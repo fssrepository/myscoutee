@@ -132,121 +132,137 @@
           @if (feedback.stackedPopupMode() === 'eventFeedback') {
             <div class="support-popup event-feedback-popup">
               @if (!feedback.eventFeedbackSubmittedState()) {
-                @if (feedback.activeEventFeedbackCard(); as card) {
+                @if (feedback.hasEventFeedbackCards()) {
                   <article class="editor-list-card support-card event-feedback-shell">
-                    @if (feedback.hasEventFeedbackCards()) {
-                      <span class="event-feedback-mobile-counter">{{ feedback.eventFeedbackSlideCounterLabel() }}</span>
-                    }
+                    <span class="event-feedback-mobile-counter">{{ feedback.eventFeedbackSlideCounterLabel() }}</span>
                     <div class="event-feedback-card-wrap">
                       <div
-                        class="event-feedback-card"
-                        [ngClass]="[card.toneClass, feedback.eventFeedbackSlideAnimClass()]"
+                        class="event-feedback-card-viewport"
                         (touchstart)="feedback.onEventFeedbackTouchStart($event)"
                         (touchend)="feedback.onEventFeedbackTouchEnd($event)"
                         >
-                        <div class="event-feedback-head" [class.event-feedback-head-member]="card.kind === 'attendee'">
-                          @if (card.kind === 'event') {
-                            <div
-                              class="event-feedback-info-card-shell event-feedback-carousel-info-card-shell"
-                              >
-                              <app-info-card
-                                class="event-feedback-carousel-info-card"
-                                [card]="eventFeedbackCarouselInfoCard(card)"
-                              ></app-info-card>
-                            </div>
-                          } @else {
-                            <article
-                              class="friends-picker-card subevent-member-image-card activity-member-image-card event-feedback-carousel-identity-card event-feedback-carousel-identity-member"
-                              [style.backgroundImage]="'url(' + card.imageUrl + ')'"
-                              >
-                              <span class="member-card-status-chip" [ngClass]="card.identityStatusClass || 'member-status-member'">
-                                <mat-icon>{{ card.identityStatusIcon || 'person' }}</mat-icon>
-                              </span>
-                              <div class="friends-picker-card-meta subevent-member-card-meta activity-member-card-meta">
-                                <h4>{{ card.identityTitle || card.heading }}</h4>
-                                <p>{{ card.identitySubtitle || card.subheading }}</p>
-                              </div>
-                            </article>
-                          }
-                          <ng-template #attendeeFeedbackIdentityCard>
-                            <article
-                              class="friends-picker-card subevent-member-image-card activity-member-image-card event-feedback-carousel-identity-card event-feedback-carousel-identity-member"
-                              [style.backgroundImage]="'url(' + card.imageUrl + ')'"
-                              >
-                              <span class="member-card-status-chip" [ngClass]="card.identityStatusClass || 'member-status-member'">
-                                <mat-icon>{{ card.identityStatusIcon || 'person' }}</mat-icon>
-                              </span>
-                              <div class="friends-picker-card-meta subevent-member-card-meta activity-member-card-meta">
-                                <h4>{{ card.identityTitle || card.heading }}</h4>
-                                <p>{{ card.identitySubtitle || card.subheading }}</p>
-                              </div>
-                            </article>
-                          </ng-template>
-                        </div>
                         <div
-                          class="event-feedback-form"
-                          [class.event-feedback-form-event]="card.kind === 'event'"
-                          [class.event-feedback-form-attendee]="card.kind === 'attendee'"
+                          class="event-feedback-card-track"
+                          [style.--event-feedback-slide-index]="feedback.eventFeedbackIndex()"
                           >
-                          <div class="event-feedback-question event-feedback-question-primary">
-                            <h5>{{ card.questionPrimary }}</h5>
-                            <div class="event-feedback-options">
-                              @for (option of card.primaryOptions; track option) {
-                                <button
-                                  type="button"
-                                  class="event-feedback-option-btn"
-                                  [class.is-selected]="feedback.isEventFeedbackPrimarySelected(option.value)"
-                                  [ngClass]="feedback.eventFeedbackOptionToneClass(card, option)"
-                                  (click)="feedback.selectEventFeedbackPrimary(option.value, $event)"
+                          @for (card of feedback.eventFeedbackCards(); track card.id; let cardIndex = $index) {
+                            <div
+                              class="event-feedback-card-slide"
+                              [class.is-active]="feedback.eventFeedbackIndex() === cardIndex"
+                              [attr.aria-hidden]="feedback.eventFeedbackIndex() === cardIndex ? null : 'true'"
+                              [attr.inert]="feedback.eventFeedbackIndex() === cardIndex ? null : ''"
+                              >
+                              <div class="event-feedback-card" [ngClass]="card.toneClass">
+                                <div class="event-feedback-head" [class.event-feedback-head-member]="card.kind === 'attendee'">
+                                  @if (card.kind === 'event') {
+                                    <div
+                                      class="event-feedback-info-card-shell event-feedback-carousel-info-card-shell"
+                                      >
+                                      <app-info-card
+                                        class="event-feedback-carousel-info-card"
+                                        [card]="eventFeedbackCarouselInfoCard(card)"
+                                      ></app-info-card>
+                                    </div>
+                                  } @else {
+                                    <article
+                                      class="friends-picker-card subevent-member-image-card activity-member-image-card event-feedback-carousel-identity-card event-feedback-carousel-identity-member"
+                                      [style.backgroundImage]="'url(' + card.imageUrl + ')'"
+                                      >
+                                      <span class="member-card-status-chip" [ngClass]="card.identityStatusClass || 'member-status-member'">
+                                        <mat-icon>{{ card.identityStatusIcon || 'person' }}</mat-icon>
+                                      </span>
+                                      <div class="friends-picker-card-meta subevent-member-card-meta activity-member-card-meta">
+                                        <h4>{{ card.identityTitle || card.heading }}</h4>
+                                        <p>{{ card.identitySubtitle || card.subheading }}</p>
+                                      </div>
+                                    </article>
+                                  }
+                                  <ng-template #attendeeFeedbackIdentityCard>
+                                    <article
+                                      class="friends-picker-card subevent-member-image-card activity-member-image-card event-feedback-carousel-identity-card event-feedback-carousel-identity-member"
+                                      [style.backgroundImage]="'url(' + card.imageUrl + ')'"
+                                      >
+                                      <span class="member-card-status-chip" [ngClass]="card.identityStatusClass || 'member-status-member'">
+                                        <mat-icon>{{ card.identityStatusIcon || 'person' }}</mat-icon>
+                                      </span>
+                                      <div class="friends-picker-card-meta subevent-member-card-meta activity-member-card-meta">
+                                        <h4>{{ card.identityTitle || card.heading }}</h4>
+                                        <p>{{ card.identitySubtitle || card.subheading }}</p>
+                                      </div>
+                                    </article>
+                                  </ng-template>
+                                </div>
+                                <div
+                                  class="event-feedback-form"
+                                  [class.event-feedback-form-event]="card.kind === 'event'"
+                                  [class.event-feedback-form-attendee]="card.kind === 'attendee'"
                                   >
-                                  <mat-icon>{{ option.icon }}</mat-icon>
-                                  <span>{{ option.label }}</span>
-                                </button>
-                              }
+                                  <div class="event-feedback-question event-feedback-question-primary">
+                                    <h5>{{ card.questionPrimary }}</h5>
+                                    <div class="event-feedback-options">
+                                      @for (option of card.primaryOptions; track option) {
+                                        <button
+                                          type="button"
+                                          class="event-feedback-option-btn"
+                                          [class.is-selected]="card.answerPrimary === option.value"
+                                          [ngClass]="feedback.eventFeedbackOptionToneClass(card, option)"
+                                          (click)="feedback.selectEventFeedbackPrimary(option.value, $event)"
+                                          >
+                                          <mat-icon>{{ option.icon }}</mat-icon>
+                                          <span>{{ option.label }}</span>
+                                        </button>
+                                      }
+                                    </div>
+                                  </div>
+                                  <div class="event-feedback-question event-feedback-question-secondary">
+                                    <h5>{{ card.questionSecondary }}</h5>
+                                    <div class="event-feedback-options">
+                                      @for (option of card.secondaryOptions; track option) {
+                                        <button
+                                          type="button"
+                                          class="event-feedback-option-btn"
+                                          [class.is-selected]="card.answerSecondary === option.value"
+                                          [ngClass]="feedback.eventFeedbackOptionToneClass(card, option)"
+                                          (click)="feedback.selectEventFeedbackSecondary(option.value, $event)"
+                                          >
+                                          <mat-icon>{{ option.icon }}</mat-icon>
+                                          <span>{{ option.label }}</span>
+                                        </button>
+                                      }
+                                    </div>
+                                  </div>
+                                  <div class="event-feedback-question event-feedback-question-traits">
+                                    <div class="event-feedback-question-head">
+                                      <h5>{{ card.traitQuestion }}</h5>
+                                      <span class="event-feedback-question-hint">Pick up to 3</span>
+                                    </div>
+                                    <div class="event-feedback-options event-feedback-options-traits">
+                                      @for (trait of card.traitOptions; track trait) {
+                                        <button
+                                          type="button"
+                                          class="event-feedback-option-btn event-feedback-option-btn-trait event-feedback-option-tone-slate"
+                                          [class.is-selected]="card.selectedTraitIds.includes(trait.id)"
+                                          [disabled]="feedback.eventFeedbackIndex() !== cardIndex || feedback.isEventFeedbackTraitDisabled(trait.id)"
+                                          (click)="feedback.toggleEventFeedbackTrait(trait.id, $event)"
+                                          >
+                                          <mat-icon>{{ trait.icon }}</mat-icon>
+                                          <span>{{ trait.label }}</span>
+                                        </button>
+                                      }
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
                             </div>
-                          </div>
-                          <div class="event-feedback-question event-feedback-question-secondary">
-                            <h5>{{ card.questionSecondary }}</h5>
-                            <div class="event-feedback-options">
-                              @for (option of card.secondaryOptions; track option) {
-                                <button
-                                  type="button"
-                                  class="event-feedback-option-btn"
-                                  [class.is-selected]="feedback.isEventFeedbackSecondarySelected(option.value)"
-                                  [ngClass]="feedback.eventFeedbackOptionToneClass(card, option)"
-                                  (click)="feedback.selectEventFeedbackSecondary(option.value, $event)"
-                                  >
-                                  <mat-icon>{{ option.icon }}</mat-icon>
-                                  <span>{{ option.label }}</span>
-                                </button>
-                              }
-                            </div>
-                          </div>
-                          <div class="event-feedback-question event-feedback-question-traits">
-                            <div class="event-feedback-question-head">
-                              <h5>{{ card.traitQuestion }}</h5>
-                              <span class="event-feedback-question-hint">Pick up to 3</span>
-                            </div>
-                            <div class="event-feedback-options event-feedback-options-traits">
-                              @for (trait of card.traitOptions; track trait) {
-                                <button
-                                  type="button"
-                                  class="event-feedback-option-btn event-feedback-option-btn-trait event-feedback-option-tone-slate"
-                                  [class.is-selected]="feedback.isEventFeedbackTraitSelected(trait.id)"
-                                  [disabled]="feedback.isEventFeedbackTraitDisabled(trait.id)"
-                                  (click)="feedback.toggleEventFeedbackTrait(trait.id, $event)"
-                                  >
-                                  <mat-icon>{{ trait.icon }}</mat-icon>
-                                  <span>{{ trait.label }}</span>
-                                </button>
-                              }
-                            </div>
-                          </div>
+                          }
                         </div>
                       </div>
                       <button
                         type="button"
-                        class="event-feedback-overlay-nav-btn event-feedback-overlay-nav-btn-prev"
+                        matRipple
+                        [matRippleCentered]="true"
+                        [matRippleColor]="'rgba(44, 87, 141, 0.18)'"
+                        class="event-feedback-overlay-nav-btn event-feedback-overlay-nav-btn-prev motion-static"
                         [disabled]="feedback.eventFeedbackIndex() <= 0"
                         (click)="feedback.previousEventFeedbackSlide($event)"
                         aria-label="Previous feedback card"
@@ -256,7 +272,10 @@
                       @if (!feedback.eventFeedbackOnLastSlide()) {
                         <button
                           type="button"
-                          class="event-feedback-overlay-nav-btn event-feedback-overlay-nav-btn-next"
+                          matRipple
+                          [matRippleCentered]="true"
+                          [matRippleColor]="'rgba(44, 87, 141, 0.18)'"
+                          class="event-feedback-overlay-nav-btn event-feedback-overlay-nav-btn-next motion-static"
                           (click)="feedback.nextEventFeedbackSlide($event)"
                           aria-label="Next feedback card"
                           >
