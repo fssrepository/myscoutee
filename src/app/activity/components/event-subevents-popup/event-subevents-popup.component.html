@@ -1,128 +1,127 @@
-<section class="subevents-overlay" *ngIf="open">
-  <div class="subevents-backdrop" (click)="requestClose()"></div>
-
-  <article class="subevents-panel" (click)="$event.stopPropagation()">
-    <header class="subevents-header">
-      <button mat-icon-button type="button" class="subevents-back-btn" (click)="requestClose()" aria-label="Back to event editor">
-        <mat-icon>arrow_back</mat-icon>
-      </button>
-
-      <div class="subevents-title">
-        <h2>Sub Events</h2>
-        <p *ngIf="parentTitle">{{ parentTitle }}</p>
-      </div>
-
-      <div class="subevents-actions">
-        <button
-          type="button"
-          class="subevents-add-btn"
-          [class.is-disabled]="readOnly"
-          [disabled]="readOnly"
-          (click)="openCreateSubEventForm($event)"
-          aria-label="Add sub event"
-        >
-          <mat-icon>add</mat-icon>
+@if (open) {
+  <section class="subevents-overlay">
+    <div class="subevents-backdrop" (click)="requestClose()"></div>
+    <article class="subevents-panel" (click)="$event.stopPropagation()">
+      <header class="subevents-header">
+        <button mat-icon-button type="button" class="subevents-back-btn" (click)="requestClose()" aria-label="Back to event editor">
+          <mat-icon>arrow_back</mat-icon>
         </button>
-
-        <div class="subevents-mode-picker">
+        <div class="subevents-title">
+          <h2>Sub Events</h2>
+          @if (parentTitle) {
+            <p>{{ parentTitle }}</p>
+          }
+        </div>
+        <div class="subevents-actions">
           <button
             type="button"
-            class="popup-view-fab subevents-mode-trigger"
-            [class.subevents-mode-tournament]="displayMode === 'Tournament'"
-            [class.subevents-mode-casual]="displayMode === 'Casual'"
-            [disabled]="readOnly"
+            class="subevents-add-btn"
             [class.is-disabled]="readOnly"
-            (click)="toggleDisplayModePicker($event)"
-            aria-label="Change sub events mode"
-          >
-            <mat-icon class="subevents-mode-icon">{{ currentDisplayModeIcon() }}</mat-icon>
-            <span>{{ displayMode }}</span>
+            [disabled]="readOnly"
+            (click)="openCreateSubEventForm($event)"
+            aria-label="Add sub event"
+            >
+            <mat-icon>add</mat-icon>
           </button>
-
-          <div class="activities-view-picker-panel subevents-mode-panel" *ngIf="showDisplayModePicker">
+          <div class="subevents-mode-picker">
             <button
               type="button"
-              class="activities-view-option subevents-mode-option"
-              *ngFor="let mode of displayModeOptions"
-              [class.subevents-mode-tournament]="mode === 'Tournament'"
-              [class.subevents-mode-casual]="mode === 'Casual'"
-              (click)="selectDisplayMode(mode, $event)"
-            >
-              <mat-icon class="subevents-mode-icon">{{ currentDisplayModeIcon(mode) }}</mat-icon>
-              <span>{{ mode }}</span>
+              class="popup-view-fab subevents-mode-trigger"
+              [class.subevents-mode-tournament]="displayMode === 'Tournament'"
+              [class.subevents-mode-casual]="displayMode === 'Casual'"
+              [disabled]="readOnly"
+              [class.is-disabled]="readOnly"
+              (click)="toggleDisplayModePicker($event)"
+              aria-label="Change sub events mode"
+              >
+              <mat-icon class="subevents-mode-icon">{{ currentDisplayModeIcon() }}</mat-icon>
+              <span>{{ displayMode }}</span>
             </button>
+            @if (showDisplayModePicker) {
+              <div class="activities-view-picker-panel subevents-mode-panel">
+                @for (mode of displayModeOptions; track mode) {
+                  <button
+                    type="button"
+                    class="activities-view-option subevents-mode-option"
+                    [class.subevents-mode-tournament]="mode === 'Tournament'"
+                    [class.subevents-mode-casual]="mode === 'Casual'"
+                    (click)="selectDisplayMode(mode, $event)"
+                    >
+                    <mat-icon class="subevents-mode-icon">{{ currentDisplayModeIcon(mode) }}</mat-icon>
+                    <span>{{ mode }}</span>
+                  </button>
+                }
+              </div>
+            }
           </div>
         </div>
-      </div>
-    </header>
-
-    <div class="subevents-body">
-      <ng-container *ngIf="sortedSubEvents.length > 0; else subeventsEmptyState">
-        <ng-container *ngIf="displayMode === 'Tournament'; else subeventsCasualMode">
-          <div class="subevents-period-head">
-            <span class="subevents-period-nav subevents-period-nav-left">
-              <button
-                type="button"
-                class="activities-calendar-nav-btn subevents-period-nav-btn"
-                (click)="scrollStagePages(-1, $event)"
-                [disabled]="!canScrollStagePages(-1)"
-                aria-label="Previous stage page"
-              >
-                <mat-icon>chevron_left</mat-icon>
-              </button>
-              <span class="subevents-period-neighbor" [class.is-empty]="!previousStageLabel()" [style.color]="previousStageColor()">
-                {{ previousStageLabel() }}
-              </span>
-            </span>
-
-            <span class="subevents-period-center">
-              <span class="subevents-period-current">
-                <span class="subevents-period-current-start" [style.color]="visibleStageStartColor()">
-                  {{ visibleStageStartLabel() }}
+      </header>
+      <div class="subevents-body">
+        @if (sortedSubEvents.length > 0) {
+          @if (displayMode === 'Tournament') {
+            <div class="subevents-period-head">
+              <span class="subevents-period-nav subevents-period-nav-left">
+                <button
+                  type="button"
+                  class="activities-calendar-nav-btn subevents-period-nav-btn"
+                  (click)="scrollStagePages(-1, $event)"
+                  [disabled]="!canScrollStagePages(-1)"
+                  aria-label="Previous stage page"
+                  >
+                  <mat-icon>chevron_left</mat-icon>
+                </button>
+                <span class="subevents-period-neighbor" [class.is-empty]="!previousStageLabel()" [style.color]="previousStageColor()">
+                  {{ previousStageLabel() }}
                 </span>
-                <ng-container *ngIf="visibleStageHasRange()">
-                  <span class="subevents-period-current-separator">-</span>
-                  <span class="subevents-period-current-end" [style.color]="visibleStageEndColor()">
-                    {{ visibleStageEndLabel() }}
+              </span>
+              <span class="subevents-period-center">
+                <span class="subevents-period-current">
+                  <span class="subevents-period-current-start" [style.color]="visibleStageStartColor()">
+                    {{ visibleStageStartLabel() }}
                   </span>
-                </ng-container>
+                  @if (visibleStageHasRange()) {
+                    <span class="subevents-period-current-separator">-</span>
+                    <span class="subevents-period-current-end" [style.color]="visibleStageEndColor()">
+                      {{ visibleStageEndLabel() }}
+                    </span>
+                  }
+                </span>
+                @if (stagePeriodLabel()) {
+                  <span class="subevents-period-range">{{ stagePeriodLabel() }}</span>
+                }
               </span>
-              <span class="subevents-period-range" *ngIf="stagePeriodLabel()">{{ stagePeriodLabel() }}</span>
-            </span>
-
-            <span class="subevents-period-nav subevents-period-nav-right">
-              <span class="subevents-period-neighbor" [class.is-empty]="!nextStageLabel()" [style.color]="nextStageColor()">
-                {{ nextStageLabel() }}
+              <span class="subevents-period-nav subevents-period-nav-right">
+                <span class="subevents-period-neighbor" [class.is-empty]="!nextStageLabel()" [style.color]="nextStageColor()">
+                  {{ nextStageLabel() }}
+                </span>
+                <button
+                  type="button"
+                  class="activities-calendar-nav-btn subevents-period-nav-btn"
+                  (click)="scrollStagePages(1, $event)"
+                  [disabled]="!canScrollStagePages(1)"
+                  aria-label="Next stage page"
+                  >
+                  <mat-icon>chevron_right</mat-icon>
+                </button>
               </span>
-              <button
-                type="button"
-                class="activities-calendar-nav-btn subevents-period-nav-btn"
-                (click)="scrollStagePages(1, $event)"
-                [disabled]="!canScrollStagePages(1)"
-                aria-label="Next stage page"
-              >
-                <mat-icon>chevron_right</mat-icon>
-              </button>
-            </span>
-          </div>
-
-          <div
-            #stageViewport
-            class="subevents-stage-viewport"
-            [class.subevents-stage-viewport-mobile]="isMobileViewport"
-            (scroll)="onStageViewportScroll()"
-          >
+            </div>
             <div
-              class="subevents-stage-grid"
-              [class.subevents-stage-grid-mobile]="isMobileViewport"
-              [style.--start-index]="stageGridStartIndex"
-              [style.--columns]="stageGridColumns"
-            >
-              <article
-                class="subevents-stage-card"
-                *ngFor="let stage of stageCards; trackBy: trackByStageKey"
-                [style.--stage-accent]="stage.accentColor"
+              #stageViewport
+              class="subevents-stage-viewport"
+              [class.subevents-stage-viewport-mobile]="isMobileViewport"
+              (scroll)="onStageViewportScroll()"
               >
+              <div
+                class="subevents-stage-grid"
+                [class.subevents-stage-grid-mobile]="isMobileViewport"
+                [style.--start-index]="stageGridStartIndex"
+                [style.--columns]="stageGridColumns"
+                >
+                @for (stage of stageCards; track trackByStageKey($index, stage)) {
+                  <article
+                    class="subevents-stage-card"
+                    [style.--stage-accent]="stage.accentColor"
+                    >
                     <header class="subevents-stage-head">
                       <div class="subevents-stage-head-main">
                         <span class="subevents-stage-step">{{ stage.title | uppercase }}</span>
@@ -141,328 +140,367 @@
                           [class.is-open]="openStageMenuKey === stage.key"
                           (click)="toggleStageActionMenu(stage, $event)"
                           [attr.aria-label]="openStageMenuKey === stage.key ? 'Close stage actions' : 'Open stage actions'"
-                        >
+                          >
                           <span class="subevents-menu-icon-stack" [class.is-open]="openStageMenuKey === stage.key">
                             <mat-icon class="subevents-menu-icon-dots">more_vert</mat-icon>
                             <mat-icon class="subevents-menu-icon-close">close</mat-icon>
                           </span>
                         </button>
-                        <div
-                          class="item-action-menu subevents-stage-menu"
-                          *ngIf="openStageMenuKey === stage.key"
-                          [class.is-open]="openStageMenuKey === stage.key"
-                          [class.item-action-menu-mobile]="isMobileViewport"
-                          [class.item-action-menu-desktop]="!isMobileViewport"
-                          (click)="$event.stopPropagation()"
-                        >
-                          <div class="item-action-menu-title">{{ stage.title }}</div>
-                          <button type="button" class="item-action-menu-btn" *ngIf="!readOnly" (click)="runStageMenuAction('add-group', stage, $event)">
-                            <mat-icon>group_add</mat-icon>
-                            <span>Add Group</span>
-                          </button>
-                          <button type="button" class="item-action-menu-btn" (click)="openStageLeaderboard(stage, $event)">
-                            <mat-icon>public</mat-icon>
-                            <span>Leaderboard</span>
-                          </button>
-                          <button type="button" class="item-action-menu-btn" *ngIf="canOpenStageLocation(stage)" (click)="openStageLocation(stage, $event)">
-                            <mat-icon>location_on</mat-icon>
-                            <span>Show on Map</span>
-                          </button>
-                          <button type="button" class="item-action-menu-btn" *ngIf="!readOnly" (click)="runStageMenuAction('edit-stage', stage, $event)">
-                            <mat-icon>edit</mat-icon>
-                            <span>Edit Stage Event</span>
-                          </button>
-                          <button type="button" class="item-action-menu-btn item-action-menu-btn-destructive" *ngIf="!readOnly" (click)="runStageMenuAction('delete-stage', stage, $event)">
-                            <mat-icon>delete</mat-icon>
-                            <span>Delete Stage</span>
-                          </button>
-                        </div>
-                      </div>
-                    </header>
-
-                    <div class="subevents-stage-body">
-                      <article class="subevents-group-row" *ngFor="let row of stage.rows; trackBy: trackByStageRowKey" [attr.data-tone]="row.toneClass">
-                        <span class="subevents-group-title">{{ row.label }}</span>
-                        <div class="experience-item-actions subevents-group-actions">
-                          <button
-                            type="button"
-                            class="experience-action-btn experience-action-menu-trigger subevents-group-menu-btn"
-                            [class.is-open]="openGroupMenuKey === row.key"
-                            (click)="toggleGroupActionMenu(row, $event)"
-                            aria-label="Group actions"
-                          >
-                            <span class="subevents-menu-icon-stack" [class.is-open]="openGroupMenuKey === row.key">
-                              <mat-icon class="subevents-menu-icon-dots">more_vert</mat-icon>
-                              <mat-icon class="subevents-menu-icon-close">close</mat-icon>
-                            </span>
-                          </button>
+                        @if (openStageMenuKey === stage.key) {
                           <div
-                            class="item-action-menu subevents-group-menu"
-                            *ngIf="openGroupMenuKey === row.key"
-                            [class.is-open]="openGroupMenuKey === row.key"
+                            class="item-action-menu subevents-stage-menu"
+                            [class.is-open]="openStageMenuKey === stage.key"
                             [class.item-action-menu-mobile]="isMobileViewport"
                             [class.item-action-menu-desktop]="!isMobileViewport"
                             (click)="$event.stopPropagation()"
-                          >
-                            <div class="item-action-menu-title">{{ row.groupName }}</div>
-                            <button type="button" class="item-action-menu-btn" *ngIf="!readOnly" (click)="runGroupMenuAction('edit-group', row, $event)">
-                              <mat-icon>edit</mat-icon>
-                              <span>Edit</span>
-                            </button>
-                            <button type="button" class="item-action-menu-btn item-action-menu-btn-destructive" *ngIf="!readOnly" (click)="runGroupMenuAction('delete-group', row, $event)">
-                              <mat-icon>delete</mat-icon>
-                              <span>Delete</span>
-                            </button>
-                            <div class="item-action-menu-divider"></div>
-                            <button
-                              type="button"
-                              class="item-action-menu-btn subevent-resource-menu-item event-subevent-badge-members"
-                              (click)="openSubEventResourcePopup('Members', row.stageItem, $event, row)"
                             >
-                              <span class="subevent-resource-menu-item-icon"><mat-icon>groups</mat-icon></span>
-                              <span class="subevent-resource-menu-item-main">
-                                <span class="subevent-resource-menu-item-title">Members</span>
-                                <span class="subevent-resource-menu-item-value">{{ row.membersLabel }}</span>
-                              </span>
-                              <span class="rate-filter-count-badge subevent-resource-menu-item-counter" *ngIf="row.membersPendingCount > 0">
-                                {{ row.membersPendingCount | counterBadge }}
-                              </span>
+                            <div class="item-action-menu-title">{{ stage.title }}</div>
+                            @if (!readOnly) {
+                              <button type="button" class="item-action-menu-btn" (click)="runStageMenuAction('add-group', stage, $event)">
+                                <mat-icon>group_add</mat-icon>
+                                <span>Add Group</span>
+                              </button>
+                            }
+                            <button type="button" class="item-action-menu-btn" (click)="openStageLeaderboard(stage, $event)">
+                              <mat-icon>public</mat-icon>
+                              <span>Leaderboard</span>
                             </button>
-                            <div class="item-action-menu-divider"></div>
-                            <div class="item-action-menu-section-label">Assets</div>
-                            <button
-                              type="button"
-                              class="item-action-menu-btn subevent-resource-menu-item event-subevent-badge-car"
-                              (click)="openSubEventResourcePopup('Car', row.stageItem, $event, row)"
-                            >
-                              <span class="subevent-resource-menu-item-icon"><mat-icon>directions_car</mat-icon></span>
-                              <span class="subevent-resource-menu-item-main">
-                                <span class="subevent-resource-menu-item-title">Car</span>
-                                <span class="subevent-resource-menu-item-value">{{ row.carLabel }}</span>
-                              </span>
-                              <span class="rate-filter-count-badge subevent-resource-menu-item-counter" *ngIf="row.carPendingCount > 0">
-                                {{ row.carPendingCount | counterBadge }}
-                              </span>
-                            </button>
-                            <button
-                              type="button"
-                              class="item-action-menu-btn subevent-resource-menu-item event-subevent-badge-accommodation"
-                              (click)="openSubEventResourcePopup('Accommodation', row.stageItem, $event, row)"
-                            >
-                              <span class="subevent-resource-menu-item-icon"><mat-icon>hotel</mat-icon></span>
-                              <span class="subevent-resource-menu-item-main">
-                                <span class="subevent-resource-menu-item-title">Accommodation</span>
-                                <span class="subevent-resource-menu-item-value">{{ row.accommodationLabel }}</span>
-                              </span>
-                              <span class="rate-filter-count-badge subevent-resource-menu-item-counter" *ngIf="row.accommodationPendingCount > 0">
-                                {{ row.accommodationPendingCount | counterBadge }}
-                              </span>
-                            </button>
-                            <button
-                              type="button"
-                              class="item-action-menu-btn subevent-resource-menu-item event-subevent-badge-supplies"
-                              (click)="openSubEventResourcePopup('Supplies', row.stageItem, $event, row)"
-                            >
-                              <span class="subevent-resource-menu-item-icon"><mat-icon>inventory_2</mat-icon></span>
-                              <span class="subevent-resource-menu-item-main">
-                                <span class="subevent-resource-menu-item-title">Supplies</span>
-                                <span class="subevent-resource-menu-item-value">{{ row.suppliesLabel }}</span>
-                              </span>
-                              <span class="rate-filter-count-badge subevent-resource-menu-item-counter" *ngIf="row.suppliesPendingCount > 0">
-                                {{ row.suppliesPendingCount | counterBadge }}
-                              </span>
-                            </button>
+                            @if (canOpenStageLocation(stage)) {
+                              <button type="button" class="item-action-menu-btn" (click)="openStageLocation(stage, $event)">
+                                <mat-icon>location_on</mat-icon>
+                                <span>Show on Map</span>
+                              </button>
+                            }
+                            @if (!readOnly) {
+                              <button type="button" class="item-action-menu-btn" (click)="runStageMenuAction('edit-stage', stage, $event)">
+                                <mat-icon>edit</mat-icon>
+                                <span>Edit Stage Event</span>
+                              </button>
+                            }
+                            @if (!readOnly) {
+                              <button type="button" class="item-action-menu-btn item-action-menu-btn-destructive" (click)="runStageMenuAction('delete-stage', stage, $event)">
+                                <mat-icon>delete</mat-icon>
+                                <span>Delete Stage</span>
+                              </button>
+                            }
                           </div>
-                        </div>
-                        <span class="subevents-group-badge" *ngIf="row.totalPendingCount > 0">
-                          {{ row.totalPendingCount | counterBadge }}
-                        </span>
-                      </article>
+                        }
+                      </div>
+                    </header>
+                    <div class="subevents-stage-body">
+                      @for (row of stage.rows; track trackByStageRowKey($index, row)) {
+                        <article class="subevents-group-row" [attr.data-tone]="row.toneClass">
+                          <span class="subevents-group-title">{{ row.label }}</span>
+                          <div class="experience-item-actions subevents-group-actions">
+                            <button
+                              type="button"
+                              class="experience-action-btn experience-action-menu-trigger subevents-group-menu-btn"
+                              [class.is-open]="openGroupMenuKey === row.key"
+                              (click)="toggleGroupActionMenu(row, $event)"
+                              aria-label="Group actions"
+                              >
+                              <span class="subevents-menu-icon-stack" [class.is-open]="openGroupMenuKey === row.key">
+                                <mat-icon class="subevents-menu-icon-dots">more_vert</mat-icon>
+                                <mat-icon class="subevents-menu-icon-close">close</mat-icon>
+                              </span>
+                            </button>
+                            @if (openGroupMenuKey === row.key) {
+                              <div
+                                class="item-action-menu subevents-group-menu"
+                                [class.is-open]="openGroupMenuKey === row.key"
+                                [class.item-action-menu-mobile]="isMobileViewport"
+                                [class.item-action-menu-desktop]="!isMobileViewport"
+                                (click)="$event.stopPropagation()"
+                                >
+                                <div class="item-action-menu-title">{{ row.groupName }}</div>
+                                @if (!readOnly) {
+                                  <button type="button" class="item-action-menu-btn" (click)="runGroupMenuAction('edit-group', row, $event)">
+                                    <mat-icon>edit</mat-icon>
+                                    <span>Edit</span>
+                                  </button>
+                                }
+                                @if (!readOnly) {
+                                  <button type="button" class="item-action-menu-btn item-action-menu-btn-destructive" (click)="runGroupMenuAction('delete-group', row, $event)">
+                                    <mat-icon>delete</mat-icon>
+                                    <span>Delete</span>
+                                  </button>
+                                }
+                                <div class="item-action-menu-divider"></div>
+                                <button
+                                  type="button"
+                                  class="item-action-menu-btn subevent-resource-menu-item event-subevent-badge-members"
+                                  (click)="openSubEventResourcePopup('Members', row.stageItem, $event, row)"
+                                  >
+                                  <span class="subevent-resource-menu-item-icon"><mat-icon>groups</mat-icon></span>
+                                  <span class="subevent-resource-menu-item-main">
+                                    <span class="subevent-resource-menu-item-title">Members</span>
+                                    <span class="subevent-resource-menu-item-value">{{ row.membersLabel }}</span>
+                                  </span>
+                                  @if (row.membersPendingCount > 0) {
+                                    <span class="rate-filter-count-badge subevent-resource-menu-item-counter">
+                                      {{ row.membersPendingCount | counterBadge }}
+                                    </span>
+                                  }
+                                </button>
+                                <div class="item-action-menu-divider"></div>
+                                <div class="item-action-menu-section-label">Assets</div>
+                                <button
+                                  type="button"
+                                  class="item-action-menu-btn subevent-resource-menu-item event-subevent-badge-car"
+                                  (click)="openSubEventResourcePopup('Car', row.stageItem, $event, row)"
+                                  >
+                                  <span class="subevent-resource-menu-item-icon"><mat-icon>directions_car</mat-icon></span>
+                                  <span class="subevent-resource-menu-item-main">
+                                    <span class="subevent-resource-menu-item-title">Car</span>
+                                    <span class="subevent-resource-menu-item-value">{{ row.carLabel }}</span>
+                                  </span>
+                                  @if (row.carPendingCount > 0) {
+                                    <span class="rate-filter-count-badge subevent-resource-menu-item-counter">
+                                      {{ row.carPendingCount | counterBadge }}
+                                    </span>
+                                  }
+                                </button>
+                                <button
+                                  type="button"
+                                  class="item-action-menu-btn subevent-resource-menu-item event-subevent-badge-accommodation"
+                                  (click)="openSubEventResourcePopup('Accommodation', row.stageItem, $event, row)"
+                                  >
+                                  <span class="subevent-resource-menu-item-icon"><mat-icon>hotel</mat-icon></span>
+                                  <span class="subevent-resource-menu-item-main">
+                                    <span class="subevent-resource-menu-item-title">Accommodation</span>
+                                    <span class="subevent-resource-menu-item-value">{{ row.accommodationLabel }}</span>
+                                  </span>
+                                  @if (row.accommodationPendingCount > 0) {
+                                    <span class="rate-filter-count-badge subevent-resource-menu-item-counter">
+                                      {{ row.accommodationPendingCount | counterBadge }}
+                                    </span>
+                                  }
+                                </button>
+                                <button
+                                  type="button"
+                                  class="item-action-menu-btn subevent-resource-menu-item event-subevent-badge-supplies"
+                                  (click)="openSubEventResourcePopup('Supplies', row.stageItem, $event, row)"
+                                  >
+                                  <span class="subevent-resource-menu-item-icon"><mat-icon>inventory_2</mat-icon></span>
+                                  <span class="subevent-resource-menu-item-main">
+                                    <span class="subevent-resource-menu-item-title">Supplies</span>
+                                    <span class="subevent-resource-menu-item-value">{{ row.suppliesLabel }}</span>
+                                  </span>
+                                  @if (row.suppliesPendingCount > 0) {
+                                    <span class="rate-filter-count-badge subevent-resource-menu-item-counter">
+                                      {{ row.suppliesPendingCount | counterBadge }}
+                                    </span>
+                                  }
+                                </button>
+                              </div>
+                            }
+                          </div>
+                          @if (row.totalPendingCount > 0) {
+                            <span class="subevents-group-badge">
+                              {{ row.totalPendingCount | counterBadge }}
+                            </span>
+                          }
+                        </article>
+                      }
                     </div>
-              </article>
+                  </article>
+                }
+              </div>
             </div>
-          </div>
-        </ng-container>
-
-        <ng-template #subeventsCasualMode>
-          <app-smart-list
-            [config]="casualSmartListConfig"
-            [loadPage]="casualSmartListLoadPage"
-            [itemTemplate]="casualSubEventTemplate"
-            [query]="casualSmartListQuery"
-          ></app-smart-list>
-
-          <ng-template #casualSubEventTemplate let-subEvent let-index="index">
-            <article
-              class="subevents-casual-card"
-              [attr.data-tone]="casualCardToneClass(subEvent)"
-            >
-              <header class="subevents-casual-head">
-                <strong>{{ casualCardTitle(subEvent, index) }}</strong>
-                <div class="subevents-casual-actions">
-                  <span class="subevents-casual-range">{{ casualCardRange(subEvent) }}</span>
-                  <button
-                    type="button"
-                    class="experience-action-btn experience-action-menu-trigger subevents-casual-menu-btn"
-                    [class.is-open]="isCasualActionMenuOpen(subEvent, index)"
-                    (click)="toggleCasualActionMenu(subEvent, index, $event)"
-                    [attr.aria-label]="isCasualActionMenuOpen(subEvent, index) ? 'Close sub event actions' : 'Open sub event actions'"
-                  >
-                    <span class="subevents-menu-icon-stack" [class.is-open]="isCasualActionMenuOpen(subEvent, index)">
-                      <mat-icon class="subevents-menu-icon-dots">more_vert</mat-icon>
-                      <mat-icon class="subevents-menu-icon-close">close</mat-icon>
-                    </span>
-                    <span class="subevents-group-badge" *ngIf="casualMenuPendingCount(subEvent) > 0">{{ casualMenuPendingCount(subEvent) | counterBadge }}</span>
-                  </button>
-                  <div
-                    class="item-action-menu subevents-casual-menu"
-                    [class.is-open]="isCasualActionMenuOpen(subEvent, index)"
-                    [class.item-action-menu-mobile]="isMobileViewport"
-                    [class.item-action-menu-desktop]="!isMobileViewport"
-                    (click)="$event.stopPropagation()"
-                  >
-                    <div class="item-action-menu-title">{{ casualCardTitle(subEvent, index) }}</div>
-                    <button type="button" class="item-action-menu-btn" *ngIf="!readOnly" (click)="runCasualMenuAction('edit', subEvent, index, $event)">
-                      <mat-icon>edit</mat-icon>
-                      <span>Edit</span>
-                    </button>
-                    <button type="button" class="item-action-menu-btn item-action-menu-btn-destructive" *ngIf="!readOnly" (click)="runCasualMenuAction('delete', subEvent, index, $event)">
-                      <mat-icon>delete</mat-icon>
-                      <span>Delete</span>
-                    </button>
-                    <button type="button" class="item-action-menu-btn" *ngIf="canOpenSubEventLocation(subEvent)" (click)="openSubEventLocation(subEvent, $event)">
-                      <mat-icon>location_on</mat-icon>
-                      <span>Show on Map</span>
-                    </button>
-                    <div class="item-action-menu-divider"></div>
+          } @else {
+            <app-smart-list
+              [config]="casualSmartListConfig"
+              [loadPage]="casualSmartListLoadPage"
+              [itemTemplate]="casualSubEventTemplate"
+              [query]="casualSmartListQuery"
+            ></app-smart-list>
+            <ng-template #casualSubEventTemplate let-subEvent let-index="index">
+              <article
+                class="subevents-casual-card"
+                [attr.data-tone]="casualCardToneClass(subEvent)"
+                >
+                <header class="subevents-casual-head">
+                  <strong>{{ casualCardTitle(subEvent, index) }}</strong>
+                  <div class="subevents-casual-actions">
+                    <span class="subevents-casual-range">{{ casualCardRange(subEvent) }}</span>
                     <button
                       type="button"
-                      class="item-action-menu-btn subevent-resource-menu-item event-subevent-badge-members"
-                      *ngIf="subEvent.optional"
-                      (click)="openSubEventResourcePopup('Members', subEvent, $event)"
-                    >
-                      <span class="subevent-resource-menu-item-icon"><mat-icon>groups</mat-icon></span>
-                      <span class="subevent-resource-menu-item-main">
-                        <span class="subevent-resource-menu-item-title">Members</span>
-                        <span class="subevent-resource-menu-item-value">{{ subEventMembersResourceLabel(subEvent) }}</span>
+                      class="experience-action-btn experience-action-menu-trigger subevents-casual-menu-btn"
+                      [class.is-open]="isCasualActionMenuOpen(subEvent, index)"
+                      (click)="toggleCasualActionMenu(subEvent, index, $event)"
+                      [attr.aria-label]="isCasualActionMenuOpen(subEvent, index) ? 'Close sub event actions' : 'Open sub event actions'"
+                      >
+                      <span class="subevents-menu-icon-stack" [class.is-open]="isCasualActionMenuOpen(subEvent, index)">
+                        <mat-icon class="subevents-menu-icon-dots">more_vert</mat-icon>
+                        <mat-icon class="subevents-menu-icon-close">close</mat-icon>
                       </span>
-                      <span class="rate-filter-count-badge subevent-resource-menu-item-counter" *ngIf="resourcePendingCount(subEvent, 'Members') > 0">
-                        {{ resourcePendingCount(subEvent, 'Members') | counterBadge }}
-                      </span>
+                      @if (casualMenuPendingCount(subEvent) > 0) {
+                        <span class="subevents-group-badge">{{ casualMenuPendingCount(subEvent) | counterBadge }}</span>
+                      }
                     </button>
-                    <div class="item-action-menu-divider" *ngIf="subEvent.optional"></div>
-                    <div class="item-action-menu-section-label">Assets</div>
-                    <button
-                      type="button"
-                      class="item-action-menu-btn subevent-resource-menu-item event-subevent-badge-car"
-                      (click)="openSubEventResourcePopup('Car', subEvent, $event)"
-                    >
-                      <span class="subevent-resource-menu-item-icon"><mat-icon>directions_car</mat-icon></span>
-                      <span class="subevent-resource-menu-item-main">
-                        <span class="subevent-resource-menu-item-title">Car</span>
-                        <span class="subevent-resource-menu-item-value">{{ subEventAssetResourceLabel(subEvent, 'Car') }}</span>
-                      </span>
-                      <span class="rate-filter-count-badge subevent-resource-menu-item-counter" *ngIf="resourcePendingCount(subEvent, 'Car') > 0">
-                        {{ resourcePendingCount(subEvent, 'Car') | counterBadge }}
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      class="item-action-menu-btn subevent-resource-menu-item event-subevent-badge-accommodation"
-                      (click)="openSubEventResourcePopup('Accommodation', subEvent, $event)"
-                    >
-                      <span class="subevent-resource-menu-item-icon"><mat-icon>hotel</mat-icon></span>
-                      <span class="subevent-resource-menu-item-main">
-                        <span class="subevent-resource-menu-item-title">Accommodation</span>
-                        <span class="subevent-resource-menu-item-value">{{ subEventAssetResourceLabel(subEvent, 'Accommodation') }}</span>
-                      </span>
-                      <span class="rate-filter-count-badge subevent-resource-menu-item-counter" *ngIf="resourcePendingCount(subEvent, 'Accommodation') > 0">
-                        {{ resourcePendingCount(subEvent, 'Accommodation') | counterBadge }}
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      class="item-action-menu-btn subevent-resource-menu-item event-subevent-badge-supplies"
-                      (click)="openSubEventResourcePopup('Supplies', subEvent, $event)"
-                    >
-                      <span class="subevent-resource-menu-item-icon"><mat-icon>inventory_2</mat-icon></span>
-                      <span class="subevent-resource-menu-item-main">
-                        <span class="subevent-resource-menu-item-title">Supplies</span>
-                        <span class="subevent-resource-menu-item-value">{{ subEventAssetResourceLabel(subEvent, 'Supplies') }}</span>
-                      </span>
-                      <span class="rate-filter-count-badge subevent-resource-menu-item-counter" *ngIf="resourcePendingCount(subEvent, 'Supplies') > 0">
-                        {{ resourcePendingCount(subEvent, 'Supplies') | counterBadge }}
-                      </span>
-                    </button>
+                    <div
+                      class="item-action-menu subevents-casual-menu"
+                      [class.is-open]="isCasualActionMenuOpen(subEvent, index)"
+                      [class.item-action-menu-mobile]="isMobileViewport"
+                      [class.item-action-menu-desktop]="!isMobileViewport"
+                      (click)="$event.stopPropagation()"
+                      >
+                      <div class="item-action-menu-title">{{ casualCardTitle(subEvent, index) }}</div>
+                      @if (!readOnly) {
+                        <button type="button" class="item-action-menu-btn" (click)="runCasualMenuAction('edit', subEvent, index, $event)">
+                          <mat-icon>edit</mat-icon>
+                          <span>Edit</span>
+                        </button>
+                      }
+                      @if (!readOnly) {
+                        <button type="button" class="item-action-menu-btn item-action-menu-btn-destructive" (click)="runCasualMenuAction('delete', subEvent, index, $event)">
+                          <mat-icon>delete</mat-icon>
+                          <span>Delete</span>
+                        </button>
+                      }
+                      @if (canOpenSubEventLocation(subEvent)) {
+                        <button type="button" class="item-action-menu-btn" (click)="openSubEventLocation(subEvent, $event)">
+                          <mat-icon>location_on</mat-icon>
+                          <span>Show on Map</span>
+                        </button>
+                      }
+                      <div class="item-action-menu-divider"></div>
+                      @if (subEvent.optional) {
+                        <button
+                          type="button"
+                          class="item-action-menu-btn subevent-resource-menu-item event-subevent-badge-members"
+                          (click)="openSubEventResourcePopup('Members', subEvent, $event)"
+                          >
+                          <span class="subevent-resource-menu-item-icon"><mat-icon>groups</mat-icon></span>
+                          <span class="subevent-resource-menu-item-main">
+                            <span class="subevent-resource-menu-item-title">Members</span>
+                            <span class="subevent-resource-menu-item-value">{{ subEventMembersResourceLabel(subEvent) }}</span>
+                          </span>
+                          @if (resourcePendingCount(subEvent, 'Members') > 0) {
+                            <span class="rate-filter-count-badge subevent-resource-menu-item-counter">
+                              {{ resourcePendingCount(subEvent, 'Members') | counterBadge }}
+                            </span>
+                          }
+                        </button>
+                      }
+                      @if (subEvent.optional) {
+                        <div class="item-action-menu-divider"></div>
+                      }
+                      <div class="item-action-menu-section-label">Assets</div>
+                      <button
+                        type="button"
+                        class="item-action-menu-btn subevent-resource-menu-item event-subevent-badge-car"
+                        (click)="openSubEventResourcePopup('Car', subEvent, $event)"
+                        >
+                        <span class="subevent-resource-menu-item-icon"><mat-icon>directions_car</mat-icon></span>
+                        <span class="subevent-resource-menu-item-main">
+                          <span class="subevent-resource-menu-item-title">Car</span>
+                          <span class="subevent-resource-menu-item-value">{{ subEventAssetResourceLabel(subEvent, 'Car') }}</span>
+                        </span>
+                        @if (resourcePendingCount(subEvent, 'Car') > 0) {
+                          <span class="rate-filter-count-badge subevent-resource-menu-item-counter">
+                            {{ resourcePendingCount(subEvent, 'Car') | counterBadge }}
+                          </span>
+                        }
+                      </button>
+                      <button
+                        type="button"
+                        class="item-action-menu-btn subevent-resource-menu-item event-subevent-badge-accommodation"
+                        (click)="openSubEventResourcePopup('Accommodation', subEvent, $event)"
+                        >
+                        <span class="subevent-resource-menu-item-icon"><mat-icon>hotel</mat-icon></span>
+                        <span class="subevent-resource-menu-item-main">
+                          <span class="subevent-resource-menu-item-title">Accommodation</span>
+                          <span class="subevent-resource-menu-item-value">{{ subEventAssetResourceLabel(subEvent, 'Accommodation') }}</span>
+                        </span>
+                        @if (resourcePendingCount(subEvent, 'Accommodation') > 0) {
+                          <span class="rate-filter-count-badge subevent-resource-menu-item-counter">
+                            {{ resourcePendingCount(subEvent, 'Accommodation') | counterBadge }}
+                          </span>
+                        }
+                      </button>
+                      <button
+                        type="button"
+                        class="item-action-menu-btn subevent-resource-menu-item event-subevent-badge-supplies"
+                        (click)="openSubEventResourcePopup('Supplies', subEvent, $event)"
+                        >
+                        <span class="subevent-resource-menu-item-icon"><mat-icon>inventory_2</mat-icon></span>
+                        <span class="subevent-resource-menu-item-main">
+                          <span class="subevent-resource-menu-item-title">Supplies</span>
+                          <span class="subevent-resource-menu-item-value">{{ subEventAssetResourceLabel(subEvent, 'Supplies') }}</span>
+                        </span>
+                        @if (resourcePendingCount(subEvent, 'Supplies') > 0) {
+                          <span class="rate-filter-count-badge subevent-resource-menu-item-counter">
+                            {{ resourcePendingCount(subEvent, 'Supplies') | counterBadge }}
+                          </span>
+                        }
+                      </button>
+                    </div>
                   </div>
-                </div>
-              </header>
-              <p class="subevents-casual-location">{{ subEvent.location || 'Location pending' }}</p>
-              <p class="subevents-casual-description">{{ subEvent.description || 'No description' }}</p>
-            </article>
-          </ng-template>
-        </ng-template>
-      </ng-container>
-
-      <ng-template #subeventsEmptyState>
-        <div class="subevents-empty-state">
-          <h4>No sub events yet</h4>
-          <p>Use + to add the first sub event.</p>
-        </div>
-      </ng-template>
-    </div>
-  </article>
-
-  <app-event-subevent-stage-form-popup
-    [view]="subEventFormPopupView()"
-    [model]="subEventForm"
-    (save)="saveSubEventForm($event)"
-    (cancel)="closeSubEventForm($event)"
-    (toggleOptionalPicker)="toggleSubEventOptionalPicker($event)"
-    (selectOptional)="selectSubEventOptional($event)"
-    (capacityMinChange)="onSubEventCapacityMinChange($event)"
-    (capacityMaxChange)="onSubEventCapacityMaxChange($event)"
-    (selectInsertPlacement)="selectSubEventStageInsertPlacement($event)"
-    (insertTargetChange)="onSubEventStageInsertTargetChange($event)"
-    (openLocationMap)="openSubEventLocationMap($event)"
-    (tournamentGroupCapacityMinChange)="onTournamentGroupCapacityMinChange($event)"
-    (tournamentGroupCapacityMaxChange)="onTournamentGroupCapacityMaxChange($event)"
-    (tournamentLeaderboardTypeChange)="onTournamentLeaderboardTypeChange($event)"
-    (tournamentAdvancePerGroupChange)="onTournamentAdvancePerGroupChange($event)"
-  ></app-event-subevent-stage-form-popup>
-
-  <app-event-subevent-group-form-popup
-    [open]="showGroupForm"
-    [title]="groupFormTitle()"
-    [stageTitle]="groupFormStageTitle"
-    [model]="groupForm"
-    [canSave]="canSaveGroupForm()"
-    [invalidName]="groupFieldInvalid()"
-    (save)="saveGroupForm($event)"
-    (cancel)="closeGroupForm($event)"
-    (capacityMinChange)="onGroupCapacityMinChange($event)"
-    (capacityMaxChange)="onGroupCapacityMaxChange($event)"
-  ></app-event-subevent-group-form-popup>
-
-  <app-event-subevent-leaderboard-popup
-    [open]="showLeaderboardPopup"
-    [title]="leaderboardPopupTitle()"
-    [subtitle]="'Stage standings and results'"
-    [readOnly]="readOnly"
-    [mode]="leaderboardPopupMode"
-    [groups]="leaderboardPopupGroups"
-    (close)="closeLeaderboardPopup($event)"
-  ></app-event-subevent-leaderboard-popup>
-
-  <section class="experience-delete-confirm" *ngIf="pendingDeleteTarget">
-    <div class="experience-delete-confirm-backdrop" (click)="cancelDeleteTarget($event)"></div>
-    <div class="experience-delete-confirm-panel" (click)="$event.stopPropagation()">
-      <h4>{{ deleteTargetTitle() }}</h4>
-      <p>{{ deleteTargetDescription() }}</p>
-      <div class="popup-actions">
-        <button type="button" class="link-btn neutral-btn" (click)="cancelDeleteTarget($event)">Cancel</button>
-        <button type="button" class="link-btn experience-delete-btn" (click)="confirmDeleteTarget($event)">Delete</button>
+                </header>
+                <p class="subevents-casual-location">{{ subEvent.location || 'Location pending' }}</p>
+                <p class="subevents-casual-description">{{ subEvent.description || 'No description' }}</p>
+              </article>
+            </ng-template>
+          }
+        } @else {
+          <div class="subevents-empty-state">
+            <h4>No sub events yet</h4>
+            <p>Use + to add the first sub event.</p>
+          </div>
+        }
       </div>
-    </div>
+    </article>
+    <app-event-subevent-stage-form-popup
+      [view]="subEventFormPopupView()"
+      [model]="subEventForm"
+      (save)="saveSubEventForm($event)"
+      (cancel)="closeSubEventForm($event)"
+      (toggleOptionalPicker)="toggleSubEventOptionalPicker($event)"
+      (selectOptional)="selectSubEventOptional($event)"
+      (capacityMinChange)="onSubEventCapacityMinChange($event)"
+      (capacityMaxChange)="onSubEventCapacityMaxChange($event)"
+      (selectInsertPlacement)="selectSubEventStageInsertPlacement($event)"
+      (insertTargetChange)="onSubEventStageInsertTargetChange($event)"
+      (openLocationMap)="openSubEventLocationMap($event)"
+      (tournamentGroupCapacityMinChange)="onTournamentGroupCapacityMinChange($event)"
+      (tournamentGroupCapacityMaxChange)="onTournamentGroupCapacityMaxChange($event)"
+      (tournamentLeaderboardTypeChange)="onTournamentLeaderboardTypeChange($event)"
+      (tournamentAdvancePerGroupChange)="onTournamentAdvancePerGroupChange($event)"
+    ></app-event-subevent-stage-form-popup>
+    <app-event-subevent-group-form-popup
+      [open]="showGroupForm"
+      [title]="groupFormTitle()"
+      [stageTitle]="groupFormStageTitle"
+      [model]="groupForm"
+      [canSave]="canSaveGroupForm()"
+      [invalidName]="groupFieldInvalid()"
+      (save)="saveGroupForm($event)"
+      (cancel)="closeGroupForm($event)"
+      (capacityMinChange)="onGroupCapacityMinChange($event)"
+      (capacityMaxChange)="onGroupCapacityMaxChange($event)"
+    ></app-event-subevent-group-form-popup>
+    <app-event-subevent-leaderboard-popup
+      [open]="showLeaderboardPopup"
+      [title]="leaderboardPopupTitle()"
+      [subtitle]="'Stage standings and results'"
+      [readOnly]="readOnly"
+      [mode]="leaderboardPopupMode"
+      [groups]="leaderboardPopupGroups"
+      (close)="closeLeaderboardPopup($event)"
+    ></app-event-subevent-leaderboard-popup>
+    @if (pendingDeleteTarget) {
+      <section class="experience-delete-confirm">
+        <div class="experience-delete-confirm-backdrop" (click)="cancelDeleteTarget($event)"></div>
+        <div class="experience-delete-confirm-panel" (click)="$event.stopPropagation()">
+          <h4>{{ deleteTargetTitle() }}</h4>
+          <p>{{ deleteTargetDescription() }}</p>
+          <div class="popup-actions">
+            <button type="button" class="link-btn neutral-btn" (click)="cancelDeleteTarget($event)">Cancel</button>
+            <button type="button" class="link-btn experience-delete-btn" (click)="confirmDeleteTarget($event)">Delete</button>
+          </div>
+        </div>
+      </section>
+    }
   </section>
-</section>
+}

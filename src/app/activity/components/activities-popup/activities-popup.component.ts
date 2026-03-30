@@ -319,7 +319,15 @@ export class ActivitiesPopupComponent implements OnDestroy {
     containerClass: () => this.activitiesSmartListClassMap(),
     listLayout: 'card-grid',
     desktopColumns: () => this.activitiesPrimaryFilter === 'chats' ? 1 : 3,
-    snapMode: () => this.activitiesPrimaryFilter === 'chats' ? 'none' : 'mandatory',
+    snapMode: () => {
+      if (this.activitiesPrimaryFilter === 'chats') {
+        return 'none';
+      }
+      if (this.activitiesPrimaryFilter === 'rates') {
+        return this.activitiesRates.isEditorDockVisible() ? 'none' : 'mandatory';
+      }
+      return 'mandatory';
+    },
     scrollPaddingTop: '2.6rem',
     footerSpacerHeight: () => this.activitiesPrimaryFilter === 'rates' ? this.activitiesRates.editorSpacerHeight() : null,
     headerProgress: {

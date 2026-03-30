@@ -1,158 +1,168 @@
-<div
-  class="app-popup app-popup-stacked app-popup-stacked-over-activities event-chat-popup-shell"
-  *ngIf="session() as chatSession"
-  [style.--chat-compose-detached-space.px]="chatComposeDetachedSpace"
->
-  <div class="app-popup-backdrop" (click)="close()"></div>
-  <div class="app-popup-panel popup-panel-event-chat" (click)="$event.stopPropagation()">
-    <button
-      type="button"
-      class="item-action-menu-dismiss-layer"
-      *ngIf="isSelectedChatContextMenuOpen()"
-      (click)="closeContextMenu($event)"
-      aria-label="Close action menu"
-    ></button>
-    <div class="popup-header popup-header-chat popup-header-with-chat-progress" (click)="closeContextMenu()">
-      <div class="popup-title popup-title-chat">
-        <div class="popup-chat-title-block">
-          <h2>{{ chatSession.item.title }}</h2>
-        </div>
-      </div>
-
-      <button
-        type="button"
-        class="chat-members-stack chat-members-stack-large chat-header-members event-editor-members-trigger event-editor-members-trigger-members popup-chat-context-btn"
-        [ngClass]="selectedChatHeaderActionToneClass()"
-        *ngIf="!selectedChatHasSubEventMenu()"
-        (click)="openSelectedChatPrimaryContext($event)"
-      >
-        <span class="event-editor-members-invite">
-          <mat-icon>{{ selectedChatHeaderActionIcon() }}</mat-icon>
-          <span>{{ selectedChatHeaderActionLabel() }}</span>
-        </span>
-        <span
-          class="card-badge event-editor-members-pending-badge popup-chat-context-total-badge"
-          *ngIf="selectedChatHeaderActionBadgeCount() > 0"
-        >
-          {{ selectedChatHeaderActionBadgeCount() | counterBadge }}
-        </span>
-      </button>
-
-      <div class="popup-chat-context-menu-wrap" *ngIf="selectedChatHasSubEventMenu()">
+@if (session(); as chatSession) {
+  <div
+    class="app-popup app-popup-stacked app-popup-stacked-over-activities event-chat-popup-shell"
+    [style.--chat-compose-detached-space.px]="chatComposeDetachedSpace"
+    >
+    <div class="app-popup-backdrop" (click)="close()"></div>
+    <div class="app-popup-panel popup-panel-event-chat" (click)="$event.stopPropagation()">
+      @if (isSelectedChatContextMenuOpen()) {
         <button
           type="button"
-          class="chat-members-stack chat-members-stack-large chat-header-members event-editor-members-trigger event-editor-members-trigger-members popup-chat-context-btn"
-          [ngClass]="selectedChatHeaderActionToneClass()"
-          [class.is-open]="isSelectedChatContextMenuOpen()"
-          (click)="toggleSelectedChatContextMenu($event)"
-          aria-label="Open chat context menu"
-        >
-          <span class="event-editor-members-invite">
-            <mat-icon>{{ selectedChatHeaderActionIcon() }}</mat-icon>
-            <span>{{ selectedChatHeaderActionLabel() }}</span>
-            <mat-icon class="popup-chat-context-chevron">expand_more</mat-icon>
-          </span>
-          <span
-            class="card-badge event-editor-members-pending-badge popup-chat-context-total-badge"
-            *ngIf="selectedChatHeaderActionBadgeCount() > 0"
-          >
-            {{ selectedChatHeaderActionBadgeCount() | counterBadge }}
-          </span>
-        </button>
-
-        <div
-          class="item-action-menu event-subevent-resource-menu popup-chat-context-menu"
-          [class.is-open]="isSelectedChatContextMenuOpen()"
-          [class.item-action-menu-mobile]="isMobileView()"
-          [class.item-action-menu-desktop]="!isMobileView()"
-          [class.is-open-up]="isSelectedChatContextMenuOpenUp()"
-          (click)="$event.stopPropagation()"
-        >
-          <div class="item-action-menu-title">{{ selectedChatContextMenuTitle() }}</div>
-          <button type="button" class="item-action-menu-btn" (click)="openSelectedChatPrimaryContext($event)">
-            <mat-icon>{{ selectedChatHeaderActionIcon() }}</mat-icon>
-            <span>{{ selectedChatHeaderActionLabel() }}</span>
-          </button>
-          <div class="item-action-menu-divider"></div>
-          <button
-            type="button"
-            class="item-action-menu-btn subevent-resource-menu-item"
-            *ngIf="preparedChatMembersResource as membersResource"
-            [ngClass]="[membersResource.typeClass, membersResource.stateClass]"
-            (click)="openSelectedChatSubEventResource(membersResource.type, $event)"
-          >
-            <span class="subevent-resource-menu-item-icon"><mat-icon>{{ membersResource.icon }}</mat-icon></span>
-            <span class="subevent-resource-menu-item-main">
-              <span class="subevent-resource-menu-item-title">{{ membersResource.title }}</span>
-              <span class="subevent-resource-menu-item-value">{{ membersResource.summary }}</span>
-            </span>
-            <span class="rate-filter-count-badge subevent-resource-menu-item-counter" *ngIf="membersResource.pending > 0">
-              {{ membersResource.pending | counterBadge }}
-            </span>
-          </button>
-          <div class="item-action-menu-divider" *ngIf="preparedChatMembersResource"></div>
-          <div class="item-action-menu-section-label">Assets</div>
-          <button
-            type="button"
-            class="item-action-menu-btn subevent-resource-menu-item"
-            *ngFor="let resource of preparedChatAssetResources"
-            [ngClass]="[resource.typeClass, resource.stateClass]"
-            (click)="openSelectedChatSubEventResource(resource.type, $event)"
-          >
-            <span class="subevent-resource-menu-item-icon"><mat-icon>{{ resource.icon }}</mat-icon></span>
-            <span class="subevent-resource-menu-item-main">
-              <span class="subevent-resource-menu-item-title">{{ resource.title }}</span>
-              <span class="subevent-resource-menu-item-value">{{ resource.summary }}</span>
-            </span>
-            <span class="rate-filter-count-badge subevent-resource-menu-item-counter" *ngIf="resource.pending > 0">
-              {{ resource.pending | counterBadge }}
-            </span>
-          </button>
-        </div>
-      </div>
-
-      <button mat-icon-button type="button" class="popup-close" (click)="close()" aria-label="Close chat popup">
-        <mat-icon>close</mat-icon>
-      </button>
-    </div>
-
-    <div class="popup-body popup-body-chat">
-      <div class="chat-popup-wrap">
-        <div class="chat-popup-box">
-          <app-smart-list
-            #chatThreadSmartList
-            [config]="chatThreadSmartListConfig"
-            [loadPage]="chatThreadLoadPage"
-            [itemTemplate]="chatThreadMessageTemplate"
-            [query]="chatThreadQuery"
-          ></app-smart-list>
-
-          <div class="chat-typing-indicator" *ngIf="typingIndicators.length > 0">
-            <span class="chat-typing-indicator-users">{{ typingIndicatorLabel() }}</span>
-            <span class="chat-typing-indicator-dots" aria-hidden="true">
-              <span></span>
-              <span></span>
-              <span></span>
-            </span>
+          class="item-action-menu-dismiss-layer"
+          (click)="closeContextMenu($event)"
+          aria-label="Close action menu"
+        ></button>
+      }
+      <div class="popup-header popup-header-chat popup-header-with-chat-progress" (click)="closeContextMenu()">
+        <div class="popup-title popup-title-chat">
+          <div class="popup-chat-title-block">
+            <h2>{{ chatSession.item.title }}</h2>
           </div>
-
-          <div class="chat-compose-box" #chatComposeBox>
-            <textarea
-              rows="3"
-              placeholder="Write message"
-              [(ngModel)]="draftMessage"
-              (ngModelChange)="onDraftMessageChange($event)"
-              [disabled]="chatInitialLoadPending"
-            ></textarea>
-            <button type="button" class="chat-send-btn" aria-label="Send message" (click)="sendMessage()" [disabled]="chatInitialLoadPending">
-              <mat-icon>send</mat-icon>
+        </div>
+        @if (!selectedChatHasSubEventMenu()) {
+          <button
+            type="button"
+            class="chat-members-stack chat-members-stack-large chat-header-members event-editor-members-trigger event-editor-members-trigger-members popup-chat-context-btn"
+            [ngClass]="selectedChatHeaderActionToneClass()"
+            (click)="openSelectedChatPrimaryContext($event)"
+            >
+            <span class="event-editor-members-invite">
+              <mat-icon>{{ selectedChatHeaderActionIcon() }}</mat-icon>
+              <span>{{ selectedChatHeaderActionLabel() }}</span>
+            </span>
+            @if (selectedChatHeaderActionBadgeCount() > 0) {
+              <span
+                class="card-badge event-editor-members-pending-badge popup-chat-context-total-badge"
+                >
+                {{ selectedChatHeaderActionBadgeCount() | counterBadge }}
+              </span>
+            }
+          </button>
+        }
+        @if (selectedChatHasSubEventMenu()) {
+          <div class="popup-chat-context-menu-wrap">
+            <button
+              type="button"
+              class="chat-members-stack chat-members-stack-large chat-header-members event-editor-members-trigger event-editor-members-trigger-members popup-chat-context-btn"
+              [ngClass]="selectedChatHeaderActionToneClass()"
+              [class.is-open]="isSelectedChatContextMenuOpen()"
+              (click)="toggleSelectedChatContextMenu($event)"
+              aria-label="Open chat context menu"
+              >
+              <span class="event-editor-members-invite">
+                <mat-icon>{{ selectedChatHeaderActionIcon() }}</mat-icon>
+                <span>{{ selectedChatHeaderActionLabel() }}</span>
+                <mat-icon class="popup-chat-context-chevron">expand_more</mat-icon>
+              </span>
+              @if (selectedChatHeaderActionBadgeCount() > 0) {
+                <span
+                  class="card-badge event-editor-members-pending-badge popup-chat-context-total-badge"
+                  >
+                  {{ selectedChatHeaderActionBadgeCount() | counterBadge }}
+                </span>
+              }
             </button>
+            <div
+              class="item-action-menu event-subevent-resource-menu popup-chat-context-menu"
+              [class.is-open]="isSelectedChatContextMenuOpen()"
+              [class.item-action-menu-mobile]="isMobileView()"
+              [class.item-action-menu-desktop]="!isMobileView()"
+              [class.is-open-up]="isSelectedChatContextMenuOpenUp()"
+              (click)="$event.stopPropagation()"
+              >
+              <div class="item-action-menu-title">{{ selectedChatContextMenuTitle() }}</div>
+              <button type="button" class="item-action-menu-btn" (click)="openSelectedChatPrimaryContext($event)">
+                <mat-icon>{{ selectedChatHeaderActionIcon() }}</mat-icon>
+                <span>{{ selectedChatHeaderActionLabel() }}</span>
+              </button>
+              <div class="item-action-menu-divider"></div>
+              @if (preparedChatMembersResource; as membersResource) {
+                <button
+                  type="button"
+                  class="item-action-menu-btn subevent-resource-menu-item"
+                  [ngClass]="[membersResource.typeClass, membersResource.stateClass]"
+                  (click)="openSelectedChatSubEventResource(membersResource.type, $event)"
+                  >
+                  <span class="subevent-resource-menu-item-icon"><mat-icon>{{ membersResource.icon }}</mat-icon></span>
+                  <span class="subevent-resource-menu-item-main">
+                    <span class="subevent-resource-menu-item-title">{{ membersResource.title }}</span>
+                    <span class="subevent-resource-menu-item-value">{{ membersResource.summary }}</span>
+                  </span>
+                  @if (membersResource.pending > 0) {
+                    <span class="rate-filter-count-badge subevent-resource-menu-item-counter">
+                      {{ membersResource.pending | counterBadge }}
+                    </span>
+                  }
+                </button>
+              }
+              @if (preparedChatMembersResource) {
+                <div class="item-action-menu-divider"></div>
+              }
+              <div class="item-action-menu-section-label">Assets</div>
+              @for (resource of preparedChatAssetResources; track resource) {
+                <button
+                  type="button"
+                  class="item-action-menu-btn subevent-resource-menu-item"
+                  [ngClass]="[resource.typeClass, resource.stateClass]"
+                  (click)="openSelectedChatSubEventResource(resource.type, $event)"
+                  >
+                  <span class="subevent-resource-menu-item-icon"><mat-icon>{{ resource.icon }}</mat-icon></span>
+                  <span class="subevent-resource-menu-item-main">
+                    <span class="subevent-resource-menu-item-title">{{ resource.title }}</span>
+                    <span class="subevent-resource-menu-item-value">{{ resource.summary }}</span>
+                  </span>
+                  @if (resource.pending > 0) {
+                    <span class="rate-filter-count-badge subevent-resource-menu-item-counter">
+                      {{ resource.pending | counterBadge }}
+                    </span>
+                  }
+                </button>
+              }
+            </div>
+          </div>
+        }
+        <button mat-icon-button type="button" class="popup-close" (click)="close()" aria-label="Close chat popup">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+      <div class="popup-body popup-body-chat">
+        <div class="chat-popup-wrap">
+          <div class="chat-popup-box">
+            <app-smart-list
+              #chatThreadSmartList
+              [config]="chatThreadSmartListConfig"
+              [loadPage]="chatThreadLoadPage"
+              [itemTemplate]="chatThreadMessageTemplate"
+              [query]="chatThreadQuery"
+            ></app-smart-list>
+            @if (typingIndicators.length > 0) {
+              <div class="chat-typing-indicator">
+                <span class="chat-typing-indicator-users">{{ typingIndicatorLabel() }}</span>
+                <span class="chat-typing-indicator-dots" aria-hidden="true">
+                  <span></span>
+                  <span></span>
+                  <span></span>
+                </span>
+              </div>
+            }
+            <div class="chat-compose-box" #chatComposeBox>
+              <textarea
+                rows="3"
+                placeholder="Write message"
+                [(ngModel)]="draftMessage"
+                (ngModelChange)="onDraftMessageChange($event)"
+                [disabled]="chatInitialLoadPending"
+              ></textarea>
+              <button type="button" class="chat-send-btn" aria-label="Send message" (click)="sendMessage()" [disabled]="chatInitialLoadPending">
+                <mat-icon>send</mat-icon>
+              </button>
+            </div>
           </div>
         </div>
       </div>
     </div>
   </div>
-</div>
+}
 
 <ng-template #chatThreadMessageTemplate let-message let-groupLabel="groupLabel">
   <article
@@ -164,37 +174,38 @@
     [attr.data-group-label]="groupLabel"
     [attr.data-smart-list-anchor]="message.id"
     [attr.data-chat-message-id]="message.id"
-  >
+    >
     <div class="chat-bubble">
-      <svg
-        class="chat-bubble-progress-ring"
-        *ngIf="message.mine && (message.deliveryState === 'pending' || message.deliveryState === 'timed-out')"
-        viewBox="0 0 100 100"
-        preserveAspectRatio="none"
-        aria-hidden="true"
-      >
-        <defs>
-          <linearGradient id="chat-bubble-progress-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stop-color="rgb(235, 147, 33)"></stop>
-            <stop offset="100%" stop-color="rgb(247, 190, 52)"></stop>
-          </linearGradient>
-          <linearGradient id="chat-bubble-progress-gradient-timeout" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stop-color="rgb(213, 54, 68)"></stop>
-            <stop offset="100%" stop-color="rgb(196, 29, 42)"></stop>
-          </linearGradient>
-        </defs>
-        <path
-          class="chat-bubble-progress-track"
-          d="M50 1.5 H88 A10.5 10.5 0 0 1 98.5 12 V88 A10.5 10.5 0 0 1 88 98.5 H12 A10.5 10.5 0 0 1 1.5 88 V12 A10.5 10.5 0 0 1 12 1.5 H50"
-        ></path>
-        <path
-          class="chat-bubble-progress-stroke"
-          [class.is-loading]="message.deliveryState === 'pending'"
-          [class.is-timed-out]="message.deliveryState === 'timed-out'"
-          d="M50 1.5 H88 A10.5 10.5 0 0 1 98.5 12 V88 A10.5 10.5 0 0 1 88 98.5 H12 A10.5 10.5 0 0 1 1.5 88 V12 A10.5 10.5 0 0 1 12 1.5 H50"
-          pathLength="100"
-        ></path>
-      </svg>
+      @if (message.mine && (message.deliveryState === 'pending' || message.deliveryState === 'timed-out')) {
+        <svg
+          class="chat-bubble-progress-ring"
+          viewBox="0 0 100 100"
+          preserveAspectRatio="none"
+          aria-hidden="true"
+          >
+          <defs>
+            <linearGradient id="chat-bubble-progress-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="rgb(235, 147, 33)"></stop>
+              <stop offset="100%" stop-color="rgb(247, 190, 52)"></stop>
+            </linearGradient>
+            <linearGradient id="chat-bubble-progress-gradient-timeout" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="rgb(213, 54, 68)"></stop>
+              <stop offset="100%" stop-color="rgb(196, 29, 42)"></stop>
+            </linearGradient>
+          </defs>
+          <path
+            class="chat-bubble-progress-track"
+            d="M50 1.5 H88 A10.5 10.5 0 0 1 98.5 12 V88 A10.5 10.5 0 0 1 88 98.5 H12 A10.5 10.5 0 0 1 1.5 88 V12 A10.5 10.5 0 0 1 12 1.5 H50"
+          ></path>
+          <path
+            class="chat-bubble-progress-stroke"
+            [class.is-loading]="message.deliveryState === 'pending'"
+            [class.is-timed-out]="message.deliveryState === 'timed-out'"
+            d="M50 1.5 H88 A10.5 10.5 0 0 1 98.5 12 V88 A10.5 10.5 0 0 1 88 98.5 H12 A10.5 10.5 0 0 1 1.5 88 V12 A10.5 10.5 0 0 1 12 1.5 H50"
+            pathLength="100"
+          ></path>
+        </svg>
+      }
       <span class="chat-sender-avatar" [class]="'user-color-' + message.senderAvatar.gender">
         {{ message.senderAvatar.initials }}
       </span>
@@ -204,28 +215,34 @@
           <span class="chat-time-chip">{{ message.time }}</span>
         </div>
         <p class="chat-line">{{ message.text }}</p>
-        <div class="chat-delivery-state" *ngIf="message.mine && message.deliveryState === 'pending'">
-          Sending...
-        </div>
-        <div
-          class="chat-delivery-state chat-delivery-state-timed-out"
-          *ngIf="message.mine && message.deliveryState === 'timed-out'"
-        >
-          Taking longer than usual
-        </div>
+        @if (message.mine && message.deliveryState === 'pending') {
+          <div class="chat-delivery-state">
+            Sending...
+          </div>
+        }
+        @if (message.mine && message.deliveryState === 'timed-out') {
+          <div
+            class="chat-delivery-state chat-delivery-state-timed-out"
+            >
+            Taking longer than usual
+          </div>
+        }
       </div>
-      <ng-container *ngIf="visibleReadReceiptsByMessageId[message.id] as visibleReaders">
-        <div class="chat-readers" *ngIf="visibleReaders.length > 0">
-          <span
-            class="chat-reader"
-            *ngFor="let reader of visibleReaders; trackBy: trackByChatReader"
-            [class]="'user-color-' + reader.gender"
-            [class.chat-reader-fresh]="isFreshRead(message.id, reader.id)"
-          >
-            {{ reader.initials }}
-          </span>
-        </div>
-      </ng-container>
+      @if (visibleReadReceiptsByMessageId[message.id]; as visibleReaders) {
+        @if (visibleReaders.length > 0) {
+          <div class="chat-readers">
+            @for (reader of visibleReaders; track trackByChatReader($index, reader)) {
+              <span
+                class="chat-reader"
+                [class]="'user-color-' + reader.gender"
+                [class.chat-reader-fresh]="isFreshRead(message.id, reader.id)"
+                >
+                {{ reader.initials }}
+              </span>
+            }
+          </div>
+        }
+      }
     </div>
   </article>
 </ng-template>

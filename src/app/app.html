@@ -6,7 +6,9 @@
   </div>
 </main>
 
-<app-navigator *ngIf="showNavigator"></app-navigator>
+@if (showNavigator) {
+  <app-navigator></app-navigator>
+}
 
 <app-install-prompt
   [visible]="showNavigator && installPromptVisible()"

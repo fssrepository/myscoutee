@@ -161,6 +161,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   protected autoFooterSpacerHeightPx = 0;
   protected loading = false;
   protected initialLoading = true;
+  protected suppressListSnapNearEnd = false;
 
   private total = 0;
   private hasMore = true;
@@ -592,6 +593,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     } else {
       this.stickyHeaderHeightPx = 0;
     }
+    this.updateListSnapNearEndSuppression(target);
     this.updateScrollProgress(target);
     this.emitState();
     this.maybeLoadMore(target);
@@ -1341,6 +1343,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
         this.stickyHeaderHeightPx = 0;
         this.stickyLabel = this.resolveEmptyStickyLabel();
       }
+      this.updateListSnapNearEndSuppression(scrollElement);
       this.updateAutoFooterSpacerHeight(scrollElement);
       this.updateScrollProgress(scrollElement);
       this.emitState();
@@ -1736,6 +1739,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
           this.stickyHeaderHeightPx = 0;
           this.stickyLabel = this.resolveEmptyStickyLabel();
         }
+        this.updateListSnapNearEndSuppression();
         this.updateAutoFooterSpacerHeight();
         this.updateScrollProgress();
       }
@@ -1891,6 +1895,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
   private shouldUseSmoothListSnapSettle(scrollElement: HTMLDivElement): boolean {
     return !this.suppressListSnapSettle
+      && !this.suppressListSnapNearEnd
       && this.currentViewMode === 'list'
       && this.resolvedListLayout() === 'card-grid'
       && this.resolvedSnapMode() !== 'none'
@@ -1959,42 +1964,64 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   }
 
   private updateAutoFooterSpacerHeight(scrollElement?: HTMLDivElement | null): void {
-    const target = scrollElement ?? this.scrollHostRef?.nativeElement;
-    if (
-      !target
-      || this.currentViewMode !== 'list'
-      || this.resolvedListLayout() !== 'card-grid'
-      || this.resolvedSnapMode() === 'none'
-    ) {
-      this.autoFooterSpacerHeightPx = 0;
-      return;
-    }
-
-    const snapTargets = this.listCardSnapTargets(target);
-    const lastSnapTarget = snapTargets.length > 0
-      ? snapTargets[snapTargets.length - 1]
-      : null;
-    if (!lastSnapTarget) {
-      this.autoFooterSpacerHeightPx = 0;
-      return;
-    }
-
-    const snapPaddingTop = this.listSnapPaddingTop(target);
-    const lastSnapTargetHeight = Math.max(
-      lastSnapTarget.offsetHeight,
-      Math.round(lastSnapTarget.getBoundingClientRect().height)
-    );
-
-    this.autoFooterSpacerHeightPx = Math.max(
-      0,
-      Math.ceil(target.clientHeight - snapPaddingTop - lastSnapTargetHeight)
-    );
+    // Preserve only explicit footer spacing from config (for example the
+    // ratings dock). The synthetic snap spacer was creating oversized empty
+    // space at the end of shared card-grid lists.
+    void scrollElement;
+    this.autoFooterSpacerHeightPx = 0;
   }
 
   private listCardSnapTargets(scrollElement: HTMLDivElement): HTMLElement[] {
     return Array.from(
       scrollElement.querySelectorAll<HTMLElement>(SmartListComponent.LIST_CARD_SNAP_TARGET_SELECTOR)
     );
+  }
+
+  private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null): void {
+    const target = scrollElement ?? this.scrollHostRef?.nativeElement;
+    const nextValue = this.shouldSuppressListSnapNearEnd(target);
+    if (this.suppressListSnapNearEnd === nextValue) {
+      return;
+    }
+    this.suppressListSnapNearEnd = nextValue;
+    if (nextValue) {
+      this.clearListSnapSettleTimer();
+    }
+    this.cdr.markForCheck();
+  }
+
+  private shouldSuppressListSnapNearEnd(scrollElement?: HTMLDivElement | null): boolean {
+    if (
+      !scrollElement
+      || this.currentViewMode !== 'list'
+      || this.resolvedListLayout() !== 'card-grid'
+      || this.resolvedSnapMode() === 'none'
+    ) {
+      return false;
+    }
+
+    const maxVerticalScroll = Math.max(0, scrollElement.scrollHeight - scrollElement.clientHeight);
+    if (maxVerticalScroll <= 1) {
+      return false;
+    }
+
+    const lastReachableSnapTop = this.lastReachableListSnapTargetTop(scrollElement, maxVerticalScroll);
+    if (lastReachableSnapTop === null || maxVerticalScroll <= lastReachableSnapTop + 1) {
+      return false;
+    }
+
+    return scrollElement.scrollTop > lastReachableSnapTop + 1;
+  }
+
+  private lastReachableListSnapTargetTop(scrollElement: HTMLDivElement, maxVerticalScroll?: number): number | null {
+    const maxScroll = maxVerticalScroll ?? Math.max(0, scrollElement.scrollHeight - scrollElement.clientHeight);
+    const reachableTops = this.listCardSnapTargets(scrollElement)
+      .map(target => this.listSnapTargetTop(scrollElement, target))
+      .filter(top => top <= maxScroll + 1);
+    if (reachableTops.length === 0) {
+      return null;
+    }
+    return Math.max(...reachableTops);
   }
 
   private listSnapTargetTop(scrollElement: HTMLDivElement, target: HTMLElement): number {

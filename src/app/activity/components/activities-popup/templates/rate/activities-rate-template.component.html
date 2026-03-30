@@ -1,13 +1,13 @@
-<app-pair-card
-  *ngIf="pairCard; else singleRateCard"
-  [card]="pairCard"
-  (badgeClick)="onBadgeClick()"
-></app-pair-card>
-
-<ng-template #singleRateCard>
-  <app-single-card
-    *ngIf="singleCard"
-    [card]="singleCard"
+@if (pairCard) {
+  <app-pair-card
+    [card]="pairCard"
     (badgeClick)="onBadgeClick()"
-  ></app-single-card>
-</ng-template>
+  ></app-pair-card>
+} @else {
+  @if (singleCard) {
+    <app-single-card
+      [card]="singleCard"
+      (badgeClick)="onBadgeClick()"
+    ></app-single-card>
+  }
+}

@@ -1,230 +1,239 @@
 <div class="asset-popup">
-  <section
-    class="app-popup"
-    *ngIf="ownedAssets.isPopupOpen()"
-    [class.app-popup-stacked]="isBasketMode()"
-    [class.app-popup-super-stacked]="isBasketMode()"
-    [class.app-popup-super-stacked-over-subevents]="isBasketMode()"
-    [class.asset-popup-basket-shell]="isBasketMode()"
-  >
-    <div class="app-popup-backdrop" (click)="closeAssetPopup()"></div>
-    <div
-      class="app-popup-panel popup-panel-assets"
-      [class.popup-panel-friends-picker]="isBasketMode()"
-      [class.popup-panel-friends-picker-members]="isBasketMode()"
-      [class.popup-panel-subevent-asset-assign]="isBasketMode()"
-      [class.popup-panel-wide]="isBasketMode()"
-      [class.popup-panel-full-height]="isBasketMode()"
-      [class.asset-popup-basket-panel]="isBasketMode()"
-      (click)="$event.stopPropagation()"
-    >
-      <div
-        class="popup-header"
-        [class.popup-header-with-progress]="!isBasketMode()"
-        [class.popup-header-friends-picker]="isBasketMode()"
+  @if (ownedAssets.isPopupOpen()) {
+    <section
+      class="app-popup"
+      [class.app-popup-stacked]="isBasketMode()"
+      [class.app-popup-super-stacked]="isBasketMode()"
+      [class.app-popup-super-stacked-over-subevents]="isBasketMode()"
+      [class.asset-popup-basket-shell]="isBasketMode()"
       >
-        <div class="popup-title" [class.popup-title-members]="isBasketMode()">
-          <div class="popup-chat-title-block" *ngIf="isBasketMode(); else assetHeaderTitleBlock">
-            <h2>{{ assetPopupTitle() }}</h2>
-            <p *ngIf="assetPopupSubtitle()">{{ assetPopupSubtitle() }}</p>
-          </div>
-          <ng-template #assetHeaderTitleBlock>
-            <h2>{{ assetPopupTitle() }}</h2>
-            <p class="popup-subtitle-activities" *ngIf="assetPopupSubtitle()">{{ assetPopupSubtitle() }}</p>
-          </ng-template>
-        </div>
-
-        <div class="popup-header-inline-controls asset-popup-basket-controls" *ngIf="isBasketMode(); else assetHeaderActions">
-          <span
-            class="asset-popup-basket-save-btn-shell"
-            [class.is-loading]="isBasketSavePending()"
-            [class.is-error]="!isBasketSavePending() && !!basketSaveErrorMessage()"
-          >
-            <span class="asset-popup-basket-save-btn-ring" *ngIf="isBasketSavePending() || basketSaveErrorMessage()" aria-hidden="true">
-              <svg viewBox="0 0 34 34" preserveAspectRatio="none" class="asset-popup-basket-save-btn-ring-svg">
-                <defs>
-                  <linearGradient id="asset-popup-basket-save-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stop-color="rgb(235, 147, 33)"></stop>
-                    <stop offset="100%" stop-color="rgb(247, 190, 52)"></stop>
-                  </linearGradient>
-                  <linearGradient id="asset-popup-basket-save-gradient-error" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stop-color="rgb(213, 54, 68)"></stop>
-                    <stop offset="100%" stop-color="rgb(196, 29, 42)"></stop>
-                  </linearGradient>
-                </defs>
-                <circle class="asset-popup-basket-save-btn-ring-track" cx="17" cy="17" r="15"></circle>
-                <circle
-                  class="asset-popup-basket-save-btn-ring-progress"
-                  [class.is-loading]="isBasketSavePending()"
-                  [class.is-error]="!isBasketSavePending() && !!basketSaveErrorMessage()"
-                  cx="17"
-                  cy="17"
-                  r="15"
-                  pathLength="100"
-                  [attr.stroke-dasharray]="basketSaveRingPerimeter()"
-                  [attr.stroke-dashoffset]="isBasketSavePending() ? basketSaveRingPerimeter() : 0"
-                ></circle>
-              </svg>
-            </span>
-            <button
-              type="button"
-              class="popup-header-add-btn subevent-leaderboard-save-btn asset-popup-basket-save-btn"
-              [class.form-save-invalid]="!canConfirmBasketSelection() && !isBasketSavePending()"
-              [disabled]="!canConfirmBasketSelection()"
-              (click)="confirmBasketSelection($event)"
-              aria-label="Save selected assets"
-            >
-              <mat-icon>done</mat-icon>
-            </button>
-          </span>
-          <button mat-icon-button class="popup-close" (click)="closeAssetPopup($event)" aria-label="Close">
-            <mat-icon>close</mat-icon>
-          </button>
-        </div>
-
-        <ng-template #assetHeaderActions>
-          <div class="ticket-order-picker" *ngIf="ownedAssets.isTicketPopup()">
-            <button
-              type="button"
-              class="popup-view-fab ticket-order-trigger"
-              (click)="assetPopup.toggleTicketOrderPicker($event)"
-              aria-label="Open ticket date ordering"
-            >
-              <mat-icon>{{ assetPopup.ticketDateOrderIcon() }}</mat-icon>
-              <span>{{ assetPopup.ticketDateOrderLabel() }}</span>
-            </button>
-            <div class="activities-view-picker-panel event-explore-order-panel" *ngIf="assetPopup.showTicketOrderPicker()">
-              <button type="button" class="activities-view-option" (click)="assetPopup.selectTicketDateOrder('upcoming', $event)">
-                <mat-icon>schedule</mat-icon>
-                <span>Upcoming</span>
-              </button>
-              <button type="button" class="activities-view-option" (click)="assetPopup.selectTicketDateOrder('past', $event)">
-                <mat-icon>history</mat-icon>
-                <span>Past</span>
-              </button>
-            </div>
-          </div>
-          <button mat-icon-button class="popup-close" (click)="closeAssetPopup($event)" aria-label="Close">
-            <mat-icon>close</mat-icon>
-          </button>
-        </ng-template>
-      </div>
-
+      <div class="app-popup-backdrop" (click)="closeAssetPopup()"></div>
       <div
-        class="popup-body popup-body-assets-list"
-        [class.popup-body-assets-tickets]="ownedAssets.isTicketPopup()"
-        [class.popup-body-friends-picker]="isBasketMode()"
-        [class.popup-body-subevent-asset-assign]="isBasketMode()"
-      >
-        <div
-          class="experience-popup assets-popup assets-popup-smart-list"
-          [class.assets-popup-tickets]="ownedAssets.isTicketPopup()"
-          [class.assets-popup-basket]="isBasketMode()"
+        class="app-popup-panel popup-panel-assets"
+        [class.popup-panel-friends-picker]="isBasketMode()"
+        [class.popup-panel-friends-picker-members]="isBasketMode()"
+        [class.popup-panel-subevent-asset-assign]="isBasketMode()"
+        [class.popup-panel-wide]="isBasketMode()"
+        [class.popup-panel-full-height]="isBasketMode()"
+        [class.asset-popup-basket-panel]="isBasketMode()"
+        (click)="$event.stopPropagation()"
         >
-          <ng-container *ngIf="isBasketMode(); else assetToolbar">
-            <app-basket
-              className="friends-picker-chip-row asset-popup-basket-chip-row"
-              [chips]="basketChips()"
-              [disabled]="isBasketSavePending()"
-              (chipClick)="onBasketChipClick($event)"
-            ></app-basket>
-
-            <p class="asset-popup-basket-error" *ngIf="basketSaveErrorMessage()">{{ basketSaveErrorMessage() }}</p>
-          </ng-container>
-
-          <ng-template #assetToolbar>
-            <div class="experience-toolbar assets-toolbar">
-              <div
-                class="profile-status-select-wrap selector-like experience-filter-select assets-compact-select"
-                [ngClass]="ownedAssets.assetTypeClass(ownedAssets.assetFilter)"
-                [class.asset-filter-open]="assetFilterOpen()"
-              >
-                <mat-select
-                  [ngModel]="ownedAssets.assetFilter"
-                  (ngModelChange)="onAssetFilterChange($event)"
-                  (openedChange)="onAssetFilterMenuOpenChange($event)"
-                  [panelWidth]="ownedAssets.assetFilterPanelWidth()"
-                  disableOptionCentering
-                  panelClass="selector-options-panel profile-bottom-sheet-panel assets-filter-options-panel"
-                >
-                  <mat-select-trigger>
-                    <span class="status-option-content">
-                      <mat-icon [class]="ownedAssets.assetTypeClass(ownedAssets.assetFilter)">{{ ownedAssets.assetTypeIcon(ownedAssets.assetFilter) }}</mat-icon>
-                      <span>{{ ownedAssets.assetFilter }}</span>
-                    </span>
-                  </mat-select-trigger>
-                  <mat-option *ngFor="let option of ownedAssets.assetFilterOptions" [value]="option" class="status-option" [ngClass]="ownedAssets.assetTypeClass(option)">
-                    <span class="status-option-content">
-                      <mat-icon [class]="ownedAssets.assetTypeClass(option)">{{ ownedAssets.assetTypeIcon(option) }}</mat-icon>
-                      <span>{{ option }}</span>
-                    </span>
-                  </mat-option>
-                </mat-select>
+        <div
+          class="popup-header"
+          [class.popup-header-with-progress]="!isBasketMode()"
+          [class.popup-header-friends-picker]="isBasketMode()"
+          >
+          <div class="popup-title" [class.popup-title-members]="isBasketMode()">
+            @if (isBasketMode()) {
+              <div class="popup-chat-title-block">
+                <h2>{{ assetPopupTitle() }}</h2>
+                @if (assetPopupSubtitle()) {
+                  <p>{{ assetPopupSubtitle() }}</p>
+                }
               </div>
-              <button
-                type="button"
-                class="popup-header-add-btn assets-add-btn"
-                *ngIf="!ownedAssets.isTicketPopup()"
-                (click)="ownedAssets.openAssetForm()"
-                aria-label="Add asset"
-              >
-                <mat-icon>add</mat-icon>
-              </button>
-              <button
-                type="button"
-                class="popup-header-add-btn assets-add-btn ticket-toolbar-scanner-btn"
-                *ngIf="ownedAssets.isTicketPopup()"
-                (click)="assetPopup.openTicketScannerPopup($event)"
-                aria-label="Scan ticket"
-              >
-                <mat-icon>qr_code_scanner</mat-icon>
-                <span>Scan Ticket</span>
+            } @else {
+              <h2>{{ assetPopupTitle() }}</h2>
+              @if (assetPopupSubtitle()) {
+                <p class="popup-subtitle-activities">{{ assetPopupSubtitle() }}</p>
+              }
+            }
+          </div>
+          @if (isBasketMode()) {
+            <div class="popup-header-inline-controls asset-popup-basket-controls">
+              <span
+                class="asset-popup-basket-save-btn-shell"
+                [class.is-loading]="isBasketSavePending()"
+                [class.is-error]="!isBasketSavePending() && !!basketSaveErrorMessage()"
+                >
+                @if (isBasketSavePending() || basketSaveErrorMessage()) {
+                  <span class="asset-popup-basket-save-btn-ring" aria-hidden="true">
+                    <svg viewBox="0 0 34 34" preserveAspectRatio="none" class="asset-popup-basket-save-btn-ring-svg">
+                      <defs>
+                        <linearGradient id="asset-popup-basket-save-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" stop-color="rgb(235, 147, 33)"></stop>
+                          <stop offset="100%" stop-color="rgb(247, 190, 52)"></stop>
+                        </linearGradient>
+                        <linearGradient id="asset-popup-basket-save-gradient-error" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" stop-color="rgb(213, 54, 68)"></stop>
+                          <stop offset="100%" stop-color="rgb(196, 29, 42)"></stop>
+                        </linearGradient>
+                      </defs>
+                      <circle class="asset-popup-basket-save-btn-ring-track" cx="17" cy="17" r="15"></circle>
+                      <circle
+                        class="asset-popup-basket-save-btn-ring-progress"
+                        [class.is-loading]="isBasketSavePending()"
+                        [class.is-error]="!isBasketSavePending() && !!basketSaveErrorMessage()"
+                        cx="17"
+                        cy="17"
+                        r="15"
+                        pathLength="100"
+                        [attr.stroke-dasharray]="basketSaveRingPerimeter()"
+                        [attr.stroke-dashoffset]="isBasketSavePending() ? basketSaveRingPerimeter() : 0"
+                      ></circle>
+                    </svg>
+                  </span>
+                }
+                <button
+                  type="button"
+                  class="popup-header-add-btn subevent-leaderboard-save-btn asset-popup-basket-save-btn"
+                  [class.form-save-invalid]="!canConfirmBasketSelection() && !isBasketSavePending()"
+                  [disabled]="!canConfirmBasketSelection()"
+                  (click)="confirmBasketSelection($event)"
+                  aria-label="Save selected assets"
+                  >
+                  <mat-icon>done</mat-icon>
+                </button>
+              </span>
+              <button mat-icon-button class="popup-close" (click)="closeAssetPopup($event)" aria-label="Close">
+                <mat-icon>close</mat-icon>
               </button>
             </div>
-          </ng-template>
-
-          <app-smart-list
-            *ngIf="ownedAssets.isTicketPopup() && !isBasketMode(); else defaultAssetCardList"
-            [config]="ticketSmartListConfig"
-            [loadPage]="ticketSmartListLoadPage"
-            [itemTemplate]="ticketItemTemplate"
-            [query]="ticketSmartListQuery"
-            (stateChange)="onTicketSmartListStateChange($event)"
-          ></app-smart-list>
-
-          <ng-template #defaultAssetCardList>
-            <app-smart-list
-              [config]="assetSmartListConfig"
-              [loadPage]="assetSmartListLoadPage"
-              [itemTemplate]="assetItemTemplate"
-              [query]="assetSmartListQuery"
-            ></app-smart-list>
-          </ng-template>
-
-          <app-asset-form-popup
-            *ngIf="!isBasketMode()"
-            [visible]="ownedAssets.showAssetForm"
-            [title]="ownedAssets.assetFormTitle()"
-            [assetForm]="ownedAssets.assetForm"
-            [sourceRefreshEnabled]="ownedAssets.assetSourceRefreshEnabled"
-            [assetFormVisibility]="ownedAssets.assetFormVisibility"
-            [assetTypeOptions]="ownedAssets.assetTypeOptions"
-            [assetFormRouteStops]="ownedAssets.assetFormRouteStops()"
-            [isEventEditorReadOnly]="false"
-            [assetTypeClass]="ownedAssets.assetTypeClass"
-            [assetTypeIcon]="ownedAssets.assetTypeIcon"
-            [eventVisibilityClass]="ownedAssets.eventVisibilityClass"
-            [close]="closeOwnedAssetForm"
-            [save]="saveOwnedAssetCard"
-            [setAssetFormRouteStop]="setOwnedAssetFormRouteStop"
-            [openAssetFormRouteStopMap]="openOwnedAssetFormRouteStopMap"
-            [refreshAssetFromSourceLink]="refreshOwnedAssetFromSourceLink"
-            [onAssetImageFileSelected]="onOwnedAssetImageFileSelected"
-          ></app-asset-form-popup>
-
-          <app-confirmation-dialog
-            *ngIf="!isBasketMode()"
-            [useService]="false"
+          } @else {
+            @if (ownedAssets.isTicketPopup()) {
+              <div class="ticket-order-picker">
+                <button
+                  type="button"
+                  class="popup-view-fab ticket-order-trigger"
+                  (click)="assetPopup.toggleTicketOrderPicker($event)"
+                  aria-label="Open ticket date ordering"
+                  >
+                  <mat-icon>{{ assetPopup.ticketDateOrderIcon() }}</mat-icon>
+                  <span>{{ assetPopup.ticketDateOrderLabel() }}</span>
+                </button>
+                @if (assetPopup.showTicketOrderPicker()) {
+                  <div class="activities-view-picker-panel event-explore-order-panel">
+                    <button type="button" class="activities-view-option" (click)="assetPopup.selectTicketDateOrder('upcoming', $event)">
+                      <mat-icon>schedule</mat-icon>
+                      <span>Upcoming</span>
+                    </button>
+                    <button type="button" class="activities-view-option" (click)="assetPopup.selectTicketDateOrder('past', $event)">
+                      <mat-icon>history</mat-icon>
+                      <span>Past</span>
+                    </button>
+                  </div>
+                }
+              </div>
+            }
+            <button mat-icon-button class="popup-close" (click)="closeAssetPopup($event)" aria-label="Close">
+              <mat-icon>close</mat-icon>
+            </button>
+          }
+        </div>
+        <div
+          class="popup-body popup-body-assets-list"
+          [class.popup-body-assets-tickets]="ownedAssets.isTicketPopup()"
+          [class.popup-body-friends-picker]="isBasketMode()"
+          [class.popup-body-subevent-asset-assign]="isBasketMode()"
+          >
+          <div
+            class="experience-popup assets-popup assets-popup-smart-list"
+            [class.assets-popup-tickets]="ownedAssets.isTicketPopup()"
+            [class.assets-popup-basket]="isBasketMode()"
+            >
+            @if (isBasketMode()) {
+              <app-basket
+                className="friends-picker-chip-row asset-popup-basket-chip-row"
+                [chips]="basketChips()"
+                [disabled]="isBasketSavePending()"
+                (chipClick)="onBasketChipClick($event)"
+              ></app-basket>
+              @if (basketSaveErrorMessage()) {
+                <p class="asset-popup-basket-error">{{ basketSaveErrorMessage() }}</p>
+              }
+            } @else {
+              <div class="experience-toolbar assets-toolbar">
+                <div
+                  class="profile-status-select-wrap selector-like experience-filter-select assets-compact-select"
+                  [ngClass]="ownedAssets.assetTypeClass(ownedAssets.assetFilter)"
+                  [class.asset-filter-open]="assetFilterOpen()"
+                  >
+                  <mat-select
+                    [ngModel]="ownedAssets.assetFilter"
+                    (ngModelChange)="onAssetFilterChange($event)"
+                    (openedChange)="onAssetFilterMenuOpenChange($event)"
+                    [panelWidth]="ownedAssets.assetFilterPanelWidth()"
+                    disableOptionCentering
+                    panelClass="selector-options-panel profile-bottom-sheet-panel assets-filter-options-panel"
+                    >
+                    <mat-select-trigger>
+                      <span class="status-option-content">
+                        <mat-icon [class]="ownedAssets.assetTypeClass(ownedAssets.assetFilter)">{{ ownedAssets.assetTypeIcon(ownedAssets.assetFilter) }}</mat-icon>
+                        <span>{{ ownedAssets.assetFilter }}</span>
+                      </span>
+                    </mat-select-trigger>
+                    @for (option of ownedAssets.assetFilterOptions; track option) {
+                      <mat-option [value]="option" class="status-option" [ngClass]="ownedAssets.assetTypeClass(option)">
+                        <span class="status-option-content">
+                          <mat-icon [class]="ownedAssets.assetTypeClass(option)">{{ ownedAssets.assetTypeIcon(option) }}</mat-icon>
+                          <span>{{ option }}</span>
+                        </span>
+                      </mat-option>
+                    }
+                  </mat-select>
+                </div>
+                @if (!ownedAssets.isTicketPopup()) {
+                  <button
+                    type="button"
+                    class="popup-header-add-btn assets-add-btn"
+                    (click)="ownedAssets.openAssetForm()"
+                    aria-label="Add asset"
+                    >
+                    <mat-icon>add</mat-icon>
+                  </button>
+                }
+                @if (ownedAssets.isTicketPopup()) {
+                  <button
+                    type="button"
+                    class="popup-header-add-btn assets-add-btn ticket-toolbar-scanner-btn"
+                    (click)="assetPopup.openTicketScannerPopup($event)"
+                    aria-label="Scan ticket"
+                    >
+                    <mat-icon>qr_code_scanner</mat-icon>
+                    <span>Scan Ticket</span>
+                  </button>
+                }
+              </div>
+            }
+            @if (ownedAssets.isTicketPopup() && !isBasketMode()) {
+              <app-smart-list
+                [config]="ticketSmartListConfig"
+                [loadPage]="ticketSmartListLoadPage"
+                [itemTemplate]="ticketItemTemplate"
+                [query]="ticketSmartListQuery"
+                (stateChange)="onTicketSmartListStateChange($event)"
+              ></app-smart-list>
+            } @else {
+              <app-smart-list
+                [config]="assetSmartListConfig"
+                [loadPage]="assetSmartListLoadPage"
+                [itemTemplate]="assetItemTemplate"
+                [query]="assetSmartListQuery"
+              ></app-smart-list>
+            }
+            @if (!isBasketMode()) {
+              <app-asset-form-popup
+                [visible]="ownedAssets.showAssetForm"
+                [title]="ownedAssets.assetFormTitle()"
+                [assetForm]="ownedAssets.assetForm"
+                [sourceRefreshEnabled]="ownedAssets.assetSourceRefreshEnabled"
+                [assetFormVisibility]="ownedAssets.assetFormVisibility"
+                [assetTypeOptions]="ownedAssets.assetTypeOptions"
+                [assetFormRouteStops]="ownedAssets.assetFormRouteStops()"
+                [isEventEditorReadOnly]="false"
+                [assetTypeClass]="ownedAssets.assetTypeClass"
+                [assetTypeIcon]="ownedAssets.assetTypeIcon"
+                [eventVisibilityClass]="ownedAssets.eventVisibilityClass"
+                [close]="closeOwnedAssetForm"
+                [save]="saveOwnedAssetCard"
+                [setAssetFormRouteStop]="setOwnedAssetFormRouteStop"
+                [openAssetFormRouteStopMap]="openOwnedAssetFormRouteStopMap"
+                [refreshAssetFromSourceLink]="refreshOwnedAssetFromSourceLink"
+                [onAssetImageFileSelected]="onOwnedAssetImageFileSelected"
+              ></app-asset-form-popup>
+            }
+            @if (!isBasketMode()) {
+              <app-confirmation-dialog
+                [useService]="false"
             [dialog]="{
               visible: !!ownedAssets.pendingAssetDeleteCardId,
               title: 'Delete asset',
@@ -234,11 +243,13 @@
               cancelAction: cancelOwnedAssetDelete,
               confirmAction: confirmOwnedAssetDelete
             }"
-          ></app-confirmation-dialog>
+              ></app-confirmation-dialog>
+            }
+          </div>
         </div>
       </div>
-    </div>
-  </section>
+    </section>
+  }
 
   <ng-template #ticketItemTemplate let-row let-groupLabel="groupLabel">
     <app-info-card
@@ -256,48 +267,50 @@
     ></app-info-card>
   </ng-template>
 
-  <section class="app-popup app-popup-stacked" *ngIf="assetPopup.ticketOverlayMode() === 'ticketCode' || assetPopup.ticketOverlayMode() === 'ticketScanner'">
-    <div class="app-popup-backdrop" (click)="assetPopup.closeTicketOverlay()"></div>
-    <div
-      class="app-popup-panel"
-      [class.popup-panel-ticket-fullscreen]="(assetPopup.ticketOverlayMode() === 'ticketCode' || assetPopup.ticketOverlayMode() === 'ticketScanner') && ownedAssets.isMobileView()"
-      (click)="$event.stopPropagation()"
-    >
-      <div class="popup-header">
-        <div class="popup-title">
-          <h2>{{ assetPopup.ticketOverlayMode() === 'ticketCode' ? 'Ticket' : 'Scan Ticket' }}</h2>
+  @if (assetPopup.ticketOverlayMode() === 'ticketCode' || assetPopup.ticketOverlayMode() === 'ticketScanner') {
+    <section class="app-popup app-popup-stacked">
+      <div class="app-popup-backdrop" (click)="assetPopup.closeTicketOverlay()"></div>
+      <div
+        class="app-popup-panel"
+        [class.popup-panel-ticket-fullscreen]="(assetPopup.ticketOverlayMode() === 'ticketCode' || assetPopup.ticketOverlayMode() === 'ticketScanner') && ownedAssets.isMobileView()"
+        (click)="$event.stopPropagation()"
+        >
+        <div class="popup-header">
+          <div class="popup-title">
+            <h2>{{ assetPopup.ticketOverlayMode() === 'ticketCode' ? 'Ticket' : 'Scan Ticket' }}</h2>
+          </div>
+          <button mat-icon-button class="popup-close" (click)="assetPopup.closeTicketOverlay()" aria-label="Close">
+            <mat-icon>close</mat-icon>
+          </button>
         </div>
-        <button mat-icon-button class="popup-close" (click)="assetPopup.closeTicketOverlay()" aria-label="Close">
-          <mat-icon>close</mat-icon>
-        </button>
+        <div class="popup-body">
+          @if (assetPopup.ticketOverlayMode() === 'ticketCode') {
+            <app-asset-ticket-code-popup
+              [selectedTicketRow]="assetPopup.selectedTicketRow()"
+              [avatarUrl]="assetPopup.ticketCodeAvatarUrl()"
+              [initials]="assetPopup.ticketCodeInitials()"
+              [personLine]="assetPopup.ticketCodePersonLine()"
+              [roleEventLine]="assetPopup.ticketCodeRoleEventLine()"
+              [dateLine]="assetPopup.ticketCodeDateLine()"
+              [qrImageUrl]="assetPopup.ticketQrImageUrl()"
+            ></app-asset-ticket-code-popup>
+          }
+          @if (assetPopup.ticketOverlayMode() === 'ticketScanner') {
+            <app-asset-ticket-scanner-popup
+              [state]="assetPopup.ticketScannerState()"
+              [result]="assetPopup.ticketScannerResult()"
+              [avatarUrl]="assetPopup.ticketScannerResultAvatarUrl()"
+              [initials]="assetPopup.ticketScannerResultInitials()"
+              [personLine]="assetPopup.ticketScannerPersonLine()"
+              [roleEventLine]="assetPopup.ticketScannerRoleEventLine()"
+              [dateLine]="assetPopup.ticketScannerDateLine()"
+              [retry]="retryTicketScanner"
+              (videoElementChange)="onTicketScannerVideoElementChange($event)"
+            ></app-asset-ticket-scanner-popup>
+          }
+        </div>
       </div>
-
-      <div class="popup-body">
-        <app-asset-ticket-code-popup
-          *ngIf="assetPopup.ticketOverlayMode() === 'ticketCode'"
-          [selectedTicketRow]="assetPopup.selectedTicketRow()"
-          [avatarUrl]="assetPopup.ticketCodeAvatarUrl()"
-          [initials]="assetPopup.ticketCodeInitials()"
-          [personLine]="assetPopup.ticketCodePersonLine()"
-          [roleEventLine]="assetPopup.ticketCodeRoleEventLine()"
-          [dateLine]="assetPopup.ticketCodeDateLine()"
-          [qrImageUrl]="assetPopup.ticketQrImageUrl()"
-        ></app-asset-ticket-code-popup>
-
-        <app-asset-ticket-scanner-popup
-          *ngIf="assetPopup.ticketOverlayMode() === 'ticketScanner'"
-          [state]="assetPopup.ticketScannerState()"
-          [result]="assetPopup.ticketScannerResult()"
-          [avatarUrl]="assetPopup.ticketScannerResultAvatarUrl()"
-          [initials]="assetPopup.ticketScannerResultInitials()"
-          [personLine]="assetPopup.ticketScannerPersonLine()"
-          [roleEventLine]="assetPopup.ticketScannerRoleEventLine()"
-          [dateLine]="assetPopup.ticketScannerDateLine()"
-          [retry]="retryTicketScanner"
-          (videoElementChange)="onTicketScannerVideoElementChange($event)"
-        ></app-asset-ticket-scanner-popup>
-      </div>
-    </div>
-  </section>
+    </section>
+  }
 
 </div>

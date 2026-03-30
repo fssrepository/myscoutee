@@ -16,14 +16,13 @@
         matRipple
         [matRippleColor]="'rgba(255, 255, 255, 0.24)'"
         (click)="requestHeaderAuth()"
-      >
-        <ng-container *ngIf="entryAuthButtonShowsAvatar; else loginButtonContent">
+        >
+        @if (entryAuthButtonShowsAvatar) {
           <span class="entry-auth-avatar">{{ firebaseAuthProfile?.initials }}</span>
-        </ng-container>
-        <ng-template #loginButtonContent>
+        } @else {
           <mat-icon>{{ entryAuthButtonIcon }}</mat-icon>
           <span>{{ entryAuthButtonLabel }}</span>
-        </ng-template>
+        }
       </button>
     </header>
 
@@ -44,7 +43,7 @@
               matRipple
               [matRippleColor]="'rgba(112, 59, 242, 0.14)'"
               (click)="requestDemo()"
-            >
+              >
               <mat-icon>rocket_launch</mat-icon>
               <span>Start exploring</span>
             </button>
@@ -141,7 +140,7 @@
         matRipple
         [matRippleColor]="'rgba(112, 59, 242, 0.14)'"
         (click)="requestDemo()"
-      >
+        >
         <mat-icon>login</mat-icon>
         <span>Open demo</span>
       </button>

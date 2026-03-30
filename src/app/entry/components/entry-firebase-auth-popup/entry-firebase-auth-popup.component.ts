@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { MatRippleModule } from '@angular/material/core';
 import { MatIconModule } from '@angular/material/icon';
@@ -7,10 +7,9 @@ import { MatIconModule } from '@angular/material/icon';
   selector: 'app-entry-firebase-auth-popup',
   standalone: true,
   imports: [
-    CommonModule,
     MatRippleModule,
     MatIconModule
-  ],
+],
   templateUrl: './entry-firebase-auth-popup.component.html',
   styleUrl: './entry-firebase-auth-popup.component.scss'
 })

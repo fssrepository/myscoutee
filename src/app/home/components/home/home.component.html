@@ -11,7 +11,7 @@
           (ngModelChange)="selectHomeMode($event)"
           panelWidth="248px"
           panelClass="home-mode-select-panel"
-        >
+          >
           <mat-select-trigger>
             <span class="game-action-mode">
               <mat-icon>{{ selectedHomeModeIcon() }}</mat-icon>
@@ -19,17 +19,18 @@
               <mat-icon class="game-action-mode-chevron">expand_more</mat-icon>
             </span>
           </mat-select-trigger>
-          <mat-option
-            *ngFor="let option of homeModeOptions"
-            [value]="option.key"
-            class="home-mode-option"
-            [ngClass]="homeModeToneClass(option.key)"
-          >
-            <span class="game-mode-option">
-              <mat-icon>{{ option.icon }}</mat-icon>
-              <span>{{ option.label }}</span>
-            </span>
-          </mat-option>
+          @for (option of homeModeOptions; track option) {
+            <mat-option
+              [value]="option.key"
+              class="home-mode-option"
+              [ngClass]="homeModeToneClass(option.key)"
+              >
+              <span class="game-mode-option">
+                <mat-icon>{{ option.icon }}</mat-icon>
+                <span>{{ option.label }}</span>
+              </span>
+            </mat-option>
+          }
         </mat-select>
       </div>
       <button
@@ -40,7 +41,7 @@
         [class.game-action-filter-no-matches]="!hasRemainingCandidatesForCurrentMode"
         (click)="openFilter()"
         aria-label="Open profile filters"
-      >
+        >
         <span class="game-action-ripple" matRipple [matRippleTrigger]="filterButton" aria-hidden="true"></span>
         <mat-icon>filter_alt</mat-icon>
         <span class="filter-state-badge" [class.active]="isFilterActive">{{ filterBadgeCount | counterBadge }}</span>
@@ -53,58 +54,65 @@
         [disabled]="!canOpenHistory"
         (click)="openHistory()"
         aria-label="Open game history"
-      >
+        >
         <span class="game-action-ripple" matRipple [matRippleTrigger]="historyButton" aria-hidden="true"></span>
         <mat-icon>history</mat-icon>
-        <span class="history-badge" *ngIf="historyBadgeCount > 0">{{ historyBadgeCount | counterBadge }}</span>
+        @if (historyBadgeCount > 0) {
+          <span class="history-badge">{{ historyBadgeCount | counterBadge }}</span>
+        }
       </button>
     </div>
   </header>
 
-  <section class="game-social-query-bar" *ngIf="showSocialQueryInputs()">
-    <label class="game-social-query-field">
-      <input
-        type="text"
-        [value]="leftSocialQuery"
-        [attr.list]="'home-social-left-suggestions'"
-        [attr.aria-label]="isFriendsInCommonMode ? 'Person' : 'Friend A'"
-        [placeholder]="isFriendsInCommonMode ? 'Search person or event' : 'Search friend or event'"
-        (input)="onLeftSocialQueryChanged(($any($event.target).value ?? '').toString())"
-      />
-    </label>
-    <label class="game-social-query-field">
-      <input
-        type="text"
-        [value]="rightSocialQuery"
-        [attr.list]="'home-social-right-suggestions'"
-        [attr.aria-label]="isFriendsInCommonMode ? 'Common friend' : 'Friend B'"
-        [placeholder]="isFriendsInCommonMode ? 'Search common friend' : 'Search friend or event'"
-        (input)="onRightSocialQueryChanged(($any($event.target).value ?? '').toString())"
-      />
-    </label>
-    <datalist id="home-social-left-suggestions">
-      <option *ngFor="let suggestion of socialQuerySuggestions('left')" [value]="suggestion"></option>
-    </datalist>
-    <datalist id="home-social-right-suggestions">
-      <option *ngFor="let suggestion of socialQuerySuggestions('right')" [value]="suggestion"></option>
-    </datalist>
-  </section>
+  @if (showSocialQueryInputs()) {
+    <section class="game-social-query-bar">
+      <label class="game-social-query-field">
+        <input
+          type="text"
+          [value]="leftSocialQuery"
+          [attr.list]="'home-social-left-suggestions'"
+          [attr.aria-label]="isFriendsInCommonMode ? 'Person' : 'Friend A'"
+          [placeholder]="isFriendsInCommonMode ? 'Search person or event' : 'Search friend or event'"
+          (input)="onLeftSocialQueryChanged(($any($event.target).value ?? '').toString())"
+          />
+      </label>
+      <label class="game-social-query-field">
+        <input
+          type="text"
+          [value]="rightSocialQuery"
+          [attr.list]="'home-social-right-suggestions'"
+          [attr.aria-label]="isFriendsInCommonMode ? 'Common friend' : 'Friend B'"
+          [placeholder]="isFriendsInCommonMode ? 'Search common friend' : 'Search friend or event'"
+          (input)="onRightSocialQueryChanged(($any($event.target).value ?? '').toString())"
+          />
+      </label>
+      <datalist id="home-social-left-suggestions">
+        @for (suggestion of socialQuerySuggestions('left'); track suggestion) {
+          <option [value]="suggestion"></option>
+        }
+      </datalist>
+      <datalist id="home-social-right-suggestions">
+        @for (suggestion of socialQuerySuggestions('right'); track suggestion) {
+          <option [value]="suggestion"></option>
+        }
+      </datalist>
+    </section>
+  }
 
   <section class="game-layout-single">
     <div class="game-card-deck">
       <ng-template #homeFullscreenItemTemplate let-row let-renderState="renderState">
-        <ng-container *ngIf="row">
-          <app-pair-card
-            *ngIf="row.mode === 'pair'; else homeSingleCardTemplate"
-            [card]="homePairCard(row, { presentation: 'fullscreen', state: renderState })"
-          ></app-pair-card>
-
-          <ng-template #homeSingleCardTemplate>
+        @if (row) {
+          @if (row.mode === 'pair') {
+            <app-pair-card
+              [card]="homePairCard(row, { presentation: 'fullscreen', state: renderState })"
+            ></app-pair-card>
+          } @else {
             <app-single-card
               [card]="homeSingleCard(row, { presentation: 'fullscreen', state: renderState })"
             ></app-single-card>
-          </ng-template>
-        </ng-container>
+          }
+        }
       </ng-template>
 
       <app-smart-list
@@ -121,22 +129,25 @@
   </section>
 </div>
 
-<app-home-game-filter-popup
-  *ngIf="localPopup === 'filter' && gameFilterPopupContext"
-  [context]="gameFilterPopupContext"
-  (closed)="onGameFilterPopupClosed($event)"
-></app-home-game-filter-popup>
+@if (localPopup === 'filter' && gameFilterPopupContext) {
+  <app-home-game-filter-popup
+    [context]="gameFilterPopupContext"
+    (closed)="onGameFilterPopupClosed($event)"
+  ></app-home-game-filter-popup>
+}
 
-<section class="game-popup" *ngIf="localPopup === 'history'">
-  <div class="game-popup-backdrop" (click)="closeLocalPopup()"></div>
-  <div class="game-popup-panel" (click)="$event.stopPropagation()">
-    <header>
-      <h2>Game History</h2>
-      <button type="button" (click)="closeLocalPopup()">×</button>
-    </header>
-    <div class="game-popup-body">
-      <p>Recent ratings and mutual matches can appear here.</p>
-      <p>Current placeholder keeps popup structure ready.</p>
+@if (localPopup === 'history') {
+  <section class="game-popup">
+    <div class="game-popup-backdrop" (click)="closeLocalPopup()"></div>
+    <div class="game-popup-panel" (click)="$event.stopPropagation()">
+      <header>
+        <h2>Game History</h2>
+        <button type="button" (click)="closeLocalPopup()">×</button>
+      </header>
+      <div class="game-popup-body">
+        <p>Recent ratings and mutual matches can appear here.</p>
+        <p>Current placeholder keeps popup structure ready.</p>
+      </div>
     </div>
-  </div>
-</section>
+  </section>
+}

@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import { ChangeDetectionStrategy, Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
 
 import { AppUtils } from '../../../../../shared/app-utils';
@@ -42,7 +42,7 @@ export interface ActivitiesEventTemplateContext {
 @Component({
   selector: 'app-activities-event-template',
   standalone: true,
-  imports: [CommonModule, InfoCardComponent],
+  imports: [InfoCardComponent],
   templateUrl: './activities-event-template.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush
 })

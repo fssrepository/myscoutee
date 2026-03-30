@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output } from '@angular/core';
 
 import type { RateMenuItem } from '../../../../../shared/core/base/interfaces/activity-feed.interface';
@@ -57,7 +57,7 @@ export interface ActivitiesRateTemplateContext {
 @Component({
   selector: 'app-activities-rate-template',
   standalone: true,
-  imports: [CommonModule, SingleCardComponent, PairCardComponent],
+  imports: [SingleCardComponent, PairCardComponent],
   templateUrl: './activities-rate-template.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush
 })

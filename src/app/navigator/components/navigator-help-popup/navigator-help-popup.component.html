@@ -5,60 +5,71 @@
   </article>
 
   <div class="support-help-tabs support-help-tabs-desktop" role="tablist" aria-label="Help topics">
-    <button
-      type="button"
-      class="support-help-tab-btn"
-      role="tab"
-      *ngFor="let section of sections"
-      [class.is-active]="section.id === activeSectionId"
-      [attr.aria-selected]="section.id === activeSectionId"
-      (click)="selectSection(section.id, $event)"
-    >
-      <span class="support-help-tab-head">
-        <mat-icon>{{ section.icon }}</mat-icon>
-        <span>{{ section.title }}</span>
-      </span>
-      <span class="support-help-tab-blurb">{{ section.blurb }}</span>
-    </button>
-  </div>
-
-  <article class="editor-list-card support-help-detail support-help-detail-desktop" *ngIf="activeSection as section">
-    <h4><mat-icon>{{ section.icon }}</mat-icon><span>{{ section.title }}</span></h4>
-    <p class="support-help-detail-lead">{{ section.blurb }}</p>
-    <p *ngFor="let paragraph of section.details">{{ paragraph }}</p>
-    <ul class="support-help-detail-list">
-      <li *ngFor="let point of section.points">{{ point }}</li>
-    </ul>
-  </article>
-
-  <div class="support-help-accordion" aria-label="Help topics">
-    <article
-      class="editor-list-card support-help-accordion-item"
-      *ngFor="let section of sections"
-      [class.is-open]="section.id === openAccordionSectionId"
-    >
+    @for (section of sections; track section) {
       <button
         type="button"
-        class="support-help-accordion-btn"
-        [attr.aria-expanded]="section.id === openAccordionSectionId"
-        (click)="toggleAccordionSection(section.id, $event)"
-      >
+        class="support-help-tab-btn"
+        role="tab"
+        [class.is-active]="section.id === activeSectionId"
+        [attr.aria-selected]="section.id === activeSectionId"
+        (click)="selectSection(section.id, $event)"
+        >
         <span class="support-help-tab-head">
           <mat-icon>{{ section.icon }}</mat-icon>
           <span>{{ section.title }}</span>
         </span>
-        <mat-icon class="support-help-accordion-caret">expand_more</mat-icon>
+        <span class="support-help-tab-blurb">{{ section.blurb }}</span>
       </button>
+    }
+  </div>
 
-      <div class="support-help-accordion-panel-wrap" [class.is-open]="section.id === openAccordionSectionId">
-        <div class="support-help-accordion-panel">
-          <p class="support-help-detail-lead">{{ section.blurb }}</p>
-          <p *ngFor="let paragraph of section.details">{{ paragraph }}</p>
-          <ul class="support-help-detail-list">
-            <li *ngFor="let point of section.points">{{ point }}</li>
-          </ul>
-        </div>
-      </div>
+  @if (activeSection; as section) {
+    <article class="editor-list-card support-help-detail support-help-detail-desktop">
+      <h4><mat-icon>{{ section.icon }}</mat-icon><span>{{ section.title }}</span></h4>
+      <p class="support-help-detail-lead">{{ section.blurb }}</p>
+      @for (paragraph of section.details; track paragraph) {
+        <p>{{ paragraph }}</p>
+      }
+      <ul class="support-help-detail-list">
+        @for (point of section.points; track point) {
+          <li>{{ point }}</li>
+        }
+      </ul>
     </article>
+  }
+
+  <div class="support-help-accordion" aria-label="Help topics">
+    @for (section of sections; track section) {
+      <article
+        class="editor-list-card support-help-accordion-item"
+        [class.is-open]="section.id === openAccordionSectionId"
+        >
+        <button
+          type="button"
+          class="support-help-accordion-btn"
+          [attr.aria-expanded]="section.id === openAccordionSectionId"
+          (click)="toggleAccordionSection(section.id, $event)"
+          >
+          <span class="support-help-tab-head">
+            <mat-icon>{{ section.icon }}</mat-icon>
+            <span>{{ section.title }}</span>
+          </span>
+          <mat-icon class="support-help-accordion-caret">expand_more</mat-icon>
+        </button>
+        <div class="support-help-accordion-panel-wrap" [class.is-open]="section.id === openAccordionSectionId">
+          <div class="support-help-accordion-panel">
+            <p class="support-help-detail-lead">{{ section.blurb }}</p>
+            @for (paragraph of section.details; track paragraph) {
+              <p>{{ paragraph }}</p>
+            }
+            <ul class="support-help-detail-list">
+              @for (point of section.points; track point) {
+                <li>{{ point }}</li>
+              }
+            </ul>
+          </div>
+        </div>
+      </article>
+    }
   </div>
 </div>

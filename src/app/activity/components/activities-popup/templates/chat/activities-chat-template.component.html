@@ -4,7 +4,7 @@
   [ngClass]="data?.toneClass"
   [attr.data-group-label]="data?.groupLabel"
   (click)="onRowClick($event)"
->
+  >
   <span class="activities-card-avatar" [ngClass]="data?.avatarClass">
     {{ data?.avatarInitials }}
   </span>
@@ -15,6 +15,8 @@
   </div>
   <span class="activities-chat-members-badge">
     <span>{{ data?.memberCount ?? 0 }} members</span>
-    <span class="card-badge asset-request-badge activities-chat-unread-badge" *ngIf="(data?.unread ?? 0) > 0">{{ (data?.unread ?? 0) | counterBadge }}</span>
+    @if ((data?.unread ?? 0) > 0) {
+      <span class="card-badge asset-request-badge activities-chat-unread-badge">{{ (data?.unread ?? 0) | counterBadge }}</span>
+    }
   </span>
 </button>

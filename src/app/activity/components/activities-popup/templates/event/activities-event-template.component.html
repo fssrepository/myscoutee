@@ -1,6 +1,7 @@
-<app-info-card
-  *ngIf="card"
-  [card]="card"
-  (mediaEndClick)="onMediaEndClick()"
-  (menuAction)="onMenuAction($event)"
-></app-info-card>
+@if (card) {
+  <app-info-card
+    [card]="card"
+    (mediaEndClick)="onMediaEndClick()"
+    (menuAction)="onMenuAction($event)"
+  ></app-info-card>
+}

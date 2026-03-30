@@ -1,250 +1,259 @@
-<ng-container *ngIf="menuUser() as user">
-<ng-container *ngIf="menuUiState() as ui">
-<div class="user-menu-backdrop" [class.open]="ui.open" [class.is-covered]="isCoveredByAssetPopup()" (click)="onCloseMenu()" *ngIf="ui.open"></div>
-
-<aside class="user-menu-panel" [class.open]="ui.open" [class.is-covered]="isCoveredByAssetPopup()">
-  <div
-    class="user-menu-header"
-    [ngClass]="profileStatusClass(user.profileStatus)"
-  >
-    <button
-      #settingsButton
-      type="button"
-      class="user-menu-settings-btn"
-      [class.is-open]="ui.settingsOpen"
-      aria-label="Open settings menu"
-      [attr.aria-expanded]="ui.settingsOpen"
-      (click)="onToggleSettingsMenu($event)"
-    >
-      <span class="navigator-action-ripple" matRipple [matRippleTrigger]="settingsButton" aria-hidden="true"></span>
-      <mat-icon>settings</mat-icon>
-    </button>
-
-    <button
-      #closeButton
-      type="button"
-      class="user-menu-close-btn"
-      aria-label="Close menu"
-      (click)="$event.stopPropagation(); onCloseMenu()"
-    >
-      <span class="navigator-action-ripple" matRipple [matRippleTrigger]="closeButton" aria-hidden="true"></span>
-      <mat-icon>close</mat-icon>
-    </button>
-
-    <app-navigator-settings-menu *ngIf="ui.settingsOpen"></app-navigator-settings-menu>
-
-    <div class="user-header-main">
-      <div class="avatar-stack" [attr.title]="profileSaveAvatarTitle()">
-        <span class="avatar-save-ring" *ngIf="showProfileSaveRing()" aria-hidden="true">
-          <svg viewBox="0 0 112 112" class="avatar-save-ring-svg">
-            <defs>
-              <linearGradient id="navigator-menu-save-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stop-color="rgb(235, 147, 33)"></stop>
-                <stop offset="100%" stop-color="rgb(247, 190, 52)"></stop>
-              </linearGradient>
-              <linearGradient id="navigator-menu-save-gradient-overdue" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stop-color="rgb(213, 54, 68)"></stop>
-                <stop offset="100%" stop-color="rgb(196, 29, 42)"></stop>
-              </linearGradient>
-            </defs>
-            <circle class="avatar-save-ring-track" cx="56" cy="56" r="51"></circle>
-            <circle
-              class="avatar-save-ring-progress"
-              [class.is-loading]="isProfileSaving() && !hasProfileSaveError()"
-              [class.is-overdue]="hasProfileSaveError()"
-              cx="56"
-              cy="56"
-              r="51"
-              [attr.stroke-dasharray]="profileSaveRingCircumference"
-              [attr.stroke-dashoffset]="hasProfileSaveError() ? 0 : profileSaveRingCircumference"
-            ></circle>
-          </svg>
-        </span>
-        <span
-          class="user-avatar user-avatar-large"
-          [ngClass]="['user-color-' + user.gender, user.featuredImagePreview ? 'has-photo' : '']"
-          [style.backgroundImage]="user.featuredImagePreview ? 'url(' + user.featuredImagePreview + ')' : null"
+@if (menuUser(); as user) {
+  @if (menuUiState(); as ui) {
+    @if (ui.open) {
+      <div class="user-menu-backdrop" [class.open]="ui.open" [class.is-covered]="isCoveredByAssetPopup()" (click)="onCloseMenu()"></div>
+    }
+    <aside class="user-menu-panel" [class.open]="ui.open" [class.is-covered]="isCoveredByAssetPopup()">
+      <div
+        class="user-menu-header"
+        [ngClass]="profileStatusClass(user.profileStatus)"
         >
-          <ng-container *ngIf="!user.featuredImagePreview">{{ user.initials }}</ng-container>
-        </span>
-        <span class="avatar-activity-badge" *ngIf="user.totalBadgeCount > 0">{{ user.totalBadgeCount }}</span>
-        <span class="avatar-bottom-pill avatar-bottom-pill-header" [ngStyle]="completionBadgeStyle(user.completion)">
-          <span>{{ user.completion }}%</span>
-        </span>
+        <button
+          #settingsButton
+          type="button"
+          class="user-menu-settings-btn"
+          [class.is-open]="ui.settingsOpen"
+          aria-label="Open settings menu"
+          [attr.aria-expanded]="ui.settingsOpen"
+          (click)="onToggleSettingsMenu($event)"
+          >
+          <span class="navigator-action-ripple" matRipple [matRippleTrigger]="settingsButton" aria-hidden="true"></span>
+          <mat-icon>settings</mat-icon>
+        </button>
+        <button
+          #closeButton
+          type="button"
+          class="user-menu-close-btn"
+          aria-label="Close menu"
+          (click)="$event.stopPropagation(); onCloseMenu()"
+          >
+          <span class="navigator-action-ripple" matRipple [matRippleTrigger]="closeButton" aria-hidden="true"></span>
+          <mat-icon>close</mat-icon>
+        </button>
+        @if (ui.settingsOpen) {
+          <app-navigator-settings-menu></app-navigator-settings-menu>
+        }
+        <div class="user-header-main">
+          <div class="avatar-stack" [attr.title]="profileSaveAvatarTitle()">
+            @if (showProfileSaveRing()) {
+              <span class="avatar-save-ring" aria-hidden="true">
+                <svg viewBox="0 0 112 112" class="avatar-save-ring-svg">
+                  <defs>
+                    <linearGradient id="navigator-menu-save-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stop-color="rgb(235, 147, 33)"></stop>
+                      <stop offset="100%" stop-color="rgb(247, 190, 52)"></stop>
+                    </linearGradient>
+                    <linearGradient id="navigator-menu-save-gradient-overdue" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stop-color="rgb(213, 54, 68)"></stop>
+                      <stop offset="100%" stop-color="rgb(196, 29, 42)"></stop>
+                    </linearGradient>
+                  </defs>
+                  <circle class="avatar-save-ring-track" cx="56" cy="56" r="51"></circle>
+                  <circle
+                    class="avatar-save-ring-progress"
+                    [class.is-loading]="isProfileSaving() && !hasProfileSaveError()"
+                    [class.is-overdue]="hasProfileSaveError()"
+                    cx="56"
+                    cy="56"
+                    r="51"
+                    [attr.stroke-dasharray]="profileSaveRingCircumference"
+                    [attr.stroke-dashoffset]="hasProfileSaveError() ? 0 : profileSaveRingCircumference"
+                  ></circle>
+                </svg>
+              </span>
+            }
+            <span
+              class="user-avatar user-avatar-large"
+              [ngClass]="['user-color-' + user.gender, user.featuredImagePreview ? 'has-photo' : '']"
+              [style.backgroundImage]="user.featuredImagePreview ? 'url(' + user.featuredImagePreview + ')' : null"
+              >
+              @if (!user.featuredImagePreview) {
+                {{ user.initials }}
+              }
+            </span>
+            @if (user.totalBadgeCount > 0) {
+              <span class="avatar-activity-badge">{{ user.totalBadgeCount }}</span>
+            }
+            <span class="avatar-bottom-pill avatar-bottom-pill-header" [ngStyle]="completionBadgeStyle(user.completion)">
+              <span>{{ user.completion }}%</span>
+            </span>
+          </div>
+          <div class="user-meta user-meta-compact">
+            <span class="user-name">{{ user.name }}, {{ user.age }}</span>
+            <span class="user-city-line">
+              <mat-icon>location_on</mat-icon>
+              <span>{{ user.city }}</span>
+            </span>
+          </div>
+        </div>
+        <button #profileEditorButton type="button" class="header-open-cue" [disabled]="!isOnline()" aria-label="Open profile editor" (click)="openProfileEditor($event)">
+          <span class="navigator-action-ripple" matRipple [matRippleTrigger]="profileEditorButton" aria-hidden="true"></span>
+          <mat-icon>edit</mat-icon>
+        </button>
       </div>
-
-      <div class="user-meta user-meta-compact">
-        <span class="user-name">{{ user.name }}, {{ user.age }}</span>
-        <span class="user-city-line">
-          <mat-icon>location_on</mat-icon>
-          <span>{{ user.city }}</span>
-        </span>
+      <div class="user-menu-content">
+        @if (!isOnline()) {
+          <div class="user-menu-offline-note">
+            Offline mode is active. Tickets stay available, while the other menu actions wait for the connection to return.
+          </div>
+        }
+        <div class="social-proof-section-head section-personality activities-header impressions-menu-header">
+          <span class="section-tag">
+            <mat-icon>psychology</mat-icon>
+            <span>Impressions</span>
+          </span>
+          <span class="section-line"></span>
+        </div>
+        <div class="impressions-shortcuts">
+          <button
+            #hostImpressionsButton
+            class="impression-shortcut-btn impression-shortcut-host-btn"
+            [ngClass]="getHostTierToneClass(user.hostTier)"
+            type="button"
+            [disabled]="!isOnline()"
+            (click)="openHostImpressions($event)"
+            aria-label="Open host impressions"
+            [title]="user.hostTier"
+            >
+            <span class="navigator-action-ripple" matRipple [matRippleTrigger]="hostImpressionsButton" aria-hidden="true"></span>
+            @if (user.impressionChangeFlags.host) {
+              <span
+                class="card-badge menu-shortcut-badge menu-shortcut-badge-empty"
+              ></span>
+            }
+            <mat-icon [class]="getHostTierColorClass(user.hostTier)">{{ getHostTierIcon(user.hostTier) }}</mat-icon>
+            <span class="impression-shortcut-label">
+              <span class="impression-shortcut-main">{{ user.hostTier.replace(' Host', '') }}</span>
+              <span class="impression-shortcut-sub">Host</span>
+            </span>
+          </button>
+          <button
+            #memberImpressionsButton
+            class="impression-shortcut-btn impression-shortcut-member-btn"
+            [ngClass]="getTraitToneClass(user.traitLabel)"
+            type="button"
+            [disabled]="!isOnline()"
+            (click)="openMemberImpressions($event)"
+            aria-label="Open member impressions"
+            [title]="user.memberImpressionTitle"
+            >
+            <span class="navigator-action-ripple" matRipple [matRippleTrigger]="memberImpressionsButton" aria-hidden="true"></span>
+            @if (user.impressionChangeFlags.member) {
+              <span
+                class="card-badge menu-shortcut-badge menu-shortcut-badge-empty"
+              ></span>
+            }
+            <mat-icon [class]="getTraitColorClass(user.traitLabel)">{{ getTraitIcon(user.traitLabel) }}</mat-icon>
+            <span class="impression-shortcut-label">
+              <span class="impression-shortcut-main">{{ user.memberImpressionTitle.replace(' Attendee', '') }}</span>
+              <span class="impression-shortcut-sub">Attendee</span>
+            </span>
+          </button>
+        </div>
+        <div class="social-proof-section-head section-social activities-header">
+          <span class="section-tag">
+            <mat-icon>local_activity</mat-icon>
+            <span>Activities</span>
+          </span>
+          <span class="section-line"></span>
+        </div>
+        <div class="menu-shortcuts">
+          <button #ratesButton class="menu-shortcut-btn menu-shortcut-rates" type="button" [disabled]="!isOnline()" (click)="$event.stopPropagation(); openRatesShortcut()" aria-label="Open rates" title="Rates">
+            <span class="navigator-action-ripple" matRipple [matRippleTrigger]="ratesButton" aria-hidden="true"></span>
+            <mat-icon>star</mat-icon>
+            <span class="menu-shortcut-label">Rates</span>
+            @if (user.activities.game > 0) {
+              <span class="card-badge menu-shortcut-badge">{{ user.activities.game | counterBadge }}</span>
+            }
+          </button>
+          <button #chatButton class="menu-shortcut-btn menu-shortcut-chat" type="button" [disabled]="!isOnline()" (click)="$event.stopPropagation(); openChatShortcut()" aria-label="Open chat" title="Chats">
+            <span class="navigator-action-ripple" matRipple [matRippleTrigger]="chatButton" aria-hidden="true"></span>
+            <mat-icon>chat</mat-icon>
+            <span class="menu-shortcut-label">Chats</span>
+            @if (user.activities.chat > 0) {
+              <span class="card-badge menu-shortcut-badge">{{ user.activities.chat | counterBadge }}</span>
+            }
+          </button>
+          <button #invitationsButton class="menu-shortcut-btn menu-shortcut-invitations" type="button" [disabled]="!isOnline()" (click)="$event.stopPropagation(); openInvitationShortcut()" aria-label="Open invitations" title="Invitations">
+            <span class="navigator-action-ripple" matRipple [matRippleTrigger]="invitationsButton" aria-hidden="true"></span>
+            <mat-icon>mail</mat-icon>
+            <span class="menu-shortcut-label">Invitations</span>
+            @if (user.activities.invitations > 0) {
+              <span class="card-badge menu-shortcut-badge">{{ user.activities.invitations | counterBadge }}</span>
+            }
+          </button>
+          <button #eventsButton class="menu-shortcut-btn menu-shortcut-events" type="button" [disabled]="!isOnline()" (click)="$event.stopPropagation(); openEventShortcut()" aria-label="Open events" title="Events">
+            <span class="navigator-action-ripple" matRipple [matRippleTrigger]="eventsButton" aria-hidden="true"></span>
+            <mat-icon>event</mat-icon>
+            <span class="menu-shortcut-label">Events</span>
+            @if (user.activities.events > 0) {
+              <span class="card-badge menu-shortcut-badge">{{ user.activities.events | counterBadge }}</span>
+            }
+          </button>
+          <button #hostingButton class="menu-shortcut-btn menu-shortcut-hosting" type="button" [disabled]="!isOnline()" (click)="$event.stopPropagation(); openHostingShortcut()" aria-label="Open my events" title="My Events">
+            <span class="navigator-action-ripple" matRipple [matRippleTrigger]="hostingButton" aria-hidden="true"></span>
+            <mat-icon>stadium</mat-icon>
+            <span class="menu-shortcut-label">My Events</span>
+            @if (user.activities.hosting > 0) {
+              <span class="card-badge menu-shortcut-badge">{{ user.activities.hosting | counterBadge }}</span>
+            }
+          </button>
+        </div>
+        <div class="social-proof-section-head section-arts section-assets activities-header impressions-menu-header">
+          <span class="section-tag">
+            <mat-icon>inventory_2</mat-icon>
+            <span>My Assets</span>
+          </span>
+          <span class="section-line"></span>
+        </div>
+        <div class="assets-shortcuts">
+          <button #assetCarButton class="asset-shortcut-btn asset-shortcut-car" type="button" [disabled]="!isOnline()" (click)="openAssetCarPopup($event)" aria-label="Car">
+            <span class="navigator-action-ripple" matRipple [matRippleTrigger]="assetCarButton" aria-hidden="true"></span>
+            <mat-icon>directions_car</mat-icon>
+            <span class="asset-shortcut-label">Car</span>
+          </button>
+          <button #assetAccommodationButton class="asset-shortcut-btn asset-shortcut-accommodation" type="button" [disabled]="!isOnline()" (click)="openAssetAccommodationPopup($event)" aria-label="Accommodation">
+            <span class="navigator-action-ripple" matRipple [matRippleTrigger]="assetAccommodationButton" aria-hidden="true"></span>
+            <mat-icon>apartment</mat-icon>
+            <span class="asset-shortcut-label">Accommodation</span>
+          </button>
+          <button #assetSuppliesButton class="asset-shortcut-btn asset-shortcut-supplies" type="button" [disabled]="!isOnline()" (click)="openAssetSuppliesPopup($event)" aria-label="Supplies">
+            <span class="navigator-action-ripple" matRipple [matRippleTrigger]="assetSuppliesButton" aria-hidden="true"></span>
+            <mat-icon>inventory_2</mat-icon>
+            <span class="asset-shortcut-label">Supplies</span>
+          </button>
+          <button #assetTicketButton class="asset-shortcut-btn asset-shortcut-ticket" type="button" (click)="openAssetTicketsPopup($event)" aria-label="Ticket">
+            <span class="navigator-action-ripple" matRipple [matRippleTrigger]="assetTicketButton" aria-hidden="true"></span>
+            <mat-icon>qr_code_2</mat-icon>
+            <span class="asset-shortcut-label">Ticket</span>
+            @if (user.activities.tickets > 0) {
+              <span class="card-badge menu-shortcut-badge">{{ user.activities.tickets | counterBadge }}</span>
+            }
+          </button>
+        </div>
+        <div class="social-proof-section-head section-feedback activities-header impressions-menu-header">
+          <span class="section-tag">
+            <mat-icon>rate_review</mat-icon>
+            <span>Feedback</span>
+          </span>
+          <span class="section-line"></span>
+        </div>
+        <div class="feedback-shortcuts">
+          <button #feedbackEventButton class="feedback-shortcut-btn feedback-shortcut-event" type="button" [disabled]="!isOnline()" (click)="openEventFeedbackPopup($event)" aria-label="Open event feedback" title="Event Feedback">
+            <span class="navigator-action-ripple" matRipple [matRippleTrigger]="feedbackEventButton" aria-hidden="true"></span>
+            <mat-icon>rate_review</mat-icon>
+            <span class="feedback-shortcut-label">Event Feedback</span>
+            @if (user.activities.feedback > 0) {
+              <span class="card-badge menu-shortcut-badge">{{ user.activities.feedback | counterBadge }}</span>
+            }
+          </button>
+          <button #feedbackReportButton class="feedback-shortcut-btn feedback-shortcut-report" type="button" [disabled]="!isOnline()" (click)="openReportUserFromFeedback($event)" aria-label="Open report user" title="Report User">
+            <span class="navigator-action-ripple" matRipple [matRippleTrigger]="feedbackReportButton" aria-hidden="true"></span>
+            <mat-icon>flag</mat-icon>
+            <span class="feedback-shortcut-label">Report User</span>
+          </button>
+        </div>
       </div>
-    </div>
-    <button #profileEditorButton type="button" class="header-open-cue" [disabled]="!isOnline()" aria-label="Open profile editor" (click)="openProfileEditor($event)">
-      <span class="navigator-action-ripple" matRipple [matRippleTrigger]="profileEditorButton" aria-hidden="true"></span>
-      <mat-icon>edit</mat-icon>
-    </button>
-  </div>
-
-    <div class="user-menu-content">
-      <div class="user-menu-offline-note" *ngIf="!isOnline()">
-        Offline mode is active. Tickets stay available, while the other menu actions wait for the connection to return.
-      </div>
-
-      <div class="social-proof-section-head section-personality activities-header impressions-menu-header">
-      <span class="section-tag">
-        <mat-icon>psychology</mat-icon>
-        <span>Impressions</span>
-      </span>
-      <span class="section-line"></span>
-    </div>
-
-    <div class="impressions-shortcuts">
-      <button
-        #hostImpressionsButton
-        class="impression-shortcut-btn impression-shortcut-host-btn"
-        [ngClass]="getHostTierToneClass(user.hostTier)"
-        type="button"
-        [disabled]="!isOnline()"
-        (click)="openHostImpressions($event)"
-        aria-label="Open host impressions"
-        [title]="user.hostTier"
-      >
-        <span class="navigator-action-ripple" matRipple [matRippleTrigger]="hostImpressionsButton" aria-hidden="true"></span>
-        <span
-          class="card-badge menu-shortcut-badge menu-shortcut-badge-empty"
-          *ngIf="user.impressionChangeFlags.host"
-        ></span>
-        <mat-icon [class]="getHostTierColorClass(user.hostTier)">{{ getHostTierIcon(user.hostTier) }}</mat-icon>
-        <span class="impression-shortcut-label">
-          <span class="impression-shortcut-main">{{ user.hostTier.replace(' Host', '') }}</span>
-          <span class="impression-shortcut-sub">Host</span>
-        </span>
-      </button>
-
-      <button
-        #memberImpressionsButton
-        class="impression-shortcut-btn impression-shortcut-member-btn"
-        [ngClass]="getTraitToneClass(user.traitLabel)"
-        type="button"
-        [disabled]="!isOnline()"
-        (click)="openMemberImpressions($event)"
-        aria-label="Open member impressions"
-        [title]="user.memberImpressionTitle"
-      >
-        <span class="navigator-action-ripple" matRipple [matRippleTrigger]="memberImpressionsButton" aria-hidden="true"></span>
-        <span
-          class="card-badge menu-shortcut-badge menu-shortcut-badge-empty"
-          *ngIf="user.impressionChangeFlags.member"
-        ></span>
-        <mat-icon [class]="getTraitColorClass(user.traitLabel)">{{ getTraitIcon(user.traitLabel) }}</mat-icon>
-        <span class="impression-shortcut-label">
-          <span class="impression-shortcut-main">{{ user.memberImpressionTitle.replace(' Attendee', '') }}</span>
-          <span class="impression-shortcut-sub">Attendee</span>
-        </span>
-      </button>
-    </div>
-
-    <div class="social-proof-section-head section-social activities-header">
-      <span class="section-tag">
-        <mat-icon>local_activity</mat-icon>
-        <span>Activities</span>
-      </span>
-      <span class="section-line"></span>
-    </div>
-
-    <div class="menu-shortcuts">
-      <button #ratesButton class="menu-shortcut-btn menu-shortcut-rates" type="button" [disabled]="!isOnline()" (click)="$event.stopPropagation(); openRatesShortcut()" aria-label="Open rates" title="Rates">
-        <span class="navigator-action-ripple" matRipple [matRippleTrigger]="ratesButton" aria-hidden="true"></span>
-        <mat-icon>star</mat-icon>
-        <span class="menu-shortcut-label">Rates</span>
-        <span class="card-badge menu-shortcut-badge" *ngIf="user.activities.game > 0">{{ user.activities.game | counterBadge }}</span>
-      </button>
-
-      <button #chatButton class="menu-shortcut-btn menu-shortcut-chat" type="button" [disabled]="!isOnline()" (click)="$event.stopPropagation(); openChatShortcut()" aria-label="Open chat" title="Chats">
-        <span class="navigator-action-ripple" matRipple [matRippleTrigger]="chatButton" aria-hidden="true"></span>
-        <mat-icon>chat</mat-icon>
-        <span class="menu-shortcut-label">Chats</span>
-        <span class="card-badge menu-shortcut-badge" *ngIf="user.activities.chat > 0">{{ user.activities.chat | counterBadge }}</span>
-      </button>
-
-      <button #invitationsButton class="menu-shortcut-btn menu-shortcut-invitations" type="button" [disabled]="!isOnline()" (click)="$event.stopPropagation(); openInvitationShortcut()" aria-label="Open invitations" title="Invitations">
-        <span class="navigator-action-ripple" matRipple [matRippleTrigger]="invitationsButton" aria-hidden="true"></span>
-        <mat-icon>mail</mat-icon>
-        <span class="menu-shortcut-label">Invitations</span>
-        <span class="card-badge menu-shortcut-badge" *ngIf="user.activities.invitations > 0">{{ user.activities.invitations | counterBadge }}</span>
-      </button>
-
-      <button #eventsButton class="menu-shortcut-btn menu-shortcut-events" type="button" [disabled]="!isOnline()" (click)="$event.stopPropagation(); openEventShortcut()" aria-label="Open events" title="Events">
-        <span class="navigator-action-ripple" matRipple [matRippleTrigger]="eventsButton" aria-hidden="true"></span>
-        <mat-icon>event</mat-icon>
-        <span class="menu-shortcut-label">Events</span>
-        <span class="card-badge menu-shortcut-badge" *ngIf="user.activities.events > 0">{{ user.activities.events | counterBadge }}</span>
-      </button>
-
-      <button #hostingButton class="menu-shortcut-btn menu-shortcut-hosting" type="button" [disabled]="!isOnline()" (click)="$event.stopPropagation(); openHostingShortcut()" aria-label="Open my events" title="My Events">
-        <span class="navigator-action-ripple" matRipple [matRippleTrigger]="hostingButton" aria-hidden="true"></span>
-        <mat-icon>stadium</mat-icon>
-        <span class="menu-shortcut-label">My Events</span>
-        <span class="card-badge menu-shortcut-badge" *ngIf="user.activities.hosting > 0">{{ user.activities.hosting | counterBadge }}</span>
-      </button>
-    </div>
-
-    <div class="social-proof-section-head section-arts section-assets activities-header impressions-menu-header">
-      <span class="section-tag">
-        <mat-icon>inventory_2</mat-icon>
-        <span>My Assets</span>
-      </span>
-      <span class="section-line"></span>
-    </div>
-
-    <div class="assets-shortcuts">
-      <button #assetCarButton class="asset-shortcut-btn asset-shortcut-car" type="button" [disabled]="!isOnline()" (click)="openAssetCarPopup($event)" aria-label="Car">
-        <span class="navigator-action-ripple" matRipple [matRippleTrigger]="assetCarButton" aria-hidden="true"></span>
-        <mat-icon>directions_car</mat-icon>
-        <span class="asset-shortcut-label">Car</span>
-      </button>
-      <button #assetAccommodationButton class="asset-shortcut-btn asset-shortcut-accommodation" type="button" [disabled]="!isOnline()" (click)="openAssetAccommodationPopup($event)" aria-label="Accommodation">
-        <span class="navigator-action-ripple" matRipple [matRippleTrigger]="assetAccommodationButton" aria-hidden="true"></span>
-        <mat-icon>apartment</mat-icon>
-        <span class="asset-shortcut-label">Accommodation</span>
-      </button>
-      <button #assetSuppliesButton class="asset-shortcut-btn asset-shortcut-supplies" type="button" [disabled]="!isOnline()" (click)="openAssetSuppliesPopup($event)" aria-label="Supplies">
-        <span class="navigator-action-ripple" matRipple [matRippleTrigger]="assetSuppliesButton" aria-hidden="true"></span>
-        <mat-icon>inventory_2</mat-icon>
-        <span class="asset-shortcut-label">Supplies</span>
-      </button>
-      <button #assetTicketButton class="asset-shortcut-btn asset-shortcut-ticket" type="button" (click)="openAssetTicketsPopup($event)" aria-label="Ticket">
-        <span class="navigator-action-ripple" matRipple [matRippleTrigger]="assetTicketButton" aria-hidden="true"></span>
-        <mat-icon>qr_code_2</mat-icon>
-        <span class="asset-shortcut-label">Ticket</span>
-        <span class="card-badge menu-shortcut-badge" *ngIf="user.activities.tickets > 0">{{ user.activities.tickets | counterBadge }}</span>
-      </button>
-    </div>
-
-    <div class="social-proof-section-head section-feedback activities-header impressions-menu-header">
-      <span class="section-tag">
-        <mat-icon>rate_review</mat-icon>
-        <span>Feedback</span>
-      </span>
-      <span class="section-line"></span>
-    </div>
-
-    <div class="feedback-shortcuts">
-      <button #feedbackEventButton class="feedback-shortcut-btn feedback-shortcut-event" type="button" [disabled]="!isOnline()" (click)="openEventFeedbackPopup($event)" aria-label="Open event feedback" title="Event Feedback">
-        <span class="navigator-action-ripple" matRipple [matRippleTrigger]="feedbackEventButton" aria-hidden="true"></span>
-        <mat-icon>rate_review</mat-icon>
-        <span class="feedback-shortcut-label">Event Feedback</span>
-        <span class="card-badge menu-shortcut-badge" *ngIf="user.activities.feedback > 0">{{ user.activities.feedback | counterBadge }}</span>
-      </button>
-      <button #feedbackReportButton class="feedback-shortcut-btn feedback-shortcut-report" type="button" [disabled]="!isOnline()" (click)="openReportUserFromFeedback($event)" aria-label="Open report user" title="Report User">
-        <span class="navigator-action-ripple" matRipple [matRippleTrigger]="feedbackReportButton" aria-hidden="true"></span>
-        <mat-icon>flag</mat-icon>
-        <span class="feedback-shortcut-label">Report User</span>
-      </button>
-    </div>
-  </div>
-</aside>
-</ng-container>
-</ng-container>
+    </aside>
+  }
+}

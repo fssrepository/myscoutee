@@ -5,7 +5,7 @@
 >
   <div class="smart-list__stage">
     <div class="smart-list__stage-list-shell" [class.is-occluded]="shouldRenderHostedFullscreenOverlay()">
-      <ng-container *ngIf="isCalendarMode(); else listMode">
+      @if (isCalendarMode()) {
         <div
           class="smart-list__calendar-shell"
           [class.smart-list__calendar-shell--presentation-list]="resolvedPresentation() === 'list'"
@@ -42,127 +42,143 @@
             [class.smart-list--presentation-fullscreen]="resolvedPresentation() === 'fullscreen'"
             (scroll)="onCalendarScroll($event)"
           >
-            <ng-container *ngIf="hasCalendarItems(); else emptyState">
-              <ng-container *ngIf="isMonthMode(); else weekMode">
-                <section
-                  class="smart-list__calendar-page smart-list__calendar-page--month"
-                  *ngFor="let page of calendarMonthPages; trackBy: trackByCalendarPageKey"
-                  [style.--month-week-count]="page.weeks.length"
-                  [class.smart-list__calendar-page--month-six-weeks]="page.weeks.length === 6"
-                  [class.smart-list__calendar-page--month-rates]="isRateCountCalendarVariant()"
-                >
-                  <div class="smart-list__calendar-weekdays">
-                    <span *ngFor="let dayLabel of calendarWeekdayLabels()">{{ dayLabel }}</span>
-                  </div>
-                  <div class="smart-list__month-grid" [class.smart-list__month-grid--rates]="isRateCountCalendarVariant()">
-                    <div
-                      class="smart-list__month-week"
-                      *ngFor="let week of page.weeks; trackBy: trackByCalendarMonthWeekKey"
-                      [class.smart-list__month-week--rates]="isRateCountCalendarVariant()"
-                    >
-                      <div
-                        class="smart-list__month-cell"
-                        *ngFor="let day of week.days; trackBy: trackByCalendarDayKey"
-                        [class.smart-list__month-cell--outside]="!day.inCurrentMonth"
-                        [class.smart-list__month-cell--today]="day.isToday"
-                        [class.smart-list__month-cell--rates]="isRateCountCalendarVariant()"
-                      >
-                        <div class="smart-list__month-day-num">{{ day.dayNumber }}</div>
+            @if (hasCalendarItems()) {
+              @if (isMonthMode()) {
+                @for (page of calendarMonthPages; track trackByCalendarPageKey($index, page)) {
+                  <section
+                    class="smart-list__calendar-page smart-list__calendar-page--month"
+                    [style.--month-week-count]="page.weeks.length"
+                    [class.smart-list__calendar-page--month-six-weeks]="page.weeks.length === 6"
+                    [class.smart-list__calendar-page--month-rates]="isRateCountCalendarVariant()"
+                  >
+                    <div class="smart-list__calendar-weekdays">
+                      @for (dayLabel of calendarWeekdayLabels(); track dayLabel) {
+                        <span>{{ dayLabel }}</span>
+                      }
+                    </div>
+                    <div class="smart-list__month-grid" [class.smart-list__month-grid--rates]="isRateCountCalendarVariant()">
+                      @for (week of page.weeks; track trackByCalendarMonthWeekKey($index, week)) {
                         <div
-                          class="smart-list__month-rate-count"
-                          *ngIf="isRateCountCalendarVariant() && monthRateCount(day) as rateCount"
-                          [ngClass]="rateHeatClassByCount(rateCount)"
+                          class="smart-list__month-week"
+                          [class.smart-list__month-week--rates]="isRateCountCalendarVariant()"
                         >
-                          {{ rateCountLabel(rateCount) }}
+                          @for (day of week.days; track trackByCalendarDayKey($index, day)) {
+                            <div
+                              class="smart-list__month-cell"
+                              [class.smart-list__month-cell--outside]="!day.inCurrentMonth"
+                              [class.smart-list__month-cell--today]="day.isToday"
+                              [class.smart-list__month-cell--rates]="isRateCountCalendarVariant()"
+                            >
+                              <div class="smart-list__month-day-num">{{ day.dayNumber }}</div>
+                              @if (isRateCountCalendarVariant() && monthRateCount(day); as rateCount) {
+                                <div
+                                  class="smart-list__month-rate-count"
+                                  [ngClass]="rateHeatClassByCount(rateCount)"
+                                >
+                                  {{ rateCountLabel(rateCount) }}
+                                </div>
+                              }
+                            </div>
+                          }
+                          @if (!isRateCountCalendarVariant() && week.spans.length > 0) {
+                            <div class="smart-list__month-week-spans">
+                              @for (span of week.spans; track trackByCalendarSpanKey($index, span)) {
+                                <button
+                                  type="button"
+                                  class="smart-list__calendar-badge smart-list__month-span-badge"
+                                  [ngClass]="calendarBadgeToneClass(span.item)"
+                                  [style.left.%]="(span.startCol * 100) / 7"
+                                  [style.width.%]="((span.endCol - span.startCol + 1) * 100) / 7"
+                                  [style.top.px]="18 + (span.lane * 20)"
+                                  (click)="onCalendarItemClick(span.item, $event)"
+                                >
+                                  <span>{{ calendarBadgeLabel(span.item) }}</span>
+                                </button>
+                              }
+                            </div>
+                          }
                         </div>
-                      </div>
-                      <div class="smart-list__month-week-spans" *ngIf="!isRateCountCalendarVariant() && week.spans.length > 0">
-                        <button
-                          type="button"
-                          class="smart-list__calendar-badge smart-list__month-span-badge"
-                          [ngClass]="calendarBadgeToneClass(span.item)"
-                          *ngFor="let span of week.spans; trackBy: trackByCalendarSpanKey"
-                          [style.left.%]="(span.startCol * 100) / 7"
-                          [style.width.%]="((span.endCol - span.startCol + 1) * 100) / 7"
-                          [style.top.px]="18 + (span.lane * 20)"
-                          (click)="onCalendarItemClick(span.item, $event)"
+                      }
+                    </div>
+                  </section>
+                }
+              } @else {
+                @for (page of calendarWeekPages; track trackByCalendarPageKey($index, page)) {
+                  <section class="smart-list__calendar-page smart-list__calendar-page--week">
+                    <div class="smart-list__week-board" [style.--week-slot-count]="calendarWeekHours().length">
+                      <div class="smart-list__week-board-corner"></div>
+                      @for (day of page.days; track trackByCalendarDayKey($index, day); let dayIndex = $index) {
+                        <div
+                          class="smart-list__week-board-day-head"
+                          [class.smart-list__week-board-day-head--today]="day.isToday"
                         >
-                          <span>{{ calendarBadgeLabel(span.item) }}</span>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </section>
-              </ng-container>
-
-              <ng-template #weekMode>
-                <section
-                  class="smart-list__calendar-page smart-list__calendar-page--week"
-                  *ngFor="let page of calendarWeekPages; trackBy: trackByCalendarPageKey"
-                >
-                  <div class="smart-list__week-board" [style.--week-slot-count]="calendarWeekHours().length">
-                    <div class="smart-list__week-board-corner"></div>
-                    <div
-                      class="smart-list__week-board-day-head"
-                      *ngFor="let day of page.days; let dayIndex = index; trackBy: trackByCalendarDayKey"
-                      [class.smart-list__week-board-day-head--today]="day.isToday"
-                    >
-                      <span>{{ calendarWeekdayLabels()[dayIndex] }}</span>
-                      <strong>{{ day.dayNumber }}</strong>
-                      <div
-                        class="smart-list__week-rate-count"
-                        *ngIf="isRateCountCalendarVariant() && weekRateDayCount(day) as dayCount"
-                        [ngClass]="rateHeatClassByCount(dayCount)"
-                      >
-                        {{ rateCountLabel(dayCount) }}
-                      </div>
-                    </div>
-                    <div class="smart-list__week-hours-col">
-                      <div class="smart-list__week-hour-label" *ngFor="let hour of calendarWeekHours()">
-                        {{ weekHourLabel(hour) }}
-                      </div>
-                    </div>
-                    <div
-                      class="smart-list__week-day-col"
-                      *ngFor="let day of page.days; trackBy: trackByCalendarDayKey"
-                      [class.smart-list__week-day-col--today]="day.isToday"
-                      [class.smart-list__week-day-col--rates]="isRateCountCalendarVariant()"
-                    >
-                      <ng-container *ngIf="isRateCountCalendarVariant(); else timedBadges">
-                        <div class="smart-list__week-hour-slot smart-list__week-rate-slot" *ngFor="let hour of calendarWeekHours()">
-                          <div
-                            class="smart-list__week-rate-badge"
-                            *ngIf="weekRateHourCount(day, hour) as hourCount"
-                            [ngClass]="rateHeatClassByCount(hourCount)"
-                          >
-                            {{ rateCountLabel(hourCount) }}
+                          <span>{{ calendarWeekdayLabels()[dayIndex] }}</span>
+                          <strong>{{ day.dayNumber }}</strong>
+                          @if (isRateCountCalendarVariant() && weekRateDayCount(day); as dayCount) {
+                            <div
+                              class="smart-list__week-rate-count"
+                              [ngClass]="rateHeatClassByCount(dayCount)"
+                            >
+                              {{ rateCountLabel(dayCount) }}
+                            </div>
+                          }
+                        </div>
+                      }
+                      <div class="smart-list__week-hours-col">
+                        @for (hour of calendarWeekHours(); track hour) {
+                          <div class="smart-list__week-hour-label">
+                            {{ weekHourLabel(hour) }}
                           </div>
-                        </div>
-                      </ng-container>
-                      <ng-template #timedBadges>
-                        <div class="smart-list__week-hour-slot" *ngFor="let hour of calendarWeekHours()"></div>
-                        <button
-                          type="button"
-                          class="smart-list__calendar-badge smart-list__week-timed-badge"
-                          [ngClass]="calendarBadgeToneClass(badge.item)"
-                          *ngFor="let badge of weekDayTimedBadges(day); trackBy: trackByCalendarTimedBadge"
-                          [style.top.%]="badge.topPct"
-                          [style.height.%]="badge.heightPct"
-                          (click)="onCalendarItemClick(badge.item, $event)"
+                        }
+                      </div>
+                      @for (day of page.days; track trackByCalendarDayKey($index, day)) {
+                        <div
+                          class="smart-list__week-day-col"
+                          [class.smart-list__week-day-col--today]="day.isToday"
+                          [class.smart-list__week-day-col--rates]="isRateCountCalendarVariant()"
                         >
-                          <span>{{ calendarBadgeLabel(badge.item) }}</span>
-                        </button>
-                      </ng-template>
+                          @if (isRateCountCalendarVariant()) {
+                            @for (hour of calendarWeekHours(); track hour) {
+                              <div class="smart-list__week-hour-slot smart-list__week-rate-slot">
+                                @if (weekRateHourCount(day, hour); as hourCount) {
+                                  <div
+                                    class="smart-list__week-rate-badge"
+                                    [ngClass]="rateHeatClassByCount(hourCount)"
+                                  >
+                                    {{ rateCountLabel(hourCount) }}
+                                  </div>
+                                }
+                              </div>
+                            }
+                          } @else {
+                            @for (hour of calendarWeekHours(); track hour) {
+                              <div class="smart-list__week-hour-slot"></div>
+                            }
+                            @for (badge of weekDayTimedBadges(day); track trackByCalendarTimedBadge($index, badge)) {
+                              <button
+                                type="button"
+                                class="smart-list__calendar-badge smart-list__week-timed-badge"
+                                [ngClass]="calendarBadgeToneClass(badge.item)"
+                                [style.top.%]="badge.topPct"
+                                [style.height.%]="badge.heightPct"
+                                (click)="onCalendarItemClick(badge.item, $event)"
+                              >
+                                <span>{{ calendarBadgeLabel(badge.item) }}</span>
+                              </button>
+                            }
+                          }
+                        </div>
+                      }
                     </div>
-                  </div>
-                </section>
-              </ng-template>
-            </ng-container>
+                  </section>
+                }
+              }
+            } @else {
+              <ng-container [ngTemplateOutlet]="emptyState"></ng-container>
+            }
           </div>
         </div>
-      </ng-container>
-
-      <ng-template #listMode>
+      } @else {
         <div
           #scrollHost
           class="smart-list"
@@ -173,36 +189,40 @@
           [class.smart-list--thread]="resolvedListLayout() === 'thread'"
           [class.smart-list--presentation-list]="resolvedPresentation() === 'list'"
           [class.smart-list--presentation-fullscreen]="resolvedPresentation() === 'fullscreen'"
-          [class.smart-list--snap-none]="resolvedSnapMode() === 'none'"
-          [class.smart-list--snap-proximity]="resolvedSnapMode() === 'proximity'"
-          [class.smart-list--snap-mandatory]="resolvedSnapMode() === 'mandatory'"
+          [class.smart-list--snap-none]="resolvedSnapMode() === 'none' || suppressListSnapNearEnd"
+          [class.smart-list--snap-proximity]="resolvedSnapMode() === 'proximity' && !suppressListSnapNearEnd"
+          [class.smart-list--snap-mandatory]="resolvedSnapMode() === 'mandatory' && !suppressListSnapNearEnd"
           [style.--smart-list-desktop-columns]="resolvedDesktopColumns()"
           [style.--smart-list-scroll-padding-top]="resolvedScrollPaddingTop()"
           [style.--smart-list-sticky-header-height.px]="stickyHeaderHeightPx > 0 ? stickyHeaderHeightPx : null"
           (scroll)="onListScroll($event)"
         >
-          <div *ngIf="shouldShowStickyHeader()" class="smart-list__sticky" [ngClass]="resolvedStickyHeaderClass()">{{ stickyLabel }}</div>
+          @if (shouldShowStickyHeader()) {
+            <div class="smart-list__sticky" [ngClass]="resolvedStickyHeaderClass()">{{ stickyLabel }}</div>
+          }
 
-          <ng-container *ngIf="groups.length > 0; else emptyState">
-            <ng-container *ngIf="resolvedItemTemplate() as templateRef">
-              <ng-container *ngFor="let group of groups; let groupIndex = index; trackBy: trackByGroup">
-                <div
-                  *ngIf="shouldShowGroupMarker(group, groupIndex) && group.label"
-                  class="smart-list__group-marker"
-                  [ngClass]="resolvedGroupMarkerClass()"
-                  [attr.data-group-label]="group.label"
-                >
-                  {{ group.label }}
-                </div>
-
-                <ng-container *ngFor="let item of group.items; let itemIndex = index; trackBy: trackByItem">
+          @if (groups.length > 0) {
+            @if (resolvedItemTemplate(); as templateRef) {
+              @for (group of groups; track trackByGroup($index, group); let groupIndex = $index) {
+                @if (shouldShowGroupMarker(group, groupIndex) && group.label) {
                   <div
-                    *ngIf="shouldRenderPrependRestoreSpacer(item, itemIndex)"
-                    class="smart-list__prepend-restore-spacer"
-                    [id]="prependRestoreSpacerId"
-                    [style.height.px]="prependRestoreSpacerHeight"
-                    aria-hidden="true"
-                  ></div>
+                    class="smart-list__group-marker"
+                    [ngClass]="resolvedGroupMarkerClass()"
+                    [attr.data-group-label]="group.label"
+                  >
+                    {{ group.label }}
+                  </div>
+                }
+
+                @for (item of group.items; track trackByItem($index, item); let itemIndex = $index) {
+                  @if (shouldRenderPrependRestoreSpacer(item, itemIndex)) {
+                    <div
+                      class="smart-list__prepend-restore-spacer"
+                      [id]="prependRestoreSpacerId"
+                      [style.height.px]="prependRestoreSpacerHeight"
+                      aria-hidden="true"
+                    ></div>
+                  }
                   <div
                     class="smart-list__item-shell"
                     [attr.data-group-label]="group.label || null"
@@ -210,129 +230,150 @@
                     [attr.data-smart-list-anchor]="itemAnchorKey(item, group.startIndex + itemIndex)"
                   >
                     <ng-container
-                      *ngTemplateOutlet="
-                        templateRef;
-                        context: itemContext(item, itemIndex, group.label)
-                      "
+                      [ngTemplateOutlet]="templateRef"
+                      [ngTemplateOutletContext]="itemContext(item, itemIndex, group.label)"
                     ></ng-container>
                   </div>
-                </ng-container>
-              </ng-container>
-            </ng-container>
-          </ng-container>
+                }
+              }
+            }
+          } @else {
+            <ng-container [ngTemplateOutlet]="emptyState"></ng-container>
+          }
 
-          <div
-            *ngIf="resolvedFooterSpacerHeight() !== null"
-            class="smart-list__footer-spacer"
-            [style.height]="resolvedFooterSpacerHeight()"
-            aria-hidden="true"
-          ></div>
+          @if (resolvedFooterSpacerHeight() !== null) {
+            <div
+              class="smart-list__footer-spacer"
+              [style.height]="resolvedFooterSpacerHeight()"
+              aria-hidden="true"
+            ></div>
+          }
         </div>
-      </ng-template>
+      }
     </div>
 
-    <div
-      class="smart-list__stage-overlay"
-      [class.smart-list__stage-overlay--with-rating-bar]="shouldRenderPaginationRatingBar()"
-      *ngIf="shouldRenderHostedFullscreenOverlay()"
-    >
-      <div #fullscreenSurface class="smart-list__fullscreen-surface" *ngIf="resolvedFullscreenItemTemplate() as fullscreenTemplateRef">
-        <ng-container *ngIf="hostedFullscreenCurrentItem() as currentItem; else fullscreenEmptyState">
-          <div
-            class="smart-list__fullscreen-card smart-list__fullscreen-card--slot-2 smart-list__fullscreen-card--preview"
-            *ngIf="hostedFullscreenStackItem(2) as thirdItem"
-            aria-hidden="true"
-          >
-            <ng-container
-              *ngTemplateOutlet="
-                fullscreenTemplateRef;
-                context: hostedFullscreenItemContext(
-                  thirdItem,
-                  hostedFullscreenStackRenderState(2),
-                  hostedFullscreenStackItemIndex(2)
-                )
-              "
-            ></ng-container>
-          </div>
+    @if (shouldRenderHostedFullscreenOverlay()) {
+      <div
+        class="smart-list__stage-overlay"
+        [class.smart-list__stage-overlay--with-rating-bar]="shouldRenderPaginationRatingBar()"
+      >
+        @if (resolvedFullscreenItemTemplate(); as fullscreenTemplateRef) {
+          <div #fullscreenSurface class="smart-list__fullscreen-surface">
+            @if (hostedFullscreenCurrentItem(); as currentItem) {
+              @if (hostedFullscreenStackItem(2); as thirdItem) {
+                <div
+                  class="smart-list__fullscreen-card smart-list__fullscreen-card--slot-2 smart-list__fullscreen-card--preview"
+                  aria-hidden="true"
+                >
+                  <ng-container
+                    [ngTemplateOutlet]="fullscreenTemplateRef"
+                    [ngTemplateOutletContext]="
+                      hostedFullscreenItemContext(
+                        thirdItem,
+                        hostedFullscreenStackRenderState(2),
+                        hostedFullscreenStackItemIndex(2)
+                      )
+                    "
+                  ></ng-container>
+                </div>
+              }
 
-          <div
-            class="smart-list__fullscreen-card smart-list__fullscreen-card--slot-1 smart-list__fullscreen-card--preview"
-            *ngIf="hostedFullscreenStackItem(1) as nextItem"
-            aria-hidden="true"
-          >
-            <ng-container
-              *ngTemplateOutlet="
-                fullscreenTemplateRef;
-                context: hostedFullscreenItemContext(
-                  nextItem,
-                  hostedFullscreenStackRenderState(1),
-                  hostedFullscreenStackItemIndex(1)
-                )
-              "
-            ></ng-container>
-          </div>
+              @if (hostedFullscreenStackItem(1); as nextItem) {
+                <div
+                  class="smart-list__fullscreen-card smart-list__fullscreen-card--slot-1 smart-list__fullscreen-card--preview"
+                  aria-hidden="true"
+                >
+                  <ng-container
+                    [ngTemplateOutlet]="fullscreenTemplateRef"
+                    [ngTemplateOutletContext]="
+                      hostedFullscreenItemContext(
+                        nextItem,
+                        hostedFullscreenStackRenderState(1),
+                        hostedFullscreenStackItemIndex(1)
+                      )
+                    "
+                  ></ng-container>
+                </div>
+              }
 
-          <div
-            class="smart-list__fullscreen-card smart-list__fullscreen-card--active"
-            [class.smart-list__fullscreen-card--curling]="hostedFullscreenIsCurling()"
-            [class.smart-list__fullscreen-card--curling-backward]="hostedFullscreenIsCurlingBackwards()"
-            (animationend)="onHostedFullscreenActiveCardAnimationEnd($event)"
-          >
-            <ng-container
-              *ngTemplateOutlet="
-                fullscreenTemplateRef;
-                context: hostedFullscreenItemContext(currentItem, hostedFullscreenCurrentRenderState())
-              "
-            ></ng-container>
+              <div
+                class="smart-list__fullscreen-card smart-list__fullscreen-card--active"
+                [class.smart-list__fullscreen-card--curling]="hostedFullscreenIsCurling()"
+                [class.smart-list__fullscreen-card--curling-backward]="hostedFullscreenIsCurlingBackwards()"
+                (animationend)="onHostedFullscreenActiveCardAnimationEnd($event)"
+              >
+                <ng-container
+                  [ngTemplateOutlet]="fullscreenTemplateRef"
+                  [ngTemplateOutletContext]="
+                    hostedFullscreenItemContext(currentItem, hostedFullscreenCurrentRenderState())
+                  "
+                ></ng-container>
+              </div>
+            } @else {
+              <ng-container [ngTemplateOutlet]="fullscreenEmptyState"></ng-container>
+            }
           </div>
-        </ng-container>
+        }
       </div>
+    }
+  </div>
+
+  @if (shouldRenderHostedHeaderProgressBar()) {
+    <div class="smart-list__header-progress-shell">
+      <app-header-progress-bar [config]="hostedHeaderProgressBarConfig()"></app-header-progress-bar>
     </div>
-  </div>
+  }
 
-  <div class="smart-list__header-progress-shell" *ngIf="shouldRenderHostedHeaderProgressBar()">
-    <app-header-progress-bar [config]="hostedHeaderProgressBarConfig()"></app-header-progress-bar>
-  </div>
+  @if (shouldRenderPaginationArrows()) {
+    <div class="smart-list__pagination-arrows">
+      <button
+        type="button"
+        class="smart-list__pagination-arrow smart-list__pagination-arrow--prev"
+        [disabled]="!canMoveCursor(-1)"
+        (click)="onPaginationPrev($event)"
+        aria-label="Previous item"
+      >
+        <mat-icon>chevron_left</mat-icon>
+      </button>
+      <button
+        type="button"
+        class="smart-list__pagination-arrow smart-list__pagination-arrow--next"
+        [disabled]="!canMoveCursor(1)"
+        (click)="onPaginationNext($event)"
+        aria-label="Next item"
+      >
+        <mat-icon>chevron_right</mat-icon>
+      </button>
+    </div>
+  }
 
-  <div class="smart-list__pagination-arrows" *ngIf="shouldRenderPaginationArrows()">
-    <button
-      type="button"
-      class="smart-list__pagination-arrow smart-list__pagination-arrow--prev"
-      [disabled]="!canMoveCursor(-1)"
-      (click)="onPaginationPrev($event)"
-      aria-label="Previous item"
-    >
-      <mat-icon>chevron_left</mat-icon>
-    </button>
-    <button
-      type="button"
-      class="smart-list__pagination-arrow smart-list__pagination-arrow--next"
-      [disabled]="!canMoveCursor(1)"
-      (click)="onPaginationNext($event)"
-      aria-label="Next item"
-    >
-      <mat-icon>chevron_right</mat-icon>
-    </button>
-  </div>
-
-  <app-rating-star-bar
-    *ngIf="shouldRenderPaginationRatingBar()"
-    [config]="resolvedPaginationRatingBarConfig()"
-    [value]="resolvedPaginationRatingBarValue()"
-    (scoreSelect)="onPaginationRatingSelect($event)"
-  ></app-rating-star-bar>
+  @if (shouldRenderPaginationRatingBar()) {
+    <app-rating-star-bar
+      [config]="resolvedPaginationRatingBarConfig()"
+      [value]="resolvedPaginationRatingBarValue()"
+      (scoreSelect)="onPaginationRatingSelect($event)"
+    ></app-rating-star-bar>
+  }
 </div>
 
 <ng-template #fullscreenEmptyState>
-  <div class="smart-list__fullscreen-empty" *ngIf="!initialLoading">
-    <h4>{{ hostedFullscreenEmptyLabel() }}</h4>
-    <p *ngIf="hostedFullscreenEmptyDescription()">{{ hostedFullscreenEmptyDescription() }}</p>
-  </div>
+  @if (!initialLoading) {
+    <div class="smart-list__fullscreen-empty">
+      <h4>{{ hostedFullscreenEmptyLabel() }}</h4>
+      @if (hostedFullscreenEmptyDescription()) {
+        <p>{{ hostedFullscreenEmptyDescription() }}</p>
+      }
+    </div>
+  }
 </ng-template>
 
 <ng-template #emptyState>
-  <div class="smart-list__empty" *ngIf="!initialLoading">
-    <h4>{{ emptyLabel() }}</h4>
-    <p *ngIf="emptyDescription()">{{ emptyDescription() }}</p>
-  </div>
+  @if (!initialLoading) {
+    <div class="smart-list__empty">
+      <h4>{{ emptyLabel() }}</h4>
+      @if (emptyDescription()) {
+        <p>{{ emptyDescription() }}</p>
+      }
+    </div>
+  }
 </ng-template>

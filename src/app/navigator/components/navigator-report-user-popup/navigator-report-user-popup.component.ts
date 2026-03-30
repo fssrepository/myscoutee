@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import { Component, OnDestroy, computed, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
@@ -8,7 +8,7 @@ import { NavigatorService } from '../../navigator.service';
 @Component({
   selector: 'app-navigator-report-user-popup',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [FormsModule],
   templateUrl: './navigator-report-user-popup.component.html',
   styleUrl: './navigator-report-user-popup.component.scss'
 })

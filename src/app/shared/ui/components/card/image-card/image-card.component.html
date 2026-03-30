@@ -1,11 +1,19 @@
 <article class="ui-image-card">
   <div class="ui-image-card__media" [appLazyBgImage]="imageUrl">
-    <span class="ui-image-card__placeholder" *ngIf="!imageUrl">{{ placeholder }}</span>
-    <span class="ui-image-card__label" *ngIf="label">{{ label }}</span>
+    @if (!imageUrl) {
+      <span class="ui-image-card__placeholder">{{ placeholder }}</span>
+    }
+    @if (label) {
+      <span class="ui-image-card__label">{{ label }}</span>
+    }
   </div>
   <div class="ui-image-card__body">
     <p class="ui-image-card__title">{{ title }}</p>
-    <p class="ui-image-card__subtitle" *ngIf="subtitle">{{ subtitle }}</p>
-    <p class="ui-image-card__detail" *ngIf="detail">{{ detail }}</p>
+    @if (subtitle) {
+      <p class="ui-image-card__subtitle">{{ subtitle }}</p>
+    }
+    @if (detail) {
+      <p class="ui-image-card__detail">{{ detail }}</p>
+    }
   </div>
 </article>

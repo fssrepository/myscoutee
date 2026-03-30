@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
@@ -42,13 +42,12 @@ interface ActivityInviteFilters {
   selector: 'app-asset-member-picker-popup',
   standalone: true,
   imports: [
-    CommonModule,
     MatButtonModule,
     MatIconModule,
     BasketComponent,
     SmartListComponent,
     LazyBgImageDirective
-  ],
+],
   templateUrl: './asset-member-picker-popup.component.html',
   styleUrls: ['./asset-member-picker-popup.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush

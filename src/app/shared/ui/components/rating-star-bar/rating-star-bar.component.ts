@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, HostBinding, Input, OnDestroy, Output, inject } from '@angular/core';
 
 export type RatingStarBarPresentation = 'list' | 'fullscreen';
@@ -23,7 +23,7 @@ export interface RatingStarBarConfig {
 @Component({
   selector: 'app-rating-star-bar',
   standalone: true,
-  imports: [CommonModule],
+  imports: [],
   templateUrl: './rating-star-bar.component.html',
   styleUrl: './rating-star-bar.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush

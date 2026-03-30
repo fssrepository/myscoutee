@@ -1,63 +1,72 @@
-<section class="confirmation-dialog" *ngIf="dialogState() as state">
-  <div class="confirmation-dialog-backdrop" (click)="closeFromBackdrop($event)"></div>
-  <div class="confirmation-dialog-panel" (click)="$event.stopPropagation()">
-    <h3>{{ state.title }}</h3>
-    <p *ngIf="state.message">{{ state.message }}</p>
-    <p class="confirmation-dialog-error" *ngIf="state.errorMessage">{{ state.errorMessage }}</p>
-    <div class="confirmation-dialog-actions" [class.confirmation-dialog-actions-single]="!state.cancelLabel">
-      <button
-        *ngIf="state.cancelLabel"
-        type="button"
-        class="confirmation-dialog-btn confirmation-dialog-cancel-btn"
-        [disabled]="state.busy"
-        (click)="cancel($event)"
-      >
-        {{ state.cancelLabel }}
-      </button>
-      <span
-        class="confirmation-dialog-confirm-shell"
-        [class.is-loading]="state.busy"
-        [class.is-error]="!state.busy && !!state.errorMessage"
-      >
-        <span class="confirmation-dialog-confirm-ring" *ngIf="state.busy || state.errorMessage" aria-hidden="true">
-          <svg viewBox="0 0 104 48" preserveAspectRatio="none" class="confirmation-dialog-confirm-ring-svg">
-            <defs>
-              <linearGradient id="confirmation-dialog-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stop-color="rgb(235, 147, 33)"></stop>
-                <stop offset="100%" stop-color="rgb(247, 190, 52)"></stop>
-              </linearGradient>
-              <linearGradient id="confirmation-dialog-gradient-error" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stop-color="rgb(213, 54, 68)"></stop>
-                <stop offset="100%" stop-color="rgb(196, 29, 42)"></stop>
-              </linearGradient>
-            </defs>
-            <path
-              class="confirmation-dialog-confirm-ring-track"
-              d="M52 2 H88 A14 14 0 0 1 102 16 V32 A14 14 0 0 1 88 46 H16 A14 14 0 0 1 2 32 V16 A14 14 0 0 1 16 2 H52"
-            ></path>
-            <path
-              class="confirmation-dialog-confirm-ring-progress"
-              [class.is-loading]="state.busy"
-              [class.is-error]="!state.busy && !!state.errorMessage"
-              d="M52 2 H88 A14 14 0 0 1 102 16 V32 A14 14 0 0 1 88 46 H16 A14 14 0 0 1 2 32 V16 A14 14 0 0 1 16 2 H52"
-              pathLength="100"
-              [attr.stroke-dasharray]="state.ringPerimeter"
-              [attr.stroke-dashoffset]="state.busy ? state.ringPerimeter : 0"
-            ></path>
-          </svg>
+@if (dialogState(); as state) {
+  <section class="confirmation-dialog">
+    <div class="confirmation-dialog-backdrop" (click)="closeFromBackdrop($event)"></div>
+    <div class="confirmation-dialog-panel" (click)="$event.stopPropagation()">
+      <h3>{{ state.title }}</h3>
+      @if (state.message) {
+        <p>{{ state.message }}</p>
+      }
+      @if (state.errorMessage) {
+        <p class="confirmation-dialog-error">{{ state.errorMessage }}</p>
+      }
+      <div class="confirmation-dialog-actions" [class.confirmation-dialog-actions-single]="!state.cancelLabel">
+        @if (state.cancelLabel) {
+          <button
+            type="button"
+            class="confirmation-dialog-btn confirmation-dialog-cancel-btn"
+            [disabled]="state.busy"
+            (click)="cancel($event)"
+            >
+            {{ state.cancelLabel }}
+          </button>
+        }
+        <span
+          class="confirmation-dialog-confirm-shell"
+          [class.is-loading]="state.busy"
+          [class.is-error]="!state.busy && !!state.errorMessage"
+          >
+          @if (state.busy || state.errorMessage) {
+            <span class="confirmation-dialog-confirm-ring" aria-hidden="true">
+              <svg viewBox="0 0 104 48" preserveAspectRatio="none" class="confirmation-dialog-confirm-ring-svg">
+                <defs>
+                  <linearGradient id="confirmation-dialog-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="rgb(235, 147, 33)"></stop>
+                    <stop offset="100%" stop-color="rgb(247, 190, 52)"></stop>
+                  </linearGradient>
+                  <linearGradient id="confirmation-dialog-gradient-error" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="rgb(213, 54, 68)"></stop>
+                    <stop offset="100%" stop-color="rgb(196, 29, 42)"></stop>
+                  </linearGradient>
+                </defs>
+                <path
+                  class="confirmation-dialog-confirm-ring-track"
+                  d="M52 2 H88 A14 14 0 0 1 102 16 V32 A14 14 0 0 1 88 46 H16 A14 14 0 0 1 2 32 V16 A14 14 0 0 1 16 2 H52"
+                ></path>
+                <path
+                  class="confirmation-dialog-confirm-ring-progress"
+                  [class.is-loading]="state.busy"
+                  [class.is-error]="!state.busy && !!state.errorMessage"
+                  d="M52 2 H88 A14 14 0 0 1 102 16 V32 A14 14 0 0 1 88 46 H16 A14 14 0 0 1 2 32 V16 A14 14 0 0 1 16 2 H52"
+                  pathLength="100"
+                  [attr.stroke-dasharray]="state.ringPerimeter"
+                  [attr.stroke-dashoffset]="state.busy ? state.ringPerimeter : 0"
+                ></path>
+              </svg>
+            </span>
+          }
+          <button
+            type="button"
+            class="confirmation-dialog-btn confirmation-dialog-confirm-btn"
+            [class.tone-accent]="state.confirmTone === 'accent'"
+            [class.tone-danger]="state.confirmTone === 'danger'"
+            [class.tone-neutral]="state.confirmTone === 'neutral'"
+            [disabled]="state.busy"
+            (click)="confirm($event)"
+            >
+            {{ confirmText(state) }}
+          </button>
         </span>
-        <button
-          type="button"
-          class="confirmation-dialog-btn confirmation-dialog-confirm-btn"
-          [class.tone-accent]="state.confirmTone === 'accent'"
-          [class.tone-danger]="state.confirmTone === 'danger'"
-          [class.tone-neutral]="state.confirmTone === 'neutral'"
-          [disabled]="state.busy"
-          (click)="confirm($event)"
-        >
-          {{ confirmText(state) }}
-        </button>
-      </span>
+      </div>
     </div>
-  </div>
-</section>
+  </section>
+}

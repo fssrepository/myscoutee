@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import { Component, HostListener, inject } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -12,14 +12,13 @@ import { NavigatorReportUserPopupComponent } from '../navigator-report-user-popu
   selector: 'app-navigator-settings-popups',
   standalone: true,
   imports: [
-    CommonModule,
     MatButtonModule,
     MatIconModule,
     NavigatorHelpPopupComponent,
     NavigatorFeedbackPopupComponent,
     NavigatorPrivacyPopupComponent,
     NavigatorReportUserPopupComponent
-  ],
+],
   templateUrl: './navigator-settings-popups.component.html',
   styleUrl: './navigator-settings-popups.component.scss'
 })

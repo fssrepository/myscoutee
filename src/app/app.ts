@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import { Component, OnDestroy, inject } from '@angular/core';
 import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { DateAdapter, MAT_DATE_FORMATS } from '@angular/material/core';
@@ -13,11 +13,10 @@ import { PwaService } from './shared/core/base/services/pwa.service';
 @Component({
   selector: 'app-root',
   imports: [
-    CommonModule,
     RouterOutlet,
     NavigatorComponent,
     AppInstallPromptComponent
-  ],
+],
   providers: [
     { provide: DateAdapter, useClass: AppCalendarDateAdapter },
     { provide: MAT_DATE_FORMATS, useValue: AppCalendarDateFormats.dateTime }
