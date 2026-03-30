@@ -241,6 +241,8 @@ interface ActivitiesRatesControllerDeps {
 }
 
 export class ActivitiesRatesController {
+  private static readonly SCORE_SELECTION_DOCK_GUARD_MS = 220;
+
   readonly templateContext: ActivitiesRateTemplateContext = {
     getUsers: () => this.deps.getUsers(),
     getActiveUserGender: () => this.deps.getActiveUserGender(),
@@ -257,6 +259,7 @@ export class ActivitiesRatesController {
 
   private readonly rateEditorPresenter: ActivitiesRateEditorPresenter;
   private selectedListRateRow: AppTypes.ActivityListRow | null = null;
+  private suppressDockCloseUntilMs = 0;
 
   constructor(private readonly deps: ActivitiesRatesControllerDeps) {
     this.rateEditorPresenter = new ActivitiesRateEditorPresenter({
@@ -293,6 +296,9 @@ export class ActivitiesRatesController {
     this.cancelEditorCloseTransition();
     const wasOpen = this.isEditorOpen();
     if (this.selectedRateId() === row.id) {
+      if (this.isSuppressingDockClose()) {
+        return;
+      }
       this.clearEditorState();
       return;
     }
@@ -353,6 +359,9 @@ export class ActivitiesRatesController {
   }
 
   isEditorClosing(): boolean {
+    if (this.isSuppressingDockClose()) {
+      return false;
+    }
     return this.deps.getEditorClosing();
   }
 
@@ -384,6 +393,7 @@ export class ActivitiesRatesController {
     if (this.isPairReceivedRow(row)) {
       return;
     }
+    this.holdDockOpenForScoreSelection();
     this.setSelectedRateId(row.id);
     this.activityRateDraftById()[row.id] = normalized;
     const rateItem = row.source as RateMenuItem;
@@ -401,6 +411,9 @@ export class ActivitiesRatesController {
 
   clearEditorState(preserveScrollPosition = false): void {
     if (this.isFullscreenModeActive()) {
+      return;
+    }
+    if (this.isSuppressingDockClose()) {
       return;
     }
     if (!this.selectedRateId() && !this.isEditorClosing()) {
@@ -603,6 +616,16 @@ export class ActivitiesRatesController {
       clearTimeout(timer);
       this.deps.setEditorCloseTimer(null);
     }
+  }
+
+  private holdDockOpenForScoreSelection(): void {
+    this.suppressDockCloseUntilMs = Date.now() + ActivitiesRatesController.SCORE_SELECTION_DOCK_GUARD_MS;
+    this.cancelEditorCloseTransition();
+    this.deps.setEditorClosing(false);
+  }
+
+  private isSuppressingDockClose(): boolean {
+    return Date.now() < this.suppressDockCloseUntilMs;
   }
 
   private cancelEditorLiftAnimation(): void {
