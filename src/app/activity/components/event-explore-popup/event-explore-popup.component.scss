@@ -21,6 +21,10 @@
   overflow: hidden;
 }
 
+.event-explore-popup-shell .popup-header.popup-header-with-progress {
+  z-index: 50;
+}
+
 .event-explore-popup {
   height: 100%;
   min-height: 0;
