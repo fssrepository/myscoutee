@@ -2,19 +2,29 @@
 
 <app-navigator-menu></app-navigator-menu>
 <app-navigator-settings-popups></app-navigator-settings-popups>
-<app-navigator-impressions-popup></app-navigator-impressions-popup>
-<app-profile-editor></app-profile-editor>
+@if (navigatorImpressionsPopupComponent(); as impressionsComponent) {
+  <ng-container *ngComponentOutlet="impressionsComponent"></ng-container>
+}
+@if (profileEditorComponent(); as profileComponent) {
+  <ng-container *ngComponentOutlet="profileComponent"></ng-container>
+}
 <app-confirmation-dialog></app-confirmation-dialog>
-<app-event-members-popup></app-event-members-popup>
+@if (eventMembersPopupComponent(); as membersComponent) {
+  <ng-container *ngComponentOutlet="membersComponent"></ng-container>
+}
 @if (subEventResources.resourceHost(); as host) {
-  <app-event-resource-popup [host]="host"></app-event-resource-popup>
+  @if (eventResourcePopupComponent(); as resourceComponent) {
+    <ng-container *ngComponentOutlet="resourceComponent; inputs: { host: host }"></ng-container>
+  }
 }
 @if (subEventResources.supplyContributionsHost(); as host) {
-  <app-event-supply-contributions-popup
-    [host]="host"
-  ></app-event-supply-contributions-popup>
+  @if (eventSupplyContributionsPopupComponent(); as supplyContributionsComponent) {
+    <ng-container *ngComponentOutlet="supplyContributionsComponent; inputs: { host: host }"></ng-container>
+  }
 }
-<app-asset-member-picker-popup></app-asset-member-picker-popup>
+@if (assetMemberPickerPopupComponent(); as assetMemberPickerComponent) {
+  <ng-container *ngComponentOutlet="assetMemberPickerComponent"></ng-container>
+}
 
 @if (activitiesPopupComponent(); as activitiesComponent) {
   <ng-container *ngComponentOutlet="activitiesComponent"></ng-container>

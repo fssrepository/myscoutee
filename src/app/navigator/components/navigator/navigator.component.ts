@@ -8,15 +8,10 @@ import { EventEditorPopupStateService } from '../../../activity/services/event-e
 import { AppContext, AppPopupContext } from '../../../shared/core';
 import { ConfirmationDialogComponent } from '../../../shared/ui/components/confirmation-dialog/confirmation-dialog.component';
 import { AvatarBtnComponent } from '../avatar-btn/avatar-btn.component';
-import { NavigatorImpressionsPopupComponent } from '../navigator-impressions-popup/navigator-impressions-popup.component';
 import { NavigatorMenuComponent } from '../navigator-menu/navigator-menu.component';
-import { ProfileEditorComponent } from '../profile-editor/profile-editor.component';
 import { NavigatorSettingsPopupsComponent } from '../navigator-settings-popups/navigator-settings-popups.component';
-import { EventMembersPopupComponent } from '../../../activity/components/event-members-popup/event-members-popup.component';
-import { EventResourcePopupComponent } from '../../../activity/components/event-resource-popup/event-resource-popup.component';
-import { EventSupplyContributionsPopupComponent } from '../../../activity/components/event-supply-contributions-popup/event-supply-contributions-popup.component';
-import { AssetMemberPickerPopupComponent } from '../../../asset/components/asset-member-picker-popup/asset-member-picker-popup.component';
 import { SubEventResourcePopupService } from '../../../activity/services/sub-event-resource-popup.service';
+import { NavigatorService } from '../../navigator.service';
 
 @Component({
   selector: 'app-navigator',
@@ -26,13 +21,7 @@ import { SubEventResourcePopupService } from '../../../activity/services/sub-eve
     AvatarBtnComponent,
     NavigatorMenuComponent,
     NavigatorSettingsPopupsComponent,
-    NavigatorImpressionsPopupComponent,
-    ConfirmationDialogComponent,
-    ProfileEditorComponent,
-    EventMembersPopupComponent,
-    EventResourcePopupComponent,
-    EventSupplyContributionsPopupComponent,
-    AssetMemberPickerPopupComponent
+    ConfirmationDialogComponent
   ],
   templateUrl: './navigator.component.html',
   styleUrl: './navigator.component.scss'
@@ -40,6 +29,7 @@ import { SubEventResourcePopupService } from '../../../activity/services/sub-eve
 export class NavigatorComponent {
   private readonly appCtx = inject(AppContext);
   private readonly popupCtx = inject(AppPopupContext);
+  private readonly navigatorService = inject(NavigatorService);
   private readonly activitiesContext = inject(ActivitiesPopupStateService);
   private readonly assetPopupService = inject(AssetPopupStateService);
   private readonly ownedAssets = inject(OwnedAssetsPopupFacadeService);
@@ -49,17 +39,43 @@ export class NavigatorComponent {
   private lastHandledActivitiesRequestMs = 0;
   private lastHandledAssetRequestMs = 0;
   private lastHandledEventFeedbackRequestMs = 0;
+  private readonly navigatorImpressionsPopupComponentRef = signal<Type<unknown> | null>(null);
+  private readonly profileEditorComponentRef = signal<Type<unknown> | null>(null);
+  private readonly eventMembersPopupComponentRef = signal<Type<unknown> | null>(null);
+  private readonly eventResourcePopupComponentRef = signal<Type<unknown> | null>(null);
+  private readonly eventSupplyContributionsPopupComponentRef = signal<Type<unknown> | null>(null);
+  private readonly assetMemberPickerPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly eventEditorPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly activitiesPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly assetPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly eventFeedbackPopupComponentRef = signal<Type<unknown> | null>(null);
 
+  protected readonly navigatorImpressionsPopupComponent = this.navigatorImpressionsPopupComponentRef.asReadonly();
+  protected readonly profileEditorComponent = this.profileEditorComponentRef.asReadonly();
+  protected readonly eventMembersPopupComponent = this.eventMembersPopupComponentRef.asReadonly();
+  protected readonly eventResourcePopupComponent = this.eventResourcePopupComponentRef.asReadonly();
+  protected readonly eventSupplyContributionsPopupComponent = this.eventSupplyContributionsPopupComponentRef.asReadonly();
+  protected readonly assetMemberPickerPopupComponent = this.assetMemberPickerPopupComponentRef.asReadonly();
   protected readonly eventEditorPopupComponent = this.eventEditorPopupComponentRef.asReadonly();
   protected readonly activitiesPopupComponent = this.activitiesPopupComponentRef.asReadonly();
   protected readonly assetPopupComponent = this.assetPopupComponentRef.asReadonly();
   protected readonly eventFeedbackPopupComponent = this.eventFeedbackPopupComponentRef.asReadonly();
 
   constructor() {
+    effect(() => {
+      const isOpen = this.navigatorService.impressionsPopupOpen();
+      if (isOpen && !this.navigatorImpressionsPopupComponentRef()) {
+        void this.ensureNavigatorImpressionsPopupLoaded();
+      }
+    });
+
+    effect(() => {
+      const isOpen = this.navigatorService.profileEditorOpen();
+      if (isOpen && !this.profileEditorComponentRef()) {
+        void this.ensureProfileEditorLoaded();
+      }
+    });
+
     effect(() => {
       const isOpen = this.eventEditorService.isOpen();
       if (isOpen && !this.eventEditorPopupComponentRef()) {
@@ -76,6 +92,14 @@ export class NavigatorComponent {
     });
 
     effect(() => {
+      const request = this.popupCtx.activitiesNavigationRequest();
+      if (!request || (request.type !== 'members' && request.type !== 'eventEditorMembers')) {
+        return;
+      }
+      void this.ensureEventMembersPopupLoaded();
+    });
+
+    effect(() => {
       const isActivitiesOpen = this.activitiesContext.activitiesOpen();
       if (isActivitiesOpen && !this.activitiesPopupComponentRef()) {
         void this.ensureActivitiesPopupLoaded();
@@ -86,6 +110,27 @@ export class NavigatorComponent {
       const isAssetPopupVisible = this.assetPopupService.visible();
       if (isAssetPopupVisible && !this.assetPopupComponentRef()) {
         void this.ensureAssetPopupLoaded();
+      }
+    });
+
+    effect(() => {
+      const resourceHost = this.subEventResources.resourceHost();
+      if (resourceHost && !this.eventResourcePopupComponentRef()) {
+        void this.ensureEventResourcePopupLoaded();
+      }
+    });
+
+    effect(() => {
+      const supplyContributionsHost = this.subEventResources.supplyContributionsHost();
+      if (supplyContributionsHost && !this.eventSupplyContributionsPopupComponentRef()) {
+        void this.ensureEventSupplyContributionsPopupLoaded();
+      }
+    });
+
+    effect(() => {
+      const activityInvitePopup = this.popupCtx.activityInvitePopup();
+      if (activityInvitePopup?.ownerId?.trim() && !this.assetMemberPickerPopupComponentRef()) {
+        void this.ensureAssetMemberPickerPopupLoaded();
       }
     });
 
@@ -128,6 +173,54 @@ export class NavigatorComponent {
   @HostListener('window:offline')
   protected onWindowOffline(): void {
     this.appCtx.setOnlineState(false);
+  }
+
+  private async ensureNavigatorImpressionsPopupLoaded(): Promise<void> {
+    if (this.navigatorImpressionsPopupComponentRef()) {
+      return;
+    }
+    const module = await import('../navigator-impressions-popup/navigator-impressions-popup.component');
+    this.navigatorImpressionsPopupComponentRef.set(module.NavigatorImpressionsPopupComponent);
+  }
+
+  private async ensureProfileEditorLoaded(): Promise<void> {
+    if (this.profileEditorComponentRef()) {
+      return;
+    }
+    const module = await import('../profile-editor/profile-editor.component');
+    this.profileEditorComponentRef.set(module.ProfileEditorComponent);
+  }
+
+  private async ensureEventMembersPopupLoaded(): Promise<void> {
+    if (this.eventMembersPopupComponentRef()) {
+      return;
+    }
+    const module = await import('../../../activity/components/event-members-popup/event-members-popup.component');
+    this.eventMembersPopupComponentRef.set(module.EventMembersPopupComponent);
+  }
+
+  private async ensureEventResourcePopupLoaded(): Promise<void> {
+    if (this.eventResourcePopupComponentRef()) {
+      return;
+    }
+    const module = await import('../../../activity/components/event-resource-popup/event-resource-popup.component');
+    this.eventResourcePopupComponentRef.set(module.EventResourcePopupComponent);
+  }
+
+  private async ensureEventSupplyContributionsPopupLoaded(): Promise<void> {
+    if (this.eventSupplyContributionsPopupComponentRef()) {
+      return;
+    }
+    const module = await import('../../../activity/components/event-supply-contributions-popup/event-supply-contributions-popup.component');
+    this.eventSupplyContributionsPopupComponentRef.set(module.EventSupplyContributionsPopupComponent);
+  }
+
+  private async ensureAssetMemberPickerPopupLoaded(): Promise<void> {
+    if (this.assetMemberPickerPopupComponentRef()) {
+      return;
+    }
+    const module = await import('../../../asset/components/asset-member-picker-popup/asset-member-picker-popup.component');
+    this.assetMemberPickerPopupComponentRef.set(module.AssetMemberPickerPopupComponent);
   }
 
   private async ensureEventEditorPopupLoaded(): Promise<void> {
