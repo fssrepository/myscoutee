@@ -41,6 +41,9 @@
             [class.smart-list--presentation-list]="resolvedPresentation() === 'list'"
             [class.smart-list--presentation-fullscreen]="resolvedPresentation() === 'fullscreen'"
             (scroll)="onCalendarScroll($event)"
+            (touchstart)="onSurfaceTouchStart()"
+            (touchend)="onSurfaceTouchEnd()"
+            (touchcancel)="onSurfaceTouchEnd()"
           >
             @if (hasCalendarItems()) {
               @if (isMonthMode()) {
@@ -196,6 +199,9 @@
           [style.--smart-list-scroll-padding-top]="resolvedScrollPaddingTop()"
           [style.--smart-list-sticky-header-height.px]="stickyHeaderHeightPx > 0 ? stickyHeaderHeightPx : null"
           (scroll)="onListScroll($event)"
+          (touchstart)="onSurfaceTouchStart()"
+          (touchend)="onSurfaceTouchEnd()"
+          (touchcancel)="onSurfaceTouchEnd()"
         >
           @if (shouldShowStickyHeader()) {
             <div class="smart-list__sticky" [ngClass]="resolvedStickyHeaderClass()">{{ stickyLabel }}</div>

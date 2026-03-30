@@ -120,7 +120,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   private static readonly QUICK_COMPLETE_THRESHOLD_MS = 120;
   private static readonly HOSTED_FULLSCREEN_STACK_SIZE = 3;
   private static readonly HOSTED_FULLSCREEN_PAGE_CURL_DURATION_MS = 420;
-  private static readonly LIST_SNAP_SETTLE_DELAY_MS = 96;
+  private static readonly LIST_SNAP_SETTLE_DELAY_MS = 250;
   private static readonly LIST_SNAP_SETTLE_GUARD_MS = 280;
   private static readonly LIST_CARD_SNAP_TARGET_SELECTOR =
     '.activities-row-item, .asset-item-card, .activities-card, .event-explore-card, .experience-item-card';
@@ -207,6 +207,40 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   private hostedFullscreenPendingDelta = 0;
   private hostedFullscreenCompletingTransition = false;
   private hostedFullscreenTransitionTimer: ReturnType<typeof setTimeout> | null = null;
+
+  // Add this near your other private properties
+  private isTouchingSurface = false;
+
+  // Add these methods to handle the touch events
+  protected onSurfaceTouchStart(): void {
+    this.isTouchingSurface = true;
+    
+    // Nuke any pending programmatic scrolls the second a finger touches down
+    this.clearListSnapSettleTimers();
+    this.clearCalendarSettleTimers();
+  }
+
+  protected onSurfaceTouchEnd(): void {
+    this.isTouchingSurface = false;
+    
+    const scrollElement = this.scrollHostRef?.nativeElement;
+    if (!scrollElement) {
+      return;
+    }
+
+    // Trigger the snap settle manually now that the user has let go
+    if (this.currentViewMode === 'list') {
+      this.scheduleListSnapSettle(scrollElement);
+    } else if (this.isCalendarMode() && !this.suppressCalendarEdgeSettle) {
+      // Calendar specific release logic
+      this.clearCalendarSettleTimers();
+      this.calendarEdgeSettleTimer = setTimeout(() => {
+        this.normalizeCalendarScrollPageAlignment(scrollElement);
+        this.settleCalendarWindow(scrollElement);
+      }, 120);
+    }
+  }
+
   private readonly paginationHelper = new SmartListPaginationHelper<T>(() => {
     this.emitState();
     this.cdr.markForCheck();
@@ -604,20 +638,23 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     const target = event.target as HTMLDivElement;
     this.updateCalendarSurface(target);
     this.emitState();
-    if (!this.isCalendarMode() || this.suppressCalendarEdgeSettle) {
+    
+    // GUARD: If we aren't in calendar mode, are suppressing settle, OR are currently touching... abort.
+    if (!this.isCalendarMode() || this.suppressCalendarEdgeSettle || this.isTouchingSurface) {
       return;
     }
+    
     this.clearCalendarSettleTimers();
     this.calendarEdgeSettleTimer = setTimeout(() => {
       this.calendarEdgeSettleTimer = null;
-      if (this.suppressCalendarEdgeSettle) {
+      if (this.suppressCalendarEdgeSettle || this.isTouchingSurface) {
         return;
       }
       this.normalizeCalendarScrollPageAlignment(target);
       const scrollLeftSnapshot = target.scrollLeft;
       this.calendarPostSettleTimer = setTimeout(() => {
         this.calendarPostSettleTimer = null;
-        if (this.suppressCalendarEdgeSettle || !this.isCalendarMode()) {
+        if (this.suppressCalendarEdgeSettle || !this.isCalendarMode() || this.isTouchingSurface) {
           return;
         }
         if (Math.abs(target.scrollLeft - scrollLeftSnapshot) > 1) {
@@ -1374,27 +1411,32 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       return;
     }
 
-    let nextScrollTop = Math.max(0, restoreContext.scrollTop + Math.max(0, scrollElement.scrollHeight - restoreContext.scrollHeight));
+    // 1. Calculate the exact delta of the newly inserted items
+    const heightDelta = scrollElement.scrollHeight - restoreContext.scrollHeight;
+    
+    // 2. Adjust the scrollTop mathematically to absorb the new height
+    let nextScrollTop = Math.max(0, restoreContext.scrollTop + Math.max(0, heightDelta));
+
     if (restoreContext.restoreAnchorId) {
       const restoredAnchor = document.getElementById(restoreContext.restoreAnchorId);
       if (restoredAnchor instanceof HTMLElement && scrollElement.contains(restoredAnchor)) {
         if (restoredAnchor.classList.contains('smart-list__prepend-restore-spacer')) {
           const revealPx = restoredAnchor.offsetHeight;
-          restoredAnchor.scrollIntoView({ block: 'start', inline: 'nearest' });
           if (revealPx > 0) {
             this.animatePrependRestoreSpacer(restoredAnchor, scrollElement, revealPx);
           } else {
             this.clearPrependRestoreSpacerState(restoredAnchor.id);
           }
-        } else {
-          restoredAnchor.scrollIntoView({ block: 'start', inline: 'nearest' });
-        }
-        nextScrollTop = scrollElement.scrollTop;
+        } 
+        
+        // Let the mathematical nextScrollTop handle the position 
         if (restoreContext.restoreAnchorCreatedId && restoredAnchor.id === restoreContext.restoreAnchorId) {
           restoredAnchor.removeAttribute('id');
         }
       }
     }
+    
+    // 3. Apply the mathematical scroll top
     scrollElement.scrollTop = nextScrollTop;
 
     if (this.shouldShowStickyHeader()) {
@@ -1896,6 +1938,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   private shouldUseSmoothListSnapSettle(scrollElement: HTMLDivElement): boolean {
     return !this.suppressListSnapSettle
       && !this.suppressListSnapNearEnd
+      && !this.isTouchingSurface
       && this.currentViewMode === 'list'
       && this.resolvedListLayout() === 'card-grid'
       && this.resolvedSnapMode() !== 'none'
@@ -3178,6 +3221,16 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
         this.cdr.markForCheck();
         return;
       }
+
+      if (Math.abs(nextElement.scrollLeft - targetLeft) <= 2) {
+          this.suppressCalendarEdgeSettle = false;
+          this.updateCalendarSurface(nextElement);
+          this.emitState();
+          this.cdr.markForCheck();
+          this.maybeLoadCurrentCalendarPage(nextElement);
+          return;
+      }
+
       const previousScrollBehavior = nextElement.style.scrollBehavior;
       const previousSnapType = nextElement.style.scrollSnapType;
       nextElement.style.scrollBehavior = 'auto';
