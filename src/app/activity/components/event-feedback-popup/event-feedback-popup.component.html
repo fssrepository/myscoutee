@@ -137,12 +137,14 @@
                     <span class="event-feedback-mobile-counter">{{ feedback.eventFeedbackSlideCounterLabel() }}</span>
                     <div class="event-feedback-card-wrap">
                       <div
+                        #eventFeedbackViewport
                         class="event-feedback-card-viewport"
-                        (touchstart)="feedback.onEventFeedbackTouchStart($event)"
-                        (touchend)="feedback.onEventFeedbackTouchEnd($event)"
+                        [class.event-feedback-card-viewport-mobile]="isMobileEventFeedbackViewport()"
+                        (scroll)="onEventFeedbackViewportScroll()"
                         >
                         <div
                           class="event-feedback-card-track"
+                          [class.event-feedback-card-track-mobile]="isMobileEventFeedbackViewport()"
                           [style.--event-feedback-slide-index]="feedback.eventFeedbackIndex()"
                           >
                           @for (card of feedback.eventFeedbackCards(); track card.id; let cardIndex = $index) {
@@ -264,7 +266,7 @@
                         [matRippleColor]="'rgba(44, 87, 141, 0.18)'"
                         class="event-feedback-overlay-nav-btn event-feedback-overlay-nav-btn-prev motion-static"
                         [disabled]="feedback.eventFeedbackIndex() <= 0"
-                        (click)="feedback.previousEventFeedbackSlide($event)"
+                        (click)="previousEventFeedbackSlide($event)"
                         aria-label="Previous feedback card"
                         >
                         <mat-icon>chevron_left</mat-icon>
@@ -276,7 +278,7 @@
                           [matRippleCentered]="true"
                           [matRippleColor]="'rgba(44, 87, 141, 0.18)'"
                           class="event-feedback-overlay-nav-btn event-feedback-overlay-nav-btn-next motion-static"
-                          (click)="feedback.nextEventFeedbackSlide($event)"
+                          (click)="nextEventFeedbackSlide($event)"
                           aria-label="Next feedback card"
                           >
                           <mat-icon>chevron_right</mat-icon>
@@ -290,7 +292,7 @@
                             type="button"
                             class="event-feedback-dot"
                             [class.is-active]="feedback.eventFeedbackIndex() === index"
-                            (click)="feedback.selectEventFeedbackSlide(index, $event)"
+                            (click)="selectEventFeedbackSlide(index, $event)"
                             [attr.aria-label]="'Open feedback card ' + (index + 1)"
                           ></button>
                         }
