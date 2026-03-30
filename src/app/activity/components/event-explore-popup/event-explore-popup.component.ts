@@ -44,6 +44,7 @@ import {
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
 import { NavigatorService } from '../../../navigator';
 import type { DemoEventRecord } from '../../../shared/core/demo/models/events.model';
+import { resolveCurrentRouteDelayMs } from '../../../shared/core/base/services/route-delay.service';
 
 @Component({
   selector: 'app-event-explore-popup',
@@ -86,6 +87,7 @@ export class EventExplorePopupComponent {
   protected showOrderPicker = false;
   protected showViewPicker = false;
   protected showTopicPicker = false;
+  protected slotPickerRecord: DemoEventRecord | null = null;
   protected eventExploreOrder: AppTypes.EventExploreOrder = 'upcoming';
   protected eventExploreView: AppTypes.EventExploreView = 'day';
   protected eventExploreFilterFriendsOnly = false;
@@ -103,11 +105,11 @@ export class EventExplorePopupComponent {
   protected selectedMembersPendingOnly = false;
   protected selectedMembersRecord: DemoEventRecord | null = null;
 
-  private activeUserId = 'u1';
+  private activeUserId = '';
   private eventEditorPrewarmStarted = false;
   private readonly leavingEventExploreRecordIds = new Set<string>();
   private readonly eventExploreExitAnimationMs = 180;
-  private readonly eventExploreJoinDelayMs = 1500;
+  private readonly eventExploreJoinDelayMs = resolveCurrentRouteDelayMs('/activities/events', 1500);
   private lastAppliedActivityMembersUpdatedMs = 0;
 
   protected eventExploreSmartListQuery: Partial<ListQuery<EventExploreFeedFilters>> = {};
@@ -129,7 +131,7 @@ export class EventExplorePopupComponent {
 
   protected readonly eventExploreSmartListConfig: SmartListConfig<DemoEventRecord, EventExploreFeedFilters> = {
     pageSize: 10,
-    loadingDelayMs: 1500,
+    loadingDelayMs: resolveCurrentRouteDelayMs('/activities/events'),
     defaultView: 'list',
     emptyLabel: 'No visible events right now.',
     emptyDescription: 'Try another filter or check back later.',
@@ -169,7 +171,7 @@ export class EventExplorePopupComponent {
     });
 
     effect(() => {
-      const nextActiveUserId = this.appCtx.activeUserId().trim() || 'u1';
+      const nextActiveUserId = this.appCtx.activeUserId().trim();
       if (nextActiveUserId === this.activeUserId) {
         return;
       }
@@ -218,6 +220,10 @@ export class EventExplorePopupComponent {
     keyboardEvent.stopPropagation();
     if (this.selectedMembersRecord) {
       this.closeMembersPopup();
+      return;
+    }
+    if (this.slotPickerRecord) {
+      this.closeEventExploreSlotPicker();
       return;
     }
     if (this.showTopicPicker) {
@@ -270,6 +276,7 @@ export class EventExplorePopupComponent {
     this.showOrderPicker = false;
     this.showViewPicker = false;
     this.showTopicPicker = false;
+    this.slotPickerRecord = null;
     this.closeMembersPopup();
     this.resetHeaderState();
     this.cdr.markForCheck();
@@ -426,7 +433,9 @@ export class EventExplorePopupComponent {
     this.popupCtx.requestActivitiesNavigation({
       type: 'members',
       ownerId: record.id,
-      ownerType: 'event'
+      ownerType: 'event',
+      subtitle: record.title,
+      canManage: record.isAdmin === true
     });
     this.cdr.markForCheck();
   }
@@ -502,14 +511,18 @@ export class EventExplorePopupComponent {
       });
       return;
     }
+    if (record.slotsEnabled && (record.upcomingSlots?.length ?? 0) > 0) {
+      this.openEventExploreSlotPicker(record);
+      return;
+    }
     this.confirmationDialogService.open({
-      title: 'Request to join?',
+      title: this.eventExploreJoinDialogTitle(record),
       message: record.title,
       cancelLabel: 'Cancel',
-      confirmLabel: 'Send request',
-      busyConfirmLabel: 'Sending request...',
+      confirmLabel: this.eventExploreJoinConfirmLabel(record),
+      busyConfirmLabel: this.eventExploreJoinBusyLabel(record),
       confirmTone: 'accent',
-      failureMessage: 'Unable to send request.',
+      failureMessage: this.eventExploreJoinFailureMessage(record),
       onConfirm: () => this.submitEventExploreJoinRequest(record)
     });
   }
@@ -546,6 +559,35 @@ export class EventExplorePopupComponent {
     });
   }
 
+  protected closeEventExploreSlotPicker(): void {
+    this.slotPickerRecord = null;
+    this.cdr.markForCheck();
+  }
+
+  protected selectEventExploreSlot(slot: AppTypes.EventSlotOccurrence): void {
+    const record = this.slotPickerRecord;
+    if (!record) {
+      return;
+    }
+    this.confirmationDialogService.open({
+      title: this.eventExploreJoinDialogTitle(record),
+      message: `${record.title}\n${slot.timeframe}`,
+      cancelLabel: 'Cancel',
+      confirmLabel: this.eventExploreJoinConfirmLabel(record),
+      busyConfirmLabel: this.eventExploreJoinBusyLabel(record),
+      confirmTone: 'accent',
+      failureMessage: this.eventExploreJoinFailureMessage(record),
+      onConfirm: async () => {
+        await this.submitEventExploreJoinRequest(record, slot.id);
+        this.closeEventExploreSlotPicker();
+      }
+    });
+  }
+
+  protected slotPickerOccupancyLabel(slot: AppTypes.EventSlotOccurrence): string {
+    return `${slot.acceptedMembers} / ${slot.capacityTotal}`;
+  }
+
   private openEventExplore(): void {
     this.isOpen = true;
     this.prewarmEventEditorPopup();
@@ -553,6 +595,7 @@ export class EventExplorePopupComponent {
     this.showOrderPicker = false;
     this.showViewPicker = false;
     this.showTopicPicker = false;
+    this.slotPickerRecord = null;
     this.closeMembersPopup();
     this.syncEventExploreQuery();
     this.reloadEventExploreSmartList();
@@ -644,6 +687,18 @@ export class EventExplorePopupComponent {
           ),
           autoInviter: sync.autoInviter ?? existing.autoInviter,
           frequency: sync.frequency ?? existing.frequency,
+          slotsEnabled: sync.slotsEnabled ?? existing.slotsEnabled,
+          slotTemplates: Array.isArray(sync.slotTemplates)
+            ? sync.slotTemplates.map(item => ({ ...item }))
+            : (existing.slotTemplates ?? []).map(item => ({ ...item })),
+          parentEventId: sync.parentEventId ?? existing.parentEventId,
+          slotTemplateId: sync.slotTemplateId ?? existing.slotTemplateId,
+          generated: sync.generated ?? existing.generated,
+          eventType: sync.eventType ?? existing.eventType,
+          nextSlot: sync.nextSlot ? { ...sync.nextSlot } : (existing.nextSlot ? { ...existing.nextSlot } : null),
+          upcomingSlots: Array.isArray(sync.upcomingSlots)
+            ? sync.upcomingSlots.map(item => ({ ...item }))
+            : (existing.upcomingSlots ?? []).map(item => ({ ...item })),
           topics: Array.isArray(sync.topics) ? [...sync.topics] : [...existing.topics],
           ticketing: sync.ticketing ?? existing.ticketing,
           published: sync.published ?? existing.published
@@ -737,7 +792,31 @@ export class EventExplorePopupComponent {
       .some(member => member.userId === userId);
   }
 
-  private async submitEventExploreJoinRequest(record: DemoEventRecord): Promise<void> {
+  private eventExploreJoinDialogTitle(record: DemoEventRecord): string {
+    return record.ticketing ? 'Book?' : 'Request to join?';
+  }
+
+  private eventExploreJoinConfirmLabel(record: DemoEventRecord): string {
+    return record.ticketing ? 'Book' : 'Send request';
+  }
+
+  private eventExploreJoinBusyLabel(record: DemoEventRecord): string {
+    return record.ticketing ? 'Booking...' : 'Sending request...';
+  }
+
+  private eventExploreJoinFailureMessage(record: DemoEventRecord): string {
+    return record.ticketing ? 'Unable to book right now.' : 'Unable to send request.';
+  }
+
+  private openEventExploreSlotPicker(record: DemoEventRecord): void {
+    this.slotPickerRecord = record;
+    this.showOrderPicker = false;
+    this.showViewPicker = false;
+    this.showTopicPicker = false;
+    this.cdr.markForCheck();
+  }
+
+  private async submitEventExploreJoinRequest(record: DemoEventRecord, slotSourceId: string | null = null): Promise<void> {
     const activeUserId = this.activeUserId.trim();
     if (!activeUserId) {
       return;
@@ -771,7 +850,9 @@ export class EventExplorePopupComponent {
 
     try {
       await Promise.all([exitPromise, delayPromise]);
-      await this.eventsService.requestJoin(activeUserId, record.id);
+      await this.eventsService.requestJoin(activeUserId, record.id, {
+        slotSourceId
+      });
       if (this.selectedMembersRecord?.id === record.id) {
         this.selectedMembers = nextMembers;
       }

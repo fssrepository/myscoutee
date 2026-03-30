@@ -1,5 +1,11 @@
 import type { LocationCoordinates } from './location.interface';
-import type { SubEventFormItem, SubEventsDisplayMode } from '../models';
+import type {
+  EventRecordKind,
+  EventSlotOccurrence,
+  EventSlotTemplate,
+  SubEventFormItem,
+  SubEventsDisplayMode
+} from '../models';
 
 export interface ChatMenuItem {
   id: string;
@@ -62,6 +68,14 @@ export interface EventMenuItem {
   capacityMax?: number | null;
   autoInviter?: boolean;
   frequency?: string;
+  slotsEnabled?: boolean;
+  slotTemplates?: EventSlotTemplate[];
+  parentEventId?: string | null;
+  slotTemplateId?: string | null;
+  generated?: boolean;
+  eventType?: EventRecordKind;
+  nextSlot?: EventSlotOccurrence | null;
+  upcomingSlots?: EventSlotOccurrence[];
   topics?: string[];
   subEvents?: SubEventFormItem[];
   subEventsDisplayMode?: SubEventsDisplayMode;
@@ -98,6 +112,14 @@ export interface HostingMenuItem {
   capacityMax?: number | null;
   autoInviter?: boolean;
   frequency?: string;
+  slotsEnabled?: boolean;
+  slotTemplates?: EventSlotTemplate[];
+  parentEventId?: string | null;
+  slotTemplateId?: string | null;
+  generated?: boolean;
+  eventType?: EventRecordKind;
+  nextSlot?: EventSlotOccurrence | null;
+  upcomingSlots?: EventSlotOccurrence[];
   topics?: string[];
   subEvents?: SubEventFormItem[];
   subEventsDisplayMode?: SubEventsDisplayMode;
@@ -115,6 +137,9 @@ export interface RateMenuItem {
   secondaryUserId?: string;
   mode: 'individual' | 'pair';
   direction: 'given' | 'received' | 'mutual' | 'met';
+  socialContext?: 'separated-friends' | 'friends-in-common';
+  bridgeUserId?: string;
+  bridgeCount?: number;
   scoreGiven: number;
   scoreReceived: number;
   eventName: string;

@@ -164,6 +164,9 @@ export class NavigatorComponent {
 
   private async openEventFeedbackPopupFromNavigatorRequest(): Promise<void> {
     await this.ensureEventFeedbackPopupLoaded();
+    await new Promise<void>(resolve => {
+      setTimeout(resolve, 0);
+    });
     this.eventFeedbackPopupService.openPopup();
   }
 

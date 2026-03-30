@@ -8,7 +8,6 @@ import {
   inject,
   NgZone,
   OnDestroy,
-  TemplateRef,
   ViewChild
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
@@ -34,59 +33,61 @@ import type {
   ActivityMemberOwnerRef,
   ActivityMembersSummary,
   ActivitiesFeedFilters,
-  ActivitiesEventSyncPayload,
-  EventChatContext,
-  EventChatResourceContext
+  ActivitiesEventSyncPayload
 } from '../../../shared/core/base/models';
 import type * as AppTypes from '../../../shared/core/base/models';
 import {
-  buildPairRateCardData,
-  buildSingleRateCardData,
-  InfoCardComponent,
-  PairCardComponent,
+  CounterBadgePipe,
   SmartListComponent,
-  SingleCardComponent,
-  type CardBadgeConfig,
   type InfoCardData,
   type InfoCardMenuAction,
   type InfoCardMenuActionEvent,
   type ListQuery,
-  type PairCardData,
-  type RateCardDataInput,
-  type RateCardPerson,
-  type RatingStarBarConfig,
-  type SingleCardData,
   type SmartListConfig,
   type SmartListLoadPage,
   type SmartListItemSelectEvent,
-  type SmartListItemTemplateContext,
   type SmartListPresentation,
   type SmartListStateChange
 } from '../../../shared/ui';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
 import { EventChatPopupComponent } from '../event-chat-popup/event-chat-popup.component';
 import { EventExplorePopupComponent } from '../event-explore-popup/event-explore-popup.component';
+import { ActivitiesPopupToolbarController } from './activities-popup-toolbar.controller';
 import {
-  ActivityEventBuilder,
+  ActivitiesChatTemplateComponent,
+  ActivitiesChatsController,
+  type ActivitiesChatTemplateContext
+} from './templates/chat/activities-chat-template.component';
+import {
+  ActivitiesEventTemplateComponent,
+  ActivitiesEventsController,
+  type ActivitiesEventTemplateContext
+} from './templates/event/activities-event-template.component';
+import {
+  ActivitiesRateTemplateComponent,
+  ActivitiesRatesController,
+  type ActivitiesRateTemplateContext
+} from './templates/rate/activities-rate-template.component';
+import {
   ActivityMembersBuilder,
-  ActivityResourceBuilder,
   ActivitiesService,
   ActivityMembersService,
   ActivityResourcesService,
   AppContext,
   AppPopupContext,
-  buildActivityRateRows,
-  toActivityEventRow,
-  toActivityEventRowFromMenuItem,
-  toActivityHostingRowFromMenuItem,
-  toActivityInvitationRowFromMenuItem,
-  toActivitySourceRowFromMenuItem,
   ChatsService,
   EventsService,
   RatesService,
+  UsersService,
   type ActivityMembersSyncState
 } from '../../../shared/core';
-import { DemoUsersRepository } from '../../../shared/core/demo';
+import { resolveCurrentRouteDelayMs } from '../../../shared/core/base/services/route-delay.service';
+import {
+  toActivityEventRow,
+  toActivityEventRowFromMenuItem,
+  toActivityHostingRowFromMenuItem,
+  toActivityInvitationRowFromMenuItem
+} from '../../../shared/core/base/converters/activities-event.converter';
 import { DemoEventSeedBuilder, DemoUserMenuCountersBuilder } from '../../../shared/core/demo/builders';
 import type { DemoEventRecord } from '../../../shared/core/demo/models/events.model';
 
@@ -100,8 +101,6 @@ interface ActivitiesEventScopeOption {
   icon: string;
 }
 
-type ActivityInfoCardActionId = 'publish' | 'primary' | 'view' | 'approve' | 'secondary' | 'restore';
-
 @Component({
   selector: 'app-activities-popup',
   standalone: true,
@@ -111,42 +110,113 @@ type ActivityInfoCardActionId = 'publish' | 'primary' | 'view' | 'approve' | 'se
     MatIconModule,
     MatSelectModule,
     SmartListComponent,
-    InfoCardComponent,
-    SingleCardComponent,
-    PairCardComponent,
+    ActivitiesEventTemplateComponent,
+    ActivitiesChatTemplateComponent,
+    ActivitiesRateTemplateComponent,
     EventChatPopupComponent,
-    EventExplorePopupComponent
+    EventExplorePopupComponent,
+    CounterBadgePipe
   ],
   templateUrl: './activities-popup.component.html',
   styleUrl: './activities-popup.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ActivitiesPopupComponent implements OnDestroy {
+  readonly activitiesToolbar = new ActivitiesPopupToolbarController(this as never);
   private static readonly ACTIVITIES_RATES_PAIR_SPLIT_DEFAULT_PERCENT = 50;
   private static readonly ACTIVITIES_RATES_PAIR_SPLIT_MIN_PERCENT = 0;
   private static readonly ACTIVITIES_RATES_PAIR_SPLIT_MAX_PERCENT = 100;
 
   // ── injected ──────────────────────────────────────────────────────────────
-  private readonly cdr = inject(ChangeDetectorRef);
+  protected readonly cdr = inject(ChangeDetectorRef);
   private readonly ngZone = inject(NgZone);
   protected readonly activitiesContext = inject(ActivitiesPopupStateService);
   private readonly activitiesService = inject(ActivitiesService);
-  private readonly eventEditorService = inject(EventEditorPopupStateService);
-  private readonly ratesService = inject(RatesService);
-  private readonly activityMembersService = inject(ActivityMembersService);
-  private readonly activityResourcesService = inject(ActivityResourcesService);
+  protected readonly eventEditorService = inject(EventEditorPopupStateService);
+  protected readonly ratesService = inject(RatesService);
+  protected readonly activityMembersService = inject(ActivityMembersService);
+  protected readonly activityResourcesService = inject(ActivityResourcesService);
   private readonly chatsService = inject(ChatsService);
-  private readonly eventsService = inject(EventsService);
-  private readonly appCtx = inject(AppContext);
-  private readonly popupCtx = inject(AppPopupContext);
+  protected readonly eventsService = inject(EventsService);
+  protected readonly appCtx = inject(AppContext);
+  protected readonly popupCtx = inject(AppPopupContext);
   private readonly ownedAssets = inject(OwnedAssetsPopupFacadeService);
-  private readonly demoUsersRepository = inject(DemoUsersRepository);
-  private readonly confirmationDialogService = inject(ConfirmationDialogService);
-
+  private readonly usersService = inject(UsersService);
+  protected readonly confirmationDialogService = inject(ConfirmationDialogService);
+  readonly activitiesRates = new ActivitiesRatesController({
+    getUsers: () => this.users,
+    getActiveUserGender: () => this.activeUser.gender,
+    getActivitiesPrimaryFilter: () => this.activitiesPrimaryFilter,
+    getActivitiesRateFilter: () => this.activitiesRateFilter,
+    getActivitiesRateSocialBadgeEnabled: () => this.activitiesRateSocialBadgeEnabled,
+    getFilteredActivityRows: () => this.filteredActivityRows,
+    getRateItems: () => this.rateItems,
+    getSmartListCursorItem: () => this.activitiesSmartList?.cursorItem() ?? null,
+    getActivitiesListScrollElement: () => this.activitiesListScrollElement(),
+    getPaginationHostElement: () => this.activitiesSmartList?.paginationHostElement() ?? null,
+    isMobileView: () => this.isMobileView,
+    isCalendarLayoutView: () => this.isCalendarLayoutView(),
+    shouldShowFullscreenToggle: () => this.shouldShowRatesFullscreenToggle(),
+    isFullscreenPaginationAnimating: () => this.activitiesSmartList?.isFullscreenPaginationAnimating() ?? false,
+    getRatingScale: () => this.activityRatingScale,
+    getActivityRateEditorSlideDurationMs: () => this.activityRateEditorSlideDurationMs,
+    getSelectedRateId: () => this.selectedActivityRateId,
+    setSelectedRateId: value => { this.selectedActivityRateId = value; },
+    getEditorClosing: () => this.activityRateEditorClosing,
+    setEditorClosing: value => { this.activityRateEditorClosing = value; },
+    getEditorCloseTimer: () => this.activityRateEditorCloseTimer,
+    setEditorCloseTimer: value => { this.activityRateEditorCloseTimer = value; },
+    getEditorLiftAnimationFrame: () => this.activityRateEditorLiftAnimationFrame,
+    setEditorLiftAnimationFrame: value => { this.activityRateEditorLiftAnimationFrame = value; },
+    getEditorOpenScrollTop: () => this.activityRateEditorOpenScrollTop,
+    setEditorOpenScrollTop: value => { this.activityRateEditorOpenScrollTop = value; },
+    getLastEditorLiftDelta: () => this.lastActivityRateEditorLiftDelta,
+    setLastEditorLiftDelta: value => { this.lastActivityRateEditorLiftDelta = value; },
+    getLastIndicatorPulseRowId: () => this.lastRateIndicatorPulseRowId,
+    setLastIndicatorPulseRowId: value => { this.lastRateIndicatorPulseRowId = value; },
+    getFullscreenMode: () => this.activitiesRatesFullscreenMode,
+    setFullscreenMode: value => { this.activitiesRatesFullscreenMode = value; },
+    getActivityRateBlinkUntilByRowId: () => this.activityRateBlinkUntilByRowId,
+    getActivityRateBlinkTimeoutByRowId: () => this.activityRateBlinkTimeoutByRowId,
+    getActivityRateDraftById: () => this.activityRateDraftById,
+    getActivityRateDirectionOverrideById: () => this.activityRateDirectionOverrideById,
+    getPendingActivityRateDirectionOverrideById: () => this.pendingActivityRateDirectionOverrideById,
+    setSelectedRateIdInContext: value => this.activitiesContext.setActivitiesSelectedRateId(value),
+    setFullscreenModeInContext: value => this.activitiesContext.setActivitiesRatesFullscreenMode(value),
+    recordActivityRate: (item, score, direction) => this.ratesService.recordActivityRate(this.activeUser.id, item, score, direction),
+    markForCheck: () => this.cdr.markForCheck(),
+    runAfterNextPaint: task => this.runAfterActivitiesNextPaint(task),
+    runAfterRender: task => this.runAfterActivitiesRender(task)
+  });
+  readonly activitiesEvents = new ActivitiesEventsController(this as never);
+  readonly activitiesChats = new ActivitiesChatsController(this as never);
+  protected readonly activitiesRateTemplateContext: ActivitiesRateTemplateContext = this.activitiesRates.templateContext;
+  protected readonly activitiesChatTemplateContext: ActivitiesChatTemplateContext = {
+    getActiveUserInitials: () => this.activeUser.initials,
+    getChatLastSender: (chat) => this.activitiesChats.getChatLastSender(chat),
+    getChatMemberCount: (chat) => this.activitiesChats.getChatMemberCount(chat),
+    getChatChannelType: (chat) => this.activitiesChats.chatChannelType(chat)
+  };
+  protected readonly activitiesEventTemplateContext: ActivitiesEventTemplateContext = {
+    getActivityRowIdentity: (row) => this.activityRowIdentity(row),
+    getActivityImageUrl: (row) => this.activityImageUrl(row),
+    getActivityCalendarDateRange: (row) => this.activityCalendarDateRange(row),
+    isActivityDraft: (row) => this.isActivityDraft(row),
+    isPendingActivityRow: (row) => this.activitiesEvents.isPendingActivityRow(row),
+    isActivityFull: (row) => this.isActivityFull(row),
+    getActivityLeadingIcon: (row) => this.activitiesEvents.activityLeadingIcon(row),
+    getActivityLeadingIconTone: (row) => this.activitiesEvents.activityLeadingIconTone(row),
+    shouldShowActivitySourceIcon: (row) => this.showActivitySourceIcon(row),
+    getActivitySourceAvatarTone: (row) => this.activitySourceAvatarTone(row),
+    getActivitySourceAvatarLabel: (row) => this.activitySourceAvatarLabel(row),
+    getActivityCapacityLabel: (row) => this.activityCapacityLabel(row),
+    getActivityPendingMemberCount: (row) => this.activityPendingMemberCount(row),
+    getActivityEventInfoCardMenuActions: (row) => this.activitiesEvents.activityEventInfoCardMenuActions(row)
+  };
   // ── Self-contained data state (no host inputs) ───────────────────────────
   protected isMobileView = false;
   protected get users(): DemoUser[] {
-    return this.demoUsersRepository.queryAllUsers() as DemoUser[];
+    return this.usersService.peekCachedUsers() as DemoUser[];
   }
   protected activeUser: DemoUser = (this.appCtx.activeUserProfile() as DemoUser | null)
     ?? this.users[0]
@@ -178,13 +248,12 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected readonly activityPendingMembersById: Record<string, number> = {};
   protected readonly eventVisibilityById: Record<string, AppTypes.EventVisibility> = {};
   private readonly eventCapacityById: Record<string, AppTypes.EventCapacityRange> = {};
-  private readonly eventSubEventsById: Record<string, AppTypes.SubEventFormItem[]> = {};
-  private readonly acceptedOptionalSubEventMembersByKey: Record<string, string[]> = {};
-  private readonly acceptedTournamentGroupMembersByKey: Record<string, string[]> = {};
-  private readonly activityMembersByRowId: Record<string, AppTypes.ActivityMemberEntry[]> = {};
-  private readonly forcedAcceptedMembersByRowKey: Record<string, number> = { 'events:e8': 20 };
-  private readonly leavingActivityRowIds = new Set<string>();
-  private readonly activityRowExitAnimationMs = 180;
+  protected readonly eventSubEventsById: Record<string, AppTypes.SubEventFormItem[]> = {};
+  protected readonly activityMembersByRowId: Record<string, AppTypes.ActivityMemberEntry[]> = {};
+  protected activitiesEventCardRevision = 0;
+  protected readonly forcedAcceptedMembersByRowKey: Record<string, number> = { 'events:e8': 20 };
+  protected readonly leavingActivityRowIds = new Set<string>();
+  protected readonly activityRowExitAnimationMs = 180;
   private lastAppliedActivityMembersUpdatedMs = 0;
 
   protected get assetCards(): AppTypes.AssetCard[] {
@@ -195,36 +264,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   private activitiesScrollRef?: ElementRef<HTMLDivElement>;
 
   @ViewChild('activitiesSmartList')
-  private activitiesSmartList?: SmartListComponent<AppTypes.ActivityListRow, ActivitiesSmartListFilters>;
-
-  private activitiesEventSmartListItemTemplateRef?: TemplateRef<SmartListItemTemplateContext<AppTypes.ActivityListRow, ActivitiesSmartListFilters>>;
-  private activitiesChatSmartListItemTemplateRef?: TemplateRef<SmartListItemTemplateContext<AppTypes.ActivityListRow, ActivitiesSmartListFilters>>;
-  private activitiesRateSingleSmartListItemTemplateRef?: TemplateRef<SmartListItemTemplateContext<AppTypes.ActivityListRow, ActivitiesSmartListFilters>>;
-  private activitiesRatePairSmartListItemTemplateRef?: TemplateRef<SmartListItemTemplateContext<AppTypes.ActivityListRow, ActivitiesSmartListFilters>>;
-
-  @ViewChild('activitiesEventSmartListItemTemplate', { read: TemplateRef })
-  private set activitiesEventSmartListItemTemplate(value: TemplateRef<SmartListItemTemplateContext<AppTypes.ActivityListRow, ActivitiesSmartListFilters>> | undefined) {
-    this.activitiesEventSmartListItemTemplateRef = value;
-    this.cdr.markForCheck();
-  }
-
-  @ViewChild('activitiesChatSmartListItemTemplate', { read: TemplateRef })
-  private set activitiesChatSmartListItemTemplate(value: TemplateRef<SmartListItemTemplateContext<AppTypes.ActivityListRow, ActivitiesSmartListFilters>> | undefined) {
-    this.activitiesChatSmartListItemTemplateRef = value;
-    this.cdr.markForCheck();
-  }
-
-  @ViewChild('activitiesRateSingleSmartListItemTemplate', { read: TemplateRef })
-  private set activitiesRateSingleSmartListItemTemplate(value: TemplateRef<SmartListItemTemplateContext<AppTypes.ActivityListRow, ActivitiesSmartListFilters>> | undefined) {
-    this.activitiesRateSingleSmartListItemTemplateRef = value;
-    this.cdr.markForCheck();
-  }
-
-  @ViewChild('activitiesRatePairSmartListItemTemplate', { read: TemplateRef })
-  private set activitiesRatePairSmartListItemTemplate(value: TemplateRef<SmartListItemTemplateContext<AppTypes.ActivityListRow, ActivitiesSmartListFilters>> | undefined) {
-    this.activitiesRatePairSmartListItemTemplateRef = value;
-    this.cdr.markForCheck();
-  }
+  protected activitiesSmartList?: SmartListComponent<AppTypes.ActivityListRow, ActivitiesSmartListFilters>;
 
   // ── Static data ───────────────────────────────────────────────────────────
   protected readonly activityRatingScale   = APP_STATIC_DATA.activityRatingScale;
@@ -251,6 +291,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     = [...APP_STATIC_DATA.rateFilterEntries];
   protected readonly activitiesViewOptions: Array<{ key: AppTypes.ActivitiesView; label: string; icon: string }>
     = [...APP_STATIC_DATA.activitiesViewOptions];
+  protected activitiesRateSocialBadgeEnabled = false;
 
   // ── Filter / view state – backed by EventEditorPopupStateService signals ───────────
   // Local copies are kept in sync via an effect() so that OnPush CD fires
@@ -273,14 +314,14 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected readonly activitiesSmartListConfig: SmartListConfig<AppTypes.ActivityListRow, ActivitiesSmartListFilters> = {
     pageSize: 10,
     initialPageSize: 20,
-    loadingDelayMs: 1500,
+    loadingDelayMs: resolveCurrentRouteDelayMs('/activities/chats'),
     defaultView: 'day',
     containerClass: () => this.activitiesSmartListClassMap(),
     listLayout: 'card-grid',
     desktopColumns: () => this.activitiesPrimaryFilter === 'chats' ? 1 : 3,
     snapMode: () => this.activitiesPrimaryFilter === 'chats' ? 'none' : 'mandatory',
     scrollPaddingTop: '2.6rem',
-    footerSpacerHeight: () => this.activitiesPrimaryFilter === 'rates' ? this.activityRateEditorSpacerHeight() : null,
+    footerSpacerHeight: () => this.activitiesPrimaryFilter === 'rates' ? this.activitiesRates.editorSpacerHeight() : null,
     headerProgress: {
       enabled: true
     },
@@ -289,14 +330,14 @@ export class ActivitiesPopupComponent implements OnDestroy {
         if (this.activitiesPrimaryFilter !== 'rates') {
           return 'scroll';
         }
-        if (this.isRatesFullscreenModeActive()) {
-          return this.isActivitiesRatesFullscreenReadOnlyNavigation() ? 'arrows' : 'rating-stars';
+        if (this.activitiesRates.isFullscreenModeActive()) {
+          return this.activitiesRates.isFullscreenReadOnlyNavigation() ? 'arrows' : 'rating-stars';
         }
-        return this.shouldRenderActivityRateEditorDock() ? 'rating-stars' : 'scroll';
+        return this.activitiesRates.shouldRenderEditorDock() ? 'rating-stars' : 'scroll';
       },
-      ratingBarConfig: () => this.activityRateBarConfig(),
-      ratingBarValue: () => this.selectedActivityRateValue(),
-      onRatingSelect: (_item, score) => this.setSelectedActivityOwnRating(score)
+      ratingBarConfig: () => this.activitiesRates.ratingBarConfig(),
+      ratingBarValue: () => this.activitiesRates.ratingBarValue(),
+      onRatingSelect: (_item, score) => this.activitiesRates.setSelectedOwnRating(score)
     },
     calendarVariant: () => this.activitiesPrimaryFilter === 'rates' ? 'rate-counts' : 'default',
     views: [
@@ -340,9 +381,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
   };
   protected readonly activitiesSmartListLoadPage: SmartListLoadPage<AppTypes.ActivityListRow, ActivitiesSmartListFilters>
     = query => from(this.activitiesService.loadActivities(query, {
-      chatItems: this.chatItemsForActivities()
+      chatItems: this.chatItems
     }));
-
   // ── Inline action menu ────────────────────────────────────────────────────
   protected inlineItemActionMenu: {
     scope: 'activityMember';
@@ -360,19 +400,19 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   // ── Rates state ───────────────────────────────────────────────────────────
   protected selectedActivityRateId: string | null  = null;
-  private activityRateEditorClosing                = false;
-  private activityRateEditorCloseTimer: ReturnType<typeof setTimeout> | null = null;
-  private activityRateEditorLiftAnimationFrame: number | null = null;
-  private readonly activityRateEditorSlideDurationMs = 180;
-  private activityRateEditorOpenScrollTop: number | null = null;
-  private lastActivityRateEditorLiftDelta = 0;
-  private readonly activityRateBlinkUntilByRowId: Record<string, number>                          = {};
-  private readonly activityRateBlinkTimeoutByRowId: Record<string, ReturnType<typeof setTimeout> | null> = {};
-  private readonly activityRateDraftById: Record<string, number>                                  = {};
-  private readonly activityRateDirectionOverrideById: Partial<Record<string, RateMenuItem['direction']>> = {};
-  private readonly pendingActivityRateDirectionOverrideById: Partial<Record<string, RateMenuItem['direction']>> = {};
+  protected activityRateEditorClosing                = false;
+  protected activityRateEditorCloseTimer: ReturnType<typeof setTimeout> | null = null;
+  protected activityRateEditorLiftAnimationFrame: number | null = null;
+  protected readonly activityRateEditorSlideDurationMs = 180;
+  protected activityRateEditorOpenScrollTop: number | null = null;
+  protected lastActivityRateEditorLiftDelta = 0;
+  protected readonly activityRateBlinkUntilByRowId: Record<string, number>                          = {};
+  protected readonly activityRateBlinkTimeoutByRowId: Record<string, ReturnType<typeof setTimeout> | null> = {};
+  protected readonly activityRateDraftById: Record<string, number>                                  = {};
+  protected readonly activityRateDirectionOverrideById: Partial<Record<string, RateMenuItem['direction']>> = {};
+  protected readonly pendingActivityRateDirectionOverrideById: Partial<Record<string, RateMenuItem['direction']>> = {};
 
-  private lastRateIndicatorPulseRowId: string | null = null;
+  protected lastRateIndicatorPulseRowId: string | null = null;
 
   // ── Rates fullscreen state ────────────────────────────────────────────────
   protected activitiesRatesFullscreenMode         = false;
@@ -386,7 +426,71 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected selectedActivityMembersTitle = '';
   protected selectedActivityMembersRow: AppTypes.ActivityListRow | null = null;
   protected selectedActivityMembersRowId: string | null = null;
-  private readonly trashedActivityRowsByKey: Record<string, AppTypes.ActivityListRow> = {};
+  protected readonly trashedActivityRowsByKey: Record<string, AppTypes.ActivityListRow> = {};
+
+  protected activityLeadingIcon(row: AppTypes.ActivityListRow): string {
+    return this.activitiesEvents.activityLeadingIcon(row);
+  }
+
+  protected activityLeadingIconTone(row: AppTypes.ActivityListRow): NonNullable<InfoCardData['leadingIcon']>['tone'] {
+    return this.activitiesEvents.activityLeadingIconTone(row);
+  }
+
+  protected isPendingActivityRow(row: AppTypes.ActivityListRow): boolean {
+    return this.activitiesEvents.isPendingActivityRow(row);
+  }
+
+  protected activityEventInfoCardMenuActions(row: AppTypes.ActivityListRow): readonly InfoCardMenuAction[] {
+    return this.activitiesEvents.activityEventInfoCardMenuActions(row);
+  }
+
+  protected getChatLastSender(item: ChatMenuItem): DemoUser {
+    return this.activitiesChats.getChatLastSender(item);
+  }
+
+  protected getChatMemberCount(item: ChatMenuItem): number {
+    return this.activitiesChats.getChatMemberCount(item);
+  }
+
+  protected chatChannelType(item: ChatMenuItem): AppTypes.ChatChannelType {
+    return this.activitiesChats.chatChannelType(item);
+  }
+
+  protected chatItemsForActivities(): ChatMenuItem[] {
+    return this.activitiesChats.chatItemsForActivities();
+  }
+
+  protected activityChatContextFilterKey(item: ChatMenuItem): AppTypes.ActivitiesChatContextFilter | null {
+    return this.activitiesChats.activityChatContextFilterKey(item);
+  }
+
+  protected openActivityChat(chat: ChatMenuItem): void {
+    this.activitiesChats.openActivityChat(chat);
+  }
+
+  protected onActivityRowClick(row: AppTypes.ActivityListRow, event?: Event): void {
+    this.activitiesEvents.onActivityRowClick(row, event);
+  }
+
+  protected openActivityMembers(row: AppTypes.ActivityListRow, event?: Event): void {
+    this.activitiesEvents.openActivityMembers(row, event);
+  }
+
+  protected onActivityEventInfoCardMenuAction(row: AppTypes.ActivityListRow, action: InfoCardMenuActionEvent): void {
+    this.activitiesEvents.onActivityEventInfoCardMenuAction(row, action);
+  }
+
+  protected isActivityIdentityTrashed(type: AppTypes.ActivityListRow['type'], id: string): boolean {
+    return this.activitiesEvents.isActivityIdentityTrashed(type, id);
+  }
+
+  protected trashedActivityCount(): number {
+    return this.activitiesEvents.trashedActivityCount();
+  }
+
+  protected openActivityRowInEventModule(row: AppTypes.ActivityListRow, readOnly: boolean): void {
+    this.activitiesEvents.openActivityRowInEventModule(row, readOnly);
+  }
 
   // =========================================================================
   // Lifecycle
@@ -412,6 +516,18 @@ export class ActivitiesPopupComponent implements OnDestroy {
       this.activitiesRatesFullscreenMode = svc.activitiesRatesFullscreenMode();
       this.selectedActivityRateId        = svc.activitiesSelectedRateId();
       this.syncActivitiesSmartListQuery();
+      this.cdr.markForCheck();
+    });
+
+    effect(() => {
+      const activeUserId = this.appCtx.activeUserId().trim();
+      const nextActiveUser = (this.appCtx.activeUserProfile() as DemoUser | null)
+        ?? this.users.find(user => user.id === activeUserId)
+        ?? this.users[0]
+        ?? this.createFallbackActiveUser();
+      this.activeUser = nextActiveUser;
+      this.bumpActivitiesEventCardRevision();
+      this.refreshSectionBadges();
       this.cdr.markForCheck();
     });
 
@@ -486,7 +602,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     this.refreshRateItems();
     void this.refreshChatItems();
     this.resetActivitiesStateForOpen();
-    this.clearActivityRateEditorState();
+    this.activitiesRates.clearEditorState();
     this.resetActivitiesScroll();
     this.seedEventOwnerMemberCountsFromEventsTable();
   }
@@ -504,13 +620,13 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   ngOnDestroy(): void {
-    this.clearActivityRateEditorState();
+    this.activitiesRates.clearEditorState();
     this.activitiesSmartList?.clearHostedLoading();
   }
 
   private createFallbackActiveUser(): DemoUser {
     return {
-      id: this.appCtx.activeUserId().trim() || 'u1',
+      id: this.appCtx.activeUserId().trim(),
       name: 'Demo User',
       age: 0,
       birthday: '',
@@ -633,6 +749,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
         }));
       }
     }
+    this.bumpActivitiesEventCardRevision();
   }
 
 
@@ -717,7 +834,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return null;
   }
 
-  private replaceVisibleActivityItems(items: readonly AppTypes.ActivityListRow[], totalDelta = 0): void {
+  protected replaceVisibleActivityItems(items: readonly AppTypes.ActivityListRow[], totalDelta = 0): void {
     const smartList = this.activitiesSmartList;
     if (!smartList) {
       return;
@@ -730,7 +847,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     });
   }
 
-  private removeVisibleActivityRow(row: AppTypes.ActivityListRow): void {
+  protected removeVisibleActivityRow(row: AppTypes.ActivityListRow): void {
     const smartList = this.activitiesSmartList;
     if (!smartList) {
       return;
@@ -952,7 +1069,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     }
   }
 
-  private refreshSectionBadges(): void {
+  protected refreshSectionBadges(): void {
     this.chatBadge = DemoUserMenuCountersBuilder.resolveSectionBadge(
       this.chatItems.map(item => item.unread),
       this.chatItems.length
@@ -1035,7 +1152,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
         distanceKm: item.distanceKm ?? this.hostingDistanceById[item.id] ?? 10
       }));
     const draftRows = myEventRows.filter(row => !this.isHostingPublished(row.id));
-    const trashRows = this.trashedActivityRows();
+    const trashRows = Object.values(this.trashedActivityRowsByKey);
 
     if (scope === 'all') {
       return [...activeEventRows, ...invitationRows, ...myEventRows];
@@ -1066,236 +1183,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return this.activitiesPrimaryFilter === 'events';
   }
 
-  protected activitiesPrimaryFilterLabel(): string {
-    return this.activitiesPrimaryFilters.find(o => o.key === this.activitiesPrimaryFilter)?.label ?? 'Chats';
-  }
-
-  protected activitiesPrimaryFilterIcon(): string {
-    return this.activitiesPrimaryFilters.find(o => o.key === this.activitiesPrimaryFilter)?.icon ?? 'chat';
-  }
-
-  protected activitiesPrimaryFilterClass(filter: AppTypes.ActivitiesPrimaryFilter = this.activitiesPrimaryFilter): string {
-    const map: Record<AppTypes.ActivitiesPrimaryFilter, string> = {
-      chats: 'activity-filter-chat',
-      invitations: 'activity-filter-invitations',
-      events: 'activity-filter-events',
-      hosting: 'activity-filter-hosting',
-      rates: 'activity-filter-rates'
-    };
-    return map[filter] ?? 'activity-filter-chat';
-  }
-
-  protected activitiesPrimaryFilterCount(filter: AppTypes.ActivitiesPrimaryFilter): number {
-    if (filter === 'rates')       { return this.gameBadge; }
-    if (filter === 'chats')       { return this.chatBadge; }
-    return 0;
-  }
-
-  protected activitiesPrimaryPanelWidth(): string {
-    return '200px';
-  }
-
-  protected activitiesEventScopePanelWidth(): string {
-    return '260px';
-  }
-
   protected activitiesEventScopeLabel(): string {
     return this.activitiesEventScopeFilters.find(option => option.key === this.activitiesEventScope)?.label ?? 'Active Events';
-  }
-
-  protected activitiesEventScopeIcon(): string {
-    return this.activitiesEventScopeFilters.find(option => option.key === this.activitiesEventScope)?.icon ?? 'event';
-  }
-
-  protected activitiesEventScopeClass(scope: AppTypes.ActivitiesEventScope = this.activitiesEventScope): string {
-    if (scope === 'trash') {
-      return 'activity-filter-trash';
-    }
-    if (scope === 'drafts') {
-      return 'activity-filter-drafts';
-    }
-    if (scope === 'invitations') {
-      return 'activity-filter-invitations';
-    }
-    if (scope === 'my-events') {
-      return 'activity-filter-hosting';
-    }
-    return 'activity-filter-events';
-  }
-
-  protected activitiesEventScopeCount(scope: AppTypes.ActivitiesEventScope = this.activitiesEventScope): number {
-    if (scope === 'all') {
-      return this.eventsBadge + this.invitationsBadge + this.hostingBadge;
-    }
-    if (scope === 'drafts') {
-      return this.hostingDraftCount();
-    }
-    if (scope === 'trash') {
-      return this.trashedActivityCount();
-    }
-    if (scope === 'active-events') {
-      return this.eventsBadge;
-    }
-    if (scope === 'invitations') {
-      return this.invitationsBadge;
-    }
-    return this.hostingBadge;
-  }
-
-  protected activitiesRatePanelWidth(): string {
-    return '220px';
-  }
-
-  protected activitiesHeaderLineOne(): string {
-    if (this.activitiesPrimaryFilter === 'chats') {
-      return this.activitiesChatsHeaderLabel();
-    }
-    if (this.activitiesPrimaryFilter === 'rates') {
-      const group = this.activitiesRateFilter.startsWith('individual') ? 'Single' : 'Pair';
-      const label = this.rateFilters.find(option => option.key === this.activitiesRateFilter)?.label ?? 'Given';
-      return `${group} Rate · ${label}`;
-    }
-    if (this.isEventActivitiesPrimaryFilter()) {
-      if (this.activitiesView === 'month' || this.activitiesView === 'week') {
-        return `Events · ${this.activitiesEventScopeLabel()}`;
-      }
-      return `${this.activitiesEventScopeLabel()} · ${this.activitiesSecondaryFilterLabel()}`;
-    }
-    if (this.activitiesView === 'month' || this.activitiesView === 'week') {
-      return this.activitiesPrimaryFilterLabel();
-    }
-    return `${this.activitiesPrimaryFilterLabel()} · ${this.activitiesSecondaryFilterLabel()}`;
-  }
-
-  protected activitiesHeaderLineTwo(): string {
-    return '';
-  }
-
-  protected activitiesChatContextFilterLabel(): string {
-    return this.activitiesChatContextFilters.find(o => o.key === this.activitiesChatContextFilter)?.label ?? 'All';
-  }
-
-  protected activitiesChatContextFilterIcon(): string {
-    return this.activitiesChatContextFilters.find(o => o.key === this.activitiesChatContextFilter)?.icon ?? 'forum';
-  }
-
-  protected activitiesChatContextFilterClass(filter: AppTypes.ActivitiesChatContextFilter = this.activitiesChatContextFilter): string {
-    const map: Record<AppTypes.ActivitiesChatContextFilter, string> = {
-      all: 'chat-context-filter-all',
-      event: 'chat-context-filter-event',
-      subEvent: 'chat-context-filter-sub-event',
-      group: 'chat-context-filter-group'
-    };
-    return map[filter] ?? 'chat-context-filter-all';
-  }
-
-  protected activitiesSecondaryFilterClass(_filter: AppTypes.ActivitiesSecondaryFilter = this.activitiesSecondaryFilter): string {
-    return 'activity-filter-secondary';
-  }
-
-  protected activitiesChatContextFilterCount(filter: AppTypes.ActivitiesChatContextFilter = this.activitiesChatContextFilter): number {
-    if (this.activitiesPrimaryFilter !== 'chats') { return 0; }
-    return this.chatItemsForActivities().filter(item => {
-      if (filter === 'all') { return true; }
-      return this.activityChatContextFilterKey(item) === filter;
-    }).length;
-  }
-
-  private activitiesChatsHeaderLabel(): string {
-    const primary = this.activitiesPrimaryFilterLabel();
-    if (this.activitiesChatContextFilter === 'all') {
-      return primary;
-    }
-    return `${primary} · ${this.activitiesChatContextFilterLabel()}`;
-  }
-
-  protected activitiesSecondaryFilterLabel(): string {
-    return this.activitiesSecondaryFilterOptionLabel(this.effectiveActivitiesSecondaryFilter());
-  }
-
-  protected activitiesSecondaryFilterOptionLabel(filter: AppTypes.ActivitiesSecondaryFilter): string {
-    if (filter === 'recent') {
-      return this.activitiesPrimaryFilter === 'rates' ? 'Recent' : 'Upcoming';
-    }
-    return this.activitiesSecondaryFilters.find(o => o.key === filter)?.label ?? 'Relevant';
-  }
-
-  protected activitiesSecondaryFilterIcon(): string {
-    return this.activitiesSecondaryFilters.find(o => o.key === this.effectiveActivitiesSecondaryFilter())?.icon ?? 'schedule';
-  }
-
-  protected activitiesRateFilterLabel(): string {
-    const filter = this.rateFilters.find(o => o.key === this.activitiesRateFilter);
-    if (!filter) { return 'Single · Given'; }
-    const group = this.activitiesRateFilter.startsWith('individual') ? 'Single' : 'Pair';
-    return `${group} · ${filter.label}`;
-  }
-
-  protected activitiesRateFilterIcon(key: AppTypes.RateFilterKey = this.activitiesRateFilter): string {
-    const icons: Record<AppTypes.RateFilterKey, string> = {
-      'individual-given':    'north_east',
-      'individual-received': 'south_west',
-      'individual-mutual':   'sync_alt',
-      'individual-met':      'handshake',
-      'pair-given':          'group_add',
-      'pair-received':       'groups_2'
-    };
-    return icons[key] ?? 'star';
-  }
-
-  protected activitiesRateFilterClass(filter: AppTypes.RateFilterKey = this.activitiesRateFilter): string {
-    return 'activity-filter-rates';
-  }
-
-  protected rateFilterOptionClass(key: AppTypes.RateFilterKey): string {
-    return `rate-filter-item-${key}`;
-  }
-
-  protected isRateGroupSeparator(label: string): boolean {
-    return label.trim().toLowerCase().includes('pair');
-  }
-
-  protected rateFilterCount(filter: AppTypes.RateFilterKey): number {
-    return this.rateItems.filter(item => this.matchesRateFilter(item, filter)).length;
-  }
-
-  protected totalRateFilterCount(): number {
-    return this.rateItems.length;
-  }
-
-  protected activityViewLabel(): string {
-    return this.activitiesViewOptions.find(o => o.key === this.activitiesView)?.label ?? 'View';
-  }
-
-  // ── Filter visibility helpers ──────────────────────────────────────────────
-
-  protected isRateFilterVisible(): boolean {
-    return this.activitiesPrimaryFilter === 'rates';
-  }
-
-  protected isHostingPublicationFilterVisible(): boolean {
-    return false;
-  }
-
-  protected hostingDraftCount(): number {
-    return this.hostingItems
-      .filter(item => item.isAdmin)
-      .filter(item => !this.isActivityIdentityTrashed('hosting', item.id))
-      .filter(item => !this.isHostingPublished(item.id))
-      .length;
-  }
-
-  protected shouldShowActivitiesQuickActions(): boolean {
-    return this.isEventActivitiesPrimaryFilter()
-      && this.activitiesEventScope !== 'all'
-      && this.activitiesEventScope !== 'active-events'
-      && this.activitiesEventScope !== 'invitations'
-      && this.activitiesEventScope !== 'trash';
-  }
-
-  protected shouldShowStandaloneEventExploreAction(): boolean {
-    return this.isEventActivitiesPrimaryFilter()
-      && (this.activitiesEventScope === 'all' || this.activitiesEventScope === 'active-events');
   }
 
   protected shouldShowRatesFullscreenToggle(): boolean {
@@ -1303,286 +1192,21 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   protected isRatesFullscreenModeActive(): boolean {
-    return this.shouldShowRatesFullscreenToggle() && this.activitiesRatesFullscreenMode;
+    return this.activitiesRates.isFullscreenModeActive();
   }
 
   protected activitiesSmartListPresentation(): SmartListPresentation {
-    return this.isRatesFullscreenModeActive() ? 'fullscreen' : 'list';
+    return this.activitiesRates.isFullscreenModeActive() ? 'fullscreen' : 'list';
   }
 
   protected isCalendarLayoutView(): boolean {
     return this.activitiesView === 'month' || this.activitiesView === 'week';
   }
 
-  protected availableActivitiesSecondaryFilters(): ReadonlyArray<{ key: AppTypes.ActivitiesSecondaryFilter; label: string; icon: string }> {
-    return this.isEventActivitiesPrimaryFilter()
-      ? this.activitiesSecondaryFilters.filter(option => option.key !== 'relevant')
-      : this.activitiesSecondaryFilters;
-  }
-
-  // ── Selection actions ─────────────────────────────────────────────────────
-
-  protected selectActivitiesPrimaryFilter(filter: AppTypes.ActivitiesPrimaryFilter): void {
-    if (this.activitiesPrimaryFilter === 'rates' || filter === 'rates') {
-      this.commitPendingRateDirectionOverrides();
-    }
-    if (filter !== 'rates') {
-      this.disableActivitiesRatesFullscreenMode();
-    }
-    this.activitiesContext.setActivitiesPrimaryFilter(filter);
-    if (filter === 'events' && this.activitiesSecondaryFilter === 'relevant') {
-      this.activitiesContext.setActivitiesSecondaryFilter('recent');
-    }
-    this.lastRateIndicatorPulseRowId = null;
-    this.showActivitiesPrimaryPicker = false;
-    this.showActivitiesEventScopePicker = false;
-    this.showActivitiesChatContextPicker = false;
-    this.showActivitiesRatePicker = false;
-    this.showActivitiesQuickActionsMenu = false;
-    this.resetActivitiesScroll();
-    this.cdr.markForCheck();
-  }
-
-  protected toggleActivitiesEventScopePicker(event: Event): void {
-    if (!this.isEventActivitiesPrimaryFilter()) {
-      return;
-    }
-    event.stopPropagation();
-    this.showActivitiesPrimaryPicker = false;
-    this.showActivitiesChatContextPicker = false;
-    this.showActivitiesRatePicker = false;
-    this.showActivitiesViewPicker = false;
-    this.showActivitiesSecondaryPicker = false;
-    this.showActivitiesQuickActionsMenu = false;
-    this.showActivitiesEventScopePicker = !this.showActivitiesEventScopePicker;
-  }
-
-  protected selectActivitiesEventScope(scope: AppTypes.ActivitiesEventScope): void {
-    const currentScope = this.activitiesContext.activitiesEventScope() as AppTypes.ActivitiesEventScope;
-    if (!this.isEventActivitiesPrimaryFilter() || currentScope === scope) {
-      this.showActivitiesEventScopePicker = false;
-      return;
-    }
-    this.activitiesContext.setActivitiesEventScope(scope);
-    this.lastRateIndicatorPulseRowId = null;
-    this.showActivitiesPrimaryPicker = false;
-    this.showActivitiesEventScopePicker = false;
-    this.showActivitiesChatContextPicker = false;
-    this.showActivitiesRatePicker = false;
-    this.showActivitiesQuickActionsMenu = false;
-    this.resetActivitiesScroll();
-    this.cdr.markForCheck();
-  }
-
-  protected selectActivitiesChatContextFilter(filter: AppTypes.ActivitiesChatContextFilter): void {
-    if (this.activitiesPrimaryFilter !== 'chats') { return; }
-    this.activitiesContext.setActivitiesChatContextFilter(filter);
-    this.showActivitiesChatContextPicker = false;
-    this.showActivitiesPrimaryPicker = false;
-    this.showActivitiesEventScopePicker = false;
-    this.showActivitiesRatePicker = false;
-    this.showActivitiesQuickActionsMenu = false;
-    this.resetActivitiesScroll();
-    this.cdr.markForCheck();
-  }
-
-  protected selectHostingPublicationFilter(filter: AppTypes.HostingPublicationFilter): void {
-    if (!this.isHostingPublicationFilterVisible() || this.hostingPublicationFilter === filter) { return; }
-    this.activitiesContext.setActivitiesHostingPublicationFilter(filter);
-    this.resetActivitiesScroll();
-    this.cdr.markForCheck();
-  }
-
-  protected selectActivitiesSecondaryFilter(filter: AppTypes.ActivitiesSecondaryFilter): void {
-    const normalizedFilter = this.isEventActivitiesPrimaryFilter() && filter === 'relevant'
-      ? 'recent'
-      : filter;
-    if (this.activitiesPrimaryFilter === 'rates') {
-      this.commitPendingRateDirectionOverrides();
-    }
-    this.activitiesContext.setActivitiesSecondaryFilter(normalizedFilter);
-    this.lastRateIndicatorPulseRowId = null;
-    this.showActivitiesPrimaryPicker = false;
-    this.showActivitiesEventScopePicker = false;
-    this.showActivitiesChatContextPicker = false;
-    this.showActivitiesRatePicker = false;
-    this.showActivitiesQuickActionsMenu = false;
-    this.resetActivitiesScroll();
-    this.cdr.markForCheck();
-  }
-
-  private effectiveActivitiesSecondaryFilter(): AppTypes.ActivitiesSecondaryFilter {
+  protected effectiveActivitiesSecondaryFilter(): AppTypes.ActivitiesSecondaryFilter {
     return this.isEventActivitiesPrimaryFilter() && this.activitiesSecondaryFilter === 'relevant'
       ? 'recent'
       : this.activitiesSecondaryFilter;
-  }
-
-  protected selectActivitiesRateFilter(filter: AppTypes.RateFilterKey): void {
-    const currentFilter = this.activitiesContext.activitiesRateFilter() as AppTypes.RateFilterKey;
-    if (currentFilter === filter) {
-      this.showActivitiesPrimaryPicker = false;
-      this.showActivitiesEventScopePicker = false;
-      this.showActivitiesChatContextPicker = false;
-      this.showActivitiesSecondaryPicker = false;
-      this.showActivitiesRatePicker = false;
-      this.showActivitiesQuickActionsMenu = false;
-      return;
-    }
-    this.commitPendingRateDirectionOverrides(filter);
-    this.activitiesContext.setActivitiesRateFilter(filter);
-    this.lastRateIndicatorPulseRowId = null;
-    this.selectedActivityRateId = null;
-    this.activitiesContext.setActivitiesSelectedRateId(null);
-    this.showActivitiesPrimaryPicker = false;
-    this.showActivitiesEventScopePicker = false;
-    this.showActivitiesChatContextPicker = false;
-    this.showActivitiesSecondaryPicker = false;
-    this.showActivitiesRatePicker = false;
-    this.showActivitiesQuickActionsMenu = false;
-    this.resetActivitiesScroll();
-    this.cdr.markForCheck();
-  }
-
-  protected toggleActivitiesViewPicker(event: Event): void {
-    event.stopPropagation();
-    if (this.activitiesPrimaryFilter === 'chats') { return; }
-    this.showActivitiesPrimaryPicker = false;
-    this.showActivitiesEventScopePicker = false;
-    this.showActivitiesChatContextPicker = false;
-    this.showActivitiesRatePicker = false;
-    this.showActivitiesQuickActionsMenu = false;
-    this.activitiesContext.toggleActivitiesViewPicker();
-  }
-
-  protected toggleActivitiesSecondaryPicker(event: Event): void {
-    event.stopPropagation();
-    if (this.activitiesPrimaryFilter === 'chats') { return; }
-    this.showActivitiesPrimaryPicker = false;
-    this.showActivitiesEventScopePicker = false;
-    this.showActivitiesChatContextPicker = false;
-    this.showActivitiesRatePicker = false;
-    this.showActivitiesQuickActionsMenu = false;
-    this.activitiesContext.toggleActivitiesSecondaryPicker();
-  }
-
-  protected setActivitiesView(view: AppTypes.ActivitiesView, event?: Event): void {
-    event?.stopPropagation();
-    if (this.activitiesPrimaryFilter === 'rates') {
-      this.commitPendingRateDirectionOverrides();
-    }
-    if (view !== 'distance') {
-      this.disableActivitiesRatesFullscreenMode();
-    }
-    this.activitiesContext.setActivitiesView(view as 'day' | 'week' | 'month' | 'distance');
-    this.lastRateIndicatorPulseRowId = null;
-    this.showActivitiesViewPicker = false;
-    this.showActivitiesSecondaryPicker = false;
-    this.showActivitiesPrimaryPicker = false;
-    this.showActivitiesEventScopePicker = false;
-    this.showActivitiesChatContextPicker = false;
-    this.showActivitiesRatePicker = false;
-    this.showActivitiesQuickActionsMenu = false;
-    this.resetActivitiesScroll();
-    this.cdr.markForCheck();
-  }
-
-  protected toggleActivitiesQuickActionsMenu(event: Event): void {
-    if (!this.shouldShowActivitiesQuickActions()) {
-      return;
-    }
-    event.stopPropagation();
-    this.showActivitiesPrimaryPicker = false;
-    this.showActivitiesEventScopePicker = false;
-    this.showActivitiesChatContextPicker = false;
-    this.showActivitiesRatePicker = false;
-    this.showActivitiesViewPicker = false;
-    this.showActivitiesSecondaryPicker = false;
-    this.showActivitiesQuickActionsMenu = !this.showActivitiesQuickActionsMenu;
-  }
-
-  // ── Mobile bottom-sheet openers (delegates back to parent if needed) ───────
-
-  protected openMobileActivitiesPrimaryFilterSelector(event: Event): void {
-    if (!this.isMobileView) {
-      return;
-    }
-    event.stopPropagation();
-    this.showActivitiesEventScopePicker = false;
-    this.showActivitiesChatContextPicker = false;
-    this.showActivitiesRatePicker = false;
-    this.showActivitiesViewPicker = false;
-    this.showActivitiesSecondaryPicker = false;
-    this.showActivitiesQuickActionsMenu = false;
-    this.showActivitiesPrimaryPicker = !this.showActivitiesPrimaryPicker;
-  }
-
-  protected openMobileActivitiesEventScopeSelector(event: Event): void {
-    if (!this.isMobileView || !this.isEventActivitiesPrimaryFilter()) {
-      return;
-    }
-    event.stopPropagation();
-    this.showActivitiesPrimaryPicker = false;
-    this.showActivitiesChatContextPicker = false;
-    this.showActivitiesRatePicker = false;
-    this.showActivitiesViewPicker = false;
-    this.showActivitiesSecondaryPicker = false;
-    this.showActivitiesQuickActionsMenu = false;
-    this.showActivitiesEventScopePicker = !this.showActivitiesEventScopePicker;
-  }
-
-  protected openMobileActivitiesChatContextFilterSelector(event: Event): void {
-    if (!this.isMobileView || this.activitiesPrimaryFilter !== 'chats') {
-      return;
-    }
-    event.stopPropagation();
-    this.showActivitiesPrimaryPicker = false;
-    this.showActivitiesEventScopePicker = false;
-    this.showActivitiesRatePicker = false;
-    this.showActivitiesViewPicker = false;
-    this.showActivitiesSecondaryPicker = false;
-    this.showActivitiesQuickActionsMenu = false;
-    this.showActivitiesChatContextPicker = !this.showActivitiesChatContextPicker;
-  }
-
-  protected openMobileActivitiesRateFilterSelector(event: Event): void {
-    event.stopPropagation();
-    if (!this.isMobileView || this.activitiesPrimaryFilter !== 'rates') {
-      return;
-    }
-    this.showActivitiesPrimaryPicker = false;
-    this.showActivitiesEventScopePicker = false;
-    this.showActivitiesChatContextPicker = false;
-    this.showActivitiesViewPicker = false;
-    this.showActivitiesSecondaryPicker = false;
-    this.showActivitiesQuickActionsMenu = false;
-    this.showActivitiesRatePicker = !this.showActivitiesRatePicker;
-  }
-
-  // ── Event editor / explore – call EventEditorPopupStateService directly ────────────
-
-  protected requestOpenEventEditor(): void {
-    const target: AppTypes.EventEditorTarget = this.isEventActivitiesPrimaryFilter()
-      ? (this.activitiesEventScope === 'my-events' || this.activitiesEventScope === 'drafts' ? 'hosting' : 'events')
-      : 'events';
-    this.showActivitiesQuickActionsMenu = false;
-    this.popupCtx.requestActivitiesNavigation({
-      type: 'eventEditorCreate',
-      target
-    });
-  }
-
-  protected requestOpenEventEditorForRow(
-    row: AppTypes.ActivityListRow,
-    readOnly = false,
-    stacked = true
-  ): void {
-    void stacked;
-    this.openActivityRowInEventModule(row, readOnly);
-  }
-
-  protected requestOpenEventExplore(): void {
-    this.showActivitiesQuickActionsMenu = false;
-    this.popupCtx.requestActivitiesNavigation({ type: 'eventExplore' });
   }
 
   // =========================================================================
@@ -1635,54 +1259,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return row.type === 'chats';
   }
 
-  protected activityRowAvatarInitials(row: AppTypes.ActivityListRow): string {
-    if (row.type === 'rates') {
-      const rate = row.source as RateMenuItem;
-      return this.userById(rate.userId)?.initials ?? 'U';
-    }
-    const source = row.source as { avatar?: string };
-    if (source?.avatar) { return source.avatar.slice(0, 2).toUpperCase(); }
-    return this.activeUser.initials;
-  }
-
-  protected activityRowAvatarClass(row: AppTypes.ActivityListRow): string {
-    if (row.type === 'rates') {
-      const rate   = row.source as RateMenuItem;
-      const gender = this.userById(rate.userId)?.gender ?? 'woman';
-      return `user-color-${gender}`;
-    }
-    if (row.type === 'chats') {
-      const chat = row.source as ChatMenuItem;
-      return `user-color-${this.getChatLastSender(chat).gender}`;
-    }
-    return 'user-color-man';
-  }
-
-  protected activityChatRowToneClass(row: AppTypes.ActivityListRow): string {
-    if (row.type !== 'chats') {
-      return '';
-    }
-    const chat = row.source as ChatMenuItem;
-    const channelType = this.chatChannelType(chat);
-    if (channelType === 'mainEvent') {
-      return 'activities-card-chat-main-event';
-    }
-    if (channelType === 'optionalSubEvent') {
-      return 'activities-card-chat-optional-sub-event';
-    }
-    if (channelType === 'groupSubEvent') {
-      return 'activities-card-chat-group-sub-event';
-    }
-    return '';
-  }
-
-  protected activityChatMemberCount(row: AppTypes.ActivityListRow): number {
-    if (row.type !== 'chats') {
-      return 0;
-    }
-    return this.getChatMemberCount(row.source as ChatMenuItem);
-  }
-
   protected activityRowBadge(row: AppTypes.ActivityListRow): number {
     if (row.type === 'chats') {
       return row.unread ?? 0;
@@ -1704,16 +1280,12 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return row.type === 'events' || row.type === 'invitations';
   }
 
-  protected activitySourceAvatarClass(row: AppTypes.ActivityListRow): string {
+  private activitySourceAvatarTone(row: AppTypes.ActivityListRow): NonNullable<InfoCardData['mediaStart']>['tone'] {
     const toneSeed = row.type === 'invitations'
       ? `${row.id}-${(row.source as InvitationMenuItem).inviter}`
       : `${row.id}-${row.title}`;
     const toneIndex = (AppUtils.hashText(toneSeed) % 8) + 1;
-    return `activities-source-tone-${toneIndex}`;
-  }
-
-  private activitySourceAvatarTone(row: AppTypes.ActivityListRow): NonNullable<InfoCardData['mediaStart']>['tone'] {
-    const toneClass = this.activitySourceAvatarClass(row);
+    const toneClass = `activities-source-tone-${toneIndex}`;
     const tone = toneClass.replace('activities-source-', '');
     switch (tone) {
       case 'tone-1':
@@ -1873,6 +1445,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   private applyActivityMembersSummary(row: AppTypes.ActivityListRow, summary: ActivityMembersSummary): void {
     this.activityCapacityById[row.id] = `${summary.acceptedMembers} / ${summary.capacityTotal}`;
     this.activityPendingMembersById[row.id] = summary.pendingMembers;
+    this.bumpActivitiesEventCardRevision();
   }
 
   private applyActivityMembersSyncState(sync: ActivityMembersSyncState): void {
@@ -1884,6 +1457,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     );
     this.activityCapacityById[sync.id] = `${acceptedMembers} / ${capacityTotal}`;
     this.activityPendingMembersById[sync.id] = pendingMembers;
+    this.bumpActivitiesEventCardRevision();
   }
 
   private async loadActivityMembersForRow(
@@ -1906,7 +1480,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     this.cdr.markForCheck();
   }
 
-  private persistSelectedActivityMembers(): void {
+  protected persistSelectedActivityMembers(): void {
     if (!this.selectedActivityMembersRow || !this.selectedActivityMembersRowId) {
       return;
     }
@@ -1933,1049 +1507,11 @@ export class ActivitiesPopupComponent implements OnDestroy {
       this.activityCapacityById[record.id] = `${record.acceptedMembers} / ${record.capacityTotal}`;
       this.activityPendingMembersById[record.id] = record.pendingMembers;
     }
-  }
-
-  protected activityLeadingIcon(row: AppTypes.ActivityListRow): string {
-    if (this.isPendingActivityRow(row)) {
-      return 'pending_actions';
-    }
-    if (row.type === 'hosting' || row.type === 'events') {
-      return this.eventVisibilityIcon(this.activityVisibility(row));
-    }
-    return this.activityTypeIcon(row);
-  }
-
-  private activityVisibility(row: AppTypes.ActivityListRow): AppTypes.EventVisibility {
-    return ((row.source as { visibility?: AppTypes.EventVisibility }).visibility)
-      ?? this.eventVisibilityById[row.id]
-      ?? (row.type === 'hosting' ? 'Invitation only' : 'Public');
-  }
-
-  protected activityTypeIcon(row: AppTypes.ActivityListRow): string {
-    if (row.type === 'events') {
-      return 'event';
-    }
-    if (row.type === 'hosting') {
-      return 'stadium';
-    }
-    if (row.type === 'invitations') {
-      return 'mail';
-    }
-    if (row.type === 'rates') {
-      return 'star';
-    }
-    return 'chat';
-  }
-
-  private eventVisibilityIcon(option: AppTypes.EventVisibility): string {
-    switch (option) {
-      case 'Public':
-        return 'public';
-      case 'Friends only':
-        return 'groups';
-      default:
-        return 'mail_lock';
-    }
-  }
-
-  private eventVisibilityClass(option: AppTypes.EventVisibility): string {
-    switch (option) {
-      case 'Public':
-        return 'event-visibility-public';
-      case 'Friends only':
-        return 'event-visibility-friends';
-      default:
-        return 'event-visibility-invitation';
-    }
-  }
-
-  private activityLeadingIconTone(row: AppTypes.ActivityListRow): NonNullable<InfoCardData['leadingIcon']>['tone'] {
-    if (this.isPendingActivityRow(row)) {
-      return 'pending';
-    }
-    if (row.type !== 'hosting' && row.type !== 'events') {
-      return 'default';
-    }
-    const visibility = this.activityVisibility(row);
-    if (visibility === 'Public') {
-      return 'public';
-    }
-    if (visibility === 'Friends only') {
-      return 'friends';
-    }
-    return 'invitation';
-  }
-
-  protected activityDateRangeMetaLine(row: AppTypes.ActivityListRow): string {
-    return this.activityDateRangeLabel(row);
-  }
-
-  private isPendingActivityRow(row: AppTypes.ActivityListRow): boolean {
-    if (row.type !== 'events') {
-      return false;
-    }
-    const activeUserId = this.activeUser.id.trim();
-    if (!activeUserId) {
-      return false;
-    }
-    const source = row.source as { pendingMemberUserIds?: readonly string[] };
-    return Array.isArray(source.pendingMemberUserIds) && source.pendingMemberUserIds.includes(activeUserId);
-  }
-
-  protected activityLocationMetaLine(row: AppTypes.ActivityListRow): string {
-    const source = row.source as { location?: string; city?: string; creatorCity?: string };
-    const location = source.location?.trim() || source.city?.trim() || source.creatorCity?.trim() || '';
-    const distanceLabel = Number.isFinite(Number(row.distanceKm)) ? `${row.distanceKm} km` : '';
-    if (location && distanceLabel) {
-      return `${location} · ${distanceLabel}`;
-    }
-    return location || distanceLabel;
-  }
-
-  private activityDateRangeLabel(row: AppTypes.ActivityListRow): string {
-    const range = this.activityCalendarDateRange(row);
-    if (!range) {
-      return (row.source as { timeframe?: string })?.timeframe ?? 'Date unavailable';
-    }
-    const sameDay = range.start.toDateString() === range.end.toDateString();
-    const startDateLabel = range.start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    const startTimeLabel = range.start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-    const endTimeLabel = range.end.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-    if (sameDay) {
-      return `${startDateLabel}, ${startTimeLabel} - ${endTimeLabel}`;
-    }
-    const endDateLabel = range.end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    return `${startDateLabel}, ${startTimeLabel} - ${endDateLabel}, ${endTimeLabel}`;
-  }
-
-  protected activityEventInfoCard(
-    row: AppTypes.ActivityListRow,
-    options: { groupLabel?: string | null } = {}
-  ): InfoCardData {
-    const locationMetaLine = this.activityLocationMetaLine(row);
-    const imageUrl = this.activityImageUrl(row);
-    return {
-      rowId: this.activityRowIdentity(row),
-      groupLabel: options.groupLabel ?? null,
-      title: row.title,
-      imageUrl: imageUrl,
-      placeholderLabel: imageUrl ? null : row.title,
-      metaRows: [
-        this.activityDateRangeMetaLine(row),
-        ...(locationMetaLine ? [locationMetaLine] : [])
-      ],
-      description: row.subtitle,
-      surfaceTone: this.isActivityDraft(row)
-        ? 'draft'
-        : this.isPendingActivityRow(row)
-          ? 'pending'
-          : this.isActivityFull(row)
-            ? 'full'
-            : 'default',
-      leadingIcon: {
-        icon: this.activityLeadingIcon(row),
-        tone: this.activityLeadingIconTone(row)
-      },
-      mediaStart: this.showActivitySourceIcon(row)
-        ? {
-            variant: 'avatar',
-            tone: this.activitySourceAvatarTone(row),
-            label: this.activitySourceAvatarLabel(row),
-            interactive: false
-          }
-        : null,
-      mediaEnd: {
-        variant: 'badge',
-        tone: this.isActivityFull(row) ? 'full' : 'default',
-        label: this.activityCapacityLabel(row),
-        ariaLabel: 'Open members',
-        interactive: true,
-        pendingCount: this.activityPendingMemberCount(row)
-      },
-      menuActions: this.activityEventInfoCardMenuActions(row),
-      clickable: false
-    };
-  }
-
-  private activityEventInfoCardMenuActions(row: AppTypes.ActivityListRow): readonly InfoCardMenuAction[] {
-    if (!this.canManageActivityRow(row)) {
-      return [];
-    }
-    if (this.isActivityRowTrashed(row)) {
-      return this.shouldShowActivityRestoreAction(row)
-        ? [{ id: 'restore', label: 'Restore', icon: 'restore_from_trash' }]
-        : [];
-    }
-
-    const actions: InfoCardMenuAction[] = [];
-    if (this.shouldShowActivityPublishAction(row)) {
-      actions.push({ id: 'publish', label: 'Publish', icon: 'campaign', tone: 'accent' });
-    }
-    if (this.shouldShowActivityPrimaryAction(row)) {
-      actions.push({
-        id: 'primary',
-        label: this.activityPrimaryActionLabel(row),
-        icon: this.activityPrimaryActionIcon(row)
-      });
-    }
-    if (this.shouldShowActivityViewAction(row)) {
-      actions.push({ id: 'view', label: 'View Event', icon: 'visibility' });
-    }
-    if (this.shouldShowActivityApproveAction(row)) {
-      actions.push({ id: 'approve', label: 'Accept', icon: 'done', tone: 'accent' });
-    }
-    if (this.shouldShowActivitySecondaryAction(row)) {
-      actions.push({
-        id: 'secondary',
-        label: this.activitySecondaryActionLabel(row),
-        icon: this.activitySecondaryActionIcon(row),
-        tone: this.isExitActivityRow(row) ? 'warning' : 'destructive'
-      });
-    }
-    return actions;
-  }
-
-  protected canManageActivityRow(row: AppTypes.ActivityListRow): boolean {
-    return row.type !== 'chats' && row.type !== 'rates';
-  }
-
-  protected shouldShowActivityPublishAction(row: AppTypes.ActivityListRow): boolean {
-    return !this.isActivityRowTrashed(row) && row.type === 'hosting' && !!row.isAdmin && !this.isHostingPublished(row.id);
-  }
-
-  protected shouldShowActivityPrimaryAction(row: AppTypes.ActivityListRow): boolean {
-    if (this.isActivityRowTrashed(row)) {
-      return false;
-    }
-    if ((row.type === 'hosting' || row.type === 'events') && !row.isAdmin) {
-      return false;
-    }
-    return true;
-  }
-
-  protected shouldShowActivityViewAction(row: AppTypes.ActivityListRow): boolean {
-    return !this.isActivityRowTrashed(row) && (row.type === 'hosting' || row.type === 'events');
-  }
-
-  protected shouldShowActivityApproveAction(row: AppTypes.ActivityListRow): boolean {
-    return !this.isActivityRowTrashed(row) && row.type === 'invitations';
-  }
-
-  protected shouldShowActivitySecondaryAction(row: AppTypes.ActivityListRow): boolean {
-    if (this.isActivityRowTrashed(row)) {
-      return false;
-    }
-    if (row.type === 'hosting' && !row.isAdmin) {
-      return false;
-    }
-    return true;
-  }
-
-  protected shouldShowActivityRestoreAction(row: AppTypes.ActivityListRow): boolean {
-    return this.isActivityRowTrashed(row);
-  }
-
-  protected isExitActivityRow(row: AppTypes.ActivityListRow): boolean {
-    return row.type === 'events';
-  }
-
-  protected activityPrimaryActionIcon(row: AppTypes.ActivityListRow): string {
-    if (row.type === 'hosting') { return 'edit'; }
-    if (row.type === 'invitations') { return 'visibility'; }
-    return 'edit';
-  }
-
-  protected activityPrimaryActionLabel(row: AppTypes.ActivityListRow): string {
-    if (row.type === 'hosting')     { return 'Edit Event'; }
-    if (row.type === 'invitations') { return 'View Invitation'; }
-    return 'Edit Event';
-  }
-
-  protected activitySecondaryActionIcon(row: AppTypes.ActivityListRow): string {
-    if (row.type === 'events')  { return 'exit_to_app'; }
-    if (row.type === 'hosting') { return 'delete'; }
-    return 'block';
-  }
-
-  protected activitySecondaryActionLabel(row: AppTypes.ActivityListRow): string {
-    if (row.type === 'events')  { return 'Leave Event'; }
-    if (row.type === 'hosting') { return 'Delete Event'; }
-    return 'Reject Invitation';
-  }
-
-  protected onActivityEventInfoCardMenuAction(row: AppTypes.ActivityListRow, action: InfoCardMenuActionEvent): void {
-    switch (action.action.id as ActivityInfoCardActionId) {
-      case 'publish':
-        this.runActivityItemPublishAction(row);
-        break;
-      case 'primary':
-        this.runActivityItemPrimaryAction(row);
-        break;
-      case 'view':
-        this.runActivityItemViewAction(row);
-        break;
-      case 'approve':
-        this.runActivityItemApproveAction(row);
-        break;
-      case 'secondary':
-        this.runActivityItemSecondaryAction(row);
-        break;
-      case 'restore':
-        this.runActivityItemRestoreAction(row);
-        break;
-    }
-  }
-
-  protected runActivityItemPrimaryAction(row: AppTypes.ActivityListRow, event?: Event): void {
-    event?.stopPropagation();
-    this.inlineItemActionMenu = null;
-    this.openActivityRowInEventModule(row, false);
-  }
-
-  protected runActivityItemViewAction(row: AppTypes.ActivityListRow, event?: Event): void {
-    event?.stopPropagation();
-    this.inlineItemActionMenu = null;
-    this.popupCtx.requestActivitiesNavigation({
-      type: 'eventEditor',
-      row,
-      readOnly: true
-    });
-  }
-
-  protected runActivityItemApproveAction(row: AppTypes.ActivityListRow, event?: Event): void {
-    event?.stopPropagation();
-    this.inlineItemActionMenu = null;
-    if (row.type !== 'invitations') {
-      this.openActivityRowInEventModule(row, true);
-      return;
-    }
-    this.confirmationDialogService.open({
-      title: 'Accept invitation?',
-      message: row.title,
-      cancelLabel: 'Cancel',
-      confirmLabel: 'Accept',
-      busyConfirmLabel: 'Accepting...',
-      confirmTone: 'accent',
-      failureMessage: 'Unable to accept invitation.',
-      onConfirm: () => this.confirmActivityInvitationApproval(row)
-    });
-  }
-
-  protected runActivityItemRestoreAction(row: AppTypes.ActivityListRow, event?: Event): void {
-    event?.stopPropagation();
-    this.inlineItemActionMenu = null;
-    void this.restoreActivityRow(row);
-  }
-
-  protected runActivityItemSecondaryAction(row: AppTypes.ActivityListRow, event?: Event): void {
-    event?.stopPropagation();
-    this.inlineItemActionMenu = null;
-    this.confirmationDialogService.open({
-      title: this.activitySecondaryConfirmTitle(row),
-      message: row.title,
-      cancelLabel: 'Cancel',
-      confirmLabel: this.activitySecondaryConfirmActionLabel(row),
-      busyConfirmLabel: this.activitySecondaryConfirmBusyLabel(row),
-      confirmTone: 'danger',
-      failureMessage: this.activitySecondaryConfirmFailureMessage(row),
-      onConfirm: () => this.confirmActivitySecondaryAction(row)
-    });
-  }
-
-  protected runActivityItemPublishAction(row: AppTypes.ActivityListRow, event?: Event): void {
-    event?.stopPropagation();
-    this.inlineItemActionMenu  = null;
-    this.confirmationDialogService.open({
-      title: 'Publish event?',
-      message: row.title,
-      cancelLabel: 'Cancel',
-      confirmLabel: 'Publish',
-      busyConfirmLabel: 'Publishing...',
-      confirmTone: 'accent',
-      failureMessage: 'Unable to publish event.',
-      onConfirm: () => this.confirmActivityPublish(row)
-    });
-  }
-
-  private async confirmActivityPublish(row: AppTypes.ActivityListRow): Promise<void> {
-    await this.eventsService.publishItem(this.activeUser.id, row.type as any, row.id);
-    this.publishedHostingIds = new Set([...this.publishedHostingIds, row.id]);
-
-    this.hostingItems = this.hostingItems.map(item =>
-      item.id === row.id ? { ...item, published: true } : item
-    );
-
-    // Only remove it if we are explicitly viewing Drafts
-    if (this.activitiesEventScope === 'drafts') {
-      this.removeVisibleActivityRow(row);
-    } else {
-      // Otherwise, patch the row visually to remove the "Publish" button and draft styling
-      const smartList = this.activitiesSmartList;
-      if (smartList) {
-        const currentItems = [...smartList.itemsSnapshot()];
-        const rowIndex = currentItems.findIndex(item => item.id === row.id);
-        if (rowIndex >= 0) {
-          const updatedRow = { ...currentItems[rowIndex] };
-          updatedRow.source = { ...updatedRow.source as any, published: true };
-          const nextItems = [...currentItems];
-          nextItems[rowIndex] = updatedRow;
-          this.replaceVisibleActivityItems(nextItems, 0);
-        }
-      }
-    }
-
-    this.refreshSectionBadges();
-    this.cdr.markForCheck();
-  }
-
-  private activitySecondaryConfirmTitle(row: AppTypes.ActivityListRow): string {
-    if (row.type === 'events') {
-      return 'Leave event?';
-    }
-    if (row.type === 'invitations') {
-      return 'Reject invitation?';
-    }
-    return 'Delete event?';
-  }
-
-  private activitySecondaryConfirmActionLabel(row: AppTypes.ActivityListRow): string {
-    if (row.type === 'events') {
-      return 'Leave';
-    }
-    if (row.type === 'invitations') {
-      return 'Reject';
-    }
-    return 'Delete';
-  }
-
-  private activitySecondaryConfirmBusyLabel(row: AppTypes.ActivityListRow): string {
-    if (row.type === 'events') {
-      return 'Leaving...';
-    }
-    if (row.type === 'invitations') {
-      return 'Rejecting...';
-    }
-    return 'Deleting...';
-  }
-
-  private activitySecondaryConfirmFailureMessage(row: AppTypes.ActivityListRow): string {
-    if (row.type === 'events') {
-      return 'Unable to leave event.';
-    }
-    if (row.type === 'invitations') {
-      return 'Unable to reject invitation.';
-    }
-    return 'Unable to delete event.';
-  }
-
-  private async confirmActivitySecondaryAction(row: AppTypes.ActivityListRow): Promise<void> {
-    await this.persistActivityRowTrash(row);
-    this.markActivityRowTrashed(row);
-    this.removeVisibleActivityRow(row);
-    this.cdr.markForCheck();
-  }
-
-  private async confirmActivityInvitationApproval(row: AppTypes.ActivityListRow): Promise<void> {
-    const syncPayload = await this.buildAcceptedInvitationSyncPayload(row);
-    await Promise.all([
-      this.eventsService.syncEventSnapshot(syncPayload),
-      this.activityMembersService.syncEventMembersFromEventSnapshot(syncPayload)
-    ]);
-    this.applyActivitiesEventSync(syncPayload);
-    this.cdr.markForCheck();
-  }
-
-  private async buildAcceptedInvitationSyncPayload(
-    row: AppTypes.ActivityListRow
-  ): Promise<Omit<ActivitiesEventSyncPayload, 'syncKey'>> {
-    const activeUserId = this.activeUser.id.trim();
-    if (!activeUserId) {
-      throw new Error('Unable to resolve active user.');
-    }
-
-    const invitationSource = row.source as InvitationMenuItem;
-    const relatedSource = ActivityEventBuilder.resolveEditorSource(row, {
-      eventItems: this.eventItems,
-      hostingItems: this.hostingItems,
-      invitationItems: this.invitationItems
-    }) ?? ActivityEventBuilder.buildInvitationPreviewEventSource(invitationSource);
-    const record = await this.eventsService.queryKnownItemById(activeUserId, row.id);
-
-    const existingAcceptedMemberUserIds = this.uniqueUserIds([
-      ...(record?.acceptedMemberUserIds ?? relatedSource.acceptedMemberUserIds ?? [])
-    ]);
-    const existingPendingMemberUserIds = this.uniqueUserIds([
-      ...(record?.pendingMemberUserIds ?? relatedSource.pendingMemberUserIds ?? [])
-    ]);
-    const activeUserWasAccepted = existingAcceptedMemberUserIds.includes(activeUserId);
-    const activeUserWasPending = existingPendingMemberUserIds.includes(activeUserId) || !activeUserWasAccepted;
-    const nextAcceptedMemberUserIds = activeUserWasAccepted
-      ? [...existingAcceptedMemberUserIds]
-      : this.uniqueUserIds([...existingAcceptedMemberUserIds, activeUserId]);
-    const nextPendingMemberUserIds = existingPendingMemberUserIds.filter(userId => userId !== activeUserId);
-
-    const acceptedMembersBase = this.chatCountValue(record?.acceptedMembers ?? relatedSource.acceptedMembers);
-    const pendingMembersBase = this.chatCountValue(
-      record?.pendingMembers
-      ?? relatedSource.pendingMembers
-      ?? (activeUserWasPending ? 1 : nextPendingMemberUserIds.length)
-    );
-    const nextAcceptedMembers = activeUserWasAccepted
-      ? Math.max(acceptedMembersBase, nextAcceptedMemberUserIds.length)
-      : Math.max(nextAcceptedMemberUserIds.length, acceptedMembersBase + 1);
-    const nextPendingMembers = activeUserWasAccepted
-      ? Math.max(pendingMembersBase, nextPendingMemberUserIds.length)
-      : Math.max(0, Math.max(pendingMembersBase, activeUserWasPending ? 1 : 0) - 1);
-
-    const title = record?.title ?? relatedSource.title ?? invitationSource.description ?? row.title;
-    const shortDescription = record?.subtitle
-      ?? relatedSource.shortDescription
-      ?? row.subtitle
-      ?? `Invited by ${invitationSource.inviter}`;
-    const timeframe = record?.timeframe ?? relatedSource.timeframe ?? invitationSource.when ?? row.detail;
-    const startAt = record?.startAtIso ?? relatedSource.startAt ?? invitationSource.startAt ?? row.dateIso;
-    const endAt = record?.endAtIso ?? relatedSource.endAt ?? invitationSource.endAt ?? startAt;
-    const distanceKmRaw = record?.distanceKm ?? relatedSource.distanceKm ?? invitationSource.distanceKm ?? row.distanceKm;
-    const distanceKm = Number.isFinite(Number(distanceKmRaw)) ? Math.max(0, Number(distanceKmRaw)) : 0;
-    const creatorName = record?.creatorName?.trim() || invitationSource.inviter?.trim() || title;
-    const creatorInitials = record?.creatorInitials?.trim() || relatedSource.avatar?.trim() || AppUtils.initialsFromText(creatorName);
-    const capacityTotal = Math.max(
-      nextAcceptedMembers,
-      this.chatCountValue(record?.capacityTotal ?? relatedSource.capacityTotal ?? relatedSource.capacityMax)
-    );
-
-    return {
-      id: row.id,
-      target: 'events',
-      title,
-      shortDescription,
-      timeframe,
-      activity: this.chatCountValue(record?.activity ?? relatedSource.activity ?? invitationSource.unread ?? row.unread),
-      isAdmin: false,
-      startAt,
-      endAt,
-      distanceKm,
-      imageUrl: record?.imageUrl ?? relatedSource.imageUrl ?? invitationSource.imageUrl ?? '',
-      acceptedMembers: nextAcceptedMembers,
-      pendingMembers: nextPendingMembers,
-      capacityTotal,
-      capacityMin: record?.capacityMin ?? relatedSource.capacityMin ?? null,
-      capacityMax: record?.capacityMax ?? relatedSource.capacityMax ?? capacityTotal,
-      autoInviter: record?.autoInviter ?? relatedSource.autoInviter,
-      frequency: record?.frequency ?? relatedSource.frequency,
-      ticketing: record?.ticketing ?? relatedSource.ticketing,
-      visibility: record?.visibility ?? relatedSource.visibility,
-      blindMode: record?.blindMode ?? relatedSource.blindMode,
-      published: record?.published ?? relatedSource.published ?? true,
-      creatorUserId: record?.creatorUserId ?? relatedSource.creatorUserId,
-      creatorName,
-      creatorInitials,
-      creatorGender: record?.creatorGender,
-      creatorCity: record?.creatorCity,
-      location: record?.location ?? relatedSource.location ?? invitationSource.location,
-      locationCoordinates: record?.locationCoordinates ?? relatedSource.locationCoordinates ?? invitationSource.locationCoordinates,
-      sourceLink: record?.sourceLink ?? relatedSource.sourceLink ?? invitationSource.sourceLink,
-      acceptedMemberUserIds: nextAcceptedMemberUserIds,
-      pendingMemberUserIds: nextPendingMemberUserIds,
-      topics: [...(record?.topics ?? relatedSource.topics ?? [])],
-      subEvents: Array.isArray(record?.subEvents)
-        ? this.cloneSyncedSubEventForms(record.subEvents)
-        : (Array.isArray(relatedSource.subEvents) ? this.cloneSyncedSubEventForms(relatedSource.subEvents) : undefined),
-      subEventsDisplayMode: record?.subEventsDisplayMode ?? relatedSource.subEventsDisplayMode
-    };
-  }
-
-  private isActivityIdentityTrashed(type: AppTypes.ActivityListRow['type'], id: string): boolean {
-    return Boolean(this.trashedActivityRowsByKey[`${type}:${id}`]);
-  }
-
-  protected isActivityRowTrashed(row: AppTypes.ActivityListRow): boolean {
-    if (Boolean((row.source as { isTrashed?: boolean }).isTrashed)) {
-      return true;
-    }
-    return this.isActivityIdentityTrashed(row.type, row.id);
-  }
-
-  private trashedActivityRows(): AppTypes.ActivityListRow[] {
-    return Object.values(this.trashedActivityRowsByKey);
-  }
-
-  private trashedActivityCount(): number {
-    return this.trashedActivityRows().length;
-  }
-
-  private markActivityRowTrashed(row: AppTypes.ActivityListRow): void {
-    this.trashedActivityRowsByKey[this.activityRowIdentity(row)] = { ...row };
-    this.refreshSectionBadges();
-  }
-
-  private unmarkActivityRowTrashed(row: AppTypes.ActivityListRow): void {
-    delete this.trashedActivityRowsByKey[this.activityRowIdentity(row)];
-    this.refreshSectionBadges();
-  }
-
-  private async persistActivityRowTrash(row: AppTypes.ActivityListRow): Promise<void> {
-    if (row.type === 'events' || row.type === 'hosting' || row.type === 'invitations') {
-      await this.eventsService.trashItem(this.activeUser.id, row.type, row.id);
-    }
-  }
-
-  private async restoreActivityRow(row: AppTypes.ActivityListRow): Promise<void> {
-    if (row.type === 'events' || row.type === 'hosting' || row.type === 'invitations') {
-      await this.eventsService.restoreItem(this.activeUser.id, row.type, row.id);
-    }
-    this.unmarkActivityRowTrashed(row);
-    this.removeVisibleActivityRow(row);
-    this.cdr.markForCheck();
-  }
-
-  // =========================================================================
-  // Row click / navigation
-  // =========================================================================
-
-  protected onActivityRowClick(row: AppTypes.ActivityListRow, event?: Event): void {
-    event?.stopPropagation();
-    this.inlineItemActionMenu = null;
-    if (row.type === 'chats') {
-      const chat = row.source as ChatMenuItem;
-      this.openActivityChat(chat);
-      return;
-    }
-    if (row.type === 'rates') {
-      this.openActivityRateEditor(row, event as Event);
-      return;
-    }
-    this.openActivityRowInEventModule(row, true);
-  }
-
-  protected openActivityMembers(row: AppTypes.ActivityListRow, event?: Event): void {
-    event?.stopPropagation();
-    this.popupCtx.requestActivitiesNavigation({
-      type: 'members',
-      ownerId: row.id,
-      ownerType: 'event'
-    });
-  }
-
-  protected canShowActivityMemberActionMenu(entry: AppTypes.ActivityMemberEntry): boolean {
-    return this.canApproveActivityMember(entry) || this.canDeleteActivityMember(entry);
-  }
-
-  protected toggleActivityMemberActionMenu(entry: AppTypes.ActivityMemberEntry, event: Event): void {
-    event.stopPropagation();
-    if (!this.canShowActivityMemberActionMenu(entry)) {
-      return;
-    }
-    if (this.inlineItemActionMenu?.scope === 'activityMember' && this.inlineItemActionMenu.id === entry.userId) {
-      this.inlineItemActionMenu = null;
-      return;
-    }
-    this.inlineItemActionMenu = {
-      scope: 'activityMember',
-      id: entry.userId,
-      title: entry.name,
-      openUp: this.shouldOpenInlineItemMenuUp(event)
-    };
-  }
-
-  protected isActivityMemberActionMenuOpen(entry: AppTypes.ActivityMemberEntry): boolean {
-    return this.inlineItemActionMenu?.scope === 'activityMember' && this.inlineItemActionMenu.id === entry.userId;
-  }
-
-  protected isActivityMemberActionMenuOpenUp(entry: AppTypes.ActivityMemberEntry): boolean {
-    return this.inlineItemActionMenu?.scope === 'activityMember'
-      && this.inlineItemActionMenu.id === entry.userId
-      && this.inlineItemActionMenu.openUp;
-  }
-
-  protected canApproveActivityMember(entry: AppTypes.ActivityMemberEntry): boolean {
-    if (this.selectedActivityMembersRow?.isAdmin !== true) {
-      return false;
-    }
-    return entry.status === 'pending' && (entry.pendingSource === 'member' || entry.requestKind === 'join');
-  }
-
-  protected canDeleteActivityMember(entry: AppTypes.ActivityMemberEntry): boolean {
-    if (this.selectedActivityMembersRow?.isAdmin === true) {
-      return true;
-    }
-    return entry.status === 'pending'
-      && entry.requestKind === 'invite'
-      && entry.invitedByActiveUser === true;
-  }
-
-  protected activityMemberMenuDeleteLabel(entry: AppTypes.ActivityMemberEntry): string {
-    if (entry.status === 'accepted') {
-      return 'Remove member';
-    }
-    if (entry.requestKind === 'join') {
-      return 'Reject request';
-    }
-    return 'Delete invitation';
-  }
-
-  protected activityMemberAge(entry: AppTypes.ActivityMemberEntry): number {
-    return this.users.find(user => user.id === entry.userId)?.age ?? 0;
-  }
-
-  protected activityMemberRoleLabel(entry: AppTypes.ActivityMemberEntry): string {
-    return entry.role === 'Admin' ? 'Admin' : 'Member';
-  }
-
-  protected activityMemberStatusLabel(entry: AppTypes.ActivityMemberEntry): string {
-    if (entry.status === 'accepted') {
-      return 'Approved';
-    }
-    if (entry.requestKind === 'join') {
-      return 'Waiting For Join Approval';
-    }
-    if (entry.pendingSource === 'admin') {
-      return 'Invitation Pending';
-    }
-    return 'Waiting For Admin Approval';
-  }
-
-  protected memberCardStatusIcon(entry: AppTypes.ActivityMemberEntry): string {
-    if (entry.status === 'accepted') {
-      return entry.role === 'Admin' ? 'admin_panel_settings' : 'person';
-    }
-    if (entry.requestKind === 'join' || entry.pendingSource === 'member') {
-      return 'pending_actions';
-    }
-    return 'outgoing_mail';
-  }
-
-  protected memberCardStatusClass(entry: AppTypes.ActivityMemberEntry): string {
-    if (entry.status === 'accepted') {
-      return entry.role === 'Admin' ? 'member-status-admin' : 'member-status-member';
-    }
-    if (entry.requestKind === 'join' || entry.pendingSource === 'member') {
-      return 'member-status-awaiting-approval';
-    }
-    return 'member-status-invite-pending';
-  }
-
-  protected memberCardToneClass(entry: AppTypes.ActivityMemberEntry): string {
-    if (entry.status === 'accepted') {
-      return entry.role === 'Admin' ? 'member-card-tone-admin' : 'member-card-tone-accepted';
-    }
-    if (entry.requestKind === 'join' || entry.pendingSource === 'member') {
-      return 'member-card-tone-awaiting-approval';
-    }
-    return 'member-card-tone-invite-pending';
-  }
-
-  protected memberCardStatusLabel(entry: AppTypes.ActivityMemberEntry): string {
-    if (entry.status === 'accepted') {
-      return entry.role === 'Admin' ? 'Admin' : 'Member';
-    }
-    return this.activityMemberStatusLabel(entry);
-  }
-
-  protected approveActivityMember(entry: AppTypes.ActivityMemberEntry, event?: Event): void {
-    event?.stopPropagation();
-    if (!this.selectedActivityMembersRowId || !this.canApproveActivityMember(entry)) {
-      return;
-    }
-    const nowIso = AppUtils.toIsoDateTime(new Date());
-    this.selectedActivityMembers = ActivityMembersBuilder.sortActivityMembersByActionTimeAsc(this.selectedActivityMembers.map(item =>
-      item.id === entry.id
-        ? {
-            ...item,
-            status: 'accepted',
-            pendingSource: null,
-            requestKind: null,
-            actionAtIso: nowIso
-          }
-        : item
-    ));
-    this.activityMembersByRowId[this.selectedActivityMembersRowId] = [...this.selectedActivityMembers];
-    this.persistSelectedActivityMembers();
-    this.inlineItemActionMenu = null;
-  }
-
-  protected removeActivityMember(entry: AppTypes.ActivityMemberEntry, event?: Event): void {
-    event?.stopPropagation();
-    if (!this.selectedActivityMembersRowId || !this.canDeleteActivityMember(entry)) {
-      return;
-    }
-    this.pendingActivityMemberDelete = entry;
-    this.inlineItemActionMenu = null;
-  }
-
-  private shouldOpenInlineItemMenuUp(event: Event): boolean {
-    if (this.isMobileView || typeof window === 'undefined') {
-      return false;
-    }
-    const trigger = event.currentTarget as HTMLElement | null;
-    const actionWrap = (trigger?.closest('.experience-item-actions') as HTMLElement | null) ?? trigger;
-    if (!actionWrap) {
-      return false;
-    }
-    const rect = actionWrap.getBoundingClientRect();
-    const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
-    const estimatedMenuHeight = 248;
-    const spaceBelow = viewportHeight - rect.bottom;
-    const spaceAbove = rect.top;
-    return spaceBelow < estimatedMenuHeight && spaceAbove > spaceBelow;
-  }
-
-  // ── Rates editor state ────────────────────────────────────────────────────
-
-  protected openActivityRateEditor(row: AppTypes.ActivityListRow, event?: Event): void {
-    event?.stopPropagation();
-    if (row.type !== 'rates') {
-      return;
-    }
-    if (this.isPairReceivedRateRow(row)) {
-      return;
-    }
-    this.cancelActivityRateEditorCloseTransition();
-    const wasOpen = this.isActivityRateEditorOpen();
-    if (this.selectedActivityRateId === row.id) {
-      this.clearActivityRateEditorState();
-      return;
-    }
-    const scrollElement = this.activitiesListScrollElement();
-    if (!wasOpen) {
-      this.activityRateEditorOpenScrollTop = scrollElement ? scrollElement.scrollTop : null;
-    }
-    this.selectedActivityRateId = row.id;
-    this.activitiesContext.setActivitiesSelectedRateId(row.id);
-    this.activityRateEditorClosing = false;
-    this.cancelActivityRateEditorLiftAnimation();
-    this.runAfterActivitiesNextPaint(() => {
-      if (!this.isActivityRateEditorOpen() || this.selectedActivityRateId !== row.id) {
-        return;
-      }
-      this.smoothRevealSelectedRateRowWhenNeeded(row.id);
-    });
-  }
-
-  protected closeActivityRateEditorFromUserScroll(): void {
-    if (!this.isActivityRateEditorOpen()) {
-      return;
-    }
-    this.clearActivityRateEditorState(true);
-  }
-
-  protected isActivityRateEditorDockVisible(): boolean {
-    if (this.isRatesFullscreenModeActive()) {
-      if (this.isActivitiesRatesFullscreenReadOnlyNavigation()) {
-        return false;
-      }
-      return this.currentActivitiesRatesFullscreenRow() !== null;
-    }
-    return this.activitiesPrimaryFilter === 'rates' && (!!this.selectedActivityRateId || this.activityRateEditorClosing);
-  }
-
-  protected shouldRenderActivityRateEditorDock(): boolean {
-    if (this.isCalendarLayoutView() || this.activitiesPrimaryFilter !== 'rates') {
-      return false;
-    }
-    if (!this.isRatesFullscreenModeActive()) {
-      return true;
-    }
-    if (this.isActivitiesRatesFullscreenReadOnlyNavigation()) {
-      return false;
-    }
-    return this.currentActivitiesRatesFullscreenRow() !== null;
-  }
-
-  protected isActivityRateEditorOpen(): boolean {
-    if (this.isRatesFullscreenModeActive()) {
-      return true;
-    }
-    return this.activitiesPrimaryFilter === 'rates' && !!this.selectedActivityRateId && !this.activityRateEditorClosing;
-  }
-
-  protected isActivityRateEditorClosing(): boolean {
-    return this.activityRateEditorClosing;
-  }
-
-  protected activityRateEditorSpacerHeight(): string | null {
-    if (this.activitiesPrimaryFilter !== 'rates' || this.isCalendarLayoutView() || this.isRatesFullscreenModeActive()) {
-      return null;
-    }
-    return this.isActivityRateEditorDockVisible()
-      ? 'calc(5.2rem + env(safe-area-inset-bottom))'
-      : '0px';
-  }
-
-  protected isSelectedActivityRateRow(row: AppTypes.ActivityListRow): boolean {
-    return row.type === 'rates' && this.isActivityRateEditorOpen() && this.selectedActivityRateId === row.id;
-  }
-
-  protected selectedActivityRateModeLabel(): string {
-    const row = this.selectedActivityRateRow();
-    if (!row || row.type !== 'rates') {
-      return this.activitiesRateFilter.startsWith('individual') ? 'Single' : 'Pair';
-    }
-    const item = row.source as RateMenuItem;
-    return item.mode === 'pair' ? 'Pair' : 'Single';
-  }
-
-  protected selectedActivityRateTitle(): string {
-    return this.selectedActivityRateRow()?.title ?? 'Rate';
-  }
-
-  protected selectedActivityRateBarLabel(): string | null {
-    if (this.isRatesFullscreenModeActive()) {
-      return null;
-    }
-    return `Rate · ${this.selectedActivityRateModeLabel()} · ${this.selectedActivityRateTitle()}`;
-  }
-
-  protected selectedActivityRateValue(): number {
-    const row = this.isRatesFullscreenModeActive()
-      ? this.currentActivitiesRatesFullscreenRow()
-      : this.selectedActivityRateRow();
-    return row ? this.activityOwnRatingValue(row) : 0;
-  }
-
-  protected activityRateBarConfig(): RatingStarBarConfig {
-    return {
-      scale: this.activityRatingScale,
-      readonly: this.isSelectedActivityRateReadOnly(),
-      label: this.selectedActivityRateBarLabel(),
-      dock: {
-        enabled: !this.isRatesFullscreenModeActive(),
-        state: this.isActivityRateEditorClosing()
-          ? 'closing'
-          : this.isActivityRateEditorOpen()
-            ? 'open'
-            : 'hidden'
-      }
-    };
-  }
-
-  protected get activitiesRateSmartListItemTemplate(): TemplateRef<SmartListItemTemplateContext<AppTypes.ActivityListRow, ActivitiesSmartListFilters>> | null {
-    return this.activitiesRateFilter.startsWith('pair')
-      ? (this.activitiesRatePairSmartListItemTemplateRef ?? null)
-      : (this.activitiesRateSingleSmartListItemTemplateRef ?? null);
-  }
-
-  protected get activitiesActiveSmartListItemTemplate(): TemplateRef<SmartListItemTemplateContext<AppTypes.ActivityListRow, ActivitiesSmartListFilters>> | null {
-    if (this.activitiesPrimaryFilter === 'rates') {
-      return this.activitiesRateSmartListItemTemplate;
-    }
-    if (this.activitiesPrimaryFilter === 'chats') {
-      return this.activitiesChatSmartListItemTemplateRef ?? null;
-    }
-    return this.activitiesEventSmartListItemTemplateRef ?? null;
-  }
-
-  protected isSelectedActivityRateReadOnly(): boolean {
-    const row = this.isRatesFullscreenModeActive()
-      ? this.currentActivitiesRatesFullscreenRow()
-      : this.selectedActivityRateRow();
-    return !!row && this.isPairReceivedRateRow(row);
-  }
-
-  protected isSelectedActivityRateScore(score: number): boolean {
-    const row = this.selectedActivityRateRow();
-    if (!row) {
-      return false;
-    }
-    return score <= this.activityOwnRatingValue(row);
-  }
-
-  protected setSelectedActivityOwnRating(score: number): void {
-    const normalized = this.normalizeRateScore(score);
-    const row = this.isRatesFullscreenModeActive()
-      ? this.currentActivitiesRatesFullscreenRow()
-      : this.selectedActivityRateRow();
-    if (!row || row.type !== 'rates') {
-      return;
-    }
-    if (this.isPairReceivedRateRow(row)) {
-      return;
-    }
-    this.selectedActivityRateId = row.id;
-    this.activitiesContext.setActivitiesSelectedRateId(row.id);
-    this.activityRateDraftById[row.id] = normalized;
-    const rateItem = row.source as RateMenuItem;
-    const nextDirection = this.pendingDirectionAfterRating(rateItem);
-    if (nextDirection) {
-      this.pendingActivityRateDirectionOverrideById[rateItem.id] = nextDirection;
-    }
-    this.ratesService.recordActivityRate(
-      this.activeUser.id,
-      rateItem,
-      normalized,
-      nextDirection ?? this.displayedRateDirection(rateItem)
-    );
-    if (!this.isRatesFullscreenModeActive()) {
-      this.triggerActivityRateBlinks(row.id);
-      return;
-    }
-    this.triggerActivityRateBlinks(row.id);
-  }
-
-  private clearActivityRateEditorState(preserveScrollPosition = false): void {
-    if (this.isRatesFullscreenModeActive()) {
-      return;
-    }
-    if (!this.selectedActivityRateId && !this.activityRateEditorClosing) {
-      return;
-    }
-    if (this.activityRateEditorClosing) {
-      return;
-    }
-    const scrollElement = this.activitiesListScrollElement();
-    const restoreTop = this.activityRateEditorOpenScrollTop;
-    const hasRestoreTop = Number.isFinite(restoreTop as number);
-    const shouldReverseLift =
-      !preserveScrollPosition &&
-      this.activitiesPrimaryFilter === 'rates' &&
-      !!scrollElement &&
-      (hasRestoreTop
-        ? scrollElement.scrollTop > (restoreTop as number) + 0.5
-        : this.lastActivityRateEditorLiftDelta > 0);
-    const previousInlineSnapType = shouldReverseLift ? scrollElement.style.scrollSnapType : '';
-    const reverseDelta = this.lastActivityRateEditorLiftDelta;
-    this.activityRateEditorClosing = true;
-    this.cancelActivityRateEditorCloseTransition();
-    this.cancelActivityRateEditorLiftAnimation();
-    this.activityRateEditorCloseTimer = setTimeout(() => {
-      this.activityRateEditorCloseTimer = null;
-      this.activityRateEditorClosing = false;
-      this.selectedActivityRateId = null;
-      this.activitiesContext.setActivitiesSelectedRateId(null);
-      this.lastRateIndicatorPulseRowId = null;
-      this.lastActivityRateEditorLiftDelta = 0;
-      this.activityRateEditorOpenScrollTop = null;
-    }, this.activityRateEditorSlideDurationMs);
-    if (!shouldReverseLift || !scrollElement) {
-      return;
-    }
-    this.runAfterActivitiesRender(() => {
-      const targetTop = Number.isFinite(restoreTop as number)
-        ? Math.max(0, restoreTop as number)
-        : Math.max(0, scrollElement.scrollTop - reverseDelta);
-      scrollElement.style.scrollSnapType = 'none';
-      this.animateActivityRateEditorScrollTo(scrollElement, targetTop, () => {
-        scrollElement.style.scrollSnapType = previousInlineSnapType;
-      });
-    });
-  }
-
-  private cancelActivityRateEditorCloseTransition(): void {
-    if (this.activityRateEditorCloseTimer) {
-      clearTimeout(this.activityRateEditorCloseTimer);
-      this.activityRateEditorCloseTimer = null;
-    }
-  }
-
-  private cancelActivityRateEditorLiftAnimation(): void {
-    if (this.activityRateEditorLiftAnimationFrame !== null && typeof globalThis.cancelAnimationFrame === 'function') {
-      globalThis.cancelAnimationFrame(this.activityRateEditorLiftAnimationFrame);
-    }
-    this.activityRateEditorLiftAnimationFrame = null;
+    this.bumpActivitiesEventCardRevision();
   }
 
   private maybeDismissActivityRateEditor(target: Element): void {
-    if (!this.isActivityRateEditorOpen()) {
+    if (!this.activitiesRates.isEditorOpen()) {
       return;
     }
     if (
@@ -2985,10 +1521,10 @@ export class ActivitiesPopupComponent implements OnDestroy {
     ) {
       return;
     }
-    this.clearActivityRateEditorState();
+    this.activitiesRates.clearEditorState();
   }
 
-  private runAfterActivitiesRender(task: () => void): void {
+  protected runAfterActivitiesRender(task: () => void): void {
     if (typeof globalThis.requestAnimationFrame === 'function') {
       globalThis.requestAnimationFrame(() => globalThis.requestAnimationFrame(task));
       return;
@@ -2996,507 +1532,13 @@ export class ActivitiesPopupComponent implements OnDestroy {
     setTimeout(task, 0);
   }
 
-  private runAfterActivitiesNextPaint(task: () => void): void {
+  protected runAfterActivitiesNextPaint(task: () => void): void {
     if (typeof globalThis.requestAnimationFrame === 'function') {
       globalThis.requestAnimationFrame(task);
       return;
     }
     setTimeout(task, 0);
   }
-
-  private smoothRevealSelectedRateRowWhenNeeded(rowId: string, attempt = 0): void {
-    if (!this.isActivityRateEditorOpen()) {
-      return;
-    }
-    const scrollElement = this.activitiesListScrollElement();
-    if (!scrollElement) {
-      return;
-    }
-    const targetRow = scrollElement.querySelector<HTMLElement>(`[data-activity-rate-row-id="${rowId}"]`);
-    if (!targetRow) {
-      return;
-    }
-    const rateRows = Array.from(scrollElement.querySelectorAll<HTMLElement>('.activities-rate-profile-card.activities-row-item'));
-    const rowTop = targetRow.offsetTop;
-    const sameRowCards = rateRows.filter(card => Math.abs(card.offsetTop - rowTop) <= 1);
-    const dock = this.activitiesSmartList?.paginationHostElement() ?? null;
-    const scrollRect = scrollElement.getBoundingClientRect();
-    const rowBottom = (sameRowCards.length > 0 ? sameRowCards : [targetRow]).reduce((maxBottom, card) => {
-      return Math.max(maxBottom, card.getBoundingClientRect().bottom);
-    }, targetRow.getBoundingClientRect().bottom);
-    const dockHeight = Math.max(72, dock?.offsetHeight ?? 72);
-    const dockTop = scrollRect.bottom - dockHeight;
-    const breathingRoom = this.isMobileView ? 6 : 8;
-    const revealBottom = dockTop - breathingRoom;
-    if (rowBottom <= revealBottom) {
-      if (!Number.isFinite(this.activityRateEditorOpenScrollTop as number)) {
-        this.lastActivityRateEditorLiftDelta = 0;
-      }
-      return;
-    }
-    const delta = rowBottom - revealBottom;
-    const startTop = scrollElement.scrollTop;
-    const targetTop = startTop + delta;
-    if (targetTop <= scrollElement.scrollTop + 0.5) {
-      this.lastActivityRateEditorLiftDelta = 0;
-      if (attempt < 1) {
-        setTimeout(() => this.smoothRevealSelectedRateRowWhenNeeded(rowId, attempt + 1), 120);
-      }
-      return;
-    }
-    const previousSnapType = scrollElement.style.scrollSnapType;
-    scrollElement.style.scrollSnapType = 'none';
-    this.animateActivityRateEditorScrollTo(scrollElement, targetTop, () => {
-      this.lastActivityRateEditorLiftDelta = Math.max(0, scrollElement.scrollTop - startTop);
-      scrollElement.style.scrollSnapType = previousSnapType;
-    });
-  }
-
-  private animateActivityRateEditorScrollTo(scrollElement: HTMLElement, targetTop: number, onComplete?: () => void): void {
-    const startTop = scrollElement.scrollTop;
-    const delta = targetTop - startTop;
-    if (Math.abs(delta) <= 0.5) {
-      scrollElement.scrollTop = targetTop;
-      onComplete?.();
-      return;
-    }
-    this.cancelActivityRateEditorLiftAnimation();
-    if (typeof globalThis.requestAnimationFrame !== 'function' || typeof globalThis.performance === 'undefined') {
-      scrollElement.scrollTop = targetTop;
-      onComplete?.();
-      return;
-    }
-    const startTime = globalThis.performance.now();
-    const step = (now: number) => {
-      const elapsed = now - startTime;
-      const progress = Math.min(1, elapsed / this.activityRateEditorSlideDurationMs);
-      scrollElement.scrollTop = startTop + (delta * this.activityRateEditorLiftEasedProgress(progress));
-      if (progress < 1) {
-        this.activityRateEditorLiftAnimationFrame = globalThis.requestAnimationFrame(step);
-        return;
-      }
-      this.activityRateEditorLiftAnimationFrame = null;
-      scrollElement.scrollTop = targetTop;
-      onComplete?.();
-    };
-    step(startTime);
-  }
-
-  private activityRateEditorLiftEasedProgress(progress: number): number {
-    return this.sampleCubicBezierYForX(AppUtils.clampNumber(progress, 0, 1), 0.22, 1, 0.36, 1);
-  }
-
-  private sampleCubicBezierYForX(x: number, x1: number, y1: number, x2: number, y2: number): number {
-    if (x <= 0) {
-      return 0;
-    }
-    if (x >= 1) {
-      return 1;
-    }
-
-    const cx = 3 * x1;
-    const bx = 3 * (x2 - x1) - cx;
-    const ax = 1 - cx - bx;
-    const cy = 3 * y1;
-    const by = 3 * (y2 - y1) - cy;
-    const ay = 1 - cy - by;
-
-    const sampleCurveX = (t: number) => ((ax * t + bx) * t + cx) * t;
-    const sampleCurveY = (t: number) => ((ay * t + by) * t + cy) * t;
-    const sampleCurveDerivativeX = (t: number) => (3 * ax * t + 2 * bx) * t + cx;
-
-    let t = x;
-    for (let index = 0; index < 4; index += 1) {
-      const currentX = sampleCurveX(t) - x;
-      const derivative = sampleCurveDerivativeX(t);
-      if (Math.abs(currentX) < 0.0001 || Math.abs(derivative) < 0.0001) {
-        break;
-      }
-      t -= currentX / derivative;
-    }
-
-    let lowerBound = 0;
-    let upperBound = 1;
-    while (upperBound - lowerBound > 0.0001) {
-      const currentX = sampleCurveX(t);
-      if (Math.abs(currentX - x) < 0.0001) {
-        break;
-      }
-      if (currentX > x) {
-        upperBound = t;
-      } else {
-        lowerBound = t;
-      }
-      t = (lowerBound + upperBound) / 2;
-    }
-
-    return sampleCurveY(AppUtils.clampNumber(t, 0, 1));
-  }
-
-  protected activitySingleCard(
-    row: AppTypes.ActivityListRow,
-    options?: {
-      groupLabel?: string | null;
-      presentation?: SingleCardData['presentation'];
-      state?: SingleCardData['state'];
-    }
-  ): SingleCardData {
-    const presentation = options?.presentation ?? 'list';
-    return buildSingleRateCardData({
-      ...this.rateCardDataInput(row, options),
-      badge: this.activityRateBadgeConfig(row, {
-        layout: 'floating',
-        interactive: presentation !== 'fullscreen',
-        forceActive: presentation === 'fullscreen'
-      })
-    });
-  }
-
-  protected activityPairCard(
-    row: AppTypes.ActivityListRow,
-    options?: {
-      groupLabel?: string | null;
-      presentation?: PairCardData['presentation'];
-      state?: PairCardData['state'];
-    }
-  ): PairCardData {
-    const presentation = options?.presentation ?? 'list';
-    return buildPairRateCardData({
-      ...this.rateCardDataInput(row, options),
-      badge: this.activityRateBadgeConfig(row, {
-        layout: presentation === 'fullscreen' ? 'pair-overlap' : 'between',
-        interactive: presentation !== 'fullscreen',
-        forceActive: presentation === 'fullscreen'
-      })
-    });
-  }
-
-  protected isPairRateRow(row: AppTypes.ActivityListRow): boolean {
-    const rate = row.source as RateMenuItem;
-    return rate.mode === 'pair';
-  }
-
-  protected isPairReceivedRateRow(row: AppTypes.ActivityListRow): boolean {
-    const rate = row.source as RateMenuItem;
-    return rate.mode === 'pair' && this.displayedRateDirection(rate) === 'received';
-  }
-
-  private rateCardDataInput(
-    row: AppTypes.ActivityListRow,
-    options?: {
-      groupLabel?: string | null;
-      presentation?: SingleCardData['presentation'] | PairCardData['presentation'];
-      state?: SingleCardData['state'] | PairCardData['state'];
-    }
-  ): RateCardDataInput {
-    const item = row.source as RateMenuItem;
-    const presentation = options?.presentation ?? 'list';
-    const rateDisplay = row.rateDisplay;
-
-    return {
-      rowId: row.id,
-      groupLabel: options?.groupLabel ?? null,
-      title: row.title,
-      distanceKm: row.distanceKm,
-      mode: item.mode,
-      direction: this.displayedRateDirection(item),
-      eventName: item.eventName,
-      happenedOnLabel: rateDisplay?.happenedOnLabel ?? 'Unknown',
-      primaryUser: this.toRateCardPerson(rateDisplay?.primaryUser) ?? this.toRateCardPerson(this.resolveRatePrimaryUser(row)),
-      pairUsers: this.rateCardPairUsers(row),
-      availableUsers: this.users
-        .map(user => this.toRateCardPerson(user))
-        .filter((user): user is RateCardPerson => Boolean(user)),
-      singleImageUrls: rateDisplay?.imageUrls?.length ? rateDisplay.imageUrls : undefined,
-      pairSlots: this.rateCardPairSlots(row),
-      fallbackGender: this.activeUser.gender,
-      stackClasses: this.rateCardStackClasses(row),
-      presentation,
-      state: options?.state ?? 'default',
-      fullscreenSplitEnabled: presentation === 'fullscreen'
-        ? !this.activitiesSmartList?.isFullscreenPaginationAnimating()
-        : false
-    };
-  }
-
-  private rateCardStackClasses(row: AppTypes.ActivityListRow): string[] {
-    const item = row.source as RateMenuItem;
-    const directionClass = this.displayedRateDirection(item);
-    return [
-      item.mode === 'pair' ? 'activities-rate-profile-stack-pair' : 'activities-rate-profile-stack-single',
-      `activities-rate-profile-stack-${directionClass}`
-    ];
-  }
-
-  private rateCardPairSlots(row: AppTypes.ActivityListRow): PairCardData['slots'] | undefined {
-    if (!row.rateDisplay?.pairSlots?.length) {
-      return undefined;
-    }
-    return row.rateDisplay.pairSlots.map(slot => ({
-      key: slot.key,
-      label: slot.label,
-      tone: slot.tone,
-      slides: slot.slides.map(slide => ({ ...slide }))
-    }));
-  }
-
-  private rateCardPairUsers(row: AppTypes.ActivityListRow): RateCardPerson[] {
-    if (row.type !== 'rates') {
-      return [];
-    }
-    const item = row.source as RateMenuItem;
-    return [item.userId, item.secondaryUserId]
-      .filter((userId): userId is string => typeof userId === 'string' && userId.length > 0)
-      .map(userId => this.users.find(user => user.id === userId) ?? null)
-      .map(user => this.toRateCardPerson(user))
-      .filter((user): user is RateCardPerson => Boolean(user));
-  }
-
-  private resolveRatePrimaryUser(row: AppTypes.ActivityListRow): DemoUser | null {
-    if (row.type !== 'rates') {
-      return null;
-    }
-    const item = row.source as RateMenuItem;
-    return this.users.find(user => user.id === item.userId) ?? null;
-  }
-
-  private toRateCardPerson(
-    user: AppTypes.ActivityRateDisplayUser | DemoUser | null | undefined
-  ): RateCardPerson | null {
-    if (!user) {
-      return null;
-    }
-    return {
-      id: user.id,
-      name: user.name,
-      age: user.age,
-      city: user.city,
-      gender: user.gender
-    };
-  }
-
-  // ── Rate badge ─────────────────────────────────────────────────────────────
-
-  protected activityRateBadgeLabel(row: AppTypes.ActivityListRow): string {
-    const ownLabel = this.activityOwnRatingLabel(row);
-    return ownLabel ? ownLabel : 'Rate';
-  }
-
-  protected activityRateBadgeAriaLabel(row: AppTypes.ActivityListRow): string {
-    if (this.isPairReceivedRateRow(row)) {
-      return 'Received pair rating';
-    }
-    return this.isActivityRatePending(row) ? 'Add your rating' : 'Edit your rating';
-  }
-
-  protected activityRateBadgeConfig(
-    row: AppTypes.ActivityListRow,
-    options?: {
-      layout?: CardBadgeConfig['layout'];
-      interactive?: boolean;
-      forceActive?: boolean;
-    }
-  ): CardBadgeConfig {
-    return {
-      label: this.activityRateBadgeLabel(row),
-      ariaLabel: this.activityRateBadgeAriaLabel(row),
-      active: options?.forceActive ? true : this.isSelectedActivityRateRow(row),
-      pending: this.isActivityRatePending(row),
-      disabled: this.isPairReceivedRateRow(row),
-      blink: this.isActivityRateBlinking(row),
-      interactive: options?.interactive ?? true,
-      layout: options?.layout ?? 'floating'
-    };
-  }
-
-  protected activityOwnRatingValue(row: AppTypes.ActivityListRow): number {
-    if (row.type !== 'rates') {
-      return 0;
-    }
-    const item = row.source as RateMenuItem;
-    const drafted = this.activityRateDraftById[item.id];
-    if (Number.isFinite(drafted)) {
-      return this.normalizeRateScore(drafted);
-    }
-    if (!this.hasOwnRating(item)) {
-      if (this.displayedRateDirection(item) === 'received' && item.mode === 'pair') {
-        return this.pairReceivedAverageScore(item);
-      }
-      return 0;
-    }
-    return this.rateOwnScore(item);
-  }
-
-  protected activityOwnRatingLabel(row: AppTypes.ActivityListRow): string {
-    const value = this.activityOwnRatingValue(row);
-    return value > 0 ? `${value}` : '';
-  }
-
-  protected isActivityRatePending(row: AppTypes.ActivityListRow): boolean {
-    if (row.type !== 'rates') {
-      return false;
-    }
-    const item = row.source as RateMenuItem;
-    if (this.displayedRateDirection(item) === 'met') {
-      return false;
-    }
-    if (!this.hasOwnRating(item) && this.displayedRateDirection(item) === 'received' && item.mode === 'pair') {
-      return this.pairReceivedAverageScore(item) <= 0;
-    }
-    return !this.hasOwnRating(item);
-  }
-
-  protected isActivityRateBlinking(row: AppTypes.ActivityListRow): boolean {
-    const until = this.activityRateBlinkUntilByRowId[row.id] ?? 0;
-    return until > Date.now();
-  }
-
-  private triggerActivityRateBlinks(rowId: string, onStart?: () => void): void {
-    const durationMs = 420;
-    const existingTimer = this.activityRateBlinkTimeoutByRowId[rowId];
-    if (existingTimer) {
-      clearTimeout(existingTimer);
-    }
-    delete this.activityRateBlinkUntilByRowId[rowId];
-    this.cdr.markForCheck();
-
-    const startBlink = () => {
-      this.activityRateBlinkUntilByRowId[rowId] = Date.now() + durationMs;
-      onStart?.();
-      this.cdr.markForCheck();
-      this.activityRateBlinkTimeoutByRowId[rowId] = setTimeout(() => {
-        if ((this.activityRateBlinkUntilByRowId[rowId] ?? 0) <= Date.now()) {
-          delete this.activityRateBlinkUntilByRowId[rowId];
-        }
-        const timer = this.activityRateBlinkTimeoutByRowId[rowId];
-        if (timer) {
-          clearTimeout(timer);
-        }
-        delete this.activityRateBlinkTimeoutByRowId[rowId];
-        this.cdr.markForCheck();
-      }, durationMs + 32);
-    };
-
-    if (typeof globalThis.requestAnimationFrame === 'function') {
-      globalThis.requestAnimationFrame(() => startBlink());
-      return;
-    }
-    setTimeout(() => startBlink(), 0);
-  }
-
-  // ── Rates fullscreen state ────────────────────────────────────────────────
-
-  protected isActivitiesRatesFullscreenReadOnlyNavigation(): boolean {
-    return this.isRatesFullscreenModeActive() && this.activitiesRateFilter === 'pair-received';
-  }
-
-  protected currentActivitiesRatesFullscreenRow(): AppTypes.ActivityListRow | null {
-    if (!this.isRatesFullscreenModeActive()) {
-      return null;
-    }
-    const smartListRow = this.activitiesSmartList?.cursorItem();
-    if (smartListRow?.type === 'rates') {
-      return smartListRow;
-    }
-    return null;
-  }
-
-  protected toggleActivitiesRatesFullscreenMode(event: Event): void {
-    event.stopPropagation();
-    if (!this.shouldShowRatesFullscreenToggle()) {
-      return;
-    }
-    if (this.activitiesRatesFullscreenMode) {
-      this.disableActivitiesRatesFullscreenMode();
-      return;
-    }
-    this.resetActivityRateEditorStateForFullscreenEntry();
-    this.activitiesRatesFullscreenMode = true;
-    this.activitiesContext.setActivitiesRatesFullscreenMode(true);
-    this.runAfterActivitiesRender(() => {
-      this.syncActivitiesRatesFullscreenSelection();
-      this.cdr.markForCheck();
-    });
-    this.cdr.markForCheck();
-  }
-
-  private disableActivitiesRatesFullscreenMode(): void {
-    if (!this.activitiesRatesFullscreenMode) {
-      return;
-    }
-    const selectedRateId = this.selectedActivityRateId;
-    this.activitiesRatesFullscreenMode = false;
-    this.activityRateEditorClosing = false;
-    this.lastActivityRateEditorLiftDelta = 0;
-    this.lastRateIndicatorPulseRowId = null;
-    this.activitiesContext.setActivitiesRatesFullscreenMode(false);
-    this.activitiesContext.setActivitiesSelectedRateId(this.selectedActivityRateId);
-    this.cdr.markForCheck();
-    if (!selectedRateId) {
-      return;
-    }
-    this.runAfterActivitiesRender(() => {
-      this.syncActivitiesRatesListPositionToRow(selectedRateId);
-      this.smoothRevealSelectedRateRowWhenNeeded(selectedRateId);
-    });
-  }
-
-  private syncActivitiesRatesFullscreenSelection(): void {
-    if (!this.activitiesRatesFullscreenMode) {
-      return;
-    }
-    const currentRow = this.currentActivitiesRatesFullscreenRow();
-    if (!currentRow) {
-      this.selectedActivityRateId = null;
-      this.activitiesContext.setActivitiesSelectedRateId(null);
-      return;
-    }
-    this.selectedActivityRateId = currentRow.id;
-    this.activitiesContext.setActivitiesSelectedRateId(this.selectedActivityRateId);
-  }
-
-  private resetActivityRateEditorStateForFullscreenEntry(): void {
-    this.cancelActivityRateEditorCloseTransition();
-    this.cancelActivityRateEditorLiftAnimation();
-    this.activityRateEditorClosing = false;
-    this.activityRateEditorOpenScrollTop = null;
-    this.lastActivityRateEditorLiftDelta = 0;
-    this.lastRateIndicatorPulseRowId = null;
-    if (!this.selectedActivityRateId) {
-      return;
-    }
-    this.selectedActivityRateId = null;
-    this.activitiesContext.setActivitiesSelectedRateId(null);
-  }
-
-  private syncActivitiesRatesListPositionToRow(rowId: string): void {
-    const scrollElement = this.activitiesListScrollElement();
-    if (!scrollElement) {
-      return;
-    }
-    const targetRow = scrollElement.querySelector<HTMLElement>(`[data-activity-rate-row-id="${rowId}"]`);
-    if (!targetRow) {
-      return;
-    }
-    const stickyHeaderHeight = scrollElement.querySelector<HTMLElement>('.smart-list__sticky')?.offsetHeight ?? 0;
-    const targetTop = Math.max(0, targetRow.offsetTop - stickyHeaderHeight - (this.isMobileView ? 4 : 6));
-    if (Math.abs(scrollElement.scrollTop - targetTop) <= 1) {
-      return;
-    }
-    const previousSnapType = scrollElement.style.scrollSnapType;
-    scrollElement.style.scrollSnapType = 'none';
-    scrollElement.scrollTop = targetTop;
-    const releaseSnap = () => {
-      scrollElement.style.scrollSnapType = previousSnapType;
-      this.cdr.markForCheck();
-    };
-    if (typeof globalThis.requestAnimationFrame === 'function') {
-      globalThis.requestAnimationFrame(() => releaseSnap());
-      return;
-    }
-    setTimeout(releaseSnap, 0);
-  }
-
   // =========================================================================
   // Calendar – SmartList config helpers
   // =========================================================================
@@ -3511,7 +1553,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   // SmartList state reset
   // =========================================================================
 
-  private resetActivitiesScroll(): void {
+  protected resetActivitiesScroll(): void {
     this.activitiesSmartList?.clearHostedLoading();
     this.visibleActivityRows = [];
     this.activitiesStickyValue = '';
@@ -3526,6 +1568,10 @@ export class ActivitiesPopupComponent implements OnDestroy {
   // =========================================================================
 
   protected onActivitiesPopupSurfaceClick(event: MouseEvent): void {
+    const target = event.target;
+    if (target instanceof Element && this.isInsideActivitiesFilterSurface(target)) {
+      return;
+    }
     if (
       this.showActivitiesViewPicker
       || this.showActivitiesSecondaryPicker
@@ -3548,7 +1594,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
       this.inlineItemActionMenu = null;
       this.cdr.markForCheck();
     }
-    const target = event.target;
     if (!(target instanceof Element)) {
       return;
     }
@@ -3559,354 +1604,21 @@ export class ActivitiesPopupComponent implements OnDestroy {
   // Private helpers
   // =========================================================================
 
-  private isHostingPublished(id: string): boolean {
+  protected isHostingPublished(id: string): boolean {
     return this.publishedHostingIds.has(id);
+  }
+
+  private isInsideActivitiesFilterSurface(target: Element): boolean {
+    return !!target.closest(
+      '.popup-filter-picker, .popup-filter-panel, .activities-view-picker-panel, .popup-mobile-filter-picker, .popup-mobile-filter-panel, .popup-view-fab'
+    );
   }
 
   private refreshRateItems(): void {
     this.rateItems = this.ratesService.peekRateItemsByUser(this.activeUser.id);
   }
 
-  private chatChannelType(item: ChatMenuItem): AppTypes.ChatChannelType {
-    if (item.channelType === 'mainEvent' || item.channelType === 'optionalSubEvent' || item.channelType === 'groupSubEvent') {
-      return item.channelType;
-    }
-    return 'general';
-  }
-
-  private chatItemsForActivities(): ChatMenuItem[] {
-    return this.chatItems.map(item => ({
-      ...item,
-      memberIds: [...(item.memberIds ?? [])],
-      channelType: this.chatChannelType(item),
-      unread: Math.max(0, Math.trunc(Number(item.unread) || 0))
-    }));
-  }
-
-  private buildContextualChatChannels(): ChatMenuItem[] {
-    const source = this.resolveChatFocusEventSource();
-    if (!source) {
-      return [];
-    }
-    const eventId = source.id;
-    const eventTitle = source.title.trim() || 'Event';
-    const subEvents = this.chatEventSubEvents(eventId);
-    const channels: ChatMenuItem[] = [
-      this.buildMainEventContextChat(eventId, eventTitle)
-    ];
-    if (subEvents.length === 0) {
-      return channels;
-    }
-
-    for (const [index, subEvent] of subEvents.entries()) {
-      const stageLabel = this.chatStageLabel(index);
-      if (subEvent.optional) {
-        if (!this.isActiveUserAttachedToOptionalSubEvent(eventId, subEvent.id)) {
-          continue;
-        }
-        channels.push(this.buildOptionalSubEventContextChat(eventId, eventTitle, subEvent, stageLabel));
-        continue;
-      }
-      const groups = this.subEventGroupsForStage(subEvent);
-      if (groups.length === 0) {
-        continue;
-      }
-      const activeGroup = this.activeUserTournamentGroup(eventId, subEvent, groups);
-      if (!activeGroup) {
-        continue;
-      }
-      channels.push(this.buildGroupSubEventContextChat(eventId, eventTitle, subEvent, activeGroup, stageLabel, groups));
-    }
-    return channels;
-  }
-
-  private buildMainEventContextChat(eventId: string, eventTitle: string): ChatMenuItem {
-    const memberIds = this.mainEventContextMemberIds(eventId);
-    return this.buildContextChatItem({
-      id: `c-context-main-${eventId}`,
-      title: `${eventTitle} · Main Event`,
-      lastMessage: `Main event channel for ${eventTitle}.`,
-      eventId,
-      subEventId: '',
-      groupId: '',
-      channelType: 'mainEvent',
-      memberIds
-    });
-  }
-
-  private buildOptionalSubEventContextChat(
-    eventId: string,
-    eventTitle: string,
-    subEvent: AppTypes.SubEventFormItem,
-    stageLabel: string
-  ): ChatMenuItem {
-    const acceptedMemberIds = this.optionalSubEventAcceptedMemberIds(eventId, subEvent.id);
-    const target = this.contextualSubEventMemberTargets(subEvent);
-    const memberIds = this.contextualChatMemberIds(
-      `chat-optional:${eventId}:${subEvent.id}`,
-      acceptedMemberIds,
-      target.accepted
-    );
-    return this.buildContextChatItem({
-      id: `c-context-optional-${eventId}-${subEvent.id}`,
-      title: `${subEvent.name || 'Optional Sub Event'} · Optional`,
-      lastMessage: `${stageLabel} optional channel in ${eventTitle}.`,
-      eventId,
-      subEventId: subEvent.id,
-      groupId: '',
-      channelType: 'optionalSubEvent',
-      memberIds
-    });
-  }
-
-  private buildGroupSubEventContextChat(
-    eventId: string,
-    eventTitle: string,
-    subEvent: AppTypes.SubEventFormItem,
-    group: AppTypes.SubEventGroupItem,
-    stageLabel: string,
-    groups: AppTypes.SubEventGroupItem[]
-  ): ChatMenuItem {
-    const acceptedMemberIds = this.tournamentGroupAcceptedMemberIds(eventId, subEvent.id, group.id, groups);
-    const target = this.contextualSubEventMemberTargets(subEvent, group, groups);
-    const memberIds = this.contextualChatMemberIds(
-      `chat-group:${eventId}:${subEvent.id}:${group.id}`,
-      acceptedMemberIds,
-      target.accepted
-    );
-    return this.buildContextChatItem({
-      id: `c-context-group-${eventId}-${subEvent.id}-${group.id}`,
-      title: `${group.name} · Group Channel`,
-      lastMessage: `${stageLabel} group channel in ${eventTitle}.`,
-      eventId,
-      subEventId: subEvent.id,
-      groupId: group.id,
-      channelType: 'groupSubEvent',
-      memberIds
-    });
-  }
-
-  private buildContextChatItem(input: {
-    id: string;
-    title: string;
-    lastMessage: string;
-    eventId: string;
-    subEventId: string;
-    groupId: string;
-    channelType: AppTypes.ChatChannelType;
-    memberIds: string[];
-  }): ChatMenuItem {
-    const memberIds = this.uniqueUserIds([this.activeUser.id, ...input.memberIds]);
-    const senderCandidates = memberIds.filter(id => id !== this.activeUser.id);
-    const lastSenderId = senderCandidates[AppUtils.hashText(`chat-sender:${input.id}`) % Math.max(1, senderCandidates.length)]
-      ?? memberIds[0]
-      ?? this.activeUser.id;
-    const item: ChatMenuItem = {
-      id: input.id,
-      avatar: AppUtils.initialsFromText(input.title),
-      title: input.title,
-      lastMessage: input.lastMessage,
-      lastSenderId,
-      memberIds,
-      unread: 0,
-      dateIso: input.subEventId
-        ? this.chatSubEventDateIso(input.eventId, input.subEventId)
-        : this.chatEventDateIso(input.eventId),
-      distanceKm: this.contextualChatDistanceKm(input.eventId),
-      distanceMetersExact: Math.max(0, Math.round(this.contextualChatDistanceKm(input.eventId) * 1000)),
-      channelType: input.channelType,
-      eventId: input.eventId,
-      subEventId: input.subEventId || undefined,
-      groupId: input.groupId || undefined
-    };
-    item.unread = this.contextualChatUnreadCount(item);
-    return item;
-  }
-
-  private contextualChatDistanceKm(eventId: string): number {
-    const normalizedEventId = eventId.trim();
-    if (!normalizedEventId) {
-      return 5;
-    }
-    return this.eventDistanceById[normalizedEventId]
-      ?? this.hostingDistanceById[normalizedEventId]
-      ?? (2 + (AppUtils.hashText(`chat-distance:${normalizedEventId}`) % 18));
-  }
-
-  private contextualChatUnreadCount(item: ChatMenuItem): number {
-    const channelType = this.chatChannelType(item);
-    if (channelType === 'optionalSubEvent' || channelType === 'groupSubEvent') {
-      const ownerId = this.normalizeLocationValue(item.eventId).trim();
-      const subEvent = this.chatSubEventForItem(item);
-      if (!subEvent || !ownerId) {
-        return 0;
-      }
-      return this.contextualSubEventPendingTotal(ownerId, subEvent, subEvent.optional || channelType === 'groupSubEvent');
-    }
-    if (channelType === 'mainEvent') {
-      return this.mainEventContextPendingCount(item);
-    }
-    return Math.max(0, Math.trunc(Number(item.unread) || 0));
-  }
-
-  private contextualChatMemberIds(seedKey: string, acceptedMemberIds: string[], targetTotal: number): string[] {
-    const accepted = this.uniqueUserIds(acceptedMemberIds);
-    const desiredTotal = Math.max(accepted.length, targetTotal);
-    if (desiredTotal <= accepted.length) {
-      return accepted;
-    }
-    const seeded = DemoEventSeedBuilder.seededEventMemberIds(
-      seedKey,
-      Math.max(desiredTotal, 4),
-      this.users,
-      this.activeUser.id
-    );
-    return this.uniqueUserIds([...accepted, ...seeded]).slice(0, desiredTotal);
-  }
-
-  private contextualSubEventMemberTargets(
-    subEvent: AppTypes.SubEventFormItem,
-    group: AppTypes.SubEventGroupItem | null = null,
-    groups: AppTypes.SubEventGroupItem[] = []
-  ): { accepted: number; pending: number; total: number } {
-    const acceptedBase = this.chatCountValue(subEvent.membersAccepted);
-    const pendingBase = this.chatCountValue(subEvent.membersPending);
-    if (!group) {
-      const total = Math.max(acceptedBase, acceptedBase + pendingBase);
-      return { accepted: acceptedBase, pending: pendingBase, total };
-    }
-    const stageCapacityMax = Math.max(
-      1,
-      this.chatCountValue(subEvent.capacityMax),
-      groups.reduce((sum, item) => sum + this.chatCountValue(item.capacityMax), 0),
-      acceptedBase + pendingBase
-    );
-    const groupCapacityMax = Math.max(
-      1,
-      this.chatCountValue(group.capacityMax),
-      Math.round(stageCapacityMax / Math.max(1, groups.length))
-    );
-    const ratio = groupCapacityMax / stageCapacityMax;
-    const accepted = Math.min(groupCapacityMax, Math.max(0, Math.round(acceptedBase * ratio)));
-    const groupPendingRaw = this.chatCountValue((group as { membersPending?: unknown }).membersPending);
-    const pendingByShare = Math.max(0, Math.round(pendingBase * ratio));
-    const pending = Math.min(Math.max(0, groupCapacityMax - accepted), Math.max(groupPendingRaw, pendingByShare));
-    const total = Math.max(accepted, accepted + pending);
-    return { accepted, pending, total };
-  }
-
-  private chatCountValue(value: unknown): number {
-    return Math.max(0, Math.trunc(Number(value) || 0));
-  }
-
-  private contextualSubEventPendingTotal(
-    ownerId: string,
-    subEvent: AppTypes.SubEventFormItem,
-    includeMembers = true
-  ): number {
-    this.syncSubEventAssetBadgeCounts(ownerId, subEvent, 'Car');
-    this.syncSubEventAssetBadgeCounts(ownerId, subEvent, 'Accommodation');
-    this.syncSubEventAssetBadgeCounts(ownerId, subEvent, 'Supplies');
-    const members = includeMembers ? this.chatCountValue(subEvent.membersPending) : 0;
-    return members
-      + this.chatCountValue(subEvent.carsPending)
-      + this.chatCountValue(subEvent.accommodationPending)
-      + this.chatCountValue(subEvent.suppliesPending);
-  }
-
-  private subEventResourceState(
-    ownerId: string,
-    subEventId: string
-  ): AppTypes.ActivitySubEventResourceState | null {
-    return this.activityResourcesService.peekSubEventResourceState(ownerId, subEventId, this.currentAssetOwnerUserId());
-  }
-
-  private resolveSubEventAssignedAssetIds(
-    ownerId: string,
-    subEventId: string,
-    type: AppTypes.AssetType
-  ): string[] {
-    return ActivityResourceBuilder.resolveAssignedAssetIds(
-      this.subEventResourceState(ownerId, subEventId),
-      type,
-      this.assetCards
-    );
-  }
-
-  private syncSubEventAssetBadgeCounts(ownerId: string, subEvent: AppTypes.SubEventFormItem, type: AppTypes.AssetType): void {
-    const state = this.subEventResourceState(ownerId, subEvent.id);
-    const accepted = ActivityResourceBuilder.resourceAcceptedCount(subEvent, type, state, this.assetCards);
-    const pending = ActivityResourceBuilder.resourcePendingCount(subEvent, type, state, this.assetCards);
-    const bounds = ActivityResourceBuilder.resourceCapacityBounds(subEvent, type, state, this.assetCards, accepted, pending);
-    if (type === 'Car') {
-      subEvent.carsAccepted = accepted;
-      subEvent.carsPending = pending;
-      subEvent.carsCapacityMin = bounds.capacityMin;
-      subEvent.carsCapacityMax = bounds.capacityMax;
-      return;
-    }
-    if (type === 'Accommodation') {
-      subEvent.accommodationAccepted = accepted;
-      subEvent.accommodationPending = pending;
-      subEvent.accommodationCapacityMin = bounds.capacityMin;
-      subEvent.accommodationCapacityMax = bounds.capacityMax;
-      return;
-    }
-    subEvent.suppliesAccepted = accepted;
-    subEvent.suppliesPending = pending;
-    subEvent.suppliesCapacityMin = bounds.capacityMin;
-    subEvent.suppliesCapacityMax = bounds.capacityMax;
-  }
-
-  private mainEventContextMemberIds(eventId: string): string[] {
-    const source = this.eventItems.find(item => item.id === eventId)
-      ?? this.hostingItems.find(item => item.id === eventId)
-      ?? null;
-    if (!source) {
-      return DemoEventSeedBuilder.seededEventMemberIds(eventId, 8, this.users, this.activeUser.id);
-    }
-    const row = this.buildChatSourceActivityRow(source);
-    const members = this.getActivityMembersByRow(row).filter(member => member.status === 'accepted');
-    const memberIds = this.uniqueUserIds(members.map(member => member.userId));
-    if (memberIds.length > 0) {
-      return memberIds;
-    }
-    return DemoEventSeedBuilder.seededEventMemberIds(eventId, 8, this.users, this.activeUser.id);
-  }
-
-  private mainEventContextPendingCount(item: ChatMenuItem): number {
-    const source = this.resolveChatEventSource(item);
-    if (!source) {
-      return 0;
-    }
-    const row = this.buildChatSourceActivityRow(source);
-    const eventPending = this.activityPendingMemberCount(row);
-    const eventId = this.normalizeLocationValue(item.eventId).trim() || source.id;
-    const subEventsPending = this.chatEventSubEvents(eventId)
-      .reduce((sum, subEvent) => sum + this.contextualSubEventPendingTotal(eventId, subEvent, true), 0);
-    return eventPending + subEventsPending;
-  }
-
-  private resolveChatEventSource(item: ChatMenuItem): EventMenuItem | HostingMenuItem | null {
-    const eventId = this.normalizeLocationValue(item.eventId).trim();
-    if (!eventId) {
-      return this.resolveChatFocusEventSource();
-    }
-    return this.eventItems.find(event => event.id === eventId)
-      ?? this.hostingItems.find(event => event.id === eventId)
-      ?? this.resolveEventEditorSource();
-  }
-
-  private buildChatSourceActivityRow(source: EventMenuItem | HostingMenuItem): AppTypes.ActivityListRow {
-    return toActivitySourceRowFromMenuItem(source, {
-      isHosting: this.hostingItems.some(item => item.id === source.id),
-      dateIso: this.eventDatesById[source.id] ?? this.hostingDatesById[source.id] ?? this.defaultEventStartIso(),
-      distanceKm: this.eventDistanceById[source.id] ?? this.hostingDistanceById[source.id] ?? 0,
-      metricScore: source.activity
-    });
-  }
-
-  private uniqueUserIds(ids: string[]): string[] {
+  protected uniqueUserIds(ids: string[]): string[] {
     const unique: string[] = [];
     for (const id of ids) {
       if (!id || unique.includes(id)) {
@@ -3917,813 +1629,16 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return unique;
   }
 
-  private chatStageLabel(index: number): string {
-    return `Stage ${index + 1}`;
+  protected chatCountValue(value: unknown): number {
+    return Math.max(0, Math.trunc(Number(value) || 0));
   }
 
-  private chatEventDateIso(eventId: string): string {
-    return this.eventDatesById[eventId]
-      ?? this.hostingDatesById[eventId]
-      ?? this.defaultEventStartIso();
-  }
-
-  private chatSubEventDateIso(eventId: string, subEventId: string): string {
-    const subEvent = this.chatEventSubEvents(eventId).find(item => item.id === subEventId) ?? null;
-    return subEvent?.startAt || this.chatEventDateIso(eventId);
-  }
-
-  private resolveChatFocusEventSource(): EventMenuItem | HostingMenuItem | null {
-    const editorSource = this.resolveEventEditorSource();
-    if (editorSource) {
-      return editorSource;
-    }
-    const managed = this.eventItems.find(item => item.isAdmin);
-    if (managed) {
-      return managed;
-    }
-    return this.eventItems[0] ?? this.hostingItems[0] ?? null;
-  }
-
-  private resolveEventEditorSource(): EventMenuItem | HostingMenuItem | null {
-    if (!this.eventEditorService.isOpen()) {
-      return null;
-    }
-    const source = this.eventEditorService.sourceEvent();
-    if (!source || typeof source !== 'object') {
-      return null;
-    }
-    const sourceId = typeof (source as { id?: unknown }).id === 'string'
-      ? ((source as { id: string }).id.trim())
-      : '';
-    if (!sourceId) {
-      return null;
-    }
-    const eventMatch = this.eventItems.find(item => item.id === sourceId);
-    if (eventMatch) {
-      return eventMatch;
-    }
-    const hostingMatch = this.hostingItems.find(item => item.id === sourceId);
-    if (hostingMatch) {
-      return hostingMatch;
-    }
-    const fallbackSource = source as Partial<EventMenuItem | HostingMenuItem>;
-    return {
-      id: sourceId,
-      avatar: typeof fallbackSource.avatar === 'string' ? fallbackSource.avatar : AppUtils.initialsFromText(typeof fallbackSource.title === 'string' ? fallbackSource.title : 'Event'),
-      title: typeof fallbackSource.title === 'string' ? fallbackSource.title : 'Event',
-      shortDescription: typeof fallbackSource.shortDescription === 'string' ? fallbackSource.shortDescription : '',
-      timeframe: typeof fallbackSource.timeframe === 'string' ? fallbackSource.timeframe : '',
-      activity: Number.isFinite(Number(fallbackSource.activity)) ? Number(fallbackSource.activity) : 0,
-      ...(typeof (fallbackSource as EventMenuItem).isAdmin === 'boolean'
-        ? { isAdmin: (fallbackSource as EventMenuItem).isAdmin }
-        : {})
-    } as EventMenuItem | HostingMenuItem;
-  }
-
-  private chatEventSubEvents(eventId: string): AppTypes.SubEventFormItem[] {
-    const normalizedEventId = eventId.trim();
-    if (!normalizedEventId) {
-      return [];
-    }
-    return this.sortSubEventsByStartAsc(this.cloneSubEvents(this.eventSubEventsById[normalizedEventId] ?? []));
-  }
-
-  private chatSubEventForItem(item: ChatMenuItem): AppTypes.SubEventFormItem | null {
-    const eventId = this.normalizeLocationValue(item.eventId).trim();
-    const subEventId = this.normalizeLocationValue(item.subEventId).trim();
-    if (!eventId || !subEventId) {
-      return null;
-    }
-    return this.chatEventSubEvents(eventId).find(subEvent => subEvent.id === subEventId) ?? null;
-  }
-
-  private isActiveUserAttachedToOptionalSubEvent(eventId: string, subEventId: string): boolean {
-    return this.optionalSubEventAcceptedMemberIds(eventId, subEventId).includes(this.activeUser.id);
-  }
-
-  private optionalSubEventAcceptedMemberIds(eventId: string, subEventId: string): string[] {
-    const key = this.optionalSubEventMembershipKey(eventId, subEventId);
-    const subEvent = this.chatEventSubEvents(eventId).find(item => item.id === subEventId) ?? null;
-    const targetAccepted = subEvent
-      ? this.contextualSubEventMemberTargets(subEvent).accepted
-      : 0;
-    const existing = this.acceptedOptionalSubEventMembersByKey[key];
-    if (existing && existing.length === targetAccepted) {
-      return existing;
-    }
-    const candidates = DemoEventSeedBuilder.seededEventMemberIds(
-      `optional-chat-member:${eventId}:${subEventId}`,
-      Math.max(targetAccepted, 4),
-      this.users,
-      this.activeUser.id
-    );
-    let accepted = targetAccepted > 0
-      ? candidates.slice(0, targetAccepted)
-      : [];
-    if (targetAccepted > 0 && !accepted.includes(this.activeUser.id)) {
-      const withoutActive = accepted.filter(id => id !== this.activeUser.id);
-      accepted = this.uniqueUserIds([this.activeUser.id, ...withoutActive]).slice(0, targetAccepted);
-    }
-    this.acceptedOptionalSubEventMembersByKey[key] = this.uniqueUserIds(accepted);
-    return this.acceptedOptionalSubEventMembersByKey[key];
-  }
-
-  private tournamentGroupAcceptedMemberIds(
-    eventId: string,
-    subEventId: string,
-    groupId: string,
-    groups: AppTypes.SubEventGroupItem[]
-  ): string[] {
-    const key = this.tournamentGroupMembershipKey(eventId, subEventId, groupId);
-    const subEvent = this.chatEventSubEvents(eventId).find(item => item.id === subEventId) ?? null;
-    const group = groups.find(item => item.id === groupId) ?? null;
-    const targetAccepted = subEvent && group
-      ? this.contextualSubEventMemberTargets(subEvent, group, groups).accepted
-      : 0;
-    const existing = this.acceptedTournamentGroupMembersByKey[key];
-    if (existing && existing.length === targetAccepted) {
-      return existing;
-    }
-    const candidates = DemoEventSeedBuilder.seededEventMemberIds(eventId, this.users.length, this.users, this.activeUser.id);
-    const seeded = candidates.filter(userId => DemoEventSeedBuilder.seededTournamentGroupIdForUser(eventId, subEventId, groups, userId) === groupId);
-    let accepted = targetAccepted > 0
-      ? seeded.slice(0, targetAccepted)
-      : [];
-    const activeGroupId = DemoEventSeedBuilder.seededTournamentGroupIdForUser(eventId, subEventId, groups, this.activeUser.id);
-    if (targetAccepted > 0 && activeGroupId === groupId && !accepted.includes(this.activeUser.id)) {
-      const withoutActive = accepted.filter(id => id !== this.activeUser.id);
-      accepted = this.uniqueUserIds([this.activeUser.id, ...withoutActive]).slice(0, targetAccepted);
-    }
-    this.acceptedTournamentGroupMembersByKey[key] = this.uniqueUserIds(accepted);
-    return this.acceptedTournamentGroupMembersByKey[key];
-  }
-
-  private activeUserTournamentGroup(
-    eventId: string,
-    subEvent: AppTypes.SubEventFormItem,
-    groups: AppTypes.SubEventGroupItem[]
-  ): AppTypes.SubEventGroupItem | null {
-    if (groups.length === 0) {
-      return null;
-    }
-    const explicitGroupId = this.explicitTournamentGroupIdForUser(eventId, subEvent.id, groups, this.activeUser.id);
-    const activeGroupId = explicitGroupId || DemoEventSeedBuilder.seededTournamentGroupIdForUser(eventId, subEvent.id, groups, this.activeUser.id);
-    if (!activeGroupId) {
-      return null;
-    }
-    const memberIds = this.tournamentGroupAcceptedMemberIds(eventId, subEvent.id, activeGroupId, groups);
-    if (!memberIds.includes(this.activeUser.id)) {
-      return null;
-    }
-    return groups.find(group => group.id === activeGroupId) ?? null;
-  }
-
-  private explicitTournamentGroupIdForUser(
-    eventId: string,
-    subEventId: string,
-    groups: AppTypes.SubEventGroupItem[],
-    userId: string
-  ): string | null {
-    for (const group of groups) {
-      const key = this.tournamentGroupMembershipKey(eventId, subEventId, group.id);
-      const members = this.acceptedTournamentGroupMembersByKey[key];
-      if (members?.includes(userId)) {
-        return group.id;
-      }
-    }
-    return null;
-  }
-
-  private optionalSubEventMembershipKey(eventId: string, subEventId: string): string {
-    return `${eventId}:${subEventId}`;
-  }
-
-  private tournamentGroupMembershipKey(eventId: string, subEventId: string, groupId: string): string {
-    return `${eventId}:${subEventId}:${groupId}`;
-  }
-
-  private cloneSubEvents(items: AppTypes.SubEventFormItem[]): AppTypes.SubEventFormItem[] {
-    return items.map(item => ({
-      ...item,
-      location: this.normalizeLocationValue(item.location),
-      groups: this.cloneSubEventGroups(item.groups)
-    }));
-  }
-
-  private normalizeLocationValue(value: string | null | undefined): string {
-    return typeof value === 'string' ? value : '';
-  }
-
-  private sortSubEventsByStartAsc(items: AppTypes.SubEventFormItem[]): AppTypes.SubEventFormItem[] {
-    const source = this.cloneSubEvents(items);
-    return source
-      .map((item, index) => ({
-        item,
-        index,
-        startMs: new Date(item.startAt).getTime()
-      }))
-      .sort((a, b) => {
-        const aTime = Number.isNaN(a.startMs) ? Number.POSITIVE_INFINITY : a.startMs;
-        const bTime = Number.isNaN(b.startMs) ? Number.POSITIVE_INFINITY : b.startMs;
-        if (aTime !== bTime) {
-          return aTime - bTime;
-        }
-        return a.index - b.index;
-      })
-      .map(entry => entry.item);
-  }
-
-  private cloneSubEventGroups(groups: AppTypes.SubEventGroupItem[] | undefined): AppTypes.SubEventGroupItem[] {
-    if (!groups || groups.length === 0) {
-      return [];
-    }
-    return groups.map(group => ({
-      ...group,
-      source: this.normalizedSubEventGroupSource(group)
-    }));
-  }
-
-  private subEventGroupsForStage(item: AppTypes.SubEventFormItem): AppTypes.SubEventGroupItem[] {
-    return this.reconcileTournamentGroupsForStage(item, this.cloneSubEventGroups(item.groups));
-  }
-
-  private normalizedSubEventGroupSource(group: Partial<AppTypes.SubEventGroupItem> | undefined): 'manual' | 'generated' {
-    return group?.source === 'generated' ? 'generated' : 'manual';
-  }
-
-  private reconcileTournamentGroupsForStage(
-    item: AppTypes.SubEventFormItem,
-    sourceGroups: AppTypes.SubEventGroupItem[] = this.cloneSubEventGroups(item.groups)
-  ): AppTypes.SubEventGroupItem[] {
-    const normalizedGroups = sourceGroups.map(group => ({
-      ...group,
-      source: this.normalizedSubEventGroupSource(group)
-    }));
-    if (item.optional) {
-      return normalizedGroups;
-    }
-    const manualGroups = normalizedGroups
-      .filter(group => this.normalizedSubEventGroupSource(group) === 'manual')
-      .map(group => ({
-        ...group,
-        source: 'manual' as const
-      }));
-    const generatedGroups = normalizedGroups
-      .filter(group => this.normalizedSubEventGroupSource(group) === 'generated')
-      .map(group => ({
-        ...group,
-        source: 'generated' as const
-      }));
-    return [...manualGroups, ...generatedGroups];
-  }
-
-  private defaultEventStartIso(): string {
+  protected defaultEventStartIso(): string {
     const iso = this.eventDatesById['e1'];
     return typeof iso === 'string' && iso.trim().length > 0 ? iso : '2026-03-01T09:00:00';
   }
 
-  private currentAssetOwnerUserId(): string {
-    return this.appCtx.activeUserId().trim() || this.activeUser.id;
-  }
-
-  private getChatItemById(chatId: string): ChatMenuItem | undefined {
-    return this.chatItems.find(item => item.id === chatId);
-  }
-
-  private getChatMembersById(chatId: string): DemoUser[] {
-    const chatItem = this.getChatItemById(chatId);
-    const explicitMembers = (chatItem?.memberIds ?? [])
-      .map(memberId => this.users.find(user => user.id === memberId))
-      .filter((user): user is DemoUser => Boolean(user));
-    const lastSender = chatItem?.lastSenderId ? this.users.find(user => user.id === chatItem.lastSenderId) ?? null : null;
-
-    const orderedMembers: DemoUser[] = [];
-    if (lastSender) {
-      orderedMembers.push(lastSender);
-    }
-    for (const member of explicitMembers) {
-      if (!orderedMembers.some(item => item.id === member.id)) {
-        orderedMembers.push(member);
-      }
-    }
-    if (!orderedMembers.some(item => item.id === this.activeUser.id)) {
-      orderedMembers.push(this.activeUser);
-    }
-    if (orderedMembers.length > 0) {
-      return orderedMembers;
-    }
-
-    const others = this.users.filter(user => user.id !== this.activeUser.id);
-    if (!others.length) {
-      return [this.activeUser];
-    }
-    const seed = AppUtils.hashText(chatId);
-    const offsets = [0, 3, 7, 11, 15, 19];
-    const memberCount = 3 + (seed % 3);
-    const picked: DemoUser[] = [];
-    for (const offset of offsets) {
-      const user = others[(seed + offset) % others.length];
-      if (!picked.some(item => item.id === user.id)) {
-        picked.push(user);
-      }
-      if (picked.length === memberCount) {
-        break;
-      }
-    }
-    while (picked.length < memberCount) {
-      picked.push(others[picked.length % others.length]);
-    }
-    return picked;
-  }
-
-  private getChatLastSender(item: ChatMenuItem): DemoUser {
-    return this.userById(item.lastSenderId) ?? this.getChatMembersById(item.id)[0] ?? this.activeUser;
-  }
-
-  private getChatMemberCount(item: ChatMenuItem): number {
-    return this.getChatMembersById(item.id).length;
-  }
-
-  private subEventDisplayName(subEvent: AppTypes.SubEventFormItem | null | undefined): string {
-    return subEvent?.name?.trim() ?? '';
-  }
-
-  private chatContextDetailLine(item: ChatMenuItem): string {
-    const channelType = this.chatChannelType(item);
-    if (channelType !== 'optionalSubEvent' && channelType !== 'groupSubEvent') {
-      return item.lastMessage.trim();
-    }
-    const subEvent = this.chatSubEventForItem(item);
-    const eventId = this.normalizeLocationValue(item.eventId).trim();
-    if (!subEvent || !eventId) {
-      return item.lastMessage.trim();
-    }
-    const ordered = this.chatEventSubEvents(eventId);
-    const stageIndex = ordered.findIndex(entry => entry.id === subEvent.id);
-    const stageLabel = this.chatStageLabel(Math.max(0, stageIndex));
-    if (channelType === 'groupSubEvent') {
-      const group = this.subEventGroupsForStage(subEvent).find(entry => entry.id === item.groupId);
-      const groupLabel = group?.name?.trim() || 'Group';
-      return `${stageLabel} - ${groupLabel}`;
-    }
-    const subEventLabel = this.subEventDisplayName(subEvent) || subEvent.name || 'Sub Event';
-    return `${stageLabel} - ${subEventLabel}`;
-  }
-
-  private openActivityChat(chat: ChatMenuItem): void {
-    const initialContext = this.buildInitialEventChatContext(chat);
-    this.activitiesContext.openEventChat(chat, initialContext);
-    const openedSession = this.activitiesContext.eventChatSession();
-    const openedAtIso = openedSession?.openedAtIso ?? '';
-    this.runAfterActivitiesRender(() => {
-      const activeSession = this.activitiesContext.eventChatSession();
-      if (!activeSession || activeSession.item.id !== chat.id || activeSession.openedAtIso !== openedAtIso) {
-        return;
-      }
-      this.activitiesContext.touchEventChatSession(() => this.buildEventChatContext(chat));
-      this.cdr.markForCheck();
-    });
-  }
-
-  private buildInitialEventChatContext(chat: ChatMenuItem): EventChatContext {
-    const channelType = this.chatChannelType(chat);
-    const hasSubEventMenu = channelType === 'optionalSubEvent' || channelType === 'groupSubEvent';
-    return {
-      channelType,
-      hasSubEventMenu,
-      actionIcon: this.eventChatActionIcon(channelType),
-      actionLabel: this.eventChatActionLabel(channelType),
-      actionToneClass: this.eventChatActionTone(channelType),
-      actionBadgeCount: Math.max(0, Math.trunc(Number(chat.unread) || 0)),
-      menuTitle: chat.title,
-      eventRow: null,
-      subEventRow: null,
-      subEvent: null,
-      group: null,
-      assetAssignmentIds: {
-        Car: [],
-        Accommodation: [],
-        Supplies: []
-      },
-      assetCardsByType: {
-        Car: [],
-        Accommodation: [],
-        Supplies: []
-      },
-      resources: []
-    };
-  }
-
-  private buildEventChatContext(chat: ChatMenuItem): EventChatContext {
-    const channelType = this.chatChannelType(chat);
-    const subEvent = this.chatSubEventForItem(chat);
-    const group = this.eventChatGroup(chat, subEvent);
-    const source = this.resolveChatEventSource(chat);
-    const eventRow = source ? this.buildChatSourceActivityRow(source) : null;
-    const ownerId = eventRow?.id ?? this.normalizeLocationValue(chat.eventId).trim();
-    const hasSubEventMenu = channelType === 'optionalSubEvent' || channelType === 'groupSubEvent';
-    return {
-      channelType,
-      hasSubEventMenu,
-      actionIcon: this.eventChatActionIcon(channelType),
-      actionLabel: this.eventChatActionLabel(channelType),
-      actionToneClass: this.eventChatActionTone(channelType),
-      actionBadgeCount: this.contextualChatUnreadCount(chat),
-      menuTitle: this.eventChatMenuTitle(chat, subEvent, group),
-      eventRow,
-      subEventRow: eventRow,
-      subEvent,
-      group,
-      assetAssignmentIds: subEvent ? this.eventChatResourceAssignmentIds(ownerId, subEvent) : {},
-      assetCardsByType: this.eventChatResourceCardsByType(),
-      resources: this.eventChatResources(channelType, ownerId, subEvent)
-    };
-  }
-
-  private eventChatActionIcon(channelType: AppTypes.ChatChannelType): string {
-    if (channelType === 'groupSubEvent') {
-      return 'groups';
-    }
-    if (channelType === 'optionalSubEvent') {
-      return 'event_available';
-    }
-    return 'event';
-  }
-
-  private eventChatActionLabel(channelType: AppTypes.ChatChannelType): string {
-    if (channelType === 'groupSubEvent') {
-      return 'View Group';
-    }
-    if (channelType === 'optionalSubEvent') {
-      return 'View Sub Event';
-    }
-    return 'View Event';
-  }
-
-  private eventChatActionTone(channelType: AppTypes.ChatChannelType): EventChatContext['actionToneClass'] {
-    if (channelType === 'optionalSubEvent') {
-      return 'popup-chat-context-btn-tone-optional';
-    }
-    if (channelType === 'groupSubEvent') {
-      return 'popup-chat-context-btn-tone-group';
-    }
-    return 'popup-chat-context-btn-tone-main-event';
-  }
-
-  private eventChatGroup(
-    chat: ChatMenuItem,
-    subEvent: AppTypes.SubEventFormItem | null
-  ): EventChatContext['group'] {
-    if (!subEvent || !chat.groupId) {
-      return null;
-    }
-    const group = this.subEventGroupsForStage(subEvent).find(item => item.id === chat.groupId) ?? null;
-    if (!group) {
-      return null;
-    }
-    return {
-      id: group.id,
-      label: group.name
-    };
-  }
-
-  private eventChatMenuTitle(
-    chat: ChatMenuItem,
-    subEvent: AppTypes.SubEventFormItem | null,
-    group: EventChatContext['group']
-  ): string {
-    if (!subEvent) {
-      return chat.title;
-    }
-    const subEventLabel = this.subEventDisplayName(subEvent) || subEvent.name || chat.title;
-    if (group) {
-      return `${subEventLabel} · ${group.label}`;
-    }
-    return subEventLabel;
-  }
-
-  private eventChatResources(
-    channelType: AppTypes.ChatChannelType,
-    ownerId: string,
-    subEvent: AppTypes.SubEventFormItem | null
-  ): EventChatResourceContext[] {
-    if (!subEvent) {
-      return [];
-    }
-    const includeMembers = channelType === 'optionalSubEvent' || channelType === 'groupSubEvent';
-    return [
-      {
-        type: 'Members',
-        icon: 'groups',
-        title: 'Members',
-        typeClass: 'event-subevent-badge-members',
-        summary: this.subEventCapacityLabelForChat(subEvent),
-        pending: Math.max(0, Math.trunc(Number(subEvent.membersPending) || 0)),
-        stateClass: this.subEventCapacityStateClassForChat(subEvent),
-        visible: includeMembers
-      },
-      this.buildEventChatAssetResource(ownerId, subEvent, 'Car', 'directions_car', 'Car', 'event-subevent-badge-car'),
-      this.buildEventChatAssetResource(ownerId, subEvent, 'Accommodation', 'hotel', 'Accommodation', 'event-subevent-badge-accommodation'),
-      this.buildEventChatAssetResource(ownerId, subEvent, 'Supplies', 'inventory_2', 'Supplies', 'event-subevent-badge-supplies')
-    ];
-  }
-
-  private buildEventChatAssetResource(
-    ownerId: string,
-    subEvent: AppTypes.SubEventFormItem,
-    type: AppTypes.AssetType,
-    icon: string,
-    title: string,
-    typeClass: string
-  ): EventChatResourceContext {
-    this.syncSubEventAssetBadgeCounts(ownerId, subEvent, type);
-    let accepted = 0;
-    let pending = 0;
-    let capacityMin = 0;
-    let capacityMax = 0;
-
-    if (type === 'Car') {
-      accepted = this.chatCountValue(subEvent.carsAccepted);
-      pending = this.chatCountValue(subEvent.carsPending);
-      capacityMin = this.chatCountValue(subEvent.carsCapacityMin);
-      capacityMax = Math.max(capacityMin, this.chatCountValue(subEvent.carsCapacityMax));
-    } else if (type === 'Accommodation') {
-      accepted = this.chatCountValue(subEvent.accommodationAccepted);
-      pending = this.chatCountValue(subEvent.accommodationPending);
-      capacityMin = this.chatCountValue(subEvent.accommodationCapacityMin);
-      capacityMax = Math.max(capacityMin, this.chatCountValue(subEvent.accommodationCapacityMax));
-    } else {
-      accepted = this.chatCountValue(subEvent.suppliesAccepted);
-      pending = this.chatCountValue(subEvent.suppliesPending);
-      capacityMin = this.chatCountValue(subEvent.suppliesCapacityMin);
-      capacityMax = Math.max(capacityMin, this.chatCountValue(subEvent.suppliesCapacityMax));
-    }
-
-    return {
-      type: type === 'Accommodation' ? 'Accommodation' : type,
-      icon,
-      title,
-      typeClass,
-      summary: `${accepted} / ${capacityMin} - ${capacityMax}`,
-      pending,
-      stateClass: accepted >= capacityMin && accepted <= capacityMax
-        ? 'subevent-capacity-in-range'
-        : 'subevent-capacity-out-of-range',
-      visible: true
-    };
-  }
-
-  private eventChatResourceAssignmentIds(
-    ownerId: string,
-    subEvent: AppTypes.SubEventFormItem
-  ): Record<AppTypes.AssetType, string[]> {
-    return {
-      Car: [...this.resolveSubEventAssignedAssetIds(ownerId, subEvent.id, 'Car')],
-      Accommodation: [...this.resolveSubEventAssignedAssetIds(ownerId, subEvent.id, 'Accommodation')],
-      Supplies: [...this.resolveSubEventAssignedAssetIds(ownerId, subEvent.id, 'Supplies')]
-    };
-  }
-
-  private eventChatResourceCardsByType(): Record<AppTypes.AssetType, AppTypes.AssetCard[]> {
-    return {
-      Car: this.assetCards.filter(card => card.type === 'Car').map(card => ({ ...card, requests: [...card.requests] })),
-      Accommodation: this.assetCards.filter(card => card.type === 'Accommodation').map(card => ({ ...card, requests: [...card.requests] })),
-      Supplies: this.assetCards.filter(card => card.type === 'Supplies').map(card => ({ ...card, requests: [...card.requests] }))
-    };
-  }
-
-  private subEventCapacityLabelForChat(item: AppTypes.SubEventFormItem): string {
-    return `${item.membersAccepted} / ${item.capacityMin} - ${item.capacityMax}`;
-  }
-
-  private subEventCapacityStateClassForChat(item: AppTypes.SubEventFormItem): string {
-    return item.membersAccepted >= item.capacityMin && item.membersAccepted <= item.capacityMax
-      ? 'subevent-capacity-in-range'
-      : 'subevent-capacity-out-of-range';
-  }
-
-  private subEventAssetCapacityLabelForChat(
-    ownerId: string,
-    item: AppTypes.SubEventFormItem,
-    type: AppTypes.AssetType
-  ): string {
-    const metrics = this.subEventAssetCapacityMetricsForChat(ownerId, item, type);
-    return `${metrics.joined} / ${metrics.capacityMin} - ${metrics.capacityMax}`;
-  }
-
-  private subEventAssetCapacityStateClassForChat(
-    ownerId: string,
-    item: AppTypes.SubEventFormItem,
-    type: AppTypes.AssetType
-  ): string {
-    const metrics = this.subEventAssetCapacityMetricsForChat(ownerId, item, type);
-    return metrics.joined >= metrics.capacityMin && metrics.joined <= metrics.capacityMax
-      ? 'subevent-capacity-in-range'
-      : 'subevent-capacity-out-of-range';
-  }
-
-  private subEventAssetPendingCountForChat(
-    ownerId: string,
-    item: AppTypes.SubEventFormItem,
-    type: AppTypes.AssetType
-  ): number {
-    this.syncSubEventAssetBadgeCounts(ownerId, item, type);
-    if (type === 'Car') {
-      return Math.max(0, Math.trunc(Number(item.carsPending) || 0));
-    }
-    if (type === 'Accommodation') {
-      return Math.max(0, Math.trunc(Number(item.accommodationPending) || 0));
-    }
-    return Math.max(0, Math.trunc(Number(item.suppliesPending) || 0));
-  }
-
-  private subEventAssetCapacityMetricsForChat(
-    ownerId: string,
-    subEvent: AppTypes.SubEventFormItem,
-    type: AppTypes.AssetType
-  ): { joined: number; capacityMin: number; capacityMax: number } {
-    const pending = this.subEventAssetPendingCountForChat(ownerId, subEvent, type);
-    const accepted = this.subEventAssetAcceptedCountForChat(ownerId, subEvent, type);
-    const bounds = this.subEventAssetCapacityBoundsForChat(ownerId, subEvent, type, accepted, pending);
-    return {
-      joined: accepted,
-      capacityMin: bounds.capacityMin,
-      capacityMax: bounds.capacityMax
-    };
-  }
-
-  private subEventAssetAcceptedCountForChat(
-    ownerId: string,
-    subEvent: AppTypes.SubEventFormItem,
-    type: AppTypes.AssetType
-  ): number {
-    return ActivityResourceBuilder.resourceAcceptedCount(
-      subEvent,
-      type,
-      this.subEventResourceState(ownerId, subEvent.id),
-      this.assetCards
-    );
-  }
-
-  private subEventAssetCapacityBoundsForChat(
-    ownerId: string,
-    subEvent: AppTypes.SubEventFormItem,
-    type: AppTypes.AssetType,
-    accepted: number,
-    pending: number
-  ): { capacityMin: number; capacityMax: number } {
-    return ActivityResourceBuilder.resourceCapacityBounds(
-      subEvent,
-      type,
-      this.subEventResourceState(ownerId, subEvent.id),
-      this.assetCards,
-      accepted,
-      pending
-    );
-  }
-
-  private matchesActivitiesChatContextFilter(item: ChatMenuItem): boolean {
-    if (this.activitiesPrimaryFilter !== 'chats' || this.activitiesChatContextFilter === 'all') {
-      return true;
-    }
-    return this.activityChatContextFilterKey(item) === this.activitiesChatContextFilter;
-  }
-
-  private activityChatContextFilterKey(item: ChatMenuItem): AppTypes.ActivitiesChatContextFilter | null {
-    const channelType = this.chatChannelType(item);
-    if (channelType === 'mainEvent' || channelType === 'general') {
-      return 'event';
-    }
-    if (channelType === 'optionalSubEvent') {
-      return 'subEvent';
-    }
-    if (channelType === 'groupSubEvent') {
-      return 'group';
-    }
-    return null;
-  }
-
-  private matchesRateFilter(item: RateMenuItem, filter: AppTypes.RateFilterKey): boolean {
-    const [modeKey, directionKey] = filter.split('-') as ['individual' | 'pair', 'given' | 'received' | 'mutual' | 'met'];
-    return item.mode === modeKey && this.displayedRateDirection(item) === directionKey;
-  }
-
-  private displayedRateDirection(item: RateMenuItem): RateMenuItem['direction'] {
-    return this.activityRateDirectionOverrideById[item.id] ?? item.direction;
-  }
-
-  private pendingDirectionAfterRating(item: RateMenuItem): RateMenuItem['direction'] | null {
-    const direction = this.displayedRateDirection(item);
-    if (item.mode === 'individual') {
-      if (direction === 'given') {
-        return item.scoreReceived > 0 ? 'mutual' : 'given';
-      }
-      if (direction === 'received') {
-        return 'mutual';
-      }
-      return null;
-    }
-    if (direction === 'received' || direction === 'met') {
-      return 'given';
-    }
-    return null;
-  }
-
-  private commitPendingRateDirectionOverrides(targetFilter?: AppTypes.RateFilterKey): void {
-    const target = targetFilter ? this.parseRateFilterKey(targetFilter) : null;
-    for (const [itemId, pendingDirection] of Object.entries(this.pendingActivityRateDirectionOverrideById)) {
-      if (!pendingDirection) {
-        continue;
-      }
-      if (target) {
-        const item = this.rateItems.find(candidate => candidate.id === itemId);
-        if (!item) {
-          continue;
-        }
-        if (item.mode !== target.mode || pendingDirection !== target.direction) {
-          continue;
-        }
-      }
-      this.activityRateDirectionOverrideById[itemId] = pendingDirection;
-      delete this.pendingActivityRateDirectionOverrideById[itemId];
-    }
-  }
-
-  private parseRateFilterKey(filter: AppTypes.RateFilterKey): { mode: 'individual' | 'pair'; direction: RateMenuItem['direction'] } {
-    const [mode, direction] = filter.split('-') as ['individual' | 'pair', RateMenuItem['direction']];
-    return { mode, direction };
-  }
-
-  private selectedActivityRateRow(): AppTypes.ActivityListRow | null {
-    if (!this.selectedActivityRateId) {
-      return null;
-    }
-    return this.filteredActivityRows.find(row => row.type === 'rates' && row.id === this.selectedActivityRateId) ?? null;
-  }
-
-  private normalizeRateScore(value: number): number {
-    return Math.min(10, Math.max(1, Math.round(value)));
-  }
-
-  private rateOwnScore(item: RateMenuItem): number {
-    if (Number.isFinite(item.scoreGiven) && item.scoreGiven > 0) {
-      return this.normalizeRateScore(item.scoreGiven);
-    }
-    return 5;
-  }
-
-  private hasOwnRating(item: RateMenuItem): boolean {
-    const drafted = this.activityRateDraftById[item.id];
-    if (Number.isFinite(drafted) && drafted > 0) {
-      return true;
-    }
-    if (this.displayedRateDirection(item) === 'received') {
-      return false;
-    }
-    return Number.isFinite(item.scoreGiven) && item.scoreGiven > 0;
-  }
-
-  private pairReceivedAverageScore(item: RateMenuItem): number {
-    const matching = this.rateItems.filter(candidate =>
-      candidate.mode === 'pair' &&
-      this.samePairUsers(candidate, item) &&
-      this.displayedRateDirection(candidate) === 'received' &&
-      Number.isFinite(candidate.scoreReceived) &&
-      candidate.scoreReceived > 0
-    );
-    if (matching.length === 0) {
-      return 0;
-    }
-    const total = matching.reduce((sum, candidate) => sum + candidate.scoreReceived, 0);
-    return this.normalizeRateScore(total / matching.length);
-  }
-
-  private samePairUsers(left: RateMenuItem, right: RateMenuItem): boolean {
-    const leftIds = [left.userId, left.secondaryUserId ?? ''].filter(id => id.trim().length > 0).sort();
-    const rightIds = [right.userId, right.secondaryUserId ?? ''].filter(id => id.trim().length > 0).sort();
-    return leftIds.length === rightIds.length && leftIds.every((id, index) => id === rightIds[index]);
-  }
-
-  private openActivityRowInEventModule(row: AppTypes.ActivityListRow, readOnly: boolean): void {
-    const source = ActivityEventBuilder.resolveEditorSource(row, {
-      eventItems: this.eventItems,
-      hostingItems: this.hostingItems,
-      invitationItems: this.invitationItems
-    });
-    if (!source) {
-      return;
-    }
-    const effectiveReadOnly = row.type === 'invitations'
-      ? true
-      : readOnly;
-    if (effectiveReadOnly) {
-      this.eventEditorService.openView(source);
-      return;
-    }
-    this.eventEditorService.openEdit(source);
-  }
-
-  private applyActivitiesEventSync(sync: ActivitiesEventSyncPayload): void {
+  protected applyActivitiesEventSync(sync: ActivitiesEventSyncPayload): void {
     let eventUpdated = false;
     let hostingUpdated = false;
 
@@ -4793,7 +1708,12 @@ export class ActivitiesPopupComponent implements OnDestroy {
     this.patchVisibleActivityRowsFromEventSync(sync);
     this.upsertVisibleEventRowFromSync(sync);
     this.applyActivitiesEventMemberSnapshot(sync);
+    this.bumpActivitiesEventCardRevision();
     this.refreshSectionBadges();
+  }
+
+  private bumpActivitiesEventCardRevision(): void {
+    this.activitiesEventCardRevision += 1;
   }
 
   private reconcileInvitationItemsFromEventSync(sync: ActivitiesEventSyncPayload): void {
@@ -4891,7 +1811,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     };
   }
 
-  private cloneSyncedSubEventForms(items: readonly AppTypes.SubEventFormItem[]): AppTypes.SubEventFormItem[] {
+  protected cloneSyncedSubEventForms(items: readonly AppTypes.SubEventFormItem[]): AppTypes.SubEventFormItem[] {
     return items.map(item => ({
       ...item,
       groups: Array.isArray(item.groups)
@@ -5078,27 +1998,47 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   protected onActivitiesSmartListStateChange(change: SmartListStateChange<AppTypes.ActivityListRow, ActivitiesSmartListFilters>): void {
-    this.visibleActivityRows = [...change.items];
-    this.activitiesInitialLoadPending = change.initialLoading;
-    this.activitiesListScrollable = change.scrollable;
-    this.activitiesStickyValue = change.stickyLabel;
-    this.activitiesContext.setActivitiesStickyValue(change.stickyLabel);
-    if (this.activitiesPrimaryFilter === 'chats') {
-      this.chatItems = this.chatsService.peekChatItemsByUser(this.activeUser.id)
-        .map(item => ({ ...item, memberIds: [...(item.memberIds ?? [])] }));
-      this.refreshSectionBadges();
+    let shouldMarkForCheck = false;
+
+    const currentVisibleIds = this.visibleActivityRows.map(row => this.activityRowIdentity(row));
+    const nextVisibleIds = change.items.map(row => this.activityRowIdentity(row));
+    if (
+      currentVisibleIds.length !== nextVisibleIds.length
+      || currentVisibleIds.some((id, index) => id !== nextVisibleIds[index])
+    ) {
+      this.visibleActivityRows = [...change.items];
+      shouldMarkForCheck = true;
     }
+
+    if (this.activitiesInitialLoadPending !== change.initialLoading) {
+      this.activitiesInitialLoadPending = change.initialLoading;
+      shouldMarkForCheck = true;
+    }
+
+    if (this.activitiesListScrollable !== change.scrollable) {
+      this.activitiesListScrollable = change.scrollable;
+      shouldMarkForCheck = true;
+    }
+
+    if (this.activitiesStickyValue !== change.stickyLabel) {
+      this.activitiesStickyValue = change.stickyLabel;
+      this.activitiesContext.setActivitiesStickyValue(change.stickyLabel);
+      shouldMarkForCheck = true;
+    }
+
     if (this.isRatesFullscreenModeActive()) {
-      this.syncActivitiesRatesFullscreenSelection();
+      this.activitiesRates.syncFullscreenSelection();
     }
-    this.cdr.markForCheck();
+    if (shouldMarkForCheck) {
+      this.cdr.markForCheck();
+    }
   }
 
-  private activityRowIdentity(row: AppTypes.ActivityListRow): string {
+  protected activityRowIdentity(row: AppTypes.ActivityListRow): string {
     return `${row.type}:${row.id}`;
   }
 
-  private activitiesListScrollElement(): HTMLDivElement | null {
+  protected activitiesListScrollElement(): HTMLDivElement | null {
     return this.activitiesSmartList?.scrollElement() ?? this.activitiesScrollRef?.nativeElement ?? null;
   }
 }

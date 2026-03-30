@@ -16,6 +16,7 @@ export interface RatingStarBarConfig {
   label?: string | null;
   presentation?: RatingStarBarPresentation;
   animation?: RatingStarBarAnimation;
+  blinkOnSelect?: boolean;
   dock?: RatingStarBarDockConfig | null;
 }
 
@@ -101,7 +102,9 @@ export class RatingStarBarComponent implements OnDestroy {
     if (this.resolvedReadonly) {
       return;
     }
-    this.triggerTransientBlink();
+    if (this.config?.blinkOnSelect !== false) {
+      this.triggerTransientBlink();
+    }
     this.scoreSelect.emit(score);
   }
 

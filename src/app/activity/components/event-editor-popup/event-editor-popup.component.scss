@@ -1064,6 +1064,100 @@
   color: #2d5ea8;
 }
 
+.event-slots-panel {
+  grid-column: 1 / -1;
+  border: 1px solid rgba(78, 112, 150, 0.24);
+  border-radius: 16px;
+  background: linear-gradient(180deg, #f7fbff 0%, #eef4fb 100%);
+  box-shadow: 0 4px 12px rgba(29, 53, 86, 0.08);
+  padding: 0.62rem 0.72rem;
+  display: grid;
+  gap: 0.62rem;
+}
+
+.event-slots-panel-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 0.5rem;
+}
+
+.event-slots-toggle-card {
+  min-height: 84px;
+}
+
+.event-slots-add-btn {
+  align-self: center;
+}
+
+.event-slots-list {
+  display: grid;
+  gap: 0.56rem;
+}
+
+.event-slot-row {
+  border: 1px solid rgba(63, 96, 132, 0.18);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.86);
+  padding: 0.56rem 0.62rem;
+  display: grid;
+  gap: 0.42rem;
+}
+
+.event-slot-row-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.event-slot-row-title {
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: #294f83;
+}
+
+.event-slot-remove-btn {
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(210, 93, 93, 0.1);
+  color: #ae4f4f;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.event-slot-remove-btn .mat-icon {
+  width: 18px;
+  height: 18px;
+  font-size: 18px;
+  line-height: 18px;
+}
+
+.event-slot-row-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.event-slot-field {
+  display: grid;
+  gap: 0.26rem;
+}
+
+.event-slot-field span {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: rgba(29, 48, 75, 0.74);
+}
+
+.event-slot-field input {
+  width: 100%;
+}
+
 .event-schedule-panel {
   grid-column: 1 / -1;
   border: 1px solid rgba(88, 105, 132, 0.26);
@@ -1779,6 +1873,10 @@
     grid-template-columns: 1fr;
     padding: 0.5rem 0.58rem;
     gap: 0.52rem;
+  }
+
+  .event-slot-row-grid {
+    grid-template-columns: 1fr;
   }
 
   .event-datetime-row {

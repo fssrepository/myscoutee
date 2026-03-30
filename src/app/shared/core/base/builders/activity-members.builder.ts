@@ -283,19 +283,16 @@ export class ActivityMembersBuilder {
       )];
     }
     const seed = AppUtils.hashText(`${row.type}:${row.id}`);
-    const acceptedTarget = row.type === 'invitations' ? 2 + (seed % 3) : 4 + (seed % 3);
-    const pendingTarget = row.type === 'invitations' ? 1 + ((seed >> 2) % 2) : 1 + ((seed >> 3) % 3);
-    const picked: DemoUser[] = [activeUser];
-    const offsets = [0, 2, 3, 5, 7, 11, 13, 17, 19, 23, 29];
-    for (const offset of offsets) {
-      const candidate = others[(seed + offset) % others.length];
-      if (!picked.some(item => item.id === candidate.id)) {
-        picked.push(candidate);
-      }
-      if (picked.length >= acceptedTarget) {
-        break;
-      }
-    }
+    const orderedOthers = [...others].sort((left, right) => {
+      const leftWeight = AppUtils.hashText(`${rowKey}:${left.id}`);
+      const rightWeight = AppUtils.hashText(`${rowKey}:${right.id}`);
+      return leftWeight - rightWeight;
+    });
+    const targets = this.resolveGeneratedMemberTargets(row, seed, orderedOthers.length);
+    const picked: DemoUser[] = [
+      activeUser,
+      ...orderedOthers.slice(0, Math.max(0, targets.acceptedTarget - 1))
+    ];
     const accepted = picked.map(user => this.toActivityMemberEntry(
       user,
       row,
@@ -305,8 +302,8 @@ export class ActivityMembersBuilder {
       metPlaces
     ));
     const acceptedIds = new Set(accepted.map(item => item.userId));
-    const pendingPool = others.filter(user => !acceptedIds.has(user.id));
-    const pendingCount = Math.min(pendingTarget, pendingPool.length);
+    const pendingPool = orderedOthers.filter(user => !acceptedIds.has(user.id));
+    const pendingCount = Math.min(targets.pendingTarget, pendingPool.length);
     for (let index = 0; index < pendingCount; index += 1) {
       const user = pendingPool[index];
       const isJoinRequest = ((seed + index) % 3) === 0;
@@ -329,6 +326,53 @@ export class ActivityMembersBuilder {
       });
     }
     return accepted;
+  }
+
+  private static resolveGeneratedMemberTargets(
+    row: ActivityListRow,
+    seed: number,
+    availableOtherUsers: number
+  ): { acceptedTarget: number; pendingTarget: number } {
+    const maxAcceptedTarget = availableOtherUsers + 1;
+    if (row.type === 'invitations') {
+      const acceptedTarget = Math.max(1, Math.min(maxAcceptedTarget, 2 + (seed % 3)));
+      const pendingTarget = Math.max(0, Math.min(
+        availableOtherUsers - Math.max(0, acceptedTarget - 1),
+        1 + ((seed >> 2) % 2)
+      ));
+      return { acceptedTarget, pendingTarget };
+    }
+
+    const bucket = seed % 100;
+    let totalTarget = 5 + (seed % 3);
+
+    if (bucket >= 45 && bucket < 78) {
+      totalTarget = 7 + (seed % 3);
+    } else if (bucket >= 78 && bucket < 93) {
+      totalTarget = 10 + (seed % 3);
+    } else if (bucket >= 93 && bucket < 99) {
+      totalTarget = 13 + (seed % 2);
+    } else if (bucket >= 99) {
+      totalTarget = 15;
+    }
+
+    let pendingTarget = 0;
+    if (totalTarget >= 7 && totalTarget <= 9) {
+      pendingTarget = 1 + ((seed >> 4) % 2);
+    } else if (totalTarget >= 10 && totalTarget <= 12) {
+      pendingTarget = 1 + ((seed >> 5) % 3);
+    } else if (totalTarget >= 13) {
+      pendingTarget = 2 + ((seed >> 6) % 3);
+    }
+
+    let acceptedTarget = totalTarget - pendingTarget;
+    acceptedTarget = Math.max(1, Math.min(maxAcceptedTarget, acceptedTarget));
+    pendingTarget = Math.max(0, Math.min(
+      availableOtherUsers - Math.max(0, acceptedTarget - 1),
+      pendingTarget
+    ));
+
+    return { acceptedTarget, pendingTarget };
   }
 
   static sortActivityMembersByActionTimeDesc(entries: readonly ActivityMemberEntry[]): ActivityMemberEntry[] {

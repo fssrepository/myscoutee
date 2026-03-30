@@ -15,7 +15,10 @@
 
       <div class="popup-body popup-body-impressions">
         <div class="social-proof-grid">
-          <div class="editor-list-card social-proof-card social-proof-card-modern social-proof-card-host">
+          <div
+            class="editor-list-card social-proof-card social-proof-card-modern social-proof-card-host"
+            [ngClass]="getHostTierToneClass(vm.user.hostTier)"
+          >
             <div class="social-proof-identity-pill social-proof-identity-pill-host">
               <mat-icon [class]="getHostTierColorClass(vm.user.hostTier)">{{ getHostTierIcon(vm.user.hostTier) }}</mat-icon>
               <span class="social-proof-identity-label">
@@ -118,7 +121,10 @@
             </div>
           </div>
 
-          <div class="editor-list-card social-proof-card social-proof-card-modern social-proof-card-member">
+          <div
+            class="editor-list-card social-proof-card social-proof-card-modern social-proof-card-member"
+            [ngClass]="getTraitToneClass(vm.user.traitLabel)"
+          >
             <div class="social-proof-identity-pill social-proof-identity-pill-member">
               <mat-icon [class]="getTraitColorClass(vm.user.traitLabel)">{{ getTraitIcon(vm.user.traitLabel) }}</mat-icon>
               <span class="social-proof-identity-label">
@@ -135,6 +141,16 @@
                 <span class="popup-impressions-badge-label">Returnees / NoShow</span>
                 <span class="popup-impressions-badge-value">{{ vm.memberReturneesSummary + ' / ' + vm.memberNoShowCount }}</span>
               </span>
+            </div>
+
+            <div class="social-proof-section-block">
+              <div class="social-proof-section-head section-vibe">
+                <span class="section-tag">Vibe</span>
+                <span class="section-line"></span>
+              </div>
+              <div class="social-proof-chip-list" [class.impressions-chip-list-updated]="vm.pulseFlags.memberChips">
+                <span class="social-proof-chip chip-vibe" *ngFor="let item of vm.memberVibeBadgeItems">{{ item }}</span>
+              </div>
             </div>
 
             <div class="social-proof-section-block">
@@ -194,16 +210,6 @@
                   <span class="social-proof-chip chip-personality" *ngFor="let item of vm.memberPersonalityBadgeItems">{{ item }}</span>
                 </div>
               </ng-template>
-            </div>
-
-            <div class="social-proof-section-block">
-              <div class="social-proof-section-head section-vibe">
-                <span class="section-tag">Vibe</span>
-                <span class="section-line"></span>
-              </div>
-              <div class="social-proof-chip-list" [class.impressions-chip-list-updated]="vm.pulseFlags.memberChips">
-                <span class="social-proof-chip chip-vibe" *ngFor="let item of vm.memberVibeBadgeItems">{{ item }}</span>
-              </div>
             </div>
 
             <div class="social-proof-section-block">

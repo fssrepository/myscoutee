@@ -204,8 +204,8 @@
                   ></div>
                   <div
                     class="smart-list__item-shell"
-                    [attr.data-smart-list-index]="itemDomIndex(item)"
-                    [attr.data-smart-list-anchor]="itemAnchorKey(item, itemDomIndex(item))"
+                    [attr.data-smart-list-index]="group.startIndex + itemIndex"
+                    [attr.data-smart-list-anchor]="itemAnchorKey(item, group.startIndex + itemIndex)"
                   >
                     <ng-container
                       *ngTemplateOutlet="
@@ -234,28 +234,56 @@
       [class.smart-list__stage-overlay--with-rating-bar]="shouldRenderPaginationRatingBar()"
       *ngIf="shouldRenderHostedFullscreenOverlay()"
     >
-      <div class="smart-list__fullscreen-surface" *ngIf="resolvedFullscreenItemTemplate() as fullscreenTemplateRef">
-        <div
-          class="smart-list__fullscreen-card smart-list__fullscreen-card--leaving"
-          *ngIf="hostedFullscreenLeavingItem() as leavingItem"
-          (animationend)="onHostedFullscreenLeaveAnimationEnd($event)"
-        >
-          <ng-container
-            *ngTemplateOutlet="
-              fullscreenTemplateRef;
-              context: hostedFullscreenItemContext(leavingItem, 'leaving')
-            "
-          ></ng-container>
-        </div>
+      <div #fullscreenSurface class="smart-list__fullscreen-surface" *ngIf="resolvedFullscreenItemTemplate() as fullscreenTemplateRef">
+        <ng-container *ngIf="hostedFullscreenCurrentItem() as currentItem; else fullscreenEmptyState">
+          <div
+            class="smart-list__fullscreen-card smart-list__fullscreen-card--slot-2 smart-list__fullscreen-card--preview"
+            *ngIf="hostedFullscreenStackItem(2) as thirdItem"
+            aria-hidden="true"
+          >
+            <ng-container
+              *ngTemplateOutlet="
+                fullscreenTemplateRef;
+                context: hostedFullscreenItemContext(
+                  thirdItem,
+                  hostedFullscreenStackRenderState(2),
+                  hostedFullscreenStackItemIndex(2)
+                )
+              "
+            ></ng-container>
+          </div>
 
-        <div class="smart-list__fullscreen-card smart-list__fullscreen-card--active" *ngIf="hostedFullscreenCurrentItem() as currentItem; else fullscreenEmptyState">
-          <ng-container
-            *ngTemplateOutlet="
-              fullscreenTemplateRef;
-              context: hostedFullscreenItemContext(currentItem, 'active')
-            "
-          ></ng-container>
-        </div>
+          <div
+            class="smart-list__fullscreen-card smart-list__fullscreen-card--slot-1 smart-list__fullscreen-card--preview"
+            *ngIf="hostedFullscreenStackItem(1) as nextItem"
+            aria-hidden="true"
+          >
+            <ng-container
+              *ngTemplateOutlet="
+                fullscreenTemplateRef;
+                context: hostedFullscreenItemContext(
+                  nextItem,
+                  hostedFullscreenStackRenderState(1),
+                  hostedFullscreenStackItemIndex(1)
+                )
+              "
+            ></ng-container>
+          </div>
+
+          <div
+            class="smart-list__fullscreen-card smart-list__fullscreen-card--active"
+            [class.smart-list__fullscreen-card--curling]="hostedFullscreenIsCurling()"
+            [class.smart-list__fullscreen-card--curling-backward]="hostedFullscreenIsCurlingBackwards()"
+            (animationend)="onHostedFullscreenActiveCardAnimationEnd($event)"
+          >
+            <ng-container
+              *ngTemplateOutlet="
+                fullscreenTemplateRef;
+                context: hostedFullscreenItemContext(currentItem, hostedFullscreenCurrentRenderState())
+              "
+            ></ng-container>
+          </div>
+        </ng-container>
       </div>
     </div>
   </div>

@@ -1,7 +1,8 @@
 .game-popup {
   position: fixed;
   inset: 0;
-  z-index: 2200;
+  z-index: 10020;
+  isolation: isolate;
   display: flex;
   align-items: flex-start;
   justify-content: center;
@@ -17,6 +18,7 @@
 .game-popup-panel {
   position: relative;
   z-index: 1;
+  isolation: isolate;
   width: min(680px, calc(100vw - 1rem));
   border-radius: 12px;
   background: #fff;
@@ -441,7 +443,7 @@
 .game-filter-selector-overlay {
   position: absolute;
   inset: 0;
-  z-index: 7;
+  z-index: 40;
   display: flex;
   align-items: flex-start;
   justify-content: center;
@@ -456,6 +458,7 @@
   border-radius: 14px;
   background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
   position: relative;
+  z-index: 1;
   width: 100%;
   padding: 0.62rem;
   display: flex;

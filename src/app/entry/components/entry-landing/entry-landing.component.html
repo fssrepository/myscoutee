@@ -9,7 +9,14 @@
         <a href="#why" (click)="scrollEntryTo('why', $event)">Why</a>
         <a href="#how" (click)="scrollEntryTo('how', $event)">How it works</a>
       </nav>
-      <button type="button" class="entry-auth-btn" [class.entry-auth-btn-avatar]="entryAuthButtonShowsAvatar" (click)="requestHeaderAuth()">
+      <button
+        type="button"
+        class="entry-auth-btn"
+        [class.entry-auth-btn-avatar]="entryAuthButtonShowsAvatar"
+        matRipple
+        [matRippleColor]="'rgba(255, 255, 255, 0.24)'"
+        (click)="requestHeaderAuth()"
+      >
         <ng-container *ngIf="entryAuthButtonShowsAvatar; else loginButtonContent">
           <span class="entry-auth-avatar">{{ firebaseAuthProfile?.initials }}</span>
         </ng-container>
@@ -31,7 +38,13 @@
             <p class="hero-line-even">Myscoutee makes meeting people social again.</p>
           </div>
           <div class="entry-hero-cta">
-            <button type="button" class="entry-cta entry-cta-primary" (click)="requestDemo()">
+            <button
+              type="button"
+              class="entry-cta entry-cta-primary"
+              matRipple
+              [matRippleColor]="'rgba(112, 59, 242, 0.14)'"
+              (click)="requestDemo()"
+            >
               <mat-icon>rocket_launch</mat-icon>
               <span>Start exploring</span>
             </button>
@@ -122,7 +135,13 @@
 
     <section class="entry-final-cta">
       <h2>Stop guessing. Start prioritizing.</h2>
-      <button type="button" class="entry-cta entry-cta-primary" (click)="requestDemo()">
+      <button
+        type="button"
+        class="entry-cta entry-cta-primary"
+        matRipple
+        [matRippleColor]="'rgba(112, 59, 242, 0.14)'"
+        (click)="requestDemo()"
+      >
         <mat-icon>login</mat-icon>
         <span>Open demo</span>
       </button>

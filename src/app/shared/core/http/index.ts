@@ -13,5 +13,7 @@ export { HttpChatsService } from './services/chats.service';
 export { HttpEventEditorDataService } from './services/event-editor-data.service';
 export { HttpEventsService } from './services/events.service';
 export { HttpGameService } from './services/game.service';
+export { HttpMediaService } from './services/media.service';
 export { HttpRatesService } from './services/rates.service';
+export { HttpUserExperiencesService } from './services/user-experiences.service';
 export { HttpUsersService } from './services/users.service';

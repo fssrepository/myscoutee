@@ -44,6 +44,7 @@ __screenshots__/
 /keys/*.json
 /.agent/logs/
 !/keys/*.example.json
+/src/app/shared/core/base/services/test/
 
 # System files
 .DS_Store

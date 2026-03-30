@@ -1,13 +1,14 @@
 <ng-container *ngIf="menuUser() as user">
 <ng-container *ngIf="menuUiState() as ui">
-<div class="user-menu-backdrop" [class.open]="ui.open" [class.is-covered]="isCoveredByPopup()" (click)="onCloseMenu()" *ngIf="ui.open"></div>
+<div class="user-menu-backdrop" [class.open]="ui.open" [class.is-covered]="isCoveredByAssetPopup()" (click)="onCloseMenu()" *ngIf="ui.open"></div>
 
-<aside class="user-menu-panel" [class.open]="ui.open" [class.is-covered]="isCoveredByPopup()">
+<aside class="user-menu-panel" [class.open]="ui.open" [class.is-covered]="isCoveredByAssetPopup()">
   <div
     class="user-menu-header"
     [ngClass]="profileStatusClass(user.profileStatus)"
   >
     <button
+      #settingsButton
       type="button"
       class="user-menu-settings-btn"
       [class.is-open]="ui.settingsOpen"
@@ -15,15 +16,18 @@
       [attr.aria-expanded]="ui.settingsOpen"
       (click)="onToggleSettingsMenu($event)"
     >
+      <span class="navigator-action-ripple" matRipple [matRippleTrigger]="settingsButton" aria-hidden="true"></span>
       <mat-icon>settings</mat-icon>
     </button>
 
     <button
+      #closeButton
       type="button"
       class="user-menu-close-btn"
       aria-label="Close menu"
       (click)="$event.stopPropagation(); onCloseMenu()"
     >
+      <span class="navigator-action-ripple" matRipple [matRippleTrigger]="closeButton" aria-hidden="true"></span>
       <mat-icon>close</mat-icon>
     </button>
 
@@ -77,7 +81,8 @@
         </span>
       </div>
     </div>
-    <button type="button" class="header-open-cue" [disabled]="!isOnline()" aria-label="Open profile editor" (click)="openProfileEditor($event)">
+    <button #profileEditorButton type="button" class="header-open-cue" [disabled]="!isOnline()" aria-label="Open profile editor" (click)="openProfileEditor($event)">
+      <span class="navigator-action-ripple" matRipple [matRippleTrigger]="profileEditorButton" aria-hidden="true"></span>
       <mat-icon>edit</mat-icon>
     </button>
   </div>
@@ -97,6 +102,7 @@
 
     <div class="impressions-shortcuts">
       <button
+        #hostImpressionsButton
         class="impression-shortcut-btn impression-shortcut-host-btn"
         [ngClass]="getHostTierToneClass(user.hostTier)"
         type="button"
@@ -105,6 +111,7 @@
         aria-label="Open host impressions"
         [title]="user.hostTier"
       >
+        <span class="navigator-action-ripple" matRipple [matRippleTrigger]="hostImpressionsButton" aria-hidden="true"></span>
         <span
           class="card-badge menu-shortcut-badge menu-shortcut-badge-empty"
           *ngIf="user.impressionChangeFlags.host"
@@ -117,6 +124,7 @@
       </button>
 
       <button
+        #memberImpressionsButton
         class="impression-shortcut-btn impression-shortcut-member-btn"
         [ngClass]="getTraitToneClass(user.traitLabel)"
         type="button"
@@ -125,6 +133,7 @@
         aria-label="Open member impressions"
         [title]="user.memberImpressionTitle"
       >
+        <span class="navigator-action-ripple" matRipple [matRippleTrigger]="memberImpressionsButton" aria-hidden="true"></span>
         <span
           class="card-badge menu-shortcut-badge menu-shortcut-badge-empty"
           *ngIf="user.impressionChangeFlags.member"
@@ -146,34 +155,39 @@
     </div>
 
     <div class="menu-shortcuts">
-      <button class="menu-shortcut-btn menu-shortcut-rates" type="button" [disabled]="!isOnline()" (click)="$event.stopPropagation(); openRatesShortcut()" aria-label="Open rates" title="Rates">
+      <button #ratesButton class="menu-shortcut-btn menu-shortcut-rates" type="button" [disabled]="!isOnline()" (click)="$event.stopPropagation(); openRatesShortcut()" aria-label="Open rates" title="Rates">
+        <span class="navigator-action-ripple" matRipple [matRippleTrigger]="ratesButton" aria-hidden="true"></span>
         <mat-icon>star</mat-icon>
         <span class="menu-shortcut-label">Rates</span>
-        <span class="card-badge menu-shortcut-badge" *ngIf="user.activities.game > 0">{{ user.activities.game }}</span>
+        <span class="card-badge menu-shortcut-badge" *ngIf="user.activities.game > 0">{{ user.activities.game | counterBadge }}</span>
       </button>
 
-      <button class="menu-shortcut-btn menu-shortcut-chat" type="button" [disabled]="!isOnline()" (click)="$event.stopPropagation(); openChatShortcut()" aria-label="Open chat" title="Chats">
+      <button #chatButton class="menu-shortcut-btn menu-shortcut-chat" type="button" [disabled]="!isOnline()" (click)="$event.stopPropagation(); openChatShortcut()" aria-label="Open chat" title="Chats">
+        <span class="navigator-action-ripple" matRipple [matRippleTrigger]="chatButton" aria-hidden="true"></span>
         <mat-icon>chat</mat-icon>
         <span class="menu-shortcut-label">Chats</span>
-        <span class="card-badge menu-shortcut-badge" *ngIf="user.activities.chat > 0">{{ user.activities.chat }}</span>
+        <span class="card-badge menu-shortcut-badge" *ngIf="user.activities.chat > 0">{{ user.activities.chat | counterBadge }}</span>
       </button>
 
-      <button class="menu-shortcut-btn menu-shortcut-invitations" type="button" [disabled]="!isOnline()" (click)="$event.stopPropagation(); openInvitationShortcut()" aria-label="Open invitations" title="Invitations">
+      <button #invitationsButton class="menu-shortcut-btn menu-shortcut-invitations" type="button" [disabled]="!isOnline()" (click)="$event.stopPropagation(); openInvitationShortcut()" aria-label="Open invitations" title="Invitations">
+        <span class="navigator-action-ripple" matRipple [matRippleTrigger]="invitationsButton" aria-hidden="true"></span>
         <mat-icon>mail</mat-icon>
         <span class="menu-shortcut-label">Invitations</span>
-        <span class="card-badge menu-shortcut-badge" *ngIf="user.activities.invitations > 0">{{ user.activities.invitations }}</span>
+        <span class="card-badge menu-shortcut-badge" *ngIf="user.activities.invitations > 0">{{ user.activities.invitations | counterBadge }}</span>
       </button>
 
-      <button class="menu-shortcut-btn menu-shortcut-events" type="button" [disabled]="!isOnline()" (click)="$event.stopPropagation(); openEventShortcut()" aria-label="Open events" title="Events">
+      <button #eventsButton class="menu-shortcut-btn menu-shortcut-events" type="button" [disabled]="!isOnline()" (click)="$event.stopPropagation(); openEventShortcut()" aria-label="Open events" title="Events">
+        <span class="navigator-action-ripple" matRipple [matRippleTrigger]="eventsButton" aria-hidden="true"></span>
         <mat-icon>event</mat-icon>
         <span class="menu-shortcut-label">Events</span>
-        <span class="card-badge menu-shortcut-badge" *ngIf="user.activities.events > 0">{{ user.activities.events }}</span>
+        <span class="card-badge menu-shortcut-badge" *ngIf="user.activities.events > 0">{{ user.activities.events | counterBadge }}</span>
       </button>
 
-      <button class="menu-shortcut-btn menu-shortcut-hosting" type="button" [disabled]="!isOnline()" (click)="$event.stopPropagation(); openHostingShortcut()" aria-label="Open my events" title="My Events">
+      <button #hostingButton class="menu-shortcut-btn menu-shortcut-hosting" type="button" [disabled]="!isOnline()" (click)="$event.stopPropagation(); openHostingShortcut()" aria-label="Open my events" title="My Events">
+        <span class="navigator-action-ripple" matRipple [matRippleTrigger]="hostingButton" aria-hidden="true"></span>
         <mat-icon>stadium</mat-icon>
         <span class="menu-shortcut-label">My Events</span>
-        <span class="card-badge menu-shortcut-badge" *ngIf="user.activities.hosting > 0">{{ user.activities.hosting }}</span>
+        <span class="card-badge menu-shortcut-badge" *ngIf="user.activities.hosting > 0">{{ user.activities.hosting | counterBadge }}</span>
       </button>
     </div>
 
@@ -186,22 +200,26 @@
     </div>
 
     <div class="assets-shortcuts">
-      <button class="asset-shortcut-btn asset-shortcut-car" type="button" [disabled]="!isOnline()" (click)="openAssetCarPopup($event)" aria-label="Car">
+      <button #assetCarButton class="asset-shortcut-btn asset-shortcut-car" type="button" [disabled]="!isOnline()" (click)="openAssetCarPopup($event)" aria-label="Car">
+        <span class="navigator-action-ripple" matRipple [matRippleTrigger]="assetCarButton" aria-hidden="true"></span>
         <mat-icon>directions_car</mat-icon>
         <span class="asset-shortcut-label">Car</span>
       </button>
-      <button class="asset-shortcut-btn asset-shortcut-accommodation" type="button" [disabled]="!isOnline()" (click)="openAssetAccommodationPopup($event)" aria-label="Accommodation">
+      <button #assetAccommodationButton class="asset-shortcut-btn asset-shortcut-accommodation" type="button" [disabled]="!isOnline()" (click)="openAssetAccommodationPopup($event)" aria-label="Accommodation">
+        <span class="navigator-action-ripple" matRipple [matRippleTrigger]="assetAccommodationButton" aria-hidden="true"></span>
         <mat-icon>apartment</mat-icon>
         <span class="asset-shortcut-label">Accommodation</span>
       </button>
-      <button class="asset-shortcut-btn asset-shortcut-supplies" type="button" [disabled]="!isOnline()" (click)="openAssetSuppliesPopup($event)" aria-label="Supplies">
+      <button #assetSuppliesButton class="asset-shortcut-btn asset-shortcut-supplies" type="button" [disabled]="!isOnline()" (click)="openAssetSuppliesPopup($event)" aria-label="Supplies">
+        <span class="navigator-action-ripple" matRipple [matRippleTrigger]="assetSuppliesButton" aria-hidden="true"></span>
         <mat-icon>inventory_2</mat-icon>
         <span class="asset-shortcut-label">Supplies</span>
       </button>
-      <button class="asset-shortcut-btn asset-shortcut-ticket" type="button" (click)="openAssetTicketsPopup($event)" aria-label="Ticket">
+      <button #assetTicketButton class="asset-shortcut-btn asset-shortcut-ticket" type="button" (click)="openAssetTicketsPopup($event)" aria-label="Ticket">
+        <span class="navigator-action-ripple" matRipple [matRippleTrigger]="assetTicketButton" aria-hidden="true"></span>
         <mat-icon>qr_code_2</mat-icon>
         <span class="asset-shortcut-label">Ticket</span>
-        <span class="card-badge menu-shortcut-badge" *ngIf="user.activities.tickets > 0">{{ user.activities.tickets }}</span>
+        <span class="card-badge menu-shortcut-badge" *ngIf="user.activities.tickets > 0">{{ user.activities.tickets | counterBadge }}</span>
       </button>
     </div>
 
@@ -214,12 +232,14 @@
     </div>
 
     <div class="feedback-shortcuts">
-      <button class="feedback-shortcut-btn feedback-shortcut-event" type="button" [disabled]="!isOnline()" (click)="openEventFeedbackPopup($event)" aria-label="Open event feedback" title="Event Feedback">
+      <button #feedbackEventButton class="feedback-shortcut-btn feedback-shortcut-event" type="button" [disabled]="!isOnline()" (click)="openEventFeedbackPopup($event)" aria-label="Open event feedback" title="Event Feedback">
+        <span class="navigator-action-ripple" matRipple [matRippleTrigger]="feedbackEventButton" aria-hidden="true"></span>
         <mat-icon>rate_review</mat-icon>
         <span class="feedback-shortcut-label">Event Feedback</span>
-        <span class="card-badge menu-shortcut-badge" *ngIf="user.activities.feedback > 0">{{ user.activities.feedback }}</span>
+        <span class="card-badge menu-shortcut-badge" *ngIf="user.activities.feedback > 0">{{ user.activities.feedback | counterBadge }}</span>
       </button>
-      <button class="feedback-shortcut-btn feedback-shortcut-report" type="button" [disabled]="!isOnline()" (click)="openReportUserFromFeedback($event)" aria-label="Open report user" title="Report User">
+      <button #feedbackReportButton class="feedback-shortcut-btn feedback-shortcut-report" type="button" [disabled]="!isOnline()" (click)="openReportUserFromFeedback($event)" aria-label="Open report user" title="Report User">
+        <span class="navigator-action-ripple" matRipple [matRippleTrigger]="feedbackReportButton" aria-hidden="true"></span>
         <mat-icon>flag</mat-icon>
         <span class="feedback-shortcut-label">Report User</span>
       </button>

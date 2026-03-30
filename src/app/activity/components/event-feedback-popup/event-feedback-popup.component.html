@@ -22,7 +22,7 @@
               [ngClass]="feedback.eventFeedbackFilterBadgeClass(feedback.eventFeedbackListFilter())"
               *ngIf="feedback.eventFeedbackFilterCount(feedback.eventFeedbackListFilter()) > 0"
             >
-              {{ feedback.eventFeedbackFilterCount(feedback.eventFeedbackListFilter()) }}
+              {{ feedback.eventFeedbackFilterCount(feedback.eventFeedbackListFilter()) | counterBadge }}
             </span>
           </button>
           <div class="activities-view-picker-panel event-explore-order-panel" *ngIf="feedback.showEventFeedbackFilterPicker()">
@@ -41,7 +41,7 @@
                 [ngClass]="feedback.eventFeedbackFilterBadgeClass(option.key)"
                 *ngIf="feedback.eventFeedbackFilterCount(option.key) > 0"
               >
-                {{ feedback.eventFeedbackFilterCount(option.key) }}
+                {{ feedback.eventFeedbackFilterCount(option.key) | counterBadge }}
               </span>
             </button>
           </div>

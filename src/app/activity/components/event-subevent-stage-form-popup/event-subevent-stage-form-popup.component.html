@@ -3,8 +3,8 @@
   <article class="experience-form-popup subevent-form-popup" (click)="$event.stopPropagation()">
     <div class="experience-form-header">
       <div class="subevent-form-header-title">
-        <h3>{{ view.title }}</h3>
-        <p *ngIf="view.parentTitle">{{ view.parentTitle }}</p>
+        <h3 [attr.title]="view.title">{{ view.title }}</h3>
+        <p *ngIf="view.parentTitle" [attr.title]="view.parentTitle">{{ view.parentTitle }}</p>
       </div>
       <div class="experience-form-header-controls">
         <ng-container *ngIf="view.showOptionalToggle; else subEventMandatoryHeader">

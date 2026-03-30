@@ -1,4 +1,8 @@
-<div class="app-popup app-popup-stacked app-popup-stacked-over-activities event-chat-popup-shell" *ngIf="session() as chatSession">
+<div
+  class="app-popup app-popup-stacked app-popup-stacked-over-activities event-chat-popup-shell"
+  *ngIf="session() as chatSession"
+  [style.--chat-compose-detached-space.px]="chatComposeDetachedSpace"
+>
   <div class="app-popup-backdrop" (click)="close()"></div>
   <div class="app-popup-panel popup-panel-event-chat" (click)="$event.stopPropagation()">
     <button
@@ -30,7 +34,7 @@
           class="card-badge event-editor-members-pending-badge popup-chat-context-total-badge"
           *ngIf="selectedChatHeaderActionBadgeCount() > 0"
         >
-          {{ selectedChatHeaderActionBadgeCount() }}
+          {{ selectedChatHeaderActionBadgeCount() | counterBadge }}
         </span>
       </button>
 
@@ -52,7 +56,7 @@
             class="card-badge event-editor-members-pending-badge popup-chat-context-total-badge"
             *ngIf="selectedChatHeaderActionBadgeCount() > 0"
           >
-            {{ selectedChatHeaderActionBadgeCount() }}
+            {{ selectedChatHeaderActionBadgeCount() | counterBadge }}
           </span>
         </button>
 
@@ -83,7 +87,7 @@
               <span class="subevent-resource-menu-item-value">{{ membersResource.summary }}</span>
             </span>
             <span class="rate-filter-count-badge subevent-resource-menu-item-counter" *ngIf="membersResource.pending > 0">
-              {{ membersResource.pending }}
+              {{ membersResource.pending | counterBadge }}
             </span>
           </button>
           <div class="item-action-menu-divider" *ngIf="preparedChatMembersResource"></div>
@@ -101,7 +105,7 @@
               <span class="subevent-resource-menu-item-value">{{ resource.summary }}</span>
             </span>
             <span class="rate-filter-count-badge subevent-resource-menu-item-counter" *ngIf="resource.pending > 0">
-              {{ resource.pending }}
+              {{ resource.pending | counterBadge }}
             </span>
           </button>
         </div>
@@ -121,7 +125,6 @@
             [loadPage]="chatThreadLoadPage"
             [itemTemplate]="chatThreadMessageTemplate"
             [query]="chatThreadQuery"
-            (stateChange)="onChatThreadSmartListStateChange($event)"
           ></app-smart-list>
 
           <div class="chat-typing-indicator" *ngIf="typingIndicators.length > 0">
@@ -133,7 +136,7 @@
             </span>
           </div>
 
-          <div class="chat-compose-box">
+          <div class="chat-compose-box" #chatComposeBox>
             <textarea
               rows="3"
               placeholder="Write message"
@@ -156,11 +159,42 @@
     class="chat-message"
     [class.mine]="message.mine"
     [class.chat-message-fresh]="isFreshMessage(message.id)"
+    [class.chat-message-pending]="message.deliveryState === 'pending'"
+    [class.chat-message-timed-out]="message.deliveryState === 'timed-out'"
     [attr.data-group-label]="groupLabel"
     [attr.data-smart-list-anchor]="message.id"
     [attr.data-chat-message-id]="message.id"
   >
     <div class="chat-bubble">
+      <svg
+        class="chat-bubble-progress-ring"
+        *ngIf="message.mine && (message.deliveryState === 'pending' || message.deliveryState === 'timed-out')"
+        viewBox="0 0 100 100"
+        preserveAspectRatio="none"
+        aria-hidden="true"
+      >
+        <defs>
+          <linearGradient id="chat-bubble-progress-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="rgb(235, 147, 33)"></stop>
+            <stop offset="100%" stop-color="rgb(247, 190, 52)"></stop>
+          </linearGradient>
+          <linearGradient id="chat-bubble-progress-gradient-timeout" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="rgb(213, 54, 68)"></stop>
+            <stop offset="100%" stop-color="rgb(196, 29, 42)"></stop>
+          </linearGradient>
+        </defs>
+        <path
+          class="chat-bubble-progress-track"
+          d="M50 1.5 H88 A10.5 10.5 0 0 1 98.5 12 V88 A10.5 10.5 0 0 1 88 98.5 H12 A10.5 10.5 0 0 1 1.5 88 V12 A10.5 10.5 0 0 1 12 1.5 H50"
+        ></path>
+        <path
+          class="chat-bubble-progress-stroke"
+          [class.is-loading]="message.deliveryState === 'pending'"
+          [class.is-timed-out]="message.deliveryState === 'timed-out'"
+          d="M50 1.5 H88 A10.5 10.5 0 0 1 98.5 12 V88 A10.5 10.5 0 0 1 88 98.5 H12 A10.5 10.5 0 0 1 1.5 88 V12 A10.5 10.5 0 0 1 12 1.5 H50"
+          pathLength="100"
+        ></path>
+      </svg>
       <span class="chat-sender-avatar" [class]="'user-color-' + message.senderAvatar.gender">
         {{ message.senderAvatar.initials }}
       </span>
@@ -170,17 +204,28 @@
           <span class="chat-time-chip">{{ message.time }}</span>
         </div>
         <p class="chat-line">{{ message.text }}</p>
-      </div>
-      <div class="chat-readers" *ngIf="visibleReadBy(message).length > 0">
-        <span
-          class="chat-reader"
-          *ngFor="let reader of visibleReadBy(message)"
-          [class]="'user-color-' + reader.gender"
-          [class.chat-reader-fresh]="isFreshRead(message.id, reader.id)"
+        <div class="chat-delivery-state" *ngIf="message.mine && message.deliveryState === 'pending'">
+          Sending...
+        </div>
+        <div
+          class="chat-delivery-state chat-delivery-state-timed-out"
+          *ngIf="message.mine && message.deliveryState === 'timed-out'"
         >
-          {{ reader.initials }}
-        </span>
+          Taking longer than usual
+        </div>
       </div>
+      <ng-container *ngIf="visibleReadReceiptsByMessageId[message.id] as visibleReaders">
+        <div class="chat-readers" *ngIf="visibleReaders.length > 0">
+          <span
+            class="chat-reader"
+            *ngFor="let reader of visibleReaders; trackBy: trackByChatReader"
+            [class]="'user-color-' + reader.gender"
+            [class.chat-reader-fresh]="isFreshRead(message.id, reader.id)"
+          >
+            {{ reader.initials }}
+          </span>
+        </div>
+      </ng-container>
     </div>
   </article>
 </ng-template>

@@ -8,7 +8,7 @@
         [class.is-loading]="isLoading()"
         [class.is-error]="hasLoadError()"
         [class.is-open]="isOpen()"
-        [class.is-covered]="isCoveredByPopup()"
+        [class.is-covered]="isCoveredByAssetPopup()"
         [disabled]="!canToggle()"
         [attr.aria-label]="ariaLabel()"
         [attr.aria-busy]="isLoading()"
@@ -52,7 +52,7 @@
           </ng-container>
         </span>
         <span class="badge-dot" *ngIf="canToggle() && badgeCount() > 0">
-          {{ badgeCount() }}
+          {{ badgeCount() | counterBadge }}
         </span>
       </button>
     </div>

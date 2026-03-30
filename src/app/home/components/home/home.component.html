@@ -5,11 +5,35 @@
       <span class="game-brand-text">yScoutee</span>
     </a>
     <div class="game-actions">
-      <button type="button" class="game-action-mode" [class.mode-pair]="isPairMode" [class.mode-single]="!isPairMode" (click)="togglePairMode()">
-        <mat-icon>{{ isPairMode ? 'groups' : 'person' }}</mat-icon>
-        <span>{{ isPairMode ? 'Pair mode' : 'Single mode' }}</span>
-      </button>
+      <div class="game-action-mode-select" [ngClass]="homeModeToneClass(selectedHomeMode)">
+        <mat-select
+          [ngModel]="selectedHomeMode"
+          (ngModelChange)="selectHomeMode($event)"
+          panelWidth="248px"
+          panelClass="home-mode-select-panel"
+        >
+          <mat-select-trigger>
+            <span class="game-action-mode">
+              <mat-icon>{{ selectedHomeModeIcon() }}</mat-icon>
+              <span>{{ selectedHomeModeLabel() }}</span>
+              <mat-icon class="game-action-mode-chevron">expand_more</mat-icon>
+            </span>
+          </mat-select-trigger>
+          <mat-option
+            *ngFor="let option of homeModeOptions"
+            [value]="option.key"
+            class="home-mode-option"
+            [ngClass]="homeModeToneClass(option.key)"
+          >
+            <span class="game-mode-option">
+              <mat-icon>{{ option.icon }}</mat-icon>
+              <span>{{ option.label }}</span>
+            </span>
+          </mat-option>
+        </mat-select>
+      </div>
       <button
+        #filterButton
         type="button"
         class="game-action-filter has-badge"
         [class.game-action-filter-has-matches]="hasRemainingCandidatesForCurrentMode"
@@ -17,10 +41,12 @@
         (click)="openFilter()"
         aria-label="Open profile filters"
       >
+        <span class="game-action-ripple" matRipple [matRippleTrigger]="filterButton" aria-hidden="true"></span>
         <mat-icon>filter_alt</mat-icon>
-        <span class="filter-state-badge" [class.active]="isFilterActive">{{ filterBadgeCount }}</span>
+        <span class="filter-state-badge" [class.active]="isFilterActive">{{ filterBadgeCount | counterBadge }}</span>
       </button>
       <button
+        #historyButton
         type="button"
         class="game-action-filter game-action-history has-badge"
         [class.is-disabled]="!canOpenHistory"
@@ -28,11 +54,41 @@
         (click)="openHistory()"
         aria-label="Open game history"
       >
+        <span class="game-action-ripple" matRipple [matRippleTrigger]="historyButton" aria-hidden="true"></span>
         <mat-icon>history</mat-icon>
-        <span class="history-badge" *ngIf="historyBadgeCount > 0">{{ historyBadgeCount }}</span>
+        <span class="history-badge" *ngIf="historyBadgeCount > 0">{{ historyBadgeCount | counterBadge }}</span>
       </button>
     </div>
   </header>
+
+  <section class="game-social-query-bar" *ngIf="showSocialQueryInputs()">
+    <label class="game-social-query-field">
+      <input
+        type="text"
+        [value]="leftSocialQuery"
+        [attr.list]="'home-social-left-suggestions'"
+        [attr.aria-label]="isFriendsInCommonMode ? 'Person' : 'Friend A'"
+        [placeholder]="isFriendsInCommonMode ? 'Search person or event' : 'Search friend or event'"
+        (input)="onLeftSocialQueryChanged(($any($event.target).value ?? '').toString())"
+      />
+    </label>
+    <label class="game-social-query-field">
+      <input
+        type="text"
+        [value]="rightSocialQuery"
+        [attr.list]="'home-social-right-suggestions'"
+        [attr.aria-label]="isFriendsInCommonMode ? 'Common friend' : 'Friend B'"
+        [placeholder]="isFriendsInCommonMode ? 'Search common friend' : 'Search friend or event'"
+        (input)="onRightSocialQueryChanged(($any($event.target).value ?? '').toString())"
+      />
+    </label>
+    <datalist id="home-social-left-suggestions">
+      <option *ngFor="let suggestion of socialQuerySuggestions('left')" [value]="suggestion"></option>
+    </datalist>
+    <datalist id="home-social-right-suggestions">
+      <option *ngFor="let suggestion of socialQuerySuggestions('right')" [value]="suggestion"></option>
+    </datalist>
+  </section>
 
   <section class="game-layout-single">
     <div class="game-card-deck">

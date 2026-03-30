@@ -72,7 +72,13 @@
           <span>Source link</span>
           <div class="asset-source-row">
             <input type="text" [(ngModel)]="assetForm.sourceLink" placeholder="https://..." />
-            <button type="button" class="asset-source-refresh-btn" (click)="refreshAssetFromSourceLink()" aria-label="Refresh from source">
+            <button
+              *ngIf="sourceRefreshEnabled"
+              type="button"
+              class="asset-source-refresh-btn"
+              (click)="refreshAssetFromSourceLink()"
+              aria-label="Refresh from source"
+            >
               <mat-icon>refresh</mat-icon>
             </button>
           </div>

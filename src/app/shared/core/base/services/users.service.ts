@@ -1,13 +1,16 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, Injector, inject } from '@angular/core';
 
+import { environment } from '../../../../../environments/environment';
 import { type LoadStatus } from '../context';
 import { AppContext } from '../context';
-import { DemoBootstrapService, type DemoBootstrapProgressState, DemoUsersService } from '../../demo';
+import { DemoBootstrapService, type DemoBootstrapProgressState, DemoUsersRepository, DemoUsersService } from '../../demo';
 import { HttpUsersService } from '../../http';
 import type {
   DemoUserListItemDto,
+  UserByIdQueryResponse,
   UserDeleteRequestDto,
   UserFeedbackSubmitRequestDto,
+  UserLocationEligibilityResponseDto,
   UserDto,
   UserLogoutRequestDto,
   UserReportUserSubmitRequestDto,
@@ -17,7 +20,9 @@ import type {
   UserService
 } from '../interfaces/user.interface';
 import type { UserGameFilterPreferencesDto } from '../interfaces/game.interface';
+import type { LocationCoordinates } from '../interfaces/location.interface';
 import { BaseRouteModeService } from './base-route-mode.service';
+import { resolveCurrentRouteDelayMs } from './route-delay.service';
 
 export { USER_GAME_CARDS_LOAD_CONTEXT_KEY } from './game.service';
 
@@ -49,13 +54,98 @@ class RequestAbortedError extends Error {
 export class UsersService extends BaseRouteModeService {
   private static readonly DEFAULT_REQUEST_TIMEOUT_MS = 3000;
   private static readonly DEFAULT_SUBMIT_MIN_DELAY_MS = 1500;
-  private readonly demoUsersService = inject(DemoUsersService);
-  private readonly demoBootstrapService = inject(DemoBootstrapService);
+  private readonly injector = inject(Injector);
   private readonly httpUsersService = inject(HttpUsersService);
   private readonly appCtx = inject(AppContext);
+  private demoUsersServiceRef: DemoUsersService | null = null;
+  private demoUsersRepositoryRef: DemoUsersRepository | null = null;
+  private demoBootstrapServiceRef: DemoBootstrapService | null = null;
 
   get demoModeEnabled(): boolean {
     return this.isDemoModeEnabled('/auth/me');
+  }
+
+  private get demoUsersService(): DemoUsersService {
+    if (!this.demoUsersServiceRef) {
+      this.demoUsersServiceRef = this.injector.get(DemoUsersService);
+    }
+    return this.demoUsersServiceRef;
+  }
+
+  private get demoUsersRepository(): DemoUsersRepository {
+    if (!this.demoUsersRepositoryRef) {
+      this.demoUsersRepositoryRef = this.injector.get(DemoUsersRepository);
+    }
+    return this.demoUsersRepositoryRef;
+  }
+
+  private get demoBootstrapService(): DemoBootstrapService {
+    if (!this.demoBootstrapServiceRef) {
+      this.demoBootstrapServiceRef = this.injector.get(DemoBootstrapService);
+    }
+    return this.demoBootstrapServiceRef;
+  }
+
+  peekCachedUsers(): UserDto[] {
+    const byId = new Map<string, UserDto>();
+    const appProfiles = this.appCtx.userProfilesByUserId();
+    for (const [userId, user] of Object.entries(appProfiles)) {
+      if (!userId.trim()) {
+        continue;
+      }
+      byId.set(userId, this.cloneUser(user));
+    }
+
+    if (this.demoModeEnabled) {
+      for (const user of this.demoUsersRepository.queryAllUsers()) {
+        if (!user?.id?.trim() || byId.has(user.id)) {
+          continue;
+        }
+        byId.set(user.id, this.cloneUser(user));
+      }
+    }
+
+    const activeUser = this.appCtx.activeUserProfile();
+    if (activeUser?.id?.trim()) {
+      byId.set(activeUser.id, this.cloneUser(activeUser));
+    }
+
+    return [...byId.values()];
+  }
+
+  peekCachedUserById(userId: string): UserDto | null {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return null;
+    }
+    const appProfile = this.appCtx.getUserProfile(normalizedUserId);
+    if (appProfile) {
+      return this.cloneUser(appProfile);
+    }
+    if (!this.demoModeEnabled) {
+      return null;
+    }
+    const demoUser = this.demoUsersRepository.queryUserById(normalizedUserId);
+    return demoUser ? this.cloneUser(demoUser) : null;
+  }
+
+  async warmCachedUsers(userIds: readonly string[]): Promise<void> {
+    const pendingUserIds = [...new Set(
+      userIds
+        .map(userId => userId.trim())
+        .filter(userId => userId.length > 0)
+        .filter(userId => !this.peekCachedUserById(userId))
+    )];
+    if (pendingUserIds.length === 0) {
+      return;
+    }
+    await Promise.all(pendingUserIds.map(async userId => {
+      try {
+        await this.loadUserById(userId, 1500);
+      } catch {
+        // Keep enrichment warmup best-effort so screens stay responsive.
+      }
+    }));
   }
 
   private get userService(): UserService {
@@ -72,12 +162,22 @@ export class UsersService extends BaseRouteModeService {
     this.setLoadStatus(USERS_LOAD_CONTEXT_KEY, 'loading');
 
     try {
-      if (demoModeEnabled) {
+      if (demoModeEnabled && environment.demoBootstrapEnabled) {
         await this.demoBootstrapService.ensureReady(onProgress);
       }
-      const response = await this.withRequestTimeout(
-        (demoModeEnabled ? this.demoUsersService : this.httpUsersService).queryAvailableDemoUsers(),
-        normalizedTimeoutMs
+      const { value: response } = await this.loadWithRecovery(
+        () => this.withRequestTimeout(
+          (demoModeEnabled ? this.demoUsersService : this.httpUsersService).queryAvailableDemoUsers(),
+          normalizedTimeoutMs
+        ),
+        () => ({
+          users: demoModeEnabled ? this.demoUsersRepository.queryAvailableDemoUsers() : []
+        }),
+        {
+          shouldRecover: next =>
+            demoModeEnabled && (!Array.isArray(next.users) || next.users.length === 0),
+          hasRecoveryValue: next => Array.isArray(next.users) && next.users.length > 0
+        }
       );
 
       this.setLoadStatus(USERS_LOAD_CONTEXT_KEY, 'success');
@@ -97,7 +197,7 @@ export class UsersService extends BaseRouteModeService {
     userId: string,
     onProgress?: (state: DemoBootstrapProgressState) => void
   ): Promise<void> {
-    if (!this.isDemoModeEnabled('/auth/me')) {
+    if (!this.isDemoModeEnabled('/auth/me') || !environment.demoBootstrapEnabled) {
       onProgress?.({
         percent: 100,
         label: 'Demo session ready'
@@ -105,7 +205,22 @@ export class UsersService extends BaseRouteModeService {
       return;
     }
 
-    await this.demoBootstrapService.ensureUserReady(userId, onProgress);
+    try {
+      await this.demoBootstrapService.ensureUserReady(userId, onProgress);
+    } catch {
+      const fallbackUser = this.demoUsersRepository.queryUserById(userId.trim());
+      if (!fallbackUser) {
+        throw new Error('Unable to prepare demo user session.');
+      }
+      onProgress?.({
+        percent: 100,
+        label: 'Demo session ready'
+      });
+    }
+  }
+
+  async checkLocationEligibility(coordinates?: LocationCoordinates | null): Promise<UserLocationEligibilityResponseDto> {
+    return this.userService.checkLocationEligibility(coordinates);
   }
 
   async loadUserById(userId?: string, requestTimeoutMs?: number): Promise<UserDto | null> {
@@ -120,9 +235,16 @@ export class UsersService extends BaseRouteModeService {
     this.setLoadStatus(USER_BY_ID_LOAD_CONTEXT_KEY, 'loading');
 
     try {
-      const response = await this.withRequestTimeout(
-        this.userService.queryUserById(normalizedUserId || undefined),
-        normalizedTimeoutMs
+      const { value: response } = await this.loadWithRecovery(
+        () => this.withRequestTimeout(
+          this.userService.queryUserById(normalizedUserId || undefined),
+          normalizedTimeoutMs
+        ),
+        () => this.recoverUserByIdResponse(normalizedUserId),
+        {
+          shouldRecover: next => !next.user,
+          hasRecoveryValue: next => Boolean(next.user)
+        }
       );
 
       if (!response.user) {
@@ -336,7 +458,7 @@ export class UsersService extends BaseRouteModeService {
 
       await this.ensureMinimumRequestDuration(
         startedAtMs,
-        UsersService.DEFAULT_SUBMIT_MIN_DELAY_MS,
+        resolveCurrentRouteDelayMs('/auth/me', UsersService.DEFAULT_SUBMIT_MIN_DELAY_MS),
         requestAbortController.signal
       );
 
@@ -361,7 +483,7 @@ export class UsersService extends BaseRouteModeService {
 
       await this.ensureMinimumRequestDuration(
         startedAtMs,
-        UsersService.DEFAULT_SUBMIT_MIN_DELAY_MS,
+        resolveCurrentRouteDelayMs('/auth/me', UsersService.DEFAULT_SUBMIT_MIN_DELAY_MS),
         requestAbortController.signal
       );
 
@@ -496,6 +618,106 @@ export class UsersService extends BaseRouteModeService {
       serverTsIso: typeof snapshot.serverTsIso === 'string'
         ? snapshot.serverTsIso
         : new Date().toISOString()
+    };
+  }
+
+  private recoverUserByIdResponse(userId: string): UserByIdQueryResponse {
+    const normalizedUserId = userId.trim();
+    const cachedUser = normalizedUserId
+      ? this.peekCachedUserById(normalizedUserId)
+      : (this.appCtx.activeUserProfile() ?? this.buildSessionFallbackUser());
+
+    if (cachedUser) {
+      return {
+        user: this.cloneUser(cachedUser)
+      };
+    }
+
+    return {
+      user: null
+    };
+  }
+
+  private buildSessionFallbackUser(): UserDto | null {
+    const session = this.sessionService.currentSession();
+    if (session?.kind !== 'firebase') {
+      return null;
+    }
+
+    return this.cloneUser({
+      id: session.profile.id.trim(),
+      name: session.profile.name.trim(),
+      age: 0,
+      birthday: '',
+      city: '',
+      height: '',
+      physique: '',
+      languages: [],
+      horoscope: '',
+      initials: session.profile.initials.trim(),
+      gender: 'man',
+      statusText: '',
+      hostTier: '',
+      traitLabel: '',
+      completion: 0,
+      headline: '',
+      about: '',
+      images: [],
+      profileStatus: 'public',
+      activities: {
+        game: 0,
+        chat: 0,
+        invitations: 0,
+        events: 0,
+        hosting: 0,
+        tickets: 0,
+        feedback: 0
+      }
+    });
+  }
+
+  private cloneUser(user: UserDto): UserDto {
+    return {
+      ...user,
+      locationCoordinates: user.locationCoordinates
+        ? {
+            latitude: Number(user.locationCoordinates.latitude),
+            longitude: Number(user.locationCoordinates.longitude)
+          }
+        : undefined,
+      languages: [...(user.languages ?? [])],
+      images: [...(user.images ?? [])],
+      impressions: user.impressions
+        ? {
+            host: user.impressions.host
+              ? {
+                  ...user.impressions.host,
+                  vibeBadges: [...(user.impressions.host.vibeBadges ?? [])],
+                  personalityBadges: [...(user.impressions.host.personalityBadges ?? [])],
+                  personalityTraits: (user.impressions.host.personalityTraits ?? []).map(trait => ({ ...trait })),
+                  categoryBadges: [...(user.impressions.host.categoryBadges ?? [])]
+                }
+              : undefined,
+            member: user.impressions.member
+              ? {
+                  ...user.impressions.member,
+                  vibeBadges: [...(user.impressions.member.vibeBadges ?? [])],
+                  personalityBadges: [...(user.impressions.member.personalityBadges ?? [])],
+                  personalityTraits: (user.impressions.member.personalityTraits ?? []).map(trait => ({ ...trait })),
+                  categoryBadges: [...(user.impressions.member.categoryBadges ?? [])]
+                }
+              : undefined
+          }
+        : undefined,
+      activities: {
+        game: Math.max(0, Math.trunc(Number(user.activities?.game) || 0)),
+        chat: Math.max(0, Math.trunc(Number(user.activities?.chat) || 0)),
+        invitations: Math.max(0, Math.trunc(Number(user.activities?.invitations) || 0)),
+        events: Math.max(0, Math.trunc(Number(user.activities?.events) || 0)),
+        hosting: Math.max(0, Math.trunc(Number(user.activities?.hosting) || 0)),
+        tickets: Math.max(0, Math.trunc(Number(user.activities?.tickets) || 0)),
+        feedback: Math.max(0, Math.trunc(Number(user.activities?.feedback) || 0))
+      }
     };
   }
 }

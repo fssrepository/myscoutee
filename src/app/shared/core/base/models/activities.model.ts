@@ -4,7 +4,15 @@ import type { AssetCard, AssetType } from './asset.model';
 import type { ActivityMemberEntry } from './activity-member.model';
 import type { ActivitiesChatContextFilter, ChatChannelType } from './chat.model';
 import type { ActivitiesEventScope, ActivitiesPrimaryFilter, ActivitiesSecondaryFilter, ActivitiesView, ActivityListRow, HostingPublicationFilter, RateFilterKey } from './activities-ui.model';
-import type { EventBlindMode, EventEditorTarget, EventVisibility, SubEventFormItem } from './event.model';
+import type {
+  EventBlindMode,
+  EventEditorTarget,
+  EventRecordKind,
+  EventSlotOccurrence,
+  EventSlotTemplate,
+  EventVisibility,
+  SubEventFormItem
+} from './event.model';
 
 export type SubEventAssetAssignmentIds = Partial<Record<AssetType, string[]>>;
 export type SubEventAssetCardsByType = Partial<Record<AssetType, AssetCard[]>>;
@@ -124,6 +132,14 @@ export interface ActivitiesEventSyncPayload {
   autoInviter?: boolean;
   frequency?: string;
   ticketing?: boolean;
+  slotsEnabled?: boolean;
+  slotTemplates?: EventSlotTemplate[];
+  parentEventId?: string | null;
+  slotTemplateId?: string | null;
+  generated?: boolean;
+  eventType?: EventRecordKind;
+  nextSlot?: EventSlotOccurrence | null;
+  upcomingSlots?: EventSlotOccurrence[];
   visibility?: EventVisibility;
   blindMode?: EventBlindMode;
   published?: boolean;

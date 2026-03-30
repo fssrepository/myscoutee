@@ -116,8 +116,10 @@ type SmartListCalendarWindow = {
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class SmartListComponent<T, TFilters extends SmartListFilters = SmartListFilters> implements AfterViewInit, OnChanges, OnDestroy {
-  private static readonly DEFAULT_LOADING_DELAY_MS = 1500;
+  private static readonly DEFAULT_LOADING_DELAY_MS = 0;
   private static readonly QUICK_COMPLETE_THRESHOLD_MS = 120;
+  private static readonly HOSTED_FULLSCREEN_STACK_SIZE = 3;
+  private static readonly HOSTED_FULLSCREEN_PAGE_CURL_DURATION_MS = 420;
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly hostRef = inject(ElementRef<HTMLElement>);
   private restoreAnchorSequence = 0;
@@ -191,6 +193,10 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   private calendarPendingVisualKey: string | null = null;
   private calendarFrozenProgress: number | null = null;
   private weekRateViewportPageKey: string | null = null;
+  private forceAnimatedLoadingCompletion = false;
+  private hostedFullscreenPendingDelta = 0;
+  private hostedFullscreenCompletingTransition = false;
+  private hostedFullscreenTransitionTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly paginationHelper = new SmartListPaginationHelper<T>(() => {
     this.emitState();
     this.cdr.markForCheck();
@@ -264,7 +270,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     }
 
     if (!this.shouldUseHostedFullscreenPagination()) {
-      this.paginationHelper.reset();
+      this.resetHostedFullscreenTransition();
     }
   }
 
@@ -272,6 +278,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     this.loadSequence += 1;
     this.clearCalendarSettleTimers();
     this.clearLoadingAnimation();
+    this.clearHostedFullscreenTransitionTimer();
     this.paginationHelper.destroy();
   }
 
@@ -368,6 +375,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   protected onPaginationPrev(event: Event): void {
     event.stopPropagation();
     if (this.shouldUseHostedFullscreenPagination()) {
+      this.interruptHostedFullscreenTransition();
       void this.advanceHostedFullscreenPagination(-1);
       return;
     }
@@ -377,6 +385,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   protected onPaginationNext(event: Event): void {
     event.stopPropagation();
     if (this.shouldUseHostedFullscreenPagination()) {
+      this.interruptHostedFullscreenTransition();
       void this.advanceHostedFullscreenPagination(1);
       return;
     }
@@ -483,7 +492,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
     if (this.currentViewMode === 'list' && this.resolvedPresentation() === 'fullscreen' && this.hasMore && !this.loading) {
       const remaining = this.items.length - (normalizedIndex + 1);
-      if (remaining <= 1) {
+      if (remaining <= SmartListComponent.HOSTED_FULLSCREEN_STACK_SIZE - 1) {
         void this.loadNextPage();
       }
     }
@@ -600,7 +609,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     }, 120);
   }
 
-  protected readonly trackByGroup = (_index: number, group: SmartListGroup<T>): string => group.label;
+  protected readonly trackByGroup = (_index: number, group: SmartListGroup<T>): string => `${group.startIndex}:${group.label}`;
 
   protected readonly trackByItem = (index: number, item: T): unknown =>
     this.config.trackBy ? this.config.trackBy(index, item) : index;
@@ -645,11 +654,6 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     };
   }
 
-  protected itemDomIndex(item: T): number {
-    const index = this.items.indexOf(item);
-    return index >= 0 ? index : 0;
-  }
-
   protected resolvedFullscreenItemTemplate(): TemplateRef<SmartListItemTemplateContext<T, TFilters>> | null {
     return this.fullscreenItemTemplate ?? this.itemTemplate;
   }
@@ -659,20 +663,54 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   }
 
   protected hostedFullscreenCurrentItem(): T | null {
-    return this.cursorItem();
+    return this.paginationHelper.leavingItem ?? this.cursorItem();
   }
 
-  protected hostedFullscreenLeavingItem(): T | null {
-    return this.paginationHelper.leavingItem;
+  protected hostedFullscreenCurrentRenderState(): SmartListItemRenderState {
+    return this.paginationHelper.animating ? 'leaving' : 'active';
+  }
+
+  protected hostedFullscreenStackItem(slotOffset: number): T | null {
+    const index = this.hostedFullscreenStackItemIndex(slotOffset);
+    if (index < 0 || index >= this.items.length) {
+      return null;
+    }
+    return this.items[index] ?? null;
+  }
+
+  protected hostedFullscreenStackRenderState(slotOffset: number): SmartListItemRenderState {
+    if (slotOffset === 1 && this.paginationHelper.animating && this.hostedFullscreenPendingDelta !== 0) {
+      return 'active';
+    }
+    return 'default';
+  }
+
+  protected hostedFullscreenIsCurling(): boolean {
+    return this.paginationHelper.animating && this.hostedFullscreenPendingDelta !== 0;
+  }
+
+  protected hostedFullscreenIsCurlingBackwards(): boolean {
+    return this.hostedFullscreenIsCurling() && this.hostedFullscreenPendingDelta < 0;
+  }
+
+  protected onHostedFullscreenActiveCardAnimationEnd(event: AnimationEvent): void {
+    if (event.animationName !== 'smart-list-fullscreen-page-curl') {
+      return;
+    }
+    if (event.currentTarget !== event.target || !this.hostedFullscreenIsCurling()) {
+      return;
+    }
+    void this.completeHostedFullscreenPaginationTransition();
   }
 
   protected hostedFullscreenItemContext(
     item: T,
-    renderState: SmartListItemRenderState
+    renderState: SmartListItemRenderState,
+    index = this.buildCursorState().index
   ): SmartListItemTemplateContext<T, TFilters> {
     return {
       $implicit: item,
-      index: this.buildCursorState().index,
+      index,
       groupLabel: '',
       query: this.currentQuery(),
       selectMode: this.resolvedSelectMode(),
@@ -705,16 +743,6 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       return 'Wait for more cards to load or adjust the current filter.';
     }
     return this.emptyDescription();
-  }
-
-  protected onHostedFullscreenLeaveAnimationEnd(event: AnimationEvent): void {
-    if (event.animationName !== 'smart-list-fullscreen-page-curl') {
-      return;
-    }
-    if (event.currentTarget !== event.target) {
-      return;
-    }
-    this.paginationHelper.finishTransition();
   }
 
   protected emptyLabel(): string {
@@ -882,7 +910,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   }
 
   private resetAndReload(): void {
-    this.paginationHelper.reset();
+    this.resetHostedFullscreenTransition();
     this.clearCalendarSettleTimers();
     this.suppressCalendarEdgeSettle = false;
     this.clearLoadingAnimation();
@@ -966,6 +994,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       ? this.captureListRestoreContext(isInitial)
       : null;
     let handledManualPrepend = false;
+    let shouldAnimateEmptyAppendCompletion = false;
 
     try {
       const [result] = await Promise.all([
@@ -977,6 +1006,8 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
         return;
       }
 
+      const nextItems = Array.isArray(result?.items) ? result.items : [];
+      shouldAnimateEmptyAppendCompletion = !isInitial && nextItems.length === 0;
       this.applyListPageResult(result, isInitial);
       if (sequence !== this.loadSequence) {
         return;
@@ -996,7 +1027,9 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       }
       this.loading = false;
       this.awaitScrollReset = true;
-      this.endLoadingAnimation();
+      this.endLoadingAnimation({
+        forceAnimatedCompletion: shouldAnimateEmptyAppendCompletion
+      });
       this.syncGroups();
       if (handledManualPrepend && restoreContext) {
         this.cdr.detectChanges();
@@ -1477,7 +1510,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
     const groupBy = this.config.groupBy;
     if (!groupBy) {
-      this.groups = this.items.length > 0 ? [{ label: '', items: [...this.items] }] : [];
+      this.groups = this.items.length > 0 ? [{ label: '', items: [...this.items], startIndex: 0 }] : [];
       if (!this.items.length || !this.shouldShowStickyHeader()) {
         this.stickyLabel = this.resolveEmptyStickyLabel();
       }
@@ -1486,14 +1519,20 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
     const query = this.currentQuery();
     const nextGroups: SmartListGroup<T>[] = [];
+    let itemIndex = 0;
     for (const item of this.items) {
       const label = groupBy(item, query);
       const lastGroup = nextGroups[nextGroups.length - 1];
       if (!lastGroup || lastGroup.label !== label) {
-        nextGroups.push({ label, items: [item] });
-        continue;
+        nextGroups.push({
+          label,
+          items: [item],
+          startIndex: itemIndex
+        });
+      } else {
+        lastGroup.items.push(item);
       }
-      lastGroup.items.push(item);
+      itemIndex += 1;
     }
     this.groups = nextGroups;
     if (nextGroups.length === 0 || !this.shouldShowStickyHeader()) {
@@ -1903,7 +1942,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     );
   }
 
-  private endLoadingAnimation(): void {
+  private endLoadingAnimation(options: { forceAnimatedCompletion?: boolean } = {}): void {
     if (this.loadingCounter === 0) {
       return;
     }
@@ -1916,7 +1955,8 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       this.loadingInterval = null;
     }
     const elapsed = Math.max(0, performance.now() - this.loadingStartedAtMs);
-    if (elapsed < SmartListComponent.QUICK_COMPLETE_THRESHOLD_MS) {
+    const forceAnimatedCompletion = options.forceAnimatedCompletion === true;
+    if (!forceAnimatedCompletion && elapsed < SmartListComponent.QUICK_COMPLETE_THRESHOLD_MS) {
       this.loadingProgress = 0;
       this.loadingOverdue = false;
       this.loadingStartedAtMs = 0;
@@ -2078,11 +2118,12 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   private ratingAdvanceInFlight = false;
 
   private async handleHostedFullscreenRatingSelect(score: number): Promise<void> {
+    this.interruptHostedFullscreenTransition();
     await this.config.pagination?.onRatingSelect?.(this.cursorItem(), score, this.currentQuery());
     if (!this.shouldUseHostedFullscreenPagination() || !this.canMoveCursor(1)) {
       return;
     }
-    if (this.paginationHelper.animating || this.ratingAdvanceInFlight) {
+    if (this.ratingAdvanceInFlight) {
       return;
     }
     this.ratingAdvanceInFlight = true;
@@ -2101,23 +2142,37 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     if (!this.shouldUseHostedFullscreenPagination() || this.paginationHelper.animating) {
       return false;
     }
-    if (!this.canMoveCursor(delta)) {
+    const normalizedDelta = Math.trunc(delta);
+    if (!this.canMoveCursor(normalizedDelta)) {
       return false;
     }
-    const targetIndex = this.buildCursorState().index + Math.trunc(delta);
+    const currentIndex = this.buildCursorState().index;
+    const targetIndex = currentIndex + normalizedDelta;
     if (!await this.ensureHostedFullscreenTargetLoaded(targetIndex)) {
       return false;
     }
+    if (normalizedDelta > 0) {
+      const previewIndex = currentIndex + (SmartListComponent.HOSTED_FULLSCREEN_STACK_SIZE - 1);
+      await this.ensureHostedFullscreenTargetLoaded(previewIndex);
+    }
     const currentItem = this.cursorItem();
     if (!currentItem) {
-      return this.moveCursor(delta);
+      return this.moveCursor(normalizedDelta);
     }
+    this.cursorIndex = targetIndex;
+    this.syncCursorBounds();
+    this.emitState();
+    this.cdr.markForCheck();
+    this.hostedFullscreenPendingDelta = normalizedDelta;
+    this.hostedFullscreenCompletingTransition = false;
     this.paginationHelper.beginTransition(currentItem);
-    const moved = await this.moveCursor(delta);
-    if (!moved) {
-      this.paginationHelper.finishTransition();
-      return false;
+    if (this.currentViewMode === 'list' && this.resolvedPresentation() === 'fullscreen' && this.hasMore && !this.loading) {
+      const remaining = this.items.length - (this.cursorIndex + 1);
+      if (remaining <= SmartListComponent.HOSTED_FULLSCREEN_STACK_SIZE - 1) {
+        void this.loadNextPage();
+      }
     }
+    this.startHostedFullscreenTransitionTimer();
     return true;
   }
 
@@ -2145,7 +2200,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     return true;
   }
 
-  private buildCursorState(): SmartListCursorState<T> {
+  private buildCursorState(indexOverride = this.cursorIndex): SmartListCursorState<T> {
     const total = Math.max(0, Math.max(this.total, this.items.length));
     if (total === 0) {
       return {
@@ -2157,7 +2212,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
         item: null
       };
     }
-    const index = Math.max(0, Math.min(this.cursorIndex, total));
+    const index = Math.max(0, Math.min(indexOverride, total));
     return {
       index,
       total,
@@ -2310,6 +2365,57 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     return new Promise(resolve => {
       setTimeout(() => resolve(), delayMs);
     });
+  }
+
+  protected hostedFullscreenStackItemIndex(slotOffset: number): number {
+    const baseIndex = this.buildCursorState().index;
+    if (!this.paginationHelper.animating || this.hostedFullscreenPendingDelta === 0) {
+      return baseIndex + slotOffset;
+    }
+    const direction = this.hostedFullscreenPendingDelta < 0 ? -1 : 1;
+    return baseIndex + ((slotOffset - 1) * direction);
+  }
+
+  private startHostedFullscreenTransitionTimer(): void {
+    this.clearHostedFullscreenTransitionTimer();
+    this.hostedFullscreenTransitionTimer = setTimeout(() => {
+      this.hostedFullscreenTransitionTimer = null;
+      void this.completeHostedFullscreenPaginationTransition();
+    }, SmartListComponent.HOSTED_FULLSCREEN_PAGE_CURL_DURATION_MS + 48);
+  }
+
+  private clearHostedFullscreenTransitionTimer(): void {
+    if (!this.hostedFullscreenTransitionTimer) {
+      return;
+    }
+    clearTimeout(this.hostedFullscreenTransitionTimer);
+    this.hostedFullscreenTransitionTimer = null;
+  }
+
+  private interruptHostedFullscreenTransition(): void {
+    if (!this.paginationHelper.animating) {
+      return;
+    }
+    this.clearHostedFullscreenTransitionTimer();
+    this.hostedFullscreenPendingDelta = 0;
+    this.hostedFullscreenCompletingTransition = false;
+    this.paginationHelper.finishTransition();
+  }
+
+  private resetHostedFullscreenTransition(): void {
+    this.interruptHostedFullscreenTransition();
+    this.paginationHelper.reset();
+  }
+
+  private async completeHostedFullscreenPaginationTransition(): Promise<void> {
+    if (!this.paginationHelper.animating || this.hostedFullscreenPendingDelta === 0 || this.hostedFullscreenCompletingTransition) {
+      return;
+    }
+    this.hostedFullscreenPendingDelta = 0;
+    this.hostedFullscreenCompletingTransition = true;
+    this.clearHostedFullscreenTransitionTimer();
+    this.hostedFullscreenCompletingTransition = false;
+    this.paginationHelper.finishTransition();
   }
 
   private calendarConfig(): SmartListCalendarConfig<T, TFilters> | null {

@@ -32,6 +32,16 @@ export interface AssetCard {
   requests: AssetMemberRequest[];
 }
 
+export interface AssetSourcePreview {
+  enabled: boolean;
+  supported: boolean;
+  normalizedUrl: string;
+  title: string;
+  subtitle: string;
+  details: string;
+  imageUrl: string;
+}
+
 export interface SubEventResourceCard {
   id: string;
   type: SubEventResourceFilter;

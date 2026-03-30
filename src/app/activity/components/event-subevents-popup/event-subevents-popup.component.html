@@ -107,11 +107,10 @@
           </div>
 
           <div
+            #stageViewport
             class="subevents-stage-viewport"
-            (touchstart)="onStageSwipeStart($event)"
-            (touchmove)="onStageSwipeMove($event)"
-            (touchend)="onStageSwipeEnd($event)"
-            (touchcancel)="onStageSwipeCancel()"
+            [class.subevents-stage-viewport-mobile]="isMobileViewport"
+            (scroll)="onStageViewportScroll()"
           >
             <div
               class="subevents-stage-grid"
@@ -122,7 +121,7 @@
               <article
                 class="subevents-stage-card"
                 *ngFor="let stage of stageCards; trackBy: trackByStageKey"
-                [style.--stage-accent]="stageAccentColor(stage)"
+                [style.--stage-accent]="stage.accentColor"
               >
                     <header class="subevents-stage-head">
                       <div class="subevents-stage-head-main">
@@ -139,19 +138,19 @@
                         <button
                           type="button"
                           class="experience-action-btn experience-action-menu-trigger subevents-stage-menu-btn"
-                          [class.is-open]="isStageActionMenuOpen(stage)"
+                          [class.is-open]="openStageMenuKey === stage.key"
                           (click)="toggleStageActionMenu(stage, $event)"
-                          [attr.aria-label]="isStageActionMenuOpen(stage) ? 'Close stage actions' : 'Open stage actions'"
+                          [attr.aria-label]="openStageMenuKey === stage.key ? 'Close stage actions' : 'Open stage actions'"
                         >
-                          <span class="subevents-menu-icon-stack" [class.is-open]="isStageActionMenuOpen(stage)">
+                          <span class="subevents-menu-icon-stack" [class.is-open]="openStageMenuKey === stage.key">
                             <mat-icon class="subevents-menu-icon-dots">more_vert</mat-icon>
                             <mat-icon class="subevents-menu-icon-close">close</mat-icon>
                           </span>
                         </button>
                         <div
                           class="item-action-menu subevents-stage-menu"
-                          *ngIf="isStageActionMenuOpen(stage)"
-                          [class.is-open]="isStageActionMenuOpen(stage)"
+                          *ngIf="openStageMenuKey === stage.key"
+                          [class.is-open]="openStageMenuKey === stage.key"
                           [class.item-action-menu-mobile]="isMobileViewport"
                           [class.item-action-menu-desktop]="!isMobileViewport"
                           (click)="$event.stopPropagation()"
@@ -182,25 +181,25 @@
                     </header>
 
                     <div class="subevents-stage-body">
-                      <article class="subevents-group-row" *ngFor="let row of stage.rows; trackBy: trackByStageRowKey" [attr.data-tone]="stageRowToneClass(stage, row)">
+                      <article class="subevents-group-row" *ngFor="let row of stage.rows; trackBy: trackByStageRowKey" [attr.data-tone]="row.toneClass">
                         <span class="subevents-group-title">{{ row.label }}</span>
                         <div class="experience-item-actions subevents-group-actions">
                           <button
                             type="button"
                             class="experience-action-btn experience-action-menu-trigger subevents-group-menu-btn"
-                            [class.is-open]="isGroupActionMenuOpen(row)"
+                            [class.is-open]="openGroupMenuKey === row.key"
                             (click)="toggleGroupActionMenu(row, $event)"
                             aria-label="Group actions"
                           >
-                            <span class="subevents-menu-icon-stack" [class.is-open]="isGroupActionMenuOpen(row)">
+                            <span class="subevents-menu-icon-stack" [class.is-open]="openGroupMenuKey === row.key">
                               <mat-icon class="subevents-menu-icon-dots">more_vert</mat-icon>
                               <mat-icon class="subevents-menu-icon-close">close</mat-icon>
                             </span>
                           </button>
                           <div
                             class="item-action-menu subevents-group-menu"
-                            *ngIf="isGroupActionMenuOpen(row)"
-                            [class.is-open]="isGroupActionMenuOpen(row)"
+                            *ngIf="openGroupMenuKey === row.key"
+                            [class.is-open]="openGroupMenuKey === row.key"
                             [class.item-action-menu-mobile]="isMobileViewport"
                             [class.item-action-menu-desktop]="!isMobileViewport"
                             (click)="$event.stopPropagation()"
@@ -218,15 +217,15 @@
                             <button
                               type="button"
                               class="item-action-menu-btn subevent-resource-menu-item event-subevent-badge-members"
-                              (click)="openSubEventResourcePopup('Members', sortedSubEvents[row.stageSourceIndex], $event, row)"
+                              (click)="openSubEventResourcePopup('Members', row.stageItem, $event, row)"
                             >
                               <span class="subevent-resource-menu-item-icon"><mat-icon>groups</mat-icon></span>
                               <span class="subevent-resource-menu-item-main">
                                 <span class="subevent-resource-menu-item-title">Members</span>
-                                <span class="subevent-resource-menu-item-value">{{ subEventMembersResourceLabel(sortedSubEvents[row.stageSourceIndex], row) }}</span>
+                                <span class="subevent-resource-menu-item-value">{{ row.membersLabel }}</span>
                               </span>
-                              <span class="rate-filter-count-badge subevent-resource-menu-item-counter" *ngIf="resourcePendingCount(sortedSubEvents[row.stageSourceIndex], 'Members', row) > 0">
-                                {{ resourcePendingCount(sortedSubEvents[row.stageSourceIndex], 'Members', row) }}
+                              <span class="rate-filter-count-badge subevent-resource-menu-item-counter" *ngIf="row.membersPendingCount > 0">
+                                {{ row.membersPendingCount | counterBadge }}
                               </span>
                             </button>
                             <div class="item-action-menu-divider"></div>
@@ -234,49 +233,49 @@
                             <button
                               type="button"
                               class="item-action-menu-btn subevent-resource-menu-item event-subevent-badge-car"
-                              (click)="openSubEventResourcePopup('Car', sortedSubEvents[row.stageSourceIndex], $event, row)"
+                              (click)="openSubEventResourcePopup('Car', row.stageItem, $event, row)"
                             >
                               <span class="subevent-resource-menu-item-icon"><mat-icon>directions_car</mat-icon></span>
                               <span class="subevent-resource-menu-item-main">
                                 <span class="subevent-resource-menu-item-title">Car</span>
-                                <span class="subevent-resource-menu-item-value">{{ subEventAssetResourceLabel(sortedSubEvents[row.stageSourceIndex], 'Car', row) }}</span>
+                                <span class="subevent-resource-menu-item-value">{{ row.carLabel }}</span>
                               </span>
-                              <span class="rate-filter-count-badge subevent-resource-menu-item-counter" *ngIf="resourcePendingCount(sortedSubEvents[row.stageSourceIndex], 'Car', row) > 0">
-                                {{ resourcePendingCount(sortedSubEvents[row.stageSourceIndex], 'Car', row) }}
+                              <span class="rate-filter-count-badge subevent-resource-menu-item-counter" *ngIf="row.carPendingCount > 0">
+                                {{ row.carPendingCount | counterBadge }}
                               </span>
                             </button>
                             <button
                               type="button"
                               class="item-action-menu-btn subevent-resource-menu-item event-subevent-badge-accommodation"
-                              (click)="openSubEventResourcePopup('Accommodation', sortedSubEvents[row.stageSourceIndex], $event, row)"
+                              (click)="openSubEventResourcePopup('Accommodation', row.stageItem, $event, row)"
                             >
                               <span class="subevent-resource-menu-item-icon"><mat-icon>hotel</mat-icon></span>
                               <span class="subevent-resource-menu-item-main">
                                 <span class="subevent-resource-menu-item-title">Accommodation</span>
-                                <span class="subevent-resource-menu-item-value">{{ subEventAssetResourceLabel(sortedSubEvents[row.stageSourceIndex], 'Accommodation', row) }}</span>
+                                <span class="subevent-resource-menu-item-value">{{ row.accommodationLabel }}</span>
                               </span>
-                              <span class="rate-filter-count-badge subevent-resource-menu-item-counter" *ngIf="resourcePendingCount(sortedSubEvents[row.stageSourceIndex], 'Accommodation', row) > 0">
-                                {{ resourcePendingCount(sortedSubEvents[row.stageSourceIndex], 'Accommodation', row) }}
+                              <span class="rate-filter-count-badge subevent-resource-menu-item-counter" *ngIf="row.accommodationPendingCount > 0">
+                                {{ row.accommodationPendingCount | counterBadge }}
                               </span>
                             </button>
                             <button
                               type="button"
                               class="item-action-menu-btn subevent-resource-menu-item event-subevent-badge-supplies"
-                              (click)="openSubEventResourcePopup('Supplies', sortedSubEvents[row.stageSourceIndex], $event, row)"
+                              (click)="openSubEventResourcePopup('Supplies', row.stageItem, $event, row)"
                             >
                               <span class="subevent-resource-menu-item-icon"><mat-icon>inventory_2</mat-icon></span>
                               <span class="subevent-resource-menu-item-main">
                                 <span class="subevent-resource-menu-item-title">Supplies</span>
-                                <span class="subevent-resource-menu-item-value">{{ subEventAssetResourceLabel(sortedSubEvents[row.stageSourceIndex], 'Supplies', row) }}</span>
+                                <span class="subevent-resource-menu-item-value">{{ row.suppliesLabel }}</span>
                               </span>
-                              <span class="rate-filter-count-badge subevent-resource-menu-item-counter" *ngIf="resourcePendingCount(sortedSubEvents[row.stageSourceIndex], 'Supplies', row) > 0">
-                                {{ resourcePendingCount(sortedSubEvents[row.stageSourceIndex], 'Supplies', row) }}
+                              <span class="rate-filter-count-badge subevent-resource-menu-item-counter" *ngIf="row.suppliesPendingCount > 0">
+                                {{ row.suppliesPendingCount | counterBadge }}
                               </span>
                             </button>
                           </div>
                         </div>
-                        <span class="subevents-group-badge" *ngIf="groupMenuPendingCount(sortedSubEvents[row.stageSourceIndex], row) > 0">
-                          {{ groupMenuPendingCount(sortedSubEvents[row.stageSourceIndex], row) }}
+                        <span class="subevents-group-badge" *ngIf="row.totalPendingCount > 0">
+                          {{ row.totalPendingCount | counterBadge }}
                         </span>
                       </article>
                     </div>
@@ -313,7 +312,7 @@
                       <mat-icon class="subevents-menu-icon-dots">more_vert</mat-icon>
                       <mat-icon class="subevents-menu-icon-close">close</mat-icon>
                     </span>
-                    <span class="subevents-group-badge" *ngIf="casualMenuPendingCount(subEvent) > 0">{{ casualMenuPendingCount(subEvent) }}</span>
+                    <span class="subevents-group-badge" *ngIf="casualMenuPendingCount(subEvent) > 0">{{ casualMenuPendingCount(subEvent) | counterBadge }}</span>
                   </button>
                   <div
                     class="item-action-menu subevents-casual-menu"
@@ -348,7 +347,7 @@
                         <span class="subevent-resource-menu-item-value">{{ subEventMembersResourceLabel(subEvent) }}</span>
                       </span>
                       <span class="rate-filter-count-badge subevent-resource-menu-item-counter" *ngIf="resourcePendingCount(subEvent, 'Members') > 0">
-                        {{ resourcePendingCount(subEvent, 'Members') }}
+                        {{ resourcePendingCount(subEvent, 'Members') | counterBadge }}
                       </span>
                     </button>
                     <div class="item-action-menu-divider" *ngIf="subEvent.optional"></div>
@@ -364,7 +363,7 @@
                         <span class="subevent-resource-menu-item-value">{{ subEventAssetResourceLabel(subEvent, 'Car') }}</span>
                       </span>
                       <span class="rate-filter-count-badge subevent-resource-menu-item-counter" *ngIf="resourcePendingCount(subEvent, 'Car') > 0">
-                        {{ resourcePendingCount(subEvent, 'Car') }}
+                        {{ resourcePendingCount(subEvent, 'Car') | counterBadge }}
                       </span>
                     </button>
                     <button
@@ -378,7 +377,7 @@
                         <span class="subevent-resource-menu-item-value">{{ subEventAssetResourceLabel(subEvent, 'Accommodation') }}</span>
                       </span>
                       <span class="rate-filter-count-badge subevent-resource-menu-item-counter" *ngIf="resourcePendingCount(subEvent, 'Accommodation') > 0">
-                        {{ resourcePendingCount(subEvent, 'Accommodation') }}
+                        {{ resourcePendingCount(subEvent, 'Accommodation') | counterBadge }}
                       </span>
                     </button>
                     <button
@@ -392,7 +391,7 @@
                         <span class="subevent-resource-menu-item-value">{{ subEventAssetResourceLabel(subEvent, 'Supplies') }}</span>
                       </span>
                       <span class="rate-filter-count-badge subevent-resource-menu-item-counter" *ngIf="resourcePendingCount(subEvent, 'Supplies') > 0">
-                        {{ resourcePendingCount(subEvent, 'Supplies') }}
+                        {{ resourcePendingCount(subEvent, 'Supplies') | counterBadge }}
                       </span>
                     </button>
                   </div>
