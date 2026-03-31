@@ -192,9 +192,9 @@
           [class.smart-list--thread]="resolvedListLayout() === 'thread'"
           [class.smart-list--presentation-list]="resolvedPresentation() === 'list'"
           [class.smart-list--presentation-fullscreen]="resolvedPresentation() === 'fullscreen'"
-          [class.smart-list--snap-none]="resolvedSnapMode() === 'none' || suppressListSnapNearEnd"
-          [class.smart-list--snap-proximity]="resolvedSnapMode() === 'proximity' && !suppressListSnapNearEnd"
-          [class.smart-list--snap-mandatory]="resolvedSnapMode() === 'mandatory' && !suppressListSnapNearEnd"
+          [class.smart-list--snap-none]="resolvedSnapMode() === 'none' || suppressListSnapNearEnd || isTouchingSurface"
+          [class.smart-list--snap-proximity]="resolvedSnapMode() === 'proximity' && !suppressListSnapNearEnd && !isTouchingSurface"
+          [class.smart-list--snap-mandatory]="resolvedSnapMode() === 'mandatory' && !suppressListSnapNearEnd && !isTouchingSurface"
           [style.--smart-list-desktop-columns]="resolvedDesktopColumns()"
           [style.--smart-list-scroll-padding-top]="resolvedScrollPaddingTop()"
           [style.--smart-list-sticky-header-height.px]="stickyHeaderHeightPx > 0 ? stickyHeaderHeightPx : null"
@@ -202,6 +202,9 @@
           (touchstart)="onSurfaceTouchStart()"
           (touchend)="onSurfaceTouchEnd()"
           (touchcancel)="onSurfaceTouchEnd()"
+          (wheel)="onSurfaceInteraction()"
+          (mousedown)="onSurfaceInteraction()"
+          (keydown)="onSurfaceInteraction()"
         >
           @if (shouldShowStickyHeader()) {
             <div class="smart-list__sticky" [ngClass]="resolvedStickyHeaderClass()">{{ stickyLabel }}</div>

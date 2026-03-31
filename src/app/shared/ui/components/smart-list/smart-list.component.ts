@@ -208,13 +208,24 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   private hostedFullscreenCompletingTransition = false;
   private hostedFullscreenTransitionTimer: ReturnType<typeof setTimeout> | null = null;
 
+  private suspendSnapReactivation = false;
+
+  protected onSurfaceInteraction(): void {
+    if (this.suspendSnapReactivation) {
+      this.suspendSnapReactivation = false;
+      this.updateListSnapNearEndSuppression();
+    }
+  }
+
   // Add this near your other private properties
-  private isTouchingSurface = false;
+  protected isTouchingSurface = false;
 
   // Add these methods to handle the touch events
   protected onSurfaceTouchStart(): void {
     // 1. Mark that the user is touching the screen
     this.isTouchingSurface = true;
+    this.cdr.markForCheck();
+    this.onSurfaceInteraction();
     
     // 2. Kill any pending timers that were ABOUT to fire
     this.clearListSnapSettleTimers();
@@ -240,6 +251,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
   protected onSurfaceTouchEnd(): void {
     this.isTouchingSurface = false;
+    this.cdr.markForCheck();
     
     const scrollElement = this.scrollHostRef?.nativeElement;
     if (!scrollElement) {
@@ -989,6 +1001,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     this.clearCalendarSettleTimers();
     this.suppressCalendarEdgeSettle = false;
     this.clearLoadingAnimation();
+    this.suspendSnapReactivation = false;
     this.loading = false;
     this.loadSequence += 1;
     this.items = [];
@@ -1171,6 +1184,11 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   }
 
   private applyListPageResult(result: PageResult<T> | null | undefined, isInitial: boolean): void {
+    // Lock the snap reactivation if we were suppressing it at the bottom
+    if (!isInitial && this.listMergeStrategy() !== 'prepend' && this.suppressListSnapNearEnd) {
+      this.suspendSnapReactivation = true;
+    }
+
     const nextItems = Array.isArray(result?.items) ? result.items : [];
     const hasExplicitNextCursor = Boolean(result && Object.prototype.hasOwnProperty.call(result, 'nextCursor'));
     if (isInitial) {
@@ -2038,9 +2056,15 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     );
   }
 
-  private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null): void {
+private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null): void {
     const target = scrollElement ?? this.scrollHostRef?.nativeElement;
-    const nextValue = this.shouldSuppressListSnapNearEnd(target);
+    let nextValue = this.shouldSuppressListSnapNearEnd(target);
+
+    // If locked, force it to stay suppressed even though we are no longer at the end
+    if (this.suspendSnapReactivation && this.suppressListSnapNearEnd && !nextValue) {
+      nextValue = true;
+    }
+
     if (this.suppressListSnapNearEnd === nextValue) {
       return;
     }
