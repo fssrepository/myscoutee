@@ -213,11 +213,29 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
   // Add these methods to handle the touch events
   protected onSurfaceTouchStart(): void {
+    // 1. Mark that the user is touching the screen
     this.isTouchingSurface = true;
     
-    // Nuke any pending programmatic scrolls the second a finger touches down
+    // 2. Kill any pending timers that were ABOUT to fire
     this.clearListSnapSettleTimers();
     this.clearCalendarSettleTimers();
+
+    // 3. Kill any smooth scroll that is ALREADY happening
+    const scrollElement = this.scrollHostRef?.nativeElement;
+    if (scrollElement) {
+      // Capture exactly where we are right now
+      const currentTop = scrollElement.scrollTop;
+      const currentLeft = scrollElement.scrollLeft;
+      
+      // Briefly force instant scrolling, and command it to stay exactly here.
+      // This forces the browser to instantly abort the smooth scroll animation.
+      scrollElement.style.scrollBehavior = 'auto';
+      scrollElement.scrollTop = currentTop;
+      scrollElement.scrollLeft = currentLeft;
+      
+      // Clear the inline style so it falls back to the smooth scrolling defined in your CSS
+      scrollElement.style.scrollBehavior = '';
+    }
   }
 
   protected onSurfaceTouchEnd(): void {
