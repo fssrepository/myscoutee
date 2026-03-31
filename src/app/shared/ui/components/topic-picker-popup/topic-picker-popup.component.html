@@ -1,52 +1,55 @@
-<section class="app-popup app-popup-stacked app-popup-super-stacked topic-picker-screen-shell" *ngIf="open">
-  <div class="app-popup-backdrop" (click)="requestClose($event)"></div>
-
-  <div class="app-popup-panel popup-panel-friends-picker popup-panel-topic-picker" (click)="$event.stopPropagation()">
-    <div class="popup-header popup-header-friends-picker topic-picker-header">
-      <button type="button" class="popup-close popup-back-btn" (click)="requestClose($event)" aria-label="Back">
-        <mat-icon>arrow_back</mat-icon>
-      </button>
-
-      <div class="popup-title">
-        <h2>{{ title }}</h2>
-      </div>
-    </div>
-
-    <div class="popup-body popup-body-friends-picker popup-body-topic-picker">
-      <div class="friends-picker-chip-row" *ngIf="selected.length > 0">
-        <button
-          type="button"
-          class="values-selected-chip friends-picker-chip"
-          *ngFor="let topic of selected"
-          [ngClass]="topicToneClass(topic)"
-          (click)="removeOption(topic, $event)"
-        >
-          <span>{{ topicLabel(topic) }}</span>
-          <mat-icon class="friends-picker-chip-remove">close</mat-icon>
+@if (open) {
+  <section class="app-popup app-popup-stacked app-popup-super-stacked topic-picker-screen-shell">
+    <div class="app-popup-backdrop" (click)="requestClose($event)"></div>
+    <div class="app-popup-panel popup-panel-friends-picker popup-panel-topic-picker" (click)="$event.stopPropagation()">
+      <div class="popup-header popup-header-friends-picker topic-picker-header">
+        <button type="button" class="popup-close popup-back-btn" (click)="requestClose($event)" aria-label="Back">
+          <mat-icon>arrow_back</mat-icon>
         </button>
+        <div class="popup-title">
+          <h2>{{ title }}</h2>
+        </div>
       </div>
-
-      <div class="values-selector-popup">
-        <div class="values-selector-group" *ngFor="let group of groups">
-          <div class="social-proof-section-head" [class]="group.toneClass">
-            <span class="section-tag">{{ group.icon }} {{ group.shortTitle }}</span>
-            <span class="section-line"></span>
+      <div class="popup-body popup-body-friends-picker popup-body-topic-picker">
+        @if (selected.length > 0) {
+          <div class="friends-picker-chip-row">
+            @for (topic of selected; track topic) {
+              <button
+                type="button"
+                class="values-selected-chip friends-picker-chip"
+                [ngClass]="topicToneClass(topic)"
+                (click)="removeOption(topic, $event)"
+                >
+                <span>{{ topicLabel(topic) }}</span>
+                <mat-icon class="friends-picker-chip-remove">close</mat-icon>
+              </button>
+            }
           </div>
-
-          <div class="social-proof-chip-list">
-            <button
-              type="button"
-              class="values-selected-chip values-option-chip"
-              *ngFor="let option of group.options"
-              [class.active]="isSelected(option)"
-              [ngClass]="topicToneClass(option)"
-              (click)="toggleOption(option, $event)"
-            >
-              {{ topicLabel(option) }}
-            </button>
-          </div>
+        }
+        <div class="values-selector-popup">
+          @for (group of groups; track group) {
+            <div class="values-selector-group">
+              <div class="social-proof-section-head" [class]="group.toneClass">
+                <span class="section-tag">{{ group.icon }} {{ group.shortTitle }}</span>
+                <span class="section-line"></span>
+              </div>
+              <div class="social-proof-chip-list">
+                @for (option of group.options; track option) {
+                  <button
+                    type="button"
+                    class="values-selected-chip values-option-chip"
+                    [class.active]="isSelected(option)"
+                    [ngClass]="topicToneClass(option)"
+                    (click)="toggleOption(option, $event)"
+                    >
+                    {{ topicLabel(option) }}
+                  </button>
+                }
+              </div>
+            </div>
+          }
         </div>
       </div>
     </div>
-  </div>
-</section>
+  </section>
+}

@@ -22,6 +22,10 @@ import {
 export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
   private static readonly DEFAULT_DEMO_USERS_COUNT = 50;
   private static readonly MIN_ACTIVITY_RATE_CONNECTIONS = 12;
+  private static readonly DEMO_ACTIVITY_RATE_SEED_COVERAGE_RATIO = 0.5;
+  private static readonly FEATURED_DEMO_ACTIVITY_RATE_OWNER_COUNT = 4;
+  private static readonly FEATURED_DEMO_ACTIVITY_RATE_EXTRA_SINGLE_GIVEN_COUNT = 15;
+  private static readonly DEFAULT_DEMO_ACTIVITY_RATE_EXTRA_SINGLE_GIVEN_COUNT = 5;
 
   init(): void {
     const users = this.querySeedUsers();
@@ -29,8 +33,13 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
     if (ownerIdsToSeed.length === 0) {
       return;
     }
-    const records = ownerIdsToSeed.flatMap(ownerUserId =>
-      DemoUserRatesBuilder.buildGeneratedRateItemsForUser(users, ownerUserId, { extraSingleGivenCount: 20 })
+    const records = ownerIdsToSeed.flatMap((ownerUserId, ownerIndex) =>
+      DemoUserRatesBuilder.buildGeneratedRateItemsForUser(users, ownerUserId, {
+        extraSingleGivenCount: ownerIndex < DemoUsersRatingsRepository.FEATURED_DEMO_ACTIVITY_RATE_OWNER_COUNT
+          ? DemoUsersRatingsRepository.FEATURED_DEMO_ACTIVITY_RATE_EXTRA_SINGLE_GIVEN_COUNT
+          : DemoUsersRatingsRepository.DEFAULT_DEMO_ACTIVITY_RATE_EXTRA_SINGLE_GIVEN_COUNT,
+        userCoverageRatio: DemoUsersRatingsRepository.DEMO_ACTIVITY_RATE_SEED_COVERAGE_RATIO
+      })
         .map(item => DemoUserRatesBuilder.toActivityRateRecord(ownerUserId, item))
     );
     if (records.length === 0) {
@@ -316,6 +325,9 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
   }
 
   private normalizeIncomingRateRecord(record: UserRateRecord): UserRateRecord | null {
+    if (record.source === 'activity-rate') {
+      return this.normalizeIncomingActivityRateRecord(record);
+    }
     const normalized = record.mode === 'pair' && record.ownerUserId
       ? this.buildNormalizedPairRateRecord(
           record.ownerUserId,
@@ -343,6 +355,39 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
       ownerUserId: record.mode === 'pair' ? record.ownerUserId?.trim() || normalized.ownerUserId : normalized.ownerUserId,
       createdAtIso,
       updatedAtIso
+    };
+  }
+
+  private normalizeIncomingActivityRateRecord(record: UserRateRecord): UserRateRecord | null {
+    const ownerUserId = record.ownerUserId?.trim() ?? '';
+    if (!ownerUserId) {
+      return null;
+    }
+    const item = DemoUserRatesBuilder.toRateMenuItem(record);
+    if (!item) {
+      return null;
+    }
+    const normalized = this.buildNormalizedActivityRateRecord(
+      ownerUserId,
+      item,
+      Number.isFinite(Number(record.scoreGiven)) && Number(record.scoreGiven) > 0
+        ? Number(record.scoreGiven)
+        : record.rate,
+      record.displayDirection ?? item.direction
+    );
+    if (!normalized) {
+      return null;
+    }
+    return {
+      ...normalized,
+      id: record.id,
+      displayId: record.displayId?.trim() || record.id,
+      createdAtIso: typeof record.createdAtIso === 'string' && record.createdAtIso.trim().length > 0
+        ? record.createdAtIso
+        : normalized.createdAtIso,
+      updatedAtIso: typeof record.updatedAtIso === 'string' && record.updatedAtIso.trim().length > 0
+        ? record.updatedAtIso
+        : normalized.updatedAtIso
     };
   }
 }

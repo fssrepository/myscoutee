@@ -1,0 +1,211 @@
+:host {
+  display: block;
+  min-width: 0;
+}
+
+.activities-card {
+  position: relative;
+  border: 1px solid rgba(33, 51, 78, 0.14);
+  border-radius: 12px;
+  background: #fff;
+  padding: 0.45rem 0.5rem;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 0.48rem;
+  align-items: center;
+  cursor: pointer;
+  width: 100%;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    box-shadow 0.16s ease,
+    background-color 0.16s ease,
+    border-color 0.16s ease,
+    color 0.16s ease;
+  isolation: isolate;
+}
+
+.activities-card-btn {
+  appearance: none;
+  -webkit-appearance: none;
+  font: inherit;
+  text-align: left;
+}
+
+.activities-card-chat-main-event {
+  border-color: rgba(43, 97, 161, 0.34);
+  background: linear-gradient(180deg, #f4f9ff 0%, #ebf3ff 100%);
+}
+
+.activities-card-chat-optional-sub-event {
+  border-color: rgba(143, 84, 26, 0.32);
+  background: linear-gradient(180deg, #fff9f0 0%, #fff3e1 100%);
+}
+
+.activities-card-chat-group-sub-event {
+  border-color: rgba(51, 131, 92, 0.34);
+  background: linear-gradient(180deg, #f3fcf5 0%, #e9f7ee 100%);
+}
+
+.activities-card-chat-main-event .activities-card-title {
+  color: #224d7f;
+}
+
+.activities-card-chat-optional-sub-event .activities-card-title {
+  color: #86521f;
+}
+
+.activities-card-chat-group-sub-event .activities-card-title {
+  color: #216b4e;
+}
+
+.activities-card-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.user-color-woman {
+  background: linear-gradient(180deg, #f089b0 0%, #df5d87 100%);
+}
+
+.user-color-man {
+  background: linear-gradient(180deg, #6ca6ff 0%, #3d78d8 100%);
+}
+
+.activities-card-main {
+  min-width: 0;
+  padding-right: 0;
+}
+
+.activities-card-title,
+.activities-card-subtitle,
+.activities-card-detail {
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.activities-card-title {
+  font-size: 0.83rem;
+  font-weight: 800;
+  color: #1f3658;
+}
+
+.activities-card-subtitle {
+  margin-top: 0.09rem;
+  font-size: 0.76rem;
+  color: rgba(20, 36, 58, 0.75);
+}
+
+.activities-card-detail {
+  margin-top: 0.08rem;
+  font-size: 0.73rem;
+  color: rgba(20, 36, 58, 0.64);
+}
+
+.activities-chat-members-badge {
+  align-self: baseline;
+  justify-self: end;
+  position: relative;
+  min-width: 72px;
+  height: 28px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.86);
+  background: rgba(26, 45, 71, 0.82);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 0 0.58rem;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.7), 0 8px 16px rgba(255, 255, 255, 0.42);
+  white-space: nowrap;
+  margin-right: 0.4rem;
+}
+
+.card-badge {
+  min-width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #d84d4d;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.asset-request-badge {
+  position: absolute;
+  top: -12px;
+  right: -12px;
+  min-width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  border: 1px solid #fff;
+  z-index: 2;
+}
+
+.activities-chat-unread-badge {
+  top: -6px;
+  right: -6px;
+  min-width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  border: 1px solid #fff;
+  z-index: 2;
+}
+
+.activities-row-item-clickable {
+  cursor: pointer;
+}
+
+.activities-card-btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(
+    circle at center,
+    rgba(255, 255, 255, 0.34) 0%,
+    rgba(255, 255, 255, 0.18) 24%,
+    rgba(255, 255, 255, 0) 62%
+  );
+  opacity: 0;
+  transform: scale(0.24);
+}
+
+.activities-card-btn:focus-visible {
+  outline: 2px solid rgba(66, 110, 182, 0.44);
+  outline-offset: 2px;
+}
+
+@keyframes activities-chat-press-wave {
+  0% {
+    opacity: 0.34;
+    transform: scale(0.24);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.08);
+  }
+}
+
+.activities-card-btn:not(:disabled):not([aria-disabled='true']):active {
+  box-shadow: 0 11px 24px rgba(18, 35, 58, 0.12);
+}
+
+.activities-card-btn:not(:disabled):not([aria-disabled='true']):active::after {
+  animation: activities-chat-press-wave 0.42s ease-out;
+}

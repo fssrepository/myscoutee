@@ -24,8 +24,6 @@ export class DemoChatsRepository {
         const record = state[CHATS_TABLE_NAME].byId[id];
         return !record
           || !AppUtils.hasText(record.dateIso ?? '')
-          || !Number.isFinite(Number(record.distanceKm))
-          || !Number.isFinite(Number(record.distanceMetersExact))
           || !Array.isArray(record.messages);
       });
       if (!needsMigration) {

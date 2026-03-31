@@ -1,0 +1,13 @@
+@if (pairCard) {
+  <app-pair-card
+    [card]="pairCard"
+    (badgeClick)="onBadgeClick()"
+  ></app-pair-card>
+} @else {
+  @if (singleCard) {
+    <app-single-card
+      [card]="singleCard"
+      (badgeClick)="onBadgeClick()"
+    ></app-single-card>
+  }
+}

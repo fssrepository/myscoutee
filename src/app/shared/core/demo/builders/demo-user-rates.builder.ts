@@ -9,10 +9,12 @@ type RateUserRef = {
 
 interface GeneratedRateItemsOptions {
   extraSingleGivenCount?: number;
+  userCoverageRatio?: number;
 }
 
 export class DemoUserRatesBuilder {
   private static readonly DEFAULT_EXTRA_SINGLE_GIVEN_COUNT = 0;
+  private static readonly DEFAULT_USER_COVERAGE_RATIO = 1;
 
   static buildGeneratedRateItemsForUser<TUser extends RateUserRef>(
     users: readonly TUser[],
@@ -22,6 +24,16 @@ export class DemoUserRatesBuilder {
     const otherUsers = users
       .filter(user => user.id !== activeUserId)
       .sort((a, b) => a.id.localeCompare(b.id));
+    const seededUsers = this.selectSeedUsers(otherUsers, activeUserId, options.userCoverageRatio);
+    const seededUserIds = new Set(seededUsers.map(user => user.id));
+    const extraTargetUsers = otherUsers
+      .filter(user => !seededUserIds.has(user.id))
+      .sort((left, right) =>
+        AppUtils.hashText(`rate-extra-seed:${activeUserId}:${left.id}`)
+        - AppUtils.hashText(`rate-extra-seed:${activeUserId}:${right.id}`)
+        || left.id.localeCompare(right.id)
+      );
+    const extraUsers = extraTargetUsers.length > 0 ? extraTargetUsers : seededUsers;
     const filterLanes: Array<{ mode: 'individual' | 'pair'; direction: RateMenuItem['direction'] }> = [
       { mode: 'individual', direction: 'given' },
       { mode: 'individual', direction: 'received' },
@@ -31,7 +43,7 @@ export class DemoUserRatesBuilder {
       { mode: 'pair', direction: 'received' }
     ];
     const generated: RateMenuItem[] = [];
-    otherUsers.forEach((user, userIndex) => {
+    seededUsers.forEach((user, userIndex) => {
       const laneIndex = userIndex % filterLanes.length;
       const lane = filterLanes[laneIndex];
       let secondaryUserId: string | undefined;
@@ -59,7 +71,7 @@ export class DemoUserRatesBuilder {
       Math.trunc(options.extraSingleGivenCount ?? DemoUserRatesBuilder.DEFAULT_EXTRA_SINGLE_GIVEN_COUNT)
     );
     for (let extraIndex = 0; extraIndex < extraSingleGivenCount; extraIndex += 1) {
-      const targetUser = otherUsers[extraIndex % otherUsers.length];
+      const targetUser = extraUsers[extraIndex % extraUsers.length];
       if (!targetUser) {
         break;
       }
@@ -70,7 +82,7 @@ export class DemoUserRatesBuilder {
           'individual',
           'given',
           0,
-          otherUsers.length + extraIndex,
+          seededUsers.length + extraIndex,
           extraIndex + 1
         )
       );
@@ -92,7 +104,7 @@ export class DemoUserRatesBuilder {
     const normalizedOwnerUserId = ownerUserId.trim();
     const normalizedCounterpartyUserId = item.userId.trim();
     const normalizedSecondaryUserId = item.secondaryUserId?.trim() ?? '';
-    const activityRateId = item.id.trim() || crypto.randomUUID();
+    const activityRateId = item.id.trim() || this.createRateId();
     const scoreGiven = this.normalizeRateScore(item.scoreGiven);
     const scoreReceived = this.normalizeRateScore(item.scoreReceived);
 
@@ -127,6 +139,9 @@ export class DemoUserRatesBuilder {
       ownerUserId: normalizedOwnerUserId,
       displayId: activityRateId,
       displayDirection: item.direction,
+      socialContext: item.socialContext,
+      bridgeUserId: item.bridgeUserId,
+      bridgeCount: item.bridgeCount,
       scoreGiven,
       scoreReceived,
       eventName: item.eventName,
@@ -151,6 +166,7 @@ export class DemoUserRatesBuilder {
       if (!firstUserId || !secondUserId || firstUserId === secondUserId) {
         return null;
       }
+      const socialContext = this.resolvePairSocialContext(record);
       if (direction === 'received') {
         if (firstUserId === ownerUserId) {
           return {
@@ -159,6 +175,9 @@ export class DemoUserRatesBuilder {
             secondaryUserId: firstUserId,
             mode: 'pair',
             direction,
+            socialContext,
+            bridgeUserId: record.bridgeUserId,
+            bridgeCount: record.bridgeCount,
             scoreGiven: this.normalizeRateScore(record.scoreGiven),
             scoreReceived: this.normalizeRateScore(record.scoreReceived),
             eventName: record.eventName?.trim() || 'Rate',
@@ -174,6 +193,9 @@ export class DemoUserRatesBuilder {
             secondaryUserId: secondUserId,
             mode: 'pair',
             direction,
+            socialContext,
+            bridgeUserId: record.bridgeUserId,
+            bridgeCount: record.bridgeCount,
             scoreGiven: this.normalizeRateScore(record.scoreGiven),
             scoreReceived: this.normalizeRateScore(record.scoreReceived),
             eventName: record.eventName?.trim() || 'Rate',
@@ -191,6 +213,9 @@ export class DemoUserRatesBuilder {
         secondaryUserId: secondUserId,
         mode: 'pair',
         direction,
+        socialContext,
+        bridgeUserId: record.bridgeUserId,
+        bridgeCount: record.bridgeCount,
         scoreGiven: this.normalizeRateScore(record.scoreGiven),
         scoreReceived: this.normalizeRateScore(record.scoreReceived),
         eventName: record.eventName?.trim() || 'Rate',
@@ -207,6 +232,9 @@ export class DemoUserRatesBuilder {
       userId: counterpartyUserId,
       mode: 'individual',
       direction,
+      socialContext: record.socialContext,
+      bridgeUserId: record.bridgeUserId,
+      bridgeCount: record.bridgeCount,
       scoreGiven: this.normalizeRateScore(record.scoreGiven),
       scoreReceived: this.normalizeRateScore(record.scoreReceived),
       eventName: record.eventName?.trim() || 'Rate',
@@ -239,6 +267,7 @@ export class DemoUserRatesBuilder {
           secondaryUserId: secondUserId,
           mode: 'pair',
           direction: 'given',
+          socialContext: 'separated-friends',
           scoreGiven: normalizedScore,
           scoreReceived: 0,
           eventName: 'Pair rate',
@@ -255,6 +284,9 @@ export class DemoUserRatesBuilder {
           secondaryUserId: normalizedOwnerUserId,
           mode: 'pair',
           direction: 'received',
+          socialContext: 'friends-in-common',
+          bridgeUserId: recordOwnerUserId || undefined,
+          bridgeCount: 1,
           scoreGiven: 0,
           scoreReceived: normalizedScore,
           eventName: 'Pair rate',
@@ -322,11 +354,12 @@ export class DemoUserRatesBuilder {
     }
     const variantSuffix = variantIndex > 0 ? `-v${variantIndex}` : '';
     return {
-      id: `rate-${activeUserId}-${mode}-${direction}-${targetUserId}${secondaryUserId ? `-${secondaryUserId}` : ''}${variantSuffix}`,
+      id: this.createRateId(),
       userId: targetUserId,
       ...(secondaryUserId ? { secondaryUserId } : {}),
       mode,
       direction,
+      ...(mode === 'pair' ? { socialContext: this.generatedPairSocialContext(direction) } : {}),
       scoreGiven,
       scoreReceived,
       eventName: variantIndex > 0
@@ -336,6 +369,13 @@ export class DemoUserRatesBuilder {
       distanceKm: 2 + ((seed + laneIndex + userIndex) % 33),
       distanceMetersExact: this.seedDistanceMetersExact(2 + ((seed + laneIndex + userIndex) % 33), seed)
     };
+  }
+
+  private static createRateId(): string {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+      return crypto.randomUUID();
+    }
+    return `rate-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
   }
 
   private static selectPairSecondaryUserId<TUser extends RateUserRef>(
@@ -362,11 +402,60 @@ export class DemoUserRatesBuilder {
     return gender === 'woman' ? 'man' : 'woman';
   }
 
+  private static resolvePairSocialContext(
+    record: UserRateRecord
+  ): RateMenuItem['socialContext'] {
+    return record.socialContext ?? this.generatedPairSocialContext(record.displayDirection);
+  }
+
+  private static generatedPairSocialContext(
+    direction: UserRateRecord['displayDirection'] | RateMenuItem['direction']
+  ): RateMenuItem['socialContext'] | undefined {
+    if (direction === 'given') {
+      return 'separated-friends';
+    }
+    if (direction === 'received') {
+      return 'friends-in-common';
+    }
+    return undefined;
+  }
+
+  private static selectSeedUsers<TUser extends RateUserRef>(
+    users: readonly TUser[],
+    activeUserId: string,
+    requestedCoverageRatio: number | undefined
+  ): TUser[] {
+    const coverageRatio = this.normalizeCoverageRatio(requestedCoverageRatio);
+    if (coverageRatio >= 1 || users.length <= 1) {
+      return [...users];
+    }
+    if (coverageRatio <= 0 || users.length === 0) {
+      return [];
+    }
+    const targetCount = Math.max(1, Math.round(users.length * coverageRatio));
+    return [...users]
+      .map(user => ({
+        user,
+        seed: AppUtils.hashText(`rate-seed-coverage:${activeUserId}:${user.id}`)
+      }))
+      .sort((left, right) => left.seed - right.seed || left.user.id.localeCompare(right.user.id))
+      .slice(0, targetCount)
+      .map(entry => entry.user)
+      .sort((left, right) => left.id.localeCompare(right.id));
+  }
+
   private static normalizeRateScore(value: unknown): number {
     if (!Number.isFinite(value)) {
       return 0;
     }
     return Math.max(0, Math.min(10, Math.trunc(Number(value))));
+  }
+
+  private static normalizeCoverageRatio(value: number | undefined): number {
+    if (!Number.isFinite(value)) {
+      return DemoUserRatesBuilder.DEFAULT_USER_COVERAGE_RATIO;
+    }
+    return Math.max(0, Math.min(1, Number(value)));
   }
 
   private static normalizeDistanceMetersExact(value: unknown, distanceKm: unknown, seedKey: string): number {

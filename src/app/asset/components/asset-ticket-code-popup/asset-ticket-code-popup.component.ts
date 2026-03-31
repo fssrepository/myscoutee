@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import { Component, Input } from '@angular/core';
 
 import type * as AppTypes from '../../../shared/core/base/models';
@@ -6,7 +6,7 @@ import type * as AppTypes from '../../../shared/core/base/models';
 @Component({
   selector: 'app-asset-ticket-code-popup',
   standalone: true,
-  imports: [CommonModule],
+  imports: [],
   templateUrl: './asset-ticket-code-popup.component.html',
   styleUrl: './asset-ticket-code-popup.component.scss'
 })

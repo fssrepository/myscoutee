@@ -10,7 +10,8 @@ import { AssetFacadeService } from '../../asset-facade.service';
 import { AssetPopupStateService } from '../../asset-popup-state.service';
 import { OwnedAssetsPopupFacadeService } from '../../owned-assets-popup-facade.service';
 import type * as AppTypes from '../../../shared/core/base/models';
-import { AppContext, AssetsService, AssetTicketsService } from '../../../shared/core';
+import { AppContext, AssetTicketsService } from '../../../shared/core';
+import { resolveCurrentRouteDelayMs } from '../../../shared/core/base/services/route-delay.service';
 import { AssetFormPopupComponent } from '../asset-form-popup/asset-form-popup.component';
 import { AssetTicketCodePopupComponent } from '../asset-ticket-code-popup/asset-ticket-code-popup.component';
 import { AssetTicketScannerPopupComponent } from '../asset-ticket-scanner-popup/asset-ticket-scanner-popup.component';
@@ -61,7 +62,6 @@ interface OwnedAssetListFilters {
 export class AssetPopupComponent implements DoCheck, OnDestroy {
   private readonly assetFacade = inject(AssetFacadeService);
   private readonly appCtx = inject(AppContext);
-  private readonly assetsService = inject(AssetsService);
   private readonly assetTicketsService = inject(AssetTicketsService);
   protected readonly assetPopup = inject(AssetPopupStateService);
   protected readonly ownedAssets = inject(OwnedAssetsPopupFacadeService);
@@ -73,7 +73,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
     this.ownedAssets.setAssetFormRouteStop(index, value);
   protected readonly openOwnedAssetFormRouteStopMap = (index: number, event?: Event): void =>
     this.ownedAssets.openAssetFormRouteStopMap(index, event);
-  protected readonly refreshOwnedAssetFromSourceLink = (): void => this.ownedAssets.refreshAssetFromSourceLink();
+  protected readonly refreshOwnedAssetFromSourceLink = (): void => { void this.ownedAssets.refreshAssetFromSourceLink(); };
   protected readonly onOwnedAssetImageFileSelected = (file: File): void => this.ownedAssets.applyAssetImageFile(file);
   protected readonly cancelOwnedAssetDelete = (): void => this.ownedAssets.cancelAssetDelete();
   protected readonly confirmOwnedAssetDelete = (): void => { void this.ownedAssets.confirmAssetDelete(); };
@@ -90,7 +90,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
     from(this.loadTicketSmartListPage(query));
   protected readonly assetSmartListConfig: SmartListConfig<AppTypes.AssetCard, OwnedAssetListFilters> = {
     pageSize: 18,
-    loadingDelayMs: 1500,
+    loadingDelayMs: resolveCurrentRouteDelayMs('/assets'),
     defaultView: 'list',
     emptyLabel: query => this.assetFacade.ownedAssetEmptyLabel(query.filters?.type ?? 'Car'),
     emptyDescription: query => this.assetFacade.ownedAssetEmptyDescription(query.filters?.type ?? 'Car'),
@@ -112,7 +112,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
   };
   protected readonly ticketSmartListConfig: SmartListConfig<AppTypes.ActivityListRow, AssetTicketListFilters> = {
     pageSize: 18,
-    loadingDelayMs: 1500,
+    loadingDelayMs: resolveCurrentRouteDelayMs('/assets/tickets'),
     defaultView: 'list',
     emptyLabel: 'No ticketed events',
     emptyDescription: 'Enable Ticketing On in an event to generate a ticket here.',
@@ -372,7 +372,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
   }
 
   private activeUserId(): string {
-    return this.appCtx.activeUserId().trim() || 'u1';
+    return this.appCtx.activeUserId().trim();
   }
 
   private currentAssetSmartListType(): AppTypes.AssetType {
@@ -413,7 +413,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
         total: 0
       };
     }
-    const cards = await this.assetsService.queryOwnedAssetsByUser(userId);
+    const cards = this.ownedAssets.assetCards;
     const selectedAssetIds = this.isBasketMode()
       ? new Set((this.assetPopup.host()?.selectedSubEventAssetAssignChips() ?? []).map(card => card.id.trim()).filter(Boolean))
       : null;

@@ -1,4 +1,4 @@
-import type { EventBlindMode, EventVisibility, SubEventsDisplayMode } from './event.model';
+import type { EventBlindMode, EventSlotTemplate, EventVisibility, SubEventsDisplayMode } from './event.model';
 
 export interface EventEditorSubEventGroupItem {
   id?: string;
@@ -43,6 +43,8 @@ export interface EventEditorDraftForm {
   autoInviter: boolean;
   ticketing: boolean;
   topics: string[];
+  slotsEnabled: boolean;
+  slotTemplates: EventSlotTemplate[];
   subEvents: EventEditorSubEventItem[];
   startAt: string;
   endAt: string;

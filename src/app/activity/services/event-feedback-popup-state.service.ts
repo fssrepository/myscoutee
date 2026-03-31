@@ -54,7 +54,6 @@ export class EventFeedbackPopupStateService {
   public readonly selectedEventFeedbackEventId = signal<string | null>(null);
   public readonly eventFeedbackSubmittedState = signal<boolean>(false);
   public readonly eventFeedbackSubmitMessage = signal<string>('');
-  public readonly eventFeedbackSlideAnimClass = signal<string>('');
   
   public readonly eventFeedbackNoteForm = signal({ eventId: '', text: '' });
   public readonly eventFeedbackNoteSubmitted = signal<boolean>(false);
@@ -62,7 +61,6 @@ export class EventFeedbackPopupStateService {
 
   private eventFeedbackTouchStartX: number | null = null;
   private eventFeedbackTouchStartY: number | null = null;
-  private eventFeedbackSlideAnimationTimer: ReturnType<typeof setTimeout> | null = null;
 
   private readonly submittedEventFeedbackByUser = signal<Record<string, Record<string, true>>>({});
   private readonly submittedEventFeedbackAnswersByUser = signal<Record<string, Record<string, AppTypes.SubmittedEventFeedbackAnswer>>>({});
@@ -87,11 +85,6 @@ export class EventFeedbackPopupStateService {
     this.eventFeedbackIndex.set(0);
     this.eventFeedbackSubmittedState.set(false);
     this.eventFeedbackSubmitMessage.set('');
-    if (this.eventFeedbackSlideAnimationTimer) {
-      clearTimeout(this.eventFeedbackSlideAnimationTimer);
-      this.eventFeedbackSlideAnimationTimer = null;
-    }
-    this.eventFeedbackSlideAnimClass.set('');
     this.eventFeedbackTouchStartX = null;
     this.eventFeedbackTouchStartY = null;
     this.hydrateEventFeedbackState();
@@ -177,12 +170,6 @@ export class EventFeedbackPopupStateService {
     this.eventFeedbackIndex.set(0);
     this.eventFeedbackSubmittedState.set(false);
     this.eventFeedbackSubmitMessage.set('');
-    
-    if (this.eventFeedbackSlideAnimationTimer) {
-      clearTimeout(this.eventFeedbackSlideAnimationTimer);
-      this.eventFeedbackSlideAnimationTimer = null;
-    }
-    this.eventFeedbackSlideAnimClass.set('');
     this.eventFeedbackTouchStartX = null;
     this.eventFeedbackTouchStartY = null;
     
@@ -279,9 +266,7 @@ export class EventFeedbackPopupStateService {
     if (index === currentIndex) {
       return;
     }
-    const direction = index > currentIndex ? 'next' : 'prev';
     this.eventFeedbackIndex.set(index);
-    this.playEventFeedbackSlideAnimation(direction);
   }
 
   public previousEventFeedbackSlide(event?: Event): void {
@@ -291,7 +276,6 @@ export class EventFeedbackPopupStateService {
       return;
     }
     this.eventFeedbackIndex.set(currentIndex - 1);
-    this.playEventFeedbackSlideAnimation('prev');
   }
 
   public nextEventFeedbackSlide(event?: Event): void {
@@ -301,7 +285,6 @@ export class EventFeedbackPopupStateService {
       return;
     }
     this.eventFeedbackIndex.set(currentIndex + 1);
-    this.playEventFeedbackSlideAnimation('next');
   }
 
   public selectEventFeedbackPrimary(optionValue: string, event?: Event): void {
@@ -482,11 +465,6 @@ export class EventFeedbackPopupStateService {
     this.eventFeedbackSubmitMessage.set(`Feedback submitted successfully for ${eventTitle}.`);
     this.eventFeedbackListSubmitMessage.set(`${eventTitle} moved to Feedbacked.`);
     this.eventFeedbackListFilter.set('feedbacked');
-    if (this.eventFeedbackSlideAnimationTimer) {
-      clearTimeout(this.eventFeedbackSlideAnimationTimer);
-      this.eventFeedbackSlideAnimationTimer = null;
-    }
-    this.eventFeedbackSlideAnimClass.set('');
     this.eventFeedbackTouchStartX = null;
     this.eventFeedbackTouchStartY = null;
   }
@@ -838,25 +816,6 @@ export class EventFeedbackPopupStateService {
       default: return this.eventFeedbackPendingItems();
     }
   });
-
-  private playEventFeedbackSlideAnimation(direction: 'next' | 'prev'): void {
-    const nextClass = direction === 'next'
-      ? 'event-feedback-slide-enter-next'
-      : 'event-feedback-slide-enter-prev';
-    if (this.eventFeedbackSlideAnimationTimer) {
-      clearTimeout(this.eventFeedbackSlideAnimationTimer);
-      this.eventFeedbackSlideAnimationTimer = null;
-    }
-    this.eventFeedbackSlideAnimClass.set('');
-    // Ideally use cdr here, but signal change should trigger CD naturally
-    setTimeout(() => {
-      this.eventFeedbackSlideAnimClass.set(nextClass);
-      this.eventFeedbackSlideAnimationTimer = setTimeout(() => {
-        this.eventFeedbackSlideAnimClass.set('');
-        this.eventFeedbackSlideAnimationTimer = null;
-      }, 260);
-    }, 0);
-  }
 
   // --- Internal Data Helpers ---
   

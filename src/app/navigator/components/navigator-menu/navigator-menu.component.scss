@@ -3,6 +3,7 @@
   --line: rgba(23, 33, 54, 0.12);
   --line-strong: rgba(23, 33, 54, 0.2);
   --danger: #d94a4a;
+  --navigator-menu-ripple-color: rgba(22, 49, 81, 0.16);
   --interactive-motion-duration: 0.16s;
   --interactive-motion-ease: cubic-bezier(0.22, 0.61, 0.36, 1);
   --interactive-hover-lift: -1px;
@@ -53,6 +54,7 @@
   .feedback-shortcut-btn
 ) {
   -webkit-tap-highlight-color: transparent;
+  isolation: isolate;
   transition:
     transform var(--interactive-motion-duration) var(--interactive-motion-ease),
     filter var(--interactive-motion-duration) var(--interactive-motion-ease),
@@ -61,6 +63,45 @@
     border-color var(--interactive-motion-duration) var(--interactive-motion-ease),
     color var(--interactive-motion-duration) var(--interactive-motion-ease);
   transform-origin: center;
+}
+
+.navigator-action-ripple {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+:host ::ng-deep .navigator-action-ripple .mat-ripple-element {
+  background-color: var(--navigator-menu-ripple-color);
+}
+
+.user-menu-settings-btn,
+.user-menu-close-btn,
+.header-open-cue {
+  --navigator-menu-ripple-color: rgba(36, 84, 138, 0.18);
+}
+
+.feedback-shortcut-report {
+  --navigator-menu-ripple-color: rgba(164, 60, 69, 0.16);
+}
+
+.user-menu-settings-btn .mat-icon,
+.user-menu-close-btn .mat-icon,
+.header-open-cue .mat-icon,
+.menu-shortcut-btn .mat-icon,
+.menu-shortcut-label,
+.impression-shortcut-btn .mat-icon,
+.impression-shortcut-label,
+.asset-shortcut-btn .mat-icon,
+.asset-shortcut-label,
+.feedback-shortcut-btn .mat-icon,
+.feedback-shortcut-label,
+.menu-shortcut-badge {
+  position: relative;
+  z-index: 1;
 }
 
 :where(
@@ -295,7 +336,7 @@
 }
 
 .user-menu-backdrop.is-covered {
-  opacity: 0;
+  visibility: hidden;
   pointer-events: none;
 }
 
@@ -313,7 +354,7 @@
   box-shadow: -10px 0 34px rgba(10, 20, 38, 0.3);
   opacity: 1;
   transform: translateX(100%);
-  transition: transform 0.24s ease, opacity 0.16s ease;
+  transition: transform 0.24s ease;
 }
 
 .user-menu-panel.open {
@@ -321,7 +362,7 @@
 }
 
 .user-menu-panel.is-covered {
-  opacity: 0;
+  visibility: hidden;
   pointer-events: none;
 }
 

@@ -2,7 +2,7 @@ import { computed, Injectable, inject, signal } from '@angular/core';
 
 import { environment } from '../../../environments/environment';
 import type * as AppTypes from '../../shared/core/base/models';
-import { ActivityMembersService, ChatsService, EventsService, SessionService } from '../../shared/core';
+import { ActivityMembersService, ChatsService, EventsService } from '../../shared/core';
 import type {
   ActivitiesEventSyncPayload,
   EventChatContext,
@@ -46,7 +46,6 @@ const DEFAULT_ACTIVITIES_UI_STATE: ActivitiesUiState = {
   providedIn: 'root'
 })
 export class ActivitiesPopupStateService {
-  private readonly sessionService = inject(SessionService);
   private readonly eventsService = inject(EventsService);
   private readonly chatsService = inject(ChatsService);
   private readonly activityMembersService = inject(ActivityMembersService);
@@ -75,7 +74,7 @@ export class ActivitiesPopupStateService {
   readonly activitiesOpenBoolean = computed(() => this._uiState().open);
   readonly eventChatOpen = computed(() => this._eventChatSession() !== null);
 
-  readonly dataMode = this.sessionService.currentSession()?.kind === 'demo' || !environment.loginEnabled
+  readonly dataMode = environment.activitiesDataSource === 'demo'
     ? 'demo'
     : 'http';
 

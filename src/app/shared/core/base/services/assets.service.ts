@@ -22,7 +22,23 @@ export class AssetsService extends BaseRouteModeService {
   }
 
   async queryOwnedAssetsByUser(userId: string): Promise<AppTypes.AssetCard[]> {
-    return this.assetsService.queryOwnedAssetsByUser(userId);
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return [];
+    }
+    if (this.isDemoModeEnabled('/assets')) {
+      return this.demoAssetsService.queryOwnedAssetsByUser(normalizedUserId);
+    }
+    const cachedCards = this.httpAssetsService.peekOwnedAssetsByUser(normalizedUserId);
+    const { value } = await this.loadWithRecovery(
+      () => this.httpAssetsService.queryOwnedAssetsByUser(normalizedUserId),
+      () => cachedCards,
+      {
+        shouldRecover: cards => cards.length === 0 && cachedCards.length > 0,
+        hasRecoveryValue: cards => cards.length > 0
+      }
+    );
+    return value;
   }
 
   async saveOwnedAsset(userId: string, asset: AppTypes.AssetCard): Promise<AppTypes.AssetCard> {
@@ -35,5 +51,13 @@ export class AssetsService extends BaseRouteModeService {
 
   async deleteOwnedAsset(userId: string, assetId: string): Promise<void> {
     await this.assetsService.deleteOwnedAsset(userId, assetId);
+  }
+
+  async refreshAssetSourcePreview(
+    userId: string,
+    type: AppTypes.AssetType,
+    sourceLink: string
+  ): Promise<AppTypes.AssetSourcePreview | null> {
+    return this.assetsService.refreshAssetSourcePreview(userId, type, sourceLink);
   }
 }

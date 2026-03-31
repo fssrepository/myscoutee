@@ -6,6 +6,7 @@ import type {
   UserByIdQueryResponse,
   UserDeleteRequestDto,
   UserFeedbackSubmitRequestDto,
+  UserLocationEligibilityResponseDto,
   UserDto,
   UserLogoutRequestDto,
   UserReportUserSubmitRequestDto,
@@ -16,6 +17,7 @@ import type {
   UsersListQueryResponse
 } from '../../base/interfaces/user.interface';
 import type { UserGameFilterPreferencesDto } from '../../base/interfaces/game.interface';
+import type { LocationCoordinates } from '../../base/interfaces/location.interface';
 import {
   DemoUserFilterPreferencesBuilder,
   DemoUserImpressionsBuilder,
@@ -44,6 +46,16 @@ export class DemoUsersService extends DemoRouteDelayService implements UserServi
     await this.waitForRouteDelay(DemoUsersService.DEMO_USERS_ROUTE);
     return {
       users: this.usersRepository.queryAvailableDemoUsers()
+    };
+  }
+
+  async checkLocationEligibility(_coordinates?: LocationCoordinates | null): Promise<UserLocationEligibilityResponseDto> {
+    return {
+      eligible: true,
+      partitionKey: null,
+      message: null,
+      securityGateEnabled: false,
+      locationRequired: false
     };
   }
 

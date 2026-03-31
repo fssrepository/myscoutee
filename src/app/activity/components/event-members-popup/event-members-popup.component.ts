@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { environment } from '../../../../environments/environment';
+import { resolveCurrentRouteDelayMs } from '../../../shared/core/base/services/route-delay.service';
 import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
@@ -18,9 +19,10 @@ import type * as AppTypes from '../../../shared/core/base/models';
 import { AppUtils } from '../../../shared/app-utils';
 import type { ActivityMemberOwnerRef, ActivityMemberOwnerType } from '../../../shared/core/base/models';
 import type { ActivityMembersSyncState } from '../../../shared/core';
-import { ActivityMembersService, AppContext, AppPopupContext, EventsService, SessionService } from '../../../shared/core';
+import { ActivityMembersService, AppContext, AppPopupContext, EventsService, UsersService } from '../../../shared/core';
 import type { DemoEventRecord } from '../../../shared/core/demo/models/events.model';
 import {
+  CounterBadgePipe,
   LazyBgImageDirective,
   SmartListComponent,
   type ListQuery,
@@ -31,7 +33,6 @@ import {
   type SmartListStateChange
 } from '../../../shared/ui';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
-import { DemoUsersRepository } from '../../../shared/core/demo';
 
 interface MembersSmartListFilters {
   ownerId?: string;
@@ -57,7 +58,8 @@ type MembersSummaryState = {
     MatButtonModule,
     MatIconModule,
     SmartListComponent,
-    LazyBgImageDirective
+    LazyBgImageDirective,
+    CounterBadgePipe
   ],
   templateUrl: './event-members-popup.component.html',
   styleUrls: ['./event-members-popup.component.scss'],
@@ -71,16 +73,7 @@ export class EventMembersPopupComponent {
   private readonly eventsService = inject(EventsService);
   private readonly appCtx = inject(AppContext);
   private readonly popupCtx = inject(AppPopupContext);
-  private readonly sessionService = inject(SessionService);
-  private readonly demoUsersRepository = inject(DemoUsersRepository);
-
-  private get users() {
-    return this.demoUsersRepository.queryAllUsers();
-  }
-
-  private get userByIdMap() {
-    return new Map(this.users.map(user => [user.id, user]));
-  }
+  private readonly usersService = inject(UsersService);
   private readonly membersCacheByOwnerId = new Map<string, AppTypes.ActivityMemberEntry[]>();
   private lastAppliedActivityMembersUpdatedMs = 0;
   private openMembersHydrationTimer: ReturnType<typeof setTimeout> | null = null;
@@ -130,7 +123,7 @@ export class EventMembersPopupComponent {
 
   protected readonly membersSmartListConfig: SmartListConfig<AppTypes.ActivityMemberEntry, MembersSmartListFilters> = {
     pageSize: 16,
-    loadingDelayMs: 1500,
+    loadingDelayMs: resolveCurrentRouteDelayMs('/activities/events/members'),
     loadingWindowMs: 3000,
     defaultView: 'list',
     headerProgress: {
@@ -440,7 +433,13 @@ export class EventMembersPopupComponent {
 
   protected memberCardToneClass(entry: AppTypes.ActivityMemberEntry): string {
     if (entry.status === 'accepted') {
-      return entry.role === 'Admin' ? 'member-card-tone-admin' : 'member-card-tone-accepted';
+      if (entry.role === 'Admin') {
+        return 'member-card-tone-admin';
+      }
+      if (entry.role === 'Manager') {
+        return 'member-card-tone-manager';
+      }
+      return 'member-card-tone-accepted';
     }
     if (entry.requestKind === 'join' || entry.pendingSource === 'member') {
       return 'member-card-tone-awaiting-approval';
@@ -450,7 +449,13 @@ export class EventMembersPopupComponent {
 
   protected memberCardStatusClass(entry: AppTypes.ActivityMemberEntry): string {
     if (entry.status === 'accepted') {
-      return entry.role === 'Admin' ? 'member-status-admin' : 'member-status-member';
+      if (entry.role === 'Admin') {
+        return 'member-status-admin';
+      }
+      if (entry.role === 'Manager') {
+        return 'member-status-manager';
+      }
+      return 'member-status-member';
     }
     if (entry.requestKind === 'join' || entry.pendingSource === 'member') {
       return 'member-status-awaiting-approval';
@@ -460,7 +465,13 @@ export class EventMembersPopupComponent {
 
   protected memberCardStatusIcon(entry: AppTypes.ActivityMemberEntry): string {
     if (entry.status === 'accepted') {
-      return entry.role === 'Admin' ? 'admin_panel_settings' : 'person';
+      if (entry.role === 'Admin') {
+        return 'admin_panel_settings';
+      }
+      if (entry.role === 'Manager') {
+        return 'badge';
+      }
+      return 'person';
     }
     if (entry.requestKind === 'join' || entry.pendingSource === 'member') {
       return 'pending_actions';
@@ -470,13 +481,13 @@ export class EventMembersPopupComponent {
 
   protected memberCardStatusLabel(entry: AppTypes.ActivityMemberEntry): string {
     if (entry.status === 'accepted') {
-      return entry.role === 'Admin' ? 'Admin' : 'Member';
+      return this.roleLabel(entry);
     }
     return this.pendingStatusLabel(entry);
   }
 
   protected age(entry: AppTypes.ActivityMemberEntry): number {
-    return this.userByIdMap.get(entry.userId)?.age ?? 0;
+    return this.usersService.peekCachedUserById(entry.userId)?.age ?? 0;
   }
 
   protected roleLabel(entry: AppTypes.ActivityMemberEntry): string {
@@ -664,7 +675,10 @@ export class EventMembersPopupComponent {
   ): void {
     this.ownerRecord = record;
     this.subtitle = record.title.trim() || options?.subtitle?.trim() || 'Event';
-    this.canManageMembers = this.canManageMembers || options?.canManage === true || record.creatorUserId === this.activeUserId();
+    this.canManageMembers = this.canManageMembers
+      || options?.canManage === true
+      || record.isAdmin === true
+      || record.creatorUserId === this.activeUserId();
     this.canShowInviteButton = this.canManageMembers;
     if (this.acceptedCount <= 0 && this.pendingCount <= 0 && this.capacityTotal <= 0) {
       this.applySummary(record.acceptedMembers, record.pendingMembers, record.capacityTotal);
@@ -692,6 +706,7 @@ export class EventMembersPopupComponent {
         ? await this.activityMembersService.queryMembersByOwner(owner)
         : await this.activityMembersService.queryMembersByOwnerId(ownerId);
       members = this.sortMembersByActionTimeDesc(loadedMembers);
+      void this.usersService.warmCachedUsers(members.map(member => member.userId));
       this.membersCacheByOwnerId.set(ownerId, members);
       if (this.isOpen && this.ownerId === ownerId) {
         const summary = owner
@@ -950,11 +965,11 @@ export class EventMembersPopupComponent {
   }
 
   private get demoModeEnabled(): boolean {
-    return this.sessionService.currentSession()?.kind === 'demo' || !environment.loginEnabled;
+    return environment.activitiesDataSource === 'demo';
   }
 
   private activeUserId(): string {
-    return this.appCtx.activeUserId().trim() || 'u1';
+    return this.appCtx.activeUserId().trim();
   }
 
   private resetSummaryState(): void {

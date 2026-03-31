@@ -1,122 +1,130 @@
-<section class="app-popup app-popup-stacked app-popup-super-stacked asset-member-picker-popup-shell" *ngIf="isOpen">
-  <div class="app-popup-backdrop" (click)="closeInvitePopup()"></div>
-  <div
-    class="app-popup-panel popup-panel-friends-picker popup-panel-friends-picker-members popup-panel-wide popup-panel-full-height"
-    (click)="$event.stopPropagation()"
-  >
-    <div class="popup-header popup-header-friends-picker">
-      <div class="popup-title">
-        <h2>Invite members</h2>
-        <p *ngIf="title && title !== 'Invite members'">{{ title }}</p>
-      </div>
-      <div class="popup-header-inline-controls">
-        <div class="friends-picker-sort">
-          <button type="button" class="popup-view-fab" (click)="toggleInviteSortPicker($event)" aria-label="Open invite sort">
-            <mat-icon>{{ inviteSort === 'recent' ? 'schedule' : 'auto_awesome' }}</mat-icon>
-            <span>{{ inviteSort === 'recent' ? 'Recent' : 'Relevant' }}</span>
-          </button>
-          <div class="activities-view-picker-panel" *ngIf="showInviteSortPicker">
-            <button type="button" class="activities-view-option" (click)="selectInviteSort('recent', $event)">
-              <mat-icon>schedule</mat-icon>
-              <span>Recent</span>
-            </button>
-            <button type="button" class="activities-view-option" (click)="selectInviteSort('relevant', $event)">
-              <mat-icon>auto_awesome</mat-icon>
-              <span>Relevant</span>
-            </button>
-          </div>
+@if (isOpen) {
+  <section class="app-popup app-popup-stacked app-popup-super-stacked asset-member-picker-popup-shell">
+    <div class="app-popup-backdrop" (click)="closeInvitePopup()"></div>
+    <div
+      class="app-popup-panel popup-panel-friends-picker popup-panel-friends-picker-members popup-panel-wide popup-panel-full-height"
+      (click)="$event.stopPropagation()"
+      >
+      <div class="popup-header popup-header-friends-picker">
+        <div class="popup-title">
+          <h2>Invite members</h2>
+          @if (title && title !== 'Invite members') {
+            <p>{{ title }}</p>
+          }
         </div>
-        <span class="header-members-count asset-member-picker-header-count" *ngIf="selectedInviteCount() > 0">{{ selectedInviteCountLabel() }}</span>
-        <span
-          class="asset-member-picker-save-btn-shell"
-          [class.is-loading]="isConfirmPending"
-          [class.is-error]="!isConfirmPending && !!confirmErrorMessage"
-        >
-          <span class="asset-member-picker-save-btn-ring" *ngIf="isConfirmPending || confirmErrorMessage" aria-hidden="true">
-            <svg viewBox="0 0 34 34" preserveAspectRatio="none" class="asset-member-picker-save-btn-ring-svg">
-              <defs>
-                <linearGradient id="asset-member-picker-save-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stop-color="rgb(235, 147, 33)"></stop>
-                  <stop offset="100%" stop-color="rgb(247, 190, 52)"></stop>
-                </linearGradient>
-                <linearGradient id="asset-member-picker-save-gradient-error" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stop-color="rgb(213, 54, 68)"></stop>
-                  <stop offset="100%" stop-color="rgb(196, 29, 42)"></stop>
-                </linearGradient>
-              </defs>
-              <circle class="asset-member-picker-save-btn-ring-track" cx="17" cy="17" r="15"></circle>
-              <circle
-                class="asset-member-picker-save-btn-ring-progress"
-                [class.is-loading]="isConfirmPending"
-                [class.is-error]="!isConfirmPending && !!confirmErrorMessage"
-                cx="17"
-                cy="17"
-                r="15"
-                pathLength="100"
-                [attr.stroke-dasharray]="confirmRingPerimeter"
-                [attr.stroke-dashoffset]="isConfirmPending ? confirmRingPerimeter : 0"
-              ></circle>
-            </svg>
+        <div class="popup-header-inline-controls">
+          <div class="friends-picker-sort">
+            <button type="button" class="popup-view-fab" (click)="toggleInviteSortPicker($event)" aria-label="Open invite sort">
+              <mat-icon>{{ inviteSort === 'recent' ? 'schedule' : 'auto_awesome' }}</mat-icon>
+              <span>{{ inviteSort === 'recent' ? 'Recent' : 'Relevant' }}</span>
+            </button>
+            @if (showInviteSortPicker) {
+              <div class="activities-view-picker-panel">
+                <button type="button" class="activities-view-option" (click)="selectInviteSort('recent', $event)">
+                  <mat-icon>schedule</mat-icon>
+                  <span>Recent</span>
+                </button>
+                <button type="button" class="activities-view-option" (click)="selectInviteSort('relevant', $event)">
+                  <mat-icon>auto_awesome</mat-icon>
+                  <span>Relevant</span>
+                </button>
+              </div>
+            }
+          </div>
+          @if (selectedInviteCount() > 0) {
+            <span class="header-members-count asset-member-picker-header-count">{{ selectedInviteCountLabel() }}</span>
+          }
+          <span
+            class="asset-member-picker-save-btn-shell"
+            [class.is-loading]="isConfirmPending"
+            [class.is-error]="!isConfirmPending && !!confirmErrorMessage"
+            >
+            @if (isConfirmPending || confirmErrorMessage) {
+              <span class="asset-member-picker-save-btn-ring" aria-hidden="true">
+                <svg viewBox="0 0 34 34" preserveAspectRatio="none" class="asset-member-picker-save-btn-ring-svg">
+                  <defs>
+                    <linearGradient id="asset-member-picker-save-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stop-color="rgb(235, 147, 33)"></stop>
+                      <stop offset="100%" stop-color="rgb(247, 190, 52)"></stop>
+                    </linearGradient>
+                    <linearGradient id="asset-member-picker-save-gradient-error" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stop-color="rgb(213, 54, 68)"></stop>
+                      <stop offset="100%" stop-color="rgb(196, 29, 42)"></stop>
+                    </linearGradient>
+                  </defs>
+                  <circle class="asset-member-picker-save-btn-ring-track" cx="17" cy="17" r="15"></circle>
+                  <circle
+                    class="asset-member-picker-save-btn-ring-progress"
+                    [class.is-loading]="isConfirmPending"
+                    [class.is-error]="!isConfirmPending && !!confirmErrorMessage"
+                    cx="17"
+                    cy="17"
+                    r="15"
+                    pathLength="100"
+                    [attr.stroke-dasharray]="confirmRingPerimeter"
+                    [attr.stroke-dashoffset]="isConfirmPending ? confirmRingPerimeter : 0"
+                  ></circle>
+                </svg>
+              </span>
+            }
+            <button
+              type="button"
+              class="popup-header-add-btn subevent-leaderboard-save-btn asset-member-picker-save-btn"
+              [class.form-save-invalid]="selectedUserIds.length === 0 && !isConfirmPending"
+              [disabled]="!canConfirmSelection()"
+              (click)="confirmSelection($event)"
+              aria-label="Invite selected members"
+              >
+              <mat-icon>done</mat-icon>
+            </button>
           </span>
-          <button
-            type="button"
-            class="popup-header-add-btn subevent-leaderboard-save-btn asset-member-picker-save-btn"
-            [class.form-save-invalid]="selectedUserIds.length === 0 && !isConfirmPending"
-            [disabled]="!canConfirmSelection()"
-            (click)="confirmSelection($event)"
-            aria-label="Invite selected members"
-          >
-            <mat-icon>done</mat-icon>
+          <button mat-icon-button class="popup-close" (click)="closeInvitePopup($event)" aria-label="Close">
+            <mat-icon>close</mat-icon>
           </button>
-        </span>
-        <button mat-icon-button class="popup-close" (click)="closeInvitePopup($event)" aria-label="Close">
-          <mat-icon>close</mat-icon>
-        </button>
+        </div>
+      </div>
+      <div class="popup-body popup-body-friends-picker">
+        <app-basket
+          className="friends-picker-chip-row asset-member-picker-chip-row"
+          [chips]="selectedInviteBasketChips()"
+          [disabled]="isConfirmPending"
+          (chipClick)="toggleInviteCandidate($event.chip.id, $event.event)"
+        ></app-basket>
+        @if (confirmErrorMessage) {
+          <p class="asset-member-picker-confirm-error">{{ confirmErrorMessage }}</p>
+        }
+        <app-smart-list
+          #inviteSmartList
+          class="asset-member-picker-smart-list"
+          [config]="inviteSmartListConfig"
+          [loaders]="inviteSmartListLoaders"
+          [itemTemplate]="inviteItemTemplateRef ?? null"
+          [query]="inviteSmartListQuery"
+          (stateChange)="onInviteSmartListStateChange($event)"
+        ></app-smart-list>
+        <ng-template #inviteItemTemplate let-candidate>
+          <article class="experience-item-card friends-picker-card asset-invite-candidate-card" [appLazyBgImage]="candidate.avatarUrl">
+            <span class="friends-picker-card-avatar-fallback" aria-hidden="true">
+              <mat-icon>highlight_off</mat-icon>
+            </span>
+            <button
+              type="button"
+              class="friends-picker-card-add-btn"
+              [class.active]="isInviteCandidateSelected(candidate.userId)"
+              [class.is-persisted]="isInviteCandidatePersisted(candidate.userId)"
+              [disabled]="isConfirmPending"
+              (click)="toggleInviteCandidate(candidate.userId, $event)"
+              [attr.aria-label]="isInviteCandidateSelected(candidate.userId) ? 'Unselect friend' : 'Select friend'"
+              >
+              <mat-icon>{{ isInviteCandidateSelected(candidate.userId) ? 'check' : 'add' }}</mat-icon>
+            </button>
+            <div class="friends-picker-card-meta">
+              <h4>{{ candidate.name }}</h4>
+              <p>{{ inviteMetLabel(candidate) }}</p>
+            </div>
+          </article>
+        </ng-template>
       </div>
     </div>
-
-    <div class="popup-body popup-body-friends-picker">
-      <app-basket
-        className="friends-picker-chip-row asset-member-picker-chip-row"
-        [chips]="selectedInviteBasketChips()"
-        [disabled]="isConfirmPending"
-        (chipClick)="toggleInviteCandidate($event.chip.id, $event.event)"
-      ></app-basket>
-
-      <p class="asset-member-picker-confirm-error" *ngIf="confirmErrorMessage">{{ confirmErrorMessage }}</p>
-
-      <app-smart-list
-        #inviteSmartList
-        class="asset-member-picker-smart-list"
-        [config]="inviteSmartListConfig"
-        [loaders]="inviteSmartListLoaders"
-        [itemTemplate]="inviteItemTemplateRef ?? null"
-        [query]="inviteSmartListQuery"
-        (stateChange)="onInviteSmartListStateChange($event)"
-      ></app-smart-list>
-
-      <ng-template #inviteItemTemplate let-candidate>
-        <article class="experience-item-card friends-picker-card asset-invite-candidate-card" [appLazyBgImage]="candidate.avatarUrl">
-          <span class="friends-picker-card-avatar-fallback" aria-hidden="true">
-            <mat-icon>highlight_off</mat-icon>
-          </span>
-          <button
-            type="button"
-            class="friends-picker-card-add-btn"
-            [class.active]="isInviteCandidateSelected(candidate.userId)"
-            [class.is-persisted]="isInviteCandidatePersisted(candidate.userId)"
-            [disabled]="isConfirmPending"
-            (click)="toggleInviteCandidate(candidate.userId, $event)"
-            [attr.aria-label]="isInviteCandidateSelected(candidate.userId) ? 'Unselect friend' : 'Select friend'"
-          >
-            <mat-icon>{{ isInviteCandidateSelected(candidate.userId) ? 'check' : 'add' }}</mat-icon>
-          </button>
-          <div class="friends-picker-card-meta">
-            <h4>{{ candidate.name }}</h4>
-            <p>{{ inviteMetLabel(candidate) }}</p>
-          </div>
-        </article>
-      </ng-template>
-    </div>
-  </div>
-</section>
+  </section>
+}

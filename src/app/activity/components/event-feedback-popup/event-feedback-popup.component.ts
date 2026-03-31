@@ -1,13 +1,15 @@
-import { Component, OnDestroy, TemplateRef, ViewChild, effect, inject, signal } from '@angular/core';
+import { Component, ElementRef, OnDestroy, TemplateRef, ViewChild, effect, inject, signal, untracked } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { MatRippleModule } from '@angular/material/core';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { from } from 'rxjs';
 
-import { AppContext, EventsService, GameService, type UserDto } from '../../../shared/core';
+import { AppContext, EventsService, GameService, UsersService, type UserDto } from '../../../shared/core';
 import type { EventMenuItem } from '../../../shared/core/base/interfaces/activity-feed.interface';
 import {
+  CounterBadgePipe,
   InfoCardComponent,
   SmartListComponent,
   type InfoCardData,
@@ -21,7 +23,6 @@ import {
 import type * as AppTypes from '../../../shared/core/base/models';
 import type { DemoEventRecord } from '../../../shared/core/demo/models/events.model';
 import { EventFeedbackPopupStateService, type EventFeedbackPopupSource } from '../../services/event-feedback-popup-state.service';
-import { DemoUsersRepository } from '../../../shared/core/demo';
 
 interface EventFeedbackListFilters {
   filter: AppTypes.EventFeedbackListFilter;
@@ -31,13 +32,18 @@ interface EventFeedbackListFilters {
 @Component({
   selector: 'app-event-feedback-popup',
   standalone: true,
+  host: {
+    '(window:resize)': 'onViewportResize()'
+  },
   imports: [
     CommonModule,
     FormsModule,
+    MatRippleModule,
     MatIconModule,
     MatButtonModule,
     SmartListComponent,
-    InfoCardComponent
+    InfoCardComponent,
+    CounterBadgePipe
   ],
   templateUrl: './event-feedback-popup.component.html',
   styleUrl: './event-feedback-popup.component.scss'
@@ -47,12 +53,16 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
   private readonly appCtx = inject(AppContext);
   private readonly eventsService = inject(EventsService);
   private readonly gameService = inject(GameService);
-  private readonly demoUsersRepository = inject(DemoUsersRepository);
+  private readonly usersService = inject(UsersService);
   private readonly eventRecordsRef = signal<DemoEventRecord[]>([]);
   private lastLoadedUserId = '';
   private loadRequestVersion = 0;
   private eventRecordsLoadPromise: Promise<void> | null = null;
   private eventRecordsLoadUserId = '';
+  private eventFeedbackViewportScrollLockTargetIndex: number | null = null;
+  private eventFeedbackViewportScrollLockTimer: ReturnType<typeof setTimeout> | null = null;
+
+  protected readonly isMobileEventFeedbackViewport = signal(this.readViewportWidth() <= 720);
 
   protected eventFeedbackSmartListQuery: Partial<ListQuery<EventFeedbackListFilters>> = {
     filters: {
@@ -71,6 +81,9 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
   ) {
     this.eventFeedbackItemTemplateRef = value;
   }
+
+  @ViewChild('eventFeedbackViewport')
+  private eventFeedbackViewportRef?: ElementRef<HTMLDivElement>;
 
   protected readonly eventFeedbackSmartListLoadPage: SmartListLoadPage<
     AppTypes.EventFeedbackEventCard,
@@ -140,6 +153,20 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
         }
       };
     });
+
+    effect(() => {
+      const isFeedbackPopupOpen = this.feedback.isStackedPopupOpen() && this.feedback.stackedPopupMode() === 'eventFeedback';
+      const isMobileViewport = this.isMobileEventFeedbackViewport();
+      const cardCount = this.feedback.eventFeedbackCards().length;
+
+      if (!isFeedbackPopupOpen || !isMobileViewport || cardCount === 0) {
+        this.clearEventFeedbackViewportScrollLock();
+        return;
+      }
+
+      const targetIndex = untracked(() => this.feedback.eventFeedbackIndex());
+      this.queueMobileEventFeedbackViewportSync('auto', targetIndex);
+    });
   }
 
   public get eventItems(): EventMenuItem[] {
@@ -149,7 +176,7 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
   }
 
   private get fallbackUsers(): UserDto[] {
-    return this.demoUsersRepository.queryAllUsers();
+    return this.usersService.peekCachedUsers();
   }
 
   public get users(): UserDto[] {
@@ -164,7 +191,7 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
   }
 
   public get activeUser(): UserDto {
-    return this.appCtx.activeUserProfile() ?? this.users[0] ?? this.fallbackUsers[0];
+    return this.appCtx.activeUserProfile() ?? this.users[0] ?? this.createFallbackUser();
   }
 
   public get eventDatesById(): Record<string, string> {
@@ -265,7 +292,80 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
     };
   }
 
+  protected onViewportResize(): void {
+    const nextIsMobileViewport = this.readViewportWidth() <= 720;
+    if (nextIsMobileViewport === this.isMobileEventFeedbackViewport()) {
+      return;
+    }
+    this.isMobileEventFeedbackViewport.set(nextIsMobileViewport);
+    if (!nextIsMobileViewport) {
+      this.clearEventFeedbackViewportScrollLock();
+      return;
+    }
+    this.queueMobileEventFeedbackViewportSync('auto');
+  }
+
+  protected previousEventFeedbackSlide(event: Event): void {
+    if (this.isMobileEventFeedbackViewport()) {
+      event.stopPropagation();
+      const currentIndex = this.feedback.eventFeedbackIndex();
+      if (currentIndex <= 0) {
+        return;
+      }
+      this.queueMobileEventFeedbackViewportSync('smooth', currentIndex - 1);
+      return;
+    }
+    this.feedback.previousEventFeedbackSlide(event);
+  }
+
+  protected nextEventFeedbackSlide(event: Event): void {
+    if (this.isMobileEventFeedbackViewport()) {
+      event.stopPropagation();
+      const currentIndex = this.feedback.eventFeedbackIndex();
+      const lastIndex = this.feedback.eventFeedbackCards().length - 1;
+      if (currentIndex >= lastIndex) {
+        return;
+      }
+      this.queueMobileEventFeedbackViewportSync('smooth', currentIndex + 1);
+      return;
+    }
+    this.feedback.nextEventFeedbackSlide(event);
+  }
+
+  protected selectEventFeedbackSlide(index: number, event: Event): void {
+    if (this.isMobileEventFeedbackViewport()) {
+      event.stopPropagation();
+      const cards = this.feedback.eventFeedbackCards();
+      if (index < 0 || index >= cards.length || index === this.feedback.eventFeedbackIndex()) {
+        return;
+      }
+      this.queueMobileEventFeedbackViewportSync('smooth', index);
+      return;
+    }
+    this.feedback.selectEventFeedbackSlide(index, event);
+  }
+
+  protected onEventFeedbackViewportScroll(): void {
+    if (!this.isMobileEventFeedbackViewport()) {
+      return;
+    }
+    const viewport = this.eventFeedbackViewportRef?.nativeElement;
+    if (!viewport) {
+      return;
+    }
+    if (this.eventFeedbackViewportScrollLockTargetIndex !== null) {
+      this.scheduleEventFeedbackViewportScrollLockRelease();
+      return;
+    }
+    const nextIndex = this.currentMobileEventFeedbackSlideIndex(viewport);
+    if (nextIndex === this.feedback.eventFeedbackIndex()) {
+      return;
+    }
+    this.feedback.eventFeedbackIndex.set(nextIndex);
+  }
+
   ngOnDestroy(): void {
+    this.clearEventFeedbackViewportScrollLock();
     this.feedback.registerSource(null);
   }
 
@@ -321,6 +421,7 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
       }
       this.lastLoadedUserId = normalizedUserId;
       this.eventRecordsRef.set(records);
+      void this.usersService.warmCachedUsers(this.collectEventRecordUserIds(records));
     })();
 
     try {
@@ -338,6 +439,47 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
       return null;
     }
     return this.eventRecordsRef().find(record => record.id === normalizedEventId) ?? null;
+  }
+
+  private collectEventRecordUserIds(records: readonly DemoEventRecord[]): string[] {
+    return [...new Set(records.flatMap(record => [
+      `${record.creatorUserId ?? ''}`.trim(),
+      ...(record.acceptedMemberUserIds ?? []).map(userId => `${userId}`.trim()),
+      ...(record.pendingMemberUserIds ?? []).map(userId => `${userId}`.trim())
+    ]).filter(userId => userId.length > 0))];
+  }
+
+  private createFallbackUser(): UserDto {
+    return {
+      id: this.appCtx.activeUserId().trim(),
+      name: 'User',
+      age: 0,
+      birthday: '',
+      city: '',
+      height: '',
+      physique: '',
+      languages: [],
+      horoscope: '',
+      initials: 'U',
+      gender: 'woman',
+      statusText: '',
+      hostTier: '',
+      traitLabel: '',
+      completion: 0,
+      headline: '',
+      about: '',
+      images: [],
+      profileStatus: 'public',
+      activities: {
+        game: 0,
+        chat: 0,
+        invitations: 0,
+        events: 0,
+        hosting: 0,
+        tickets: 0,
+        feedback: 0
+      }
+    };
   }
 
   private eventFeedbackLeadingIcon(item: AppTypes.EventFeedbackEventCard): string {
@@ -395,6 +537,115 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
     });
 
     return actions;
+  }
+
+  private queueMobileEventFeedbackViewportSync(behavior: ScrollBehavior, targetIndex = this.feedback.eventFeedbackIndex()): void {
+    if (!this.isMobileEventFeedbackViewport()) {
+      this.clearEventFeedbackViewportScrollLock();
+      return;
+    }
+
+    const cards = this.feedback.eventFeedbackCards();
+    if (cards.length === 0) {
+      this.clearEventFeedbackViewportScrollLock();
+      return;
+    }
+
+    const normalizedTargetIndex = Math.max(0, Math.min(targetIndex, cards.length - 1));
+    if (behavior === 'smooth') {
+      this.eventFeedbackViewportScrollLockTargetIndex = normalizedTargetIndex;
+      this.scheduleEventFeedbackViewportScrollLockRelease();
+    } else {
+      this.clearEventFeedbackViewportScrollLock();
+    }
+
+    const sync = () => {
+      const viewport = this.eventFeedbackViewportRef?.nativeElement;
+      if (!viewport) {
+        return;
+      }
+      const targetLeft = this.mobileEventFeedbackSlideOffsetLeft(viewport, normalizedTargetIndex);
+      if (targetLeft < 0) {
+        return;
+      }
+      const previousScrollBehavior = viewport.style.scrollBehavior;
+      viewport.style.scrollBehavior = behavior;
+      viewport.scrollLeft = targetLeft;
+      const restore = () => {
+        viewport.style.scrollBehavior = previousScrollBehavior;
+      };
+      if (typeof globalThis.requestAnimationFrame === 'function') {
+        globalThis.requestAnimationFrame(() => restore());
+      } else {
+        setTimeout(restore, 0);
+      }
+    };
+
+    if (typeof globalThis.requestAnimationFrame === 'function') {
+      globalThis.requestAnimationFrame(() => globalThis.requestAnimationFrame(sync));
+      return;
+    }
+    setTimeout(sync, 0);
+  }
+
+  private scheduleEventFeedbackViewportScrollLockRelease(): void {
+    if (this.eventFeedbackViewportScrollLockTimer) {
+      clearTimeout(this.eventFeedbackViewportScrollLockTimer);
+    }
+    this.eventFeedbackViewportScrollLockTimer = setTimeout(() => {
+      this.eventFeedbackViewportScrollLockTimer = null;
+      const viewport = this.eventFeedbackViewportRef?.nativeElement;
+      const finalIndex = viewport
+        ? this.currentMobileEventFeedbackSlideIndex(viewport)
+        : this.eventFeedbackViewportScrollLockTargetIndex;
+      this.eventFeedbackViewportScrollLockTargetIndex = null;
+      if (finalIndex === null || finalIndex === this.feedback.eventFeedbackIndex()) {
+        return;
+      }
+      this.feedback.eventFeedbackIndex.set(finalIndex);
+    }, 96);
+  }
+
+  private clearEventFeedbackViewportScrollLock(): void {
+    if (this.eventFeedbackViewportScrollLockTimer) {
+      clearTimeout(this.eventFeedbackViewportScrollLockTimer);
+      this.eventFeedbackViewportScrollLockTimer = null;
+    }
+    this.eventFeedbackViewportScrollLockTargetIndex = null;
+  }
+
+  private currentMobileEventFeedbackSlideIndex(viewport: HTMLDivElement): number {
+    const slides = Array.from(viewport.querySelectorAll<HTMLElement>('.event-feedback-card-slide'));
+    if (slides.length === 0) {
+      return 0;
+    }
+    const currentLeft = viewport.scrollLeft;
+    let closestIndex = 0;
+    let closestDistance = Number.POSITIVE_INFINITY;
+
+    slides.forEach((slide, index) => {
+      const distance = Math.abs(slide.offsetLeft - currentLeft);
+      if (distance < closestDistance) {
+        closestDistance = distance;
+        closestIndex = index;
+      }
+    });
+
+    return Math.max(0, Math.min(closestIndex, slides.length - 1));
+  }
+
+  private mobileEventFeedbackSlideOffsetLeft(viewport: HTMLDivElement, slideIndex: number): number {
+    const slides = Array.from(viewport.querySelectorAll<HTMLElement>('.event-feedback-card-slide'));
+    if (slides.length === 0) {
+      return -1;
+    }
+    const normalizedIndex = Math.max(0, Math.min(slideIndex, slides.length - 1));
+    const targetSlide = slides[normalizedIndex] ?? null;
+    return targetSlide ? Math.max(0, targetSlide.offsetLeft) : -1;
+  }
+
+  private readViewportWidth(): number {
+    return typeof window === 'undefined' ? 1280 : window.innerWidth;
   }
 
   private eventFeedbackEmptyDescription(filter: AppTypes.EventFeedbackListFilter): string {

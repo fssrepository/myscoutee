@@ -107,6 +107,50 @@ export class HttpAssetsRepository {
     }
   }
 
+  async refreshAssetSourcePreview(
+    userId: string,
+    type: AppTypes.AssetType,
+    sourceLink: string
+  ): Promise<AppTypes.AssetSourcePreview | null> {
+    const normalizedUserId = userId.trim();
+    const normalizedSourceLink = sourceLink.trim();
+    if (!normalizedSourceLink) {
+      return null;
+    }
+    try {
+      type HttpAssetSourceRefreshResponse = {
+        enabled?: boolean | null;
+        supported?: boolean | null;
+        normalizedUrl?: string | null;
+        title?: string | null;
+        subtitle?: string | null;
+        details?: string | null;
+        imageUrl?: string | null;
+      };
+      const response = await this.http
+        .post<HttpAssetSourceRefreshResponse | null>(`${this.apiBaseUrl}/assets/refresh-from-source`, {
+          userId: normalizedUserId,
+          type,
+          sourceLink: normalizedSourceLink
+        })
+        .toPromise();
+      if (!response) {
+        return null;
+      }
+      return {
+        enabled: response.enabled !== false,
+        supported: response.supported === true,
+        normalizedUrl: typeof response.normalizedUrl === 'string' ? response.normalizedUrl.trim() : '',
+        title: typeof response.title === 'string' ? response.title.trim() : '',
+        subtitle: typeof response.subtitle === 'string' ? response.subtitle.trim() : '',
+        details: typeof response.details === 'string' ? response.details.trim() : '',
+        imageUrl: typeof response.imageUrl === 'string' ? response.imageUrl.trim() : ''
+      };
+    } catch {
+      return null;
+    }
+  }
+
   protected cloneCards(cards: readonly AppTypes.AssetCard[]): AppTypes.AssetCard[] {
     return cards.map(card => ({
       ...card,

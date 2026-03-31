@@ -1,12 +1,13 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { MatRippleModule } from '@angular/material/core';
 
 import { GDPR_CONTENT } from '../../../shared/gdpr-data';
 
 @Component({
   selector: 'app-entry-consent-popup',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, MatRippleModule],
   templateUrl: './entry-consent-popup.component.html',
   styleUrl: './entry-consent-popup.component.scss'
 })

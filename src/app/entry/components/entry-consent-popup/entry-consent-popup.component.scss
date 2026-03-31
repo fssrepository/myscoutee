@@ -44,6 +44,8 @@
 }
 
 .popup-close {
+  position: relative;
+  overflow: hidden;
   width: 32px;
   height: 32px;
   padding: 0;
@@ -81,6 +83,8 @@
   font-size: 1.65rem;
   font-weight: 400;
   transform: translateY(-0.5px);
+  position: relative;
+  z-index: 1;
 }
 
 .entry-consent-head h2 {
@@ -158,6 +162,8 @@
 }
 
 .entry-consent-btn {
+  position: relative;
+  overflow: hidden;
   min-height: 40px;
   border-radius: 999px;
   border: 1px solid transparent;

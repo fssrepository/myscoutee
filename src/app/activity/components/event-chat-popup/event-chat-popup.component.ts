@@ -2,7 +2,7 @@ import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
   Component,
-  NgZone,
+  ElementRef,
   OnDestroy,
   ViewChild,
   computed,
@@ -17,18 +17,19 @@ import { delay, from, of } from 'rxjs';
 
 import type * as AppTypes from '../../../shared/core/base/models';
 import { AppUtils } from '../../../shared/app-utils';
+import { resolveCurrentRouteDelayMs } from '../../../shared/core/base/services/route-delay.service';
 import { ActivitiesPopupStateService } from '../../services/activities-popup-state.service';
 import { EventEditorPopupStateService } from '../../services/event-editor-popup-state.service';
 import type { EventChatResourceContext } from '../../../shared/core/base/models';
 import { AppContext, AppPopupContext } from '../../../shared/core';
 import type { ChatMenuItem, EventMenuItem } from '../../../shared/core/base/interfaces/activity-feed.interface';
 import {
+  CounterBadgePipe,
   SmartListComponent,
   type ListQuery,
   type PageResult,
   type SmartListConfig,
-  type SmartListLoadPage,
-  type SmartListStateChange
+  type SmartListLoadPage
 } from '../../../shared/ui';
 
 interface ChatThreadFilters {
@@ -39,14 +40,13 @@ interface ChatThreadFilters {
 @Component({
   selector: 'app-event-chat-popup',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatButtonModule, MatIconModule, SmartListComponent],
+  imports: [CommonModule, FormsModule, MatButtonModule, MatIconModule, SmartListComponent, CounterBadgePipe],
   templateUrl: './event-chat-popup.component.html',
   styleUrl: './event-chat-popup.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class EventChatPopupComponent implements OnDestroy {
   private readonly cdr = inject(ChangeDetectorRef);
-  private readonly ngZone = inject(NgZone);
   protected readonly activitiesContext = inject(ActivitiesPopupStateService);
   private readonly eventEditorService = inject(EventEditorPopupStateService);
   private readonly appCtx = inject(AppContext);
@@ -58,10 +58,7 @@ export class EventChatPopupComponent implements OnDestroy {
   protected draftMessage = '';
   protected showContextMenu = false;
   protected contextMenuOpenUp = false;
-  protected chatHeaderProgress = 0;
-  protected chatHeaderProgressLoading = false;
-  protected chatHeaderLoadingProgress = 0;
-  protected chatHeaderLoadingOverdue = false;
+  protected chatComposeDetachedSpace = 108;
   protected preparedChatContext: AppTypes.EventChatContext | null = null;
   protected preparedChatMembersResource: EventChatResourceContext | null = null;
   protected preparedChatAssetResources: EventChatResourceContext[] = [];
@@ -70,12 +67,12 @@ export class EventChatPopupComponent implements OnDestroy {
   private readonly chatHistoryPageSize = 10;
   private readonly chatInitialLoadMessageCount = 15;
   private readonly chatHistoryPreloadOffsetPx = 48;
-  private readonly chatLoadOlderDelayMs = 1500;
-  private readonly headerLoadingWindowMs = 3000;
-  private readonly headerLoadingTickMs = 16;
+  private readonly chatLoadOlderDelayMs = resolveCurrentRouteDelayMs('/activities/chats', 1500);
   private readonly chatTypingIdleMs = 1800;
   private readonly chatTypingRemoteTtlMs = 3200;
   private readonly chatTransientFxMs = 1600;
+  private readonly pendingMessageTimeoutMs = 7000;
+  private readonly pendingMessageMatchWindowMs = 45000;
   private chatThreadRevision = 0;
   protected chatThreadQuery: Partial<ListQuery<ChatThreadFilters>> = {};
   protected readonly chatThreadSmartListConfig: SmartListConfig<AppTypes.ChatPopupMessage, ChatThreadFilters> = {
@@ -83,7 +80,7 @@ export class EventChatPopupComponent implements OnDestroy {
     initialPageCount: 1,
     initialPageSize: this.chatInitialLoadMessageCount,
     preloadOffsetPx: this.chatHistoryPreloadOffsetPx,
-    loadingDelayMs: 1500,
+    loadingDelayMs: resolveCurrentRouteDelayMs('/activities/chats'),
     showStickyHeader: false,
     showFirstGroupMarker: true,
     loadTriggerEdge: 'start',
@@ -115,20 +112,29 @@ export class EventChatPopupComponent implements OnDestroy {
   @ViewChild('chatThreadSmartList')
   private chatThreadSmartList?: SmartListComponent<AppTypes.ChatPopupMessage, ChatThreadFilters>;
 
+  @ViewChild('chatComposeBox')
+  private set chatComposeBox(value: ElementRef<HTMLDivElement> | undefined) {
+    this.chatComposeBoxRef = value;
+    this.observeChatComposeBox();
+  }
+
   private loadedSessionKey: string | null = null;
   private initialChatLoadedSessionKey: string | null = null;
-  private chatInitialLoadTimer: ReturnType<typeof setTimeout> | null = null;
-  private chatHeaderLoadingCounter = 0;
-  private chatHeaderLoadingInterval: ReturnType<typeof setInterval> | null = null;
-  private chatHeaderLoadingCompleteTimer: ReturnType<typeof setTimeout> | null = null;
-  private chatHeaderLoadingStartedAtMs = 0;
+  private chatComposeBoxRef?: ElementRef<HTMLDivElement>;
+  private chatComposeResizeObserver: ResizeObserver | null = null;
   private liveChatUnsubscribe: (() => void) | null = null;
   private typingIdleTimer: ReturnType<typeof setTimeout> | null = null;
   private localTypingActive = false;
+  private visibleChatThreadTotal = 0;
   private readonly latestVisibleReadMessageIdByReaderId: Record<string, string> = {};
+  protected readonly visibleReadReceiptsByMessageId: Record<string, AppTypes.ChatReadAvatar[]> = {};
   private readonly freshMessageIds = new Set<string>();
   private readonly freshReadKeys = new Set<string>();
   private readonly remoteTypingExpiryByUserId: Record<string, ReturnType<typeof setTimeout> | null> = {};
+  private readonly pendingMessageTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
+  private optimisticMessageSequence = 0;
+
+  protected readonly trackByChatReader = (_index: number, reader: AppTypes.ChatReadAvatar): string => reader.id;
 
   constructor() {
     effect(() => {
@@ -151,17 +157,16 @@ export class EventChatPopupComponent implements OnDestroy {
       this.clearTypingIdleTimer();
       this.clearRemoteTypingIndicators();
       this.clearTransientMessageState();
+      this.clearPendingMessageTimers();
       this.resetVisibleReadReceipts();
       this.chatThreadRevision = 0;
+      this.visibleChatThreadTotal = 0;
       this.syncChatThreadQuery();
-      this.chatHeaderProgress = 0;
-      this.cancelChatInitialLoadTimer();
       if (!session) {
         this.loadedSessionKey = null;
         this.chatThreadQuery = {};
         this.chatInitialLoadPending = false;
         this.syncPreparedChatContext(null);
-        this.clearChatHeaderLoadingAnimation();
         this.cdr.markForCheck();
         return;
       }
@@ -173,10 +178,11 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.clearChatComposeResizeObserver();
     this.stopLocalTyping();
     this.teardownLiveChatUpdates();
-    this.cancelChatInitialLoadTimer();
-    this.clearChatHeaderLoadingAnimation();
+    this.clearPendingMessageTimers();
+    this.visibleChatThreadTotal = 0;
   }
 
   protected close(): void {
@@ -184,8 +190,8 @@ export class EventChatPopupComponent implements OnDestroy {
     this.contextMenuOpenUp = false;
     this.stopLocalTyping();
     this.teardownLiveChatUpdates();
-    this.cancelChatInitialLoadTimer();
-    this.clearChatHeaderLoadingAnimation();
+    this.clearPendingMessageTimers();
+    this.visibleChatThreadTotal = 0;
     this.loadedSessionKey = null;
     this.chatThreadQuery = {};
     this.activitiesContext.closeEventChat();
@@ -324,21 +330,6 @@ export class EventChatPopupComponent implements OnDestroy {
     this.contextMenuOpenUp = false;
   }
 
-  protected onChatThreadSmartListStateChange(
-    state: SmartListStateChange<AppTypes.ChatPopupMessage, ChatThreadFilters>
-  ): void {
-    if (this.chatInitialLoadPending) {
-      return;
-    }
-    this.chatHeaderProgress = state.scrollable
-      ? state.progress
-      : (state.items.length > 0 ? 1 : 0);
-    this.chatHeaderProgressLoading = state.loading;
-    this.chatHeaderLoadingProgress = state.loadingProgress;
-    this.chatHeaderLoadingOverdue = state.loadingOverdue;
-    this.cdr.markForCheck();
-  }
-
   protected onDraftMessageChange(value: string): void {
     this.draftMessage = value;
     const session = this.session();
@@ -370,10 +361,6 @@ export class EventChatPopupComponent implements OnDestroy {
     return 'Several people are typing';
   }
 
-  protected visibleReadBy(message: AppTypes.ChatPopupMessage): AppTypes.ChatReadAvatar[] {
-    return (message.readBy ?? []).filter(reader => this.latestVisibleReadMessageIdByReaderId[reader.id] === message.id);
-  }
-
   protected isFreshMessage(messageId: string): boolean {
     return this.freshMessageIds.has(messageId);
   }
@@ -389,20 +376,26 @@ export class EventChatPopupComponent implements OnDestroy {
       return;
     }
     const sessionKey = `${session.item.id}:${session.openedAtIso}`;
+    const optimisticMessage = this.buildOptimisticChatMessage(text);
     this.draftMessage = '';
     this.stopLocalTyping();
+    this.mergeIncomingChatMessage(optimisticMessage);
+    this.schedulePendingMessageTimeout(optimisticMessage.id);
     this.cdr.markForCheck();
     void this.activitiesContext.sendEventChatMessage(session.item, text)
       .then(message => {
+        if (this.loadedSessionKey !== sessionKey) {
+          return;
+        }
         if (message) {
-          this.mergeIncomingChatMessage(message);
+          this.confirmPendingChatMessage(optimisticMessage.id, message);
         }
       })
       .catch(() => {
         if (this.loadedSessionKey !== sessionKey) {
           return;
         }
-        this.draftMessage = text;
+        this.markPendingMessageTimedOut(optimisticMessage.id);
         this.cdr.markForCheck();
       });
   }
@@ -422,7 +415,7 @@ export class EventChatPopupComponent implements OnDestroy {
       if (this.loadedSessionKey !== sessionKey) {
         return this.chatThreadPageResult(query);
       }
-      this.allMessages = [...nextMessages]
+      this.allMessages = this.normalizeChatMessages(nextMessages)
         .sort((first, second) => AppUtils.toSortableDate(first.sentAtIso) - AppUtils.toSortableDate(second.sentAtIso));
       this.rebuildVisibleReadReceipts();
       this.initialChatLoadedSessionKey = sessionKey;
@@ -497,20 +490,61 @@ export class EventChatPopupComponent implements OnDestroy {
     this.clearRemoteTypingIndicators();
   }
 
-  private mergeIncomingChatMessage(message: AppTypes.ChatPopupMessage): void {
-    if (this.allMessages.some(existingMessage => existingMessage.id === message.id)) {
+  private buildOptimisticChatMessage(text: string): AppTypes.ChatPopupMessage {
+    const sentAt = new Date();
+    const activeUserId = this.activeUserId();
+    const senderPresentation = this.resolveOptimisticSenderPresentation(activeUserId);
+    const clientId = `pending:${activeUserId || 'self'}:${sentAt.getTime()}:${++this.optimisticMessageSequence}`;
+
+    return {
+      id: clientId,
+      clientId,
+      sender: senderPresentation.sender,
+      senderAvatar: senderPresentation.senderAvatar,
+      text,
+      time: sentAt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+      sentAtIso: sentAt.toISOString(),
+      mine: true,
+      readBy: [],
+      deliveryState: 'pending'
+    } satisfies AppTypes.ChatPopupMessage;
+  }
+
+  private confirmPendingChatMessage(pendingMessageId: string, message: AppTypes.ChatPopupMessage): void {
+    if (this.replacePendingMessage(pendingMessageId, message, true)) {
       return;
     }
-    this.flagFreshMessage(message.id);
-    this.allMessages = [...this.allMessages, message]
+    this.mergeIncomingChatMessage(message);
+  }
+
+  private mergeIncomingChatMessage(message: AppTypes.ChatPopupMessage): void {
+    const normalizedMessage = this.normalizeChatMessage(message);
+    const shouldStickToEnd = normalizedMessage.mine || this.isChatThreadNearEnd();
+    const matchedPendingId = this.matchPendingMessageId(normalizedMessage);
+    if (matchedPendingId) {
+      this.replacePendingMessage(matchedPendingId, normalizedMessage, shouldStickToEnd);
+      return;
+    }
+    if (this.allMessages.some(existingMessage => existingMessage.id === normalizedMessage.id)) {
+      return;
+    }
+    this.flagFreshMessage(normalizedMessage.id);
+    this.allMessages = [...this.allMessages, normalizedMessage]
       .sort((first, second) => AppUtils.toSortableDate(first.sentAtIso) - AppUtils.toSortableDate(second.sentAtIso));
     this.rebuildVisibleReadReceipts();
-    this.chatThreadRevision += 1;
-    this.syncChatThreadQuery();
+    this.syncVisibleChatThread({
+      appendedMessageId: normalizedMessage.id,
+      stickToEnd: shouldStickToEnd
+    });
     this.cdr.markForCheck();
   }
 
   private handleLiveChatEvent(chat: ChatMenuItem, event: AppTypes.ChatLiveEvent): void {
+    if (event.type === 'reconnected') {
+      this.clearRemoteTypingIndicators();
+      void this.resyncChatThreadFromServer(chat);
+      return;
+    }
     if (event.type === 'typing') {
       this.applyTypingIndicator(event.typing);
       return;
@@ -547,14 +581,14 @@ export class EventChatPopupComponent implements OnDestroy {
       return;
     }
     const loadedMessageIds = new Set(this.allMessages.map(message => message.id));
-    const matchedMessageIds = (read.messageIds ?? []).filter(messageId => loadedMessageIds.has(messageId));
-    if (matchedMessageIds.length === 0) {
+    const matchedMessageIds = new Set((read.messageIds ?? []).filter(messageId => loadedMessageIds.has(messageId)));
+    if (matchedMessageIds.size === 0) {
       return;
     }
 
     let changed = false;
     this.allMessages = this.allMessages.map(message => {
-      if (!message.mine || !matchedMessageIds.includes(message.id)) {
+      if (!message.mine || !matchedMessageIds.has(message.id)) {
         return message;
       }
       if ((message.readBy ?? []).some(reader => reader.id === read.userId)) {
@@ -582,12 +616,16 @@ export class EventChatPopupComponent implements OnDestroy {
     if (lastVisibleMessageId) {
       this.flagFreshRead(lastVisibleMessageId, read.userId);
     }
+    this.syncVisibleChatThread();
     this.cdr.markForCheck();
   }
 
   private rebuildVisibleReadReceipts(): void {
     for (const key of Object.keys(this.latestVisibleReadMessageIdByReaderId)) {
       delete this.latestVisibleReadMessageIdByReaderId[key];
+    }
+    for (const key of Object.keys(this.visibleReadReceiptsByMessageId)) {
+      delete this.visibleReadReceiptsByMessageId[key];
     }
     for (const message of this.allMessages) {
       if (!message.mine) {
@@ -600,12 +638,181 @@ export class EventChatPopupComponent implements OnDestroy {
         this.latestVisibleReadMessageIdByReaderId[reader.id] = message.id;
       }
     }
+    for (const message of this.allMessages) {
+      if (!message.mine || (message.readBy?.length ?? 0) === 0) {
+        continue;
+      }
+      const visibleReaders = (message.readBy ?? []).filter(reader => this.latestVisibleReadMessageIdByReaderId[reader.id] === message.id);
+      if (visibleReaders.length > 0) {
+        this.visibleReadReceiptsByMessageId[message.id] = visibleReaders;
+      }
+    }
   }
 
   private resetVisibleReadReceipts(): void {
     for (const key of Object.keys(this.latestVisibleReadMessageIdByReaderId)) {
       delete this.latestVisibleReadMessageIdByReaderId[key];
     }
+    for (const key of Object.keys(this.visibleReadReceiptsByMessageId)) {
+      delete this.visibleReadReceiptsByMessageId[key];
+    }
+  }
+
+  private matchPendingMessageId(message: AppTypes.ChatPopupMessage): string | null {
+    if (!message.mine) {
+      return null;
+    }
+    let matchedId: string | null = null;
+    let matchedDiff = Number.POSITIVE_INFINITY;
+    const messageSentAtMs = AppUtils.toSortableDate(message.sentAtIso);
+
+    for (const pendingMessage of this.allMessages) {
+      if (
+        !pendingMessage.mine
+        || (pendingMessage.deliveryState !== 'pending' && pendingMessage.deliveryState !== 'timed-out')
+        || pendingMessage.text !== message.text
+      ) {
+        continue;
+      }
+      const diffMs = Math.abs(AppUtils.toSortableDate(pendingMessage.sentAtIso) - messageSentAtMs);
+      if (diffMs > this.pendingMessageMatchWindowMs || diffMs >= matchedDiff) {
+        continue;
+      }
+      matchedId = pendingMessage.id;
+      matchedDiff = diffMs;
+    }
+
+    return matchedId;
+  }
+
+  private replacePendingMessage(
+    pendingMessageId: string,
+    message: AppTypes.ChatPopupMessage,
+    stickToEnd: boolean
+  ): boolean {
+    const pendingIndex = this.allMessages.findIndex(existingMessage => existingMessage.id === pendingMessageId);
+    if (pendingIndex < 0) {
+      return false;
+    }
+
+    this.clearPendingMessageTimeout(pendingMessageId);
+    const pendingMessage = this.allMessages[pendingIndex];
+    const pendingClientId = pendingMessage?.clientId;
+    const resolvedMessage = this.normalizeChatMessage(message);
+    const normalizedMessage = resolvedMessage.mine
+      ? {
+          ...resolvedMessage,
+          sender: pendingMessage?.sender ?? resolvedMessage.sender,
+          senderAvatar: pendingMessage?.senderAvatar ?? resolvedMessage.senderAvatar
+        }
+      : resolvedMessage;
+    let nextMessages = [...this.allMessages];
+    if (nextMessages.some((existingMessage, index) => index !== pendingIndex && existingMessage.id === normalizedMessage.id)) {
+      nextMessages = nextMessages.filter((_existingMessage, index) => index !== pendingIndex);
+    } else {
+      nextMessages[pendingIndex] = {
+        ...normalizedMessage,
+        clientId: pendingClientId
+      };
+    }
+
+    this.allMessages = nextMessages
+      .sort((first, second) => AppUtils.toSortableDate(first.sentAtIso) - AppUtils.toSortableDate(second.sentAtIso));
+    this.rebuildVisibleReadReceipts();
+    this.syncVisibleChatThread({
+      appendedMessageId: normalizedMessage.id,
+      stickToEnd
+    });
+    this.cdr.markForCheck();
+    return true;
+  }
+
+  private async resyncChatThreadFromServer(chat: ChatMenuItem): Promise<void> {
+    const sessionKey = this.loadedSessionKey;
+    if (!sessionKey) {
+      return;
+    }
+    const shouldStickToEnd = this.isChatThreadNearEnd();
+
+    try {
+      const snapshot = await this.activitiesContext.loadEventChatMessages(chat);
+      if (this.loadedSessionKey !== sessionKey) {
+        return;
+      }
+      this.allMessages = this.mergeServerSnapshotWithPendingMessages(snapshot)
+        .sort((first, second) => AppUtils.toSortableDate(first.sentAtIso) - AppUtils.toSortableDate(second.sentAtIso));
+      this.rebuildVisibleReadReceipts();
+      this.syncVisibleChatThread({
+        stickToEnd: shouldStickToEnd
+      });
+      this.cdr.markForCheck();
+    } catch {
+      // Keep the current optimistic/live state if the reconnect snapshot fails.
+    }
+  }
+
+  private mergeServerSnapshotWithPendingMessages(
+    snapshot: readonly AppTypes.ChatPopupMessage[]
+  ): AppTypes.ChatPopupMessage[] {
+    const matchedPendingIds = new Set<string>();
+    const snapshotMessages = snapshot.map(message => {
+      const pendingId = this.matchPendingMessageId(message);
+      if (!pendingId) {
+        return message;
+      }
+      matchedPendingIds.add(pendingId);
+      this.clearPendingMessageTimeout(pendingId);
+      const pendingMessage = this.allMessages.find(existingMessage => existingMessage.id === pendingId);
+      return this.normalizeChatMessage({
+        ...message,
+        clientId: pendingMessage?.clientId
+      });
+    });
+    const unresolvedPendingMessages = this.allMessages.filter(message =>
+      (message.deliveryState === 'pending' || message.deliveryState === 'timed-out')
+      && !matchedPendingIds.has(message.id)
+    );
+
+    return [...this.normalizeChatMessages(snapshotMessages), ...unresolvedPendingMessages];
+  }
+
+  private schedulePendingMessageTimeout(messageId: string): void {
+    this.clearPendingMessageTimeout(messageId);
+    this.pendingMessageTimeouts.set(messageId, setTimeout(() => {
+      this.pendingMessageTimeouts.delete(messageId);
+      this.markPendingMessageTimedOut(messageId);
+    }, this.pendingMessageTimeoutMs));
+  }
+
+  private clearPendingMessageTimeout(messageId: string): void {
+    const timer = this.pendingMessageTimeouts.get(messageId);
+    if (!timer) {
+      return;
+    }
+    clearTimeout(timer);
+    this.pendingMessageTimeouts.delete(messageId);
+  }
+
+  private clearPendingMessageTimers(): void {
+    for (const timer of this.pendingMessageTimeouts.values()) {
+      clearTimeout(timer);
+    }
+    this.pendingMessageTimeouts.clear();
+  }
+
+  private markPendingMessageTimedOut(messageId: string): void {
+    const pendingIndex = this.allMessages.findIndex(message => message.id === messageId && message.deliveryState === 'pending');
+    if (pendingIndex < 0) {
+      return;
+    }
+    const nextMessages = [...this.allMessages];
+    nextMessages[pendingIndex] = {
+      ...nextMessages[pendingIndex],
+      deliveryState: 'timed-out'
+    };
+    this.allMessages = nextMessages;
+    this.syncVisibleChatThread();
+    this.cdr.markForCheck();
   }
 
   private flagFreshMessage(messageId: string): void {
@@ -635,6 +842,40 @@ export class EventChatPopupComponent implements OnDestroy {
 
   private activeUserId(): string {
     return this.appCtx.activeUserId().trim();
+  }
+
+  private normalizeChatMessages(
+    messages: readonly AppTypes.ChatPopupMessage[]
+  ): AppTypes.ChatPopupMessage[] {
+    return messages.map(message => this.normalizeChatMessage(message));
+  }
+
+  private normalizeChatMessage(message: AppTypes.ChatPopupMessage): AppTypes.ChatPopupMessage {
+    if (!message.mine) {
+      return message;
+    }
+    const senderPresentation = this.resolveOptimisticSenderPresentation(message.senderAvatar?.id || this.activeUserId());
+    return {
+      ...message,
+      sender: senderPresentation.sender,
+      senderAvatar: senderPresentation.senderAvatar
+    };
+  }
+
+  private resolveOptimisticSenderPresentation(
+    activeUserId: string
+  ): Pick<AppTypes.ChatPopupMessage, 'sender' | 'senderAvatar'> {
+    const activeUser = this.appCtx.activeUserProfile() ?? (activeUserId ? this.appCtx.getUserProfile(activeUserId) : null);
+    const initials = activeUser?.initials?.trim()
+      || AppUtils.initialsFromText(activeUser?.name ?? 'Me');
+    return {
+      sender: 'You',
+      senderAvatar: {
+        id: activeUser?.id?.trim() || activeUserId || 'self',
+        initials: initials || 'ME',
+        gender: activeUser?.gender ?? 'man'
+      }
+    };
   }
 
   private refreshRemoteTypingExpiry(userId: string): void {
@@ -759,108 +1000,106 @@ export class EventChatPopupComponent implements OnDestroy {
     return spaceBelow < estimatedMenuHeight && spaceAbove > spaceBelow;
   }
 
-  private beginChatHeaderProgressLoading(): void {
-    this.chatHeaderLoadingCounter += 1;
-    if (this.chatHeaderLoadingCounter > 1) {
+  private syncVisibleChatThread(
+    options: {
+      appendedMessageId?: string;
+      stickToEnd?: boolean;
+    } = {}
+  ): void {
+    const smartList = this.chatThreadSmartList;
+    if (!smartList) {
       return;
     }
-    this.chatHeaderProgressLoading = true;
-    this.chatHeaderLoadingOverdue = false;
-    this.chatHeaderLoadingProgress = 0.02;
-    this.chatHeaderLoadingStartedAtMs = performance.now();
+
+    const currentVisibleItems = smartList.itemsSnapshot();
+    const latestMessageById = new Map(this.allMessages.map(message => [message.id, message] as const));
+    let nextVisibleItems = currentVisibleItems
+      .map(message => latestMessageById.get(message.id) ?? message)
+      .filter(message => latestMessageById.has(message.id));
+
+    const appendedMessageId = options.appendedMessageId?.trim() ?? '';
+    if (appendedMessageId) {
+      const appendedMessage = latestMessageById.get(appendedMessageId);
+      if (appendedMessage && !nextVisibleItems.some(message => message.id === appendedMessage.id)) {
+        nextVisibleItems = [...nextVisibleItems, appendedMessage]
+          .sort((first, second) => AppUtils.toSortableDate(first.sentAtIso) - AppUtils.toSortableDate(second.sentAtIso));
+      }
+    }
+
+    const visibleItemsChanged = nextVisibleItems.length !== currentVisibleItems.length
+      || nextVisibleItems.some((message, index) => message !== currentVisibleItems[index]);
+    const totalChanged = this.visibleChatThreadTotal !== this.allMessages.length;
+    if (!visibleItemsChanged && !totalChanged) {
+      if (options.stickToEnd) {
+        this.scheduleChatThreadScrollToEnd();
+      }
+      return;
+    }
+
+    smartList.replaceVisibleItems(nextVisibleItems, {
+      total: this.allMessages.length
+    });
+    this.visibleChatThreadTotal = this.allMessages.length;
+
+    if (options.stickToEnd) {
+      this.scheduleChatThreadScrollToEnd();
+    }
+  }
+
+  private isChatThreadNearEnd(): boolean {
+    const scrollElement = this.chatThreadSmartList?.scrollElement();
+    if (!scrollElement) {
+      return true;
+    }
+    const remaining = scrollElement.scrollHeight - scrollElement.scrollTop - scrollElement.clientHeight;
+    return remaining <= 72;
+  }
+
+  private scheduleChatThreadScrollToEnd(): void {
+    const run = () => {
+      const scrollElement = this.chatThreadSmartList?.scrollElement();
+      if (!scrollElement) {
+        return;
+      }
+      scrollElement.scrollTo({
+        top: scrollElement.scrollHeight,
+        behavior: 'smooth'
+      });
+    };
+
+    if (typeof globalThis.requestAnimationFrame === 'function') {
+      globalThis.requestAnimationFrame(() => globalThis.requestAnimationFrame(run));
+      return;
+    }
+    setTimeout(run, 0);
+  }
+
+  private observeChatComposeBox(): void {
+    this.clearChatComposeResizeObserver();
+    this.syncChatComposeDetachedSpace();
+    const composeElement = this.chatComposeBoxRef?.nativeElement;
+    if (!composeElement || typeof ResizeObserver === 'undefined') {
+      return;
+    }
+    this.chatComposeResizeObserver = new ResizeObserver(() => {
+      this.syncChatComposeDetachedSpace();
+    });
+    this.chatComposeResizeObserver.observe(composeElement);
+  }
+
+  private clearChatComposeResizeObserver(): void {
+    this.chatComposeResizeObserver?.disconnect();
+    this.chatComposeResizeObserver = null;
+  }
+
+  private syncChatComposeDetachedSpace(): void {
+    const composeElement = this.chatComposeBoxRef?.nativeElement;
+    const measuredHeight = composeElement ? Math.ceil(composeElement.getBoundingClientRect().height) : 0;
+    const nextSpace = Math.max(108, measuredHeight + 12);
+    if (nextSpace === this.chatComposeDetachedSpace) {
+      return;
+    }
+    this.chatComposeDetachedSpace = nextSpace;
     this.cdr.markForCheck();
-    if (this.chatHeaderLoadingCompleteTimer) {
-      clearTimeout(this.chatHeaderLoadingCompleteTimer);
-      this.chatHeaderLoadingCompleteTimer = null;
-    }
-    if (this.chatHeaderLoadingInterval) {
-      clearInterval(this.chatHeaderLoadingInterval);
-      this.chatHeaderLoadingInterval = null;
-    }
-    this.updateChatHeaderLoadingWindow();
-    this.chatHeaderLoadingInterval = this.ngZone.runOutsideAngular(() =>
-      setInterval(() => {
-        this.updateChatHeaderLoadingWindow();
-        this.cdr.markForCheck();
-      }, this.headerLoadingTickMs)
-    );
-  }
-
-  private endChatHeaderProgressLoading(): void {
-    if (this.chatHeaderLoadingCounter === 0) {
-      return;
-    }
-    this.chatHeaderLoadingCounter = Math.max(0, this.chatHeaderLoadingCounter - 1);
-    if (this.chatHeaderLoadingCounter !== 0) {
-      return;
-    }
-    this.completeChatHeaderLoading();
-  }
-
-  private completeChatHeaderLoading(): void {
-    if (this.chatHeaderLoadingInterval) {
-      clearInterval(this.chatHeaderLoadingInterval);
-      this.chatHeaderLoadingInterval = null;
-    }
-    this.chatHeaderLoadingProgress = 1;
-    this.chatHeaderLoadingOverdue = false;
-    this.cdr.markForCheck();
-    if (this.chatHeaderLoadingCompleteTimer) {
-      clearTimeout(this.chatHeaderLoadingCompleteTimer);
-    }
-    this.chatHeaderLoadingCompleteTimer = this.ngZone.runOutsideAngular(() =>
-      setTimeout(() => {
-        this.ngZone.run(() => {
-          if (this.chatHeaderLoadingCounter !== 0) {
-            return;
-          }
-          this.chatHeaderProgressLoading = false;
-          this.chatHeaderLoadingProgress = 0;
-          this.chatHeaderLoadingOverdue = false;
-          this.chatHeaderLoadingStartedAtMs = 0;
-          this.chatHeaderLoadingCompleteTimer = null;
-          if (this.chatInitialLoadPending) {
-            this.chatInitialLoadPending = false;
-            this.chatHeaderProgress = this.allMessages.length > 0 ? 1 : 0;
-          }
-          this.cdr.markForCheck();
-        });
-      }, 100)
-    );
-  }
-
-  private updateChatHeaderLoadingWindow(): void {
-    if (!this.chatHeaderProgressLoading) {
-      return;
-    }
-    const elapsed = Math.max(0, performance.now() - this.chatHeaderLoadingStartedAtMs);
-    const nextProgress = AppUtils.clampNumber(elapsed / this.headerLoadingWindowMs, 0, 1);
-    this.chatHeaderLoadingProgress = Math.max(this.chatHeaderLoadingProgress, nextProgress);
-    this.chatHeaderLoadingOverdue = elapsed >= this.headerLoadingWindowMs && this.chatHeaderLoadingCounter > 0;
-  }
-
-  private clearChatHeaderLoadingAnimation(): void {
-    if (this.chatHeaderLoadingInterval) {
-      clearInterval(this.chatHeaderLoadingInterval);
-      this.chatHeaderLoadingInterval = null;
-    }
-    if (this.chatHeaderLoadingCompleteTimer) {
-      clearTimeout(this.chatHeaderLoadingCompleteTimer);
-      this.chatHeaderLoadingCompleteTimer = null;
-    }
-    this.chatHeaderLoadingCounter = 0;
-    this.chatHeaderLoadingProgress = 0;
-    this.chatHeaderProgressLoading = false;
-    this.chatHeaderLoadingOverdue = false;
-    this.chatHeaderLoadingStartedAtMs = 0;
-    this.cdr.markForCheck();
-  }
-
-  private cancelChatInitialLoadTimer(): void {
-    if (!this.chatInitialLoadTimer) {
-      return;
-    }
-    clearTimeout(this.chatInitialLoadTimer);
-    this.chatInitialLoadTimer = null;
   }
 }

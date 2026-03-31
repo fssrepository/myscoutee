@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, HostListener, computed, inject } from '@angular/core';
+import { MatRippleModule } from '@angular/material/core';
 import { MatIconModule } from '@angular/material/icon';
 import {
   AppContext,
@@ -18,6 +19,7 @@ import {
   resolveTraitIcon,
   resolveTraitToneClass
 } from '../../navigator-presenters';
+import { CounterBadgePipe } from '../../../shared/ui';
 import { NavigatorService } from '../../navigator.service';
 import { NavigatorSettingsMenuComponent } from '../navigator-settings-menu/navigator-settings-menu.component';
 
@@ -32,7 +34,7 @@ interface NavigatorMenuUser extends Omit<UserDto, 'activities'> {
 @Component({
   selector: 'app-navigator-menu',
   standalone: true,
-  imports: [CommonModule, MatIconModule, NavigatorSettingsMenuComponent],
+  imports: [CommonModule, MatIconModule, MatRippleModule, NavigatorSettingsMenuComponent, CounterBadgePipe],
   templateUrl: './navigator-menu.component.html',
   styleUrl: './navigator-menu.component.scss'
 })
@@ -101,7 +103,7 @@ export class NavigatorMenuComponent {
     };
   });
   protected readonly menuUiState = this.navigatorService.menuUiState;
-  protected readonly isCoveredByPopup = this.navigatorService.menuCoveredByPopup;
+  protected readonly isCoveredByAssetPopup = this.navigatorService.navigatorCoveredByAssetPopup;
 
   @HostListener('document:click', ['$event'])
   protected onDocumentClick(event: MouseEvent): void {

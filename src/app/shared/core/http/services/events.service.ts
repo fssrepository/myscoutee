@@ -214,7 +214,11 @@ export class HttpEventsService {
     await this.postVoid('/activities/events/restore', { userId: userId.trim(), type, sourceId: sourceId.trim() });
   }
 
-  async requestJoin(userId: string, sourceId: string): Promise<DemoEventRecord | null> {
+  async requestJoin(
+    userId: string,
+    sourceId: string,
+    options: { slotSourceId?: string | null } = {}
+  ): Promise<DemoEventRecord | null> {
     const normalizedUserId = userId.trim();
     const normalizedSourceId = sourceId.trim();
     if (!normalizedUserId || !normalizedSourceId) {
@@ -225,7 +229,8 @@ export class HttpEventsService {
         .post<DemoEventRecord | null>(`${this.apiBaseUrl}/activities/events/join`, {
           userId: normalizedUserId,
           type: 'events',
-          sourceId: normalizedSourceId
+          sourceId: normalizedSourceId,
+          slotSourceId: options.slotSourceId?.trim() || null
         })
         .toPromise();
       return response ? this.cloneRecords([response])[0] ?? null : null;

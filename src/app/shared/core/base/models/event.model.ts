@@ -132,6 +132,26 @@ export type EventEditorMode = 'edit' | 'create';
 export type EventEditorTarget = 'events' | 'hosting';
 export type EventVisibility = 'Public' | 'Friends only' | 'Invitation only';
 export type EventBlindMode = 'Open Event' | 'Blind Event';
+export type EventRecordKind = 'main' | 'slot';
+
+export interface EventSlotTemplate {
+  id: string;
+  startAt: string;
+  endAt: string;
+}
+
+export interface EventSlotOccurrence {
+  id: string;
+  parentEventId: string;
+  slotTemplateId: string;
+  title: string;
+  timeframe: string;
+  startAtIso: string;
+  endAtIso: string;
+  capacityTotal: number;
+  acceptedMembers: number;
+  pendingMembers: number;
+}
 
 export interface EventEditorForm {
   title: string;
@@ -148,6 +168,8 @@ export interface EventEditorForm {
   autoInviter: boolean;
   ticketing: boolean;
   topics: string[];
+  slotsEnabled: boolean;
+  slotTemplates: EventSlotTemplate[];
   subEvents: SubEventFormItem[];
 }
 

@@ -1,5 +1,6 @@
 import type * as AppTypes from '../models';
 import type { DemoEventRecord } from '../../demo/models/events.model';
+import { AppUtils } from '../../../app-utils';
 import { EventEditorConverter } from '../converters/event-editor.converter';
 
 export class EventEditorBuilder {
@@ -16,6 +17,16 @@ export class EventEditorBuilder {
     return items.map(item => ({
       ...item,
       groups: (item.groups ?? []).map(group => ({ ...group }))
+    }));
+  }
+
+  static cloneEventEditorSlotTemplates(
+    items: readonly AppTypes.EventSlotTemplate[]
+  ): AppTypes.EventSlotTemplate[] {
+    return items.map(item => ({
+      id: `${item.id ?? ''}`.trim(),
+      startAt: `${item.startAt ?? ''}`.trim(),
+      endAt: `${item.endAt ?? ''}`.trim()
     }));
   }
 
@@ -169,6 +180,29 @@ export class EventEditorBuilder {
     });
   }
 
+  static buildPersistedEventEditorSlotTemplates(
+    items: readonly AppTypes.EventSlotTemplate[]
+  ): AppTypes.EventSlotTemplate[] {
+    return items.map((item, index) => {
+      const normalizedStart = `${item.startAt ?? ''}`.trim();
+      const parsedStart = EventEditorConverter.parseEventEditorDateValue(normalizedStart) ?? new Date();
+      const normalizedEnd = `${item.endAt ?? ''}`.trim();
+      const parsedEndRaw = EventEditorConverter.parseEventEditorDateValue(normalizedEnd) ?? new Date(parsedStart.getTime() + (60 * 60 * 1000));
+      const parsedEnd = parsedEndRaw.getTime() <= parsedStart.getTime()
+        ? new Date(parsedStart.getTime() + (60 * 60 * 1000))
+        : parsedEndRaw;
+      return {
+        id: `${item.id ?? `slot-${index + 1}`}`.trim() || `slot-${index + 1}`,
+        startAt: EventEditorConverter.parseEventEditorDateValue(normalizedStart)
+          ? normalizedStart
+          : AppUtils.toIsoDateTimeLocal(parsedStart),
+        endAt: EventEditorConverter.parseEventEditorDateValue(normalizedEnd)
+          ? normalizedEnd
+          : AppUtils.toIsoDateTimeLocal(parsedEnd)
+      };
+    });
+  }
+
   static buildEventEditorTimeframeLabel(startAt: string, endAt: string, frequency: string): string {
     const start = EventEditorConverter.parseEventEditorDateValue(startAt);
     const end = EventEditorConverter.parseEventEditorDateValue(endAt);
@@ -227,19 +261,25 @@ export class EventEditorBuilder {
       autoInviter: params.form.autoInviter,
       frequency: params.form.frequency,
       ticketing: params.form.ticketing,
+      slotsEnabled: params.form.slotsEnabled,
+      slotTemplates: this.buildPersistedEventEditorSlotTemplates(params.form.slotTemplates),
       visibility: params.form.visibility,
       blindMode: params.form.blindMode,
       published: params.target === 'hosting'
         ? (params.existingRecord?.published ?? false)
         : true,
-      creatorUserId: params.activeUserId || params.existingRecord?.creatorUserId,
-      creatorName: params.activeUserProfile?.name ?? params.existingRecord?.creatorName,
-      creatorInitials: params.activeUserProfile?.initials ?? params.existingRecord?.creatorInitials,
-      creatorGender: params.activeUserProfile?.gender ?? params.existingRecord?.creatorGender,
-      creatorCity: params.activeUserProfile?.city ?? params.existingRecord?.creatorCity,
+      creatorUserId: params.existingRecord?.creatorUserId ?? params.activeUserId ?? undefined,
+      creatorName: params.existingRecord?.creatorName ?? params.activeUserProfile?.name,
+      creatorInitials: params.existingRecord?.creatorInitials ?? params.activeUserProfile?.initials,
+      creatorGender: params.existingRecord?.creatorGender ?? params.activeUserProfile?.gender,
+      creatorCity: params.existingRecord?.creatorCity ?? params.activeUserProfile?.city,
       location: params.form.location.trim(),
       locationCoordinates: params.existingRecord?.locationCoordinates ?? undefined,
       sourceLink: params.existingRecord?.sourceLink ?? '',
+      parentEventId: params.existingRecord?.parentEventId ?? null,
+      slotTemplateId: params.existingRecord?.slotTemplateId ?? null,
+      generated: params.existingRecord?.generated ?? false,
+      eventType: params.existingRecord?.eventType ?? 'main',
       acceptedMemberUserIds: Array.from(new Set(params.acceptedMemberUserIds.filter(id => id.trim().length > 0))),
       pendingMemberUserIds: Array.from(new Set(params.pendingMemberUserIds.filter(id => id.trim().length > 0))),
       topics: [...params.form.topics],

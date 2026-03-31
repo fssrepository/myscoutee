@@ -28,16 +28,21 @@ export class EventExploreBuilder {
       title: record.title,
       imageUrl: record.imageUrl,
       metaRows: [
-        `${this.typeLabel(record)} · ${visibility} · ${this.distanceLabel(record)}`
+        `${record.slotsEnabled ? 'Series' : this.typeLabel(record)} · ${visibility} · ${this.distanceLabel(record)}`
       ],
       description: record.subtitle,
-      detailRows: [record.timeframe],
+      detailRows: [record.slotsEnabled && record.nextSlot
+        ? `Next slot · ${record.nextSlot.timeframe}`
+        : record.timeframe],
       detailStyle: 'mono',
-      footerChips: record.topics.map(topic => ({
-        label: `#${this.topicLabel(topic)}`,
-        toneClass: this.resolveTopicToneClass(topic, options.topicToneGroups)
-      })),
-      surfaceTone: full ? 'full' : 'default',
+      footerChips: [
+        ...(record.slotsEnabled ? [{ label: 'Series' }] : []),
+        ...record.topics.map(topic => ({
+          label: `#${this.topicLabel(topic)}`,
+          toneClass: this.resolveTopicToneClass(topic, options.topicToneGroups)
+        }))
+      ],
+      surfaceTone: full ? 'full' : record.slotsEnabled ? 'series' : 'default',
       leadingIcon: {
         icon: this.visibilityIcon(visibility),
         tone: this.visibilityTone(record)
@@ -108,7 +113,7 @@ export class EventExploreBuilder {
     if (this.isOpenEvent(record)) {
       actions.push({
         id: 'join',
-        label: 'Request join',
+        label: record.ticketing ? 'Book' : 'Request join',
         icon: 'person_add',
         tone: 'accent'
       });

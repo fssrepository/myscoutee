@@ -9,6 +9,9 @@ const PRECACHE_URLS = [
   './index.html',
   './manifest.webmanifest',
   './assets/icon/favicon.ico',
+  './assets/icon/apple-touch-icon.png',
+  './assets/icon/android-chrome-192x192.png',
+  './assets/icon/android-chrome-512x512.png',
   './assets/logo/heart.png',
   './assets/logo/cards_no_edges.png'
 ];

@@ -2,8 +2,21 @@ import type { UserDto } from './user.interface';
 
 export interface UserGameCardsStackSnapshot {
   cardUserIds: string[];
+  socialCards: UserGameSocialCard[];
   nextCursor: string | null;
   requestInFlight: boolean;
+}
+
+export type UserGameMode = 'single' | 'pair' | 'separated-friends' | 'friends-in-common';
+
+export interface UserGameSocialCard {
+  id: string;
+  userId: string;
+  secondaryUserId?: string;
+  socialContext: 'separated-friends' | 'friends-in-common';
+  bridgeUserId?: string;
+  bridgeCount?: number;
+  eventName?: string;
 }
 
 export interface UserGameFilterPreferencesDto {
@@ -32,6 +45,9 @@ export interface UserGameFilterPreferencesDto {
 
 export interface UserGameCardsQueryRequest {
   userId: string;
+  mode?: UserGameMode;
+  leftQuery?: string | null;
+  rightQuery?: string | null;
   filterPreferences?: UserGameFilterPreferencesDto | null;
   cursor?: string | null;
   pageSize?: number;
@@ -40,6 +56,7 @@ export interface UserGameCardsQueryRequest {
 export interface UserGameCardsDto {
   filterCount: number;
   cardUserIds: string[];
+  socialCards?: UserGameSocialCard[];
   nextCursor: string | null;
 }
 
@@ -59,6 +76,9 @@ export interface UserRateRecord {
   ownerUserId?: string;
   displayId?: string;
   displayDirection?: 'given' | 'received' | 'mutual' | 'met';
+  socialContext?: 'separated-friends' | 'friends-in-common';
+  bridgeUserId?: string;
+  bridgeCount?: number;
   scoreGiven?: number;
   scoreReceived?: number;
   eventName?: string;

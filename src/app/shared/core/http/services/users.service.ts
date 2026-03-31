@@ -7,6 +7,7 @@ import type {
   UserDeleteRequestDto,
   UserFeedbackSubmitRequestDto,
   UserByIdQueryResponse,
+  UserLocationEligibilityResponseDto,
   UserImpressionsDto,
   UserLogoutRequestDto,
   UserMenuCountersDto,
@@ -21,6 +22,7 @@ import type {
   UserDto
 } from '../../base/interfaces/user.interface';
 import type { UserGameFilterPreferencesDto } from '../../base/interfaces/game.interface';
+import type { LocationCoordinates } from '../../base/interfaces/location.interface';
 import { OfflineCacheService } from '../../base/services/offline-cache.service';
 
 @Injectable({
@@ -54,6 +56,29 @@ export class HttpUsersService implements UserService {
     } catch {
       return { users: [] };
     }
+  }
+
+  async checkLocationEligibility(coordinates?: LocationCoordinates | null): Promise<UserLocationEligibilityResponseDto> {
+    const hasCoordinates = !!coordinates
+      && Number.isFinite(Number(coordinates.latitude))
+      && Number.isFinite(Number(coordinates.longitude));
+    const response = await this.http
+      .get<UserLocationEligibilityResponseDto>(`${this.apiBaseUrl}/auth/eligibility`, {
+        params: hasCoordinates
+          ? {
+              latitude: `${Number(coordinates?.latitude)}`,
+              longitude: `${Number(coordinates?.longitude)}`
+            }
+          : {}
+      })
+      .toPromise();
+    return {
+      eligible: response?.eligible === true,
+      partitionKey: typeof response?.partitionKey === 'string' ? response.partitionKey : null,
+      message: typeof response?.message === 'string' ? response.message : null,
+      securityGateEnabled: response?.securityGateEnabled === true,
+      locationRequired: response?.locationRequired === true
+    };
   }
 
   async queryUserById(userId?: string): Promise<UserByIdQueryResponse> {
@@ -319,6 +344,12 @@ export class HttpUsersService implements UserService {
   private cloneUser(user: UserDto): UserDto {
     return {
       ...user,
+      locationCoordinates: user.locationCoordinates
+        ? {
+            latitude: Number(user.locationCoordinates.latitude),
+            longitude: Number(user.locationCoordinates.longitude)
+          }
+        : undefined,
       languages: [...(user.languages ?? [])],
       images: [...(user.images ?? [])],
       impressions: this.cloneImpressions(user.impressions),

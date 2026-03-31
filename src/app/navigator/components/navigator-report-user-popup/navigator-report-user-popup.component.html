@@ -1,109 +1,115 @@
 <div class="support-popup">
-  <article class="editor-list-card support-card" *ngIf="!reportUserSubmitted; else reportUserSubmittedState">
-    <h4>Report User</h4>
-    <p>Share what happened. Reports are reviewed by moderation, and we use them to improve trust and safety.</p>
-    <form class="support-form" (ngSubmit)="submitReportUser()">
-      <div class="support-submit-error" *ngIf="submitErrorMessage() as errorMessage" role="alert">{{ errorMessage }}</div>
-      <label>
-        <span>User handle or email</span>
-        <input
-          type="text"
-          name="reportHandle"
-          [(ngModel)]="reportUserForm.handle"
-          placeholder="@username or email"
-          [class.support-form-field-invalid]="!reportUserHandleValid"
-          [disabled]="isSubmitBusy()"
-          (ngModelChange)="clearSubmitStatus()"
-          required
-        />
-        <small class="support-form-help-text" [class.support-form-help-text-error]="!reportUserHandleValid">
-          Required. Minimum {{ reportUserHandleMinLength }} characters ({{ reportUserHandleLength }}/{{ reportUserHandleMinLength }}).
-        </small>
-      </label>
-      <label>
-        <span>Reason</span>
-        <select
-          name="reportReason"
-          [(ngModel)]="reportUserForm.reason"
-          [disabled]="isSubmitBusy()"
-          (ngModelChange)="clearSubmitStatus()"
-        >
-          <option *ngFor="let item of reportUserReasons" [value]="item">{{ item }}</option>
-        </select>
-      </label>
-      <label>
-        <span>Details</span>
-        <textarea
-          rows="4"
-          name="reportDetails"
-          [(ngModel)]="reportUserForm.details"
-          placeholder="Add short details (what happened, when, and where)."
-          [class.support-form-field-invalid]="!reportUserDetailsValid"
-          [disabled]="isSubmitBusy()"
-          (ngModelChange)="clearSubmitStatus()"
-          required
-        ></textarea>
-        <small class="support-form-help-text" [class.support-form-help-text-error]="!reportUserDetailsValid">
-          Required. Minimum {{ reportUserDetailsMinLength }} characters ({{ reportUserDetailsLength }}/{{ reportUserDetailsMinLength }}).
-        </small>
-      </label>
-      <div class="support-actions">
-        <button type="button" class="link-btn neutral-btn" (click)="closePopup()">Cancel</button>
-        <span
-          class="support-submit-btn-shell"
-          [class.is-loading]="isSubmitting()"
-          [class.is-error]="hasSubmitError()"
-          [class.is-success]="isSubmitSuccess()"
-        >
-          <span class="support-submit-btn-ring" *ngIf="showSubmitRing()" aria-hidden="true">
-            <svg viewBox="0 0 104 48" preserveAspectRatio="none" class="support-submit-btn-ring-svg">
-              <defs>
-                <linearGradient id="navigator-report-submit-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stop-color="rgb(235, 147, 33)"></stop>
-                  <stop offset="100%" stop-color="rgb(247, 190, 52)"></stop>
-                </linearGradient>
-                <linearGradient id="navigator-report-submit-gradient-error" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stop-color="rgb(213, 54, 68)"></stop>
-                  <stop offset="100%" stop-color="rgb(196, 29, 42)"></stop>
-                </linearGradient>
-                <linearGradient id="navigator-report-submit-gradient-success" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stop-color="rgb(72, 181, 111)"></stop>
-                  <stop offset="100%" stop-color="rgb(48, 156, 93)"></stop>
-                </linearGradient>
-              </defs>
-              <rect class="support-submit-btn-ring-track" x="2" y="2" width="100" height="44" rx="14" ry="14"></rect>
-              <rect
-                class="support-submit-btn-ring-progress"
-                [class.is-loading]="isSubmitting()"
-                [class.is-error]="hasSubmitError()"
-                [class.is-success]="isSubmitSuccess()"
-                x="2"
-                y="2"
-                width="100"
-                height="44"
-                rx="14"
-                ry="14"
-                pathLength="100"
-                [attr.stroke-dasharray]="submitRingPerimeter"
-                [attr.stroke-dashoffset]="(hasSubmitError() || isSubmitSuccess()) ? 0 : submitRingPerimeter"
-              ></rect>
-            </svg>
+  @if (!reportUserSubmitted) {
+    <article class="editor-list-card support-card">
+      <h4>Report User</h4>
+      <p>Share what happened. Reports are reviewed by moderation, and we use them to improve trust and safety.</p>
+      <form class="support-form" (ngSubmit)="submitReportUser()">
+        @if (submitErrorMessage(); as errorMessage) {
+          <div class="support-submit-error" role="alert">{{ errorMessage }}</div>
+        }
+        <label>
+          <span>User handle or email</span>
+          <input
+            type="text"
+            name="reportHandle"
+            [(ngModel)]="reportUserForm.handle"
+            placeholder="@username or email"
+            [class.support-form-field-invalid]="!reportUserHandleValid"
+            [disabled]="isSubmitBusy()"
+            (ngModelChange)="clearSubmitStatus()"
+            required
+            />
+          <small class="support-form-help-text" [class.support-form-help-text-error]="!reportUserHandleValid">
+            Required. Minimum {{ reportUserHandleMinLength }} characters ({{ reportUserHandleLength }}/{{ reportUserHandleMinLength }}).
+          </small>
+        </label>
+        <label>
+          <span>Reason</span>
+          <select
+            name="reportReason"
+            [(ngModel)]="reportUserForm.reason"
+            [disabled]="isSubmitBusy()"
+            (ngModelChange)="clearSubmitStatus()"
+            >
+            @for (item of reportUserReasons; track item) {
+              <option [value]="item">{{ item }}</option>
+            }
+          </select>
+        </label>
+        <label>
+          <span>Details</span>
+          <textarea
+            rows="4"
+            name="reportDetails"
+            [(ngModel)]="reportUserForm.details"
+            placeholder="Add short details (what happened, when, and where)."
+            [class.support-form-field-invalid]="!reportUserDetailsValid"
+            [disabled]="isSubmitBusy()"
+            (ngModelChange)="clearSubmitStatus()"
+            required
+          ></textarea>
+          <small class="support-form-help-text" [class.support-form-help-text-error]="!reportUserDetailsValid">
+            Required. Minimum {{ reportUserDetailsMinLength }} characters ({{ reportUserDetailsLength }}/{{ reportUserDetailsMinLength }}).
+          </small>
+        </label>
+        <div class="support-actions">
+          <button type="button" class="link-btn neutral-btn" (click)="closePopup()">Cancel</button>
+          <span
+            class="support-submit-btn-shell"
+            [class.is-loading]="isSubmitting()"
+            [class.is-error]="hasSubmitError()"
+            [class.is-success]="isSubmitSuccess()"
+            >
+            @if (showSubmitRing()) {
+              <span class="support-submit-btn-ring" aria-hidden="true">
+                <svg viewBox="0 0 104 48" preserveAspectRatio="none" class="support-submit-btn-ring-svg">
+                  <defs>
+                    <linearGradient id="navigator-report-submit-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stop-color="rgb(235, 147, 33)"></stop>
+                      <stop offset="100%" stop-color="rgb(247, 190, 52)"></stop>
+                    </linearGradient>
+                    <linearGradient id="navigator-report-submit-gradient-error" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stop-color="rgb(213, 54, 68)"></stop>
+                      <stop offset="100%" stop-color="rgb(196, 29, 42)"></stop>
+                    </linearGradient>
+                    <linearGradient id="navigator-report-submit-gradient-success" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stop-color="rgb(72, 181, 111)"></stop>
+                      <stop offset="100%" stop-color="rgb(48, 156, 93)"></stop>
+                    </linearGradient>
+                  </defs>
+                  <rect class="support-submit-btn-ring-track" x="2" y="2" width="100" height="44" rx="14" ry="14"></rect>
+                  <rect
+                    class="support-submit-btn-ring-progress"
+                    [class.is-loading]="isSubmitting()"
+                    [class.is-error]="hasSubmitError()"
+                    [class.is-success]="isSubmitSuccess()"
+                    x="2"
+                    y="2"
+                    width="100"
+                    height="44"
+                    rx="14"
+                    ry="14"
+                    pathLength="100"
+                    [attr.stroke-dasharray]="submitRingPerimeter"
+                    [attr.stroke-dashoffset]="(hasSubmitError() || isSubmitSuccess()) ? 0 : submitRingPerimeter"
+                  ></rect>
+                </svg>
+              </span>
+            }
+            <button
+              type="submit"
+              class="link-btn primary-btn support-submit-btn"
+              [disabled]="!canSubmitReportUser()"
+              >
+              Submit report
+            </button>
           </span>
-          <button
-            type="submit"
-            class="link-btn primary-btn support-submit-btn"
-            [disabled]="!canSubmitReportUser()"
-          >
-            Submit report
-          </button>
-        </span>
-      </div>
-    </form>
-  </article>
+        </div>
+      </form>
+    </article>
+  } @else {
+    <article class="editor-list-card support-card">
+      <div class="support-submit-success">{{ reportUserSubmitMessage }}</div>
+    </article>
+  }
 </div>
-
-<ng-template #reportUserSubmittedState>
-  <article class="editor-list-card support-card">
-    <div class="support-submit-success">{{ reportUserSubmitMessage }}</div>
-  </article>
-</ng-template>
