@@ -1,5 +1,6 @@
-import { CommonModule } from '@angular/common';
+
 import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { MatRippleModule } from '@angular/material/core';
 import { MatIconModule } from '@angular/material/icon';
 
 import type * as AppTypes from '../../../shared/core/base/models';
@@ -8,9 +9,9 @@ import type * as AppTypes from '../../../shared/core/base/models';
   selector: 'app-entry-landing',
   standalone: true,
   imports: [
-    CommonModule,
+    MatRippleModule,
     MatIconModule
-  ],
+],
   templateUrl: './entry-landing.component.html',
   styleUrl: './entry-landing.component.scss'
 })

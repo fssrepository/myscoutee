@@ -337,7 +337,13 @@ const INTEREST_OPTION_GROUPS: InterestOptionGroup[] = [
   }
 ];
 const DETAIL_PRIVACY_OPTIONS: DetailPrivacy[] = ['Public', 'Friends', 'Hosts', 'Private'];
-const EXPERIENCE_FILTER_OPTIONS: Array<'All' | 'Workspace' | 'School'> = ['All', 'Workspace', 'School'];
+const EXPERIENCE_FILTER_OPTIONS: Array<'All' | ExperienceEntry['type']> = [
+  'All',
+  'Workspace',
+  'School',
+  'Online Session',
+  'Additional Project'
+];
 const EXPERIENCE_TYPE_OPTIONS: Array<ExperienceEntry['type']> = ['Workspace', 'School', 'Online Session', 'Additional Project'];
 
 const PROFILE_SAMPLE_EXPERIENCE_ENTRIES: ExperienceEntry[] = [
@@ -422,12 +428,12 @@ const RATE_FILTERS: Array<{ key: RateFilterKey; label: string }> = [
   { key: 'pair-received', label: 'Received' }
 ];
 const RATE_FILTER_ENTRIES: RateFilterEntry[] = [
-  { kind: 'group', label: 'Single Rate' },
+  { kind: 'group', label: 'Preferences' },
   { kind: 'item', key: 'individual-given', label: 'Given' },
   { kind: 'item', key: 'individual-received', label: 'Received' },
   { kind: 'item', key: 'individual-mutual', label: 'Mutual' },
   { kind: 'item', key: 'individual-met', label: 'Met' },
-  { kind: 'group', label: 'Pair Rate' },
+  { kind: 'group', label: 'Suggestions' },
   { kind: 'item', key: 'pair-given', label: 'Given' },
   { kind: 'item', key: 'pair-received', label: 'Received' }
 ];

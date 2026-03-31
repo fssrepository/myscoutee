@@ -8,66 +8,86 @@
   <article class="editor-list-card gdpr-card">
     <h4>Contacts</h4>
     <ul class="gdpr-list">
-      <li *ngFor="let contact of gdprContent.contacts"><strong>{{ contact.label }}:</strong> {{ contact.value }}</li>
+      @for (contact of gdprContent.contacts; track contact) {
+        <li><strong>{{ contact.label }}:</strong> {{ contact.value }}</li>
+      }
     </ul>
   </article>
 
   <article class="editor-list-card gdpr-card">
     <h4>Legal Basis</h4>
     <ul class="gdpr-list">
-      <li *ngFor="let item of gdprContent.legalBases">{{ item }}</li>
+      @for (item of gdprContent.legalBases; track item) {
+        <li>{{ item }}</li>
+      }
     </ul>
   </article>
 
   <article class="editor-list-card gdpr-card">
     <h4>Your Rights</h4>
     <div class="gdpr-rights-grid">
-      <section class="gdpr-right-item" *ngFor="let right of gdprContent.rights">
-        <h5>{{ right.title }}</h5>
-        <ul class="gdpr-list">
-          <li *ngFor="let item of right.items">{{ item }}</li>
-        </ul>
-      </section>
+      @for (right of gdprContent.rights; track right) {
+        <section class="gdpr-right-item">
+          <h5>{{ right.title }}</h5>
+          <ul class="gdpr-list">
+            @for (item of right.items; track item) {
+              <li>{{ item }}</li>
+            }
+          </ul>
+        </section>
+      }
     </div>
   </article>
 
   <article class="editor-list-card gdpr-card">
     <h4>Data We Process</h4>
     <div class="gdpr-data-grid">
-      <section class="gdpr-data-item" *ngFor="let section of gdprContent.dataCategories">
-        <h5>{{ section.category }}</h5>
-        <ul class="gdpr-list">
-          <li *ngFor="let item of section.items">{{ item }}</li>
-        </ul>
-      </section>
+      @for (section of gdprContent.dataCategories; track section) {
+        <section class="gdpr-data-item">
+          <h5>{{ section.category }}</h5>
+          <ul class="gdpr-list">
+            @for (item of section.items; track item) {
+              <li>{{ item }}</li>
+            }
+          </ul>
+        </section>
+      }
     </div>
   </article>
 
   <article class="editor-list-card gdpr-card">
     <h4>Purposes</h4>
     <ul class="gdpr-list">
-      <li *ngFor="let item of gdprContent.purposes">{{ item }}</li>
+      @for (item of gdprContent.purposes; track item) {
+        <li>{{ item }}</li>
+      }
     </ul>
   </article>
 
   <article class="editor-list-card gdpr-card">
     <h4>Retention</h4>
     <ul class="gdpr-list">
-      <li *ngFor="let item of gdprContent.retention">{{ item }}</li>
+      @for (item of gdprContent.retention; track item) {
+        <li>{{ item }}</li>
+      }
     </ul>
   </article>
 
   <article class="editor-list-card gdpr-card">
     <h4>Third-Party Sharing</h4>
     <ul class="gdpr-list">
-      <li *ngFor="let item of gdprContent.sharing">{{ item }}</li>
+      @for (item of gdprContent.sharing; track item) {
+        <li>{{ item }}</li>
+      }
     </ul>
   </article>
 
   <article class="editor-list-card gdpr-card">
     <h4>Security</h4>
     <ul class="gdpr-list">
-      <li *ngFor="let item of gdprContent.security">{{ item }}</li>
+      @for (item of gdprContent.security; track item) {
+        <li>{{ item }}</li>
+      }
     </ul>
   </article>
 </div>

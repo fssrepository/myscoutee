@@ -218,6 +218,9 @@
 }
 
 .demo-user-item {
+  position: relative;
+  overflow: hidden;
+  height: 5rem;
   border: 1px solid var(--entry-line, rgba(23, 33, 54, 0.12));
   border-radius: 12px;
   background: #fff;
@@ -227,6 +230,7 @@
   flex-direction: column;
   gap: 0.24rem;
   align-items: flex-start;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
 }
 
 .demo-user-item:hover {
@@ -236,6 +240,13 @@
 
 .demo-user-item:disabled {
   cursor: default;
+}
+
+.demo-user-item .user-avatar,
+.demo-user-item .demo-user-name,
+.demo-user-item .demo-user-meta {
+  position: relative;
+  z-index: 1;
 }
 
 .demo-user-submit-overlay {

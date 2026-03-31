@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import { ChangeDetectionStrategy, Component, Input } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
@@ -7,7 +7,7 @@ import { LazyBgImageDirective } from '../../../directives/lazy-bg-image.directiv
 @Component({
   selector: 'app-image-card',
   standalone: true,
-  imports: [CommonModule, MatIconModule, LazyBgImageDirective],
+  imports: [MatIconModule, LazyBgImageDirective],
   templateUrl: './image-card.component.html',
   styleUrl: './image-card.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush

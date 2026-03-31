@@ -22,6 +22,7 @@ export class AssetFormPopupComponent {
   @Input() visible = false;
   @Input() title = '';
   @Input({ required: true }) assetForm!: Omit<AppTypes.AssetCard, 'id' | 'requests'>;
+  @Input() sourceRefreshEnabled = false;
   @Input() assetFormVisibility: AppTypes.EventVisibility = 'Invitation only';
   @Input() assetTypeOptions: readonly AppTypes.AssetType[] = [];
   @Input() assetFormRouteStops: string[] = [];
@@ -33,7 +34,7 @@ export class AssetFormPopupComponent {
   @Input({ required: true }) save!: () => void;
   @Input({ required: true }) setAssetFormRouteStop!: (index: number, value: string) => void;
   @Input({ required: true }) openAssetFormRouteStopMap!: (index: number, event?: Event) => void;
-  @Input({ required: true }) refreshAssetFromSourceLink!: () => void;
+  @Input({ required: true }) refreshAssetFromSourceLink!: () => void | Promise<void>;
   @Input({ required: true }) onAssetImageFileSelected!: (file: File) => void;
 
   protected onImageFileChange(event: Event): void {

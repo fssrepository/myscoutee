@@ -4,23 +4,26 @@
   [class.rating-star-bar--fullscreen]="resolvedPresentation === 'fullscreen'"
   [class.rating-star-bar--blink]="resolvedAnimation === 'blink'"
   [class.rating-star-bar--readonly]="resolvedReadonly"
->
-  <div class="rating-star-bar__head" *ngIf="resolvedLabel">
-    <span class="rating-star-bar__label">{{ resolvedLabel }}</span>
-  </div>
+  >
+  @if (resolvedLabel) {
+    <div class="rating-star-bar__head">
+      <span class="rating-star-bar__label">{{ resolvedLabel }}</span>
+    </div>
+  }
 
   <div class="rating-star-bar__stars">
-    <button
-      type="button"
-      class="rating-star-bar__star"
-      *ngFor="let score of resolvedScale"
-      [class.is-filled]="isFilled(score)"
-      [class.is-disabled]="resolvedReadonly"
-      [disabled]="resolvedReadonly"
-      (click)="selectScore(score, $event)"
-      [attr.aria-label]="'Set rating ' + score"
-    >
-      ★
-    </button>
+    @for (score of resolvedScale; track score) {
+      <button
+        type="button"
+        class="rating-star-bar__star"
+        [class.is-filled]="isFilled(score)"
+        [class.is-disabled]="resolvedReadonly"
+        [disabled]="resolvedReadonly"
+        (click)="selectScore(score, $event)"
+        [attr.aria-label]="'Set rating ' + score"
+        >
+        ★
+      </button>
+    }
   </div>
 </div>

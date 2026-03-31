@@ -18,6 +18,7 @@ import {
 } from '../models/events.model';
 import type * as AppTypes from '../../../core/base/models';
 import type { ActivitiesEventSyncPayload } from '../../../core/base/models';
+import { EventEditorBuilder } from '../../../core/base/builders';
 import { USERS_TABLE_NAME } from '../models/users.model';
 import type { LocationCoordinates } from '../../base/interfaces';
 
@@ -39,7 +40,7 @@ interface DemoEventExploreCursor {
   providedIn: 'root'
 })
 export class DemoEventsRepository {
-  private static readonly MIN_DEMO_EVENT_ITEMS_PER_USER = 30;
+  private static readonly MIN_DEMO_EVENT_ITEMS_PER_USER = 15;
   private static readonly SYNTHETIC_EVENT_TITLE_PREFIXES = [
     'Lantern',
     'Harbor',
@@ -103,6 +104,7 @@ export class DemoEventsRepository {
 
   queryItemsByUser(userId: string): DemoEventRecord[] {
     this.init();
+    this.materializeSlotRecords();
     return this.queryUserRecords(userId);
   }
 
@@ -132,6 +134,7 @@ export class DemoEventsRepository {
     hostingPublicationFilter: 'all' | 'drafts' = 'all'
   ): DemoEventRecord[] {
     this.init();
+    this.materializeSlotRecords();
     const userItems = this.queryUserRecords(userId);
     const activeEventItems = userItems
       .filter(record => record.type === 'events')
@@ -165,6 +168,7 @@ export class DemoEventsRepository {
 
   queryActivitiesEventPage(query: DemoEventActivitiesQuery): DemoEventActivitiesQueryResult {
     this.init();
+    this.materializeSlotRecords();
     const normalizedUserId = query.userId.trim();
     if (!normalizedUserId) {
       return {
@@ -212,6 +216,7 @@ export class DemoEventsRepository {
 
   queryExploreItems(userId: string): DemoEventRecord[] {
     this.init();
+    this.materializeSlotRecords();
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return [];
@@ -221,12 +226,12 @@ export class DemoEventsRepository {
 
     for (const id of table.ids) {
       const record = table.byId[id];
-      if (!record || !this.shouldIncludeExploreRecord(record, normalizedUserId)) {
+      if (!record || this.isGeneratedSlotRecord(record) || !this.shouldIncludeExploreRecord(record, normalizedUserId)) {
         continue;
       }
       const existing = byEventId.get(record.id);
       if (!existing || this.shouldPreferExploreRecord(record, existing)) {
-        byEventId.set(record.id, DemoEventsRepositoryBuilder.cloneRecord(record));
+        byEventId.set(record.id, this.withResolvedSlotContext(DemoEventsRepositoryBuilder.cloneRecord(record), table));
       }
     }
 
@@ -332,6 +337,7 @@ export class DemoEventsRepository {
         }
       };
     });
+    this.materializeSlotRecords();
   }
 
   trashItem(userId: string, type: DemoRepositoryEventItemType, sourceId: string): void {
@@ -357,10 +363,12 @@ export class DemoEventsRepository {
     });
   }
 
-  requestJoin(userId: string, sourceId: string): DemoEventRecord | null {
+  requestJoin(userId: string, sourceId: string, slotSourceId: string | null = null): DemoEventRecord | null {
     this.init();
+    this.materializeSlotRecords();
     const normalizedUserId = userId.trim();
     const normalizedSourceId = sourceId.trim();
+    const normalizedSlotSourceId = slotSourceId?.trim() || '';
     if (!normalizedUserId || !normalizedSourceId) {
       return null;
     }
@@ -371,41 +379,50 @@ export class DemoEventsRepository {
       return null;
     }
 
-    const acceptedMemberUserIds = this.normalizeUserIds(preferredRecord.acceptedMemberUserIds);
-    const pendingMemberUserIds = this.normalizeUserIds(preferredRecord.pendingMemberUserIds);
-    if (!acceptedMemberUserIds.includes(normalizedUserId) && !pendingMemberUserIds.includes(normalizedUserId)) {
-      pendingMemberUserIds.push(normalizedUserId);
-      this.memoryDb.write(state => {
-        const table = state[EVENTS_TABLE_NAME];
-        const nextById = { ...table.byId };
-
-        for (const recordKey of table.ids) {
-          const current = table.byId[recordKey];
-          if (!current || current.id !== normalizedSourceId || current.isInvitation) {
-            continue;
-          }
-          nextById[recordKey] = {
-            ...current,
-            acceptedMembers: acceptedMemberUserIds.length,
-            pendingMembers: pendingMemberUserIds.length,
-            acceptedMemberUserIds: [...acceptedMemberUserIds],
-            pendingMemberUserIds: [...pendingMemberUserIds],
-            capacityTotal: Math.max(acceptedMemberUserIds.length, current.capacityTotal)
-          };
-        }
-
-        return {
-          ...state,
-          [EVENTS_TABLE_NAME]: {
-            byId: nextById,
-            ids: [...table.ids]
-          }
-        };
-      });
+    const idsToJoin = Array.from(new Set([
+      normalizedSourceId,
+      normalizedSlotSourceId
+    ].filter(Boolean)));
+    if (idsToJoin.length === 0) {
+      return null;
     }
 
+    this.memoryDb.write(state => {
+      const table = state[EVENTS_TABLE_NAME];
+      const nextById = { ...table.byId };
+
+      for (const recordKey of table.ids) {
+        const current = table.byId[recordKey];
+        if (!current || current.isInvitation || !idsToJoin.includes(current.id)) {
+          continue;
+        }
+        const acceptedMemberUserIds = this.normalizeUserIds(current.acceptedMemberUserIds);
+        const pendingMemberUserIds = this.normalizeUserIds(current.pendingMemberUserIds);
+        if (!acceptedMemberUserIds.includes(normalizedUserId) && !pendingMemberUserIds.includes(normalizedUserId)) {
+          pendingMemberUserIds.push(normalizedUserId);
+        }
+        nextById[recordKey] = {
+          ...current,
+          acceptedMembers: acceptedMemberUserIds.length,
+          pendingMembers: pendingMemberUserIds.length,
+          acceptedMemberUserIds: [...acceptedMemberUserIds],
+          pendingMemberUserIds: [...pendingMemberUserIds],
+          capacityTotal: Math.max(acceptedMemberUserIds.length, current.capacityTotal)
+        };
+      }
+
+      return {
+        ...state,
+        [EVENTS_TABLE_NAME]: {
+          byId: nextById,
+          ids: [...table.ids]
+        }
+      };
+    });
+
+    this.materializeSlotRecords();
     const refreshed = this.computePreferredEventRecords(this.memoryDb.read()[EVENTS_TABLE_NAME])
-      .find(record => record.id === normalizedSourceId && !record.isInvitation)
+      .find(record => record.id === (normalizedSlotSourceId || normalizedSourceId) && !record.isInvitation)
       ?? preferredRecord;
     return this.buildMembershipProjectionRecord(normalizedUserId, refreshed);
   }
@@ -625,14 +642,14 @@ export class DemoEventsRepository {
       .filter((record): record is DemoEventRecord => Boolean(record))
       .filter(record => record.userId === normalizedUserId)
       .filter(record => this.shouldIncludeUserDirectRecord(record, normalizedUserId, preferredRecordByEventId.get(record.id)))
-      .map(record => DemoEventsRepositoryBuilder.cloneRecord(record));
+      .map(record => this.withResolvedSlotContext(DemoEventsRepositoryBuilder.cloneRecord(record), table));
     const directIds = new Set(directRecords.map(record => record.id));
     const membershipRecords = preferredRecords
       .filter(record => record.creatorUserId !== normalizedUserId)
       .filter(record => !record.isTrashed)
       .filter(record => !directIds.has(record.id))
       .filter(record => this.hasTrackedUserParticipation(record, normalizedUserId))
-      .map(record => this.buildMembershipProjectionRecord(normalizedUserId, record));
+      .map(record => this.buildMembershipProjectionRecord(normalizedUserId, this.withResolvedSlotContext(record, table)));
     return [...directRecords, ...membershipRecords];
   }
 
@@ -1139,6 +1156,14 @@ export class DemoEventsRepository {
         : (typeof existing?.autoInviter === 'boolean' ? existing.autoInviter : false),
       frequency: payload.frequency?.trim() || existing?.frequency || 'One-time',
       ticketing,
+      slotsEnabled: payload.slotsEnabled ?? existing?.slotsEnabled ?? false,
+      slotTemplates: EventEditorBuilder.cloneEventEditorSlotTemplates(payload.slotTemplates ?? existing?.slotTemplates ?? []),
+      parentEventId: payload.parentEventId ?? existing?.parentEventId ?? null,
+      slotTemplateId: payload.slotTemplateId ?? existing?.slotTemplateId ?? null,
+      generated: payload.generated ?? existing?.generated ?? false,
+      eventType: payload.eventType ?? existing?.eventType ?? 'main',
+      nextSlot: payload.nextSlot ? { ...payload.nextSlot } : (existing?.nextSlot ? { ...existing.nextSlot } : null),
+      upcomingSlots: (payload.upcomingSlots ?? existing?.upcomingSlots ?? []).map(item => ({ ...item })),
       acceptedMembers: context.acceptedMembers,
       pendingMembers: context.pendingMembers,
       acceptedMemberUserIds: [...context.acceptedMemberUserIds],
@@ -1400,8 +1425,23 @@ export class DemoEventsRepository {
     seeded: DemoEventRecordCollection
   ): { table: DemoEventRecordCollection; changed: boolean } {
     const nextById: Record<string, DemoEventRecord> = { ...current.byId };
-    const nextIds = [...current.ids];
+    const seededRecordKeys = new Set(seeded.ids);
+    const nextIds = current.ids.filter(recordKey => {
+      const currentRecord = current.byId[recordKey];
+      if (!currentRecord) {
+        return false;
+      }
+      if (seededRecordKeys.has(recordKey) || !this.isObsoleteSyntheticSeededRecord(currentRecord)) {
+        return true;
+      }
+      delete nextById[recordKey];
+      return false;
+    });
     let changed = false;
+
+    if (nextIds.length !== current.ids.length) {
+      changed = true;
+    }
 
     for (const recordKey of seeded.ids) {
       const seededRecord = seeded.byId[recordKey];
@@ -1429,6 +1469,10 @@ export class DemoEventsRepository {
       },
       changed
     };
+  }
+
+  private isObsoleteSyntheticSeededRecord(record: DemoEventRecord): boolean {
+    return record.type === 'events' && record.id.startsWith('ex-');
   }
 
   private mergeSeededRecord(current: DemoEventRecord, seeded: DemoEventRecord): DemoEventRecord {
@@ -1491,6 +1535,16 @@ export class DemoEventsRepository {
       autoInviter: typeof current.autoInviter === 'boolean' ? current.autoInviter : seeded.autoInviter,
       frequency: current.frequency?.trim() || seeded.frequency,
       ticketing: typeof current.ticketing === 'boolean' ? current.ticketing : seeded.ticketing,
+      slotsEnabled: typeof current.slotsEnabled === 'boolean' ? current.slotsEnabled : seeded.slotsEnabled,
+      slotTemplates: (current.slotTemplates ?? []).length > 0
+        ? EventEditorBuilder.cloneEventEditorSlotTemplates(current.slotTemplates ?? [])
+        : EventEditorBuilder.cloneEventEditorSlotTemplates(seeded.slotTemplates ?? []),
+      parentEventId: current.parentEventId ?? seeded.parentEventId ?? null,
+      slotTemplateId: current.slotTemplateId ?? seeded.slotTemplateId ?? null,
+      generated: typeof current.generated === 'boolean' ? current.generated : seeded.generated,
+      eventType: current.eventType ?? seeded.eventType ?? 'main',
+      nextSlot: current.nextSlot ? { ...current.nextSlot } : (seeded.nextSlot ? { ...seeded.nextSlot } : null),
+      upcomingSlots: (current.upcomingSlots ?? seeded.upcomingSlots ?? []).map(item => ({ ...item })),
       isAdmin: shouldPreferSeededDirectEventState ? seeded.isAdmin : current.isAdmin,
       acceptedMembers: shouldPreferSeededMemberState
         ? seeded.acceptedMembers
@@ -1613,6 +1667,272 @@ export class DemoEventsRepository {
       return value;
     }
     return fallback;
+  }
+
+  private materializeSlotRecords(): void {
+    const table = this.memoryDb.read()[EVENTS_TABLE_NAME];
+    const preferredParents = this.computePreferredEventRecords(table)
+      .filter(record => this.isSlotParentRecord(record));
+    if (preferredParents.length === 0) {
+      return;
+    }
+
+    const nextById = { ...table.byId };
+    const nextIds = [...table.ids];
+    let changed = false;
+
+    for (const parent of preferredParents) {
+      const generatedRecords = this.buildGeneratedSlotRecordsForParent(parent, table);
+      for (const record of generatedRecords) {
+        const recordKey = DemoEventsRepositoryBuilder.buildRecordKey(record.userId, record.type, record.id);
+        const current = nextById[recordKey];
+        if (!current) {
+          nextById[recordKey] = record;
+          if (!nextIds.includes(recordKey)) {
+            nextIds.push(recordKey);
+          }
+          changed = true;
+        }
+      }
+    }
+
+    if (!changed) {
+      return;
+    }
+
+    this.memoryDb.write(currentState => ({
+      ...currentState,
+      [EVENTS_TABLE_NAME]: {
+        byId: nextById,
+        ids: nextIds
+      }
+    }));
+  }
+
+  private buildGeneratedSlotRecordsForParent(
+    parent: DemoEventRecord,
+    table: DemoEventRecordCollection
+  ): DemoEventRecord[] {
+    const parentStart = this.parseEventDate(parent.startAtIso);
+    const parentEnd = this.parseEventDate(parent.endAtIso);
+    if (!parentStart || !parentEnd) {
+      return [];
+    }
+
+    const horizonStart = new Date(Math.max(parentStart.getTime(), Date.now() - (24 * 60 * 60 * 1000)));
+    const horizonEnd = new Date(Math.min(parentEnd.getTime(), Date.now() + (45 * 24 * 60 * 60 * 1000)));
+    if (horizonEnd.getTime() < horizonStart.getTime()) {
+      return [];
+    }
+
+    const records: DemoEventRecord[] = [];
+    for (const template of parent.slotTemplates ?? []) {
+      const templateStart = this.parseEventDate(template.startAt);
+      const templateEnd = this.parseEventDate(template.endAt);
+      if (!templateStart || !templateEnd) {
+        continue;
+      }
+      const durationMs = Math.max(60 * 60 * 1000, templateEnd.getTime() - templateStart.getTime());
+      const starts = this.generateSlotOccurrenceStarts(parent.frequency ?? 'One-time', templateStart, horizonStart, horizonEnd);
+      for (const startAt of starts) {
+        const endAt = new Date(startAt.getTime() + durationMs);
+        if (startAt.getTime() < parentStart.getTime() || endAt.getTime() > parentEnd.getTime()) {
+          continue;
+        }
+        const sourceId = this.buildGeneratedSlotSourceId(parent.id, template.id, startAt);
+        const existing = this.computePreferredEventRecords(table)
+          .find(record => record.id === sourceId && this.isGeneratedSlotRecord(record))
+          ?? null;
+        if (existing) {
+          continue;
+        }
+        const acceptedMemberUserIds: string[] = [];
+        const pendingMemberUserIds: string[] = [];
+        const capacityTotal = Math.max(
+          acceptedMemberUserIds.length,
+          parent.capacityTotal
+        );
+        records.push({
+          id: sourceId,
+          userId: parent.creatorUserId || parent.userId,
+          type: 'events',
+          avatar: parent.avatar,
+          title: parent.title,
+          subtitle: parent.subtitle,
+          timeframe: this.buildGeneratedSlotTimeframe(startAt, endAt),
+          inviter: null,
+          unread: 0,
+          activity: 0,
+          isAdmin: true,
+          isInvitation: false,
+          isHosting: false,
+          isTrashed: false,
+          published: parent.published,
+          trashedAtIso: null,
+          creatorUserId: parent.creatorUserId,
+          creatorName: parent.creatorName,
+          creatorInitials: parent.creatorInitials,
+          creatorGender: parent.creatorGender,
+          creatorCity: parent.creatorCity,
+          visibility: parent.visibility,
+          blindMode: parent.blindMode,
+          startAtIso: startAt.toISOString(),
+          endAtIso: endAt.toISOString(),
+          distanceKm: parent.distanceKm,
+          imageUrl: parent.imageUrl,
+          sourceLink: parent.sourceLink,
+          location: parent.location,
+          locationCoordinates: this.normalizeLocationCoordinates(parent.locationCoordinates),
+          capacityMin: parent.capacityMin,
+          capacityMax: parent.capacityMax,
+          capacityTotal,
+          autoInviter: parent.autoInviter,
+          frequency: parent.frequency,
+          ticketing: parent.ticketing,
+          slotsEnabled: false,
+          slotTemplates: [],
+          parentEventId: parent.id,
+          slotTemplateId: template.id,
+          generated: true,
+          eventType: 'slot',
+          nextSlot: null,
+          upcomingSlots: [],
+          acceptedMembers: acceptedMemberUserIds.length,
+          pendingMembers: pendingMemberUserIds.length,
+          acceptedMemberUserIds,
+          pendingMemberUserIds,
+          topics: [...parent.topics],
+          subEvents: this.cloneSubEvents(parent.subEvents) ?? undefined,
+          subEventsDisplayMode: parent.subEventsDisplayMode,
+          rating: parent.rating,
+          relevance: parent.relevance,
+          affinity: parent.affinity
+        });
+      }
+    }
+    return records;
+  }
+
+  private withResolvedSlotContext(record: DemoEventRecord, table: DemoEventRecordCollection): DemoEventRecord {
+    if (!this.isSlotParentRecord(record)) {
+      return {
+        ...record,
+        nextSlot: null,
+        upcomingSlots: []
+      };
+    }
+    const upcomingSlots = this.resolveUpcomingSlotOccurrences(record.id, table);
+    return {
+      ...record,
+      nextSlot: upcomingSlots[0] ?? null,
+      upcomingSlots
+    };
+  }
+
+  private resolveUpcomingSlotOccurrences(
+    parentEventId: string,
+    table: DemoEventRecordCollection
+  ): AppTypes.EventSlotOccurrence[] {
+    const nowMs = Date.now() - (60 * 60 * 1000);
+    return table.ids
+      .map(id => table.byId[id])
+      .filter((record): record is DemoEventRecord => Boolean(record))
+      .filter(record => this.isGeneratedSlotRecord(record) && record.parentEventId === parentEventId)
+      .filter(record => !record.isTrashed)
+      .filter(record => new Date(record.endAtIso).getTime() >= nowMs)
+      .sort((left, right) => new Date(left.startAtIso).getTime() - new Date(right.startAtIso).getTime())
+      .map(record => ({
+        id: record.id,
+        parentEventId,
+        slotTemplateId: record.slotTemplateId ?? '',
+        title: record.title,
+        timeframe: record.timeframe,
+        startAtIso: record.startAtIso,
+        endAtIso: record.endAtIso,
+        capacityTotal: record.capacityTotal,
+        acceptedMembers: record.acceptedMembers,
+        pendingMembers: record.pendingMembers
+      }));
+  }
+
+  private isGeneratedSlotRecord(record: DemoEventRecord | null | undefined): boolean {
+    return Boolean(record?.generated) || record?.eventType === 'slot' || Boolean(record?.parentEventId);
+  }
+
+  private isSlotParentRecord(record: DemoEventRecord | null | undefined): boolean {
+    return Boolean(record?.slotsEnabled) && !this.isGeneratedSlotRecord(record) && (record?.slotTemplates?.length ?? 0) > 0;
+  }
+
+  private buildGeneratedSlotSourceId(parentEventId: string, slotTemplateId: string, startAt: Date): string {
+    return `${parentEventId}:slot:${slotTemplateId}:${startAt.toISOString()}`;
+  }
+
+  private buildGeneratedSlotTimeframe(startAt: Date, endAt: Date): string {
+    const dateLabel = startAt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const startLabel = startAt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    const endLabel = endAt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    return `${dateLabel} · ${startLabel} - ${endLabel}`;
+  }
+
+  private generateSlotOccurrenceStarts(
+    frequency: string,
+    templateStart: Date,
+    horizonStart: Date,
+    horizonEnd: Date
+  ): Date[] {
+    const normalizedFrequency = `${frequency ?? ''}`.trim().toLowerCase();
+    if (normalizedFrequency === 'one-time' || !normalizedFrequency) {
+      return templateStart.getTime() >= horizonStart.getTime() && templateStart.getTime() <= horizonEnd.getTime()
+        ? [new Date(templateStart)]
+        : [];
+    }
+
+    const starts: Date[] = [];
+    const cursor = new Date(horizonStart);
+    cursor.setHours(0, 0, 0, 0);
+    const endDate = new Date(horizonEnd);
+    endDate.setHours(0, 0, 0, 0);
+    while (cursor.getTime() <= endDate.getTime()) {
+      if (this.matchesSlotFrequency(cursor, templateStart, normalizedFrequency)) {
+        const next = new Date(cursor);
+        next.setHours(templateStart.getHours(), templateStart.getMinutes(), templateStart.getSeconds(), templateStart.getMilliseconds());
+        if (next.getTime() >= horizonStart.getTime() && next.getTime() <= horizonEnd.getTime()) {
+          starts.push(next);
+        }
+      }
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    return starts;
+  }
+
+  private matchesSlotFrequency(date: Date, templateStart: Date, frequency: string): boolean {
+    if (frequency === 'daily') {
+      return true;
+    }
+    if (frequency === 'weekly') {
+      return date.getDay() === templateStart.getDay();
+    }
+    if (frequency === 'bi-weekly' || frequency === 'biweekly') {
+      if (date.getDay() !== templateStart.getDay()) {
+        return false;
+      }
+      const diffDays = Math.floor((date.getTime() - templateStart.getTime()) / (24 * 60 * 60 * 1000));
+      const diffWeeks = Math.floor(diffDays / 7);
+      return diffWeeks >= 0 && diffWeeks % 2 === 0;
+    }
+    if (frequency === 'monthly') {
+      const lastDayOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+      return date.getDate() === Math.min(templateStart.getDate(), lastDayOfMonth);
+    }
+    return false;
+  }
+
+  private parseEventDate(value: string | null | undefined): Date | null {
+    if (!value?.trim()) {
+      return null;
+    }
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
   }
 
   private normalizeLocationCoordinates(value: unknown): DemoEventRecord['locationCoordinates'] {

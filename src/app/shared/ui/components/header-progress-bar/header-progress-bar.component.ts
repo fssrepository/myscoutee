@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import { ChangeDetectionStrategy, Component, HostBinding, Input, inject } from '@angular/core';
 import { AppContext } from '../../../core';
 
@@ -16,7 +16,7 @@ export interface HeaderProgressBarConfig {
 @Component({
   selector: 'app-header-progress-bar',
   standalone: true,
-  imports: [CommonModule],
+  imports: [],
   templateUrl: './header-progress-bar.component.html',
   styleUrl: './header-progress-bar.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush

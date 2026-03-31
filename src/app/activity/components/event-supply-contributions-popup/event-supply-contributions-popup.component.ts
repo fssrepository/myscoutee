@@ -1,10 +1,11 @@
-import { CommonModule } from '@angular/common';
+
 import { Component, DoCheck, Input, TemplateRef, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { delay, from } from 'rxjs';
 import type * as AppTypes from '../../../shared/core/base/models';
+import { resolveCurrentDemoDelayMs } from '../../../shared/core/base/services/route-delay.service';
 import {
   SmartListComponent,
   type ListQuery,
@@ -63,12 +64,11 @@ export interface EventSupplyContributionsPopupHost {
   selector: 'app-event-supply-contributions-popup',
   standalone: true,
   imports: [
-    CommonModule,
     FormsModule,
     MatButtonModule,
     MatIconModule,
     SmartListComponent
-  ],
+],
   templateUrl: './event-supply-contributions-popup.component.html',
   styleUrls: ['./event-supply-contributions-popup.component.scss']
 })
@@ -107,7 +107,7 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
     AppTypes.SubEventSupplyContributionRow,
     SupplyContributionListFilters
   > = query => from(this.host.loadRowsPage(query)).pipe(
-    delay(query.filters?.showProgress ? 1500 : 0)
+    delay(resolveCurrentDemoDelayMs(query.filters?.showProgress ? 1500 : 0))
   );
 
   protected readonly supplyContributionSmartListConfig: SmartListConfig<
@@ -115,7 +115,7 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
     SupplyContributionListFilters
   > = {
     pageSize: 12,
-    loadingDelayMs: 1500,
+    loadingDelayMs: resolveCurrentDemoDelayMs(1500),
     loadingWindowMs: 3000,
     defaultView: 'list',
     headerProgress: {

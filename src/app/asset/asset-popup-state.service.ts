@@ -297,7 +297,7 @@ export class AssetPopupStateService {
   }
 
   private activeUserId(): string {
-    return this.appCtx.activeUserId().trim() || 'u1';
+    return this.appCtx.activeUserId().trim();
   }
 
   private selectedTicketPayload(): AppTypes.TicketScanPayload | null {

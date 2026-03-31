@@ -45,11 +45,16 @@
 .experience-form-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 0.6rem;
   padding: 0.82rem 1rem;
   border-bottom: 1px solid rgba(187, 199, 217, 0.7);
   background: linear-gradient(180deg, #ffffff 0%, #f4f8ff 100%);
+}
+
+.subevent-form-header-title {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .subevent-form-header-title h3,
@@ -58,6 +63,9 @@
   color: #1e385a;
   font-size: 1.12rem;
   font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .subevent-form-header-title p {
@@ -73,6 +81,8 @@
   display: inline-flex;
   align-items: center;
   gap: 0.44rem;
+  flex: 0 0 auto;
+  min-width: 0;
 }
 
 @include shared.popup-header-add-btn-base();

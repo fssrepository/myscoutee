@@ -2,27 +2,40 @@
 
 <app-navigator-menu></app-navigator-menu>
 <app-navigator-settings-popups></app-navigator-settings-popups>
-<app-navigator-impressions-popup></app-navigator-impressions-popup>
-<app-profile-editor></app-profile-editor>
+@if (navigatorImpressionsPopupComponent(); as impressionsComponent) {
+  <ng-container *ngComponentOutlet="impressionsComponent"></ng-container>
+}
+@if (profileEditorComponent(); as profileComponent) {
+  <ng-container *ngComponentOutlet="profileComponent"></ng-container>
+}
 <app-confirmation-dialog></app-confirmation-dialog>
-<app-event-members-popup></app-event-members-popup>
-<app-event-resource-popup *ngIf="subEventResources.resourceHost() as host" [host]="host"></app-event-resource-popup>
-<app-event-supply-contributions-popup
-  *ngIf="subEventResources.supplyContributionsHost() as host"
-  [host]="host"
-></app-event-supply-contributions-popup>
-<app-asset-member-picker-popup></app-asset-member-picker-popup>
+@if (eventMembersPopupComponent(); as membersComponent) {
+  <ng-container *ngComponentOutlet="membersComponent"></ng-container>
+}
+@if (subEventResources.resourceHost(); as host) {
+  @if (eventResourcePopupComponent(); as resourceComponent) {
+    <ng-container *ngComponentOutlet="resourceComponent; inputs: { host: host }"></ng-container>
+  }
+}
+@if (subEventResources.supplyContributionsHost(); as host) {
+  @if (eventSupplyContributionsPopupComponent(); as supplyContributionsComponent) {
+    <ng-container *ngComponentOutlet="supplyContributionsComponent; inputs: { host: host }"></ng-container>
+  }
+}
+@if (assetMemberPickerPopupComponent(); as assetMemberPickerComponent) {
+  <ng-container *ngComponentOutlet="assetMemberPickerComponent"></ng-container>
+}
 
-<ng-container *ngIf="activitiesPopupComponent() as activitiesComponent">
+@if (activitiesPopupComponent(); as activitiesComponent) {
   <ng-container *ngComponentOutlet="activitiesComponent"></ng-container>
-</ng-container>
-<ng-container *ngIf="eventEditorPopupComponent() as popupComponent">
+}
+@if (eventEditorPopupComponent(); as popupComponent) {
   <ng-container *ngComponentOutlet="popupComponent"></ng-container>
-</ng-container>
-<ng-container *ngIf="eventFeedbackPopupComponent() as feedbackComponent">
+}
+@if (eventFeedbackPopupComponent(); as feedbackComponent) {
   <ng-container *ngComponentOutlet="feedbackComponent"></ng-container>
-</ng-container>
+}
 
-<ng-container *ngIf="assetPopupComponent() as assetComponent">
+@if (assetPopupComponent(); as assetComponent) {
   <ng-container *ngComponentOutlet="assetComponent"></ng-container>
-</ng-container>
+}

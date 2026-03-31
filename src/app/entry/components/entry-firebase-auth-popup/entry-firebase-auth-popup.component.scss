@@ -50,6 +50,8 @@
 }
 
 .popup-close {
+  position: relative;
+  overflow: hidden;
   width: 32px;
   height: 32px;
   padding: 0;
@@ -87,9 +89,13 @@
   font-size: 1.65rem;
   font-weight: 400;
   transform: translateY(-0.5px);
+  position: relative;
+  z-index: 1;
 }
 
 .firebase-auth-main-btn {
+  position: relative;
+  overflow: hidden;
   min-height: 42px;
   border: 1px solid rgba(34, 96, 176, 0.42);
   border-radius: 12px;
@@ -114,6 +120,12 @@
   height: 18px;
   font-size: 18px;
   line-height: 18px;
+}
+
+.firebase-auth-main-btn .mat-icon,
+.firebase-auth-main-btn span {
+  position: relative;
+  z-index: 1;
 }
 
 @media (max-width: 760px) {

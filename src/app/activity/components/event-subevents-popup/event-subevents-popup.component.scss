@@ -500,6 +500,22 @@
   touch-action: pan-y;
 }
 
+.subevents-stage-viewport.subevents-stage-viewport-mobile {
+  overflow-x: auto;
+  overflow-y: hidden;
+  touch-action: pan-x;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+}
+
+.subevents-stage-viewport.subevents-stage-viewport-mobile::-webkit-scrollbar {
+  display: none;
+}
+
 .subevents-stage-grid {
   --stage-gap: 0.46rem;
   --start-index: 0;
@@ -518,9 +534,20 @@
 }
 
 .subevents-stage-grid.subevents-stage-grid-mobile {
+  transform: none;
+  transition: none;
+
   .subevents-stage-card {
     flex: 0 0 100%;
+    min-width: 100%;
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+    contain: layout paint style;
   }
+}
+
+.subevents-stage-grid.subevents-stage-grid-mobile .subevents-stage-body {
+  touch-action: pan-y;
 }
 
 .subevents-stage-card {

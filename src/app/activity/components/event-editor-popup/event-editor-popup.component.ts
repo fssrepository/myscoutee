@@ -19,9 +19,9 @@ import { EventEditorBuilder } from '../../../shared/core/base/builders';
 import { EventEditorConverter } from '../../../shared/core/base/converters';
 import type * as AppTypes from '../../../shared/core/base/models';
 import { ActivityMembersService, AppContext, AppPopupContext, EventEditorDataService } from '../../../shared/core';
+import { HttpMediaService } from '../../../shared/core/http';
 import type { DemoEventRecord } from '../../../shared/core/demo/models/events.model';
-import { TopicPickerPopupComponent } from '../../../shared/ui';
-import { SessionService } from '../../../shared/core';
+import { CounterBadgePipe, TopicPickerPopupComponent } from '../../../shared/ui';
 import { environment } from '../../../../environments/environment';
 import { EventSubeventsPopupComponent, EventSubeventsItem } from '../event-subevents-popup/event-subevents-popup.component';
 
@@ -41,7 +41,8 @@ import { EventSubeventsPopupComponent, EventSubeventsItem } from '../event-subev
     MatNativeDateModule,
     MatOptionModule,
     TopicPickerPopupComponent,
-    EventSubeventsPopupComponent
+    EventSubeventsPopupComponent,
+    CounterBadgePipe
   ],
   templateUrl: './event-editor-popup.component.html',
   styleUrls: ['./event-editor-popup.component.scss']
@@ -54,7 +55,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   private readonly activityMembersService = inject(ActivityMembersService);
   private readonly appCtx = inject(AppContext);
   private readonly popupCtx = inject(AppPopupContext);
-  private readonly sessionService = inject(SessionService);
+  private readonly httpMediaService = inject(HttpMediaService);
   protected readonly interestOptionGroups = APP_STATIC_DATA.interestOptionGroups;
 
   @ViewChild('eventImageInput') eventImageInput!: ElementRef<HTMLInputElement>;
@@ -68,6 +69,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   private currentRecord: DemoEventRecord | null = null;
   private currentMemberSummary: AppTypes.ActivityMembersSummary | null = null;
   private lastHandledActivityMembersSyncMs = 0;
+  private pendingEventImageFile: File | null = null;
 
   constructor() {
     effect(() => {
@@ -185,6 +187,8 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     blindMode: 'Open Event',
     autoInviter: false,
     ticketing: false,
+    slotsEnabled: false,
+    slotTemplates: [] as AppTypes.EventSlotTemplate[],
     topics: [] as string[],
     subEvents: [] as AppTypes.EventEditorSubEventItem[],
     startAt: '',
@@ -331,6 +335,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     if (this.eventEditorService.readOnly()) {
       return false;
     }
+    const hasValidSlots = !this.eventForm.slotsEnabled || this.eventForm.slotTemplates.length > 0;
     return Boolean(
       this.eventForm.title.trim()
       && this.eventForm.description.trim()
@@ -338,7 +343,16 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       && this.eventForm.capacityMax !== null
       && this.eventForm.startAt
       && this.eventForm.endAt
+      && hasValidSlots
     );
+  }
+
+  protected canConfigureSlotsSeries(): boolean {
+    return !this.eventEditorService.readOnly() && !this.isGeneratedSlotInstance();
+  }
+
+  protected isGeneratedSlotInstance(): boolean {
+    return Boolean(this.currentRecord?.generated) || this.currentRecord?.eventType === 'slot';
   }
 
   saveEventEditorForm(): void {
@@ -602,6 +616,10 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     if (!file) {
       return;
     }
+    if (this.pendingEventImageFile && this.eventForm.imageUrl.startsWith('blob:')) {
+      URL.revokeObjectURL(this.eventForm.imageUrl);
+    }
+    this.pendingEventImageFile = this.demoModeEnabled ? null : file;
     this.eventForm.imageUrl = URL.createObjectURL(file);
     target.value = '';
   }
@@ -655,6 +673,96 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       return;
     }
     this.eventForm.ticketing = !this.eventForm.ticketing;
+  }
+
+  toggleEventSlots(event: Event): void {
+    event.preventDefault();
+    if (!this.canConfigureSlotsSeries()) {
+      return;
+    }
+    this.eventForm.slotsEnabled = !this.eventForm.slotsEnabled;
+    if (this.eventForm.slotsEnabled && this.eventForm.slotTemplates.length === 0) {
+      this.addSlotTemplate();
+    }
+  }
+
+  addSlotTemplate(): void {
+    if (!this.canConfigureSlotsSeries()) {
+      return;
+    }
+    const nextIndex = this.eventForm.slotTemplates.length + 1;
+    const startAt = this.eventForm.slotTemplates[this.eventForm.slotTemplates.length - 1]?.endAt
+      || this.eventForm.startAt
+      || AppUtils.toIsoDateTimeLocal(new Date());
+    const startDate = EventEditorConverter.parseEventEditorDateValue(startAt) ?? new Date();
+    const endDate = new Date(startDate.getTime() + (60 * 60 * 1000));
+    this.eventForm.slotTemplates = [
+      ...EventEditorBuilder.cloneEventEditorSlotTemplates(this.eventForm.slotTemplates),
+      {
+        id: `slot-${nextIndex}`,
+        startAt: AppUtils.toIsoDateTimeLocal(startDate),
+        endAt: AppUtils.toIsoDateTimeLocal(endDate)
+      }
+    ];
+  }
+
+  removeSlotTemplate(index: number): void {
+    if (!this.canConfigureSlotsSeries()) {
+      return;
+    }
+    this.eventForm.slotTemplates = this.eventForm.slotTemplates
+      .filter((_, currentIndex) => currentIndex !== index)
+      .map((item, currentIndex) => ({
+        ...item,
+        id: item.id?.trim() || `slot-${currentIndex + 1}`
+      }));
+  }
+
+  slotTemplateLabel(index: number): string {
+    return `Slot ${index + 1}`;
+  }
+
+  onSlotTemplateStartChange(index: number, value: string): void {
+    const normalizedValue = `${value ?? ''}`.trim();
+    this.eventForm.slotTemplates = this.eventForm.slotTemplates.map((item, currentIndex) => {
+      if (currentIndex !== index) {
+        return { ...item };
+      }
+      const nextStart = normalizedValue || item.startAt;
+      const startDate = EventEditorConverter.parseEventEditorDateValue(nextStart) ?? new Date();
+      const endDate = EventEditorConverter.parseEventEditorDateValue(item.endAt);
+      const nextEnd = !endDate || endDate.getTime() <= startDate.getTime()
+        ? AppUtils.toIsoDateTimeLocal(new Date(startDate.getTime() + (60 * 60 * 1000)))
+        : item.endAt;
+      return {
+        ...item,
+        startAt: nextStart,
+        endAt: nextEnd
+      };
+    });
+  }
+
+  onSlotTemplateEndChange(index: number, value: string): void {
+    const normalizedValue = `${value ?? ''}`.trim();
+    this.eventForm.slotTemplates = this.eventForm.slotTemplates.map((item, currentIndex) => {
+      if (currentIndex !== index) {
+        return { ...item };
+      }
+      const startDate = EventEditorConverter.parseEventEditorDateValue(item.startAt) ?? new Date();
+      const endDate = EventEditorConverter.parseEventEditorDateValue(normalizedValue);
+      const nextEnd = !endDate || endDate.getTime() <= startDate.getTime()
+        ? AppUtils.toIsoDateTimeLocal(new Date(startDate.getTime() + (60 * 60 * 1000)))
+        : normalizedValue;
+      return {
+        ...item,
+        endAt: nextEnd
+      };
+    });
+  }
+
+  slotTemplateInputValue(value: string): string {
+    const parsed = EventEditorConverter.parseEventEditorDateValue(value);
+    return parsed ? AppUtils.toIsoDateTimeLocal(parsed) : `${value ?? ''}`.trim();
   }
 
   onEventLocationChange(value: string): void {
@@ -780,6 +888,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
     this.syncEventFormFromDateTimeControls();
     this.normalizeEventDateRange();
+    this.normalizeEventSlotTemplates();
     this.syncFirstSubEventLocationFromMainEvent();
     const normalizedCapacity = EventEditorBuilder.normalizedEventEditorCapacityRange(this.eventForm);
     this.eventForm.capacityMin = normalizedCapacity.min;
@@ -794,6 +903,13 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       || this.draftEventId
       || EventEditorBuilder.buildCreatedEventEditorId(this.editorTarget);
     this.eventForm.id = eventId;
+    const uploadedImageUrl = await this.resolvePersistedEventImageUrl(activeUserId, eventId);
+    if (!this.demoModeEnabled && this.pendingEventImageFile && !uploadedImageUrl) {
+      return;
+    }
+    if (uploadedImageUrl) {
+      this.eventForm.imageUrl = uploadedImageUrl;
+    }
     const existingRecord = this.currentRecord
       ?? (activeUserId ? this.eventEditorDataService.peekKnownItemById(activeUserId, eventId) : null);
     const memberSummary = await this.resolveCurrentEventMembersSummary(eventId, normalizedCapacity);
@@ -872,7 +988,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   private get demoModeEnabled(): boolean {
-    return this.sessionService.currentSession()?.kind === 'demo' || !environment.loginEnabled;
+    return environment.activitiesDataSource === 'demo';
   }
 
   private resetEditorContext(): void {
@@ -882,6 +998,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.currentRecord = null;
     this.currentMemberSummary = null;
     this.lastHandledActivityMembersSyncMs = 0;
+    this.pendingEventImageFile = null;
   }
 
   private activeUserId(): string {
@@ -942,8 +1059,10 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   private populateFormFromSourceEvent(sourceEvent: Record<string, unknown>): void {
     const state = EventEditorConverter.toEventEditorFormState(sourceEvent);
     this.editingEventId = state.form.id.trim() || this.editingEventId;
+    this.pendingEventImageFile = null;
     this.eventForm = {
       ...state.form,
+      slotTemplates: EventEditorBuilder.cloneEventEditorSlotTemplates(state.form.slotTemplates),
       subEvents: EventEditorBuilder.cloneEventEditorSubEvents(state.form.subEvents)
     };
     this.subEventsDisplayMode = state.subEventsDisplayMode;
@@ -955,6 +1074,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     const start = new Date();
     const end = new Date(start.getTime() + (60 * 60 * 1000));
 
+    this.pendingEventImageFile = null;
     this.eventForm = {
       id: this.draftEventId ?? '',
       title: '',
@@ -968,6 +1088,8 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       blindMode: 'Open Event',
       autoInviter: false,
       ticketing: false,
+      slotsEnabled: false,
+      slotTemplates: [],
       topics: [],
       subEvents: [],
       startAt: AppUtils.toIsoDateTimeLocal(start),
@@ -1008,6 +1130,15 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     if (!this.eventFrequencyOptions.includes(this.eventForm.frequency)) {
       this.eventForm.frequency = this.eventFrequencyOptions[0] ?? 'One-time';
     }
+  }
+
+  private normalizeEventSlotTemplates(): void {
+    if (!this.eventForm.slotsEnabled) {
+      this.eventForm.slotTemplates = [];
+      return;
+    }
+
+    this.eventForm.slotTemplates = EventEditorBuilder.buildPersistedEventEditorSlotTemplates(this.eventForm.slotTemplates);
   }
 
   private syncMainEventBoundsFromSubEvents(): void {
@@ -1081,6 +1212,21 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       .filter(stop => stop.length > 0);
     const ordered = [mainLocation, ...subEventStops].filter(stop => stop.length > 0);
     return Array.from(new Set(ordered));
+  }
+
+  private async resolvePersistedEventImageUrl(activeUserId: string, eventId: string): Promise<string | null> {
+    if (this.demoModeEnabled || !this.pendingEventImageFile) {
+      return this.eventForm.imageUrl.trim() || null;
+    }
+    const uploadResult = await this.httpMediaService.uploadImage('event', activeUserId, eventId, this.pendingEventImageFile);
+    if (!uploadResult.uploaded || !uploadResult.imageUrl) {
+      return null;
+    }
+    if (this.eventForm.imageUrl.startsWith('blob:')) {
+      URL.revokeObjectURL(this.eventForm.imageUrl);
+    }
+    this.pendingEventImageFile = null;
+    return uploadResult.imageUrl;
   }
 
   private currentSubEventPanelState(): { item: AppTypes.EventEditorSubEventItem; index: number } | null {

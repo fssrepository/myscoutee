@@ -1,9 +1,10 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, HostListener, Input, OnChanges, Output, SimpleChanges, effect, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, EventEmitter, HostListener, Input, OnChanges, Output, SimpleChanges, ViewChild, effect, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { of } from 'rxjs';
+import { resolveCurrentDemoDelayMs } from '../../../shared/core/base/services/route-delay.service';
 import { EventSubeventGroupFormPopupComponent } from '../event-subevent-group-form-popup/event-subevent-group-form-popup.component';
 import { EventSubeventLeaderboardGroup, EventSubeventLeaderboardPopupComponent } from '../event-subevent-leaderboard-popup/event-subevent-leaderboard-popup.component';
 import { EventSubeventStageFormPopupComponent, type EventSubeventStageFormPopupView } from '../event-subevent-stage-form-popup/event-subevent-stage-form-popup.component';
@@ -14,6 +15,7 @@ import { ActivityResourceBuilder, ActivityResourcesService, AppContext, EventsSe
 import type { DemoEventRecord } from '../../../shared/core/demo/models/events.model';
 import { EventEditorPopupStateService, EventEditorSubEventResourceType } from '../../services/event-editor-popup-state.service';
 import {
+  CounterBadgePipe,
   SmartListComponent,
   type ListQuery,
   type PageResult,
@@ -75,8 +77,27 @@ interface EventSubeventsStageRow {
   groupId: string | null;
   groupName: string;
   tone: 'amber' | 'green' | 'mint' | 'teal';
+  toneClass: string;
   source: 'manual' | 'generated';
   stageSourceIndex: number;
+  stageItem: EventSubeventsPreparedItem;
+  membersLabel: string;
+  membersPendingCount: number;
+  membersCapacityMin: number;
+  membersCapacityMax: number;
+  carLabel: string;
+  carPendingCount: number;
+  carCapacityMin: number;
+  carCapacityMax: number;
+  accommodationLabel: string;
+  accommodationPendingCount: number;
+  accommodationCapacityMin: number;
+  accommodationCapacityMax: number;
+  suppliesLabel: string;
+  suppliesPendingCount: number;
+  suppliesCapacityMin: number;
+  suppliesCapacityMax: number;
+  totalPendingCount: number;
 }
 
 interface EventSubeventsStageCard {
@@ -91,6 +112,7 @@ interface EventSubeventsStageCard {
   rangeLabel: string;
   groupsLabel: string;
   accentHue: number;
+  accentColor: string;
   startMs: number;
   endMs: number;
   rows: EventSubeventsStageRow[];
@@ -160,10 +182,12 @@ type EventSubeventsAssetMetricsByType = Record<Exclude<EventEditorSubEventResour
     SmartListComponent,
     EventSubeventStageFormPopupComponent,
     EventSubeventGroupFormPopupComponent,
-    EventSubeventLeaderboardPopupComponent
+    EventSubeventLeaderboardPopupComponent,
+    CounterBadgePipe
   ],
   templateUrl: './event-subevents-popup.component.html',
-  styleUrl: './event-subevents-popup.component.scss'
+  styleUrl: './event-subevents-popup.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class EventSubeventsPopupComponent implements OnChanges {
   private readonly eventEditorService = inject(EventEditorPopupStateService);
@@ -182,6 +206,8 @@ export class EventSubeventsPopupComponent implements OnChanges {
   @Output() readonly close = new EventEmitter<void>();
   @Output() readonly displayModeChange = new EventEmitter<SubEventsDisplayMode>();
   @Output() readonly subEventsChange = new EventEmitter<EventSubeventsItem[]>();
+
+  @ViewChild('stageViewport') private stageViewportRef?: ElementRef<HTMLDivElement>;
 
   protected readonly displayModeOptions: readonly SubEventsDisplayMode[] = ['Casual', 'Tournament'];
   protected showDisplayModePicker = false;
@@ -218,8 +244,6 @@ export class EventSubeventsPopupComponent implements OnChanges {
   private subEventFormPopupViewCacheKey = '';
   private subEventFormPopupViewCache: EventSubeventStageFormPopupView | null = null;
 
-  private stageSwipeStartX: number | null = null;
-  private stageSwipeDeltaX = 0;
   private workingSubEvents: EventSubeventsItem[] = [];
   protected sortedSubEvents: EventSubeventsPreparedItem[] = [];
   protected stageCards: EventSubeventsStageCard[] = [];
@@ -228,6 +252,8 @@ export class EventSubeventsPopupComponent implements OnChanges {
   private sortedEntries: EventSubeventsSortedEntry[] = [];
   private stagePageStartIndexesCache: number[] = [];
   private stageCardByKey = new Map<string, EventSubeventsStageCard>();
+  private mobileStageScrollLockTargetIndex: number | null = null;
+  private mobileStageScrollLockTimer: ReturnType<typeof setTimeout> | null = null;
   private ownerHydrationSequence = 0;
   private localMutationVersion = 0;
   private casualListRevision = 0;
@@ -238,7 +264,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
 
   protected readonly casualSmartListConfig: SmartListConfig<EventSubeventsItem, { revision: number }> = {
     pageSize: 18,
-    loadingDelayMs: 1500,
+    loadingDelayMs: resolveCurrentDemoDelayMs(1500),
     defaultView: 'list',
     showStickyHeader: false,
     showGroupMarker: () => false,
@@ -417,47 +443,24 @@ export class EventSubeventsPopupComponent implements OnChanges {
     this.scrollStagePagesBy(direction);
   }
 
-  protected onStageSwipeStart(event: TouchEvent): void {
+  protected onStageViewportScroll(): void {
     if (!this.isMobileViewport || this.displayMode !== 'Tournament') {
       return;
     }
-    if (event.touches.length !== 1) {
+    const viewport = this.stageViewportRef?.nativeElement;
+    if (!viewport) {
       return;
     }
-    this.stageSwipeStartX = event.touches[0]?.clientX ?? null;
-    this.stageSwipeDeltaX = 0;
-  }
-
-  protected onStageSwipeMove(event: TouchEvent): void {
-    if (!this.isMobileViewport || this.stageSwipeStartX === null || event.touches.length !== 1) {
+    if (this.mobileStageScrollLockTargetIndex !== null) {
+      this.scheduleMobileStageScrollLockRelease();
       return;
     }
-    this.stageSwipeDeltaX = (event.touches[0]?.clientX ?? this.stageSwipeStartX) - this.stageSwipeStartX;
-  }
-
-  protected onStageSwipeEnd(event: TouchEvent): void {
-    if (!this.isMobileViewport || this.stageSwipeStartX === null) {
-      this.onStageSwipeCancel();
+    const nextPageIndex = this.currentMobileStagePageIndex(viewport);
+    if (nextPageIndex === this.stagePageIndex) {
       return;
     }
-
-    const deltaX = this.stageSwipeDeltaX;
-    this.onStageSwipeCancel();
-    if (Math.abs(deltaX) < 44) {
-      return;
-    }
-
-    if (deltaX < 0) {
-      this.scrollStagePagesBy(1);
-      return;
-    }
-
-    this.scrollStagePagesBy(-1);
-  }
-
-  protected onStageSwipeCancel(): void {
-    this.stageSwipeStartX = null;
-    this.stageSwipeDeltaX = 0;
+    this.stagePageIndex = nextPageIndex;
+    this.syncVisibleStageCards();
   }
 
   protected stageRangeLabel(): string {
@@ -545,14 +548,6 @@ export class EventSubeventsPopupComponent implements OnChanges {
     return this.stageAccentColorByNumber(stage.stageNumber);
   }
 
-  protected stageAccentColor(stage: EventSubeventsStageCard): string {
-    return `hsl(${stage.accentHue} 76% 54%)`;
-  }
-
-  protected stageRowToneClass(stage: EventSubeventsStageCard, row: EventSubeventsStageRow): string {
-    return `subevents-group-row-${row.tone}`;
-  }
-
   protected casualCardToneClass(item: EventSubeventsItem): string {
     return item.optional ? 'subevents-casual-card-optional' : 'subevents-casual-card-mandatory';
   }
@@ -576,6 +571,9 @@ export class EventSubeventsPopupComponent implements OnChanges {
   }
 
   protected subEventMembersResourceLabel(item: EventSubeventsItem, row?: EventSubeventsStageRow | null): string {
+    if (row) {
+      return row.membersLabel;
+    }
     const accepted = this.toPendingCount(item.membersAccepted);
     const { min, max } = this.resourceCapacityRange(item, row);
     return `${accepted} / ${min} - ${max}`;
@@ -586,6 +584,15 @@ export class EventSubeventsPopupComponent implements OnChanges {
     type: Exclude<EventEditorSubEventResourceType, 'Members'>,
     row?: EventSubeventsStageRow | null
   ): string {
+    if (row) {
+      if (type === 'Car') {
+        return row.carLabel;
+      }
+      if (type === 'Accommodation') {
+        return row.accommodationLabel;
+      }
+      return row.suppliesLabel;
+    }
     const joined = this.resourceJoinedCount(item, type);
     const { min, max } = this.resourceAssetCapacityRange(item, type, row);
     return `${joined} / ${min} - ${max}`;
@@ -596,10 +603,10 @@ export class EventSubeventsPopupComponent implements OnChanges {
     type: EventEditorSubEventResourceType,
     row?: EventSubeventsStageRow | null
   ): number {
+    if (row) {
+      return this.groupPendingCountForType(row, type);
+    }
     if (type === 'Members') {
-      if (row) {
-        return this.toPendingCount(row.pending);
-      }
       return this.toPendingCount(item.membersPending);
     }
     const subEvent = this.toSubEventResourceItem(item);
@@ -628,13 +635,11 @@ export class EventSubeventsPopupComponent implements OnChanges {
 
     const group = row
       ? (() => {
-        const range = type === 'Members'
-          ? this.resourceCapacityRange(item, row)
-          : this.resourceAssetCapacityRange(item, type, row);
+        const range = this.groupCapacityRangeForType(row, type);
         return {
           id: row.groupId,
           groupLabel: row.groupName,
-          pending: this.resourcePendingCount(item, type, row),
+          pending: this.groupPendingCountForType(row, type),
           capacityMin: range.min,
           capacityMax: range.max
         };
@@ -663,14 +668,6 @@ export class EventSubeventsPopupComponent implements OnChanges {
 
   protected casualMenuPendingCount(item: EventSubeventsItem): number {
     return (item as EventSubeventsPreparedItem).casualMenuPendingCount ?? this.buildCasualMenuPendingCount(item);
-  }
-
-  protected groupMenuPendingCount(item: EventSubeventsItem, row: EventSubeventsStageRow): number {
-    const members = this.resourcePendingCount(item, 'Members', row);
-    return members
-      + this.preparedAssetMetricsForItem(item, 'Car').pending
-      + this.preparedAssetMetricsForItem(item, 'Accommodation').pending
-      + this.preparedAssetMetricsForItem(item, 'Supplies').pending;
   }
 
   protected toggleCasualActionMenu(item: EventSubeventsItem, index: number, event: Event): void {
@@ -704,10 +701,6 @@ export class EventSubeventsPopupComponent implements OnChanges {
       groupId: null,
       label: this.casualCardTitle(item, index)
     };
-  }
-
-  protected isStageActionMenuOpen(stage: EventSubeventsStageCard): boolean {
-    return this.openStageMenuKey === stage.key;
   }
 
   protected toggleStageActionMenu(stage: EventSubeventsStageCard, event: Event): void {
@@ -759,10 +752,6 @@ export class EventSubeventsPopupComponent implements OnChanges {
       return;
     }
     this.openSubEventLocation(source, event);
-  }
-
-  protected isGroupActionMenuOpen(row: EventSubeventsStageRow): boolean {
-    return this.openGroupMenuKey === row.key;
   }
 
   protected toggleGroupActionMenu(row: EventSubeventsStageRow, event: Event): void {
@@ -1366,8 +1355,8 @@ export class EventSubeventsPopupComponent implements OnChanges {
         stageNumber = this.workingSubEvents.length + 1;
       }
       return this.subEventFormMode === 'edit'
-        ? `Edit Stage ${stageNumber} Event`
-        : `Create Stage ${stageNumber} Event`;
+        ? `Edit Stage ${stageNumber}`
+        : `Create Stage ${stageNumber}`;
     }
     return this.subEventFormMode === 'edit' ? 'Edit Sub Event' : 'Create Sub Event';
   }
@@ -1463,6 +1452,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
     const visibleStageCount = this.columnsPerPage();
     this.stagePages = this.stagePageStartIndexesCache.map(startIndex => this.stageCards.slice(startIndex, startIndex + visibleStageCount));
     this.clampStagePageIndex();
+    this.queueMobileStageViewportSync('auto');
     if (this.showLeaderboardPopup) {
       this.syncLeaderboardPopupState();
     }
@@ -1512,6 +1502,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
         rangeLabel: this.subEventRangeLabel(item),
         groupsLabel: rows.length === 1 ? '1 group' : `${rows.length} groups`,
         accentHue: this.stageAccentHue(stageNumber, totalStages),
+        accentColor: this.stageAccentColorByNumber(stageNumber, totalStages),
         startMs,
         endMs,
         rows
@@ -1547,7 +1538,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
     this.visibleStageCards = this.stagePages[this.stagePageIndex] ?? [];
   }
 
-  private stageRowsForItem(item: EventSubeventsItem, stageSourceIndex: number, stageId: string): EventSubeventsStageRow[] {
+  private stageRowsForItem(item: EventSubeventsPreparedItem, stageSourceIndex: number, stageId: string): EventSubeventsStageRow[] {
     const groups = this.cloneGroups(item.groups);
     const toneByIndex: Array<'amber' | 'green' | 'mint' | 'teal'> = ['amber', 'green', 'mint', 'teal'];
     const explicitGroupCount = this.normalizedNonNegativeInt(item.tournamentGroupCount);
@@ -1558,21 +1549,48 @@ export class EventSubeventsPopupComponent implements OnChanges {
       : 0;
     const targetGroupCount = Math.max(groups.length, explicitGroupCount ?? inferredGroupCount, 1);
     const rows: EventSubeventsStageRow[] = [];
+    const membersAccepted = this.toPendingCount(item.membersAccepted);
+    const carMetrics = item.resourceMetrics.Car;
+    const accommodationMetrics = item.resourceMetrics.Accommodation;
+    const suppliesMetrics = item.resourceMetrics.Supplies;
 
     for (let index = 0; index < targetGroupCount; index += 1) {
       const group = groups[index] ?? null;
       const letter = String.fromCharCode(65 + (index % 26));
       const groupName = `${group?.name ?? `Group ${letter}`}`.trim() || `Group ${letter}`;
       const source = group ? this.normalizeGroupSource(group.source) : 'generated';
+      const tone = toneByIndex[index % toneByIndex.length];
+      const membersPendingCount = this.toPendingCount(group?.membersPending ?? item.membersPending ?? 6);
+      const membersCapacityMin = Math.max(0, Number(group?.capacityMin ?? item.capacityMin) || 0);
+      const membersCapacityMax = Math.max(membersCapacityMin, Number(group?.capacityMax ?? item.capacityMax) || membersCapacityMin);
       rows.push({
         key: `${stageId}-${group?.id ?? `generated-${index}`}`,
         label: `${groupName.toUpperCase()} · ${source.toUpperCase()}`,
-        pending: this.toPendingCount(group?.membersPending ?? item.membersPending ?? 6),
+        pending: membersPendingCount,
         groupId: group?.id ?? null,
         groupName,
-        tone: toneByIndex[index % toneByIndex.length],
+        tone,
+        toneClass: `subevents-group-row-${tone}`,
         source,
-        stageSourceIndex
+        stageSourceIndex,
+        stageItem: item,
+        membersLabel: `${membersAccepted} / ${membersCapacityMin} - ${membersCapacityMax}`,
+        membersPendingCount,
+        membersCapacityMin,
+        membersCapacityMax,
+        carLabel: `${carMetrics.accepted} / ${carMetrics.capacityMin} - ${carMetrics.capacityMax}`,
+        carPendingCount: carMetrics.pending,
+        carCapacityMin: carMetrics.capacityMin,
+        carCapacityMax: carMetrics.capacityMax,
+        accommodationLabel: `${accommodationMetrics.accepted} / ${accommodationMetrics.capacityMin} - ${accommodationMetrics.capacityMax}`,
+        accommodationPendingCount: accommodationMetrics.pending,
+        accommodationCapacityMin: accommodationMetrics.capacityMin,
+        accommodationCapacityMax: accommodationMetrics.capacityMax,
+        suppliesLabel: `${suppliesMetrics.accepted} / ${suppliesMetrics.capacityMin} - ${suppliesMetrics.capacityMax}`,
+        suppliesPendingCount: suppliesMetrics.pending,
+        suppliesCapacityMin: suppliesMetrics.capacityMin,
+        suppliesCapacityMax: suppliesMetrics.capacityMax,
+        totalPendingCount: membersPendingCount + carMetrics.pending + accommodationMetrics.pending + suppliesMetrics.pending
       });
     }
 
@@ -2079,9 +2097,8 @@ export class EventSubeventsPopupComponent implements OnChanges {
     return Math.round(210 - (210 * ratio));
   }
 
-  private stageAccentColorByNumber(stageNumber: number): string {
-    const total = Math.max(this.stageCards.length, 1);
-    return `hsl(${this.stageAccentHue(stageNumber, total)} 76% 54%)`;
+  private stageAccentColorByNumber(stageNumber: number, totalStages = Math.max(this.stageCards.length, 1)): string {
+    return `hsl(${this.stageAccentHue(stageNumber, totalStages)} 76% 54%)`;
   }
 
   private resolveStageNumberById(stageId: string | null | undefined): number | null {
@@ -2120,6 +2137,106 @@ export class EventSubeventsPopupComponent implements OnChanges {
       Math.max(0, this.stagePages.length - 1)
     );
     this.syncVisibleStageCards();
+    this.queueMobileStageViewportSync(this.isMobileViewport ? 'smooth' : 'auto');
+  }
+
+  private queueMobileStageViewportSync(behavior: ScrollBehavior): void {
+    if (!this.isMobileViewport || this.displayMode !== 'Tournament') {
+      this.clearMobileStageScrollLock();
+      return;
+    }
+    const targetPageIndex = this.stagePageIndex;
+    if (behavior === 'smooth') {
+      this.mobileStageScrollLockTargetIndex = targetPageIndex;
+      this.scheduleMobileStageScrollLockRelease();
+    } else {
+      this.clearMobileStageScrollLock();
+    }
+
+    const sync = () => {
+      const viewport = this.stageViewportRef?.nativeElement;
+      if (!viewport) {
+        return;
+      }
+      const targetLeft = this.mobileStagePageOffsetLeft(viewport, targetPageIndex);
+      if (targetLeft < 0) {
+        return;
+      }
+      const previousScrollBehavior = viewport.style.scrollBehavior;
+      viewport.style.scrollBehavior = behavior;
+      viewport.scrollLeft = targetLeft;
+      const restore = () => {
+        viewport.style.scrollBehavior = previousScrollBehavior;
+      };
+      if (typeof globalThis.requestAnimationFrame === 'function') {
+        globalThis.requestAnimationFrame(() => restore());
+      } else {
+        setTimeout(restore, 0);
+      }
+    };
+
+    if (typeof globalThis.requestAnimationFrame === 'function') {
+      globalThis.requestAnimationFrame(() => globalThis.requestAnimationFrame(sync));
+      return;
+    }
+    setTimeout(sync, 0);
+  }
+
+  private scheduleMobileStageScrollLockRelease(): void {
+    if (this.mobileStageScrollLockTimer) {
+      clearTimeout(this.mobileStageScrollLockTimer);
+    }
+    this.mobileStageScrollLockTimer = setTimeout(() => {
+      this.mobileStageScrollLockTimer = null;
+      const viewport = this.stageViewportRef?.nativeElement;
+      const finalPageIndex = viewport
+        ? this.currentMobileStagePageIndex(viewport)
+        : this.mobileStageScrollLockTargetIndex;
+      this.mobileStageScrollLockTargetIndex = null;
+      if (finalPageIndex === null || finalPageIndex === this.stagePageIndex) {
+        return;
+      }
+      this.stagePageIndex = finalPageIndex;
+      this.syncVisibleStageCards();
+    }, 96);
+  }
+
+  private clearMobileStageScrollLock(): void {
+    if (this.mobileStageScrollLockTimer) {
+      clearTimeout(this.mobileStageScrollLockTimer);
+      this.mobileStageScrollLockTimer = null;
+    }
+    this.mobileStageScrollLockTargetIndex = null;
+  }
+
+  private currentMobileStagePageIndex(viewport: HTMLDivElement): number {
+    const cards = Array.from(viewport.querySelectorAll<HTMLElement>('.subevents-stage-card'));
+    if (cards.length === 0) {
+      return 0;
+    }
+    const currentLeft = viewport.scrollLeft;
+    let closestIndex = 0;
+    let closestDistance = Number.POSITIVE_INFINITY;
+
+    cards.forEach((card, index) => {
+      const distance = Math.abs(card.offsetLeft - currentLeft);
+      if (distance < closestDistance) {
+        closestDistance = distance;
+        closestIndex = index;
+      }
+    });
+
+    return AppUtils.clampNumber(closestIndex, 0, Math.max(0, this.stagePages.length - 1));
+  }
+
+  private mobileStagePageOffsetLeft(viewport: HTMLDivElement, pageIndex: number): number {
+    const cards = Array.from(viewport.querySelectorAll<HTMLElement>('.subevents-stage-card'));
+    if (cards.length === 0) {
+      return -1;
+    }
+    const targetIndex = AppUtils.clampNumber(pageIndex, 0, Math.max(0, cards.length - 1));
+    const targetCard = cards[targetIndex] ?? null;
+    return targetCard ? Math.max(0, targetCard.offsetLeft) : -1;
   }
 
   protected stageGridTransform(): string {
@@ -2134,6 +2251,9 @@ export class EventSubeventsPopupComponent implements OnChanges {
   }
 
   protected get stageGridStartIndex(): number {
+    if (this.isMobileViewport) {
+      return 0;
+    }
     return this.stagePageStartIndexesCache[this.stagePageIndex] ?? 0;
   }
 
@@ -2192,6 +2312,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
 
     this.stagePageIndex = AppUtils.clampNumber(nextPageIndex, 0, Math.max(0, pageStarts.length - 1));
     this.syncVisibleStageCards();
+    this.queueMobileStageViewportSync('auto');
   }
 
 
@@ -2544,6 +2665,9 @@ export class EventSubeventsPopupComponent implements OnChanges {
       if (entry.item.id === insertedId) {
         continue;
       }
+      if (!this.shouldAutoAdjustInsertedSubEventOverlap(inserted, entry.item)) {
+        continue;
+      }
       if ((entry.startMs as number) < (insertedStartMs as number) && (entry.endMs as number) > (insertedStartMs as number)) {
         trimCandidate = entry;
       }
@@ -2554,6 +2678,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
 
     const firstShiftOverlap = ordered.find(entry =>
       entry.item.id !== insertedId
+      && this.shouldAutoAdjustInsertedSubEventOverlap(inserted, entry.item)
       && (entry.startMs as number) >= (insertedStartMs as number)
       && (entry.startMs as number) < (insertedEndMs as number)
     );
@@ -2568,7 +2693,11 @@ export class EventSubeventsPopupComponent implements OnChanges {
     }
 
     for (const entry of ordered) {
-      if (entry.item.id === insertedId || (entry.startMs as number) < shiftStartMs) {
+      if (
+        entry.item.id === insertedId
+        || (entry.startMs as number) < shiftStartMs
+        || !this.shouldAutoAdjustInsertedSubEventOverlap(inserted, entry.item)
+      ) {
         continue;
       }
       entry.item.startAt = AppUtils.toIsoDateTimeLocal(new Date((entry.startMs as number) + shiftMs));
@@ -2576,6 +2705,13 @@ export class EventSubeventsPopupComponent implements OnChanges {
     }
 
     return nextItems;
+  }
+
+  private shouldAutoAdjustInsertedSubEventOverlap(
+    inserted: Pick<EventSubeventsItem, 'optional'>,
+    candidate: Pick<EventSubeventsItem, 'optional'>
+  ): boolean {
+    return !(inserted.optional === true && candidate.optional === true);
   }
 
   private normalizedTournamentLeaderboardType(value: unknown): TournamentLeaderboardType {
@@ -2698,6 +2834,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
   }
 
   private resetTransientUi(): void {
+    this.clearMobileStageScrollLock();
     this.showDisplayModePicker = false;
     this.openStageMenuKey = null;
     this.openGroupMenuKey = null;
@@ -2719,7 +2856,6 @@ export class EventSubeventsPopupComponent implements OnChanges {
     this.leaderboardPopupGroups = [];
     this.leaderboardPopupMode = 'Score';
     this.pendingDeleteTarget = null;
-    this.onStageSwipeCancel();
   }
 
   private cloneSubEvents(items: readonly EventSubeventsItem[]): EventSubeventsItem[] {
@@ -2766,6 +2902,44 @@ export class EventSubeventsPopupComponent implements OnChanges {
       return [];
     }
     return groups.map(group => ({ ...group }));
+  }
+
+  private groupPendingCountForType(row: EventSubeventsStageRow, type: EventEditorSubEventResourceType): number {
+    if (type === 'Members') {
+      return row.membersPendingCount;
+    }
+    if (type === 'Car') {
+      return row.carPendingCount;
+    }
+    if (type === 'Accommodation') {
+      return row.accommodationPendingCount;
+    }
+    return row.suppliesPendingCount;
+  }
+
+  private groupCapacityRangeForType(row: EventSubeventsStageRow, type: EventEditorSubEventResourceType): { min: number; max: number } {
+    if (type === 'Members') {
+      return {
+        min: row.membersCapacityMin,
+        max: row.membersCapacityMax
+      };
+    }
+    if (type === 'Car') {
+      return {
+        min: row.carCapacityMin,
+        max: row.carCapacityMax
+      };
+    }
+    if (type === 'Accommodation') {
+      return {
+        min: row.accommodationCapacityMin,
+        max: row.accommodationCapacityMax
+      };
+    }
+    return {
+      min: row.suppliesCapacityMin,
+      max: row.suppliesCapacityMax
+    };
   }
 
   private nextId(prefix: string): string {

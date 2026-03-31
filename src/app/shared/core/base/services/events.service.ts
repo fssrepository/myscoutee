@@ -135,8 +135,12 @@ export class EventsService extends BaseRouteModeService {
     return this.eventsService.restoreItem(userId, type, sourceId);
   }
 
-  requestJoin(userId: string, sourceId: string): Promise<DemoEventRecord | null> {
-    return this.eventsService.requestJoin(userId, sourceId);
+  requestJoin(
+    userId: string,
+    sourceId: string,
+    options: { slotSourceId?: string | null } = {}
+  ): Promise<DemoEventRecord | null> {
+    return this.eventsService.requestJoin(userId, sourceId, options);
   }
 
   queryEventFeedbackStates(userId: string): Promise<EventFeedbackStateDto[]> {

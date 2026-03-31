@@ -8,6 +8,7 @@ import { MatSelectModule, MatSelect } from '@angular/material/select';
 import { of } from 'rxjs';
 
 import {
+  CounterBadgePipe,
   InfoCardComponent,
   SmartListComponent,
   type InfoCardData,
@@ -20,6 +21,7 @@ import {
   type SmartListStateChange
 } from '../../../shared/ui';
 import type * as AppTypes from '../../../shared/core/base/models';
+import { resolveCurrentDemoDelayMs } from '../../../shared/core/base/services/route-delay.service';
 
 interface CapacityEditorState {
   title: string;
@@ -126,7 +128,8 @@ export interface EventResourcePopupHost {
     MatIconModule,
     MatSelectModule,
     SmartListComponent,
-    InfoCardComponent
+    InfoCardComponent,
+    CounterBadgePipe
   ],
   templateUrl: './event-resource-popup.component.html',
   styleUrls: ['./event-resource-popup.component.scss']
@@ -176,7 +179,7 @@ export class EventResourcePopupComponent implements DoCheck {
 
   protected readonly resourceSmartListConfig: SmartListConfig<AppTypes.SubEventResourceCard, ResourceSmartListFilters> = {
     pageSize: 18,
-    loadingDelayMs: 1500,
+    loadingDelayMs: resolveCurrentDemoDelayMs(1500),
     loadingWindowMs: 3000,
     defaultView: 'list',
     headerProgress: {

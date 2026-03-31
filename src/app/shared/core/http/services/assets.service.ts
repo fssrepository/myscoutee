@@ -28,4 +28,12 @@ export class HttpAssetsService {
   async deleteOwnedAsset(userId: string, assetId: string): Promise<void> {
     await this.assetsRepository.deleteOwnedAsset(userId, assetId);
   }
+
+  async refreshAssetSourcePreview(
+    userId: string,
+    type: AppTypes.AssetType,
+    sourceLink: string
+  ): Promise<AppTypes.AssetSourcePreview | null> {
+    return this.assetsRepository.refreshAssetSourcePreview(userId, type, sourceLink);
+  }
 }

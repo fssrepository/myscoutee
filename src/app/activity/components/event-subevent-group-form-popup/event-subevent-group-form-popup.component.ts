@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
@@ -12,7 +12,7 @@ interface GroupFormModel {
 @Component({
   selector: 'app-event-subevent-group-form-popup',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatIconModule],
+  imports: [FormsModule, MatIconModule],
   templateUrl: './event-subevent-group-form-popup.component.html',
   styleUrls: ['./event-subevent-group-form-popup.component.scss']
 })

@@ -1,10 +1,10 @@
-import { CommonModule } from '@angular/common';
+
 import { ChangeDetectionStrategy, Component, Input } from '@angular/core';
 
 @Component({
   selector: 'app-smart-list-default-card',
   standalone: true,
-  imports: [CommonModule],
+  imports: [],
   templateUrl: './smart-list-default-card.component.html',
   styleUrl: './smart-list-default-card.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush

@@ -51,6 +51,14 @@ export interface DemoEventRecord {
   autoInviter?: boolean;
   frequency?: string;
   ticketing: boolean;
+  slotsEnabled?: boolean;
+  slotTemplates?: AppTypes.EventSlotTemplate[];
+  parentEventId?: string | null;
+  slotTemplateId?: string | null;
+  generated?: boolean;
+  eventType?: AppTypes.EventRecordKind;
+  nextSlot?: AppTypes.EventSlotOccurrence | null;
+  upcomingSlots?: AppTypes.EventSlotOccurrence[];
   acceptedMembers: number;
   pendingMembers: number;
   acceptedMemberUserIds: string[];

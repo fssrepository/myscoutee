@@ -13,9 +13,11 @@ import {
 import {
   resolveHostTierColorClass,
   resolveHostTierIcon,
+  resolveHostTierToneClass,
   resolveMemberImpressionTitle,
   resolveTraitColorClass,
-  resolveTraitIcon
+  resolveTraitIcon,
+  resolveTraitToneClass
 } from '../../navigator-presenters';
 import { NavigatorService } from '../../navigator.service';
 
@@ -224,12 +226,20 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
     return resolveHostTierIcon(tier);
   }
 
+  protected getHostTierToneClass(tier: string): string {
+    return resolveHostTierToneClass(tier);
+  }
+
   protected getTraitColorClass(trait: string): string {
     return resolveTraitColorClass(trait);
   }
 
   protected getTraitIcon(trait: string): string {
     return resolveTraitIcon(trait);
+  }
+
+  protected getTraitToneClass(trait: string): string {
+    return resolveTraitToneClass(trait);
   }
 
   protected previousHostTrait(): void {

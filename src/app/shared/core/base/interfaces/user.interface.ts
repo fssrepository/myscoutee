@@ -50,6 +50,14 @@ export interface UserRealtimeLongPollResponseDto {
   serverTsIso?: string;
 }
 
+export interface UserLocationEligibilityResponseDto {
+  eligible: boolean;
+  partitionKey?: string | null;
+  message?: string | null;
+  securityGateEnabled?: boolean;
+  locationRequired?: boolean;
+}
+
 export interface DemoUserListItemDto {
   id: string;
   name: string;
@@ -78,6 +86,7 @@ export interface UserDto {
   about: string;
   affinity?: number;
   locationCoordinates?: LocationCoordinates;
+  partitionKey?: string;
   images?: string[];
   impressions?: UserImpressionsDto;
   profileStatus: 'public' | 'friends only' | 'host only' | 'inactive' | 'deleted';
@@ -137,6 +146,7 @@ export interface UserProfileImageUploadResult {
 
 export interface UserService {
   queryAvailableDemoUsers(): Promise<UsersListQueryResponse>;
+  checkLocationEligibility(coordinates?: LocationCoordinates | null): Promise<UserLocationEligibilityResponseDto>;
   queryUserById(userId?: string): Promise<UserByIdQueryResponse>;
   queryUserRealtimeLongPoll(userId: string, cursor?: string | null): Promise<UserRealtimeLongPollResponseDto | null>;
   saveUserFilterPreferences(userId: string, preferences: UserGameFilterPreferencesDto): Promise<void>;

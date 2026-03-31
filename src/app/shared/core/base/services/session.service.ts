@@ -2,6 +2,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 
 import { environment } from '../../../../../environments/environment';
 import type * as AppTypes from '../../../core/base/models';
+import { AppContext } from '../context';
 import { FirebaseAuthService } from './firebase-auth.service';
 
 export type AppSession =
@@ -16,6 +17,7 @@ export class SessionService {
   private static readonly DEMO_ACTIVE_USER_KEY = 'demo-active-user';
 
   private readonly firebaseAuthService = inject(FirebaseAuthService);
+  private readonly appCtx = inject(AppContext);
   private readonly sessionRef = signal<AppSession | null>(this.loadStoredSession());
   private readonly firebaseBusyRef = signal(false);
 
@@ -26,6 +28,10 @@ export class SessionService {
     return current?.kind === 'firebase' ? current.profile : null;
   });
   readonly authMode: AppTypes.AuthMode = environment.loginEnabled ? 'firebase' : 'selector';
+
+  constructor() {
+    this.syncActiveUserIdWithSession(this.sessionRef());
+  }
 
   currentSession(): AppSession | null {
     return this.sessionRef();
@@ -121,12 +127,26 @@ export class SessionService {
 
   private persistSession(session: AppSession): void {
     this.sessionRef.set(session);
+    this.syncActiveUserIdWithSession(session);
     localStorage.setItem(SessionService.SESSION_STORAGE_KEY, JSON.stringify(session));
   }
 
   private clearStoredSession(): void {
     this.sessionRef.set(null);
+    this.syncActiveUserIdWithSession(null);
     localStorage.removeItem(SessionService.SESSION_STORAGE_KEY);
+  }
+
+  private syncActiveUserIdWithSession(session: AppSession | null): void {
+    if (session?.kind === 'demo') {
+      this.appCtx.setActiveUserId(session.userId.trim());
+      return;
+    }
+    if (session?.kind === 'firebase') {
+      this.appCtx.setActiveUserId(session.profile.id.trim());
+      return;
+    }
+    this.appCtx.setActiveUserId('');
   }
 
   private loadStoredSession(): AppSession | null {

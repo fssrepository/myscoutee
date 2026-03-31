@@ -11,6 +11,7 @@ import {
   type ActivityCounterKey,
   type UserDto
 } from '../../../shared/core';
+import { CounterBadgePipe } from '../../../shared/ui';
 import { NavigatorService } from '../../navigator.service';
 
 interface NavigatorAvatarState {
@@ -21,7 +22,7 @@ interface NavigatorAvatarState {
 @Component({
   selector: 'app-avatar-btn',
   standalone: true,
-  imports: [CommonModule, MatButtonModule, MatIconModule],
+  imports: [CommonModule, MatButtonModule, MatIconModule, CounterBadgePipe],
   templateUrl: './avatar-btn.component.html',
   styleUrl: './avatar-btn.component.scss'
 })
@@ -51,7 +52,7 @@ export class AvatarBtnComponent implements OnDestroy {
     };
   });
   protected readonly menuUiState = this.navigatorService.menuUiState;
-  protected readonly isCoveredByPopup = this.navigatorService.menuCoveredByPopup;
+  protected readonly isCoveredByAssetPopup = this.navigatorService.navigatorCoveredByAssetPopup;
   protected readonly visible = computed(() => this.isInternalRoute(this.currentUrlRef()));
   protected readonly hasBindings = computed(() => this.bindings() !== null);
   protected readonly isOpen = computed(() => this.menuUiState().open);

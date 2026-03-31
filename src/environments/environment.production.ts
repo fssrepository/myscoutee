@@ -1,8 +1,10 @@
 export const environment = {
   production: true,
   loginEnabled: false,
-  activitiesDataSource: 'demo' as const,
+  activitiesDataSource: 'demo' as 'demo' | 'http',
+  demoBootstrapEnabled: true,
   apiBaseUrl: '/api',
   serviceWorkerEnabled: true,
-  firebaseMessagingEnabled: true
+  firebaseMessagingEnabled: true,
+  assetSourceRefreshEnabled: true
 };

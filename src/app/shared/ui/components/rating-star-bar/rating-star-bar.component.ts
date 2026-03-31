@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, HostBinding, Input, OnDestroy, Output, inject } from '@angular/core';
 
 export type RatingStarBarPresentation = 'list' | 'fullscreen';
@@ -16,13 +16,14 @@ export interface RatingStarBarConfig {
   label?: string | null;
   presentation?: RatingStarBarPresentation;
   animation?: RatingStarBarAnimation;
+  blinkOnSelect?: boolean;
   dock?: RatingStarBarDockConfig | null;
 }
 
 @Component({
   selector: 'app-rating-star-bar',
   standalone: true,
-  imports: [CommonModule],
+  imports: [],
   templateUrl: './rating-star-bar.component.html',
   styleUrl: './rating-star-bar.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -101,7 +102,9 @@ export class RatingStarBarComponent implements OnDestroy {
     if (this.resolvedReadonly) {
       return;
     }
-    this.triggerTransientBlink();
+    if (this.config?.blinkOnSelect !== false) {
+      this.triggerTransientBlink();
+    }
     this.scoreSelect.emit(score);
   }
 

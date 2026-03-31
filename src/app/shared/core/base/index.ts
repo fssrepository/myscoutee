@@ -24,6 +24,7 @@ export { AssetsService } from './services/assets.service';
 export { ActivityInviteCandidatesService } from './services/activity-invite-candidates.service';
 export { ChatsService } from './services/chats.service';
 export { RatesService } from './services/rates.service';
+export { UserExperiencesService } from './services/user-experiences.service';
 export {
   SessionService,
   type AppSession

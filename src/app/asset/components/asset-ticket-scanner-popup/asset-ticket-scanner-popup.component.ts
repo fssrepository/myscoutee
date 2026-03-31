@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import { AfterViewInit, Component, ElementRef, EventEmitter, Input, OnDestroy, Output, ViewChild } from '@angular/core';
 
 import type * as AppTypes from '../../../shared/core/base/models';
@@ -6,7 +6,7 @@ import type * as AppTypes from '../../../shared/core/base/models';
 @Component({
   selector: 'app-asset-ticket-scanner-popup',
   standalone: true,
-  imports: [CommonModule],
+  imports: [],
   templateUrl: './asset-ticket-scanner-popup.component.html',
   styleUrl: './asset-ticket-scanner-popup.component.scss'
 })

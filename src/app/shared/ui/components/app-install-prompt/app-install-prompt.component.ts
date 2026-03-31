@@ -1,10 +1,10 @@
-import { CommonModule } from '@angular/common';
+
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 
 @Component({
   selector: 'app-install-prompt',
   standalone: true,
-  imports: [CommonModule],
+  imports: [],
   templateUrl: './app-install-prompt.component.html',
   styleUrl: './app-install-prompt.component.scss'
 })

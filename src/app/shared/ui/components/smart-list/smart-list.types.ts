@@ -13,7 +13,7 @@ export type SmartListCalendarVariant = 'default' | 'rate-counts';
 export type SmartListListLayout = 'stack' | 'card-grid' | 'thread';
 export type SmartListSnapMode = 'none' | 'proximity' | 'mandatory';
 export type SmartListPaginationMode = 'scroll' | 'arrows' | 'rating-stars';
-export type SmartListItemRenderState = 'list' | 'active' | 'leaving';
+export type SmartListItemRenderState = 'list' | 'default' | 'active' | 'leaving';
 export type SmartListFilters = object;
 export type SmartListLoadTriggerEdge = 'end' | 'start';
 export type SmartListMergeStrategy = 'append' | 'prepend';
@@ -50,6 +50,7 @@ export type SmartListLoaders<T, TFilters extends SmartListFilters = SmartListFil
 export interface SmartListGroup<T> {
   label: string;
   items: T[];
+  startIndex: number;
 }
 
 export interface SmartListStateChange<T, TFilters extends SmartListFilters = SmartListFilters> {

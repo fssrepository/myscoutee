@@ -1,20 +1,32 @@
 import { Injectable } from '@angular/core';
+import { environment } from '../../../../../environments/environment';
 
 import { resolveRouteConfig } from '../config';
+
+export function resolveCurrentRouteDelayMs(route: string, fallbackDelayMs = 0): number {
+  const routeConfig = resolveRouteConfig(route);
+  if (routeConfig.http) {
+    return 0;
+  }
+  if (routeConfig.demoDelayMs > 0) {
+    return routeConfig.demoDelayMs;
+  }
+  return normalizeDelayMs(fallbackDelayMs);
+}
+
+export function resolveCurrentDemoDelayMs(fallbackDelayMs = 0): number {
+  if (environment.activitiesDataSource !== 'demo') {
+    return 0;
+  }
+  return normalizeDelayMs(fallbackDelayMs);
+}
 
 @Injectable({
   providedIn: 'root'
 })
 export class RouteDelayService {
   resolveDelayMs(route: string, fallbackDelayMs = 0): number {
-    const routeConfig = resolveRouteConfig(route);
-    if (routeConfig.http) {
-      return 0;
-    }
-    if (routeConfig.demoDelayMs > 0) {
-      return routeConfig.demoDelayMs;
-    }
-    return this.normalizeDelayMs(fallbackDelayMs);
+    return resolveCurrentRouteDelayMs(route, fallbackDelayMs);
   }
 
   async waitForRouteDelay(
@@ -67,6 +79,10 @@ export class RouteDelayService {
   }
 
   private normalizeDelayMs(value: number): number {
-    return Math.max(0, Math.trunc(Number(value) || 0));
+    return normalizeDelayMs(value);
   }
+}
+
+function normalizeDelayMs(value: number): number {
+  return Math.max(0, Math.trunc(Number(value) || 0));
 }
