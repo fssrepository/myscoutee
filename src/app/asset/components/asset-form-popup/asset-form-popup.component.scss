@@ -15,6 +15,90 @@
   color: rgba(39, 87, 148, 0.94);
 }
 
+.asset-form-save-btn-shell {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  padding: 2px;
+  box-sizing: border-box;
+  overflow: hidden;
+  flex: 0 0 auto;
+}
+
+.asset-form-save-btn {
+  position: relative;
+  z-index: 1;
+  width: 30px;
+  min-width: 30px;
+  height: 30px;
+  min-height: 30px;
+  border-radius: 50%;
+}
+
+.asset-form-save-btn-ring {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.asset-form-save-btn-ring-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  transform-origin: 50% 50%;
+  will-change: transform;
+  filter: drop-shadow(0 4px 12px rgba(22, 94, 51, 0.12));
+}
+
+.asset-form-save-btn-ring-track,
+.asset-form-save-btn-ring-progress {
+  fill: none;
+  stroke-width: 3;
+}
+
+.asset-form-save-btn-ring-track {
+  stroke: rgba(133, 100, 42, 0.18);
+}
+
+.asset-form-save-btn-ring-progress {
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transform-origin: 50% 50%;
+  transform: rotate(-90deg);
+  transition: stroke-dashoffset 3s linear;
+}
+
+.asset-form-save-btn-ring-progress.is-loading {
+  stroke: url(#asset-form-save-gradient);
+}
+
+.asset-form-save-btn-shell.is-loading .asset-form-save-btn,
+.asset-form-save-btn-shell.is-loading .asset-form-save-btn:hover,
+.asset-form-save-btn-shell.is-loading .asset-form-save-btn:disabled {
+  border-color: rgba(181, 117, 23, 0.76);
+  background: linear-gradient(180deg, #ffe7bf 0%, #ffd085 100%);
+  color: #8e4f0d;
+  opacity: 1;
+  cursor: wait;
+  box-shadow: none;
+  transform: none;
+  filter: none;
+}
+
+.asset-form-required-marker {
+  color: #cb2f2f;
+  font-weight: 800;
+  margin-left: 0.12rem;
+}
+
+.experience-form-panel.is-saving {
+  pointer-events: none;
+}
+
 .experience-form-panel.event-visibility-public {
   background: linear-gradient(180deg, #f3f8ff 0%, #ecf4ff 100%);
   border-color: rgba(46, 111, 178, 0.24);

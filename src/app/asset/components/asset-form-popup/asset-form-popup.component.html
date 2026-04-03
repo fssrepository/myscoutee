@@ -1,25 +1,55 @@
 @if (visible) {
   <section class="experience-form-overlay asset-form-overlay">
-    <div class="experience-form-overlay-backdrop" (click)="close()"></div>
+    <div class="experience-form-overlay-backdrop" (click)="requestClose()"></div>
     <div class="experience-form-popup asset-form-popup" (click)="$event.stopPropagation()">
       <div class="experience-form-header">
         <h3>{{ title }}</h3>
         <div class="experience-form-header-controls">
-          <button type="button" class="popup-header-add-btn subevent-leaderboard-save-btn" (click)="save()" aria-label="Save asset">
-            <mat-icon>done</mat-icon>
-          </button>
-          <button type="button" class="experience-form-close-btn" (click)="close()" aria-label="Close asset form">
+          <span class="asset-form-save-btn-shell" [class.is-loading]="isSavePending">
+            <span class="asset-form-save-btn-ring" aria-hidden="true">
+              <svg viewBox="0 0 34 34" preserveAspectRatio="none" class="asset-form-save-btn-ring-svg">
+                <defs>
+                  <linearGradient id="asset-form-save-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="rgb(235, 147, 33)"></stop>
+                    <stop offset="100%" stop-color="rgb(247, 190, 52)"></stop>
+                  </linearGradient>
+                </defs>
+                <circle class="asset-form-save-btn-ring-track" cx="17" cy="17" r="15"></circle>
+                <circle
+                  class="asset-form-save-btn-ring-progress"
+                  [class.is-loading]="isSavePending"
+                  cx="17"
+                  cy="17"
+                  r="15"
+                  pathLength="100"
+                  [attr.stroke-dasharray]="saveRingPerimeter"
+                  [style.stroke-dashoffset]="isSavePending ? 0 : saveRingPerimeter"
+                ></circle>
+              </svg>
+            </span>
+            <button
+              type="button"
+              class="popup-header-add-btn subevent-leaderboard-save-btn asset-form-save-btn"
+              [class.form-save-invalid]="!canSave && !isSavePending"
+              [disabled]="!canSave || isSavePending"
+              (click)="submitForm()"
+              aria-label="Save asset"
+              >
+              <mat-icon>done</mat-icon>
+            </button>
+          </span>
+          <button type="button" class="experience-form-close-btn" [disabled]="isSavePending" (click)="requestClose()" aria-label="Close asset form">
             <mat-icon>close</mat-icon>
           </button>
         </div>
       </div>
-      <section class="experience-form-panel" [ngClass]="eventVisibilityClass(assetFormVisibility)">
+      <section class="experience-form-panel" [ngClass]="eventVisibilityClass(assetFormVisibility)" [class.is-saving]="isSavePending">
         <div class="experience-form-grid">
           <label>
             <span>Type</span>
             @if (!isMobileAssetTypeSheetViewport()) {
               <div class="profile-status-select-wrap selector-like experience-type-select" [ngClass]="assetTypeClass(assetForm.type)">
-                <mat-select [(ngModel)]="assetForm.type" disableOptionCentering panelClass="selector-options-panel profile-bottom-sheet-panel asset-type-options-panel">
+                <mat-select [(ngModel)]="assetForm.type" [disabled]="isSavePending" disableOptionCentering panelClass="selector-options-panel profile-bottom-sheet-panel asset-type-options-panel">
                   <mat-select-trigger>
                     <span class="status-option-content">
                       <mat-icon [class]="assetTypeClass(assetForm.type)">{{ assetTypeIcon(assetForm.type) }}</mat-icon>
@@ -42,6 +72,7 @@
                   type="button"
                   class="profile-status-select-wrap selector-like experience-type-select asset-form-mobile-type-trigger"
                   [ngClass]="assetTypeClass(assetForm.type)"
+                  [disabled]="isSavePending"
                   (click)="openMobileAssetTypeSelector($event)"
                   aria-label="Open asset type"
                   >
@@ -58,6 +89,7 @@
                         type="button"
                         class="popup-filter-option activities-view-option"
                         [ngClass]="[assetTypeClass(option), option === assetForm.type ? 'active' : '']"
+                        [disabled]="isSavePending"
                         (click)="selectMobileAssetType(option, $event)"
                         >
                         <mat-icon [class]="assetTypeClass(option)">{{ assetTypeIcon(option) }}</mat-icon>
@@ -70,34 +102,36 @@
             }
           </label>
           <label>
-            <span>Title</span>
-            <input type="text" [(ngModel)]="assetForm.title" />
+            <span>Title<span class="asset-form-required-marker">*</span></span>
+            <input type="text" [(ngModel)]="assetForm.title" [disabled]="isSavePending" />
           </label>
           <label>
             <span>Subtitle</span>
-            <input type="text" [(ngModel)]="assetForm.subtitle" />
+            <input type="text" [(ngModel)]="assetForm.subtitle" [disabled]="isSavePending" />
           </label>
           <label>
-            <span>Total capacity</span>
-            <input type="number" min="1" step="1" [(ngModel)]="assetForm.capacityTotal" />
+            <span>Total capacity<span class="asset-form-required-marker">*</span></span>
+            <input type="number" min="1" step="1" [(ngModel)]="assetForm.capacityTotal" [disabled]="isSavePending" />
           </label>
           <label class="experience-description-field">
             <span>Details</span>
-            <textarea rows="3" [(ngModel)]="assetForm.details"></textarea>
+            <textarea rows="3" [(ngModel)]="assetForm.details" [disabled]="isSavePending"></textarea>
           </label>
-          @if (assetForm.type === 'Accommodation') {
+          @if (isPropertyAssetForm()) {
             <label class="experience-description-field">
-              <span>Location</span>
+              <span>Location<span class="asset-form-required-marker">*</span></span>
               <div class="asset-route-row asset-route-row-inline">
                 <input
                   type="text"
                   [ngModel]="assetFormRouteStops[0]"
                   (ngModelChange)="setAssetFormRouteStop(0, $event)"
+                  [disabled]="isSavePending"
                   placeholder="Property address"
                   />
                 <button
                   type="button"
                   class="experience-action-btn asset-route-map-btn"
+                  [disabled]="isSavePending"
                   (click)="openAssetFormRouteStopMap(0, $event)"
                   aria-label="Open location on map"
                   >
@@ -109,11 +143,12 @@
           <label class="experience-description-field">
             <span>Source link</span>
             <div class="asset-source-row">
-              <input type="text" [(ngModel)]="assetForm.sourceLink" placeholder="https://..." />
+              <input type="text" [(ngModel)]="assetForm.sourceLink" [disabled]="isSavePending" placeholder="https://..." />
               @if (sourceRefreshEnabled) {
                 <button
                   type="button"
                   class="asset-source-refresh-btn"
+                  [disabled]="isSavePending"
                   (click)="refreshAssetFromSourceLink()"
                   aria-label="Refresh from source"
                   >
@@ -125,7 +160,7 @@
           <label class="experience-description-field">
             <span>Image</span>
             <input #assetImageInput type="file" accept="image/*" hidden (change)="onImageFileChange($event)" />
-            <button type="button" class="asset-image-dropzone" (click)="assetImageInput.click()">
+            <button type="button" class="asset-image-dropzone" [disabled]="isSavePending" (click)="assetImageInput.click()">
               <div class="asset-image-preview" [style.backgroundImage]="assetForm.imageUrl ? 'url(' + assetForm.imageUrl + ')' : null">
                 @if (!isEventEditorReadOnly) {
                   <span class="asset-image-plus">+</span>

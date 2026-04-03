@@ -4,6 +4,7 @@ import { environment } from '../../environments/environment';
 import { DemoAssetBuilder } from '../shared/core/demo/builders';
 import { APP_STATIC_DATA } from '../shared/app-static-data';
 import type * as AppTypes from '../shared/core/base/models';
+import { resolveCurrentDemoDelayMs } from '../shared/core/base/services/route-delay.service';
 import { AssetPopupStateService } from './asset-popup-state.service';
 import { AppContext, AssetsService } from '../shared/core';
 import { HttpMediaService } from '../shared/core/http';
@@ -19,7 +20,7 @@ export interface OwnedAssetsRuntimeHooks {
   providedIn: 'root'
 })
 export class OwnedAssetsPopupFacadeService {
-  private static readonly DELETE_PENDING_WINDOW_MS = 1500;
+  private static readonly DEMO_PENDING_WINDOW_MS = 1500;
 
   private readonly assetPopupState = inject(AssetPopupStateService);
   private readonly assetsService = inject(AssetsService);
@@ -34,6 +35,7 @@ export class OwnedAssetsPopupFacadeService {
   assetFilter: AppTypes.AssetFilterType = 'Car';
   showAssetForm = false;
   editingAssetId: string | null = null;
+  isAssetFormSavePending = false;
   pendingAssetDeleteCardId: string | null = null;
   isAssetDeletePending = false;
   assetForm: Omit<AppTypes.AssetCard, 'id' | 'requests'> = this.buildEmptyAssetForm('Car');
@@ -52,6 +54,7 @@ export class OwnedAssetsPopupFacadeService {
   private pendingPersistOwnerUserId = '';
   private persistTimerId: ReturnType<typeof setTimeout> | null = null;
   private pendingAssetImageFile: File | null = null;
+  private assetMutationVersion = 0;
   private pendingAssetDeleteLabelValue = '';
   private pendingAssetDeleteErrorValue = '';
 
@@ -159,6 +162,10 @@ export class OwnedAssetsPopupFacadeService {
     return 100;
   }
 
+  assetFormSaveRingPerimeter(): number {
+    return 100;
+  }
+
   assetTypeIcon(type: AppTypes.AssetFilterType): string {
     if (type === 'Car') {
       return 'directions_car';
@@ -225,6 +232,7 @@ export class OwnedAssetsPopupFacadeService {
   closePopup(): void {
     this.activePopupFilter = null;
     this.closeAssetForm();
+    this.isAssetFormSavePending = false;
     this.pendingAssetDeleteCardId = null;
     this.isAssetDeletePending = false;
     this.pendingAssetDeleteLabelValue = '';
@@ -246,6 +254,7 @@ export class OwnedAssetsPopupFacadeService {
   openAssetForm(card?: AppTypes.AssetCard): void {
     this.itemActionMenu = null;
     this.showAssetForm = true;
+    this.isAssetFormSavePending = false;
     this.pendingAssetImageFile = null;
     const forcePrivateVisibility = this.isPopupOpen();
     if (card) {
@@ -277,9 +286,23 @@ export class OwnedAssetsPopupFacadeService {
   closeAssetForm(): void {
     this.showAssetForm = false;
     this.editingAssetId = null;
+    this.isAssetFormSavePending = false;
     for (const hooks of this.runtimeHooks) {
       hooks.onAssetFormClosed?.();
     }
+  }
+
+  canSubmitAssetForm(): boolean {
+    const title = this.assetForm.title.trim();
+    const capacityTotal = Math.max(0, Math.trunc(Number(this.assetForm.capacityTotal) || 0));
+    if (!title || capacityTotal < 1) {
+      return false;
+    }
+    if (this.assetForm.type !== 'Accommodation') {
+      return true;
+    }
+    const routes = this.normalizeAssetRoutes(this.assetForm.type, this.assetForm.routes);
+    return routes.some(stop => stop.trim().length > 0);
   }
 
   setAssetFormRouteStop(index: number, value: string): void {
@@ -350,88 +373,97 @@ export class OwnedAssetsPopupFacadeService {
   }
 
   async saveAssetCard(): Promise<void> {
-    const title = this.assetForm.title.trim();
-    const city = this.assetForm.city.trim();
-    const routes = this.normalizeAssetRoutes(this.assetForm.type, this.assetForm.routes);
-    const accommodationLocation = routes.find(stop => stop.trim().length > 0)?.trim() || '';
-    const resolvedCity = this.assetForm.type === 'Accommodation'
-      ? accommodationLocation
-      : city;
-    if (!title) {
+    if (this.isAssetFormSavePending || !this.canSubmitAssetForm()) {
       return;
     }
-    if (this.assetForm.type === 'Accommodation' && !accommodationLocation) {
-      return;
-    }
-    const ownerUserId = this.resolveOwnerUserId();
-    const assetId = this.editingAssetId || `asset-${Date.now()}`;
-    const resolvedImageUrl = await this.resolvePersistedAssetImageUrl(ownerUserId, assetId);
-    if (environment.activitiesDataSource === 'http' && this.pendingAssetImageFile && !resolvedImageUrl) {
-      return;
-    }
-    const imageUrl = this.normalizeAssetImageLink(this.assetForm.type, resolvedImageUrl || this.assetForm.imageUrl, title || this.assetForm.subtitle || city);
-    const sourceLink = this.normalizeAssetSourceLink(this.assetForm.sourceLink, imageUrl);
-    const payload: Omit<AppTypes.AssetCard, 'id' | 'requests'> = {
-      type: this.assetForm.type,
-      title,
-      subtitle: this.assetForm.subtitle.trim() || DemoAssetBuilder.defaultAssetSubtitle(this.assetForm.type),
-      city: resolvedCity,
-      capacityTotal: Math.max(1, Number(this.assetForm.capacityTotal) || (this.assetForm.type === 'Supplies' ? 6 : 4)),
-      details: this.assetForm.details.trim() || DemoAssetBuilder.defaultAssetDetails(this.assetForm.type),
-      imageUrl,
-      sourceLink,
-      routes
-    };
-    const resolvedVisibility: AppTypes.EventVisibility = this.isPopupOpen() ? 'Invitation only' : this.assetFormVisibility;
-    if (this.editingAssetId) {
-      const editingAssetId = this.editingAssetId;
-      const existing = this.assetCardsRef.find(card => card.id === editingAssetId);
-      const nextCard: AppTypes.AssetCard = {
-        id: editingAssetId,
-        ...payload,
-        requests: existing?.requests.map(request => ({ ...request })) ?? []
+    this.isAssetFormSavePending = true;
+    try {
+      const title = this.assetForm.title.trim();
+      const city = this.assetForm.city.trim();
+      const routes = this.normalizeAssetRoutes(this.assetForm.type, this.assetForm.routes);
+      const accommodationLocation = routes.find(stop => stop.trim().length > 0)?.trim() || '';
+      const resolvedCity = this.assetForm.type === 'Accommodation'
+        ? accommodationLocation
+        : city;
+      const ownerUserId = this.resolveOwnerUserId();
+      const assetId = this.editingAssetId || `asset-${Date.now()}`;
+      const resolvedImageUrl = await this.resolvePersistedAssetImageUrl(ownerUserId, assetId);
+      if (environment.activitiesDataSource === 'http' && this.pendingAssetImageFile && !resolvedImageUrl) {
+        throw new Error('Unable to upload asset image.');
+      }
+      const imageUrl = this.normalizeAssetImageLink(this.assetForm.type, resolvedImageUrl || this.assetForm.imageUrl, title || this.assetForm.subtitle || city);
+      const sourceLink = this.normalizeAssetSourceLink(this.assetForm.sourceLink, imageUrl);
+      const payload: Omit<AppTypes.AssetCard, 'id' | 'requests'> = {
+        type: this.assetForm.type,
+        title,
+        subtitle: this.assetForm.subtitle.trim() || DemoAssetBuilder.defaultAssetSubtitle(this.assetForm.type),
+        city: resolvedCity,
+        capacityTotal: Math.max(1, Number(this.assetForm.capacityTotal) || (this.assetForm.type === 'Supplies' ? 6 : 4)),
+        details: this.assetForm.details.trim() || DemoAssetBuilder.defaultAssetDetails(this.assetForm.type),
+        imageUrl,
+        sourceLink,
+        routes
       };
-      this.assetVisibilityById[editingAssetId] = resolvedVisibility;
-      this.applyAssetCards(this.assetCardsRef.map(card =>
-        card.id === this.editingAssetId
-          ? nextCard
-          : card
-      ), { persist: false, reloadList: false });
-      for (const hooks of this.runtimeHooks) {
-        hooks.onAssetsChanged?.();
-      }
-      this.closeAssetForm();
-      if (ownerUserId) {
-        const savedCard = await this.assetsService.saveOwnedAsset(ownerUserId, nextCard);
-        if (this.activeOwnerUserId === ownerUserId) {
-          this.applyAssetCards(this.assetCardsRef.map(card => card.id === savedCard.id ? savedCard : card), {
-            persist: false,
-            reloadList: false
-          });
+      const resolvedVisibility: AppTypes.EventVisibility = this.isPopupOpen() ? 'Invitation only' : this.assetFormVisibility;
+
+      if (this.editingAssetId) {
+        const editingAssetId = this.editingAssetId;
+        const existing = this.assetCardsRef.find(card => card.id === editingAssetId);
+        const nextCard: AppTypes.AssetCard = {
+          id: editingAssetId,
+          ...payload,
+          requests: existing?.requests.map(request => ({ ...request })) ?? []
+        };
+        this.assetVisibilityById[editingAssetId] = resolvedVisibility;
+        this.markAssetMutation();
+        this.applyAssetCards(this.assetCardsRef.map(card =>
+          card.id === editingAssetId
+            ? nextCard
+            : card
+        ), { persist: false, reloadList: false });
+        for (const hooks of this.runtimeHooks) {
+          hooks.onAssetsChanged?.();
         }
+        const persistPromise = ownerUserId
+          ? this.assetsService.saveOwnedAsset(ownerUserId, nextCard).then(savedCard => {
+              if (this.activeOwnerUserId === ownerUserId) {
+                this.applyAssetCards(this.assetCardsRef.map(card => card.id === savedCard.id ? savedCard : card), {
+                  persist: false,
+                  reloadList: false
+                });
+              }
+            })
+          : Promise.resolve();
+        await this.awaitAssetMutationCompletion(persistPromise);
+      } else {
+        this.assetVisibilityById[assetId] = resolvedVisibility;
+        const nextCard: AppTypes.AssetCard = {
+          id: assetId,
+          ...payload,
+          requests: []
+        };
+        this.markAssetMutation();
+        this.applyAssetCards([nextCard, ...this.assetCardsRef], { persist: false, reloadList: false });
+        for (const hooks of this.runtimeHooks) {
+          hooks.onAssetCreated?.(nextCard);
+          hooks.onAssetsChanged?.();
+        }
+        const persistPromise = ownerUserId
+          ? this.assetsService.saveOwnedAsset(ownerUserId, nextCard).then(savedCard => {
+              if (this.activeOwnerUserId === ownerUserId) {
+                this.applyAssetCards(this.assetCardsRef.map(card => card.id === savedCard.id ? savedCard : card), {
+                  persist: false,
+                  reloadList: false
+                });
+              }
+            })
+          : Promise.resolve();
+        await this.awaitAssetMutationCompletion(persistPromise);
       }
-      return;
-    }
-    this.assetVisibilityById[assetId] = resolvedVisibility;
-    const nextCard: AppTypes.AssetCard = {
-      id: assetId,
-      ...payload,
-      requests: []
-    };
-    this.applyAssetCards([nextCard, ...this.assetCardsRef], { persist: false, reloadList: false });
-    for (const hooks of this.runtimeHooks) {
-      hooks.onAssetCreated?.(nextCard);
-      hooks.onAssetsChanged?.();
-    }
-    this.closeAssetForm();
-    if (ownerUserId) {
-      const savedCard = await this.assetsService.saveOwnedAsset(ownerUserId, nextCard);
-      if (this.activeOwnerUserId === ownerUserId) {
-        this.applyAssetCards(this.assetCardsRef.map(card => card.id === savedCard.id ? savedCard : card), {
-          persist: false,
-          reloadList: false
-        });
-      }
+      this.isAssetFormSavePending = false;
+      this.closeAssetForm();
+    } catch {
+      this.isAssetFormSavePending = false;
     }
   }
 
@@ -524,9 +556,26 @@ export class OwnedAssetsPopupFacadeService {
       return false;
     }
     const ownerUserId = this.resolveOwnerUserId();
+    if (this.demoMutationWindowMs() > 0) {
+      this.markAssetMutation();
+      this.applyAssetCards(this.assetCardsRef.filter(card => card.id !== normalizedCardId), {
+        persist: false,
+        reloadList: false
+      });
+      for (const hooks of this.runtimeHooks) {
+        hooks.onAssetDeleted?.(normalizedCardId);
+        hooks.onAssetsChanged?.();
+      }
+      if (ownerUserId) {
+        void this.assetsService.deleteOwnedAsset(ownerUserId, normalizedCardId).catch(() => undefined);
+      }
+      await this.wait(this.demoMutationWindowMs());
+      return true;
+    }
     if (ownerUserId) {
       await this.assetsService.deleteOwnedAsset(ownerUserId, normalizedCardId);
     }
+    this.markAssetMutation();
     this.applyAssetCards(this.assetCardsRef.filter(card => card.id !== normalizedCardId), {
       persist: false,
       reloadList: false
@@ -546,10 +595,7 @@ export class OwnedAssetsPopupFacadeService {
     this.pendingAssetDeleteErrorValue = '';
     this.isAssetDeletePending = true;
     try {
-      await Promise.all([
-        this.minimumAssetDeletePendingWindow(),
-        this.deleteAssetCardById(cardId)
-      ]);
+      await this.deleteAssetCardById(cardId);
       this.isAssetDeletePending = false;
       this.pendingAssetDeleteCardId = null;
       this.pendingAssetDeleteLabelValue = '';
@@ -664,21 +710,6 @@ export class OwnedAssetsPopupFacadeService {
     }
   }
 
-  private minimumAssetDeletePendingWindow(): Promise<void> {
-    return environment.activitiesDataSource === 'demo'
-      ? this.wait(OwnedAssetsPopupFacadeService.DELETE_PENDING_WINDOW_MS)
-      : Promise.resolve();
-  }
-
-  private async wait(delayMs: number): Promise<void> {
-    if (delayMs <= 0) {
-      return;
-    }
-    await new Promise<void>(resolve => {
-      setTimeout(() => resolve(), delayMs);
-    });
-  }
-
   private resolveAssetDeleteErrorMessage(error: unknown): string {
     if (typeof error === 'string' && error.trim()) {
       return error.trim();
@@ -692,12 +723,40 @@ export class OwnedAssetsPopupFacadeService {
     return 'Unable to delete asset right now.';
   }
 
+  private async awaitAssetMutationCompletion(persistPromise: Promise<void>): Promise<void> {
+    const demoWindowMs = this.demoMutationWindowMs();
+    if (demoWindowMs <= 0) {
+      await persistPromise;
+      return;
+    }
+    void persistPromise.catch(() => undefined);
+    await this.wait(demoWindowMs);
+  }
+
+  private demoMutationWindowMs(): number {
+    return resolveCurrentDemoDelayMs(OwnedAssetsPopupFacadeService.DEMO_PENDING_WINDOW_MS);
+  }
+
+  private async wait(delayMs: number): Promise<void> {
+    if (delayMs <= 0) {
+      return;
+    }
+    await new Promise<void>(resolve => {
+      setTimeout(() => resolve(), delayMs);
+    });
+  }
+
   private async refreshOwnedAssetsFromRepository(ownerUserId: string): Promise<void> {
+    const requestMutationVersion = this.assetMutationVersion;
     const cards = await this.assetsService.queryOwnedAssetsByUser(ownerUserId);
-    if (this.activeOwnerUserId !== ownerUserId) {
+    if (this.activeOwnerUserId !== ownerUserId || requestMutationVersion !== this.assetMutationVersion) {
       return;
     }
     this.applyAssetCards(cards, { persist: false });
+  }
+
+  private markAssetMutation(): void {
+    this.assetMutationVersion += 1;
   }
 
   private resolveOwnerUserId(): string {

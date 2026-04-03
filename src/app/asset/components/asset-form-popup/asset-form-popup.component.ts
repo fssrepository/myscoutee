@@ -22,6 +22,9 @@ export class AssetFormPopupComponent {
   @Input() visible = false;
   @Input() title = '';
   @Input({ required: true }) assetForm!: Omit<AppTypes.AssetCard, 'id' | 'requests'>;
+  @Input() canSave = false;
+  @Input() isSavePending = false;
+  @Input() saveRingPerimeter = 100;
   @Input() sourceRefreshEnabled = false;
   @Input() assetFormVisibility: AppTypes.EventVisibility = 'Invitation only';
   @Input() assetTypeOptions: readonly AppTypes.AssetType[] = [];
@@ -32,15 +35,33 @@ export class AssetFormPopupComponent {
   @Input({ required: true }) assetTypeLabel!: (type: AppTypes.AssetFilterType) => string;
   @Input({ required: true }) eventVisibilityClass!: (option: AppTypes.EventVisibility) => string;
   @Input({ required: true }) close!: () => void;
-  @Input({ required: true }) save!: () => void;
+  @Input({ required: true }) save!: () => void | Promise<void>;
   @Input({ required: true }) setAssetFormRouteStop!: (index: number, value: string) => void;
   @Input({ required: true }) openAssetFormRouteStopMap!: (index: number, event?: Event) => void;
   @Input({ required: true }) refreshAssetFromSourceLink!: () => void | Promise<void>;
   @Input({ required: true }) onAssetImageFileSelected!: (file: File) => void;
   protected showMobileAssetTypePicker = false;
 
+  protected requestClose(): void {
+    if (this.isSavePending) {
+      return;
+    }
+    this.close();
+  }
+
+  protected submitForm(): void {
+    if (!this.canSave || this.isSavePending) {
+      return;
+    }
+    void this.save();
+  }
+
+  protected isPropertyAssetForm(): boolean {
+    return this.assetForm?.type === 'Accommodation';
+  }
+
   protected openMobileAssetTypeSelector(event: Event): void {
-    if (!this.isMobileAssetTypeSheetViewport()) {
+    if (!this.isMobileAssetTypeSheetViewport() || this.isSavePending) {
       return;
     }
     event.stopPropagation();
@@ -48,6 +69,9 @@ export class AssetFormPopupComponent {
   }
 
   protected selectMobileAssetType(type: AppTypes.AssetType, event?: Event): void {
+    if (this.isSavePending) {
+      return;
+    }
     event?.stopPropagation();
     this.assetForm.type = type;
     this.showMobileAssetTypePicker = false;
