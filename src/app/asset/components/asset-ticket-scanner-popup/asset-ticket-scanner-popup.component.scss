@@ -8,6 +8,36 @@
   min-height: 0;
 }
 
+.link-btn {
+  border: 1px solid rgba(23, 33, 54, 0.2);
+  border-radius: 999px;
+  background: #fff;
+  color: #1f3350;
+  font: inherit;
+  font-size: 0.83rem;
+  padding: 0.38rem 0.76rem;
+  cursor: pointer;
+  transition:
+    transform 0.16s ease,
+    box-shadow 0.16s ease,
+    opacity 0.16s ease,
+    background 0.16s ease,
+    border-color 0.16s ease;
+}
+
+.link-btn:not(:disabled):hover {
+  transform: translateY(-1px);
+}
+
+.link-btn:not(:disabled):active {
+  transform: translateY(0);
+}
+
+.neutral-btn {
+  background: #f2f4fa;
+  border-color: rgba(23, 33, 54, 0.12);
+}
+
 .ticket-scanner-popup {
   height: 100%;
   min-height: 0;

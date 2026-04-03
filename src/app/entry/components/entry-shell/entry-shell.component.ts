@@ -1,6 +1,7 @@
 import { ChangeDetectorRef, Component, EventEmitter, HostListener, Injector, Input, NgZone, Output, inject } from '@angular/core';
 
 import { UsersService, type DemoUserListItemDto } from '../../../shared/core';
+import type { DemoBootstrapProgressStage } from '../../../shared/core/demo';
 import type * as AppTypes from '../../../shared/core/base/models';
 import type { LocationCoordinates } from '../../../shared/core/base/interfaces/location.interface';
 import { ConfirmationDialogComponent } from '../../../shared/ui/components/confirmation-dialog/confirmation-dialog.component';
@@ -52,6 +53,7 @@ export class EntryShellComponent {
   protected demoSelectorLoading = false;
   protected demoSelectorLoadingProgress = 0;
   protected demoSelectorLoadingLabel = 'Preparing demo data';
+  protected demoSelectorLoadingStage: DemoBootstrapProgressStage = 'selector';
   protected demoSelectorSubmitting = false;
   protected showFirebaseAuthPopup = false;
   private demoSelectorRequestToken = 0;
@@ -126,6 +128,7 @@ export class EntryShellComponent {
     this.demoSelectorLoading = false;
     this.demoSelectorLoadingProgress = 0;
     this.demoSelectorLoadingLabel = 'Preparing demo data';
+    this.demoSelectorLoadingStage = 'selector';
     this.demoSelectorSubmitting = false;
   }
 
@@ -138,6 +141,7 @@ export class EntryShellComponent {
     this.demoSelectorLoading = true;
     this.demoSelectorLoadingProgress = 0;
     this.demoSelectorLoadingLabel = 'Preparing demo session';
+    this.demoSelectorLoadingStage = 'session';
     void this.prepareSelectedDemoUser(userId, requestToken);
   }
 
@@ -190,6 +194,7 @@ export class EntryShellComponent {
     this.demoSelectorLoading = false;
     this.demoSelectorLoadingProgress = 0;
     this.demoSelectorLoadingLabel = 'Preparing demo data';
+    this.demoSelectorLoadingStage = 'selector';
     this.demoSelectorSubmitting = false;
     this.showFirebaseAuthPopup = false;
   }
@@ -264,6 +269,7 @@ export class EntryShellComponent {
     this.demoSelectorLoading = true;
     this.demoSelectorLoadingProgress = 0;
     this.demoSelectorLoadingLabel = 'Preparing demo data';
+    this.demoSelectorLoadingStage = 'selector';
     this.demoSelectorSubmitting = false;
     void this.loadDemoSelectorUsers(requestToken);
   }
@@ -282,6 +288,7 @@ export class EntryShellComponent {
         this.commitDemoSelectorState(() => {
           this.demoSelectorLoadingProgress = state.percent;
           this.demoSelectorLoadingLabel = state.label;
+          this.demoSelectorLoadingStage = state.stage;
         });
       });
       if (!this.isCurrentDemoSelectorRequest(requestToken)) {
@@ -291,6 +298,7 @@ export class EntryShellComponent {
         this.demoSelectorUsers = users;
         this.demoSelectorLoadingProgress = 100;
         this.demoSelectorLoadingLabel = 'Demo data ready';
+        this.demoSelectorLoadingStage = 'ready';
       });
       await this.waitForLoaderCompletionBeat();
       if (!this.isCurrentDemoSelectorRequest(requestToken)) {
@@ -323,6 +331,7 @@ export class EntryShellComponent {
         this.commitDemoSelectorState(() => {
           this.demoSelectorLoadingProgress = state.percent;
           this.demoSelectorLoadingLabel = state.label;
+          this.demoSelectorLoadingStage = state.stage;
         });
       });
       if (!this.isCurrentDemoSelectorRequest(requestToken)) {
@@ -331,6 +340,7 @@ export class EntryShellComponent {
       this.commitDemoSelectorState(() => {
         this.demoSelectorLoadingProgress = 100;
         this.demoSelectorLoadingLabel = 'Demo session ready';
+        this.demoSelectorLoadingStage = 'sessionReady';
       });
       await this.waitForLoaderCompletionBeat();
       if (!this.isCurrentDemoSelectorRequest(requestToken)) {
@@ -346,6 +356,7 @@ export class EntryShellComponent {
         this.demoSelectorSubmitting = false;
         this.demoSelectorLoadingProgress = 0;
         this.demoSelectorLoadingLabel = 'Preparing demo data';
+        this.demoSelectorLoadingStage = 'selector';
       });
     }
   }

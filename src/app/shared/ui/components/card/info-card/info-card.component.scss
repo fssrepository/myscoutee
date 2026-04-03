@@ -320,6 +320,29 @@ button.ui-info-card__overlay-action {
   transform: translateY(-0.02em);
 }
 
+.ui-info-card--owned-asset .ui-info-card__overlay-action--avatar.asset-occupancy-badge {
+  width: auto;
+  min-width: 34px;
+  height: 28px;
+  padding: 0 0.48rem;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  letter-spacing: 0.01em;
+}
+
+.ui-info-card--owned-asset .ui-info-card__overlay-action--end.ui-info-card__overlay-action--avatar.ui-info-card__overlay-action--tone-default.asset-occupancy-badge {
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  background: linear-gradient(180deg, #334f72 0%, #264061 100%);
+  color: #fff;
+  box-shadow: 0 7px 16px rgba(9, 22, 40, 0.34), inset 0 0 0 1px rgba(18, 38, 64, 0.58);
+}
+
+.ui-info-card--owned-asset .ui-info-card__overlay-action--start.ui-info-card__overlay-action--avatar.ui-info-card__overlay-action--tone-default {
+  background: linear-gradient(180deg, #ffe8cc 0%, #ffd7af 100%);
+  border-color: rgba(179, 108, 42, 0.54);
+  color: #8c4f18;
+}
+
 .ui-info-card__overlay-action--badge {
   min-width: 0;
   height: 25px;

@@ -163,6 +163,10 @@
 }
 
 .demo-user-progress {
+  --demo-user-progress-fill: linear-gradient(90deg, #57ba7c 0%, #3f8fe1 52%, #7d6be8 100%);
+  --demo-user-progress-glow: rgba(73, 132, 213, 0.18);
+  --demo-user-progress-track-stripe-strong: rgba(97, 126, 178, 0.12);
+  --demo-user-progress-track-stripe-soft: rgba(97, 126, 178, 0.04);
   position: relative;
   width: min(100%, 23rem);
   height: 0.9rem;
@@ -187,27 +191,142 @@
     linear-gradient(90deg, rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0)),
     repeating-linear-gradient(
       -55deg,
-      rgba(97, 126, 178, 0.12) 0,
-      rgba(97, 126, 178, 0.12) 12px,
-      rgba(97, 126, 178, 0.04) 12px,
-      rgba(97, 126, 178, 0.04) 24px
+      var(--demo-user-progress-track-stripe-strong) 0,
+      var(--demo-user-progress-track-stripe-strong) 12px,
+      var(--demo-user-progress-track-stripe-soft) 12px,
+      var(--demo-user-progress-track-stripe-soft) 24px
     );
   animation: demo-user-progress-track-shift 1.4s linear infinite;
+}
+
+.demo-user-progress-segments {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.demo-user-progress-segment {
+  position: absolute;
+  top: 0.12rem;
+  bottom: 0.12rem;
+  border-radius: 999px;
+  opacity: 0.48;
+}
+
+.demo-user-progress-segment::after {
+  content: '';
+  position: absolute;
+  top: -0.12rem;
+  right: -1px;
+  bottom: -0.12rem;
+  width: 1px;
+  background: rgba(25, 44, 74, 0.14);
 }
 
 .demo-user-progress-fill {
   display: block;
   width: 100%;
-  z-index: 1;
+  z-index: 2;
   border-radius: inherit;
-  background: linear-gradient(90deg, #57ba7c 0%, #3f8fe1 52%, #7d6be8 100%);
+  background: var(--demo-user-progress-fill);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.28),
-    0 0 14px rgba(73, 132, 213, 0.18);
+    0 0 14px var(--demo-user-progress-glow);
   transform: scaleX(0);
   transform-origin: left center;
   will-change: transform;
   transition: transform 0.28s ease;
+}
+
+.demo-user-progress[data-stage='selector'] {
+  --demo-user-progress-fill: linear-gradient(90deg, #5cc986 0%, #49b9a0 100%);
+  --demo-user-progress-glow: rgba(73, 185, 160, 0.24);
+}
+
+.demo-user-progress[data-stage='chats'],
+.demo-user-progress[data-stage='sessionChats'] {
+  --demo-user-progress-fill: linear-gradient(90deg, #4cc4d6 0%, #458fe4 100%);
+  --demo-user-progress-glow: rgba(68, 143, 228, 0.24);
+}
+
+.demo-user-progress[data-stage='events'] {
+  --demo-user-progress-fill: linear-gradient(90deg, #3fb2e8 0%, #4b7df0 100%);
+  --demo-user-progress-glow: rgba(75, 125, 240, 0.24);
+}
+
+.demo-user-progress[data-stage='users'],
+.demo-user-progress[data-stage='assets'] {
+  --demo-user-progress-fill: linear-gradient(90deg, #57a3ff 0%, #5877e5 100%);
+  --demo-user-progress-glow: rgba(87, 119, 229, 0.24);
+}
+
+.demo-user-progress[data-stage='feedback'] {
+  --demo-user-progress-fill: linear-gradient(90deg, #f0bf56 0%, #e58b4c 100%);
+  --demo-user-progress-glow: rgba(229, 139, 76, 0.22);
+}
+
+.demo-user-progress[data-stage='ratings'] {
+  --demo-user-progress-fill: linear-gradient(90deg, #ffb95c 0%, #ff8d5e 100%);
+  --demo-user-progress-glow: rgba(255, 141, 94, 0.28);
+  --demo-user-progress-track-stripe-strong: rgba(255, 166, 110, 0.16);
+  --demo-user-progress-track-stripe-soft: rgba(255, 166, 110, 0.06);
+}
+
+.demo-user-progress[data-stage='activityMembers'] {
+  --demo-user-progress-fill: linear-gradient(90deg, #6e8fff 0%, #8b67f0 100%);
+  --demo-user-progress-glow: rgba(126, 113, 244, 0.28);
+  --demo-user-progress-track-stripe-strong: rgba(123, 114, 241, 0.16);
+  --demo-user-progress-track-stripe-soft: rgba(123, 114, 241, 0.06);
+}
+
+.demo-user-progress[data-stage='activityResources'],
+.demo-user-progress[data-stage='indexedDb'],
+.demo-user-progress[data-stage='sessionIndexedDb'] {
+  --demo-user-progress-fill: linear-gradient(90deg, #6f86a8 0%, #485f89 100%);
+  --demo-user-progress-glow: rgba(72, 95, 137, 0.22);
+}
+
+.demo-user-progress[data-stage='ready'],
+.demo-user-progress[data-stage='sessionReady'] {
+  --demo-user-progress-fill: linear-gradient(90deg, #62c98b 0%, #58a9f1 100%);
+  --demo-user-progress-glow: rgba(88, 169, 241, 0.22);
+}
+
+.demo-user-progress-segment[data-stage='selector'] {
+  background: rgba(85, 194, 136, 0.18);
+}
+
+.demo-user-progress-segment[data-stage='chats'],
+.demo-user-progress-segment[data-stage='sessionChats'] {
+  background: rgba(76, 196, 214, 0.18);
+}
+
+.demo-user-progress-segment[data-stage='events'] {
+  background: rgba(63, 178, 232, 0.18);
+}
+
+.demo-user-progress-segment[data-stage='users'],
+.demo-user-progress-segment[data-stage='assets'] {
+  background: rgba(87, 163, 255, 0.16);
+}
+
+.demo-user-progress-segment[data-stage='feedback'] {
+  background: rgba(240, 191, 86, 0.18);
+}
+
+.demo-user-progress-segment[data-stage='ratings'] {
+  background: rgba(255, 169, 95, 0.24);
+}
+
+.demo-user-progress-segment[data-stage='activityMembers'] {
+  background: rgba(126, 113, 244, 0.24);
+}
+
+.demo-user-progress-segment[data-stage='activityResources'],
+.demo-user-progress-segment[data-stage='indexedDb'],
+.demo-user-progress-segment[data-stage='sessionIndexedDb'] {
+  background: rgba(99, 123, 160, 0.2);
 }
 
 .demo-user-progress-value {

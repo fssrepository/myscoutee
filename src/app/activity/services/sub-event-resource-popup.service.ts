@@ -5,6 +5,7 @@ import type { MatSelect } from '@angular/material/select';
 import { AssetPopupStateService } from '../../asset/asset-popup-state.service';
 import type { AssetPopupHost } from '../../asset/asset-popup.host';
 import { OwnedAssetsPopupFacadeService } from '../../asset/owned-assets-popup-facade.service';
+import { APP_STATIC_DATA } from '../../shared/app-static-data';
 import { AppUtils } from '../../shared/app-utils';
 import type * as AppTypes from '../../shared/core/base/models';
 import { ActivityMembersService, ActivityResourceBuilder, ActivityResourcesService, AppContext, AppPopupContext, UsersService, type UserDto } from '../../shared/core';
@@ -164,6 +165,7 @@ export class SubEventResourcePopupService {
     resourceFilterCount: type => this.resourceFilterCount(type),
     resourceTypeClass: type => this.ownedAssets.assetTypeClass(type === 'Members' ? 'Car' : type),
     resourceTypeIcon: type => type === 'Members' ? 'groups' : this.ownedAssets.assetTypeIcon(type),
+    resourceTypeLabel: type => APP_STATIC_DATA.subEventResourceFilterLabels[type],
     cards: () => this.resourceCards(),
     capacityEditor: () => this.capacityEditorRef(),
     routeEditor: () => this.routeEditorRef(),
@@ -495,11 +497,12 @@ export class SubEventResourcePopupService {
   private popupTitle(): string {
     const context = this.popupContextRef();
     const subEvent = context?.subEvent;
+    const typeLabel = APP_STATIC_DATA.assetTypeLabels[this.resourceFilterRef()];
     if (!context || !subEvent) {
-      return this.resourceFilterRef();
+      return typeLabel;
     }
     const stageLabel = this.subEventStageLabel(subEvent);
-    return stageLabel ? `${this.resourceFilterRef()} - ${stageLabel}` : this.resourceFilterRef();
+    return stageLabel ? `${typeLabel} - ${stageLabel}` : typeLabel;
   }
 
   private popupSubtitle(): string {

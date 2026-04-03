@@ -602,33 +602,6 @@ app-info-card.event-feedback-carousel-info-card {
   max-height: var(--event-feedback-identity-height);
 }
 
-.event-feedback-carousel-identity-event {
-  border-color: rgba(57, 97, 152, 0.28);
-  background: linear-gradient(180deg, #f3f8ff 0%, #eaf2ff 100%);
-  display: grid;
-  grid-template-rows: 132px minmax(0, 1fr);
-  height: var(--event-feedback-identity-height);
-  overflow: hidden;
-}
-
-.event-feedback-carousel-identity-event .asset-card-image {
-  width: 100%;
-  height: 132px;
-  min-height: 132px;
-}
-
-.event-feedback-carousel-identity-event .experience-item-head {
-  margin-top: 0.24rem;
-  align-items: flex-start;
-}
-
-.event-feedback-carousel-identity-event .experience-item-meta h4,
-.event-feedback-carousel-identity-event .experience-item-meta p {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
 .event-feedback-target-line {
   margin: 0.16rem 0 0;
   display: inline-flex;
@@ -1042,15 +1015,6 @@ app-info-card.event-feedback-carousel-info-card {
   }
 
   :host ::ng-deep app-info-card.event-feedback-carousel-info-card .ui-info-card__media {
-    min-height: 96px;
-    height: 96px;
-  }
-
-  .event-feedback-carousel-identity-event {
-    grid-template-rows: 96px minmax(0, 1fr);
-  }
-
-  .event-feedback-carousel-identity-event .asset-card-image {
     min-height: 96px;
     height: 96px;
   }

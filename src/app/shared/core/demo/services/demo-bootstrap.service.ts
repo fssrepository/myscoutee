@@ -14,12 +14,65 @@ import type { DemoEventRecord } from '../models/events.model';
 import { DemoUsersRatingsRepository } from '../repositories/users-ratings.repository';
 import { DemoUsersRepository } from '../repositories/users.repository';
 
+export type DemoBootstrapProgressStage =
+  | 'selector'
+  | 'chats'
+  | 'events'
+  | 'users'
+  | 'feedback'
+  | 'ratings'
+  | 'assets'
+  | 'activityMembers'
+  | 'activityResources'
+  | 'indexedDb'
+  | 'ready'
+  | 'session'
+  | 'sessionChats'
+  | 'sessionIndexedDb'
+  | 'sessionReady';
+
 export interface DemoBootstrapProgressState {
+  percent: number;
+  label: string;
+  stage: DemoBootstrapProgressStage;
+}
+
+export interface DemoBootstrapProgressStep {
+  stage: DemoBootstrapProgressStage;
   percent: number;
   label: string;
 }
 
+export const DEMO_BOOTSTRAP_PROGRESS_STEPS: readonly DemoBootstrapProgressStep[] = [
+  { stage: 'selector', percent: 0, label: 'Preparing demo selector' },
+  { stage: 'chats', percent: 9, label: 'Loading chats' },
+  { stage: 'events', percent: 22, label: 'Loading events' },
+  { stage: 'users', percent: 34, label: 'Preparing demo users' },
+  { stage: 'feedback', percent: 44, label: 'Preparing event feedback' },
+  { stage: 'ratings', percent: 52, label: 'Loading ratings' },
+  { stage: 'assets', percent: 68, label: 'Preparing owned assets' },
+  { stage: 'activityMembers', percent: 80, label: 'Preparing activity members' },
+  { stage: 'activityResources', percent: 94, label: 'Preparing activity resources' },
+  { stage: 'indexedDb', percent: 98, label: 'Syncing demo IndexedDB' },
+  { stage: 'ready', percent: 100, label: 'Demo data ready' }
+];
+
+export const DEMO_SESSION_PROGRESS_STEPS: readonly DemoBootstrapProgressStep[] = [
+  { stage: 'session', percent: 0, label: 'Preparing demo session' },
+  { stage: 'sessionChats', percent: 38, label: 'Preparing chat threads' },
+  { stage: 'sessionIndexedDb', percent: 84, label: 'Syncing demo IndexedDB' },
+  { stage: 'sessionReady', percent: 100, label: 'Demo session ready' }
+];
+
 type DemoBootstrapProgressListener = (state: DemoBootstrapProgressState) => void;
+
+const DEMO_PROGRESS_STEP_BY_STAGE = new Map<DemoBootstrapProgressStage, DemoBootstrapProgressStep>(
+  [...DEMO_BOOTSTRAP_PROGRESS_STEPS, ...DEMO_SESSION_PROGRESS_STEPS].map(step => [step.stage, step])
+);
+
+function demoBootstrapProgressStep(stage: DemoBootstrapProgressStage): DemoBootstrapProgressStep {
+  return DEMO_PROGRESS_STEP_BY_STAGE.get(stage) ?? DEMO_BOOTSTRAP_PROGRESS_STEPS[0];
+}
 
 @Injectable({
   providedIn: 'root'
@@ -40,7 +93,8 @@ export class DemoBootstrapService {
   private readonly readyUserIds = new Set<string>();
   private lastProgress: DemoBootstrapProgressState = {
     percent: 0,
-    label: 'Preparing demo data'
+    label: 'Preparing demo selector',
+    stage: 'selector'
   };
   private readonly listeners = new Set<DemoBootstrapProgressListener>();
 
@@ -51,10 +105,7 @@ export class DemoBootstrapService {
     }
 
     if (this.ready) {
-      this.emitProgress({
-        percent: 100,
-        label: 'Demo data ready'
-      });
+      this.emitProgress(demoBootstrapProgressStep('ready'));
       if (onProgress) {
         this.listeners.delete(onProgress);
       }
@@ -79,79 +130,55 @@ export class DemoBootstrapService {
   async ensureUserReady(userId: string, onProgress?: DemoBootstrapProgressListener): Promise<void> {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
-      onProgress?.({
-        percent: 100,
-        label: 'Demo session ready'
-      });
+      onProgress?.(demoBootstrapProgressStep('sessionReady'));
       return;
     }
 
     await this.ensureReady();
 
     if (this.readyUserIds.has(normalizedUserId)) {
-      onProgress?.({
-        percent: 100,
-        label: 'Demo session ready'
-      });
+      onProgress?.(demoBootstrapProgressStep('sessionReady'));
       return;
     }
 
-    onProgress?.({
-      percent: 0,
-      label: 'Preparing demo session'
-    });
+    onProgress?.(demoBootstrapProgressStep('session'));
     await this.waitForUiYield();
 
-    onProgress?.({
-      percent: 45,
-      label: 'Preparing chat threads'
-    });
+    onProgress?.(demoBootstrapProgressStep('sessionChats'));
     await this.waitForUiYield();
     const contextualChatsChanged = this.chatsRepository.seedContextualRecordsForUser(
       normalizedUserId,
       this.eventsRepository.queryItemsByUser(normalizedUserId)
     );
     if (contextualChatsChanged) {
-      onProgress?.({
-        percent: 80,
-        label: 'Syncing demo IndexedDB'
-      });
+      onProgress?.(demoBootstrapProgressStep('sessionIndexedDb'));
       await this.memoryDb.flushToIndexedDb();
       await this.waitForUiYield();
     }
 
     this.readyUserIds.add(normalizedUserId);
-    onProgress?.({
-      percent: 100,
-      label: 'Demo session ready'
-    });
+    onProgress?.(demoBootstrapProgressStep('sessionReady'));
   }
 
   private async runBootstrap(): Promise<void> {
     if (this.ready) {
-      this.emitProgress({
-        percent: 100,
-        label: 'Demo data ready'
-      });
+      this.emitProgress(demoBootstrapProgressStep('ready'));
       return;
     }
 
-    await this.runBootstrapStep(0, 'Preparing demo selector');
-    await this.runBootstrapStep(16, 'Loading chats', () => this.chatsRepository.init());
-    await this.runBootstrapStep(36, 'Loading events', () => this.eventsRepository.init());
-    await this.runBootstrapStep(52, 'Preparing demo users', () => { this.usersRepository.init(); });
-    await this.runBootstrapStep(60, 'Preparing event feedback', () => this.seedEventFeedbackStates());
-    await this.runBootstrapStep(68, 'Loading ratings', () => this.usersRatingsRepository.init());
-    await this.runBootstrapStep(80, 'Preparing owned assets', () => this.assetsRepository.init());
-    await this.runBootstrapStep(90, 'Preparing activity members', () => this.activityMembersRepository.init());
-    await this.runBootstrapStep(96, 'Preparing activity resources', () => this.activityResourcesRepository.init());
-    await this.runBootstrapStep(100, 'Syncing demo IndexedDB', () => this.memoryDb.flushToIndexedDb());
+    await this.runBootstrapStep('selector');
+    await this.runBootstrapStep('chats', () => this.chatsRepository.init());
+    await this.runBootstrapStep('events', () => this.eventsRepository.init());
+    await this.runBootstrapStep('users', () => { this.usersRepository.init(); });
+    await this.runBootstrapStep('feedback', () => this.seedEventFeedbackStates());
+    await this.runBootstrapStep('ratings', () => this.usersRatingsRepository.init());
+    await this.runBootstrapStep('assets', () => this.assetsRepository.init());
+    await this.runBootstrapStep('activityMembers', () => this.activityMembersRepository.init());
+    await this.runBootstrapStep('activityResources', () => this.activityResourcesRepository.init());
+    await this.runBootstrapStep('indexedDb', () => this.memoryDb.flushToIndexedDb());
 
     this.ready = true;
-    this.emitProgress({
-      percent: 100,
-      label: 'Demo data ready'
-    });
+    this.emitProgress(demoBootstrapProgressStep('ready'));
   }
 
 
@@ -242,11 +269,10 @@ export class DemoBootstrapService {
   }
 
   private async runBootstrapStep(
-    percent: number,
-    label: string,
+    stage: DemoBootstrapProgressStage,
     work?: () => void | Promise<void>
   ): Promise<void> {
-    this.emitProgress({ percent, label });
+    this.emitProgress(demoBootstrapProgressStep(stage));
     await this.waitForUiYield();
     if (work) {
       await work();
@@ -257,7 +283,8 @@ export class DemoBootstrapService {
   private emitProgress(state: DemoBootstrapProgressState): void {
     this.lastProgress = {
       percent: Math.max(0, Math.min(100, Math.round(state.percent))),
-      label: state.label.trim() || 'Preparing demo data'
+      label: state.label.trim() || 'Preparing demo data',
+      stage: state.stage
     };
 
     for (const listener of this.listeners) {

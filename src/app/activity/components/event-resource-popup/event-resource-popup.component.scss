@@ -207,6 +207,10 @@
   gap: 0.34rem;
 }
 
+.event-resource-popup-shell .subevent-resource-mobile-filter-picker {
+  position: relative;
+}
+
 .event-resource-popup-shell .experience-filter-select.asset-filter-car,
 .event-resource-popup-shell .experience-type-select.asset-filter-car {
   background: linear-gradient(180deg, #eef6ff 0%, #e2efff 100%);
@@ -235,6 +239,33 @@
 
 .event-resource-popup-shell .asset-filter-supplies {
   color: #8a5428;
+}
+
+.event-resource-popup-shell .subevent-resource-mobile-filter-panel .activities-view-option.asset-filter-car {
+  background: linear-gradient(180deg, #eef6ff 0%, #e2efff 100%);
+  border-color: rgba(43, 111, 179, 0.28);
+  color: #295d96;
+}
+
+.event-resource-popup-shell .subevent-resource-mobile-filter-panel .activities-view-option.asset-filter-accommodation {
+  background: linear-gradient(180deg, #edf9f4 0%, #e1f3ea 100%);
+  border-color: rgba(37, 127, 95, 0.28);
+  color: #236d51;
+}
+
+.event-resource-popup-shell .subevent-resource-mobile-filter-panel .activities-view-option.asset-filter-supplies {
+  background: linear-gradient(180deg, #fff5ec 0%, #ffe9d8 100%);
+  border-color: rgba(151, 92, 41, 0.28);
+  color: #8a5428;
+}
+
+.event-resource-popup-shell .subevent-resource-mobile-filter-panel .activities-view-option.active {
+  box-shadow: inset 0 0 0 1px rgba(24, 46, 76, 0.24);
+  filter: brightness(0.95);
+}
+
+.event-resource-popup-shell .subevent-resource-mobile-filter-panel .rate-filter-count-badge {
+  margin-left: auto;
 }
 
 .event-resource-popup-shell .assets-toolbar .profile-status-select-wrap:focus-within {
@@ -910,6 +941,13 @@
 }
 
 @media (max-width: 900px) {
+  .event-resource-popup-shell.app-popup,
+  .event-resource-popup-shell.app-popup-stacked {
+    padding: 0;
+    align-items: stretch;
+  }
+
+  .event-resource-popup-shell .app-popup-panel.popup-panel-asset-members,
   .event-resource-popup-shell.app-popup-stacked.app-popup-stacked-over-subevents .app-popup-panel.popup-panel-asset-members {
     width: 100vw !important;
     max-width: 100vw !important;
@@ -917,11 +955,73 @@
     max-height: 100dvh !important;
     min-height: 100dvh;
     margin: 0 !important;
+    border: 0;
     border-radius: 0;
     box-shadow: none;
   }
 
+  .event-resource-popup-shell .popup-body.popup-body-members {
+    height: calc(100dvh - 58px);
+  }
+
+  .event-resource-popup-shell .subevent-resource-mobile-filter-panel {
+    position: fixed;
+    left: 0.65rem !important;
+    right: 0.65rem !important;
+    top: auto !important;
+    bottom: 0;
+    width: auto;
+    max-width: calc(100vw - 1.3rem);
+    max-height: min(54vh, 420px);
+    min-width: 0;
+    border-radius: 16px 16px 0 0;
+    border: 1px solid #d6deea;
+    border-bottom: 0;
+    box-shadow: 0 -14px 28px rgba(15, 29, 52, 0.24);
+    padding: 0.84rem 0.6rem max(0.62rem, env(safe-area-inset-bottom));
+    gap: 0.32rem;
+    overflow-x: hidden;
+    overflow-y: auto;
+    z-index: 2805;
+  }
+
+  .event-resource-popup-shell .subevent-resource-mobile-filter-panel::before {
+    content: '';
+    position: sticky;
+    top: 0;
+    display: block;
+    width: 42px;
+    height: 4px;
+    border-radius: 999px;
+    background: rgba(44, 67, 100, 0.24);
+    margin: 0 auto 0.52rem;
+    z-index: 1;
+  }
+
+  .event-resource-popup-shell .subevent-resource-mobile-filter-panel .popup-filter-option,
+  .event-resource-popup-shell .subevent-resource-mobile-filter-panel .activities-view-option {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    border: 1px solid rgba(58, 81, 114, 0.24);
+    border-radius: 12px;
+    min-height: 42px;
+    padding: 0.46rem 0.62rem;
+    justify-content: flex-start;
+    gap: 0.36rem;
+  }
+
+  .event-resource-popup-shell .subevent-resource-mobile-filter-panel .popup-filter-option .mat-icon,
+  .event-resource-popup-shell .subevent-resource-mobile-filter-panel .activities-view-option .mat-icon {
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+  }
+
   .event-resource-popup-shell .experience-form-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 80;
     padding: 0;
     align-items: stretch;
     justify-content: stretch;
@@ -931,11 +1031,15 @@
   .event-resource-popup-shell .subevent-group-popup {
     width: 100vw;
     max-width: 100vw;
-    max-height: 100%;
+    height: 100dvh;
+    max-height: 100dvh;
+    min-height: 100dvh;
     border-radius: 0;
   }
 
   .event-resource-popup-shell .experience-form-panel {
+    min-height: 0;
+    flex: 1 1 auto;
     border-radius: 0;
   }
 

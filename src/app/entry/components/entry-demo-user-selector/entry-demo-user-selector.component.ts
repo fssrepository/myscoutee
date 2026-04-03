@@ -3,7 +3,18 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatRippleModule } from '@angular/material/core';
 
+import {
+  DEMO_BOOTSTRAP_PROGRESS_STEPS,
+  DEMO_SESSION_PROGRESS_STEPS,
+  type DemoBootstrapProgressStage
+} from '../../../shared/core/demo';
 import type { DemoUserListItemDto } from '../../../shared/core';
+
+type DemoUserProgressSegment = {
+  stage: DemoBootstrapProgressStage;
+  start: number;
+  width: number;
+};
 
 @Component({
   selector: 'app-entry-demo-user-selector',
@@ -20,6 +31,7 @@ export class EntryDemoUserSelectorComponent {
   @Input() loading = false;
   @Input() loadingProgress = 0;
   @Input() loadingLabel = 'Preparing demo data';
+  @Input() loadingStage: DemoBootstrapProgressStage = 'selector';
   @Input() submitting = false;
   @Input() users: DemoUserListItemDto[] = [];
 
@@ -38,5 +50,19 @@ export class EntryDemoUserSelectorComponent {
       return;
     }
     this.userSelected.emit(userId);
+  }
+
+  protected loadingSegments(): ReadonlyArray<DemoUserProgressSegment> {
+    const steps = this.loadingStage.startsWith('session')
+      ? DEMO_SESSION_PROGRESS_STEPS
+      : DEMO_BOOTSTRAP_PROGRESS_STEPS;
+    return steps
+      .slice(0, -1)
+      .map((step, index) => ({
+        stage: step.stage,
+        start: step.percent,
+        width: Math.max(0, steps[index + 1].percent - step.percent)
+      }))
+      .filter(segment => segment.width > 0);
   }
 }

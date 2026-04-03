@@ -212,10 +212,10 @@
             <mat-icon>directions_car</mat-icon>
             <span class="asset-shortcut-label">Car</span>
           </button>
-          <button #assetAccommodationButton class="asset-shortcut-btn asset-shortcut-accommodation" type="button" [disabled]="!isOnline()" (click)="openAssetAccommodationPopup($event)" aria-label="Accommodation">
+          <button #assetAccommodationButton class="asset-shortcut-btn asset-shortcut-accommodation" type="button" [disabled]="!isOnline()" (click)="openAssetAccommodationPopup($event)" aria-label="Property">
             <span class="navigator-action-ripple" matRipple [matRippleTrigger]="assetAccommodationButton" aria-hidden="true"></span>
             <mat-icon>apartment</mat-icon>
-            <span class="asset-shortcut-label">Accommodation</span>
+            <span class="asset-shortcut-label">Property</span>
           </button>
           <button #assetSuppliesButton class="asset-shortcut-btn asset-shortcut-supplies" type="button" [disabled]="!isOnline()" (click)="openAssetSuppliesPopup($event)" aria-label="Supplies">
             <span class="navigator-action-ripple" matRipple [matRippleTrigger]="assetSuppliesButton" aria-hidden="true"></span>

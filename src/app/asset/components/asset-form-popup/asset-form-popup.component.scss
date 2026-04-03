@@ -1,7 +1,182 @@
+@use '../../../shared/ui/styles' as ui;
 @use '../_asset-interactions.shared' as asset-interactions;
 
+@include ui.popup-shell();
+@include ui.form-controls();
 @include asset-interactions.host-motion-vars(contents);
 @include asset-interactions.interactive-feedback('.popup-header-add-btn, .experience-form-close-btn, .profile-status-select-wrap, .experience-action-btn, .asset-source-refresh-btn, .asset-image-dropzone');
+
+.experience-form-overlay {
+  z-index: 4200;
+}
+
+.experience-form-close-btn {
+  background: rgba(235, 242, 255, 0.9);
+  color: rgba(39, 87, 148, 0.94);
+}
+
+.asset-form-save-btn-shell {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  padding: 2px;
+  box-sizing: border-box;
+  overflow: hidden;
+  flex: 0 0 auto;
+}
+
+.asset-form-save-btn {
+  position: relative;
+  z-index: 1;
+  width: 30px;
+  min-width: 30px;
+  height: 30px;
+  min-height: 30px;
+  border-radius: 50%;
+}
+
+.asset-form-save-btn-ring {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.asset-form-save-btn-ring-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  transform-origin: 50% 50%;
+  will-change: transform;
+  filter: drop-shadow(0 4px 12px rgba(22, 94, 51, 0.12));
+}
+
+.asset-form-save-btn-ring-track,
+.asset-form-save-btn-ring-progress {
+  fill: none;
+  stroke-width: 3;
+}
+
+.asset-form-save-btn-ring-track {
+  stroke: rgba(133, 100, 42, 0.18);
+}
+
+.asset-form-save-btn-ring-progress {
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transform-origin: 50% 50%;
+  transform: rotate(-90deg);
+  transition: stroke-dashoffset 3s linear;
+}
+
+.asset-form-save-btn-ring-progress.is-loading {
+  stroke: url(#asset-form-save-gradient);
+}
+
+.asset-form-save-btn-shell.is-loading .asset-form-save-btn,
+.asset-form-save-btn-shell.is-loading .asset-form-save-btn:hover,
+.asset-form-save-btn-shell.is-loading .asset-form-save-btn:disabled {
+  border-color: rgba(181, 117, 23, 0.76);
+  background: linear-gradient(180deg, #ffe7bf 0%, #ffd085 100%);
+  color: #8e4f0d;
+  opacity: 1;
+  cursor: wait;
+  box-shadow: none;
+  transform: none;
+  filter: none;
+}
+
+.asset-form-required-marker {
+  color: #cb2f2f;
+  font-weight: 800;
+  margin-left: 0.12rem;
+}
+
+.experience-form-panel.is-saving {
+  pointer-events: none;
+}
+
+.experience-form-panel.event-visibility-public {
+  background: linear-gradient(180deg, #f3f8ff 0%, #ecf4ff 100%);
+  border-color: rgba(46, 111, 178, 0.24);
+}
+
+.experience-form-panel.event-visibility-friends {
+  background: linear-gradient(180deg, #f4faf2 0%, #edf7eb 100%);
+  border-color: rgba(54, 129, 72, 0.24);
+}
+
+.experience-form-panel.event-visibility-invitation {
+  background: linear-gradient(180deg, #fff5f2 0%, #ffefea 100%);
+  border-color: rgba(176, 86, 66, 0.24);
+}
+
+.experience-type-select.asset-filter-car {
+  background: linear-gradient(180deg, #eef6ff 0%, #e2efff 100%);
+  border-color: rgba(43, 111, 179, 0.32);
+}
+
+.experience-type-select.asset-filter-accommodation {
+  background: linear-gradient(180deg, #edf9f4 0%, #e1f3ea 100%);
+  border-color: rgba(37, 127, 95, 0.32);
+}
+
+.experience-type-select.asset-filter-supplies {
+  background: linear-gradient(180deg, #fff5ec 0%, #ffe9d8 100%);
+  border-color: rgba(151, 92, 41, 0.32);
+}
+
+.asset-form-mobile-type-picker {
+  position: relative;
+}
+
+.asset-filter-car {
+  color: #295d96;
+}
+
+.asset-filter-accommodation {
+  color: #236d51;
+}
+
+.asset-filter-supplies {
+  color: #8a5428;
+}
+
+.asset-filter-ticket {
+  color: #2d5f99;
+}
+
+.asset-form-mobile-type-panel .activities-view-option.asset-filter-car {
+  background: linear-gradient(180deg, #eef6ff 0%, #e2efff 100%);
+  border-color: rgba(43, 111, 179, 0.28);
+  color: #295d96;
+}
+
+.asset-form-mobile-type-panel .activities-view-option.asset-filter-accommodation {
+  background: linear-gradient(180deg, #edf9f4 0%, #e1f3ea 100%);
+  border-color: rgba(37, 127, 95, 0.28);
+  color: #236d51;
+}
+
+.asset-form-mobile-type-panel .activities-view-option.asset-filter-supplies {
+  background: linear-gradient(180deg, #fff5ec 0%, #ffe9d8 100%);
+  border-color: rgba(151, 92, 41, 0.28);
+  color: #8a5428;
+}
+
+.asset-form-mobile-type-panel .activities-view-option.asset-filter-ticket {
+  background: linear-gradient(180deg, #eef5ff 0%, #e0ebff 100%);
+  border-color: rgba(45, 95, 153, 0.28);
+  color: #2d5f99;
+}
+
+.asset-form-mobile-type-panel .activities-view-option.active {
+  box-shadow: inset 0 0 0 1px rgba(24, 46, 76, 0.24);
+  filter: brightness(0.95);
+}
 
 .asset-route-row {
   display: grid;
@@ -23,6 +198,33 @@
 .asset-route-map-btn {
   width: 30px;
   height: 30px;
+}
+
+.experience-action-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid rgba(42, 67, 101, 0.26);
+  background: rgba(255, 255, 255, 0.88);
+  color: #2d5ea8;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition:
+    transform 0.14s ease,
+    filter 0.14s ease,
+    box-shadow 0.14s ease,
+    background-color 0.14s ease,
+    border-color 0.14s ease,
+    color 0.14s ease;
+}
+
+.experience-action-btn .mat-icon {
+  width: 15px;
+  height: 15px;
+  font-size: 15px;
+  line-height: 15px;
 }
 
 .experience-action-btn.asset-route-map-btn {
@@ -93,7 +295,121 @@
   line-height: 1;
 }
 
+:host ::ng-deep .mat-mdc-select-panel.asset-type-options-panel .mat-mdc-option.status-option .status-option-content {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  column-gap: 0.34rem;
+}
+
+:host ::ng-deep .mat-mdc-select-panel.asset-type-options-panel .mat-mdc-option.status-option.asset-filter-car,
+:host ::ng-deep .mat-mdc-select-panel.asset-type-options-panel .mat-mdc-option.status-option.asset-filter-car .status-option-content,
+:host ::ng-deep .mat-mdc-select-panel.asset-type-options-panel .mat-mdc-option.status-option.asset-filter-car .status-option-content .mat-icon {
+  background: linear-gradient(0deg, #ffffff, #eef6ff);
+  color: #295d96;
+}
+
+:host ::ng-deep .mat-mdc-select-panel.asset-type-options-panel .mat-mdc-option.status-option.asset-filter-accommodation,
+:host ::ng-deep .mat-mdc-select-panel.asset-type-options-panel .mat-mdc-option.status-option.asset-filter-accommodation .status-option-content,
+:host ::ng-deep .mat-mdc-select-panel.asset-type-options-panel .mat-mdc-option.status-option.asset-filter-accommodation .status-option-content .mat-icon {
+  background: linear-gradient(0deg, #ffffff, #edf9f4);
+  color: #236d51;
+}
+
+:host ::ng-deep .mat-mdc-select-panel.asset-type-options-panel .mat-mdc-option.status-option.asset-filter-supplies,
+:host ::ng-deep .mat-mdc-select-panel.asset-type-options-panel .mat-mdc-option.status-option.asset-filter-supplies .status-option-content,
+:host ::ng-deep .mat-mdc-select-panel.asset-type-options-panel .mat-mdc-option.status-option.asset-filter-supplies .status-option-content .mat-icon {
+  background: linear-gradient(0deg, #ffffff, #fff5ec);
+  color: #8a5428;
+}
+
+:host ::ng-deep .mat-mdc-select-panel.asset-type-options-panel .mat-mdc-option.status-option.asset-filter-ticket,
+:host ::ng-deep .mat-mdc-select-panel.asset-type-options-panel .mat-mdc-option.status-option.asset-filter-ticket .status-option-content,
+:host ::ng-deep .mat-mdc-select-panel.asset-type-options-panel .mat-mdc-option.status-option.asset-filter-ticket .status-option-content .mat-icon {
+  background: linear-gradient(0deg, #ffffff, #eef5ff);
+  color: #2d5f99;
+}
+
 @media (max-width: 900px) {
+  button.experience-type-select.asset-form-mobile-type-trigger {
+    position: relative;
+    justify-content: flex-start;
+    gap: 0.38rem;
+    padding-right: 1.6rem;
+  }
+
+  button.experience-type-select.asset-form-mobile-type-trigger > .mat-icon:last-child {
+    position: absolute;
+    right: 0.56rem;
+    top: 50%;
+    transform: translateY(-50%);
+    flex: 0 0 auto;
+    margin-left: 0;
+  }
+
+  .asset-form-mobile-type-panel {
+    position: fixed;
+    left: 0.65rem !important;
+    right: 0.65rem !important;
+    top: auto !important;
+    bottom: 0;
+    width: auto;
+    max-width: calc(100vw - 1.3rem);
+    max-height: min(54vh, 420px);
+    min-width: 0;
+    border-radius: 16px 16px 0 0;
+    border: 1px solid #d6deea;
+    border-bottom: 0;
+    box-shadow: 0 -14px 28px rgba(15, 29, 52, 0.24);
+    padding: 0.84rem 0.6rem max(0.62rem, env(safe-area-inset-bottom));
+    gap: 0.32rem;
+    overflow-x: hidden;
+    overflow-y: auto;
+    z-index: 4250;
+  }
+
+  .asset-form-mobile-type-panel::before {
+    content: '';
+    position: sticky;
+    top: 0;
+    display: block;
+    width: 42px;
+    height: 4px;
+    border-radius: 999px;
+    background: rgba(44, 67, 100, 0.24);
+    margin: 0 auto 0.52rem;
+    z-index: 1;
+  }
+
+  .asset-form-mobile-type-panel .popup-filter-option,
+  .asset-form-mobile-type-panel .activities-view-option {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    border: 1px solid rgba(58, 81, 114, 0.24);
+    border-radius: 12px;
+    min-height: 42px;
+    padding: 0.46rem 0.62rem;
+    justify-content: flex-start;
+    gap: 0.36rem;
+  }
+
+  .asset-form-mobile-type-panel .popup-filter-option .mat-icon,
+  .asset-form-mobile-type-panel .activities-view-option .mat-icon {
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+  }
+
+  .experience-form-grid {
+    grid-template-columns: 1fr;
+    max-width: none;
+    justify-content: stretch;
+    row-gap: 0.72rem;
+  }
+
   .asset-route-row.asset-route-row-inline {
     grid-template-columns: minmax(0, 1fr) auto;
   }

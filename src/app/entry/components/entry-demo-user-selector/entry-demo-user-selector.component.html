@@ -29,11 +29,22 @@
                   class="demo-user-progress"
                   role="progressbar"
                   aria-label="Demo data loading progress"
+                  [attr.data-stage]="loadingStage"
                   [attr.aria-valuemin]="0"
                   [attr.aria-valuemax]="100"
                   [attr.aria-valuenow]="loadingProgress"
                   >
                   <span class="demo-user-progress-track" aria-hidden="true"></span>
+                  <span class="demo-user-progress-segments" aria-hidden="true">
+                    @for (segment of loadingSegments(); track segment.stage) {
+                      <span
+                        class="demo-user-progress-segment"
+                        [attr.data-stage]="segment.stage"
+                        [style.left.%]="segment.start"
+                        [style.width.%]="segment.width"
+                      ></span>
+                    }
+                  </span>
                   <span
                     class="demo-user-progress-fill"
                     [style.transform]="'scaleX(' + (loadingProgress / 100) + ')'"
