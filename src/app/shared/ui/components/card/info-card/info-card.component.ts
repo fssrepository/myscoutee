@@ -244,6 +244,9 @@ export class InfoCardComponent {
 
   protected rootClassList(): string[] {
     const classes = ['ui-info-card'];
+    if ((this.card?.rowId ?? '').startsWith('asset:')) {
+      classes.push('ui-info-card--owned-asset');
+    }
     if (this.card?.surfaceTone && this.card.surfaceTone !== 'default') {
       classes.push(`ui-info-card--tone-${this.card.surfaceTone}`);
     }

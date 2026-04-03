@@ -21,7 +21,13 @@ export { DemoActivityInviteCandidatesService } from './services/activity-invite-
 export { DemoActivityMembersService } from './services/activity-members.service';
 export { DemoActivityResourcesService } from './services/activity-resources.service';
 export { DemoChatsService } from './services/chats.service';
-export { DemoBootstrapService, type DemoBootstrapProgressState } from './services/demo-bootstrap.service';
+export {
+  DemoBootstrapService,
+  DEMO_BOOTSTRAP_PROGRESS_STEPS,
+  DEMO_SESSION_PROGRESS_STEPS,
+  type DemoBootstrapProgressStage,
+  type DemoBootstrapProgressState
+} from './services/demo-bootstrap.service';
 export { DemoEventEditorDataService } from './services/event-editor-data.service';
 export { DemoEventsService } from './services/events.service';
 export { DemoGameService } from './services/game.service';

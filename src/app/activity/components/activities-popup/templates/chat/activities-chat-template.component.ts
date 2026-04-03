@@ -651,7 +651,7 @@ export class ActivitiesChatsController {
         visible: includeMembers
       },
       this.buildEventChatAssetResource(ownerId, subEvent, 'Car', 'directions_car', 'Car', 'event-subevent-badge-car'),
-      this.buildEventChatAssetResource(ownerId, subEvent, 'Accommodation', 'hotel', 'Accommodation', 'event-subevent-badge-accommodation'),
+      this.buildEventChatAssetResource(ownerId, subEvent, 'Accommodation', 'hotel', 'Property', 'event-subevent-badge-accommodation'),
       this.buildEventChatAssetResource(ownerId, subEvent, 'Supplies', 'inventory_2', 'Supplies', 'event-subevent-badge-supplies')
     ];
   }

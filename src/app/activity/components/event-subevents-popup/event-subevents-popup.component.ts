@@ -567,7 +567,11 @@ export class EventSubeventsPopupComponent implements OnChanges {
     const accommodation = this.toPendingCount(item.accommodationPending);
     const supplies = this.toPendingCount(item.suppliesPending);
     const acceptedMembers = this.toPendingCount(item.membersAccepted);
-    return `Members ${acceptedMembers}/${Math.max(acceptedMembers, members + acceptedMembers)} · Car ${cars} · Accommodation ${accommodation} · Supplies ${supplies}`;
+    return `Members ${acceptedMembers}/${Math.max(acceptedMembers, members + acceptedMembers)} · Car ${cars} · Property ${accommodation} · Supplies ${supplies}`;
+  }
+
+  protected assetResourceTypeLabel(type: Exclude<EventEditorSubEventResourceType, 'Members'>): string {
+    return type === 'Accommodation' ? 'Property' : type;
   }
 
   protected subEventMembersResourceLabel(item: EventSubeventsItem, row?: EventSubeventsStageRow | null): string {
