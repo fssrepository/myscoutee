@@ -142,35 +142,68 @@
               }
             } @else {
               <div class="experience-toolbar assets-toolbar">
-                <div
-                  class="profile-status-select-wrap selector-like experience-filter-select assets-compact-select"
-                  [ngClass]="ownedAssets.assetTypeClass(ownedAssets.assetFilter)"
-                  [class.asset-filter-open]="assetFilterOpen()"
-                  >
-                  <mat-select
-                    [ngModel]="ownedAssets.assetFilter"
-                    (ngModelChange)="onAssetFilterChange($event)"
-                    (openedChange)="onAssetFilterMenuOpenChange($event)"
-                    [panelWidth]="ownedAssets.assetFilterPanelWidth()"
-                    disableOptionCentering
-                    panelClass="selector-options-panel profile-bottom-sheet-panel assets-filter-options-panel"
+                @if (!isMobileAssetFilterSheetViewport()) {
+                  <div
+                    class="profile-status-select-wrap selector-like experience-filter-select assets-compact-select"
+                    [ngClass]="ownedAssets.assetTypeClass(ownedAssets.assetFilter)"
+                    [class.asset-filter-open]="assetFilterOpen()"
                     >
-                    <mat-select-trigger>
+                    <mat-select
+                      [ngModel]="ownedAssets.assetFilter"
+                      (ngModelChange)="onAssetFilterChange($event)"
+                      (openedChange)="onAssetFilterMenuOpenChange($event)"
+                      [panelWidth]="ownedAssets.assetFilterPanelWidth()"
+                      disableOptionCentering
+                      panelClass="selector-options-panel profile-bottom-sheet-panel assets-filter-options-panel"
+                      >
+                      <mat-select-trigger>
+                        <span class="status-option-content">
+                          <mat-icon [class]="ownedAssets.assetTypeClass(ownedAssets.assetFilter)">{{ ownedAssets.assetTypeIcon(ownedAssets.assetFilter) }}</mat-icon>
+                          <span>{{ ownedAssets.assetFilter }}</span>
+                        </span>
+                      </mat-select-trigger>
+                      @for (option of ownedAssets.assetFilterOptions; track option) {
+                        <mat-option [value]="option" class="status-option" [ngClass]="ownedAssets.assetTypeClass(option)">
+                          <span class="status-option-content">
+                            <mat-icon [class]="ownedAssets.assetTypeClass(option)">{{ ownedAssets.assetTypeIcon(option) }}</mat-icon>
+                            <span>{{ option }}</span>
+                          </span>
+                        </mat-option>
+                      }
+                    </mat-select>
+                  </div>
+                } @else {
+                  <div class="popup-mobile-filter-picker assets-mobile-filter-picker">
+                    <button
+                      type="button"
+                      class="profile-status-select-wrap selector-like experience-filter-select assets-compact-select"
+                      [ngClass]="ownedAssets.assetTypeClass(ownedAssets.assetFilter)"
+                      (click)="openMobileAssetFilterSelector($event)"
+                      aria-label="Open asset filter"
+                      >
                       <span class="status-option-content">
                         <mat-icon [class]="ownedAssets.assetTypeClass(ownedAssets.assetFilter)">{{ ownedAssets.assetTypeIcon(ownedAssets.assetFilter) }}</mat-icon>
                         <span>{{ ownedAssets.assetFilter }}</span>
                       </span>
-                    </mat-select-trigger>
-                    @for (option of ownedAssets.assetFilterOptions; track option) {
-                      <mat-option [value]="option" class="status-option" [ngClass]="ownedAssets.assetTypeClass(option)">
-                        <span class="status-option-content">
-                          <mat-icon [class]="ownedAssets.assetTypeClass(option)">{{ ownedAssets.assetTypeIcon(option) }}</mat-icon>
-                          <span>{{ option }}</span>
-                        </span>
-                      </mat-option>
+                      <mat-icon>expand_more</mat-icon>
+                    </button>
+                    @if (showMobileAssetFilterPicker) {
+                      <div class="popup-filter-panel popup-mobile-filter-panel activities-view-picker-panel assets-mobile-filter-panel">
+                        @for (option of ownedAssets.assetFilterOptions; track option) {
+                          <button
+                            type="button"
+                            class="popup-filter-option activities-view-option"
+                            [ngClass]="[ownedAssets.assetTypeClass(option), option === ownedAssets.assetFilter ? 'active' : '']"
+                            (click)="selectMobileAssetFilter(option, $event)"
+                            >
+                            <mat-icon [class]="ownedAssets.assetTypeClass(option)">{{ ownedAssets.assetTypeIcon(option) }}</mat-icon>
+                            <span>{{ option }}</span>
+                          </button>
+                        }
+                      </div>
                     }
-                  </mat-select>
-                </div>
+                  </div>
+                }
                 @if (!ownedAssets.isTicketPopup()) {
                   <button
                     type="button"
@@ -204,10 +237,12 @@
               ></app-smart-list>
             } @else {
               <app-smart-list
+                #assetSmartList
                 [config]="assetSmartListConfig"
                 [loadPage]="assetSmartListLoadPage"
                 [itemTemplate]="assetItemTemplate"
                 [query]="assetSmartListQuery"
+                (stateChange)="onAssetSmartListStateChange($event)"
               ></app-smart-list>
             }
             @if (!isBasketMode()) {
@@ -239,7 +274,11 @@
               title: 'Delete asset',
               message: ownedAssets.pendingAssetDeleteLabel(),
               confirmLabel: 'Delete',
+              busyConfirmLabel: ownedAssets.assetDeleteBusyLabel(),
               confirmTone: 'danger',
+              busy: ownedAssets.isAssetDeletePending,
+              errorMessage: ownedAssets.assetDeleteErrorMessage(),
+              ringPerimeter: ownedAssets.assetDeleteRingPerimeter(),
               cancelAction: cancelOwnedAssetDelete,
               confirmAction: confirmOwnedAssetDelete
             }"

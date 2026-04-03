@@ -17,7 +17,7 @@
     <div class="popup-body popup-body-members">
       <div class="experience-popup assets-popup subevent-assets-popup">
         <div class="experience-toolbar assets-toolbar">
-          @if (!host.isMobilePopupSheetViewport()) {
+          @if (!isMobileResourceFilterSheetViewport()) {
             <div
               class="profile-status-select-wrap selector-like experience-filter-select assets-compact-select"
               [ngClass]="host.resourceTypeClass(host.resourceFilter())"
@@ -61,24 +61,44 @@
               }
             </div>
           } @else {
-            <button
-              type="button"
-              class="profile-status-select-wrap selector-like experience-filter-select assets-compact-select"
-              [ngClass]="host.resourceTypeClass(host.resourceFilter())"
-              (click)="host.openMobileResourceFilterSelector($event)"
-              aria-label="Open asset filter"
-              >
-              <span class="status-option-content">
-                <mat-icon [class]="host.resourceTypeClass(host.resourceFilter())">{{ host.resourceTypeIcon(host.resourceFilter()) }}</mat-icon>
-                <span>{{ host.resourceFilter().toLowerCase() }}</span>
-              </span>
-              <mat-icon>expand_more</mat-icon>
-              @if (host.resourceFilterCount(host.resourceFilter()) > 0) {
-                <span class="rate-filter-count-badge rate-filter-trigger-badge">
-                  {{ host.resourceFilterCount(host.resourceFilter()) | counterBadge }}
+            <div class="popup-mobile-filter-picker subevent-resource-mobile-filter-picker">
+              <button
+                type="button"
+                class="profile-status-select-wrap selector-like experience-filter-select assets-compact-select"
+                [ngClass]="host.resourceTypeClass(host.resourceFilter())"
+                (click)="openMobileResourceFilterSelector($event)"
+                aria-label="Open asset filter"
+                >
+                <span class="status-option-content">
+                  <mat-icon [class]="host.resourceTypeClass(host.resourceFilter())">{{ host.resourceTypeIcon(host.resourceFilter()) }}</mat-icon>
+                  <span>{{ host.resourceFilter().toLowerCase() }}</span>
                 </span>
+                <mat-icon>expand_more</mat-icon>
+                @if (host.resourceFilterCount(host.resourceFilter()) > 0) {
+                  <span class="rate-filter-count-badge rate-filter-trigger-badge">
+                    {{ host.resourceFilterCount(host.resourceFilter()) | counterBadge }}
+                  </span>
+                }
+              </button>
+              @if (showMobileResourceFilterPicker) {
+                <div class="popup-filter-panel popup-mobile-filter-panel activities-view-picker-panel subevent-resource-mobile-filter-panel">
+                  @for (option of host.resourceFilterOptions(); track option) {
+                    <button
+                      type="button"
+                      class="popup-filter-option activities-view-option"
+                      [ngClass]="[host.resourceTypeClass(option), option === host.resourceFilter() ? 'active' : '']"
+                      (click)="selectMobileResourceFilter(option, $event)"
+                      >
+                      <mat-icon [class]="host.resourceTypeClass(option)">{{ host.resourceTypeIcon(option) }}</mat-icon>
+                      <span>{{ option.toLowerCase() }}</span>
+                      @if (host.resourceFilterCount(option) > 0) {
+                        <span class="rate-filter-count-badge">{{ host.resourceFilterCount(option) | counterBadge }}</span>
+                      }
+                    </button>
+                  }
+                </div>
               }
-            </button>
+            </div>
           }
 
           <div class="subevent-assets-toolbar-actions">

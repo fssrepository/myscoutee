@@ -1,7 +1,65 @@
+@use '../../../shared/ui/styles' as ui;
 @use '../_asset-interactions.shared' as asset-interactions;
 
+@include ui.popup-shell();
+@include ui.form-controls();
 @include asset-interactions.host-motion-vars(contents);
 @include asset-interactions.interactive-feedback('.popup-header-add-btn, .experience-form-close-btn, .profile-status-select-wrap, .experience-action-btn, .asset-source-refresh-btn, .asset-image-dropzone');
+
+.experience-form-overlay {
+  z-index: 4200;
+}
+
+.experience-form-close-btn {
+  background: rgba(235, 242, 255, 0.9);
+  color: rgba(39, 87, 148, 0.94);
+}
+
+.experience-form-panel.event-visibility-public {
+  background: linear-gradient(180deg, #f3f8ff 0%, #ecf4ff 100%);
+  border-color: rgba(46, 111, 178, 0.24);
+}
+
+.experience-form-panel.event-visibility-friends {
+  background: linear-gradient(180deg, #f4faf2 0%, #edf7eb 100%);
+  border-color: rgba(54, 129, 72, 0.24);
+}
+
+.experience-form-panel.event-visibility-invitation {
+  background: linear-gradient(180deg, #fff5f2 0%, #ffefea 100%);
+  border-color: rgba(176, 86, 66, 0.24);
+}
+
+.experience-type-select.asset-filter-car {
+  background: linear-gradient(180deg, #eef6ff 0%, #e2efff 100%);
+  border-color: rgba(43, 111, 179, 0.32);
+}
+
+.experience-type-select.asset-filter-accommodation {
+  background: linear-gradient(180deg, #edf9f4 0%, #e1f3ea 100%);
+  border-color: rgba(37, 127, 95, 0.32);
+}
+
+.experience-type-select.asset-filter-supplies {
+  background: linear-gradient(180deg, #fff5ec 0%, #ffe9d8 100%);
+  border-color: rgba(151, 92, 41, 0.32);
+}
+
+.asset-filter-car {
+  color: #295d96;
+}
+
+.asset-filter-accommodation {
+  color: #236d51;
+}
+
+.asset-filter-supplies {
+  color: #8a5428;
+}
+
+.asset-filter-ticket {
+  color: #2d5f99;
+}
 
 .asset-route-row {
   display: grid;
@@ -23,6 +81,33 @@
 .asset-route-map-btn {
   width: 30px;
   height: 30px;
+}
+
+.experience-action-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid rgba(42, 67, 101, 0.26);
+  background: rgba(255, 255, 255, 0.88);
+  color: #2d5ea8;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition:
+    transform 0.14s ease,
+    filter 0.14s ease,
+    box-shadow 0.14s ease,
+    background-color 0.14s ease,
+    border-color 0.14s ease,
+    color 0.14s ease;
+}
+
+.experience-action-btn .mat-icon {
+  width: 15px;
+  height: 15px;
+  font-size: 15px;
+  line-height: 15px;
 }
 
 .experience-action-btn.asset-route-map-btn {
@@ -93,7 +178,51 @@
   line-height: 1;
 }
 
+:host ::ng-deep .mat-mdc-select-panel.asset-type-options-panel .mat-mdc-option.status-option .status-option-content {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  column-gap: 0.34rem;
+}
+
+:host ::ng-deep .mat-mdc-select-panel.asset-type-options-panel .mat-mdc-option.status-option.asset-filter-car,
+:host ::ng-deep .mat-mdc-select-panel.asset-type-options-panel .mat-mdc-option.status-option.asset-filter-car .status-option-content,
+:host ::ng-deep .mat-mdc-select-panel.asset-type-options-panel .mat-mdc-option.status-option.asset-filter-car .status-option-content .mat-icon {
+  background: linear-gradient(0deg, #ffffff, #eef6ff);
+  color: #295d96;
+}
+
+:host ::ng-deep .mat-mdc-select-panel.asset-type-options-panel .mat-mdc-option.status-option.asset-filter-accommodation,
+:host ::ng-deep .mat-mdc-select-panel.asset-type-options-panel .mat-mdc-option.status-option.asset-filter-accommodation .status-option-content,
+:host ::ng-deep .mat-mdc-select-panel.asset-type-options-panel .mat-mdc-option.status-option.asset-filter-accommodation .status-option-content .mat-icon {
+  background: linear-gradient(0deg, #ffffff, #edf9f4);
+  color: #236d51;
+}
+
+:host ::ng-deep .mat-mdc-select-panel.asset-type-options-panel .mat-mdc-option.status-option.asset-filter-supplies,
+:host ::ng-deep .mat-mdc-select-panel.asset-type-options-panel .mat-mdc-option.status-option.asset-filter-supplies .status-option-content,
+:host ::ng-deep .mat-mdc-select-panel.asset-type-options-panel .mat-mdc-option.status-option.asset-filter-supplies .status-option-content .mat-icon {
+  background: linear-gradient(0deg, #ffffff, #fff5ec);
+  color: #8a5428;
+}
+
+:host ::ng-deep .mat-mdc-select-panel.asset-type-options-panel .mat-mdc-option.status-option.asset-filter-ticket,
+:host ::ng-deep .mat-mdc-select-panel.asset-type-options-panel .mat-mdc-option.status-option.asset-filter-ticket .status-option-content,
+:host ::ng-deep .mat-mdc-select-panel.asset-type-options-panel .mat-mdc-option.status-option.asset-filter-ticket .status-option-content .mat-icon {
+  background: linear-gradient(0deg, #ffffff, #eef5ff);
+  color: #2d5f99;
+}
+
 @media (max-width: 900px) {
+  .experience-form-grid {
+    grid-template-columns: 1fr;
+    max-width: none;
+    justify-content: stretch;
+    row-gap: 0.72rem;
+  }
+
   .asset-route-row.asset-route-row-inline {
     grid-template-columns: minmax(0, 1fr) auto;
   }

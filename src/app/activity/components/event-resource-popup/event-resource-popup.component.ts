@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, DoCheck, Input, TemplateRef, ViewChild } from '@angular/core';
+import { Component, DoCheck, HostListener, Input, TemplateRef, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DragDropModule } from '@angular/cdk/drag-drop';
 import { MatButtonModule } from '@angular/material/button';
@@ -144,6 +144,7 @@ export class EventResourcePopupComponent implements DoCheck {
   @Input({ required: true }) host!: EventResourcePopupHost;
 
   protected resourceFilterOpen = false;
+  protected showMobileResourceFilterPicker = false;
 
   protected resourceSmartListQuery: Partial<ListQuery<ResourceSmartListFilters>> = {
     filters: {
@@ -299,6 +300,21 @@ export class EventResourcePopupComponent implements DoCheck {
     this.host.onResourceFilterOpened(isOpen, select);
   }
 
+  protected openMobileResourceFilterSelector(event: Event): void {
+    if (!this.isMobileResourceFilterSheetViewport()) {
+      return;
+    }
+    event.stopPropagation();
+    this.resourceFilterOpen = false;
+    this.showMobileResourceFilterPicker = !this.showMobileResourceFilterPicker;
+  }
+
+  protected selectMobileResourceFilter(filter: AppTypes.AssetType, event?: Event): void {
+    event?.stopPropagation();
+    this.showMobileResourceFilterPicker = false;
+    this.host.selectResourceFilter(filter);
+  }
+
   protected onResourceCardMenuAction(card: AppTypes.SubEventResourceCard, event: InfoCardMenuActionEvent): void {
     if (event.actionId === 'join') {
       this.host.join(card, new Event('click'));
@@ -313,6 +329,26 @@ export class EventResourcePopupComponent implements DoCheck {
       return;
     }
     this.host.delete(card, new Event('click'));
+  }
+
+  @HostListener('window:keydown.escape', ['$event'])
+  protected onEscapePressed(event: Event): void {
+    const keyboardEvent = event as KeyboardEvent;
+    if (keyboardEvent.defaultPrevented || !this.showMobileResourceFilterPicker) {
+      return;
+    }
+    keyboardEvent.preventDefault();
+    keyboardEvent.stopPropagation();
+    this.showMobileResourceFilterPicker = false;
+  }
+
+  @HostListener('document:click', ['$event'])
+  protected onDocumentClick(event: MouseEvent): void {
+    const target = event.target;
+    if (!(target instanceof Element) || target.closest('.popup-mobile-filter-picker')) {
+      return;
+    }
+    this.showMobileResourceFilterPicker = false;
   }
 
   private syncVisibleResourceCards(
@@ -334,6 +370,13 @@ export class EventResourcePopupComponent implements DoCheck {
     this.resourceSmartList.replaceVisibleItems(cards.slice(0, nextVisibleCount), {
       total: cards.length
     });
+  }
+
+  protected isMobileResourceFilterSheetViewport(): boolean {
+    if (typeof window === 'undefined') {
+      return false;
+    }
+    return window.matchMedia('(max-width: 900px)').matches;
   }
 
   private resourceMediaStart(card: AppTypes.SubEventResourceCard): NonNullable<InfoCardData['mediaStart']> | null {

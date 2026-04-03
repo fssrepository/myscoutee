@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, DoCheck, HostListener, OnDestroy, ViewEncapsulation, inject, signal } from '@angular/core';
+import { Component, DoCheck, HostListener, OnDestroy, ViewChild, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -56,8 +56,7 @@ interface OwnedAssetListFilters {
     AssetTicketScannerPopupComponent
   ],
   templateUrl: './asset-popup.component.html',
-  styleUrl: './asset-popup.component.scss',
-  encapsulation: ViewEncapsulation.None
+  styleUrl: './asset-popup.component.scss'
 })
 export class AssetPopupComponent implements DoCheck, OnDestroy {
   private readonly assetFacade = inject(AssetFacadeService);
@@ -66,6 +65,12 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
   protected readonly assetPopup = inject(AssetPopupStateService);
   protected readonly ownedAssets = inject(OwnedAssetsPopupFacadeService);
   protected readonly assetFilterOpen = signal(false);
+  protected showMobileAssetFilterPicker = false;
+  private lastAssetListContextKey = '';
+  private lastAssetCardsSignature = '';
+  private lastAssetCardCount = 0;
+  private assetListReady = false;
+  private assetListVisibleCount = 0;
   protected readonly retryTicketScanner = (event?: Event): void => this.assetPopup.retryTicketScanner(event);
   protected readonly closeOwnedAssetForm = (): void => this.ownedAssets.closeAssetForm();
   protected readonly saveOwnedAssetCard = (): void => { void this.ownedAssets.saveAssetCard(); };
@@ -83,6 +88,8 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
   private assetSmartListQueryRevision = 0;
   private ticketSmartListQueryKey = '';
   private ticketSmartListQueryRevision = 0;
+  @ViewChild('assetSmartList')
+  private assetSmartList?: SmartListComponent<AppTypes.AssetCard, OwnedAssetListFilters>;
 
   protected readonly assetSmartListLoadPage = (query: ListQuery<OwnedAssetListFilters>) =>
     from(this.loadOwnedAssetSmartListPage(query));
@@ -144,6 +151,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
 
   ngDoCheck(): void {
     this.syncSmartListQueries();
+    this.syncVisibleOwnedAssets();
   }
 
   protected isBasketMode(): boolean {
@@ -240,12 +248,13 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
     if (this.isBasketMode()) {
       return;
     }
+    this.showMobileAssetFilterPicker = false;
     this.ownedAssets.selectAssetFilter(filter);
     this.assetSmartListQuery = {
       filters: {
         userId: this.activeUserId(),
         type: filter === 'Ticket' ? 'Car' : filter,
-        refreshToken: this.ownedAssets.assetListRevision()
+        refreshToken: this.ownedAssets.assetListReloadRevision()
       }
     };
   }
@@ -265,8 +274,34 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
     this.assetPopup.updateTicketListState(change);
   }
 
+  protected onAssetSmartListStateChange(change: SmartListStateChange<AppTypes.AssetCard, OwnedAssetListFilters>): void {
+    this.assetListVisibleCount = change.items.length;
+    this.assetListReady = !change.initialLoading;
+    if (!this.assetListReady || this.ownedAssets.isTicketPopup()) {
+      return;
+    }
+    const cards = this.orderedOwnedAssetCards(this.currentAssetSmartListType());
+    if (change.total !== cards.length) {
+      this.syncVisibleOwnedAssetCards(cards, change.total);
+    }
+  }
+
   protected onAssetFilterMenuOpenChange(isOpen: boolean): void {
     this.assetFilterOpen.set(isOpen);
+  }
+
+  protected openMobileAssetFilterSelector(event: Event): void {
+    if (!this.isMobileAssetFilterSheetViewport() || this.isBasketMode()) {
+      return;
+    }
+    event.stopPropagation();
+    this.assetFilterOpen.set(false);
+    this.showMobileAssetFilterPicker = !this.showMobileAssetFilterPicker;
+  }
+
+  protected selectMobileAssetFilter(filter: AppTypes.AssetFilterType, event?: Event): void {
+    event?.stopPropagation();
+    this.onAssetFilterChange(filter);
   }
 
   protected closeAssetPopup(event?: Event): void {
@@ -276,6 +311,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
       host.closeSubEventAssetAssignPopup(false);
       return;
     }
+    this.showMobileAssetFilterPicker = false;
     this.ownedAssets.closePopup();
   }
 
@@ -307,6 +343,15 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
       this.assetPopup.closeTicketOverlay();
       return;
     }
+    if (this.showMobileAssetFilterPicker) {
+      keyboardEvent.preventDefault();
+      keyboardEvent.stopPropagation();
+      this.showMobileAssetFilterPicker = false;
+      return;
+    }
+    if (this.ownedAssets.pendingAssetDeleteCardId) {
+      return;
+    }
     if (this.ownedAssets.isPopupOpen()) {
       keyboardEvent.preventDefault();
       keyboardEvent.stopPropagation();
@@ -319,6 +364,9 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
     const target = event.target;
     if (!(target instanceof Element)) {
       return;
+    }
+    if (!target.closest('.popup-mobile-filter-picker')) {
+      this.showMobileAssetFilterPicker = false;
     }
     if (target.closest('.item-action-menu') || target.closest('.experience-action-menu-trigger')) {
       return;
@@ -335,15 +383,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
     const activeUserId = this.activeUserId();
     const assetType = this.currentAssetSmartListType();
     const basketMode = this.isBasketMode();
-    const basketCardsKey = basketMode
-      ? this.ownedAssets.assetCards
-        .filter(card => card.type === assetType)
-        .map(card => card.id)
-        .join('|')
-      : '';
-    const assetKey = basketMode
-      ? `${activeUserId}:${assetType}:basket:${basketCardsKey}`
-      : `${activeUserId}:${assetType}:assets:${this.ownedAssets.assetListRevision()}`;
+    const assetKey = `${activeUserId}:${assetType}:${basketMode ? 'basket' : 'assets'}:${this.ownedAssets.assetListReloadRevision()}`;
     if (assetKey !== this.assetSmartListQueryKey) {
       this.assetSmartListQueryKey = assetKey;
       this.assetSmartListQueryRevision += 1;
@@ -380,6 +420,98 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
     return currentFilter === 'Accommodation' || currentFilter === 'Supplies' ? currentFilter : 'Car';
   }
 
+  protected isMobileAssetFilterSheetViewport(): boolean {
+    if (typeof window === 'undefined') {
+      return false;
+    }
+    return window.matchMedia('(max-width: 900px)').matches;
+  }
+
+  private syncVisibleOwnedAssets(): void {
+    if (!this.ownedAssets.isPopupOpen() || this.ownedAssets.isTicketPopup()) {
+      this.lastAssetListContextKey = '';
+      this.lastAssetCardsSignature = '';
+      this.lastAssetCardCount = 0;
+      this.assetListReady = false;
+      this.assetListVisibleCount = 0;
+      return;
+    }
+
+    const activeUserId = this.activeUserId();
+    const assetType = this.currentAssetSmartListType();
+    const selectedAssetKey = this.isBasketMode()
+      ? (this.assetPopup.host()?.selectedSubEventAssetAssignChips() ?? []).map(card => card.id).join('|')
+      : '';
+    const contextKey = `${activeUserId}:${assetType}:${this.isBasketMode() ? `basket:${selectedAssetKey}` : 'assets'}`;
+    const cards = this.orderedOwnedAssetCards(assetType);
+    const signature = `${contextKey}:${cards.map(card => [
+      card.id,
+      card.type,
+      card.title,
+      card.subtitle,
+      card.city,
+      card.capacityTotal,
+      card.details,
+      card.imageUrl,
+      card.sourceLink,
+      ...(card.routes ?? []),
+      String(card.requests.length)
+    ].join(':')).join('|')}`;
+
+    if (contextKey !== this.lastAssetListContextKey) {
+      this.lastAssetListContextKey = contextKey;
+      this.lastAssetCardsSignature = signature;
+      this.lastAssetCardCount = cards.length;
+      this.assetListReady = false;
+      this.assetListVisibleCount = 0;
+      return;
+    }
+
+    if (signature === this.lastAssetCardsSignature) {
+      return;
+    }
+
+    const previousCardCount = this.lastAssetCardCount;
+    this.lastAssetCardsSignature = signature;
+    this.lastAssetCardCount = cards.length;
+    this.syncVisibleOwnedAssetCards(cards, previousCardCount);
+  }
+
+  private syncVisibleOwnedAssetCards(cards: AppTypes.AssetCard[], previousCardCount: number): void {
+    if (!this.assetListReady || !this.assetSmartList) {
+      return;
+    }
+
+    const visibleCount = Math.max(this.assetListVisibleCount, this.assetSmartList.itemsSnapshot().length);
+    const allCardsWereVisible = visibleCount >= previousCardCount;
+    let nextVisibleCount = Math.min(cards.length, visibleCount);
+
+    if (cards.length > previousCardCount && allCardsWereVisible) {
+      nextVisibleCount = Math.min(cards.length, visibleCount + 1);
+    }
+
+    this.assetSmartList.replaceVisibleItems(cards.slice(0, nextVisibleCount).map(card => this.cloneOwnedAsset(card)), {
+      total: cards.length
+    });
+  }
+
+  private orderedOwnedAssetCards(type: AppTypes.AssetType): AppTypes.AssetCard[] {
+    const selectedAssetIds = this.isBasketMode()
+      ? new Set((this.assetPopup.host()?.selectedSubEventAssetAssignChips() ?? []).map(card => card.id.trim()).filter(Boolean))
+      : null;
+    return this.ownedAssets.assetCards
+      .filter(card => card.type === type)
+      .sort((left, right) => {
+        if (selectedAssetIds) {
+          const selectedDelta = Number(selectedAssetIds.has(right.id)) - Number(selectedAssetIds.has(left.id));
+          if (selectedDelta !== 0) {
+            return selectedDelta;
+          }
+        }
+        return left.title.localeCompare(right.title) || left.id.localeCompare(right.id);
+      });
+  }
+
   private async loadTicketSmartListPage(
     query: ListQuery<AssetTicketListFilters>
   ): Promise<{ items: AppTypes.ActivityListRow[]; total: number }> {
@@ -413,21 +545,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
         total: 0
       };
     }
-    const cards = this.ownedAssets.assetCards;
-    const selectedAssetIds = this.isBasketMode()
-      ? new Set((this.assetPopup.host()?.selectedSubEventAssetAssignChips() ?? []).map(card => card.id.trim()).filter(Boolean))
-      : null;
-    const filtered = cards
-      .filter(card => card.type === type)
-      .sort((left, right) => {
-        if (selectedAssetIds) {
-          const selectedDelta = Number(selectedAssetIds.has(right.id)) - Number(selectedAssetIds.has(left.id));
-          if (selectedDelta !== 0) {
-            return selectedDelta;
-          }
-        }
-        return left.title.localeCompare(right.title) || left.id.localeCompare(right.id);
-      });
+    const filtered = this.orderedOwnedAssetCards(type);
     const page = Math.max(0, Math.trunc(Number(query.page) || 0));
     const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 1));
     const start = page * pageSize;
