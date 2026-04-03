@@ -200,7 +200,8 @@ export class UsersService extends BaseRouteModeService {
     if (!this.isDemoModeEnabled('/auth/me') || !environment.demoBootstrapEnabled) {
       onProgress?.({
         percent: 100,
-        label: 'Demo session ready'
+        label: 'Demo session ready',
+        stage: 'sessionReady'
       });
       return;
     }
@@ -214,7 +215,8 @@ export class UsersService extends BaseRouteModeService {
       }
       onProgress?.({
         percent: 100,
-        label: 'Demo session ready'
+        label: 'Demo session ready',
+        stage: 'sessionReady'
       });
     }
   }
