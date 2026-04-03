@@ -1214,7 +1214,13 @@
   }
 }
 
-@media (max-width: 1023px) {
+@media (max-width: 900px) {
+  .asset-popup .tickets-scroll-list .asset-occupancy-badge {
+    border-color: rgba(17, 33, 56, 0.2);
+    background: rgba(26, 45, 71, 0.9);
+    box-shadow: 0 5px 10px rgba(8, 18, 34, 0.24);
+  }
+
   .asset-popup .tickets-scroll-list .activities-sticky-header,
   .asset-popup .tickets-scroll-list .smart-list__group-marker {
     backdrop-filter: none;
