@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 
 import { DemoAssetBuilder } from '../shared/core/demo/builders';
+import { APP_STATIC_DATA } from '../shared/app-static-data';
 import { AppUtils } from '../shared/app-utils';
 import type * as AppTypes from '../shared/core/base/models';
 import { AppContext, UsersService, type UserDto } from '../shared/core';
@@ -100,7 +101,7 @@ export class AssetFacadeService {
 
   ownedAssetEmptyLabel(type: AppTypes.AssetType): string {
     if (type === 'Accommodation') {
-      return 'No accommodations yet';
+      return 'No properties yet';
     }
     if (type === 'Supplies') {
       return 'No supplies yet';
@@ -110,7 +111,7 @@ export class AssetFacadeService {
 
   ownedAssetEmptyDescription(type: AppTypes.AssetType): string {
     if (type === 'Accommodation') {
-      return 'Add a stay, room, or place so it can show up here.';
+      return 'Add a property, stay, room, or place so it can show up here.';
     }
     if (type === 'Supplies') {
       return 'Add supplies or shared gear so the list can populate.';
@@ -268,13 +269,7 @@ export class AssetFacadeService {
   }
 
   private ownedAssetTypeLabel(type: AppTypes.AssetType): string {
-    if (type === 'Accommodation') {
-      return 'Accommodation';
-    }
-    if (type === 'Supplies') {
-      return 'Supplies';
-    }
-    return 'Car';
+    return APP_STATIC_DATA.assetTypeLabels[type];
   }
 
   private ownedAssetTypeIcon(type: AppTypes.AssetType): string {
@@ -310,7 +305,7 @@ export class AssetFacadeService {
       tone: 'default',
       icon: 'location_on',
       interactive: true,
-      ariaLabel: 'Open accommodation map'
+      ariaLabel: 'Open property map'
     };
   }
 

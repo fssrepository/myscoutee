@@ -29,6 +29,7 @@ export class AssetFormPopupComponent {
   @Input() isEventEditorReadOnly = false;
   @Input({ required: true }) assetTypeClass!: (type: AppTypes.AssetFilterType) => string;
   @Input({ required: true }) assetTypeIcon!: (type: AppTypes.AssetFilterType) => string;
+  @Input({ required: true }) assetTypeLabel!: (type: AppTypes.AssetFilterType) => string;
   @Input({ required: true }) eventVisibilityClass!: (option: AppTypes.EventVisibility) => string;
   @Input({ required: true }) close!: () => void;
   @Input({ required: true }) save!: () => void;

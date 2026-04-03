@@ -265,9 +265,9 @@
                                   class="item-action-menu-btn subevent-resource-menu-item event-subevent-badge-accommodation"
                                   (click)="openSubEventResourcePopup('Accommodation', row.stageItem, $event, row)"
                                   >
-                                  <span class="subevent-resource-menu-item-icon"><mat-icon>hotel</mat-icon></span>
+                                  <span class="subevent-resource-menu-item-icon"><mat-icon>apartment</mat-icon></span>
                                   <span class="subevent-resource-menu-item-main">
-                                    <span class="subevent-resource-menu-item-title">Accommodation</span>
+                                    <span class="subevent-resource-menu-item-title">{{ assetResourceTypeLabel('Accommodation') }}</span>
                                     <span class="subevent-resource-menu-item-value">{{ row.accommodationLabel }}</span>
                                   </span>
                                   @if (row.accommodationPendingCount > 0) {
@@ -408,9 +408,9 @@
                         class="item-action-menu-btn subevent-resource-menu-item event-subevent-badge-accommodation"
                         (click)="openSubEventResourcePopup('Accommodation', subEvent, $event)"
                         >
-                        <span class="subevent-resource-menu-item-icon"><mat-icon>hotel</mat-icon></span>
+                        <span class="subevent-resource-menu-item-icon"><mat-icon>apartment</mat-icon></span>
                         <span class="subevent-resource-menu-item-main">
-                          <span class="subevent-resource-menu-item-title">Accommodation</span>
+                          <span class="subevent-resource-menu-item-title">{{ assetResourceTypeLabel('Accommodation') }}</span>
                           <span class="subevent-resource-menu-item-value">{{ subEventAssetResourceLabel(subEvent, 'Accommodation') }}</span>
                         </span>
                         @if (resourcePendingCount(subEvent, 'Accommodation') > 0) {

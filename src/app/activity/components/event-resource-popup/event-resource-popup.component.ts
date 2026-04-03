@@ -62,6 +62,7 @@ export interface EventResourcePopupHost {
   resourceFilterCount(type: AppTypes.AssetType): number;
   resourceTypeClass(type: AppTypes.SubEventResourceFilter): string;
   resourceTypeIcon(type: AppTypes.SubEventResourceFilter): string;
+  resourceTypeLabel(type: AppTypes.SubEventResourceFilter): string;
   cards(): AppTypes.SubEventResourceCard[];
   capacityEditor(): CapacityEditorState | null;
   routeEditor(): RouteEditorState | null;

@@ -23,14 +23,14 @@
                   <mat-select-trigger>
                     <span class="status-option-content">
                       <mat-icon [class]="assetTypeClass(assetForm.type)">{{ assetTypeIcon(assetForm.type) }}</mat-icon>
-                      <span>{{ assetForm.type }}</span>
+                      <span>{{ assetTypeLabel(assetForm.type) }}</span>
                     </span>
                   </mat-select-trigger>
                   @for (option of assetTypeOptions; track option) {
                     <mat-option [value]="option" class="status-option" [ngClass]="assetTypeClass(option)">
                       <span class="status-option-content">
                         <mat-icon [class]="assetTypeClass(option)">{{ assetTypeIcon(option) }}</mat-icon>
-                        <span>{{ option }}</span>
+                        <span>{{ assetTypeLabel(option) }}</span>
                       </span>
                     </mat-option>
                   }
@@ -47,7 +47,7 @@
                   >
                   <span class="status-option-content">
                     <mat-icon [class]="assetTypeClass(assetForm.type)">{{ assetTypeIcon(assetForm.type) }}</mat-icon>
-                    <span>{{ assetForm.type }}</span>
+                    <span>{{ assetTypeLabel(assetForm.type) }}</span>
                   </span>
                   <mat-icon>expand_more</mat-icon>
                 </button>
@@ -61,7 +61,7 @@
                         (click)="selectMobileAssetType(option, $event)"
                         >
                         <mat-icon [class]="assetTypeClass(option)">{{ assetTypeIcon(option) }}</mat-icon>
-                        <span>{{ option }}</span>
+                        <span>{{ assetTypeLabel(option) }}</span>
                       </button>
                     }
                   </div>
@@ -93,7 +93,7 @@
                   type="text"
                   [ngModel]="assetFormRouteStops[0]"
                   (ngModelChange)="setAssetFormRouteStop(0, $event)"
-                  placeholder="Accommodation address"
+                  placeholder="Property address"
                   />
                 <button
                   type="button"

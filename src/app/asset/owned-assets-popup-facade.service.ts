@@ -114,7 +114,7 @@ export class OwnedAssetsPopupFacadeService {
 
   popupTitle(): string {
     const filter = this.activePopupFilter ?? this.assetFilter;
-    return `Assets · ${filter}`;
+    return `Assets · ${this.assetTypeLabel(filter)}`;
   }
 
   assetFilterPanelWidth(): string {
@@ -129,7 +129,7 @@ export class OwnedAssetsPopupFacadeService {
   }
 
   assetFormTitle(): string {
-    return `${this.editingAssetId ? 'Edit' : 'Add'} ${this.assetForm.type}`;
+    return `${this.editingAssetId ? 'Edit' : 'Add'} ${this.assetTypeLabel(this.assetForm.type)}`;
   }
 
   assetFormRouteStops(): string[] {
@@ -186,6 +186,10 @@ export class OwnedAssetsPopupFacadeService {
       return 'asset-filter-ticket';
     }
     return 'asset-filter-car';
+  }
+
+  assetTypeLabel(type: AppTypes.AssetFilterType): string {
+    return APP_STATIC_DATA.assetTypeLabels[type];
   }
 
   eventVisibilityClass(option: AppTypes.EventVisibility): string {

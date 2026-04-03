@@ -35,7 +35,7 @@
                 <mat-select-trigger>
                   <span class="status-option-content">
                     <mat-icon [class]="host.resourceTypeClass(host.resourceFilter())">{{ host.resourceTypeIcon(host.resourceFilter()) }}</mat-icon>
-                    <span>{{ host.resourceFilter().toLowerCase() }}</span>
+                    <span>{{ host.resourceTypeLabel(host.resourceFilter()).toLowerCase() }}</span>
                   </span>
                 </mat-select-trigger>
                 @for (option of host.resourceFilterOptions(); track option) {
@@ -46,7 +46,7 @@
                     >
                     <span class="status-option-content">
                       <mat-icon [class]="host.resourceTypeClass(option)">{{ host.resourceTypeIcon(option) }}</mat-icon>
-                      <span>{{ option.toLowerCase() }}</span>
+                      <span>{{ host.resourceTypeLabel(option).toLowerCase() }}</span>
                       @if (host.resourceFilterCount(option) > 0) {
                         <span class="rate-filter-count-badge">{{ host.resourceFilterCount(option) | counterBadge }}</span>
                       }
@@ -71,7 +71,7 @@
                 >
                 <span class="status-option-content">
                   <mat-icon [class]="host.resourceTypeClass(host.resourceFilter())">{{ host.resourceTypeIcon(host.resourceFilter()) }}</mat-icon>
-                  <span>{{ host.resourceFilter().toLowerCase() }}</span>
+                  <span>{{ host.resourceTypeLabel(host.resourceFilter()).toLowerCase() }}</span>
                 </span>
                 <mat-icon>expand_more</mat-icon>
                 @if (host.resourceFilterCount(host.resourceFilter()) > 0) {
@@ -90,7 +90,7 @@
                       (click)="selectMobileResourceFilter(option, $event)"
                       >
                       <mat-icon [class]="host.resourceTypeClass(option)">{{ host.resourceTypeIcon(option) }}</mat-icon>
-                      <span>{{ option.toLowerCase() }}</span>
+                      <span>{{ host.resourceTypeLabel(option).toLowerCase() }}</span>
                       @if (host.resourceFilterCount(option) > 0) {
                         <span class="rate-filter-count-badge">{{ host.resourceFilterCount(option) | counterBadge }}</span>
                       }

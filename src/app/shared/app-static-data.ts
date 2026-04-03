@@ -401,6 +401,12 @@ const PROFILE_SAMPLE_EXPERIENCE_ENTRIES: ExperienceEntry[] = [
 
 const ASSET_TYPE_OPTIONS: AssetType[] = ['Car', 'Accommodation', 'Supplies'];
 const ASSET_FILTER_OPTIONS: AssetFilterType[] = ['Car', 'Accommodation', 'Supplies', 'Ticket'];
+const ASSET_TYPE_LABELS: Record<AssetFilterType, string> = {
+  Car: 'Car',
+  Accommodation: 'Property',
+  Supplies: 'Supplies',
+  Ticket: 'Ticket'
+};
 const ACTIVITIES_PRIMARY_FILTERS: Array<{ key: ActivitiesPrimaryFilter; label: string; icon: string }> = [
   { key: 'rates', label: 'Rates', icon: 'star' },
   { key: 'chats', label: 'Chats', icon: 'chat' },
@@ -702,6 +708,12 @@ const CALENDAR_WEEKDAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'
 const EVENT_VISIBILITY_OPTIONS: EventVisibility[] = ['Public', 'Friends only', 'Invitation only'];
 const EVENT_BLIND_MODE_OPTIONS: EventBlindMode[] = ['Open Event', 'Blind Event'];
 const SUB_EVENT_RESOURCE_FILTER_OPTIONS: SubEventResourceFilter[] = ['Members', 'Car', 'Accommodation', 'Supplies'];
+const SUB_EVENT_RESOURCE_FILTER_LABELS: Record<SubEventResourceFilter, string> = {
+  Members: 'Members',
+  Car: 'Car',
+  Accommodation: 'Property',
+  Supplies: 'Supplies'
+};
 const SUB_EVENTS_DISPLAY_MODE_OPTIONS: SubEventsDisplayMode[] = ['Casual', 'Tournament'];
 const TOURNAMENT_LEADERBOARD_TYPE_OPTIONS: TournamentLeaderboardType[] = ['Score', 'Fifa'];
 const ACTIVITY_GROUP_LABELS = {
@@ -856,11 +868,13 @@ export const APP_STATIC_DATA = {
   profileSampleExperienceEntries: PROFILE_SAMPLE_EXPERIENCE_ENTRIES,
   assetTypeOptions: ASSET_TYPE_OPTIONS,
   assetFilterOptions: ASSET_FILTER_OPTIONS,
+  assetTypeLabels: ASSET_TYPE_LABELS,
   activityRatingScale: ACTIVITY_RATING_SCALE,
   calendarWeekdayLabels: CALENDAR_WEEKDAY_LABELS,
   eventVisibilityOptions: EVENT_VISIBILITY_OPTIONS,
   eventBlindModeOptions: EVENT_BLIND_MODE_OPTIONS,
   subEventResourceFilterOptions: SUB_EVENT_RESOURCE_FILTER_OPTIONS,
+  subEventResourceFilterLabels: SUB_EVENT_RESOURCE_FILTER_LABELS,
   subEventsDisplayModeOptions: SUB_EVENTS_DISPLAY_MODE_OPTIONS,
   tournamentLeaderboardTypeOptions: TOURNAMENT_LEADERBOARD_TYPE_OPTIONS,
   activityGroupLabels: ACTIVITY_GROUP_LABELS,

@@ -159,14 +159,14 @@
                       <mat-select-trigger>
                         <span class="status-option-content">
                           <mat-icon [class]="ownedAssets.assetTypeClass(ownedAssets.assetFilter)">{{ ownedAssets.assetTypeIcon(ownedAssets.assetFilter) }}</mat-icon>
-                          <span>{{ ownedAssets.assetFilter }}</span>
+                          <span>{{ ownedAssets.assetTypeLabel(ownedAssets.assetFilter) }}</span>
                         </span>
                       </mat-select-trigger>
                       @for (option of ownedAssets.assetFilterOptions; track option) {
                         <mat-option [value]="option" class="status-option" [ngClass]="ownedAssets.assetTypeClass(option)">
                           <span class="status-option-content">
                             <mat-icon [class]="ownedAssets.assetTypeClass(option)">{{ ownedAssets.assetTypeIcon(option) }}</mat-icon>
-                            <span>{{ option }}</span>
+                            <span>{{ ownedAssets.assetTypeLabel(option) }}</span>
                           </span>
                         </mat-option>
                       }
@@ -183,7 +183,7 @@
                       >
                       <span class="status-option-content">
                         <mat-icon [class]="ownedAssets.assetTypeClass(ownedAssets.assetFilter)">{{ ownedAssets.assetTypeIcon(ownedAssets.assetFilter) }}</mat-icon>
-                        <span>{{ ownedAssets.assetFilter }}</span>
+                        <span>{{ ownedAssets.assetTypeLabel(ownedAssets.assetFilter) }}</span>
                       </span>
                       <mat-icon>expand_more</mat-icon>
                     </button>
@@ -197,7 +197,7 @@
                             (click)="selectMobileAssetFilter(option, $event)"
                             >
                             <mat-icon [class]="ownedAssets.assetTypeClass(option)">{{ ownedAssets.assetTypeIcon(option) }}</mat-icon>
-                            <span>{{ option }}</span>
+                            <span>{{ ownedAssets.assetTypeLabel(option) }}</span>
                           </button>
                         }
                       </div>
@@ -257,6 +257,7 @@
                 [isEventEditorReadOnly]="false"
                 [assetTypeClass]="ownedAssets.assetTypeClass"
                 [assetTypeIcon]="ownedAssets.assetTypeIcon"
+                [assetTypeLabel]="ownedAssets.assetTypeLabel"
                 [eventVisibilityClass]="ownedAssets.eventVisibilityClass"
                 [close]="closeOwnedAssetForm"
                 [save]="saveOwnedAssetCard"
