@@ -331,7 +331,7 @@
 
 
 .popup-body {
-  padding: 0.4rem;
+  padding: 0.72rem;
   overflow-y: auto;
   overflow-x: hidden;
   display: flex;
@@ -342,10 +342,10 @@
 }
 
 .editor-list-card {
-  border: 1px solid rgba(13, 25, 44, 0.12);
-  border-radius: 11px;
-  padding: 0.56rem;
-  background: #fbfdff;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  background: transparent;
 }
 
 .card-badge {
@@ -1918,6 +1918,6 @@
   }
 
   .popup-body {
-    padding: 0.34rem;
+    padding: 0.5rem;
   }
 }
