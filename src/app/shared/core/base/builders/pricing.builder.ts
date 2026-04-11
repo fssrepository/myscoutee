@@ -5,6 +5,7 @@ export class PricingBuilder {
     context: 'event' | 'asset' | 'subevent' = 'event'
   ): AppTypes.PricingConfig {
     return {
+      enabled: context === 'asset',
       mode: 'fixed',
       basePrice: context === 'asset' ? 10 : 0,
       currency: 'USD',
@@ -34,6 +35,7 @@ export class PricingBuilder {
     mode: AppTypes.PricingMode = 'hybrid'
   ): AppTypes.PricingConfig {
     return {
+      enabled: true,
       mode,
       basePrice: 25,
       currency: 'USD',
@@ -142,6 +144,10 @@ export class PricingBuilder {
       : {};
 
     const normalized: AppTypes.PricingConfig = {
+      enabled: this.normalizeBoolean(
+        source['enabled'],
+        this.hasMeaningfulPricingContent(source, context)
+      ),
       mode: this.normalizeMode(source['mode']),
       basePrice: this.normalizeMoney(source['basePrice'] ?? source['amount']) ?? fallback.basePrice,
       currency: this.normalizeCurrency(source['currency']) || fallback.currency,
@@ -257,6 +263,32 @@ export class PricingBuilder {
       .filter((item, index, source) => source.findIndex(candidate => candidate.id === item.id) === index);
 
     return next;
+  }
+
+  private static hasMeaningfulPricingContent(
+    source: Readonly<Record<string, unknown>>,
+    context: 'event' | 'asset' | 'subevent'
+  ): boolean {
+    const basePrice = this.normalizeMoney(source['basePrice'] ?? source['amount']) ?? (context === 'asset' ? 10 : 0);
+    const demandRules = Array.isArray(source['demandRules']) ? source['demandRules'].length : 0;
+    const timeRules = Array.isArray(source['timeRules']) ? source['timeRules'].length : 0;
+    const slotOverrides = Array.isArray(source['slotOverrides']) ? source['slotOverrides'].length : 0;
+    const audienceSource = (typeof source['audience'] === 'object' && source['audience'] !== null)
+      ? source['audience'] as Record<string, unknown>
+      : {};
+    const promoCodes = Array.isArray(audienceSource['promoCodes']) ? audienceSource['promoCodes'].length : 0;
+    const memberPrice = this.normalizeMoney(audienceSource['memberPrice']);
+    const vipPrice = this.normalizeMoney(audienceSource['vipPrice']);
+    const inviteOnlyDiscount = this.normalizePercent(audienceSource['inviteOnlyDiscountPercent']);
+
+    return basePrice > 0
+      || demandRules > 0
+      || timeRules > 0
+      || slotOverrides > 0
+      || promoCodes > 0
+      || memberPrice !== null
+      || vipPrice !== null
+      || inviteOnlyDiscount !== null;
   }
 
   static slotOverrideFromReference(

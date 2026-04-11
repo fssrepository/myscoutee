@@ -1,53 +1,662 @@
-<section class="pricing-editor" [class.pricing-editor--readonly]="readOnly">
+<section
+  class="pricing-editor"
+  [class.pricing-editor--readonly]="readOnly"
+  [class.pricing-editor--summary-popup]="usesSummaryPopup()"
+  [class.pricing-editor--wizard-open]="wizardOpen"
+  [class.pricing-editor--enabled]="isPricingEnabled()"
+  >
   <header class="pricing-editor__head">
     <div class="pricing-editor__title">
-      <span class="pricing-editor__title-icon">
-        <mat-icon>paid</mat-icon>
-      </span>
       <span class="pricing-editor__title-copy">
-        <span class="pricing-editor__title-text">{{ title }}</span>
+        <span class="pricing-editor__title-text">
+          <mat-icon>paid</mat-icon>
+          <span>{{ title }}</span>
+        </span>
         @if (subtitle) {
           <span class="pricing-editor__subtitle">{{ subtitle }}</span>
         }
       </span>
     </div>
-    <span class="pricing-editor__status" [class.is-dynamic]="isDynamicMode()">
-      <mat-icon>{{ isDynamicMode() ? 'bolt' : 'timelapse' }}</mat-icon>
-      <span>{{ isDynamicMode() ? 'Dynamic On' : 'Dynamic Off' }}</span>
-    </span>
+    <div class="pricing-editor__head-actions">
+      <button
+        type="button"
+        class="pricing-editor__toggle pricing-editor__toggle--header"
+        [class.is-on]="isPricingEnabled()"
+        [disabled]="readOnly"
+        [attr.aria-pressed]="isPricingEnabled()"
+        (click)="togglePricingEnabled()"
+        >
+        <mat-icon>{{ isPricingEnabled() ? 'toggle_on' : 'toggle_off' }}</mat-icon>
+        <span>{{ isPricingEnabled() ? 'On' : 'Off' }}</span>
+      </button>
+    </div>
   </header>
 
-  <div class="pricing-editor__layout">
-    <div class="pricing-editor__main">
-      <section class="pricing-editor__surface">
-        <div class="pricing-editor__section-head">
-          <span>Pricing Mode</span>
+  @if (usesSummaryPopup() && isPricingEnabled()) {
+    <div class="pricing-editor__summary-actions">
+      <button type="button" class="pricing-editor__open-btn pricing-editor__open-btn--summary" [disabled]="readOnly" (click)="openWizard()">
+        <mat-icon>tune</mat-icon>
+        <span>Open Pricing Setup</span>
+      </button>
+    </div>
+    @if (resolvedShowPreview) {
+      <div class="pricing-editor__preview pricing-editor__preview--summary">
+        <ng-container [ngTemplateOutlet]="pricingPreviewCards"></ng-container>
+      </div>
+    }
+  } @else if (isPricingEnabled()) {
+    <div class="pricing-editor__layout">
+      <div class="pricing-editor__main">
+        <ng-container [ngTemplateOutlet]="pricingEditorSurfaces"></ng-container>
+      </div>
+
+      @if (resolvedShowPreview) {
+        <aside class="pricing-editor__preview">
+          <ng-container [ngTemplateOutlet]="pricingPreviewCards"></ng-container>
+        </aside>
+      }
+    </div>
+  }
+
+  @if (usesSummaryPopup() && wizardOpen && isPricingEnabled()) {
+    <div class="pricing-editor__wizard-backdrop" (click)="closeWizard()"></div>
+    <section class="pricing-editor__wizard" role="dialog" aria-modal="true" aria-label="Pricing setup wizard">
+      <header class="pricing-editor__wizard-head">
+        <div class="pricing-editor__wizard-copy">
+          <span class="pricing-editor__wizard-title">{{ title }} Setup</span>
+          <span class="pricing-editor__wizard-subtitle">Adjust the full pricing configuration here while the summary stays compact on the form.</span>
         </div>
-        <div class="pricing-editor__mode-switch" role="tablist" aria-label="Pricing mode">
-          @for (mode of modeOptions; track mode) {
-            <button
-              type="button"
-              class="pricing-editor__mode-btn"
-              [class.is-active]="workingPricing.mode === mode"
-              [disabled]="readOnly"
-              (click)="setMode(mode)"
-              >
-              {{ modeLabel(mode) }}
-            </button>
+        <button type="button" class="pricing-editor__wizard-close" (click)="closeWizard()" aria-label="Close pricing setup">
+          <mat-icon>close</mat-icon>
+        </button>
+      </header>
+
+      <div class="pricing-editor__wizard-body">
+        @if (resolvedShowPreview) {
+          <aside class="pricing-editor__preview pricing-editor__preview--wizard-sticky">
+            <ng-container [ngTemplateOutlet]="pricingWizardPreviewCard"></ng-container>
+          </aside>
+        }
+        <div class="pricing-editor__main">
+          <ng-container [ngTemplateOutlet]="pricingEditorSurfaces"></ng-container>
+        </div>
+      </div>
+    </section>
+  }
+</section>
+
+<ng-template #pricingEditorSurfaces>
+  <section class="pricing-editor__surface">
+    <div class="pricing-editor__section-head">
+      <span>Pricing Mode</span>
+    </div>
+    <div class="pricing-editor__mode-switch" role="tablist" aria-label="Pricing mode">
+      @for (mode of modeOptions; track mode) {
+        <button
+          type="button"
+          class="pricing-editor__mode-btn"
+          [class.is-active]="workingPricing.mode === mode"
+          [disabled]="readOnly"
+          (click)="setMode(mode)"
+          >
+          {{ modeLabel(mode) }}
+        </button>
+      }
+    </div>
+
+    <div class="pricing-editor__grid">
+      <label class="pricing-editor__field pricing-editor__field--money">
+        <span>Base Price</span>
+        <div class="pricing-editor__money-field">
+          <span class="pricing-editor__money-prefix">{{ currencySymbol(workingPricing.currency) }}</span>
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            [ngModel]="workingPricing.basePrice"
+            (ngModelChange)="onBasePriceChange($event)"
+            [disabled]="readOnly"
+            />
+          <span class="pricing-editor__money-code">{{ workingPricing.currency }}</span>
+        </div>
+      </label>
+
+      <label class="pricing-editor__field">
+        <span>Currency</span>
+        <div class="pricing-editor__select-shell">
+          <mat-select
+            [(ngModel)]="workingPricing.currency"
+            (ngModelChange)="onStringFieldChange()"
+            [disabled]="readOnly"
+            [panelWidth]="null"
+            disableOptionCentering
+            panelClass="selector-options-panel profile-bottom-sheet-panel"
+            >
+            @for (option of currencyOptions; track option) {
+              <mat-option [value]="option">{{ option }}</mat-option>
+            }
+          </mat-select>
+        </div>
+      </label>
+
+      <label class="pricing-editor__field">
+        <span>Tax</span>
+        <div class="pricing-editor__select-shell">
+          <mat-select
+            [(ngModel)]="workingPricing.taxMode"
+            (ngModelChange)="onStringFieldChange()"
+            [disabled]="readOnly"
+            [panelWidth]="null"
+            disableOptionCentering
+            panelClass="selector-options-panel profile-bottom-sheet-panel"
+            >
+            @for (option of taxModeOptions; track option) {
+              <mat-option [value]="option">{{ taxModeLabel(option) }}</mat-option>
+            }
+          </mat-select>
+        </div>
+      </label>
+
+      <label class="pricing-editor__field">
+        <span>{{ chargeTypeFieldLabel() }}</span>
+        <div class="pricing-editor__select-shell">
+          <mat-select
+            [(ngModel)]="workingPricing.chargeType"
+            (ngModelChange)="onStringFieldChange()"
+            [disabled]="readOnly"
+            [panelWidth]="null"
+            disableOptionCentering
+            panelClass="selector-options-panel profile-bottom-sheet-panel"
+            >
+            @for (option of resolvedChargeTypeOptions; track option) {
+              <mat-option [value]="option">{{ chargeTypeLabel(option) }}</mat-option>
+            }
+          </mat-select>
+        </div>
+      </label>
+
+      <label class="pricing-editor__field pricing-editor__field--money">
+        <span>Min Price</span>
+        <div class="pricing-editor__money-field">
+          <span class="pricing-editor__money-prefix">{{ currencySymbol(workingPricing.currency) }}</span>
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            [ngModel]="workingPricing.minPrice ?? ''"
+            (ngModelChange)="onNullableMoneyFieldChange('minPrice', $event)"
+            [disabled]="readOnly"
+            placeholder="No minimum"
+            />
+          <span class="pricing-editor__money-code">{{ workingPricing.currency }}</span>
+        </div>
+      </label>
+
+      <label class="pricing-editor__field pricing-editor__field--money">
+        <span>Max Price</span>
+        <div class="pricing-editor__money-field">
+          <span class="pricing-editor__money-prefix">{{ currencySymbol(workingPricing.currency) }}</span>
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            [ngModel]="workingPricing.maxPrice ?? ''"
+            (ngModelChange)="onNullableMoneyFieldChange('maxPrice', $event)"
+            [disabled]="readOnly"
+            placeholder="No maximum"
+            />
+          <span class="pricing-editor__money-code">{{ workingPricing.currency }}</span>
+        </div>
+      </label>
+
+      <label class="pricing-editor__field">
+        <span>Rounding</span>
+        <div class="pricing-editor__select-shell">
+          <mat-select
+            [(ngModel)]="workingPricing.rounding"
+            (ngModelChange)="onStringFieldChange()"
+            [disabled]="readOnly"
+            [panelWidth]="null"
+            disableOptionCentering
+            panelClass="selector-options-panel profile-bottom-sheet-panel"
+            >
+            @for (option of roundingOptions; track option) {
+              <mat-option [value]="option">{{ roundingLabel(option) }}</mat-option>
+            }
+          </mat-select>
+        </div>
+      </label>
+    </div>
+  </section>
+
+  @if (showDemandSection()) {
+    <section class="pricing-editor__surface">
+      <div class="pricing-editor__section-head">
+        <span>Demand Rules</span>
+        <button
+          type="button"
+          class="pricing-editor__toggle"
+          [class.is-on]="workingPricing.demandRulesEnabled"
+          [disabled]="readOnly"
+          (click)="toggleDemandRulesEnabled()"
+          >
+          <mat-icon>{{ workingPricing.demandRulesEnabled ? 'toggle_on' : 'toggle_off' }}</mat-icon>
+          <span>{{ workingPricing.demandRulesEnabled ? 'On' : 'Off' }}</span>
+        </button>
+      </div>
+      @if (workingPricing.demandRulesEnabled) {
+        <div class="pricing-editor__rules">
+          @for (rule of workingPricing.demandRules; track trackByRule($index, rule)) {
+            <article class="pricing-editor__rule-card">
+              <div class="pricing-editor__rule-grid" [class.pricing-editor__rule-grid--slots]="resolvedAllowSlotFeatures">
+                <label class="pricing-editor__field">
+                  <span>If</span>
+                  <div class="pricing-editor__select-shell">
+                    <mat-select
+                      [(ngModel)]="rule.operator"
+                      (ngModelChange)="emitPricing()"
+                      [disabled]="readOnly"
+                      [panelWidth]="null"
+                      disableOptionCentering
+                      panelClass="selector-options-panel profile-bottom-sheet-panel"
+                      >
+                      @for (option of demandOperatorOptions; track option) {
+                        <mat-option [value]="option">Capacity filled {{ operatorLabel(option) }}</mat-option>
+                      }
+                    </mat-select>
+                  </div>
+                </label>
+                <label class="pricing-editor__field">
+                  <span>Capacity %</span>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="1"
+                    [ngModel]="rule.capacityFilledPercent"
+                    (ngModelChange)="onDemandRuleThresholdChange(rule, $event)"
+                    [disabled]="readOnly"
+                    />
+                </label>
+                <label class="pricing-editor__field">
+                  <span>Then</span>
+                  <div class="pricing-editor__select-shell">
+                    <mat-select
+                      [(ngModel)]="rule.action.kind"
+                      (ngModelChange)="emitPricing()"
+                      [disabled]="readOnly"
+                      [panelWidth]="null"
+                      disableOptionCentering
+                      panelClass="selector-options-panel profile-bottom-sheet-panel"
+                      >
+                      @for (option of actionKindOptions; track option) {
+                        <mat-option [value]="option">{{ actionLabel(option) }}</mat-option>
+                      }
+                    </mat-select>
+                  </div>
+                </label>
+                <label class="pricing-editor__field">
+                  <span>Value</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    [ngModel]="rule.action.value"
+                    (ngModelChange)="onDemandRuleActionValueChange(rule, $event)"
+                    [disabled]="readOnly"
+                    />
+                </label>
+                @if (resolvedAllowSlotFeatures) {
+                  <label class="pricing-editor__field">
+                    <span>Applies To</span>
+                    <div class="pricing-editor__scope-picker" (click)="$event.stopPropagation()">
+                      <button
+                        type="button"
+                        class="pricing-editor__scope-trigger"
+                        [class.is-open]="isRuleScopePickerOpen('demand', rule)"
+                        [disabled]="readOnly"
+                        (click)="toggleRuleScopePicker('demand', rule, $event)"
+                        >
+                        <span class="pricing-editor__scope-trigger-copy">
+                          <mat-icon>view_week</mat-icon>
+                          <span>{{ ruleScopeButtonLabel(rule) }}</span>
+                        </span>
+                        <mat-icon class="pricing-editor__scope-trigger-chevron">expand_more</mat-icon>
+                      </button>
+                      @if (isRuleScopePickerOpen('demand', rule)) {
+                        <div class="pricing-editor__scope-panel" (click)="$event.stopPropagation()">
+                          <div class="pricing-editor__scope-panel-current">
+                            <span class="pricing-editor__scope-trigger-copy">
+                              <mat-icon>view_week</mat-icon>
+                              <span>{{ currentRuleScopeDraftMode() === 'all_slots' ? 'All slots' : 'Specific slots' }}</span>
+                            </span>
+                            <mat-icon>expand_more</mat-icon>
+                          </div>
+                          <div class="pricing-editor__scope-options">
+                            <button
+                              type="button"
+                              class="pricing-editor__scope-option"
+                              [class.is-selected]="currentRuleScopeDraftMode() === 'all_slots'"
+                              (click)="selectRuleScopeDraftMode('all_slots', $event)"
+                              >
+                              <mat-icon>{{ currentRuleScopeDraftMode() === 'all_slots' ? 'check' : 'view_week' }}</mat-icon>
+                              <span>All slots</span>
+                            </button>
+                            <button
+                              type="button"
+                              class="pricing-editor__scope-option"
+                              [class.is-selected]="currentRuleScopeDraftMode() === 'selected_slots'"
+                              [disabled]="slotCatalog.length === 0"
+                              (click)="selectRuleScopeDraftMode('selected_slots', $event)"
+                              >
+                              <mat-icon>{{ currentRuleScopeDraftMode() === 'selected_slots' ? 'check' : 'view_list' }}</mat-icon>
+                              <span>Specific slots</span>
+                            </button>
+                          </div>
+                          @if (currentRuleScopeDraftMode() === 'selected_slots') {
+                            <div class="pricing-editor__scope-slot-list">
+                              @for (slot of slotCatalog; track slot.id) {
+                                <button
+                                  type="button"
+                                  class="pricing-editor__scope-slot"
+                                  [class.is-selected]="isRuleScopeDraftSlotSelected(slot.id)"
+                                  (click)="toggleRuleScopeDraftSlot(slot.id, $event)"
+                                  >
+                                  <mat-icon>{{ isRuleScopeDraftSlotSelected(slot.id) ? 'check_box' : 'check_box_outline_blank' }}</mat-icon>
+                                  <span class="pricing-editor__scope-slot-copy">
+                                    <span class="pricing-editor__scope-slot-title">{{ slot.label }}</span>
+                                    <span class="pricing-editor__scope-slot-meta">{{ slotScopeWindowLabel(slot) }}</span>
+                                  </span>
+                                </button>
+                              }
+                              @if (slotCatalog.length === 0) {
+                                <p class="pricing-editor__scope-empty">Add slots to use specific slot targeting.</p>
+                              }
+                            </div>
+                          }
+                          <button
+                            type="button"
+                            class="pricing-editor__scope-apply"
+                            [disabled]="!canApplyRuleScopeDraft()"
+                            (click)="applyRuleScopeDraft(rule, $event)"
+                            >
+                            Apply
+                          </button>
+                        </div>
+                      }
+                    </div>
+                  </label>
+                }
+              </div>
+              <button
+                type="button"
+                class="pricing-editor__rule-remove"
+                [disabled]="readOnly"
+                (click)="removeDemandRule($index)"
+                aria-label="Remove demand rule"
+                >
+                <mat-icon>delete</mat-icon>
+              </button>
+            </article>
           }
         </div>
+        <button type="button" class="pricing-editor__add-btn" [disabled]="readOnly" (click)="addDemandRule()">
+          <mat-icon>add</mat-icon>
+          <span>Add Demand Rule</span>
+        </button>
+      } @else {
+        <p class="pricing-editor__hint">Demand pricing is currently off. Turn it on when you want capacity-based price changes.</p>
+      }
+    </section>
+  }
 
-        <div class="pricing-editor__grid">
+  @if (showTimeSection()) {
+    <section class="pricing-editor__surface">
+      <div class="pricing-editor__section-head">
+        <span>Time Rules</span>
+        <button
+          type="button"
+          class="pricing-editor__toggle"
+          [class.is-on]="workingPricing.timeRulesEnabled"
+          [disabled]="readOnly"
+          (click)="toggleTimeRulesEnabled()"
+          >
+          <mat-icon>{{ workingPricing.timeRulesEnabled ? 'toggle_on' : 'toggle_off' }}</mat-icon>
+          <span>{{ workingPricing.timeRulesEnabled ? 'On' : 'Off' }}</span>
+        </button>
+      </div>
+      @if (workingPricing.timeRulesEnabled) {
+        <div class="pricing-editor__rules">
+          @for (rule of workingPricing.timeRules; track trackByRule($index, rule)) {
+            <article class="pricing-editor__rule-card">
+              <div class="pricing-editor__rule-grid" [class.pricing-editor__rule-grid--slots]="resolvedAllowSlotFeatures">
+                <label class="pricing-editor__field">
+                  <span>If</span>
+                  <div class="pricing-editor__select-shell">
+                    <mat-select
+                      [(ngModel)]="rule.trigger"
+                      (ngModelChange)="emitPricing()"
+                      [disabled]="readOnly"
+                      [panelWidth]="null"
+                      disableOptionCentering
+                      panelClass="selector-options-panel profile-bottom-sheet-panel"
+                      >
+                      @for (option of timeTriggerOptions; track option) {
+                        <mat-option [value]="option">{{ timeTriggerLabel(option) }}</mat-option>
+                      }
+                    </mat-select>
+                  </div>
+                </label>
+                @if (rule.trigger === 'specific_date') {
+                  <label class="pricing-editor__field">
+                    <span>Date</span>
+                    <input
+                      type="date"
+                      [ngModel]="rule.specificDate ?? ''"
+                      (ngModelChange)="onTimeRuleDateChange(rule, $event)"
+                      [disabled]="readOnly"
+                      />
+                  </label>
+                } @else {
+                  <label class="pricing-editor__field">
+                    <span>Offset</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      [ngModel]="rule.offsetValue ?? ''"
+                      (ngModelChange)="onTimeRuleOffsetChange(rule, $event)"
+                      [disabled]="readOnly"
+                      />
+                  </label>
+                }
+                <label class="pricing-editor__field">
+                  <span>Then</span>
+                  <div class="pricing-editor__select-shell">
+                    <mat-select
+                      [(ngModel)]="rule.action.kind"
+                      (ngModelChange)="emitPricing()"
+                      [disabled]="readOnly"
+                      [panelWidth]="null"
+                      disableOptionCentering
+                      panelClass="selector-options-panel profile-bottom-sheet-panel"
+                      >
+                      @for (option of actionKindOptions; track option) {
+                        <mat-option [value]="option">{{ actionLabel(option) }}</mat-option>
+                      }
+                    </mat-select>
+                  </div>
+                </label>
+                <label class="pricing-editor__field">
+                  <span>Value</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    [ngModel]="rule.action.value"
+                    (ngModelChange)="onTimeRuleActionValueChange(rule, $event)"
+                    [disabled]="readOnly"
+                    />
+                </label>
+                @if (resolvedAllowSlotFeatures) {
+                  <label class="pricing-editor__field">
+                    <span>Applies To</span>
+                    <div class="pricing-editor__scope-picker" (click)="$event.stopPropagation()">
+                      <button
+                        type="button"
+                        class="pricing-editor__scope-trigger"
+                        [class.is-open]="isRuleScopePickerOpen('time', rule)"
+                        [disabled]="readOnly"
+                        (click)="toggleRuleScopePicker('time', rule, $event)"
+                        >
+                        <span class="pricing-editor__scope-trigger-copy">
+                          <mat-icon>view_week</mat-icon>
+                          <span>{{ ruleScopeButtonLabel(rule) }}</span>
+                        </span>
+                        <mat-icon class="pricing-editor__scope-trigger-chevron">expand_more</mat-icon>
+                      </button>
+                      @if (isRuleScopePickerOpen('time', rule)) {
+                        <div class="pricing-editor__scope-panel" (click)="$event.stopPropagation()">
+                          <div class="pricing-editor__scope-panel-current">
+                            <span class="pricing-editor__scope-trigger-copy">
+                              <mat-icon>view_week</mat-icon>
+                              <span>{{ currentRuleScopeDraftMode() === 'all_slots' ? 'All slots' : 'Specific slots' }}</span>
+                            </span>
+                            <mat-icon>expand_more</mat-icon>
+                          </div>
+                          <div class="pricing-editor__scope-options">
+                            <button
+                              type="button"
+                              class="pricing-editor__scope-option"
+                              [class.is-selected]="currentRuleScopeDraftMode() === 'all_slots'"
+                              (click)="selectRuleScopeDraftMode('all_slots', $event)"
+                              >
+                              <mat-icon>{{ currentRuleScopeDraftMode() === 'all_slots' ? 'check' : 'view_week' }}</mat-icon>
+                              <span>All slots</span>
+                            </button>
+                            <button
+                              type="button"
+                              class="pricing-editor__scope-option"
+                              [class.is-selected]="currentRuleScopeDraftMode() === 'selected_slots'"
+                              [disabled]="slotCatalog.length === 0"
+                              (click)="selectRuleScopeDraftMode('selected_slots', $event)"
+                              >
+                              <mat-icon>{{ currentRuleScopeDraftMode() === 'selected_slots' ? 'check' : 'view_list' }}</mat-icon>
+                              <span>Specific slots</span>
+                            </button>
+                          </div>
+                          @if (currentRuleScopeDraftMode() === 'selected_slots') {
+                            <div class="pricing-editor__scope-slot-list">
+                              @for (slot of slotCatalog; track slot.id) {
+                                <button
+                                  type="button"
+                                  class="pricing-editor__scope-slot"
+                                  [class.is-selected]="isRuleScopeDraftSlotSelected(slot.id)"
+                                  (click)="toggleRuleScopeDraftSlot(slot.id, $event)"
+                                  >
+                                  <mat-icon>{{ isRuleScopeDraftSlotSelected(slot.id) ? 'check_box' : 'check_box_outline_blank' }}</mat-icon>
+                                  <span class="pricing-editor__scope-slot-copy">
+                                    <span class="pricing-editor__scope-slot-title">{{ slot.label }}</span>
+                                    <span class="pricing-editor__scope-slot-meta">{{ slotScopeWindowLabel(slot) }}</span>
+                                  </span>
+                                </button>
+                              }
+                              @if (slotCatalog.length === 0) {
+                                <p class="pricing-editor__scope-empty">Add slots to use specific slot targeting.</p>
+                              }
+                            </div>
+                          }
+                          <button
+                            type="button"
+                            class="pricing-editor__scope-apply"
+                            [disabled]="!canApplyRuleScopeDraft()"
+                            (click)="applyRuleScopeDraft(rule, $event)"
+                            >
+                            Apply
+                          </button>
+                        </div>
+                      }
+                    </div>
+                  </label>
+                }
+              </div>
+              <button
+                type="button"
+                class="pricing-editor__rule-remove"
+                [disabled]="readOnly"
+                (click)="removeTimeRule($index)"
+                aria-label="Remove time rule"
+                >
+                <mat-icon>delete</mat-icon>
+              </button>
+            </article>
+          }
+        </div>
+        <button type="button" class="pricing-editor__add-btn" [disabled]="readOnly" (click)="addTimeRule()">
+          <mat-icon>add</mat-icon>
+          <span>Add Time Rule</span>
+        </button>
+      } @else {
+        <p class="pricing-editor__hint">Time pricing is currently off. Turn it on for early-bird or last-minute adjustments.</p>
+      }
+    </section>
+  }
+
+  @if (showSlotSection()) {
+    <app-pricing-slot-panel
+      [enabled]="workingPricing.slotPricingEnabled"
+      (enabledChange)="onSlotPricingEnabledChange($event)"
+      [overrides]="workingPricing.slotOverrides"
+      (overridesChange)="onSlotOverridesChange($event)"
+      [slotCatalog]="slotCatalog"
+      [currency]="workingPricing.currency"
+      [readOnly]="readOnly"
+    ></app-pricing-slot-panel>
+  }
+
+  @if (resolvedShowAudienceSection) {
+    <section class="pricing-editor__surface">
+      <div class="pricing-editor__section-head">
+        <span>Advanced Audience Pricing</span>
+        <button
+          type="button"
+          class="pricing-editor__toggle"
+          [class.is-on]="workingPricing.audience.enabled"
+          [disabled]="readOnly"
+          (click)="toggleAudienceEnabled()"
+          >
+          <mat-icon>{{ workingPricing.audience.enabled ? 'toggle_on' : 'toggle_off' }}</mat-icon>
+          <span>{{ workingPricing.audience.enabled ? 'On' : 'Off' }}</span>
+        </button>
+      </div>
+      @if (workingPricing.audience.enabled) {
+        <div class="pricing-editor__grid pricing-editor__grid--compact">
           <label class="pricing-editor__field pricing-editor__field--money">
-            <span>Base Price</span>
+            <span>Member Price</span>
             <div class="pricing-editor__money-field">
               <span class="pricing-editor__money-prefix">{{ currencySymbol(workingPricing.currency) }}</span>
               <input
                 type="number"
                 min="0"
                 step="0.01"
-                [ngModel]="workingPricing.basePrice"
-                (ngModelChange)="onBasePriceChange($event)"
+                [ngModel]="workingPricing.audience.memberPrice ?? ''"
+                (ngModelChange)="onAudienceMoneyFieldChange('memberPrice', $event)"
+                [disabled]="readOnly"
+                />
+              <span class="pricing-editor__money-code">{{ workingPricing.currency }}</span>
+            </div>
+          </label>
+
+          <label class="pricing-editor__field pricing-editor__field--money">
+            <span>VIP Price</span>
+            <div class="pricing-editor__money-field">
+              <span class="pricing-editor__money-prefix">{{ currencySymbol(workingPricing.currency) }}</span>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                [ngModel]="workingPricing.audience.vipPrice ?? ''"
+                (ngModelChange)="onAudienceMoneyFieldChange('vipPrice', $event)"
                 [disabled]="readOnly"
                 />
               <span class="pricing-editor__money-code">{{ workingPricing.currency }}</span>
@@ -55,688 +664,178 @@
           </label>
 
           <label class="pricing-editor__field">
-            <span>Currency</span>
+            <span>Invite-only Discount %</span>
+            <input
+              type="number"
+              min="0"
+              max="100"
+              step="1"
+              [ngModel]="workingPricing.audience.inviteOnlyDiscountPercent ?? ''"
+              (ngModelChange)="onAudienceDiscountChange($event)"
+              [disabled]="readOnly"
+              />
+          </label>
+
+          <label class="pricing-editor__field">
+            <span>Sold Out Label</span>
             <div class="pricing-editor__select-shell">
               <mat-select
-                [(ngModel)]="workingPricing.currency"
+                [(ngModel)]="workingPricing.audience.soldOutLabel"
                 (ngModelChange)="onStringFieldChange()"
                 [disabled]="readOnly"
                 [panelWidth]="null"
                 disableOptionCentering
                 panelClass="selector-options-panel profile-bottom-sheet-panel"
                 >
-                @for (option of currencyOptions; track option) {
+                @for (option of soldOutLabelOptions; track option) {
                   <mat-option [value]="option">{{ option }}</mat-option>
                 }
               </mat-select>
             </div>
           </label>
-
-          <label class="pricing-editor__field">
-            <span>Tax</span>
-            <div class="pricing-editor__select-shell">
-              <mat-select
-                [(ngModel)]="workingPricing.taxMode"
-                (ngModelChange)="onStringFieldChange()"
-                [disabled]="readOnly"
-                [panelWidth]="null"
-                disableOptionCentering
-                panelClass="selector-options-panel profile-bottom-sheet-panel"
-                >
-                @for (option of taxModeOptions; track option) {
-                  <mat-option [value]="option">{{ taxModeLabel(option) }}</mat-option>
-                }
-              </mat-select>
-            </div>
-          </label>
-
-          <label class="pricing-editor__field">
-            <span>{{ chargeTypeFieldLabel() }}</span>
-            <div class="pricing-editor__select-shell">
-              <mat-select
-                [(ngModel)]="workingPricing.chargeType"
-                (ngModelChange)="onStringFieldChange()"
-                [disabled]="readOnly"
-                [panelWidth]="null"
-                disableOptionCentering
-                panelClass="selector-options-panel profile-bottom-sheet-panel"
-                >
-                @for (option of resolvedChargeTypeOptions; track option) {
-                  <mat-option [value]="option">{{ chargeTypeLabel(option) }}</mat-option>
-                }
-              </mat-select>
-            </div>
-          </label>
-
-          <label class="pricing-editor__field pricing-editor__field--money">
-            <span>Min Price</span>
-            <div class="pricing-editor__money-field">
-              <span class="pricing-editor__money-prefix">{{ currencySymbol(workingPricing.currency) }}</span>
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                [ngModel]="workingPricing.minPrice ?? ''"
-                (ngModelChange)="onNullableMoneyFieldChange('minPrice', $event)"
-                [disabled]="readOnly"
-                placeholder="No minimum"
-                />
-              <span class="pricing-editor__money-code">{{ workingPricing.currency }}</span>
-            </div>
-          </label>
-
-          <label class="pricing-editor__field pricing-editor__field--money">
-            <span>Max Price</span>
-            <div class="pricing-editor__money-field">
-              <span class="pricing-editor__money-prefix">{{ currencySymbol(workingPricing.currency) }}</span>
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                [ngModel]="workingPricing.maxPrice ?? ''"
-                (ngModelChange)="onNullableMoneyFieldChange('maxPrice', $event)"
-                [disabled]="readOnly"
-                placeholder="No maximum"
-                />
-              <span class="pricing-editor__money-code">{{ workingPricing.currency }}</span>
-            </div>
-          </label>
-
-          <label class="pricing-editor__field">
-            <span>Rounding</span>
-            <div class="pricing-editor__select-shell">
-              <mat-select
-                [(ngModel)]="workingPricing.rounding"
-                (ngModelChange)="onStringFieldChange()"
-                [disabled]="readOnly"
-                [panelWidth]="null"
-                disableOptionCentering
-                panelClass="selector-options-panel profile-bottom-sheet-panel"
-                >
-                @for (option of roundingOptions; track option) {
-                  <mat-option [value]="option">{{ roundingLabel(option) }}</mat-option>
-                }
-              </mat-select>
-            </div>
-          </label>
         </div>
-      </section>
 
-      @if (showDemandSection()) {
-        <section class="pricing-editor__surface">
-          <div class="pricing-editor__section-head">
-            <span>Demand Rules</span>
-            <button
-              type="button"
-              class="pricing-editor__toggle"
-              [class.is-on]="workingPricing.demandRulesEnabled"
-              [disabled]="readOnly"
-              (click)="toggleDemandRulesEnabled()"
-              >
-              <mat-icon>{{ workingPricing.demandRulesEnabled ? 'toggle_on' : 'toggle_off' }}</mat-icon>
-              <span>{{ workingPricing.demandRulesEnabled ? 'On' : 'Off' }}</span>
-            </button>
-          </div>
-          @if (workingPricing.demandRulesEnabled) {
-            <div class="pricing-editor__rules">
-              @for (rule of workingPricing.demandRules; track trackByRule($index, rule)) {
-                <article class="pricing-editor__rule-card">
-                  <div class="pricing-editor__rule-grid">
-                    <label class="pricing-editor__field">
-                      <span>If</span>
-                      <div class="pricing-editor__select-shell">
-                        <mat-select
-                          [(ngModel)]="rule.operator"
-                          (ngModelChange)="emitPricing()"
-                          [disabled]="readOnly"
-                          [panelWidth]="null"
-                          disableOptionCentering
-                          panelClass="selector-options-panel profile-bottom-sheet-panel"
-                          >
-                          @for (option of demandOperatorOptions; track option) {
-                            <mat-option [value]="option">Capacity filled {{ operatorLabel(option) }}</mat-option>
-                          }
-                        </mat-select>
-                      </div>
-                    </label>
-                    <label class="pricing-editor__field">
-                      <span>Capacity %</span>
-                      <input
-                        type="number"
-                        min="0"
-                        max="100"
-                        step="1"
-                        [ngModel]="rule.capacityFilledPercent"
-                        (ngModelChange)="onDemandRuleThresholdChange(rule, $event)"
-                        [disabled]="readOnly"
-                        />
-                    </label>
-                    <label class="pricing-editor__field">
-                      <span>Then</span>
-                      <div class="pricing-editor__select-shell">
-                        <mat-select
-                          [(ngModel)]="rule.action.kind"
-                          (ngModelChange)="emitPricing()"
-                          [disabled]="readOnly"
-                          [panelWidth]="null"
-                          disableOptionCentering
-                          panelClass="selector-options-panel profile-bottom-sheet-panel"
-                          >
-                          @for (option of actionKindOptions; track option) {
-                            <mat-option [value]="option">{{ actionLabel(option) }}</mat-option>
-                          }
-                        </mat-select>
-                      </div>
-                    </label>
-                    <label class="pricing-editor__field">
-                      <span>Value</span>
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        [ngModel]="rule.action.value"
-                        (ngModelChange)="onDemandRuleActionValueChange(rule, $event)"
-                        [disabled]="readOnly"
-                        />
-                    </label>
-                    @if (resolvedAllowSlotFeatures) {
-                      <label class="pricing-editor__field">
-                        <span>Applies To</span>
-                        <div class="pricing-editor__scope-picker" (click)="$event.stopPropagation()">
-                          <button
-                            type="button"
-                            class="pricing-editor__scope-trigger"
-                            [class.is-open]="isRuleScopePickerOpen('demand', rule)"
-                            [disabled]="readOnly"
-                            (click)="toggleRuleScopePicker('demand', rule, $event)"
-                            >
-                            <span class="pricing-editor__scope-trigger-copy">
-                              <mat-icon>view_week</mat-icon>
-                              <span>{{ ruleScopeButtonLabel(rule) }}</span>
-                            </span>
-                            <mat-icon class="pricing-editor__scope-trigger-chevron">expand_more</mat-icon>
-                          </button>
-                          @if (isRuleScopePickerOpen('demand', rule)) {
-                            <div class="pricing-editor__scope-panel" (click)="$event.stopPropagation()">
-                              <div class="pricing-editor__scope-panel-current">
-                                <span class="pricing-editor__scope-trigger-copy">
-                                  <mat-icon>view_week</mat-icon>
-                                  <span>{{ currentRuleScopeDraftMode() === 'all_slots' ? 'All slots' : 'Specific slots' }}</span>
-                                </span>
-                                <mat-icon>expand_more</mat-icon>
-                              </div>
-                              <div class="pricing-editor__scope-options">
-                                <button
-                                  type="button"
-                                  class="pricing-editor__scope-option"
-                                  [class.is-selected]="currentRuleScopeDraftMode() === 'all_slots'"
-                                  (click)="selectRuleScopeDraftMode('all_slots', $event)"
-                                  >
-                                  <mat-icon>{{ currentRuleScopeDraftMode() === 'all_slots' ? 'check' : 'view_week' }}</mat-icon>
-                                  <span>All slots</span>
-                                </button>
-                                <button
-                                  type="button"
-                                  class="pricing-editor__scope-option"
-                                  [class.is-selected]="currentRuleScopeDraftMode() === 'selected_slots'"
-                                  [disabled]="slotCatalog.length === 0"
-                                  (click)="selectRuleScopeDraftMode('selected_slots', $event)"
-                                  >
-                                  <mat-icon>{{ currentRuleScopeDraftMode() === 'selected_slots' ? 'check' : 'view_list' }}</mat-icon>
-                                  <span>Specific slots</span>
-                                </button>
-                              </div>
-                              @if (currentRuleScopeDraftMode() === 'selected_slots') {
-                                <div class="pricing-editor__scope-slot-list">
-                                  @for (slot of slotCatalog; track slot.id) {
-                                    <button
-                                      type="button"
-                                      class="pricing-editor__scope-slot"
-                                      [class.is-selected]="isRuleScopeDraftSlotSelected(slot.id)"
-                                      (click)="toggleRuleScopeDraftSlot(slot.id, $event)"
-                                      >
-                                      <mat-icon>{{ isRuleScopeDraftSlotSelected(slot.id) ? 'check_box' : 'check_box_outline_blank' }}</mat-icon>
-                                      <span class="pricing-editor__scope-slot-copy">
-                                        <span class="pricing-editor__scope-slot-title">{{ slot.label }}</span>
-                                        <span class="pricing-editor__scope-slot-meta">{{ slotScopeWindowLabel(slot) }}</span>
-                                      </span>
-                                    </button>
-                                  }
-                                  @if (slotCatalog.length === 0) {
-                                    <p class="pricing-editor__scope-empty">Add slots to use specific slot targeting.</p>
-                                  }
-                                </div>
-                              }
-                              <button
-                                type="button"
-                                class="pricing-editor__scope-apply"
-                                [disabled]="!canApplyRuleScopeDraft()"
-                                (click)="applyRuleScopeDraft(rule, $event)"
-                                >
-                                Apply
-                              </button>
-                            </div>
-                          }
-                        </div>
-                      </label>
-                    }
-                  </div>
-                  <button
-                    type="button"
-                    class="pricing-editor__rule-remove"
-                    [disabled]="readOnly"
-                    (click)="removeDemandRule($index)"
-                    aria-label="Remove demand rule"
-                    >
-                    <mat-icon>delete</mat-icon>
-                  </button>
-                </article>
-              }
-            </div>
-            <button type="button" class="pricing-editor__add-btn" [disabled]="readOnly" (click)="addDemandRule()">
-              <mat-icon>add</mat-icon>
-              <span>Add Demand Rule</span>
-            </button>
-          } @else {
-            <p class="pricing-editor__hint">Demand pricing stays off until you enable it here.</p>
-          }
-        </section>
-      }
-
-      @if (showTimeSection()) {
-        <section class="pricing-editor__surface">
-          <div class="pricing-editor__section-head">
-            <span>Time Rules</span>
-            <button
-              type="button"
-              class="pricing-editor__toggle"
-              [class.is-on]="workingPricing.timeRulesEnabled"
-              [disabled]="readOnly"
-              (click)="toggleTimeRulesEnabled()"
-              >
-              <mat-icon>{{ workingPricing.timeRulesEnabled ? 'toggle_on' : 'toggle_off' }}</mat-icon>
-              <span>{{ workingPricing.timeRulesEnabled ? 'On' : 'Off' }}</span>
-            </button>
-          </div>
-          @if (workingPricing.timeRulesEnabled) {
-            <div class="pricing-editor__rules">
-              @for (rule of workingPricing.timeRules; track trackByRule($index, rule)) {
-                <article class="pricing-editor__rule-card">
-                  <div class="pricing-editor__rule-grid">
-                    <label class="pricing-editor__field">
-                      <span>If</span>
-                      <div class="pricing-editor__select-shell">
-                        <mat-select
-                          [(ngModel)]="rule.trigger"
-                          (ngModelChange)="emitPricing()"
-                          [disabled]="readOnly"
-                          [panelWidth]="null"
-                          disableOptionCentering
-                          panelClass="selector-options-panel profile-bottom-sheet-panel"
-                          >
-                          @for (option of timeTriggerOptions; track option) {
-                            <mat-option [value]="option">{{ timeTriggerLabel(option) }}</mat-option>
-                          }
-                        </mat-select>
-                      </div>
-                    </label>
-                    @if (rule.trigger === 'specific_date') {
-                      <label class="pricing-editor__field">
-                        <span>Date</span>
-                        <input
-                          type="date"
-                          [ngModel]="rule.specificDate ?? ''"
-                          (ngModelChange)="onTimeRuleDateChange(rule, $event)"
-                          [disabled]="readOnly"
-                          />
-                      </label>
-                    } @else {
-                      <label class="pricing-editor__field">
-                        <span>Offset</span>
-                        <input
-                          type="number"
-                          min="0"
-                          step="1"
-                          [ngModel]="rule.offsetValue ?? ''"
-                          (ngModelChange)="onTimeRuleOffsetChange(rule, $event)"
-                          [disabled]="readOnly"
-                          />
-                      </label>
-                    }
-                    <label class="pricing-editor__field">
-                      <span>Then</span>
-                      <div class="pricing-editor__select-shell">
-                        <mat-select
-                          [(ngModel)]="rule.action.kind"
-                          (ngModelChange)="emitPricing()"
-                          [disabled]="readOnly"
-                          [panelWidth]="null"
-                          disableOptionCentering
-                          panelClass="selector-options-panel profile-bottom-sheet-panel"
-                          >
-                          @for (option of actionKindOptions; track option) {
-                            <mat-option [value]="option">{{ actionLabel(option) }}</mat-option>
-                          }
-                        </mat-select>
-                      </div>
-                    </label>
-                    <label class="pricing-editor__field">
-                      <span>Value</span>
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        [ngModel]="rule.action.value"
-                        (ngModelChange)="onTimeRuleActionValueChange(rule, $event)"
-                        [disabled]="readOnly"
-                        />
-                    </label>
-                    @if (resolvedAllowSlotFeatures) {
-                      <label class="pricing-editor__field">
-                        <span>Applies To</span>
-                        <div class="pricing-editor__scope-picker" (click)="$event.stopPropagation()">
-                          <button
-                            type="button"
-                            class="pricing-editor__scope-trigger"
-                            [class.is-open]="isRuleScopePickerOpen('time', rule)"
-                            [disabled]="readOnly"
-                            (click)="toggleRuleScopePicker('time', rule, $event)"
-                            >
-                            <span class="pricing-editor__scope-trigger-copy">
-                              <mat-icon>view_week</mat-icon>
-                              <span>{{ ruleScopeButtonLabel(rule) }}</span>
-                            </span>
-                            <mat-icon class="pricing-editor__scope-trigger-chevron">expand_more</mat-icon>
-                          </button>
-                          @if (isRuleScopePickerOpen('time', rule)) {
-                            <div class="pricing-editor__scope-panel" (click)="$event.stopPropagation()">
-                              <div class="pricing-editor__scope-panel-current">
-                                <span class="pricing-editor__scope-trigger-copy">
-                                  <mat-icon>view_week</mat-icon>
-                                  <span>{{ currentRuleScopeDraftMode() === 'all_slots' ? 'All slots' : 'Specific slots' }}</span>
-                                </span>
-                                <mat-icon>expand_more</mat-icon>
-                              </div>
-                              <div class="pricing-editor__scope-options">
-                                <button
-                                  type="button"
-                                  class="pricing-editor__scope-option"
-                                  [class.is-selected]="currentRuleScopeDraftMode() === 'all_slots'"
-                                  (click)="selectRuleScopeDraftMode('all_slots', $event)"
-                                  >
-                                  <mat-icon>{{ currentRuleScopeDraftMode() === 'all_slots' ? 'check' : 'view_week' }}</mat-icon>
-                                  <span>All slots</span>
-                                </button>
-                                <button
-                                  type="button"
-                                  class="pricing-editor__scope-option"
-                                  [class.is-selected]="currentRuleScopeDraftMode() === 'selected_slots'"
-                                  [disabled]="slotCatalog.length === 0"
-                                  (click)="selectRuleScopeDraftMode('selected_slots', $event)"
-                                  >
-                                  <mat-icon>{{ currentRuleScopeDraftMode() === 'selected_slots' ? 'check' : 'view_list' }}</mat-icon>
-                                  <span>Specific slots</span>
-                                </button>
-                              </div>
-                              @if (currentRuleScopeDraftMode() === 'selected_slots') {
-                                <div class="pricing-editor__scope-slot-list">
-                                  @for (slot of slotCatalog; track slot.id) {
-                                    <button
-                                      type="button"
-                                      class="pricing-editor__scope-slot"
-                                      [class.is-selected]="isRuleScopeDraftSlotSelected(slot.id)"
-                                      (click)="toggleRuleScopeDraftSlot(slot.id, $event)"
-                                      >
-                                      <mat-icon>{{ isRuleScopeDraftSlotSelected(slot.id) ? 'check_box' : 'check_box_outline_blank' }}</mat-icon>
-                                      <span class="pricing-editor__scope-slot-copy">
-                                        <span class="pricing-editor__scope-slot-title">{{ slot.label }}</span>
-                                        <span class="pricing-editor__scope-slot-meta">{{ slotScopeWindowLabel(slot) }}</span>
-                                      </span>
-                                    </button>
-                                  }
-                                  @if (slotCatalog.length === 0) {
-                                    <p class="pricing-editor__scope-empty">Add slots to use specific slot targeting.</p>
-                                  }
-                                </div>
-                              }
-                              <button
-                                type="button"
-                                class="pricing-editor__scope-apply"
-                                [disabled]="!canApplyRuleScopeDraft()"
-                                (click)="applyRuleScopeDraft(rule, $event)"
-                                >
-                                Apply
-                              </button>
-                            </div>
-                          }
-                        </div>
-                      </label>
-                    }
-                  </div>
-                  <button
-                    type="button"
-                    class="pricing-editor__rule-remove"
-                    [disabled]="readOnly"
-                    (click)="removeTimeRule($index)"
-                    aria-label="Remove time rule"
-                    >
-                    <mat-icon>delete</mat-icon>
-                  </button>
-                </article>
-              }
-            </div>
-            <button type="button" class="pricing-editor__add-btn" [disabled]="readOnly" (click)="addTimeRule()">
-              <mat-icon>add</mat-icon>
-              <span>Add Time Rule</span>
-            </button>
-          } @else {
-            <p class="pricing-editor__hint">Use time rules for early-bird discounts or last-minute surcharges.</p>
-          }
-        </section>
-      }
-
-      @if (showSlotSection()) {
-        <app-pricing-slot-panel
-          [enabled]="workingPricing.slotPricingEnabled"
-          (enabledChange)="onSlotPricingEnabledChange($event)"
-          [overrides]="workingPricing.slotOverrides"
-          (overridesChange)="onSlotOverridesChange($event)"
-          [slotCatalog]="slotCatalog"
-          [currency]="workingPricing.currency"
-          [readOnly]="readOnly"
-        ></app-pricing-slot-panel>
-      }
-
-      @if (resolvedShowAudienceSection) {
-        <section class="pricing-editor__surface">
-          <div class="pricing-editor__section-head">
-            <span>Advanced Audience Pricing</span>
-            <button
-              type="button"
-              class="pricing-editor__toggle"
-              [class.is-on]="workingPricing.audience.enabled"
-              [disabled]="readOnly"
-              (click)="toggleAudienceEnabled()"
-              >
-              <mat-icon>{{ workingPricing.audience.enabled ? 'toggle_on' : 'toggle_off' }}</mat-icon>
-              <span>{{ workingPricing.audience.enabled ? 'On' : 'Off' }}</span>
-            </button>
-          </div>
-          @if (workingPricing.audience.enabled) {
-            <div class="pricing-editor__grid pricing-editor__grid--compact">
-              <label class="pricing-editor__field pricing-editor__field--money">
-                <span>Member Price</span>
-                <div class="pricing-editor__money-field">
-                  <span class="pricing-editor__money-prefix">{{ currencySymbol(workingPricing.currency) }}</span>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    [ngModel]="workingPricing.audience.memberPrice ?? ''"
-                    (ngModelChange)="onAudienceMoneyFieldChange('memberPrice', $event)"
-                    [disabled]="readOnly"
-                    />
-                  <span class="pricing-editor__money-code">{{ workingPricing.currency }}</span>
-                </div>
-              </label>
-
-              <label class="pricing-editor__field pricing-editor__field--money">
-                <span>VIP Price</span>
-                <div class="pricing-editor__money-field">
-                  <span class="pricing-editor__money-prefix">{{ currencySymbol(workingPricing.currency) }}</span>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    [ngModel]="workingPricing.audience.vipPrice ?? ''"
-                    (ngModelChange)="onAudienceMoneyFieldChange('vipPrice', $event)"
-                    [disabled]="readOnly"
-                    />
-                  <span class="pricing-editor__money-code">{{ workingPricing.currency }}</span>
-                </div>
-              </label>
-
+        <div class="pricing-editor__promo-list">
+          @for (promo of workingPricing.audience.promoCodes; track trackByRule($index, promo)) {
+            <article class="pricing-editor__promo-card">
               <label class="pricing-editor__field">
-                <span>Invite-only Discount %</span>
+                <span>Promo Code</span>
                 <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="1"
-                  [ngModel]="workingPricing.audience.inviteOnlyDiscountPercent ?? ''"
-                  (ngModelChange)="onAudienceDiscountChange($event)"
+                  type="text"
+                  [ngModel]="promo.code"
+                  (ngModelChange)="onPromoCodeTextChange(promo, $event)"
                   [disabled]="readOnly"
+                  placeholder="EARLY"
                   />
               </label>
-
               <label class="pricing-editor__field">
-                <span>Sold Out Label</span>
+                <span>Effect</span>
                 <div class="pricing-editor__select-shell">
                   <mat-select
-                    [(ngModel)]="workingPricing.audience.soldOutLabel"
-                    (ngModelChange)="onStringFieldChange()"
+                    [(ngModel)]="promo.action.kind"
+                    (ngModelChange)="emitPricing()"
                     [disabled]="readOnly"
                     [panelWidth]="null"
                     disableOptionCentering
                     panelClass="selector-options-panel profile-bottom-sheet-panel"
                     >
-                    @for (option of soldOutLabelOptions; track option) {
-                      <mat-option [value]="option">{{ option }}</mat-option>
+                    @for (option of actionKindOptions; track option) {
+                      <mat-option [value]="option">{{ actionLabel(option) }}</mat-option>
                     }
                   </mat-select>
                 </div>
               </label>
-            </div>
-
-            <div class="pricing-editor__promo-list">
-              @for (promo of workingPricing.audience.promoCodes; track trackByRule($index, promo)) {
-                <article class="pricing-editor__promo-card">
-                  <label class="pricing-editor__field">
-                    <span>Promo Code</span>
-                    <input
-                      type="text"
-                      [ngModel]="promo.code"
-                      (ngModelChange)="onPromoCodeTextChange(promo, $event)"
-                      [disabled]="readOnly"
-                      placeholder="EARLY"
-                      />
-                  </label>
-                  <label class="pricing-editor__field">
-                    <span>Effect</span>
-                    <div class="pricing-editor__select-shell">
-                      <mat-select
-                        [(ngModel)]="promo.action.kind"
-                        (ngModelChange)="emitPricing()"
-                        [disabled]="readOnly"
-                        [panelWidth]="null"
-                        disableOptionCentering
-                        panelClass="selector-options-panel profile-bottom-sheet-panel"
-                        >
-                        @for (option of actionKindOptions; track option) {
-                          <mat-option [value]="option">{{ actionLabel(option) }}</mat-option>
-                        }
-                      </mat-select>
-                    </div>
-                  </label>
-                  <label class="pricing-editor__field">
-                    <span>Value</span>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      [ngModel]="promo.action.value"
-                      (ngModelChange)="onPromoCodeActionValueChange(promo, $event)"
-                      [disabled]="readOnly"
-                      />
-                  </label>
-                  <button
-                    type="button"
-                    class="pricing-editor__rule-remove"
-                    [disabled]="readOnly"
-                    (click)="removePromoCode($index)"
-                    aria-label="Remove promo code"
-                    >
-                    <mat-icon>delete</mat-icon>
-                  </button>
-                </article>
-              }
-            </div>
-            <button type="button" class="pricing-editor__add-btn" [disabled]="readOnly" (click)="addPromoCode()">
-              <mat-icon>add</mat-icon>
-              <span>Add Promo Code</span>
-            </button>
-          } @else {
-            <p class="pricing-editor__hint">Keep this off for a single flat price, or enable it for members, VIP, and promo code pricing.</p>
+              <label class="pricing-editor__field">
+                <span>Value</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  [ngModel]="promo.action.value"
+                  (ngModelChange)="onPromoCodeActionValueChange(promo, $event)"
+                  [disabled]="readOnly"
+                  />
+              </label>
+              <button
+                type="button"
+                class="pricing-editor__rule-remove"
+                [disabled]="readOnly"
+                (click)="removePromoCode($index)"
+                aria-label="Remove promo code"
+                >
+                <mat-icon>delete</mat-icon>
+              </button>
+            </article>
           }
-        </section>
+        </div>
+        <button type="button" class="pricing-editor__add-btn" [disabled]="readOnly" (click)="addPromoCode()">
+          <mat-icon>add</mat-icon>
+          <span>Add Promo Code</span>
+        </button>
+      } @else {
+        <p class="pricing-editor__hint">Audience pricing is off, so every attendee will see the same public price until you turn on member, VIP, or promo-code pricing.</p>
       }
-    </div>
+    </section>
+  }
+</ng-template>
 
-    @if (resolvedShowPreview) {
-      <aside class="pricing-editor__preview">
-        <div class="pricing-editor__preview-card">
-          <div class="pricing-editor__preview-head">
-            <span>Current Pricing Preview</span>
-            <mat-icon>query_stats</mat-icon>
-          </div>
-          <div class="pricing-editor__preview-line">
-            <span>Base</span>
-            <strong>{{ currencySymbol(workingPricing.currency) }}{{ previewState().basePrice | number:'1.0-2' }}</strong>
-          </div>
-          @if (previewState().demandDelta !== 0) {
-            <div class="pricing-editor__preview-line">
-              <span>Demand adjustment</span>
-              <strong [class.positive]="previewState().demandDelta > 0" [class.negative]="previewState().demandDelta < 0">
-                {{ previewState().demandDelta > 0 ? '+' : '' }}{{ currencySymbol(workingPricing.currency) }}{{ previewState().demandDelta | number:'1.0-2' }}
-              </strong>
-            </div>
-          }
-          @if (previewState().timeDelta !== 0) {
-            <div class="pricing-editor__preview-line">
-              <span>Time adjustment</span>
-              <strong [class.positive]="previewState().timeDelta > 0" [class.negative]="previewState().timeDelta < 0">
-                {{ previewState().timeDelta > 0 ? '+' : '' }}{{ currencySymbol(workingPricing.currency) }}{{ previewState().timeDelta | number:'1.0-2' }}
-              </strong>
-            </div>
-          }
-          <div class="pricing-editor__preview-total">
-            <span>Final price</span>
-            <strong>{{ currencySymbol(workingPricing.currency) }}{{ previewState().finalPrice | number:'1.0-2' }}</strong>
-          </div>
-        </div>
-        <div class="pricing-editor__preview-card pricing-editor__preview-card--light">
-          <div class="pricing-editor__preview-head">
-            <span>Why this price?</span>
-            <mat-icon>help_outline</mat-icon>
-          </div>
-          @for (line of previewExplanationLines(); track line) {
-            <p class="pricing-editor__preview-note">{{ line }}</p>
-          }
-          @if (previewExplanationLines().length === 0) {
-            <p class="pricing-editor__preview-note">Fixed pricing keeps the preview straightforward until extra rules are turned on.</p>
-          }
-        </div>
-      </aside>
+<ng-template #pricingWizardPreviewCard>
+  <div class="pricing-editor__preview-card">
+    <div class="pricing-editor__preview-head">
+      <span>Current Price Review</span>
+      <mat-icon>query_stats</mat-icon>
+    </div>
+    <div class="pricing-editor__preview-line">
+      <span>Base</span>
+      <strong>{{ currencySymbol(workingPricing.currency) }}{{ previewState().basePrice | number:'1.0-2' }}</strong>
+    </div>
+    @if (previewState().demandDelta !== 0) {
+      <div class="pricing-editor__preview-line">
+        <span>Demand adjustment</span>
+        <strong [class.positive]="previewState().demandDelta > 0" [class.negative]="previewState().demandDelta < 0">
+          {{ previewState().demandDelta > 0 ? '+' : '' }}{{ currencySymbol(workingPricing.currency) }}{{ previewState().demandDelta | number:'1.0-2' }}
+        </strong>
+      </div>
+    }
+    @if (previewState().timeDelta !== 0) {
+      <div class="pricing-editor__preview-line">
+        <span>Time adjustment</span>
+        <strong [class.positive]="previewState().timeDelta > 0" [class.negative]="previewState().timeDelta < 0">
+          {{ previewState().timeDelta > 0 ? '+' : '' }}{{ currencySymbol(workingPricing.currency) }}{{ previewState().timeDelta | number:'1.0-2' }}
+        </strong>
+      </div>
+    }
+    <div class="pricing-editor__preview-total">
+      <span>Final price</span>
+      <strong>{{ currencySymbol(workingPricing.currency) }}{{ previewState().finalPrice | number:'1.0-2' }}</strong>
+    </div>
+  </div>
+</ng-template>
+
+<ng-template #pricingPreviewCards>
+  <div class="pricing-editor__preview-card">
+    <div class="pricing-editor__preview-head">
+      <span>Current Price Review</span>
+      <mat-icon>query_stats</mat-icon>
+    </div>
+    <div class="pricing-editor__preview-line">
+      <span>Base</span>
+      <strong>{{ currencySymbol(workingPricing.currency) }}{{ previewState().basePrice | number:'1.0-2' }}</strong>
+    </div>
+    @if (previewState().demandDelta !== 0) {
+      <div class="pricing-editor__preview-line">
+        <span>Demand adjustment</span>
+        <strong [class.positive]="previewState().demandDelta > 0" [class.negative]="previewState().demandDelta < 0">
+          {{ previewState().demandDelta > 0 ? '+' : '' }}{{ currencySymbol(workingPricing.currency) }}{{ previewState().demandDelta | number:'1.0-2' }}
+        </strong>
+      </div>
+    }
+    @if (previewState().timeDelta !== 0) {
+      <div class="pricing-editor__preview-line">
+        <span>Time adjustment</span>
+        <strong [class.positive]="previewState().timeDelta > 0" [class.negative]="previewState().timeDelta < 0">
+          {{ previewState().timeDelta > 0 ? '+' : '' }}{{ currencySymbol(workingPricing.currency) }}{{ previewState().timeDelta | number:'1.0-2' }}
+        </strong>
+      </div>
+    }
+    <div class="pricing-editor__preview-total">
+      <span>Final price</span>
+      <strong>{{ currencySymbol(workingPricing.currency) }}{{ previewState().finalPrice | number:'1.0-2' }}</strong>
+    </div>
+  </div>
+  <div class="pricing-editor__preview-card pricing-editor__preview-card--light">
+    <div class="pricing-editor__preview-head">
+      <span>Why this price?</span>
+      <mat-icon>help_outline</mat-icon>
+    </div>
+    @if (previewExplanationLines().length > 0) {
+      @for (line of previewExplanationLines(); track line) {
+        <p class="pricing-editor__preview-note">{{ line }}</p>
+      }
+    } @else {
+      @for (line of previewFallbackLines(); track line) {
+        <p class="pricing-editor__preview-note">{{ line }}</p>
+      }
     }
   </div>
-</section>
+</ng-template>

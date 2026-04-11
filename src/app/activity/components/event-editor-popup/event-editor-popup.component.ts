@@ -94,6 +94,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       const isOpen = this.eventEditorService.isOpen();
 
       if (!isOpen) {
+        this.showSlotsPopup = false;
         this.showEventVisibilityPicker = false;
         this.showSubEventsPopup = false;
         this.showTopicPicker = false;
@@ -116,6 +117,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       }
       this.lastHandledOpenSubEventsRequest = openSubEventsRequestNonce;
       this.showEventVisibilityPicker = false;
+      this.showSlotsPopup = false;
       this.showTopicPicker = false;
       this.showSubEventsPopup = true;
     });
@@ -209,6 +211,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   subEventsDisplayMode: AppTypes.SubEventsDisplayMode = 'Casual';
   slotEditorMode: 'base' | 'date' = 'base';
   slotsPanelExpanded = false;
+  showSlotsPopup = false;
   showEventVisibilityPicker = false;
   showSubEventsPopup = false;
   showTopicPicker = false;
@@ -219,6 +222,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   readonly eventFrequencyOptions = ['One-time', 'Daily', 'Weekly', 'Bi-weekly', 'Monthly'];
 
   close(): void {
+    this.showSlotsPopup = false;
     this.showEventVisibilityPicker = false;
     this.showSubEventsPopup = false;
     this.showTopicPicker = false;
@@ -268,6 +272,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
   requestOpenSubEvents(): void {
     this.showEventVisibilityPicker = false;
+    this.showSlotsPopup = false;
     this.showTopicPicker = false;
     this.showSubEventsPopup = true;
   }
@@ -304,8 +309,72 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     return this.pricingSlotCatalogCache;
   }
 
+  protected slotSummaryBaseItems(): AppTypes.EventSlotTemplate[] {
+    return this.baseSlotTemplates();
+  }
+
+  protected slotSummaryOverrideItems(): Array<{ dateKey: string; label: string; detail: string }> {
+    const grouped = new Map<string, AppTypes.EventSlotTemplate[]>();
+    for (const slot of this.eventForm.slotTemplates) {
+      const dateKey = EventEditorConverter.normalizeEventEditorSlotOverrideDate(slot.overrideDate);
+      if (!dateKey) {
+        continue;
+      }
+      const current = grouped.get(dateKey) ?? [];
+      current.push({ ...slot });
+      grouped.set(dateKey, current);
+    }
+
+    return [...grouped.entries()]
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([dateKey, items]) => {
+        const visibleSlots = items.filter(item => item.closed !== true);
+        if (items.some(item => item.closed === true) && visibleSlots.length === 0) {
+          return {
+            dateKey,
+            label: this.slotOverrideDateLabel(dateKey),
+            detail: 'Closed for this date'
+          };
+        }
+        const count = visibleSlots.length;
+        return {
+          dateKey,
+          label: this.slotOverrideDateLabel(dateKey),
+          detail: count === 1 ? '1 custom slot' : `${count} custom slots`
+        };
+      });
+  }
+
+  protected slotSummaryWindowLabel(slot: AppTypes.EventSlotTemplate): string {
+    const start = EventEditorConverter.parseEventEditorDateValue(slot.startAt);
+    const end = EventEditorConverter.parseEventEditorDateValue(slot.endAt);
+    if (!start && !end) {
+      return 'Time pending';
+    }
+    if (!start) {
+      return `Ends ${this.formatSlotDateTimeLabel(end)}`;
+    }
+    if (!end) {
+      return `Starts ${this.formatSlotDateTimeLabel(start)}`;
+    }
+    return `${this.formatSlotDateTimeLabel(start)} - ${this.formatSlotDateTimeLabel(end)}`;
+  }
+
+  protected openSlotsPopup(event?: Event): void {
+    event?.preventDefault();
+    if (this.eventEditorService.readOnly()) {
+      return;
+    }
+    this.showSlotsPopup = true;
+  }
+
+  protected closeSlotsPopup(): void {
+    this.showSlotsPopup = false;
+  }
+
   requestOpenTopics(): void {
     this.showEventVisibilityPicker = false;
+    this.showSlotsPopup = false;
     this.showSubEventsPopup = false;
     this.showTopicPicker = true;
   }
@@ -699,6 +768,9 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       return;
     }
     this.eventForm.slotsEnabled = !this.eventForm.slotsEnabled;
+    if (!this.eventForm.slotsEnabled) {
+      this.showSlotsPopup = false;
+    }
     if (this.eventForm.slotsEnabled && this.baseSlotTemplates().length === 0) {
       this.slotEditorMode = 'base';
       this.addSlotTemplate();
@@ -933,6 +1005,10 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     }
     keyboardEvent.preventDefault();
     keyboardEvent.stopPropagation();
+    if (this.showSlotsPopup) {
+      this.showSlotsPopup = false;
+      return;
+    }
     if (this.showTopicPicker) {
       this.showTopicPicker = false;
       return;
@@ -1329,6 +1405,30 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     return parsed;
   }
 
+  private slotOverrideDateLabel(dateKey: string): string {
+    const parsed = EventEditorConverter.parseEventEditorOverrideDate(dateKey);
+    if (!parsed) {
+      return dateKey;
+    }
+    return parsed.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  }
+
+  private formatSlotDateTimeLabel(value: Date | null | undefined): string {
+    if (!value) {
+      return '';
+    }
+    return value.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit'
+    });
+  }
+
   private currentEventIdentity(): string {
     return this.eventForm.id.trim() || this.editingEventId || this.draftEventId || '';
   }
@@ -1395,6 +1495,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.syncDateTimeControlsFromForm();
     this.slotEditorMode = 'base';
     this.slotsPanelExpanded = this.eventForm.slotsEnabled;
+    this.showSlotsPopup = false;
     this.slotOverrideDateValue = this.defaultSlotOverrideDate();
     this.normalizeSlotOverrideDateSelection();
   }
@@ -1427,6 +1528,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     };
 
     this.subEventsDisplayMode = 'Casual';
+    this.showSlotsPopup = false;
     this.showEventVisibilityPicker = false;
     this.syncDateTimeControlsFromForm();
     this.slotEditorMode = 'base';

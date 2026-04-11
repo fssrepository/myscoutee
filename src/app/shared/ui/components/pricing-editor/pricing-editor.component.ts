@@ -45,6 +45,7 @@ export class PricingEditorComponent implements OnChanges {
   @Output() readonly pricingChange = new EventEmitter<AppTypes.PricingConfig>();
 
   @Input() context: 'event' | 'asset' | 'subevent' = 'event';
+  @Input() presentation: 'inline' | 'popup-summary' = 'inline';
   @Input() slotCatalog: readonly AppTypes.PricingSlotReference[] = [];
   @Input() readOnly = false;
   @Input() title = 'Pricing';
@@ -68,6 +69,8 @@ export class PricingEditorComponent implements OnChanges {
   protected resolvedAllowSlotFeatures = true;
   protected resolvedShowAudienceSection = true;
   protected resolvedShowPreview = true;
+  protected resolvedPresentation: 'inline' | 'popup-summary' = 'inline';
+  protected wizardOpen = false;
 
   private idSequence = 0;
   private ruleScopePickerState: RuleScopePickerState | null = null;
@@ -80,6 +83,7 @@ export class PricingEditorComponent implements OnChanges {
       || changes['allowSlotFeatures']
       || changes['showAudienceSection']
       || changes['showPreview']
+      || changes['presentation']
     ) {
       this.syncResolvedCapabilities();
       this.syncWorkingPricing();
@@ -210,6 +214,37 @@ export class PricingEditorComponent implements OnChanges {
 
   protected isDynamicMode(): boolean {
     return this.workingPricing.mode !== 'fixed';
+  }
+
+  protected isPricingEnabled(): boolean {
+    return this.workingPricing.enabled === true;
+  }
+
+  protected usesSummaryPopup(): boolean {
+    return this.resolvedPresentation === 'popup-summary';
+  }
+
+  protected openWizard(): void {
+    if (this.readOnly || !this.usesSummaryPopup()) {
+      return;
+    }
+    this.wizardOpen = true;
+  }
+
+  protected closeWizard(): void {
+    this.wizardOpen = false;
+    this.closeRuleScopePicker();
+  }
+
+  protected togglePricingEnabled(): void {
+    if (this.readOnly) {
+      return;
+    }
+    this.workingPricing.enabled = !this.workingPricing.enabled;
+    if (!this.workingPricing.enabled) {
+      this.closeWizard();
+    }
+    this.emitPricing();
   }
 
   protected onStringFieldChange(): void {
@@ -531,6 +566,23 @@ export class PricingEditorComponent implements OnChanges {
     this.closeRuleScopePicker();
   }
 
+  @HostListener('document:keydown.escape', ['$event'])
+  protected onEscape(event: Event): void {
+    const keyboardEvent = event as KeyboardEvent;
+    if (!this.ruleScopePickerState && !this.wizardOpen) {
+      return;
+    }
+    keyboardEvent.preventDefault();
+    keyboardEvent.stopPropagation();
+    if (this.ruleScopePickerState) {
+      this.closeRuleScopePicker();
+      return;
+    }
+    if (this.wizardOpen) {
+      this.closeWizard();
+    }
+  }
+
   protected previewState(): PricingPreviewState {
     const normalized = this.normalizePricingWithCapabilities(this.workingPricing);
     const activeSlotOverride = normalized.slotPricingEnabled
@@ -581,10 +633,44 @@ export class PricingEditorComponent implements OnChanges {
   protected previewExplanationLines(): string[] {
     const preview = this.previewState();
     return [
-      ...(preview.slotOverridePrice !== null ? [`Slot override: ${this.formatMoney(preview.slotOverridePrice)}`] : []),
+      ...(preview.slotOverridePrice !== null ? [`A slot override is active, so this preview starts from ${this.formatMoney(preview.slotOverridePrice)} instead of the global base price.`] : []),
       ...preview.demandNotes,
       ...preview.timeNotes
     ];
+  }
+
+  protected previewFallbackLines(): string[] {
+    const lines: string[] = [];
+    if (this.workingPricing.basePrice <= 0) {
+      lines.push('The base price is still set to $0, so the current preview is showing a free entry.');
+    } else {
+      lines.push(`The preview is currently showing the base price of ${this.formatMoney(this.workingPricing.basePrice)}.`);
+    }
+
+    if (!this.isDynamicMode()) {
+      lines.push('Pricing Mode is set to Fixed, so demand and time rules are not changing the amount yet.');
+    } else {
+      if (this.showDemandSection() && !this.workingPricing.demandRulesEnabled) {
+        lines.push('Demand rules are available in this mode, but they are currently turned off.');
+      }
+      if (this.showTimeSection() && !this.workingPricing.timeRulesEnabled) {
+        lines.push('Time rules are available in this mode, but they are currently turned off.');
+      }
+    }
+
+    if (this.resolvedAllowSlotFeatures) {
+      if (this.slotCatalog.length === 0) {
+        lines.push('Slot-specific pricing is unavailable until the event has at least one slot in the Slots section.');
+      } else if (!this.workingPricing.slotPricingEnabled || this.workingPricing.slotOverrides.length === 0) {
+        lines.push('Slot overrides are off, so every slot is still using the same main event price.');
+      }
+    }
+
+    if (this.resolvedShowAudienceSection && !this.workingPricing.audience.enabled) {
+      lines.push('Audience pricing is off, so members, VIP guests, and promo codes are not changing the public price.');
+    }
+
+    return lines;
   }
 
   protected trackByRule(index: number, rule: { id: string }): string {
@@ -605,7 +691,11 @@ export class PricingEditorComponent implements OnChanges {
     this.resolvedAllowSlotFeatures = this.allowSlotFeatures ?? this.context === 'event';
     this.resolvedShowAudienceSection = this.showAudienceSection ?? this.context === 'event';
     this.resolvedShowPreview = this.showPreview ?? true;
+    this.resolvedPresentation = this.presentation ?? 'inline';
     this.resolvedChargeTypeOptions = this.resolveChargeTypeOptions();
+    if (!this.usesSummaryPopup()) {
+      this.wizardOpen = false;
+    }
   }
 
   private resolveChargeTypeOptions(): readonly AppTypes.PricingChargeType[] {
@@ -821,17 +911,18 @@ export class PricingEditorComponent implements OnChanges {
   }
 
   private describeDemandRule(rule: AppTypes.PricingDemandRule): string {
-    return `${rule.operator === 'lte' ? '<=' : '>='} ${rule.capacityFilledPercent}% capacity filled`;
+    return `Demand rule active: when capacity filled is ${rule.operator === 'lte' ? '<=' : '>='} ${rule.capacityFilledPercent}%, ${this.describeAction(rule.action)}${this.describeRuleScope(rule)}.`;
   }
 
   private describeTimeRule(rule: AppTypes.PricingTimeRule): string {
     if (rule.trigger === 'specific_date') {
-      return `Specific date ${rule.specificDate ?? ''}`.trim();
+      return `Time rule active: on ${rule.specificDate ?? 'the selected date'}, ${this.describeAction(rule.action)}${this.describeRuleScope(rule)}.`;
     }
     const offset = Math.max(0, Math.trunc(Number(rule.offsetValue) || 0));
-    return rule.trigger === 'hours_before_start'
-      ? `Within ${offset} hours of start`
-      : `Within ${offset} days of start`;
+    const triggerText = rule.trigger === 'hours_before_start'
+      ? `${offset} hours before the event starts`
+      : `${offset} days before the event starts`;
+    return `Time rule active: ${triggerText}, ${this.describeAction(rule.action)}${this.describeRuleScope(rule)}.`;
   }
 
   private formatMoney(value: number | null | undefined): string {
@@ -846,5 +937,30 @@ export class PricingEditorComponent implements OnChanges {
     } catch {
       return `${this.currencySymbol(currency)}${amount.toFixed(2)}`;
     }
+  }
+
+  private describeAction(action: AppTypes.PricingAction): string {
+    const value = Math.max(0, Number(action.value) || 0);
+    switch (action.kind) {
+      case 'decrease_percent':
+        return `the price decreases by ${value}%`;
+      case 'set_exact_price':
+        return `the price is set to ${this.formatMoney(value)}`;
+      default:
+        return `the price increases by ${value}%`;
+    }
+  }
+
+  private describeRuleScope(rule: PricingScopedRule): string {
+    if (rule.appliesTo !== 'selected_slots') {
+      return ' for all slots';
+    }
+    if ((rule.slotIds?.length ?? 0) === 0) {
+      return ' for the selected slots';
+    }
+    if (rule.slotIds.length === 1) {
+      return ` for ${this.slotLabelById(rule.slotIds[0]) || 'the selected slot'}`;
+    }
+    return ` for ${rule.slotIds.length} selected slots`;
   }
 }

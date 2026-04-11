@@ -64,6 +64,7 @@ export interface PricingAudienceSettings {
 }
 
 export interface PricingConfig {
+  enabled: boolean;
   mode: PricingMode;
   basePrice: number;
   currency: string;
