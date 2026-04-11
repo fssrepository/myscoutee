@@ -1,4 +1,4 @@
-<div class="asset-popup">
+<div class="asset-popup" [attr.data-owned-assets-ui-rev]="ownedAssets.uiRevision()">
   @if (ownedAssets.isPopupOpen()) {
     <section
       class="app-popup"

@@ -28,6 +28,7 @@ export class OwnedAssetsPopupFacadeService {
   private readonly httpMediaService = inject(HttpMediaService);
   private readonly assetListRevisionRef = signal(0);
   private readonly assetListReloadRevisionRef = signal(0);
+  private readonly uiRevisionRef = signal(0);
 
   readonly assetTypeOptions: AppTypes.AssetType[] = APP_STATIC_DATA.assetTypeOptions;
   readonly assetFilterOptions: AppTypes.AssetFilterType[] = APP_STATIC_DATA.assetFilterOptions;
@@ -60,6 +61,7 @@ export class OwnedAssetsPopupFacadeService {
 
   readonly assetListRevision = this.assetListRevisionRef.asReadonly();
   readonly assetListReloadRevision = this.assetListReloadRevisionRef.asReadonly();
+  readonly uiRevision = this.uiRevisionRef.asReadonly();
 
   get assetCards(): AppTypes.AssetCard[] {
     return this.assetCardsRef;
@@ -99,6 +101,7 @@ export class OwnedAssetsPopupFacadeService {
     this.pendingAssetDeleteErrorValue = '';
     this.itemActionMenu = null;
     this.cancelScheduledPersist();
+    this.touchUiState();
     if (!normalizedUserId) {
       this.applyAssetCards([], { persist: false });
       return;
@@ -227,6 +230,7 @@ export class OwnedAssetsPopupFacadeService {
       this.assetPopupState.prepareTicketPopupOpen();
     }
     this.assetPopupState.setPrimaryVisible(true);
+    this.touchUiState();
   }
 
   closePopup(): void {
@@ -240,6 +244,7 @@ export class OwnedAssetsPopupFacadeService {
     this.itemActionMenu = null;
     this.assetPopupState.resetTicketState();
     this.assetPopupState.setPrimaryVisible(false);
+    this.touchUiState();
   }
 
   selectAssetFilter(filter: AppTypes.AssetFilterType): void {
@@ -249,6 +254,7 @@ export class OwnedAssetsPopupFacadeService {
       this.assetPopupState.prepareTicketPopupOpen();
     }
     this.assetPopupState.setPrimaryVisible(true);
+    this.touchUiState();
   }
 
   openAssetForm(card?: AppTypes.AssetCard): void {
@@ -275,12 +281,14 @@ export class OwnedAssetsPopupFacadeService {
         sourceLink,
         routes: this.normalizeAssetRoutes(card.type, card.routes)
       };
+      this.touchUiState();
       return;
     }
     this.editingAssetId = null;
     const type = this.activeAssetType();
     this.assetFormVisibility = forcePrivateVisibility ? 'Invitation only' : 'Public';
     this.assetForm = this.buildEmptyAssetForm(type);
+    this.touchUiState();
   }
 
   closeAssetForm(): void {
@@ -290,6 +298,7 @@ export class OwnedAssetsPopupFacadeService {
     for (const hooks of this.runtimeHooks) {
       hooks.onAssetFormClosed?.();
     }
+    this.touchUiState();
   }
 
   canSubmitAssetForm(): boolean {
@@ -377,6 +386,7 @@ export class OwnedAssetsPopupFacadeService {
       return;
     }
     this.isAssetFormSavePending = true;
+    this.touchUiState();
     try {
       const title = this.assetForm.title.trim();
       const city = this.assetForm.city.trim();
@@ -464,6 +474,7 @@ export class OwnedAssetsPopupFacadeService {
       this.closeAssetForm();
     } catch {
       this.isAssetFormSavePending = false;
+      this.touchUiState();
     }
   }
 
@@ -535,6 +546,7 @@ export class OwnedAssetsPopupFacadeService {
     this.pendingAssetDeleteErrorValue = '';
     this.isAssetDeletePending = false;
     this.itemActionMenu = null;
+    this.touchUiState();
   }
 
   cancelAssetDelete(): void {
@@ -544,6 +556,7 @@ export class OwnedAssetsPopupFacadeService {
     this.pendingAssetDeleteCardId = null;
     this.pendingAssetDeleteLabelValue = '';
     this.pendingAssetDeleteErrorValue = '';
+    this.touchUiState();
   }
 
   async deleteAssetCardById(cardId: string): Promise<boolean> {
@@ -594,14 +607,17 @@ export class OwnedAssetsPopupFacadeService {
     const cardId = this.pendingAssetDeleteCardId;
     this.pendingAssetDeleteErrorValue = '';
     this.isAssetDeletePending = true;
+    this.touchUiState();
     try {
       await this.deleteAssetCardById(cardId);
       this.isAssetDeletePending = false;
       this.pendingAssetDeleteCardId = null;
       this.pendingAssetDeleteLabelValue = '';
+      this.touchUiState();
     } catch (error) {
       this.isAssetDeletePending = false;
       this.pendingAssetDeleteErrorValue = this.resolveAssetDeleteErrorMessage(error);
+      this.touchUiState();
     }
   }
 
@@ -757,6 +773,10 @@ export class OwnedAssetsPopupFacadeService {
 
   private markAssetMutation(): void {
     this.assetMutationVersion += 1;
+  }
+
+  private touchUiState(): void {
+    this.uiRevisionRef.update(value => value + 1);
   }
 
   private resolveOwnerUserId(): string {
