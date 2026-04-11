@@ -30,6 +30,7 @@ import type {
 export class DemoEventsService extends DemoRouteDelayService {
   private static readonly EVENTS_ROUTE = '/activities/events';
   private static readonly EVENTS_EXPLORE_ROUTE = '/activities/events/explore';
+  private static readonly EVENTS_CHECKOUT_ROUTE = '/activities/events/checkout';
   private readonly eventsRepository = inject(DemoEventsRepository);
   private readonly memoryDb = inject(AppMemoryDb);
 
@@ -232,7 +233,7 @@ export class DemoEventsService extends DemoRouteDelayService {
   }
 
   async createCheckoutSession(request: EventCheckoutRequest): Promise<EventCheckoutSession | null> {
-    await this.waitForRouteDelay(DemoEventsService.EVENTS_ROUTE);
+    await this.waitForRouteDelay(DemoEventsService.EVENTS_CHECKOUT_ROUTE);
     return {
       id: `checkout-${Date.now()}`,
       provider: 'dummy',

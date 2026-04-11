@@ -42,6 +42,7 @@ import {
   type SmartListStateChange
 } from '../../../shared/ui';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
+import { EventCheckoutDraftService, type EventCheckoutDraft } from '../../../shared/ui/services/event-checkout-draft.service';
 import { EventCheckoutDialogService } from '../../../shared/ui/services/event-checkout-dialog.service';
 import { NavigatorService } from '../../../navigator';
 import type { DemoEventRecord } from '../../../shared/core/demo/models/events.model';
@@ -70,6 +71,7 @@ export class EventExplorePopupComponent {
   private readonly usersService = inject(UsersService);
   protected readonly navigatorService = inject(NavigatorService);
   private readonly confirmationDialogService = inject(ConfirmationDialogService);
+  private readonly eventCheckoutDraftService = inject(EventCheckoutDraftService);
   private readonly eventCheckoutDialogService = inject(EventCheckoutDialogService);
   private readonly appCtx = inject(AppContext);
   private readonly popupCtx = inject(AppPopupContext);
@@ -90,6 +92,7 @@ export class EventExplorePopupComponent {
   protected showViewPicker = false;
   protected showTopicPicker = false;
   protected slotPickerRecord: DemoEventRecord | null = null;
+  protected showCheckoutDraftBasket = false;
   protected eventExploreOrder: AppTypes.EventExploreOrder = 'upcoming';
   protected eventExploreView: AppTypes.EventExploreView = 'day';
   protected eventExploreFilterFriendsOnly = false;
@@ -209,6 +212,13 @@ export class EventExplorePopupComponent {
       }
       this.applyActivitiesEventSync(sync);
     });
+
+    effect(() => {
+      this.eventCheckoutDraftService.drafts();
+      if (this.isOpen) {
+        this.cdr.markForCheck();
+      }
+    });
   }
 
   @HostListener('window:openFeaturePopup', ['$event'])
@@ -234,6 +244,11 @@ export class EventExplorePopupComponent {
     }
     if (this.slotPickerRecord) {
       this.closeEventExploreSlotPicker();
+      return;
+    }
+    if (this.showCheckoutDraftBasket) {
+      this.showCheckoutDraftBasket = false;
+      this.cdr.markForCheck();
       return;
     }
     if (this.showTopicPicker) {
@@ -269,6 +284,9 @@ export class EventExplorePopupComponent {
     if (this.showViewPicker && !target.closest('.event-explore-view-picker')) {
       this.showViewPicker = false;
     }
+    if (this.showCheckoutDraftBasket && !target.closest('.event-explore-basket')) {
+      this.showCheckoutDraftBasket = false;
+    }
     this.cdr.markForCheck();
   }
 
@@ -286,6 +304,7 @@ export class EventExplorePopupComponent {
     this.showOrderPicker = false;
     this.showViewPicker = false;
     this.showTopicPicker = false;
+    this.showCheckoutDraftBasket = false;
     this.slotPickerRecord = null;
     this.closeMembersPopup();
     this.resetHeaderState();
@@ -559,6 +578,53 @@ export class EventExplorePopupComponent {
     if (action.actionId === 'join') {
       this.runEventExploreJoinAction(record);
     }
+  }
+
+  protected checkoutDraftCount(): number {
+    return this.checkoutDraftEntries().length;
+  }
+
+  protected checkoutDraftEntries(): Array<{ draft: EventCheckoutDraft; record: DemoEventRecord | null }> {
+    return this.eventCheckoutDraftService.listByUser(this.activeUserId)
+      .map(draft => ({
+        draft,
+        record: this.eventsService.peekKnownItemById(this.activeUserId, draft.sourceId)
+      }));
+  }
+
+  protected toggleCheckoutDraftBasket(event?: Event): void {
+    event?.stopPropagation();
+    this.showCheckoutDraftBasket = !this.showCheckoutDraftBasket;
+    this.cdr.markForCheck();
+  }
+
+  protected async continueCheckoutDraft(
+    draft: EventCheckoutDraft,
+    event?: { stopPropagation?: () => void; preventDefault?: () => void }
+  ): Promise<void> {
+    this.stopDomEvent(event);
+    const record = this.eventsService.peekKnownItemById(this.activeUserId, draft.sourceId)
+      ?? await this.eventsService.queryKnownItemById(this.activeUserId, draft.sourceId);
+    if (!record) {
+      this.eventCheckoutDraftService.clear(this.activeUserId, draft.sourceId);
+      this.confirmationDialogService.openInfo('This checkout draft can no longer be restored.', {
+        title: 'Basket unavailable',
+        confirmTone: 'neutral'
+      });
+      this.cdr.markForCheck();
+      return;
+    }
+    this.showCheckoutDraftBasket = false;
+    this.openEventExploreCheckout(record);
+  }
+
+  protected clearCheckoutDraft(
+    draft: EventCheckoutDraft,
+    event?: { stopPropagation?: () => void; preventDefault?: () => void }
+  ): void {
+    this.stopDomEvent(event);
+    this.eventCheckoutDraftService.clear(this.activeUserId, draft.sourceId);
+    this.cdr.markForCheck();
   }
 
   protected eventExploreInfoCard(record: DemoEventRecord, groupLabel: string | null): InfoCardData {
@@ -905,14 +971,14 @@ export class EventExplorePopupComponent {
     this.activitiesContext.emitActivitiesEventSync(nextPayload);
 
     try {
-      await Promise.all([exitPromise, delayPromise]);
-      await this.eventsService.requestJoin(activeUserId, record.id, {
+      const requestJoinPromise = this.eventsService.requestJoin(activeUserId, record.id, {
         slotSourceId: selection?.slotSourceId ?? null,
         optionalSubEventIds: selection?.optionalSubEventIds ?? [],
         assetSelections: selection?.assetSelections ?? [],
         acceptedPolicyIds: selection?.acceptedPolicyIds ?? [],
         paymentSessionId: selection?.paymentSessionId ?? null
       });
+      await Promise.all([exitPromise, delayPromise, requestJoinPromise]);
       if (this.selectedMembersRecord?.id === record.id) {
         this.selectedMembers = nextMembers;
       }

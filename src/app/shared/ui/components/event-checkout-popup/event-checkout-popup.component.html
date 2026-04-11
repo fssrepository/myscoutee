@@ -269,7 +269,7 @@
             [disabled]="!canContinue() || busy"
             (click)="submit($event)"
           >
-            {{ busy ? state.busyConfirmLabel : continueLabel() }}
+            {{ busy ? busyLabel() : continueLabel() }}
           </button>
         </span>
       </div>

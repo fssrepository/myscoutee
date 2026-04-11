@@ -14,6 +14,7 @@ import { PricingBuilder } from '../../../core/base/builders';
 import type * as AppTypes from '../../../core/base/models';
 import { EventsService } from '../../../core/base/services/events.service';
 import type { DemoEventRecord } from '../../../core/demo/models/events.model';
+import { EventCheckoutDraftService } from '../../services/event-checkout-draft.service';
 import { EventCheckoutDialogService, type EventCheckoutDialogState } from '../../services/event-checkout-dialog.service';
 
 type PricingSnapshot = {
@@ -43,6 +44,7 @@ export class EventCheckoutPopupComponent {
   protected readonly environment = environment;
   protected readonly dialogService = inject(EventCheckoutDialogService);
   private readonly eventsService = inject(EventsService);
+  private readonly checkoutDraftService = inject(EventCheckoutDraftService);
 
   protected selectedSlotSourceId: string | null = null;
   protected selectedSlotDateValue: Date | null = null;
@@ -54,6 +56,7 @@ export class EventCheckoutPopupComponent {
   protected errorMessage = '';
 
   private renderedDialogId = 0;
+  private checkoutSessionId: string | null = null;
   private availableSlotsCache: AppTypes.EventSlotOccurrence[] = [];
   private availableSlotDateEntriesCache: Array<{ key: string; value: Date; label: string; count: number }> = [];
   private availableSlotDateKeySet = new Set<string>();
@@ -261,6 +264,7 @@ export class EventCheckoutPopupComponent {
     }
     this.selectedSlotDateValue = normalized;
     this.slotPageIndex = 0;
+    this.invalidateCheckoutDraft();
   }
 
   protected policies(): AppTypes.EventPolicyItem[] {
@@ -277,6 +281,7 @@ export class EventCheckoutPopupComponent {
 
   protected toggleSlot(slotId: string): void {
     this.selectedSlotSourceId = this.selectedSlotSourceId === slotId ? null : slotId;
+    this.invalidateCheckoutDraft();
   }
 
   protected isSelectedOptionalSubEvent(id: string): boolean {
@@ -289,6 +294,7 @@ export class EventCheckoutPopupComponent {
     } else {
       this.selectedOptionalSubEventIds.add(id);
     }
+    this.invalidateCheckoutDraft();
   }
 
   protected isAcceptedPolicy(id: string): boolean {
@@ -298,9 +304,12 @@ export class EventCheckoutPopupComponent {
   protected togglePolicy(id: string): void {
     if (this.acceptedPolicyIds.has(id)) {
       this.acceptedPolicyIds.delete(id);
-      return;
+    } else {
+      this.acceptedPolicyIds.add(id);
     }
-    this.acceptedPolicyIds.add(id);
+    if (this.checkoutSessionId) {
+      this.persistCheckoutDraft();
+    }
   }
 
   protected lineItems(): AppTypes.EventCheckoutLineItem[] {
@@ -372,12 +381,23 @@ export class EventCheckoutPopupComponent {
       return 'Continue';
     }
     if (this.paymentStep) {
-      return 'Pay & confirm';
+      return 'Buy';
     }
     if (this.totalAmount() > 0) {
-      return 'View payment';
+      return 'Checkout';
     }
     return dialog.confirmLabel;
+  }
+
+  protected busyLabel(): string {
+    const dialog = this.dialog();
+    if (!dialog) {
+      return 'Working...';
+    }
+    if (this.totalAmount() > 0) {
+      return this.paymentStep ? 'Buying...' : 'Checking out...';
+    }
+    return dialog.busyConfirmLabel;
   }
 
   protected canContinue(): boolean {
@@ -400,11 +420,21 @@ export class EventCheckoutPopupComponent {
       return;
     }
     if (!this.paymentStep && this.totalAmount() > 0) {
+      const startedAt = Date.now();
       this.busy = true;
       this.errorMessage = '';
       try {
-        await this.ensureMinimumBusyDuration(Date.now());
+        const session = await this.eventsService.createCheckoutSession(this.buildCheckoutRequest());
+        await this.ensureMinimumBusyDuration(startedAt);
+        if (!session?.id) {
+          throw new Error('Unable to start checkout.');
+        }
+        this.checkoutSessionId = session.id;
+        this.persistCheckoutDraft();
         this.paymentStep = true;
+      } catch (error) {
+        await this.ensureMinimumBusyDuration(startedAt);
+        this.errorMessage = this.resolveErrorMessage(error, 'Unable to start checkout.');
       } finally {
         this.busy = false;
       }
@@ -415,20 +445,19 @@ export class EventCheckoutPopupComponent {
     this.busy = true;
     this.errorMessage = '';
     try {
-      let paymentSessionId: string | null = null;
+      let paymentSessionId = this.checkoutSessionId;
       if (this.totalAmount() > 0) {
-        if (environment.paymentIntegrationEnabled) {
+        if (!paymentSessionId) {
           const session = await this.eventsService.createCheckoutSession(this.buildCheckoutRequest());
           if (!session?.id) {
             throw new Error('Unable to start payment.');
           }
           paymentSessionId = session.id;
-        } else {
-          paymentSessionId = `dummy-${Date.now()}`;
         }
       }
       await Promise.resolve(dialog.onSubmit(this.buildSelection(paymentSessionId)));
       await this.ensureMinimumBusyDuration(startedAt);
+      this.clearCheckoutDraft();
       this.dialogService.close();
     } catch (error) {
       await this.ensureMinimumBusyDuration(startedAt);
@@ -466,14 +495,25 @@ export class EventCheckoutPopupComponent {
   private initializeDialogState(dialog: EventCheckoutDialogState): void {
     this.rebuildSlotCaches(dialog.record.upcomingSlots ?? []);
     const firstSlot = dialog.record.upcomingSlots?.[0] ?? null;
-    this.selectedSlotSourceId = null;
-    this.selectedSlotDateValue = firstSlot
-      ? this.slotDateValueFromIso(firstSlot.startAtIso)
+    const draft = this.checkoutDraftService.read(dialog.userId, dialog.record.id);
+    const validOptionalIds = new Set(this.optionalSubEvents().map(item => item.id));
+    const validPolicyIds = new Set((dialog.record.policies ?? []).map(item => item.id));
+    const validSlotIds = new Set(this.availableSlots().map(item => item.id));
+    this.selectedSlotSourceId = draft?.slotSourceId && validSlotIds.has(draft.slotSourceId)
+      ? draft.slotSourceId
       : null;
+    const selectedSlot = this.selectedSlotSourceId
+      ? this.availableSlots().find(item => item.id === this.selectedSlotSourceId) ?? null
+      : null;
+    this.selectedSlotDateValue = selectedSlot
+      ? this.slotDateValueFromIso(selectedSlot.startAtIso)
+      : (draft?.selectedDateKey ? this.slotDateValueFromKey(draft.selectedDateKey) : null)
+        ?? (firstSlot ? this.slotDateValueFromIso(firstSlot.startAtIso) : null);
     this.slotPageIndex = 0;
-    this.selectedOptionalSubEventIds = new Set<string>();
-    this.acceptedPolicyIds = new Set<string>();
-    this.paymentStep = false;
+    this.selectedOptionalSubEventIds = new Set((draft?.optionalSubEventIds ?? []).filter(item => validOptionalIds.has(item)));
+    this.acceptedPolicyIds = new Set((draft?.acceptedPolicyIds ?? []).filter(item => validPolicyIds.has(item)));
+    this.paymentStep = Boolean(draft?.checkoutSessionId);
+    this.checkoutSessionId = draft?.checkoutSessionId ?? null;
     this.busy = false;
     this.errorMessage = '';
   }
@@ -489,6 +529,7 @@ export class EventCheckoutPopupComponent {
     this.selectedOptionalSubEventIds = new Set<string>();
     this.acceptedPolicyIds = new Set<string>();
     this.paymentStep = false;
+    this.checkoutSessionId = null;
     this.busy = false;
     this.errorMessage = '';
   }
@@ -682,6 +723,17 @@ export class EventCheckoutPopupComponent {
     return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
   }
 
+  private slotDateValueFromKey(value: string): Date | null {
+    const [yearText, monthText, dayText] = value.split('-');
+    const year = Number(yearText);
+    const month = Number(monthText);
+    const day = Number(dayText);
+    if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) {
+      return null;
+    }
+    return new Date(year, month - 1, day);
+  }
+
   private slotDateKeyFromIso(value: string): string {
     const parsed = AppUtils.isoLocalDateTimeToDate(value);
     return parsed ? this.slotDateKeyFromDate(parsed) : '';
@@ -689,6 +741,44 @@ export class EventCheckoutPopupComponent {
 
   private slotDateKeyFromDate(value: Date): string {
     return `${value.getFullYear()}-${AppUtils.pad2(value.getMonth() + 1)}-${AppUtils.pad2(value.getDate())}`;
+  }
+
+  private persistCheckoutDraft(): void {
+    const dialog = this.dialog();
+    if (!dialog || this.totalAmount() <= 0) {
+      return;
+    }
+    this.checkoutDraftService.save({
+      userId: dialog.userId,
+      sourceId: dialog.record.id,
+      eventTitle: dialog.record.title,
+      eventTimeframe: dialog.record.timeframe,
+      slotSourceId: this.selectedSlotSourceId,
+      selectedDateKey: this.selectedSlotDateValue ? this.slotDateKeyFromDate(this.selectedSlotDateValue) : null,
+      optionalSubEventIds: [...this.selectedOptionalSubEventIds],
+      acceptedPolicyIds: [...this.acceptedPolicyIds],
+      lineItems: this.lineItems(),
+      totalAmount: this.totalAmount(),
+      currency: this.currency(),
+      checkoutSessionId: this.checkoutSessionId,
+      updatedAtMs: Date.now()
+    });
+  }
+
+  private clearCheckoutDraft(): void {
+    const dialog = this.dialog();
+    if (!dialog) {
+      return;
+    }
+    this.checkoutDraftService.clear(dialog.userId, dialog.record.id);
+    this.checkoutSessionId = null;
+  }
+
+  private invalidateCheckoutDraft(): void {
+    if (!this.checkoutSessionId) {
+      return;
+    }
+    this.clearCheckoutDraft();
   }
 
   private async ensureMinimumBusyDuration(startedAt: number): Promise<void> {

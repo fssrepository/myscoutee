@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 
 import { environment } from '../../../../../environments/environment';
 import { PricingBuilder } from '../../../core/base/builders';
+import { RouteDelayService } from '../../../core/base/services/route-delay.service';
 import type {
   ActivitiesEventSyncPayload,
   EventCheckoutAssetSelection,
@@ -39,6 +40,7 @@ interface HttpEventsFilterRequest {
 export class HttpEventsService {
   private readonly http = inject(HttpClient);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
+  private readonly routeDelayService = inject(RouteDelayService);
 
   async queryItemsByUser(userId: string): Promise<DemoEventRecord[]> {
     return this.getRecords('/activities/events', userId);
@@ -255,6 +257,7 @@ export class HttpEventsService {
 
   async createCheckoutSession(request: EventCheckoutRequest): Promise<EventCheckoutSession | null> {
     try {
+      await this.routeDelayService.waitForRouteDelay('/activities/events/checkout');
       return await this.http
         .post<EventCheckoutSession | null>(`${this.apiBaseUrl}/activities/events/checkout`, request)
         .toPromise() ?? null;
