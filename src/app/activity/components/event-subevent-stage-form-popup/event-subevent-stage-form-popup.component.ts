@@ -29,6 +29,14 @@ export interface EventSubeventStageFormPopupView {
   showOptionalPicker: boolean;
   modeClass: EventSubeventStageFormModeClass;
   modeIcon: string;
+  slotBoundTiming: boolean;
+  timingSummaryTitle: string;
+  timingSummaryText: string;
+  timingSummaryMeta: string;
+  startFieldLabel: string;
+  endFieldLabel: string;
+  timingBoundStartAt: string;
+  timingBoundEndAt: string;
   showInsertControls: boolean;
   insertFieldLabel: string;
   insertPlacement: EventSubeventStageInsertPlacement;
@@ -153,11 +161,41 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
   }
 
   private normalizeDateRange(): void {
-    const start = this.parseDateTime(this.model.startAt) ?? new Date();
-    const currentEnd = this.parseDateTime(this.model.endAt);
-    const safeEnd = currentEnd && currentEnd.getTime() > start.getTime()
-      ? currentEnd
-      : new Date(start.getTime() + (60 * 60 * 1000));
+    const boundStart = this.parseDateTime(this.view.timingBoundStartAt);
+    const boundEnd = this.parseDateTime(this.view.timingBoundEndAt);
+    const defaultStart = boundStart ?? new Date();
+    const defaultDurationMs = boundStart && boundEnd && boundEnd.getTime() > boundStart.getTime()
+      ? Math.max(15 * 60 * 1000, Math.min(60 * 60 * 1000, boundEnd.getTime() - boundStart.getTime()))
+      : (60 * 60 * 1000);
+
+    let start = this.parseDateTime(this.model.startAt) ?? new Date(defaultStart.getTime());
+    let safeEnd = this.parseDateTime(this.model.endAt);
+    if (!safeEnd || safeEnd.getTime() <= start.getTime()) {
+      safeEnd = new Date(start.getTime() + defaultDurationMs);
+    }
+
+    if (this.view.slotBoundTiming && boundStart && boundEnd && boundEnd.getTime() > boundStart.getTime()) {
+      const minMs = boundStart.getTime();
+      const maxMs = boundEnd.getTime();
+      const minSpanMs = Math.max(60 * 1000, Math.min(defaultDurationMs, maxMs - minMs));
+
+      let startMs = Math.max(minMs, start.getTime());
+      let endMs = Math.min(maxMs, safeEnd.getTime());
+
+      if (startMs >= maxMs) {
+        startMs = Math.max(minMs, maxMs - minSpanMs);
+      }
+      if (endMs <= startMs) {
+        endMs = Math.min(maxMs, startMs + minSpanMs);
+      }
+      if (endMs <= startMs) {
+        startMs = minMs;
+        endMs = maxMs;
+      }
+
+      start = new Date(startMs);
+      safeEnd = new Date(endMs);
+    }
 
     this.model.startAt = AppUtils.toIsoDateTimeLocal(start);
     this.model.endAt = AppUtils.toIsoDateTimeLocal(safeEnd);
@@ -183,6 +221,14 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
       showOptionalPicker: false,
       modeClass: 'subevent-mode-mandatory',
       modeIcon: 'block',
+      slotBoundTiming: false,
+      timingSummaryTitle: '',
+      timingSummaryText: '',
+      timingSummaryMeta: '',
+      startFieldLabel: 'Start',
+      endFieldLabel: 'End',
+      timingBoundStartAt: '',
+      timingBoundEndAt: '',
       showInsertControls: false,
       insertFieldLabel: 'Insert Stage',
       insertPlacement: 'after',

@@ -228,6 +228,8 @@ export class EventEditorConverter {
         pricing: this.normalizeEventEditorPricing(item['pricing'], { context: 'subevent' }),
         startAt: startAtDate ? AppUtils.toIsoDateTimeLocal(startAtDate) : '',
         endAt: endAtDate ? AppUtils.toIsoDateTimeLocal(endAtDate) : '',
+        slotStartOffsetMinutes: this.toEventEditorCapacityInputValue(item['slotStartOffsetMinutes']) ?? undefined,
+        slotDurationMinutes: this.toEventEditorCapacityInputValue(item['slotDurationMinutes']) ?? undefined,
         groups: groups.map(group => ({ ...(group as Record<string, unknown>) })) as AppTypes.EventEditorSubEventGroupItem[]
       };
     });

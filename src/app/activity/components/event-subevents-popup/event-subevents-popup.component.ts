@@ -70,6 +70,8 @@ export interface EventSubeventsItem {
   accommodationCapacityMax?: number;
   suppliesCapacityMin?: number;
   suppliesCapacityMax?: number;
+  slotStartOffsetMinutes?: number;
+  slotDurationMinutes?: number;
 }
 
 interface EventSubeventsStageRow {
@@ -149,6 +151,14 @@ interface SubEventFormModel {
   tournamentLeaderboardType?: TournamentLeaderboardType;
   tournamentAdvancePerGroup?: number;
   groups?: readonly EventSubeventsGroupItem[];
+  slotStartOffsetMinutes?: number;
+  slotDurationMinutes?: number;
+}
+
+interface SlotTimingPreview {
+  start: Date;
+  end: Date;
+  slotCount: number;
 }
 
 interface GroupFormModel {
@@ -205,6 +215,10 @@ export class EventSubeventsPopupComponent implements OnChanges {
   @Input() ownerId: string | null = null;
   @Input() subEvents: readonly EventSubeventsItem[] = [];
   @Input() displayMode: SubEventsDisplayMode = 'Casual';
+  @Input() slotsEnabled = false;
+  @Input() slotTemplates: readonly AppTypes.EventSlotTemplate[] = [];
+  @Input() parentStartAt = '';
+  @Input() parentEndAt = '';
 
   @Output() readonly close = new EventEmitter<void>();
   @Output() readonly displayModeChange = new EventEmitter<SubEventsDisplayMode>();
@@ -308,7 +322,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
       }
     }
 
-    if (changes['ownerId'] && this.open) {
+    if ((changes['ownerId'] || changes['slotsEnabled'] || changes['slotTemplates'] || changes['parentStartAt'] || changes['parentEndAt']) && this.open) {
       this.rebuildRenderModel();
       void this.hydrateOwnerRecord();
     }
@@ -373,7 +387,10 @@ export class EventSubeventsPopupComponent implements OnChanges {
     this.subEventFormSourceIndex = null;
 
     const start = this.resolveNextSubEventStartAt();
-    const end = new Date(start.getTime() + (2 * 60 * 60 * 1000));
+    const initialRange = this.normalizedInputDateRange(
+      this.toInputDateTime(start),
+      this.toInputDateTime(new Date(start.getTime() + (2 * 60 * 60 * 1000)))
+    );
     const stageNumber = this.workingSubEvents.length + 1;
     const defaultName = this.displayMode === 'Tournament' ? `Stage ${stageNumber}` : `Sub Event ${stageNumber}`;
     this.resetSubEventStageInsertControls();
@@ -387,8 +404,8 @@ export class EventSubeventsPopupComponent implements OnChanges {
       name: defaultName,
       description: '',
       location: '',
-      startAt: this.toInputDateTime(start),
-      endAt: this.toInputDateTime(end),
+      startAt: initialRange.startAt,
+      endAt: initialRange.endAt,
       optional: this.displayMode !== 'Tournament',
       pricing: PricingBuilder.createDefaultPricingConfig('subevent'),
       capacityMin: fallbackStageMin,
@@ -398,7 +415,9 @@ export class EventSubeventsPopupComponent implements OnChanges {
       tournamentGroupCapacityMax: fallbackGroupMax,
       tournamentLeaderboardType: this.defaultTournamentLeaderboardType(),
       tournamentAdvancePerGroup: this.defaultTournamentAdvancePerGroup(),
-      groups: []
+      groups: [],
+      slotStartOffsetMinutes: undefined,
+      slotDurationMinutes: undefined
     };
 
     this.showSubEventOptionalPicker = false;
@@ -932,6 +951,13 @@ export class EventSubeventsPopupComponent implements OnChanges {
 
 
   protected subEventFormPopupView(): EventSubeventStageFormPopupView {
+    const slotBoundTiming = this.isSlotBoundSubEventTiming();
+    const timingSummaryTitle = this.subEventTimingSummaryTitle();
+    const timingSummaryText = this.subEventTimingSummaryText();
+    const timingSummaryMeta = this.subEventTimingSummaryMeta();
+    const timingBounds = this.subEventTimingBounds();
+    const startFieldLabel = slotBoundTiming ? 'Start in slot' : 'Start';
+    const endFieldLabel = slotBoundTiming ? 'End in slot' : 'End';
     const title = this.subEventFormTitle();
     const canSave = this.canSaveSubEventForm();
     const invalidName = this.subEventFieldInvalid('name');
@@ -966,6 +992,14 @@ export class EventSubeventsPopupComponent implements OnChanges {
       this.subEventStageInsertPlacement,
       this.subEventStageInsertTargetId ?? '',
       insertOptions.map(option => `${option.id}:${option.label}`).join('|'),
+      slotBoundTiming ? '1' : '0',
+      timingSummaryTitle,
+      timingSummaryText,
+      timingSummaryMeta,
+      startFieldLabel,
+      endFieldLabel,
+      timingBounds?.start ? AppUtils.toIsoDateTimeLocal(timingBounds.start) : '',
+      timingBounds?.end ? AppUtils.toIsoDateTimeLocal(timingBounds.end) : '',
       showTournamentFields ? '1' : '0',
       tournamentLeaderboardTypeValue,
       tournamentLeaderboardTypeClass,
@@ -989,6 +1023,14 @@ export class EventSubeventsPopupComponent implements OnChanges {
       showOptionalPicker: this.showSubEventOptionalPicker,
       modeClass,
       modeIcon,
+      slotBoundTiming,
+      timingSummaryTitle,
+      timingSummaryText,
+      timingSummaryMeta,
+      startFieldLabel,
+      endFieldLabel,
+      timingBoundStartAt: timingBounds?.start ? AppUtils.toIsoDateTimeLocal(timingBounds.start) : '',
+      timingBoundEndAt: timingBounds?.end ? AppUtils.toIsoDateTimeLocal(timingBounds.end) : '',
       showInsertControls,
       insertFieldLabel,
       insertPlacement: this.subEventStageInsertPlacement,
@@ -1066,6 +1108,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
     }
 
     const dateRange = this.normalizedInputDateRange(this.subEventForm.startAt, this.subEventForm.endAt);
+    const slotRelativeTiming = this.slotRelativeTimingFromDateRange(dateRange);
     const existingId = this.editingSubEventId();
     const existingItem = existingId
       ? this.workingSubEvents.find(item => item.id === existingId) ?? null
@@ -1094,6 +1137,8 @@ export class EventSubeventsPopupComponent implements OnChanges {
       ),
       startAt: dateRange.startAt,
       endAt: dateRange.endAt,
+      slotStartOffsetMinutes: slotRelativeTiming?.slotStartOffsetMinutes,
+      slotDurationMinutes: slotRelativeTiming?.slotDurationMinutes,
       capacityMin: normalizedCapacityMin,
       capacityMax: normalizedCapacityMax,
       tournamentGroupCount: this.normalizedNonNegativeInt(this.subEventForm.tournamentGroupCount) ?? undefined,
@@ -1656,8 +1701,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
       name: `${sourceItem.name ?? sourceItem.title ?? fallbackName}`.trim(),
       description: `${sourceItem.description ?? ''}`.trim(),
       location: `${sourceItem.location ?? ''}`.trim(),
-      startAt: this.toInputDateTime(this.parseDateValue(sourceItem.startAt) ?? new Date()),
-      endAt: this.toInputDateTime(this.parseDateValue(sourceItem.endAt) ?? new Date(Date.now() + (2 * 60 * 60 * 1000))),
+      ...this.subEventDraftDateRange(sourceItem),
       optional: sourceItem.optional ?? (this.displayMode !== 'Tournament'),
       pricing: PricingBuilder.clonePricingConfig(sourceItem.pricing ?? PricingBuilder.createDefaultPricingConfig('subevent')),
       capacityMin: Math.max(0, Number(sourceItem.capacityMin) || 0),
@@ -1674,7 +1718,9 @@ export class EventSubeventsPopupComponent implements OnChanges {
         : this.defaultTournamentGroupCapacityMax(this.defaultTournamentGroupCapacityMin()),
       tournamentLeaderboardType: this.normalizedTournamentLeaderboardType(sourceItem.tournamentLeaderboardType),
       tournamentAdvancePerGroup: Math.max(0, Math.trunc(Number(sourceItem.tournamentAdvancePerGroup) || 0)),
-      groups: this.cloneGroups(sourceItem.groups)
+      groups: this.cloneGroups(sourceItem.groups),
+      slotStartOffsetMinutes: this.normalizedNonNegativeInt(sourceItem.slotStartOffsetMinutes) ?? undefined,
+      slotDurationMinutes: this.normalizedNonNegativeInt(sourceItem.slotDurationMinutes) ?? undefined
     };
     this.resetSubEventStageInsertControls(sourceItem.id ?? null);
     this.showSubEventForm = true;
@@ -1793,16 +1839,199 @@ export class EventSubeventsPopupComponent implements OnChanges {
   }
 
   private normalizedInputDateRange(startInput: string, endInput: string): { startAt: string; endAt: string } {
-    const startDate = this.parseInputDate(startInput) ?? new Date();
-    const endDate = this.parseInputDate(endInput) ?? new Date(startDate.getTime() + (2 * 60 * 60 * 1000));
+    const bounds = this.subEventTimingBounds();
+    const fallbackStart = bounds?.start ?? new Date();
+    const defaultDurationMs = bounds
+      ? Math.max(15 * 60 * 1000, Math.min(60 * 60 * 1000, bounds.end.getTime() - bounds.start.getTime()))
+      : (60 * 60 * 1000);
+    const startDate = this.parseInputDate(startInput) ?? new Date(fallbackStart.getTime());
+    const endDate = this.parseInputDate(endInput) ?? new Date(startDate.getTime() + defaultDurationMs);
 
-    const safeEnd = endDate.getTime() <= startDate.getTime()
-      ? new Date(startDate.getTime() + (60 * 60 * 1000))
-      : endDate;
+    let nextStartMs = startDate.getTime();
+    let nextEndMs = endDate.getTime() > nextStartMs
+      ? endDate.getTime()
+      : nextStartMs + defaultDurationMs;
+
+    if (bounds && bounds.end.getTime() > bounds.start.getTime()) {
+      const minMs = bounds.start.getTime();
+      const maxMs = bounds.end.getTime();
+      const minSpanMs = Math.max(60 * 1000, Math.min(defaultDurationMs, maxMs - minMs));
+
+      nextStartMs = Math.max(minMs, nextStartMs);
+      nextEndMs = Math.min(maxMs, nextEndMs);
+
+      if (nextStartMs >= maxMs) {
+        nextStartMs = Math.max(minMs, maxMs - minSpanMs);
+      }
+
+      if (nextEndMs <= nextStartMs) {
+        nextEndMs = Math.min(maxMs, nextStartMs + minSpanMs);
+      }
+
+      if (nextEndMs <= nextStartMs) {
+        nextStartMs = minMs;
+        nextEndMs = maxMs;
+      }
+    }
 
     return {
-      startAt: AppUtils.toIsoDateTimeLocal(startDate),
-      endAt: AppUtils.toIsoDateTimeLocal(safeEnd)
+      startAt: AppUtils.toIsoDateTimeLocal(new Date(nextStartMs)),
+      endAt: AppUtils.toIsoDateTimeLocal(new Date(nextEndMs))
+    };
+  }
+
+  private slotTimingPreview(): SlotTimingPreview | null {
+    if (!this.slotsEnabled) {
+      return null;
+    }
+
+    const templates = (this.slotTemplates ?? [])
+      .map(template => {
+        const start = this.parseDateValue(template?.startAt);
+        const rawEnd = this.parseDateValue(template?.endAt);
+        if (!template || template.closed === true || !start) {
+          return null;
+        }
+        const end = rawEnd && rawEnd.getTime() > start.getTime()
+          ? rawEnd
+          : new Date(start.getTime() + (60 * 60 * 1000));
+        return { start, end };
+      })
+      .filter((value): value is { start: Date; end: Date } => Boolean(value))
+      .sort((left, right) => left.start.getTime() - right.start.getTime());
+
+    if (templates.length === 0) {
+      return null;
+    }
+
+    return {
+      start: new Date(templates[0]!.start.getTime()),
+      end: new Date(templates[0]!.end.getTime()),
+      slotCount: templates.length
+    };
+  }
+
+  private isSlotBoundSubEventTiming(): boolean {
+    return this.slotTimingPreview() !== null;
+  }
+
+  private subEventTimingBounds(): { start: Date; end: Date } | null {
+    const slotPreview = this.slotTimingPreview();
+    if (slotPreview) {
+      return { start: slotPreview.start, end: slotPreview.end };
+    }
+
+    const parentStart = this.parseDateValue(this.parentStartAt);
+    const parentEnd = this.parseDateValue(this.parentEndAt);
+    if (!parentStart || !parentEnd || parentEnd.getTime() <= parentStart.getTime()) {
+      return null;
+    }
+    return { start: parentStart, end: parentEnd };
+  }
+
+  private resolveSlotRelativeTiming(
+    item: Pick<EventSubeventsItem, 'startAt' | 'endAt' | 'slotStartOffsetMinutes' | 'slotDurationMinutes'> | null | undefined
+  ): { offsetMinutes: number; durationMinutes: number } | null {
+    const preview = this.slotTimingPreview();
+    if (!preview || !item) {
+      return null;
+    }
+
+    const slotDurationMinutes = Math.max(1, Math.round((preview.end.getTime() - preview.start.getTime()) / 60000));
+    const explicitOffset = Number(item.slotStartOffsetMinutes);
+    const explicitDuration = Number(item.slotDurationMinutes);
+
+    let offsetMinutes = Number.isFinite(explicitOffset) ? Math.max(0, Math.trunc(explicitOffset)) : Number.NaN;
+    let durationMinutes = Number.isFinite(explicitDuration) ? Math.max(1, Math.trunc(explicitDuration)) : Number.NaN;
+
+    if (!Number.isFinite(offsetMinutes) || !Number.isFinite(durationMinutes)) {
+      const start = this.parseDateValue(item.startAt);
+      const end = this.parseDateValue(item.endAt);
+      if (start && end) {
+        if (!Number.isFinite(offsetMinutes)) {
+          offsetMinutes = Math.round((start.getTime() - preview.start.getTime()) / 60000);
+        }
+        if (!Number.isFinite(durationMinutes)) {
+          durationMinutes = Math.max(1, Math.round((end.getTime() - start.getTime()) / 60000));
+        }
+      }
+    }
+
+    if (!Number.isFinite(offsetMinutes) || !Number.isFinite(durationMinutes)) {
+      return null;
+    }
+
+    const safeOffsetMinutes = AppUtils.clampNumber(Math.trunc(offsetMinutes), 0, Math.max(0, slotDurationMinutes - 1));
+    const safeDurationMinutes = AppUtils.clampNumber(
+      Math.trunc(durationMinutes),
+      1,
+      Math.max(1, slotDurationMinutes - safeOffsetMinutes)
+    );
+
+    return {
+      offsetMinutes: safeOffsetMinutes,
+      durationMinutes: safeDurationMinutes
+    };
+  }
+
+  private buildAnchoredSlotDateRange(offsetMinutes: number, durationMinutes: number): { startAt: string; endAt: string } {
+    const preview = this.slotTimingPreview();
+    if (!preview) {
+      return this.normalizedInputDateRange('', '');
+    }
+
+    const safeOffsetMinutes = AppUtils.clampNumber(
+      Math.trunc(offsetMinutes),
+      0,
+      Math.max(0, Math.round((preview.end.getTime() - preview.start.getTime()) / 60000) - 1)
+    );
+    const start = new Date(preview.start.getTime() + (safeOffsetMinutes * 60 * 1000));
+    const end = new Date(start.getTime() + (Math.max(1, Math.trunc(durationMinutes)) * 60 * 1000));
+    return this.normalizedInputDateRange(AppUtils.toIsoDateTimeLocal(start), AppUtils.toIsoDateTimeLocal(end));
+  }
+
+  private subEventDraftDateRange(sourceItem: EventSubeventsItem | null | undefined): { startAt: string; endAt: string } {
+    const relative = this.resolveSlotRelativeTiming(sourceItem);
+    if (relative) {
+      return this.buildAnchoredSlotDateRange(relative.offsetMinutes, relative.durationMinutes);
+    }
+
+    if (sourceItem?.startAt || sourceItem?.endAt) {
+      return this.normalizedInputDateRange(sourceItem.startAt ?? '', sourceItem.endAt ?? '');
+    }
+
+    const start = this.resolveNextSubEventStartAt();
+    return this.normalizedInputDateRange(
+      this.toInputDateTime(start),
+      this.toInputDateTime(new Date(start.getTime() + (2 * 60 * 60 * 1000)))
+    );
+  }
+
+  private slotRelativeTimingFromDateRange(
+    range: { startAt: string; endAt: string }
+  ): { slotStartOffsetMinutes: number; slotDurationMinutes: number } | null {
+    const preview = this.slotTimingPreview();
+    const start = this.parseDateValue(range.startAt);
+    const end = this.parseDateValue(range.endAt);
+    if (!preview || !start || !end) {
+      return null;
+    }
+
+    const slotDurationMinutes = Math.max(1, Math.round((preview.end.getTime() - preview.start.getTime()) / 60000));
+    const offsetMinutes = AppUtils.clampNumber(
+      Math.round((start.getTime() - preview.start.getTime()) / 60000),
+      0,
+      Math.max(0, slotDurationMinutes - 1)
+    );
+    const durationMinutes = AppUtils.clampNumber(
+      Math.max(1, Math.round((end.getTime() - start.getTime()) / 60000)),
+      1,
+      Math.max(1, slotDurationMinutes - offsetMinutes)
+    );
+
+    return {
+      slotStartOffsetMinutes: offsetMinutes,
+      slotDurationMinutes: durationMinutes
     };
   }
 
@@ -1816,12 +2045,75 @@ export class EventSubeventsPopupComponent implements OnChanges {
   }
 
   private subEventRangeLabel(item: EventSubeventsItem): string {
+    const relative = this.resolveSlotRelativeTiming(item);
+    const preview = this.slotTimingPreview();
+    if (relative && preview) {
+      const firstRange = this.buildAnchoredSlotDateRange(relative.offsetMinutes, relative.durationMinutes);
+      const firstStart = this.parseDateValue(firstRange.startAt);
+      const firstEnd = this.parseDateValue(firstRange.endAt);
+      if (firstStart && firstEnd) {
+        const repeatLabel = preview.slotCount > 1 ? ` · ${preview.slotCount} slots configured` : '';
+        return `Per slot · ${this.timeRangeLabel(firstStart, firstEnd)} · first slot ${this.shortMonthDay(firstStart.getTime())}${repeatLabel}`;
+      }
+      return 'Per slot timing';
+    }
+
     const start = this.parseDateValue(item.startAt);
     const end = this.parseDateValue(item.endAt);
     if (!start || !end) {
       return 'Date pending';
     }
     return `${this.monthDayTime(start)} - ${this.monthDayTime(end)}`;
+  }
+
+  private timeRangeLabel(start: Date, end: Date): string {
+    return `${AppUtils.pad2(start.getHours())}:${AppUtils.pad2(start.getMinutes())} - ${AppUtils.pad2(end.getHours())}:${AppUtils.pad2(end.getMinutes())}`;
+  }
+
+  private durationLabel(totalMinutes: number): string {
+    const safeMinutes = Math.max(1, Math.trunc(totalMinutes));
+    const hours = Math.floor(safeMinutes / 60);
+    const minutes = safeMinutes % 60;
+    if (hours > 0 && minutes > 0) {
+      return `${hours}h ${minutes}m`;
+    }
+    if (hours > 0) {
+      return `${hours}h`;
+    }
+    return `${minutes}m`;
+  }
+
+  private subEventTimingSummaryTitle(): string {
+    return this.isSlotBoundSubEventTiming() ? 'Per-slot timing' : 'Main event timing';
+  }
+
+  private subEventTimingSummaryText(): string {
+    const preview = this.slotTimingPreview();
+    if (preview) {
+      return 'This sub event repeats inside every slot. The first configured slot below is only a preview for picking the start and end time.';
+    }
+    return 'Slots are off or not configured yet, so this sub event follows the main event date range.';
+  }
+
+  private subEventTimingSummaryMeta(): string {
+    const preview = this.slotTimingPreview();
+    if (preview) {
+      const currentRange = this.normalizedInputDateRange(this.subEventForm.startAt, this.subEventForm.endAt);
+      const currentStart = this.parseDateValue(currentRange.startAt);
+      const currentEnd = this.parseDateValue(currentRange.endAt);
+      const durationText = currentStart && currentEnd
+        ? this.durationLabel(Math.max(1, Math.round((currentEnd.getTime() - currentStart.getTime()) / 60000)))
+        : '';
+      const repeatLabel = preview.slotCount > 1 ? ` · ${preview.slotCount} slots configured` : '';
+      const durationLabel = durationText ? ` · duration ${durationText}` : '';
+      return `Preview slot ${this.monthDayTime(preview.start)} - ${this.monthDayTime(preview.end)}${durationLabel}${repeatLabel}`;
+    }
+
+    const bounds = this.subEventTimingBounds();
+    if (!bounds) {
+      return '';
+    }
+    return `Main event range ${this.monthDayTime(bounds.start)} - ${this.monthDayTime(bounds.end)}`;
   }
 
   private monthDayTime(value: Date): string {
@@ -2028,7 +2320,9 @@ export class EventSubeventsPopupComponent implements OnChanges {
       accommodationCapacityMin: this.toPendingCount(item.accommodationCapacityMin),
       accommodationCapacityMax: this.toPendingCount(item.accommodationCapacityMax),
       suppliesCapacityMin: this.toPendingCount(item.suppliesCapacityMin),
-      suppliesCapacityMax: this.toPendingCount(item.suppliesCapacityMax)
+      suppliesCapacityMax: this.toPendingCount(item.suppliesCapacityMax),
+      slotStartOffsetMinutes: this.normalizedNonNegativeInt(item.slotStartOffsetMinutes) ?? undefined,
+      slotDurationMinutes: this.normalizedNonNegativeInt(item.slotDurationMinutes) ?? undefined
     };
   }
 
@@ -2517,7 +2811,11 @@ export class EventSubeventsPopupComponent implements OnChanges {
       .sort((a, b) => a.getTime() - b.getTime())
       .pop();
 
-    return lastEnd ? new Date(lastEnd.getTime()) : new Date();
+    if (lastEnd) {
+      return new Date(lastEnd.getTime());
+    }
+    const bounds = this.subEventTimingBounds();
+    return bounds ? new Date(bounds.start.getTime()) : new Date();
   }
 
   private normalizeSubEventCapacityRange(): void {
@@ -2619,10 +2917,11 @@ export class EventSubeventsPopupComponent implements OnChanges {
     if (!draftStartAt || !draftEndAt) {
       return;
     }
+    const normalized = this.normalizedInputDateRange(draftStartAt, draftEndAt);
     this.subEventForm = {
       ...this.subEventForm,
-      startAt: draftStartAt,
-      endAt: draftEndAt
+      startAt: normalized.startAt,
+      endAt: normalized.endAt
     };
   }
 
@@ -2835,7 +3134,9 @@ export class EventSubeventsPopupComponent implements OnChanges {
       tournamentGroupCapacityMax: 7,
       tournamentLeaderboardType: 'Score',
       tournamentAdvancePerGroup: 0,
-      groups: []
+      groups: [],
+      slotStartOffsetMinutes: undefined,
+      slotDurationMinutes: undefined
     };
   }
 

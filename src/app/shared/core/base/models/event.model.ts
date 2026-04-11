@@ -210,6 +210,8 @@ export interface SubEventFormItem {
   accommodationCapacityMax?: number;
   suppliesCapacityMin?: number;
   suppliesCapacityMax?: number;
+  slotStartOffsetMinutes?: number;
+  slotDurationMinutes?: number;
 }
 
 export interface SubEventGroupItem {

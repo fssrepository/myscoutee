@@ -28,6 +28,8 @@ export interface EventEditorSubEventItem {
   carsPending?: number;
   accommodationPending?: number;
   suppliesPending?: number;
+  slotStartOffsetMinutes?: number;
+  slotDurationMinutes?: number;
   [key: string]: unknown;
 }
 

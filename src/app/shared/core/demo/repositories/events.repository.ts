@@ -1236,6 +1236,59 @@ export class DemoEventsRepository {
     }));
   }
 
+  private materializeSubEventsForSlotOccurrence(
+    items: readonly AppTypes.SubEventFormItem[] | undefined,
+    occurrenceStart: Date,
+    occurrenceEnd: Date
+  ): AppTypes.SubEventFormItem[] | undefined {
+    const subEvents = this.cloneSubEvents(items);
+    if (!subEvents?.length) {
+      return subEvents;
+    }
+
+    const slotDurationMinutes = Math.max(1, Math.round((occurrenceEnd.getTime() - occurrenceStart.getTime()) / 60000));
+    return subEvents.map(item => {
+      const rawStart = this.parseEventDate(item.startAt);
+      const rawEnd = this.parseEventDate(item.endAt);
+      const explicitOffset = Number(item.slotStartOffsetMinutes);
+      const explicitDuration = Number(item.slotDurationMinutes);
+
+      const offsetMinutes = Number.isFinite(explicitOffset)
+        ? Math.max(0, Math.trunc(explicitOffset))
+        : Math.max(
+          0,
+          rawStart
+            ? ((rawStart.getHours() * 60) + rawStart.getMinutes()) - ((occurrenceStart.getHours() * 60) + occurrenceStart.getMinutes())
+            : 0
+        );
+      const durationMinutes = Number.isFinite(explicitDuration)
+        ? Math.max(1, Math.trunc(explicitDuration))
+        : Math.max(
+          1,
+          rawStart && rawEnd
+            ? Math.round((rawEnd.getTime() - rawStart.getTime()) / 60000)
+            : slotDurationMinutes
+        );
+
+      const safeOffsetMinutes = AppUtils.clampNumber(offsetMinutes, 0, Math.max(0, slotDurationMinutes - 1));
+      const safeDurationMinutes = AppUtils.clampNumber(
+        durationMinutes,
+        1,
+        Math.max(1, slotDurationMinutes - safeOffsetMinutes)
+      );
+      const startAt = new Date(occurrenceStart.getTime() + (safeOffsetMinutes * 60 * 1000));
+      const endAt = new Date(startAt.getTime() + (safeDurationMinutes * 60 * 1000));
+
+      return {
+        ...item,
+        startAt: AppUtils.toIsoDateTimeLocal(startAt),
+        endAt: AppUtils.toIsoDateTimeLocal(endAt),
+        slotStartOffsetMinutes: safeOffsetMinutes,
+        slotDurationMinutes: safeDurationMinutes
+      };
+    });
+  }
+
   private buildSeededRecords(): DemoEventRecordCollection {
     const eventsByUser = this.buildEventsByUserWithSyntheticSeed();
     return DemoEventsRepositoryBuilder.buildRecordCollection({
@@ -1824,7 +1877,7 @@ export class DemoEventsRepository {
           acceptedMemberUserIds,
           pendingMemberUserIds,
           topics: [...parent.topics],
-          subEvents: this.cloneSubEvents(parent.subEvents) ?? undefined,
+          subEvents: this.materializeSubEventsForSlotOccurrence(parent.subEvents, startAt, endAt) ?? undefined,
           subEventsDisplayMode: parent.subEventsDisplayMode,
           rating: parent.rating,
           relevance: parent.relevance,
@@ -1922,7 +1975,7 @@ export class DemoEventsRepository {
         acceptedMemberUserIds,
         pendingMemberUserIds,
         topics: [...parent.topics],
-        subEvents: this.cloneSubEvents(parent.subEvents) ?? undefined,
+        subEvents: this.materializeSubEventsForSlotOccurrence(parent.subEvents, startAt, endAt) ?? undefined,
         subEventsDisplayMode: parent.subEventsDisplayMode,
         rating: parent.rating,
         relevance: parent.relevance,

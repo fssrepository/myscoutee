@@ -182,6 +182,12 @@ export class EventEditorBuilder {
           : undefined,
         suppliesCapacityMax: Number.isFinite(Number(rawItem['suppliesCapacityMax']))
           ? Math.max(0, Math.trunc(Number(rawItem['suppliesCapacityMax'])))
+          : undefined,
+        slotStartOffsetMinutes: Number.isFinite(Number(rawItem['slotStartOffsetMinutes']))
+          ? Math.max(0, Math.trunc(Number(rawItem['slotStartOffsetMinutes'])))
+          : undefined,
+        slotDurationMinutes: Number.isFinite(Number(rawItem['slotDurationMinutes']))
+          ? Math.max(0, Math.trunc(Number(rawItem['slotDurationMinutes'])))
           : undefined
       };
     });
