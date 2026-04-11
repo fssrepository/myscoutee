@@ -851,7 +851,9 @@ export class EventExplorePopupComponent {
       confirmLabel: this.eventExploreJoinConfirmLabel(record),
       busyConfirmLabel: this.eventExploreJoinBusyLabel(record),
       failureMessage: this.eventExploreJoinFailureMessage(record),
-      onSubmit: (selection) => this.submitEventExploreJoinRequest(record, selection)
+      onSubmit: (selection) => this.submitEventExploreJoinRequest(record, selection, {
+        skipVisualDelay: true
+      })
     });
   }
 
@@ -865,20 +867,24 @@ export class EventExplorePopupComponent {
 
   private async submitEventExploreJoinRequest(
     record: DemoEventRecord,
-    selection?: AppTypes.EventCheckoutSelection | null
+    selection?: AppTypes.EventCheckoutSelection | null,
+    options: {
+      skipVisualDelay?: boolean;
+    } = {}
   ): Promise<void> {
     const activeUserId = this.activeUserId.trim();
     if (!activeUserId) {
       return;
     }
     const owner = this.eventMembersOwner(record);
-    const loadedMembersPromise = this.activityMembersService.queryMembersByOwner(owner);
     const exitPromise = this.runEventExploreExitTransition(record, () => {
       this.removeVisibleEventExploreRecord(record);
     });
-    const delayPromise = this.waitForEventExploreDelay(this.eventExploreJoinDelayMs);
-    const loadedMembers = await loadedMembersPromise;
-    const existingMembers = loadedMembers.length > 0 ? loadedMembers : this.buildMemberEntries(record);
+    const delayPromise = options.skipVisualDelay
+      ? Promise.resolve()
+      : this.waitForEventExploreDelay(this.eventExploreJoinDelayMs);
+    const peekedMembers = this.activityMembersService.peekMembersByOwner(owner);
+    const existingMembers = peekedMembers.length > 0 ? peekedMembers : this.buildMemberEntries(record);
     const existingEntry = existingMembers.find(member => member.userId === activeUserId);
 
     if (existingEntry) {

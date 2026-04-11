@@ -429,7 +429,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   protected closePolicyEditor(): void {
-    this.syncWorkingPolicyDraft();
     this.showPolicyEditorPopup = false;
     this.workingPolicyDraft = this.createEmptyPolicyDraft();
     this.editingPolicyDraftIndex = null;
@@ -467,8 +466,8 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       : 'Optional policy shown during join or checkout.';
   }
 
-  protected onWorkingPolicyDraftChange(): void {
-    this.syncWorkingPolicyDraft();
+  protected canSavePolicyDraft(): boolean {
+    return this.workingPolicyDraft.title.trim().length > 0 || this.workingPolicyDraft.description.trim().length > 0;
   }
 
   private createEmptyPolicyDraft(): AppTypes.EventPolicyItem {
@@ -2107,25 +2106,20 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     );
   }
 
-  private syncWorkingPolicyDraft(): void {
-    const nextItem = this.normalizedWorkingPolicyDraft();
-    const hasMeaningfulCopy = nextItem.title.length > 0 || nextItem.description.length > 0;
-
-    if (this.editingPolicyDraftIndex !== null && this.editingPolicyDraftIndex >= 0 && this.editingPolicyDraftIndex < this.workingPolicies.length) {
-      if (hasMeaningfulCopy) {
-        this.workingPolicies = this.workingPolicies.map((item, index) => (
-          index === this.editingPolicyDraftIndex ? nextItem : item
-        ));
-      } else {
-        this.workingPolicies = this.workingPolicies.filter((_, index) => index !== this.editingPolicyDraftIndex);
-        this.editingPolicyDraftIndex = null;
-      }
-    } else if (hasMeaningfulCopy) {
-      this.workingPolicies = [...this.workingPolicies, nextItem];
-      this.editingPolicyDraftIndex = this.workingPolicies.length - 1;
+  protected savePolicyDraft(): void {
+    if (!this.canSavePolicyDraft()) {
+      return;
     }
-
+    const nextItem = this.normalizedWorkingPolicyDraft();
+    if (this.editingPolicyDraftIndex !== null && this.editingPolicyDraftIndex >= 0 && this.editingPolicyDraftIndex < this.workingPolicies.length) {
+      this.workingPolicies = this.workingPolicies.map((item, index) => (
+        index === this.editingPolicyDraftIndex ? nextItem : item
+      ));
+    } else {
+      this.workingPolicies = [...this.workingPolicies, nextItem];
+    }
     this.syncEventPoliciesFromWorkingPolicies();
+    this.closePolicyEditor();
   }
 
   private normalizedWorkingPolicyDraft(): AppTypes.EventPolicyItem {

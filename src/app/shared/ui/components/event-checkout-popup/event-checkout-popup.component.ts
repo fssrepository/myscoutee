@@ -1,7 +1,12 @@
 import { CommonModule } from '@angular/common';
 import { Component, HostListener, effect, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { MatButtonModule } from '@angular/material/button';
+import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
+import { MatNativeDateModule } from '@angular/material/core';
 
 import { environment } from '../../../../../environments/environment';
 import { AppUtils } from '../../../app-utils';
@@ -11,14 +16,6 @@ import { EventsService } from '../../../core/base/services/events.service';
 import type { DemoEventRecord } from '../../../core/demo/models/events.model';
 import { EventCheckoutDialogService, type EventCheckoutDialogState } from '../../services/event-checkout-dialog.service';
 
-type ResourceOption = {
-  key: string;
-  subEventId: string;
-  resourceType: AppTypes.EventCheckoutAssetSelection['resourceType'];
-  label: string;
-  description: string;
-};
-
 type PricingSnapshot = {
   amount: number;
   currency: string;
@@ -27,24 +24,39 @@ type PricingSnapshot = {
 @Component({
   selector: 'app-event-checkout-popup',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatIconModule],
+  imports: [
+    CommonModule,
+    FormsModule,
+    MatButtonModule,
+    MatDatepickerModule,
+    MatFormFieldModule,
+    MatIconModule,
+    MatInputModule,
+    MatNativeDateModule
+  ],
   templateUrl: './event-checkout-popup.component.html',
   styleUrl: './event-checkout-popup.component.scss'
 })
 export class EventCheckoutPopupComponent {
+  private static readonly MAX_VISIBLE_SLOTS = 10;
+  private static readonly MIN_BUSY_DURATION_MS = 1500;
   protected readonly environment = environment;
   protected readonly dialogService = inject(EventCheckoutDialogService);
   private readonly eventsService = inject(EventsService);
 
   protected selectedSlotSourceId: string | null = null;
+  protected selectedSlotDateValue: Date | null = null;
+  protected slotPageIndex = 0;
   protected selectedOptionalSubEventIds = new Set<string>();
-  protected selectedAssetKeys = new Set<string>();
   protected acceptedPolicyIds = new Set<string>();
   protected paymentStep = false;
   protected busy = false;
   protected errorMessage = '';
 
   private renderedDialogId = 0;
+  private availableSlotsCache: AppTypes.EventSlotOccurrence[] = [];
+  private availableSlotDateEntriesCache: Array<{ key: string; value: Date; label: string; count: number }> = [];
+  private availableSlotDateKeySet = new Set<string>();
 
   constructor() {
     effect(() => {
@@ -118,15 +130,14 @@ export class EventCheckoutPopupComponent {
   }
 
   protected availableSlots(): readonly AppTypes.EventSlotOccurrence[] {
-    return this.dialog()?.record.upcomingSlots ?? [];
+    return this.availableSlotsCache;
   }
 
   protected selectedSlot(): AppTypes.EventSlotOccurrence | null {
-    const slots = this.availableSlots();
-    if (slots.length === 0) {
+    if (!this.selectedSlotSourceId) {
       return null;
     }
-    return slots.find(item => item.id === this.selectedSlotSourceId) ?? slots[0] ?? null;
+    return this.availableSlots().find(item => item.id === this.selectedSlotSourceId) ?? null;
   }
 
   protected requiresSlotSelection(): boolean {
@@ -137,31 +148,119 @@ export class EventCheckoutPopupComponent {
     return (this.dialog()?.record.subEvents ?? []).filter(item => item.optional);
   }
 
-  protected resourceOptions(): ResourceOption[] {
-    const options: ResourceOption[] = [];
-    for (const subEvent of this.optionalSubEvents()) {
-      if (!this.selectedOptionalSubEventIds.has(subEvent.id)) {
-        continue;
-      }
-      const capacityRows: Array<[AppTypes.EventCheckoutAssetSelection['resourceType'], number | undefined, string]> = [
-        ['Car', subEvent.carsCapacityMax, 'Transport / Car'],
-        ['Accommodation', subEvent.accommodationCapacityMax, 'Accommodation'],
-        ['Supplies', subEvent.suppliesCapacityMax, 'Supplies']
-      ];
-      for (const [resourceType, capacityMax, label] of capacityRows) {
-        if (!Number.isFinite(Number(capacityMax)) || Number(capacityMax) <= 0) {
-          continue;
-        }
-        options.push({
-          key: `${subEvent.id}:${resourceType}`,
-          subEventId: subEvent.id,
-          resourceType,
-          label,
-          description: `${subEvent.name} · request ${label.toLowerCase()}`
-        });
-      }
+  protected slotCalendarFilter = (value: Date | null): boolean => {
+    if (!value) {
+      return false;
     }
-    return options;
+    return this.availableSlotDateKeySet.has(this.slotDateKeyFromDate(value));
+  };
+
+  protected availableSlotDateEntries(): Array<{ key: string; value: Date; label: string; count: number }> {
+    return this.availableSlotDateEntriesCache;
+  }
+
+  protected filteredSlots(): AppTypes.EventSlotOccurrence[] {
+    const selectedDateKey = this.selectedSlotDateKey();
+    const all = [...this.availableSlots()];
+    if (!selectedDateKey) {
+      return all;
+    }
+    return all.filter(slot => this.slotDateKeyFromIso(slot.startAtIso) === selectedDateKey);
+  }
+
+  protected pagedSlots(): AppTypes.EventSlotOccurrence[] {
+    const offset = this.slotPageIndex * EventCheckoutPopupComponent.MAX_VISIBLE_SLOTS;
+    return this.filteredSlots().slice(offset, offset + EventCheckoutPopupComponent.MAX_VISIBLE_SLOTS);
+  }
+
+  protected slotPageCount(): number {
+    return Math.max(1, Math.ceil(this.filteredSlots().length / EventCheckoutPopupComponent.MAX_VISIBLE_SLOTS));
+  }
+
+  protected canGoToPreviousSlotPage(): boolean {
+    return this.slotPageIndex > 0;
+  }
+
+  protected canGoToNextSlotPage(): boolean {
+    return this.slotPageIndex < this.slotPageCount() - 1;
+  }
+
+  protected previousSlotPage(): void {
+    if (!this.canGoToPreviousSlotPage()) {
+      return;
+    }
+    this.slotPageIndex -= 1;
+  }
+
+  protected nextSlotPage(): void {
+    if (!this.canGoToNextSlotPage()) {
+      return;
+    }
+    this.slotPageIndex += 1;
+  }
+
+  protected slotPageSummary(): string {
+    const filtered = this.filteredSlots();
+    if (filtered.length === 0) {
+      return 'No slots';
+    }
+    const from = (this.slotPageIndex * EventCheckoutPopupComponent.MAX_VISIBLE_SLOTS) + 1;
+    const to = Math.min(filtered.length, from + EventCheckoutPopupComponent.MAX_VISIBLE_SLOTS - 1);
+    return `${from}-${to} of ${filtered.length}`;
+  }
+
+  protected selectedSlotDateLabel(): string {
+    const key = this.selectedSlotDateKey();
+    if (!key) {
+      return 'All dates';
+    }
+    const parsed = this.selectedSlotDateValue ?? this.availableSlotDateEntries().find(item => item.key === key)?.value ?? null;
+    if (!parsed) {
+      return key;
+    }
+    return parsed.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  }
+
+  protected selectedSlotBadgeLabel(): string {
+    const slot = this.selectedSlot();
+    if (!slot) {
+      const dateLabel = this.selectedSlotDateLabel();
+      return dateLabel === 'All dates' ? 'Choose a slot' : `${dateLabel} · choose a slot`;
+    }
+    const start = AppUtils.isoLocalDateTimeToDate(slot.startAtIso);
+    const end = AppUtils.isoLocalDateTimeToDate(slot.endAtIso);
+    if (!start || !end) {
+      return slot.timeframe || 'Choose a slot';
+    }
+    const dateLabel = start.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+    const startTime = start.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit'
+    });
+    const endTime = end.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit'
+    });
+    return `${dateLabel} · ${startTime} - ${endTime}`;
+  }
+
+  protected onSlotDateChange(value: Date | null): void {
+    const normalized = value
+      ? new Date(value.getFullYear(), value.getMonth(), value.getDate())
+      : null;
+    if (normalized && !this.slotCalendarFilter(normalized)) {
+      return;
+    }
+    this.selectedSlotDateValue = normalized;
+    this.slotPageIndex = 0;
   }
 
   protected policies(): AppTypes.EventPolicyItem[] {
@@ -187,26 +286,9 @@ export class EventCheckoutPopupComponent {
   protected toggleOptionalSubEvent(id: string): void {
     if (this.selectedOptionalSubEventIds.has(id)) {
       this.selectedOptionalSubEventIds.delete(id);
-      for (const option of this.resourceOptions()) {
-        if (option.subEventId === id) {
-          this.selectedAssetKeys.delete(option.key);
-        }
-      }
     } else {
       this.selectedOptionalSubEventIds.add(id);
     }
-  }
-
-  protected isSelectedAsset(key: string): boolean {
-    return this.selectedAssetKeys.has(key);
-  }
-
-  protected toggleAsset(key: string): void {
-    if (this.selectedAssetKeys.has(key)) {
-      this.selectedAssetKeys.delete(key);
-      return;
-    }
-    this.selectedAssetKeys.add(key);
   }
 
   protected isAcceptedPolicy(id: string): boolean {
@@ -255,20 +337,6 @@ export class EventCheckoutPopupComponent {
       });
     }
 
-    for (const option of this.resourceOptions()) {
-      if (!this.selectedAssetKeys.has(option.key)) {
-        continue;
-      }
-      items.push({
-        id: `resource:${option.key}`,
-        kind: 'resource',
-        label: option.label,
-        detail: option.description,
-        amount: 0,
-        currency: this.currency()
-      });
-    }
-
     return items;
   }
 
@@ -307,7 +375,7 @@ export class EventCheckoutPopupComponent {
       return 'Pay & confirm';
     }
     if (this.totalAmount() > 0) {
-      return 'Review payment';
+      return 'View payment';
     }
     return dialog.confirmLabel;
   }
@@ -332,11 +400,18 @@ export class EventCheckoutPopupComponent {
       return;
     }
     if (!this.paymentStep && this.totalAmount() > 0) {
-      this.paymentStep = true;
+      this.busy = true;
       this.errorMessage = '';
+      try {
+        await this.ensureMinimumBusyDuration(Date.now());
+        this.paymentStep = true;
+      } finally {
+        this.busy = false;
+      }
       return;
     }
 
+    const startedAt = Date.now();
     this.busy = true;
     this.errorMessage = '';
     try {
@@ -353,8 +428,10 @@ export class EventCheckoutPopupComponent {
         }
       }
       await Promise.resolve(dialog.onSubmit(this.buildSelection(paymentSessionId)));
+      await this.ensureMinimumBusyDuration(startedAt);
       this.dialogService.close();
     } catch (error) {
+      await this.ensureMinimumBusyDuration(startedAt);
       this.errorMessage = this.resolveErrorMessage(error, dialog.failureMessage);
     } finally {
       this.busy = false;
@@ -382,19 +459,19 @@ export class EventCheckoutPopupComponent {
     return item.id;
   }
 
-  protected trackResource(_index: number, item: ResourceOption): string {
-    return item.key;
-  }
-
   protected trackSlot(_index: number, item: AppTypes.EventSlotOccurrence): string {
     return item.id;
   }
 
   private initializeDialogState(dialog: EventCheckoutDialogState): void {
+    this.rebuildSlotCaches(dialog.record.upcomingSlots ?? []);
     const firstSlot = dialog.record.upcomingSlots?.[0] ?? null;
-    this.selectedSlotSourceId = firstSlot?.id ?? null;
+    this.selectedSlotSourceId = null;
+    this.selectedSlotDateValue = firstSlot
+      ? this.slotDateValueFromIso(firstSlot.startAtIso)
+      : null;
+    this.slotPageIndex = 0;
     this.selectedOptionalSubEventIds = new Set<string>();
-    this.selectedAssetKeys = new Set<string>();
     this.acceptedPolicyIds = new Set<string>();
     this.paymentStep = false;
     this.busy = false;
@@ -403,9 +480,13 @@ export class EventCheckoutPopupComponent {
 
   private resetDialogState(): void {
     this.renderedDialogId = 0;
+    this.availableSlotsCache = [];
+    this.availableSlotDateEntriesCache = [];
+    this.availableSlotDateKeySet = new Set<string>();
     this.selectedSlotSourceId = null;
+    this.selectedSlotDateValue = null;
+    this.slotPageIndex = 0;
     this.selectedOptionalSubEventIds = new Set<string>();
-    this.selectedAssetKeys = new Set<string>();
     this.acceptedPolicyIds = new Set<string>();
     this.paymentStep = false;
     this.busy = false;
@@ -421,12 +502,7 @@ export class EventCheckoutPopupComponent {
       sourceId: dialog.record.id,
       slotSourceId: this.selectedSlotSourceId,
       optionalSubEventIds: [...this.selectedOptionalSubEventIds],
-      assetSelections: this.resourceOptions()
-        .filter(option => this.selectedAssetKeys.has(option.key))
-        .map(option => ({
-          subEventId: option.subEventId,
-          resourceType: option.resourceType
-        })),
+      assetSelections: [],
       acceptedPolicyIds: [...this.acceptedPolicyIds],
       lineItems: this.lineItems(),
       totalAmount: this.totalAmount(),
@@ -445,12 +521,7 @@ export class EventCheckoutPopupComponent {
       sourceId: dialog.record.id,
       slotSourceId: this.selectedSlotSourceId,
       optionalSubEventIds: [...this.selectedOptionalSubEventIds],
-      assetSelections: this.resourceOptions()
-        .filter(option => this.selectedAssetKeys.has(option.key))
-        .map(option => ({
-          subEventId: option.subEventId,
-          resourceType: option.resourceType
-        })),
+      assetSelections: [],
       acceptedPolicyIds: [...this.acceptedPolicyIds],
       lineItems: this.lineItems(),
       totalAmount: this.totalAmount(),
@@ -591,5 +662,76 @@ export class EventCheckoutPopupComponent {
       return error.message.trim();
     }
     return fallback;
+  }
+
+  private availableSlotDateKeys(): string[] {
+    return this.availableSlotDateEntries().map(item => item.key);
+  }
+
+  private selectedSlotDateKey(): string {
+    return this.selectedSlotDateValue
+      ? this.slotDateKeyFromDate(this.selectedSlotDateValue)
+      : (this.availableSlotDateKeys()[0] ?? '');
+  }
+
+  private slotDateValueFromIso(value: string): Date | null {
+    const parsed = AppUtils.isoLocalDateTimeToDate(value);
+    if (!parsed) {
+      return null;
+    }
+    return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+  }
+
+  private slotDateKeyFromIso(value: string): string {
+    const parsed = AppUtils.isoLocalDateTimeToDate(value);
+    return parsed ? this.slotDateKeyFromDate(parsed) : '';
+  }
+
+  private slotDateKeyFromDate(value: Date): string {
+    return `${value.getFullYear()}-${AppUtils.pad2(value.getMonth() + 1)}-${AppUtils.pad2(value.getDate())}`;
+  }
+
+  private async ensureMinimumBusyDuration(startedAt: number): Promise<void> {
+    const elapsed = Date.now() - startedAt;
+    const remaining = Math.max(0, EventCheckoutPopupComponent.MIN_BUSY_DURATION_MS - elapsed);
+    if (remaining > 0) {
+      await new Promise(resolve => window.setTimeout(resolve, remaining));
+    }
+  }
+
+  private rebuildSlotCaches(slots: readonly AppTypes.EventSlotOccurrence[]): void {
+    this.availableSlotsCache = [...slots].sort((left, right) => {
+      const leftMs = AppUtils.isoLocalDateTimeToDate(left.startAtIso)?.getTime() ?? 0;
+      const rightMs = AppUtils.isoLocalDateTimeToDate(right.startAtIso)?.getTime() ?? 0;
+      return leftMs - rightMs;
+    });
+
+    const grouped = new Map<string, { value: Date; count: number }>();
+    for (const slot of this.availableSlotsCache) {
+      const parsed = AppUtils.isoLocalDateTimeToDate(slot.startAtIso);
+      if (!parsed) {
+        continue;
+      }
+      const key = this.slotDateKeyFromDate(parsed);
+      if (!grouped.has(key)) {
+        grouped.set(key, {
+          value: new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate()),
+          count: 0
+        });
+      }
+      grouped.get(key)!.count += 1;
+    }
+
+    this.availableSlotDateEntriesCache = [...grouped.entries()].map(([key, item]) => ({
+      key,
+      value: item.value,
+      label: item.value.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+      }),
+      count: item.count
+    }));
+    this.availableSlotDateKeySet = new Set(this.availableSlotDateEntriesCache.map(item => item.key));
   }
 }

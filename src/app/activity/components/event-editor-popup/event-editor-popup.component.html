@@ -729,9 +729,21 @@
           <header class="event-slots-popup-head">
             <div class="event-slots-popup-copy">
               <span class="event-slots-popup-title">{{ policyPopupTitle() }}</span>
-              <span class="event-slots-popup-subtitle">Write the policy clearly and choose whether attendees must approve it before joining. Changes are kept automatically.</span>
+              <span class="event-slots-popup-subtitle">Write the policy clearly and choose whether attendees must approve it before joining.</span>
             </div>
             <div class="event-policies-popup-head-controls">
+              @if (!eventEditorService.readOnly()) {
+                <button
+                  type="button"
+                  class="popup-header-add-btn subevent-leaderboard-save-btn event-policy-header-save-btn"
+                  [class.form-save-invalid]="!canSavePolicyDraft()"
+                  [disabled]="!canSavePolicyDraft()"
+                  (click)="savePolicyDraft()"
+                  aria-label="Save policy"
+                >
+                  <mat-icon>done</mat-icon>
+                </button>
+              }
               <button type="button" class="event-slots-popup-close" (click)="closePolicyEditor()" aria-label="Close policy form">
                 <mat-icon>close</mat-icon>
               </button>
@@ -742,14 +754,14 @@
             <article class="event-policy-card">
               <label class="event-policy-field">
                 <span>Title</span>
-                <input type="text" [(ngModel)]="workingPolicyDraft.title" (ngModelChange)="onWorkingPolicyDraftChange()" [readonly]="eventEditorService.readOnly()" placeholder="Policy title" />
+                <input type="text" [(ngModel)]="workingPolicyDraft.title" [readonly]="eventEditorService.readOnly()" placeholder="Policy title" />
               </label>
               <label class="event-policy-field">
                 <span>Description</span>
-                <textarea rows="6" [(ngModel)]="workingPolicyDraft.description" (ngModelChange)="onWorkingPolicyDraftChange()" [readonly]="eventEditorService.readOnly()" placeholder="Explain the policy clearly."></textarea>
+                <textarea rows="6" [(ngModel)]="workingPolicyDraft.description" [readonly]="eventEditorService.readOnly()" placeholder="Explain the policy clearly."></textarea>
               </label>
               <label class="event-policy-check">
-                <input type="checkbox" [(ngModel)]="workingPolicyDraft.required" (ngModelChange)="onWorkingPolicyDraftChange()" [disabled]="eventEditorService.readOnly()" />
+                <input type="checkbox" [(ngModel)]="workingPolicyDraft.required" [disabled]="eventEditorService.readOnly()" />
                 <span>Attendees must approve this policy</span>
               </label>
             </article>

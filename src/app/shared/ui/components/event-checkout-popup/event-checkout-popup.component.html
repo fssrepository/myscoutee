@@ -43,12 +43,62 @@
         @if (!paymentStep) {
           @if (requiresSlotSelection()) {
             <section class="event-checkout-card">
-              <div class="event-checkout-card__head">
-                <h3>Select Slot</h3>
-                <span>{{ selectedSlot() ? '1 selected' : 'Required' }}</span>
+              <div class="event-checkout-card__head event-checkout-card__head--slot">
+                <div class="event-checkout-card__head-copy">
+                  <h3>Select Slot</h3>
+                  <span class="event-checkout-slot-selected-badge">
+                    {{ selectedSlotBadgeLabel() }}
+                  </span>
+                </div>
+                <div class="event-checkout-slot-head-controls">
+                  <div class="event-checkout-slot-date-wrap">
+                    <input
+                      matInput
+                      class="event-checkout-slot-date-hidden"
+                      [matDatepicker]="slotDatePicker"
+                      [matDatepickerFilter]="slotCalendarFilter"
+                      [ngModel]="selectedSlotDateValue"
+                      (ngModelChange)="onSlotDateChange($event)"
+                      readonly
+                      tabindex="-1"
+                      aria-hidden="true"
+                    />
+                    <mat-datepicker #slotDatePicker xPosition="end" yPosition="below"></mat-datepicker>
+                    <button
+                      type="button"
+                      class="event-checkout-slot-date-trigger"
+                      (click)="slotDatePicker.open()"
+                      aria-label="Choose slot date"
+                    >
+                      <mat-icon>event</mat-icon>
+                      <span>{{ selectedSlotDateLabel() }}</span>
+                    </button>
+                  </div>
+                  <div class="event-checkout-slot-pager">
+                    <button
+                      type="button"
+                      class="event-checkout-slot-pager__btn"
+                      [disabled]="!canGoToPreviousSlotPage()"
+                      (click)="previousSlotPage()"
+                      aria-label="Previous slot page"
+                    >
+                      <mat-icon>chevron_left</mat-icon>
+                    </button>
+                    <span class="event-checkout-slot-pager__summary">{{ slotPageSummary() }}</span>
+                    <button
+                      type="button"
+                      class="event-checkout-slot-pager__btn"
+                      [disabled]="!canGoToNextSlotPage()"
+                      (click)="nextSlotPage()"
+                      aria-label="Next slot page"
+                    >
+                      <mat-icon>chevron_right</mat-icon>
+                    </button>
+                  </div>
+                </div>
               </div>
               <div class="event-checkout-slot-list">
-                @for (slot of availableSlots(); track trackSlot($index, slot)) {
+                @for (slot of pagedSlots(); track trackSlot($index, slot)) {
                   <button
                     type="button"
                     class="event-checkout-slot-card"
@@ -83,31 +133,6 @@
                       <span>{{ subEvent.description || 'Optional experience' }}</span>
                     </div>
                     <strong>{{ formatMoney(resolvePricing(subEvent.pricing, dialog()!.record, null, selectedSlot()).amount, resolvePricing(subEvent.pricing, dialog()!.record, null, selectedSlot()).currency) }}</strong>
-                  </button>
-                }
-              </div>
-            </section>
-          }
-
-          @if (resourceOptions().length > 0) {
-            <section class="event-checkout-card">
-              <div class="event-checkout-card__head">
-                <h3>Requested Assets</h3>
-                <span>Attach optional resource requests</span>
-              </div>
-              <div class="event-checkout-option-list">
-                @for (option of resourceOptions(); track trackResource($index, option)) {
-                  <button
-                    type="button"
-                    class="event-checkout-toggle-card event-checkout-toggle-card--compact"
-                    [class.is-selected]="isSelectedAsset(option.key)"
-                    (click)="toggleAsset(option.key)"
-                    >
-                    <div>
-                      <strong>{{ option.label }}</strong>
-                      <span>{{ option.description }}</span>
-                    </div>
-                    <strong>Request</strong>
                   </button>
                 }
               </div>
