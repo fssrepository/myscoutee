@@ -317,7 +317,14 @@ export class HttpEventsService {
       ...record,
       acceptedMemberUserIds: [...(record.acceptedMemberUserIds ?? [])],
       pendingMemberUserIds: [...(record.pendingMemberUserIds ?? [])],
-      topics: [...(record.topics ?? [])]
+      topics: [...(record.topics ?? [])],
+      slotTemplates: (record.slotTemplates ?? []).map(item => ({ ...item })),
+      nextSlot: record.nextSlot ? { ...record.nextSlot } : null,
+      upcomingSlots: (record.upcomingSlots ?? []).map(item => ({ ...item })),
+      subEvents: (record.subEvents ?? []).map(item => ({
+        ...item,
+        groups: Array.isArray(item.groups) ? item.groups.map(group => ({ ...group })) : []
+      }))
     }));
   }
 

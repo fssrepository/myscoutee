@@ -1726,7 +1726,16 @@ export class DemoEventsRepository {
     }
 
     const records: DemoEventRecord[] = [];
-    for (const template of parent.slotTemplates ?? []) {
+    const templates = parent.slotTemplates ?? [];
+    const overrideDates = new Set(
+      templates
+        .map(template => this.slotOverrideDateKey(template.overrideDate))
+        .filter((value): value is string => Boolean(value))
+    );
+    for (const template of templates) {
+      if (this.slotOverrideDateKey(template.overrideDate) || template.closed === true) {
+        continue;
+      }
       const templateStart = this.parseEventDate(template.startAt);
       const templateEnd = this.parseEventDate(template.endAt);
       if (!templateStart || !templateEnd) {
@@ -1735,6 +1744,10 @@ export class DemoEventsRepository {
       const durationMs = Math.max(60 * 60 * 1000, templateEnd.getTime() - templateStart.getTime());
       const starts = this.generateSlotOccurrenceStarts(parent.frequency ?? 'One-time', templateStart, horizonStart, horizonEnd);
       for (const startAt of starts) {
+        const occurrenceDateKey = this.slotOverrideDateKey(startAt.toISOString());
+        if (occurrenceDateKey && overrideDates.has(occurrenceDateKey)) {
+          continue;
+        }
         const endAt = new Date(startAt.getTime() + durationMs);
         if (startAt.getTime() < parentStart.getTime() || endAt.getTime() > parentEnd.getTime()) {
           continue;
@@ -1809,6 +1822,103 @@ export class DemoEventsRepository {
           affinity: parent.affinity
         });
       }
+    }
+    for (const template of templates) {
+      const overrideDateKey = this.slotOverrideDateKey(template.overrideDate);
+      if (!overrideDateKey) {
+        continue;
+      }
+      if (template.closed === true) {
+        continue;
+      }
+      const templateStart = this.parseEventDate(template.startAt);
+      const templateEnd = this.parseEventDate(template.endAt);
+      const overrideDate = this.parseEventDate(`${overrideDateKey}T00:00`);
+      if (!templateStart || !templateEnd || !overrideDate) {
+        continue;
+      }
+      const startAt = new Date(overrideDate);
+      startAt.setHours(templateStart.getHours(), templateStart.getMinutes(), templateStart.getSeconds(), templateStart.getMilliseconds());
+      const endAt = new Date(overrideDate);
+      endAt.setHours(templateEnd.getHours(), templateEnd.getMinutes(), templateEnd.getSeconds(), templateEnd.getMilliseconds());
+      if (endAt.getTime() <= startAt.getTime()) {
+        endAt.setTime(startAt.getTime() + (60 * 60 * 1000));
+      }
+      if (startAt.getTime() < horizonStart.getTime() || startAt.getTime() > horizonEnd.getTime()) {
+        continue;
+      }
+      if (startAt.getTime() < parentStart.getTime() || endAt.getTime() > parentEnd.getTime()) {
+        continue;
+      }
+      const sourceId = this.buildGeneratedSlotSourceId(parent.id, template.id, startAt);
+      const existing = this.computePreferredEventRecords(table)
+        .find(record => record.id === sourceId && this.isGeneratedSlotRecord(record))
+        ?? null;
+      if (existing) {
+        continue;
+      }
+      const acceptedMemberUserIds: string[] = [];
+      const pendingMemberUserIds: string[] = [];
+      const capacityTotal = Math.max(
+        acceptedMemberUserIds.length,
+        parent.capacityTotal
+      );
+      records.push({
+        id: sourceId,
+        userId: parent.creatorUserId || parent.userId,
+        type: 'events',
+        avatar: parent.avatar,
+        title: parent.title,
+        subtitle: parent.subtitle,
+        timeframe: this.buildGeneratedSlotTimeframe(startAt, endAt),
+        inviter: null,
+        unread: 0,
+        activity: 0,
+        isAdmin: true,
+        isInvitation: false,
+        isHosting: false,
+        isTrashed: false,
+        published: parent.published,
+        trashedAtIso: null,
+        creatorUserId: parent.creatorUserId,
+        creatorName: parent.creatorName,
+        creatorInitials: parent.creatorInitials,
+        creatorGender: parent.creatorGender,
+        creatorCity: parent.creatorCity,
+        visibility: parent.visibility,
+        blindMode: parent.blindMode,
+        startAtIso: startAt.toISOString(),
+        endAtIso: endAt.toISOString(),
+        distanceKm: parent.distanceKm,
+        imageUrl: parent.imageUrl,
+        sourceLink: parent.sourceLink,
+        location: parent.location,
+        locationCoordinates: this.normalizeLocationCoordinates(parent.locationCoordinates),
+        capacityMin: parent.capacityMin,
+        capacityMax: parent.capacityMax,
+        capacityTotal,
+        autoInviter: parent.autoInviter,
+        frequency: parent.frequency,
+        ticketing: parent.ticketing,
+        slotsEnabled: false,
+        slotTemplates: [],
+        parentEventId: parent.id,
+        slotTemplateId: template.id,
+        generated: true,
+        eventType: 'slot',
+        nextSlot: null,
+        upcomingSlots: [],
+        acceptedMembers: acceptedMemberUserIds.length,
+        pendingMembers: pendingMemberUserIds.length,
+        acceptedMemberUserIds,
+        pendingMemberUserIds,
+        topics: [...parent.topics],
+        subEvents: this.cloneSubEvents(parent.subEvents) ?? undefined,
+        subEventsDisplayMode: parent.subEventsDisplayMode,
+        rating: parent.rating,
+        relevance: parent.relevance,
+        affinity: parent.affinity
+      });
     }
     return records;
   }
@@ -1933,6 +2043,17 @@ export class DemoEventsRepository {
     }
     const parsed = new Date(value);
     return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  private slotOverrideDateKey(value: string | null | undefined): string | null {
+    const parsed = this.parseEventDate(value?.includes('T') ? value : `${value ?? ''}T00:00`);
+    if (!parsed) {
+      return null;
+    }
+    const year = parsed.getFullYear();
+    const month = `${parsed.getMonth() + 1}`.padStart(2, '0');
+    const day = `${parsed.getDate()}`.padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
 
   private normalizeLocationCoordinates(value: unknown): DemoEventRecord['locationCoordinates'] {

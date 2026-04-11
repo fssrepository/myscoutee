@@ -138,6 +138,8 @@ export interface EventSlotTemplate {
   id: string;
   startAt: string;
   endAt: string;
+  overrideDate?: string | null;
+  closed?: boolean;
 }
 
 export interface EventSlotOccurrence {

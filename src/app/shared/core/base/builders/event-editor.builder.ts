@@ -26,7 +26,9 @@ export class EventEditorBuilder {
     return items.map(item => ({
       id: `${item.id ?? ''}`.trim(),
       startAt: `${item.startAt ?? ''}`.trim(),
-      endAt: `${item.endAt ?? ''}`.trim()
+      endAt: `${item.endAt ?? ''}`.trim(),
+      overrideDate: EventEditorConverter.normalizeEventEditorSlotOverrideDate(item.overrideDate),
+      closed: item.closed === true
     }));
   }
 
@@ -184,6 +186,15 @@ export class EventEditorBuilder {
     items: readonly AppTypes.EventSlotTemplate[]
   ): AppTypes.EventSlotTemplate[] {
     return items.map((item, index) => {
+      if (item.closed === true) {
+        return {
+          id: `${item.id ?? `slot-${index + 1}`}`.trim() || `slot-${index + 1}`,
+          startAt: '',
+          endAt: '',
+          overrideDate: EventEditorConverter.normalizeEventEditorSlotOverrideDate(item.overrideDate),
+          closed: true
+        };
+      }
       const normalizedStart = `${item.startAt ?? ''}`.trim();
       const parsedStart = EventEditorConverter.parseEventEditorDateValue(normalizedStart) ?? new Date();
       const normalizedEnd = `${item.endAt ?? ''}`.trim();
@@ -191,14 +202,23 @@ export class EventEditorBuilder {
       const parsedEnd = parsedEndRaw.getTime() <= parsedStart.getTime()
         ? new Date(parsedStart.getTime() + (60 * 60 * 1000))
         : parsedEndRaw;
+      const overrideDate = EventEditorConverter.normalizeEventEditorSlotOverrideDate(item.overrideDate);
+      const startAt = EventEditorConverter.parseEventEditorDateValue(normalizedStart)
+        ? normalizedStart
+        : AppUtils.toIsoDateTimeLocal(parsedStart);
+      const endAt = EventEditorConverter.parseEventEditorDateValue(normalizedEnd)
+        ? normalizedEnd
+        : AppUtils.toIsoDateTimeLocal(parsedEnd);
       return {
         id: `${item.id ?? `slot-${index + 1}`}`.trim() || `slot-${index + 1}`,
-        startAt: EventEditorConverter.parseEventEditorDateValue(normalizedStart)
-          ? normalizedStart
-          : AppUtils.toIsoDateTimeLocal(parsedStart),
-        endAt: EventEditorConverter.parseEventEditorDateValue(normalizedEnd)
-          ? normalizedEnd
-          : AppUtils.toIsoDateTimeLocal(parsedEnd)
+        startAt: overrideDate
+          ? AppUtils.applyDatePartToIsoLocal(startAt, EventEditorConverter.parseEventEditorOverrideDate(overrideDate))
+          : startAt,
+        endAt: overrideDate
+          ? AppUtils.applyDatePartToIsoLocal(endAt, EventEditorConverter.parseEventEditorOverrideDate(overrideDate))
+          : endAt,
+        overrideDate,
+        closed: false
       };
     });
   }

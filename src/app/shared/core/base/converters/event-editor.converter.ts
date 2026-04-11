@@ -110,6 +110,43 @@ export class EventEditorConverter {
     return Number.isNaN(parsed.getTime()) ? null : parsed;
   }
 
+  static parseEventEditorOverrideDate(value: unknown): Date | null {
+    if (value instanceof Date) {
+      return Number.isNaN(value.getTime()) ? null : new Date(value.getFullYear(), value.getMonth(), value.getDate());
+    }
+
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      const parsedFromNumber = new Date(value);
+      return Number.isNaN(parsedFromNumber.getTime())
+        ? null
+        : new Date(parsedFromNumber.getFullYear(), parsedFromNumber.getMonth(), parsedFromNumber.getDate());
+    }
+
+    const raw = `${value ?? ''}`.trim();
+    if (!raw) {
+      return null;
+    }
+
+    const direct = new Date(raw);
+    if (!Number.isNaN(direct.getTime())) {
+      return new Date(direct.getFullYear(), direct.getMonth(), direct.getDate());
+    }
+
+    const parsed = new Date(`${raw}T00:00`);
+    return Number.isNaN(parsed.getTime()) ? null : new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+  }
+
+  static normalizeEventEditorSlotOverrideDate(value: unknown): string | null {
+    const parsed = this.parseEventEditorOverrideDate(value);
+    if (!parsed) {
+      return null;
+    }
+    const year = parsed.getFullYear();
+    const month = `${parsed.getMonth() + 1}`.padStart(2, '0');
+    const day = `${parsed.getDate()}`.padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
   static toEventEditorCapacityInputValue(value: unknown): number | null {
     if (value === null || value === undefined || value === '') {
       return null;
@@ -128,14 +165,34 @@ export class EventEditorConverter {
 
     return value.map((entry, index) => {
       const item = (typeof entry === 'object' && entry !== null) ? entry as Record<string, unknown> : {};
+      const closed = item['closed'] === true;
+      const overrideDate = this.normalizeEventEditorSlotOverrideDate(item['overrideDate'] ?? item['date']);
+      if (closed) {
+        return {
+          id: `${item['id'] ?? `slot-${index + 1}`}`.trim() || `slot-${index + 1}`,
+          startAt: '',
+          endAt: '',
+          overrideDate,
+          closed: true
+        };
+      }
       const startAtDate = this.parseEventEditorDateValue(item['startAt'] ?? item['startDate']);
       const endAtDate = this.parseEventEditorDateValue(item['endAt'] ?? item['endDate']);
       const resolvedStart = startAtDate ?? new Date();
       const resolvedEnd = endAtDate ?? new Date(resolvedStart.getTime() + (60 * 60 * 1000));
+      const overrideDateValue = this.parseEventEditorOverrideDate(overrideDate);
+      const startAt = overrideDateValue
+        ? AppUtils.applyDatePartToIsoLocal(AppUtils.toIsoDateTimeLocal(resolvedStart), overrideDateValue)
+        : AppUtils.toIsoDateTimeLocal(resolvedStart);
+      const endAt = overrideDateValue
+        ? AppUtils.applyDatePartToIsoLocal(AppUtils.toIsoDateTimeLocal(resolvedEnd), overrideDateValue)
+        : AppUtils.toIsoDateTimeLocal(resolvedEnd);
       return {
         id: `${item['id'] ?? `slot-${index + 1}`}`.trim() || `slot-${index + 1}`,
-        startAt: AppUtils.toIsoDateTimeLocal(resolvedStart),
-        endAt: AppUtils.toIsoDateTimeLocal(resolvedEnd)
+        startAt,
+        endAt,
+        overrideDate,
+        closed: false
       };
     });
   }

@@ -70,6 +70,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   private currentMemberSummary: AppTypes.ActivityMembersSummary | null = null;
   private lastHandledActivityMembersSyncMs = 0;
   private pendingEventImageFile: File | null = null;
+  private readonly slotDateControlValueCache = new Map<string, Date | null>();
 
   constructor() {
     effect(() => {
@@ -199,8 +200,11 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   eventStartTimeValue: Date | null = null;
   eventEndDateValue: Date | null = null;
   eventEndTimeValue: Date | null = null;
+  slotOverrideDateValue: Date | null = null;
 
   subEventsDisplayMode: AppTypes.SubEventsDisplayMode = 'Casual';
+  slotEditorMode: 'base' | 'date' = 'base';
+  slotsPanelExpanded = false;
   showEventVisibilityPicker = false;
   showSubEventsPopup = false;
   showTopicPicker = false;
@@ -335,7 +339,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     if (this.eventEditorService.readOnly()) {
       return false;
     }
-    const hasValidSlots = !this.eventForm.slotsEnabled || this.eventForm.slotTemplates.length > 0;
     return Boolean(
       this.eventForm.title.trim()
       && this.eventForm.description.trim()
@@ -343,7 +346,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       && this.eventForm.capacityMax !== null
       && this.eventForm.startAt
       && this.eventForm.endAt
-      && hasValidSlots
     );
   }
 
@@ -681,88 +683,197 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       return;
     }
     this.eventForm.slotsEnabled = !this.eventForm.slotsEnabled;
-    if (this.eventForm.slotsEnabled && this.eventForm.slotTemplates.length === 0) {
+    if (this.eventForm.slotsEnabled && this.baseSlotTemplates().length === 0) {
+      this.slotEditorMode = 'base';
       this.addSlotTemplate();
     }
+    this.normalizeSlotOverrideDateSelection();
+  }
+
+  protected toggleSlotsPanelExpanded(event?: Event): void {
+    event?.preventDefault();
+    this.slotsPanelExpanded = !this.slotsPanelExpanded;
+  }
+
+  protected selectSlotEditorMode(mode: 'base' | 'date', event?: Event): void {
+    event?.preventDefault();
+    if (!this.eventForm.slotsEnabled || !this.canConfigureSlotsSeries()) {
+      return;
+    }
+    if (this.slotEditorMode === mode) {
+      return;
+    }
+    this.slotEditorMode = mode;
+    if (mode === 'date' && !this.slotOverrideDateValue) {
+      this.slotOverrideDateValue = this.defaultSlotOverrideDate();
+    }
+    this.normalizeSlotOverrideDateSelection();
+  }
+
+  protected isDateSlotEditorMode(): boolean {
+    return this.slotEditorMode === 'date';
+  }
+
+  protected slotEditorModeButtonClass(mode: 'base' | 'date'): string {
+    if (this.slotEditorMode !== mode) {
+      return '';
+    }
+    return mode === 'date' ? 'event-slot-mode-btn-active-date' : 'event-slot-mode-btn-active-base';
+  }
+
+  protected activeSlotTemplates(): AppTypes.EventSlotTemplate[] {
+    if (this.slotEditorMode === 'base') {
+      return EventEditorBuilder.cloneEventEditorSlotTemplates(this.baseSlotTemplates());
+    }
+    const dateKey = this.selectedSlotOverrideDateKey();
+    if (!dateKey) {
+      return [];
+    }
+    const explicit = this.overrideSlotTemplatesForDate(dateKey);
+    if (explicit.length > 0) {
+      if (explicit.some(item => item.closed === true)) {
+        return [];
+      }
+      return EventEditorBuilder.cloneEventEditorSlotTemplates(explicit);
+    }
+    return this.projectBaseSlotTemplatesToDate(dateKey);
+  }
+
+  protected slotEditorModeDescription(): string {
+    if (this.slotEditorMode === 'date') {
+      if (this.isSpecificDateClosed()) {
+        return 'This date has its own override and currently has no slots.';
+      }
+      return this.hasExplicitSlotOverride()
+        ? 'Editing the date-only clone for this day. Switch the day from the picker above.'
+        : 'This day starts as a clone of the base schedule. Switch the day from the picker above; your changes stay on this date only.';
+    }
+    return 'Base slots repeat according to the selected frequency.';
+  }
+
+  protected slotOverrideDateMin(): Date | null {
+    return AppUtils.isoLocalDateTimeToDate(this.eventForm.startAt);
+  }
+
+  protected slotOverrideDateMax(): Date | null {
+    return AppUtils.isoLocalDateTimeToDate(this.eventForm.endAt);
+  }
+
+  protected onSlotOverrideDateChange(value: Date | null): void {
+    this.slotOverrideDateValue = value;
+    this.normalizeSlotOverrideDateSelection();
+  }
+
+  protected slotTrackId(index: number, slot: AppTypes.EventSlotTemplate): string {
+    return `${slot.overrideDate ?? 'base'}:${slot.id || `slot-${index + 1}`}:${slot.startAt}:${slot.endAt}`;
   }
 
   addSlotTemplate(): void {
     if (!this.canConfigureSlotsSeries()) {
       return;
     }
-    const nextIndex = this.eventForm.slotTemplates.length + 1;
-    const startAt = this.eventForm.slotTemplates[this.eventForm.slotTemplates.length - 1]?.endAt
+    this.ensureSpecificDateOverrideSeeded();
+    const currentTemplates = this.resolveActiveSlotTemplatesForEditing();
+    const nextIndex = currentTemplates.length + 1;
+    const startAt = currentTemplates[currentTemplates.length - 1]?.endAt
+      || this.defaultSlotStartForActiveScope()
       || this.eventForm.startAt
       || AppUtils.toIsoDateTimeLocal(new Date());
     const startDate = EventEditorConverter.parseEventEditorDateValue(startAt) ?? new Date();
     const endDate = new Date(startDate.getTime() + (60 * 60 * 1000));
-    this.eventForm.slotTemplates = [
-      ...EventEditorBuilder.cloneEventEditorSlotTemplates(this.eventForm.slotTemplates),
+    this.setActiveSlotTemplates([
+      ...currentTemplates,
       {
-        id: `slot-${nextIndex}`,
+        id: this.buildSlotTemplateId(nextIndex),
         startAt: AppUtils.toIsoDateTimeLocal(startDate),
-        endAt: AppUtils.toIsoDateTimeLocal(endDate)
+        endAt: AppUtils.toIsoDateTimeLocal(endDate),
+        overrideDate: this.slotEditorMode === 'date' ? this.selectedSlotOverrideDateKey() : null,
+        closed: false
       }
-    ];
+    ]);
   }
 
   removeSlotTemplate(index: number): void {
     if (!this.canConfigureSlotsSeries()) {
       return;
     }
-    this.eventForm.slotTemplates = this.eventForm.slotTemplates
+    this.ensureSpecificDateOverrideSeeded();
+    const currentTemplates = this.resolveActiveSlotTemplatesForEditing();
+    this.setActiveSlotTemplates(currentTemplates
       .filter((_, currentIndex) => currentIndex !== index)
       .map((item, currentIndex) => ({
         ...item,
-        id: item.id?.trim() || `slot-${currentIndex + 1}`
-      }));
+        id: item.id?.trim() || this.buildSlotTemplateId(currentIndex + 1),
+        overrideDate: this.slotEditorMode === 'date' ? this.selectedSlotOverrideDateKey() : null,
+        closed: false
+      })));
   }
 
   slotTemplateLabel(index: number): string {
     return `Slot ${index + 1}`;
   }
 
-  onSlotTemplateStartChange(index: number, value: string): void {
-    const normalizedValue = `${value ?? ''}`.trim();
-    this.eventForm.slotTemplates = this.eventForm.slotTemplates.map((item, currentIndex) => {
-      if (currentIndex !== index) {
-        return { ...item };
-      }
-      const nextStart = normalizedValue || item.startAt;
-      const startDate = EventEditorConverter.parseEventEditorDateValue(nextStart) ?? new Date();
-      const endDate = EventEditorConverter.parseEventEditorDateValue(item.endAt);
-      const nextEnd = !endDate || endDate.getTime() <= startDate.getTime()
-        ? AppUtils.toIsoDateTimeLocal(new Date(startDate.getTime() + (60 * 60 * 1000)))
-        : item.endAt;
-      return {
-        ...item,
-        startAt: nextStart,
-        endAt: nextEnd
-      };
-    });
+  protected slotTemplateStartDateValue(slot: AppTypes.EventSlotTemplate): Date | null {
+    return this.slotControlDateValue(slot.startAt);
   }
 
-  onSlotTemplateEndChange(index: number, value: string): void {
-    const normalizedValue = `${value ?? ''}`.trim();
-    this.eventForm.slotTemplates = this.eventForm.slotTemplates.map((item, currentIndex) => {
-      if (currentIndex !== index) {
-        return { ...item };
-      }
-      const startDate = EventEditorConverter.parseEventEditorDateValue(item.startAt) ?? new Date();
-      const endDate = EventEditorConverter.parseEventEditorDateValue(normalizedValue);
-      const nextEnd = !endDate || endDate.getTime() <= startDate.getTime()
-        ? AppUtils.toIsoDateTimeLocal(new Date(startDate.getTime() + (60 * 60 * 1000)))
-        : normalizedValue;
-      return {
-        ...item,
-        endAt: nextEnd
-      };
-    });
+  protected slotTemplateStartTimeValue(slot: AppTypes.EventSlotTemplate): Date | null {
+    return this.slotControlDateValue(slot.startAt);
   }
 
-  slotTemplateInputValue(value: string): string {
-    const parsed = EventEditorConverter.parseEventEditorDateValue(value);
-    return parsed ? AppUtils.toIsoDateTimeLocal(parsed) : `${value ?? ''}`.trim();
+  protected slotTemplateEndDateValue(slot: AppTypes.EventSlotTemplate): Date | null {
+    return this.slotControlDateValue(slot.endAt);
+  }
+
+  protected slotTemplateEndTimeValue(slot: AppTypes.EventSlotTemplate): Date | null {
+    return this.slotControlDateValue(slot.endAt);
+  }
+
+  onSlotTemplateStartDateChange(index: number, value: Date | null): void {
+    if (this.isDateSlotEditorMode()) {
+      return;
+    }
+    this.updateSlotTemplate(index, item => this.normalizeSlotTemplateBounds({
+      ...item,
+      startAt: AppUtils.applyDatePartToIsoLocal(item.startAt, value),
+      overrideDate: this.slotEditorMode === 'date' ? this.selectedSlotOverrideDateKey() : null,
+      closed: false
+    }));
+  }
+
+  onSlotTemplateStartTimeChange(index: number, value: Date | null): void {
+    this.updateSlotTemplate(index, item => this.normalizeSlotTemplateBounds({
+      ...item,
+      startAt: AppUtils.applyTimePartFromDateToIsoLocal(item.startAt, value),
+      overrideDate: this.slotEditorMode === 'date' ? this.selectedSlotOverrideDateKey() : null,
+      closed: false
+    }));
+  }
+
+  onSlotTemplateEndDateChange(index: number, value: Date | null): void {
+    if (this.isDateSlotEditorMode()) {
+      return;
+    }
+    this.updateSlotTemplate(index, item => this.normalizeSlotTemplateBounds({
+      ...item,
+      endAt: AppUtils.applyDatePartToIsoLocal(item.endAt, value),
+      overrideDate: this.slotEditorMode === 'date' ? this.selectedSlotOverrideDateKey() : null,
+      closed: false
+    }));
+  }
+
+  onSlotTemplateEndTimeChange(index: number, value: Date | null): void {
+    this.updateSlotTemplate(index, item => this.normalizeSlotTemplateBounds({
+      ...item,
+      endAt: AppUtils.applyTimePartFromDateToIsoLocal(item.endAt, value),
+      overrideDate: this.slotEditorMode === 'date' ? this.selectedSlotOverrideDateKey() : null,
+      closed: false
+    }));
+  }
+
+  protected hasExplicitSlotOverride(): boolean {
+    const dateKey = this.selectedSlotOverrideDateKey();
+    return !!dateKey && this.overrideSlotTemplatesForDate(dateKey).length > 0;
   }
 
   onEventLocationChange(value: string): void {
@@ -1005,6 +1116,203 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     return this.appCtx.activeUserId().trim() || this.appCtx.getActiveUserId().trim();
   }
 
+  private baseSlotTemplates(): AppTypes.EventSlotTemplate[] {
+    return this.eventForm.slotTemplates
+      .filter(item => !EventEditorConverter.normalizeEventEditorSlotOverrideDate(item.overrideDate))
+      .filter(item => item.closed !== true)
+      .map(item => ({
+        ...item,
+        overrideDate: null,
+        closed: false
+      }));
+  }
+
+  private overrideSlotTemplatesForDate(dateKey: string): AppTypes.EventSlotTemplate[] {
+    if (!dateKey) {
+      return [];
+    }
+    return this.eventForm.slotTemplates
+      .filter(item => EventEditorConverter.normalizeEventEditorSlotOverrideDate(item.overrideDate) === dateKey)
+      .map(item => ({
+        ...item,
+        overrideDate: dateKey,
+        closed: item.closed === true
+      }));
+  }
+
+  private selectedSlotOverrideDateKey(): string {
+    return EventEditorConverter.normalizeEventEditorSlotOverrideDate(this.slotOverrideDateValue) ?? '';
+  }
+
+  private defaultSlotOverrideDate(): Date | null {
+    const firstOverrideDate = this.eventForm.slotTemplates
+      .map(item => EventEditorConverter.parseEventEditorOverrideDate(item.overrideDate))
+      .find((value): value is Date => Boolean(value));
+    return firstOverrideDate ?? AppUtils.isoLocalDateTimeToDate(this.eventForm.startAt);
+  }
+
+  private normalizeSlotOverrideDateSelection(): void {
+    const min = this.slotOverrideDateMin();
+    const max = this.slotOverrideDateMax();
+    let next = this.slotOverrideDateValue ?? this.defaultSlotOverrideDate();
+    if (!next) {
+      this.slotOverrideDateValue = null;
+      return;
+    }
+    if (min && next.getTime() < min.getTime()) {
+      next = min;
+    }
+    if (max && next.getTime() > max.getTime()) {
+      next = max;
+    }
+    this.slotOverrideDateValue = next;
+  }
+
+  private buildSlotTemplateId(index: number): string {
+    if (this.slotEditorMode === 'date') {
+      const dateKey = this.selectedSlotOverrideDateKey() || 'date';
+      return `override-${dateKey}-slot-${index}`;
+    }
+    return `slot-${index}`;
+  }
+
+  private projectBaseSlotTemplatesToDate(dateKey: string): AppTypes.EventSlotTemplate[] {
+    const overrideDate = EventEditorConverter.parseEventEditorOverrideDate(dateKey);
+    if (!overrideDate) {
+      return [];
+    }
+    return this.baseSlotTemplates().map((item, index) => ({
+      id: item.id?.trim()
+        ? `override-${dateKey}-${item.id.trim()}`
+        : this.buildSlotTemplateId(index + 1),
+      startAt: AppUtils.applyDatePartToIsoLocal(item.startAt, overrideDate),
+      endAt: AppUtils.applyDatePartToIsoLocal(item.endAt, overrideDate),
+      overrideDate: dateKey,
+      closed: false
+    }));
+  }
+
+  private resolveActiveSlotTemplatesForEditing(): AppTypes.EventSlotTemplate[] {
+    return EventEditorBuilder.cloneEventEditorSlotTemplates(this.activeSlotTemplates());
+  }
+
+  private updateSlotTemplate(
+    index: number,
+    updater: (item: AppTypes.EventSlotTemplate) => AppTypes.EventSlotTemplate
+  ): void {
+    this.ensureSpecificDateOverrideSeeded();
+    const currentTemplates = this.resolveActiveSlotTemplatesForEditing();
+    this.setActiveSlotTemplates(currentTemplates.map((item, currentIndex) => (
+      currentIndex !== index ? { ...item } : updater({ ...item })
+    )));
+  }
+
+  private ensureSpecificDateOverrideSeeded(): void {
+    if (this.slotEditorMode !== 'date') {
+      return;
+    }
+    const dateKey = this.selectedSlotOverrideDateKey();
+    if (!dateKey || this.overrideSlotTemplatesForDate(dateKey).length > 0) {
+      return;
+    }
+    const base = this.baseSlotTemplates().map(item => ({ ...item, overrideDate: null }));
+    const otherOverrides = this.eventForm.slotTemplates
+      .filter(item => {
+        const overrideDate = EventEditorConverter.normalizeEventEditorSlotOverrideDate(item.overrideDate);
+        return overrideDate && overrideDate !== dateKey;
+      })
+      .map(item => ({ ...item }));
+    this.eventForm.slotTemplates = [
+      ...base,
+      ...otherOverrides,
+      ...this.projectBaseSlotTemplatesToDate(dateKey)
+    ];
+  }
+
+  private setActiveSlotTemplates(nextTemplates: AppTypes.EventSlotTemplate[]): void {
+    const normalizedTemplates = EventEditorBuilder.buildPersistedEventEditorSlotTemplates(nextTemplates);
+    if (this.slotEditorMode === 'base') {
+      const overrides = this.eventForm.slotTemplates
+        .filter(item => EventEditorConverter.normalizeEventEditorSlotOverrideDate(item.overrideDate))
+        .map(item => ({ ...item }));
+      this.eventForm.slotTemplates = [
+        ...normalizedTemplates.map(item => ({ ...item, overrideDate: null, closed: false })),
+        ...overrides
+      ];
+      return;
+    }
+
+    const dateKey = this.selectedSlotOverrideDateKey();
+    const base = this.baseSlotTemplates().map(item => ({ ...item, overrideDate: null, closed: false }));
+    const otherOverrides = this.eventForm.slotTemplates
+      .filter(item => {
+        const overrideDate = EventEditorConverter.normalizeEventEditorSlotOverrideDate(item.overrideDate);
+        return overrideDate && overrideDate !== dateKey;
+      })
+      .map(item => ({ ...item }));
+    const currentOverride = normalizedTemplates.length > 0
+      ? normalizedTemplates.map(item => ({ ...item, overrideDate: dateKey || null, closed: false }))
+      : (dateKey ? [this.buildClosedDateOverridePlaceholder(dateKey)] : []);
+    this.eventForm.slotTemplates = [
+      ...base,
+      ...otherOverrides,
+      ...currentOverride
+    ];
+  }
+
+  private buildClosedDateOverridePlaceholder(dateKey: string): AppTypes.EventSlotTemplate {
+    return {
+      id: `override-${dateKey}-closed`,
+      startAt: '',
+      endAt: '',
+      overrideDate: dateKey,
+      closed: true
+    };
+  }
+
+  private isSpecificDateClosed(): boolean {
+    const dateKey = this.selectedSlotOverrideDateKey();
+    return !!dateKey && this.overrideSlotTemplatesForDate(dateKey).some(item => item.closed === true);
+  }
+
+  private defaultSlotStartForActiveScope(): string {
+    if (this.slotEditorMode !== 'date') {
+      return this.eventForm.startAt;
+    }
+    const dateKey = this.selectedSlotOverrideDateKey();
+    const overrideDate = EventEditorConverter.parseEventEditorOverrideDate(dateKey);
+    if (!overrideDate) {
+      return this.eventForm.startAt;
+    }
+    return AppUtils.applyDatePartToIsoLocal(this.eventForm.startAt, overrideDate);
+  }
+
+  private normalizeSlotTemplateBounds(slot: AppTypes.EventSlotTemplate): AppTypes.EventSlotTemplate {
+    const startDate = EventEditorConverter.parseEventEditorDateValue(slot.startAt) ?? new Date();
+    const endDate = EventEditorConverter.parseEventEditorDateValue(slot.endAt);
+    const normalizedEnd = !endDate || endDate.getTime() <= startDate.getTime()
+      ? new Date(startDate.getTime() + (60 * 60 * 1000))
+      : endDate;
+    return {
+      ...slot,
+      startAt: AppUtils.toIsoDateTimeLocal(startDate),
+      endAt: AppUtils.toIsoDateTimeLocal(normalizedEnd)
+    };
+  }
+
+  private slotControlDateValue(value: string): Date | null {
+    const normalizedValue = `${value ?? ''}`.trim();
+    if (!normalizedValue) {
+      return null;
+    }
+    if (this.slotDateControlValueCache.has(normalizedValue)) {
+      return this.slotDateControlValueCache.get(normalizedValue) ?? null;
+    }
+    const parsed = EventEditorConverter.parseEventEditorDateValue(normalizedValue);
+    this.slotDateControlValueCache.set(normalizedValue, parsed);
+    return parsed;
+  }
+
   private currentEventIdentity(): string {
     return this.eventForm.id.trim() || this.editingEventId || this.draftEventId || '';
   }
@@ -1068,6 +1376,10 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.subEventsDisplayMode = state.subEventsDisplayMode;
     this.normalizeEventDateRange();
     this.syncDateTimeControlsFromForm();
+    this.slotEditorMode = 'base';
+    this.slotsPanelExpanded = this.eventForm.slotsEnabled;
+    this.slotOverrideDateValue = this.defaultSlotOverrideDate();
+    this.normalizeSlotOverrideDateSelection();
   }
 
   private resetForm(target: AppTypes.EventEditorTarget = this.editorTarget): void {
@@ -1099,6 +1411,10 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.subEventsDisplayMode = 'Casual';
     this.showEventVisibilityPicker = false;
     this.syncDateTimeControlsFromForm();
+    this.slotEditorMode = 'base';
+    this.slotsPanelExpanded = false;
+    this.slotOverrideDateValue = this.defaultSlotOverrideDate();
+    this.normalizeSlotOverrideDateSelection();
   }
 
   private syncDateTimeControlsFromForm(): void {
@@ -1130,6 +1446,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     if (!this.eventFrequencyOptions.includes(this.eventForm.frequency)) {
       this.eventForm.frequency = this.eventFrequencyOptions[0] ?? 'One-time';
     }
+    this.normalizeSlotOverrideDateSelection();
   }
 
   private normalizeEventSlotTemplates(): void {

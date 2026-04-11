@@ -233,32 +233,34 @@
                     <mat-icon>calendar_month</mat-icon>
                     <span>Date</span>
                   </span>
-                  <label class="event-frequency-label">
-                    <div class="profile-status-select-wrap selector-like experience-filter-select event-frequency-select" [ngClass]="eventFrequencyClass(eventForm.frequency)">
-                      <mat-select
-                        [(ngModel)]="eventForm.frequency"
-                        [disabled]="eventEditorService.readOnly()"
-                        [panelWidth]="null"
-                        disableOptionCentering
-                        panelClass="selector-options-panel profile-bottom-sheet-panel event-frequency-options-panel"
-                        >
-                        <mat-select-trigger>
-                          <span class="status-option-content">
-                            <mat-icon [ngClass]="eventFrequencyClass(eventForm.frequency)">{{ eventFrequencyIcon(eventForm.frequency) }}</mat-icon>
-                            <span>{{ eventForm.frequency }}</span>
-                          </span>
-                        </mat-select-trigger>
-                        @for (option of eventFrequencyOptions; track option) {
-                          <mat-option [value]="option" class="status-option" [ngClass]="eventFrequencyClass(option)">
+                  <div class="event-schedule-panel-actions">
+                    <label class="event-frequency-label">
+                      <div class="profile-status-select-wrap selector-like experience-filter-select event-frequency-select" [ngClass]="eventFrequencyClass(eventForm.frequency)">
+                        <mat-select
+                          [(ngModel)]="eventForm.frequency"
+                          [disabled]="eventEditorService.readOnly()"
+                          [panelWidth]="null"
+                          disableOptionCentering
+                          panelClass="selector-options-panel profile-bottom-sheet-panel event-frequency-options-panel"
+                          >
+                          <mat-select-trigger>
                             <span class="status-option-content">
-                              <mat-icon [ngClass]="eventFrequencyClass(option)">{{ eventFrequencyIcon(option) }}</mat-icon>
-                              <span>{{ option }}</span>
+                              <mat-icon [ngClass]="eventFrequencyClass(eventForm.frequency)">{{ eventFrequencyIcon(eventForm.frequency) }}</mat-icon>
+                              <span>{{ eventForm.frequency }}</span>
                             </span>
-                          </mat-option>
-                        }
-                      </mat-select>
-                    </div>
-                  </label>
+                          </mat-select-trigger>
+                          @for (option of eventFrequencyOptions; track option) {
+                            <mat-option [value]="option" class="status-option" [ngClass]="eventFrequencyClass(option)">
+                              <span class="status-option-content">
+                                <mat-icon [ngClass]="eventFrequencyClass(option)">{{ eventFrequencyIcon(option) }}</mat-icon>
+                                <span>{{ option }}</span>
+                              </span>
+                            </mat-option>
+                          }
+                        </mat-select>
+                      </div>
+                    </label>
+                  </div>
                 </div>
                 <label class="event-datetime-label">
                   <span>Start</span>
@@ -305,73 +307,195 @@
                   </div>
                 </label>
               </section>
-              <section class="event-slots-panel">
+              <section
+                class="event-slots-panel"
+                [class.event-slots-panel-collapsed]="!slotsPanelExpanded"
+                [class.event-slots-panel-disabled]="!eventForm.slotsEnabled"
+                >
                 <div class="event-slots-panel-head">
                   <button
                     type="button"
-                    class="event-ticketing-card event-slots-toggle-card"
-                    [ngClass]="eventForm.slotsEnabled ? 'event-ticketing-on' : 'event-ticketing-off'"
-                    [disabled]="!canConfigureSlotsSeries()"
-                    (click)="toggleEventSlots($event)"
+                    class="event-slots-panel-trigger"
+                    [class.event-slots-panel-trigger-expanded]="slotsPanelExpanded"
+                    [class.event-slots-panel-trigger-collapsed]="!slotsPanelExpanded"
+                    [attr.aria-expanded]="slotsPanelExpanded"
+                    (click)="toggleSlotsPanelExpanded($event)"
                     >
-                    <span class="event-ticketing-title">
-                      <mat-icon [ngClass]="eventForm.slotsEnabled ? 'event-ticketing-on' : 'event-ticketing-off'">
-                        {{ eventForm.slotsEnabled ? 'event_available' : 'event_busy' }}
-                      </mat-icon>
-                      <span>Slots {{ eventForm.slotsEnabled ? 'On' : 'Off' }}</span>
+                    <span class="event-slots-panel-title">
+                      <span class="event-schedule-panel-title">
+                        <mat-icon>schedule</mat-icon>
+                        <span>Slots</span>
+                      </span>
                     </span>
-                    <span class="event-ticketing-description">
-                      {{ isGeneratedSlotInstance() ? 'Series settings stay on the parent event.' : 'Generated event instances created from this series.' }}
+                    <span class="event-slots-panel-trigger-meta">
+                      <mat-icon class="event-slots-panel-trigger-chevron">{{ slotsPanelExpanded ? 'expand_less' : 'expand_more' }}</mat-icon>
                     </span>
                   </button>
-                  @if (eventForm.slotsEnabled && canConfigureSlotsSeries()) {
-                    <button
-                      type="button"
-                      class="popup-header-add-btn event-slots-add-btn"
-                      (click)="addSlotTemplate()"
-                      aria-label="Add slot"
-                      >
-                      <mat-icon>add</mat-icon>
-                    </button>
-                  }
+                  <button
+                    type="button"
+                    class="event-slots-enable-btn"
+                    [class.event-slots-enable-btn-on]="eventForm.slotsEnabled"
+                    [class.event-slots-enable-btn-off]="!eventForm.slotsEnabled"
+                    [disabled]="!canConfigureSlotsSeries()"
+                    [attr.aria-pressed]="eventForm.slotsEnabled"
+                    (click)="toggleEventSlots($event)"
+                    >
+                    <mat-icon>{{ eventForm.slotsEnabled ? 'toggle_on' : 'toggle_off' }}</mat-icon>
+                    <span>{{ eventForm.slotsEnabled ? 'On' : 'Off' }}</span>
+                  </button>
                 </div>
-                @if (eventForm.slotsEnabled) {
-                  <div class="event-slots-list">
-                    @for (slot of eventForm.slotTemplates; track slot; let i = $index) {
-                      <div class="event-slot-row">
-                        <div class="event-slot-row-head">
-                          <span class="event-slot-row-title">{{ slotTemplateLabel(i) }}</span>
+                @if (slotsPanelExpanded) {
+                  <div
+                    class="event-slots-panel-body"
+                    [class.event-slots-panel-body-disabled]="!eventForm.slotsEnabled || !canConfigureSlotsSeries()"
+                    >
+                    @if (eventForm.slotsEnabled) {
+                      <div class="event-slot-editor-toolbar">
+                        <div class="event-slot-mode-switch" role="tablist" aria-label="Slot editor mode">
                           <button
                             type="button"
-                            class="event-slot-remove-btn"
+                            class="event-slot-mode-btn"
+                            [ngClass]="slotEditorModeButtonClass('base')"
                             [disabled]="!canConfigureSlotsSeries()"
-                            (click)="removeSlotTemplate(i)"
-                            aria-label="Remove slot"
+                            (click)="selectSlotEditorMode('base', $event)"
                             >
-                            <mat-icon>delete</mat-icon>
+                            Base schedule
+                          </button>
+                          <button
+                            type="button"
+                            class="event-slot-mode-btn"
+                            [ngClass]="slotEditorModeButtonClass('date')"
+                            [disabled]="!canConfigureSlotsSeries()"
+                            (click)="selectSlotEditorMode('date', $event)"
+                            >
+                            Specific date
                           </button>
                         </div>
-                        <div class="event-slot-row-grid">
-                          <label class="event-slot-field">
-                            <span>Start</span>
-                            <input
-                              type="datetime-local"
-                              [ngModel]="slotTemplateInputValue(slot.startAt)"
-                              (ngModelChange)="onSlotTemplateStartChange(i, $event)"
-                              [readonly]="eventEditorService.readOnly()"
-                              />
-                          </label>
-                          <label class="event-slot-field">
-                            <span>End</span>
-                            <input
-                              type="datetime-local"
-                              [ngModel]="slotTemplateInputValue(slot.endAt)"
-                              (ngModelChange)="onSlotTemplateEndChange(i, $event)"
-                              [readonly]="eventEditorService.readOnly()"
-                              />
-                          </label>
-                        </div>
+                        @if (canConfigureSlotsSeries()) {
+                          <button
+                            type="button"
+                            class="popup-header-add-btn event-slots-add-btn"
+                            (click)="addSlotTemplate()"
+                            aria-label="Add slot"
+                            >
+                            <mat-icon>add</mat-icon>
+                          </button>
+                        }
+                        @if (isDateSlotEditorMode()) {
+                          <div class="event-slot-toolbar-date-row">
+                            <mat-form-field appearance="outline" class="event-slot-date-picker" subscriptSizing="dynamic">
+                              <mat-label>Date</mat-label>
+                              <input
+                                matInput
+                                [matDatepicker]="slotOverridePicker"
+                                [ngModel]="slotOverrideDateValue"
+                                (ngModelChange)="onSlotOverrideDateChange($event)"
+                                [min]="slotOverrideDateMin()"
+                                [max]="slotOverrideDateMax()"
+                                [disabled]="!canConfigureSlotsSeries()"
+                                />
+                              <mat-datepicker-toggle matSuffix [for]="slotOverridePicker"></mat-datepicker-toggle>
+                              <mat-datepicker #slotOverridePicker></mat-datepicker>
+                            </mat-form-field>
+                          </div>
+                        }
                       </div>
+                      <p class="event-slot-mode-note">{{ slotEditorModeDescription() }}</p>
+                      <div class="event-slots-list">
+                        @for (slot of activeSlotTemplates(); track slotTrackId($index, slot); let i = $index) {
+                          <div class="event-slot-row">
+                            <div class="event-slot-row-head">
+                              <span class="event-slot-row-title">{{ slotTemplateLabel(i) }}</span>
+                              <button
+                                type="button"
+                                class="event-slot-remove-btn"
+                                [disabled]="!canConfigureSlotsSeries()"
+                                (click)="removeSlotTemplate(i)"
+                                aria-label="Remove slot"
+                                >
+                                <mat-icon>delete</mat-icon>
+                              </button>
+                            </div>
+                            <div class="event-slot-row-grid">
+                              <label class="event-slot-field">
+                                <span>Start</span>
+                                <div class="event-datetime-row event-slot-datetime-row">
+                                  <mat-form-field
+                                    appearance="outline"
+                                    class="event-date-field event-date-field-start event-slot-date-field"
+                                    [class.event-slot-date-field-locked]="isDateSlotEditorMode()"
+                                    subscriptSizing="dynamic"
+                                    >
+                                    <input
+                                      matInput
+                                      [matDatepicker]="slotStartPicker"
+                                [ngModel]="slotTemplateStartDateValue(slot)"
+                                (ngModelChange)="onSlotTemplateStartDateChange(i, $event)"
+                                [disabled]="eventEditorService.readOnly() || !canConfigureSlotsSeries() || isDateSlotEditorMode()"
+                                />
+                                    <mat-datepicker-toggle matSuffix [for]="slotStartPicker"></mat-datepicker-toggle>
+                                    <mat-datepicker #slotStartPicker></mat-datepicker>
+                                  </mat-form-field>
+                                  <mat-form-field appearance="outline" class="event-time-field event-time-field-start event-slot-time-field" subscriptSizing="dynamic">
+                                    <input
+                                      matInput
+                                      [matTimepicker]="slotStartTimePicker"
+                                      [matTimepickerOpenOnClick]="true"
+                                [ngModel]="slotTemplateStartTimeValue(slot)"
+                                (ngModelChange)="onSlotTemplateStartTimeChange(i, $event)"
+                                [disabled]="eventEditorService.readOnly() || !canConfigureSlotsSeries()"
+                                />
+                                    <mat-timepicker-toggle matSuffix [for]="slotStartTimePicker"></mat-timepicker-toggle>
+                                    <mat-timepicker #slotStartTimePicker></mat-timepicker>
+                                  </mat-form-field>
+                                </div>
+                              </label>
+                              <label class="event-slot-field">
+                                <span>End</span>
+                                <div class="event-datetime-row event-slot-datetime-row">
+                                  <mat-form-field
+                                    appearance="outline"
+                                    class="event-date-field event-date-field-end event-slot-date-field"
+                                    [class.event-slot-date-field-locked]="isDateSlotEditorMode()"
+                                    subscriptSizing="dynamic"
+                                    >
+                                    <input
+                                      matInput
+                                      [matDatepicker]="slotEndPicker"
+                                [ngModel]="slotTemplateEndDateValue(slot)"
+                                (ngModelChange)="onSlotTemplateEndDateChange(i, $event)"
+                                [disabled]="eventEditorService.readOnly() || !canConfigureSlotsSeries() || isDateSlotEditorMode()"
+                                />
+                                    <mat-datepicker-toggle matSuffix [for]="slotEndPicker"></mat-datepicker-toggle>
+                                    <mat-datepicker #slotEndPicker></mat-datepicker>
+                                  </mat-form-field>
+                                  <mat-form-field appearance="outline" class="event-time-field event-time-field-end event-slot-time-field" subscriptSizing="dynamic">
+                                    <input
+                                      matInput
+                                      [matTimepicker]="slotEndTimePicker"
+                                      [matTimepickerOpenOnClick]="true"
+                                [ngModel]="slotTemplateEndTimeValue(slot)"
+                                (ngModelChange)="onSlotTemplateEndTimeChange(i, $event)"
+                                [disabled]="eventEditorService.readOnly() || !canConfigureSlotsSeries()"
+                                />
+                                    <mat-timepicker-toggle matSuffix [for]="slotEndTimePicker"></mat-timepicker-toggle>
+                                    <mat-timepicker #slotEndTimePicker></mat-timepicker>
+                                  </mat-form-field>
+                                </div>
+                              </label>
+                            </div>
+                          </div>
+                        }
+                        @if (activeSlotTemplates().length === 0) {
+                          <div class="event-slot-empty-state">
+                            <span>No slots for this schedule.</span>
+                          </div>
+                        }
+                      </div>
+                    } @else {
+                      <p class="event-slot-mode-note event-slot-mode-note-disabled">
+                        {{ isGeneratedSlotInstance() ? 'Series settings stay on the parent event.' : 'Turn slots on to enable recurring slots and date-specific overrides.' }}
+                      </p>
                     }
                   </div>
                 }

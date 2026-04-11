@@ -1764,6 +1764,18 @@ export class ActivitiesPopupComponent implements OnDestroy {
       capacityMax: sync.capacityMax ?? existing?.capacityMax ?? null,
       autoInviter: sync.autoInviter ?? existing?.autoInviter,
       frequency: sync.frequency ?? existing?.frequency,
+      slotsEnabled: sync.slotsEnabled ?? existing?.slotsEnabled,
+      slotTemplates: Array.isArray(sync.slotTemplates)
+        ? this.cloneSyncedSlotTemplates(sync.slotTemplates)
+        : this.cloneSyncedSlotTemplates(existing?.slotTemplates),
+      parentEventId: sync.parentEventId ?? existing?.parentEventId,
+      slotTemplateId: sync.slotTemplateId ?? existing?.slotTemplateId,
+      generated: sync.generated ?? existing?.generated,
+      eventType: sync.eventType ?? existing?.eventType,
+      nextSlot: sync.nextSlot ? { ...sync.nextSlot } : (existing?.nextSlot ? { ...existing.nextSlot } : null),
+      upcomingSlots: Array.isArray(sync.upcomingSlots)
+        ? sync.upcomingSlots.map(item => ({ ...item }))
+        : (existing?.upcomingSlots ? existing.upcomingSlots.map(item => ({ ...item })) : undefined),
       topics: Array.isArray(sync.topics) ? [...sync.topics] : [...(existing?.topics ?? [])],
       subEvents: Array.isArray(sync.subEvents)
         ? this.cloneSyncedSubEventForms(sync.subEvents)
@@ -1805,6 +1817,18 @@ export class ActivitiesPopupComponent implements OnDestroy {
       capacityMax: sync.capacityMax ?? existing?.capacityMax ?? null,
       autoInviter: sync.autoInviter ?? existing?.autoInviter,
       frequency: sync.frequency ?? existing?.frequency,
+      slotsEnabled: sync.slotsEnabled ?? existing?.slotsEnabled,
+      slotTemplates: Array.isArray(sync.slotTemplates)
+        ? this.cloneSyncedSlotTemplates(sync.slotTemplates)
+        : this.cloneSyncedSlotTemplates(existing?.slotTemplates),
+      parentEventId: sync.parentEventId ?? existing?.parentEventId,
+      slotTemplateId: sync.slotTemplateId ?? existing?.slotTemplateId,
+      generated: sync.generated ?? existing?.generated,
+      eventType: sync.eventType ?? existing?.eventType,
+      nextSlot: sync.nextSlot ? { ...sync.nextSlot } : (existing?.nextSlot ? { ...existing.nextSlot } : null),
+      upcomingSlots: Array.isArray(sync.upcomingSlots)
+        ? sync.upcomingSlots.map(item => ({ ...item }))
+        : (existing?.upcomingSlots ? existing.upcomingSlots.map(item => ({ ...item })) : undefined),
       topics: Array.isArray(sync.topics) ? [...sync.topics] : [...(existing?.topics ?? [])],
       subEvents: Array.isArray(sync.subEvents)
         ? this.cloneSyncedSubEventForms(sync.subEvents)
@@ -1826,6 +1850,15 @@ export class ActivitiesPopupComponent implements OnDestroy {
         ? item.groups.map(group => ({ ...group }))
         : []
     }));
+  }
+
+  protected cloneSyncedSlotTemplates(
+    items: readonly AppTypes.EventSlotTemplate[] | null | undefined
+  ): AppTypes.EventSlotTemplate[] | undefined {
+    if (!Array.isArray(items)) {
+      return undefined;
+    }
+    return items.map(item => ({ ...item }));
   }
 
   private patchVisibleActivityRowsFromEventSync(sync: ActivitiesEventSyncPayload): void {
