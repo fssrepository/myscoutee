@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
+import { Component, EventEmitter, HostListener, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
@@ -16,6 +16,15 @@ interface PricingPreviewState {
   finalPrice: number;
   demandNotes: string[];
   timeNotes: string[];
+}
+
+type PricingScopedRule = AppTypes.PricingDemandRule | AppTypes.PricingTimeRule;
+
+interface RuleScopePickerState {
+  kind: 'demand' | 'time';
+  ruleId: string;
+  appliesTo: AppTypes.PricingRuleScope;
+  slotIds: string[];
 }
 
 @Component({
@@ -61,6 +70,7 @@ export class PricingEditorComponent implements OnChanges {
   protected resolvedShowPreview = true;
 
   private idSequence = 0;
+  private ruleScopePickerState: RuleScopePickerState | null = null;
 
   ngOnChanges(changes: SimpleChanges): void {
     if (
@@ -396,6 +406,131 @@ export class PricingEditorComponent implements OnChanges {
     this.emitPricing();
   }
 
+  protected toggleRuleScopePicker(
+    kind: 'demand' | 'time',
+    rule: PricingScopedRule,
+    event?: Event
+  ): void {
+    event?.stopPropagation();
+    if (this.readOnly) {
+      return;
+    }
+    if (this.isRuleScopePickerOpen(kind, rule)) {
+      this.closeRuleScopePicker();
+      return;
+    }
+    this.ruleScopePickerState = {
+      kind,
+      ruleId: rule.id,
+      appliesTo: rule.appliesTo,
+      slotIds: [...(rule.slotIds ?? [])]
+    };
+  }
+
+  protected isRuleScopePickerOpen(kind: 'demand' | 'time', rule: PricingScopedRule): boolean {
+    return this.ruleScopePickerState?.kind === kind && this.ruleScopePickerState.ruleId === rule.id;
+  }
+
+  protected ruleScopeButtonLabel(rule: PricingScopedRule): string {
+    if (rule.appliesTo !== 'selected_slots') {
+      return 'All slots';
+    }
+    if ((rule.slotIds?.length ?? 0) === 0) {
+      return 'Specific slots';
+    }
+    if (rule.slotIds.length === 1) {
+      return this.slotLabelById(rule.slotIds[0]) || 'Specific slots';
+    }
+    return `${rule.slotIds.length} slots selected`;
+  }
+
+  protected currentRuleScopeDraftMode(): AppTypes.PricingRuleScope {
+    return this.ruleScopePickerState?.appliesTo ?? 'all_slots';
+  }
+
+  protected currentRuleScopeDraftSlotIds(): string[] {
+    return [...(this.ruleScopePickerState?.slotIds ?? [])];
+  }
+
+  protected selectRuleScopeDraftMode(scope: AppTypes.PricingRuleScope, event?: Event): void {
+    event?.stopPropagation();
+    if (!this.ruleScopePickerState) {
+      return;
+    }
+    this.ruleScopePickerState = {
+      ...this.ruleScopePickerState,
+      appliesTo: scope,
+      slotIds: scope === 'all_slots'
+        ? []
+        : (this.ruleScopePickerState.slotIds.length > 0 ? [...this.ruleScopePickerState.slotIds] : this.defaultDraftSlotIds())
+    };
+  }
+
+  protected toggleRuleScopeDraftSlot(slotId: string, event?: Event): void {
+    event?.stopPropagation();
+    if (!this.ruleScopePickerState || this.ruleScopePickerState.appliesTo !== 'selected_slots') {
+      return;
+    }
+    const normalizedSlotId = `${slotId}`.trim();
+    if (!normalizedSlotId) {
+      return;
+    }
+    const slotIds = new Set(this.ruleScopePickerState.slotIds);
+    if (slotIds.has(normalizedSlotId)) {
+      slotIds.delete(normalizedSlotId);
+    } else {
+      slotIds.add(normalizedSlotId);
+    }
+    this.ruleScopePickerState = {
+      ...this.ruleScopePickerState,
+      slotIds: [...slotIds]
+    };
+  }
+
+  protected isRuleScopeDraftSlotSelected(slotId: string): boolean {
+    return this.ruleScopePickerState?.slotIds.includes(`${slotId}`.trim()) ?? false;
+  }
+
+  protected canApplyRuleScopeDraft(): boolean {
+    if (!this.ruleScopePickerState) {
+      return false;
+    }
+    return this.ruleScopePickerState.appliesTo === 'all_slots' || this.ruleScopePickerState.slotIds.length > 0;
+  }
+
+  protected applyRuleScopeDraft(rule: PricingScopedRule, event?: Event): void {
+    event?.stopPropagation();
+    if (!this.ruleScopePickerState || !this.canApplyRuleScopeDraft()) {
+      return;
+    }
+    rule.appliesTo = this.ruleScopePickerState.appliesTo;
+    rule.slotIds = rule.appliesTo === 'selected_slots'
+      ? [...this.ruleScopePickerState.slotIds]
+      : [];
+    this.closeRuleScopePicker();
+    this.emitPricing();
+  }
+
+  protected slotScopeWindowLabel(slot: AppTypes.PricingSlotReference): string {
+    const start = this.formatSlotTime(slot.startAt);
+    const end = this.formatSlotTime(slot.endAt);
+    if (!start && !end) {
+      return 'Time follows this slot.';
+    }
+    if (!start) {
+      return `Ends ${end}`;
+    }
+    if (!end) {
+      return `Starts ${start}`;
+    }
+    return `${start} - ${end}`;
+  }
+
+  @HostListener('document:click')
+  protected onDocumentClick(): void {
+    this.closeRuleScopePicker();
+  }
+
   protected previewState(): PricingPreviewState {
     const normalized = this.normalizePricingWithCapabilities(this.workingPricing);
     const activeSlotOverride = normalized.slotPricingEnabled
@@ -543,6 +678,38 @@ export class PricingEditorComponent implements OnChanges {
   private nextId(prefix: string): string {
     this.idSequence += 1;
     return `${prefix}-${Date.now()}-${this.idSequence}`;
+  }
+
+  private closeRuleScopePicker(): void {
+    this.ruleScopePickerState = null;
+  }
+
+  private defaultDraftSlotIds(): string[] {
+    const firstSlotId = `${this.slotCatalog[0]?.id ?? ''}`.trim();
+    return firstSlotId ? [firstSlotId] : [];
+  }
+
+  private slotLabelById(slotId: string | null | undefined): string {
+    const normalizedSlotId = `${slotId ?? ''}`.trim();
+    if (!normalizedSlotId) {
+      return '';
+    }
+    return this.slotCatalog.find(slot => slot.id === normalizedSlotId)?.label ?? '';
+  }
+
+  private formatSlotTime(value: string | null | undefined): string {
+    const raw = `${value ?? ''}`.trim();
+    if (!raw) {
+      return '';
+    }
+    const parsed = new Date(raw);
+    if (Number.isNaN(parsed.getTime())) {
+      return raw;
+    }
+    return parsed.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit'
+    });
   }
 
   private parseMoney(value: number | string): number | null {
