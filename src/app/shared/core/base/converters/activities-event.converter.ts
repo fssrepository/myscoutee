@@ -5,6 +5,7 @@ import type {
   InvitationMenuItem
 } from '../interfaces/activity-feed.interface';
 import type { DemoEventRecord } from '../../demo/models/events.model';
+import { PricingBuilder } from '../builders/pricing.builder';
 
 export function buildActivityEventRows(records: readonly DemoEventRecord[]): AppTypes.ActivityListRow[] {
   return records.map(record => toActivityEventRow(record));
@@ -174,6 +175,7 @@ function toEventMenuItem(record: DemoEventRecord): EventMenuItem {
     capacityMax: record.capacityMax,
     autoInviter: record.autoInviter,
     frequency: record.frequency,
+    pricing: record.pricing ? PricingBuilder.clonePricingConfig(record.pricing) : undefined,
     slotsEnabled: record.slotsEnabled,
     slotTemplates: (record.slotTemplates ?? []).map(item => ({ ...item })),
     parentEventId: record.parentEventId ?? null,
@@ -184,6 +186,12 @@ function toEventMenuItem(record: DemoEventRecord): EventMenuItem {
     upcomingSlots: (record.upcomingSlots ?? []).map(item => ({ ...item })),
     ticketing: record.ticketing,
     topics: [...record.topics],
+    subEvents: (record.subEvents ?? []).map(item => ({
+      ...item,
+      groups: Array.isArray(item.groups) ? item.groups.map(group => ({ ...group })) : [],
+      pricing: item.pricing ? PricingBuilder.clonePricingConfig(item.pricing) : undefined
+    })),
+    subEventsDisplayMode: record.subEventsDisplayMode,
     rating: record.rating,
     relevance: record.relevance,
     published: record.published
@@ -213,6 +221,7 @@ function toHostingMenuItem(record: DemoEventRecord): HostingMenuItem {
     capacityMax: record.capacityMax,
     autoInviter: record.autoInviter,
     frequency: record.frequency,
+    pricing: record.pricing ? PricingBuilder.clonePricingConfig(record.pricing) : undefined,
     slotsEnabled: record.slotsEnabled,
     slotTemplates: (record.slotTemplates ?? []).map(item => ({ ...item })),
     parentEventId: record.parentEventId ?? null,
@@ -223,6 +232,12 @@ function toHostingMenuItem(record: DemoEventRecord): HostingMenuItem {
     upcomingSlots: (record.upcomingSlots ?? []).map(item => ({ ...item })),
     ticketing: record.ticketing,
     topics: [...record.topics],
+    subEvents: (record.subEvents ?? []).map(item => ({
+      ...item,
+      groups: Array.isArray(item.groups) ? item.groups.map(group => ({ ...group })) : [],
+      pricing: item.pricing ? PricingBuilder.clonePricingConfig(item.pricing) : undefined
+    })),
+    subEventsDisplayMode: record.subEventsDisplayMode,
     rating: record.rating,
     relevance: record.relevance,
     published: record.published,

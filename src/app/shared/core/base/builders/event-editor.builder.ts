@@ -2,6 +2,7 @@ import type * as AppTypes from '../models';
 import type { DemoEventRecord } from '../../demo/models/events.model';
 import { AppUtils } from '../../../app-utils';
 import { EventEditorConverter } from '../converters/event-editor.converter';
+import { PricingBuilder } from './pricing.builder';
 
 export class EventEditorBuilder {
   static buildCreatedEventEditorId(
@@ -16,7 +17,8 @@ export class EventEditorBuilder {
   ): AppTypes.EventEditorSubEventItem[] {
     return items.map(item => ({
       ...item,
-      groups: (item.groups ?? []).map(group => ({ ...group }))
+      groups: (item.groups ?? []).map(group => ({ ...group })),
+      pricing: item.pricing ? PricingBuilder.clonePricingConfig(item.pricing) : undefined
     }));
   }
 
@@ -116,6 +118,7 @@ export class EventEditorBuilder {
         endAt: `${item.endAt ?? ''}`.trim(),
         location: EventEditorConverter.normalizeEventEditorLocation(item.location),
         optional: Boolean(item.optional),
+        pricing: item.pricing ? PricingBuilder.clonePricingConfig(item.pricing) : undefined,
         capacityMin,
         capacityMax,
         tournamentGroupCount: Number.isFinite(Number(rawItem['tournamentGroupCount']))
@@ -281,6 +284,10 @@ export class EventEditorBuilder {
       autoInviter: params.form.autoInviter,
       frequency: params.form.frequency,
       ticketing: params.form.ticketing,
+      pricing: PricingBuilder.syncSlotOverrides(
+        params.form.pricing,
+        PricingBuilder.slotCatalogFromEventSlotTemplates(this.buildPersistedEventEditorSlotTemplates(params.form.slotTemplates))
+      ),
       slotsEnabled: params.form.slotsEnabled,
       slotTemplates: this.buildPersistedEventEditorSlotTemplates(params.form.slotTemplates),
       visibility: params.form.visibility,

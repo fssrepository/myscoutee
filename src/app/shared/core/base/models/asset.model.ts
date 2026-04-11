@@ -1,5 +1,6 @@
 import type { ActivityMemberRole } from './activity-member.model';
 import type { ActivityListRow } from './activities-ui.model';
+import type { PricingConfig } from './pricing.model';
 
 export type AssetType = 'Car' | 'Accommodation' | 'Supplies';
 export type AssetFilterType = AssetType | 'Ticket';
@@ -29,6 +30,7 @@ export interface AssetCard {
   imageUrl: string;
   sourceLink: string;
   routes?: string[];
+  pricing?: PricingConfig | null;
   requests: AssetMemberRequest[];
 }
 

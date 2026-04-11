@@ -3,6 +3,7 @@ import { environment } from '../../environments/environment';
 
 import { DemoAssetBuilder } from '../shared/core/demo/builders';
 import { APP_STATIC_DATA } from '../shared/app-static-data';
+import { PricingBuilder } from '../shared/core/base/builders';
 import type * as AppTypes from '../shared/core/base/models';
 import { resolveCurrentDemoDelayMs } from '../shared/core/base/services/route-delay.service';
 import { AssetPopupStateService } from './asset-popup-state.service';
@@ -253,7 +254,8 @@ export class OwnedAssetsPopupFacadeService {
         details: card.details,
         imageUrl,
         sourceLink,
-        routes: AssetCardBuilder.normalizeAssetRoutes(card.type, card.routes)
+        routes: AssetCardBuilder.normalizeAssetRoutes(card.type, card.routes),
+        pricing: PricingBuilder.clonePricingConfig(card.pricing ?? PricingBuilder.createDefaultPricingConfig('asset'))
       };
       this.touchUiState();
       return;
@@ -391,7 +393,8 @@ export class OwnedAssetsPopupFacadeService {
         details: this.assetForm.details.trim() || DemoAssetBuilder.defaultAssetDetails(this.assetForm.type),
         imageUrl,
         sourceLink,
-        routes
+        routes,
+        pricing: PricingBuilder.clonePricingConfig(this.assetForm.pricing ?? PricingBuilder.createDefaultPricingConfig('asset'))
       };
       const resolvedVisibility: AppTypes.EventVisibility = this.isPopupOpen() ? 'Invitation only' : this.assetFormVisibility;
 
@@ -700,6 +703,7 @@ export class OwnedAssetsPopupFacadeService {
     this.pendingPersistSnapshot = this.assetCardsRef.map(card => ({
       ...card,
       routes: [...(card.routes ?? [])],
+      pricing: card.pricing ? PricingBuilder.clonePricingConfig(card.pricing) : undefined,
       requests: card.requests.map(request => ({ ...request }))
     }));
     if (this.persistTimerId !== null) {
@@ -791,6 +795,7 @@ export class OwnedAssetsPopupFacadeService {
       card.imageUrl,
       card.sourceLink,
       (card.routes ?? []).join('|'),
+      JSON.stringify(card.pricing ?? null),
       card.requests
         .map(request => [
           request.id,

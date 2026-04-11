@@ -1,5 +1,6 @@
 import { APP_STATIC_DATA } from '../../../app-static-data';
 import { ActivityMembersBuilder } from '../../base/builders/activity-members.builder';
+import { PricingBuilder } from '../../base/builders/pricing.builder';
 import { DemoEventSeedBuilder } from './demo-event-seed.builder';
 import { DemoUserSeedBuilder } from './demo-user-seed.builder';
 import type * as AppTypes from '../../../core/base/models';
@@ -227,6 +228,7 @@ interface DemoEventSeedOverrides {
   acceptedMemberUserIds?: string[];
   pendingMemberUserIds?: string[];
   topics?: string[];
+  pricing?: AppTypes.PricingConfig | null;
   subEvents?: AppTypes.SubEventFormItem[];
   subEventsDisplayMode?: AppTypes.SubEventsDisplayMode;
   rating?: number;
@@ -531,6 +533,7 @@ export class DemoEventsRepositoryBuilder {
     return {
       ...record,
       locationCoordinates: this.cloneLocationCoordinates(record.locationCoordinates),
+      pricing: record.pricing ? PricingBuilder.clonePricingConfig(record.pricing) : undefined,
       slotTemplates: (record.slotTemplates ?? []).map(item => ({ ...item })),
       nextSlot: record.nextSlot ? { ...record.nextSlot } : null,
       upcomingSlots: (record.upcomingSlots ?? []).map(item => ({ ...item })),
@@ -676,6 +679,7 @@ export class DemoEventsRepositoryBuilder {
       .map(userId => DEMO_EVENT_MEMBER_USERS.find(user => user.id === userId) ?? null)
       .filter((user): user is DemoUser => Boolean(user));
     const location = record.seed?.location?.trim() || this.buildSeededLocation(record, creator);
+    const ticketing = record.seed?.ticketing ?? this.resolveTicketing(record);
     return {
       creatorUserId: creator.id,
       creatorName: creator.name,
@@ -699,7 +703,10 @@ export class DemoEventsRepositoryBuilder {
       autoInviter: record.seed?.autoInviter ?? this.resolveAutoInviter(record),
       frequency: record.seed?.frequency?.trim()
         || this.parseFrequencyFromTimeframe((record as { timeframe?: string }).timeframe ?? startAtIso),
-      ticketing: record.seed?.ticketing ?? this.resolveTicketing(record),
+      ticketing,
+      pricing: record.seed?.pricing
+        ? PricingBuilder.clonePricingConfig(record.seed.pricing)
+        : PricingBuilder.createSamplePricingConfig(ticketing ? 'hybrid' : 'fixed'),
       slotsEnabled: false,
       slotTemplates: [],
       parentEventId: null,
@@ -1145,6 +1152,7 @@ export class DemoEventsRepositoryBuilder {
     return items.map(item => ({
       ...item,
       location: typeof item.location === 'string' ? item.location : '',
+      pricing: item.pricing ? PricingBuilder.clonePricingConfig(item.pricing) : undefined,
       groups: Array.isArray(item.groups)
         ? item.groups.map((group: AppTypes.SubEventGroupItem) => ({ ...group }))
         : []

@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 
 import { environment } from '../../../../../environments/environment';
 import type * as AppTypes from '../../../core/base/models';
+import { PricingBuilder } from '../../../core/base/builders';
 
 @Injectable({
   providedIn: 'root'
@@ -155,6 +156,7 @@ export class HttpAssetsRepository {
     return cards.map(card => ({
       ...card,
       routes: [...(card.routes ?? [])],
+      pricing: card.pricing ? PricingBuilder.clonePricingConfig(card.pricing) : undefined,
       requests: card.requests.map(request => ({ ...request }))
     }));
   }
@@ -187,6 +189,7 @@ export class HttpAssetsRepository {
       routes: Array.isArray(card?.routes)
         ? card.routes.map(route => `${route ?? ''}`.trim()).filter(route => route.length > 0)
         : [],
+      pricing: PricingBuilder.normalizePricingConfig(card?.pricing, { context: 'asset' }),
       requests: Array.isArray(card?.requests)
         ? card.requests
           .map(request => ({
@@ -213,6 +216,7 @@ export class HttpAssetsRepository {
       next[existingIndex] = {
         ...nextCard,
         routes: [...(nextCard.routes ?? [])],
+        pricing: nextCard.pricing ? PricingBuilder.clonePricingConfig(nextCard.pricing) : undefined,
         requests: nextCard.requests.map(request => ({ ...request }))
       };
       return next;
@@ -221,6 +225,7 @@ export class HttpAssetsRepository {
       {
         ...nextCard,
         routes: [...(nextCard.routes ?? [])],
+        pricing: nextCard.pricing ? PricingBuilder.clonePricingConfig(nextCard.pricing) : undefined,
         requests: nextCard.requests.map(request => ({ ...request }))
       },
       ...next

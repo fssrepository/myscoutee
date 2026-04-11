@@ -1,0 +1,641 @@
+import { CommonModule } from '@angular/common';
+import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { MatIconModule } from '@angular/material/icon';
+import { MatSelectModule } from '@angular/material/select';
+
+import { PricingBuilder } from '../../../core/base/builders';
+import type * as AppTypes from '../../../core/base/models';
+import { PricingSlotPanelComponent } from '../pricing-slot-panel';
+
+interface PricingPreviewState {
+  basePrice: number;
+  slotOverridePrice: number | null;
+  demandDelta: number;
+  timeDelta: number;
+  finalPrice: number;
+  demandNotes: string[];
+  timeNotes: string[];
+}
+
+@Component({
+  selector: 'app-pricing-editor',
+  standalone: true,
+  imports: [
+    CommonModule,
+    FormsModule,
+    MatIconModule,
+    MatSelectModule,
+    PricingSlotPanelComponent
+  ],
+  templateUrl: './pricing-editor.component.html',
+  styleUrl: './pricing-editor.component.scss'
+})
+export class PricingEditorComponent implements OnChanges {
+  @Input() pricing: AppTypes.PricingConfig | null | undefined = null;
+  @Output() readonly pricingChange = new EventEmitter<AppTypes.PricingConfig>();
+
+  @Input() context: 'event' | 'asset' | 'subevent' = 'event';
+  @Input() slotCatalog: readonly AppTypes.PricingSlotReference[] = [];
+  @Input() readOnly = false;
+  @Input() title = 'Pricing';
+  @Input() subtitle = '';
+  @Input() showAudienceSection = true;
+  @Input() showPreview = true;
+
+  protected workingPricing: AppTypes.PricingConfig = PricingBuilder.createDefaultPricingConfig('event');
+
+  protected readonly modeOptions: readonly AppTypes.PricingMode[] = ['fixed', 'demand-based', 'time-based', 'hybrid'];
+  protected readonly currencyOptions = ['USD', 'EUR', 'GBP', 'CZK'];
+  protected readonly taxModeOptions: readonly AppTypes.PricingTaxMode[] = ['excluded', 'included'];
+  protected readonly chargeTypeOptions: readonly AppTypes.PricingChargeType[] = ['per_attendee', 'per_booking', 'per_slot'];
+  protected readonly roundingOptions: readonly AppTypes.PricingRoundingMode[] = ['none', 'whole', 'half'];
+  protected readonly demandOperatorOptions: readonly AppTypes.PricingDemandOperator[] = ['gte', 'lte'];
+  protected readonly actionKindOptions: readonly AppTypes.PricingRuleActionKind[] = ['increase_percent', 'decrease_percent', 'set_exact_price'];
+  protected readonly ruleScopeOptions: readonly AppTypes.PricingRuleScope[] = ['all_slots', 'selected_slots'];
+  protected readonly timeTriggerOptions: readonly AppTypes.PricingTimeRuleTrigger[] = ['days_before_start', 'hours_before_start', 'specific_date'];
+  protected readonly soldOutLabelOptions = ['Show "Sold Out"', 'Hide from list', 'Show "Waitlist"'];
+
+  private idSequence = 0;
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['pricing'] || changes['slotCatalog'] || changes['context']) {
+      this.syncWorkingPricing();
+    }
+  }
+
+  protected setMode(mode: AppTypes.PricingMode): void {
+    if (this.readOnly || this.workingPricing.mode === mode) {
+      return;
+    }
+    this.workingPricing.mode = mode;
+    const supportsDemand = mode === 'demand-based' || mode === 'hybrid';
+    const supportsTime = mode === 'time-based' || mode === 'hybrid';
+    this.workingPricing.demandRulesEnabled = supportsDemand
+      ? (this.workingPricing.demandRulesEnabled || this.workingPricing.demandRules.length > 0)
+      : false;
+    this.workingPricing.timeRulesEnabled = supportsTime
+      ? (this.workingPricing.timeRulesEnabled || this.workingPricing.timeRules.length > 0)
+      : false;
+    if (supportsDemand && this.workingPricing.demandRules.length === 0) {
+      this.workingPricing.demandRules = [this.createDefaultDemandRule()];
+      this.workingPricing.demandRulesEnabled = true;
+    }
+    if (supportsTime && this.workingPricing.timeRules.length === 0) {
+      this.workingPricing.timeRules = [this.createDefaultTimeRule()];
+      this.workingPricing.timeRulesEnabled = true;
+    }
+    this.emitPricing();
+  }
+
+  protected modeLabel(mode: AppTypes.PricingMode): string {
+    switch (mode) {
+      case 'demand-based':
+        return 'Demand-based';
+      case 'time-based':
+        return 'Time-based';
+      case 'hybrid':
+        return 'Hybrid';
+      default:
+        return 'Fixed';
+    }
+  }
+
+  protected actionLabel(action: AppTypes.PricingRuleActionKind): string {
+    switch (action) {
+      case 'decrease_percent':
+        return 'Decrease by %';
+      case 'set_exact_price':
+        return 'Set exact price';
+      default:
+        return 'Increase by %';
+    }
+  }
+
+  protected chargeTypeLabel(chargeType: AppTypes.PricingChargeType): string {
+    switch (chargeType) {
+      case 'per_booking':
+        return 'Per booking';
+      case 'per_slot':
+        return 'Per slot';
+      default:
+        return 'Per attendee';
+    }
+  }
+
+  protected roundingLabel(rounding: AppTypes.PricingRoundingMode): string {
+    switch (rounding) {
+      case 'whole':
+        return 'Whole number';
+      case 'half':
+        return '0.50 steps';
+      default:
+        return 'No rounding';
+    }
+  }
+
+  protected taxModeLabel(mode: AppTypes.PricingTaxMode): string {
+    return mode === 'included' ? 'Included' : 'Excluded';
+  }
+
+  protected operatorLabel(operator: AppTypes.PricingDemandOperator): string {
+    return operator === 'lte' ? '<=' : '>=';
+  }
+
+  protected ruleScopeLabel(scope: AppTypes.PricingRuleScope): string {
+    return scope === 'selected_slots' ? 'Selected slots' : 'All slots';
+  }
+
+  protected timeTriggerLabel(trigger: AppTypes.PricingTimeRuleTrigger): string {
+    switch (trigger) {
+      case 'hours_before_start':
+        return 'Before event start by hours';
+      case 'specific_date':
+        return 'On specific date';
+      default:
+        return 'Before event start by days';
+    }
+  }
+
+  protected currencySymbol(currency: string): string {
+    switch (`${currency ?? ''}`.trim().toUpperCase()) {
+      case 'EUR':
+        return 'EUR';
+      case 'GBP':
+        return 'GBP';
+      case 'CZK':
+        return 'CZK';
+      default:
+        return '$';
+    }
+  }
+
+  protected showDemandSection(): boolean {
+    return this.workingPricing.mode === 'demand-based' || this.workingPricing.mode === 'hybrid';
+  }
+
+  protected showTimeSection(): boolean {
+    return this.workingPricing.mode === 'time-based' || this.workingPricing.mode === 'hybrid';
+  }
+
+  protected showSlotSection(): boolean {
+    return this.context !== 'subevent' || this.slotCatalog.length > 0 || this.workingPricing.slotOverrides.length > 0;
+  }
+
+  protected isDynamicMode(): boolean {
+    return this.workingPricing.mode !== 'fixed';
+  }
+
+  protected onStringFieldChange(): void {
+    this.emitPricing();
+  }
+
+  protected onBasePriceChange(value: number | string): void {
+    this.workingPricing.basePrice = this.parseMoney(value) ?? 0;
+    this.emitPricing();
+  }
+
+  protected onNullableMoneyFieldChange(field: 'minPrice' | 'maxPrice', value: number | string): void {
+    this.workingPricing[field] = this.parseMoney(value);
+    this.normalizePriceBounds();
+    this.emitPricing();
+  }
+
+  protected onAudienceMoneyFieldChange(field: 'memberPrice' | 'vipPrice', value: number | string): void {
+    this.workingPricing.audience[field] = this.parseMoney(value);
+    this.emitPricing();
+  }
+
+  protected onAudienceDiscountChange(value: number | string): void {
+    this.workingPricing.audience.inviteOnlyDiscountPercent = this.parsePercent(value);
+    this.emitPricing();
+  }
+
+  protected toggleDemandRulesEnabled(): void {
+    if (this.readOnly) {
+      return;
+    }
+    this.workingPricing.demandRulesEnabled = !this.workingPricing.demandRulesEnabled;
+    if (this.workingPricing.demandRulesEnabled && this.workingPricing.demandRules.length === 0) {
+      this.workingPricing.demandRules = [this.createDefaultDemandRule()];
+    }
+    this.emitPricing();
+  }
+
+  protected toggleTimeRulesEnabled(): void {
+    if (this.readOnly) {
+      return;
+    }
+    this.workingPricing.timeRulesEnabled = !this.workingPricing.timeRulesEnabled;
+    if (this.workingPricing.timeRulesEnabled && this.workingPricing.timeRules.length === 0) {
+      this.workingPricing.timeRules = [this.createDefaultTimeRule()];
+    }
+    this.emitPricing();
+  }
+
+  protected toggleAudienceEnabled(): void {
+    if (this.readOnly) {
+      return;
+    }
+    this.workingPricing.audience.enabled = !this.workingPricing.audience.enabled;
+    this.emitPricing();
+  }
+
+  protected addDemandRule(): void {
+    if (this.readOnly) {
+      return;
+    }
+    this.workingPricing.demandRules = [
+      ...this.workingPricing.demandRules,
+      this.createDefaultDemandRule()
+    ];
+    this.workingPricing.demandRulesEnabled = true;
+    this.emitPricing();
+  }
+
+  protected removeDemandRule(index: number): void {
+    if (this.readOnly || index < 0 || index >= this.workingPricing.demandRules.length) {
+      return;
+    }
+    this.workingPricing.demandRules = this.workingPricing.demandRules.filter((_, itemIndex) => itemIndex !== index);
+    this.emitPricing();
+  }
+
+  protected addTimeRule(): void {
+    if (this.readOnly) {
+      return;
+    }
+    this.workingPricing.timeRules = [
+      ...this.workingPricing.timeRules,
+      this.createDefaultTimeRule()
+    ];
+    this.workingPricing.timeRulesEnabled = true;
+    this.emitPricing();
+  }
+
+  protected removeTimeRule(index: number): void {
+    if (this.readOnly || index < 0 || index >= this.workingPricing.timeRules.length) {
+      return;
+    }
+    this.workingPricing.timeRules = this.workingPricing.timeRules.filter((_, itemIndex) => itemIndex !== index);
+    this.emitPricing();
+  }
+
+  protected addPromoCode(): void {
+    if (this.readOnly) {
+      return;
+    }
+    this.workingPricing.audience.promoCodes = [
+      ...this.workingPricing.audience.promoCodes,
+      {
+        id: this.nextId('promo'),
+        code: '',
+        action: {
+          kind: 'decrease_percent',
+          value: 10
+        }
+      }
+    ];
+    this.workingPricing.audience.enabled = true;
+    this.emitPricing();
+  }
+
+  protected removePromoCode(index: number): void {
+    if (this.readOnly || index < 0 || index >= this.workingPricing.audience.promoCodes.length) {
+      return;
+    }
+    this.workingPricing.audience.promoCodes = this.workingPricing.audience.promoCodes.filter((_, itemIndex) => itemIndex !== index);
+    this.emitPricing();
+  }
+
+  protected onDemandRuleThresholdChange(rule: AppTypes.PricingDemandRule, value: number | string): void {
+    rule.capacityFilledPercent = this.parsePercent(value) ?? rule.capacityFilledPercent;
+    this.emitPricing();
+  }
+
+  protected onDemandRuleActionValueChange(rule: AppTypes.PricingDemandRule, value: number | string): void {
+    rule.action.value = this.parseMoney(value) ?? 0;
+    this.emitPricing();
+  }
+
+  protected onDemandRuleScopeChange(rule: AppTypes.PricingDemandRule, scope: AppTypes.PricingRuleScope): void {
+    rule.appliesTo = scope;
+    if (scope === 'all_slots') {
+      rule.slotIds = [];
+    }
+    this.emitPricing();
+  }
+
+  protected onDemandRuleSlotIdsChange(rule: AppTypes.PricingDemandRule, value: string[] | null | undefined): void {
+    rule.slotIds = Array.isArray(value) ? value.map(item => `${item}`.trim()).filter(item => item.length > 0) : [];
+    this.emitPricing();
+  }
+
+  protected onTimeRuleOffsetChange(rule: AppTypes.PricingTimeRule, value: number | string): void {
+    rule.offsetValue = this.parseInteger(value);
+    this.emitPricing();
+  }
+
+  protected onTimeRuleDateChange(rule: AppTypes.PricingTimeRule, value: string | null | undefined): void {
+    const normalized = `${value ?? ''}`.trim();
+    rule.specificDate = normalized || null;
+    this.emitPricing();
+  }
+
+  protected onTimeRuleActionValueChange(rule: AppTypes.PricingTimeRule, value: number | string): void {
+    rule.action.value = this.parseMoney(value) ?? 0;
+    this.emitPricing();
+  }
+
+  protected onTimeRuleScopeChange(rule: AppTypes.PricingTimeRule, scope: AppTypes.PricingRuleScope): void {
+    rule.appliesTo = scope;
+    if (scope === 'all_slots') {
+      rule.slotIds = [];
+    }
+    this.emitPricing();
+  }
+
+  protected onTimeRuleSlotIdsChange(rule: AppTypes.PricingTimeRule, value: string[] | null | undefined): void {
+    rule.slotIds = Array.isArray(value) ? value.map(item => `${item}`.trim()).filter(item => item.length > 0) : [];
+    this.emitPricing();
+  }
+
+  protected onPromoCodeTextChange(code: AppTypes.PricingPromoCode, value: string | null | undefined): void {
+    code.code = `${value ?? ''}`.trim().toUpperCase();
+    this.emitPricing();
+  }
+
+  protected onPromoCodeActionValueChange(code: AppTypes.PricingPromoCode, value: number | string): void {
+    code.action.value = this.parseMoney(value) ?? 0;
+    this.emitPricing();
+  }
+
+  protected onSlotPricingEnabledChange(value: boolean): void {
+    this.workingPricing.slotPricingEnabled = value;
+    this.emitPricing();
+  }
+
+  protected onSlotOverridesChange(overrides: AppTypes.PricingSlotOverride[]): void {
+    this.workingPricing.slotOverrides = overrides.map(item => ({ ...item }));
+    this.emitPricing();
+  }
+
+  protected previewState(): PricingPreviewState {
+    const normalized = PricingBuilder.syncSlotOverrides(this.workingPricing, this.slotCatalog);
+    const activeSlotOverride = normalized.slotPricingEnabled
+      ? normalized.slotOverrides.find(item => item.price !== null) ?? null
+      : null;
+    const previewSlotId = activeSlotOverride?.slotId ?? null;
+    let runningPrice = activeSlotOverride?.price ?? normalized.basePrice;
+    const basePrice = runningPrice;
+    const demandNotes: string[] = [];
+    const timeNotes: string[] = [];
+
+    if (this.showDemandSection() && normalized.demandRulesEnabled) {
+      for (const rule of normalized.demandRules) {
+        if (!this.matchesDemandRule(rule, 50, previewSlotId)) {
+          continue;
+        }
+        const nextPrice = this.applyRuleAction(runningPrice, rule.action);
+        demandNotes.push(this.describeDemandRule(rule));
+        runningPrice = nextPrice;
+      }
+    }
+    const priceAfterDemand = runningPrice;
+
+    if (this.showTimeSection() && normalized.timeRulesEnabled) {
+      for (const rule of normalized.timeRules) {
+        if (!this.matchesTimeRule(rule, 72, previewSlotId)) {
+          continue;
+        }
+        const nextPrice = this.applyRuleAction(runningPrice, rule.action);
+        timeNotes.push(this.describeTimeRule(rule));
+        runningPrice = nextPrice;
+      }
+    }
+
+    const clamped = this.clampPrice(runningPrice);
+    const finalPrice = this.applyRounding(clamped);
+    return {
+      basePrice,
+      slotOverridePrice: activeSlotOverride?.price ?? null,
+      demandDelta: priceAfterDemand - basePrice,
+      timeDelta: clamped - priceAfterDemand,
+      finalPrice,
+      demandNotes,
+      timeNotes
+    };
+  }
+
+  protected previewExplanationLines(): string[] {
+    const preview = this.previewState();
+    return [
+      ...(preview.slotOverridePrice !== null ? [`Slot override: ${this.formatMoney(preview.slotOverridePrice)}`] : []),
+      ...preview.demandNotes,
+      ...preview.timeNotes
+    ];
+  }
+
+  protected trackByRule(index: number, rule: { id: string }): string {
+    return rule.id || `rule-${index}`;
+  }
+
+  private syncWorkingPricing(): void {
+    this.workingPricing = PricingBuilder.normalizePricingConfig(this.pricing, {
+      context: this.context,
+      slotCatalog: this.slotCatalog
+    });
+  }
+
+  protected emitPricing(): void {
+    this.normalizePriceBounds();
+    this.workingPricing = PricingBuilder.syncSlotOverrides(this.workingPricing, this.slotCatalog);
+    this.pricingChange.emit(PricingBuilder.clonePricingConfig(this.workingPricing));
+  }
+
+  private normalizePriceBounds(): void {
+    if (this.workingPricing.minPrice !== null && this.workingPricing.minPrice < 0) {
+      this.workingPricing.minPrice = 0;
+    }
+    if (this.workingPricing.maxPrice !== null && this.workingPricing.maxPrice < 0) {
+      this.workingPricing.maxPrice = 0;
+    }
+    if (
+      this.workingPricing.minPrice !== null
+      && this.workingPricing.maxPrice !== null
+      && this.workingPricing.maxPrice < this.workingPricing.minPrice
+    ) {
+      this.workingPricing.maxPrice = this.workingPricing.minPrice;
+    }
+  }
+
+  private createDefaultDemandRule(): AppTypes.PricingDemandRule {
+    return {
+      id: this.nextId('demand-rule'),
+      operator: 'gte',
+      capacityFilledPercent: 50,
+      action: {
+        kind: 'increase_percent',
+        value: 10
+      },
+      appliesTo: 'all_slots',
+      slotIds: []
+    };
+  }
+
+  private createDefaultTimeRule(): AppTypes.PricingTimeRule {
+    return {
+      id: this.nextId('time-rule'),
+      trigger: 'days_before_start',
+      offsetValue: 7,
+      specificDate: null,
+      action: {
+        kind: 'decrease_percent',
+        value: 5
+      },
+      appliesTo: 'all_slots',
+      slotIds: []
+    };
+  }
+
+  private nextId(prefix: string): string {
+    this.idSequence += 1;
+    return `${prefix}-${Date.now()}-${this.idSequence}`;
+  }
+
+  private parseMoney(value: number | string): number | null {
+    if (value === '' || value === null || value === undefined) {
+      return null;
+    }
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) {
+      return null;
+    }
+    return Math.max(0, Math.round(parsed * 100) / 100);
+  }
+
+  private parsePercent(value: number | string): number | null {
+    const parsed = this.parseMoney(value);
+    if (parsed === null) {
+      return null;
+    }
+    return Math.max(0, Math.min(100, parsed));
+  }
+
+  private parseInteger(value: number | string): number | null {
+    if (value === '' || value === null || value === undefined) {
+      return null;
+    }
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) {
+      return null;
+    }
+    return Math.max(0, Math.trunc(parsed));
+  }
+
+  private matchesDemandRule(
+    rule: AppTypes.PricingDemandRule,
+    capacityFilledPercent: number,
+    activeSlotId: string | null
+  ): boolean {
+    if (rule.appliesTo === 'selected_slots') {
+      if (!activeSlotId || !rule.slotIds.includes(activeSlotId)) {
+        return false;
+      }
+    }
+    if (rule.operator === 'lte') {
+      return capacityFilledPercent <= rule.capacityFilledPercent;
+    }
+    return capacityFilledPercent >= rule.capacityFilledPercent;
+  }
+
+  private matchesTimeRule(
+    rule: AppTypes.PricingTimeRule,
+    hoursUntilStart: number,
+    activeSlotId: string | null
+  ): boolean {
+    if (rule.appliesTo === 'selected_slots') {
+      if (!activeSlotId || !rule.slotIds.includes(activeSlotId)) {
+        return false;
+      }
+    }
+    if (rule.trigger === 'specific_date') {
+      const target = `${rule.specificDate ?? ''}`.trim();
+      if (!target) {
+        return false;
+      }
+      const today = new Date();
+      const normalizedToday = `${today.getFullYear()}-${`${today.getMonth() + 1}`.padStart(2, '0')}-${`${today.getDate()}`.padStart(2, '0')}`;
+      return normalizedToday === target;
+    }
+    const offset = Math.max(0, Math.trunc(Number(rule.offsetValue) || 0));
+    if (rule.trigger === 'hours_before_start') {
+      return hoursUntilStart <= offset;
+    }
+    return hoursUntilStart <= (offset * 24);
+  }
+
+  private applyRuleAction(price: number, action: AppTypes.PricingAction): number {
+    const value = Math.max(0, Number(action.value) || 0);
+    switch (action.kind) {
+      case 'decrease_percent':
+        return Math.max(0, price - ((price * value) / 100));
+      case 'set_exact_price':
+        return value;
+      default:
+        return price + ((price * value) / 100);
+    }
+  }
+
+  private clampPrice(price: number): number {
+    const min = this.workingPricing.minPrice;
+    const max = this.workingPricing.maxPrice;
+    let nextPrice = price;
+    if (min !== null) {
+      nextPrice = Math.max(min, nextPrice);
+    }
+    if (max !== null) {
+      nextPrice = Math.min(max, nextPrice);
+    }
+    return Math.max(0, nextPrice);
+  }
+
+  private applyRounding(price: number): number {
+    switch (this.workingPricing.rounding) {
+      case 'whole':
+        return Math.round(price);
+      case 'half':
+        return Math.round(price * 2) / 2;
+      default:
+        return Math.round(price * 100) / 100;
+    }
+  }
+
+  private describeDemandRule(rule: AppTypes.PricingDemandRule): string {
+    return `${rule.operator === 'lte' ? '<=' : '>='} ${rule.capacityFilledPercent}% capacity filled`;
+  }
+
+  private describeTimeRule(rule: AppTypes.PricingTimeRule): string {
+    if (rule.trigger === 'specific_date') {
+      return `Specific date ${rule.specificDate ?? ''}`.trim();
+    }
+    const offset = Math.max(0, Math.trunc(Number(rule.offsetValue) || 0));
+    return rule.trigger === 'hours_before_start'
+      ? `Within ${offset} hours of start`
+      : `Within ${offset} days of start`;
+  }
+
+  private formatMoney(value: number | null | undefined): string {
+    const amount = Math.max(0, Number(value) || 0);
+    const currency = this.workingPricing.currency || 'USD';
+    try {
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency,
+        maximumFractionDigits: currency === 'CZK' ? 0 : 2
+      }).format(amount);
+    } catch {
+      return `${this.currencySymbol(currency)}${amount.toFixed(2)}`;
+    }
+  }
+}

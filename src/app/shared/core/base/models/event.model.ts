@@ -1,3 +1,5 @@
+import type { PricingConfig } from './pricing.model';
+
 export interface EventFeedbackOption {
   value: string;
   label: string;
@@ -169,6 +171,7 @@ export interface EventEditorForm {
   blindMode: EventBlindMode;
   autoInviter: boolean;
   ticketing: boolean;
+  pricing?: PricingConfig | null;
   topics: string[];
   slotsEnabled: boolean;
   slotTemplates: EventSlotTemplate[];
@@ -200,6 +203,7 @@ export interface SubEventFormItem {
   carsAccepted?: number;
   accommodationAccepted?: number;
   suppliesAccepted?: number;
+  pricing?: PricingConfig | null;
   carsCapacityMin?: number;
   carsCapacityMax?: number;
   accommodationCapacityMin?: number;

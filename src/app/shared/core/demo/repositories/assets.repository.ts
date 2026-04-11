@@ -1,5 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 
+import { PricingBuilder } from '../../../core/base/builders';
 import { DemoAssetBuilder, DemoUserSeedBuilder } from '../builders';
 import type * as AppTypes from '../../../core/base/models';
 import type { DemoUser } from '../../base/interfaces/user.interface';
@@ -105,11 +106,12 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
       };
     });
 
-    return {
-      ...normalizedAsset,
-      routes: [...(normalizedAsset.routes ?? [])],
-      requests: normalizedAsset.requests.map(request => ({ ...request }))
-    };
+      return {
+        ...normalizedAsset,
+        routes: [...(normalizedAsset.routes ?? [])],
+        pricing: normalizedAsset.pricing ? PricingBuilder.clonePricingConfig(normalizedAsset.pricing) : undefined,
+        requests: normalizedAsset.requests.map(request => ({ ...request }))
+      };
   }
 
   override async replaceOwnedAssets(
@@ -163,6 +165,7 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
     return normalizedAssets.map(asset => ({
       ...asset,
       routes: [...(asset.routes ?? [])],
+      pricing: asset.pricing ? PricingBuilder.clonePricingConfig(asset.pricing) : undefined,
       requests: asset.requests.map(request => ({ ...request }))
     }));
   }
@@ -205,6 +208,7 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
         city: owner.city || card.city,
         imageUrl,
         sourceLink: imageUrl,
+        pricing: PricingBuilder.createSamplePricingConfig(card.type === 'Supplies' ? 'fixed' : 'hybrid'),
         ownerUserId,
         visibility: 'Invitation only',
         requests: this.buildSeededRequests(ownerUserId, card.type, otherUsers, index),
@@ -272,6 +276,7 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
       imageUrl: record.imageUrl,
       sourceLink: record.sourceLink,
       routes: [...(record.routes ?? [])],
+      pricing: record.pricing ? PricingBuilder.clonePricingConfig(record.pricing) : undefined,
       requests: record.requests.map(request => ({ ...request }))
     };
   }

@@ -9,6 +9,8 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTimepickerModule } from '@angular/material/timepicker';
 import { AppUtils } from '../../../shared/app-utils';
+import type * as AppTypes from '../../../shared/core/base/models';
+import { PricingEditorComponent } from '../../../shared/ui';
 
 export type EventSubeventStageFormModeClass = 'subevent-mode-mandatory' | 'subevent-mode-optional';
 export type EventSubeventStageInsertPlacement = 'before' | 'after';
@@ -47,6 +49,7 @@ export interface EventSubeventStageFormModel {
   startAt: string;
   endAt: string;
   optional: boolean;
+  pricing?: AppTypes.PricingConfig | null;
   capacityMin: number;
   capacityMax: number;
   tournamentGroupCapacityMin?: number;
@@ -67,7 +70,8 @@ export interface EventSubeventStageFormModel {
     MatInputModule,
     MatDatepickerModule,
     MatTimepickerModule,
-    MatNativeDateModule
+    MatNativeDateModule,
+    PricingEditorComponent
   ],
   templateUrl: './event-subevent-stage-form-popup.component.html',
   styleUrls: ['./event-subevent-stage-form-popup.component.scss']
@@ -81,6 +85,7 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
     startAt: '',
     endAt: '',
     optional: false,
+    pricing: null,
     capacityMin: 0,
     capacityMax: 0
   };

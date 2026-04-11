@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { of } from 'rxjs';
+import { PricingBuilder } from '../../../shared/core/base/builders';
 import { resolveCurrentDemoDelayMs } from '../../../shared/core/base/services/route-delay.service';
 import { EventSubeventGroupFormPopupComponent } from '../event-subevent-group-form-popup/event-subevent-group-form-popup.component';
 import { EventSubeventLeaderboardGroup, EventSubeventLeaderboardPopupComponent } from '../event-subevent-leaderboard-popup/event-subevent-leaderboard-popup.component';
@@ -44,6 +45,7 @@ export interface EventSubeventsItem {
   description?: string;
   location?: string;
   optional?: boolean;
+  pricing?: AppTypes.PricingConfig | null;
   startAt?: string;
   endAt?: string;
   capacityMin?: number;
@@ -138,6 +140,7 @@ interface SubEventFormModel {
   startAt: string;
   endAt: string;
   optional: boolean;
+  pricing?: AppTypes.PricingConfig | null;
   capacityMin: number;
   capacityMax: number;
   tournamentGroupCount?: number;
@@ -387,6 +390,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
       startAt: this.toInputDateTime(start),
       endAt: this.toInputDateTime(end),
       optional: this.displayMode !== 'Tournament',
+      pricing: PricingBuilder.createDefaultPricingConfig('subevent'),
       capacityMin: fallbackStageMin,
       capacityMax: fallbackStageMax,
       tournamentGroupCount: undefined,
@@ -1083,6 +1087,11 @@ export class EventSubeventsPopupComponent implements OnChanges {
       description: this.subEventForm.description.trim(),
       location: this.subEventForm.location.trim(),
       optional: forceMandatoryTournament ? false : this.subEventForm.optional,
+      pricing: PricingBuilder.clonePricingConfig(
+        this.subEventForm.pricing
+        ?? existingItem?.pricing
+        ?? PricingBuilder.createDefaultPricingConfig('subevent')
+      ),
       startAt: dateRange.startAt,
       endAt: dateRange.endAt,
       capacityMin: normalizedCapacityMin,
@@ -1650,6 +1659,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
       startAt: this.toInputDateTime(this.parseDateValue(sourceItem.startAt) ?? new Date()),
       endAt: this.toInputDateTime(this.parseDateValue(sourceItem.endAt) ?? new Date(Date.now() + (2 * 60 * 60 * 1000))),
       optional: sourceItem.optional ?? (this.displayMode !== 'Tournament'),
+      pricing: PricingBuilder.clonePricingConfig(sourceItem.pricing ?? PricingBuilder.createDefaultPricingConfig('subevent')),
       capacityMin: Math.max(0, Number(sourceItem.capacityMin) || 0),
       capacityMax: Math.max(
         Math.max(0, Number(sourceItem.capacityMin) || 0),
@@ -2817,6 +2827,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
       startAt: '',
       endAt: '',
       optional: this.displayMode !== 'Tournament',
+      pricing: PricingBuilder.createDefaultPricingConfig('subevent'),
       capacityMin: 4,
       capacityMax: 7,
       tournamentGroupCount: undefined,
@@ -2865,6 +2876,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
   private cloneSubEvents(items: readonly EventSubeventsItem[]): EventSubeventsItem[] {
     return items.map(item => ({
       ...item,
+      pricing: item.pricing ? PricingBuilder.clonePricingConfig(item.pricing) : undefined,
       groups: this.cloneGroups(item.groups)
     }));
   }

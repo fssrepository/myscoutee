@@ -1,0 +1,252 @@
+:host {
+  display: block;
+}
+
+.pricing-slot-panel {
+  display: grid;
+  gap: 0.82rem;
+  padding: 1rem;
+  border: 1px solid rgba(132, 162, 199, 0.3);
+  border-radius: 20px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(244, 248, 255, 0.92) 100%),
+    radial-gradient(circle at top right, rgba(105, 189, 176, 0.16), transparent 48%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.88);
+}
+
+.pricing-slot-panel__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.pricing-slot-panel__copy h4 {
+  margin: 0;
+  color: #213a5b;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.pricing-slot-panel__copy p {
+  margin: 0.28rem 0 0;
+  color: rgba(57, 82, 115, 0.8);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.pricing-slot-panel__toggle,
+.pricing-slot-panel__add,
+.pricing-slot-panel__remove {
+  border: 0;
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease;
+}
+
+.pricing-slot-panel__toggle {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.38rem;
+  padding: 0.34rem 0.56rem;
+  border-radius: 999px;
+  color: #245f58;
+  background: rgba(229, 247, 241, 0.92);
+  box-shadow: inset 0 0 0 1px rgba(81, 174, 147, 0.3);
+  font-weight: 700;
+}
+
+.pricing-slot-panel__toggle.is-off {
+  color: #60748e;
+  background: rgba(239, 244, 251, 0.96);
+  box-shadow: inset 0 0 0 1px rgba(129, 150, 177, 0.24);
+}
+
+.pricing-slot-panel__toggle mat-icon {
+  width: 24px;
+  height: 24px;
+  font-size: 24px;
+}
+
+.pricing-slot-panel__toggle:disabled,
+.pricing-slot-panel__add:disabled,
+.pricing-slot-panel__remove:disabled {
+  cursor: default;
+  opacity: 0.55;
+  transform: none;
+}
+
+.pricing-slot-panel__cards {
+  display: grid;
+  gap: 0.78rem;
+}
+
+.pricing-slot-panel__card {
+  display: grid;
+  gap: 0.7rem;
+  padding: 0.88rem;
+  border-radius: 16px;
+  border: 1px solid rgba(111, 143, 183, 0.22);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(250, 252, 255, 0.9) 100%),
+    radial-gradient(circle at top left, rgba(114, 165, 217, 0.12), transparent 58%);
+}
+
+.pricing-slot-panel__card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.pricing-slot-panel__card-title {
+  color: #21405f;
+  font-size: 0.93rem;
+  font-weight: 800;
+}
+
+.pricing-slot-panel__remove {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #6d829a;
+  background: rgba(240, 245, 251, 0.96);
+  box-shadow: inset 0 0 0 1px rgba(125, 146, 173, 0.22);
+}
+
+.pricing-slot-panel__remove mat-icon {
+  width: 18px;
+  height: 18px;
+  font-size: 18px;
+}
+
+.pricing-slot-panel__card-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 0.95fr);
+  gap: 0.78rem;
+}
+
+.pricing-slot-panel__field {
+  display: grid;
+  gap: 0.34rem;
+}
+
+.pricing-slot-panel__field > span {
+  color: rgba(31, 57, 88, 0.88);
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+}
+
+.pricing-slot-panel__select-shell,
+.pricing-slot-panel__money-field {
+  min-height: 46px;
+  border-radius: 14px;
+  border: 1px solid rgba(126, 149, 180, 0.28);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.92);
+}
+
+.pricing-slot-panel__select-shell {
+  display: flex;
+  align-items: center;
+  padding: 0 0.68rem;
+}
+
+.pricing-slot-panel__select-shell ::ng-deep .mat-mdc-select-trigger {
+  min-height: 44px;
+}
+
+.pricing-slot-panel__select-shell ::ng-deep .mat-mdc-form-field-subscript-wrapper {
+  display: none;
+}
+
+.pricing-slot-panel__money-field {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.48rem;
+  padding: 0 0.7rem;
+}
+
+.pricing-slot-panel__money-prefix,
+.pricing-slot-panel__money-code {
+  color: rgba(66, 87, 115, 0.78);
+  font-weight: 800;
+  font-size: 0.85rem;
+}
+
+.pricing-slot-panel__money-field input {
+  min-width: 0;
+  width: 100%;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: #203d5d;
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.pricing-slot-panel__meta {
+  margin: 0;
+  color: rgba(58, 82, 114, 0.8);
+  font-size: 0.79rem;
+}
+
+.pricing-slot-panel__empty {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-height: 48px;
+  padding: 0.8rem 0.9rem;
+  border-radius: 16px;
+  border: 1px dashed rgba(115, 145, 184, 0.35);
+  color: rgba(46, 72, 108, 0.86);
+  background: rgba(247, 250, 255, 0.78);
+}
+
+.pricing-slot-panel__empty--muted {
+  color: rgba(84, 103, 128, 0.78);
+}
+
+.pricing-slot-panel__add {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.46rem;
+  padding: 0.66rem 0.92rem;
+  border-radius: 14px;
+  color: #214763;
+  background: linear-gradient(180deg, #ffffff 0%, #eff6ff 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(99, 137, 184, 0.26),
+    0 10px 22px rgba(31, 58, 97, 0.08);
+  font-size: 0.88rem;
+  font-weight: 800;
+}
+
+.pricing-slot-panel__add mat-icon {
+  width: 18px;
+  height: 18px;
+  font-size: 18px;
+}
+
+@media (max-width: 720px) {
+  .pricing-slot-panel__head {
+    flex-direction: column;
+  }
+
+  .pricing-slot-panel__card-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .pricing-slot-panel__add {
+    width: 100%;
+    justify-content: center;
+  }
+}

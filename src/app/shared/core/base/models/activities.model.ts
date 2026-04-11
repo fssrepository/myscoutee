@@ -13,6 +13,7 @@ import type {
   EventVisibility,
   SubEventFormItem
 } from './event.model';
+import type { PricingConfig } from './pricing.model';
 
 export type SubEventAssetAssignmentIds = Partial<Record<AssetType, string[]>>;
 export type SubEventAssetCardsByType = Partial<Record<AssetType, AssetCard[]>>;
@@ -132,6 +133,7 @@ export interface ActivitiesEventSyncPayload {
   autoInviter?: boolean;
   frequency?: string;
   ticketing?: boolean;
+  pricing?: PricingConfig | null;
   slotsEnabled?: boolean;
   slotTemplates?: EventSlotTemplate[];
   parentEventId?: string | null;

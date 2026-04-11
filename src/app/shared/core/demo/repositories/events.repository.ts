@@ -19,6 +19,7 @@ import {
 import type * as AppTypes from '../../../core/base/models';
 import type { ActivitiesEventSyncPayload } from '../../../core/base/models';
 import { EventEditorBuilder } from '../../../core/base/builders';
+import { PricingBuilder } from '../../../core/base/builders/pricing.builder';
 import { USERS_TABLE_NAME } from '../models/users.model';
 import type { LocationCoordinates } from '../../base/interfaces';
 
@@ -1097,6 +1098,13 @@ export class DemoEventsRepository {
     const topics = this.normalizeTopics(payload.topics ?? existing?.topics ?? []);
     const subEvents = this.cloneSubEvents(payload.subEvents ?? existing?.subEvents);
     const ticketing = payload.ticketing ?? existing?.ticketing ?? false;
+    const pricing = PricingBuilder.syncSlotOverrides(
+      PricingBuilder.normalizePricingConfig(payload.pricing ?? existing?.pricing, {
+        context: 'event',
+        slotCatalog: PricingBuilder.slotCatalogFromEventSlotTemplates(payload.slotTemplates ?? existing?.slotTemplates ?? [])
+      }),
+      PricingBuilder.slotCatalogFromEventSlotTemplates(payload.slotTemplates ?? existing?.slotTemplates ?? [])
+    );
     const rating = existing?.rating ?? (6 + ((AppUtils.hashText(`${context.type}:${payload.id}:${payload.title}`) % 35) / 10));
     const relevance = existing?.relevance ?? (50 + (AppUtils.hashText(`${context.type}:${payload.id}:${payload.title}`) % 51));
     const usersTable = this.memoryDb.read()[USERS_TABLE_NAME];
@@ -1156,6 +1164,7 @@ export class DemoEventsRepository {
         : (typeof existing?.autoInviter === 'boolean' ? existing.autoInviter : false),
       frequency: payload.frequency?.trim() || existing?.frequency || 'One-time',
       ticketing,
+      pricing,
       slotsEnabled: payload.slotsEnabled ?? existing?.slotsEnabled ?? false,
       slotTemplates: EventEditorBuilder.cloneEventEditorSlotTemplates(payload.slotTemplates ?? existing?.slotTemplates ?? []),
       parentEventId: payload.parentEventId ?? existing?.parentEventId ?? null,

@@ -2,6 +2,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 
 import { environment } from '../../../../../environments/environment';
+import { PricingBuilder } from '../../../core/base/builders';
 import type {
   ActivitiesEventSyncPayload,
   EventFeedbackNoteRequestDto,
@@ -318,12 +319,14 @@ export class HttpEventsService {
       acceptedMemberUserIds: [...(record.acceptedMemberUserIds ?? [])],
       pendingMemberUserIds: [...(record.pendingMemberUserIds ?? [])],
       topics: [...(record.topics ?? [])],
+      pricing: record.pricing ? PricingBuilder.clonePricingConfig(record.pricing) : undefined,
       slotTemplates: (record.slotTemplates ?? []).map(item => ({ ...item })),
       nextSlot: record.nextSlot ? { ...record.nextSlot } : null,
       upcomingSlots: (record.upcomingSlots ?? []).map(item => ({ ...item })),
       subEvents: (record.subEvents ?? []).map(item => ({
         ...item,
-        groups: Array.isArray(item.groups) ? item.groups.map(group => ({ ...group })) : []
+        groups: Array.isArray(item.groups) ? item.groups.map(group => ({ ...group })) : [],
+        pricing: item.pricing ? PricingBuilder.clonePricingConfig(item.pricing) : undefined
       }))
     }));
   }

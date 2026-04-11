@@ -3,6 +3,7 @@ import type {
   EventRecordKind,
   EventSlotOccurrence,
   EventSlotTemplate,
+  PricingConfig,
   SubEventFormItem,
   SubEventsDisplayMode
 } from '../models';
@@ -68,6 +69,7 @@ export interface EventMenuItem {
   capacityMax?: number | null;
   autoInviter?: boolean;
   frequency?: string;
+  pricing?: PricingConfig | null;
   slotsEnabled?: boolean;
   slotTemplates?: EventSlotTemplate[];
   parentEventId?: string | null;
@@ -112,6 +114,7 @@ export interface HostingMenuItem {
   capacityMax?: number | null;
   autoInviter?: boolean;
   frequency?: string;
+  pricing?: PricingConfig | null;
   slotsEnabled?: boolean;
   slotTemplates?: EventSlotTemplate[];
   parentEventId?: string | null;

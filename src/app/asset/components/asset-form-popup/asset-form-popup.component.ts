@@ -5,6 +5,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
 
 import type * as AppTypes from '../../../shared/core/base/models';
+import { PricingEditorComponent } from '../../../shared/ui';
 
 @Component({
   selector: 'app-asset-form-popup',
@@ -13,7 +14,8 @@ import type * as AppTypes from '../../../shared/core/base/models';
     CommonModule,
     FormsModule,
     MatIconModule,
-    MatSelectModule
+    MatSelectModule,
+    PricingEditorComponent
   ],
   templateUrl: './asset-form-popup.component.html',
   styleUrl: './asset-form-popup.component.scss'

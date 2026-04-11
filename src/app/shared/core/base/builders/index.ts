@@ -6,3 +6,4 @@ export { AssetDefaultsBuilder } from './asset-defaults.builder';
 export { AssetInfoCardBuilder } from './asset-info-card.builder';
 export { EventExploreBuilder } from './event-explore.builder';
 export { EventEditorBuilder } from './event-editor.builder';
+export { PricingBuilder } from './pricing.builder';

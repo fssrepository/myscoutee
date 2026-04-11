@@ -15,13 +15,13 @@ import { ActivitiesPopupStateService } from '../../services/activities-popup-sta
 import { EventEditorPopupStateService } from '../../services/event-editor-popup-state.service';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { AppUtils } from '../../../shared/app-utils';
-import { EventEditorBuilder } from '../../../shared/core/base/builders';
+import { EventEditorBuilder, PricingBuilder } from '../../../shared/core/base/builders';
 import { EventEditorConverter } from '../../../shared/core/base/converters';
 import type * as AppTypes from '../../../shared/core/base/models';
 import { ActivityMembersService, AppContext, AppPopupContext, EventEditorDataService } from '../../../shared/core';
 import { HttpMediaService } from '../../../shared/core/http';
 import type { DemoEventRecord } from '../../../shared/core/demo/models/events.model';
-import { CounterBadgePipe, TopicPickerPopupComponent } from '../../../shared/ui';
+import { CounterBadgePipe, PricingEditorComponent, TopicPickerPopupComponent } from '../../../shared/ui';
 import { environment } from '../../../../environments/environment';
 import { EventSubeventsPopupComponent, EventSubeventsItem } from '../event-subevents-popup/event-subevents-popup.component';
 
@@ -42,6 +42,7 @@ import { EventSubeventsPopupComponent, EventSubeventsItem } from '../event-subev
     MatOptionModule,
     TopicPickerPopupComponent,
     EventSubeventsPopupComponent,
+    PricingEditorComponent,
     CounterBadgePipe
   ],
   templateUrl: './event-editor-popup.component.html',
@@ -71,6 +72,8 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   private lastHandledActivityMembersSyncMs = 0;
   private pendingEventImageFile: File | null = null;
   private readonly slotDateControlValueCache = new Map<string, Date | null>();
+  private pricingSlotCatalogCacheKey = '';
+  private pricingSlotCatalogCache: AppTypes.PricingSlotReference[] = [];
 
   constructor() {
     effect(() => {
@@ -188,6 +191,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     blindMode: 'Open Event',
     autoInviter: false,
     ticketing: false,
+    pricing: PricingBuilder.createDefaultPricingConfig('event'),
     slotsEnabled: false,
     slotTemplates: [] as AppTypes.EventSlotTemplate[],
     topics: [] as string[],
@@ -286,6 +290,18 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.subEventsDisplayMode = mode;
     this.syncMainEventBoundsFromSubEvents();
     this.syncDateTimeControlsFromForm();
+  }
+
+  protected pricingSlotCatalog(): readonly AppTypes.PricingSlotReference[] {
+    const normalizedSlots = EventEditorBuilder.buildPersistedEventEditorSlotTemplates(this.eventForm.slotTemplates);
+    const nextKey = normalizedSlots
+      .map(item => [item.id, item.startAt, item.endAt, item.overrideDate ?? '', item.closed === true ? '1' : '0'].join(':'))
+      .join('|');
+    if (nextKey !== this.pricingSlotCatalogCacheKey) {
+      this.pricingSlotCatalogCacheKey = nextKey;
+      this.pricingSlotCatalogCache = PricingBuilder.slotCatalogFromEventSlotTemplates(normalizedSlots);
+    }
+    return this.pricingSlotCatalogCache;
   }
 
   requestOpenTopics(): void {
@@ -1370,6 +1386,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.pendingEventImageFile = null;
     this.eventForm = {
       ...state.form,
+      pricing: PricingBuilder.clonePricingConfig(state.form.pricing),
       slotTemplates: EventEditorBuilder.cloneEventEditorSlotTemplates(state.form.slotTemplates),
       subEvents: EventEditorBuilder.cloneEventEditorSubEvents(state.form.subEvents)
     };
@@ -1400,6 +1417,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       blindMode: 'Open Event',
       autoInviter: false,
       ticketing: false,
+      pricing: PricingBuilder.createDefaultPricingConfig('event'),
       slotsEnabled: false,
       slotTemplates: [],
       topics: [],

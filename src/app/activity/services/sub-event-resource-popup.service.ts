@@ -7,6 +7,7 @@ import type { AssetPopupHost } from '../../asset/asset-popup.host';
 import { OwnedAssetsPopupFacadeService } from '../../asset/owned-assets-popup-facade.service';
 import { APP_STATIC_DATA } from '../../shared/app-static-data';
 import { AppUtils } from '../../shared/app-utils';
+import { PricingBuilder } from '../../shared/core/base/builders';
 import type * as AppTypes from '../../shared/core/base/models';
 import { ActivityMembersService, ActivityResourceBuilder, ActivityResourcesService, AppContext, AppPopupContext, UsersService, type UserDto } from '../../shared/core';
 import { ActivitiesPopupStateService } from './activities-popup-state.service';
@@ -2058,6 +2059,7 @@ export class SubEventResourcePopupService {
   private cloneSubEvent(subEvent: AppTypes.SubEventFormItem): AppTypes.SubEventFormItem {
     return {
       ...subEvent,
+      pricing: subEvent.pricing ? PricingBuilder.clonePricingConfig(subEvent.pricing) : undefined,
       groups: Array.isArray(subEvent.groups)
         ? subEvent.groups.map(group => ({ ...group }))
         : []
@@ -2068,6 +2070,7 @@ export class SubEventResourcePopupService {
     return {
       ...card,
       routes: [...(card.routes ?? [])],
+      pricing: card.pricing ? PricingBuilder.clonePricingConfig(card.pricing) : undefined,
       requests: card.requests.map(request => ({ ...request }))
     };
   }

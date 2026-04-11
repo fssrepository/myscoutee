@@ -9,6 +9,7 @@ import { from } from 'rxjs';
 import { AssetFacadeService } from '../../asset-facade.service';
 import { AssetPopupStateService } from '../../asset-popup-state.service';
 import { OwnedAssetsPopupFacadeService } from '../../owned-assets-popup-facade.service';
+import { PricingBuilder } from '../../../shared/core/base/builders';
 import type * as AppTypes from '../../../shared/core/base/models';
 import { AppContext, AssetTicketsService } from '../../../shared/core';
 import { resolveCurrentRouteDelayMs } from '../../../shared/core/base/services/route-delay.service';
@@ -454,6 +455,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
       card.details,
       card.imageUrl,
       card.sourceLink,
+      JSON.stringify(card.pricing ?? null),
       ...(card.routes ?? []),
       String(card.requests.length)
     ].join(':')).join('|')}`;
@@ -559,6 +561,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
     return {
       ...card,
       routes: [...(card.routes ?? [])],
+      pricing: card.pricing ? PricingBuilder.clonePricingConfig(card.pricing) : undefined,
       requests: card.requests.map(request => ({ ...request }))
     };
   }

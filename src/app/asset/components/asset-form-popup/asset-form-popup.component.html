@@ -117,6 +117,13 @@
             <span>Details</span>
             <textarea rows="3" [(ngModel)]="assetForm.details" [disabled]="isSavePending"></textarea>
           </label>
+          <app-pricing-editor
+            class="experience-description-field asset-pricing-field"
+            [(pricing)]="assetForm.pricing"
+            [context]="'asset'"
+            [readOnly]="isSavePending"
+            [subtitle]="'Set a flat price, demand rules, or promo discounts for this asset.'"
+          ></app-pricing-editor>
           @if (isPropertyAssetForm()) {
             <label class="experience-description-field">
               <span>Location<span class="asset-form-required-marker">*</span></span>

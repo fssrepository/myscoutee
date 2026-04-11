@@ -1,5 +1,6 @@
 import type * as AppTypes from '../../base/models';
 import type { DemoUser } from '../../base/interfaces/user.interface';
+import { PricingBuilder } from '../../base/builders/pricing.builder';
 
 export class DemoAssetBuilder {
   static defaultAssetImage(type: AppTypes.AssetType, seed = type.toLowerCase()): string {
@@ -45,6 +46,7 @@ export class DemoAssetBuilder {
         imageUrl: this.defaultAssetImage('Car', 'car-1'),
         sourceLink: this.defaultAssetImage('Car', 'car-1'),
         routes: ['Austin Downtown', 'Round Rock', 'Lake Travis'],
+        pricing: PricingBuilder.createSamplePricingConfig('hybrid'),
         requests: [
           this.buildAssetRequest('asset-member-1', 'u4', 'pending', 'Needs one medium suitcase slot.', users),
           this.buildAssetRequest('asset-member-2', 'u8', 'accepted', 'Can meet at 6th Street.', users),
@@ -62,6 +64,7 @@ export class DemoAssetBuilder {
         imageUrl: this.defaultAssetImage('Car', 'car-2'),
         sourceLink: this.defaultAssetImage('Car', 'car-2'),
         routes: ['Austin Airport', 'Domain Northside'],
+        pricing: PricingBuilder.createSamplePricingConfig('demand-based'),
         requests: [this.buildAssetRequest('asset-member-3', 'u6', 'pending', 'Landing at 22:40.', users)]
       },
       {
@@ -75,6 +78,7 @@ export class DemoAssetBuilder {
         imageUrl: this.defaultAssetImage('Accommodation', 'acc-1'),
         sourceLink: this.defaultAssetImage('Accommodation', 'acc-1'),
         routes: ['101 South Congress Ave, Austin'],
+        pricing: PricingBuilder.createSamplePricingConfig('time-based'),
         requests: [
           this.buildAssetRequest('asset-member-4', 'u3', 'pending', 'Staying for 2 nights.', users),
           this.buildAssetRequest('asset-member-5', 'u10', 'accepted', 'Can share room.', users)
@@ -91,6 +95,7 @@ export class DemoAssetBuilder {
         imageUrl: this.defaultAssetImage('Accommodation', 'acc-2'),
         sourceLink: this.defaultAssetImage('Accommodation', 'acc-2'),
         routes: ['East 6th Street, Austin'],
+        pricing: PricingBuilder.createSamplePricingConfig('fixed'),
         requests: [this.buildAssetRequest('asset-member-6', 'u11', 'pending', 'Arrives Friday evening.', users)]
       },
       {
@@ -104,6 +109,7 @@ export class DemoAssetBuilder {
         imageUrl: this.defaultAssetImage('Supplies', 'sup-1'),
         sourceLink: this.defaultAssetImage('Supplies', 'sup-1'),
         routes: [],
+        pricing: PricingBuilder.createSamplePricingConfig('fixed'),
         requests: []
       },
       {
@@ -117,6 +123,7 @@ export class DemoAssetBuilder {
         imageUrl: this.defaultAssetImage('Supplies', 'sup-2'),
         sourceLink: this.defaultAssetImage('Supplies', 'sup-2'),
         routes: [],
+        pricing: PricingBuilder.createSamplePricingConfig('fixed'),
         requests: []
       }
     ];

@@ -500,6 +500,14 @@
                   </div>
                 }
               </section>
+              <app-pricing-editor
+                class="experience-description-field event-pricing-field"
+                [(pricing)]="eventForm.pricing"
+                [context]="'event'"
+                [slotCatalog]="pricingSlotCatalog()"
+                [readOnly]="eventEditorService.readOnly()"
+                [subtitle]="eventForm.ticketing ? 'Configure paid entry for the main event and optional slot overrides.' : 'Keep it free for now or prepare ticketing rules in advance.'"
+              ></app-pricing-editor>
               <label class="experience-description-field event-location-field">
                 <span>Location</span>
                 <div class="asset-route-row asset-route-row-inline">

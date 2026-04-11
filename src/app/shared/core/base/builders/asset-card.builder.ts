@@ -1,4 +1,5 @@
 import type * as AppTypes from '../models';
+import { PricingBuilder } from './pricing.builder';
 
 export class AssetCardBuilder {
   static buildEmptyAssetForm(type: AppTypes.AssetType): Omit<AppTypes.AssetCard, 'id' | 'requests'> {
@@ -11,7 +12,8 @@ export class AssetCardBuilder {
       details: '',
       imageUrl: '',
       sourceLink: '',
-      routes: this.normalizeAssetRoutes(type, [])
+      routes: this.normalizeAssetRoutes(type, []),
+      pricing: PricingBuilder.createDefaultPricingConfig('asset')
     };
   }
 
@@ -60,7 +62,8 @@ export class AssetCardBuilder {
     return {
       ...card,
       imageUrl,
-      sourceLink
+      sourceLink,
+      pricing: PricingBuilder.clonePricingConfig(card.pricing ?? PricingBuilder.createDefaultPricingConfig('asset'))
     };
   }
 

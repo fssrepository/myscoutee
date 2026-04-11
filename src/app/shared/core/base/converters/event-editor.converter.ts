@@ -1,6 +1,7 @@
 import { AppUtils } from '../../../app-utils';
 import type * as AppTypes from '../models';
 import type { DemoEventRecord } from '../../demo/models/events.model';
+import { PricingBuilder } from '../builders/pricing.builder';
 
 export class EventEditorConverter {
   static normalizeEventEditorTextValue(value: unknown): string {
@@ -89,6 +90,16 @@ export class EventEditorConverter {
 
   static normalizeEventEditorTopicToken(value: unknown): string {
     return `${value ?? ''}`.trim().replace(/^#+/, '').toLowerCase();
+  }
+
+  static normalizeEventEditorPricing(
+    value: unknown,
+    options: {
+      context?: 'event' | 'asset' | 'subevent';
+      slotCatalog?: readonly AppTypes.PricingSlotReference[];
+    } = {}
+  ): AppTypes.PricingConfig {
+    return PricingBuilder.normalizePricingConfig(value, options);
   }
 
   static parseEventEditorDateValue(value: unknown): Date | null {
@@ -214,6 +225,7 @@ export class EventEditorConverter {
         title: `${item['title'] ?? resolvedName}`.trim() || resolvedName,
         location: this.normalizeEventEditorLocation(item['location']),
         optional: Boolean(item['optional']),
+        pricing: this.normalizeEventEditorPricing(item['pricing'], { context: 'subevent' }),
         startAt: startAtDate ? AppUtils.toIsoDateTimeLocal(startAtDate) : '',
         endAt: endAtDate ? AppUtils.toIsoDateTimeLocal(endAtDate) : '',
         groups: groups.map(group => ({ ...(group as Record<string, unknown>) })) as AppTypes.EventEditorSubEventGroupItem[]
@@ -260,6 +272,7 @@ export class EventEditorConverter {
     record: DemoEventRecord,
     target: AppTypes.EventEditorTarget
   ): Record<string, unknown> {
+    const slotTemplates = this.normalizeEventEditorSlotTemplates(record.slotTemplates ?? []);
     return {
       id: record.id,
       avatar: record.creatorInitials,
@@ -278,8 +291,12 @@ export class EventEditorConverter {
       blindMode: record.blindMode,
       autoInviter: record.autoInviter ?? false,
       ticketing: record.ticketing,
+      pricing: this.normalizeEventEditorPricing(record.pricing, {
+        context: 'event',
+        slotCatalog: PricingBuilder.slotCatalogFromEventSlotTemplates(slotTemplates)
+      }),
       slotsEnabled: Boolean(record.slotsEnabled),
-      slotTemplates: this.normalizeEventEditorSlotTemplates(record.slotTemplates ?? []),
+      slotTemplates,
       topics: [...record.topics],
       subEvents: this.normalizeEventEditorSubEvents(record.subEvents ?? []),
       subEventsDisplayMode: record.subEventsDisplayMode,
@@ -320,6 +337,7 @@ export class EventEditorConverter {
       blindMode: 'Open Event',
       autoInviter: false,
       ticketing: Boolean(rowSource?.['ticketing']),
+      pricing: this.normalizeEventEditorPricing(rowSource?.['pricing'], { context: 'event' }),
       slotsEnabled: Boolean(rowSource?.['slotsEnabled']),
       slotTemplates: this.normalizeEventEditorSlotTemplates(rowSource?.['slotTemplates']),
       topics: Array.isArray(rowSource?.['topics']) ? rowSource['topics'] : [],
@@ -355,6 +373,7 @@ export class EventEditorConverter {
     const slotTemplates = this.normalizeEventEditorSlotTemplates(
       sourceEvent['slotTemplates'] ?? sourceEvent['slots'] ?? sourceEvent['slot_templates']
     );
+    const slotCatalog = PricingBuilder.slotCatalogFromEventSlotTemplates(slotTemplates);
 
     return {
       form: {
@@ -370,6 +389,7 @@ export class EventEditorConverter {
         blindMode: this.normalizeEventEditorBlindMode(sourceEvent['blindMode'] ?? sourceEvent['matchingMode']),
         autoInviter: this.normalizeEventEditorAutoInviter(sourceEvent['autoInviter'] ?? sourceEvent['inviteMode']),
         ticketing: this.normalizeEventEditorTicketing(sourceEvent['ticketing'] ?? sourceEvent['ticketType']),
+        pricing: this.normalizeEventEditorPricing(sourceEvent['pricing'], { context: 'event', slotCatalog }),
         slotsEnabled: this.normalizeEventEditorSlotsEnabled(sourceEvent['slotsEnabled']),
         slotTemplates,
         topics: this.normalizeEventEditorTopics(sourceEvent['topics'] ?? sourceEvent['tags']),

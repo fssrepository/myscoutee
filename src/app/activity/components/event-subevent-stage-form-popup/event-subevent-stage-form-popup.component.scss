@@ -142,6 +142,23 @@
   grid-column: 1 / -1;
 }
 
+.subevent-pricing-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.86rem 0.96rem;
+  border-radius: 14px;
+  border: 1px solid rgba(163, 88, 88, 0.2);
+  background: rgba(255, 250, 250, 0.86);
+  color: rgba(126, 62, 62, 0.88);
+  font-size: 0.87rem;
+  font-weight: 700;
+}
+
+.subevent-pricing-note mat-icon {
+  color: #bf6666;
+}
+
 .subevent-name-field {
   grid-column: 1 / -1;
 }
