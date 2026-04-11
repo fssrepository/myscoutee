@@ -40,26 +40,38 @@ export class PricingEditorComponent implements OnChanges {
   @Input() readOnly = false;
   @Input() title = 'Pricing';
   @Input() subtitle = '';
-  @Input() showAudienceSection = true;
-  @Input() showPreview = true;
+  @Input() showAudienceSection: boolean | null = null;
+  @Input() showPreview: boolean | null = null;
+  @Input() allowSlotFeatures: boolean | null = null;
 
   protected workingPricing: AppTypes.PricingConfig = PricingBuilder.createDefaultPricingConfig('event');
 
   protected readonly modeOptions: readonly AppTypes.PricingMode[] = ['fixed', 'demand-based', 'time-based', 'hybrid'];
   protected readonly currencyOptions = ['USD', 'EUR', 'GBP', 'CZK'];
   protected readonly taxModeOptions: readonly AppTypes.PricingTaxMode[] = ['excluded', 'included'];
-  protected readonly chargeTypeOptions: readonly AppTypes.PricingChargeType[] = ['per_attendee', 'per_booking', 'per_slot'];
   protected readonly roundingOptions: readonly AppTypes.PricingRoundingMode[] = ['none', 'whole', 'half'];
   protected readonly demandOperatorOptions: readonly AppTypes.PricingDemandOperator[] = ['gte', 'lte'];
   protected readonly actionKindOptions: readonly AppTypes.PricingRuleActionKind[] = ['increase_percent', 'decrease_percent', 'set_exact_price'];
   protected readonly ruleScopeOptions: readonly AppTypes.PricingRuleScope[] = ['all_slots', 'selected_slots'];
   protected readonly timeTriggerOptions: readonly AppTypes.PricingTimeRuleTrigger[] = ['days_before_start', 'hours_before_start', 'specific_date'];
   protected readonly soldOutLabelOptions = ['Show "Sold Out"', 'Hide from list', 'Show "Waitlist"'];
+  protected resolvedChargeTypeOptions: readonly AppTypes.PricingChargeType[] = ['per_attendee', 'per_booking', 'per_slot'];
+  protected resolvedAllowSlotFeatures = true;
+  protected resolvedShowAudienceSection = true;
+  protected resolvedShowPreview = true;
 
   private idSequence = 0;
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes['pricing'] || changes['slotCatalog'] || changes['context']) {
+    if (
+      changes['pricing']
+      || changes['slotCatalog']
+      || changes['context']
+      || changes['allowSlotFeatures']
+      || changes['showAudienceSection']
+      || changes['showPreview']
+    ) {
+      this.syncResolvedCapabilities();
       this.syncWorkingPricing();
     }
   }
@@ -123,6 +135,10 @@ export class PricingEditorComponent implements OnChanges {
     }
   }
 
+  protected chargeTypeFieldLabel(): string {
+    return this.context === 'asset' ? 'Charge Basis' : 'Charge Type';
+  }
+
   protected roundingLabel(rounding: AppTypes.PricingRoundingMode): string {
     switch (rounding) {
       case 'whole':
@@ -179,7 +195,7 @@ export class PricingEditorComponent implements OnChanges {
   }
 
   protected showSlotSection(): boolean {
-    return this.context !== 'subevent' || this.slotCatalog.length > 0 || this.workingPricing.slotOverrides.length > 0;
+    return this.resolvedAllowSlotFeatures;
   }
 
   protected isDynamicMode(): boolean {
@@ -381,7 +397,7 @@ export class PricingEditorComponent implements OnChanges {
   }
 
   protected previewState(): PricingPreviewState {
-    const normalized = PricingBuilder.syncSlotOverrides(this.workingPricing, this.slotCatalog);
+    const normalized = this.normalizePricingWithCapabilities(this.workingPricing);
     const activeSlotOverride = normalized.slotPricingEnabled
       ? normalized.slotOverrides.find(item => item.price !== null) ?? null
       : null;
@@ -441,16 +457,42 @@ export class PricingEditorComponent implements OnChanges {
   }
 
   private syncWorkingPricing(): void {
-    this.workingPricing = PricingBuilder.normalizePricingConfig(this.pricing, {
-      context: this.context,
-      slotCatalog: this.slotCatalog
-    });
+    this.workingPricing = this.normalizePricingWithCapabilities(this.pricing);
   }
 
   protected emitPricing(): void {
     this.normalizePriceBounds();
-    this.workingPricing = PricingBuilder.syncSlotOverrides(this.workingPricing, this.slotCatalog);
+    this.workingPricing = this.normalizePricingWithCapabilities(this.workingPricing);
     this.pricingChange.emit(PricingBuilder.clonePricingConfig(this.workingPricing));
+  }
+
+  private syncResolvedCapabilities(): void {
+    this.resolvedAllowSlotFeatures = this.allowSlotFeatures ?? this.context === 'event';
+    this.resolvedShowAudienceSection = this.showAudienceSection ?? this.context === 'event';
+    this.resolvedShowPreview = this.showPreview ?? true;
+    this.resolvedChargeTypeOptions = this.resolveChargeTypeOptions();
+  }
+
+  private resolveChargeTypeOptions(): readonly AppTypes.PricingChargeType[] {
+    const base: AppTypes.PricingChargeType[] = this.context === 'asset'
+      ? ['per_booking', 'per_attendee']
+      : ['per_attendee', 'per_booking'];
+    if (this.resolvedAllowSlotFeatures) {
+      base.push('per_slot');
+    }
+    return base;
+  }
+
+  private normalizePricingWithCapabilities(
+    value: AppTypes.PricingConfig | null | undefined
+  ): AppTypes.PricingConfig {
+    return PricingBuilder.normalizePricingConfig(value, {
+      context: this.context,
+      slotCatalog: this.resolvedAllowSlotFeatures ? this.slotCatalog : [],
+      allowSlotFeatures: this.resolvedAllowSlotFeatures,
+      allowedChargeTypes: this.resolvedChargeTypeOptions,
+      preserveEmptyPromoCodes: true
+    });
   }
 
   private normalizePriceBounds(): void {

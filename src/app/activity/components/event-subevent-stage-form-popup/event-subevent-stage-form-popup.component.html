@@ -179,8 +179,11 @@
               class="experience-description-field subevent-pricing-field"
               [(pricing)]="model.pricing"
               [context]="'subevent'"
+              [allowSlotFeatures]="false"
+              [showAudienceSection]="false"
               [readOnly]="view.readOnly"
-              [subtitle]="'Optional sub events can add an extra charge beyond the main event price.'"
+              [title]="'Optional Pricing'"
+              [subtitle]="'Optional sub events can add a separate charge beyond the main event price without slot-specific rules.'"
             ></app-pricing-editor>
           } @else {
             <div class="experience-description-field subevent-pricing-note">

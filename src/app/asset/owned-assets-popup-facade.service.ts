@@ -394,7 +394,10 @@ export class OwnedAssetsPopupFacadeService {
         imageUrl,
         sourceLink,
         routes,
-        pricing: PricingBuilder.clonePricingConfig(this.assetForm.pricing ?? PricingBuilder.createDefaultPricingConfig('asset'))
+        pricing: PricingBuilder.compactPricingConfig(
+          this.assetForm.pricing ?? PricingBuilder.createDefaultPricingConfig('asset'),
+          { context: 'asset', allowSlotFeatures: false }
+        )
       };
       const resolvedVisibility: AppTypes.EventVisibility = this.isPopupOpen() ? 'Invitation only' : this.assetFormVisibility;
 

@@ -91,7 +91,7 @@
           </label>
 
           <label class="pricing-editor__field">
-            <span>Charge Type</span>
+            <span>{{ chargeTypeFieldLabel() }}</span>
             <div class="pricing-editor__select-shell">
               <mat-select
                 [(ngModel)]="workingPricing.chargeType"
@@ -101,7 +101,7 @@
                 disableOptionCentering
                 panelClass="selector-options-panel profile-bottom-sheet-panel"
                 >
-                @for (option of chargeTypeOptions; track option) {
+                @for (option of resolvedChargeTypeOptions; track option) {
                   <mat-option [value]="option">{{ chargeTypeLabel(option) }}</mat-option>
                 }
               </mat-select>
@@ -239,24 +239,26 @@
                         [disabled]="readOnly"
                         />
                     </label>
-                    <label class="pricing-editor__field">
-                      <span>Applies To</span>
-                      <div class="pricing-editor__select-shell">
-                        <mat-select
-                          [ngModel]="rule.appliesTo"
-                          (ngModelChange)="onDemandRuleScopeChange(rule, $event)"
-                          [disabled]="readOnly"
-                          [panelWidth]="null"
-                          disableOptionCentering
-                          panelClass="selector-options-panel profile-bottom-sheet-panel"
-                          >
-                          @for (option of ruleScopeOptions; track option) {
-                            <mat-option [value]="option">{{ ruleScopeLabel(option) }}</mat-option>
-                          }
-                        </mat-select>
-                      </div>
-                    </label>
-                    @if (rule.appliesTo === 'selected_slots' && slotCatalog.length > 0) {
+                    @if (resolvedAllowSlotFeatures) {
+                      <label class="pricing-editor__field">
+                        <span>Applies To</span>
+                        <div class="pricing-editor__select-shell">
+                          <mat-select
+                            [ngModel]="rule.appliesTo"
+                            (ngModelChange)="onDemandRuleScopeChange(rule, $event)"
+                            [disabled]="readOnly"
+                            [panelWidth]="null"
+                            disableOptionCentering
+                            panelClass="selector-options-panel profile-bottom-sheet-panel"
+                            >
+                            @for (option of ruleScopeOptions; track option) {
+                              <mat-option [value]="option">{{ ruleScopeLabel(option) }}</mat-option>
+                            }
+                          </mat-select>
+                        </div>
+                      </label>
+                    }
+                    @if (resolvedAllowSlotFeatures && rule.appliesTo === 'selected_slots' && slotCatalog.length > 0) {
                       <label class="pricing-editor__field pricing-editor__field--span-full">
                         <span>Selected Slots</span>
                         <div class="pricing-editor__select-shell">
@@ -387,24 +389,26 @@
                         [disabled]="readOnly"
                         />
                     </label>
-                    <label class="pricing-editor__field">
-                      <span>Applies To</span>
-                      <div class="pricing-editor__select-shell">
-                        <mat-select
-                          [ngModel]="rule.appliesTo"
-                          (ngModelChange)="onTimeRuleScopeChange(rule, $event)"
-                          [disabled]="readOnly"
-                          [panelWidth]="null"
-                          disableOptionCentering
-                          panelClass="selector-options-panel profile-bottom-sheet-panel"
-                          >
-                          @for (option of ruleScopeOptions; track option) {
-                            <mat-option [value]="option">{{ ruleScopeLabel(option) }}</mat-option>
-                          }
-                        </mat-select>
-                      </div>
-                    </label>
-                    @if (rule.appliesTo === 'selected_slots' && slotCatalog.length > 0) {
+                    @if (resolvedAllowSlotFeatures) {
+                      <label class="pricing-editor__field">
+                        <span>Applies To</span>
+                        <div class="pricing-editor__select-shell">
+                          <mat-select
+                            [ngModel]="rule.appliesTo"
+                            (ngModelChange)="onTimeRuleScopeChange(rule, $event)"
+                            [disabled]="readOnly"
+                            [panelWidth]="null"
+                            disableOptionCentering
+                            panelClass="selector-options-panel profile-bottom-sheet-panel"
+                            >
+                            @for (option of ruleScopeOptions; track option) {
+                              <mat-option [value]="option">{{ ruleScopeLabel(option) }}</mat-option>
+                            }
+                          </mat-select>
+                        </div>
+                      </label>
+                    }
+                    @if (resolvedAllowSlotFeatures && rule.appliesTo === 'selected_slots' && slotCatalog.length > 0) {
                       <label class="pricing-editor__field pricing-editor__field--span-full">
                         <span>Selected Slots</span>
                         <div class="pricing-editor__select-shell">
@@ -459,7 +463,7 @@
         ></app-pricing-slot-panel>
       }
 
-      @if (showAudienceSection) {
+      @if (resolvedShowAudienceSection) {
         <section class="pricing-editor__surface">
           <div class="pricing-editor__section-head">
             <span>Advanced Audience Pricing</span>
@@ -604,7 +608,7 @@
       }
     </div>
 
-    @if (showPreview) {
+    @if (resolvedShowPreview) {
       <aside class="pricing-editor__preview">
         <div class="pricing-editor__preview-card">
           <div class="pricing-editor__preview-head">

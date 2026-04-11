@@ -3,6 +3,7 @@
 }
 
 .pricing-editor {
+  container-type: inline-size;
   display: grid;
   gap: 1rem;
   padding: 1rem;
@@ -178,17 +179,30 @@
 .pricing-editor__rule-grid,
 .pricing-editor__promo-card {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.78rem;
+  column-gap: 1rem;
+  row-gap: 1rem;
+}
+
+.pricing-editor__grid {
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+}
+
+.pricing-editor__rule-grid {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.pricing-editor__promo-card {
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
 }
 
 .pricing-editor__grid--compact {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
 }
 
 .pricing-editor__field {
   display: grid;
   gap: 0.34rem;
+  min-width: 0;
 }
 
 .pricing-editor__field--span-full {
@@ -206,6 +220,8 @@
 .pricing-editor__field input,
 .pricing-editor__select-shell,
 .pricing-editor__money-field {
+  box-sizing: border-box;
+  width: 100%;
   min-height: 46px;
   border-radius: 14px;
   border: 1px solid rgba(126, 149, 180, 0.28);
@@ -214,6 +230,7 @@
 }
 
 .pricing-editor__field input {
+  box-sizing: border-box;
   width: 100%;
   min-width: 0;
   padding: 0 0.76rem;
@@ -264,11 +281,16 @@
 .pricing-editor__rules,
 .pricing-editor__promo-list {
   display: grid;
-  gap: 0.78rem;
+  gap: 1.08rem;
+}
+
+.pricing-editor__promo-list {
+  margin-top: 0.28rem;
 }
 
 .pricing-editor__rule-card,
 .pricing-editor__promo-card {
+  box-sizing: border-box;
   position: relative;
   align-items: end;
   padding: 0.86rem;
@@ -277,6 +299,14 @@
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(246, 250, 255, 0.92) 100%),
     radial-gradient(circle at top right, rgba(110, 183, 172, 0.12), transparent 36%);
+}
+
+.pricing-editor__rule-card {
+  padding-right: 3.2rem;
+}
+
+.pricing-editor__promo-card {
+  padding-right: 3.2rem;
 }
 
 .pricing-editor__rule-remove {
@@ -399,7 +429,7 @@
   line-height: 1.55;
 }
 
-@media (max-width: 1080px) {
+@container (max-width: 980px) {
   .pricing-editor__layout {
     grid-template-columns: 1fr;
   }
@@ -409,25 +439,27 @@
   }
 }
 
-@media (max-width: 860px) {
-  .pricing-editor__grid,
-  .pricing-editor__rule-grid,
-  .pricing-editor__promo-card {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
+@container (max-width: 760px) {
   .pricing-editor__head {
     flex-direction: column;
     align-items: flex-start;
   }
+
+  .pricing-editor__preview {
+    grid-template-columns: 1fr;
+  }
+
+  .pricing-editor__mode-switch {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
-@media (max-width: 640px) {
-  .pricing-editor__mode-switch,
+@container (max-width: 520px) {
   .pricing-editor__grid,
   .pricing-editor__grid--compact,
   .pricing-editor__rule-grid,
   .pricing-editor__promo-card,
+  .pricing-editor__mode-switch,
   .pricing-editor__preview {
     grid-template-columns: 1fr;
   }

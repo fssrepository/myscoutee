@@ -125,9 +125,15 @@ export class PricingBuilder {
     options: {
       context?: 'event' | 'asset' | 'subevent';
       slotCatalog?: readonly AppTypes.PricingSlotReference[];
+      allowSlotFeatures?: boolean;
+      allowedChargeTypes?: readonly AppTypes.PricingChargeType[];
+      preserveEmptyPromoCodes?: boolean;
     } = {}
   ): AppTypes.PricingConfig {
-    const fallback = this.createDefaultPricingConfig(options.context ?? 'event');
+    const context = options.context ?? 'event';
+    const allowSlotFeatures = options.allowSlotFeatures ?? context === 'event';
+    const slotCatalog = allowSlotFeatures ? (options.slotCatalog ?? []) : [];
+    const fallback = this.createDefaultPricingConfig(context);
     const source = (typeof value === 'object' && value !== null)
       ? value as Record<string, unknown>
       : {};
@@ -167,16 +173,60 @@ export class PricingBuilder {
         memberPrice: this.normalizeMoney(audienceSource['memberPrice']),
         vipPrice: this.normalizeMoney(audienceSource['vipPrice']),
         inviteOnlyDiscountPercent: this.normalizePercent(audienceSource['inviteOnlyDiscountPercent']),
-        promoCodes: this.normalizePromoCodes(audienceSource['promoCodes']),
+        promoCodes: this.normalizePromoCodes(
+          audienceSource['promoCodes'],
+          options.preserveEmptyPromoCodes === true
+        ),
         soldOutLabel: this.normalizeText(audienceSource['soldOutLabel']) || fallback.audience.soldOutLabel
       }
     };
+
+    const allowedChargeTypes = this.allowedChargeTypesForContext(
+      context,
+      allowSlotFeatures,
+      options.allowedChargeTypes
+    );
+    normalized.chargeType = allowedChargeTypes.includes(normalized.chargeType)
+      ? normalized.chargeType
+      : allowedChargeTypes[0] ?? fallback.chargeType;
+
+    const slotCatalogIds = new Set(
+      slotCatalog
+        .map(item => this.normalizeText(item.id))
+        .filter(item => item.length > 0)
+    );
+    normalized.demandRules = normalized.demandRules.map(rule =>
+      this.sanitizeRuleScope(rule, slotCatalogIds, allowSlotFeatures)
+    );
+    normalized.timeRules = normalized.timeRules.map(rule =>
+      this.sanitizeRuleScope(rule, slotCatalogIds, allowSlotFeatures)
+    );
+
+    if (!allowSlotFeatures || slotCatalogIds.size === 0) {
+      normalized.slotPricingEnabled = false;
+      normalized.slotOverrides = [];
+    }
 
     if (normalized.maxPrice !== null && normalized.minPrice !== null && normalized.maxPrice < normalized.minPrice) {
       normalized.maxPrice = normalized.minPrice;
     }
 
-    return this.syncSlotOverrides(normalized, options.slotCatalog ?? []);
+    return this.syncSlotOverrides(normalized, slotCatalog);
+  }
+
+  static compactPricingConfig(
+    pricing: AppTypes.PricingConfig | null | undefined,
+    options: {
+      context?: 'event' | 'asset' | 'subevent';
+      slotCatalog?: readonly AppTypes.PricingSlotReference[];
+      allowSlotFeatures?: boolean;
+      allowedChargeTypes?: readonly AppTypes.PricingChargeType[];
+    } = {}
+  ): AppTypes.PricingConfig {
+    return this.normalizePricingConfig(pricing, {
+      ...options,
+      preserveEmptyPromoCodes: false
+    });
   }
 
   static syncSlotOverrides(
@@ -236,6 +286,61 @@ export class PricingBuilder {
     }));
   }
 
+  private static allowedChargeTypesForContext(
+    context: 'event' | 'asset' | 'subevent',
+    allowSlotFeatures: boolean,
+    override?: readonly AppTypes.PricingChargeType[]
+  ): readonly AppTypes.PricingChargeType[] {
+    const normalizedOverride = (override ?? []).filter((value, index, source) =>
+      (value === 'per_attendee' || value === 'per_booking' || value === 'per_slot')
+      && source.indexOf(value) === index
+    );
+    if (normalizedOverride.length > 0) {
+      return allowSlotFeatures
+        ? normalizedOverride
+        : normalizedOverride.filter(value => value !== 'per_slot');
+    }
+
+    const defaults: AppTypes.PricingChargeType[] = context === 'asset'
+      ? ['per_booking', 'per_attendee']
+      : ['per_attendee', 'per_booking'];
+    if (allowSlotFeatures) {
+      defaults.push('per_slot');
+    }
+    return defaults;
+  }
+
+  private static sanitizeRuleScope<T extends { appliesTo: AppTypes.PricingRuleScope; slotIds: string[] }>(
+    rule: T,
+    slotCatalogIds: ReadonlySet<string>,
+    allowSlotFeatures: boolean
+  ): T {
+    if (!allowSlotFeatures || slotCatalogIds.size === 0 || rule.appliesTo !== 'selected_slots') {
+      return {
+        ...rule,
+        appliesTo: 'all_slots',
+        slotIds: []
+      };
+    }
+
+    const slotIds = (rule.slotIds ?? [])
+      .map(item => this.normalizeText(item))
+      .filter(item => slotCatalogIds.has(item));
+
+    if (slotIds.length === 0) {
+      return {
+        ...rule,
+        appliesTo: 'all_slots',
+        slotIds: []
+      };
+    }
+
+    return {
+      ...rule,
+      slotIds
+    };
+  }
+
   private static normalizeDemandRules(value: unknown): AppTypes.PricingDemandRule[] {
     if (!Array.isArray(value)) {
       return [];
@@ -289,7 +394,10 @@ export class PricingBuilder {
     });
   }
 
-  private static normalizePromoCodes(value: unknown): AppTypes.PricingPromoCode[] {
+  private static normalizePromoCodes(
+    value: unknown,
+    preserveEmpty = false
+  ): AppTypes.PricingPromoCode[] {
     if (!Array.isArray(value)) {
       return [];
     }
@@ -300,7 +408,7 @@ export class PricingBuilder {
         code: this.normalizeText(source['code']).toUpperCase(),
         action: this.normalizeAction(source['action'], source['actionKind'], source['value'])
       };
-    }).filter(item => item.code.length > 0);
+    }).filter(item => preserveEmpty || item.code.length > 0);
   }
 
   private static normalizeAction(

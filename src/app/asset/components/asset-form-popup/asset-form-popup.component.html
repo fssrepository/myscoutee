@@ -121,8 +121,11 @@
             class="experience-description-field asset-pricing-field"
             [(pricing)]="assetForm.pricing"
             [context]="'asset'"
+            [allowSlotFeatures]="false"
+            [showAudienceSection]="false"
             [readOnly]="isSavePending"
-            [subtitle]="'Set a flat price, demand rules, or promo discounts for this asset.'"
+            [title]="'Asset Pricing'"
+            [subtitle]="'Set the default charge for using this asset without event slot-specific pricing controls.'"
           ></app-pricing-editor>
           @if (isPropertyAssetForm()) {
             <label class="experience-description-field">
