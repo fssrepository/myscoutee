@@ -1,0 +1,253 @@
+@if (dialog(); as state) {
+  <section class="event-checkout-dialog">
+    <div class="event-checkout-dialog__backdrop" (click)="closeFromBackdrop($event)"></div>
+    <div class="event-checkout-dialog__panel" (click)="$event.stopPropagation()">
+      <div class="event-checkout-dialog__header">
+        <div class="event-checkout-dialog__title-block">
+          <h2>{{ sectionTitle() }}</h2>
+          <p class="event-checkout-dialog__subtitle">{{ state.record.title }}</p>
+          @if (sectionSubtitle()) {
+            <p class="event-checkout-dialog__subtitle event-checkout-dialog__subtitle--secondary">{{ sectionSubtitle() }}</p>
+          }
+        </div>
+        <button
+          type="button"
+          class="event-checkout-dialog__close"
+          [disabled]="busy"
+          (click)="close($event)"
+          aria-label="Close checkout"
+        >
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+
+      <div class="event-checkout-dialog__body">
+        <section class="event-checkout-summary-card">
+          <div class="event-checkout-summary-card__head">
+            <span>Basket Summary</span>
+            <strong>{{ formatMoney(totalAmount()) }}</strong>
+          </div>
+          <div class="event-checkout-summary-card__list">
+            @for (item of lineItems(); track trackLineItem($index, item)) {
+              <article class="event-checkout-summary-card__item">
+                <div>
+                  <strong>{{ item.label }}</strong>
+                  <span>{{ item.detail }}</span>
+                </div>
+                <strong>{{ item.amount > 0 ? formatMoney(item.amount, item.currency) : 'Included' }}</strong>
+              </article>
+            }
+          </div>
+        </section>
+
+        @if (!paymentStep) {
+          @if (requiresSlotSelection()) {
+            <section class="event-checkout-card">
+              <div class="event-checkout-card__head">
+                <h3>Select Slot</h3>
+                <span>{{ selectedSlot() ? '1 selected' : 'Required' }}</span>
+              </div>
+              <div class="event-checkout-slot-list">
+                @for (slot of availableSlots(); track trackSlot($index, slot)) {
+                  <button
+                    type="button"
+                    class="event-checkout-slot-card"
+                    [class.is-selected]="selectedSlot()?.id === slot.id"
+                    (click)="toggleSlot(slot.id)"
+                    >
+                    <span class="event-checkout-slot-card__title">{{ slot.title }}</span>
+                    <span class="event-checkout-slot-card__meta">{{ slot.timeframe }}</span>
+                    <span class="event-checkout-slot-card__capacity">{{ slot.acceptedMembers }} / {{ slot.capacityTotal }}</span>
+                  </button>
+                }
+              </div>
+            </section>
+          }
+
+          @if (optionalSubEvents().length > 0) {
+            <section class="event-checkout-card">
+              <div class="event-checkout-card__head">
+                <h3>Optional Sub Events</h3>
+                <span>Select paid or free add-ons</span>
+              </div>
+              <div class="event-checkout-option-list">
+                @for (subEvent of optionalSubEvents(); track trackOptionalSubEvent($index, subEvent)) {
+                  <button
+                    type="button"
+                    class="event-checkout-toggle-card"
+                    [class.is-selected]="isSelectedOptionalSubEvent(subEvent.id)"
+                    (click)="toggleOptionalSubEvent(subEvent.id)"
+                    >
+                    <div>
+                      <strong>{{ subEvent.name }}</strong>
+                      <span>{{ subEvent.description || 'Optional experience' }}</span>
+                    </div>
+                    <strong>{{ formatMoney(resolvePricing(subEvent.pricing, dialog()!.record, null, selectedSlot()).amount, resolvePricing(subEvent.pricing, dialog()!.record, null, selectedSlot()).currency) }}</strong>
+                  </button>
+                }
+              </div>
+            </section>
+          }
+
+          @if (resourceOptions().length > 0) {
+            <section class="event-checkout-card">
+              <div class="event-checkout-card__head">
+                <h3>Requested Assets</h3>
+                <span>Attach optional resource requests</span>
+              </div>
+              <div class="event-checkout-option-list">
+                @for (option of resourceOptions(); track trackResource($index, option)) {
+                  <button
+                    type="button"
+                    class="event-checkout-toggle-card event-checkout-toggle-card--compact"
+                    [class.is-selected]="isSelectedAsset(option.key)"
+                    (click)="toggleAsset(option.key)"
+                    >
+                    <div>
+                      <strong>{{ option.label }}</strong>
+                      <span>{{ option.description }}</span>
+                    </div>
+                    <strong>Request</strong>
+                  </button>
+                }
+              </div>
+            </section>
+          }
+
+          @if (policies().length > 0) {
+            <section class="event-checkout-card">
+              <div class="event-checkout-card__head">
+                <h3>Event Policies</h3>
+                <span>Review and approve before continuing</span>
+              </div>
+              <div class="event-checkout-policy-list">
+                @for (policy of policies(); track trackPolicy($index, policy)) {
+                  <label class="event-checkout-policy-card" [class.is-required]="policy.required !== false">
+                    <input
+                      type="checkbox"
+                      [checked]="isAcceptedPolicy(policy.id)"
+                      (change)="togglePolicy(policy.id)"
+                    />
+                    <div>
+                      <strong>{{ policy.title }}</strong>
+                      @if (policy.description) {
+                        <span>{{ policy.description }}</span>
+                      }
+                    </div>
+                    @if (policy.required !== false) {
+                      <em>Required</em>
+                    }
+                  </label>
+                }
+              </div>
+            </section>
+          }
+        } @else {
+          <section class="event-checkout-card event-checkout-card--payment">
+            <div class="event-checkout-card__head">
+              <div class="event-checkout-payment-headline">
+                <h3>Payment</h3>
+                <p>{{ environment.paymentIntegrationEnabled ? 'Gateway handoff is ready.' : 'Custom dummy pay screen for checkout review.' }}</p>
+              </div>
+              <span class="event-checkout-payment-provider">
+                {{ environment.paymentIntegrationEnabled ? (environment.paymentProvider | titlecase) : 'Dummy pay' }}
+              </span>
+            </div>
+            <div class="event-checkout-payment-summary">
+              <article>
+                <span>Amount due</span>
+                <strong>{{ formatMoney(totalAmount()) }}</strong>
+              </article>
+              <article>
+                <span>Status</span>
+                <strong>{{ environment.paymentIntegrationEnabled ? 'Ready to redirect' : 'Review before confirm' }}</strong>
+              </article>
+            </div>
+            <p class="event-checkout-payment-note">
+              {{ environment.paymentIntegrationEnabled
+                ? 'The checkout session will go through the configured provider after confirmation.'
+                : 'This keeps the payment step visible while integration is disabled. The fields stay locked, but the basket, policies, and total are all reviewed here.' }}
+            </p>
+            <div class="event-checkout-payment-grid">
+              <label>
+                <span>Card number</span>
+                <input type="text" value="4242 4242 4242 4242" disabled />
+              </label>
+              <label>
+                <span>Name on card</span>
+                <input type="text" value="Demo User" disabled />
+              </label>
+              <label>
+                <span>Expiry</span>
+                <input type="text" value="12 / 30" disabled />
+              </label>
+              <label>
+                <span>CVC</span>
+                <input type="text" value="123" disabled />
+              </label>
+            </div>
+          </section>
+        }
+
+        @if (errorMessage) {
+          <p class="event-checkout-dialog__error">{{ errorMessage }}</p>
+        }
+      </div>
+
+      <div class="event-checkout-dialog__footer">
+        @if (paymentStep) {
+          <button type="button" class="event-checkout-btn event-checkout-btn--secondary" [disabled]="busy" (click)="backToDetails($event)">
+            Back
+          </button>
+        } @else {
+          <button type="button" class="event-checkout-btn event-checkout-btn--secondary" [disabled]="busy" (click)="close($event)">
+            Cancel
+          </button>
+        }
+        <span
+          class="event-checkout-confirm-shell"
+          [class.is-loading]="busy"
+          [class.is-error]="!busy && !!errorMessage"
+        >
+          @if (busy || errorMessage) {
+            <span class="event-checkout-confirm-ring" aria-hidden="true">
+              <svg viewBox="0 0 132 52" preserveAspectRatio="none" class="event-checkout-confirm-ring-svg">
+                <defs>
+                  <linearGradient id="event-checkout-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="rgb(235, 147, 33)"></stop>
+                    <stop offset="100%" stop-color="rgb(247, 190, 52)"></stop>
+                  </linearGradient>
+                  <linearGradient id="event-checkout-gradient-error" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="rgb(213, 54, 68)"></stop>
+                    <stop offset="100%" stop-color="rgb(196, 29, 42)"></stop>
+                  </linearGradient>
+                </defs>
+                <path
+                  class="event-checkout-confirm-ring-track"
+                  d="M66 2 H116 A14 14 0 0 1 130 16 V36 A14 14 0 0 1 116 50 H16 A14 14 0 0 1 2 36 V16 A14 14 0 0 1 16 2 H66"
+                ></path>
+                <path
+                  class="event-checkout-confirm-ring-progress"
+                  [class.is-loading]="busy"
+                  [class.is-error]="!busy && !!errorMessage"
+                  d="M66 2 H116 A14 14 0 0 1 130 16 V36 A14 14 0 0 1 116 50 H16 A14 14 0 0 1 2 36 V16 A14 14 0 0 1 16 2 H66"
+                  pathLength="100"
+                  stroke-dasharray="100"
+                  [attr.stroke-dashoffset]="busy ? 100 : 0"
+                ></path>
+              </svg>
+            </span>
+          }
+          <button
+            type="button"
+            class="event-checkout-btn event-checkout-btn--primary event-checkout-btn--confirm"
+            [disabled]="!canContinue() || busy"
+            (click)="submit($event)"
+          >
+            {{ busy ? state.busyConfirmLabel : continueLabel() }}
+          </button>
+        </span>
+      </div>
+    </div>
+  </section>
+}

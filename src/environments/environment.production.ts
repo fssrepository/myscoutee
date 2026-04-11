@@ -6,5 +6,7 @@ export const environment = {
   apiBaseUrl: '/api',
   serviceWorkerEnabled: true,
   firebaseMessagingEnabled: true,
-  assetSourceRefreshEnabled: true
+  assetSourceRefreshEnabled: true,
+  paymentIntegrationEnabled: false,
+  paymentProvider: 'dummy' as 'dummy' | 'stripe' | 'barion'
 };

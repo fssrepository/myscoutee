@@ -1,5 +1,48 @@
 import type { PricingConfig } from './pricing.model';
 
+export interface EventPolicyItem {
+  id: string;
+  title: string;
+  description: string;
+  required: boolean;
+}
+
+export interface EventCheckoutAssetSelection {
+  subEventId: string;
+  resourceType: 'Car' | 'Accommodation' | 'Supplies';
+}
+
+export interface EventCheckoutLineItem {
+  id: string;
+  kind: 'event' | 'sub_event' | 'resource';
+  label: string;
+  detail: string;
+  amount: number;
+  currency: string;
+}
+
+export interface EventCheckoutSelection {
+  sourceId: string;
+  slotSourceId?: string | null;
+  optionalSubEventIds: string[];
+  assetSelections: EventCheckoutAssetSelection[];
+  acceptedPolicyIds: string[];
+  lineItems: EventCheckoutLineItem[];
+  totalAmount: number;
+  currency: string;
+  paymentSessionId?: string | null;
+}
+
+export interface EventCheckoutSession {
+  id: string;
+  provider: string;
+  mode: 'dummy' | 'gateway';
+  status: 'approved' | 'requires_action';
+  amount: number;
+  currency: string;
+  paymentUrl?: string | null;
+}
+
 export interface EventFeedbackOption {
   value: string;
   label: string;
@@ -172,6 +215,7 @@ export interface EventEditorForm {
   autoInviter: boolean;
   ticketing: boolean;
   pricing?: PricingConfig | null;
+  policies?: EventPolicyItem[];
   topics: string[];
   slotsEnabled: boolean;
   slotTemplates: EventSlotTemplate[];

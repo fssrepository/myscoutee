@@ -52,6 +52,7 @@ export interface DemoEventRecord {
   frequency?: string;
   ticketing: boolean;
   pricing?: AppTypes.PricingConfig | null;
+  policies?: AppTypes.EventPolicyItem[];
   slotsEnabled?: boolean;
   slotTemplates?: AppTypes.EventSlotTemplate[];
   parentEventId?: string | null;

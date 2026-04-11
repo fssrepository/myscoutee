@@ -238,7 +238,8 @@
                     <label class="event-frequency-label">
                       <div class="profile-status-select-wrap selector-like experience-filter-select event-frequency-select" [ngClass]="eventFrequencyClass(eventForm.frequency)">
                         <mat-select
-                          [(ngModel)]="eventForm.frequency"
+                          [ngModel]="eventForm.frequency"
+                          (ngModelChange)="onEventFrequencyChange($event)"
                           [disabled]="eventEditorService.readOnly()"
                           [panelWidth]="null"
                           disableOptionCentering
@@ -267,7 +268,13 @@
                   <span>Start</span>
                   <div class="event-datetime-row">
                     <mat-form-field appearance="outline" class="event-date-field event-date-field-start" subscriptSizing="dynamic">
-                      <input matInput [matDatepicker]="eventStartPicker" [ngModel]="eventStartDateValue" (ngModelChange)="onEventStartDateChange($event)" [disabled]="eventEditorService.readOnly()" />
+                      <input
+                        matInput
+                        [matDatepicker]="eventStartPicker"
+                        [ngModel]="eventStartDateValue"
+                        (ngModelChange)="onEventStartDateChange($event)"
+                        [disabled]="eventEditorService.readOnly()"
+                        />
                       <mat-datepicker-toggle matSuffix [for]="eventStartPicker"></mat-datepicker-toggle>
                       <mat-datepicker #eventStartPicker></mat-datepicker>
                     </mat-form-field>
@@ -289,7 +296,14 @@
                   <span>End</span>
                   <div class="event-datetime-row">
                     <mat-form-field appearance="outline" class="event-date-field event-date-field-end" subscriptSizing="dynamic">
-                      <input matInput [matDatepicker]="eventEndPicker" [ngModel]="eventEndDateValue" (ngModelChange)="onEventEndDateChange($event)" [disabled]="eventEditorService.readOnly()" />
+                      <input
+                        matInput
+                        [matDatepicker]="eventEndPicker"
+                        [ngModel]="eventEndDateValue"
+                        (ngModelChange)="onEventEndDateChange($event)"
+                        [min]="eventEndDateMin()"
+                        [disabled]="eventEditorService.readOnly()"
+                        />
                       <mat-datepicker-toggle matSuffix [for]="eventEndPicker"></mat-datepicker-toggle>
                       <mat-datepicker #eventEndPicker></mat-datepicker>
                     </mat-form-field>
@@ -308,82 +322,65 @@
                   </div>
                 </label>
                 </section>
-                <section
-                  class="event-slots-panel"
-                  [class.event-slots-panel-disabled]="!eventForm.slotsEnabled"
-                  >
-                <div class="event-slots-panel-head">
-                  <div class="event-slots-panel-title-wrap">
-                    <span class="event-slots-panel-title">
-                      <span class="event-schedule-panel-title">
-                        <mat-icon>schedule</mat-icon>
-                        <span>Slots</span>
-                      </span>
-                    </span>
-                    <p class="event-slots-panel-subtitle">Base schedule and date-specific overrides.</p>
-                  </div>
-                  <div class="event-slots-panel-actions">
-                    <button
-                      type="button"
-                      class="event-slots-enable-btn"
-                      [class.event-slots-enable-btn-on]="eventForm.slotsEnabled"
-                      [class.event-slots-enable-btn-off]="!eventForm.slotsEnabled"
-                      [disabled]="!canConfigureSlotsSeries()"
-                      [attr.aria-pressed]="eventForm.slotsEnabled"
-                      (click)="toggleEventSlots($event)"
-                      >
-                      <mat-icon>{{ eventForm.slotsEnabled ? 'toggle_on' : 'toggle_off' }}</mat-icon>
-                      <span>{{ eventForm.slotsEnabled ? 'On' : 'Off' }}</span>
-                    </button>
-                  </div>
-                </div>
-                @if (eventForm.slotsEnabled) {
-                  <div class="event-slots-panel-body">
-                    <button
-                      type="button"
-                      class="event-slots-open-btn event-slots-open-btn-inline"
-                      [disabled]="eventEditorService.readOnly()"
-                      (click)="openSlotsPopup($event)"
-                      >
-                      <mat-icon>tune</mat-icon>
-                      <span>Open Slot Setup</span>
-                    </button>
-                    <div class="event-slots-summary">
-                      <section class="event-slots-summary-block">
-                        <span class="event-slots-summary-label">Base schedule</span>
-                        @if (slotSummaryBaseItems().length > 0) {
-                          <div class="event-slots-summary-list">
-                            @for (slot of slotSummaryBaseItems(); track slotTrackId($index, slot); let i = $index) {
-                              <article class="event-slots-summary-item">
-                                <span class="event-slots-summary-title">{{ slotTemplateLabel(i) }}</span>
-                                <span class="event-slots-summary-meta">{{ slotSummaryWindowLabel(slot) }}</span>
-                              </article>
-                            }
-                          </div>
-                        } @else {
-                          <p class="event-slots-summary-note">No base slots yet. Open slot setup to create the first one.</p>
-                        }
-                      </section>
-
-                      <section class="event-slots-summary-block">
-                        <span class="event-slots-summary-label">Specific date overrides</span>
-                        @if (slotSummaryOverrideItems().length > 0) {
-                          <div class="event-slots-summary-list">
-                            @for (override of slotSummaryOverrideItems(); track override.dateKey) {
-                              <article class="event-slots-summary-item">
-                                <span class="event-slots-summary-title">{{ override.label }}</span>
-                                <span class="event-slots-summary-meta">{{ override.detail }}</span>
-                              </article>
-                            }
-                          </div>
-                        } @else {
-                          <p class="event-slots-summary-note">No date-specific overrides yet. The event is still using only the base schedule.</p>
-                        }
-                      </section>
+                @if (eventFrequencyUsesSlots()) {
+                  <section class="event-slots-panel">
+                    <div class="event-slots-panel-head">
+                      <div class="event-slots-panel-title-wrap">
+                        <span class="event-slots-panel-title">
+                          <span class="event-schedule-panel-title">
+                            <mat-icon>schedule</mat-icon>
+                            <span>Slots</span>
+                          </span>
+                        </span>
+                        <p class="event-slots-panel-subtitle">Base schedule and date-specific overrides.</p>
+                      </div>
                     </div>
-                  </div>
+                    <div class="event-slots-panel-body">
+                      <button
+                        type="button"
+                        class="event-slots-open-btn event-slots-open-btn-inline"
+                        [disabled]="eventEditorService.readOnly()"
+                        (click)="openSlotsPopup($event)"
+                        >
+                        <mat-icon>tune</mat-icon>
+                        <span>Open Slot Setup</span>
+                      </button>
+                      <div class="event-slots-summary">
+                        <section class="event-slots-summary-block">
+                          <span class="event-slots-summary-label">Base schedule</span>
+                          @if (slotSummaryBaseItems().length > 0) {
+                            <div class="event-slots-summary-list">
+                              @for (slot of slotSummaryBaseItems(); track slotTrackId($index, slot); let i = $index) {
+                                <article class="event-slots-summary-item">
+                                  <span class="event-slots-summary-title">{{ slotTemplateLabel(i) }}</span>
+                                  <span class="event-slots-summary-meta">{{ slotSummaryWindowLabel(slot) }}</span>
+                                </article>
+                              }
+                            </div>
+                          } @else {
+                            <p class="event-slots-summary-note">No base slots yet. Open slot setup to create the first one.</p>
+                          }
+                        </section>
+
+                        <section class="event-slots-summary-block">
+                          <span class="event-slots-summary-label">Specific date overrides</span>
+                          @if (slotSummaryOverrideItems().length > 0) {
+                            <div class="event-slots-summary-list">
+                              @for (override of slotSummaryOverrideItems(); track override.dateKey) {
+                                <article class="event-slots-summary-item">
+                                  <span class="event-slots-summary-title">{{ override.label }}</span>
+                                  <span class="event-slots-summary-meta">{{ override.detail }}</span>
+                                </article>
+                              }
+                            </div>
+                          } @else {
+                            <p class="event-slots-summary-note">No date-specific overrides yet. The event is still using only the base schedule.</p>
+                          }
+                        </section>
+                      </div>
+                    </div>
+                  </section>
                 }
-                </section>
               </section>
               <app-pricing-editor
                 class="experience-description-field event-pricing-field"
@@ -394,6 +391,44 @@
                 [readOnly]="eventEditorService.readOnly()"
                 [subtitle]="eventForm.ticketing ? 'Configure paid entry for the main event and optional slot overrides.' : 'Keep it free for now or prepare ticketing rules in advance.'"
               ></app-pricing-editor>
+              <section class="event-policies-panel">
+                <div class="event-policies-panel-head">
+                  <div class="event-policies-panel-title-wrap">
+                    <span class="event-policies-panel-title">
+                      <mat-icon>policy</mat-icon>
+                      <span>Event Policies</span>
+                    </span>
+                    <p class="event-policies-panel-subtitle">Add the rules attendees need to read and approve before joining.</p>
+                  </div>
+                </div>
+                <div class="event-policies-panel-body">
+                  <button
+                    type="button"
+                    class="event-slots-open-btn event-slots-open-btn-inline"
+                    (click)="openPoliciesPopup($event)"
+                    >
+                    <mat-icon>gavel</mat-icon>
+                    <span>{{ eventEditorService.readOnly() ? 'View Policies' : 'Open Policy Setup' }}</span>
+                  </button>
+                  <div class="event-slots-summary">
+                    <section class="event-slots-summary-block">
+                      <span class="event-slots-summary-label">Summary</span>
+                      @if (eventForm.policies.length > 0) {
+                        <div class="event-slots-summary-list">
+                          <article class="event-slots-summary-item">
+                            <span class="event-slots-summary-title">{{ policiesCountLabel() }}</span>
+                            <span class="event-slots-summary-meta">
+                              {{ requiredPoliciesCount() }} required · {{ eventForm.policies.length - requiredPoliciesCount() }} optional
+                            </span>
+                          </article>
+                        </div>
+                      } @else {
+                        <p class="event-slots-summary-note">No policies yet. Add policies if attendees must review terms before joining or booking.</p>
+                      }
+                    </section>
+                  </div>
+                </div>
+              </section>
               <label class="experience-description-field event-location-field">
                 <span>Location</span>
                 <div class="asset-route-row asset-route-row-inline">
@@ -488,9 +523,7 @@
 
         <div
           class="event-slots-popup-body"
-          [class.event-slots-popup-body-disabled]="!eventForm.slotsEnabled || !canConfigureSlotsSeries()"
           >
-          @if (eventForm.slotsEnabled) {
             <div class="event-slot-editor-toolbar">
               <div class="event-slot-mode-switch" role="tablist" aria-label="Slot editor mode">
                 <button
@@ -522,7 +555,7 @@
                   <mat-icon>add</mat-icon>
                 </button>
               }
-              @if (isDateSlotEditorMode()) {
+              @if (showSlotOverrideDatePicker()) {
                 <div class="event-slot-toolbar-date-row">
                   <mat-form-field appearance="outline" class="event-slot-date-picker" subscriptSizing="dynamic">
                     <mat-label>Date</mat-label>
@@ -564,7 +597,7 @@
                         <mat-form-field
                           appearance="outline"
                           class="event-date-field event-date-field-start event-slot-date-field"
-                          [class.event-slot-date-field-locked]="isDateSlotEditorMode()"
+                          [class.event-slot-date-field-locked]="isSlotOverrideDateFieldLocked()"
                           subscriptSizing="dynamic"
                           >
                           <input
@@ -572,7 +605,9 @@
                             [matDatepicker]="slotStartPopupPicker"
                             [ngModel]="slotTemplateStartDateValue(slot)"
                             (ngModelChange)="onSlotTemplateStartDateChange(i, $event)"
-                            [disabled]="eventEditorService.readOnly() || !canConfigureSlotsSeries() || isDateSlotEditorMode()"
+                            [min]="slotTemplateDateMin(slot)"
+                            [max]="slotTemplateDateMax(slot)"
+                            [disabled]="eventEditorService.readOnly() || !canConfigureSlotsSeries() || isSlotOverrideDateFieldLocked()"
                             />
                           <mat-datepicker-toggle matSuffix [for]="slotStartPopupPicker"></mat-datepicker-toggle>
                           <mat-datepicker #slotStartPopupPicker></mat-datepicker>
@@ -597,7 +632,7 @@
                         <mat-form-field
                           appearance="outline"
                           class="event-date-field event-date-field-end event-slot-date-field"
-                          [class.event-slot-date-field-locked]="isDateSlotEditorMode()"
+                          [class.event-slot-date-field-locked]="isSlotOverrideDateFieldLocked()"
                           subscriptSizing="dynamic"
                           >
                           <input
@@ -605,7 +640,9 @@
                             [matDatepicker]="slotEndPopupPicker"
                             [ngModel]="slotTemplateEndDateValue(slot)"
                             (ngModelChange)="onSlotTemplateEndDateChange(i, $event)"
-                            [disabled]="eventEditorService.readOnly() || !canConfigureSlotsSeries() || isDateSlotEditorMode()"
+                            [min]="slotTemplateEndDateMin(slot)"
+                            [max]="slotTemplateEndDateMax(i, slot)"
+                            [disabled]="eventEditorService.readOnly() || !canConfigureSlotsSeries() || isSlotOverrideDateFieldLocked()"
                             />
                           <mat-datepicker-toggle matSuffix [for]="slotEndPopupPicker"></mat-datepicker-toggle>
                           <mat-datepicker #slotEndPopupPicker></mat-datepicker>
@@ -633,13 +670,92 @@
                 </div>
               }
             </div>
-          } @else {
-            <p class="event-slot-mode-note event-slot-mode-note-disabled">
-              {{ isGeneratedSlotInstance() ? 'Series settings stay on the parent event.' : 'Turn slots on to enable recurring slots and date-specific overrides.' }}
-            </p>
-          }
         </div>
       </section>
+    }
+    @if (showPoliciesPopup) {
+      <div class="event-slots-popup-backdrop" (click)="closePoliciesPopup()"></div>
+      <section class="event-slots-popup event-policies-popup" role="dialog" aria-modal="true" aria-label="Policy setup">
+        <header class="event-slots-popup-head">
+          <div class="event-slots-popup-copy">
+            <span class="event-slots-popup-title">Policy Setup</span>
+            <span class="event-slots-popup-subtitle">Keep the list compact here. Open a policy to edit the details attendees need to read and approve.</span>
+          </div>
+          <div class="event-policies-popup-head-controls">
+            @if (!eventEditorService.readOnly()) {
+              <button type="button" class="popup-header-add-btn event-slots-add-btn" (click)="openPolicyEditor(undefined, $event)" aria-label="Add policy">
+                <mat-icon>add</mat-icon>
+              </button>
+            }
+            <button type="button" class="event-slots-popup-close" (click)="closePoliciesPopup()" aria-label="Close policy setup">
+              <mat-icon>close</mat-icon>
+            </button>
+          </div>
+        </header>
+
+        <div class="event-slots-popup-body event-policies-popup-body">
+          <div class="event-policies-list event-policies-list-compact">
+            @for (policy of workingPolicies; track policy.id; let i = $index) {
+              <article
+                class="event-policy-list-card"
+                [class.is-readonly]="eventEditorService.readOnly()"
+                (click)="openPolicyEditor(i, $event)"
+              >
+                <div class="event-policy-list-card-head">
+                  <div class="event-policy-list-card-copy">
+                    <strong>{{ policy.title || ('Policy ' + (i + 1)) }}</strong>
+                    <span>{{ policyCardMetaLabel(policy) }}</span>
+                  </div>
+                  @if (!eventEditorService.readOnly()) {
+                    <button type="button" class="event-slot-remove-btn" (click)="removePolicyDraft(i, $event)" aria-label="Remove policy">
+                      <mat-icon>delete</mat-icon>
+                    </button>
+                  }
+                </div>
+                <p>{{ policyCardPreview(policy) }}</p>
+              </article>
+            }
+            @if (workingPolicies.length === 0) {
+              <div class="event-slot-empty-state event-policy-empty-state">
+                <span>No policies yet.</span>
+              </div>
+            }
+          </div>
+        </div>
+      </section>
+      @if (showPolicyEditorPopup) {
+        <div class="event-policy-editor-backdrop" (click)="closePolicyEditor()"></div>
+        <section class="event-slots-popup event-policy-editor-popup" role="dialog" aria-modal="true" aria-label="Edit policy">
+          <header class="event-slots-popup-head">
+            <div class="event-slots-popup-copy">
+              <span class="event-slots-popup-title">{{ policyPopupTitle() }}</span>
+              <span class="event-slots-popup-subtitle">Write the policy clearly and choose whether attendees must approve it before joining. Changes are kept automatically.</span>
+            </div>
+            <div class="event-policies-popup-head-controls">
+              <button type="button" class="event-slots-popup-close" (click)="closePolicyEditor()" aria-label="Close policy form">
+                <mat-icon>close</mat-icon>
+              </button>
+            </div>
+          </header>
+
+          <div class="event-slots-popup-body event-policy-editor-body">
+            <article class="event-policy-card">
+              <label class="event-policy-field">
+                <span>Title</span>
+                <input type="text" [(ngModel)]="workingPolicyDraft.title" (ngModelChange)="onWorkingPolicyDraftChange()" [readonly]="eventEditorService.readOnly()" placeholder="Policy title" />
+              </label>
+              <label class="event-policy-field">
+                <span>Description</span>
+                <textarea rows="6" [(ngModel)]="workingPolicyDraft.description" (ngModelChange)="onWorkingPolicyDraftChange()" [readonly]="eventEditorService.readOnly()" placeholder="Explain the policy clearly."></textarea>
+              </label>
+              <label class="event-policy-check">
+                <input type="checkbox" [(ngModel)]="workingPolicyDraft.required" (ngModelChange)="onWorkingPolicyDraftChange()" [disabled]="eventEditorService.readOnly()" />
+                <span>Attendees must approve this policy</span>
+              </label>
+            </article>
+          </div>
+        </section>
+      }
     }
     <app-event-subevents-popup
       [open]="showSubEventsPopup"
@@ -648,7 +764,7 @@
       [ownerId]="editingEventId"
       [subEvents]="eventForm.subEvents"
       [displayMode]="subEventsDisplayMode"
-      [slotsEnabled]="eventForm.slotsEnabled"
+      [slotsEnabled]="eventFrequencyUsesSlots()"
       [slotTemplates]="eventForm.slotTemplates"
       [parentStartAt]="eventForm.startAt"
       [parentEndAt]="eventForm.endAt"

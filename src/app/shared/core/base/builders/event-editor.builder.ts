@@ -5,6 +5,17 @@ import { EventEditorConverter } from '../converters/event-editor.converter';
 import { PricingBuilder } from './pricing.builder';
 
 export class EventEditorBuilder {
+  static cloneEventEditorPolicies(
+    items: readonly AppTypes.EventPolicyItem[]
+  ): AppTypes.EventPolicyItem[] {
+    return items.map(item => ({
+      id: `${item.id ?? ''}`.trim(),
+      title: `${item.title ?? ''}`.trim(),
+      description: `${item.description ?? ''}`.trim(),
+      required: item.required !== false
+    })).filter(item => item.id || item.title || item.description);
+  }
+
   static buildCreatedEventEditorId(
     target: AppTypes.EventEditorTarget,
     timestampMs = Date.now()
@@ -222,16 +233,25 @@ export class EventEditorBuilder {
         : AppUtils.toIsoDateTimeLocal(parsedEnd);
       return {
         id: `${item.id ?? `slot-${index + 1}`}`.trim() || `slot-${index + 1}`,
-        startAt: overrideDate
-          ? AppUtils.applyDatePartToIsoLocal(startAt, EventEditorConverter.parseEventEditorOverrideDate(overrideDate))
-          : startAt,
-        endAt: overrideDate
-          ? AppUtils.applyDatePartToIsoLocal(endAt, EventEditorConverter.parseEventEditorOverrideDate(overrideDate))
-          : endAt,
+        startAt,
+        endAt,
         overrideDate,
         closed: false
       };
     });
+  }
+
+  static buildPersistedEventEditorPolicies(
+    items: readonly AppTypes.EventPolicyItem[]
+  ): AppTypes.EventPolicyItem[] {
+    return items
+      .map((item, index) => ({
+        id: `${item.id ?? `policy-${index + 1}`}`.trim() || `policy-${index + 1}`,
+        title: `${item.title ?? ''}`.trim() || `Policy ${index + 1}`,
+        description: `${item.description ?? ''}`.trim(),
+        required: item.required !== false
+      }))
+      .filter(item => item.title.length > 0 || item.description.length > 0);
   }
 
   static buildEventEditorTimeframeLabel(startAt: string, endAt: string, frequency: string): string {
@@ -303,8 +323,11 @@ export class EventEditorBuilder {
           allowSlotFeatures: true
         }
       ),
-      slotsEnabled: params.form.slotsEnabled,
-      slotTemplates: this.buildPersistedEventEditorSlotTemplates(params.form.slotTemplates),
+      policies: this.buildPersistedEventEditorPolicies(params.form.policies),
+      slotsEnabled: EventEditorConverter.normalizeEventEditorFrequency(params.form.frequency) !== 'One-time',
+      slotTemplates: EventEditorConverter.normalizeEventEditorFrequency(params.form.frequency) !== 'One-time'
+        ? this.buildPersistedEventEditorSlotTemplates(params.form.slotTemplates)
+        : [],
       visibility: params.form.visibility,
       blindMode: params.form.blindMode,
       published: params.target === 'hosting'

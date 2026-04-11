@@ -2,6 +2,9 @@ import { Injectable, inject } from '@angular/core';
 
 import type {
   ActivitiesEventSyncPayload,
+  EventCheckoutAssetSelection,
+  EventCheckoutRequest,
+  EventCheckoutSession,
   EventFeedbackNoteRequestDto,
   EventFeedbackStateDto,
   EventFeedbackSubmitRequestDto
@@ -138,9 +141,19 @@ export class EventsService extends BaseRouteModeService {
   requestJoin(
     userId: string,
     sourceId: string,
-    options: { slotSourceId?: string | null } = {}
+    options: {
+      slotSourceId?: string | null;
+      optionalSubEventIds?: string[];
+      assetSelections?: EventCheckoutAssetSelection[];
+      acceptedPolicyIds?: string[];
+      paymentSessionId?: string | null;
+    } = {}
   ): Promise<DemoEventRecord | null> {
     return this.eventsService.requestJoin(userId, sourceId, options);
+  }
+
+  createCheckoutSession(request: EventCheckoutRequest): Promise<EventCheckoutSession | null> {
+    return this.eventsService.createCheckoutSession(request);
   }
 
   queryEventFeedbackStates(userId: string): Promise<EventFeedbackStateDto[]> {

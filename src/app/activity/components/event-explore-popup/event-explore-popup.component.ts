@@ -42,6 +42,7 @@ import {
   type SmartListStateChange
 } from '../../../shared/ui';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
+import { EventCheckoutDialogService } from '../../../shared/ui/services/event-checkout-dialog.service';
 import { NavigatorService } from '../../../navigator';
 import type { DemoEventRecord } from '../../../shared/core/demo/models/events.model';
 import { resolveCurrentRouteDelayMs } from '../../../shared/core/base/services/route-delay.service';
@@ -69,6 +70,7 @@ export class EventExplorePopupComponent {
   private readonly usersService = inject(UsersService);
   protected readonly navigatorService = inject(NavigatorService);
   private readonly confirmationDialogService = inject(ConfirmationDialogService);
+  private readonly eventCheckoutDialogService = inject(EventCheckoutDialogService);
   private readonly appCtx = inject(AppContext);
   private readonly popupCtx = inject(AppPopupContext);
   private readonly activitiesContext = inject(ActivitiesPopupStateService);
@@ -126,7 +128,15 @@ export class EventExplorePopupComponent {
   }
 
   protected readonly eventExploreLoadPage = (query: ListQuery<EventExploreFeedFilters>) =>
-    from(this.activitiesService.loadExplore(query));
+    from(this.activitiesService.loadExplore(query).then(result => {
+      const filteredItems = result.items.filter((record: DemoEventRecord) => !this.hasTrackedMembership(record, this.activeUserId));
+      const hiddenCount = result.items.length - filteredItems.length;
+      return {
+        ...result,
+        items: filteredItems,
+        total: Math.max(0, result.total - hiddenCount)
+      };
+    }));
   protected readonly EventExploreBuilder = EventExploreBuilder;
 
   protected readonly eventExploreSmartListConfig: SmartListConfig<DemoEventRecord, EventExploreFeedFilters> = {
@@ -511,8 +521,8 @@ export class EventExplorePopupComponent {
       });
       return;
     }
-    if (record.slotsEnabled && (record.upcomingSlots?.length ?? 0) > 0) {
-      this.openEventExploreSlotPicker(record);
+    if (this.shouldUseCheckoutFlow(record)) {
+      this.openEventExploreCheckout(record);
       return;
     }
     this.confirmationDialogService.open({
@@ -578,7 +588,17 @@ export class EventExplorePopupComponent {
       confirmTone: 'accent',
       failureMessage: this.eventExploreJoinFailureMessage(record),
       onConfirm: async () => {
-        await this.submitEventExploreJoinRequest(record, slot.id);
+        await this.submitEventExploreJoinRequest(record, {
+          sourceId: record.id,
+          slotSourceId: slot.id,
+          optionalSubEventIds: [],
+          assetSelections: [],
+          acceptedPolicyIds: [],
+          lineItems: [],
+          totalAmount: 0,
+          currency: record.pricing?.currency ?? 'USD',
+          paymentSessionId: null
+        });
         this.closeEventExploreSlotPicker();
       }
     });
@@ -808,6 +828,33 @@ export class EventExplorePopupComponent {
     return record.ticketing ? 'Unable to book right now.' : 'Unable to send request.';
   }
 
+  private shouldUseCheckoutFlow(record: DemoEventRecord): boolean {
+    if ((record.upcomingSlots?.length ?? 0) > 0) {
+      return true;
+    }
+    if ((record.policies?.length ?? 0) > 0) {
+      return true;
+    }
+    if ((record.subEvents ?? []).some(item => item.optional)) {
+      return true;
+    }
+    return Boolean(record.pricing?.enabled && (Number(record.pricing?.basePrice) || 0) > 0);
+  }
+
+  private openEventExploreCheckout(record: DemoEventRecord): void {
+    this.eventCheckoutDialogService.open({
+      mode: 'join',
+      userId: this.activeUserId,
+      record,
+      title: this.eventExploreJoinDialogTitle(record),
+      subtitle: record.timeframe,
+      confirmLabel: this.eventExploreJoinConfirmLabel(record),
+      busyConfirmLabel: this.eventExploreJoinBusyLabel(record),
+      failureMessage: this.eventExploreJoinFailureMessage(record),
+      onSubmit: (selection) => this.submitEventExploreJoinRequest(record, selection)
+    });
+  }
+
   private openEventExploreSlotPicker(record: DemoEventRecord): void {
     this.slotPickerRecord = record;
     this.showOrderPicker = false;
@@ -816,7 +863,10 @@ export class EventExplorePopupComponent {
     this.cdr.markForCheck();
   }
 
-  private async submitEventExploreJoinRequest(record: DemoEventRecord, slotSourceId: string | null = null): Promise<void> {
+  private async submitEventExploreJoinRequest(
+    record: DemoEventRecord,
+    selection?: AppTypes.EventCheckoutSelection | null
+  ): Promise<void> {
     const activeUserId = this.activeUserId.trim();
     if (!activeUserId) {
       return;
@@ -851,7 +901,11 @@ export class EventExplorePopupComponent {
     try {
       await Promise.all([exitPromise, delayPromise]);
       await this.eventsService.requestJoin(activeUserId, record.id, {
-        slotSourceId
+        slotSourceId: selection?.slotSourceId ?? null,
+        optionalSubEventIds: selection?.optionalSubEventIds ?? [],
+        assetSelections: selection?.assetSelections ?? [],
+        acceptedPolicyIds: selection?.acceptedPolicyIds ?? [],
+        paymentSessionId: selection?.paymentSessionId ?? null
       });
       if (this.selectedMembersRecord?.id === record.id) {
         this.selectedMembers = nextMembers;

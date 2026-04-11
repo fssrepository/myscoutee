@@ -5,6 +5,9 @@ import { environment } from '../../../../../environments/environment';
 import { PricingBuilder } from '../../../core/base/builders';
 import type {
   ActivitiesEventSyncPayload,
+  EventCheckoutAssetSelection,
+  EventCheckoutRequest,
+  EventCheckoutSession,
   EventFeedbackNoteRequestDto,
   EventFeedbackStateDto,
   EventFeedbackSubmitRequestDto
@@ -218,7 +221,13 @@ export class HttpEventsService {
   async requestJoin(
     userId: string,
     sourceId: string,
-    options: { slotSourceId?: string | null } = {}
+    options: {
+      slotSourceId?: string | null;
+      optionalSubEventIds?: string[];
+      assetSelections?: EventCheckoutAssetSelection[];
+      acceptedPolicyIds?: string[];
+      paymentSessionId?: string | null;
+    } = {}
   ): Promise<DemoEventRecord | null> {
     const normalizedUserId = userId.trim();
     const normalizedSourceId = sourceId.trim();
@@ -231,10 +240,24 @@ export class HttpEventsService {
           userId: normalizedUserId,
           type: 'events',
           sourceId: normalizedSourceId,
-          slotSourceId: options.slotSourceId?.trim() || null
+          slotSourceId: options.slotSourceId?.trim() || null,
+          optionalSubEventIds: [...(options.optionalSubEventIds ?? [])],
+          assetSelections: [...(options.assetSelections ?? [])],
+          acceptedPolicyIds: [...(options.acceptedPolicyIds ?? [])],
+          paymentSessionId: options.paymentSessionId?.trim() || null
         })
         .toPromise();
       return response ? this.cloneRecords([response])[0] ?? null : null;
+    } catch {
+      return null;
+    }
+  }
+
+  async createCheckoutSession(request: EventCheckoutRequest): Promise<EventCheckoutSession | null> {
+    try {
+      return await this.http
+        .post<EventCheckoutSession | null>(`${this.apiBaseUrl}/activities/events/checkout`, request)
+        .toPromise() ?? null;
     } catch {
       return null;
     }
@@ -320,6 +343,7 @@ export class HttpEventsService {
       pendingMemberUserIds: [...(record.pendingMemberUserIds ?? [])],
       topics: [...(record.topics ?? [])],
       pricing: record.pricing ? PricingBuilder.clonePricingConfig(record.pricing) : undefined,
+      policies: (record.policies ?? []).map(item => ({ ...item })),
       slotTemplates: (record.slotTemplates ?? []).map(item => ({ ...item })),
       nextSlot: record.nextSlot ? { ...record.nextSlot } : null,
       upcomingSlots: (record.upcomingSlots ?? []).map(item => ({ ...item })),

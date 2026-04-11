@@ -1111,6 +1111,56 @@
   gap: 0.62rem;
 }
 
+.event-policies-panel {
+  grid-column: 1 / -1;
+  border: 1px solid rgba(121, 115, 150, 0.22);
+  border-radius: 18px;
+  background: linear-gradient(180deg, #f7f4ff 0%, #f1edff 100%);
+  box-shadow: 0 4px 12px rgba(47, 40, 93, 0.08);
+  padding: 0.72rem 0.84rem;
+  display: grid;
+  gap: 0.7rem;
+}
+
+.event-policies-panel-head {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.event-policies-panel-title-wrap {
+  display: grid;
+  gap: 0.18rem;
+}
+
+.event-policies-panel-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.34rem;
+  font-size: 1rem;
+  font-weight: 800;
+  color: #5f4f8a;
+}
+
+.event-policies-panel-title .mat-icon {
+  width: 18px;
+  height: 18px;
+  font-size: 18px;
+  line-height: 18px;
+  color: #5f4f8a;
+}
+
+.event-policies-panel-subtitle {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: rgba(63, 56, 97, 0.78);
+}
+
+.event-policies-panel-body {
+  display: grid;
+  gap: 0.62rem;
+}
+
 .event-slots-panel.event-slots-panel-disabled {
   background: linear-gradient(180deg, #f7fafd 0%, #eef3f8 100%);
   border-color: rgba(103, 122, 150, 0.18);
@@ -1514,6 +1564,152 @@ button.event-slots-enable-btn:disabled {
   opacity: 0.72;
 }
 
+.event-policies-popup-body {
+  padding-right: 0.08rem;
+}
+
+.event-policies-popup-head-controls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.event-policies-list {
+  display: grid;
+  gap: 0.72rem;
+}
+
+.event-policies-list-compact {
+  align-content: start;
+}
+
+.event-policy-list-card {
+  border: 1px solid rgba(124, 117, 158, 0.2);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.88);
+  padding: 0.86rem 0.9rem;
+  display: grid;
+  gap: 0.42rem;
+  cursor: pointer;
+}
+
+.event-policy-list-card.is-readonly {
+  cursor: default;
+}
+
+.event-policy-list-card-head {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.event-policy-list-card-copy {
+  min-width: 0;
+  display: grid;
+  gap: 0.18rem;
+}
+
+.event-policy-list-card-copy strong {
+  color: #4f4479;
+  font-size: 0.94rem;
+}
+
+.event-policy-list-card-copy span {
+  color: rgba(84, 74, 126, 0.72);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.event-policy-list-card p {
+  margin: 0;
+  color: rgba(39, 53, 76, 0.8);
+  font-size: 0.84rem;
+  line-height: 1.5;
+  white-space: pre-line;
+}
+
+.event-policy-card {
+  border: 1px solid rgba(124, 117, 158, 0.2);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.88);
+  padding: 0.8rem;
+  display: grid;
+  gap: 0.56rem;
+}
+
+.event-policy-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  color: #4f4479;
+}
+
+.event-policy-field {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.event-policy-field span,
+.event-policy-check span {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: rgba(54, 49, 79, 0.76);
+}
+
+.event-policy-field input,
+.event-policy-field textarea {
+  width: 100%;
+  border: 1px solid rgba(136, 156, 186, 0.5);
+  border-radius: 12px;
+  background: #fff;
+  color: #1d3556;
+  padding: 0.72rem 0.8rem;
+  box-sizing: border-box;
+  font: inherit;
+}
+
+.event-policy-field textarea {
+  resize: vertical;
+  min-height: 108px;
+}
+
+.event-policy-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.event-policy-check input {
+  width: 16px;
+  height: 16px;
+}
+
+.event-policy-empty-state {
+  gap: 0.8rem;
+}
+
+.event-policy-editor-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 32;
+  background: rgba(17, 31, 50, 0.24);
+  backdrop-filter: blur(2px);
+}
+
+.event-policy-editor-popup {
+  z-index: 33;
+  width: min(760px, calc(100vw - 1.6rem));
+  height: auto;
+  max-height: calc(100vh - 2rem);
+}
+
+.event-policy-editor-body {
+  padding-right: 0.12rem;
+}
+
 .event-schedule-panel {
   grid-column: 1 / -1;
   border: 1px solid rgba(88, 105, 132, 0.26);
@@ -1647,6 +1843,11 @@ button.profile-status-select-wrap {
   border-color: rgba(36, 103, 168, 0.42);
 }
 
+.event-frequency-select.event-frequency-yearly {
+  background: linear-gradient(180deg, #edf8ef 0%, #dff1e4 100%);
+  border-color: rgba(55, 132, 82, 0.42);
+}
+
 .event-frequency-one-time {
   color: #d07d33;
 }
@@ -1667,6 +1868,10 @@ button.profile-status-select-wrap {
   color: #295d96;
 }
 
+.event-frequency-yearly {
+  color: #2f8651;
+}
+
 :host ::ng-deep .mat-mdc-option.status-option.event-frequency-one-time {
   background: linear-gradient(0deg, #ffffff, #fff3e8);
 }
@@ -1685,6 +1890,10 @@ button.profile-status-select-wrap {
 
 :host ::ng-deep .mat-mdc-option.status-option.event-frequency-monthly {
   background: linear-gradient(0deg, #ffffff, #eef6ff);
+}
+
+:host ::ng-deep .mat-mdc-option.status-option.event-frequency-yearly {
+  background: linear-gradient(0deg, #ffffff, #eef8f1);
 }
 
 .event-frequency-select .status-option-content {

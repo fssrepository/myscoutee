@@ -38,6 +38,7 @@ import type {
 import type * as AppTypes from '../../../shared/core/base/models';
 import {
   CounterBadgePipe,
+  EventCheckoutPopupComponent,
   SmartListComponent,
   type InfoCardData,
   type InfoCardMenuAction,
@@ -50,6 +51,7 @@ import {
   type SmartListStateChange
 } from '../../../shared/ui';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
+import { EventCheckoutDialogService } from '../../../shared/ui/services/event-checkout-dialog.service';
 import { EventChatPopupComponent } from '../event-chat-popup/event-chat-popup.component';
 import { EventExplorePopupComponent } from '../event-explore-popup/event-explore-popup.component';
 import { ActivitiesPopupToolbarController } from './activities-popup-toolbar.controller';
@@ -114,6 +116,7 @@ interface ActivitiesEventScopeOption {
     ActivitiesChatTemplateComponent,
     ActivitiesRateTemplateComponent,
     EventChatPopupComponent,
+    EventCheckoutPopupComponent,
     EventExplorePopupComponent,
     CounterBadgePipe
   ],
@@ -143,6 +146,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   private readonly ownedAssets = inject(OwnedAssetsPopupFacadeService);
   private readonly usersService = inject(UsersService);
   protected readonly confirmationDialogService = inject(ConfirmationDialogService);
+  protected readonly eventCheckoutDialogService = inject(EventCheckoutDialogService);
   readonly activitiesRates = new ActivitiesRatesController({
     getUsers: () => this.users,
     getActiveUserGender: () => this.activeUser.gender,

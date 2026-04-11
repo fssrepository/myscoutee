@@ -1097,6 +1097,7 @@ export class DemoEventsRepository {
     const blindMode = payload.blindMode ?? existing?.blindMode ?? 'Open Event';
     const topics = this.normalizeTopics(payload.topics ?? existing?.topics ?? []);
     const subEvents = this.cloneSubEvents(payload.subEvents ?? existing?.subEvents);
+    const policies = EventEditorBuilder.cloneEventEditorPolicies(payload.policies ?? existing?.policies ?? []);
     const ticketing = payload.ticketing ?? existing?.ticketing ?? false;
     const pricing = PricingBuilder.syncSlotOverrides(
       PricingBuilder.normalizePricingConfig(payload.pricing ?? existing?.pricing, {
@@ -1165,6 +1166,7 @@ export class DemoEventsRepository {
       frequency: payload.frequency?.trim() || existing?.frequency || 'One-time',
       ticketing,
       pricing,
+      policies,
       slotsEnabled: payload.slotsEnabled ?? existing?.slotsEnabled ?? false,
       slotTemplates: EventEditorBuilder.cloneEventEditorSlotTemplates(payload.slotTemplates ?? existing?.slotTemplates ?? []),
       parentEventId: payload.parentEventId ?? existing?.parentEventId ?? null,
@@ -1341,12 +1343,15 @@ export class DemoEventsRepository {
           : ((index % 2) === 0 ? 'Friends only' : 'Public');
         const blindMode = (index % 5) === 0 ? 'Blind Event' : 'Open Event';
         const seed = AppUtils.hashText(`${userId}:${id}:${seq}`);
+        const title = this.buildSyntheticEventTitle(user, seq, seed);
+        const defaultDescription = this.buildSyntheticEventDescription(user, seq, seed);
+        const checkoutVariation = this.buildSyntheticCheckoutVariation(id, index);
 
         synthetic.push({
           id,
           avatar: user?.initials ?? AppUtils.initialsFromText(user?.name ?? 'Synthetic Event'),
-          title: this.buildSyntheticEventTitle(user, seq, seed),
-          shortDescription: this.buildSyntheticEventDescription(user, seq, seed),
+          title,
+          shortDescription: checkoutVariation?.shortDescription ?? defaultDescription,
           timeframe: `${start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · ${start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} - ${end.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`,
           activity: (index % 5) + 1,
           isAdmin: (seq % 4) === 0,
@@ -1362,7 +1367,8 @@ export class DemoEventsRepository {
           capacityMin: 6 + (index % 10),
           capacityMax: 12 + (index % 18),
           rating: 6 + ((seed % 35) / 10),
-          relevance: 50 + (seed % 51)
+          relevance: 50 + (seed % 51),
+          ...checkoutVariation
         });
       }
 
@@ -1403,6 +1409,244 @@ export class DemoEventsRepository {
     ] as const;
     const variation = variations[(seed >> 7) % variations.length] ?? variations[0];
     return `${city} synthetic event ${seq} with ${variation.toLowerCase()}`;
+  }
+
+  private buildSyntheticCheckoutVariation(
+    sourceId: string,
+    index: number
+  ): Partial<EventMenuItem> | null {
+    if (index === 0) {
+      const slotTemplates: AppTypes.EventSlotTemplate[] = [
+        {
+          id: `${sourceId}-slot-1`,
+          startAt: '2026-04-18T18:30:00',
+          endAt: '2026-04-18T20:00:00'
+        },
+        {
+          id: `${sourceId}-slot-2`,
+          startAt: '2026-04-18T20:15:00',
+          endAt: '2026-04-18T22:15:00'
+        }
+      ];
+      return {
+        timeframe: 'Every Sat · Apr 18 - Jun 20',
+        startAt: '2026-04-18T18:00:00',
+        endAt: '2026-06-20T23:00:00',
+        frequency: 'Weekly',
+        ticketing: true,
+        visibility: 'Public',
+        slotsEnabled: true,
+        slotTemplates,
+        pricing: this.buildSyntheticCheckoutPricing(38, slotTemplates),
+        policies: this.buildSyntheticPolicies(),
+        subEvents: this.buildSyntheticCheckoutSubEvents({
+          sourceId,
+          firstSlotStartAt: slotTemplates[0]?.startAt ?? '2026-04-18T18:30:00',
+          firstSlotEndAt: slotTemplates[0]?.endAt ?? '2026-04-18T20:00:00',
+          includePaidOptional: true
+        }),
+        shortDescription: 'Checkout demo: choose a slot, add optional paid extras, review policies, then continue to dummy pay.'
+      };
+    }
+
+    if (index === 1) {
+      return {
+        timeframe: 'May 3 · 7:00 PM - 10:00 PM',
+        startAt: '2026-05-03T19:00:00',
+        endAt: '2026-05-03T22:00:00',
+        frequency: 'One-time',
+        ticketing: true,
+        visibility: 'Public',
+        slotsEnabled: false,
+        slotTemplates: [],
+        pricing: this.buildSyntheticCheckoutPricing(22),
+        policies: this.buildSyntheticPolicies(),
+        subEvents: this.buildSyntheticCheckoutSubEvents({
+          sourceId,
+          firstSlotStartAt: '2026-05-03T19:10:00',
+          firstSlotEndAt: '2026-05-03T20:30:00',
+          includePaidOptional: true
+        }),
+        shortDescription: 'Checkout demo: paid event without slots, so you can test policies and add-ons without slot selection.'
+      };
+    }
+
+    if (index === 2) {
+      const slotTemplates: AppTypes.EventSlotTemplate[] = [
+        {
+          id: `${sourceId}-slot-1`,
+          startAt: '2026-04-19T13:00:00',
+          endAt: '2026-04-19T14:15:00'
+        },
+        {
+          id: `${sourceId}-slot-2`,
+          startAt: '2026-04-19T15:00:00',
+          endAt: '2026-04-19T16:30:00'
+        }
+      ];
+      return {
+        timeframe: 'Every Sun · Apr 19 - May 31',
+        startAt: '2026-04-19T12:30:00',
+        endAt: '2026-05-31T18:00:00',
+        frequency: 'Weekly',
+        ticketing: false,
+        visibility: 'Public',
+        slotsEnabled: true,
+        slotTemplates,
+        pricing: PricingBuilder.createDefaultPricingConfig('event'),
+        policies: [],
+        subEvents: this.buildSyntheticCheckoutSubEvents({
+          sourceId,
+          firstSlotStartAt: slotTemplates[0]?.startAt ?? '2026-04-19T13:00:00',
+          firstSlotEndAt: slotTemplates[0]?.endAt ?? '2026-04-19T14:15:00',
+          includePaidOptional: false
+        }),
+        shortDescription: 'Checkout demo: free recurring event with multiple slots, so you can test slot picking and join requests only.'
+      };
+    }
+
+    return null;
+  }
+
+  private buildSyntheticPolicies(): AppTypes.EventPolicyItem[] {
+    return [
+      {
+        id: 'policy-checkin-window',
+        title: 'Check-in window',
+        description: 'Arrive within the first 15 minutes of your selected slot so the organizer can release late spots.',
+        required: true
+      },
+      {
+        id: 'policy-cancellation',
+        title: 'Cancellation',
+        description: 'Optional extras are refundable only until 24 hours before the selected slot starts.',
+        required: true
+      },
+      {
+        id: 'policy-media',
+        title: 'Photos & recap',
+        description: 'Highlights may be shared privately with attendees after the event.',
+        required: false
+      }
+    ];
+  }
+
+  private buildSyntheticCheckoutPricing(
+    basePrice: number,
+    slotTemplates: readonly AppTypes.EventSlotTemplate[] = []
+  ): AppTypes.PricingConfig {
+    const pricing = PricingBuilder.createSamplePricingConfig(slotTemplates.length > 0 ? 'hybrid' : 'fixed');
+    pricing.enabled = true;
+    pricing.basePrice = basePrice;
+    pricing.minPrice = Math.max(0, basePrice - 12);
+    pricing.maxPrice = basePrice + 48;
+    pricing.currency = 'USD';
+    pricing.chargeType = 'per_attendee';
+    pricing.audience.enabled = false;
+    pricing.audience.promoCodes = [];
+    if (slotTemplates.length > 0) {
+      pricing.slotPricingEnabled = true;
+      pricing.slotOverrides = slotTemplates.map((slot, index) => ({
+        id: `${slot.id}-override`,
+        slotId: slot.id,
+        label: `Slot ${index + 1}`,
+        startAt: slot.startAt,
+        endAt: slot.endAt,
+        price: basePrice + (index * 6),
+        currency: 'USD'
+      }));
+    } else {
+      pricing.slotPricingEnabled = false;
+      pricing.slotOverrides = [];
+    }
+    return pricing;
+  }
+
+  private buildSyntheticCheckoutSubEvents(options: {
+    sourceId: string;
+    firstSlotStartAt: string;
+    firstSlotEndAt: string;
+    includePaidOptional: boolean;
+  }): AppTypes.SubEventFormItem[] {
+    const includedPricing = PricingBuilder.createDefaultPricingConfig('subevent');
+    const addOnPricing = PricingBuilder.createDefaultPricingConfig('subevent');
+    addOnPricing.enabled = true;
+    addOnPricing.basePrice = options.includePaidOptional ? 16 : 0;
+    addOnPricing.currency = 'USD';
+    addOnPricing.chargeType = 'per_booking';
+    addOnPricing.minPrice = options.includePaidOptional ? 12 : 0;
+    addOnPricing.maxPrice = options.includePaidOptional ? 24 : 0;
+
+    const transportPricing = PricingBuilder.createDefaultPricingConfig('subevent');
+    transportPricing.enabled = true;
+    transportPricing.basePrice = 8;
+    transportPricing.currency = 'USD';
+    transportPricing.chargeType = 'per_attendee';
+    transportPricing.minPrice = 6;
+    transportPricing.maxPrice = 12;
+
+    return [
+      {
+        id: `${options.sourceId}-main-session`,
+        name: 'Main Session',
+        description: 'Included in the event price and aligned to the selected slot.',
+        startAt: options.firstSlotStartAt,
+        endAt: options.firstSlotEndAt,
+        optional: false,
+        capacityMin: 0,
+        capacityMax: 24,
+        membersAccepted: 0,
+        membersPending: 0,
+        carsPending: 0,
+        accommodationPending: 0,
+        suppliesPending: 0,
+        pricing: includedPricing,
+        slotStartOffsetMinutes: 0,
+        slotDurationMinutes: 75
+      },
+      {
+        id: `${options.sourceId}-vip-lounge`,
+        name: options.includePaidOptional ? 'VIP Lounge Access' : 'Community Lounge Access',
+        description: options.includePaidOptional
+          ? 'Optional add-on with a separate basket line and room request support.'
+          : 'Optional free add-on for the free slot flow.',
+        startAt: options.firstSlotStartAt,
+        endAt: options.firstSlotEndAt,
+        optional: true,
+        capacityMin: 0,
+        capacityMax: 10,
+        membersAccepted: 0,
+        membersPending: 0,
+        carsPending: 0,
+        accommodationPending: 0,
+        suppliesPending: 0,
+        accommodationCapacityMin: 0,
+        accommodationCapacityMax: options.includePaidOptional ? 4 : 0,
+        pricing: addOnPricing,
+        slotStartOffsetMinutes: 20,
+        slotDurationMinutes: 45
+      },
+      {
+        id: `${options.sourceId}-ride-share`,
+        name: 'Ride-share Pickup',
+        description: 'Optional transport add-on so the checkout can show an asset-style request too.',
+        startAt: options.firstSlotStartAt,
+        endAt: options.firstSlotEndAt,
+        optional: true,
+        capacityMin: 0,
+        capacityMax: 12,
+        membersAccepted: 0,
+        membersPending: 0,
+        carsPending: 0,
+        accommodationPending: 0,
+        suppliesPending: 0,
+        carsCapacityMin: 0,
+        carsCapacityMax: 3,
+        pricing: options.includePaidOptional ? transportPricing : includedPricing,
+        slotStartOffsetMinutes: 0,
+        slotDurationMinutes: 20
+      }
+    ];
   }
 
   private buildFeaturedFriendsOnlyEvents(
@@ -1583,8 +1827,8 @@ export class DemoEventsRepository {
         ? seeded.visibility
         : this.normalizeVisibility(current.visibility, seeded.visibility),
       blindMode: this.normalizeBlindMode(current.blindMode, seeded.blindMode),
-      startAtIso: current.startAtIso?.trim() || seeded.startAtIso,
-      endAtIso: current.endAtIso?.trim() || seeded.endAtIso,
+      startAtIso: shouldPreferSeededSyntheticIdentity ? seeded.startAtIso : (current.startAtIso?.trim() || seeded.startAtIso),
+      endAtIso: shouldPreferSeededSyntheticIdentity ? seeded.endAtIso : (current.endAtIso?.trim() || seeded.endAtIso),
       distanceKm: Number.isFinite(current.distanceKm) ? current.distanceKm : seeded.distanceKm,
       imageUrl: current.imageUrl?.trim() || seeded.imageUrl,
       sourceLink: current.sourceLink?.trim() || seeded.sourceLink,
@@ -1594,11 +1838,27 @@ export class DemoEventsRepository {
       capacityMin: this.normalizeCount(current.capacityMin) ?? seeded.capacityMin,
       capacityMax: this.normalizeCount(current.capacityMax) ?? seeded.capacityMax,
       capacityTotal: this.normalizeCount(current.capacityTotal) ?? seeded.capacityTotal,
-      autoInviter: typeof current.autoInviter === 'boolean' ? current.autoInviter : seeded.autoInviter,
-      frequency: current.frequency?.trim() || seeded.frequency,
-      ticketing: typeof current.ticketing === 'boolean' ? current.ticketing : seeded.ticketing,
-      slotsEnabled: typeof current.slotsEnabled === 'boolean' ? current.slotsEnabled : seeded.slotsEnabled,
-      slotTemplates: (current.slotTemplates ?? []).length > 0
+      autoInviter: shouldPreferSeededSyntheticIdentity
+        ? seeded.autoInviter
+        : (typeof current.autoInviter === 'boolean' ? current.autoInviter : seeded.autoInviter),
+      frequency: shouldPreferSeededSyntheticIdentity ? seeded.frequency : (current.frequency?.trim() || seeded.frequency),
+      ticketing: shouldPreferSeededSyntheticIdentity
+        ? seeded.ticketing
+        : (typeof current.ticketing === 'boolean' ? current.ticketing : seeded.ticketing),
+      pricing: shouldPreferSeededSyntheticIdentity
+        ? (seeded.pricing ? PricingBuilder.clonePricingConfig(seeded.pricing) : null)
+        : (current.pricing
+            ? PricingBuilder.clonePricingConfig(current.pricing)
+            : (seeded.pricing ? PricingBuilder.clonePricingConfig(seeded.pricing) : null)),
+      policies: shouldPreferSeededSyntheticIdentity
+        ? EventEditorBuilder.cloneEventEditorPolicies(seeded.policies ?? [])
+        : EventEditorBuilder.cloneEventEditorPolicies(current.policies ?? seeded.policies ?? []),
+      slotsEnabled: shouldPreferSeededSyntheticIdentity
+        ? seeded.slotsEnabled
+        : (typeof current.slotsEnabled === 'boolean' ? current.slotsEnabled : seeded.slotsEnabled),
+      slotTemplates: shouldPreferSeededSyntheticIdentity
+        ? EventEditorBuilder.cloneEventEditorSlotTemplates(seeded.slotTemplates ?? [])
+        : (current.slotTemplates ?? []).length > 0
         ? EventEditorBuilder.cloneEventEditorSlotTemplates(current.slotTemplates ?? [])
         : EventEditorBuilder.cloneEventEditorSlotTemplates(seeded.slotTemplates ?? []),
       parentEventId: current.parentEventId ?? seeded.parentEventId ?? null,
@@ -1619,7 +1879,9 @@ export class DemoEventsRepository {
       topics: shouldPreferSeededTopics
         ? [...seeded.topics]
         : (topics.length > 0 ? topics : [...seeded.topics]),
-      subEvents: this.cloneSubEvents(current.subEvents) ?? this.cloneSubEvents(seeded.subEvents),
+      subEvents: shouldPreferSeededSyntheticIdentity
+        ? this.cloneSubEvents(seeded.subEvents)
+        : (this.cloneSubEvents(current.subEvents) ?? this.cloneSubEvents(seeded.subEvents)),
       subEventsDisplayMode: current.subEventsDisplayMode
         ?? seeded.subEventsDisplayMode
         ?? (this.cloneSubEvents(current.subEvents)?.length
@@ -1806,7 +2068,7 @@ export class DemoEventsRepository {
       const durationMs = Math.max(60 * 60 * 1000, templateEnd.getTime() - templateStart.getTime());
       const starts = this.generateSlotOccurrenceStarts(parent.frequency ?? 'One-time', templateStart, horizonStart, horizonEnd);
       for (const startAt of starts) {
-        const occurrenceDateKey = this.slotOverrideDateKey(startAt.toISOString());
+        const occurrenceDateKey = this.slotOccurrenceAnchorDateKey(startAt, templateStart, parentStart);
         if (occurrenceDateKey && overrideDates.has(occurrenceDateKey)) {
           continue;
         }
@@ -1895,14 +2157,11 @@ export class DemoEventsRepository {
       }
       const templateStart = this.parseEventDate(template.startAt);
       const templateEnd = this.parseEventDate(template.endAt);
-      const overrideDate = this.parseEventDate(`${overrideDateKey}T00:00`);
-      if (!templateStart || !templateEnd || !overrideDate) {
+      if (!templateStart || !templateEnd) {
         continue;
       }
-      const startAt = new Date(overrideDate);
-      startAt.setHours(templateStart.getHours(), templateStart.getMinutes(), templateStart.getSeconds(), templateStart.getMilliseconds());
-      const endAt = new Date(overrideDate);
-      endAt.setHours(templateEnd.getHours(), templateEnd.getMinutes(), templateEnd.getSeconds(), templateEnd.getMilliseconds());
+      const startAt = new Date(templateStart);
+      const endAt = new Date(templateEnd);
       if (endAt.getTime() <= startAt.getTime()) {
         endAt.setTime(startAt.getTime() + (60 * 60 * 1000));
       }
@@ -2096,6 +2355,13 @@ export class DemoEventsRepository {
       const lastDayOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
       return date.getDate() === Math.min(templateStart.getDate(), lastDayOfMonth);
     }
+    if (frequency === 'yearly' || frequency === 'annual' || frequency === 'annually') {
+      if (date.getMonth() !== templateStart.getMonth()) {
+        return false;
+      }
+      const lastDayOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+      return date.getDate() === Math.min(templateStart.getDate(), lastDayOfMonth);
+    }
     return false;
   }
 
@@ -2116,6 +2382,11 @@ export class DemoEventsRepository {
     const month = `${parsed.getMonth() + 1}`.padStart(2, '0');
     const day = `${parsed.getDate()}`.padStart(2, '0');
     return `${year}-${month}-${day}`;
+  }
+
+  private slotOccurrenceAnchorDateKey(occurrenceStart: Date, templateStart: Date, parentStart: Date): string | null {
+    const templateOffsetMs = templateStart.getTime() - parentStart.getTime();
+    return this.slotOverrideDateKey(new Date(occurrenceStart.getTime() - templateOffsetMs).toISOString());
   }
 
   private normalizeLocationCoordinates(value: unknown): DemoEventRecord['locationCoordinates'] {

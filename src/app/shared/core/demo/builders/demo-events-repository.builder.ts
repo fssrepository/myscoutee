@@ -15,6 +15,148 @@ import type {
 } from '../models/events.model';
 
 const DEMO_EVENT_MEMBER_USERS = DemoUserSeedBuilder.buildExpandedDemoUsers(50);
+
+function buildCheckoutDemoPolicies(): AppTypes.EventPolicyItem[] {
+  return [
+    {
+      id: 'policy-checkin-window',
+      title: 'Check-in window',
+      description: 'Arrive within the first 15 minutes of the selected slot so the organizer can release late spots.',
+      required: true
+    },
+    {
+      id: 'policy-cancellation',
+      title: 'Cancellation',
+      description: 'Paid extras are refundable only until 24 hours before the selected slot starts.',
+      required: true
+    },
+    {
+      id: 'policy-media',
+      title: 'Photos & recap',
+      description: 'A private recap may be shared with attendees after the event.',
+      required: false
+    }
+  ];
+}
+
+function buildCheckoutDemoPricing(
+  basePrice: number,
+  slotTemplates: readonly AppTypes.EventSlotTemplate[] = []
+): AppTypes.PricingConfig {
+  const pricing = PricingBuilder.createSamplePricingConfig(slotTemplates.length > 0 ? 'hybrid' : 'fixed');
+  pricing.enabled = true;
+  pricing.basePrice = basePrice;
+  pricing.minPrice = Math.max(0, basePrice - 12);
+  pricing.maxPrice = basePrice + 48;
+  pricing.currency = 'USD';
+  pricing.chargeType = 'per_attendee';
+  pricing.audience.enabled = false;
+  pricing.audience.promoCodes = [];
+  if (slotTemplates.length > 0) {
+    pricing.slotPricingEnabled = true;
+    pricing.slotOverrides = slotTemplates.map((slot, index) => ({
+      id: `${slot.id}-override`,
+      slotId: slot.id,
+      label: `Slot ${index + 1}`,
+      startAt: slot.startAt,
+      endAt: slot.endAt,
+      price: basePrice + (index * 6),
+      currency: 'USD'
+    }));
+  } else {
+    pricing.slotPricingEnabled = false;
+    pricing.slotOverrides = [];
+  }
+  return pricing;
+}
+
+function buildCheckoutDemoSubEvents(options: {
+  sourceId: string;
+  firstSlotStartAt: string;
+  firstSlotEndAt: string;
+  includePaidOptional: boolean;
+}): AppTypes.SubEventFormItem[] {
+  const includedPricing = PricingBuilder.createDefaultPricingConfig('subevent');
+  const paidAddOnPricing = PricingBuilder.createDefaultPricingConfig('subevent');
+  paidAddOnPricing.enabled = options.includePaidOptional;
+  paidAddOnPricing.basePrice = options.includePaidOptional ? 16 : 0;
+  paidAddOnPricing.currency = 'USD';
+  paidAddOnPricing.chargeType = 'per_booking';
+  paidAddOnPricing.minPrice = options.includePaidOptional ? 12 : 0;
+  paidAddOnPricing.maxPrice = options.includePaidOptional ? 24 : 0;
+
+  const transportPricing = PricingBuilder.createDefaultPricingConfig('subevent');
+  transportPricing.enabled = options.includePaidOptional;
+  transportPricing.basePrice = options.includePaidOptional ? 8 : 0;
+  transportPricing.currency = 'USD';
+  transportPricing.chargeType = 'per_attendee';
+  transportPricing.minPrice = options.includePaidOptional ? 6 : 0;
+  transportPricing.maxPrice = options.includePaidOptional ? 12 : 0;
+
+  return [
+    {
+      id: `${options.sourceId}-main-session`,
+      name: 'Main Session',
+      description: 'Included in the base event price and aligned to the selected slot.',
+      startAt: options.firstSlotStartAt,
+      endAt: options.firstSlotEndAt,
+      optional: false,
+      capacityMin: 0,
+      capacityMax: 24,
+      membersAccepted: 0,
+      membersPending: 0,
+      carsPending: 0,
+      accommodationPending: 0,
+      suppliesPending: 0,
+      pricing: includedPricing,
+      slotStartOffsetMinutes: 0,
+      slotDurationMinutes: 75
+    },
+    {
+      id: `${options.sourceId}-vip-lounge`,
+      name: options.includePaidOptional ? 'VIP Lounge Access' : 'Community Lounge Access',
+      description: options.includePaidOptional
+        ? 'Optional add-on with a separate basket line and accommodation request support.'
+        : 'Optional free add-on for the slot-based join flow.',
+      startAt: options.firstSlotStartAt,
+      endAt: options.firstSlotEndAt,
+      optional: true,
+      capacityMin: 0,
+      capacityMax: 10,
+      membersAccepted: 0,
+      membersPending: 0,
+      carsPending: 0,
+      accommodationPending: 0,
+      suppliesPending: 0,
+      accommodationCapacityMin: 0,
+      accommodationCapacityMax: options.includePaidOptional ? 4 : 0,
+      pricing: paidAddOnPricing,
+      slotStartOffsetMinutes: 20,
+      slotDurationMinutes: 45
+    },
+    {
+      id: `${options.sourceId}-ride-share`,
+      name: 'Ride-share Pickup',
+      description: 'Optional transport-style add-on so checkout can show an asset request path too.',
+      startAt: options.firstSlotStartAt,
+      endAt: options.firstSlotEndAt,
+      optional: true,
+      capacityMin: 0,
+      capacityMax: 12,
+      membersAccepted: 0,
+      membersPending: 0,
+      carsPending: 0,
+      accommodationPending: 0,
+      suppliesPending: 0,
+      carsCapacityMin: 0,
+      carsCapacityMax: 3,
+      pricing: transportPricing,
+      slotStartOffsetMinutes: 0,
+      slotDurationMinutes: 20
+    }
+  ];
+}
+
 const SEED_INVITATIONS_BY_USER: Record<string, InvitationMenuItem[]> = {
   u1: [
     { id: 'i1', avatar: 'LP', inviter: 'Lina', description: 'Jazz Rooftop Session', when: 'Sat Feb 21, 8:00 PM', unread: 1 },
@@ -133,6 +275,61 @@ const SEED_EVENTS_BY_USER: Record<string, EventMenuItem[]> = {
       timeframe: 'Feb 28 · 8:00 AM - 12:00 PM',
       activity: 2,
       isAdmin: true
+    },
+    {
+      id: 'checkout-paid-slots',
+      avatar: 'SY',
+      title: 'Checkout Demo · Paid Multi-Slot',
+      shortDescription: 'Choose a slot, approve policies, add optional paid extras, and continue to dummy pay.',
+      timeframe: 'Apr 12 · multiple slots',
+      activity: 3,
+      isAdmin: false,
+      creatorUserId: 'u2',
+      startAt: '2026-04-12T18:00:00',
+      endAt: '2026-06-14T23:00:00',
+      frequency: 'Weekly',
+      ticketing: true,
+      visibility: 'Public',
+      blindMode: 'Open Event',
+      location: 'Austin · Checkout Demo Hall',
+      capacityMin: 6,
+      capacityMax: 18,
+      acceptedMemberUserIds: ['u40', 'u41'],
+      pendingMemberUserIds: ['u42'],
+      slotsEnabled: true,
+      slotTemplates: [
+        {
+          id: 'checkout-paid-slots-slot-1',
+          startAt: '2026-04-12T18:30:00',
+          endAt: '2026-04-12T20:00:00'
+        },
+        {
+          id: 'checkout-paid-slots-slot-2',
+          startAt: '2026-04-12T20:15:00',
+          endAt: '2026-04-12T22:15:00'
+        }
+      ],
+      pricing: buildCheckoutDemoPricing(38, [
+        {
+          id: 'checkout-paid-slots-slot-1',
+          startAt: '2026-04-12T18:30:00',
+          endAt: '2026-04-12T20:00:00'
+        },
+        {
+          id: 'checkout-paid-slots-slot-2',
+          startAt: '2026-04-12T20:15:00',
+          endAt: '2026-04-12T22:15:00'
+        }
+      ]),
+      policies: buildCheckoutDemoPolicies(),
+      subEvents: buildCheckoutDemoSubEvents({
+        sourceId: 'checkout-paid-slots',
+        firstSlotStartAt: '2026-04-12T18:30:00',
+        firstSlotEndAt: '2026-04-12T20:00:00',
+        includePaidOptional: true
+      }),
+      rating: 9.2,
+      relevance: 99
     }
   ],
   u3: [
@@ -145,6 +342,80 @@ const SEED_EVENTS_BY_USER: Record<string, EventMenuItem[]> = {
       activity: 2,
       isAdmin: false,
       creatorUserId: 'u11'
+    },
+    {
+      id: 'checkout-paid-policy',
+      avatar: 'SY',
+      title: 'Checkout Demo · Paid Policy',
+      shortDescription: 'Paid join flow without slots, so you can test policies and add-ons with checkout.',
+      timeframe: 'Apr 13 · 7:00 PM - 10:00 PM',
+      activity: 2,
+      isAdmin: false,
+      creatorUserId: 'u3',
+      startAt: '2026-04-13T19:00:00',
+      endAt: '2026-04-13T22:00:00',
+      frequency: 'One-time',
+      ticketing: true,
+      visibility: 'Public',
+      blindMode: 'Open Event',
+      location: 'Austin · Policy Demo Studio',
+      capacityMin: 4,
+      capacityMax: 16,
+      acceptedMemberUserIds: ['u43', 'u44'],
+      pendingMemberUserIds: ['u45'],
+      pricing: buildCheckoutDemoPricing(22),
+      policies: buildCheckoutDemoPolicies(),
+      subEvents: buildCheckoutDemoSubEvents({
+        sourceId: 'checkout-paid-policy',
+        firstSlotStartAt: '2026-04-13T19:10:00',
+        firstSlotEndAt: '2026-04-13T20:30:00',
+        includePaidOptional: true
+      }),
+      rating: 9.1,
+      relevance: 98
+    },
+    {
+      id: 'checkout-free-slots',
+      avatar: 'SY',
+      title: 'Checkout Demo · Free Multi-Slot',
+      shortDescription: 'Free recurring event with multiple slots, so you can test slot-only join without payment.',
+      timeframe: 'Apr 14 · multiple slots',
+      activity: 2,
+      isAdmin: false,
+      creatorUserId: 'u3',
+      startAt: '2026-04-14T12:30:00',
+      endAt: '2026-05-26T18:00:00',
+      frequency: 'Weekly',
+      ticketing: false,
+      visibility: 'Public',
+      blindMode: 'Open Event',
+      location: 'Austin · Slot Demo Yard',
+      capacityMin: 6,
+      capacityMax: 20,
+      acceptedMemberUserIds: ['u46', 'u47'],
+      pendingMemberUserIds: ['u48'],
+      slotsEnabled: true,
+      slotTemplates: [
+        {
+          id: 'checkout-free-slots-slot-1',
+          startAt: '2026-04-14T13:00:00',
+          endAt: '2026-04-14T14:15:00'
+        },
+        {
+          id: 'checkout-free-slots-slot-2',
+          startAt: '2026-04-14T15:00:00',
+          endAt: '2026-04-14T16:30:00'
+        }
+      ],
+      pricing: PricingBuilder.createDefaultPricingConfig('event'),
+      subEvents: buildCheckoutDemoSubEvents({
+        sourceId: 'checkout-free-slots',
+        firstSlotStartAt: '2026-04-14T13:00:00',
+        firstSlotEndAt: '2026-04-14T14:15:00',
+        includePaidOptional: false
+      }),
+      rating: 8.9,
+      relevance: 97
     }
   ]
 };
@@ -229,6 +500,9 @@ interface DemoEventSeedOverrides {
   pendingMemberUserIds?: string[];
   topics?: string[];
   pricing?: AppTypes.PricingConfig | null;
+  policies?: AppTypes.EventPolicyItem[];
+  slotsEnabled?: boolean;
+  slotTemplates?: AppTypes.EventSlotTemplate[];
   subEvents?: AppTypes.SubEventFormItem[];
   subEventsDisplayMode?: AppTypes.SubEventsDisplayMode;
   rating?: number;
@@ -250,6 +524,10 @@ export class DemoEventsRepositoryBuilder {
         userId,
         items.map(item => ({
           ...item,
+          pricing: item.pricing ? PricingBuilder.clonePricingConfig(item.pricing) : item.pricing,
+          policies: item.policies ? item.policies.map(policy => ({ ...policy })) : item.policies,
+          slotTemplates: item.slotTemplates ? item.slotTemplates.map(slot => ({ ...slot })) : item.slotTemplates,
+          subEvents: this.cloneSubEvents(item.subEvents) ?? item.subEvents,
           topics: item.topics ? [...item.topics] : item.topics,
           acceptedMemberUserIds: item.acceptedMemberUserIds ? [...item.acceptedMemberUserIds] : item.acceptedMemberUserIds,
           pendingMemberUserIds: item.pendingMemberUserIds ? [...item.pendingMemberUserIds] : item.pendingMemberUserIds
@@ -299,6 +577,10 @@ export class DemoEventsRepositoryBuilder {
         userId,
         items.map(item => ({
           ...item,
+          pricing: item.pricing ? PricingBuilder.clonePricingConfig(item.pricing) : item.pricing,
+          policies: item.policies ? item.policies.map(policy => ({ ...policy })) : item.policies,
+          slotTemplates: item.slotTemplates ? item.slotTemplates.map(slot => ({ ...slot })) : item.slotTemplates,
+          subEvents: this.cloneSubEvents(item.subEvents) ?? item.subEvents,
           topics: item.topics ? [...item.topics] : item.topics
         }))
       ])
@@ -534,6 +816,7 @@ export class DemoEventsRepositoryBuilder {
       ...record,
       locationCoordinates: this.cloneLocationCoordinates(record.locationCoordinates),
       pricing: record.pricing ? PricingBuilder.clonePricingConfig(record.pricing) : undefined,
+      policies: (record.policies ?? []).map(item => ({ ...item })),
       slotTemplates: (record.slotTemplates ?? []).map(item => ({ ...item })),
       nextSlot: record.nextSlot ? { ...record.nextSlot } : null,
       upcomingSlots: (record.upcomingSlots ?? []).map(item => ({ ...item })),
@@ -707,8 +990,9 @@ export class DemoEventsRepositoryBuilder {
       pricing: record.seed?.pricing
         ? PricingBuilder.clonePricingConfig(record.seed.pricing)
         : PricingBuilder.createSamplePricingConfig(ticketing ? 'hybrid' : 'fixed'),
-      slotsEnabled: false,
-      slotTemplates: [],
+      policies: this.clonePolicies(record.seed?.policies) ?? [],
+      slotsEnabled: record.seed?.slotsEnabled === true,
+      slotTemplates: this.cloneSlotTemplates(record.seed?.slotTemplates) ?? [],
       parentEventId: null,
       slotTemplateId: null,
       generated: false,
@@ -1114,6 +1398,10 @@ export class DemoEventsRepositoryBuilder {
       locationCoordinates: this.cloneLocationCoordinates(item.locationCoordinates) ?? undefined,
       capacityMin: item.capacityMin,
       capacityMax: item.capacityMax,
+      pricing: item.pricing ? PricingBuilder.clonePricingConfig(item.pricing) : item.pricing,
+      policies: this.clonePolicies(item.policies) ?? undefined,
+      slotsEnabled: item.slotsEnabled,
+      slotTemplates: this.cloneSlotTemplates(item.slotTemplates) ?? undefined,
       topics: item.topics,
       subEvents: this.cloneSubEvents(item.subEvents),
       subEventsDisplayMode: item.subEventsDisplayMode,
@@ -1159,6 +1447,22 @@ export class DemoEventsRepositoryBuilder {
     }));
   }
 
+  private static clonePolicies(items: readonly AppTypes.EventPolicyItem[] | undefined): AppTypes.EventPolicyItem[] | undefined {
+    if (!Array.isArray(items)) {
+      return undefined;
+    }
+    return items.map(item => ({ ...item }));
+  }
+
+  private static cloneSlotTemplates(
+    items: readonly AppTypes.EventSlotTemplate[] | undefined
+  ): AppTypes.EventSlotTemplate[] | undefined {
+    if (!Array.isArray(items)) {
+      return undefined;
+    }
+    return items.map(item => ({ ...item }));
+  }
+
   private static normalizeCount(value: number | null | undefined): number | null {
     if (!Number.isFinite(value)) {
       return null;
@@ -1191,6 +1495,9 @@ export class DemoEventsRepositoryBuilder {
     }
     if (normalized.includes('monthly')) {
       return 'Monthly';
+    }
+    if (normalized.includes('yearly') || normalized.includes('annual')) {
+      return 'Yearly';
     }
     if (normalized.includes('daily')) {
       return 'Daily';

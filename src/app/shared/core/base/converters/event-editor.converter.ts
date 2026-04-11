@@ -4,6 +4,28 @@ import type { DemoEventRecord } from '../../demo/models/events.model';
 import { PricingBuilder } from '../builders/pricing.builder';
 
 export class EventEditorConverter {
+  static normalizeEventEditorPolicies(value: unknown): AppTypes.EventPolicyItem[] {
+    if (!Array.isArray(value)) {
+      return [];
+    }
+    return value
+      .map((entry, index) => {
+        const item = (typeof entry === 'object' && entry !== null) ? entry as Record<string, unknown> : {};
+        const title = `${item['title'] ?? item['name'] ?? ''}`.trim();
+        const description = `${item['description'] ?? item['text'] ?? item['body'] ?? ''}`.trim();
+        if (!title && !description) {
+          return null;
+        }
+        return {
+          id: `${item['id'] ?? `policy-${index + 1}`}`.trim() || `policy-${index + 1}`,
+          title: title || `Policy ${index + 1}`,
+          description,
+          required: item['required'] !== false
+        } satisfies AppTypes.EventPolicyItem;
+      })
+      .filter((item): item is AppTypes.EventPolicyItem => item !== null);
+  }
+
   static normalizeEventEditorTextValue(value: unknown): string {
     return typeof value === 'string' ? value.trim() : '';
   }
@@ -36,6 +58,9 @@ export class EventEditorConverter {
     }
     if (normalized === 'monthly') {
       return 'Monthly';
+    }
+    if (normalized === 'yearly' || normalized === 'annual' || normalized === 'annually') {
+      return 'Yearly';
     }
     return 'One-time';
   }
@@ -191,13 +216,8 @@ export class EventEditorConverter {
       const endAtDate = this.parseEventEditorDateValue(item['endAt'] ?? item['endDate']);
       const resolvedStart = startAtDate ?? new Date();
       const resolvedEnd = endAtDate ?? new Date(resolvedStart.getTime() + (60 * 60 * 1000));
-      const overrideDateValue = this.parseEventEditorOverrideDate(overrideDate);
-      const startAt = overrideDateValue
-        ? AppUtils.applyDatePartToIsoLocal(AppUtils.toIsoDateTimeLocal(resolvedStart), overrideDateValue)
-        : AppUtils.toIsoDateTimeLocal(resolvedStart);
-      const endAt = overrideDateValue
-        ? AppUtils.applyDatePartToIsoLocal(AppUtils.toIsoDateTimeLocal(resolvedEnd), overrideDateValue)
-        : AppUtils.toIsoDateTimeLocal(resolvedEnd);
+      const startAt = AppUtils.toIsoDateTimeLocal(resolvedStart);
+      const endAt = AppUtils.toIsoDateTimeLocal(resolvedEnd);
       return {
         id: `${item['id'] ?? `slot-${index + 1}`}`.trim() || `slot-${index + 1}`,
         startAt,
@@ -297,6 +317,7 @@ export class EventEditorConverter {
         context: 'event',
         slotCatalog: PricingBuilder.slotCatalogFromEventSlotTemplates(slotTemplates)
       }),
+      policies: this.normalizeEventEditorPolicies(record.policies),
       slotsEnabled: Boolean(record.slotsEnabled),
       slotTemplates,
       topics: [...record.topics],
@@ -340,6 +361,7 @@ export class EventEditorConverter {
       autoInviter: false,
       ticketing: Boolean(rowSource?.['ticketing']),
       pricing: this.normalizeEventEditorPricing(rowSource?.['pricing'], { context: 'event' }),
+      policies: this.normalizeEventEditorPolicies(rowSource?.['policies']),
       slotsEnabled: Boolean(rowSource?.['slotsEnabled']),
       slotTemplates: this.normalizeEventEditorSlotTemplates(rowSource?.['slotTemplates']),
       topics: Array.isArray(rowSource?.['topics']) ? rowSource['topics'] : [],
@@ -392,6 +414,7 @@ export class EventEditorConverter {
         autoInviter: this.normalizeEventEditorAutoInviter(sourceEvent['autoInviter'] ?? sourceEvent['inviteMode']),
         ticketing: this.normalizeEventEditorTicketing(sourceEvent['ticketing'] ?? sourceEvent['ticketType']),
         pricing: this.normalizeEventEditorPricing(sourceEvent['pricing'], { context: 'event', slotCatalog }),
+        policies: this.normalizeEventEditorPolicies(sourceEvent['policies']),
         slotsEnabled: this.normalizeEventEditorSlotsEnabled(sourceEvent['slotsEnabled']),
         slotTemplates,
         topics: this.normalizeEventEditorTopics(sourceEvent['topics'] ?? sourceEvent['tags']),

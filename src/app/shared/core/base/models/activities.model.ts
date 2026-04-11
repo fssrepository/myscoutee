@@ -5,7 +5,10 @@ import type { ActivityMemberEntry } from './activity-member.model';
 import type { ActivitiesChatContextFilter, ChatChannelType } from './chat.model';
 import type { ActivitiesEventScope, ActivitiesPrimaryFilter, ActivitiesSecondaryFilter, ActivitiesView, ActivityListRow, HostingPublicationFilter, RateFilterKey } from './activities-ui.model';
 import type {
+  EventCheckoutAssetSelection,
   EventBlindMode,
+  EventCheckoutSession,
+  EventPolicyItem,
   EventEditorTarget,
   EventRecordKind,
   EventSlotOccurrence,
@@ -153,12 +156,27 @@ export interface ActivitiesEventSyncPayload {
   location?: string;
   locationCoordinates?: LocationCoordinates;
   sourceLink?: string;
+  policies?: EventPolicyItem[];
   acceptedMemberUserIds?: string[];
   pendingMemberUserIds?: string[];
   topics?: string[];
   subEvents?: SubEventFormItem[];
   subEventsDisplayMode?: import('./event.model').SubEventsDisplayMode;
 }
+
+export interface EventCheckoutRequest {
+  userId: string;
+  sourceId: string;
+  slotSourceId?: string | null;
+  optionalSubEventIds: string[];
+  assetSelections: EventCheckoutAssetSelection[];
+  acceptedPolicyIds: string[];
+  lineItems: import('./event.model').EventCheckoutLineItem[];
+  totalAmount: number;
+  currency: string;
+}
+
+export type { EventCheckoutSession };
 
 export interface EventChatSession {
   item: ChatMenuItem;

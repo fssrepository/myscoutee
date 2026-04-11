@@ -584,6 +584,24 @@ export class EventSubeventsPopupComponent implements OnChanges {
     return this.subEventRangeLabel(item);
   }
 
+  protected showHeaderTimeBadge(): boolean {
+    return Boolean(this.slotTimingPreview() || this.subEventTimingBounds());
+  }
+
+  protected headerTimeBadgeLabel(): string {
+    const preview = this.slotTimingPreview();
+    if (!preview) {
+      const bounds = this.subEventTimingBounds();
+      if (!bounds) {
+        return '';
+      }
+      return `Main event range ${this.monthDayTime(bounds.start)} - ${this.monthDayTime(bounds.end)}`;
+    }
+
+    const slotCountLabel = preview.slotCount > 1 ? ` · ${preview.slotCount} slots` : '';
+    return `First slot preview ${this.monthDayTime(preview.start)} - ${this.monthDayTime(preview.end)}${slotCountLabel}`;
+  }
+
   protected casualCardResources(item: EventSubeventsItem): string {
     const members = this.toPendingCount(item.membersPending);
     const cars = this.toPendingCount(item.carsPending);
@@ -956,8 +974,8 @@ export class EventSubeventsPopupComponent implements OnChanges {
     const timingSummaryText = this.subEventTimingSummaryText();
     const timingSummaryMeta = this.subEventTimingSummaryMeta();
     const timingBounds = this.subEventTimingBounds();
-    const startFieldLabel = slotBoundTiming ? 'Start in slot' : 'Start';
-    const endFieldLabel = slotBoundTiming ? 'End in slot' : 'End';
+    const startFieldLabel = 'Start';
+    const endFieldLabel = 'End';
     const title = this.subEventFormTitle();
     const canSave = this.canSaveSubEventForm();
     const invalidName = this.subEventFieldInvalid('name');
@@ -2052,10 +2070,9 @@ export class EventSubeventsPopupComponent implements OnChanges {
       const firstStart = this.parseDateValue(firstRange.startAt);
       const firstEnd = this.parseDateValue(firstRange.endAt);
       if (firstStart && firstEnd) {
-        const repeatLabel = preview.slotCount > 1 ? ` · ${preview.slotCount} slots configured` : '';
-        return `Per slot · ${this.timeRangeLabel(firstStart, firstEnd)} · first slot ${this.shortMonthDay(firstStart.getTime())}${repeatLabel}`;
+        return `${this.timeRangeLabel(firstStart, firstEnd)} · ${this.durationLabel(relative.durationMinutes)}`;
       }
-      return 'Per slot timing';
+      return 'Time in slot';
     }
 
     const start = this.parseDateValue(item.startAt);
@@ -2101,12 +2118,8 @@ export class EventSubeventsPopupComponent implements OnChanges {
       const currentRange = this.normalizedInputDateRange(this.subEventForm.startAt, this.subEventForm.endAt);
       const currentStart = this.parseDateValue(currentRange.startAt);
       const currentEnd = this.parseDateValue(currentRange.endAt);
-      const durationText = currentStart && currentEnd
-        ? this.durationLabel(Math.max(1, Math.round((currentEnd.getTime() - currentStart.getTime()) / 60000)))
-        : '';
       const repeatLabel = preview.slotCount > 1 ? ` · ${preview.slotCount} slots configured` : '';
-      const durationLabel = durationText ? ` · duration ${durationText}` : '';
-      return `Preview slot ${this.monthDayTime(preview.start)} - ${this.monthDayTime(preview.end)}${durationLabel}${repeatLabel}`;
+      return `First slot preview ${this.monthDayTime(preview.start)} - ${this.monthDayTime(preview.end)}${repeatLabel}`;
     }
 
     const bounds = this.subEventTimingBounds();

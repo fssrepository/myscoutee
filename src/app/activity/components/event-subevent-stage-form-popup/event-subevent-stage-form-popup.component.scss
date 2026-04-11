@@ -43,17 +43,21 @@
 }
 
 .experience-form-header {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    'title controls'
+    'badge badge';
   align-items: center;
-  justify-content: flex-start;
   gap: 0.6rem;
+  row-gap: 0.46rem;
   padding: 0.82rem 1rem;
   border-bottom: 1px solid rgba(187, 199, 217, 0.7);
   background: linear-gradient(180deg, #ffffff 0%, #f4f8ff 100%);
 }
 
 .subevent-form-header-title {
-  flex: 1 1 auto;
+  grid-area: title;
   min-width: 0;
 }
 
@@ -78,8 +82,10 @@
 }
 
 .experience-form-header-controls {
+  grid-area: controls;
   display: inline-flex;
   align-items: center;
+  justify-self: end;
   gap: 0.44rem;
   flex: 0 0 auto;
   min-width: 0;
@@ -160,30 +166,27 @@
 }
 
 .subevent-timing-summary {
-  display: grid;
+  display: inline-flex;
+  align-items: center;
+  grid-area: badge;
+  justify-self: start;
   gap: 0.42rem;
-  padding: 0.86rem 0.96rem;
-  border-radius: 14px;
-  border: 1px solid rgba(82, 114, 156, 0.2);
-  background: rgba(255, 255, 255, 0.76);
-  color: rgba(39, 65, 101, 0.9);
+  width: fit-content;
+  max-width: 100%;
+  padding: 0.42rem 0.74rem;
+  border-radius: 999px;
+  border: 1px solid rgba(82, 114, 156, 0.22);
+  background: rgba(255, 255, 255, 0.84);
+  color: rgba(39, 65, 101, 0.92);
+  box-sizing: border-box;
 }
 
 .subevent-timing-summary-slot {
-  background: linear-gradient(180deg, rgba(240, 250, 255, 0.94) 0%, rgba(231, 245, 255, 0.92) 100%);
+  background: linear-gradient(180deg, rgba(240, 250, 255, 0.96) 0%, rgba(231, 245, 255, 0.94) 100%);
   border-color: rgba(79, 151, 184, 0.24);
 }
 
-.subevent-timing-summary-head {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.42rem;
-  font-size: 0.9rem;
-  font-weight: 800;
-  color: #21456d;
-}
-
-.subevent-timing-summary-head .mat-icon {
+.subevent-timing-summary .mat-icon {
   width: 18px;
   height: 18px;
   font-size: 18px;
@@ -191,25 +194,15 @@
   color: #2b6d95;
 }
 
-.subevent-timing-summary p {
-  margin: 0;
-  font-size: 0.81rem;
-  line-height: 1.5;
-  color: rgba(50, 77, 112, 0.88);
-}
-
-.subevent-timing-summary-meta {
-  display: inline-flex;
-  width: fit-content;
-  max-width: 100%;
-  padding: 0.32rem 0.6rem;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.88);
-  border: 1px solid rgba(118, 151, 191, 0.24);
-  color: #365b83;
-  font-size: 0.73rem;
-  font-weight: 700;
+.subevent-timing-summary span {
+  min-width: 0;
+  font-size: 0.74rem;
+  font-weight: 800;
   line-height: 1.35;
+  color: #365b83;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .subevent-name-field {
@@ -877,6 +870,26 @@
 
   .subevent-form-grid {
     grid-template-columns: 1fr;
+  }
+
+  .experience-form-header {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'title controls'
+      'badge badge';
+    align-items: start;
+  }
+
+  .experience-form-header-controls {
+    align-self: start;
+  }
+
+  .subevent-timing-summary {
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+    justify-self: stretch;
+    justify-content: center;
   }
 
   .subevent-form-grid.subevent-form-grid-with-insert .subevent-name-field,

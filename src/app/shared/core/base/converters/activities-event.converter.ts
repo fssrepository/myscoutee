@@ -185,6 +185,7 @@ function toEventMenuItem(record: DemoEventRecord): EventMenuItem {
     nextSlot: record.nextSlot ? { ...record.nextSlot } : null,
     upcomingSlots: (record.upcomingSlots ?? []).map(item => ({ ...item })),
     ticketing: record.ticketing,
+    policies: (record.policies ?? []).map(item => ({ ...item })),
     topics: [...record.topics],
     subEvents: (record.subEvents ?? []).map(item => ({
       ...item,
@@ -231,6 +232,7 @@ function toHostingMenuItem(record: DemoEventRecord): HostingMenuItem {
     nextSlot: record.nextSlot ? { ...record.nextSlot } : null,
     upcomingSlots: (record.upcomingSlots ?? []).map(item => ({ ...item })),
     ticketing: record.ticketing,
+    policies: (record.policies ?? []).map(item => ({ ...item })),
     topics: [...record.topics],
     subEvents: (record.subEvents ?? []).map(item => ({
       ...item,
@@ -260,6 +262,7 @@ function toInvitationMenuItem(record: DemoEventRecord): InvitationMenuItem {
     imageUrl: record.imageUrl,
     sourceLink: record.sourceLink,
     location: record.location,
-    locationCoordinates: record.locationCoordinates ?? undefined
+    locationCoordinates: record.locationCoordinates ?? undefined,
+    policies: (record.policies ?? []).map(item => ({ ...item }))
   };
 }

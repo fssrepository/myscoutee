@@ -55,6 +55,9 @@
             }
           </div>
         </div>
+        @if (showHeaderTimeBadge()) {
+          <span class="subevents-slot-preview-chip">{{ headerTimeBadgeLabel() }}</span>
+        }
       </header>
       <div class="subevents-body">
         @if (sortedSubEvents.length > 0) {

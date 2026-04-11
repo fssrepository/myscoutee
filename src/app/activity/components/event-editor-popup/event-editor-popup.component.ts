@@ -49,7 +49,7 @@ import { EventSubeventsPopupComponent, EventSubeventsItem } from '../event-subev
   styleUrls: ['./event-editor-popup.component.scss']
 })
 export class EventEditorPopupComponent implements OnInit, OnDestroy {
-  private static readonly SAVE_PENDING_WINDOW_MS = 1500;
+  private static readonly DRAFT_AUTOSAVE_INTERVAL_MS = 5000;
   protected readonly eventEditorService = inject(EventEditorPopupStateService);
   private readonly activitiesContext = inject(ActivitiesPopupStateService);
   private readonly eventEditorDataService = inject(EventEditorDataService);
@@ -74,6 +74,9 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   private readonly slotDateControlValueCache = new Map<string, Date | null>();
   private pricingSlotCatalogCacheKey = '';
   private pricingSlotCatalogCache: AppTypes.PricingSlotReference[] = [];
+  private draftAutosaveTimer: ReturnType<typeof setInterval> | null = null;
+  private lastDraftAutosaveSignature = '';
+  private isDraftAutosavePending = false;
 
   constructor() {
     effect(() => {
@@ -95,9 +98,12 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
       if (!isOpen) {
         this.showSlotsPopup = false;
+        this.showPoliciesPopup = false;
+        this.showPolicyEditorPopup = false;
         this.showEventVisibilityPicker = false;
         this.showSubEventsPopup = false;
         this.showTopicPicker = false;
+        this.resetDraftAutosaveTracking();
         return;
       }
 
@@ -118,6 +124,8 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       this.lastHandledOpenSubEventsRequest = openSubEventsRequestNonce;
       this.showEventVisibilityPicker = false;
       this.showSlotsPopup = false;
+      this.showPoliciesPopup = false;
+      this.showPolicyEditorPopup = false;
       this.showTopicPicker = false;
       this.showSubEventsPopup = true;
     });
@@ -165,19 +173,27 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       this.showEventVisibilityPicker = false;
       this.showSubEventsPopup = false;
       this.showTopicPicker = false;
+      this.showPoliciesPopup = false;
+      this.showPolicyEditorPopup = false;
     });
 
     this.closeSubscription = this.eventEditorService.onClose$.subscribe(() => {
       this.showEventVisibilityPicker = false;
       this.showSubEventsPopup = false;
       this.showTopicPicker = false;
+      this.showPoliciesPopup = false;
+      this.showPolicyEditorPopup = false;
       this.resetEditorContext();
+      this.resetDraftAutosaveTracking();
     });
+
+    this.startDraftAutosaveLoop();
   }
 
   ngOnDestroy(): void {
     this.openSubscription?.unsubscribe();
     this.closeSubscription?.unsubscribe();
+    this.stopDraftAutosaveLoop();
   }
 
   eventForm: AppTypes.EventEditorDraftForm = {
@@ -194,6 +210,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     autoInviter: false,
     ticketing: false,
     pricing: PricingBuilder.createDefaultPricingConfig('event'),
+    policies: [],
     slotsEnabled: false,
     slotTemplates: [] as AppTypes.EventSlotTemplate[],
     topics: [] as string[],
@@ -212,17 +229,24 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   slotEditorMode: 'base' | 'date' = 'base';
   slotsPanelExpanded = false;
   showSlotsPopup = false;
+  showPoliciesPopup = false;
+  showPolicyEditorPopup = false;
   showEventVisibilityPicker = false;
   showSubEventsPopup = false;
   showTopicPicker = false;
   isSavePending = false;
   readonly saveRingPerimeter = 100;
+  workingPolicies: AppTypes.EventPolicyItem[] = [];
+  workingPolicyDraft: AppTypes.EventPolicyItem = this.createEmptyPolicyDraft();
+  editingPolicyDraftIndex: number | null = null;
 
   readonly visibilityOptions: AppTypes.EventVisibility[] = ['Public', 'Friends only', 'Invitation only'];
-  readonly eventFrequencyOptions = ['One-time', 'Daily', 'Weekly', 'Bi-weekly', 'Monthly'];
+  readonly eventFrequencyOptions = ['One-time', 'Daily', 'Weekly', 'Bi-weekly', 'Monthly', 'Yearly'];
 
   close(): void {
     this.showSlotsPopup = false;
+    this.showPoliciesPopup = false;
+    this.showPolicyEditorPopup = false;
     this.showEventVisibilityPicker = false;
     this.showSubEventsPopup = false;
     this.showTopicPicker = false;
@@ -362,7 +386,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
   protected openSlotsPopup(event?: Event): void {
     event?.preventDefault();
-    if (this.eventEditorService.readOnly()) {
+    if (this.eventEditorService.readOnly() || !this.eventFrequencyUsesSlots()) {
       return;
     }
     this.showSlotsPopup = true;
@@ -370,6 +394,99 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
   protected closeSlotsPopup(): void {
     this.showSlotsPopup = false;
+  }
+
+  protected openPoliciesPopup(event?: Event): void {
+    event?.preventDefault();
+    this.workingPolicies = EventEditorBuilder.cloneEventEditorPolicies(this.eventForm.policies);
+    this.showPoliciesPopup = true;
+    this.showPolicyEditorPopup = false;
+  }
+
+  protected closePoliciesPopup(): void {
+    this.syncEventPoliciesFromWorkingPolicies();
+    this.showPoliciesPopup = false;
+    this.showPolicyEditorPopup = false;
+    this.workingPolicies = [];
+    this.workingPolicyDraft = this.createEmptyPolicyDraft();
+    this.editingPolicyDraftIndex = null;
+  }
+
+  protected openPolicyEditor(index?: number, event?: Event): void {
+    event?.preventDefault();
+    event?.stopPropagation();
+    if (!this.showPoliciesPopup) {
+      return;
+    }
+    const existing = Number.isInteger(index) && index !== undefined
+      ? this.workingPolicies[index] ?? null
+      : null;
+    this.editingPolicyDraftIndex = existing ? (index ?? null) : null;
+    this.workingPolicyDraft = existing
+      ? { ...existing }
+      : this.createEmptyPolicyDraft();
+    this.showPolicyEditorPopup = true;
+  }
+
+  protected closePolicyEditor(): void {
+    this.syncWorkingPolicyDraft();
+    this.showPolicyEditorPopup = false;
+    this.workingPolicyDraft = this.createEmptyPolicyDraft();
+    this.editingPolicyDraftIndex = null;
+  }
+
+  protected removePolicyDraft(index: number, event?: Event): void {
+    event?.preventDefault();
+    event?.stopPropagation();
+    if (index < 0 || index >= this.workingPolicies.length) {
+      return;
+    }
+    this.workingPolicies = this.workingPolicies.filter((_, itemIndex) => itemIndex !== index);
+    if (this.editingPolicyDraftIndex === index) {
+      this.editingPolicyDraftIndex = null;
+      this.workingPolicyDraft = this.createEmptyPolicyDraft();
+    }
+    this.syncEventPoliciesFromWorkingPolicies();
+  }
+
+  protected policyPopupTitle(): string {
+    return this.editingPolicyDraftIndex === null ? 'Create Policy' : 'Edit Policy';
+  }
+
+  protected policyCardMetaLabel(policy: AppTypes.EventPolicyItem): string {
+    return policy.required !== false ? 'Required approval' : 'Optional policy';
+  }
+
+  protected policyCardPreview(policy: AppTypes.EventPolicyItem): string {
+    const description = policy.description.trim();
+    if (description.length > 0) {
+      return description;
+    }
+    return policy.required !== false
+      ? 'Attendees must approve this policy before joining.'
+      : 'Optional policy shown during join or checkout.';
+  }
+
+  protected onWorkingPolicyDraftChange(): void {
+    this.syncWorkingPolicyDraft();
+  }
+
+  private createEmptyPolicyDraft(): AppTypes.EventPolicyItem {
+    return {
+      id: `policy-${Date.now()}`,
+      title: '',
+      description: '',
+      required: true
+    };
+  }
+
+  protected policiesCountLabel(): string {
+    const count = this.eventForm.policies.length;
+    return count === 1 ? '1 policy' : `${count} policies`;
+  }
+
+  protected requiredPoliciesCount(): number {
+    return this.eventForm.policies.filter(item => item.required !== false).length;
   }
 
   requestOpenTopics(): void {
@@ -447,7 +564,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     if (!this.canSubmitEventEditorForm() || this.isSavePending) {
       return;
     }
-    void this.runSaveWithPendingWindow();
+    void this.runImmediateSave();
   }
 
   toggleEventVisibilityPicker(event?: Event): void {
@@ -557,6 +674,8 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
         return 'event-frequency-bi-weekly';
       case 'Monthly':
         return 'event-frequency-monthly';
+      case 'Yearly':
+        return 'event-frequency-yearly';
       default:
         return 'event-frequency-one-time';
     }
@@ -572,9 +691,38 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
         return 'date_range';
       case 'Monthly':
         return 'calendar_month';
+      case 'Yearly':
+        return 'calendar_today';
       default:
         return 'event';
     }
+  }
+
+  protected onEventFrequencyChange(value: string): void {
+    this.eventForm.frequency = EventEditorConverter.normalizeEventEditorFrequency(value);
+    this.eventForm.slotsEnabled = this.eventFrequencyUsesSlots();
+    if (!this.eventForm.slotsEnabled) {
+      this.eventForm.slotTemplates = [];
+      this.showSlotsPopup = false;
+      this.slotEditorMode = 'base';
+    } else if (this.baseSlotTemplates().length === 0) {
+      this.slotEditorMode = 'base';
+      this.addSlotTemplate();
+    }
+    this.normalizeSlotOverrideDateSelection();
+    this.normalizeEventSlotTemplates();
+  }
+
+  protected eventEndDateMin(): Date | null {
+    const start = this.eventStartDateValue ?? AppUtils.isoLocalDateTimeToDate(this.eventForm.startAt);
+    if (!start) {
+      return null;
+    }
+    return new Date(start.getFullYear(), start.getMonth(), start.getDate());
+  }
+
+  protected eventFrequencyUsesSlots(): boolean {
+    return EventEditorConverter.normalizeEventEditorFrequency(this.eventForm.frequency) !== 'One-time';
   }
 
   subEventsCountLabel(): string {
@@ -764,18 +912,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
   toggleEventSlots(event: Event): void {
     event.preventDefault();
-    if (!this.canConfigureSlotsSeries()) {
-      return;
-    }
-    this.eventForm.slotsEnabled = !this.eventForm.slotsEnabled;
-    if (!this.eventForm.slotsEnabled) {
-      this.showSlotsPopup = false;
-    }
-    if (this.eventForm.slotsEnabled && this.baseSlotTemplates().length === 0) {
-      this.slotEditorMode = 'base';
-      this.addSlotTemplate();
-    }
-    this.normalizeSlotOverrideDateSelection();
+    this.eventForm.slotsEnabled = this.eventFrequencyUsesSlots();
   }
 
   protected toggleSlotsPanelExpanded(event?: Event): void {
@@ -785,7 +922,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
   protected selectSlotEditorMode(mode: 'base' | 'date', event?: Event): void {
     event?.preventDefault();
-    if (!this.eventForm.slotsEnabled || !this.canConfigureSlotsSeries()) {
+    if (!this.eventFrequencyUsesSlots() || !this.canConfigureSlotsSeries()) {
       return;
     }
     if (this.slotEditorMode === mode) {
@@ -800,6 +937,14 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
   protected isDateSlotEditorMode(): boolean {
     return this.slotEditorMode === 'date';
+  }
+
+  protected showSlotOverrideDatePicker(): boolean {
+    return this.isDateSlotEditorMode();
+  }
+
+  protected isSlotOverrideDateFieldLocked(): boolean {
+    return false;
   }
 
   protected slotEditorModeButtonClass(mode: 'base' | 'date'): string {
@@ -833,18 +978,20 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
         return 'This date has its own override and currently has no slots.';
       }
       return this.hasExplicitSlotOverride()
-        ? 'Editing the date-only clone for this day. Switch the day from the picker above.'
-        : 'This day starts as a clone of the base schedule. Switch the day from the picker above; your changes stay on this date only.';
+        ? 'Editing one recurring slot window. The preview date chooses the occurrence, and the slot rows stay editable inside that cycle and the overall event range.'
+        : 'This occurrence starts as a shifted copy of the base schedule. Pick the preview date above, then adjust the slot rows directly inside that cycle.';
     }
-    return 'Base slots repeat according to the selected frequency.';
+    return 'Base slots can start anywhere inside the main event range. Each slot still respects the selected frequency boundary and cannot overlap the others.';
   }
 
   protected slotOverrideDateMin(): Date | null {
-    return AppUtils.isoLocalDateTimeToDate(this.eventForm.startAt);
+    const start = AppUtils.isoLocalDateTimeToDate(this.eventForm.startAt);
+    return start ? new Date(start.getFullYear(), start.getMonth(), start.getDate()) : null;
   }
 
   protected slotOverrideDateMax(): Date | null {
-    return AppUtils.isoLocalDateTimeToDate(this.eventForm.endAt);
+    const end = AppUtils.isoLocalDateTimeToDate(this.eventForm.endAt);
+    return end ? new Date(end.getFullYear(), end.getMonth(), end.getDate()) : null;
   }
 
   protected onSlotOverrideDateChange(value: Date | null): void {
@@ -917,13 +1064,54 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     return this.slotControlDateValue(slot.endAt);
   }
 
+  protected slotTemplateDateMin(slot: AppTypes.EventSlotTemplate): Date | null {
+    const window = this.slotWindowForEditing(slot.overrideDate);
+    if (!window) {
+      return null;
+    }
+    return new Date(window.start.getFullYear(), window.start.getMonth(), window.start.getDate());
+  }
+
+  protected slotTemplateDateMax(slot: AppTypes.EventSlotTemplate): Date | null {
+    const window = this.slotWindowForEditing(slot.overrideDate);
+    if (!window) {
+      return null;
+    }
+    return new Date(window.end.getFullYear(), window.end.getMonth(), window.end.getDate());
+  }
+
+  protected slotTemplateEndDateMin(slot: AppTypes.EventSlotTemplate): Date | null {
+    const start = EventEditorConverter.parseEventEditorDateValue(slot.startAt);
+    if (!start) {
+      return this.slotTemplateDateMin(slot);
+    }
+    return new Date(start.getFullYear(), start.getMonth(), start.getDate());
+  }
+
+  protected slotTemplateEndDateMax(index: number, slot: AppTypes.EventSlotTemplate): Date | null {
+    const start = EventEditorConverter.parseEventEditorDateValue(slot.startAt);
+    const window = this.slotWindowForEditing(slot.overrideDate);
+    if (!start || !window) {
+      return this.slotTemplateDateMax(slot);
+    }
+    const boundaryEnd = this.eventFrequencyBoundaryEnd(start, this.eventForm.frequency) ?? window.end;
+    const nextSlot = this.activeSlotTemplates()[index + 1] ?? null;
+    const nextStart = nextSlot ? EventEditorConverter.parseEventEditorDateValue(nextSlot.startAt) : null;
+    const maxDate = new Date(Math.min(
+      window.end.getTime(),
+      boundaryEnd.getTime(),
+      nextStart?.getTime() ?? boundaryEnd.getTime()
+    ));
+    return new Date(maxDate.getFullYear(), maxDate.getMonth(), maxDate.getDate());
+  }
+
   onSlotTemplateStartDateChange(index: number, value: Date | null): void {
-    if (this.isDateSlotEditorMode()) {
+    if (this.isSlotOverrideDateFieldLocked()) {
       return;
     }
     this.updateSlotTemplate(index, item => this.normalizeSlotTemplateBounds({
       ...item,
-      startAt: AppUtils.applyDatePartToIsoLocal(item.startAt, value),
+      ...this.shiftSlotByStartChange(item, AppUtils.applyDatePartToIsoLocal(item.startAt, value)),
       overrideDate: this.slotEditorMode === 'date' ? this.selectedSlotOverrideDateKey() : null,
       closed: false
     }));
@@ -932,14 +1120,14 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   onSlotTemplateStartTimeChange(index: number, value: Date | null): void {
     this.updateSlotTemplate(index, item => this.normalizeSlotTemplateBounds({
       ...item,
-      startAt: AppUtils.applyTimePartFromDateToIsoLocal(item.startAt, value),
+      ...this.shiftSlotByStartChange(item, AppUtils.applyTimePartFromDateToIsoLocal(item.startAt, value)),
       overrideDate: this.slotEditorMode === 'date' ? this.selectedSlotOverrideDateKey() : null,
       closed: false
     }));
   }
 
   onSlotTemplateEndDateChange(index: number, value: Date | null): void {
-    if (this.isDateSlotEditorMode()) {
+    if (this.isSlotOverrideDateFieldLocked()) {
       return;
     }
     this.updateSlotTemplate(index, item => this.normalizeSlotTemplateBounds({
@@ -1007,6 +1195,14 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     keyboardEvent.stopPropagation();
     if (this.showSlotsPopup) {
       this.showSlotsPopup = false;
+      return;
+    }
+    if (this.showPolicyEditorPopup) {
+      this.closePolicyEditor();
+      return;
+    }
+    if (this.showPoliciesPopup) {
+      this.closePoliciesPopup();
       return;
     }
     if (this.showTopicPicker) {
@@ -1083,21 +1279,21 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.eventEditorService.openEdit(source);
   }
 
-  private async persistEventEditorForm(): Promise<void> {
-    console.log(Date.now());
+  private async persistEventEditorForm(options: { allowIncomplete?: boolean } = {}): Promise<boolean> {
     if (this.eventEditorService.readOnly()) {
-      return;
+      return false;
     }
 
     this.syncEventFormFromDateTimeControls();
     this.normalizeEventDateRange();
     this.normalizeEventSlotTemplates();
     this.syncFirstSubEventLocationFromMainEvent();
+    this.syncEventPoliciesFromWorkingPolicies();
     const normalizedCapacity = EventEditorBuilder.normalizedEventEditorCapacityRange(this.eventForm);
     this.eventForm.capacityMin = normalizedCapacity.min;
     this.eventForm.capacityMax = normalizedCapacity.max;
-    if (!this.canSubmitEventEditorForm()) {
-      return;
+    if (!options.allowIncomplete && !this.canSubmitEventEditorForm()) {
+      return false;
     }
 
     const activeUserId = this.activeUserId();
@@ -1108,7 +1304,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.eventForm.id = eventId;
     const uploadedImageUrl = await this.resolvePersistedEventImageUrl(activeUserId, eventId);
     if (!this.demoModeEnabled && this.pendingEventImageFile && !uploadedImageUrl) {
-      return;
+      return false;
     }
     if (uploadedImageUrl) {
       this.eventForm.imageUrl = uploadedImageUrl;
@@ -1117,10 +1313,20 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       ?? (activeUserId ? this.eventEditorDataService.peekKnownItemById(activeUserId, eventId) : null);
     const memberSummary = await this.resolveCurrentEventMembersSummary(eventId, normalizedCapacity);
     this.currentMemberSummary = memberSummary;
+    const formForSync: AppTypes.EventEditorDraftForm = {
+      ...this.eventForm,
+      title: options.allowIncomplete
+        ? (this.eventForm.title.trim() || existingRecord?.title || 'Untitled draft event')
+        : this.eventForm.title,
+      description: options.allowIncomplete
+        ? (this.eventForm.description.trim() || existingRecord?.subtitle || 'Draft event in progress')
+        : this.eventForm.description
+    };
+
     const payload = EventEditorBuilder.buildEventEditorSyncPayload({
       eventId,
       target: this.editorTarget,
-      form: this.eventForm,
+      form: formForSync,
       subEventsDisplayMode: this.subEventsDisplayMode,
       acceptedMembers: memberSummary.acceptedMembers,
       pendingMembers: memberSummary.pendingMembers,
@@ -1133,21 +1339,18 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     });
 
     this.activitiesContext.emitActivitiesEventSync(payload);
-
-    console.log(Date.now());
+    return true;
   }
 
-  private async runSaveWithPendingWindow(): Promise<void> {
+  private async runImmediateSave(): Promise<void> {
     this.isSavePending = true;
     try {
-      const pendingWindowPromise = this.minimumSavePendingWindow();
-      const savePromise = this.runSaveAfterUiYield();
-
-      await Promise.all([
-        pendingWindowPromise,
-        savePromise
-      ]);
-
+      const saved = await this.persistEventEditorForm();
+      if (!saved) {
+        this.isSavePending = false;
+        return;
+      }
+      this.lastDraftAutosaveSignature = this.buildDraftAutosaveSignature();
       this.isSavePending = false;
       this.eventEditorService.close();
     } catch {
@@ -1155,43 +1358,80 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     }
   }
 
-  private minimumSavePendingWindow(): Promise<void> {
-    return this.demoModeEnabled
-      ? this.wait(EventEditorPopupComponent.SAVE_PENDING_WINDOW_MS)
-      : Promise.resolve();
-  }
-
-  private async runSaveAfterUiYield(): Promise<void> {
-    //await this.waitForAnimationKickoff();
-    await this.persistEventEditorForm();
-  }
-
-  private async waitForAnimationKickoff(): Promise<void> {
-    await this.waitForNextPaint();
-    await this.wait(this.demoModeEnabled ? 96 : 16);
-  }
-
-  private async wait(delayMs: number): Promise<void> {
-    if (delayMs <= 0) {
-      return;
-    }
-    await new Promise<void>(resolve => {
-      setTimeout(() => resolve(), delayMs);
-    });
-  }
-
-  private async waitForNextPaint(): Promise<void> {
-    await new Promise<void>(resolve => {
-      if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
-        window.requestAnimationFrame(() => resolve());
-        return;
-      }
-      setTimeout(() => resolve(), 0);
-    });
-  }
-
   private get demoModeEnabled(): boolean {
     return environment.activitiesDataSource === 'demo';
+  }
+
+  private startDraftAutosaveLoop(): void {
+    this.stopDraftAutosaveLoop();
+    this.draftAutosaveTimer = setInterval(() => {
+      void this.runDraftAutosaveIfNeeded();
+    }, EventEditorPopupComponent.DRAFT_AUTOSAVE_INTERVAL_MS);
+  }
+
+  private stopDraftAutosaveLoop(): void {
+    if (!this.draftAutosaveTimer) {
+      return;
+    }
+    clearInterval(this.draftAutosaveTimer);
+    this.draftAutosaveTimer = null;
+  }
+
+  private resetDraftAutosaveTracking(): void {
+    this.lastDraftAutosaveSignature = '';
+    this.isDraftAutosavePending = false;
+  }
+
+  private seedDraftAutosaveSignature(): void {
+    this.lastDraftAutosaveSignature = this.buildDraftAutosaveSignature();
+  }
+
+  private shouldAutosaveDraft(): boolean {
+    if (!this.eventEditorService.isOpen() || this.eventEditorService.readOnly() || this.isSavePending || this.isDraftAutosavePending) {
+      return false;
+    }
+    if (this.eventEditorService.mode() === 'create') {
+      return true;
+    }
+    return this.editorTarget === 'hosting' && this.currentRecord?.published === false;
+  }
+
+  private async runDraftAutosaveIfNeeded(): Promise<void> {
+    if (!this.shouldAutosaveDraft()) {
+      return;
+    }
+    const nextSignature = this.buildDraftAutosaveSignature();
+    if (!nextSignature || nextSignature === this.lastDraftAutosaveSignature) {
+      return;
+    }
+    this.isDraftAutosavePending = true;
+    try {
+      const saved = await this.persistEventEditorForm({ allowIncomplete: true });
+      if (saved) {
+        this.lastDraftAutosaveSignature = this.buildDraftAutosaveSignature();
+      }
+    } finally {
+      this.isDraftAutosavePending = false;
+    }
+  }
+
+  private buildDraftAutosaveSignature(): string {
+    return JSON.stringify({
+      target: this.editorTarget,
+      mode: this.eventEditorService.mode(),
+      readOnly: this.eventEditorService.readOnly(),
+      editingEventId: this.editingEventId,
+      draftEventId: this.draftEventId,
+      subEventsDisplayMode: this.subEventsDisplayMode,
+      form: {
+        ...this.eventForm,
+        topics: [...this.eventForm.topics],
+        pricing: PricingBuilder.clonePricingConfig(this.eventForm.pricing),
+        policies: EventEditorBuilder.cloneEventEditorPolicies(this.eventForm.policies),
+        slotTemplates: EventEditorBuilder.cloneEventEditorSlotTemplates(this.eventForm.slotTemplates),
+        subEvents: EventEditorBuilder.cloneEventEditorSubEvents(this.eventForm.subEvents)
+      }
+    });
   }
 
   private resetEditorContext(): void {
@@ -1240,24 +1480,32 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     const firstOverrideDate = this.eventForm.slotTemplates
       .map(item => EventEditorConverter.parseEventEditorOverrideDate(item.overrideDate))
       .find((value): value is Date => Boolean(value));
-    return firstOverrideDate ?? AppUtils.isoLocalDateTimeToDate(this.eventForm.startAt);
+    if (firstOverrideDate) {
+      return new Date(firstOverrideDate.getFullYear(), firstOverrideDate.getMonth(), firstOverrideDate.getDate());
+    }
+    const eventStart = AppUtils.isoLocalDateTimeToDate(this.eventForm.startAt);
+    return eventStart
+      ? new Date(eventStart.getFullYear(), eventStart.getMonth(), eventStart.getDate())
+      : null;
   }
 
   private normalizeSlotOverrideDateSelection(): void {
-    const min = this.slotOverrideDateMin();
-    const max = this.slotOverrideDateMax();
     let next = this.slotOverrideDateValue ?? this.defaultSlotOverrideDate();
     if (!next) {
       this.slotOverrideDateValue = null;
       return;
     }
-    if (min && next.getTime() < min.getTime()) {
-      next = min;
+    const min = this.slotOverrideDateMin();
+    const max = this.slotOverrideDateMax();
+    let nextMs = new Date(next.getFullYear(), next.getMonth(), next.getDate()).getTime();
+    if (min && nextMs < min.getTime()) {
+      nextMs = min.getTime();
     }
-    if (max && next.getTime() > max.getTime()) {
-      next = max;
+    if (max && nextMs > max.getTime()) {
+      nextMs = max.getTime();
     }
-    this.slotOverrideDateValue = next;
+    const normalized = new Date(nextMs);
+    this.slotOverrideDateValue = new Date(normalized.getFullYear(), normalized.getMonth(), normalized.getDate());
   }
 
   private buildSlotTemplateId(index: number): string {
@@ -1269,16 +1517,18 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   private projectBaseSlotTemplatesToDate(dateKey: string): AppTypes.EventSlotTemplate[] {
-    const overrideDate = EventEditorConverter.parseEventEditorOverrideDate(dateKey);
-    if (!overrideDate) {
+    const window = this.slotWindowForOverrideDate(dateKey);
+    const baseStart = AppUtils.isoLocalDateTimeToDate(this.eventForm.startAt);
+    if (!window || !baseStart) {
       return [];
     }
+    const shiftMs = window.start.getTime() - baseStart.getTime();
     return this.baseSlotTemplates().map((item, index) => ({
       id: item.id?.trim()
         ? `override-${dateKey}-${item.id.trim()}`
         : this.buildSlotTemplateId(index + 1),
-      startAt: AppUtils.applyDatePartToIsoLocal(item.startAt, overrideDate),
-      endAt: AppUtils.applyDatePartToIsoLocal(item.endAt, overrideDate),
+      startAt: this.shiftSlotDateTimeByMs(item.startAt, shiftMs),
+      endAt: this.shiftSlotDateTimeByMs(item.endAt, shiftMs),
       overrideDate: dateKey,
       closed: false
     }));
@@ -1322,7 +1572,9 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   private setActiveSlotTemplates(nextTemplates: AppTypes.EventSlotTemplate[]): void {
-    const normalizedTemplates = EventEditorBuilder.buildPersistedEventEditorSlotTemplates(nextTemplates);
+    const normalizedTemplates = EventEditorBuilder.buildPersistedEventEditorSlotTemplates(
+      this.normalizeEditableSlotTemplates(nextTemplates)
+    );
     if (this.slotEditorMode === 'base') {
       const overrides = this.eventForm.slotTemplates
         .filter(item => EventEditorConverter.normalizeEventEditorSlotOverrideDate(item.overrideDate))
@@ -1368,28 +1620,193 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   private defaultSlotStartForActiveScope(): string {
-    if (this.slotEditorMode !== 'date') {
-      return this.eventForm.startAt;
-    }
-    const dateKey = this.selectedSlotOverrideDateKey();
-    const overrideDate = EventEditorConverter.parseEventEditorOverrideDate(dateKey);
-    if (!overrideDate) {
-      return this.eventForm.startAt;
-    }
-    return AppUtils.applyDatePartToIsoLocal(this.eventForm.startAt, overrideDate);
+    return this.slotWindowForEditing()?.startAt ?? this.eventForm.startAt;
   }
 
   private normalizeSlotTemplateBounds(slot: AppTypes.EventSlotTemplate): AppTypes.EventSlotTemplate {
-    const startDate = EventEditorConverter.parseEventEditorDateValue(slot.startAt) ?? new Date();
-    const endDate = EventEditorConverter.parseEventEditorDateValue(slot.endAt);
-    const normalizedEnd = !endDate || endDate.getTime() <= startDate.getTime()
-      ? new Date(startDate.getTime() + (60 * 60 * 1000))
-      : endDate;
+    const window = this.slotWindowForEditing(slot.overrideDate);
+    const fallbackStart = window?.start ?? EventEditorConverter.parseEventEditorDateValue(this.eventForm.startAt) ?? new Date();
+    const fallbackEnd = window?.end ?? EventEditorConverter.parseEventEditorDateValue(this.eventForm.endAt) ?? new Date(fallbackStart.getTime() + (60 * 60 * 1000));
+    const windowStartMs = fallbackStart.getTime();
+    const windowEndMs = Math.max(windowStartMs + (60 * 1000), fallbackEnd.getTime());
+
+    let startDate = EventEditorConverter.parseEventEditorDateValue(slot.startAt) ?? new Date(fallbackStart);
+    let startMs = startDate.getTime();
+    const maxStartMs = Math.max(windowStartMs, windowEndMs - (60 * 1000));
+    startMs = Math.min(maxStartMs, Math.max(windowStartMs, startMs));
+    startDate = new Date(startMs);
+
+    const slotBoundaryEndMs = Math.min(
+      windowEndMs,
+      this.eventFrequencyBoundaryEnd(startDate, this.eventForm.frequency)?.getTime() ?? windowEndMs
+    );
+
+    let endDate = EventEditorConverter.parseEventEditorDateValue(slot.endAt);
+    let endMs = endDate?.getTime() ?? (startMs + (60 * 60 * 1000));
+    if (endMs <= startMs) {
+      endMs = startMs + (60 * 60 * 1000);
+    }
+    endMs = Math.min(slotBoundaryEndMs, endMs);
+    if (endMs <= startMs) {
+      endMs = Math.min(slotBoundaryEndMs, startMs + (60 * 1000));
+    }
+    if (endMs <= startMs) {
+      startMs = Math.max(windowStartMs, slotBoundaryEndMs - (60 * 1000));
+      endMs = slotBoundaryEndMs;
+      startDate = new Date(startMs);
+    }
+    const normalizedEnd = new Date(endMs);
     return {
       ...slot,
       startAt: AppUtils.toIsoDateTimeLocal(startDate),
       endAt: AppUtils.toIsoDateTimeLocal(normalizedEnd)
     };
+  }
+
+  private normalizeEditableSlotTemplates(
+    nextTemplates: readonly AppTypes.EventSlotTemplate[]
+  ): AppTypes.EventSlotTemplate[] {
+    let normalized = EventEditorBuilder.cloneEventEditorSlotTemplates(nextTemplates)
+      .map(item => item.closed === true ? { ...item } : this.normalizeSlotTemplateBounds({ ...item }));
+    for (let index = 0; index < normalized.length; index += 1) {
+      normalized = this.normalizeSlotTemplateWithNeighbors(normalized, index);
+    }
+    return normalized;
+  }
+
+  private normalizeSlotTemplateWithNeighbors(
+    items: readonly AppTypes.EventSlotTemplate[],
+    index: number
+  ): AppTypes.EventSlotTemplate[] {
+    const current = items[index];
+    if (!current || current.closed === true) {
+      return [...items];
+    }
+
+    const nextItems = items.map(item => ({ ...item }));
+    const scopeKey = EventEditorConverter.normalizeEventEditorSlotOverrideDate(current.overrideDate) ?? '';
+    const previous = [...nextItems]
+      .slice(0, index)
+      .reverse()
+      .find(item => (EventEditorConverter.normalizeEventEditorSlotOverrideDate(item.overrideDate) ?? '') === scopeKey && item.closed !== true);
+    const upcoming = nextItems
+      .slice(index + 1)
+      .find(item => (EventEditorConverter.normalizeEventEditorSlotOverrideDate(item.overrideDate) ?? '') === scopeKey && item.closed !== true);
+    const window = this.slotWindowForEditing(current.overrideDate);
+    const fallbackStart = window?.start ?? EventEditorConverter.parseEventEditorDateValue(this.eventForm.startAt) ?? new Date();
+    const fallbackEnd = window?.end ?? EventEditorConverter.parseEventEditorDateValue(this.eventForm.endAt) ?? new Date(fallbackStart.getTime() + (60 * 60 * 1000));
+    const previousEnd = previous ? EventEditorConverter.parseEventEditorDateValue(previous.endAt) : null;
+    const upcomingStart = upcoming ? EventEditorConverter.parseEventEditorDateValue(upcoming.startAt) : null;
+    const currentStart = EventEditorConverter.parseEventEditorDateValue(current.startAt) ?? new Date(fallbackStart);
+    const currentEnd = EventEditorConverter.parseEventEditorDateValue(current.endAt) ?? new Date(currentStart.getTime() + (60 * 60 * 1000));
+    const durationMs = Math.max(60 * 1000, currentEnd.getTime() - currentStart.getTime());
+
+    const minStartMs = Math.max(fallbackStart.getTime(), previousEnd?.getTime() ?? fallbackStart.getTime());
+    const slotBoundaryEndMs = Math.min(
+      fallbackEnd.getTime(),
+      this.eventFrequencyBoundaryEnd(currentStart, this.eventForm.frequency)?.getTime() ?? fallbackEnd.getTime()
+    );
+    const maxEndMs = Math.min(slotBoundaryEndMs, upcomingStart?.getTime() ?? slotBoundaryEndMs);
+    const maxStartMs = Math.max(minStartMs, maxEndMs - (60 * 1000));
+    let startMs = Math.max(minStartMs, Math.min(currentStart.getTime(), maxStartMs));
+    let endMs = Math.min(maxEndMs, startMs + durationMs);
+
+    if (endMs <= startMs) {
+      endMs = Math.min(maxEndMs, startMs + (60 * 1000));
+    }
+    if (endMs <= startMs) {
+      startMs = Math.max(minStartMs, maxEndMs - (60 * 1000));
+      endMs = maxEndMs;
+    }
+
+    nextItems[index] = {
+      ...current,
+      startAt: AppUtils.toIsoDateTimeLocal(new Date(startMs)),
+      endAt: AppUtils.toIsoDateTimeLocal(new Date(endMs))
+    };
+    return nextItems;
+  }
+
+  private shiftSlotByStartChange(
+    slot: AppTypes.EventSlotTemplate,
+    nextStartAt: string
+  ): Pick<AppTypes.EventSlotTemplate, 'startAt' | 'endAt'> {
+    const currentStart = EventEditorConverter.parseEventEditorDateValue(slot.startAt);
+    const currentEnd = EventEditorConverter.parseEventEditorDateValue(slot.endAt);
+    const nextStart = EventEditorConverter.parseEventEditorDateValue(nextStartAt);
+    if (!currentStart || !currentEnd || !nextStart) {
+      return {
+        startAt: nextStartAt,
+        endAt: slot.endAt
+      };
+    }
+    const durationMs = Math.max(60 * 1000, currentEnd.getTime() - currentStart.getTime());
+    return {
+      startAt: nextStartAt,
+      endAt: AppUtils.toIsoDateTimeLocal(new Date(nextStart.getTime() + durationMs))
+    };
+  }
+
+  private slotWindowForEditing(overrideDate = this.slotEditorMode === 'date' ? this.selectedSlotOverrideDateKey() : null): {
+    start: Date;
+    end: Date;
+    startAt: string;
+    endAt: string;
+  } | null {
+    return this.slotWindowForOverrideDate(overrideDate);
+  }
+
+  private slotWindowForOverrideDate(overrideDate: string | null | undefined): {
+    start: Date;
+    end: Date;
+    startAt: string;
+    endAt: string;
+  } | null {
+    const baseStart = EventEditorConverter.parseEventEditorDateValue(this.eventForm.startAt);
+    const baseEnd = EventEditorConverter.parseEventEditorDateValue(this.eventForm.endAt);
+    if (!baseStart || !baseEnd) {
+      return null;
+    }
+
+    if (!overrideDate) {
+      return {
+        start: new Date(baseStart),
+        end: new Date(baseEnd),
+        startAt: AppUtils.toIsoDateTimeLocal(baseStart),
+        endAt: AppUtils.toIsoDateTimeLocal(baseEnd)
+      };
+    }
+
+    const overrideDateValue = EventEditorConverter.parseEventEditorOverrideDate(overrideDate);
+    const shiftedStartAt = overrideDateValue
+      ? AppUtils.applyDatePartToIsoLocal(this.eventForm.startAt, overrideDateValue)
+      : this.eventForm.startAt;
+    const shiftedStart = EventEditorConverter.parseEventEditorDateValue(shiftedStartAt) ?? new Date(baseStart);
+    const boundaryEnd = this.eventFrequencyBoundaryEnd(shiftedStart, this.eventForm.frequency) ?? new Date(baseEnd);
+    const shiftedEnd = boundaryEnd.getTime() > baseEnd.getTime() ? new Date(baseEnd) : boundaryEnd;
+    if (shiftedEnd.getTime() <= shiftedStart.getTime()) {
+      const fallbackEnd = new Date(Math.min(baseEnd.getTime(), shiftedStart.getTime() + (60 * 60 * 1000)));
+      return {
+        start: shiftedStart,
+        end: fallbackEnd,
+        startAt: AppUtils.toIsoDateTimeLocal(shiftedStart),
+        endAt: AppUtils.toIsoDateTimeLocal(fallbackEnd)
+      };
+    }
+    return {
+      start: shiftedStart,
+      end: shiftedEnd,
+      startAt: AppUtils.toIsoDateTimeLocal(shiftedStart),
+      endAt: AppUtils.toIsoDateTimeLocal(shiftedEnd)
+    };
+  }
+
+  private shiftSlotDateTimeByMs(value: string, shiftMs: number): string {
+    const parsed = EventEditorConverter.parseEventEditorDateValue(value);
+    if (!parsed) {
+      return value;
+    }
+    return AppUtils.toIsoDateTimeLocal(new Date(parsed.getTime() + shiftMs));
   }
 
   private slotControlDateValue(value: string): Date | null {
@@ -1486,7 +1903,9 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.pendingEventImageFile = null;
     this.eventForm = {
       ...state.form,
+      slotsEnabled: EventEditorConverter.normalizeEventEditorFrequency(state.form.frequency) !== 'One-time',
       pricing: PricingBuilder.clonePricingConfig(state.form.pricing),
+      policies: EventEditorBuilder.cloneEventEditorPolicies(state.form.policies),
       slotTemplates: EventEditorBuilder.cloneEventEditorSlotTemplates(state.form.slotTemplates),
       subEvents: EventEditorBuilder.cloneEventEditorSubEvents(state.form.subEvents)
     };
@@ -1494,10 +1913,11 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.normalizeEventDateRange();
     this.syncDateTimeControlsFromForm();
     this.slotEditorMode = 'base';
-    this.slotsPanelExpanded = this.eventForm.slotsEnabled;
+    this.slotsPanelExpanded = this.eventFrequencyUsesSlots();
     this.showSlotsPopup = false;
     this.slotOverrideDateValue = this.defaultSlotOverrideDate();
     this.normalizeSlotOverrideDateSelection();
+    this.seedDraftAutosaveSignature();
   }
 
   private resetForm(target: AppTypes.EventEditorTarget = this.editorTarget): void {
@@ -1519,6 +1939,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       autoInviter: false,
       ticketing: false,
       pricing: PricingBuilder.createDefaultPricingConfig('event'),
+      policies: [],
       slotsEnabled: false,
       slotTemplates: [],
       topics: [],
@@ -1535,6 +1956,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.slotsPanelExpanded = false;
     this.slotOverrideDateValue = this.defaultSlotOverrideDate();
     this.normalizeSlotOverrideDateSelection();
+    this.seedDraftAutosaveSignature();
   }
 
   private syncDateTimeControlsFromForm(): void {
@@ -1553,29 +1975,72 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
   private normalizeEventDateRange(): void {
     const start = AppUtils.isoLocalDateTimeToDate(this.eventForm.startAt);
-    const end = AppUtils.isoLocalDateTimeToDate(this.eventForm.endAt);
+    let end = AppUtils.isoLocalDateTimeToDate(this.eventForm.endAt);
     if (!start || !end) {
       return;
-    }
-
-    if (end.getTime() <= start.getTime()) {
-      const nextEnd = new Date(start.getTime() + (60 * 60 * 1000));
-      this.eventForm.endAt = AppUtils.toIsoDateTimeLocal(nextEnd);
     }
 
     if (!this.eventFrequencyOptions.includes(this.eventForm.frequency)) {
       this.eventForm.frequency = this.eventFrequencyOptions[0] ?? 'One-time';
     }
+
+    if (end.getTime() <= start.getTime()) {
+      end = new Date(start.getTime() + (60 * 60 * 1000));
+    }
+
+    this.eventForm.endAt = AppUtils.toIsoDateTimeLocal(end);
+    this.eventForm.slotsEnabled = this.eventFrequencyUsesSlots();
+    if (!this.eventForm.slotsEnabled) {
+      this.eventForm.slotTemplates = [];
+      this.showSlotsPopup = false;
+    }
     this.normalizeSlotOverrideDateSelection();
+    this.normalizeEventSlotTemplates();
+  }
+
+  private eventFrequencyBoundaryEnd(start: Date | null, frequency: string): Date | null {
+    if (!start) {
+      return null;
+    }
+    const normalizedFrequency = EventEditorConverter.normalizeEventEditorFrequency(frequency);
+    let boundaryDate: Date | null = null;
+    switch (normalizedFrequency) {
+      case 'Daily':
+        boundaryDate = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+        break;
+      case 'Weekly':
+        boundaryDate = AppUtils.endOfWeekSunday(start);
+        break;
+      case 'Bi-weekly':
+        boundaryDate = AppUtils.addDays(AppUtils.endOfWeekSunday(start), 7);
+        break;
+      case 'Monthly':
+        boundaryDate = AppUtils.endOfMonth(start);
+        break;
+      case 'Yearly':
+        boundaryDate = new Date(start.getFullYear(), 11, 31);
+        break;
+      default:
+        boundaryDate = null;
+        break;
+    }
+    if (!boundaryDate) {
+      return null;
+    }
+    return new Date(boundaryDate.getFullYear(), boundaryDate.getMonth(), boundaryDate.getDate(), 23, 59, 0, 0);
   }
 
   private normalizeEventSlotTemplates(): void {
-    if (!this.eventForm.slotsEnabled) {
+    if (!this.eventFrequencyUsesSlots()) {
+      this.eventForm.slotsEnabled = false;
       this.eventForm.slotTemplates = [];
       return;
     }
+    this.eventForm.slotsEnabled = true;
 
-    this.eventForm.slotTemplates = EventEditorBuilder.buildPersistedEventEditorSlotTemplates(this.eventForm.slotTemplates);
+    this.eventForm.slotTemplates = EventEditorBuilder.buildPersistedEventEditorSlotTemplates(
+      this.eventForm.slotTemplates.map(item => item.closed === true ? { ...item } : this.normalizeSlotTemplateBounds({ ...item }))
+    );
   }
 
   private syncMainEventBoundsFromSubEvents(): void {
@@ -1640,6 +2105,47 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       this.eventForm.subEvents,
       this.eventForm.location
     );
+  }
+
+  private syncWorkingPolicyDraft(): void {
+    const nextItem = this.normalizedWorkingPolicyDraft();
+    const hasMeaningfulCopy = nextItem.title.length > 0 || nextItem.description.length > 0;
+
+    if (this.editingPolicyDraftIndex !== null && this.editingPolicyDraftIndex >= 0 && this.editingPolicyDraftIndex < this.workingPolicies.length) {
+      if (hasMeaningfulCopy) {
+        this.workingPolicies = this.workingPolicies.map((item, index) => (
+          index === this.editingPolicyDraftIndex ? nextItem : item
+        ));
+      } else {
+        this.workingPolicies = this.workingPolicies.filter((_, index) => index !== this.editingPolicyDraftIndex);
+        this.editingPolicyDraftIndex = null;
+      }
+    } else if (hasMeaningfulCopy) {
+      this.workingPolicies = [...this.workingPolicies, nextItem];
+      this.editingPolicyDraftIndex = this.workingPolicies.length - 1;
+    }
+
+    this.syncEventPoliciesFromWorkingPolicies();
+  }
+
+  private normalizedWorkingPolicyDraft(): AppTypes.EventPolicyItem {
+    return {
+      id: this.workingPolicyDraft.id?.trim() || `policy-${Date.now()}`,
+      title: this.workingPolicyDraft.title.trim(),
+      description: this.workingPolicyDraft.description.trim(),
+      required: this.workingPolicyDraft.required !== false
+    };
+  }
+
+  private syncEventPoliciesFromWorkingPolicies(): void {
+    this.eventForm.policies = this.workingPolicies
+      .map(item => ({
+        id: `${item.id ?? ''}`.trim(),
+        title: `${item.title ?? ''}`.trim(),
+        description: `${item.description ?? ''}`.trim(),
+        required: item.required !== false
+      }))
+      .filter(item => item.title.length > 0 || item.description.length > 0);
   }
 
   private eventLocationRouteStops(): string[] {

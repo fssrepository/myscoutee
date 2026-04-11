@@ -1,6 +1,7 @@
 import type { LocationCoordinates } from './location.interface';
 import type {
   EventRecordKind,
+  EventPolicyItem,
   EventSlotOccurrence,
   EventSlotTemplate,
   PricingConfig,
@@ -40,6 +41,7 @@ export interface InvitationMenuItem {
   sourceLink?: string;
   location?: string;
   locationCoordinates?: LocationCoordinates;
+  policies?: EventPolicyItem[];
 }
 
 export interface EventMenuItem {
@@ -81,6 +83,7 @@ export interface EventMenuItem {
   topics?: string[];
   subEvents?: SubEventFormItem[];
   subEventsDisplayMode?: SubEventsDisplayMode;
+  policies?: EventPolicyItem[];
   rating?: number;
   relevance?: number;
   affinity?: number;
@@ -126,6 +129,7 @@ export interface HostingMenuItem {
   topics?: string[];
   subEvents?: SubEventFormItem[];
   subEventsDisplayMode?: SubEventsDisplayMode;
+  policies?: EventPolicyItem[];
   rating?: number;
   relevance?: number;
   affinity?: number;
