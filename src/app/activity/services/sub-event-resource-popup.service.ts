@@ -1700,7 +1700,7 @@ export class SubEventResourcePopupService {
     return popup.cards
       .map(card => {
         const request = this.findPendingAssetExploreBorrowRequest(card, context.subEvent.id, activeUserId);
-        if (!request) {
+        if (!request || !request.booking?.paymentSessionId) {
           return null;
         }
         return {
@@ -2216,6 +2216,58 @@ export class SubEventResourcePopupService {
           if (!session?.id) {
             throw new Error('Unable to start checkout.');
           }
+
+          const nextRequest: AppTypes.AssetMemberRequest = {
+            id: existingRequest?.id ?? `borrow:${activeUser.id}:${card.id}:${context.subEvent.id}`,
+            userId: activeUser.id,
+            name: activeUser.name,
+            initials: activeUser.initials,
+            gender: activeUser.gender,
+            status: 'pending',
+            note: 'Awaiting payment.',
+            requestKind: 'borrow',
+            requestedAtIso: new Date().toISOString(),
+            booking: this.assetRequestBookingForRange(
+              context.subEvent,
+              context.ownerId,
+              context.parentTitle,
+              dialog.startAtIso,
+              dialog.endAtIso,
+              dialog.quantity,
+              {
+                totalAmount: pricing.amount,
+                currency: pricing.currency,
+                acceptedPolicyIds: dialog.acceptedPolicyIds,
+                paymentSessionId: session.id
+              }
+            )
+          };
+          const nextCard: AppTypes.AssetCard = {
+            ...card,
+            requests: [
+              nextRequest,
+              ...card.requests
+                .filter(request => request.id !== nextRequest.id)
+                .map(request => ({
+                  ...request,
+                  booking: request.booking
+                    ? {
+                        ...request.booking,
+                        acceptedPolicyIds: [...(request.booking.acceptedPolicyIds ?? [])]
+                      }
+                    : null
+                }))
+            ]
+          };
+
+          const currentPopup = this.assetExplorePopupRef();
+          if (currentPopup) {
+            this.assetExplorePopupRef.set({
+              ...currentPopup,
+              cards: currentPopup.cards.map(cardItem => cardItem.id === nextCard.id ? this.cloneAsset(nextCard) : cardItem)
+            });
+          }
+
           const currentDialog = this.assetExploreBorrowDialogRef();
           if (!currentDialog || requestVersion !== this.pendingAssetExploreBorrowRequestVersion) {
             return;
@@ -2227,6 +2279,22 @@ export class SubEventResourcePopupService {
             busy: false,
             error: null
           });
+
+          void this.assetsService.saveOwnedAsset(dialog.ownerUserId, nextCard)
+            .then(savedCard => {
+              const latestPopup = this.assetExplorePopupRef();
+              if (latestPopup) {
+                this.assetExploreWarmCacheByKey.clear();
+                this.assetExplorePopupRef.set({
+                  ...latestPopup,
+                  cards: latestPopup.cards.map(cardItem => cardItem.id === savedCard.id ? this.cloneAsset(savedCard) : cardItem)
+                });
+                this.scheduleAssetExploreCardsLoad();
+              }
+            })
+            .catch(() => {
+              // Best-effort save; basket will still work on next explore open.
+            });
         })
         .catch(async error => {
           await this.ensureAssetExploreBorrowMinimumBusyDuration(startedAt);
@@ -2289,7 +2357,7 @@ export class SubEventResourcePopupService {
               totalAmount: pricing.amount,
               currency: pricing.currency,
               acceptedPolicyIds: dialog.acceptedPolicyIds,
-              paymentSessionId: session?.id ?? dialog.checkoutSessionId ?? null
+              paymentSessionId: null
             }
           )
         };
