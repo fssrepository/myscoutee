@@ -14,7 +14,6 @@ import { of } from 'rxjs';
 
 import {
   CounterBadgePipe,
-  HeaderProgressBarComponent,
   InfoCardComponent,
   SmartListComponent,
   type HeaderProgressBarConfig,
@@ -204,7 +203,6 @@ export interface EventResourcePopupHost {
     MatNativeDateModule,
     MatSelectModule,
     MatTimepickerModule,
-    HeaderProgressBarComponent,
     SmartListComponent,
     InfoCardComponent,
     CounterBadgePipe
@@ -327,17 +325,17 @@ export class EventResourcePopupComponent implements DoCheck {
 
   protected readonly assetExploreSmartListConfig: SmartListConfig<AppTypes.AssetCard, ResourceSmartListFilters> = {
     pageSize: 10,
-    loadingDelayMs: 0,
-    loadingWindowMs: 0,
+    loadingDelayMs: resolveCurrentDemoDelayMs(1500),
+    loadingWindowMs: 3000,
     defaultView: 'list',
     presentation: 'list',
     headerProgress: {
-      enabled: false
+      enabled: true
     },
     emptyLabel: 'No visible assets right now.',
     emptyDescription: 'Try another date range or category.',
     showStickyHeader: true,
-    showGroupMarker: ({ groupIndex, scrollable }) => groupIndex > 0 || scrollable,
+    showGroupMarker: ({ groupIndex }) => groupIndex > 0,
     groupBy: card => this.assetExploreGroupLabel(card),
     listLayout: 'card-grid',
     desktopColumns: 3,

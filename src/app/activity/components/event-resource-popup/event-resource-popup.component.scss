@@ -459,7 +459,7 @@
   padding: 0.4rem;
   gap: 0.46rem;
   position: relative;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .asset-explore-shell .asset-explore-popup-screen {
@@ -469,6 +469,7 @@
   height: 100%;
   min-height: 0;
   gap: 0.46rem;
+  overflow: visible;
 }
 
 .asset-explore-shell .asset-explore-panel,
@@ -601,10 +602,15 @@
   min-width: 252px;
   margin-left: auto;
   flex: 0 0 auto;
+  overflow: visible;
 }
 
 .asset-explore-shell .asset-explore-date-range-pill {
   max-width: none;
+  overflow: visible;
+  --mat-form-field-state-layer-color: transparent;
+  --mat-form-field-hover-state-layer-opacity: 0;
+  --mat-form-field-focus-state-layer-opacity: 0;
 }
 
 .asset-explore-shell .asset-explore-date-range-pill ::ng-deep .mat-mdc-text-field-wrapper {
@@ -613,16 +619,27 @@
   border-radius: 999px;
   background: #f7fbff;
   border-color: rgba(42, 83, 141, 0.26);
+  overflow: visible;
 }
 
 .asset-explore-shell .asset-explore-date-range-pill ::ng-deep .mat-date-range-input-container {
   grid-template-columns: minmax(78px, 1fr) auto minmax(78px, 1fr);
   column-gap: 0.14rem;
+  min-height: 34px;
+  height: 34px;
+  align-items: center;
+  overflow: visible;
 }
 
 .asset-explore-shell .asset-explore-date-range-pill ::ng-deep .mat-date-range-input-separator {
   margin: 0;
   color: #5f7899;
+  min-height: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 34px;
 }
 
 .asset-explore-shell .asset-explore-date-range-pill ::ng-deep .mat-date-range-input-inner,
@@ -630,10 +647,125 @@
   font-size: 0.78rem;
   font-weight: 700;
   color: #2c4c74;
+  height: 34px;
+  line-height: 34px;
+  text-align: center;
+  align-self: center;
 }
 
 .asset-explore-shell .asset-explore-date-range-pill ::ng-deep .mat-mdc-form-field-subscript-wrapper {
   display: none;
+}
+
+:host ::ng-deep .asset-explore-date-range-pill .mat-mdc-form-field-flex,
+:host ::ng-deep .asset-explore-date-range-pill .mat-mdc-form-field-infix,
+:host ::ng-deep .asset-explore-date-range-pill .mat-date-range-input-wrapper,
+:host ::ng-deep .asset-explore-date-range-pill .mat-date-range-input-end-wrapper {
+  min-width: 0;
+  overflow: visible;
+  border-bottom: 0 !important;
+  box-shadow: none !important;
+}
+
+:host ::ng-deep .asset-explore-date-range-pill .mat-date-range-input-wrapper,
+:host ::ng-deep .asset-explore-date-range-pill .mat-date-range-input-end-wrapper {
+  min-height: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+:host ::ng-deep .asset-explore-date-range-pill .mat-date-range-input-mirror {
+  min-height: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  line-height: 34px;
+}
+
+:host ::ng-deep .asset-explore-date-range-pill .mat-mdc-form-field-flex {
+  min-height: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center !important;
+}
+
+:host ::ng-deep .asset-explore-date-range-pill .mat-mdc-form-field-infix {
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  min-height: 34px !important;
+  height: 34px;
+  width: auto !important;
+  min-width: 0 !important;
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+}
+
+:host ::ng-deep .asset-explore-date-range-pill .mat-mdc-form-field-focus-overlay {
+  background: transparent !important;
+  opacity: 0 !important;
+}
+
+:host ::ng-deep .asset-explore-date-range-pill .mat-mdc-form-field-icon-suffix {
+  align-self: center;
+  flex: 0 0 auto;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  padding-right: 0.14rem;
+}
+
+:host ::ng-deep .asset-explore-date-range-pill .mat-datepicker-toggle {
+  margin: 0 !important;
+  align-self: center !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+:host ::ng-deep .asset-explore-date-range-pill .mat-datepicker-toggle .mat-mdc-icon-button {
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  min-height: 28px;
+  padding: 0;
+  border-radius: 999px;
+  --mdc-icon-button-state-layer-size: 28px;
+  color: #365677;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  transition: background-color 0.16s ease, color 0.16s ease, box-shadow 0.16s ease;
+}
+
+:host ::ng-deep .asset-explore-date-range-pill .mat-datepicker-toggle .mat-mdc-icon-button:hover {
+  background: rgba(61, 104, 167, 0.1);
+  color: #24486e;
+}
+
+:host ::ng-deep .asset-explore-date-range-pill .mat-datepicker-toggle .mat-mdc-icon-button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(61, 104, 167, 0.14);
+}
+
+:host ::ng-deep .asset-explore-date-range-pill .mat-datepicker-toggle .mat-mdc-button-persistent-ripple,
+:host ::ng-deep .asset-explore-date-range-pill .mat-datepicker-toggle .mat-mdc-button-persistent-ripple::before,
+:host ::ng-deep .asset-explore-date-range-pill .mat-datepicker-toggle .mat-mdc-button-touch-target,
+:host ::ng-deep .asset-explore-date-range-pill .mat-datepicker-toggle .mat-focus-indicator {
+  border-radius: 999px;
+}
+
+:host ::ng-deep .asset-explore-date-range-pill .mdc-line-ripple,
+:host ::ng-deep .asset-explore-date-range-pill .mat-mdc-form-field-line-ripple,
+:host ::ng-deep .asset-explore-date-range-pill .mdc-line-ripple--deactivating,
+:host ::ng-deep .asset-explore-date-range-pill .mdc-line-ripple--active,
+:host ::ng-deep .asset-explore-date-range-pill .mat-mdc-form-field-bottom-align {
+  display: none !important;
+  opacity: 0 !important;
+  transform: scaleX(0) !important;
 }
 
 .asset-explore-shell .asset-explore-progress-strip {
@@ -658,6 +790,7 @@
   min-height: 0;
   padding-right: 0.12rem;
   padding-bottom: 0.3rem;
+  overscroll-behavior-y: contain;
 }
 
 .asset-explore-shell .asset-explore-panel {
@@ -1426,9 +1559,31 @@
 
   .asset-explore-shell .asset-explore-date-range-field,
   .asset-explore-shell .assets-badge-form-field {
-    width: min(348px, calc(100vw - 1.5rem));
-    min-width: min(348px, calc(100vw - 1.5rem));
+    width: min(286px, calc(100vw - 8rem));
+    min-width: min(286px, calc(100vw - 8rem));
     max-width: none;
+  }
+
+  .asset-explore-shell .asset-explore-date-range-pill ::ng-deep .mat-date-range-input-container {
+    grid-template-columns: minmax(72px, 1fr) auto minmax(72px, 1fr);
+    column-gap: 0.08rem;
+  }
+
+  .asset-explore-shell .asset-explore-date-range-pill ::ng-deep .mat-date-range-input-inner,
+  .asset-explore-shell .asset-explore-date-range-pill ::ng-deep input {
+    font-size: 0.74rem;
+  }
+
+  :host ::ng-deep .asset-explore-date-range-pill .mat-mdc-form-field-icon-suffix {
+    padding-right: 0.06rem;
+  }
+
+  :host ::ng-deep .asset-explore-date-range-pill .mat-datepicker-toggle .mat-mdc-icon-button {
+    width: 26px;
+    height: 26px;
+    min-width: 26px;
+    min-height: 26px;
+    --mdc-icon-button-state-layer-size: 26px;
   }
 
   .asset-explore-shell .asset-explore-smart-list,
