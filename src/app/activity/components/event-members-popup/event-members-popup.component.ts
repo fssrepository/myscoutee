@@ -113,7 +113,7 @@ export class EventMembersPopupComponent {
 
   protected membersItemTemplateRef?: TemplateRef<SmartListItemTemplateContext<AppTypes.ActivityMemberEntry, MembersSmartListFilters>>;
 
-  @ViewChild('memberItemTemplate', { read: TemplateRef })
+  @ViewChild('memberItemTemplate', { read: TemplateRef, static: true })
   private set membersItemTemplate(
     value: TemplateRef<SmartListItemTemplateContext<AppTypes.ActivityMemberEntry, MembersSmartListFilters>> | undefined
   ) {

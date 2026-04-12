@@ -124,7 +124,7 @@ export class EventExplorePopupComponent {
 
   protected eventExploreItemTemplateRef?: TemplateRef<SmartListItemTemplateContext<DemoEventRecord, EventExploreFeedFilters>>;
 
-  @ViewChild('eventExploreItemTemplate', { read: TemplateRef })
+  @ViewChild('eventExploreItemTemplate', { read: TemplateRef, static: true })
   private set eventExploreItemTemplate(value: TemplateRef<SmartListItemTemplateContext<DemoEventRecord, EventExploreFeedFilters>> | undefined) {
     this.eventExploreItemTemplateRef = value;
     this.cdr.markForCheck();

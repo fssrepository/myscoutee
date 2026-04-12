@@ -75,7 +75,7 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
     SmartListItemTemplateContext<AppTypes.EventFeedbackEventCard, EventFeedbackListFilters>
   >;
 
-  @ViewChild('eventFeedbackItemTemplate', { read: TemplateRef })
+  @ViewChild('eventFeedbackItemTemplate', { read: TemplateRef, static: true })
   private set eventFeedbackItemTemplate(
     value: TemplateRef<SmartListItemTemplateContext<AppTypes.EventFeedbackEventCard, EventFeedbackListFilters>> | undefined
   ) {
