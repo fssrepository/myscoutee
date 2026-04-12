@@ -335,11 +335,11 @@ export class EventResourcePopupComponent implements DoCheck {
     emptyLabel: 'No visible assets right now.',
     emptyDescription: 'Try another date range or category.',
     showStickyHeader: true,
-    showGroupMarker: ({ groupIndex }) => groupIndex > 0,
+    showGroupMarker: ({ groupIndex, scrollable }) => groupIndex > 0 || scrollable,
     groupBy: card => this.assetExploreGroupLabel(card),
     listLayout: 'card-grid',
     desktopColumns: 3,
-    snapMode: 'none',
+    snapMode: 'mandatory',
     scrollPaddingTop: '2.6rem',
     stickyHeaderClass: 'asset-explore-sticky-header',
     containerClass: {
