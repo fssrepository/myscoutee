@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectorRef, Component, DoCheck, HostListener, Input, TemplateRef, ViewChild, inject } from '@angular/core';
+import { Component, DoCheck, HostListener, Input, TemplateRef, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DragDropModule } from '@angular/cdk/drag-drop';
 import { MatButtonModule } from '@angular/material/button';
@@ -193,8 +193,6 @@ export interface EventResourcePopupHost {
   styleUrls: ['./event-resource-popup.component.scss']
 })
 export class EventResourcePopupComponent implements DoCheck {
-  private readonly cdr = inject(ChangeDetectorRef);
-
   private lastCardsSignature = '';
   private lastContextKey = '';
   private lastCardCount = 0;
@@ -237,22 +235,20 @@ export class EventResourcePopupComponent implements DoCheck {
 
   protected resourceItemTemplateRef?: TemplateRef<SmartListItemTemplateContext<AppTypes.SubEventResourceCard, ResourceSmartListFilters>>;
 
-  @ViewChild('resourceItemTemplate', { read: TemplateRef, static: true })
+  @ViewChild('resourceItemTemplate', { read: TemplateRef })
   private set resourceItemTemplate(
     value: TemplateRef<SmartListItemTemplateContext<AppTypes.SubEventResourceCard, ResourceSmartListFilters>> | undefined
   ) {
     this.resourceItemTemplateRef = value;
-    this.cdr.markForCheck();
   }
 
   protected assetExploreItemTemplateRef?: TemplateRef<SmartListItemTemplateContext<AppTypes.AssetCard, ResourceSmartListFilters>>;
 
-  @ViewChild('assetExploreItemTemplate', { read: TemplateRef, static: true })
+  @ViewChild('assetExploreItemTemplate', { read: TemplateRef })
   private set assetExploreItemTemplate(
     value: TemplateRef<SmartListItemTemplateContext<AppTypes.AssetCard, ResourceSmartListFilters>> | undefined
   ) {
     this.assetExploreItemTemplateRef = value;
-    this.cdr.markForCheck();
   }
 
   protected readonly resourceSmartListLoadPage: SmartListLoadPage<AppTypes.SubEventResourceCard, ResourceSmartListFilters> = (
