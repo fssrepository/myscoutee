@@ -26,6 +26,7 @@ export interface AssetHireRequestBooking {
   totalAmount?: number | null;
   currency?: string | null;
   acceptedPolicyIds?: string[];
+  paymentSessionId?: string | null;
 }
 
 export interface AssetMemberRequest {

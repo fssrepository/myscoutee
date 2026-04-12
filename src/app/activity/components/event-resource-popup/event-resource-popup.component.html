@@ -606,6 +606,62 @@
             </div>
           </section>
 
+          @if (assetExploreBorrowDraftCount() > 0) {
+            <div class="asset-explore-basket">
+              @if (showAssetExploreBorrowBasket) {
+                <section class="asset-explore-basket-panel">
+                  <header class="asset-explore-basket-panel__head">
+                    <div>
+                      <strong>Basket</strong>
+                      <span>{{ assetExploreBorrowDraftCount() }} pending {{ assetExploreBorrowDraftCount() === 1 ? 'request' : 'requests' }}</span>
+                    </div>
+                    <button
+                      type="button"
+                      class="asset-explore-basket-panel__close"
+                      (click)="toggleAssetExploreBorrowBasket($event)"
+                      aria-label="Close basket"
+                    >
+                      <mat-icon>close</mat-icon>
+                    </button>
+                  </header>
+                  <div class="asset-explore-basket-panel__list">
+                    @for (entry of assetExploreBorrowDrafts(); track entry.cardId) {
+                      <article class="asset-explore-basket-item">
+                        <div class="asset-explore-basket-item__copy">
+                          <strong>{{ entry.title }}</strong>
+                          <span>{{ entry.timeframe }}</span>
+                          <span>Quantity {{ entry.quantity }} · {{ entry.availabilityLabel }}</span>
+                        </div>
+                        <div class="asset-explore-basket-item__actions">
+                          <button type="button" class="asset-explore-basket-item__btn" (click)="continueAssetExploreBorrowDraft(entry.cardId, $event)">
+                            Continue
+                          </button>
+                          <button
+                            type="button"
+                            class="asset-explore-basket-item__btn asset-explore-basket-item__btn--clear"
+                            (click)="clearAssetExploreBorrowDraft(entry.cardId, $event)"
+                          >
+                            Clear
+                          </button>
+                        </div>
+                      </article>
+                    }
+                  </div>
+                </section>
+              }
+              <button
+                type="button"
+                class="asset-explore-basket-fab"
+                [class.is-open]="showAssetExploreBorrowBasket"
+                (click)="toggleAssetExploreBorrowBasket($event)"
+                aria-label="Open basket"
+              >
+                <mat-icon>shopping_basket</mat-icon>
+                <span class="asset-explore-basket-fab__count">{{ assetExploreBorrowDraftCount() }}</span>
+              </button>
+            </div>
+          }
+
           @if (host.assetExploreBorrowDialog(); as dialog) {
             <section class="experience-form-overlay subevent-form-overlay subevent-group-form-overlay subevent-asset-capacity-overlay asset-explore-borrow-overlay">
               <div class="experience-form-overlay-backdrop" (click)="host.closeAssetExploreBorrowDialog($event)"></div>
@@ -616,60 +672,16 @@
                     <p class="subevent-group-stage-subtitle">{{ dialog.subtitle }}</p>
                   </div>
                   <div class="experience-form-header-controls">
-                    <span
-                      class="subevent-resource-save-btn-shell"
-                      [class.is-loading]="dialog.busy"
-                      [class.is-error]="!dialog.busy && !!dialog.error"
-                    >
-                      @if (dialog.busy || dialog.error) {
-                        <span class="subevent-resource-save-btn-ring" aria-hidden="true">
-                          <svg viewBox="0 0 34 34" preserveAspectRatio="none" class="subevent-resource-save-btn-ring-svg">
-                            <defs>
-                              <linearGradient id="subevent-resource-borrow-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                                <stop offset="0%" stop-color="rgb(235, 147, 33)"></stop>
-                                <stop offset="100%" stop-color="rgb(247, 190, 52)"></stop>
-                              </linearGradient>
-                              <linearGradient id="subevent-resource-borrow-gradient-error" x1="0%" y1="0%" x2="100%" y2="100%">
-                                <stop offset="0%" stop-color="rgb(213, 54, 68)"></stop>
-                                <stop offset="100%" stop-color="rgb(196, 29, 42)"></stop>
-                              </linearGradient>
-                            </defs>
-                            <circle class="subevent-resource-save-btn-ring-track" cx="17" cy="17" r="15"></circle>
-                            <circle
-                              class="subevent-resource-save-btn-ring-progress"
-                              [class.is-loading]="dialog.busy"
-                              [class.is-error]="!dialog.busy && !!dialog.error"
-                              cx="17"
-                              cy="17"
-                              r="15"
-                              pathLength="100"
-                              [attr.stroke-dasharray]="host.assetExploreBorrowRingPerimeter()"
-                              [attr.stroke-dashoffset]="dialog.busy ? host.assetExploreBorrowRingPerimeter() : 0"
-                            ></circle>
-                          </svg>
-                        </span>
-                      }
-                      <button
-                        type="button"
-                        class="popup-header-add-btn subevent-leaderboard-save-btn subevent-resource-save-btn"
-                        [class.form-save-invalid]="!host.canSubmitAssetExploreBorrow() && !dialog.busy"
-                        [disabled]="!host.canSubmitAssetExploreBorrow()"
-                        (click)="host.confirmAssetExploreBorrow($event)"
-                        aria-label="Send borrow request"
-                      >
-                        <mat-icon>done</mat-icon>
-                      </button>
-                    </span>
                     <button type="button" class="experience-form-close-btn" (click)="host.closeAssetExploreBorrowDialog($event)" aria-label="Close borrow request">
                       <mat-icon>close</mat-icon>
                     </button>
                   </div>
                 </div>
                 <section class="experience-form-panel subevent-form-panel subevent-group-form-panel asset-explore-borrow-panel">
-                  <div class="experience-form-grid subevent-group-form-grid">
-                    <label class="event-slot-field">
-                      <span>Start</span>
-                      <div class="event-datetime-row event-slot-datetime-row">
+                  <div class="asset-explore-borrow-form">
+                    <label class="event-slot-field asset-explore-borrow-slot">
+                      <span class="asset-explore-borrow-slot__label">Start</span>
+                      <div class="event-datetime-row event-slot-datetime-row asset-explore-borrow-slot__row">
                         <mat-form-field appearance="outline" class="event-date-field event-date-field-start event-slot-date-field" subscriptSizing="dynamic">
                           <input
                             matInput
@@ -693,9 +705,9 @@
                         </mat-form-field>
                       </div>
                     </label>
-                    <label class="event-slot-field">
-                      <span>End</span>
-                      <div class="event-datetime-row event-slot-datetime-row">
+                    <label class="event-slot-field asset-explore-borrow-slot">
+                      <span class="asset-explore-borrow-slot__label">End</span>
+                      <div class="event-datetime-row event-slot-datetime-row asset-explore-borrow-slot__row">
                         <mat-form-field appearance="outline" class="event-date-field event-date-field-end event-slot-date-field" subscriptSizing="dynamic">
                           <input
                             matInput
@@ -719,7 +731,7 @@
                         </mat-form-field>
                       </div>
                     </label>
-                    <label>
+                    <label class="asset-explore-borrow-quantity-field">
                       <span>Quantity</span>
                       <input
                         type="number"
@@ -733,9 +745,101 @@
                     <p class="asset-explore-borrow-availability">
                       Available for this time: {{ dialog.availableQuantity }} {{ dialog.availableQuantity === 1 ? 'item' : 'items' }}
                     </p>
+
+                    <section class="asset-explore-borrow-review-card">
+                      <div class="asset-explore-borrow-review-card__head">
+                        <div>
+                          <h4>Borrow Summary</h4>
+                          <span>{{ dialog.timeframe }}</span>
+                        </div>
+                        <strong>{{ dialog.totalAmount > 0 ? assetExploreBorrowFormatMoney(dialog.totalAmount, dialog.currency) : 'Included' }}</strong>
+                      </div>
+                      <div class="asset-explore-borrow-review-card__list">
+                        @for (item of dialog.lineItems; track item.id) {
+                          <article class="asset-explore-borrow-review-card__item">
+                            <div>
+                              <strong>{{ item.label }}</strong>
+                              <span>{{ item.detail }}</span>
+                            </div>
+                            <strong>{{ item.amount > 0 ? assetExploreBorrowFormatMoney(item.amount, item.currency) : 'Included' }}</strong>
+                          </article>
+                        }
+                      </div>
+                    </section>
+
+                    @if (dialog.policies.length > 0) {
+                      <section class="asset-explore-borrow-review-card">
+                        <div class="asset-explore-borrow-review-card__head">
+                          <div>
+                            <h4>Policies</h4>
+                            <span>Review and approve before continuing</span>
+                          </div>
+                        </div>
+                        <div class="asset-explore-borrow-policy-list">
+                          @for (policy of dialog.policies; track policy.id) {
+                            <label class="asset-explore-borrow-policy-card" [class.is-required]="policy.required !== false">
+                              <input
+                                type="checkbox"
+                                [checked]="dialog.acceptedPolicyIds.includes(policy.id)"
+                                (change)="host.toggleAssetExploreBorrowPolicy(policy.id)"
+                              />
+                              <div>
+                                <strong>{{ policy.title }}</strong>
+                                @if (policy.description) {
+                                  <span>{{ policy.description }}</span>
+                                }
+                              </div>
+                              @if (policy.required !== false) {
+                                <em>Required</em>
+                              }
+                            </label>
+                          }
+                        </div>
+                      </section>
+                    }
+
+                    @if (dialog.payable) {
+                      <section class="asset-explore-borrow-review-card asset-explore-borrow-review-card--payment">
+                        <div class="asset-explore-borrow-review-card__head">
+                          <div>
+                            <h4>Payment</h4>
+                            <span>This borrow window triggers asset pricing.</span>
+                          </div>
+                          <strong>{{ assetExploreBorrowFormatMoney(dialog.totalAmount, dialog.currency) }}</strong>
+                        </div>
+                        <div class="asset-explore-borrow-payment-summary">
+                          <article>
+                            <span>Amount due</span>
+                            <strong>{{ assetExploreBorrowFormatMoney(dialog.totalAmount, dialog.currency) }}</strong>
+                          </article>
+                          <article>
+                            <span>Status</span>
+                            <strong>Ready to approve</strong>
+                          </article>
+                        </div>
+                        <p class="asset-explore-borrow-payment-note">
+                          A checkout session is created as part of the borrow request so payable assets do not stay on the free path.
+                        </p>
+                      </section>
+                    }
+
                     @if (dialog.error) {
                       <p class="subevent-resource-editor-error">{{ dialog.error }}</p>
                     }
+
+                    <div class="asset-explore-borrow-actions">
+                      <button type="button" class="asset-explore-borrow-actions__btn asset-explore-borrow-actions__btn--secondary" (click)="host.closeAssetExploreBorrowDialog($event)">
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        class="asset-explore-borrow-actions__btn asset-explore-borrow-actions__btn--primary"
+                        [disabled]="!host.canSubmitAssetExploreBorrow()"
+                        (click)="host.confirmAssetExploreBorrow($event)"
+                      >
+                        {{ dialog.busy ? 'Processing...' : dialog.submitLabel }}
+                      </button>
+                    </div>
                   </div>
                 </section>
               </div>

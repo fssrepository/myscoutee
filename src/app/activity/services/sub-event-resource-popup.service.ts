@@ -16,12 +16,14 @@ import {
   AppContext,
   AppPopupContext,
   AssetsService as SharedAssetsService,
+  EventsService,
   UsersService,
   type UserDto
 } from '../../shared/core';
 import { ActivitiesPopupStateService } from './activities-popup-state.service';
 import { EventEditorPopupStateService } from './event-editor-popup-state.service';
 import type {
+  AssetExploreBorrowDraftViewState,
   AssetExploreBorrowDialogViewState,
   AssetExplorePopupViewState,
   EventResourcePopupHost
@@ -110,8 +112,14 @@ interface AssetExploreBorrowDialogState {
   startAtIso: string;
   endAtIso: string;
   availableQuantity: number;
+  acceptedPolicyIds: string[];
   busy: boolean;
   error: string | null;
+}
+
+interface AssetExploreBorrowPricingPreview {
+  amount: number;
+  currency: string;
 }
 
 interface SupplyBringDialogState {
@@ -136,6 +144,7 @@ export class SubEventResourcePopupService {
   private readonly activityMembersService = inject(ActivityMembersService);
   private readonly activityResourcesService = inject(ActivityResourcesService);
   private readonly assetsService = inject(SharedAssetsService);
+  private readonly eventsService = inject(EventsService);
   private readonly appCtx = inject(AppContext);
   private readonly popupCtx = inject(AppPopupContext);
   private readonly usersService = inject(UsersService);
@@ -214,6 +223,7 @@ export class SubEventResourcePopupService {
     pendingDeleteCard: () => this.pendingResourceDeleteRef(),
     assetExplorePopup: () => this.assetExplorePopupViewState(),
     assetExploreBorrowDialog: () => this.assetExploreBorrowDialogViewState(),
+    assetExploreBorrowDrafts: () => this.assetExploreBorrowDraftsViewState(),
     close: () => this.closeResourcePopup(),
     selectResourceFilter: filter => this.selectResourceFilter(filter),
     onResourceFilterOpened: (isOpen, select) => this.onResourceFilterOpened(isOpen, select),
@@ -232,8 +242,11 @@ export class SubEventResourcePopupService {
     setAssetExploreBorrowDateRange: (start, end) => this.setAssetExploreBorrowDateRange(start, end),
     setAssetExploreBorrowTime: (edge, value) => this.setAssetExploreBorrowTime(edge, value),
     onAssetExploreBorrowQuantityChange: value => this.onAssetExploreBorrowQuantityChange(value),
+    toggleAssetExploreBorrowPolicy: policyId => this.toggleAssetExploreBorrowPolicy(policyId),
     canSubmitAssetExploreBorrow: () => this.canSubmitAssetExploreBorrow(),
     confirmAssetExploreBorrow: event => this.confirmAssetExploreBorrow(event),
+    resumeAssetExploreBorrowDraft: (cardId, event) => this.resumeAssetExploreBorrowDraft(cardId, event),
+    clearAssetExploreBorrowDraft: (cardId, event) => this.clearAssetExploreBorrowDraft(cardId, event),
     assetExploreBorrowRingPerimeter: () => this.assignConfirmRingPerimeter,
     trackByCard: (_index, card) => card.id,
     canOpenMap: card => this.canOpenResourceMap(card),
@@ -1630,18 +1643,68 @@ export class SubEventResourcePopupService {
     if (!card) {
       return null;
     }
+    const timeframe = this.assetRequestTimeframeLabel(dialog.startAtIso, dialog.endAtIso);
+    const pricing = this.resolveAssetExploreBorrowPricing(card, dialog.startAtIso, dialog.endAtIso, dialog.quantity);
+    const detail = dialog.quantity > 1
+      ? `${timeframe} · Qty ${dialog.quantity}`
+      : timeframe;
     return {
       title: `Borrow ${card.title}`,
       subtitle: this.popupSubtitle(),
+      timeframe,
       quantity: dialog.quantity,
       availableQuantity: dialog.availableQuantity,
       startDate: AppUtils.isoLocalDateTimeToDate(dialog.startAtIso),
       endDate: AppUtils.isoLocalDateTimeToDate(dialog.endAtIso),
       startTime: AppUtils.isoLocalTimePart(dialog.startAtIso),
       endTime: AppUtils.isoLocalTimePart(dialog.endAtIso),
+      lineItems: [
+        {
+          id: `resource:${card.id}`,
+          kind: 'resource',
+          label: card.title,
+          detail: detail || 'Borrow request',
+          amount: pricing.amount,
+          currency: pricing.currency
+        }
+      ],
+      totalAmount: pricing.amount,
+      currency: pricing.currency,
+      policies: (card.policies ?? []).map(item => ({ ...item })),
+      acceptedPolicyIds: [...dialog.acceptedPolicyIds],
+      payable: pricing.amount > 0,
+      submitLabel: pricing.amount > 0 ? 'Pay & send request' : 'Send borrow request',
       busy: dialog.busy,
       error: dialog.error
     };
+  });
+
+  private readonly assetExploreBorrowDraftsViewState = computed<AssetExploreBorrowDraftViewState[]>(() => {
+    const popup = this.assetExplorePopupRef();
+    const context = this.popupContextRef();
+    const activeUserId = this.activeUser().id.trim();
+    if (!popup || !context || !activeUserId) {
+      return [];
+    }
+    return popup.cards
+      .map(card => {
+        const request = this.findPendingAssetExploreBorrowRequest(card, context.subEvent.id, activeUserId);
+        if (!request) {
+          return null;
+        }
+        return {
+          cardId: card.id,
+          title: card.title,
+          timeframe: request.booking?.timeframe || this.assetRequestTimeframeLabel(
+            request.booking?.startAtIso ?? popup.startAtIso,
+            request.booking?.endAtIso ?? popup.endAtIso
+          ),
+          quantity: this.assetRequestQuantity(request),
+          availabilityLabel: this.assetExploreAvailabilityLabel(card)
+        } satisfies AssetExploreBorrowDraftViewState;
+      })
+      .filter((entry): entry is AssetExploreBorrowDraftViewState => Boolean(entry))
+      .sort((left, right) => left.title.localeCompare(right.title) || left.cardId.localeCompare(right.cardId));
   });
 
   private selectAssetExploreCategory(category: string, event?: Event): void {
@@ -1908,16 +1971,11 @@ export class SubEventResourcePopupService {
     if (!ownerUserId) {
       return;
     }
-    const activeUserId = this.activeUser().id;
-    const existingRequest = card.requests.find(request =>
-      request.requestKind !== 'manual'
-      && AppUtils.resolveAssetRequestUserId(request, this.users) === activeUserId
-      && request.booking?.subEventId === context.subEvent.id
-      && request.status === 'pending'
-    ) ?? null;
+    const existingRequest = this.findPendingAssetExploreBorrowRequest(card, context.subEvent.id);
     const startAtIso = `${existingRequest?.booking?.startAtIso ?? popup.startAtIso}`.trim() || popup.startAtIso;
     const endAtIso = `${existingRequest?.booking?.endAtIso ?? popup.endAtIso}`.trim() || popup.endAtIso;
     const availableQuantity = this.assetExploreAvailableQuantityForWindow(card, startAtIso, endAtIso);
+    const validPolicyIds = new Set((card.policies ?? []).map(policy => policy.id));
     this.assetExploreBorrowDialogRef.set({
       cardId: card.id,
       ownerUserId,
@@ -1929,6 +1987,8 @@ export class SubEventResourcePopupService {
       startAtIso,
       endAtIso,
       availableQuantity,
+      acceptedPolicyIds: [...(existingRequest?.booking?.acceptedPolicyIds ?? [])]
+        .filter(policyId => validPolicyIds.has(policyId)),
       busy: false,
       error: null
     });
@@ -2000,9 +2060,41 @@ export class SubEventResourcePopupService {
     });
   }
 
+  private toggleAssetExploreBorrowPolicy(policyId: string): void {
+    const dialog = this.assetExploreBorrowDialogRef();
+    if (!dialog || dialog.busy) {
+      return;
+    }
+    const normalizedPolicyId = `${policyId ?? ''}`.trim();
+    if (!normalizedPolicyId) {
+      return;
+    }
+    const nextAccepted = new Set(dialog.acceptedPolicyIds);
+    if (nextAccepted.has(normalizedPolicyId)) {
+      nextAccepted.delete(normalizedPolicyId);
+    } else {
+      nextAccepted.add(normalizedPolicyId);
+    }
+    this.assetExploreBorrowDialogRef.set({
+      ...dialog,
+      acceptedPolicyIds: [...nextAccepted],
+      error: null
+    });
+  }
+
   private canSubmitAssetExploreBorrow(): boolean {
     const dialog = this.assetExploreBorrowDialogRef();
     if (!dialog || dialog.busy || dialog.availableQuantity <= 0 || dialog.quantity > dialog.availableQuantity) {
+      return false;
+    }
+    const card = this.resolveAssetExploreCard(dialog.cardId);
+    if (!card) {
+      return false;
+    }
+    const acceptedPolicyIds = new Set(dialog.acceptedPolicyIds);
+    const missingRequiredPolicy = (card.policies ?? [])
+      .some(policy => policy.required !== false && !acceptedPolicyIds.has(policy.id));
+    if (missingRequiredPolicy) {
       return false;
     }
     return this.isValidAssetExploreWindow(dialog.startAtIso, dialog.endAtIso);
@@ -2021,55 +2113,100 @@ export class SubEventResourcePopupService {
       return;
     }
     const activeUser = this.activeUser();
-    const existingRequest = card.requests.find(request =>
-      request.requestKind !== 'manual'
-      && AppUtils.resolveAssetRequestUserId(request, this.users) === activeUser.id
-      && request.booking?.subEventId === context.subEvent.id
-      && request.status === 'pending'
-    ) ?? null;
+    const existingRequest = this.findPendingAssetExploreBorrowRequest(card, context.subEvent.id, activeUser.id);
     const requestVersion = ++this.pendingAssetExploreBorrowRequestVersion;
+    const pricing = this.resolveAssetExploreBorrowPricing(card, dialog.startAtIso, dialog.endAtIso, dialog.quantity);
+    const lineItems: AppTypes.EventCheckoutLineItem[] = [
+      {
+        id: `resource:${card.id}`,
+        kind: 'resource',
+        label: card.title,
+        detail: dialog.quantity > 1
+          ? `${this.assetRequestTimeframeLabel(dialog.startAtIso, dialog.endAtIso)} · Qty ${dialog.quantity}`
+          : this.assetRequestTimeframeLabel(dialog.startAtIso, dialog.endAtIso) || 'Borrow request',
+        amount: pricing.amount,
+        currency: pricing.currency
+      }
+    ];
     this.assetExploreBorrowDialogRef.set({
       ...dialog,
       busy: true,
       error: null
     });
-    const nextRequest: AppTypes.AssetMemberRequest = {
-      id: existingRequest?.id ?? `borrow:${activeUser.id}:${card.id}:${context.subEvent.id}`,
-      userId: activeUser.id,
-      name: activeUser.name,
-      initials: activeUser.initials,
-      gender: activeUser.gender,
-      status: 'pending',
-      note: 'Awaiting owner confirmation.',
-      requestKind: 'borrow',
-      requestedAtIso: new Date().toISOString(),
-      booking: this.assetRequestBookingForRange(
-        context.subEvent,
-        context.ownerId,
-        context.parentTitle,
-        dialog.startAtIso,
-        dialog.endAtIso,
-        dialog.quantity
-      )
-    };
-    const nextCard: AppTypes.AssetCard = {
-      ...card,
-      requests: [
-        nextRequest,
-        ...card.requests
-          .filter(request => request.id !== nextRequest.id)
-          .map(request => ({
-            ...request,
-            booking: request.booking
-              ? {
-                  ...request.booking,
-                  acceptedPolicyIds: [...(request.booking.acceptedPolicyIds ?? [])]
-                }
-              : null
-          }))
-      ]
-    };
-    void this.assetsService.saveOwnedAsset(dialog.ownerUserId, nextCard)
+    const checkoutRequest = pricing.amount > 0
+      ? {
+          userId: activeUser.id,
+          sourceId: card.id,
+          slotSourceId: null,
+          optionalSubEventIds: [],
+          assetSelections: [
+            {
+              subEventId: context.subEvent.id,
+              resourceType: card.type
+            }
+          ],
+          acceptedPolicyIds: [...dialog.acceptedPolicyIds],
+          lineItems,
+          totalAmount: pricing.amount,
+          currency: pricing.currency
+        } satisfies AppTypes.EventCheckoutRequest
+      : null;
+
+    const checkoutSessionPromise = checkoutRequest
+      ? this.eventsService.createCheckoutSession(checkoutRequest)
+      : Promise.resolve(null);
+
+    void checkoutSessionPromise
+      .then(session => {
+        if (checkoutRequest && (!session || session.status !== 'approved')) {
+          throw new Error('Unable to approve payment for this borrow request.');
+        }
+        const nextRequest: AppTypes.AssetMemberRequest = {
+          id: existingRequest?.id ?? `borrow:${activeUser.id}:${card.id}:${context.subEvent.id}`,
+          userId: activeUser.id,
+          name: activeUser.name,
+          initials: activeUser.initials,
+          gender: activeUser.gender,
+          status: 'pending',
+          note: pricing.amount > 0
+            ? 'Payment approved. Awaiting owner confirmation.'
+            : 'Awaiting owner confirmation.',
+          requestKind: 'borrow',
+          requestedAtIso: new Date().toISOString(),
+          booking: this.assetRequestBookingForRange(
+            context.subEvent,
+            context.ownerId,
+            context.parentTitle,
+            dialog.startAtIso,
+            dialog.endAtIso,
+            dialog.quantity,
+            {
+              totalAmount: pricing.amount,
+              currency: pricing.currency,
+              acceptedPolicyIds: dialog.acceptedPolicyIds,
+              paymentSessionId: session?.id ?? null
+            }
+          )
+        };
+        const nextCard: AppTypes.AssetCard = {
+          ...card,
+          requests: [
+            nextRequest,
+            ...card.requests
+              .filter(request => request.id !== nextRequest.id)
+              .map(request => ({
+                ...request,
+                booking: request.booking
+                  ? {
+                      ...request.booking,
+                      acceptedPolicyIds: [...(request.booking.acceptedPolicyIds ?? [])]
+                    }
+                  : null
+              }))
+          ]
+        };
+        return this.assetsService.saveOwnedAsset(dialog.ownerUserId, nextCard);
+      })
       .then(savedCard => {
         const currentDialog = this.assetExploreBorrowDialogRef();
         const currentPopup = this.assetExplorePopupRef();
@@ -2084,7 +2221,7 @@ export class SubEventResourcePopupService {
         this.closeAssetExploreBorrowDialog();
         this.scheduleAssetExploreCardsLoad();
       })
-      .catch(() => {
+      .catch(error => {
         const currentDialog = this.assetExploreBorrowDialogRef();
         if (!currentDialog || requestVersion !== this.pendingAssetExploreBorrowRequestVersion) {
           return;
@@ -2092,8 +2229,61 @@ export class SubEventResourcePopupService {
         this.assetExploreBorrowDialogRef.set({
           ...currentDialog,
           busy: false,
-          error: 'Unable to send the borrow request.'
+          error: this.resolveAssetExploreBorrowErrorMessage(error, 'Unable to send the borrow request.')
         });
+      });
+  }
+
+  private resumeAssetExploreBorrowDraft(cardId: string, event?: Event): void {
+    event?.stopPropagation();
+    const card = this.resolveAssetExploreCard(cardId);
+    if (!card) {
+      return;
+    }
+    this.openAssetExploreBorrowDialog(card, event);
+  }
+
+  private clearAssetExploreBorrowDraft(cardId: string, event?: Event): void {
+    event?.stopPropagation();
+    const popup = this.assetExplorePopupRef();
+    const context = this.popupContextRef();
+    const activeUserId = this.activeUser().id.trim();
+    const card = this.resolveAssetExploreCard(cardId);
+    if (!popup || !context || !activeUserId || !card) {
+      return;
+    }
+    const ownerUserId = `${card.ownerUserId ?? ''}`.trim();
+    if (!ownerUserId) {
+      return;
+    }
+    const nextCard = this.cloneAsset(card);
+    nextCard.requests = nextCard.requests.filter(request =>
+      request.requestKind === 'manual'
+      || request.status !== 'pending'
+      || AppUtils.resolveAssetRequestUserId(request, this.users) !== activeUserId
+      || request.booking?.subEventId !== context.subEvent.id
+    );
+    if (nextCard.requests.length === card.requests.length) {
+      return;
+    }
+    void this.assetsService.saveOwnedAsset(ownerUserId, nextCard)
+      .then(savedCard => {
+        const currentPopup = this.assetExplorePopupRef();
+        if (!currentPopup) {
+          return;
+        }
+        this.assetExploreWarmCacheByKey.clear();
+        this.assetExplorePopupRef.set({
+          ...currentPopup,
+          cards: currentPopup.cards.map(cardItem => cardItem.id === savedCard.id ? this.cloneAsset(savedCard) : cardItem)
+        });
+        if (this.assetExploreBorrowDialogRef()?.cardId === savedCard.id) {
+          this.assetExploreBorrowDialogRef.set(null);
+        }
+        this.scheduleAssetExploreCardsLoad();
+      })
+      .catch(() => {
+        // Keep basket clearing best-effort so the rest of asset explore keeps working.
       });
   }
 
@@ -2560,7 +2750,11 @@ export class SubEventResourcePopupService {
       bookingStartAtIso: request.booking?.startAtIso ?? '',
       bookingEndAtIso: request.booking?.endAtIso ?? '',
       bookingQuantity: request.booking?.quantity ?? '',
-      bookingTimeframe: request.booking?.timeframe ?? ''
+      bookingTimeframe: request.booking?.timeframe ?? '',
+      bookingTotalAmount: request.booking?.totalAmount ?? '',
+      bookingCurrency: request.booking?.currency ?? '',
+      bookingAcceptedPolicyIds: [...(request.booking?.acceptedPolicyIds ?? [])],
+      bookingPaymentSessionId: request.booking?.paymentSessionId ?? ''
     };
   }
 
@@ -2598,7 +2792,13 @@ export class SubEventResourcePopupService {
     parentTitle: string,
     startAtIso: string,
     endAtIso: string,
-    quantity: number
+    quantity: number,
+    options: {
+      totalAmount?: number | null;
+      currency?: string | null;
+      acceptedPolicyIds?: string[];
+      paymentSessionId?: string | null;
+    } = {}
   ): AppTypes.AssetHireRequestBooking | null {
     return {
       eventId: ownerId,
@@ -2610,7 +2810,11 @@ export class SubEventResourcePopupService {
       timeframe: this.assetRequestTimeframeLabel(startAtIso, endAtIso),
       startAtIso: startAtIso || undefined,
       endAtIso: endAtIso || undefined,
-      quantity
+      quantity,
+      totalAmount: options.totalAmount ?? null,
+      currency: options.currency ?? null,
+      acceptedPolicyIds: [...(options.acceptedPolicyIds ?? [])],
+      paymentSessionId: options.paymentSessionId ?? null
     };
   }
 
@@ -2757,6 +2961,140 @@ export class SubEventResourcePopupService {
     const start = AppUtils.isoLocalDateTimeToDate(startAtIso);
     const end = AppUtils.isoLocalDateTimeToDate(endAtIso);
     return !!start && !!end && start.getTime() < end.getTime();
+  }
+
+  private resolveAssetExploreBorrowPricing(
+    card: AppTypes.AssetCard,
+    startAtIso: string,
+    endAtIso: string,
+    quantity: number
+  ): AssetExploreBorrowPricingPreview {
+    const normalized = PricingBuilder.compactPricingConfig(card.pricing, {
+      context: 'asset',
+      allowSlotFeatures: false
+    });
+    const currency = normalized.currency?.trim() || 'USD';
+    if (!normalized.enabled) {
+      return {
+        amount: 0,
+        currency
+      };
+    }
+
+    const totalQuantity = Math.max(1, AssetCardBuilder.quantityValue(card));
+    const overlappingCommitted = card.requests
+      .filter(request => request.status === 'accepted' || request.requestKind === 'manual')
+      .filter(request => this.isAssetExploreWindowOverlap(request, startAtIso, endAtIso))
+      .reduce((sum, request) => sum + this.assetRequestQuantity(request), 0);
+    const capacityFilledPercent = Math.round(
+      (Math.min(totalQuantity, overlappingCommitted + Math.max(1, quantity)) / totalQuantity) * 100
+    );
+    const hoursUntilStart = this.resolveHoursUntilStart(startAtIso);
+
+    let nextPrice = normalized.basePrice;
+    if ((normalized.mode === 'demand-based' || normalized.mode === 'hybrid') && normalized.demandRulesEnabled) {
+      for (const rule of normalized.demandRules) {
+        if (!this.matchesPricingDemandRule(rule, capacityFilledPercent)) {
+          continue;
+        }
+        nextPrice = this.applyPricingAction(nextPrice, rule.action);
+      }
+    }
+    if ((normalized.mode === 'time-based' || normalized.mode === 'hybrid') && normalized.timeRulesEnabled) {
+      for (const rule of normalized.timeRules) {
+        if (!this.matchesPricingTimeRule(rule, hoursUntilStart, startAtIso)) {
+          continue;
+        }
+        nextPrice = this.applyPricingAction(nextPrice, rule.action);
+      }
+    }
+
+    if (normalized.minPrice !== null) {
+      nextPrice = Math.max(normalized.minPrice, nextPrice);
+    }
+    if (normalized.maxPrice !== null) {
+      nextPrice = Math.min(normalized.maxPrice, nextPrice);
+    }
+
+    const roundedUnitPrice = this.applyPricingRounding(nextPrice, normalized.rounding);
+    const multiplier = normalized.chargeType === 'per_attendee'
+      ? Math.max(1, Math.trunc(Number(quantity) || 1))
+      : 1;
+    return {
+      amount: Math.round(roundedUnitPrice * multiplier * 100) / 100,
+      currency
+    };
+  }
+
+  private matchesPricingDemandRule(
+    rule: AppTypes.PricingDemandRule,
+    capacityFilledPercent: number
+  ): boolean {
+    if (rule.operator === 'lte') {
+      return capacityFilledPercent <= rule.capacityFilledPercent;
+    }
+    return capacityFilledPercent >= rule.capacityFilledPercent;
+  }
+
+  private matchesPricingTimeRule(
+    rule: AppTypes.PricingTimeRule,
+    hoursUntilStart: number,
+    comparisonIso: string
+  ): boolean {
+    if (rule.trigger === 'specific_date') {
+      const start = `${rule.specificDateStart ?? ''}`.trim();
+      const end = `${rule.specificDateEnd ?? ''}`.trim();
+      if (!start || !end || !comparisonIso) {
+        return false;
+      }
+      const comparisonDate = comparisonIso.slice(0, 10);
+      return comparisonDate >= start && comparisonDate <= end;
+    }
+    if (rule.trigger === 'hours_before_start') {
+      return hoursUntilStart <= Math.max(0, Number(rule.offsetValue) || 0);
+    }
+    const dayWindowHours = Math.max(0, Number(rule.offsetValue) || 0) * 24;
+    return hoursUntilStart <= dayWindowHours;
+  }
+
+  private applyPricingAction(currentPrice: number, action: AppTypes.PricingAction): number {
+    const value = Number(action.value) || 0;
+    if (action.kind === 'set_exact_price') {
+      return Math.max(0, value);
+    }
+    const percent = value / 100;
+    if (action.kind === 'decrease_percent') {
+      return Math.max(0, currentPrice * (1 - percent));
+    }
+    return Math.max(0, currentPrice * (1 + percent));
+  }
+
+  private applyPricingRounding(price: number, rounding: AppTypes.PricingRoundingMode): number {
+    if (rounding === 'whole') {
+      return Math.round(price);
+    }
+    if (rounding === 'half') {
+      return Math.round(price * 2) / 2;
+    }
+    return Math.round(price * 100) / 100;
+  }
+
+  private resolveHoursUntilStart(startAtIso: string): number {
+    const start = AppUtils.isoLocalDateTimeToDate(startAtIso);
+    if (!start) {
+      return 0;
+    }
+    return Math.max(0, Math.round((start.getTime() - Date.now()) / (60 * 60 * 1000)));
+  }
+
+  private resolveAssetExploreBorrowErrorMessage(error: unknown, fallback: string): string {
+    if (typeof error === 'string' && error.trim().length > 0) {
+      return error.trim();
+    }
+    if (error instanceof Error && error.message.trim().length > 0) {
+      return error.message.trim();
+    }
+    return fallback;
   }
 
   private assetRequestQuantity(request: AppTypes.AssetMemberRequest): number {
@@ -2928,6 +3266,19 @@ export class SubEventResourcePopupService {
           : null
       }))
     };
+  }
+
+  private findPendingAssetExploreBorrowRequest(
+    card: AppTypes.AssetCard,
+    subEventId: string,
+    activeUserId = this.activeUser().id
+  ): AppTypes.AssetMemberRequest | null {
+    return card.requests.find(request =>
+      request.requestKind !== 'manual'
+      && request.status === 'pending'
+      && AppUtils.resolveAssetRequestUserId(request, this.users) === activeUserId
+      && request.booking?.subEventId === subEventId
+    ) ?? null;
   }
 
   private cloneFallbackCards(

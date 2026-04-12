@@ -28,7 +28,7 @@ import {
 } from '../../../shared/ui';
 import type * as AppTypes from '../../../shared/core/base/models';
 import { AppUtils } from '../../../shared/app-utils';
-import { resolveCurrentDemoDelayMs } from '../../../shared/core/base/services/route-delay.service';
+import { resolveCurrentDemoDelayMs, resolveCurrentRouteDelayMs } from '../../../shared/core/base/services/route-delay.service';
 
 interface CapacityEditorState {
   title: string;
@@ -92,14 +92,30 @@ export interface AssetExplorePopupViewState {
 export interface AssetExploreBorrowDialogViewState {
   title: string;
   subtitle: string;
+  timeframe: string;
   quantity: number;
   availableQuantity: number;
   startDate: Date | null;
   endDate: Date | null;
   startTime: string;
   endTime: string;
+  lineItems: AppTypes.EventCheckoutLineItem[];
+  totalAmount: number;
+  currency: string;
+  policies: AppTypes.EventPolicyItem[];
+  acceptedPolicyIds: string[];
+  payable: boolean;
+  submitLabel: string;
   busy: boolean;
   error: string | null;
+}
+
+export interface AssetExploreBorrowDraftViewState {
+  cardId: string;
+  title: string;
+  timeframe: string;
+  quantity: number;
+  availabilityLabel: string;
 }
 
 export interface EventResourcePopupHost {
@@ -121,6 +137,7 @@ export interface EventResourcePopupHost {
   pendingDeleteCard(): PendingResourceDeleteState | null;
   assetExplorePopup(): AssetExplorePopupViewState | null;
   assetExploreBorrowDialog(): AssetExploreBorrowDialogViewState | null;
+  assetExploreBorrowDrafts(): AssetExploreBorrowDraftViewState[];
   close(): void;
   selectResourceFilter(filter: AppTypes.SubEventResourceFilter): void;
   onResourceFilterOpened(isOpen: boolean, select: MatSelect): void;
@@ -139,8 +156,11 @@ export interface EventResourcePopupHost {
   setAssetExploreBorrowDateRange(start: Date | null, end: Date | null): void;
   setAssetExploreBorrowTime(edge: 'start' | 'end', value: string): void;
   onAssetExploreBorrowQuantityChange(value: number | string): void;
+  toggleAssetExploreBorrowPolicy(policyId: string): void;
   canSubmitAssetExploreBorrow(): boolean;
   confirmAssetExploreBorrow(event?: Event): void;
+  resumeAssetExploreBorrowDraft(cardId: string, event?: Event): void;
+  clearAssetExploreBorrowDraft(cardId: string, event?: Event): void;
   assetExploreBorrowRingPerimeter(): number;
   trackByCard(index: number, card: AppTypes.SubEventResourceCard): string;
   canOpenMap(card: AppTypes.SubEventResourceCard): boolean;
@@ -233,6 +253,7 @@ export class EventResourcePopupComponent implements DoCheck {
   protected showMobileResourceFilterPicker = false;
   protected showQuickActionsMenu = false;
   protected showAssetExploreOrderPicker = false;
+  protected showAssetExploreBorrowBasket = false;
   protected assetExploreOrder: AssetExploreOrder = 'availability';
   protected readonly assetExploreOrderOptions = ASSET_EXPLORE_ORDER_OPTIONS;
 
@@ -316,17 +337,23 @@ export class EventResourcePopupComponent implements DoCheck {
     const cards = this.assetExploreCardsForView();
     const page = Math.max(0, Math.trunc(Number(query.page) || 0));
     const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 1));
-    const start = page * pageSize;
+    const basePageSize = Math.max(1, Math.trunc(Number(this.assetExploreSmartListConfig.pageSize) || pageSize));
+    const initialPageSize = Math.max(
+      basePageSize,
+      Math.trunc(Number(this.assetExploreSmartListConfig.initialPageSize ?? basePageSize))
+    );
+    const start = page === 0 ? 0 : initialPageSize + ((page - 1) * basePageSize);
+    const size = page === 0 ? Math.max(pageSize, initialPageSize) : pageSize;
     return of({
-      items: cards.slice(start, start + pageSize),
+      items: cards.slice(start, start + size),
       total: cards.length
     });
   };
 
   protected readonly assetExploreSmartListConfig: SmartListConfig<AppTypes.AssetCard, ResourceSmartListFilters> = {
     pageSize: 10,
-    loadingDelayMs: resolveCurrentDemoDelayMs(1500),
-    loadingWindowMs: 3000,
+    initialPageSize: 20,
+    loadingDelayMs: resolveCurrentRouteDelayMs('/activities/events', resolveCurrentDemoDelayMs(1500)),
     defaultView: 'list',
     presentation: 'list',
     headerProgress: {
@@ -381,6 +408,9 @@ export class EventResourcePopupComponent implements DoCheck {
     }
 
     const explore = this.host?.assetExplorePopup?.() ?? null;
+    if (!explore) {
+      this.showAssetExploreBorrowBasket = false;
+    }
     const assetExploreCards = explore?.cards ?? [];
     const assetExploreContextKey = explore
       ? [
@@ -615,6 +645,7 @@ export class EventResourcePopupComponent implements DoCheck {
     if (!this.host.assetExploreCanBorrow(card)) {
       return;
     }
+    this.showAssetExploreBorrowBasket = false;
     this.host.openAssetExploreBorrowDialog(card);
   }
 
@@ -622,6 +653,7 @@ export class EventResourcePopupComponent implements DoCheck {
     if (event.actionId !== 'borrow') {
       return;
     }
+    this.showAssetExploreBorrowBasket = false;
     this.host.openAssetExploreBorrowDialog(card, new Event('click'));
   }
 
@@ -637,6 +669,45 @@ export class EventResourcePopupComponent implements DoCheck {
     end: Date | null
   ): void {
     this.host.setAssetExploreBorrowDateRange(start, end);
+  }
+
+  protected assetExploreBorrowFormatMoney(amount: number, currency = 'USD'): string {
+    switch ((currency || '').trim().toUpperCase()) {
+      case 'EUR':
+        return `EUR ${(Number(amount) || 0).toFixed(2)}`;
+      case 'GBP':
+        return `GBP ${(Number(amount) || 0).toFixed(2)}`;
+      default:
+        return `$${(Number(amount) || 0).toFixed(2)}`;
+    }
+  }
+
+  protected assetExploreBorrowDrafts(): AssetExploreBorrowDraftViewState[] {
+    return this.host.assetExploreBorrowDrafts();
+  }
+
+  protected assetExploreBorrowDraftCount(): number {
+    return this.assetExploreBorrowDrafts().length;
+  }
+
+  protected toggleAssetExploreBorrowBasket(event?: Event): void {
+    event?.stopPropagation();
+    if (this.assetExploreBorrowDraftCount() <= 0) {
+      this.showAssetExploreBorrowBasket = false;
+      return;
+    }
+    this.showAssetExploreBorrowBasket = !this.showAssetExploreBorrowBasket;
+  }
+
+  protected continueAssetExploreBorrowDraft(cardId: string, event?: Event): void {
+    event?.stopPropagation();
+    this.showAssetExploreBorrowBasket = false;
+    this.host.resumeAssetExploreBorrowDraft(cardId, event);
+  }
+
+  protected clearAssetExploreBorrowDraft(cardId: string, event?: Event): void {
+    event?.stopPropagation();
+    this.host.clearAssetExploreBorrowDraft(cardId, event);
   }
 
   protected assetExploreHeaderProgressBarConfig(): HeaderProgressBarConfig {
@@ -712,6 +783,12 @@ export class EventResourcePopupComponent implements DoCheck {
       this.host.closeAssetExploreBorrowDialog();
       return;
     }
+    if (this.showAssetExploreBorrowBasket) {
+      keyboardEvent.preventDefault();
+      keyboardEvent.stopPropagation();
+      this.showAssetExploreBorrowBasket = false;
+      return;
+    }
     if (this.host.assetExplorePopup()) {
       keyboardEvent.preventDefault();
       keyboardEvent.stopPropagation();
@@ -734,6 +811,7 @@ export class EventResourcePopupComponent implements DoCheck {
 
   protected toggleAssetExploreOrderPicker(event: Event): void {
     event.stopPropagation();
+    this.showAssetExploreBorrowBasket = false;
     this.showAssetExploreOrderPicker = !this.showAssetExploreOrderPicker;
   }
 
@@ -769,6 +847,9 @@ export class EventResourcePopupComponent implements DoCheck {
     }
     if (this.showAssetExploreOrderPicker && !target.closest('.asset-explore-order-picker')) {
       this.showAssetExploreOrderPicker = false;
+    }
+    if (this.showAssetExploreBorrowBasket && !target.closest('.asset-explore-basket')) {
+      this.showAssetExploreBorrowBasket = false;
     }
     if (!target.closest('.popup-mobile-filter-picker')) {
       this.showMobileResourceFilterPicker = false;

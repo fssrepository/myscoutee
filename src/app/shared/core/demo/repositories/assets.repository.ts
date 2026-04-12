@@ -627,16 +627,23 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
     ownerIndex: number,
     cardIndex: number
   ): AppTypes.PricingConfig {
-    const modeCycle: AppTypes.PricingMode[] = card.type === 'Supplies'
-      ? ['fixed', 'time-based', 'hybrid']
-      : ['fixed', 'demand-based', 'time-based', 'hybrid'];
-    const mode = modeCycle[(ownerIndex + cardIndex) % modeCycle.length] ?? 'fixed';
-    const pricing = PricingBuilder.createSamplePricingConfig(mode);
-    pricing.chargeType = card.type === 'Supplies' ? 'per_booking' : 'per_booking';
+    const scenario = this.seededCheckoutScenarioForCard(card.type, ownerIndex, cardIndex);
+    const modeByScenario: Record<string, AppTypes.PricingMode> = {
+      free_open: 'fixed',
+      free_policy: 'fixed',
+      paid_simple: 'fixed',
+      paid_policy: 'fixed',
+      paid_time: 'time-based',
+      paid_demand: 'demand-based'
+    };
+    const pricing = PricingBuilder.createSamplePricingConfig(modeByScenario[scenario] ?? 'fixed');
+    pricing.chargeType = card.type === 'Supplies' ? 'per_attendee' : 'per_booking';
     pricing.basePrice = this.seededBasePriceForCardType(card.type, ownerIndex, cardIndex);
     pricing.minPrice = pricing.basePrice > 0 ? Math.max(0, pricing.basePrice - 8) : 0;
-    pricing.maxPrice = pricing.basePrice > 0 ? pricing.basePrice + 18 : 20;
-    if (((ownerIndex * 2) + cardIndex) % 11 === 0) {
+    pricing.maxPrice = pricing.basePrice > 0 ? pricing.basePrice + 24 : 28;
+    pricing.rounding = card.type === 'Supplies' ? 'half' : 'whole';
+
+    if (scenario === 'free_open' || scenario === 'free_policy') {
       pricing.enabled = false;
       pricing.basePrice = 0;
       pricing.minPrice = 0;
@@ -644,7 +651,90 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
       pricing.demandRulesEnabled = false;
       pricing.timeRulesEnabled = false;
       pricing.mode = 'fixed';
+      return pricing;
     }
+
+    if (scenario === 'paid_simple') {
+      pricing.mode = 'fixed';
+      pricing.demandRulesEnabled = false;
+      pricing.timeRulesEnabled = false;
+      return pricing;
+    }
+
+    if (scenario === 'paid_policy') {
+      pricing.mode = 'fixed';
+      pricing.basePrice += card.type === 'Accommodation' ? 8 : 4;
+      pricing.minPrice = Math.max(0, pricing.basePrice - 6);
+      pricing.maxPrice = pricing.basePrice + 12;
+      pricing.demandRulesEnabled = false;
+      pricing.timeRulesEnabled = false;
+      return pricing;
+    }
+
+    if (scenario === 'paid_time') {
+      pricing.mode = card.type === 'Supplies' ? 'time-based' : 'hybrid';
+      pricing.timeRulesEnabled = true;
+      pricing.timeRules = [
+        {
+          id: `time-window-${ownerIndex}-${cardIndex}-1`,
+          trigger: 'specific_date',
+          offsetValue: null,
+          specificDateStart: '2026-03-04',
+          specificDateEnd: '2026-03-05',
+          action: {
+            kind: card.type === 'Accommodation' ? 'increase_percent' : 'decrease_percent',
+            value: card.type === 'Accommodation' ? 15 : 10
+          },
+          appliesTo: 'all_slots',
+          slotIds: []
+        }
+      ];
+      pricing.demandRulesEnabled = pricing.mode === 'hybrid';
+      pricing.demandRules = pricing.mode === 'hybrid'
+        ? [
+            {
+              id: `demand-window-${ownerIndex}-${cardIndex}-1`,
+              operator: 'gte',
+              capacityFilledPercent: 50,
+              action: {
+                kind: 'increase_percent',
+                value: 10
+              },
+              appliesTo: 'all_slots',
+              slotIds: []
+            }
+          ]
+        : [];
+      return pricing;
+    }
+
+    pricing.mode = 'demand-based';
+    pricing.demandRulesEnabled = true;
+    pricing.demandRules = [
+      {
+        id: `demand-window-${ownerIndex}-${cardIndex}-1`,
+        operator: 'gte',
+        capacityFilledPercent: 50,
+        action: {
+          kind: 'increase_percent',
+          value: 12
+        },
+        appliesTo: 'all_slots',
+        slotIds: []
+      },
+      {
+        id: `demand-window-${ownerIndex}-${cardIndex}-2`,
+        operator: 'gte',
+        capacityFilledPercent: 80,
+        action: {
+          kind: 'increase_percent',
+          value: 18
+        },
+        appliesTo: 'all_slots',
+        slotIds: []
+      }
+    ];
+    pricing.timeRulesEnabled = false;
     return pricing;
   }
 
@@ -682,14 +772,34 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
       ]
     };
     const pool = policyPoolByType[card.type] ?? [];
-    const seed = (ownerIndex * 3) + cardIndex;
-    const desiredCount = seed % 8 === 0 ? 0 : ((seed % 3) + 1);
+    const scenario = this.seededCheckoutScenarioForCard(card.type, ownerIndex, cardIndex);
+    const desiredCount = scenario === 'free_open'
+      ? 0
+      : scenario === 'paid_simple'
+        ? Math.min(1, pool.length)
+        : scenario === 'paid_time'
+          ? Math.min(2, pool.length)
+          : pool.length;
     return pool.slice(0, desiredCount).map((policy, index) => ({
       id: `${card.type.toLowerCase()}-policy-${ownerIndex}-${cardIndex}-${index + 1}`,
       title: policy.title,
       description: policy.description,
       required: policy.required
     }));
+  }
+
+  private seededCheckoutScenarioForCard(
+    type: AppTypes.AssetType,
+    ownerIndex: number,
+    cardIndex: number
+  ): 'free_open' | 'free_policy' | 'paid_simple' | 'paid_policy' | 'paid_time' | 'paid_demand' {
+    const scenariosByType: Record<AppTypes.AssetType, ReadonlyArray<'free_open' | 'free_policy' | 'paid_simple' | 'paid_policy' | 'paid_time' | 'paid_demand'>> = {
+      Car: ['free_policy', 'paid_simple', 'paid_policy', 'paid_time', 'paid_demand'],
+      Accommodation: ['free_open', 'free_policy', 'paid_policy', 'paid_time', 'paid_demand'],
+      Supplies: ['free_open', 'paid_simple', 'paid_policy', 'paid_time', 'paid_demand']
+    };
+    const scenarios = scenariosByType[type] ?? scenariosByType.Supplies;
+    return scenarios[(ownerIndex + (cardIndex * 2)) % scenarios.length] ?? 'paid_simple';
   }
 
   private normalizeCollection(value: unknown): DemoAssetsRecordCollection {
