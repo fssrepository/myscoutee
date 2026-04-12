@@ -170,56 +170,85 @@
                   </button>
                 </div>
               </div>
-              <section class="experience-form-panel subevent-form-panel asset-explore-panel">
-                <div class="asset-explore-filter-bar">
-                  <label class="asset-explore-filter-field asset-explore-category-field">
-                    <span>Category</span>
-                    <div class="profile-status-select-wrap selector-like experience-type-select" [ngClass]="host.resourceTypeClass(explore.type)">
-                      <mat-select
-                        [ngModel]="explore.category"
-                        (ngModelChange)="host.selectAssetExploreCategory($event)"
-                        disableOptionCentering
-                        panelClass="selector-options-panel profile-bottom-sheet-panel asset-type-options-panel"
-                        >
-                        <mat-select-trigger>
+              <div class="asset-explore-filter-bar">
+                <div class="activities-toolbar event-explore-toolbar">
+                  <div class="profile-status-select-wrap selector-like experience-type-select asset-explore-category-field" [ngClass]="host.resourceTypeClass(explore.type)">
+                    <mat-select
+                      [ngModel]="explore.categoryDisplay"
+                      (ngModelChange)="host.selectAssetExploreCategory($event)"
+                      disableOptionCentering
+                      panelClass="selector-options-panel profile-bottom-sheet-panel asset-type-options-panel"
+                      >
+                      <mat-select-trigger>
+                        <span class="status-option-content">
+                          <mat-icon [class]="host.resourceTypeClass(explore.type)">sell</mat-icon>
+                          <span>{{ explore.categoryDisplay }}</span>
+                        </span>
+                      </mat-select-trigger>
+                      @for (option of explore.categoryOptions; track option) {
+                        <mat-option [value]="option" class="status-option" [ngClass]="host.resourceTypeClass(explore.type)">
                           <span class="status-option-content">
                             <mat-icon [class]="host.resourceTypeClass(explore.type)">sell</mat-icon>
-                            <span>{{ explore.category }}</span>
+                            <span>{{ option }}</span>
                           </span>
-                        </mat-select-trigger>
-                        @for (option of explore.categoryOptions; track option) {
-                          <mat-option [value]="option" class="status-option" [ngClass]="host.resourceTypeClass(explore.type)">
-                            <span class="status-option-content">
-                              <mat-icon [class]="host.resourceTypeClass(explore.type)">sell</mat-icon>
-                              <span>{{ option }}</span>
-                            </span>
-                          </mat-option>
-                        }
-                      </mat-select>
-                    </div>
-                  </label>
-                  <label class="asset-explore-filter-field experience-date-range-field">
-                    <span>Date range</span>
-                    <div class="asset-explore-date-range-shell">
-                      <mat-date-range-input [rangePicker]="assetExploreRangePicker">
-                        <input
-                          matStartDate
-                          [ngModel]="explore.startDate"
-                          (ngModelChange)="onAssetExploreDateRangeChange($event, explore.endDate)"
-                          placeholder="Start date"
-                          />
-                        <input
-                          matEndDate
-                          [ngModel]="explore.endDate"
-                          (ngModelChange)="onAssetExploreDateRangeChange(explore.startDate, $event)"
-                          placeholder="End date"
-                          />
-                      </mat-date-range-input>
-                      <mat-datepicker-toggle matIconSuffix [for]="assetExploreRangePicker"></mat-datepicker-toggle>
-                      <mat-date-range-picker #assetExploreRangePicker></mat-date-range-picker>
-                    </div>
-                  </label>
+                        </mat-option>
+                      }
+                    </mat-select>
+                  </div>
+                  
+                  <div class="profile-status-select-wrap selector-like experience-filter-select asset-explore-order-field">
+                    <button
+                      type="button"
+                      class="activities-view-option activities-order-trigger"
+                      (click)="toggleAssetExploreOrderPicker($event)"
+                      >
+                      <mat-icon>sort</mat-icon>
+                      <span class="capitalize">{{ assetExploreOrder }}</span>
+                    </button>
+                    @if (showAssetExploreOrderPicker) {
+                      <div class="activities-view-picker-panel">
+                        <button
+                          type="button"
+                          class="activities-view-option"
+                          (click)="selectAssetExploreOrder('upcoming', $event)"
+                          >
+                          <mat-icon>event_upcoming</mat-icon>
+                          <span>Upcoming</span>
+                        </button>
+                        <button
+                          type="button"
+                          class="activities-view-option"
+                          (click)="selectAssetExploreOrder('distance', $event)"
+                          >
+                          <mat-icon>social_distance</mat-icon>
+                          <span>Distance</span>
+                        </button>
+                      </div>
+                    }
+                  </div>
                 </div>
+                <label class="asset-explore-filter-field experience-date-range-badge">
+                  <mat-form-field appearance="outline" class="asset-explore-date-range-field assets-badge-form-field" subscriptSizing="dynamic">
+                    <mat-date-range-input [rangePicker]="assetExploreRangePicker">
+                      <input
+                        matStartDate
+                        [ngModel]="explore.startDate"
+                        (ngModelChange)="onAssetExploreDateRangeChange($event, explore.endDate)"
+                        placeholder="Start date"
+                        />
+                      <input
+                        matEndDate
+                        [ngModel]="explore.endDate"
+                        (ngModelChange)="onAssetExploreDateRangeChange(explore.startDate, $event)"
+                        placeholder="End date"
+                        />
+                    </mat-date-range-input>
+                    <mat-datepicker-toggle matIconSuffix [for]="assetExploreRangePicker"></mat-datepicker-toggle>
+                    <mat-date-range-picker #assetExploreRangePicker></mat-date-range-picker>
+                  </mat-form-field>
+                </label>
+              </div>
+              <section class="experience-form-panel subevent-form-panel asset-explore-panel">
 
                 <div class="asset-explore-grid">
                   @if (explore.loading) {
@@ -323,42 +352,57 @@
               </div>
               <section class="experience-form-panel subevent-form-panel subevent-group-form-panel asset-explore-borrow-panel">
                 <div class="experience-form-grid subevent-group-form-grid">
-                  <label class="experience-date-range-field asset-explore-borrow-date-field">
-                    <span>Date range</span>
-                    <div class="asset-explore-date-range-shell">
-                      <mat-date-range-input [rangePicker]="assetExploreBorrowRangePicker">
+                  <label class="event-slot-field">
+                    <span>Start</span>
+                    <div class="event-datetime-row event-slot-datetime-row">
+                      <mat-form-field appearance="outline" class="event-date-field event-date-field-start event-slot-date-field" subscriptSizing="dynamic">
                         <input
-                          matStartDate
+                          matInput
+                          [matDatepicker]="borrowStartPicker"
                           [ngModel]="dialog.startDate"
-                          (ngModelChange)="onAssetExploreBorrowDateRangeChange($event, dialog.endDate)"
-                          placeholder="Start date"
-                          />
+                          (ngModelChange)="host.setAssetExploreBorrowDateRange($event, dialog.endDate)"
+                        />
+                        <mat-datepicker-toggle matSuffix [for]="borrowStartPicker"></mat-datepicker-toggle>
+                        <mat-datepicker #borrowStartPicker></mat-datepicker>
+                      </mat-form-field>
+                      <mat-form-field appearance="outline" class="event-time-field event-time-field-start event-slot-time-field" subscriptSizing="dynamic">
                         <input
-                          matEndDate
-                          [ngModel]="dialog.endDate"
-                          (ngModelChange)="onAssetExploreBorrowDateRangeChange(dialog.startDate, $event)"
-                          placeholder="End date"
-                          />
-                      </mat-date-range-input>
-                      <mat-datepicker-toggle matIconSuffix [for]="assetExploreBorrowRangePicker"></mat-datepicker-toggle>
-                      <mat-date-range-picker #assetExploreBorrowRangePicker></mat-date-range-picker>
+                          matInput
+                          [matTimepicker]="borrowStartTimePicker"
+                          [matTimepickerOpenOnClick]="true"
+                          [ngModel]="dialog.startTime"
+                          (ngModelChange)="host.setAssetExploreBorrowTime('start', $event)"
+                        />
+                        <mat-timepicker-toggle matSuffix [for]="borrowStartTimePicker"></mat-timepicker-toggle>
+                        <mat-timepicker #borrowStartTimePicker></mat-timepicker>
+                      </mat-form-field>
                     </div>
                   </label>
-                  <label>
-                    <span>Start time</span>
-                    <input
-                      type="time"
-                      [ngModel]="dialog.startTime"
-                      (ngModelChange)="host.setAssetExploreBorrowTime('start', $event)"
-                      />
-                  </label>
-                  <label>
-                    <span>End time</span>
-                    <input
-                      type="time"
-                      [ngModel]="dialog.endTime"
-                      (ngModelChange)="host.setAssetExploreBorrowTime('end', $event)"
-                      />
+                  <label class="event-slot-field">
+                    <span>End</span>
+                    <div class="event-datetime-row event-slot-datetime-row">
+                      <mat-form-field appearance="outline" class="event-date-field event-date-field-end event-slot-date-field" subscriptSizing="dynamic">
+                        <input
+                          matInput
+                          [matDatepicker]="borrowEndPicker"
+                          [ngModel]="dialog.endDate"
+                          (ngModelChange)="host.setAssetExploreBorrowDateRange(dialog.startDate, $event)"
+                        />
+                        <mat-datepicker-toggle matSuffix [for]="borrowEndPicker"></mat-datepicker-toggle>
+                        <mat-datepicker #borrowEndPicker></mat-datepicker>
+                      </mat-form-field>
+                      <mat-form-field appearance="outline" class="event-time-field event-time-field-end event-slot-time-field" subscriptSizing="dynamic">
+                        <input
+                          matInput
+                          [matTimepicker]="borrowEndTimePicker"
+                          [matTimepickerOpenOnClick]="true"
+                          [ngModel]="dialog.endTime"
+                          (ngModelChange)="host.setAssetExploreBorrowTime('end', $event)"
+                        />
+                        <mat-timepicker-toggle matSuffix [for]="borrowEndTimePicker"></mat-timepicker-toggle>
+                        <mat-timepicker #borrowEndTimePicker></mat-timepicker>
+                      </mat-form-field>
+                    </div>
                   </label>
                   <label>
                     <span>Quantity</span>

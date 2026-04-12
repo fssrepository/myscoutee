@@ -6,7 +6,10 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatNativeDateModule } from '@angular/material/core';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
+import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule, MatSelect } from '@angular/material/select';
+import { MatTimepickerModule } from '@angular/material/timepicker';
 import { of } from 'rxjs';
 
 import {
@@ -58,6 +61,7 @@ export interface AssetExplorePopupViewState {
   subtitle: string;
   type: AppTypes.AssetType;
   category: AppTypes.AssetCategory;
+  categoryDisplay: string;
   categoryOptions: readonly AppTypes.AssetCategory[];
   startDate: Date | null;
   endDate: Date | null;
@@ -175,9 +179,12 @@ export interface EventResourcePopupHost {
     DragDropModule,
     MatButtonModule,
     MatDatepickerModule,
+    MatFormFieldModule,
     MatIconModule,
+    MatInputModule,
     MatNativeDateModule,
     MatSelectModule,
+    MatTimepickerModule,
     SmartListComponent,
     InfoCardComponent,
     CounterBadgePipe
@@ -204,6 +211,9 @@ export class EventResourcePopupComponent implements DoCheck {
   protected resourceFilterOpen = false;
   protected showMobileResourceFilterPicker = false;
   protected showQuickActionsMenu = false;
+  protected showAssetExploreCategoryPicker = false;
+  protected showAssetExploreOrderPicker = false;
+  protected assetExploreOrder = 'default';
 
   protected resourceSmartListQuery: Partial<ListQuery<ResourceSmartListFilters>> = {
     filters: {
@@ -300,7 +310,7 @@ export class EventResourcePopupComponent implements DoCheck {
     loadingWindowMs: 0,
     defaultView: 'list',
     headerProgress: {
-      enabled: false
+      enabled: true
     },
     emptyLabel: 'No visible assets right now.',
     emptyDescription: 'Try another date range or category.',
@@ -637,11 +647,39 @@ export class EventResourcePopupComponent implements DoCheck {
     this.showMobileResourceFilterPicker = false;
   }
 
+  protected toggleAssetExploreCategoryPicker(event: Event): void {
+    event.stopPropagation();
+    this.showAssetExploreCategoryPicker = !this.showAssetExploreCategoryPicker;
+  }
+
+  protected selectAssetExploreCategoryOption(option: string, event: Event): void {
+    this.showAssetExploreCategoryPicker = false;
+    this.host.selectAssetExploreCategory(option, event);
+  }
+
+  protected toggleAssetExploreOrderPicker(event: Event): void {
+    event.stopPropagation();
+    this.showAssetExploreOrderPicker = !this.showAssetExploreOrderPicker;
+  }
+
+  protected selectAssetExploreOrder(order: string, event: Event): void {
+    event.stopPropagation();
+    this.assetExploreOrder = order;
+    this.showAssetExploreOrderPicker = false;
+    // Implementation for ordering would go here when backend supports it
+  }
+
   @HostListener('document:click', ['$event'])
   protected onDocumentClick(event: MouseEvent): void {
     const target = event.target;
     if (!(target instanceof Element)) {
       return;
+    }
+    if (this.showAssetExploreCategoryPicker && !target.closest('.asset-explore-category-field')) {
+      this.showAssetExploreCategoryPicker = false;
+    }
+    if (this.showAssetExploreOrderPicker && !target.closest('.asset-explore-order-field')) {
+      this.showAssetExploreOrderPicker = false;
     }
     if (!target.closest('.popup-mobile-filter-picker')) {
       this.showMobileResourceFilterPicker = false;

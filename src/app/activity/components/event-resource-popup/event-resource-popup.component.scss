@@ -415,9 +415,12 @@
 }
 
 .event-resource-popup-shell .asset-explore-popup {
-  width: min(1120px, calc(100vw - 1.2rem));
-  height: calc(100vh - 1.2rem);
-  max-height: calc(100vh - 1.2rem);
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none !important;
+  max-height: none !important;
+  border-radius: inherit;
+  border: none;
 }
 
 .event-resource-popup-shell .asset-explore-panel,
@@ -429,9 +432,15 @@
 
 .event-resource-popup-shell .asset-explore-filter-bar {
   display: grid;
-  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+  grid-template-columns: minmax(220px, 280px) minmax(280px, auto);
   gap: 0.8rem;
-  align-items: end;
+  align-items: center;
+  padding: 0.82rem 1rem;
+  border-bottom: 1px solid rgba(187, 199, 217, 0.7);
+  background: #fff;
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
 .event-resource-popup-shell .asset-explore-filter-field {
@@ -439,10 +448,31 @@
   gap: 0.3rem;
 }
 
-.event-resource-popup-shell .asset-explore-date-range-shell {
-  display: flex;
-  align-items: center;
-  min-height: 48px;
+.event-resource-popup-shell .asset-explore-date-range-field {
+  width: 100%;
+}
+
+.event-resource-popup-shell .assets-badge-form-field {
+  max-width: 280px;
+}
+
+.event-resource-popup-shell .assets-badge-form-field .mdc-text-field--outlined {
+  border-radius: 999px;
+  padding: 0 0.6rem;
+  background: rgba(244, 247, 252, 0.6);
+}
+
+.event-resource-popup-shell .assets-badge-form-field .mat-date-range-input-inner {
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 0.82rem;
+  color: #3b5e91;
+}
+
+.event-resource-popup-shell .assets-badge-form-field .mat-datepicker-toggle-default-icon {
+  width: 20px;
+  height: 20px;
+  color: #5c84be;
 }
 
 .event-resource-popup-shell .asset-explore-grid {
@@ -508,8 +538,7 @@
   z-index: 20;
   display: flex;
   align-items: center;
-  justify-content: center;
-  padding: 0.9rem;
+  padding: 0;
 }
 
 .event-resource-popup-shell .experience-form-overlay-backdrop {

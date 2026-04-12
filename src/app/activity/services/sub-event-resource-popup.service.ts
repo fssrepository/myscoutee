@@ -1591,7 +1591,7 @@ export class SubEventResourcePopupService {
     this.assetExplorePopupRef.set(null);
   }
 
-  private assetExplorePopupViewState(): AssetExplorePopupViewState | null {
+  private readonly assetExplorePopupViewState = computed<AssetExplorePopupViewState | null>(() => {
     const popup = this.assetExplorePopupRef();
     const context = this.popupContextRef();
     if (!popup || !context) {
@@ -1599,11 +1599,12 @@ export class SubEventResourcePopupService {
     }
     const stageLabel = this.subEventStageLabel(context.subEvent);
     return {
-      title: stageLabel ? `Explore ${popup.type} - ${stageLabel}` : `Explore ${popup.type}`,
+      title: stageLabel ? `Explore - ${stageLabel}` : `Explore`,
       subtitle: this.popupSubtitle(),
       type: popup.type,
       category: popup.category,
-      categoryOptions: AssetDefaultsBuilder.assetCategoryOptions(popup.type),
+      categoryDisplay: popup.type === 'Car' || popup.type === 'Accommodation' ? popup.type : popup.category,
+      categoryOptions: ['Car', 'Accommodation', ...AssetDefaultsBuilder.assetCategoryOptions('Supplies')],
       startDate: AppUtils.isoLocalDateTimeToDate(popup.startAtIso),
       endDate: AppUtils.isoLocalDateTimeToDate(popup.endAtIso),
       startTime: AppUtils.isoLocalTimePart(popup.startAtIso),
@@ -1612,9 +1613,9 @@ export class SubEventResourcePopupService {
       error: popup.error,
       cards: popup.cards
     };
-  }
+  });
 
-  private assetExploreBorrowDialogViewState(): AssetExploreBorrowDialogViewState | null {
+  private readonly assetExploreBorrowDialogViewState = computed<AssetExploreBorrowDialogViewState | null>(() => {
     const dialog = this.assetExploreBorrowDialogRef();
     const popup = this.assetExplorePopupRef();
     const context = this.popupContextRef();
@@ -1637,22 +1638,34 @@ export class SubEventResourcePopupService {
       busy: dialog.busy,
       error: dialog.error
     };
-  }
+  });
 
-  private selectAssetExploreCategory(category: AppTypes.AssetCategory, event?: Event): void {
+  private selectAssetExploreCategory(category: string, event?: Event): void {
     event?.stopPropagation();
     const popup = this.assetExplorePopupRef();
     if (!popup) {
       return;
     }
-    const normalizedCategory = AssetDefaultsBuilder.normalizeCategory(popup.type, category);
-    if (normalizedCategory === popup.category) {
+    let nextType = popup.type;
+    let nextCategory = popup.category;
+    if (category === 'Car' || category === 'Accommodation') {
+      nextType = category;
+      nextCategory = AssetDefaultsBuilder.defaultCategory(category);
+    } else {
+      nextType = 'Supplies';
+      nextCategory = category;
+    }
+    
+    if (nextType === popup.type && nextCategory === popup.category) {
       return;
     }
-    this.assetExplorePopupRef.set(this.resolveAssetExplorePopupState({
+    this.assetExplorePopupRef.set({
       ...popup,
-      category: normalizedCategory
-    }));
+      type: nextType,
+      category: nextCategory,
+      loading: true,
+      error: null
+    });
     this.scheduleAssetExploreCardsLoad();
   }
 
