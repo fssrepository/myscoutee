@@ -2388,10 +2388,17 @@ export class SubEventResourcePopupService {
         if (!currentDialog || !currentPopup || requestVersion !== this.pendingAssetExploreBorrowRequestVersion) {
           return;
         }
+        const remainingAvailability = this.assetExploreAvailableQuantityForWindow(
+          savedCard,
+          currentDialog.startAtIso,
+          currentDialog.endAtIso
+        ) - currentDialog.quantity;
         this.assetExploreWarmCacheByKey.clear();
         this.assetExplorePopupRef.set({
           ...currentPopup,
-          cards: currentPopup.cards.map(cardItem => cardItem.id === savedCard.id ? this.cloneAsset(savedCard) : cardItem)
+          cards: remainingAvailability <= 0
+            ? currentPopup.cards.filter(cardItem => cardItem.id !== savedCard.id)
+            : currentPopup.cards.map(cardItem => cardItem.id === savedCard.id ? this.cloneAsset(savedCard) : cardItem)
         });
         this.closeAssetExploreBorrowDialog();
         this.scheduleAssetExploreCardsLoad();
@@ -3001,6 +3008,7 @@ export class SubEventResourcePopupService {
     }
     const activeUser = this.activeUser();
     let changed = false;
+    const dirtyCards: AppTypes.AssetCard[] = [];
     const nextCards = this.ownedAssets.assetCards.map(card => {
       const nextManualRequest = this.buildManualAssignmentRequest(card, subEvent, context.ownerId, context.parentTitle, activeUser);
       const preservedRequests: AppTypes.AssetMemberRequest[] = card.requests
@@ -3023,13 +3031,18 @@ export class SubEventResourcePopupService {
         return card;
       }
       changed = true;
-      return {
+      const nextCard = {
         ...card,
         requests: preservedRequests
       };
+      dirtyCards.push(nextCard);
+      return nextCard;
     });
     if (changed) {
       this.ownedAssets.assetCards = nextCards;
+      for (const dirtyCard of dirtyCards) {
+        void this.assetsService.saveOwnedAsset(activeUser.id, dirtyCard);
+      }
     }
   }
 

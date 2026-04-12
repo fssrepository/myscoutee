@@ -456,6 +456,10 @@
   font-weight: 700;
   line-height: 1.25;
   box-sizing: border-box;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
 }
 
 .pricing-editor__date-range-field ::ng-deep .mat-mdc-icon-button {
