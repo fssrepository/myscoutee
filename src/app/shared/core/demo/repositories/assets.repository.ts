@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 
-import { PricingBuilder } from '../../../core/base/builders';
+import { AssetCardBuilder, PricingBuilder } from '../../../core/base/builders';
 import { DemoAssetBuilder, DemoUserSeedBuilder } from '../builders';
 import type * as AppTypes from '../../../core/base/models';
 import type { DemoUser } from '../../base/interfaces/user.interface';
@@ -112,7 +112,7 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
         topics: [...(normalizedAsset.topics ?? [])],
         policies: (normalizedAsset.policies ?? []).map(item => ({ ...item })),
         pricing: normalizedAsset.pricing ? PricingBuilder.clonePricingConfig(normalizedAsset.pricing) : undefined,
-        requests: normalizedAsset.requests.map(request => ({ ...request }))
+        requests: normalizedAsset.requests.map(request => this.cloneRequest(request))
       };
   }
 
@@ -170,7 +170,7 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
       topics: [...(asset.topics ?? [])],
       policies: (asset.policies ?? []).map(item => ({ ...item })),
       pricing: asset.pricing ? PricingBuilder.clonePricingConfig(asset.pricing) : undefined,
-      requests: asset.requests.map(request => ({ ...request }))
+      requests: asset.requests.map(request => this.cloneRequest(request))
     }));
   }
 
@@ -215,7 +215,7 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
         pricing: PricingBuilder.createSamplePricingConfig(card.type === 'Supplies' ? 'fixed' : 'hybrid'),
         ownerUserId,
         visibility: 'Invitation only',
-        requests: this.buildSeededRequests(ownerUserId, card.type, otherUsers, index),
+        requests: this.buildSeededRequests(ownerUserId, card, otherUsers, index),
         createdAtIso,
         updatedAtIso: createdAtIso,
         createdMs,
@@ -226,22 +226,23 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
 
   private buildSeededRequests(
     ownerUserId: string,
-    type: AppTypes.AssetType,
+    card: Pick<AppTypes.AssetCard, 'title' | 'type'>,
     users: readonly DemoUser[],
     seedOffset: number
   ): AppTypes.AssetMemberRequest[] {
     if (users.length === 0) {
       return [];
     }
-    const targetCount = type === 'Car' ? 3 : 2;
+    const targetCount = card.type === 'Car' ? 3 : 2;
     const prioritizedUsers = DemoUserSeedBuilder.friendUsersForActiveUser(users, ownerUserId, Math.max(targetCount * 3, targetCount));
     const requestUsers = prioritizedUsers.length > 0 ? prioritizedUsers : [...users];
     const requests: AppTypes.AssetMemberRequest[] = [];
     for (let index = 0; index < targetCount; index += 1) {
       const user = requestUsers[(seedOffset + (index * 3)) % requestUsers.length];
       const status = index === 0 ? 'pending' : 'accepted';
+      const booking = this.buildSeededRequestBooking(card, index);
       requests.push({
-        id: `${ownerUserId}:${type}:request:${index + 1}`,
+        id: `${ownerUserId}:${card.type}:request:${index + 1}`,
         userId: user.id,
         name: user.name,
         initials: user.initials,
@@ -249,10 +250,158 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
         status,
         note: status === 'pending'
           ? 'Awaiting owner confirmation.'
-          : 'Approved and synced with the plan.'
+          : 'Approved and synced with the plan.',
+        requestKind: 'borrow',
+        requestedAtIso: booking.startAtIso
+          ? new Date(new Date(booking.startAtIso).getTime() - ((index + 2) * 24 * 60 * 60 * 1000)).toISOString()
+          : undefined,
+        booking
       });
     }
     return requests;
+  }
+
+  private buildSeededRequestBooking(
+    card: Pick<AppTypes.AssetCard, 'title' | 'type'>,
+    index: number
+  ): AppTypes.AssetHireRequestBooking {
+    const slotsByTitle: Record<string, Array<{ eventTitle: string; subEventTitle: string; startAtIso: string; endAtIso: string }>> = {
+      'Camping Gear Kit': [
+        {
+          eventTitle: 'Forest Basecamp Weekend',
+          subEventTitle: 'Camp Setup',
+          startAtIso: '2026-04-18T15:00:00.000Z',
+          endAtIso: '2026-04-20T10:00:00.000Z'
+        },
+        {
+          eventTitle: 'Forest Basecamp Weekend',
+          subEventTitle: 'Night Watch',
+          startAtIso: '2026-04-19T18:00:00.000Z',
+          endAtIso: '2026-04-20T08:00:00.000Z'
+        }
+      ],
+      'Game Night Box': [
+        {
+          eventTitle: 'Indoor Strategy Social',
+          subEventTitle: 'Board Game Lounge',
+          startAtIso: '2026-05-02T17:30:00.000Z',
+          endAtIso: '2026-05-02T22:00:00.000Z'
+        },
+        {
+          eventTitle: 'Indoor Strategy Social',
+          subEventTitle: 'Late Table Finals',
+          startAtIso: '2026-05-02T20:00:00.000Z',
+          endAtIso: '2026-05-03T00:30:00.000Z'
+        }
+      ],
+      'South Congress Loft': [
+        {
+          eventTitle: 'Austin Host Meetup',
+          subEventTitle: 'Weekend Stay',
+          startAtIso: '2026-06-12T14:00:00.000Z',
+          endAtIso: '2026-06-14T11:00:00.000Z'
+        },
+        {
+          eventTitle: 'Austin Host Meetup',
+          subEventTitle: 'Overflow Rooms',
+          startAtIso: '2026-06-13T17:00:00.000Z',
+          endAtIso: '2026-06-14T10:00:00.000Z'
+        }
+      ],
+      'Eastside Guest Room': [
+        {
+          eventTitle: 'Sunrise Photo Walk',
+          subEventTitle: 'Overnight Stay',
+          startAtIso: '2026-07-03T18:00:00.000Z',
+          endAtIso: '2026-07-04T09:00:00.000Z'
+        },
+        {
+          eventTitle: 'Sunrise Photo Walk',
+          subEventTitle: 'Second Night',
+          startAtIso: '2026-07-04T18:00:00.000Z',
+          endAtIso: '2026-07-05T09:00:00.000Z'
+        }
+      ],
+      'City-to-Lake SUV': [
+        {
+          eventTitle: 'Lake Cleanup Trip',
+          subEventTitle: 'Departure Ride',
+          startAtIso: '2026-05-09T07:30:00.000Z',
+          endAtIso: '2026-05-09T10:30:00.000Z'
+        },
+        {
+          eventTitle: 'Lake Cleanup Trip',
+          subEventTitle: 'Return Ride',
+          startAtIso: '2026-05-09T16:00:00.000Z',
+          endAtIso: '2026-05-09T19:00:00.000Z'
+        },
+        {
+          eventTitle: 'Trail Weekend',
+          subEventTitle: 'Gear Shuttle',
+          startAtIso: '2026-05-16T09:00:00.000Z',
+          endAtIso: '2026-05-16T12:30:00.000Z'
+        }
+      ],
+      'Airport Shuttle Hatchback': [
+        {
+          eventTitle: 'Late Arrival Crew',
+          subEventTitle: 'Airport Pickup',
+          startAtIso: '2026-08-21T21:30:00.000Z',
+          endAtIso: '2026-08-21T23:45:00.000Z'
+        },
+        {
+          eventTitle: 'Late Arrival Crew',
+          subEventTitle: 'Hotel Dropoff',
+          startAtIso: '2026-08-22T00:00:00.000Z',
+          endAtIso: '2026-08-22T01:15:00.000Z'
+        },
+        {
+          eventTitle: 'Night Market Run',
+          subEventTitle: 'Pickup Loop',
+          startAtIso: '2026-08-28T18:30:00.000Z',
+          endAtIso: '2026-08-28T21:00:00.000Z'
+        }
+      ]
+    };
+    const slots = slotsByTitle[card.title] ?? [
+      {
+        eventTitle: `${card.title} Event`,
+        subEventTitle: card.type === 'Supplies' ? 'Borrow Window' : 'Booking Window',
+        startAtIso: '2026-04-18T15:00:00.000Z',
+        endAtIso: '2026-04-18T18:00:00.000Z'
+      }
+    ];
+    const slot = slots[index % slots.length];
+    const slotKey = `${this.seededRequestSlug(card.title)}:${index + 1}`;
+    return {
+      eventId: `${this.seededRequestSlug(slot.eventTitle)}-event`,
+      eventTitle: slot.eventTitle,
+      subEventId: `${this.seededRequestSlug(slot.subEventTitle)}-subevent`,
+      subEventTitle: slot.subEventTitle,
+      slotKey,
+      slotLabel: slot.subEventTitle,
+      timeframe: this.formatSeededRequestTimeframe(slot.startAtIso, slot.endAtIso),
+      startAtIso: slot.startAtIso,
+      endAtIso: slot.endAtIso,
+      quantity: 1
+    };
+  }
+
+  private formatSeededRequestTimeframe(startAtIso: string, endAtIso: string): string {
+    const start = new Date(startAtIso);
+    const end = new Date(endAtIso);
+    const sameDay = start.toDateString() === end.toDateString();
+    const startDate = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const endDate = end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const startTime = start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    const endTime = end.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    return sameDay
+      ? `${startDate} · ${startTime} - ${endTime}`
+      : `${startDate} ${startTime} - ${endDate} ${endTime}`;
+  }
+
+  private seededRequestSlug(value: string): string {
+    return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
   }
 
   private querySeedUsers(): DemoUser[] {
@@ -276,6 +425,7 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
       subtitle: record.subtitle,
       city: record.city,
       capacityTotal: record.capacityTotal,
+      quantity: AssetCardBuilder.normalizeQuantity(record.type, record.quantity, record.capacityTotal),
       details: record.details,
       imageUrl: record.imageUrl,
       sourceLink: record.sourceLink,
@@ -283,7 +433,7 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
       topics: [...(record.topics ?? [])],
       policies: (record.policies ?? []).map(item => ({ ...item })),
       pricing: record.pricing ? PricingBuilder.clonePricingConfig(record.pricing) : undefined,
-      requests: record.requests.map(request => ({ ...request }))
+      requests: record.requests.map(request => this.cloneRequest(request))
     };
   }
 
@@ -329,7 +479,14 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
     table: DemoAssetsRecordCollection,
     record: DemoAssetRecord
   ): DemoAssetsRecordCollection {
-    const nextById = { ...table.byId, [record.id]: { ...record, routes: [...(record.routes ?? [])], requests: record.requests.map(request => ({ ...request })) } };
+    const nextById = {
+      ...table.byId,
+      [record.id]: {
+        ...record,
+        routes: [...(record.routes ?? [])],
+        requests: record.requests.map(request => this.cloneRequest(request))
+      }
+    };
     const nextIds = table.ids.includes(record.id) ? [...table.ids] : [record.id, ...table.ids];
     const nextIdsByOwnerUserId = { ...table.idsByOwnerUserId };
     const ownerBucket = nextIdsByOwnerUserId[record.ownerUserId] ?? [];

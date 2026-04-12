@@ -64,7 +64,8 @@ export class PricingBuilder {
           id: 'time-rule-1',
           trigger: 'days_before_start',
           offsetValue: 7,
-          specificDate: null,
+          specificDateStart: null,
+          specificDateEnd: null,
           action: {
             kind: 'decrease_percent',
             value: 5
@@ -397,13 +398,16 @@ export class PricingBuilder {
     return value.map((entry, index) => {
       const source = (typeof entry === 'object' && entry !== null) ? entry as Record<string, unknown> : {};
       return {
-        id: this.normalizeText(source['id']) || `time-rule-${index + 1}`,
-        trigger: this.normalizeTimeTrigger(source['trigger']) ?? 'days_before_start',
-        offsetValue: this.normalizeOffset(source['offsetValue']),
-        specificDate: this.normalizeDate(source['specificDate']),
-        action: this.normalizeAction(source['action'], source['actionKind'], source['value']),
-        appliesTo: this.normalizeRuleScope(source['appliesTo']) ?? 'all_slots',
-        slotIds: this.normalizeStringArray(source['slotIds'])
+        ...this.normalizeTimeRuleDateRange({
+          id: this.normalizeText(source['id']) || `time-rule-${index + 1}`,
+          trigger: this.normalizeTimeTrigger(source['trigger']) ?? 'days_before_start',
+          offsetValue: this.normalizeOffset(source['offsetValue']),
+          specificDateStart: this.normalizeDate(source['specificDateStart']),
+          specificDateEnd: this.normalizeDate(source['specificDateEnd']),
+          action: this.normalizeAction(source['action'], source['actionKind'], source['value']),
+          appliesTo: this.normalizeRuleScope(source['appliesTo']) ?? 'all_slots',
+          slotIds: this.normalizeStringArray(source['slotIds'])
+        })
       };
     });
   }
@@ -518,6 +522,40 @@ export class PricingBuilder {
   private static normalizeDate(value: unknown): string | null {
     const normalized = this.normalizeText(value);
     return normalized.length > 0 ? normalized : null;
+  }
+
+  private static normalizeTimeRuleDateRange(rule: AppTypes.PricingTimeRule): AppTypes.PricingTimeRule {
+    const start = rule.specificDateStart;
+    const end = rule.specificDateEnd;
+    if (!start && !end) {
+      return {
+        ...rule,
+        specificDateStart: null,
+        specificDateEnd: null
+      };
+    }
+    if (start && !end) {
+      return {
+        ...rule,
+        specificDateStart: start,
+        specificDateEnd: start
+      };
+    }
+    if (!start && end) {
+      return {
+        ...rule,
+        specificDateStart: end,
+        specificDateEnd: end
+      };
+    }
+    if ((start ?? '') > (end ?? '')) {
+      return {
+        ...rule,
+        specificDateStart: end,
+        specificDateEnd: start
+      };
+    }
+    return rule;
   }
 
   private static normalizeMode(value: unknown): AppTypes.PricingMode {

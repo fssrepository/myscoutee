@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 
 import { environment } from '../../../../../environments/environment';
 import type * as AppTypes from '../../../core/base/models';
-import { PricingBuilder } from '../../../core/base/builders';
+import { AssetCardBuilder, PricingBuilder } from '../../../core/base/builders';
 
 @Injectable({
   providedIn: 'root'
@@ -68,7 +68,7 @@ export class HttpAssetsRepository {
       topics: [...(normalizedAsset.topics ?? [])],
       policies: (normalizedAsset.policies ?? []).map(item => ({ ...item })),
       pricing: normalizedAsset.pricing ? PricingBuilder.clonePricingConfig(normalizedAsset.pricing) : undefined,
-      requests: normalizedAsset.requests.map(request => ({ ...request }))
+      requests: normalizedAsset.requests.map(request => this.cloneRequest(request))
     };
   }
 
@@ -166,7 +166,7 @@ export class HttpAssetsRepository {
       topics: [...(card.topics ?? [])],
       policies: (card.policies ?? []).map(item => ({ ...item })),
       pricing: card.pricing ? PricingBuilder.clonePricingConfig(card.pricing) : undefined,
-      requests: card.requests.map(request => ({ ...request }))
+      requests: card.requests.map(request => this.cloneRequest(request))
     }));
   }
 
@@ -191,7 +191,8 @@ export class HttpAssetsRepository {
       title: card?.title?.trim() ?? '',
       subtitle: card?.subtitle?.trim() ?? '',
       city: card?.city?.trim() ?? '',
-      capacityTotal: Math.max(1, Math.trunc(Number(card?.capacityTotal) || 0)),
+      capacityTotal: AssetCardBuilder.capacityValue({ capacityTotal: card?.capacityTotal ?? 0 }),
+      quantity: AssetCardBuilder.normalizeQuantity(type, card?.quantity, card?.capacityTotal),
       details: card?.details?.trim() ?? '',
       imageUrl: card?.imageUrl?.trim() ?? '',
       sourceLink: card?.sourceLink?.trim() ?? '',
@@ -221,7 +222,32 @@ export class HttpAssetsRepository {
             initials: `${request?.initials ?? ''}`.trim(),
             gender: (request?.gender === 'woman' ? 'woman' : 'man') as 'woman' | 'man',
             status: (request?.status === 'accepted' ? 'accepted' : 'pending') as AppTypes.AssetRequestStatus,
-            note: `${request?.note ?? ''}`.trim()
+            note: `${request?.note ?? ''}`.trim(),
+            requestKind: (request?.requestKind === 'manual' ? 'manual' : 'borrow') as AppTypes.AssetRequestKind,
+            requestedAtIso: `${request?.requestedAtIso ?? ''}`.trim() || undefined,
+            booking: request?.booking
+              ? {
+                  eventId: `${request.booking.eventId ?? ''}`.trim() || undefined,
+                  eventTitle: `${request.booking.eventTitle ?? ''}`.trim() || undefined,
+                  subEventId: `${request.booking.subEventId ?? ''}`.trim() || undefined,
+                  subEventTitle: `${request.booking.subEventTitle ?? ''}`.trim() || undefined,
+                  slotKey: `${request.booking.slotKey ?? ''}`.trim() || undefined,
+                  slotLabel: `${request.booking.slotLabel ?? ''}`.trim() || undefined,
+                  timeframe: `${request.booking.timeframe ?? ''}`.trim() || undefined,
+                  startAtIso: `${request.booking.startAtIso ?? ''}`.trim() || undefined,
+                  endAtIso: `${request.booking.endAtIso ?? ''}`.trim() || undefined,
+                  quantity: Number.isFinite(Number(request.booking.quantity))
+                    ? Math.max(1, Math.trunc(Number(request.booking.quantity)))
+                    : null,
+                  totalAmount: Number.isFinite(Number(request.booking.totalAmount))
+                    ? Math.max(0, Number(request.booking.totalAmount))
+                    : null,
+                  currency: `${request.booking.currency ?? ''}`.trim() || undefined,
+                  acceptedPolicyIds: Array.isArray(request.booking.acceptedPolicyIds)
+                    ? request.booking.acceptedPolicyIds.map(item => `${item ?? ''}`.trim()).filter(item => item.length > 0)
+                    : []
+                }
+              : null
           }))
           .filter(request => request.id.length > 0)
         : []
@@ -241,7 +267,7 @@ export class HttpAssetsRepository {
         topics: [...(nextCard.topics ?? [])],
         policies: (nextCard.policies ?? []).map(item => ({ ...item })),
         pricing: nextCard.pricing ? PricingBuilder.clonePricingConfig(nextCard.pricing) : undefined,
-        requests: nextCard.requests.map(request => ({ ...request }))
+        requests: nextCard.requests.map(request => this.cloneRequest(request))
       };
       return next;
     }
@@ -252,9 +278,21 @@ export class HttpAssetsRepository {
         topics: [...(nextCard.topics ?? [])],
         policies: (nextCard.policies ?? []).map(item => ({ ...item })),
         pricing: nextCard.pricing ? PricingBuilder.clonePricingConfig(nextCard.pricing) : undefined,
-        requests: nextCard.requests.map(request => ({ ...request }))
+        requests: nextCard.requests.map(request => this.cloneRequest(request))
       },
       ...next
     ];
+  }
+
+  protected cloneRequest(request: AppTypes.AssetMemberRequest): AppTypes.AssetMemberRequest {
+    return {
+      ...request,
+      booking: request.booking
+        ? {
+            ...request.booking,
+            acceptedPolicyIds: [...(request.booking.acceptedPolicyIds ?? [])]
+          }
+        : null
+    };
   }
 }

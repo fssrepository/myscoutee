@@ -55,7 +55,6 @@ export class AssetInfoCardBuilder {
   ): InfoCardData {
     const selectMode = options.selectMode === true;
     const selected = options.selected === true;
-    const pendingRequests = card.requests.filter(request => request.status === 'pending').length;
     return {
       rowId: `asset:${card.id}`,
       groupLabel: options.groupLabel ?? null,
@@ -80,14 +79,7 @@ export class AssetInfoCardBuilder {
             disabled: options.selectDisabled === true,
             ariaLabel: selected ? 'Remove asset from basket' : 'Add asset to basket'
           }
-        : {
-            variant: 'avatar',
-            tone: 'default',
-            label: AssetCardBuilder.capacityLabel(card),
-            interactive: false,
-            ariaLabel: null
-          },
-      menuBadgeCount: selectMode ? 0 : pendingRequests,
+        : this.ownedAssetMediaEnd(card),
       menuActions: selectMode ? [] : this.ownedAssetMenuActions(card),
       clickable: false
     };
@@ -206,16 +198,7 @@ export class AssetInfoCardBuilder {
 
   private static ownedAssetMenuActions(card: AppTypes.AssetCard): readonly InfoCardMenuAction[] {
     const label = AssetDefaultsBuilder.assetTypeLabel(card.type).toLowerCase();
-    const pendingRequests = card.requests.filter(request => request.status === 'pending').length;
     return [
-      {
-        id: 'requests',
-        label: pendingRequests > 0
-          ? `Borrow requests (${pendingRequests})`
-          : 'Borrow requests',
-        icon: 'inbox',
-        tone: pendingRequests > 0 ? 'warning' : 'default'
-      },
       {
         id: 'edit',
         label: `Edit ${label}`,
@@ -228,5 +211,18 @@ export class AssetInfoCardBuilder {
         tone: 'destructive'
       }
     ];
+  }
+
+  private static ownedAssetMediaEnd(card: AppTypes.AssetCard): NonNullable<InfoCardData['mediaEnd']> | null {
+    const pendingCount = card.requests.filter(request => request.status === 'pending' && request.requestKind !== 'manual').length;
+    return {
+      variant: 'badge',
+      tone: card.type === 'Supplies' ? 'warm' : 'default',
+      label: AssetCardBuilder.quantityLabel(card),
+      detailLabel: AssetCardBuilder.capacityLabel(card),
+      interactive: true,
+      pendingCount,
+      ariaLabel: 'Open asset requests and assignments'
+    };
   }
 }

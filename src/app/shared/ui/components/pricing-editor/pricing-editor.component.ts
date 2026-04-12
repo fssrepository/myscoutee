@@ -1,7 +1,11 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, HostListener, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { MatNativeDateModule } from '@angular/material/core';
+import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 
 import { PricingBuilder } from '../../../core/base/builders';
@@ -33,7 +37,11 @@ interface RuleScopePickerState {
   imports: [
     CommonModule,
     FormsModule,
+    MatDatepickerModule,
+    MatFormFieldModule,
     MatIconModule,
+    MatInputModule,
+    MatNativeDateModule,
     MatSelectModule,
     PricingSlotPanelComponent
   ],
@@ -181,7 +189,7 @@ export class PricingEditorComponent implements OnChanges {
       case 'hours_before_start':
         return 'Before event start by hours';
       case 'specific_date':
-        return 'On specific date';
+        return 'During date range';
       default:
         return 'Before event start by days';
     }
@@ -397,9 +405,39 @@ export class PricingEditorComponent implements OnChanges {
     this.emitPricing();
   }
 
-  protected onTimeRuleDateChange(rule: AppTypes.PricingTimeRule, value: string | null | undefined): void {
-    const normalized = `${value ?? ''}`.trim();
-    rule.specificDate = normalized || null;
+  protected timeRuleRangeStartDate(rule: AppTypes.PricingTimeRule): Date | null {
+    return this.isoDateToDate(rule.specificDateStart);
+  }
+
+  protected timeRuleRangeEndDate(rule: AppTypes.PricingTimeRule): Date | null {
+    return this.isoDateToDate(rule.specificDateEnd);
+  }
+
+  protected onTimeRuleRangeStartChange(rule: AppTypes.PricingTimeRule, value: Date | null): void {
+    const normalized = this.dateToIsoDate(value);
+    rule.specificDateStart = normalized;
+    if (!normalized) {
+      rule.specificDateEnd = null;
+      this.emitPricing();
+      return;
+    }
+    if (!rule.specificDateEnd || rule.specificDateEnd < normalized) {
+      rule.specificDateEnd = normalized;
+    }
+    this.emitPricing();
+  }
+
+  protected onTimeRuleRangeEndChange(rule: AppTypes.PricingTimeRule, value: Date | null): void {
+    const normalized = this.dateToIsoDate(value);
+    rule.specificDateEnd = normalized;
+    if (!normalized) {
+      rule.specificDateStart = null;
+      this.emitPricing();
+      return;
+    }
+    if (!rule.specificDateStart || rule.specificDateStart > normalized) {
+      rule.specificDateStart = normalized;
+    }
     this.emitPricing();
   }
 
@@ -755,7 +793,8 @@ export class PricingEditorComponent implements OnChanges {
       id: this.nextId('time-rule'),
       trigger: 'days_before_start',
       offsetValue: 7,
-      specificDate: null,
+      specificDateStart: null,
+      specificDateEnd: null,
       action: {
         kind: 'decrease_percent',
         value: 5
@@ -859,13 +898,14 @@ export class PricingEditorComponent implements OnChanges {
       }
     }
     if (rule.trigger === 'specific_date') {
-      const target = `${rule.specificDate ?? ''}`.trim();
-      if (!target) {
+      const start = `${rule.specificDateStart ?? ''}`.trim();
+      const end = `${rule.specificDateEnd ?? ''}`.trim();
+      if (!start || !end) {
         return false;
       }
       const today = new Date();
       const normalizedToday = `${today.getFullYear()}-${`${today.getMonth() + 1}`.padStart(2, '0')}-${`${today.getDate()}`.padStart(2, '0')}`;
-      return normalizedToday === target;
+      return normalizedToday >= start && normalizedToday <= end;
     }
     const offset = Math.max(0, Math.trunc(Number(rule.offsetValue) || 0));
     if (rule.trigger === 'hours_before_start') {
@@ -916,7 +956,12 @@ export class PricingEditorComponent implements OnChanges {
 
   private describeTimeRule(rule: AppTypes.PricingTimeRule): string {
     if (rule.trigger === 'specific_date') {
-      return `Time rule active: on ${rule.specificDate ?? 'the selected date'}, ${this.describeAction(rule.action)}${this.describeRuleScope(rule)}.`;
+      const start = `${rule.specificDateStart ?? ''}`.trim();
+      const end = `${rule.specificDateEnd ?? ''}`.trim();
+      const rangeLabel = start && end
+        ? start === end ? start : `${start} - ${end}`
+        : 'the selected range';
+      return `Time rule active: during ${rangeLabel}, ${this.describeAction(rule.action)}${this.describeRuleScope(rule)}.`;
     }
     const offset = Math.max(0, Math.trunc(Number(rule.offsetValue) || 0));
     const triggerText = rule.trigger === 'hours_before_start'
@@ -962,5 +1007,24 @@ export class PricingEditorComponent implements OnChanges {
       return ` for ${this.slotLabelById(rule.slotIds[0]) || 'the selected slot'}`;
     }
     return ` for ${rule.slotIds.length} selected slots`;
+  }
+
+  private isoDateToDate(value: string | null | undefined): Date | null {
+    const normalized = `${value ?? ''}`.trim();
+    if (!normalized) {
+      return null;
+    }
+    const parsed = new Date(`${normalized}T00:00:00`);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  private dateToIsoDate(value: Date | null | undefined): string | null {
+    if (!(value instanceof Date) || Number.isNaN(value.getTime())) {
+      return null;
+    }
+    const year = value.getFullYear();
+    const month = `${value.getMonth() + 1}`.padStart(2, '0');
+    const day = `${value.getDate()}`.padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
 }

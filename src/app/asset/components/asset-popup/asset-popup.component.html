@@ -291,6 +291,196 @@
           </div>
         </div>
       </div>
+
+      @if (!isBasketMode() && showSupplyRequestList && selectedSupplyAsset(); as supplyAsset) {
+        <section class="app-popup app-popup-stacked app-popup-super-stacked asset-supply-requests-shell">
+          <div class="app-popup-backdrop" (click)="closeSupplyRequestList()"></div>
+          <div
+            class="app-popup-panel popup-panel-assets popup-panel-wide popup-panel-full-height asset-supply-requests-panel"
+            (click)="$event.stopPropagation()"
+            >
+            <div class="popup-header popup-header-friends-picker asset-supply-requests-head">
+              <div class="popup-title popup-title-members">
+                <div class="popup-chat-title-block">
+                  <h2>{{ supplyAsset.title }}</h2>
+                  <p>{{ assetRequestListSubtitle() }}</p>
+                </div>
+              </div>
+              <button mat-icon-button class="popup-close" (click)="closeSupplyRequestList($event)" aria-label="Close asset requests">
+                <mat-icon>close</mat-icon>
+              </button>
+            </div>
+
+            <div class="popup-body popup-body-friends-picker asset-supply-requests-body">
+              <div class="asset-supply-requests-sections">
+                @if (supplyPendingRequests().length > 0) {
+                  <section class="asset-supply-requests-section">
+                    <div class="asset-supply-requests-section-head">
+                      <span>Borrow Requests</span>
+                      <strong>{{ selectedSupplySummaryPending() }} pending</strong>
+                    </div>
+                    <div class="asset-supply-request-list">
+                      @for (request of supplyPendingRequests(); track request.id) {
+                        <article class="asset-supply-request-row asset-supply-request-row--pending">
+                          <div class="asset-supply-request-avatar">{{ request.initials }}</div>
+                          <div class="asset-supply-request-copy">
+                            <strong>{{ request.name }}</strong>
+                            <span>{{ supplyRequestReservationLabel(request) }}</span>
+                            @if (supplyRequestEventLabel(request); as eventLabel) {
+                              <span>{{ eventLabel }}</span>
+                            }
+                            @if (supplyRequestScheduleLabel(request); as scheduleLabel) {
+                              <span>{{ scheduleLabel }}</span>
+                            }
+                            @if (supplyRequestDisplayNote(request); as displayNote) {
+                              <p>{{ displayNote }}</p>
+                            }
+                          </div>
+                          <div class="asset-supply-request-side">
+                            <span
+                              class="asset-supply-request-availability-badge"
+                              [class.asset-supply-request-availability-badge--empty]="supplyRequestInventoryState(request) === 'empty'"
+                              [class.asset-supply-request-availability-badge--over]="supplyRequestInventoryState(request) === 'over'"
+                              [attr.aria-label]="supplyRequestInventoryLabel(request)"
+                              >
+                              {{ supplyRequestInventoryBadgeLabel(request) }}
+                            </span>
+                            <div class="asset-supply-request-menu-anchor">
+                              <button
+                                type="button"
+                                class="experience-action-btn experience-action-menu-trigger"
+                                [class.is-open]="isSupplyRequestActionMenuOpen(request)"
+                                [disabled]="isSupplyRequestBusy(request, 'accept') || isSupplyRequestBusy(request, 'remove')"
+                                (click)="toggleSupplyRequestActionMenu(request, $event)"
+                                aria-label="Open quantity request actions"
+                                >
+                                <mat-icon>{{ isSupplyRequestActionMenuOpen(request) ? 'close' : 'more_vert' }}</mat-icon>
+                              </button>
+                              <div
+                                class="item-action-menu"
+                                [class.is-open]="isSupplyRequestActionMenuOpen(request)"
+                                [class.item-action-menu-mobile]="isMobileAssetFilterSheetViewport()"
+                                [class.item-action-menu-desktop]="!isMobileAssetFilterSheetViewport()"
+                                [class.is-open-up]="isSupplyRequestActionMenuOpenUp(request)"
+                                (click)="$event.stopPropagation()"
+                                >
+                                <div class="item-action-menu-title">{{ request.name }}</div>
+                                <button
+                                  type="button"
+                                  class="item-action-menu-btn item-action-menu-btn-publish"
+                                  [disabled]="isSupplyRequestBusy(request, 'accept')"
+                                  (click)="approveSupplyRequest(request, $event)"
+                                  >
+                                  <mat-icon>check_circle</mat-icon>
+                                  <span>{{ isSupplyRequestBusy(request, 'accept') ? 'Accepting...' : 'Accept' }}</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  class="item-action-menu-btn item-action-menu-btn-destructive"
+                                  [disabled]="isSupplyRequestBusy(request, 'remove')"
+                                  (click)="rejectSupplyRequest(request, $event)"
+                                  >
+                                  <mat-icon>delete</mat-icon>
+                                  <span>{{ isSupplyRequestBusy(request, 'remove') ? 'Rejecting...' : 'Reject' }}</span>
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </article>
+                      }
+                    </div>
+                  </section>
+                }
+
+                @if (supplyBorrowedRequests().length > 0) {
+                  <section class="asset-supply-requests-section">
+                    <div class="asset-supply-requests-section-head">
+                      <span>Borrowed Items</span>
+                    </div>
+                    <div class="asset-supply-request-list">
+                      @for (request of supplyBorrowedRequests(); track request.id) {
+                        <article class="asset-supply-request-row">
+                          <div class="asset-supply-request-avatar">{{ request.initials }}</div>
+                          <div class="asset-supply-request-copy">
+                            <strong>{{ request.name }}</strong>
+                            <span>{{ supplyRequestReservationLabel(request) }}</span>
+                            @if (supplyRequestEventLabel(request); as eventLabel) {
+                              <span>{{ eventLabel }}</span>
+                            }
+                            @if (supplyRequestScheduleLabel(request); as scheduleLabel) {
+                              <span>{{ scheduleLabel }}</span>
+                            }
+                            @if (supplyRequestDisplayNote(request); as displayNote) {
+                              <p>{{ displayNote }}</p>
+                            }
+                          </div>
+                          <div class="asset-supply-request-side">
+                            <span
+                              class="asset-supply-request-availability-badge"
+                              [class.asset-supply-request-availability-badge--empty]="supplyRequestInventoryState(request) === 'empty'"
+                              [class.asset-supply-request-availability-badge--over]="supplyRequestInventoryState(request) === 'over'"
+                              [attr.aria-label]="supplyRequestInventoryLabel(request)"
+                              >
+                              {{ supplyRequestInventoryBadgeLabel(request) }}
+                            </span>
+                            <span class="asset-supply-request-status">{{ supplyRequestStatusLabel(request) }}</span>
+                          </div>
+                        </article>
+                      }
+                    </div>
+                  </section>
+                }
+
+                @if (supplyAssignedRequests().length > 0) {
+                  <section class="asset-supply-requests-section">
+                    <div class="asset-supply-requests-section-head">
+                      <span>Assigned Items</span>
+                    </div>
+                    <div class="asset-supply-request-list">
+                      @for (request of supplyAssignedRequests(); track request.id) {
+                        <article class="asset-supply-request-row asset-supply-request-row--assigned">
+                          <div class="asset-supply-request-avatar">{{ request.initials }}</div>
+                          <div class="asset-supply-request-copy">
+                            <strong>{{ request.name }}</strong>
+                            <span>{{ supplyRequestReservationLabel(request) }}</span>
+                            @if (supplyRequestEventLabel(request); as eventLabel) {
+                              <span>{{ eventLabel }}</span>
+                            }
+                            @if (supplyRequestScheduleLabel(request); as scheduleLabel) {
+                              <span>{{ scheduleLabel }}</span>
+                            }
+                            @if (supplyRequestDisplayNote(request); as displayNote) {
+                              <p>{{ displayNote }}</p>
+                            }
+                          </div>
+                          <div class="asset-supply-request-side">
+                            <span
+                              class="asset-supply-request-availability-badge"
+                              [class.asset-supply-request-availability-badge--empty]="supplyRequestInventoryState(request) === 'empty'"
+                              [class.asset-supply-request-availability-badge--over]="supplyRequestInventoryState(request) === 'over'"
+                              [attr.aria-label]="supplyRequestInventoryLabel(request)"
+                              >
+                              {{ supplyRequestInventoryBadgeLabel(request) }}
+                            </span>
+                            <span class="asset-supply-request-status">{{ supplyRequestStatusLabel(request) }}</span>
+                          </div>
+                        </article>
+                      }
+                    </div>
+                  </section>
+                }
+
+                @if (supplyPendingRequests().length === 0 && supplyBorrowedRequests().length === 0 && supplyAssignedRequests().length === 0) {
+                  <section class="asset-supply-requests-empty">
+                    <mat-icon>inventory_2</mat-icon>
+                    <span>{{ supplyRequestEmptyLabel() }}</span>
+                  </section>
+                }
+              </div>
+            </div>
+          </div>
+        </section>
+      }
     </section>
   }
 

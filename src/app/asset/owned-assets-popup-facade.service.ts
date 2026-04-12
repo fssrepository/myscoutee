@@ -69,7 +69,7 @@ export class OwnedAssetsPopupFacadeService {
   }
 
   set assetCards(cards: AppTypes.AssetCard[]) {
-    this.applyAssetCards(cards, { persist: true });
+    this.applyAssetCards(cards, { persist: true, reloadList: false });
   }
 
   constructor() {
@@ -86,7 +86,7 @@ export class OwnedAssetsPopupFacadeService {
   }
 
   initialize(cards: AppTypes.AssetCard[]): void {
-    this.applyAssetCards(cards, { persist: false });
+    this.applyAssetCards(cards, { persist: false, reloadList: false });
   }
 
   assetListRevisionValue(): number {
@@ -104,10 +104,10 @@ export class OwnedAssetsPopupFacadeService {
     this.cancelScheduledPersist();
     this.touchUiState();
     if (!normalizedUserId) {
-      this.applyAssetCards([], { persist: false });
+      this.applyAssetCards([], { persist: false, reloadList: false });
       return;
     }
-    this.applyAssetCards(this.assetsService.peekOwnedAssetsByUser(normalizedUserId), { persist: false });
+    this.applyAssetCards(this.assetsService.peekOwnedAssetsByUser(normalizedUserId), { persist: false, reloadList: false });
     void this.refreshOwnedAssetsFromRepository(normalizedUserId);
   }
 
@@ -168,6 +168,68 @@ export class OwnedAssetsPopupFacadeService {
 
   assetFormSaveRingPerimeter(): number {
     return 100;
+  }
+
+  async applyAssetRequestAction(
+    assetId: string,
+    requestId: string,
+    action: AppTypes.AssetRequestAction
+  ): Promise<void> {
+    const normalizedAssetId = assetId.trim();
+    const normalizedRequestId = requestId.trim();
+    if (!normalizedAssetId || !normalizedRequestId || (action !== 'accept' && action !== 'remove')) {
+      return;
+    }
+    const existing = this.assetCardsRef.find(card => card.id === normalizedAssetId) ?? null;
+    if (!existing) {
+      return;
+    }
+
+    const nextRequests = existing.requests
+      .map(request => this.cloneAssetRequest(request))
+      .filter(request => {
+        if (request.id !== normalizedRequestId) {
+          return true;
+        }
+        if (action === 'remove') {
+          return false;
+        }
+        request.status = 'accepted';
+        request.note = request.requestKind === 'manual'
+          ? 'Reserved and assigned by the owner.'
+          : 'Borrow request approved by the owner.';
+        return true;
+      });
+
+    const nextCard: AppTypes.AssetCard = {
+      ...existing,
+      routes: [...(existing.routes ?? [])],
+      topics: [...(existing.topics ?? [])],
+      policies: (existing.policies ?? []).map(item => ({ ...item })),
+      pricing: existing.pricing ? PricingBuilder.clonePricingConfig(existing.pricing) : undefined,
+      requests: nextRequests
+    };
+
+    const ownerUserId = this.resolveOwnerUserId();
+    this.markAssetMutation();
+    this.applyAssetCards(this.assetCardsRef.map(card => (
+      card.id === normalizedAssetId ? nextCard : card
+    )), { persist: false, reloadList: false });
+    for (const hooks of this.runtimeHooks) {
+      hooks.onAssetsChanged?.();
+    }
+
+    const persistPromise = ownerUserId
+      ? this.assetsService.saveOwnedAsset(ownerUserId, nextCard).then(savedCard => {
+          if (this.activeOwnerUserId === ownerUserId) {
+            this.applyAssetCards(this.assetCardsRef.map(card => card.id === savedCard.id ? savedCard : card), {
+              persist: false,
+              reloadList: false
+            });
+          }
+        })
+      : Promise.resolve();
+    await this.awaitAssetMutationCompletion(persistPromise);
   }
 
   assetTypeIcon(type: AppTypes.AssetFilterType): string {
@@ -251,6 +313,7 @@ export class OwnedAssetsPopupFacadeService {
         subtitle: card.subtitle,
         city: card.city,
         capacityTotal: card.capacityTotal,
+        quantity: card.quantity,
         details: card.details,
         imageUrl,
         sourceLink,
@@ -282,7 +345,8 @@ export class OwnedAssetsPopupFacadeService {
   canSubmitAssetForm(): boolean {
     const title = this.assetForm.title.trim();
     const capacityTotal = Math.max(0, Math.trunc(Number(this.assetForm.capacityTotal) || 0));
-    if (!title || capacityTotal < 1) {
+    const quantity = Math.max(0, Math.trunc(Number(this.assetForm.quantity) || 0));
+    if (!title || capacityTotal < 1 || quantity < 1) {
       return false;
     }
     if (this.assetForm.type !== 'Accommodation') {
@@ -392,6 +456,7 @@ export class OwnedAssetsPopupFacadeService {
         subtitle: this.assetForm.subtitle.trim() || DemoAssetBuilder.defaultAssetSubtitle(this.assetForm.type),
         city: resolvedCity,
         capacityTotal: Math.max(1, Number(this.assetForm.capacityTotal) || (this.assetForm.type === 'Supplies' ? 6 : 4)),
+        quantity: AssetCardBuilder.normalizeQuantity(this.assetForm.type, this.assetForm.quantity, this.assetForm.capacityTotal),
         details: this.assetForm.details.trim() || DemoAssetBuilder.defaultAssetDetails(this.assetForm.type),
         imageUrl,
         sourceLink,
@@ -636,7 +701,10 @@ export class OwnedAssetsPopupFacadeService {
     const nextCards = this.normalizeAssetMediaLinks(cards.map(card => ({
       ...card,
       routes: [...(card.routes ?? [])],
-      requests: card.requests.map(request => ({ ...request }))
+      topics: [...(card.topics ?? [])],
+      policies: (card.policies ?? []).map(item => ({ ...item })),
+      pricing: card.pricing ? PricingBuilder.clonePricingConfig(card.pricing) : undefined,
+      requests: card.requests.map(request => this.cloneAssetRequest(request))
     })));
     if (this.areAssetCardListsEqual(this.assetCardsRef, nextCards)) {
       return;
@@ -693,7 +761,7 @@ export class OwnedAssetsPopupFacadeService {
     if (this.activeOwnerUserId !== ownerUserId || requestMutationVersion !== this.assetMutationVersion) {
       return;
     }
-    this.applyAssetCards(cards, { persist: false });
+    this.applyAssetCards(cards, { persist: false, reloadList: false });
   }
 
   private markAssetMutation(): void {
@@ -720,7 +788,7 @@ export class OwnedAssetsPopupFacadeService {
       topics: [...(card.topics ?? [])],
       policies: (card.policies ?? []).map(item => ({ ...item })),
       pricing: card.pricing ? PricingBuilder.clonePricingConfig(card.pricing) : undefined,
-      requests: card.requests.map(request => ({ ...request }))
+      requests: card.requests.map(request => this.cloneAssetRequest(request))
     }));
     if (this.persistTimerId !== null) {
       clearTimeout(this.persistTimerId);
@@ -807,6 +875,7 @@ export class OwnedAssetsPopupFacadeService {
       card.subtitle,
       card.city,
       String(card.capacityTotal),
+      String(card.quantity),
       card.details,
       card.imageUrl,
       card.sourceLink,
@@ -827,9 +896,29 @@ export class OwnedAssetsPopupFacadeService {
           request.initials,
           request.gender,
           request.status,
-          request.note
+          request.note,
+          request.requestKind ?? '',
+          request.requestedAtIso ?? '',
+          request.booking?.eventId ?? '',
+          request.booking?.subEventId ?? '',
+          request.booking?.slotKey ?? '',
+          request.booking?.quantity ?? '',
+          request.booking?.totalAmount ?? '',
+          request.booking?.timeframe ?? ''
         ].join(':'))
         .join('|')
     ].join('||');
+  }
+
+  private cloneAssetRequest(request: AppTypes.AssetMemberRequest): AppTypes.AssetMemberRequest {
+    return {
+      ...request,
+      booking: request.booking
+        ? {
+            ...request.booking,
+            acceptedPolicyIds: [...(request.booking.acceptedPolicyIds ?? [])]
+          }
+        : null
+    };
   }
 }

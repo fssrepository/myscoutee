@@ -47,6 +47,7 @@ export interface AssetCard {
   subtitle: string;
   city: string;
   capacityTotal: number;
+  quantity: number;
   details: string;
   imageUrl: string;
   sourceLink: string;

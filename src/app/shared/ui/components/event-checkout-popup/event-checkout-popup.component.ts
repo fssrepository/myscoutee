@@ -652,11 +652,13 @@ export class EventCheckoutPopupComponent {
       return false;
     }
     if (rule.trigger === 'specific_date') {
-      const specific = (rule.specificDate ?? '').trim();
-      if (!specific || !comparisonIso) {
+      const start = (rule.specificDateStart ?? '').trim();
+      const end = (rule.specificDateEnd ?? '').trim();
+      if (!start || !end || !comparisonIso) {
         return false;
       }
-      return comparisonIso.slice(0, 10) === specific;
+      const comparisonDate = comparisonIso.slice(0, 10);
+      return comparisonDate >= start && comparisonDate <= end;
     }
     if (rule.trigger === 'hours_before_start') {
       return hoursUntilStart <= Math.max(0, Number(rule.offsetValue) || 0);

@@ -1029,6 +1029,7 @@ export class SubEventResourcePopupService {
       return;
     }
     const activeUser = this.activeUser();
+    const booking = this.currentAssetRequestBooking(1);
     this.ownedAssets.assetCards = this.ownedAssets.assetCards.map(asset => {
       if (asset.id !== card.sourceAssetId) {
         return asset;
@@ -1041,7 +1042,10 @@ export class SubEventResourcePopupService {
         initials: activeUser.initials,
         gender: activeUser.gender,
         status: 'pending',
-        note: 'Join request from sub-event assets.'
+        note: 'Join request from sub-event assets.',
+        requestKind: 'borrow',
+        requestedAtIso: new Date().toISOString(),
+        booking
       });
       return {
         ...asset,
@@ -1895,6 +1899,7 @@ export class SubEventResourcePopupService {
     );
     const existingByName = new Map(asset.requests.map(request => [request.name.toLowerCase(), request] as const));
     const now = Date.now();
+    const booking = this.currentAssetRequestBooking(1);
     const nextRequests: AppTypes.AssetMemberRequest[] = members.map((entry, index) => {
       const existing =
         existingById.get(entry.id)
@@ -1914,27 +1919,19 @@ export class SubEventResourcePopupService {
         initials: entry.initials,
         gender: entry.gender,
         status: entry.status,
-        note
+        note,
+        requestKind: existing?.requestKind ?? 'borrow',
+        requestedAtIso: existing?.requestedAtIso ?? new Date().toISOString(),
+        booking: existing?.booking
+          ? {
+              ...existing.booking,
+              acceptedPolicyIds: [...(existing.booking.acceptedPolicyIds ?? [])]
+            }
+          : booking
       };
     });
-    const currentSignature = JSON.stringify(asset.requests.map(request => ({
-      id: request.id,
-      userId: request.userId ?? '',
-      name: request.name,
-      initials: request.initials,
-      gender: request.gender,
-      status: request.status,
-      note: request.note
-    })));
-    const nextSignature = JSON.stringify(nextRequests.map(request => ({
-      id: request.id,
-      userId: request.userId ?? '',
-      name: request.name,
-      initials: request.initials,
-      gender: request.gender,
-      status: request.status,
-      note: request.note
-    })));
+    const currentSignature = JSON.stringify(asset.requests.map(request => this.assetRequestSyncSignature(request)));
+    const nextSignature = JSON.stringify(nextRequests.map(request => this.assetRequestSyncSignature(request)));
     if (currentSignature === nextSignature) {
       return;
     }
@@ -1944,6 +1941,63 @@ export class SubEventResourcePopupService {
         : card
     );
     this.syncPopupSubEventMetrics();
+  }
+
+  private assetRequestSyncSignature(request: AppTypes.AssetMemberRequest): object {
+    return {
+      id: request.id,
+      userId: request.userId ?? '',
+      name: request.name,
+      initials: request.initials,
+      gender: request.gender,
+      status: request.status,
+      note: request.note,
+      requestKind: request.requestKind ?? '',
+      requestedAtIso: request.requestedAtIso ?? '',
+      bookingEventId: request.booking?.eventId ?? '',
+      bookingSubEventId: request.booking?.subEventId ?? '',
+      bookingStartAtIso: request.booking?.startAtIso ?? '',
+      bookingEndAtIso: request.booking?.endAtIso ?? '',
+      bookingQuantity: request.booking?.quantity ?? '',
+      bookingTimeframe: request.booking?.timeframe ?? ''
+    };
+  }
+
+  private currentAssetRequestBooking(quantity: number): AppTypes.AssetHireRequestBooking | null {
+    const context = this.popupContextRef();
+    if (!context) {
+      return null;
+    }
+    const startAtIso = `${context.subEvent.startAt ?? ''}`.trim();
+    const endAtIso = `${context.subEvent.endAt ?? ''}`.trim();
+    return {
+      eventId: context.ownerId,
+      eventTitle: context.parentTitle,
+      subEventId: context.subEvent.id,
+      subEventTitle: context.subEvent.name,
+      slotKey: context.subEvent.id,
+      slotLabel: context.subEvent.name,
+      timeframe: this.assetRequestTimeframeLabel(startAtIso, endAtIso),
+      startAtIso: startAtIso || undefined,
+      endAtIso: endAtIso || undefined,
+      quantity
+    };
+  }
+
+  private assetRequestTimeframeLabel(startAtIso: string, endAtIso: string): string {
+    const start = AppUtils.isoLocalDateTimeToDate(startAtIso);
+    const end = AppUtils.isoLocalDateTimeToDate(endAtIso);
+    if (!start || !end) {
+      return '';
+    }
+    const sameDay = start.toDateString() === end.toDateString();
+    const startDate = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const endDate = end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const startTime = start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    const endTime = end.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    return sameDay
+      ? `${startDate} · ${startTime} - ${endTime}`
+      : `${startDate} ${startTime} - ${endDate} ${endTime}`;
   }
 
   private assetMemberEntries(card: AppTypes.AssetCard, ownerUserId: string | null): AppTypes.ActivityMemberEntry[] {
@@ -2071,7 +2125,15 @@ export class SubEventResourcePopupService {
       ...card,
       routes: [...(card.routes ?? [])],
       pricing: card.pricing ? PricingBuilder.clonePricingConfig(card.pricing) : undefined,
-      requests: card.requests.map(request => ({ ...request }))
+      requests: card.requests.map(request => ({
+        ...request,
+        booking: request.booking
+          ? {
+              ...request.booking,
+              acceptedPolicyIds: [...(request.booking.acceptedPolicyIds ?? [])]
+            }
+          : null
+      }))
     };
   }
 

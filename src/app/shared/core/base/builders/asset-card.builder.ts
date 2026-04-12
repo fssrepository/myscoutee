@@ -9,6 +9,7 @@ export class AssetCardBuilder {
       subtitle: '',
       city: '',
       capacityTotal: type === 'Supplies' ? 6 : 4,
+      quantity: this.defaultQuantity(type),
       details: '',
       imageUrl: '',
       sourceLink: '',
@@ -81,7 +82,38 @@ export class AssetCardBuilder {
   }
 
   static capacityLabel(card: AppTypes.AssetCard): string {
-    return `${Math.max(1, Math.trunc(Number(card.capacityTotal) || 0))}`;
+    return `${this.capacityValue(card)}`;
+  }
+
+  static quantityLabel(card: AppTypes.AssetCard): string {
+    return `${this.quantityValue(card)}`;
+  }
+
+  static capacityValue(card: Pick<AppTypes.AssetCard, 'capacityTotal'>): number {
+    return Math.max(1, Math.trunc(Number(card.capacityTotal) || 0));
+  }
+
+  static quantityValue(card: Pick<AppTypes.AssetCard, 'type' | 'quantity' | 'capacityTotal'>): number {
+    return this.normalizeQuantity(card.type, card.quantity, card.capacityTotal);
+  }
+
+  static defaultQuantity(type: AppTypes.AssetType): number {
+    return type === 'Supplies' ? 6 : 1;
+  }
+
+  static normalizeQuantity(
+    type: AppTypes.AssetType,
+    value: unknown,
+    capacityFallback: unknown = null
+  ): number {
+    const parsed = Math.trunc(Number(value) || 0);
+    if (parsed > 0) {
+      return parsed;
+    }
+    if (type === 'Supplies') {
+      return Math.max(1, Math.trunc(Number(capacityFallback) || 0));
+    }
+    return this.defaultQuantity(type);
   }
 
   static primaryLocation(card: AppTypes.AssetCard): string {

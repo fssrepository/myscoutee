@@ -449,13 +449,27 @@
                 </label>
                 @if (rule.trigger === 'specific_date') {
                   <label class="pricing-editor__field">
-                    <span>Date</span>
-                    <input
-                      type="date"
-                      [ngModel]="rule.specificDate ?? ''"
-                      (ngModelChange)="onTimeRuleDateChange(rule, $event)"
-                      [disabled]="readOnly"
-                      />
+                    <span>Date range</span>
+                    <mat-form-field appearance="outline" class="pricing-editor__date-range-field" subscriptSizing="dynamic">
+                      <mat-date-range-input [rangePicker]="timeRuleRangePicker">
+                        <input
+                          matStartDate
+                          [value]="timeRuleRangeStartDate(rule)"
+                          (dateChange)="onTimeRuleRangeStartChange(rule, $event.value)"
+                          [disabled]="readOnly"
+                          placeholder="Start date"
+                          />
+                        <input
+                          matEndDate
+                          [value]="timeRuleRangeEndDate(rule)"
+                          (dateChange)="onTimeRuleRangeEndChange(rule, $event.value)"
+                          [disabled]="readOnly"
+                          placeholder="End date"
+                          />
+                      </mat-date-range-input>
+                      <mat-datepicker-toggle matSuffix [for]="timeRuleRangePicker"></mat-datepicker-toggle>
+                      <mat-date-range-picker #timeRuleRangePicker></mat-date-range-picker>
+                    </mat-form-field>
                   </label>
                 } @else {
                   <label class="pricing-editor__field">

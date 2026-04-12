@@ -42,7 +42,8 @@ export interface PricingTimeRule {
   id: string;
   trigger: PricingTimeRuleTrigger;
   offsetValue: number | null;
-  specificDate?: string | null;
+  specificDateStart?: string | null;
+  specificDateEnd?: string | null;
   action: PricingAction;
   appliesTo: PricingRuleScope;
   slotIds: string[];

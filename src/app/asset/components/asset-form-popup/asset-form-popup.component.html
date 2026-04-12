@@ -113,6 +113,10 @@
             <span>Total capacity<span class="asset-form-required-marker">*</span></span>
             <input type="number" min="1" step="1" [(ngModel)]="assetForm.capacityTotal" [disabled]="isSavePending" />
           </label>
+          <label>
+            <span>Quantity<span class="asset-form-required-marker">*</span></span>
+            <input type="number" min="1" step="1" [(ngModel)]="assetForm.quantity" [disabled]="isSavePending" />
+          </label>
           <label class="experience-description-field">
             <span>Details</span>
             <textarea rows="3" [(ngModel)]="assetForm.details" [disabled]="isSavePending"></textarea>

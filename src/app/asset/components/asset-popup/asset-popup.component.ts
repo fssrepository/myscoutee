@@ -9,7 +9,7 @@ import { from } from 'rxjs';
 import { AssetFacadeService } from '../../asset-facade.service';
 import { AssetPopupStateService } from '../../asset-popup-state.service';
 import { OwnedAssetsPopupFacadeService } from '../../owned-assets-popup-facade.service';
-import { PricingBuilder } from '../../../shared/core/base/builders';
+import { AssetCardBuilder, PricingBuilder } from '../../../shared/core/base/builders';
 import type * as AppTypes from '../../../shared/core/base/models';
 import { AppContext, AssetTicketsService } from '../../../shared/core';
 import { resolveCurrentRouteDelayMs } from '../../../shared/core/base/services/route-delay.service';
@@ -72,6 +72,10 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
   private lastAssetCardCount = 0;
   private assetListReady = false;
   private assetListVisibleCount = 0;
+  protected showSupplyRequestList = false;
+  protected selectedSupplyAssetId: string | null = null;
+  protected supplyRequestActionMenu: { id: string; openUp: boolean } | null = null;
+  protected supplyRequestBusyKey = '';
   protected readonly retryTicketScanner = (event?: Event): void => this.assetPopup.retryTicketScanner(event);
   protected readonly closeOwnedAssetForm = (): void => this.ownedAssets.closeAssetForm();
   protected readonly saveOwnedAssetCard = (): void => { void this.ownedAssets.saveAssetCard(); };
@@ -233,9 +237,321 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
 
   protected onOwnedAssetMediaEndClick(card: AppTypes.AssetCard, selectMode: boolean): void {
     if (!selectMode) {
+      this.openSupplyRequestList(card);
       return;
     }
     this.assetPopup.host()?.toggleSubEventAssetAssignCard(card.id);
+  }
+
+  protected openSupplyRequestList(card: AppTypes.AssetCard, event?: Event): void {
+    event?.stopPropagation();
+    if (this.isBasketMode()) {
+      return;
+    }
+    this.selectedSupplyAssetId = card.id;
+    this.showSupplyRequestList = true;
+    this.supplyRequestActionMenu = null;
+    this.supplyRequestBusyKey = '';
+  }
+
+  protected closeSupplyRequestList(event?: Event): void {
+    event?.stopPropagation();
+    this.showSupplyRequestList = false;
+    this.selectedSupplyAssetId = null;
+    this.supplyRequestActionMenu = null;
+    this.supplyRequestBusyKey = '';
+  }
+
+  protected selectedSupplyAsset(): AppTypes.AssetCard | null {
+    const assetId = `${this.selectedSupplyAssetId ?? ''}`.trim();
+    if (!assetId) {
+      return null;
+    }
+    return this.ownedAssets.assetCards.find(card => card.id === assetId) ?? null;
+  }
+
+  protected assetRequestListSubtitle(): string {
+    return 'Requests and assignments with time-based availability';
+  }
+
+  protected selectedSupplySummaryPending(): number {
+    return this.supplyPendingRequests().reduce((sum, request) => sum + this.supplyRequestQuantity(request), 0);
+  }
+
+  protected selectedSupplyTotalQuantity(): number {
+    const asset = this.selectedSupplyAsset();
+    return asset ? AssetCardBuilder.quantityValue(asset) : 0;
+  }
+
+  protected supplyPendingRequests(): AppTypes.AssetMemberRequest[] {
+    return (this.selectedSupplyAsset()?.requests ?? [])
+      .filter(request => request.status === 'pending' && !this.isAssignedSupplyRequest(request));
+  }
+
+  protected supplyBorrowedRequests(): AppTypes.AssetMemberRequest[] {
+    return (this.selectedSupplyAsset()?.requests ?? [])
+      .filter(request => request.status === 'accepted' && !this.isAssignedSupplyRequest(request));
+  }
+
+  protected supplyAssignedRequests(): AppTypes.AssetMemberRequest[] {
+    return (this.selectedSupplyAsset()?.requests ?? [])
+      .filter(request => this.isAssignedSupplyRequest(request));
+  }
+
+  protected supplyRequestQuantity(request: AppTypes.AssetMemberRequest): number {
+    const raw = Number(request.booking?.quantity);
+    return Number.isFinite(raw) && raw > 0 ? Math.trunc(raw) : 1;
+  }
+
+  protected supplyRequestReservationLabel(request: AppTypes.AssetMemberRequest): string {
+    const quantityLabel = this.supplyRequestQuantityLabel(request);
+    if (this.isAssignedSupplyRequest(request)) {
+      return `Assigned ${quantityLabel}`;
+    }
+    if (request.status === 'accepted') {
+      return `Borrowed ${quantityLabel}`;
+    }
+    return `Borrow request for ${quantityLabel}`;
+  }
+
+  protected supplyRequestEventLabel(request: AppTypes.AssetMemberRequest): string {
+    return [
+      `${request.booking?.eventTitle ?? ''}`.trim(),
+      `${request.booking?.subEventTitle ?? ''}`.trim()
+    ].filter(Boolean).join(' · ');
+  }
+
+  protected supplyRequestScheduleLabel(request: AppTypes.AssetMemberRequest): string {
+    const start = this.parseIsoDate(request.booking?.startAtIso);
+    const end = this.parseIsoDate(request.booking?.endAtIso);
+    if (start && end) {
+      return this.formatSupplyRequestDateRange(start, end);
+    }
+    const timeframe = `${request.booking?.timeframe ?? ''}`.trim();
+    if (timeframe) {
+      return timeframe;
+    }
+    return `${request.booking?.slotLabel ?? ''}`.trim();
+  }
+
+  protected supplyRequestDisplayNote(request: AppTypes.AssetMemberRequest): string {
+    const note = `${request.note ?? ''}`.trim();
+    if (!note || this.isSystemSupplyRequestNote(note)) {
+      return '';
+    }
+    return note;
+  }
+
+  protected supplyRequestInventoryLabel(request: AppTypes.AssetMemberRequest): string {
+    const quantityLabel = this.supplyRequestQuantityLabel(request);
+    const total = this.selectedSupplyTotalQuantity();
+    if (total <= 0) {
+      return `${quantityLabel} requested. No quantity configured.`;
+    }
+    const remaining = this.selectedSupplyRemainingQuantityForRequest(request);
+    if (remaining < 0) {
+      return `${quantityLabel} requested. ${Math.abs(remaining)} over the limit for this time.`;
+    }
+    return `${quantityLabel} requested. ${Math.max(0, remaining)} left for this time.`;
+  }
+
+  protected supplyRequestInventoryBadgeLabel(request: AppTypes.AssetMemberRequest): string {
+    const quantityLabel = this.supplyRequestQuantityLabel(request);
+    const total = this.selectedSupplyTotalQuantity();
+    if (total <= 0) {
+      return `${quantityLabel} / no qty`;
+    }
+    const remaining = this.selectedSupplyRemainingQuantityForRequest(request);
+    if (remaining < 0) {
+      return `${quantityLabel} / ${Math.abs(remaining)} over`;
+    }
+    return `${quantityLabel} / ${Math.max(0, remaining)} left`;
+  }
+
+  protected supplyRequestInventoryState(request: AppTypes.AssetMemberRequest): 'available' | 'empty' | 'over' | 'unset' {
+    const total = this.selectedSupplyTotalQuantity();
+    if (total <= 0) {
+      return 'unset';
+    }
+    const remaining = this.selectedSupplyRemainingQuantityForRequest(request);
+    if (remaining < 0) {
+      return 'over';
+    }
+    if (remaining === 0) {
+      return 'empty';
+    }
+    return 'available';
+  }
+
+  protected supplyRequestStatusLabel(request: AppTypes.AssetMemberRequest): string {
+    if (this.isAssignedSupplyRequest(request)) {
+      return 'Assigned';
+    }
+    return request.status === 'accepted' ? 'Borrowed' : 'Pending';
+  }
+
+  protected toggleSupplyRequestActionMenu(request: AppTypes.AssetMemberRequest, event: Event): void {
+    event.stopPropagation();
+    if (request.status !== 'pending' || this.isAssignedSupplyRequest(request)) {
+      return;
+    }
+    if (this.supplyRequestActionMenu?.id === request.id) {
+      this.supplyRequestActionMenu = null;
+      return;
+    }
+    this.supplyRequestActionMenu = {
+      id: request.id,
+      openUp: this.shouldOpenInlineItemMenuUp(event)
+    };
+  }
+
+  protected isSupplyRequestActionMenuOpen(request: AppTypes.AssetMemberRequest): boolean {
+    return this.supplyRequestActionMenu?.id === request.id;
+  }
+
+  protected isSupplyRequestActionMenuOpenUp(request: AppTypes.AssetMemberRequest): boolean {
+    return this.supplyRequestActionMenu?.id === request.id && this.supplyRequestActionMenu.openUp;
+  }
+
+  protected isSupplyRequestBusy(request: AppTypes.AssetMemberRequest, action: AppTypes.AssetRequestAction): boolean {
+    return this.supplyRequestBusyKey === `${request.id}:${action}`;
+  }
+
+  protected async approveSupplyRequest(request: AppTypes.AssetMemberRequest, event: Event): Promise<void> {
+    event.stopPropagation();
+    const asset = this.selectedSupplyAsset();
+    if (!asset || request.status !== 'pending') {
+      return;
+    }
+    this.supplyRequestActionMenu = null;
+    this.supplyRequestBusyKey = `${request.id}:accept`;
+    try {
+      await this.ownedAssets.applyAssetRequestAction(asset.id, request.id, 'accept');
+    } finally {
+      this.supplyRequestBusyKey = '';
+    }
+  }
+
+  protected async rejectSupplyRequest(request: AppTypes.AssetMemberRequest, event: Event): Promise<void> {
+    event.stopPropagation();
+    const asset = this.selectedSupplyAsset();
+    if (!asset) {
+      return;
+    }
+    this.supplyRequestActionMenu = null;
+    this.supplyRequestBusyKey = `${request.id}:remove`;
+    try {
+      await this.ownedAssets.applyAssetRequestAction(asset.id, request.id, 'remove');
+    } finally {
+      this.supplyRequestBusyKey = '';
+    }
+  }
+
+  protected supplyRequestEmptyLabel(): string {
+    if (this.selectedSupplyTotalQuantity() <= 0) {
+      return 'No quantity entered yet.';
+    }
+    return 'No borrow or assignment activity yet.';
+  }
+
+  private isAssignedSupplyRequest(request: AppTypes.AssetMemberRequest): boolean {
+    return request.requestKind === 'manual';
+  }
+
+  private selectedSupplyRemainingQuantityForRequest(request: AppTypes.AssetMemberRequest): number {
+    const overlappingCommitted = (this.selectedSupplyAsset()?.requests ?? [])
+      .filter(other => this.isCommittedSupplyRequest(other))
+      .filter(other => this.isSupplyRequestTimeOverlap(request, other))
+      .reduce((sum, other) => sum + this.supplyRequestQuantity(other), 0);
+    const pendingCurrentQuantity = this.isCommittedSupplyRequest(request) ? 0 : this.supplyRequestQuantity(request);
+    return this.selectedSupplyTotalQuantity() - overlappingCommitted - pendingCurrentQuantity;
+  }
+
+  private isCommittedSupplyRequest(request: AppTypes.AssetMemberRequest): boolean {
+    return request.status === 'accepted' || this.isAssignedSupplyRequest(request);
+  }
+
+  private isSupplyRequestTimeOverlap(
+    left: AppTypes.AssetMemberRequest,
+    right: AppTypes.AssetMemberRequest
+  ): boolean {
+    if (left.id === right.id) {
+      return true;
+    }
+    const leftStart = this.parseIsoDateMs(left.booking?.startAtIso);
+    const leftEnd = this.parseIsoDateMs(left.booking?.endAtIso);
+    const rightStart = this.parseIsoDateMs(right.booking?.startAtIso);
+    const rightEnd = this.parseIsoDateMs(right.booking?.endAtIso);
+    if (leftStart !== null && leftEnd !== null && rightStart !== null && rightEnd !== null) {
+      return leftStart < rightEnd && rightStart < leftEnd;
+    }
+    const leftSlotKey = `${left.booking?.slotKey ?? ''}`.trim();
+    const rightSlotKey = `${right.booking?.slotKey ?? ''}`.trim();
+    if (leftSlotKey && rightSlotKey) {
+      return leftSlotKey === rightSlotKey;
+    }
+    const leftWindow = this.requestTimeWindowKey(left);
+    const rightWindow = this.requestTimeWindowKey(right);
+    if (leftWindow && rightWindow) {
+      return leftWindow === rightWindow;
+    }
+    return true;
+  }
+
+  private requestTimeWindowKey(request: AppTypes.AssetMemberRequest): string {
+    return [
+      `${request.booking?.eventId ?? ''}`.trim(),
+      `${request.booking?.subEventId ?? ''}`.trim(),
+      `${request.booking?.slotLabel ?? ''}`.trim(),
+      `${request.booking?.timeframe ?? ''}`.trim()
+    ].filter(Boolean).join('|');
+  }
+
+  private supplyRequestQuantityLabel(request: AppTypes.AssetMemberRequest): string {
+    const quantity = this.supplyRequestQuantity(request);
+    return quantity === 1 ? '1 item' : `${quantity} items`;
+  }
+
+  private isSystemSupplyRequestNote(note: string): boolean {
+    return note === 'Awaiting owner confirmation.'
+      || note === 'Approved and synced with the plan.'
+      || note === 'Reserved and assigned by the owner.'
+      || note === 'Borrow request approved by the owner.';
+  }
+
+  private formatSupplyRequestDateRange(start: Date, end: Date): string {
+    const sameDay = start.toDateString() === end.toDateString();
+    if (sameDay) {
+      return `${this.formatSupplyRequestDate(start)} · ${this.formatSupplyRequestTime(start)} - ${this.formatSupplyRequestTime(end)}`;
+    }
+    return `${this.formatSupplyRequestDate(start)} ${this.formatSupplyRequestTime(start)} - ${this.formatSupplyRequestDate(end)} ${this.formatSupplyRequestTime(end)}`;
+  }
+
+  private formatSupplyRequestDate(value: Date): string {
+    return value.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric'
+    });
+  }
+
+  private formatSupplyRequestTime(value: Date): string {
+    return value.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit'
+    });
+  }
+
+  private parseIsoDate(value: string | null | undefined): Date | null {
+    const normalized = `${value ?? ''}`.trim();
+    if (!normalized) {
+      return null;
+    }
+    const parsed = new Date(normalized);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  private parseIsoDateMs(value: string | null | undefined): number | null {
+    return this.parseIsoDate(value)?.getTime() ?? null;
   }
 
   protected openOwnedAssetMap(card: AppTypes.AssetCard): void {
@@ -307,6 +623,10 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
 
   protected closeAssetPopup(event?: Event): void {
     event?.stopPropagation();
+    if (this.showSupplyRequestList) {
+      this.closeSupplyRequestList();
+      return;
+    }
     const host = this.assetPopup.host();
     if (host?.isSubEventAssetAssignPopup()) {
       host.closeSubEventAssetAssignPopup(false);
@@ -350,6 +670,16 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
       this.showMobileAssetFilterPicker = false;
       return;
     }
+    if (this.showSupplyRequestList) {
+      keyboardEvent.preventDefault();
+      keyboardEvent.stopPropagation();
+      if (this.supplyRequestActionMenu) {
+        this.supplyRequestActionMenu = null;
+        return;
+      }
+      this.closeSupplyRequestList();
+      return;
+    }
     if (this.ownedAssets.pendingAssetDeleteCardId) {
       return;
     }
@@ -368,6 +698,9 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
     }
     if (!target.closest('.popup-mobile-filter-picker')) {
       this.showMobileAssetFilterPicker = false;
+    }
+    if (!target.closest('.asset-supply-request-menu-anchor')) {
+      this.supplyRequestActionMenu = null;
     }
     if (target.closest('.item-action-menu') || target.closest('.experience-action-menu-trigger')) {
       return;
@@ -562,7 +895,32 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
       ...card,
       routes: [...(card.routes ?? [])],
       pricing: card.pricing ? PricingBuilder.clonePricingConfig(card.pricing) : undefined,
-      requests: card.requests.map(request => ({ ...request }))
+      requests: card.requests.map(request => ({
+        ...request,
+        booking: request.booking
+          ? {
+              ...request.booking,
+              acceptedPolicyIds: [...(request.booking.acceptedPolicyIds ?? [])]
+            }
+          : null
+      }))
     };
+  }
+
+  private shouldOpenInlineItemMenuUp(event: Event): boolean {
+    if (this.isMobileAssetFilterSheetViewport() || typeof window === 'undefined') {
+      return false;
+    }
+    const trigger = event.currentTarget as HTMLElement | null;
+    const actionWrap = (trigger?.closest('.asset-supply-request-menu-anchor') as HTMLElement | null) ?? trigger;
+    if (!actionWrap) {
+      return false;
+    }
+    const rect = actionWrap.getBoundingClientRect();
+    const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+    const estimatedMenuHeight = 220;
+    const spaceBelow = viewportHeight - rect.bottom;
+    const spaceAbove = rect.top;
+    return spaceBelow < estimatedMenuHeight && spaceAbove > spaceBelow;
   }
 }
