@@ -1,8 +1,10 @@
 import type { LocationCoordinates } from './location.interface';
 import type {
   EventRecordKind,
+  EventPolicyItem,
   EventSlotOccurrence,
   EventSlotTemplate,
+  PricingConfig,
   SubEventFormItem,
   SubEventsDisplayMode
 } from '../models';
@@ -39,6 +41,7 @@ export interface InvitationMenuItem {
   sourceLink?: string;
   location?: string;
   locationCoordinates?: LocationCoordinates;
+  policies?: EventPolicyItem[];
 }
 
 export interface EventMenuItem {
@@ -68,6 +71,7 @@ export interface EventMenuItem {
   capacityMax?: number | null;
   autoInviter?: boolean;
   frequency?: string;
+  pricing?: PricingConfig | null;
   slotsEnabled?: boolean;
   slotTemplates?: EventSlotTemplate[];
   parentEventId?: string | null;
@@ -79,6 +83,7 @@ export interface EventMenuItem {
   topics?: string[];
   subEvents?: SubEventFormItem[];
   subEventsDisplayMode?: SubEventsDisplayMode;
+  policies?: EventPolicyItem[];
   rating?: number;
   relevance?: number;
   affinity?: number;
@@ -112,6 +117,7 @@ export interface HostingMenuItem {
   capacityMax?: number | null;
   autoInviter?: boolean;
   frequency?: string;
+  pricing?: PricingConfig | null;
   slotsEnabled?: boolean;
   slotTemplates?: EventSlotTemplate[];
   parentEventId?: string | null;
@@ -123,6 +129,7 @@ export interface HostingMenuItem {
   topics?: string[];
   subEvents?: SubEventFormItem[];
   subEventsDisplayMode?: SubEventsDisplayMode;
+  policies?: EventPolicyItem[];
   rating?: number;
   relevance?: number;
   affinity?: number;

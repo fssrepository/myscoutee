@@ -108,6 +108,52 @@
             [query]="eventExploreSmartListQuery"
             (stateChange)="onEventExploreSmartListStateChange($event)"
           ></app-smart-list>
+          @if (checkoutDraftCount() > 0) {
+            <div class="event-explore-basket">
+              @if (showCheckoutDraftBasket) {
+                <section class="event-explore-basket-panel">
+                  <header class="event-explore-basket-panel__head">
+                    <div>
+                      <strong>Basket</strong>
+                      <span>{{ checkoutDraftCount() }} unfinished {{ checkoutDraftCount() === 1 ? 'checkout' : 'checkouts' }}</span>
+                    </div>
+                    <button type="button" class="event-explore-basket-panel__close" (click)="toggleCheckoutDraftBasket($event)" aria-label="Close basket">
+                      <mat-icon>close</mat-icon>
+                    </button>
+                  </header>
+                  <div class="event-explore-basket-panel__list">
+                    @for (entry of checkoutDraftEntries(); track entry.draft.sourceId) {
+                      <article class="event-explore-basket-item">
+                        <div class="event-explore-basket-item__copy">
+                          <strong>{{ entry.draft.eventTitle }}</strong>
+                          <span>{{ entry.draft.eventTimeframe || entry.record?.timeframe || 'Pending checkout' }}</span>
+                          <span>{{ entry.draft.lineItems.length }} {{ entry.draft.lineItems.length === 1 ? 'item' : 'items' }} · {{ entry.draft.currency }} {{ entry.draft.totalAmount.toFixed(2) }}</span>
+                        </div>
+                        <div class="event-explore-basket-item__actions">
+                          <button type="button" class="event-explore-basket-item__btn" (click)="continueCheckoutDraft(entry.draft, $event)">
+                            Continue
+                          </button>
+                          <button type="button" class="event-explore-basket-item__btn event-explore-basket-item__btn--clear" (click)="clearCheckoutDraft(entry.draft, $event)">
+                            Clear
+                          </button>
+                        </div>
+                      </article>
+                    }
+                  </div>
+                </section>
+              }
+              <button
+                type="button"
+                class="event-explore-basket-fab"
+                [class.is-open]="showCheckoutDraftBasket"
+                (click)="toggleCheckoutDraftBasket($event)"
+                aria-label="Open basket"
+              >
+                <mat-icon>shopping_basket</mat-icon>
+                <span class="event-explore-basket-fab__count">{{ checkoutDraftCount() }}</span>
+              </button>
+            </div>
+          }
           <ng-template #eventExploreItemTemplate let-record let-groupLabel="groupLabel">
             <app-info-card
               [card]="eventExploreInfoCard(record, groupLabel)"

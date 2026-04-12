@@ -1,0 +1,103 @@
+<section class="pricing-slot-panel">
+  <div class="pricing-slot-panel__head">
+    <div class="pricing-slot-panel__copy">
+      <h4>{{ title }}</h4>
+      <p>{{ description }}</p>
+    </div>
+    <button
+      type="button"
+      class="pricing-slot-panel__toggle"
+      [class.is-on]="enabled"
+      [class.is-off]="!enabled"
+      [disabled]="readOnly"
+      (click)="toggleEnabled()"
+      >
+      <mat-icon>{{ enabled ? 'toggle_on' : 'toggle_off' }}</mat-icon>
+      <span>{{ enabled ? 'On' : 'Off' }}</span>
+    </button>
+  </div>
+
+  @if (slotCatalog.length === 0) {
+    <div class="pricing-slot-panel__empty">
+      <mat-icon>schedule</mat-icon>
+      <span>Add slots to unlock slot-specific pricing.</span>
+    </div>
+  } @else if (!enabled) {
+    <div class="pricing-slot-panel__empty pricing-slot-panel__empty--muted">
+      <mat-icon>grid_view</mat-icon>
+      <span>Global pricing will apply to every slot until overrides are enabled.</span>
+    </div>
+  } @else {
+    <div class="pricing-slot-panel__cards">
+      @for (override of workingOverrides; track trackByOverride($index, override)) {
+        <article class="pricing-slot-panel__card">
+          <div class="pricing-slot-panel__card-head">
+            <span class="pricing-slot-panel__card-title">{{ override.label || ('Slot ' + ($index + 1)) }}</span>
+            <button
+              type="button"
+              class="pricing-slot-panel__remove"
+              [disabled]="readOnly"
+              (click)="removeOverride($index)"
+              aria-label="Remove slot price override"
+              >
+              <mat-icon>close</mat-icon>
+            </button>
+          </div>
+          <div class="pricing-slot-panel__card-grid">
+            <label class="pricing-slot-panel__field">
+              <span>Slot</span>
+              <div class="pricing-slot-panel__select-shell">
+                <mat-select
+                  [ngModel]="override.slotId ?? ''"
+                  (ngModelChange)="onSlotIdChange($index, $event)"
+                  [disabled]="readOnly"
+                  [panelWidth]="null"
+                  disableOptionCentering
+                  panelClass="selector-options-panel profile-bottom-sheet-panel"
+                  >
+                  @for (slot of availableSlotsFor(override); track slot.id) {
+                    <mat-option [value]="slot.id">
+                      {{ slot.label }}
+                    </mat-option>
+                  }
+                </mat-select>
+              </div>
+            </label>
+            <label class="pricing-slot-panel__field">
+              <span>Price</span>
+              <div class="pricing-slot-panel__money-field">
+                <span class="pricing-slot-panel__money-prefix">{{ currencySymbol(currency) }}</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  [ngModel]="override.price ?? ''"
+                  (ngModelChange)="onPriceChange($index, $event)"
+                  [disabled]="readOnly"
+                  placeholder="0"
+                  />
+                <span class="pricing-slot-panel__money-code">{{ currency }}</span>
+              </div>
+            </label>
+          </div>
+          <p class="pricing-slot-panel__meta">{{ slotWindowLabel(override) }}</p>
+        </article>
+      }
+      @if (workingOverrides.length === 0) {
+        <div class="pricing-slot-panel__empty">
+          <mat-icon>event_available</mat-icon>
+          <span>No slot overrides yet. Add the first one below.</span>
+        </div>
+      }
+    </div>
+    <button
+      type="button"
+      class="pricing-slot-panel__add"
+      [disabled]="readOnly || !hasRemainingSlots()"
+      (click)="addOverride()"
+      >
+      <mat-icon>add</mat-icon>
+      <span>{{ hasRemainingSlots() ? 'Add Slot Price Override' : 'All Slots Already Customized' }}</span>
+    </button>
+  }
+</section>

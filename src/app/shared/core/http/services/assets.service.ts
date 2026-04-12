@@ -17,6 +17,10 @@ export class HttpAssetsService {
     return this.assetsRepository.queryOwnedAssetsByUser(userId);
   }
 
+  async queryVisibleAssets(query: AppTypes.AssetExploreQuery): Promise<AppTypes.AssetCard[]> {
+    return this.assetsRepository.queryVisibleAssets(query);
+  }
+
   async saveOwnedAsset(userId: string, asset: AppTypes.AssetCard): Promise<AppTypes.AssetCard> {
     return this.assetsRepository.saveOwnedAsset(userId, asset);
   }

@@ -5,7 +5,10 @@ import type { ActivityMemberEntry } from './activity-member.model';
 import type { ActivitiesChatContextFilter, ChatChannelType } from './chat.model';
 import type { ActivitiesEventScope, ActivitiesPrimaryFilter, ActivitiesSecondaryFilter, ActivitiesView, ActivityListRow, HostingPublicationFilter, RateFilterKey } from './activities-ui.model';
 import type {
+  EventCheckoutAssetSelection,
   EventBlindMode,
+  EventCheckoutSession,
+  EventPolicyItem,
   EventEditorTarget,
   EventRecordKind,
   EventSlotOccurrence,
@@ -13,6 +16,7 @@ import type {
   EventVisibility,
   SubEventFormItem
 } from './event.model';
+import type { PricingConfig } from './pricing.model';
 
 export type SubEventAssetAssignmentIds = Partial<Record<AssetType, string[]>>;
 export type SubEventAssetCardsByType = Partial<Record<AssetType, AssetCard[]>>;
@@ -132,6 +136,7 @@ export interface ActivitiesEventSyncPayload {
   autoInviter?: boolean;
   frequency?: string;
   ticketing?: boolean;
+  pricing?: PricingConfig | null;
   slotsEnabled?: boolean;
   slotTemplates?: EventSlotTemplate[];
   parentEventId?: string | null;
@@ -151,12 +156,27 @@ export interface ActivitiesEventSyncPayload {
   location?: string;
   locationCoordinates?: LocationCoordinates;
   sourceLink?: string;
+  policies?: EventPolicyItem[];
   acceptedMemberUserIds?: string[];
   pendingMemberUserIds?: string[];
   topics?: string[];
   subEvents?: SubEventFormItem[];
   subEventsDisplayMode?: import('./event.model').SubEventsDisplayMode;
 }
+
+export interface EventCheckoutRequest {
+  userId: string;
+  sourceId: string;
+  slotSourceId?: string | null;
+  optionalSubEventIds: string[];
+  assetSelections: EventCheckoutAssetSelection[];
+  acceptedPolicyIds: string[];
+  lineItems: import('./event.model').EventCheckoutLineItem[];
+  totalAmount: number;
+  currency: string;
+}
+
+export type { EventCheckoutSession };
 
 export interface EventChatSession {
   item: ChatMenuItem;

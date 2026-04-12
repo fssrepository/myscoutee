@@ -1,5 +1,7 @@
 import type { ActivityMemberRole } from './activity-member.model';
 import type { ActivityListRow } from './activities-ui.model';
+import type { EventPolicyItem, EventVisibility } from './event.model';
+import type { PricingConfig } from './pricing.model';
 
 export type AssetType = 'Car' | 'Accommodation' | 'Supplies';
 export type AssetFilterType = AssetType | 'Ticket';
@@ -7,6 +9,25 @@ export type SubEventResourceFilter = 'Members' | AssetType;
 export type AssetRequestAction = 'accept' | 'remove';
 export type AssetRequestStatus = 'pending' | 'accepted';
 export type AssetTicketOrder = 'upcoming' | 'past';
+export type AssetRequestKind = 'manual' | 'borrow';
+export type AssetCategory = string;
+
+export interface AssetHireRequestBooking {
+  eventId?: string;
+  eventTitle?: string;
+  subEventId?: string;
+  subEventTitle?: string;
+  slotKey?: string;
+  slotLabel?: string;
+  timeframe?: string;
+  startAtIso?: string;
+  endAtIso?: string;
+  quantity?: number | null;
+  totalAmount?: number | null;
+  currency?: string | null;
+  acceptedPolicyIds?: string[];
+  paymentSessionId?: string | null;
+}
 
 export interface AssetMemberRequest {
   id: string;
@@ -16,6 +37,9 @@ export interface AssetMemberRequest {
   gender: 'woman' | 'man';
   status: AssetRequestStatus;
   note: string;
+  requestKind?: AssetRequestKind;
+  requestedAtIso?: string;
+  booking?: AssetHireRequestBooking | null;
 }
 
 export interface AssetCard {
@@ -23,13 +47,29 @@ export interface AssetCard {
   type: AssetType;
   title: string;
   subtitle: string;
+  category?: AssetCategory;
   city: string;
   capacityTotal: number;
+  quantity: number;
   details: string;
   imageUrl: string;
   sourceLink: string;
   routes?: string[];
+  topics?: string[];
+  policies?: EventPolicyItem[];
+  pricing?: PricingConfig | null;
+  visibility?: EventVisibility;
+  ownerUserId?: string;
+  ownerName?: string;
   requests: AssetMemberRequest[];
+}
+
+export interface AssetExploreQuery {
+  userId: string;
+  type: AssetType;
+  category?: AssetCategory;
+  startAtIso?: string;
+  endAtIso?: string;
 }
 
 export interface AssetSourcePreview {

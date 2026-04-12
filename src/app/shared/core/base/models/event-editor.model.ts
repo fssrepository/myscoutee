@@ -1,4 +1,5 @@
-import type { EventBlindMode, EventSlotTemplate, EventVisibility, SubEventsDisplayMode } from './event.model';
+import type { EventBlindMode, EventPolicyItem, EventSlotTemplate, EventVisibility, SubEventsDisplayMode } from './event.model';
+import type { PricingConfig } from './pricing.model';
 
 export interface EventEditorSubEventGroupItem {
   id?: string;
@@ -23,9 +24,12 @@ export interface EventEditorSubEventItem {
   groups?: EventEditorSubEventGroupItem[];
   membersPending?: number;
   membersAccepted?: number;
+  pricing?: PricingConfig | null;
   carsPending?: number;
   accommodationPending?: number;
   suppliesPending?: number;
+  slotStartOffsetMinutes?: number;
+  slotDurationMinutes?: number;
   [key: string]: unknown;
 }
 
@@ -42,6 +46,8 @@ export interface EventEditorDraftForm {
   blindMode: EventBlindMode;
   autoInviter: boolean;
   ticketing: boolean;
+  pricing: PricingConfig;
+  policies: EventPolicyItem[];
   topics: string[];
   slotsEnabled: boolean;
   slotTemplates: EventSlotTemplate[];

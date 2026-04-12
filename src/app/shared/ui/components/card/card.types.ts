@@ -159,6 +159,7 @@ export interface InfoCardData {
   mediaStart?: InfoCardOverlayAction | null;
   mediaEnd?: InfoCardOverlayAction | null;
   menuActions?: readonly InfoCardMenuAction[];
+  menuBadgeCount?: number | null;
   clickable?: boolean;
   state?: CardRenderState;
 }

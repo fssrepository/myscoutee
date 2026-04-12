@@ -3,6 +3,9 @@ import { Injectable, inject } from '@angular/core';
 import { AppMemoryDb } from '../../../core/base';
 import type {
   ActivitiesEventSyncPayload,
+  EventCheckoutAssetSelection,
+  EventCheckoutRequest,
+  EventCheckoutSession,
   EventFeedbackPersistedState,
   EventFeedbackNoteRequestDto,
   EventFeedbackStateDto,
@@ -27,6 +30,7 @@ import type {
 export class DemoEventsService extends DemoRouteDelayService {
   private static readonly EVENTS_ROUTE = '/activities/events';
   private static readonly EVENTS_EXPLORE_ROUTE = '/activities/events/explore';
+  private static readonly EVENTS_CHECKOUT_ROUTE = '/activities/events/checkout';
   private readonly eventsRepository = inject(DemoEventsRepository);
   private readonly memoryDb = inject(AppMemoryDb);
 
@@ -214,12 +218,31 @@ export class DemoEventsService extends DemoRouteDelayService {
   async requestJoin(
     userId: string,
     sourceId: string,
-    options: { slotSourceId?: string | null } = {}
+    options: {
+      slotSourceId?: string | null;
+      optionalSubEventIds?: string[];
+      assetSelections?: EventCheckoutAssetSelection[];
+      acceptedPolicyIds?: string[];
+      paymentSessionId?: string | null;
+    } = {}
   ): Promise<DemoEventRecord | null> {
     await this.waitForRouteDelay(DemoEventsService.EVENTS_ROUTE);
     const record = this.eventsRepository.requestJoin(userId, sourceId, options.slotSourceId ?? null);
     await this.memoryDb.flushToIndexedDb();
     return record;
+  }
+
+  async createCheckoutSession(request: EventCheckoutRequest): Promise<EventCheckoutSession | null> {
+    await this.waitForRouteDelay(DemoEventsService.EVENTS_CHECKOUT_ROUTE);
+    return {
+      id: `checkout-${Date.now()}`,
+      provider: 'dummy',
+      mode: 'dummy',
+      status: 'approved',
+      amount: Math.max(0, Number(request.totalAmount) || 0),
+      currency: request.currency?.trim() || 'USD',
+      paymentUrl: null
+    };
   }
 
   countTicketItemsByUser(userId: string): number {

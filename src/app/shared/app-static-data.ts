@@ -4,6 +4,7 @@ import type {
   ActivitiesSecondaryFilter,
   ActivitiesView,
   AssetFilterType,
+  AssetCategory,
   AssetType,
   DetailPrivacy,
   EventBlindMode,
@@ -406,6 +407,11 @@ const ASSET_TYPE_LABELS: Record<AssetFilterType, string> = {
   Accommodation: 'Property',
   Supplies: 'Supplies',
   Ticket: 'Ticket'
+};
+const ASSET_CATEGORY_OPTIONS_BY_TYPE: Record<AssetType, AssetCategory[]> = {
+  Car: ['Ride'],
+  Accommodation: ['Stay'],
+  Supplies: ['Camping', 'Cooking', 'Games', 'Audio', 'Sports', 'Safety', 'Decor', 'Tech']
 };
 const ACTIVITIES_PRIMARY_FILTERS: Array<{ key: ActivitiesPrimaryFilter; label: string; icon: string }> = [
   { key: 'rates', label: 'Rates', icon: 'star' },
@@ -869,6 +875,7 @@ export const APP_STATIC_DATA = {
   assetTypeOptions: ASSET_TYPE_OPTIONS,
   assetFilterOptions: ASSET_FILTER_OPTIONS,
   assetTypeLabels: ASSET_TYPE_LABELS,
+  assetCategoryOptionsByType: ASSET_CATEGORY_OPTIONS_BY_TYPE,
   activityRatingScale: ACTIVITY_RATING_SCALE,
   calendarWeekdayLabels: CALENDAR_WEEKDAY_LABELS,
   eventVisibilityOptions: EVENT_VISIBILITY_OPTIONS,

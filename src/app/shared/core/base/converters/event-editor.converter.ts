@@ -1,8 +1,31 @@
 import { AppUtils } from '../../../app-utils';
 import type * as AppTypes from '../models';
 import type { DemoEventRecord } from '../../demo/models/events.model';
+import { PricingBuilder } from '../builders/pricing.builder';
 
 export class EventEditorConverter {
+  static normalizeEventEditorPolicies(value: unknown): AppTypes.EventPolicyItem[] {
+    if (!Array.isArray(value)) {
+      return [];
+    }
+    return value
+      .map((entry, index) => {
+        const item = (typeof entry === 'object' && entry !== null) ? entry as Record<string, unknown> : {};
+        const title = `${item['title'] ?? item['name'] ?? ''}`.trim();
+        const description = `${item['description'] ?? item['text'] ?? item['body'] ?? ''}`.trim();
+        if (!title && !description) {
+          return null;
+        }
+        return {
+          id: `${item['id'] ?? `policy-${index + 1}`}`.trim() || `policy-${index + 1}`,
+          title: title || `Policy ${index + 1}`,
+          description,
+          required: item['required'] !== false
+        } satisfies AppTypes.EventPolicyItem;
+      })
+      .filter((item): item is AppTypes.EventPolicyItem => item !== null);
+  }
+
   static normalizeEventEditorTextValue(value: unknown): string {
     return typeof value === 'string' ? value.trim() : '';
   }
@@ -35,6 +58,9 @@ export class EventEditorConverter {
     }
     if (normalized === 'monthly') {
       return 'Monthly';
+    }
+    if (normalized === 'yearly' || normalized === 'annual' || normalized === 'annually') {
+      return 'Yearly';
     }
     return 'One-time';
   }
@@ -91,6 +117,16 @@ export class EventEditorConverter {
     return `${value ?? ''}`.trim().replace(/^#+/, '').toLowerCase();
   }
 
+  static normalizeEventEditorPricing(
+    value: unknown,
+    options: {
+      context?: 'event' | 'asset' | 'subevent';
+      slotCatalog?: readonly AppTypes.PricingSlotReference[];
+    } = {}
+  ): AppTypes.PricingConfig {
+    return PricingBuilder.normalizePricingConfig(value, options);
+  }
+
   static parseEventEditorDateValue(value: unknown): Date | null {
     if (value instanceof Date) {
       return Number.isNaN(value.getTime()) ? null : new Date(value);
@@ -108,6 +144,43 @@ export class EventEditorConverter {
 
     const parsed = new Date(raw.replace(/\//g, '-'));
     return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  static parseEventEditorOverrideDate(value: unknown): Date | null {
+    if (value instanceof Date) {
+      return Number.isNaN(value.getTime()) ? null : new Date(value.getFullYear(), value.getMonth(), value.getDate());
+    }
+
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      const parsedFromNumber = new Date(value);
+      return Number.isNaN(parsedFromNumber.getTime())
+        ? null
+        : new Date(parsedFromNumber.getFullYear(), parsedFromNumber.getMonth(), parsedFromNumber.getDate());
+    }
+
+    const raw = `${value ?? ''}`.trim();
+    if (!raw) {
+      return null;
+    }
+
+    const direct = new Date(raw);
+    if (!Number.isNaN(direct.getTime())) {
+      return new Date(direct.getFullYear(), direct.getMonth(), direct.getDate());
+    }
+
+    const parsed = new Date(`${raw}T00:00`);
+    return Number.isNaN(parsed.getTime()) ? null : new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+  }
+
+  static normalizeEventEditorSlotOverrideDate(value: unknown): string | null {
+    const parsed = this.parseEventEditorOverrideDate(value);
+    if (!parsed) {
+      return null;
+    }
+    const year = parsed.getFullYear();
+    const month = `${parsed.getMonth() + 1}`.padStart(2, '0');
+    const day = `${parsed.getDate()}`.padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
 
   static toEventEditorCapacityInputValue(value: unknown): number | null {
@@ -128,14 +201,29 @@ export class EventEditorConverter {
 
     return value.map((entry, index) => {
       const item = (typeof entry === 'object' && entry !== null) ? entry as Record<string, unknown> : {};
+      const closed = item['closed'] === true;
+      const overrideDate = this.normalizeEventEditorSlotOverrideDate(item['overrideDate'] ?? item['date']);
+      if (closed) {
+        return {
+          id: `${item['id'] ?? `slot-${index + 1}`}`.trim() || `slot-${index + 1}`,
+          startAt: '',
+          endAt: '',
+          overrideDate,
+          closed: true
+        };
+      }
       const startAtDate = this.parseEventEditorDateValue(item['startAt'] ?? item['startDate']);
       const endAtDate = this.parseEventEditorDateValue(item['endAt'] ?? item['endDate']);
       const resolvedStart = startAtDate ?? new Date();
       const resolvedEnd = endAtDate ?? new Date(resolvedStart.getTime() + (60 * 60 * 1000));
+      const startAt = AppUtils.toIsoDateTimeLocal(resolvedStart);
+      const endAt = AppUtils.toIsoDateTimeLocal(resolvedEnd);
       return {
         id: `${item['id'] ?? `slot-${index + 1}`}`.trim() || `slot-${index + 1}`,
-        startAt: AppUtils.toIsoDateTimeLocal(resolvedStart),
-        endAt: AppUtils.toIsoDateTimeLocal(resolvedEnd)
+        startAt,
+        endAt,
+        overrideDate,
+        closed: false
       };
     });
   }
@@ -157,8 +245,11 @@ export class EventEditorConverter {
         title: `${item['title'] ?? resolvedName}`.trim() || resolvedName,
         location: this.normalizeEventEditorLocation(item['location']),
         optional: Boolean(item['optional']),
+        pricing: this.normalizeEventEditorPricing(item['pricing'], { context: 'subevent' }),
         startAt: startAtDate ? AppUtils.toIsoDateTimeLocal(startAtDate) : '',
         endAt: endAtDate ? AppUtils.toIsoDateTimeLocal(endAtDate) : '',
+        slotStartOffsetMinutes: this.toEventEditorCapacityInputValue(item['slotStartOffsetMinutes']) ?? undefined,
+        slotDurationMinutes: this.toEventEditorCapacityInputValue(item['slotDurationMinutes']) ?? undefined,
         groups: groups.map(group => ({ ...(group as Record<string, unknown>) })) as AppTypes.EventEditorSubEventGroupItem[]
       };
     });
@@ -203,6 +294,7 @@ export class EventEditorConverter {
     record: DemoEventRecord,
     target: AppTypes.EventEditorTarget
   ): Record<string, unknown> {
+    const slotTemplates = this.normalizeEventEditorSlotTemplates(record.slotTemplates ?? []);
     return {
       id: record.id,
       avatar: record.creatorInitials,
@@ -221,8 +313,13 @@ export class EventEditorConverter {
       blindMode: record.blindMode,
       autoInviter: record.autoInviter ?? false,
       ticketing: record.ticketing,
+      pricing: this.normalizeEventEditorPricing(record.pricing, {
+        context: 'event',
+        slotCatalog: PricingBuilder.slotCatalogFromEventSlotTemplates(slotTemplates)
+      }),
+      policies: this.normalizeEventEditorPolicies(record.policies),
       slotsEnabled: Boolean(record.slotsEnabled),
-      slotTemplates: this.normalizeEventEditorSlotTemplates(record.slotTemplates ?? []),
+      slotTemplates,
       topics: [...record.topics],
       subEvents: this.normalizeEventEditorSubEvents(record.subEvents ?? []),
       subEventsDisplayMode: record.subEventsDisplayMode,
@@ -263,6 +360,8 @@ export class EventEditorConverter {
       blindMode: 'Open Event',
       autoInviter: false,
       ticketing: Boolean(rowSource?.['ticketing']),
+      pricing: this.normalizeEventEditorPricing(rowSource?.['pricing'], { context: 'event' }),
+      policies: this.normalizeEventEditorPolicies(rowSource?.['policies']),
       slotsEnabled: Boolean(rowSource?.['slotsEnabled']),
       slotTemplates: this.normalizeEventEditorSlotTemplates(rowSource?.['slotTemplates']),
       topics: Array.isArray(rowSource?.['topics']) ? rowSource['topics'] : [],
@@ -298,6 +397,7 @@ export class EventEditorConverter {
     const slotTemplates = this.normalizeEventEditorSlotTemplates(
       sourceEvent['slotTemplates'] ?? sourceEvent['slots'] ?? sourceEvent['slot_templates']
     );
+    const slotCatalog = PricingBuilder.slotCatalogFromEventSlotTemplates(slotTemplates);
 
     return {
       form: {
@@ -313,6 +413,8 @@ export class EventEditorConverter {
         blindMode: this.normalizeEventEditorBlindMode(sourceEvent['blindMode'] ?? sourceEvent['matchingMode']),
         autoInviter: this.normalizeEventEditorAutoInviter(sourceEvent['autoInviter'] ?? sourceEvent['inviteMode']),
         ticketing: this.normalizeEventEditorTicketing(sourceEvent['ticketing'] ?? sourceEvent['ticketType']),
+        pricing: this.normalizeEventEditorPricing(sourceEvent['pricing'], { context: 'event', slotCatalog }),
+        policies: this.normalizeEventEditorPolicies(sourceEvent['policies']),
         slotsEnabled: this.normalizeEventEditorSlotsEnabled(sourceEvent['slotsEnabled']),
         slotTemplates,
         topics: this.normalizeEventEditorTopics(sourceEvent['topics'] ?? sourceEvent['tags']),

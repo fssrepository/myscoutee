@@ -26,11 +26,178 @@
 }
 
 .event-explore-popup {
+  position: relative;
   height: 100%;
   min-height: 0;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
   gap: 0.46rem;
+}
+
+.event-explore-basket {
+  position: absolute;
+  right: 0.75rem;
+  bottom: 0.9rem;
+  z-index: 18;
+  display: grid;
+  gap: 0.6rem;
+  justify-items: end;
+  pointer-events: none;
+}
+
+.event-explore-basket-fab,
+.event-explore-basket-panel,
+.event-explore-basket-panel__close,
+.event-explore-basket-item__btn {
+  pointer-events: auto;
+}
+
+.event-explore-basket-fab {
+  width: 58px;
+  height: 58px;
+  border: 1px solid rgba(201, 145, 54, 0.48);
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(255, 248, 225, 0.99) 0%, rgba(255, 218, 148, 0.99) 100%);
+  color: #8f4d0c;
+  box-shadow: 0 18px 34px rgba(122, 74, 18, 0.24);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  cursor: pointer;
+}
+
+.event-explore-basket-fab.is-open {
+  background: linear-gradient(180deg, rgba(244, 141, 79, 0.99) 0%, rgba(214, 95, 48, 0.99) 100%);
+  color: #fff;
+}
+
+.event-explore-basket-fab .mat-icon {
+  width: 24px;
+  height: 24px;
+  font-size: 24px;
+  line-height: 24px;
+}
+
+.event-explore-basket-fab__count {
+  position: absolute;
+  top: -4px;
+  right: -3px;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #ff8a5f 0%, #e0583f 100%);
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 10px 18px rgba(148, 55, 38, 0.28);
+}
+
+.event-explore-basket-panel {
+  width: min(340px, calc(100vw - 2rem));
+  border-radius: 20px;
+  border: 1px solid rgba(211, 184, 128, 0.84);
+  background: linear-gradient(180deg, rgba(255, 252, 244, 0.99) 0%, rgba(255, 244, 224, 0.98) 100%);
+  box-shadow: 0 22px 46px rgba(82, 54, 22, 0.2);
+  padding: 0.9rem;
+  display: grid;
+  gap: 0.8rem;
+}
+
+.event-explore-basket-panel__head {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.event-explore-basket-panel__head strong {
+  display: block;
+  color: #1f3f68;
+  font-size: 0.98rem;
+}
+
+.event-explore-basket-panel__head span {
+  display: block;
+  margin-top: 0.15rem;
+  color: rgba(31, 63, 104, 0.68);
+  font-size: 0.8rem;
+}
+
+.event-explore-basket-panel__close {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  border: 1px solid rgba(186, 205, 229, 0.88);
+  background: rgba(248, 251, 255, 0.95);
+  color: #4b688b;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.event-explore-basket-panel__close .mat-icon {
+  width: 18px;
+  height: 18px;
+  font-size: 18px;
+  line-height: 18px;
+  margin: 0;
+}
+
+.event-explore-basket-panel__list {
+  display: grid;
+  gap: 0.65rem;
+  max-height: min(46vh, 320px);
+  overflow: auto;
+}
+
+.event-explore-basket-item {
+  border-radius: 16px;
+  border: 1px solid rgba(190, 211, 232, 0.84);
+  background: rgba(255, 255, 255, 0.94);
+  padding: 0.8rem;
+  display: grid;
+  gap: 0.65rem;
+}
+
+.event-explore-basket-item__copy {
+  display: grid;
+  gap: 0.18rem;
+}
+
+.event-explore-basket-item__copy strong {
+  color: #264a73;
+}
+
+.event-explore-basket-item__copy span {
+  color: rgba(39, 72, 109, 0.76);
+  font-size: 0.82rem;
+}
+
+.event-explore-basket-item__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.45rem;
+}
+
+.event-explore-basket-item__btn {
+  min-height: 34px;
+  padding: 0 0.8rem;
+  border-radius: 999px;
+  border: 1px solid rgba(182, 202, 226, 0.88);
+  background: linear-gradient(180deg, rgba(249, 252, 255, 0.98) 0%, rgba(236, 244, 252, 0.98) 100%);
+  color: #2f5d96;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.event-explore-basket-item__btn--clear {
+  color: #a04844;
 }
 
 .event-explore-header-controls {
@@ -304,5 +471,14 @@
 
   .event-explore-topic-filter-panel {
     width: min(340px, calc(100vw - 1.6rem));
+  }
+
+  .event-explore-basket {
+    right: 0.55rem;
+    bottom: 0.7rem;
+  }
+
+  .event-explore-basket-panel {
+    width: min(320px, calc(100vw - 1.2rem));
   }
 }

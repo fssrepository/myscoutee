@@ -5,6 +5,7 @@ import type {
   InvitationMenuItem
 } from '../interfaces/activity-feed.interface';
 import type { DemoEventRecord } from '../../demo/models/events.model';
+import { PricingBuilder } from '../builders/pricing.builder';
 
 export function buildActivityEventRows(records: readonly DemoEventRecord[]): AppTypes.ActivityListRow[] {
   return records.map(record => toActivityEventRow(record));
@@ -174,6 +175,7 @@ function toEventMenuItem(record: DemoEventRecord): EventMenuItem {
     capacityMax: record.capacityMax,
     autoInviter: record.autoInviter,
     frequency: record.frequency,
+    pricing: record.pricing ? PricingBuilder.clonePricingConfig(record.pricing) : undefined,
     slotsEnabled: record.slotsEnabled,
     slotTemplates: (record.slotTemplates ?? []).map(item => ({ ...item })),
     parentEventId: record.parentEventId ?? null,
@@ -183,7 +185,14 @@ function toEventMenuItem(record: DemoEventRecord): EventMenuItem {
     nextSlot: record.nextSlot ? { ...record.nextSlot } : null,
     upcomingSlots: (record.upcomingSlots ?? []).map(item => ({ ...item })),
     ticketing: record.ticketing,
+    policies: (record.policies ?? []).map(item => ({ ...item })),
     topics: [...record.topics],
+    subEvents: (record.subEvents ?? []).map(item => ({
+      ...item,
+      groups: Array.isArray(item.groups) ? item.groups.map(group => ({ ...group })) : [],
+      pricing: item.pricing ? PricingBuilder.clonePricingConfig(item.pricing) : undefined
+    })),
+    subEventsDisplayMode: record.subEventsDisplayMode,
     rating: record.rating,
     relevance: record.relevance,
     published: record.published
@@ -213,6 +222,7 @@ function toHostingMenuItem(record: DemoEventRecord): HostingMenuItem {
     capacityMax: record.capacityMax,
     autoInviter: record.autoInviter,
     frequency: record.frequency,
+    pricing: record.pricing ? PricingBuilder.clonePricingConfig(record.pricing) : undefined,
     slotsEnabled: record.slotsEnabled,
     slotTemplates: (record.slotTemplates ?? []).map(item => ({ ...item })),
     parentEventId: record.parentEventId ?? null,
@@ -222,7 +232,14 @@ function toHostingMenuItem(record: DemoEventRecord): HostingMenuItem {
     nextSlot: record.nextSlot ? { ...record.nextSlot } : null,
     upcomingSlots: (record.upcomingSlots ?? []).map(item => ({ ...item })),
     ticketing: record.ticketing,
+    policies: (record.policies ?? []).map(item => ({ ...item })),
     topics: [...record.topics],
+    subEvents: (record.subEvents ?? []).map(item => ({
+      ...item,
+      groups: Array.isArray(item.groups) ? item.groups.map(group => ({ ...group })) : [],
+      pricing: item.pricing ? PricingBuilder.clonePricingConfig(item.pricing) : undefined
+    })),
+    subEventsDisplayMode: record.subEventsDisplayMode,
     rating: record.rating,
     relevance: record.relevance,
     published: record.published,
@@ -245,6 +262,7 @@ function toInvitationMenuItem(record: DemoEventRecord): InvitationMenuItem {
     imageUrl: record.imageUrl,
     sourceLink: record.sourceLink,
     location: record.location,
-    locationCoordinates: record.locationCoordinates ?? undefined
+    locationCoordinates: record.locationCoordinates ?? undefined,
+    policies: (record.policies ?? []).map(item => ({ ...item }))
   };
 }
