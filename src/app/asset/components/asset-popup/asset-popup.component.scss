@@ -839,12 +839,13 @@
 .asset-popup .asset-supply-request-copy {
   min-width: 0;
   display: grid;
-  gap: 0.14rem;
+  gap: 0.2rem;
 }
 
 .asset-popup .asset-supply-request-copy strong {
   color: #23446d;
-  font-size: 0.95rem;
+  font-size: 0.98rem;
+  line-height: 1.2;
 }
 
 .asset-popup .asset-supply-request-copy span,
@@ -853,6 +854,20 @@
   color: rgba(25, 44, 69, 0.74);
   font-size: 0.8rem;
   line-height: 1.42;
+}
+
+.asset-popup .asset-supply-request-event {
+  color: #355884;
+  font-size: 0.83rem;
+  font-weight: 700;
+  line-height: 1.38;
+}
+
+.asset-popup .asset-supply-request-schedule {
+  color: rgba(35, 68, 109, 0.82);
+  font-size: 0.79rem;
+  font-weight: 500;
+  line-height: 1.38;
 }
 
 .asset-popup .asset-supply-request-side {

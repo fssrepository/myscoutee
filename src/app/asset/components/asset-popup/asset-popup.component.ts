@@ -522,16 +522,16 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
   private formatSupplyRequestDateRange(start: Date, end: Date): string {
     const sameDay = start.toDateString() === end.toDateString();
     if (sameDay) {
-      return `${this.formatSupplyRequestDate(start)} · ${this.formatSupplyRequestTime(start)} - ${this.formatSupplyRequestTime(end)}`;
+      return `${this.formatSupplyRequestDate(start)} ${this.formatSupplyRequestTime(start)} - ${this.formatSupplyRequestTime(end)}`;
     }
     return `${this.formatSupplyRequestDate(start)} ${this.formatSupplyRequestTime(start)} - ${this.formatSupplyRequestDate(end)} ${this.formatSupplyRequestTime(end)}`;
   }
 
   private formatSupplyRequestDate(value: Date): string {
-    return value.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric'
-    });
+    const year = value.getFullYear();
+    const month = value.toLocaleDateString('en-US', { month: 'short' });
+    const day = `${value.getDate()}`.padStart(2, '0');
+    return `${year} ${month} ${day}`;
   }
 
   private formatSupplyRequestTime(value: Date): string {
