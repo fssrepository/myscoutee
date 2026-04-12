@@ -2,8 +2,20 @@ import type * as AppTypes from '../models';
 import type { DemoEventRecord } from '../../demo/models/events.model';
 import { AppUtils } from '../../../app-utils';
 import { EventEditorConverter } from '../converters/event-editor.converter';
+import { PricingBuilder } from './pricing.builder';
 
 export class EventEditorBuilder {
+  static cloneEventEditorPolicies(
+    items: readonly AppTypes.EventPolicyItem[]
+  ): AppTypes.EventPolicyItem[] {
+    return items.map(item => ({
+      id: `${item.id ?? ''}`.trim(),
+      title: `${item.title ?? ''}`.trim(),
+      description: `${item.description ?? ''}`.trim(),
+      required: item.required !== false
+    })).filter(item => item.id || item.title || item.description);
+  }
+
   static buildCreatedEventEditorId(
     target: AppTypes.EventEditorTarget,
     timestampMs = Date.now()
@@ -16,7 +28,8 @@ export class EventEditorBuilder {
   ): AppTypes.EventEditorSubEventItem[] {
     return items.map(item => ({
       ...item,
-      groups: (item.groups ?? []).map(group => ({ ...group }))
+      groups: (item.groups ?? []).map(group => ({ ...group })),
+      pricing: item.pricing ? PricingBuilder.clonePricingConfig(item.pricing) : undefined
     }));
   }
 
@@ -26,7 +39,9 @@ export class EventEditorBuilder {
     return items.map(item => ({
       id: `${item.id ?? ''}`.trim(),
       startAt: `${item.startAt ?? ''}`.trim(),
-      endAt: `${item.endAt ?? ''}`.trim()
+      endAt: `${item.endAt ?? ''}`.trim(),
+      overrideDate: EventEditorConverter.normalizeEventEditorSlotOverrideDate(item.overrideDate),
+      closed: item.closed === true
     }));
   }
 
@@ -114,6 +129,9 @@ export class EventEditorBuilder {
         endAt: `${item.endAt ?? ''}`.trim(),
         location: EventEditorConverter.normalizeEventEditorLocation(item.location),
         optional: Boolean(item.optional),
+        pricing: item.pricing
+          ? PricingBuilder.compactPricingConfig(item.pricing, { context: 'subevent', allowSlotFeatures: false })
+          : undefined,
         capacityMin,
         capacityMax,
         tournamentGroupCount: Number.isFinite(Number(rawItem['tournamentGroupCount']))
@@ -175,6 +193,12 @@ export class EventEditorBuilder {
           : undefined,
         suppliesCapacityMax: Number.isFinite(Number(rawItem['suppliesCapacityMax']))
           ? Math.max(0, Math.trunc(Number(rawItem['suppliesCapacityMax'])))
+          : undefined,
+        slotStartOffsetMinutes: Number.isFinite(Number(rawItem['slotStartOffsetMinutes']))
+          ? Math.max(0, Math.trunc(Number(rawItem['slotStartOffsetMinutes'])))
+          : undefined,
+        slotDurationMinutes: Number.isFinite(Number(rawItem['slotDurationMinutes']))
+          ? Math.max(0, Math.trunc(Number(rawItem['slotDurationMinutes'])))
           : undefined
       };
     });
@@ -184,6 +208,15 @@ export class EventEditorBuilder {
     items: readonly AppTypes.EventSlotTemplate[]
   ): AppTypes.EventSlotTemplate[] {
     return items.map((item, index) => {
+      if (item.closed === true) {
+        return {
+          id: `${item.id ?? `slot-${index + 1}`}`.trim() || `slot-${index + 1}`,
+          startAt: '',
+          endAt: '',
+          overrideDate: EventEditorConverter.normalizeEventEditorSlotOverrideDate(item.overrideDate),
+          closed: true
+        };
+      }
       const normalizedStart = `${item.startAt ?? ''}`.trim();
       const parsedStart = EventEditorConverter.parseEventEditorDateValue(normalizedStart) ?? new Date();
       const normalizedEnd = `${item.endAt ?? ''}`.trim();
@@ -191,16 +224,34 @@ export class EventEditorBuilder {
       const parsedEnd = parsedEndRaw.getTime() <= parsedStart.getTime()
         ? new Date(parsedStart.getTime() + (60 * 60 * 1000))
         : parsedEndRaw;
+      const overrideDate = EventEditorConverter.normalizeEventEditorSlotOverrideDate(item.overrideDate);
+      const startAt = EventEditorConverter.parseEventEditorDateValue(normalizedStart)
+        ? normalizedStart
+        : AppUtils.toIsoDateTimeLocal(parsedStart);
+      const endAt = EventEditorConverter.parseEventEditorDateValue(normalizedEnd)
+        ? normalizedEnd
+        : AppUtils.toIsoDateTimeLocal(parsedEnd);
       return {
         id: `${item.id ?? `slot-${index + 1}`}`.trim() || `slot-${index + 1}`,
-        startAt: EventEditorConverter.parseEventEditorDateValue(normalizedStart)
-          ? normalizedStart
-          : AppUtils.toIsoDateTimeLocal(parsedStart),
-        endAt: EventEditorConverter.parseEventEditorDateValue(normalizedEnd)
-          ? normalizedEnd
-          : AppUtils.toIsoDateTimeLocal(parsedEnd)
+        startAt,
+        endAt,
+        overrideDate,
+        closed: false
       };
     });
+  }
+
+  static buildPersistedEventEditorPolicies(
+    items: readonly AppTypes.EventPolicyItem[]
+  ): AppTypes.EventPolicyItem[] {
+    return items
+      .map((item, index) => ({
+        id: `${item.id ?? `policy-${index + 1}`}`.trim() || `policy-${index + 1}`,
+        title: `${item.title ?? ''}`.trim() || `Policy ${index + 1}`,
+        description: `${item.description ?? ''}`.trim(),
+        required: item.required !== false
+      }))
+      .filter(item => item.title.length > 0 || item.description.length > 0);
   }
 
   static buildEventEditorTimeframeLabel(startAt: string, endAt: string, frequency: string): string {
@@ -261,8 +312,22 @@ export class EventEditorBuilder {
       autoInviter: params.form.autoInviter,
       frequency: params.form.frequency,
       ticketing: params.form.ticketing,
-      slotsEnabled: params.form.slotsEnabled,
-      slotTemplates: this.buildPersistedEventEditorSlotTemplates(params.form.slotTemplates),
+      pricing: PricingBuilder.compactPricingConfig(
+        PricingBuilder.syncSlotOverrides(
+          params.form.pricing,
+          PricingBuilder.slotCatalogFromEventSlotTemplates(this.buildPersistedEventEditorSlotTemplates(params.form.slotTemplates))
+        ),
+        {
+          context: 'event',
+          slotCatalog: PricingBuilder.slotCatalogFromEventSlotTemplates(this.buildPersistedEventEditorSlotTemplates(params.form.slotTemplates)),
+          allowSlotFeatures: true
+        }
+      ),
+      policies: this.buildPersistedEventEditorPolicies(params.form.policies),
+      slotsEnabled: EventEditorConverter.normalizeEventEditorFrequency(params.form.frequency) !== 'One-time',
+      slotTemplates: EventEditorConverter.normalizeEventEditorFrequency(params.form.frequency) !== 'One-time'
+        ? this.buildPersistedEventEditorSlotTemplates(params.form.slotTemplates)
+        : [],
       visibility: params.form.visibility,
       blindMode: params.form.blindMode,
       published: params.target === 'hosting'

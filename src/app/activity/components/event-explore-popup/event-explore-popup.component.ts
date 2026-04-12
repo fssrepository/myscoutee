@@ -42,6 +42,8 @@ import {
   type SmartListStateChange
 } from '../../../shared/ui';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
+import { EventCheckoutDraftService, type EventCheckoutDraft } from '../../../shared/ui/services/event-checkout-draft.service';
+import { EventCheckoutDialogService } from '../../../shared/ui/services/event-checkout-dialog.service';
 import { NavigatorService } from '../../../navigator';
 import type { DemoEventRecord } from '../../../shared/core/demo/models/events.model';
 import { resolveCurrentRouteDelayMs } from '../../../shared/core/base/services/route-delay.service';
@@ -69,6 +71,8 @@ export class EventExplorePopupComponent {
   private readonly usersService = inject(UsersService);
   protected readonly navigatorService = inject(NavigatorService);
   private readonly confirmationDialogService = inject(ConfirmationDialogService);
+  private readonly eventCheckoutDraftService = inject(EventCheckoutDraftService);
+  private readonly eventCheckoutDialogService = inject(EventCheckoutDialogService);
   private readonly appCtx = inject(AppContext);
   private readonly popupCtx = inject(AppPopupContext);
   private readonly activitiesContext = inject(ActivitiesPopupStateService);
@@ -88,6 +92,7 @@ export class EventExplorePopupComponent {
   protected showViewPicker = false;
   protected showTopicPicker = false;
   protected slotPickerRecord: DemoEventRecord | null = null;
+  protected showCheckoutDraftBasket = false;
   protected eventExploreOrder: AppTypes.EventExploreOrder = 'upcoming';
   protected eventExploreView: AppTypes.EventExploreView = 'day';
   protected eventExploreFilterFriendsOnly = false;
@@ -126,7 +131,15 @@ export class EventExplorePopupComponent {
   }
 
   protected readonly eventExploreLoadPage = (query: ListQuery<EventExploreFeedFilters>) =>
-    from(this.activitiesService.loadExplore(query));
+    from(this.activitiesService.loadExplore(query).then(result => {
+      const filteredItems = result.items.filter((record: DemoEventRecord) => !this.hasTrackedMembership(record, this.activeUserId));
+      const hiddenCount = result.items.length - filteredItems.length;
+      return {
+        ...result,
+        items: filteredItems,
+        total: Math.max(0, result.total - hiddenCount)
+      };
+    }));
   protected readonly EventExploreBuilder = EventExploreBuilder;
 
   protected readonly eventExploreSmartListConfig: SmartListConfig<DemoEventRecord, EventExploreFeedFilters> = {
@@ -199,6 +212,13 @@ export class EventExplorePopupComponent {
       }
       this.applyActivitiesEventSync(sync);
     });
+
+    effect(() => {
+      this.eventCheckoutDraftService.drafts();
+      if (this.isOpen) {
+        this.cdr.markForCheck();
+      }
+    });
   }
 
   @HostListener('window:openFeaturePopup', ['$event'])
@@ -224,6 +244,11 @@ export class EventExplorePopupComponent {
     }
     if (this.slotPickerRecord) {
       this.closeEventExploreSlotPicker();
+      return;
+    }
+    if (this.showCheckoutDraftBasket) {
+      this.showCheckoutDraftBasket = false;
+      this.cdr.markForCheck();
       return;
     }
     if (this.showTopicPicker) {
@@ -259,6 +284,9 @@ export class EventExplorePopupComponent {
     if (this.showViewPicker && !target.closest('.event-explore-view-picker')) {
       this.showViewPicker = false;
     }
+    if (this.showCheckoutDraftBasket && !target.closest('.event-explore-basket')) {
+      this.showCheckoutDraftBasket = false;
+    }
     this.cdr.markForCheck();
   }
 
@@ -276,6 +304,7 @@ export class EventExplorePopupComponent {
     this.showOrderPicker = false;
     this.showViewPicker = false;
     this.showTopicPicker = false;
+    this.showCheckoutDraftBasket = false;
     this.slotPickerRecord = null;
     this.closeMembersPopup();
     this.resetHeaderState();
@@ -511,8 +540,8 @@ export class EventExplorePopupComponent {
       });
       return;
     }
-    if (record.slotsEnabled && (record.upcomingSlots?.length ?? 0) > 0) {
-      this.openEventExploreSlotPicker(record);
+    if (this.shouldUseCheckoutFlow(record)) {
+      this.openEventExploreCheckout(record);
       return;
     }
     this.confirmationDialogService.open({
@@ -551,6 +580,53 @@ export class EventExplorePopupComponent {
     }
   }
 
+  protected checkoutDraftCount(): number {
+    return this.checkoutDraftEntries().length;
+  }
+
+  protected checkoutDraftEntries(): Array<{ draft: EventCheckoutDraft; record: DemoEventRecord | null }> {
+    return this.eventCheckoutDraftService.listByUser(this.activeUserId)
+      .map(draft => ({
+        draft,
+        record: this.eventsService.peekKnownItemById(this.activeUserId, draft.sourceId)
+      }));
+  }
+
+  protected toggleCheckoutDraftBasket(event?: Event): void {
+    event?.stopPropagation();
+    this.showCheckoutDraftBasket = !this.showCheckoutDraftBasket;
+    this.cdr.markForCheck();
+  }
+
+  protected async continueCheckoutDraft(
+    draft: EventCheckoutDraft,
+    event?: { stopPropagation?: () => void; preventDefault?: () => void }
+  ): Promise<void> {
+    this.stopDomEvent(event);
+    const record = this.eventsService.peekKnownItemById(this.activeUserId, draft.sourceId)
+      ?? await this.eventsService.queryKnownItemById(this.activeUserId, draft.sourceId);
+    if (!record) {
+      this.eventCheckoutDraftService.clear(this.activeUserId, draft.sourceId);
+      this.confirmationDialogService.openInfo('This checkout draft can no longer be restored.', {
+        title: 'Basket unavailable',
+        confirmTone: 'neutral'
+      });
+      this.cdr.markForCheck();
+      return;
+    }
+    this.showCheckoutDraftBasket = false;
+    this.openEventExploreCheckout(record);
+  }
+
+  protected clearCheckoutDraft(
+    draft: EventCheckoutDraft,
+    event?: { stopPropagation?: () => void; preventDefault?: () => void }
+  ): void {
+    this.stopDomEvent(event);
+    this.eventCheckoutDraftService.clear(this.activeUserId, draft.sourceId);
+    this.cdr.markForCheck();
+  }
+
   protected eventExploreInfoCard(record: DemoEventRecord, groupLabel: string | null): InfoCardData {
     return EventExploreBuilder.buildInfoCard(record, {
       groupLabel,
@@ -578,7 +654,17 @@ export class EventExplorePopupComponent {
       confirmTone: 'accent',
       failureMessage: this.eventExploreJoinFailureMessage(record),
       onConfirm: async () => {
-        await this.submitEventExploreJoinRequest(record, slot.id);
+        await this.submitEventExploreJoinRequest(record, {
+          sourceId: record.id,
+          slotSourceId: slot.id,
+          optionalSubEventIds: [],
+          assetSelections: [],
+          acceptedPolicyIds: [],
+          lineItems: [],
+          totalAmount: 0,
+          currency: record.pricing?.currency ?? 'USD',
+          paymentSessionId: null
+        });
         this.closeEventExploreSlotPicker();
       }
     });
@@ -808,6 +894,35 @@ export class EventExplorePopupComponent {
     return record.ticketing ? 'Unable to book right now.' : 'Unable to send request.';
   }
 
+  private shouldUseCheckoutFlow(record: DemoEventRecord): boolean {
+    if ((record.upcomingSlots?.length ?? 0) > 0) {
+      return true;
+    }
+    if ((record.policies?.length ?? 0) > 0) {
+      return true;
+    }
+    if ((record.subEvents ?? []).some(item => item.optional)) {
+      return true;
+    }
+    return Boolean(record.pricing?.enabled && (Number(record.pricing?.basePrice) || 0) > 0);
+  }
+
+  private openEventExploreCheckout(record: DemoEventRecord): void {
+    this.eventCheckoutDialogService.open({
+      mode: 'join',
+      userId: this.activeUserId,
+      record,
+      title: this.eventExploreJoinDialogTitle(record),
+      subtitle: record.timeframe,
+      confirmLabel: this.eventExploreJoinConfirmLabel(record),
+      busyConfirmLabel: this.eventExploreJoinBusyLabel(record),
+      failureMessage: this.eventExploreJoinFailureMessage(record),
+      onSubmit: (selection) => this.submitEventExploreJoinRequest(record, selection, {
+        skipVisualDelay: true
+      })
+    });
+  }
+
   private openEventExploreSlotPicker(record: DemoEventRecord): void {
     this.slotPickerRecord = record;
     this.showOrderPicker = false;
@@ -816,19 +931,26 @@ export class EventExplorePopupComponent {
     this.cdr.markForCheck();
   }
 
-  private async submitEventExploreJoinRequest(record: DemoEventRecord, slotSourceId: string | null = null): Promise<void> {
+  private async submitEventExploreJoinRequest(
+    record: DemoEventRecord,
+    selection?: AppTypes.EventCheckoutSelection | null,
+    options: {
+      skipVisualDelay?: boolean;
+    } = {}
+  ): Promise<void> {
     const activeUserId = this.activeUserId.trim();
     if (!activeUserId) {
       return;
     }
     const owner = this.eventMembersOwner(record);
-    const loadedMembersPromise = this.activityMembersService.queryMembersByOwner(owner);
     const exitPromise = this.runEventExploreExitTransition(record, () => {
       this.removeVisibleEventExploreRecord(record);
     });
-    const delayPromise = this.waitForEventExploreDelay(this.eventExploreJoinDelayMs);
-    const loadedMembers = await loadedMembersPromise;
-    const existingMembers = loadedMembers.length > 0 ? loadedMembers : this.buildMemberEntries(record);
+    const delayPromise = options.skipVisualDelay
+      ? Promise.resolve()
+      : this.waitForEventExploreDelay(this.eventExploreJoinDelayMs);
+    const peekedMembers = this.activityMembersService.peekMembersByOwner(owner);
+    const existingMembers = peekedMembers.length > 0 ? peekedMembers : this.buildMemberEntries(record);
     const existingEntry = existingMembers.find(member => member.userId === activeUserId);
 
     if (existingEntry) {
@@ -849,10 +971,14 @@ export class EventExplorePopupComponent {
     this.activitiesContext.emitActivitiesEventSync(nextPayload);
 
     try {
-      await Promise.all([exitPromise, delayPromise]);
-      await this.eventsService.requestJoin(activeUserId, record.id, {
-        slotSourceId
+      const requestJoinPromise = this.eventsService.requestJoin(activeUserId, record.id, {
+        slotSourceId: selection?.slotSourceId ?? null,
+        optionalSubEventIds: selection?.optionalSubEventIds ?? [],
+        assetSelections: selection?.assetSelections ?? [],
+        acceptedPolicyIds: selection?.acceptedPolicyIds ?? [],
+        paymentSessionId: selection?.paymentSessionId ?? null
       });
+      await Promise.all([exitPromise, delayPromise, requestJoinPromise]);
       if (this.selectedMembersRecord?.id === record.id) {
         this.selectedMembers = nextMembers;
       }

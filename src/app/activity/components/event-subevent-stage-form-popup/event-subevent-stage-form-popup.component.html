@@ -52,6 +52,12 @@
             <mat-icon>close</mat-icon>
           </button>
         </div>
+        @if (view.timingSummaryMeta || view.timingSummaryTitle) {
+          <div class="subevent-timing-summary" [class.subevent-timing-summary-slot]="view.slotBoundTiming">
+            <mat-icon>{{ view.slotBoundTiming ? 'schedule' : 'event' }}</mat-icon>
+            <span>{{ view.timingSummaryMeta || view.timingSummaryTitle }}</span>
+          </div>
+        }
       </div>
       <section class="experience-form-panel subevent-form-panel" [ngClass]="view.modeClass">
         <div class="experience-form-grid subevent-form-grid" [class.subevent-form-grid-with-insert]="view.showInsertControls">
@@ -131,7 +137,7 @@
             <textarea rows="3" [(ngModel)]="model.description" [class.field-required-invalid]="view.invalidDescription" placeholder="Describe this stage"></textarea>
           </label>
           <label class="event-datetime-label">
-            <span>Start</span>
+            <span>{{ view.startFieldLabel }}</span>
             <div class="event-datetime-row">
               <mat-form-field appearance="outline" class="event-date-field event-date-field-start" subscriptSizing="dynamic">
                 <input matInput [matDatepicker]="subEventStartPicker" [ngModel]="subEventStartDateValue" (ngModelChange)="onStartDateChange($event)" />
@@ -146,7 +152,7 @@
             </div>
           </label>
           <label class="event-datetime-label">
-            <span>End</span>
+            <span>{{ view.endFieldLabel }}</span>
             <div class="event-datetime-row">
               <mat-form-field appearance="outline" class="event-date-field event-date-field-end" subscriptSizing="dynamic">
                 <input matInput [matDatepicker]="subEventEndPicker" [ngModel]="subEventEndDateValue" (ngModelChange)="onEndDateChange($event)" />
@@ -174,6 +180,24 @@
               </button>
             </div>
           </label>
+          @if (model.optional) {
+            <app-pricing-editor
+              class="experience-description-field subevent-pricing-field"
+              [(pricing)]="model.pricing"
+              [context]="'subevent'"
+              [presentation]="'popup-summary'"
+              [allowSlotFeatures]="false"
+              [showAudienceSection]="false"
+              [readOnly]="view.readOnly"
+              [title]="'Optional Pricing'"
+              [subtitle]="'Optional sub events can add a separate charge beyond the main event price without slot-specific rules.'"
+            ></app-pricing-editor>
+          } @else {
+            <div class="experience-description-field subevent-pricing-note">
+              <mat-icon>info</mat-icon>
+              <span>Mandatory sub events are included in the main event price.</span>
+            </div>
+          }
           @if (view.showTournamentFields) {
             <fieldset class="subevent-tournament-fieldset">
               <legend>Stage Rule</legend>

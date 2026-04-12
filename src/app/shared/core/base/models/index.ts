@@ -5,6 +5,7 @@ export * from './activity-resource.model';
 export * from './chat.model';
 export * from './profile.model';
 export * from './event.model';
+export * from './pricing.model';
 export type {
   EventEditorDraftForm,
   EventEditorFormState,

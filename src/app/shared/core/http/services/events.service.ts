@@ -2,8 +2,13 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 
 import { environment } from '../../../../../environments/environment';
+import { PricingBuilder } from '../../../core/base/builders';
+import { RouteDelayService } from '../../../core/base/services/route-delay.service';
 import type {
   ActivitiesEventSyncPayload,
+  EventCheckoutAssetSelection,
+  EventCheckoutRequest,
+  EventCheckoutSession,
   EventFeedbackNoteRequestDto,
   EventFeedbackStateDto,
   EventFeedbackSubmitRequestDto
@@ -35,6 +40,7 @@ interface HttpEventsFilterRequest {
 export class HttpEventsService {
   private readonly http = inject(HttpClient);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
+  private readonly routeDelayService = inject(RouteDelayService);
 
   async queryItemsByUser(userId: string): Promise<DemoEventRecord[]> {
     return this.getRecords('/activities/events', userId);
@@ -217,7 +223,13 @@ export class HttpEventsService {
   async requestJoin(
     userId: string,
     sourceId: string,
-    options: { slotSourceId?: string | null } = {}
+    options: {
+      slotSourceId?: string | null;
+      optionalSubEventIds?: string[];
+      assetSelections?: EventCheckoutAssetSelection[];
+      acceptedPolicyIds?: string[];
+      paymentSessionId?: string | null;
+    } = {}
   ): Promise<DemoEventRecord | null> {
     const normalizedUserId = userId.trim();
     const normalizedSourceId = sourceId.trim();
@@ -230,10 +242,25 @@ export class HttpEventsService {
           userId: normalizedUserId,
           type: 'events',
           sourceId: normalizedSourceId,
-          slotSourceId: options.slotSourceId?.trim() || null
+          slotSourceId: options.slotSourceId?.trim() || null,
+          optionalSubEventIds: [...(options.optionalSubEventIds ?? [])],
+          assetSelections: [...(options.assetSelections ?? [])],
+          acceptedPolicyIds: [...(options.acceptedPolicyIds ?? [])],
+          paymentSessionId: options.paymentSessionId?.trim() || null
         })
         .toPromise();
       return response ? this.cloneRecords([response])[0] ?? null : null;
+    } catch {
+      return null;
+    }
+  }
+
+  async createCheckoutSession(request: EventCheckoutRequest): Promise<EventCheckoutSession | null> {
+    try {
+      await this.routeDelayService.waitForRouteDelay('/activities/events/checkout');
+      return await this.http
+        .post<EventCheckoutSession | null>(`${this.apiBaseUrl}/activities/events/checkout`, request)
+        .toPromise() ?? null;
     } catch {
       return null;
     }
@@ -317,7 +344,17 @@ export class HttpEventsService {
       ...record,
       acceptedMemberUserIds: [...(record.acceptedMemberUserIds ?? [])],
       pendingMemberUserIds: [...(record.pendingMemberUserIds ?? [])],
-      topics: [...(record.topics ?? [])]
+      topics: [...(record.topics ?? [])],
+      pricing: record.pricing ? PricingBuilder.clonePricingConfig(record.pricing) : undefined,
+      policies: (record.policies ?? []).map(item => ({ ...item })),
+      slotTemplates: (record.slotTemplates ?? []).map(item => ({ ...item })),
+      nextSlot: record.nextSlot ? { ...record.nextSlot } : null,
+      upcomingSlots: (record.upcomingSlots ?? []).map(item => ({ ...item })),
+      subEvents: (record.subEvents ?? []).map(item => ({
+        ...item,
+        groups: Array.isArray(item.groups) ? item.groups.map(group => ({ ...group })) : [],
+        pricing: item.pricing ? PricingBuilder.clonePricingConfig(item.pricing) : undefined
+      }))
     }));
   }
 

@@ -112,6 +112,7 @@ export class ActivitiesEventsController {
   private get activityMembersService() { return this.host.activityMembersService; }
   private get cdr() { return this.host.cdr; }
   private get confirmationDialogService() { return this.host.confirmationDialogService; }
+  private get eventCheckoutDialogService() { return this.host.eventCheckoutDialogService; }
   private get eventEditorService() { return this.host.eventEditorService; }
   private get eventItems() { return this.host.eventItems as EventMenuItem[]; }
   private get eventVisibilityById() { return this.host.eventVisibilityById as Record<string, AppTypes.EventVisibility>; }
@@ -372,6 +373,26 @@ export class ActivitiesEventsController {
       this.openActivityRowInEventModule(row, true);
       return;
     }
+    void this.openInvitationApprovalFlow(row);
+  }
+
+  private async openInvitationApprovalFlow(row: AppTypes.ActivityListRow): Promise<void> {
+    const activeUserId = this.activeUser.id.trim();
+    const record = activeUserId ? await this.eventsService.queryKnownItemById(activeUserId, row.id) : null;
+    if (record && this.shouldUseCheckoutFlow(record)) {
+      this.eventCheckoutDialogService.open({
+        mode: 'invitation',
+        userId: activeUserId,
+        record,
+        title: 'Accept invitation?',
+        subtitle: record.timeframe,
+        confirmLabel: 'Accept',
+        busyConfirmLabel: 'Accepting...',
+        failureMessage: 'Unable to accept invitation.',
+        onSubmit: (selection: AppTypes.EventCheckoutSelection) => this.confirmActivityInvitationApproval(row, selection)
+      });
+      return;
+    }
     this.confirmationDialogService.open({
       title: 'Accept invitation?',
       message: row.title,
@@ -496,8 +517,29 @@ export class ActivitiesEventsController {
     this.cdr.markForCheck();
   }
 
-  private async confirmActivityInvitationApproval(row: AppTypes.ActivityListRow): Promise<void> {
-    const syncPayload = await this.buildAcceptedInvitationSyncPayload(row);
+  private shouldUseCheckoutFlow(record: {
+    upcomingSlots?: AppTypes.EventSlotOccurrence[] | null;
+    policies?: AppTypes.EventPolicyItem[] | null;
+    subEvents?: AppTypes.SubEventFormItem[] | null;
+    pricing?: AppTypes.PricingConfig | null;
+  }): boolean {
+    if ((record?.upcomingSlots?.length ?? 0) > 0) {
+      return true;
+    }
+    if ((record?.policies?.length ?? 0) > 0) {
+      return true;
+    }
+    if ((record?.subEvents ?? []).some((item: AppTypes.SubEventFormItem) => item.optional)) {
+      return true;
+    }
+    return Boolean(record?.pricing?.enabled && (Number(record?.pricing?.basePrice) || 0) > 0);
+  }
+
+  private async confirmActivityInvitationApproval(
+    row: AppTypes.ActivityListRow,
+    selection?: AppTypes.EventCheckoutSelection | null
+  ): Promise<void> {
+    const syncPayload = await this.buildAcceptedInvitationSyncPayload(row, selection);
     await Promise.all([
       this.eventsService.syncEventSnapshot(syncPayload),
       this.activityMembersService.syncEventMembersFromEventSnapshot(syncPayload)
@@ -507,7 +549,8 @@ export class ActivitiesEventsController {
   }
 
   private async buildAcceptedInvitationSyncPayload(
-    row: AppTypes.ActivityListRow
+    row: AppTypes.ActivityListRow,
+    selection?: AppTypes.EventCheckoutSelection | null
   ): Promise<Omit<ActivitiesEventSyncPayload, 'syncKey'>> {
     const activeUserId = this.activeUser.id.trim();
     if (!activeUserId) {
@@ -564,6 +607,9 @@ export class ActivitiesEventsController {
       nextAcceptedMembers,
       this.chatCountValue(record?.capacityTotal ?? relatedSource.capacityTotal ?? relatedSource.capacityMax)
     );
+    const selectedSlot = selection?.slotSourceId
+      ? (record?.upcomingSlots ?? []).find((item: AppTypes.EventSlotOccurrence) => item.id === selection.slotSourceId) ?? null
+      : null;
 
     return {
       id: row.id,
@@ -585,6 +631,24 @@ export class ActivitiesEventsController {
       autoInviter: record?.autoInviter ?? relatedSource.autoInviter,
       frequency: record?.frequency ?? relatedSource.frequency,
       ticketing: record?.ticketing ?? relatedSource.ticketing,
+      pricing: record?.pricing ?? relatedSource.pricing,
+      policies: Array.isArray(record?.policies)
+        ? record.policies.map((item: AppTypes.EventPolicyItem) => ({ ...item }))
+        : (Array.isArray(relatedSource.policies) ? relatedSource.policies.map((item: AppTypes.EventPolicyItem) => ({ ...item })) : undefined),
+      slotsEnabled: record?.slotsEnabled ?? relatedSource.slotsEnabled,
+      slotTemplates: Array.isArray(record?.slotTemplates)
+        ? record.slotTemplates.map((item: AppTypes.EventSlotTemplate) => ({ ...item }))
+        : (Array.isArray(relatedSource.slotTemplates) ? relatedSource.slotTemplates.map((item: AppTypes.EventSlotTemplate) => ({ ...item })) : undefined),
+      parentEventId: record?.parentEventId ?? relatedSource.parentEventId,
+      slotTemplateId: record?.slotTemplateId ?? relatedSource.slotTemplateId,
+      generated: record?.generated ?? relatedSource.generated,
+      eventType: record?.eventType ?? relatedSource.eventType,
+      nextSlot: selectedSlot
+        ? { ...selectedSlot }
+        : (record?.nextSlot ? { ...record.nextSlot } : (relatedSource.nextSlot ? { ...relatedSource.nextSlot } : undefined)),
+      upcomingSlots: Array.isArray(record?.upcomingSlots)
+        ? record.upcomingSlots.map((item: AppTypes.EventSlotOccurrence) => ({ ...item }))
+        : (Array.isArray(relatedSource.upcomingSlots) ? relatedSource.upcomingSlots.map((item: AppTypes.EventSlotOccurrence) => ({ ...item })) : undefined),
       visibility: record?.visibility ?? relatedSource.visibility,
       blindMode: record?.blindMode ?? relatedSource.blindMode,
       published: record?.published ?? relatedSource.published ?? true,
