@@ -55,6 +55,7 @@ export class AssetInfoCardBuilder {
   ): InfoCardData {
     const selectMode = options.selectMode === true;
     const selected = options.selected === true;
+    const pendingRequests = card.requests.filter(request => request.status === 'pending').length;
     return {
       rowId: `asset:${card.id}`,
       groupLabel: options.groupLabel ?? null,
@@ -86,6 +87,7 @@ export class AssetInfoCardBuilder {
             interactive: false,
             ariaLabel: null
           },
+      menuBadgeCount: selectMode ? 0 : pendingRequests,
       menuActions: selectMode ? [] : this.ownedAssetMenuActions(card),
       clickable: false
     };
@@ -204,7 +206,16 @@ export class AssetInfoCardBuilder {
 
   private static ownedAssetMenuActions(card: AppTypes.AssetCard): readonly InfoCardMenuAction[] {
     const label = AssetDefaultsBuilder.assetTypeLabel(card.type).toLowerCase();
+    const pendingRequests = card.requests.filter(request => request.status === 'pending').length;
     return [
+      {
+        id: 'requests',
+        label: pendingRequests > 0
+          ? `Borrow requests (${pendingRequests})`
+          : 'Borrow requests',
+        icon: 'inbox',
+        tone: pendingRequests > 0 ? 'warning' : 'default'
+      },
       {
         id: 'edit',
         label: `Edit ${label}`,

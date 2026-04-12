@@ -62,7 +62,14 @@ export class HttpAssetsRepository {
     } catch {
       // Keep optimistic state while concrete endpoint wiring lands.
     }
-    return { ...normalizedAsset, requests: [...normalizedAsset.requests] };
+    return {
+      ...normalizedAsset,
+      routes: [...(normalizedAsset.routes ?? [])],
+      topics: [...(normalizedAsset.topics ?? [])],
+      policies: (normalizedAsset.policies ?? []).map(item => ({ ...item })),
+      pricing: normalizedAsset.pricing ? PricingBuilder.clonePricingConfig(normalizedAsset.pricing) : undefined,
+      requests: normalizedAsset.requests.map(request => ({ ...request }))
+    };
   }
 
   async replaceOwnedAssets(
@@ -156,6 +163,8 @@ export class HttpAssetsRepository {
     return cards.map(card => ({
       ...card,
       routes: [...(card.routes ?? [])],
+      topics: [...(card.topics ?? [])],
+      policies: (card.policies ?? []).map(item => ({ ...item })),
       pricing: card.pricing ? PricingBuilder.clonePricingConfig(card.pricing) : undefined,
       requests: card.requests.map(request => ({ ...request }))
     }));
@@ -189,6 +198,19 @@ export class HttpAssetsRepository {
       routes: Array.isArray(card?.routes)
         ? card.routes.map(route => `${route ?? ''}`.trim()).filter(route => route.length > 0)
         : [],
+      topics: Array.isArray(card?.topics)
+        ? card.topics.map(topic => `${topic ?? ''}`.trim()).filter(topic => topic.length > 0)
+        : [],
+      policies: Array.isArray(card?.policies)
+        ? card.policies
+          .map(item => ({
+            id: `${item?.id ?? ''}`.trim(),
+            title: `${item?.title ?? ''}`.trim(),
+            description: `${item?.description ?? ''}`.trim(),
+            required: item?.required !== false
+          }))
+          .filter(item => item.id || item.title || item.description)
+        : [],
       pricing: PricingBuilder.normalizePricingConfig(card?.pricing, { context: 'asset' }),
       requests: Array.isArray(card?.requests)
         ? card.requests
@@ -216,6 +238,8 @@ export class HttpAssetsRepository {
       next[existingIndex] = {
         ...nextCard,
         routes: [...(nextCard.routes ?? [])],
+        topics: [...(nextCard.topics ?? [])],
+        policies: (nextCard.policies ?? []).map(item => ({ ...item })),
         pricing: nextCard.pricing ? PricingBuilder.clonePricingConfig(nextCard.pricing) : undefined,
         requests: nextCard.requests.map(request => ({ ...request }))
       };
@@ -225,6 +249,8 @@ export class HttpAssetsRepository {
       {
         ...nextCard,
         routes: [...(nextCard.routes ?? [])],
+        topics: [...(nextCard.topics ?? [])],
+        policies: (nextCard.policies ?? []).map(item => ({ ...item })),
         pricing: nextCard.pricing ? PricingBuilder.clonePricingConfig(nextCard.pricing) : undefined,
         requests: nextCard.requests.map(request => ({ ...request }))
       },

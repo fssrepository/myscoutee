@@ -43,6 +43,11 @@ export class AssetFormPopupComponent {
   @Input({ required: true }) refreshAssetFromSourceLink!: () => void | Promise<void>;
   @Input({ required: true }) onAssetImageFileSelected!: (file: File) => void;
   protected showMobileAssetTypePicker = false;
+  protected showPoliciesPopup = false;
+  protected showPolicyEditorPopup = false;
+  protected workingPolicies: AppTypes.EventPolicyItem[] = [];
+  protected workingPolicyDraft: AppTypes.EventPolicyItem = this.createEmptyPolicyDraft();
+  protected editingPolicyDraftIndex: number | null = null;
 
   protected requestClose(): void {
     if (this.isSavePending) {
@@ -56,6 +61,117 @@ export class AssetFormPopupComponent {
       return;
     }
     void this.save();
+  }
+
+  protected openPoliciesPopup(event?: Event): void {
+    event?.preventDefault();
+    event?.stopPropagation();
+    if (this.isSavePending) {
+      return;
+    }
+    this.showPoliciesPopup = true;
+    this.showPolicyEditorPopup = false;
+    this.editingPolicyDraftIndex = null;
+    this.workingPolicyDraft = this.createEmptyPolicyDraft();
+    this.workingPolicies = this.clonePolicies(this.assetForm.policies ?? []);
+  }
+
+  protected closePoliciesPopup(): void {
+    this.showPoliciesPopup = false;
+    this.closePolicyEditor();
+    this.workingPolicies = [];
+  }
+
+  protected openPolicyEditor(index?: number, event?: Event): void {
+    event?.preventDefault();
+    event?.stopPropagation();
+    if (this.isSavePending) {
+      return;
+    }
+    const source = typeof index === 'number'
+      ? this.workingPolicies[index] ?? null
+      : null;
+    this.editingPolicyDraftIndex = typeof index === 'number' ? index : null;
+    this.workingPolicyDraft = source
+      ? {
+          id: source.id?.trim() || `policy-${Date.now()}`,
+          title: source.title ?? '',
+          description: source.description ?? '',
+          required: source.required !== false
+        }
+      : this.createEmptyPolicyDraft();
+    this.showPolicyEditorPopup = true;
+  }
+
+  protected closePolicyEditor(): void {
+    this.showPolicyEditorPopup = false;
+    this.workingPolicyDraft = this.createEmptyPolicyDraft();
+    this.editingPolicyDraftIndex = null;
+  }
+
+  protected savePolicyDraft(): void {
+    if (!this.canSavePolicyDraft() || this.isSavePending) {
+      return;
+    }
+    const nextItem: AppTypes.EventPolicyItem = {
+      id: this.workingPolicyDraft.id?.trim() || `policy-${Date.now()}`,
+      title: this.workingPolicyDraft.title.trim(),
+      description: this.workingPolicyDraft.description.trim(),
+      required: this.workingPolicyDraft.required !== false
+    };
+    if (this.editingPolicyDraftIndex !== null && this.editingPolicyDraftIndex >= 0 && this.editingPolicyDraftIndex < this.workingPolicies.length) {
+      this.workingPolicies = this.workingPolicies.map((item, index) => (
+        index === this.editingPolicyDraftIndex ? nextItem : item
+      ));
+    } else {
+      this.workingPolicies = [...this.workingPolicies, nextItem];
+    }
+    this.syncAssetPoliciesFromWorkingPolicies();
+    this.closePolicyEditor();
+  }
+
+  protected removePolicyDraft(index: number, event?: Event): void {
+    event?.preventDefault();
+    event?.stopPropagation();
+    if (this.isSavePending || index < 0 || index >= this.workingPolicies.length) {
+      return;
+    }
+    this.workingPolicies = this.workingPolicies.filter((_, itemIndex) => itemIndex !== index);
+    if (this.editingPolicyDraftIndex === index) {
+      this.closePolicyEditor();
+    }
+    this.syncAssetPoliciesFromWorkingPolicies();
+  }
+
+  protected policyPopupTitle(): string {
+    return this.editingPolicyDraftIndex === null ? 'Create Policy' : 'Edit Policy';
+  }
+
+  protected policyCardMetaLabel(policy: AppTypes.EventPolicyItem): string {
+    return policy.required !== false ? 'Required approval' : 'Optional policy';
+  }
+
+  protected policyCardPreview(policy: AppTypes.EventPolicyItem): string {
+    const description = policy.description.trim();
+    if (description.length > 0) {
+      return description;
+    }
+    return policy.required !== false
+      ? 'Borrowers must approve this lending policy before sending the request.'
+      : 'Optional lending policy shown during the request flow.';
+  }
+
+  protected policiesCountLabel(): string {
+    const count = this.assetForm.policies?.length ?? 0;
+    return count === 1 ? '1 policy' : `${count} policies`;
+  }
+
+  protected requiredPoliciesCount(): number {
+    return (this.assetForm.policies ?? []).filter(item => item.required !== false).length;
+  }
+
+  protected canSavePolicyDraft(): boolean {
+    return this.workingPolicyDraft.title.trim().length > 0 || this.workingPolicyDraft.description.trim().length > 0;
   }
 
   protected isPropertyAssetForm(): boolean {
@@ -116,5 +232,27 @@ export class AssetFormPopupComponent {
     }
     this.onAssetImageFileSelected(file);
     target.value = '';
+  }
+
+  private syncAssetPoliciesFromWorkingPolicies(): void {
+    this.assetForm.policies = this.clonePolicies(this.workingPolicies);
+  }
+
+  private createEmptyPolicyDraft(): AppTypes.EventPolicyItem {
+    return {
+      id: `policy-${Date.now()}`,
+      title: '',
+      description: '',
+      required: true
+    };
+  }
+
+  private clonePolicies(items: readonly AppTypes.EventPolicyItem[]): AppTypes.EventPolicyItem[] {
+    return items.map(item => ({
+      id: `${item.id ?? ''}`.trim(),
+      title: `${item.title ?? ''}`.trim(),
+      description: `${item.description ?? ''}`.trim(),
+      required: item.required !== false
+    })).filter(item => item.id || item.title || item.description);
   }
 }

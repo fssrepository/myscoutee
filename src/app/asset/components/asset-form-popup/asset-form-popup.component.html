@@ -128,6 +128,45 @@
             [title]="'Asset Pricing'"
             [subtitle]="'Set the default charge for using this asset without event slot-specific pricing controls.'"
           ></app-pricing-editor>
+          <section class="event-policies-panel asset-policies-panel experience-description-field">
+            <div class="event-policies-panel-head">
+              <div class="event-policies-panel-title-wrap">
+                <span class="event-policies-panel-title">
+                  <mat-icon>policy</mat-icon>
+                  <span>Lending Policies</span>
+                </span>
+                <p class="event-policies-panel-subtitle">Add the rules borrowers need to read and approve before borrowing this asset.</p>
+              </div>
+            </div>
+            <div class="event-policies-panel-body">
+              <button
+                type="button"
+                class="event-slots-open-btn event-slots-open-btn-inline"
+                [disabled]="isSavePending"
+                (click)="openPoliciesPopup($event)"
+                >
+                <mat-icon>gavel</mat-icon>
+                <span>Open Policy Setup</span>
+              </button>
+              <div class="event-slots-summary">
+                <section class="event-slots-summary-block">
+                  <span class="event-slots-summary-label">Summary</span>
+                  @if ((assetForm.policies ?? []).length > 0) {
+                    <div class="event-slots-summary-list">
+                      <article class="event-slots-summary-item">
+                        <span class="event-slots-summary-title">{{ policiesCountLabel() }}</span>
+                        <span class="event-slots-summary-meta">
+                          {{ requiredPoliciesCount() }} required · {{ (assetForm.policies?.length ?? 0) - requiredPoliciesCount() }} optional
+                        </span>
+                      </article>
+                    </div>
+                  } @else {
+                    <p class="event-slots-summary-note">No lending policies yet. Add policies if borrowers must review terms before sending the request.</p>
+                  }
+                </section>
+              </div>
+            </div>
+          </section>
           @if (isPropertyAssetForm()) {
             <label class="experience-description-field">
               <span>Location<span class="asset-form-required-marker">*</span></span>
@@ -181,6 +220,93 @@
           </label>
         </div>
       </section>
+
+      @if (showPoliciesPopup) {
+        <div class="event-slots-popup-backdrop" (click)="closePoliciesPopup()"></div>
+        <section class="event-slots-popup event-policies-popup asset-policies-popup" role="dialog" aria-modal="true" aria-label="Lending policy setup">
+          <header class="event-slots-popup-head">
+            <div class="event-slots-popup-copy">
+              <span class="event-slots-popup-title">Policy Setup</span>
+              <span class="event-slots-popup-subtitle">Keep the list compact here. Open a policy to edit the details borrowers need to read and approve.</span>
+            </div>
+            <div class="event-policies-popup-head-controls">
+              <button type="button" class="popup-header-add-btn event-slots-add-btn" [disabled]="isSavePending" (click)="openPolicyEditor(undefined, $event)" aria-label="Add policy">
+                <mat-icon>add</mat-icon>
+              </button>
+              <button type="button" class="event-slots-popup-close" (click)="closePoliciesPopup()" aria-label="Close policy setup">
+                <mat-icon>close</mat-icon>
+              </button>
+            </div>
+          </header>
+
+          <div class="event-slots-popup-body event-policies-popup-body">
+            <div class="event-policies-list event-policies-list-compact">
+              @for (policy of workingPolicies; track policy.id; let i = $index) {
+                <article class="event-policy-list-card" (click)="openPolicyEditor(i, $event)">
+                  <div class="event-policy-list-card-head">
+                    <div class="event-policy-list-card-copy">
+                      <strong>{{ policy.title || ('Policy ' + (i + 1)) }}</strong>
+                      <span>{{ policyCardMetaLabel(policy) }}</span>
+                    </div>
+                    <button type="button" class="event-slot-remove-btn" [disabled]="isSavePending" (click)="removePolicyDraft(i, $event)" aria-label="Remove policy">
+                      <mat-icon>delete</mat-icon>
+                    </button>
+                  </div>
+                  <p>{{ policyCardPreview(policy) }}</p>
+                </article>
+              }
+              @if (workingPolicies.length === 0) {
+                <div class="event-slot-empty-state event-policy-empty-state">
+                  <span>No policies yet.</span>
+                </div>
+              }
+            </div>
+          </div>
+        </section>
+        @if (showPolicyEditorPopup) {
+          <div class="event-policy-editor-backdrop" (click)="closePolicyEditor()"></div>
+          <section class="event-slots-popup event-policy-editor-popup asset-policy-editor-popup" role="dialog" aria-modal="true" aria-label="Edit lending policy">
+            <header class="event-slots-popup-head">
+              <div class="event-slots-popup-copy">
+                <span class="event-slots-popup-title">{{ policyPopupTitle() }}</span>
+                <span class="event-slots-popup-subtitle">Write the lending policy clearly and choose whether borrowers must approve it before sending the request.</span>
+              </div>
+              <div class="event-policies-popup-head-controls">
+                <button
+                  type="button"
+                  class="popup-header-add-btn subevent-leaderboard-save-btn event-policy-header-save-btn"
+                  [class.form-save-invalid]="!canSavePolicyDraft()"
+                  [disabled]="!canSavePolicyDraft() || isSavePending"
+                  (click)="savePolicyDraft()"
+                  aria-label="Save policy"
+                >
+                  <mat-icon>done</mat-icon>
+                </button>
+                <button type="button" class="event-slots-popup-close" (click)="closePolicyEditor()" aria-label="Close policy form">
+                  <mat-icon>close</mat-icon>
+                </button>
+              </div>
+            </header>
+
+            <div class="event-slots-popup-body event-policy-editor-body">
+              <article class="event-policy-card">
+                <label class="event-policy-field">
+                  <span>Title</span>
+                  <input type="text" [(ngModel)]="workingPolicyDraft.title" [readonly]="isSavePending" placeholder="Policy title" />
+                </label>
+                <label class="event-policy-field">
+                  <span>Description</span>
+                  <textarea rows="6" [(ngModel)]="workingPolicyDraft.description" [readonly]="isSavePending" placeholder="Explain the lending policy clearly."></textarea>
+                </label>
+                <label class="event-policy-check">
+                  <input type="checkbox" [(ngModel)]="workingPolicyDraft.required" [disabled]="isSavePending" />
+                  <span>Borrowers must approve this policy</span>
+                </label>
+              </article>
+            </div>
+          </section>
+        }
+      }
     </div>
   </section>
 }

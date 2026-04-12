@@ -13,6 +13,8 @@ export class AssetCardBuilder {
       imageUrl: '',
       sourceLink: '',
       routes: this.normalizeAssetRoutes(type, []),
+      topics: [],
+      policies: [],
       pricing: PricingBuilder.createDefaultPricingConfig('asset')
     };
   }
@@ -63,6 +65,8 @@ export class AssetCardBuilder {
       ...card,
       imageUrl,
       sourceLink,
+      topics: [...(card.topics ?? [])],
+      policies: (card.policies ?? []).map(item => ({ ...item })),
       pricing: PricingBuilder.clonePricingConfig(card.pricing ?? PricingBuilder.createDefaultPricingConfig('asset'))
     };
   }

@@ -204,6 +204,9 @@
           (click)="toggleMenu($event)"
           >
           <mat-icon>{{ menuOpen ? 'close' : 'more_vert' }}</mat-icon>
+          @if ((card?.menuBadgeCount ?? 0) > 0) {
+            <span class="ui-info-card__pending-badge card-badge asset-request-badge">{{ card?.menuBadgeCount }}</span>
+          }
         </button>
         @if (menuOpen) {
           <div

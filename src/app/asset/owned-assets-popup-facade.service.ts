@@ -255,6 +255,8 @@ export class OwnedAssetsPopupFacadeService {
         imageUrl,
         sourceLink,
         routes: AssetCardBuilder.normalizeAssetRoutes(card.type, card.routes),
+        topics: [...(card.topics ?? [])],
+        policies: (card.policies ?? []).map(item => ({ ...item })),
         pricing: PricingBuilder.clonePricingConfig(card.pricing ?? PricingBuilder.createDefaultPricingConfig('asset'))
       };
       this.touchUiState();
@@ -394,6 +396,15 @@ export class OwnedAssetsPopupFacadeService {
         imageUrl,
         sourceLink,
         routes,
+        topics: [...(this.assetForm.topics ?? [])],
+        policies: (this.assetForm.policies ?? [])
+          .map(item => ({
+            id: `${item.id ?? ''}`.trim(),
+            title: `${item.title ?? ''}`.trim(),
+            description: `${item.description ?? ''}`.trim(),
+            required: item.required !== false
+          }))
+          .filter(item => item.id || item.title || item.description),
         pricing: PricingBuilder.compactPricingConfig(
           this.assetForm.pricing ?? PricingBuilder.createDefaultPricingConfig('asset'),
           { context: 'asset', allowSlotFeatures: false }
@@ -706,6 +717,8 @@ export class OwnedAssetsPopupFacadeService {
     this.pendingPersistSnapshot = this.assetCardsRef.map(card => ({
       ...card,
       routes: [...(card.routes ?? [])],
+      topics: [...(card.topics ?? [])],
+      policies: (card.policies ?? []).map(item => ({ ...item })),
       pricing: card.pricing ? PricingBuilder.clonePricingConfig(card.pricing) : undefined,
       requests: card.requests.map(request => ({ ...request }))
     }));
@@ -798,6 +811,13 @@ export class OwnedAssetsPopupFacadeService {
       card.imageUrl,
       card.sourceLink,
       (card.routes ?? []).join('|'),
+      (card.topics ?? []).join('|'),
+      JSON.stringify((card.policies ?? []).map(item => ({
+        id: item.id,
+        title: item.title,
+        description: item.description,
+        required: item.required !== false
+      }))),
       JSON.stringify(card.pricing ?? null),
       card.requests
         .map(request => [

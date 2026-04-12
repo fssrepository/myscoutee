@@ -109,6 +109,8 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
       return {
         ...normalizedAsset,
         routes: [...(normalizedAsset.routes ?? [])],
+        topics: [...(normalizedAsset.topics ?? [])],
+        policies: (normalizedAsset.policies ?? []).map(item => ({ ...item })),
         pricing: normalizedAsset.pricing ? PricingBuilder.clonePricingConfig(normalizedAsset.pricing) : undefined,
         requests: normalizedAsset.requests.map(request => ({ ...request }))
       };
@@ -165,6 +167,8 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
     return normalizedAssets.map(asset => ({
       ...asset,
       routes: [...(asset.routes ?? [])],
+      topics: [...(asset.topics ?? [])],
+      policies: (asset.policies ?? []).map(item => ({ ...item })),
       pricing: asset.pricing ? PricingBuilder.clonePricingConfig(asset.pricing) : undefined,
       requests: asset.requests.map(request => ({ ...request }))
     }));
@@ -276,6 +280,8 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
       imageUrl: record.imageUrl,
       sourceLink: record.sourceLink,
       routes: [...(record.routes ?? [])],
+      topics: [...(record.topics ?? [])],
+      policies: (record.policies ?? []).map(item => ({ ...item })),
       pricing: record.pricing ? PricingBuilder.clonePricingConfig(record.pricing) : undefined,
       requests: record.requests.map(request => ({ ...request }))
     };
