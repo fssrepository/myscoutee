@@ -34,7 +34,20 @@ export class DemoAssetBuilder {
   }
 
   static buildSampleAssetCards(users: readonly DemoUser[]): AppTypes.AssetCard[] {
-    return [
+    void users;
+    const sampleSpecs: Array<{
+      id: string;
+      type: AppTypes.AssetType;
+      title: string;
+      subtitle: string;
+      category: AppTypes.AssetCategory;
+      city: string;
+      capacityTotal: number;
+      quantity: number;
+      details: string;
+      routes: string[];
+      pricingMode: AppTypes.PricingMode;
+    }> = [
       {
         id: 'asset-car-1',
         type: 'Car',
@@ -45,15 +58,8 @@ export class DemoAssetBuilder {
         capacityTotal: 4,
         quantity: 1,
         details: 'Pickup from Downtown at 17:30. Luggage: 2 cabin bags.',
-        imageUrl: this.defaultAssetImage('Car', 'car-1'),
-        sourceLink: this.defaultAssetImage('Car', 'car-1'),
         routes: ['Austin Downtown', 'Round Rock', 'Lake Travis'],
-        pricing: PricingBuilder.createSamplePricingConfig('hybrid'),
-        requests: [
-          this.buildAssetRequest('asset-member-1', 'u4', 'pending', 'Needs one medium suitcase slot.', users),
-          this.buildAssetRequest('asset-member-2', 'u8', 'accepted', 'Can meet at 6th Street.', users),
-          this.buildAssetRequest('asset-member-7', 'u2', 'accepted', 'Travels light with backpack only.', users)
-        ]
+        pricingMode: 'hybrid'
       },
       {
         id: 'asset-car-2',
@@ -65,11 +71,34 @@ export class DemoAssetBuilder {
         capacityTotal: 4,
         quantity: 1,
         details: 'Airport run before midnight, fuel split evenly.',
-        imageUrl: this.defaultAssetImage('Car', 'car-2'),
-        sourceLink: this.defaultAssetImage('Car', 'car-2'),
         routes: ['Austin Airport', 'Domain Northside'],
-        pricing: PricingBuilder.createSamplePricingConfig('demand-based'),
-        requests: [this.buildAssetRequest('asset-member-3', 'u6', 'pending', 'Landing at 22:40.', users)]
+        pricingMode: 'demand-based'
+      },
+      {
+        id: 'asset-car-3',
+        type: 'Car',
+        title: 'Volunteer Crew Van',
+        subtitle: 'Ford Transit · Automatic',
+        category: 'Ride',
+        city: 'Austin',
+        capacityTotal: 7,
+        quantity: 1,
+        details: 'Best for crew transfers and bulky kit runs.',
+        routes: ['Austin Central', 'Expo Grounds', 'River Park'],
+        pricingMode: 'time-based'
+      },
+      {
+        id: 'asset-car-4',
+        type: 'Car',
+        title: 'Summit Transfer Sedan',
+        subtitle: 'Toyota Corolla · Hybrid',
+        category: 'Ride',
+        city: 'Austin',
+        capacityTotal: 4,
+        quantity: 1,
+        details: 'Quiet ride for speaker pickup and return.',
+        routes: ['Austin Station', 'Summit Hotel'],
+        pricingMode: 'fixed'
       },
       {
         id: 'asset-acc-1',
@@ -81,14 +110,8 @@ export class DemoAssetBuilder {
         capacityTotal: 4,
         quantity: 1,
         details: 'Check-in after 15:00. Quiet building, no smoking.',
-        imageUrl: this.defaultAssetImage('Accommodation', 'acc-1'),
-        sourceLink: this.defaultAssetImage('Accommodation', 'acc-1'),
         routes: ['101 South Congress Ave, Austin'],
-        pricing: PricingBuilder.createSamplePricingConfig('time-based'),
-        requests: [
-          this.buildAssetRequest('asset-member-4', 'u3', 'pending', 'Staying for 2 nights.', users),
-          this.buildAssetRequest('asset-member-5', 'u10', 'accepted', 'Can share room.', users)
-        ]
+        pricingMode: 'time-based'
       },
       {
         id: 'asset-acc-2',
@@ -100,11 +123,34 @@ export class DemoAssetBuilder {
         capacityTotal: 2,
         quantity: 1,
         details: 'Ideal for early risers. Parking available.',
-        imageUrl: this.defaultAssetImage('Accommodation', 'acc-2'),
-        sourceLink: this.defaultAssetImage('Accommodation', 'acc-2'),
         routes: ['East 6th Street, Austin'],
-        pricing: PricingBuilder.createSamplePricingConfig('fixed'),
-        requests: [this.buildAssetRequest('asset-member-6', 'u11', 'pending', 'Arrives Friday evening.', users)]
+        pricingMode: 'fixed'
+      },
+      {
+        id: 'asset-acc-3',
+        type: 'Accommodation',
+        title: 'Harbor View Studio',
+        subtitle: 'Studio loft · Self check-in',
+        category: 'Stay',
+        city: 'San Diego',
+        capacityTotal: 2,
+        quantity: 1,
+        details: 'Compact overnight stay close to the venue route.',
+        routes: ['Harbor Drive, San Diego'],
+        pricingMode: 'hybrid'
+      },
+      {
+        id: 'asset-acc-4',
+        type: 'Accommodation',
+        title: 'Riverside Family Flat',
+        subtitle: '3 rooms · Kitchen access',
+        category: 'Stay',
+        city: 'Denver',
+        capacityTotal: 5,
+        quantity: 1,
+        details: 'Good for short host-team overnights with gear.',
+        routes: ['Riverfront District, Denver'],
+        pricingMode: 'demand-based'
       },
       {
         id: 'asset-sup-1',
@@ -116,11 +162,8 @@ export class DemoAssetBuilder {
         capacityTotal: 6,
         quantity: 6,
         details: 'Packed and ready in the garage. Pickup only.',
-        imageUrl: this.defaultAssetImage('Supplies', 'sup-1'),
-        sourceLink: this.defaultAssetImage('Supplies', 'sup-1'),
         routes: [],
-        pricing: PricingBuilder.createSamplePricingConfig('fixed'),
-        requests: []
+        pricingMode: 'fixed'
       },
       {
         id: 'asset-sup-2',
@@ -132,42 +175,107 @@ export class DemoAssetBuilder {
         capacityTotal: 4,
         quantity: 4,
         details: 'Can deliver to venue before 19:00.',
-        imageUrl: this.defaultAssetImage('Supplies', 'sup-2'),
-        sourceLink: this.defaultAssetImage('Supplies', 'sup-2'),
         routes: [],
-        pricing: PricingBuilder.createSamplePricingConfig('fixed'),
-        requests: []
+        pricingMode: 'fixed'
+      },
+      {
+        id: 'asset-sup-3',
+        type: 'Supplies',
+        title: 'Field Kitchen Crate',
+        subtitle: 'Burners + pots + serving tools',
+        category: 'Cooking',
+        city: 'Austin',
+        capacityTotal: 5,
+        quantity: 5,
+        details: 'Built for fast meal prep at outdoor sub-events.',
+        routes: [],
+        pricingMode: 'time-based'
+      },
+      {
+        id: 'asset-sup-4',
+        type: 'Supplies',
+        title: 'PA Speaker Pack',
+        subtitle: 'Mixer + speakers + stands',
+        category: 'Audio',
+        city: 'Austin',
+        capacityTotal: 3,
+        quantity: 3,
+        details: 'Venue handoff includes cable bag and quick setup notes.',
+        routes: [],
+        pricingMode: 'hybrid'
+      },
+      {
+        id: 'asset-sup-5',
+        type: 'Supplies',
+        title: 'Safety Marshal Kit',
+        subtitle: 'Radios + torches + hi-vis gear',
+        category: 'Safety',
+        city: 'Austin',
+        capacityTotal: 8,
+        quantity: 8,
+        details: 'Counted at handoff and best for larger moving groups.',
+        routes: [],
+        pricingMode: 'fixed'
+      },
+      {
+        id: 'asset-sup-6',
+        type: 'Supplies',
+        title: 'Popup Decor Set',
+        subtitle: 'Lanterns + signage + table runners',
+        category: 'Decor',
+        city: 'Austin',
+        capacityTotal: 6,
+        quantity: 6,
+        details: 'Packed by zone so styling the venue stays fast.',
+        routes: [],
+        pricingMode: 'fixed'
+      },
+      {
+        id: 'asset-sup-7',
+        type: 'Supplies',
+        title: 'Trail Repair Tools',
+        subtitle: 'Pumps + patches + multi-tools',
+        category: 'Sports',
+        city: 'Austin',
+        capacityTotal: 5,
+        quantity: 5,
+        details: 'Best for active-day support and quick fixes on site.',
+        routes: [],
+        pricingMode: 'demand-based'
+      },
+      {
+        id: 'asset-sup-8',
+        type: 'Supplies',
+        title: 'Charging Station Tote',
+        subtitle: 'Power banks + strips + cables',
+        category: 'Tech',
+        city: 'Austin',
+        capacityTotal: 7,
+        quantity: 7,
+        details: 'Labelled by connector type for fast check-in and return.',
+        routes: [],
+        pricingMode: 'hybrid'
       }
     ];
-  }
 
-  private static buildAssetRequest(
-    id: string,
-    userId: string,
-    status: AppTypes.AssetRequestStatus,
-    note: string,
-    users: readonly DemoUser[]
-  ): AppTypes.AssetMemberRequest {
-    const user = users.find(item => item.id === userId) ?? users[0] ?? null;
-    if (!user) {
+    return sampleSpecs.map(spec => {
+      const imageUrl = this.defaultAssetImage(spec.type, spec.id);
       return {
-        id,
-        userId,
-        name: 'Unknown User',
-        initials: 'UN',
-        gender: 'man',
-        status,
-        note
+        id: spec.id,
+        type: spec.type,
+        title: spec.title,
+        subtitle: spec.subtitle,
+        category: spec.category,
+        city: spec.city,
+        capacityTotal: spec.capacityTotal,
+        quantity: spec.quantity,
+        details: spec.details,
+        imageUrl,
+        sourceLink: imageUrl,
+        routes: [...spec.routes],
+        pricing: PricingBuilder.createSamplePricingConfig(spec.pricingMode),
+        requests: []
       };
-    }
-    return {
-      id,
-      userId,
-      name: user.name,
-      initials: user.initials,
-      gender: user.gender,
-      status,
-      note
-    };
+    });
   }
 }

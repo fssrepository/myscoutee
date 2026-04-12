@@ -14,8 +14,10 @@ import { of } from 'rxjs';
 
 import {
   CounterBadgePipe,
+  HeaderProgressBarComponent,
   InfoCardComponent,
   SmartListComponent,
+  type HeaderProgressBarConfig,
   type InfoCardData,
   type InfoCardMenuAction,
   type InfoCardMenuActionEvent,
@@ -56,6 +58,20 @@ interface ResourceSmartListFilters {
   contextKey?: string;
 }
 
+type AssetExploreOrder = 'availability' | 'lowest-price' | 'fewest-policies';
+
+type AssetExploreOrderOption = {
+  key: AssetExploreOrder;
+  label: string;
+  icon: string;
+};
+
+const ASSET_EXPLORE_ORDER_OPTIONS: readonly AssetExploreOrderOption[] = [
+  { key: 'availability', label: 'Available first', icon: 'inventory_2' },
+  { key: 'lowest-price', label: 'Lowest price', icon: 'payments' },
+  { key: 'fewest-policies', label: 'Fewest policies', icon: 'policy' }
+] as const;
+
 export interface AssetExplorePopupViewState {
   title: string;
   subtitle: string;
@@ -65,6 +81,8 @@ export interface AssetExplorePopupViewState {
   categoryOptions: readonly AppTypes.AssetCategory[];
   startDate: Date | null;
   endDate: Date | null;
+  windowStartDate: Date | null;
+  windowEndDate: Date | null;
   startTime: string;
   endTime: string;
   loading: boolean;
@@ -114,6 +132,7 @@ export interface EventResourcePopupHost {
   selectAssetExploreCategory(category: AppTypes.AssetCategory, event?: Event): void;
   setAssetExploreDateRange(start: Date | null, end: Date | null): void;
   setAssetExploreTime(edge: 'start' | 'end', value: string): void;
+  assetExploreAvailableQuantity(card: AppTypes.AssetCard): number;
   assetExploreAvailabilityLabel(card: AppTypes.AssetCard): string;
   assetExploreCanBorrow(card: AppTypes.AssetCard): boolean;
   openAssetExploreBorrowDialog(card: AppTypes.AssetCard, event?: Event): void;
@@ -185,6 +204,7 @@ export interface EventResourcePopupHost {
     MatNativeDateModule,
     MatSelectModule,
     MatTimepickerModule,
+    HeaderProgressBarComponent,
     SmartListComponent,
     InfoCardComponent,
     CounterBadgePipe
@@ -203,15 +223,20 @@ export class EventResourcePopupComponent implements DoCheck {
   private lastAssetExploreCardCount = 0;
   private assetExploreListReady = false;
   private assetExploreListVisibleCount = 0;
+  private assetExploreHeaderProgress = 0;
+  private assetExploreHeaderProgressLoading = false;
+  private assetExploreHeaderLoadingProgress = 0;
+  private assetExploreHeaderLoadingOverdue = false;
+  private assetExploreStickyLabel = 'No items';
 
   @Input({ required: true }) host!: EventResourcePopupHost;
 
   protected resourceFilterOpen = false;
   protected showMobileResourceFilterPicker = false;
   protected showQuickActionsMenu = false;
-  protected showAssetExploreCategoryPicker = false;
   protected showAssetExploreOrderPicker = false;
-  protected assetExploreOrder = 'default';
+  protected assetExploreOrder: AssetExploreOrder = 'availability';
+  protected readonly assetExploreOrderOptions = ASSET_EXPLORE_ORDER_OPTIONS;
 
   protected resourceSmartListQuery: Partial<ListQuery<ResourceSmartListFilters>> = {
     filters: {
@@ -290,7 +315,7 @@ export class EventResourcePopupComponent implements DoCheck {
   protected readonly assetExploreSmartListLoadPage: SmartListLoadPage<AppTypes.AssetCard, ResourceSmartListFilters> = (
     query
   ) => {
-    const cards = this.host?.assetExplorePopup?.()?.cards ?? [];
+    const cards = this.assetExploreCardsForView();
     const page = Math.max(0, Math.trunc(Number(query.page) || 0));
     const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 1));
     const start = page * pageSize;
@@ -301,20 +326,24 @@ export class EventResourcePopupComponent implements DoCheck {
   };
 
   protected readonly assetExploreSmartListConfig: SmartListConfig<AppTypes.AssetCard, ResourceSmartListFilters> = {
-    pageSize: 18,
+    pageSize: 10,
     loadingDelayMs: 0,
     loadingWindowMs: 0,
     defaultView: 'list',
+    presentation: 'list',
     headerProgress: {
-      enabled: true
+      enabled: false
     },
     emptyLabel: 'No visible assets right now.',
     emptyDescription: 'Try another date range or category.',
-    showStickyHeader: false,
-    showGroupMarker: () => false,
+    showStickyHeader: true,
+    showGroupMarker: ({ groupIndex, scrollable }) => groupIndex > 0 || scrollable,
+    groupBy: card => this.assetExploreGroupLabel(card),
     listLayout: 'card-grid',
     desktopColumns: 3,
     snapMode: 'none',
+    scrollPaddingTop: '2.6rem',
+    stickyHeaderClass: 'asset-explore-sticky-header',
     containerClass: {
       'experience-card-list': true,
       'assets-card-list': true,
@@ -361,6 +390,7 @@ export class EventResourcePopupComponent implements DoCheck {
           explore.subtitle,
           explore.type,
           explore.category,
+          this.assetExploreOrder,
           explore.startDate?.getTime() ?? 'start',
           explore.endDate?.getTime() ?? 'end',
           explore.startTime,
@@ -381,6 +411,7 @@ export class EventResourcePopupComponent implements DoCheck {
       this.lastAssetExploreCardCount = assetExploreCards.length;
       this.assetExploreListReady = false;
       this.assetExploreListVisibleCount = 0;
+      this.resetAssetExploreHeaderState(Boolean(explore?.loading));
       this.assetExploreSmartListQuery = {
         filters: {
           revision: Date.now(),
@@ -417,12 +448,17 @@ export class EventResourcePopupComponent implements DoCheck {
   protected onAssetExploreSmartListStateChange(
     change: SmartListStateChange<AppTypes.AssetCard, ResourceSmartListFilters>
   ): void {
+    this.assetExploreHeaderProgress = change.progress;
+    this.assetExploreHeaderProgressLoading = change.loading;
+    this.assetExploreHeaderLoadingProgress = change.loadingProgress;
+    this.assetExploreHeaderLoadingOverdue = change.loadingOverdue;
+    this.assetExploreStickyLabel = change.stickyLabel || 'No items';
     this.assetExploreListVisibleCount = change.items.length;
     this.assetExploreListReady = !change.initialLoading;
     if (!this.assetExploreListReady) {
       return;
     }
-    const cards = this.host?.assetExplorePopup?.()?.cards ?? [];
+    const cards = this.assetExploreCardsForView();
     if (change.total !== cards.length) {
       this.syncVisibleAssetExploreCards(cards, change.total);
     }
@@ -509,15 +545,21 @@ export class EventResourcePopupComponent implements DoCheck {
     this.host.selectResourceFilter(filter);
   }
 
-  protected assetExploreInfoCard(card: AppTypes.AssetCard): InfoCardData {
+  protected assetExploreInfoCard(
+    card: AppTypes.AssetCard,
+    options: { groupLabel?: string | null } = {}
+  ): InfoCardData {
     const visibility = card.visibility === 'Friends only'
       ? 'Friends only'
       : card.visibility === 'Invitation only'
         ? 'Invitation only'
         : 'Public';
     const canBorrow = this.host.assetExploreCanBorrow(card);
+    const priceLabel = this.assetExplorePriceLabel(card);
+    const policyLabel = this.assetExplorePolicyLabel(card);
     return {
       rowId: `asset-explore:${card.id}`,
+      groupLabel: options.groupLabel ?? null,
       title: card.title,
       imageUrl: card.imageUrl,
       metaRows: [[
@@ -530,6 +572,10 @@ export class EventResourcePopupComponent implements DoCheck {
         card.ownerName?.trim() || 'Unknown owner',
         visibility
       ].filter(Boolean).join(' · ')],
+      footerChips: [
+        { label: priceLabel },
+        { label: policyLabel }
+      ],
       leadingIcon: {
         icon: visibility === 'Friends only'
           ? 'groups'
@@ -595,6 +641,51 @@ export class EventResourcePopupComponent implements DoCheck {
     this.host.setAssetExploreBorrowDateRange(start, end);
   }
 
+  protected assetExploreHeaderProgressBarConfig(): HeaderProgressBarConfig {
+    return {
+      position: this.assetExploreHeaderProgressLoading
+        ? this.assetExploreHeaderLoadingProgress
+        : this.assetExploreHeaderProgress,
+      state: this.assetExploreHeaderProgressLoading
+        ? (this.assetExploreHeaderLoadingOverdue ? 'loading-overdue' : 'loading')
+        : 'scrolling',
+      placement: 'edge'
+    };
+  }
+
+  protected assetExploreHeaderStickyLabel(): string {
+    return this.assetExploreStickyLabel || 'No items';
+  }
+
+  protected assetExploreCategoryOptionClass(option: AppTypes.AssetCategory): string {
+    if (option === 'Ride') {
+      return this.host.resourceTypeClass('Car');
+    }
+    if (option === 'Stay') {
+      return this.host.resourceTypeClass('Accommodation');
+    }
+    return this.host.resourceTypeClass('Supplies');
+  }
+
+  protected readonly assetExploreDateFilter = (date: Date | null): boolean => {
+    const explore = this.host?.assetExplorePopup?.();
+    if (!date || !explore?.windowStartDate || !explore.windowEndDate) {
+      return false;
+    }
+    const candidate = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+    const min = new Date(
+      explore.windowStartDate.getFullYear(),
+      explore.windowStartDate.getMonth(),
+      explore.windowStartDate.getDate()
+    ).getTime();
+    const max = new Date(
+      explore.windowEndDate.getFullYear(),
+      explore.windowEndDate.getMonth(),
+      explore.windowEndDate.getDate()
+    ).getTime();
+    return candidate >= min && candidate <= max;
+  };
+
   protected onResourceCardMenuAction(card: AppTypes.SubEventResourceCard, event: InfoCardMenuActionEvent): void {
     if (event.actionId === 'join') {
       this.host.join(card, new Event('click'));
@@ -643,26 +734,33 @@ export class EventResourcePopupComponent implements DoCheck {
     this.showMobileResourceFilterPicker = false;
   }
 
-  protected toggleAssetExploreCategoryPicker(event: Event): void {
-    event.stopPropagation();
-    this.showAssetExploreCategoryPicker = !this.showAssetExploreCategoryPicker;
-  }
-
-  protected selectAssetExploreCategoryOption(option: string, event: Event): void {
-    this.showAssetExploreCategoryPicker = false;
-    this.host.selectAssetExploreCategory(option, event);
-  }
-
   protected toggleAssetExploreOrderPicker(event: Event): void {
     event.stopPropagation();
     this.showAssetExploreOrderPicker = !this.showAssetExploreOrderPicker;
   }
 
-  protected selectAssetExploreOrder(order: string, event: Event): void {
+  protected selectAssetExploreOrder(order: AssetExploreOrder, event: Event): void {
     event.stopPropagation();
     this.assetExploreOrder = order;
     this.showAssetExploreOrderPicker = false;
-    // Implementation for ordering would go here when backend supports it
+  }
+
+  protected assetExploreOrderLabel(order: AssetExploreOrder = this.assetExploreOrder): string {
+    return this.assetExploreOrderOptions.find(option => option.key === order)?.label ?? 'Available first';
+  }
+
+  protected assetExploreOrderIcon(order: AssetExploreOrder = this.assetExploreOrder): string {
+    return this.assetExploreOrderOptions.find(option => option.key === order)?.icon ?? 'inventory_2';
+  }
+
+  protected assetExploreOrderClass(order: AssetExploreOrder = this.assetExploreOrder): string {
+    if (order === 'lowest-price') {
+      return 'asset-explore-order-lowest-price';
+    }
+    if (order === 'fewest-policies') {
+      return 'asset-explore-order-fewest-policies';
+    }
+    return 'asset-explore-order-availability';
   }
 
   @HostListener('document:click', ['$event'])
@@ -671,10 +769,7 @@ export class EventResourcePopupComponent implements DoCheck {
     if (!(target instanceof Element)) {
       return;
     }
-    if (this.showAssetExploreCategoryPicker && !target.closest('.asset-explore-category-field')) {
-      this.showAssetExploreCategoryPicker = false;
-    }
-    if (this.showAssetExploreOrderPicker && !target.closest('.asset-explore-order-field')) {
+    if (this.showAssetExploreOrderPicker && !target.closest('.asset-explore-order-picker')) {
       this.showAssetExploreOrderPicker = false;
     }
     if (!target.closest('.popup-mobile-filter-picker')) {
@@ -722,9 +817,130 @@ export class EventResourcePopupComponent implements DoCheck {
       nextVisibleCount = Math.min(cards.length, visibleCount + 1);
     }
 
-    this.assetExploreSmartList.replaceVisibleItems(cards.slice(0, nextVisibleCount), {
-      total: cards.length
+    const orderedCards = this.assetExploreCardsForView(cards);
+    this.assetExploreSmartList.replaceVisibleItems(orderedCards.slice(0, nextVisibleCount), {
+      total: orderedCards.length
     });
+  }
+
+  private resetAssetExploreHeaderState(loading = false): void {
+    this.assetExploreHeaderProgress = 0;
+    this.assetExploreHeaderProgressLoading = loading;
+    this.assetExploreHeaderLoadingProgress = loading ? 0.02 : 0;
+    this.assetExploreHeaderLoadingOverdue = false;
+    this.assetExploreStickyLabel = 'No items';
+  }
+
+  private assetExploreCardsForView(source: readonly AppTypes.AssetCard[] = this.host?.assetExplorePopup?.()?.cards ?? []): AppTypes.AssetCard[] {
+    const cards = [...source];
+    const availability = (card: AppTypes.AssetCard) => this.host.assetExploreAvailableQuantity(card);
+    const price = (card: AppTypes.AssetCard) => this.assetExplorePriceAmount(card);
+    const policyCount = (card: AppTypes.AssetCard) => (card.policies ?? []).length;
+
+    cards.sort((left, right) => {
+      if (this.assetExploreOrder === 'lowest-price') {
+        const priceDelta = price(left) - price(right);
+        if (priceDelta !== 0) {
+          return priceDelta;
+        }
+        const availabilityDelta = availability(right) - availability(left);
+        if (availabilityDelta !== 0) {
+          return availabilityDelta;
+        }
+      } else if (this.assetExploreOrder === 'fewest-policies') {
+        const policyDelta = policyCount(left) - policyCount(right);
+        if (policyDelta !== 0) {
+          return policyDelta;
+        }
+        const availabilityDelta = availability(right) - availability(left);
+        if (availabilityDelta !== 0) {
+          return availabilityDelta;
+        }
+      } else {
+        const availabilityDelta = availability(right) - availability(left);
+        if (availabilityDelta !== 0) {
+          return availabilityDelta;
+        }
+        const priceDelta = price(left) - price(right);
+        if (priceDelta !== 0) {
+          return priceDelta;
+        }
+      }
+      return left.title.localeCompare(right.title)
+        || (left.ownerName ?? '').localeCompare(right.ownerName ?? '')
+        || left.id.localeCompare(right.id);
+    });
+
+    return cards;
+  }
+
+  private assetExploreGroupLabel(card: AppTypes.AssetCard): string {
+    if (this.assetExploreOrder === 'lowest-price') {
+      const amount = this.assetExplorePriceAmount(card);
+      if (amount <= 0) {
+        return 'Free borrow';
+      }
+      if (amount < 20) {
+        return 'Under $20';
+      }
+      if (amount < 40) {
+        return '$20 - $39';
+      }
+      return '$40 and up';
+    }
+    if (this.assetExploreOrder === 'fewest-policies') {
+      const count = (card.policies ?? []).length;
+      if (count <= 0) {
+        return 'No policies';
+      }
+      if (count === 1) {
+        return '1 policy';
+      }
+      return '2+ policies';
+    }
+    const available = this.host.assetExploreAvailableQuantity(card);
+    if (available <= 0) {
+      return 'Booked out';
+    }
+    if (available === 1) {
+      return '1 left';
+    }
+    if (available <= 3) {
+      return '2-3 left';
+    }
+    return '4+ left';
+  }
+
+  private assetExplorePriceAmount(card: AppTypes.AssetCard): number {
+    if (!card.pricing?.enabled) {
+      return 0;
+    }
+    return Math.max(0, Number(card.pricing.basePrice) || 0);
+  }
+
+  private assetExplorePriceLabel(card: AppTypes.AssetCard): string {
+    const amount = this.assetExplorePriceAmount(card);
+    const currency = card.pricing?.currency || 'USD';
+    if (amount <= 0) {
+      return 'Free borrow';
+    }
+    try {
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency,
+        maximumFractionDigits: 0
+      }).format(amount);
+    } catch {
+      return `${currency} ${amount.toFixed(0)}`;
+    }
+  }
+
+  private assetExplorePolicyLabel(card: AppTypes.AssetCard): string {
+    const count = (card.policies ?? []).length;
+    if (count <= 0) {
+      return 'No policy';
+    }
+    return count === 1 ? '1 policy' : `${count} policies`;
   }
 
   protected isMobileResourceFilterSheetViewport(): boolean {

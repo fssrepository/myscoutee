@@ -155,277 +155,13 @@
           ></app-info-card>
         </ng-template>
 
-        @if (host.assetExplorePopup(); as explore) {
-          <section class="experience-form-overlay subevent-form-overlay asset-explore-overlay">
-            <div class="experience-form-overlay-backdrop" (click)="host.closeExplorePopup($event)"></div>
-            <div class="experience-form-popup subevent-form-popup asset-explore-popup">
-              <div class="experience-form-header subevent-group-header">
-                <div class="subevent-group-header-main">
-                  <h3>{{ explore.title }}</h3>
-                  <p class="subevent-group-stage-subtitle">{{ explore.subtitle }}</p>
-                </div>
-                <div class="experience-form-header-controls">
-                  <button type="button" class="experience-form-close-btn" (click)="host.closeExplorePopup($event)" aria-label="Close asset explore">
-                    <mat-icon>close</mat-icon>
-                  </button>
-                </div>
-              </div>
-              <div class="asset-explore-filter-bar">
-                <div class="activities-toolbar event-explore-toolbar">
-                  <div class="profile-status-select-wrap selector-like experience-type-select asset-explore-category-field" [ngClass]="host.resourceTypeClass(explore.type)">
-                    <mat-select
-                      [ngModel]="explore.categoryDisplay"
-                      (ngModelChange)="host.selectAssetExploreCategory($event)"
-                      disableOptionCentering
-                      panelClass="selector-options-panel profile-bottom-sheet-panel asset-type-options-panel"
-                      >
-                      <mat-select-trigger>
-                        <span class="status-option-content">
-                          <mat-icon [class]="host.resourceTypeClass(explore.type)">sell</mat-icon>
-                          <span>{{ explore.categoryDisplay }}</span>
-                        </span>
-                      </mat-select-trigger>
-                      @for (option of explore.categoryOptions; track option) {
-                        <mat-option [value]="option" class="status-option" [ngClass]="host.resourceTypeClass(explore.type)">
-                          <span class="status-option-content">
-                            <mat-icon [class]="host.resourceTypeClass(explore.type)">sell</mat-icon>
-                            <span>{{ option }}</span>
-                          </span>
-                        </mat-option>
-                      }
-                    </mat-select>
-                  </div>
-                  
-                  <div class="profile-status-select-wrap selector-like experience-filter-select asset-explore-order-field">
-                    <button
-                      type="button"
-                      class="activities-view-option activities-order-trigger"
-                      (click)="toggleAssetExploreOrderPicker($event)"
-                      >
-                      <mat-icon>sort</mat-icon>
-                      <span class="capitalize">{{ assetExploreOrder }}</span>
-                    </button>
-                    @if (showAssetExploreOrderPicker) {
-                      <div class="activities-view-picker-panel">
-                        <button
-                          type="button"
-                          class="activities-view-option"
-                          (click)="selectAssetExploreOrder('upcoming', $event)"
-                          >
-                          <mat-icon>event_upcoming</mat-icon>
-                          <span>Upcoming</span>
-                        </button>
-                        <button
-                          type="button"
-                          class="activities-view-option"
-                          (click)="selectAssetExploreOrder('distance', $event)"
-                          >
-                          <mat-icon>social_distance</mat-icon>
-                          <span>Distance</span>
-                        </button>
-                      </div>
-                    }
-                  </div>
-                </div>
-                <label class="asset-explore-filter-field experience-date-range-badge">
-                  <mat-form-field appearance="outline" class="asset-explore-date-range-field assets-badge-form-field" subscriptSizing="dynamic">
-                    <mat-date-range-input [rangePicker]="assetExploreRangePicker">
-                      <input
-                        matStartDate
-                        [ngModel]="explore.startDate"
-                        (ngModelChange)="onAssetExploreDateRangeChange($event, explore.endDate)"
-                        placeholder="Start date"
-                        />
-                      <input
-                        matEndDate
-                        [ngModel]="explore.endDate"
-                        (ngModelChange)="onAssetExploreDateRangeChange(explore.startDate, $event)"
-                        placeholder="End date"
-                        />
-                    </mat-date-range-input>
-                    <mat-datepicker-toggle matIconSuffix [for]="assetExploreRangePicker"></mat-datepicker-toggle>
-                    <mat-date-range-picker #assetExploreRangePicker></mat-date-range-picker>
-                  </mat-form-field>
-                </label>
-              </div>
-              <section class="experience-form-panel subevent-form-panel asset-explore-panel">
-
-                <div class="asset-explore-grid">
-                  @if (explore.loading) {
-                    <section class="asset-explore-empty-state">
-                      <mat-icon>hourglass_top</mat-icon>
-                      <span>Loading visible assets...</span>
-                    </section>
-                  } @else if (explore.error) {
-                    <section class="asset-explore-empty-state asset-explore-empty-state-error">
-                      <mat-icon>error</mat-icon>
-                      <span>{{ explore.error }}</span>
-                    </section>
-                  } @else if (explore.cards.length === 0) {
-                    <section class="asset-explore-empty-state">
-                      <mat-icon>travel_explore</mat-icon>
-                      <span>No visible assets match this date range and category yet.</span>
-                    </section>
-                  } @else {
-                    <app-smart-list
-                      #assetExploreSmartList
-                      class="asset-explore-smart-list"
-                      [config]="assetExploreSmartListConfig"
-                      [loadPage]="assetExploreSmartListLoadPage"
-                      [itemTemplate]="assetExploreItemTemplateRef ?? null"
-                      [query]="assetExploreSmartListQuery"
-                      (stateChange)="onAssetExploreSmartListStateChange($event)"
-                    ></app-smart-list>
-                  }
-                </div>
-              </section>
-            </div>
-          </section>
-        }
-
-        <ng-template #assetExploreItemTemplate let-card>
+        <ng-template #assetExploreItemTemplate let-card let-groupLabel="groupLabel">
           <app-info-card
-            [card]="assetExploreInfoCard(card)"
+            [card]="assetExploreInfoCard(card, { groupLabel })"
             (mediaEndClick)="openAssetExploreBorrowFromBadge(card)"
             (menuAction)="onAssetExploreInfoCardMenuAction(card, $event)"
           ></app-info-card>
         </ng-template>
-
-        @if (host.assetExploreBorrowDialog(); as dialog) {
-          <section class="experience-form-overlay subevent-form-overlay subevent-group-form-overlay subevent-asset-capacity-overlay">
-            <div class="experience-form-overlay-backdrop" (click)="host.closeAssetExploreBorrowDialog($event)"></div>
-            <div class="experience-form-popup subevent-form-popup subevent-group-popup asset-explore-borrow-popup">
-              <div class="experience-form-header subevent-group-header">
-                <div class="subevent-group-header-main">
-                  <h3>{{ dialog.title }}</h3>
-                  <p class="subevent-group-stage-subtitle">{{ dialog.subtitle }}</p>
-                </div>
-                <div class="experience-form-header-controls">
-                  <span
-                    class="subevent-resource-save-btn-shell"
-                    [class.is-loading]="dialog.busy"
-                    [class.is-error]="!dialog.busy && !!dialog.error"
-                    >
-                    @if (dialog.busy || dialog.error) {
-                      <span class="subevent-resource-save-btn-ring" aria-hidden="true">
-                        <svg viewBox="0 0 34 34" preserveAspectRatio="none" class="subevent-resource-save-btn-ring-svg">
-                          <defs>
-                            <linearGradient id="subevent-resource-borrow-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                              <stop offset="0%" stop-color="rgb(235, 147, 33)"></stop>
-                              <stop offset="100%" stop-color="rgb(247, 190, 52)"></stop>
-                            </linearGradient>
-                            <linearGradient id="subevent-resource-borrow-gradient-error" x1="0%" y1="0%" x2="100%" y2="100%">
-                              <stop offset="0%" stop-color="rgb(213, 54, 68)"></stop>
-                              <stop offset="100%" stop-color="rgb(196, 29, 42)"></stop>
-                            </linearGradient>
-                          </defs>
-                          <circle class="subevent-resource-save-btn-ring-track" cx="17" cy="17" r="15"></circle>
-                          <circle
-                            class="subevent-resource-save-btn-ring-progress"
-                            [class.is-loading]="dialog.busy"
-                            [class.is-error]="!dialog.busy && !!dialog.error"
-                            cx="17"
-                            cy="17"
-                            r="15"
-                            pathLength="100"
-                            [attr.stroke-dasharray]="host.assetExploreBorrowRingPerimeter()"
-                            [attr.stroke-dashoffset]="dialog.busy ? host.assetExploreBorrowRingPerimeter() : 0"
-                          ></circle>
-                        </svg>
-                      </span>
-                    }
-                    <button
-                      type="button"
-                      class="popup-header-add-btn subevent-leaderboard-save-btn subevent-resource-save-btn"
-                      [class.form-save-invalid]="!host.canSubmitAssetExploreBorrow() && !dialog.busy"
-                      [disabled]="!host.canSubmitAssetExploreBorrow()"
-                      (click)="host.confirmAssetExploreBorrow($event)"
-                      aria-label="Send borrow request"
-                      >
-                      <mat-icon>done</mat-icon>
-                    </button>
-                  </span>
-                  <button type="button" class="experience-form-close-btn" (click)="host.closeAssetExploreBorrowDialog($event)" aria-label="Close borrow request">
-                    <mat-icon>close</mat-icon>
-                  </button>
-                </div>
-              </div>
-              <section class="experience-form-panel subevent-form-panel subevent-group-form-panel asset-explore-borrow-panel">
-                <div class="experience-form-grid subevent-group-form-grid">
-                  <label class="event-slot-field">
-                    <span>Start</span>
-                    <div class="event-datetime-row event-slot-datetime-row">
-                      <mat-form-field appearance="outline" class="event-date-field event-date-field-start event-slot-date-field" subscriptSizing="dynamic">
-                        <input
-                          matInput
-                          [matDatepicker]="borrowStartPicker"
-                          [ngModel]="dialog.startDate"
-                          (ngModelChange)="host.setAssetExploreBorrowDateRange($event, dialog.endDate)"
-                        />
-                        <mat-datepicker-toggle matSuffix [for]="borrowStartPicker"></mat-datepicker-toggle>
-                        <mat-datepicker #borrowStartPicker></mat-datepicker>
-                      </mat-form-field>
-                      <mat-form-field appearance="outline" class="event-time-field event-time-field-start event-slot-time-field" subscriptSizing="dynamic">
-                        <input
-                          matInput
-                          [matTimepicker]="borrowStartTimePicker"
-                          [matTimepickerOpenOnClick]="true"
-                          [ngModel]="dialog.startTime"
-                          (ngModelChange)="host.setAssetExploreBorrowTime('start', $event)"
-                        />
-                        <mat-timepicker-toggle matSuffix [for]="borrowStartTimePicker"></mat-timepicker-toggle>
-                        <mat-timepicker #borrowStartTimePicker></mat-timepicker>
-                      </mat-form-field>
-                    </div>
-                  </label>
-                  <label class="event-slot-field">
-                    <span>End</span>
-                    <div class="event-datetime-row event-slot-datetime-row">
-                      <mat-form-field appearance="outline" class="event-date-field event-date-field-end event-slot-date-field" subscriptSizing="dynamic">
-                        <input
-                          matInput
-                          [matDatepicker]="borrowEndPicker"
-                          [ngModel]="dialog.endDate"
-                          (ngModelChange)="host.setAssetExploreBorrowDateRange(dialog.startDate, $event)"
-                        />
-                        <mat-datepicker-toggle matSuffix [for]="borrowEndPicker"></mat-datepicker-toggle>
-                        <mat-datepicker #borrowEndPicker></mat-datepicker>
-                      </mat-form-field>
-                      <mat-form-field appearance="outline" class="event-time-field event-time-field-end event-slot-time-field" subscriptSizing="dynamic">
-                        <input
-                          matInput
-                          [matTimepicker]="borrowEndTimePicker"
-                          [matTimepickerOpenOnClick]="true"
-                          [ngModel]="dialog.endTime"
-                          (ngModelChange)="host.setAssetExploreBorrowTime('end', $event)"
-                        />
-                        <mat-timepicker-toggle matSuffix [for]="borrowEndTimePicker"></mat-timepicker-toggle>
-                        <mat-timepicker #borrowEndTimePicker></mat-timepicker>
-                      </mat-form-field>
-                    </div>
-                  </label>
-                  <label>
-                    <span>Quantity</span>
-                    <input
-                      type="number"
-                      min="1"
-                      step="1"
-                      [max]="dialog.availableQuantity"
-                      [ngModel]="dialog.quantity"
-                      (ngModelChange)="host.onAssetExploreBorrowQuantityChange($event)"
-                      />
-                  </label>
-                  <p class="asset-explore-borrow-availability">
-                    Available for this time: {{ dialog.availableQuantity }} {{ dialog.availableQuantity === 1 ? 'item' : 'items' }}
-                  </p>
-                  @if (dialog.error) {
-                    <p class="subevent-resource-editor-error">{{ dialog.error }}</p>
-                  }
-                </div>
-              </section>
-            </div>
-          </section>
-        }
 
         @if (host.capacityEditor(); as editor) {
           <section class="experience-form-overlay subevent-form-overlay subevent-group-form-overlay subevent-asset-capacity-overlay">
@@ -736,3 +472,281 @@
     </div>
   </div>
 </section>
+
+@if (host.assetExplorePopup(); as explore) {
+  <section class="app-popup app-popup-stacked app-popup-stacked-over-subevents event-resource-popup-shell asset-explore-shell">
+    <div class="app-popup-backdrop" (click)="host.closeExplorePopup($event)"></div>
+    <div class="app-popup-panel popup-panel-asset-members asset-explore-shell-panel" (click)="$event.stopPropagation()">
+      <div class="popup-header popup-header-with-progress asset-explore-shell-header">
+        <div class="popup-title">
+          <h2>{{ explore.title }}</h2>
+          <p class="popup-subtitle">{{ explore.subtitle }}</p>
+        </div>
+        <div class="event-explore-header-controls asset-explore-header-controls">
+          <div class="event-explore-order-picker asset-explore-order-picker">
+            <button
+              type="button"
+              class="popup-view-fab event-explore-order-trigger asset-explore-order-trigger"
+              [ngClass]="assetExploreOrderClass()"
+              (click)="toggleAssetExploreOrderPicker($event)"
+              aria-label="Open asset explore order"
+            >
+              <mat-icon [class]="assetExploreOrderClass()">{{ assetExploreOrderIcon() }}</mat-icon>
+              <span>{{ assetExploreOrderLabel() }}</span>
+            </button>
+            @if (showAssetExploreOrderPicker) {
+              <div class="activities-view-picker-panel asset-explore-order-panel">
+                @for (option of assetExploreOrderOptions; track option.key) {
+                  <button
+                    type="button"
+                    class="activities-view-option"
+                    [ngClass]="assetExploreOrderClass(option.key)"
+                    (click)="selectAssetExploreOrder(option.key, $event)"
+                  >
+                    <mat-icon [class]="assetExploreOrderClass(option.key)">{{ option.icon }}</mat-icon>
+                    <span>{{ option.label }}</span>
+                  </button>
+                }
+              </div>
+            }
+          </div>
+        </div>
+        <button type="button" class="popup-close" (click)="host.closeExplorePopup($event)" aria-label="Close asset explore">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+
+      <div class="popup-body popup-body-members asset-explore-shell-body">
+        <div class="asset-explore-popup-screen">
+          <div class="asset-explore-filter-bar popup-filter-bar">
+            <div
+              class="profile-status-select-wrap selector-like experience-filter-select popup-compact-select activities-compact-select popup-filter-no-badge activities-filter-no-badge asset-explore-category-field"
+              [ngClass]="host.resourceTypeClass(explore.type)"
+            >
+              <mat-select
+                [ngModel]="explore.categoryDisplay"
+                (ngModelChange)="host.selectAssetExploreCategory($event)"
+                disableOptionCentering
+                panelClass="selector-options-panel profile-bottom-sheet-panel subevent-resource-options-panel asset-type-options-panel"
+              >
+                <mat-select-trigger>
+                  <span class="status-option-content">
+                    <mat-icon [class]="host.resourceTypeClass(explore.type)">sell</mat-icon>
+                    <span>{{ explore.categoryDisplay }}</span>
+                  </span>
+                </mat-select-trigger>
+                @for (option of explore.categoryOptions; track option) {
+                  <mat-option [value]="option" class="status-option" [ngClass]="assetExploreCategoryOptionClass(option)">
+                    <span class="status-option-content">
+                      <mat-icon [class]="assetExploreCategoryOptionClass(option)">sell</mat-icon>
+                      <span>{{ option }}</span>
+                    </span>
+                  </mat-option>
+                }
+              </mat-select>
+            </div>
+
+            <mat-form-field appearance="fill" class="asset-explore-date-range-field experience-date-range-field asset-explore-date-range-pill" subscriptSizing="dynamic">
+              <mat-date-range-input
+                [rangePicker]="assetExploreRangePicker"
+                [comparisonStart]="explore.windowStartDate"
+                [comparisonEnd]="explore.windowEndDate"
+                [dateFilter]="assetExploreDateFilter"
+              >
+                <input
+                  matStartDate
+                  [min]="explore.windowStartDate"
+                  [max]="explore.windowEndDate"
+                  [ngModel]="explore.startDate"
+                  (ngModelChange)="onAssetExploreDateRangeChange($event, explore.endDate)"
+                  placeholder="Start date"
+                />
+                <input
+                  matEndDate
+                  [min]="explore.windowStartDate"
+                  [max]="explore.windowEndDate"
+                  [ngModel]="explore.endDate"
+                  (ngModelChange)="onAssetExploreDateRangeChange(explore.startDate, $event)"
+                  placeholder="End date"
+                />
+              </mat-date-range-input>
+              <mat-datepicker-toggle matIconSuffix [for]="assetExploreRangePicker"></mat-datepicker-toggle>
+              <mat-date-range-picker #assetExploreRangePicker></mat-date-range-picker>
+            </mat-form-field>
+          </div>
+
+          <div class="asset-explore-progress-strip">
+            <app-header-progress-bar [config]="assetExploreHeaderProgressBarConfig()"></app-header-progress-bar>
+          </div>
+
+          <section class="asset-explore-panel">
+            <div class="asset-explore-grid">
+              @if (explore.loading) {
+                <section class="asset-explore-empty-state">
+                  <mat-icon>hourglass_top</mat-icon>
+                  <span>Loading visible assets...</span>
+                </section>
+              } @else if (explore.error) {
+                <section class="asset-explore-empty-state asset-explore-empty-state-error">
+                  <mat-icon>error</mat-icon>
+                  <span>{{ explore.error }}</span>
+                </section>
+              } @else if (explore.cards.length === 0) {
+                <section class="asset-explore-empty-state">
+                  <mat-icon>travel_explore</mat-icon>
+                  <span>No visible assets match this date range and category yet.</span>
+                </section>
+              } @else {
+                <app-smart-list
+                  #assetExploreSmartList
+                  class="asset-explore-smart-list"
+                  [config]="assetExploreSmartListConfig"
+                  [loadPage]="assetExploreSmartListLoadPage"
+                  [itemTemplate]="assetExploreItemTemplateRef ?? null"
+                  [query]="assetExploreSmartListQuery"
+                  (stateChange)="onAssetExploreSmartListStateChange($event)"
+                ></app-smart-list>
+              }
+            </div>
+          </section>
+
+          @if (host.assetExploreBorrowDialog(); as dialog) {
+            <section class="experience-form-overlay subevent-form-overlay subevent-group-form-overlay subevent-asset-capacity-overlay asset-explore-borrow-overlay">
+              <div class="experience-form-overlay-backdrop" (click)="host.closeAssetExploreBorrowDialog($event)"></div>
+              <div class="experience-form-popup subevent-form-popup subevent-group-popup asset-explore-borrow-popup">
+                <div class="experience-form-header subevent-group-header">
+                  <div class="subevent-group-header-main">
+                    <h3>{{ dialog.title }}</h3>
+                    <p class="subevent-group-stage-subtitle">{{ dialog.subtitle }}</p>
+                  </div>
+                  <div class="experience-form-header-controls">
+                    <span
+                      class="subevent-resource-save-btn-shell"
+                      [class.is-loading]="dialog.busy"
+                      [class.is-error]="!dialog.busy && !!dialog.error"
+                    >
+                      @if (dialog.busy || dialog.error) {
+                        <span class="subevent-resource-save-btn-ring" aria-hidden="true">
+                          <svg viewBox="0 0 34 34" preserveAspectRatio="none" class="subevent-resource-save-btn-ring-svg">
+                            <defs>
+                              <linearGradient id="subevent-resource-borrow-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stop-color="rgb(235, 147, 33)"></stop>
+                                <stop offset="100%" stop-color="rgb(247, 190, 52)"></stop>
+                              </linearGradient>
+                              <linearGradient id="subevent-resource-borrow-gradient-error" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stop-color="rgb(213, 54, 68)"></stop>
+                                <stop offset="100%" stop-color="rgb(196, 29, 42)"></stop>
+                              </linearGradient>
+                            </defs>
+                            <circle class="subevent-resource-save-btn-ring-track" cx="17" cy="17" r="15"></circle>
+                            <circle
+                              class="subevent-resource-save-btn-ring-progress"
+                              [class.is-loading]="dialog.busy"
+                              [class.is-error]="!dialog.busy && !!dialog.error"
+                              cx="17"
+                              cy="17"
+                              r="15"
+                              pathLength="100"
+                              [attr.stroke-dasharray]="host.assetExploreBorrowRingPerimeter()"
+                              [attr.stroke-dashoffset]="dialog.busy ? host.assetExploreBorrowRingPerimeter() : 0"
+                            ></circle>
+                          </svg>
+                        </span>
+                      }
+                      <button
+                        type="button"
+                        class="popup-header-add-btn subevent-leaderboard-save-btn subevent-resource-save-btn"
+                        [class.form-save-invalid]="!host.canSubmitAssetExploreBorrow() && !dialog.busy"
+                        [disabled]="!host.canSubmitAssetExploreBorrow()"
+                        (click)="host.confirmAssetExploreBorrow($event)"
+                        aria-label="Send borrow request"
+                      >
+                        <mat-icon>done</mat-icon>
+                      </button>
+                    </span>
+                    <button type="button" class="experience-form-close-btn" (click)="host.closeAssetExploreBorrowDialog($event)" aria-label="Close borrow request">
+                      <mat-icon>close</mat-icon>
+                    </button>
+                  </div>
+                </div>
+                <section class="experience-form-panel subevent-form-panel subevent-group-form-panel asset-explore-borrow-panel">
+                  <div class="experience-form-grid subevent-group-form-grid">
+                    <label class="event-slot-field">
+                      <span>Start</span>
+                      <div class="event-datetime-row event-slot-datetime-row">
+                        <mat-form-field appearance="outline" class="event-date-field event-date-field-start event-slot-date-field" subscriptSizing="dynamic">
+                          <input
+                            matInput
+                            [matDatepicker]="borrowStartPicker"
+                            [ngModel]="dialog.startDate"
+                            (ngModelChange)="host.setAssetExploreBorrowDateRange($event, dialog.endDate)"
+                          />
+                          <mat-datepicker-toggle matSuffix [for]="borrowStartPicker"></mat-datepicker-toggle>
+                          <mat-datepicker #borrowStartPicker></mat-datepicker>
+                        </mat-form-field>
+                        <mat-form-field appearance="outline" class="event-time-field event-time-field-start event-slot-time-field" subscriptSizing="dynamic">
+                          <input
+                            matInput
+                            [matTimepicker]="borrowStartTimePicker"
+                            [matTimepickerOpenOnClick]="true"
+                            [ngModel]="dialog.startTime"
+                            (ngModelChange)="host.setAssetExploreBorrowTime('start', $event)"
+                          />
+                          <mat-timepicker-toggle matSuffix [for]="borrowStartTimePicker"></mat-timepicker-toggle>
+                          <mat-timepicker #borrowStartTimePicker></mat-timepicker>
+                        </mat-form-field>
+                      </div>
+                    </label>
+                    <label class="event-slot-field">
+                      <span>End</span>
+                      <div class="event-datetime-row event-slot-datetime-row">
+                        <mat-form-field appearance="outline" class="event-date-field event-date-field-end event-slot-date-field" subscriptSizing="dynamic">
+                          <input
+                            matInput
+                            [matDatepicker]="borrowEndPicker"
+                            [ngModel]="dialog.endDate"
+                            (ngModelChange)="host.setAssetExploreBorrowDateRange(dialog.startDate, $event)"
+                          />
+                          <mat-datepicker-toggle matSuffix [for]="borrowEndPicker"></mat-datepicker-toggle>
+                          <mat-datepicker #borrowEndPicker></mat-datepicker>
+                        </mat-form-field>
+                        <mat-form-field appearance="outline" class="event-time-field event-time-field-end event-slot-time-field" subscriptSizing="dynamic">
+                          <input
+                            matInput
+                            [matTimepicker]="borrowEndTimePicker"
+                            [matTimepickerOpenOnClick]="true"
+                            [ngModel]="dialog.endTime"
+                            (ngModelChange)="host.setAssetExploreBorrowTime('end', $event)"
+                          />
+                          <mat-timepicker-toggle matSuffix [for]="borrowEndTimePicker"></mat-timepicker-toggle>
+                          <mat-timepicker #borrowEndTimePicker></mat-timepicker>
+                        </mat-form-field>
+                      </div>
+                    </label>
+                    <label>
+                      <span>Quantity</span>
+                      <input
+                        type="number"
+                        min="1"
+                        step="1"
+                        [max]="dialog.availableQuantity"
+                        [ngModel]="dialog.quantity"
+                        (ngModelChange)="host.onAssetExploreBorrowQuantityChange($event)"
+                      />
+                    </label>
+                    <p class="asset-explore-borrow-availability">
+                      Available for this time: {{ dialog.availableQuantity }} {{ dialog.availableQuantity === 1 ? 'item' : 'items' }}
+                    </p>
+                    @if (dialog.error) {
+                      <p class="subevent-resource-editor-error">{{ dialog.error }}</p>
+                    }
+                  </div>
+                </section>
+              </div>
+            </section>
+          }
+        </div>
+      </div>
+    </div>
+  </section>
+}

@@ -17,9 +17,9 @@ import {
   providedIn: 'root'
 })
 export class DemoAssetsRepository extends HttpAssetsRepository {
+  private static readonly VISIBLE_EXPLORE_OWNER_LIMIT = 12;
   private readonly memoryDb = inject(AppMemoryDb);
   private readonly usersRepository = inject(DemoUsersRepository);
-  private readonly initializedOwnerUserIds = new Set<string>();
 
   init(ownerUserIds?: readonly string[]): void {
     const normalizedOwnerIds = Array.from(new Set(
@@ -31,7 +31,7 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
       return;
     }
 
-    const ownerIdsToInitialize = normalizedOwnerIds.filter(ownerUserId => !this.initializedOwnerUserIds.has(ownerUserId));
+    const ownerIdsToInitialize = normalizedOwnerIds;
     if (ownerIdsToInitialize.length === 0) {
       return;
     }
@@ -40,20 +40,19 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
     let changed = false;
 
     for (const ownerUserId of ownerIdsToInitialize) {
-      if ((nextTable.idsByOwnerUserId[ownerUserId] ?? []).length > 0) {
-        this.initializedOwnerUserIds.add(ownerUserId);
-        continue;
-      }
       const records = this.buildSeededOwnerRecords(ownerUserId);
       if (records.length === 0) {
-        this.initializedOwnerUserIds.add(ownerUserId);
         continue;
       }
+      const existingIds = new Set(nextTable.idsByOwnerUserId[ownerUserId] ?? []);
       for (const record of records) {
+        if (existingIds.has(record.id)) {
+          continue;
+        }
         nextTable = this.upsertRecordCollection(nextTable, record);
+        existingIds.add(record.id);
+        changed = true;
       }
-      this.initializedOwnerUserIds.add(ownerUserId);
-      changed = true;
     }
 
     if (!changed) {
@@ -212,6 +211,7 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
     if (!owner) {
       return [];
     }
+    const ownerIndex = Math.max(0, allUsers.findIndex(user => user.id === ownerUserId));
     const otherUsers = allUsers.filter(user => user.id !== ownerUserId);
     const baseCards = DemoAssetBuilder.buildSampleAssetCards(allUsers as DemoUser[]);
     const createdAt = new Date('2026-02-01T12:00:00.000Z');
@@ -219,14 +219,18 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
       const createdMs = createdAt.getTime() + (index * 60_000);
       const createdAtIso = new Date(createdMs).toISOString();
       const imageUrl = DemoAssetBuilder.defaultAssetImage(card.type, `${ownerUserId}-${card.id}`);
+      const category = this.seededCategoryForCard(card, ownerIndex, index);
       return {
         ...card,
         id: `${ownerUserId}:${card.id}`,
-        category: AssetDefaultsBuilder.normalizeCategory(card.type, card.category),
+        category: AssetDefaultsBuilder.normalizeCategory(card.type, category),
         city: owner.city || card.city,
+        subtitle: this.seededSubtitleForCard(card, ownerIndex, index),
+        details: this.seededDetailsForCard(card, ownerIndex, index),
         imageUrl,
         sourceLink: imageUrl,
-        pricing: PricingBuilder.createSamplePricingConfig(card.type === 'Supplies' ? 'fixed' : 'hybrid'),
+        pricing: this.seededPricingForCard(card, ownerIndex, index),
+        policies: this.seededPoliciesForCard(card, ownerIndex, index),
         ownerUserId,
         ownerName: owner.name,
         visibility: this.seededVisibilityForCard(card, index),
@@ -283,30 +287,58 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
     const slotsByTitle: Record<string, Array<{ eventTitle: string; subEventTitle: string; startAtIso: string; endAtIso: string }>> = {
       'Camping Gear Kit': [
         {
-          eventTitle: 'Forest Basecamp Weekend',
-          subEventTitle: 'Camp Setup',
-          startAtIso: '2026-04-18T15:00:00.000Z',
-          endAtIso: '2026-04-20T10:00:00.000Z'
+          eventTitle: 'Alpine Weekend 2.0',
+          subEventTitle: 'Camp Setup Hold',
+          startAtIso: '2026-03-04T08:00:00.000Z',
+          endAtIso: '2026-03-04T18:00:00.000Z'
         },
         {
-          eventTitle: 'Forest Basecamp Weekend',
-          subEventTitle: 'Night Watch',
-          startAtIso: '2026-04-19T18:00:00.000Z',
-          endAtIso: '2026-04-20T08:00:00.000Z'
+          eventTitle: 'Alpine Weekend 2.0',
+          subEventTitle: 'Night Watch Hold',
+          startAtIso: '2026-03-04T19:00:00.000Z',
+          endAtIso: '2026-03-05T07:00:00.000Z'
         }
       ],
       'Game Night Box': [
         {
-          eventTitle: 'Indoor Strategy Social',
-          subEventTitle: 'Board Game Lounge',
-          startAtIso: '2026-05-02T17:30:00.000Z',
-          endAtIso: '2026-05-02T22:00:00.000Z'
+          eventTitle: 'Alpine Weekend 2.0',
+          subEventTitle: 'Game Lounge',
+          startAtIso: '2026-03-04T17:30:00.000Z',
+          endAtIso: '2026-03-04T22:00:00.000Z'
         },
         {
-          eventTitle: 'Indoor Strategy Social',
+          eventTitle: 'Alpine Weekend 2.0',
           subEventTitle: 'Late Table Finals',
-          startAtIso: '2026-05-02T20:00:00.000Z',
-          endAtIso: '2026-05-03T00:30:00.000Z'
+          startAtIso: '2026-03-04T20:00:00.000Z',
+          endAtIso: '2026-03-05T00:30:00.000Z'
+        }
+      ],
+      'Field Kitchen Crate': [
+        {
+          eventTitle: 'Alpine Weekend 2.0',
+          subEventTitle: 'Catering Prep',
+          startAtIso: '2026-03-04T06:30:00.000Z',
+          endAtIso: '2026-03-04T12:00:00.000Z'
+        },
+        {
+          eventTitle: 'Alpine Weekend 2.0',
+          subEventTitle: 'Dinner Service',
+          startAtIso: '2026-03-04T17:00:00.000Z',
+          endAtIso: '2026-03-04T21:00:00.000Z'
+        }
+      ],
+      'PA Speaker Pack': [
+        {
+          eventTitle: 'Alpine Weekend 2.0',
+          subEventTitle: 'Main Stage Soundcheck',
+          startAtIso: '2026-03-04T09:00:00.000Z',
+          endAtIso: '2026-03-04T14:30:00.000Z'
+        },
+        {
+          eventTitle: 'Alpine Weekend 2.0',
+          subEventTitle: 'Finals PA Reset',
+          startAtIso: '2026-03-04T15:00:00.000Z',
+          endAtIso: '2026-03-04T20:30:00.000Z'
         }
       ],
       'South Congress Loft': [
@@ -359,22 +391,56 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
       ],
       'Airport Shuttle Hatchback': [
         {
-          eventTitle: 'Late Arrival Crew',
-          subEventTitle: 'Airport Pickup',
-          startAtIso: '2026-08-21T21:30:00.000Z',
-          endAtIso: '2026-08-21T23:45:00.000Z'
+          eventTitle: 'Alpine Weekend 2.0',
+          subEventTitle: 'Finals Airport Pickup',
+          startAtIso: '2026-03-04T07:30:00.000Z',
+          endAtIso: '2026-03-04T10:00:00.000Z'
         },
         {
-          eventTitle: 'Late Arrival Crew',
-          subEventTitle: 'Hotel Dropoff',
-          startAtIso: '2026-08-22T00:00:00.000Z',
-          endAtIso: '2026-08-22T01:15:00.000Z'
+          eventTitle: 'Alpine Weekend 2.0',
+          subEventTitle: 'Finals Hotel Dropoff',
+          startAtIso: '2026-03-04T11:15:00.000Z',
+          endAtIso: '2026-03-04T13:00:00.000Z'
         },
         {
           eventTitle: 'Night Market Run',
           subEventTitle: 'Pickup Loop',
           startAtIso: '2026-08-28T18:30:00.000Z',
           endAtIso: '2026-08-28T21:00:00.000Z'
+        }
+      ],
+      'Volunteer Crew Van': [
+        {
+          eventTitle: 'Alpine Weekend 2.0',
+          subEventTitle: 'Stage Crew Load-in',
+          startAtIso: '2026-03-04T05:45:00.000Z',
+          endAtIso: '2026-03-04T09:30:00.000Z'
+        },
+        {
+          eventTitle: 'Alpine Weekend 2.0',
+          subEventTitle: 'Venue Supply Loop',
+          startAtIso: '2026-03-04T12:30:00.000Z',
+          endAtIso: '2026-03-04T16:00:00.000Z'
+        },
+        {
+          eventTitle: 'Alpine Weekend 2.0',
+          subEventTitle: 'Night Reset Pickup',
+          startAtIso: '2026-03-04T18:30:00.000Z',
+          endAtIso: '2026-03-04T21:00:00.000Z'
+        }
+      ],
+      'Summit Transfer Sedan': [
+        {
+          eventTitle: 'Speaker Summit',
+          subEventTitle: 'Green Room Pickup',
+          startAtIso: '2026-03-05T08:00:00.000Z',
+          endAtIso: '2026-03-05T10:30:00.000Z'
+        },
+        {
+          eventTitle: 'Speaker Summit',
+          subEventTitle: 'Hotel Return',
+          startAtIso: '2026-03-05T17:00:00.000Z',
+          endAtIso: '2026-03-05T18:30:00.000Z'
         }
       ]
     };
@@ -434,10 +500,12 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
 
   private readVisibleAssets(activeUserId: string): AppTypes.AssetCard[] {
     const table = this.normalizeCollection(this.memoryDb.read()[ASSETS_TABLE_NAME]);
+    const visibleOwnerIds = new Set(this.queryVisibleExploreOwners(activeUserId).map(user => user.id));
     return table.ids
       .map(id => table.byId[id])
       .filter((record): record is DemoAssetRecord => Boolean(record))
       .filter(record => record.ownerUserId !== activeUserId)
+      .filter(record => visibleOwnerIds.size === 0 || visibleOwnerIds.has(record.ownerUserId))
       .filter(record => record.visibility === 'Public'
         || (record.visibility === 'Friends only' && DemoUserSeedBuilder.isFriendOfActiveUser(record.ownerUserId, activeUserId)))
       .map(record => this.toAssetCard(record));
@@ -477,6 +545,153 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
     return card.title.includes('Guest') ? 'Friends only' : 'Public';
   }
 
+  private seededCategoryForCard(
+    card: Pick<AppTypes.AssetCard, 'type' | 'category'>,
+    ownerIndex: number,
+    cardIndex: number
+  ): AppTypes.AssetCategory {
+    if (card.type !== 'Supplies') {
+      return AssetDefaultsBuilder.normalizeCategory(card.type, card.category);
+    }
+    const supplyCategories = AssetDefaultsBuilder.assetCategoryOptions('Supplies');
+    return supplyCategories[(ownerIndex + cardIndex) % supplyCategories.length] ?? 'Camping';
+  }
+
+  private seededSubtitleForCard(
+    card: Pick<AppTypes.AssetCard, 'type' | 'subtitle'>,
+    ownerIndex: number,
+    cardIndex: number
+  ): string {
+    if (card.type === 'Car') {
+      const variants = [
+        'Volkswagen Golf · Manual',
+        'Hyundai Tucson · Automatic',
+        'Toyota Corolla · Hybrid',
+        'Kia Sportage · Automatic'
+      ];
+      return variants[(ownerIndex + cardIndex) % variants.length] ?? card.subtitle;
+    }
+    if (card.type === 'Accommodation') {
+      const variants = [
+        'Private room · Shared bathroom',
+        '2 bedrooms · 1 living room',
+        'Studio loft · Self check-in',
+        'Guest suite · Breakfast included'
+      ];
+      return variants[(ownerIndex + cardIndex) % variants.length] ?? card.subtitle;
+    }
+    const category = this.seededCategoryForCard(card, ownerIndex, cardIndex);
+    const supplyVariants = [
+      `${category} kit · Packed + labelled`,
+      `${category} box · Ready for pickup`,
+      `${category} bundle · Venue handoff`,
+      `${category} set · Return inventory tracked`
+    ];
+    return supplyVariants[(ownerIndex + cardIndex) % supplyVariants.length] ?? card.subtitle;
+  }
+
+  private seededDetailsForCard(
+    card: Pick<AppTypes.AssetCard, 'type' | 'details'>,
+    ownerIndex: number,
+    cardIndex: number
+  ): string {
+    if (card.type === 'Car') {
+      const variants = [
+        'Airport run before midnight, fuel split evenly.',
+        'Pickup window is flexible, but luggage needs to stay compact.',
+        'Driver prefers one stop only before the venue.',
+        'Good for late arrivals and small gear loads.'
+      ];
+      return variants[(ownerIndex + cardIndex) % variants.length] ?? card.details;
+    }
+    if (card.type === 'Accommodation') {
+      const variants = [
+        'Check-in details are shared once the stay is confirmed.',
+        'Quiet-hours friendly stay with simple self check-in.',
+        'Best for short overnights tied to early sub-event starts.',
+        'Host can coordinate late arrival if the schedule shifts.'
+      ];
+      return variants[(ownerIndex + cardIndex) % variants.length] ?? card.details;
+    }
+    const variants = [
+      'Pickup only, inventory is counted at handoff.',
+      'Owner can bring it to the venue if the timing lines up.',
+      'Packed and labelled for fast sub-event handoff.',
+      'Best for short borrow windows with tracked return.'
+    ];
+    return variants[(ownerIndex + cardIndex) % variants.length] ?? card.details;
+  }
+
+  private seededPricingForCard(
+    card: Pick<AppTypes.AssetCard, 'type' | 'pricing'>,
+    ownerIndex: number,
+    cardIndex: number
+  ): AppTypes.PricingConfig {
+    const modeCycle: AppTypes.PricingMode[] = card.type === 'Supplies'
+      ? ['fixed', 'time-based', 'hybrid']
+      : ['fixed', 'demand-based', 'time-based', 'hybrid'];
+    const mode = modeCycle[(ownerIndex + cardIndex) % modeCycle.length] ?? 'fixed';
+    const pricing = PricingBuilder.createSamplePricingConfig(mode);
+    pricing.chargeType = card.type === 'Supplies' ? 'per_booking' : 'per_booking';
+    pricing.basePrice = this.seededBasePriceForCardType(card.type, ownerIndex, cardIndex);
+    pricing.minPrice = pricing.basePrice > 0 ? Math.max(0, pricing.basePrice - 8) : 0;
+    pricing.maxPrice = pricing.basePrice > 0 ? pricing.basePrice + 18 : 20;
+    if (((ownerIndex * 2) + cardIndex) % 11 === 0) {
+      pricing.enabled = false;
+      pricing.basePrice = 0;
+      pricing.minPrice = 0;
+      pricing.maxPrice = 0;
+      pricing.demandRulesEnabled = false;
+      pricing.timeRulesEnabled = false;
+      pricing.mode = 'fixed';
+    }
+    return pricing;
+  }
+
+  private seededBasePriceForCardType(type: AppTypes.AssetType, ownerIndex: number, cardIndex: number): number {
+    const seed = ownerIndex + (cardIndex * 2);
+    if (type === 'Car') {
+      return 12 + ((seed % 6) * 4);
+    }
+    if (type === 'Accommodation') {
+      return 20 + ((seed % 5) * 10);
+    }
+    return 4 + ((seed % 6) * 3);
+  }
+
+  private seededPoliciesForCard(
+    card: Pick<AppTypes.AssetCard, 'type'>,
+    ownerIndex: number,
+    cardIndex: number
+  ): AppTypes.EventPolicyItem[] {
+    const policyPoolByType: Record<AppTypes.AssetType, Array<{ title: string; description: string; required: boolean }>> = {
+      Car: [
+        { title: 'Fuel reset', description: 'Return the car with the same fuel level.', required: true },
+        { title: 'No smoking', description: 'Keep the cabin smoke-free during the borrow window.', required: true },
+        { title: 'Confirm pickup', description: 'Message the owner 30 minutes before pickup.', required: false }
+      ],
+      Accommodation: [
+        { title: 'Quiet hours', description: 'Respect quiet hours after 22:00.', required: true },
+        { title: 'Shoes off', description: 'Leave shoes at the entrance.', required: false },
+        { title: 'Checkout tidy', description: 'Leave the room in tidy condition before checkout.', required: true }
+      ],
+      Supplies: [
+        { title: 'Count on return', description: 'Return all pieces and report missing items.', required: true },
+        { title: 'Clean before return', description: 'Wipe down surfaces before handoff back.', required: false },
+        { title: 'Protect packaging', description: 'Keep cases, cables, and labels together.', required: true }
+      ]
+    };
+    const pool = policyPoolByType[card.type] ?? [];
+    const seed = (ownerIndex * 3) + cardIndex;
+    const desiredCount = seed % 8 === 0 ? 0 : ((seed % 3) + 1);
+    return pool.slice(0, desiredCount).map((policy, index) => ({
+      id: `${card.type.toLowerCase()}-policy-${ownerIndex}-${cardIndex}-${index + 1}`,
+      title: policy.title,
+      description: policy.description,
+      required: policy.required
+    }));
+  }
+
   private normalizeCollection(value: unknown): DemoAssetsRecordCollection {
     const source = value as Partial<DemoAssetsRecordCollection> | null | undefined;
     const byId = source?.byId && typeof source.byId === 'object'
@@ -513,6 +728,24 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
       ids,
       idsByOwnerUserId
     };
+  }
+
+  private queryVisibleExploreOwners(activeUserId: string): DemoUser[] {
+    const allUsers = this.querySeedUsers();
+    const prioritizedFriends = DemoUserSeedBuilder.friendUsersForActiveUser(
+      allUsers,
+      activeUserId,
+      Math.min(8, DemoAssetsRepository.VISIBLE_EXPLORE_OWNER_LIMIT)
+    );
+    const prioritizedFriendIds = new Set(prioritizedFriends.map(user => user.id));
+    const remainingUsers = allUsers
+      .filter(user => user.id !== activeUserId)
+      .filter(user => !prioritizedFriendIds.has(user.id))
+      .sort((left, right) => left.id.localeCompare(right.id));
+    return [
+      ...prioritizedFriends,
+      ...remainingUsers.slice(0, Math.max(0, DemoAssetsRepository.VISIBLE_EXPLORE_OWNER_LIMIT - prioritizedFriends.length))
+    ];
   }
 
   private upsertRecordCollection(

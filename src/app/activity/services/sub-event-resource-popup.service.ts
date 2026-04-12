@@ -224,6 +224,7 @@ export class SubEventResourcePopupService {
     selectAssetExploreCategory: (category, event) => this.selectAssetExploreCategory(category, event),
     setAssetExploreDateRange: (start, end) => this.setAssetExploreDateRange(start, end),
     setAssetExploreTime: (edge, value) => this.setAssetExploreTime(edge, value),
+    assetExploreAvailableQuantity: card => this.assetExploreAvailableQuantity(card),
     assetExploreAvailabilityLabel: card => this.assetExploreAvailabilityLabel(card),
     assetExploreCanBorrow: card => this.assetExploreAvailableQuantity(card) > 0,
     openAssetExploreBorrowDialog: (card, event) => this.openAssetExploreBorrowDialog(card, event),
@@ -1598,6 +1599,7 @@ export class SubEventResourcePopupService {
       return null;
     }
     const stageLabel = this.subEventStageLabel(context.subEvent);
+    const windowRange = this.defaultAssetExploreRange(context.subEvent);
     return {
       title: stageLabel ? `Explore - ${stageLabel}` : `Explore`,
       subtitle: this.popupSubtitle(),
@@ -1607,6 +1609,8 @@ export class SubEventResourcePopupService {
       categoryOptions: ['Car', 'Accommodation', ...AssetDefaultsBuilder.assetCategoryOptions('Supplies')],
       startDate: AppUtils.isoLocalDateTimeToDate(popup.startAtIso),
       endDate: AppUtils.isoLocalDateTimeToDate(popup.endAtIso),
+      windowStartDate: AppUtils.isoLocalDateTimeToDate(windowRange.startAtIso),
+      windowEndDate: AppUtils.isoLocalDateTimeToDate(windowRange.endAtIso),
       startTime: AppUtils.isoLocalTimePart(popup.startAtIso),
       endTime: AppUtils.isoLocalTimePart(popup.endAtIso),
       loading: popup.loading,
