@@ -105,7 +105,9 @@ export interface AssetExploreBorrowDialogViewState {
   policies: AppTypes.EventPolicyItem[];
   acceptedPolicyIds: string[];
   payable: boolean;
+  paymentStep: boolean;
   submitLabel: string;
+  busyLabel: string;
   busy: boolean;
   error: string | null;
 }
@@ -157,6 +159,7 @@ export interface EventResourcePopupHost {
   setAssetExploreBorrowTime(edge: 'start' | 'end', value: string): void;
   onAssetExploreBorrowQuantityChange(value: number | string): void;
   toggleAssetExploreBorrowPolicy(policyId: string): void;
+  backAssetExploreBorrowToDetails(event?: Event): void;
   canSubmitAssetExploreBorrow(): boolean;
   confirmAssetExploreBorrow(event?: Event): void;
   resumeAssetExploreBorrowDraft(cardId: string, event?: Event): void;
@@ -780,6 +783,10 @@ export class EventResourcePopupComponent implements DoCheck {
     if (this.host.assetExploreBorrowDialog()) {
       keyboardEvent.preventDefault();
       keyboardEvent.stopPropagation();
+      if (this.host.assetExploreBorrowDialog()?.paymentStep) {
+        this.host.backAssetExploreBorrowToDetails();
+        return;
+      }
       this.host.closeAssetExploreBorrowDialog();
       return;
     }

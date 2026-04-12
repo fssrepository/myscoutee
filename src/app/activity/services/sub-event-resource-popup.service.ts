@@ -113,6 +113,8 @@ interface AssetExploreBorrowDialogState {
   endAtIso: string;
   availableQuantity: number;
   acceptedPolicyIds: string[];
+  checkoutSessionId: string | null;
+  paymentStep: boolean;
   busy: boolean;
   error: string | null;
 }
@@ -137,6 +139,8 @@ interface SupplyBringDialogState {
   providedIn: 'root'
 })
 export class SubEventResourcePopupService {
+  private static readonly ASSET_EXPLORE_BORROW_MIN_BUSY_DURATION_MS = 1500;
+
   private readonly activitiesContext = inject(ActivitiesPopupStateService);
   private readonly eventEditorService = inject(EventEditorPopupStateService);
   private readonly assetPopupService = inject(AssetPopupStateService);
@@ -243,6 +247,7 @@ export class SubEventResourcePopupService {
     setAssetExploreBorrowTime: (edge, value) => this.setAssetExploreBorrowTime(edge, value),
     onAssetExploreBorrowQuantityChange: value => this.onAssetExploreBorrowQuantityChange(value),
     toggleAssetExploreBorrowPolicy: policyId => this.toggleAssetExploreBorrowPolicy(policyId),
+    backAssetExploreBorrowToDetails: event => this.backAssetExploreBorrowToDetails(event),
     canSubmitAssetExploreBorrow: () => this.canSubmitAssetExploreBorrow(),
     confirmAssetExploreBorrow: event => this.confirmAssetExploreBorrow(event),
     resumeAssetExploreBorrowDraft: (cardId, event) => this.resumeAssetExploreBorrowDraft(cardId, event),
@@ -1673,7 +1678,13 @@ export class SubEventResourcePopupService {
       policies: (card.policies ?? []).map(item => ({ ...item })),
       acceptedPolicyIds: [...dialog.acceptedPolicyIds],
       payable: pricing.amount > 0,
-      submitLabel: pricing.amount > 0 ? 'Pay & send request' : 'Send borrow request',
+      paymentStep: dialog.paymentStep,
+      submitLabel: pricing.amount > 0
+        ? (dialog.paymentStep ? 'Buy' : 'Checkout')
+        : 'Send borrow request',
+      busyLabel: pricing.amount > 0
+        ? (dialog.paymentStep ? 'Buying...' : 'Checking out...')
+        : 'Sending request...',
       busy: dialog.busy,
       error: dialog.error
     };
@@ -1989,6 +2000,8 @@ export class SubEventResourcePopupService {
       availableQuantity,
       acceptedPolicyIds: [...(existingRequest?.booking?.acceptedPolicyIds ?? [])]
         .filter(policyId => validPolicyIds.has(policyId)),
+      checkoutSessionId: `${existingRequest?.booking?.paymentSessionId ?? ''}`.trim() || null,
+      paymentStep: Boolean(existingRequest?.booking?.paymentSessionId && Number(existingRequest?.booking?.totalAmount) > 0),
       busy: false,
       error: null
     });
@@ -2011,12 +2024,14 @@ export class SubEventResourcePopupService {
     const startAtIso = AppUtils.applyDatePartToIsoLocal(dialog.startAtIso, start);
     const endAtIso = AppUtils.applyDatePartToIsoLocal(dialog.endAtIso, end);
     const availableQuantity = this.assetExploreAvailableQuantityForWindow(card, startAtIso, endAtIso);
+    const invalidated = this.invalidateAssetExploreBorrowCheckout(dialog);
     this.assetExploreBorrowDialogRef.set({
-      ...dialog,
+      ...invalidated,
       startAtIso,
       endAtIso,
       availableQuantity,
       quantity: AppUtils.clampNumber(dialog.quantity, 1, Math.max(1, availableQuantity)),
+      acceptedPolicyIds: [...invalidated.acceptedPolicyIds],
       error: null
     });
   }
@@ -2033,12 +2048,14 @@ export class SubEventResourcePopupService {
     const startAtIso = edge === 'start' ? AppUtils.applyTimePartToIsoLocal(dialog.startAtIso, value) : dialog.startAtIso;
     const endAtIso = edge === 'end' ? AppUtils.applyTimePartToIsoLocal(dialog.endAtIso, value) : dialog.endAtIso;
     const availableQuantity = this.assetExploreAvailableQuantityForWindow(card, startAtIso, endAtIso);
+    const invalidated = this.invalidateAssetExploreBorrowCheckout(dialog);
     this.assetExploreBorrowDialogRef.set({
-      ...dialog,
+      ...invalidated,
       startAtIso,
       endAtIso,
       availableQuantity,
       quantity: AppUtils.clampNumber(dialog.quantity, 1, Math.max(1, availableQuantity)),
+      acceptedPolicyIds: [...invalidated.acceptedPolicyIds],
       error: null
     });
   }
@@ -2049,13 +2066,15 @@ export class SubEventResourcePopupService {
       return;
     }
     const parsed = Number(value);
+    const invalidated = this.invalidateAssetExploreBorrowCheckout(dialog);
     this.assetExploreBorrowDialogRef.set({
-      ...dialog,
+      ...invalidated,
       quantity: AppUtils.clampNumber(
         Number.isFinite(parsed) ? Math.trunc(parsed) : dialog.quantity,
         1,
         Math.max(1, dialog.availableQuantity)
       ),
+      acceptedPolicyIds: [...invalidated.acceptedPolicyIds],
       error: null
     });
   }
@@ -2075,10 +2094,47 @@ export class SubEventResourcePopupService {
     } else {
       nextAccepted.add(normalizedPolicyId);
     }
+    const invalidated = this.invalidateAssetExploreBorrowCheckout(dialog);
     this.assetExploreBorrowDialogRef.set({
-      ...dialog,
+      ...invalidated,
       acceptedPolicyIds: [...nextAccepted],
       error: null
+    });
+  }
+
+  private backAssetExploreBorrowToDetails(event?: Event): void {
+    event?.stopPropagation();
+    const dialog = this.assetExploreBorrowDialogRef();
+    if (!dialog || dialog.busy || !dialog.paymentStep) {
+      return;
+    }
+    this.assetExploreBorrowDialogRef.set({
+      ...dialog,
+      paymentStep: false,
+      error: null
+    });
+  }
+
+  private invalidateAssetExploreBorrowCheckout(
+    dialog: AssetExploreBorrowDialogState
+  ): AssetExploreBorrowDialogState {
+    if (!dialog.paymentStep && !dialog.checkoutSessionId) {
+      return dialog;
+    }
+    return {
+      ...dialog,
+      checkoutSessionId: null,
+      paymentStep: false
+    };
+  }
+
+  private ensureAssetExploreBorrowMinimumBusyDuration(startedAtMs: number): Promise<void> {
+    const remainingMs = SubEventResourcePopupService.ASSET_EXPLORE_BORROW_MIN_BUSY_DURATION_MS - (Date.now() - startedAtMs);
+    if (remainingMs <= 0) {
+      return Promise.resolve();
+    }
+    return new Promise(resolve => {
+      setTimeout(resolve, remainingMs);
     });
   }
 
@@ -2128,11 +2184,6 @@ export class SubEventResourcePopupService {
         currency: pricing.currency
       }
     ];
-    this.assetExploreBorrowDialogRef.set({
-      ...dialog,
-      busy: true,
-      error: null
-    });
     const checkoutRequest = pricing.amount > 0
       ? {
           userId: activeUser.id,
@@ -2152,14 +2203,68 @@ export class SubEventResourcePopupService {
         } satisfies AppTypes.EventCheckoutRequest
       : null;
 
-    const checkoutSessionPromise = checkoutRequest
-      ? this.eventsService.createCheckoutSession(checkoutRequest)
-      : Promise.resolve(null);
+    if (pricing.amount > 0 && !dialog.paymentStep) {
+      const startedAt = Date.now();
+      this.assetExploreBorrowDialogRef.set({
+        ...dialog,
+        busy: true,
+        error: null
+      });
+      void this.eventsService.createCheckoutSession(checkoutRequest!)
+        .then(async session => {
+          await this.ensureAssetExploreBorrowMinimumBusyDuration(startedAt);
+          if (!session?.id) {
+            throw new Error('Unable to start checkout.');
+          }
+          const currentDialog = this.assetExploreBorrowDialogRef();
+          if (!currentDialog || requestVersion !== this.pendingAssetExploreBorrowRequestVersion) {
+            return;
+          }
+          this.assetExploreBorrowDialogRef.set({
+            ...currentDialog,
+            checkoutSessionId: session.id,
+            paymentStep: true,
+            busy: false,
+            error: null
+          });
+        })
+        .catch(async error => {
+          await this.ensureAssetExploreBorrowMinimumBusyDuration(startedAt);
+          const currentDialog = this.assetExploreBorrowDialogRef();
+          if (!currentDialog || requestVersion !== this.pendingAssetExploreBorrowRequestVersion) {
+            return;
+          }
+          this.assetExploreBorrowDialogRef.set({
+            ...currentDialog,
+            busy: false,
+            error: this.resolveAssetExploreBorrowErrorMessage(error, 'Unable to start checkout.')
+          });
+        });
+      return;
+    }
+
+    const startedAt = Date.now();
+    this.assetExploreBorrowDialogRef.set({
+      ...dialog,
+      busy: true,
+      error: null
+    });
+    const checkoutSessionPromise = pricing.amount > 0 && !dialog.checkoutSessionId
+      ? this.eventsService.createCheckoutSession(checkoutRequest!)
+      : Promise.resolve(dialog.checkoutSessionId ? {
+          id: dialog.checkoutSessionId,
+          provider: 'dummy',
+          mode: 'dummy',
+          status: 'approved',
+          amount: pricing.amount,
+          currency: pricing.currency,
+          paymentUrl: null
+        } satisfies AppTypes.EventCheckoutSession : null);
 
     void checkoutSessionPromise
-      .then(session => {
-        if (checkoutRequest && (!session || session.status !== 'approved')) {
-          throw new Error('Unable to approve payment for this borrow request.');
+      .then(async session => {
+        if (pricing.amount > 0 && (!session || !session.id)) {
+          throw new Error('Unable to start payment.');
         }
         const nextRequest: AppTypes.AssetMemberRequest = {
           id: existingRequest?.id ?? `borrow:${activeUser.id}:${card.id}:${context.subEvent.id}`,
@@ -2184,7 +2289,7 @@ export class SubEventResourcePopupService {
               totalAmount: pricing.amount,
               currency: pricing.currency,
               acceptedPolicyIds: dialog.acceptedPolicyIds,
-              paymentSessionId: session?.id ?? null
+              paymentSessionId: session?.id ?? dialog.checkoutSessionId ?? null
             }
           )
         };
@@ -2205,7 +2310,9 @@ export class SubEventResourcePopupService {
               }))
           ]
         };
-        return this.assetsService.saveOwnedAsset(dialog.ownerUserId, nextCard);
+        const savedCard = await this.assetsService.saveOwnedAsset(dialog.ownerUserId, nextCard);
+        await this.ensureAssetExploreBorrowMinimumBusyDuration(startedAt);
+        return savedCard;
       })
       .then(savedCard => {
         const currentDialog = this.assetExploreBorrowDialogRef();
@@ -2221,7 +2328,8 @@ export class SubEventResourcePopupService {
         this.closeAssetExploreBorrowDialog();
         this.scheduleAssetExploreCardsLoad();
       })
-      .catch(error => {
+      .catch(async error => {
+        await this.ensureAssetExploreBorrowMinimumBusyDuration(startedAt);
         const currentDialog = this.assetExploreBorrowDialogRef();
         if (!currentDialog || requestVersion !== this.pendingAssetExploreBorrowRequestVersion) {
           return;
