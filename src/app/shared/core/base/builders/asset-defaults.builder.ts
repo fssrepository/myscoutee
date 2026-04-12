@@ -46,6 +46,34 @@ export class AssetDefaultsBuilder {
     }
   }
 
+  static visibilityIcon(option: AppTypes.EventVisibility): string {
+    switch (option) {
+      case 'Friends only':
+        return 'groups';
+      case 'Invitation only':
+        return 'mail_lock';
+      default:
+        return 'public';
+    }
+  }
+
+  static assetCategoryOptions(type: AppTypes.AssetType): AppTypes.AssetCategory[] {
+    return [...(APP_STATIC_DATA.assetCategoryOptionsByType[type] ?? [])];
+  }
+
+  static defaultCategory(type: AppTypes.AssetType): AppTypes.AssetCategory {
+    return this.assetCategoryOptions(type)[0] ?? '';
+  }
+
+  static normalizeCategory(type: AppTypes.AssetType, value: unknown): AppTypes.AssetCategory {
+    const normalized = `${value ?? ''}`.trim();
+    const options = this.assetCategoryOptions(type);
+    if (options.some(option => option === normalized)) {
+      return normalized;
+    }
+    return this.defaultCategory(type);
+  }
+
   static ownedAssetEmptyLabel(type: AppTypes.AssetType): string {
     if (type === 'Accommodation') {
       return 'No properties yet';

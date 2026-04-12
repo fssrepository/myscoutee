@@ -21,6 +21,11 @@ export class DemoAssetsService extends DemoRouteDelayService {
     return this.assetsRepository.queryOwnedAssetsByUser(userId);
   }
 
+  async queryVisibleAssets(query: AppTypes.AssetExploreQuery): Promise<AppTypes.AssetCard[]> {
+    await this.waitForRouteDelay(DemoAssetsService.ASSETS_ROUTE);
+    return this.assetsRepository.queryVisibleAssets(query);
+  }
+
   async saveOwnedAsset(userId: string, asset: AppTypes.AssetCard): Promise<AppTypes.AssetCard> {
     await this.waitForRouteDelay(DemoAssetsService.ASSETS_ROUTE);
     return this.assetsRepository.saveOwnedAsset(userId, asset);

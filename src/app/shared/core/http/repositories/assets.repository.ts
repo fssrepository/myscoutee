@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 
 import { environment } from '../../../../../environments/environment';
 import type * as AppTypes from '../../../core/base/models';
-import { AssetCardBuilder, PricingBuilder } from '../../../core/base/builders';
+import { AssetCardBuilder, AssetDefaultsBuilder, PricingBuilder } from '../../../core/base/builders';
 
 @Injectable({
   providedIn: 'root'
@@ -37,6 +37,28 @@ export class HttpAssetsRepository {
       return this.cloneCards(cards);
     } catch {
       return this.peekOwnedAssetsByUser(normalizedUserId);
+    }
+  }
+
+  async queryVisibleAssets(query: AppTypes.AssetExploreQuery): Promise<AppTypes.AssetCard[]> {
+    const normalizedUserId = query.userId.trim();
+    if (!normalizedUserId) {
+      return [];
+    }
+    try {
+      const response = await this.http
+        .get<AppTypes.AssetCard[] | null>(`${this.apiBaseUrl}/assets/explore`, {
+          params: new HttpParams()
+            .set('userId', normalizedUserId)
+            .set('type', query.type)
+            .set('category', `${query.category ?? ''}`.trim())
+            .set('startAtIso', `${query.startAtIso ?? ''}`.trim())
+            .set('endAtIso', `${query.endAtIso ?? ''}`.trim())
+        })
+        .toPromise();
+      return this.normalizeCards(Array.isArray(response) ? response : []);
+    } catch {
+      return [];
     }
   }
 
@@ -190,6 +212,7 @@ export class HttpAssetsRepository {
       type,
       title: card?.title?.trim() ?? '',
       subtitle: card?.subtitle?.trim() ?? '',
+      category: AssetDefaultsBuilder.normalizeCategory(type, card?.category),
       city: card?.city?.trim() ?? '',
       capacityTotal: AssetCardBuilder.capacityValue({ capacityTotal: card?.capacityTotal ?? 0 }),
       quantity: AssetCardBuilder.normalizeQuantity(type, card?.quantity, card?.capacityTotal),
@@ -213,6 +236,13 @@ export class HttpAssetsRepository {
           .filter(item => item.id || item.title || item.description)
         : [],
       pricing: PricingBuilder.normalizePricingConfig(card?.pricing, { context: 'asset' }),
+      visibility: card?.visibility === 'Friends only'
+        ? 'Friends only'
+        : card?.visibility === 'Invitation only'
+          ? 'Invitation only'
+          : 'Public',
+      ownerUserId: `${card?.ownerUserId ?? ''}`.trim() || undefined,
+      ownerName: `${card?.ownerName ?? ''}`.trim() || undefined,
       requests: Array.isArray(card?.requests)
         ? card.requests
           .map(request => ({

@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 
-import { AssetCardBuilder, PricingBuilder } from '../../../core/base/builders';
+import { AssetCardBuilder, AssetDefaultsBuilder, PricingBuilder } from '../../../core/base/builders';
 import { DemoAssetBuilder, DemoUserSeedBuilder } from '../builders';
 import type * as AppTypes from '../../../core/base/models';
 import type { DemoUser } from '../../base/interfaces/user.interface';
@@ -78,6 +78,19 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
     return this.peekOwnedAssetsByUser(userId);
   }
 
+  override async queryVisibleAssets(query: AppTypes.AssetExploreQuery): Promise<AppTypes.AssetCard[]> {
+    const normalizedUserId = query.userId.trim();
+    if (!normalizedUserId) {
+      return [];
+    }
+    this.init(this.querySeedUsers().map(user => user.id));
+    const normalizedCategory = `${query.category ?? ''}`.trim();
+    return this.readVisibleAssets(normalizedUserId)
+      .filter(card => card.type === query.type)
+      .filter(card => !normalizedCategory || card.category === normalizedCategory)
+      .sort((left, right) => left.title.localeCompare(right.title));
+  }
+
   override async saveOwnedAsset(userId: string, asset: AppTypes.AssetCard): Promise<AppTypes.AssetCard> {
     const normalizedUserId = userId.trim();
     const normalizedAsset = this.normalizeCard(asset);
@@ -94,7 +107,7 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
       const nextRecord: DemoAssetRecord = {
         ...normalizedAsset,
         ownerUserId: normalizedUserId,
-        visibility: existing?.visibility ?? 'Invitation only',
+        visibility: normalizedAsset.visibility ?? existing?.visibility ?? 'Public',
         createdAtIso: existing?.createdAtIso ?? nowIso,
         updatedAtIso: nowIso,
         createdMs: existing?.createdMs ?? nowMs,
@@ -138,7 +151,7 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
       nextRecords.push({
         ...asset,
         ownerUserId: normalizedUserId,
-        visibility: existing?.visibility ?? 'Invitation only',
+        visibility: asset.visibility ?? existing?.visibility ?? 'Public',
         createdAtIso: existing?.createdAtIso ?? new Date(nowMs).toISOString(),
         updatedAtIso: new Date(nowMs).toISOString(),
         createdMs: existing?.createdMs ?? nowMs,
@@ -209,12 +222,14 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
       return {
         ...card,
         id: `${ownerUserId}:${card.id}`,
+        category: AssetDefaultsBuilder.normalizeCategory(card.type, card.category),
         city: owner.city || card.city,
         imageUrl,
         sourceLink: imageUrl,
         pricing: PricingBuilder.createSamplePricingConfig(card.type === 'Supplies' ? 'fixed' : 'hybrid'),
         ownerUserId,
-        visibility: 'Invitation only',
+        ownerName: owner.name,
+        visibility: this.seededVisibilityForCard(card, index),
         requests: this.buildSeededRequests(ownerUserId, card, otherUsers, index),
         createdAtIso,
         updatedAtIso: createdAtIso,
@@ -417,12 +432,24 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
       .map(record => this.toAssetCard(record));
   }
 
+  private readVisibleAssets(activeUserId: string): AppTypes.AssetCard[] {
+    const table = this.normalizeCollection(this.memoryDb.read()[ASSETS_TABLE_NAME]);
+    return table.ids
+      .map(id => table.byId[id])
+      .filter((record): record is DemoAssetRecord => Boolean(record))
+      .filter(record => record.ownerUserId !== activeUserId)
+      .filter(record => record.visibility === 'Public'
+        || (record.visibility === 'Friends only' && DemoUserSeedBuilder.isFriendOfActiveUser(record.ownerUserId, activeUserId)))
+      .map(record => this.toAssetCard(record));
+  }
+
   private toAssetCard(record: DemoAssetRecord): AppTypes.AssetCard {
     return {
       id: record.id,
       type: record.type,
       title: record.title,
       subtitle: record.subtitle,
+      category: AssetDefaultsBuilder.normalizeCategory(record.type, record.category),
       city: record.city,
       capacityTotal: record.capacityTotal,
       quantity: AssetCardBuilder.normalizeQuantity(record.type, record.quantity, record.capacityTotal),
@@ -433,8 +460,21 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
       topics: [...(record.topics ?? [])],
       policies: (record.policies ?? []).map(item => ({ ...item })),
       pricing: record.pricing ? PricingBuilder.clonePricingConfig(record.pricing) : undefined,
+      visibility: record.visibility,
+      ownerUserId: record.ownerUserId,
+      ownerName: record.ownerName,
       requests: record.requests.map(request => this.cloneRequest(request))
     };
+  }
+
+  private seededVisibilityForCard(card: Pick<AppTypes.AssetCard, 'type' | 'title'>, index: number): AppTypes.EventVisibility {
+    if (card.type === 'Supplies') {
+      return index % 2 === 0 ? 'Public' : 'Friends only';
+    }
+    if (card.type === 'Car') {
+      return card.title.includes('Airport') ? 'Friends only' : 'Public';
+    }
+    return card.title.includes('Guest') ? 'Friends only' : 'Public';
   }
 
   private normalizeCollection(value: unknown): DemoAssetsRecordCollection {

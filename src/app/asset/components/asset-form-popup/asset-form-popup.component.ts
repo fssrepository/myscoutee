@@ -5,6 +5,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
 
 import type * as AppTypes from '../../../shared/core/base/models';
+import { AssetCardBuilder, AssetDefaultsBuilder } from '../../../shared/core/base/builders';
 import { PricingEditorComponent } from '../../../shared/ui';
 
 @Component({
@@ -30,19 +31,23 @@ export class AssetFormPopupComponent {
   @Input() sourceRefreshEnabled = false;
   @Input() assetFormVisibility: AppTypes.EventVisibility = 'Invitation only';
   @Input() assetTypeOptions: readonly AppTypes.AssetType[] = [];
+  @Input() assetVisibilityOptions: readonly AppTypes.EventVisibility[] = [];
   @Input() assetFormRouteStops: string[] = [];
   @Input() isEventEditorReadOnly = false;
   @Input({ required: true }) assetTypeClass!: (type: AppTypes.AssetFilterType) => string;
   @Input({ required: true }) assetTypeIcon!: (type: AppTypes.AssetFilterType) => string;
   @Input({ required: true }) assetTypeLabel!: (type: AppTypes.AssetFilterType) => string;
   @Input({ required: true }) eventVisibilityClass!: (option: AppTypes.EventVisibility) => string;
+  @Input({ required: true }) visibilityIcon!: (option: AppTypes.EventVisibility) => string;
   @Input({ required: true }) close!: () => void;
   @Input({ required: true }) save!: () => void | Promise<void>;
+  @Input({ required: true }) setAssetFormVisibility!: (option: AppTypes.EventVisibility) => void;
   @Input({ required: true }) setAssetFormRouteStop!: (index: number, value: string) => void;
   @Input({ required: true }) openAssetFormRouteStopMap!: (index: number, event?: Event) => void;
   @Input({ required: true }) refreshAssetFromSourceLink!: () => void | Promise<void>;
   @Input({ required: true }) onAssetImageFileSelected!: (file: File) => void;
   protected showMobileAssetTypePicker = false;
+  protected showVisibilityPicker = false;
   protected showPoliciesPopup = false;
   protected showPolicyEditorPopup = false;
   protected workingPolicies: AppTypes.EventPolicyItem[] = [];
@@ -61,6 +66,33 @@ export class AssetFormPopupComponent {
       return;
     }
     void this.save();
+  }
+
+  protected toggleVisibilityPicker(event?: Event): void {
+    event?.stopPropagation();
+    if (this.isSavePending) {
+      return;
+    }
+    this.showVisibilityPicker = !this.showVisibilityPicker;
+  }
+
+  protected selectVisibility(option: AppTypes.EventVisibility, event?: Event): void {
+    event?.stopPropagation();
+    if (this.isSavePending) {
+      return;
+    }
+    this.setAssetFormVisibility(option);
+    this.showVisibilityPicker = false;
+  }
+
+  protected assetCategoryOptions(): AppTypes.AssetCategory[] {
+    return AssetDefaultsBuilder.assetCategoryOptions(this.assetForm.type);
+  }
+
+  protected onAssetTypeChange(type: AppTypes.AssetType): void {
+    this.assetForm.type = type;
+    this.assetForm.category = AssetDefaultsBuilder.normalizeCategory(type, this.assetForm.category);
+    this.assetForm.routes = AssetCardBuilder.normalizeAssetRoutes(type, this.assetForm.routes);
   }
 
   protected openPoliciesPopup(event?: Event): void {
@@ -191,7 +223,7 @@ export class AssetFormPopupComponent {
       return;
     }
     event?.stopPropagation();
-    this.assetForm.type = type;
+    this.onAssetTypeChange(type);
     this.showMobileAssetTypePicker = false;
   }
 
@@ -221,6 +253,9 @@ export class AssetFormPopupComponent {
     }
     if (!target.closest('.asset-form-mobile-type-picker')) {
       this.showMobileAssetTypePicker = false;
+    }
+    if (!target.closest('.asset-form-visibility-picker')) {
+      this.showVisibilityPicker = false;
     }
   }
 

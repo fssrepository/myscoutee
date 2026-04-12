@@ -10,6 +10,7 @@ export type AssetRequestAction = 'accept' | 'remove';
 export type AssetRequestStatus = 'pending' | 'accepted';
 export type AssetTicketOrder = 'upcoming' | 'past';
 export type AssetRequestKind = 'manual' | 'borrow';
+export type AssetCategory = string;
 
 export interface AssetHireRequestBooking {
   eventId?: string;
@@ -45,6 +46,7 @@ export interface AssetCard {
   type: AssetType;
   title: string;
   subtitle: string;
+  category?: AssetCategory;
   city: string;
   capacityTotal: number;
   quantity: number;
@@ -59,6 +61,14 @@ export interface AssetCard {
   ownerUserId?: string;
   ownerName?: string;
   requests: AssetMemberRequest[];
+}
+
+export interface AssetExploreQuery {
+  userId: string;
+  type: AssetType;
+  category?: AssetCategory;
+  startAtIso?: string;
+  endAtIso?: string;
 }
 
 export interface AssetSourcePreview {

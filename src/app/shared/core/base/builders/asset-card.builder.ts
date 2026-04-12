@@ -1,4 +1,5 @@
 import type * as AppTypes from '../models';
+import { AssetDefaultsBuilder } from './asset-defaults.builder';
 import { PricingBuilder } from './pricing.builder';
 
 export class AssetCardBuilder {
@@ -7,6 +8,7 @@ export class AssetCardBuilder {
       type,
       title: '',
       subtitle: '',
+      category: AssetDefaultsBuilder.defaultCategory(type),
       city: '',
       capacityTotal: type === 'Supplies' ? 6 : 4,
       quantity: this.defaultQuantity(type),

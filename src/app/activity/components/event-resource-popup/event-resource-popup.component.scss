@@ -312,6 +312,50 @@
   gap: 0.36rem;
 }
 
+.event-resource-popup-shell .subevent-assets-quick-actions {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.event-resource-popup-shell .subevent-assets-quick-actions-trigger.is-open .mat-icon {
+  transform: rotate(45deg);
+}
+
+.event-resource-popup-shell .subevent-assets-quick-actions-trigger .mat-icon {
+  transition: transform 0.16s ease;
+}
+
+.event-resource-popup-shell .subevent-assets-quick-actions-panel {
+  right: 0;
+  min-width: 184px;
+}
+
+.event-resource-popup-shell .subevent-assets-quick-action-option {
+  justify-content: flex-start;
+  width: 100%;
+}
+
+.event-resource-popup-shell .subevent-assets-quick-action-option-assign {
+  background: linear-gradient(180deg, #fff7ea 0%, #ffeed1 100%);
+  border: 1px solid rgba(168, 111, 36, 0.28);
+  color: #9b5e1f;
+}
+
+.event-resource-popup-shell .subevent-assets-quick-action-option-assign .mat-icon {
+  color: #ae661f;
+}
+
+.event-resource-popup-shell .subevent-assets-quick-action-option-explore {
+  background: linear-gradient(180deg, #eef4ff 0%, #e2ebff 100%);
+  border: 1px solid rgba(74, 108, 182, 0.28);
+  color: #4164a8;
+}
+
+.event-resource-popup-shell .subevent-assets-quick-action-option-explore .mat-icon {
+  color: #4b73bf;
+}
+
 .event-resource-popup-shell .chat-members-stack {
   display: inline-flex;
   align-items: center;
@@ -368,6 +412,90 @@
   font-size: 16px;
   line-height: 16px;
   color: #ae661f;
+}
+
+.event-resource-popup-shell .asset-explore-popup {
+  width: min(1120px, calc(100vw - 1.2rem));
+  height: calc(100vh - 1.2rem);
+  max-height: calc(100vh - 1.2rem);
+}
+
+.event-resource-popup-shell .asset-explore-panel,
+.event-resource-popup-shell .asset-explore-borrow-panel {
+  min-height: 0;
+  display: grid;
+  gap: 0.9rem;
+}
+
+.event-resource-popup-shell .asset-explore-filter-bar {
+  display: grid;
+  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+  gap: 0.8rem;
+  align-items: end;
+}
+
+.event-resource-popup-shell .asset-explore-filter-field {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.event-resource-popup-shell .asset-explore-date-range-shell {
+  display: flex;
+  align-items: center;
+  min-height: 48px;
+}
+
+.event-resource-popup-shell .asset-explore-grid {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.85rem;
+  align-content: start;
+  overflow: auto;
+  padding-right: 0.12rem;
+}
+
+.event-resource-popup-shell .asset-explore-empty-state {
+  grid-column: 1 / -1;
+  display: grid;
+  place-items: center;
+  gap: 0.55rem;
+  min-height: 220px;
+  border: 1px dashed rgba(118, 137, 165, 0.34);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.76);
+  color: rgba(51, 72, 103, 0.78);
+  text-align: center;
+  padding: 1.2rem;
+}
+
+.event-resource-popup-shell .asset-explore-empty-state .mat-icon {
+  width: 26px;
+  height: 26px;
+  font-size: 26px;
+  line-height: 26px;
+}
+
+.event-resource-popup-shell .asset-explore-empty-state-error {
+  border-color: rgba(185, 79, 79, 0.34);
+  color: rgba(146, 45, 45, 0.84);
+  background: rgba(255, 244, 244, 0.88);
+}
+
+.event-resource-popup-shell .asset-explore-borrow-popup {
+  width: min(760px, calc(100vw - 1.6rem));
+}
+
+.event-resource-popup-shell .asset-explore-borrow-date-field {
+  grid-column: 1 / -1;
+}
+
+.event-resource-popup-shell .asset-explore-borrow-availability {
+  grid-column: 1 / -1;
+  margin: -0.1rem 0 0;
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: rgba(48, 87, 56, 0.82);
 }
 
 .event-resource-popup-shell .experience-form-overlay {
@@ -1059,5 +1187,20 @@
   .event-resource-popup-shell .asset-route-toolbar-actions {
     grid-template-columns: repeat(2, 28px);
     gap: 0.38rem;
+  }
+
+  .event-resource-popup-shell .asset-explore-popup,
+  .event-resource-popup-shell .asset-explore-borrow-popup {
+    width: min(100%, calc(100vw - 1rem));
+    height: auto;
+    max-height: calc(100vh - 1rem);
+  }
+
+  .event-resource-popup-shell .asset-explore-filter-bar {
+    grid-template-columns: 1fr;
+  }
+
+  .event-resource-popup-shell .asset-explore-grid {
+    grid-template-columns: 1fr;
   }
 }

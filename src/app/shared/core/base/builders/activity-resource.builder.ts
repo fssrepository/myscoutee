@@ -150,9 +150,6 @@ export class ActivityResourceBuilder {
       .map(card => card.id);
     const eligible = new Set(eligibleIds);
     const stored = state?.assetAssignmentIds?.[type] ?? [];
-    if (stored.length === 0) {
-      return [...eligibleIds];
-    }
     return stored.filter(id => eligible.has(id));
   }
 
@@ -268,24 +265,7 @@ export class ActivityResourceBuilder {
     ref: AppTypes.ActivitySubEventResourceStateRef,
     assets: readonly AppTypes.AssetCard[]
   ): AppTypes.ActivitySubEventResourceState {
-    const state = this.createEmptyState(ref);
-    for (const type of ['Car', 'Accommodation', 'Supplies'] as const) {
-      const cards = assets.filter(card => card.type === type);
-      if (cards.length === 0) {
-        continue;
-      }
-      state.assetAssignmentIds[type] = cards.map(card => card.id);
-      state.assetSettingsByType[type] = Object.fromEntries(cards.map(card => [
-        card.id,
-        {
-          capacityMin: 0,
-          capacityMax: Math.max(0, Math.trunc(Number(card.capacityTotal) || 0)),
-          addedByUserId: ref.assetOwnerUserId,
-          routes: this.normalizeRoutes(card.routes)
-        }
-      ]));
-    }
-    return state;
+    return this.createEmptyState(ref);
   }
 
   private static resolveAssignedCards(

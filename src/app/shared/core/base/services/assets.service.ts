@@ -41,6 +41,17 @@ export class AssetsService extends BaseRouteModeService {
     return value;
   }
 
+  async queryVisibleAssets(query: AppTypes.AssetExploreQuery): Promise<AppTypes.AssetCard[]> {
+    const normalizedUserId = query.userId.trim();
+    if (!normalizedUserId) {
+      return [];
+    }
+    return this.assetsService.queryVisibleAssets({
+      ...query,
+      userId: normalizedUserId
+    });
+  }
+
   async saveOwnedAsset(userId: string, asset: AppTypes.AssetCard): Promise<AppTypes.AssetCard> {
     return this.assetsService.saveOwnedAsset(userId, asset);
   }

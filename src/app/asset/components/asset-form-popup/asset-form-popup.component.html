@@ -5,6 +5,34 @@
       <div class="experience-form-header">
         <h3>{{ title }}</h3>
         <div class="experience-form-header-controls">
+          <div class="event-visibility-picker asset-form-visibility-picker">
+            <button
+              type="button"
+              class="popup-view-fab event-visibility-trigger"
+              [ngClass]="eventVisibilityClass(assetFormVisibility)"
+              [disabled]="isSavePending"
+              (click)="toggleVisibilityPicker($event)"
+              aria-label="Open asset visibility selector"
+              >
+              <mat-icon [ngClass]="eventVisibilityClass(assetFormVisibility)">{{ visibilityIcon(assetFormVisibility) }}</mat-icon>
+              <span>{{ assetFormVisibility }}</span>
+            </button>
+            @if (showVisibilityPicker) {
+              <div class="activities-view-picker-panel">
+                @for (option of assetVisibilityOptions; track option) {
+                  <button
+                    type="button"
+                    class="activities-view-option"
+                    [ngClass]="eventVisibilityClass(option)"
+                    (click)="selectVisibility(option, $event)"
+                    >
+                    <mat-icon [ngClass]="eventVisibilityClass(option)">{{ visibilityIcon(option) }}</mat-icon>
+                    <span>{{ option }}</span>
+                  </button>
+                }
+              </div>
+            }
+          </div>
           <span class="asset-form-save-btn-shell" [class.is-loading]="isSavePending">
             <span class="asset-form-save-btn-ring" aria-hidden="true">
               <svg viewBox="0 0 34 34" preserveAspectRatio="none" class="asset-form-save-btn-ring-svg">
@@ -49,7 +77,7 @@
             <span>Type</span>
             @if (!isMobileAssetTypeSheetViewport()) {
               <div class="profile-status-select-wrap selector-like experience-type-select" [ngClass]="assetTypeClass(assetForm.type)">
-                <mat-select [(ngModel)]="assetForm.type" [disabled]="isSavePending" disableOptionCentering panelClass="selector-options-panel profile-bottom-sheet-panel asset-type-options-panel">
+                <mat-select [ngModel]="assetForm.type" (ngModelChange)="onAssetTypeChange($event)" [disabled]="isSavePending" disableOptionCentering panelClass="selector-options-panel profile-bottom-sheet-panel asset-type-options-panel">
                   <mat-select-trigger>
                     <span class="status-option-content">
                       <mat-icon [class]="assetTypeClass(assetForm.type)">{{ assetTypeIcon(assetForm.type) }}</mat-icon>
@@ -108,6 +136,27 @@
           <label>
             <span>Subtitle</span>
             <input type="text" [(ngModel)]="assetForm.subtitle" [disabled]="isSavePending" />
+          </label>
+          <label>
+            <span>Category</span>
+            <div class="profile-status-select-wrap selector-like experience-type-select" [ngClass]="assetTypeClass(assetForm.type)">
+              <mat-select [(ngModel)]="assetForm.category" [disabled]="isSavePending" disableOptionCentering panelClass="selector-options-panel profile-bottom-sheet-panel asset-type-options-panel">
+                <mat-select-trigger>
+                  <span class="status-option-content">
+                    <mat-icon [class]="assetTypeClass(assetForm.type)">sell</mat-icon>
+                    <span>{{ assetForm.category }}</span>
+                  </span>
+                </mat-select-trigger>
+                @for (option of assetCategoryOptions(); track option) {
+                  <mat-option [value]="option" class="status-option" [ngClass]="assetTypeClass(assetForm.type)">
+                    <span class="status-option-content">
+                      <mat-icon [class]="assetTypeClass(assetForm.type)">sell</mat-icon>
+                      <span>{{ option }}</span>
+                    </span>
+                  </mat-option>
+                }
+              </mat-select>
+            </div>
           </label>
           <label>
             <span>Total capacity<span class="asset-form-required-marker">*</span></span>

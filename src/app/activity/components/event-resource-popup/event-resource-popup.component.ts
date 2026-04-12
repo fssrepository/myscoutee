@@ -3,6 +3,8 @@ import { Component, DoCheck, HostListener, Input, TemplateRef, ViewChild } from 
 import { FormsModule } from '@angular/forms';
 import { DragDropModule } from '@angular/cdk/drag-drop';
 import { MatButtonModule } from '@angular/material/button';
+import { MatNativeDateModule } from '@angular/material/core';
+import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule, MatSelect } from '@angular/material/select';
 import { of } from 'rxjs';
@@ -21,6 +23,7 @@ import {
   type SmartListStateChange
 } from '../../../shared/ui';
 import type * as AppTypes from '../../../shared/core/base/models';
+import { AppUtils } from '../../../shared/app-utils';
 import { resolveCurrentDemoDelayMs } from '../../../shared/core/base/services/route-delay.service';
 
 interface CapacityEditorState {
@@ -50,6 +53,34 @@ interface ResourceSmartListFilters {
   contextKey?: string;
 }
 
+export interface AssetExplorePopupViewState {
+  title: string;
+  subtitle: string;
+  type: AppTypes.AssetType;
+  category: AppTypes.AssetCategory;
+  categoryOptions: readonly AppTypes.AssetCategory[];
+  startDate: Date | null;
+  endDate: Date | null;
+  startTime: string;
+  endTime: string;
+  loading: boolean;
+  error: string | null;
+  cards: AppTypes.AssetCard[];
+}
+
+export interface AssetExploreBorrowDialogViewState {
+  title: string;
+  subtitle: string;
+  quantity: number;
+  availableQuantity: number;
+  startDate: Date | null;
+  endDate: Date | null;
+  startTime: string;
+  endTime: string;
+  busy: boolean;
+  error: string | null;
+}
+
 export interface EventResourcePopupHost {
   title(): string;
   subtitle(): string;
@@ -67,11 +98,28 @@ export interface EventResourcePopupHost {
   capacityEditor(): CapacityEditorState | null;
   routeEditor(): RouteEditorState | null;
   pendingDeleteCard(): PendingResourceDeleteState | null;
+  assetExplorePopup(): AssetExplorePopupViewState | null;
+  assetExploreBorrowDialog(): AssetExploreBorrowDialogViewState | null;
   close(): void;
   selectResourceFilter(filter: AppTypes.SubEventResourceFilter): void;
   onResourceFilterOpened(isOpen: boolean, select: MatSelect): void;
   openMobileResourceFilterSelector(event?: Event): void;
   openAssignPopup(event?: Event): void;
+  openExplorePopup(event?: Event): void;
+  closeExplorePopup(event?: Event): void;
+  selectAssetExploreCategory(category: AppTypes.AssetCategory, event?: Event): void;
+  setAssetExploreDateRange(start: Date | null, end: Date | null): void;
+  setAssetExploreTime(edge: 'start' | 'end', value: string): void;
+  assetExploreAvailabilityLabel(card: AppTypes.AssetCard): string;
+  assetExploreCanBorrow(card: AppTypes.AssetCard): boolean;
+  openAssetExploreBorrowDialog(card: AppTypes.AssetCard, event?: Event): void;
+  closeAssetExploreBorrowDialog(event?: Event): void;
+  setAssetExploreBorrowDateRange(start: Date | null, end: Date | null): void;
+  setAssetExploreBorrowTime(edge: 'start' | 'end', value: string): void;
+  onAssetExploreBorrowQuantityChange(value: number | string): void;
+  canSubmitAssetExploreBorrow(): boolean;
+  confirmAssetExploreBorrow(event?: Event): void;
+  assetExploreBorrowRingPerimeter(): number;
   trackByCard(index: number, card: AppTypes.SubEventResourceCard): string;
   canOpenMap(card: AppTypes.SubEventResourceCard): boolean;
   openMap(card: AppTypes.SubEventResourceCard, event?: Event): void;
@@ -126,7 +174,9 @@ export interface EventResourcePopupHost {
     FormsModule,
     DragDropModule,
     MatButtonModule,
+    MatDatepickerModule,
     MatIconModule,
+    MatNativeDateModule,
     MatSelectModule,
     SmartListComponent,
     InfoCardComponent,
@@ -146,6 +196,7 @@ export class EventResourcePopupComponent implements DoCheck {
 
   protected resourceFilterOpen = false;
   protected showMobileResourceFilterPicker = false;
+  protected showQuickActionsMenu = false;
 
   protected resourceSmartListQuery: Partial<ListQuery<ResourceSmartListFilters>> = {
     filters: {
@@ -310,10 +361,113 @@ export class EventResourcePopupComponent implements DoCheck {
     this.showMobileResourceFilterPicker = !this.showMobileResourceFilterPicker;
   }
 
+  protected toggleQuickActionsMenu(event: Event): void {
+    event.stopPropagation();
+    this.showQuickActionsMenu = !this.showQuickActionsMenu;
+  }
+
+  protected openAssignQuickAction(event: Event): void {
+    event.stopPropagation();
+    this.showQuickActionsMenu = false;
+    this.host.openAssignPopup(event);
+  }
+
+  protected openExploreQuickAction(event: Event): void {
+    event.stopPropagation();
+    this.showQuickActionsMenu = false;
+    this.host.openExplorePopup(event);
+  }
+
   protected selectMobileResourceFilter(filter: AppTypes.AssetType, event?: Event): void {
     event?.stopPropagation();
     this.showMobileResourceFilterPicker = false;
     this.host.selectResourceFilter(filter);
+  }
+
+  protected assetExploreInfoCard(card: AppTypes.AssetCard): InfoCardData {
+    const visibility = card.visibility === 'Friends only'
+      ? 'Friends only'
+      : card.visibility === 'Invitation only'
+        ? 'Invitation only'
+        : 'Public';
+    const canBorrow = this.host.assetExploreCanBorrow(card);
+    return {
+      rowId: `asset-explore:${card.id}`,
+      title: card.title,
+      imageUrl: card.imageUrl,
+      metaRows: [[
+        this.host.resourceTypeLabel(card.type),
+        card.category ?? '',
+        card.city
+      ].filter(Boolean).join(' · ')],
+      description: card.details,
+      detailRows: [[
+        card.ownerName?.trim() || 'Unknown owner',
+        visibility
+      ].filter(Boolean).join(' · ')],
+      leadingIcon: {
+        icon: visibility === 'Friends only'
+          ? 'groups'
+          : visibility === 'Invitation only'
+            ? 'mail_lock'
+            : 'public',
+        tone: visibility === 'Friends only'
+          ? 'friends'
+          : visibility === 'Invitation only'
+            ? 'invitation'
+            : 'public'
+      },
+      mediaStart: {
+        variant: 'avatar',
+        tone: `tone-${(AppUtils.hashText(`${card.ownerUserId ?? card.id}:${card.ownerName ?? card.title}`) % 8) + 1}` as NonNullable<InfoCardData['mediaStart']>['tone'],
+        label: AppUtils.initialsFromText(card.ownerName?.trim() || card.title),
+        interactive: false,
+        ariaLabel: null
+      },
+      mediaEnd: {
+        variant: 'badge',
+        tone: canBorrow ? 'default' : 'inactive',
+        label: this.host.assetExploreAvailabilityLabel(card),
+        interactive: canBorrow,
+        disabled: !canBorrow,
+        ariaLabel: canBorrow ? 'Borrow asset' : 'Asset unavailable for this time'
+      },
+      menuActions: canBorrow ? [{
+        id: 'borrow',
+        label: 'Borrow',
+        icon: 'volunteer_activism',
+        tone: 'accent'
+      }] : [],
+      clickable: false
+    };
+  }
+
+  protected openAssetExploreBorrowFromBadge(card: AppTypes.AssetCard): void {
+    if (!this.host.assetExploreCanBorrow(card)) {
+      return;
+    }
+    this.host.openAssetExploreBorrowDialog(card);
+  }
+
+  protected onAssetExploreInfoCardMenuAction(card: AppTypes.AssetCard, event: InfoCardMenuActionEvent): void {
+    if (event.actionId !== 'borrow') {
+      return;
+    }
+    this.host.openAssetExploreBorrowDialog(card, new Event('click'));
+  }
+
+  protected onAssetExploreDateRangeChange(
+    start: Date | null,
+    end: Date | null
+  ): void {
+    this.host.setAssetExploreDateRange(start, end);
+  }
+
+  protected onAssetExploreBorrowDateRangeChange(
+    start: Date | null,
+    end: Date | null
+  ): void {
+    this.host.setAssetExploreBorrowDateRange(start, end);
   }
 
   protected onResourceCardMenuAction(card: AppTypes.SubEventResourceCard, event: InfoCardMenuActionEvent): void {
@@ -335,7 +489,28 @@ export class EventResourcePopupComponent implements DoCheck {
   @HostListener('window:keydown.escape', ['$event'])
   protected onEscapePressed(event: Event): void {
     const keyboardEvent = event as KeyboardEvent;
-    if (keyboardEvent.defaultPrevented || !this.showMobileResourceFilterPicker) {
+    if (keyboardEvent.defaultPrevented) {
+      return;
+    }
+    if (this.host.assetExploreBorrowDialog()) {
+      keyboardEvent.preventDefault();
+      keyboardEvent.stopPropagation();
+      this.host.closeAssetExploreBorrowDialog();
+      return;
+    }
+    if (this.host.assetExplorePopup()) {
+      keyboardEvent.preventDefault();
+      keyboardEvent.stopPropagation();
+      this.host.closeExplorePopup();
+      return;
+    }
+    if (this.showQuickActionsMenu) {
+      keyboardEvent.preventDefault();
+      keyboardEvent.stopPropagation();
+      this.showQuickActionsMenu = false;
+      return;
+    }
+    if (!this.showMobileResourceFilterPicker) {
       return;
     }
     keyboardEvent.preventDefault();
@@ -346,10 +521,15 @@ export class EventResourcePopupComponent implements DoCheck {
   @HostListener('document:click', ['$event'])
   protected onDocumentClick(event: MouseEvent): void {
     const target = event.target;
-    if (!(target instanceof Element) || target.closest('.popup-mobile-filter-picker')) {
+    if (!(target instanceof Element)) {
       return;
     }
-    this.showMobileResourceFilterPicker = false;
+    if (!target.closest('.popup-mobile-filter-picker')) {
+      this.showMobileResourceFilterPicker = false;
+    }
+    if (!target.closest('.subevent-assets-quick-actions')) {
+      this.showQuickActionsMenu = false;
+    }
   }
 
   private syncVisibleResourceCards(
