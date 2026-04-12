@@ -447,12 +447,16 @@
 
 .event-resource-popup-shell .asset-explore-grid {
   min-height: 0;
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.85rem;
-  align-content: start;
-  overflow: auto;
+}
+
+.event-resource-popup-shell .asset-explore-smart-list {
+  min-height: 0;
+}
+
+.event-resource-popup-shell .asset-explore-card-list {
+  min-height: 0;
   padding-right: 0.12rem;
+  padding-bottom: 0.3rem;
 }
 
 .event-resource-popup-shell .asset-explore-empty-state {
@@ -1200,7 +1204,8 @@
     grid-template-columns: 1fr;
   }
 
-  .event-resource-popup-shell .asset-explore-grid {
-    grid-template-columns: 1fr;
+  .event-resource-popup-shell .asset-explore-smart-list,
+  .event-resource-popup-shell .asset-explore-card-list {
+    min-height: 0;
   }
 }

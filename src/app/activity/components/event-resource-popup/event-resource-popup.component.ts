@@ -191,6 +191,11 @@ export class EventResourcePopupComponent implements DoCheck {
   private lastCardCount = 0;
   private resourceListReady = false;
   private resourceListVisibleCount = 0;
+  private lastAssetExploreCardsSignature = '';
+  private lastAssetExploreContextKey = '';
+  private lastAssetExploreCardCount = 0;
+  private assetExploreListReady = false;
+  private assetExploreListVisibleCount = 0;
 
   @Input({ required: true }) host!: EventResourcePopupHost;
 
@@ -205,8 +210,18 @@ export class EventResourcePopupComponent implements DoCheck {
     }
   };
 
+  protected assetExploreSmartListQuery: Partial<ListQuery<ResourceSmartListFilters>> = {
+    filters: {
+      revision: 0,
+      contextKey: ''
+    }
+  };
+
   @ViewChild('resourceSmartList')
   private resourceSmartList?: SmartListComponent<AppTypes.SubEventResourceCard, ResourceSmartListFilters>;
+
+  @ViewChild('assetExploreSmartList')
+  private assetExploreSmartList?: SmartListComponent<AppTypes.AssetCard, ResourceSmartListFilters>;
 
   protected resourceItemTemplateRef?: TemplateRef<SmartListItemTemplateContext<AppTypes.SubEventResourceCard, ResourceSmartListFilters>>;
 
@@ -215,6 +230,15 @@ export class EventResourcePopupComponent implements DoCheck {
     value: TemplateRef<SmartListItemTemplateContext<AppTypes.SubEventResourceCard, ResourceSmartListFilters>> | undefined
   ) {
     this.resourceItemTemplateRef = value;
+  }
+
+  protected assetExploreItemTemplateRef?: TemplateRef<SmartListItemTemplateContext<AppTypes.AssetCard, ResourceSmartListFilters>>;
+
+  @ViewChild('assetExploreItemTemplate', { read: TemplateRef })
+  private set assetExploreItemTemplate(
+    value: TemplateRef<SmartListItemTemplateContext<AppTypes.AssetCard, ResourceSmartListFilters>> | undefined
+  ) {
+    this.assetExploreItemTemplateRef = value;
   }
 
   protected readonly resourceSmartListLoadPage: SmartListLoadPage<AppTypes.SubEventResourceCard, ResourceSmartListFilters> = (
@@ -253,6 +277,42 @@ export class EventResourcePopupComponent implements DoCheck {
     trackBy: (_index, card) => card.id
   };
 
+  protected readonly assetExploreSmartListLoadPage: SmartListLoadPage<AppTypes.AssetCard, ResourceSmartListFilters> = (
+    query
+  ) => {
+    const cards = this.host?.assetExplorePopup?.()?.cards ?? [];
+    const page = Math.max(0, Math.trunc(Number(query.page) || 0));
+    const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 1));
+    const start = page * pageSize;
+    return of({
+      items: cards.slice(start, start + pageSize),
+      total: cards.length
+    });
+  };
+
+  protected readonly assetExploreSmartListConfig: SmartListConfig<AppTypes.AssetCard, ResourceSmartListFilters> = {
+    pageSize: 18,
+    loadingDelayMs: 0,
+    loadingWindowMs: 0,
+    defaultView: 'list',
+    headerProgress: {
+      enabled: false
+    },
+    emptyLabel: 'No visible assets right now.',
+    emptyDescription: 'Try another date range or category.',
+    showStickyHeader: false,
+    showGroupMarker: () => false,
+    listLayout: 'card-grid',
+    desktopColumns: 3,
+    snapMode: 'none',
+    containerClass: {
+      'experience-card-list': true,
+      'assets-card-list': true,
+      'asset-explore-card-list': true
+    },
+    trackBy: (_index, card) => card.id
+  };
+
   ngDoCheck(): void {
     const cards = this.host?.cards?.() ?? [];
     const contextKey = `${this.host?.title?.() ?? ''}:${this.host?.subtitle?.() ?? ''}:${this.host?.resourceFilter?.() ?? ''}`;
@@ -276,17 +336,58 @@ export class EventResourcePopupComponent implements DoCheck {
           contextKey
         }
       };
+    } else if (signature !== this.lastCardsSignature) {
+      const previousCardCount = this.lastCardCount;
+      this.lastCardsSignature = signature;
+      this.lastCardCount = cards.length;
+      this.syncVisibleResourceCards(cards, previousCardCount);
+    }
+
+    const explore = this.host?.assetExplorePopup?.() ?? null;
+    const assetExploreCards = explore?.cards ?? [];
+    const assetExploreContextKey = explore
+      ? [
+          explore.title,
+          explore.subtitle,
+          explore.type,
+          explore.category,
+          explore.startDate?.getTime() ?? 'start',
+          explore.endDate?.getTime() ?? 'end',
+          explore.startTime,
+          explore.endTime
+        ].join(':')
+      : '';
+    const assetExploreSignature = `${assetExploreContextKey}:${assetExploreCards.map(card => [
+      card.id,
+      card.quantity ?? '',
+      card.capacityTotal,
+      card.requests.length,
+      this.host?.assetExploreAvailabilityLabel?.(card) ?? ''
+    ].join(':')).join('|')}`;
+
+    if (assetExploreContextKey !== this.lastAssetExploreContextKey) {
+      this.lastAssetExploreContextKey = assetExploreContextKey;
+      this.lastAssetExploreCardsSignature = assetExploreSignature;
+      this.lastAssetExploreCardCount = assetExploreCards.length;
+      this.assetExploreListReady = false;
+      this.assetExploreListVisibleCount = 0;
+      this.assetExploreSmartListQuery = {
+        filters: {
+          revision: Date.now(),
+          contextKey: assetExploreContextKey
+        }
+      };
       return;
     }
 
-    if (signature === this.lastCardsSignature) {
+    if (assetExploreSignature === this.lastAssetExploreCardsSignature) {
       return;
     }
 
-    const previousCardCount = this.lastCardCount;
-    this.lastCardsSignature = signature;
-    this.lastCardCount = cards.length;
-    this.syncVisibleResourceCards(cards, previousCardCount);
+    const previousAssetExploreCardCount = this.lastAssetExploreCardCount;
+    this.lastAssetExploreCardsSignature = assetExploreSignature;
+    this.lastAssetExploreCardCount = assetExploreCards.length;
+    this.syncVisibleAssetExploreCards(assetExploreCards, previousAssetExploreCardCount);
   }
 
   protected onResourceSmartListStateChange(
@@ -300,6 +401,20 @@ export class EventResourcePopupComponent implements DoCheck {
     const cards = this.host?.cards?.() ?? [];
     if (change.total !== cards.length) {
       this.syncVisibleResourceCards(cards, change.total);
+    }
+  }
+
+  protected onAssetExploreSmartListStateChange(
+    change: SmartListStateChange<AppTypes.AssetCard, ResourceSmartListFilters>
+  ): void {
+    this.assetExploreListVisibleCount = change.items.length;
+    this.assetExploreListReady = !change.initialLoading;
+    if (!this.assetExploreListReady) {
+      return;
+    }
+    const cards = this.host?.assetExplorePopup?.()?.cards ?? [];
+    if (change.total !== cards.length) {
+      this.syncVisibleAssetExploreCards(cards, change.total);
     }
   }
 
@@ -549,6 +664,27 @@ export class EventResourcePopupComponent implements DoCheck {
     }
 
     this.resourceSmartList.replaceVisibleItems(cards.slice(0, nextVisibleCount), {
+      total: cards.length
+    });
+  }
+
+  private syncVisibleAssetExploreCards(
+    cards: AppTypes.AssetCard[],
+    previousCardCount: number
+  ): void {
+    if (!this.assetExploreListReady || !this.assetExploreSmartList) {
+      return;
+    }
+
+    const visibleCount = Math.max(this.assetExploreListVisibleCount, this.assetExploreSmartList.itemsSnapshot().length);
+    const allCardsWereVisible = visibleCount >= previousCardCount;
+    let nextVisibleCount = Math.min(cards.length, visibleCount);
+
+    if (cards.length > previousCardCount && allCardsWereVisible) {
+      nextVisibleCount = Math.min(cards.length, visibleCount + 1);
+    }
+
+    this.assetExploreSmartList.replaceVisibleItems(cards.slice(0, nextVisibleCount), {
       total: cards.length
     });
   }

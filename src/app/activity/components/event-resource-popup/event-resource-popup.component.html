@@ -238,19 +238,29 @@
                       <span>No visible assets match this date range and category yet.</span>
                     </section>
                   } @else {
-                    @for (card of explore.cards; track card.id) {
-                      <app-info-card
-                        [card]="assetExploreInfoCard(card)"
-                        (mediaEndClick)="openAssetExploreBorrowFromBadge(card)"
-                        (menuAction)="onAssetExploreInfoCardMenuAction(card, $event)"
-                      ></app-info-card>
-                    }
+                    <app-smart-list
+                      #assetExploreSmartList
+                      class="asset-explore-smart-list"
+                      [config]="assetExploreSmartListConfig"
+                      [loadPage]="assetExploreSmartListLoadPage"
+                      [itemTemplate]="assetExploreItemTemplateRef ?? null"
+                      [query]="assetExploreSmartListQuery"
+                      (stateChange)="onAssetExploreSmartListStateChange($event)"
+                    ></app-smart-list>
                   }
                 </div>
               </section>
             </div>
           </section>
         }
+
+        <ng-template #assetExploreItemTemplate let-card>
+          <app-info-card
+            [card]="assetExploreInfoCard(card)"
+            (mediaEndClick)="openAssetExploreBorrowFromBadge(card)"
+            (menuAction)="onAssetExploreInfoCardMenuAction(card, $event)"
+          ></app-info-card>
+        </ng-template>
 
         @if (host.assetExploreBorrowDialog(); as dialog) {
           <section class="experience-form-overlay subevent-form-overlay subevent-group-form-overlay subevent-asset-capacity-overlay">

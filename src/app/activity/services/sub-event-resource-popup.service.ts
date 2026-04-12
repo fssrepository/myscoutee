@@ -183,6 +183,9 @@ export class SubEventResourcePopupService {
   private pendingAssignSaveRequestVersion = 0;
   private pendingAssetExploreRequestVersion = 0;
   private pendingAssetExploreBorrowRequestVersion = 0;
+  private assetExploreLoadScheduled = false;
+  private readonly assetExploreWarmCacheByKey = new Map<string, AppTypes.AssetCard[]>();
+  private readonly pendingAssetExploreWarmupKeys = new Set<string>();
 
   readonly resourceHost = computed<EventResourcePopupHost | null>(() =>
     this.popupContextRef() ? this.eventResourcePopupHost : null
@@ -446,6 +449,7 @@ export class SubEventResourcePopupService {
     this.closeAssignPopup(false);
     this.hydratePopupResourceState(context);
     this.syncPopupSubEventMetrics();
+    this.scheduleAssetExploreWarmup(type, context);
   }
 
   private hydratePopupResourceState(context: ResourcePopupContext): void {
@@ -977,6 +981,7 @@ export class SubEventResourcePopupService {
     this.routeEditorRef.set(null);
     this.assetExploreBorrowDialogRef.set(null);
     this.assetExplorePopupRef.set(null);
+    this.scheduleAssetExploreWarmup(filter);
   }
 
   private onResourceFilterOpened(isOpen: boolean, select: MatSelect): void {
@@ -1570,17 +1575,14 @@ export class SubEventResourcePopupService {
     const type = this.resourceFilterRef();
     const { startAtIso, endAtIso } = this.defaultAssetExploreRange(context.subEvent);
     this.assetExploreBorrowDialogRef.set(null);
-    this.assetExplorePopupRef.set({
+    this.assetExplorePopupRef.set(this.resolveAssetExplorePopupState({
       subEventId: context.subEvent.id,
       type,
       category: AssetDefaultsBuilder.defaultCategory(type),
       startAtIso,
-      endAtIso,
-      loading: true,
-      error: null,
-      cards: []
-    });
-    void this.loadAssetExploreCards();
+      endAtIso
+    }));
+    this.scheduleAssetExploreCardsLoad();
   }
 
   private closeExplorePopup(event?: Event): void {
@@ -1608,7 +1610,7 @@ export class SubEventResourcePopupService {
       endTime: AppUtils.isoLocalTimePart(popup.endAtIso),
       loading: popup.loading,
       error: popup.error,
-      cards: popup.cards.map(card => this.cloneAsset(card))
+      cards: popup.cards
     };
   }
 
@@ -1647,13 +1649,11 @@ export class SubEventResourcePopupService {
     if (normalizedCategory === popup.category) {
       return;
     }
-    this.assetExplorePopupRef.set({
+    this.assetExplorePopupRef.set(this.resolveAssetExplorePopupState({
       ...popup,
-      category: normalizedCategory,
-      loading: true,
-      error: null
-    });
-    void this.loadAssetExploreCards();
+      category: normalizedCategory
+    }));
+    this.scheduleAssetExploreCardsLoad();
   }
 
   private setAssetExploreDateRange(start: Date | null, end: Date | null): void {
@@ -1663,14 +1663,12 @@ export class SubEventResourcePopupService {
     }
     const nextStartAtIso = AppUtils.applyDatePartToIsoLocal(popup.startAtIso, start);
     const nextEndAtIso = AppUtils.applyDatePartToIsoLocal(popup.endAtIso, end);
-    this.assetExplorePopupRef.set({
+    this.assetExplorePopupRef.set(this.resolveAssetExplorePopupState({
       ...popup,
       startAtIso: nextStartAtIso,
-      endAtIso: nextEndAtIso,
-      loading: true,
-      error: null
-    });
-    void this.loadAssetExploreCards();
+      endAtIso: nextEndAtIso
+    }));
+    this.scheduleAssetExploreCardsLoad();
   }
 
   private setAssetExploreTime(edge: 'start' | 'end', value: string): void {
@@ -1678,14 +1676,12 @@ export class SubEventResourcePopupService {
     if (!popup) {
       return;
     }
-    this.assetExplorePopupRef.set({
+    this.assetExplorePopupRef.set(this.resolveAssetExplorePopupState({
       ...popup,
       startAtIso: edge === 'start' ? AppUtils.applyTimePartToIsoLocal(popup.startAtIso, value) : popup.startAtIso,
-      endAtIso: edge === 'end' ? AppUtils.applyTimePartToIsoLocal(popup.endAtIso, value) : popup.endAtIso,
-      loading: true,
-      error: null
-    });
-    void this.loadAssetExploreCards();
+      endAtIso: edge === 'end' ? AppUtils.applyTimePartToIsoLocal(popup.endAtIso, value) : popup.endAtIso
+    }));
+    this.scheduleAssetExploreCardsLoad();
   }
 
   private async loadAssetExploreCards(): Promise<void> {
@@ -1693,34 +1689,25 @@ export class SubEventResourcePopupService {
     if (!popup) {
       return;
     }
+    const query = this.assetExploreQueryFromPopup(popup);
+    const queryKey = this.assetExploreQueryKey(query);
     const requestVersion = ++this.pendingAssetExploreRequestVersion;
     try {
-      const cards = await this.assetsService.queryVisibleAssets({
-        userId: this.activeUser().id,
-        type: popup.type,
-        category: popup.category,
-        startAtIso: popup.startAtIso,
-        endAtIso: popup.endAtIso
-      });
+      const cards = await this.assetsService.queryVisibleAssets(query);
+      const sortedCards = this.sortAssetExploreCards(cards, query.startAtIso ?? '', query.endAtIso ?? '');
+      this.storeAssetExploreWarmCache(queryKey, sortedCards);
       const current = this.assetExplorePopupRef();
       if (!current || requestVersion !== this.pendingAssetExploreRequestVersion) {
         return;
       }
-      const sortedCards = cards
-        .map(card => this.cloneAsset(card))
-        .sort((left, right) => {
-          const availabilityDelta = this.assetExploreAvailableQuantityForWindow(right, current.startAtIso, current.endAtIso)
-            - this.assetExploreAvailableQuantityForWindow(left, current.startAtIso, current.endAtIso);
-          if (availabilityDelta !== 0) {
-            return availabilityDelta;
-          }
-          return left.title.localeCompare(right.title) || left.id.localeCompare(right.id);
-        });
+      if (this.assetExploreQueryKey(this.assetExploreQueryFromPopup(current)) !== queryKey) {
+        return;
+      }
       this.assetExplorePopupRef.set({
         ...current,
         loading: false,
         error: null,
-        cards: sortedCards
+        cards: sortedCards.map(card => this.cloneAsset(card))
       });
     } catch {
       const current = this.assetExplorePopupRef();
@@ -1730,9 +1717,138 @@ export class SubEventResourcePopupService {
       this.assetExplorePopupRef.set({
         ...current,
         loading: false,
-        error: 'Unable to load visible assets right now.'
+        error: current.cards.length > 0 ? null : 'Unable to load visible assets right now.'
       });
     }
+  }
+
+  private resolveAssetExplorePopupState(
+    popup: Pick<AssetExplorePopupState, 'subEventId' | 'type' | 'category' | 'startAtIso' | 'endAtIso'>
+  ): AssetExplorePopupState {
+    const cachedCards = this.peekAssetExploreWarmCache(this.assetExploreQueryFromPopup(popup));
+    return {
+      ...popup,
+      loading: cachedCards === null,
+      error: null,
+      cards: cachedCards ?? []
+    };
+  }
+
+  private scheduleAssetExploreCardsLoad(): void {
+    if (this.assetExploreLoadScheduled) {
+      return;
+    }
+    this.assetExploreLoadScheduled = true;
+    this.runAfterAssetExploreNextPaint(() => {
+      this.assetExploreLoadScheduled = false;
+      if (!this.assetExplorePopupRef()) {
+        return;
+      }
+      void this.loadAssetExploreCards();
+    });
+  }
+
+  private scheduleAssetExploreWarmup(
+    type: AppTypes.AssetType = this.resourceFilterRef(),
+    context: ResourcePopupContext | null = this.popupContextRef()
+  ): void {
+    if (!context) {
+      return;
+    }
+    const userId = this.activeUser().id.trim();
+    if (!userId) {
+      return;
+    }
+    const { startAtIso, endAtIso } = this.defaultAssetExploreRange(context.subEvent);
+    const query: AppTypes.AssetExploreQuery = {
+      userId,
+      type,
+      category: AssetDefaultsBuilder.defaultCategory(type),
+      startAtIso,
+      endAtIso
+    };
+    this.runAfterAssetExploreNextPaint(() => {
+      void this.prewarmAssetExploreQuery(query);
+    });
+  }
+
+  private async prewarmAssetExploreQuery(query: AppTypes.AssetExploreQuery): Promise<void> {
+    const queryKey = this.assetExploreQueryKey(query);
+    if (this.assetExploreWarmCacheByKey.has(queryKey) || this.pendingAssetExploreWarmupKeys.has(queryKey)) {
+      return;
+    }
+    this.pendingAssetExploreWarmupKeys.add(queryKey);
+    try {
+      const cards = await this.assetsService.queryVisibleAssets(query);
+      this.storeAssetExploreWarmCache(queryKey, this.sortAssetExploreCards(cards, query.startAtIso ?? '', query.endAtIso ?? ''));
+    } catch {
+      // Keep warm-up best-effort so the popup still opens immediately.
+    } finally {
+      this.pendingAssetExploreWarmupKeys.delete(queryKey);
+    }
+  }
+
+  private assetExploreQueryFromPopup(
+    popup: Pick<AssetExplorePopupState, 'type' | 'category' | 'startAtIso' | 'endAtIso'>
+  ): AppTypes.AssetExploreQuery {
+    return {
+      userId: this.activeUser().id,
+      type: popup.type,
+      category: popup.category,
+      startAtIso: popup.startAtIso,
+      endAtIso: popup.endAtIso
+    };
+  }
+
+  private assetExploreQueryKey(query: AppTypes.AssetExploreQuery): string {
+    return [
+      query.userId.trim(),
+      query.type,
+      `${query.category ?? ''}`.trim(),
+      `${query.startAtIso ?? ''}`.trim(),
+      `${query.endAtIso ?? ''}`.trim()
+    ].join('|');
+  }
+
+  private peekAssetExploreWarmCache(query: AppTypes.AssetExploreQuery): AppTypes.AssetCard[] | null {
+    const cached = this.assetExploreWarmCacheByKey.get(this.assetExploreQueryKey(query));
+    return cached ? cached.map(card => this.cloneAsset(card)) : null;
+  }
+
+  private storeAssetExploreWarmCache(queryKey: string, cards: readonly AppTypes.AssetCard[]): void {
+    this.assetExploreWarmCacheByKey.set(queryKey, cards.map(card => this.cloneAsset(card)));
+    if (this.assetExploreWarmCacheByKey.size <= 18) {
+      return;
+    }
+    const oldestKey = this.assetExploreWarmCacheByKey.keys().next().value;
+    if (oldestKey) {
+      this.assetExploreWarmCacheByKey.delete(oldestKey);
+    }
+  }
+
+  private sortAssetExploreCards(
+    cards: readonly AppTypes.AssetCard[],
+    startAtIso: string,
+    endAtIso: string
+  ): AppTypes.AssetCard[] {
+    return cards
+      .map(card => this.cloneAsset(card))
+      .sort((left, right) => {
+        const availabilityDelta = this.assetExploreAvailableQuantityForWindow(right, startAtIso, endAtIso)
+          - this.assetExploreAvailableQuantityForWindow(left, startAtIso, endAtIso);
+        if (availabilityDelta !== 0) {
+          return availabilityDelta;
+        }
+        return left.title.localeCompare(right.title) || left.id.localeCompare(right.id);
+      });
+  }
+
+  private runAfterAssetExploreNextPaint(task: () => void): void {
+    if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+      window.requestAnimationFrame(() => window.requestAnimationFrame(task));
+      return;
+    }
+    setTimeout(task, 0);
   }
 
   private assetExploreAvailabilityLabel(card: AppTypes.AssetCard): string {
@@ -1943,12 +2059,13 @@ export class SubEventResourcePopupService {
         if (!currentDialog || !currentPopup || requestVersion !== this.pendingAssetExploreBorrowRequestVersion) {
           return;
         }
+        this.assetExploreWarmCacheByKey.clear();
         this.assetExplorePopupRef.set({
           ...currentPopup,
           cards: currentPopup.cards.map(cardItem => cardItem.id === savedCard.id ? this.cloneAsset(savedCard) : cardItem)
         });
         this.closeAssetExploreBorrowDialog();
-        void this.loadAssetExploreCards();
+        this.scheduleAssetExploreCardsLoad();
       })
       .catch(() => {
         const currentDialog = this.assetExploreBorrowDialogRef();
