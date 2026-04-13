@@ -1,10 +1,19 @@
 :host {
   display: block;
+  // 1. Move the container-type to the stable host element
+  container-type: inline-size; 
+  // 2. Prevent horizontal flex/grid blowout from the parent
+  min-width: 0; 
 }
 
 .pricing-editor {
-  container-type: inline-size;
+  // container-type: inline-size; <--- REMOVE THIS LINE
+  
   display: grid;
+  // 3. Ensure the grid respects the host boundaries 
+  // and doesn't cause a momentary horizontal scrollbar
+  min-width: 0; 
+  
   gap: 1rem;
   padding: 1rem;
   border-radius: 24px;
@@ -787,6 +796,7 @@
 .pricing-editor__preview {
   display: grid;
   gap: 0.82rem;
+  min-width: 0; // Add this
 }
 
 .pricing-editor__preview--summary {
@@ -796,6 +806,7 @@
 .pricing-editor__preview-card {
   display: grid;
   gap: 0.72rem;
+  min-width: 0;
   padding: 1rem;
   border-radius: 20px;
   border: 1px solid rgba(126, 152, 188, 0.28);
