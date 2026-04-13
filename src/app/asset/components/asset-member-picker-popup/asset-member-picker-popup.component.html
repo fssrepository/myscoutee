@@ -12,9 +12,14 @@
             <p>{{ title }}</p>
           }
         </div>
-        <div class="popup-header-inline-controls">
+        <div class="popup-header-mobile-status-row">
           <div class="friends-picker-sort">
-            <button type="button" class="popup-view-fab" (click)="toggleInviteSortPicker($event)" aria-label="Open invite sort">
+            <button
+              type="button"
+              class="popup-view-fab asset-member-picker-sort-trigger"
+              (click)="toggleInviteSortPicker($event)"
+              aria-label="Open invite sort"
+              >
               <mat-icon>{{ inviteSort === 'recent' ? 'schedule' : 'auto_awesome' }}</mat-icon>
               <span>{{ inviteSort === 'recent' ? 'Recent' : 'Relevant' }}</span>
             </button>
@@ -31,6 +36,8 @@
               </div>
             }
           </div>
+        </div>
+        <div class="popup-header-mobile-actions-row">
           @if (selectedInviteCount() > 0) {
             <span class="header-members-count asset-member-picker-header-count">{{ selectedInviteCountLabel() }}</span>
           }
@@ -78,7 +85,7 @@
               </span>
             }
           </span>
-          <button mat-icon-button class="popup-close" (click)="closeInvitePopup($event)" aria-label="Close">
+          <button type="button" class="popup-close" (click)="closeInvitePopup($event)" aria-label="Close">
             <mat-icon>close</mat-icon>
           </button>
         </div>

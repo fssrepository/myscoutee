@@ -27,28 +27,78 @@
   gap: 0.58rem;
 }
 
-.asset-member-picker-popup-shell .popup-header-inline-controls {
-  margin-left: auto;
-  display: inline-flex;
+.asset-member-picker-popup-shell .popup-header {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto auto;
+  gap: 0.35rem 0.5rem !important;
+  padding: 0.74rem 0.65rem !important;
+  border-bottom: 1px solid rgba(46, 114, 184, 0.2);
+  position: relative;
+  box-sizing: border-box;
+}
+
+.asset-member-picker-popup-shell .popup-title {
+  grid-column: 1 / 2;
+  grid-row: 1 / 2;
+  align-self: center;
+  display: block;
+  min-width: 0;
+}
+
+.asset-member-picker-popup-shell .popup-header-mobile-actions-row {
+  display: flex;
+  grid-column: 2 / 3;
+  grid-row: 1 / 2;
   align-items: center;
-  gap: 0.46rem;
+  gap: 0.45rem;
+  justify-content: flex-end;
+}
+
+.asset-member-picker-popup-shell .popup-header-mobile-status-row {
+  display: flex;
+  grid-column: 1 / 3;
+  grid-row: 2 / 3;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  width: 100%;
+  margin-top: 0.1rem;
 }
 
 .asset-member-picker-popup-shell .asset-member-picker-header-count {
   min-width: fit-content;
-  height: 22px;
+  height: 24px;
   border-radius: 999px;
-  padding: 0 9px;
+  padding: 0 10px;
   border: 1px solid rgba(121, 144, 179, 0.24);
-  background: linear-gradient(180deg, #f5f8fc 0%, #e9eff7 100%);
-  box-shadow: 0 2px 8px rgba(26, 47, 78, 0.08);
-  color: rgba(24, 39, 61, 0.82);
+  background: #dbe4ef;
+  color: rgba(24, 39, 61, 0.88);
   font-size: 0.72rem;
   font-weight: 700;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   white-space: nowrap;
+}
+
+.asset-member-picker-popup-shell .popup-close {
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: rgba(38, 67, 105, 0.92);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.asset-member-picker-popup-shell .popup-close .mat-icon {
+  width: 21px;
+  height: 21px;
+  font-size: 21px;
+  line-height: 21px;
 }
 
 .asset-member-picker-popup-shell .popup-title p {
