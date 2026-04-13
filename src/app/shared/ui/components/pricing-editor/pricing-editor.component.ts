@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, HostListener, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
+import { ChangeDetectionStrategy, Component, EventEmitter, HostListener, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatNativeDateModule } from '@angular/material/core';
 import { MatDatepickerModule } from '@angular/material/datepicker';
@@ -46,7 +46,8 @@ interface RuleScopePickerState {
     PricingSlotPanelComponent
   ],
   templateUrl: './pricing-editor.component.html',
-  styleUrl: './pricing-editor.component.scss'
+  styleUrl: './pricing-editor.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class PricingEditorComponent implements OnChanges {
   @Input() pricing: AppTypes.PricingConfig | null | undefined = null;
@@ -82,6 +83,10 @@ export class PricingEditorComponent implements OnChanges {
 
   private idSequence = 0;
   private ruleScopePickerState: RuleScopePickerState | null = null;
+
+  private cachedPreview: PricingPreviewState | null = null;
+  private cachedExplanationLines: string[] | null = null;
+  private cachedFallbackLines: string[] | null = null;
 
   ngOnChanges(changes: SimpleChanges): void {
     if (
@@ -622,6 +627,13 @@ export class PricingEditorComponent implements OnChanges {
   }
 
   protected previewState(): PricingPreviewState {
+    if (!this.cachedPreview) {
+      this.refreshCache();
+    }
+    return this.cachedPreview!;
+  }
+
+  private calculatePreviewState(): PricingPreviewState {
     const normalized = this.normalizePricingWithCapabilities(this.workingPricing);
     const activeSlotOverride = normalized.slotPricingEnabled
       ? normalized.slotOverrides.find(item => item.price !== null) ?? null
@@ -669,6 +681,13 @@ export class PricingEditorComponent implements OnChanges {
   }
 
   protected previewExplanationLines(): string[] {
+    if (!this.cachedExplanationLines) {
+      this.refreshCache();
+    }
+    return this.cachedExplanationLines!;
+  }
+
+  private calculateExplanationLines(): string[] {
     const preview = this.previewState();
     return [
       ...(preview.slotOverridePrice !== null ? [`A slot override is active, so this preview starts from ${this.formatMoney(preview.slotOverridePrice)} instead of the global base price.`] : []),
@@ -678,6 +697,13 @@ export class PricingEditorComponent implements OnChanges {
   }
 
   protected previewFallbackLines(): string[] {
+    if (!this.cachedFallbackLines) {
+      this.refreshCache();
+    }
+    return this.cachedFallbackLines!;
+  }
+
+  private calculateFallbackLines(): string[] {
     const lines: string[] = [];
     if (this.workingPricing.basePrice <= 0) {
       lines.push('The base price is still set to $0, so the current preview is showing a free entry.');
@@ -717,12 +743,20 @@ export class PricingEditorComponent implements OnChanges {
 
   private syncWorkingPricing(): void {
     this.workingPricing = this.normalizePricingWithCapabilities(this.pricing);
+    this.refreshCache();
   }
 
   protected emitPricing(): void {
     this.normalizePriceBounds();
     this.workingPricing = this.normalizePricingWithCapabilities(this.workingPricing);
+    this.refreshCache();
     this.pricingChange.emit(PricingBuilder.clonePricingConfig(this.workingPricing));
+  }
+
+  private refreshCache(): void {
+    this.cachedPreview = this.calculatePreviewState();
+    this.cachedExplanationLines = this.calculateExplanationLines();
+    this.cachedFallbackLines = this.calculateFallbackLines();
   }
 
   private syncResolvedCapabilities(): void {

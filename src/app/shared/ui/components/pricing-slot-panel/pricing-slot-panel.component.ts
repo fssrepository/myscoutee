@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
+import { ChangeDetectionStrategy, Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
@@ -17,7 +17,8 @@ import type * as AppTypes from '../../../core/base/models';
     MatSelectModule
   ],
   templateUrl: './pricing-slot-panel.component.html',
-  styleUrl: './pricing-slot-panel.component.scss'
+  styleUrl: './pricing-slot-panel.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class PricingSlotPanelComponent implements OnChanges {
   @Input() enabled = false;
@@ -33,6 +34,7 @@ export class PricingSlotPanelComponent implements OnChanges {
   @Input() description = 'Override global rules with slot-specific pricing.';
 
   protected workingOverrides: AppTypes.PricingSlotOverride[] = [];
+  protected slotWindowLabels: Map<string, string> = new Map();
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['overrides'] || changes['slotCatalog'] || changes['currency']) {
@@ -133,18 +135,7 @@ export class PricingSlotPanelComponent implements OnChanges {
   }
 
   protected slotWindowLabel(override: AppTypes.PricingSlotOverride): string {
-    const start = this.formatDateTime(override.startAt);
-    const end = this.formatDateTime(override.endAt);
-    if (!start && !end) {
-      return 'Time window will follow the selected slot.';
-    }
-    if (!start) {
-      return `Ends ${end}`;
-    }
-    if (!end) {
-      return `Starts ${start}`;
-    }
-    return `${start} - ${end}`;
+    return this.slotWindowLabels.get(override.id) || '';
   }
 
   protected currencySymbol(currency: string): string {
@@ -167,6 +158,7 @@ export class PricingSlotPanelComponent implements OnChanges {
       slotOverrides: (this.overrides ?? []).map(item => ({ ...item }))
     }, this.slotCatalog);
     this.workingOverrides = normalized.slotOverrides.map(item => ({ ...item }));
+    this.refreshLabels();
   }
 
   private emitOverrides(): void {
@@ -176,7 +168,30 @@ export class PricingSlotPanelComponent implements OnChanges {
       slotOverrides: this.workingOverrides.map(item => ({ ...item }))
     }, this.slotCatalog);
     this.workingOverrides = normalized.slotOverrides.map(item => ({ ...item }));
+    this.refreshLabels();
     this.overridesChange.emit(this.workingOverrides.map(item => ({ ...item })));
+  }
+
+  private refreshLabels(): void {
+    this.slotWindowLabels.clear();
+    for (const override of this.workingOverrides) {
+      this.slotWindowLabels.set(override.id, this.calculateSlotWindowLabel(override));
+    }
+  }
+
+  private calculateSlotWindowLabel(override: AppTypes.PricingSlotOverride): string {
+    const start = this.formatDateTime(override.startAt);
+    const end = this.formatDateTime(override.endAt);
+    if (!start && !end) {
+      return 'Time window will follow the selected slot.';
+    }
+    if (!start) {
+      return `Ends ${end}`;
+    }
+    if (!end) {
+      return `Starts ${start}`;
+    }
+    return `${start} - ${end}`;
   }
 
   private remainingSlots(): AppTypes.PricingSlotReference[] {

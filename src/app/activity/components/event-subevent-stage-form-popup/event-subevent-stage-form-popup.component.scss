@@ -40,6 +40,8 @@
 
 .subevent-form-popup {
   width: min(860px, calc(100vw - 2rem));
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }
 
 .experience-form-header {
@@ -108,6 +110,10 @@
   overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  transform: translateZ(0);
+  will-change: transform;
 }
 
 .subevent-form-panel {
