@@ -257,6 +257,7 @@ export class EventResourcePopupComponent implements DoCheck {
   protected resourceFilterOpen = false;
   protected showMobileResourceFilterPicker = false;
   protected showQuickActionsMenu = false;
+  protected showAssetExploreCategoryPicker = false;
   protected showAssetExploreOrderPicker = false;
   protected showAssetExploreBorrowBasket = false;
   protected assetExploreOrder: AssetExploreOrder = 'availability';
@@ -414,6 +415,8 @@ export class EventResourcePopupComponent implements DoCheck {
 
     const explore = this.host?.assetExplorePopup?.() ?? null;
     if (!explore) {
+      this.showAssetExploreCategoryPicker = false;
+      this.showAssetExploreOrderPicker = false;
       this.showAssetExploreBorrowBasket = false;
     }
     const assetExploreCards = explore?.cards ?? [];
@@ -560,6 +563,16 @@ export class EventResourcePopupComponent implements DoCheck {
     this.showQuickActionsMenu = !this.showQuickActionsMenu;
   }
 
+  protected toggleAssetExploreCategoryPicker(event: Event): void {
+    if (!this.isMobileResourceFilterSheetViewport()) {
+      return;
+    }
+    event.stopPropagation();
+    this.showAssetExploreOrderPicker = false;
+    this.showAssetExploreBorrowBasket = false;
+    this.showAssetExploreCategoryPicker = !this.showAssetExploreCategoryPicker;
+  }
+
   protected openAssignQuickAction(event: Event): void {
     event.stopPropagation();
     this.showQuickActionsMenu = false;
@@ -576,6 +589,12 @@ export class EventResourcePopupComponent implements DoCheck {
     event?.stopPropagation();
     this.showMobileResourceFilterPicker = false;
     this.host.selectResourceFilter(filter);
+  }
+
+  protected selectMobileAssetExploreCategory(category: AppTypes.AssetCategory, event?: Event): void {
+    event?.stopPropagation();
+    this.showAssetExploreCategoryPicker = false;
+    this.host.selectAssetExploreCategory(category);
   }
 
   protected assetExploreInfoCard(
@@ -697,6 +716,8 @@ export class EventResourcePopupComponent implements DoCheck {
 
   protected toggleAssetExploreBorrowBasket(event?: Event): void {
     event?.stopPropagation();
+    this.showAssetExploreCategoryPicker = false;
+    this.showAssetExploreOrderPicker = false;
     if (this.assetExploreBorrowDraftCount() <= 0) {
       this.showAssetExploreBorrowBasket = false;
       return;
@@ -800,6 +821,18 @@ export class EventResourcePopupComponent implements DoCheck {
       this.showAssetExploreBorrowBasket = false;
       return;
     }
+    if (this.showAssetExploreCategoryPicker) {
+      keyboardEvent.preventDefault();
+      keyboardEvent.stopPropagation();
+      this.showAssetExploreCategoryPicker = false;
+      return;
+    }
+    if (this.showAssetExploreOrderPicker) {
+      keyboardEvent.preventDefault();
+      keyboardEvent.stopPropagation();
+      this.showAssetExploreOrderPicker = false;
+      return;
+    }
     if (this.host.assetExplorePopup()) {
       keyboardEvent.preventDefault();
       keyboardEvent.stopPropagation();
@@ -822,6 +855,7 @@ export class EventResourcePopupComponent implements DoCheck {
 
   protected toggleAssetExploreOrderPicker(event: Event): void {
     event.stopPropagation();
+    this.showAssetExploreCategoryPicker = false;
     this.showAssetExploreBorrowBasket = false;
     this.showAssetExploreOrderPicker = !this.showAssetExploreOrderPicker;
   }
@@ -864,6 +898,7 @@ export class EventResourcePopupComponent implements DoCheck {
     }
     if (!target.closest('.popup-mobile-filter-picker')) {
       this.showMobileResourceFilterPicker = false;
+      this.showAssetExploreCategoryPicker = false;
     }
     if (!target.closest('.subevent-assets-quick-actions')) {
       this.showQuickActionsMenu = false;
