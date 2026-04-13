@@ -135,6 +135,10 @@
   box-shadow: 0 14px 28px rgba(16, 33, 58, 0.08);
 }
 
+.navigator-contact-card.is-menu-open {
+  z-index: 100;
+}
+
 .navigator-contact-avatar-shell {
   padding-top: 0.1rem;
 }
@@ -768,10 +772,6 @@
     background: rgba(230, 239, 252, 0.76);
   }
 
-  .navigator-contact-card:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 20px 36px rgba(16, 33, 58, 0.12);
-  }
 }
 
 @media (max-width: 900px) {

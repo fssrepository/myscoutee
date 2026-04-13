@@ -52,7 +52,7 @@
         ></app-smart-list>
 
         <ng-template #contactItemTemplate let-contact>
-          <article class="navigator-contact-card">
+          <article class="navigator-contact-card" [class.is-menu-open]="isActionMenuOpen(contact)">
             <div class="navigator-contact-avatar-shell">
               <span
                 class="navigator-contact-avatar"
