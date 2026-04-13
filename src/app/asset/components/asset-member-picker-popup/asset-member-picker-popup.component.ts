@@ -484,7 +484,9 @@ export class AssetMemberPickerPopupComponent {
 
   private async waitForAnimationKickoff(): Promise<void> {
     await this.waitForNextPaint();
-    await this.wait(this.demoModeEnabled ? 96 : 16);
+    await this.waitForNextPaint();
+    await this.yieldToCompositor();
+    await this.wait(this.demoModeEnabled ? 150 : 32);
   }
 
   private async wait(delayMs: number): Promise<void> {
@@ -500,6 +502,18 @@ export class AssetMemberPickerPopupComponent {
     await new Promise<void>(resolve => {
       if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
         window.requestAnimationFrame(() => resolve());
+        return;
+      }
+      setTimeout(() => resolve(), 0);
+    });
+  }
+
+  private async yieldToCompositor(): Promise<void> {
+    await new Promise<void>(resolve => {
+      if (typeof MessageChannel !== 'undefined') {
+        const channel = new MessageChannel();
+        channel.port1.onmessage = () => resolve();
+        channel.port2.postMessage(undefined);
         return;
       }
       setTimeout(() => resolve(), 0);

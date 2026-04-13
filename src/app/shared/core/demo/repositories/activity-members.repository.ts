@@ -32,6 +32,7 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
   private readonly demoEventsRepository = inject(DemoEventsRepository);
   private readonly demoUsersRepository = inject(DemoUsersRepository);
   private lastInitToken = '';
+  private isInitialized = false;
   private readonly ownerCapacityByKey = new Map<string, number>();
   private demoActivityMemberUsersSnapshot: DemoUser[] | null = null;
   private preferredEventRecordsSnapshot: DemoEventRecord[] | null = null;
@@ -125,6 +126,7 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
       this.syncEventSummariesFromMembers();
       const finalTable = this.normalizeCollection(this.memoryDb.read()[ACTIVITY_MEMBERS_TABLE_NAME]);
       this.lastInitToken = `${eventsTable.ids.length}:${finalTable.ids.length}:${Object.keys(finalTable.idsByOwnerKey).length}:${normalizedOwnerUserIds.join('|')}`;
+      this.isInitialized = true;
     } finally {
       this.demoActivityMemberUsersSnapshot = null;
       this.preferredEventRecordsSnapshot = null;
@@ -156,7 +158,9 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
     members: readonly AppTypes.ActivityMemberEntry[],
     capacityTotal?: number | null
   ): Promise<void> {
-    this.init();
+    if (!this.isInitialized) {
+      this.init();
+    }
     const normalizedOwner = this.normalizeOwnerRef(owner);
     if (!normalizedOwner) {
       return;
