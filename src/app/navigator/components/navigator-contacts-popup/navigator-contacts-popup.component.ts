@@ -269,7 +269,7 @@ export class NavigatorContactsPopupComponent {
     try {
       await Promise.all([
         this.contactsService.saveContact(contact),
-        this.wait(180)
+        this.wait(resolveCurrentDemoDelayMs(1500))
       ]);
       this.isFormSavePending.set(false);
       this.editingContact.set(null);
