@@ -22,6 +22,7 @@ import {
 import { CounterBadgePipe } from '../../../shared/ui';
 import { NavigatorService } from '../../navigator.service';
 import { NavigatorSettingsMenuComponent } from '../navigator-settings-menu/navigator-settings-menu.component';
+import { NavigatorContactsService } from '../../navigator-contacts.service';
 
 interface NavigatorMenuUser extends Omit<UserDto, 'activities'> {
   activities: ActivityCounters;
@@ -44,6 +45,7 @@ export class NavigatorMenuComponent {
   private readonly appCtx = inject(AppContext);
   private readonly popupCtx = inject(AppPopupContext);
   private readonly navigatorService = inject(NavigatorService);
+  private readonly navigatorContactsService = inject(NavigatorContactsService);
   private readonly profileSaveLoadState = this.appCtx.selectLoadingState(USER_PROFILE_SAVE_CONTEXT_KEY);
   protected readonly activeUser = this.appCtx.activeUserProfile;
   protected readonly isOnline = this.appCtx.isOnline;
@@ -270,6 +272,11 @@ export class NavigatorMenuComponent {
   protected openAssetTicketsPopup(event?: Event): void {
     event?.stopPropagation();
     this.popupCtx.openNavigatorAssetRequest('Ticket');
+  }
+
+  protected openContactsPopup(event?: Event): void {
+    event?.stopPropagation();
+    this.navigatorContactsService.openPopup();
   }
 
   protected openEventFeedbackPopup(event?: Event): void {

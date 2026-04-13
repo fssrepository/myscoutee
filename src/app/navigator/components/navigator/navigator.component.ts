@@ -12,6 +12,7 @@ import { NavigatorMenuComponent } from '../navigator-menu/navigator-menu.compone
 import { NavigatorSettingsPopupsComponent } from '../navigator-settings-popups/navigator-settings-popups.component';
 import { SubEventResourcePopupService } from '../../../activity/services/sub-event-resource-popup.service';
 import { NavigatorService } from '../../navigator.service';
+import { NavigatorContactsService } from '../../navigator-contacts.service';
 
 @Component({
   selector: 'app-navigator',
@@ -30,6 +31,7 @@ export class NavigatorComponent {
   private readonly appCtx = inject(AppContext);
   private readonly popupCtx = inject(AppPopupContext);
   private readonly navigatorService = inject(NavigatorService);
+  private readonly navigatorContactsService = inject(NavigatorContactsService);
   private readonly activitiesContext = inject(ActivitiesPopupStateService);
   private readonly assetPopupService = inject(AssetPopupStateService);
   private readonly ownedAssets = inject(OwnedAssetsPopupFacadeService);
@@ -49,6 +51,7 @@ export class NavigatorComponent {
   private readonly activitiesPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly assetPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly eventFeedbackPopupComponentRef = signal<Type<unknown> | null>(null);
+  private readonly navigatorContactsPopupComponentRef = signal<Type<unknown> | null>(null);
 
   protected readonly navigatorImpressionsPopupComponent = this.navigatorImpressionsPopupComponentRef.asReadonly();
   protected readonly profileEditorComponent = this.profileEditorComponentRef.asReadonly();
@@ -60,6 +63,7 @@ export class NavigatorComponent {
   protected readonly activitiesPopupComponent = this.activitiesPopupComponentRef.asReadonly();
   protected readonly assetPopupComponent = this.assetPopupComponentRef.asReadonly();
   protected readonly eventFeedbackPopupComponent = this.eventFeedbackPopupComponentRef.asReadonly();
+  protected readonly navigatorContactsPopupComponent = this.navigatorContactsPopupComponentRef.asReadonly();
 
   constructor() {
     effect(() => {
@@ -103,6 +107,13 @@ export class NavigatorComponent {
       const isActivitiesOpen = this.activitiesContext.activitiesOpen();
       if (isActivitiesOpen && !this.activitiesPopupComponentRef()) {
         void this.ensureActivitiesPopupLoaded();
+      }
+    });
+
+    effect(() => {
+      const isContactsOpen = this.navigatorContactsService.isOpen();
+      if (isContactsOpen && !this.navigatorContactsPopupComponentRef()) {
+        void this.ensureNavigatorContactsPopupLoaded();
       }
     });
 
@@ -253,6 +264,14 @@ export class NavigatorComponent {
     }
     const module = await import('../../../activity/components/event-feedback-popup/event-feedback-popup.component');
     this.eventFeedbackPopupComponentRef.set(module.EventFeedbackPopupComponent);
+  }
+
+  private async ensureNavigatorContactsPopupLoaded(): Promise<void> {
+    if (this.navigatorContactsPopupComponentRef()) {
+      return;
+    }
+    const module = await import('../navigator-contacts-popup/navigator-contacts-popup.component');
+    this.navigatorContactsPopupComponentRef.set(module.NavigatorContactsPopupComponent);
   }
 
   private async openEventFeedbackPopupFromNavigatorRequest(): Promise<void> {

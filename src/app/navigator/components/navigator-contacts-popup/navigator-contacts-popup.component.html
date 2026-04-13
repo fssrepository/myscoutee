@@ -1,0 +1,278 @@
+@if (contactsService.isOpen()) {
+  <section class="app-popup navigator-contacts-popup-shell">
+    <div class="app-popup-backdrop" (click)="closePopup($event)"></div>
+    <div class="app-popup-panel popup-panel-wide popup-panel-full-height popup-panel-contacts" (click)="$event.stopPropagation()">
+      <div class="popup-header popup-header-with-progress popup-header-contacts">
+        <div class="popup-title">
+          <h2>Contacts</h2>
+          <p class="popup-subtitle-activities">{{ contactsService.summaryLabel() }}</p>
+        </div>
+        <div class="contacts-header-actions">
+          <button
+            type="button"
+            class="popup-view-fab contacts-create-trigger"
+            (click)="openCreateContactPicker($event)"
+            aria-label="Create contact"
+            >
+            <mat-icon>person_add</mat-icon>
+            <span>Create contact</span>
+          </button>
+          <button type="button" class="popup-close" (click)="closePopup($event)" aria-label="Close contacts">
+            <mat-icon>close</mat-icon>
+          </button>
+        </div>
+      </div>
+
+      <div class="popup-body popup-body-contacts">
+        <section class="contacts-toolbar">
+          <label class="contacts-search-field">
+            <mat-icon>search</mat-icon>
+            <input
+              type="text"
+              [ngModel]="searchText()"
+              (ngModelChange)="searchText.set(($event ?? '').toString())"
+              placeholder="Filter contacts A-Z"
+              aria-label="Filter contacts"
+              />
+            @if (searchText()) {
+              <button type="button" class="contacts-search-clear" (click)="clearSearch($event)" aria-label="Clear contact filter">
+                <mat-icon>close</mat-icon>
+              </button>
+            }
+          </label>
+          <span class="contacts-toolbar-pill">
+            <mat-icon>sort_by_alpha</mat-icon>
+            <span>A-Z grouped</span>
+          </span>
+        </section>
+
+        <app-smart-list
+          #contactsSmartList
+          class="navigator-contacts-smart-list"
+          [config]="contactSmartListConfig"
+          [loadPage]="contactSmartListLoadPage"
+          [itemTemplate]="contactItemTemplate"
+          [query]="contactSmartListQuery()"
+        ></app-smart-list>
+
+        <ng-template #contactItemTemplate let-contact>
+          <article class="navigator-contact-card">
+            <div class="navigator-contact-avatar-shell">
+              <span
+                class="navigator-contact-avatar"
+                [ngClass]="['user-color-' + contact.gender, contact.avatarUrl ? 'has-photo' : '']"
+                [style.backgroundImage]="contact.avatarUrl ? 'url(' + contact.avatarUrl + ')' : null"
+                >
+                @if (!contact.avatarUrl) {
+                  {{ contact.initials }}
+                }
+              </span>
+            </div>
+
+            <div class="navigator-contact-copy">
+              <div class="navigator-contact-title-row">
+                <div class="navigator-contact-title-wrap">
+                  <h3>{{ contact.name }}</h3>
+                  @if (contact.headline) {
+                    <p class="navigator-contact-headline">{{ contact.headline }}</p>
+                  } @else {
+                    <p class="navigator-contact-headline navigator-contact-headline-muted">Quick reach card</p>
+                  }
+                </div>
+                <span class="navigator-contact-method-count">{{ contact.methodCountLabel }}</span>
+              </div>
+
+              <p class="navigator-contact-city">
+                <mat-icon>location_on</mat-icon>
+                <span>{{ contact.city || 'City not set yet' }}</span>
+              </p>
+
+              @if (contact.methods.length > 0) {
+                <div class="navigator-contact-method-chips">
+                  @for (method of visibleMethodChips(contact); track method.id) {
+                    <span class="navigator-contact-method-chip">
+                      <mat-icon>{{ method.icon }}</mat-icon>
+                      <span>{{ method.label }}</span>
+                    </span>
+                  }
+                  @if (hiddenMethodCount(contact) > 0) {
+                    <span class="navigator-contact-method-chip navigator-contact-method-chip-more">
+                      +{{ hiddenMethodCount(contact) }}
+                    </span>
+                  }
+                </div>
+              } @else {
+                <p class="navigator-contact-empty-methods">No availability methods yet. Use Edit to add phone, Facebook, email, and more.</p>
+              }
+            </div>
+
+            <div class="navigator-contact-menu-anchor">
+              <button
+                type="button"
+                class="experience-action-btn experience-action-menu-trigger"
+                [class.is-open]="isActionMenuOpen(contact)"
+                [attr.aria-label]="isActionMenuOpen(contact) ? 'Close contact actions' : 'Open contact actions'"
+                (click)="toggleActionMenu(contact, $event)"
+                >
+                <mat-icon>{{ isActionMenuOpen(contact) ? 'close' : 'more_vert' }}</mat-icon>
+              </button>
+
+              @if (isActionMenuOpen(contact)) {
+                <div
+                  class="item-action-menu"
+                  [class.is-open]="isActionMenuOpen(contact)"
+                  [class.item-action-menu-mobile]="isMobileViewport()"
+                  [class.item-action-menu-desktop]="!isMobileViewport()"
+                  [class.is-open-up]="isActionMenuOpenUp(contact)"
+                  (click)="$event.stopPropagation()"
+                  >
+                  <div class="item-action-menu-title">{{ contact.name }}</div>
+
+                  @for (method of contact.methods; track method.id) {
+                    <button type="button" class="item-action-menu-btn" (click)="runMethod(method, $event)">
+                      <mat-icon>{{ method.icon }}</mat-icon>
+                      <span>{{ method.menuLabel }}</span>
+                    </button>
+                  }
+
+                  @if (contact.methods.length > 0) {
+                    <div class="item-action-menu-divider"></div>
+                  }
+
+                  <button type="button" class="item-action-menu-btn" (click)="openEditForm(contact, $event)">
+                    <mat-icon>edit</mat-icon>
+                    <span>Edit</span>
+                  </button>
+
+                  <button type="button" class="item-action-menu-btn item-action-menu-btn-destructive" (click)="confirmDelete(contact, $event)">
+                    <mat-icon>delete</mat-icon>
+                    <span>Delete</span>
+                  </button>
+                </div>
+              }
+            </div>
+          </article>
+        </ng-template>
+      </div>
+    </div>
+  </section>
+
+  @if (editingContact(); as contactForm) {
+    <section class="app-popup app-popup-stacked navigator-contacts-popup-shell navigator-contacts-form-shell">
+      <div class="app-popup-backdrop" (click)="closeFormPopup($event)"></div>
+      <div class="experience-form-popup navigator-contact-form-popup" (click)="$event.stopPropagation()">
+        <div class="experience-form-header navigator-contact-form-header">
+          <div class="navigator-contact-form-heading">
+            <span
+              class="navigator-contact-form-avatar"
+              [ngClass]="['user-color-' + contactForm.gender, contactForm.avatarUrl ? 'has-photo' : '']"
+              [style.backgroundImage]="contactForm.avatarUrl ? 'url(' + contactForm.avatarUrl + ')' : null"
+              >
+              @if (!contactForm.avatarUrl) {
+                {{ contactForm.initials }}
+              }
+            </span>
+            <div class="navigator-contact-form-heading-copy">
+              <h3>Edit Contact</h3>
+              <p>{{ contactForm.name }}{{ contactForm.city ? ' · ' + contactForm.city : '' }}</p>
+            </div>
+          </div>
+          <div class="experience-form-header-controls">
+            <button
+              type="button"
+              class="popup-header-add-btn subevent-leaderboard-save-btn"
+              [disabled]="isFormSavePending()"
+              (click)="saveForm($event)"
+              aria-label="Save contact"
+              >
+              <mat-icon>{{ isFormSavePending() ? 'hourglass_top' : 'done' }}</mat-icon>
+            </button>
+            <button type="button" class="experience-form-close-btn" (click)="closeFormPopup($event)" aria-label="Close contact form">
+              <mat-icon>close</mat-icon>
+            </button>
+          </div>
+        </div>
+
+        <div class="experience-form-panel navigator-contact-form-panel">
+          <section class="navigator-contact-form-summary">
+            <div>
+              <strong>{{ contactForm.name }}</strong>
+              <p>{{ contactForm.headline || 'Create one-tap ways to reach this member from the contact list.' }}</p>
+            </div>
+            <span class="navigator-contact-form-summary-pill">
+              <mat-icon>hub</mat-icon>
+              <span>{{ contactForm.methods.length === 1 ? '1 method' : contactForm.methods.length + ' methods' }}</span>
+            </span>
+          </section>
+
+          <section class="navigator-contact-form-actions">
+            <div class="navigator-contact-form-section-title">
+              <h4>Availability Methods</h4>
+              <p>Add one or more routes like phone, Facebook, email, Telegram, or a custom link.</p>
+            </div>
+            <button type="button" class="popup-view-fab" (click)="addMethodRow($event)" aria-label="Add availability method">
+              <mat-icon>add_link</mat-icon>
+              <span>Add method</span>
+            </button>
+          </section>
+
+          @if (formErrorMessage()) {
+            <p class="navigator-contact-form-error">{{ formErrorMessage() }}</p>
+          }
+
+          @if (contactForm.methods.length === 0) {
+            <div class="navigator-contact-form-empty">
+              <mat-icon>contact_phone</mat-icon>
+              <p>No methods added yet.</p>
+            </div>
+          }
+
+          @for (method of contactForm.methods; track trackMethod($index, method)) {
+            <article class="navigator-contact-method-row">
+              <div class="navigator-contact-method-row-head">
+                <div class="navigator-contact-method-type-select">
+                  <mat-select
+                    [ngModel]="method.type"
+                    (ngModelChange)="updateMethodType(method.id, $event)"
+                    panelClass="selector-options-panel profile-bottom-sheet-panel navigator-contact-method-panel"
+                    >
+                    @for (option of contactMethodOptions; track option.value) {
+                      <mat-option [value]="option.value">
+                        <span class="navigator-contact-method-option">
+                          <mat-icon>{{ option.icon }}</mat-icon>
+                          <span>{{ option.label }}</span>
+                        </span>
+                      </mat-option>
+                    }
+                  </mat-select>
+                </div>
+
+                <button
+                  type="button"
+                  class="experience-action-btn navigator-contact-method-remove-btn"
+                  (click)="removeMethodRow(method.id, $event)"
+                  aria-label="Remove method"
+                  >
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </div>
+
+              <label class="navigator-contact-method-field">
+                <span>{{ methodOption(method.type).label }}</span>
+                <input
+                  [type]="methodOption(method.type).inputType"
+                  [inputMode]="methodOption(method.type).inputMode"
+                  [autocomplete]="methodOption(method.type).autocomplete"
+                  [placeholder]="methodOption(method.type).placeholder"
+                  [(ngModel)]="method.value"
+                  />
+              </label>
+
+              <p class="navigator-contact-method-help">{{ methodOption(method.type).helpText }}</p>
+            </article>
+          }
+        </div>
+      </div>
+    </section>
+  }
+}

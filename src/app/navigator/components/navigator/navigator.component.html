@@ -25,6 +25,9 @@
 @if (assetMemberPickerPopupComponent(); as assetMemberPickerComponent) {
   <ng-container *ngComponentOutlet="assetMemberPickerComponent"></ng-container>
 }
+@if (navigatorContactsPopupComponent(); as contactsComponent) {
+  <ng-container *ngComponentOutlet="contactsComponent"></ng-container>
+}
 
 @if (activitiesPopupComponent(); as activitiesComponent) {
   <ng-container *ngComponentOutlet="activitiesComponent"></ng-container>

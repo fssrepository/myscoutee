@@ -917,7 +917,7 @@
 
 .assets-shortcuts {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 0.46rem;
   width: 100%;
 }
@@ -998,6 +998,16 @@
 .asset-shortcut-ticket .mat-icon,
 .asset-shortcut-ticket .asset-shortcut-label {
   color: #2a5f9a;
+}
+
+.asset-shortcut-contact {
+  border-color: rgba(45, 120, 130, 0.28);
+  background: linear-gradient(180deg, #edfafa 0%, #ddf1f2 100%);
+}
+
+.asset-shortcut-contact .mat-icon,
+.asset-shortcut-contact .asset-shortcut-label {
+  color: #2b6a74;
 }
 
 .feedback-shortcut-btn {
