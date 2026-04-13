@@ -185,6 +185,7 @@ export class OwnedAssetsPopupFacadeService {
       return;
     }
 
+    let nextQuantity = AssetCardBuilder.storedQuantityValue(existing);
     const nextRequests = existing.requests
       .map(request => this.cloneAssetRequest(request))
       .filter(request => {
@@ -198,11 +199,21 @@ export class OwnedAssetsPopupFacadeService {
         request.note = request.requestKind === 'manual'
           ? 'Reserved and assigned by the owner.'
           : 'Borrow request approved by the owner.';
+        if (request.requestKind !== 'manual' && request.booking?.inventoryApplied !== true) {
+          nextQuantity = Math.max(0, nextQuantity - this.assetRequestQuantity(request));
+          request.booking = request.booking
+            ? {
+                ...request.booking,
+                inventoryApplied: true
+              }
+            : null;
+        }
         return true;
       });
 
     const nextCard: AppTypes.AssetCard = {
       ...existing,
+      quantity: nextQuantity,
       routes: [...(existing.routes ?? [])],
       topics: [...(existing.topics ?? [])],
       policies: (existing.policies ?? []).map(item => ({ ...item })),
@@ -947,5 +958,9 @@ export class OwnedAssetsPopupFacadeService {
           }
         : null
     };
+  }
+
+  private assetRequestQuantity(request: AppTypes.AssetMemberRequest): number {
+    return Math.max(1, Math.trunc(Number(request.booking?.quantity) || 0));
   }
 }

@@ -215,7 +215,11 @@ export class HttpAssetsRepository {
       category: AssetDefaultsBuilder.normalizeCategory(type, card?.category),
       city: card?.city?.trim() ?? '',
       capacityTotal: AssetCardBuilder.capacityValue({ capacityTotal: card?.capacityTotal ?? 0 }),
-      quantity: AssetCardBuilder.normalizeQuantity(type, card?.quantity, card?.capacityTotal),
+      quantity: AssetCardBuilder.storedQuantityValue({
+        type,
+        quantity: card?.quantity,
+        capacityTotal: card?.capacityTotal ?? 0
+      }),
       details: card?.details?.trim() ?? '',
       imageUrl: card?.imageUrl?.trim() ?? '',
       sourceLink: card?.sourceLink?.trim() ?? '',
@@ -273,6 +277,8 @@ export class HttpAssetsRepository {
                     ? Math.max(0, Number(request.booking.totalAmount))
                     : null,
                   currency: `${request.booking.currency ?? ''}`.trim() || undefined,
+                  paymentSessionId: `${request.booking.paymentSessionId ?? ''}`.trim() || null,
+                  inventoryApplied: request.booking.inventoryApplied === true ? true : null,
                   acceptedPolicyIds: Array.isArray(request.booking.acceptedPolicyIds)
                     ? request.booking.acceptedPolicyIds.map(item => `${item ?? ''}`.trim()).filter(item => item.length > 0)
                     : []

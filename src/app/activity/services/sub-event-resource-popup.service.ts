@@ -513,6 +513,21 @@ export class SubEventResourcePopupService {
     if (!normalizedState) {
       return;
     }
+    const activeContext = this.popupContextRef();
+    if (
+      activeContext
+      && activeContext.ownerId === normalizedState.ownerId
+      && activeContext.subEvent.id === normalizedState.subEventId
+    ) {
+      this.popupContextRef.set({
+        ...activeContext,
+        fallbackCardsByType: this.mergePersistedFallbackCards(
+          activeContext.fallbackCardsByType,
+          normalizedState.fallbackAssetCardsByType,
+          normalizedState.subEventId
+        )
+      });
+    }
     for (const type of ['Car', 'Accommodation', 'Supplies'] as const) {
       this.assignedAssetIdsByKey[this.subEventAssetAssignmentKey(normalizedState.subEventId, type)] = [
         ...(normalizedState.assetAssignmentIds[type] ?? [])
@@ -571,7 +586,12 @@ export class SubEventResourcePopupService {
           assetId,
           this.subEventSupplyContributionEntries(subEventId, assetId).map(entry => ({ ...entry }))
         ])
-      )
+      ),
+      fallbackAssetCardsByType: {
+        Car: this.persistedAssignedFallbackCards(context, 'Car'),
+        Accommodation: this.persistedAssignedFallbackCards(context, 'Accommodation'),
+        Supplies: this.persistedAssignedFallbackCards(context, 'Supplies')
+      }
     };
   }
 
@@ -653,7 +673,7 @@ export class SubEventResourcePopupService {
     if (!context || !card.sourceAssetId || (card.type !== 'Car' && card.type !== 'Accommodation')) {
       return;
     }
-    const sourceCard = this.ownedAssets.assetCards.find(item => item.id === card.sourceAssetId && item.type === card.type);
+    const sourceCard = this.resolveSubEventAssignedAssetCard(context.subEvent.id, card.type, card.sourceAssetId);
     if (!sourceCard) {
       return;
     }
@@ -1976,9 +1996,10 @@ export class SubEventResourcePopupService {
     startAtIso: string,
     endAtIso: string
   ): number {
-    const totalQuantity = AssetCardBuilder.quantityValue(card);
+    const totalQuantity = AssetCardBuilder.storedQuantityValue(card);
     const overlappingCommitted = card.requests
       .filter(request => request.status === 'accepted' || request.requestKind === 'manual')
+      .filter(request => request.booking?.inventoryApplied !== true)
       .filter(request => this.isAssetExploreWindowOverlap(request, startAtIso, endAtIso))
       .reduce((sum, request) => sum + this.assetRequestQuantity(request), 0);
     return Math.max(0, totalQuantity - overlappingCommitted);
@@ -2289,6 +2310,7 @@ export class SubEventResourcePopupService {
         if (pricing.amount > 0 && (!session || !session.id)) {
           throw new Error('Unable to start payment.');
         }
+        const inventoryApplied = pricing.amount > 0;
         const nextRequest: AppTypes.AssetMemberRequest = {
           id: existingRequest?.id ?? `borrow:${activeUser.id}:${card.id}:${context.subEvent.id}`,
           userId: activeUser.id,
@@ -2312,12 +2334,16 @@ export class SubEventResourcePopupService {
               totalAmount: pricing.amount,
               currency: pricing.currency,
               acceptedPolicyIds: dialog.acceptedPolicyIds,
-              paymentSessionId: session?.id ?? dialog.checkoutSessionId ?? null
+              paymentSessionId: session?.id ?? dialog.checkoutSessionId ?? null,
+              inventoryApplied
             }
           )
         };
         const nextCard: AppTypes.AssetCard = {
           ...card,
+          quantity: inventoryApplied
+            ? Math.max(0, AssetCardBuilder.storedQuantityValue(card) - dialog.quantity)
+            : AssetCardBuilder.storedQuantityValue(card),
           requests: [
             nextRequest,
             ...card.requests
@@ -2344,20 +2370,26 @@ export class SubEventResourcePopupService {
           return;
         }
         this.clearAssetExploreBorrowDraftState(activeUser.id, context.subEvent.id, currentDialog.cardId);
+        if (pricing.amount > 0) {
+          this.attachBoughtAssetToSubEventLocally(context, savedCard, currentDialog.quantity);
+        }
         const remainingAvailability = this.assetExploreAvailableQuantityForWindow(
           savedCard,
           currentDialog.startAtIso,
           currentDialog.endAtIso
-        ) - currentDialog.quantity;
-        this.assetExploreWarmCacheByKey.clear();
+        ) - (pricing.amount > 0 ? 0 : currentDialog.quantity);
+        const nextCards = remainingAvailability <= 0
+          ? currentPopup.cards.filter(cardItem => cardItem.id !== savedCard.id)
+          : currentPopup.cards.map(cardItem => cardItem.id === savedCard.id ? this.cloneAsset(savedCard) : cardItem);
         this.assetExplorePopupRef.set({
           ...currentPopup,
-          cards: remainingAvailability <= 0
-            ? currentPopup.cards.filter(cardItem => cardItem.id !== savedCard.id)
-            : currentPopup.cards.map(cardItem => cardItem.id === savedCard.id ? this.cloneAsset(savedCard) : cardItem)
+          cards: nextCards
         });
+        this.storeAssetExploreWarmCache(
+          this.assetExploreQueryKey(this.assetExploreQueryFromPopup(currentPopup)),
+          nextCards
+        );
         this.closeAssetExploreBorrowDialog();
-        this.scheduleAssetExploreCardsLoad();
       })
       .catch(async error => {
         await this.ensureAssetExploreBorrowMinimumBusyDuration(startedAt);
@@ -2698,7 +2730,7 @@ export class SubEventResourcePopupService {
 
   private subEventAssignedAssetCards(subEventId: string, type: AppTypes.AssetType): AppTypes.AssetCard[] {
     return this.resolveSubEventAssignedAssetIds(subEventId, type)
-      .map(id => this.ownedAssets.assetCards.find(card => card.id === id && card.type === type) ?? null)
+      .map(id => this.resolveSubEventAssignedAssetCard(subEventId, type, id))
       .filter((card): card is AppTypes.AssetCard => card !== null);
   }
 
@@ -2708,7 +2740,7 @@ export class SubEventResourcePopupService {
     const existing = this.assignedAssetSettingsByKey[key] ?? {};
     const next: Record<string, AppTypes.SubEventAssignedAssetSettings> = {};
     for (const assetId of assignedIds) {
-      const source = this.ownedAssets.assetCards.find(card => card.id === assetId && card.type === type);
+      const source = this.resolveSubEventAssignedAssetCard(subEventId, type, assetId);
       if (!source) {
         continue;
       }
@@ -2729,7 +2761,10 @@ export class SubEventResourcePopupService {
 
   private resolveSubEventAssignedAssetIds(subEventId: string, type: AppTypes.AssetType): string[] {
     const key = this.subEventAssetAssignmentKey(subEventId, type);
-    const eligibleIds = this.ownedAssets.assetCards.filter(card => card.type === type).map(card => card.id);
+    const eligibleIds = [
+      ...this.ownedAssets.assetCards.filter(card => card.type === type).map(card => card.id),
+      ...this.subEventFallbackAssetCards(subEventId, type).map(card => card.id)
+    ];
     const eligible = new Set(eligibleIds);
     const stored = this.assignedAssetIdsByKey[key];
     if (!stored) {
@@ -2741,6 +2776,27 @@ export class SubEventResourcePopupService {
       this.assignedAssetIdsByKey[key] = [...normalized];
     }
     return normalized;
+  }
+
+  private resolveSubEventAssignedAssetCard(
+    subEventId: string,
+    type: AppTypes.AssetType,
+    assetId: string
+  ): AppTypes.AssetCard | null {
+    return this.ownedAssets.assetCards.find(card => card.id === assetId && card.type === type)
+      ?? this.subEventFallbackAssetCards(subEventId, type).find(card => card.id === assetId && card.type === type)
+      ?? null;
+  }
+
+  private subEventFallbackAssetCards(
+    subEventId: string,
+    type: AppTypes.AssetType
+  ): AppTypes.AssetCard[] {
+    const context = this.popupContextRef();
+    if (context?.subEvent.id !== subEventId) {
+      return [];
+    }
+    return context.fallbackCardsByType[type] ?? [];
   }
 
   private seedAssignmentsFromRequest(
@@ -2869,10 +2925,13 @@ export class SubEventResourcePopupService {
     assetType: 'Car' | 'Accommodation',
     members: readonly AppTypes.ActivityMemberEntry[]
   ): void {
-    const asset = this.ownedAssets.assetCards.find(card => card.id === assetId && card.type === assetType);
+    const context = this.popupContextRef();
+    const asset = this.ownedAssets.assetCards.find(card => card.id === assetId && card.type === assetType)
+      ?? (context ? this.subEventFallbackAssetCards(context.subEvent.id, assetType).find(card => card.id === assetId) ?? null : null);
     if (!asset) {
       return;
     }
+    const isOwnedAsset = this.ownedAssets.assetCards.some(card => card.id === asset.id && card.type === assetType);
     const existingById = new Map(asset.requests.map(request => [request.id, request] as const));
     const existingByUserId = new Map(
       asset.requests.map(request => [AppUtils.resolveAssetRequestUserId(request, this.users), request] as const)
@@ -2900,7 +2959,7 @@ export class SubEventResourcePopupService {
         gender: entry.gender,
         status: entry.status,
         note,
-        requestKind: existing?.requestKind ?? 'borrow',
+        requestKind: existing?.requestKind ?? (isOwnedAsset ? 'borrow' : 'manual'),
         requestedAtIso: existing?.requestedAtIso ?? new Date().toISOString(),
         booking: existing?.booking
           ? {
@@ -2910,21 +2969,49 @@ export class SubEventResourcePopupService {
           : booking
       };
     });
-    const manualRequests = asset.requests
-      .filter(request => request.requestKind === 'manual')
-      .map(request => ({
-        ...request,
-        booking: request.booking
-          ? {
-              ...request.booking,
-              acceptedPolicyIds: [...(request.booking.acceptedPolicyIds ?? [])]
-            }
-          : null
-      }));
+    const manualRequests = isOwnedAsset
+      ? asset.requests
+        .filter(request => request.requestKind === 'manual')
+        .map(request => ({
+          ...request,
+          booking: request.booking
+            ? {
+                ...request.booking,
+                acceptedPolicyIds: [...(request.booking.acceptedPolicyIds ?? [])]
+              }
+            : null
+        }))
+      : [];
     const nextRequests: AppTypes.AssetMemberRequest[] = [...manualRequests, ...memberRequests];
     const currentSignature = JSON.stringify(asset.requests.map(request => this.assetRequestSyncSignature(request)));
     const nextSignature = JSON.stringify(nextRequests.map(request => this.assetRequestSyncSignature(request)));
     if (currentSignature === nextSignature) {
+      return;
+    }
+    if (!isOwnedAsset) {
+      if (!context) {
+        return;
+      }
+      const activeContext = this.popupContextRef();
+      if (!activeContext || activeContext.subEvent.id !== context.subEvent.id) {
+        return;
+      }
+      const nextFallbackCards = this.cloneFallbackCards(activeContext.fallbackCardsByType);
+      const nextCards = nextFallbackCards[assetType] ?? [];
+      const nextAsset = this.assignedFallbackAssetSnapshot(context.subEvent.id, {
+        ...asset,
+        requests: nextRequests
+      });
+      nextFallbackCards[assetType] = nextCards.some(card => card.id === assetId)
+        ? nextCards.map(card => card.id === assetId ? nextAsset : card)
+        : [...nextCards, nextAsset];
+      const nextContext = {
+        ...activeContext,
+        fallbackCardsByType: nextFallbackCards
+      };
+      this.popupContextRef.set(nextContext);
+      this.syncPopupSubEventMetrics(false);
+      this.persistPopupResourceState(nextContext);
       return;
     }
     this.ownedAssets.assetCards = this.ownedAssets.assetCards.map(card =>
@@ -2955,7 +3042,8 @@ export class SubEventResourcePopupService {
       bookingTotalAmount: request.booking?.totalAmount ?? '',
       bookingCurrency: request.booking?.currency ?? '',
       bookingAcceptedPolicyIds: [...(request.booking?.acceptedPolicyIds ?? [])],
-      bookingPaymentSessionId: request.booking?.paymentSessionId ?? ''
+      bookingPaymentSessionId: request.booking?.paymentSessionId ?? '',
+      bookingInventoryApplied: request.booking?.inventoryApplied === true
     };
   }
 
@@ -2999,6 +3087,7 @@ export class SubEventResourcePopupService {
       currency?: string | null;
       acceptedPolicyIds?: string[];
       paymentSessionId?: string | null;
+      inventoryApplied?: boolean | null;
     } = {}
   ): AppTypes.AssetHireRequestBooking | null {
     return {
@@ -3015,7 +3104,8 @@ export class SubEventResourcePopupService {
       totalAmount: options.totalAmount ?? null,
       currency: options.currency ?? null,
       acceptedPolicyIds: [...(options.acceptedPolicyIds ?? [])],
-      paymentSessionId: options.paymentSessionId ?? null
+      paymentSessionId: options.paymentSessionId ?? null,
+      inventoryApplied: options.inventoryApplied === true ? true : null
     };
   }
 
@@ -3188,9 +3278,10 @@ export class SubEventResourcePopupService {
       };
     }
 
-    const totalQuantity = Math.max(1, AssetCardBuilder.quantityValue(card));
+    const totalQuantity = Math.max(1, AssetCardBuilder.storedQuantityValue(card));
     const overlappingCommitted = card.requests
       .filter(request => request.status === 'accepted' || request.requestKind === 'manual')
+      .filter(request => request.booking?.inventoryApplied !== true)
       .filter(request => this.isAssetExploreWindowOverlap(request, startAtIso, endAtIso))
       .reduce((sum, request) => sum + this.assetRequestQuantity(request), 0);
     const capacityFilledPercent = Math.round(
@@ -3500,6 +3591,118 @@ export class SubEventResourcePopupService {
       next[type] = cards.map(card => this.cloneAsset(card));
     }
     return next;
+  }
+
+  private mergePersistedFallbackCards(
+    current: Partial<Record<AppTypes.AssetType, AppTypes.AssetCard[]>> | undefined,
+    persisted: Partial<Record<AppTypes.AssetType, AppTypes.AssetCard[]>> | undefined,
+    subEventId: string
+  ): Partial<Record<AppTypes.AssetType, AppTypes.AssetCard[]>> {
+    const next = this.cloneFallbackCards(current);
+    for (const type of ['Car', 'Accommodation', 'Supplies'] as const) {
+      const cards = persisted?.[type];
+      if (!Array.isArray(cards) || cards.length === 0) {
+        continue;
+      }
+      const nextById = new Map((next[type] ?? []).map(card => [card.id, this.cloneAsset(card)] as const));
+      for (const card of cards) {
+        nextById.set(card.id, this.assignedFallbackAssetSnapshot(subEventId, card));
+      }
+      next[type] = [...nextById.values()];
+    }
+    return next;
+  }
+
+  private persistedAssignedFallbackCards(
+    context: ResourcePopupContext,
+    type: AppTypes.AssetType
+  ): AppTypes.AssetCard[] {
+    const assignedIds = new Set(this.resolveSubEventAssignedAssetIds(context.subEvent.id, type));
+    const ownedIds = new Set(this.ownedAssets.assetCards.filter(card => card.type === type).map(card => card.id));
+    return (context.fallbackCardsByType[type] ?? [])
+      .filter(card => assignedIds.has(card.id) && !ownedIds.has(card.id))
+      .map(card => this.assignedFallbackAssetSnapshot(context.subEvent.id, card));
+  }
+
+  private assignedFallbackAssetSnapshot(
+    subEventId: string,
+    card: AppTypes.AssetCard,
+    options: { clearRequests?: boolean } = {}
+  ): AppTypes.AssetCard {
+    const nextCard = this.cloneAsset(card);
+    if (options.clearRequests) {
+      return {
+        ...nextCard,
+        requests: []
+      };
+    }
+    return {
+      ...nextCard,
+      requests: nextCard.requests.filter(request =>
+        request.requestKind === 'manual' && request.booking?.subEventId === subEventId
+      )
+    };
+  }
+
+  private attachBoughtAssetToSubEventLocally(
+    context: ResourcePopupContext,
+    card: AppTypes.AssetCard,
+    quantity: number
+  ): void {
+    const key = this.subEventAssetAssignmentKey(context.subEvent.id, card.type);
+    const currentIds = this.assignedAssetIdsByKey[key] ?? [];
+    if (!currentIds.includes(card.id)) {
+      this.assignedAssetIdsByKey[key] = [...currentIds, card.id];
+    }
+
+    const currentSettings = { ...(this.assignedAssetSettingsByKey[key] ?? {}) };
+    if (!currentSettings[card.id]) {
+      const capacityLimit = Math.max(0, card.capacityTotal);
+      currentSettings[card.id] = {
+        capacityMin: 0,
+        capacityMax: capacityLimit,
+        addedByUserId: this.activeUser().id,
+        routes: this.normalizeAssetRoutes(card.type, card.routes)
+      };
+      this.assignedAssetSettingsByKey[key] = currentSettings;
+    }
+
+    if (card.type === 'Supplies') {
+      const contributionKey = this.subEventSupplyAssignmentKey(context.subEvent.id, card.id);
+      const currentEntries = this.supplyContributionEntriesByAssignmentKey[contributionKey] ?? [];
+      this.supplyContributionEntriesByAssignmentKey[contributionKey] = [
+        {
+          id: `subevent-supply-row-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          userId: this.activeUser().id,
+          quantity: Math.max(1, Math.trunc(Number(quantity) || 1)),
+          addedAtIso: AppUtils.toIsoDateTime(new Date())
+        },
+        ...currentEntries
+      ];
+    }
+
+    const activeContext = this.popupContextRef();
+    if (activeContext?.subEvent.id === context.subEvent.id) {
+      const nextFallbackCards = this.cloneFallbackCards(activeContext.fallbackCardsByType);
+      const existingCards = nextFallbackCards[card.type] ?? [];
+      if (!existingCards.some(item => item.id === card.id)) {
+        nextFallbackCards[card.type] = [
+          ...existingCards,
+          this.assignedFallbackAssetSnapshot(context.subEvent.id, card, { clearRequests: true })
+        ];
+      }
+      const nextContext = {
+        ...activeContext,
+        fallbackCardsByType: nextFallbackCards
+      };
+      this.popupContextRef.set(nextContext);
+      this.syncPopupSubEventMetrics(false);
+      this.persistPopupResourceState(nextContext);
+      return;
+    }
+
+    this.syncPopupSubEventMetrics(false);
+    this.persistPopupResourceState(context);
   }
 
   private applyGroupScopedAssetSnapshot(

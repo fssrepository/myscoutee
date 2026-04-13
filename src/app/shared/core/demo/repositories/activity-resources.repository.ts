@@ -142,6 +142,9 @@ export class DemoActivityResourcesRepository extends HttpActivityResourcesReposi
         supplyContributionEntriesByAssetId: ActivityResourceBuilder.cloneSupplyContributionEntriesByAssetId(
           normalizedState.supplyContributionEntriesByAssetId
         ),
+        fallbackAssetCardsByType: ActivityResourceBuilder.cloneFallbackAssetCardsByType(
+          normalizedState.fallbackAssetCardsByType
+        ),
         createdMs: existing?.createdMs ?? nowMs,
         updatedMs: nowMs,
         createdAtIso: existing?.createdAtIso ?? nowIso,
@@ -167,11 +170,21 @@ export class DemoActivityResourcesRepository extends HttpActivityResourcesReposi
     if (!record) {
       return null;
     }
+    const fallbackCardsByType = ActivityResourceBuilder.cloneFallbackAssetCardsByType(record.fallbackAssetCardsByType);
     const assets = this.assetsRepository.peekOwnedAssetsByUser(normalizedRef.assetOwnerUserId);
     const eligibleIdsByType: Partial<Record<AppTypes.AssetType, Set<string>>> = {
-      Car: new Set(assets.filter(card => card.type === 'Car').map(card => card.id)),
-      Accommodation: new Set(assets.filter(card => card.type === 'Accommodation').map(card => card.id)),
-      Supplies: new Set(assets.filter(card => card.type === 'Supplies').map(card => card.id))
+      Car: new Set([
+        ...assets.filter(card => card.type === 'Car').map(card => card.id),
+        ...(fallbackCardsByType.Car ?? []).map(card => card.id)
+      ]),
+      Accommodation: new Set([
+        ...assets.filter(card => card.type === 'Accommodation').map(card => card.id),
+        ...(fallbackCardsByType.Accommodation ?? []).map(card => card.id)
+      ]),
+      Supplies: new Set([
+        ...assets.filter(card => card.type === 'Supplies').map(card => card.id),
+        ...(fallbackCardsByType.Supplies ?? []).map(card => card.id)
+      ])
     };
     const normalizedState = ActivityResourceBuilder.normalizeState({
       ownerId: record.ownerId,
@@ -186,7 +199,12 @@ export class DemoActivityResourcesRepository extends HttpActivityResourcesReposi
       supplyContributionEntriesByAssetId: Object.fromEntries(
         Object.entries(record.supplyContributionEntriesByAssetId ?? {})
           .filter(([assetId]) => eligibleIdsByType.Supplies?.has(assetId))
-      )
+      ),
+      fallbackAssetCardsByType: {
+        Car: (fallbackCardsByType.Car ?? []).filter(card => eligibleIdsByType.Car?.has(card.id)),
+        Accommodation: (fallbackCardsByType.Accommodation ?? []).filter(card => eligibleIdsByType.Accommodation?.has(card.id)),
+        Supplies: (fallbackCardsByType.Supplies ?? []).filter(card => eligibleIdsByType.Supplies?.has(card.id))
+      }
     }, normalizedRef);
     return normalizedState ? ActivityResourceBuilder.cloneState(normalizedState) : null;
   }
@@ -377,6 +395,9 @@ export class DemoActivityResourcesRepository extends HttpActivityResourcesReposi
       assetSettingsByType: ActivityResourceBuilder.cloneAssetSettingsByType(record.assetSettingsByType),
       supplyContributionEntriesByAssetId: ActivityResourceBuilder.cloneSupplyContributionEntriesByAssetId(
         record.supplyContributionEntriesByAssetId
+      ),
+      fallbackAssetCardsByType: ActivityResourceBuilder.cloneFallbackAssetCardsByType(
+        record.fallbackAssetCardsByType
       )
     };
   }

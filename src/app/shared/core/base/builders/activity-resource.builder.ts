@@ -1,5 +1,6 @@
 import { AppUtils } from '../../../app-utils';
 import type * as AppTypes from '../models';
+import { PricingBuilder } from './pricing.builder';
 
 export class ActivityResourceBuilder {
   static ownerKey(ref: AppTypes.ActivitySubEventResourceStateRef): string {
@@ -19,7 +20,8 @@ export class ActivityResourceBuilder {
       assetOwnerUserId: ref.assetOwnerUserId.trim(),
       assetAssignmentIds: {},
       assetSettingsByType: {},
-      supplyContributionEntriesByAssetId: {}
+      supplyContributionEntriesByAssetId: {},
+      fallbackAssetCardsByType: {}
     };
   }
 
@@ -37,7 +39,8 @@ export class ActivityResourceBuilder {
       assetSettingsByType: this.cloneAssetSettingsByType(state.assetSettingsByType),
       supplyContributionEntriesByAssetId: this.cloneSupplyContributionEntriesByAssetId(
         state.supplyContributionEntriesByAssetId
-      )
+      ),
+      fallbackAssetCardsByType: this.cloneFallbackAssetCardsByType(state.fallbackAssetCardsByType)
     };
   }
 
@@ -64,6 +67,7 @@ export class ActivityResourceBuilder {
     next.supplyContributionEntriesByAssetId = this.cloneSupplyContributionEntriesByAssetId(
       next.supplyContributionEntriesByAssetId
     );
+    next.fallbackAssetCardsByType = this.cloneFallbackAssetCardsByType(next.fallbackAssetCardsByType);
     return next;
   }
 
@@ -140,14 +144,26 @@ export class ActivityResourceBuilder {
     return next;
   }
 
+  static cloneFallbackAssetCardsByType(
+    source: Partial<Record<AppTypes.AssetType, AppTypes.AssetCard[]>> | null | undefined
+  ): Partial<Record<AppTypes.AssetType, AppTypes.AssetCard[]>> {
+    const next: Partial<Record<AppTypes.AssetType, AppTypes.AssetCard[]>> = {};
+    for (const type of ['Car', 'Accommodation', 'Supplies'] as const) {
+      const cards = source?.[type];
+      if (!Array.isArray(cards) || cards.length === 0) {
+        continue;
+      }
+      next[type] = cards.map(card => this.cloneAssetCard(card));
+    }
+    return next;
+  }
+
   static resolveAssignedAssetIds(
     state: AppTypes.ActivitySubEventResourceState | null | undefined,
     type: AppTypes.AssetType,
     assets: readonly AppTypes.AssetCard[]
   ): string[] {
-    const eligibleIds = assets
-      .filter(card => card.type === type)
-      .map(card => card.id);
+    const eligibleIds = this.resolveAvailableAssetCards(type, state, assets).map(card => card.id);
     const eligible = new Set(eligibleIds);
     const stored = state?.assetAssignmentIds?.[type] ?? [];
     return stored.filter(id => eligible.has(id));
@@ -274,9 +290,50 @@ export class ActivityResourceBuilder {
     assets: readonly AppTypes.AssetCard[]
   ): AppTypes.AssetCard[] {
     const assignedIds = this.resolveAssignedAssetIds(state, type, assets);
+    const availableCards = this.resolveAvailableAssetCards(type, state, assets);
     return assignedIds
-      .map(id => assets.find(card => card.id === id && card.type === type) ?? null)
+      .map(id => availableCards.find(card => card.id === id && card.type === type) ?? null)
       .filter((card): card is AppTypes.AssetCard => card !== null);
+  }
+
+  private static resolveAvailableAssetCards(
+    type: AppTypes.AssetType,
+    state: AppTypes.ActivitySubEventResourceState | null | undefined,
+    assets: readonly AppTypes.AssetCard[]
+  ): AppTypes.AssetCard[] {
+    const nextById = new Map<string, AppTypes.AssetCard>();
+    for (const card of assets) {
+      if (card.type !== type) {
+        continue;
+      }
+      nextById.set(card.id, card);
+    }
+    for (const card of state?.fallbackAssetCardsByType?.[type] ?? []) {
+      if (card.type !== type || nextById.has(card.id)) {
+        continue;
+      }
+      nextById.set(card.id, card);
+    }
+    return [...nextById.values()];
+  }
+
+  private static cloneAssetCard(card: AppTypes.AssetCard): AppTypes.AssetCard {
+    return {
+      ...card,
+      routes: [...(card.routes ?? [])],
+      topics: [...(card.topics ?? [])],
+      policies: (card.policies ?? []).map(item => ({ ...item })),
+      pricing: card.pricing ? PricingBuilder.clonePricingConfig(card.pricing) : undefined,
+      requests: card.requests.map(request => ({
+        ...request,
+        booking: request.booking
+          ? {
+              ...request.booking,
+              acceptedPolicyIds: [...(request.booking.acceptedPolicyIds ?? [])]
+            }
+          : null
+      }))
+    };
   }
 
   private static normalizeRoutes(routes: readonly string[] | undefined | null): string[] {
