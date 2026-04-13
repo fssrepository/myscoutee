@@ -2494,6 +2494,124 @@ button.profile-status-select-wrap {
 }
 
 @media (max-width: 900px) {
+  .event-frequency-mobile-picker {
+    position: relative;
+    width: 100%;
+  }
+
+  button.event-frequency-mobile-trigger {
+    position: relative;
+    justify-content: flex-start;
+    gap: 0.38rem;
+    padding-right: 1.6rem;
+    width: 100%;
+  }
+
+  button.event-frequency-mobile-trigger>.mat-icon:last-child {
+    position: absolute;
+    right: 0.56rem;
+    top: 50%;
+    transform: translateY(-50%);
+    flex: 0 0 auto;
+    margin-left: 0;
+  }
+
+  .event-frequency-mobile-panel {
+    position: fixed;
+    left: 0.65rem !important;
+    right: 0.65rem !important;
+    top: auto !important;
+    bottom: 0;
+    width: auto;
+    max-width: calc(100vw - 1.3rem);
+    max-height: min(54vh, 420px);
+    min-width: 0;
+    border-radius: 16px 16px 0 0;
+    border: 1px solid #d6deea;
+    border-bottom: 0;
+    box-shadow: 0 -14px 28px rgba(15, 29, 52, 0.24);
+    padding: 0.84rem 0.6rem max(0.62rem, env(safe-area-inset-bottom));
+    gap: 0.32rem;
+    overflow-x: hidden;
+    overflow-y: auto;
+    z-index: 4250;
+  }
+
+  .event-frequency-mobile-panel::before {
+    content: '';
+    position: sticky;
+    top: 0;
+    display: block;
+    width: 42px;
+    height: 4px;
+    border-radius: 999px;
+    background: rgba(44, 67, 100, 0.24);
+    margin: 0 auto 0.52rem;
+    z-index: 1;
+  }
+
+  .event-frequency-mobile-panel .popup-filter-option,
+  .event-frequency-mobile-panel .activities-view-option {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    border: 1px solid rgba(58, 81, 114, 0.24);
+    border-radius: 12px;
+    min-height: 42px;
+    padding: 0.46rem 0.62rem;
+    justify-content: flex-start;
+    gap: 0.36rem;
+    background: #fff;
+  }
+
+  .event-frequency-mobile-panel .popup-filter-option .mat-icon,
+  .event-frequency-mobile-panel .activities-view-option .mat-icon {
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+  }
+
+  .event-frequency-mobile-panel .activities-view-option.event-frequency-one-time {
+    background: linear-gradient(180deg, #fff3e6 0%, #ffe8d4 100%);
+    border-color: rgba(196, 114, 34, 0.32);
+    color: #d07d33;
+  }
+
+  .event-frequency-mobile-panel .activities-view-option.event-frequency-daily {
+    background: linear-gradient(180deg, #fff4cf 0%, #ffe7b2 100%);
+    border-color: rgba(188, 138, 21, 0.34);
+    color: #c8921e;
+  }
+
+  .event-frequency-mobile-panel .activities-view-option.event-frequency-weekly {
+    background: linear-gradient(180deg, #eaf8fb 0%, #dff2f6 100%);
+    border-color: rgba(39, 134, 150, 0.32);
+    color: #2f8e9d;
+  }
+
+  .event-frequency-mobile-panel .activities-view-option.event-frequency-bi-weekly {
+    background: linear-gradient(180deg, #f3efff 0%, #ebe3fd 100%);
+    border-color: rgba(105, 78, 168, 0.32);
+    color: #7358b0;
+  }
+
+  .event-frequency-mobile-panel .activities-view-option.event-frequency-monthly {
+    background: linear-gradient(180deg, #e8f2ff 0%, #dceaff 100%);
+    border-color: rgba(36, 103, 168, 0.32);
+    color: #295d96;
+  }
+
+  .event-frequency-mobile-panel .activities-view-option.event-frequency-yearly {
+    background: linear-gradient(180deg, #edf8ef 0%, #dff1e4 100%);
+    border-color: rgba(55, 132, 82, 0.32);
+    color: #2f8651;
+  }
+
+  .event-frequency-mobile-panel .activities-view-option.active {
+    box-shadow: inset 0 0 0 1px rgba(24, 46, 76, 0.24);
+    filter: brightness(0.95);
+  }
+
   .event-scheduling-stack {
     padding: 0.58rem;
     gap: 0.58rem;
