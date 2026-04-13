@@ -151,7 +151,7 @@ export class ActivitiesPopupToolbarController {
       if (this.activitiesView === 'month' || this.activitiesView === 'week') {
         return `Events · ${this.activitiesEventScopeLabel()}`;
       }
-      return `${this.activitiesEventScopeLabel()} · ${this.activitiesSecondaryFilterLabel()}`;
+      return this.activitiesEventScopeLabel();
     }
     if (this.activitiesView === 'month' || this.activitiesView === 'week') {
       return this.activitiesPrimaryFilterLabel();
