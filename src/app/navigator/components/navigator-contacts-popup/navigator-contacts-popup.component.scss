@@ -833,33 +833,46 @@
 .subevent-leaderboard-save-btn {
   position: relative;
   overflow: visible !important;
+
+  &.is-loading {
+    border-color: rgba(181, 117, 23, 0.76) !important;
+    background: linear-gradient(180deg, #ffe7bf 0%, #ffd085 100%) !important;
+    color: #8e4f0d !important;
+    cursor: wait !important;
+    box-shadow: none !important;
+    transform: none !important;
+    filter: none !important;
+  }
 }
 
 .navigator-contact-save-ring {
   position: absolute;
-  inset: -3px;
+  inset: -4px;
   pointer-events: none;
-  z-index: 2;
+  z-index: 10;
 }
 
 .navigator-contact-save-ring-svg {
   width: 100%;
   height: 100%;
   display: block;
+  overflow: visible;
 }
 
 .navigator-contact-save-ring-track {
-  stroke: rgba(41, 72, 111, 0.08);
+  stroke: rgba(32, 58, 94, 0.08);
+  stroke-width: 8px;
 }
 
 .navigator-contact-save-ring-progress {
   stroke: url(#contact-save-ring-gradient);
+  stroke-width: 8px;
   stroke-linecap: round;
   stroke-dashoffset: 100;
 }
 
 .subevent-leaderboard-save-btn.is-loading .navigator-contact-save-ring-progress {
-  animation: navigator-contact-save-ring-grow 1500ms linear forwards;
+  animation: navigator-contact-save-ring-grow 3000ms linear forwards;
 }
 
 @keyframes navigator-contact-save-ring-grow {

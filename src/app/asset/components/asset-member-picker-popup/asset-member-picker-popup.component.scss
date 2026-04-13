@@ -167,7 +167,7 @@
 
 .asset-member-picker-popup-shell .asset-member-picker-save-btn-ring-progress.is-loading {
   stroke: url(#asset-member-picker-save-gradient);
-  animation: asset-member-picker-save-ring-progress 3s linear forwards;
+  animation: asset-member-picker-save-ring-progress 3000ms linear forwards;
 }
 
 .asset-member-picker-popup-shell .asset-member-picker-save-btn-ring-progress.is-error {
