@@ -122,8 +122,13 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
 
       console.log(Date.now() + "db write end - activity members");
 
-      this.refreshInvalidSeededEventOwners();
+      const batchState = this.memoryDb.read();
+      let activityMembersTable = this.normalizeCollection(batchState[ACTIVITY_MEMBERS_TABLE_NAME]);
+      
+      this.batchRefreshInvalidSeededEventOwners(activityMembersTable);
+      
       this.syncEventSummariesFromMembers();
+      
       const finalTable = this.normalizeCollection(this.memoryDb.read()[ACTIVITY_MEMBERS_TABLE_NAME]);
       this.lastInitToken = `${eventsTable.ids.length}:${finalTable.ids.length}:${Object.keys(finalTable.idsByOwnerKey).length}:${normalizedOwnerUserIds.join('|')}`;
       this.isInitialized = true;
@@ -331,21 +336,77 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
   }
 
   private syncEventSummariesFromMembers(): void {
-    const table = this.normalizeCollection(this.memoryDb.read()[ACTIVITY_MEMBERS_TABLE_NAME]);
+    const state = this.memoryDb.read();
+    const table = this.normalizeCollection(state[ACTIVITY_MEMBERS_TABLE_NAME]);
+    const eventTable = state[EVENTS_TABLE_NAME];
+    
     const eventIds = Object.keys(table.idsByOwnerKey)
       .filter(ownerKey => ownerKey.startsWith('event:'))
       .map(ownerKey => ownerKey.slice('event:'.length))
       .filter(eventId => eventId.length > 0);
 
+    const summariesByEventId = new Map<string, ActivityMembersSummary>();
     for (const eventId of eventIds) {
-      const summary = this.readSummaryByOwner({
-        ownerType: 'event',
-        ownerId: eventId
+      const owner: ActivityMemberOwnerRef = { ownerType: 'event', ownerId: eventId };
+      const members = (table.idsByOwnerKey[this.ownerKey(owner)] ?? [])
+        .map(id => table.byId[id])
+        .filter((record): record is DemoActivityMemberRecord => Boolean(record))
+        .map(record => this.toMemberEntry(record))
+        .sort((left, right) => AppUtils.toSortableDate(left.actionAtIso) - AppUtils.toSortableDate(right.actionAtIso));
+      
+      const acceptedMembers = members.filter(member => member.status === 'accepted').length;
+      const ownerKey = this.ownerKey(owner);
+      const storedCapacity = this.ownerCapacityByKey.get(ownerKey);
+      
+      const capacityTotal = owner.ownerType === 'event'
+        ? this.resolveEventCapacityTotal(owner.ownerId, acceptedMembers)
+        : Math.max(
+            acceptedMembers,
+            storedCapacity ?? this.parseSampleCapacityLabel(owner.ownerId).capacityTotal ?? 0
+          );
+          
+      summariesByEventId.set(eventId, this.buildSummary(owner, members, capacityTotal));
+    }
+
+    if (summariesByEventId.size > 0) {
+      this.memoryDb.write(currentState => {
+        const currentEventTable = currentState[EVENTS_TABLE_NAME];
+        const nextById = { ...currentEventTable.byId };
+        let changed = false;
+
+        for (const id of currentEventTable.ids) {
+          const current = currentEventTable.byId[id];
+          if (!current || !summariesByEventId.has(current.id)) {
+            continue;
+          }
+          const summary = summariesByEventId.get(current.id)!;
+          
+          // Check if sync actually needed
+          if (current.acceptedMembers === summary.acceptedMembers && 
+              current.pendingMembers === summary.pendingMembers &&
+              current.capacityTotal === Math.max(summary.acceptedMembers, summary.capacityTotal)) {
+            continue;
+          }
+
+          nextById[id] = {
+            ...current,
+            acceptedMembers: summary.acceptedMembers,
+            pendingMembers: summary.pendingMembers,
+            capacityTotal: Math.max(summary.acceptedMembers, summary.capacityTotal)
+          };
+          changed = true;
+        }
+
+        if (!changed) return currentState;
+
+        return {
+          ...currentState,
+          [EVENTS_TABLE_NAME]: {
+            byId: nextById,
+            ids: [...currentEventTable.ids]
+          }
+        };
       });
-      if (!summary) {
-        continue;
-      }
-      this.syncSingleEventSummary(eventId, summary, false);
     }
   }
 
@@ -408,18 +469,74 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
     return records;
   }
 
-  private refreshInvalidSeededEventOwners(): void {
+  private batchRefreshInvalidSeededEventOwners(table: DemoActivityMembersRecordCollection): void {
+    const updates: Array<{ owner: ActivityMemberOwnerRef; members: AppTypes.ActivityMemberEntry[]; capacityTotal: number | null }> = [];
+
     for (const eventRecord of this.preferredEventRecords()) {
       const owner: ActivityMemberOwnerRef = {
         ownerType: 'event',
         ownerId: eventRecord.id
       };
-      const currentMembers = this.readMembersByOwner(owner);
+      const ownerKey = this.ownerKey(owner);
+      const currentMembers = (table.idsByOwnerKey[ownerKey] ?? [])
+        .map(id => table.byId[id])
+        .filter((record): record is DemoActivityMemberRecord => Boolean(record))
+        .map(record => this.toMemberEntry(record))
+        .sort((left, right) => AppUtils.toSortableDate(left.actionAtIso) - AppUtils.toSortableDate(right.actionAtIso));
+
       if (!this.shouldRefreshSeededEventOwner(eventRecord, currentMembers)) {
         continue;
       }
+      
       const nextMembers = this.buildSeededRecordsForEvent(eventRecord).map(record => this.toMemberEntry(record));
-      this.writeOwnerMembers(owner, nextMembers, eventRecord.capacityTotal, true);
+      updates.push({ owner, members: nextMembers, capacityTotal: eventRecord.capacityTotal });
+    }
+
+    if (updates.length > 0) {
+      this.memoryDb.write(currentState => {
+        let nextTable = this.normalizeCollection(currentState[ACTIVITY_MEMBERS_TABLE_NAME]);
+        let nextById = { ...nextTable.byId };
+        let nextIds = [...nextTable.ids];
+        let nextIdsByOwnerKey = this.cloneOwnerKeyIndex(nextTable.idsByOwnerKey);
+
+        for (const update of updates) {
+          const ownerKey = this.ownerKey(update.owner);
+          const existingOwnerRecordsById: Record<string, DemoActivityMemberRecord> = {};
+          
+          const filteredIds: string[] = [];
+          for (const id of nextIds) {
+            const current = nextById[id];
+            if (current?.ownerKey === ownerKey) {
+              existingOwnerRecordsById[id] = current;
+              delete nextById[id];
+              continue;
+            }
+            filteredIds.push(id);
+          }
+          nextIds = filteredIds;
+          delete nextIdsByOwnerKey[ownerKey];
+
+          for (const member of update.members) {
+            const record = this.toRecord(update.owner, member, existingOwnerRecordsById[member.id]);
+            nextById[record.id] = record;
+            nextIds.push(record.id);
+            const ownerBucket = nextIdsByOwnerKey[ownerKey] ?? [];
+            ownerBucket.push(record.id);
+            nextIdsByOwnerKey[ownerKey] = ownerBucket;
+          }
+          
+          this.ownerCapacityByKey.set(ownerKey, update.capacityTotal ?? 0);
+        }
+
+        return {
+          ...currentState,
+          [ACTIVITY_MEMBERS_TABLE_NAME]: {
+            byId: nextById,
+            ids: nextIds,
+            idsByOwnerKey: nextIdsByOwnerKey
+          }
+        };
+      });
     }
   }
 
@@ -883,11 +1000,12 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
       if (!ownerKey) {
         continue;
       }
-      const ownerBucket = nextIdsByOwnerKey[ownerKey] ?? [];
-      if (!ownerBucket.includes(id)) {
+      const ownerBucket = nextIdsByOwnerKey[ownerKey];
+      if (!ownerBucket) {
+        nextIdsByOwnerKey[ownerKey] = [id];
+      } else if (!ownerBucket.includes(id)) {
         ownerBucket.push(id);
       }
-      nextIdsByOwnerKey[ownerKey] = ownerBucket;
     }
 
     return {
