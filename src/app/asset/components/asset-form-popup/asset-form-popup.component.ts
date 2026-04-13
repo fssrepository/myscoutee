@@ -47,6 +47,7 @@ export class AssetFormPopupComponent {
   @Input({ required: true }) refreshAssetFromSourceLink!: () => void | Promise<void>;
   @Input({ required: true }) onAssetImageFileSelected!: (file: File) => void;
   protected showMobileAssetTypePicker = false;
+  protected showMobileAssetCategoryPicker = false;
   protected showVisibilityPicker = false;
   protected showPoliciesPopup = false;
   protected showPolicyEditorPopup = false;
@@ -73,6 +74,8 @@ export class AssetFormPopupComponent {
     if (this.isSavePending) {
       return;
     }
+    this.showMobileAssetTypePicker = false;
+    this.showMobileAssetCategoryPicker = false;
     this.showVisibilityPicker = !this.showVisibilityPicker;
   }
 
@@ -227,6 +230,8 @@ export class AssetFormPopupComponent {
       return;
     }
     event.stopPropagation();
+    this.showMobileAssetCategoryPicker = false;
+    this.showVisibilityPicker = false;
     this.showMobileAssetTypePicker = !this.showMobileAssetTypePicker;
   }
 
@@ -239,6 +244,25 @@ export class AssetFormPopupComponent {
     this.showMobileAssetTypePicker = false;
   }
 
+  protected openMobileAssetCategorySelector(event: Event): void {
+    if (!this.isMobileAssetTypeSheetViewport() || this.isSavePending) {
+      return;
+    }
+    event.stopPropagation();
+    this.showMobileAssetTypePicker = false;
+    this.showVisibilityPicker = false;
+    this.showMobileAssetCategoryPicker = !this.showMobileAssetCategoryPicker;
+  }
+
+  protected selectMobileAssetCategory(category: AppTypes.AssetCategory, event?: Event): void {
+    if (this.isSavePending) {
+      return;
+    }
+    event?.stopPropagation();
+    this.assetForm.category = category;
+    this.showMobileAssetCategoryPicker = false;
+  }
+
   protected isMobileAssetTypeSheetViewport(): boolean {
     if (typeof window === 'undefined') {
       return false;
@@ -248,13 +272,14 @@ export class AssetFormPopupComponent {
 
   @HostListener('window:keydown.escape', ['$event'])
   protected onEscapePressed(event: Event): void {
-    if (!this.showMobileAssetTypePicker) {
+    if (!this.showMobileAssetTypePicker && !this.showMobileAssetCategoryPicker) {
       return;
     }
     const keyboardEvent = event as KeyboardEvent;
     keyboardEvent.preventDefault();
     keyboardEvent.stopPropagation();
     this.showMobileAssetTypePicker = false;
+    this.showMobileAssetCategoryPicker = false;
   }
 
   @HostListener('document:click', ['$event'])
@@ -265,6 +290,9 @@ export class AssetFormPopupComponent {
     }
     if (!target.closest('.asset-form-mobile-type-picker')) {
       this.showMobileAssetTypePicker = false;
+    }
+    if (!target.closest('.asset-form-mobile-category-picker')) {
+      this.showMobileAssetCategoryPicker = false;
     }
     if (!target.closest('.asset-form-visibility-picker')) {
       this.showVisibilityPicker = false;
