@@ -58,6 +58,7 @@ export class NavigatorContactsPopupComponent {
   }));
 
   private readonly manualRefreshRevision = signal(0);
+  private lastKnownTotal = 0;
   private readonly hasInitialLoadCompleted = signal(false);
   private readonly isDeletionsPending = signal(false);
 
@@ -66,9 +67,19 @@ export class NavigatorContactsPopupComponent {
       const revision = this.contactsService.revision();
       const lastOptimistic = this.contactsService.lastOptimisticRevision();
       untracked(() => {
+        const currentTotal = this.contactsService.contactCount();
         if (revision && revision === lastOptimistic) {
+          if (this.contactsSmartList) {
+            const additions = Math.max(0, currentTotal - this.lastKnownTotal);
+            const loadedCount = this.contactsSmartList.itemsSnapshot().length;
+            this.contactsSmartList.replaceVisibleItems(this.contactsService.contacts().slice(0, loadedCount + additions), {
+              total: currentTotal
+            });
+          }
+          this.lastKnownTotal = currentTotal;
           return;
         }
+        this.lastKnownTotal = currentTotal;
         this.manualRefreshRevision.set(revision);
       });
     });
@@ -87,7 +98,7 @@ export class NavigatorContactsPopupComponent {
     );
 
   protected readonly contactSmartListConfig = computed<SmartListConfig<NavigatorContactListItem, NavigatorContactListFilters>>(() => ({
-    pageSize: 24,
+    pageSize: 10,
     loadingDelayMs: 1500,
     defaultView: 'list',
     emptyLabel: 'No contacts saved yet',
@@ -166,18 +177,7 @@ export class NavigatorContactsPopupComponent {
     event?.stopPropagation();
     this.closeActionMenu();
     
-    const previousRevision = this.contactsService.revision();
     await this.contactsService.openCreateContactPicker();
-    
-    // The service now handles flagging the optimistic revision,
-    // so we just perform the manual item replacement if the revision bumped.
-    if (this.contactsService.revision() > previousRevision) {
-      if (this.contactsSmartList) {
-        this.contactsSmartList.replaceVisibleItems(this.contactsService.contacts(), {
-          total: this.contactsService.contactCount()
-        });
-      }
-    }
   }
 
   protected toggleActionMenu(contact: NavigatorContactListItem, event: Event): void {
@@ -271,11 +271,6 @@ export class NavigatorContactsPopupComponent {
         this.contactsService.saveContact(contact),
         this.wait(180)
       ]);
-      if (this.contactsSmartList) {
-        this.contactsSmartList.replaceVisibleItems(this.contactsService.contacts(), {
-          total: this.contactsService.contactCount()
-        });
-      }
       this.isFormSavePending.set(false);
       this.editingContact.set(null);
     } catch (error) {
@@ -309,6 +304,9 @@ export class NavigatorContactsPopupComponent {
             total: Math.max(0, (this.contactsSmartList.totalItemCount() ?? current.length) - 1)
           });
         }
+        
+        // Update lastKnownTotal so the effect knows we already accounted for this deletion
+        this.lastKnownTotal = Math.max(0, this.lastKnownTotal - 1);
 
         try {
           await this.contactsService.deleteContact(contact.id);
