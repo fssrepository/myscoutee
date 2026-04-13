@@ -137,7 +137,7 @@ export class NavigatorMenuComponent {
     event.stopPropagation();
     const url = window.location.origin;
     const title = 'MyScoutee';
-    const text = 'Please subscribe for the first priority based application, MyScoutee!';
+    const text = 'Please subscribe for the first priority based dating app, MyScoutee!';
 
     if (navigator.share) {
       void navigator.share({ title, text, url });
