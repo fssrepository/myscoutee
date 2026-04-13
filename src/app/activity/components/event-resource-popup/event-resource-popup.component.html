@@ -521,7 +521,7 @@
           <div class="asset-explore-filter-bar popup-filter-bar">
             <div
               class="profile-status-select-wrap selector-like experience-filter-select popup-compact-select activities-compact-select popup-filter-no-badge activities-filter-no-badge asset-explore-category-field"
-              [ngClass]="host.resourceTypeClass(explore.type)"
+              [ngClass]="assetExploreCategoryClass(explore.category)"
             >
               <mat-select
                 [ngModel]="explore.categoryDisplay"
@@ -531,15 +531,15 @@
               >
                 <mat-select-trigger>
                   <span class="status-option-content">
-                    <mat-icon [class]="host.resourceTypeClass(explore.type)">sell</mat-icon>
-                    <span>{{ explore.categoryDisplay }}</span>
+                    <mat-icon [class]="assetExploreCategoryClass(explore.category)">{{ assetExploreCategoryIcon(explore.category) }}</mat-icon>
+                    <span>{{ assetExploreCategoryLabel(explore.categoryDisplay) }}</span>
                   </span>
                 </mat-select-trigger>
                 @for (option of explore.categoryOptions; track option) {
-                  <mat-option [value]="option" class="status-option" [ngClass]="assetExploreCategoryOptionClass(option)">
+                  <mat-option [value]="option" class="status-option" [ngClass]="assetExploreCategoryClass(option)">
                     <span class="status-option-content">
-                      <mat-icon [class]="assetExploreCategoryOptionClass(option)">sell</mat-icon>
-                      <span>{{ option }}</span>
+                      <mat-icon [class]="assetExploreCategoryClass(option)">{{ assetExploreCategoryIcon(option) }}</mat-icon>
+                      <span>{{ assetExploreCategoryLabel(option) }}</span>
                     </span>
                   </mat-option>
                 }

@@ -1660,8 +1660,12 @@ export class SubEventResourcePopupService {
       subtitle: this.popupSubtitle(),
       type: popup.type,
       category: popup.category,
-      categoryDisplay: popup.type === 'Car' || popup.type === 'Accommodation' ? popup.type : popup.category,
-      categoryOptions: ['Car', 'Accommodation', ...AssetDefaultsBuilder.assetCategoryOptions('Supplies')],
+      categoryDisplay: AssetDefaultsBuilder.assetCategoryLabel(popup.category),
+      categoryOptions: [
+        ...AssetDefaultsBuilder.assetCategoryOptions('Car'),
+        ...AssetDefaultsBuilder.assetCategoryOptions('Accommodation'),
+        ...AssetDefaultsBuilder.assetCategoryOptions('Supplies')
+      ],
       startDate: AppUtils.isoLocalDateTimeToDate(popup.startAtIso),
       endDate: AppUtils.isoLocalDateTimeToDate(popup.endAtIso),
       windowStartDate: AppUtils.isoLocalDateTimeToDate(windowRange.startAtIso),
@@ -1758,16 +1762,12 @@ export class SubEventResourcePopupService {
     if (!popup) {
       return;
     }
+    const normalizedCategory = AssetDefaultsBuilder.assetCategoryLabel(category);
     let nextType = popup.type;
     let nextCategory = popup.category;
-    if (category === 'Car' || category === 'Accommodation') {
-      nextType = category;
-      nextCategory = AssetDefaultsBuilder.defaultCategory(category);
-    } else {
-      nextType = 'Supplies';
-      nextCategory = category;
-    }
-    
+    nextType = AssetDefaultsBuilder.assetCategoryType(normalizedCategory);
+    nextCategory = AssetDefaultsBuilder.normalizeCategory(nextType, normalizedCategory);
+
     if (nextType === popup.type && nextCategory === popup.category) {
       return;
     }

@@ -28,6 +28,7 @@ import {
 } from '../../../shared/ui';
 import type * as AppTypes from '../../../shared/core/base/models';
 import { AppUtils } from '../../../shared/app-utils';
+import { AssetDefaultsBuilder } from '../../../shared/core/base/builders';
 import { resolveCurrentDemoDelayMs, resolveCurrentRouteDelayMs } from '../../../shared/core/base/services/route-delay.service';
 
 interface CapacityEditorState {
@@ -730,14 +731,16 @@ export class EventResourcePopupComponent implements DoCheck {
     return this.assetExploreStickyLabel || 'No items';
   }
 
-  protected assetExploreCategoryOptionClass(option: AppTypes.AssetCategory): string {
-    if (option === 'Ride') {
-      return this.host.resourceTypeClass('Car');
-    }
-    if (option === 'Stay') {
-      return this.host.resourceTypeClass('Accommodation');
-    }
-    return this.host.resourceTypeClass('Supplies');
+  protected assetExploreCategoryClass(option: AppTypes.AssetCategory): string {
+    return AssetDefaultsBuilder.assetCategoryClass(option);
+  }
+
+  protected assetExploreCategoryIcon(option: AppTypes.AssetCategory): string {
+    return AssetDefaultsBuilder.assetCategoryIcon(option);
+  }
+
+  protected assetExploreCategoryLabel(option: AppTypes.AssetCategory): string {
+    return AssetDefaultsBuilder.assetCategoryLabel(option);
   }
 
   protected readonly assetExploreDateFilter = (date: Date | null): boolean => {

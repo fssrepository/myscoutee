@@ -89,6 +89,18 @@ export class AssetFormPopupComponent {
     return AssetDefaultsBuilder.assetCategoryOptions(this.assetForm.type);
   }
 
+  protected assetCategoryClass(category: AppTypes.AssetCategory | null | undefined): string {
+    return AssetDefaultsBuilder.assetCategoryClass(category, this.assetForm.type);
+  }
+
+  protected assetCategoryIcon(category: AppTypes.AssetCategory | null | undefined): string {
+    return AssetDefaultsBuilder.assetCategoryIcon(category, this.assetForm.type);
+  }
+
+  protected assetCategoryLabel(category: AppTypes.AssetCategory | null | undefined): string {
+    return AssetDefaultsBuilder.assetCategoryLabel(category);
+  }
+
   protected onAssetTypeChange(type: AppTypes.AssetType): void {
     this.assetForm.type = type;
     this.assetForm.category = AssetDefaultsBuilder.normalizeCategory(type, this.assetForm.category);

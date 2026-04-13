@@ -241,6 +241,86 @@
   color: #8a5428;
 }
 
+.event-resource-popup-shell .experience-filter-select.asset-category-camping,
+.event-resource-popup-shell .experience-type-select.asset-category-camping {
+  background: linear-gradient(180deg, #f6f3e7 0%, #ece3c5 100%);
+  border-color: rgba(129, 110, 53, 0.3);
+}
+
+.event-resource-popup-shell .experience-filter-select.asset-category-cooking,
+.event-resource-popup-shell .experience-type-select.asset-category-cooking {
+  background: linear-gradient(180deg, #fff3e6 0%, #ffe2c2 100%);
+  border-color: rgba(165, 96, 33, 0.3);
+}
+
+.event-resource-popup-shell .experience-filter-select.asset-category-games,
+.event-resource-popup-shell .experience-type-select.asset-category-games {
+  background: linear-gradient(180deg, #f3edff 0%, #e5d8ff 100%);
+  border-color: rgba(102, 76, 171, 0.3);
+}
+
+.event-resource-popup-shell .experience-filter-select.asset-category-audio,
+.event-resource-popup-shell .experience-type-select.asset-category-audio {
+  background: linear-gradient(180deg, #ecf8ff 0%, #d9effb 100%);
+  border-color: rgba(43, 118, 155, 0.3);
+}
+
+.event-resource-popup-shell .experience-filter-select.asset-category-sports,
+.event-resource-popup-shell .experience-type-select.asset-category-sports {
+  background: linear-gradient(180deg, #fff1eb 0%, #ffd7ca 100%);
+  border-color: rgba(176, 78, 46, 0.3);
+}
+
+.event-resource-popup-shell .experience-filter-select.asset-category-safety,
+.event-resource-popup-shell .experience-type-select.asset-category-safety {
+  background: linear-gradient(180deg, #fff2f3 0%, #ffdfe3 100%);
+  border-color: rgba(182, 73, 101, 0.3);
+}
+
+.event-resource-popup-shell .experience-filter-select.asset-category-decor,
+.event-resource-popup-shell .experience-type-select.asset-category-decor {
+  background: linear-gradient(180deg, #fff1f8 0%, #ffe0ef 100%);
+  border-color: rgba(169, 82, 131, 0.3);
+}
+
+.event-resource-popup-shell .experience-filter-select.asset-category-tech,
+.event-resource-popup-shell .experience-type-select.asset-category-tech {
+  background: linear-gradient(180deg, #eef4ff 0%, #dde9ff 100%);
+  border-color: rgba(56, 99, 174, 0.3);
+}
+
+.event-resource-popup-shell .asset-category-camping {
+  color: #7a6423;
+}
+
+.event-resource-popup-shell .asset-category-cooking {
+  color: #9a531c;
+}
+
+.event-resource-popup-shell .asset-category-games {
+  color: #5f43a5;
+}
+
+.event-resource-popup-shell .asset-category-audio {
+  color: #2a7196;
+}
+
+.event-resource-popup-shell .asset-category-sports {
+  color: #a34d28;
+}
+
+.event-resource-popup-shell .asset-category-safety {
+  color: #a84360;
+}
+
+.event-resource-popup-shell .asset-category-decor {
+  color: #9c4a79;
+}
+
+.event-resource-popup-shell .asset-category-tech {
+  color: #2f5fa8;
+}
+
 .event-resource-popup-shell .subevent-resource-mobile-filter-panel .activities-view-option.asset-filter-car {
   background: linear-gradient(180deg, #eef6ff 0%, #e2efff 100%);
   border-color: rgba(43, 111, 179, 0.28);
@@ -2013,6 +2093,62 @@
 :host ::ng-deep .mat-mdc-select-panel.subevent-resource-options-panel .mat-mdc-option.status-option.asset-filter-supplies .status-option-content .mat-icon {
   background: linear-gradient(0deg, #ffffff, #fff5ec);
   color: #8a5428;
+}
+
+:host ::ng-deep .mat-mdc-select-panel.subevent-resource-options-panel .mat-mdc-option.status-option.asset-category-camping,
+:host ::ng-deep .mat-mdc-select-panel.subevent-resource-options-panel .mat-mdc-option.status-option.asset-category-camping .status-option-content,
+:host ::ng-deep .mat-mdc-select-panel.subevent-resource-options-panel .mat-mdc-option.status-option.asset-category-camping .status-option-content .mat-icon {
+  background: linear-gradient(0deg, #ffffff, #f6f3e7);
+  color: #7a6423;
+}
+
+:host ::ng-deep .mat-mdc-select-panel.subevent-resource-options-panel .mat-mdc-option.status-option.asset-category-cooking,
+:host ::ng-deep .mat-mdc-select-panel.subevent-resource-options-panel .mat-mdc-option.status-option.asset-category-cooking .status-option-content,
+:host ::ng-deep .mat-mdc-select-panel.subevent-resource-options-panel .mat-mdc-option.status-option.asset-category-cooking .status-option-content .mat-icon {
+  background: linear-gradient(0deg, #ffffff, #fff3e6);
+  color: #9a531c;
+}
+
+:host ::ng-deep .mat-mdc-select-panel.subevent-resource-options-panel .mat-mdc-option.status-option.asset-category-games,
+:host ::ng-deep .mat-mdc-select-panel.subevent-resource-options-panel .mat-mdc-option.status-option.asset-category-games .status-option-content,
+:host ::ng-deep .mat-mdc-select-panel.subevent-resource-options-panel .mat-mdc-option.status-option.asset-category-games .status-option-content .mat-icon {
+  background: linear-gradient(0deg, #ffffff, #f3edff);
+  color: #5f43a5;
+}
+
+:host ::ng-deep .mat-mdc-select-panel.subevent-resource-options-panel .mat-mdc-option.status-option.asset-category-audio,
+:host ::ng-deep .mat-mdc-select-panel.subevent-resource-options-panel .mat-mdc-option.status-option.asset-category-audio .status-option-content,
+:host ::ng-deep .mat-mdc-select-panel.subevent-resource-options-panel .mat-mdc-option.status-option.asset-category-audio .status-option-content .mat-icon {
+  background: linear-gradient(0deg, #ffffff, #ecf8ff);
+  color: #2a7196;
+}
+
+:host ::ng-deep .mat-mdc-select-panel.subevent-resource-options-panel .mat-mdc-option.status-option.asset-category-sports,
+:host ::ng-deep .mat-mdc-select-panel.subevent-resource-options-panel .mat-mdc-option.status-option.asset-category-sports .status-option-content,
+:host ::ng-deep .mat-mdc-select-panel.subevent-resource-options-panel .mat-mdc-option.status-option.asset-category-sports .status-option-content .mat-icon {
+  background: linear-gradient(0deg, #ffffff, #fff1eb);
+  color: #a34d28;
+}
+
+:host ::ng-deep .mat-mdc-select-panel.subevent-resource-options-panel .mat-mdc-option.status-option.asset-category-safety,
+:host ::ng-deep .mat-mdc-select-panel.subevent-resource-options-panel .mat-mdc-option.status-option.asset-category-safety .status-option-content,
+:host ::ng-deep .mat-mdc-select-panel.subevent-resource-options-panel .mat-mdc-option.status-option.asset-category-safety .status-option-content .mat-icon {
+  background: linear-gradient(0deg, #ffffff, #fff2f3);
+  color: #a84360;
+}
+
+:host ::ng-deep .mat-mdc-select-panel.subevent-resource-options-panel .mat-mdc-option.status-option.asset-category-decor,
+:host ::ng-deep .mat-mdc-select-panel.subevent-resource-options-panel .mat-mdc-option.status-option.asset-category-decor .status-option-content,
+:host ::ng-deep .mat-mdc-select-panel.subevent-resource-options-panel .mat-mdc-option.status-option.asset-category-decor .status-option-content .mat-icon {
+  background: linear-gradient(0deg, #ffffff, #fff1f8);
+  color: #9c4a79;
+}
+
+:host ::ng-deep .mat-mdc-select-panel.subevent-resource-options-panel .mat-mdc-option.status-option.asset-category-tech,
+:host ::ng-deep .mat-mdc-select-panel.subevent-resource-options-panel .mat-mdc-option.status-option.asset-category-tech .status-option-content,
+:host ::ng-deep .mat-mdc-select-panel.subevent-resource-options-panel .mat-mdc-option.status-option.asset-category-tech .status-option-content .mat-icon {
+  background: linear-gradient(0deg, #ffffff, #eef4ff);
+  color: #2f5fa8;
 }
 
 @media (hover: hover) and (pointer: fine) {
