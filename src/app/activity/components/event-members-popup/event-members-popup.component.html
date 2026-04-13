@@ -2,49 +2,53 @@
   <section class="app-popup app-popup-stacked app-popup-super-stacked activity-members-popup-shell">
     <div class="app-popup-backdrop" (click)="closeMembersPopup()"></div>
     <div class="app-popup-panel popup-panel-members popup-panel-wide popup-panel-full-height" (click)="$event.stopPropagation()">
-      <div class="popup-header popup-header-members-invite-mobile-layout popup-header-activity-members-pending-layout">
+      <div class="popup-header" (click)="$event.stopPropagation()">
         <div class="popup-title popup-title-members">
           <div class="popup-chat-title-block">
             <h2>{{ title }}</h2>
             <p>{{ subtitle }}</p>
           </div>
         </div>
-        @if (canShowInviteButton) {
+        <div class="popup-header-mobile-status-row">
+          @if (canShowInviteButton) {
+            <button
+              type="button"
+              class="chat-members-stack chat-members-stack-large chat-header-members event-editor-members-trigger activity-members-header-invite-trigger"
+              (click)="handleInvite($event)"
+              aria-label="Invite friends"
+              >
+              <span class="event-editor-members-invite">
+                <mat-icon>person_add</mat-icon>
+                <span>Invite</span>
+              </span>
+            </button>
+          }
           <button
             type="button"
-            class="chat-members-stack chat-members-stack-large chat-header-members event-editor-members-trigger activity-members-header-invite-trigger"
-            (click)="handleInvite($event)"
-            aria-label="Invite friends"
+            class="profile-status-select-wrap selector-like experience-filter-select activities-compact-select subevent-members-pending-toggle activity-members-header-pending-toggle"
+            [class.is-active]="pendingOnly"
+            (click)="togglePendingOnly($event)"
+            [attr.aria-label]="pendingOnly ? 'Show all members' : 'Show pending members only'"
             >
-            <span class="event-editor-members-invite">
-              <mat-icon>person_add</mat-icon>
-              <span>Invite</span>
+            <span class="status-option-content activities-hosting-draft-content">
+              <mat-icon class="activities-toggle-icon">pending_actions</mat-icon>
+              <span class="activities-hosting-draft-label">Pending only</span>
             </span>
+            @if (pendingCount > 0) {
+              <span class="rate-filter-count-badge rate-filter-trigger-badge activity-members-header-pending-badge">
+                {{ pendingCount | counterBadge }}
+              </span>
+            }
           </button>
-        }
-        <button
-          type="button"
-          class="profile-status-select-wrap selector-like experience-filter-select activities-compact-select subevent-members-pending-toggle activity-members-header-pending-toggle"
-          [class.is-active]="pendingOnly"
-          (click)="togglePendingOnly($event)"
-          [attr.aria-label]="pendingOnly ? 'Show all members' : 'Show pending members only'"
-          >
-          <span class="status-option-content activities-hosting-draft-content">
-            <mat-icon class="activities-toggle-icon">pending_actions</mat-icon>
-            <span class="activities-hosting-draft-label">Pending only</span>
-          </span>
-          @if (pendingCount > 0) {
-            <span class="rate-filter-count-badge rate-filter-trigger-badge activity-members-header-pending-badge">
-              {{ pendingCount | counterBadge }}
-            </span>
+        </div>
+        <div class="popup-header-mobile-actions-row">
+          @if (isSummaryVisible) {
+            <span class="header-members-count members-header-summary-badge">{{ summaryLabel }}</span>
           }
-        </button>
-        @if (isSummaryVisible) {
-          <span class="header-members-count members-header-summary-badge">{{ summaryLabel }}</span>
-        }
-        <button mat-icon-button class="popup-close" (click)="closeMembersPopup($event)" aria-label="Close">
-          <mat-icon>close</mat-icon>
-        </button>
+          <button type="button" class="popup-close" (click)="closeMembersPopup($event)" aria-label="Close">
+            <mat-icon>close</mat-icon>
+          </button>
+        </div>
       </div>
       <div class="popup-body popup-body-members">
         <div class="activity-members-popup-wrap">
