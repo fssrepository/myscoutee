@@ -158,6 +158,7 @@ export interface EventResourcePopupHost {
   setAssetExploreBorrowDateRange(start: Date | null, end: Date | null): void;
   setAssetExploreBorrowTime(edge: 'start' | 'end', value: string): void;
   onAssetExploreBorrowQuantityChange(value: number | string): void;
+  normalizeAssetExploreBorrowQuantityOnBlur(value: number | string): void;
   toggleAssetExploreBorrowPolicy(policyId: string): void;
   backAssetExploreBorrowToDetails(event?: Event): void;
   canSubmitAssetExploreBorrow(): boolean;

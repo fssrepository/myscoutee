@@ -577,12 +577,18 @@
 
           <section class="asset-explore-panel">
             <div class="asset-explore-grid">
+              @if (explore.error && explore.cards.length > 0) {
+                <section class="asset-explore-empty-state asset-explore-empty-state-error">
+                  <mat-icon>error</mat-icon>
+                  <span>{{ explore.error }}</span>
+                </section>
+              }
               @if (explore.loading) {
                 <section class="asset-explore-empty-state">
                   <mat-icon>hourglass_top</mat-icon>
                   <span>Loading visible assets...</span>
                 </section>
-              } @else if (explore.error) {
+              } @else if (explore.error && explore.cards.length === 0) {
                 <section class="asset-explore-empty-state asset-explore-empty-state-error">
                   <mat-icon>error</mat-icon>
                   <span>{{ explore.error }}</span>
@@ -741,6 +747,7 @@
                           [max]="dialog.availableQuantity"
                           [ngModel]="dialog.quantity"
                           (ngModelChange)="host.onAssetExploreBorrowQuantityChange($event)"
+                          (blur)="host.normalizeAssetExploreBorrowQuantityOnBlur($any($event.target).value)"
                         />
                       </label>
                     }

@@ -262,6 +262,7 @@ export class SubEventResourcePopupService {
     setAssetExploreBorrowDateRange: (start, end) => this.setAssetExploreBorrowDateRange(start, end),
     setAssetExploreBorrowTime: (edge, value) => this.setAssetExploreBorrowTime(edge, value),
     onAssetExploreBorrowQuantityChange: value => this.onAssetExploreBorrowQuantityChange(value),
+    normalizeAssetExploreBorrowQuantityOnBlur: value => this.normalizeAssetExploreBorrowQuantityOnBlur(value),
     toggleAssetExploreBorrowPolicy: policyId => this.toggleAssetExploreBorrowPolicy(policyId),
     backAssetExploreBorrowToDetails: event => this.backAssetExploreBorrowToDetails(event),
     canSubmitAssetExploreBorrow: () => this.canSubmitAssetExploreBorrow(),
@@ -1744,7 +1745,7 @@ export class SubEventResourcePopupService {
             draft.endAtIso || popup.endAtIso
           ),
           quantity: Math.max(1, Math.trunc(Number(draft.quantity) || 1)),
-          availabilityLabel: card ? this.assetExploreAvailabilityLabel(card) : 'Draft saved'
+          availabilityLabel: card ? this.assetExploreAvailabilityLabel(card) : 'Unavailable for this time'
         } satisfies AssetExploreBorrowDraftViewState;
       })
       .filter((entry): entry is AssetExploreBorrowDraftViewState => Boolean(entry))
@@ -2022,15 +2023,18 @@ export class SubEventResourcePopupService {
     const startAtIso = `${draft?.startAtIso ?? existingRequest?.booking?.startAtIso ?? popup.startAtIso}`.trim() || popup.startAtIso;
     const endAtIso = `${draft?.endAtIso ?? existingRequest?.booking?.endAtIso ?? popup.endAtIso}`.trim() || popup.endAtIso;
     const availableQuantity = this.assetExploreAvailableQuantityForWindow(card, startAtIso, endAtIso);
+    const requestedQuantity = Math.max(1, Math.trunc(Number(draft?.quantity ?? existingRequest?.booking?.quantity) || 1));
     const validPolicyIds = new Set((card.policies ?? []).map(policy => policy.id));
+    if (popup.error) {
+      this.assetExplorePopupRef.set({
+        ...popup,
+        error: null
+      });
+    }
     this.assetExploreBorrowDialogRef.set({
       cardId: card.id,
       ownerUserId,
-      quantity: AppUtils.clampNumber(
-        Math.trunc(Number(draft?.quantity ?? existingRequest?.booking?.quantity) || 1),
-        1,
-        Math.max(1, availableQuantity)
-      ),
+      quantity: AppUtils.clampNumber(requestedQuantity, 1, Math.max(1, availableQuantity)),
       startAtIso,
       endAtIso,
       availableQuantity,
@@ -2039,7 +2043,7 @@ export class SubEventResourcePopupService {
       checkoutSessionId: `${draft?.checkoutSessionId ?? ''}`.trim() || null,
       paymentStep: Boolean(draft?.paymentStep),
       busy: false,
-      error: null
+      error: this.assetExploreBorrowAvailabilityError(requestedQuantity, availableQuantity)
     });
   }
 
@@ -2074,7 +2078,7 @@ export class SubEventResourcePopupService {
       availableQuantity,
       quantity: AppUtils.clampNumber(dialog.quantity, 1, Math.max(1, availableQuantity)),
       acceptedPolicyIds: [...invalidated.acceptedPolicyIds],
-      error: null
+      error: this.assetExploreBorrowAvailabilityError(dialog.quantity, availableQuantity)
     });
   }
 
@@ -2098,7 +2102,7 @@ export class SubEventResourcePopupService {
       availableQuantity,
       quantity: AppUtils.clampNumber(dialog.quantity, 1, Math.max(1, availableQuantity)),
       acceptedPolicyIds: [...invalidated.acceptedPolicyIds],
-      error: null
+      error: this.assetExploreBorrowAvailabilityError(dialog.quantity, availableQuantity)
     });
   }
 
@@ -2109,15 +2113,36 @@ export class SubEventResourcePopupService {
     }
     const parsed = Number(value);
     const invalidated = this.invalidateAssetExploreBorrowCheckout(dialog);
+    const requestedQuantity = AppUtils.clampNumber(
+      Number.isFinite(parsed) ? Math.trunc(parsed) : dialog.quantity,
+      1,
+      Number.MAX_SAFE_INTEGER
+    );
     this.assetExploreBorrowDialogRef.set({
       ...invalidated,
-      quantity: AppUtils.clampNumber(
-        Number.isFinite(parsed) ? Math.trunc(parsed) : dialog.quantity,
-        1,
-        Math.max(1, dialog.availableQuantity)
-      ),
+      quantity: requestedQuantity,
       acceptedPolicyIds: [...invalidated.acceptedPolicyIds],
-      error: null
+      error: this.assetExploreBorrowAvailabilityError(requestedQuantity, dialog.availableQuantity)
+    });
+  }
+
+  private normalizeAssetExploreBorrowQuantityOnBlur(value: number | string): void {
+    const dialog = this.assetExploreBorrowDialogRef();
+    if (!dialog || dialog.busy) {
+      return;
+    }
+    const parsed = Number(value);
+    const invalidated = this.invalidateAssetExploreBorrowCheckout(dialog);
+    const normalizedQuantity = AppUtils.clampNumber(
+      Number.isFinite(parsed) ? Math.trunc(parsed) : dialog.quantity,
+      1,
+      Math.max(1, dialog.availableQuantity)
+    );
+    this.assetExploreBorrowDialogRef.set({
+      ...invalidated,
+      quantity: normalizedQuantity,
+      acceptedPolicyIds: [...invalidated.acceptedPolicyIds],
+      error: this.assetExploreBorrowAvailabilityError(normalizedQuantity, dialog.availableQuantity)
     });
   }
 
@@ -2198,16 +2223,52 @@ export class SubEventResourcePopupService {
     return this.isValidAssetExploreWindow(dialog.startAtIso, dialog.endAtIso);
   }
 
+  private assetExploreBorrowAvailabilityError(
+    requestedQuantity: number,
+    availableQuantity: number
+  ): string | null {
+    if (availableQuantity <= 0) {
+      return 'This asset is no longer available for the selected date range.';
+    }
+    if (requestedQuantity > availableQuantity) {
+      return availableQuantity === 1
+        ? 'Only 1 item is still available for the selected date range.'
+        : `Only ${availableQuantity} items are still available for the selected date range.`;
+    }
+    return null;
+  }
+
   private confirmAssetExploreBorrow(event?: Event): void {
     event?.stopPropagation();
     const dialog = this.assetExploreBorrowDialogRef();
     const popup = this.assetExplorePopupRef();
     const context = this.popupContextRef();
-    if (!dialog || !popup || !context || !this.canSubmitAssetExploreBorrow()) {
+    if (!dialog || !popup || !context) {
       return;
     }
     const card = this.resolveAssetExploreCard(dialog.cardId);
     if (!card) {
+      this.assetExplorePopupRef.set({
+        ...popup,
+        error: 'This basket item is no longer available for the selected date range.'
+      });
+      this.assetExploreBorrowDialogRef.set(null);
+      return;
+    }
+    const availableQuantity = this.assetExploreAvailableQuantityForWindow(card, dialog.startAtIso, dialog.endAtIso);
+    const availabilityError = this.assetExploreBorrowAvailabilityError(dialog.quantity, availableQuantity);
+    if (availabilityError) {
+      const invalidated = this.invalidateAssetExploreBorrowCheckout(dialog);
+      this.assetExploreBorrowDialogRef.set({
+        ...invalidated,
+        availableQuantity,
+        quantity: AppUtils.clampNumber(dialog.quantity, 1, Math.max(1, availableQuantity)),
+        acceptedPolicyIds: [...invalidated.acceptedPolicyIds],
+        error: availabilityError
+      });
+      return;
+    }
+    if (!this.canSubmitAssetExploreBorrow()) {
       return;
     }
     const activeUser = this.activeUser();
@@ -2409,6 +2470,13 @@ export class SubEventResourcePopupService {
     event?.stopPropagation();
     const card = this.resolveAssetExploreCard(cardId);
     if (!card) {
+      const popup = this.assetExplorePopupRef();
+      if (popup) {
+        this.assetExplorePopupRef.set({
+          ...popup,
+          error: 'This basket item is no longer available for the selected date range.'
+        });
+      }
       return;
     }
     this.openAssetExploreBorrowDialog(card, event);
