@@ -253,6 +253,7 @@ export class AssetMemberPickerPopupComponent {
         savePromise
       ]);
       this.isConfirmPending = false;
+      this.cdr.markForCheck();
       this.closeInvitePopup();
     } catch {
       this.isConfirmPending = false;
