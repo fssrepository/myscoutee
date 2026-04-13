@@ -1320,21 +1320,27 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
   private listTopInset(scrollElement: HTMLElement): number {
     const threadRect = scrollElement.getBoundingClientRect();
+    const styles = getComputedStyle(scrollElement);
+    const scrollPaddingTop = Number.parseFloat(styles.scrollPaddingTop || '0') || 0;
     const stickyHeaderHeight = this.shouldShowStickyHeader()
       ? scrollElement.querySelector<HTMLElement>('.smart-list__sticky')?.offsetHeight ?? 0
       : 0;
+
     const stickyGroupMarker = Array.from(
       scrollElement.querySelectorAll<HTMLElement>('.smart-list__group-marker')
     ).find(marker => {
       const rect = marker.getBoundingClientRect();
       return rect.top <= threadRect.top + 1 && rect.bottom > threadRect.top + 1;
     }) ?? null;
+
+    const baseInset = Math.max(stickyHeaderHeight, scrollPaddingTop);
     if (!stickyGroupMarker) {
-      return stickyHeaderHeight;
+      return baseInset;
     }
-    const styles = getComputedStyle(stickyGroupMarker);
-    const markerMarginBottom = Number.parseFloat(styles.marginBottom || '0') || 0;
-    return stickyHeaderHeight + stickyGroupMarker.getBoundingClientRect().height + markerMarginBottom;
+
+    const markerStyles = getComputedStyle(stickyGroupMarker);
+    const markerMarginBottom = Number.parseFloat(markerStyles.marginBottom || '0') || 0;
+    return baseInset + stickyGroupMarker.getBoundingClientRect().height + markerMarginBottom;
   }
 
   private captureListRestoreContext(
@@ -1409,6 +1415,11 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
         this.applyPrependRestore(restoreContext);
       } else if (applyInitialAnchor && this.initialListScrollAnchor() === 'end') {
         scrollElement.scrollTop = scrollElement.scrollHeight;
+      } else if (applyInitialAnchor && this.initialListScrollAnchor() === 'first-item' && this.groups.length > 0) {
+        const firstBoundary = scrollElement.querySelector<HTMLElement>('.smart-list__group-marker, .smart-list__item-shell');
+        if (firstBoundary) {
+          scrollElement.scrollTop = firstBoundary.offsetTop;
+        }
       }
       if (this.shouldShowStickyHeader()) {
         this.updateStickyLabel(scrollElement.scrollTop);
@@ -1752,22 +1763,28 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     const stickyHeader = scrollElement.querySelector<HTMLElement>('.smart-list__sticky');
     const stickyHeaderHeight = stickyHeader?.offsetHeight ?? 0;
     this.stickyHeaderHeightPx = stickyHeaderHeight;
-    const targetTop = scrollTop + stickyHeaderHeight + 1;
-    const rows = Array.from(
-      scrollElement.querySelectorAll<HTMLElement>('.smart-list__item-shell[data-group-label]')
+    const targetTop = scrollTop + stickyHeaderHeight;
+    const boundaries = Array.from(
+      scrollElement.querySelectorAll<HTMLElement>('.smart-list__item-shell[data-group-label], .smart-list__group-marker[data-group-label]')
     );
-    if (rows.length === 0) {
+    if (boundaries.length === 0) {
       this.stickyLabel = this.groups[0]?.label ?? this.resolveEmptyStickyLabel();
       return;
     }
     if (scrollTop <= 1) {
-      this.stickyLabel = rows[0]?.dataset['groupLabel'] ?? this.groups[0].label;
+      this.stickyLabel = boundaries[0]?.dataset['groupLabel'] ?? this.groups[0].label;
       return;
     }
-    const activeRow =
-      rows.find(row => row.offsetTop >= targetTop - 2) ??
-      rows[rows.length - 1];
-    this.stickyLabel = activeRow?.dataset['groupLabel'] ?? this.groups[0].label;
+
+    let activeBoundary = boundaries[0];
+    for (let i = boundaries.length - 1; i >= 0; i--) {
+      if (boundaries[i].offsetTop <= targetTop + 1) {
+        activeBoundary = boundaries[i];
+        break;
+      }
+    }
+
+    this.stickyLabel = activeBoundary?.dataset['groupLabel'] ?? this.groups[0].label;
   }
 
   private updateScrollProgress(scrollElement?: HTMLDivElement | null): void {

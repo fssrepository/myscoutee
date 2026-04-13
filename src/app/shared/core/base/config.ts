@@ -61,6 +61,10 @@ export const ROUTE_CONFIG: RouteConfig = {
     {
       routePrefix: '/assets/tickets',
       demoDelayMs: 1500
+    },
+    {
+      routePrefix: '/navigator/contacts',
+      demoDelayMs: 1500
     }
   ]
 };

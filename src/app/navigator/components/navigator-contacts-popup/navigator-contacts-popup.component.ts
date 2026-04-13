@@ -6,7 +6,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
 import { from } from 'rxjs';
 
-import { resolveCurrentRouteDelayMs } from '../../../shared/core/base/services/route-delay.service';
+import { resolveCurrentDemoDelayMs, resolveCurrentRouteDelayMs } from '../../../shared/core/base/services/route-delay.service';
 import {
   SmartListComponent,
   type ListQuery,
@@ -63,7 +63,7 @@ export class NavigatorContactsPopupComponent {
 
   protected readonly contactSmartListConfig: SmartListConfig<NavigatorContactListItem, NavigatorContactListFilters> = {
     pageSize: 24,
-    loadingDelayMs: resolveCurrentRouteDelayMs('/navigator/contacts'),
+    loadingDelayMs: resolveCurrentRouteDelayMs('/navigator/contacts', resolveCurrentDemoDelayMs(1500)),
     defaultView: 'list',
     emptyLabel: 'No contacts saved yet',
     emptyDescription: 'Use Create contact to add members into your personal quick-reach list.',
@@ -74,7 +74,8 @@ export class NavigatorContactsPopupComponent {
     showStickyHeader: true,
     stickyHeaderClass: 'activities-sticky-header',
     listLayout: 'stack',
-    snapMode: 'none',
+    snapMode: 'mandatory',
+    initialScrollAnchor: 'first-item',
     scrollPaddingTop: '2.8rem',
     containerClass: {
       'contacts-scroll-list': true
