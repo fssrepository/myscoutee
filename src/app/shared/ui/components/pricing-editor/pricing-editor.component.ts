@@ -64,7 +64,6 @@ export class PricingEditorComponent implements OnChanges {
 
   protected workingPricing: AppTypes.PricingConfig = PricingBuilder.createDefaultPricingConfig('event');
 
-  protected readonly modeOptions: readonly AppTypes.PricingMode[] = ['fixed', 'demand-based', 'time-based', 'hybrid'];
   protected readonly currencyOptions = ['USD', 'EUR', 'GBP', 'CZK'];
   protected readonly taxModeOptions: readonly AppTypes.PricingTaxMode[] = ['excluded', 'included'];
   protected readonly roundingOptions: readonly AppTypes.PricingRoundingMode[] = ['none', 'whole', 'half'];
@@ -100,42 +99,7 @@ export class PricingEditorComponent implements OnChanges {
     }
   }
 
-  protected setMode(mode: AppTypes.PricingMode): void {
-    if (this.readOnly || this.workingPricing.mode === mode) {
-      return;
-    }
-    this.workingPricing.mode = mode;
-    const supportsDemand = mode === 'demand-based' || mode === 'hybrid';
-    const supportsTime = mode === 'time-based' || mode === 'hybrid';
-    this.workingPricing.demandRulesEnabled = supportsDemand
-      ? (this.workingPricing.demandRulesEnabled || this.workingPricing.demandRules.length > 0)
-      : false;
-    this.workingPricing.timeRulesEnabled = supportsTime
-      ? (this.workingPricing.timeRulesEnabled || this.workingPricing.timeRules.length > 0)
-      : false;
-    if (supportsDemand && this.workingPricing.demandRules.length === 0) {
-      this.workingPricing.demandRules = [this.createDefaultDemandRule()];
-      this.workingPricing.demandRulesEnabled = true;
-    }
-    if (supportsTime && this.workingPricing.timeRules.length === 0) {
-      this.workingPricing.timeRules = [this.createDefaultTimeRule()];
-      this.workingPricing.timeRulesEnabled = true;
-    }
-    this.emitPricing();
-  }
 
-  protected modeLabel(mode: AppTypes.PricingMode): string {
-    switch (mode) {
-      case 'demand-based':
-        return 'Demand-based';
-      case 'time-based':
-        return 'Time-based';
-      case 'hybrid':
-        return 'Hybrid';
-      default:
-        return 'Fixed';
-    }
-  }
 
   protected actionLabel(action: AppTypes.PricingRuleActionKind): string {
     switch (action) {
@@ -211,11 +175,11 @@ export class PricingEditorComponent implements OnChanges {
   }
 
   protected showDemandSection(): boolean {
-    return this.workingPricing.mode === 'demand-based' || this.workingPricing.mode === 'hybrid';
+    return true;
   }
 
   protected showTimeSection(): boolean {
-    return this.workingPricing.mode === 'time-based' || this.workingPricing.mode === 'hybrid';
+    return true;
   }
 
   protected showSlotSection(): boolean {
@@ -724,9 +688,24 @@ export class PricingEditorComponent implements OnChanges {
 
   protected emitPricing(): void {
     this.normalizePriceBounds();
+    this.syncMode();
     this.workingPricing = this.normalizePricingWithCapabilities(this.workingPricing);
     this.currentPreview = this.calculatePreviewState();
     this.pricingChange.emit(PricingBuilder.clonePricingConfig(this.workingPricing));
+  }
+
+  private syncMode(): void {
+    const hasDemand = this.workingPricing.demandRulesEnabled;
+    const hasTime = this.workingPricing.timeRulesEnabled;
+    if (hasDemand && hasTime) {
+      this.workingPricing.mode = 'hybrid';
+    } else if (hasDemand) {
+      this.workingPricing.mode = 'demand-based';
+    } else if (hasTime) {
+      this.workingPricing.mode = 'time-based';
+    } else {
+      this.workingPricing.mode = 'fixed';
+    }
   }
 
   private syncResolvedCapabilities(): void {

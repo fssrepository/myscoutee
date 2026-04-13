@@ -87,23 +87,6 @@
 
 <ng-template #pricingEditorSurfaces>
   <section class="pricing-editor__surface">
-    <div class="pricing-editor__section-head">
-      <span>Pricing Mode</span>
-    </div>
-    <div class="pricing-editor__mode-switch" role="tablist" aria-label="Pricing mode">
-      @for (mode of modeOptions; track mode) {
-        <button
-          type="button"
-          class="pricing-editor__mode-btn"
-          [class.is-active]="workingPricing.mode === mode"
-          [disabled]="readOnly"
-          (click)="setMode(mode)"
-          >
-          {{ modeLabel(mode) }}
-        </button>
-      }
-    </div>
-
     <div class="pricing-editor__grid">
       <label class="pricing-editor__field pricing-editor__field--money">
         <span>Base Price</span>

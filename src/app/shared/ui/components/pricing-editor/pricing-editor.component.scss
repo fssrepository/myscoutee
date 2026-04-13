@@ -126,7 +126,6 @@
 .pricing-editor__toggle,
 .pricing-editor__add-btn,
 .pricing-editor__rule-remove,
-.pricing-editor__mode-btn,
 .pricing-editor__open-btn,
 .pricing-editor__wizard-close {
   border: 0;
@@ -274,33 +273,8 @@
   font-weight: 900;
 }
 
-.pricing-editor__mode-switch {
-  display: inline-grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.42rem;
-  padding: 0.28rem;
-  border-radius: 16px;
-  background: rgba(236, 242, 250, 0.94);
-  box-shadow: inset 0 0 0 1px rgba(124, 148, 180, 0.22);
-}
 
-.pricing-editor__mode-btn {
-  min-height: 42px;
-  border-radius: 12px;
-  cursor: pointer;
-  background: transparent;
-  color: #476078;
-  font-size: 0.9rem;
-  font-weight: 800;
-}
 
-.pricing-editor__mode-btn.is-active {
-  color: #ffffff;
-  background: linear-gradient(180deg, #7aa0c6 0%, #5d7fa6 100%);
-  box-shadow: 0 12px 24px rgba(64, 91, 129, 0.18);
-}
-
-.pricing-editor__mode-btn:disabled,
 .pricing-editor__toggle:disabled,
 .pricing-editor__add-btn:disabled,
 .pricing-editor__rule-remove:disabled,
