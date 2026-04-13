@@ -459,7 +459,7 @@ export class NavigatorContactsService {
       label: option.label,
       icon: option.icon,
       displayValue,
-      menuLabel: `${option.actionLabel}${displayValue ? ` · ${displayValue}` : ''}`,
+      menuLabel: displayValue || option.label,
       href,
       openBehavior: option.openBehavior
     };

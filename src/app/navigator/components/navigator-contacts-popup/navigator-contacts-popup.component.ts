@@ -215,7 +215,7 @@ export class NavigatorContactsPopupComponent {
     }
     this.editingContact.set({
       ...contact,
-      methods: contact.methods.map(method => method.id === methodId ? { ...method, type } : method)
+      methods: contact.methods.map(method => method.id === methodId ? { ...method, type, value: '' } : method)
     });
   }
 
@@ -270,8 +270,21 @@ export class NavigatorContactsPopupComponent {
     return this.contactsService.methodOption(type);
   }
 
+  protected methodToneClass(type: NavigatorContactMethodType): string {
+    return `navigator-contact-method-tone-${type}`;
+  }
+
+  protected methodPanelClasses(type: NavigatorContactMethodType): string[] {
+    return [
+      'selector-options-panel',
+      'profile-bottom-sheet-panel',
+      'navigator-contact-method-panel',
+      this.methodToneClass(type)
+    ];
+  }
+
   protected trackMethod(_index: number, method: NavigatorContactMethodDraft): string {
-    return method.id;
+    return `${method.id}:${method.type}`;
   }
 
   protected visibleMethodChips(contact: NavigatorContactListItem): NavigatorContactMethodItem[] {

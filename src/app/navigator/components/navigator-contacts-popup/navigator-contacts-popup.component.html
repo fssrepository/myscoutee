@@ -40,10 +40,6 @@
               </button>
             }
           </label>
-          <span class="contacts-toolbar-pill">
-            <mat-icon>sort_by_alpha</mat-icon>
-            <span>A-Z grouped</span>
-          </span>
         </section>
 
         <app-smart-list
@@ -79,7 +75,51 @@
                     <p class="navigator-contact-headline navigator-contact-headline-muted">Quick reach card</p>
                   }
                 </div>
-                <span class="navigator-contact-method-count">{{ contact.methodCountLabel }}</span>
+                <div class="navigator-contact-menu-anchor">
+                  <button
+                    type="button"
+                    class="experience-action-btn experience-action-menu-trigger"
+                    [class.is-open]="isActionMenuOpen(contact)"
+                    [attr.aria-label]="isActionMenuOpen(contact) ? 'Close contact actions' : 'Open contact actions'"
+                    (click)="toggleActionMenu(contact, $event)"
+                    >
+                    <mat-icon>{{ isActionMenuOpen(contact) ? 'close' : 'more_vert' }}</mat-icon>
+                  </button>
+
+                  @if (isActionMenuOpen(contact)) {
+                    <div
+                      class="item-action-menu"
+                      [class.is-open]="isActionMenuOpen(contact)"
+                      [class.item-action-menu-mobile]="isMobileViewport()"
+                      [class.item-action-menu-desktop]="!isMobileViewport()"
+                      [class.is-open-up]="isActionMenuOpenUp(contact)"
+                      (click)="$event.stopPropagation()"
+                      >
+                      <div class="item-action-menu-title">{{ contact.name }}</div>
+
+                      @for (method of contact.methods; track method.id) {
+                        <button type="button" class="item-action-menu-btn" [ngClass]="methodToneClass(method.type)" (click)="runMethod(method, $event)">
+                          <mat-icon>{{ method.icon }}</mat-icon>
+                          <span>{{ method.menuLabel }}</span>
+                        </button>
+                      }
+
+                      @if (contact.methods.length > 0) {
+                        <div class="item-action-menu-divider"></div>
+                      }
+
+                      <button type="button" class="item-action-menu-btn" (click)="openEditForm(contact, $event)">
+                        <mat-icon>edit</mat-icon>
+                        <span>Edit</span>
+                      </button>
+
+                      <button type="button" class="item-action-menu-btn item-action-menu-btn-destructive" (click)="confirmDelete(contact, $event)">
+                        <mat-icon>delete</mat-icon>
+                        <span>Delete</span>
+                      </button>
+                    </div>
+                  }
+                </div>
               </div>
 
               <p class="navigator-contact-city">
@@ -90,10 +130,10 @@
               @if (contact.methods.length > 0) {
                 <div class="navigator-contact-method-chips">
                   @for (method of visibleMethodChips(contact); track method.id) {
-                    <span class="navigator-contact-method-chip">
+                    <button type="button" class="navigator-contact-method-chip" [ngClass]="methodToneClass(method.type)" (click)="runMethod(method, $event)">
                       <mat-icon>{{ method.icon }}</mat-icon>
-                      <span>{{ method.label }}</span>
-                    </span>
+                      <span>{{ method.displayValue || method.label }}</span>
+                    </button>
                   }
                   @if (hiddenMethodCount(contact) > 0) {
                     <span class="navigator-contact-method-chip navigator-contact-method-chip-more">
@@ -103,52 +143,6 @@
                 </div>
               } @else {
                 <p class="navigator-contact-empty-methods">No availability methods yet. Use Edit to add phone, Facebook, email, and more.</p>
-              }
-            </div>
-
-            <div class="navigator-contact-menu-anchor">
-              <button
-                type="button"
-                class="experience-action-btn experience-action-menu-trigger"
-                [class.is-open]="isActionMenuOpen(contact)"
-                [attr.aria-label]="isActionMenuOpen(contact) ? 'Close contact actions' : 'Open contact actions'"
-                (click)="toggleActionMenu(contact, $event)"
-                >
-                <mat-icon>{{ isActionMenuOpen(contact) ? 'close' : 'more_vert' }}</mat-icon>
-              </button>
-
-              @if (isActionMenuOpen(contact)) {
-                <div
-                  class="item-action-menu"
-                  [class.is-open]="isActionMenuOpen(contact)"
-                  [class.item-action-menu-mobile]="isMobileViewport()"
-                  [class.item-action-menu-desktop]="!isMobileViewport()"
-                  [class.is-open-up]="isActionMenuOpenUp(contact)"
-                  (click)="$event.stopPropagation()"
-                  >
-                  <div class="item-action-menu-title">{{ contact.name }}</div>
-
-                  @for (method of contact.methods; track method.id) {
-                    <button type="button" class="item-action-menu-btn" (click)="runMethod(method, $event)">
-                      <mat-icon>{{ method.icon }}</mat-icon>
-                      <span>{{ method.menuLabel }}</span>
-                    </button>
-                  }
-
-                  @if (contact.methods.length > 0) {
-                    <div class="item-action-menu-divider"></div>
-                  }
-
-                  <button type="button" class="item-action-menu-btn" (click)="openEditForm(contact, $event)">
-                    <mat-icon>edit</mat-icon>
-                    <span>Edit</span>
-                  </button>
-
-                  <button type="button" class="item-action-menu-btn item-action-menu-btn-destructive" (click)="confirmDelete(contact, $event)">
-                    <mat-icon>delete</mat-icon>
-                    <span>Delete</span>
-                  </button>
-                </div>
               }
             </div>
           </article>
@@ -230,15 +224,22 @@
           @for (method of contactForm.methods; track trackMethod($index, method)) {
             <article class="navigator-contact-method-row">
               <div class="navigator-contact-method-row-head">
-                <div class="navigator-contact-method-type-select">
+                <div class="navigator-contact-method-type-select" [ngClass]="methodToneClass(method.type)">
                   <mat-select
                     [ngModel]="method.type"
                     (ngModelChange)="updateMethodType(method.id, $event)"
-                    panelClass="selector-options-panel profile-bottom-sheet-panel navigator-contact-method-panel"
+                    [panelClass]="methodPanelClasses(method.type)"
                     >
+                    <mat-select-trigger>
+                      <span class="navigator-contact-method-trigger" [ngClass]="methodToneClass(method.type)">
+                        <mat-icon>{{ methodOption(method.type).icon }}</mat-icon>
+                        <span>{{ methodOption(method.type).label }}</span>
+                        <mat-icon class="navigator-contact-method-trigger-chevron">expand_more</mat-icon>
+                      </span>
+                    </mat-select-trigger>
                     @for (option of contactMethodOptions; track option.value) {
                       <mat-option [value]="option.value">
-                        <span class="navigator-contact-method-option">
+                        <span class="navigator-contact-method-option" [ngClass]="methodToneClass(option.value)">
                           <mat-icon>{{ option.icon }}</mat-icon>
                           <span>{{ option.label }}</span>
                         </span>

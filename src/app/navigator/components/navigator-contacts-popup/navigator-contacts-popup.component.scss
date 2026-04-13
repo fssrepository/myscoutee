@@ -56,7 +56,9 @@
 }
 
 .contacts-search-field {
-  min-width: min(360px, 100%);
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   flex: 1 1 auto;
   min-height: 44px;
   display: inline-flex;
@@ -67,6 +69,7 @@
   background: rgba(255, 255, 255, 0.94);
   padding: 0.16rem 0.18rem 0.16rem 0.7rem;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 6px 18px rgba(21, 39, 66, 0.06);
+  box-sizing: border-box;
 }
 
 .contacts-search-field .mat-icon,
@@ -110,20 +113,6 @@
   cursor: pointer;
 }
 
-.contacts-toolbar-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.34rem;
-  min-height: 36px;
-  padding: 0 0.78rem;
-  border-radius: 999px;
-  border: 1px solid rgba(41, 102, 155, 0.18);
-  background: linear-gradient(180deg, #f6fbff 0%, #eaf3ff 100%);
-  color: #295480;
-  font-size: 0.76rem;
-  font-weight: 800;
-}
-
 .contacts-scroll-list {
   display: grid;
   gap: 0.7rem;
@@ -133,7 +122,7 @@
 .navigator-contact-card {
   position: relative;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr);
   gap: 0.82rem;
   align-items: start;
   padding: 0.92rem 0.98rem;
@@ -188,6 +177,7 @@
 
 .navigator-contact-title-wrap {
   min-width: 0;
+  flex: 1 1 auto;
 }
 
 .navigator-contact-title-wrap h3,
@@ -220,19 +210,6 @@
   color: rgba(40, 62, 92, 0.54);
 }
 
-.navigator-contact-method-count {
-  flex: 0 0 auto;
-  min-height: 24px;
-  padding: 0.16rem 0.56rem;
-  border-radius: 999px;
-  background: linear-gradient(180deg, #eff8ff 0%, #ddeeff 100%);
-  border: 1px solid rgba(49, 106, 155, 0.18);
-  color: #2a608f;
-  font-size: 0.72rem;
-  font-weight: 800;
-  white-space: nowrap;
-}
-
 .navigator-contact-city {
   margin: 0;
   display: inline-flex;
@@ -250,6 +227,7 @@
 }
 
 .navigator-contact-method-chip {
+  border: 0;
   display: inline-flex;
   align-items: center;
   gap: 0.28rem;
@@ -260,11 +238,13 @@
   color: #264a74;
   font-size: 0.74rem;
   font-weight: 800;
+  cursor: pointer;
 }
 
 .navigator-contact-method-chip-more {
   background: rgba(35, 66, 102, 0.1);
   color: rgba(32, 58, 92, 0.76);
+  cursor: default;
 }
 
 .navigator-contact-empty-methods {
@@ -273,6 +253,7 @@
 
 .navigator-contact-menu-anchor {
   position: relative;
+  flex: 0 0 auto;
 }
 
 .experience-action-menu-trigger {
@@ -364,6 +345,87 @@
 
 .item-action-menu-btn-destructive {
   color: #b52b2b;
+}
+
+.navigator-contact-method-chip.navigator-contact-method-tone-phone,
+.item-action-menu-btn.navigator-contact-method-tone-phone,
+.navigator-contact-method-trigger.navigator-contact-method-tone-phone,
+.navigator-contact-method-option.navigator-contact-method-tone-phone,
+.navigator-contact-method-type-select.navigator-contact-method-tone-phone {
+  background: linear-gradient(180deg, rgba(233, 243, 255, 0.98), rgba(219, 234, 252, 0.95));
+  color: #22507f;
+}
+
+.navigator-contact-method-chip.navigator-contact-method-tone-sms,
+.item-action-menu-btn.navigator-contact-method-tone-sms,
+.navigator-contact-method-trigger.navigator-contact-method-tone-sms,
+.navigator-contact-method-option.navigator-contact-method-tone-sms,
+.navigator-contact-method-type-select.navigator-contact-method-tone-sms {
+  background: linear-gradient(180deg, rgba(239, 237, 255, 0.98), rgba(228, 224, 252, 0.95));
+  color: #53409c;
+}
+
+.navigator-contact-method-chip.navigator-contact-method-tone-whatsapp,
+.item-action-menu-btn.navigator-contact-method-tone-whatsapp,
+.navigator-contact-method-trigger.navigator-contact-method-tone-whatsapp,
+.navigator-contact-method-option.navigator-contact-method-tone-whatsapp,
+.navigator-contact-method-type-select.navigator-contact-method-tone-whatsapp {
+  background: linear-gradient(180deg, rgba(233, 250, 239, 0.98), rgba(214, 245, 225, 0.95));
+  color: #1d7a46;
+}
+
+.navigator-contact-method-chip.navigator-contact-method-tone-email,
+.item-action-menu-btn.navigator-contact-method-tone-email,
+.navigator-contact-method-trigger.navigator-contact-method-tone-email,
+.navigator-contact-method-option.navigator-contact-method-tone-email,
+.navigator-contact-method-type-select.navigator-contact-method-tone-email {
+  background: linear-gradient(180deg, rgba(255, 244, 232, 0.98), rgba(252, 234, 214, 0.95));
+  color: #9a5a1f;
+}
+
+.navigator-contact-method-chip.navigator-contact-method-tone-facebook,
+.item-action-menu-btn.navigator-contact-method-tone-facebook,
+.navigator-contact-method-trigger.navigator-contact-method-tone-facebook,
+.navigator-contact-method-option.navigator-contact-method-tone-facebook,
+.navigator-contact-method-type-select.navigator-contact-method-tone-facebook {
+  background: linear-gradient(180deg, rgba(232, 240, 255, 0.98), rgba(216, 229, 252, 0.95));
+  color: #2457a4;
+}
+
+.navigator-contact-method-chip.navigator-contact-method-tone-instagram,
+.item-action-menu-btn.navigator-contact-method-tone-instagram,
+.navigator-contact-method-trigger.navigator-contact-method-tone-instagram,
+.navigator-contact-method-option.navigator-contact-method-tone-instagram,
+.navigator-contact-method-type-select.navigator-contact-method-tone-instagram {
+  background: linear-gradient(180deg, rgba(255, 238, 246, 0.98), rgba(252, 222, 236, 0.95));
+  color: #a33d6f;
+}
+
+.navigator-contact-method-chip.navigator-contact-method-tone-telegram,
+.item-action-menu-btn.navigator-contact-method-tone-telegram,
+.navigator-contact-method-trigger.navigator-contact-method-tone-telegram,
+.navigator-contact-method-option.navigator-contact-method-tone-telegram,
+.navigator-contact-method-type-select.navigator-contact-method-tone-telegram {
+  background: linear-gradient(180deg, rgba(232, 249, 255, 0.98), rgba(214, 241, 252, 0.95));
+  color: #1f6f90;
+}
+
+.navigator-contact-method-chip.navigator-contact-method-tone-linkedin,
+.item-action-menu-btn.navigator-contact-method-tone-linkedin,
+.navigator-contact-method-trigger.navigator-contact-method-tone-linkedin,
+.navigator-contact-method-option.navigator-contact-method-tone-linkedin,
+.navigator-contact-method-type-select.navigator-contact-method-tone-linkedin {
+  background: linear-gradient(180deg, rgba(234, 243, 255, 0.98), rgba(219, 232, 252, 0.95));
+  color: #1f5b88;
+}
+
+.navigator-contact-method-chip.navigator-contact-method-tone-website,
+.item-action-menu-btn.navigator-contact-method-tone-website,
+.navigator-contact-method-trigger.navigator-contact-method-tone-website,
+.navigator-contact-method-option.navigator-contact-method-tone-website,
+.navigator-contact-method-type-select.navigator-contact-method-tone-website {
+  background: linear-gradient(180deg, rgba(239, 244, 250, 0.98), rgba(227, 235, 245, 0.95));
+  color: #46617c;
 }
 
 .item-action-menu-divider {
@@ -491,14 +553,109 @@
   flex: 1 1 auto;
   border: 1px solid rgba(49, 87, 131, 0.14);
   border-radius: 14px;
-  background: #f8fbff;
-  padding: 0 0.18rem;
+  background: rgba(255, 255, 255, 0.98);
+  padding: 0.12rem 0.18rem;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.navigator-contact-method-type-select ::ng-deep .mat-mdc-select-trigger {
+  min-height: 34px;
+}
+
+.navigator-contact-method-type-select ::ng-deep .mat-mdc-select-arrow-wrapper {
+  display: none;
+}
+
+.navigator-contact-method-trigger {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.46rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1.2;
+  border-radius: 12px;
+  padding: 0.4rem 0.54rem;
+  box-sizing: border-box;
+}
+
+.navigator-contact-method-trigger .mat-icon {
+  width: 16px;
+  height: 16px;
+  font-size: 16px;
+  line-height: 16px;
+}
+
+.navigator-contact-method-trigger-chevron {
+  margin-left: auto;
+  color: rgba(41, 71, 108, 0.72);
 }
 
 .navigator-contact-method-option {
   display: inline-flex;
   align-items: center;
   gap: 0.42rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1.2;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.48rem 0.54rem;
+  border-radius: 12px;
+}
+
+.navigator-contact-method-option .mat-icon {
+  width: 16px;
+  height: 16px;
+  font-size: 16px;
+  line-height: 16px;
+}
+
+:host ::ng-deep .navigator-contact-method-panel {
+  border-radius: 18px !important;
+  padding: 0.42rem !important;
+  box-shadow: 0 18px 40px rgba(14, 30, 52, 0.18) !important;
+}
+
+:host ::ng-deep .navigator-contact-method-panel .mat-mdc-option {
+  min-height: auto;
+  padding: 0.12rem 0.18rem !important;
+}
+
+:host ::ng-deep .navigator-contact-method-panel.navigator-contact-method-tone-phone {
+  background: linear-gradient(180deg, rgba(241, 247, 255, 0.98), rgba(231, 241, 252, 0.98)) !important;
+}
+
+:host ::ng-deep .navigator-contact-method-panel.navigator-contact-method-tone-sms {
+  background: linear-gradient(180deg, rgba(245, 243, 255, 0.98), rgba(236, 232, 252, 0.98)) !important;
+}
+
+:host ::ng-deep .navigator-contact-method-panel.navigator-contact-method-tone-whatsapp {
+  background: linear-gradient(180deg, rgba(239, 252, 244, 0.98), rgba(229, 248, 236, 0.98)) !important;
+}
+
+:host ::ng-deep .navigator-contact-method-panel.navigator-contact-method-tone-email {
+  background: linear-gradient(180deg, rgba(255, 248, 239, 0.98), rgba(253, 241, 227, 0.98)) !important;
+}
+
+:host ::ng-deep .navigator-contact-method-panel.navigator-contact-method-tone-facebook {
+  background: linear-gradient(180deg, rgba(239, 245, 255, 0.98), rgba(230, 239, 252, 0.98)) !important;
+}
+
+:host ::ng-deep .navigator-contact-method-panel.navigator-contact-method-tone-instagram {
+  background: linear-gradient(180deg, rgba(255, 243, 248, 0.98), rgba(252, 232, 241, 0.98)) !important;
+}
+
+:host ::ng-deep .navigator-contact-method-panel.navigator-contact-method-tone-telegram {
+  background: linear-gradient(180deg, rgba(239, 251, 255, 0.98), rgba(228, 246, 252, 0.98)) !important;
+}
+
+:host ::ng-deep .navigator-contact-method-panel.navigator-contact-method-tone-linkedin {
+  background: linear-gradient(180deg, rgba(239, 246, 255, 0.98), rgba(229, 238, 252, 0.98)) !important;
+}
+
+:host ::ng-deep .navigator-contact-method-panel.navigator-contact-method-tone-website {
+  background: linear-gradient(180deg, rgba(244, 247, 250, 0.98), rgba(234, 240, 245, 0.98)) !important;
 }
 
 .navigator-contact-method-remove-btn {
@@ -544,7 +701,8 @@
 @media (hover: hover) and (pointer: fine) {
   .contacts-search-clear:hover,
   .experience-action-menu-trigger:hover,
-  .navigator-contact-method-remove-btn:hover {
+  .navigator-contact-method-remove-btn:hover,
+  .navigator-contact-method-chip:hover {
     filter: brightness(0.98);
     transform: translateY(-1px);
   }
@@ -562,12 +720,6 @@
 @media (max-width: 900px) {
   .navigator-contact-card {
     grid-template-columns: auto minmax(0, 1fr);
-  }
-
-  .navigator-contact-menu-anchor {
-    grid-column: 2;
-    justify-self: end;
-    margin-top: -0.2rem;
   }
 
   .item-action-menu.item-action-menu-mobile {
@@ -600,8 +752,22 @@
     min-width: 0;
     flex: 0 0 auto;
   }
+}
 
-  .contacts-toolbar-pill,
+@media (max-width: 760px) {
+  .navigator-contact-form-popup {
+    width: 100vw;
+    max-width: 100vw;
+    min-width: 0;
+    height: 100dvh;
+    max-height: 100dvh;
+    border-radius: 0;
+  }
+
+  .navigator-contact-form-panel {
+    padding-bottom: calc(0.9rem + env(safe-area-inset-bottom));
+  }
+
   .navigator-contact-form-summary-pill {
     justify-content: center;
   }
