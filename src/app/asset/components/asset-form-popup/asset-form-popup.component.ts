@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, HostListener, Input } from '@angular/core';
+import { Component, HostListener, Input, OnChanges, SimpleChanges } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
@@ -21,7 +21,7 @@ import { PricingEditorComponent } from '../../../shared/ui';
   templateUrl: './asset-form-popup.component.html',
   styleUrl: './asset-form-popup.component.scss'
 })
-export class AssetFormPopupComponent {
+export class AssetFormPopupComponent implements OnChanges {
   @Input() visible = false;
   @Input() title = '';
   @Input({ required: true }) assetForm!: Omit<AppTypes.AssetCard, 'id' | 'requests'>;
@@ -54,6 +54,14 @@ export class AssetFormPopupComponent {
   protected workingPolicies: AppTypes.EventPolicyItem[] = [];
   protected workingPolicyDraft: AppTypes.EventPolicyItem = this.createEmptyPolicyDraft();
   protected editingPolicyDraftIndex: number | null = null;
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['visible'] && changes['visible'].currentValue === true) {
+      this.showMobileAssetTypePicker = false;
+      this.showMobileAssetCategoryPicker = false;
+      this.showVisibilityPicker = false;
+    }
+  }
 
   protected requestClose(): void {
     if (this.isSavePending) {
