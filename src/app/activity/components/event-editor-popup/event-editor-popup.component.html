@@ -12,68 +12,72 @@
         </p>
         }
       </div>
-      <button
-        class="chat-members-stack chat-members-stack-large chat-header-members event-editor-members-trigger event-editor-members-trigger-members popup-chat-context-btn"
-        type="button" (click)="requestOpenMembers()">
-        <span class="event-editor-members-invite">
-          <mat-icon>groups</mat-icon>
-          <span>Members</span>
-        </span>
-        @if (eventEditorHeaderPendingMemberCount() > 0) {
-        <span class="card-badge event-editor-members-pending-badge popup-chat-context-total-badge">
-          {{ eventEditorHeaderPendingMemberCount() | counterBadge }}
-        </span>
-        }
-      </button>
-      <div class="event-visibility-picker" (click)="$event.stopPropagation()">
-        <button type="button" class="popup-view-fab event-visibility-trigger"
-          [ngClass]="eventVisibilityClass(eventForm.visibility)"
-          [class.event-editor-readonly-control]="eventEditorService.readOnly()"
-          [disabled]="eventEditorService.readOnly()" (click)="toggleEventVisibilityPicker($event)"
-          aria-label="Open visibility selector">
-          <mat-icon [ngClass]="eventVisibilityClass(eventForm.visibility)">{{ getVisibilityIcon(eventForm.visibility)
-            }}</mat-icon>
-          <span>{{ eventForm.visibility }}</span>
+      <div class="popup-header-mobile-status-row">
+        <button
+          class="chat-members-stack chat-members-stack-large chat-header-members event-editor-members-trigger event-editor-members-trigger-members popup-chat-context-btn"
+          type="button" (click)="requestOpenMembers()">
+          <span class="event-editor-members-invite">
+            <mat-icon>groups</mat-icon>
+            <span>Members</span>
+          </span>
+          @if (eventEditorHeaderPendingMemberCount() > 0) {
+          <span class="card-badge event-editor-members-pending-badge popup-chat-context-total-badge">
+            {{ eventEditorHeaderPendingMemberCount() | counterBadge }}
+          </span>
+          }
         </button>
-        @if (showEventVisibilityPicker) {
-        <div class="activities-view-picker-panel">
-          @for (option of visibilityOptions; track option) {
-          <button type="button" class="activities-view-option" [ngClass]="eventVisibilityClass(option)"
-            (click)="selectVisibility(option, $event)">
-            <mat-icon [ngClass]="eventVisibilityClass(option)">{{ getVisibilityIcon(option) }}</mat-icon>
-            <span>{{ option }}</span>
+        <div class="event-visibility-picker" (click)="$event.stopPropagation()">
+          <button type="button" class="popup-view-fab event-visibility-trigger"
+            [ngClass]="eventVisibilityClass(eventForm.visibility)"
+            [class.event-editor-readonly-control]="eventEditorService.readOnly()"
+            [disabled]="eventEditorService.readOnly()" (click)="toggleEventVisibilityPicker($event)"
+            aria-label="Open visibility selector">
+            <mat-icon [ngClass]="eventVisibilityClass(eventForm.visibility)">{{ getVisibilityIcon(eventForm.visibility)
+              }}</mat-icon>
+            <span>{{ eventForm.visibility }}</span>
           </button>
+          @if (showEventVisibilityPicker) {
+          <div class="activities-view-picker-panel">
+            @for (option of visibilityOptions; track option) {
+            <button type="button" class="activities-view-option" [ngClass]="eventVisibilityClass(option)"
+              (click)="selectVisibility(option, $event)">
+              <mat-icon [ngClass]="eventVisibilityClass(option)">{{ getVisibilityIcon(option) }}</mat-icon>
+              <span>{{ option }}</span>
+            </button>
+            }
+          </div>
           }
         </div>
-        }
       </div>
-      @if (!eventEditorService.readOnly()) {
-      <span class="event-editor-save-btn-shell" [class.is-loading]="isSavePending">
-        <span class="event-editor-save-btn-ring" aria-hidden="true">
-          <svg viewBox="0 0 34 34" preserveAspectRatio="none" class="event-editor-save-btn-ring-svg">
-            <defs>
-              <linearGradient id="event-editor-save-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stop-color="rgb(235, 147, 33)"></stop>
-                <stop offset="100%" stop-color="rgb(247, 190, 52)"></stop>
-              </linearGradient>
-            </defs>
-            <circle class="event-editor-save-btn-ring-track" cx="17" cy="17" r="15"></circle>
-            <circle class="event-editor-save-btn-ring-progress" [class.is-loading]="isSavePending" cx="17" cy="17"
-              r="15" pathLength="100" [attr.stroke-dasharray]="saveRingPerimeter"
-              [style.stroke-dashoffset]="isSavePending ? 0 : saveRingPerimeter"></circle>
-          </svg>
+      <div class="popup-header-mobile-actions-row">
+        @if (!eventEditorService.readOnly()) {
+        <span class="event-editor-save-btn-shell" [class.is-loading]="isSavePending">
+          <span class="event-editor-save-btn-ring" aria-hidden="true">
+            <svg viewBox="0 0 34 34" preserveAspectRatio="none" class="event-editor-save-btn-ring-svg">
+              <defs>
+                <linearGradient id="event-editor-save-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="rgb(235, 147, 33)"></stop>
+                  <stop offset="100%" stop-color="rgb(247, 190, 52)"></stop>
+                </linearGradient>
+              </defs>
+              <circle class="event-editor-save-btn-ring-track" cx="17" cy="17" r="15"></circle>
+              <circle class="event-editor-save-btn-ring-progress" [class.is-loading]="isSavePending" cx="17" cy="17"
+                r="15" pathLength="100" [attr.stroke-dasharray]="saveRingPerimeter"
+                [style.stroke-dashoffset]="isSavePending ? 0 : saveRingPerimeter"></circle>
+            </svg>
+          </span>
+          <button type="button" class="popup-header-add-btn subevent-leaderboard-save-btn event-editor-save-btn"
+            [class.form-save-invalid]="!canSubmitEventEditorForm() && !isSavePending"
+            [disabled]="!canSubmitEventEditorForm() || isSavePending" (click)="saveEventEditorForm()"
+            aria-label="Save event">
+            <mat-icon>done</mat-icon>
+          </button>
         </span>
-        <button type="button" class="popup-header-add-btn subevent-leaderboard-save-btn event-editor-save-btn"
-          [class.form-save-invalid]="!canSubmitEventEditorForm() && !isSavePending"
-          [disabled]="!canSubmitEventEditorForm() || isSavePending" (click)="saveEventEditorForm()"
-          aria-label="Save event">
-          <mat-icon>done</mat-icon>
+        }
+        <button type="button" class="popup-close" (click)="close()" aria-label="Close">
+          <mat-icon>close</mat-icon>
         </button>
-      </span>
-      }
-      <button type="button" class="popup-close" (click)="close()" aria-label="Close">
-        <mat-icon>close</mat-icon>
-      </button>
+      </div>
     </div>
     <div class="popup-body">
       <section class="editor-list-card">
@@ -231,7 +235,8 @@
                           <button type="button" class="popup-filter-option activities-view-option"
                             [ngClass]="[eventFrequencyClass(option), option === eventForm.frequency ? 'active' : '']"
                             (click)="selectMobileFrequency(option, $event)">
-                            <mat-icon [ngClass]="eventFrequencyClass(option)">{{ eventFrequencyIcon(option) }}</mat-icon>
+                            <mat-icon [ngClass]="eventFrequencyClass(option)">{{ eventFrequencyIcon(option)
+                              }}</mat-icon>
                             <span>{{ option }}</span>
                           </button>
                           }
