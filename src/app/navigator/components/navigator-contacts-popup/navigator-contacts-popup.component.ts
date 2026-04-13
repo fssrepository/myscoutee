@@ -58,15 +58,15 @@ export class NavigatorContactsPopupComponent {
   }));
 
   private readonly manualRefreshRevision = signal(0);
-  private lastOptimisticRevision = 0;
   private readonly hasInitialLoadCompleted = signal(false);
   private readonly isDeletionsPending = signal(false);
 
   constructor() {
     effect(() => {
       const revision = this.contactsService.revision();
+      const lastOptimistic = this.contactsService.lastOptimisticRevision();
       untracked(() => {
-        if (revision && revision === this.lastOptimisticRevision) {
+        if (revision && revision === lastOptimistic) {
           return;
         }
         this.manualRefreshRevision.set(revision);
@@ -88,7 +88,7 @@ export class NavigatorContactsPopupComponent {
 
   protected readonly contactSmartListConfig = computed<SmartListConfig<NavigatorContactListItem, NavigatorContactListFilters>>(() => ({
     pageSize: 24,
-    loadingDelayMs: this.hasInitialLoadCompleted() ? 0 : resolveCurrentRouteDelayMs('/navigator/contacts', resolveCurrentDemoDelayMs(1500)),
+    loadingDelayMs: 1500,
     defaultView: 'list',
     emptyLabel: 'No contacts saved yet',
     emptyDescription: 'Use Create contact to add members into your personal quick-reach list.',
@@ -169,9 +169,14 @@ export class NavigatorContactsPopupComponent {
     const previousRevision = this.contactsService.revision();
     await this.contactsService.openCreateContactPicker();
     
-    // Check if revision bumped (meaning a contact was added)
-    if (this.contactsService.revision() !== previousRevision) {
-      this.lastOptimisticRevision = this.contactsService.revision();
+    // The service now handles flagging the optimistic revision,
+    // so we just perform the manual item replacement if the revision bumped.
+    if (this.contactsService.revision() > previousRevision) {
+      if (this.contactsSmartList) {
+        this.contactsSmartList.replaceVisibleItems(this.contactsService.contacts(), {
+          total: this.contactsService.contactCount()
+        });
+      }
     }
   }
 
@@ -266,7 +271,11 @@ export class NavigatorContactsPopupComponent {
         this.contactsService.saveContact(contact),
         this.wait(180)
       ]);
-      this.lastOptimisticRevision = this.contactsService.revision();
+      if (this.contactsSmartList) {
+        this.contactsSmartList.replaceVisibleItems(this.contactsService.contacts(), {
+          total: this.contactsService.contactCount()
+        });
+      }
       this.isFormSavePending.set(false);
       this.editingContact.set(null);
     } catch (error) {
@@ -303,7 +312,6 @@ export class NavigatorContactsPopupComponent {
 
         try {
           await this.contactsService.deleteContact(contact.id);
-          this.lastOptimisticRevision = this.contactsService.revision();
 
           const delayMs = resolveCurrentDemoDelayMs(1500);
           if (delayMs > 0) {

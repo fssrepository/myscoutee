@@ -224,12 +224,14 @@ export class NavigatorContactsService {
   private readonly openRef = signal(false);
   private readonly contactsRef = signal<NavigatorStoredContact[]>([]);
   private readonly revisionRef = signal(0);
+  private readonly lastOptimisticRevisionRef = signal(0);
   private readonly contactCountRef = signal(0);
   private warmedUserIds = new Set<string>();
   private loadedUserId = '';
 
   readonly isOpen = this.openRef.asReadonly();
   readonly revision = this.revisionRef.asReadonly();
+  readonly lastOptimisticRevision = this.lastOptimisticRevisionRef.asReadonly();
   readonly contactCount = this.contactCountRef.asReadonly();
   readonly contacts = computed(() => this.contactsRef().map(contact => this.toListItem(contact)));
 
@@ -243,7 +245,7 @@ export class NavigatorContactsService {
       this.warmedUserIds = new Set<string>();
       this.contactsRef.set(this.readContacts(activeUserId));
       this.contactCountRef.set(this.contactsRef().length);
-      this.bumpRevision();
+      this.bumpRevision(false);
       if (!activeUserId) {
         this.openRef.set(false);
       }
@@ -275,6 +277,7 @@ export class NavigatorContactsService {
       return;
     }
     await this.ensureKnownUsersWarm();
+
     this.popupCtx.openActivityInvitePopup({
       ownerId: activeUserId,
       ownerType: 'asset',
@@ -353,6 +356,7 @@ export class NavigatorContactsService {
       .filter(contact => contact.id !== nextContact.id)
       .concat(nextContact);
     this.persistContacts(activeUserId, nextContacts);
+    this.bumpRevision(true);
   }
 
   async deleteContact(contactId: string): Promise<void> {
@@ -363,6 +367,7 @@ export class NavigatorContactsService {
     }
     const nextContacts = this.contactsRef().filter(contact => contact.id !== normalizedContactId);
     this.persistContacts(activeUserId, nextContacts);
+    this.bumpRevision(true);
   }
 
   triggerMethod(method: NavigatorContactMethodItem): void {
@@ -411,6 +416,33 @@ export class NavigatorContactsService {
       }));
     }
     this.persistContacts(activeUserId, [...nextById.values()]);
+    this.bumpRevision(true);
+  }
+
+  allContactsAsMemberEntries(): ActivityMemberEntry[] {
+    return this.contactsRef().map(contact => this.toMemberEntry(contact));
+  }
+
+  private toMemberEntry(contact: NavigatorStoredContact): ActivityMemberEntry {
+    return {
+      id: contact.id,
+      userId: contact.userId,
+      name: contact.name,
+      initials: contact.initials,
+      gender: contact.gender === 'woman' ? 'woman' : 'man',
+      city: contact.city,
+      statusText: contact.headline,
+      role: 'Member',
+      status: 'accepted',
+      pendingSource: null,
+      requestKind: null,
+      invitedByActiveUser: true,
+      metAtIso: contact.createdAtIso,
+      actionAtIso: contact.updatedAtIso,
+      metWhere: '',
+      relevance: 100,
+      avatarUrl: contact.avatarUrl
+    };
   }
 
   private toListItem(contact: NavigatorStoredContact): NavigatorContactListItem {
@@ -694,7 +726,10 @@ export class NavigatorContactsService {
     return `${prefix}-${Math.random().toString(36).slice(2, 10)}`;
   }
 
-  private bumpRevision(): void {
+  private bumpRevision(optimistic = false): void {
     this.revisionRef.update(value => value + 1);
+    if (optimistic) {
+      this.lastOptimisticRevisionRef.set(this.revisionRef());
+    }
   }
 }
