@@ -781,27 +781,27 @@
     </div>
     <div class="pricing-editor__preview-line">
       <span>Base</span>
-      <strong>{{ currencySymbol(workingPricing.currency) }}{{ previewState().basePrice | number:'1.0-2' }}</strong>
+      <strong>{{ currencySymbol(workingPricing.currency) }}{{ currentPreview.basePrice | number:'1.0-2' }}</strong>
     </div>
-    @if (previewState().demandDelta !== 0) {
+    @if (currentPreview.demandDelta !== 0) {
       <div class="pricing-editor__preview-line">
         <span>Demand adjustment</span>
-        <strong [class.positive]="previewState().demandDelta > 0" [class.negative]="previewState().demandDelta < 0">
-          {{ previewState().demandDelta > 0 ? '+' : '' }}{{ currencySymbol(workingPricing.currency) }}{{ previewState().demandDelta | number:'1.0-2' }}
+        <strong [class.positive]="currentPreview.demandDelta > 0" [class.negative]="currentPreview.demandDelta < 0">
+          {{ currentPreview.demandDelta > 0 ? '+' : '' }}{{ currencySymbol(workingPricing.currency) }}{{ currentPreview.demandDelta | number:'1.0-2' }}
         </strong>
       </div>
     }
-    @if (previewState().timeDelta !== 0) {
+    @if (currentPreview.timeDelta !== 0) {
       <div class="pricing-editor__preview-line">
         <span>Time adjustment</span>
-        <strong [class.positive]="previewState().timeDelta > 0" [class.negative]="previewState().timeDelta < 0">
-          {{ previewState().timeDelta > 0 ? '+' : '' }}{{ currencySymbol(workingPricing.currency) }}{{ previewState().timeDelta | number:'1.0-2' }}
+        <strong [class.positive]="currentPreview.timeDelta > 0" [class.negative]="currentPreview.timeDelta < 0">
+          {{ currentPreview.timeDelta > 0 ? '+' : '' }}{{ currencySymbol(workingPricing.currency) }}{{ currentPreview.timeDelta | number:'1.0-2' }}
         </strong>
       </div>
     }
     <div class="pricing-editor__preview-total">
       <span>Final price</span>
-      <strong>{{ currencySymbol(workingPricing.currency) }}{{ previewState().finalPrice | number:'1.0-2' }}</strong>
+      <strong>{{ currencySymbol(workingPricing.currency) }}{{ currentPreview.finalPrice | number:'1.0-2' }}</strong>
     </div>
   </div>
 </ng-template>
@@ -814,27 +814,27 @@
     </div>
     <div class="pricing-editor__preview-line">
       <span>Base</span>
-      <strong>{{ currencySymbol(workingPricing.currency) }}{{ previewState().basePrice | number:'1.0-2' }}</strong>
+      <strong>{{ currencySymbol(workingPricing.currency) }}{{ currentPreview.basePrice | number:'1.0-2' }}</strong>
     </div>
-    @if (previewState().demandDelta !== 0) {
+    @if (currentPreview.demandDelta !== 0) {
       <div class="pricing-editor__preview-line">
         <span>Demand adjustment</span>
-        <strong [class.positive]="previewState().demandDelta > 0" [class.negative]="previewState().demandDelta < 0">
-          {{ previewState().demandDelta > 0 ? '+' : '' }}{{ currencySymbol(workingPricing.currency) }}{{ previewState().demandDelta | number:'1.0-2' }}
+        <strong [class.positive]="currentPreview.demandDelta > 0" [class.negative]="currentPreview.demandDelta < 0">
+          {{ currentPreview.demandDelta > 0 ? '+' : '' }}{{ currencySymbol(workingPricing.currency) }}{{ currentPreview.demandDelta | number:'1.0-2' }}
         </strong>
       </div>
     }
-    @if (previewState().timeDelta !== 0) {
+    @if (currentPreview.timeDelta !== 0) {
       <div class="pricing-editor__preview-line">
         <span>Time adjustment</span>
-        <strong [class.positive]="previewState().timeDelta > 0" [class.negative]="previewState().timeDelta < 0">
-          {{ previewState().timeDelta > 0 ? '+' : '' }}{{ currencySymbol(workingPricing.currency) }}{{ previewState().timeDelta | number:'1.0-2' }}
+        <strong [class.positive]="currentPreview.timeDelta > 0" [class.negative]="currentPreview.timeDelta < 0">
+          {{ currentPreview.timeDelta > 0 ? '+' : '' }}{{ currencySymbol(workingPricing.currency) }}{{ currentPreview.timeDelta | number:'1.0-2' }}
         </strong>
       </div>
     }
     <div class="pricing-editor__preview-total">
       <span>Final price</span>
-      <strong>{{ currencySymbol(workingPricing.currency) }}{{ previewState().finalPrice | number:'1.0-2' }}</strong>
+      <strong>{{ currencySymbol(workingPricing.currency) }}{{ currentPreview.finalPrice | number:'1.0-2' }}</strong>
     </div>
   </div>
   <div class="pricing-editor__preview-card pricing-editor__preview-card--light">

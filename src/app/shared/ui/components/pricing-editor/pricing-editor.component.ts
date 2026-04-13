@@ -83,6 +83,8 @@ export class PricingEditorComponent implements OnChanges {
   private idSequence = 0;
   private ruleScopePickerState: RuleScopePickerState | null = null;
 
+  protected currentPreview!: PricingPreviewState;
+
   ngOnChanges(changes: SimpleChanges): void {
     if (
       changes['pricing']
@@ -621,7 +623,7 @@ export class PricingEditorComponent implements OnChanges {
     }
   }
 
-  protected previewState(): PricingPreviewState {
+  protected calculatePreviewState(): PricingPreviewState {
     const normalized = this.normalizePricingWithCapabilities(this.workingPricing);
     const activeSlotOverride = normalized.slotPricingEnabled
       ? normalized.slotOverrides.find(item => item.price !== null) ?? null
@@ -669,7 +671,7 @@ export class PricingEditorComponent implements OnChanges {
   }
 
   protected previewExplanationLines(): string[] {
-    const preview = this.previewState();
+    const preview = this.calculatePreviewState();
     return [
       ...(preview.slotOverridePrice !== null ? [`A slot override is active, so this preview starts from ${this.formatMoney(preview.slotOverridePrice)} instead of the global base price.`] : []),
       ...preview.demandNotes,
@@ -717,11 +719,13 @@ export class PricingEditorComponent implements OnChanges {
 
   private syncWorkingPricing(): void {
     this.workingPricing = this.normalizePricingWithCapabilities(this.pricing);
+    this.currentPreview = this.calculatePreviewState();
   }
 
   protected emitPricing(): void {
     this.normalizePriceBounds();
     this.workingPricing = this.normalizePricingWithCapabilities(this.workingPricing);
+    this.currentPreview = this.calculatePreviewState();
     this.pricingChange.emit(PricingBuilder.clonePricingConfig(this.workingPricing));
   }
 
