@@ -133,6 +133,20 @@ export class NavigatorMenuComponent {
     this.navigatorService.closeSettingsMenu();
   }
 
+  protected onShareProfile(event: MouseEvent): void {
+    event.stopPropagation();
+    const url = window.location.origin;
+    const title = 'MyScoutee';
+    const text = 'Please subscribe for the first priority based application, MyScoutee!';
+
+    if (navigator.share) {
+      void navigator.share({ title, text, url });
+    } else {
+      const shareUrl = `mailto:?subject=${encodeURIComponent(title)}&body=${encodeURIComponent(text + '\n\n' + url)}`;
+      window.location.href = shareUrl;
+    }
+  }
+
   protected profileStatusClass(status: string): string {
     switch (status) {
       case 'public':

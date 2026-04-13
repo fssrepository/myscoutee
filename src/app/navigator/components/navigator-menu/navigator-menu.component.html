@@ -9,6 +9,16 @@
         [ngClass]="profileStatusClass(user.profileStatus)"
         >
         <button
+          #shareButton
+          type="button"
+          class="user-menu-share-btn"
+          aria-label="Share profile"
+          (click)="onShareProfile($event)"
+          >
+          <span class="navigator-action-ripple" matRipple [matRippleTrigger]="shareButton" aria-hidden="true"></span>
+          <mat-icon>share</mat-icon>
+        </button>
+        <button
           #settingsButton
           type="button"
           class="user-menu-settings-btn"

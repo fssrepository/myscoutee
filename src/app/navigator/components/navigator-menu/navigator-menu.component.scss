@@ -45,6 +45,7 @@
 }
 
 :where(
+  .user-menu-share-btn,
   .user-menu-settings-btn,
   .user-menu-close-btn,
   .header-open-cue,
@@ -78,6 +79,7 @@
   background-color: var(--navigator-menu-ripple-color);
 }
 
+.user-menu-share-btn,
 .user-menu-settings-btn,
 .user-menu-close-btn,
 .header-open-cue {
@@ -105,6 +107,7 @@
 }
 
 :where(
+  .user-menu-share-btn,
   .user-menu-settings-btn,
   .user-menu-close-btn,
   .header-open-cue,
@@ -119,6 +122,7 @@
 
 @media (hover: hover) and (pointer: fine) {
   :where(
+    .user-menu-share-btn,
     .user-menu-settings-btn,
     .user-menu-close-btn,
     .header-open-cue,
@@ -132,6 +136,7 @@
   }
 
   :where(
+    .user-menu-share-btn,
     .user-menu-settings-btn,
     .user-menu-close-btn,
     .header-open-cue,
@@ -154,6 +159,7 @@
 
 @media (hover: none), (pointer: coarse) {
   :where(
+    .user-menu-share-btn,
     .user-menu-settings-btn,
     .user-menu-close-btn,
     .header-open-cue,
@@ -368,7 +374,7 @@
 
 .user-menu-header {
   position: relative;
-  padding: 0.9rem 5.1rem 0.8rem 0.95rem;
+  padding: 0.9rem 7.18rem 0.8rem 0.95rem;
   border-bottom: 1px solid rgba(23, 33, 54, 0.12);
   background: linear-gradient(180deg, rgba(227, 238, 255, 0.9), rgba(248, 250, 255, 0.96));
 }
@@ -393,6 +399,7 @@
   border-bottom-color: rgba(91, 101, 115, 0.32);
 }
 
+.user-menu-share-btn,
 .user-menu-settings-btn,
 .user-menu-close-btn {
   position: absolute;
@@ -410,6 +417,10 @@
   transition: transform 0.16s ease, background-color 0.16s ease, color 0.16s ease;
 }
 
+.user-menu-share-btn {
+  right: 4.74rem;
+}
+
 .user-menu-settings-btn {
   right: 2.66rem;
 }
@@ -418,6 +429,7 @@
   right: 0.58rem;
 }
 
+.user-menu-share-btn .mat-icon,
 .user-menu-settings-btn .mat-icon,
 .user-menu-close-btn .mat-icon {
   width: 18px;
