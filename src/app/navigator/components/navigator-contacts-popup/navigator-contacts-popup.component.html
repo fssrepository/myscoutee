@@ -238,7 +238,7 @@
                       </span>
                     </mat-select-trigger>
                     @for (option of contactMethodOptions; track option.value) {
-                      <mat-option [value]="option.value">
+                      <mat-option [value]="option.value" [ngClass]="methodToneClass(option.value)">
                         <span class="navigator-contact-method-option" [ngClass]="methodToneClass(option.value)">
                           <mat-icon>{{ option.icon }}</mat-icon>
                           <span>{{ option.label }}</span>
