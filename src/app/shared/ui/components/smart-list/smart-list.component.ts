@@ -164,6 +164,10 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   protected suppressListSnapNearEnd = false;
 
   private total = 0;
+
+  totalItemCount(): number {
+    return this.total;
+  }
   private hasMore = true;
   private pageIndex = 0;
   private nextPageCursor: string | null = null;

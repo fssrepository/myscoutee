@@ -1,16 +1,18 @@
+import { Component, HostListener, ViewChild, computed, effect, inject, signal, untracked } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Component, HostListener, ViewChild, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
-import { from } from 'rxjs';
+import { from, timer, of, defer } from 'rxjs';
+import { switchMap, tap } from 'rxjs/operators';
 
 import { resolveCurrentDemoDelayMs, resolveCurrentRouteDelayMs } from '../../../shared/core/base/services/route-delay.service';
 import {
   SmartListComponent,
   type ListQuery,
-  type SmartListConfig
+  type SmartListConfig,
+  type SmartListLoadPage
 } from '../../../shared/ui';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
 import {
@@ -51,19 +53,42 @@ export class NavigatorContactsPopupComponent {
   protected readonly contactSmartListQuery = computed<Partial<ListQuery<NavigatorContactListFilters>>>(() => ({
     filters: {
       search: this.searchText(),
-      refreshToken: this.contactsService.revision()
+      refreshToken: this.manualRefreshRevision()
     }
   }));
+
+  private readonly manualRefreshRevision = signal(0);
+  private lastOptimisticRevision = 0;
+  private readonly hasInitialLoadCompleted = signal(false);
+  private readonly isDeletionsPending = signal(false);
+
+  constructor() {
+    effect(() => {
+      const revision = this.contactsService.revision();
+      untracked(() => {
+        if (revision && revision === this.lastOptimisticRevision) {
+          return;
+        }
+        this.manualRefreshRevision.set(revision);
+      });
+    });
+  }
 
   @ViewChild('contactsSmartList')
   private contactsSmartList?: SmartListComponent<NavigatorContactListItem, NavigatorContactListFilters>;
 
-  protected readonly contactSmartListLoadPage = (query: ListQuery<NavigatorContactListFilters>) =>
-    from(this.contactsService.loadContactPage(query));
+  protected readonly contactSmartListLoadPage: SmartListLoadPage<NavigatorContactListItem, NavigatorContactListFilters> = (query) =>
+    from(this.contactsService.loadContactPage(query)).pipe(
+      tap(() => {
+        if (!this.hasInitialLoadCompleted()) {
+          this.hasInitialLoadCompleted.set(true);
+        }
+      })
+    );
 
-  protected readonly contactSmartListConfig: SmartListConfig<NavigatorContactListItem, NavigatorContactListFilters> = {
+  protected readonly contactSmartListConfig = computed<SmartListConfig<NavigatorContactListItem, NavigatorContactListFilters>>(() => ({
     pageSize: 24,
-    loadingDelayMs: resolveCurrentRouteDelayMs('/navigator/contacts', resolveCurrentDemoDelayMs(1500)),
+    loadingDelayMs: this.hasInitialLoadCompleted() ? 0 : resolveCurrentRouteDelayMs('/navigator/contacts', resolveCurrentDemoDelayMs(1500)),
     defaultView: 'list',
     emptyLabel: 'No contacts saved yet',
     emptyDescription: 'Use Create contact to add members into your personal quick-reach list.',
@@ -82,8 +107,9 @@ export class NavigatorContactsPopupComponent {
     },
     trackBy: (_index, contact) => contact.id,
     showGroupMarker: ({ groupIndex, scrollable }) => groupIndex > 0 || scrollable,
-    groupBy: contact => contact.groupLabel
-  };
+    groupBy: contact => contact.groupLabel,
+    onDelete: (contact: NavigatorContactListItem, event?: Event) => this.confirmDelete(contact, event)
+  }));
 
   @HostListener('window:keydown.escape', ['$event'])
   protected onEscape(event: Event): void {
@@ -139,7 +165,14 @@ export class NavigatorContactsPopupComponent {
   protected async openCreateContactPicker(event?: Event): Promise<void> {
     event?.stopPropagation();
     this.closeActionMenu();
+    
+    const previousRevision = this.contactsService.revision();
     await this.contactsService.openCreateContactPicker();
+    
+    // Check if revision bumped (meaning a contact was added)
+    if (this.contactsService.revision() !== previousRevision) {
+      this.lastOptimisticRevision = this.contactsService.revision();
+    }
   }
 
   protected toggleActionMenu(contact: NavigatorContactListItem, event: Event): void {
@@ -233,6 +266,7 @@ export class NavigatorContactsPopupComponent {
         this.contactsService.saveContact(contact),
         this.wait(180)
       ]);
+      this.lastOptimisticRevision = this.contactsService.revision();
       this.isFormSavePending.set(false);
       this.editingContact.set(null);
     } catch (error) {
@@ -255,8 +289,29 @@ export class NavigatorContactsPopupComponent {
       busyConfirmLabel: 'Deleting...',
       confirmTone: 'danger',
       failureMessage: 'Unable to delete this contact right now.',
+      ringPerimeter: 100,
       onConfirm: async () => {
-        await this.contactsService.deleteContact(contact.id);
+        this.isDeletionsPending.set(true);
+
+        // Optimistically remove from the visible list
+        if (this.contactsSmartList) {
+          const current = this.contactsSmartList.itemsSnapshot();
+          this.contactsSmartList.replaceVisibleItems(current.filter(i => i.id !== contact.id), {
+            total: Math.max(0, (this.contactsSmartList.totalItemCount() ?? current.length) - 1)
+          });
+        }
+
+        try {
+          await this.contactsService.deleteContact(contact.id);
+          this.lastOptimisticRevision = this.contactsService.revision();
+
+          const delayMs = resolveCurrentDemoDelayMs(1500);
+          if (delayMs > 0) {
+            await new Promise(resolve => setTimeout(resolve, delayMs));
+          }
+        } finally {
+          this.isDeletionsPending.set(false);
+        }
       }
     });
   }

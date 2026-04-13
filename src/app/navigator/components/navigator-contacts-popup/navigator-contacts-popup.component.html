@@ -45,7 +45,7 @@
         <app-smart-list
           #contactsSmartList
           class="navigator-contacts-smart-list"
-          [config]="contactSmartListConfig"
+          [config]="contactSmartListConfig()"
           [loadPage]="contactSmartListLoadPage"
           [itemTemplate]="contactItemTemplate"
           [query]="contactSmartListQuery()"
