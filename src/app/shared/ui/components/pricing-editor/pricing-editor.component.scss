@@ -917,6 +917,15 @@
   justify-self: end;
 }
 
+.pricing-editor__wizard-body,
+.pricing-editor__wizard-layout .pricing-editor__main,
+.pricing-editor__wizard-layout .pricing-editor__preview {
+  will-change: transform, scroll-position;
+  transform: translateZ(0);
+  -webkit-transform: translate3d(0, 0, 0); /* Crucial for Safari */
+  backface-visibility: hidden;
+}
+
 .pricing-editor__wizard-layout {
   min-height: 0;
   display: grid;
