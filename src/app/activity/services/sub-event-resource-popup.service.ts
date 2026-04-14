@@ -3051,8 +3051,8 @@ export class SubEventResourcePopupService {
         }))
       : [];
     const nextRequests: AppTypes.AssetMemberRequest[] = [...manualRequests, ...memberRequests];
-    const currentSignature = JSON.stringify(asset.requests.map(request => this.assetRequestSyncSignature(request)));
-    const nextSignature = JSON.stringify(nextRequests.map(request => this.assetRequestSyncSignature(request)));
+    const currentSignature = JSON.stringify(asset.requests.map(request => ActivityResourceBuilder.assetRequestSyncSignature(request)));
+    const nextSignature = JSON.stringify(nextRequests.map(request => ActivityResourceBuilder.assetRequestSyncSignature(request)));
     if (currentSignature === nextSignature) {
       return;
     }
@@ -3088,31 +3088,6 @@ export class SubEventResourcePopupService {
         : card
     );
     this.syncPopupSubEventMetrics();
-  }
-
-  private assetRequestSyncSignature(request: AppTypes.AssetMemberRequest): object {
-    return {
-      id: request.id,
-      userId: request.userId ?? '',
-      name: request.name,
-      initials: request.initials,
-      gender: request.gender,
-      status: request.status,
-      note: request.note,
-      requestKind: request.requestKind ?? '',
-      requestedAtIso: request.requestedAtIso ?? '',
-      bookingEventId: request.booking?.eventId ?? '',
-      bookingSubEventId: request.booking?.subEventId ?? '',
-      bookingStartAtIso: request.booking?.startAtIso ?? '',
-      bookingEndAtIso: request.booking?.endAtIso ?? '',
-      bookingQuantity: request.booking?.quantity ?? '',
-      bookingTimeframe: request.booking?.timeframe ?? '',
-      bookingTotalAmount: request.booking?.totalAmount ?? '',
-      bookingCurrency: request.booking?.currency ?? '',
-      bookingAcceptedPolicyIds: [...(request.booking?.acceptedPolicyIds ?? [])],
-      bookingPaymentSessionId: request.booking?.paymentSessionId ?? '',
-      bookingInventoryApplied: request.booking?.inventoryApplied === true
-    };
   }
 
   private currentAssetRequestBooking(quantity: number): AppTypes.AssetHireRequestBooking | null {
@@ -3188,7 +3163,7 @@ export class SubEventResourcePopupService {
     const nextCards = this.ownedAssets.assetCards.map(card => {
       const nextManualRequest = this.buildManualAssignmentRequest(card, subEvent, context.ownerId, context.parentTitle, activeUser);
       const preservedRequests: AppTypes.AssetMemberRequest[] = card.requests
-        .filter(request => !this.isSubEventManualAssignmentRequest(request, subEvent.id))
+        .filter(request => !ActivityResourceBuilder.isSubEventManualAssignmentRequest(request, subEvent.id))
         .map(request => ({
           ...request,
           booking: request.booking
@@ -3202,7 +3177,7 @@ export class SubEventResourcePopupService {
         preservedRequests.unshift(nextManualRequest);
       }
       const sameRequests = preservedRequests.length === card.requests.length
-        && preservedRequests.every((request, index) => this.assetRequestSyncSignature(request) === this.assetRequestSyncSignature(card.requests[index]));
+        && preservedRequests.every((request, index) => ActivityResourceBuilder.assetRequestSyncSignature(request) === ActivityResourceBuilder.assetRequestSyncSignature(card.requests[index]));
       if (sameRequests) {
         return card;
       }
@@ -3240,7 +3215,7 @@ export class SubEventResourcePopupService {
       if (quantity <= 0) {
         return null;
       }
-      const existing = card.requests.find(request => this.isSubEventManualAssignmentRequest(request, subEvent.id)) ?? null;
+      const existing = card.requests.find(request => ActivityResourceBuilder.isSubEventManualAssignmentRequest(request, subEvent.id)) ?? null;
       return {
         id: existing?.id ?? `manual:${subEvent.id}:${card.id}`,
         userId: activeUser.id,
@@ -3261,7 +3236,7 @@ export class SubEventResourcePopupService {
     if (!assignedIds.has(card.id)) {
       return null;
     }
-    const existing = card.requests.find(request => this.isSubEventManualAssignmentRequest(request, subEvent.id)) ?? null;
+    const existing = card.requests.find(request => ActivityResourceBuilder.isSubEventManualAssignmentRequest(request, subEvent.id)) ?? null;
     return {
       id: existing?.id ?? `manual:${subEvent.id}:${card.id}`,
       userId: activeUser.id,
@@ -3274,10 +3249,6 @@ export class SubEventResourcePopupService {
       requestedAtIso: existing?.requestedAtIso ?? new Date().toISOString(),
       booking: this.assetRequestBookingForSubEvent(subEvent, 1, ownerId, parentTitle)
     };
-  }
-
-  private isSubEventManualAssignmentRequest(request: AppTypes.AssetMemberRequest, subEventId: string): boolean {
-    return request.requestKind === 'manual' && request.booking?.subEventId === subEventId;
   }
 
   private assetRequestTimeframeLabel(startAtIso: string, endAtIso: string): string {

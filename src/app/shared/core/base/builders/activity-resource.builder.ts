@@ -317,6 +317,26 @@ export class ActivityResourceBuilder {
     return [...nextById.values()];
   }
 
+  static isSubEventManualAssignmentRequest(request: AppTypes.AssetMemberRequest, subEventId: string): boolean {
+    const normalizedSubEventId = subEventId.trim();
+    return (
+      request.requestKind === 'manual'
+      && normalizedSubEventId.length > 0
+      && request.id.startsWith(`manual:${normalizedSubEventId}:`)
+    );
+  }
+
+  static assetRequestSyncSignature(request: AppTypes.AssetMemberRequest): string {
+    return JSON.stringify({
+      id: request.id,
+      userId: request.userId ?? '',
+      status: request.status,
+      requestKind: request.requestKind ?? '',
+      bookingQuantity: request.booking?.quantity ?? '',
+      bookingAcceptedPolicyIds: [...(request.booking?.acceptedPolicyIds ?? [])]
+    });
+  }
+
   private static cloneAssetCard(card: AppTypes.AssetCard): AppTypes.AssetCard {
     return {
       ...card,
