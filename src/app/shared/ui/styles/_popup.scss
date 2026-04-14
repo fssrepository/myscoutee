@@ -169,8 +169,7 @@
   .experience-form-overlay-backdrop {
     position: absolute;
     inset: 0;
-    background: rgba(8, 16, 30, 0.54);
-    backdrop-filter: blur(2px);
+    background: rgba(8, 16, 30, 0.76);
   }
 
   .popup-surface,
@@ -187,6 +186,7 @@
     box-shadow: 0 24px 60px rgba(14, 32, 58, 0.26);
     display: flex;
     flex-direction: column;
+    contain: layout paint;
   }
 
   .popup-surface-header,
