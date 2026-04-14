@@ -730,7 +730,7 @@ export class OwnedAssetsPopupFacadeService {
     });
   }
 
-  private applyAssetCards(
+  public applyAssetCards(
     cards: readonly AppTypes.AssetCard[],
     options: { persist?: boolean; reloadList?: boolean } = {}
   ): void {

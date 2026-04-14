@@ -2925,7 +2925,7 @@ export class SubEventResourcePopupService {
     };
   }
 
-  private syncPopupSubEventMetrics(persist = true): void {
+  private syncPopupSubEventMetrics(persist = false): void {
     const context = this.popupContextRef();
     if (!context) {
       return;
@@ -2950,7 +2950,7 @@ export class SubEventResourcePopupService {
       ...context,
       subEvent: nextSubEvent
     });
-    this.syncSubEventManualAssetRequests(nextSubEvent);
+    this.syncSubEventManualAssetRequests(nextSubEvent, persist);
     if (persist) {
       this.persistPopupResourceState({
         ...context,
@@ -3177,7 +3177,7 @@ export class SubEventResourcePopupService {
     };
   }
 
-  private syncSubEventManualAssetRequests(subEvent: AppTypes.SubEventFormItem): void {
+  private syncSubEventManualAssetRequests(subEvent: AppTypes.SubEventFormItem, persist = false): void {
     const context = this.popupContextRef();
     if (!context) {
       return;
@@ -3215,9 +3215,11 @@ export class SubEventResourcePopupService {
       return nextCard;
     });
     if (changed) {
-      this.ownedAssets.assetCards = nextCards;
-      for (const dirtyCard of dirtyCards) {
-        void this.assetsService.saveOwnedAsset(activeUser.id, dirtyCard);
+      this.ownedAssets.applyAssetCards(nextCards, { persist });
+      if (persist) {
+        for (const dirtyCard of dirtyCards) {
+          void this.assetsService.saveOwnedAsset(activeUser.id, dirtyCard);
+        }
       }
     }
   }
