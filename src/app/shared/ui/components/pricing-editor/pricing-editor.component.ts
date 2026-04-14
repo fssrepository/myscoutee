@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, HostListener, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
+import { Component, EventEmitter, HostListener, Input, OnChanges, Output, SimpleChanges, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatNativeDateModule } from '@angular/material/core';
 import { MatDatepickerModule } from '@angular/material/datepicker';
@@ -46,7 +46,8 @@ interface RuleScopePickerState {
     PricingSlotPanelComponent
   ],
   templateUrl: './pricing-editor.component.html',
-  styleUrl: './pricing-editor.component.scss'
+  styleUrl: './pricing-editor.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class PricingEditorComponent implements OnChanges {
   @Input() pricing: AppTypes.PricingConfig | null | undefined = null;
@@ -83,6 +84,8 @@ export class PricingEditorComponent implements OnChanges {
   private ruleScopePickerState: RuleScopePickerState | null = null;
 
   protected currentPreview!: PricingPreviewState;
+  
+  constructor(private readonly cdr: ChangeDetectorRef) {}
 
   protected currentExplanationLines: string[] = [];
   protected currentFallbackLines: string[] = [];
@@ -99,6 +102,7 @@ export class PricingEditorComponent implements OnChanges {
     ) {
       this.syncResolvedCapabilities();
       this.syncWorkingPricing();
+      this.cdr.markForCheck();
     }
   }
 
@@ -206,11 +210,13 @@ export class PricingEditorComponent implements OnChanges {
       return;
     }
     this.wizardOpen = true;
+    this.cdr.markForCheck();
   }
 
   protected closeWizard(): void {
     this.wizardOpen = false;
     this.closeRuleScopePicker();
+    this.cdr.markForCheck();
   }
 
   protected togglePricingEnabled(): void {
@@ -467,6 +473,7 @@ export class PricingEditorComponent implements OnChanges {
       appliesTo: rule.appliesTo,
       slotIds: [...(rule.slotIds ?? [])]
     };
+    this.cdr.markForCheck();
   }
 
   protected isRuleScopePickerOpen(kind: 'demand' | 'time', rule: PricingScopedRule): boolean {
@@ -702,6 +709,7 @@ export class PricingEditorComponent implements OnChanges {
     this.currentFallbackLines = this.previewFallbackLines();
     
     this.pricingChange.emit(PricingBuilder.clonePricingConfig(this.workingPricing));
+    this.cdr.markForCheck();
   }
 
   private syncMode(): void {
@@ -804,6 +812,7 @@ export class PricingEditorComponent implements OnChanges {
 
   private closeRuleScopePicker(): void {
     this.ruleScopePickerState = null;
+    this.cdr.markForCheck();
   }
 
   private defaultDraftSlotIds(): string[] {

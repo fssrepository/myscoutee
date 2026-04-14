@@ -330,7 +330,7 @@
   .experience-form-panel {
     border: 1px solid rgba(43, 71, 107, 0.2);
     border-radius: 14px;
-    background: linear-gradient(180deg, #f8fbff 0%, #f4f8ff 100%);
+    background: #f8fbff;
     padding: 0.74rem;
     display: grid;
     gap: 0.78rem;
@@ -343,6 +343,7 @@
     overflow-y: auto;
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
+    scrollbar-gutter: stable;
   }
 
   .mobile-profile-selector-sheet-wrap {
