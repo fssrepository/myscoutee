@@ -825,12 +825,13 @@
       <span>Why this price?</span>
       <mat-icon>help_outline</mat-icon>
     </div>
-    @if (previewExplanationLines().length > 0) {
-      @for (line of previewExplanationLines(); track line) {
+    
+    @if (currentExplanationLines.length > 0) {
+      @for (line of currentExplanationLines; track line) {
         <p class="pricing-editor__preview-note">{{ line }}</p>
       }
     } @else {
-      @for (line of previewFallbackLines(); track line) {
+      @for (line of currentFallbackLines; track line) {
         <p class="pricing-editor__preview-note">{{ line }}</p>
       }
     }

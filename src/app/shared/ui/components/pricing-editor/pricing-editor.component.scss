@@ -771,6 +771,8 @@
   display: grid;
   gap: 0.82rem;
   min-width: 0; // Add this
+  transform: translateZ(0); /* Hardware accelerates the scroll layer */
+  backface-visibility: hidden;
 }
 
 .pricing-editor__preview--summary {
@@ -850,6 +852,9 @@
   z-index: 1200;
   background: rgba(17, 31, 50, 0.28);
   backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px); /* Added Safari support */
+  transform: translateZ(0); /* Fixes background flicker */
+  backface-visibility: hidden;
 }
 
 .pricing-editor__wizard {
@@ -935,6 +940,8 @@
   gap: 0.92rem;
   overflow: auto;
   padding: 0.12rem 0.32rem 0.8rem 0.12rem;
+  transform: translateZ(0); /* Hardware accelerates the scroll layer */
+  backface-visibility: hidden;
 }
 
 .pricing-editor__preview--wizard-sticky {

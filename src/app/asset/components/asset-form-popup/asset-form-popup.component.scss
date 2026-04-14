@@ -268,6 +268,9 @@
   z-index: 30;
   background: rgba(17, 31, 50, 0.28);
   backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px); /* Added Safari support */
+  transform: translateZ(0); /* Fixes background flicker */
+  backface-visibility: hidden;
 }
 
 .event-slots-popup {
@@ -337,6 +340,8 @@
   gap: 0.72rem;
   overflow: auto;
   padding: 0.12rem 0.24rem 0.72rem 0.04rem;
+  transform: translateZ(0); /* Hardware accelerates the scroll layer */
+  backface-visibility: hidden;
 }
 
 .event-policies-popup-body {
@@ -474,6 +479,9 @@
   z-index: 32;
   background: rgba(17, 31, 50, 0.24);
   backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px); /* Added Safari support */
+  transform: translateZ(0); /* Fixes background flicker */
+  backface-visibility: hidden;
 }
 
 .event-policy-editor-popup {

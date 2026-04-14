@@ -84,6 +84,9 @@ export class PricingEditorComponent implements OnChanges {
 
   protected currentPreview!: PricingPreviewState;
 
+  protected currentExplanationLines: string[] = [];
+  protected currentFallbackLines: string[] = [];
+
   ngOnChanges(changes: SimpleChanges): void {
     if (
       changes['pricing']
@@ -684,6 +687,9 @@ export class PricingEditorComponent implements OnChanges {
   private syncWorkingPricing(): void {
     this.workingPricing = this.normalizePricingWithCapabilities(this.pricing);
     this.currentPreview = this.calculatePreviewState();
+    // Cache the lines here
+    this.currentExplanationLines = this.previewExplanationLines();
+    this.currentFallbackLines = this.previewFallbackLines();
   }
 
   protected emitPricing(): void {
@@ -691,6 +697,10 @@ export class PricingEditorComponent implements OnChanges {
     this.syncMode();
     this.workingPricing = this.normalizePricingWithCapabilities(this.workingPricing);
     this.currentPreview = this.calculatePreviewState();
+    // Cache the lines here
+    this.currentExplanationLines = this.previewExplanationLines();
+    this.currentFallbackLines = this.previewFallbackLines();
+    
     this.pricingChange.emit(PricingBuilder.clonePricingConfig(this.workingPricing));
   }
 
