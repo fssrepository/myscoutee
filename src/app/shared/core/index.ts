@@ -44,6 +44,7 @@ export {
   SessionService,
   type AppSession
 } from './base/services/session.service';
+export { NavigatorContactsService } from '../../navigator/navigator-contacts.service';
 export * from './base/builders';
 export * from './base/converters';
 export * from './base/formatters';

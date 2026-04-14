@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, HostListener, Input } from '@angular/core';
+import { Component, HostListener, Input, OnChanges, OnDestroy, OnInit, SimpleChanges } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
@@ -21,7 +21,7 @@ import { PricingEditorComponent } from '../../../shared/ui';
   templateUrl: './asset-form-popup.component.html',
   styleUrl: './asset-form-popup.component.scss'
 })
-export class AssetFormPopupComponent {
+export class AssetFormPopupComponent implements OnChanges, OnInit, OnDestroy {
   @Input() visible = false;
   @Input() title = '';
   @Input({ required: true }) assetForm!: Omit<AppTypes.AssetCard, 'id' | 'requests'>;
@@ -47,12 +47,39 @@ export class AssetFormPopupComponent {
   @Input({ required: true }) refreshAssetFromSourceLink!: () => void | Promise<void>;
   @Input({ required: true }) onAssetImageFileSelected!: (file: File) => void;
   protected showMobileAssetTypePicker = false;
+  protected showMobileAssetCategoryPicker = false;
   protected showVisibilityPicker = false;
   protected showPoliciesPopup = false;
   protected showPolicyEditorPopup = false;
   protected workingPolicies: AppTypes.EventPolicyItem[] = [];
   protected workingPolicyDraft: AppTypes.EventPolicyItem = this.createEmptyPolicyDraft();
   protected editingPolicyDraftIndex: number | null = null;
+
+  // Add to your class properties:
+  protected isMobileViewport = false;
+  private mediaQueryList: MediaQueryList | null = null;
+  private mediaListener = () => { this.isMobileViewport = this.mediaQueryList?.matches ?? false; };
+
+  // Implement OnInit and OnDestroy:
+  ngOnInit(): void {
+    if (typeof window !== 'undefined') {
+      this.mediaQueryList = window.matchMedia('(max-width: 900px)');
+      this.isMobileViewport = this.mediaQueryList.matches;
+      this.mediaQueryList.addEventListener('change', this.mediaListener);
+    }
+  }
+
+  ngOnDestroy(): void {
+    this.mediaQueryList?.removeEventListener('change', this.mediaListener);
+  }
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['visible'] && changes['visible'].currentValue === true) {
+      this.showMobileAssetTypePicker = false;
+      this.showMobileAssetCategoryPicker = false;
+      this.showVisibilityPicker = false;
+    }
+  }
 
   protected requestClose(): void {
     if (this.isSavePending) {
@@ -73,6 +100,8 @@ export class AssetFormPopupComponent {
     if (this.isSavePending) {
       return;
     }
+    this.showMobileAssetTypePicker = false;
+    this.showMobileAssetCategoryPicker = false;
     this.showVisibilityPicker = !this.showVisibilityPicker;
   }
 
@@ -87,6 +116,18 @@ export class AssetFormPopupComponent {
 
   protected assetCategoryOptions(): AppTypes.AssetCategory[] {
     return AssetDefaultsBuilder.assetCategoryOptions(this.assetForm.type);
+  }
+
+  protected assetCategoryClass(category: AppTypes.AssetCategory | null | undefined): string {
+    return AssetDefaultsBuilder.assetCategoryClass(category, this.assetForm.type);
+  }
+
+  protected assetCategoryIcon(category: AppTypes.AssetCategory | null | undefined): string {
+    return AssetDefaultsBuilder.assetCategoryIcon(category, this.assetForm.type);
+  }
+
+  protected assetCategoryLabel(category: AppTypes.AssetCategory | null | undefined): string {
+    return AssetDefaultsBuilder.assetCategoryLabel(category);
   }
 
   protected onAssetTypeChange(type: AppTypes.AssetType): void {
@@ -215,6 +256,8 @@ export class AssetFormPopupComponent {
       return;
     }
     event.stopPropagation();
+    this.showMobileAssetCategoryPicker = false;
+    this.showVisibilityPicker = false;
     this.showMobileAssetTypePicker = !this.showMobileAssetTypePicker;
   }
 
@@ -227,6 +270,25 @@ export class AssetFormPopupComponent {
     this.showMobileAssetTypePicker = false;
   }
 
+  protected openMobileAssetCategorySelector(event: Event): void {
+    if (!this.isMobileAssetTypeSheetViewport() || this.isSavePending) {
+      return;
+    }
+    event.stopPropagation();
+    this.showMobileAssetTypePicker = false;
+    this.showVisibilityPicker = false;
+    this.showMobileAssetCategoryPicker = !this.showMobileAssetCategoryPicker;
+  }
+
+  protected selectMobileAssetCategory(category: AppTypes.AssetCategory, event?: Event): void {
+    if (this.isSavePending) {
+      return;
+    }
+    event?.stopPropagation();
+    this.assetForm.category = category;
+    this.showMobileAssetCategoryPicker = false;
+  }
+
   protected isMobileAssetTypeSheetViewport(): boolean {
     if (typeof window === 'undefined') {
       return false;
@@ -236,13 +298,14 @@ export class AssetFormPopupComponent {
 
   @HostListener('window:keydown.escape', ['$event'])
   protected onEscapePressed(event: Event): void {
-    if (!this.showMobileAssetTypePicker) {
+    if (!this.showMobileAssetTypePicker && !this.showMobileAssetCategoryPicker) {
       return;
     }
     const keyboardEvent = event as KeyboardEvent;
     keyboardEvent.preventDefault();
     keyboardEvent.stopPropagation();
     this.showMobileAssetTypePicker = false;
+    this.showMobileAssetCategoryPicker = false;
   }
 
   @HostListener('document:click', ['$event'])
@@ -253,6 +316,9 @@ export class AssetFormPopupComponent {
     }
     if (!target.closest('.asset-form-mobile-type-picker')) {
       this.showMobileAssetTypePicker = false;
+    }
+    if (!target.closest('.asset-form-mobile-category-picker')) {
+      this.showMobileAssetCategoryPicker = false;
     }
     if (!target.closest('.asset-form-visibility-picker')) {
       this.showVisibilityPicker = false;

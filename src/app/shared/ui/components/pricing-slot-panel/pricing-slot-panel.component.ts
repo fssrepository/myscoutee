@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
+import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
@@ -17,7 +17,8 @@ import type * as AppTypes from '../../../core/base/models';
     MatSelectModule
   ],
   templateUrl: './pricing-slot-panel.component.html',
-  styleUrl: './pricing-slot-panel.component.scss'
+  styleUrl: './pricing-slot-panel.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class PricingSlotPanelComponent implements OnChanges {
   @Input() enabled = false;
@@ -33,10 +34,13 @@ export class PricingSlotPanelComponent implements OnChanges {
   @Input() description = 'Override global rules with slot-specific pricing.';
 
   protected workingOverrides: AppTypes.PricingSlotOverride[] = [];
+  
+  constructor(private readonly cdr: ChangeDetectorRef) {}
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['overrides'] || changes['slotCatalog'] || changes['currency']) {
       this.syncWorkingOverrides();
+      this.cdr.markForCheck();
     }
   }
 
@@ -177,6 +181,7 @@ export class PricingSlotPanelComponent implements OnChanges {
     }, this.slotCatalog);
     this.workingOverrides = normalized.slotOverrides.map(item => ({ ...item }));
     this.overridesChange.emit(this.workingOverrides.map(item => ({ ...item })));
+    this.cdr.markForCheck();
   }
 
   private remainingSlots(): AppTypes.PricingSlotReference[] {

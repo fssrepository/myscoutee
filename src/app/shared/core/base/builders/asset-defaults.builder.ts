@@ -61,6 +61,81 @@ export class AssetDefaultsBuilder {
     return [...(APP_STATIC_DATA.assetCategoryOptionsByType[type] ?? [])];
   }
 
+  static assetCategoryLabel(category: AppTypes.AssetCategory | null | undefined): string {
+    return `${category ?? ''}`.trim();
+  }
+
+  static assetCategoryIcon(
+    category: AppTypes.AssetCategory | null | undefined,
+    fallbackType: AppTypes.AssetType = this.assetCategoryType(category)
+  ): string {
+    switch (`${category ?? ''}`.trim().toLowerCase()) {
+      case 'ride':
+        return this.assetTypeIcon('Car');
+      case 'stay':
+        return this.assetTypeIcon('Accommodation');
+      case 'camping':
+        return 'forest';
+      case 'cooking':
+        return 'restaurant';
+      case 'games':
+        return 'sports_esports';
+      case 'audio':
+        return 'speaker';
+      case 'sports':
+        return 'sports_basketball';
+      case 'safety':
+        return 'health_and_safety';
+      case 'decor':
+        return 'celebration';
+      case 'tech':
+        return 'memory';
+      default:
+        return this.assetTypeIcon(fallbackType);
+    }
+  }
+
+  static assetCategoryClass(
+    category: AppTypes.AssetCategory | null | undefined,
+    fallbackType: AppTypes.AssetType = this.assetCategoryType(category)
+  ): string {
+    switch (`${category ?? ''}`.trim().toLowerCase()) {
+      case 'ride':
+        return this.assetTypeClass('Car');
+      case 'stay':
+        return this.assetTypeClass('Accommodation');
+      case 'camping':
+        return 'asset-category-camping';
+      case 'cooking':
+        return 'asset-category-cooking';
+      case 'games':
+        return 'asset-category-games';
+      case 'audio':
+        return 'asset-category-audio';
+      case 'sports':
+        return 'asset-category-sports';
+      case 'safety':
+        return 'asset-category-safety';
+      case 'decor':
+        return 'asset-category-decor';
+      case 'tech':
+        return 'asset-category-tech';
+      default:
+        return this.assetTypeClass(fallbackType);
+    }
+  }
+
+  static assetCategoryType(category: AppTypes.AssetCategory | null | undefined): AppTypes.AssetType {
+    switch (`${category ?? ''}`.trim().toLowerCase()) {
+      case 'ride':
+        return 'Car';
+      case 'stay':
+        return 'Accommodation';
+      default:
+        return 'Supplies';
+    }
+  }
+
   static defaultCategory(type: AppTypes.AssetType): AppTypes.AssetCategory {
     return this.assetCategoryOptions(type)[0] ?? '';
   }

@@ -169,8 +169,7 @@
   .experience-form-overlay-backdrop {
     position: absolute;
     inset: 0;
-    background: rgba(8, 16, 30, 0.54);
-    backdrop-filter: blur(2px);
+    background: rgba(8, 16, 30, 0.76);
   }
 
   .popup-surface,
@@ -187,6 +186,7 @@
     box-shadow: 0 24px 60px rgba(14, 32, 58, 0.26);
     display: flex;
     flex-direction: column;
+    contain: layout paint;
   }
 
   .popup-surface-header,
@@ -330,7 +330,7 @@
   .experience-form-panel {
     border: 1px solid rgba(43, 71, 107, 0.2);
     border-radius: 14px;
-    background: linear-gradient(180deg, #f8fbff 0%, #f4f8ff 100%);
+    background: #f8fbff;
     padding: 0.74rem;
     display: grid;
     gap: 0.78rem;
@@ -343,6 +343,7 @@
     overflow-y: auto;
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
+    scrollbar-gutter: stable;
   }
 
   .mobile-profile-selector-sheet-wrap {

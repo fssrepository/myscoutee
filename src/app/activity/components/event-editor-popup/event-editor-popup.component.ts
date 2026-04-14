@@ -103,6 +103,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
         this.showEventVisibilityPicker = false;
         this.showSubEventsPopup = false;
         this.showTopicPicker = false;
+        this.showMobileFrequencyPicker = false;
         this.resetDraftAutosaveTracking();
         return;
       }
@@ -127,6 +128,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       this.showPoliciesPopup = false;
       this.showPolicyEditorPopup = false;
       this.showTopicPicker = false;
+      this.showMobileFrequencyPicker = false;
       this.showSubEventsPopup = true;
     });
 
@@ -175,6 +177,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       this.showTopicPicker = false;
       this.showPoliciesPopup = false;
       this.showPolicyEditorPopup = false;
+      this.showMobileFrequencyPicker = false;
     });
 
     this.closeSubscription = this.eventEditorService.onClose$.subscribe(() => {
@@ -183,6 +186,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       this.showTopicPicker = false;
       this.showPoliciesPopup = false;
       this.showPolicyEditorPopup = false;
+      this.showMobileFrequencyPicker = false;
       this.resetEditorContext();
       this.resetDraftAutosaveTracking();
     });
@@ -234,6 +238,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   showEventVisibilityPicker = false;
   showSubEventsPopup = false;
   showTopicPicker = false;
+  showMobileFrequencyPicker = false;
   isSavePending = false;
   readonly saveRingPerimeter = 100;
   workingPolicies: AppTypes.EventPolicyItem[] = [];
@@ -250,6 +255,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.showEventVisibilityPicker = false;
     this.showSubEventsPopup = false;
     this.showTopicPicker = false;
+    this.showMobileFrequencyPicker = false;
     this.isSavePending = false;
     this.eventEditorService.close();
   }
@@ -270,6 +276,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   requestOpenMembers(): void {
     this.showEventVisibilityPicker = false;
     this.showTopicPicker = false;
+    this.showMobileFrequencyPicker = false;
     const source = this.eventEditorService.sourceEvent();
     const eventId = this.currentEventIdentity() || 'draft-event';
     const row: AppTypes.ActivityListRow = {
@@ -298,6 +305,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.showEventVisibilityPicker = false;
     this.showSlotsPopup = false;
     this.showTopicPicker = false;
+    this.showMobileFrequencyPicker = false;
     this.showSubEventsPopup = true;
   }
 
@@ -492,11 +500,13 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.showEventVisibilityPicker = false;
     this.showSlotsPopup = false;
     this.showSubEventsPopup = false;
+    this.showMobileFrequencyPicker = false;
     this.showTopicPicker = true;
   }
 
   requestOpenLocationMap(): void {
     this.showEventVisibilityPicker = false;
+    this.showMobileFrequencyPicker = false;
     const routeStops = this.eventLocationRouteStops();
     if (routeStops.length <= 1) {
       this.openGoogleMapsSearch(routeStops[0] ?? this.eventForm.location);
@@ -572,6 +582,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       return;
     }
     this.showEventVisibilityPicker = !this.showEventVisibilityPicker;
+    this.showMobileFrequencyPicker = false;
   }
 
   selectVisibility(option: AppTypes.EventVisibility, event?: Event): void {
@@ -1219,9 +1230,45 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.close();
   }
 
-  @HostListener('document:click')
-  onDocumentClick(): void {
+  protected isMobileFrequencySheetViewport(): boolean {
+    if (typeof window === 'undefined') {
+      return false;
+    }
+    return window.matchMedia('(max-width: 900px)').matches;
+  }
+
+  protected openMobileFrequencySelector(event: Event): void {
+    if (!this.isMobileFrequencySheetViewport() || this.eventEditorService.readOnly()) {
+      return;
+    }
+    event.stopPropagation();
     this.showEventVisibilityPicker = false;
+    this.showMobileFrequencyPicker = !this.showMobileFrequencyPicker;
+  }
+
+  protected selectMobileFrequency(option: string, event?: Event): void {
+    if (this.eventEditorService.readOnly()) {
+      return;
+    }
+    event?.stopPropagation();
+    this.onEventFrequencyChange(option);
+    this.showMobileFrequencyPicker = false;
+  }
+
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent): void {
+    const target = event.target;
+    if (!(target instanceof Element)) {
+      this.showEventVisibilityPicker = false;
+      this.showMobileFrequencyPicker = false;
+      return;
+    }
+    if (!target.closest('.event-visibility-picker')) {
+      this.showEventVisibilityPicker = false;
+    }
+    if (!target.closest('.event-frequency-mobile-picker')) {
+      this.showMobileFrequencyPicker = false;
+    }
   }
 
   private openCreateRequest(target: AppTypes.EventEditorTarget): void {

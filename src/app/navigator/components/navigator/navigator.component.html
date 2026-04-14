@@ -8,7 +8,9 @@
 @if (profileEditorComponent(); as profileComponent) {
   <ng-container *ngComponentOutlet="profileComponent"></ng-container>
 }
+
 <app-confirmation-dialog></app-confirmation-dialog>
+
 @if (eventMembersPopupComponent(); as membersComponent) {
   <ng-container *ngComponentOutlet="membersComponent"></ng-container>
 }
@@ -25,6 +27,9 @@
 @if (assetMemberPickerPopupComponent(); as assetMemberPickerComponent) {
   <ng-container *ngComponentOutlet="assetMemberPickerComponent"></ng-container>
 }
+@if (navigatorContactsPopupComponent(); as contactsComponent) {
+  <ng-container *ngComponentOutlet="contactsComponent"></ng-container>
+}
 
 @if (activitiesPopupComponent(); as activitiesComponent) {
   <ng-container *ngComponentOutlet="activitiesComponent"></ng-container>
@@ -39,3 +44,4 @@
 @if (assetPopupComponent(); as assetComponent) {
   <ng-container *ngComponentOutlet="assetComponent"></ng-container>
 }
+

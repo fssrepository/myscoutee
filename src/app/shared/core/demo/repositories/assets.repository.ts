@@ -520,7 +520,11 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
       category: AssetDefaultsBuilder.normalizeCategory(record.type, record.category),
       city: record.city,
       capacityTotal: record.capacityTotal,
-      quantity: AssetCardBuilder.normalizeQuantity(record.type, record.quantity, record.capacityTotal),
+      quantity: AssetCardBuilder.storedQuantityValue({
+        type: record.type,
+        quantity: record.quantity,
+        capacityTotal: record.capacityTotal
+      }),
       details: record.details,
       imageUrl: record.imageUrl,
       sourceLink: record.sourceLink,

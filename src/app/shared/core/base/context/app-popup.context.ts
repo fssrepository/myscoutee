@@ -8,6 +8,7 @@ export interface ActivityInvitePopupState {
   ownerType?: ActivityMemberOwnerType;
   title?: string;
   initialCandidates?: readonly ActivityMemberEntry[];
+  initialSelection?: readonly ActivityMemberEntry[];
   onApply?: (selectedCandidates: readonly ActivityMemberEntry[]) => void | Promise<void>;
   closeOwnerPopupOnClose?: boolean;
 }
@@ -48,6 +49,7 @@ export class AppPopupContext {
     ownerType?: ActivityMemberOwnerType;
     title?: string;
     initialCandidates?: readonly ActivityMemberEntry[];
+    initialSelection?: readonly ActivityMemberEntry[];
     onApply?: (selectedCandidates: readonly ActivityMemberEntry[]) => void | Promise<void>;
     closeOwnerPopupOnClose?: boolean;
   }): void {
@@ -64,6 +66,9 @@ export class AppPopupContext {
       title: payload.title?.trim() || undefined,
       initialCandidates: Array.isArray(payload.initialCandidates)
         ? payload.initialCandidates.map(candidate => ({ ...candidate }))
+        : undefined,
+      initialSelection: Array.isArray(payload.initialSelection)
+        ? payload.initialSelection.map(candidate => ({ ...candidate }))
         : undefined,
       onApply: payload.onApply,
       closeOwnerPopupOnClose: payload.closeOwnerPopupOnClose === true

@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, HostListener, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
+import { Component, EventEmitter, HostListener, Input, OnChanges, Output, SimpleChanges, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatNativeDateModule } from '@angular/material/core';
 import { MatDatepickerModule } from '@angular/material/datepicker';
@@ -46,7 +46,8 @@ interface RuleScopePickerState {
     PricingSlotPanelComponent
   ],
   templateUrl: './pricing-editor.component.html',
-  styleUrl: './pricing-editor.component.scss'
+  styleUrl: './pricing-editor.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class PricingEditorComponent implements OnChanges {
   @Input() pricing: AppTypes.PricingConfig | null | undefined = null;
@@ -64,7 +65,6 @@ export class PricingEditorComponent implements OnChanges {
 
   protected workingPricing: AppTypes.PricingConfig = PricingBuilder.createDefaultPricingConfig('event');
 
-  protected readonly modeOptions: readonly AppTypes.PricingMode[] = ['fixed', 'demand-based', 'time-based', 'hybrid'];
   protected readonly currencyOptions = ['USD', 'EUR', 'GBP', 'CZK'];
   protected readonly taxModeOptions: readonly AppTypes.PricingTaxMode[] = ['excluded', 'included'];
   protected readonly roundingOptions: readonly AppTypes.PricingRoundingMode[] = ['none', 'whole', 'half'];
@@ -83,6 +83,13 @@ export class PricingEditorComponent implements OnChanges {
   private idSequence = 0;
   private ruleScopePickerState: RuleScopePickerState | null = null;
 
+  protected currentPreview!: PricingPreviewState;
+  
+  constructor(private readonly cdr: ChangeDetectorRef) {}
+
+  protected currentExplanationLines: string[] = [];
+  protected currentFallbackLines: string[] = [];
+
   ngOnChanges(changes: SimpleChanges): void {
     if (
       changes['pricing']
@@ -95,45 +102,11 @@ export class PricingEditorComponent implements OnChanges {
     ) {
       this.syncResolvedCapabilities();
       this.syncWorkingPricing();
+      this.cdr.markForCheck();
     }
   }
 
-  protected setMode(mode: AppTypes.PricingMode): void {
-    if (this.readOnly || this.workingPricing.mode === mode) {
-      return;
-    }
-    this.workingPricing.mode = mode;
-    const supportsDemand = mode === 'demand-based' || mode === 'hybrid';
-    const supportsTime = mode === 'time-based' || mode === 'hybrid';
-    this.workingPricing.demandRulesEnabled = supportsDemand
-      ? (this.workingPricing.demandRulesEnabled || this.workingPricing.demandRules.length > 0)
-      : false;
-    this.workingPricing.timeRulesEnabled = supportsTime
-      ? (this.workingPricing.timeRulesEnabled || this.workingPricing.timeRules.length > 0)
-      : false;
-    if (supportsDemand && this.workingPricing.demandRules.length === 0) {
-      this.workingPricing.demandRules = [this.createDefaultDemandRule()];
-      this.workingPricing.demandRulesEnabled = true;
-    }
-    if (supportsTime && this.workingPricing.timeRules.length === 0) {
-      this.workingPricing.timeRules = [this.createDefaultTimeRule()];
-      this.workingPricing.timeRulesEnabled = true;
-    }
-    this.emitPricing();
-  }
 
-  protected modeLabel(mode: AppTypes.PricingMode): string {
-    switch (mode) {
-      case 'demand-based':
-        return 'Demand-based';
-      case 'time-based':
-        return 'Time-based';
-      case 'hybrid':
-        return 'Hybrid';
-      default:
-        return 'Fixed';
-    }
-  }
 
   protected actionLabel(action: AppTypes.PricingRuleActionKind): string {
     switch (action) {
@@ -209,11 +182,11 @@ export class PricingEditorComponent implements OnChanges {
   }
 
   protected showDemandSection(): boolean {
-    return this.workingPricing.mode === 'demand-based' || this.workingPricing.mode === 'hybrid';
+    return true;
   }
 
   protected showTimeSection(): boolean {
-    return this.workingPricing.mode === 'time-based' || this.workingPricing.mode === 'hybrid';
+    return true;
   }
 
   protected showSlotSection(): boolean {
@@ -237,11 +210,13 @@ export class PricingEditorComponent implements OnChanges {
       return;
     }
     this.wizardOpen = true;
+    this.cdr.markForCheck();
   }
 
   protected closeWizard(): void {
     this.wizardOpen = false;
     this.closeRuleScopePicker();
+    this.cdr.markForCheck();
   }
 
   protected togglePricingEnabled(): void {
@@ -498,6 +473,7 @@ export class PricingEditorComponent implements OnChanges {
       appliesTo: rule.appliesTo,
       slotIds: [...(rule.slotIds ?? [])]
     };
+    this.cdr.markForCheck();
   }
 
   protected isRuleScopePickerOpen(kind: 'demand' | 'time', rule: PricingScopedRule): boolean {
@@ -621,7 +597,7 @@ export class PricingEditorComponent implements OnChanges {
     }
   }
 
-  protected previewState(): PricingPreviewState {
+  protected calculatePreviewState(): PricingPreviewState {
     const normalized = this.normalizePricingWithCapabilities(this.workingPricing);
     const activeSlotOverride = normalized.slotPricingEnabled
       ? normalized.slotOverrides.find(item => item.price !== null) ?? null
@@ -669,7 +645,7 @@ export class PricingEditorComponent implements OnChanges {
   }
 
   protected previewExplanationLines(): string[] {
-    const preview = this.previewState();
+    const preview = this.calculatePreviewState();
     return [
       ...(preview.slotOverridePrice !== null ? [`A slot override is active, so this preview starts from ${this.formatMoney(preview.slotOverridePrice)} instead of the global base price.`] : []),
       ...preview.demandNotes,
@@ -717,12 +693,37 @@ export class PricingEditorComponent implements OnChanges {
 
   private syncWorkingPricing(): void {
     this.workingPricing = this.normalizePricingWithCapabilities(this.pricing);
+    this.currentPreview = this.calculatePreviewState();
+    // Cache the lines here
+    this.currentExplanationLines = this.previewExplanationLines();
+    this.currentFallbackLines = this.previewFallbackLines();
   }
 
   protected emitPricing(): void {
     this.normalizePriceBounds();
+    this.syncMode();
     this.workingPricing = this.normalizePricingWithCapabilities(this.workingPricing);
+    this.currentPreview = this.calculatePreviewState();
+    // Cache the lines here
+    this.currentExplanationLines = this.previewExplanationLines();
+    this.currentFallbackLines = this.previewFallbackLines();
+    
     this.pricingChange.emit(PricingBuilder.clonePricingConfig(this.workingPricing));
+    this.cdr.markForCheck();
+  }
+
+  private syncMode(): void {
+    const hasDemand = this.workingPricing.demandRulesEnabled;
+    const hasTime = this.workingPricing.timeRulesEnabled;
+    if (hasDemand && hasTime) {
+      this.workingPricing.mode = 'hybrid';
+    } else if (hasDemand) {
+      this.workingPricing.mode = 'demand-based';
+    } else if (hasTime) {
+      this.workingPricing.mode = 'time-based';
+    } else {
+      this.workingPricing.mode = 'fixed';
+    }
   }
 
   private syncResolvedCapabilities(): void {
@@ -811,6 +812,7 @@ export class PricingEditorComponent implements OnChanges {
 
   private closeRuleScopePicker(): void {
     this.ruleScopePickerState = null;
+    this.cdr.markForCheck();
   }
 
   private defaultDraftSlotIds(): string[] {

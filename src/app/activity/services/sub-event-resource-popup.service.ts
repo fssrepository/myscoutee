@@ -119,6 +119,21 @@ interface AssetExploreBorrowDialogState {
   error: string | null;
 }
 
+interface AssetExploreBorrowDraftState {
+  userId: string;
+  subEventId: string;
+  cardId: string;
+  ownerUserId: string;
+  title: string;
+  quantity: number;
+  startAtIso: string;
+  endAtIso: string;
+  acceptedPolicyIds: string[];
+  checkoutSessionId: string | null;
+  paymentStep: boolean;
+  updatedAtMs: number;
+}
+
 interface AssetExploreBorrowPricingPreview {
   amount: number;
   currency: string;
@@ -173,6 +188,7 @@ export class SubEventResourcePopupService {
   private readonly pendingAssignSaveRef = signal<PendingAssignSaveState | null>(null);
   private readonly assetExplorePopupRef = signal<AssetExplorePopupState | null>(null);
   private readonly assetExploreBorrowDialogRef = signal<AssetExploreBorrowDialogState | null>(null);
+  private readonly assetExploreBorrowDraftsRef = signal<Record<string, AssetExploreBorrowDraftState>>({});
   private readonly assignContextRef = signal<{ subEventId: string; type: AppTypes.AssetType } | null>(null);
   private readonly selectedAssignAssetIdsRef = signal<string[]>([]);
   private readonly resourceDeleteConfirmRingPerimeter = 100;
@@ -246,6 +262,7 @@ export class SubEventResourcePopupService {
     setAssetExploreBorrowDateRange: (start, end) => this.setAssetExploreBorrowDateRange(start, end),
     setAssetExploreBorrowTime: (edge, value) => this.setAssetExploreBorrowTime(edge, value),
     onAssetExploreBorrowQuantityChange: value => this.onAssetExploreBorrowQuantityChange(value),
+    normalizeAssetExploreBorrowQuantityOnBlur: value => this.normalizeAssetExploreBorrowQuantityOnBlur(value),
     toggleAssetExploreBorrowPolicy: policyId => this.toggleAssetExploreBorrowPolicy(policyId),
     backAssetExploreBorrowToDetails: event => this.backAssetExploreBorrowToDetails(event),
     canSubmitAssetExploreBorrow: () => this.canSubmitAssetExploreBorrow(),
@@ -497,6 +514,21 @@ export class SubEventResourcePopupService {
     if (!normalizedState) {
       return;
     }
+    const activeContext = this.popupContextRef();
+    if (
+      activeContext
+      && activeContext.ownerId === normalizedState.ownerId
+      && activeContext.subEvent.id === normalizedState.subEventId
+    ) {
+      this.popupContextRef.set({
+        ...activeContext,
+        fallbackCardsByType: this.mergePersistedFallbackCards(
+          activeContext.fallbackCardsByType,
+          normalizedState.fallbackAssetCardsByType,
+          normalizedState.subEventId
+        )
+      });
+    }
     for (const type of ['Car', 'Accommodation', 'Supplies'] as const) {
       this.assignedAssetIdsByKey[this.subEventAssetAssignmentKey(normalizedState.subEventId, type)] = [
         ...(normalizedState.assetAssignmentIds[type] ?? [])
@@ -555,7 +587,12 @@ export class SubEventResourcePopupService {
           assetId,
           this.subEventSupplyContributionEntries(subEventId, assetId).map(entry => ({ ...entry }))
         ])
-      )
+      ),
+      fallbackAssetCardsByType: {
+        Car: this.persistedAssignedFallbackCards(context, 'Car'),
+        Accommodation: this.persistedAssignedFallbackCards(context, 'Accommodation'),
+        Supplies: this.persistedAssignedFallbackCards(context, 'Supplies')
+      }
     };
   }
 
@@ -637,7 +674,7 @@ export class SubEventResourcePopupService {
     if (!context || !card.sourceAssetId || (card.type !== 'Car' && card.type !== 'Accommodation')) {
       return;
     }
-    const sourceCard = this.ownedAssets.assetCards.find(item => item.id === card.sourceAssetId && item.type === card.type);
+    const sourceCard = this.resolveSubEventAssignedAssetCard(context.subEvent.id, card.type, card.sourceAssetId);
     if (!sourceCard) {
       return;
     }
@@ -1623,8 +1660,12 @@ export class SubEventResourcePopupService {
       subtitle: this.popupSubtitle(),
       type: popup.type,
       category: popup.category,
-      categoryDisplay: popup.type === 'Car' || popup.type === 'Accommodation' ? popup.type : popup.category,
-      categoryOptions: ['Car', 'Accommodation', ...AssetDefaultsBuilder.assetCategoryOptions('Supplies')],
+      categoryDisplay: AssetDefaultsBuilder.assetCategoryLabel(popup.category),
+      categoryOptions: [
+        ...AssetDefaultsBuilder.assetCategoryOptions('Car'),
+        ...AssetDefaultsBuilder.assetCategoryOptions('Accommodation'),
+        ...AssetDefaultsBuilder.assetCategoryOptions('Supplies')
+      ],
       startDate: AppUtils.isoLocalDateTimeToDate(popup.startAtIso),
       endDate: AppUtils.isoLocalDateTimeToDate(popup.endAtIso),
       windowStartDate: AppUtils.isoLocalDateTimeToDate(windowRange.startAtIso),
@@ -1697,21 +1738,18 @@ export class SubEventResourcePopupService {
     if (!popup || !context || !activeUserId) {
       return [];
     }
-    return popup.cards
-      .map(card => {
-        const request = this.findPendingAssetExploreBorrowRequest(card, context.subEvent.id, activeUserId);
-        if (!request || !request.booking?.paymentSessionId) {
-          return null;
-        }
+    return this.listAssetExploreBorrowDrafts(activeUserId, context.subEvent.id)
+      .map(draft => {
+        const card = popup.cards.find(item => item.id === draft.cardId) ?? null;
         return {
-          cardId: card.id,
-          title: card.title,
-          timeframe: request.booking?.timeframe || this.assetRequestTimeframeLabel(
-            request.booking?.startAtIso ?? popup.startAtIso,
-            request.booking?.endAtIso ?? popup.endAtIso
+          cardId: draft.cardId,
+          title: card?.title ?? draft.title,
+          timeframe: this.assetRequestTimeframeLabel(
+            draft.startAtIso || popup.startAtIso,
+            draft.endAtIso || popup.endAtIso
           ),
-          quantity: this.assetRequestQuantity(request),
-          availabilityLabel: this.assetExploreAvailabilityLabel(card)
+          quantity: Math.max(1, Math.trunc(Number(draft.quantity) || 1)),
+          availabilityLabel: card ? this.assetExploreAvailabilityLabel(card) : 'Unavailable for this time'
         } satisfies AssetExploreBorrowDraftViewState;
       })
       .filter((entry): entry is AssetExploreBorrowDraftViewState => Boolean(entry))
@@ -1724,16 +1762,12 @@ export class SubEventResourcePopupService {
     if (!popup) {
       return;
     }
+    const normalizedCategory = AssetDefaultsBuilder.assetCategoryLabel(category);
     let nextType = popup.type;
     let nextCategory = popup.category;
-    if (category === 'Car' || category === 'Accommodation') {
-      nextType = category;
-      nextCategory = AssetDefaultsBuilder.defaultCategory(category);
-    } else {
-      nextType = 'Supplies';
-      nextCategory = category;
-    }
-    
+    nextType = AssetDefaultsBuilder.assetCategoryType(normalizedCategory);
+    nextCategory = AssetDefaultsBuilder.normalizeCategory(nextType, normalizedCategory);
+
     if (nextType === popup.type && nextCategory === popup.category) {
       return;
     }
@@ -1963,9 +1997,10 @@ export class SubEventResourcePopupService {
     startAtIso: string,
     endAtIso: string
   ): number {
-    const totalQuantity = AssetCardBuilder.quantityValue(card);
+    const totalQuantity = AssetCardBuilder.storedQuantityValue(card);
     const overlappingCommitted = card.requests
       .filter(request => request.status === 'accepted' || request.requestKind === 'manual')
+      .filter(request => request.booking?.inventoryApplied !== true)
       .filter(request => this.isAssetExploreWindowOverlap(request, startAtIso, endAtIso))
       .reduce((sum, request) => sum + this.assetRequestQuantity(request), 0);
     return Math.max(0, totalQuantity - overlappingCommitted);
@@ -1982,33 +2017,44 @@ export class SubEventResourcePopupService {
     if (!ownerUserId) {
       return;
     }
+    const activeUserId = this.activeUser().id.trim();
+    const draft = this.readAssetExploreBorrowDraft(activeUserId, context.subEvent.id, card.id);
     const existingRequest = this.findPendingAssetExploreBorrowRequest(card, context.subEvent.id);
-    const startAtIso = `${existingRequest?.booking?.startAtIso ?? popup.startAtIso}`.trim() || popup.startAtIso;
-    const endAtIso = `${existingRequest?.booking?.endAtIso ?? popup.endAtIso}`.trim() || popup.endAtIso;
+    const startAtIso = `${draft?.startAtIso ?? existingRequest?.booking?.startAtIso ?? popup.startAtIso}`.trim() || popup.startAtIso;
+    const endAtIso = `${draft?.endAtIso ?? existingRequest?.booking?.endAtIso ?? popup.endAtIso}`.trim() || popup.endAtIso;
     const availableQuantity = this.assetExploreAvailableQuantityForWindow(card, startAtIso, endAtIso);
+    const requestedQuantity = Math.max(1, Math.trunc(Number(draft?.quantity ?? existingRequest?.booking?.quantity) || 1));
     const validPolicyIds = new Set((card.policies ?? []).map(policy => policy.id));
+    if (popup.error) {
+      this.assetExplorePopupRef.set({
+        ...popup,
+        error: null
+      });
+    }
     this.assetExploreBorrowDialogRef.set({
       cardId: card.id,
       ownerUserId,
-      quantity: AppUtils.clampNumber(
-        Math.trunc(Number(existingRequest?.booking?.quantity) || 1),
-        1,
-        Math.max(1, availableQuantity)
-      ),
+      quantity: AppUtils.clampNumber(requestedQuantity, 1, Math.max(1, availableQuantity)),
       startAtIso,
       endAtIso,
       availableQuantity,
-      acceptedPolicyIds: [...(existingRequest?.booking?.acceptedPolicyIds ?? [])]
+      acceptedPolicyIds: [...(draft?.acceptedPolicyIds ?? existingRequest?.booking?.acceptedPolicyIds ?? [])]
         .filter(policyId => validPolicyIds.has(policyId)),
-      checkoutSessionId: `${existingRequest?.booking?.paymentSessionId ?? ''}`.trim() || null,
-      paymentStep: Boolean(existingRequest?.booking?.paymentSessionId && Number(existingRequest?.booking?.totalAmount) > 0),
+      checkoutSessionId: `${draft?.checkoutSessionId ?? ''}`.trim() || null,
+      paymentStep: Boolean(draft?.paymentStep),
       busy: false,
-      error: null
+      error: this.assetExploreBorrowAvailabilityError(requestedQuantity, availableQuantity)
     });
   }
 
   private closeAssetExploreBorrowDialog(event?: Event): void {
     event?.stopPropagation();
+    const dialog = this.assetExploreBorrowDialogRef();
+    const context = this.popupContextRef();
+    const activeUserId = this.activeUser().id.trim();
+    if (dialog && context && !dialog.busy && this.shouldPersistAssetExploreBorrowDraft(dialog, context.subEvent.id, activeUserId)) {
+      this.saveAssetExploreBorrowDraft(activeUserId, context.subEvent.id, dialog);
+    }
     this.assetExploreBorrowDialogRef.set(null);
   }
 
@@ -2032,7 +2078,7 @@ export class SubEventResourcePopupService {
       availableQuantity,
       quantity: AppUtils.clampNumber(dialog.quantity, 1, Math.max(1, availableQuantity)),
       acceptedPolicyIds: [...invalidated.acceptedPolicyIds],
-      error: null
+      error: this.assetExploreBorrowAvailabilityError(dialog.quantity, availableQuantity)
     });
   }
 
@@ -2056,7 +2102,7 @@ export class SubEventResourcePopupService {
       availableQuantity,
       quantity: AppUtils.clampNumber(dialog.quantity, 1, Math.max(1, availableQuantity)),
       acceptedPolicyIds: [...invalidated.acceptedPolicyIds],
-      error: null
+      error: this.assetExploreBorrowAvailabilityError(dialog.quantity, availableQuantity)
     });
   }
 
@@ -2067,15 +2113,36 @@ export class SubEventResourcePopupService {
     }
     const parsed = Number(value);
     const invalidated = this.invalidateAssetExploreBorrowCheckout(dialog);
+    const requestedQuantity = AppUtils.clampNumber(
+      Number.isFinite(parsed) ? Math.trunc(parsed) : dialog.quantity,
+      1,
+      Number.MAX_SAFE_INTEGER
+    );
     this.assetExploreBorrowDialogRef.set({
       ...invalidated,
-      quantity: AppUtils.clampNumber(
-        Number.isFinite(parsed) ? Math.trunc(parsed) : dialog.quantity,
-        1,
-        Math.max(1, dialog.availableQuantity)
-      ),
+      quantity: requestedQuantity,
       acceptedPolicyIds: [...invalidated.acceptedPolicyIds],
-      error: null
+      error: this.assetExploreBorrowAvailabilityError(requestedQuantity, dialog.availableQuantity)
+    });
+  }
+
+  private normalizeAssetExploreBorrowQuantityOnBlur(value: number | string): void {
+    const dialog = this.assetExploreBorrowDialogRef();
+    if (!dialog || dialog.busy) {
+      return;
+    }
+    const parsed = Number(value);
+    const invalidated = this.invalidateAssetExploreBorrowCheckout(dialog);
+    const normalizedQuantity = AppUtils.clampNumber(
+      Number.isFinite(parsed) ? Math.trunc(parsed) : dialog.quantity,
+      1,
+      Math.max(1, dialog.availableQuantity)
+    );
+    this.assetExploreBorrowDialogRef.set({
+      ...invalidated,
+      quantity: normalizedQuantity,
+      acceptedPolicyIds: [...invalidated.acceptedPolicyIds],
+      error: this.assetExploreBorrowAvailabilityError(normalizedQuantity, dialog.availableQuantity)
     });
   }
 
@@ -2156,16 +2223,52 @@ export class SubEventResourcePopupService {
     return this.isValidAssetExploreWindow(dialog.startAtIso, dialog.endAtIso);
   }
 
+  private assetExploreBorrowAvailabilityError(
+    requestedQuantity: number,
+    availableQuantity: number
+  ): string | null {
+    if (availableQuantity <= 0) {
+      return 'This asset is no longer available for the selected date range.';
+    }
+    if (requestedQuantity > availableQuantity) {
+      return availableQuantity === 1
+        ? 'Only 1 item is still available for the selected date range.'
+        : `Only ${availableQuantity} items are still available for the selected date range.`;
+    }
+    return null;
+  }
+
   private confirmAssetExploreBorrow(event?: Event): void {
     event?.stopPropagation();
     const dialog = this.assetExploreBorrowDialogRef();
     const popup = this.assetExplorePopupRef();
     const context = this.popupContextRef();
-    if (!dialog || !popup || !context || !this.canSubmitAssetExploreBorrow()) {
+    if (!dialog || !popup || !context) {
       return;
     }
     const card = this.resolveAssetExploreCard(dialog.cardId);
     if (!card) {
+      this.assetExplorePopupRef.set({
+        ...popup,
+        error: 'This basket item is no longer available for the selected date range.'
+      });
+      this.assetExploreBorrowDialogRef.set(null);
+      return;
+    }
+    const availableQuantity = this.assetExploreAvailableQuantityForWindow(card, dialog.startAtIso, dialog.endAtIso);
+    const availabilityError = this.assetExploreBorrowAvailabilityError(dialog.quantity, availableQuantity);
+    if (availabilityError) {
+      const invalidated = this.invalidateAssetExploreBorrowCheckout(dialog);
+      this.assetExploreBorrowDialogRef.set({
+        ...invalidated,
+        availableQuantity,
+        quantity: AppUtils.clampNumber(dialog.quantity, 1, Math.max(1, availableQuantity)),
+        acceptedPolicyIds: [...invalidated.acceptedPolicyIds],
+        error: availabilityError
+      });
+      return;
+    }
+    if (!this.canSubmitAssetExploreBorrow()) {
       return;
     }
     const activeUser = this.activeUser();
@@ -2216,85 +2319,19 @@ export class SubEventResourcePopupService {
           if (!session?.id) {
             throw new Error('Unable to start checkout.');
           }
-
-          const nextRequest: AppTypes.AssetMemberRequest = {
-            id: existingRequest?.id ?? `borrow:${activeUser.id}:${card.id}:${context.subEvent.id}`,
-            userId: activeUser.id,
-            name: activeUser.name,
-            initials: activeUser.initials,
-            gender: activeUser.gender,
-            status: 'pending',
-            note: 'Awaiting payment.',
-            requestKind: 'borrow',
-            requestedAtIso: new Date().toISOString(),
-            booking: this.assetRequestBookingForRange(
-              context.subEvent,
-              context.ownerId,
-              context.parentTitle,
-              dialog.startAtIso,
-              dialog.endAtIso,
-              dialog.quantity,
-              {
-                totalAmount: pricing.amount,
-                currency: pricing.currency,
-                acceptedPolicyIds: dialog.acceptedPolicyIds,
-                paymentSessionId: session.id
-              }
-            )
-          };
-          const nextCard: AppTypes.AssetCard = {
-            ...card,
-            requests: [
-              nextRequest,
-              ...card.requests
-                .filter(request => request.id !== nextRequest.id)
-                .map(request => ({
-                  ...request,
-                  booking: request.booking
-                    ? {
-                        ...request.booking,
-                        acceptedPolicyIds: [...(request.booking.acceptedPolicyIds ?? [])]
-                      }
-                    : null
-                }))
-            ]
-          };
-
-          const currentPopup = this.assetExplorePopupRef();
-          if (currentPopup) {
-            this.assetExplorePopupRef.set({
-              ...currentPopup,
-              cards: currentPopup.cards.map(cardItem => cardItem.id === nextCard.id ? this.cloneAsset(nextCard) : cardItem)
-            });
-          }
-
           const currentDialog = this.assetExploreBorrowDialogRef();
           if (!currentDialog || requestVersion !== this.pendingAssetExploreBorrowRequestVersion) {
             return;
           }
-          this.assetExploreBorrowDialogRef.set({
+          const nextDialog: AssetExploreBorrowDialogState = {
             ...currentDialog,
             checkoutSessionId: session.id,
             paymentStep: true,
             busy: false,
             error: null
-          });
-
-          void this.assetsService.saveOwnedAsset(dialog.ownerUserId, nextCard)
-            .then(savedCard => {
-              const latestPopup = this.assetExplorePopupRef();
-              if (latestPopup) {
-                this.assetExploreWarmCacheByKey.clear();
-                this.assetExplorePopupRef.set({
-                  ...latestPopup,
-                  cards: latestPopup.cards.map(cardItem => cardItem.id === savedCard.id ? this.cloneAsset(savedCard) : cardItem)
-                });
-                this.scheduleAssetExploreCardsLoad();
-              }
-            })
-            .catch(() => {
-              // Best-effort save; basket will still work on next explore open.
-            });
+          };
+          this.assetExploreBorrowDialogRef.set(nextDialog);
+          this.saveAssetExploreBorrowDraft(activeUser.id, context.subEvent.id, nextDialog);
         })
         .catch(async error => {
           await this.ensureAssetExploreBorrowMinimumBusyDuration(startedAt);
@@ -2334,6 +2371,7 @@ export class SubEventResourcePopupService {
         if (pricing.amount > 0 && (!session || !session.id)) {
           throw new Error('Unable to start payment.');
         }
+        const inventoryApplied = pricing.amount > 0;
         const nextRequest: AppTypes.AssetMemberRequest = {
           id: existingRequest?.id ?? `borrow:${activeUser.id}:${card.id}:${context.subEvent.id}`,
           userId: activeUser.id,
@@ -2357,12 +2395,16 @@ export class SubEventResourcePopupService {
               totalAmount: pricing.amount,
               currency: pricing.currency,
               acceptedPolicyIds: dialog.acceptedPolicyIds,
-              paymentSessionId: null
+              paymentSessionId: session?.id ?? dialog.checkoutSessionId ?? null,
+              inventoryApplied
             }
           )
         };
         const nextCard: AppTypes.AssetCard = {
           ...card,
+          quantity: inventoryApplied
+            ? Math.max(0, AssetCardBuilder.storedQuantityValue(card) - dialog.quantity)
+            : AssetCardBuilder.storedQuantityValue(card),
           requests: [
             nextRequest,
             ...card.requests
@@ -2388,20 +2430,27 @@ export class SubEventResourcePopupService {
         if (!currentDialog || !currentPopup || requestVersion !== this.pendingAssetExploreBorrowRequestVersion) {
           return;
         }
+        this.clearAssetExploreBorrowDraftState(activeUser.id, context.subEvent.id, currentDialog.cardId);
+        if (pricing.amount > 0) {
+          this.attachBoughtAssetToSubEventLocally(context, savedCard, currentDialog.quantity);
+        }
         const remainingAvailability = this.assetExploreAvailableQuantityForWindow(
           savedCard,
           currentDialog.startAtIso,
           currentDialog.endAtIso
-        ) - currentDialog.quantity;
-        this.assetExploreWarmCacheByKey.clear();
+        ) - (pricing.amount > 0 ? 0 : currentDialog.quantity);
+        const nextCards = remainingAvailability <= 0
+          ? currentPopup.cards.filter(cardItem => cardItem.id !== savedCard.id)
+          : currentPopup.cards.map(cardItem => cardItem.id === savedCard.id ? this.cloneAsset(savedCard) : cardItem);
         this.assetExplorePopupRef.set({
           ...currentPopup,
-          cards: remainingAvailability <= 0
-            ? currentPopup.cards.filter(cardItem => cardItem.id !== savedCard.id)
-            : currentPopup.cards.map(cardItem => cardItem.id === savedCard.id ? this.cloneAsset(savedCard) : cardItem)
+          cards: nextCards
         });
+        this.storeAssetExploreWarmCache(
+          this.assetExploreQueryKey(this.assetExploreQueryFromPopup(currentPopup)),
+          nextCards
+        );
         this.closeAssetExploreBorrowDialog();
-        this.scheduleAssetExploreCardsLoad();
       })
       .catch(async error => {
         await this.ensureAssetExploreBorrowMinimumBusyDuration(startedAt);
@@ -2421,6 +2470,13 @@ export class SubEventResourcePopupService {
     event?.stopPropagation();
     const card = this.resolveAssetExploreCard(cardId);
     if (!card) {
+      const popup = this.assetExplorePopupRef();
+      if (popup) {
+        this.assetExplorePopupRef.set({
+          ...popup,
+          error: 'This basket item is no longer available for the selected date range.'
+        });
+      }
       return;
     }
     this.openAssetExploreBorrowDialog(card, event);
@@ -2428,46 +2484,108 @@ export class SubEventResourcePopupService {
 
   private clearAssetExploreBorrowDraft(cardId: string, event?: Event): void {
     event?.stopPropagation();
-    const popup = this.assetExplorePopupRef();
     const context = this.popupContextRef();
     const activeUserId = this.activeUser().id.trim();
-    const card = this.resolveAssetExploreCard(cardId);
-    if (!popup || !context || !activeUserId || !card) {
+    if (!context || !activeUserId) {
       return;
     }
-    const ownerUserId = `${card.ownerUserId ?? ''}`.trim();
-    if (!ownerUserId) {
+    this.clearAssetExploreBorrowDraftState(activeUserId, context.subEvent.id, cardId);
+    if (this.assetExploreBorrowDialogRef()?.cardId === cardId) {
+      this.assetExploreBorrowDialogRef.set(null);
+    }
+  }
+
+  private listAssetExploreBorrowDrafts(
+    userId: string,
+    subEventId: string
+  ): AssetExploreBorrowDraftState[] {
+    const normalizedUserId = userId.trim();
+    const normalizedSubEventId = subEventId.trim();
+    if (!normalizedUserId || !normalizedSubEventId) {
+      return [];
+    }
+    return Object.values(this.assetExploreBorrowDraftsRef())
+      .filter(draft => draft.userId === normalizedUserId && draft.subEventId === normalizedSubEventId)
+      .sort((left, right) => right.updatedAtMs - left.updatedAtMs);
+  }
+
+  private readAssetExploreBorrowDraft(
+    userId: string,
+    subEventId: string,
+    cardId: string
+  ): AssetExploreBorrowDraftState | null {
+    const key = this.assetExploreBorrowDraftKey(userId, subEventId, cardId);
+    return key ? this.assetExploreBorrowDraftsRef()[key] ?? null : null;
+  }
+
+  private saveAssetExploreBorrowDraft(
+    userId: string,
+    subEventId: string,
+    dialog: AssetExploreBorrowDialogState
+  ): void {
+    const key = this.assetExploreBorrowDraftKey(userId, subEventId, dialog.cardId);
+    if (!key) {
       return;
     }
-    const nextCard = this.cloneAsset(card);
-    nextCard.requests = nextCard.requests.filter(request =>
-      request.requestKind === 'manual'
-      || request.status !== 'pending'
-      || AppUtils.resolveAssetRequestUserId(request, this.users) !== activeUserId
-      || request.booking?.subEventId !== context.subEvent.id
+    const card = this.resolveAssetExploreCard(dialog.cardId);
+    const next: AssetExploreBorrowDraftState = {
+      userId: userId.trim(),
+      subEventId: subEventId.trim(),
+      cardId: dialog.cardId,
+      ownerUserId: dialog.ownerUserId,
+      title: card?.title?.trim() || 'Borrow draft',
+      quantity: Math.max(1, Math.trunc(Number(dialog.quantity) || 1)),
+      startAtIso: dialog.startAtIso,
+      endAtIso: dialog.endAtIso,
+      acceptedPolicyIds: [...new Set(dialog.acceptedPolicyIds)].map(item => item.trim()).filter(Boolean),
+      checkoutSessionId: dialog.checkoutSessionId?.trim() || null,
+      paymentStep: dialog.paymentStep,
+      updatedAtMs: Date.now()
+    };
+    this.assetExploreBorrowDraftsRef.set({
+      ...this.assetExploreBorrowDraftsRef(),
+      [key]: next
+    });
+  }
+
+  private clearAssetExploreBorrowDraftState(
+    userId: string,
+    subEventId: string,
+    cardId: string
+  ): void {
+    const key = this.assetExploreBorrowDraftKey(userId, subEventId, cardId);
+    if (!key || !this.assetExploreBorrowDraftsRef()[key]) {
+      return;
+    }
+    const next = { ...this.assetExploreBorrowDraftsRef() };
+    delete next[key];
+    this.assetExploreBorrowDraftsRef.set(next);
+  }
+
+  private shouldPersistAssetExploreBorrowDraft(
+    dialog: AssetExploreBorrowDialogState,
+    subEventId: string,
+    userId: string
+  ): boolean {
+    return Boolean(
+      dialog.checkoutSessionId
+      || dialog.paymentStep
+      || this.readAssetExploreBorrowDraft(userId, subEventId, dialog.cardId)
     );
-    if (nextCard.requests.length === card.requests.length) {
-      return;
+  }
+
+  private assetExploreBorrowDraftKey(
+    userId: string,
+    subEventId: string,
+    cardId: string
+  ): string {
+    const normalizedUserId = userId.trim();
+    const normalizedSubEventId = subEventId.trim();
+    const normalizedCardId = cardId.trim();
+    if (!normalizedUserId || !normalizedSubEventId || !normalizedCardId) {
+      return '';
     }
-    void this.assetsService.saveOwnedAsset(ownerUserId, nextCard)
-      .then(savedCard => {
-        const currentPopup = this.assetExplorePopupRef();
-        if (!currentPopup) {
-          return;
-        }
-        this.assetExploreWarmCacheByKey.clear();
-        this.assetExplorePopupRef.set({
-          ...currentPopup,
-          cards: currentPopup.cards.map(cardItem => cardItem.id === savedCard.id ? this.cloneAsset(savedCard) : cardItem)
-        });
-        if (this.assetExploreBorrowDialogRef()?.cardId === savedCard.id) {
-          this.assetExploreBorrowDialogRef.set(null);
-        }
-        this.scheduleAssetExploreCardsLoad();
-      })
-      .catch(() => {
-        // Keep basket clearing best-effort so the rest of asset explore keeps working.
-      });
+    return `${normalizedUserId}::${normalizedSubEventId}::${normalizedCardId}`;
   }
 
   private closeAssignPopup(apply = false): void {
@@ -2680,7 +2798,7 @@ export class SubEventResourcePopupService {
 
   private subEventAssignedAssetCards(subEventId: string, type: AppTypes.AssetType): AppTypes.AssetCard[] {
     return this.resolveSubEventAssignedAssetIds(subEventId, type)
-      .map(id => this.ownedAssets.assetCards.find(card => card.id === id && card.type === type) ?? null)
+      .map(id => this.resolveSubEventAssignedAssetCard(subEventId, type, id))
       .filter((card): card is AppTypes.AssetCard => card !== null);
   }
 
@@ -2690,7 +2808,7 @@ export class SubEventResourcePopupService {
     const existing = this.assignedAssetSettingsByKey[key] ?? {};
     const next: Record<string, AppTypes.SubEventAssignedAssetSettings> = {};
     for (const assetId of assignedIds) {
-      const source = this.ownedAssets.assetCards.find(card => card.id === assetId && card.type === type);
+      const source = this.resolveSubEventAssignedAssetCard(subEventId, type, assetId);
       if (!source) {
         continue;
       }
@@ -2711,7 +2829,10 @@ export class SubEventResourcePopupService {
 
   private resolveSubEventAssignedAssetIds(subEventId: string, type: AppTypes.AssetType): string[] {
     const key = this.subEventAssetAssignmentKey(subEventId, type);
-    const eligibleIds = this.ownedAssets.assetCards.filter(card => card.type === type).map(card => card.id);
+    const eligibleIds = [
+      ...this.ownedAssets.assetCards.filter(card => card.type === type).map(card => card.id),
+      ...this.subEventFallbackAssetCards(subEventId, type).map(card => card.id)
+    ];
     const eligible = new Set(eligibleIds);
     const stored = this.assignedAssetIdsByKey[key];
     if (!stored) {
@@ -2723,6 +2844,27 @@ export class SubEventResourcePopupService {
       this.assignedAssetIdsByKey[key] = [...normalized];
     }
     return normalized;
+  }
+
+  private resolveSubEventAssignedAssetCard(
+    subEventId: string,
+    type: AppTypes.AssetType,
+    assetId: string
+  ): AppTypes.AssetCard | null {
+    return this.ownedAssets.assetCards.find(card => card.id === assetId && card.type === type)
+      ?? this.subEventFallbackAssetCards(subEventId, type).find(card => card.id === assetId && card.type === type)
+      ?? null;
+  }
+
+  private subEventFallbackAssetCards(
+    subEventId: string,
+    type: AppTypes.AssetType
+  ): AppTypes.AssetCard[] {
+    const context = this.popupContextRef();
+    if (context?.subEvent.id !== subEventId) {
+      return [];
+    }
+    return context.fallbackCardsByType[type] ?? [];
   }
 
   private seedAssignmentsFromRequest(
@@ -2783,7 +2925,7 @@ export class SubEventResourcePopupService {
     };
   }
 
-  private syncPopupSubEventMetrics(persist = true): void {
+  private syncPopupSubEventMetrics(persist = false): void {
     const context = this.popupContextRef();
     if (!context) {
       return;
@@ -2808,7 +2950,7 @@ export class SubEventResourcePopupService {
       ...context,
       subEvent: nextSubEvent
     });
-    this.syncSubEventManualAssetRequests(nextSubEvent);
+    this.syncSubEventManualAssetRequests(nextSubEvent, persist);
     if (persist) {
       this.persistPopupResourceState({
         ...context,
@@ -2851,10 +2993,13 @@ export class SubEventResourcePopupService {
     assetType: 'Car' | 'Accommodation',
     members: readonly AppTypes.ActivityMemberEntry[]
   ): void {
-    const asset = this.ownedAssets.assetCards.find(card => card.id === assetId && card.type === assetType);
+    const context = this.popupContextRef();
+    const asset = this.ownedAssets.assetCards.find(card => card.id === assetId && card.type === assetType)
+      ?? (context ? this.subEventFallbackAssetCards(context.subEvent.id, assetType).find(card => card.id === assetId) ?? null : null);
     if (!asset) {
       return;
     }
+    const isOwnedAsset = this.ownedAssets.assetCards.some(card => card.id === asset.id && card.type === assetType);
     const existingById = new Map(asset.requests.map(request => [request.id, request] as const));
     const existingByUserId = new Map(
       asset.requests.map(request => [AppUtils.resolveAssetRequestUserId(request, this.users), request] as const)
@@ -2882,7 +3027,7 @@ export class SubEventResourcePopupService {
         gender: entry.gender,
         status: entry.status,
         note,
-        requestKind: existing?.requestKind ?? 'borrow',
+        requestKind: existing?.requestKind ?? (isOwnedAsset ? 'borrow' : 'manual'),
         requestedAtIso: existing?.requestedAtIso ?? new Date().toISOString(),
         booking: existing?.booking
           ? {
@@ -2892,21 +3037,49 @@ export class SubEventResourcePopupService {
           : booking
       };
     });
-    const manualRequests = asset.requests
-      .filter(request => request.requestKind === 'manual')
-      .map(request => ({
-        ...request,
-        booking: request.booking
-          ? {
-              ...request.booking,
-              acceptedPolicyIds: [...(request.booking.acceptedPolicyIds ?? [])]
-            }
-          : null
-      }));
+    const manualRequests = isOwnedAsset
+      ? asset.requests
+        .filter(request => request.requestKind === 'manual')
+        .map(request => ({
+          ...request,
+          booking: request.booking
+            ? {
+                ...request.booking,
+                acceptedPolicyIds: [...(request.booking.acceptedPolicyIds ?? [])]
+              }
+            : null
+        }))
+      : [];
     const nextRequests: AppTypes.AssetMemberRequest[] = [...manualRequests, ...memberRequests];
-    const currentSignature = JSON.stringify(asset.requests.map(request => this.assetRequestSyncSignature(request)));
-    const nextSignature = JSON.stringify(nextRequests.map(request => this.assetRequestSyncSignature(request)));
+    const currentSignature = JSON.stringify(asset.requests.map(request => ActivityResourceBuilder.assetRequestSyncSignature(request)));
+    const nextSignature = JSON.stringify(nextRequests.map(request => ActivityResourceBuilder.assetRequestSyncSignature(request)));
     if (currentSignature === nextSignature) {
+      return;
+    }
+    if (!isOwnedAsset) {
+      if (!context) {
+        return;
+      }
+      const activeContext = this.popupContextRef();
+      if (!activeContext || activeContext.subEvent.id !== context.subEvent.id) {
+        return;
+      }
+      const nextFallbackCards = this.cloneFallbackCards(activeContext.fallbackCardsByType);
+      const nextCards = nextFallbackCards[assetType] ?? [];
+      const nextAsset = this.assignedFallbackAssetSnapshot(context.subEvent.id, {
+        ...asset,
+        requests: nextRequests
+      });
+      nextFallbackCards[assetType] = nextCards.some(card => card.id === assetId)
+        ? nextCards.map(card => card.id === assetId ? nextAsset : card)
+        : [...nextCards, nextAsset];
+      const nextContext = {
+        ...activeContext,
+        fallbackCardsByType: nextFallbackCards
+      };
+      this.popupContextRef.set(nextContext);
+      this.syncPopupSubEventMetrics(false);
+      this.persistPopupResourceState(nextContext);
       return;
     }
     this.ownedAssets.assetCards = this.ownedAssets.assetCards.map(card =>
@@ -2915,30 +3088,6 @@ export class SubEventResourcePopupService {
         : card
     );
     this.syncPopupSubEventMetrics();
-  }
-
-  private assetRequestSyncSignature(request: AppTypes.AssetMemberRequest): object {
-    return {
-      id: request.id,
-      userId: request.userId ?? '',
-      name: request.name,
-      initials: request.initials,
-      gender: request.gender,
-      status: request.status,
-      note: request.note,
-      requestKind: request.requestKind ?? '',
-      requestedAtIso: request.requestedAtIso ?? '',
-      bookingEventId: request.booking?.eventId ?? '',
-      bookingSubEventId: request.booking?.subEventId ?? '',
-      bookingStartAtIso: request.booking?.startAtIso ?? '',
-      bookingEndAtIso: request.booking?.endAtIso ?? '',
-      bookingQuantity: request.booking?.quantity ?? '',
-      bookingTimeframe: request.booking?.timeframe ?? '',
-      bookingTotalAmount: request.booking?.totalAmount ?? '',
-      bookingCurrency: request.booking?.currency ?? '',
-      bookingAcceptedPolicyIds: [...(request.booking?.acceptedPolicyIds ?? [])],
-      bookingPaymentSessionId: request.booking?.paymentSessionId ?? ''
-    };
   }
 
   private currentAssetRequestBooking(quantity: number): AppTypes.AssetHireRequestBooking | null {
@@ -2981,6 +3130,7 @@ export class SubEventResourcePopupService {
       currency?: string | null;
       acceptedPolicyIds?: string[];
       paymentSessionId?: string | null;
+      inventoryApplied?: boolean | null;
     } = {}
   ): AppTypes.AssetHireRequestBooking | null {
     return {
@@ -2997,11 +3147,12 @@ export class SubEventResourcePopupService {
       totalAmount: options.totalAmount ?? null,
       currency: options.currency ?? null,
       acceptedPolicyIds: [...(options.acceptedPolicyIds ?? [])],
-      paymentSessionId: options.paymentSessionId ?? null
+      paymentSessionId: options.paymentSessionId ?? null,
+      inventoryApplied: options.inventoryApplied === true ? true : null
     };
   }
 
-  private syncSubEventManualAssetRequests(subEvent: AppTypes.SubEventFormItem): void {
+  private syncSubEventManualAssetRequests(subEvent: AppTypes.SubEventFormItem, persist = false): void {
     const context = this.popupContextRef();
     if (!context) {
       return;
@@ -3012,7 +3163,7 @@ export class SubEventResourcePopupService {
     const nextCards = this.ownedAssets.assetCards.map(card => {
       const nextManualRequest = this.buildManualAssignmentRequest(card, subEvent, context.ownerId, context.parentTitle, activeUser);
       const preservedRequests: AppTypes.AssetMemberRequest[] = card.requests
-        .filter(request => !this.isSubEventManualAssignmentRequest(request, subEvent.id))
+        .filter(request => !ActivityResourceBuilder.isSubEventManualAssignmentRequest(request, subEvent.id))
         .map(request => ({
           ...request,
           booking: request.booking
@@ -3026,7 +3177,7 @@ export class SubEventResourcePopupService {
         preservedRequests.unshift(nextManualRequest);
       }
       const sameRequests = preservedRequests.length === card.requests.length
-        && preservedRequests.every((request, index) => this.assetRequestSyncSignature(request) === this.assetRequestSyncSignature(card.requests[index]));
+        && preservedRequests.every((request, index) => ActivityResourceBuilder.assetRequestSyncSignature(request) === ActivityResourceBuilder.assetRequestSyncSignature(card.requests[index]));
       if (sameRequests) {
         return card;
       }
@@ -3039,9 +3190,11 @@ export class SubEventResourcePopupService {
       return nextCard;
     });
     if (changed) {
-      this.ownedAssets.assetCards = nextCards;
-      for (const dirtyCard of dirtyCards) {
-        void this.assetsService.saveOwnedAsset(activeUser.id, dirtyCard);
+      this.ownedAssets.applyAssetCards(nextCards, { persist });
+      if (persist) {
+        for (const dirtyCard of dirtyCards) {
+          void this.assetsService.saveOwnedAsset(activeUser.id, dirtyCard);
+        }
       }
     }
   }
@@ -3062,7 +3215,7 @@ export class SubEventResourcePopupService {
       if (quantity <= 0) {
         return null;
       }
-      const existing = card.requests.find(request => this.isSubEventManualAssignmentRequest(request, subEvent.id)) ?? null;
+      const existing = card.requests.find(request => ActivityResourceBuilder.isSubEventManualAssignmentRequest(request, subEvent.id)) ?? null;
       return {
         id: existing?.id ?? `manual:${subEvent.id}:${card.id}`,
         userId: activeUser.id,
@@ -3083,7 +3236,7 @@ export class SubEventResourcePopupService {
     if (!assignedIds.has(card.id)) {
       return null;
     }
-    const existing = card.requests.find(request => this.isSubEventManualAssignmentRequest(request, subEvent.id)) ?? null;
+    const existing = card.requests.find(request => ActivityResourceBuilder.isSubEventManualAssignmentRequest(request, subEvent.id)) ?? null;
     return {
       id: existing?.id ?? `manual:${subEvent.id}:${card.id}`,
       userId: activeUser.id,
@@ -3096,10 +3249,6 @@ export class SubEventResourcePopupService {
       requestedAtIso: existing?.requestedAtIso ?? new Date().toISOString(),
       booking: this.assetRequestBookingForSubEvent(subEvent, 1, ownerId, parentTitle)
     };
-  }
-
-  private isSubEventManualAssignmentRequest(request: AppTypes.AssetMemberRequest, subEventId: string): boolean {
-    return request.requestKind === 'manual' && request.booking?.subEventId === subEventId;
   }
 
   private assetRequestTimeframeLabel(startAtIso: string, endAtIso: string): string {
@@ -3170,9 +3319,10 @@ export class SubEventResourcePopupService {
       };
     }
 
-    const totalQuantity = Math.max(1, AssetCardBuilder.quantityValue(card));
+    const totalQuantity = Math.max(1, AssetCardBuilder.storedQuantityValue(card));
     const overlappingCommitted = card.requests
       .filter(request => request.status === 'accepted' || request.requestKind === 'manual')
+      .filter(request => request.booking?.inventoryApplied !== true)
       .filter(request => this.isAssetExploreWindowOverlap(request, startAtIso, endAtIso))
       .reduce((sum, request) => sum + this.assetRequestQuantity(request), 0);
     const capacityFilledPercent = Math.round(
@@ -3482,6 +3632,118 @@ export class SubEventResourcePopupService {
       next[type] = cards.map(card => this.cloneAsset(card));
     }
     return next;
+  }
+
+  private mergePersistedFallbackCards(
+    current: Partial<Record<AppTypes.AssetType, AppTypes.AssetCard[]>> | undefined,
+    persisted: Partial<Record<AppTypes.AssetType, AppTypes.AssetCard[]>> | undefined,
+    subEventId: string
+  ): Partial<Record<AppTypes.AssetType, AppTypes.AssetCard[]>> {
+    const next = this.cloneFallbackCards(current);
+    for (const type of ['Car', 'Accommodation', 'Supplies'] as const) {
+      const cards = persisted?.[type];
+      if (!Array.isArray(cards) || cards.length === 0) {
+        continue;
+      }
+      const nextById = new Map((next[type] ?? []).map(card => [card.id, this.cloneAsset(card)] as const));
+      for (const card of cards) {
+        nextById.set(card.id, this.assignedFallbackAssetSnapshot(subEventId, card));
+      }
+      next[type] = [...nextById.values()];
+    }
+    return next;
+  }
+
+  private persistedAssignedFallbackCards(
+    context: ResourcePopupContext,
+    type: AppTypes.AssetType
+  ): AppTypes.AssetCard[] {
+    const assignedIds = new Set(this.resolveSubEventAssignedAssetIds(context.subEvent.id, type));
+    const ownedIds = new Set(this.ownedAssets.assetCards.filter(card => card.type === type).map(card => card.id));
+    return (context.fallbackCardsByType[type] ?? [])
+      .filter(card => assignedIds.has(card.id) && !ownedIds.has(card.id))
+      .map(card => this.assignedFallbackAssetSnapshot(context.subEvent.id, card));
+  }
+
+  private assignedFallbackAssetSnapshot(
+    subEventId: string,
+    card: AppTypes.AssetCard,
+    options: { clearRequests?: boolean } = {}
+  ): AppTypes.AssetCard {
+    const nextCard = this.cloneAsset(card);
+    if (options.clearRequests) {
+      return {
+        ...nextCard,
+        requests: []
+      };
+    }
+    return {
+      ...nextCard,
+      requests: nextCard.requests.filter(request =>
+        request.requestKind === 'manual' && request.booking?.subEventId === subEventId
+      )
+    };
+  }
+
+  private attachBoughtAssetToSubEventLocally(
+    context: ResourcePopupContext,
+    card: AppTypes.AssetCard,
+    quantity: number
+  ): void {
+    const key = this.subEventAssetAssignmentKey(context.subEvent.id, card.type);
+    const currentIds = this.assignedAssetIdsByKey[key] ?? [];
+    if (!currentIds.includes(card.id)) {
+      this.assignedAssetIdsByKey[key] = [...currentIds, card.id];
+    }
+
+    const currentSettings = { ...(this.assignedAssetSettingsByKey[key] ?? {}) };
+    if (!currentSettings[card.id]) {
+      const capacityLimit = Math.max(0, card.capacityTotal);
+      currentSettings[card.id] = {
+        capacityMin: 0,
+        capacityMax: capacityLimit,
+        addedByUserId: this.activeUser().id,
+        routes: this.normalizeAssetRoutes(card.type, card.routes)
+      };
+      this.assignedAssetSettingsByKey[key] = currentSettings;
+    }
+
+    if (card.type === 'Supplies') {
+      const contributionKey = this.subEventSupplyAssignmentKey(context.subEvent.id, card.id);
+      const currentEntries = this.supplyContributionEntriesByAssignmentKey[contributionKey] ?? [];
+      this.supplyContributionEntriesByAssignmentKey[contributionKey] = [
+        {
+          id: `subevent-supply-row-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          userId: this.activeUser().id,
+          quantity: Math.max(1, Math.trunc(Number(quantity) || 1)),
+          addedAtIso: AppUtils.toIsoDateTime(new Date())
+        },
+        ...currentEntries
+      ];
+    }
+
+    const activeContext = this.popupContextRef();
+    if (activeContext?.subEvent.id === context.subEvent.id) {
+      const nextFallbackCards = this.cloneFallbackCards(activeContext.fallbackCardsByType);
+      const existingCards = nextFallbackCards[card.type] ?? [];
+      if (!existingCards.some(item => item.id === card.id)) {
+        nextFallbackCards[card.type] = [
+          ...existingCards,
+          this.assignedFallbackAssetSnapshot(context.subEvent.id, card, { clearRequests: true })
+        ];
+      }
+      const nextContext = {
+        ...activeContext,
+        fallbackCardsByType: nextFallbackCards
+      };
+      this.popupContextRef.set(nextContext);
+      this.syncPopupSubEventMetrics(false);
+      this.persistPopupResourceState(nextContext);
+      return;
+    }
+
+    this.syncPopupSubEventMetrics(false);
+    this.persistPopupResourceState(context);
   }
 
   private applyGroupScopedAssetSnapshot(

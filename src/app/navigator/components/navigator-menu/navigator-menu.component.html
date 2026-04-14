@@ -9,6 +9,16 @@
         [ngClass]="profileStatusClass(user.profileStatus)"
         >
         <button
+          #shareButton
+          type="button"
+          class="user-menu-share-btn"
+          aria-label="Share profile"
+          (click)="onShareProfile($event)"
+          >
+          <span class="navigator-action-ripple" matRipple [matRippleTrigger]="shareButton" aria-hidden="true"></span>
+          <mat-icon>share</mat-icon>
+        </button>
+        <button
           #settingsButton
           type="button"
           class="user-menu-settings-btn"
@@ -229,6 +239,11 @@
             @if (user.activities.tickets > 0) {
               <span class="card-badge menu-shortcut-badge">{{ user.activities.tickets | counterBadge }}</span>
             }
+          </button>
+          <button #contactsButton class="asset-shortcut-btn asset-shortcut-contact" type="button" (click)="openContactsPopup($event)" aria-label="Contacts">
+            <span class="navigator-action-ripple" matRipple [matRippleTrigger]="contactsButton" aria-hidden="true"></span>
+            <mat-icon>contacts</mat-icon>
+            <span class="asset-shortcut-label">Contacts</span>
           </button>
         </div>
         <div class="social-proof-section-head section-feedback activities-header impressions-menu-header">

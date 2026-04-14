@@ -29,7 +29,13 @@ import {
   type SmartListLoaders,
   type SmartListStateChange
 } from '../../../shared/ui';
-import { ActivityInviteCandidatesService, ActivityMembersService, AppContext, AppPopupContext } from '../../../shared/core';
+import {
+  ActivityInviteCandidatesService,
+  ActivityMembersService,
+  AppContext,
+  AppPopupContext,
+  NavigatorContactsService
+} from '../../../shared/core';
 import { OwnedAssetsPopupFacadeService } from '../../owned-assets-popup-facade.service';
 
 interface ActivityInviteFilters {
@@ -60,6 +66,7 @@ export class AssetMemberPickerPopupComponent {
   private readonly activityInviteCandidatesService = inject(ActivityInviteCandidatesService);
   private readonly activityMembersService = inject(ActivityMembersService);
   private readonly ownedAssets = inject(OwnedAssetsPopupFacadeService);
+  private readonly navigatorContactsService = inject(NavigatorContactsService);
 
   protected isOpen = false;
   protected title = 'Invite members';
@@ -253,6 +260,7 @@ export class AssetMemberPickerPopupComponent {
         savePromise
       ]);
       this.isConfirmPending = false;
+      this.cdr.markForCheck();
       this.closeInvitePopup();
     } catch {
       this.isConfirmPending = false;
@@ -389,15 +397,26 @@ export class AssetMemberPickerPopupComponent {
         };
         const cachedMembers = this.activityMembersService.peekMembersByOwner(ownerRef);
         const hasCachedMemberState = cachedMembers.length > 0 || !!this.activityMembersService.peekSummaryByOwner(ownerRef);
-        const currentMembers = hasCachedMemberState
+        let currentMembers = hasCachedMemberState
           ? cachedMembers
           : await this.activityMembersService.queryMembersByOwner(ownerRef);
+
+        if (this.ownerType === 'asset') {
+          const contacts = this.navigatorContactsService.allContactsAsMemberEntries();
+          currentMembers = [...currentMembers, ...contacts];
+        }
+        const existingUserIds = [
+          ...new Set([
+            ...currentMembers.map(member => member.userId),
+            ...this.persistedSelectedUserIds
+          ])
+        ];
         const candidates = await this.activityInviteCandidatesService.queryCandidatesByOwner(
           ownerId,
           inviteSort,
           query.filters?.fallbackTitle,
           this.ownerType,
-          currentMembers.map(member => member.userId)
+          existingUserIds
         );
         const persistedMembers = currentMembers.filter(member =>
           member.userId !== activeUserId
@@ -435,8 +454,10 @@ export class AssetMemberPickerPopupComponent {
     sort: AppTypes.ActivityInviteSort
   ): AppTypes.ActivityMemberEntry[] {
     const mergedByUserId = new Map<string, AppTypes.ActivityMemberEntry>();
-    for (const member of persistedMembers) {
-      mergedByUserId.set(member.userId, { ...member });
+    if (this.ownerType !== 'asset') {
+      for (const member of persistedMembers) {
+        mergedByUserId.set(member.userId, { ...member });
+      }
     }
     for (const candidate of candidates) {
       const current = mergedByUserId.get(candidate.userId);
@@ -483,7 +504,9 @@ export class AssetMemberPickerPopupComponent {
 
   private async waitForAnimationKickoff(): Promise<void> {
     await this.waitForNextPaint();
-    await this.wait(this.demoModeEnabled ? 96 : 16);
+    await this.waitForNextPaint();
+    await this.yieldToCompositor();
+    await this.wait(this.demoModeEnabled ? 150 : 32);
   }
 
   private async wait(delayMs: number): Promise<void> {
@@ -499,6 +522,18 @@ export class AssetMemberPickerPopupComponent {
     await new Promise<void>(resolve => {
       if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
         window.requestAnimationFrame(() => resolve());
+        return;
+      }
+      setTimeout(() => resolve(), 0);
+    });
+  }
+
+  private async yieldToCompositor(): Promise<void> {
+    await new Promise<void>(resolve => {
+      if (typeof MessageChannel !== 'undefined') {
+        const channel = new MessageChannel();
+        channel.port1.onmessage = () => resolve();
+        channel.port2.postMessage(undefined);
         return;
       }
       setTimeout(() => resolve(), 0);
