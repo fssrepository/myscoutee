@@ -1,4 +1,5 @@
 import type {
+  AssetCard,
   AssetType,
   SubEventAssignedAssetSettings,
   SubEventSupplyContributionEntry
@@ -20,4 +21,5 @@ export interface ActivitySubEventResourceState extends ActivitySubEventResourceS
   assetAssignmentIds: ActivitySubEventAssetAssignmentIds;
   assetSettingsByType: ActivitySubEventAssetSettingsByType;
   supplyContributionEntriesByAssetId: ActivitySubEventSupplyContributionsByAssetId;
+  fallbackAssetCardsByType?: Partial<Record<AssetType, AssetCard[]>>;
 }

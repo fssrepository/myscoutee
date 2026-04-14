@@ -11,6 +11,7 @@ import {
   type DemoActivityResourcesRecordCollection,
   type DemoActivitySubEventResourceRecord
 } from '../models/activity-resources.model';
+import { ASSETS_TABLE_NAME, type DemoAssetsRecordCollection } from '../models/assets.model';
 import { EVENTS_TABLE_NAME, type DemoEventRecord } from '../models/events.model';
 import { DemoEventsRepository } from './events.repository';
 import { DemoUsersRepository } from './users.repository';
@@ -89,12 +90,15 @@ export class DemoActivityResourcesRepository extends HttpActivityResourcesReposi
     }
 
     const nextTable = this.buildCollection(nextRecords);
+    const assetsTable = this.normalizeAssetsCollection(this.memoryDb.read()[ASSETS_TABLE_NAME]);
+    const nextAssetsTable = this.syncManualRequestsInAssetsTable(assetsTable, nextRecords);
 
     console.log(Date.now() + "end - activity members");
 
     this.memoryDb.write(state => ({
       ...state,
-      [ACTIVITY_RESOURCES_TABLE_NAME]: nextTable
+      [ACTIVITY_RESOURCES_TABLE_NAME]: nextTable,
+      [ASSETS_TABLE_NAME]: nextAssetsTable
     }));
 
     console.log(Date.now() + "finish - activity members");
@@ -142,6 +146,9 @@ export class DemoActivityResourcesRepository extends HttpActivityResourcesReposi
         supplyContributionEntriesByAssetId: ActivityResourceBuilder.cloneSupplyContributionEntriesByAssetId(
           normalizedState.supplyContributionEntriesByAssetId
         ),
+        fallbackAssetCardsByType: ActivityResourceBuilder.cloneFallbackAssetCardsByType(
+          normalizedState.fallbackAssetCardsByType
+        ),
         createdMs: existing?.createdMs ?? nowMs,
         updatedMs: nowMs,
         createdAtIso: existing?.createdAtIso ?? nowIso,
@@ -167,11 +174,21 @@ export class DemoActivityResourcesRepository extends HttpActivityResourcesReposi
     if (!record) {
       return null;
     }
+    const fallbackCardsByType = ActivityResourceBuilder.cloneFallbackAssetCardsByType(record.fallbackAssetCardsByType);
     const assets = this.assetsRepository.peekOwnedAssetsByUser(normalizedRef.assetOwnerUserId);
     const eligibleIdsByType: Partial<Record<AppTypes.AssetType, Set<string>>> = {
-      Car: new Set(assets.filter(card => card.type === 'Car').map(card => card.id)),
-      Accommodation: new Set(assets.filter(card => card.type === 'Accommodation').map(card => card.id)),
-      Supplies: new Set(assets.filter(card => card.type === 'Supplies').map(card => card.id))
+      Car: new Set([
+        ...assets.filter(card => card.type === 'Car').map(card => card.id),
+        ...(fallbackCardsByType.Car ?? []).map(card => card.id)
+      ]),
+      Accommodation: new Set([
+        ...assets.filter(card => card.type === 'Accommodation').map(card => card.id),
+        ...(fallbackCardsByType.Accommodation ?? []).map(card => card.id)
+      ]),
+      Supplies: new Set([
+        ...assets.filter(card => card.type === 'Supplies').map(card => card.id),
+        ...(fallbackCardsByType.Supplies ?? []).map(card => card.id)
+      ])
     };
     const normalizedState = ActivityResourceBuilder.normalizeState({
       ownerId: record.ownerId,
@@ -186,7 +203,12 @@ export class DemoActivityResourcesRepository extends HttpActivityResourcesReposi
       supplyContributionEntriesByAssetId: Object.fromEntries(
         Object.entries(record.supplyContributionEntriesByAssetId ?? {})
           .filter(([assetId]) => eligibleIdsByType.Supplies?.has(assetId))
-      )
+      ),
+      fallbackAssetCardsByType: {
+        Car: (fallbackCardsByType.Car ?? []).filter(card => eligibleIdsByType.Car?.has(card.id)),
+        Accommodation: (fallbackCardsByType.Accommodation ?? []).filter(card => eligibleIdsByType.Accommodation?.has(card.id)),
+        Supplies: (fallbackCardsByType.Supplies ?? []).filter(card => eligibleIdsByType.Supplies?.has(card.id))
+      }
     }, normalizedRef);
     return normalizedState ? ActivityResourceBuilder.cloneState(normalizedState) : null;
   }
@@ -377,6 +399,9 @@ export class DemoActivityResourcesRepository extends HttpActivityResourcesReposi
       assetSettingsByType: ActivityResourceBuilder.cloneAssetSettingsByType(record.assetSettingsByType),
       supplyContributionEntriesByAssetId: ActivityResourceBuilder.cloneSupplyContributionEntriesByAssetId(
         record.supplyContributionEntriesByAssetId
+      ),
+      fallbackAssetCardsByType: ActivityResourceBuilder.cloneFallbackAssetCardsByType(
+        record.fallbackAssetCardsByType
       )
     };
   }
@@ -460,6 +485,109 @@ export class DemoActivityResourcesRepository extends HttpActivityResourcesReposi
       byId,
       ids,
       idsByOwnerKey
+    };
+  }
+  private syncManualRequestsInAssetsTable(
+    table: DemoAssetsRecordCollection,
+    resourceRecords: readonly DemoActivitySubEventResourceRecord[]
+  ): DemoAssetsRecordCollection {
+    const nextById = { ...table.byId };
+    let changed = false;
+
+    for (const record of resourceRecords) {
+      const state = this.memoryDb.read();
+      const eventsTable = state[EVENTS_TABLE_NAME];
+      const event = eventsTable.byId[record.ownerId];
+      const subEvent = event?.subEvents?.find((item: any) => item.id === record.subEventId);
+      if (!subEvent) {
+        continue;
+      }
+
+      for (const type of ['Car', 'Accommodation', 'Supplies'] as const) {
+        const assignedIds = record.assetAssignmentIds[type] ?? [];
+        for (const assetId of assignedIds) {
+          const card = nextById[assetId];
+          if (!card) {
+            continue;
+          }
+
+          const existingRequestIndex = card.requests.findIndex(r =>
+            ActivityResourceBuilder.isSubEventManualAssignmentRequest(r, subEvent.id)
+          );
+          const existingRequest = existingRequestIndex >= 0 ? card.requests[existingRequestIndex] : null;
+
+          const quantity = type === 'Supplies'
+            ? (record.supplyContributionEntriesByAssetId[assetId] ?? [])
+                .reduce((sum, entry) => sum + entry.quantity, 0)
+            : 0;
+
+          if (type === 'Supplies' && quantity <= 0) {
+            if (existingRequestIndex >= 0) {
+              const nextRequests = [...card.requests];
+              nextRequests.splice(existingRequestIndex, 1);
+              nextById[assetId] = {
+                ...card,
+                requests: nextRequests,
+                updatedMs: Date.now(),
+                updatedAtIso: new Date().toISOString()
+              };
+              changed = true;
+            }
+            continue;
+          }
+
+          const desiredRequest: AppTypes.AssetMemberRequest = {
+            id: existingRequest?.id ?? `manual:${subEvent.id}:${card.id}`,
+            userId: record.assetOwnerUserId,
+            name: 'Demo User',
+            initials: 'DU',
+            gender: 'man',
+            status: 'accepted',
+            note: '',
+            requestKind: 'manual',
+            requestedAtIso: existingRequest?.requestedAtIso ?? record.createdAtIso,
+            booking: {
+              eventId: event.id,
+              subEventId: subEvent.id,
+              startAtIso: subEvent.startAt,
+              endAtIso: subEvent.endAt,
+              quantity: type === 'Supplies' ? quantity : 1,
+              totalAmount: 0,
+              currency: 'USD',
+              acceptedPolicyIds: [],
+              paymentSessionId: '',
+              inventoryApplied: true
+            }
+          };
+
+          if (!existingRequest || ActivityResourceBuilder.assetRequestSyncSignature(existingRequest) !== ActivityResourceBuilder.assetRequestSyncSignature(desiredRequest)) {
+            const nextRequests = [...card.requests];
+            if (existingRequestIndex >= 0) {
+              nextRequests[existingRequestIndex] = desiredRequest;
+            } else {
+              nextRequests.push(desiredRequest);
+            }
+            nextById[assetId] = {
+              ...card,
+              requests: nextRequests,
+              updatedMs: Date.now(),
+              updatedAtIso: new Date().toISOString()
+            };
+            changed = true;
+          }
+        }
+      }
+    }
+
+    return changed ? { ...table, byId: nextById } : table;
+  }
+
+  private normalizeAssetsCollection(value: unknown): DemoAssetsRecordCollection {
+    const source = value as Partial<DemoAssetsRecordCollection> | null | undefined;
+    return {
+      byId: source?.byId ? { ...source.byId } : {},
+      ids: Array.isArray(source?.ids) ? [...source.ids] : [],
+      idsByOwnerUserId: source?.idsByOwnerUserId ? { ...source.idsByOwnerUserId } : {}
     };
   }
 }

@@ -158,7 +158,8 @@
   color: rgba(56, 77, 104, 0.74);
 }
 
-.smart-list--list.smart-list--card-grid {
+.smart-list--list.smart-list--card-grid,
+.smart-list--list.smart-list--stack {
   --smart-list-card-snap-gap: 0.34rem;
   scroll-padding-top: calc(
     var(--smart-list-sticky-header-height, var(--smart-list-scroll-padding-top, 2.6rem))
@@ -178,15 +179,18 @@
   overflow-anchor: none;
 }
 
-.smart-list--list.smart-list--card-grid.smart-list--snap-proximity {
+.smart-list--list.smart-list--card-grid.smart-list--snap-proximity,
+.smart-list--list.smart-list--stack.smart-list--snap-proximity {
   scroll-snap-type: y proximity;
 }
 
-.smart-list--list.smart-list--card-grid.smart-list--snap-mandatory {
+.smart-list--list.smart-list--card-grid.smart-list--snap-mandatory,
+.smart-list--list.smart-list--stack.smart-list--snap-mandatory {
   scroll-snap-type: y mandatory;
 }
 
-.smart-list--list.smart-list--card-grid.smart-list--snap-none {
+.smart-list--list.smart-list--card-grid.smart-list--snap-none,
+.smart-list--list.smart-list--stack.smart-list--snap-none {
   scroll-snap-type: none;
 }
 
@@ -336,6 +340,7 @@
 .smart-list__item-shell {
   display: block;
   min-width: 0;
+  scroll-snap-align: start;
 }
 
 .smart-list--list.smart-list--card-grid .smart-list__item-shell {

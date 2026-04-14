@@ -99,6 +99,16 @@ export class AssetCardBuilder {
     return this.normalizeQuantity(card.type, card.quantity, card.capacityTotal);
   }
 
+  static storedQuantityValue(
+    card: Pick<AppTypes.AssetCard, 'type' | 'capacityTotal'> & { quantity: unknown }
+  ): number {
+    const parsed = Math.trunc(Number(card.quantity));
+    if (Number.isFinite(parsed) && parsed >= 0) {
+      return parsed;
+    }
+    return this.normalizeQuantity(card.type, card.quantity, card.capacityTotal);
+  }
+
   static defaultQuantity(type: AppTypes.AssetType): number {
     return type === 'Supplies' ? 6 : 1;
   }

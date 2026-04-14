@@ -34,6 +34,27 @@ export class DemoActivityInviteCandidatesRepository implements ActivityInviteCan
     const existingUserIds = new Set(query.existingMemberUserIds.map(userId => userId.trim()).filter(Boolean));
     existingUserIds.add(activeUserId);
 
+    // Filter out existing contacts at the repository level if the owner is an asset
+    if (query.owner.ownerType === 'asset') {
+      const storageKey = `myscoutee.navigator.contacts.v1.${activeUserId}`;
+      try {
+        const rawContacts = localStorage.getItem(storageKey);
+        if (rawContacts) {
+          const contacts = JSON.parse(rawContacts);
+          if (Array.isArray(contacts)) {
+            for (const contact of contacts) {
+              const contactUserId = (contact.userId || contact.id || '').trim();
+              if (contactUserId) {
+                existingUserIds.add(contactUserId);
+              }
+            }
+          }
+        }
+      } catch {
+        // Ignore storage errors
+      }
+    }
+
     const latestMetByUserId = new Map<string, { metAtIso: string; metWhere: string; relevance: number }>();
     for (const rate of this.usersRatingsRepository.queryUserRatesByUserId(activeUserId)) {
       const counterpartIds = this.counterpartUserIds(rate, activeUserId);
