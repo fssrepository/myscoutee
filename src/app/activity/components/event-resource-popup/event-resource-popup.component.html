@@ -616,17 +616,12 @@
                   <span>{{ explore.error }}</span>
                 </section>
               }
-              @if (explore.loading) {
-                <section class="asset-explore-empty-state">
-                  <mat-icon>hourglass_top</mat-icon>
-                  <span>Loading visible assets...</span>
-                </section>
-              } @else if (explore.error && explore.cards.length === 0) {
+              @if (explore.error && explore.cards.length === 0) {
                 <section class="asset-explore-empty-state asset-explore-empty-state-error">
                   <mat-icon>error</mat-icon>
                   <span>{{ explore.error }}</span>
                 </section>
-              } @else if (explore.cards.length === 0) {
+              } @else if (explore.cards.length === 0 && !explore.loading) {
                 <section class="asset-explore-empty-state">
                   <mat-icon>travel_explore</mat-icon>
                   <span>No visible assets match this date range and category yet.</span>
