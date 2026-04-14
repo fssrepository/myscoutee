@@ -340,6 +340,8 @@
   gap: 0.72rem;
   overflow: auto;
   padding: 0.12rem 0.24rem 0.72rem 0.04rem;
+  will-change: transform, scroll-position;
+  transform: translateZ(0);
   transform: translateZ(0); /* Hardware accelerates the scroll layer */
   backface-visibility: hidden;
 }

@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, HostListener, Input, OnChanges, SimpleChanges } from '@angular/core';
+import { Component, HostListener, Input, OnChanges, OnDestroy, OnInit, SimpleChanges } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
@@ -21,7 +21,7 @@ import { PricingEditorComponent } from '../../../shared/ui';
   templateUrl: './asset-form-popup.component.html',
   styleUrl: './asset-form-popup.component.scss'
 })
-export class AssetFormPopupComponent implements OnChanges {
+export class AssetFormPopupComponent implements OnChanges, OnInit, OnDestroy {
   @Input() visible = false;
   @Input() title = '';
   @Input({ required: true }) assetForm!: Omit<AppTypes.AssetCard, 'id' | 'requests'>;
@@ -54,6 +54,24 @@ export class AssetFormPopupComponent implements OnChanges {
   protected workingPolicies: AppTypes.EventPolicyItem[] = [];
   protected workingPolicyDraft: AppTypes.EventPolicyItem = this.createEmptyPolicyDraft();
   protected editingPolicyDraftIndex: number | null = null;
+
+  // Add to your class properties:
+  protected isMobileViewport = false;
+  private mediaQueryList: MediaQueryList | null = null;
+  private mediaListener = () => { this.isMobileViewport = this.mediaQueryList?.matches ?? false; };
+
+  // Implement OnInit and OnDestroy:
+  ngOnInit(): void {
+    if (typeof window !== 'undefined') {
+      this.mediaQueryList = window.matchMedia('(max-width: 900px)');
+      this.isMobileViewport = this.mediaQueryList.matches;
+      this.mediaQueryList.addEventListener('change', this.mediaListener);
+    }
+  }
+
+  ngOnDestroy(): void {
+    this.mediaQueryList?.removeEventListener('change', this.mediaListener);
+  }
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['visible'] && changes['visible'].currentValue === true) {
