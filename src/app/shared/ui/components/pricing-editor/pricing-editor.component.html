@@ -231,7 +231,10 @@
         <div class="pricing-editor__rules">
           @for (rule of workingPricing.demandRules; track trackByRule($index, rule)) {
             <article class="pricing-editor__rule-card">
-              <div class="pricing-editor__rule-grid" [class.pricing-editor__rule-grid--slots]="resolvedAllowSlotFeatures">
+              <div
+                class="pricing-editor__rule-grid"
+                [class.pricing-editor__rule-grid--slots]="resolvedAllowSlotFeatures"
+              >
                 <label class="pricing-editor__field">
                   <span>If</span>
                   <div class="pricing-editor__select-shell">
@@ -412,7 +415,10 @@
         <div class="pricing-editor__rules">
           @for (rule of workingPricing.timeRules; track trackByRule($index, rule)) {
             <article class="pricing-editor__rule-card">
-              <div class="pricing-editor__rule-grid" [class.pricing-editor__rule-grid--slots]="resolvedAllowSlotFeatures">
+              <div
+                class="pricing-editor__rule-grid"
+                [class.pricing-editor__rule-grid--slots]="resolvedAllowSlotFeatures"
+              >
                 <label class="pricing-editor__field">
                   <span>If</span>
                   <div class="pricing-editor__select-shell">
