@@ -32,10 +32,12 @@ export class EntryDemoUserSelectorComponent {
   @Input() loadingProgress = 0;
   @Input() loadingLabel = 'Preparing demo data';
   @Input() loadingStage: DemoBootstrapProgressStage = 'selector';
+  @Input() errorMessage = '';
   @Input() submitting = false;
   @Input() users: DemoUserListItemDto[] = [];
 
   @Output() readonly closeRequested = new EventEmitter<void>();
+  @Output() readonly retryRequested = new EventEmitter<void>();
   @Output() readonly userSelected = new EventEmitter<string>();
 
   protected requestClose(): void {
@@ -50,6 +52,13 @@ export class EntryDemoUserSelectorComponent {
       return;
     }
     this.userSelected.emit(userId);
+  }
+
+  protected requestRetry(): void {
+    if (this.loading || this.submitting) {
+      return;
+    }
+    this.retryRequested.emit();
   }
 
   protected loadingSegments(): ReadonlyArray<DemoUserProgressSegment> {

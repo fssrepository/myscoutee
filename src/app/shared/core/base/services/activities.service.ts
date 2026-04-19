@@ -8,6 +8,7 @@ import type {
   EventExploreFeedFilters
 } from '../../../core/base/models';
 import type { ChatMenuItem } from '../interfaces/activity-feed.interface';
+import type { UserDto } from '../interfaces/user.interface';
 import type { ListQuery, PageResult } from '../../../ui';
 import {
   buildActivityEventRows,
@@ -20,6 +21,7 @@ import { ChatsService } from './chats.service';
 import { EventsService } from './events.service';
 import { RatesService } from './rates.service';
 import { SessionService } from './session.service';
+import { UsersService } from './users.service';
 import { DemoUsersRepository } from '../../demo';
 import { BaseRouteModeService } from './base-route-mode.service';
 
@@ -31,6 +33,7 @@ export class ActivitiesService extends BaseRouteModeService {
   private readonly chatsService = inject(ChatsService);
   private readonly ratesService = inject(RatesService);
   private readonly appCtx = inject(AppContext);
+  private readonly usersService = inject(UsersService);
   private readonly demoUsersRepository = inject(DemoUsersRepository);
 
   async loadActivities(
@@ -65,10 +68,12 @@ export class ActivitiesService extends BaseRouteModeService {
   private async loadRates(request: ActivitiesPageRequest): Promise<PageResult<AppTypes.ActivityListRow>> {
     const activeUserId = this.resolveActiveUserId();
     const page = await this.ratesService.queryActivitiesRatePage(activeUserId, request);
+    this.cacheActivityUsers(page.users);
+    const knownUsers = this.resolveActivityUsers(page.users);
     return {
       items: buildActivityRateRows(page.items, {
         activeUserId,
-        users: this.demoUsersRepository.queryAllUsers(),
+        users: knownUsers,
         filter: request.rateFilter,
         secondaryFilter: request.secondaryFilter,
         view: request.view,
@@ -108,7 +113,7 @@ export class ActivitiesService extends BaseRouteModeService {
   ): Promise<PageResult<AppTypes.ActivityListRow>> {
     return this.chatsService.queryActivitiesChatPage(this.resolveActiveUserId(), request, {
       chatItems: options.chatItems,
-      users: this.demoUsersRepository.queryAllUsers()
+      users: this.resolveActivityUsers()
     });
   }
 
@@ -177,6 +182,25 @@ export class ActivitiesService extends BaseRouteModeService {
       pendingMemberUserIds: [...record.pendingMemberUserIds],
       topics: [...record.topics]
     };
+  }
+
+  private cacheActivityUsers(users: readonly UserDto[] | null | undefined): void {
+    for (const user of users ?? []) {
+      if (!user?.id?.trim()) {
+        continue;
+      }
+      this.appCtx.setUserProfile(user);
+    }
+  }
+
+  private resolveActivityUsers(preferredUsers?: readonly UserDto[] | null): UserDto[] {
+    if (this.isDemoModeEnabled('/activities/rates')) {
+      return this.demoUsersRepository.queryAllUsers();
+    }
+    if (preferredUsers && preferredUsers.length > 0) {
+      return preferredUsers.map(user => ({ ...user, images: [...(user.images ?? [])] }));
+    }
+    return this.usersService.peekCachedUsers();
   }
 
   private paginateActivitiesRows(

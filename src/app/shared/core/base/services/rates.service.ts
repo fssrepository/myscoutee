@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { AppUtils } from '../../../app-utils';
 import type { ActivitiesPageRequest } from '../../../core/base/models';
 import type { RateMenuItem } from '../interfaces/activity-feed.interface';
+import type { ActivityRatePageResult } from '../interfaces/game.interface';
 import { DemoRatesService } from '../../demo';
 import { HttpRatesService } from '../../http';
 import { BaseRouteModeService } from './base-route-mode.service';
@@ -41,7 +42,7 @@ export class RatesService extends BaseRouteModeService {
   async queryActivitiesRatePage(
     userId: string,
     request: ActivitiesPageRequest
-  ): Promise<{ items: RateMenuItem[]; total: number; nextCursor?: string | null }> {
+  ): Promise<ActivityRatePageResult> {
     if (this.isDemoModeEnabled('/activities/rates')) {
       return this.demoRatesService.queryActivitiesRatePage(userId, request);
     }
@@ -62,7 +63,7 @@ export class RatesService extends BaseRouteModeService {
   private buildLocalActivitiesRatePage(
     request: ActivitiesPageRequest,
     items: readonly RateMenuItem[]
-  ): { items: RateMenuItem[]; total: number; nextCursor?: string | null } {
+  ): ActivityRatePageResult {
     const [mode, direction] = request.rateFilter.split('-') as ['individual' | 'pair', RateMenuItem['direction']];
     const filtered = items
       .filter(item => item.mode === mode && item.direction === direction)
@@ -81,7 +82,8 @@ export class RatesService extends BaseRouteModeService {
       total: filtered.length,
       nextCursor: filtered.length > startIndex + pageItems.length && pageItems.length > 0
         ? pageItems[pageItems.length - 1]?.id ?? null
-        : null
+        : null,
+      users: []
     };
   }
 

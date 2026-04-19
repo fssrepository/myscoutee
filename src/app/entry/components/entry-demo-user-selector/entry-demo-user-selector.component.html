@@ -56,9 +56,27 @@
             </div>
           </div>
         } @else {
-          @if (users.length > 0) {
+          @if (errorMessage) {
+            <div class="demo-user-grid demo-user-grid-loading">
+              <div class="demo-user-loading-shell">
+                <div class="demo-user-loading-copy-group">
+                  <p class="demo-user-loading-eyebrow">Selector unavailable</p>
+                  <p class="demo-user-loading-copy">{{ errorMessage }}</p>
+                  <button
+                    mat-flat-button
+                    type="button"
+                    class="demo-user-retry-btn"
+                    [disabled]="submitting"
+                    (click)="requestRetry()"
+                  >
+                    Try again
+                  </button>
+                </div>
+              </div>
+            </div>
+          } @else if (users.length > 0) {
             <div class="demo-user-grid" [class.demo-user-grid-submitting]="submitting">
-              @for (user of users; track user) {
+              @for (user of users; track user.id) {
                 <button
                   type="button"
                   class="demo-user-item"

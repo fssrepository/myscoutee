@@ -188,6 +188,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     setSelectedRateIdInContext: value => this.activitiesContext.setActivitiesSelectedRateId(value),
     setFullscreenModeInContext: value => this.activitiesContext.setActivitiesRatesFullscreenMode(value),
     recordActivityRate: (item, score, direction) => this.ratesService.recordActivityRate(this.activeUser.id, item, score, direction),
+    refreshRateCards: () => this.refreshActivitiesRateCards(),
     markForCheck: () => this.cdr.markForCheck(),
     runAfterNextPaint: task => this.runAfterActivitiesNextPaint(task),
     runAfterRender: task => this.runAfterActivitiesRender(task)
@@ -255,6 +256,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected readonly eventSubEventsById: Record<string, AppTypes.SubEventFormItem[]> = {};
   protected readonly activityMembersByRowId: Record<string, AppTypes.ActivityMemberEntry[]> = {};
   protected activitiesEventCardRevision = 0;
+  protected activitiesRateCardRevision = 0;
   protected readonly forcedAcceptedMembersByRowKey: Record<string, number> = { 'events:e8': 20 };
   protected readonly leavingActivityRowIds = new Set<string>();
   protected readonly activityRowExitAnimationMs = 180;
@@ -1726,6 +1728,11 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   private bumpActivitiesEventCardRevision(): void {
     this.activitiesEventCardRevision += 1;
+  }
+
+  private refreshActivitiesRateCards(): void {
+    this.activitiesRateCardRevision += 1;
+    this.cdr.markForCheck();
   }
 
   private reconcileInvitationItemsFromEventSync(sync: ActivitiesEventSyncPayload): void {

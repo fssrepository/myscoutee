@@ -5,7 +5,7 @@ import { resolveRouteConfig } from '../config';
 
 export function resolveCurrentRouteDelayMs(route: string, fallbackDelayMs = 0): number {
   const routeConfig = resolveRouteConfig(route);
-  if (routeConfig.http) {
+  if (environment.activitiesDataSource === 'http' || routeConfig.http) {
     return 0;
   }
   if (routeConfig.demoDelayMs > 0) {

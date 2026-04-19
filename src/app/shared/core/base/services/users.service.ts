@@ -53,6 +53,7 @@ class RequestAbortedError extends Error {
 })
 export class UsersService extends BaseRouteModeService {
   private static readonly DEFAULT_REQUEST_TIMEOUT_MS = 3000;
+  private static readonly DEMO_USERS_HTTP_TIMEOUT_MS = 10000;
   private static readonly DEFAULT_SUBMIT_MIN_DELAY_MS = 1500;
   private readonly injector = inject(Injector);
   private readonly httpUsersService = inject(HttpUsersService);
@@ -158,6 +159,9 @@ export class UsersService extends BaseRouteModeService {
   ): Promise<DemoUserListItemDto[]> {
     const normalizedTimeoutMs = this.resolveRequestTimeoutMs(requestTimeoutMs);
     const demoModeEnabled = this.isDemoModeEnabled('/auth/demo-users');
+    const effectiveTimeoutMs = demoModeEnabled
+      ? normalizedTimeoutMs
+      : Math.max(normalizedTimeoutMs, UsersService.DEMO_USERS_HTTP_TIMEOUT_MS);
 
     this.setLoadStatus(USERS_LOAD_CONTEXT_KEY, 'loading');
 
@@ -168,7 +172,7 @@ export class UsersService extends BaseRouteModeService {
       const { value: response } = await this.loadWithRecovery(
         () => this.withRequestTimeout(
           (demoModeEnabled ? this.demoUsersService : this.httpUsersService).queryAvailableDemoUsers(),
-          normalizedTimeoutMs
+          effectiveTimeoutMs
         ),
         () => ({
           users: demoModeEnabled ? this.demoUsersRepository.queryAvailableDemoUsers() : []

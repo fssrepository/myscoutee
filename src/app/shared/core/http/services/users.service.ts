@@ -41,21 +41,20 @@ export class HttpUsersService implements UserService {
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
 
   async queryAvailableDemoUsers(): Promise<UsersListQueryResponse> {
-    try {
-      const response = await this.http
-        .get<UserDto[] | null>(`${this.apiBaseUrl}/auth/demo-users`)
-        .toPromise();
-      if (!Array.isArray(response)) {
-        return { users: [] };
-      }
-      return {
-        users: response
-          .map(user => this.cloneUser(user))
-          .map(user => this.toDemoUserListItem(user))
-      };
-    } catch {
+    type HttpDemoUserListEntry = Partial<UserDto> & Partial<DemoUserListItemDto> & {
+      gender?: string | null;
+    };
+    const response = await this.http
+      .get<HttpDemoUserListEntry[] | null>(`${this.apiBaseUrl}/auth/demo-users`)
+      .toPromise();
+    if (!Array.isArray(response)) {
       return { users: [] };
     }
+    return {
+      users: response
+        .map(user => this.toDemoUserListItem(user))
+        .filter((user): user is DemoUserListItemDto => user !== null)
+    };
   }
 
   async checkLocationEligibility(coordinates?: LocationCoordinates | null): Promise<UserLocationEligibilityResponseDto> {
@@ -537,13 +536,18 @@ export class HttpUsersService implements UserService {
     return error instanceof Error && error.name === 'AbortError';
   }
 
-  private toDemoUserListItem(user: UserDto): DemoUserListItemDto {
+  private toDemoUserListItem(user: Partial<UserDto> & Partial<DemoUserListItemDto> & { gender?: string | null }): DemoUserListItemDto | null {
+    const id = `${user.id ?? ''}`.trim();
+    if (!id) {
+      return null;
+    }
+    const normalizedGender = `${user.gender ?? ''}`.trim().toLowerCase() === 'man' ? 'man' : 'woman';
     return {
-      id: user.id,
-      name: user.name,
-      city: user.city,
-      initials: user.initials,
-      gender: user.gender
+      id,
+      name: `${user.name ?? ''}`.trim(),
+      city: `${user.city ?? ''}`.trim(),
+      initials: `${user.initials ?? ''}`.trim(),
+      gender: normalizedGender
     };
   }
 

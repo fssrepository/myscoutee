@@ -1,6 +1,6 @@
 import { ChangeDetectorRef, Component, EventEmitter, HostListener, Injector, Input, NgZone, Output, inject } from '@angular/core';
 
-import { UsersService, type DemoUserListItemDto } from '../../../shared/core';
+import { AppContext, USERS_LOAD_CONTEXT_KEY, UsersService, type DemoUserListItemDto } from '../../../shared/core';
 import type { DemoBootstrapProgressStage } from '../../../shared/core/demo';
 import type * as AppTypes from '../../../shared/core/base/models';
 import type { LocationCoordinates } from '../../../shared/core/base/interfaces/location.interface';
@@ -33,6 +33,7 @@ export class EntryShellComponent {
   private readonly injector = inject(Injector);
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
   private readonly ngZone = inject(NgZone);
+  private readonly appCtx = inject(AppContext);
   private readonly confirmationDialogService = inject(ConfirmationDialogService);
   private usersServiceRef: UsersService | null = null;
   private loginEligibilityBusy = false;
@@ -54,6 +55,7 @@ export class EntryShellComponent {
   protected demoSelectorLoadingProgress = 0;
   protected demoSelectorLoadingLabel = 'Preparing demo data';
   protected demoSelectorLoadingStage: DemoBootstrapProgressStage = 'selector';
+  protected demoSelectorErrorMessage = '';
   protected demoSelectorSubmitting = false;
   protected showFirebaseAuthPopup = false;
   private demoSelectorRequestToken = 0;
@@ -129,6 +131,7 @@ export class EntryShellComponent {
     this.demoSelectorLoadingProgress = 0;
     this.demoSelectorLoadingLabel = 'Preparing demo data';
     this.demoSelectorLoadingStage = 'selector';
+    this.demoSelectorErrorMessage = '';
     this.demoSelectorSubmitting = false;
   }
 
@@ -150,6 +153,13 @@ export class EntryShellComponent {
       return;
     }
     this.firebaseAuthRequested.emit();
+  }
+
+  protected retryDemoUserSelectorPopup(): void {
+    if (this.demoSelectorLoading || this.demoSelectorSubmitting) {
+      return;
+    }
+    this.openDemoUserSelectorPopup();
   }
 
   protected openEntryConsentPopup(viewOnly = false): void {
@@ -195,6 +205,7 @@ export class EntryShellComponent {
     this.demoSelectorLoadingProgress = 0;
     this.demoSelectorLoadingLabel = 'Preparing demo data';
     this.demoSelectorLoadingStage = 'selector';
+    this.demoSelectorErrorMessage = '';
     this.demoSelectorSubmitting = false;
     this.showFirebaseAuthPopup = false;
   }
@@ -270,6 +281,7 @@ export class EntryShellComponent {
     this.demoSelectorLoadingProgress = 0;
     this.demoSelectorLoadingLabel = 'Preparing demo data';
     this.demoSelectorLoadingStage = 'selector';
+    this.demoSelectorErrorMessage = '';
     this.demoSelectorSubmitting = false;
     void this.loadDemoSelectorUsers(requestToken);
   }
@@ -291,15 +303,27 @@ export class EntryShellComponent {
           this.demoSelectorLoadingStage = state.stage;
         });
       });
+      const loadState = this.appCtx.getLoadingState(USERS_LOAD_CONTEXT_KEY);
+      const selectorErrorMessage = users.length === 0
+        && (loadState.status === 'timeout' || loadState.status === 'error')
+        ? (loadState.error?.trim() || 'Unable to load demo users right now.')
+        : '';
       if (!this.isCurrentDemoSelectorRequest(requestToken)) {
         return;
       }
       this.commitDemoSelectorState(() => {
         this.demoSelectorUsers = users;
-        this.demoSelectorLoadingProgress = 100;
-        this.demoSelectorLoadingLabel = 'Demo data ready';
-        this.demoSelectorLoadingStage = 'ready';
+        this.demoSelectorErrorMessage = selectorErrorMessage;
+        this.demoSelectorLoadingProgress = selectorErrorMessage ? 0 : 100;
+        this.demoSelectorLoadingLabel = selectorErrorMessage ? 'Retry demo selector' : 'Demo data ready';
+        this.demoSelectorLoadingStage = selectorErrorMessage ? 'selector' : 'ready';
       });
+      if (selectorErrorMessage) {
+        this.commitDemoSelectorState(() => {
+          this.demoSelectorLoading = false;
+        });
+        return;
+      }
       await this.waitForLoaderCompletionBeat();
       if (!this.isCurrentDemoSelectorRequest(requestToken)) {
         return;
@@ -313,6 +337,8 @@ export class EntryShellComponent {
       }
       this.commitDemoSelectorState(() => {
         this.demoSelectorLoading = false;
+        this.demoSelectorErrorMessage = this.appCtx.getLoadingState(USERS_LOAD_CONTEXT_KEY).error?.trim()
+          || 'Unable to load demo users right now.';
       });
     }
   }

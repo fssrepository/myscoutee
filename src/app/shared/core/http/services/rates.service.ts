@@ -4,6 +4,8 @@ import { Injectable, inject } from '@angular/core';
 import { environment } from '../../../../../environments/environment';
 import type { ActivitiesPageRequest } from '../../../core/base/models';
 import type { RateMenuItem } from '../../base/interfaces/activity-feed.interface';
+import type { ActivityRatePageResult } from '../../base/interfaces/game.interface';
+import type { UserDto } from '../../base/interfaces/user.interface';
 import { HttpUsersRatingsRepository } from '../repositories/users-ratings.repository';
 
 @Injectable({
@@ -37,7 +39,7 @@ export class HttpRatesService {
   async queryActivitiesRatePage(
     userId: string,
     request: ActivitiesPageRequest
-  ): Promise<{ items: RateMenuItem[]; total: number; nextCursor?: string | null }> {
+  ): Promise<ActivityRatePageResult> {
     await this.queryRateItemsByUser(userId);
     const [mode, direction] = request.rateFilter.split('-') as ['individual' | 'pair', RateMenuItem['direction']];
     let params = new HttpParams()
@@ -63,6 +65,7 @@ export class HttpRatesService {
       items?: RateMenuItem[] | null;
       total?: number | null;
       nextCursor?: string | null;
+      users?: UserDto[] | null;
     } | null>(`${this.apiBaseUrl}${HttpRatesService.USER_RATES_PAGE_ROUTE}`, { params }).toPromise();
 
     return {
@@ -70,7 +73,31 @@ export class HttpRatesService {
       total: Number.isFinite(response?.total) ? Math.max(0, Math.trunc(Number(response?.total))) : 0,
       nextCursor: typeof response?.nextCursor === 'string' && response.nextCursor.trim().length > 0
         ? response.nextCursor.trim()
-        : null
+        : null,
+      users: Array.isArray(response?.users) ? response.users.map(user => this.cloneUser(user)) : []
+    };
+  }
+
+  private cloneUser(user: UserDto): UserDto {
+    return {
+      ...user,
+      locationCoordinates: user.locationCoordinates
+        ? {
+            latitude: Number(user.locationCoordinates.latitude),
+            longitude: Number(user.locationCoordinates.longitude)
+          }
+        : undefined,
+      languages: [...(user.languages ?? [])],
+      images: [...(user.images ?? [])],
+      activities: {
+        game: user.activities?.game ?? 0,
+        chat: user.activities?.chat ?? 0,
+        invitations: user.activities?.invitations ?? 0,
+        events: user.activities?.events ?? 0,
+        hosting: user.activities?.hosting ?? 0,
+        tickets: user.activities?.tickets ?? 0,
+        feedback: user.activities?.feedback ?? 0
+      }
     };
   }
 }

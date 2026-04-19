@@ -20,9 +20,11 @@
   [loadingProgress]="demoSelectorLoadingProgress"
   [loadingLabel]="demoSelectorLoadingLabel"
   [loadingStage]="demoSelectorLoadingStage"
+  [errorMessage]="demoSelectorErrorMessage"
   [submitting]="demoSelectorSubmitting"
   [users]="demoSelectorUsers"
   (closeRequested)="closeDemoUserSelectorPopup()"
+  (retryRequested)="retryDemoUserSelectorPopup()"
   (userSelected)="onSelectDemoUser($event)"
 ></app-entry-demo-user-selector>
 
