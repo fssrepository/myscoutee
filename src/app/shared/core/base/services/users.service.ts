@@ -258,8 +258,12 @@ export class UsersService extends BaseRouteModeService {
         return null;
       }
 
-      const resolvedUserId = normalizedUserId || response.user.id.trim();
+      const resolvedUserId = response.user.id.trim() || normalizedUserId;
+      const previousActiveUserId = this.appCtx.getActiveUserId().trim();
       this.appCtx.setUserProfile(response.user);
+      if (resolvedUserId && (!normalizedUserId || previousActiveUserId === normalizedUserId)) {
+        this.appCtx.setActiveUserId(resolvedUserId);
+      }
       if (resolvedUserId) {
         this.appCtx.clearUserCounterOverrides(resolvedUserId);
         if (response.counterOverrides) {

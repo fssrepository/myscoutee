@@ -118,6 +118,14 @@ export class ActivitiesService extends BaseRouteModeService {
   }
 
   private resolveActiveUserId(): string {
+    const activeUserProfileId = this.appCtx.activeUserProfile()?.id?.trim();
+    if (activeUserProfileId) {
+      return activeUserProfileId;
+    }
+    const activeUserId = this.appCtx.getActiveUserId().trim();
+    if (activeUserId) {
+      return activeUserId;
+    }
     const session = this.sessionService.currentSession();
     if (session?.kind === 'demo' && session.userId.trim().length > 0) {
       return session.userId.trim();
@@ -125,11 +133,7 @@ export class ActivitiesService extends BaseRouteModeService {
     if (session?.kind === 'firebase' && session.profile.id.trim().length > 0) {
       return session.profile.id.trim();
     }
-    const activeUserId = this.appCtx.getActiveUserId().trim();
-    if (activeUserId) {
-      return activeUserId;
-    }
-        return this.isDemoModeEnabled('/activities/events')
+    return this.isDemoModeEnabled('/activities/events')
       ? (this.demoUsersRepository.queryAllUsers()[0]?.id ?? '')
       : '';
   }
