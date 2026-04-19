@@ -375,7 +375,7 @@ export class EventResourcePopupComponent implements DoCheck {
     const basePageSize = Math.max(1, Math.trunc(Number(this.assetExploreSmartListConfig.pageSize) || pageSize));
     const initialPageSize = Math.max(
       basePageSize,
-      Math.trunc(Number(this.assetExploreSmartListConfig.initialPageSize ?? basePageSize))
+      this.assetExploreInitialPageSize(basePageSize)
     );
     const start = page === 0 ? 0 : initialPageSize + ((page - 1) * basePageSize);
     const size = page === 0 ? Math.max(pageSize, initialPageSize) : pageSize;
@@ -1112,6 +1112,17 @@ export class EventResourcePopupComponent implements DoCheck {
       return false;
     }
     return window.matchMedia('(max-width: 900px)').matches;
+  }
+
+  private assetExploreInitialPageSize(basePageSize: number): number {
+    const configuredInitialPageSize = Math.max(
+      basePageSize,
+      Math.trunc(Number(this.assetExploreSmartListConfig.initialPageSize ?? basePageSize))
+    );
+    if (!this.isMobileResourceFilterSheetViewport()) {
+      return configuredInitialPageSize;
+    }
+    return Math.min(configuredInitialPageSize, basePageSize);
   }
 
   private resourceMediaStart(card: AppTypes.SubEventResourceCard): NonNullable<InfoCardData['mediaStart']> | null {
