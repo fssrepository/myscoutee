@@ -14,6 +14,21 @@
   position: relative;
 }
 
+@media (min-width: 901px) {
+  .experience-form-overlay.asset-form-overlay {
+    align-items: flex-start;
+    padding: 1rem;
+  }
+
+  .asset-form-popup {
+    width: min(1080px, calc(100vw - 1.2rem));
+    max-width: min(1080px, calc(100vw - 1.2rem));
+    height: calc(100vh - 1.2rem);
+    max-height: calc(100vh - 1.2rem);
+    border-radius: 14px;
+  }
+}
+
 .asset-form-visibility-picker {
   position: relative;
   display: inline-flex;

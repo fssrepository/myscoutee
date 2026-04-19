@@ -1085,6 +1085,14 @@
   .pricing-editor__rule-grid.pricing-editor__rule-grid--slots {
     grid-template-columns: minmax(0, 1.22fr) minmax(112px, 0.68fr) minmax(0, 1.1fr) minmax(100px, 0.65fr) minmax(0, 1.05fr);
   }
+
+  .pricing-editor__rule-grid.pricing-editor__rule-grid--time-date-desktop {
+    grid-template-columns: minmax(0, 1.1fr) minmax(260px, 1.3fr) minmax(0, 1.05fr) minmax(110px, 0.72fr);
+  }
+
+  .pricing-editor__rule-grid.pricing-editor__rule-grid--time-date-desktop.pricing-editor__rule-grid--slots {
+    grid-template-columns: minmax(0, 1.08fr) minmax(260px, 1.24fr) minmax(0, 1fr) minmax(100px, 0.62fr) minmax(0, 1.02fr);
+  }
 }
 
 @container (max-width: 980px) {

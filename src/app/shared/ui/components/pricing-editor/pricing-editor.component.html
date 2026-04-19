@@ -418,6 +418,7 @@
               <div
                 class="pricing-editor__rule-grid"
                 [class.pricing-editor__rule-grid--slots]="resolvedAllowSlotFeatures"
+                [class.pricing-editor__rule-grid--time-date-desktop]="rule.trigger === 'specific_date'"
               >
                 <label class="pricing-editor__field">
                   <span>If</span>
