@@ -1255,13 +1255,17 @@ export class SubEventResourcePopupService {
     if (!normalizedManagerUserId) {
       return requests;
     }
-    const visibleRequests = requests.filter(request => {
-      const requestUserId = AppUtils.resolveAssetRequestUserId(request, this.users) || `${request.userId ?? ''}`.trim();
-      if (requestUserId !== normalizedManagerUserId) {
-        return true;
-      }
-      return request.status === 'accepted' || request.requestKind === 'manual';
-    });
+    const ownerUserId = `${card.ownerUserId ?? ''}`.trim();
+    const managerOwnsAsset = this.isAssetOwnedByActiveUser(card, normalizedManagerUserId, ownerUserId);
+    const visibleRequests = managerOwnsAsset
+      ? requests.filter(request => {
+          const requestUserId = AppUtils.resolveAssetRequestUserId(request, this.users) || `${request.userId ?? ''}`.trim();
+          if (requestUserId !== normalizedManagerUserId) {
+            return true;
+          }
+          return request.status === 'accepted' || request.requestKind === 'manual';
+        })
+      : requests;
     const hasManagerRequest = visibleRequests.some(request =>
       AppUtils.resolveAssetRequestUserId(request, this.users) === normalizedManagerUserId
       || `${request.userId ?? ''}`.trim() === normalizedManagerUserId
@@ -1277,9 +1281,9 @@ export class SubEventResourcePopupService {
         name: managerUser.name,
         initials: managerUser.initials,
         gender: managerUser.gender,
-        status: 'accepted',
-        note: 'Managing this asset for the sub-event.',
-        requestKind: 'manual',
+        status: managerOwnsAsset ? 'accepted' : 'pending',
+        note: managerOwnsAsset ? 'Managing this asset for the sub-event.' : 'Waiting for lender approval.',
+        requestKind: managerOwnsAsset ? 'manual' : 'borrow',
         requestedAtIso: '',
         booking: {
           subEventId
@@ -4357,7 +4361,7 @@ export class SubEventResourcePopupService {
       if (!existingCards.some(item => item.id === card.id)) {
         nextFallbackCards[card.type] = [
           ...existingCards,
-          this.assignedFallbackAssetSnapshot(context.subEvent.id, card, { clearRequests: true })
+          this.assignedFallbackAssetSnapshot(context.subEvent.id, card)
         ];
       }
       const nextContext = {
