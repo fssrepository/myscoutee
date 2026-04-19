@@ -939,7 +939,7 @@ export class EventResourcePopupComponent implements DoCheck {
     let nextVisibleCount = Math.min(cards.length, visibleCount);
 
     if (cards.length > previousCardCount && allCardsWereVisible) {
-      nextVisibleCount = Math.min(cards.length, visibleCount + 1);
+      nextVisibleCount = Math.min(cards.length, visibleCount + (cards.length - previousCardCount));
     }
 
     const orderedCards = this.assetExploreCardsForView(cards);
@@ -957,8 +957,8 @@ export class EventResourcePopupComponent implements DoCheck {
   }
 
   private assetExploreCardsForView(source: readonly AppTypes.AssetCard[] = this.host?.assetExplorePopup?.()?.cards ?? []): AppTypes.AssetCard[] {
-    const cards = [...source];
     const availability = (card: AppTypes.AssetCard) => this.host.assetExploreAvailableQuantity(card);
+    const cards = [...source].filter(card => availability(card) > 0);
     const price = (card: AppTypes.AssetCard) => this.assetExplorePriceAmount(card);
     const policyCount = (card: AppTypes.AssetCard) => (card.policies ?? []).length;
 
