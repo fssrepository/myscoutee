@@ -485,7 +485,6 @@ export class SubEventResourcePopupService {
     this.closeAssignPopup(false);
     this.hydratePopupResourceState(context);
     this.syncPopupSubEventMetrics();
-    this.scheduleAssetExploreWarmup(type, context);
   }
 
   private hydratePopupResourceState(context: ResourcePopupContext): void {
@@ -1037,7 +1036,6 @@ export class SubEventResourcePopupService {
     this.routeEditorRef.set(null);
     this.assetExploreBorrowDialogRef.set(null);
     this.assetExplorePopupRef.set(null);
-    this.scheduleAssetExploreWarmup(filter);
   }
 
   private onResourceFilterOpened(isOpen: boolean, select: MatSelect): void {
