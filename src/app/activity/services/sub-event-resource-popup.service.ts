@@ -23,6 +23,7 @@ import {
 import { ActivitiesPopupStateService } from './activities-popup-state.service';
 import { EventEditorPopupStateService } from './event-editor-popup-state.service';
 import type {
+  AssignedAssetJoinDialogViewState,
   AssetExploreBorrowDraftViewState,
   AssetExploreBorrowDialogViewState,
   AssetExplorePopupViewState,
@@ -119,6 +120,15 @@ interface AssetExploreBorrowDialogState {
   error: string | null;
 }
 
+interface AssignedAssetJoinDialogState {
+  cardId: string;
+  type: 'Car' | 'Accommodation';
+  sourceAssetId: string;
+  acceptedPolicyIds: string[];
+  busy: boolean;
+  error: string | null;
+}
+
 interface AssetExploreBorrowDraftState {
   userId: string;
   subEventId: string;
@@ -148,6 +158,14 @@ interface SupplyBringDialogState {
   max: number;
   busy: boolean;
   error: string | null;
+}
+
+interface AssignedAssetJoinPricingPreview {
+  totalAmount: number;
+  shareAmount: number;
+  shareMemberCount: number;
+  currency: string;
+  chargeType: AppTypes.PricingChargeType | null;
 }
 
 @Injectable({
@@ -188,6 +206,7 @@ export class SubEventResourcePopupService {
   private readonly pendingAssignSaveRef = signal<PendingAssignSaveState | null>(null);
   private readonly assetExplorePopupRef = signal<AssetExplorePopupState | null>(null);
   private readonly assetExploreBorrowDialogRef = signal<AssetExploreBorrowDialogState | null>(null);
+  private readonly assignedAssetJoinDialogRef = signal<AssignedAssetJoinDialogState | null>(null);
   private readonly assetExploreBorrowDraftsRef = signal<Record<string, AssetExploreBorrowDraftState>>({});
   private readonly assignContextRef = signal<{ subEventId: string; type: AppTypes.AssetType } | null>(null);
   private readonly selectedAssignAssetIdsRef = signal<string[]>([]);
@@ -248,6 +267,7 @@ export class SubEventResourcePopupService {
     pendingDeleteCard: () => this.pendingResourceDeleteRef(),
     assetExplorePopup: () => this.assetExplorePopupViewState(),
     assetExploreBorrowDialog: () => this.assetExploreBorrowDialogViewState(),
+    joinDialog: () => this.assignedAssetJoinDialogViewState(),
     assetExploreBorrowDrafts: () => this.assetExploreBorrowDraftsViewState(),
     close: () => this.closeResourcePopup(),
     selectResourceFilter: filter => this.selectResourceFilter(filter),
@@ -287,6 +307,13 @@ export class SubEventResourcePopupService {
     toggleItemActionMenu: (card, event) => this.toggleItemActionMenu(card, event),
     canJoin: card => this.canJoin(card),
     join: (card, event) => this.join(card, event),
+    canLeave: card => this.canLeave(card),
+    leave: (card, event) => this.leave(card, event),
+    closeJoinDialog: event => this.closeAssignedAssetJoinDialog(event),
+    toggleJoinPolicy: policyId => this.toggleAssignedAssetJoinPolicy(policyId),
+    canSubmitJoin: () => this.canSubmitAssignedAssetJoin(),
+    confirmJoin: event => this.confirmAssignedAssetJoin(event),
+    joinConfirmRingPerimeter: () => this.assignConfirmRingPerimeter,
     canEditCapacity: card => this.canEditCapacity(card),
     openCapacityEditor: (card, event) => this.openCapacityEditor(card, event),
     canEditRoute: card => this.canEditRoute(card),
@@ -485,6 +512,7 @@ export class SubEventResourcePopupService {
     this.abortPendingSupplyBringRequest();
     this.bringDialogRef.set(null);
     this.pendingSupplyDeleteRef.set(null);
+    this.assignedAssetJoinDialogRef.set(null);
     this.assetExploreBorrowDialogRef.set(null);
     this.assetExplorePopupRef.set(null);
     this.closeAssignPopup(false);
@@ -613,6 +641,7 @@ export class SubEventResourcePopupService {
     this.supplyPopupRef.set(null);
     this.bringDialogRef.set(null);
     this.pendingSupplyDeleteRef.set(null);
+    this.assignedAssetJoinDialogRef.set(null);
     this.assetExploreBorrowDialogRef.set(null);
     this.assetExplorePopupRef.set(null);
     this.closeAssignPopup(false);
@@ -684,8 +713,8 @@ export class SubEventResourcePopupService {
     }
     const assetType: 'Car' | 'Accommodation' = card.type;
     const settings = this.getSubEventAssignedAssetSettings(context.subEvent.id, assetType);
-    const ownerUserId = settings[card.sourceAssetId]?.addedByUserId ?? null;
-    const fallbackMembers = this.assetMemberEntries(sourceCard, ownerUserId);
+    const managerUserId = settings[card.sourceAssetId]?.addedByUserId?.trim() || null;
+    const fallbackMembers = this.assetMemberEntries(sourceCard, managerUserId, context.subEvent.id);
     const acceptedMembers = fallbackMembers.filter(member => member.status === 'accepted').length;
     const pendingMembers = fallbackMembers.filter(member => member.status === 'pending').length;
     const capacityTotal = settings[card.sourceAssetId]?.capacityMax ?? Math.max(0, sourceCard.capacityTotal);
@@ -694,10 +723,11 @@ export class SubEventResourcePopupService {
       ownerId: sourceCard.id,
       ownerType: 'asset',
       subtitle: `${sourceCard.title} · ${this.subEventDisplayName(context.subEvent) || 'Sub Event'}`,
-      canManage: ownerUserId === this.activeUser().id,
+      canManage: this.isAssetOwnedByActiveUser(sourceCard),
       acceptedMembers,
       pendingMembers,
       capacityTotal,
+      members: fallbackMembers,
       onMembersChanged: nextMembers => this.syncAssetRequestsFromMembers(sourceCard.id, assetType, nextMembers)
     });
   }
@@ -1039,6 +1069,7 @@ export class SubEventResourcePopupService {
     this.inlineItemActionMenuRef.set(null);
     this.capacityEditorRef.set(null);
     this.routeEditorRef.set(null);
+    this.assignedAssetJoinDialogRef.set(null);
     this.assetExploreBorrowDialogRef.set(null);
     this.assetExplorePopupRef.set(null);
   }
@@ -1080,7 +1111,11 @@ export class SubEventResourcePopupService {
         ?? null
       ))
       .filter((card): card is AppTypes.AssetCard => card !== null)
-      .map(card => ({
+      .map(card => {
+      const managerUserId = (type === 'Car' || type === 'Accommodation')
+        ? (`${settings[card.id]?.addedByUserId ?? ''}`.trim() || null)
+        : null;
+      return ({
       id: `subevent-${card.id}`,
       type: card.type,
       sourceAssetId: card.id,
@@ -1096,10 +1131,11 @@ export class SubEventResourcePopupService {
       capacityTotal: settings[card.id]?.capacityMax ?? Math.max(0, card.capacityTotal),
       accepted: card.type === 'Supplies'
         ? this.subEventSupplyProvidedCount(card.id, context.subEvent.id)
-        : this.assetAcceptedCount(card),
-      pending: this.assetPendingCount(card),
+        : this.assetAcceptedCount(card, context.subEvent.id, managerUserId),
+      pending: this.assetPendingCount(card, context.subEvent.id, managerUserId),
       isMembers: false
-      }));
+      });
+      });
   }
 
   private occupancyLabel(card: AppTypes.SubEventResourceCard): string {
@@ -1108,6 +1144,187 @@ export class SubEventResourcePopupService {
       return `${this.subEventSupplyProvidedCount(card.sourceAssetId, context.subEvent.id)} / 1 - ${card.capacityTotal}`;
     }
     return `${card.accepted} / ${card.capacityTotal}`;
+  }
+
+  private isAssignedAssetOwnedByActiveUser(card: AppTypes.SubEventResourceCard): boolean {
+    const context = this.popupContextRef();
+    if (!context || !card.sourceAssetId) {
+      return false;
+    }
+    const sourceCard = this.resolveSubEventAssignedAssetCard(context.subEvent.id, card.type as AppTypes.AssetType, card.sourceAssetId);
+    if (!sourceCard) {
+      return false;
+    }
+    const ownerUserId = `${sourceCard.ownerUserId ?? ''}`.trim();
+    const activeUserId = this.activeUser().id.trim();
+    return this.isAssetOwnedByActiveUser(sourceCard, activeUserId, ownerUserId);
+  }
+
+  private assignedAssetManagerUserId(
+    subEventId: string,
+    type: 'Car' | 'Accommodation',
+    assetId: string
+  ): string | null {
+    const settings = this.getSubEventAssignedAssetSettings(subEventId, type);
+    const managerUserId = `${settings[assetId]?.addedByUserId ?? ''}`.trim();
+    return managerUserId || null;
+  }
+
+  private isAssignedAssetManagedByActiveUser(card: AppTypes.SubEventResourceCard): boolean {
+    const context = this.popupContextRef();
+    if (!context || !card.sourceAssetId || (card.type !== 'Car' && card.type !== 'Accommodation')) {
+      return false;
+    }
+    return this.assignedAssetManagerUserId(context.subEvent.id, card.type, card.sourceAssetId) === this.activeUser().id;
+  }
+
+  private isAssetOwnedByActiveUser(
+    card: AppTypes.AssetCard,
+    activeUserId = this.activeUser().id.trim(),
+    ownerUserId = `${card.ownerUserId ?? ''}`.trim()
+  ): boolean {
+    return ownerUserId.length > 0
+      ? ownerUserId === activeUserId
+      : this.ownedAssets.assetCards.some(item => item.id === card.id && item.type === card.type);
+  }
+
+  private isSubEventScopedAssetRequest(request: AppTypes.AssetMemberRequest, subEventId: string): boolean {
+    return ActivityResourceBuilder.isSubEventManualAssignmentRequest(request, subEventId)
+      || `${request.booking?.subEventId ?? ''}`.trim() === subEventId.trim();
+  }
+
+  private subEventScopedAssetRequests(
+    card: AppTypes.AssetCard,
+    subEventId: string
+  ): AppTypes.AssetMemberRequest[] {
+    return card.requests
+      .filter(request => this.isSubEventScopedAssetRequest(request, subEventId))
+      .map(request => ({
+        ...request,
+        booking: request.booking
+          ? {
+              ...request.booking,
+              acceptedPolicyIds: [...(request.booking.acceptedPolicyIds ?? [])]
+            }
+          : null
+      }));
+  }
+
+  private findAssignedAssetJoinRequest(
+    card: AppTypes.AssetCard,
+    subEventId: string,
+    activeUserId = this.activeUser().id
+  ): AppTypes.AssetMemberRequest | null {
+    return this.subEventScopedAssetRequests(card, subEventId)
+      .find(request =>
+        request.requestKind !== 'manual'
+        && AppUtils.resolveAssetRequestUserId(request, this.users) === activeUserId
+      ) ?? null;
+  }
+
+  private assignedAssetJoinMemberCounts(
+    card: AppTypes.AssetCard,
+    subEventId: string,
+    activeUserId = this.activeUser().id,
+    managerUserId: string | null = null
+  ): { accepted: number; pending: number; shareMemberCount: number } {
+    const relevantRequests = this.assetRequestsForView(card, subEventId, managerUserId);
+    const relevantUserIds = new Set(
+      relevantRequests
+        .filter(request => request.status === 'accepted' || request.status === 'pending' || request.requestKind === 'manual')
+        .map(request => AppUtils.resolveAssetRequestUserId(request, this.users) || request.userId || request.id)
+        .filter(value => `${value ?? ''}`.trim().length > 0)
+    );
+    if (`${activeUserId ?? ''}`.trim().length > 0) {
+      relevantUserIds.add(activeUserId);
+    }
+    return {
+      accepted: relevantRequests.filter(request => request.status === 'accepted').length,
+      pending: relevantRequests.filter(request => request.status === 'pending').length,
+      shareMemberCount: Math.max(1, relevantUserIds.size)
+    };
+  }
+
+  private assetRequestsForView(
+    card: AppTypes.AssetCard,
+    subEventId: string,
+    managerUserId: string | null = null
+  ): AppTypes.AssetMemberRequest[] {
+    const requests = this.subEventScopedAssetRequests(card, subEventId);
+    const normalizedManagerUserId = `${managerUserId ?? ''}`.trim();
+    if (!normalizedManagerUserId) {
+      return requests;
+    }
+    const visibleRequests = requests.filter(request => {
+      const requestUserId = AppUtils.resolveAssetRequestUserId(request, this.users) || `${request.userId ?? ''}`.trim();
+      if (requestUserId !== normalizedManagerUserId) {
+        return true;
+      }
+      return request.status === 'accepted' || request.requestKind === 'manual';
+    });
+    const hasManagerRequest = visibleRequests.some(request =>
+      AppUtils.resolveAssetRequestUserId(request, this.users) === normalizedManagerUserId
+      || `${request.userId ?? ''}`.trim() === normalizedManagerUserId
+    );
+    if (hasManagerRequest) {
+      return visibleRequests;
+    }
+    const managerUser = this.userById.get(normalizedManagerUserId) ?? this.createFallbackUser(normalizedManagerUserId);
+    return [
+      {
+        id: `manual:${subEventId}:${card.id}`,
+        userId: managerUser.id,
+        name: managerUser.name,
+        initials: managerUser.initials,
+        gender: managerUser.gender,
+        status: 'accepted',
+        note: 'Managing this asset for the sub-event.',
+        requestKind: 'manual',
+        requestedAtIso: '',
+        booking: {
+          subEventId
+        }
+      },
+      ...visibleRequests
+    ];
+  }
+
+  private resolveAssignedAssetJoinPricing(
+    card: AppTypes.AssetCard,
+    subEvent: AppTypes.SubEventFormItem,
+    activeUserId = this.activeUser().id,
+    managerUserId: string | null = null
+  ): AssignedAssetJoinPricingPreview {
+    const startAtIso = `${subEvent.startAt ?? ''}`.trim();
+    const endAtIso = `${subEvent.endAt ?? ''}`.trim();
+    const normalized = PricingBuilder.compactPricingConfig(card.pricing, {
+      context: 'asset',
+      allowSlotFeatures: false
+    });
+    const basePricing = this.resolveAssetExploreBorrowPricing(card, startAtIso, endAtIso, 1);
+    const shareMemberCount = this.assignedAssetJoinMemberCounts(card, subEvent.id, activeUserId, managerUserId).shareMemberCount;
+    if (!normalized.enabled || basePricing.amount <= 0) {
+      return {
+        totalAmount: 0,
+        shareAmount: 0,
+        shareMemberCount,
+        currency: basePricing.currency,
+        chargeType: normalized.chargeType ?? null
+      };
+    }
+    const totalAmount = normalized.chargeType === 'per_attendee'
+      ? Math.round(basePricing.amount * shareMemberCount * 100) / 100
+      : basePricing.amount;
+    const shareAmount = normalized.chargeType === 'per_attendee'
+      ? basePricing.amount
+      : Math.round((totalAmount / Math.max(1, shareMemberCount)) * 100) / 100;
+    return {
+      totalAmount,
+      shareAmount,
+      shareMemberCount,
+      currency: basePricing.currency,
+      chargeType: normalized.chargeType ?? null
+    };
   }
 
   private canOpenResourceMap(card: AppTypes.SubEventResourceCard): boolean {
@@ -1143,49 +1360,289 @@ export class SubEventResourcePopupService {
   }
 
   private canJoin(card: AppTypes.SubEventResourceCard): boolean {
-    return !!card.sourceAssetId && (card.type === 'Car' || card.type === 'Accommodation');
+    const context = this.popupContextRef();
+    if (!context || !card.sourceAssetId || (card.type !== 'Car' && card.type !== 'Accommodation')) {
+      return false;
+    }
+    if (this.isAssignedAssetManagedByActiveUser(card)) {
+      return false;
+    }
+    const sourceCard = this.resolveSubEventAssignedAssetCard(context.subEvent.id, card.type, card.sourceAssetId);
+    if (!sourceCard) {
+      return false;
+    }
+    return !this.findAssignedAssetJoinRequest(sourceCard, context.subEvent.id, this.activeUser().id);
   }
 
   private join(card: AppTypes.SubEventResourceCard, event: Event): void {
     event.stopPropagation();
-    if (!this.canJoin(card) || !card.sourceAssetId) {
+    const context = this.popupContextRef();
+    if (!context || !this.canJoin(card) || !card.sourceAssetId) {
+      return;
+    }
+    const type = card.type === 'Car' || card.type === 'Accommodation' ? card.type : null;
+    if (!type) {
+      return;
+    }
+    const sourceCard = this.resolveSubEventAssignedAssetCard(context.subEvent.id, type, card.sourceAssetId);
+    if (!sourceCard) {
+      return;
+    }
+    const existingRequest = this.findAssignedAssetJoinRequest(sourceCard, context.subEvent.id, this.activeUser().id);
+    const validPolicyIds = new Set((sourceCard.policies ?? []).map(policy => policy.id));
+    this.assignedAssetJoinDialogRef.set({
+      cardId: card.id,
+      type,
+      sourceAssetId: sourceCard.id,
+      acceptedPolicyIds: [...new Set(existingRequest?.booking?.acceptedPolicyIds ?? [])]
+        .map(item => `${item ?? ''}`.trim())
+        .filter(item => item.length > 0 && validPolicyIds.has(item)),
+      busy: false,
+      error: null
+    });
+    this.inlineItemActionMenuRef.set(null);
+  }
+
+  private canLeave(card: AppTypes.SubEventResourceCard): boolean {
+    const context = this.popupContextRef();
+    if (!context || !card.sourceAssetId || (card.type !== 'Car' && card.type !== 'Accommodation')) {
+      return false;
+    }
+    if (this.isAssignedAssetManagedByActiveUser(card)) {
+      return false;
+    }
+    const sourceCard = this.resolveSubEventAssignedAssetCard(context.subEvent.id, card.type, card.sourceAssetId);
+    if (!sourceCard) {
+      return false;
+    }
+    return !!this.findAssignedAssetJoinRequest(sourceCard, context.subEvent.id, this.activeUser().id);
+  }
+
+  private leave(card: AppTypes.SubEventResourceCard, event: Event): void {
+    event.stopPropagation();
+    const context = this.popupContextRef();
+    if (!context || !card.sourceAssetId || (card.type !== 'Car' && card.type !== 'Accommodation')) {
+      return;
+    }
+    if (this.isAssignedAssetManagedByActiveUser(card)) {
+      return;
+    }
+    const sourceCard = this.resolveSubEventAssignedAssetCard(context.subEvent.id, card.type, card.sourceAssetId);
+    if (!sourceCard) {
+      return;
+    }
+    const currentRequest = this.findAssignedAssetJoinRequest(sourceCard, context.subEvent.id, this.activeUser().id);
+    if (!currentRequest) {
+      return;
+    }
+    const nextRequests = sourceCard.requests
+      .filter(request => request.id !== currentRequest.id)
+      .map(request => ({
+        ...request,
+        booking: request.booking
+          ? {
+              ...request.booking,
+              acceptedPolicyIds: [...(request.booking.acceptedPolicyIds ?? [])]
+            }
+          : null
+      }));
+    this.inlineItemActionMenuRef.set(null);
+    if (this.assignedAssetJoinDialogRef()?.sourceAssetId === sourceCard.id) {
+      this.assignedAssetJoinDialogRef.set(null);
+    }
+    if (this.isAssetOwnedByActiveUser(sourceCard)) {
+      this.ownedAssets.assetCards = this.ownedAssets.assetCards.map(asset => (
+        asset.id === sourceCard.id && asset.type === sourceCard.type
+          ? {
+              ...asset,
+              requests: nextRequests
+            }
+          : asset
+      ));
+      this.syncPopupSubEventMetrics();
+      return;
+    }
+    const activeContext = this.popupContextRef();
+    if (!activeContext || activeContext.subEvent.id !== context.subEvent.id) {
+      return;
+    }
+    const nextFallbackCards = this.cloneFallbackCards(activeContext.fallbackCardsByType);
+    const existingCards = nextFallbackCards[sourceCard.type] ?? [];
+    const nextFallbackAsset = this.assignedFallbackAssetSnapshot(context.subEvent.id, {
+      ...sourceCard,
+      requests: nextRequests
+    });
+    nextFallbackCards[sourceCard.type] = existingCards.some(item => item.id === sourceCard.id)
+      ? existingCards.map(item => item.id === sourceCard.id ? nextFallbackAsset : item)
+      : [...existingCards, nextFallbackAsset];
+    const nextContext = {
+      ...activeContext,
+      fallbackCardsByType: nextFallbackCards
+    };
+    this.popupContextRef.set(nextContext);
+    this.syncPopupSubEventMetrics(false);
+    this.persistPopupResourceState(nextContext);
+  }
+
+  private closeAssignedAssetJoinDialog(event?: Event): void {
+    event?.stopPropagation();
+    this.assignedAssetJoinDialogRef.set(null);
+  }
+
+  private toggleAssignedAssetJoinPolicy(policyId: string): void {
+    const dialog = this.assignedAssetJoinDialogRef();
+    if (!dialog || dialog.busy) {
+      return;
+    }
+    const normalizedPolicyId = `${policyId ?? ''}`.trim();
+    if (!normalizedPolicyId) {
+      return;
+    }
+    const nextAccepted = new Set(dialog.acceptedPolicyIds.map(item => item.trim()).filter(Boolean));
+    if (nextAccepted.has(normalizedPolicyId)) {
+      nextAccepted.delete(normalizedPolicyId);
+    } else {
+      nextAccepted.add(normalizedPolicyId);
+    }
+    this.assignedAssetJoinDialogRef.set({
+      ...dialog,
+      acceptedPolicyIds: [...nextAccepted],
+      error: null
+    });
+  }
+
+  private canSubmitAssignedAssetJoin(): boolean {
+    const dialog = this.assignedAssetJoinDialogRef();
+    const context = this.popupContextRef();
+    if (!dialog || !context || dialog.busy) {
+      return false;
+    }
+    const sourceCard = this.resolveSubEventAssignedAssetCard(context.subEvent.id, dialog.type, dialog.sourceAssetId);
+    if (!sourceCard) {
+      return false;
+    }
+    const acceptedPolicyIds = new Set(dialog.acceptedPolicyIds.map(item => item.trim()).filter(Boolean));
+    return !(sourceCard.policies ?? [])
+      .some(policy => policy.required !== false && !acceptedPolicyIds.has(policy.id));
+  }
+
+  private confirmAssignedAssetJoin(event?: Event): void {
+    event?.stopPropagation();
+    const dialog = this.assignedAssetJoinDialogRef();
+    const context = this.popupContextRef();
+    if (!dialog || !context) {
+      return;
+    }
+    const sourceCard = this.resolveSubEventAssignedAssetCard(context.subEvent.id, dialog.type, dialog.sourceAssetId);
+    if (!sourceCard) {
+      this.assignedAssetJoinDialogRef.set({
+        ...dialog,
+        busy: false,
+        error: 'This asset is no longer available in the resource popup.'
+      });
+      return;
+    }
+    if (!this.canSubmitAssignedAssetJoin()) {
       return;
     }
     const activeUser = this.activeUser();
-    const booking = this.currentAssetRequestBooking(1);
-    this.ownedAssets.assetCards = this.ownedAssets.assetCards.map(asset => {
-      if (asset.id !== card.sourceAssetId) {
-        return asset;
-      }
-      const nextRequests = asset.requests.filter(request => AppUtils.resolveAssetRequestUserId(request, this.users) !== activeUser.id);
-      nextRequests.unshift({
-        id: activeUser.id,
-        userId: activeUser.id,
-        name: activeUser.name,
-        initials: activeUser.initials,
-        gender: activeUser.gender,
-        status: 'pending',
-        note: 'Join request from sub-event assets.',
-        requestKind: 'borrow',
-        requestedAtIso: new Date().toISOString(),
-        booking
-      });
-      return {
-        ...asset,
-        requests: nextRequests
-      };
+    const pricing = this.resolveAssignedAssetJoinPricing(sourceCard, context.subEvent, activeUser.id);
+    const validPolicyIds = new Set((sourceCard.policies ?? []).map(policy => policy.id));
+    const acceptedPolicyIds = [...new Set(dialog.acceptedPolicyIds.map(item => item.trim()).filter(Boolean))]
+      .filter(item => validPolicyIds.has(item));
+    const existingRequest = this.findAssignedAssetJoinRequest(sourceCard, context.subEvent.id, activeUser.id);
+    const startAtIso = `${context.subEvent.startAt ?? ''}`.trim();
+    const endAtIso = `${context.subEvent.endAt ?? ''}`.trim();
+    const nextRequest: AppTypes.AssetMemberRequest = {
+      id: existingRequest?.id ?? `borrow:${activeUser.id}:${sourceCard.id}:${context.subEvent.id}`,
+      userId: activeUser.id,
+      name: activeUser.name,
+      initials: activeUser.initials,
+      gender: activeUser.gender,
+      status: 'pending',
+      note: 'Join request from sub-event assets.',
+      requestKind: 'borrow',
+      requestedAtIso: existingRequest?.requestedAtIso ?? new Date().toISOString(),
+      booking: this.assetRequestBookingForRange(
+        context.subEvent,
+        context.ownerId,
+        context.parentTitle,
+        startAtIso,
+        endAtIso,
+        1,
+        {
+          totalAmount: pricing.shareAmount,
+          currency: pricing.currency,
+          acceptedPolicyIds
+        }
+      )
+    };
+    const nextRequests: AppTypes.AssetMemberRequest[] = [
+      nextRequest,
+      ...sourceCard.requests
+        .filter(request =>
+          request.id !== nextRequest.id
+          && AppUtils.resolveAssetRequestUserId(request, this.users) !== activeUser.id
+        )
+        .map(request => ({
+          ...request,
+          booking: request.booking
+            ? {
+                ...request.booking,
+                acceptedPolicyIds: [...(request.booking.acceptedPolicyIds ?? [])]
+              }
+            : null
+        }))
+    ];
+    this.assignedAssetJoinDialogRef.set({
+      ...dialog,
+      acceptedPolicyIds,
+      busy: true,
+      error: null
     });
-    this.inlineItemActionMenuRef.set(null);
-    this.syncPopupSubEventMetrics();
+    const startedAt = Date.now();
+    void this.ensureAssignedAssetJoinMinimumBusyDuration(startedAt)
+      .then(() => {
+        if (this.isAssetOwnedByActiveUser(sourceCard)) {
+          this.ownedAssets.assetCards = this.ownedAssets.assetCards.map(asset => (
+            asset.id === sourceCard.id && asset.type === sourceCard.type
+              ? {
+                  ...asset,
+                  requests: nextRequests
+                }
+              : asset
+          ));
+          this.assignedAssetJoinDialogRef.set(null);
+          this.syncPopupSubEventMetrics();
+          return;
+        }
+
+        const activeContext = this.popupContextRef();
+        if (!activeContext || activeContext.subEvent.id !== context.subEvent.id) {
+          return;
+        }
+        const nextFallbackCards = this.cloneFallbackCards(activeContext.fallbackCardsByType);
+        const existingCards = nextFallbackCards[sourceCard.type] ?? [];
+        const nextFallbackAsset = this.assignedFallbackAssetSnapshot(context.subEvent.id, {
+          ...sourceCard,
+          requests: nextRequests
+        });
+        nextFallbackCards[sourceCard.type] = existingCards.some(card => card.id === sourceCard.id)
+          ? existingCards.map(card => card.id === sourceCard.id ? nextFallbackAsset : card)
+          : [...existingCards, nextFallbackAsset];
+        const nextContext = {
+          ...activeContext,
+          fallbackCardsByType: nextFallbackCards
+        };
+        this.popupContextRef.set(nextContext);
+        this.syncPopupSubEventMetrics(false);
+        this.persistPopupResourceState(nextContext);
+        this.assignedAssetJoinDialogRef.set(null);
+      });
   }
 
   private canEditCapacity(card: AppTypes.SubEventResourceCard): boolean {
-    const context = this.popupContextRef();
-    if (!context || !card.sourceAssetId) {
-      return false;
-    }
-    const settings = this.getSubEventAssignedAssetSettings(context.subEvent.id, card.type as AppTypes.AssetType);
-    return settings[card.sourceAssetId]?.addedByUserId === this.activeUser().id;
+    return this.isAssignedAssetOwnedByActiveUser(card);
   }
 
   private canEditRoute(card: AppTypes.SubEventResourceCard): boolean {
@@ -1633,6 +2090,7 @@ export class SubEventResourcePopupService {
     }
     const type = this.resourceFilterRef();
     const { startAtIso, endAtIso } = this.defaultAssetExploreRange(context.subEvent);
+    this.assignedAssetJoinDialogRef.set(null);
     this.assetExploreBorrowDialogRef.set(null);
     this.assetExplorePopupRef.set(this.resolveAssetExplorePopupState({
       subEventId: context.subEvent.id,
@@ -1729,6 +2187,65 @@ export class SubEventResourcePopupService {
       busyLabel: pricing.amount > 0
         ? (dialog.paymentStep ? 'Buying...' : 'Checking out...')
         : 'Sending request...',
+      busy: dialog.busy,
+      error: dialog.error
+    };
+  });
+
+  private readonly assignedAssetJoinDialogViewState = computed<AssignedAssetJoinDialogViewState | null>(() => {
+    const dialog = this.assignedAssetJoinDialogRef();
+    const context = this.popupContextRef();
+    if (!dialog || !context) {
+      return null;
+    }
+    const sourceCard = this.resolveSubEventAssignedAssetCard(context.subEvent.id, dialog.type, dialog.sourceAssetId);
+    if (!sourceCard) {
+      return null;
+    }
+    const timeframe = this.assetRequestTimeframeLabel(
+      `${context.subEvent.startAt ?? ''}`.trim(),
+      `${context.subEvent.endAt ?? ''}`.trim()
+    );
+    const isOwnedAsset = this.isAssetOwnedByActiveUser(sourceCard);
+    const managerUserId = this.assignedAssetManagerUserId(context.subEvent.id, dialog.type, dialog.sourceAssetId);
+    const pricing = this.resolveAssignedAssetJoinPricing(sourceCard, context.subEvent, this.activeUser().id, managerUserId);
+    const memberCounts = this.assignedAssetJoinMemberCounts(sourceCard, context.subEvent.id, this.activeUser().id, managerUserId);
+    const shareLabel = pricing.chargeType === 'per_attendee'
+      ? 'Per-member price'
+      : (pricing.shareMemberCount === 1 ? 'Current share' : `Estimated share for ${pricing.shareMemberCount} members`);
+    const shareHint = pricing.totalAmount > 0
+      ? (pricing.chargeType === 'per_attendee'
+          ? 'This asset charges per member, so your join keeps the same price even as the member list changes.'
+          : 'This asset is priced as a shared booking, so the preview is split across the current member count for this subevent.')
+      : 'No asset pricing is configured for this join request.';
+    return {
+      title: `Join ${sourceCard.title}`,
+      subtitle: this.popupSubtitle(),
+      timeframe: timeframe || 'Sub-event timeframe',
+      pathLabel: isOwnedAsset ? 'Assigned own asset' : 'Borrowed item',
+      memberSummary: memberCounts.pending > 0
+        ? `${memberCounts.accepted} accepted · ${memberCounts.pending} pending`
+        : `${memberCounts.accepted} accepted`,
+      lineItems: [
+        {
+          id: `resource:${sourceCard.id}`,
+          kind: 'resource',
+          label: sourceCard.title,
+          detail: isOwnedAsset ? 'Assigned asset join' : 'Borrowed item join',
+          amount: pricing.shareAmount,
+          currency: pricing.currency
+        }
+      ],
+      totalAmount: pricing.totalAmount,
+      shareAmount: pricing.shareAmount,
+      shareMemberCount: pricing.shareMemberCount,
+      currency: pricing.currency,
+      shareLabel,
+      shareHint,
+      policies: (sourceCard.policies ?? []).map(item => ({ ...item })),
+      acceptedPolicyIds: [...dialog.acceptedPolicyIds],
+      submitLabel: 'Send join request',
+      busyLabel: 'Sending request...',
       busy: dialog.busy,
       error: dialog.error
     };
@@ -2254,6 +2771,16 @@ export class SubEventResourcePopupService {
   }
 
   private ensureAssetExploreBorrowMinimumBusyDuration(startedAtMs: number): Promise<void> {
+    const remainingMs = SubEventResourcePopupService.ASSET_EXPLORE_BORROW_MIN_BUSY_DURATION_MS - (Date.now() - startedAtMs);
+    if (remainingMs <= 0) {
+      return Promise.resolve();
+    }
+    return new Promise(resolve => {
+      setTimeout(resolve, remainingMs);
+    });
+  }
+
+  private ensureAssignedAssetJoinMinimumBusyDuration(startedAtMs: number): Promise<void> {
     const remainingMs = SubEventResourcePopupService.ASSET_EXPLORE_BORROW_MIN_BUSY_DURATION_MS - (Date.now() - startedAtMs);
     if (remainingMs <= 0) {
       return Promise.resolve();
@@ -2967,7 +3494,12 @@ export class SubEventResourcePopupService {
     const settings = this.getSubEventAssignedAssetSettings(subEvent.id, type);
     const capacityMax = cards.reduce((sum, card) => sum + (settings[card.id]?.capacityMax ?? Math.max(0, card.capacityTotal)), 0);
     const capacityMin = cards.reduce((sum, card) => sum + (settings[card.id]?.capacityMin ?? 0), 0);
-    const pending = cards.reduce((sum, card) => sum + this.assetPendingCount(card), 0);
+    const pending = cards.reduce((sum, card) => {
+      const managerUserId = (type === 'Car' || type === 'Accommodation')
+        ? (`${settings[card.id]?.addedByUserId ?? ''}`.trim() || null)
+        : null;
+      return sum + this.assetPendingCount(card, subEvent.id, managerUserId);
+    }, 0);
     if (type === 'Supplies') {
       return {
         joined: cards.reduce((sum, card) => sum + this.subEventSupplyProvidedCount(card.id, subEvent.id), 0),
@@ -2978,9 +3510,12 @@ export class SubEventResourcePopupService {
     }
     const joinedIds = new Set<string>();
     for (const card of cards) {
-      for (const request of card.requests) {
+      const managerUserId = (type === 'Car' || type === 'Accommodation')
+        ? (`${settings[card.id]?.addedByUserId ?? ''}`.trim() || null)
+        : null;
+      for (const request of this.assetRequestsForView(card, subEvent.id, managerUserId)) {
         if (request.status === 'accepted') {
-          joinedIds.add(request.id);
+          joinedIds.add(AppUtils.resolveAssetRequestUserId(request, this.users) || request.userId || request.id);
         }
       }
     }
@@ -3558,12 +4093,19 @@ export class SubEventResourcePopupService {
     return parsed ? parsed.getTime() : null;
   }
 
-  private assetMemberEntries(card: AppTypes.AssetCard, ownerUserId: string | null): AppTypes.ActivityMemberEntry[] {
+  private assetMemberEntries(
+    card: AppTypes.AssetCard,
+    ownerUserId: string | null,
+    subEventId?: string
+  ): AppTypes.ActivityMemberEntry[] {
     const seedBaseDate = new Date('2026-02-24T12:00:00');
-    void this.usersService.warmCachedUsers(card.requests
+    const requests = subEventId
+      ? this.assetRequestsForView(card, subEventId, ownerUserId)
+      : [...card.requests];
+    void this.usersService.warmCachedUsers(requests
       .map(request => AppUtils.resolveAssetRequestUserId(request, this.users))
       .filter(userId => `${userId}`.trim().length > 0));
-    return [...card.requests]
+    return requests
       .map(request => {
         const requestUserId = AppUtils.resolveAssetRequestUserId(request, this.users);
         const matchedUser =
@@ -3767,9 +4309,7 @@ export class SubEventResourcePopupService {
     }
     return {
       ...nextCard,
-      requests: nextCard.requests.filter(request =>
-        request.requestKind === 'manual' && request.booking?.subEventId === subEventId
-      )
+      requests: nextCard.requests.filter(request => this.isSubEventScopedAssetRequest(request, subEventId))
     };
   }
 
@@ -3879,12 +4419,26 @@ export class SubEventResourcePopupService {
     return cleaned.length > 0 ? cleaned : [''];
   }
 
-  private assetPendingCount(card: AppTypes.AssetCard): number {
-    return card.requests.filter(request => request.status === 'pending').length;
+  private assetPendingCount(
+    card: AppTypes.AssetCard,
+    subEventId?: string,
+    managerUserId: string | null = null
+  ): number {
+    const requests = subEventId
+      ? this.assetRequestsForView(card, subEventId, managerUserId)
+      : card.requests;
+    return requests.filter(request => request.status === 'pending').length;
   }
 
-  private assetAcceptedCount(card: AppTypes.AssetCard): number {
-    return card.requests.filter(request => request.status === 'accepted').length;
+  private assetAcceptedCount(
+    card: AppTypes.AssetCard,
+    subEventId?: string,
+    managerUserId: string | null = null
+  ): number {
+    const requests = subEventId
+      ? this.assetRequestsForView(card, subEventId, managerUserId)
+      : card.requests;
+    return requests.filter(request => request.status === 'accepted').length;
   }
 
   private subEventSupplyAssignmentKey(subEventId: string, cardId: string): string {

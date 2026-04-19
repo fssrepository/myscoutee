@@ -113,6 +113,27 @@ export interface AssetExploreBorrowDialogViewState {
   error: string | null;
 }
 
+export interface AssignedAssetJoinDialogViewState {
+  title: string;
+  subtitle: string;
+  timeframe: string;
+  pathLabel: string;
+  memberSummary: string;
+  lineItems: AppTypes.EventCheckoutLineItem[];
+  totalAmount: number;
+  shareAmount: number;
+  shareMemberCount: number;
+  currency: string;
+  shareLabel: string;
+  shareHint: string;
+  policies: AppTypes.EventPolicyItem[];
+  acceptedPolicyIds: string[];
+  submitLabel: string;
+  busyLabel: string;
+  busy: boolean;
+  error: string | null;
+}
+
 export interface AssetExploreBorrowDraftViewState {
   cardId: string;
   title: string;
@@ -140,6 +161,7 @@ export interface EventResourcePopupHost {
   pendingDeleteCard(): PendingResourceDeleteState | null;
   assetExplorePopup(): AssetExplorePopupViewState | null;
   assetExploreBorrowDialog(): AssetExploreBorrowDialogViewState | null;
+  joinDialog(): AssignedAssetJoinDialogViewState | null;
   assetExploreBorrowDrafts(): AssetExploreBorrowDraftViewState[];
   close(): void;
   selectResourceFilter(filter: AppTypes.SubEventResourceFilter): void;
@@ -179,6 +201,13 @@ export interface EventResourcePopupHost {
   toggleItemActionMenu(card: AppTypes.SubEventResourceCard, event: Event): void;
   canJoin(card: AppTypes.SubEventResourceCard): boolean;
   join(card: AppTypes.SubEventResourceCard, event: Event): void;
+  canLeave(card: AppTypes.SubEventResourceCard): boolean;
+  leave(card: AppTypes.SubEventResourceCard, event: Event): void;
+  closeJoinDialog(event?: Event): void;
+  toggleJoinPolicy(policyId: string): void;
+  canSubmitJoin(): boolean;
+  confirmJoin(event?: Event): void;
+  joinConfirmRingPerimeter(): number;
   canEditCapacity(card: AppTypes.SubEventResourceCard): boolean;
   openCapacityEditor(card: AppTypes.SubEventResourceCard, event: Event): void;
   canEditRoute(card: AppTypes.SubEventResourceCard): boolean;
@@ -788,6 +817,10 @@ export class EventResourcePopupComponent implements DoCheck {
       this.host.join(card, new Event('click'));
       return;
     }
+    if (event.actionId === 'leave') {
+      this.host.leave(card, new Event('click'));
+      return;
+    }
     if (event.actionId === 'capacity') {
       this.host.openCapacityEditor(card, new Event('click'));
       return;
@@ -813,6 +846,12 @@ export class EventResourcePopupComponent implements DoCheck {
         return;
       }
       this.host.closeAssetExploreBorrowDialog();
+      return;
+    }
+    if (this.host.joinDialog()) {
+      keyboardEvent.preventDefault();
+      keyboardEvent.stopPropagation();
+      this.host.closeJoinDialog();
       return;
     }
     if (this.showAssetExploreBorrowBasket) {
@@ -1096,6 +1135,13 @@ export class EventResourcePopupComponent implements DoCheck {
         label: 'Join',
         icon: 'login',
         tone: 'accent'
+      });
+    } else if (this.host.canLeave(card)) {
+      actions.push({
+        id: 'leave',
+        label: 'Leave',
+        icon: 'logout',
+        tone: 'default'
       });
     }
     if (this.host.canEditCapacity(card)) {
