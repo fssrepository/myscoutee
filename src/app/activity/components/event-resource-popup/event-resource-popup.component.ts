@@ -918,7 +918,7 @@ export class EventResourcePopupComponent implements DoCheck {
     let nextVisibleCount = Math.min(cards.length, visibleCount);
 
     if (cards.length > previousCardCount && allCardsWereVisible) {
-      nextVisibleCount = Math.min(cards.length, visibleCount + 1);
+      nextVisibleCount = Math.min(cards.length, visibleCount + (cards.length - previousCardCount));
     }
 
     this.resourceSmartList.replaceVisibleItems(cards.slice(0, nextVisibleCount), {
