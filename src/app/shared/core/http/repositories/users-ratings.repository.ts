@@ -48,6 +48,69 @@ export class HttpUsersRatingsRepository {
     this.applyUserRatesSyncResult(batch, syncResult.syncedRateIds, syncResult.failedRateIds, syncResult.error);
   }
 
+  queryPendingRatedGameCardUserIds(raterUserId: string): string[] {
+    const normalizedRaterId = raterUserId.trim();
+    if (!normalizedRaterId) {
+      return [];
+    }
+    const ratedUserIds = new Set<string>();
+    const outboxTable = this.memoryDb.read()[USER_RATES_OUTBOX_TABLE_NAME];
+    for (const id of outboxTable.ids) {
+      const outboxRecord = outboxTable.byId[id];
+      const payload = outboxRecord?.payload;
+      if (!payload || outboxRecord.status !== 'pending' || payload.source !== 'game-card') {
+        continue;
+      }
+      if (payload.mode === 'pair' && payload.ownerUserId?.trim() === normalizedRaterId) {
+        const firstUserId = payload.fromUserId.trim();
+        const secondUserId = payload.toUserId.trim();
+        if (firstUserId) {
+          ratedUserIds.add(firstUserId);
+        }
+        if (secondUserId) {
+          ratedUserIds.add(secondUserId);
+        }
+        continue;
+      }
+      if (payload.fromUserId.trim() === normalizedRaterId) {
+        const ratedUserId = payload.toUserId.trim();
+        if (ratedUserId) {
+          ratedUserIds.add(ratedUserId);
+        }
+      }
+    }
+    return [...ratedUserIds];
+  }
+
+  queryPendingRatedGameCardPairKeys(ownerUserId: string): string[] {
+    const normalizedOwnerUserId = ownerUserId.trim();
+    if (!normalizedOwnerUserId) {
+      return [];
+    }
+    const pairKeys = new Set<string>();
+    const outboxTable = this.memoryDb.read()[USER_RATES_OUTBOX_TABLE_NAME];
+    for (const id of outboxTable.ids) {
+      const outboxRecord = outboxTable.byId[id];
+      const payload = outboxRecord?.payload;
+      if (
+        !payload
+        || outboxRecord.status !== 'pending'
+        || payload.source !== 'game-card'
+        || payload.mode !== 'pair'
+        || payload.ownerUserId?.trim() !== normalizedOwnerUserId
+      ) {
+        continue;
+      }
+      const firstUserId = payload.fromUserId.trim();
+      const secondUserId = payload.toUserId.trim();
+      const pairKey = this.toSortedPairKey(firstUserId, secondUserId);
+      if (pairKey) {
+        pairKeys.add(pairKey);
+      }
+    }
+    return [...pairKeys];
+  }
+
   peekRateItemsByUserId(userId: string): RateMenuItem[] {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
@@ -440,6 +503,17 @@ export class HttpUsersRatingsRepository {
 
   private normalizeRateScore(value: number): number {
     return Math.max(1, Math.min(10, Math.trunc(Number(value) || 0)));
+  }
+
+  private toSortedPairKey(leftUserId: string, rightUserId: string): string | null {
+    const normalizedLeftUserId = leftUserId.trim();
+    const normalizedRightUserId = rightUserId.trim();
+    if (!normalizedLeftUserId || !normalizedRightUserId || normalizedLeftUserId === normalizedRightUserId) {
+      return null;
+    }
+    return [normalizedLeftUserId, normalizedRightUserId]
+      .sort((left, right) => left.localeCompare(right))
+      .join(':');
   }
 
   private applyUserRatesSyncResult(
