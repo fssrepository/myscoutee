@@ -541,6 +541,9 @@ export class HttpUsersService implements UserService {
     if (!id) {
       return null;
     }
+    if (`${user.profileStatus ?? ''}`.trim().toLowerCase() === 'deleted') {
+      return null;
+    }
     const normalizedGender = `${user.gender ?? ''}`.trim().toLowerCase() === 'man' ? 'man' : 'woman';
     return {
       id,

@@ -151,6 +151,7 @@ export class DemoUsersRepository {
 
   queryAvailableDemoUsers(): DemoUserListItemDto[] {
     return this.queryAllUsers()
+      .filter(user => user.profileStatus !== 'deleted')
       .map(user => DemoUsersRepositoryBuilder.toDemoUserListItem(user));
   }
 
