@@ -44,6 +44,7 @@ import {
   type InfoCardMenuAction,
   type InfoCardMenuActionEvent,
   type ListQuery,
+  type PageResult,
   type SmartListConfig,
   type SmartListLoadPage,
   type SmartListItemSelectEvent,
@@ -394,9 +395,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     }
   };
   protected readonly activitiesSmartListLoadPage: SmartListLoadPage<AppTypes.ActivityListRow, ActivitiesSmartListFilters>
-    = query => from(this.activitiesService.loadActivities(query, {
-      chatItems: this.chatItems
-    }));
+    = query => from(this.loadActivitiesSmartListPage(query));
   // ── Inline action menu ────────────────────────────────────────────────────
   protected inlineItemActionMenu: {
     scope: 'activityMember';
@@ -2092,5 +2091,18 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   protected activitiesListScrollElement(): HTMLDivElement | null {
     return this.activitiesSmartList?.scrollElement() ?? this.activitiesScrollRef?.nativeElement ?? null;
+  }
+
+  private async loadActivitiesSmartListPage(
+    query: ListQuery<ActivitiesSmartListFilters>
+  ): Promise<PageResult<AppTypes.ActivityListRow>> {
+    const page = await this.activitiesService.loadActivities(query, {
+      chatItems: this.chatItems
+    });
+    const requestedPrimaryFilter = query.filters?.primaryFilter ?? this.activitiesPrimaryFilter;
+    if (requestedPrimaryFilter === 'rates') {
+      this.refreshRateItems();
+    }
+    return page;
   }
 }

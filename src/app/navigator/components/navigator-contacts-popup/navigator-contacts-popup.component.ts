@@ -99,7 +99,7 @@ export class NavigatorContactsPopupComponent {
 
   protected readonly contactSmartListConfig = computed<SmartListConfig<NavigatorContactListItem, NavigatorContactListFilters>>(() => ({
     pageSize: 10,
-    loadingDelayMs: 1500,
+    loadingDelayMs: resolveCurrentRouteDelayMs('/navigator/contacts'),
     defaultView: 'list',
     emptyLabel: 'No contacts saved yet',
     emptyDescription: 'Use Create contact to add members into your personal quick-reach list.',

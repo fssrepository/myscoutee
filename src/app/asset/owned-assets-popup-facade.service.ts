@@ -95,6 +95,9 @@ export class OwnedAssetsPopupFacadeService {
 
   initializeFromUser(userId: string): void {
     const normalizedUserId = userId.trim();
+    if (normalizedUserId === this.activeOwnerUserId) {
+      return;
+    }
     this.activeOwnerUserId = normalizedUserId;
     this.pendingAssetDeleteCardId = null;
     this.isAssetDeletePending = false;
