@@ -39,6 +39,10 @@ export const ROUTE_CONFIG: RouteConfig = {
       demoDelayMs: 1500
     },
     {
+      routePrefix: '/activities/events/feedback',
+      demoDelayMs: 1500
+    },
+    {
       routePrefix: '/activities/events/subevent-resources',
       demoDelayMs: 1500
     },

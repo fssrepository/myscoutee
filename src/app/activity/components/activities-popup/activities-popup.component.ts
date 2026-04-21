@@ -523,6 +523,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       this.hostingPublicationFilter      = svc.activitiesHostingPublicationFilter() as AppTypes.HostingPublicationFilter;
       this.activitiesRateFilter          = svc.activitiesRateFilter() as AppTypes.RateFilterKey;
       this.activitiesView                = svc.activitiesView() as AppTypes.ActivitiesView;
+      this.activitiesSmartListConfig.loadingDelayMs = this.resolveActivitiesLoadingDelayMs();
       this.showActivitiesViewPicker      = svc.activitiesShowViewPicker();
       this.showActivitiesSecondaryPicker = svc.activitiesShowSecondaryPicker();
       this.activitiesStickyValue         = svc.activitiesStickyValue();
@@ -2017,6 +2018,16 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   private userById(userId: string): DemoUser | undefined {
     return this.users.find(u => u.id === userId);
+  }
+
+  private resolveActivitiesLoadingDelayMs(): number {
+    if (this.activitiesPrimaryFilter === 'events') {
+      return resolveCurrentRouteDelayMs('/activities/events');
+    }
+    if (this.activitiesPrimaryFilter === 'rates') {
+      return resolveCurrentRouteDelayMs('/activities/rates');
+    }
+    return resolveCurrentRouteDelayMs('/activities/chats');
   }
 
   private syncActivitiesSmartListQuery(): void {
