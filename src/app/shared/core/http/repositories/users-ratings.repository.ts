@@ -48,6 +48,100 @@ export class HttpUsersRatingsRepository {
     this.applyUserRatesSyncResult(batch, syncResult.syncedRateIds, syncResult.failedRateIds, syncResult.error);
   }
 
+  queryPendingRatedGameCardUserIds(raterUserId: string): string[] {
+    const normalizedRaterId = raterUserId.trim();
+    if (!normalizedRaterId) {
+      return [];
+    }
+    const ratedUserIds = new Set<string>();
+    const outboxTable = this.memoryDb.read()[USER_RATES_OUTBOX_TABLE_NAME];
+    for (const id of outboxTable.ids) {
+      const outboxRecord = outboxTable.byId[id];
+      const payload = outboxRecord?.payload;
+      if (!payload || outboxRecord.status !== 'pending') {
+        continue;
+      }
+      if (payload.source === 'game-card') {
+        if (payload.mode === 'pair' && payload.ownerUserId?.trim() === normalizedRaterId) {
+          const firstUserId = payload.fromUserId.trim();
+          const secondUserId = payload.toUserId.trim();
+          if (firstUserId) {
+            ratedUserIds.add(firstUserId);
+          }
+          if (secondUserId) {
+            ratedUserIds.add(secondUserId);
+          }
+          continue;
+        }
+        if (payload.fromUserId.trim() === normalizedRaterId) {
+          const ratedUserId = payload.toUserId.trim();
+          if (ratedUserId) {
+            ratedUserIds.add(ratedUserId);
+          }
+        }
+        continue;
+      }
+      if (payload.source !== 'activity-rate') {
+        continue;
+      }
+      const item = this.toRateMenuItem(payload, normalizedRaterId);
+      if (!this.shouldExcludePendingItemFromHome(item)) {
+        continue;
+      }
+      const primaryUserId = item.userId.trim();
+      const secondaryUserId = item.secondaryUserId?.trim() ?? '';
+      if (primaryUserId && primaryUserId !== normalizedRaterId) {
+        ratedUserIds.add(primaryUserId);
+      }
+      if (secondaryUserId && secondaryUserId !== normalizedRaterId) {
+        ratedUserIds.add(secondaryUserId);
+      }
+    }
+    return [...ratedUserIds];
+  }
+
+  queryPendingRatedGameCardPairKeys(ownerUserId: string): string[] {
+    const normalizedOwnerUserId = ownerUserId.trim();
+    if (!normalizedOwnerUserId) {
+      return [];
+    }
+    const pairKeys = new Set<string>();
+    const outboxTable = this.memoryDb.read()[USER_RATES_OUTBOX_TABLE_NAME];
+    for (const id of outboxTable.ids) {
+      const outboxRecord = outboxTable.byId[id];
+      const payload = outboxRecord?.payload;
+      if (
+        !payload
+        || outboxRecord.status !== 'pending'
+      ) {
+        continue;
+      }
+      let firstUserId = '';
+      let secondUserId = '';
+      if (payload.source === 'game-card') {
+        if (payload.mode !== 'pair' || payload.ownerUserId?.trim() !== normalizedOwnerUserId) {
+          continue;
+        }
+        firstUserId = payload.fromUserId.trim();
+        secondUserId = payload.toUserId.trim();
+      } else if (payload.source === 'activity-rate') {
+        const item = this.toRateMenuItem(payload, normalizedOwnerUserId);
+        if (!this.shouldExcludePendingItemFromHome(item) || item.mode !== 'pair') {
+          continue;
+        }
+        firstUserId = item.userId.trim();
+        secondUserId = item.secondaryUserId?.trim() ?? '';
+      } else {
+        continue;
+      }
+      const pairKey = this.toSortedPairKey(firstUserId, secondUserId);
+      if (pairKey) {
+        pairKeys.add(pairKey);
+      }
+    }
+    return [...pairKeys];
+  }
+
   peekRateItemsByUserId(userId: string): RateMenuItem[] {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
@@ -283,16 +377,18 @@ export class HttpUsersRatingsRepository {
       return null;
     }
     const nowIso = new Date().toISOString();
-    return {
+    return DemoUserRatesBuilder.toActivityRateRecord(normalizedRaterId, {
       id: `game-card:${normalizedRaterId}:${normalizedRatedUserId}`,
-      fromUserId: normalizedRaterId,
-      toUserId: normalizedRatedUserId,
-      rate: normalizedRating,
-      mode: mode === 'pair' ? 'pair' : 'single',
-      source: 'game-card',
-      createdAtIso: nowIso,
-      updatedAtIso: nowIso
-    };
+      userId: normalizedRatedUserId,
+      mode: mode === 'pair' ? 'pair' : 'individual',
+      direction: 'given',
+      socialContext: mode === 'pair' ? 'separated-friends' : undefined,
+      scoreGiven: normalizedRating,
+      scoreReceived: 0,
+      eventName: 'Single rate',
+      happenedAt: nowIso,
+      distanceKm: 0
+    });
   }
 
   protected buildNormalizedActivityRateRecord(
@@ -354,17 +450,19 @@ export class HttpUsersRatingsRepository {
     }
     const [fromUserId, toUserId] = [normalizedFirstUserId, normalizedSecondUserId].sort((left, right) => left.localeCompare(right));
     const nowIso = new Date().toISOString();
-    return {
+    return DemoUserRatesBuilder.toActivityRateRecord(normalizedOwnerUserId, {
       id: `game-card-pair:${normalizedOwnerUserId}:${fromUserId}:${toUserId}`,
-      fromUserId,
-      toUserId,
-      rate: normalizedRating,
+      userId: fromUserId,
+      secondaryUserId: toUserId,
       mode: 'pair',
-      source: 'game-card',
-      createdAtIso: nowIso,
-      updatedAtIso: nowIso,
-      ownerUserId: normalizedOwnerUserId
-    };
+      direction: 'given',
+      socialContext: 'separated-friends',
+      scoreGiven: normalizedRating,
+      scoreReceived: 0,
+      eventName: 'Pair rate',
+      happenedAt: nowIso,
+      distanceKm: 0
+    });
   }
 
   private enqueueNormalizedRateOutbox(nextRecord: UserRateRecord): void {
@@ -440,6 +538,27 @@ export class HttpUsersRatingsRepository {
 
   private normalizeRateScore(value: number): number {
     return Math.max(1, Math.min(10, Math.trunc(Number(value) || 0)));
+  }
+
+  private shouldExcludePendingItemFromHome(item: RateMenuItem | null): item is RateMenuItem {
+    if (!item) {
+      return false;
+    }
+    if (item.direction === 'met') {
+      return true;
+    }
+    return Number.isFinite(item.scoreGiven) && item.scoreGiven > 0;
+  }
+
+  private toSortedPairKey(leftUserId: string, rightUserId: string): string | null {
+    const normalizedLeftUserId = leftUserId.trim();
+    const normalizedRightUserId = rightUserId.trim();
+    if (!normalizedLeftUserId || !normalizedRightUserId || normalizedLeftUserId === normalizedRightUserId) {
+      return null;
+    }
+    return [normalizedLeftUserId, normalizedRightUserId]
+      .sort((left, right) => left.localeCompare(right))
+      .join(':');
   }
 
   private applyUserRatesSyncResult(

@@ -115,12 +115,14 @@ export interface UserByIdQueryResponse {
 }
 
 export interface UserFeedbackSubmitRequestDto {
+  userId?: string;
   category: string;
   subject: string;
   details: string;
 }
 
 export interface UserReportUserSubmitRequestDto {
+  userId?: string;
   handle: string;
   reason: string;
   details: string;

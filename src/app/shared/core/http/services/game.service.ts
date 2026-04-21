@@ -4,6 +4,7 @@ import { Injectable, inject } from '@angular/core';
 import { environment } from '../../../../../environments/environment';
 import type {
   UserGameSocialCard,
+  UserGameCardsDto,
   UserGameCardsQueryRequest,
   UserGameCardsQueryResponse,
   UserGameDataService
@@ -77,21 +78,74 @@ export class HttpGameService implements UserGameDataService {
       const nextCursor = typeof response.nextCursor === 'string' && response.nextCursor.trim().length > 0
         ? response.nextCursor.trim()
         : null;
+      const cards = this.applyPendingGameCardOutboxOverlay(normalizedUserId, request, {
+        filterCount,
+        cardUserIds,
+        socialCards: Array.isArray(response.socialCards)
+          ? response.socialCards
+            .map(card => this.cloneSocialCard(card))
+            .filter(card => card.id.length > 0 && card.userId.length > 0)
+          : [],
+        nextCursor
+      });
       return {
-        cards: {
-          filterCount,
-          cardUserIds,
-          socialCards: Array.isArray(response.socialCards)
-            ? response.socialCards
-              .map(card => this.cloneSocialCard(card))
-              .filter(card => card.id.length > 0 && card.userId.length > 0)
-            : [],
-          nextCursor
-        }
+        cards
       };
     } catch {
       return { cards: null };
     }
+  }
+
+  private applyPendingGameCardOutboxOverlay(
+    userId: string,
+    request: UserGameCardsQueryRequest,
+    cards: UserGameCardsDto
+  ): UserGameCardsDto {
+    const mode = request.mode ?? 'single';
+    const pendingRatedUserIds = new Set(this.usersRatingsRepository.queryPendingRatedGameCardUserIds(userId));
+    const pendingRatedPairKeys = new Set(this.usersRatingsRepository.queryPendingRatedGameCardPairKeys(userId));
+    if (pendingRatedUserIds.size === 0 && pendingRatedPairKeys.size === 0) {
+      return cards;
+    }
+
+    if (mode === 'friends-in-common') {
+      const socialCards = (cards.socialCards ?? []).filter(card => !pendingRatedUserIds.has(card.userId.trim()));
+      return {
+        ...cards,
+        filterCount: Math.max(0, cards.filterCount - ((cards.socialCards ?? []).length - socialCards.length)),
+        socialCards
+      };
+    }
+
+    if (mode === 'separated-friends') {
+      const socialCards = (cards.socialCards ?? []).filter(card => {
+        const pairKey = this.toSocialPairKey(card);
+        return !pairKey || !pendingRatedPairKeys.has(pairKey);
+      });
+      return {
+        ...cards,
+        filterCount: Math.max(0, cards.filterCount - ((cards.socialCards ?? []).length - socialCards.length)),
+        socialCards
+      };
+    }
+
+    const cardUserIds = cards.cardUserIds.filter(cardUserId => !pendingRatedUserIds.has(cardUserId.trim()));
+    return {
+      ...cards,
+      filterCount: Math.max(0, cards.filterCount - (cards.cardUserIds.length - cardUserIds.length)),
+      cardUserIds
+    };
+  }
+
+  private toSocialPairKey(card: UserGameSocialCard): string | null {
+    const firstUserId = `${card.userId ?? ''}`.trim();
+    const secondUserId = `${card.secondaryUserId ?? ''}`.trim();
+    if (!firstUserId || !secondUserId || firstUserId === secondUserId) {
+      return null;
+    }
+    return [firstUserId, secondUserId]
+      .sort((left, right) => left.localeCompare(right))
+      .join(':');
   }
 
 

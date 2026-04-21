@@ -565,14 +565,15 @@
           </div><!-- /toolbar -->
           <ng-template #activitiesRateFullscreenSmartListItemTemplate let-row let-renderState="renderState">
             @if (row) {
-              <app-activities-rate-template
-                [row]="row"
-                [presentation]="'fullscreen'"
-                [state]="renderState"
-                [context]="activitiesRateTemplateContext"
-              ></app-activities-rate-template>
-            }
-          </ng-template>
+            <app-activities-rate-template
+              [row]="row"
+              [presentation]="'fullscreen'"
+              [state]="renderState"
+              [context]="activitiesRateTemplateContext"
+              [cardRevision]="activitiesRateCardRevision"
+            ></app-activities-rate-template>
+          }
+        </ng-template>
           <!-- ───── List / Calendar layout ───── -->
           <app-smart-list
             #activitiesSmartList
@@ -615,6 +616,7 @@
               [row]="row"
               [groupLabel]="groupLabel"
               [context]="activitiesRateTemplateContext"
+              [cardRevision]="activitiesRateCardRevision"
               (badgeClick)="activitiesRates.openEditor(row)"
             ></app-activities-rate-template>
           </ng-template>

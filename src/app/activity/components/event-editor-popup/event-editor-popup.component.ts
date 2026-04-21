@@ -77,6 +77,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   private draftAutosaveTimer: ReturnType<typeof setInterval> | null = null;
   private lastDraftAutosaveSignature = '';
   private isDraftAutosavePending = false;
+  protected isLoadingEventData = false;
 
   constructor() {
     effect(() => {
@@ -1284,8 +1285,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   private async openEditRequest(row: AppTypes.ActivityListRow, readOnly: boolean): Promise<void> {
     this.resetEditorContext();
     const activeUserId = this.activeUserId();
-    const cachedRecord = activeUserId ? this.eventEditorDataService.peekKnownItemById(activeUserId, row.id) : null;
-    const target = cachedRecord?.type === 'hosting' || row.type === 'hosting' ? 'hosting' : 'events';
+    const target = row.type === 'hosting' ? 'hosting' : 'events';
     const fallbackSource = EventEditorConverter.toEventEditorFallbackSource(row, readOnly, target);
 
     this.editorTarget = target;
@@ -1293,27 +1293,45 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.currentMemberSummary = this.activityMembersService.peekSummaryByOwnerId(row.id);
     void this.refreshCurrentMemberSummary(row.id);
 
+    if (!activeUserId) {
+      this.eventEditorService.open('edit', fallbackSource, readOnly);
+      return;
+    }
+
+    const cachedRecord = this.eventEditorDataService.peekKnownItemById(activeUserId, row.id);
     if (cachedRecord) {
       this.currentRecord = cachedRecord;
       this.openRecord(cachedRecord, readOnly, target);
       return;
     }
 
-    if (!activeUserId) {
-      this.eventEditorService.open('edit', fallbackSource, readOnly);
-      return;
-    }
+    this.isLoadingEventData = true;
+    this.eventEditorService.open('edit', fallbackSource, readOnly);
 
-    const record = await this.eventEditorDataService.queryKnownItemById(activeUserId, row.id);
-    if (!record) {
-      this.eventEditorService.open('edit', fallbackSource, readOnly);
-      return;
-    }
+    let isTimeout = false;
+    const timeoutPromise = new Promise(resolve => setTimeout(() => {
+      isTimeout = true;
+      resolve(null);
+    }, 3000));
 
-    this.currentRecord = record;
-    this.editorTarget = record.type === 'hosting' ? 'hosting' : target;
-    this.editingEventId = record.id;
-    this.openRecord(record, readOnly, this.editorTarget);
+    try {
+      const record = await Promise.race([
+        this.eventEditorDataService.queryKnownItemById(activeUserId, row.id),
+        timeoutPromise
+      ]);
+
+      this.isLoadingEventData = false;
+      if (!record || isTimeout) {
+        return;
+      }
+
+      this.currentRecord = record as DemoEventRecord;
+      this.editorTarget = this.currentRecord.type === 'hosting' ? 'hosting' : target;
+      this.editingEventId = this.currentRecord.id;
+      this.openRecord(this.currentRecord, readOnly, this.editorTarget);
+    } catch {
+      this.isLoadingEventData = false;
+    }
   }
 
   private openRecord(record: DemoEventRecord, readOnly: boolean, target: AppTypes.EventEditorTarget): void {

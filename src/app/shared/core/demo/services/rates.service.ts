@@ -2,8 +2,9 @@ import { Injectable, inject } from '@angular/core';
 
 import type { ActivitiesPageRequest } from '../../../core/base/models';
 import type { RateMenuItem } from '../../base/interfaces/activity-feed.interface';
-import type { ActivityRateRecordQuery } from '../../base/interfaces/game.interface';
+import type { ActivityRatePageResult, ActivityRateRecordQuery } from '../../base/interfaces/game.interface';
 import { DemoRouteDelayService } from './demo-route-delay.service';
+import { DemoUsersRepository } from '../repositories/users.repository';
 import { DemoUsersRatingsRepository } from '../repositories/users-ratings.repository';
 
 @Injectable({
@@ -11,6 +12,7 @@ import { DemoUsersRatingsRepository } from '../repositories/users-ratings.reposi
 })
 export class DemoRatesService extends DemoRouteDelayService {
   private static readonly RATES_ROUTE = '/activities/rates';
+  private readonly usersRepository = inject(DemoUsersRepository);
   private readonly usersRatingsRepository = inject(DemoUsersRatingsRepository);
 
   recordActivityRate(
@@ -34,11 +36,30 @@ export class DemoRatesService extends DemoRouteDelayService {
   async queryActivitiesRatePage(
     userId: string,
     request: ActivitiesPageRequest
-  ): Promise<{ items: RateMenuItem[]; total: number; nextCursor?: string | null }> {
+  ): Promise<ActivityRatePageResult> {
     await this.waitForRouteDelay(DemoRatesService.RATES_ROUTE);
-    return this.usersRatingsRepository.queryActivityRateItemsPage(
+    const page = await this.usersRatingsRepository.queryActivityRateItemsPage(
       this.toActivityRateRecordQuery(userId, request)
     );
+    const usersById = new Map(this.usersRepository.queryAllUsers().map(user => [user.id, { ...user }]));
+    const userIds = new Set<string>();
+    for (const item of page.items) {
+      if (item.userId?.trim()) {
+        userIds.add(item.userId.trim());
+      }
+      if (item.secondaryUserId?.trim()) {
+        userIds.add(item.secondaryUserId.trim());
+      }
+      if (item.bridgeUserId?.trim()) {
+        userIds.add(item.bridgeUserId.trim());
+      }
+    }
+    return {
+      ...page,
+      users: [...userIds]
+        .map(userId => usersById.get(userId) ?? null)
+        .filter((user): user is NonNullable<typeof user> => Boolean(user))
+    };
   }
 
 

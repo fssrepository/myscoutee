@@ -83,9 +83,10 @@ export class NavigatorReportUserPopupComponent implements OnDestroy {
   }
 
   protected async submitReportUser(): Promise<void> {
+    const activeUserId = this.appCtx.activeUserId().trim();
     const target = this.reportUserForm.handle.trim();
     const details = this.reportUserForm.details.trim();
-    if (!this.canSubmitReportUser() || this.isSubmitting()) {
+    if (!activeUserId || !this.canSubmitReportUser() || this.isSubmitting()) {
       return;
     }
 
@@ -96,6 +97,7 @@ export class NavigatorReportUserPopupComponent implements OnDestroy {
 
     const response = await this.usersService.submitReportUser(
       {
+        userId: activeUserId,
         handle: target,
         reason: this.reportUserForm.reason,
         details

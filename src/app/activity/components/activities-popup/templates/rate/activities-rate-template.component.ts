@@ -67,6 +67,7 @@ export class ActivitiesRateTemplateComponent {
   @Input() presentation: SingleCardData['presentation'] | PairCardData['presentation'] = 'list';
   @Input() state: SingleCardData['state'] | PairCardData['state'] = 'default';
   @Input() context: ActivitiesRateTemplateContext | null = null;
+  @Input() cardRevision = 0;
 
   @Output() readonly badgeClick = new EventEmitter<void>();
 
@@ -235,6 +236,7 @@ interface ActivitiesRatesControllerDeps {
   setSelectedRateIdInContext: (value: string | null) => void;
   setFullscreenModeInContext: (value: boolean) => void;
   recordActivityRate: (item: RateMenuItem, score: number, direction: RateMenuItem['direction']) => void;
+  refreshRateCards: () => void;
   markForCheck: () => void;
   runAfterNextPaint: (task: () => void) => void;
   runAfterRender: (task: () => void) => void;
@@ -401,6 +403,7 @@ export class ActivitiesRatesController {
     if (nextDirection) {
       this.pendingActivityRateDirectionOverrideById()[rateItem.id] = nextDirection;
     }
+    this.refreshRateCards();
     this.deps.recordActivityRate(
       rateItem,
       normalized,
@@ -740,16 +743,29 @@ export class ActivitiesRatesController {
   }
 
   private setSelectedRateId(value: string | null): void {
+    const previousValue = this.deps.getSelectedRateId();
     if (!value) {
       this.selectedListRateRow = null;
     }
+    if (previousValue === value) {
+      return;
+    }
     this.deps.setSelectedRateId(value);
     this.deps.setSelectedRateIdInContext(value);
+    this.refreshRateCards();
   }
 
   private setFullscreenMode(value: boolean): void {
+    if (this.deps.getFullscreenMode() === value) {
+      return;
+    }
     this.deps.setFullscreenMode(value);
     this.deps.setFullscreenModeInContext(value);
+    this.refreshRateCards();
+  }
+
+  private refreshRateCards(): void {
+    this.deps.refreshRateCards();
   }
 
   private activityRateDraftById(): Record<string, number> {

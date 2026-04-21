@@ -584,6 +584,9 @@ export class EventMembersPopupComponent {
     if (!normalizedOwnerId) {
       return;
     }
+    const initialMembers = Array.isArray(options?.initialMembers)
+      ? this.sortMembersByActionTimeDesc(options.initialMembers)
+      : null;
     this.isOpen = true;
     this.ownerId = normalizedOwnerId;
     this.ownerRef = {
@@ -600,11 +603,19 @@ export class EventMembersPopupComponent {
     this.resetSummaryState();
     this.canManageMembers = options?.canManage === true;
     this.canShowInviteButton = this.canManageMembers;
-    this.isLocalMembersSource = false;
+    this.isLocalMembersSource = initialMembers !== null;
+    if (initialMembers) {
+      this.membersCacheByOwnerId.set(normalizedOwnerId, initialMembers);
+      void this.usersService.warmCachedUsers(
+        initialMembers
+          .map(member => `${member.userId ?? ''}`.trim())
+          .filter(userId => userId.length > 0)
+      );
+    }
     this.membersChangeHandler = options?.onMembersChanged ?? null;
     this.membersSmartListQuery = {};
-    if (Array.isArray(options?.initialMembers) && !Number.isFinite(Number(options?.acceptedMembers)) && !Number.isFinite(Number(options?.pendingMembers)) && !Number.isFinite(Number(options?.capacityTotal))) {
-      this.applySummaryFromMembers(options.initialMembers);
+    if (initialMembers && !Number.isFinite(Number(options?.acceptedMembers)) && !Number.isFinite(Number(options?.pendingMembers)) && !Number.isFinite(Number(options?.capacityTotal))) {
+      this.applySummaryFromMembers(initialMembers);
     }
     if (
       Number.isFinite(Number(options?.acceptedMembers))
