@@ -377,16 +377,18 @@ export class HttpUsersRatingsRepository {
       return null;
     }
     const nowIso = new Date().toISOString();
-    return {
+    return DemoUserRatesBuilder.toActivityRateRecord(normalizedRaterId, {
       id: `game-card:${normalizedRaterId}:${normalizedRatedUserId}`,
-      fromUserId: normalizedRaterId,
-      toUserId: normalizedRatedUserId,
-      rate: normalizedRating,
-      mode: mode === 'pair' ? 'pair' : 'single',
-      source: 'game-card',
-      createdAtIso: nowIso,
-      updatedAtIso: nowIso
-    };
+      userId: normalizedRatedUserId,
+      mode: mode === 'pair' ? 'pair' : 'individual',
+      direction: 'given',
+      socialContext: mode === 'pair' ? 'separated-friends' : undefined,
+      scoreGiven: normalizedRating,
+      scoreReceived: 0,
+      eventName: 'Single rate',
+      happenedAt: nowIso,
+      distanceKm: 0
+    });
   }
 
   protected buildNormalizedActivityRateRecord(
@@ -448,17 +450,19 @@ export class HttpUsersRatingsRepository {
     }
     const [fromUserId, toUserId] = [normalizedFirstUserId, normalizedSecondUserId].sort((left, right) => left.localeCompare(right));
     const nowIso = new Date().toISOString();
-    return {
+    return DemoUserRatesBuilder.toActivityRateRecord(normalizedOwnerUserId, {
       id: `game-card-pair:${normalizedOwnerUserId}:${fromUserId}:${toUserId}`,
-      fromUserId,
-      toUserId,
-      rate: normalizedRating,
+      userId: fromUserId,
+      secondaryUserId: toUserId,
       mode: 'pair',
-      source: 'game-card',
-      createdAtIso: nowIso,
-      updatedAtIso: nowIso,
-      ownerUserId: normalizedOwnerUserId
-    };
+      direction: 'given',
+      socialContext: 'separated-friends',
+      scoreGiven: normalizedRating,
+      scoreReceived: 0,
+      eventName: 'Pair rate',
+      happenedAt: nowIso,
+      distanceKm: 0
+    });
   }
 
   private enqueueNormalizedRateOutbox(nextRecord: UserRateRecord): void {
