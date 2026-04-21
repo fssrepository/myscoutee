@@ -1437,6 +1437,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       this.updateScrollProgress(scrollElement);
       this.emitState();
       this.cdr.markForCheck();
+      this.maybeAutoloadToFillViewport(scrollElement);
     };
 
     if (!this.afterViewInit) {
@@ -1804,6 +1805,18 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     this.progress = maxVerticalScroll > 1
       ? this.clamp(target.scrollTop / maxVerticalScroll)
       : 0;
+  }
+
+  private maybeAutoloadToFillViewport(scrollElement?: HTMLDivElement | null): void {
+    const target = scrollElement ?? this.scrollHostRef?.nativeElement;
+    if (!target || this.currentViewMode !== 'list' || this.loading || !this.hasMore) {
+      return;
+    }
+    const maxVerticalScroll = Math.max(0, target.scrollHeight - target.clientHeight);
+    if (maxVerticalScroll > 1) {
+      return;
+    }
+    void this.loadNextPage();
   }
 
   private updateCalendarSurface(scrollElement?: HTMLDivElement | null): void {
