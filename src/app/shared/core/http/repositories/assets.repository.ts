@@ -12,6 +12,7 @@ export class HttpAssetsRepository {
   private readonly http = inject(HttpClient);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
   private readonly cachedAssetsByUserId: Record<string, AppTypes.AssetCard[]> = {};
+  private readonly inflightAssetsByUserId: Record<string, Promise<AppTypes.AssetCard[]>> = {};
 
   peekOwnedAssetsByUser(userId: string): AppTypes.AssetCard[] {
     const normalizedUserId = userId.trim();
@@ -26,18 +27,30 @@ export class HttpAssetsRepository {
     if (!normalizedUserId) {
       return [];
     }
+    const inflightRequest = this.inflightAssetsByUserId[normalizedUserId];
+    if (inflightRequest) {
+      return inflightRequest;
+    }
+    const request = this.queryAndCacheOwnedAssetsByUser(normalizedUserId);
+    this.inflightAssetsByUserId[normalizedUserId] = request;
     try {
-      const response = await this.http
-        .get<AppTypes.AssetCard[] | null>(`${this.apiBaseUrl}/assets`, {
-          params: new HttpParams().set('userId', normalizedUserId)
-        })
-        .toPromise();
-      const cards = this.normalizeCards(Array.isArray(response) ? response : []);
-      this.cachedAssetsByUserId[normalizedUserId] = cards;
-      return this.cloneCards(cards);
+      return await request;
     } catch {
       return this.peekOwnedAssetsByUser(normalizedUserId);
+    } finally {
+      delete this.inflightAssetsByUserId[normalizedUserId];
     }
+  }
+
+  private async queryAndCacheOwnedAssetsByUser(userId: string): Promise<AppTypes.AssetCard[]> {
+    const response = await this.http
+      .get<AppTypes.AssetCard[] | null>(`${this.apiBaseUrl}/assets`, {
+        params: new HttpParams().set('userId', userId)
+      })
+      .toPromise();
+    const cards = this.normalizeCards(Array.isArray(response) ? response : []);
+    this.cachedAssetsByUserId[userId] = cards;
+    return this.cloneCards(cards);
   }
 
   async queryVisibleAssets(query: AppTypes.AssetExploreQuery): Promise<AppTypes.AssetCard[]> {

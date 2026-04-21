@@ -68,7 +68,7 @@ function buildActivitiesRateCardInput(
     availableUsers: options.users
       .map(user => toActivitiesRateCardPerson(user))
       .filter((user): user is RateCardPerson => Boolean(user)),
-    singleImageUrls: rateDisplay?.imageUrls?.length ? rateDisplay.imageUrls : undefined,
+    singleImageUrls: resolveActivitiesRateImageUrls(rateDisplay?.imageUrls),
     pairSlots: buildActivitiesRateCardPairSlots(row),
     fallbackGender: options.activeUserGender,
     stackClasses: buildActivitiesRateCardStackClasses(item.mode, options.displayedDirection),
@@ -90,6 +90,13 @@ function buildActivitiesRateCardStackClasses(
 
 function buildActivitiesRateCardPairSlots(row: AppTypes.ActivityListRow): PairCardData['slots'] | undefined {
   if (!row.rateDisplay?.pairSlots?.length) {
+    return undefined;
+  }
+
+  const hasUsableImage = row.rateDisplay.pairSlots.some(slot =>
+    slot.slides.some(slide => `${slide.imageUrl ?? ''}`.trim().length > 0)
+  );
+  if (!hasUsableImage) {
     return undefined;
   }
 
@@ -128,6 +135,16 @@ function resolveActivitiesRatePrimaryUser(
   const item = row.source as RateMenuItem;
   const user = users.find(candidate => candidate.id === item.userId) ?? null;
   return toActivitiesRateCardPerson(user);
+}
+
+function resolveActivitiesRateImageUrls(imageUrls: readonly string[] | null | undefined): readonly string[] | undefined {
+  if (!imageUrls?.length) {
+    return undefined;
+  }
+  const normalizedImageUrls = imageUrls
+    .map(imageUrl => `${imageUrl ?? ''}`.trim())
+    .filter(imageUrl => imageUrl.length > 0);
+  return normalizedImageUrls.length > 0 ? normalizedImageUrls : undefined;
 }
 
 function toActivitiesRateCardPerson(

@@ -113,6 +113,27 @@ export interface AssetExploreBorrowDialogViewState {
   error: string | null;
 }
 
+export interface AssignedAssetJoinDialogViewState {
+  title: string;
+  subtitle: string;
+  timeframe: string;
+  pathLabel: string;
+  memberSummary: string;
+  lineItems: AppTypes.EventCheckoutLineItem[];
+  totalAmount: number;
+  shareAmount: number;
+  shareMemberCount: number;
+  currency: string;
+  shareLabel: string;
+  shareHint: string;
+  policies: AppTypes.EventPolicyItem[];
+  acceptedPolicyIds: string[];
+  submitLabel: string;
+  busyLabel: string;
+  busy: boolean;
+  error: string | null;
+}
+
 export interface AssetExploreBorrowDraftViewState {
   cardId: string;
   title: string;
@@ -140,6 +161,7 @@ export interface EventResourcePopupHost {
   pendingDeleteCard(): PendingResourceDeleteState | null;
   assetExplorePopup(): AssetExplorePopupViewState | null;
   assetExploreBorrowDialog(): AssetExploreBorrowDialogViewState | null;
+  joinDialog(): AssignedAssetJoinDialogViewState | null;
   assetExploreBorrowDrafts(): AssetExploreBorrowDraftViewState[];
   close(): void;
   selectResourceFilter(filter: AppTypes.SubEventResourceFilter): void;
@@ -179,6 +201,13 @@ export interface EventResourcePopupHost {
   toggleItemActionMenu(card: AppTypes.SubEventResourceCard, event: Event): void;
   canJoin(card: AppTypes.SubEventResourceCard): boolean;
   join(card: AppTypes.SubEventResourceCard, event: Event): void;
+  canLeave(card: AppTypes.SubEventResourceCard): boolean;
+  leave(card: AppTypes.SubEventResourceCard, event: Event): void;
+  closeJoinDialog(event?: Event): void;
+  toggleJoinPolicy(policyId: string): void;
+  canSubmitJoin(): boolean;
+  confirmJoin(event?: Event): void;
+  joinConfirmRingPerimeter(): number;
   canEditCapacity(card: AppTypes.SubEventResourceCard): boolean;
   openCapacityEditor(card: AppTypes.SubEventResourceCard, event: Event): void;
   canEditRoute(card: AppTypes.SubEventResourceCard): boolean;
@@ -343,11 +372,11 @@ export class EventResourcePopupComponent implements DoCheck {
     const cards = this.assetExploreCardsForView();
     const page = Math.max(0, Math.trunc(Number(query.page) || 0));
     const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 1));
-    const basePageSize = Math.max(1, Math.trunc(Number(this.assetExploreSmartListConfig.pageSize) || pageSize));
-    const initialPageSize = Math.max(
-      basePageSize,
-      Math.trunc(Number(this.assetExploreSmartListConfig.initialPageSize ?? basePageSize))
+    const basePageSize = Math.max(
+      1,
+      Math.trunc(Number(query.pageSize) || Number(this.assetExploreSmartListConfig.pageSize) || 1)
     );
+    const initialPageSize = this.assetExploreInitialPageSize(basePageSize);
     const start = page === 0 ? 0 : initialPageSize + ((page - 1) * basePageSize);
     const size = page === 0 ? Math.max(pageSize, initialPageSize) : pageSize;
     return of({
@@ -788,6 +817,10 @@ export class EventResourcePopupComponent implements DoCheck {
       this.host.join(card, new Event('click'));
       return;
     }
+    if (event.actionId === 'leave') {
+      this.host.leave(card, new Event('click'));
+      return;
+    }
     if (event.actionId === 'capacity') {
       this.host.openCapacityEditor(card, new Event('click'));
       return;
@@ -813,6 +846,12 @@ export class EventResourcePopupComponent implements DoCheck {
         return;
       }
       this.host.closeAssetExploreBorrowDialog();
+      return;
+    }
+    if (this.host.joinDialog()) {
+      keyboardEvent.preventDefault();
+      keyboardEvent.stopPropagation();
+      this.host.closeJoinDialog();
       return;
     }
     if (this.showAssetExploreBorrowBasket) {
@@ -918,7 +957,7 @@ export class EventResourcePopupComponent implements DoCheck {
     let nextVisibleCount = Math.min(cards.length, visibleCount);
 
     if (cards.length > previousCardCount && allCardsWereVisible) {
-      nextVisibleCount = Math.min(cards.length, visibleCount + 1);
+      nextVisibleCount = Math.min(cards.length, visibleCount + (cards.length - previousCardCount));
     }
 
     this.resourceSmartList.replaceVisibleItems(cards.slice(0, nextVisibleCount), {
@@ -939,7 +978,7 @@ export class EventResourcePopupComponent implements DoCheck {
     let nextVisibleCount = Math.min(cards.length, visibleCount);
 
     if (cards.length > previousCardCount && allCardsWereVisible) {
-      nextVisibleCount = Math.min(cards.length, visibleCount + 1);
+      nextVisibleCount = Math.min(cards.length, visibleCount + (cards.length - previousCardCount));
     }
 
     const orderedCards = this.assetExploreCardsForView(cards);
@@ -957,8 +996,8 @@ export class EventResourcePopupComponent implements DoCheck {
   }
 
   private assetExploreCardsForView(source: readonly AppTypes.AssetCard[] = this.host?.assetExplorePopup?.()?.cards ?? []): AppTypes.AssetCard[] {
-    const cards = [...source];
     const availability = (card: AppTypes.AssetCard) => this.host.assetExploreAvailableQuantity(card);
+    const cards = [...source].filter(card => availability(card) > 0);
     const price = (card: AppTypes.AssetCard) => this.assetExplorePriceAmount(card);
     const policyCount = (card: AppTypes.AssetCard) => (card.policies ?? []).length;
 
@@ -1075,6 +1114,17 @@ export class EventResourcePopupComponent implements DoCheck {
     return window.matchMedia('(max-width: 900px)').matches;
   }
 
+  private assetExploreInitialPageSize(basePageSize: number): number {
+    const configuredInitialPageSize = Math.max(
+      basePageSize,
+      Math.trunc(Number(this.assetExploreSmartListConfig.initialPageSize ?? basePageSize))
+    );
+    if (!this.isMobileResourceFilterSheetViewport()) {
+      return configuredInitialPageSize;
+    }
+    return basePageSize;
+  }
+
   private resourceMediaStart(card: AppTypes.SubEventResourceCard): NonNullable<InfoCardData['mediaStart']> | null {
     if (!this.host.canOpenMap(card)) {
       return null;
@@ -1096,6 +1146,13 @@ export class EventResourcePopupComponent implements DoCheck {
         label: 'Join',
         icon: 'login',
         tone: 'accent'
+      });
+    } else if (this.host.canLeave(card)) {
+      actions.push({
+        id: 'leave',
+        label: 'Leave',
+        icon: 'logout',
+        tone: 'default'
       });
     }
     if (this.host.canEditCapacity(card)) {

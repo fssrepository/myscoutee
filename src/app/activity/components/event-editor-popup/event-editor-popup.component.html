@@ -80,6 +80,11 @@
       </div>
     </div>
     <div class="popup-body">
+      @if (isLoadingEventData) {
+      <div class="popup-loading-overlay">
+        <mat-icon class="rotating-spinner" style="font-size: 48px; width: 48px; height: 48px; color: var(--color-primary, #F7BE34);">sync</mat-icon>
+      </div>
+      } @else {
       <section class="editor-list-card">
         <div class="experience-form-panel" [ngClass]="eventVisibilityClass(eventForm.visibility)">
           <div class="experience-form-grid">
@@ -457,6 +462,7 @@
           </div>
         </div>
       </section>
+      }
     </div>
   </div>
   @if (showSlotsPopup) {

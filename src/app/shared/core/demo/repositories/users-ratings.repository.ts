@@ -145,26 +145,56 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
 
     for (const id of ratesTable.ids) {
       const record = ratesTable.byId[id];
-      if (record && record.source === 'game-card') {
+      if (!record) {
+        continue;
+      }
+      if (record.source === 'game-card') {
         if (record.mode === 'pair' && record.ownerUserId?.trim() === normalizedRaterId) {
           ratedUserIds.add(record.fromUserId.trim());
           ratedUserIds.add(record.toUserId.trim());
         } else if (record.fromUserId === normalizedRaterId) {
           ratedUserIds.add(record.toUserId.trim());
         }
+        continue;
+      }
+      if (record.source !== 'activity-rate' || record.ownerUserId?.trim() !== normalizedRaterId) {
+        continue;
+      }
+      const item = DemoUserRatesBuilder.toRateMenuItem(record);
+      if (!item || (item.direction !== 'met' && item.scoreGiven <= 0)) {
+        continue;
+      }
+      ratedUserIds.add(item.userId.trim());
+      if (item.secondaryUserId?.trim()) {
+        ratedUserIds.add(item.secondaryUserId.trim());
       }
     }
 
     for (const id of outboxTable.ids) {
       const outboxRecord = outboxTable.byId[id];
-      if (outboxRecord?.payload && outboxRecord.payload.source === 'game-card' && outboxRecord.status === 'pending') {
-        const payload = outboxRecord.payload;
+      const payload = outboxRecord?.payload;
+      if (!payload || outboxRecord.status !== 'pending') {
+        continue;
+      }
+      if (payload.source === 'game-card') {
         if (payload.mode === 'pair' && payload.ownerUserId?.trim() === normalizedRaterId) {
           ratedUserIds.add(payload.fromUserId.trim());
           ratedUserIds.add(payload.toUserId.trim());
         } else if (payload.fromUserId === normalizedRaterId) {
           ratedUserIds.add(payload.toUserId.trim());
         }
+        continue;
+      }
+      if (payload.source !== 'activity-rate' || payload.ownerUserId?.trim() !== normalizedRaterId) {
+        continue;
+      }
+      const item = DemoUserRatesBuilder.toRateMenuItem(payload);
+      if (!item || (item.direction !== 'met' && item.scoreGiven <= 0)) {
+        continue;
+      }
+      ratedUserIds.add(item.userId.trim());
+      if (item.secondaryUserId?.trim()) {
+        ratedUserIds.add(item.secondaryUserId.trim());
       }
     }
 

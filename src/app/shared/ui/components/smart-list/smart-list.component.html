@@ -337,7 +337,7 @@
     <div class="smart-list__pagination-arrows">
       <button
         type="button"
-        class="smart-list__pagination-arrow smart-list__pagination-arrow--prev"
+        class="smart-list__pagination-arrow smart-list__pagination-arrow--prev motion-static"
         [disabled]="!canMoveCursor(-1)"
         (click)="onPaginationPrev($event)"
         aria-label="Previous item"
@@ -346,7 +346,7 @@
       </button>
       <button
         type="button"
-        class="smart-list__pagination-arrow smart-list__pagination-arrow--next"
+        class="smart-list__pagination-arrow smart-list__pagination-arrow--next motion-static"
         [disabled]="!canMoveCursor(1)"
         (click)="onPaginationNext($event)"
         aria-label="Next item"

@@ -77,6 +77,7 @@ export class EventChatPopupComponent implements OnDestroy {
   protected chatThreadQuery: Partial<ListQuery<ChatThreadFilters>> = {};
   protected readonly chatThreadSmartListConfig: SmartListConfig<AppTypes.ChatPopupMessage, ChatThreadFilters> = {
     pageSize: this.chatHistoryPageSize,
+    mobilePageSizeCap: null,
     initialPageCount: 1,
     initialPageSize: this.chatInitialLoadMessageCount,
     preloadOffsetPx: this.chatHistoryPreloadOffsetPx,

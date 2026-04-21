@@ -117,6 +117,7 @@ type SmartListCalendarWindow = {
 })
 export class SmartListComponent<T, TFilters extends SmartListFilters = SmartListFilters> implements AfterViewInit, OnChanges, OnDestroy {
   private static readonly DEFAULT_LOADING_DELAY_MS = 0;
+  private static readonly DEFAULT_MOBILE_PAGE_SIZE_CAP = 6;
   private static readonly QUICK_COMPLETE_THRESHOLD_MS = 120;
   private static readonly HOSTED_FULLSCREEN_STACK_SIZE = 3;
   private static readonly HOSTED_FULLSCREEN_PAGE_CURL_DURATION_MS = 420;
@@ -1436,6 +1437,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       this.updateScrollProgress(scrollElement);
       this.emitState();
       this.cdr.markForCheck();
+      this.maybeAutoloadToFillViewport(scrollElement);
     };
 
     if (!this.afterViewInit) {
@@ -1803,6 +1805,18 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     this.progress = maxVerticalScroll > 1
       ? this.clamp(target.scrollTop / maxVerticalScroll)
       : 0;
+  }
+
+  private maybeAutoloadToFillViewport(scrollElement?: HTMLDivElement | null): void {
+    const target = scrollElement ?? this.scrollHostRef?.nativeElement;
+    if (!target || this.currentViewMode !== 'list' || this.loading || !this.hasMore) {
+      return;
+    }
+    const maxVerticalScroll = Math.max(0, target.scrollHeight - target.clientHeight);
+    if (maxVerticalScroll > 1) {
+      return;
+    }
+    void this.loadNextPage();
   }
 
   private updateCalendarSurface(scrollElement?: HTMLDivElement | null): void {
@@ -2547,9 +2561,10 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
       ...(((baseQuery.filters ?? {}) as TFilters)),
       ...((this.filters ?? {}) as TFilters)
     } as TFilters;
+    const pageSize = this.resolveEffectivePageSize(this.currentViewKey);
     const query: ListQuery<TFilters> = {
       page: this.currentViewMode === 'list' ? page : 0,
-      pageSize: Math.max(1, Math.trunc(activeView?.pageSize ?? this.config.pageSize ?? 10)),
+      pageSize,
       cursor: this.currentViewMode === 'list' ? this.nextPageCursor : undefined,
       sort: this.sort ?? baseQuery.sort ?? this.config.defaultSort,
       direction: this.direction ?? baseQuery.direction ?? this.config.defaultDirection,
@@ -2578,7 +2593,7 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
     }
     return {
       ...query,
-      pageSize: Math.max(1, Math.trunc(Number(initialPageSize)))
+      pageSize: this.resolveEffectiveInitialPageSize(query.pageSize, Number(initialPageSize))
     };
   }
 
@@ -2801,6 +2816,38 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
       rangeStart: this.dateKey(range.start),
       rangeEnd: this.dateKey(range.end)
     };
+  }
+
+  private resolveEffectivePageSize(viewKey: string | null = this.currentViewKey): number {
+    const configuredPageSize = Math.max(
+      1,
+      Math.trunc(this.activeViewConfig(viewKey)?.pageSize ?? this.config.pageSize ?? 10)
+    );
+    const mobileCap = this.mobilePageSizeCapForView(viewKey);
+    return mobileCap === null ? configuredPageSize : Math.min(configuredPageSize, mobileCap);
+  }
+
+  private resolveEffectiveInitialPageSize(queryPageSize: number, configuredInitialPageSize: number): number {
+    const normalizedInitialPageSize = Math.max(1, Math.trunc(configuredInitialPageSize));
+    const mobileCap = this.mobilePageSizeCapForView();
+    if (mobileCap === null) {
+      return normalizedInitialPageSize;
+    }
+    return Math.max(1, Math.trunc(queryPageSize));
+  }
+
+  private mobilePageSizeCapForView(viewKey: string | null = this.currentViewKey): number | null {
+    if (typeof window === 'undefined' || !window.matchMedia('(max-width: 900px)').matches) {
+      return null;
+    }
+    if (this.resolveViewMode(viewKey) !== 'list') {
+      return null;
+    }
+    const configuredCap = this.config.mobilePageSizeCap;
+    if (configuredCap === null) {
+      return null;
+    }
+    return Math.max(1, Math.trunc(configuredCap ?? SmartListComponent.DEFAULT_MOBILE_PAGE_SIZE_CAP));
   }
 
   private calendarRangeForAnchor(anchor: Date): { start: Date; end: Date } {

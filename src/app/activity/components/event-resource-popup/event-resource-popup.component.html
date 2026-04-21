@@ -468,6 +468,164 @@
             </div>
           </section>
         }
+
+        @if (host.joinDialog(); as dialog) {
+          <div class="asset-explore-shell assigned-asset-join-shell">
+            <section class="experience-form-overlay subevent-form-overlay subevent-group-form-overlay subevent-asset-capacity-overlay asset-explore-borrow-overlay">
+              <div class="experience-form-overlay-backdrop" (click)="host.closeJoinDialog($event)"></div>
+              <div class="experience-form-popup subevent-form-popup subevent-group-popup asset-explore-borrow-popup">
+                <div class="experience-form-header subevent-group-header">
+                  <div class="subevent-group-header-main">
+                    <h3>{{ dialog.title }}</h3>
+                    <p class="subevent-group-stage-subtitle">{{ dialog.subtitle }}</p>
+                  </div>
+                  <div class="experience-form-header-controls">
+                    <button type="button" class="experience-form-close-btn" (click)="host.closeJoinDialog($event)" aria-label="Close join request">
+                      <mat-icon>close</mat-icon>
+                    </button>
+                  </div>
+                </div>
+                <section class="experience-form-panel subevent-form-panel subevent-group-form-panel asset-explore-borrow-panel">
+                  <div class="asset-explore-borrow-form">
+                    <section class="asset-explore-borrow-review-card">
+                      <div class="asset-explore-borrow-review-card__head">
+                        <div>
+                          <h4>Join Summary</h4>
+                          <span>{{ dialog.timeframe }}</span>
+                        </div>
+                        <strong>{{ dialog.shareAmount > 0 ? assetExploreBorrowFormatMoney(dialog.shareAmount, dialog.currency) : 'Included' }}</strong>
+                      </div>
+                      <div class="asset-explore-borrow-review-card__list">
+                        @for (item of dialog.lineItems; track item.id) {
+                          <article class="asset-explore-borrow-review-card__item">
+                            <div>
+                              <strong>{{ item.label }}</strong>
+                              <span>{{ dialog.pathLabel }} · {{ dialog.memberSummary }}</span>
+                            </div>
+                            <strong>{{ item.amount > 0 ? assetExploreBorrowFormatMoney(item.amount, item.currency) : 'Included' }}</strong>
+                          </article>
+                        }
+                      </div>
+                    </section>
+
+                    <section class="asset-explore-borrow-review-card asset-explore-borrow-review-card--payment">
+                      <div class="asset-explore-borrow-review-card__head">
+                        <div>
+                          <h4>Shared Price</h4>
+                          <span>{{ dialog.shareHint }}</span>
+                        </div>
+                        <strong>{{ dialog.shareAmount > 0 ? assetExploreBorrowFormatMoney(dialog.shareAmount, dialog.currency) : 'Included' }}</strong>
+                      </div>
+                      <div class="asset-explore-borrow-payment-summary">
+                        <article>
+                          <span>Asset total</span>
+                          <strong>{{ dialog.totalAmount > 0 ? assetExploreBorrowFormatMoney(dialog.totalAmount, dialog.currency) : 'Included' }}</strong>
+                        </article>
+                        <article>
+                          <span>{{ dialog.shareLabel }}</span>
+                          <strong>{{ dialog.shareAmount > 0 ? assetExploreBorrowFormatMoney(dialog.shareAmount, dialog.currency) : 'Included' }}</strong>
+                        </article>
+                        <article>
+                          <span>Members after join</span>
+                          <strong>{{ dialog.shareMemberCount }}</strong>
+                        </article>
+                      </div>
+                    </section>
+
+                    @if (dialog.policies.length > 0) {
+                      <section class="asset-explore-borrow-review-card">
+                        <div class="asset-explore-borrow-review-card__head">
+                          <div>
+                            <h4>Policies</h4>
+                            <span>Review and approve before joining</span>
+                          </div>
+                        </div>
+                        <div class="asset-explore-borrow-policy-list">
+                          @for (policy of dialog.policies; track policy.id) {
+                            <label class="asset-explore-borrow-policy-card" [class.is-required]="policy.required !== false">
+                              <input
+                                type="checkbox"
+                                [checked]="dialog.acceptedPolicyIds.includes(policy.id)"
+                                (change)="host.toggleJoinPolicy(policy.id)"
+                              />
+                              <div>
+                                <strong>{{ policy.title }}</strong>
+                                @if (policy.description) {
+                                  <span>{{ policy.description }}</span>
+                                }
+                              </div>
+                              @if (policy.required !== false) {
+                                <em>Required</em>
+                              }
+                            </label>
+                          }
+                        </div>
+                      </section>
+                    }
+
+                    @if (dialog.error) {
+                      <p class="subevent-resource-editor-error">{{ dialog.error }}</p>
+                    }
+
+                    <div class="asset-explore-borrow-actions">
+                      <button
+                        type="button"
+                        class="asset-explore-borrow-actions__btn asset-explore-borrow-actions__btn--secondary"
+                        [disabled]="dialog.busy"
+                        (click)="host.closeJoinDialog($event)"
+                      >
+                        Cancel
+                      </button>
+                      <span
+                        class="asset-explore-borrow-confirm-shell"
+                        [class.is-loading]="dialog.busy"
+                        [class.is-error]="!dialog.busy && !!dialog.error"
+                      >
+                        @if (dialog.busy || dialog.error) {
+                          <span class="asset-explore-borrow-confirm-ring" aria-hidden="true">
+                            <svg viewBox="0 0 132 52" preserveAspectRatio="none" class="asset-explore-borrow-confirm-ring-svg">
+                              <defs>
+                                <linearGradient id="asset-explore-borrow-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                  <stop offset="0%" stop-color="rgb(235, 147, 33)"></stop>
+                                  <stop offset="100%" stop-color="rgb(247, 190, 52)"></stop>
+                                </linearGradient>
+                                <linearGradient id="asset-explore-borrow-gradient-error" x1="0%" y1="0%" x2="100%" y2="100%">
+                                  <stop offset="0%" stop-color="rgb(213, 54, 68)"></stop>
+                                  <stop offset="100%" stop-color="rgb(196, 29, 42)"></stop>
+                                </linearGradient>
+                              </defs>
+                              <path
+                                class="asset-explore-borrow-confirm-ring-track"
+                                d="M66 2 H116 A14 14 0 0 1 130 16 V36 A14 14 0 0 1 116 50 H16 A14 14 0 0 1 2 36 V16 A14 14 0 0 1 16 2 H66"
+                              ></path>
+                              <path
+                                class="asset-explore-borrow-confirm-ring-progress"
+                                [class.is-loading]="dialog.busy"
+                                [class.is-error]="!dialog.busy && !!dialog.error"
+                                d="M66 2 H116 A14 14 0 0 1 130 16 V36 A14 14 0 0 1 116 50 H16 A14 14 0 0 1 2 36 V16 A14 14 0 0 1 16 2 H66"
+                                pathLength="100"
+                                stroke-dasharray="100"
+                                [attr.stroke-dashoffset]="dialog.busy ? host.joinConfirmRingPerimeter() : 0"
+                              ></path>
+                            </svg>
+                          </span>
+                        }
+                        <button
+                          type="button"
+                          class="asset-explore-borrow-actions__btn asset-explore-borrow-actions__btn--primary asset-explore-borrow-actions__btn--confirm"
+                          [disabled]="!host.canSubmitJoin() || dialog.busy"
+                          (click)="host.confirmJoin($event)"
+                        >
+                          {{ dialog.busy ? dialog.busyLabel : dialog.submitLabel }}
+                        </button>
+                      </span>
+                    </div>
+                  </div>
+                </section>
+              </div>
+            </section>
+          </div>
+        }
       </div>
     </div>
   </div>

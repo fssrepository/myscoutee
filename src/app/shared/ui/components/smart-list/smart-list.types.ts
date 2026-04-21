@@ -179,6 +179,7 @@ export interface SmartListItemSelectEvent<T, TFilters extends SmartListFilters =
 
 export interface SmartListConfig<T, TFilters extends SmartListFilters = SmartListFilters> {
   pageSize?: number;
+  mobilePageSizeCap?: number | null;
   initialPageCount?: number;
   initialPageSize?: number;
   preloadOffsetPx?: number;

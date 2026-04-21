@@ -74,7 +74,7 @@ export class OwnedAssetsPopupFacadeService {
 
   constructor() {
     effect(() => {
-      this.initializeFromUser(this.appCtx.activeUserId().trim());
+      this.initializeFromUser(this.resolveContextOwnerUserId());
     });
   }
 
@@ -95,6 +95,9 @@ export class OwnedAssetsPopupFacadeService {
 
   initializeFromUser(userId: string): void {
     const normalizedUserId = userId.trim();
+    if (normalizedUserId === this.activeOwnerUserId) {
+      return;
+    }
     this.activeOwnerUserId = normalizedUserId;
     this.pendingAssetDeleteCardId = null;
     this.isAssetDeletePending = false;
@@ -810,6 +813,10 @@ export class OwnedAssetsPopupFacadeService {
 
   private resolveOwnerUserId(): string {
     return this.activeOwnerUserId.trim() || this.appCtx.getActiveUserId().trim();
+  }
+
+  private resolveContextOwnerUserId(): string {
+    return this.appCtx.activeUserProfile()?.id?.trim() || this.appCtx.activeUserId().trim();
   }
 
   private schedulePersist(): void {

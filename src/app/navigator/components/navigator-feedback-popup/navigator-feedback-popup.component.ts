@@ -74,9 +74,10 @@ export class NavigatorFeedbackPopupComponent implements OnDestroy {
   }
 
   protected async submitFeedback(): Promise<void> {
+    const activeUserId = this.appCtx.activeUserId().trim();
     const subject = this.feedbackForm.subject.trim();
     const details = this.feedbackForm.details.trim();
-    if (!subject || details.length < this.feedbackDetailsMinLength || this.isSubmitting()) {
+    if (!activeUserId || !subject || details.length < this.feedbackDetailsMinLength || this.isSubmitting()) {
       return;
     }
 
@@ -87,6 +88,7 @@ export class NavigatorFeedbackPopupComponent implements OnDestroy {
 
     const response = await this.usersService.submitUserFeedback(
       {
+        userId: activeUserId,
         category: this.feedbackForm.category,
         subject,
         details

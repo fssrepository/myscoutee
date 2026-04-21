@@ -4,6 +4,7 @@ import { AppUtils } from '../shared/app-utils';
 import {
   AppContext,
   AppPopupContext,
+  SessionService,
   UsersService,
   type ActivityMemberEntry,
   type UserDto
@@ -219,6 +220,7 @@ const CONTACT_METHOD_OPTION_BY_TYPE = new Map(
 export class NavigatorContactsService {
   private readonly appCtx = inject(AppContext);
   private readonly popupCtx = inject(AppPopupContext);
+  private readonly sessionService = inject(SessionService);
   private readonly usersService = inject(UsersService);
 
   private readonly openRef = signal(false);
@@ -238,11 +240,13 @@ export class NavigatorContactsService {
   constructor() {
     effect(() => {
       const activeUserId = this.appCtx.activeUserId().trim();
+      const previousLoadedUserId = this.loadedUserId;
       if (activeUserId === this.loadedUserId) {
         return;
       }
       this.loadedUserId = activeUserId;
       this.warmedUserIds = new Set<string>();
+      this.migrateHttpAliasContacts(previousLoadedUserId, activeUserId);
       this.contactsRef.set(this.readContacts(activeUserId));
       this.contactCountRef.set(this.contactsRef().length);
       this.bumpRevision(false);
@@ -674,6 +678,42 @@ export class NavigatorContactsService {
       return;
     }
     window.localStorage.setItem(this.storageKey(userId), JSON.stringify(normalizedContacts));
+  }
+
+  private migrateHttpAliasContacts(previousUserId: string, nextUserId: string): void {
+    if (typeof window === 'undefined') {
+      return;
+    }
+    const normalizedPreviousUserId = previousUserId.trim();
+    const normalizedNextUserId = nextUserId.trim();
+    if (!normalizedPreviousUserId || !normalizedNextUserId || normalizedPreviousUserId === normalizedNextUserId) {
+      return;
+    }
+
+    const currentSession = this.sessionService.currentSession();
+    if (currentSession?.kind !== 'demo' || currentSession.userId.trim() !== normalizedPreviousUserId) {
+      return;
+    }
+
+    const previousContacts = this.readContacts(normalizedPreviousUserId);
+    if (previousContacts.length === 0) {
+      return;
+    }
+
+    const mergedContactsById = new Map<string, NavigatorStoredContact>();
+    for (const contact of this.readContacts(normalizedNextUserId)) {
+      mergedContactsById.set(contact.id, contact);
+    }
+    for (const contact of previousContacts) {
+      const existing = mergedContactsById.get(contact.id);
+      if (!existing || contact.updatedAtIso.localeCompare(existing.updatedAtIso) > 0) {
+        mergedContactsById.set(contact.id, contact);
+      }
+    }
+
+    const mergedContacts = [...mergedContactsById.values()];
+    window.localStorage.setItem(this.storageKey(normalizedNextUserId), JSON.stringify(mergedContacts));
+    window.localStorage.removeItem(this.storageKey(normalizedPreviousUserId));
   }
 
   private compareContacts(left: Pick<NavigatorContactListItem, 'name' | 'city' | 'updatedAtIso'>, right: Pick<NavigatorContactListItem, 'name' | 'city' | 'updatedAtIso'>): number {

@@ -142,6 +142,12 @@ function resolveDistanceMetersExact(distanceKm: number): number {
 }
 
 function resolveActivityEventRowType(record: DemoEventRecord): AppTypes.ActivityListRow['type'] {
+  if (record.status === 'invitation') {
+    return 'invitations';
+  }
+  if (record.status === 'hosting' || record.status === 'draft') {
+    return 'hosting';
+  }
   if (record.isInvitation || record.type === 'invitations') {
     return 'invitations';
   }

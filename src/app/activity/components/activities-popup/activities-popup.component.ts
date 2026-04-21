@@ -44,6 +44,7 @@ import {
   type InfoCardMenuAction,
   type InfoCardMenuActionEvent,
   type ListQuery,
+  type PageResult,
   type SmartListConfig,
   type SmartListLoadPage,
   type SmartListItemSelectEvent,
@@ -188,6 +189,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     setSelectedRateIdInContext: value => this.activitiesContext.setActivitiesSelectedRateId(value),
     setFullscreenModeInContext: value => this.activitiesContext.setActivitiesRatesFullscreenMode(value),
     recordActivityRate: (item, score, direction) => this.ratesService.recordActivityRate(this.activeUser.id, item, score, direction),
+    refreshRateCards: () => this.refreshActivitiesRateCards(),
     markForCheck: () => this.cdr.markForCheck(),
     runAfterNextPaint: task => this.runAfterActivitiesNextPaint(task),
     runAfterRender: task => this.runAfterActivitiesRender(task)
@@ -255,6 +257,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected readonly eventSubEventsById: Record<string, AppTypes.SubEventFormItem[]> = {};
   protected readonly activityMembersByRowId: Record<string, AppTypes.ActivityMemberEntry[]> = {};
   protected activitiesEventCardRevision = 0;
+  protected activitiesRateCardRevision = 0;
   protected readonly forcedAcceptedMembersByRowKey: Record<string, number> = { 'events:e8': 20 };
   protected readonly leavingActivityRowIds = new Set<string>();
   protected readonly activityRowExitAnimationMs = 180;
@@ -392,9 +395,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     }
   };
   protected readonly activitiesSmartListLoadPage: SmartListLoadPage<AppTypes.ActivityListRow, ActivitiesSmartListFilters>
-    = query => from(this.activitiesService.loadActivities(query, {
-      chatItems: this.chatItems
-    }));
+    = query => from(this.loadActivitiesSmartListPage(query));
   // ── Inline action menu ────────────────────────────────────────────────────
   protected inlineItemActionMenu: {
     scope: 'activityMember';
@@ -522,6 +523,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       this.hostingPublicationFilter      = svc.activitiesHostingPublicationFilter() as AppTypes.HostingPublicationFilter;
       this.activitiesRateFilter          = svc.activitiesRateFilter() as AppTypes.RateFilterKey;
       this.activitiesView                = svc.activitiesView() as AppTypes.ActivitiesView;
+      this.activitiesSmartListConfig.loadingDelayMs = this.resolveActivitiesLoadingDelayMs();
       this.showActivitiesViewPicker      = svc.activitiesShowViewPicker();
       this.showActivitiesSecondaryPicker = svc.activitiesShowSecondaryPicker();
       this.activitiesStickyValue         = svc.activitiesStickyValue();
@@ -1728,6 +1730,11 @@ export class ActivitiesPopupComponent implements OnDestroy {
     this.activitiesEventCardRevision += 1;
   }
 
+  private refreshActivitiesRateCards(): void {
+    this.activitiesRateCardRevision += 1;
+    this.cdr.markForCheck();
+  }
+
   private reconcileInvitationItemsFromEventSync(sync: ActivitiesEventSyncPayload): void {
     const activeUserId = this.activeUser.id.trim();
     if (!activeUserId) {
@@ -2013,6 +2020,16 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return this.users.find(u => u.id === userId);
   }
 
+  private resolveActivitiesLoadingDelayMs(): number {
+    if (this.activitiesPrimaryFilter === 'events') {
+      return resolveCurrentRouteDelayMs('/activities/events');
+    }
+    if (this.activitiesPrimaryFilter === 'rates') {
+      return resolveCurrentRouteDelayMs('/activities/rates');
+    }
+    return resolveCurrentRouteDelayMs('/activities/chats');
+  }
+
   private syncActivitiesSmartListQuery(): void {
     const nextFilters: Record<string, unknown> = {
       primaryFilter: this.activitiesPrimaryFilter,
@@ -2085,5 +2102,18 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   protected activitiesListScrollElement(): HTMLDivElement | null {
     return this.activitiesSmartList?.scrollElement() ?? this.activitiesScrollRef?.nativeElement ?? null;
+  }
+
+  private async loadActivitiesSmartListPage(
+    query: ListQuery<ActivitiesSmartListFilters>
+  ): Promise<PageResult<AppTypes.ActivityListRow>> {
+    const page = await this.activitiesService.loadActivities(query, {
+      chatItems: this.chatItems
+    });
+    const requestedPrimaryFilter = query.filters?.primaryFilter ?? this.activitiesPrimaryFilter;
+    if (requestedPrimaryFilter === 'rates') {
+      this.refreshRateItems();
+    }
+    return page;
   }
 }
