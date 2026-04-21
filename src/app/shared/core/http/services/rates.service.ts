@@ -40,6 +40,11 @@ export class HttpRatesService {
     userId: string,
     request: ActivitiesPageRequest
   ): Promise<ActivityRatePageResult> {
+    try {
+      await this.usersRatingsRepository.flushPendingUserRatesOutboxBatch();
+    } catch {
+      // Fall through to the mixed server/cache read below.
+    }
     await this.queryRateItemsByUser(userId);
     const [mode, direction] = request.rateFilter.split('-') as ['individual' | 'pair', RateMenuItem['direction']];
     let params = new HttpParams()

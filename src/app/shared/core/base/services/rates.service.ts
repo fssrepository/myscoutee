@@ -28,6 +28,7 @@ export class RatesService extends BaseRouteModeService {
     direction?: RateMenuItem['direction'] | null
   ): void {
     this.ratesService.recordActivityRate(ownerUserId, item, rating, direction);
+    this.gameService.resetUserGameCardsStack(ownerUserId);
     this.gameService.kickUserRatesOutboxSync();
   }
 
