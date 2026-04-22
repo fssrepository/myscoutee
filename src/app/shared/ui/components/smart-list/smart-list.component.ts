@@ -165,6 +165,11 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   protected suppressListSnapNearEnd = false;
 
   private total = 0;
+  private resolvedListTrackKeys: Array<string | number> = [];
+  private fallbackTrackKeyByObject = new WeakMap<object, string>();
+  private listItemIndexByObject = new WeakMap<object, number>();
+  private resolvedListTrackKeyByObject = new WeakMap<object, string | number>();
+  private fallbackTrackKeySequence = 0;
 
   totalItemCount(): number {
     return this.total;
@@ -710,7 +715,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   protected readonly trackByGroup = (_index: number, group: SmartListGroup<T>): string => `${group.startIndex}:${group.label}`;
 
   protected readonly trackByItem = (index: number, item: T): unknown =>
-    this.config.trackBy ? this.config.trackBy(index, item) : index;
+    this.config.trackBy ? this.resolvedListTrackKeyForItem(index, item) : index;
 
   protected readonly trackByCalendarPageKey = (_index: number, page: SmartListCalendarPage<T>): string => page.key;
 
@@ -722,7 +727,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   protected readonly trackByCalendarSpanKey = (_index: number, span: SmartListCalendarMonthSpan<T>): string => span.key;
 
   protected readonly trackByCalendarTimedBadge = (index: number, badge: SmartListCalendarTimedBadge<T>): unknown =>
-    this.config.trackBy ? this.config.trackBy(index, badge.item) : index;
+    this.calendarTrackKey(index, badge.item);
 
   protected shouldShowGroupMarker(group: SmartListGroup<T>, groupIndex: number): boolean {
     if (this.config.showGroupMarker) {
@@ -1722,12 +1727,97 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   }
 
   protected itemAnchorKey(item: T, index: number): string | null {
-    const trackBy = this.config.trackBy;
-    if (!trackBy) {
+    if (!this.config.trackBy) {
       return null;
     }
-    const key = trackBy(index, item);
-    return key === null || key === undefined ? null : String(key);
+    return String(this.resolvedListTrackKeyForItem(index, item));
+  }
+
+  private rebuildResolvedListTrackKeys(): void {
+    if (!this.config.trackBy) {
+      this.resolvedListTrackKeys = [];
+      return;
+    }
+
+    this.listItemIndexByObject = new WeakMap<object, number>();
+    this.resolvedListTrackKeyByObject = new WeakMap<object, string | number>();
+
+    const rawKeys = this.items.map((item, index) => this.normalizedConfiguredTrackKey(index, item));
+    const rawKeyCounts = new Map<string, number>();
+    for (const rawKey of rawKeys) {
+      if (!rawKey) {
+        continue;
+      }
+      rawKeyCounts.set(rawKey, (rawKeyCounts.get(rawKey) ?? 0) + 1);
+    }
+
+    this.resolvedListTrackKeys = rawKeys.map((rawKey, index) => {
+      const item = this.items[index];
+      if (!rawKey) {
+        const resolvedFallback = this.fallbackResolvedTrackKey(index, item);
+        this.rememberResolvedListTrackKey(item, index, resolvedFallback);
+        return resolvedFallback;
+      }
+      const resolvedKey = (rawKeyCounts.get(rawKey) ?? 0) > 1
+        ? `${rawKey}::${this.trackItemInstanceToken(item, index)}`
+        : rawKey;
+      this.rememberResolvedListTrackKey(item, index, resolvedKey);
+      return resolvedKey;
+    });
+  }
+
+  private rememberResolvedListTrackKey(item: T, index: number, resolvedKey: string | number): void {
+    if (!item || (typeof item !== 'object' && typeof item !== 'function')) {
+      return;
+    }
+    const reference = item as object;
+    this.listItemIndexByObject.set(reference, index);
+    this.resolvedListTrackKeyByObject.set(reference, resolvedKey);
+  }
+
+  private resolvedListTrackKeyForItem(index: number, item: T): string | number {
+    if (item && (typeof item === 'object' || typeof item === 'function')) {
+      const reference = item as object;
+      const resolvedKey = this.resolvedListTrackKeyByObject.get(reference);
+      if (resolvedKey !== undefined) {
+        return resolvedKey;
+      }
+      const absoluteIndex = this.listItemIndexByObject.get(reference);
+      if (absoluteIndex !== undefined) {
+        return this.resolvedListTrackKeys[absoluteIndex] ?? this.fallbackResolvedTrackKey(absoluteIndex, item);
+      }
+    }
+    return this.resolvedListTrackKeys[index] ?? this.fallbackResolvedTrackKey(index, item);
+  }
+
+  private normalizedConfiguredTrackKey(index: number, item: T): string | null {
+    const key = this.config.trackBy?.(index, item);
+    if (key === null || key === undefined) {
+      return null;
+    }
+    const normalized = String(key).trim();
+    return normalized.length > 0 ? normalized : null;
+  }
+
+  private fallbackResolvedTrackKey(index: number, item: T): string {
+    return `smart-list-track:${this.trackItemInstanceToken(item, index)}`;
+  }
+
+  private calendarTrackKey(index: number, item: T): string {
+    return this.normalizedConfiguredTrackKey(index, item) ?? this.fallbackResolvedTrackKey(index, item);
+  }
+
+  private trackItemInstanceToken(item: T, index: number): string {
+    if (item && (typeof item === 'object' || typeof item === 'function')) {
+      const reference = item as object;
+      let token = this.fallbackTrackKeyByObject.get(reference);
+      if (!token) {
+        token = `obj-${++this.fallbackTrackKeySequence}`;
+        this.fallbackTrackKeyByObject.set(reference, token);
+      }
+      return `${token}:${index}`;
+    }
+    return `idx-${index}:${String(item)}`;
   }
 
   private scheduleNativePrependReveal(): void {
@@ -1799,10 +1889,13 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
   private syncGroups(): void {
     if (this.currentViewMode !== 'list') {
+      this.resolvedListTrackKeys = [];
       this.groups = [];
       this.stickyLabel = this.resolveEmptyStickyLabel();
       return;
     }
+
+    this.rebuildResolvedListTrackKeys();
 
     const groupBy = this.config.groupBy;
     if (!groupBy) {
@@ -1871,7 +1964,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
         const resolveDateRange = (item: T) => this.calendarConfig()?.resolveDateRange(item, pageQuery) ?? null;
         const itemsByDate = buildSmartListCalendarItemsByDate(pageItems, resolveDateRange, value => this.dateKey(value));
         return buildSmartListCalendarMonthPage(anchor, itemsByDate, pageItems, resolveDateRange, {
-          trackByKey: item => String(this.trackByItem(0, item)),
+          trackByKey: item => this.calendarTrackKey(0, item),
           dateKey: value => this.dateKey(value),
           monthKey: value => this.monthKey(value)
         });

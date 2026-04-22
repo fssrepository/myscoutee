@@ -106,9 +106,11 @@ export class HttpChatsService {
           params: this.withUserId(new HttpParams(), normalizedUserId)
         })
         .toPromise();
-      const records = Array.isArray(response)
-        ? response.map(item => this.mapChatRecord(item, normalizedUserId))
-        : [];
+      const records = this.deduplicateChatRecords(
+        Array.isArray(response)
+          ? response.map(item => this.mapChatRecord(item, normalizedUserId))
+          : []
+      );
       this.chatItemsByUserId.set(normalizedUserId, records.map(record => this.cloneChatRecord(record)));
       return records.map(record => this.cloneChatRecord(record));
     } catch {
@@ -160,9 +162,11 @@ export class HttpChatsService {
       } | null>(`${this.apiBaseUrl}/activities/chats/page`, { params }).toPromise();
 
       return {
-        items: Array.isArray(response?.items)
-          ? response.items.map(item => this.mapChatRecord(item, normalizedUserId))
-          : [],
+        items: this.deduplicateChatRecords(
+          Array.isArray(response?.items)
+            ? response.items.map(item => this.mapChatRecord(item, normalizedUserId))
+            : []
+        ),
         total: Number.isFinite(response?.total) ? Math.max(0, Math.trunc(Number(response?.total))) : 0,
         nextCursor: typeof response?.nextCursor === 'string' && response.nextCursor.trim().length > 0
           ? response.nextCursor.trim()
@@ -326,6 +330,20 @@ export class HttpChatsService {
         readBy: [...(message.readBy ?? [])]
       }))
     };
+  }
+
+  private deduplicateChatRecords(records: readonly DemoChatRecord[]): DemoChatRecord[] {
+    const uniqueById = new Map<string, DemoChatRecord>();
+    for (const record of records) {
+      const chatId = `${record?.id ?? ''}`.trim();
+      if (!chatId) {
+        continue;
+      }
+      if (!uniqueById.has(chatId)) {
+        uniqueById.set(chatId, record);
+      }
+    }
+    return [...uniqueById.values()];
   }
 
   private mapChatMessage(message: HttpChatMessageDto): AppTypes.ChatPopupMessage {

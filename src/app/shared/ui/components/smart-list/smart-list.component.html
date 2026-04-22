@@ -225,7 +225,7 @@
                 }
 
                 @for (item of group.items; track trackByItem($index, item); let itemIndex = $index) {
-                  @if (shouldRenderPrependRestoreSpacer(item, itemIndex)) {
+                  @if (shouldRenderPrependRestoreSpacer(item, group.startIndex + itemIndex)) {
                     <div
                       class="smart-list__prepend-restore-spacer"
                       [id]="prependRestoreSpacerId"
