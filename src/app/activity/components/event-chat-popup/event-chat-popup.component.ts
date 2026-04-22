@@ -625,7 +625,7 @@ export class EventChatPopupComponent implements OnDestroy {
     if (lastVisibleMessageId) {
       this.flagFreshRead(lastVisibleMessageId, read.userId);
     }
-    this.syncVisibleChatThread();
+
     this.cdr.markForCheck();
   }
 
@@ -755,12 +755,20 @@ export class EventChatPopupComponent implements OnDestroy {
       if (this.loadedSessionKey !== sessionKey) {
         return;
       }
-      this.allMessages = this.mergeServerSnapshotWithPendingMessages(snapshot)
+      
+      // FIX: Instead of replacing everything, we merge and sort
+      // This preserves the "history" the user has already loaded in the UI
+      const mergedMessages = this.mergeServerSnapshotWithPendingMessages(snapshot);
+    
+      this.allMessages = mergedMessages
         .sort((first, second) => AppUtils.toSortableDate(second.sentAtIso) - AppUtils.toSortableDate(first.sentAtIso));
+
       this.rebuildVisibleReadReceipts();
-      this.syncVisibleChatThread({
-        stickToEnd: shouldStickToEnd
-      });
+
+      if (shouldStickToEnd) {
+        this.scheduleChatThreadScrollToEnd();
+      }
+
       this.cdr.markForCheck();
     } catch {
       // Keep the current optimistic/live state if the reconnect snapshot fails.
@@ -827,7 +835,10 @@ export class EventChatPopupComponent implements OnDestroy {
       deliveryState: 'timed-out'
     };
     this.allMessages = nextMessages;
-    this.syncVisibleChatThread();
+    
+    this.chatThreadRevision++;
+    this.syncChatThreadQuery();
+
     this.cdr.markForCheck();
   }
 
@@ -1014,52 +1025,6 @@ export class EventChatPopupComponent implements OnDestroy {
     const spaceBelow = viewportHeight - rect.bottom;
     const spaceAbove = rect.top;
     return spaceBelow < estimatedMenuHeight && spaceAbove > spaceBelow;
-  }
-
-  private syncVisibleChatThread(
-    options: {
-      appendedMessageId?: string;
-      stickToEnd?: boolean;
-    } = {}
-  ): void {
-    const smartList = this.chatThreadSmartList;
-    if (!smartList) {
-      return;
-    }
-
-    const currentVisibleItems = smartList.itemsSnapshot();
-    const latestMessageById = new Map(this.allMessages.map(message => [message.id, message] as const));
-    let nextVisibleItems = currentVisibleItems
-      .map(message => latestMessageById.get(message.id) ?? message)
-      .filter(message => latestMessageById.has(message.id));
-
-    const appendedMessageId = options.appendedMessageId?.trim() ?? '';
-    if (appendedMessageId) {
-      const appendedMessage = latestMessageById.get(appendedMessageId);
-      if (appendedMessage && !nextVisibleItems.some(message => message.id === appendedMessage.id)) {
-        nextVisibleItems = [...nextVisibleItems, appendedMessage]
-          .sort((first, second) => AppUtils.toSortableDate(second.sentAtIso) - AppUtils.toSortableDate(first.sentAtIso));
-      }
-    }
-
-    const visibleItemsChanged = nextVisibleItems.length !== currentVisibleItems.length
-      || nextVisibleItems.some((message, index) => message !== currentVisibleItems[index]);
-    const totalChanged = this.visibleChatThreadTotal !== this.allMessages.length;
-    if (!visibleItemsChanged && !totalChanged) {
-      if (options.stickToEnd) {
-        this.scheduleChatThreadScrollToEnd();
-      }
-      return;
-    }
-
-    smartList.replaceVisibleItems(nextVisibleItems, {
-      total: this.allMessages.length
-    });
-    this.visibleChatThreadTotal = this.allMessages.length;
-
-    if (options.stickToEnd) {
-      this.scheduleChatThreadScrollToEnd();
-    }
   }
 
   private isChatThreadNearEnd(): boolean {
