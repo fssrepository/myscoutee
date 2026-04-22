@@ -191,6 +191,8 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   private suppressListSnapSettle = false;
   private flushScheduled = false;
   private awaitScrollReset = false;
+  private awaitScrollResetBaselineTop: number | null = null;
+  private awaitScrollResetBaselineReverseDistance: number | null = null;
   private calendarMonthFocusDate: Date | null = null;
   private calendarWeekFocusDate: Date | null = null;
   private calendarEdgeSettleTimer: ReturnType<typeof setTimeout> | null = null;
@@ -528,7 +530,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     this.clearLoadingAnimation();
     this.loading = false;
     this.initialLoading = false;
-    this.awaitScrollReset = false;
+    this.clearAwaitScrollReset();
     this.items = [...items];
     this.total = Number.isFinite(options.total)
       ? Math.max(this.items.length, Math.trunc(Number(options.total)))
@@ -626,6 +628,10 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
   protected resolvedListLayout(): 'stack' | 'card-grid' | 'thread' {
     return this.resolveConfigValue(this.config.listLayout, 'stack');
+  }
+
+  protected isReversedListFlow(): boolean {
+    return this.resolveConfigValue(this.config.listFlow, 'normal') === 'reverse';
   }
 
   protected resolvedDesktopColumns(): string | null {
@@ -1019,7 +1025,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     this.cursorIndex = 0;
     this.hasMore = this.currentViewMode === 'list';
     this.initialLoading = true;
-    this.awaitScrollReset = false;
+    this.clearAwaitScrollReset();
     this.stickyLabel = this.resolveEmptyStickyLabel();
     this.progress = 0;
     this.scrollable = false;
@@ -1080,11 +1086,18 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     const shouldUseManualPrependRestore = !isInitial
       && this.listMergeStrategy() === 'prepend'
       && this.prependRestoreMode() === 'manual';
+    const shouldUseReverseAppendAnchorRestore = !isInitial
+      && this.listMergeStrategy() === 'append'
+      && this.isReversedListFlow()
+      && this.listLoadTriggerEdge() === 'end';
     const shouldUseNativePrependReveal = !isInitial
       && this.listMergeStrategy() === 'prepend'
       && this.prependRestoreMode() === 'native';
     const restoreContext = shouldUseManualPrependRestore
       ? this.captureListRestoreContext(isInitial)
+      : null;
+    const reverseAppendAnchorContext = shouldUseReverseAppendAnchorRestore
+      ? this.captureReverseAppendAnchorContext(isInitial)
       : null;
     let handledManualPrepend = false;
     let shouldAnimateEmptyAppendCompletion = false;
@@ -1120,6 +1133,8 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       }
       this.loading = false;
       this.awaitScrollReset = true;
+      this.awaitScrollResetBaselineTop = null;
+      this.awaitScrollResetBaselineReverseDistance = null;
       this.endLoadingAnimation({
         forceAnimatedCompletion: shouldAnimateEmptyAppendCompletion
       });
@@ -1127,6 +1142,9 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       if (handledManualPrepend && restoreContext) {
         this.cdr.detectChanges();
         this.scheduleManualPrependRestore(restoreContext);
+      } else if (reverseAppendAnchorContext) {
+        this.cdr.detectChanges();
+        this.scheduleReverseAppendAnchorRestore(reverseAppendAnchorContext, applyInitialAnchor);
       } else if (shouldUseNativePrependReveal) {
         this.cdr.detectChanges();
         this.scheduleNativePrependReveal();
@@ -1243,17 +1261,33 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     }
     const triggerEdge = this.listLoadTriggerEdge();
     const threshold = Math.max(0, this.config.preloadOffsetPx ?? (triggerEdge === 'start' ? 48 : 520));
-    const remainingPx = scrollElement.scrollHeight - scrollElement.scrollTop - scrollElement.clientHeight;
     const maxVerticalScroll = Math.max(0, scrollElement.scrollHeight - scrollElement.clientHeight);
+    const distanceToVisualTop = this.reverseDistanceToVisualTop(scrollElement, maxVerticalScroll);
+
     if (this.awaitScrollReset) {
-      if (triggerEdge === 'start') {
-        if (scrollElement.scrollTop > Math.max(120, threshold * 2)) {
-          this.awaitScrollReset = false;
+      if (this.isReversedListFlow() && triggerEdge === 'end') {
+        const resetThreshold = Math.max(120, threshold * 2);
+        const baselineTop = this.awaitScrollResetBaselineTop;
+        const baselineDistance = this.awaitScrollResetBaselineReverseDistance;
+        const topDelta = baselineTop === null ? 0 : Math.abs(scrollElement.scrollTop - baselineTop);
+        const distanceDelta = baselineDistance === null ? 0 : Math.abs(distanceToVisualTop - baselineDistance);
+        if (distanceToVisualTop > resetThreshold
+          || maxVerticalScroll <= resetThreshold
+          || topDelta > 12
+          || distanceDelta > 12) {
+          this.clearAwaitScrollReset();
         }
       } else {
-        const resetThreshold = Math.max(360, threshold);
-        if (remainingPx > resetThreshold || maxVerticalScroll <= resetThreshold) {
-          this.awaitScrollReset = false;
+        const remainingPx = scrollElement.scrollHeight - scrollElement.scrollTop - scrollElement.clientHeight;
+        if (triggerEdge === 'start') {
+          if (scrollElement.scrollTop > Math.max(120, threshold * 2)) {
+            this.clearAwaitScrollReset();
+          }
+        } else {
+          const resetThreshold = Math.max(360, threshold);
+          if (remainingPx > resetThreshold || maxVerticalScroll <= resetThreshold) {
+            this.clearAwaitScrollReset();
+          }
         }
       }
       if (this.awaitScrollReset) {
@@ -1261,6 +1295,15 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       }
     }
 
+    if (this.isReversedListFlow() && triggerEdge === 'end') {
+      if (!this.shouldStartReverseAppendPreload(scrollElement, threshold)) {
+        return;
+      }
+      void this.loadNextPage();
+      return;
+    }
+
+    const remainingPx = scrollElement.scrollHeight - scrollElement.scrollTop - scrollElement.clientHeight;
     if (triggerEdge === 'start') {
       if (scrollElement.scrollTop > threshold) {
         return;
@@ -1273,6 +1316,39 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       return;
     }
     void this.loadNextPage();
+  }
+
+  private shouldStartReverseAppendPreload(
+    scrollElement: HTMLDivElement,
+    threshold: number
+  ): boolean {
+    const maxVerticalScroll = Math.max(0, scrollElement.scrollHeight - scrollElement.clientHeight);
+    if (maxVerticalScroll <= 1) {
+      return false;
+    }
+    const distanceToVisualTop = this.reverseDistanceToVisualTop(scrollElement, maxVerticalScroll);
+    return distanceToVisualTop <= Math.max(48, threshold);
+  }
+
+  private reverseDistanceToVisualTop(
+    scrollElement: HTMLDivElement,
+    maxVerticalScroll = Math.max(0, scrollElement.scrollHeight - scrollElement.clientHeight)
+  ): number {
+    return Math.max(0, maxVerticalScroll - Math.abs(scrollElement.scrollTop));
+  }
+
+  private captureAwaitScrollResetBaseline(scrollElement: HTMLDivElement): void {
+    if (!this.awaitScrollReset || !this.isReversedListFlow() || this.listLoadTriggerEdge() !== 'end') {
+      return;
+    }
+    this.awaitScrollResetBaselineTop = scrollElement.scrollTop;
+    this.awaitScrollResetBaselineReverseDistance = this.reverseDistanceToVisualTop(scrollElement);
+  }
+
+  private clearAwaitScrollReset(): void {
+    this.awaitScrollReset = false;
+    this.awaitScrollResetBaselineTop = null;
+    this.awaitScrollResetBaselineReverseDistance = null;
   }
 
   private shouldStartAppendPreload(
@@ -1366,7 +1442,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     const threadRect = scrollElement.getBoundingClientRect();
     const visibleTop = threadRect.top + this.listTopInset(scrollElement);
     const anchors = Array.from(
-      scrollElement.querySelectorAll<HTMLElement>('[data-smart-list-anchor]')
+      scrollElement.querySelectorAll<HTMLElement>('.smart-list__item-shell[data-smart-list-anchor]')
     );
     const anchorElement = anchors.find(element => element.getBoundingClientRect().bottom > threadRect.top + 1)
       ?? anchors.find(element => element.getBoundingClientRect().top >= visibleTop - 1)
@@ -1402,6 +1478,45 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     };
   }
 
+  private captureReverseAppendAnchorContext(
+    isInitial: boolean
+  ): {
+    anchorKey: string;
+    offsetTop: number;
+  } | null {
+    if (isInitial || !this.isReversedListFlow() || this.listMergeStrategy() !== 'append') {
+      return null;
+    }
+    const scrollElement = this.scrollHostRef?.nativeElement;
+    if (!scrollElement) {
+      return null;
+    }
+    const threadRect = scrollElement.getBoundingClientRect();
+    const visibleTop = threadRect.top + this.listTopInset(scrollElement);
+    const anchorElement = this.topVisibleItemShell(scrollElement, visibleTop);
+    const anchorKey = anchorElement?.dataset['smartListAnchor']?.trim() ?? '';
+    if (!anchorElement || !anchorKey) {
+      return null;
+    }
+    return {
+      anchorKey,
+      offsetTop: anchorElement.getBoundingClientRect().top - visibleTop
+    };
+  }
+
+  private topVisibleItemShell(
+    scrollElement: HTMLDivElement,
+    visibleTop = scrollElement.getBoundingClientRect().top + this.listTopInset(scrollElement)
+  ): HTMLElement | null {
+    const itemShells = Array.from(
+      scrollElement.querySelectorAll<HTMLElement>('.smart-list__item-shell[data-smart-list-anchor]')
+    ).sort((first, second) => first.getBoundingClientRect().top - second.getBoundingClientRect().top);
+    return itemShells.find(element => element.getBoundingClientRect().bottom > visibleTop + 1)
+      ?? itemShells.find(element => element.getBoundingClientRect().top >= visibleTop - 1)
+      ?? itemShells.find(element => element.getBoundingClientRect().bottom > scrollElement.getBoundingClientRect().top + 1)
+      ?? null;
+  }
+
   private schedulePostListLoadAdjustments(
     restoreContext: {
       scrollHeight: number;
@@ -1420,24 +1535,15 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
         this.applyPrependRestore(restoreContext);
       } else if (applyInitialAnchor && this.initialListScrollAnchor() === 'end') {
         scrollElement.scrollTop = scrollElement.scrollHeight;
+      } else if (applyInitialAnchor && this.initialListScrollAnchor() === 'start' && this.isReversedListFlow()) {
+        scrollElement.scrollTop = 0;
       } else if (applyInitialAnchor && this.initialListScrollAnchor() === 'first-item' && this.groups.length > 0) {
         const firstBoundary = scrollElement.querySelector<HTMLElement>('.smart-list__group-marker, .smart-list__item-shell');
         if (firstBoundary) {
           scrollElement.scrollTop = firstBoundary.offsetTop;
         }
       }
-      if (this.shouldShowStickyHeader()) {
-        this.updateStickyLabel(scrollElement.scrollTop);
-      } else {
-        this.stickyHeaderHeightPx = 0;
-        this.stickyLabel = this.resolveEmptyStickyLabel();
-      }
-      this.updateListSnapNearEndSuppression(scrollElement);
-      this.updateAutoFooterSpacerHeight(scrollElement);
-      this.updateScrollProgress(scrollElement);
-      this.emitState();
-      this.cdr.markForCheck();
-      this.maybeAutoloadToFillViewport(scrollElement);
+      this.finalizePostListLoad(scrollElement);
     };
 
     if (!this.afterViewInit) {
@@ -1449,6 +1555,78 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       return;
     }
     setTimeout(run, 0);
+  }
+
+  private scheduleReverseAppendAnchorRestore(
+    restoreContext: {
+      anchorKey: string;
+      offsetTop: number;
+    },
+    applyInitialAnchor: boolean
+  ): void {
+    const run = () => {
+      const scrollElement = this.scrollHostRef?.nativeElement;
+      if (!scrollElement || this.currentViewMode !== 'list') {
+        return;
+      }
+      this.applyReverseAppendAnchorRestore(restoreContext);
+      if (applyInitialAnchor && this.initialListScrollAnchor() === 'start') {
+        scrollElement.scrollTop = Math.min(0, scrollElement.scrollTop);
+      }
+      this.finalizePostListLoad(scrollElement);
+    };
+
+    if (!this.afterViewInit) {
+      run();
+      return;
+    }
+    if (typeof globalThis.requestAnimationFrame === 'function') {
+      globalThis.requestAnimationFrame(() => globalThis.requestAnimationFrame(run));
+      return;
+    }
+    setTimeout(run, 0);
+  }
+
+  private applyReverseAppendAnchorRestore(
+    restoreContext: {
+      anchorKey: string;
+      offsetTop: number;
+    }
+  ): void {
+    const scrollElement = this.scrollHostRef?.nativeElement;
+    if (!scrollElement || this.currentViewMode !== 'list') {
+      return;
+    }
+    const threadRect = scrollElement.getBoundingClientRect();
+    const visibleTop = threadRect.top + this.listTopInset(scrollElement);
+    const anchorElement = Array.from(
+      scrollElement.querySelectorAll<HTMLElement>('.smart-list__item-shell[data-smart-list-anchor]')
+    ).find(element => (element.dataset['smartListAnchor'] ?? '') === restoreContext.anchorKey) ?? null;
+    if (!anchorElement) {
+      return;
+    }
+    const currentOffsetTop = anchorElement.getBoundingClientRect().top - visibleTop;
+    const offsetDelta = currentOffsetTop - restoreContext.offsetTop;
+    if (Math.abs(offsetDelta) <= 0.5) {
+      return;
+    }
+    scrollElement.scrollTop -= offsetDelta;
+  }
+
+  private finalizePostListLoad(scrollElement: HTMLDivElement): void {
+    if (this.shouldShowStickyHeader()) {
+      this.updateStickyLabel(scrollElement.scrollTop);
+    } else {
+      this.stickyHeaderHeightPx = 0;
+      this.stickyLabel = this.resolveEmptyStickyLabel();
+    }
+    this.captureAwaitScrollResetBaseline(scrollElement);
+    this.updateListSnapNearEndSuppression(scrollElement);
+    this.updateAutoFooterSpacerHeight(scrollElement);
+    this.updateScrollProgress(scrollElement);
+    this.emitState();
+    this.cdr.markForCheck();
+    this.maybeAutoloadToFillViewport(scrollElement);
   }
 
   private applyPrependRestore(
@@ -1801,9 +1979,12 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       return;
     }
     const maxVerticalScroll = Math.max(0, target.scrollHeight - target.clientHeight);
+    const scrollOffset = this.isReversedListFlow()
+      ? Math.abs(target.scrollTop)
+      : target.scrollTop;
     this.scrollable = maxVerticalScroll > 1;
     this.progress = maxVerticalScroll > 1
-      ? this.clamp(target.scrollTop / maxVerticalScroll)
+      ? this.clamp(scrollOffset / maxVerticalScroll)
       : 0;
   }
 

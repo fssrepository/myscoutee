@@ -190,6 +190,7 @@
           [class.smart-list--stack]="resolvedListLayout() === 'stack'"
           [class.smart-list--card-grid]="resolvedListLayout() === 'card-grid'"
           [class.smart-list--thread]="resolvedListLayout() === 'thread'"
+          [class.smart-list--flow-reverse]="isReversedListFlow()"
           [class.smart-list--presentation-list]="resolvedPresentation() === 'list'"
           [class.smart-list--presentation-fullscreen]="resolvedPresentation() === 'fullscreen'"
           [class.smart-list--snap-none]="resolvedSnapMode() === 'none' || suppressListSnapNearEnd || isTouchingSurface"
@@ -213,7 +214,7 @@
           @if (groups.length > 0) {
             @if (resolvedItemTemplate(); as templateRef) {
               @for (group of groups; track trackByGroup($index, group); let groupIndex = $index) {
-                @if (shouldShowGroupMarker(group, groupIndex) && group.label) {
+                @if (!isReversedListFlow() && shouldShowGroupMarker(group, groupIndex) && group.label) {
                   <div
                     class="smart-list__group-marker"
                     [ngClass]="resolvedGroupMarkerClass()"
@@ -242,6 +243,15 @@
                       [ngTemplateOutlet]="templateRef"
                       [ngTemplateOutletContext]="itemContext(item, itemIndex, group.label)"
                     ></ng-container>
+                  </div>
+                }
+                @if (isReversedListFlow() && shouldShowGroupMarker(group, groupIndex) && group.label) {
+                  <div
+                    class="smart-list__group-marker"
+                    [ngClass]="resolvedGroupMarkerClass()"
+                    [attr.data-group-label]="group.label"
+                  >
+                    {{ group.label }}
                   </div>
                 }
               }

@@ -682,6 +682,14 @@
   margin-bottom: 0.12rem;
 }
 
+.chat-thread-list--reverse .chat-message:first-child {
+  margin-bottom: 0.12rem;
+}
+
+.chat-thread-list--reverse .chat-message:last-child {
+  margin-bottom: 0.48rem;
+}
+
 .chat-message.chat-message-fresh .chat-bubble {
   animation: chat-message-pop 0.34s ease-out;
 }

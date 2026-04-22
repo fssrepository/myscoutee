@@ -84,11 +84,12 @@ export class EventChatPopupComponent implements OnDestroy {
     loadingDelayMs: resolveCurrentRouteDelayMs('/activities/chats'),
     showStickyHeader: false,
     showFirstGroupMarker: true,
-    loadTriggerEdge: 'start',
-    mergeStrategy: 'prepend',
-    initialScrollAnchor: 'end',
-    prependRestoreMode: 'manual',
-    containerClass: 'chat-thread-list',
+    loadTriggerEdge: 'end',
+    mergeStrategy: 'append',
+    initialScrollAnchor: 'start',
+    listLayout: 'thread',
+    listFlow: 'reverse',
+    containerClass: ['chat-thread-list', 'chat-thread-list--reverse'],
     groupMarkerClass: 'chat-thread-group-marker',
     headerProgress: {
       enabled: true,
@@ -417,7 +418,7 @@ export class EventChatPopupComponent implements OnDestroy {
         return this.chatThreadPageResult(query);
       }
       this.allMessages = this.normalizeChatMessages(nextMessages)
-        .sort((first, second) => AppUtils.toSortableDate(first.sentAtIso) - AppUtils.toSortableDate(second.sentAtIso));
+        .sort((first, second) => AppUtils.toSortableDate(second.sentAtIso) - AppUtils.toSortableDate(first.sentAtIso));
       this.rebuildVisibleReadReceipts();
       this.initialChatLoadedSessionKey = sessionKey;
       await this.startLiveChatUpdates(session.item, sessionKey);
@@ -444,14 +445,14 @@ export class EventChatPopupComponent implements OnDestroy {
     const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || this.chatHistoryPageSize));
     const page = Math.max(0, Math.trunc(Number(query.page) || 0));
     let start = 0;
-    let end = total;
+    let end = 0;
 
     if (page === 0) {
-      start = Math.max(0, total - pageSize);
+      end = Math.min(total, pageSize);
     } else {
       const initialBlockSize = Math.max(this.chatHistoryPageSize, this.chatInitialLoadMessageCount);
-      end = Math.max(0, total - initialBlockSize - ((page - 1) * this.chatHistoryPageSize));
-      start = Math.max(0, end - this.chatHistoryPageSize);
+      start = Math.min(total, initialBlockSize + ((page - 1) * this.chatHistoryPageSize));
+      end = Math.min(total, start + this.chatHistoryPageSize);
     }
 
     return {
@@ -531,7 +532,7 @@ export class EventChatPopupComponent implements OnDestroy {
     }
     this.flagFreshMessage(normalizedMessage.id);
     this.allMessages = [...this.allMessages, normalizedMessage]
-      .sort((first, second) => AppUtils.toSortableDate(first.sentAtIso) - AppUtils.toSortableDate(second.sentAtIso));
+      .sort((first, second) => AppUtils.toSortableDate(second.sentAtIso) - AppUtils.toSortableDate(first.sentAtIso));
     this.rebuildVisibleReadReceipts();
     this.syncVisibleChatThread({
       appendedMessageId: normalizedMessage.id,
@@ -628,7 +629,8 @@ export class EventChatPopupComponent implements OnDestroy {
     for (const key of Object.keys(this.visibleReadReceiptsByMessageId)) {
       delete this.visibleReadReceiptsByMessageId[key];
     }
-    for (const message of this.allMessages) {
+    for (let index = this.allMessages.length - 1; index >= 0; index -= 1) {
+      const message = this.allMessages[index];
       if (!message.mine) {
         continue;
       }
@@ -718,7 +720,7 @@ export class EventChatPopupComponent implements OnDestroy {
     }
 
     this.allMessages = nextMessages
-      .sort((first, second) => AppUtils.toSortableDate(first.sentAtIso) - AppUtils.toSortableDate(second.sentAtIso));
+      .sort((first, second) => AppUtils.toSortableDate(second.sentAtIso) - AppUtils.toSortableDate(first.sentAtIso));
     this.rebuildVisibleReadReceipts();
     this.syncVisibleChatThread({
       appendedMessageId: normalizedMessage.id,
@@ -741,7 +743,7 @@ export class EventChatPopupComponent implements OnDestroy {
         return;
       }
       this.allMessages = this.mergeServerSnapshotWithPendingMessages(snapshot)
-        .sort((first, second) => AppUtils.toSortableDate(first.sentAtIso) - AppUtils.toSortableDate(second.sentAtIso));
+        .sort((first, second) => AppUtils.toSortableDate(second.sentAtIso) - AppUtils.toSortableDate(first.sentAtIso));
       this.rebuildVisibleReadReceipts();
       this.syncVisibleChatThread({
         stickToEnd: shouldStickToEnd
@@ -1023,7 +1025,7 @@ export class EventChatPopupComponent implements OnDestroy {
       const appendedMessage = latestMessageById.get(appendedMessageId);
       if (appendedMessage && !nextVisibleItems.some(message => message.id === appendedMessage.id)) {
         nextVisibleItems = [...nextVisibleItems, appendedMessage]
-          .sort((first, second) => AppUtils.toSortableDate(first.sentAtIso) - AppUtils.toSortableDate(second.sentAtIso));
+          .sort((first, second) => AppUtils.toSortableDate(second.sentAtIso) - AppUtils.toSortableDate(first.sentAtIso));
       }
     }
 
@@ -1052,8 +1054,7 @@ export class EventChatPopupComponent implements OnDestroy {
     if (!scrollElement) {
       return true;
     }
-    const remaining = scrollElement.scrollHeight - scrollElement.scrollTop - scrollElement.clientHeight;
-    return remaining <= 72;
+    return Math.abs(scrollElement.scrollTop) <= 72;
   }
 
   private scheduleChatThreadScrollToEnd(): void {
@@ -1063,7 +1064,7 @@ export class EventChatPopupComponent implements OnDestroy {
         return;
       }
       scrollElement.scrollTo({
-        top: scrollElement.scrollHeight,
+        top: 0,
         behavior: 'smooth'
       });
     };

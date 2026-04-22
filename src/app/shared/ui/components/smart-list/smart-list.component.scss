@@ -179,6 +179,13 @@
   overflow-anchor: none;
 }
 
+.smart-list--list.smart-list--thread.smart-list--flow-reverse {
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: stretch;
+  overflow-anchor: none;
+}
+
 .smart-list--list.smart-list--card-grid.smart-list--snap-proximity,
 .smart-list--list.smart-list--stack.smart-list--snap-proximity {
   scroll-snap-type: y proximity;
@@ -335,11 +342,13 @@
   pointer-events: none;
   visibility: hidden;
   overflow: hidden;
+  overflow-anchor: none;
 }
 
 .smart-list__item-shell {
   display: block;
   min-width: 0;
+  overflow-anchor: none;
   scroll-snap-align: start;
 }
 
@@ -651,6 +660,7 @@
   position: sticky;
   top: 0;
   z-index: 25;
+  overflow-anchor: none;
   border: 1px solid rgba(33, 51, 78, 0.14);
   border-radius: 9px;
   background: linear-gradient(180deg, #f9fbff 0%, #f3f8ff 100%);
@@ -664,6 +674,7 @@
 .smart-list__group-marker {
   z-index: 1;
   scroll-snap-align: none;
+  overflow-anchor: none;
   border: 1px solid rgba(39, 60, 92, 0.16);
   border-radius: 9px;
   background: linear-gradient(180deg, #f9fbff 0%, #f3f8ff 100%);
@@ -676,6 +687,7 @@
 
 .smart-list__empty {
   margin: auto 0;
+  overflow-anchor: none;
   border: 1px dashed rgba(37, 54, 82, 0.16);
   border-radius: 18px;
   background: rgba(248, 250, 253, 0.92);
