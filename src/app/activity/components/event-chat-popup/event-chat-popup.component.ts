@@ -534,10 +534,17 @@ export class EventChatPopupComponent implements OnDestroy {
     this.allMessages = [...this.allMessages, normalizedMessage]
       .sort((first, second) => AppUtils.toSortableDate(second.sentAtIso) - AppUtils.toSortableDate(first.sentAtIso));
     this.rebuildVisibleReadReceipts();
-    this.syncVisibleChatThread({
-      appendedMessageId: normalizedMessage.id,
-      stickToEnd: shouldStickToEnd
-    });
+
+    // 1. Increment revision to notify the SmartList
+    this.chatThreadRevision++; 
+    this.syncChatThreadQuery(); // Updates the [query] input
+  
+    // 2. Instead of replaceVisibleItems, let the list refresh itself 
+    // or use a targeted append if the component supports it.
+    if (shouldStickToEnd) {
+      this.scheduleChatThreadScrollToEnd();
+    }
+
     this.cdr.markForCheck();
   }
 
@@ -715,6 +722,7 @@ export class EventChatPopupComponent implements OnDestroy {
     } else {
       nextMessages[pendingIndex] = {
         ...normalizedMessage,
+        id: pendingMessageId,
         clientId: pendingClientId
       };
     }
@@ -722,10 +730,15 @@ export class EventChatPopupComponent implements OnDestroy {
     this.allMessages = nextMessages
       .sort((first, second) => AppUtils.toSortableDate(second.sentAtIso) - AppUtils.toSortableDate(first.sentAtIso));
     this.rebuildVisibleReadReceipts();
-    this.syncVisibleChatThread({
-      appendedMessageId: normalizedMessage.id,
-      stickToEnd
-    });
+
+    // ADD: Use the revision system instead
+    this.chatThreadRevision++; 
+    this.syncChatThreadQuery(); // This pushes a new [query] object to the SmartList
+
+    if (stickToEnd) {
+      this.scheduleChatThreadScrollToEnd();
+    }
+
     this.cdr.markForCheck();
     return true;
   }
