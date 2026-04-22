@@ -606,6 +606,113 @@
     </section>
   }
 
+  @if (showCancellationSection()) {
+    <section class="pricing-editor__surface">
+      <div class="pricing-editor__section-head">
+        <span>Cancellation & Reimbursement</span>
+        <button
+          type="button"
+          class="pricing-editor__toggle"
+          [class.is-on]="workingPricing.cancellationPolicy.enabled"
+          [disabled]="readOnly"
+          (click)="toggleCancellationPolicyEnabled()"
+          >
+          <mat-icon>{{ workingPricing.cancellationPolicy.enabled ? 'toggle_on' : 'toggle_off' }}</mat-icon>
+          <span>{{ workingPricing.cancellationPolicy.enabled ? 'On' : 'Off' }}</span>
+        </button>
+      </div>
+      @if (workingPricing.cancellationPolicy.enabled) {
+        <div class="pricing-editor__rules">
+          @for (rule of workingPricing.cancellationPolicy.rules; track trackByRule($index, rule)) {
+            <article class="pricing-editor__rule-card">
+              <div class="pricing-editor__grid pricing-editor__grid--compact">
+                <label class="pricing-editor__field">
+                  <span>Notice Window</span>
+                  <div class="pricing-editor__select-shell">
+                    <mat-select
+                      [(ngModel)]="rule.offsetUnit"
+                      (ngModelChange)="emitPricing()"
+                      [disabled]="readOnly"
+                      [panelWidth]="null"
+                      disableOptionCentering
+                      panelClass="selector-options-panel profile-bottom-sheet-panel"
+                      >
+                      @for (option of cancellationUnitOptions; track option) {
+                        <mat-option [value]="option">{{ cancellationUnitLabel(option) }}</mat-option>
+                      }
+                    </mat-select>
+                  </div>
+                </label>
+                <label class="pricing-editor__field">
+                  <span>Value</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    [ngModel]="rule.offsetValue ?? ''"
+                    (ngModelChange)="onCancellationRuleOffsetChange(rule, $event)"
+                    [disabled]="readOnly"
+                    />
+                </label>
+                <label class="pricing-editor__field">
+                  <span>Refund</span>
+                  <div class="pricing-editor__select-shell">
+                    <mat-select
+                      [ngModel]="rule.refundKind"
+                      (ngModelChange)="onCancellationRuleRefundKindChange(rule, $event)"
+                      [disabled]="readOnly"
+                      [panelWidth]="null"
+                      disableOptionCentering
+                      panelClass="selector-options-panel profile-bottom-sheet-panel"
+                      >
+                      @for (option of cancellationRefundKindOptions; track option) {
+                        <mat-option [value]="option">{{ cancellationRefundKindLabel(option) }}</mat-option>
+                      }
+                    </mat-select>
+                  </div>
+                </label>
+                <label class="pricing-editor__field">
+                  <span>Refund Value</span>
+                  @if (cancellationRuleNeedsValue(rule)) {
+                    <input
+                      type="number"
+                      min="0"
+                      [step]="rule.refundKind === 'percent' ? '1' : '0.01'"
+                      [ngModel]="rule.refundValue ?? ''"
+                      (ngModelChange)="onCancellationRuleRefundValueChange(rule, $event)"
+                      [disabled]="readOnly"
+                      />
+                  } @else {
+                    <input
+                      type="text"
+                      [value]="cancellationRuleValueSuffix(rule)"
+                      disabled
+                      />
+                  }
+                </label>
+              </div>
+              <button
+                type="button"
+                class="pricing-editor__rule-remove"
+                [disabled]="readOnly"
+                (click)="removeCancellationRule($index)"
+                aria-label="Remove cancellation rule"
+                >
+                <mat-icon>delete</mat-icon>
+              </button>
+            </article>
+          }
+        </div>
+        <button type="button" class="pricing-editor__add-btn" [disabled]="readOnly" (click)="addCancellationRule()">
+          <mat-icon>add</mat-icon>
+          <span>Add Cancellation Rule</span>
+        </button>
+      } @else {
+        <p class="pricing-editor__hint">Cancellation reimbursement is off. Turn it on to define how much of a paid booking can be refunded before the event starts.</p>
+      }
+    </section>
+  }
+
   @if (showSlotSection()) {
     <app-pricing-slot-panel
       [enabled]="workingPricing.slotPricingEnabled"

@@ -72,6 +72,8 @@ export class PricingEditorComponent implements OnChanges {
   protected readonly actionKindOptions: readonly AppTypes.PricingRuleActionKind[] = ['increase_percent', 'decrease_percent', 'set_exact_price'];
   protected readonly ruleScopeOptions: readonly AppTypes.PricingRuleScope[] = ['all_slots', 'selected_slots'];
   protected readonly timeTriggerOptions: readonly AppTypes.PricingTimeRuleTrigger[] = ['days_before_start', 'hours_before_start', 'specific_date'];
+  protected readonly cancellationUnitOptions: readonly AppTypes.PricingCancellationUnit[] = ['hours', 'days', 'weeks', 'months'];
+  protected readonly cancellationRefundKindOptions: readonly AppTypes.PricingCancellationRefundKind[] = ['percent', 'fixed_amount', 'full', 'none'];
   protected readonly soldOutLabelOptions = ['Show "Sold Out"', 'Hide from list', 'Show "Waitlist"'];
   protected resolvedChargeTypeOptions: readonly AppTypes.PricingChargeType[] = ['per_attendee', 'per_booking', 'per_slot'];
   protected resolvedAllowSlotFeatures = true;
@@ -193,6 +195,10 @@ export class PricingEditorComponent implements OnChanges {
     return this.resolvedAllowSlotFeatures;
   }
 
+  protected showCancellationSection(): boolean {
+    return this.context === 'event';
+  }
+
   protected isDynamicMode(): boolean {
     return this.workingPricing.mode !== 'fixed';
   }
@@ -285,6 +291,17 @@ export class PricingEditorComponent implements OnChanges {
     this.emitPricing();
   }
 
+  protected toggleCancellationPolicyEnabled(): void {
+    if (this.readOnly) {
+      return;
+    }
+    this.workingPricing.cancellationPolicy.enabled = !this.workingPricing.cancellationPolicy.enabled;
+    if (this.workingPricing.cancellationPolicy.enabled && this.workingPricing.cancellationPolicy.rules.length === 0) {
+      this.workingPricing.cancellationPolicy.rules = [this.createDefaultCancellationRule()];
+    }
+    this.emitPricing();
+  }
+
   protected addDemandRule(): void {
     if (this.readOnly) {
       return;
@@ -322,6 +339,27 @@ export class PricingEditorComponent implements OnChanges {
       return;
     }
     this.workingPricing.timeRules = this.workingPricing.timeRules.filter((_, itemIndex) => itemIndex !== index);
+    this.emitPricing();
+  }
+
+  protected addCancellationRule(): void {
+    if (this.readOnly) {
+      return;
+    }
+    this.workingPricing.cancellationPolicy.rules = [
+      ...this.workingPricing.cancellationPolicy.rules,
+      this.createDefaultCancellationRule()
+    ];
+    this.workingPricing.cancellationPolicy.enabled = true;
+    this.emitPricing();
+  }
+
+  protected removeCancellationRule(index: number): void {
+    if (this.readOnly || index < 0 || index >= this.workingPricing.cancellationPolicy.rules.length) {
+      return;
+    }
+    this.workingPricing.cancellationPolicy.rules = this.workingPricing.cancellationPolicy.rules
+      .filter((_, itemIndex) => itemIndex !== index);
     this.emitPricing();
   }
 
@@ -418,6 +456,73 @@ export class PricingEditorComponent implements OnChanges {
 
   protected onTimeRuleActionValueChange(rule: AppTypes.PricingTimeRule, value: number | string): void {
     rule.action.value = this.parseMoney(value) ?? 0;
+    this.emitPricing();
+  }
+
+  protected cancellationUnitLabel(unit: AppTypes.PricingCancellationUnit): string {
+    switch (unit) {
+      case 'hours':
+        return 'Hours before start';
+      case 'weeks':
+        return 'Weeks before start';
+      case 'months':
+        return 'Months before start';
+      default:
+        return 'Days before start';
+    }
+  }
+
+  protected cancellationRefundKindLabel(kind: AppTypes.PricingCancellationRefundKind): string {
+    switch (kind) {
+      case 'fixed_amount':
+        return 'Fixed refund';
+      case 'full':
+        return 'Full refund';
+      case 'none':
+        return 'No refund';
+      default:
+        return 'Refund %';
+    }
+  }
+
+  protected cancellationRuleNeedsValue(rule: AppTypes.PricingCancellationRule): boolean {
+    return rule.refundKind === 'percent' || rule.refundKind === 'fixed_amount';
+  }
+
+  protected cancellationRuleValueSuffix(rule: AppTypes.PricingCancellationRule): string {
+    if (rule.refundKind === 'percent') {
+      return '%';
+    }
+    if (rule.refundKind === 'fixed_amount') {
+      return this.workingPricing.currency;
+    }
+    return 'Auto';
+  }
+
+  protected onCancellationRuleOffsetChange(rule: AppTypes.PricingCancellationRule, value: number | string): void {
+    rule.offsetValue = this.parseInteger(value);
+    this.emitPricing();
+  }
+
+  protected onCancellationRuleRefundKindChange(
+    rule: AppTypes.PricingCancellationRule,
+    value: AppTypes.PricingCancellationRefundKind
+  ): void {
+    rule.refundKind = value;
+    if (value === 'percent') {
+      rule.refundValue = rule.refundValue ?? 100;
+    } else if (value === 'fixed_amount') {
+      rule.refundValue = rule.refundValue ?? this.workingPricing.basePrice;
+    } else {
+      rule.refundValue = null;
+    }
+    this.emitPricing();
+  }
+
+  protected onCancellationRuleRefundValueChange(rule: AppTypes.PricingCancellationRule, value: number | string): void {
+    rule.refundValue = rule.refundKind === 'percent'
+      ? this.parsePercent(value)
+      : this.parseMoney(value);
     this.emitPricing();
   }
 
@@ -684,6 +789,14 @@ export class PricingEditorComponent implements OnChanges {
       lines.push('Audience pricing is off, so members, VIP guests, and promo codes are not changing the public price.');
     }
 
+    if (this.showCancellationSection()) {
+      if (!this.workingPricing.cancellationPolicy.enabled) {
+        lines.push('Cancellation reimbursement is off, so leaving after booking will not follow a configured refund schedule yet.');
+      } else if (this.workingPricing.cancellationPolicy.rules.length === 0) {
+        lines.push('Cancellation reimbursement is on, but add at least one rule so the refund window is explicit.');
+      }
+    }
+
     return lines;
   }
 
@@ -802,6 +915,16 @@ export class PricingEditorComponent implements OnChanges {
       },
       appliesTo: 'all_slots',
       slotIds: []
+    };
+  }
+
+  private createDefaultCancellationRule(): AppTypes.PricingCancellationRule {
+    return {
+      id: this.nextId('cancellation-rule'),
+      offsetUnit: 'days',
+      offsetValue: 7,
+      refundKind: 'percent',
+      refundValue: 50
     };
   }
 
