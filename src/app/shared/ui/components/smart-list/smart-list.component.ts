@@ -1615,7 +1615,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     if (Math.abs(offsetDelta) <= 0.5) {
       return;
     }
-    scrollElement.scrollTop -= offsetDelta;
+    scrollElement.scrollTop += offsetDelta;
   }
 
   private finalizePostListLoad(scrollElement: HTMLDivElement): void {
