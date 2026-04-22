@@ -196,7 +196,7 @@ export class PricingEditorComponent implements OnChanges {
   }
 
   protected showCancellationSection(): boolean {
-    return this.context === 'event';
+    return this.context === 'event' || this.context === 'asset';
   }
 
   protected isDynamicMode(): boolean {
