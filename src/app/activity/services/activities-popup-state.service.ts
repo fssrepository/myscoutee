@@ -229,7 +229,7 @@ export class ActivitiesPopupStateService {
 
   openEventChat(item: ChatMenuItem, context: EventChatContext | null = null): void {
     this._eventChatSession.set({
-      item,
+      item: this.cloneChatMenuItem(item),
       openedAtIso: new Date().toISOString(),
       context
     });
@@ -252,9 +252,21 @@ export class ActivitiesPopupStateService {
       : null;
     this._eventChatSession.set({
       ...session,
+      item: this.cloneChatMenuItem(session.item),
       context: clonedContext && contextUpdater
         ? contextUpdater(clonedContext)
         : clonedContext
+    });
+  }
+
+  patchEventChatSessionItem(itemUpdater: (item: ChatMenuItem) => ChatMenuItem): void {
+    const session = this._eventChatSession();
+    if (!session) {
+      return;
+    }
+    this._eventChatSession.set({
+      ...session,
+      item: this.cloneChatMenuItem(itemUpdater(this.cloneChatMenuItem(session.item)))
     });
   }
 
@@ -262,8 +274,8 @@ export class ActivitiesPopupStateService {
     return this.chatsService.loadChatMessages(chat);
   }
 
-  async sendEventChatMessage(chat: ChatMenuItem, text: string): Promise<AppTypes.ChatPopupMessage | null> {
-    return this.chatsService.sendChatMessage(chat, text);
+  async sendEventChatMessage(chat: ChatMenuItem, text: string, clientId?: string): Promise<AppTypes.ChatPopupMessage | null> {
+    return this.chatsService.sendChatMessage(chat, text, clientId);
   }
 
   async watchEventChatMessages(
@@ -316,6 +328,13 @@ export class ActivitiesPopupStateService {
       return 'my-events';
     }
     return 'active-events';
+  }
+
+  private cloneChatMenuItem(item: ChatMenuItem): ChatMenuItem {
+    return {
+      ...item,
+      memberIds: [...(item.memberIds ?? [])]
+    };
   }
 
 }

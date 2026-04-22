@@ -479,6 +479,15 @@ export class ActivitiesChatsController {
     return picked;
   }
 
+  private explicitChatMemberCount(item: ChatMenuItem | null | undefined): number {
+    const uniqueIds = new Set(
+      (item?.memberIds ?? [])
+        .map(memberId => `${memberId ?? ''}`.trim())
+        .filter(Boolean)
+    );
+    return uniqueIds.size;
+  }
+
   public getChatLastSender(item: ChatMenuItem): DemoUser {
     this.syncChatLookupCache();
     const cachedLastSender = this.chatLastSenderByIdCache.get(item.id);
@@ -491,6 +500,10 @@ export class ActivitiesChatsController {
   }
 
   public getChatMemberCount(item: ChatMenuItem): number {
+    const explicitCount = this.explicitChatMemberCount(item);
+    if (explicitCount > 0) {
+      return explicitCount;
+    }
     return this.getChatMembersById(item.id).length;
   }
 

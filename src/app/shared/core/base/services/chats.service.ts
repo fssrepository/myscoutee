@@ -50,8 +50,8 @@ export class ChatsService extends BaseRouteModeService {
     return this.chatsService.loadChatMessages(chat);
   }
 
-  async sendChatMessage(chat: ChatMenuItem, text: string): Promise<AppTypes.ChatPopupMessage | null> {
-    return this.chatsService.sendChatMessage(chat, text);
+  async sendChatMessage(chat: ChatMenuItem, text: string, clientId?: string): Promise<AppTypes.ChatPopupMessage | null> {
+    return this.chatsService.sendChatMessage(chat, text, clientId);
   }
 
   async watchChatMessages(
@@ -194,13 +194,20 @@ export class ChatsService extends BaseRouteModeService {
     userById: ReadonlyMap<string, DemoUser>,
     hasFallbackUser: boolean
   ): number {
-    const memberIds = item.memberIds ?? [];
-    if (memberIds.length === 0) {
+    const uniqueMemberIds = new Set(
+      (item.memberIds ?? [])
+        .map(memberId => `${memberId ?? ''}`.trim())
+        .filter(Boolean)
+    );
+    if (uniqueMemberIds.size > 0) {
+      return uniqueMemberIds.size;
+    }
+    if ((item.memberIds ?? []).length === 0) {
       return hasFallbackUser ? 1 : 0;
     }
 
     const uniqueIds = new Set<string>();
-    for (const memberId of memberIds) {
+    for (const memberId of item.memberIds ?? []) {
       if (userById.has(memberId)) {
         uniqueIds.add(memberId);
       }

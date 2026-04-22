@@ -384,7 +384,7 @@ export class EventChatPopupComponent implements OnDestroy {
     this.mergeIncomingChatMessage(optimisticMessage);
     this.schedulePendingMessageTimeout(optimisticMessage.id);
     this.cdr.markForCheck();
-    void this.activitiesContext.sendEventChatMessage(session.item, text)
+    void this.activitiesContext.sendEventChatMessage(session.item, text, optimisticMessage.clientId)
       .then(message => {
         if (this.loadedSessionKey !== sessionKey) {
           return;
@@ -411,6 +411,7 @@ export class EventChatPopupComponent implements OnDestroy {
       return this.chatThreadPageResult(query);
     }
     this.chatInitialLoadPending = true;
+    this.clearOpenChatUnreadState();
     this.cdr.markForCheck();
     try {
       const nextMessages = await this.activitiesContext.loadEventChatMessages(session.item);
@@ -420,7 +421,9 @@ export class EventChatPopupComponent implements OnDestroy {
       this.allMessages = this.normalizeChatMessages(nextMessages)
         .sort((first, second) => AppUtils.toSortableDate(second.sentAtIso) - AppUtils.toSortableDate(first.sentAtIso));
       this.rebuildVisibleReadReceipts();
+      this.syncEventChatSummaryFromLatestMessage();
       this.initialChatLoadedSessionKey = sessionKey;
+      this.markLoadedChatThreadAsRead(session.item, this.allMessages);
       await this.startLiveChatUpdates(session.item, sessionKey);
       return this.chatThreadPageResult(query);
     } catch {
@@ -528,19 +531,17 @@ export class EventChatPopupComponent implements OnDestroy {
       return;
     }
     if (this.allMessages.some(existingMessage => existingMessage.id === normalizedMessage.id)) {
+      this.syncEventChatSummaryFromMessage(normalizedMessage);
       return;
     }
     this.flagFreshMessage(normalizedMessage.id);
     this.allMessages = [...this.allMessages, normalizedMessage]
       .sort((first, second) => AppUtils.toSortableDate(second.sentAtIso) - AppUtils.toSortableDate(first.sentAtIso));
     this.rebuildVisibleReadReceipts();
+    this.syncEventChatSummaryFromMessage(normalizedMessage);
 
-    // 1. Increment revision to notify the SmartList
-    this.chatThreadRevision++; 
-    this.syncChatThreadQuery(); // Updates the [query] input
-  
-    // 2. Instead of replaceVisibleItems, let the list refresh itself 
-    // or use a targeted append if the component supports it.
+    this.refreshVisibleChatThreadSurface();
+
     if (shouldStickToEnd) {
       this.scheduleChatThreadScrollToEnd();
     }
@@ -565,6 +566,7 @@ export class EventChatPopupComponent implements OnDestroy {
 
     this.mergeIncomingChatMessage(event.message);
     if (!event.message.mine) {
+      this.clearOpenChatUnreadState();
       void this.activitiesContext.markEventChatRead(chat, [event.message.id]);
     }
   }
@@ -672,6 +674,17 @@ export class EventChatPopupComponent implements OnDestroy {
     if (!message.mine) {
       return null;
     }
+    const normalizedClientId = `${message.clientId ?? ''}`.trim();
+    if (normalizedClientId) {
+      const exactPendingMatch = this.allMessages.find(pendingMessage =>
+        pendingMessage.mine
+        && (pendingMessage.deliveryState === 'pending' || pendingMessage.deliveryState === 'timed-out')
+        && `${pendingMessage.clientId ?? ''}`.trim() === normalizedClientId
+      );
+      if (exactPendingMatch) {
+        return exactPendingMatch.id;
+      }
+    }
     let matchedId: string | null = null;
     let matchedDiff = Number.POSITIVE_INFINITY;
     const messageSentAtMs = AppUtils.toSortableDate(message.sentAtIso);
@@ -716,24 +729,24 @@ export class EventChatPopupComponent implements OnDestroy {
           senderAvatar: pendingMessage?.senderAvatar ?? resolvedMessage.senderAvatar
         }
       : resolvedMessage;
+    const nextMessage: AppTypes.ChatPopupMessage = {
+      ...normalizedMessage,
+      id: `${normalizedMessage.id ?? ''}`.trim() || pendingMessageId,
+      clientId: pendingClientId || normalizedMessage.clientId
+    };
     let nextMessages = [...this.allMessages];
-    if (nextMessages.some((existingMessage, index) => index !== pendingIndex && existingMessage.id === normalizedMessage.id)) {
+    if (nextMessages.some((existingMessage, index) => index !== pendingIndex && existingMessage.id === nextMessage.id)) {
       nextMessages = nextMessages.filter((_existingMessage, index) => index !== pendingIndex);
     } else {
-      nextMessages[pendingIndex] = {
-        ...normalizedMessage,
-        id: pendingMessageId,
-        clientId: pendingClientId
-      };
+      nextMessages[pendingIndex] = nextMessage;
     }
 
     this.allMessages = nextMessages
       .sort((first, second) => AppUtils.toSortableDate(second.sentAtIso) - AppUtils.toSortableDate(first.sentAtIso));
     this.rebuildVisibleReadReceipts();
+    this.syncEventChatSummaryFromMessage(nextMessage);
 
-    // ADD: Use the revision system instead
-    this.chatThreadRevision++; 
-    this.syncChatThreadQuery(); // This pushes a new [query] object to the SmartList
+    this.refreshVisibleChatThreadSurface();
 
     if (stickToEnd) {
       this.scheduleChatThreadScrollToEnd();
@@ -764,11 +777,13 @@ export class EventChatPopupComponent implements OnDestroy {
         .sort((first, second) => AppUtils.toSortableDate(second.sentAtIso) - AppUtils.toSortableDate(first.sentAtIso));
 
       this.rebuildVisibleReadReceipts();
+      this.syncEventChatSummaryFromLatestMessage();
 
       if (shouldStickToEnd) {
         this.scheduleChatThreadScrollToEnd();
       }
 
+      this.refreshVisibleChatThreadSurface();
       this.cdr.markForCheck();
     } catch {
       // Keep the current optimistic/live state if the reconnect snapshot fails.
@@ -836,10 +851,24 @@ export class EventChatPopupComponent implements OnDestroy {
     };
     this.allMessages = nextMessages;
     
-    this.chatThreadRevision++;
-    this.syncChatThreadQuery();
+    this.refreshVisibleChatThreadSurface();
 
     this.cdr.markForCheck();
+  }
+
+  private refreshVisibleChatThreadSurface(): void {
+    this.visibleChatThreadTotal = this.allMessages.length;
+    const smartList = this.chatThreadSmartList;
+    const visibleCount = smartList?.itemsSnapshot().length ?? 0;
+    if (!smartList || visibleCount === 0) {
+      this.chatThreadRevision++;
+      this.syncChatThreadQuery();
+      return;
+    }
+    smartList.replaceVisibleItems(
+      this.allMessages.slice(0, Math.min(this.allMessages.length, visibleCount)),
+      { total: this.allMessages.length }
+    );
   }
 
   private flagFreshMessage(messageId: string): void {
@@ -869,6 +898,74 @@ export class EventChatPopupComponent implements OnDestroy {
 
   private activeUserId(): string {
     return this.appCtx.activeUserId().trim();
+  }
+
+  private clearOpenChatUnreadState(): void {
+    const session = this.session();
+    if (!session || Math.max(0, Math.trunc(Number(session.item.unread) || 0)) === 0) {
+      return;
+    }
+    this.activitiesContext.patchEventChatSessionItem(item => ({
+      ...item,
+      unread: 0
+    }));
+  }
+
+  private markLoadedChatThreadAsRead(
+    chat: ChatMenuItem,
+    messages: readonly AppTypes.ChatPopupMessage[]
+  ): void {
+    const activeUserId = this.activeUserId();
+    const unreadMessageIds = messages
+      .filter(message =>
+        !message.mine
+        && `${message.id ?? ''}`.trim().length > 0
+        && !(message.readBy ?? []).some(reader => `${reader.id ?? ''}`.trim() === activeUserId)
+      )
+      .map(message => `${message.id ?? ''}`.trim());
+
+    if (unreadMessageIds.length === 0) {
+      return;
+    }
+    void this.activitiesContext.markEventChatRead(chat, unreadMessageIds);
+  }
+
+  private syncEventChatSummaryFromLatestMessage(): void {
+    const latestMessage = this.allMessages[0];
+    if (!latestMessage) {
+      return;
+    }
+    this.syncEventChatSummaryFromMessage(latestMessage);
+  }
+
+  private syncEventChatSummaryFromMessage(message: AppTypes.ChatPopupMessage): void {
+    const session = this.session();
+    if (!session) {
+      return;
+    }
+    const nextLastMessage = `${message.text ?? ''}`.trim();
+    const nextDateIso = `${message.sentAtIso ?? ''}`.trim();
+    const nextLastSenderId = this.resolveChatMessageSenderId(message, session.item.lastSenderId);
+    if (!nextLastMessage && !nextDateIso && !nextLastSenderId) {
+      return;
+    }
+    this.activitiesContext.patchEventChatSessionItem(item => ({
+      ...item,
+      lastMessage: nextLastMessage || item.lastMessage,
+      lastSenderId: nextLastSenderId || item.lastSenderId,
+      dateIso: nextDateIso || item.dateIso
+    }));
+  }
+
+  private resolveChatMessageSenderId(
+    message: AppTypes.ChatPopupMessage,
+    fallbackSenderId: string
+  ): string {
+    if (message.mine) {
+      return this.activeUserId() || fallbackSenderId;
+    }
+    const senderId = `${message.senderAvatar?.id ?? ''}`.trim();
+    return senderId || fallbackSenderId;
   }
 
   private normalizeChatMessages(
@@ -1073,9 +1170,7 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   private syncChatComposeDetachedSpace(): void {
-    const composeElement = this.chatComposeBoxRef?.nativeElement;
-    const measuredHeight = composeElement ? Math.ceil(composeElement.getBoundingClientRect().height) : 0;
-    const nextSpace = Math.max(108, measuredHeight + 12);
+    const nextSpace = 108;
     if (nextSpace === this.chatComposeDetachedSpace) {
       return;
     }

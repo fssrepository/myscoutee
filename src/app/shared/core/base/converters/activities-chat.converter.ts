@@ -102,6 +102,14 @@ function resolveChatMemberCount(
   item: ChatMenuItem,
   options: ResolvedBuildActivityChatRowsOptions
 ): number {
+  const explicitMemberCount = new Set(
+    (item.memberIds ?? [])
+      .map(memberId => `${memberId ?? ''}`.trim())
+      .filter(Boolean)
+  ).size;
+  if (explicitMemberCount > 0) {
+    return explicitMemberCount;
+  }
   return resolveChatMembers(item, options).length;
 }
 

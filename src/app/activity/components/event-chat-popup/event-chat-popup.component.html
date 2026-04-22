@@ -214,16 +214,26 @@
           <span class="chat-time-chip">{{ message.time }}</span>
         </div>
         <p class="chat-line">{{ message.text }}</p>
-        @if (message.mine && message.deliveryState === 'pending') {
-          <div class="chat-delivery-state">
-            Sending...
-          </div>
-        }
-        @if (message.mine && message.deliveryState === 'timed-out') {
-          <div
-            class="chat-delivery-state chat-delivery-state-timed-out"
-            >
-            Taking longer than usual
+        @if (message.mine) {
+          <div class="chat-delivery-slot">
+            @if (message.deliveryState === 'pending') {
+              <div class="chat-delivery-state">
+                Sending...
+              </div>
+            } @else if (message.deliveryState === 'timed-out') {
+              <div
+                class="chat-delivery-state chat-delivery-state-timed-out"
+                >
+                Taking longer than usual
+              </div>
+            } @else {
+              <div
+                class="chat-delivery-state chat-delivery-state-placeholder"
+                aria-hidden="true"
+                >
+                Sending...
+              </div>
+            }
           </div>
         }
       </div>
