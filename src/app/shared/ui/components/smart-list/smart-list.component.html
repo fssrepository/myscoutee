@@ -219,6 +219,7 @@
                     class="smart-list__group-marker"
                     [ngClass]="resolvedGroupMarkerClass()"
                     [attr.data-group-label]="group.label"
+                    [style.z-index]="isReversedListFlow() ? groups.length - groupIndex + 3 : null"
                   >
                     {{ group.label }}
                   </div>
@@ -250,6 +251,7 @@
                     class="smart-list__group-marker"
                     [ngClass]="resolvedGroupMarkerClass()"
                     [attr.data-group-label]="group.label"
+                    [style.z-index]="isReversedListFlow() ? groups.length - groupIndex + 3 : null"
                   >
                     {{ group.label }}
                   </div>
