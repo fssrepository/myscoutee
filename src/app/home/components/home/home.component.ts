@@ -282,12 +282,11 @@ export class HomeComponent implements OnDestroy {
       }
       const status = userByIdLoadState().status;
       const activeProfile = this.appCtx.activeUserProfile();
-      const alreadyLoaded = status === 'success' && activeProfile?.id === this.activeUserId;
       if (status === 'loading') {
         this.awaitingUserByIdLoadingSeen = true;
         return;
       }
-      if (status === 'idle' || (!this.awaitingUserByIdLoadingSeen && !alreadyLoaded)) {
+      if (status === 'idle' || !this.awaitingUserByIdLoadingSeen) {
         return;
       }
       if (activeProfile) {
@@ -299,6 +298,7 @@ export class HomeComponent implements OnDestroy {
       if (this.gameInitialCardsLoadPending) {
         void this.reloadServiceCardStack();
       }
+      this.cdr.markForCheck();
     });
     effect(() => {
       const status = userGameCardsLoadState().status;
@@ -359,6 +359,10 @@ export class HomeComponent implements OnDestroy {
     return this.appCtx.getLoadingState(USER_BY_ID_LOAD_CONTEXT_KEY).status === 'success';
   }
 
+  protected get isAwaitingUserBootstrap(): boolean {
+    return this.awaitingUserBootstrap;
+  }
+
   protected get historyBadgeCount(): number {
     if (!this.canOpenHistory) {
       return 0;
@@ -382,13 +386,14 @@ export class HomeComponent implements OnDestroy {
 
   protected get candidatePool(): DemoUser[] {
     const serviceStack = this.gameService.peekUserGameCardsStackSnapshot(this.activeUserId);
-    if (this.isFriendsInCommonMode && (serviceStack.socialCards.length > 0 || serviceStack.nextCursor !== null)) {
+    const shouldUseServiceStack = this.gameService.shouldUseUserGameCardsStack(this.activeUserId);
+    if (this.isFriendsInCommonMode && shouldUseServiceStack) {
       const usersById = new Map(this.users.map(user => [user.id, user] as const));
       return serviceStack.socialCards
         .map(card => usersById.get(card.userId))
         .filter((user): user is DemoUser => Boolean(user));
     }
-    if (!this.isPairMode && (serviceStack.cardUserIds.length > 0 || serviceStack.nextCursor !== null)) {
+    if ((!this.isPairMode || this.isSyntheticPairMode) && shouldUseServiceStack) {
       const usersById = new Map(this.users.map(user => [user.id, user] as const));
       return serviceStack.cardUserIds
         .map(id => usersById.get(id))
@@ -450,6 +455,9 @@ export class HomeComponent implements OnDestroy {
   }
 
   protected get filterBadgeCount(): number {
+    if (this.isSyntheticPairMode) {
+      return Math.max(0, this.totalRoundsForCurrentMode() - this.cardIndex);
+    }
     const overrideTotal = this.appCtx.getUserFilterCountOverride(this.activeUser.id);
     if (this.gameInitialCardsLoadPending) {
       if (overrideTotal === null) {
@@ -1146,7 +1154,6 @@ export class HomeComponent implements OnDestroy {
     this.gameInitialCardsLoadPending = true;
     this.awaitingUserBootstrap = true;
     this.awaitingUserByIdLoadingSeen = false;
-    void this.reloadServiceCardStack();
     this.cdr.markForCheck();
   }
 
