@@ -19,10 +19,14 @@ import { DemoUsersRepository } from '../../demo';
 export class ChatsService extends BaseRouteModeService {
   private static readonly CHAT_ROUTE = '/activities/chats';
 
+  private readonly demoChatsService = inject(DemoChatsService);
   private readonly httpChatsService = inject(HttpChatsService);
   private readonly demoUsersRepository = inject(DemoUsersRepository);
 
   async queryChatItemsByUser(userId: string): Promise<DemoChatRecord[]> {
+    if (this.isDemoModeEnabled(ChatsService.CHAT_ROUTE)) {
+      return this.demoChatsService.queryChatItemsByUser(userId);
+    }
     const { value } = await this.loadWithRecovery(
       () => this.httpChatsService.queryChatItemsByUser(userId),
       () => this.httpChatsService.peekChatItemsByUser(userId),
@@ -35,14 +39,23 @@ export class ChatsService extends BaseRouteModeService {
   }
 
   peekChatItemsByUser(userId: string): DemoChatRecord[] {
+    if (this.isDemoModeEnabled(ChatsService.CHAT_ROUTE)) {
+      return this.demoChatsService.peekChatItemsByUser(userId);
+    }
     return this.httpChatsService.peekChatItemsByUser(userId);
   }
 
   async loadChatMessages(chat: ChatMenuItem): Promise<AppTypes.ChatPopupMessage[]> {
+    if (this.isDemoModeEnabled(ChatsService.CHAT_ROUTE)) {
+      return this.demoChatsService.loadChatMessages(chat);
+    }
     return this.httpChatsService.loadChatMessages(chat);
   }
 
   async sendChatMessage(chat: ChatMenuItem, text: string, clientId?: string): Promise<AppTypes.ChatPopupMessage | null> {
+    if (this.isDemoModeEnabled(ChatsService.CHAT_ROUTE)) {
+      return this.demoChatsService.sendChatMessage(chat, text, clientId);
+    }
     return this.httpChatsService.sendChatMessage(chat, text, clientId);
   }
 
@@ -50,6 +63,9 @@ export class ChatsService extends BaseRouteModeService {
     chat: ChatMenuItem,
     onMessage: (message: AppTypes.ChatPopupMessage) => void
   ): Promise<() => void> {
+    if (this.isDemoModeEnabled(ChatsService.CHAT_ROUTE)) {
+      return this.demoChatsService.watchChatMessages(chat, onMessage);
+    }
     return this.httpChatsService.watchChatMessages(chat, onMessage);
   }
 
@@ -57,14 +73,23 @@ export class ChatsService extends BaseRouteModeService {
     chat: ChatMenuItem,
     onEvent: (event: AppTypes.ChatLiveEvent) => void
   ): Promise<() => void> {
+    if (this.isDemoModeEnabled(ChatsService.CHAT_ROUTE)) {
+      return this.demoChatsService.watchChatEvents(chat, onEvent);
+    }
     return this.httpChatsService.watchChatEvents(chat, onEvent);
   }
 
   async sendChatTyping(chat: ChatMenuItem, typing: boolean): Promise<void> {
+    if (this.isDemoModeEnabled(ChatsService.CHAT_ROUTE)) {
+      return this.demoChatsService.sendChatTyping(chat, typing);
+    }
     return this.httpChatsService.sendChatTyping(chat, typing);
   }
 
   async markChatRead(chat: ChatMenuItem, messageIds: readonly string[]): Promise<void> {
+    if (this.isDemoModeEnabled(ChatsService.CHAT_ROUTE)) {
+      return this.demoChatsService.markChatRead(chat, messageIds);
+    }
     return this.httpChatsService.markChatRead(chat, messageIds);
   }
 
@@ -77,6 +102,20 @@ export class ChatsService extends BaseRouteModeService {
     } = {}
   ): Promise<PageResult<AppTypes.ActivityListRow>> {
     const users = options.users ?? this.demoUsersRepository.queryAllUsers();
+    if (this.isDemoModeEnabled(ChatsService.CHAT_ROUTE)) {
+      const items = options.chatItems && options.chatItems.length > 0
+        ? options.chatItems
+        : await this.demoChatsService.queryChatItemsByUser(userId);
+      const page = this.buildLocalActivitiesChatPage(userId, request, users, items);
+      return {
+        items: buildActivityChatRows(page.items, {
+          users,
+          activeUserId: userId
+        }),
+        total: page.total,
+        nextCursor: page.nextCursor ?? null
+      };
+    }
 
     const cachedChatItems = this.resolveCachedChatItems(userId, options.chatItems);
     const { value: page } = await this.loadWithRecovery(

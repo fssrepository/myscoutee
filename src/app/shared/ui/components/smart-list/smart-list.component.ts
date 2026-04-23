@@ -545,6 +545,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     this.syncCursorBounds();
     this.emitState();
     this.cdr.markForCheck();
+    this.refreshSurfaceSoon();
   }
 
   public canMoveCursor(delta: number): boolean {
