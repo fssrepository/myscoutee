@@ -66,6 +66,22 @@ export class ActivityMembersBuilder {
     const pendingFromSource = Number(sourceRecord.pendingMembers);
     const capacityFromSource = Number(sourceRecord.capacityTotal);
     const capacityMaxFromSource = Number(sourceRecord.capacityMax);
+    if (source) {
+      const parts = source.split('/').map(part => Number.parseInt(part.trim(), 10));
+      const acceptedMembers = parts.length >= 1 && Number.isFinite(parts[0]) ? Math.max(0, parts[0]) : null;
+      const capacityTotal = parts.length >= 2 && Number.isFinite(parts[1]) ? Math.max(0, parts[1]) : null;
+      if (acceptedMembers !== null && capacityTotal !== null) {
+        return {
+          ownerType: 'event',
+          ownerId: row.id,
+          acceptedMembers,
+          pendingMembers: Number.isFinite(pendingFromSource) ? Math.max(0, Math.trunc(pendingFromSource)) : pendingMembers,
+          capacityTotal,
+          acceptedMemberUserIds: [],
+          pendingMemberUserIds: []
+        };
+      }
+    }
     if (
       Number.isFinite(acceptedFromSource)
       && (Number.isFinite(capacityFromSource) || Number.isFinite(capacityMaxFromSource))
@@ -85,24 +101,7 @@ export class ActivityMembersBuilder {
         pendingMemberUserIds: []
       };
     }
-    if (!source) {
-      return null;
-    }
-    const parts = source.split('/').map(part => Number.parseInt(part.trim(), 10));
-    const acceptedMembers = parts.length >= 1 && Number.isFinite(parts[0]) ? Math.max(0, parts[0]) : null;
-    const capacityTotal = parts.length >= 2 && Number.isFinite(parts[1]) ? Math.max(0, parts[1]) : null;
-    if (acceptedMembers === null || capacityTotal === null) {
-      return null;
-    }
-    return {
-      ownerType: 'event',
-      ownerId: row.id,
-      acceptedMembers,
-      pendingMembers,
-      capacityTotal,
-      acceptedMemberUserIds: [],
-      pendingMemberUserIds: []
-    };
+    return null;
   }
 
   static buildActivityMembersSummary(

@@ -666,7 +666,8 @@ export class ActivitiesEventsController {
       subEvents: Array.isArray(record?.subEvents)
         ? this.cloneSyncedSubEventForms(record.subEvents)
         : (Array.isArray(relatedSource.subEvents) ? this.cloneSyncedSubEventForms(relatedSource.subEvents) : undefined),
-      subEventsDisplayMode: record?.subEventsDisplayMode ?? relatedSource.subEventsDisplayMode
+      subEventsDisplayMode: record?.subEventsDisplayMode ?? relatedSource.subEventsDisplayMode,
+      paymentSessionId: selection?.paymentSessionId ?? null
     };
   }
 

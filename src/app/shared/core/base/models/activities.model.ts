@@ -162,6 +162,7 @@ export interface ActivitiesEventSyncPayload {
   topics?: string[];
   subEvents?: SubEventFormItem[];
   subEventsDisplayMode?: import('./event.model').SubEventsDisplayMode;
+  paymentSessionId?: string | null;
 }
 
 export interface EventCheckoutRequest {

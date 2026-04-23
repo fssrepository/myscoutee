@@ -2159,6 +2159,10 @@ export class SubEventResourcePopupService {
     const detail = dialog.quantity > 1
       ? `${timeframe} · Qty ${dialog.quantity}`
       : timeframe;
+    const cancellationPolicy = PricingBuilder.compactPricingConfig(card.pricing, {
+      context: 'asset',
+      allowSlotFeatures: false
+    }).cancellationPolicy;
     return {
       title: `Borrow ${card.title}`,
       subtitle: this.popupSubtitle(),
@@ -2181,6 +2185,8 @@ export class SubEventResourcePopupService {
       ],
       totalAmount: pricing.amount,
       currency: pricing.currency,
+      bookingStartAtIso: dialog.startAtIso,
+      cancellationPolicy,
       policies: (card.policies ?? []).map(item => ({ ...item })),
       acceptedPolicyIds: [...dialog.acceptedPolicyIds],
       payable: pricing.amount > 0,

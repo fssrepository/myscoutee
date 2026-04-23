@@ -131,15 +131,7 @@ export class EventExplorePopupComponent {
   }
 
   protected readonly eventExploreLoadPage = (query: ListQuery<EventExploreFeedFilters>) =>
-    from(this.activitiesService.loadExplore(query).then(result => {
-      const filteredItems = result.items.filter((record: DemoEventRecord) => !this.hasTrackedMembership(record, this.activeUserId));
-      const hiddenCount = result.items.length - filteredItems.length;
-      return {
-        ...result,
-        items: filteredItems,
-        total: Math.max(0, result.total - hiddenCount)
-      };
-    }));
+    from(this.activitiesService.loadExplore(query));
   protected readonly EventExploreBuilder = EventExploreBuilder;
 
   protected readonly eventExploreSmartListConfig: SmartListConfig<DemoEventRecord, EventExploreFeedFilters> = {

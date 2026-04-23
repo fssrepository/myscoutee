@@ -29,7 +29,7 @@ export class DemoChatsService extends DemoRouteDelayService {
     return this.chatsRepository.queryChatMessages(chat);
   }
 
-  async sendChatMessage(chat: ChatMenuItem, text: string): Promise<AppTypes.ChatPopupMessage | null> {
+  async sendChatMessage(chat: ChatMenuItem, text: string, clientId?: string): Promise<AppTypes.ChatPopupMessage | null> {
     await this.waitForRouteDelay(DemoChatsService.CHAT_ROUTE);
     const trimmedText = text.trim();
     if (!trimmedText) {
@@ -37,7 +37,7 @@ export class DemoChatsService extends DemoRouteDelayService {
     }
     const sentAt = new Date();
     return this.chatsRepository.appendChatMessage(chat, {
-      id: `${chat.id}:${sentAt.getTime()}`,
+      id: `${clientId ?? `${chat.id}:${sentAt.getTime()}`}`,
       sender: 'You',
       senderAvatar: {
         id: 'self',
@@ -48,7 +48,8 @@ export class DemoChatsService extends DemoRouteDelayService {
       time: sentAt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
       sentAtIso: AppUtils.toIsoDateTime(sentAt),
       mine: true,
-      readBy: []
+      readBy: [],
+      clientId: `${clientId ?? ''}`.trim() || undefined
     });
   }
 
