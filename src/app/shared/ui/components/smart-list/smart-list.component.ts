@@ -1102,7 +1102,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     const restoreContext = shouldUseManualPrependRestore
       ? this.captureListRestoreContext(isInitial)
       : null;
-    const reverseAppendAnchorContext = shouldUseReverseAppendAnchorRestore
+    let reverseAppendAnchorContext = shouldUseReverseAppendAnchorRestore
       ? this.captureReverseAppendAnchorContext(isInitial)
       : null;
     let handledManualPrepend = false;
@@ -1120,6 +1120,9 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
       const nextItems = Array.isArray(result?.items) ? result.items : [];
       shouldAnimateEmptyAppendCompletion = !isInitial && nextItems.length === 0;
+      if (shouldUseReverseAppendAnchorRestore) {
+        reverseAppendAnchorContext = this.captureReverseAppendAnchorContext(isInitial) ?? reverseAppendAnchorContext;
+      }
       this.applyListPageResult(result, isInitial);
       if (sequence !== this.loadSequence) {
         return;
