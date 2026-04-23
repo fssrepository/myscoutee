@@ -11,6 +11,7 @@
   --asset-popup-z-index: 12000;
   --asset-popup-stacked-z-index: 12100;
   --asset-popup-super-stacked-z-index: 12200;
+  --asset-popup-basket-shell-gap: 0.35rem;
   --asset-popup-basket-panel-max-width: 1120px;
 }
 
@@ -1461,6 +1462,12 @@
   max-width: calc(100vw - (var(--asset-popup-basket-shell-gap) * 2));
   height: calc(100vh - (var(--asset-popup-basket-shell-gap) * 2));
   max-height: calc(100vh - (var(--asset-popup-basket-shell-gap) * 2));
+}
+
+.asset-popup .app-popup.app-popup-stacked.app-popup-super-stacked.app-popup-super-stacked-over-subevents
+  .popup-panel-assets.popup-panel-subevent-asset-assign {
+  height: calc(100dvh - (var(--asset-popup-basket-shell-gap) * 2));
+  max-height: calc(100dvh - (var(--asset-popup-basket-shell-gap) * 2));
 }
 
 .asset-popup .popup-body.popup-body-subevent-asset-assign {
