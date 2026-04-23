@@ -1408,13 +1408,24 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     return Math.max(0, Number(this.config.prependRevealPx) || 0);
   }
 
-  private listTopInset(scrollElement: HTMLElement): number {
+  private listTopInset(
+    scrollElement: HTMLElement,
+    options: {
+      includeStickyGroupMarker?: boolean;
+    } = {}
+  ): number {
     const threadRect = scrollElement.getBoundingClientRect();
     const styles = getComputedStyle(scrollElement);
     const scrollPaddingTop = Number.parseFloat(styles.scrollPaddingTop || '0') || 0;
     const stickyHeaderHeight = this.shouldShowStickyHeader()
       ? scrollElement.querySelector<HTMLElement>('.smart-list__sticky')?.offsetHeight ?? 0
       : 0;
+    const includeStickyGroupMarker = options.includeStickyGroupMarker !== false;
+    const baseInset = Math.max(stickyHeaderHeight, scrollPaddingTop);
+
+    if (!includeStickyGroupMarker) {
+      return baseInset;
+    }
 
     const stickyGroupMarker = Array.from(
       scrollElement.querySelectorAll<HTMLElement>('.smart-list__group-marker')
@@ -1423,7 +1434,6 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       return rect.top <= threadRect.top + 1 && rect.bottom > threadRect.top + 1;
     }) ?? null;
 
-    const baseInset = Math.max(stickyHeaderHeight, scrollPaddingTop);
     if (!stickyGroupMarker) {
       return baseInset;
     }
@@ -1449,7 +1459,9 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       return null;
     }
     const threadRect = scrollElement.getBoundingClientRect();
-    const visibleTop = threadRect.top + this.listTopInset(scrollElement);
+    const visibleTop = threadRect.top + this.listTopInset(scrollElement, {
+      includeStickyGroupMarker: false
+    });
     const anchors = Array.from(
       scrollElement.querySelectorAll<HTMLElement>('.smart-list__item-shell[data-smart-list-anchor]')
     );
@@ -1501,7 +1513,9 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       return null;
     }
     const threadRect = scrollElement.getBoundingClientRect();
-    const visibleTop = threadRect.top + this.listTopInset(scrollElement);
+    const visibleTop = threadRect.top + this.listTopInset(scrollElement, {
+      includeStickyGroupMarker: false
+    });
     const anchorElement = this.topVisibleItemShell(scrollElement, visibleTop);
     const anchorKey = anchorElement?.dataset['smartListAnchor']?.trim() ?? '';
     if (!anchorElement || !anchorKey) {
@@ -1607,7 +1621,9 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       return;
     }
     const threadRect = scrollElement.getBoundingClientRect();
-    const visibleTop = threadRect.top + this.listTopInset(scrollElement);
+    const visibleTop = threadRect.top + this.listTopInset(scrollElement, {
+      includeStickyGroupMarker: false
+    });
     const anchorElement = Array.from(
       scrollElement.querySelectorAll<HTMLElement>('.smart-list__item-shell[data-smart-list-anchor]')
     ).find(element => (element.dataset['smartListAnchor'] ?? '') === restoreContext.anchorKey) ?? null;
