@@ -103,6 +103,8 @@ export interface AssetExploreBorrowDialogViewState {
   lineItems: AppTypes.EventCheckoutLineItem[];
   totalAmount: number;
   currency: string;
+  bookingStartAtIso: string;
+  cancellationPolicy: AppTypes.PricingCancellationPolicy | null;
   policies: AppTypes.EventPolicyItem[];
   acceptedPolicyIds: string[];
   payable: boolean;
@@ -733,6 +735,138 @@ export class EventResourcePopupComponent implements DoCheck {
       default:
         return `$${(Number(amount) || 0).toFixed(2)}`;
     }
+  }
+
+  protected showAssetExploreBorrowCancellationPolicyCard(dialog: AssetExploreBorrowDialogViewState): boolean {
+    return dialog.totalAmount > 0
+      && dialog.cancellationPolicy?.enabled === true
+      && (dialog.cancellationPolicy.rules?.length ?? 0) > 0;
+  }
+
+  protected assetExploreBorrowCancellationPreview(
+    dialog: AssetExploreBorrowDialogViewState
+  ): { refundLabel: string; note: string } | null {
+    if (!this.showAssetExploreBorrowCancellationPolicyCard(dialog)) {
+      return null;
+    }
+    const applicableRule = this.assetExploreBorrowApplicableCancellationRule(dialog);
+    if (!applicableRule) {
+      return {
+        refundLabel: 'No refund right now',
+        note: 'The selected borrow window is already inside the last reimbursement window.'
+      };
+    }
+
+    const refundAmount = this.assetExploreBorrowCancellationRefundAmount(applicableRule, dialog.totalAmount);
+    return {
+      refundLabel: refundAmount > 0
+        ? `${this.assetExploreBorrowFormatMoney(refundAmount, dialog.currency)} refundable right now`
+        : 'No refund right now',
+      note: this.assetExploreBorrowDescribeCancellationRule(applicableRule, dialog.currency)
+    };
+  }
+
+  protected assetExploreBorrowCancellationRules(
+    dialog: AssetExploreBorrowDialogViewState
+  ): AppTypes.PricingCancellationRule[] {
+    return dialog.cancellationPolicy?.rules ?? [];
+  }
+
+  protected assetExploreBorrowCancellationRuleWindowLabel(rule: AppTypes.PricingCancellationRule): string {
+    const value = Math.max(0, Number(rule.offsetValue) || 0);
+    const unit = rule.offsetUnit === 'hours'
+      ? (value === 1 ? 'hour' : 'hours')
+      : rule.offsetUnit === 'weeks'
+        ? (value === 1 ? 'week' : 'weeks')
+        : rule.offsetUnit === 'months'
+          ? (value === 1 ? 'month' : 'months')
+          : (value === 1 ? 'day' : 'days');
+    return `${value} ${unit} before start`;
+  }
+
+  protected assetExploreBorrowCancellationRuleRefundLabel(
+    rule: AppTypes.PricingCancellationRule,
+    currency = 'USD'
+  ): string {
+    if (rule.refundKind === 'full') {
+      return 'Full refund';
+    }
+    if (rule.refundKind === 'none') {
+      return 'No refund';
+    }
+    if (rule.refundKind === 'fixed_amount') {
+      return this.assetExploreBorrowFormatMoney(Number(rule.refundValue) || 0, currency);
+    }
+    return `${Math.max(0, Number(rule.refundValue) || 0)}% refund`;
+  }
+
+  private assetExploreBorrowApplicableCancellationRule(
+    dialog: AssetExploreBorrowDialogViewState
+  ): AppTypes.PricingCancellationRule | null {
+    const bookingStart = AppUtils.isoLocalDateTimeToDate(dialog.bookingStartAtIso);
+    if (!bookingStart) {
+      return null;
+    }
+
+    let bestRule: AppTypes.PricingCancellationRule | null = null;
+    let bestDeadlineMs = Number.NEGATIVE_INFINITY;
+    for (const rule of this.assetExploreBorrowCancellationRules(dialog)) {
+      const deadlineMs = this.assetExploreBorrowCancellationRuleDeadlineMs(rule, bookingStart);
+      if (!Number.isFinite(deadlineMs) || Date.now() > deadlineMs) {
+        continue;
+      }
+      if (deadlineMs > bestDeadlineMs) {
+        bestDeadlineMs = deadlineMs;
+        bestRule = rule;
+      }
+    }
+    return bestRule;
+  }
+
+  private assetExploreBorrowCancellationRuleDeadlineMs(
+    rule: AppTypes.PricingCancellationRule,
+    bookingStart: Date
+  ): number {
+    const deadline = new Date(bookingStart.getTime());
+    const offsetValue = Math.max(0, Number(rule.offsetValue) || 0);
+    switch (rule.offsetUnit) {
+      case 'hours':
+        deadline.setHours(deadline.getHours() - offsetValue);
+        break;
+      case 'weeks':
+        deadline.setDate(deadline.getDate() - (offsetValue * 7));
+        break;
+      case 'months':
+        deadline.setMonth(deadline.getMonth() - offsetValue);
+        break;
+      default:
+        deadline.setDate(deadline.getDate() - offsetValue);
+        break;
+    }
+    return deadline.getTime();
+  }
+
+  private assetExploreBorrowCancellationRefundAmount(
+    rule: AppTypes.PricingCancellationRule,
+    totalAmount: number
+  ): number {
+    if (rule.refundKind === 'full') {
+      return Math.round(totalAmount * 100) / 100;
+    }
+    if (rule.refundKind === 'none') {
+      return 0;
+    }
+    if (rule.refundKind === 'fixed_amount') {
+      return Math.min(totalAmount, Math.round((Number(rule.refundValue) || 0) * 100) / 100);
+    }
+    return Math.round(totalAmount * ((Math.max(0, Math.min(100, Number(rule.refundValue) || 0))) / 100) * 100) / 100;
+  }
+
+  private assetExploreBorrowDescribeCancellationRule(
+    rule: AppTypes.PricingCancellationRule,
+    currency: string
+  ): string {
+    return `${this.assetExploreBorrowCancellationRuleRefundLabel(rule, currency)} when cancelled at least ${this.assetExploreBorrowCancellationRuleWindowLabel(rule)}.`;
   }
 
   protected assetExploreBorrowDrafts(): AssetExploreBorrowDraftViewState[] {

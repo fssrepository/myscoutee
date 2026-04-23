@@ -23,10 +23,6 @@ export class ChatsService extends BaseRouteModeService {
   private readonly httpChatsService = inject(HttpChatsService);
   private readonly demoUsersRepository = inject(DemoUsersRepository);
 
-  private get chatsService(): DemoChatsService | HttpChatsService {
-    return this.resolveRouteService(ChatsService.CHAT_ROUTE, this.demoChatsService, this.httpChatsService);
-  }
-
   async queryChatItemsByUser(userId: string): Promise<DemoChatRecord[]> {
     if (this.isDemoModeEnabled(ChatsService.CHAT_ROUTE)) {
       return this.demoChatsService.queryChatItemsByUser(userId);
@@ -43,37 +39,58 @@ export class ChatsService extends BaseRouteModeService {
   }
 
   peekChatItemsByUser(userId: string): DemoChatRecord[] {
-    return this.chatsService.peekChatItemsByUser(userId);
+    if (this.isDemoModeEnabled(ChatsService.CHAT_ROUTE)) {
+      return this.demoChatsService.peekChatItemsByUser(userId);
+    }
+    return this.httpChatsService.peekChatItemsByUser(userId);
   }
 
   async loadChatMessages(chat: ChatMenuItem): Promise<AppTypes.ChatPopupMessage[]> {
-    return this.chatsService.loadChatMessages(chat);
+    if (this.isDemoModeEnabled(ChatsService.CHAT_ROUTE)) {
+      return this.demoChatsService.loadChatMessages(chat);
+    }
+    return this.httpChatsService.loadChatMessages(chat);
   }
 
-  async sendChatMessage(chat: ChatMenuItem, text: string): Promise<AppTypes.ChatPopupMessage | null> {
-    return this.chatsService.sendChatMessage(chat, text);
+  async sendChatMessage(chat: ChatMenuItem, text: string, clientId?: string): Promise<AppTypes.ChatPopupMessage | null> {
+    if (this.isDemoModeEnabled(ChatsService.CHAT_ROUTE)) {
+      return this.demoChatsService.sendChatMessage(chat, text, clientId);
+    }
+    return this.httpChatsService.sendChatMessage(chat, text, clientId);
   }
 
   async watchChatMessages(
     chat: ChatMenuItem,
     onMessage: (message: AppTypes.ChatPopupMessage) => void
   ): Promise<() => void> {
-    return this.chatsService.watchChatMessages(chat, onMessage);
+    if (this.isDemoModeEnabled(ChatsService.CHAT_ROUTE)) {
+      return this.demoChatsService.watchChatMessages(chat, onMessage);
+    }
+    return this.httpChatsService.watchChatMessages(chat, onMessage);
   }
 
   async watchChatEvents(
     chat: ChatMenuItem,
     onEvent: (event: AppTypes.ChatLiveEvent) => void
   ): Promise<() => void> {
-    return this.chatsService.watchChatEvents(chat, onEvent);
+    if (this.isDemoModeEnabled(ChatsService.CHAT_ROUTE)) {
+      return this.demoChatsService.watchChatEvents(chat, onEvent);
+    }
+    return this.httpChatsService.watchChatEvents(chat, onEvent);
   }
 
   async sendChatTyping(chat: ChatMenuItem, typing: boolean): Promise<void> {
-    return this.chatsService.sendChatTyping(chat, typing);
+    if (this.isDemoModeEnabled(ChatsService.CHAT_ROUTE)) {
+      return this.demoChatsService.sendChatTyping(chat, typing);
+    }
+    return this.httpChatsService.sendChatTyping(chat, typing);
   }
 
   async markChatRead(chat: ChatMenuItem, messageIds: readonly string[]): Promise<void> {
-    return this.chatsService.markChatRead(chat, messageIds);
+    if (this.isDemoModeEnabled(ChatsService.CHAT_ROUTE)) {
+      return this.demoChatsService.markChatRead(chat, messageIds);
+    }
+    return this.httpChatsService.markChatRead(chat, messageIds);
   }
 
   async queryActivitiesChatPage(
@@ -85,11 +102,10 @@ export class ChatsService extends BaseRouteModeService {
     } = {}
   ): Promise<PageResult<AppTypes.ActivityListRow>> {
     const users = options.users ?? this.demoUsersRepository.queryAllUsers();
-
     if (this.isDemoModeEnabled(ChatsService.CHAT_ROUTE)) {
       const items = options.chatItems && options.chatItems.length > 0
         ? options.chatItems
-        : await this.queryChatItemsByUser(userId);
+        : await this.demoChatsService.queryChatItemsByUser(userId);
       const page = this.buildLocalActivitiesChatPage(userId, request, users, items);
       return {
         items: buildActivityChatRows(page.items, {
@@ -194,13 +210,20 @@ export class ChatsService extends BaseRouteModeService {
     userById: ReadonlyMap<string, DemoUser>,
     hasFallbackUser: boolean
   ): number {
-    const memberIds = item.memberIds ?? [];
-    if (memberIds.length === 0) {
+    const uniqueMemberIds = new Set(
+      (item.memberIds ?? [])
+        .map(memberId => `${memberId ?? ''}`.trim())
+        .filter(Boolean)
+    );
+    if (uniqueMemberIds.size > 0) {
+      return uniqueMemberIds.size;
+    }
+    if ((item.memberIds ?? []).length === 0) {
       return hasFallbackUser ? 1 : 0;
     }
 
     const uniqueIds = new Set<string>();
-    for (const memberId of memberIds) {
+    for (const memberId of item.memberIds ?? []) {
       if (userById.has(memberId)) {
         uniqueIds.add(memberId);
       }

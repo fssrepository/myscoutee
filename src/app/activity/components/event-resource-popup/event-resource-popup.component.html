@@ -965,6 +965,37 @@
                       </div>
                     </section>
 
+                    @if (showAssetExploreBorrowCancellationPolicyCard(dialog)) {
+                      <section class="asset-explore-borrow-review-card">
+                        <div class="asset-explore-borrow-review-card__head">
+                          <div>
+                            <h4>Cancellation & Reimbursement</h4>
+                            <span>What this borrow can reimburse if you cancel before it starts</span>
+                          </div>
+                        </div>
+                        @if (assetExploreBorrowCancellationPreview(dialog); as preview) {
+                          <div class="asset-explore-borrow-review-card__list">
+                            <article class="asset-explore-borrow-review-card__item">
+                              <div>
+                                <strong>Current reimbursement</strong>
+                                <span>{{ preview.note }}</span>
+                              </div>
+                              <strong>{{ preview.refundLabel }}</strong>
+                            </article>
+                            @for (rule of assetExploreBorrowCancellationRules(dialog); track rule.id) {
+                              <article class="asset-explore-borrow-review-card__item">
+                                <div>
+                                  <strong>{{ assetExploreBorrowCancellationRuleWindowLabel(rule) }}</strong>
+                                  <span>{{ assetExploreBorrowCancellationRuleRefundLabel(rule, dialog.currency) }}</span>
+                                </div>
+                                <strong>{{ assetExploreBorrowCancellationRuleRefundLabel(rule, dialog.currency) }}</strong>
+                              </article>
+                            }
+                          </div>
+                        }
+                      </section>
+                    }
+
                     @if (!dialog.paymentStep && dialog.policies.length > 0) {
                       <section class="asset-explore-borrow-review-card">
                         <div class="asset-explore-borrow-review-card__head">

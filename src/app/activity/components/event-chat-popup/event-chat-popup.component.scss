@@ -682,6 +682,14 @@
   margin-bottom: 0.12rem;
 }
 
+.chat-thread-list--reverse .chat-message:first-child {
+  margin-bottom: 0.12rem;
+}
+
+.chat-thread-list--reverse .chat-message:last-child {
+  margin-bottom: 0.48rem;
+}
+
 .chat-message.chat-message-fresh .chat-bubble {
   animation: chat-message-pop 0.34s ease-out;
 }
@@ -741,15 +749,28 @@
 }
 
 .chat-delivery-state {
-  margin-top: 0.26rem;
   color: rgba(41, 72, 112, 0.72);
   font-size: 0.69rem;
   font-weight: 800;
   line-height: 1.2;
+  white-space: nowrap;
 }
 
 .chat-delivery-state-timed-out {
   color: rgba(167, 53, 53, 0.92);
+}
+
+.chat-delivery-slot {
+  margin-top: 0.26rem;
+  min-height: 0.83rem;
+  display: flex;
+  align-items: flex-start;
+}
+
+.chat-delivery-state-placeholder {
+  visibility: hidden;
+  pointer-events: none;
+  user-select: none;
 }
 
 .chat-readers {

@@ -18,6 +18,10 @@ export class PricingBuilder {
       demandRules: [],
       timeRulesEnabled: false,
       timeRules: [],
+      cancellationPolicy: {
+        enabled: false,
+        rules: []
+      },
       slotPricingEnabled: false,
       slotOverrides: [],
       audience: {
@@ -74,6 +78,25 @@ export class PricingBuilder {
           slotIds: []
         }
       ],
+      cancellationPolicy: {
+        enabled: true,
+        rules: [
+          {
+            id: 'cancellation-rule-1',
+            offsetUnit: 'days',
+            offsetValue: 7,
+            refundKind: 'percent',
+            refundValue: 50
+          },
+          {
+            id: 'cancellation-rule-2',
+            offsetUnit: 'hours',
+            offsetValue: 24,
+            refundKind: 'none',
+            refundValue: null
+          }
+        ]
+      },
       slotPricingEnabled: false,
       slotOverrides: [],
       audience: {
@@ -112,6 +135,12 @@ export class PricingBuilder {
         action: { ...rule.action },
         slotIds: [...(rule.slotIds ?? [])]
       })),
+      cancellationPolicy: {
+        enabled: normalized.cancellationPolicy?.enabled === true,
+        rules: (normalized.cancellationPolicy?.rules ?? []).map(rule => ({
+          ...rule
+        }))
+      },
       slotOverrides: (normalized.slotOverrides ?? []).map(item => ({ ...item })),
       audience: {
         ...normalized.audience,
@@ -167,6 +196,7 @@ export class PricingBuilder {
         Array.isArray(source['timeRules']) && source['timeRules'].length > 0
       ),
       timeRules: this.normalizeTimeRules(source['timeRules']),
+      cancellationPolicy: this.normalizeCancellationPolicy(source['cancellationPolicy']),
       slotPricingEnabled: this.normalizeBoolean(
         source['slotPricingEnabled'],
         Array.isArray(source['slotOverrides']) && source['slotOverrides'].length > 0
@@ -274,6 +304,10 @@ export class PricingBuilder {
     const demandRules = Array.isArray(source['demandRules']) ? source['demandRules'].length : 0;
     const timeRules = Array.isArray(source['timeRules']) ? source['timeRules'].length : 0;
     const slotOverrides = Array.isArray(source['slotOverrides']) ? source['slotOverrides'].length : 0;
+    const cancellationPolicySource = (typeof source['cancellationPolicy'] === 'object' && source['cancellationPolicy'] !== null)
+      ? source['cancellationPolicy'] as Record<string, unknown>
+      : {};
+    const cancellationRules = Array.isArray(cancellationPolicySource['rules']) ? cancellationPolicySource['rules'].length : 0;
     const audienceSource = (typeof source['audience'] === 'object' && source['audience'] !== null)
       ? source['audience'] as Record<string, unknown>
       : {};
@@ -285,6 +319,7 @@ export class PricingBuilder {
     return basePrice > 0
       || demandRules > 0
       || timeRules > 0
+      || cancellationRules > 0
       || slotOverrides > 0
       || promoCodes > 0
       || memberPrice !== null
@@ -412,6 +447,36 @@ export class PricingBuilder {
     });
   }
 
+  private static normalizeCancellationPolicy(value: unknown): AppTypes.PricingCancellationPolicy {
+    const source = (typeof value === 'object' && value !== null) ? value as Record<string, unknown> : {};
+    const rules = this.normalizeCancellationRules(source['rules']);
+    return {
+      enabled: this.normalizeBoolean(source['enabled'], rules.length > 0),
+      rules
+    };
+  }
+
+  private static normalizeCancellationRules(value: unknown): AppTypes.PricingCancellationRule[] {
+    if (!Array.isArray(value)) {
+      return [];
+    }
+    return value.map((entry, index) => {
+      const source = (typeof entry === 'object' && entry !== null) ? entry as Record<string, unknown> : {};
+      const refundKind = this.normalizeCancellationRefundKind(source['refundKind']) ?? 'percent';
+      return {
+        id: this.normalizeText(source['id']) || `cancellation-rule-${index + 1}`,
+        offsetUnit: this.normalizeCancellationUnit(source['offsetUnit']) ?? 'days',
+        offsetValue: this.normalizeOffset(source['offsetValue']),
+        refundKind,
+        refundValue: refundKind === 'percent'
+          ? this.normalizePercent(source['refundValue'])
+          : refundKind === 'fixed_amount'
+            ? this.normalizeMoney(source['refundValue'])
+            : null
+      };
+    });
+  }
+
   private static normalizeSlotOverrides(value: unknown): AppTypes.PricingSlotOverride[] {
     if (!Array.isArray(value)) {
       return [];
@@ -517,6 +582,23 @@ export class PricingBuilder {
 
   private static normalizeCurrency(value: unknown): string {
     return this.normalizeText(value).toUpperCase().slice(0, 8);
+  }
+
+  private static normalizeCancellationUnit(value: unknown): AppTypes.PricingCancellationUnit | null {
+    const normalized = this.normalizeText(value);
+    return normalized === 'hours' || normalized === 'days' || normalized === 'weeks' || normalized === 'months'
+      ? normalized
+      : null;
+  }
+
+  private static normalizeCancellationRefundKind(value: unknown): AppTypes.PricingCancellationRefundKind | null {
+    const normalized = this.normalizeText(value);
+    return normalized === 'percent'
+      || normalized === 'fixed_amount'
+      || normalized === 'full'
+      || normalized === 'none'
+      ? normalized
+      : null;
   }
 
   private static normalizeDate(value: unknown): string | null {

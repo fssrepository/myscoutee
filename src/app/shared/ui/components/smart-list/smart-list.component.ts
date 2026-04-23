@@ -165,6 +165,11 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   protected suppressListSnapNearEnd = false;
 
   private total = 0;
+  private resolvedListTrackKeys: Array<string | number> = [];
+  private fallbackTrackKeyByObject = new WeakMap<object, string>();
+  private listItemIndexByObject = new WeakMap<object, number>();
+  private resolvedListTrackKeyByObject = new WeakMap<object, string | number>();
+  private fallbackTrackKeySequence = 0;
 
   totalItemCount(): number {
     return this.total;
@@ -191,6 +196,8 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   private suppressListSnapSettle = false;
   private flushScheduled = false;
   private awaitScrollReset = false;
+  private awaitScrollResetBaselineTop: number | null = null;
+  private awaitScrollResetBaselineReverseDistance: number | null = null;
   private calendarMonthFocusDate: Date | null = null;
   private calendarWeekFocusDate: Date | null = null;
   private calendarEdgeSettleTimer: ReturnType<typeof setTimeout> | null = null;
@@ -528,7 +535,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     this.clearLoadingAnimation();
     this.loading = false;
     this.initialLoading = false;
-    this.awaitScrollReset = false;
+    this.clearAwaitScrollReset();
     this.items = [...items];
     this.total = Number.isFinite(options.total)
       ? Math.max(this.items.length, Math.trunc(Number(options.total)))
@@ -538,6 +545,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     this.syncCursorBounds();
     this.emitState();
     this.cdr.markForCheck();
+    this.refreshSurfaceSoon();
   }
 
   public canMoveCursor(delta: number): boolean {
@@ -628,6 +636,10 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     return this.resolveConfigValue(this.config.listLayout, 'stack');
   }
 
+  protected isReversedListFlow(): boolean {
+    return this.resolveConfigValue(this.config.listFlow, 'normal') === 'reverse';
+  }
+
   protected resolvedDesktopColumns(): string | null {
     const value = this.resolveConfigValue(this.config.desktopColumns, null);
     if (!Number.isFinite(Number(value))) {
@@ -704,7 +716,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   protected readonly trackByGroup = (_index: number, group: SmartListGroup<T>): string => `${group.startIndex}:${group.label}`;
 
   protected readonly trackByItem = (index: number, item: T): unknown =>
-    this.config.trackBy ? this.config.trackBy(index, item) : index;
+    this.config.trackBy ? this.resolvedListTrackKeyForItem(index, item) : index;
 
   protected readonly trackByCalendarPageKey = (_index: number, page: SmartListCalendarPage<T>): string => page.key;
 
@@ -716,7 +728,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   protected readonly trackByCalendarSpanKey = (_index: number, span: SmartListCalendarMonthSpan<T>): string => span.key;
 
   protected readonly trackByCalendarTimedBadge = (index: number, badge: SmartListCalendarTimedBadge<T>): unknown =>
-    this.config.trackBy ? this.config.trackBy(index, badge.item) : index;
+    this.calendarTrackKey(index, badge.item);
 
   protected shouldShowGroupMarker(group: SmartListGroup<T>, groupIndex: number): boolean {
     if (this.config.showGroupMarker) {
@@ -1019,7 +1031,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     this.cursorIndex = 0;
     this.hasMore = this.currentViewMode === 'list';
     this.initialLoading = true;
-    this.awaitScrollReset = false;
+    this.clearAwaitScrollReset();
     this.stickyLabel = this.resolveEmptyStickyLabel();
     this.progress = 0;
     this.scrollable = false;
@@ -1080,11 +1092,18 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     const shouldUseManualPrependRestore = !isInitial
       && this.listMergeStrategy() === 'prepend'
       && this.prependRestoreMode() === 'manual';
+    const shouldUseReverseAppendAnchorRestore = !isInitial
+      && this.listMergeStrategy() === 'append'
+      && this.isReversedListFlow()
+      && this.listLoadTriggerEdge() === 'end';
     const shouldUseNativePrependReveal = !isInitial
       && this.listMergeStrategy() === 'prepend'
       && this.prependRestoreMode() === 'native';
     const restoreContext = shouldUseManualPrependRestore
       ? this.captureListRestoreContext(isInitial)
+      : null;
+    let reverseAppendAnchorContext = shouldUseReverseAppendAnchorRestore
+      ? this.captureReverseAppendAnchorContext(isInitial)
       : null;
     let handledManualPrepend = false;
     let shouldAnimateEmptyAppendCompletion = false;
@@ -1101,6 +1120,9 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
       const nextItems = Array.isArray(result?.items) ? result.items : [];
       shouldAnimateEmptyAppendCompletion = !isInitial && nextItems.length === 0;
+      if (shouldUseReverseAppendAnchorRestore) {
+        reverseAppendAnchorContext = this.captureReverseAppendAnchorContext(isInitial) ?? reverseAppendAnchorContext;
+      }
       this.applyListPageResult(result, isInitial);
       if (sequence !== this.loadSequence) {
         return;
@@ -1120,6 +1142,8 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       }
       this.loading = false;
       this.awaitScrollReset = true;
+      this.awaitScrollResetBaselineTop = null;
+      this.awaitScrollResetBaselineReverseDistance = null;
       this.endLoadingAnimation({
         forceAnimatedCompletion: shouldAnimateEmptyAppendCompletion
       });
@@ -1127,6 +1151,9 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       if (handledManualPrepend && restoreContext) {
         this.cdr.detectChanges();
         this.scheduleManualPrependRestore(restoreContext);
+      } else if (reverseAppendAnchorContext) {
+        this.cdr.detectChanges();
+        this.scheduleReverseAppendAnchorRestore(reverseAppendAnchorContext, applyInitialAnchor);
       } else if (shouldUseNativePrependReveal) {
         this.cdr.detectChanges();
         this.scheduleNativePrependReveal();
@@ -1243,17 +1270,33 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     }
     const triggerEdge = this.listLoadTriggerEdge();
     const threshold = Math.max(0, this.config.preloadOffsetPx ?? (triggerEdge === 'start' ? 48 : 520));
-    const remainingPx = scrollElement.scrollHeight - scrollElement.scrollTop - scrollElement.clientHeight;
     const maxVerticalScroll = Math.max(0, scrollElement.scrollHeight - scrollElement.clientHeight);
+    const distanceToVisualTop = this.reverseDistanceToVisualTop(scrollElement, maxVerticalScroll);
+
     if (this.awaitScrollReset) {
-      if (triggerEdge === 'start') {
-        if (scrollElement.scrollTop > Math.max(120, threshold * 2)) {
-          this.awaitScrollReset = false;
+      if (this.isReversedListFlow() && triggerEdge === 'end') {
+        const resetThreshold = Math.max(120, threshold * 2);
+        const baselineTop = this.awaitScrollResetBaselineTop;
+        const baselineDistance = this.awaitScrollResetBaselineReverseDistance;
+        const topDelta = baselineTop === null ? 0 : Math.abs(scrollElement.scrollTop - baselineTop);
+        const distanceDelta = baselineDistance === null ? 0 : Math.abs(distanceToVisualTop - baselineDistance);
+        if (distanceToVisualTop > resetThreshold
+          || maxVerticalScroll <= resetThreshold
+          || topDelta > 12
+          || distanceDelta > 12) {
+          this.clearAwaitScrollReset();
         }
       } else {
-        const resetThreshold = Math.max(360, threshold);
-        if (remainingPx > resetThreshold || maxVerticalScroll <= resetThreshold) {
-          this.awaitScrollReset = false;
+        const remainingPx = scrollElement.scrollHeight - scrollElement.scrollTop - scrollElement.clientHeight;
+        if (triggerEdge === 'start') {
+          if (scrollElement.scrollTop > Math.max(120, threshold * 2)) {
+            this.clearAwaitScrollReset();
+          }
+        } else {
+          const resetThreshold = Math.max(360, threshold);
+          if (remainingPx > resetThreshold || maxVerticalScroll <= resetThreshold) {
+            this.clearAwaitScrollReset();
+          }
         }
       }
       if (this.awaitScrollReset) {
@@ -1261,6 +1304,15 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       }
     }
 
+    if (this.isReversedListFlow() && triggerEdge === 'end') {
+      if (!this.shouldStartReverseAppendPreload(scrollElement, threshold)) {
+        return;
+      }
+      void this.loadNextPage();
+      return;
+    }
+
+    const remainingPx = scrollElement.scrollHeight - scrollElement.scrollTop - scrollElement.clientHeight;
     if (triggerEdge === 'start') {
       if (scrollElement.scrollTop > threshold) {
         return;
@@ -1273,6 +1325,39 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       return;
     }
     void this.loadNextPage();
+  }
+
+  private shouldStartReverseAppendPreload(
+    scrollElement: HTMLDivElement,
+    threshold: number
+  ): boolean {
+    const maxVerticalScroll = Math.max(0, scrollElement.scrollHeight - scrollElement.clientHeight);
+    if (maxVerticalScroll <= 1) {
+      return false;
+    }
+    const distanceToVisualTop = this.reverseDistanceToVisualTop(scrollElement, maxVerticalScroll);
+    return distanceToVisualTop <= Math.max(48, threshold);
+  }
+
+  private reverseDistanceToVisualTop(
+    scrollElement: HTMLDivElement,
+    maxVerticalScroll = Math.max(0, scrollElement.scrollHeight - scrollElement.clientHeight)
+  ): number {
+    return Math.max(0, maxVerticalScroll - Math.abs(scrollElement.scrollTop));
+  }
+
+  private captureAwaitScrollResetBaseline(scrollElement: HTMLDivElement): void {
+    if (!this.awaitScrollReset || !this.isReversedListFlow() || this.listLoadTriggerEdge() !== 'end') {
+      return;
+    }
+    this.awaitScrollResetBaselineTop = scrollElement.scrollTop;
+    this.awaitScrollResetBaselineReverseDistance = this.reverseDistanceToVisualTop(scrollElement);
+  }
+
+  private clearAwaitScrollReset(): void {
+    this.awaitScrollReset = false;
+    this.awaitScrollResetBaselineTop = null;
+    this.awaitScrollResetBaselineReverseDistance = null;
   }
 
   private shouldStartAppendPreload(
@@ -1323,13 +1408,24 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     return Math.max(0, Number(this.config.prependRevealPx) || 0);
   }
 
-  private listTopInset(scrollElement: HTMLElement): number {
+  private listTopInset(
+    scrollElement: HTMLElement,
+    options: {
+      includeStickyGroupMarker?: boolean;
+    } = {}
+  ): number {
     const threadRect = scrollElement.getBoundingClientRect();
     const styles = getComputedStyle(scrollElement);
     const scrollPaddingTop = Number.parseFloat(styles.scrollPaddingTop || '0') || 0;
     const stickyHeaderHeight = this.shouldShowStickyHeader()
       ? scrollElement.querySelector<HTMLElement>('.smart-list__sticky')?.offsetHeight ?? 0
       : 0;
+    const includeStickyGroupMarker = options.includeStickyGroupMarker !== false;
+    const baseInset = Math.max(stickyHeaderHeight, scrollPaddingTop);
+
+    if (!includeStickyGroupMarker) {
+      return baseInset;
+    }
 
     const stickyGroupMarker = Array.from(
       scrollElement.querySelectorAll<HTMLElement>('.smart-list__group-marker')
@@ -1338,7 +1434,6 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       return rect.top <= threadRect.top + 1 && rect.bottom > threadRect.top + 1;
     }) ?? null;
 
-    const baseInset = Math.max(stickyHeaderHeight, scrollPaddingTop);
     if (!stickyGroupMarker) {
       return baseInset;
     }
@@ -1364,9 +1459,11 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       return null;
     }
     const threadRect = scrollElement.getBoundingClientRect();
-    const visibleTop = threadRect.top + this.listTopInset(scrollElement);
+    const visibleTop = threadRect.top + this.listTopInset(scrollElement, {
+      includeStickyGroupMarker: false
+    });
     const anchors = Array.from(
-      scrollElement.querySelectorAll<HTMLElement>('[data-smart-list-anchor]')
+      scrollElement.querySelectorAll<HTMLElement>('.smart-list__item-shell[data-smart-list-anchor]')
     );
     const anchorElement = anchors.find(element => element.getBoundingClientRect().bottom > threadRect.top + 1)
       ?? anchors.find(element => element.getBoundingClientRect().top >= visibleTop - 1)
@@ -1402,6 +1499,47 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     };
   }
 
+  private captureReverseAppendAnchorContext(
+    isInitial: boolean
+  ): {
+    anchorKey: string;
+    offsetTop: number;
+  } | null {
+    if (isInitial || !this.isReversedListFlow() || this.listMergeStrategy() !== 'append') {
+      return null;
+    }
+    const scrollElement = this.scrollHostRef?.nativeElement;
+    if (!scrollElement) {
+      return null;
+    }
+    const threadRect = scrollElement.getBoundingClientRect();
+    const visibleTop = threadRect.top + this.listTopInset(scrollElement, {
+      includeStickyGroupMarker: false
+    });
+    const anchorElement = this.topVisibleItemShell(scrollElement, visibleTop);
+    const anchorKey = anchorElement?.dataset['smartListAnchor']?.trim() ?? '';
+    if (!anchorElement || !anchorKey) {
+      return null;
+    }
+    return {
+      anchorKey,
+      offsetTop: anchorElement.getBoundingClientRect().top - visibleTop
+    };
+  }
+
+  private topVisibleItemShell(
+    scrollElement: HTMLDivElement,
+    visibleTop = scrollElement.getBoundingClientRect().top + this.listTopInset(scrollElement)
+  ): HTMLElement | null {
+    const itemShells = Array.from(
+      scrollElement.querySelectorAll<HTMLElement>('.smart-list__item-shell[data-smart-list-anchor]')
+    ).sort((first, second) => first.getBoundingClientRect().top - second.getBoundingClientRect().top);
+    return itemShells.find(element => element.getBoundingClientRect().bottom > visibleTop + 1)
+      ?? itemShells.find(element => element.getBoundingClientRect().top >= visibleTop - 1)
+      ?? itemShells.find(element => element.getBoundingClientRect().bottom > scrollElement.getBoundingClientRect().top + 1)
+      ?? null;
+  }
+
   private schedulePostListLoadAdjustments(
     restoreContext: {
       scrollHeight: number;
@@ -1420,24 +1558,15 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
         this.applyPrependRestore(restoreContext);
       } else if (applyInitialAnchor && this.initialListScrollAnchor() === 'end') {
         scrollElement.scrollTop = scrollElement.scrollHeight;
+      } else if (applyInitialAnchor && this.initialListScrollAnchor() === 'start' && this.isReversedListFlow()) {
+        scrollElement.scrollTop = 0;
       } else if (applyInitialAnchor && this.initialListScrollAnchor() === 'first-item' && this.groups.length > 0) {
         const firstBoundary = scrollElement.querySelector<HTMLElement>('.smart-list__group-marker, .smart-list__item-shell');
         if (firstBoundary) {
           scrollElement.scrollTop = firstBoundary.offsetTop;
         }
       }
-      if (this.shouldShowStickyHeader()) {
-        this.updateStickyLabel(scrollElement.scrollTop);
-      } else {
-        this.stickyHeaderHeightPx = 0;
-        this.stickyLabel = this.resolveEmptyStickyLabel();
-      }
-      this.updateListSnapNearEndSuppression(scrollElement);
-      this.updateAutoFooterSpacerHeight(scrollElement);
-      this.updateScrollProgress(scrollElement);
-      this.emitState();
-      this.cdr.markForCheck();
-      this.maybeAutoloadToFillViewport(scrollElement);
+      this.finalizePostListLoad(scrollElement);
     };
 
     if (!this.afterViewInit) {
@@ -1449,6 +1578,80 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       return;
     }
     setTimeout(run, 0);
+  }
+
+  private scheduleReverseAppendAnchorRestore(
+    restoreContext: {
+      anchorKey: string;
+      offsetTop: number;
+    },
+    applyInitialAnchor: boolean
+  ): void {
+    const run = () => {
+      const scrollElement = this.scrollHostRef?.nativeElement;
+      if (!scrollElement || this.currentViewMode !== 'list') {
+        return;
+      }
+      this.applyReverseAppendAnchorRestore(restoreContext);
+      if (applyInitialAnchor && this.initialListScrollAnchor() === 'start') {
+        scrollElement.scrollTop = Math.min(0, scrollElement.scrollTop);
+      }
+      this.finalizePostListLoad(scrollElement);
+    };
+
+    if (!this.afterViewInit) {
+      run();
+      return;
+    }
+    if (typeof globalThis.requestAnimationFrame === 'function') {
+      globalThis.requestAnimationFrame(() => globalThis.requestAnimationFrame(run));
+      return;
+    }
+    setTimeout(run, 0);
+  }
+
+  private applyReverseAppendAnchorRestore(
+    restoreContext: {
+      anchorKey: string;
+      offsetTop: number;
+    }
+  ): void {
+    const scrollElement = this.scrollHostRef?.nativeElement;
+    if (!scrollElement || this.currentViewMode !== 'list') {
+      return;
+    }
+    const threadRect = scrollElement.getBoundingClientRect();
+    const visibleTop = threadRect.top + this.listTopInset(scrollElement, {
+      includeStickyGroupMarker: false
+    });
+    const anchorElement = Array.from(
+      scrollElement.querySelectorAll<HTMLElement>('.smart-list__item-shell[data-smart-list-anchor]')
+    ).find(element => (element.dataset['smartListAnchor'] ?? '') === restoreContext.anchorKey) ?? null;
+    if (!anchorElement) {
+      return;
+    }
+    const currentOffsetTop = anchorElement.getBoundingClientRect().top - visibleTop;
+    const offsetDelta = currentOffsetTop - restoreContext.offsetTop;
+    if (Math.abs(offsetDelta) <= 0.5) {
+      return;
+    }
+    scrollElement.scrollTop += offsetDelta;
+  }
+
+  private finalizePostListLoad(scrollElement: HTMLDivElement): void {
+    if (this.shouldShowStickyHeader()) {
+      this.updateStickyLabel(scrollElement.scrollTop);
+    } else {
+      this.stickyHeaderHeightPx = 0;
+      this.stickyLabel = this.resolveEmptyStickyLabel();
+    }
+    this.captureAwaitScrollResetBaseline(scrollElement);
+    this.updateListSnapNearEndSuppression(scrollElement);
+    this.updateAutoFooterSpacerHeight(scrollElement);
+    this.updateScrollProgress(scrollElement);
+    this.emitState();
+    this.cdr.markForCheck();
+    this.maybeAutoloadToFillViewport(scrollElement);
   }
 
   private applyPrependRestore(
@@ -1544,12 +1747,97 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   }
 
   protected itemAnchorKey(item: T, index: number): string | null {
-    const trackBy = this.config.trackBy;
-    if (!trackBy) {
+    if (!this.config.trackBy) {
       return null;
     }
-    const key = trackBy(index, item);
-    return key === null || key === undefined ? null : String(key);
+    return String(this.resolvedListTrackKeyForItem(index, item));
+  }
+
+  private rebuildResolvedListTrackKeys(): void {
+    if (!this.config.trackBy) {
+      this.resolvedListTrackKeys = [];
+      return;
+    }
+
+    this.listItemIndexByObject = new WeakMap<object, number>();
+    this.resolvedListTrackKeyByObject = new WeakMap<object, string | number>();
+
+    const rawKeys = this.items.map((item, index) => this.normalizedConfiguredTrackKey(index, item));
+    const rawKeyCounts = new Map<string, number>();
+    for (const rawKey of rawKeys) {
+      if (!rawKey) {
+        continue;
+      }
+      rawKeyCounts.set(rawKey, (rawKeyCounts.get(rawKey) ?? 0) + 1);
+    }
+
+    this.resolvedListTrackKeys = rawKeys.map((rawKey, index) => {
+      const item = this.items[index];
+      if (!rawKey) {
+        const resolvedFallback = this.fallbackResolvedTrackKey(index, item);
+        this.rememberResolvedListTrackKey(item, index, resolvedFallback);
+        return resolvedFallback;
+      }
+      const resolvedKey = (rawKeyCounts.get(rawKey) ?? 0) > 1
+        ? `${rawKey}::${this.trackItemInstanceToken(item, index)}`
+        : rawKey;
+      this.rememberResolvedListTrackKey(item, index, resolvedKey);
+      return resolvedKey;
+    });
+  }
+
+  private rememberResolvedListTrackKey(item: T, index: number, resolvedKey: string | number): void {
+    if (!item || (typeof item !== 'object' && typeof item !== 'function')) {
+      return;
+    }
+    const reference = item as object;
+    this.listItemIndexByObject.set(reference, index);
+    this.resolvedListTrackKeyByObject.set(reference, resolvedKey);
+  }
+
+  private resolvedListTrackKeyForItem(index: number, item: T): string | number {
+    if (item && (typeof item === 'object' || typeof item === 'function')) {
+      const reference = item as object;
+      const resolvedKey = this.resolvedListTrackKeyByObject.get(reference);
+      if (resolvedKey !== undefined) {
+        return resolvedKey;
+      }
+      const absoluteIndex = this.listItemIndexByObject.get(reference);
+      if (absoluteIndex !== undefined) {
+        return this.resolvedListTrackKeys[absoluteIndex] ?? this.fallbackResolvedTrackKey(absoluteIndex, item);
+      }
+    }
+    return this.resolvedListTrackKeys[index] ?? this.fallbackResolvedTrackKey(index, item);
+  }
+
+  private normalizedConfiguredTrackKey(index: number, item: T): string | null {
+    const key = this.config.trackBy?.(index, item);
+    if (key === null || key === undefined) {
+      return null;
+    }
+    const normalized = String(key).trim();
+    return normalized.length > 0 ? normalized : null;
+  }
+
+  private fallbackResolvedTrackKey(index: number, item: T): string {
+    return `smart-list-track:${this.trackItemInstanceToken(item, index)}`;
+  }
+
+  private calendarTrackKey(index: number, item: T): string {
+    return this.normalizedConfiguredTrackKey(index, item) ?? this.fallbackResolvedTrackKey(index, item);
+  }
+
+  private trackItemInstanceToken(item: T, index: number): string {
+    if (item && (typeof item === 'object' || typeof item === 'function')) {
+      const reference = item as object;
+      let token = this.fallbackTrackKeyByObject.get(reference);
+      if (!token) {
+        token = `obj-${++this.fallbackTrackKeySequence}`;
+        this.fallbackTrackKeyByObject.set(reference, token);
+      }
+      return `${token}:${index}`;
+    }
+    return `idx-${index}:${String(item)}`;
   }
 
   private scheduleNativePrependReveal(): void {
@@ -1621,10 +1909,13 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
   private syncGroups(): void {
     if (this.currentViewMode !== 'list') {
+      this.resolvedListTrackKeys = [];
       this.groups = [];
       this.stickyLabel = this.resolveEmptyStickyLabel();
       return;
     }
+
+    this.rebuildResolvedListTrackKeys();
 
     const groupBy = this.config.groupBy;
     if (!groupBy) {
@@ -1693,7 +1984,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
         const resolveDateRange = (item: T) => this.calendarConfig()?.resolveDateRange(item, pageQuery) ?? null;
         const itemsByDate = buildSmartListCalendarItemsByDate(pageItems, resolveDateRange, value => this.dateKey(value));
         return buildSmartListCalendarMonthPage(anchor, itemsByDate, pageItems, resolveDateRange, {
-          trackByKey: item => String(this.trackByItem(0, item)),
+          trackByKey: item => this.calendarTrackKey(0, item),
           dateKey: value => this.dateKey(value),
           monthKey: value => this.monthKey(value)
         });
@@ -1801,9 +2092,12 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       return;
     }
     const maxVerticalScroll = Math.max(0, target.scrollHeight - target.clientHeight);
+    const scrollOffset = this.isReversedListFlow()
+      ? Math.abs(target.scrollTop)
+      : target.scrollTop;
     this.scrollable = maxVerticalScroll > 1;
     this.progress = maxVerticalScroll > 1
-      ? this.clamp(target.scrollTop / maxVerticalScroll)
+      ? this.clamp(scrollOffset / maxVerticalScroll)
       : 0;
   }
 

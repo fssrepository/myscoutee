@@ -6,6 +6,8 @@ export type PricingRuleActionKind = 'increase_percent' | 'decrease_percent' | 's
 export type PricingRuleScope = 'all_slots' | 'selected_slots';
 export type PricingDemandOperator = 'gte' | 'lte';
 export type PricingTimeRuleTrigger = 'days_before_start' | 'hours_before_start' | 'specific_date';
+export type PricingCancellationUnit = 'hours' | 'days' | 'weeks' | 'months';
+export type PricingCancellationRefundKind = 'percent' | 'fixed_amount' | 'full' | 'none';
 
 export interface PricingAction {
   kind: PricingRuleActionKind;
@@ -55,6 +57,19 @@ export interface PricingPromoCode {
   action: PricingAction;
 }
 
+export interface PricingCancellationRule {
+  id: string;
+  offsetUnit: PricingCancellationUnit;
+  offsetValue: number | null;
+  refundKind: PricingCancellationRefundKind;
+  refundValue: number | null;
+}
+
+export interface PricingCancellationPolicy {
+  enabled: boolean;
+  rules: PricingCancellationRule[];
+}
+
 export interface PricingAudienceSettings {
   enabled: boolean;
   memberPrice: number | null;
@@ -78,6 +93,7 @@ export interface PricingConfig {
   demandRules: PricingDemandRule[];
   timeRulesEnabled: boolean;
   timeRules: PricingTimeRule[];
+  cancellationPolicy: PricingCancellationPolicy;
   slotPricingEnabled: boolean;
   slotOverrides: PricingSlotOverride[];
   audience: PricingAudienceSettings;

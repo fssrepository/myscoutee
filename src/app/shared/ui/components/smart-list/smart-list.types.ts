@@ -11,6 +11,7 @@ export type SmartListPresentation = 'list' | 'fullscreen';
 export type SmartListClassValue = string | string[] | Set<string> | Record<string, boolean> | null;
 export type SmartListCalendarVariant = 'default' | 'rate-counts';
 export type SmartListListLayout = 'stack' | 'card-grid' | 'thread';
+export type SmartListListFlow = 'normal' | 'reverse';
 export type SmartListSnapMode = 'none' | 'proximity' | 'mandatory';
 export type SmartListPaginationMode = 'scroll' | 'arrows' | 'rating-stars';
 export type SmartListItemRenderState = 'list' | 'default' | 'active' | 'leaving';
@@ -213,6 +214,7 @@ export interface SmartListConfig<T, TFilters extends SmartListFilters = SmartLis
   presentation?: SmartListConfigValue<SmartListPresentation, TFilters>;
   selectMode?: SmartListConfigValue<boolean, TFilters>;
   listLayout?: SmartListConfigValue<SmartListListLayout, TFilters>;
+  listFlow?: SmartListConfigValue<SmartListListFlow, TFilters>;
   desktopColumns?: SmartListConfigValue<number | null, TFilters>;
   snapMode?: SmartListConfigValue<SmartListSnapMode, TFilters>;
   scrollPaddingTop?: SmartListConfigValue<string | null, TFilters>;

@@ -81,6 +81,7 @@ import {
   ChatsService,
   EventsService,
   RatesService,
+  toActivityChatRow,
   UsersService,
   type ActivityMembersSyncState
 } from '../../../shared/core';
@@ -546,6 +547,14 @@ export class ActivitiesPopupComponent implements OnDestroy {
     });
 
     effect(() => {
+      const session = this.activitiesContext.eventChatSession();
+      if (!session) {
+        return;
+      }
+      this.syncChatItemFromOpenSession(session.item);
+    });
+
+    effect(() => {
       if (this.isEventActivitiesPrimaryFilter() && this.activitiesSecondaryFilter === 'relevant') {
         this.activitiesContext.setActivitiesSecondaryFilter('recent');
       }
@@ -695,15 +704,134 @@ export class ActivitiesPopupComponent implements OnDestroy {
       if (this.activeUser.id.trim() !== userId) {
         return;
       }
-      this.chatItems = items.map(item => ({
+      let nextItems = items.map(item => ({
         ...item,
         memberIds: [...(item.memberIds ?? [])]
       }));
+      const activeSessionChat = this.activitiesContext.eventChatSession()?.item ?? null;
+      if (activeSessionChat) {
+        const activeSessionIndex = nextItems.findIndex(item => item.id === activeSessionChat.id);
+        if (activeSessionIndex >= 0) {
+          nextItems[activeSessionIndex] = {
+            ...nextItems[activeSessionIndex],
+            ...activeSessionChat,
+            memberIds: [...(activeSessionChat.memberIds ?? [])]
+          };
+          nextItems = this.sortChatMenuItems(nextItems);
+        }
+      }
+      this.chatItems = nextItems;
       this.refreshSectionBadges();
       this.cdr.markForCheck();
     } catch {
       // Keep the last cached chat state if the refresh fails.
     }
+  }
+
+  private syncChatItemFromOpenSession(chat: ChatMenuItem): void {
+    const currentIndex = this.chatItems.findIndex(item => item.id === chat.id);
+    if (currentIndex < 0) {
+      return;
+    }
+    const nextChat = this.cloneChatMenuItem(chat);
+    const currentChat = this.chatItems[currentIndex];
+    if (this.areChatMenuItemsEqual(currentChat, nextChat)) {
+      return;
+    }
+    const nextItems = [...this.chatItems];
+    nextItems[currentIndex] = nextChat;
+    this.chatItems = this.sortChatMenuItems(nextItems);
+    this.refreshSectionBadges();
+    this.syncVisibleChatRow(nextChat);
+    this.cdr.markForCheck();
+  }
+
+  private syncVisibleChatRow(chat: ChatMenuItem): void {
+    const smartList = this.activitiesSmartList;
+    if (!smartList || this.activitiesPrimaryFilter !== 'chats' || this.isCalendarLayoutView()) {
+      return;
+    }
+    const currentItems = [...smartList.itemsSnapshot()];
+    const existingIndex = currentItems.findIndex(row => row.type === 'chats' && row.id === chat.id);
+    if (existingIndex < 0) {
+      return;
+    }
+    const nextItems = currentItems.filter((_row, index) => index !== existingIndex);
+    nextItems.push(this.buildActivityChatRow(chat));
+    this.replaceVisibleActivityItems(nextItems);
+  }
+
+  private buildActivityChatRow(chat: ChatMenuItem): AppTypes.ActivityListRow {
+    return toActivityChatRow(chat, {
+      users: this.users,
+      activeUserId: this.activeUser.id
+    });
+  }
+
+  private sortChatMenuItems<T extends ChatMenuItem>(items: readonly T[]): T[] {
+    const secondaryFilter = this.effectiveActivitiesSecondaryFilter();
+    return [...items].sort((left, right) => {
+      if (secondaryFilter === 'relevant') {
+        return this.chatMenuMetricScore(right) - this.chatMenuMetricScore(left)
+          || AppUtils.toSortableDate(right.dateIso ?? '') - AppUtils.toSortableDate(left.dateIso ?? '')
+          || left.id.localeCompare(right.id);
+      }
+      return AppUtils.toSortableDate(right.dateIso ?? '') - AppUtils.toSortableDate(left.dateIso ?? '')
+        || left.id.localeCompare(right.id);
+    });
+  }
+
+  private sortVisibleChatRows(items: readonly AppTypes.ActivityListRow[]): AppTypes.ActivityListRow[] {
+    const secondaryFilter = this.effectiveActivitiesSecondaryFilter();
+    return [...items].sort((left, right) => {
+      if (secondaryFilter === 'relevant') {
+        return this.chatRowMetricScore(right) - this.chatRowMetricScore(left)
+          || AppUtils.toSortableDate(right.dateIso ?? '') - AppUtils.toSortableDate(left.dateIso ?? '')
+          || this.activityRowIdentity(left).localeCompare(this.activityRowIdentity(right));
+      }
+      return AppUtils.toSortableDate(right.dateIso ?? '') - AppUtils.toSortableDate(left.dateIso ?? '')
+        || this.activityRowIdentity(left).localeCompare(this.activityRowIdentity(right));
+    });
+  }
+
+  private chatMenuMetricScore(chat: ChatMenuItem): number {
+    const unread = Math.max(0, Math.trunc(Number(chat.unread) || 0));
+    return unread * 10 + this.activitiesChats.getChatMemberCount(chat);
+  }
+
+  private chatRowMetricScore(row: AppTypes.ActivityListRow): number {
+    return this.chatMenuMetricScore(row.source as ChatMenuItem);
+  }
+
+  private cloneChatMenuItem<T extends ChatMenuItem>(chat: T): T {
+    return {
+      ...chat,
+      memberIds: [...(chat.memberIds ?? [])]
+    } as T;
+  }
+
+  private areChatMenuItemsEqual(left: ChatMenuItem, right: ChatMenuItem): boolean {
+    const leftMemberIds = left.memberIds ?? [];
+    const rightMemberIds = right.memberIds ?? [];
+    if (
+      left.id !== right.id
+      || left.avatar !== right.avatar
+      || left.title !== right.title
+      || left.lastMessage !== right.lastMessage
+      || left.lastSenderId !== right.lastSenderId
+      || left.unread !== right.unread
+      || left.dateIso !== right.dateIso
+      || left.distanceKm !== right.distanceKm
+      || left.distanceMetersExact !== right.distanceMetersExact
+      || left.channelType !== right.channelType
+      || left.eventId !== right.eventId
+      || left.subEventId !== right.subEventId
+      || left.groupId !== right.groupId
+      || leftMemberIds.length !== rightMemberIds.length
+    ) {
+      return false;
+    }
+    return leftMemberIds.every((memberId, index) => memberId === rightMemberIds[index]);
   }
 
   private hydrateStandaloneEventItems(userId: string): void {
@@ -853,9 +981,12 @@ export class ActivitiesPopupComponent implements OnDestroy {
     if (!smartList) {
       return;
     }
-    const nextItems = this.isEventActivitiesPrimaryFilter() && !this.isCalendarLayoutView()
-      ? this.sortVisibleEventRows(items)
-      : [...items];
+    let nextItems = [...items];
+    if (this.isEventActivitiesPrimaryFilter() && !this.isCalendarLayoutView()) {
+      nextItems = this.sortVisibleEventRows(items);
+    } else if (this.activitiesPrimaryFilter === 'chats' && !this.isCalendarLayoutView()) {
+      nextItems = this.sortVisibleChatRows(items);
+    }
     smartList.replaceVisibleItems(nextItems, {
       total: Math.max(nextItems.length, smartList.cursorState().total + totalDelta)
     });

@@ -29,6 +29,7 @@ interface HttpChatSummaryDto {
 
 interface HttpChatMessageDto {
   id: string;
+  clientId?: string;
   senderId: string;
   senderName: string;
   senderInitials: string;
@@ -45,6 +46,7 @@ interface HttpChatMessageDto {
 
 interface HttpChatSocketRequestDto {
   type: 'message' | 'typing' | 'read';
+  clientId?: string;
   text?: string;
   typing?: boolean;
   messageIds?: string[];
@@ -80,6 +82,7 @@ interface HttpChatSocketEventDto {
 export class HttpChatsService {
   private static readonly SOCKET_RECONNECT_BASE_DELAY_MS = 750;
   private static readonly SOCKET_RECONNECT_MAX_DELAY_MS = 8000;
+  private static readonly SOCKET_MESSAGE_ACK_TIMEOUT_MS = 12000;
 
   private readonly http = inject(HttpClient);
   private readonly appCtx = inject(AppContext);
@@ -91,9 +94,19 @@ export class HttpChatsService {
   private socketPromise: Promise<WebSocket | null> | null = null;
   private readonly socketListeners = new Set<(event: AppTypes.ChatLiveEvent) => void>();
   private readonly intentionalSocketClosures = new Set<WebSocket>();
+  private readonly pendingSocketMessageIds = new Set<string>();
+  private readonly pendingSocketMessageTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  private readonly pendingSocketAckResolvers = new Map<
+    string,
+    {
+      resolve: (message: AppTypes.ChatPopupMessage | null) => void;
+      timer: ReturnType<typeof setTimeout>;
+    }
+  >();
   private socketReconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private socketReconnectAttempt = 0;
   private shouldEmitReconnectEvent = false;
+  private socketMessageSequence = 0;
 
   async queryChatItemsByUser(userId: string): Promise<DemoChatRecord[]> {
     const normalizedUserId = userId.trim();
@@ -106,9 +119,11 @@ export class HttpChatsService {
           params: this.withUserId(new HttpParams(), normalizedUserId)
         })
         .toPromise();
-      const records = Array.isArray(response)
-        ? response.map(item => this.mapChatRecord(item, normalizedUserId))
-        : [];
+      const records = this.deduplicateChatRecords(
+        Array.isArray(response)
+          ? response.map(item => this.mapChatRecord(item, normalizedUserId))
+          : []
+      );
       this.chatItemsByUserId.set(normalizedUserId, records.map(record => this.cloneChatRecord(record)));
       return records.map(record => this.cloneChatRecord(record));
     } catch {
@@ -160,9 +175,11 @@ export class HttpChatsService {
       } | null>(`${this.apiBaseUrl}/activities/chats/page`, { params }).toPromise();
 
       return {
-        items: Array.isArray(response?.items)
-          ? response.items.map(item => this.mapChatRecord(item, normalizedUserId))
-          : [],
+        items: this.deduplicateChatRecords(
+          Array.isArray(response?.items)
+            ? response.items.map(item => this.mapChatRecord(item, normalizedUserId))
+            : []
+        ),
         total: Number.isFinite(response?.total) ? Math.max(0, Math.trunc(Number(response?.total))) : 0,
         nextCursor: typeof response?.nextCursor === 'string' && response.nextCursor.trim().length > 0
           ? response.nextCursor.trim()
@@ -191,36 +208,45 @@ export class HttpChatsService {
       .toPromise();
 
     const messages = (response ?? []).map(message => this.mapChatMessage(message));
+    const cachedMessages = this.resolveCachedChatMessages(chat);
 
-    return messages.sort((first, second) => AppUtils.toSortableDate(first.sentAtIso) - AppUtils.toSortableDate(second.sentAtIso));
+    return this.mergeCachedChatMessages(messages, cachedMessages)
+      .sort((first, second) => AppUtils.toSortableDate(first.sentAtIso) - AppUtils.toSortableDate(second.sentAtIso));
   }
 
-  async sendChatMessage(chat: ChatMenuItem, text: string): Promise<AppTypes.ChatPopupMessage | null> {
+  async sendChatMessage(chat: ChatMenuItem, text: string, clientId?: string): Promise<AppTypes.ChatPopupMessage | null> {
     const trimmedText = text.trim();
     if (!trimmedText) {
       return null;
     }
 
-    const socket = await this.ensureSocket(chat);
-    if (socket && socket.readyState === WebSocket.OPEN) {
-      const payload: HttpChatSocketRequestDto = {
-        type: 'message',
-        text: trimmedText
-      };
-      socket.send(JSON.stringify(payload));
+    const normalizedChatId = `${chat.id ?? ''}`.trim();
+    if (!normalizedChatId) {
       return null;
     }
 
+    const outboundClientId = `${clientId ?? ''}`.trim() || this.buildSocketClientMessageId(normalizedChatId);
+    this.trackPendingSocketMessage(outboundClientId);
+
     try {
-      const response = await this.http
-        .post<HttpChatMessageDto | null>(
-          `${this.apiBaseUrl}/activities/chats/${encodeURIComponent(chat.id)}/messages`,
-          { text: trimmedText },
-          { params: this.activeUserParams() }
-        )
-        .toPromise();
-      return response ? this.mapChatMessage(response) : null;
+      const socket = await this.ensureSocket(chat);
+      if (!socket || socket.readyState !== WebSocket.OPEN) {
+        this.clearPendingSocketMessage(outboundClientId);
+        this.closeSocketIfIdle();
+        return null;
+      }
+
+      const payload: HttpChatSocketRequestDto = {
+        type: 'message',
+        clientId: outboundClientId,
+        text: trimmedText
+      };
+      socket.send(JSON.stringify(payload));
+      return this.waitForSocketMessageAck(outboundClientId);
     } catch {
+      this.clearPendingSocketMessage(outboundClientId);
+      this.resolvePendingSocketAck(outboundClientId, null);
+      this.closeSocketIfIdle();
       return null;
     }
   }
@@ -273,7 +299,7 @@ export class HttpChatsService {
     return () => {
       this.socketListeners.delete(onEvent);
       if (this.socketListeners.size === 0) {
-        this.closeSocket();
+        this.closeSocketIfIdle();
       }
     };
   }
@@ -328,11 +354,26 @@ export class HttpChatsService {
     };
   }
 
+  private deduplicateChatRecords(records: readonly DemoChatRecord[]): DemoChatRecord[] {
+    const uniqueById = new Map<string, DemoChatRecord>();
+    for (const record of records) {
+      const chatId = `${record?.id ?? ''}`.trim();
+      if (!chatId) {
+        continue;
+      }
+      if (!uniqueById.has(chatId)) {
+        uniqueById.set(chatId, record);
+      }
+    }
+    return [...uniqueById.values()];
+  }
+
   private mapChatMessage(message: HttpChatMessageDto): AppTypes.ChatPopupMessage {
     const sentAt = new Date(message.sentAtIso);
     const activeUserId = this.activeUserId();
     return {
       id: message.id,
+      clientId: `${message.clientId ?? ''}`.trim() || undefined,
       sender: message.senderName,
       senderAvatar: {
         id: message.senderId,
@@ -349,6 +390,121 @@ export class HttpChatsService {
         gender: reader.gender
       }))
     } satisfies AppTypes.ChatPopupMessage;
+  }
+
+  private updateCachedChatSummaryAfterMessage(
+    chat: ChatMenuItem,
+    message: AppTypes.ChatPopupMessage
+  ): void {
+    const ownerUserId = this.activeUserId();
+    if (!ownerUserId) {
+      return;
+    }
+    const normalizedChatId = `${chat.id ?? ''}`.trim();
+    if (!normalizedChatId) {
+      return;
+    }
+    const currentRecords = (this.chatItemsByUserId.get(ownerUserId) ?? []).map(record => this.cloneChatRecord(record));
+    const existingIndex = currentRecords.findIndex(record => record.id === normalizedChatId);
+    const existingRecord = existingIndex >= 0 ? currentRecords[existingIndex] : null;
+    const nextRecord = this.buildCachedChatRecordFromMessage(chat, ownerUserId, message, existingRecord);
+    if (existingIndex >= 0) {
+      currentRecords[existingIndex] = nextRecord;
+    } else {
+      currentRecords.push(nextRecord);
+    }
+    this.chatItemsByUserId.set(ownerUserId, this.sortCachedChatRecords(currentRecords));
+  }
+
+  private buildCachedChatRecordFromMessage(
+    chat: ChatMenuItem,
+    ownerUserId: string,
+    message: AppTypes.ChatPopupMessage,
+    existingRecord: DemoChatRecord | null
+  ): DemoChatRecord {
+    const sanitizedDistanceKm = Number.isFinite(Number(chat.distanceKm))
+      ? Math.max(0, Number(chat.distanceKm))
+      : existingRecord?.distanceKm;
+    const sanitizedDistanceMetersExact = Number.isFinite(Number(chat.distanceMetersExact))
+      ? Math.max(0, Math.trunc(Number(chat.distanceMetersExact)))
+      : existingRecord?.distanceMetersExact;
+    return {
+      id: `${chat.id ?? existingRecord?.id ?? ''}`.trim(),
+      avatar: `${chat.avatar ?? existingRecord?.avatar ?? ''}`.trim(),
+      title: `${chat.title ?? existingRecord?.title ?? ''}`.trim(),
+      lastMessage: `${message.text ?? existingRecord?.lastMessage ?? ''}`.trim(),
+      lastSenderId: `${message.senderAvatar?.id ?? existingRecord?.lastSenderId ?? ''}`.trim(),
+      memberIds: [...((chat.memberIds?.length ? chat.memberIds : existingRecord?.memberIds) ?? [])],
+      unread: message.mine ? 0 : Math.max(0, Math.trunc(Number(existingRecord?.unread) || 0)),
+      dateIso: `${message.sentAtIso ?? existingRecord?.dateIso ?? ''}`.trim() || undefined,
+      channelType: chat.channelType ?? existingRecord?.channelType,
+      eventId: chat.eventId ?? existingRecord?.eventId,
+      subEventId: chat.subEventId ?? existingRecord?.subEventId,
+      groupId: chat.groupId ?? existingRecord?.groupId,
+      distanceKm: sanitizedDistanceKm,
+      distanceMetersExact: sanitizedDistanceMetersExact,
+      ownerUserId,
+      messages: this.mergeCachedChatMessages(existingRecord?.messages ?? [], [message])
+    } satisfies DemoChatRecord;
+  }
+
+  private resolveCachedChatMessages(chat: ChatMenuItem): AppTypes.ChatPopupMessage[] {
+    const ownerUserId = this.activeUserId();
+    const normalizedChatId = `${chat.id ?? ''}`.trim();
+    if (!ownerUserId || !normalizedChatId) {
+      return [];
+    }
+    const records = this.chatItemsByUserId.get(ownerUserId) ?? [];
+    const existingRecord = records.find(record => record.id === normalizedChatId) ?? null;
+    return existingRecord?.messages?.map(message => ({
+      ...message,
+      readBy: [...(message.readBy ?? [])]
+    })) ?? [];
+  }
+
+  private mergeCachedChatMessages(
+    baseMessages: readonly AppTypes.ChatPopupMessage[],
+    extraMessages: readonly AppTypes.ChatPopupMessage[]
+  ): AppTypes.ChatPopupMessage[] {
+    const mergedById = new Map<string, AppTypes.ChatPopupMessage>();
+    for (const message of [...baseMessages, ...extraMessages]) {
+      const identity = this.chatMessageIdentity(message);
+      if (!identity) {
+        continue;
+      }
+      mergedById.set(identity, {
+        ...message,
+        readBy: [...(message.readBy ?? [])]
+      });
+    }
+    return [...mergedById.values()];
+  }
+
+  private chatMessageIdentity(message: AppTypes.ChatPopupMessage | null | undefined): string {
+    const normalizedId = `${message?.id ?? ''}`.trim();
+    if (normalizedId) {
+      return normalizedId;
+    }
+    const normalizedClientId = `${message?.clientId ?? ''}`.trim();
+    if (normalizedClientId) {
+      return `client:${normalizedClientId}`;
+    }
+    const senderId = `${message?.senderAvatar?.id ?? ''}`.trim();
+    const sentAtIso = `${message?.sentAtIso ?? ''}`.trim();
+    const text = `${message?.text ?? ''}`.trim();
+    if (!sentAtIso && !text) {
+      return '';
+    }
+    return `fallback:${senderId}:${sentAtIso}:${text}`;
+  }
+
+  private sortCachedChatRecords(records: readonly DemoChatRecord[]): DemoChatRecord[] {
+    return this.deduplicateChatRecords(records)
+      .map(record => this.cloneChatRecord(record))
+      .sort((left, right) =>
+        AppUtils.toSortableDate(right.dateIso ?? '') - AppUtils.toSortableDate(left.dateIso ?? '')
+        || left.id.localeCompare(right.id)
+      );
   }
 
   private mapSocketEvent(
@@ -421,7 +577,7 @@ export class HttpChatsService {
     }
 
     this.clearSocketReconnectTimer();
-    this.closeSocket(false);
+    this.closeSocket(false, false);
     this.socketChatId = normalizedChatId;
     this.socketPromise = this.createSocket(normalizedChatId);
     const socket = await this.socketPromise;
@@ -482,9 +638,11 @@ export class HttpChatsService {
       };
       socket.onclose = () => {
         if (this.intentionalSocketClosures.delete(socket)) {
+          finalize(null);
           return;
         }
         this.handleUnexpectedSocketDisconnect(chatId);
+        finalize(null);
       };
     });
   }
@@ -523,8 +681,11 @@ export class HttpChatsService {
     return normalizedUserId ? params.set('userId', normalizedUserId) : params;
   }
 
-  private closeSocket(clearListeners = true): void {
+  private closeSocket(clearListeners = true, clearPending = true): void {
     this.clearSocketReconnectTimer();
+    if (clearPending) {
+      this.clearPendingSocketMessages();
+    }
     const currentSocket = this.socket;
     this.socket = null;
     this.socketChatId = null;
@@ -541,15 +702,39 @@ export class HttpChatsService {
   }
 
   private emitSocketEvent(event: AppTypes.ChatLiveEvent): void {
+    if (event.type === 'message') {
+      const normalizedClientId = `${event.message.clientId ?? ''}`.trim();
+      this.clearPendingSocketMessage(normalizedClientId);
+      this.resolvePendingSocketAck(normalizedClientId, event.message);
+      this.updateCachedChatSummaryFromSocketEvent(event.chatId, event.message);
+    }
     for (const listener of this.socketListeners) {
       listener(event);
     }
+    this.closeSocketIfIdle();
+  }
+
+  private updateCachedChatSummaryFromSocketEvent(
+    chatId: string,
+    message: AppTypes.ChatPopupMessage
+  ): void {
+    const ownerUserId = this.activeUserId();
+    if (!ownerUserId) {
+      return;
+    }
+    const currentRecords = this.chatItemsByUserId.get(ownerUserId) ?? [];
+    const existingRecord = currentRecords.find(record => record.id === chatId) ?? null;
+    if (!existingRecord) {
+      return;
+    }
+    this.updateCachedChatSummaryAfterMessage(existingRecord, message);
   }
 
   private handleUnexpectedSocketDisconnect(chatId: string): void {
     if (this.socketChatId && this.socketChatId !== chatId) {
       return;
     }
+    this.clearPendingSocketMessages();
     this.socket = null;
     this.socketPromise = null;
     this.socketChatId = chatId;
@@ -597,5 +782,96 @@ export class HttpChatsService {
     }
     clearTimeout(this.socketReconnectTimer);
     this.socketReconnectTimer = null;
+  }
+
+  private closeSocketIfIdle(): void {
+    if (this.socketListeners.size > 0 || this.pendingSocketMessageIds.size > 0) {
+      return;
+    }
+    this.closeSocket();
+  }
+
+  private buildSocketClientMessageId(chatId: string): string {
+    const activeUserId = this.activeUserId() || 'self';
+    this.socketMessageSequence += 1;
+    return `ws:${chatId}:${activeUserId}:${Date.now()}:${this.socketMessageSequence}`;
+  }
+
+  private trackPendingSocketMessage(clientId: string): void {
+    const normalizedClientId = `${clientId ?? ''}`.trim();
+    if (!normalizedClientId) {
+      return;
+    }
+    this.clearPendingSocketMessage(normalizedClientId);
+    this.pendingSocketMessageIds.add(normalizedClientId);
+    this.pendingSocketMessageTimers.set(normalizedClientId, setTimeout(() => {
+      this.clearPendingSocketMessage(normalizedClientId);
+      this.closeSocketIfIdle();
+    }, HttpChatsService.SOCKET_MESSAGE_ACK_TIMEOUT_MS));
+  }
+
+  private clearPendingSocketMessage(clientId: string): void {
+    const normalizedClientId = `${clientId ?? ''}`.trim();
+    if (!normalizedClientId) {
+      return;
+    }
+    const timer = this.pendingSocketMessageTimers.get(normalizedClientId);
+    if (timer) {
+      clearTimeout(timer);
+      this.pendingSocketMessageTimers.delete(normalizedClientId);
+    }
+    this.pendingSocketMessageIds.delete(normalizedClientId);
+  }
+
+  private clearPendingSocketMessages(): void {
+    for (const timer of this.pendingSocketMessageTimers.values()) {
+      clearTimeout(timer);
+    }
+    this.pendingSocketMessageTimers.clear();
+    this.pendingSocketMessageIds.clear();
+    for (const [clientId, pending] of this.pendingSocketAckResolvers.entries()) {
+      clearTimeout(pending.timer);
+      pending.resolve(null);
+      this.pendingSocketAckResolvers.delete(clientId);
+    }
+  }
+
+  private waitForSocketMessageAck(clientId: string): Promise<AppTypes.ChatPopupMessage | null> {
+    const normalizedClientId = `${clientId ?? ''}`.trim();
+    if (!normalizedClientId) {
+      return Promise.resolve(null);
+    }
+    const existingPending = this.pendingSocketAckResolvers.get(normalizedClientId);
+    if (existingPending) {
+      clearTimeout(existingPending.timer);
+      this.pendingSocketAckResolvers.delete(normalizedClientId);
+      existingPending.resolve(null);
+    }
+    return new Promise<AppTypes.ChatPopupMessage | null>(resolve => {
+      const timer = setTimeout(() => {
+        this.pendingSocketAckResolvers.delete(normalizedClientId);
+        this.clearPendingSocketMessage(normalizedClientId);
+        resolve(null);
+        this.closeSocketIfIdle();
+      }, HttpChatsService.SOCKET_MESSAGE_ACK_TIMEOUT_MS);
+      this.pendingSocketAckResolvers.set(normalizedClientId, { resolve, timer });
+    });
+  }
+
+  private resolvePendingSocketAck(
+    clientId: string,
+    message: AppTypes.ChatPopupMessage | null
+  ): void {
+    const normalizedClientId = `${clientId ?? ''}`.trim();
+    if (!normalizedClientId) {
+      return;
+    }
+    const pending = this.pendingSocketAckResolvers.get(normalizedClientId);
+    if (!pending) {
+      return;
+    }
+    clearTimeout(pending.timer);
+    this.pendingSocketAckResolvers.delete(normalizedClientId);
+    pending.resolve(message);
   }
 }

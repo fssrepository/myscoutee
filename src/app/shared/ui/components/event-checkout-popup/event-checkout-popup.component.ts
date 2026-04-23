@@ -22,6 +22,12 @@ type PricingSnapshot = {
   currency: string;
 };
 
+type CancellationPreview = {
+  refundAmount: number;
+  refundLabel: string;
+  note: string;
+};
+
 @Component({
   selector: 'app-event-checkout-popup',
   standalone: true,
@@ -351,6 +357,97 @@ export class EventCheckoutPopupComponent {
 
   protected totalAmount(): number {
     return Math.round(this.lineItems().reduce((sum, item) => sum + (Number(item.amount) || 0), 0) * 100) / 100;
+  }
+
+  protected showCancellationPolicyCard(): boolean {
+    if (this.totalAmount() <= 0) {
+      return false;
+    }
+    const dialog = this.dialog();
+    if (!dialog) {
+      return false;
+    }
+    const policy = PricingBuilder.compactPricingConfig(dialog.record.pricing, {
+      context: 'event',
+      slotCatalog: PricingBuilder.slotCatalogFromEventSlotTemplates(dialog.record.slotTemplates ?? []),
+      allowSlotFeatures: (dialog.record.slotTemplates?.length ?? 0) > 0
+    }).cancellationPolicy;
+    return policy.enabled && policy.rules.length > 0;
+  }
+
+  protected cancellationPreview(): CancellationPreview | null {
+    const dialog = this.dialog();
+    if (!dialog || this.totalAmount() <= 0) {
+      return null;
+    }
+    const policy = PricingBuilder.compactPricingConfig(dialog.record.pricing, {
+      context: 'event',
+      slotCatalog: PricingBuilder.slotCatalogFromEventSlotTemplates(dialog.record.slotTemplates ?? []),
+      allowSlotFeatures: (dialog.record.slotTemplates?.length ?? 0) > 0
+    }).cancellationPolicy;
+    if (!policy.enabled || policy.rules.length === 0) {
+      return null;
+    }
+
+    const startAtIso = this.selectedSlot()?.startAtIso ?? dialog.record.startAtIso;
+    if (!startAtIso) {
+      return null;
+    }
+    const applicableRule = this.resolveApplicableCancellationRule(policy.rules, startAtIso);
+    if (!applicableRule) {
+      return {
+        refundAmount: 0,
+        refundLabel: 'No refund right now',
+        note: 'The selected booking is already inside the last reimbursement window.'
+      };
+    }
+
+    const refundAmount = this.calculateCancellationRefundAmount(applicableRule, this.totalAmount());
+    return {
+      refundAmount,
+      refundLabel: refundAmount > 0
+        ? `${this.formatMoney(refundAmount)} refundable right now`
+        : 'No refund right now',
+      note: this.describeCancellationRule(applicableRule)
+    };
+  }
+
+  protected cancellationRules(): AppTypes.PricingCancellationRule[] {
+    const dialog = this.dialog();
+    if (!dialog) {
+      return [];
+    }
+    const policy = PricingBuilder.compactPricingConfig(dialog.record.pricing, {
+      context: 'event',
+      slotCatalog: PricingBuilder.slotCatalogFromEventSlotTemplates(dialog.record.slotTemplates ?? []),
+      allowSlotFeatures: (dialog.record.slotTemplates?.length ?? 0) > 0
+    }).cancellationPolicy;
+    return policy.rules;
+  }
+
+  protected cancellationRuleWindowLabel(rule: AppTypes.PricingCancellationRule): string {
+    const value = Math.max(0, Number(rule.offsetValue) || 0);
+    const unit = rule.offsetUnit === 'hours'
+      ? (value === 1 ? 'hour' : 'hours')
+      : rule.offsetUnit === 'weeks'
+        ? (value === 1 ? 'week' : 'weeks')
+        : rule.offsetUnit === 'months'
+          ? (value === 1 ? 'month' : 'months')
+          : (value === 1 ? 'day' : 'days');
+    return `${value} ${unit} before start`;
+  }
+
+  protected cancellationRuleRefundLabel(rule: AppTypes.PricingCancellationRule): string {
+    if (rule.refundKind === 'full') {
+      return 'Full refund';
+    }
+    if (rule.refundKind === 'none') {
+      return 'No refund';
+    }
+    if (rule.refundKind === 'fixed_amount') {
+      return this.formatMoney(Number(rule.refundValue) || 0, this.currency());
+    }
+    return `${Math.max(0, Number(rule.refundValue) || 0)}% refund`;
   }
 
   protected currency(): string {
@@ -695,6 +792,74 @@ export class EventCheckoutPopupComponent {
       return 0;
     }
     return Math.max(0, Math.round((start.getTime() - Date.now()) / (60 * 60 * 1000)));
+  }
+
+  private resolveApplicableCancellationRule(
+    rules: readonly AppTypes.PricingCancellationRule[],
+    startAtIso: string
+  ): AppTypes.PricingCancellationRule | null {
+    const start = AppUtils.isoLocalDateTimeToDate(startAtIso);
+    if (!start) {
+      return null;
+    }
+
+    const now = Date.now();
+    let bestRule: AppTypes.PricingCancellationRule | null = null;
+    let bestDeadlineMs = Number.POSITIVE_INFINITY;
+    for (const rule of rules) {
+      const deadline = this.cancellationRuleDeadlineMs(rule, start);
+      if (deadline === null || now > deadline) {
+        continue;
+      }
+      if (deadline < bestDeadlineMs) {
+        bestRule = rule;
+        bestDeadlineMs = deadline;
+      }
+    }
+    return bestRule;
+  }
+
+  private cancellationRuleDeadlineMs(
+    rule: AppTypes.PricingCancellationRule,
+    start: Date
+  ): number | null {
+    const value = Math.max(0, Math.trunc(Number(rule.offsetValue) || 0));
+    const next = new Date(start.getTime());
+    if (rule.offsetUnit === 'hours') {
+      next.setHours(next.getHours() - value);
+      return next.getTime();
+    }
+    if (rule.offsetUnit === 'weeks') {
+      next.setDate(next.getDate() - (value * 7));
+      return next.getTime();
+    }
+    if (rule.offsetUnit === 'months') {
+      next.setMonth(next.getMonth() - value);
+      return next.getTime();
+    }
+    next.setDate(next.getDate() - value);
+    return next.getTime();
+  }
+
+  private calculateCancellationRefundAmount(
+    rule: AppTypes.PricingCancellationRule,
+    totalAmount: number
+  ): number {
+    const amount = Math.max(0, totalAmount);
+    if (rule.refundKind === 'full') {
+      return amount;
+    }
+    if (rule.refundKind === 'none') {
+      return 0;
+    }
+    if (rule.refundKind === 'fixed_amount') {
+      return Math.min(amount, Math.round((Number(rule.refundValue) || 0) * 100) / 100);
+    }
+    return Math.round(amount * ((Math.max(0, Math.min(100, Number(rule.refundValue) || 0))) / 100) * 100) / 100;
+  }
+
+  private describeCancellationRule(rule: AppTypes.PricingCancellationRule): string {
+    return `${this.cancellationRuleRefundLabel(rule)} when cancelled at least ${this.cancellationRuleWindowLabel(rule)}.`;
   }
 
   private resolveErrorMessage(error: unknown, fallback: string): string {

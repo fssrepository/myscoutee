@@ -40,6 +40,35 @@
           </div>
         </section>
 
+        @if (showCancellationPolicyCard()) {
+          <section class="event-checkout-card">
+            <div class="event-checkout-card__head">
+              <h3>Cancellation & Reimbursement</h3>
+              <span>What the current booking can reimburse if you leave before it starts</span>
+            </div>
+            @if (cancellationPreview(); as preview) {
+              <div class="event-checkout-summary-card__list">
+                <article class="event-checkout-summary-card__item">
+                  <div>
+                    <strong>Current reimbursement</strong>
+                    <span>{{ preview.note }}</span>
+                  </div>
+                  <strong>{{ preview.refundLabel }}</strong>
+                </article>
+                @for (rule of cancellationRules(); track rule.id) {
+                  <article class="event-checkout-summary-card__item">
+                    <div>
+                      <strong>{{ cancellationRuleWindowLabel(rule) }}</strong>
+                      <span>{{ cancellationRuleRefundLabel(rule) }}</span>
+                    </div>
+                    <strong>{{ cancellationRuleRefundLabel(rule) }}</strong>
+                  </article>
+                }
+              </div>
+            }
+          </section>
+        }
+
         @if (!paymentStep) {
           @if (requiresSlotSelection()) {
             <section class="event-checkout-card">
