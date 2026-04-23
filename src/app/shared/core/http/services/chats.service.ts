@@ -208,8 +208,10 @@ export class HttpChatsService {
       .toPromise();
 
     const messages = (response ?? []).map(message => this.mapChatMessage(message));
+    const cachedMessages = this.resolveCachedChatMessages(chat);
 
-    return messages.sort((first, second) => AppUtils.toSortableDate(first.sentAtIso) - AppUtils.toSortableDate(second.sentAtIso));
+    return this.mergeCachedChatMessages(messages, cachedMessages)
+      .sort((first, second) => AppUtils.toSortableDate(first.sentAtIso) - AppUtils.toSortableDate(second.sentAtIso));
   }
 
   async sendChatMessage(chat: ChatMenuItem, text: string, clientId?: string): Promise<AppTypes.ChatPopupMessage | null> {
@@ -442,11 +444,58 @@ export class HttpChatsService {
       distanceKm: sanitizedDistanceKm,
       distanceMetersExact: sanitizedDistanceMetersExact,
       ownerUserId,
-      messages: existingRecord?.messages?.map(existingMessage => ({
-        ...existingMessage,
-        readBy: [...(existingMessage.readBy ?? [])]
-      }))
+      messages: this.mergeCachedChatMessages(existingRecord?.messages ?? [], [message])
     } satisfies DemoChatRecord;
+  }
+
+  private resolveCachedChatMessages(chat: ChatMenuItem): AppTypes.ChatPopupMessage[] {
+    const ownerUserId = this.activeUserId();
+    const normalizedChatId = `${chat.id ?? ''}`.trim();
+    if (!ownerUserId || !normalizedChatId) {
+      return [];
+    }
+    const records = this.chatItemsByUserId.get(ownerUserId) ?? [];
+    const existingRecord = records.find(record => record.id === normalizedChatId) ?? null;
+    return existingRecord?.messages?.map(message => ({
+      ...message,
+      readBy: [...(message.readBy ?? [])]
+    })) ?? [];
+  }
+
+  private mergeCachedChatMessages(
+    baseMessages: readonly AppTypes.ChatPopupMessage[],
+    extraMessages: readonly AppTypes.ChatPopupMessage[]
+  ): AppTypes.ChatPopupMessage[] {
+    const mergedById = new Map<string, AppTypes.ChatPopupMessage>();
+    for (const message of [...baseMessages, ...extraMessages]) {
+      const identity = this.chatMessageIdentity(message);
+      if (!identity) {
+        continue;
+      }
+      mergedById.set(identity, {
+        ...message,
+        readBy: [...(message.readBy ?? [])]
+      });
+    }
+    return [...mergedById.values()];
+  }
+
+  private chatMessageIdentity(message: AppTypes.ChatPopupMessage | null | undefined): string {
+    const normalizedId = `${message?.id ?? ''}`.trim();
+    if (normalizedId) {
+      return normalizedId;
+    }
+    const normalizedClientId = `${message?.clientId ?? ''}`.trim();
+    if (normalizedClientId) {
+      return `client:${normalizedClientId}`;
+    }
+    const senderId = `${message?.senderAvatar?.id ?? ''}`.trim();
+    const sentAtIso = `${message?.sentAtIso ?? ''}`.trim();
+    const text = `${message?.text ?? ''}`.trim();
+    if (!sentAtIso && !text) {
+      return '';
+    }
+    return `fallback:${senderId}:${sentAtIso}:${text}`;
   }
 
   private sortCachedChatRecords(records: readonly DemoChatRecord[]): DemoChatRecord[] {
