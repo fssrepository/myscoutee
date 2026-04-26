@@ -67,6 +67,17 @@ export class GameService extends BaseRouteModeService {
     return this.gameDataService.queryGameCardsUsersSnapshot();
   }
 
+  queryExcludedGameCardUserIds(userId: string): string[] {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return [];
+    }
+    if (this.isDemoModeEnabled('/activities/rates')) {
+      return this.demoUsersRatingsRepository.queryRatedGameCardUserIds(normalizedUserId);
+    }
+    return this.httpUsersRatingsRepository.queryPendingRatedGameCardUserIds(normalizedUserId);
+  }
+
   recordUserGameCardRating(
     raterUserId: string,
     ratedUserId: string,

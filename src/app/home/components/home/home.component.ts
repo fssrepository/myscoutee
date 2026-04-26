@@ -391,20 +391,22 @@ export class HomeComponent implements OnDestroy {
 
   protected get candidatePool(): DemoUser[] {
     const serviceStack = this.gameService.peekUserGameCardsStackSnapshot(this.activeUserId);
+    const excludedUserIds = new Set(this.gameService.queryExcludedGameCardUserIds(this.activeUserId));
     if (this.isFriendsInCommonMode && (serviceStack.socialCards.length > 0 || serviceStack.nextCursor !== null)) {
       const usersById = new Map(this.users.map(user => [user.id, user] as const));
       return serviceStack.socialCards
         .map(card => usersById.get(card.userId))
-        .filter((user): user is DemoUser => Boolean(user));
+        .filter((user): user is DemoUser => !!user && !excludedUserIds.has(user.id));
     }
     if (!this.isPairMode && (serviceStack.cardUserIds.length > 0 || serviceStack.nextCursor !== null)) {
       const usersById = new Map(this.users.map(user => [user.id, user] as const));
       return serviceStack.cardUserIds
         .map(id => usersById.get(id))
-        .filter((user): user is DemoUser => Boolean(user));
+        .filter((user): user is DemoUser => !!user && !excludedUserIds.has(user.id));
     }
     return this.users
       .filter(user => user.id !== this.activeUserId)
+      .filter(user => !excludedUserIds.has(user.id))
       .filter(user => this.matchesFilter(user));
   }
 
@@ -1195,7 +1197,7 @@ export class HomeComponent implements OnDestroy {
     this.queuedServiceCardStackReloadKey = null;
     const shouldReloadSmartList = this.gameInitialCardsLoadPending === false;
     try {
-      await this.gameService.loadInitialUserGameCardsStackPage(
+      const serviceStack = await this.gameService.loadInitialUserGameCardsStackPage(
         this.activeUserId,
         this.gameFilterForRequest(),
         this.gameStackPageSizeForCurrentMode(),
@@ -1211,7 +1213,7 @@ export class HomeComponent implements OnDestroy {
         return;
       }
       this.mergeGameStackUsersIntoHomeUsers();
-      this.resetGameStackPaginationState(true);
+      this.syncGameStackLoadedStateFromSnapshot(serviceStack);
       this.preloadGameImageWindow();
       this.gameInitialCardsLoadPending = false;
       if (shouldReloadSmartList) {
@@ -2136,6 +2138,24 @@ export class HomeComponent implements OnDestroy {
     this.gameStackCardsLoaded = loadFirstPageImmediately
       ? Math.min(totalRounds, this.gameStackPageSizeForCurrentMode())
       : 0;
+    this.cardIndex = Math.min(this.cardIndex, this.gameStackCardsLoaded);
+    this.cdr.markForCheck();
+  }
+
+  private syncGameStackLoadedStateFromSnapshot(serviceStack: {
+    cardUserIds: string[];
+    socialCards: { id: string }[];
+    nextCursor: string | null;
+  }): void {
+    this.cancelGameStackPaginationLoad();
+    this.clearGameStackHeaderLoadingAnimation();
+    this.gameStackPaginationKey = this.gameStackPaginationStateKey();
+    this.gameStackNoMoreProbeCount = 0;
+    const loadedCount = this.isSeparatedFriendsMode || this.isFriendsInCommonMode
+      ? serviceStack.socialCards.length
+      : serviceStack.cardUserIds.length;
+    this.gameStackCardsLoaded = loadedCount;
+    this.gameStackExhausted = loadedCount <= 0 && serviceStack.nextCursor === null;
     this.cardIndex = Math.min(this.cardIndex, this.gameStackCardsLoaded);
     this.cdr.markForCheck();
   }
