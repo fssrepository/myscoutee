@@ -529,9 +529,11 @@ export class PairCardComponent implements AfterViewInit, OnChanges, OnDestroy {
     if (availableWidth <= 0 || availableHeight <= 0) {
       return;
     }
-    const aspectRatio = this.isCompactViewport()
-      ? PairCardComponent.MOBILE_FULLSCREEN_ASPECT_RATIO
-      : PairCardComponent.FULLSCREEN_ASPECT_RATIO;
+    if (this.isCompactViewport()) {
+      this.setFullscreenCardSize(`${availableWidth}px`, `${availableHeight}px`);
+      return;
+    }
+    const aspectRatio = PairCardComponent.FULLSCREEN_ASPECT_RATIO;
     const nextWidth = Math.min(availableWidth, availableHeight * aspectRatio);
     const nextHeight = nextWidth / aspectRatio;
     this.setFullscreenCardSize(`${nextWidth}px`, `${nextHeight}px`);

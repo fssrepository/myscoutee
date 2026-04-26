@@ -590,6 +590,7 @@ export class HomeComponent implements OnDestroy {
     const isSocialPair = !!round?.socialCard;
     return {
       rowId: row?.id ?? 'home-pair-empty',
+      stackClasses: ['activities-rate-profile-stack-pair'],
       slots: [
         this.homePairCardSlot(
           'woman',
