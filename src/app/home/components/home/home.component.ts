@@ -194,6 +194,9 @@ export class HomeComponent implements OnDestroy {
   private gameStackPaginating = false;
   private gameStackExhausted = false;
   private gameStackNoMoreProbeCount = 0;
+  private homeSmartListQueryKey = '';
+  private inFlightServiceCardStackReloadKey: string | null = null;
+  private queuedServiceCardStackReloadKey: string | null = null;
   private dynamicJoinerSequence = 0;
   private gameStackLoadTimer: ReturnType<typeof setTimeout> | null = null;
   private gameStackHeaderLoadingCounter = 0;
@@ -264,7 +267,12 @@ export class HomeComponent implements OnDestroy {
     this.activeUserId = this.getActiveUserId();
     const initialFilter = createInitialGameFilter(this.activeUser);
     this.gameFilter = cloneGameFilter(initialFilter);
-    this.syncHomeSmartListQuery();
+    if (this.activeUserId) {
+      this.lastHandledActiveUserId = this.activeUserId;
+      this.handleActiveUserChanged(this.activeUserId);
+    } else {
+      this.syncHomeSmartListQuery();
+    }
     const activeUserIdSignal = this.appCtx.activeUserId;
     const userByIdLoadState = this.appCtx.selectLoadingState(USER_BY_ID_LOAD_CONTEXT_KEY);
     const userGameCardsLoadState = this.appCtx.selectLoadingState(USER_GAME_CARDS_LOAD_CONTEXT_KEY);
@@ -293,10 +301,11 @@ export class HomeComponent implements OnDestroy {
       if (activeProfile) {
         this.upsertHomeUser(activeProfile);
       }
+      const previousReloadKey = this.serviceCardStackReloadKey();
       this.awaitingUserBootstrap = false;
       this.awaitingUserByIdLoadingSeen = false;
       this.applyFilterPreferencesFromAppContext();
-      if (this.gameInitialCardsLoadPending) {
+      if (this.gameInitialCardsLoadPending && previousReloadKey !== this.serviceCardStackReloadKey()) {
         void this.reloadServiceCardStack();
       }
     });
@@ -450,7 +459,7 @@ export class HomeComponent implements OnDestroy {
   }
 
   protected get filterBadgeCount(): number {
-    const overrideTotal = this.appCtx.getUserFilterCountOverride(this.activeUser.id);
+    const overrideTotal = this.gameService.peekUserGameCardsStackSnapshot(this.activeUser.id).filterCount;
     if (this.gameInitialCardsLoadPending) {
       if (overrideTotal === null) {
         return 0;
@@ -1169,14 +1178,20 @@ export class HomeComponent implements OnDestroy {
   }
 
   private gameFilterForRequest(): GameFilterForm | null {
-    return this.appCtx.getUserFilterPreferences(this.activeUserId) ? this.gameFilter : null;
+    return this.gameFilter;
   }
 
   private async reloadServiceCardStack(): Promise<void> {
+    const reloadKey = this.serviceCardStackReloadKey();
     if (this.gameService.isUserGameCardsStackRequestInFlight(this.activeUserId)) {
+      if (this.inFlightServiceCardStackReloadKey !== reloadKey) {
+        this.queuedServiceCardStackReloadKey = reloadKey;
+      }
       return;
     }
     const requestUserId = this.activeUserId;
+    this.inFlightServiceCardStackReloadKey = reloadKey;
+    this.queuedServiceCardStackReloadKey = null;
     const shouldReloadSmartList = this.gameInitialCardsLoadPending === false;
     try {
       await this.gameService.loadInitialUserGameCardsStackPage(
@@ -1190,6 +1205,10 @@ export class HomeComponent implements OnDestroy {
       if (requestUserId !== this.activeUserId) {
         return;
       }
+      if (reloadKey !== this.serviceCardStackReloadKey()) {
+        this.queuedServiceCardStackReloadKey = this.serviceCardStackReloadKey();
+        return;
+      }
       this.mergeGameStackUsersIntoHomeUsers();
       this.resetGameStackPaginationState(true);
       this.preloadGameImageWindow();
@@ -1198,8 +1217,19 @@ export class HomeComponent implements OnDestroy {
         this.homeSmartList?.reload();
       }
     } finally {
+      this.inFlightServiceCardStackReloadKey = null;
       this.gameInitialCardsLoadPending = false;
       this.cdr.markForCheck();
+      if (requestUserId === this.activeUserId && this.queuedServiceCardStackReloadKey) {
+        const queuedReloadKey = this.queuedServiceCardStackReloadKey;
+        this.queuedServiceCardStackReloadKey = null;
+        if (queuedReloadKey !== reloadKey) {
+          this.resetServiceCardState();
+          this.resetGameStackPaginationState(false);
+          this.syncHomeSmartListQuery();
+        }
+        void this.reloadServiceCardStack();
+      }
     }
   }
 
@@ -1283,15 +1313,21 @@ export class HomeComponent implements OnDestroy {
   }
 
   private syncHomeSmartListQuery(): void {
+    const filterKey = JSON.stringify({
+      gameFilter: this.gameFilter,
+      leftSocialQuery: this.leftSocialQuery.trim(),
+      rightSocialQuery: this.rightSocialQuery.trim()
+    });
+    const queryKey = `${this.activeUserId}|${this.selectedHomeMode}|${filterKey}`;
+    if (this.homeSmartListQueryKey === queryKey) {
+      return;
+    }
+    this.homeSmartListQueryKey = queryKey;
     this.homeSmartListQuery = {
       filters: {
         activeUserId: this.activeUserId,
         mode: this.selectedHomeMode,
-        filterKey: JSON.stringify({
-          gameFilter: this.gameFilter,
-          leftSocialQuery: this.leftSocialQuery.trim(),
-          rightSocialQuery: this.rightSocialQuery.trim()
-        })
+        filterKey
       }
     };
   }
@@ -1299,6 +1335,13 @@ export class HomeComponent implements OnDestroy {
   private async loadHomeSmartListPage(
     query: ListQuery<HomeSmartListFilters>
   ): Promise<PageResult<HomeSmartListRow>> {
+    if (!query.filters?.activeUserId?.trim()) {
+      return {
+        items: [],
+        total: 0,
+        nextCursor: null
+      };
+    }
     await this.waitForInitialHomeGameStack(query);
     await this.ensureHomeSmartListRowsAvailable(query);
     const rows = this.homeSmartListRows();
@@ -1316,6 +1359,11 @@ export class HomeComponent implements OnDestroy {
   }
 
   private async waitForInitialHomeGameStack(query: ListQuery<HomeSmartListFilters>): Promise<void> {
+    if (this.awaitingUserBootstrap && query.page === 0) {
+      while (this.awaitingUserBootstrap) {
+        await this.waitForHomeGameStackTick();
+      }
+    }
     if (this.isSyntheticPairMode || query.page > 0 || this.gameInitialCardsLoadPending === false) {
       return;
     }
@@ -2047,7 +2095,7 @@ export class HomeComponent implements OnDestroy {
       const fallbackCount = this.isSeparatedFriendsMode || this.isFriendsInCommonMode
         ? serviceStack.socialCards.length
         : serviceStack.cardUserIds.length;
-      const resolvedCount = this.appCtx.resolveUserFilterCount(this.activeUserId, fallbackCount);
+      const resolvedCount = serviceStack.filterCount ?? fallbackCount;
       const minimumKnownCount = fallbackCount + (serviceStack.nextCursor !== null ? 1 : 0);
       return Math.max(resolvedCount, minimumKnownCount);
     }
@@ -2061,6 +2109,10 @@ export class HomeComponent implements OnDestroy {
       rightSocialQuery: this.rightSocialQuery.trim()
     });
     return `${this.activeUserId}|${this.selectedHomeMode}|${filterKey}`;
+  }
+
+  private serviceCardStackReloadKey(): string {
+    return this.gameStackPaginationStateKey();
   }
 
   private gameStackPageSizeForCurrentMode(): number {

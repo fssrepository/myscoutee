@@ -191,6 +191,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   private loadingStartedAtMs = 0;
   private loadingInterval: ReturnType<typeof setInterval> | null = null;
   private loadingCompleteTimer: ReturnType<typeof setTimeout> | null = null;
+  private suppressVisibleLoadingProgress = false;
   private listSnapSettleTimer: ReturnType<typeof setTimeout> | null = null;
   private listSnapSettleGuardTimer: ReturnType<typeof setTimeout> | null = null;
   private suppressListSnapSettle = false;
@@ -504,7 +505,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   }
 
   public isLoadingActive(): boolean {
-    return this.loading || this.loadingProgress > 0;
+    return !this.suppressVisibleLoadingProgress && (this.loading || this.loadingProgress > 0);
   }
 
   public isFullscreenPaginationAnimating(): boolean {
@@ -1021,6 +1022,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     this.suspendSnapReactivation = false;
     this.loading = false;
     this.loadSequence += 1;
+    this.suppressVisibleLoadingProgress = false;
     this.items = [];
     this.groups = [];
     this.calendarMonthPages = [];
@@ -1085,8 +1087,15 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
     const query = this.loadQuery(this.pageIndex, isInitial);
     const sequence = ++this.loadSequence;
+    const shouldSuppressVisibleLoadingProgress = !isInitial
+      && this.currentViewMode === 'list'
+      && this.resolvedPresentation() === 'fullscreen'
+      && this.items.length > 0;
+    this.suppressVisibleLoadingProgress = shouldSuppressVisibleLoadingProgress;
     this.loading = true;
-    this.startLoadingAnimation();
+    if (!shouldSuppressVisibleLoadingProgress) {
+      this.startLoadingAnimation();
+    }
     this.emitState();
 
     const shouldUseManualPrependRestore = !isInitial
@@ -1141,6 +1150,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
         return;
       }
       this.loading = false;
+      this.suppressVisibleLoadingProgress = false;
       this.awaitScrollReset = true;
       this.awaitScrollResetBaselineTop = null;
       this.awaitScrollResetBaselineReverseDistance = null;

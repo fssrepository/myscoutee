@@ -2,6 +2,7 @@ import type { RateMenuItem } from './activity-feed.interface';
 import type { UserDto } from './user.interface';
 
 export interface UserGameCardsStackSnapshot {
+  filterCount: number | null;
   cardUserIds: string[];
   socialCards: UserGameSocialCard[];
   nextCursor: string | null;

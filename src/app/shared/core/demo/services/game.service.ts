@@ -177,13 +177,18 @@ export class DemoGameService extends DemoRouteDelayService implements UserGameDa
       .filter(userId => userId !== activeUserId)
       .sort();
     const ratedPairKeys = this.queryRatedPairKeys(activeUserId);
+    const pendingPairKeys = new Set(this.usersRatingsRepository.queryPendingRatedGameCardPairKeys(activeUserId));
     const cards: UserGameSocialCard[] = [];
     for (let leftIndex = 0; leftIndex < neighbors.length; leftIndex += 1) {
       const leftUserId = neighbors[leftIndex];
       for (let rightIndex = leftIndex + 1; rightIndex < neighbors.length; rightIndex += 1) {
         const rightUserId = neighbors[rightIndex];
         const key = this.sortedPairKey(leftUserId, rightUserId);
-        if ((graph.neighborsByUserId.get(leftUserId)?.has(rightUserId) ?? false) || ratedPairKeys.has(key)) {
+        if (
+          (graph.neighborsByUserId.get(leftUserId)?.has(rightUserId) ?? false)
+          || ratedPairKeys.has(key)
+          || pendingPairKeys.has(key)
+        ) {
           continue;
         }
         cards.push({

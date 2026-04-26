@@ -19,6 +19,7 @@ import { BaseRouteModeService } from './base-route-mode.service';
 export const USER_GAME_CARDS_LOAD_CONTEXT_KEY = 'user-game-cards';
 
 interface UserGameCardsStackState {
+  filterCount: number | null;
   cardUserIds: string[];
   socialCards: UserGameSocialCard[];
   nextCursor: string | null;
@@ -198,6 +199,7 @@ export class GameService extends BaseRouteModeService {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return {
+        filterCount: null,
         cardUserIds: [],
         socialCards: [],
         nextCursor: null,
@@ -206,6 +208,7 @@ export class GameService extends BaseRouteModeService {
     }
     const state = this.ensureUserGameCardsStackState(normalizedUserId);
     return {
+      filterCount: state.filterCount,
       cardUserIds: [...state.cardUserIds],
       socialCards: state.socialCards.map(card => ({ ...card })),
       nextCursor: state.nextCursor,
@@ -217,6 +220,7 @@ export class GameService extends BaseRouteModeService {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return {
+        filterCount: null,
         cardUserIds: [],
         socialCards: [],
         nextCursor: null,
@@ -232,6 +236,7 @@ export class GameService extends BaseRouteModeService {
       return;
     }
     this.userGameCardsStackStateByUserId[normalizedUserId] = {
+      filterCount: null,
       cardUserIds: [],
       socialCards: [],
       nextCursor: null,
@@ -248,7 +253,7 @@ export class GameService extends BaseRouteModeService {
     return snapshot.cardUserIds.length > 0
       || snapshot.socialCards.length > 0
       || snapshot.nextCursor !== null
-      || this.appCtx.getUserFilterCountOverride(userId) !== null;
+      || snapshot.filterCount !== null;
   }
 
   async loadInitialUserGameCardsStackPage(
@@ -327,7 +332,7 @@ export class GameService extends BaseRouteModeService {
         }
       );
       if (cards) {
-        this.appCtx.setUserFilterCountOverride(normalizedUserId, cards.filterCount);
+        state.filterCount = cards.filterCount;
         const next = [...existingIds];
         const seen = new Set(next);
         for (const id of cards.cardUserIds) {
@@ -349,6 +354,7 @@ export class GameService extends BaseRouteModeService {
         state.socialCards = [...socialCardsById.values()];
         state.nextCursor = cards.nextCursor;
       } else if (reset) {
+        state.filterCount = null;
         state.cardUserIds = [];
         state.socialCards = [];
         state.nextCursor = null;
@@ -369,12 +375,12 @@ export class GameService extends BaseRouteModeService {
       cardUserIds.length === 0
       && socialCards.length === 0
       && nextCursor === null
-      && this.appCtx.getUserFilterCountOverride(userId) === null
+      && this.peekUserGameCardsStackSnapshot(userId).filterCount === null
     ) {
       return null;
     }
     return {
-      filterCount: this.appCtx.getUserFilterCountOverride(userId) ?? cardUserIds.length + socialCards.length,
+      filterCount: this.peekUserGameCardsStackSnapshot(userId).filterCount ?? cardUserIds.length + socialCards.length,
       cardUserIds: [...cardUserIds],
       socialCards: socialCards.map(card => ({ ...card })),
       nextCursor
@@ -399,6 +405,7 @@ export class GameService extends BaseRouteModeService {
       return existing;
     }
     const next: UserGameCardsStackState = {
+      filterCount: null,
       cardUserIds: [],
       socialCards: [],
       nextCursor: null,
