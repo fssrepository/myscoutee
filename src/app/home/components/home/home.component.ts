@@ -369,7 +369,6 @@ export class HomeComponent implements OnDestroy {
 
   protected get candidatePool(): DemoUser[] {
     const serviceStack = this.gameService.peekUserGameCardsStackSnapshot(this.activeUserId);
-    const excludedUserIds = new Set(this.gameService.queryExcludedGameCardUserIds(this.activeUserId, this.selectedHomeMode));
     const hasResolvedServiceStack = serviceStack.cardUserIds.length > 0
       || serviceStack.socialCards.length > 0
       || serviceStack.nextCursor !== null
@@ -378,14 +377,15 @@ export class HomeComponent implements OnDestroy {
       const usersById = new Map(this.users.map(user => [user.id, user] as const));
       return serviceStack.socialCards
         .map(card => usersById.get(card.userId))
-        .filter((user): user is DemoUser => !!user && !excludedUserIds.has(user.id));
+        .filter((user): user is DemoUser => !!user);
     }
     if (!this.isPairMode && hasResolvedServiceStack) {
       const usersById = new Map(this.users.map(user => [user.id, user] as const));
       return serviceStack.cardUserIds
         .map(id => usersById.get(id))
-        .filter((user): user is DemoUser => !!user && !excludedUserIds.has(user.id));
+        .filter((user): user is DemoUser => !!user);
     }
+    const excludedUserIds = new Set(this.gameService.queryExcludedGameCardUserIds(this.activeUserId, this.selectedHomeMode));
     return this.users
       .filter(user => user.id !== this.activeUserId)
       .filter(user => !excludedUserIds.has(user.id))
