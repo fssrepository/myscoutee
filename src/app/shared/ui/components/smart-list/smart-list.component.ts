@@ -2117,6 +2117,11 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     if (!target || this.currentViewMode !== 'list' || this.loading || !this.hasMore) {
       return;
     }
+    if (this.shouldRenderHostedFullscreenOverlay()) {
+      // Hosted fullscreen pagination preloads from cursor position instead of scroll height.
+      // The occluded backing list can be heightless, which would otherwise eagerly drain all pages on mount.
+      return;
+    }
     const maxVerticalScroll = Math.max(0, target.scrollHeight - target.clientHeight);
     if (maxVerticalScroll > 1) {
       return;
