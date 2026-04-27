@@ -1,4 +1,4 @@
-import { Component, ElementRef, OnDestroy, TemplateRef, ViewChild, effect, inject, signal, untracked } from '@angular/core';
+import { Component, ElementRef, OnDestroy, TemplateRef, ViewChild, computed, effect, inject, signal, untracked } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatRippleModule } from '@angular/material/core';
@@ -28,6 +28,27 @@ import { resolveCurrentRouteDelayMs } from '../../../shared/core/base/services/r
 interface EventFeedbackListFilters {
   filter: AppTypes.EventFeedbackListFilter;
   userId: string;
+}
+
+interface OrganizerEventFeedbackCarouselStatItem {
+  key: string;
+  label: string;
+  icon: string;
+  count: number;
+}
+
+interface OrganizerEventFeedbackCarouselSection {
+  key: string;
+  label: string;
+  icon: string;
+  subtitle: string;
+  toneClass: string;
+  topLabel: string;
+  topCount: number;
+  optionCount: number;
+  responseCount: number;
+  progressPercent: number;
+  items: OrganizerEventFeedbackCarouselStatItem[];
 }
 
 @Component({
@@ -64,6 +85,79 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
   private eventFeedbackViewportScrollLockTimer: ReturnType<typeof setTimeout> | null = null;
 
   protected readonly isMobileEventFeedbackViewport = signal(this.readViewportWidth() <= 720);
+  protected readonly organizerEventFeedbackCarouselIndex = signal(0);
+  protected readonly organizerEventFeedbackCarouselSections = computed<OrganizerEventFeedbackCarouselSection[]>(() => {
+    const totalEntries = this.feedback.selectedOrganizerEventFeedbackEntries().length;
+    const buildSection = (
+      key: string,
+      label: string,
+      icon: string,
+      subtitle: string,
+      toneClass: string,
+      items: readonly { key: string; label: string; icon: string; count: number }[]
+    ): OrganizerEventFeedbackCarouselSection | null => {
+      if (items.length === 0) {
+        return null;
+      }
+      const topItem = items[0];
+      const topCount = Math.max(0, topItem?.count ?? 0);
+      const progressPercent = totalEntries > 0
+        ? Math.max(8, Math.min(100, Math.round((topCount / totalEntries) * 100)))
+        : 0;
+      return {
+        key,
+        label,
+        icon,
+        subtitle,
+        toneClass,
+        topLabel: topItem?.label ?? label,
+        topCount,
+        optionCount: items.length,
+        responseCount: totalEntries,
+        progressPercent,
+        items: items.map(item => ({
+          key: item.key,
+          label: item.label,
+          icon: item.icon,
+          count: item.count
+        }))
+      };
+    };
+
+    return [
+      buildSection(
+        'overall',
+        'Overall',
+        'sentiment_satisfied',
+        'Most selected event impression',
+        'event-feedback-organizer-carousel-card-tone-overall',
+        this.feedback.organizerEventFeedbackOverallStats()
+      ),
+      buildSection(
+        'improve',
+        'Improve Next',
+        'campaign',
+        'Most requested improvement next time',
+        'event-feedback-organizer-carousel-card-tone-improve',
+        this.feedback.organizerEventFeedbackImproveStats()
+      ),
+      buildSection(
+        'traits',
+        'Host Traits',
+        'groups',
+        'Traits attendees mentioned most',
+        'event-feedback-organizer-carousel-card-tone-traits',
+        this.feedback.organizerEventFeedbackTraitStats()
+      )
+    ].filter((section): section is OrganizerEventFeedbackCarouselSection => section !== null);
+  });
+  protected readonly organizerEventFeedbackActiveCarouselSection = computed<OrganizerEventFeedbackCarouselSection | null>(() => {
+    const sections = this.organizerEventFeedbackCarouselSections();
+    if (sections.length === 0) {
+      return null;
+    }
+    return sections[this.organizerEventFeedbackCarouselIndex()] ?? sections[0] ?? null;
+  });
 
   protected eventFeedbackSmartListQuery: Partial<ListQuery<EventFeedbackListFilters>> = {
     filters: {
@@ -172,6 +266,29 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
 
       const targetIndex = untracked(() => this.feedback.eventFeedbackIndex());
       this.queueMobileEventFeedbackViewportSync('auto', targetIndex);
+    });
+
+    effect(() => {
+      const selectedEventId = this.feedback.selectedOrganizerEventFeedbackEventId();
+      const stackedMode = this.feedback.stackedPopupMode();
+      if (stackedMode !== 'organizerEventFeedback' || !selectedEventId) {
+        return;
+      }
+      this.organizerEventFeedbackCarouselIndex.set(0);
+    });
+
+    effect(() => {
+      const sections = this.organizerEventFeedbackCarouselSections();
+      const currentIndex = this.organizerEventFeedbackCarouselIndex();
+      if (sections.length === 0) {
+        if (currentIndex !== 0) {
+          this.organizerEventFeedbackCarouselIndex.set(0);
+        }
+        return;
+      }
+      if (currentIndex >= sections.length) {
+        this.organizerEventFeedbackCarouselIndex.set(sections.length - 1);
+      }
     });
   }
 
@@ -362,6 +479,14 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
 
   protected openOrganizerEventFeedback(eventId: string): void {
     this.feedback.openOrganizerEventFeedback(eventId);
+  }
+
+  protected selectOrganizerEventFeedbackCarousel(index: number): void {
+    const sections = this.organizerEventFeedbackCarouselSections();
+    if (index < 0 || index >= sections.length) {
+      return;
+    }
+    this.organizerEventFeedbackCarouselIndex.set(index);
   }
 
   protected onViewportResize(): void {

@@ -353,77 +353,73 @@
             <div class="support-popup event-feedback-organizer-popup">
               @if (feedback.selectedOrganizerEventFeedbackItem(); as item) {
                 <article class="editor-list-card support-card event-feedback-organizer-shell">
-                  <div class="event-feedback-info-card-shell event-feedback-organizer-info-card-shell">
-                    <app-info-card
-                      class="event-feedback-organizer-hero-card"
-                      [card]="organizerEventFeedbackDetailInfoCard(item)"
-                    ></app-info-card>
-                  </div>
+                  <div class="event-feedback-organizer-overview-grid">
+                    <div class="event-feedback-info-card-shell event-feedback-organizer-info-card-shell">
+                      <app-info-card
+                        class="event-feedback-organizer-hero-card"
+                        [card]="organizerEventFeedbackDetailInfoCard(item)"
+                      ></app-info-card>
+                    </div>
 
-                  <div class="event-feedback-organizer-stats-grid">
-                    @if (feedback.organizerEventFeedbackSummaryStats().length > 0) {
-                      <section class="event-feedback-organizer-stat-section">
-                        <div class="event-feedback-organizer-section-head">
-                          <h4>Summary</h4>
-                        </div>
-                        <div class="event-feedback-organizer-stat-list">
-                          @for (stat of feedback.organizerEventFeedbackSummaryStats(); track stat.key) {
-                            <article class="event-feedback-organizer-stat-chip">
-                              <mat-icon>{{ stat.icon }}</mat-icon>
-                              <span>{{ stat.label }}</span>
-                              <strong>{{ stat.count }}</strong>
-                            </article>
-                          }
-                        </div>
-                      </section>
-                    }
+                    @if (organizerEventFeedbackCarouselSections().length > 0) {
+                      <section class="event-feedback-organizer-carousel-panel">
+                        <div class="event-feedback-organizer-carousel">
+                          <div class="event-feedback-organizer-carousel-pill-strip">
+                            @for (section of organizerEventFeedbackCarouselSections(); track section.key; let index = $index) {
+                              <button
+                                type="button"
+                                class="event-feedback-organizer-carousel-pill"
+                                [ngClass]="[section.toneClass, organizerEventFeedbackCarouselIndex() === index ? 'is-active' : '']"
+                                (click)="selectOrganizerEventFeedbackCarousel(index)"
+                                [attr.aria-label]="'Open organizer feedback section ' + section.label"
+                                >
+                                <span class="event-feedback-organizer-carousel-pill-head">
+                                  <span class="event-feedback-organizer-carousel-pill-label">{{ section.label }}</span>
+                                  <span
+                                    class="event-feedback-organizer-carousel-pill-badge"
+                                    [attr.title]="section.topCount + ' of ' + section.responseCount + ' responses selected this'"
+                                    >
+                                    {{ section.topCount }}
+                                  </span>
+                                </span>
+                              </button>
+                            }
+                          </div>
 
-                    @if (feedback.organizerEventFeedbackOverallStats().length > 0) {
-                      <section class="event-feedback-organizer-stat-section">
-                        <div class="event-feedback-organizer-section-head">
-                          <h4>Overall</h4>
-                        </div>
-                        <div class="event-feedback-organizer-stat-list">
-                          @for (stat of feedback.organizerEventFeedbackOverallStats(); track stat.key) {
-                            <article class="event-feedback-organizer-stat-chip">
-                              <mat-icon>{{ stat.icon }}</mat-icon>
-                              <span>{{ stat.label }}</span>
-                              <strong>{{ stat.count }}</strong>
-                            </article>
-                          }
-                        </div>
-                      </section>
-                    }
-
-                    @if (feedback.organizerEventFeedbackImproveStats().length > 0) {
-                      <section class="event-feedback-organizer-stat-section">
-                        <div class="event-feedback-organizer-section-head">
-                          <h4>Improve Next</h4>
-                        </div>
-                        <div class="event-feedback-organizer-stat-list">
-                          @for (stat of feedback.organizerEventFeedbackImproveStats(); track stat.key) {
-                            <article class="event-feedback-organizer-stat-chip">
-                              <mat-icon>{{ stat.icon }}</mat-icon>
-                              <span>{{ stat.label }}</span>
-                              <strong>{{ stat.count }}</strong>
-                            </article>
-                          }
-                        </div>
-                      </section>
-                    }
-
-                    @if (feedback.organizerEventFeedbackTraitStats().length > 0) {
-                      <section class="event-feedback-organizer-stat-section">
-                        <div class="event-feedback-organizer-section-head">
-                          <h4>Host Traits</h4>
-                        </div>
-                        <div class="event-feedback-organizer-stat-list">
-                          @for (stat of feedback.organizerEventFeedbackTraitStats(); track stat.key) {
-                            <article class="event-feedback-organizer-stat-chip">
-                              <mat-icon>{{ stat.icon }}</mat-icon>
-                              <span>{{ stat.label }}</span>
-                              <strong>{{ stat.count }}</strong>
-                            </article>
+                          @if (organizerEventFeedbackActiveCarouselSection(); as section) {
+                            <div class="event-feedback-organizer-carousel-card" [ngClass]="section.toneClass">
+                              <div class="event-feedback-organizer-carousel-card-head">
+                                <div class="event-feedback-organizer-carousel-card-title">
+                                  <span class="event-feedback-organizer-carousel-card-icon"><mat-icon>{{ section.icon }}</mat-icon></span>
+                                  <div>
+                                    <strong>{{ section.topLabel }}</strong>
+                                    <p>{{ section.subtitle }}</p>
+                                  </div>
+                                </div>
+                              </div>
+                              <div class="event-feedback-organizer-carousel-card-bar">
+                                <span [style.width.%]="section.progressPercent"></span>
+                              </div>
+                              <div class="event-feedback-organizer-carousel-card-meta">
+                                <span>
+                                  {{ section.topCount }} of {{ section.responseCount }}
+                                  {{ section.responseCount === 1 ? 'response' : 'responses' }}
+                                </span>
+                                <span>
+                                  {{ section.optionCount }}
+                                  {{ section.optionCount === 1 ? 'option' : 'options' }}
+                                </span>
+                              </div>
+                              <div class="event-feedback-organizer-carousel-card-highlights">
+                                @for (stat of section.items; track stat.key) {
+                                  <span class="event-feedback-organizer-carousel-chip">
+                                    <mat-icon>{{ stat.icon }}</mat-icon>
+                                    <span>{{ stat.label }}</span>
+                                    <strong>{{ stat.count }}</strong>
+                                  </span>
+                                }
+                              </div>
+                            </div>
                           }
                         </div>
                       </section>
@@ -431,9 +427,6 @@
                   </div>
 
                   <section class="event-feedback-organizer-messages">
-                    <div class="event-feedback-organizer-section-head">
-                      <h4>Feedback Messages</h4>
-                    </div>
                     @if (feedback.organizerEventFeedbackMessageGroups().length > 0) {
                       @for (group of feedback.organizerEventFeedbackMessageGroups(); track group.dayKey) {
                         <div class="event-feedback-organizer-group-marker">{{ group.label }}</div>
@@ -444,9 +437,10 @@
                                 <div
                                   class="event-feedback-organizer-message-avatar"
                                   [ngClass]="'user-color-' + message.viewerGender"
-                                  [style.backgroundImage]="message.viewerImageUrl ? 'url(' + message.viewerImageUrl + ')' : null"
                                   >
-                                  @if (!message.viewerImageUrl) {
+                                  @if (message.viewerImageUrl) {
+                                    <img [src]="message.viewerImageUrl" [alt]="message.viewerName" />
+                                  } @else {
                                     <span>{{ message.viewerInitials }}</span>
                                   }
                                 </div>
@@ -454,7 +448,6 @@
                                   <h5>{{ message.viewerName }}</h5>
                                   <p>{{ message.timeLabel || 'Recent feedback' }}</p>
                                 </div>
-                                <span class="event-feedback-organizer-message-count">{{ message.responseCount }}</span>
                               </div>
                               <div class="event-feedback-organizer-message-chips">
                                 @if (message.overallLabel) {
