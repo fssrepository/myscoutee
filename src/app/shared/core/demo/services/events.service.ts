@@ -7,6 +7,7 @@ import type {
   EventCheckoutRequest,
   EventCheckoutSession,
   EventFeedbackPersistedState,
+  EventFeedbackReceivedEventDto,
   EventFeedbackNoteRequestDto,
   EventFeedbackStateDto,
   EventFeedbackSubmitRequestDto
@@ -108,6 +109,57 @@ export class DemoEventsService extends DemoRouteDelayService {
       organizerNote: record.organizerNote,
       answersByCardId: this.cloneEventFeedbackAnswersByCardId(record.answersByCardId)
     }));
+  }
+
+  async queryReceivedEventFeedback(userId: string): Promise<EventFeedbackReceivedEventDto[]> {
+    await this.waitForRouteDelay(DemoEventsService.EVENTS_ROUTE);
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return [];
+    }
+    const ownedEventIds = new Set(
+      this.eventsRepository.queryHostingItemsByUser(normalizedUserId)
+        .filter(record => record.isAdmin === true && !record.isTrashed)
+        .map(record => record.id.trim())
+        .filter(Boolean)
+    );
+    if (ownedEventIds.size === 0) {
+      return [];
+    }
+
+    const table = this.memoryDb.read()[EVENT_FEEDBACK_TABLE_NAME];
+    const byEventId = new Map<string, EventFeedbackReceivedEventDto['entries']>();
+
+    for (const id of table.ids) {
+      const record = table.byId[id];
+      if (!record || record.userId === normalizedUserId || !ownedEventIds.has(record.eventId)) {
+        continue;
+      }
+      const answers = Object.values(this.cloneEventFeedbackAnswersByCardId(record.answersByCardId));
+      const organizerNote = record.organizerNote.trim();
+      if (!organizerNote && answers.length === 0) {
+        continue;
+      }
+      const entries = byEventId.get(record.eventId) ?? [];
+      entries.push({
+        viewerUserId: record.userId,
+        eventId: record.eventId,
+        submittedAtIso: record.submittedAtIso ?? '',
+        updatedAtIso: record.submittedAtIso ?? '',
+        organizerNote,
+        answers
+      });
+      byEventId.set(record.eventId, entries);
+    }
+
+    return [...byEventId.entries()]
+      .map(([eventId, entries]) => ({
+        eventId,
+        entries: [...entries].sort((left, right) =>
+          (right.updatedAtIso || right.submittedAtIso).localeCompare(left.updatedAtIso || left.submittedAtIso)
+        )
+      }))
+      .sort((left, right) => right.eventId.localeCompare(left.eventId));
   }
 
   async submitEventFeedback(request: EventFeedbackSubmitRequestDto): Promise<void> {

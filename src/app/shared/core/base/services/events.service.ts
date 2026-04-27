@@ -5,6 +5,7 @@ import type {
   EventCheckoutAssetSelection,
   EventCheckoutRequest,
   EventCheckoutSession,
+  EventFeedbackReceivedEventDto,
   EventFeedbackNoteRequestDto,
   EventFeedbackStateDto,
   EventFeedbackSubmitRequestDto
@@ -159,6 +160,10 @@ export class EventsService extends BaseRouteModeService {
 
   queryEventFeedbackStates(userId: string): Promise<EventFeedbackStateDto[]> {
     return this.eventsService.queryEventFeedbackStates(userId);
+  }
+
+  queryReceivedEventFeedback(userId: string): Promise<EventFeedbackReceivedEventDto[]> {
+    return this.eventsService.queryReceivedEventFeedback(userId);
   }
 
   submitEventFeedback(request: EventFeedbackSubmitRequestDto): Promise<void> {

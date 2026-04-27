@@ -2,7 +2,9 @@ import { Injectable, inject } from '@angular/core';
 
 import { APP_STATIC_DATA } from '../../../app-static-data';
 import type { EventMenuItem } from '../../base/interfaces/activity-feed.interface';
+import type { UserDto } from '../../base/interfaces/user.interface';
 import { AppMemoryDb } from '../../base/db';
+import type { EventFeedbackPersistedState } from '../../base/models';
 import { DemoEventFeedbackBuilder } from '../builders';
 import { DemoActivityMembersRepository } from '../repositories/activity-members.repository';
 import { DemoActivityResourcesRepository } from '../repositories/activity-resources.repository';
@@ -79,6 +81,7 @@ function demoBootstrapProgressStep(stage: DemoBootstrapProgressStage): DemoBoots
 })
 export class DemoBootstrapService {
   private static readonly EVENT_FEEDBACK_UNLOCK_DELAY_MS = 2 * 60 * 60 * 1000;
+  private static readonly ORGANIZER_FEEDBACK_SHOWCASE_TARGET_COUNT = 3;
   private readonly memoryDb = inject(AppMemoryDb);
   private readonly chatsRepository = inject(DemoChatsRepository);
   private readonly eventsRepository = inject(DemoEventsRepository);
@@ -233,6 +236,10 @@ export class DemoBootstrapService {
       }
     }
 
+    if (this.seedOrganizerFeedbackShowcaseRecords(users, nextById, nextIds)) {
+      changed = true;
+    }
+
     if (!changed) {
       return;
     }
@@ -244,6 +251,115 @@ export class DemoBootstrapService {
         ids: nextIds
       }
     }));
+  }
+
+  private seedOrganizerFeedbackShowcaseRecords(
+    users: UserDto[],
+    nextById: Record<string, EventFeedbackPersistedState>,
+    nextIds: string[]
+  ): boolean {
+    const usersById = new Map(users.map(user => [user.id, user]));
+    const hostedEventById = new Map<string, DemoEventRecord>();
+    let changed = false;
+
+    for (const user of users) {
+      for (const record of this.eventsRepository.queryHostingItemsByUser(user.id)) {
+        const eventId = record.id?.trim() ?? '';
+        if (!eventId || record.isAdmin !== true || record.isTrashed) {
+          continue;
+        }
+        const current = hostedEventById.get(eventId);
+        if (!current || (current.published === false && record.published !== false)) {
+          hostedEventById.set(eventId, record);
+        }
+      }
+    }
+
+    for (const record of hostedEventById.values()) {
+      const hostUserId = record.creatorUserId?.trim() || record.userId?.trim();
+      const hostUser = hostUserId ? usersById.get(hostUserId) : null;
+      if (!hostUser) {
+        continue;
+      }
+
+      const viewerUserIds = [...new Set([
+        ...record.acceptedMemberUserIds,
+        ...record.pendingMemberUserIds
+      ].map(userId => `${userId}`.trim()).filter(Boolean))]
+        .filter(userId => userId !== hostUser.id && usersById.has(userId));
+      if (viewerUserIds.length === 0) {
+        continue;
+      }
+
+      let visibleEntryCount = viewerUserIds.filter(userId =>
+        this.hasOrganizerVisibleFeedback(nextById[`${userId}::${record.id}`])
+      ).length;
+      if (visibleEntryCount >= DemoBootstrapService.ORGANIZER_FEEDBACK_SHOWCASE_TARGET_COUNT) {
+        continue;
+      }
+
+      const feedbackItem = this.toFeedbackViewerEventMenuItem(record);
+      for (const viewerUserId of viewerUserIds) {
+        if (visibleEntryCount >= DemoBootstrapService.ORGANIZER_FEEDBACK_SHOWCASE_TARGET_COUNT) {
+          break;
+        }
+        const existingRecord = nextById[`${viewerUserId}::${record.id}`];
+        if (existingRecord) {
+          continue;
+        }
+        const viewer = usersById.get(viewerUserId);
+        if (!viewer) {
+          continue;
+        }
+        const seededRecord = DemoEventFeedbackBuilder.buildSeededSubmittedState({
+          eventItem: feedbackItem,
+          users,
+          activeUser: viewer,
+          eventDatesById: {
+            [record.id]: record.startAtIso
+          },
+          activityImageById: {
+            [record.id]: record.imageUrl ?? ''
+          },
+          eventFeedbackUnlockDelayMs: DemoBootstrapService.EVENT_FEEDBACK_UNLOCK_DELAY_MS,
+          eventOverallOptions: APP_STATIC_DATA.eventFeedbackEventOverallOptions,
+          hostImproveOptions: APP_STATIC_DATA.eventFeedbackHostImproveOptions,
+          attendeeCollabOptions: APP_STATIC_DATA.eventFeedbackAttendeeCollabOptions,
+          attendeeRejoinOptions: APP_STATIC_DATA.eventFeedbackAttendeeRejoinOptions,
+          personalityTraitOptions: APP_STATIC_DATA.eventFeedbackPersonalityTraitOptions,
+          seedKey: `organizer-showcase:${record.id}:${viewerUserId}`
+        });
+        if (!seededRecord) {
+          continue;
+        }
+        nextById[seededRecord.id] = {
+          ...seededRecord,
+          answersByCardId: { ...(seededRecord.answersByCardId ?? {}) }
+        };
+        if (!nextIds.includes(seededRecord.id)) {
+          nextIds.push(seededRecord.id);
+        }
+        visibleEntryCount += 1;
+        changed = true;
+      }
+    }
+
+    return changed;
+  }
+
+  private hasOrganizerVisibleFeedback(record: EventFeedbackPersistedState | undefined): boolean {
+    if (!record) {
+      return false;
+    }
+    return Boolean(record.organizerNote?.trim()) || Object.keys(record.answersByCardId ?? {}).length > 0;
+  }
+
+  private toFeedbackViewerEventMenuItem(record: DemoEventRecord): EventMenuItem {
+    return {
+      ...this.toEventMenuItem(record),
+      activity: 0,
+      isAdmin: false
+    };
   }
 
   private toEventMenuItem(record: DemoEventRecord): EventMenuItem {
@@ -259,6 +375,9 @@ export class DemoBootstrapService {
       startAt: record.startAtIso,
       endAt: record.endAtIso,
       distanceKm: record.distanceKm,
+      acceptedMembers: record.acceptedMembers,
+      pendingMembers: record.pendingMembers,
+      capacityTotal: record.capacityTotal,
       acceptedMemberUserIds: [...record.acceptedMemberUserIds],
       pendingMemberUserIds: [...record.pendingMemberUserIds],
       visibility: record.visibility,

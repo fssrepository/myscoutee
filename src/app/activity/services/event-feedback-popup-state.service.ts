@@ -10,12 +10,56 @@ import type { EventMenuItem } from '../../shared/core/base/interfaces/activity-f
 
 export interface EventFeedbackPopupSource {
   eventItems: EventMenuItem[];
+  ownedEventItems: EventMenuItem[];
   users: UserDto[];
   activeUser: UserDto;
   eventDatesById: Record<string, string>;
   activityImageById: Record<string, string>;
   eventStartAtMs(eventId: string): number | null;
   eventTitleById(eventId: string): string;
+}
+
+interface OrganizerEventFeedbackItem {
+  eventId: string;
+  title: string;
+  subtitle: string;
+  timeframe: string;
+  imageUrl: string;
+  startAtMs: number | null;
+  responseCount: number;
+  noteCount: number;
+  latestActivityAtMs: number | null;
+}
+
+interface OrganizerEventFeedbackStatItem {
+  key: string;
+  label: string;
+  icon: string;
+  count: number;
+}
+
+interface OrganizerEventFeedbackMessageItem {
+  id: string;
+  viewerUserId: string;
+  viewerName: string;
+  viewerInitials: string;
+  viewerGender: string;
+  viewerImageUrl: string;
+  timestampIso: string;
+  dayKey: string;
+  dayLabel: string;
+  timeLabel: string;
+  organizerNote: string;
+  overallLabel: string | null;
+  improveLabel: string | null;
+  traitLabels: string[];
+  responseCount: number;
+}
+
+interface OrganizerEventFeedbackMessageGroup {
+  dayKey: string;
+  label: string;
+  items: OrganizerEventFeedbackMessageItem[];
 }
 
 @Injectable({
@@ -36,6 +80,7 @@ export class EventFeedbackPopupStateService {
     this.sourceRef.set(source);
     this.configureEventFeedbackPolling();
     if (!source?.activeUser?.id?.trim()) {
+      this.receivedEventFeedbackByEventId.set({});
       return;
     }
     this.hydrateEventFeedbackState();
@@ -43,7 +88,7 @@ export class EventFeedbackPopupStateService {
 
   public readonly isPopupOpen = signal<boolean>(false);
   public readonly isStackedPopupOpen = signal<boolean>(false);
-  public readonly stackedPopupMode = signal<'eventFeedback' | 'eventFeedbackNote' | null>(null);
+  public readonly stackedPopupMode = signal<'eventFeedback' | 'eventFeedbackNote' | 'organizerEventFeedback' | null>(null);
 
   public readonly eventFeedbackCards = signal<AppTypes.EventFeedbackCard[]>([]);
   public readonly eventFeedbackIndex = signal<number>(0);
@@ -52,6 +97,7 @@ export class EventFeedbackPopupStateService {
   public readonly eventFeedbackListSubmitMessage = signal<string>('');
   public readonly eventFeedbackCardMenuEventId = signal<string | null>(null);
   public readonly selectedEventFeedbackEventId = signal<string | null>(null);
+  public readonly selectedOrganizerEventFeedbackEventId = signal<string | null>(null);
   public readonly eventFeedbackSubmittedState = signal<boolean>(false);
   public readonly eventFeedbackSubmitMessage = signal<string>('');
   
@@ -67,6 +113,7 @@ export class EventFeedbackPopupStateService {
   private readonly submittedEventFeedbackEventsByUser = signal<Record<string, Record<string, string>>>({});
   private readonly removedEventFeedbackEventsByUser = signal<Record<string, Record<string, true>>>({});
   private readonly organizerEventFeedbackNotesByUser = signal<Record<string, Record<string, string>>>({});
+  private readonly receivedEventFeedbackByEventId = signal<Record<string, AppTypes.EventFeedbackReceivedEventDto>>({});
 
   public readonly eventFeedbackEventOverallOptions = APP_STATIC_DATA.eventFeedbackEventOverallOptions;
   public readonly eventFeedbackHostImproveOptions = APP_STATIC_DATA.eventFeedbackHostImproveOptions;
@@ -81,6 +128,7 @@ export class EventFeedbackPopupStateService {
     this.eventFeedbackListSubmitMessage.set('');
     this.eventFeedbackCardMenuEventId.set(null);
     this.selectedEventFeedbackEventId.set(null);
+    this.selectedOrganizerEventFeedbackEventId.set(null);
     this.eventFeedbackCards.set([]);
     this.eventFeedbackIndex.set(0);
     this.eventFeedbackSubmittedState.set(false);
@@ -98,6 +146,7 @@ export class EventFeedbackPopupStateService {
   public closeStackedPopup(): void {
     this.isStackedPopupOpen.set(false);
     this.stackedPopupMode.set(null);
+    this.selectedOrganizerEventFeedbackEventId.set(null);
   }
 
   public toggleEventFeedbackFilterPicker(event?: Event): void {
@@ -110,6 +159,7 @@ export class EventFeedbackPopupStateService {
     this.eventFeedbackListFilter.set(filter);
     this.showEventFeedbackFilterPicker.set(false);
     this.eventFeedbackCardMenuEventId.set(null);
+    this.selectedOrganizerEventFeedbackEventId.set(null);
   }
 
   public closeEventFeedbackFilterPicker(event?: Event): void {
@@ -147,7 +197,10 @@ export class EventFeedbackPopupStateService {
   }
 
   public eventFeedbackCurrentEventTitle(): string {
-    const eventId = this.selectedEventFeedbackEventId() ?? this.eventFeedbackNoteForm().eventId;
+    const eventId =
+      this.selectedOrganizerEventFeedbackEventId()
+      ?? this.selectedEventFeedbackEventId()
+      ?? this.eventFeedbackNoteForm().eventId;
     return this.sourceRef()?.eventTitleById(eventId) ?? 'this event';
   }
 
@@ -155,6 +208,20 @@ export class EventFeedbackPopupStateService {
     const user = this.sourceRef()?.activeUser;
     if (!user) return false;
     return Boolean(this.organizerEventFeedbackNotesByUser()[user.id]?.[eventId]?.trim());
+  }
+
+  public openOrganizerEventFeedback(eventId: string, event?: Event): void {
+    event?.stopPropagation();
+    const normalizedEventId = eventId.trim();
+    if (!normalizedEventId) {
+      return;
+    }
+    this.eventFeedbackListFilter.set('own-events');
+    this.showEventFeedbackFilterPicker.set(false);
+    this.eventFeedbackCardMenuEventId.set(null);
+    this.selectedOrganizerEventFeedbackEventId.set(normalizedEventId);
+    this.stackedPopupMode.set('organizerEventFeedback');
+    this.isStackedPopupOpen.set(true);
   }
 
   public startEventFeedback(item: AppTypes.EventFeedbackEventCard, event?: Event): void {
@@ -510,10 +577,12 @@ export class EventFeedbackPopupStateService {
   private hydrateEventFeedbackState(): void {
     const userId = this.sourceRef()?.activeUser?.id?.trim();
     if (!userId) {
+      this.receivedEventFeedbackByEventId.set({});
       return;
     }
     this.applyPersistedEventFeedbackSignals(userId);
     void this.refreshEventFeedbackStateFromServer(userId);
+    void this.refreshReceivedEventFeedbackFromServer(userId);
   }
 
   private async refreshEventFeedbackStateFromServer(userId: string): Promise<void> {
@@ -526,6 +595,37 @@ export class EventFeedbackPopupStateService {
       return;
     }
     this.mergeServerEventFeedbackStates(normalizedUserId, states);
+  }
+
+  private async refreshReceivedEventFeedbackFromServer(userId: string): Promise<void> {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      this.receivedEventFeedbackByEventId.set({});
+      return;
+    }
+    const events = await this.eventsService.queryReceivedEventFeedback(normalizedUserId);
+    if ((this.sourceRef()?.activeUser?.id?.trim() ?? '') !== normalizedUserId) {
+      return;
+    }
+    const next: Record<string, AppTypes.EventFeedbackReceivedEventDto> = {};
+    for (const item of events) {
+      const eventId = item.eventId?.trim() ?? '';
+      if (!eventId) {
+        continue;
+      }
+      next[eventId] = {
+        eventId,
+        entries: (item.entries ?? []).map(entry => ({
+          viewerUserId: entry.viewerUserId?.trim() ?? '',
+          eventId: entry.eventId?.trim() ?? eventId,
+          submittedAtIso: entry.submittedAtIso?.trim() ?? '',
+          updatedAtIso: entry.updatedAtIso?.trim() ?? '',
+          organizerNote: entry.organizerNote?.trim() ?? '',
+          answers: (entry.answers ?? []).map(answer => this.cloneSubmittedEventFeedbackAnswer(answer))
+        })).filter(entry => entry.viewerUserId.length > 0)
+      };
+    }
+    this.receivedEventFeedbackByEventId.set(next);
   }
 
   private mergeServerEventFeedbackStates(userId: string, states: AppTypes.EventFeedbackStateDto[]): void {
@@ -714,6 +814,7 @@ export class EventFeedbackPopupStateService {
     this.eventFeedbackPollInFlight = true;
     try {
       await this.refreshEventFeedbackStateFromServer(userId);
+      await this.refreshReceivedEventFeedbackFromServer(userId);
     } finally {
       this.eventFeedbackPollInFlight = false;
     }
@@ -780,9 +881,147 @@ export class EventFeedbackPopupStateService {
   public readonly eventFeedbackPendingCount = computed(() => this.eventFeedbackPendingItems().length);
   public readonly eventFeedbackFeedbackedCount = computed(() => this.eventFeedbackFeedbackedItems().length);
   public readonly eventFeedbackRemovedCount = computed(() => this.eventFeedbackRemovedItems().length);
+  public readonly organizerEventFeedbackItems = computed<OrganizerEventFeedbackItem[]>(() => {
+    const source = this.sourceRef();
+    if (!source) {
+      return [];
+    }
+    return [...source.ownedEventItems]
+      .map(item => {
+        const eventId = item.id?.trim() ?? '';
+        const received = this.receivedEventFeedbackByEventId()[eventId]?.entries ?? [];
+        return {
+          eventId,
+          title: item.title,
+          subtitle: item.shortDescription,
+          timeframe: item.timeframe,
+          imageUrl: source.activityImageById[eventId] ?? item.imageUrl ?? '',
+          startAtMs: source.eventStartAtMs(eventId),
+          responseCount: received.length,
+          noteCount: received.filter(entry => entry.organizerNote.trim().length > 0).length,
+          latestActivityAtMs: this.organizerEventFeedbackEntriesLatestAtMs(received)
+        };
+      })
+      .filter(item => item.eventId.length > 0)
+      .sort((left, right) =>
+        (right.startAtMs ?? 0) - (left.startAtMs ?? 0)
+        || (right.latestActivityAtMs ?? 0) - (left.latestActivityAtMs ?? 0)
+        || left.title.localeCompare(right.title)
+      );
+  });
+  public readonly organizerEventFeedbackBadgeCount = computed(() =>
+    this.organizerEventFeedbackItems().reduce((total, item) => total + item.responseCount, 0)
+  );
+  public readonly selectedOrganizerEventFeedbackItem = computed(() =>
+    this.organizerEventFeedbackItems().find(item => item.eventId === this.selectedOrganizerEventFeedbackEventId()) ?? null
+  );
+  public readonly selectedOrganizerEventFeedbackEntries = computed(() => {
+    const eventId = this.selectedOrganizerEventFeedbackEventId()?.trim() ?? '';
+    if (!eventId) {
+      return [];
+    }
+    return [...(this.receivedEventFeedbackByEventId()[eventId]?.entries ?? [])]
+      .sort((left, right) => this.organizerEventFeedbackEntryTimestampMs(right) - this.organizerEventFeedbackEntryTimestampMs(left));
+  });
+  public readonly organizerEventFeedbackOverallStats = computed(() =>
+    this.buildOrganizerEventFeedbackOptionStats(
+      this.eventFeedbackEventOverallOptions,
+      this.selectedOrganizerEventFeedbackEntries().map(entry => this.organizerEventFeedbackEntryEventAnswer(entry)?.primaryValue ?? '')
+    )
+  );
+  public readonly organizerEventFeedbackImproveStats = computed(() =>
+    this.buildOrganizerEventFeedbackOptionStats(
+      this.eventFeedbackHostImproveOptions,
+      this.selectedOrganizerEventFeedbackEntries().map(entry => this.organizerEventFeedbackEntryEventAnswer(entry)?.secondaryValue ?? '')
+    )
+  );
+  public readonly organizerEventFeedbackTraitStats = computed(() => {
+    const countsByTraitId = new Map<string, number>();
+    for (const entry of this.selectedOrganizerEventFeedbackEntries()) {
+      const answer = this.organizerEventFeedbackEntryEventAnswer(entry);
+      if (!answer) {
+        continue;
+      }
+      for (const traitId of answer.personalityTraitIds ?? []) {
+        const normalizedTraitId = traitId.trim();
+        if (!normalizedTraitId) {
+          continue;
+        }
+        countsByTraitId.set(normalizedTraitId, (countsByTraitId.get(normalizedTraitId) ?? 0) + 1);
+      }
+    }
+    return this.eventFeedbackPersonalityTraitOptions
+      .map(option => ({
+        key: option.id,
+        label: option.label,
+        icon: option.icon,
+        count: countsByTraitId.get(option.id) ?? 0
+      }))
+      .filter(item => item.count > 0)
+      .sort((left, right) => right.count - left.count || left.label.localeCompare(right.label));
+  });
+  public readonly organizerEventFeedbackMessageGroups = computed<OrganizerEventFeedbackMessageGroup[]>(() => {
+    const groups = new Map<string, OrganizerEventFeedbackMessageGroup>();
+    for (const entry of this.selectedOrganizerEventFeedbackEntries()) {
+      const timestampIso = this.organizerEventFeedbackEntryTimestampIso(entry);
+      const timestampDate = timestampIso ? new Date(timestampIso) : null;
+      const hasValidTimestamp = Boolean(timestampDate) && !Number.isNaN(timestampDate!.getTime());
+      const answer = this.organizerEventFeedbackEntryEventAnswer(entry);
+      const user = this.organizerEventFeedbackUser(entry.viewerUserId);
+      const dayKey = hasValidTimestamp ? AppUtils.toIsoDate(timestampDate as Date) : 'undated';
+      const dayLabel = hasValidTimestamp
+        ? (timestampDate as Date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+        : 'No date';
+      const timeLabel = hasValidTimestamp
+        ? (timestampDate as Date).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+        : '';
+      const group = groups.get(dayKey) ?? { dayKey, label: dayLabel, items: [] };
+      group.items.push({
+        id: `${entry.viewerUserId}:${timestampIso || dayKey}`,
+        viewerUserId: entry.viewerUserId,
+        viewerName: user?.name?.trim() || 'Event member',
+        viewerInitials: user?.initials?.trim() || AppUtils.initialsFromText(user?.name?.trim() || 'Event member'),
+        viewerGender: user?.gender?.trim() || 'woman',
+        viewerImageUrl: AppUtils.firstImageUrl(user?.images),
+        timestampIso,
+        dayKey,
+        dayLabel,
+        timeLabel,
+        organizerNote: entry.organizerNote.trim(),
+        overallLabel: answer ? (this.organizerEventFeedbackOptionLabel(answer.primaryValue, this.eventFeedbackEventOverallOptions) ?? null) : null,
+        improveLabel: answer ? (this.organizerEventFeedbackOptionLabel(answer.secondaryValue, this.eventFeedbackHostImproveOptions) ?? null) : null,
+        traitLabels: answer
+          ? answer.personalityTraitIds
+            .map(traitId => this.eventFeedbackPersonalityTraitOptions.find(option => option.id === traitId)?.label ?? '')
+            .filter(label => label.length > 0)
+          : [],
+        responseCount: entry.answers.length
+      });
+      groups.set(dayKey, group);
+    }
+    return [...groups.values()]
+      .map(group => ({
+        ...group,
+        items: [...group.items].sort((left, right) => {
+          const leftMs = left.timestampIso ? new Date(left.timestampIso).getTime() : 0;
+          const rightMs = right.timestampIso ? new Date(right.timestampIso).getTime() : 0;
+          return rightMs - leftMs || left.viewerName.localeCompare(right.viewerName);
+        })
+      }))
+      .sort((left, right) => {
+        if (left.dayKey === 'undated') {
+          return 1;
+        }
+        if (right.dayKey === 'undated') {
+          return -1;
+        }
+        return right.dayKey.localeCompare(left.dayKey);
+      });
+  });
 
   public eventFeedbackFilterCount(filter: AppTypes.EventFeedbackListFilter): number {
     switch (filter) {
+      case 'own-events': return this.organizerEventFeedbackBadgeCount();
       case 'feedbacked': return this.eventFeedbackFeedbackedCount();
       case 'removed': return this.eventFeedbackRemovedCount();
       case 'pending':
@@ -792,6 +1031,7 @@ export class EventFeedbackPopupStateService {
 
   public eventFeedbackFilterOptionClass(filter: AppTypes.EventFeedbackListFilter): string {
     switch (filter) {
+      case 'own-events': return 'event-feedback-filter-option-own-events';
       case 'feedbacked': return 'event-feedback-filter-option-feedbacked';
       case 'removed': return 'event-feedback-filter-option-removed';
       case 'pending':
@@ -801,6 +1041,7 @@ export class EventFeedbackPopupStateService {
 
   public eventFeedbackFilterBadgeClass(filter: AppTypes.EventFeedbackListFilter): string {
     switch (filter) {
+      case 'own-events': return 'event-feedback-filter-badge-own-events';
       case 'feedbacked': return 'event-feedback-filter-badge-feedbacked';
       case 'removed': return 'event-feedback-filter-badge-removed';
       case 'pending':
@@ -810,6 +1051,7 @@ export class EventFeedbackPopupStateService {
 
   public readonly eventFeedbackVisibleItems = computed(() => {
     switch (this.eventFeedbackListFilter()) {
+      case 'own-events': return [];
       case 'feedbacked': return this.eventFeedbackFeedbackedItems();
       case 'removed': return this.eventFeedbackRemovedItems();
       case 'pending':
@@ -818,6 +1060,93 @@ export class EventFeedbackPopupStateService {
   });
 
   // --- Internal Data Helpers ---
+
+  private organizerEventFeedbackEntriesLatestAtMs(entries: readonly AppTypes.EventFeedbackReceivedEntryDto[]): number | null {
+    let latestAtMs: number | null = null;
+    for (const entry of entries) {
+      const candidateMs = this.organizerEventFeedbackEntryTimestampMs(entry);
+      if (candidateMs <= 0) {
+        continue;
+      }
+      latestAtMs = latestAtMs === null ? candidateMs : Math.max(latestAtMs, candidateMs);
+    }
+    return latestAtMs;
+  }
+
+  private organizerEventFeedbackEntryTimestampIso(entry: AppTypes.EventFeedbackReceivedEntryDto): string {
+    const updatedAtIso = entry.updatedAtIso?.trim() ?? '';
+    if (updatedAtIso) {
+      return updatedAtIso;
+    }
+    const submittedAtIso = entry.submittedAtIso?.trim() ?? '';
+    if (submittedAtIso) {
+      return submittedAtIso;
+    }
+    for (const answer of entry.answers ?? []) {
+      const answerIso = answer.submittedAtIso?.trim() ?? '';
+      if (answerIso) {
+        return answerIso;
+      }
+    }
+    return '';
+  }
+
+  private organizerEventFeedbackEntryTimestampMs(entry: AppTypes.EventFeedbackReceivedEntryDto): number {
+    const timestampIso = this.organizerEventFeedbackEntryTimestampIso(entry);
+    if (!timestampIso) {
+      return 0;
+    }
+    const value = new Date(timestampIso).getTime();
+    return Number.isNaN(value) ? 0 : value;
+  }
+
+  private organizerEventFeedbackEntryEventAnswer(
+    entry: AppTypes.EventFeedbackReceivedEntryDto
+  ): AppTypes.SubmittedEventFeedbackAnswer | null {
+    return (entry.answers ?? []).find(answer => answer.kind === 'event') ?? null;
+  }
+
+  private buildOrganizerEventFeedbackOptionStats(
+    options: readonly AppTypes.EventFeedbackOption[],
+    values: readonly string[]
+  ): OrganizerEventFeedbackStatItem[] {
+    const countsByValue = new Map<string, number>();
+    for (const value of values) {
+      const normalizedValue = value.trim();
+      if (!normalizedValue) {
+        continue;
+      }
+      countsByValue.set(normalizedValue, (countsByValue.get(normalizedValue) ?? 0) + 1);
+    }
+    return options
+      .map(option => ({
+        key: option.value,
+        label: option.label,
+        icon: option.icon,
+        count: countsByValue.get(option.value) ?? 0
+      }))
+      .filter(item => item.count > 0)
+      .sort((left, right) => right.count - left.count || left.label.localeCompare(right.label));
+  }
+
+  private organizerEventFeedbackOptionLabel(
+    value: string,
+    options: readonly AppTypes.EventFeedbackOption[]
+  ): string | null {
+    const normalizedValue = value.trim();
+    if (!normalizedValue) {
+      return null;
+    }
+    return options.find(option => option.value === normalizedValue)?.label ?? null;
+  }
+
+  private organizerEventFeedbackUser(userId: string): UserDto | null {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return null;
+    }
+    return this.sourceRef()?.users.find(user => user.id === normalizedUserId) ?? null;
+  }
   
   private buildEventFeedbackCardsData(): AppTypes.EventFeedbackCard[] {
     const source = this.sourceRef();

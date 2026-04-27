@@ -106,6 +106,20 @@ export interface EventFeedbackStateDto {
   answersByCardId?: Record<string, SubmittedEventFeedbackAnswer>;
 }
 
+export interface EventFeedbackReceivedEntryDto {
+  viewerUserId: string;
+  eventId: string;
+  submittedAtIso: string;
+  updatedAtIso: string;
+  organizerNote: string;
+  answers: SubmittedEventFeedbackAnswer[];
+}
+
+export interface EventFeedbackReceivedEventDto {
+  eventId: string;
+  entries: EventFeedbackReceivedEntryDto[];
+}
+
 export interface EventFeedbackAnswerSubmitDto {
   cardId: string;
   kind: 'event' | 'attendee';
@@ -145,7 +159,7 @@ export interface EventFeedbackPersistedState {
   answersByCardId: Record<string, SubmittedEventFeedbackAnswer>;
 }
 
-export type EventFeedbackListFilter = 'pending' | 'feedbacked' | 'removed';
+export type EventFeedbackListFilter = 'own-events' | 'pending' | 'feedbacked' | 'removed';
 
 export interface EventFeedbackEventCard {
   eventId: string;

@@ -8,6 +8,7 @@ import type {
   EventCheckoutAssetSelection,
   EventCheckoutRequest,
   EventCheckoutSession,
+  EventFeedbackReceivedEventDto,
   EventFeedbackNoteRequestDto,
   EventFeedbackStateDto,
   EventFeedbackSubmitRequestDto
@@ -283,6 +284,37 @@ export class HttpEventsService {
             submittedAtIso: item.submittedAtIso?.trim() ?? '',
             organizerNote: item.organizerNote?.trim() ?? '',
             answersByCardId: this.cloneEventFeedbackAnswersByCardId(item.answersByCardId)
+          })).filter(item => item.eventId)
+        : [];
+    } catch {
+      return [];
+    }
+  }
+
+  async queryReceivedEventFeedback(userId: string): Promise<EventFeedbackReceivedEventDto[]> {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return [];
+    }
+    try {
+      const response = await this.http
+        .get<EventFeedbackReceivedEventDto[] | null>(`${this.apiBaseUrl}/activities/events/feedback/received`, {
+          params: new HttpParams().set('userId', normalizedUserId)
+        })
+        .toPromise();
+      return Array.isArray(response)
+        ? response.map(item => ({
+            eventId: item.eventId?.trim() ?? '',
+            entries: (item.entries ?? []).map(entry => ({
+              viewerUserId: entry.viewerUserId?.trim() ?? '',
+              eventId: entry.eventId?.trim() ?? item.eventId?.trim() ?? '',
+              submittedAtIso: entry.submittedAtIso?.trim() ?? '',
+              updatedAtIso: entry.updatedAtIso?.trim() ?? '',
+              organizerNote: entry.organizerNote?.trim() ?? '',
+              answers: Object.values(this.cloneEventFeedbackAnswersByCardId(
+                Object.fromEntries((entry.answers ?? []).map(answer => [answer.cardId ?? '', answer]))
+              ))
+            })).filter(entry => entry.viewerUserId && entry.eventId)
           })).filter(item => item.eventId)
         : [];
     } catch {

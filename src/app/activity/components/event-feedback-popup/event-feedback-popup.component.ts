@@ -138,6 +138,10 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
       this.lastLoadedUserId = '';
       this.eventRecordsLoadUserId = '';
       this.eventRecordsLoadPromise = null;
+      const activeUserId = this.appCtx.activeUserId().trim();
+      if (activeUserId) {
+        void this.loadEventRecords(activeUserId);
+      }
     });
 
     effect(() => {
@@ -172,8 +176,14 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
   }
 
   public get eventItems(): EventMenuItem[] {
-    return this.eventRecordsRef()
-      .filter(record => !record.isTrashed && !record.isInvitation)
+    return this.uniqueEventRecords()
+      .filter(record => record.type === 'events' && !record.isTrashed && !record.isInvitation && !record.isAdmin)
+      .map(record => this.toEventMenuItem(record));
+  }
+
+  public get ownedEventItems(): EventMenuItem[] {
+    return this.uniqueEventRecords()
+      .filter(record => !record.isTrashed && !record.isInvitation && !!record.isAdmin)
       .map(record => this.toEventMenuItem(record));
   }
 
@@ -198,7 +208,7 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
 
   public get eventDatesById(): Record<string, string> {
     const next: Record<string, string> = {};
-    for (const record of this.eventRecordsRef()) {
+    for (const record of this.uniqueEventRecords()) {
       if (!record.startAtIso) {
         continue;
       }
@@ -209,7 +219,7 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
 
   public get activityImageById(): Record<string, string> {
     const next: Record<string, string> = {};
-    for (const record of this.eventRecordsRef()) {
+    for (const record of this.uniqueEventRecords()) {
       if (!record.imageUrl?.trim()) {
         continue;
       }
@@ -292,6 +302,66 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
       },
       clickable: false
     };
+  }
+
+  protected organizerEventFeedbackInfoCard(item: {
+    eventId: string;
+    title: string;
+    subtitle: string;
+    timeframe: string;
+    imageUrl: string;
+    responseCount: number;
+    noteCount: number;
+  }): InfoCardData {
+    return this.organizerEventFeedbackCardData(item, true);
+  }
+
+  protected organizerEventFeedbackDetailInfoCard(item: {
+    eventId: string;
+    title: string;
+    subtitle: string;
+    timeframe: string;
+    imageUrl: string;
+    responseCount: number;
+    noteCount: number;
+  }): InfoCardData {
+    return this.organizerEventFeedbackCardData(item, false);
+  }
+
+  private organizerEventFeedbackCardData(item: {
+    eventId: string;
+    title: string;
+    subtitle: string;
+    timeframe: string;
+    imageUrl: string;
+    responseCount: number;
+    noteCount: number;
+  }, showAction: boolean): InfoCardData {
+    return {
+      rowId: item.eventId,
+      title: item.title,
+      imageUrl: item.imageUrl,
+      metaRows: [item.subtitle],
+      detailRows: [item.timeframe],
+      leadingIcon: {
+        icon: 'stadium'
+      },
+      mediaEnd: showAction
+        ? {
+          variant: 'badge',
+          tone: 'default',
+          label: 'View Feedbacks',
+          pendingCount: item.responseCount,
+          interactive: true,
+          ariaLabel: `Open feedback details for ${item.title}`
+        }
+        : null,
+      clickable: false
+    };
+  }
+
+  protected openOrganizerEventFeedback(eventId: string): void {
+    this.feedback.openOrganizerEventFeedback(eventId);
   }
 
   protected onViewportResize(): void {
@@ -417,7 +487,7 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
     const requestVersion = ++this.loadRequestVersion;
     this.eventRecordsLoadUserId = normalizedUserId;
     this.eventRecordsLoadPromise = (async () => {
-      const records = await this.eventsService.queryEventItemsByUser(normalizedUserId);
+      const records = await this.eventsService.queryItemsByUser(normalizedUserId);
       if (requestVersion !== this.loadRequestVersion) {
         return;
       }
@@ -440,7 +510,31 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
     if (!normalizedEventId) {
       return null;
     }
-    return this.eventRecordsRef().find(record => record.id === normalizedEventId) ?? null;
+    return this.uniqueEventRecords().find(record => record.id === normalizedEventId) ?? null;
+  }
+
+  private uniqueEventRecords(): DemoEventRecord[] {
+    const byId = new Map<string, DemoEventRecord>();
+    for (const record of this.eventRecordsRef()) {
+      const recordId = record.id?.trim() ?? '';
+      if (!recordId) {
+        continue;
+      }
+      const current = byId.get(recordId);
+      if (!current || this.shouldPreferEventRecord(record, current)) {
+        byId.set(recordId, record);
+      }
+    }
+    return [...byId.values()];
+  }
+
+  private shouldPreferEventRecord(candidate: DemoEventRecord, current: DemoEventRecord): boolean {
+    const score = (record: DemoEventRecord) =>
+      (record.isAdmin ? 8 : 0)
+      + (record.type === 'hosting' ? 4 : 0)
+      + (!record.isInvitation ? 2 : 0)
+      + (!record.isTrashed ? 1 : 0);
+    return score(candidate) > score(current);
   }
 
   private collectEventRecordUserIds(records: readonly DemoEventRecord[]): string[] {
@@ -652,6 +746,8 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
 
   private eventFeedbackEmptyDescription(filter: AppTypes.EventFeedbackListFilter): string {
     switch (filter) {
+      case 'own-events':
+        return 'No own events yet. Hosted events with received feedback will show here.';
       case 'feedbacked':
         return 'No feedbacked events yet.';
       case 'removed':
@@ -675,6 +771,11 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
       startAt: record.startAtIso,
       endAt: record.endAtIso,
       distanceKm: record.distanceKm,
+      acceptedMembers: record.acceptedMembers,
+      pendingMembers: record.pendingMembers,
+      capacityTotal: record.capacityTotal,
+      acceptedMemberUserIds: [...record.acceptedMemberUserIds],
+      pendingMemberUserIds: [...record.pendingMemberUserIds],
       visibility: record.visibility,
       blindMode: record.blindMode,
       imageUrl: record.imageUrl,

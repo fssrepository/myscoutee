@@ -61,26 +61,45 @@
             @if (feedback.eventFeedbackListSubmitMessage()) {
               <div class="support-submit-success">{{ feedback.eventFeedbackListSubmitMessage() }}</div>
             }
-            <app-smart-list
-              class="event-feedback-list-surface"
-              [config]="eventFeedbackSmartListConfig"
-              [loadPage]="eventFeedbackSmartListLoadPage"
-              [itemTemplate]="eventFeedbackItemTemplateRef ?? null"
-              [query]="eventFeedbackSmartListQuery"
-            ></app-smart-list>
-            <ng-template #eventFeedbackItemTemplate let-item>
-              <div
-                class="event-feedback-info-card-shell"
-                [class.is-feedbacked]="item.isFeedbacked"
-                [class.is-removed]="item.isRemoved"
-                >
-                <app-info-card
-                  [card]="eventFeedbackInfoCard(item)"
-                  (mediaEndClick)="startEventFeedbackFromCard(item)"
-                  (menuAction)="onEventFeedbackCardMenuAction(item, $event)"
-                ></app-info-card>
-              </div>
-            </ng-template>
+            @if (feedback.eventFeedbackListFilter() === 'own-events') {
+              @if (feedback.organizerEventFeedbackItems().length > 0) {
+                <div class="event-feedback-owned-event-list">
+                  @for (item of feedback.organizerEventFeedbackItems(); track item.eventId) {
+                    <div class="event-feedback-info-card-shell event-feedback-owned-event-card-shell">
+                      <app-info-card
+                        [card]="organizerEventFeedbackInfoCard(item)"
+                        (mediaEndClick)="openOrganizerEventFeedback(item.eventId)"
+                      ></app-info-card>
+                    </div>
+                  }
+                </div>
+              } @else {
+                <article class="editor-list-card support-card event-feedback-empty-card">
+                  <p>No own events with feedback yet.</p>
+                </article>
+              }
+            } @else {
+              <app-smart-list
+                class="event-feedback-list-surface"
+                [config]="eventFeedbackSmartListConfig"
+                [loadPage]="eventFeedbackSmartListLoadPage"
+                [itemTemplate]="eventFeedbackItemTemplateRef ?? null"
+                [query]="eventFeedbackSmartListQuery"
+              ></app-smart-list>
+              <ng-template #eventFeedbackItemTemplate let-item>
+                <div
+                  class="event-feedback-info-card-shell"
+                  [class.is-feedbacked]="item.isFeedbacked"
+                  [class.is-removed]="item.isRemoved"
+                  >
+                  <app-info-card
+                    [card]="eventFeedbackInfoCard(item)"
+                    (mediaEndClick)="startEventFeedbackFromCard(item)"
+                    (menuAction)="onEventFeedbackCardMenuAction(item, $event)"
+                  ></app-info-card>
+                </div>
+              </ng-template>
+            }
           </div>
         </div>
       </div>
@@ -93,13 +112,18 @@
       <div class="app-popup-backdrop" (click)="feedback.closeStackedPopup()"></div>
       <div
         class="app-popup-panel"
-        [class.popup-panel-event-feedback]="feedback.stackedPopupMode() === 'eventFeedback'"
+        [class.popup-panel-event-feedback]="feedback.stackedPopupMode() === 'eventFeedback' || feedback.stackedPopupMode() === 'organizerEventFeedback'"
         (click)="$event.stopPropagation()"
         >
         <div class="popup-header">
           @if (feedback.stackedPopupMode() === 'eventFeedback') {
             <div class="popup-title popup-title-feedback">
               <h2>Event Feedback</h2>
+              <p class="popup-subtitle-activities popup-subtitle-feedback-event">{{ feedback.eventFeedbackCurrentEventTitle() }}</p>
+            </div>
+          } @else if (feedback.stackedPopupMode() === 'organizerEventFeedback') {
+            <div class="popup-title popup-title-feedback">
+              <h2>Own Event Feedback</h2>
               <p class="popup-subtitle-activities popup-subtitle-feedback-event">{{ feedback.eventFeedbackCurrentEventTitle() }}</p>
             </div>
           } @else {
@@ -325,6 +349,126 @@
               }
             </article>
           </ng-template>
+          @if (feedback.stackedPopupMode() === 'organizerEventFeedback') {
+            <div class="support-popup event-feedback-organizer-popup">
+              @if (feedback.selectedOrganizerEventFeedbackItem(); as item) {
+                <article class="editor-list-card support-card event-feedback-organizer-shell">
+                  <div class="event-feedback-info-card-shell event-feedback-organizer-info-card-shell">
+                    <app-info-card
+                      class="event-feedback-organizer-hero-card"
+                      [card]="organizerEventFeedbackDetailInfoCard(item)"
+                    ></app-info-card>
+                  </div>
+
+                  <div class="event-feedback-organizer-stats-grid">
+                    @if (feedback.organizerEventFeedbackOverallStats().length > 0) {
+                      <section class="event-feedback-organizer-stat-section">
+                        <div class="event-feedback-organizer-section-head">
+                          <h4>Overall</h4>
+                        </div>
+                        <div class="event-feedback-organizer-stat-list">
+                          @for (stat of feedback.organizerEventFeedbackOverallStats(); track stat.key) {
+                            <article class="event-feedback-organizer-stat-chip">
+                              <mat-icon>{{ stat.icon }}</mat-icon>
+                              <span>{{ stat.label }}</span>
+                              <strong>{{ stat.count }}</strong>
+                            </article>
+                          }
+                        </div>
+                      </section>
+                    }
+
+                    @if (feedback.organizerEventFeedbackImproveStats().length > 0) {
+                      <section class="event-feedback-organizer-stat-section">
+                        <div class="event-feedback-organizer-section-head">
+                          <h4>Improve Next</h4>
+                        </div>
+                        <div class="event-feedback-organizer-stat-list">
+                          @for (stat of feedback.organizerEventFeedbackImproveStats(); track stat.key) {
+                            <article class="event-feedback-organizer-stat-chip">
+                              <mat-icon>{{ stat.icon }}</mat-icon>
+                              <span>{{ stat.label }}</span>
+                              <strong>{{ stat.count }}</strong>
+                            </article>
+                          }
+                        </div>
+                      </section>
+                    }
+
+                    @if (feedback.organizerEventFeedbackTraitStats().length > 0) {
+                      <section class="event-feedback-organizer-stat-section">
+                        <div class="event-feedback-organizer-section-head">
+                          <h4>Host Traits</h4>
+                        </div>
+                        <div class="event-feedback-organizer-stat-list">
+                          @for (stat of feedback.organizerEventFeedbackTraitStats(); track stat.key) {
+                            <article class="event-feedback-organizer-stat-chip">
+                              <mat-icon>{{ stat.icon }}</mat-icon>
+                              <span>{{ stat.label }}</span>
+                              <strong>{{ stat.count }}</strong>
+                            </article>
+                          }
+                        </div>
+                      </section>
+                    }
+                  </div>
+
+                  <section class="event-feedback-organizer-messages">
+                    <div class="event-feedback-organizer-section-head">
+                      <h4>Feedback Messages</h4>
+                    </div>
+                    @if (feedback.organizerEventFeedbackMessageGroups().length > 0) {
+                      @for (group of feedback.organizerEventFeedbackMessageGroups(); track group.dayKey) {
+                        <div class="event-feedback-organizer-group-marker">{{ group.label }}</div>
+                        <div class="event-feedback-organizer-message-list">
+                          @for (message of group.items; track message.id) {
+                            <article class="event-feedback-organizer-message-card">
+                              <div class="event-feedback-organizer-message-head">
+                                <div
+                                  class="event-feedback-organizer-message-avatar"
+                                  [ngClass]="'user-color-' + message.viewerGender"
+                                  [style.backgroundImage]="message.viewerImageUrl ? 'url(' + message.viewerImageUrl + ')' : null"
+                                  >
+                                  @if (!message.viewerImageUrl) {
+                                    <span>{{ message.viewerInitials }}</span>
+                                  }
+                                </div>
+                                <div class="event-feedback-organizer-message-meta">
+                                  <h5>{{ message.viewerName }}</h5>
+                                  <p>{{ message.timeLabel || 'Recent feedback' }}</p>
+                                </div>
+                                <span class="event-feedback-organizer-message-count">{{ message.responseCount }}</span>
+                              </div>
+                              <div class="event-feedback-organizer-message-chips">
+                                @if (message.overallLabel) {
+                                  <span class="event-feedback-organizer-message-chip">{{ message.overallLabel }}</span>
+                                }
+                                @if (message.improveLabel) {
+                                  <span class="event-feedback-organizer-message-chip">{{ message.improveLabel }}</span>
+                                }
+                                @for (traitLabel of message.traitLabels; track traitLabel) {
+                                  <span class="event-feedback-organizer-message-chip event-feedback-organizer-message-chip-trait">{{ traitLabel }}</span>
+                                }
+                              </div>
+                              @if (message.organizerNote) {
+                                <p class="event-feedback-organizer-message-note">{{ message.organizerNote }}</p>
+                              }
+                            </article>
+                          }
+                        </div>
+                      }
+                    } @else {
+                      <p class="event-feedback-organizer-empty-copy">No feedback has been submitted for this event yet.</p>
+                    }
+                  </section>
+                </article>
+              } @else {
+                <article class="editor-list-card support-card event-feedback-empty-card">
+                  <p>Choose an own event to review its feedback.</p>
+                </article>
+              }
+            </div>
+          }
           @if (feedback.stackedPopupMode() === 'eventFeedbackNote') {
             <div class="support-popup">
               @if (!feedback.eventFeedbackNoteSubmitted()) {
