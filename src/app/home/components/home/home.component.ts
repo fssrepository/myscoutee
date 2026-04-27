@@ -388,12 +388,13 @@ export class HomeComponent implements OnDestroy {
         .filter((user): user is DemoUser => !!user);
     }
     const excludedUserIds = new Set(this.gameService.queryExcludedGameCardUserIds(this.activeUserId, this.selectedHomeMode));
+    const metUserIds = this.selectedHomeMode !== 'single' && !this.isSyntheticPairMode
+      ? null
+      : new Set(this.gameService.queryMetUserIds(this.activeUserId));
     return this.users
       .filter(user => user.id !== this.activeUserId)
       .filter(user => !excludedUserIds.has(user.id))
-      .filter(user => this.selectedHomeMode !== 'single' && !this.isSyntheticPairMode
-        ? true
-        : !this.gameService.didUsersMeet(this.activeUserId, user.id))
+      .filter(user => !metUserIds || !metUserIds.has(user.id))
       .filter(user => this.matchesFilter(user));
   }
 
@@ -1854,16 +1855,20 @@ export class HomeComponent implements OnDestroy {
     if (this.syntheticPairRoundsCacheKey === cacheKey) {
       return this.syntheticPairRoundsCache;
     }
+    const metUserIdsByCandidateId = new Map(
+      candidates.map(candidate => [candidate.id, new Set(this.gameService.queryMetUserIds(candidate.id))] as const)
+    );
     const rounds: PairModeRoundState[] = [];
     for (let leftIndex = 0; leftIndex < candidates.length; leftIndex += 1) {
       for (let rightIndex = leftIndex + 1; rightIndex < candidates.length; rightIndex += 1) {
         const left = candidates[leftIndex] ?? null;
         const right = candidates[rightIndex] ?? null;
+        const leftMetUserIds = left ? metUserIdsByCandidateId.get(left.id) : null;
         if (
           !left
           || !right
           || excludedPairKeys.has(this.sortedHomePairKey(left.id, right.id))
-          || this.gameService.didUsersMeet(left.id, right.id)
+          || leftMetUserIds?.has(right.id)
         ) {
           continue;
         }

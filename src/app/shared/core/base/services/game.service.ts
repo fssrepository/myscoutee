@@ -86,6 +86,17 @@ export class GameService extends BaseRouteModeService {
     return false;
   }
 
+  queryMetUserIds(userId: string): string[] {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return [];
+    }
+    if (this.isDemoModeEnabled('/activities/events')) {
+      return this.demoGameService.queryMetUserIds(normalizedUserId);
+    }
+    return [];
+  }
+
   queryExcludedGameCardUserIds(userId: string, mode: UserGameMode = 'single'): string[] {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {

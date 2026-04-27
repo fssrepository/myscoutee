@@ -99,6 +99,10 @@ export class DemoGameService extends DemoRouteDelayService implements UserGameDa
     return this.activityMembersRepository.didUsersMeet(leftUserId, rightUserId);
   }
 
+  queryMetUserIds(userId: string): string[] {
+    return this.activityMembersRepository.queryMetUserIds(userId);
+  }
+
   private resolvePageSize(value: number | undefined): number {
     if (!Number.isFinite(value)) {
       return 10;
