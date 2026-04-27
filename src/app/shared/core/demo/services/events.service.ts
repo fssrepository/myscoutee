@@ -224,10 +224,16 @@ export class DemoEventsService extends DemoRouteDelayService {
       assetSelections?: EventCheckoutAssetSelection[];
       acceptedPolicyIds?: string[];
       paymentSessionId?: string | null;
+      bookingConfirmed?: boolean;
     } = {}
   ): Promise<DemoEventRecord | null> {
     await this.waitForRouteDelay(DemoEventsService.EVENTS_ROUTE);
-    const record = this.eventsRepository.requestJoin(userId, sourceId, options.slotSourceId ?? null);
+    const record = this.eventsRepository.requestJoin(
+      userId,
+      sourceId,
+      options.slotSourceId ?? null,
+      options.bookingConfirmed === true || Boolean(options.paymentSessionId?.trim())
+    );
     await this.memoryDb.flushToIndexedDb();
     return record;
   }

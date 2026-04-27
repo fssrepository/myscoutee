@@ -227,6 +227,7 @@ export class HttpEventsService {
       assetSelections?: EventCheckoutAssetSelection[];
       acceptedPolicyIds?: string[];
       paymentSessionId?: string | null;
+      bookingConfirmed?: boolean;
     } = {}
   ): Promise<DemoEventRecord | null> {
     const normalizedUserId = userId.trim();
@@ -244,7 +245,8 @@ export class HttpEventsService {
           optionalSubEventIds: [...(options.optionalSubEventIds ?? [])],
           assetSelections: [...(options.assetSelections ?? [])],
           acceptedPolicyIds: [...(options.acceptedPolicyIds ?? [])],
-          paymentSessionId: options.paymentSessionId?.trim() || null
+          paymentSessionId: options.paymentSessionId?.trim() || null,
+          bookingConfirmed: options.bookingConfirmed === true
         })
         .toPromise();
       return response ? this.cloneRecords([response])[0] ?? null : null;

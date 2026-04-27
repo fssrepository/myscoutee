@@ -217,7 +217,13 @@ export class ActivitiesEventsController {
     if (!activeUserId) {
       return false;
     }
-    const source = row.source as { pendingMemberUserIds?: readonly string[] };
+    const source = row.source as {
+      acceptedMemberUserIds?: readonly string[];
+      pendingMemberUserIds?: readonly string[];
+    };
+    if (Array.isArray(source.acceptedMemberUserIds) && source.acceptedMemberUserIds.includes(activeUserId)) {
+      return false;
+    }
     return Array.isArray(source.pendingMemberUserIds) && source.pendingMemberUserIds.includes(activeUserId);
   }
 

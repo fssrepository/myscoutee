@@ -31,6 +31,7 @@ export interface EventCheckoutSelection {
   totalAmount: number;
   currency: string;
   paymentSessionId?: string | null;
+  bookingConfirmed?: boolean;
 }
 
 export interface EventCheckoutSession {

@@ -301,7 +301,7 @@ export class NavigatorMenuComponent {
 
   private openActivitiesShortcut(
     primaryFilter: 'rates' | 'chats' | 'events',
-    eventScope?: 'active-events' | 'invitations' | 'my-events'
+    eventScope?: 'all' | 'active-events' | 'pending' | 'invitations' | 'my-events' | 'drafts' | 'trash'
   ): void {
     if (!this.isOnline()) {
       return;

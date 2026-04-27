@@ -655,7 +655,8 @@ export class EventExplorePopupComponent {
           lineItems: [],
           totalAmount: 0,
           currency: record.pricing?.currency ?? 'USD',
-          paymentSessionId: null
+          paymentSessionId: null,
+          bookingConfirmed: true
         });
         this.closeEventExploreSlotPicker();
       }
@@ -954,12 +955,13 @@ export class EventExplorePopupComponent {
       return;
     }
 
+    const isAcceptedBooking = this.isConfirmedEventExploreBooking(record, selection);
     const nextMembers = this.sortMembersByActionTimeDesc([
       ...existingMembers,
-      this.buildJoinRequestEntry(record)
+      this.buildJoinRequestEntry(record, isAcceptedBooking)
     ]);
     const rollbackPayload = this.buildActivitiesEventSyncPayload(record, existingMembers);
-    const nextPayload = this.buildActivitiesEventSyncPayload(record, nextMembers);
+    const nextPayload = this.buildActivitiesEventSyncPayload(record, nextMembers, selection?.paymentSessionId ?? null);
     this.activitiesContext.emitActivitiesEventSync(nextPayload);
 
     try {
@@ -968,7 +970,8 @@ export class EventExplorePopupComponent {
         optionalSubEventIds: selection?.optionalSubEventIds ?? [],
         assetSelections: selection?.assetSelections ?? [],
         acceptedPolicyIds: selection?.acceptedPolicyIds ?? [],
-        paymentSessionId: selection?.paymentSessionId ?? null
+        paymentSessionId: selection?.paymentSessionId ?? null,
+        bookingConfirmed: isAcceptedBooking
       });
       await Promise.all([exitPromise, delayPromise, requestJoinPromise]);
       if (this.selectedMembersRecord?.id === record.id) {
@@ -1122,7 +1125,7 @@ export class EventExplorePopupComponent {
       };
   }
 
-  private buildJoinRequestEntry(record: DemoEventRecord): AppTypes.ActivityMemberEntry {
+  private buildJoinRequestEntry(record: DemoEventRecord, accepted = false): AppTypes.ActivityMemberEntry {
     const user = this.resolveUser(this.activeUserId, record);
     const row = EventExploreBuilder.buildActivityRow(record);
     const entry = ActivityMembersBuilder.toActivityMemberEntry(
@@ -1130,20 +1133,35 @@ export class EventExplorePopupComponent {
       row,
       `${row.type}:${row.id}`,
       record.creatorUserId,
-      { status: 'pending', pendingSource: 'member', invitedByActiveUser: false },
+      {
+        status: accepted ? 'accepted' : 'pending',
+        pendingSource: accepted ? null : 'member',
+        invitedByActiveUser: false
+      },
       APP_STATIC_DATA.activityMemberMetPlaces
     );
     return {
       ...entry,
       role: 'Member',
-      requestKind: 'join',
-      statusText: 'Waiting for admin approval.'
+      requestKind: accepted ? null : 'join',
+      statusText: accepted ? 'Joined event.' : 'Waiting for admin approval.'
     };
+  }
+
+  private isConfirmedEventExploreBooking(
+    record: DemoEventRecord,
+    selection?: AppTypes.EventCheckoutSelection | null
+  ): boolean {
+    if (selection?.bookingConfirmed === true || Boolean(selection?.paymentSessionId?.trim())) {
+      return true;
+    }
+    return !selection && record.ticketing === true && !this.shouldUseCheckoutFlow(record);
   }
 
   private buildActivitiesEventSyncPayload(
     record: DemoEventRecord,
-    members: readonly AppTypes.ActivityMemberEntry[]
+    members: readonly AppTypes.ActivityMemberEntry[],
+    paymentSessionId: string | null = null
   ): Omit<AppTypes.ActivitiesEventSyncPayload, 'syncKey'> {
     const summary = ActivityMembersBuilder.buildActivityMembersSummary(
       this.eventMembersOwner(record),
@@ -1192,7 +1210,8 @@ export class EventExplorePopupComponent {
               : []
           }))
         : undefined,
-      subEventsDisplayMode: record.subEventsDisplayMode
+      subEventsDisplayMode: record.subEventsDisplayMode,
+      paymentSessionId
     };
   }
 

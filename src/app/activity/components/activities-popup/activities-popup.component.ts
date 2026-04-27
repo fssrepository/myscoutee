@@ -237,6 +237,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   protected chatBadge = this.activeUser.activities.chat;
   protected eventsBadge = this.activeUser.activities.events;
+  protected pendingBadge = 0;
   protected hostingBadge = this.activeUser.activities.hosting;
   protected invitationsBadge = this.activeUser.activities.invitations;
   protected gameBadge = this.activeUser.activities.game;
@@ -284,6 +285,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected readonly activitiesEventScopeFilters: ReadonlyArray<ActivitiesEventScopeOption> = [
     { key: 'all', label: 'All', icon: 'widgets' },
     { key: 'active-events', label: 'Active Events', icon: 'event' },
+    { key: 'pending', label: 'Pending', icon: 'pending_actions' },
     { key: 'invitations', label: 'Invitations', icon: 'mail' },
     { key: 'my-events', label: 'My Events', icon: 'stadium' },
     { key: 'drafts', label: 'Drafts', icon: 'drafts' },
@@ -625,6 +627,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   private onActivitiesOpened(): void {
     this.refreshRateItems();
     void this.refreshChatItems();
+    void this.refreshStandaloneEventItems();
     this.resetActivitiesStateForOpen();
     this.activitiesRates.clearEditorState();
     this.resetActivitiesScroll();
@@ -836,28 +839,64 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   private hydrateStandaloneEventItems(userId: string): void {
-    const records = this.eventsService.peekItemsByUser(userId);
-    if (this.eventItems.length === 0) {
-      this.eventItems = records
+    this.applyStandaloneEventRecords(this.eventsService.peekItemsByUser(userId));
+  }
+
+  private async refreshStandaloneEventItems(): Promise<void> {
+    const userId = this.activeUser?.id?.trim();
+    if (!userId) {
+      return;
+    }
+    try {
+      const records = await this.eventsService.queryItemsByUser(userId);
+      if (this.activeUser.id.trim() !== userId) {
+        return;
+      }
+      this.applyStandaloneEventRecords(records, true);
+      this.initializeEventEditorContextData();
+      this.refreshSectionBadges();
+      this.seedEventOwnerMemberCountsFromEventsTable();
+      if (
+        this.activitiesPrimaryFilter === 'events'
+        && this.shouldUseLocalEventRowsFallback(this.activitiesEventScope)
+        && this.visibleActivityRows.length === 0
+        && this.buildEventScopeRows(
+          this.activitiesEventScope,
+          this.activitiesSecondaryFilter,
+          this.hostingPublicationFilter
+        ).length > 0
+      ) {
+        this.runAfterActivitiesNextPaint(() => this.activitiesSmartList?.reload());
+      }
+      this.cdr.markForCheck();
+    } catch {
+      // Keep the last cached event state if the refresh fails.
+    }
+  }
+
+  private applyStandaloneEventRecords(records: readonly DemoEventRecord[], replaceExisting = false): void {
+    const normalizedRecords = Array.isArray(records) ? records.map(record => ({ ...record })) : [];
+    if (replaceExisting || this.eventItems.length === 0) {
+      this.eventItems = normalizedRecords
         .filter(record => record.type === 'events')
         .map(record => this.toEventMenuItem(record));
     }
-    if (this.hostingItems.length === 0) {
-      this.hostingItems = records
+    if (replaceExisting || this.hostingItems.length === 0) {
+      this.hostingItems = normalizedRecords
         .filter(record => record.type === 'hosting')
         .map(record => this.toHostingMenuItem(record));
     }
-    if (this.invitationItems.length === 0) {
-      this.invitationItems = records
+    if (replaceExisting || this.invitationItems.length === 0) {
+      this.invitationItems = normalizedRecords
         .filter(record => record.isInvitation)
         .map(record => this.toInvitationMenuItem(record));
     }
     this.publishedHostingIds = new Set(
-      records
+      normalizedRecords
         .filter(record => record.type === 'hosting' && record.published !== false)
         .map(record => record.id)
     );
-    for (const record of records) {
+    for (const record of normalizedRecords) {
       if (record.startAtIso) {
         this.activityDateTimeRangeById[record.id] = {
           startIso: record.startAtIso,
@@ -872,8 +911,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
         this.hostingDatesById[record.id] = record.startAtIso;
         this.hostingDistanceById[record.id] = record.distanceKm;
       }
-      if (record.isInvitation) {
-      }
       if (record.isTrashed) {
         const row = toActivityEventRow(record);
         this.trashedActivityRowsByKey[this.activityRowIdentity(row)] = row;
@@ -886,7 +923,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       this.eventVisibilityById[record.id] = record.visibility;
       this.eventCapacityById[record.id] = { min: record.capacityMin, max: record.capacityMax };
       if (Array.isArray(record.subEvents) && record.subEvents.length > 0) {
-        this.eventSubEventsById[record.id] = record.subEvents.map(item => ({
+        this.eventSubEventsById[record.id] = record.subEvents.map((item: AppTypes.SubEventFormItem) => ({
           ...item,
           groups: Array.isArray(item.groups) ? item.groups.map((group: AppTypes.SubEventGroupItem) => ({ ...group })) : []
         }));
@@ -958,9 +995,14 @@ export class ActivitiesPopupComponent implements OnDestroy {
     // If we've locally published it, trust that over a lagging sync payload
     const isPublishedLocally = this.publishedHostingIds.has(sync.id);
     const isPublished = sync.published !== false || isPublishedLocally;
+    const isPending = this.isPendingEventSync(sync);
+    const isAccepted = this.isAcceptedEventSync(sync);
 
     if (this.activitiesEventScope === 'active-events') {
-      return (sync.isAdmin && !isPublished) ? null : 'events';
+      return !sync.isAdmin && isPublished && isAccepted ? 'events' : null;
+    }
+    if (this.activitiesEventScope === 'pending') {
+      return !sync.isAdmin && isPublished && isPending ? 'events' : null;
     }
     if (this.activitiesEventScope === 'my-events') {
       if (this.hostingPublicationFilter === 'drafts' && isPublished) {
@@ -972,7 +1014,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       return sync.isAdmin && !isPublished ? 'hosting' : null;
     }
     if (this.activitiesEventScope === 'all') {
-      return sync.isAdmin ? 'hosting' : 'events';
+      return sync.isAdmin ? 'hosting' : (isAccepted || isPending ? 'events' : null);
     }
     return null;
   }
@@ -1089,6 +1131,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
       startAt: record.startAtIso,
       endAt: record.endAtIso,
       distanceKm: record.distanceKm,
+      acceptedMembers: record.acceptedMembers,
+      pendingMembers: record.pendingMembers,
       acceptedMemberUserIds: [...record.acceptedMemberUserIds],
       pendingMemberUserIds: [...record.pendingMemberUserIds],
       visibility: record.visibility,
@@ -1099,6 +1143,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       locationCoordinates: record.locationCoordinates ?? undefined,
       capacityMin: record.capacityMin,
       capacityMax: record.capacityMax,
+      capacityTotal: record.capacityTotal,
       autoInviter: record.autoInviter,
       frequency: record.frequency,
       topics: [...record.topics],
@@ -1220,18 +1265,85 @@ export class ActivitiesPopupComponent implements OnDestroy {
       this.chatItems.map(item => item.unread),
       this.chatItems.length
     );
+    if (this.eventItems.length === 0 && this.hostingItems.length === 0 && this.invitationItems.length === 0) {
+      this.invitationsBadge = this.activeUser.activities.invitations;
+      this.eventsBadge = this.activeUser.activities.events;
+      this.pendingBadge = 0;
+      this.hostingBadge = this.activeUser.activities.hosting;
+      this.gameBadge = this.activeUser.activities.game;
+      this.syncActivityCounterOverrides();
+      return;
+    }
     const visibleInvitations = this.invitationItems
       .filter(item => !this.isActivityIdentityTrashed('invitations', item.id));
     this.invitationsBadge = visibleInvitations.length;
-    const visibleActiveEvents = this.eventItems
-      .filter(item => item.isAdmin !== true || this.isHostingPublished(item.id))
-      .filter(item => !this.isActivityIdentityTrashed('events', item.id));
+    const visibleMemberEvents = this.eventItems
+      .filter(item => item.isAdmin !== true)
+      .filter(item => !this.isActivityIdentityTrashed('events', item.id))
+      .filter(item => this.isAcceptedEventMenuItem(item) || this.isPendingEventMenuItem(item));
+    const visiblePendingEvents = visibleMemberEvents
+      .filter(item => this.isPendingEventMenuItem(item));
+    const visibleActiveEvents = visibleMemberEvents
+      .filter(item => this.isAcceptedEventMenuItem(item));
     this.eventsBadge = visibleActiveEvents.length;
+    this.pendingBadge = visiblePendingEvents.length;
     const adminEvents = this.hostingItems
       .filter(item => item.isAdmin)
       .filter(item => !this.isActivityIdentityTrashed('hosting', item.id));
     this.hostingBadge = adminEvents.length;
     this.gameBadge = this.activeUser.activities.game;
+    this.syncActivityCounterOverrides();
+  }
+
+  private isAcceptedEventMenuItem(item: EventMenuItem): boolean {
+    const activeUserId = this.activeUser?.id?.trim() ?? '';
+    if (!activeUserId || item.isAdmin === true) {
+      return false;
+    }
+    return (item.acceptedMemberUserIds ?? []).includes(activeUserId);
+  }
+
+  private isPendingEventMenuItem(item: EventMenuItem): boolean {
+    const activeUserId = this.activeUser?.id?.trim() ?? '';
+    if (!activeUserId || item.isAdmin === true) {
+      return false;
+    }
+    if ((item.acceptedMemberUserIds ?? []).includes(activeUserId)) {
+      return false;
+    }
+    return (item.pendingMemberUserIds ?? []).includes(activeUserId);
+  }
+
+  private isPendingEventSync(sync: ActivitiesEventSyncPayload): boolean {
+    const activeUserId = this.activeUser?.id?.trim() ?? '';
+    if (!activeUserId || sync.isAdmin) {
+      return false;
+    }
+    if ((sync.acceptedMemberUserIds ?? []).includes(activeUserId)) {
+      return false;
+    }
+    return (sync.pendingMemberUserIds ?? []).includes(activeUserId);
+  }
+
+  private isAcceptedEventSync(sync: ActivitiesEventSyncPayload): boolean {
+    const activeUserId = this.activeUser?.id?.trim() ?? '';
+    if (!activeUserId || sync.isAdmin) {
+      return false;
+    }
+    return (sync.acceptedMemberUserIds ?? []).includes(activeUserId);
+  }
+
+  private syncActivityCounterOverrides(): void {
+    const activeUserId = this.activeUser?.id?.trim();
+    if (!activeUserId) {
+      return;
+    }
+    this.appCtx.patchUserCounterOverrides(activeUserId, {
+      chat: this.chatBadge,
+      invitations: this.invitationsBadge,
+      events: this.eventsBadge,
+      hosting: this.hostingBadge
+    });
   }
 
   private syncMobileViewFromViewport(): void {
@@ -1268,9 +1380,18 @@ export class ActivitiesPopupComponent implements OnDestroy {
     secondaryFilter: AppTypes.ActivitiesSecondaryFilter,
     hostingPublicationFilter: AppTypes.HostingPublicationFilter
   ): AppTypes.ActivityListRow[] {
-    const activeEventRows = this.eventItems
+    const memberEventItems = this.eventItems
       .filter(item => item.isAdmin !== true)
       .filter(item => !this.isActivityIdentityTrashed('events', item.id))
+      .filter(item => this.isAcceptedEventMenuItem(item) || this.isPendingEventMenuItem(item));
+    const activeEventRows = memberEventItems
+      .filter(item => this.isAcceptedEventMenuItem(item))
+      .map(item => toActivityEventRowFromMenuItem(item, {
+        dateIso: item.startAt ?? this.eventDatesById[item.id] ?? '2026-03-01T09:00:00',
+        distanceKm: item.distanceKm ?? this.eventDistanceById[item.id] ?? 10
+      }));
+    const pendingEventRows = memberEventItems
+      .filter(item => this.isPendingEventMenuItem(item))
       .map(item => toActivityEventRowFromMenuItem(item, {
         dateIso: item.startAt ?? this.eventDatesById[item.id] ?? '2026-03-01T09:00:00',
         distanceKm: item.distanceKm ?? this.eventDistanceById[item.id] ?? 10
@@ -1292,7 +1413,10 @@ export class ActivitiesPopupComponent implements OnDestroy {
     const trashRows = Object.values(this.trashedActivityRowsByKey);
 
     if (scope === 'all') {
-      return [...activeEventRows, ...invitationRows, ...myEventRows];
+      return [...activeEventRows, ...pendingEventRows, ...invitationRows, ...myEventRows];
+    }
+    if (scope === 'pending') {
+      return pendingEventRows;
     }
     if (scope === 'invitations') {
       return invitationRows;
@@ -1636,7 +1760,22 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   private seedEventOwnerMemberCountsFromEventsTable(): void {
-    const eventRecords = this.eventsService.peekItemsByUser(this.activeUser.id);
+    const eventRecords = [
+      ...this.eventItems.map(item => ({
+        id: item.id,
+        isInvitation: false,
+        acceptedMembers: item.acceptedMembers ?? 0,
+        capacityTotal: item.capacityTotal ?? 0,
+        pendingMembers: item.pendingMembers ?? 0
+      })),
+      ...this.hostingItems.map(item => ({
+        id: item.id,
+        isInvitation: false,
+        acceptedMembers: item.acceptedMembers ?? 0,
+        capacityTotal: item.capacityTotal ?? 0,
+        pendingMembers: item.pendingMembers ?? 0
+      }))
+    ];
     for (const record of eventRecords) {
       if (record.isInvitation) {
         continue;
@@ -2236,9 +2375,35 @@ export class ActivitiesPopupComponent implements OnDestroy {
       chatItems: this.chatItems
     });
     const requestedPrimaryFilter = query.filters?.primaryFilter ?? this.activitiesPrimaryFilter;
+    const requestedEventScope = query.filters?.eventScopeFilter ?? this.activitiesEventScope;
+    if (
+      requestedPrimaryFilter === 'events'
+      && this.shouldUseLocalEventRowsFallback(requestedEventScope)
+      && page.items.length === 0
+    ) {
+      const localRows = this.sortVisibleEventRows(this.buildEventScopeRows(
+        requestedEventScope,
+        this.activitiesSecondaryFilter,
+        this.hostingPublicationFilter
+      ));
+      if (localRows.length > 0) {
+        const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || this.activitiesPageSize));
+        const pageIndex = Math.max(0, Math.trunc(Number(query.page) || 0));
+        const start = pageIndex * pageSize;
+        return {
+          items: localRows.slice(start, start + pageSize),
+          total: localRows.length,
+          nextCursor: null
+        };
+      }
+    }
     if (requestedPrimaryFilter === 'rates') {
       this.refreshRateItems();
     }
     return page;
+  }
+
+  private shouldUseLocalEventRowsFallback(scope: AppTypes.ActivitiesEventScope): boolean {
+    return scope === 'all' || scope === 'active-events' || scope === 'pending';
   }
 }

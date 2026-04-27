@@ -147,6 +147,7 @@ export class EventsService extends BaseRouteModeService {
       assetSelections?: EventCheckoutAssetSelection[];
       acceptedPolicyIds?: string[];
       paymentSessionId?: string | null;
+      bookingConfirmed?: boolean;
     } = {}
   ): Promise<DemoEventRecord | null> {
     return this.eventsService.requestJoin(userId, sourceId, options);

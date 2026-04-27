@@ -646,7 +646,8 @@ export class EventCheckoutPopupComponent {
       lineItems: this.lineItems(),
       totalAmount: this.totalAmount(),
       currency: this.currency(),
-      paymentSessionId
+      paymentSessionId,
+      bookingConfirmed: true
     };
   }
 

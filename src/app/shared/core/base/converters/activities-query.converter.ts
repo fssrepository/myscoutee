@@ -38,6 +38,7 @@ function normalizeActivitiesPrimaryFilter(filter: AppTypes.ActivitiesPrimaryFilt
 
 function normalizeActivitiesEventScopeFilter(value: unknown): AppTypes.ActivitiesEventScope {
   return value === 'all'
+    || value === 'pending'
     || value === 'invitations'
     || value === 'my-events'
     || value === 'drafts'

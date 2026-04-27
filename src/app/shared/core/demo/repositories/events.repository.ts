@@ -137,9 +137,15 @@ export class DemoEventsRepository {
     this.init();
     this.materializeSlotRecords();
     const userItems = this.queryUserRecords(userId);
-    const activeEventItems = userItems
+    const memberEventItems = userItems
       .filter(record => record.type === 'events')
-      .filter(record => !record.isTrashed);
+      .filter(record => record.isAdmin !== true)
+      .filter(record => !record.isTrashed)
+      .filter(record => this.isAcceptedEventRecord(record, userId) || this.isPendingEventRecord(record, userId));
+    const pendingEventItems = memberEventItems
+      .filter(record => this.isPendingEventRecord(record, userId));
+    const activeEventItems = memberEventItems
+      .filter(record => this.isAcceptedEventRecord(record, userId));
     const invitationItems = userItems
       .filter(record => record.isInvitation)
       .filter(record => !record.isTrashed);
@@ -150,7 +156,10 @@ export class DemoEventsRepository {
     const draftItems = myEventItems.filter(record => record.published === false);
 
     if (filter === 'all') {
-      return [...activeEventItems, ...invitationItems];
+      return [...activeEventItems, ...pendingEventItems, ...invitationItems, ...myEventItems];
+    }
+    if (filter === 'pending') {
+      return pendingEventItems;
     }
     if (filter === 'invitations') {
       return invitationItems;
@@ -165,6 +174,25 @@ export class DemoEventsRepository {
       return userItems.filter(record => record.isTrashed);
     }
     return activeEventItems;
+  }
+
+  private isPendingEventRecord(record: DemoEventRecord, userId: string): boolean {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId || record.type !== 'events' || record.isAdmin === true) {
+      return false;
+    }
+    if ((record.acceptedMemberUserIds ?? []).includes(normalizedUserId)) {
+      return false;
+    }
+    return (record.pendingMemberUserIds ?? []).includes(normalizedUserId);
+  }
+
+  private isAcceptedEventRecord(record: DemoEventRecord, userId: string): boolean {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId || record.type !== 'events' || record.isAdmin === true) {
+      return false;
+    }
+    return (record.acceptedMemberUserIds ?? []).includes(normalizedUserId);
   }
 
   queryActivitiesEventPage(query: DemoEventActivitiesQuery): DemoEventActivitiesQueryResult {
@@ -364,7 +392,7 @@ export class DemoEventsRepository {
     });
   }
 
-  requestJoin(userId: string, sourceId: string, slotSourceId: string | null = null): DemoEventRecord | null {
+  requestJoin(userId: string, sourceId: string, slotSourceId: string | null = null, accepted = false): DemoEventRecord | null {
     this.init();
     this.materializeSlotRecords();
     const normalizedUserId = userId.trim();
@@ -399,7 +427,15 @@ export class DemoEventsRepository {
         }
         const acceptedMemberUserIds = this.normalizeUserIds(current.acceptedMemberUserIds);
         const pendingMemberUserIds = this.normalizeUserIds(current.pendingMemberUserIds);
-        if (!acceptedMemberUserIds.includes(normalizedUserId) && !pendingMemberUserIds.includes(normalizedUserId)) {
+        if (accepted) {
+          if (!acceptedMemberUserIds.includes(normalizedUserId)) {
+            acceptedMemberUserIds.push(normalizedUserId);
+          }
+          const pendingIndex = pendingMemberUserIds.indexOf(normalizedUserId);
+          if (pendingIndex >= 0) {
+            pendingMemberUserIds.splice(pendingIndex, 1);
+          }
+        } else if (!acceptedMemberUserIds.includes(normalizedUserId) && !pendingMemberUserIds.includes(normalizedUserId)) {
           pendingMemberUserIds.push(normalizedUserId);
         }
         nextById[recordKey] = {
