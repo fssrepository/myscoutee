@@ -136,7 +136,14 @@ export class DemoBootstrapService {
 
     await this.ensureReady();
 
+    const filterPreferencesChanged = this.usersRepository.seedDefaultUserFilterPreferencesForUser(normalizedUserId);
+
     if (this.readyUserIds.has(normalizedUserId)) {
+      if (filterPreferencesChanged) {
+        onProgress?.(demoBootstrapProgressStep('sessionIndexedDb'));
+        await this.memoryDb.flushToIndexedDb();
+        await this.waitForUiYield();
+      }
       onProgress?.(demoBootstrapProgressStep('sessionReady'));
       return;
     }
@@ -150,7 +157,7 @@ export class DemoBootstrapService {
       normalizedUserId,
       this.eventsRepository.queryItemsByUser(normalizedUserId)
     );
-    if (contextualChatsChanged) {
+    if (contextualChatsChanged || filterPreferencesChanged) {
       onProgress?.(demoBootstrapProgressStep('sessionIndexedDb'));
       await this.memoryDb.flushToIndexedDb();
       await this.waitForUiYield();
@@ -166,6 +173,7 @@ export class DemoBootstrapService {
       return;
     }
 
+    await this.memoryDb.whenReady();
     await this.runBootstrapStep('selector');
     await this.runBootstrapStep('chats', () => this.chatsRepository.init());
     await this.runBootstrapStep('events', () => this.eventsRepository.init());

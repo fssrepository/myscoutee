@@ -63,6 +63,7 @@ export class DemoUsersService extends DemoRouteDelayService implements UserServi
   }
 
   async queryUserById(userId?: string): Promise<UserByIdQueryResponse> {
+    await this.memoryDb.whenReady();
     await this.waitForRouteDelay(DemoUsersService.USER_BY_ID_ROUTE);
     const normalizedUserId = typeof userId === 'string' ? userId.trim() : '';
     if (!normalizedUserId) {

@@ -13,7 +13,7 @@ import {
   USER_RATES_TABLE_NAME
 } from '../models/users.model';
 import { AppMemoryDb } from '../../base/db';
-import { DemoUserSeedBuilder, DemoUsersRepositoryBuilder } from '../builders';
+import { DemoUserFilterPreferencesBuilder, DemoUserSeedBuilder, DemoUsersRepositoryBuilder } from '../builders';
 import { CHATS_TABLE_NAME } from '../models/chats.model';
 import { EVENTS_TABLE_NAME } from '../models/events.model';
 import type { DemoMemorySchema } from '../models/memory.model';
@@ -235,6 +235,40 @@ export class DemoUsersRepository {
         }
       };
     });
+  }
+
+  seedDefaultUserFilterPreferencesForUser(userId: string): boolean {
+    this.init();
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return false;
+    }
+    const state = this.memoryDb.read();
+    const user = state[USERS_TABLE_NAME].byId[normalizedUserId];
+    const filterTable = state[USER_FILTER_PREFERENCES_TABLE_NAME];
+    if (!user || Object.prototype.hasOwnProperty.call(filterTable.byId, normalizedUserId)) {
+      return false;
+    }
+
+    this.memoryDb.write(current => {
+      const currentFilterTable = current[USER_FILTER_PREFERENCES_TABLE_NAME];
+      if (Object.prototype.hasOwnProperty.call(currentFilterTable.byId, normalizedUserId)) {
+        return current;
+      }
+      return {
+        ...current,
+        [USER_FILTER_PREFERENCES_TABLE_NAME]: {
+          byId: {
+            ...currentFilterTable.byId,
+            [normalizedUserId]: DemoUserFilterPreferencesBuilder.buildDefaultFilterPreferences(user)
+          },
+          ids: currentFilterTable.ids.includes(normalizedUserId)
+            ? [...currentFilterTable.ids]
+            : [...currentFilterTable.ids, normalizedUserId]
+        }
+      };
+    });
+    return true;
   }
 
   queryGameStackUsers(raterUserId?: string): UserDto[] {
