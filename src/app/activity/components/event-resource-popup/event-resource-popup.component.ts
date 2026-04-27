@@ -43,6 +43,7 @@ interface CapacityEditorState {
 interface RouteEditorState {
   title: string;
   routes: string[];
+  routeRowIds: string[];
   busy: boolean;
   error: string | null;
 }
@@ -293,6 +294,10 @@ export class EventResourcePopupComponent implements DoCheck {
   protected showAssetExploreBorrowBasket = false;
   protected assetExploreOrder: AssetExploreOrder = 'availability';
   protected readonly assetExploreOrderOptions = ASSET_EXPLORE_ORDER_OPTIONS;
+
+  protected routeStopTrackId(stopIndex: number): string {
+    return this.host.routeEditor()?.routeRowIds[stopIndex] ?? `route-stop-${stopIndex}`;
+  }
 
   protected resourceSmartListQuery: Partial<ListQuery<ResourceSmartListFilters>> = {
     filters: {

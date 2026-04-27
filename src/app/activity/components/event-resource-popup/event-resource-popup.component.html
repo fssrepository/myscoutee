@@ -353,7 +353,7 @@
                       (cdkDropListDropped)="host.dropRouteStop($event)"
                       [cdkDropListDisabled]="!host.routeEditorSupportsMultiRoute() || host.isRouteSavePending()"
                       >
-                      @for (stop of editor.routes; track stop; let stopIndex = $index) {
+                      @for (stop of editor.routes; track routeStopTrackId($index); let stopIndex = $index) {
                         <div
                           class="asset-route-row"
                           cdkDrag
