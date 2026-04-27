@@ -1418,7 +1418,7 @@ export class HomeComponent implements OnDestroy {
         await this.waitForHomeGameStackTick();
         continue;
       }
-      if (snapshot.nextCursor === null) {
+      if (snapshot.nextCursor === null && !this.hasUnloadedRemainingServiceRows(snapshot)) {
         return;
       }
       await this.gameService.loadNextUserGameCardsStackPage(
@@ -1431,6 +1431,42 @@ export class HomeComponent implements OnDestroy {
       );
       this.mergeGameStackUsersIntoHomeUsers();
     }
+  }
+
+  private loadedServiceRowsCount(serviceStack: {
+    cardUserIds: string[];
+    socialCards: { id: string }[];
+  }): number {
+    return this.isSeparatedFriendsMode || this.isFriendsInCommonMode
+      ? serviceStack.socialCards.length
+      : serviceStack.cardUserIds.length;
+  }
+
+  private loadedRemainingServiceRowsCount(serviceStack: {
+    filterCount: number | null;
+    cardUserIds: string[];
+    socialCards: UserGameSocialCard[];
+  }): number {
+    if (this.isSeparatedFriendsMode || this.isFriendsInCommonMode) {
+      const ratedPairKeys = new Set(this.gameService.queryExcludedGameCardPairKeys(this.activeUserId));
+      return serviceStack.socialCards.filter(card => {
+        const secondUserId = card.secondaryUserId?.trim() || card.bridgeUserId?.trim() || '';
+        return !ratedPairKeys.has(this.sortedHomePairKey(card.userId, secondUserId));
+      }).length;
+    }
+    const excludedUserIds = new Set(this.gameService.queryExcludedGameCardUserIds(this.activeUserId, this.selectedHomeMode));
+    return serviceStack.cardUserIds.filter(id => !excludedUserIds.has(id.trim())).length;
+  }
+
+  private hasUnloadedRemainingServiceRows(serviceStack: {
+    filterCount: number | null;
+    cardUserIds: string[];
+    socialCards: UserGameSocialCard[];
+  }): boolean {
+    if (serviceStack.filterCount === null) {
+      return false;
+    }
+    return serviceStack.filterCount > this.loadedRemainingServiceRowsCount(serviceStack);
   }
 
   private availableServiceRowsCount(): number {
@@ -2134,12 +2170,15 @@ export class HomeComponent implements OnDestroy {
     }
     const serviceStack = this.gameService.peekUserGameCardsStackSnapshot(this.activeUserId);
     if (serviceStack.cardUserIds.length > 0 || serviceStack.socialCards.length > 0 || serviceStack.nextCursor !== null) {
-      const fallbackCount = this.isSeparatedFriendsMode || this.isFriendsInCommonMode
-        ? serviceStack.socialCards.length
-        : serviceStack.cardUserIds.length;
-      const resolvedCount = serviceStack.filterCount ?? fallbackCount;
-      const minimumKnownCount = fallbackCount + (serviceStack.nextCursor !== null ? 1 : 0);
-      return Math.max(resolvedCount, minimumKnownCount);
+      const loadedCount = this.loadedServiceRowsCount(serviceStack);
+      if (serviceStack.filterCount !== null) {
+        const unloadedRemainingCount = Math.max(
+          0,
+          serviceStack.filterCount - this.loadedRemainingServiceRowsCount(serviceStack)
+        );
+        return loadedCount + unloadedRemainingCount;
+      }
+      return loadedCount + (serviceStack.nextCursor !== null ? 1 : 0);
     }
     return this.candidatePool.length;
   }

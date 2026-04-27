@@ -353,15 +353,20 @@ export class GameService extends BaseRouteModeService {
     if (state.requestInFlight) {
       return this.getUserGameCardsStackSnapshot(normalizedUserId);
     }
-    if (!reset && state.nextCursor === null && (state.cardUserIds.length > 0 || state.socialCards.length > 0)) {
-      return this.getUserGameCardsStackSnapshot(normalizedUserId);
-    }
-    state.requestInFlight = true;
     const fallbackIds = [...state.cardUserIds];
     const fallbackSocialCards = state.socialCards.map(card => ({ ...card }));
     const fallbackCursor = state.nextCursor;
     const excludedUserIds = new Set(this.queryExcludedGameCardUserIds(normalizedUserId, mode ?? 'single'));
     const excludedPairKeys = new Set(this.queryExcludedGameCardPairKeys(normalizedUserId));
+    if (
+      !reset
+      && state.nextCursor === null
+      && (state.cardUserIds.length > 0 || state.socialCards.length > 0)
+      && !this.hasUnloadedRemainingGameCards(state, mode, excludedUserIds, excludedPairKeys)
+    ) {
+      return this.getUserGameCardsStackSnapshot(normalizedUserId);
+    }
+    state.requestInFlight = true;
     const existingIds = reset
       ? []
       : fallbackIds.filter(id => this.shouldKeepExistingGameCardUserId(id, normalizedUserId));
@@ -438,6 +443,21 @@ export class GameService extends BaseRouteModeService {
       state.requestInFlight = false;
     }
     return this.getUserGameCardsStackSnapshot(normalizedUserId);
+  }
+
+  private hasUnloadedRemainingGameCards(
+    state: UserGameCardsStackState,
+    mode: UserGameCardsQueryRequest['mode'],
+    excludedUserIds: ReadonlySet<string>,
+    excludedPairKeys: ReadonlySet<string>
+  ): boolean {
+    if (state.filterCount === null) {
+      return false;
+    }
+    const loadedRemainingCount = mode === 'single'
+      ? state.cardUserIds.filter(id => !excludedUserIds.has(id.trim())).length
+      : state.socialCards.filter(card => this.shouldKeepGameSocialCard(card, mode, excludedUserIds, excludedPairKeys)).length;
+    return state.filterCount > loadedRemainingCount;
   }
 
   private adjustDemoStackCursorForRatedLoadedCards(
