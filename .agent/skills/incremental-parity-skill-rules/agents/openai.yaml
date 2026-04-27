@@ -1,4 +1,0 @@
-interface:
-  display_name: "Incremental Parity Rules"
-  short_description: "Incremental parity checks with minimal safe patches"
-  default_prompt: "Apply minimal, parity-first patches against a defined baseline, preserve existing behavior, and avoid invasive rewrites unless explicitly requested."
