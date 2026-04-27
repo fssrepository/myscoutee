@@ -185,6 +185,8 @@ export class HomeComponent implements OnDestroy {
   private gameStackPaginating = false;
   private gameStackExhausted = false;
   private homeSmartListQueryKey = '';
+  private syntheticPairRoundsCacheKey = '';
+  private syntheticPairRoundsCache: PairModeRoundState[] = [];
   private inFlightServiceCardStackReloadKey: string | null = null;
   private queuedServiceCardStackReloadKey: string | null = null;
   private initialServiceCardStackLoadPromise: Promise<void> | null = null;
@@ -441,6 +443,9 @@ export class HomeComponent implements OnDestroy {
   protected get hasFilteredCandidates(): boolean {
     if (this.isSeparatedFriendsMode || this.isFriendsInCommonMode) {
       return this.activeSocialPairRows().length > 0;
+    }
+    if (this.isSyntheticPairMode) {
+      return this.pairModeCycleSize() > 0;
     }
     return this.candidatePool.length > 0;
   }
@@ -1173,6 +1178,7 @@ export class HomeComponent implements OnDestroy {
 
   private resetServiceCardState(): void {
     this.clearPendingRatingAdvanceTimer();
+    this.invalidateSyntheticPairRoundsCache();
     this.gameService.resetUserGameCardsStack(this.activeUserId);
   }
 
@@ -1362,7 +1368,6 @@ export class HomeComponent implements OnDestroy {
     }
     await this.waitForInitialHomeGameStack(query);
     await this.ensureHomeSmartListRowsAvailable(query);
-    const rows = this.homeSmartListRows();
     const pageSize = Number.isFinite(query.pageSize)
       ? Math.max(1, Math.trunc(Number(query.pageSize)))
       : this.gameStackPageSizeForCurrentMode();
@@ -1370,7 +1375,7 @@ export class HomeComponent implements OnDestroy {
     const endIndex = startIndex + pageSize;
     const total = this.totalRoundsForCurrentMode();
     return {
-      items: rows.slice(startIndex, endIndex),
+      items: this.homeSmartListRowsPage(startIndex, endIndex),
       total,
       nextCursor: endIndex < total ? String(endIndex) : null
     };
@@ -1480,22 +1485,49 @@ export class HomeComponent implements OnDestroy {
     return this.candidatePool.length;
   }
 
-  private homeSmartListRows(): HomeSmartListRow[] {
+  private homeSmartListRowsPage(startIndex: number, endIndex: number): HomeSmartListRow[] {
     if (this.isSeparatedFriendsMode || this.isFriendsInCommonMode) {
-      return this.activeSocialPairRows();
+      return this.activeSocialPairRows().slice(startIndex, endIndex);
+    }
+    if (this.isSyntheticPairMode) {
+      return this.pairModeRounds()
+        .slice(startIndex, endIndex)
+        .map((round, index) => ({
+          id: round.socialCard?.id ?? `pair:${round.woman?.id ?? 'none'}:${round.man?.id ?? 'none'}:${startIndex + index}`,
+          mode: 'pair',
+          round
+        }));
     }
     if (this.isPairMode) {
-      return this.pairModeRounds().map((round, index) => ({
-        id: round.socialCard?.id ?? `pair:${round.woman?.id ?? 'none'}:${round.man?.id ?? 'none'}:${index}`,
-        mode: 'pair',
-        round
-      }));
+      return this.pairModeRounds()
+        .slice(startIndex, endIndex)
+        .map((round, index) => ({
+          id: round.socialCard?.id ?? `pair:${round.woman?.id ?? 'none'}:${round.man?.id ?? 'none'}:${startIndex + index}`,
+          mode: 'pair',
+          round
+        }));
     }
-    return this.candidatePool.map(candidate => ({
-      id: `single:${candidate.id}`,
-      mode: 'single',
-      candidate
-    }));
+    return this.candidatePool
+      .slice(startIndex, endIndex)
+      .map(candidate => ({
+        id: `single:${candidate.id}`,
+        mode: 'single',
+        candidate
+      }));
+  }
+
+  private buildSyntheticPairRoundsCacheKey(
+    candidates: readonly DemoUser[],
+    excludedPairKeys: readonly string[]
+  ): string {
+    const candidateIdsKey = candidates.map(candidate => candidate.id).join('|');
+    const excludedPairKeysKey = [...excludedPairKeys].sort((left, right) => left.localeCompare(right)).join('|');
+    return `${this.gameStackPaginationStateKey()}|candidates:${candidateIdsKey}|excluded:${excludedPairKeysKey}`;
+  }
+
+  private invalidateSyntheticPairRoundsCache(): void {
+    this.syntheticPairRoundsCacheKey = '';
+    this.syntheticPairRoundsCache = [];
   }
 
   private async onHomeSmartListRatingSelect(row: HomeSmartListRow | null, score: number): Promise<void> {
@@ -1818,6 +1850,10 @@ export class HomeComponent implements OnDestroy {
     }
     const excludedPairKeys = new Set(this.gameService.queryExcludedGameCardPairKeys(this.activeUserId));
     const candidates = this.candidatePool;
+    const cacheKey = this.buildSyntheticPairRoundsCacheKey(candidates, [...excludedPairKeys]);
+    if (this.syntheticPairRoundsCacheKey === cacheKey) {
+      return this.syntheticPairRoundsCache;
+    }
     const rounds: PairModeRoundState[] = [];
     for (let leftIndex = 0; leftIndex < candidates.length; leftIndex += 1) {
       for (let rightIndex = leftIndex + 1; rightIndex < candidates.length; rightIndex += 1) {
@@ -1837,6 +1873,8 @@ export class HomeComponent implements OnDestroy {
         });
       }
     }
+    this.syntheticPairRoundsCacheKey = cacheKey;
+    this.syntheticPairRoundsCache = rounds;
     return rounds;
   }
 
@@ -2444,6 +2482,7 @@ export class HomeComponent implements OnDestroy {
       byId.set(user.id, user);
     }
     this.users = Array.from(byId.values());
+    this.invalidateSyntheticPairRoundsCache();
   }
 
   private toHomeUser(user: UserDto): DemoUser {
