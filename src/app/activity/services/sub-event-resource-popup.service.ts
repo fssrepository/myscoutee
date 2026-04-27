@@ -20,6 +20,7 @@ import {
   UsersService,
   type UserDto
 } from '../../shared/core';
+import { resolveCurrentDemoDelayMs } from '../../shared/core/base/services/route-delay.service';
 import { ActivitiesPopupStateService } from './activities-popup-state.service';
 import { EventEditorPopupStateService } from './event-editor-popup-state.service';
 import type {
@@ -2791,7 +2792,8 @@ export class SubEventResourcePopupService {
   }
 
   private ensureAssetExploreBorrowMinimumBusyDuration(startedAtMs: number): Promise<void> {
-    const remainingMs = SubEventResourcePopupService.ASSET_EXPLORE_BORROW_MIN_BUSY_DURATION_MS - (Date.now() - startedAtMs);
+    const minimumBusyDurationMs = resolveCurrentDemoDelayMs(SubEventResourcePopupService.ASSET_EXPLORE_BORROW_MIN_BUSY_DURATION_MS);
+    const remainingMs = minimumBusyDurationMs - (Date.now() - startedAtMs);
     if (remainingMs <= 0) {
       return Promise.resolve();
     }
@@ -2801,7 +2803,8 @@ export class SubEventResourcePopupService {
   }
 
   private ensureAssignedAssetJoinMinimumBusyDuration(startedAtMs: number): Promise<void> {
-    const remainingMs = SubEventResourcePopupService.ASSET_EXPLORE_BORROW_MIN_BUSY_DURATION_MS - (Date.now() - startedAtMs);
+    const minimumBusyDurationMs = resolveCurrentDemoDelayMs(SubEventResourcePopupService.ASSET_EXPLORE_BORROW_MIN_BUSY_DURATION_MS);
+    const remainingMs = minimumBusyDurationMs - (Date.now() - startedAtMs);
     if (remainingMs <= 0) {
       return Promise.resolve();
     }
