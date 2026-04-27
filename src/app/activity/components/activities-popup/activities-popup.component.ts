@@ -1222,24 +1222,15 @@ export class ActivitiesPopupComponent implements OnDestroy {
     );
     const visibleInvitations = this.invitationItems
       .filter(item => !this.isActivityIdentityTrashed('invitations', item.id));
-    this.invitationsBadge = DemoUserMenuCountersBuilder.resolveSectionBadge(
-      visibleInvitations.map(item => item.unread),
-      visibleInvitations.length
-    );
+    this.invitationsBadge = visibleInvitations.length;
     const visibleActiveEvents = this.eventItems
       .filter(item => item.isAdmin !== true || this.isHostingPublished(item.id))
       .filter(item => !this.isActivityIdentityTrashed('events', item.id));
-    this.eventsBadge = DemoUserMenuCountersBuilder.resolveSectionBadge(
-      visibleActiveEvents.map(item => item.activity),
-      visibleActiveEvents.length
-    );
+    this.eventsBadge = visibleActiveEvents.length;
     const adminEvents = this.hostingItems
       .filter(item => item.isAdmin)
       .filter(item => !this.isActivityIdentityTrashed('hosting', item.id));
-    this.hostingBadge = DemoUserMenuCountersBuilder.resolveSectionBadge(
-      adminEvents.map(item => item.activity),
-      adminEvents.length
-    );
+    this.hostingBadge = adminEvents.length;
     this.gameBadge = this.activeUser.activities.game;
   }
 
