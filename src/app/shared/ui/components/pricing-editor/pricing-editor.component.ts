@@ -50,6 +50,8 @@ interface RuleScopePickerState {
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class PricingEditorComponent implements OnChanges {
+  private static readonly MOBILE_SCOPE_SHEET_BREAKPOINT_PX = 760;
+
   @Input() pricing: AppTypes.PricingConfig | null | undefined = null;
   @Output() readonly pricingChange = new EventEmitter<AppTypes.PricingConfig>();
 
@@ -84,6 +86,7 @@ export class PricingEditorComponent implements OnChanges {
 
   private idSequence = 0;
   private ruleScopePickerState: RuleScopePickerState | null = null;
+  private mobileScopeSheetViewport = this.resolveMobileScopeSheetViewport();
 
   protected currentPreview!: PricingPreviewState;
   
@@ -581,8 +584,20 @@ export class PricingEditorComponent implements OnChanges {
     this.cdr.markForCheck();
   }
 
+  protected shouldUseMobileRuleScopeSheet(): boolean {
+    return this.mobileScopeSheetViewport;
+  }
+
+  protected showMobileRuleScopeSheet(): boolean {
+    return this.mobileScopeSheetViewport && !!this.ruleScopePickerState;
+  }
+
   protected isRuleScopePickerOpen(kind: 'demand' | 'time', rule: PricingScopedRule): boolean {
     return this.ruleScopePickerState?.kind === kind && this.ruleScopePickerState.ruleId === rule.id;
+  }
+
+  protected currentRuleScopeSheetTitle(): string {
+    return this.ruleScopePickerState?.kind === 'time' ? 'Time Rule Slots' : 'Demand Rule Slots';
   }
 
   protected ruleScopeButtonLabel(rule: PricingScopedRule): string {
@@ -652,9 +667,10 @@ export class PricingEditorComponent implements OnChanges {
     return this.ruleScopePickerState.appliesTo === 'all_slots' || this.ruleScopePickerState.slotIds.length > 0;
   }
 
-  protected applyRuleScopeDraft(rule: PricingScopedRule, event?: Event): void {
+  protected applyCurrentRuleScopeDraft(event?: Event): void {
     event?.stopPropagation();
-    if (!this.ruleScopePickerState || !this.canApplyRuleScopeDraft()) {
+    const rule = this.currentRuleScopeRule();
+    if (!rule || !this.ruleScopePickerState || !this.canApplyRuleScopeDraft()) {
       return;
     }
     rule.appliesTo = this.ruleScopePickerState.appliesTo;
@@ -678,6 +694,16 @@ export class PricingEditorComponent implements OnChanges {
       return `Starts ${start}`;
     }
     return `${start} - ${end}`;
+  }
+
+  @HostListener('window:resize')
+  protected onWindowResize(): void {
+    const nextViewport = this.resolveMobileScopeSheetViewport();
+    if (nextViewport === this.mobileScopeSheetViewport) {
+      return;
+    }
+    this.mobileScopeSheetViewport = nextViewport;
+    this.cdr.markForCheck();
   }
 
   @HostListener('document:click')
@@ -933,14 +959,31 @@ export class PricingEditorComponent implements OnChanges {
     return `${prefix}-${Date.now()}-${this.idSequence}`;
   }
 
-  private closeRuleScopePicker(): void {
+  protected closeRuleScopePicker(event?: Event): void {
+    event?.stopPropagation();
     this.ruleScopePickerState = null;
     this.cdr.markForCheck();
+  }
+
+  private currentRuleScopeRule(): PricingScopedRule | null {
+    const state = this.ruleScopePickerState;
+    if (!state) {
+      return null;
+    }
+    const rules = state.kind === 'demand'
+      ? this.workingPricing.demandRules
+      : this.workingPricing.timeRules;
+    return rules.find(rule => rule.id === state.ruleId) ?? null;
   }
 
   private defaultDraftSlotIds(): string[] {
     const firstSlotId = `${this.slotCatalog[0]?.id ?? ''}`.trim();
     return firstSlotId ? [firstSlotId] : [];
+  }
+
+  private resolveMobileScopeSheetViewport(): boolean {
+    return typeof window !== 'undefined'
+      && window.innerWidth <= PricingEditorComponent.MOBILE_SCOPE_SHEET_BREAKPOINT_PX;
   }
 
   private slotLabelById(slotId: string | null | undefined): string {
