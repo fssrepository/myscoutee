@@ -54,15 +54,24 @@ export class AppMemoryDb {
   private readonly _tables = signal<DemoMemorySchema>(this.loadInitialState());
   private pendingPersistState: DemoMemorySchema | null = null;
   private persistTimerId: ReturnType<typeof setTimeout> | null = null;
+  private readonly hydrationReady: Promise<void>;
 
   readonly tables = this._tables.asReadonly();
 
   constructor() {
-    void this.hydrateFromIndexedDb();
+    this.hydrationReady = this.hydrateFromIndexedDb();
   }
 
   read(): DemoMemorySchema {
     return this._tables();
+  }
+
+  async whenReady(): Promise<void> {
+    try {
+      await this.hydrationReady;
+    } catch {
+      // Keep callers unblocked if IndexedDB hydration fails.
+    }
   }
 
   write(updater: (current: DemoMemorySchema) => DemoMemorySchema): void {

@@ -115,16 +115,18 @@
         }
       </ng-template>
 
-      <app-smart-list
-        #homeSmartList
-        class="home-smart-list"
-        [config]="homeSmartListConfig"
-        [loadPage]="homeSmartListLoadPage"
-        [fullscreenItemTemplate]="homeFullscreenItemTemplate"
-        presentation="fullscreen"
-        [query]="homeSmartListQuery"
-        (stateChange)="onHomeSmartListStateChange($event)"
-      ></app-smart-list>
+      @if (homeSmartListQueryReady) {
+        <app-smart-list
+          #homeSmartList
+          class="home-smart-list"
+          [config]="homeSmartListConfig"
+          [loadPage]="homeSmartListLoadPage"
+          [fullscreenItemTemplate]="homeFullscreenItemTemplate"
+          presentation="fullscreen"
+          [query]="homeSmartListQuery"
+          (stateChange)="onHomeSmartListStateChange($event)"
+        ></app-smart-list>
+      }
     </div>
   </section>
 </div>

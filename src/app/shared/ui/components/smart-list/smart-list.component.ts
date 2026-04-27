@@ -1090,7 +1090,8 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     const shouldSuppressVisibleLoadingProgress = !isInitial
       && this.currentViewMode === 'list'
       && this.resolvedPresentation() === 'fullscreen'
-      && this.items.length > 0;
+      && this.items.length > 0
+      && !this.resolveConfigValue(this.config.showBackgroundLoadingProgress, false);
     this.suppressVisibleLoadingProgress = shouldSuppressVisibleLoadingProgress;
     this.loading = true;
     if (!shouldSuppressVisibleLoadingProgress) {

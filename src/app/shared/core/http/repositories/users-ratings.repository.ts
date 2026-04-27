@@ -494,6 +494,7 @@ export class HttpUsersRatingsRepository {
         }
       };
     });
+    void this.memoryDb.flushToIndexedDb();
   }
 
   private mergePendingOutboxRateItems(userId: string, items: readonly RateMenuItem[]): RateMenuItem[] {
