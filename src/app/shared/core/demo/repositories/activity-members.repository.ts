@@ -12,6 +12,7 @@ import { AppUtils } from '../../../app-utils';
 import type { DemoUser } from '../../base/interfaces/user.interface';
 import type { EventMenuItem, HostingMenuItem } from '../../base/interfaces/activity-feed.interface';
 import { HttpActivityMembersRepository } from '../../http/repositories/activity-members.repository';
+import type { UserGameMode, UserGameSocialCard } from '../../base/interfaces/game.interface';
 import type { DemoEventRecord, DemoEventRecordCollection } from '../models/events.model';
 import { EVENTS_TABLE_NAME } from '../models/events.model';
 import {
@@ -44,6 +45,8 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
   private preferredEventRecordsSnapshot: DemoEventRecord[] | null = null;
   private eventCapacitySnapshotByEventId: Map<string, { acceptedMembers: number | null; capacityTotal: number | null }> | null = null;
   private readonly seededSubEventsSnapshotByEventId = new Map<string, AppTypes.SubEventFormItem[]>();
+  private gameSocialCardsCacheToken = '';
+  private readonly gameSocialCardsByUserId = new Map<string, Record<'friends-in-common' | 'separated-friends', UserGameSocialCard[]>>();
 
   constructor() {
     super();
@@ -136,6 +139,7 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
       this.syncEventSummariesFromMembers();
       
       const finalTable = this.normalizeCollection(this.memoryDb.read()[ACTIVITY_MEMBERS_TABLE_NAME]);
+      this.refreshGameSocialCardsCache(finalTable);
       this.lastInitToken = `${eventsTable.ids.length}:${finalTable.ids.length}:${Object.keys(finalTable.idsByOwnerKey).length}:${normalizedOwnerUserIds.join('|')}`;
       this.isInitialized = true;
     } finally {
@@ -156,6 +160,25 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
 
   queryAcceptedEventMemberGroups(): DemoAcceptedEventMemberGroup[] {
     const table = this.normalizeCollection(this.memoryDb.read()[ACTIVITY_MEMBERS_TABLE_NAME]);
+    return this.acceptedEventMemberGroupsFromTable(table);
+  }
+
+  queryGameSocialCards(activeUserId: string, mode: Extract<UserGameMode, 'friends-in-common' | 'separated-friends'>): UserGameSocialCard[] {
+    const normalizedUserId = activeUserId.trim();
+    if (!normalizedUserId) {
+      return [];
+    }
+    if (!this.isInitialized) {
+      this.init();
+    }
+    this.ensureGameSocialCardsCache();
+    return (this.gameSocialCardsByUserId.get(normalizedUserId)?.[mode] ?? [])
+      .map(card => ({ ...card }));
+  }
+
+  private acceptedEventMemberGroupsFromTable(
+    table: DemoActivityMembersRecordCollection
+  ): DemoAcceptedEventMemberGroup[] {
     const groupsByEventId = new Map<string, { eventName: string; userIds: Set<string> }>();
     for (const id of table.ids) {
       const record = table.byId[id];
@@ -182,6 +205,120 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
       }))
       .filter(group => group.userIds.length > 1)
       .sort((left, right) => left.eventId.localeCompare(right.eventId));
+  }
+
+  private ensureGameSocialCardsCache(): void {
+    const table = this.normalizeCollection(this.memoryDb.read()[ACTIVITY_MEMBERS_TABLE_NAME]);
+    const token = this.gameSocialCardsCacheTokenForTable(table);
+    if (token === this.gameSocialCardsCacheToken) {
+      return;
+    }
+    this.refreshGameSocialCardsCache(table);
+  }
+
+  private refreshGameSocialCardsCache(table: DemoActivityMembersRecordCollection): void {
+    const groups = this.acceptedEventMemberGroupsFromTable(table);
+    const graph = this.buildAcceptedMemberGraph(groups);
+    this.gameSocialCardsByUserId.clear();
+    for (const activeUserId of [...graph.neighborsByUserId.keys()].sort()) {
+      const activeNeighbors = [...(graph.neighborsByUserId.get(activeUserId) ?? new Set<string>())]
+        .filter(userId => userId !== activeUserId)
+        .sort();
+      const cards: Record<'friends-in-common' | 'separated-friends', UserGameSocialCard[]> = {
+        'friends-in-common': [],
+        'separated-friends': []
+      };
+      for (let leftIndex = 0; leftIndex < activeNeighbors.length; leftIndex += 1) {
+        const leftUserId = activeNeighbors[leftIndex];
+        for (let rightIndex = leftIndex + 1; rightIndex < activeNeighbors.length; rightIndex += 1) {
+          const rightUserId = activeNeighbors[rightIndex];
+          const key = this.sortedPairKey(leftUserId, rightUserId);
+          const isConnected = graph.neighborsByUserId.get(leftUserId)?.has(rightUserId) ?? false;
+          const mode: Extract<UserGameMode, 'friends-in-common' | 'separated-friends'> = isConnected
+            ? 'friends-in-common'
+            : 'separated-friends';
+          cards[mode].push({
+            id: `${mode}:${activeUserId}:${key}`,
+            userId: leftUserId,
+            secondaryUserId: rightUserId,
+            bridgeUserId: rightUserId,
+            socialContext: mode,
+            bridgeCount: isConnected ? 1 : 2,
+            eventName: isConnected
+              ? (graph.edgeEventNameByKey.get(key) ?? 'Connected Friends')
+              : (
+                graph.edgeEventNameByKey.get(this.sortedPairKey(activeUserId, leftUserId))
+                ?? graph.edgeEventNameByKey.get(this.sortedPairKey(activeUserId, rightUserId))
+                ?? 'Unconnected Friends'
+              )
+          });
+        }
+      }
+      cards['friends-in-common'].sort((left, right) => left.id.localeCompare(right.id));
+      cards['separated-friends'].sort((left, right) => left.id.localeCompare(right.id));
+      this.gameSocialCardsByUserId.set(activeUserId, cards);
+    }
+    this.gameSocialCardsCacheToken = this.gameSocialCardsCacheTokenForTable(table);
+  }
+
+  private buildAcceptedMemberGraph(groups: readonly DemoAcceptedEventMemberGroup[]): {
+    neighborsByUserId: Map<string, Set<string>>;
+    edgeEventNameByKey: Map<string, string>;
+  } {
+    const neighborsByUserId = new Map<string, Set<string>>();
+    const edgeEventNameByKey = new Map<string, string>();
+    for (const group of groups) {
+      for (let leftIndex = 0; leftIndex < group.userIds.length; leftIndex += 1) {
+        for (let rightIndex = leftIndex + 1; rightIndex < group.userIds.length; rightIndex += 1) {
+          this.registerAcceptedMemberEdge(
+            neighborsByUserId,
+            edgeEventNameByKey,
+            group.userIds[leftIndex] ?? '',
+            group.userIds[rightIndex] ?? '',
+            group.eventName
+          );
+        }
+      }
+    }
+    return { neighborsByUserId, edgeEventNameByKey };
+  }
+
+  private registerAcceptedMemberEdge(
+    neighborsByUserId: Map<string, Set<string>>,
+    edgeEventNameByKey: Map<string, string>,
+    leftUserId: string,
+    rightUserId: string,
+    eventName?: string
+  ): void {
+    const normalizedLeftUserId = leftUserId.trim();
+    const normalizedRightUserId = rightUserId.trim();
+    if (!normalizedLeftUserId || !normalizedRightUserId || normalizedLeftUserId === normalizedRightUserId) {
+      return;
+    }
+    if (!neighborsByUserId.has(normalizedLeftUserId)) {
+      neighborsByUserId.set(normalizedLeftUserId, new Set<string>());
+    }
+    if (!neighborsByUserId.has(normalizedRightUserId)) {
+      neighborsByUserId.set(normalizedRightUserId, new Set<string>());
+    }
+    neighborsByUserId.get(normalizedLeftUserId)?.add(normalizedRightUserId);
+    neighborsByUserId.get(normalizedRightUserId)?.add(normalizedLeftUserId);
+    const key = this.sortedPairKey(normalizedLeftUserId, normalizedRightUserId);
+    if (eventName?.trim()) {
+      edgeEventNameByKey.set(key, eventName.trim());
+    }
+  }
+
+  private sortedPairKey(leftUserId: string, rightUserId: string): string {
+    return [leftUserId.trim(), rightUserId.trim()].sort((left, right) => left.localeCompare(right)).join(':');
+  }
+
+  private gameSocialCardsCacheTokenForTable(table: DemoActivityMembersRecordCollection): string {
+    const latestUpdatedMs = table.ids.reduce((latest, id) => {
+      const record = table.byId[id];
+      return Math.max(latest, Number.isFinite(Number(record?.updatedMs)) ? Number(record?.updatedMs) : 0);
+    }, 0);
+    return `${table.ids.length}:${Object.keys(table.idsByOwnerKey).length}:${latestUpdatedMs}`;
   }
 
   override peekSummaryByOwner(owner: ActivityMemberOwnerRef): ActivityMembersSummary | null {
