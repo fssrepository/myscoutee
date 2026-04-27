@@ -1402,7 +1402,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       pendingMemberUserIds: memberSummary.pendingMemberUserIds
     });
 
-    this.activitiesContext.emitActivitiesEventSync(payload);
+    await this.activitiesContext.emitActivitiesEventSync(payload);
     return true;
   }
 

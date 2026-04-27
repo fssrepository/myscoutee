@@ -99,8 +99,13 @@
 }
 
 .game-popup-apply-btn.is-saving {
-  border-color: rgba(235, 147, 33, 0.48);
-  box-shadow: 0 6px 16px rgba(235, 147, 33, 0.2);
+  border-color: rgba(181, 117, 23, 0.76);
+  background: linear-gradient(180deg, #ffe7bf 0%, #ffd085 100%);
+  color: #8e4f0d;
+  cursor: wait;
+  box-shadow: none;
+  transform: none;
+  filter: none;
 }
 
 .game-popup-apply-btn .mat-icon {
@@ -114,39 +119,37 @@
 
 .game-popup-apply-save-ring {
   position: absolute;
-  inset: -6px;
+  inset: -4px;
   pointer-events: none;
+  z-index: 10;
 }
 
 .game-popup-apply-save-ring-svg {
-  width: 44px;
-  height: 44px;
+  width: 100%;
+  height: 100%;
   display: block;
-  filter: drop-shadow(0 8px 18px rgba(235, 147, 33, 0.24));
-  transform: rotate(-90deg);
-}
-
-.game-popup-apply-save-ring-track,
-.game-popup-apply-save-ring-progress {
-  fill: none;
-  stroke-width: 3;
+  overflow: visible;
 }
 
 .game-popup-apply-save-ring-track {
-  stroke: rgba(46, 114, 184, 0.12);
+  stroke: rgba(32, 58, 94, 0.08);
+  stroke-width: 8px;
 }
 
 .game-popup-apply-save-ring-progress {
-  stroke: url("#game-filter-apply-save-gradient");
+  stroke: url(#game-filter-apply-save-gradient);
+  stroke-width: 8px;
   stroke-linecap: round;
-  stroke-dasharray: 119.3805208364;
-  stroke-dashoffset: 119.3805208364;
-  animation: game-filter-apply-save-ring-progress 1500ms linear forwards;
+  stroke-dashoffset: 100;
+}
+
+.game-popup-apply-btn.is-saving .game-popup-apply-save-ring-progress {
+  animation: game-filter-apply-save-ring-progress 3000ms linear forwards;
 }
 
 @keyframes game-filter-apply-save-ring-progress {
   from {
-    stroke-dashoffset: 119.3805208364;
+    stroke-dashoffset: 100;
   }
 
   to {

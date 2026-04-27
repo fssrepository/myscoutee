@@ -198,29 +198,35 @@ export class ActivitiesPopupStateService {
     this.patchUiState({ selectedRateId: rateId });
   }
 
-  emitActivitiesEventSync(payload: Omit<ActivitiesEventSyncPayload, 'syncKey'>): void {
+  emitActivitiesEventSync(payload: Omit<ActivitiesEventSyncPayload, 'syncKey'>): Promise<void> {
     this._activitiesEventSync.set({ ...payload });
-    this.runDeferredEventPersistence(payload);
+    return this.runDeferredEventPersistence(payload);
   }
 
-  private runDeferredEventPersistence(payload: Omit<ActivitiesEventSyncPayload, 'syncKey'>): void {
-    const persist = () => {
-      void this.eventsService.syncEventSnapshot(payload).catch(() => {
+  private runDeferredEventPersistence(payload: Omit<ActivitiesEventSyncPayload, 'syncKey'>): Promise<void> {
+    const persist = async () => {
+      await Promise.all([
+        this.eventsService.syncEventSnapshot(payload).catch(() => {
         // Demo persistence is best-effort; UI state stays optimistic.
-      });
-      void this.activityMembersService.syncEventMembersFromEventSnapshot(payload).catch(() => {
+        }),
+        this.activityMembersService.syncEventMembersFromEventSnapshot(payload).catch(() => {
         // Demo persistence is best-effort; UI state stays optimistic.
-      });
+        })
+      ]);
     };
 
-    if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
-      window.requestAnimationFrame(() => {
-        setTimeout(persist, 0);
-      });
-      return;
-    }
-
-    setTimeout(persist, 0);
+    return new Promise(resolve => {
+      const run = () => {
+        void persist().finally(resolve);
+      };
+      if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+        window.requestAnimationFrame(() => {
+          setTimeout(run, 0);
+        });
+        return;
+      }
+      setTimeout(run, 0);
+    });
   }
 
   clearActivitiesEventSync(): void {
