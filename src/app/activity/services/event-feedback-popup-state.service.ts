@@ -617,6 +617,10 @@ export class EventFeedbackPopupStateService {
         eventId,
         entries: (item.entries ?? []).map(entry => ({
           viewerUserId: entry.viewerUserId?.trim() ?? '',
+          viewerName: entry.viewerName?.trim() ?? '',
+          viewerInitials: entry.viewerInitials?.trim() ?? '',
+          viewerGender: (entry.viewerGender === 'woman' ? 'woman' : 'man') as 'woman' | 'man',
+          viewerImageUrl: entry.viewerImageUrl?.trim() ?? '',
           eventId: entry.eventId?.trim() ?? eventId,
           submittedAtIso: entry.submittedAtIso?.trim() ?? '',
           updatedAtIso: entry.updatedAtIso?.trim() ?? '',
@@ -902,10 +906,12 @@ export class EventFeedbackPopupStateService {
           latestActivityAtMs: this.organizerEventFeedbackEntriesLatestAtMs(received)
         };
       })
-      .filter(item => item.eventId.length > 0)
+      .filter(item => item.eventId.length > 0 && item.responseCount > 0)
       .sort((left, right) =>
-        (right.startAtMs ?? 0) - (left.startAtMs ?? 0)
-        || (right.latestActivityAtMs ?? 0) - (left.latestActivityAtMs ?? 0)
+        (right.latestActivityAtMs ?? right.startAtMs ?? 0) - (left.latestActivityAtMs ?? left.startAtMs ?? 0)
+        || right.responseCount - left.responseCount
+        || right.noteCount - left.noteCount
+        || (right.startAtMs ?? 0) - (left.startAtMs ?? 0)
         || left.title.localeCompare(right.title)
       );
   });
@@ -935,6 +941,32 @@ export class EventFeedbackPopupStateService {
       this.selectedOrganizerEventFeedbackEntries().map(entry => this.organizerEventFeedbackEntryEventAnswer(entry)?.secondaryValue ?? '')
     )
   );
+  public readonly organizerEventFeedbackSummaryStats = computed<OrganizerEventFeedbackStatItem[]>(() => {
+    const entries = this.selectedOrganizerEventFeedbackEntries();
+    if (entries.length === 0) {
+      return [];
+    }
+    return [
+      {
+        key: 'responses',
+        label: 'Feedback entries',
+        icon: 'forum',
+        count: entries.length
+      },
+      {
+        key: 'event-ratings',
+        label: 'Event ratings',
+        icon: 'poll',
+        count: entries.filter(entry => Boolean(this.organizerEventFeedbackEntryEventAnswer(entry))).length
+      },
+      {
+        key: 'notes',
+        label: 'Written notes',
+        icon: 'edit_note',
+        count: entries.filter(entry => entry.organizerNote.trim().length > 0).length
+      }
+    ];
+  });
   public readonly organizerEventFeedbackTraitStats = computed(() => {
     const countsByTraitId = new Map<string, number>();
     for (const entry of this.selectedOrganizerEventFeedbackEntries()) {
@@ -967,7 +999,15 @@ export class EventFeedbackPopupStateService {
       const timestampDate = timestampIso ? new Date(timestampIso) : null;
       const hasValidTimestamp = Boolean(timestampDate) && !Number.isNaN(timestampDate!.getTime());
       const answer = this.organizerEventFeedbackEntryEventAnswer(entry);
-      const user = this.organizerEventFeedbackUser(entry.viewerUserId);
+      const fallbackUser = this.organizerEventFeedbackUser(entry.viewerUserId);
+      const viewerName = entry.viewerName?.trim() || fallbackUser?.name?.trim() || entry.viewerUserId.trim() || 'Member';
+      const viewerInitials = entry.viewerInitials?.trim()
+        || fallbackUser?.initials?.trim()
+        || AppUtils.initialsFromText(viewerName);
+      const viewerGender = entry.viewerGender === 'woman'
+        ? 'woman'
+        : (fallbackUser?.gender === 'woman' ? 'woman' : 'man');
+      const viewerImageUrl = entry.viewerImageUrl?.trim() || AppUtils.firstImageUrl(fallbackUser?.images);
       const dayKey = hasValidTimestamp ? AppUtils.toIsoDate(timestampDate as Date) : 'undated';
       const dayLabel = hasValidTimestamp
         ? (timestampDate as Date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
@@ -979,10 +1019,10 @@ export class EventFeedbackPopupStateService {
       group.items.push({
         id: `${entry.viewerUserId}:${timestampIso || dayKey}`,
         viewerUserId: entry.viewerUserId,
-        viewerName: user?.name?.trim() || 'Event member',
-        viewerInitials: user?.initials?.trim() || AppUtils.initialsFromText(user?.name?.trim() || 'Event member'),
-        viewerGender: user?.gender?.trim() || 'woman',
-        viewerImageUrl: AppUtils.firstImageUrl(user?.images),
+        viewerName,
+        viewerInitials,
+        viewerGender,
+        viewerImageUrl,
         timestampIso,
         dayKey,
         dayLabel,

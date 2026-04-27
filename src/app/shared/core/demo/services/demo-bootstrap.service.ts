@@ -282,11 +282,7 @@ export class DemoBootstrapService {
         continue;
       }
 
-      const viewerUserIds = [...new Set([
-        ...record.acceptedMemberUserIds,
-        ...record.pendingMemberUserIds
-      ].map(userId => `${userId}`.trim()).filter(Boolean))]
-        .filter(userId => userId !== hostUser.id && usersById.has(userId));
+      const viewerUserIds = this.organizerFeedbackShowcaseViewerUserIds(record, users, hostUser.id, usersById);
       if (viewerUserIds.length === 0) {
         continue;
       }
@@ -298,13 +294,13 @@ export class DemoBootstrapService {
         continue;
       }
 
-      const feedbackItem = this.toFeedbackViewerEventMenuItem(record);
+      const feedbackItem = this.toFeedbackViewerEventMenuItem(record, viewerUserIds);
       for (const viewerUserId of viewerUserIds) {
         if (visibleEntryCount >= DemoBootstrapService.ORGANIZER_FEEDBACK_SHOWCASE_TARGET_COUNT) {
           break;
         }
         const existingRecord = nextById[`${viewerUserId}::${record.id}`];
-        if (existingRecord) {
+        if (this.hasOrganizerVisibleFeedback(existingRecord)) {
           continue;
         }
         const viewer = usersById.get(viewerUserId);
@@ -354,12 +350,64 @@ export class DemoBootstrapService {
     return Boolean(record.organizerNote?.trim()) || Object.keys(record.answersByCardId ?? {}).length > 0;
   }
 
-  private toFeedbackViewerEventMenuItem(record: DemoEventRecord): EventMenuItem {
+  private organizerFeedbackShowcaseViewerUserIds(
+    record: DemoEventRecord,
+    users: readonly UserDto[],
+    hostUserId: string,
+    usersById: ReadonlyMap<string, UserDto>
+  ): string[] {
+    const memberUserIds = [...new Set([
+      ...record.acceptedMemberUserIds,
+      ...record.pendingMemberUserIds
+    ].map(userId => `${userId}`.trim()).filter(Boolean))]
+      .filter(userId => userId !== hostUserId && usersById.has(userId));
+    if (memberUserIds.length > 0) {
+      return memberUserIds;
+    }
+
+    const candidates = users
+      .map(user => user.id.trim())
+      .filter(userId => userId && userId !== hostUserId);
+    if (candidates.length === 0) {
+      return [];
+    }
+
+    const seed = this.hashText(`organizer-feedback-viewers:${record.id}`);
+    const selected: string[] = [];
+    for (let index = 0; index < candidates.length && selected.length < DemoBootstrapService.ORGANIZER_FEEDBACK_SHOWCASE_TARGET_COUNT; index += 1) {
+      const candidate = candidates[(seed + (index * 5)) % candidates.length];
+      if (!candidate || selected.includes(candidate)) {
+        continue;
+      }
+      selected.push(candidate);
+    }
+    return selected;
+  }
+
+  private toFeedbackViewerEventMenuItem(record: DemoEventRecord, viewerUserIds: readonly string[] = []): EventMenuItem {
+    const acceptedMemberUserIds = [...new Set([
+      ...record.acceptedMemberUserIds,
+      ...viewerUserIds
+    ].map(userId => `${userId}`.trim()).filter(Boolean))];
+    const pendingMemberUserIds = record.pendingMemberUserIds.filter(userId => !acceptedMemberUserIds.includes(userId));
     return {
       ...this.toEventMenuItem(record),
       activity: 0,
-      isAdmin: false
+      isAdmin: false,
+      acceptedMembers: Math.max(record.acceptedMembers, acceptedMemberUserIds.length),
+      capacityTotal: Math.max(record.capacityTotal, acceptedMemberUserIds.length),
+      acceptedMemberUserIds,
+      pendingMemberUserIds
     };
+  }
+
+  private hashText(value: string): number {
+    let hash = 0;
+    for (let index = 0; index < value.length; index += 1) {
+      hash = ((hash << 5) - hash) + value.charCodeAt(index);
+      hash |= 0;
+    }
+    return Math.abs(hash);
   }
 
   private toEventMenuItem(record: DemoEventRecord): EventMenuItem {

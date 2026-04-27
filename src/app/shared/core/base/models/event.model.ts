@@ -108,6 +108,10 @@ export interface EventFeedbackStateDto {
 
 export interface EventFeedbackReceivedEntryDto {
   viewerUserId: string;
+  viewerName: string;
+  viewerInitials: string;
+  viewerGender: 'woman' | 'man';
+  viewerImageUrl: string;
   eventId: string;
   submittedAtIso: string;
   updatedAtIso: string;

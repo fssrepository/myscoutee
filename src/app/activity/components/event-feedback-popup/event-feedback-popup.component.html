@@ -361,6 +361,23 @@
                   </div>
 
                   <div class="event-feedback-organizer-stats-grid">
+                    @if (feedback.organizerEventFeedbackSummaryStats().length > 0) {
+                      <section class="event-feedback-organizer-stat-section">
+                        <div class="event-feedback-organizer-section-head">
+                          <h4>Summary</h4>
+                        </div>
+                        <div class="event-feedback-organizer-stat-list">
+                          @for (stat of feedback.organizerEventFeedbackSummaryStats(); track stat.key) {
+                            <article class="event-feedback-organizer-stat-chip">
+                              <mat-icon>{{ stat.icon }}</mat-icon>
+                              <span>{{ stat.label }}</span>
+                              <strong>{{ stat.count }}</strong>
+                            </article>
+                          }
+                        </div>
+                      </section>
+                    }
+
                     @if (feedback.organizerEventFeedbackOverallStats().length > 0) {
                       <section class="event-feedback-organizer-stat-section">
                         <div class="event-feedback-organizer-section-head">

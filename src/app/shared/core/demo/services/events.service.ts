@@ -1,5 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 
+import { AppUtils } from '../../../app-utils';
 import { AppMemoryDb } from '../../../core/base';
 import type {
   ActivitiesEventSyncPayload,
@@ -14,6 +15,7 @@ import type {
 } from '../../../core/base/models';
 import { DemoRouteDelayService } from './demo-route-delay.service';
 import { DemoEventsRepository } from '../repositories/events.repository';
+import { DemoUsersRepository } from '../repositories/users.repository';
 import { EVENT_FEEDBACK_TABLE_NAME } from '../models/event-feedback.model';
 import type {
   DemoEventActivitiesQuery,
@@ -33,6 +35,7 @@ export class DemoEventsService extends DemoRouteDelayService {
   private static readonly EVENTS_EXPLORE_ROUTE = '/activities/events/explore';
   private static readonly EVENTS_CHECKOUT_ROUTE = '/activities/events/checkout';
   private readonly eventsRepository = inject(DemoEventsRepository);
+  private readonly usersRepository = inject(DemoUsersRepository);
   private readonly memoryDb = inject(AppMemoryDb);
 
   async queryItemsByUser(userId: string): Promise<DemoEventRecord[]> {
@@ -140,9 +143,14 @@ export class DemoEventsService extends DemoRouteDelayService {
       if (!organizerNote && answers.length === 0) {
         continue;
       }
+      const viewer = this.usersRepository.queryUserById(record.userId);
       const entries = byEventId.get(record.eventId) ?? [];
       entries.push({
         viewerUserId: record.userId,
+        viewerName: viewer?.name?.trim() || record.userId,
+        viewerInitials: viewer?.initials?.trim() || AppUtils.initialsFromText(viewer?.name?.trim() || record.userId),
+        viewerGender: (viewer?.gender === 'woman' ? 'woman' : 'man') as 'woman' | 'man',
+        viewerImageUrl: AppUtils.firstImageUrl(viewer?.images),
         eventId: record.eventId,
         submittedAtIso: record.submittedAtIso ?? '',
         updatedAtIso: record.submittedAtIso ?? '',

@@ -298,15 +298,19 @@ export class HttpEventsService {
     }
     try {
       const response = await this.http
-        .get<EventFeedbackReceivedEventDto[] | null>(`${this.apiBaseUrl}/activities/events/feedback/received`, {
-          params: new HttpParams().set('userId', normalizedUserId)
-        })
-        .toPromise();
+          .get<EventFeedbackReceivedEventDto[] | null>(`${this.apiBaseUrl}/activities/events/feedback/received`, {
+            params: new HttpParams().set('userId', normalizedUserId)
+          })
+          .toPromise();
       return Array.isArray(response)
         ? response.map(item => ({
             eventId: item.eventId?.trim() ?? '',
             entries: (item.entries ?? []).map(entry => ({
               viewerUserId: entry.viewerUserId?.trim() ?? '',
+              viewerName: entry.viewerName?.trim() ?? '',
+              viewerInitials: entry.viewerInitials?.trim() ?? '',
+              viewerGender: (entry.viewerGender === 'woman' ? 'woman' : 'man') as 'woman' | 'man',
+              viewerImageUrl: entry.viewerImageUrl?.trim() ?? '',
               eventId: entry.eventId?.trim() ?? item.eventId?.trim() ?? '',
               submittedAtIso: entry.submittedAtIso?.trim() ?? '',
               updatedAtIso: entry.updatedAtIso?.trim() ?? '',
