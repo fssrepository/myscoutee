@@ -102,6 +102,7 @@ export interface EventFeedbackStateDto {
   eventId: string;
   removed: boolean;
   submittedAtIso: string;
+  removedAtIso?: string;
   organizerNote: string;
   answersByCardId?: Record<string, SubmittedEventFeedbackAnswer>;
 }
@@ -159,6 +160,7 @@ export interface EventFeedbackPersistedState {
   eventId: string;
   removed: boolean;
   submittedAtIso: string | null;
+  removedAtIso?: string | null;
   organizerNote: string;
   answersByCardId: Record<string, SubmittedEventFeedbackAnswer>;
 }
@@ -177,6 +179,8 @@ export interface EventFeedbackEventCard {
   isRemoved: boolean;
   isFeedbacked: boolean;
   feedbackedAtMs: number | null;
+  removedAtMs?: number | null;
+  isOwnEvent?: boolean;
 }
 
 export interface SubEventCard {

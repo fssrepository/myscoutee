@@ -112,6 +112,7 @@ export class EventFeedbackPopupStateService {
   private readonly submittedEventFeedbackAnswersByUser = signal<Record<string, Record<string, AppTypes.SubmittedEventFeedbackAnswer>>>({});
   private readonly submittedEventFeedbackEventsByUser = signal<Record<string, Record<string, string>>>({});
   private readonly removedEventFeedbackEventsByUser = signal<Record<string, Record<string, true>>>({});
+  private readonly removedEventFeedbackEventDatesByUser = signal<Record<string, Record<string, string>>>({});
   private readonly organizerEventFeedbackNotesByUser = signal<Record<string, Record<string, string>>>({});
   private readonly receivedEventFeedbackByEventId = signal<Record<string, AppTypes.EventFeedbackReceivedEventDto>>({});
 
@@ -648,6 +649,7 @@ export class EventFeedbackPopupStateService {
           ...existing,
           removed: Boolean(state.removed),
           submittedAtIso: state.submittedAtIso?.trim() || null,
+          removedAtIso: state.removedAtIso?.trim() || existing.removedAtIso || null,
           organizerNote: state.organizerNote?.trim() ?? existing.organizerNote,
           answersByCardId: state.answersByCardId
             ? this.clonePersistedAnswersByCardId(state.answersByCardId)
@@ -673,11 +675,15 @@ export class EventFeedbackPopupStateService {
     const submittedAnswers: Record<string, AppTypes.SubmittedEventFeedbackAnswer> = {};
     const submittedEvents: Record<string, string> = {};
     const removedEvents: Record<string, true> = {};
+    const removedEventDates: Record<string, string> = {};
     const organizerNotes: Record<string, string> = {};
 
     for (const record of this.readPersistedEventFeedbackStates(userId)) {
       if (record.removed) {
         removedEvents[record.eventId] = true;
+        if (record.removedAtIso?.trim()) {
+          removedEventDates[record.eventId] = record.removedAtIso.trim();
+        }
       }
       if (record.submittedAtIso) {
         submittedEvents[record.eventId] = record.submittedAtIso;
@@ -695,6 +701,7 @@ export class EventFeedbackPopupStateService {
     this.submittedEventFeedbackAnswersByUser.update(state => ({ ...state, [userId]: submittedAnswers }));
     this.submittedEventFeedbackEventsByUser.update(state => ({ ...state, [userId]: submittedEvents }));
     this.removedEventFeedbackEventsByUser.update(state => ({ ...state, [userId]: removedEvents }));
+    this.removedEventFeedbackEventDatesByUser.update(state => ({ ...state, [userId]: removedEventDates }));
     this.organizerEventFeedbackNotesByUser.update(state => ({ ...state, [userId]: organizerNotes }));
   }
 
@@ -709,6 +716,7 @@ export class EventFeedbackPopupStateService {
       .filter((record): record is AppTypes.EventFeedbackPersistedState => Boolean(record) && record.userId === normalizedUserId)
       .map(record => ({
         ...record,
+        removedAtIso: record.removedAtIso?.trim() || null,
         answersByCardId: this.clonePersistedAnswersByCardId(record.answersByCardId)
       }));
   }
@@ -753,7 +761,8 @@ export class EventFeedbackPopupStateService {
     }
     this.updatePersistedEventFeedbackState(userId, normalizedEventId, current => ({
       ...current,
-      removed
+      removed,
+      removedAtIso: removed ? AppUtils.toIsoDateTime(new Date()) : null
     }));
     if (removed) {
       void this.eventsService.removeEventFeedbackEvent(userId, normalizedEventId);
@@ -769,6 +778,7 @@ export class EventFeedbackPopupStateService {
       eventId,
       removed: false,
       submittedAtIso: null,
+      removedAtIso: null,
       organizerNote: '',
       answersByCardId: {}
     };
@@ -908,13 +918,30 @@ export class EventFeedbackPopupStateService {
       })
       .filter(item => item.eventId.length > 0 && item.responseCount > 0)
       .sort((left, right) =>
-        (right.latestActivityAtMs ?? right.startAtMs ?? 0) - (left.latestActivityAtMs ?? left.startAtMs ?? 0)
+        this.compareEventFeedbackDates(left.startAtMs, right.startAtMs, 'asc')
+        || left.title.localeCompare(right.title)
         || right.responseCount - left.responseCount
         || right.noteCount - left.noteCount
-        || (right.startAtMs ?? 0) - (left.startAtMs ?? 0)
-        || left.title.localeCompare(right.title)
+        || this.compareEventFeedbackDates(left.latestActivityAtMs, right.latestActivityAtMs, 'desc')
       );
   });
+  public readonly organizerEventFeedbackCards = computed<AppTypes.EventFeedbackEventCard[]>(() =>
+    this.organizerEventFeedbackItems().map(item => ({
+      eventId: item.eventId,
+      title: item.title,
+      subtitle: item.subtitle,
+      timeframe: item.timeframe,
+      imageUrl: item.imageUrl,
+      startAtMs: item.startAtMs ?? 0,
+      pendingCards: item.responseCount,
+      totalCards: item.responseCount,
+      isRemoved: false,
+      isFeedbacked: false,
+      feedbackedAtMs: item.latestActivityAtMs,
+      removedAtMs: null,
+      isOwnEvent: true
+    }))
+  );
   public readonly organizerEventFeedbackBadgeCount = computed(() =>
     this.organizerEventFeedbackItems().reduce((total, item) => total + item.responseCount, 0)
   );
@@ -1091,7 +1118,7 @@ export class EventFeedbackPopupStateService {
 
   public readonly eventFeedbackVisibleItems = computed(() => {
     switch (this.eventFeedbackListFilter()) {
-      case 'own-events': return [];
+      case 'own-events': return this.organizerEventFeedbackCards();
       case 'feedbacked': return this.eventFeedbackFeedbackedItems();
       case 'removed': return this.eventFeedbackRemovedItems();
       case 'pending':
@@ -1255,6 +1282,15 @@ export class EventFeedbackPopupStateService {
     return Number.isNaN(ms) ? null : ms;
   }
 
+  private eventFeedbackEventRemovedAtMs(eventId: string): number | null {
+    const user = this.sourceRef()?.activeUser;
+    if (!user) return null;
+    const iso = this.removedEventFeedbackEventDatesByUser()[user.id]?.[eventId];
+    if (!iso) return null;
+    const ms = new Date(iso).getTime();
+    return Number.isNaN(ms) ? null : ms;
+  }
+
   private isEventFeedbackEventSubmitted(eventId: string): boolean {
     const user = this.sourceRef()?.activeUser;
     if (!user) return false;
@@ -1270,9 +1306,15 @@ export class EventFeedbackPopupStateService {
   private markEventFeedbackEventRemoved(eventId: string): void {
     const user = this.sourceRef()?.activeUser;
     if (!user) return;
+    const removedAtIso = new Date().toISOString();
     this.removedEventFeedbackEventsByUser.update(state => {
       const current = { ...(state[user.id] ?? {}) };
       current[eventId] = true;
+      return { ...state, [user.id]: current };
+    });
+    this.removedEventFeedbackEventDatesByUser.update(state => {
+      const current = { ...(state[user.id] ?? {}) };
+      current[eventId] = removedAtIso;
       return { ...state, [user.id]: current };
     });
   }
@@ -1285,6 +1327,30 @@ export class EventFeedbackPopupStateService {
       delete current[eventId];
       return { ...state, [user.id]: current };
     });
+    this.removedEventFeedbackEventDatesByUser.update(state => {
+      const current = { ...(state[user.id] ?? {}) };
+      delete current[eventId];
+      return { ...state, [user.id]: current };
+    });
+  }
+
+  private compareEventFeedbackDates(
+    leftMs: number | null | undefined,
+    rightMs: number | null | undefined,
+    direction: 'asc' | 'desc'
+  ): number {
+    const left = Number.isFinite(leftMs) && (leftMs ?? 0) > 0 ? Number(leftMs) : null;
+    const right = Number.isFinite(rightMs) && (rightMs ?? 0) > 0 ? Number(rightMs) : null;
+    if (left === null && right === null) {
+      return 0;
+    }
+    if (left === null) {
+      return 1;
+    }
+    if (right === null) {
+      return -1;
+    }
+    return direction === 'asc' ? left - right : right - left;
   }
 
   private selectedImpressionTagsForCard(card: AppTypes.EventFeedbackCard): string[] {
@@ -1360,7 +1426,8 @@ export class EventFeedbackPopupStateService {
         totalCards: counts.total,
         isRemoved,
         isFeedbacked: !isRemoved && counts.pending === 0,
-        feedbackedAtMs
+        feedbackedAtMs,
+        removedAtMs: this.eventFeedbackEventRemovedAtMs(item.id)
       });
     }
     return items;
@@ -1369,22 +1436,27 @@ export class EventFeedbackPopupStateService {
   public readonly eventFeedbackPendingItems = computed(() => {
     return this.eventFeedbackAllItems()
       .filter(item => !item.isRemoved && item.pendingCards > 0)
-      .sort((a, b) => a.startAtMs - b.startAtMs);
+      .sort((left, right) =>
+        this.compareEventFeedbackDates(left.startAtMs, right.startAtMs, 'asc')
+        || left.title.localeCompare(right.title)
+      );
   });
 
   public readonly eventFeedbackFeedbackedItems = computed(() => {
     return this.eventFeedbackAllItems()
       .filter(item => item.isFeedbacked)
-      .sort((a, b) => {
-        const first = a.feedbackedAtMs ?? a.startAtMs;
-        const second = b.feedbackedAtMs ?? b.startAtMs;
-        return second - first;
-      });
+      .sort((left, right) =>
+        this.compareEventFeedbackDates(left.feedbackedAtMs ?? left.startAtMs, right.feedbackedAtMs ?? right.startAtMs, 'desc')
+        || right.title.localeCompare(left.title)
+      );
   });
 
   public readonly eventFeedbackRemovedItems = computed(() => {
     return this.eventFeedbackAllItems()
       .filter(item => item.isRemoved)
-      .sort((a, b) => b.startAtMs - a.startAtMs);
+      .sort((left, right) =>
+        this.compareEventFeedbackDates(left.removedAtMs ?? left.feedbackedAtMs ?? left.startAtMs, right.removedAtMs ?? right.feedbackedAtMs ?? right.startAtMs, 'desc')
+        || right.title.localeCompare(left.title)
+      );
   });
 }

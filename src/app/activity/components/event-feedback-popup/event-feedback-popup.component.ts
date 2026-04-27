@@ -197,11 +197,14 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
     },
     emptyLabel: 'Event Feedback',
     emptyDescription: (query) => this.eventFeedbackEmptyDescription(query.filters?.filter ?? 'pending'),
-    showStickyHeader: false,
-    showGroupMarker: () => false,
+    showStickyHeader: true,
+    showGroupMarker: ({ groupIndex, scrollable }) => groupIndex > 0 || scrollable,
+    groupBy: (item, query) => this.eventFeedbackGroupLabel(item, query.filters?.filter ?? this.feedback.eventFeedbackListFilter()),
     listLayout: 'card-grid',
     desktopColumns: 3,
-    snapMode: 'none',
+    snapMode: 'mandatory',
+    scrollPaddingTop: '2.6rem',
+    stickyHeaderClass: 'event-feedback-sticky-header',
     containerClass: {
       'experience-card-list': true,
       'assets-card-list': true,
@@ -359,6 +362,17 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
   }
 
   protected eventFeedbackInfoCard(item: AppTypes.EventFeedbackEventCard): InfoCardData {
+    if (item.isOwnEvent) {
+      return this.organizerEventFeedbackCardData({
+        eventId: item.eventId,
+        title: item.title,
+        subtitle: item.subtitle,
+        timeframe: item.timeframe,
+        imageUrl: item.imageUrl,
+        responseCount: item.pendingCards,
+        noteCount: 0
+      }, true);
+    }
     return {
       rowId: item.eventId,
       title: item.title,
@@ -382,7 +396,11 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
     };
   }
 
-  protected startEventFeedbackFromCard(item: AppTypes.EventFeedbackEventCard): void {
+  protected onEventFeedbackCardPrimaryAction(item: AppTypes.EventFeedbackEventCard): void {
+    if (item.isOwnEvent) {
+      this.openOrganizerEventFeedback(item.eventId);
+      return;
+    }
     if (!this.feedback.isEventFeedbackStartAvailable(item)) {
       return;
     }
@@ -390,6 +408,9 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
   }
 
   protected onEventFeedbackCardMenuAction(item: AppTypes.EventFeedbackEventCard, event: InfoCardMenuActionEvent): void {
+    if (item.isOwnEvent) {
+      return;
+    }
     if (event.actionId === 'start') {
       this.feedback.startEventFeedback(item);
       return;
@@ -704,6 +725,9 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
   }
 
   private eventFeedbackLeadingIcon(item: AppTypes.EventFeedbackEventCard): string {
+    if (item.isOwnEvent) {
+      return 'stadium';
+    }
     if (item.isFeedbacked) {
       return 'task_alt';
     }
@@ -714,6 +738,9 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
   }
 
   private eventFeedbackStartBadgeLabel(item: AppTypes.EventFeedbackEventCard): string {
+    if (item.isOwnEvent) {
+      return 'View Feedbacks';
+    }
     if (item.isRemoved) {
       return 'Removed';
     }
@@ -724,6 +751,9 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
   }
 
   private eventFeedbackMenuActions(item: AppTypes.EventFeedbackEventCard): readonly InfoCardMenuAction[] {
+    if (item.isOwnEvent) {
+      return [];
+    }
     const actions: InfoCardMenuAction[] = [];
 
     if (this.feedback.isEventFeedbackStartAvailable(item)) {
@@ -758,6 +788,37 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
     });
 
     return actions;
+  }
+
+  private eventFeedbackGroupLabel(
+    item: AppTypes.EventFeedbackEventCard,
+    filter: AppTypes.EventFeedbackListFilter
+  ): string {
+    const timestampMs = this.eventFeedbackGroupTimestampMs(item, filter);
+    if (!timestampMs || Number.isNaN(timestampMs)) {
+      return 'No date';
+    }
+    return new Date(timestampMs).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  }
+
+  private eventFeedbackGroupTimestampMs(
+    item: AppTypes.EventFeedbackEventCard,
+    filter: AppTypes.EventFeedbackListFilter
+  ): number | null {
+    switch (filter) {
+      case 'feedbacked':
+        return this.validEventFeedbackTimestamp(item.feedbackedAtMs ?? item.startAtMs);
+      case 'removed':
+        return this.validEventFeedbackTimestamp(item.removedAtMs ?? item.feedbackedAtMs ?? item.startAtMs);
+      case 'own-events':
+      case 'pending':
+      default:
+        return this.validEventFeedbackTimestamp(item.startAtMs);
+    }
+  }
+
+  private validEventFeedbackTimestamp(value: number | null | undefined): number | null {
+    return Number.isFinite(value) && (value ?? 0) > 0 ? Number(value) : null;
   }
 
   private queueMobileEventFeedbackViewportSync(behavior: ScrollBehavior, targetIndex = this.feedback.eventFeedbackIndex()): void {

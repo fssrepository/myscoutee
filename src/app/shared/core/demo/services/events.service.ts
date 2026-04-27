@@ -109,6 +109,7 @@ export class DemoEventsService extends DemoRouteDelayService {
       eventId: record.eventId,
       removed: record.removed,
       submittedAtIso: record.submittedAtIso ?? '',
+      removedAtIso: record.removedAtIso ?? '',
       organizerNote: record.organizerNote,
       answersByCardId: this.cloneEventFeedbackAnswersByCardId(record.answersByCardId)
     }));
@@ -202,6 +203,7 @@ export class DemoEventsService extends DemoRouteDelayService {
     this.updateEventFeedbackState(normalizedUserId, normalizedEventId, current => ({
       ...current,
       removed: false,
+      removedAtIso: null,
       submittedAtIso,
       answersByCardId: {
         ...current.answersByCardId,
@@ -235,7 +237,8 @@ export class DemoEventsService extends DemoRouteDelayService {
     }
     this.updateEventFeedbackState(normalizedUserId, normalizedEventId, current => ({
       ...current,
-      removed: true
+      removed: true,
+      removedAtIso: new Date().toISOString()
     }));
     await this.memoryDb.flushToIndexedDb();
   }
@@ -249,7 +252,8 @@ export class DemoEventsService extends DemoRouteDelayService {
     }
     this.updateEventFeedbackState(normalizedUserId, normalizedEventId, current => ({
       ...current,
-      removed: false
+      removed: false,
+      removedAtIso: null
     }));
     await this.memoryDb.flushToIndexedDb();
   }
@@ -372,6 +376,7 @@ export class DemoEventsService extends DemoRouteDelayService {
       eventId,
       removed: false,
       submittedAtIso: null,
+      removedAtIso: null,
       organizerNote: '',
       answersByCardId: {}
     };

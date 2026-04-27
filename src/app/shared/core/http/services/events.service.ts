@@ -282,6 +282,7 @@ export class HttpEventsService {
             eventId: item.eventId?.trim() ?? '',
             removed: Boolean(item.removed),
             submittedAtIso: item.submittedAtIso?.trim() ?? '',
+            removedAtIso: item.removedAtIso?.trim() ?? '',
             organizerNote: item.organizerNote?.trim() ?? '',
             answersByCardId: this.cloneEventFeedbackAnswersByCardId(item.answersByCardId)
           })).filter(item => item.eventId)

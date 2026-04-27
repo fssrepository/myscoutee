@@ -61,45 +61,27 @@
             @if (feedback.eventFeedbackListSubmitMessage()) {
               <div class="support-submit-success">{{ feedback.eventFeedbackListSubmitMessage() }}</div>
             }
-            @if (feedback.eventFeedbackListFilter() === 'own-events') {
-              @if (feedback.organizerEventFeedbackItems().length > 0) {
-                <div class="event-feedback-owned-event-list">
-                  @for (item of feedback.organizerEventFeedbackItems(); track item.eventId) {
-                    <div class="event-feedback-info-card-shell event-feedback-owned-event-card-shell">
-                      <app-info-card
-                        [card]="organizerEventFeedbackInfoCard(item)"
-                        (mediaEndClick)="openOrganizerEventFeedback(item.eventId)"
-                      ></app-info-card>
-                    </div>
-                  }
-                </div>
-              } @else {
-                <article class="editor-list-card support-card event-feedback-empty-card">
-                  <p>No own events with feedback yet.</p>
-                </article>
-              }
-            } @else {
-              <app-smart-list
-                class="event-feedback-list-surface"
-                [config]="eventFeedbackSmartListConfig"
-                [loadPage]="eventFeedbackSmartListLoadPage"
-                [itemTemplate]="eventFeedbackItemTemplateRef ?? null"
-                [query]="eventFeedbackSmartListQuery"
-              ></app-smart-list>
-              <ng-template #eventFeedbackItemTemplate let-item>
-                <div
-                  class="event-feedback-info-card-shell"
-                  [class.is-feedbacked]="item.isFeedbacked"
-                  [class.is-removed]="item.isRemoved"
-                  >
-                  <app-info-card
-                    [card]="eventFeedbackInfoCard(item)"
-                    (mediaEndClick)="startEventFeedbackFromCard(item)"
-                    (menuAction)="onEventFeedbackCardMenuAction(item, $event)"
-                  ></app-info-card>
-                </div>
-              </ng-template>
-            }
+            <app-smart-list
+              class="event-feedback-list-surface"
+              [config]="eventFeedbackSmartListConfig"
+              [loadPage]="eventFeedbackSmartListLoadPage"
+              [itemTemplate]="eventFeedbackItemTemplateRef ?? null"
+              [query]="eventFeedbackSmartListQuery"
+            ></app-smart-list>
+            <ng-template #eventFeedbackItemTemplate let-item>
+              <div
+                class="event-feedback-info-card-shell"
+                [class.is-feedbacked]="item.isFeedbacked"
+                [class.is-removed]="item.isRemoved"
+                [class.is-own-event]="item.isOwnEvent"
+                >
+                <app-info-card
+                  [card]="eventFeedbackInfoCard(item)"
+                  (mediaEndClick)="onEventFeedbackCardPrimaryAction(item)"
+                  (menuAction)="onEventFeedbackCardMenuAction(item, $event)"
+                ></app-info-card>
+              </div>
+            </ng-template>
           </div>
         </div>
       </div>
