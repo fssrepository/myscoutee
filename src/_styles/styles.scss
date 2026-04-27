@@ -71,6 +71,63 @@ select {
   }
 }
 
+@keyframes popup-close-wave-feedback {
+  0% {
+    opacity: 0.34;
+    transform: scale(0.24);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(1.08);
+  }
+}
+
+:where(
+  .popup-close,
+  .game-popup-close-btn,
+  .event-slots-popup-close,
+  .mobile-profile-selector-close-btn
+) {
+  --popup-close-wave-color: rgba(255, 255, 255, 0.34);
+  --popup-close-fill-color: rgba(110, 124, 145, 0.18);
+  --popup-close-click-fill-color: rgba(96, 111, 134, 0.24);
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+:where(
+  .popup-close,
+  .game-popup-close-btn,
+  .event-slots-popup-close,
+  .mobile-profile-selector-close-btn
+)::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(
+    circle at center,
+    var(--popup-close-wave-color) 0%,
+    rgba(255, 255, 255, 0.18) 26%,
+    rgba(255, 255, 255, 0) 62%
+  );
+  opacity: 0;
+  transform: scale(0.24);
+}
+
+:where(
+  .popup-close,
+  .game-popup-close-btn,
+  .event-slots-popup-close,
+  .mobile-profile-selector-close-btn
+) > * {
+  position: relative;
+  z-index: 1;
+}
+
 @media (hover: hover) and (pointer: fine) {
   :where(
     button,
@@ -204,6 +261,29 @@ select {
     transform: scale(var(--interactive-press-scale, 0.97));
     filter: brightness(var(--interactive-press-brightness, 0.97));
   }
+
+  :where(
+    .popup-close,
+    .mobile-profile-selector-close-btn
+  ):not(:disabled):not([aria-disabled='true']):hover {
+    background-color: var(--popup-close-fill-color);
+  }
+
+  :where(
+    .popup-close,
+    .mobile-profile-selector-close-btn
+  ):not(:disabled):not([aria-disabled='true']):active {
+    background-color: var(--popup-close-click-fill-color);
+  }
+
+  :where(
+    .popup-close,
+    .game-popup-close-btn,
+    .event-slots-popup-close,
+    .mobile-profile-selector-close-btn
+  ):not(:disabled):not([aria-disabled='true']):active::after {
+    animation: popup-close-wave-feedback 0.42s ease-out;
+  }
 }
 
 @media (hover: none), (pointer: coarse) {
@@ -297,5 +377,21 @@ select {
     animation: global-mobile-touch-feedback 0.2s ease;
     transform: scale(var(--interactive-press-scale, 0.97));
     filter: brightness(var(--interactive-press-brightness, 0.97));
+  }
+
+  :where(
+    .popup-close,
+    .mobile-profile-selector-close-btn
+  ):not(:disabled):not([aria-disabled='true']):active {
+    background-color: var(--popup-close-click-fill-color);
+  }
+
+  :where(
+    .popup-close,
+    .game-popup-close-btn,
+    .event-slots-popup-close,
+    .mobile-profile-selector-close-btn
+  ):not(:disabled):not([aria-disabled='true']):active::after {
+    animation: popup-close-wave-feedback 0.42s ease-out;
   }
 }
