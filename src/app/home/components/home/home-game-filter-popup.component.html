@@ -5,10 +5,31 @@
       <header class="game-filter-popup-header">
         <h2>Game Filters</h2>
         <div class="game-filter-popup-header-actions" [class.is-hidden]="hasOpenFilterSelector">
-          <button type="button" class="game-popup-apply-btn" (click)="apply()" aria-label="Apply filters">
+          <button
+            type="button"
+            class="game-popup-apply-btn"
+            [class.is-saving]="saving"
+            [disabled]="saving"
+            (click)="apply()"
+            [attr.aria-label]="saving ? 'Saving filters' : 'Apply filters'"
+            >
+            @if (saving) {
+              <span class="game-popup-apply-save-ring" aria-hidden="true">
+                <svg viewBox="0 0 44 44" class="game-popup-apply-save-ring-svg">
+                  <defs>
+                    <linearGradient id="game-filter-apply-save-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stop-color="rgb(235, 147, 33)"></stop>
+                      <stop offset="100%" stop-color="rgb(247, 190, 52)"></stop>
+                    </linearGradient>
+                  </defs>
+                  <circle class="game-popup-apply-save-ring-track" cx="22" cy="22" r="19"></circle>
+                  <circle class="game-popup-apply-save-ring-progress" cx="22" cy="22" r="19"></circle>
+                </svg>
+              </span>
+            }
             <mat-icon>check</mat-icon>
           </button>
-          <button type="button" class="game-popup-close-btn" (click)="requestClose($event)" aria-label="Close filter popup">
+          <button type="button" class="game-popup-close-btn" [disabled]="saving" (click)="requestClose($event)" aria-label="Close filter popup">
             <mat-icon>close</mat-icon>
           </button>
         </div>

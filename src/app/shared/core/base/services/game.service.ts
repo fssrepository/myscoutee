@@ -7,7 +7,8 @@ import type {
   UserGameCardsQueryRequest,
   UserGameSocialCard,
   UserGameCardsStackSnapshot,
-  UserGameDataService
+  UserGameDataService,
+  UserGameMode
 } from '../interfaces/game.interface';
 import { DemoGameService } from '../../demo';
 import { DemoUsersRatingsRepository } from '../../demo/repositories/users-ratings.repository';
@@ -69,15 +70,29 @@ export class GameService extends BaseRouteModeService {
     return this.gameDataService.queryGameCardsUsersSnapshot();
   }
 
-  queryExcludedGameCardUserIds(userId: string): string[] {
+  queryExcludedGameCardUserIds(userId: string, mode: UserGameMode = 'single'): string[] {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return [];
+    }
+    if (mode !== 'single') {
+      return [];
+    }
+    if (this.isDemoModeEnabled('/activities/rates')) {
+      return this.demoUsersRatingsRepository.queryRatedGameCardUserIds(normalizedUserId, 'single');
+    }
+    return this.httpUsersRatingsRepository.queryPendingRatedGameCardUserIds(normalizedUserId, 'single');
+  }
+
+  queryExcludedGameCardPairKeys(userId: string): string[] {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return [];
     }
     if (this.isDemoModeEnabled('/activities/rates')) {
-      return this.demoUsersRatingsRepository.queryRatedGameCardUserIds(normalizedUserId);
+      return this.demoUsersRatingsRepository.queryRatedGameCardPairKeys(normalizedUserId);
     }
-    return this.httpUsersRatingsRepository.queryPendingRatedGameCardUserIds(normalizedUserId);
+    return this.httpUsersRatingsRepository.queryRatedGameCardPairKeys(normalizedUserId);
   }
 
   recordUserGameCardRating(
@@ -345,8 +360,8 @@ export class GameService extends BaseRouteModeService {
     const fallbackIds = [...state.cardUserIds];
     const fallbackSocialCards = state.socialCards.map(card => ({ ...card }));
     const fallbackCursor = state.nextCursor;
-    const excludedUserIds = new Set(this.queryExcludedGameCardUserIds(normalizedUserId));
-    const excludedPairKeys = new Set(this.usersRatingsRepository.queryPendingRatedGameCardPairKeys(normalizedUserId));
+    const excludedUserIds = new Set(this.queryExcludedGameCardUserIds(normalizedUserId, mode ?? 'single'));
+    const excludedPairKeys = new Set(this.queryExcludedGameCardPairKeys(normalizedUserId));
     const existingIds = reset
       ? []
       : fallbackIds.filter(id => this.shouldKeepGameCardUserId(id, normalizedUserId, excludedUserIds));
@@ -437,7 +452,7 @@ export class GameService extends BaseRouteModeService {
     if (!userId || excludedUserIds.has(userId)) {
       return false;
     }
-    if (mode !== 'separated-friends') {
+    if (mode === 'single') {
       return true;
     }
     const pairKey = this.socialPairKey(card);
@@ -446,7 +461,7 @@ export class GameService extends BaseRouteModeService {
 
   private socialPairKey(card: UserGameSocialCard): string | null {
     const firstUserId = card.userId.trim();
-    const secondUserId = card.secondaryUserId?.trim() ?? '';
+    const secondUserId = card.secondaryUserId?.trim() || card.bridgeUserId?.trim() || '';
     if (!firstUserId || !secondUserId || firstUserId === secondUserId) {
       return null;
     }

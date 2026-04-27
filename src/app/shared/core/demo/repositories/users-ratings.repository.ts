@@ -6,6 +6,7 @@ import type { RateMenuItem } from '../../base/interfaces/activity-feed.interface
 import type { UserDto } from '../../base/interfaces/user.interface';
 import type {
   ActivityRateRecordQuery,
+  UserGameMode,
   UserRateRecord,
   UserRatesSyncResult
 } from '../../base/interfaces/game.interface';
@@ -26,11 +27,16 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
   private static readonly FEATURED_DEMO_ACTIVITY_RATE_OWNER_COUNT = 4;
   private static readonly FEATURED_DEMO_ACTIVITY_RATE_EXTRA_SINGLE_GIVEN_COUNT = 15;
   private static readonly DEFAULT_DEMO_ACTIVITY_RATE_EXTRA_SINGLE_GIVEN_COUNT = 5;
+  private initialized = false;
 
   init(): void {
+    if (this.initialized) {
+      return;
+    }
     const users = this.querySeedUsers();
     const ownerIdsToSeed = this.collectOwnerIdsNeedingActivityRateSeed(users);
     if (ownerIdsToSeed.length === 0) {
+      this.initialized = true;
       return;
     }
     const records = ownerIdsToSeed.flatMap((ownerUserId, ownerIndex) =>
@@ -66,6 +72,7 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
         }
       };
     });
+    this.initialized = true;
   }
 
   private querySeedUsers(): UserDto[] {
@@ -131,12 +138,13 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
     return [];
   }
 
-  queryRatedGameCardUserIds(raterUserId: string): string[] {
+  queryRatedGameCardUserIds(raterUserId: string, mode: UserGameMode = 'single'): string[] {
     this.init();
     const normalizedRaterId = raterUserId.trim();
     if (!normalizedRaterId) {
       return [];
     }
+    const collectPairUsers = mode !== 'single';
     const state = this.memoryDb.read();
     const ratesTable = state[USER_RATES_TABLE_NAME];
     const outboxTable = state[USER_RATES_OUTBOX_TABLE_NAME];
@@ -150,9 +158,12 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
       }
       if (record.source === 'game-card') {
         if (record.mode === 'pair' && record.ownerUserId?.trim() === normalizedRaterId) {
+          if (!collectPairUsers) {
+            continue;
+          }
           ratedUserIds.add(record.fromUserId.trim());
           ratedUserIds.add(record.toUserId.trim());
-        } else if (record.fromUserId === normalizedRaterId) {
+        } else if (mode === 'single' && record.fromUserId === normalizedRaterId) {
           ratedUserIds.add(record.toUserId.trim());
         }
         continue;
@@ -162,6 +173,12 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
       }
       const item = DemoUserRatesBuilder.toRateMenuItem(record);
       if (!item || (item.direction !== 'met' && item.scoreGiven <= 0)) {
+        continue;
+      }
+      if (mode === 'single' && item.mode !== 'individual') {
+        continue;
+      }
+      if (mode !== 'single' && item.mode !== 'pair') {
         continue;
       }
       ratedUserIds.add(item.userId.trim());
@@ -178,9 +195,12 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
       }
       if (payload.source === 'game-card') {
         if (payload.mode === 'pair' && payload.ownerUserId?.trim() === normalizedRaterId) {
+          if (!collectPairUsers) {
+            continue;
+          }
           ratedUserIds.add(payload.fromUserId.trim());
           ratedUserIds.add(payload.toUserId.trim());
-        } else if (payload.fromUserId === normalizedRaterId) {
+        } else if (mode === 'single' && payload.fromUserId === normalizedRaterId) {
           ratedUserIds.add(payload.toUserId.trim());
         }
         continue;
@@ -192,6 +212,12 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
       if (!item || (item.direction !== 'met' && item.scoreGiven <= 0)) {
         continue;
       }
+      if (mode === 'single' && item.mode !== 'individual') {
+        continue;
+      }
+      if (mode !== 'single' && item.mode !== 'pair') {
+        continue;
+      }
       ratedUserIds.add(item.userId.trim());
       if (item.secondaryUserId?.trim()) {
         ratedUserIds.add(item.secondaryUserId.trim());
@@ -199,6 +225,55 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
     }
 
     return Array.from(ratedUserIds).filter(id => id.length > 0);
+  }
+
+  override queryRatedGameCardPairKeys(ownerUserId: string): string[] {
+    this.init();
+    const normalizedOwnerUserId = ownerUserId.trim();
+    if (!normalizedOwnerUserId) {
+      return [];
+    }
+    const pairKeys = new Set(this.queryPendingRatedGameCardPairKeys(normalizedOwnerUserId));
+    const ratesTable = this.memoryDb.read()[USER_RATES_TABLE_NAME];
+    for (const id of ratesTable.ids) {
+      const record = ratesTable.byId[id];
+      if (!record) {
+        continue;
+      }
+      if (record.source === 'game-card') {
+        if (record.mode !== 'pair' || record.ownerUserId?.trim() !== normalizedOwnerUserId) {
+          continue;
+        }
+        const pairKey = this.sortedPairKey(record.fromUserId, record.toUserId);
+        if (pairKey) {
+          pairKeys.add(pairKey);
+        }
+        continue;
+      }
+      if (record.source !== 'activity-rate' || record.ownerUserId?.trim() !== normalizedOwnerUserId) {
+        continue;
+      }
+      const item = DemoUserRatesBuilder.toRateMenuItem(record);
+      if (!item || item.mode !== 'pair' || (item.direction !== 'met' && item.scoreGiven <= 0)) {
+        continue;
+      }
+      const pairKey = this.sortedPairKey(item.userId, item.secondaryUserId ?? '');
+      if (pairKey) {
+        pairKeys.add(pairKey);
+      }
+    }
+    return [...pairKeys];
+  }
+
+  private sortedPairKey(leftUserId: string, rightUserId: string): string | null {
+    const normalizedLeftUserId = leftUserId.trim();
+    const normalizedRightUserId = rightUserId.trim();
+    if (!normalizedLeftUserId || !normalizedRightUserId || normalizedLeftUserId === normalizedRightUserId) {
+      return null;
+    }
+    return [normalizedLeftUserId, normalizedRightUserId]
+      .sort((left, right) => left.localeCompare(right))
+      .join(':');
   }
 
   queryActivityRateItemsByUserId(userId: string): RateMenuItem[] {

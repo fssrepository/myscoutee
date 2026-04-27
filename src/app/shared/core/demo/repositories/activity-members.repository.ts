@@ -24,6 +24,12 @@ import { DemoAssetsRepository } from './assets.repository';
 import { DemoEventsRepository } from './events.repository';
 import { DemoUsersRepository } from './users.repository';
 
+export interface DemoAcceptedEventMemberGroup {
+  eventId: string;
+  eventName: string;
+  userIds: string[];
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -146,6 +152,36 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
 
   override async queryMembersByOwner(owner: ActivityMemberOwnerRef): Promise<AppTypes.ActivityMemberEntry[]> {
     return this.readMembersByOwner(owner);
+  }
+
+  queryAcceptedEventMemberGroups(): DemoAcceptedEventMemberGroup[] {
+    const table = this.normalizeCollection(this.memoryDb.read()[ACTIVITY_MEMBERS_TABLE_NAME]);
+    const groupsByEventId = new Map<string, { eventName: string; userIds: Set<string> }>();
+    for (const id of table.ids) {
+      const record = table.byId[id];
+      const eventId = record?.ownerType === 'event' ? record.ownerId.trim() : '';
+      const userId = record?.userId.trim() ?? '';
+      if (!record || record.status !== 'accepted' || !eventId || !userId) {
+        continue;
+      }
+      const group = groupsByEventId.get(eventId) ?? {
+        eventName: record.metWhere?.trim() || eventId,
+        userIds: new Set<string>()
+      };
+      group.userIds.add(userId);
+      if (!group.eventName && record.metWhere?.trim()) {
+        group.eventName = record.metWhere.trim();
+      }
+      groupsByEventId.set(eventId, group);
+    }
+    return [...groupsByEventId.entries()]
+      .map(([eventId, group]) => ({
+        eventId,
+        eventName: group.eventName || eventId,
+        userIds: [...group.userIds].sort()
+      }))
+      .filter(group => group.userIds.length > 1)
+      .sort((left, right) => left.eventId.localeCompare(right.eventId));
   }
 
   override peekSummaryByOwner(owner: ActivityMemberOwnerRef): ActivityMembersSummary | null {

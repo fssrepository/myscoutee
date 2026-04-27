@@ -1,5 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 
+import { AppMemoryDb } from '../../base/db';
 import { DemoUsersRepository } from '../repositories/users.repository';
 import { DemoRouteDelayService } from './demo-route-delay.service';
 import type {
@@ -37,7 +38,9 @@ export class DemoUsersService extends DemoRouteDelayService implements UserServi
   private static readonly USER_REALTIME_LONG_POLL_SIMULATION_STEP_MS = 30000;
   private static readonly INITIAL_EVENT_FEEDBACK_UNLOCK_DELAY_MS = 2 * 60 * 60 * 1000;
   private static readonly MAX_PROFILE_IMAGE_SLOTS = 8;
+  private static readonly FILTER_PREFERENCES_SAVE_DELAY_MS = 1500;
   private readonly eventsRepository = inject(DemoEventsRepository);
+  private readonly memoryDb = inject(AppMemoryDb);
   private readonly usersRepository = inject(DemoUsersRepository);
   private readonly realtimeCursorByUserId: Record<string, number> = {};
   private readonly realtimeLastAdvanceAtByUserId: Record<string, number> = {};
@@ -148,6 +151,8 @@ export class DemoUsersService extends DemoRouteDelayService implements UserServi
 
   async saveUserFilterPreferences(userId: string, preferences: UserGameFilterPreferencesDto): Promise<void> {
     this.usersRepository.upsertUserFilterPreferences(userId, preferences);
+    await this.memoryDb.flushToIndexedDb();
+    await this.waitForDelay(DemoUsersService.FILTER_PREFERENCES_SAVE_DELAY_MS);
   }
 
   async saveUserProfile(user: UserDto): Promise<UserDto | null> {

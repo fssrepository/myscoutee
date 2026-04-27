@@ -168,6 +168,7 @@ export class HomeComponent implements OnDestroy {
   protected activeUserId = '';
   protected gameFilter: GameFilterForm;
   protected gameFilterPopupContext: HomeGameFilterPopupContext | null = null;
+  protected isGameFilterSaving = false;
   private readonly failedCandidateImageUrls = new Set<string>();
   private readonly preloadedGameImageUrls = new Set<string>();
   private readonly pendingGameImageUrls = new Set<string>();
@@ -368,7 +369,7 @@ export class HomeComponent implements OnDestroy {
 
   protected get candidatePool(): DemoUser[] {
     const serviceStack = this.gameService.peekUserGameCardsStackSnapshot(this.activeUserId);
-    const excludedUserIds = new Set(this.gameService.queryExcludedGameCardUserIds(this.activeUserId));
+    const excludedUserIds = new Set(this.gameService.queryExcludedGameCardUserIds(this.activeUserId, this.selectedHomeMode));
     const hasResolvedServiceStack = serviceStack.cardUserIds.length > 0
       || serviceStack.socialCards.length > 0
       || serviceStack.nextCursor !== null
@@ -442,6 +443,9 @@ export class HomeComponent implements OnDestroy {
   }
 
   protected get filterBadgeCount(): number {
+    if (this.isSyntheticPairMode) {
+      return Math.max(0, this.pairModeCycleSize());
+    }
     const overrideTotal = this.gameService.peekUserGameCardsStackSnapshot(this.activeUser.id).filterCount;
     if (this.gameInitialCardsLoadPending) {
       if (overrideTotal === null) {
@@ -670,6 +674,10 @@ export class HomeComponent implements OnDestroy {
     this.resetGameStackPaginationState(false);
     this.syncHomeSmartListQuery();
     this.gameInitialCardsLoadPending = true;
+    if (this.homeSmartList) {
+      this.homeSmartList.reload();
+      return;
+    }
     void this.reloadServiceCardStack();
   }
 
@@ -706,14 +714,25 @@ export class HomeComponent implements OnDestroy {
     this.localPopup = 'filter';
   }
 
-  protected onGameFilterPopupClosed(filter: GameFilterForm | null): void {
-    this.gameFilterPopupContext = null;
-    this.localPopup = null;
+  protected async onGameFilterPopupClosed(filter: GameFilterForm | null): Promise<void> {
     if (!filter) {
+      if (this.isGameFilterSaving) {
+        return;
+      }
+      this.gameFilterPopupContext = null;
+      this.localPopup = null;
       return;
     }
     this.gameFilter = normalizeGameFilter(filter);
-    void this.usersService.saveUserFilterPreferences(this.activeUserId, this.gameFilter);
+    this.isGameFilterSaving = true;
+    this.cdr.markForCheck();
+    try {
+      await this.usersService.saveUserFilterPreferences(this.activeUserId, this.gameFilter);
+    } finally {
+      this.isGameFilterSaving = false;
+    }
+    this.gameFilterPopupContext = null;
+    this.localPopup = null;
     this.appCtx.clearUserFilterCountOverride(this.activeUserId);
     this.resetServiceCardState();
     this.cardIndex = 0;
@@ -721,6 +740,10 @@ export class HomeComponent implements OnDestroy {
     this.resetGameStackPaginationState(false);
     this.syncHomeSmartListQuery();
     this.gameInitialCardsLoadPending = true;
+    if (this.homeSmartList) {
+      this.homeSmartList.reload();
+      return;
+    }
     void this.reloadServiceCardStack();
   }
 
@@ -1540,6 +1563,12 @@ export class HomeComponent implements OnDestroy {
       : this.socialPairRows();
   }
 
+  private sortedHomePairKey(leftUserId: string, rightUserId: string): string {
+    return [leftUserId.trim(), rightUserId.trim()]
+      .sort((left, right) => left.localeCompare(right))
+      .join(':');
+  }
+
   private userById(userId: string): DemoUser | null {
     return this.users.find(user => user.id === userId) ?? null;
   }
@@ -1553,7 +1582,7 @@ export class HomeComponent implements OnDestroy {
     side: 'left' | 'right'
   ): string {
     if (!socialCard) {
-      return side === 'left' ? 'Woman' : 'Man';
+      return side === 'left' ? 'Person A' : 'Person B';
     }
     if (socialCard.socialContext === 'friends-in-common') {
       return side === 'left' ? 'Person' : 'Common friend';
@@ -1748,13 +1777,23 @@ export class HomeComponent implements OnDestroy {
     if (this.isSeparatedFriendsMode || this.isFriendsInCommonMode) {
       return this.activeSocialPairRows().map(row => row.round);
     }
-    const women = this.candidatePool.filter(user => user.gender === 'woman');
-    const men = this.candidatePool.filter(user => user.gender === 'man');
-    const total = Math.min(women.length, men.length);
-    return Array.from({ length: total }, (_, index) => ({
-      woman: women[index] ?? null,
-      man: men[index] ?? null
-    }));
+    const excludedPairKeys = new Set(this.gameService.queryExcludedGameCardPairKeys(this.activeUserId));
+    const candidates = this.candidatePool;
+    const rounds: PairModeRoundState[] = [];
+    for (let leftIndex = 0; leftIndex < candidates.length; leftIndex += 1) {
+      for (let rightIndex = leftIndex + 1; rightIndex < candidates.length; rightIndex += 1) {
+        const left = candidates[leftIndex] ?? null;
+        const right = candidates[rightIndex] ?? null;
+        if (!left || !right || excludedPairKeys.has(this.sortedHomePairKey(left.id, right.id))) {
+          continue;
+        }
+        rounds.push({
+          woman: left,
+          man: right
+        });
+      }
+    }
+    return rounds;
   }
 
   private pairModeRoundAt(index: number): PairModeRoundState | null {

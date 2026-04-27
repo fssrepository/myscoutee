@@ -244,7 +244,7 @@ export class DemoUsersRepository {
     if (!normalizedRaterId) {
       return users;
     }
-    const ratedUserIds = new Set(this.usersRatingsRepository.queryRatedGameCardUserIds(normalizedRaterId));
+    const ratedUserIds = new Set(this.usersRatingsRepository.queryRatedGameCardUserIds(normalizedRaterId, 'single'));
     return users
       .filter(user => user.id !== normalizedRaterId)
       .filter(user => !ratedUserIds.has(user.id));

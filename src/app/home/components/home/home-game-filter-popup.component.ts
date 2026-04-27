@@ -44,6 +44,7 @@ import {
 })
 export class HomeGameFilterPopupComponent implements OnChanges {
   @Input() context: HomeGameFilterPopupContext | null = null;
+  @Input() saving = false;
 
   @Output() readonly closed = new EventEmitter<GameFilterForm | null>();
 
@@ -279,10 +280,16 @@ export class HomeGameFilterPopupComponent implements OnChanges {
 
   protected requestClose(event?: Event): void {
     event?.stopPropagation();
+    if (this.saving) {
+      return;
+    }
     this.closed.emit(null);
   }
 
   protected apply(): void {
+    if (this.saving) {
+      return;
+    }
     this.closed.emit(normalizeGameFilter(this.filterDraft));
   }
 

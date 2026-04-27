@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 
 import { DemoRouteDelayService } from './demo-route-delay.service';
+import { DemoActivityMembersRepository } from '../repositories/activity-members.repository';
 import { DemoUsersRepository } from '../repositories/users.repository';
 import { DemoUsersRatingsRepository } from '../repositories/users-ratings.repository';
 import type {
@@ -8,8 +9,7 @@ import type {
   UserGameCardsQueryRequest,
   UserGameCardsQueryResponse,
   UserGameDataService,
-  UserGameFilterPreferencesDto,
-  UserRateRecord
+  UserGameFilterPreferencesDto
 } from '../../base/interfaces/game.interface';
 import type { UserDto } from '../../base/interfaces/user.interface';
 
@@ -18,6 +18,7 @@ import type { UserDto } from '../../base/interfaces/user.interface';
 })
 export class DemoGameService extends DemoRouteDelayService implements UserGameDataService {
   private static readonly USER_GAME_CARDS_ROUTE = '/game-cards/query';
+  private readonly activityMembersRepository = inject(DemoActivityMembersRepository);
   private readonly usersRepository = inject(DemoUsersRepository);
   private readonly usersRatingsRepository = inject(DemoUsersRatingsRepository);
 
@@ -172,12 +173,11 @@ export class DemoGameService extends DemoRouteDelayService implements UserGameDa
   }
 
   private buildSeparatedFriendCards(activeUserId: string, users: readonly UserDto[]): UserGameSocialCard[] {
-    const graph = this.buildActivityGraph(users);
+    const graph = this.buildActivityGraph();
     const neighbors = [...(graph.neighborsByUserId.get(activeUserId) ?? new Set<string>())]
       .filter(userId => userId !== activeUserId)
       .sort();
-    const ratedPairKeys = this.queryRatedPairKeys(activeUserId);
-    const pendingPairKeys = new Set(this.usersRatingsRepository.queryPendingRatedGameCardPairKeys(activeUserId));
+    const ratedPairKeys = new Set(this.usersRatingsRepository.queryRatedGameCardPairKeys(activeUserId));
     const cards: UserGameSocialCard[] = [];
     for (let leftIndex = 0; leftIndex < neighbors.length; leftIndex += 1) {
       const leftUserId = neighbors[leftIndex];
@@ -187,7 +187,6 @@ export class DemoGameService extends DemoRouteDelayService implements UserGameDa
         if (
           (graph.neighborsByUserId.get(leftUserId)?.has(rightUserId) ?? false)
           || ratedPairKeys.has(key)
-          || pendingPairKeys.has(key)
         ) {
           continue;
         }
@@ -207,12 +206,12 @@ export class DemoGameService extends DemoRouteDelayService implements UserGameDa
   }
 
   private buildFriendsInCommonCards(activeUserId: string, users: readonly UserDto[]): UserGameSocialCard[] {
-    const graph = this.buildActivityGraph(users);
+    const graph = this.buildActivityGraph();
     const activeNeighbors = graph.neighborsByUserId.get(activeUserId) ?? new Set<string>();
-    const ratedUserIds = new Set(this.usersRatingsRepository.queryRatedGameCardUserIds(activeUserId));
+    const ratedPairKeys = new Set(this.usersRatingsRepository.queryRatedGameCardPairKeys(activeUserId));
     const cards: UserGameSocialCard[] = [];
     for (const user of users) {
-      if (user.id === activeUserId || activeNeighbors.has(user.id) || ratedUserIds.has(user.id)) {
+      if (user.id === activeUserId || activeNeighbors.has(user.id)) {
         continue;
       }
       const candidateNeighbors = graph.neighborsByUserId.get(user.id) ?? new Set<string>();
@@ -221,6 +220,9 @@ export class DemoGameService extends DemoRouteDelayService implements UserGameDa
         continue;
       }
       const bridgeUserId = bridges.sort()[0];
+      if (ratedPairKeys.has(this.sortedPairKey(user.id, bridgeUserId))) {
+        continue;
+      }
       cards.push({
         id: `friends-in-common:${activeUserId}:${user.id}`,
         userId: user.id,
@@ -235,21 +237,22 @@ export class DemoGameService extends DemoRouteDelayService implements UserGameDa
     return cards.sort((left, right) => (right.bridgeCount ?? 0) - (left.bridgeCount ?? 0) || left.id.localeCompare(right.id));
   }
 
-  private buildActivityGraph(users: readonly UserDto[]): {
+  private buildActivityGraph(): {
     neighborsByUserId: Map<string, Set<string>>;
     edgeEventNameByKey: Map<string, string>;
   } {
     const neighborsByUserId = new Map<string, Set<string>>();
     const edgeEventNameByKey = new Map<string, string>();
-    for (const user of users) {
-      for (const record of this.usersRatingsRepository.queryUserRatesByUserId(user.id)) {
-        if (record.source !== 'activity-rate') {
-          continue;
-        }
-        this.registerActivityEdge(neighborsByUserId, edgeEventNameByKey, record.ownerUserId ?? '', record.fromUserId, record.eventName);
-        this.registerActivityEdge(neighborsByUserId, edgeEventNameByKey, record.ownerUserId ?? '', record.toUserId, record.eventName);
-        if (record.mode === 'single') {
-          this.registerActivityEdge(neighborsByUserId, edgeEventNameByKey, record.fromUserId, record.toUserId, record.eventName);
+    for (const group of this.activityMembersRepository.queryAcceptedEventMemberGroups()) {
+      for (let leftIndex = 0; leftIndex < group.userIds.length; leftIndex += 1) {
+        for (let rightIndex = leftIndex + 1; rightIndex < group.userIds.length; rightIndex += 1) {
+          this.registerActivityEdge(
+            neighborsByUserId,
+            edgeEventNameByKey,
+            group.userIds[leftIndex] ?? '',
+            group.userIds[rightIndex] ?? '',
+            group.eventName
+          );
         }
       }
     }
@@ -280,14 +283,6 @@ export class DemoGameService extends DemoRouteDelayService implements UserGameDa
     if (eventName?.trim()) {
       edgeEventNameByKey.set(key, eventName.trim());
     }
-  }
-
-  private queryRatedPairKeys(activeUserId: string): Set<string> {
-    return new Set(
-      this.usersRatingsRepository.queryUserRatesByUserId(activeUserId)
-        .filter((record): record is UserRateRecord => record.source === 'game-card' && record.mode === 'pair' && record.ownerUserId === activeUserId)
-        .map(record => this.sortedPairKey(record.fromUserId, record.toUserId))
-    );
   }
 
   private sortedPairKey(leftUserId: string, rightUserId: string): string {

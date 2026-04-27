@@ -4,7 +4,7 @@ import { Injectable, inject } from '@angular/core';
 import { environment } from '../../../../../environments/environment';
 import { DemoUserRatesBuilder } from '../../demo/builders';
 import type { RateMenuItem } from '../../base/interfaces/activity-feed.interface';
-import type { UserRateOutboxRecord, UserRateRecord, UserRatesSyncResult } from '../../base/interfaces/game.interface';
+import type { UserGameMode, UserRateOutboxRecord, UserRateRecord, UserRatesSyncResult } from '../../base/interfaces/game.interface';
 import {
   USER_RATES_OUTBOX_TABLE_NAME
 } from '../../demo/models/users.model';
@@ -48,11 +48,12 @@ export class HttpUsersRatingsRepository {
     this.applyUserRatesSyncResult(batch, syncResult.syncedRateIds, syncResult.failedRateIds, syncResult.error);
   }
 
-  queryPendingRatedGameCardUserIds(raterUserId: string): string[] {
+  queryPendingRatedGameCardUserIds(raterUserId: string, mode: UserGameMode = 'single'): string[] {
     const normalizedRaterId = raterUserId.trim();
     if (!normalizedRaterId) {
       return [];
     }
+    const collectPairUsers = mode !== 'single';
     const ratedUserIds = new Set<string>();
     const outboxTable = this.memoryDb.read()[USER_RATES_OUTBOX_TABLE_NAME];
     for (const id of outboxTable.ids) {
@@ -63,6 +64,9 @@ export class HttpUsersRatingsRepository {
       }
       if (payload.source === 'game-card') {
         if (payload.mode === 'pair' && payload.ownerUserId?.trim() === normalizedRaterId) {
+          if (!collectPairUsers) {
+            continue;
+          }
           const firstUserId = payload.fromUserId.trim();
           const secondUserId = payload.toUserId.trim();
           if (firstUserId) {
@@ -73,7 +77,7 @@ export class HttpUsersRatingsRepository {
           }
           continue;
         }
-        if (payload.fromUserId.trim() === normalizedRaterId) {
+        if (mode === 'single' && payload.fromUserId.trim() === normalizedRaterId) {
           const ratedUserId = payload.toUserId.trim();
           if (ratedUserId) {
             ratedUserIds.add(ratedUserId);
@@ -88,6 +92,12 @@ export class HttpUsersRatingsRepository {
       if (!this.shouldExcludePendingItemFromHome(item)) {
         continue;
       }
+      if (mode === 'single' && item.mode !== 'individual') {
+        continue;
+      }
+      if (mode !== 'single' && item.mode !== 'pair') {
+        continue;
+      }
       const primaryUserId = item.userId.trim();
       const secondaryUserId = item.secondaryUserId?.trim() ?? '';
       if (primaryUserId && primaryUserId !== normalizedRaterId) {
@@ -98,6 +108,10 @@ export class HttpUsersRatingsRepository {
       }
     }
     return [...ratedUserIds];
+  }
+
+  queryRatedGameCardPairKeys(ownerUserId: string): string[] {
+    return this.queryPendingRatedGameCardPairKeys(ownerUserId);
   }
 
   queryPendingRatedGameCardPairKeys(ownerUserId: string): string[] {
