@@ -88,6 +88,7 @@ export class GameService extends BaseRouteModeService {
   ): void {
     this.resolveRouteService('/activities/rates', this.demoGameService, this.httpGameService)
       .recordGameCardRating(raterUserId, ratedUserId, rating, mode);
+    this.decrementUserGameCardsStackFilterCount(raterUserId);
     this.scheduleUserRatesOutboxFlushFromNow();
   }
 
@@ -108,6 +109,7 @@ export class GameService extends BaseRouteModeService {
       normalizedSecondId,
       rating
     );
+    this.decrementUserGameCardsStackFilterCount(raterUserId);
     this.scheduleUserRatesOutboxFlushFromNow();
   }
 
@@ -270,6 +272,30 @@ export class GameService extends BaseRouteModeService {
       || snapshot.filterCount !== null;
   }
 
+  private decrementUserGameCardsStackFilterCount(userId: string): void {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return;
+    }
+    const state = this.userGameCardsStackStateByUserId[normalizedUserId];
+    if (!state || state.filterCount === null) {
+      return;
+    }
+    state.filterCount = Math.max(0, state.filterCount - 1);
+  }
+
+  private mergeUserGameCardsStackFilterCount(
+    currentFilterCount: number | null,
+    nextFilterCount: number,
+    reset: boolean
+  ): number {
+    const normalizedNextCount = Math.max(0, Math.trunc(Number(nextFilterCount) || 0));
+    if (reset || currentFilterCount === null) {
+      return normalizedNextCount;
+    }
+    return Math.min(currentFilterCount, normalizedNextCount);
+  }
+
   async loadInitialUserGameCardsStackPage(
     userId: string,
     filterPreferences: UserGameCardsQueryRequest['filterPreferences'],
@@ -354,7 +380,7 @@ export class GameService extends BaseRouteModeService {
         }
       );
       if (cards) {
-        state.filterCount = cards.filterCount;
+        state.filterCount = this.mergeUserGameCardsStackFilterCount(state.filterCount, cards.filterCount, reset);
         const next = [...existingIds];
         const seen = new Set(next);
         for (const id of cards.cardUserIds) {

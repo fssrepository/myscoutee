@@ -447,13 +447,13 @@ export class HomeComponent implements OnDestroy {
       if (overrideTotal === null) {
         return 0;
       }
-      return Math.max(0, overrideTotal - this.cardIndex);
+      return Math.max(0, overrideTotal);
     }
     const fallback = Math.max(0, this.totalRoundsForCurrentMode() - this.cardIndex);
     if (overrideTotal === null) {
       return fallback;
     }
-    return Math.max(0, overrideTotal - this.cardIndex);
+    return Math.max(0, overrideTotal);
   }
 
   protected get hasRemainingCandidatesForCurrentMode(): boolean {

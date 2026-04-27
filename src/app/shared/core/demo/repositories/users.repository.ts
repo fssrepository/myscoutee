@@ -87,16 +87,12 @@ export class DemoUsersRepository {
       nextRatesById[rateId] = { ...record };
       nextRateIds.push(rateId);
     }
-    const validRateIds = new Set(nextRateIds);
     const currentOutbox = state[USER_RATES_OUTBOX_TABLE_NAME];
     const nextOutboxById: Record<string, UserRateOutboxRecord> = {};
     const nextOutboxIds: string[] = [];
     for (const outboxId of currentOutbox.ids) {
       const record = currentOutbox.byId[outboxId];
       if (!record) {
-        continue;
-      }
-      if (!validRateIds.has(record.rateId)) {
         continue;
       }
       if (!validUserIds.has(record.payload.fromUserId) || !validUserIds.has(record.payload.toUserId)) {
