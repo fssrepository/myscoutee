@@ -18,6 +18,7 @@ interface ActivitiesUiState {
   chatContextFilter: AppTypes.ActivitiesChatContextFilter;
   hostingPublicationFilter: AppTypes.HostingPublicationFilter;
   rateFilter: AppTypes.RateFilterKey;
+  rateSocialBadgeEnabled: boolean;
   view: AppTypes.ActivitiesView;
   showViewPicker: boolean;
   showSecondaryPicker: boolean;
@@ -34,6 +35,7 @@ const DEFAULT_ACTIVITIES_UI_STATE: ActivitiesUiState = {
   chatContextFilter: 'all',
   hostingPublicationFilter: 'all',
   rateFilter: 'individual-given',
+  rateSocialBadgeEnabled: false,
   view: 'day',
   showViewPicker: false,
   showSecondaryPicker: false,
@@ -62,6 +64,7 @@ export class ActivitiesPopupStateService {
   readonly activitiesChatContextFilter = computed(() => this._uiState().chatContextFilter);
   readonly activitiesHostingPublicationFilter = computed(() => this._uiState().hostingPublicationFilter);
   readonly activitiesRateFilter = computed(() => this._uiState().rateFilter);
+  readonly activitiesRateSocialBadgeEnabled = computed(() => this._uiState().rateSocialBadgeEnabled);
   readonly activitiesView = computed(() => this._uiState().view);
   readonly activitiesShowViewPicker = computed(() => this._uiState().showViewPicker);
   readonly activitiesShowSecondaryPicker = computed(() => this._uiState().showSecondaryPicker);
@@ -81,7 +84,8 @@ export class ActivitiesPopupStateService {
   openActivities(
     primaryFilter: AppTypes.ActivitiesPrimaryFilter = 'chats',
     eventScope?: AppTypes.ActivitiesEventScope,
-    initialRateFilter?: AppTypes.RateFilterKey
+    initialRateFilter?: AppTypes.RateFilterKey,
+    initialRateSocialBadgeEnabled = false
   ): void {
     const normalizedPrimaryFilter = this.normalizeActivitiesPrimaryFilter(primaryFilter);
     const resolvedScope = this.resolveActivitiesEventScope(primaryFilter, eventScope);
@@ -99,7 +103,12 @@ export class ActivitiesPopupStateService {
       stickyValue: '',
       ratesFullscreenMode: false,
       selectedRateId: null,
-      ...(normalizedPrimaryFilter === 'rates' ? { rateFilter: resolvedRateFilter } : {})
+      ...(normalizedPrimaryFilter === 'rates'
+        ? {
+            rateFilter: resolvedRateFilter,
+            rateSocialBadgeEnabled: initialRateSocialBadgeEnabled
+          }
+        : { rateSocialBadgeEnabled: false })
     }));
   }
 
@@ -124,6 +133,7 @@ export class ActivitiesPopupStateService {
       chatContextFilter: 'all',
       ratesFullscreenMode: normalizedFilter !== 'rates' ? false : state.ratesFullscreenMode,
       rateFilter: normalizedFilter === 'rates' ? 'individual-given' : state.rateFilter,
+      rateSocialBadgeEnabled: normalizedFilter === 'rates' ? state.rateSocialBadgeEnabled : false,
       view: normalizedFilter === 'rates'
         ? 'distance'
         : normalizedFilter === 'chats'
@@ -157,6 +167,10 @@ export class ActivitiesPopupStateService {
 
   setActivitiesRateFilter(filter: AppTypes.RateFilterKey): void {
     this.patchUiState({ rateFilter: filter });
+  }
+
+  setActivitiesRateSocialBadgeEnabled(enabled: boolean): void {
+    this.patchUiState({ rateSocialBadgeEnabled: enabled });
   }
 
   setActivitiesView(view: AppTypes.ActivitiesView): void {

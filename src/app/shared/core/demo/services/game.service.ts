@@ -74,8 +74,10 @@ export class DemoGameService extends DemoRouteDelayService implements UserGameDa
     }
     const pageSize = this.resolvePageSize(request.pageSize);
     const offset = this.resolveOffset(request.cursor);
+    const metUserIds = new Set(this.activityMembersRepository.queryMetUserIds(normalizedUserId));
     const allUsers = this.usersRepository.queryGameStackUsers(normalizedUserId);
     const filtered = allUsers
+      .filter(user => !metUserIds.has(user.id))
       .filter(user => this.matchesFilterPreferences(user, request.filterPreferences ?? null));
     const cardUserIds = filtered
       .slice(offset, offset + pageSize)
@@ -91,6 +93,10 @@ export class DemoGameService extends DemoRouteDelayService implements UserGameDa
         nextCursor
       }
     };
+  }
+
+  didUsersMeet(leftUserId: string, rightUserId: string): boolean {
+    return this.activityMembersRepository.didUsersMeet(leftUserId, rightUserId);
   }
 
   private resolvePageSize(value: number | undefined): number {

@@ -70,6 +70,22 @@ export class GameService extends BaseRouteModeService {
     return this.gameDataService.queryGameCardsUsersSnapshot();
   }
 
+  didUsersMeet(leftUserId: string, rightUserId: string): boolean {
+    const normalizedLeftUserId = leftUserId.trim();
+    const normalizedRightUserId = rightUserId.trim();
+    if (
+      !normalizedLeftUserId
+      || !normalizedRightUserId
+      || normalizedLeftUserId === normalizedRightUserId
+    ) {
+      return false;
+    }
+    if (this.isDemoModeEnabled('/activities/events')) {
+      return this.demoGameService.didUsersMeet(normalizedLeftUserId, normalizedRightUserId);
+    }
+    return false;
+  }
+
   queryExcludedGameCardUserIds(userId: string, mode: UserGameMode = 'single'): string[] {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {

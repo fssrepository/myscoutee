@@ -272,6 +272,7 @@ export class ActivitiesPopupToolbarController {
 
   toggleRateSocialBadge(): void {
     this.activitiesRateSocialBadgeEnabled = !this.activitiesRateSocialBadgeEnabled;
+    this.activitiesContext.setActivitiesRateSocialBadgeEnabled(this.activitiesRateSocialBadgeEnabled);
     if (this.activitiesRateFilter.startsWith('pair')) {
       this.activitiesSmartList?.reload();
     }

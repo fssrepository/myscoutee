@@ -46,6 +46,11 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
   private eventCapacitySnapshotByEventId: Map<string, { acceptedMembers: number | null; capacityTotal: number | null }> | null = null;
   private readonly seededSubEventsSnapshotByEventId = new Map<string, AppTypes.SubEventFormItem[]>();
   private gameSocialCardsCacheToken = '';
+  private acceptedMemberGraphCacheToken = '';
+  private acceptedMemberGraphCache: {
+    neighborsByUserId: Map<string, Set<string>>;
+    edgeEventNameByKey: Map<string, string>;
+  } | null = null;
   private readonly gameSocialCardsByUserId = new Map<string, Record<'friends-in-common' | 'separated-friends', UserGameSocialCard[]>>();
 
   constructor() {
@@ -176,6 +181,31 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
       .map(card => ({ ...card }));
   }
 
+  queryMetUserIds(activeUserId: string): string[] {
+    const normalizedUserId = activeUserId.trim();
+    if (!normalizedUserId) {
+      return [];
+    }
+    const graph = this.queryAcceptedMemberGraph();
+    return [...(graph.neighborsByUserId.get(normalizedUserId) ?? new Set<string>())]
+      .filter(userId => userId !== normalizedUserId)
+      .sort((left, right) => left.localeCompare(right));
+  }
+
+  didUsersMeet(leftUserId: string, rightUserId: string): boolean {
+    const normalizedLeftUserId = leftUserId.trim();
+    const normalizedRightUserId = rightUserId.trim();
+    if (
+      !normalizedLeftUserId
+      || !normalizedRightUserId
+      || normalizedLeftUserId === normalizedRightUserId
+    ) {
+      return false;
+    }
+    const graph = this.queryAcceptedMemberGraph();
+    return graph.neighborsByUserId.get(normalizedLeftUserId)?.has(normalizedRightUserId) ?? false;
+  }
+
   private acceptedEventMemberGroupsFromTable(
     table: DemoActivityMembersRecordCollection
   ): DemoAcceptedEventMemberGroup[] {
@@ -222,6 +252,9 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
   private refreshGameSocialCardsCache(table: DemoActivityMembersRecordCollection): void {
     const groups = this.acceptedEventMemberGroupsFromTable(table);
     const graph = this.buildAcceptedMemberGraph(groups);
+    const graphToken = this.gameSocialCardsCacheTokenForTable(table);
+    this.acceptedMemberGraphCache = graph;
+    this.acceptedMemberGraphCacheToken = graphToken;
     this.gameSocialCardsByUserId.clear();
     for (const activeUserId of [...graph.neighborsByUserId.keys()].sort()) {
       const activeNeighbors = [...(graph.neighborsByUserId.get(activeUserId) ?? new Set<string>())]
@@ -261,7 +294,25 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
       cards['separated-friends'].sort((left, right) => left.id.localeCompare(right.id));
       this.gameSocialCardsByUserId.set(activeUserId, cards);
     }
-    this.gameSocialCardsCacheToken = this.gameSocialCardsCacheTokenForTable(table);
+    this.gameSocialCardsCacheToken = graphToken;
+  }
+
+  private queryAcceptedMemberGraph(): {
+    neighborsByUserId: Map<string, Set<string>>;
+    edgeEventNameByKey: Map<string, string>;
+  } {
+    if (!this.isInitialized) {
+      this.init();
+    }
+    const table = this.normalizeCollection(this.memoryDb.read()[ACTIVITY_MEMBERS_TABLE_NAME]);
+    const token = this.gameSocialCardsCacheTokenForTable(table);
+    if (this.acceptedMemberGraphCache && this.acceptedMemberGraphCacheToken === token) {
+      return this.acceptedMemberGraphCache;
+    }
+    const graph = this.buildAcceptedMemberGraph(this.acceptedEventMemberGroupsFromTable(table));
+    this.acceptedMemberGraphCache = graph;
+    this.acceptedMemberGraphCacheToken = token;
+    return graph;
   }
 
   private buildAcceptedMemberGraph(groups: readonly DemoAcceptedEventMemberGroup[]): {

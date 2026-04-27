@@ -12,6 +12,9 @@ import type {
 } from '../../base/interfaces/game.interface';
 import { HttpUsersRatingsRepository } from '../../http/repositories/users-ratings.repository';
 import {
+  ACTIVITY_MEMBERS_TABLE_NAME,
+} from '../models/activity-members.model';
+import {
   USER_RATES_OUTBOX_TABLE_NAME,
   USER_RATES_TABLE_NAME,
   USERS_TABLE_NAME
@@ -278,18 +281,7 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
 
   queryActivityRateItemsByUserId(userId: string): RateMenuItem[] {
     this.init();
-    const normalizedUserId = userId.trim();
-    if (!normalizedUserId) {
-      return [];
-    }
-    const ratesTable = this.memoryDb.read()[USER_RATES_TABLE_NAME];
-    return ratesTable.ids
-      .map(id => ratesTable.byId[id])
-      .filter((record): record is UserRateRecord => Boolean(record))
-      .filter(record => record.source === 'activity-rate')
-      .filter(record => record.ownerUserId === normalizedUserId)
-      .map(record => DemoUserRatesBuilder.toRateMenuItem(record))
-      .filter((item): item is RateMenuItem => Boolean(item));
+    return this.buildRateItemsByUserId(userId);
   }
 
   override peekRateItemsByUserId(userId: string): RateMenuItem[] {
@@ -304,15 +296,36 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
 
   async queryActivityRateItemsPage(query: ActivityRateRecordQuery): Promise<{ items: RateMenuItem[]; total: number; nextCursor?: string | null }> {
     this.init();
-    const result = await this.memoryDb.queryActivityRateRecords(query);
-    const items = result.records
-      .map(record => DemoUserRatesBuilder.toRateMenuItem(record))
-      .filter((item): item is RateMenuItem => Boolean(item));
+    const normalizedOwnerUserId = query.ownerUserId.trim();
+    if (!normalizedOwnerUserId) {
+      return {
+        items: [],
+        total: 0,
+        nextCursor: null
+      };
+    }
+    const mode = query.mode === 'pair' ? 'pair' : 'individual';
+    const filtered = this.buildRateItemsByUserId(normalizedOwnerUserId)
+      .filter(item => item.mode === mode)
+      .filter(item => item.direction === query.displayDirection)
+      .filter(item => this.matchesDynamicRateRange(item, query))
+      .filter(item => this.matchesDynamicPairSocialFilter(item, query.socialBadgeEnabled === true))
+      .sort((left, right) => this.compareDynamicRateItems(left, right, query));
+    const cursorId = this.resolveDynamicRateCursorId(query.cursor);
+    const limit = Math.max(1, Math.trunc(Number(query.limit) || 50));
+    const startIndex = cursorId
+      ? Math.max(0, filtered.findIndex(item => item.id === cursorId) + 1)
+      : 0;
+    const items = filtered
+      .slice(startIndex, startIndex + limit)
+      .map(item => ({ ...item }));
 
     return {
       items,
-      total: result.total,
-      nextCursor: result.nextCursor ?? null
+      total: filtered.length,
+      nextCursor: filtered.length > startIndex + items.length && items.length > 0
+        ? items[items.length - 1]?.id ?? null
+        : null
     };
   }
 
@@ -340,18 +353,285 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
     }
     return [...recordsById.values()]
       .filter((record): record is UserRateRecord => Boolean(record))
-      .flatMap(record => {
-        if (record.source === 'activity-rate') {
-          if (record.ownerUserId !== normalizedUserId) {
-            return [];
-          }
-          const item = DemoUserRatesBuilder.toRateMenuItem(record);
-          return item ? [item] : [];
-        }
-        const item = DemoUserRatesBuilder.toGameCardRateMenuItem(record, normalizedUserId);
-        return item ? [item] : [];
-      })
+      .flatMap(record => this.buildDynamicRateItemsForUser(record, normalizedUserId))
       .sort((left, right) => AppUtils.toSortableDate(right.happenedAt) - AppUtils.toSortableDate(left.happenedAt));
+  }
+
+  private buildDynamicRateItemsForUser(record: UserRateRecord, normalizedUserId: string): RateMenuItem[] {
+    if (record.source !== 'activity-rate') {
+      const item = DemoUserRatesBuilder.toGameCardRateMenuItem(record, normalizedUserId);
+      return item ? [item] : [];
+    }
+
+    if (record.mode === 'pair') {
+      return this.buildDynamicPairRateItemsForUser(record, normalizedUserId);
+    }
+
+    if (record.ownerUserId?.trim() !== normalizedUserId) {
+      return [];
+    }
+
+    const item = DemoUserRatesBuilder.toRateMenuItem(record);
+    if (!item) {
+      return [];
+    }
+    if (item.direction === 'met' && !this.didUsersMeetFromIndexedDb(normalizedUserId, item.userId)) {
+      return [];
+    }
+    return [item];
+  }
+
+  private buildDynamicPairRateItemsForUser(record: UserRateRecord, normalizedUserId: string): RateMenuItem[] {
+    const ownerUserId = record.ownerUserId?.trim() ?? '';
+    const pairUserIds = this.resolvePairUserIdsFromRecord(record);
+    if (!ownerUserId || pairUserIds === null) {
+      return [];
+    }
+
+    const items: RateMenuItem[] = [];
+    const dynamicSocialContext = this.resolveDynamicPairSocialContext(ownerUserId, pairUserIds[0], pairUserIds[1]);
+
+    if (ownerUserId === normalizedUserId) {
+      const ownerItem = DemoUserRatesBuilder.toRateMenuItem(record);
+      if (
+        ownerItem
+        && ownerItem.mode === 'pair'
+        && ownerItem.direction === 'given'
+        && dynamicSocialContext
+      ) {
+        items.push({
+          ...ownerItem,
+          socialContext: dynamicSocialContext
+        });
+      }
+      return items;
+    }
+
+    const receivedItem = this.buildDynamicReceivedPairItem(record, normalizedUserId, ownerUserId, pairUserIds, dynamicSocialContext);
+    return receivedItem ? [receivedItem] : [];
+  }
+
+  private buildDynamicReceivedPairItem(
+    record: UserRateRecord,
+    normalizedUserId: string,
+    ownerUserId: string,
+    pairUserIds: [string, string],
+    dynamicSocialContext: RateMenuItem['socialContext'] | null
+  ): RateMenuItem | null {
+    const [firstUserId, secondUserId] = pairUserIds;
+    if (
+      !dynamicSocialContext
+      || (firstUserId !== normalizedUserId && secondUserId !== normalizedUserId)
+    ) {
+      return null;
+    }
+
+    const otherUserId = firstUserId === normalizedUserId ? secondUserId : firstUserId;
+    const scoreReceived = this.normalizeDynamicRateScore(
+      Number.isFinite(Number(record.scoreGiven)) && Number(record.scoreGiven) > 0
+        ? Number(record.scoreGiven)
+        : record.rate
+    );
+    if (scoreReceived <= 0) {
+      return null;
+    }
+
+    return {
+      id: `${record.id}:received:${normalizedUserId}`,
+      userId: otherUserId,
+      secondaryUserId: normalizedUserId,
+      mode: 'pair',
+      direction: 'received',
+      socialContext: dynamicSocialContext,
+      bridgeUserId: ownerUserId,
+      bridgeCount: dynamicSocialContext === 'friends-in-common' ? 1 : undefined,
+      scoreGiven: 0,
+      scoreReceived,
+      eventName: record.eventName?.trim() || 'Pair rate',
+      happenedAt: record.happenedAtIso?.trim() || record.updatedAtIso,
+      distanceKm: Number.isFinite(record.distanceKm) ? Number(record.distanceKm) : 0,
+      distanceMetersExact: this.dynamicDistanceMetersExact(record)
+    };
+  }
+
+  private resolvePairUserIdsFromRecord(record: UserRateRecord): [string, string] | null {
+    const firstUserId = record.fromUserId.trim();
+    const secondUserId = record.toUserId.trim();
+    if (!firstUserId || !secondUserId || firstUserId === secondUserId) {
+      return null;
+    }
+    return [firstUserId, secondUserId];
+  }
+
+  private resolveDynamicPairSocialContext(
+    ownerUserId: string,
+    firstUserId: string,
+    secondUserId: string
+  ): RateMenuItem['socialContext'] | null {
+    const normalizedOwnerUserId = ownerUserId.trim();
+    const normalizedFirstUserId = firstUserId.trim();
+    const normalizedSecondUserId = secondUserId.trim();
+    if (
+      !normalizedOwnerUserId
+      || !normalizedFirstUserId
+      || !normalizedSecondUserId
+      || normalizedFirstUserId === normalizedSecondUserId
+      || normalizedOwnerUserId === normalizedFirstUserId
+      || normalizedOwnerUserId === normalizedSecondUserId
+    ) {
+      return null;
+    }
+
+    const ownerMetFirst = this.didUsersMeetFromIndexedDb(normalizedOwnerUserId, normalizedFirstUserId);
+    const ownerMetSecond = this.didUsersMeetFromIndexedDb(normalizedOwnerUserId, normalizedSecondUserId);
+    if (ownerMetFirst && ownerMetSecond) {
+      return 'friends-in-common';
+    }
+
+    const pairMet = this.didUsersMeetFromIndexedDb(normalizedFirstUserId, normalizedSecondUserId);
+    if (!ownerMetFirst && !ownerMetSecond && !pairMet) {
+      return 'separated-friends';
+    }
+
+    return null;
+  }
+
+  private didUsersMeetFromIndexedDb(leftUserId: string, rightUserId: string): boolean {
+    const normalizedLeftUserId = leftUserId.trim();
+    const normalizedRightUserId = rightUserId.trim();
+    if (
+      !normalizedLeftUserId
+      || !normalizedRightUserId
+      || normalizedLeftUserId === normalizedRightUserId
+    ) {
+      return false;
+    }
+
+    const table = this.memoryDb.read()[ACTIVITY_MEMBERS_TABLE_NAME];
+    const groupsByOwnerKey = new Map<string, Set<string>>();
+    for (const id of table.ids) {
+      const record = table.byId[id];
+      const ownerType = record?.ownerType === 'event' || record?.ownerType === 'subEvent' || record?.ownerType === 'group'
+        ? record.ownerType
+        : null;
+      const ownerId = record?.ownerId?.trim() ?? '';
+      const userId = record?.userId?.trim() ?? '';
+      if (!ownerType || !ownerId || !userId || record.status !== 'accepted') {
+        continue;
+      }
+      const ownerKey = `${ownerType}:${ownerId}`;
+      const bucket = groupsByOwnerKey.get(ownerKey) ?? new Set<string>();
+      bucket.add(userId);
+      groupsByOwnerKey.set(ownerKey, bucket);
+    }
+
+    for (const members of groupsByOwnerKey.values()) {
+      if (members.has(normalizedLeftUserId) && members.has(normalizedRightUserId)) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  private matchesDynamicRateRange(item: RateMenuItem, query: ActivityRateRecordQuery): boolean {
+    const happenedAtMs = AppUtils.toSortableDate(item.happenedAt ?? '');
+    const rangeStartMs = query.rangeStartIso ? AppUtils.toSortableDate(query.rangeStartIso) : null;
+    const rangeEndMs = query.rangeEndIso ? AppUtils.toSortableDate(query.rangeEndIso) : null;
+    if (rangeStartMs !== null && happenedAtMs < rangeStartMs) {
+      return false;
+    }
+    if (rangeEndMs !== null && happenedAtMs > rangeEndMs) {
+      return false;
+    }
+    return true;
+  }
+
+  private matchesDynamicPairSocialFilter(item: RateMenuItem, socialBadgeEnabled: boolean): boolean {
+    if (item.mode !== 'pair') {
+      return true;
+    }
+    if (socialBadgeEnabled) {
+      return item.socialContext === 'friends-in-common';
+    }
+    return item.socialContext === 'separated-friends' || !item.socialContext;
+  }
+
+  private compareDynamicRateItems(left: RateMenuItem, right: RateMenuItem, query: ActivityRateRecordQuery): number {
+    if (query.sort === 'distance') {
+      const distanceDelta = this.dynamicDistanceValue(left) - this.dynamicDistanceValue(right);
+      if (distanceDelta !== 0) {
+        return distanceDelta;
+      }
+      return left.id.localeCompare(right.id);
+    }
+
+    if (query.sort === 'relevance') {
+      const relevanceDelta = this.dynamicRelevanceScore(right) - this.dynamicRelevanceScore(left);
+      if (relevanceDelta !== 0) {
+        return relevanceDelta;
+      }
+      return right.id.localeCompare(left.id);
+    }
+
+    const sortDirection = query.sortDirection === 'asc' || query.sortDirection === 'desc'
+      ? query.sortDirection
+      : 'desc';
+    const happenedAtDelta = sortDirection === 'asc'
+      ? AppUtils.toSortableDate(left.happenedAt ?? '') - AppUtils.toSortableDate(right.happenedAt ?? '')
+      : AppUtils.toSortableDate(right.happenedAt ?? '') - AppUtils.toSortableDate(left.happenedAt ?? '');
+    if (happenedAtDelta !== 0) {
+      return happenedAtDelta;
+    }
+    return sortDirection === 'asc'
+      ? left.id.localeCompare(right.id)
+      : right.id.localeCompare(left.id);
+  }
+
+  private dynamicDistanceMetersExact(record: UserRateRecord): number {
+    if (Number.isFinite(record.distanceMetersExact)) {
+      return Math.max(0, Math.trunc(Number(record.distanceMetersExact)));
+    }
+    return Math.max(0, Math.round((Number(record.distanceKm) || 0) * 1000));
+  }
+
+  private dynamicDistanceValue(item: RateMenuItem): number {
+    if (Number.isFinite(item.distanceMetersExact)) {
+      return Math.max(0, Math.trunc(Number(item.distanceMetersExact)));
+    }
+    return Math.max(0, Math.round((Number(item.distanceKm) || 0) * 1000));
+  }
+
+  private dynamicRelevanceScore(item: RateMenuItem): number {
+    const scoreGiven = Number.isFinite(item.scoreGiven)
+      ? Math.max(0, Math.round(Number(item.scoreGiven)))
+      : 0;
+    const scoreReceived = Number.isFinite(item.scoreReceived)
+      ? Math.max(0, Math.round(Number(item.scoreReceived)))
+      : 0;
+    if (item.direction === 'mutual') {
+      return scoreGiven + scoreReceived;
+    }
+    return scoreGiven > 0 ? scoreGiven : 5;
+  }
+
+  private normalizeDynamicRateScore(value: number): number {
+    return Math.min(10, Math.max(0, Math.round(Number(value) || 0)));
+  }
+
+  private resolveDynamicRateCursorId(cursor: string | null | undefined): string | null {
+    const normalizedCursor = `${cursor ?? ''}`.trim();
+    if (!normalizedCursor) {
+      return null;
+    }
+    try {
+      const parsed = JSON.parse(normalizedCursor) as { id?: string };
+      return typeof parsed.id === 'string' && parsed.id.trim().length > 0
+        ? parsed.id.trim()
+        : normalizedCursor;
+    } catch {
+      return normalizedCursor;
+    }
   }
 
   queryUserRatesByUserId(userId: string): UserRateRecord[] {

@@ -95,6 +95,7 @@ export interface ActivityRateRecordQuery {
   ownerUserId: string;
   mode: 'single' | 'pair';
   displayDirection: 'given' | 'received' | 'mutual' | 'met';
+  socialBadgeEnabled?: boolean;
   sort: ActivityRateRecordSort;
   sortDirection?: 'asc' | 'desc';
   cursor?: string | null;

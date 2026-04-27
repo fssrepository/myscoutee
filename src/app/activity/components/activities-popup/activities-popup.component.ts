@@ -523,6 +523,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       this.activitiesSecondaryFilter     = svc.activitiesSecondaryFilter() as AppTypes.ActivitiesSecondaryFilter;
       this.hostingPublicationFilter      = svc.activitiesHostingPublicationFilter() as AppTypes.HostingPublicationFilter;
       this.activitiesRateFilter          = svc.activitiesRateFilter() as AppTypes.RateFilterKey;
+      this.activitiesRateSocialBadgeEnabled = svc.activitiesRateSocialBadgeEnabled();
       this.activitiesView                = svc.activitiesView() as AppTypes.ActivitiesView;
       this.activitiesSmartListConfig.loadingDelayMs = this.resolveActivitiesLoadingDelayMs();
       this.showActivitiesViewPicker      = svc.activitiesShowViewPicker();
@@ -2168,7 +2169,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
       secondaryFilter: this.activitiesSecondaryFilter,
       chatContextFilter: this.activitiesChatContextFilter,
       hostingPublicationFilter: this.hostingPublicationFilter,
-      rateFilter: this.activitiesRateFilter
+      rateFilter: this.activitiesRateFilter,
+      rateSocialBadgeEnabled: this.activitiesRateSocialBadgeEnabled
     };
     const currentFilters = this.activitiesSmartListQuery.filters ?? {};
     if (
@@ -2178,6 +2180,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       && currentFilters['chatContextFilter'] === nextFilters['chatContextFilter']
       && currentFilters['hostingPublicationFilter'] === nextFilters['hostingPublicationFilter']
       && currentFilters['rateFilter'] === nextFilters['rateFilter']
+      && currentFilters['rateSocialBadgeEnabled'] === nextFilters['rateSocialBadgeEnabled']
     ) {
       return;
     }

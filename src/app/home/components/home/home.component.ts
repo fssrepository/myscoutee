@@ -389,6 +389,9 @@ export class HomeComponent implements OnDestroy {
     return this.users
       .filter(user => user.id !== this.activeUserId)
       .filter(user => !excludedUserIds.has(user.id))
+      .filter(user => this.selectedHomeMode !== 'single' && !this.isSyntheticPairMode
+        ? true
+        : !this.gameService.didUsersMeet(this.activeUserId, user.id))
       .filter(user => this.matchesFilter(user));
   }
 
@@ -695,12 +698,12 @@ export class HomeComponent implements OnDestroy {
     if (!this.canOpenHistory) {
       return;
     }
+    const initialRateFilter = this.isPairMode ? 'pair-given' : 'individual-given';
     this.activitiesContext.openActivities(
       'rates',
       undefined,
-      this.selectedHomeMode === 'friends-in-common'
-        ? 'pair-received'
-        : (this.isPairMode ? 'pair-given' : 'individual-given')
+      initialRateFilter,
+      this.isSeparatedFriendsMode || this.isFriendsInCommonMode
     );
   }
 
@@ -1820,7 +1823,12 @@ export class HomeComponent implements OnDestroy {
       for (let rightIndex = leftIndex + 1; rightIndex < candidates.length; rightIndex += 1) {
         const left = candidates[leftIndex] ?? null;
         const right = candidates[rightIndex] ?? null;
-        if (!left || !right || excludedPairKeys.has(this.sortedHomePairKey(left.id, right.id))) {
+        if (
+          !left
+          || !right
+          || excludedPairKeys.has(this.sortedHomePairKey(left.id, right.id))
+          || this.gameService.didUsersMeet(left.id, right.id)
+        ) {
           continue;
         }
         rounds.push({
