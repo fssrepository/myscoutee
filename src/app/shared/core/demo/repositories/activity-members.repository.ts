@@ -182,7 +182,10 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
     const groupsByEventId = new Map<string, { eventName: string; userIds: Set<string> }>();
     for (const id of table.ids) {
       const record = table.byId[id];
-      const eventId = record?.ownerType === 'event' ? record.ownerId.trim() : '';
+      const activityOwnerType = record?.ownerType === 'event' || record?.ownerType === 'subEvent' || record?.ownerType === 'group'
+        ? record.ownerType
+        : null;
+      const eventId = activityOwnerType ? `${activityOwnerType}:${record?.ownerId.trim() ?? ''}` : '';
       const userId = record?.userId.trim() ?? '';
       if (!record || record.status !== 'accepted' || !eventId || !userId) {
         continue;
