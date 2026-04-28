@@ -866,7 +866,16 @@ export class ActivitiesPopupComponent implements OnDestroy {
           this.hostingPublicationFilter
         ).length > 0
       ) {
-        this.runAfterActivitiesNextPaint(() => this.activitiesSmartList?.reload());
+        const fallbackRows = this.sortVisibleEventRows(this.buildEventScopeRows(
+          this.activitiesEventScope,
+          this.activitiesSecondaryFilter,
+          this.hostingPublicationFilter
+        ));
+        this.runAfterActivitiesRender(() => {
+          if (!this.replaceVisibleActivityFallbackRows(fallbackRows)) {
+            this.activitiesSmartList?.reload();
+          }
+        });
       }
       this.cdr.markForCheck();
     } catch {
@@ -1033,6 +1042,27 @@ export class ActivitiesPopupComponent implements OnDestroy {
     smartList.replaceVisibleItems(nextItems, {
       total: Math.max(nextItems.length, smartList.cursorState().total + totalDelta)
     });
+  }
+
+  private replaceVisibleActivityFallbackRows(items: readonly AppTypes.ActivityListRow[]): boolean {
+    const smartList = this.activitiesSmartList;
+    if (!smartList || this.isCalendarLayoutView()) {
+      return false;
+    }
+    let nextItems = [...items];
+    if (this.isEventActivitiesPrimaryFilter()) {
+      nextItems = this.sortVisibleEventRows(nextItems);
+    } else if (this.activitiesPrimaryFilter === 'chats') {
+      nextItems = this.sortVisibleChatRows(nextItems);
+    }
+    const initialPageSize = Number(this.activitiesSmartListConfig.initialPageSize);
+    const visibleCount = Number.isFinite(initialPageSize)
+      ? Math.max(1, Math.trunc(initialPageSize))
+      : Math.max(1, this.activitiesPageSize);
+    smartList.replaceVisibleItems(nextItems.slice(0, visibleCount), {
+      total: nextItems.length
+    });
+    return true;
   }
 
   protected removeVisibleActivityRow(row: AppTypes.ActivityListRow): void {
