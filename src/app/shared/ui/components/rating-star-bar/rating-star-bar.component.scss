@@ -5,7 +5,7 @@
 
 :host(.rating-star-bar-host--dockable) {
   --rating-star-bar-dock-hidden-offset: calc(100% + 0.8rem + env(safe-area-inset-bottom));
-  position: absolute;
+  position: fixed;
   left: 0;
   right: 0;
   bottom: 0;
