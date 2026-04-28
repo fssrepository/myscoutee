@@ -128,6 +128,9 @@ export class EventCheckoutPopupComponent {
     if (dialog.mode === 'invitation') {
       return this.totalAmount() > 0 ? 'Accept Invitation & Pay' : 'Accept Invitation';
     }
+    if (this.shouldAwaitApprovalBeforePayment()) {
+      return 'Review Join Request';
+    }
     return this.totalAmount() > 0 ? 'Review Booking & Pay' : 'Join Event';
   }
 
@@ -481,6 +484,9 @@ export class EventCheckoutPopupComponent {
     if (this.paymentStep) {
       return 'Buy';
     }
+    if (this.shouldAwaitApprovalBeforePayment()) {
+      return dialog.confirmLabel;
+    }
     if (this.totalAmount() > 0) {
       return 'Checkout';
     }
@@ -491,6 +497,9 @@ export class EventCheckoutPopupComponent {
     const dialog = this.dialog();
     if (!dialog) {
       return 'Working...';
+    }
+    if (this.shouldAwaitApprovalBeforePayment()) {
+      return dialog.busyConfirmLabel;
     }
     if (this.totalAmount() > 0) {
       return this.paymentStep ? 'Buying...' : 'Checking out...';
@@ -511,10 +520,35 @@ export class EventCheckoutPopupComponent {
     return true;
   }
 
+  protected shouldAwaitApprovalBeforePayment(): boolean {
+    const dialog = this.dialog();
+    if (!dialog || dialog.mode !== 'join') {
+      return false;
+    }
+    return dialog.requiresApprovalBeforePayment && !dialog.approvalGranted && this.totalAmount() > 0;
+  }
+
   protected async submit(event?: Event): Promise<void> {
     event?.stopPropagation();
     const dialog = this.dialog();
     if (!dialog || !this.canContinue()) {
+      return;
+    }
+    if (!this.paymentStep && this.shouldAwaitApprovalBeforePayment()) {
+      const startedAt = Date.now();
+      this.busy = true;
+      this.errorMessage = '';
+      try {
+        await Promise.resolve(dialog.onSubmit(this.buildSelection(null, false)));
+        this.persistCheckoutDraft();
+        await this.ensureMinimumBusyDuration(startedAt);
+        this.dialogService.close();
+      } catch (error) {
+        await this.ensureMinimumBusyDuration(startedAt);
+        this.errorMessage = this.resolveErrorMessage(error, dialog.failureMessage);
+      } finally {
+        this.busy = false;
+      }
       return;
     }
     if (!this.paymentStep && this.totalAmount() > 0) {
@@ -632,7 +666,10 @@ export class EventCheckoutPopupComponent {
     this.errorMessage = '';
   }
 
-  private buildSelection(paymentSessionId: string | null): AppTypes.EventCheckoutSelection {
+  private buildSelection(
+    paymentSessionId: string | null,
+    bookingConfirmed = true
+  ): AppTypes.EventCheckoutSelection {
     const dialog = this.dialog();
     if (!dialog) {
       throw new Error('Checkout session is not available.');
@@ -647,7 +684,7 @@ export class EventCheckoutPopupComponent {
       totalAmount: this.totalAmount(),
       currency: this.currency(),
       paymentSessionId,
-      bookingConfirmed: true
+      bookingConfirmed
     };
   }
 

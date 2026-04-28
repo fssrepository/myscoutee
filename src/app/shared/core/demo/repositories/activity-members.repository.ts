@@ -1624,8 +1624,13 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
     const normalizedOwner = this.normalizeOwnerRef(owner)!;
     const nowMs = Date.now();
     const nowIso = new Date(nowMs).toISOString();
+    const invitedByUserId = member.status === 'pending' && member.requestKind === 'invite'
+      ? member.invitedByUserId?.trim() || null
+      : null;
     return {
       ...member,
+      invitedByUserId,
+      invitedByActiveUser: invitedByUserId ? member.invitedByActiveUser === true : false,
       ownerType: normalizedOwner.ownerType,
       ownerId: normalizedOwner.ownerId,
       ownerKey: this.ownerKey(normalizedOwner),
@@ -1650,6 +1655,7 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
       pendingSource: record.pendingSource,
       requestKind: record.requestKind,
       invitedByActiveUser: record.invitedByActiveUser,
+      invitedByUserId: record.invitedByUserId ?? null,
       metAtIso: record.metAtIso,
       actionAtIso: record.actionAtIso,
       metWhere: record.metWhere,

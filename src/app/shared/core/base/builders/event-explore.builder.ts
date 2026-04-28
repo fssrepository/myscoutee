@@ -113,7 +113,7 @@ export class EventExploreBuilder {
     if (this.isOpenEvent(record)) {
       actions.push({
         id: 'join',
-        label: record.ticketing ? 'Book' : 'Request join',
+        label: 'Request join',
         icon: 'person_add',
         tone: 'accent'
       });

@@ -104,6 +104,7 @@ export class ActivitiesEventsController {
   constructor(private readonly host: ActivitiesEventsHost) {}
 
   private get activeUser() { return this.host.activeUser as any; }
+  private get activitiesContext() { return this.host.activitiesContext; }
   private get activitiesEventScope() { return this.host.activitiesEventScope as AppTypes.ActivitiesEventScope; }
   private set activitiesEventScope(value: AppTypes.ActivitiesEventScope) { this.host.activitiesEventScope = value; }
   private get activitiesRates() { return this.host.activitiesRates; }
@@ -112,6 +113,7 @@ export class ActivitiesEventsController {
   private get activityMembersService() { return this.host.activityMembersService; }
   private get cdr() { return this.host.cdr; }
   private get confirmationDialogService() { return this.host.confirmationDialogService; }
+  private get eventCheckoutDraftService() { return this.host.eventCheckoutDraftService; }
   private get eventCheckoutDialogService() { return this.host.eventCheckoutDialogService; }
   private get eventEditorService() { return this.host.eventEditorService; }
   private get eventItems() { return this.host.eventItems as EventMenuItem[]; }
@@ -517,10 +519,42 @@ export class ActivitiesEventsController {
   }
 
   private async confirmActivitySecondaryAction(row: AppTypes.ActivityListRow): Promise<void> {
+    if (row.type === 'events') {
+      await this.confirmActivityLeave(row);
+      return;
+    }
     await this.persistActivityRowTrash(row);
     this.markActivityRowTrashed(row);
     this.removeVisibleActivityRow(row);
     this.cdr.markForCheck();
+  }
+
+  private async confirmActivityLeave(row: AppTypes.ActivityListRow): Promise<void> {
+    const activeUserId = this.activeUser.id.trim();
+    if (!activeUserId) {
+      return;
+    }
+    const syncPayload = await this.buildLeftEventSyncPayload(row);
+    if (!syncPayload) {
+      this.eventCheckoutDraftService.clear(activeUserId, row.id);
+      this.removeVisibleActivityRow(row);
+      this.refreshSectionBadges();
+      this.cdr.markForCheck();
+      return;
+    }
+
+    this.eventCheckoutDraftService.clear(activeUserId, row.id);
+    const persistence = this.activitiesContext.emitActivitiesEventSync(syncPayload);
+
+    if (this.selectedActivityMembersRowId === this.activityRowIdentity(row)) {
+      this.selectedActivityMembers = ActivityMembersBuilder.sortActivityMembersByActionTimeAsc(
+        this.selectedActivityMembers.filter(member => member.userId !== activeUserId)
+      );
+      this.activityMembersByRowId[this.selectedActivityMembersRowId] = [...this.selectedActivityMembers];
+    }
+
+    this.cdr.markForCheck();
+    await persistence;
   }
 
   private shouldUseCheckoutFlow(record: {
@@ -674,6 +708,152 @@ export class ActivitiesEventsController {
         : (Array.isArray(relatedSource.subEvents) ? this.cloneSyncedSubEventForms(relatedSource.subEvents) : undefined),
       subEventsDisplayMode: record?.subEventsDisplayMode ?? relatedSource.subEventsDisplayMode,
       paymentSessionId: selection?.paymentSessionId ?? null
+    };
+  }
+
+  private async buildLeftEventSyncPayload(
+    row: AppTypes.ActivityListRow
+  ): Promise<Omit<ActivitiesEventSyncPayload, 'syncKey'> | null> {
+    const activeUserId = this.activeUser.id.trim();
+    if (!activeUserId) {
+      return null;
+    }
+
+    const relatedSource = ActivityEventBuilder.resolveEditorSource(row, {
+      eventItems: this.eventItems,
+      hostingItems: this.hostingItems,
+      invitationItems: this.invitationItems
+    });
+    const record = await this.eventsService.queryKnownItemById(activeUserId, row.id);
+    const source = row.source as EventMenuItem;
+    const creatorUserId = record?.creatorUserId ?? relatedSource?.creatorUserId ?? source.creatorUserId ?? '';
+    if (!creatorUserId.trim()) {
+      return null;
+    }
+
+    const existingAcceptedMemberUserIds = this.uniqueUserIds([
+      ...(record?.acceptedMemberUserIds ?? relatedSource?.acceptedMemberUserIds ?? source.acceptedMemberUserIds ?? [])
+    ]);
+    const existingPendingMemberUserIds = this.uniqueUserIds([
+      ...(record?.pendingMemberUserIds ?? relatedSource?.pendingMemberUserIds ?? source.pendingMemberUserIds ?? [])
+    ]);
+    const activeUserWasAccepted = existingAcceptedMemberUserIds.includes(activeUserId);
+    const activeUserWasPending = existingPendingMemberUserIds.includes(activeUserId);
+    const nextAcceptedMemberUserIds = existingAcceptedMemberUserIds.filter(userId => userId !== activeUserId);
+    const nextPendingMemberUserIds = existingPendingMemberUserIds
+      .filter(userId => userId !== activeUserId && !nextAcceptedMemberUserIds.includes(userId));
+
+    const acceptedMembersBase = this.chatCountValue(
+      record?.acceptedMembers
+      ?? relatedSource?.acceptedMembers
+      ?? source.acceptedMembers
+    );
+    const pendingMembersBase = this.chatCountValue(
+      record?.pendingMembers
+      ?? relatedSource?.pendingMembers
+      ?? source.pendingMembers
+    );
+    const nextAcceptedMembers = Math.max(
+      nextAcceptedMemberUserIds.length,
+      Math.max(0, acceptedMembersBase - (activeUserWasAccepted ? 1 : 0))
+    );
+    const nextPendingMembers = Math.max(
+      nextPendingMemberUserIds.length,
+      Math.max(0, pendingMembersBase - (activeUserWasPending ? 1 : 0))
+    );
+
+    const title = record?.title ?? relatedSource?.title ?? source.title ?? row.title;
+    const shortDescription = record?.subtitle
+      ?? relatedSource?.shortDescription
+      ?? source.shortDescription
+      ?? row.subtitle
+      ?? '';
+    const timeframe = record?.timeframe ?? relatedSource?.timeframe ?? source.timeframe ?? row.detail;
+    const startAt = record?.startAtIso ?? relatedSource?.startAt ?? source.startAt ?? row.dateIso;
+    const endAt = record?.endAtIso ?? relatedSource?.endAt ?? source.endAt ?? startAt;
+    const distanceKmRaw = record?.distanceKm ?? relatedSource?.distanceKm ?? source.distanceKm ?? row.distanceKm;
+    const distanceKm = Number.isFinite(Number(distanceKmRaw)) ? Math.max(0, Number(distanceKmRaw)) : 0;
+    const creatorName = record?.creatorName?.trim() || title;
+    const creatorInitials = record?.creatorInitials?.trim()
+      || relatedSource?.avatar?.trim()
+      || source.avatar?.trim()
+      || AppUtils.initialsFromText(creatorName);
+    const capacityTotal = Math.max(
+      nextAcceptedMembers,
+      this.chatCountValue(
+        record?.capacityTotal
+        ?? relatedSource?.capacityTotal
+        ?? source.capacityTotal
+        ?? relatedSource?.capacityMax
+        ?? source.capacityMax
+      )
+    );
+
+    return {
+      id: row.id,
+      target: 'events',
+      title,
+      shortDescription,
+      timeframe,
+      activity: this.chatCountValue(record?.activity ?? relatedSource?.activity ?? source.activity ?? row.unread),
+      isAdmin: false,
+      startAt,
+      endAt,
+      distanceKm,
+      imageUrl: record?.imageUrl ?? relatedSource?.imageUrl ?? source.imageUrl ?? '',
+      acceptedMembers: nextAcceptedMembers,
+      pendingMembers: nextPendingMembers,
+      capacityTotal,
+      capacityMin: record?.capacityMin ?? relatedSource?.capacityMin ?? source.capacityMin ?? null,
+      capacityMax: record?.capacityMax ?? relatedSource?.capacityMax ?? source.capacityMax ?? capacityTotal,
+      autoInviter: record?.autoInviter ?? relatedSource?.autoInviter ?? source.autoInviter,
+      frequency: record?.frequency ?? relatedSource?.frequency ?? source.frequency,
+      ticketing: record?.ticketing ?? relatedSource?.ticketing ?? source.ticketing,
+      pricing: record?.pricing ?? relatedSource?.pricing ?? source.pricing,
+      policies: Array.isArray(record?.policies)
+        ? record.policies.map((item: AppTypes.EventPolicyItem) => ({ ...item }))
+        : (Array.isArray(relatedSource?.policies)
+            ? relatedSource.policies.map((item: AppTypes.EventPolicyItem) => ({ ...item }))
+            : (Array.isArray(source.policies) ? source.policies.map((item: AppTypes.EventPolicyItem) => ({ ...item })) : undefined)),
+      slotsEnabled: record?.slotsEnabled ?? relatedSource?.slotsEnabled ?? source.slotsEnabled,
+      slotTemplates: Array.isArray(record?.slotTemplates)
+        ? record.slotTemplates.map((item: AppTypes.EventSlotTemplate) => ({ ...item }))
+        : (Array.isArray(relatedSource?.slotTemplates)
+            ? relatedSource.slotTemplates.map((item: AppTypes.EventSlotTemplate) => ({ ...item }))
+            : (Array.isArray(source.slotTemplates) ? source.slotTemplates.map((item: AppTypes.EventSlotTemplate) => ({ ...item })) : undefined)),
+      parentEventId: record?.parentEventId ?? relatedSource?.parentEventId ?? source.parentEventId,
+      slotTemplateId: record?.slotTemplateId ?? relatedSource?.slotTemplateId ?? source.slotTemplateId,
+      generated: record?.generated ?? relatedSource?.generated ?? source.generated,
+      eventType: record?.eventType ?? relatedSource?.eventType ?? source.eventType,
+      nextSlot: record?.nextSlot
+        ? { ...record.nextSlot }
+        : (relatedSource?.nextSlot ? { ...relatedSource.nextSlot } : (source.nextSlot ? { ...source.nextSlot } : undefined)),
+      upcomingSlots: Array.isArray(record?.upcomingSlots)
+        ? record.upcomingSlots.map((item: AppTypes.EventSlotOccurrence) => ({ ...item }))
+        : (Array.isArray(relatedSource?.upcomingSlots)
+            ? relatedSource.upcomingSlots.map((item: AppTypes.EventSlotOccurrence) => ({ ...item }))
+            : (Array.isArray(source.upcomingSlots) ? source.upcomingSlots.map((item: AppTypes.EventSlotOccurrence) => ({ ...item })) : undefined)),
+      visibility: record?.visibility ?? relatedSource?.visibility ?? source.visibility,
+      blindMode: record?.blindMode ?? relatedSource?.blindMode ?? source.blindMode,
+      published: record?.published ?? relatedSource?.published ?? source.published ?? true,
+      creatorUserId,
+      creatorName,
+      creatorInitials,
+      creatorGender: record?.creatorGender,
+      creatorCity: record?.creatorCity,
+      location: record?.location ?? relatedSource?.location ?? source.location,
+      locationCoordinates: record?.locationCoordinates ?? relatedSource?.locationCoordinates ?? source.locationCoordinates,
+      sourceLink: record?.sourceLink ?? relatedSource?.sourceLink ?? source.sourceLink,
+      acceptedMemberUserIds: nextAcceptedMemberUserIds,
+      pendingMemberUserIds: nextPendingMemberUserIds,
+      topics: [...(record?.topics ?? relatedSource?.topics ?? source.topics ?? [])],
+      subEvents: Array.isArray(record?.subEvents)
+        ? this.cloneSyncedSubEventForms(record.subEvents)
+        : (Array.isArray(relatedSource?.subEvents)
+            ? this.cloneSyncedSubEventForms(relatedSource.subEvents)
+            : (Array.isArray(source.subEvents) ? this.cloneSyncedSubEventForms(source.subEvents) : undefined)),
+      subEventsDisplayMode: record?.subEventsDisplayMode ?? relatedSource?.subEventsDisplayMode ?? source.subEventsDisplayMode,
+      paymentSessionId: null
     };
   }
 

@@ -196,6 +196,13 @@
   cursor: pointer;
 }
 
+.event-explore-basket-item__btn:disabled {
+  border-color: rgba(190, 198, 210, 0.82);
+  background: linear-gradient(180deg, rgba(246, 248, 251, 0.96) 0%, rgba(236, 239, 244, 0.96) 100%);
+  color: rgba(87, 106, 130, 0.78);
+  cursor: default;
+}
+
 .event-explore-basket-item__btn--clear {
   color: #a04844;
 }

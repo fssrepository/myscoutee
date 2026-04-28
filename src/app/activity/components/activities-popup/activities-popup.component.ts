@@ -53,6 +53,7 @@ import {
 } from '../../../shared/ui';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
 import { EventCheckoutDialogService } from '../../../shared/ui/services/event-checkout-dialog.service';
+import { EventCheckoutDraftService, type EventCheckoutDraft } from '../../../shared/ui/services/event-checkout-draft.service';
 import { EventChatPopupComponent } from '../event-chat-popup/event-chat-popup.component';
 import { EventExplorePopupComponent } from '../event-explore-popup/event-explore-popup.component';
 import { ActivitiesPopupToolbarController } from './activities-popup-toolbar.controller';
@@ -150,6 +151,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   private readonly usersService = inject(UsersService);
   protected readonly confirmationDialogService = inject(ConfirmationDialogService);
   protected readonly eventCheckoutDialogService = inject(EventCheckoutDialogService);
+  private readonly eventCheckoutDraftService = inject(EventCheckoutDraftService);
   readonly activitiesRates = new ActivitiesRatesController({
     getUsers: () => this.users,
     getActiveUserGender: () => this.activeUser.gender,
@@ -258,6 +260,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected readonly eventVisibilityById: Record<string, AppTypes.EventVisibility> = {};
   private readonly eventCapacityById: Record<string, AppTypes.EventCapacityRange> = {};
   protected readonly eventSubEventsById: Record<string, AppTypes.SubEventFormItem[]> = {};
+  private lastPendingCheckoutDraftSourceIds = new Set<string>();
   protected readonly activityMembersByRowId: Record<string, AppTypes.ActivityMemberEntry[]> = {};
   protected activitiesEventCardRevision = 0;
   protected activitiesRateCardRevision = 0;
@@ -599,6 +602,25 @@ export class ActivitiesPopupComponent implements OnDestroy {
         return;
       }
       this.applyActivitiesEventSync(sync);
+      this.cdr.markForCheck();
+    });
+
+    effect(() => {
+      this.eventCheckoutDraftService.drafts();
+      const nextPendingDraftSourceIds = this.pendingCheckoutDraftSourceIds();
+      const hadPendingDraftRemoval = [...this.lastPendingCheckoutDraftSourceIds]
+        .some(sourceId => !nextPendingDraftSourceIds.has(sourceId));
+      const hasNewPendingDraft = [...nextPendingDraftSourceIds]
+        .some(sourceId => !this.lastPendingCheckoutDraftSourceIds.has(sourceId));
+      this.lastPendingCheckoutDraftSourceIds = nextPendingDraftSourceIds;
+      this.refreshSectionBadges();
+      const shouldReloadEventList = this.activitiesContext.activitiesOpen()
+        && (hadPendingDraftRemoval || hasNewPendingDraft)
+        && this.activitiesPrimaryFilter === 'events'
+        && this.activitiesEventScope !== 'pending';
+      if (shouldReloadEventList) {
+        this.activitiesSmartList?.reload();
+      }
       this.cdr.markForCheck();
     });
 
@@ -991,9 +1013,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     sync: ActivitiesEventSyncPayload,
     existingRow: AppTypes.ActivityListRow | null = null
   ): AppTypes.ActivityListRow | null {
-    const rowType = existingRow && existingRow.type !== 'invitations'
-      ? existingRow.type
-      : this.resolveVisibleEventRowTypeFromSync(sync);
+    const rowType = this.resolveVisibleEventRowTypeFromSync(sync);
     if (rowType === 'events') {
       const source = this.buildSyncedEventMenuItem(
         sync,
@@ -1321,11 +1341,12 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   protected refreshSectionBadges(): void {
+    const memberEventItems = this.memberEventItems();
     this.chatBadge = DemoUserMenuCountersBuilder.resolveSectionBadge(
       this.chatItems.map(item => item.unread),
       this.chatItems.length
     );
-    if (this.eventItems.length === 0 && this.hostingItems.length === 0 && this.invitationItems.length === 0) {
+    if (memberEventItems.length === 0 && this.hostingItems.length === 0 && this.invitationItems.length === 0) {
       this.invitationsBadge = this.activeUser.activities.invitations;
       this.eventsBadge = this.activeUser.activities.events;
       this.pendingBadge = 0;
@@ -1337,8 +1358,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     const visibleInvitations = this.invitationItems
       .filter(item => !this.isActivityIdentityTrashed('invitations', item.id));
     this.invitationsBadge = visibleInvitations.length;
-    const visibleMemberEvents = this.eventItems
-      .filter(item => item.isAdmin !== true)
+    const visibleMemberEvents = memberEventItems
       .filter(item => !this.isActivityIdentityTrashed('events', item.id))
       .filter(item => this.isAcceptedEventMenuItem(item) || this.isPendingEventMenuItem(item));
     const visiblePendingEvents = visibleMemberEvents
@@ -1379,6 +1399,9 @@ export class ActivitiesPopupComponent implements OnDestroy {
     if (!activeUserId || sync.isAdmin) {
       return false;
     }
+    if (this.pendingCheckoutDraftSourceIds().has(sync.id)) {
+      return true;
+    }
     if ((sync.acceptedMemberUserIds ?? []).includes(activeUserId)) {
       return false;
     }
@@ -1388,6 +1411,9 @@ export class ActivitiesPopupComponent implements OnDestroy {
   private isAcceptedEventSync(sync: ActivitiesEventSyncPayload): boolean {
     const activeUserId = this.activeUser?.id?.trim() ?? '';
     if (!activeUserId || sync.isAdmin) {
+      return false;
+    }
+    if (this.pendingCheckoutDraftSourceIds().has(sync.id)) {
       return false;
     }
     return (sync.acceptedMemberUserIds ?? []).includes(activeUserId);
@@ -1440,8 +1466,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     secondaryFilter: AppTypes.ActivitiesSecondaryFilter,
     hostingPublicationFilter: AppTypes.HostingPublicationFilter
   ): AppTypes.ActivityListRow[] {
-    const memberEventItems = this.eventItems
-      .filter(item => item.isAdmin !== true)
+    const memberEventItems = this.memberEventItems()
       .filter(item => !this.isActivityIdentityTrashed('events', item.id))
       .filter(item => this.isAcceptedEventMenuItem(item) || this.isPendingEventMenuItem(item));
     const activeEventRows = memberEventItems
@@ -1494,6 +1519,118 @@ export class ActivitiesPopupComponent implements OnDestroy {
       return trashRows;
     }
     return activeEventRows;
+  }
+
+  private memberEventItems(): EventMenuItem[] {
+    const pendingDraftItems = this.pendingCheckoutDraftEventMenuItems();
+    const pendingDraftSourceIds = new Set(pendingDraftItems.map(item => item.id));
+    return [
+      ...this.eventItems
+        .filter(item => item.isAdmin !== true)
+        .filter(item => !pendingDraftSourceIds.has(item.id)),
+      ...pendingDraftItems
+    ];
+  }
+
+  private pendingCheckoutDraftEventMenuItems(): EventMenuItem[] {
+    const activeUserId = this.activeUser?.id?.trim() ?? '';
+    if (!activeUserId) {
+      return [];
+    }
+    return this.eventCheckoutDraftService.listByUser(activeUserId)
+      .filter(draft => this.shouldTrackPendingCheckoutDraft(draft))
+      .map(draft => this.buildPendingCheckoutDraftEventMenuItem(draft))
+      .filter((item): item is EventMenuItem => Boolean(item));
+  }
+
+  private buildPendingCheckoutDraftEventMenuItem(draft: EventCheckoutDraft): EventMenuItem | null {
+    const activeUserId = this.activeUser?.id?.trim() ?? '';
+    const sourceId = draft.sourceId.trim();
+    if (!activeUserId || !sourceId) {
+      return null;
+    }
+    const checkoutStarted = Boolean(draft.checkoutSessionId?.trim());
+    const pendingDescription = checkoutStarted
+      ? 'Checkout in progress.'
+      : 'Waiting for admin approval before payment.';
+    const pendingTimeframe = checkoutStarted
+      ? 'Booking pending.'
+      : 'Approval pending.';
+
+    const knownRecord = this.eventsService.peekKnownItemById(activeUserId, sourceId);
+    if (!knownRecord) {
+      return {
+        id: sourceId,
+        avatar: AppUtils.initialsFromText(draft.eventTitle || 'Pending'),
+        title: draft.eventTitle.trim() || 'Pending booking',
+        shortDescription: pendingDescription,
+        timeframe: draft.eventTimeframe.trim() || pendingTimeframe,
+        activity: 0,
+        isAdmin: false,
+        acceptedMembers: 0,
+        pendingMembers: 1,
+        capacityTotal: 1,
+        acceptedMemberUserIds: [],
+        pendingMemberUserIds: [activeUserId],
+        ticketing: draft.lineItems.length > 0 || draft.totalAmount > 0
+      };
+    }
+
+    const item = this.toEventMenuItem(knownRecord);
+    const originalAcceptedMemberUserIds = this.uniqueUserIds(item.acceptedMemberUserIds ?? []);
+    const originalPendingMemberUserIds = this.uniqueUserIds(item.pendingMemberUserIds ?? []);
+    const acceptedMemberUserIds = originalAcceptedMemberUserIds.filter(userId => userId !== activeUserId);
+    const pendingMemberUserIds = this.uniqueUserIds([
+      ...originalPendingMemberUserIds.filter(userId => userId !== activeUserId),
+      activeUserId
+    ]);
+    const acceptedMembers = Math.max(
+      acceptedMemberUserIds.length,
+      Math.max(
+        0,
+        this.chatCountValue(item.acceptedMembers) - (originalAcceptedMemberUserIds.includes(activeUserId) ? 1 : 0)
+      )
+    );
+    const pendingMembers = Math.max(
+      pendingMemberUserIds.length,
+      Math.max(
+        0,
+        this.chatCountValue(item.pendingMembers) + (originalPendingMemberUserIds.includes(activeUserId) ? 0 : 1)
+      )
+    );
+
+    return {
+      ...item,
+      isAdmin: false,
+      title: item.title.trim() || draft.eventTitle.trim() || 'Pending booking',
+      shortDescription: item.shortDescription.trim() || pendingDescription,
+      timeframe: item.timeframe.trim() || draft.eventTimeframe.trim() || pendingTimeframe,
+      acceptedMembers,
+      pendingMembers,
+      capacityTotal: Math.max(
+        acceptedMembers,
+        this.chatCountValue(item.capacityTotal ?? item.capacityMax)
+      ),
+      acceptedMemberUserIds,
+      pendingMemberUserIds
+    };
+  }
+
+  private pendingCheckoutDraftSourceIds(): Set<string> {
+    const activeUserId = this.activeUser?.id?.trim() ?? '';
+    if (!activeUserId) {
+      return new Set<string>();
+    }
+    return new Set(
+      this.eventCheckoutDraftService.listByUser(activeUserId)
+        .filter(draft => this.shouldTrackPendingCheckoutDraft(draft))
+        .map(draft => draft.sourceId.trim())
+        .filter(sourceId => sourceId.length > 0)
+    );
+  }
+
+  private shouldTrackPendingCheckoutDraft(draft: EventCheckoutDraft | null | undefined): boolean {
+    return Math.max(0, Number(draft?.totalAmount) || 0) > 0;
   }
 
   // =========================================================================
@@ -2630,28 +2767,44 @@ export class ActivitiesPopupComponent implements OnDestroy {
     if (
       requestedPrimaryFilter === 'events'
       && this.shouldUseLocalEventRowsFallback(requestedEventScope)
-      && page.items.length === 0
     ) {
       const localRows = this.sortVisibleEventRows(this.buildEventScopeRows(
         requestedEventScope,
         this.activitiesSecondaryFilter,
         this.hostingPublicationFilter
       ));
-      if (localRows.length > 0) {
-        const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || this.activitiesPageSize));
-        const pageIndex = Math.max(0, Math.trunc(Number(query.page) || 0));
-        const start = pageIndex * pageSize;
-        return {
-          items: localRows.slice(start, start + pageSize),
-          total: localRows.length,
-          nextCursor: null
-        };
+      if (requestedEventScope === 'pending' && localRows.length > 0) {
+        return this.paginateLocalEventRows(localRows, query);
+      }
+      if (page.items.length === 0 && localRows.length > 0) {
+        return this.paginateLocalEventRows(localRows, query);
       }
     }
     if (requestedPrimaryFilter === 'rates') {
       this.refreshRateItems();
     }
     return page;
+  }
+
+  private paginateLocalEventRows(
+    rows: readonly AppTypes.ActivityListRow[],
+    query: ListQuery<ActivitiesSmartListFilters>
+  ): PageResult<AppTypes.ActivityListRow> {
+    if (rows.length === 0) {
+      return {
+        items: [],
+        total: 0,
+        nextCursor: null
+      };
+    }
+    const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || this.activitiesPageSize));
+    const pageIndex = Math.max(0, Math.trunc(Number(query.page) || 0));
+    const start = pageIndex * pageSize;
+    return {
+      items: rows.slice(start, start + pageSize),
+      total: rows.length,
+      nextCursor: null
+    };
   }
 
   private shouldUseLocalEventRowsFallback(scope: AppTypes.ActivitiesEventScope): boolean {

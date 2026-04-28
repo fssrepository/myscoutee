@@ -539,6 +539,7 @@ export class EventMembersPopupComponent {
     if (!selectionChanged) {
       return;
     }
+    const activeUserId = this.activeUserId();
     const nowIso = AppUtils.toIsoDateTime(new Date());
     const nextPendingInvites = selectedCandidates.map(candidate => {
       const existing = existingPendingInviteByUserId.get(candidate.userId);
@@ -551,6 +552,7 @@ export class EventMembersPopupComponent {
           pendingSource: 'admin' as const,
           requestKind: 'invite' as const,
           invitedByActiveUser: true,
+          invitedByUserId: activeUserId,
           actionAtIso: existing.actionAtIso || nowIso
         };
       }
@@ -560,6 +562,7 @@ export class EventMembersPopupComponent {
         pendingSource: 'admin' as const,
         requestKind: 'invite' as const,
         invitedByActiveUser: true,
+        invitedByUserId: activeUserId,
         statusText: candidate.statusText?.trim() || 'Waiting for admin approval.',
         actionAtIso: nowIso
       };

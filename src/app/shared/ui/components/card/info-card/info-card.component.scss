@@ -841,6 +841,12 @@ button.ui-info-card__overlay-action {
   color: #5a4ea0;
 }
 
+.ui-info-card__footer-chip.status-pending {
+  background: linear-gradient(180deg, #fff8e8 0%, #ffefc9 100%);
+  border-color: rgba(201, 144, 39, 0.34);
+  color: #9b6714;
+}
+
 @media (hover: hover) and (pointer: fine) {
   button.asset-occupancy-badge:hover {
     box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.82), 0 10px 22px rgba(255, 255, 255, 0.58);

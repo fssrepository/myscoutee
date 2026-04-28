@@ -1481,7 +1481,7 @@ export class DemoEventsRepository {
           firstSlotEndAt: slotTemplates[0]?.endAt ?? '2026-04-18T20:00:00',
           includePaidOptional: true
         }),
-        shortDescription: 'Checkout demo: choose a slot, add optional paid extras, review policies, then continue to dummy pay.'
+        shortDescription: 'Weekly tasting series with optional paid extras and host approval before payment.'
       };
     }
 
@@ -1503,7 +1503,7 @@ export class DemoEventsRepository {
           firstSlotEndAt: '2026-05-03T20:30:00',
           includePaidOptional: true
         }),
-        shortDescription: 'Checkout demo: paid event without slots, so you can test policies and add-ons without slot selection.'
+        shortDescription: 'Late-night tasting event with optional add-ons and host approval before payment.'
       };
     }
 

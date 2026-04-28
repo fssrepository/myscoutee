@@ -7,6 +7,8 @@ export interface EventCheckoutDialogConfig {
   mode: 'join' | 'invitation';
   userId: string;
   record: DemoEventRecord;
+  requiresApprovalBeforePayment?: boolean;
+  approvalGranted?: boolean;
   title?: string | null;
   subtitle?: string | null;
   confirmLabel?: string | null;
@@ -22,6 +24,8 @@ export interface EventCheckoutDialogState {
   mode: 'join' | 'invitation';
   userId: string;
   record: DemoEventRecord;
+  requiresApprovalBeforePayment: boolean;
+  approvalGranted: boolean;
   title: string;
   subtitle: string;
   confirmLabel: string;
@@ -52,6 +56,8 @@ export class EventCheckoutDialogService {
       mode: config.mode,
       userId: trimmedUserId,
       record: config.record,
+      requiresApprovalBeforePayment: config.requiresApprovalBeforePayment === true,
+      approvalGranted: config.approvalGranted === true,
       title: config.title?.trim() || (config.mode === 'invitation' ? 'Accept Invitation' : 'Join Event'),
       subtitle: config.subtitle?.trim() || config.record.title,
       confirmLabel: config.confirmLabel?.trim() || 'Confirm',

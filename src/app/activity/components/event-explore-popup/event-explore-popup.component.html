@@ -115,7 +115,7 @@
                   <header class="event-explore-basket-panel__head">
                     <div>
                       <strong>Basket</strong>
-                      <span>{{ checkoutDraftCount() }} unfinished {{ checkoutDraftCount() === 1 ? 'checkout' : 'checkouts' }}</span>
+                      <span>{{ checkoutDraftCount() }} open {{ checkoutDraftCount() === 1 ? 'basket item' : 'basket items' }}</span>
                     </div>
                     <button type="button" class="event-explore-basket-panel__close" (click)="toggleCheckoutDraftBasket($event)" aria-label="Close basket">
                       <mat-icon>close</mat-icon>
@@ -128,10 +128,18 @@
                           <strong>{{ entry.draft.eventTitle }}</strong>
                           <span>{{ entry.draft.eventTimeframe || entry.record?.timeframe || 'Pending checkout' }}</span>
                           <span>{{ entry.draft.lineItems.length }} {{ entry.draft.lineItems.length === 1 ? 'item' : 'items' }} · {{ entry.draft.currency }} {{ entry.draft.totalAmount.toFixed(2) }}</span>
+                          @if (!canContinueCheckoutDraft(entry)) {
+                            <span>Waiting for admin approval before payment.</span>
+                          }
                         </div>
                         <div class="event-explore-basket-item__actions">
-                          <button type="button" class="event-explore-basket-item__btn" (click)="continueCheckoutDraft(entry.draft, $event)">
-                            Continue
+                          <button
+                            type="button"
+                            class="event-explore-basket-item__btn"
+                            [disabled]="!canContinueCheckoutDraft(entry)"
+                            (click)="continueCheckoutDraft(entry, $event)"
+                          >
+                            {{ checkoutDraftActionLabel(entry) }}
                           </button>
                           <button type="button" class="event-explore-basket-item__btn event-explore-basket-item__btn--clear" (click)="clearCheckoutDraft(entry.draft, $event)">
                             Clear
