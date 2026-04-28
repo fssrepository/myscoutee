@@ -893,7 +893,7 @@ button.asset-occupancy-badge:focus-visible {
   box-shadow: 0 3px 8px rgba(19, 39, 68, 0.18);
 }
 
-@media (max-width: 860px) {
+@media (max-width: 760px) {
   .ui-info-card__head {
     grid-template-columns: auto minmax(0, 1fr) auto;
     row-gap: 0.32rem;

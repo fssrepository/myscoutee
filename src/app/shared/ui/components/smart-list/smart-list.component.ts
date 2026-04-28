@@ -3147,7 +3147,7 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
   }
 
   private mobilePageSizeCapForView(viewKey: string | null = this.currentViewKey): number | null {
-    if (typeof window === 'undefined' || !window.matchMedia('(max-width: 900px)').matches) {
+    if (typeof window === 'undefined' || !window.matchMedia('(max-width: 760px)').matches) {
       return null;
     }
     if (this.resolveViewMode(viewKey) !== 'list') {

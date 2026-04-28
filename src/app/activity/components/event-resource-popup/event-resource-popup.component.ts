@@ -1250,7 +1250,7 @@ export class EventResourcePopupComponent implements DoCheck {
     if (typeof window === 'undefined') {
       return false;
     }
-    return window.matchMedia('(max-width: 900px)').matches;
+    return window.matchMedia('(max-width: 760px)').matches;
   }
 
   private assetExploreInitialPageSize(basePageSize: number): number {

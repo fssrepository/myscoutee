@@ -1235,7 +1235,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     if (typeof window === 'undefined') {
       return false;
     }
-    return window.matchMedia('(max-width: 900px)').matches;
+    return window.matchMedia('(max-width: 760px)').matches;
   }
 
   protected openMobileFrequencySelector(event: Event): void {

@@ -934,7 +934,7 @@ export class EventMembersPopupComponent {
       this.isMobileView = false;
       return;
     }
-    this.isMobileView = window.innerWidth <= 860;
+    this.isMobileView = window.innerWidth <= 760;
   }
 
   private minimumDeletePendingWindow(): Promise<void> {

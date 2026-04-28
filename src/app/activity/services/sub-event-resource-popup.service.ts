@@ -4512,7 +4512,7 @@ export class SubEventResourcePopupService {
     if (typeof window === 'undefined') {
       return false;
     }
-    return window.matchMedia('(max-width: 900px)').matches;
+    return window.matchMedia('(max-width: 760px)').matches;
   }
 
   private openGoogleMapsSearch(query: string): void {

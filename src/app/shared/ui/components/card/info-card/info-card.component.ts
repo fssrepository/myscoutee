@@ -37,7 +37,7 @@ import type {
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class InfoCardComponent {
-  private static readonly MOBILE_BREAKPOINT_PX = 860;
+  private static readonly MOBILE_BREAKPOINT_PX = 760;
   private readonly hostRef = inject(ElementRef<HTMLElement>);
   private readonly cdr = inject(ChangeDetectorRef);
 

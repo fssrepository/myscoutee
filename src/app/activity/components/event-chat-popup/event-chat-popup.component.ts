@@ -235,7 +235,7 @@ export class EventChatPopupComponent implements OnDestroy {
     if (typeof window === 'undefined') {
       return false;
     }
-    return window.matchMedia('(max-width: 900px)').matches;
+    return window.matchMedia('(max-width: 760px)').matches;
   }
 
   protected openSelectedChatEvent(event?: Event): void {

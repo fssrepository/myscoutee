@@ -1351,7 +1351,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       this.isMobileView = false;
       return;
     }
-    const next = window.innerWidth <= 860;
+    const next = window.innerWidth <= 760;
     if (next === this.isMobileView) {
       return;
     }
