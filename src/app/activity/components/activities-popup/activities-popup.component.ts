@@ -193,7 +193,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     setSelectedRateIdInContext: value => this.activitiesContext.setActivitiesSelectedRateId(value),
     setFullscreenModeInContext: value => this.activitiesContext.setActivitiesRatesFullscreenMode(value),
     recordActivityRate: (item, score, direction) => this.ratesService.recordActivityRate(this.activeUser.id, item, score, direction),
-    refreshRateCards: () => this.refreshActivitiesRateCards(),
+    refreshRateCards: rowId => this.refreshActivitiesRateCards(rowId),
     markForCheck: () => this.cdr.markForCheck(),
     runAfterNextPaint: task => this.runAfterActivitiesNextPaint(task),
     runAfterRender: task => this.runAfterActivitiesRender(task)
@@ -264,6 +264,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected readonly activityMembersByRowId: Record<string, AppTypes.ActivityMemberEntry[]> = {};
   protected activitiesEventCardRevision = 0;
   protected activitiesRateCardRevision = 0;
+  protected readonly activityRateCardRevisionByRowId: Record<string, number> = {};
   protected readonly leavingActivityRowIds = new Set<string>();
   protected readonly activityRowExitAnimationMs = 180;
   private lastAppliedActivityMembersUpdatedMs = 0;
@@ -1522,6 +1523,11 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return imageUrl;
   }
 
+  protected activitiesRateCardRevisionForRow(row: AppTypes.ActivityListRow | null): string {
+    const rowRevision = row ? (this.activityRateCardRevisionByRowId[row.id] ?? 0) : 0;
+    return `${this.activitiesRateCardRevision}:${rowRevision}`;
+  }
+
   protected activitiesSmartListClassMap(): Record<string, boolean> {
     return {
       'experience-card-list': true,
@@ -2123,8 +2129,14 @@ export class ActivitiesPopupComponent implements OnDestroy {
     this.activitiesEventCardRevision += 1;
   }
 
-  private refreshActivitiesRateCards(): void {
-    this.activitiesRateCardRevision += 1;
+  private refreshActivitiesRateCards(rowId?: string | null): void {
+    const normalizedRowId = `${rowId ?? ''}`.trim();
+    if (normalizedRowId) {
+      this.activityRateCardRevisionByRowId[normalizedRowId] =
+        (this.activityRateCardRevisionByRowId[normalizedRowId] ?? 0) + 1;
+    } else {
+      this.activitiesRateCardRevision += 1;
+    }
     this.cdr.markForCheck();
   }
 

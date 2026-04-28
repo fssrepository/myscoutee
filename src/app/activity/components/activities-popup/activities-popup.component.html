@@ -570,7 +570,7 @@
               [presentation]="'fullscreen'"
               [state]="renderState"
               [context]="activitiesRateTemplateContext"
-              [cardRevision]="activitiesRateCardRevision"
+              [cardRevision]="activitiesRateCardRevisionForRow(row)"
             ></app-activities-rate-template>
           }
         </ng-template>
@@ -616,7 +616,7 @@
               [row]="row"
               [groupLabel]="groupLabel"
               [context]="activitiesRateTemplateContext"
-              [cardRevision]="activitiesRateCardRevision"
+              [cardRevision]="activitiesRateCardRevisionForRow(row)"
               (badgeClick)="activitiesRates.openEditor(row)"
             ></app-activities-rate-template>
           </ng-template>

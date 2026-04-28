@@ -1,5 +1,4 @@
 import type { RateMenuItem } from '../../../../../shared/core/base/interfaces/activity-feed.interface';
-import type { DemoUser } from '../../../../../shared/core/base/interfaces/user.interface';
 import type * as AppTypes from '../../../../../shared/core/base/models';
 import {
   buildPairRateCardData,
@@ -16,7 +15,8 @@ interface BuildActivitiesRateCardOptions {
   state?: SingleCardData['state'] | PairCardData['state'];
   badge: CardBadgeConfig;
   displayedDirection: RateMenuItem['direction'];
-  users: readonly DemoUser[];
+  availableUsers: readonly RateCardPerson[];
+  resolveUserById: (userId: string) => RateCardPerson | null;
   activeUserGender: 'woman' | 'man';
   fullscreenSplitEnabled: boolean;
 }
@@ -63,11 +63,9 @@ function buildActivitiesRateCardInput(
     direction: options.displayedDirection,
     eventName: item.eventName,
     happenedOnLabel: rateDisplay?.happenedOnLabel ?? 'Unknown',
-    primaryUser: toActivitiesRateCardPerson(rateDisplay?.primaryUser) ?? resolveActivitiesRatePrimaryUser(row, options.users),
-    pairUsers: buildActivitiesRateCardPairUsers(row, options.users),
-    availableUsers: options.users
-      .map(user => toActivitiesRateCardPerson(user))
-      .filter((user): user is RateCardPerson => Boolean(user)),
+    primaryUser: toActivitiesRateCardPerson(rateDisplay?.primaryUser) ?? resolveActivitiesRatePrimaryUser(row, options.resolveUserById),
+    pairUsers: buildActivitiesRateCardPairUsers(row, options.resolveUserById),
+    availableUsers: options.availableUsers,
     singleImageUrls: resolveActivitiesRateImageUrls(rateDisplay?.imageUrls),
     pairSlots: buildActivitiesRateCardPairSlots(row),
     fallbackGender: options.activeUserGender,
@@ -110,7 +108,7 @@ function buildActivitiesRateCardPairSlots(row: AppTypes.ActivityListRow): PairCa
 
 function buildActivitiesRateCardPairUsers(
   row: AppTypes.ActivityListRow,
-  users: readonly DemoUser[]
+  resolveUserById: (userId: string) => RateCardPerson | null
 ): RateCardPerson[] {
   if (row.type !== 'rates') {
     return [];
@@ -119,22 +117,20 @@ function buildActivitiesRateCardPairUsers(
   const item = row.source as RateMenuItem;
   return [item.userId, item.secondaryUserId]
     .filter((userId): userId is string => typeof userId === 'string' && userId.length > 0)
-    .map(userId => users.find(user => user.id === userId) ?? null)
-    .map(user => toActivitiesRateCardPerson(user))
+    .map(userId => resolveUserById(userId))
     .filter((user): user is RateCardPerson => Boolean(user));
 }
 
 function resolveActivitiesRatePrimaryUser(
   row: AppTypes.ActivityListRow,
-  users: readonly DemoUser[]
+  resolveUserById: (userId: string) => RateCardPerson | null
 ): RateCardPerson | null {
   if (row.type !== 'rates') {
     return null;
   }
 
   const item = row.source as RateMenuItem;
-  const user = users.find(candidate => candidate.id === item.userId) ?? null;
-  return toActivitiesRateCardPerson(user);
+  return resolveUserById(item.userId);
 }
 
 function resolveActivitiesRateImageUrls(imageUrls: readonly string[] | null | undefined): readonly string[] | undefined {
@@ -148,7 +144,7 @@ function resolveActivitiesRateImageUrls(imageUrls: readonly string[] | null | un
 }
 
 function toActivitiesRateCardPerson(
-  user: AppTypes.ActivityRateDisplayUser | DemoUser | null | undefined
+  user: AppTypes.ActivityRateDisplayUser | null | undefined
 ): RateCardPerson | null {
   if (!user) {
     return null;
