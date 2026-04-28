@@ -416,6 +416,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected activitiesStickyValue     = '';
   protected activitiesInitialLoadPending = false;
   private visibleActivityRows: AppTypes.ActivityListRow[] = [];
+  private lastHandledActivitiesOpenRevision = 0;
   protected readonly activitiesPageSize  = 10;
 
   // ── Rates state ───────────────────────────────────────────────────────────
@@ -590,7 +591,14 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
     // React to open events: reset scroll state whenever the popup is opened.
     effect(() => {
-      if (this.activitiesContext.activitiesOpen()) {
+      const isOpen = this.activitiesContext.activitiesOpen();
+      const openRevision = this.activitiesContext.activitiesOpenRevision();
+      if (!isOpen) {
+        this.lastHandledActivitiesOpenRevision = openRevision;
+        return;
+      }
+      if (openRevision !== this.lastHandledActivitiesOpenRevision) {
+        this.lastHandledActivitiesOpenRevision = openRevision;
         this.onActivitiesOpened();
       }
     });

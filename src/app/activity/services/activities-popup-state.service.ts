@@ -12,6 +12,7 @@ import type { ChatMenuItem } from '../../shared/core/base/interfaces/activity-fe
 
 interface ActivitiesUiState {
   open: boolean;
+  openRevision: number;
   primaryFilter: AppTypes.ActivitiesPrimaryFilter;
   eventScope: AppTypes.ActivitiesEventScope;
   secondaryFilter: AppTypes.ActivitiesSecondaryFilter;
@@ -29,6 +30,7 @@ interface ActivitiesUiState {
 
 const DEFAULT_ACTIVITIES_UI_STATE: ActivitiesUiState = {
   open: false,
+  openRevision: 0,
   primaryFilter: 'chats',
   eventScope: 'active-events',
   secondaryFilter: 'recent',
@@ -58,6 +60,7 @@ export class ActivitiesPopupStateService {
 
   readonly activitiesUiState = this._uiState.asReadonly();
   readonly activitiesOpen = computed(() => this._uiState().open);
+  readonly activitiesOpenRevision = computed(() => this._uiState().openRevision);
   readonly activitiesPrimaryFilter = computed(() => this._uiState().primaryFilter);
   readonly activitiesEventScope = computed(() => this._uiState().eventScope);
   readonly activitiesSecondaryFilter = computed(() => this._uiState().secondaryFilter);
@@ -93,6 +96,7 @@ export class ActivitiesPopupStateService {
     this._uiState.update(state => ({
       ...state,
       open: true,
+      openRevision: state.openRevision + 1,
       primaryFilter: normalizedPrimaryFilter,
       eventScope: resolvedScope,
       secondaryFilter: 'recent',
