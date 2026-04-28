@@ -855,12 +855,14 @@
 
 .impression-dual-segment {
   position: relative;
-  min-height: 64px;
+  box-sizing: border-box;
+  height: 100%;
+  min-height: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.42rem;
-  padding: 0.42rem 0.56rem;
+  padding: 0 0.56rem;
   text-align: center;
   background: transparent;
 }
@@ -984,6 +986,8 @@
   text-transform: uppercase;
   letter-spacing: 0.07em;
   line-height: 1.08;
+  align-self: center;
+  text-align: center;
 }
 
 .assets-shortcuts {
