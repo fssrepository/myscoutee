@@ -11,7 +11,22 @@ export class ActivityEventBuilder {
       shortDescription: `Invited by ${invitation.inviter}`,
       timeframe: invitation.when,
       activity: Math.max(0, invitation.unread),
-      isAdmin: false
+      isAdmin: false,
+      startAt: invitation.startAt,
+      endAt: invitation.endAt,
+      distanceKm: invitation.distanceKm,
+      acceptedMembers: invitation.acceptedMembers,
+      pendingMembers: invitation.pendingMembers,
+      capacityTotal: invitation.capacityTotal,
+      capacityMin: invitation.capacityMin ?? null,
+      capacityMax: invitation.capacityMax ?? null,
+      acceptedMemberUserIds: [...(invitation.acceptedMemberUserIds ?? [])],
+      pendingMemberUserIds: [...(invitation.pendingMemberUserIds ?? [])],
+      imageUrl: invitation.imageUrl,
+      sourceLink: invitation.sourceLink,
+      location: invitation.location,
+      locationCoordinates: invitation.locationCoordinates,
+      policies: (invitation.policies ?? []).map(item => ({ ...item }))
     };
   }
 
@@ -54,6 +69,14 @@ export class ActivityEventBuilder {
       hostingItems: readonly HostingMenuItem[];
     }
   ): EventMenuItem | HostingMenuItem | null {
+    const invitationId = invitation.id.trim();
+    if (invitationId) {
+      const relatedById = options.eventItems.find(item => item.id === invitationId)
+        ?? options.hostingItems.find(item => item.id === invitationId);
+      if (relatedById) {
+        return relatedById;
+      }
+    }
     const invitationTitle = AppUtils.normalizeText(invitation.description);
     const relatedEvent = options.eventItems.find(item => AppUtils.normalizeText(item.title) === invitationTitle);
     if (relatedEvent) {

@@ -496,6 +496,7 @@ interface DemoEventSeedOverrides {
   locationCoordinates?: LocationCoordinates;
   capacityMin?: number | null;
   capacityMax?: number | null;
+  capacityTotal?: number | null;
   acceptedMemberUserIds?: string[];
   pendingMemberUserIds?: string[];
   topics?: string[];
@@ -514,7 +515,12 @@ export class DemoEventsRepositoryBuilder {
 
   static buildSeedInvitationItemsByUser(): Record<string, InvitationMenuItem[]> {
     return Object.fromEntries(
-      Object.entries(SEED_INVITATIONS_BY_USER).map(([userId, items]) => [userId, items.map(item => ({ ...item }))])
+      Object.entries(SEED_INVITATIONS_BY_USER).map(([userId, items]) => [userId, items.map(item => ({
+        ...item,
+        acceptedMemberUserIds: item.acceptedMemberUserIds ? [...item.acceptedMemberUserIds] : item.acceptedMemberUserIds,
+        pendingMemberUserIds: item.pendingMemberUserIds ? [...item.pendingMemberUserIds] : item.pendingMemberUserIds,
+        policies: item.policies ? item.policies.map(policy => ({ ...policy })) : item.policies
+      }))])
     );
   }
 
@@ -604,6 +610,7 @@ export class DemoEventsRepositoryBuilder {
     for (const [userId, items] of Object.entries(options.invitationsByUser)) {
       for (const item of items) {
         const recordKey = this.buildRecordKey(userId, 'invitations', item.id);
+        const creatorUserId = this.resolveInvitationCreatorUserId(item, userId, creatorUserIdByEventId);
         byId[recordKey] = this.buildRecord({
           id: item.id,
           userId,
@@ -621,7 +628,8 @@ export class DemoEventsRepositoryBuilder {
           isTrashed: false,
           published: true,
           trashedAtIso: null,
-          creatorUserId: creatorUserIdByEventId.get(item.id) ?? userId
+          creatorUserId,
+          seed: this.extractSeedOverrides(item)
         });
         ids.push(recordKey);
       }
@@ -861,6 +869,44 @@ export class DemoEventsRepositoryBuilder {
     return map;
   }
 
+  private static resolveInvitationCreatorUserId(
+    item: InvitationMenuItem,
+    inviteeUserId: string,
+    creatorUserIdByEventId: Map<string, string>
+  ): string {
+    const byEventId = creatorUserIdByEventId.get(item.id)?.trim() ?? '';
+    if (byEventId) {
+      return byEventId;
+    }
+    const normalizedInviter = AppUtils.normalizeText(item.inviter);
+    if (normalizedInviter) {
+      const exactMatch = DEMO_EVENT_MEMBER_USERS.find(user => AppUtils.normalizeText(user.name) === normalizedInviter);
+      if (exactMatch) {
+        return exactMatch.id;
+      }
+      const firstNameMatch = DEMO_EVENT_MEMBER_USERS.find(user =>
+        AppUtils.normalizeText(user.name.split(/\s+/)[0] ?? '') === normalizedInviter
+      );
+      if (firstNameMatch) {
+        return firstNameMatch.id;
+      }
+    }
+    const avatarInitials = item.avatar?.trim() || AppUtils.initialsFromText(item.inviter);
+    if (avatarInitials) {
+      const initialsMatch = DEMO_EVENT_MEMBER_USERS.find(user => user.initials === avatarInitials && user.id !== inviteeUserId);
+      if (initialsMatch) {
+        return initialsMatch.id;
+      }
+    }
+    const fallbackCandidates = DEMO_EVENT_MEMBER_USERS.filter(user => user.id !== inviteeUserId);
+    if (fallbackCandidates.length === 0) {
+      return inviteeUserId;
+    }
+    const fallbackIndex = Math.abs(AppUtils.hashText(`invitation-creator:${inviteeUserId}:${item.id}:${item.inviter}`))
+      % fallbackCandidates.length;
+    return fallbackCandidates[fallbackIndex]?.id ?? inviteeUserId;
+  }
+
   private static buildRecord(record: Pick<
     DemoEventRecord,
     | 'id'
@@ -948,7 +994,7 @@ export class DemoEventsRepositoryBuilder {
     const capacityMax = this.normalizeCount(record.seed?.capacityMax) ?? this.normalizeCount(capacityRange.max);
     const capacityTotal = Math.max(
       acceptedMembers,
-      capacityMax ?? acceptedMembers
+      this.normalizeCount(record.seed?.capacityTotal) ?? capacityMax ?? acceptedMembers
     );
     const topics = this.normalizeTopics(record.seed?.topics).length > 0
       ? this.normalizeTopics(record.seed?.topics)
@@ -1192,6 +1238,15 @@ export class DemoEventsRepositoryBuilder {
     members: { acceptedMemberUserIds: string[]; pendingMemberUserIds: string[] }
   ): { acceptedMemberUserIds: string[]; pendingMemberUserIds: string[] } {
     const ownerUserId = record.userId.trim();
+    if (record.isInvitation) {
+      const acceptedMemberUserIds = this.normalizeUserIds(members.acceptedMemberUserIds);
+      const pendingMemberUserIds = this.normalizeUserIds(members.pendingMemberUserIds)
+        .filter(userId => !acceptedMemberUserIds.includes(userId));
+      return {
+        acceptedMemberUserIds,
+        pendingMemberUserIds
+      };
+    }
     const acceptedMemberUserIds = this.normalizeUserIds(members.acceptedMemberUserIds)
       .filter(userId => userId !== ownerUserId);
     const pendingMemberUserIds = this.normalizeUserIds(members.pendingMemberUserIds)
@@ -1266,15 +1321,41 @@ export class DemoEventsRepositoryBuilder {
   }
 
   private static buildSeededMemberIds(
-    record: Pick<DemoEventRecord, 'id' | 'type' | 'title' | 'subtitle' | 'activity' | 'isAdmin'>,
+    record: Pick<DemoEventRecord, 'id' | 'type' | 'userId' | 'title' | 'subtitle' | 'activity' | 'isAdmin'>,
     startAtIso: string,
     distanceKm: number,
     creator: DemoUser
   ): { acceptedMemberUserIds: string[]; pendingMemberUserIds: string[] } {
     if (record.type === 'invitations') {
+      const invitee = this.resolveCreatorUser(record.userId, record.title);
+      const seed = AppUtils.hashText(`invitation-members:${this.recordSeedKey(record)}:${creator.id}:${invitee.id}`);
+      const acceptedTarget = 1 + (seed % 3);
+      const pendingTarget = Math.max(1, 1 + ((seed >> 3) % 2));
+      const orderedCandidates = DEMO_EVENT_MEMBER_USERS
+        .filter(user => user.id !== invitee.id)
+        .sort((left, right) =>
+          AppUtils.hashText(`invitation-member:${record.id}:${left.id}`)
+          - AppUtils.hashText(`invitation-member:${record.id}:${right.id}`)
+        );
+      const acceptedMemberUserIds = Array.from(new Set([
+        creator.id,
+        ...orderedCandidates
+          .filter(user => user.id !== creator.id)
+          .slice(0, Math.max(0, acceptedTarget - 1))
+          .map(user => user.id)
+      ])).slice(0, acceptedTarget);
+      const pendingMemberUserIds = Array.from(new Set([
+        invitee.id,
+        ...orderedCandidates
+          .filter(user => user.id !== creator.id && !acceptedMemberUserIds.includes(user.id))
+          .slice(0, Math.max(0, pendingTarget - 1))
+          .map(user => user.id)
+      ]))
+        .filter(userId => !acceptedMemberUserIds.includes(userId))
+        .slice(0, pendingTarget);
       return {
-        acceptedMemberUserIds: [],
-        pendingMemberUserIds: []
+        acceptedMemberUserIds,
+        pendingMemberUserIds
       };
     }
     const row: AppTypes.ActivityListRow = {
@@ -1382,32 +1463,35 @@ export class DemoEventsRepositoryBuilder {
     return 50 + (seed % 51);
   }
 
-  private static extractSeedOverrides(item: EventMenuItem | HostingMenuItem): DemoEventSeedOverrides | undefined {
+  private static extractSeedOverrides(item: EventMenuItem | HostingMenuItem | InvitationMenuItem): DemoEventSeedOverrides | undefined {
     const overrides: DemoEventSeedOverrides = {
       startAt: item.startAt,
       endAt: item.endAt,
       distanceKm: item.distanceKm,
-      autoInviter: item.autoInviter,
-      frequency: item.frequency,
-      ticketing: item.ticketing,
-      visibility: item.visibility,
-      blindMode: item.blindMode,
+      autoInviter: 'autoInviter' in item ? item.autoInviter : undefined,
+      frequency: 'frequency' in item ? item.frequency : undefined,
+      ticketing: 'ticketing' in item ? item.ticketing : undefined,
+      visibility: 'visibility' in item ? item.visibility : undefined,
+      blindMode: 'blindMode' in item ? item.blindMode : undefined,
       imageUrl: item.imageUrl,
       sourceLink: item.sourceLink,
       location: item.location,
       locationCoordinates: this.cloneLocationCoordinates(item.locationCoordinates) ?? undefined,
       capacityMin: item.capacityMin,
       capacityMax: item.capacityMax,
-      pricing: item.pricing ? PricingBuilder.clonePricingConfig(item.pricing) : item.pricing,
+      capacityTotal: item.capacityTotal,
+      acceptedMemberUserIds: item.acceptedMemberUserIds ? [...item.acceptedMemberUserIds] : undefined,
+      pendingMemberUserIds: item.pendingMemberUserIds ? [...item.pendingMemberUserIds] : undefined,
+      pricing: 'pricing' in item && item.pricing ? PricingBuilder.clonePricingConfig(item.pricing) : ('pricing' in item ? item.pricing : undefined),
       policies: this.clonePolicies(item.policies) ?? undefined,
-      slotsEnabled: item.slotsEnabled,
-      slotTemplates: this.cloneSlotTemplates(item.slotTemplates) ?? undefined,
-      topics: item.topics,
-      subEvents: this.cloneSubEvents(item.subEvents),
-      subEventsDisplayMode: item.subEventsDisplayMode,
-      rating: item.rating,
-      relevance: item.relevance,
-      affinity: item.affinity
+      slotsEnabled: 'slotsEnabled' in item ? item.slotsEnabled : undefined,
+      slotTemplates: 'slotTemplates' in item ? this.cloneSlotTemplates(item.slotTemplates) ?? undefined : undefined,
+      topics: 'topics' in item ? item.topics : undefined,
+      subEvents: 'subEvents' in item ? this.cloneSubEvents(item.subEvents) : undefined,
+      subEventsDisplayMode: 'subEventsDisplayMode' in item ? item.subEventsDisplayMode : undefined,
+      rating: 'rating' in item ? item.rating : undefined,
+      relevance: 'relevance' in item ? item.relevance : undefined,
+      affinity: 'affinity' in item ? item.affinity : undefined
     };
     if (Object.values(overrides).every(value => value === undefined)) {
       return undefined;

@@ -72,6 +72,7 @@ import {
   type ActivitiesRateTemplateContext
 } from './templates/rate/activities-rate-template.component';
 import {
+  ActivityEventBuilder,
   ActivityMembersBuilder,
   ActivitiesService,
   ActivityMembersService,
@@ -489,7 +490,29 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   protected openActivityMembers(row: AppTypes.ActivityListRow, event?: Event): void {
-    this.activitiesEvents.openActivityMembers(row, event);
+    event?.stopPropagation();
+    if (row.type !== 'invitations') {
+      this.activitiesEvents.openActivityMembers(row, event);
+      return;
+    }
+    const membersRow = this.resolveInvitationActivityMembersRow(row);
+    const owner = ActivityMembersBuilder.activityMembersOwnerForRow(membersRow) ?? {
+      ownerType: 'event' as const,
+      ownerId: membersRow.id
+    };
+    const summary = this.resolveActivityMembersPopupSummary(membersRow);
+    const members = this.previewActivityMembersForPopup(membersRow, summary);
+    this.popupCtx.requestActivitiesNavigation({
+      type: 'members',
+      ownerId: owner.ownerId,
+      ownerType: owner.ownerType,
+      subtitle: membersRow.title,
+      canManage: membersRow.isAdmin === true,
+      acceptedMembers: summary?.acceptedMembers,
+      pendingMembers: summary?.pendingMembers,
+      capacityTotal: summary?.capacityTotal,
+      members
+    });
   }
 
   protected onActivityEventInfoCardMenuAction(row: AppTypes.ActivityListRow, action: InfoCardMenuActionEvent): void {
@@ -1205,6 +1228,13 @@ export class ActivitiesPopupComponent implements OnDestroy {
       description: record.title,
       when: record.timeframe,
       unread: record.unread,
+      acceptedMembers: record.acceptedMembers,
+      pendingMembers: record.pendingMembers,
+      capacityTotal: record.capacityTotal,
+      capacityMin: record.capacityMin,
+      capacityMax: record.capacityMax,
+      acceptedMemberUserIds: [...record.acceptedMemberUserIds],
+      pendingMemberUserIds: [...record.pendingMemberUserIds],
       startAt: record.startAtIso,
       endAt: record.endAtIso,
       distanceKm: record.distanceKm,
@@ -1615,10 +1645,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   protected activityCapacityLabel(row: AppTypes.ActivityListRow): string {
-    const summary = ActivityMembersBuilder.activityMembersSummaryForRow(row, {
-      capacityByRowId: this.activityCapacityById,
-      pendingMembersByRowId: this.activityPendingMembersById
-    });
+    const summary = this.resolveActivityMembersPopupSummary(row);
     if (summary) {
       return `${summary.acceptedMembers} / ${summary.capacityTotal}`;
     }
@@ -1628,10 +1655,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   protected activityPendingMemberCount(row: AppTypes.ActivityListRow): number {
-    const summary = ActivityMembersBuilder.activityMembersSummaryForRow(row, {
-      capacityByRowId: this.activityCapacityById,
-      pendingMembersByRowId: this.activityPendingMembersById
-    });
+    const summary = this.resolveActivityMembersPopupSummary(row);
     if (summary) {
       return summary.pendingMembers;
     }
@@ -1642,10 +1666,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     if (row.type !== 'events') {
       return false;
     }
-    const summary = ActivityMembersBuilder.activityMembersSummaryForRow(row, {
-      capacityByRowId: this.activityCapacityById,
-      pendingMembersByRowId: this.activityPendingMembersById
-    });
+    const summary = this.resolveActivityMembersPopupSummary(row);
     if (summary) {
       return summary.capacityTotal > 0 && summary.acceptedMembers >= summary.capacityTotal;
     }
@@ -1656,6 +1677,31 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   protected isActivityDraft(row: AppTypes.ActivityListRow): boolean {
     return row.type === 'hosting' && !this.isHostingPublished(row.id);
+  }
+
+  private resolveActivityMembersPopupSummary(row: AppTypes.ActivityListRow): ActivityMembersSummary | null {
+    const summary = ActivityMembersBuilder.activityMembersSummaryForRow(row, {
+      capacityByRowId: this.activityCapacityById,
+      pendingMembersByRowId: this.activityPendingMembersById
+    });
+    if (summary) {
+      return summary;
+    }
+    const acceptedMembers = this.parseAcceptedMembersFromCapacityLabel(this.activityCapacityById[row.id]);
+    const pendingMembers = Math.max(0, Math.trunc(Number(this.activityPendingMembersById[row.id]) || 0));
+    const capacityTotal = this.activityCapacityTotal(row, acceptedMembers);
+    if (acceptedMembers <= 0 && pendingMembers <= 0 && capacityTotal <= 0) {
+      return null;
+    }
+    return {
+      ownerType: 'event',
+      ownerId: row.id,
+      acceptedMembers,
+      pendingMembers,
+      capacityTotal,
+      acceptedMemberUserIds: [],
+      pendingMemberUserIds: []
+    };
   }
 
   private activityCapacityTotal(row: AppTypes.ActivityListRow, fallbackBase = 0): number {
@@ -1675,6 +1721,17 @@ export class ActivitiesPopupComponent implements OnDestroy {
       return Math.max(fallbackBase, Math.trunc(sourceCapacityTotal));
     }
     return fallbackBase;
+  }
+
+  private parseAcceptedMembersFromCapacityLabel(label: string | undefined): number {
+    const normalizedLabel = label?.trim() ?? '';
+    if (!normalizedLabel) {
+      return 0;
+    }
+    const parts = normalizedLabel.split('/').map(part => Number.parseInt(part.trim(), 10));
+    return parts.length >= 1 && Number.isFinite(parts[0])
+      ? Math.max(0, parts[0])
+      : 0;
   }
 
 
@@ -1699,6 +1756,124 @@ export class ActivitiesPopupComponent implements OnDestroy {
       return null;
     }
     return { start: parsed, end: new Date(parsed.getTime() + (2 * 60 * 60 * 1000)) };
+  }
+
+  private resolveInvitationActivityMembersRow(row: AppTypes.ActivityListRow): AppTypes.ActivityListRow {
+    if (row.type !== 'invitations') {
+      return row;
+    }
+    const resolvedSource = ActivityEventBuilder.resolveEditorSource(row, {
+      eventItems: this.eventItems,
+      hostingItems: this.hostingItems,
+      invitationItems: this.invitationItems
+    });
+    if (!resolvedSource || resolvedSource.id.startsWith('inv-preview-')) {
+      return row;
+    }
+    const matchingEvent = this.eventItems.find(item => item.id === resolvedSource.id);
+    if (matchingEvent) {
+      return toActivityEventRowFromMenuItem(matchingEvent, {
+        dateIso: row.dateIso,
+        distanceKm: row.distanceKm
+      });
+    }
+    const matchingHosting = this.hostingItems.find(item => item.id === resolvedSource.id);
+    if (matchingHosting) {
+      return toActivityHostingRowFromMenuItem(matchingHosting, {
+        dateIso: row.dateIso,
+        distanceKm: row.distanceKm
+      });
+    }
+    return row;
+  }
+
+  private previewActivityMembersForPopup(
+    row: AppTypes.ActivityListRow,
+    summary: ActivityMembersSummary | null
+  ): AppTypes.ActivityMemberEntry[] {
+    const rowKey = this.activityRowIdentity(row);
+    const cached = this.activityMembersByRowId[rowKey];
+    if (cached && cached.length > 0) {
+      return ActivityMembersBuilder.sortActivityMembersByActionTimeDesc(cached);
+    }
+    if (summary && (summary.acceptedMembers > 0 || summary.pendingMembers > 0)) {
+      const previewMembers = summary.acceptedMemberUserIds.length > 0 || summary.pendingMemberUserIds.length > 0
+        ? this.buildActivityMembersPreviewFromUserIds(row, summary.acceptedMemberUserIds, summary.pendingMemberUserIds)
+        : ActivityMembersBuilder.buildSyncedActivityMembersForRow(
+            row,
+            summary.acceptedMembers,
+            summary.pendingMembers,
+            {
+              activeUser: this.activeUser,
+              users: this.users
+            }
+          );
+      const orderedMembers = ActivityMembersBuilder.sortActivityMembersByActionTimeDesc(previewMembers);
+      this.activityMembersByRowId[rowKey] = [...orderedMembers];
+      return orderedMembers;
+    }
+    return this.getActivityMembersByRow(row);
+  }
+
+  private buildActivityMembersPreviewFromUserIds(
+    row: AppTypes.ActivityListRow,
+    acceptedMemberUserIds: readonly string[],
+    pendingMemberUserIds: readonly string[]
+  ): AppTypes.ActivityMemberEntry[] {
+    const rowKey = this.activityRowIdentity(row);
+    const normalizedAcceptedMemberUserIds = this.uniqueUserIds(acceptedMemberUserIds);
+    const normalizedPendingMemberUserIds = this.uniqueUserIds(pendingMemberUserIds)
+      .filter(userId => !normalizedAcceptedMemberUserIds.includes(userId));
+    const entries: AppTypes.ActivityMemberEntry[] = [];
+    for (const userId of normalizedAcceptedMemberUserIds) {
+      const user = this.resolveActivityMemberPreviewUser(userId, `${rowKey}:accepted:${userId}`);
+      entries.push({
+        ...ActivityMembersBuilder.toActivityMemberEntry(
+          user,
+          row,
+          rowKey,
+          this.activeUser.id,
+          { status: 'accepted', pendingSource: null, invitedByActiveUser: false },
+          APP_STATIC_DATA.activityMemberMetPlaces
+        ),
+        id: `${rowKey}:${userId}`,
+        userId
+      });
+    }
+    for (const userId of normalizedPendingMemberUserIds) {
+      const user = this.resolveActivityMemberPreviewUser(userId, `${rowKey}:pending:${userId}`);
+      entries.push({
+        ...ActivityMembersBuilder.toActivityMemberEntry(
+          user,
+          row,
+          rowKey,
+          this.activeUser.id,
+          { status: 'pending', pendingSource: 'admin', invitedByActiveUser: false },
+          APP_STATIC_DATA.activityMemberMetPlaces
+        ),
+        id: `${rowKey}:${userId}`,
+        userId,
+        requestKind: 'invite',
+        statusText: 'Invitation pending.'
+      });
+    }
+    return entries;
+  }
+
+  private resolveActivityMemberPreviewUser(userId: string, fallbackSeed: string): DemoUser {
+    const normalizedUserId = userId.trim();
+    if (normalizedUserId === this.activeUser.id) {
+      return this.activeUser;
+    }
+    const knownUser = this.userById(normalizedUserId);
+    if (knownUser) {
+      return knownUser;
+    }
+    if (this.users.length === 0) {
+      return this.activeUser;
+    }
+    const fallbackIndex = Math.abs(AppUtils.hashText(fallbackSeed)) % this.users.length;
+    return this.users[fallbackIndex] ?? this.activeUser;
   }
 
   private getActivityMembersByRow(row: AppTypes.ActivityListRow): AppTypes.ActivityMemberEntry[] {
@@ -1793,27 +1968,62 @@ export class ActivitiesPopupComponent implements OnDestroy {
     const eventRecords = [
       ...this.eventItems.map(item => ({
         id: item.id,
-        isInvitation: false,
+        row: toActivityEventRowFromMenuItem(item, {
+          dateIso: this.eventDatesById[item.id] ?? item.startAt ?? '2026-03-01T09:00:00',
+          distanceKm: this.eventDistanceById[item.id] ?? item.distanceKm ?? 10
+        }),
         acceptedMembers: item.acceptedMembers ?? 0,
         capacityTotal: item.capacityTotal ?? 0,
         pendingMembers: item.pendingMembers ?? 0
       })),
       ...this.hostingItems.map(item => ({
         id: item.id,
-        isInvitation: false,
+        row: toActivityHostingRowFromMenuItem(item, {
+          dateIso: this.hostingDatesById[item.id] ?? item.startAt ?? '2026-03-01T09:00:00',
+          distanceKm: this.hostingDistanceById[item.id] ?? item.distanceKm ?? 10
+        }),
+        acceptedMembers: item.acceptedMembers ?? 0,
+        capacityTotal: item.capacityTotal ?? 0,
+        pendingMembers: item.pendingMembers ?? 0
+      })),
+      ...this.invitationItems.map(item => ({
+        id: item.id,
+        row: toActivityInvitationRowFromMenuItem(item, {
+          dateIso: item.startAt ?? '2026-02-21T09:00:00',
+          distanceKm: item.distanceKm ?? 5
+        }),
         acceptedMembers: item.acceptedMembers ?? 0,
         capacityTotal: item.capacityTotal ?? 0,
         pendingMembers: item.pendingMembers ?? 0
       }))
     ];
     for (const record of eventRecords) {
-      if (record.isInvitation) {
-        continue;
-      }
       this.activityCapacityById[record.id] = `${record.acceptedMembers} / ${record.capacityTotal}`;
       this.activityPendingMembersById[record.id] = record.pendingMembers;
+      this.seedBootstrappedActivityMembersForRow(record.row);
     }
     this.bumpActivitiesEventCardRevision();
+  }
+
+  private seedBootstrappedActivityMembersForRow(row: AppTypes.ActivityListRow): void {
+    const rowKey = this.activityRowIdentity(row);
+    const summary = this.resolveActivityMembersPopupSummary(row);
+    if (!summary) {
+      delete this.activityMembersByRowId[rowKey];
+      return;
+    }
+    const members = summary.acceptedMemberUserIds.length > 0 || summary.pendingMemberUserIds.length > 0
+      ? this.buildActivityMembersPreviewFromUserIds(row, summary.acceptedMemberUserIds, summary.pendingMemberUserIds)
+      : ActivityMembersBuilder.buildSyncedActivityMembersForRow(
+          row,
+          summary.acceptedMembers,
+          summary.pendingMembers,
+          {
+            activeUser: this.activeUser,
+            users: this.users
+          }
+        );
+    this.activityMembersByRowId[rowKey] = ActivityMembersBuilder.sortActivityMembersByActionTimeDesc(members);
   }
 
   private maybeDismissActivityRateEditor(target: Element): void {
@@ -1924,7 +2134,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     this.rateItems = this.ratesService.peekRateItemsByUser(this.activeUser.id);
   }
 
-  protected uniqueUserIds(ids: string[]): string[] {
+  protected uniqueUserIds(ids: readonly string[]): string[] {
     const unique: string[] = [];
     for (const id of ids) {
       if (!id || unique.includes(id)) {
@@ -2036,6 +2246,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       return;
     }
     this.invitationItems = this.invitationItems.filter(item => item.id !== sync.id);
+    delete this.activityMembersByRowId[`invitations:${sync.id}`];
   }
 
   private buildSyncedEventMenuItem(sync: ActivitiesEventSyncPayload, existing?: Partial<EventMenuItem>): EventMenuItem {
@@ -2304,6 +2515,16 @@ export class ActivitiesPopupComponent implements OnDestroy {
     this.activityMembersByRowId[hostingRowKey] = hostingMembers;
     this.forcedAcceptedMembersByRowKey[eventRowKey] = acceptedMembers;
     this.forcedAcceptedMembersByRowKey[hostingRowKey] = acceptedMembers;
+
+    const invitationSource = this.invitationItems.find(item => item.id === sync.id) ?? null;
+    if (invitationSource) {
+      this.seedBootstrappedActivityMembersForRow(toActivityInvitationRowFromMenuItem(invitationSource, {
+        dateIso: invitationSource.startAt ?? sync.startAt,
+        distanceKm: invitationSource.distanceKm ?? sync.distanceKm
+      }));
+    } else {
+      delete this.activityMembersByRowId[`invitations:${sync.id}`];
+    }
   }
 
   // ── User lookup ────────────────────────────────────────────────────────────

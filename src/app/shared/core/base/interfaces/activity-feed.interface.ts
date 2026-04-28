@@ -33,6 +33,13 @@ export interface InvitationMenuItem {
   description: string;
   when: string;
   unread: number;
+  acceptedMembers?: number;
+  pendingMembers?: number;
+  capacityTotal?: number;
+  capacityMin?: number | null;
+  capacityMax?: number | null;
+  acceptedMemberUserIds?: string[];
+  pendingMemberUserIds?: string[];
   startAt?: string;
   endAt?: string;
   distanceKm?: number;

@@ -1834,7 +1834,15 @@ export class DemoEventsRepository {
       acceptedMemberUserIds,
       pendingMemberUserIds
     );
-    const shouldPreferSeededMemberState = shouldPreferSeededSyntheticMembershipState || shouldPreferSeededDirectEventState;
+    const shouldPreferSeededInvitationMemberState = this.shouldPreferSeededInvitationMemberState(
+      current,
+      seeded,
+      acceptedMemberUserIds,
+      pendingMemberUserIds
+    );
+    const shouldPreferSeededMemberState = shouldPreferSeededSyntheticMembershipState
+      || shouldPreferSeededDirectEventState
+      || shouldPreferSeededInvitationMemberState;
     const mergedAcceptedMemberUserIds = shouldPreferSeededMemberState
       ? [...seeded.acceptedMemberUserIds]
       : (acceptedMemberUserIds.length > 0
@@ -1995,6 +2003,42 @@ export class DemoEventsRepository {
     if (currentTotalMembers <= 1 && seededTotalMembers > currentTotalMembers) {
       return true;
     }
+    return (currentAcceptedMembers + currentPendingMembers) < (seededAcceptedMembers + seededPendingMembers);
+  }
+
+  private shouldPreferSeededInvitationMemberState(
+    record: DemoEventRecord,
+    seeded: DemoEventRecord,
+    acceptedMemberUserIds: readonly string[],
+    pendingMemberUserIds: readonly string[]
+  ): boolean {
+    if (!record.isInvitation) {
+      return false;
+    }
+    const ownerUserId = record.userId.trim();
+    const seededAcceptedMemberUserIds = this.normalizeUserIds(seeded.acceptedMemberUserIds);
+    const seededPendingMemberUserIds = this.normalizeUserIds(seeded.pendingMemberUserIds);
+    if (
+      ownerUserId
+      && seededPendingMemberUserIds.includes(ownerUserId)
+      && !pendingMemberUserIds.includes(ownerUserId)
+    ) {
+      return true;
+    }
+    if (
+      acceptedMemberUserIds.length === 0
+      && pendingMemberUserIds.length === 0
+      && (seededAcceptedMemberUserIds.length > 0 || seededPendingMemberUserIds.length > 0)
+    ) {
+      return true;
+    }
+    const currentAcceptedMembers = this.normalizeCount(record.acceptedMembers) ?? acceptedMemberUserIds.length;
+    const currentPendingMembers = this.normalizeCount(record.pendingMembers) ?? pendingMemberUserIds.length;
+    if (currentAcceptedMembers > acceptedMemberUserIds.length || currentPendingMembers > pendingMemberUserIds.length) {
+      return true;
+    }
+    const seededAcceptedMembers = this.normalizeCount(seeded.acceptedMembers) ?? seededAcceptedMemberUserIds.length;
+    const seededPendingMembers = this.normalizeCount(seeded.pendingMembers) ?? seededPendingMemberUserIds.length;
     return (currentAcceptedMembers + currentPendingMembers) < (seededAcceptedMembers + seededPendingMembers);
   }
 
