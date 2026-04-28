@@ -180,19 +180,24 @@ export class DemoEventFeedbackBuilder {
       cardsByEventId.set(card.eventId, eventCards);
     }
 
+    const orderedEventIds = [...cardsByEventId.keys()].sort((left, right) => {
+      const leftStartAtMs = this.eventStartAtMs(left, options.eventDatesById) ?? 0;
+      const rightStartAtMs = this.eventStartAtMs(right, options.eventDatesById) ?? 0;
+      return leftStartAtMs - rightStartAtMs || left.localeCompare(right);
+    });
     const states: EventFeedbackPersistedState[] = [];
-    for (const [eventId, eventCards] of cardsByEventId.entries()) {
+    for (const [index, eventId] of orderedEventIds.entries()) {
+      const eventCards = cardsByEventId.get(eventId) ?? [];
       if (eventCards.length === 0) {
         continue;
       }
       const seed = AppUtils.hashText(`feedback-state:${options.activeUser.id}:${eventId}`);
-      const variant = seed % 8;
-      if (variant >= 5) {
+      const recordId = this.eventFeedbackStateRecordId(options.activeUser.id, eventId);
+      const variant = index % 3;
+      if (variant === 0) {
         continue;
       }
-
-      const recordId = this.eventFeedbackStateRecordId(options.activeUser.id, eventId);
-      if (variant === 4) {
+      if (variant === 2) {
         states.push({
           id: recordId,
           userId: options.activeUser.id,
@@ -200,19 +205,6 @@ export class DemoEventFeedbackBuilder {
           removed: true,
           submittedAtIso: null,
           organizerNote: '',
-          answersByCardId: {}
-        });
-        continue;
-      }
-
-      if (variant === 3) {
-        states.push({
-          id: recordId,
-          userId: options.activeUser.id,
-          eventId,
-          removed: false,
-          submittedAtIso: null,
-          organizerNote: this.seededOrganizerNote(eventCards[0], seed),
           answersByCardId: {}
         });
         continue;

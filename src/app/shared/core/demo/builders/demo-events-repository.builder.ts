@@ -258,7 +258,9 @@ const SEED_EVENTS_BY_USER: Record<string, EventMenuItem[]> = {
       timeframe: 'Mar 12 · 7:30 PM - 11:30 PM',
       activity: 3,
       isAdmin: false,
-      creatorUserId: 'u3'
+      creatorUserId: 'u3',
+      startAt: '2026-02-21T19:30:00',
+      endAt: '2026-02-21T23:30:00'
     },
     {
       id: 'e6',
@@ -268,7 +270,9 @@ const SEED_EVENTS_BY_USER: Record<string, EventMenuItem[]> = {
       timeframe: 'Mar 14 · 5:00 PM - 8:30 PM',
       activity: 2,
       isAdmin: false,
-      creatorUserId: 'u4'
+      creatorUserId: 'u4',
+      startAt: '2026-02-23T17:00:00',
+      endAt: '2026-02-23T20:30:00'
     },
     {
       id: 'e7',
@@ -277,7 +281,9 @@ const SEED_EVENTS_BY_USER: Record<string, EventMenuItem[]> = {
       shortDescription: 'Small-circle meetup with curated intro prompts.',
       timeframe: 'Mar 16 · 9:30 AM - 11:30 AM',
       activity: 1,
-      isAdmin: true
+      isAdmin: true,
+      startAt: '2026-02-26T09:30:00',
+      endAt: '2026-02-26T11:30:00'
     },
     {
       id: 'e8',
@@ -287,7 +293,9 @@ const SEED_EVENTS_BY_USER: Record<string, EventMenuItem[]> = {
       timeframe: 'Feb 27 · 11:15 AM - 1:00 PM',
       activity: 2,
       isAdmin: false,
-      creatorUserId: 'u12'
+      creatorUserId: 'u12',
+      startAt: '2026-02-25T11:15:00',
+      endAt: '2026-02-25T13:00:00'
     },
     {
       id: 'e9',
@@ -297,7 +305,9 @@ const SEED_EVENTS_BY_USER: Record<string, EventMenuItem[]> = {
       timeframe: 'Feb 27 · 1:30 PM - 3:30 PM',
       activity: 3,
       isAdmin: false,
-      creatorUserId: 'u2'
+      creatorUserId: 'u2',
+      startAt: '2026-02-27T13:30:00',
+      endAt: '2026-02-27T15:30:00'
     },
     {
       id: 'e10',
@@ -337,7 +347,9 @@ const SEED_EVENTS_BY_USER: Record<string, EventMenuItem[]> = {
       timeframe: 'Feb 28 · 8:00 AM - 12:00 PM',
       activity: 2,
       isAdmin: false,
-      creatorUserId: 'u13'
+      creatorUserId: 'u13',
+      startAt: '2026-02-24T08:00:00',
+      endAt: '2026-02-24T12:00:00'
     },
     {
       id: 'e13',
@@ -416,7 +428,9 @@ const SEED_EVENTS_BY_USER: Record<string, EventMenuItem[]> = {
       timeframe: 'Mar 3 · 6:00 PM - 10:00 PM',
       activity: 2,
       isAdmin: false,
-      creatorUserId: 'u11'
+      creatorUserId: 'u11',
+      startAt: '2026-02-25T18:00:00',
+      endAt: '2026-02-25T22:00:00'
     },
     {
       id: 'e14',

@@ -263,13 +263,17 @@ export class DemoBootstrapService {
     let changed = false;
 
     for (const user of users) {
-      for (const record of this.eventsRepository.queryHostingItemsByUser(user.id)) {
+      for (const record of this.eventsRepository.queryItemsByUser(user.id)) {
         const eventId = record.id?.trim() ?? '';
-        if (!eventId || record.isAdmin !== true || record.isTrashed) {
+        if (!eventId || record.isAdmin !== true || record.isInvitation || record.isTrashed) {
           continue;
         }
         const current = hostedEventById.get(eventId);
-        if (!current || (current.published === false && record.published !== false)) {
+        if (
+          !current
+          || (current.type !== 'hosting' && record.type === 'hosting')
+          || (current.published === false && record.published !== false)
+        ) {
           hostedEventById.set(eventId, record);
         }
       }

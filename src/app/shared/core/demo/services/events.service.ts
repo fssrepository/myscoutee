@@ -122,8 +122,8 @@ export class DemoEventsService extends DemoRouteDelayService {
       return [];
     }
     const ownedEventIds = new Set(
-      this.eventsRepository.queryHostingItemsByUser(normalizedUserId)
-        .filter(record => record.isAdmin === true && !record.isTrashed)
+      this.eventsRepository.queryItemsByUser(normalizedUserId)
+        .filter(record => record.isAdmin === true && !record.isInvitation && !record.isTrashed)
         .map(record => record.id.trim())
         .filter(Boolean)
     );

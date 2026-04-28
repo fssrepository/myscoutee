@@ -801,7 +801,12 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
     if (!timestampMs || Number.isNaN(timestampMs)) {
       return 'No date';
     }
-    return new Date(timestampMs).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    return new Date(timestampMs).toLocaleDateString('en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
   }
 
   private eventFeedbackGroupTimestampMs(

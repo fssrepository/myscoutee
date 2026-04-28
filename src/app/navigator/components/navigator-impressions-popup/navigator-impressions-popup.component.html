@@ -100,17 +100,6 @@
                       </div>
                     </div>
                   }
-                  @if (vm.hostTraitCards.length > 1) {
-                    <div class="personality-trait-carousel-footer">
-                      <button type="button" class="personality-trait-nav" (click)="previousHostTrait()" aria-label="Previous host trait">
-                        <mat-icon>chevron_left</mat-icon>
-                      </button>
-                      <div class="personality-trait-position">{{ vm.hostTraitIndex + 1 }} / {{ vm.hostTraitCards.length }}</div>
-                      <button type="button" class="personality-trait-nav" (click)="nextHostTrait()" aria-label="Next host trait">
-                        <mat-icon>chevron_right</mat-icon>
-                      </button>
-                    </div>
-                  }
                 </div>
               } @else {
                 <div class="social-proof-chip-list" [class.impressions-chip-list-updated]="vm.pulseFlags.hostChips">
@@ -212,17 +201,6 @@
                           <span class="social-proof-chip chip-personality">{{ item }}</span>
                         }
                       </div>
-                    </div>
-                  }
-                  @if (vm.memberTraitCards.length > 1) {
-                    <div class="personality-trait-carousel-footer">
-                      <button type="button" class="personality-trait-nav" (click)="previousMemberTrait()" aria-label="Previous member trait">
-                        <mat-icon>chevron_left</mat-icon>
-                      </button>
-                      <div class="personality-trait-position">{{ vm.memberTraitIndex + 1 }} / {{ vm.memberTraitCards.length }}</div>
-                      <button type="button" class="personality-trait-nav" (click)="nextMemberTrait()" aria-label="Next member trait">
-                        <mat-icon>chevron_right</mat-icon>
-                      </button>
                     </div>
                   }
                 </div>

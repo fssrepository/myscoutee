@@ -1394,17 +1394,26 @@ export class DemoEventsRepository {
       const user = userById.get(userId);
       const synthetic: EventMenuItem[] = [];
       const needed = DemoEventsRepository.MIN_DEMO_EVENT_ITEMS_PER_USER - baseItems.length;
+      const creatorCandidates = users.filter(candidate => candidate.id !== userId);
 
       for (let index = 0; index < needed; index += 1) {
         const seq = baseItems.length + index + 1;
         const id = `ex-${userId}-${seq}`;
-        const start = new Date(2026, 2, 1 + (index * 2), 10 + (index % 6), (index % 2) * 30, 0, 0);
+        const isPastMemberFeedbackSeed = index >= 3 && index <= 5;
+        const isPastOwnedFeedbackSeed = index === 6;
+        const isPastFeedbackSeed = isPastMemberFeedbackSeed || isPastOwnedFeedbackSeed;
+        const start = isPastFeedbackSeed
+          ? new Date(2026, 1, 18 + ((index - 3) * 2), 17 + ((index - 3) % 3), (index % 2) * 30, 0, 0)
+          : new Date(2026, 2, 1 + (index * 2), 10 + (index % 6), (index % 2) * 30, 0, 0);
         const end = new Date(start.getTime() + ((2 + (index % 3)) * 60 * 60 * 1000));
         const visibility = seq === 12
           ? 'Friends only'
           : ((index % 2) === 0 ? 'Friends only' : 'Public');
         const blindMode = (index % 5) === 0 ? 'Blind Event' : 'Open Event';
         const seed = AppUtils.hashText(`${userId}:${id}:${seq}`);
+        const creatorUserId = isPastMemberFeedbackSeed && creatorCandidates.length > 0
+          ? (creatorCandidates[(seed + (index * 5)) % creatorCandidates.length]?.id ?? userId)
+          : userId;
         const title = this.buildSyntheticEventTitle(user, seq, seed);
         const defaultDescription = this.buildSyntheticEventDescription(user, seq, seed);
         const checkoutVariation = this.buildSyntheticCheckoutVariation(id, index);
@@ -1416,8 +1425,8 @@ export class DemoEventsRepository {
           shortDescription: checkoutVariation?.shortDescription ?? defaultDescription,
           timeframe: `${start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · ${start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} - ${end.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`,
           activity: (index % 5) + 1,
-          isAdmin: (seq % 4) === 0,
-          creatorUserId: userId,
+          isAdmin: isPastMemberFeedbackSeed ? false : (isPastOwnedFeedbackSeed ? true : (seq % 4) === 0),
+          creatorUserId,
           startAt: start.toISOString().slice(0, 19),
           endAt: end.toISOString().slice(0, 19),
           distanceKm: 3 + (index % 42),
