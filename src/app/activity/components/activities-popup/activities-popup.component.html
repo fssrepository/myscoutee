@@ -590,7 +590,8 @@
             [query]="activitiesSmartListQuery"
             (itemSelect)="onActivitiesSmartListItemSelect($event)"
             (stateChange)="onActivitiesSmartListStateChange($event)"
-            (surfaceScroll)="activitiesRates.closeEditorFromUserScroll($event)"
+            (wheel)="activitiesRates.closeEditorFromUserScroll($event)"
+            (touchmove)="activitiesRates.closeEditorFromUserScroll($event)"
           ></app-smart-list>
           <ng-template #activitiesEventSmartListItemTemplate let-row let-groupLabel="groupLabel">
             <app-activities-event-template
