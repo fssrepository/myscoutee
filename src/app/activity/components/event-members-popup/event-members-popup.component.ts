@@ -106,6 +106,7 @@ export class EventMembersPopupComponent {
   private membersChangeHandler: ((members: readonly AppTypes.ActivityMemberEntry[]) => void) | null = null;
   private suppressedOwnerSyncId: string | null = null;
   private requestedCanManageMembers = false;
+  private viewOnlyMode = false;
 
   protected membersSmartListQuery: Partial<ListQuery<MembersSmartListFilters>> = {};
 
@@ -163,6 +164,7 @@ export class EventMembersPopupComponent {
           ownerType: request.ownerType ?? 'event',
           subtitle: request.subtitle,
           canManage: request.canManage,
+          viewOnly: request.viewOnly,
           acceptedMembers: request.acceptedMembers,
           pendingMembers: request.pendingMembers,
           capacityTotal: request.capacityTotal,
@@ -270,6 +272,7 @@ export class EventMembersPopupComponent {
     this.membersChangeHandler = null;
     this.suppressedOwnerSyncId = null;
     this.requestedCanManageMembers = false;
+    this.viewOnlyMode = false;
     this.subtitle = 'Event';
     this.resetSummaryState();
     this.selectedMembersVisible = [];
@@ -297,6 +300,9 @@ export class EventMembersPopupComponent {
   }
 
   protected canShowActionMenu(entry: AppTypes.ActivityMemberEntry): boolean {
+    if (this.viewOnlyMode) {
+      return false;
+    }
     return this.canApproveMember(entry) || this.canDeleteMember(entry);
   }
 
@@ -579,6 +585,7 @@ export class EventMembersPopupComponent {
     options?: {
       subtitle?: string;
       canManage?: boolean;
+      viewOnly?: boolean;
       ownerType?: ActivityMemberOwnerType;
       acceptedMembers?: number;
       pendingMembers?: number;
@@ -609,7 +616,8 @@ export class EventMembersPopupComponent {
     this.membersCacheByOwnerId.delete(normalizedOwnerId);
     this.resetSummaryState();
     this.requestedCanManageMembers = options?.canManage === true;
-    this.canManageMembers = this.requestedCanManageMembers;
+    this.viewOnlyMode = options?.viewOnly === true;
+    this.canManageMembers = !this.viewOnlyMode && this.requestedCanManageMembers;
     this.canShowInviteButton = this.canManageMembers;
     this.isLocalMembersSource = initialMembers !== null;
     if (initialMembers) {
@@ -828,12 +836,18 @@ export class EventMembersPopupComponent {
   }
 
   protected canApproveMember(entry: AppTypes.ActivityMemberEntry): boolean {
+    if (this.viewOnlyMode) {
+      return false;
+    }
     return this.canManageMembers
       && entry.status === 'pending'
       && (entry.pendingSource === 'member' || entry.requestKind === 'join');
   }
 
   protected canDeleteMember(entry: AppTypes.ActivityMemberEntry): boolean {
+    if (this.viewOnlyMode) {
+      return false;
+    }
     if (this.canManageMembers) {
       return true;
     }
@@ -843,6 +857,11 @@ export class EventMembersPopupComponent {
   }
 
   private syncCanManageMembers(members: readonly AppTypes.ActivityMemberEntry[] = this.currentOwnerMembers()): void {
+    if (this.viewOnlyMode) {
+      this.canManageMembers = false;
+      this.canShowInviteButton = false;
+      return;
+    }
     const activeUserId = this.activeUserId();
     const activeMember = members.find(member => member.userId === activeUserId && member.status === 'accepted');
     const activeMemberCanManage = activeMember?.role === 'Admin' || activeMember?.role === 'Manager';

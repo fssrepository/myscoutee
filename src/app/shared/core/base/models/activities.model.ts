@@ -74,6 +74,7 @@ export type ActivitiesNavigationRequest =
       ownerType?: ActivityMemberOwnerType;
       subtitle?: string;
       canManage?: boolean;
+      viewOnly?: boolean;
       acceptedMembers?: number;
       pendingMembers?: number;
       capacityTotal?: number;

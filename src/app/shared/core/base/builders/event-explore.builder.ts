@@ -68,6 +68,7 @@ export class EventExploreBuilder {
         disabled: !openEvent,
         ariaLabel: openEvent ? 'Open event members' : 'Members hidden for this event',
         label: this.membersLabel(record),
+        pendingCount: Math.max(0, Math.trunc(Number(record.pendingMembers) || 0)),
         leadingAccessory: {
           icon: this.blindModeIcon(record.blindMode),
           tone: record.blindMode === 'Open Event' ? 'positive' : 'negative'

@@ -479,7 +479,8 @@ export class EventExplorePopupComponent {
       ownerId: record.id,
       ownerType: 'event',
       subtitle: record.title,
-      canManage: record.isAdmin === true
+      canManage: false,
+      viewOnly: true
     });
     this.cdr.markForCheck();
   }
