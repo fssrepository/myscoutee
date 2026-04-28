@@ -350,7 +350,11 @@ export class ActivitiesRatesController {
     });
   }
 
-  closeEditorFromUserScroll(): void {
+  closeEditorFromUserScroll(event?: Event): void {
+    const target = event?.target;
+    if (target instanceof Element && target.closest('[data-rating-star-bar-dock]')) {
+      return;
+    }
     if (!this.isEditorOpen()) {
       return;
     }

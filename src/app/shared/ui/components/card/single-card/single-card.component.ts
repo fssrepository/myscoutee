@@ -92,7 +92,7 @@ export class SingleCardComponent implements AfterViewInit, OnChanges, OnDestroy 
       this.startLoadingPulse();
     }
 
-    if (rowId === this.previousRowId && badgeLabel !== this.previousBadgeLabel) {
+    if (rowId === this.previousRowId && badgeLabel !== this.previousBadgeLabel && this.card?.badge?.blink !== true) {
       this.startTransientBadgeBlink();
     }
 
