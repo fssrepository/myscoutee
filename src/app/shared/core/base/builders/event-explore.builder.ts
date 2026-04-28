@@ -18,7 +18,7 @@ export class EventExploreBuilder {
       state?: CardRenderState | null;
     } = {}
   ): InfoCardData {
-    const openEvent = this.isOpenEvent(record);
+    const membersPreviewVisible = this.canPreviewMembers(record);
     const full = this.isFull(record);
     const visibility = record.visibility;
 
@@ -63,10 +63,10 @@ export class EventExploreBuilder {
       mediaEnd: {
         variant: 'badge',
         layout: 'badge-with-leading-accessory',
-        tone: openEvent ? (full ? 'full' : 'default') : 'inactive',
-        interactive: openEvent,
-        disabled: !openEvent,
-        ariaLabel: openEvent ? 'Open event members' : 'Members hidden for this event',
+        tone: membersPreviewVisible ? (full ? 'full' : 'default') : 'inactive',
+        interactive: membersPreviewVisible,
+        disabled: !membersPreviewVisible,
+        ariaLabel: membersPreviewVisible ? 'Open event members' : 'Members hidden for this event',
         label: this.membersLabel(record),
         pendingCount: Math.max(0, Math.trunc(Number(record.pendingMembers) || 0)),
         leadingAccessory: {
@@ -111,14 +111,12 @@ export class EventExploreBuilder {
         icon: this.visibilityIcon(record.visibility)
       }
     ];
-    if (this.isOpenEvent(record)) {
-      actions.push({
-        id: 'join',
-        label: 'Request join',
-        icon: 'person_add',
-        tone: 'accent'
-      });
-    }
+    actions.push({
+      id: 'join',
+      label: this.joinActionLabel(record),
+      icon: 'person_add',
+      tone: 'accent'
+    });
     return actions;
   }
 
@@ -180,8 +178,21 @@ export class EventExploreBuilder {
     return record.capacityTotal > 0 && record.acceptedMembers >= record.capacityTotal;
   }
 
-  private static isOpenEvent(record: DemoEventRecord): boolean {
+  private static canPreviewMembers(record: DemoEventRecord): boolean {
     return record.blindMode === 'Open Event';
+  }
+
+  private static joinActionLabel(record: DemoEventRecord): string {
+    return this.requiresBookingFlow(record)
+      ? 'Book event'
+      : 'Request join';
+  }
+
+  private static requiresBookingFlow(record: DemoEventRecord): boolean {
+    if (record.ticketing === true) {
+      return true;
+    }
+    return Boolean(record.pricing?.enabled && (Number(record.pricing?.basePrice) || 0) > 0);
   }
 
   private static topicLabel(topic: string): string {

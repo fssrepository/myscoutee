@@ -471,7 +471,7 @@ export class EventExplorePopupComponent {
     event?: { stopPropagation?: () => void; preventDefault?: () => void }
   ): void {
     this.stopDomEvent(event);
-    if (!this.isEventExploreOpenEvent(record)) {
+    if (!this.canPreviewEventExploreMembers(record)) {
       return;
     }
     this.popupCtx.requestActivitiesNavigation({
@@ -535,9 +535,6 @@ export class EventExplorePopupComponent {
     event?: { stopPropagation?: () => void; preventDefault?: () => void }
   ): void {
     this.stopDomEvent(event);
-    if (!this.isEventExploreOpenEvent(record)) {
-      return;
-    }
     const activeUserId = this.activeUserId.trim();
     if (!activeUserId) {
       return;
@@ -582,7 +579,7 @@ export class EventExplorePopupComponent {
     this.navigatorService.openImpressionsPopup(record.creatorUserId);
   }
 
-  protected isEventExploreOpenEvent(record: DemoEventRecord): boolean {
+  protected canPreviewEventExploreMembers(record: DemoEventRecord): boolean {
     return record.blindMode === 'Open Event';
   }
 
