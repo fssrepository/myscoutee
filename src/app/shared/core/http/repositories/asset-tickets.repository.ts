@@ -92,7 +92,10 @@ export class HttpAssetTicketsRepository {
     const page = Math.max(0, Math.trunc(Number(query.page) || 0));
     const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 1));
     const orderedRows = [...rows].sort((left, right) => this.toSortableDate(left.dateIso) - this.toSortableDate(right.dateIso));
-    const visibleRows = query.order === 'upcoming' ? orderedRows.reverse() : orderedRows;
+    const visibleRows = orderedRows.filter(row => this.matchesTicketOrder(row, query.order));
+    if (query.order === 'past') {
+      visibleRows.reverse();
+    }
     const startIndex = page * pageSize;
     return {
       items: this.cloneRows(visibleRows.slice(startIndex, startIndex + pageSize)),
@@ -102,6 +105,20 @@ export class HttpAssetTicketsRepository {
 
   protected cloneRows(rows: readonly AppTypes.ActivityListRow[]): AppTypes.ActivityListRow[] {
     return rows.map(row => ({ ...row }));
+  }
+
+  private matchesTicketOrder(row: AppTypes.ActivityListRow, order: AppTypes.AssetTicketOrder): boolean {
+    const isPast = this.resolveTicketEndTimestamp(row) < Date.now();
+    return order === 'past' ? isPast : !isPast;
+  }
+
+  private resolveTicketEndTimestamp(row: AppTypes.ActivityListRow): number {
+    const source = row.source as { endAt?: string | null | undefined };
+    const endAtMs = this.toSortableDate(source.endAt ?? '');
+    if (endAtMs > 0) {
+      return endAtMs;
+    }
+    return this.toSortableDate(row.dateIso);
   }
 
   private toSortableDate(dateIso: string): number {

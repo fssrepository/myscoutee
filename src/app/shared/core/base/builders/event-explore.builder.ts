@@ -92,7 +92,7 @@ export class EventExploreBuilder {
     if (Number.isNaN(parsed.getTime())) {
       return 'Date unavailable';
     }
-    return parsed.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    return AppUtils.smartListDayLabel(parsed);
   }
 
   static buildActivityRow(record: DemoEventRecord): AppTypes.ActivityListRow {

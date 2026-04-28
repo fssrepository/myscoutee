@@ -215,6 +215,7 @@ export class DemoEventsRepository {
     const viewerCoordinates = this.queryUserLocationCoordinates(normalizedUserId);
     const normalizedRecords = filteredRecords
       .map(record => this.withResolvedDistance(record, viewerCoordinates))
+      .filter(record => this.matchesActivitiesSecondaryFilter(record, query.secondaryFilter))
       .sort((left, right) => this.compareActivitiesRecords(left, right, query));
     const total = normalizedRecords.length;
 
@@ -889,6 +890,31 @@ export class DemoEventsRepository {
 
   private relevanceOrderValue(record: DemoEventRecord): number {
     return Math.max(0, Number(record.relevance) || 0);
+  }
+
+  private resolveActivitiesEndTimestamp(record: DemoEventRecord): number {
+    const endAtMs = AppUtils.toSortableDate(record.endAtIso);
+    if (Number.isFinite(endAtMs) && endAtMs > 0) {
+      return endAtMs;
+    }
+    return this.timestampOrderValue(record);
+  }
+
+  private isPastActivitiesRecord(record: DemoEventRecord): boolean {
+    return this.resolveActivitiesEndTimestamp(record) < Date.now();
+  }
+
+  private matchesActivitiesSecondaryFilter(
+    record: DemoEventRecord,
+    secondaryFilter: DemoEventActivitiesQuery['secondaryFilter']
+  ): boolean {
+    if (secondaryFilter === 'past') {
+      return this.isPastActivitiesRecord(record);
+    }
+    if (secondaryFilter === 'recent' || secondaryFilter === 'relevant') {
+      return !this.isPastActivitiesRecord(record);
+    }
+    return true;
   }
 
   private timestampOrderValue(record: DemoEventRecord): number {
