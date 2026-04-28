@@ -616,13 +616,14 @@ export class EventMembersPopupComponent {
     if (!normalizedOwnerId) {
       return;
     }
-    const initialMembers = Array.isArray(options?.initialMembers)
+    const ownerType = options?.ownerType ?? 'event';
+    const initialMembers = ownerType !== 'event' && Array.isArray(options?.initialMembers)
       ? this.sortMembersByActionTimeDesc(options.initialMembers)
       : null;
     this.isOpen = true;
     this.ownerId = normalizedOwnerId;
     this.ownerRef = {
-      ownerType: options?.ownerType ?? 'event',
+      ownerType,
       ownerId: normalizedOwnerId
     };
     this.ownerRecord = null;

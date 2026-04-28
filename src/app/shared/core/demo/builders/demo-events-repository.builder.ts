@@ -159,12 +159,72 @@ function buildCheckoutDemoSubEvents(options: {
 
 const SEED_INVITATIONS_BY_USER: Record<string, InvitationMenuItem[]> = {
   u1: [
-    { id: 'i1', avatar: 'LP', inviter: 'Lina', description: 'Jazz Rooftop Session', when: 'Sat Feb 21, 8:00 PM', unread: 1 },
-    { id: 'i2', avatar: 'NH', inviter: 'Noah', description: 'Open Padel Pairs', when: 'Sun Feb 22, 3:00 PM', unread: 1 },
-    { id: 'i3', avatar: 'SY', inviter: 'System', description: 'Chat: Last-minute Ski Carpool', when: 'Sat Feb 21, 9:15 AM', unread: 2 }
+    {
+      id: 'i1',
+      avatar: 'LP',
+      inviter: 'Lina',
+      description: 'Jazz Rooftop Session',
+      when: 'Sat Feb 21, 8:00 PM',
+      unread: 1,
+      acceptedMemberUserIds: ['u5', 'u18', 'u19'],
+      pendingMemberUserIds: ['u1', 'u20'],
+      capacityTotal: 6,
+      startAt: '2026-03-10T20:00:00',
+      endAt: '2026-03-10T22:00:00'
+    },
+    {
+      id: 'i2',
+      avatar: 'NH',
+      inviter: 'Noah',
+      description: 'Open Padel Pairs',
+      when: 'Sun Feb 22, 3:00 PM',
+      unread: 1,
+      acceptedMemberUserIds: ['u7', 'u21', 'u22'],
+      pendingMemberUserIds: ['u1', 'u23'],
+      capacityTotal: 6,
+      startAt: '2026-03-11T15:00:00',
+      endAt: '2026-03-11T17:30:00'
+    },
+    {
+      id: 'i3',
+      avatar: 'SY',
+      inviter: 'System',
+      description: 'Chat: Last-minute Ski Carpool',
+      when: 'Sat Feb 21, 9:15 AM',
+      unread: 2,
+      acceptedMemberUserIds: ['u11', 'u24'],
+      pendingMemberUserIds: ['u1', 'u25'],
+      capacityTotal: 5,
+      startAt: '2026-03-12T09:15:00',
+      endAt: '2026-03-12T11:15:00'
+    }
   ],
-  u2: [{ id: 'i4', avatar: 'MS', inviter: 'Maya', description: 'Foodie Crawl Team', when: 'Sun Feb 22, 6:30 PM', unread: 1 }],
-  u3: [{ id: 'i5', avatar: 'LH', inviter: 'Luca', description: 'Urban Photo Sprint', when: 'Mon Feb 23, 6:00 PM', unread: 1 }]
+  u2: [{
+    id: 'i4',
+    avatar: 'MS',
+    inviter: 'Maya',
+    description: 'Foodie Crawl Team',
+    when: 'Sun Feb 22, 6:30 PM',
+    unread: 1,
+    acceptedMemberUserIds: ['u4', 'u26', 'u27'],
+    pendingMemberUserIds: ['u2', 'u28'],
+    capacityTotal: 6,
+    startAt: '2026-03-13T18:30:00',
+    endAt: '2026-03-13T21:00:00'
+  }],
+  u3: [{
+    id: 'i5',
+    avatar: 'LH',
+    inviter: 'Luca',
+    description: 'Urban Photo Sprint',
+    when: 'Mon Feb 23, 6:00 PM',
+    unread: 1,
+    acceptedMemberUserIds: ['u10', 'u29', 'u30'],
+    pendingMemberUserIds: ['u3', 'u31'],
+    capacityTotal: 6,
+    startAt: '2026-03-14T18:00:00',
+    endAt: '2026-03-14T20:00:00'
+  }]
 };
 
 const SEED_EVENTS_BY_USER: Record<string, EventMenuItem[]> = {
@@ -186,7 +246,9 @@ const SEED_EVENTS_BY_USER: Record<string, EventMenuItem[]> = {
       timeframe: 'Mar 8 · 10:00 AM - 7:00 PM',
       activity: 1,
       isAdmin: false,
-      creatorUserId: 'u10'
+      creatorUserId: 'u10',
+      acceptedMemberUserIds: ['u10', 'u14', 'u15'],
+      pendingMemberUserIds: ['u1', 'u16']
     },
     {
       id: 'e3',
@@ -274,7 +336,20 @@ const SEED_EVENTS_BY_USER: Record<string, EventMenuItem[]> = {
       shortDescription: 'Easy pace run and social brunch with optional pair mode.',
       timeframe: 'Feb 28 · 8:00 AM - 12:00 PM',
       activity: 2,
-      isAdmin: true
+      isAdmin: false,
+      creatorUserId: 'u13'
+    },
+    {
+      id: 'e13',
+      avatar: 'SY',
+      title: 'Afterwork Tasting Circle',
+      shortDescription: 'Host review pending while the guest list settles for tonight.',
+      timeframe: 'Mar 11 · 6:30 PM - 9:30 PM',
+      activity: 2,
+      isAdmin: false,
+      creatorUserId: 'u8',
+      acceptedMemberUserIds: ['u8', 'u35', 'u36'],
+      pendingMemberUserIds: ['u2', 'u37']
     },
     {
       id: 'checkout-paid-slots',
@@ -342,6 +417,18 @@ const SEED_EVENTS_BY_USER: Record<string, EventMenuItem[]> = {
       activity: 2,
       isAdmin: false,
       creatorUserId: 'u11'
+    },
+    {
+      id: 'e14',
+      avatar: 'SY',
+      title: 'Moonlight Boardwalk Mixer',
+      shortDescription: 'Approval queue is still open while the organizer finalizes the pair rotations.',
+      timeframe: 'Mar 13 · 7:15 PM - 10:15 PM',
+      activity: 2,
+      isAdmin: false,
+      creatorUserId: 'u7',
+      acceptedMemberUserIds: ['u7', 'u38', 'u39'],
+      pendingMemberUserIds: ['u3']
     },
     {
       id: 'checkout-paid-policy',
@@ -1250,23 +1337,32 @@ export class DemoEventsRepositoryBuilder {
     members: { acceptedMemberUserIds: string[]; pendingMemberUserIds: string[] }
   ): { acceptedMemberUserIds: string[]; pendingMemberUserIds: string[] } {
     const ownerUserId = record.userId.trim();
+    const normalizedAcceptedMemberUserIds = this.normalizeUserIds(members.acceptedMemberUserIds);
+    const normalizedPendingMemberUserIds = this.normalizeUserIds(members.pendingMemberUserIds)
+      .filter(userId => !normalizedAcceptedMemberUserIds.includes(userId));
     if (record.isInvitation) {
-      const acceptedMemberUserIds = this.normalizeUserIds(members.acceptedMemberUserIds);
-      const pendingMemberUserIds = this.normalizeUserIds(members.pendingMemberUserIds)
-        .filter(userId => !acceptedMemberUserIds.includes(userId));
       return {
-        acceptedMemberUserIds,
-        pendingMemberUserIds
+        acceptedMemberUserIds: normalizedAcceptedMemberUserIds,
+        pendingMemberUserIds: normalizedPendingMemberUserIds
       };
     }
-    const acceptedMemberUserIds = this.normalizeUserIds(members.acceptedMemberUserIds)
+    const ownerHasExplicitAcceptedMembership = normalizedAcceptedMemberUserIds.includes(ownerUserId);
+    const ownerHasExplicitPendingMembership = !ownerHasExplicitAcceptedMembership
+      && normalizedPendingMemberUserIds.includes(ownerUserId);
+    const acceptedMemberUserIds = normalizedAcceptedMemberUserIds
       .filter(userId => userId !== ownerUserId);
-    const pendingMemberUserIds = this.normalizeUserIds(members.pendingMemberUserIds)
+    const pendingMemberUserIds = normalizedPendingMemberUserIds
       .filter(userId => userId !== ownerUserId && !acceptedMemberUserIds.includes(userId));
     if (record.type !== 'events' || record.isInvitation || !ownerUserId) {
       return {
         acceptedMemberUserIds,
         pendingMemberUserIds
+      };
+    }
+    if (ownerHasExplicitPendingMembership) {
+      return {
+        acceptedMemberUserIds,
+        pendingMemberUserIds: [ownerUserId, ...pendingMemberUserIds]
       };
     }
     return {

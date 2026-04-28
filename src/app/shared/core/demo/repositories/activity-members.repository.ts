@@ -59,7 +59,6 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
   }
 
   init(ownerUserIds?: readonly string[]): void {
-    console.log(Date.now() + "start - activity members");
     this.demoEventsRepository.init();
     const normalizedOwnerUserIds = Array.from(new Set(
       (ownerUserIds ?? this.demoUsersRepository.queryAvailableDemoUsers().map(user => user.id))
@@ -70,16 +69,12 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
       this.demoAssetsRepository.init(normalizedOwnerUserIds);
     }
 
-    console.log(Date.now() + "events read - activity members");
-
     const eventsTable = this.memoryDb.read()[EVENTS_TABLE_NAME];
     const currentTable = this.normalizeCollection(this.memoryDb.read()[ACTIVITY_MEMBERS_TABLE_NAME]);
     const initToken = `${eventsTable.ids.length}:${currentTable.ids.length}:${Object.keys(currentTable.idsByOwnerKey).length}:${normalizedOwnerUserIds.join('|')}`;
     if (this.lastInitToken === initToken) {
       return;
     }
-
-    console.log(Date.now() + "seeded read - activity members");
 
     this.demoActivityMemberUsersSnapshot = this.demoUsersRepository.queryAllUsers() as DemoUser[];
     this.preferredEventRecordsSnapshot = this.computePreferredEventRecords(eventsTable);
@@ -124,8 +119,6 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
       }
       appendSeededRecords(this.buildSeededSubEventAndGroupOwnerRecords(existingOwnerKeys));
 
-      console.log(Date.now() + "db write read - activity members");
-
       if (changed) {
         this.memoryDb.write(state => ({
           ...state,
@@ -136,8 +129,6 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
           }
         }));
       }
-
-      console.log(Date.now() + "db write end - activity members");
 
       const batchState = this.memoryDb.read();
       let activityMembersTable = this.normalizeCollection(batchState[ACTIVITY_MEMBERS_TABLE_NAME]);
@@ -425,17 +416,27 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
       payload.creatorGender === 'woman' ? 'woman' : 'man'
     );
     const entryContext = this.buildEntryContext(row, creator);
-    const acceptedTarget = this.normalizeMemberCount(payload.acceptedMembers)
-      ?? this.normalizeMemberUserIds(payload.acceptedMemberUserIds).length;
-    const pendingTarget = this.normalizeMemberCount(payload.pendingMembers)
-      ?? this.normalizeMemberUserIds(payload.pendingMemberUserIds).length;
+    const acceptedMemberUserIds = this.normalizeMemberUserIds(payload.acceptedMemberUserIds);
+    const pendingMemberUserIds = this.normalizeMemberUserIds(payload.pendingMemberUserIds)
+      .filter(userId => !acceptedMemberUserIds.includes(userId));
+    const hasExplicitMemberUserIds = Array.isArray(payload.acceptedMemberUserIds) || Array.isArray(payload.pendingMemberUserIds);
+    const acceptedTarget = hasExplicitMemberUserIds
+      ? acceptedMemberUserIds.length
+      : (this.normalizeMemberCount(payload.acceptedMembers) ?? acceptedMemberUserIds.length);
+    const pendingTarget = hasExplicitMemberUserIds
+      ? pendingMemberUserIds.length
+      : (this.normalizeMemberCount(payload.pendingMembers) ?? pendingMemberUserIds.length);
     const entries = this.buildEntriesFromUserIds(
       owner,
       entryContext,
-      payload.acceptedMemberUserIds,
-      payload.pendingMemberUserIds,
+      acceptedMemberUserIds,
+      pendingMemberUserIds,
       acceptedTarget,
-      pendingTarget
+      pendingTarget,
+      {
+        allowAcceptedBackfill: !hasExplicitMemberUserIds,
+        allowPendingBackfill: !hasExplicitMemberUserIds
+      }
     );
     const summary = this.writeOwnerMembers(
       owner,
@@ -803,9 +804,13 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
     const actualPendingUserIds = currentMembers
       .filter(member => member.status === 'pending')
       .map(member => member.userId);
-    const expectedAcceptedMembers = this.normalizeMemberCount(record.acceptedMembers) ?? expectedAcceptedUserIds.length;
-    const expectedPendingMembers = this.normalizeMemberCount(record.pendingMembers) ?? expectedPendingUserIds.length;
-    if (actualAcceptedUserIds.length < expectedAcceptedMembers || actualPendingUserIds.length < expectedPendingMembers) {
+    if (actualAcceptedUserIds.length !== expectedAcceptedUserIds.length || actualPendingUserIds.length !== expectedPendingUserIds.length) {
+      return true;
+    }
+    if (actualAcceptedUserIds.some(userId => !expectedAcceptedUserIds.includes(userId))) {
+      return true;
+    }
+    if (actualPendingUserIds.some(userId => !expectedPendingUserIds.includes(userId))) {
       return true;
     }
     if (expectedAcceptedUserIds.some(userId => !actualAcceptedUserIds.includes(userId))) {
@@ -1334,19 +1339,20 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
     );
     const row = this.buildActivityRowFromEventRecord(record);
     const entryContext = this.buildEntryContext(row, creator);
-    const sampleCapacity = this.parseSampleCapacityLabel(record.id);
-    const acceptedTarget = Math.max(
-      this.normalizeMemberCount(record.acceptedMembers) ?? 0,
-      sampleCapacity.acceptedMembers ?? 0
-    );
-    const pendingTarget = this.normalizeMemberCount(record.pendingMembers) ?? 0;
+    const acceptedMemberUserIds = this.normalizeMemberUserIds(record.acceptedMemberUserIds);
+    const pendingMemberUserIds = this.normalizeMemberUserIds(record.pendingMemberUserIds)
+      .filter(userId => !acceptedMemberUserIds.includes(userId));
     const entries = this.buildEntriesFromUserIds(
       owner,
       entryContext,
-      record.acceptedMemberUserIds,
-      record.pendingMemberUserIds,
-      acceptedTarget,
-      pendingTarget
+      acceptedMemberUserIds,
+      pendingMemberUserIds,
+      acceptedMemberUserIds.length,
+      pendingMemberUserIds.length,
+      {
+        allowAcceptedBackfill: false,
+        allowPendingBackfill: false
+      }
     );
     return entries.map(entry => this.toRecord(owner, entry));
   }
@@ -1368,19 +1374,17 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
     const acceptedMemberUserIds = this.normalizeMemberUserIds(record.acceptedMemberUserIds);
     const pendingMemberUserIds = this.normalizeMemberUserIds(record.pendingMemberUserIds)
       .filter(userId => !acceptedMemberUserIds.includes(userId));
-    const acceptedTarget = acceptedMemberUserIds.length > 0
-      ? acceptedMemberUserIds.length
-      : (this.normalizeMemberCount(record.acceptedMembers) ?? 0);
-    const pendingTarget = pendingMemberUserIds.length > 0
-      ? pendingMemberUserIds.length
-      : (this.normalizeMemberCount(record.pendingMembers) ?? 0);
     const entries = this.buildEntriesFromUserIds(
       owner,
       entryContext,
       acceptedMemberUserIds,
       pendingMemberUserIds,
-      acceptedTarget,
-      pendingTarget
+      acceptedMemberUserIds.length,
+      pendingMemberUserIds.length,
+      {
+        allowAcceptedBackfill: false,
+        allowPendingBackfill: false
+      }
     );
     return entries.map(entry => this.toRecord(owner, entry));
   }
@@ -1397,8 +1401,14 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
     acceptedMemberUserIds: readonly string[] | undefined,
     pendingMemberUserIds: readonly string[] | undefined,
     acceptedTarget: number,
-    pendingTarget: number
+    pendingTarget: number,
+    options: {
+      allowAcceptedBackfill?: boolean;
+      allowPendingBackfill?: boolean;
+    } = {}
   ): AppTypes.ActivityMemberEntry[] {
+    const allowAcceptedBackfill = options.allowAcceptedBackfill !== false;
+    const allowPendingBackfill = options.allowPendingBackfill !== false;
     const usedUserIds = new Set<string>();
     const acceptedEntries: AppTypes.ActivityMemberEntry[] = [];
     const pendingEntries: AppTypes.ActivityMemberEntry[] = [];
@@ -1412,7 +1422,7 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
       usedUserIds.add(entry.userId);
     }
 
-    if (acceptedEntries.length < acceptedTarget) {
+    if (allowAcceptedBackfill && acceptedEntries.length < acceptedTarget) {
       const forcedEntries = ActivityMembersBuilder.buildForcedAcceptedMembers(
         context.row,
         context.rowKey,
@@ -1445,7 +1455,7 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
       usedUserIds.add(entry.userId);
     }
 
-    if (pendingEntries.length < pendingTarget) {
+    if (allowPendingBackfill && pendingEntries.length < pendingTarget) {
       for (const entry of context.generatedPendingByUserId.values()) {
         if (pendingEntries.length >= pendingTarget) {
           break;
@@ -1461,7 +1471,7 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
       }
     }
 
-    if (pendingEntries.length < pendingTarget) {
+    if (allowPendingBackfill && pendingEntries.length < pendingTarget) {
       const prioritizedFallbackCandidates = [
         ...DemoUserSeedBuilder.friendUsersForActiveUser(this.demoActivityMemberUsers, context.creator.id, Math.max(pendingTarget * 3, pendingTarget)),
         ...this.demoActivityMemberUsers

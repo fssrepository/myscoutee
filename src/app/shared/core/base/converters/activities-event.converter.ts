@@ -18,15 +18,16 @@ export function toActivityEventRowFromMenuItem(
     distanceKm?: number;
   } = {}
 ): AppTypes.ActivityListRow {
+  const distanceKm = options.distanceKm ?? item.distanceKm ?? 0;
   return {
     id: item.id,
     type: 'events',
     title: item.title,
     subtitle: item.shortDescription,
     detail: item.timeframe,
-    dateIso: options.dateIso ?? '2026-03-01T09:00:00',
-    distanceKm: options.distanceKm ?? 10,
-    distanceMetersExact: resolveDistanceMetersExact(options.distanceKm ?? 10),
+    dateIso: options.dateIso ?? item.startAt ?? '',
+    distanceKm,
+    distanceMetersExact: resolveDistanceMetersExact(distanceKm),
     unread: item.activity,
     metricScore: (item.isAdmin ? 20 : 0) + item.activity,
     isAdmin: item.isAdmin,
@@ -41,15 +42,16 @@ export function toActivityHostingRowFromMenuItem(
     distanceKm?: number;
   } = {}
 ): AppTypes.ActivityListRow {
+  const distanceKm = options.distanceKm ?? item.distanceKm ?? 0;
   return {
     id: item.id,
     type: 'hosting',
     title: item.title,
     subtitle: item.shortDescription,
     detail: item.timeframe,
-    dateIso: options.dateIso ?? '2026-03-01T09:00:00',
-    distanceKm: options.distanceKm ?? 10,
-    distanceMetersExact: resolveDistanceMetersExact(options.distanceKm ?? 10),
+    dateIso: options.dateIso ?? item.startAt ?? '',
+    distanceKm,
+    distanceMetersExact: resolveDistanceMetersExact(distanceKm),
     unread: item.activity,
     metricScore: 20 + item.activity,
     isAdmin: item.isAdmin,
@@ -64,15 +66,16 @@ export function toActivityInvitationRowFromMenuItem(
     distanceKm?: number;
   } = {}
 ): AppTypes.ActivityListRow {
+  const distanceKm = options.distanceKm ?? item.distanceKm ?? 0;
   return {
     id: item.id,
     type: 'invitations',
     title: item.description,
     subtitle: item.inviter,
     detail: item.when,
-    dateIso: options.dateIso ?? item.startAt ?? '2026-02-21T09:00:00',
-    distanceKm: options.distanceKm ?? item.distanceKm ?? 5,
-    distanceMetersExact: resolveDistanceMetersExact(options.distanceKm ?? item.distanceKm ?? 5),
+    dateIso: options.dateIso ?? item.startAt ?? '',
+    distanceKm,
+    distanceMetersExact: resolveDistanceMetersExact(distanceKm),
     unread: item.unread,
     metricScore: item.unread * 10,
     source: item

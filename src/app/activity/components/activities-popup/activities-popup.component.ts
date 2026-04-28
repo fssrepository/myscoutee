@@ -94,7 +94,7 @@ import {
   toActivityHostingRowFromMenuItem,
   toActivityInvitationRowFromMenuItem
 } from '../../../shared/core/base/converters/activities-event.converter';
-import { DemoEventSeedBuilder, DemoUserMenuCountersBuilder } from '../../../shared/core/demo/builders';
+import { DemoUserMenuCountersBuilder } from '../../../shared/core/demo/builders';
 import type { DemoEventRecord } from '../../../shared/core/demo/models/events.model';
 
 // ---------------------------------------------------------------------------
@@ -736,7 +736,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
     }
     this.refreshRateItems();
 
-    this.initializeEventEditorContextData();
     this.refreshSectionBadges();
     this.seedEventOwnerMemberCountsFromEventsTable();
   }
@@ -896,30 +895,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
         return;
       }
       this.applyStandaloneEventRecords(records, true);
-      this.initializeEventEditorContextData();
       this.refreshSectionBadges();
       this.seedEventOwnerMemberCountsFromEventsTable();
-      if (
-        this.activitiesPrimaryFilter === 'events'
-        && this.shouldUseLocalEventRowsFallback(this.activitiesEventScope)
-        && this.visibleActivityRows.length === 0
-        && this.buildEventScopeRows(
-          this.activitiesEventScope,
-          this.activitiesSecondaryFilter,
-          this.hostingPublicationFilter
-        ).length > 0
-      ) {
-        const fallbackRows = this.sortVisibleEventRows(this.buildEventScopeRows(
-          this.activitiesEventScope,
-          this.activitiesSecondaryFilter,
-          this.hostingPublicationFilter
-        ));
-        this.runAfterActivitiesRender(() => {
-          if (!this.replaceVisibleActivityFallbackRows(fallbackRows)) {
-            this.activitiesSmartList?.reload();
-          }
-        });
-      }
       this.cdr.markForCheck();
     } catch {
       // Keep the last cached event state if the refresh fails.
@@ -1085,27 +1062,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
     });
   }
 
-  private replaceVisibleActivityFallbackRows(items: readonly AppTypes.ActivityListRow[]): boolean {
-    const smartList = this.activitiesSmartList;
-    if (!smartList || this.isCalendarLayoutView()) {
-      return false;
-    }
-    let nextItems = [...items];
-    if (this.isEventActivitiesPrimaryFilter()) {
-      nextItems = this.sortVisibleEventRows(nextItems);
-    } else if (this.activitiesPrimaryFilter === 'chats') {
-      nextItems = this.sortVisibleChatRows(nextItems);
-    }
-    const initialPageSize = Number(this.activitiesSmartListConfig.initialPageSize);
-    const visibleCount = Number.isFinite(initialPageSize)
-      ? Math.max(1, Math.trunc(initialPageSize))
-      : Math.max(1, this.activitiesPageSize);
-    smartList.replaceVisibleItems(nextItems.slice(0, visibleCount), {
-      total: nextItems.length
-    });
-    return true;
-  }
-
   protected removeVisibleActivityRow(row: AppTypes.ActivityListRow): void {
     const smartList = this.activitiesSmartList;
     if (!smartList) {
@@ -1264,80 +1220,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
     };
   }
 
-  private ensurePaginationTestEvents(minEventsPerUser: number): void {
-    if (this.eventItems.length >= minEventsPerUser) {
-      return;
-    }
-
-    const needed = minEventsPerUser - this.eventItems.length;
-    const synthetic: EventMenuItem[] = [];
-    for (let index = 0; index < needed; index += 1) {
-      const seq = this.eventItems.length + index + 1;
-      const id = `ex-${this.activeUser.id}-${seq}`;
-      const start = new Date(2026, 2, 1 + (index * 2), 10 + (index % 6), (index % 2) * 30, 0, 0);
-      const end = new Date(start.getTime() + ((2 + (index % 3)) * 60 * 60 * 1000));
-      const isAdmin = (seq % 4) === 0;
-      const title = `Pagination Test Event ${seq}`;
-      const timeframe = `${start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · ${start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} - ${end.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
-
-      synthetic.push({
-        id,
-        avatar: this.activeUser.initials,
-        title,
-        shortDescription: `Synthetic feed item ${seq} to validate activities infinite loading.`,
-        timeframe,
-        activity: (index % 5) + 1,
-        isAdmin
-      });
-
-      this.eventDatesById[id] = start.toISOString().slice(0, 19);
-      this.eventDistanceById[id] = 3 + (index % 42);
-      this.activityDateTimeRangeById[id] = {
-        startIso: start.toISOString().slice(0, 19),
-        endIso: end.toISOString().slice(0, 19)
-      };
-      this.activityImageById[id] = `https://picsum.photos/seed/event-${id}/1200/700`;
-      this.activityCapacityById[id] = `${6 + (index % 18)} / ${12 + (index % 24)}`;
-    }
-
-    this.eventItems = [...this.eventItems, ...synthetic];
-  }
-
-  private initializeEventEditorContextData(): void {
-    const sources: Array<{ item: EventMenuItem | HostingMenuItem; isHosting: boolean }> = [];
-    for (const item of this.eventItems) {
-      sources.push({ item, isHosting: false });
-    }
-    for (const item of this.hostingItems) {
-      sources.push({ item, isHosting: true });
-    }
-
-    const visited = new Set<string>();
-    for (const source of sources) {
-      const id = source.item.id;
-      if (visited.has(id)) {
-        continue;
-      }
-      visited.add(id);
-
-      if (!this.eventCapacityById[id]) {
-        this.eventCapacityById[id] = DemoEventSeedBuilder.seededEventCapacityRange(id, this.activityCapacityById);
-      }
-      if (!this.eventSubEventsById[id] || this.eventSubEventsById[id].length === 0) {
-        this.eventSubEventsById[id] = DemoEventSeedBuilder.buildSeededSubEventsForEvent(source.item, {
-          isHosting: source.isHosting,
-          activityDateTimeRangeById: this.activityDateTimeRangeById,
-          hostingDatesById: this.hostingDatesById,
-          eventDatesById: this.eventDatesById,
-          eventCapacityById: this.eventCapacityById,
-          activityCapacityById: this.activityCapacityById,
-          defaultStartIso: this.defaultEventStartIso(),
-          activeUserId: this.activeUser.id
-        });
-      }
-    }
-  }
-
   protected refreshSectionBadges(): void {
     const memberEventItems = this.memberEventItems();
     this.chatBadge = DemoUserMenuCountersBuilder.resolveSectionBadge(
@@ -1457,96 +1339,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   protected get filteredActivityRows(): AppTypes.ActivityListRow[] {
     return [...this.visibleActivityRows];
-  }
-
-  private buildEventScopeRows(
-    scope: AppTypes.ActivitiesEventScope,
-    secondaryFilter: AppTypes.ActivitiesSecondaryFilter,
-    hostingPublicationFilter: AppTypes.HostingPublicationFilter
-  ): AppTypes.ActivityListRow[] {
-    const normalizedSecondaryFilter = secondaryFilter === 'relevant'
-      ? 'recent'
-      : secondaryFilter;
-    const memberEventItems = this.memberEventItems()
-      .filter(item => !this.isActivityIdentityTrashed('events', item.id))
-      .filter(item => this.isAcceptedEventMenuItem(item) || this.isPendingEventMenuItem(item));
-    const activeEventRows = memberEventItems
-      .filter(item => this.isAcceptedEventMenuItem(item))
-      .map(item => toActivityEventRowFromMenuItem(item, {
-        dateIso: item.startAt ?? this.eventDatesById[item.id] ?? '2026-03-01T09:00:00',
-        distanceKm: item.distanceKm ?? this.eventDistanceById[item.id] ?? 10
-      }));
-    const pendingEventRows = memberEventItems
-      .filter(item => this.isPendingEventMenuItem(item))
-      .map(item => toActivityEventRowFromMenuItem(item, {
-        dateIso: item.startAt ?? this.eventDatesById[item.id] ?? '2026-03-01T09:00:00',
-        distanceKm: item.distanceKm ?? this.eventDistanceById[item.id] ?? 10
-      }));
-    const invitationRows = this.invitationItems
-      .filter(item => !this.isActivityIdentityTrashed('invitations', item.id))
-      .map(item => toActivityInvitationRowFromMenuItem(item, {
-        dateIso: item.startAt ?? '2026-02-21T09:00:00',
-        distanceKm: item.distanceKm ?? 5
-      }));
-    const myEventRows = this.hostingItems
-      .filter(item => item.isAdmin === true)
-      .filter(item => !this.isActivityIdentityTrashed('hosting', item.id))
-      .map(item => toActivityHostingRowFromMenuItem(item, {
-        dateIso: item.startAt ?? this.hostingDatesById[item.id] ?? '2026-03-01T09:00:00',
-        distanceKm: item.distanceKm ?? this.hostingDistanceById[item.id] ?? 10
-      }));
-    const draftRows = myEventRows.filter(row => !this.isHostingPublished(row.id));
-    const trashRows = Object.values(this.trashedActivityRowsByKey);
-
-    const scopedRows = scope === 'all'
-      ? [...activeEventRows, ...pendingEventRows, ...invitationRows, ...myEventRows]
-      : scope === 'pending'
-        ? pendingEventRows
-        : scope === 'invitations'
-          ? invitationRows
-          : scope === 'my-events'
-            ? (hostingPublicationFilter === 'drafts' ? draftRows : myEventRows)
-            : scope === 'drafts'
-              ? draftRows
-              : scope === 'trash'
-                ? trashRows
-                : activeEventRows;
-    return scopedRows.filter(row => this.matchesActivityRowSecondaryFilter(row, normalizedSecondaryFilter));
-  }
-
-  private matchesActivityRowSecondaryFilter(
-    row: AppTypes.ActivityListRow,
-    secondaryFilter: AppTypes.ActivitiesSecondaryFilter
-  ): boolean {
-    if (secondaryFilter === 'past') {
-      return this.isPastActivityRow(row);
-    }
-    if (secondaryFilter === 'recent' || secondaryFilter === 'relevant') {
-      return !this.isPastActivityRow(row);
-    }
-    return true;
-  }
-
-  private isPastActivityRow(row: AppTypes.ActivityListRow): boolean {
-    return this.resolveActivityRowEndTimestamp(row) <= Date.now();
-  }
-
-  private resolveActivityRowEndTimestamp(row: AppTypes.ActivityListRow): number {
-    const explicitRange = this.activityDateTimeRangeById[row.id];
-    const explicitEndAtMs = AppUtils.toSortableDate(explicitRange?.endIso ?? '');
-    if (Number.isFinite(explicitEndAtMs)) {
-      return explicitEndAtMs;
-    }
-
-    const sourceEndAtMs = AppUtils.toSortableDate(`${(row.source as { endAt?: string }).endAt ?? ''}`.trim());
-    if (Number.isFinite(sourceEndAtMs)) {
-      return sourceEndAtMs;
-    }
-
-    const startAtMs = this.activityRowTimestampOrderValue(row);
-    return Number.isFinite(startAtMs)
-      ? startAtMs + (2 * 60 * 60 * 1000)
-      : Number.POSITIVE_INFINITY;
   }
 
   private memberEventItems(): EventMenuItem[] {
@@ -2080,8 +1872,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
       ...this.eventItems.map(item => ({
         id: item.id,
         row: toActivityEventRowFromMenuItem(item, {
-          dateIso: this.eventDatesById[item.id] ?? item.startAt ?? '2026-03-01T09:00:00',
-          distanceKm: this.eventDistanceById[item.id] ?? item.distanceKm ?? 10
+          dateIso: this.eventDatesById[item.id] ?? item.startAt ?? '',
+          distanceKm: this.eventDistanceById[item.id] ?? item.distanceKm ?? 0
         }),
         acceptedMembers: item.acceptedMembers ?? 0,
         capacityTotal: item.capacityTotal ?? 0,
@@ -2090,8 +1882,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
       ...this.hostingItems.map(item => ({
         id: item.id,
         row: toActivityHostingRowFromMenuItem(item, {
-          dateIso: this.hostingDatesById[item.id] ?? item.startAt ?? '2026-03-01T09:00:00',
-          distanceKm: this.hostingDistanceById[item.id] ?? item.distanceKm ?? 10
+          dateIso: this.hostingDatesById[item.id] ?? item.startAt ?? '',
+          distanceKm: this.hostingDistanceById[item.id] ?? item.distanceKm ?? 0
         }),
         acceptedMembers: item.acceptedMembers ?? 0,
         capacityTotal: item.capacityTotal ?? 0,
@@ -2100,8 +1892,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
       ...this.invitationItems.map(item => ({
         id: item.id,
         row: toActivityInvitationRowFromMenuItem(item, {
-          dateIso: item.startAt ?? '2026-02-21T09:00:00',
-          distanceKm: item.distanceKm ?? 5
+          dateIso: item.startAt ?? '',
+          distanceKm: item.distanceKm ?? 0
         }),
         acceptedMembers: item.acceptedMembers ?? 0,
         capacityTotal: item.capacityTotal ?? 0,
@@ -2251,11 +2043,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   protected chatCountValue(value: unknown): number {
     return Math.max(0, Math.trunc(Number(value) || 0));
-  }
-
-  protected defaultEventStartIso(): string {
-    const iso = this.eventDatesById['e1'];
-    return typeof iso === 'string' && iso.trim().length > 0 ? iso : '2026-03-01T09:00:00';
   }
 
   protected applyActivitiesEventSync(sync: ActivitiesEventSyncPayload): void {
@@ -2727,52 +2514,9 @@ export class ActivitiesPopupComponent implements OnDestroy {
       chatItems: this.chatItems
     });
     const requestedPrimaryFilter = query.filters?.primaryFilter ?? this.activitiesPrimaryFilter;
-    const requestedEventScope = query.filters?.eventScopeFilter ?? this.activitiesEventScope;
-    if (
-      requestedPrimaryFilter === 'events'
-      && !this.isCalendarLayoutView()
-      && this.shouldUseLocalEventRowsFallback(requestedEventScope)
-    ) {
-      const localRows = this.sortVisibleEventRows(this.buildEventScopeRows(
-        requestedEventScope,
-        this.effectiveActivitiesSecondaryFilter(),
-        this.hostingPublicationFilter
-      ));
-      if (requestedEventScope === 'pending' && localRows.length > 0) {
-        return this.paginateLocalEventRows(localRows, query);
-      }
-      if (page.items.length === 0 && localRows.length > 0) {
-        return this.paginateLocalEventRows(localRows, query);
-      }
-    }
     if (requestedPrimaryFilter === 'rates') {
       this.refreshRateItems();
     }
     return page;
-  }
-
-  private paginateLocalEventRows(
-    rows: readonly AppTypes.ActivityListRow[],
-    query: ListQuery<ActivitiesSmartListFilters>
-  ): PageResult<AppTypes.ActivityListRow> {
-    if (rows.length === 0) {
-      return {
-        items: [],
-        total: 0,
-        nextCursor: null
-      };
-    }
-    const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || this.activitiesPageSize));
-    const pageIndex = Math.max(0, Math.trunc(Number(query.page) || 0));
-    const start = pageIndex * pageSize;
-    return {
-      items: rows.slice(start, start + pageSize),
-      total: rows.length,
-      nextCursor: null
-    };
-  }
-
-  private shouldUseLocalEventRowsFallback(scope: AppTypes.ActivitiesEventScope): boolean {
-    return scope === 'all' || scope === 'active-events' || scope === 'pending';
   }
 }
