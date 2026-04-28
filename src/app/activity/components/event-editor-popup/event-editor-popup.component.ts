@@ -280,6 +280,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.showMobileFrequencyPicker = false;
     const source = this.eventEditorService.sourceEvent();
     const eventId = this.currentEventIdentity() || 'draft-event';
+    const canManageMembers = !this.eventEditorService.readOnly();
     const row: AppTypes.ActivityListRow = {
       id: eventId,
       type: this.editorTarget === 'hosting' ? 'hosting' : 'events',
@@ -290,7 +291,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       distanceKm: 0,
       unread: 0,
       metricScore: 0,
-      isAdmin: true,
+      isAdmin: canManageMembers,
       source: source ?? {
         id: eventId,
         avatar: '',

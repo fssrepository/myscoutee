@@ -105,6 +105,7 @@ export class EventMembersPopupComponent {
   private isLocalMembersSource = false;
   private membersChangeHandler: ((members: readonly AppTypes.ActivityMemberEntry[]) => void) | null = null;
   private suppressedOwnerSyncId: string | null = null;
+  private requestedCanManageMembers = false;
 
   protected membersSmartListQuery: Partial<ListQuery<MembersSmartListFilters>> = {};
 
@@ -268,6 +269,7 @@ export class EventMembersPopupComponent {
     this.isLocalMembersSource = false;
     this.membersChangeHandler = null;
     this.suppressedOwnerSyncId = null;
+    this.requestedCanManageMembers = false;
     this.subtitle = 'Event';
     this.resetSummaryState();
     this.selectedMembersVisible = [];
@@ -604,7 +606,8 @@ export class EventMembersPopupComponent {
     this.selectedMembersVisible = [];
     this.membersCacheByOwnerId.delete(normalizedOwnerId);
     this.resetSummaryState();
-    this.canManageMembers = options?.canManage === true;
+    this.requestedCanManageMembers = options?.canManage === true;
+    this.canManageMembers = this.requestedCanManageMembers;
     this.canShowInviteButton = this.canManageMembers;
     this.isLocalMembersSource = initialMembers !== null;
     if (initialMembers) {
@@ -614,6 +617,7 @@ export class EventMembersPopupComponent {
           .map(member => `${member.userId ?? ''}`.trim())
           .filter(userId => userId.length > 0)
       );
+      this.syncCanManageMembers(initialMembers);
     }
     this.membersChangeHandler = options?.onMembersChanged ?? null;
     this.membersSmartListQuery = {};
@@ -689,11 +693,7 @@ export class EventMembersPopupComponent {
   ): void {
     this.ownerRecord = record;
     this.subtitle = record.title.trim() || options?.subtitle?.trim() || 'Event';
-    this.canManageMembers = this.canManageMembers
-      || options?.canManage === true
-      || record.isAdmin === true
-      || record.creatorUserId === this.activeUserId();
-    this.canShowInviteButton = this.canManageMembers;
+    this.syncCanManageMembers();
     if (this.acceptedCount <= 0 && this.pendingCount <= 0 && this.capacityTotal <= 0) {
       this.applySummary(record.acceptedMembers, record.pendingMembers, record.capacityTotal);
     }
@@ -726,6 +726,7 @@ export class EventMembersPopupComponent {
         const summary = owner
           ? this.activityMembersService.peekSummaryByOwner(owner)
           : this.activityMembersService.peekSummaryByOwnerId(ownerId);
+        this.syncCanManageMembers(members);
         if (summary) {
           this.applySummary(summary.acceptedMembers, summary.pendingMembers, summary.capacityTotal);
         } else {
@@ -781,6 +782,7 @@ export class EventMembersPopupComponent {
       }
     }
     this.membersCacheByOwnerId.set(this.ownerId, normalizedMembers);
+    this.syncCanManageMembers(normalizedMembers);
     this.applySummaryFromMembers(normalizedMembers);
     this.inlineItemActionMenu = null;
     this.syncVisibleMembers(previousMembers, normalizedMembers);
@@ -838,6 +840,18 @@ export class EventMembersPopupComponent {
       && entry.invitedByActiveUser === true;
   }
 
+  private syncCanManageMembers(members: readonly AppTypes.ActivityMemberEntry[] = this.currentOwnerMembers()): void {
+    const activeUserId = this.activeUserId();
+    const activeMember = members.find(member => member.userId === activeUserId && member.status === 'accepted');
+    const activeMemberCanManage = activeMember?.role === 'Admin' || activeMember?.role === 'Manager';
+    const ownerRecordCanManage = !!this.ownerRecord && (
+      this.ownerRecord.creatorUserId === activeUserId
+      || this.ownerRecord.isAdmin === true
+    );
+    this.canManageMembers = this.requestedCanManageMembers || ownerRecordCanManage || activeMemberCanManage;
+    this.canShowInviteButton = this.canManageMembers;
+  }
+
   private applySummaryFromMembers(members: readonly AppTypes.ActivityMemberEntry[]): void {
     const acceptedCount = members.filter(member => member.status === 'accepted').length;
     const pendingCount = members.filter(member => member.status === 'pending').length;
@@ -889,6 +903,7 @@ export class EventMembersPopupComponent {
         }
         const normalizedMembers = this.sortMembersByActionTimeDesc(members);
         this.membersCacheByOwnerId.set(sync.id, normalizedMembers);
+        this.syncCanManageMembers(normalizedMembers);
         const summary = this.activityMembersService.peekSummaryByOwner(owner);
         if (summary) {
           this.applySummary(summary.acceptedMembers, summary.pendingMembers, summary.capacityTotal);

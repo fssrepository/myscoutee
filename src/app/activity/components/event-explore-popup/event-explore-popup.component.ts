@@ -124,6 +124,8 @@ export class EventExplorePopupComponent {
   private lastAppliedActivityMembersUpdatedMs = 0;
   private lastPendingCheckoutDraftSourceIds = new Set<string>();
   private readonly locallyTrackedMembershipSourceIds = new Set<string>();
+  private readonly checkoutDraftReleaseSourceIds = new Set<string>();
+  private readonly clearingCheckoutDraftsBySourceId = new Map<string, EventCheckoutDraft>();
 
   protected eventExploreSmartListQuery: Partial<ListQuery<EventExploreFeedFilters>> = {};
 
@@ -597,14 +599,24 @@ export class EventExplorePopupComponent {
   }
 
   protected checkoutDraftEntries(): CheckoutDraftEntry[] {
-    return this.eventCheckoutDraftService.listByUser(this.activeUserId)
+    const activeUserId = this.activeUserId.trim();
+    const liveDrafts = this.eventCheckoutDraftService.listByUser(activeUserId);
+    const liveSourceIds = new Set(liveDrafts.map(draft => draft.sourceId.trim()).filter(Boolean));
+    const clearingDrafts = [...this.clearingCheckoutDraftsBySourceId.values()]
+      .filter(draft => draft.userId === activeUserId)
+      .filter(draft => !liveSourceIds.has(draft.sourceId.trim()));
+    return [...liveDrafts, ...clearingDrafts]
+      .sort((left, right) => right.updatedAtMs - left.updatedAtMs)
       .map(draft => ({
         draft,
-        record: this.eventsService.peekKnownItemById(this.activeUserId, draft.sourceId)
+        record: this.eventsService.peekKnownItemById(activeUserId, draft.sourceId)
       }));
   }
 
   protected canContinueCheckoutDraft(entry: CheckoutDraftEntry): boolean {
+    if (this.isCheckoutDraftClearing(entry.draft.sourceId)) {
+      return false;
+    }
     if (Boolean(entry.draft.checkoutSessionId?.trim())) {
       return true;
     }
@@ -616,6 +628,18 @@ export class EventExplorePopupComponent {
 
   protected checkoutDraftActionLabel(entry: CheckoutDraftEntry): string {
     return this.canContinueCheckoutDraft(entry) ? 'Continue' : 'Waiting for approval';
+  }
+
+  protected isCheckoutDraftClearing(sourceId: string): boolean {
+    return this.checkoutDraftReleaseSourceIds.has(sourceId.trim());
+  }
+
+  protected checkoutDraftClearRingGradientId(sourceId: string): string {
+    const normalizedSourceId = sourceId.trim();
+    if (!normalizedSourceId) {
+      return 'event-explore-basket-clear-gradient';
+    }
+    return `event-explore-basket-clear-gradient-${normalizedSourceId.replace(/[^a-zA-Z0-9_-]/g, '-')}`;
   }
 
   protected toggleCheckoutDraftBasket(event?: Event): void {
@@ -650,13 +674,67 @@ export class EventExplorePopupComponent {
     });
   }
 
-  protected clearCheckoutDraft(
+  protected async clearCheckoutDraft(
     draft: EventCheckoutDraft,
     event?: { stopPropagation?: () => void; preventDefault?: () => void }
-  ): void {
+  ): Promise<void> {
     this.stopDomEvent(event);
-    this.eventCheckoutDraftService.clear(this.activeUserId, draft.sourceId);
+    const activeUserId = this.activeUserId.trim();
+    const sourceId = draft.sourceId.trim();
+    if (!activeUserId || !sourceId) {
+      this.eventCheckoutDraftService.clear(activeUserId, sourceId);
+      this.cdr.markForCheck();
+      return;
+    }
+    if (this.checkoutDraftReleaseSourceIds.has(sourceId)) {
+      return;
+    }
+
+    this.checkoutDraftReleaseSourceIds.add(sourceId);
+    this.clearingCheckoutDraftsBySourceId.set(sourceId, { ...draft });
+    this.eventCheckoutDraftService.clear(activeUserId, sourceId);
     this.cdr.markForCheck();
+    try {
+      const record = this.eventsService.peekKnownItemById(activeUserId, sourceId)
+        ?? await this.eventsService.queryKnownItemById(activeUserId, sourceId);
+
+      if (!record) {
+        if (this.isOpen) {
+          this.reloadEventExploreSmartList();
+        }
+        return;
+      }
+
+      const owner = this.eventMembersOwner(record);
+      const baseMembers = this.activityMembersService.peekMembersByOwner(owner);
+      const existingMembers = baseMembers.length > 0 ? baseMembers : this.buildMemberEntries(record);
+      const hadMembership = existingMembers.some(member => member.userId === activeUserId);
+      if (!hadMembership) {
+        this.locallyTrackedMembershipSourceIds.delete(sourceId);
+        if (this.isOpen) {
+          this.reloadEventExploreSmartList();
+        }
+        return;
+      }
+
+      const nextMembers = this.sortMembersByActionTimeDesc(
+        existingMembers.filter(member => member.userId !== activeUserId)
+      );
+      const payload = this.buildActivitiesEventSyncPayload(record, nextMembers);
+      const persistence = this.activitiesContext.emitActivitiesEventSync(payload);
+      if (this.selectedMembersRecord?.id === record.id) {
+        this.selectedMembers = nextMembers;
+      }
+      this.cdr.markForCheck();
+      await persistence;
+      if (this.isOpen) {
+        this.reloadEventExploreSmartList();
+      }
+    } finally {
+      this.clearingCheckoutDraftsBySourceId.delete(sourceId);
+      this.checkoutDraftReleaseSourceIds.delete(sourceId);
+      this.cdr.markForCheck();
+    }
   }
 
   private async loadEventExplorePage(
@@ -855,6 +933,9 @@ export class EventExplorePopupComponent {
     if (!this.isOpen || userJoinedEvent) {
       return;
     }
+    if (this.checkoutDraftReleaseSourceIds.has(sync.id.trim())) {
+      return;
+    }
     this.reloadEventExploreSmartList();
   }
 
@@ -959,7 +1040,13 @@ export class EventExplorePopupComponent {
   }
 
   private shouldReloadEventExploreAfterDraftRemoval(sourceIds: readonly string[]): boolean {
-    return sourceIds.some(sourceId => !this.locallyTrackedMembershipSourceIds.has(sourceId.trim()));
+    return sourceIds.some(sourceId => {
+      const normalizedSourceId = sourceId.trim();
+      if (!normalizedSourceId || this.checkoutDraftReleaseSourceIds.has(normalizedSourceId)) {
+        return false;
+      }
+      return !this.locallyTrackedMembershipSourceIds.has(normalizedSourceId);
+    });
   }
 
   private requiresApprovalBeforePayment(

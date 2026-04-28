@@ -499,6 +499,10 @@ export class ActivitiesPopupComponent implements OnDestroy {
       return;
     }
     const membersRow = this.resolveInvitationActivityMembersRow(row);
+    if (membersRow.type !== 'invitations') {
+      this.activitiesEvents.openActivityMembers(membersRow, event);
+      return;
+    }
     const owner = ActivityMembersBuilder.activityMembersOwnerForRow(membersRow) ?? {
       ownerType: 'event' as const,
       ownerId: membersRow.id
