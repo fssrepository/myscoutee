@@ -53,6 +53,7 @@ import {
 } from '../../../shared/ui';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
 import { EventCheckoutDialogService } from '../../../shared/ui/services/event-checkout-dialog.service';
+import { EventCheckoutDraftService, type EventCheckoutDraft } from '../../../shared/ui/services/event-checkout-draft.service';
 import { EventChatPopupComponent } from '../event-chat-popup/event-chat-popup.component';
 import { EventExplorePopupComponent } from '../event-explore-popup/event-explore-popup.component';
 import { ActivitiesPopupToolbarController } from './activities-popup-toolbar.controller';
@@ -72,6 +73,7 @@ import {
   type ActivitiesRateTemplateContext
 } from './templates/rate/activities-rate-template.component';
 import {
+  ActivityEventBuilder,
   ActivityMembersBuilder,
   ActivitiesService,
   ActivityMembersService,
@@ -92,7 +94,7 @@ import {
   toActivityHostingRowFromMenuItem,
   toActivityInvitationRowFromMenuItem
 } from '../../../shared/core/base/converters/activities-event.converter';
-import { DemoEventSeedBuilder, DemoUserMenuCountersBuilder } from '../../../shared/core/demo/builders';
+import { DemoUserMenuCountersBuilder } from '../../../shared/core/demo/builders';
 import type { DemoEventRecord } from '../../../shared/core/demo/models/events.model';
 
 // ---------------------------------------------------------------------------
@@ -149,6 +151,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   private readonly usersService = inject(UsersService);
   protected readonly confirmationDialogService = inject(ConfirmationDialogService);
   protected readonly eventCheckoutDialogService = inject(EventCheckoutDialogService);
+  private readonly eventCheckoutDraftService = inject(EventCheckoutDraftService);
   readonly activitiesRates = new ActivitiesRatesController({
     getUsers: () => this.users,
     getActiveUserGender: () => this.activeUser.gender,
@@ -190,7 +193,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     setSelectedRateIdInContext: value => this.activitiesContext.setActivitiesSelectedRateId(value),
     setFullscreenModeInContext: value => this.activitiesContext.setActivitiesRatesFullscreenMode(value),
     recordActivityRate: (item, score, direction) => this.ratesService.recordActivityRate(this.activeUser.id, item, score, direction),
-    refreshRateCards: () => this.refreshActivitiesRateCards(),
+    refreshRateCards: rowId => this.refreshActivitiesRateCards(rowId),
     markForCheck: () => this.cdr.markForCheck(),
     runAfterNextPaint: task => this.runAfterActivitiesNextPaint(task),
     runAfterRender: task => this.runAfterActivitiesRender(task)
@@ -237,6 +240,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   protected chatBadge = this.activeUser.activities.chat;
   protected eventsBadge = this.activeUser.activities.events;
+  protected pendingBadge = 0;
   protected hostingBadge = this.activeUser.activities.hosting;
   protected invitationsBadge = this.activeUser.activities.invitations;
   protected gameBadge = this.activeUser.activities.game;
@@ -256,10 +260,11 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected readonly eventVisibilityById: Record<string, AppTypes.EventVisibility> = {};
   private readonly eventCapacityById: Record<string, AppTypes.EventCapacityRange> = {};
   protected readonly eventSubEventsById: Record<string, AppTypes.SubEventFormItem[]> = {};
+  private lastPendingCheckoutDraftSourceIds = new Set<string>();
   protected readonly activityMembersByRowId: Record<string, AppTypes.ActivityMemberEntry[]> = {};
   protected activitiesEventCardRevision = 0;
   protected activitiesRateCardRevision = 0;
-  protected readonly forcedAcceptedMembersByRowKey: Record<string, number> = { 'events:e8': 20 };
+  protected readonly activityRateCardRevisionByRowId: Record<string, number> = {};
   protected readonly leavingActivityRowIds = new Set<string>();
   protected readonly activityRowExitAnimationMs = 180;
   private lastAppliedActivityMembersUpdatedMs = 0;
@@ -284,6 +289,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected readonly activitiesEventScopeFilters: ReadonlyArray<ActivitiesEventScopeOption> = [
     { key: 'all', label: 'All', icon: 'widgets' },
     { key: 'active-events', label: 'Active Events', icon: 'event' },
+    { key: 'pending', label: 'Pending', icon: 'pending_actions' },
     { key: 'invitations', label: 'Invitations', icon: 'mail' },
     { key: 'my-events', label: 'My Events', icon: 'stadium' },
     { key: 'drafts', label: 'Drafts', icon: 'drafts' },
@@ -410,6 +416,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected activitiesStickyValue     = '';
   protected activitiesInitialLoadPending = false;
   private visibleActivityRows: AppTypes.ActivityListRow[] = [];
+  private lastHandledActivitiesOpenRevision = 0;
   protected readonly activitiesPageSize  = 10;
 
   // ── Rates state ───────────────────────────────────────────────────────────
@@ -487,7 +494,28 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   protected openActivityMembers(row: AppTypes.ActivityListRow, event?: Event): void {
-    this.activitiesEvents.openActivityMembers(row, event);
+    event?.stopPropagation();
+    if (row.type !== 'invitations') {
+      this.activitiesEvents.openActivityMembers(row, event);
+      return;
+    }
+    const membersRow = this.resolveInvitationActivityMembersRow(row);
+    if (membersRow.type !== 'invitations') {
+      this.activitiesEvents.openActivityMembers(membersRow, event);
+      return;
+    }
+    const owner = this.activityMembersOwnerForRow(membersRow);
+    const summary = this.resolveActivityMembersPopupSummary(membersRow);
+    this.popupCtx.requestActivitiesNavigation({
+      type: 'members',
+      ownerId: owner.ownerId,
+      ownerType: owner.ownerType,
+      subtitle: membersRow.title,
+      canManage: membersRow.isAdmin === true,
+      acceptedMembers: summary?.acceptedMembers,
+      pendingMembers: summary?.pendingMembers,
+      capacityTotal: summary?.capacityTotal
+    });
   }
 
   protected onActivityEventInfoCardMenuAction(row: AppTypes.ActivityListRow, action: InfoCardMenuActionEvent): void {
@@ -523,6 +551,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       this.activitiesSecondaryFilter     = svc.activitiesSecondaryFilter() as AppTypes.ActivitiesSecondaryFilter;
       this.hostingPublicationFilter      = svc.activitiesHostingPublicationFilter() as AppTypes.HostingPublicationFilter;
       this.activitiesRateFilter          = svc.activitiesRateFilter() as AppTypes.RateFilterKey;
+      this.activitiesRateSocialBadgeEnabled = svc.activitiesRateSocialBadgeEnabled();
       this.activitiesView                = svc.activitiesView() as AppTypes.ActivitiesView;
       this.activitiesSmartListConfig.loadingDelayMs = this.resolveActivitiesLoadingDelayMs();
       this.showActivitiesViewPicker      = svc.activitiesShowViewPicker();
@@ -562,7 +591,14 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
     // React to open events: reset scroll state whenever the popup is opened.
     effect(() => {
-      if (this.activitiesContext.activitiesOpen()) {
+      const isOpen = this.activitiesContext.activitiesOpen();
+      const openRevision = this.activitiesContext.activitiesOpenRevision();
+      if (!isOpen) {
+        this.lastHandledActivitiesOpenRevision = openRevision;
+        return;
+      }
+      if (openRevision !== this.lastHandledActivitiesOpenRevision) {
+        this.lastHandledActivitiesOpenRevision = openRevision;
         this.onActivitiesOpened();
       }
     });
@@ -573,6 +609,25 @@ export class ActivitiesPopupComponent implements OnDestroy {
         return;
       }
       this.applyActivitiesEventSync(sync);
+      this.cdr.markForCheck();
+    });
+
+    effect(() => {
+      this.eventCheckoutDraftService.drafts();
+      const nextPendingDraftSourceIds = this.pendingCheckoutDraftSourceIds();
+      const hadPendingDraftRemoval = [...this.lastPendingCheckoutDraftSourceIds]
+        .some(sourceId => !nextPendingDraftSourceIds.has(sourceId));
+      const hasNewPendingDraft = [...nextPendingDraftSourceIds]
+        .some(sourceId => !this.lastPendingCheckoutDraftSourceIds.has(sourceId));
+      this.lastPendingCheckoutDraftSourceIds = nextPendingDraftSourceIds;
+      this.refreshSectionBadges();
+      const shouldReloadEventList = this.activitiesContext.activitiesOpen()
+        && (hadPendingDraftRemoval || hasNewPendingDraft)
+        && this.activitiesPrimaryFilter === 'events'
+        && this.activitiesEventScope !== 'pending';
+      if (shouldReloadEventList) {
+        this.activitiesSmartList?.reload();
+      }
       this.cdr.markForCheck();
     });
 
@@ -624,6 +679,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   private onActivitiesOpened(): void {
     this.refreshRateItems();
     void this.refreshChatItems();
+    void this.refreshStandaloneEventItems();
     this.resetActivitiesStateForOpen();
     this.activitiesRates.clearEditorState();
     this.resetActivitiesScroll();
@@ -689,7 +745,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
     }
     this.refreshRateItems();
 
-    this.initializeEventEditorContextData();
     this.refreshSectionBadges();
     this.seedEventOwnerMemberCountsFromEventsTable();
   }
@@ -835,28 +890,51 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   private hydrateStandaloneEventItems(userId: string): void {
-    const records = this.eventsService.peekItemsByUser(userId);
-    if (this.eventItems.length === 0) {
-      this.eventItems = records
+    this.applyStandaloneEventRecords(this.eventsService.peekItemsByUser(userId));
+  }
+
+  private async refreshStandaloneEventItems(): Promise<void> {
+    const userId = this.activeUser?.id?.trim();
+    if (!userId) {
+      return;
+    }
+    try {
+      const records = await this.eventsService.queryItemsByUser(userId);
+      if (this.activeUser.id.trim() !== userId) {
+        return;
+      }
+      this.applyStandaloneEventRecords(records, true);
+      this.refreshSectionBadges();
+      this.seedEventOwnerMemberCountsFromEventsTable();
+      this.cdr.markForCheck();
+    } catch {
+      // Keep the last cached event state if the refresh fails.
+    }
+  }
+
+  private applyStandaloneEventRecords(records: readonly DemoEventRecord[], replaceExisting = false): void {
+    const normalizedRecords = Array.isArray(records) ? records.map(record => ({ ...record })) : [];
+    if (replaceExisting || this.eventItems.length === 0) {
+      this.eventItems = normalizedRecords
         .filter(record => record.type === 'events')
         .map(record => this.toEventMenuItem(record));
     }
-    if (this.hostingItems.length === 0) {
-      this.hostingItems = records
+    if (replaceExisting || this.hostingItems.length === 0) {
+      this.hostingItems = normalizedRecords
         .filter(record => record.type === 'hosting')
         .map(record => this.toHostingMenuItem(record));
     }
-    if (this.invitationItems.length === 0) {
-      this.invitationItems = records
+    if (replaceExisting || this.invitationItems.length === 0) {
+      this.invitationItems = normalizedRecords
         .filter(record => record.isInvitation)
         .map(record => this.toInvitationMenuItem(record));
     }
     this.publishedHostingIds = new Set(
-      records
+      normalizedRecords
         .filter(record => record.type === 'hosting' && record.published !== false)
         .map(record => record.id)
     );
-    for (const record of records) {
+    for (const record of normalizedRecords) {
       if (record.startAtIso) {
         this.activityDateTimeRangeById[record.id] = {
           startIso: record.startAtIso,
@@ -871,8 +949,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
         this.hostingDatesById[record.id] = record.startAtIso;
         this.hostingDistanceById[record.id] = record.distanceKm;
       }
-      if (record.isInvitation) {
-      }
       if (record.isTrashed) {
         const row = toActivityEventRow(record);
         this.trashedActivityRowsByKey[this.activityRowIdentity(row)] = row;
@@ -885,7 +961,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       this.eventVisibilityById[record.id] = record.visibility;
       this.eventCapacityById[record.id] = { min: record.capacityMin, max: record.capacityMax };
       if (Array.isArray(record.subEvents) && record.subEvents.length > 0) {
-        this.eventSubEventsById[record.id] = record.subEvents.map(item => ({
+        this.eventSubEventsById[record.id] = record.subEvents.map((item: AppTypes.SubEventFormItem) => ({
           ...item,
           groups: Array.isArray(item.groups) ? item.groups.map((group: AppTypes.SubEventGroupItem) => ({ ...group })) : []
         }));
@@ -921,9 +997,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     sync: ActivitiesEventSyncPayload,
     existingRow: AppTypes.ActivityListRow | null = null
   ): AppTypes.ActivityListRow | null {
-    const rowType = existingRow && existingRow.type !== 'invitations'
-      ? existingRow.type
-      : this.resolveVisibleEventRowTypeFromSync(sync);
+    const rowType = this.resolveVisibleEventRowTypeFromSync(sync);
     if (rowType === 'events') {
       const source = this.buildSyncedEventMenuItem(
         sync,
@@ -957,9 +1031,14 @@ export class ActivitiesPopupComponent implements OnDestroy {
     // If we've locally published it, trust that over a lagging sync payload
     const isPublishedLocally = this.publishedHostingIds.has(sync.id);
     const isPublished = sync.published !== false || isPublishedLocally;
+    const isPending = this.isPendingEventSync(sync);
+    const isAccepted = this.isAcceptedEventSync(sync);
 
     if (this.activitiesEventScope === 'active-events') {
-      return (sync.isAdmin && !isPublished) ? null : 'events';
+      return !sync.isAdmin && isPublished && isAccepted ? 'events' : null;
+    }
+    if (this.activitiesEventScope === 'pending') {
+      return !sync.isAdmin && isPublished && isPending ? 'events' : null;
     }
     if (this.activitiesEventScope === 'my-events') {
       if (this.hostingPublicationFilter === 'drafts' && isPublished) {
@@ -971,7 +1050,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       return sync.isAdmin && !isPublished ? 'hosting' : null;
     }
     if (this.activitiesEventScope === 'all') {
-      return sync.isAdmin ? 'hosting' : 'events';
+      return sync.isAdmin ? 'hosting' : (isAccepted || isPending ? 'events' : null);
     }
     return null;
   }
@@ -1088,6 +1167,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
       startAt: record.startAtIso,
       endAt: record.endAtIso,
       distanceKm: record.distanceKm,
+      acceptedMembers: record.acceptedMembers,
+      pendingMembers: record.pendingMembers,
       acceptedMemberUserIds: [...record.acceptedMemberUserIds],
       pendingMemberUserIds: [...record.pendingMemberUserIds],
       visibility: record.visibility,
@@ -1098,6 +1179,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       locationCoordinates: record.locationCoordinates ?? undefined,
       capacityMin: record.capacityMin,
       capacityMax: record.capacityMax,
+      capacityTotal: record.capacityTotal,
       autoInviter: record.autoInviter,
       frequency: record.frequency,
       topics: [...record.topics],
@@ -1129,6 +1211,13 @@ export class ActivitiesPopupComponent implements OnDestroy {
       description: record.title,
       when: record.timeframe,
       unread: record.unread,
+      acceptedMembers: record.acceptedMembers,
+      pendingMembers: record.pendingMembers,
+      capacityTotal: record.capacityTotal,
+      capacityMin: record.capacityMin,
+      capacityMax: record.capacityMax,
+      acceptedMemberUserIds: [...record.acceptedMemberUserIds],
+      pendingMemberUserIds: [...record.pendingMemberUserIds],
       startAt: record.startAtIso,
       endAt: record.endAtIso,
       distanceKm: record.distanceKm,
@@ -1140,106 +1229,96 @@ export class ActivitiesPopupComponent implements OnDestroy {
     };
   }
 
-  private ensurePaginationTestEvents(minEventsPerUser: number): void {
-    if (this.eventItems.length >= minEventsPerUser) {
-      return;
-    }
-
-    const needed = minEventsPerUser - this.eventItems.length;
-    const synthetic: EventMenuItem[] = [];
-    for (let index = 0; index < needed; index += 1) {
-      const seq = this.eventItems.length + index + 1;
-      const id = `ex-${this.activeUser.id}-${seq}`;
-      const start = new Date(2026, 2, 1 + (index * 2), 10 + (index % 6), (index % 2) * 30, 0, 0);
-      const end = new Date(start.getTime() + ((2 + (index % 3)) * 60 * 60 * 1000));
-      const isAdmin = (seq % 4) === 0;
-      const title = `Pagination Test Event ${seq}`;
-      const timeframe = `${start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · ${start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} - ${end.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
-
-      synthetic.push({
-        id,
-        avatar: this.activeUser.initials,
-        title,
-        shortDescription: `Synthetic feed item ${seq} to validate activities infinite loading.`,
-        timeframe,
-        activity: (index % 5) + 1,
-        isAdmin
-      });
-
-      this.eventDatesById[id] = start.toISOString().slice(0, 19);
-      this.eventDistanceById[id] = 3 + (index % 42);
-      this.activityDateTimeRangeById[id] = {
-        startIso: start.toISOString().slice(0, 19),
-        endIso: end.toISOString().slice(0, 19)
-      };
-      this.activityImageById[id] = `https://picsum.photos/seed/event-${id}/1200/700`;
-      this.activityCapacityById[id] = `${6 + (index % 18)} / ${12 + (index % 24)}`;
-    }
-
-    this.eventItems = [...this.eventItems, ...synthetic];
-  }
-
-  private initializeEventEditorContextData(): void {
-    const sources: Array<{ item: EventMenuItem | HostingMenuItem; isHosting: boolean }> = [];
-    for (const item of this.eventItems) {
-      sources.push({ item, isHosting: false });
-    }
-    for (const item of this.hostingItems) {
-      sources.push({ item, isHosting: true });
-    }
-
-    const visited = new Set<string>();
-    for (const source of sources) {
-      const id = source.item.id;
-      if (visited.has(id)) {
-        continue;
-      }
-      visited.add(id);
-
-      if (!this.eventCapacityById[id]) {
-        this.eventCapacityById[id] = DemoEventSeedBuilder.seededEventCapacityRange(id, this.activityCapacityById);
-      }
-      if (!this.eventSubEventsById[id] || this.eventSubEventsById[id].length === 0) {
-        this.eventSubEventsById[id] = DemoEventSeedBuilder.buildSeededSubEventsForEvent(source.item, {
-          isHosting: source.isHosting,
-          activityDateTimeRangeById: this.activityDateTimeRangeById,
-          hostingDatesById: this.hostingDatesById,
-          eventDatesById: this.eventDatesById,
-          eventCapacityById: this.eventCapacityById,
-          activityCapacityById: this.activityCapacityById,
-          defaultStartIso: this.defaultEventStartIso(),
-          activeUserId: this.activeUser.id
-        });
-      }
-    }
-  }
-
   protected refreshSectionBadges(): void {
+    const memberEventItems = this.memberEventItems();
     this.chatBadge = DemoUserMenuCountersBuilder.resolveSectionBadge(
       this.chatItems.map(item => item.unread),
       this.chatItems.length
     );
+    if (memberEventItems.length === 0 && this.hostingItems.length === 0 && this.invitationItems.length === 0) {
+      this.invitationsBadge = this.activeUser.activities.invitations;
+      this.eventsBadge = this.activeUser.activities.events;
+      this.pendingBadge = 0;
+      this.hostingBadge = this.activeUser.activities.hosting;
+      this.gameBadge = this.activeUser.activities.game;
+      this.syncActivityCounterOverrides();
+      return;
+    }
     const visibleInvitations = this.invitationItems
       .filter(item => !this.isActivityIdentityTrashed('invitations', item.id));
-    this.invitationsBadge = DemoUserMenuCountersBuilder.resolveSectionBadge(
-      visibleInvitations.map(item => item.unread),
-      visibleInvitations.length
-    );
-    const visibleActiveEvents = this.eventItems
-      .filter(item => item.isAdmin !== true || this.isHostingPublished(item.id))
-      .filter(item => !this.isActivityIdentityTrashed('events', item.id));
-    this.eventsBadge = DemoUserMenuCountersBuilder.resolveSectionBadge(
-      visibleActiveEvents.map(item => item.activity),
-      visibleActiveEvents.length
-    );
+    this.invitationsBadge = visibleInvitations.length;
+    const visibleMemberEvents = memberEventItems
+      .filter(item => !this.isActivityIdentityTrashed('events', item.id))
+      .filter(item => this.isAcceptedEventMenuItem(item) || this.isPendingEventMenuItem(item));
+    const visiblePendingEvents = visibleMemberEvents
+      .filter(item => this.isPendingEventMenuItem(item));
+    const visibleActiveEvents = visibleMemberEvents
+      .filter(item => this.isAcceptedEventMenuItem(item));
+    this.eventsBadge = visibleActiveEvents.length;
+    this.pendingBadge = visiblePendingEvents.length;
     const adminEvents = this.hostingItems
       .filter(item => item.isAdmin)
       .filter(item => !this.isActivityIdentityTrashed('hosting', item.id));
-    this.hostingBadge = DemoUserMenuCountersBuilder.resolveSectionBadge(
-      adminEvents.map(item => item.activity),
-      adminEvents.length
-    );
+    this.hostingBadge = adminEvents.length;
     this.gameBadge = this.activeUser.activities.game;
+    this.syncActivityCounterOverrides();
+  }
+
+  private isAcceptedEventMenuItem(item: EventMenuItem): boolean {
+    const activeUserId = this.activeUser?.id?.trim() ?? '';
+    if (!activeUserId || item.isAdmin === true) {
+      return false;
+    }
+    return (item.acceptedMemberUserIds ?? []).includes(activeUserId);
+  }
+
+  private isPendingEventMenuItem(item: EventMenuItem): boolean {
+    const activeUserId = this.activeUser?.id?.trim() ?? '';
+    if (!activeUserId || item.isAdmin === true) {
+      return false;
+    }
+    if ((item.acceptedMemberUserIds ?? []).includes(activeUserId)) {
+      return false;
+    }
+    return (item.pendingMemberUserIds ?? []).includes(activeUserId);
+  }
+
+  private isPendingEventSync(sync: ActivitiesEventSyncPayload): boolean {
+    const activeUserId = this.activeUser?.id?.trim() ?? '';
+    if (!activeUserId || sync.isAdmin) {
+      return false;
+    }
+    if (this.pendingCheckoutDraftSourceIds().has(sync.id)) {
+      return true;
+    }
+    if ((sync.acceptedMemberUserIds ?? []).includes(activeUserId)) {
+      return false;
+    }
+    return (sync.pendingMemberUserIds ?? []).includes(activeUserId);
+  }
+
+  private isAcceptedEventSync(sync: ActivitiesEventSyncPayload): boolean {
+    const activeUserId = this.activeUser?.id?.trim() ?? '';
+    if (!activeUserId || sync.isAdmin) {
+      return false;
+    }
+    if (this.pendingCheckoutDraftSourceIds().has(sync.id)) {
+      return false;
+    }
+    return (sync.acceptedMemberUserIds ?? []).includes(activeUserId);
+  }
+
+  private syncActivityCounterOverrides(): void {
+    const activeUserId = this.activeUser?.id?.trim();
+    if (!activeUserId) {
+      return;
+    }
+    this.appCtx.patchUserCounterOverrides(activeUserId, {
+      chat: this.chatBadge,
+      invitations: this.invitationsBadge,
+      events: this.eventsBadge,
+      hosting: this.hostingBadge
+    });
   }
 
   private syncMobileViewFromViewport(): void {
@@ -1247,7 +1326,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       this.isMobileView = false;
       return;
     }
-    const next = window.innerWidth <= 860;
+    const next = window.innerWidth <= 760;
     if (next === this.isMobileView) {
       return;
     }
@@ -1271,53 +1350,116 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return [...this.visibleActivityRows];
   }
 
-  private buildEventScopeRows(
-    scope: AppTypes.ActivitiesEventScope,
-    secondaryFilter: AppTypes.ActivitiesSecondaryFilter,
-    hostingPublicationFilter: AppTypes.HostingPublicationFilter
-  ): AppTypes.ActivityListRow[] {
-    const activeEventRows = this.eventItems
-      .filter(item => item.isAdmin !== true)
-      .filter(item => !this.isActivityIdentityTrashed('events', item.id))
-      .map(item => toActivityEventRowFromMenuItem(item, {
-        dateIso: item.startAt ?? this.eventDatesById[item.id] ?? '2026-03-01T09:00:00',
-        distanceKm: item.distanceKm ?? this.eventDistanceById[item.id] ?? 10
-      }));
-    const invitationRows = this.invitationItems
-      .filter(item => !this.isActivityIdentityTrashed('invitations', item.id))
-      .map(item => toActivityInvitationRowFromMenuItem(item, {
-        dateIso: item.startAt ?? '2026-02-21T09:00:00',
-        distanceKm: item.distanceKm ?? 5
-      }));
-    const myEventRows = this.hostingItems
-      .filter(item => item.isAdmin === true)
-      .filter(item => !this.isActivityIdentityTrashed('hosting', item.id))
-      .map(item => toActivityHostingRowFromMenuItem(item, {
-        dateIso: item.startAt ?? this.hostingDatesById[item.id] ?? '2026-03-01T09:00:00',
-        distanceKm: item.distanceKm ?? this.hostingDistanceById[item.id] ?? 10
-      }));
-    const draftRows = myEventRows.filter(row => !this.isHostingPublished(row.id));
-    const trashRows = Object.values(this.trashedActivityRowsByKey);
+  private memberEventItems(): EventMenuItem[] {
+    const pendingDraftItems = this.pendingCheckoutDraftEventMenuItems();
+    const pendingDraftSourceIds = new Set(pendingDraftItems.map(item => item.id));
+    return [
+      ...this.eventItems
+        .filter(item => item.isAdmin !== true)
+        .filter(item => !pendingDraftSourceIds.has(item.id)),
+      ...pendingDraftItems
+    ];
+  }
 
-    if (scope === 'all') {
-      return [...activeEventRows, ...invitationRows, ...myEventRows];
+  private pendingCheckoutDraftEventMenuItems(): EventMenuItem[] {
+    const activeUserId = this.activeUser?.id?.trim() ?? '';
+    if (!activeUserId) {
+      return [];
     }
-    if (scope === 'invitations') {
-      return invitationRows;
+    return this.eventCheckoutDraftService.listByUser(activeUserId)
+      .filter(draft => this.shouldTrackPendingCheckoutDraft(draft))
+      .map(draft => this.buildPendingCheckoutDraftEventMenuItem(draft))
+      .filter((item): item is EventMenuItem => Boolean(item));
+  }
+
+  private buildPendingCheckoutDraftEventMenuItem(draft: EventCheckoutDraft): EventMenuItem | null {
+    const activeUserId = this.activeUser?.id?.trim() ?? '';
+    const sourceId = draft.sourceId.trim();
+    if (!activeUserId || !sourceId) {
+      return null;
     }
-    if (scope === 'my-events') {
-      if (hostingPublicationFilter === 'drafts') {
-        return draftRows;
-      }
-      return myEventRows;
+    const checkoutStarted = Boolean(draft.checkoutSessionId?.trim());
+    const pendingDescription = checkoutStarted
+      ? 'Checkout in progress.'
+      : 'Waiting for admin approval before payment.';
+    const pendingTimeframe = checkoutStarted
+      ? 'Booking pending.'
+      : 'Approval pending.';
+
+    const knownRecord = this.eventsService.peekKnownItemById(activeUserId, sourceId);
+    if (!knownRecord) {
+      return {
+        id: sourceId,
+        avatar: AppUtils.initialsFromText(draft.eventTitle || 'Pending'),
+        title: draft.eventTitle.trim() || 'Pending booking',
+        shortDescription: pendingDescription,
+        timeframe: draft.eventTimeframe.trim() || pendingTimeframe,
+        activity: 0,
+        isAdmin: false,
+        acceptedMembers: 0,
+        pendingMembers: 1,
+        capacityTotal: 1,
+        acceptedMemberUserIds: [],
+        pendingMemberUserIds: [activeUserId],
+        ticketing: draft.lineItems.length > 0 || draft.totalAmount > 0
+      };
     }
-    if (scope === 'drafts') {
-      return draftRows;
+
+    const item = this.toEventMenuItem(knownRecord);
+    const originalAcceptedMemberUserIds = this.uniqueUserIds(item.acceptedMemberUserIds ?? []);
+    const originalPendingMemberUserIds = this.uniqueUserIds(item.pendingMemberUserIds ?? []);
+    const acceptedMemberUserIds = originalAcceptedMemberUserIds.filter(userId => userId !== activeUserId);
+    const pendingMemberUserIds = this.uniqueUserIds([
+      ...originalPendingMemberUserIds.filter(userId => userId !== activeUserId),
+      activeUserId
+    ]);
+    const acceptedMembers = Math.max(
+      acceptedMemberUserIds.length,
+      Math.max(
+        0,
+        this.chatCountValue(item.acceptedMembers) - (originalAcceptedMemberUserIds.includes(activeUserId) ? 1 : 0)
+      )
+    );
+    const pendingMembers = Math.max(
+      pendingMemberUserIds.length,
+      Math.max(
+        0,
+        this.chatCountValue(item.pendingMembers) + (originalPendingMemberUserIds.includes(activeUserId) ? 0 : 1)
+      )
+    );
+
+    return {
+      ...item,
+      isAdmin: false,
+      title: item.title.trim() || draft.eventTitle.trim() || 'Pending booking',
+      shortDescription: item.shortDescription.trim() || pendingDescription,
+      timeframe: item.timeframe.trim() || draft.eventTimeframe.trim() || pendingTimeframe,
+      acceptedMembers,
+      pendingMembers,
+      capacityTotal: Math.max(
+        acceptedMembers,
+        this.chatCountValue(item.capacityTotal ?? item.capacityMax)
+      ),
+      acceptedMemberUserIds,
+      pendingMemberUserIds
+    };
+  }
+
+  private pendingCheckoutDraftSourceIds(): Set<string> {
+    const activeUserId = this.activeUser?.id?.trim() ?? '';
+    if (!activeUserId) {
+      return new Set<string>();
     }
-    if (scope === 'trash') {
-      return trashRows;
-    }
-    return activeEventRows;
+    return new Set(
+      this.eventCheckoutDraftService.listByUser(activeUserId)
+        .filter(draft => this.shouldTrackPendingCheckoutDraft(draft))
+        .map(draft => draft.sourceId.trim())
+        .filter(sourceId => sourceId.length > 0)
+    );
+  }
+
+  private shouldTrackPendingCheckoutDraft(draft: EventCheckoutDraft | null | undefined): boolean {
+    return Math.max(0, Number(draft?.totalAmount) || 0) > 0;
   }
 
   // =========================================================================
@@ -1387,6 +1529,11 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   protected trackByRateCardImage(_index: number, imageUrl: string): string {
     return imageUrl;
+  }
+
+  protected activitiesRateCardRevisionForRow(row: AppTypes.ActivityListRow | null): string {
+    const rowRevision = row ? (this.activityRateCardRevisionByRowId[row.id] ?? 0) : 0;
+    return `${this.activitiesRateCardRevision}:${rowRevision}`;
   }
 
   protected activitiesSmartListClassMap(): Record<string, boolean> {
@@ -1469,47 +1616,77 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   protected activityCapacityLabel(row: AppTypes.ActivityListRow): string {
-    const summary = ActivityMembersBuilder.activityMembersSummaryForRow(row, {
-      capacityByRowId: this.activityCapacityById,
-      pendingMembersByRowId: this.activityPendingMembersById
-    });
+    const summary = this.resolveActivityMembersPopupSummary(row);
     if (summary) {
       return `${summary.acceptedMembers} / ${summary.capacityTotal}`;
     }
-    const acceptedMembersCount = this.getActivityMembersByRow(row).filter(member => member.status === 'accepted').length;
-    const capacityTotal = this.activityCapacityTotal(row, acceptedMembersCount);
-    return `${acceptedMembersCount} / ${capacityTotal}`;
+    const acceptedMembers = this.parseAcceptedMembersFromCapacityLabel(this.activityCapacityById[row.id]);
+    return `${acceptedMembers} / ${this.activityCapacityTotal(row, acceptedMembers)}`;
   }
 
   protected activityPendingMemberCount(row: AppTypes.ActivityListRow): number {
-    const summary = ActivityMembersBuilder.activityMembersSummaryForRow(row, {
-      capacityByRowId: this.activityCapacityById,
-      pendingMembersByRowId: this.activityPendingMembersById
-    });
+    const summary = this.resolveActivityMembersPopupSummary(row);
     if (summary) {
       return summary.pendingMembers;
     }
-    return this.getActivityMembersByRow(row).filter(member => member.status === 'pending').length;
+    return Math.max(0, Math.trunc(Number(this.activityPendingMembersById[row.id]) || 0));
   }
 
   protected isActivityFull(row: AppTypes.ActivityListRow): boolean {
     if (row.type !== 'events') {
       return false;
     }
+    const summary = this.resolveActivityMembersPopupSummary(row);
+    if (summary) {
+      return summary.capacityTotal > 0 && summary.acceptedMembers >= summary.capacityTotal;
+    }
+    const acceptedMembers = this.parseAcceptedMembersFromCapacityLabel(this.activityCapacityById[row.id]);
+    const capacityTotal = this.activityCapacityTotal(row, acceptedMembers);
+    return capacityTotal > 0 && acceptedMembers >= capacityTotal;
+  }
+
+  protected isActivityDraft(row: AppTypes.ActivityListRow): boolean {
+    return row.type === 'hosting' && !this.isHostingPublished(row.id);
+  }
+
+  private activityMembersOwnerForRow(row: AppTypes.ActivityListRow): ActivityMemberOwnerRef {
+    return ActivityMembersBuilder.activityMembersOwnerForRow(row) ?? {
+      ownerType: 'event',
+      ownerId: row.id
+    };
+  }
+
+  private resolveActivityMembersPopupSummary(row: AppTypes.ActivityListRow): ActivityMembersSummary | null {
+    const persistedSummary = this.activityMembersService.peekSummaryByOwner(this.activityMembersOwnerForRow(row));
+    if (persistedSummary) {
+      return {
+        ...persistedSummary,
+        acceptedMemberUserIds: [...persistedSummary.acceptedMemberUserIds],
+        pendingMemberUserIds: [...persistedSummary.pendingMemberUserIds]
+      };
+    }
     const summary = ActivityMembersBuilder.activityMembersSummaryForRow(row, {
       capacityByRowId: this.activityCapacityById,
       pendingMembersByRowId: this.activityPendingMembersById
     });
     if (summary) {
-      return summary.capacityTotal > 0 && summary.acceptedMembers >= summary.capacityTotal;
+      return summary;
     }
-    const acceptedMembersCount = this.getActivityMembersByRow(row).filter(member => member.status === 'accepted').length;
-    const capacityTotal = this.activityCapacityTotal(row, acceptedMembersCount);
-    return capacityTotal > 0 && acceptedMembersCount >= capacityTotal;
-  }
-
-  protected isActivityDraft(row: AppTypes.ActivityListRow): boolean {
-    return row.type === 'hosting' && !this.isHostingPublished(row.id);
+    const acceptedMembers = this.parseAcceptedMembersFromCapacityLabel(this.activityCapacityById[row.id]);
+    const pendingMembers = Math.max(0, Math.trunc(Number(this.activityPendingMembersById[row.id]) || 0));
+    const capacityTotal = this.activityCapacityTotal(row, acceptedMembers);
+    if (acceptedMembers <= 0 && pendingMembers <= 0 && capacityTotal <= 0) {
+      return null;
+    }
+    return {
+      ownerType: 'event',
+      ownerId: row.id,
+      acceptedMembers,
+      pendingMembers,
+      capacityTotal,
+      acceptedMemberUserIds: [],
+      pendingMemberUserIds: []
+    };
   }
 
   private activityCapacityTotal(row: AppTypes.ActivityListRow, fallbackBase = 0): number {
@@ -1529,6 +1706,17 @@ export class ActivitiesPopupComponent implements OnDestroy {
       return Math.max(fallbackBase, Math.trunc(sourceCapacityTotal));
     }
     return fallbackBase;
+  }
+
+  private parseAcceptedMembersFromCapacityLabel(label: string | undefined): number {
+    const normalizedLabel = label?.trim() ?? '';
+    if (!normalizedLabel) {
+      return 0;
+    }
+    const parts = normalizedLabel.split('/').map(part => Number.parseInt(part.trim(), 10));
+    return parts.length >= 1 && Number.isFinite(parts[0])
+      ? Math.max(0, parts[0])
+      : 0;
   }
 
 
@@ -1555,36 +1743,86 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return { start: parsed, end: new Date(parsed.getTime() + (2 * 60 * 60 * 1000)) };
   }
 
-  private getActivityMembersByRow(row: AppTypes.ActivityListRow): AppTypes.ActivityMemberEntry[] {
-    const rowKey = `${row.type}:${row.id}`;
-    const cached = this.activityMembersByRowId[rowKey];
-    if (cached) {
-      return ActivityMembersBuilder.sortActivityMembersByActionTimeDesc(cached);
+  private resolveInvitationActivityMembersRow(row: AppTypes.ActivityListRow): AppTypes.ActivityListRow {
+    if (row.type !== 'invitations') {
+      return row;
     }
-    const forcedAcceptedCount = this.forcedAcceptedMembersByRowKey[rowKey];
-    if (Number.isFinite(forcedAcceptedCount) && forcedAcceptedCount > 0) {
-      const forced = ActivityMembersBuilder.buildForcedAcceptedMembers(
-        row,
-        rowKey,
-        forcedAcceptedCount,
-        this.users,
-        this.activeUser,
-        APP_STATIC_DATA.activityMemberDefaults.forcedMetWhere
-      );
-      const orderedForced = ActivityMembersBuilder.sortActivityMembersByActionTimeDesc(forced);
-      this.activityMembersByRowId[rowKey] = [...orderedForced];
-      return orderedForced;
+    const resolvedSource = ActivityEventBuilder.resolveEditorSource(row, {
+      eventItems: this.eventItems,
+      hostingItems: this.hostingItems,
+      invitationItems: this.invitationItems
+    });
+    if (!resolvedSource || resolvedSource.id.startsWith('inv-preview-')) {
+      return row;
     }
-    const generated = ActivityMembersBuilder.generateActivityMembersForRow(
-      row,
-      rowKey,
-      this.users,
-      this.activeUser,
-      APP_STATIC_DATA.activityMemberMetPlaces
-    );
-    const ordered = ActivityMembersBuilder.sortActivityMembersByActionTimeDesc(generated);
-    this.activityMembersByRowId[rowKey] = [...ordered];
-    return ordered;
+    const matchingEvent = this.eventItems.find(item => item.id === resolvedSource.id);
+    if (matchingEvent) {
+      return toActivityEventRowFromMenuItem(matchingEvent, {
+        dateIso: row.dateIso,
+        distanceKm: row.distanceKm
+      });
+    }
+    const matchingHosting = this.hostingItems.find(item => item.id === resolvedSource.id);
+    if (matchingHosting) {
+      return toActivityHostingRowFromMenuItem(matchingHosting, {
+        dateIso: row.dateIso,
+        distanceKm: row.distanceKm
+      });
+    }
+    return row;
+  }
+
+  private buildActivityMembersFromKnownUserIds(
+    row: AppTypes.ActivityListRow,
+    acceptedMemberUserIds: readonly string[],
+    pendingMemberUserIds: readonly string[]
+  ): AppTypes.ActivityMemberEntry[] {
+    const rowKey = this.activityRowIdentity(row);
+    const normalizedAcceptedMemberUserIds = this.uniqueUserIds(acceptedMemberUserIds);
+    const normalizedPendingMemberUserIds = this.uniqueUserIds(pendingMemberUserIds)
+      .filter(userId => !normalizedAcceptedMemberUserIds.includes(userId));
+    const entries: AppTypes.ActivityMemberEntry[] = [];
+    for (const userId of normalizedAcceptedMemberUserIds) {
+      const user = this.resolveActivityMemberUser(userId);
+      entries.push({
+        ...ActivityMembersBuilder.toActivityMemberEntry(
+          user,
+          row,
+          rowKey,
+          this.activeUser.id,
+          { status: 'accepted', pendingSource: null, invitedByActiveUser: false },
+          APP_STATIC_DATA.activityMemberMetPlaces
+        ),
+        id: `${rowKey}:${userId}`,
+        userId
+      });
+    }
+    for (const userId of normalizedPendingMemberUserIds) {
+      const user = this.resolveActivityMemberUser(userId);
+      entries.push({
+        ...ActivityMembersBuilder.toActivityMemberEntry(
+          user,
+          row,
+          rowKey,
+          this.activeUser.id,
+          { status: 'pending', pendingSource: 'admin', invitedByActiveUser: false },
+          APP_STATIC_DATA.activityMemberMetPlaces
+        ),
+        id: `${rowKey}:${userId}`,
+        userId,
+        requestKind: 'invite',
+        statusText: 'Invitation pending.'
+      });
+    }
+    return entries;
+  }
+
+  private resolveActivityMemberUser(userId: string): DemoUser {
+    const normalizedUserId = userId.trim();
+    if (normalizedUserId === this.activeUser.id) {
+      return this.activeUser;
+    }
+    return this.userById(normalizedUserId) ?? this.activeUser;
   }
 
   private applyActivityMembersSummary(row: AppTypes.ActivityListRow, summary: ActivityMembersSummary): void {
@@ -1644,13 +1882,56 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   private seedEventOwnerMemberCountsFromEventsTable(): void {
-    const eventRecords = this.eventsService.peekItemsByUser(this.activeUser.id);
+    const eventRecords = [
+      ...this.eventItems.map(item => ({
+        id: item.id,
+        row: toActivityEventRowFromMenuItem(item, {
+          dateIso: this.eventDatesById[item.id] ?? item.startAt ?? '',
+          distanceKm: this.eventDistanceById[item.id] ?? item.distanceKm ?? 0
+        }),
+        acceptedMembers: item.acceptedMembers ?? 0,
+        capacityTotal: item.capacityTotal ?? 0,
+        pendingMembers: item.pendingMembers ?? 0
+      })),
+      ...this.hostingItems.map(item => ({
+        id: item.id,
+        row: toActivityHostingRowFromMenuItem(item, {
+          dateIso: this.hostingDatesById[item.id] ?? item.startAt ?? '',
+          distanceKm: this.hostingDistanceById[item.id] ?? item.distanceKm ?? 0
+        }),
+        acceptedMembers: item.acceptedMembers ?? 0,
+        capacityTotal: item.capacityTotal ?? 0,
+        pendingMembers: item.pendingMembers ?? 0
+      })),
+      ...this.invitationItems.map(item => ({
+        id: item.id,
+        row: toActivityInvitationRowFromMenuItem(item, {
+          dateIso: item.startAt ?? '',
+          distanceKm: item.distanceKm ?? 0
+        }),
+        acceptedMembers: item.acceptedMembers ?? 0,
+        capacityTotal: item.capacityTotal ?? 0,
+        pendingMembers: item.pendingMembers ?? 0
+      }))
+    ];
     for (const record of eventRecords) {
-      if (record.isInvitation) {
-        continue;
+      const owner = this.activityMembersOwnerForRow(record.row);
+      const summary = this.activityMembersService.peekSummaryByOwner(owner);
+      const acceptedMembers = summary?.acceptedMembers ?? record.acceptedMembers;
+      const pendingMembers = summary?.pendingMembers ?? record.pendingMembers;
+      const capacityTotal = summary?.capacityTotal ?? Math.max(acceptedMembers, record.capacityTotal);
+      this.activityCapacityById[record.id] = `${acceptedMembers} / ${capacityTotal}`;
+      this.activityPendingMembersById[record.id] = pendingMembers;
+
+      const rowKey = this.activityRowIdentity(record.row);
+      if (summary) {
+        const members = this.activityMembersService.peekMembersByOwner(owner);
+        if (members.length > 0) {
+          this.activityMembersByRowId[rowKey] = ActivityMembersBuilder.sortActivityMembersByActionTimeDesc(members);
+          continue;
+        }
       }
-      this.activityCapacityById[record.id] = `${record.acceptedMembers} / ${record.capacityTotal}`;
-      this.activityPendingMembersById[record.id] = record.pendingMembers;
+      delete this.activityMembersByRowId[rowKey];
     }
     this.bumpActivitiesEventCardRevision();
   }
@@ -1763,7 +2044,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     this.rateItems = this.ratesService.peekRateItemsByUser(this.activeUser.id);
   }
 
-  protected uniqueUserIds(ids: string[]): string[] {
+  protected uniqueUserIds(ids: readonly string[]): string[] {
     const unique: string[] = [];
     for (const id of ids) {
       if (!id || unique.includes(id)) {
@@ -1776,11 +2057,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   protected chatCountValue(value: unknown): number {
     return Math.max(0, Math.trunc(Number(value) || 0));
-  }
-
-  protected defaultEventStartIso(): string {
-    const iso = this.eventDatesById['e1'];
-    return typeof iso === 'string' && iso.trim().length > 0 ? iso : '2026-03-01T09:00:00';
   }
 
   protected applyActivitiesEventSync(sync: ActivitiesEventSyncPayload): void {
@@ -1861,8 +2137,14 @@ export class ActivitiesPopupComponent implements OnDestroy {
     this.activitiesEventCardRevision += 1;
   }
 
-  private refreshActivitiesRateCards(): void {
-    this.activitiesRateCardRevision += 1;
+  private refreshActivitiesRateCards(rowId?: string | null): void {
+    const normalizedRowId = `${rowId ?? ''}`.trim();
+    if (normalizedRowId) {
+      this.activityRateCardRevisionByRowId[normalizedRowId] =
+        (this.activityRateCardRevisionByRowId[normalizedRowId] ?? 0) + 1;
+    } else {
+      this.activitiesRateCardRevision += 1;
+    }
     this.cdr.markForCheck();
   }
 
@@ -1875,6 +2157,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       return;
     }
     this.invitationItems = this.invitationItems.filter(item => item.id !== sync.id);
+    delete this.activityMembersByRowId[`invitations:${sync.id}`];
   }
 
   private buildSyncedEventMenuItem(sync: ActivitiesEventSyncPayload, existing?: Partial<EventMenuItem>): EventMenuItem {
@@ -2122,27 +2405,34 @@ export class ActivitiesPopupComponent implements OnDestroy {
       source: hostingSource
     };
 
-    const eventMembers = ActivityMembersBuilder.buildSyncedActivityMembersForRow(eventRow, acceptedMembers, pendingMembers, {
-      activeUser: this.activeUser,
-      users: this.users
-    });
-    const hostingMembers = ActivityMembersBuilder.buildSyncedActivityMembersForRow(hostingRow, acceptedMembers, pendingMembers, {
-      activeUser: this.activeUser,
-      users: this.users
-    });
-    const summary = ActivityMembersBuilder.buildActivityMembersSummary(
-      { ownerType: 'event', ownerId: sync.id },
-      eventMembers,
-      capacityTotal
-    );
+    const acceptedMemberUserIds = this.uniqueUserIds(sync.acceptedMemberUserIds ?? []);
+    const pendingMemberUserIds = this.uniqueUserIds(sync.pendingMemberUserIds ?? [])
+      .filter(userId => !acceptedMemberUserIds.includes(userId));
+    const summary: ActivityMembersSummary = {
+      ownerType: 'event',
+      ownerId: sync.id,
+      acceptedMembers,
+      pendingMembers,
+      capacityTotal,
+      acceptedMemberUserIds,
+      pendingMemberUserIds
+    };
     this.applyActivityMembersSummary(eventRow, summary);
 
     const eventRowKey = `${eventRow.type}:${eventRow.id}`;
     const hostingRowKey = `${hostingRow.type}:${hostingRow.id}`;
-    this.activityMembersByRowId[eventRowKey] = eventMembers;
-    this.activityMembersByRowId[hostingRowKey] = hostingMembers;
-    this.forcedAcceptedMembersByRowKey[eventRowKey] = acceptedMembers;
-    this.forcedAcceptedMembersByRowKey[hostingRowKey] = acceptedMembers;
+    if (acceptedMemberUserIds.length > 0 || pendingMemberUserIds.length > 0) {
+      this.activityMembersByRowId[eventRowKey] = ActivityMembersBuilder.sortActivityMembersByActionTimeDesc(
+        this.buildActivityMembersFromKnownUserIds(eventRow, acceptedMemberUserIds, pendingMemberUserIds)
+      );
+      this.activityMembersByRowId[hostingRowKey] = ActivityMembersBuilder.sortActivityMembersByActionTimeDesc(
+        this.buildActivityMembersFromKnownUserIds(hostingRow, acceptedMemberUserIds, pendingMemberUserIds)
+      );
+    } else {
+      delete this.activityMembersByRowId[eventRowKey];
+      delete this.activityMembersByRowId[hostingRowKey];
+    }
+    delete this.activityMembersByRowId[`invitations:${sync.id}`];
   }
 
   // ── User lookup ────────────────────────────────────────────────────────────
@@ -2168,7 +2458,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
       secondaryFilter: this.activitiesSecondaryFilter,
       chatContextFilter: this.activitiesChatContextFilter,
       hostingPublicationFilter: this.hostingPublicationFilter,
-      rateFilter: this.activitiesRateFilter
+      rateFilter: this.activitiesRateFilter,
+      rateSocialBadgeEnabled: this.activitiesRateSocialBadgeEnabled
     };
     const currentFilters = this.activitiesSmartListQuery.filters ?? {};
     if (
@@ -2178,6 +2469,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       && currentFilters['chatContextFilter'] === nextFilters['chatContextFilter']
       && currentFilters['hostingPublicationFilter'] === nextFilters['hostingPublicationFilter']
       && currentFilters['rateFilter'] === nextFilters['rateFilter']
+      && currentFilters['rateSocialBadgeEnabled'] === nextFilters['rateSocialBadgeEnabled']
     ) {
       return;
     }

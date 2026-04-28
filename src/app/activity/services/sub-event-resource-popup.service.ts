@@ -20,6 +20,7 @@ import {
   UsersService,
   type UserDto
 } from '../../shared/core';
+import { resolveCurrentDemoDelayMs } from '../../shared/core/base/services/route-delay.service';
 import { ActivitiesPopupStateService } from './activities-popup-state.service';
 import { EventEditorPopupStateService } from './event-editor-popup-state.service';
 import type {
@@ -62,6 +63,7 @@ interface RouteEditorState {
   assetId: string;
   title: string;
   routes: string[];
+  routeRowIds: string[];
   busy: boolean;
   error: string | null;
 }
@@ -227,6 +229,7 @@ export class SubEventResourcePopupService {
   private pendingCapacitySaveRequestVersion = 0;
   private pendingRouteSaveAbortController: AbortController | null = null;
   private pendingRouteSaveRequestVersion = 0;
+  private routeEditorRowIdSequence = 0;
   private pendingAssignSaveAbortController: AbortController | null = null;
   private pendingAssignSaveRequestVersion = 0;
   private pendingAssetExploreRequestVersion = 0;
@@ -1823,13 +1826,15 @@ export class SubEventResourcePopupService {
     }
     const settings = this.getSubEventAssignedAssetSettings(context.subEvent.id, 'Car');
     const source = this.ownedAssets.assetCards.find(item => item.id === card.sourceAssetId && item.type === 'Car');
+    const routes = this.normalizeAssetRoutes('Car', settings[card.sourceAssetId]?.routes ?? source?.routes);
     this.abortPendingRouteSaveRequest();
     this.routeEditorRef.set({
       subEventId: context.subEvent.id,
       type: 'Car',
       assetId: card.sourceAssetId,
       title: card.title,
-      routes: this.normalizeAssetRoutes('Car', settings[card.sourceAssetId]?.routes ?? source?.routes),
+      routes,
+      routeRowIds: this.buildRouteEditorRowIds(routes),
       busy: false,
       error: null
     });
@@ -1853,6 +1858,7 @@ export class SubEventResourcePopupService {
     this.routeEditorRef.set({
       ...editor,
       routes: [...editor.routes, ''],
+      routeRowIds: [...editor.routeRowIds, this.nextRouteEditorRowId()],
       error: null
     });
   }
@@ -1865,6 +1871,7 @@ export class SubEventResourcePopupService {
     this.routeEditorRef.set({
       ...editor,
       routes: editor.routes.filter((_stop, stopIndex) => stopIndex !== index),
+      routeRowIds: editor.routeRowIds.filter((_routeRowId, stopIndex) => stopIndex !== index),
       error: null
     });
   }
@@ -1875,11 +1882,15 @@ export class SubEventResourcePopupService {
       return;
     }
     const routes = [...editor.routes];
+    const routeRowIds = [...editor.routeRowIds];
     const [moved] = routes.splice(event.previousIndex, 1);
+    const [movedRouteRowId] = routeRowIds.splice(event.previousIndex, 1);
     routes.splice(event.currentIndex, 0, moved);
+    routeRowIds.splice(event.currentIndex, 0, movedRouteRowId);
     this.routeEditorRef.set({
       ...editor,
       routes,
+      routeRowIds,
       error: null
     });
   }
@@ -2781,7 +2792,8 @@ export class SubEventResourcePopupService {
   }
 
   private ensureAssetExploreBorrowMinimumBusyDuration(startedAtMs: number): Promise<void> {
-    const remainingMs = SubEventResourcePopupService.ASSET_EXPLORE_BORROW_MIN_BUSY_DURATION_MS - (Date.now() - startedAtMs);
+    const minimumBusyDurationMs = resolveCurrentDemoDelayMs(SubEventResourcePopupService.ASSET_EXPLORE_BORROW_MIN_BUSY_DURATION_MS);
+    const remainingMs = minimumBusyDurationMs - (Date.now() - startedAtMs);
     if (remainingMs <= 0) {
       return Promise.resolve();
     }
@@ -2791,7 +2803,8 @@ export class SubEventResourcePopupService {
   }
 
   private ensureAssignedAssetJoinMinimumBusyDuration(startedAtMs: number): Promise<void> {
-    const remainingMs = SubEventResourcePopupService.ASSET_EXPLORE_BORROW_MIN_BUSY_DURATION_MS - (Date.now() - startedAtMs);
+    const minimumBusyDurationMs = resolveCurrentDemoDelayMs(SubEventResourcePopupService.ASSET_EXPLORE_BORROW_MIN_BUSY_DURATION_MS);
+    const remainingMs = minimumBusyDurationMs - (Date.now() - startedAtMs);
     if (remainingMs <= 0) {
       return Promise.resolve();
     }
@@ -4429,6 +4442,15 @@ export class SubEventResourcePopupService {
     return cleaned.length > 0 ? cleaned : [''];
   }
 
+  private buildRouteEditorRowIds(routes: string[]): string[] {
+    return routes.map(() => this.nextRouteEditorRowId());
+  }
+
+  private nextRouteEditorRowId(): string {
+    this.routeEditorRowIdSequence += 1;
+    return `route-stop-${this.routeEditorRowIdSequence}`;
+  }
+
   private assetPendingCount(
     card: AppTypes.AssetCard,
     subEventId?: string,
@@ -4490,7 +4512,7 @@ export class SubEventResourcePopupService {
     if (typeof window === 'undefined') {
       return false;
     }
-    return window.matchMedia('(max-width: 900px)').matches;
+    return window.matchMedia('(max-width: 760px)').matches;
   }
 
   private openGoogleMapsSearch(query: string): void {

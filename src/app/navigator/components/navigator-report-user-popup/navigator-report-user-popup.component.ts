@@ -1,5 +1,5 @@
 
-import { Component, OnDestroy, computed, inject } from '@angular/core';
+import { Component, OnDestroy, computed, effect, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { AppContext, USER_REPORT_USER_SUBMIT_CONTEXT_KEY, UsersService } from '../../../shared/core';
@@ -17,6 +17,7 @@ export class NavigatorReportUserPopupComponent implements OnDestroy {
   private readonly usersService = inject(UsersService);
   private readonly appCtx = inject(AppContext);
   private readonly submitLoadState = this.appCtx.selectLoadingState(USER_REPORT_USER_SUBMIT_CONTEXT_KEY);
+  private lastContextKey = '';
   private submitAbortController: AbortController | null = null;
   private submitRequestVersion = 0;
 
@@ -24,6 +25,11 @@ export class NavigatorReportUserPopupComponent implements OnDestroy {
   protected readonly reportUserHandleMinLength = 3;
   protected readonly reportUserDetailsMinLength = 12;
   protected readonly submitRingPerimeter = 100;
+  protected readonly reportUserContext = this.navigatorService.reportUserContext;
+  protected readonly isContextualReport = computed(() => {
+    const context = this.reportUserContext();
+    return !!context?.targetUserId?.trim() && !!context?.eventId?.trim();
+  });
   protected readonly isSubmitting = computed(() => this.submitLoadState().status === 'loading');
   protected readonly hasSubmitError = computed(() => {
     const status = this.submitLoadState().status;
@@ -43,6 +49,26 @@ export class NavigatorReportUserPopupComponent implements OnDestroy {
 
   constructor() {
     this.appCtx.resetLoadingState(USER_REPORT_USER_SUBMIT_CONTEXT_KEY);
+    effect(() => {
+      const context = this.reportUserContext();
+      const contextKey = [
+        context?.targetUserId?.trim() ?? '',
+        context?.memberEntryId?.trim() ?? '',
+        context?.eventId?.trim() ?? '',
+        context?.eventTitle?.trim() ?? '',
+        context?.eventStartAtIso?.trim() ?? '',
+        context?.eventTimeframe?.trim() ?? ''
+      ].join('|');
+      if (contextKey === this.lastContextKey) {
+        return;
+      }
+      this.lastContextKey = contextKey;
+      this.abortActiveSubmit();
+      this.reportUserForm = this.createInitialForm();
+      this.reportUserSubmitMessage = '';
+      this.reportUserSubmitted = false;
+      this.appCtx.resetLoadingState(USER_REPORT_USER_SUBMIT_CONTEXT_KEY);
+    });
   }
 
   ngOnDestroy(): void {
@@ -72,7 +98,40 @@ export class NavigatorReportUserPopupComponent implements OnDestroy {
   }
 
   protected canSubmitReportUser(): boolean {
-    return !this.isSubmitBusy() && this.reportUserHandleValid && this.reportUserDetailsValid;
+    return this.isContextualReport() && !this.isSubmitBusy() && this.reportUserHandleValid && this.reportUserDetailsValid;
+  }
+
+  protected reportContextSummary(): string {
+    const context = this.reportUserContext();
+    if (!context) {
+      return '';
+    }
+    const lines = [
+      `User: ${context.targetName.trim() || 'Unknown user'}`,
+      `Event: ${context.eventTitle?.trim() || 'Unknown event'}`
+    ];
+    const dateLabel = this.reportEventDateLabel();
+    if (dateLabel) {
+      lines.push(`Date: ${dateLabel}`);
+    }
+    return lines.join('\n');
+  }
+
+  protected reportEventDateLabel(): string {
+    const context = this.reportUserContext();
+    const startAtIso = `${context?.eventStartAtIso ?? ''}`.trim();
+    if (startAtIso) {
+      const parsed = new Date(startAtIso);
+      if (Number.isFinite(parsed.getTime())) {
+        return parsed.toLocaleDateString('en-US', {
+          weekday: 'short',
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric'
+        });
+      }
+    }
+    return `${context?.eventTimeframe ?? ''}`.trim();
   }
 
   protected clearSubmitStatus(): void {
@@ -83,10 +142,11 @@ export class NavigatorReportUserPopupComponent implements OnDestroy {
   }
 
   protected async submitReportUser(): Promise<void> {
+    const context = this.reportUserContext();
     const activeUserId = this.appCtx.activeUserId().trim();
     const target = this.reportUserForm.handle.trim();
     const details = this.reportUserForm.details.trim();
-    if (!activeUserId || !this.canSubmitReportUser() || this.isSubmitting()) {
+    if (!context || !activeUserId || !this.canSubmitReportUser() || this.isSubmitting()) {
       return;
     }
 
@@ -100,7 +160,12 @@ export class NavigatorReportUserPopupComponent implements OnDestroy {
         userId: activeUserId,
         handle: target,
         reason: this.reportUserForm.reason,
-        details
+        details,
+        targetUserId: context.targetUserId.trim(),
+        memberEntryId: `${context.memberEntryId ?? ''}`.trim() || null,
+        eventId: context.eventId.trim(),
+        eventTitle: `${context.eventTitle ?? ''}`.trim() || null,
+        eventStartAtIso: `${context.eventStartAtIso ?? ''}`.trim() || null
       },
       undefined,
       abortController.signal
@@ -120,8 +185,9 @@ export class NavigatorReportUserPopupComponent implements OnDestroy {
   }
 
   private createInitialForm(): { handle: string; reason: string; details: string } {
+    const context = this.reportUserContext();
     return {
-      handle: '',
+      handle: context?.targetName?.trim() || '',
       reason: this.reportUserReasons[0] ?? 'Harassment',
       details: ''
     };

@@ -3,19 +3,25 @@
     <article class="editor-list-card support-card">
       <h4>Report User</h4>
       <p>Share what happened. Reports are reviewed by moderation, and we use them to improve trust and safety.</p>
+      @if (!isContextualReport()) {
+        <div class="support-submit-error" role="alert">
+          Reports can only be started from a member card of an event you both attended.
+        </div>
+      }
       <form class="support-form" (ngSubmit)="submitReportUser()">
         @if (submitErrorMessage(); as errorMessage) {
           <div class="support-submit-error" role="alert">{{ errorMessage }}</div>
         }
         <label>
-          <span>User handle or email</span>
+          <span>User</span>
           <input
             type="text"
             name="reportHandle"
             [(ngModel)]="reportUserForm.handle"
-            placeholder="@username or email"
+            placeholder="Selected member"
             [class.support-form-field-invalid]="!reportUserHandleValid"
             [disabled]="isSubmitBusy()"
+            [readOnly]="isContextualReport()"
             (ngModelChange)="clearSubmitStatus()"
             required
             />
@@ -23,6 +29,17 @@
             Required. Minimum {{ reportUserHandleMinLength }} characters ({{ reportUserHandleLength }}/{{ reportUserHandleMinLength }}).
           </small>
         </label>
+        @if (isContextualReport()) {
+          <label>
+            <span>Event context</span>
+            <textarea
+              rows="3"
+              name="reportContext"
+              [ngModel]="reportContextSummary()"
+              readonly
+            ></textarea>
+          </label>
+        }
         <label>
           <span>Reason</span>
           <select
@@ -42,7 +59,7 @@
             rows="4"
             name="reportDetails"
             [(ngModel)]="reportUserForm.details"
-            placeholder="Add short details (what happened, when, and where)."
+            placeholder="Add short details about what happened and why you are reporting this member."
             [class.support-form-field-invalid]="!reportUserDetailsValid"
             [disabled]="isSubmitBusy()"
             (ngModelChange)="clearSubmitStatus()"

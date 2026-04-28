@@ -242,44 +242,12 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
     return resolveTraitToneClass(trait);
   }
 
-  protected previousHostTrait(): void {
-    const vm = this.viewModel();
-    if (!vm || vm.hostTraitCards.length <= 1) {
-      return;
-    }
-    this.hostTraitIndexRef.set((vm.hostTraitIndex - 1 + vm.hostTraitCards.length) % vm.hostTraitCards.length);
-  }
-
-  protected nextHostTrait(): void {
-    const vm = this.viewModel();
-    if (!vm || vm.hostTraitCards.length <= 1) {
-      return;
-    }
-    this.hostTraitIndexRef.set((vm.hostTraitIndex + 1) % vm.hostTraitCards.length);
-  }
-
   protected selectHostTrait(index: number): void {
     const vm = this.viewModel();
     if (!vm || index < 0 || index >= vm.hostTraitCards.length) {
       return;
     }
     this.hostTraitIndexRef.set(index);
-  }
-
-  protected previousMemberTrait(): void {
-    const vm = this.viewModel();
-    if (!vm || vm.memberTraitCards.length <= 1) {
-      return;
-    }
-    this.memberTraitIndexRef.set((vm.memberTraitIndex - 1 + vm.memberTraitCards.length) % vm.memberTraitCards.length);
-  }
-
-  protected nextMemberTrait(): void {
-    const vm = this.viewModel();
-    if (!vm || vm.memberTraitCards.length <= 1) {
-      return;
-    }
-    this.memberTraitIndexRef.set((vm.memberTraitIndex + 1) % vm.memberTraitCards.length);
   }
 
   protected selectMemberTrait(index: number): void {

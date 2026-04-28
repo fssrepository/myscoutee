@@ -34,8 +34,8 @@ export class DemoEventFeedbackBuilder {
         continue;
       }
       const eventLabel = this.eventFeedbackWhenLabel(item.id, options.eventDatesById);
-      const host = this.feedbackHostUserForEvent(item.id, options.users, options.activeUser);
-      const attendees = this.feedbackAttendeesForEvent(item.id, host.id, options.users, options.activeUser.id);
+      const host = this.feedbackHostUserForEvent(item, options.users, options.activeUser);
+      const attendees = this.feedbackAttendeesForEvent(item, host.id, options.users, options.activeUser.id);
       eventCards.push({
         id: `feedback-event-${item.id}`,
         eventId: item.id,
@@ -94,6 +94,67 @@ export class DemoEventFeedbackBuilder {
     return eventCards;
   }
 
+  static buildSeededSubmittedState(options: {
+    eventItem: EventMenuItem;
+    users: DemoUser[];
+    activeUser: DemoUser;
+    eventDatesById: Record<string, string>;
+    activityImageById: Record<string, string>;
+    eventFeedbackUnlockDelayMs: number;
+    eventOverallOptions: EventFeedbackOption[];
+    hostImproveOptions: EventFeedbackOption[];
+    attendeeCollabOptions: EventFeedbackOption[];
+    attendeeRejoinOptions: EventFeedbackOption[];
+    personalityTraitOptions: EventFeedbackTraitOption[];
+    seedKey?: string;
+  }): EventFeedbackPersistedState | null {
+    const eventId = options.eventItem.id?.trim() ?? '';
+    if (!eventId) {
+      return null;
+    }
+
+    const eventCards = this.buildEventFeedbackCards({
+      eventItems: [options.eventItem],
+      users: options.users,
+      activeUser: options.activeUser,
+      eventDatesById: options.eventDatesById,
+      activityImageById: options.activityImageById,
+      eventFeedbackUnlockDelayMs: options.eventFeedbackUnlockDelayMs,
+      eventOverallOptions: options.eventOverallOptions,
+      hostImproveOptions: options.hostImproveOptions,
+      attendeeCollabOptions: options.attendeeCollabOptions,
+      attendeeRejoinOptions: options.attendeeRejoinOptions,
+      personalityTraitOptions: options.personalityTraitOptions
+    }).filter(card => !(card.kind === 'attendee' && card.attendeeUserId === options.activeUser.id));
+
+    if (eventCards.length === 0) {
+      return null;
+    }
+
+    const seed = AppUtils.hashText(options.seedKey?.trim() || `feedback-submitted:${options.activeUser.id}:${eventId}`);
+    const submittedAtIso = this.seededSubmittedAtIso(
+      eventId,
+      options.eventDatesById,
+      options.eventFeedbackUnlockDelayMs,
+      seed
+    );
+    const answersByCardId: EventFeedbackPersistedState['answersByCardId'] = {};
+    for (const card of eventCards) {
+      const answer = this.seededSubmittedAnswer(card, seed, submittedAtIso);
+      answersByCardId[answer.cardId] = answer;
+    }
+
+    return {
+      id: this.eventFeedbackStateRecordId(options.activeUser.id, eventId),
+      userId: options.activeUser.id,
+      eventId,
+      removed: false,
+      submittedAtIso,
+      organizerNote: this.seededOrganizerNote(eventCards[0], seed),
+      answersByCardId
+    };
+  }
+
 
   static buildSeededPersistedStates(options: {
     eventItems: EventMenuItem[];
@@ -119,19 +180,24 @@ export class DemoEventFeedbackBuilder {
       cardsByEventId.set(card.eventId, eventCards);
     }
 
+    const orderedEventIds = [...cardsByEventId.keys()].sort((left, right) => {
+      const leftStartAtMs = this.eventStartAtMs(left, options.eventDatesById) ?? 0;
+      const rightStartAtMs = this.eventStartAtMs(right, options.eventDatesById) ?? 0;
+      return leftStartAtMs - rightStartAtMs || left.localeCompare(right);
+    });
     const states: EventFeedbackPersistedState[] = [];
-    for (const [eventId, eventCards] of cardsByEventId.entries()) {
+    for (const [index, eventId] of orderedEventIds.entries()) {
+      const eventCards = cardsByEventId.get(eventId) ?? [];
       if (eventCards.length === 0) {
         continue;
       }
       const seed = AppUtils.hashText(`feedback-state:${options.activeUser.id}:${eventId}`);
-      const variant = seed % 8;
-      if (variant >= 5) {
+      const recordId = this.eventFeedbackStateRecordId(options.activeUser.id, eventId);
+      const variant = index % 3;
+      if (variant === 0) {
         continue;
       }
-
-      const recordId = this.eventFeedbackStateRecordId(options.activeUser.id, eventId);
-      if (variant === 4) {
+      if (variant === 2) {
         states.push({
           id: recordId,
           userId: options.activeUser.id,
@@ -139,19 +205,6 @@ export class DemoEventFeedbackBuilder {
           removed: true,
           submittedAtIso: null,
           organizerNote: '',
-          answersByCardId: {}
-        });
-        continue;
-      }
-
-      if (variant === 3) {
-        states.push({
-          id: recordId,
-          userId: options.activeUser.id,
-          eventId,
-          removed: false,
-          submittedAtIso: null,
-          organizerNote: this.seededOrganizerNote(eventCards[0], seed),
           answersByCardId: {}
         });
         continue;
@@ -284,26 +337,48 @@ export class DemoEventFeedbackBuilder {
     return `${day} · ${time}`;
   }
 
-  private static feedbackHostUserForEvent(eventId: string, users: DemoUser[], activeUser: DemoUser): DemoUser {
+  private static feedbackHostUserForEvent(item: EventMenuItem, users: DemoUser[], activeUser: DemoUser): DemoUser {
+    const creatorUserId = item.creatorUserId?.trim() ?? '';
+    if (creatorUserId) {
+      const creator = users.find(user => user.id === creatorUserId);
+      if (creator) {
+        return creator;
+      }
+    }
     const candidates = users.filter(user => user.id !== activeUser.id);
     if (candidates.length === 0) {
       return activeUser;
     }
-    const index = AppUtils.hashText(`feedback-host:${eventId}`) % candidates.length;
+    const index = AppUtils.hashText(`feedback-host:${item.id}`) % candidates.length;
     return candidates[index] ?? candidates[0];
   }
 
   private static feedbackAttendeesForEvent(
-    eventId: string,
+    item: EventMenuItem,
     hostId: string,
     users: DemoUser[],
     activeUserId: string
   ): DemoUser[] {
+    const attendeeIds = [...new Set([
+      ...(item.acceptedMemberUserIds ?? []),
+      ...(item.pendingMemberUserIds ?? [])
+    ].map(userId => `${userId}`.trim()).filter(Boolean))]
+      .filter(userId => userId !== activeUserId && userId !== hostId);
+    if (attendeeIds.length > 0) {
+      const usersById = new Map(users.map(user => [user.id, user]));
+      const resolved = attendeeIds
+        .map(userId => usersById.get(userId))
+        .filter((user): user is DemoUser => Boolean(user));
+      if (resolved.length > 0) {
+        return resolved.slice(0, Math.min(5, resolved.length));
+      }
+    }
+
     const candidates = users.filter(user => user.id !== activeUserId && user.id !== hostId);
     if (candidates.length === 0) {
       return [];
     }
-    const seed = AppUtils.hashText(`feedback-attendees:${eventId}`);
+    const seed = AppUtils.hashText(`feedback-attendees:${item.id}`);
     const desired = Math.min(candidates.length, 3 + (seed % 4));
     const picked: DemoUser[] = [];
     for (let index = 0; index < candidates.length && picked.length < desired; index += 1) {

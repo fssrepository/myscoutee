@@ -7,7 +7,7 @@ import type {
 } from '../interfaces/activity-feed.interface';
 
 export type ActivitiesPrimaryFilter = 'chats' | 'invitations' | 'events' | 'hosting' | 'rates';
-export type ActivitiesEventScope = 'all' | 'active-events' | 'invitations' | 'my-events' | 'drafts' | 'trash';
+export type ActivitiesEventScope = 'all' | 'active-events' | 'pending' | 'invitations' | 'my-events' | 'drafts' | 'trash';
 export type ActivitiesSecondaryFilter = 'recent' | 'relevant' | 'past';
 export type HostingPublicationFilter = 'all' | 'drafts';
 export type ActivitiesView = 'month' | 'week' | 'day' | 'distance';
@@ -140,4 +140,3 @@ export interface EventExploreGroup {
   label: string;
   cards: EventExploreCard[];
 }
-

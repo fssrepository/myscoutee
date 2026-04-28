@@ -79,6 +79,7 @@ export class DemoRatesService extends DemoRouteDelayService {
       ownerUserId: userId,
       mode: mode === 'pair' ? 'pair' : 'single',
       displayDirection,
+      socialBadgeEnabled: request.rateSocialBadgeEnabled === true,
       sort: normalizedSort,
       sortDirection,
       cursor: request.cursor,

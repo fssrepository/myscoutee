@@ -16,7 +16,7 @@ export interface ActivityInvitePopupState {
 export interface NavigatorActivitiesRequest {
   updatedMs: number;
   primaryFilter: 'rates' | 'chats' | 'events';
-  eventScope?: 'active-events' | 'invitations' | 'my-events';
+  eventScope?: 'all' | 'active-events' | 'pending' | 'invitations' | 'my-events' | 'drafts' | 'trash';
 }
 
 export interface NavigatorAssetRequest {
@@ -81,7 +81,7 @@ export class AppPopupContext {
 
   openNavigatorActivitiesRequest(
     primaryFilter: 'rates' | 'chats' | 'events',
-    eventScope?: 'active-events' | 'invitations' | 'my-events'
+    eventScope?: 'all' | 'active-events' | 'pending' | 'invitations' | 'my-events' | 'drafts' | 'trash'
   ): void {
     this._navigatorActivitiesRequest.set({
       updatedMs: Date.now(),

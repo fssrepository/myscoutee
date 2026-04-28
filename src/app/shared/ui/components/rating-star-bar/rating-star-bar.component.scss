@@ -123,6 +123,7 @@
 
 @media (max-width: 760px) {
   :host(.rating-star-bar-host--dockable) {
+    position: fixed;
     padding: 0.42rem 0.44rem calc(0.44rem + env(safe-area-inset-bottom));
   }
 

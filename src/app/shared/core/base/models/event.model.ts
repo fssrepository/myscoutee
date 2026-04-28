@@ -31,6 +31,7 @@ export interface EventCheckoutSelection {
   totalAmount: number;
   currency: string;
   paymentSessionId?: string | null;
+  bookingConfirmed?: boolean;
 }
 
 export interface EventCheckoutSession {
@@ -101,8 +102,27 @@ export interface EventFeedbackStateDto {
   eventId: string;
   removed: boolean;
   submittedAtIso: string;
+  removedAtIso?: string;
   organizerNote: string;
   answersByCardId?: Record<string, SubmittedEventFeedbackAnswer>;
+}
+
+export interface EventFeedbackReceivedEntryDto {
+  viewerUserId: string;
+  viewerName: string;
+  viewerInitials: string;
+  viewerGender: 'woman' | 'man';
+  viewerImageUrl: string;
+  eventId: string;
+  submittedAtIso: string;
+  updatedAtIso: string;
+  organizerNote: string;
+  answers: SubmittedEventFeedbackAnswer[];
+}
+
+export interface EventFeedbackReceivedEventDto {
+  eventId: string;
+  entries: EventFeedbackReceivedEntryDto[];
 }
 
 export interface EventFeedbackAnswerSubmitDto {
@@ -140,11 +160,12 @@ export interface EventFeedbackPersistedState {
   eventId: string;
   removed: boolean;
   submittedAtIso: string | null;
+  removedAtIso?: string | null;
   organizerNote: string;
   answersByCardId: Record<string, SubmittedEventFeedbackAnswer>;
 }
 
-export type EventFeedbackListFilter = 'pending' | 'feedbacked' | 'removed';
+export type EventFeedbackListFilter = 'own-events' | 'pending' | 'feedbacked' | 'removed';
 
 export interface EventFeedbackEventCard {
   eventId: string;
@@ -158,6 +179,8 @@ export interface EventFeedbackEventCard {
   isRemoved: boolean;
   isFeedbacked: boolean;
   feedbackedAtMs: number | null;
+  removedAtMs?: number | null;
+  isOwnEvent?: boolean;
 }
 
 export interface SubEventCard {

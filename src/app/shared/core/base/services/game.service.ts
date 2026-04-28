@@ -7,18 +7,21 @@ import type {
   UserGameCardsQueryRequest,
   UserGameSocialCard,
   UserGameCardsStackSnapshot,
-  UserGameDataService
+  UserGameDataService,
+  UserGameMode
 } from '../interfaces/game.interface';
 import { DemoGameService } from '../../demo';
 import { DemoUsersRatingsRepository } from '../../demo/repositories/users-ratings.repository';
 import { HttpGameService } from '../../http';
 import { HttpUsersRatingsRepository } from '../../http/repositories/users-ratings.repository';
 import type { UserDto } from '../interfaces/user.interface';
+import { AppMemoryDb } from '../db/app.db';
 import { BaseRouteModeService } from './base-route-mode.service';
 
 export const USER_GAME_CARDS_LOAD_CONTEXT_KEY = 'user-game-cards';
 
 interface UserGameCardsStackState {
+  filterCount: number | null;
   cardUserIds: string[];
   socialCards: UserGameSocialCard[];
   nextCursor: string | null;
@@ -44,6 +47,7 @@ export class GameService extends BaseRouteModeService {
   private readonly httpGameService = inject(HttpGameService);
   private readonly httpUsersRatingsRepository = inject(HttpUsersRatingsRepository);
   private readonly appCtx = inject(AppContext);
+  private readonly memoryDb = inject(AppMemoryDb);
   private readonly userGameCardsStackStateByUserId: Record<string, UserGameCardsStackState> = {};
   private userRatesOutboxSyncInFlight = false;
   private userRatesOutboxSyncTimer: ReturnType<typeof setInterval> | null = null;
@@ -66,6 +70,58 @@ export class GameService extends BaseRouteModeService {
     return this.gameDataService.queryGameCardsUsersSnapshot();
   }
 
+  didUsersMeet(leftUserId: string, rightUserId: string): boolean {
+    const normalizedLeftUserId = leftUserId.trim();
+    const normalizedRightUserId = rightUserId.trim();
+    if (
+      !normalizedLeftUserId
+      || !normalizedRightUserId
+      || normalizedLeftUserId === normalizedRightUserId
+    ) {
+      return false;
+    }
+    if (this.isDemoModeEnabled('/activities/events')) {
+      return this.demoGameService.didUsersMeet(normalizedLeftUserId, normalizedRightUserId);
+    }
+    return false;
+  }
+
+  queryMetUserIds(userId: string): string[] {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return [];
+    }
+    if (this.isDemoModeEnabled('/activities/events')) {
+      return this.demoGameService.queryMetUserIds(normalizedUserId);
+    }
+    return [];
+  }
+
+  queryExcludedGameCardUserIds(userId: string, mode: UserGameMode = 'single'): string[] {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return [];
+    }
+    if (mode !== 'single') {
+      return [];
+    }
+    if (this.isDemoModeEnabled('/activities/rates')) {
+      return this.demoUsersRatingsRepository.queryRatedGameCardUserIds(normalizedUserId, 'single');
+    }
+    return this.httpUsersRatingsRepository.queryPendingRatedGameCardUserIds(normalizedUserId, 'single');
+  }
+
+  queryExcludedGameCardPairKeys(userId: string): string[] {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return [];
+    }
+    if (this.isDemoModeEnabled('/activities/rates')) {
+      return this.demoUsersRatingsRepository.queryRatedGameCardPairKeys(normalizedUserId);
+    }
+    return this.httpUsersRatingsRepository.queryRatedGameCardPairKeys(normalizedUserId);
+  }
+
   recordUserGameCardRating(
     raterUserId: string,
     ratedUserId: string,
@@ -74,6 +130,7 @@ export class GameService extends BaseRouteModeService {
   ): void {
     this.resolveRouteService('/activities/rates', this.demoGameService, this.httpGameService)
       .recordGameCardRating(raterUserId, ratedUserId, rating, mode);
+    this.decrementUserGameCardsStackFilterCount(raterUserId);
     this.scheduleUserRatesOutboxFlushFromNow();
   }
 
@@ -94,6 +151,7 @@ export class GameService extends BaseRouteModeService {
       normalizedSecondId,
       rating
     );
+    this.decrementUserGameCardsStackFilterCount(raterUserId);
     this.scheduleUserRatesOutboxFlushFromNow();
   }
 
@@ -105,6 +163,7 @@ export class GameService extends BaseRouteModeService {
     request: UserGameCardsQueryRequest,
     requestTimeoutMs?: number
   ): Promise<UserGameCardsDto | null> {
+    await this.memoryDb.whenReady();
     const normalizedTimeoutMs = this.resolveRequestTimeoutMs(requestTimeoutMs);
     const normalizedUserId = request.userId.trim();
 
@@ -198,6 +257,7 @@ export class GameService extends BaseRouteModeService {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return {
+        filterCount: null,
         cardUserIds: [],
         socialCards: [],
         nextCursor: null,
@@ -206,6 +266,7 @@ export class GameService extends BaseRouteModeService {
     }
     const state = this.ensureUserGameCardsStackState(normalizedUserId);
     return {
+      filterCount: state.filterCount,
       cardUserIds: [...state.cardUserIds],
       socialCards: state.socialCards.map(card => ({ ...card })),
       nextCursor: state.nextCursor,
@@ -217,6 +278,7 @@ export class GameService extends BaseRouteModeService {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return {
+        filterCount: null,
         cardUserIds: [],
         socialCards: [],
         nextCursor: null,
@@ -232,6 +294,7 @@ export class GameService extends BaseRouteModeService {
       return;
     }
     this.userGameCardsStackStateByUserId[normalizedUserId] = {
+      filterCount: null,
       cardUserIds: [],
       socialCards: [],
       nextCursor: null,
@@ -248,7 +311,31 @@ export class GameService extends BaseRouteModeService {
     return snapshot.cardUserIds.length > 0
       || snapshot.socialCards.length > 0
       || snapshot.nextCursor !== null
-      || this.appCtx.getUserFilterCountOverride(userId) !== null;
+      || snapshot.filterCount !== null;
+  }
+
+  private decrementUserGameCardsStackFilterCount(userId: string): void {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return;
+    }
+    const state = this.userGameCardsStackStateByUserId[normalizedUserId];
+    if (!state || state.filterCount === null) {
+      return;
+    }
+    state.filterCount = Math.max(0, state.filterCount - 1);
+  }
+
+  private mergeUserGameCardsStackFilterCount(
+    currentFilterCount: number | null,
+    nextFilterCount: number,
+    reset: boolean
+  ): number {
+    const normalizedNextCount = Math.max(0, Math.trunc(Number(nextFilterCount) || 0));
+    if (reset || currentFilterCount === null) {
+      return normalizedNextCount;
+    }
+    return Math.min(currentFilterCount, normalizedNextCount);
   }
 
   async loadInitialUserGameCardsStackPage(
@@ -293,16 +380,38 @@ export class GameService extends BaseRouteModeService {
     if (state.requestInFlight) {
       return this.getUserGameCardsStackSnapshot(normalizedUserId);
     }
-    if (!reset && state.nextCursor === null && (state.cardUserIds.length > 0 || state.socialCards.length > 0)) {
-      return this.getUserGameCardsStackSnapshot(normalizedUserId);
-    }
-    state.requestInFlight = true;
     const fallbackIds = [...state.cardUserIds];
     const fallbackSocialCards = state.socialCards.map(card => ({ ...card }));
     const fallbackCursor = state.nextCursor;
-    const existingIds = reset ? [] : [...fallbackIds];
-    const existingSocialCards = reset ? [] : fallbackSocialCards.map(card => ({ ...card }));
-    const existingCursor = reset ? null : fallbackCursor;
+    const excludedUserIds = new Set(this.queryExcludedGameCardUserIds(normalizedUserId, mode ?? 'single'));
+    const excludedPairKeys = new Set(this.queryExcludedGameCardPairKeys(normalizedUserId));
+    if (
+      !reset
+      && state.nextCursor === null
+      && (state.cardUserIds.length > 0 || state.socialCards.length > 0)
+      && !this.hasUnloadedRemainingGameCards(state, mode, excludedUserIds, excludedPairKeys)
+    ) {
+      return this.getUserGameCardsStackSnapshot(normalizedUserId);
+    }
+    state.requestInFlight = true;
+    const existingIds = reset
+      ? []
+      : fallbackIds.filter(id => this.shouldKeepExistingGameCardUserId(id, normalizedUserId));
+    const existingSocialCards = reset
+      ? []
+      : fallbackSocialCards
+        .filter(card => this.shouldKeepExistingGameSocialCard(card, mode))
+        .map(card => ({ ...card }));
+    const existingCursor = reset
+      ? null
+      : this.adjustDemoStackCursorForRatedLoadedCards(
+        fallbackCursor,
+        fallbackIds,
+        fallbackSocialCards,
+        mode,
+        excludedUserIds,
+        excludedPairKeys
+      );
     try {
       const { value: cards } = await this.loadWithRecovery(
         () => this.loadUserGameCardsPage(
@@ -327,12 +436,12 @@ export class GameService extends BaseRouteModeService {
         }
       );
       if (cards) {
-        this.appCtx.setUserFilterCountOverride(normalizedUserId, cards.filterCount);
+        state.filterCount = this.mergeUserGameCardsStackFilterCount(state.filterCount, cards.filterCount, reset);
         const next = [...existingIds];
         const seen = new Set(next);
         for (const id of cards.cardUserIds) {
           const normalizedId = id.trim();
-          if (!normalizedId || normalizedId === normalizedUserId || seen.has(normalizedId)) {
+          if (!this.shouldKeepGameCardUserId(normalizedId, normalizedUserId, excludedUserIds) || seen.has(normalizedId)) {
             continue;
           }
           seen.add(normalizedId);
@@ -344,11 +453,15 @@ export class GameService extends BaseRouteModeService {
           if (!card.id.trim() || !card.userId.trim()) {
             continue;
           }
+          if (!this.shouldKeepGameSocialCard(card, mode, excludedUserIds, excludedPairKeys)) {
+            continue;
+          }
           socialCardsById.set(card.id.trim(), { ...card });
         }
         state.socialCards = [...socialCardsById.values()];
         state.nextCursor = cards.nextCursor;
       } else if (reset) {
+        state.filterCount = null;
         state.cardUserIds = [];
         state.socialCards = [];
         state.nextCursor = null;
@@ -357,6 +470,111 @@ export class GameService extends BaseRouteModeService {
       state.requestInFlight = false;
     }
     return this.getUserGameCardsStackSnapshot(normalizedUserId);
+  }
+
+  private hasUnloadedRemainingGameCards(
+    state: UserGameCardsStackState,
+    mode: UserGameCardsQueryRequest['mode'],
+    excludedUserIds: ReadonlySet<string>,
+    excludedPairKeys: ReadonlySet<string>
+  ): boolean {
+    if (state.filterCount === null) {
+      return false;
+    }
+    const loadedRemainingCount = mode === 'single'
+      ? state.cardUserIds.filter(id => !excludedUserIds.has(id.trim())).length
+      : state.socialCards.filter(card => this.shouldKeepGameSocialCard(card, mode, excludedUserIds, excludedPairKeys)).length;
+    return state.filterCount > loadedRemainingCount;
+  }
+
+  private adjustDemoStackCursorForRatedLoadedCards(
+    cursor: string | null,
+    loadedCardUserIds: readonly string[],
+    loadedSocialCards: readonly UserGameSocialCard[],
+    mode: UserGameCardsQueryRequest['mode'],
+    excludedUserIds: ReadonlySet<string>,
+    excludedPairKeys: ReadonlySet<string>
+  ): string | null {
+    if (!cursor || !this.isDemoModeEnabled('/game-cards/query')) {
+      return cursor;
+    }
+    const parsedCursor = Number.parseInt(cursor, 10);
+    if (!Number.isFinite(parsedCursor) || parsedCursor <= 0) {
+      return cursor;
+    }
+    const loadedBeforeCursor = Math.max(0, parsedCursor);
+    const ratedLoadedBeforeCursor = mode === 'single'
+      ? loadedCardUserIds
+        .slice(0, loadedBeforeCursor)
+        .filter(id => excludedUserIds.has(id.trim())).length
+      : loadedSocialCards
+        .slice(0, loadedBeforeCursor)
+        .filter(card => !this.shouldKeepGameSocialCard(card, mode, excludedUserIds, excludedPairKeys)).length;
+    if (ratedLoadedBeforeCursor <= 0) {
+      return cursor;
+    }
+    return String(Math.max(0, parsedCursor - ratedLoadedBeforeCursor));
+  }
+
+  private shouldKeepGameCardUserId(
+    userId: string,
+    activeUserId: string,
+    excludedUserIds: ReadonlySet<string>
+  ): boolean {
+    const normalizedUserId = userId.trim();
+    return normalizedUserId.length > 0
+      && normalizedUserId !== activeUserId
+      && !excludedUserIds.has(normalizedUserId);
+  }
+
+  private shouldKeepExistingGameCardUserId(
+    userId: string,
+    activeUserId: string
+  ): boolean {
+    const normalizedUserId = userId.trim();
+    return normalizedUserId.length > 0 && normalizedUserId !== activeUserId;
+  }
+
+  private shouldKeepExistingGameSocialCard(
+    card: UserGameSocialCard,
+    mode: UserGameCardsQueryRequest['mode']
+  ): boolean {
+    const userId = card.userId.trim();
+    if (!userId) {
+      return false;
+    }
+    if (mode === 'single') {
+      return true;
+    }
+    return this.socialPairKey(card) !== null;
+  }
+
+  private shouldKeepGameSocialCard(
+    card: UserGameSocialCard,
+    mode: UserGameCardsQueryRequest['mode'],
+    excludedUserIds: ReadonlySet<string>,
+    excludedPairKeys: ReadonlySet<string>
+  ): boolean {
+    const userId = card.userId.trim();
+    if (!userId || excludedUserIds.has(userId)) {
+      return false;
+    }
+    if (mode === 'single') {
+      return true;
+    }
+    const pairKey = this.socialPairKey(card);
+    return !pairKey || !excludedPairKeys.has(pairKey);
+  }
+
+  private socialPairKey(card: UserGameSocialCard): string | null {
+    const firstUserId = card.userId.trim();
+    const secondUserId = card.secondaryUserId?.trim() || card.bridgeUserId?.trim() || '';
+    if (!firstUserId || !secondUserId || firstUserId === secondUserId) {
+      return null;
+    }
+    return [firstUserId, secondUserId]
+      .sort((left, right) => left.localeCompare(right))
+      .join(':');
   }
 
   private buildRecoveredGameCardsPage(
@@ -369,12 +587,12 @@ export class GameService extends BaseRouteModeService {
       cardUserIds.length === 0
       && socialCards.length === 0
       && nextCursor === null
-      && this.appCtx.getUserFilterCountOverride(userId) === null
+      && this.peekUserGameCardsStackSnapshot(userId).filterCount === null
     ) {
       return null;
     }
     return {
-      filterCount: this.appCtx.getUserFilterCountOverride(userId) ?? cardUserIds.length + socialCards.length,
+      filterCount: this.peekUserGameCardsStackSnapshot(userId).filterCount ?? cardUserIds.length + socialCards.length,
       cardUserIds: [...cardUserIds],
       socialCards: socialCards.map(card => ({ ...card })),
       nextCursor
@@ -399,6 +617,7 @@ export class GameService extends BaseRouteModeService {
       return existing;
     }
     const next: UserGameCardsStackState = {
+      filterCount: null,
       cardUserIds: [],
       socialCards: [],
       nextCursor: null,

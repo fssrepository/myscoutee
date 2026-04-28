@@ -204,15 +204,11 @@ export class NavigatorMenuComponent {
     this.navigatorService.openProfileEditor();
   }
 
-  protected openHostImpressions(event?: Event): void {
-    event?.stopPropagation();
-    if (!this.isOnline()) {
-      return;
-    }
-    this.navigatorService.openImpressionsPopup();
+  protected impressionShortcutBadgeCount(user: NavigatorMenuUser): number {
+    return Number(user.impressionChangeFlags.host) + Number(user.impressionChangeFlags.member);
   }
 
-  protected openMemberImpressions(event?: Event): void {
+  protected openImpressions(event?: Event): void {
     event?.stopPropagation();
     if (!this.isOnline()) {
       return;
@@ -287,21 +283,13 @@ export class NavigatorMenuComponent {
     this.popupCtx.openNavigatorEventFeedbackRequest();
   }
 
-  protected openReportUserFromFeedback(event?: Event): void {
-    event?.stopPropagation();
-    if (!this.isOnline()) {
-      return;
-    }
-    this.navigatorService.openSettingsPopup('report-user');
-  }
-
   private resolveUserImageUrl(user: UserDto | null): string | null {
     return user?.images?.find(image => image.trim().length > 0) ?? null;
   }
 
   private openActivitiesShortcut(
     primaryFilter: 'rates' | 'chats' | 'events',
-    eventScope?: 'active-events' | 'invitations' | 'my-events'
+    eventScope?: 'all' | 'active-events' | 'pending' | 'invitations' | 'my-events' | 'drafts' | 'trash'
   ): void {
     if (!this.isOnline()) {
       return;

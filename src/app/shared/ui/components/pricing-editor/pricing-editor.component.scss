@@ -66,17 +66,14 @@
 }
 
 .pricing-editor__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-}
-
-.pricing-editor--summary-popup .pricing-editor__head {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: start;
   gap: 0.75rem;
+}
+
+.pricing-editor--summary-popup .pricing-editor__head {
+  gap: 0.62rem;
 }
 
 .pricing-editor__head-actions {
@@ -85,6 +82,8 @@
   justify-content: flex-end;
   gap: 0.7rem;
   flex-wrap: wrap;
+  justify-self: end;
+  align-self: start;
 }
 
 .pricing-editor--summary-popup .pricing-editor__head-actions {
@@ -253,6 +252,8 @@
 
 .pricing-editor__surface {
   display: grid;
+  position: relative;
+  z-index: 0;
   gap: 0.86rem;
   padding: 1rem;
   border-radius: 20px;
@@ -263,19 +264,31 @@
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
   
   // Optimization: Isolate layout/paint and promote to own layer
-  contain: layout paint;
+  contain: layout;
   transform: translateZ(0); 
   backface-visibility: hidden;
 }
 
+.pricing-editor__surface:has(.pricing-editor__scope-trigger.is-open) {
+  z-index: 70;
+}
+
 .pricing-editor__section-head {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
   gap: 0.8rem;
   color: #1f3b5a;
   font-size: 0.95rem;
   font-weight: 900;
+}
+
+.pricing-editor__section-head > span {
+  min-width: 0;
+}
+
+.pricing-editor__section-head .pricing-editor__toggle {
+  justify-self: end;
 }
 
 
@@ -592,9 +605,11 @@
   position: absolute;
   top: calc(100% + 0.72rem);
   left: 0;
-  z-index: 25;
+  z-index: 60;
   min-width: 100%;
   width: min(460px, calc(100vw - 4.5rem));
+  box-sizing: border-box;
+  max-height: min(68vh, 560px);
   padding: 1rem;
   border-radius: 24px;
   border: 1px solid rgba(139, 163, 196, 0.28);
@@ -606,6 +621,8 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.9);
   display: grid;
   gap: 0.88rem;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .pricing-editor__scope-panel-current {
@@ -772,6 +789,7 @@
 .pricing-editor__promo-card {
   box-sizing: border-box;
   position: relative;
+  z-index: 0;
   align-items: end;
   padding: 0.86rem;
   border-radius: 18px;
@@ -783,7 +801,11 @@
   // Optimization: Promote to own layer for smoother scrolling
   transform: translateZ(0);
   backface-visibility: hidden;
-  contain: layout paint;
+  contain: layout;
+}
+
+.pricing-editor__rule-card:has(.pricing-editor__scope-trigger.is-open) {
+  z-index: 80;
 }
 
 .pricing-editor__rule-card {
@@ -920,6 +942,66 @@
   color: rgba(57, 82, 113, 0.8);
   font-size: 0.84rem;
   line-height: 1.55;
+}
+
+.pricing-editor__scope-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 5200;
+  background: rgba(8, 16, 30, 0.42);
+}
+
+.pricing-editor__scope-sheet {
+  position: fixed;
+  left: 0.65rem;
+  right: 0.65rem;
+  bottom: 0;
+  z-index: 5201;
+  max-height: min(70vh, 560px);
+  border-radius: 16px 16px 0 0;
+  border: 1px solid #d6deea;
+  border-bottom: 0;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.99) 0%, rgba(247, 251, 255, 0.97) 100%),
+    radial-gradient(circle at top left, rgba(120, 189, 170, 0.12), transparent 48%);
+  box-shadow: 0 -14px 28px rgba(15, 29, 52, 0.24);
+  padding: 0.84rem 0.6rem max(0.62rem, env(safe-area-inset-bottom));
+  display: grid;
+  gap: 0.52rem;
+}
+
+.pricing-editor__scope-sheet-handle {
+  width: 42px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(44, 67, 100, 0.24);
+  margin: 0 auto;
+}
+
+.pricing-editor__scope-sheet-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  padding: 0 0.14rem;
+  color: #1c3354;
+  font-size: 0.94rem;
+  font-weight: 800;
+}
+
+.pricing-editor__scope-sheet-title .mat-icon {
+  width: 17px;
+  height: 17px;
+  font-size: 17px;
+  line-height: 17px;
+}
+
+.pricing-editor__scope-sheet-panel {
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  display: grid;
+  gap: 0.88rem;
+  padding: 0 0.14rem;
 }
 
 .pricing-editor__wizard-backdrop {
@@ -1106,11 +1188,6 @@
 }
 
 @container (max-width: 760px) {
-  .pricing-editor__head {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
   .pricing-editor--summary-popup .pricing-editor__head {
     grid-template-columns: minmax(0, 1fr) auto;
     align-items: start;

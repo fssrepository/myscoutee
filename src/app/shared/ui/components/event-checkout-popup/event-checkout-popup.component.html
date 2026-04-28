@@ -40,6 +40,15 @@
           </div>
         </section>
 
+        @if (shouldAwaitApprovalBeforePayment()) {
+          <section class="event-checkout-card">
+            <div class="event-checkout-card__head">
+              <h3>Approval Required</h3>
+              <span>Send the request now. Payment unlocks in the basket after the event admin approves it.</span>
+            </div>
+          </section>
+        }
+
         @if (showCancellationPolicyCard()) {
           <section class="event-checkout-card">
             <div class="event-checkout-card__head">

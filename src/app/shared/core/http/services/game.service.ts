@@ -102,14 +102,21 @@ export class HttpGameService implements UserGameDataService {
     cards: UserGameCardsDto
   ): UserGameCardsDto {
     const mode = request.mode ?? 'single';
-    const pendingRatedUserIds = new Set(this.usersRatingsRepository.queryPendingRatedGameCardUserIds(userId));
+    const pendingRatedUserIds = new Set(
+      mode === 'single'
+        ? this.usersRatingsRepository.queryPendingRatedGameCardUserIds(userId, 'single')
+        : []
+    );
     const pendingRatedPairKeys = new Set(this.usersRatingsRepository.queryPendingRatedGameCardPairKeys(userId));
     if (pendingRatedUserIds.size === 0 && pendingRatedPairKeys.size === 0) {
       return cards;
     }
 
     if (mode === 'friends-in-common') {
-      const socialCards = (cards.socialCards ?? []).filter(card => !pendingRatedUserIds.has(card.userId.trim()));
+      const socialCards = (cards.socialCards ?? []).filter(card => {
+        const pairKey = this.toSocialPairKey(card);
+        return !pairKey || !pendingRatedPairKeys.has(pairKey);
+      });
       return {
         ...cards,
         filterCount: Math.max(0, cards.filterCount - ((cards.socialCards ?? []).length - socialCards.length)),
@@ -139,7 +146,7 @@ export class HttpGameService implements UserGameDataService {
 
   private toSocialPairKey(card: UserGameSocialCard): string | null {
     const firstUserId = `${card.userId ?? ''}`.trim();
-    const secondUserId = `${card.secondaryUserId ?? ''}`.trim();
+    const secondUserId = `${card.secondaryUserId ?? card.bridgeUserId ?? ''}`.trim();
     if (!firstUserId || !secondUserId || firstUserId === secondUserId) {
       return null;
     }

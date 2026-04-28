@@ -201,7 +201,7 @@
   scroll-snap-type: none;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 760px) {
   .smart-list--calendar.smart-list--month {
     padding-bottom: 0;
     overflow-y: hidden;
@@ -545,7 +545,7 @@
   scroll-snap-stop: normal;
 }
 
-@media (min-width: 1024px) {
+@media (min-width: 761px) {
   .smart-list--list.smart-list--card-grid {
     --smart-list-card-snap-gap: 0.6rem;
     display: grid;
@@ -564,7 +564,7 @@
   }
 }
 
-@media (max-width: 900px) {
+@media (max-width: 760px) {
   .smart-list--list.smart-list--thread {
     padding-right: 0.08rem;
   }
@@ -1200,14 +1200,14 @@
   color: #5a3d9d;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 760px) {
   .smart-list--list.chat-thread-list {
     transform: translateZ(0);
     backface-visibility: hidden;
   }
 }
 
-@media (min-width: 901px) {
+@media (min-width: 761px) {
   .smart-list__calendar-page {
     width: 100%;
   }

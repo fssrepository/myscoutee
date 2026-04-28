@@ -137,9 +137,15 @@ export class DemoEventsRepository {
     this.init();
     this.materializeSlotRecords();
     const userItems = this.queryUserRecords(userId);
-    const activeEventItems = userItems
+    const memberEventItems = userItems
       .filter(record => record.type === 'events')
-      .filter(record => !record.isTrashed);
+      .filter(record => record.isAdmin !== true)
+      .filter(record => !record.isTrashed)
+      .filter(record => this.isAcceptedEventRecord(record, userId) || this.isPendingEventRecord(record, userId));
+    const pendingEventItems = memberEventItems
+      .filter(record => this.isPendingEventRecord(record, userId));
+    const activeEventItems = memberEventItems
+      .filter(record => this.isAcceptedEventRecord(record, userId));
     const invitationItems = userItems
       .filter(record => record.isInvitation)
       .filter(record => !record.isTrashed);
@@ -150,7 +156,10 @@ export class DemoEventsRepository {
     const draftItems = myEventItems.filter(record => record.published === false);
 
     if (filter === 'all') {
-      return [...activeEventItems, ...invitationItems];
+      return [...activeEventItems, ...pendingEventItems, ...invitationItems, ...myEventItems];
+    }
+    if (filter === 'pending') {
+      return pendingEventItems;
     }
     if (filter === 'invitations') {
       return invitationItems;
@@ -165,6 +174,25 @@ export class DemoEventsRepository {
       return userItems.filter(record => record.isTrashed);
     }
     return activeEventItems;
+  }
+
+  private isPendingEventRecord(record: DemoEventRecord, userId: string): boolean {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId || record.type !== 'events' || record.isAdmin === true) {
+      return false;
+    }
+    if ((record.acceptedMemberUserIds ?? []).includes(normalizedUserId)) {
+      return false;
+    }
+    return (record.pendingMemberUserIds ?? []).includes(normalizedUserId);
+  }
+
+  private isAcceptedEventRecord(record: DemoEventRecord, userId: string): boolean {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId || record.type !== 'events' || record.isAdmin === true) {
+      return false;
+    }
+    return (record.acceptedMemberUserIds ?? []).includes(normalizedUserId);
   }
 
   queryActivitiesEventPage(query: DemoEventActivitiesQuery): DemoEventActivitiesQueryResult {
@@ -187,6 +215,7 @@ export class DemoEventsRepository {
     const viewerCoordinates = this.queryUserLocationCoordinates(normalizedUserId);
     const normalizedRecords = filteredRecords
       .map(record => this.withResolvedDistance(record, viewerCoordinates))
+      .filter(record => this.matchesActivitiesSecondaryFilter(record, query.secondaryFilter))
       .sort((left, right) => this.compareActivitiesRecords(left, right, query));
     const total = normalizedRecords.length;
 
@@ -364,7 +393,7 @@ export class DemoEventsRepository {
     });
   }
 
-  requestJoin(userId: string, sourceId: string, slotSourceId: string | null = null): DemoEventRecord | null {
+  requestJoin(userId: string, sourceId: string, slotSourceId: string | null = null, accepted = false): DemoEventRecord | null {
     this.init();
     this.materializeSlotRecords();
     const normalizedUserId = userId.trim();
@@ -399,7 +428,15 @@ export class DemoEventsRepository {
         }
         const acceptedMemberUserIds = this.normalizeUserIds(current.acceptedMemberUserIds);
         const pendingMemberUserIds = this.normalizeUserIds(current.pendingMemberUserIds);
-        if (!acceptedMemberUserIds.includes(normalizedUserId) && !pendingMemberUserIds.includes(normalizedUserId)) {
+        if (accepted) {
+          if (!acceptedMemberUserIds.includes(normalizedUserId)) {
+            acceptedMemberUserIds.push(normalizedUserId);
+          }
+          const pendingIndex = pendingMemberUserIds.indexOf(normalizedUserId);
+          if (pendingIndex >= 0) {
+            pendingMemberUserIds.splice(pendingIndex, 1);
+          }
+        } else if (!acceptedMemberUserIds.includes(normalizedUserId) && !pendingMemberUserIds.includes(normalizedUserId)) {
           pendingMemberUserIds.push(normalizedUserId);
         }
         nextById[recordKey] = {
@@ -853,6 +890,31 @@ export class DemoEventsRepository {
 
   private relevanceOrderValue(record: DemoEventRecord): number {
     return Math.max(0, Number(record.relevance) || 0);
+  }
+
+  private resolveActivitiesEndTimestamp(record: DemoEventRecord): number {
+    const endAtMs = AppUtils.toSortableDate(record.endAtIso);
+    if (Number.isFinite(endAtMs) && endAtMs > 0) {
+      return endAtMs;
+    }
+    return this.timestampOrderValue(record);
+  }
+
+  private isPastActivitiesRecord(record: DemoEventRecord): boolean {
+    return this.resolveActivitiesEndTimestamp(record) <= Date.now();
+  }
+
+  private matchesActivitiesSecondaryFilter(
+    record: DemoEventRecord,
+    secondaryFilter: DemoEventActivitiesQuery['secondaryFilter']
+  ): boolean {
+    if (secondaryFilter === 'past') {
+      return this.isPastActivitiesRecord(record);
+    }
+    if (secondaryFilter === 'recent' || secondaryFilter === 'relevant') {
+      return !this.isPastActivitiesRecord(record);
+    }
+    return true;
   }
 
   private timestampOrderValue(record: DemoEventRecord): number {
@@ -1332,17 +1394,26 @@ export class DemoEventsRepository {
       const user = userById.get(userId);
       const synthetic: EventMenuItem[] = [];
       const needed = DemoEventsRepository.MIN_DEMO_EVENT_ITEMS_PER_USER - baseItems.length;
+      const creatorCandidates = users.filter(candidate => candidate.id !== userId);
 
       for (let index = 0; index < needed; index += 1) {
         const seq = baseItems.length + index + 1;
         const id = `ex-${userId}-${seq}`;
-        const start = new Date(2026, 2, 1 + (index * 2), 10 + (index % 6), (index % 2) * 30, 0, 0);
+        const isPastMemberFeedbackSeed = index >= 3 && index <= 5;
+        const isPastOwnedFeedbackSeed = index === 6;
+        const isPastFeedbackSeed = isPastMemberFeedbackSeed || isPastOwnedFeedbackSeed;
+        const start = isPastFeedbackSeed
+          ? new Date(2026, 1, 18 + ((index - 3) * 2), 17 + ((index - 3) % 3), (index % 2) * 30, 0, 0)
+          : new Date(2026, 2, 1 + (index * 2), 10 + (index % 6), (index % 2) * 30, 0, 0);
         const end = new Date(start.getTime() + ((2 + (index % 3)) * 60 * 60 * 1000));
         const visibility = seq === 12
           ? 'Friends only'
           : ((index % 2) === 0 ? 'Friends only' : 'Public');
         const blindMode = (index % 5) === 0 ? 'Blind Event' : 'Open Event';
         const seed = AppUtils.hashText(`${userId}:${id}:${seq}`);
+        const creatorUserId = isPastMemberFeedbackSeed && creatorCandidates.length > 0
+          ? (creatorCandidates[(seed + (index * 5)) % creatorCandidates.length]?.id ?? userId)
+          : userId;
         const title = this.buildSyntheticEventTitle(user, seq, seed);
         const defaultDescription = this.buildSyntheticEventDescription(user, seq, seed);
         const checkoutVariation = this.buildSyntheticCheckoutVariation(id, index);
@@ -1354,8 +1425,8 @@ export class DemoEventsRepository {
           shortDescription: checkoutVariation?.shortDescription ?? defaultDescription,
           timeframe: `${start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · ${start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} - ${end.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`,
           activity: (index % 5) + 1,
-          isAdmin: (seq % 4) === 0,
-          creatorUserId: userId,
+          isAdmin: isPastMemberFeedbackSeed ? false : (isPastOwnedFeedbackSeed ? true : (seq % 4) === 0),
+          creatorUserId,
           startAt: start.toISOString().slice(0, 19),
           endAt: end.toISOString().slice(0, 19),
           distanceKm: 3 + (index % 42),
@@ -1445,7 +1516,7 @@ export class DemoEventsRepository {
           firstSlotEndAt: slotTemplates[0]?.endAt ?? '2026-04-18T20:00:00',
           includePaidOptional: true
         }),
-        shortDescription: 'Checkout demo: choose a slot, add optional paid extras, review policies, then continue to dummy pay.'
+        shortDescription: 'Weekly tasting series with optional paid extras and host approval before payment.'
       };
     }
 
@@ -1467,7 +1538,7 @@ export class DemoEventsRepository {
           firstSlotEndAt: '2026-05-03T20:30:00',
           includePaidOptional: true
         }),
-        shortDescription: 'Checkout demo: paid event without slots, so you can test policies and add-ons without slot selection.'
+        shortDescription: 'Late-night tasting event with optional add-ons and host approval before payment.'
       };
     }
 
@@ -1737,6 +1808,10 @@ export class DemoEventsRepository {
       if (!currentRecord) {
         return false;
       }
+      if (this.isGeneratedSlotRecord(currentRecord)) {
+        delete nextById[recordKey];
+        return false;
+      }
       if (seededRecordKeys.has(recordKey) || !this.isObsoleteSyntheticSeededRecord(currentRecord)) {
         return true;
       }
@@ -1787,6 +1862,8 @@ export class DemoEventsRepository {
     const shouldPreferSeededSyntheticIdentity = current.id.startsWith('ex-');
     const shouldPreferSeededVisibility = current.id.startsWith('ex-');
     const shouldPreferSeededTopics = current.id.startsWith('ex-');
+    const shouldPreferSeededSchedule = shouldPreferSeededSyntheticIdentity
+      || this.hasSeededScheduleChanged(current, seeded);
     const acceptedMemberUserIds = this.normalizeUserIds(current.acceptedMemberUserIds);
     const pendingMemberUserIds = this.normalizeUserIds(current.pendingMemberUserIds);
     const topics = this.normalizeTopics(current.topics ?? []);
@@ -1798,7 +1875,15 @@ export class DemoEventsRepository {
       acceptedMemberUserIds,
       pendingMemberUserIds
     );
-    const shouldPreferSeededMemberState = shouldPreferSeededSyntheticMembershipState || shouldPreferSeededDirectEventState;
+    const shouldPreferSeededInvitationMemberState = this.shouldPreferSeededInvitationMemberState(
+      current,
+      seeded,
+      acceptedMemberUserIds,
+      pendingMemberUserIds
+    );
+    const shouldPreferSeededMemberState = shouldPreferSeededSyntheticMembershipState
+      || shouldPreferSeededDirectEventState
+      || shouldPreferSeededInvitationMemberState;
     const mergedAcceptedMemberUserIds = shouldPreferSeededMemberState
       ? [...seeded.acceptedMemberUserIds]
       : (acceptedMemberUserIds.length > 0
@@ -1815,7 +1900,7 @@ export class DemoEventsRepository {
       avatar: shouldPreferSeededSyntheticIdentity ? seeded.avatar : current.avatar,
       title: shouldPreferSeededSyntheticIdentity ? seeded.title : current.title,
       subtitle: shouldPreferSeededSyntheticIdentity ? seeded.subtitle : current.subtitle,
-      timeframe: shouldPreferSeededSyntheticIdentity ? seeded.timeframe : current.timeframe,
+      timeframe: shouldPreferSeededSchedule ? seeded.timeframe : current.timeframe,
       creatorUserId,
       creatorName: creatorChanged || !current.creatorName?.trim() ? seeded.creatorName : current.creatorName,
       creatorInitials: creatorChanged || !current.creatorInitials?.trim() ? seeded.creatorInitials : current.creatorInitials,
@@ -1827,8 +1912,8 @@ export class DemoEventsRepository {
         ? seeded.visibility
         : this.normalizeVisibility(current.visibility, seeded.visibility),
       blindMode: this.normalizeBlindMode(current.blindMode, seeded.blindMode),
-      startAtIso: shouldPreferSeededSyntheticIdentity ? seeded.startAtIso : (current.startAtIso?.trim() || seeded.startAtIso),
-      endAtIso: shouldPreferSeededSyntheticIdentity ? seeded.endAtIso : (current.endAtIso?.trim() || seeded.endAtIso),
+      startAtIso: shouldPreferSeededSchedule ? seeded.startAtIso : (current.startAtIso?.trim() || seeded.startAtIso),
+      endAtIso: shouldPreferSeededSchedule ? seeded.endAtIso : (current.endAtIso?.trim() || seeded.endAtIso),
       distanceKm: Number.isFinite(current.distanceKm) ? current.distanceKm : seeded.distanceKm,
       imageUrl: current.imageUrl?.trim() || seeded.imageUrl,
       sourceLink: current.sourceLink?.trim() || seeded.sourceLink,
@@ -1838,25 +1923,25 @@ export class DemoEventsRepository {
       capacityMin: this.normalizeCount(current.capacityMin) ?? seeded.capacityMin,
       capacityMax: this.normalizeCount(current.capacityMax) ?? seeded.capacityMax,
       capacityTotal: this.normalizeCount(current.capacityTotal) ?? seeded.capacityTotal,
-      autoInviter: shouldPreferSeededSyntheticIdentity
+      autoInviter: shouldPreferSeededSchedule
         ? seeded.autoInviter
         : (typeof current.autoInviter === 'boolean' ? current.autoInviter : seeded.autoInviter),
-      frequency: shouldPreferSeededSyntheticIdentity ? seeded.frequency : (current.frequency?.trim() || seeded.frequency),
-      ticketing: shouldPreferSeededSyntheticIdentity
+      frequency: shouldPreferSeededSchedule ? seeded.frequency : (current.frequency?.trim() || seeded.frequency),
+      ticketing: shouldPreferSeededSchedule
         ? seeded.ticketing
         : (typeof current.ticketing === 'boolean' ? current.ticketing : seeded.ticketing),
-      pricing: shouldPreferSeededSyntheticIdentity
+      pricing: shouldPreferSeededSchedule
         ? (seeded.pricing ? PricingBuilder.clonePricingConfig(seeded.pricing) : null)
         : (current.pricing
             ? PricingBuilder.clonePricingConfig(current.pricing)
             : (seeded.pricing ? PricingBuilder.clonePricingConfig(seeded.pricing) : null)),
-      policies: shouldPreferSeededSyntheticIdentity
+      policies: shouldPreferSeededSchedule
         ? EventEditorBuilder.cloneEventEditorPolicies(seeded.policies ?? [])
         : EventEditorBuilder.cloneEventEditorPolicies(current.policies ?? seeded.policies ?? []),
-      slotsEnabled: shouldPreferSeededSyntheticIdentity
+      slotsEnabled: shouldPreferSeededSchedule
         ? seeded.slotsEnabled
         : (typeof current.slotsEnabled === 'boolean' ? current.slotsEnabled : seeded.slotsEnabled),
-      slotTemplates: shouldPreferSeededSyntheticIdentity
+      slotTemplates: shouldPreferSeededSchedule
         ? EventEditorBuilder.cloneEventEditorSlotTemplates(seeded.slotTemplates ?? [])
         : (current.slotTemplates ?? []).length > 0
         ? EventEditorBuilder.cloneEventEditorSlotTemplates(current.slotTemplates ?? [])
@@ -1879,20 +1964,39 @@ export class DemoEventsRepository {
       topics: shouldPreferSeededTopics
         ? [...seeded.topics]
         : (topics.length > 0 ? topics : [...seeded.topics]),
-      subEvents: shouldPreferSeededSyntheticIdentity
+      subEvents: shouldPreferSeededSchedule
         ? this.cloneSubEvents(seeded.subEvents)
         : (this.cloneSubEvents(current.subEvents) ?? this.cloneSubEvents(seeded.subEvents)),
-      subEventsDisplayMode: current.subEventsDisplayMode
+      subEventsDisplayMode: shouldPreferSeededSchedule
+        ? (seeded.subEventsDisplayMode
+          ?? (this.cloneSubEvents(seeded.subEvents)?.length
+            ? DemoEventSeedBuilder.inferredSubEventsDisplayMode(this.cloneSubEvents(seeded.subEvents)!)
+            : 'Casual'))
+        : (current.subEventsDisplayMode
         ?? seeded.subEventsDisplayMode
         ?? (this.cloneSubEvents(current.subEvents)?.length
           ? DemoEventSeedBuilder.inferredSubEventsDisplayMode(this.cloneSubEvents(current.subEvents)!)
-          : 'Casual'),
+          : 'Casual')),
       rating: Number.isFinite(current.rating) ? Number(current.rating) : seeded.rating,
       relevance: Number.isFinite(current.relevance) ? Number(current.relevance) : seeded.relevance,
       affinity: Number.isFinite(current.affinity)
         ? Math.max(0, Math.trunc(Number(current.affinity)))
         : seeded.affinity
     };
+  }
+
+  private hasSeededScheduleChanged(current: DemoEventRecord, seeded: DemoEventRecord): boolean {
+    return current.timeframe !== seeded.timeframe
+      || current.startAtIso !== seeded.startAtIso
+      || current.endAtIso !== seeded.endAtIso
+      || `${current.frequency ?? ''}` !== `${seeded.frequency ?? ''}`
+      || current.ticketing !== seeded.ticketing
+      || current.autoInviter !== seeded.autoInviter
+      || current.slotsEnabled !== seeded.slotsEnabled
+      || JSON.stringify(current.slotTemplates ?? []) !== JSON.stringify(seeded.slotTemplates ?? [])
+      || JSON.stringify(current.subEvents ?? []) !== JSON.stringify(seeded.subEvents ?? [])
+      || JSON.stringify(current.policies ?? []) !== JSON.stringify(seeded.policies ?? [])
+      || JSON.stringify(current.pricing ?? null) !== JSON.stringify(seeded.pricing ?? null);
   }
 
   private shouldPreferSeededSyntheticMembershipState(
@@ -1959,6 +2063,42 @@ export class DemoEventsRepository {
     if (currentTotalMembers <= 1 && seededTotalMembers > currentTotalMembers) {
       return true;
     }
+    return (currentAcceptedMembers + currentPendingMembers) < (seededAcceptedMembers + seededPendingMembers);
+  }
+
+  private shouldPreferSeededInvitationMemberState(
+    record: DemoEventRecord,
+    seeded: DemoEventRecord,
+    acceptedMemberUserIds: readonly string[],
+    pendingMemberUserIds: readonly string[]
+  ): boolean {
+    if (!record.isInvitation) {
+      return false;
+    }
+    const ownerUserId = record.userId.trim();
+    const seededAcceptedMemberUserIds = this.normalizeUserIds(seeded.acceptedMemberUserIds);
+    const seededPendingMemberUserIds = this.normalizeUserIds(seeded.pendingMemberUserIds);
+    if (
+      ownerUserId
+      && seededPendingMemberUserIds.includes(ownerUserId)
+      && !pendingMemberUserIds.includes(ownerUserId)
+    ) {
+      return true;
+    }
+    if (
+      acceptedMemberUserIds.length === 0
+      && pendingMemberUserIds.length === 0
+      && (seededAcceptedMemberUserIds.length > 0 || seededPendingMemberUserIds.length > 0)
+    ) {
+      return true;
+    }
+    const currentAcceptedMembers = this.normalizeCount(record.acceptedMembers) ?? acceptedMemberUserIds.length;
+    const currentPendingMembers = this.normalizeCount(record.pendingMembers) ?? pendingMemberUserIds.length;
+    if (currentAcceptedMembers > acceptedMemberUserIds.length || currentPendingMembers > pendingMemberUserIds.length) {
+      return true;
+    }
+    const seededAcceptedMembers = this.normalizeCount(seeded.acceptedMembers) ?? seededAcceptedMemberUserIds.length;
+    const seededPendingMembers = this.normalizeCount(seeded.pendingMembers) ?? seededPendingMemberUserIds.length;
     return (currentAcceptedMembers + currentPendingMembers) < (seededAcceptedMembers + seededPendingMembers);
   }
 

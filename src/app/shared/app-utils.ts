@@ -197,12 +197,21 @@ export class AppUtils {
       return labels.dateUnavailable;
     }
     if (activitiesView === 'day') {
-      return parsed.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+      return this.smartListDayLabel(parsed);
     }
     if (activitiesView === 'month') {
       return parsed.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
     }
     return `${labels.weekPrefix} ${this.isoWeekNumber(parsed)}, ${parsed.getFullYear()}`;
+  }
+
+  static smartListDayLabel(value: Date): string {
+    return value.toLocaleDateString('en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
   }
 
   static findUserByName(users: DemoUser[], name: string): DemoUser | undefined {

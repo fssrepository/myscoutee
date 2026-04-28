@@ -29,6 +29,7 @@ export interface ActivitiesFeedFilters {
   chatContextFilter?: ActivitiesChatContextFilter;
   hostingPublicationFilter?: HostingPublicationFilter;
   rateFilter?: RateFilterKey;
+  rateSocialBadgeEnabled?: boolean;
 }
 
 export interface EventExploreFeedFilters {
@@ -73,6 +74,7 @@ export type ActivitiesNavigationRequest =
       ownerType?: ActivityMemberOwnerType;
       subtitle?: string;
       canManage?: boolean;
+      viewOnly?: boolean;
       acceptedMembers?: number;
       pendingMembers?: number;
       capacityTotal?: number;
@@ -192,6 +194,7 @@ export interface ActivitiesPageRequest {
   chatContextFilter: ActivitiesChatContextFilter;
   hostingPublicationFilter: HostingPublicationFilter;
   rateFilter: RateFilterKey;
+  rateSocialBadgeEnabled?: boolean;
   view: ActivitiesView;
   page: number;
   pageSize: number;

@@ -12,12 +12,14 @@ import type { ChatMenuItem } from '../../shared/core/base/interfaces/activity-fe
 
 interface ActivitiesUiState {
   open: boolean;
+  openRevision: number;
   primaryFilter: AppTypes.ActivitiesPrimaryFilter;
   eventScope: AppTypes.ActivitiesEventScope;
   secondaryFilter: AppTypes.ActivitiesSecondaryFilter;
   chatContextFilter: AppTypes.ActivitiesChatContextFilter;
   hostingPublicationFilter: AppTypes.HostingPublicationFilter;
   rateFilter: AppTypes.RateFilterKey;
+  rateSocialBadgeEnabled: boolean;
   view: AppTypes.ActivitiesView;
   showViewPicker: boolean;
   showSecondaryPicker: boolean;
@@ -28,12 +30,14 @@ interface ActivitiesUiState {
 
 const DEFAULT_ACTIVITIES_UI_STATE: ActivitiesUiState = {
   open: false,
+  openRevision: 0,
   primaryFilter: 'chats',
   eventScope: 'active-events',
   secondaryFilter: 'recent',
   chatContextFilter: 'all',
   hostingPublicationFilter: 'all',
   rateFilter: 'individual-given',
+  rateSocialBadgeEnabled: false,
   view: 'day',
   showViewPicker: false,
   showSecondaryPicker: false,
@@ -56,12 +60,14 @@ export class ActivitiesPopupStateService {
 
   readonly activitiesUiState = this._uiState.asReadonly();
   readonly activitiesOpen = computed(() => this._uiState().open);
+  readonly activitiesOpenRevision = computed(() => this._uiState().openRevision);
   readonly activitiesPrimaryFilter = computed(() => this._uiState().primaryFilter);
   readonly activitiesEventScope = computed(() => this._uiState().eventScope);
   readonly activitiesSecondaryFilter = computed(() => this._uiState().secondaryFilter);
   readonly activitiesChatContextFilter = computed(() => this._uiState().chatContextFilter);
   readonly activitiesHostingPublicationFilter = computed(() => this._uiState().hostingPublicationFilter);
   readonly activitiesRateFilter = computed(() => this._uiState().rateFilter);
+  readonly activitiesRateSocialBadgeEnabled = computed(() => this._uiState().rateSocialBadgeEnabled);
   readonly activitiesView = computed(() => this._uiState().view);
   readonly activitiesShowViewPicker = computed(() => this._uiState().showViewPicker);
   readonly activitiesShowSecondaryPicker = computed(() => this._uiState().showSecondaryPicker);
@@ -81,7 +87,8 @@ export class ActivitiesPopupStateService {
   openActivities(
     primaryFilter: AppTypes.ActivitiesPrimaryFilter = 'chats',
     eventScope?: AppTypes.ActivitiesEventScope,
-    initialRateFilter?: AppTypes.RateFilterKey
+    initialRateFilter?: AppTypes.RateFilterKey,
+    initialRateSocialBadgeEnabled = false
   ): void {
     const normalizedPrimaryFilter = this.normalizeActivitiesPrimaryFilter(primaryFilter);
     const resolvedScope = this.resolveActivitiesEventScope(primaryFilter, eventScope);
@@ -89,6 +96,7 @@ export class ActivitiesPopupStateService {
     this._uiState.update(state => ({
       ...state,
       open: true,
+      openRevision: state.openRevision + 1,
       primaryFilter: normalizedPrimaryFilter,
       eventScope: resolvedScope,
       secondaryFilter: 'recent',
@@ -99,7 +107,12 @@ export class ActivitiesPopupStateService {
       stickyValue: '',
       ratesFullscreenMode: false,
       selectedRateId: null,
-      ...(normalizedPrimaryFilter === 'rates' ? { rateFilter: resolvedRateFilter } : {})
+      ...(normalizedPrimaryFilter === 'rates'
+        ? {
+            rateFilter: resolvedRateFilter,
+            rateSocialBadgeEnabled: initialRateSocialBadgeEnabled
+          }
+        : { rateSocialBadgeEnabled: false })
     }));
   }
 
@@ -124,6 +137,7 @@ export class ActivitiesPopupStateService {
       chatContextFilter: 'all',
       ratesFullscreenMode: normalizedFilter !== 'rates' ? false : state.ratesFullscreenMode,
       rateFilter: normalizedFilter === 'rates' ? 'individual-given' : state.rateFilter,
+      rateSocialBadgeEnabled: normalizedFilter === 'rates' ? state.rateSocialBadgeEnabled : false,
       view: normalizedFilter === 'rates'
         ? 'distance'
         : normalizedFilter === 'chats'
@@ -157,6 +171,10 @@ export class ActivitiesPopupStateService {
 
   setActivitiesRateFilter(filter: AppTypes.RateFilterKey): void {
     this.patchUiState({ rateFilter: filter });
+  }
+
+  setActivitiesRateSocialBadgeEnabled(enabled: boolean): void {
+    this.patchUiState({ rateSocialBadgeEnabled: enabled });
   }
 
   setActivitiesView(view: AppTypes.ActivitiesView): void {
@@ -198,29 +216,35 @@ export class ActivitiesPopupStateService {
     this.patchUiState({ selectedRateId: rateId });
   }
 
-  emitActivitiesEventSync(payload: Omit<ActivitiesEventSyncPayload, 'syncKey'>): void {
+  emitActivitiesEventSync(payload: Omit<ActivitiesEventSyncPayload, 'syncKey'>): Promise<void> {
     this._activitiesEventSync.set({ ...payload });
-    this.runDeferredEventPersistence(payload);
+    return this.runDeferredEventPersistence(payload);
   }
 
-  private runDeferredEventPersistence(payload: Omit<ActivitiesEventSyncPayload, 'syncKey'>): void {
-    const persist = () => {
-      void this.eventsService.syncEventSnapshot(payload).catch(() => {
+  private runDeferredEventPersistence(payload: Omit<ActivitiesEventSyncPayload, 'syncKey'>): Promise<void> {
+    const persist = async () => {
+      await Promise.all([
+        this.eventsService.syncEventSnapshot(payload).catch(() => {
         // Demo persistence is best-effort; UI state stays optimistic.
-      });
-      void this.activityMembersService.syncEventMembersFromEventSnapshot(payload).catch(() => {
+        }),
+        this.activityMembersService.syncEventMembersFromEventSnapshot(payload).catch(() => {
         // Demo persistence is best-effort; UI state stays optimistic.
-      });
+        })
+      ]);
     };
 
-    if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
-      window.requestAnimationFrame(() => {
-        setTimeout(persist, 0);
-      });
-      return;
-    }
-
-    setTimeout(persist, 0);
+    return new Promise(resolve => {
+      const run = () => {
+        void persist().finally(resolve);
+      };
+      if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+        window.requestAnimationFrame(() => {
+          setTimeout(run, 0);
+        });
+        return;
+      }
+      setTimeout(run, 0);
+    });
   }
 
   clearActivitiesEventSync(): void {

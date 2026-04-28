@@ -32,6 +32,7 @@ import {
 import { ActivitiesPopupStateService } from '../../services/activities-popup-state.service';
 import {
   InfoCardComponent,
+  type PageResult,
   SmartListComponent,
   TopicPickerPopupComponent,
   type InfoCardData,
@@ -47,6 +48,11 @@ import { EventCheckoutDialogService } from '../../../shared/ui/services/event-ch
 import { NavigatorService } from '../../../navigator';
 import type { DemoEventRecord } from '../../../shared/core/demo/models/events.model';
 import { resolveCurrentRouteDelayMs } from '../../../shared/core/base/services/route-delay.service';
+
+type CheckoutDraftEntry = {
+  draft: EventCheckoutDraft;
+  record: DemoEventRecord | null;
+};
 
 @Component({
   selector: 'app-event-explore-popup',
@@ -116,6 +122,10 @@ export class EventExplorePopupComponent {
   private readonly eventExploreExitAnimationMs = 180;
   private readonly eventExploreJoinDelayMs = resolveCurrentRouteDelayMs('/activities/events', 1500);
   private lastAppliedActivityMembersUpdatedMs = 0;
+  private lastPendingCheckoutDraftSourceIds = new Set<string>();
+  private readonly locallyTrackedMembershipSourceIds = new Set<string>();
+  private readonly checkoutDraftReleaseSourceIds = new Set<string>();
+  private readonly clearingCheckoutDraftsBySourceId = new Map<string, EventCheckoutDraft>();
 
   protected eventExploreSmartListQuery: Partial<ListQuery<EventExploreFeedFilters>> = {};
 
@@ -131,11 +141,12 @@ export class EventExplorePopupComponent {
   }
 
   protected readonly eventExploreLoadPage = (query: ListQuery<EventExploreFeedFilters>) =>
-    from(this.activitiesService.loadExplore(query));
+    from(this.loadEventExplorePage(query));
   protected readonly EventExploreBuilder = EventExploreBuilder;
 
   protected readonly eventExploreSmartListConfig: SmartListConfig<DemoEventRecord, EventExploreFeedFilters> = {
     pageSize: 10,
+    initialPageSize: 20,
     loadingDelayMs: resolveCurrentRouteDelayMs('/activities/events'),
     defaultView: 'list',
     emptyLabel: 'No visible events right now.',
@@ -181,6 +192,7 @@ export class EventExplorePopupComponent {
         return;
       }
       this.activeUserId = nextActiveUserId;
+      this.locallyTrackedMembershipSourceIds.clear();
       this.syncEventExploreQuery();
       if (this.isOpen) {
         this.reloadEventExploreSmartList();
@@ -207,7 +219,18 @@ export class EventExplorePopupComponent {
 
     effect(() => {
       this.eventCheckoutDraftService.drafts();
+      const nextPendingDraftSourceIds = this.pendingCheckoutDraftSourceIds();
+      const removedPendingDraftSourceIds = [...this.lastPendingCheckoutDraftSourceIds]
+        .filter(sourceId => !nextPendingDraftSourceIds.has(sourceId));
+      const hasNewPendingDraft = [...nextPendingDraftSourceIds]
+        .some(sourceId => !this.lastPendingCheckoutDraftSourceIds.has(sourceId));
+      this.lastPendingCheckoutDraftSourceIds = nextPendingDraftSourceIds;
       if (this.isOpen) {
+        if (removedPendingDraftSourceIds.length > 0 && this.shouldReloadEventExploreAfterDraftRemoval(removedPendingDraftSourceIds)) {
+          this.reloadEventExploreSmartList();
+        } else if (hasNewPendingDraft) {
+          this.pruneVisibleTrackedEventExploreRecords();
+        }
         this.cdr.markForCheck();
       }
     });
@@ -448,7 +471,7 @@ export class EventExplorePopupComponent {
     event?: { stopPropagation?: () => void; preventDefault?: () => void }
   ): void {
     this.stopDomEvent(event);
-    if (!this.isEventExploreOpenEvent(record)) {
+    if (!this.canPreviewEventExploreMembers(record)) {
       return;
     }
     this.popupCtx.requestActivitiesNavigation({
@@ -456,7 +479,8 @@ export class EventExplorePopupComponent {
       ownerId: record.id,
       ownerType: 'event',
       subtitle: record.title,
-      canManage: record.isAdmin === true
+      canManage: false,
+      viewOnly: true
     });
     this.cdr.markForCheck();
   }
@@ -511,9 +535,6 @@ export class EventExplorePopupComponent {
     event?: { stopPropagation?: () => void; preventDefault?: () => void }
   ): void {
     this.stopDomEvent(event);
-    if (!this.isEventExploreOpenEvent(record)) {
-      return;
-    }
     const activeUserId = this.activeUserId.trim();
     if (!activeUserId) {
       return;
@@ -558,7 +579,7 @@ export class EventExplorePopupComponent {
     this.navigatorService.openImpressionsPopup(record.creatorUserId);
   }
 
-  protected isEventExploreOpenEvent(record: DemoEventRecord): boolean {
+  protected canPreviewEventExploreMembers(record: DemoEventRecord): boolean {
     return record.blindMode === 'Open Event';
   }
 
@@ -576,12 +597,48 @@ export class EventExplorePopupComponent {
     return this.checkoutDraftEntries().length;
   }
 
-  protected checkoutDraftEntries(): Array<{ draft: EventCheckoutDraft; record: DemoEventRecord | null }> {
-    return this.eventCheckoutDraftService.listByUser(this.activeUserId)
+  protected checkoutDraftEntries(): CheckoutDraftEntry[] {
+    const activeUserId = this.activeUserId.trim();
+    const liveDrafts = this.eventCheckoutDraftService.listByUser(activeUserId);
+    const liveSourceIds = new Set(liveDrafts.map(draft => draft.sourceId.trim()).filter(Boolean));
+    const clearingDrafts = [...this.clearingCheckoutDraftsBySourceId.values()]
+      .filter(draft => draft.userId === activeUserId)
+      .filter(draft => !liveSourceIds.has(draft.sourceId.trim()));
+    return [...liveDrafts, ...clearingDrafts]
+      .sort((left, right) => right.updatedAtMs - left.updatedAtMs)
       .map(draft => ({
         draft,
-        record: this.eventsService.peekKnownItemById(this.activeUserId, draft.sourceId)
+        record: this.eventsService.peekKnownItemById(activeUserId, draft.sourceId)
       }));
+  }
+
+  protected canContinueCheckoutDraft(entry: CheckoutDraftEntry): boolean {
+    if (this.isCheckoutDraftClearing(entry.draft.sourceId)) {
+      return false;
+    }
+    if (Boolean(entry.draft.checkoutSessionId?.trim())) {
+      return true;
+    }
+    if (!this.requiresApprovalBeforePayment(entry.record, entry.draft)) {
+      return true;
+    }
+    return this.resolveCheckoutDraftMembershipStatus(entry.draft.sourceId, entry.record) === 'accepted';
+  }
+
+  protected checkoutDraftActionLabel(entry: CheckoutDraftEntry): string {
+    return this.canContinueCheckoutDraft(entry) ? 'Continue' : 'Waiting for approval';
+  }
+
+  protected isCheckoutDraftClearing(sourceId: string): boolean {
+    return this.checkoutDraftReleaseSourceIds.has(sourceId.trim());
+  }
+
+  protected checkoutDraftClearRingGradientId(sourceId: string): string {
+    const normalizedSourceId = sourceId.trim();
+    if (!normalizedSourceId) {
+      return 'event-explore-basket-clear-gradient';
+    }
+    return `event-explore-basket-clear-gradient-${normalizedSourceId.replace(/[^a-zA-Z0-9_-]/g, '-')}`;
   }
 
   protected toggleCheckoutDraftBasket(event?: Event): void {
@@ -591,10 +648,14 @@ export class EventExplorePopupComponent {
   }
 
   protected async continueCheckoutDraft(
-    draft: EventCheckoutDraft,
+    entry: CheckoutDraftEntry,
     event?: { stopPropagation?: () => void; preventDefault?: () => void }
   ): Promise<void> {
     this.stopDomEvent(event);
+    if (!this.canContinueCheckoutDraft(entry)) {
+      return;
+    }
+    const { draft } = entry;
     const record = this.eventsService.peekKnownItemById(this.activeUserId, draft.sourceId)
       ?? await this.eventsService.queryKnownItemById(this.activeUserId, draft.sourceId);
     if (!record) {
@@ -607,16 +668,91 @@ export class EventExplorePopupComponent {
       return;
     }
     this.showCheckoutDraftBasket = false;
-    this.openEventExploreCheckout(record);
+    this.openEventExploreCheckout(record, {
+      approvalGranted: this.canContinueCheckoutDraft({ draft, record })
+    });
   }
 
-  protected clearCheckoutDraft(
+  protected async clearCheckoutDraft(
     draft: EventCheckoutDraft,
     event?: { stopPropagation?: () => void; preventDefault?: () => void }
-  ): void {
+  ): Promise<void> {
     this.stopDomEvent(event);
-    this.eventCheckoutDraftService.clear(this.activeUserId, draft.sourceId);
+    const activeUserId = this.activeUserId.trim();
+    const sourceId = draft.sourceId.trim();
+    if (!activeUserId || !sourceId) {
+      this.eventCheckoutDraftService.clear(activeUserId, sourceId);
+      this.cdr.markForCheck();
+      return;
+    }
+    if (this.checkoutDraftReleaseSourceIds.has(sourceId)) {
+      return;
+    }
+
+    this.checkoutDraftReleaseSourceIds.add(sourceId);
+    this.clearingCheckoutDraftsBySourceId.set(sourceId, { ...draft });
+    this.eventCheckoutDraftService.clear(activeUserId, sourceId);
     this.cdr.markForCheck();
+    try {
+      const record = this.eventsService.peekKnownItemById(activeUserId, sourceId)
+        ?? await this.eventsService.queryKnownItemById(activeUserId, sourceId);
+
+      if (!record) {
+        if (this.isOpen) {
+          this.reloadEventExploreSmartList();
+        }
+        return;
+      }
+
+      const owner = this.eventMembersOwner(record);
+      const baseMembers = this.activityMembersService.peekMembersByOwner(owner);
+      const existingMembers = baseMembers.length > 0 ? baseMembers : this.buildMemberEntries(record);
+      const hadMembership = existingMembers.some(member => member.userId === activeUserId);
+      if (!hadMembership) {
+        this.locallyTrackedMembershipSourceIds.delete(sourceId);
+        if (this.isOpen) {
+          this.reloadEventExploreSmartList();
+        }
+        return;
+      }
+
+      const nextMembers = this.sortMembersByActionTimeDesc(
+        existingMembers.filter(member => member.userId !== activeUserId)
+      );
+      const payload = this.buildActivitiesEventSyncPayload(record, nextMembers);
+      const persistence = this.activitiesContext.emitActivitiesEventSync(payload);
+      if (this.selectedMembersRecord?.id === record.id) {
+        this.selectedMembers = nextMembers;
+      }
+      this.cdr.markForCheck();
+      await persistence;
+      if (this.isOpen) {
+        this.reloadEventExploreSmartList();
+      }
+    } finally {
+      this.clearingCheckoutDraftsBySourceId.delete(sourceId);
+      this.checkoutDraftReleaseSourceIds.delete(sourceId);
+      this.cdr.markForCheck();
+    }
+  }
+
+  private async loadEventExplorePage(
+    query: ListQuery<EventExploreFeedFilters>
+  ): Promise<PageResult<DemoEventRecord>> {
+    const page = await this.activitiesService.loadExplore(query);
+    const activeUserId = this.activeUserId.trim();
+    if (!activeUserId) {
+      return page;
+    }
+    const filteredItems = page.items.filter(record => !this.hasTrackedMembership(record, activeUserId));
+    if (filteredItems.length === page.items.length) {
+      return page;
+    }
+    return {
+      items: filteredItems,
+      total: Math.max(filteredItems.length, page.total - (page.items.length - filteredItems.length)),
+      nextCursor: page.nextCursor ?? null
+    };
   }
 
   protected eventExploreInfoCard(record: DemoEventRecord, groupLabel: string | null): InfoCardData {
@@ -655,7 +791,8 @@ export class EventExplorePopupComponent {
           lineItems: [],
           totalAmount: 0,
           currency: record.pricing?.currency ?? 'USD',
-          paymentSessionId: null
+          paymentSessionId: null,
+          bookingConfirmed: true
         });
         this.closeEventExploreSlotPicker();
       }
@@ -715,16 +852,21 @@ export class EventExplorePopupComponent {
   }
 
   private applyActivitiesEventSync(sync: AppTypes.ActivitiesEventSyncPayload): void {
-    if (!this.eventExploreSmartList) {
-      return;
-    }
-    const currentItems = [...this.eventExploreSmartList.itemsSnapshot()];
-    const currentIndex = currentItems.findIndex(record => record.id === sync.id);
     const activeUserId = this.activeUserId.trim();
     const userJoinedEvent = activeUserId.length > 0 && (
       (Array.isArray(sync.acceptedMemberUserIds) && sync.acceptedMemberUserIds.includes(activeUserId))
       || (Array.isArray(sync.pendingMemberUserIds) && sync.pendingMemberUserIds.includes(activeUserId))
     );
+    if (userJoinedEvent) {
+      this.locallyTrackedMembershipSourceIds.add(sync.id);
+    } else {
+      this.locallyTrackedMembershipSourceIds.delete(sync.id);
+    }
+    if (!this.eventExploreSmartList) {
+      return;
+    }
+    const currentItems = [...this.eventExploreSmartList.itemsSnapshot()];
+    const currentIndex = currentItems.findIndex(record => record.id === sync.id);
 
     if (currentIndex >= 0) {
       const existing = currentItems[currentIndex];
@@ -788,6 +930,9 @@ export class EventExplorePopupComponent {
     }
 
     if (!this.isOpen || userJoinedEvent) {
+      return;
+    }
+    if (this.checkoutDraftReleaseSourceIds.has(sync.id.trim())) {
       return;
     }
     this.reloadEventExploreSmartList();
@@ -863,27 +1008,128 @@ export class EventExplorePopupComponent {
   }
 
   private hasTrackedMembership(record: DemoEventRecord, userId: string): boolean {
+    if (userId === this.activeUserId.trim() && this.locallyTrackedMembershipSourceIds.has(record.id)) {
+      return true;
+    }
     if (record.acceptedMemberUserIds.includes(userId) || record.pendingMemberUserIds.includes(userId)) {
+      return true;
+    }
+    if (this.hasPendingCheckoutDraft(record.id, userId)) {
       return true;
     }
     return this.activityMembersService.peekMembersByOwner(this.eventMembersOwner(record))
       .some(member => member.userId === userId);
   }
 
-  private eventExploreJoinDialogTitle(record: DemoEventRecord): string {
-    return record.ticketing ? 'Book?' : 'Request to join?';
+  private hasPendingCheckoutDraft(sourceId: string, userId: string): boolean {
+    return this.isTrackableCheckoutDraft(this.eventCheckoutDraftService.read(userId, sourceId));
   }
 
-  private eventExploreJoinConfirmLabel(record: DemoEventRecord): string {
-    return record.ticketing ? 'Book' : 'Send request';
+  private pendingCheckoutDraftSourceIds(): Set<string> {
+    const activeUserId = this.activeUserId.trim();
+    if (!activeUserId) {
+      return new Set<string>();
+    }
+    return new Set(
+      this.eventCheckoutDraftService.listByUser(activeUserId)
+        .filter(draft => this.isTrackableCheckoutDraft(draft))
+        .map(draft => draft.sourceId.trim())
+        .filter(sourceId => sourceId.length > 0)
+    );
   }
 
-  private eventExploreJoinBusyLabel(record: DemoEventRecord): string {
-    return record.ticketing ? 'Booking...' : 'Sending request...';
+  private shouldReloadEventExploreAfterDraftRemoval(sourceIds: readonly string[]): boolean {
+    return sourceIds.some(sourceId => {
+      const normalizedSourceId = sourceId.trim();
+      if (!normalizedSourceId || this.checkoutDraftReleaseSourceIds.has(normalizedSourceId)) {
+        return false;
+      }
+      return !this.locallyTrackedMembershipSourceIds.has(normalizedSourceId);
+    });
   }
 
-  private eventExploreJoinFailureMessage(record: DemoEventRecord): string {
-    return record.ticketing ? 'Unable to book right now.' : 'Unable to send request.';
+  private requiresApprovalBeforePayment(
+    record: DemoEventRecord | null,
+    draft: EventCheckoutDraft | null = null
+  ): boolean {
+    if (record?.ticketing === true) {
+      return true;
+    }
+    return Math.max(0, Number(draft?.totalAmount) || 0) > 0;
+  }
+
+  private resolveCheckoutDraftMembershipStatus(
+    sourceId: string,
+    record: DemoEventRecord | null
+  ): 'accepted' | 'pending' | 'none' {
+    const activeUserId = this.activeUserId.trim();
+    const ownerId = sourceId.trim();
+    if (!activeUserId || !ownerId) {
+      return 'none';
+    }
+    const memberEntries = this.activityMembersService.peekMembersByOwner({
+      ownerType: 'event',
+      ownerId
+    });
+    const existingEntry = memberEntries.find(member => member.userId === activeUserId);
+    if (existingEntry?.status === 'accepted') {
+      return 'accepted';
+    }
+    if (existingEntry?.status === 'pending') {
+      return 'pending';
+    }
+    const knownRecord = record ?? this.eventsService.peekKnownItemById(activeUserId, ownerId);
+    if (knownRecord?.acceptedMemberUserIds.includes(activeUserId)) {
+      return 'accepted';
+    }
+    if (knownRecord?.pendingMemberUserIds.includes(activeUserId)) {
+      return 'pending';
+    }
+    return 'none';
+  }
+
+  private isTrackableCheckoutDraft(draft: EventCheckoutDraft | null | undefined): boolean {
+    return Math.max(0, Number(draft?.totalAmount) || 0) > 0;
+  }
+
+  private eventExploreJoinDialogTitle(
+    record: DemoEventRecord,
+    options: { approvalGranted?: boolean } = {}
+  ): string {
+    if (this.requiresApprovalBeforePayment(record) && options.approvalGranted !== true) {
+      return 'Request to join?';
+    }
+    return record.ticketing ? 'Continue booking?' : 'Request to join?';
+  }
+
+  private eventExploreJoinConfirmLabel(
+    record: DemoEventRecord,
+    options: { approvalGranted?: boolean } = {}
+  ): string {
+    if (this.requiresApprovalBeforePayment(record) && options.approvalGranted !== true) {
+      return 'Send request';
+    }
+    return record.ticketing ? 'Continue' : 'Send request';
+  }
+
+  private eventExploreJoinBusyLabel(
+    record: DemoEventRecord,
+    options: { approvalGranted?: boolean } = {}
+  ): string {
+    if (this.requiresApprovalBeforePayment(record) && options.approvalGranted !== true) {
+      return 'Sending request...';
+    }
+    return record.ticketing ? 'Continuing...' : 'Sending request...';
+  }
+
+  private eventExploreJoinFailureMessage(
+    record: DemoEventRecord,
+    options: { approvalGranted?: boolean } = {}
+  ): string {
+    if (this.requiresApprovalBeforePayment(record) && options.approvalGranted !== true) {
+      return 'Unable to send request.';
+    }
+    return record.ticketing ? 'Unable to continue booking right now.' : 'Unable to send request.';
   }
 
   private shouldUseCheckoutFlow(record: DemoEventRecord): boolean {
@@ -899,16 +1145,24 @@ export class EventExplorePopupComponent {
     return Boolean(record.pricing?.enabled && (Number(record.pricing?.basePrice) || 0) > 0);
   }
 
-  private openEventExploreCheckout(record: DemoEventRecord): void {
+  private openEventExploreCheckout(
+    record: DemoEventRecord,
+    options: { approvalGranted?: boolean } = {}
+  ): void {
+    const dialogOptions = {
+      approvalGranted: options.approvalGranted === true
+    };
     this.eventCheckoutDialogService.open({
       mode: 'join',
       userId: this.activeUserId,
       record,
-      title: this.eventExploreJoinDialogTitle(record),
+      requiresApprovalBeforePayment: this.requiresApprovalBeforePayment(record),
+      approvalGranted: dialogOptions.approvalGranted,
+      title: this.eventExploreJoinDialogTitle(record, dialogOptions),
       subtitle: record.timeframe,
-      confirmLabel: this.eventExploreJoinConfirmLabel(record),
-      busyConfirmLabel: this.eventExploreJoinBusyLabel(record),
-      failureMessage: this.eventExploreJoinFailureMessage(record),
+      confirmLabel: this.eventExploreJoinConfirmLabel(record, dialogOptions),
+      busyConfirmLabel: this.eventExploreJoinBusyLabel(record, dialogOptions),
+      failureMessage: this.eventExploreJoinFailureMessage(record, dialogOptions),
       onSubmit: (selection) => this.submitEventExploreJoinRequest(record, selection, {
         skipVisualDelay: true
       })
@@ -954,12 +1208,13 @@ export class EventExplorePopupComponent {
       return;
     }
 
+    const isAcceptedBooking = this.isConfirmedEventExploreBooking(record, selection);
     const nextMembers = this.sortMembersByActionTimeDesc([
       ...existingMembers,
-      this.buildJoinRequestEntry(record)
+      this.buildJoinRequestEntry(record, isAcceptedBooking)
     ]);
     const rollbackPayload = this.buildActivitiesEventSyncPayload(record, existingMembers);
-    const nextPayload = this.buildActivitiesEventSyncPayload(record, nextMembers);
+    const nextPayload = this.buildActivitiesEventSyncPayload(record, nextMembers, selection?.paymentSessionId ?? null);
     this.activitiesContext.emitActivitiesEventSync(nextPayload);
 
     try {
@@ -968,7 +1223,8 @@ export class EventExplorePopupComponent {
         optionalSubEventIds: selection?.optionalSubEventIds ?? [],
         assetSelections: selection?.assetSelections ?? [],
         acceptedPolicyIds: selection?.acceptedPolicyIds ?? [],
-        paymentSessionId: selection?.paymentSessionId ?? null
+        paymentSessionId: selection?.paymentSessionId ?? null,
+        bookingConfirmed: isAcceptedBooking
       });
       await Promise.all([exitPromise, delayPromise, requestJoinPromise]);
       if (this.selectedMembersRecord?.id === record.id) {
@@ -1028,6 +1284,24 @@ export class EventExplorePopupComponent {
     }
     this.eventExploreSmartList.replaceVisibleItems(nextItems, {
       total: Math.max(nextItems.length, this.eventExploreSmartList.cursorState().total - 1)
+    });
+  }
+
+  private pruneVisibleTrackedEventExploreRecords(): void {
+    if (!this.eventExploreSmartList) {
+      return;
+    }
+    const activeUserId = this.activeUserId.trim();
+    if (!activeUserId) {
+      return;
+    }
+    const currentItems = [...this.eventExploreSmartList.itemsSnapshot()];
+    const nextItems = currentItems.filter(item => !this.hasTrackedMembership(item, activeUserId));
+    if (nextItems.length === currentItems.length) {
+      return;
+    }
+    this.eventExploreSmartList.replaceVisibleItems(nextItems, {
+      total: Math.max(nextItems.length, this.eventExploreSmartList.cursorState().total - (currentItems.length - nextItems.length))
     });
   }
 
@@ -1122,7 +1396,7 @@ export class EventExplorePopupComponent {
       };
   }
 
-  private buildJoinRequestEntry(record: DemoEventRecord): AppTypes.ActivityMemberEntry {
+  private buildJoinRequestEntry(record: DemoEventRecord, accepted = false): AppTypes.ActivityMemberEntry {
     const user = this.resolveUser(this.activeUserId, record);
     const row = EventExploreBuilder.buildActivityRow(record);
     const entry = ActivityMembersBuilder.toActivityMemberEntry(
@@ -1130,20 +1404,41 @@ export class EventExplorePopupComponent {
       row,
       `${row.type}:${row.id}`,
       record.creatorUserId,
-      { status: 'pending', pendingSource: 'member', invitedByActiveUser: false },
+      {
+        status: accepted ? 'accepted' : 'pending',
+        pendingSource: accepted ? null : 'member',
+        invitedByActiveUser: false
+      },
       APP_STATIC_DATA.activityMemberMetPlaces
     );
     return {
       ...entry,
       role: 'Member',
-      requestKind: 'join',
-      statusText: 'Waiting for admin approval.'
+      requestKind: accepted ? null : 'join',
+      statusText: accepted ? 'Joined event.' : 'Waiting for admin approval.'
     };
+  }
+
+  private isConfirmedEventExploreBooking(
+    record: DemoEventRecord,
+    selection?: AppTypes.EventCheckoutSelection | null
+  ): boolean {
+    if (Boolean(selection?.paymentSessionId?.trim())) {
+      return false;
+    }
+    if (record.ticketing !== true) {
+      return false;
+    }
+    if (selection?.bookingConfirmed === true) {
+      return true;
+    }
+    return !selection && !this.shouldUseCheckoutFlow(record);
   }
 
   private buildActivitiesEventSyncPayload(
     record: DemoEventRecord,
-    members: readonly AppTypes.ActivityMemberEntry[]
+    members: readonly AppTypes.ActivityMemberEntry[],
+    paymentSessionId: string | null = null
   ): Omit<AppTypes.ActivitiesEventSyncPayload, 'syncKey'> {
     const summary = ActivityMembersBuilder.buildActivityMembersSummary(
       this.eventMembersOwner(record),
@@ -1192,7 +1487,8 @@ export class EventExplorePopupComponent {
               : []
           }))
         : undefined,
-      subEventsDisplayMode: record.subEventsDisplayMode
+      subEventsDisplayMode: record.subEventsDisplayMode,
+      paymentSessionId
     };
   }
 

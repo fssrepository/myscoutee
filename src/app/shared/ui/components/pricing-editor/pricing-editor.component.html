@@ -85,6 +85,86 @@
   }
 </section>
 
+@if (showMobileRuleScopeSheet()) {
+  <div class="pricing-editor__scope-sheet-backdrop" (click)="closeRuleScopePicker($event)"></div>
+  <section
+    class="pricing-editor__scope-sheet"
+    role="dialog"
+    aria-modal="true"
+    [attr.aria-label]="currentRuleScopeSheetTitle()"
+    (click)="$event.stopPropagation()"
+    >
+    <div class="pricing-editor__scope-sheet-handle"></div>
+    <div class="pricing-editor__scope-sheet-title">
+      <mat-icon>view_week</mat-icon>
+      <span>{{ currentRuleScopeSheetTitle() }}</span>
+    </div>
+    <div class="pricing-editor__scope-sheet-panel">
+      <ng-container [ngTemplateOutlet]="ruleScopePanelContent"></ng-container>
+    </div>
+  </section>
+}
+
+<ng-template #ruleScopePanelContent>
+  <div class="pricing-editor__scope-panel-current">
+    <span class="pricing-editor__scope-trigger-copy">
+      <mat-icon>view_week</mat-icon>
+      <span>{{ currentRuleScopeDraftMode() === 'all_slots' ? 'All slots' : 'Specific slots' }}</span>
+    </span>
+    <mat-icon>expand_more</mat-icon>
+  </div>
+  <div class="pricing-editor__scope-options">
+    <button
+      type="button"
+      class="pricing-editor__scope-option"
+      [class.is-selected]="currentRuleScopeDraftMode() === 'all_slots'"
+      (click)="selectRuleScopeDraftMode('all_slots', $event)"
+      >
+      <mat-icon>{{ currentRuleScopeDraftMode() === 'all_slots' ? 'check' : 'view_week' }}</mat-icon>
+      <span>All slots</span>
+    </button>
+    <button
+      type="button"
+      class="pricing-editor__scope-option"
+      [class.is-selected]="currentRuleScopeDraftMode() === 'selected_slots'"
+      [disabled]="slotCatalog.length === 0"
+      (click)="selectRuleScopeDraftMode('selected_slots', $event)"
+      >
+      <mat-icon>{{ currentRuleScopeDraftMode() === 'selected_slots' ? 'check' : 'view_list' }}</mat-icon>
+      <span>Specific slots</span>
+    </button>
+  </div>
+  @if (currentRuleScopeDraftMode() === 'selected_slots') {
+    <div class="pricing-editor__scope-slot-list">
+      @for (slot of slotCatalog; track slot.id) {
+        <button
+          type="button"
+          class="pricing-editor__scope-slot"
+          [class.is-selected]="isRuleScopeDraftSlotSelected(slot.id)"
+          (click)="toggleRuleScopeDraftSlot(slot.id, $event)"
+          >
+          <mat-icon>{{ isRuleScopeDraftSlotSelected(slot.id) ? 'check_box' : 'check_box_outline_blank' }}</mat-icon>
+          <span class="pricing-editor__scope-slot-copy">
+            <span class="pricing-editor__scope-slot-title">{{ slot.label }}</span>
+            <span class="pricing-editor__scope-slot-meta">{{ slotScopeWindowLabel(slot) }}</span>
+          </span>
+        </button>
+      }
+      @if (slotCatalog.length === 0) {
+        <p class="pricing-editor__scope-empty">Add slots to use specific slot targeting.</p>
+      }
+    </div>
+  }
+  <button
+    type="button"
+    class="pricing-editor__scope-apply"
+    [disabled]="!canApplyRuleScopeDraft()"
+    (click)="applyCurrentRuleScopeDraft($event)"
+    >
+    Apply
+  </button>
+</ng-template>
+
 <ng-template #pricingEditorSurfaces>
   <section class="pricing-editor__surface">
     <div class="pricing-editor__grid">
@@ -309,65 +389,9 @@
                         </span>
                         <mat-icon class="pricing-editor__scope-trigger-chevron">expand_more</mat-icon>
                       </button>
-                      @if (isRuleScopePickerOpen('demand', rule)) {
+                      @if (isRuleScopePickerOpen('demand', rule) && !shouldUseMobileRuleScopeSheet()) {
                         <div class="pricing-editor__scope-panel" (click)="$event.stopPropagation()">
-                          <div class="pricing-editor__scope-panel-current">
-                            <span class="pricing-editor__scope-trigger-copy">
-                              <mat-icon>view_week</mat-icon>
-                              <span>{{ currentRuleScopeDraftMode() === 'all_slots' ? 'All slots' : 'Specific slots' }}</span>
-                            </span>
-                            <mat-icon>expand_more</mat-icon>
-                          </div>
-                          <div class="pricing-editor__scope-options">
-                            <button
-                              type="button"
-                              class="pricing-editor__scope-option"
-                              [class.is-selected]="currentRuleScopeDraftMode() === 'all_slots'"
-                              (click)="selectRuleScopeDraftMode('all_slots', $event)"
-                              >
-                              <mat-icon>{{ currentRuleScopeDraftMode() === 'all_slots' ? 'check' : 'view_week' }}</mat-icon>
-                              <span>All slots</span>
-                            </button>
-                            <button
-                              type="button"
-                              class="pricing-editor__scope-option"
-                              [class.is-selected]="currentRuleScopeDraftMode() === 'selected_slots'"
-                              [disabled]="slotCatalog.length === 0"
-                              (click)="selectRuleScopeDraftMode('selected_slots', $event)"
-                              >
-                              <mat-icon>{{ currentRuleScopeDraftMode() === 'selected_slots' ? 'check' : 'view_list' }}</mat-icon>
-                              <span>Specific slots</span>
-                            </button>
-                          </div>
-                          @if (currentRuleScopeDraftMode() === 'selected_slots') {
-                            <div class="pricing-editor__scope-slot-list">
-                              @for (slot of slotCatalog; track slot.id) {
-                                <button
-                                  type="button"
-                                  class="pricing-editor__scope-slot"
-                                  [class.is-selected]="isRuleScopeDraftSlotSelected(slot.id)"
-                                  (click)="toggleRuleScopeDraftSlot(slot.id, $event)"
-                                  >
-                                  <mat-icon>{{ isRuleScopeDraftSlotSelected(slot.id) ? 'check_box' : 'check_box_outline_blank' }}</mat-icon>
-                                  <span class="pricing-editor__scope-slot-copy">
-                                    <span class="pricing-editor__scope-slot-title">{{ slot.label }}</span>
-                                    <span class="pricing-editor__scope-slot-meta">{{ slotScopeWindowLabel(slot) }}</span>
-                                  </span>
-                                </button>
-                              }
-                              @if (slotCatalog.length === 0) {
-                                <p class="pricing-editor__scope-empty">Add slots to use specific slot targeting.</p>
-                              }
-                            </div>
-                          }
-                          <button
-                            type="button"
-                            class="pricing-editor__scope-apply"
-                            [disabled]="!canApplyRuleScopeDraft()"
-                            (click)="applyRuleScopeDraft(rule, $event)"
-                            >
-                            Apply
-                          </button>
+                          <ng-container [ngTemplateOutlet]="ruleScopePanelContent"></ng-container>
                         </div>
                       }
                     </div>
@@ -438,7 +462,7 @@
                   </div>
                 </label>
                 @if (rule.trigger === 'specific_date') {
-                  <label class="pricing-editor__field">
+                  <label class="pricing-editor__field pricing-editor__field--span-full">
                     <span>Date range</span>
                     <mat-form-field appearance="outline" class="pricing-editor__date-range-field" subscriptSizing="dynamic">
                       <mat-date-range-input [rangePicker]="timeRuleRangePicker">
@@ -519,65 +543,9 @@
                         </span>
                         <mat-icon class="pricing-editor__scope-trigger-chevron">expand_more</mat-icon>
                       </button>
-                      @if (isRuleScopePickerOpen('time', rule)) {
+                      @if (isRuleScopePickerOpen('time', rule) && !shouldUseMobileRuleScopeSheet()) {
                         <div class="pricing-editor__scope-panel" (click)="$event.stopPropagation()">
-                          <div class="pricing-editor__scope-panel-current">
-                            <span class="pricing-editor__scope-trigger-copy">
-                              <mat-icon>view_week</mat-icon>
-                              <span>{{ currentRuleScopeDraftMode() === 'all_slots' ? 'All slots' : 'Specific slots' }}</span>
-                            </span>
-                            <mat-icon>expand_more</mat-icon>
-                          </div>
-                          <div class="pricing-editor__scope-options">
-                            <button
-                              type="button"
-                              class="pricing-editor__scope-option"
-                              [class.is-selected]="currentRuleScopeDraftMode() === 'all_slots'"
-                              (click)="selectRuleScopeDraftMode('all_slots', $event)"
-                              >
-                              <mat-icon>{{ currentRuleScopeDraftMode() === 'all_slots' ? 'check' : 'view_week' }}</mat-icon>
-                              <span>All slots</span>
-                            </button>
-                            <button
-                              type="button"
-                              class="pricing-editor__scope-option"
-                              [class.is-selected]="currentRuleScopeDraftMode() === 'selected_slots'"
-                              [disabled]="slotCatalog.length === 0"
-                              (click)="selectRuleScopeDraftMode('selected_slots', $event)"
-                              >
-                              <mat-icon>{{ currentRuleScopeDraftMode() === 'selected_slots' ? 'check' : 'view_list' }}</mat-icon>
-                              <span>Specific slots</span>
-                            </button>
-                          </div>
-                          @if (currentRuleScopeDraftMode() === 'selected_slots') {
-                            <div class="pricing-editor__scope-slot-list">
-                              @for (slot of slotCatalog; track slot.id) {
-                                <button
-                                  type="button"
-                                  class="pricing-editor__scope-slot"
-                                  [class.is-selected]="isRuleScopeDraftSlotSelected(slot.id)"
-                                  (click)="toggleRuleScopeDraftSlot(slot.id, $event)"
-                                  >
-                                  <mat-icon>{{ isRuleScopeDraftSlotSelected(slot.id) ? 'check_box' : 'check_box_outline_blank' }}</mat-icon>
-                                  <span class="pricing-editor__scope-slot-copy">
-                                    <span class="pricing-editor__scope-slot-title">{{ slot.label }}</span>
-                                    <span class="pricing-editor__scope-slot-meta">{{ slotScopeWindowLabel(slot) }}</span>
-                                  </span>
-                                </button>
-                              }
-                              @if (slotCatalog.length === 0) {
-                                <p class="pricing-editor__scope-empty">Add slots to use specific slot targeting.</p>
-                              }
-                            </div>
-                          }
-                          <button
-                            type="button"
-                            class="pricing-editor__scope-apply"
-                            [disabled]="!canApplyRuleScopeDraft()"
-                            (click)="applyRuleScopeDraft(rule, $event)"
-                            >
-                            Apply
-                          </button>
+                          <ng-container [ngTemplateOutlet]="ruleScopePanelContent"></ng-container>
                         </div>
                       }
                     </div>

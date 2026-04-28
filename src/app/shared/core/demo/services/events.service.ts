@@ -1,5 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 
+import { AppUtils } from '../../../app-utils';
 import { AppMemoryDb } from '../../../core/base';
 import type {
   ActivitiesEventSyncPayload,
@@ -7,12 +8,14 @@ import type {
   EventCheckoutRequest,
   EventCheckoutSession,
   EventFeedbackPersistedState,
+  EventFeedbackReceivedEventDto,
   EventFeedbackNoteRequestDto,
   EventFeedbackStateDto,
   EventFeedbackSubmitRequestDto
 } from '../../../core/base/models';
 import { DemoRouteDelayService } from './demo-route-delay.service';
 import { DemoEventsRepository } from '../repositories/events.repository';
+import { DemoUsersRepository } from '../repositories/users.repository';
 import { EVENT_FEEDBACK_TABLE_NAME } from '../models/event-feedback.model';
 import type {
   DemoEventActivitiesQuery,
@@ -32,6 +35,7 @@ export class DemoEventsService extends DemoRouteDelayService {
   private static readonly EVENTS_EXPLORE_ROUTE = '/activities/events/explore';
   private static readonly EVENTS_CHECKOUT_ROUTE = '/activities/events/checkout';
   private readonly eventsRepository = inject(DemoEventsRepository);
+  private readonly usersRepository = inject(DemoUsersRepository);
   private readonly memoryDb = inject(AppMemoryDb);
 
   async queryItemsByUser(userId: string): Promise<DemoEventRecord[]> {
@@ -105,9 +109,66 @@ export class DemoEventsService extends DemoRouteDelayService {
       eventId: record.eventId,
       removed: record.removed,
       submittedAtIso: record.submittedAtIso ?? '',
+      removedAtIso: record.removedAtIso ?? '',
       organizerNote: record.organizerNote,
       answersByCardId: this.cloneEventFeedbackAnswersByCardId(record.answersByCardId)
     }));
+  }
+
+  async queryReceivedEventFeedback(userId: string): Promise<EventFeedbackReceivedEventDto[]> {
+    await this.waitForRouteDelay(DemoEventsService.EVENTS_ROUTE);
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return [];
+    }
+    const ownedEventIds = new Set(
+      this.eventsRepository.queryItemsByUser(normalizedUserId)
+        .filter(record => record.isAdmin === true && !record.isInvitation && !record.isTrashed)
+        .map(record => record.id.trim())
+        .filter(Boolean)
+    );
+    if (ownedEventIds.size === 0) {
+      return [];
+    }
+
+    const table = this.memoryDb.read()[EVENT_FEEDBACK_TABLE_NAME];
+    const byEventId = new Map<string, EventFeedbackReceivedEventDto['entries']>();
+
+    for (const id of table.ids) {
+      const record = table.byId[id];
+      if (!record || record.userId === normalizedUserId || !ownedEventIds.has(record.eventId)) {
+        continue;
+      }
+      const answers = Object.values(this.cloneEventFeedbackAnswersByCardId(record.answersByCardId));
+      const organizerNote = record.organizerNote.trim();
+      if (!organizerNote && answers.length === 0) {
+        continue;
+      }
+      const viewer = this.usersRepository.queryUserById(record.userId);
+      const entries = byEventId.get(record.eventId) ?? [];
+      entries.push({
+        viewerUserId: record.userId,
+        viewerName: viewer?.name?.trim() || record.userId,
+        viewerInitials: viewer?.initials?.trim() || AppUtils.initialsFromText(viewer?.name?.trim() || record.userId),
+        viewerGender: (viewer?.gender === 'woman' ? 'woman' : 'man') as 'woman' | 'man',
+        viewerImageUrl: AppUtils.firstImageUrl(viewer?.images),
+        eventId: record.eventId,
+        submittedAtIso: record.submittedAtIso ?? '',
+        updatedAtIso: record.submittedAtIso ?? '',
+        organizerNote,
+        answers
+      });
+      byEventId.set(record.eventId, entries);
+    }
+
+    return [...byEventId.entries()]
+      .map(([eventId, entries]) => ({
+        eventId,
+        entries: [...entries].sort((left, right) =>
+          (right.updatedAtIso || right.submittedAtIso).localeCompare(left.updatedAtIso || left.submittedAtIso)
+        )
+      }))
+      .sort((left, right) => right.eventId.localeCompare(left.eventId));
   }
 
   async submitEventFeedback(request: EventFeedbackSubmitRequestDto): Promise<void> {
@@ -142,6 +203,7 @@ export class DemoEventsService extends DemoRouteDelayService {
     this.updateEventFeedbackState(normalizedUserId, normalizedEventId, current => ({
       ...current,
       removed: false,
+      removedAtIso: null,
       submittedAtIso,
       answersByCardId: {
         ...current.answersByCardId,
@@ -175,7 +237,8 @@ export class DemoEventsService extends DemoRouteDelayService {
     }
     this.updateEventFeedbackState(normalizedUserId, normalizedEventId, current => ({
       ...current,
-      removed: true
+      removed: true,
+      removedAtIso: new Date().toISOString()
     }));
     await this.memoryDb.flushToIndexedDb();
   }
@@ -189,7 +252,8 @@ export class DemoEventsService extends DemoRouteDelayService {
     }
     this.updateEventFeedbackState(normalizedUserId, normalizedEventId, current => ({
       ...current,
-      removed: false
+      removed: false,
+      removedAtIso: null
     }));
     await this.memoryDb.flushToIndexedDb();
   }
@@ -224,10 +288,17 @@ export class DemoEventsService extends DemoRouteDelayService {
       assetSelections?: EventCheckoutAssetSelection[];
       acceptedPolicyIds?: string[];
       paymentSessionId?: string | null;
+      bookingConfirmed?: boolean;
     } = {}
   ): Promise<DemoEventRecord | null> {
     await this.waitForRouteDelay(DemoEventsService.EVENTS_ROUTE);
-    const record = this.eventsRepository.requestJoin(userId, sourceId, options.slotSourceId ?? null);
+    const hasPendingCheckout = Boolean(options.paymentSessionId?.trim());
+    const record = this.eventsRepository.requestJoin(
+      userId,
+      sourceId,
+      options.slotSourceId ?? null,
+      options.bookingConfirmed === true && !hasPendingCheckout
+    );
     await this.memoryDb.flushToIndexedDb();
     return record;
   }
@@ -306,6 +377,7 @@ export class DemoEventsService extends DemoRouteDelayService {
       eventId,
       removed: false,
       submittedAtIso: null,
+      removedAtIso: null,
       organizerNote: '',
       answersByCardId: {}
     };

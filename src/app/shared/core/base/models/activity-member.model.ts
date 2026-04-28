@@ -17,10 +17,10 @@ export interface ActivityMemberEntry {
   pendingSource: ActivityPendingSource;
   requestKind: ActivityMemberRequestKind;
   invitedByActiveUser: boolean;
+  invitedByUserId?: string | null;
   metAtIso: string;
   actionAtIso: string;
   metWhere: string;
   relevance: number;
   avatarUrl: string;
 }
-

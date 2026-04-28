@@ -1,4 +1,4 @@
-import { Component, ElementRef, OnDestroy, TemplateRef, ViewChild, effect, inject, signal, untracked } from '@angular/core';
+import { Component, ElementRef, OnDestroy, TemplateRef, ViewChild, computed, effect, inject, signal, untracked } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatRippleModule } from '@angular/material/core';
@@ -28,6 +28,27 @@ import { resolveCurrentRouteDelayMs } from '../../../shared/core/base/services/r
 interface EventFeedbackListFilters {
   filter: AppTypes.EventFeedbackListFilter;
   userId: string;
+}
+
+interface OrganizerEventFeedbackCarouselStatItem {
+  key: string;
+  label: string;
+  icon: string;
+  count: number;
+}
+
+interface OrganizerEventFeedbackCarouselSection {
+  key: string;
+  label: string;
+  icon: string;
+  subtitle: string;
+  toneClass: string;
+  topLabel: string;
+  topCount: number;
+  optionCount: number;
+  responseCount: number;
+  progressPercent: number;
+  items: OrganizerEventFeedbackCarouselStatItem[];
 }
 
 @Component({
@@ -64,6 +85,79 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
   private eventFeedbackViewportScrollLockTimer: ReturnType<typeof setTimeout> | null = null;
 
   protected readonly isMobileEventFeedbackViewport = signal(this.readViewportWidth() <= 720);
+  protected readonly organizerEventFeedbackCarouselIndex = signal(0);
+  protected readonly organizerEventFeedbackCarouselSections = computed<OrganizerEventFeedbackCarouselSection[]>(() => {
+    const totalEntries = this.feedback.selectedOrganizerEventFeedbackEntries().length;
+    const buildSection = (
+      key: string,
+      label: string,
+      icon: string,
+      subtitle: string,
+      toneClass: string,
+      items: readonly { key: string; label: string; icon: string; count: number }[]
+    ): OrganizerEventFeedbackCarouselSection | null => {
+      if (items.length === 0) {
+        return null;
+      }
+      const topItem = items[0];
+      const topCount = Math.max(0, topItem?.count ?? 0);
+      const progressPercent = totalEntries > 0
+        ? Math.max(8, Math.min(100, Math.round((topCount / totalEntries) * 100)))
+        : 0;
+      return {
+        key,
+        label,
+        icon,
+        subtitle,
+        toneClass,
+        topLabel: topItem?.label ?? label,
+        topCount,
+        optionCount: items.length,
+        responseCount: totalEntries,
+        progressPercent,
+        items: items.map(item => ({
+          key: item.key,
+          label: item.label,
+          icon: item.icon,
+          count: item.count
+        }))
+      };
+    };
+
+    return [
+      buildSection(
+        'overall',
+        'Overall',
+        'sentiment_satisfied',
+        'Most selected event impression',
+        'event-feedback-organizer-carousel-card-tone-overall',
+        this.feedback.organizerEventFeedbackOverallStats()
+      ),
+      buildSection(
+        'improve',
+        'Improve Next',
+        'campaign',
+        'Most requested improvement next time',
+        'event-feedback-organizer-carousel-card-tone-improve',
+        this.feedback.organizerEventFeedbackImproveStats()
+      ),
+      buildSection(
+        'traits',
+        'Host Traits',
+        'groups',
+        'Traits attendees mentioned most',
+        'event-feedback-organizer-carousel-card-tone-traits',
+        this.feedback.organizerEventFeedbackTraitStats()
+      )
+    ].filter((section): section is OrganizerEventFeedbackCarouselSection => section !== null);
+  });
+  protected readonly organizerEventFeedbackActiveCarouselSection = computed<OrganizerEventFeedbackCarouselSection | null>(() => {
+    const sections = this.organizerEventFeedbackCarouselSections();
+    if (sections.length === 0) {
+      return null;
+    }
+    return sections[this.organizerEventFeedbackCarouselIndex()] ?? sections[0] ?? null;
+  });
 
   protected eventFeedbackSmartListQuery: Partial<ListQuery<EventFeedbackListFilters>> = {
     filters: {
@@ -103,11 +197,14 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
     },
     emptyLabel: 'Event Feedback',
     emptyDescription: (query) => this.eventFeedbackEmptyDescription(query.filters?.filter ?? 'pending'),
-    showStickyHeader: false,
-    showGroupMarker: () => false,
+    showStickyHeader: true,
+    showGroupMarker: ({ groupIndex, scrollable }) => groupIndex > 0 || scrollable,
+    groupBy: (item, query) => this.eventFeedbackGroupLabel(item, query.filters?.filter ?? this.feedback.eventFeedbackListFilter()),
     listLayout: 'card-grid',
     desktopColumns: 3,
-    snapMode: 'none',
+    snapMode: 'mandatory',
+    scrollPaddingTop: '2.6rem',
+    stickyHeaderClass: 'event-feedback-sticky-header',
     containerClass: {
       'experience-card-list': true,
       'assets-card-list': true,
@@ -138,6 +235,10 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
       this.lastLoadedUserId = '';
       this.eventRecordsLoadUserId = '';
       this.eventRecordsLoadPromise = null;
+      const activeUserId = this.appCtx.activeUserId().trim();
+      if (activeUserId) {
+        void this.loadEventRecords(activeUserId);
+      }
     });
 
     effect(() => {
@@ -169,11 +270,40 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
       const targetIndex = untracked(() => this.feedback.eventFeedbackIndex());
       this.queueMobileEventFeedbackViewportSync('auto', targetIndex);
     });
+
+    effect(() => {
+      const selectedEventId = this.feedback.selectedOrganizerEventFeedbackEventId();
+      const stackedMode = this.feedback.stackedPopupMode();
+      if (stackedMode !== 'organizerEventFeedback' || !selectedEventId) {
+        return;
+      }
+      this.organizerEventFeedbackCarouselIndex.set(0);
+    });
+
+    effect(() => {
+      const sections = this.organizerEventFeedbackCarouselSections();
+      const currentIndex = this.organizerEventFeedbackCarouselIndex();
+      if (sections.length === 0) {
+        if (currentIndex !== 0) {
+          this.organizerEventFeedbackCarouselIndex.set(0);
+        }
+        return;
+      }
+      if (currentIndex >= sections.length) {
+        this.organizerEventFeedbackCarouselIndex.set(sections.length - 1);
+      }
+    });
   }
 
   public get eventItems(): EventMenuItem[] {
-    return this.eventRecordsRef()
-      .filter(record => !record.isTrashed && !record.isInvitation)
+    return this.uniqueEventRecords()
+      .filter(record => record.type === 'events' && !record.isTrashed && !record.isInvitation && !record.isAdmin)
+      .map(record => this.toEventMenuItem(record));
+  }
+
+  public get ownedEventItems(): EventMenuItem[] {
+    return this.uniqueEventRecords()
+      .filter(record => !record.isTrashed && !record.isInvitation && !!record.isAdmin)
       .map(record => this.toEventMenuItem(record));
   }
 
@@ -198,7 +328,7 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
 
   public get eventDatesById(): Record<string, string> {
     const next: Record<string, string> = {};
-    for (const record of this.eventRecordsRef()) {
+    for (const record of this.uniqueEventRecords()) {
       if (!record.startAtIso) {
         continue;
       }
@@ -209,7 +339,7 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
 
   public get activityImageById(): Record<string, string> {
     const next: Record<string, string> = {};
-    for (const record of this.eventRecordsRef()) {
+    for (const record of this.uniqueEventRecords()) {
       if (!record.imageUrl?.trim()) {
         continue;
       }
@@ -232,12 +362,26 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
   }
 
   protected eventFeedbackInfoCard(item: AppTypes.EventFeedbackEventCard): InfoCardData {
+    if (item.isOwnEvent) {
+      return this.organizerEventFeedbackCardData({
+        eventId: item.eventId,
+        title: item.title,
+        subtitle: item.subtitle,
+        timeframe: item.timeframe,
+        imageUrl: item.imageUrl,
+        responseCount: item.pendingCards,
+        noteCount: 0
+      }, true);
+    }
+    const detailRows = item.isFeedbacked
+      ? [item.timeframe]
+      : [item.timeframe, this.feedback.eventFeedbackItemStatusLine(item)];
     return {
       rowId: item.eventId,
       title: item.title,
       imageUrl: item.imageUrl,
       metaRows: [item.subtitle],
-      detailRows: [item.timeframe, this.feedback.eventFeedbackItemStatusLine(item)],
+      detailRows,
       leadingIcon: {
         icon: this.eventFeedbackLeadingIcon(item)
       },
@@ -255,7 +399,11 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
     };
   }
 
-  protected startEventFeedbackFromCard(item: AppTypes.EventFeedbackEventCard): void {
+  protected onEventFeedbackCardPrimaryAction(item: AppTypes.EventFeedbackEventCard): void {
+    if (item.isOwnEvent) {
+      this.openOrganizerEventFeedback(item.eventId);
+      return;
+    }
     if (!this.feedback.isEventFeedbackStartAvailable(item)) {
       return;
     }
@@ -263,6 +411,9 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
   }
 
   protected onEventFeedbackCardMenuAction(item: AppTypes.EventFeedbackEventCard, event: InfoCardMenuActionEvent): void {
+    if (item.isOwnEvent) {
+      return;
+    }
     if (event.actionId === 'start') {
       this.feedback.startEventFeedback(item);
       return;
@@ -292,6 +443,74 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
       },
       clickable: false
     };
+  }
+
+  protected organizerEventFeedbackInfoCard(item: {
+    eventId: string;
+    title: string;
+    subtitle: string;
+    timeframe: string;
+    imageUrl: string;
+    responseCount: number;
+    noteCount: number;
+  }): InfoCardData {
+    return this.organizerEventFeedbackCardData(item, true);
+  }
+
+  protected organizerEventFeedbackDetailInfoCard(item: {
+    eventId: string;
+    title: string;
+    subtitle: string;
+    timeframe: string;
+    imageUrl: string;
+    responseCount: number;
+    noteCount: number;
+  }): InfoCardData {
+    return this.organizerEventFeedbackCardData(item, false);
+  }
+
+  private organizerEventFeedbackCardData(item: {
+    eventId: string;
+    title: string;
+    subtitle: string;
+    timeframe: string;
+    imageUrl: string;
+    responseCount: number;
+    noteCount: number;
+  }, showAction: boolean): InfoCardData {
+    return {
+      rowId: item.eventId,
+      title: item.title,
+      imageUrl: item.imageUrl,
+      metaRows: [item.subtitle],
+      detailRows: [item.timeframe],
+      leadingIcon: {
+        icon: 'stadium'
+      },
+      mediaEnd: showAction
+        ? {
+          variant: 'badge',
+          tone: 'default',
+          label: 'View Feedbacks',
+          pendingCount: item.responseCount,
+          interactive: true,
+          ariaLabel: `Open feedback details for ${item.title}`
+        }
+        : null,
+      clickable: false
+    };
+  }
+
+  protected openOrganizerEventFeedback(eventId: string): void {
+    this.feedback.openOrganizerEventFeedback(eventId);
+  }
+
+  protected selectOrganizerEventFeedbackCarousel(index: number): void {
+    const sections = this.organizerEventFeedbackCarouselSections();
+    if (index < 0 || index >= sections.length) {
+      return;
+    }
+    this.organizerEventFeedbackCarouselIndex.set(index);
   }
 
   protected onViewportResize(): void {
@@ -417,7 +636,7 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
     const requestVersion = ++this.loadRequestVersion;
     this.eventRecordsLoadUserId = normalizedUserId;
     this.eventRecordsLoadPromise = (async () => {
-      const records = await this.eventsService.queryEventItemsByUser(normalizedUserId);
+      const records = await this.eventsService.queryItemsByUser(normalizedUserId);
       if (requestVersion !== this.loadRequestVersion) {
         return;
       }
@@ -440,7 +659,31 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
     if (!normalizedEventId) {
       return null;
     }
-    return this.eventRecordsRef().find(record => record.id === normalizedEventId) ?? null;
+    return this.uniqueEventRecords().find(record => record.id === normalizedEventId) ?? null;
+  }
+
+  private uniqueEventRecords(): DemoEventRecord[] {
+    const byId = new Map<string, DemoEventRecord>();
+    for (const record of this.eventRecordsRef()) {
+      const recordId = record.id?.trim() ?? '';
+      if (!recordId) {
+        continue;
+      }
+      const current = byId.get(recordId);
+      if (!current || this.shouldPreferEventRecord(record, current)) {
+        byId.set(recordId, record);
+      }
+    }
+    return [...byId.values()];
+  }
+
+  private shouldPreferEventRecord(candidate: DemoEventRecord, current: DemoEventRecord): boolean {
+    const score = (record: DemoEventRecord) =>
+      (record.isAdmin ? 8 : 0)
+      + (record.type === 'hosting' ? 4 : 0)
+      + (!record.isInvitation ? 2 : 0)
+      + (!record.isTrashed ? 1 : 0);
+    return score(candidate) > score(current);
   }
 
   private collectEventRecordUserIds(records: readonly DemoEventRecord[]): string[] {
@@ -485,6 +728,9 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
   }
 
   private eventFeedbackLeadingIcon(item: AppTypes.EventFeedbackEventCard): string {
+    if (item.isOwnEvent) {
+      return 'stadium';
+    }
     if (item.isFeedbacked) {
       return 'task_alt';
     }
@@ -495,6 +741,9 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
   }
 
   private eventFeedbackStartBadgeLabel(item: AppTypes.EventFeedbackEventCard): string {
+    if (item.isOwnEvent) {
+      return 'View Feedbacks';
+    }
     if (item.isRemoved) {
       return 'Removed';
     }
@@ -505,6 +754,9 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
   }
 
   private eventFeedbackMenuActions(item: AppTypes.EventFeedbackEventCard): readonly InfoCardMenuAction[] {
+    if (item.isOwnEvent) {
+      return [];
+    }
     const actions: InfoCardMenuAction[] = [];
 
     if (this.feedback.isEventFeedbackStartAvailable(item)) {
@@ -539,6 +791,42 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
     });
 
     return actions;
+  }
+
+  private eventFeedbackGroupLabel(
+    item: AppTypes.EventFeedbackEventCard,
+    filter: AppTypes.EventFeedbackListFilter
+  ): string {
+    const timestampMs = this.eventFeedbackGroupTimestampMs(item, filter);
+    if (!timestampMs || Number.isNaN(timestampMs)) {
+      return 'No date';
+    }
+    return new Date(timestampMs).toLocaleDateString('en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  }
+
+  private eventFeedbackGroupTimestampMs(
+    item: AppTypes.EventFeedbackEventCard,
+    filter: AppTypes.EventFeedbackListFilter
+  ): number | null {
+    switch (filter) {
+      case 'feedbacked':
+        return this.validEventFeedbackTimestamp(item.feedbackedAtMs ?? item.startAtMs);
+      case 'removed':
+        return this.validEventFeedbackTimestamp(item.removedAtMs ?? item.feedbackedAtMs ?? item.startAtMs);
+      case 'own-events':
+      case 'pending':
+      default:
+        return this.validEventFeedbackTimestamp(item.startAtMs);
+    }
+  }
+
+  private validEventFeedbackTimestamp(value: number | null | undefined): number | null {
+    return Number.isFinite(value) && (value ?? 0) > 0 ? Number(value) : null;
   }
 
   private queueMobileEventFeedbackViewportSync(behavior: ScrollBehavior, targetIndex = this.feedback.eventFeedbackIndex()): void {
@@ -652,6 +940,8 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
 
   private eventFeedbackEmptyDescription(filter: AppTypes.EventFeedbackListFilter): string {
     switch (filter) {
+      case 'own-events':
+        return 'No own events yet. Hosted events with received feedback will show here.';
       case 'feedbacked':
         return 'No feedbacked events yet.';
       case 'removed':
@@ -675,6 +965,11 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
       startAt: record.startAtIso,
       endAt: record.endAtIso,
       distanceKm: record.distanceKm,
+      acceptedMembers: record.acceptedMembers,
+      pendingMembers: record.pendingMembers,
+      capacityTotal: record.capacityTotal,
+      acceptedMemberUserIds: [...record.acceptedMemberUserIds],
+      pendingMemberUserIds: [...record.pendingMemberUserIds],
       visibility: record.visibility,
       blindMode: record.blindMode,
       imageUrl: record.imageUrl,

@@ -570,7 +570,7 @@
               [presentation]="'fullscreen'"
               [state]="renderState"
               [context]="activitiesRateTemplateContext"
-              [cardRevision]="activitiesRateCardRevision"
+              [cardRevision]="activitiesRateCardRevisionForRow(row)"
             ></app-activities-rate-template>
           }
         </ng-template>
@@ -590,8 +590,8 @@
             [query]="activitiesSmartListQuery"
             (itemSelect)="onActivitiesSmartListItemSelect($event)"
             (stateChange)="onActivitiesSmartListStateChange($event)"
-            (wheel)="activitiesRates.closeEditorFromUserScroll()"
-            (touchmove)="activitiesRates.closeEditorFromUserScroll()"
+            (wheel)="activitiesRates.closeEditorFromUserScroll($event)"
+            (touchmove)="activitiesRates.closeEditorFromUserScroll($event)"
           ></app-smart-list>
           <ng-template #activitiesEventSmartListItemTemplate let-row let-groupLabel="groupLabel">
             <app-activities-event-template
@@ -616,7 +616,7 @@
               [row]="row"
               [groupLabel]="groupLabel"
               [context]="activitiesRateTemplateContext"
-              [cardRevision]="activitiesRateCardRevision"
+              [cardRevision]="activitiesRateCardRevisionForRow(row)"
               (badgeClick)="activitiesRates.openEditor(row)"
             ></app-activities-rate-template>
           </ng-template>

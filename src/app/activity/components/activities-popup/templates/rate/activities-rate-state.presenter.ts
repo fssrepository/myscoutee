@@ -11,13 +11,13 @@ export function matchesActivitiesRateFilter(
   if (item.mode !== modeKey || displayedDirection(item) !== directionKey) {
     return false;
   }
-  if (!socialBadgeEnabled || modeKey !== 'pair') {
+  if (modeKey !== 'pair') {
     return true;
   }
-  if (filter === 'pair-given') {
-    return item.socialContext === 'separated-friends';
+  if (!socialBadgeEnabled) {
+    return item.socialContext === 'separated-friends' || !item.socialContext;
   }
-  if (filter === 'pair-received') {
+  if (filter === 'pair-given' || filter === 'pair-received') {
     return item.socialContext === 'friends-in-common';
   }
   return true;
