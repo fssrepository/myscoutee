@@ -32,6 +32,7 @@ import {
 import { ActivitiesPopupStateService } from '../../services/activities-popup-state.service';
 import {
   InfoCardComponent,
+  type PageResult,
   SmartListComponent,
   TopicPickerPopupComponent,
   type InfoCardData,
@@ -116,6 +117,7 @@ export class EventExplorePopupComponent {
   private readonly eventExploreExitAnimationMs = 180;
   private readonly eventExploreJoinDelayMs = resolveCurrentRouteDelayMs('/activities/events', 1500);
   private lastAppliedActivityMembersUpdatedMs = 0;
+  private lastPendingCheckoutDraftSourceIds = new Set<string>();
 
   protected eventExploreSmartListQuery: Partial<ListQuery<EventExploreFeedFilters>> = {};
 
@@ -131,7 +133,7 @@ export class EventExplorePopupComponent {
   }
 
   protected readonly eventExploreLoadPage = (query: ListQuery<EventExploreFeedFilters>) =>
-    from(this.activitiesService.loadExplore(query));
+    from(this.loadEventExplorePage(query));
   protected readonly EventExploreBuilder = EventExploreBuilder;
 
   protected readonly eventExploreSmartListConfig: SmartListConfig<DemoEventRecord, EventExploreFeedFilters> = {
@@ -207,7 +209,18 @@ export class EventExplorePopupComponent {
 
     effect(() => {
       this.eventCheckoutDraftService.drafts();
+      const nextPendingDraftSourceIds = this.pendingCheckoutDraftSourceIds();
+      const hadPendingDraftRemoval = [...this.lastPendingCheckoutDraftSourceIds]
+        .some(sourceId => !nextPendingDraftSourceIds.has(sourceId));
+      const hasNewPendingDraft = [...nextPendingDraftSourceIds]
+        .some(sourceId => !this.lastPendingCheckoutDraftSourceIds.has(sourceId));
+      this.lastPendingCheckoutDraftSourceIds = nextPendingDraftSourceIds;
       if (this.isOpen) {
+        if (hadPendingDraftRemoval) {
+          this.reloadEventExploreSmartList();
+        } else if (hasNewPendingDraft) {
+          this.pruneVisibleTrackedEventExploreRecords();
+        }
         this.cdr.markForCheck();
       }
     });
@@ -619,6 +632,25 @@ export class EventExplorePopupComponent {
     this.cdr.markForCheck();
   }
 
+  private async loadEventExplorePage(
+    query: ListQuery<EventExploreFeedFilters>
+  ): Promise<PageResult<DemoEventRecord>> {
+    const page = await this.activitiesService.loadExplore(query);
+    const activeUserId = this.activeUserId.trim();
+    if (!activeUserId) {
+      return page;
+    }
+    const filteredItems = page.items.filter(record => !this.hasTrackedMembership(record, activeUserId));
+    if (filteredItems.length === page.items.length) {
+      return page;
+    }
+    return {
+      items: filteredItems,
+      total: Math.max(filteredItems.length, page.total - (page.items.length - filteredItems.length)),
+      nextCursor: page.nextCursor ?? null
+    };
+  }
+
   protected eventExploreInfoCard(record: DemoEventRecord, groupLabel: string | null): InfoCardData {
     return EventExploreBuilder.buildInfoCard(record, {
       groupLabel,
@@ -867,8 +899,28 @@ export class EventExplorePopupComponent {
     if (record.acceptedMemberUserIds.includes(userId) || record.pendingMemberUserIds.includes(userId)) {
       return true;
     }
+    if (this.hasPendingCheckoutDraft(record.id, userId)) {
+      return true;
+    }
     return this.activityMembersService.peekMembersByOwner(this.eventMembersOwner(record))
       .some(member => member.userId === userId);
+  }
+
+  private hasPendingCheckoutDraft(sourceId: string, userId: string): boolean {
+    return Boolean(this.eventCheckoutDraftService.read(userId, sourceId)?.checkoutSessionId?.trim());
+  }
+
+  private pendingCheckoutDraftSourceIds(): Set<string> {
+    const activeUserId = this.activeUserId.trim();
+    if (!activeUserId) {
+      return new Set<string>();
+    }
+    return new Set(
+      this.eventCheckoutDraftService.listByUser(activeUserId)
+        .filter(draft => Boolean(draft.checkoutSessionId?.trim()))
+        .map(draft => draft.sourceId.trim())
+        .filter(sourceId => sourceId.length > 0)
+    );
   }
 
   private eventExploreJoinDialogTitle(record: DemoEventRecord): string {
@@ -1034,6 +1086,24 @@ export class EventExplorePopupComponent {
     });
   }
 
+  private pruneVisibleTrackedEventExploreRecords(): void {
+    if (!this.eventExploreSmartList) {
+      return;
+    }
+    const activeUserId = this.activeUserId.trim();
+    if (!activeUserId) {
+      return;
+    }
+    const currentItems = [...this.eventExploreSmartList.itemsSnapshot()];
+    const nextItems = currentItems.filter(item => !this.hasTrackedMembership(item, activeUserId));
+    if (nextItems.length === currentItems.length) {
+      return;
+    }
+    this.eventExploreSmartList.replaceVisibleItems(nextItems, {
+      total: Math.max(nextItems.length, this.eventExploreSmartList.cursorState().total - (currentItems.length - nextItems.length))
+    });
+  }
+
   private isEventExploreRecordLeaving(record: DemoEventRecord): boolean {
     return this.leavingEventExploreRecordIds.has(record.id);
   }
@@ -1152,10 +1222,16 @@ export class EventExplorePopupComponent {
     record: DemoEventRecord,
     selection?: AppTypes.EventCheckoutSelection | null
   ): boolean {
-    if (selection?.bookingConfirmed === true || Boolean(selection?.paymentSessionId?.trim())) {
+    if (Boolean(selection?.paymentSessionId?.trim())) {
+      return false;
+    }
+    if (record.ticketing !== true) {
+      return false;
+    }
+    if (selection?.bookingConfirmed === true) {
       return true;
     }
-    return !selection && record.ticketing === true && !this.shouldUseCheckoutFlow(record);
+    return !selection && !this.shouldUseCheckoutFlow(record);
   }
 
   private buildActivitiesEventSyncPayload(

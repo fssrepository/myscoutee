@@ -292,11 +292,12 @@ export class DemoEventsService extends DemoRouteDelayService {
     } = {}
   ): Promise<DemoEventRecord | null> {
     await this.waitForRouteDelay(DemoEventsService.EVENTS_ROUTE);
+    const hasPendingCheckout = Boolean(options.paymentSessionId?.trim());
     const record = this.eventsRepository.requestJoin(
       userId,
       sourceId,
       options.slotSourceId ?? null,
-      options.bookingConfirmed === true || Boolean(options.paymentSessionId?.trim())
+      options.bookingConfirmed === true && !hasPendingCheckout
     );
     await this.memoryDb.flushToIndexedDb();
     return record;
