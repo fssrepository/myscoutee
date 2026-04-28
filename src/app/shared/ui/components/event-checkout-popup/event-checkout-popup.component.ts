@@ -522,7 +522,7 @@ export class EventCheckoutPopupComponent {
 
   protected shouldAwaitApprovalBeforePayment(): boolean {
     const dialog = this.dialog();
-    if (!dialog || dialog.mode !== 'join') {
+    if (!dialog) {
       return false;
     }
     return dialog.requiresApprovalBeforePayment && !dialog.approvalGranted && this.totalAmount() > 0;

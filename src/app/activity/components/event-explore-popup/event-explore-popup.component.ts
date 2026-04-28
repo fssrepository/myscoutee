@@ -146,6 +146,7 @@ export class EventExplorePopupComponent {
 
   protected readonly eventExploreSmartListConfig: SmartListConfig<DemoEventRecord, EventExploreFeedFilters> = {
     pageSize: 10,
+    initialPageSize: 20,
     loadingDelayMs: resolveCurrentRouteDelayMs('/activities/events'),
     defaultView: 'list',
     emptyLabel: 'No visible events right now.',

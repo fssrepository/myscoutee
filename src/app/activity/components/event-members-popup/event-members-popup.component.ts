@@ -507,7 +507,9 @@ export class EventMembersPopupComponent {
       return 'Approved';
     }
     if (entry.requestKind === 'join') {
-      return 'Waiting For Join Approval';
+      return entry.pendingSource === 'admin'
+        ? 'Waiting For Admin Approval'
+        : 'Waiting For Join Approval';
     }
     if (entry.pendingSource === 'admin') {
       return this.ownerRef?.ownerType === 'asset' ? 'Waiting For Admin Approval' : 'Invitation Pending';
@@ -849,7 +851,7 @@ export class EventMembersPopupComponent {
       || this.ownerRecord.isAdmin === true
     );
     this.canManageMembers = this.requestedCanManageMembers || ownerRecordCanManage || activeMemberCanManage;
-    this.canShowInviteButton = this.canManageMembers;
+    this.canShowInviteButton = this.canManageMembers || !!activeMember;
   }
 
   private applySummaryFromMembers(members: readonly AppTypes.ActivityMemberEntry[]): void {
