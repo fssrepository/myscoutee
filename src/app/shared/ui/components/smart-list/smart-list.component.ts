@@ -149,6 +149,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   @Output() readonly stateChange = new EventEmitter<SmartListStateChange<T, TFilters>>();
   @Output() readonly viewChange = new EventEmitter<string>();
   @Output() readonly itemSelect = new EventEmitter<SmartListItemSelectEvent<T, TFilters>>();
+  @Output() readonly surfaceScroll = new EventEmitter<Event>();
 
   protected items: T[] = [];
   protected groups: SmartListGroup<T>[] = [];
@@ -677,6 +678,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     }
     this.updateListSnapNearEndSuppression(target);
     this.updateScrollProgress(target);
+    this.surfaceScroll.emit(event);
     this.emitState();
     this.maybeLoadMore(target);
     this.scheduleListSnapSettle(target);
