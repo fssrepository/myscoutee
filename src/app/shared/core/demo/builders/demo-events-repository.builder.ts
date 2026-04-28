@@ -512,6 +512,7 @@ interface DemoEventSeedOverrides {
 }
 
 export class DemoEventsRepositoryBuilder {
+  private static readonly SEED_SCHEDULE_REFERENCE_DATE = new Date(2026, 2, 1, 0, 0, 0, 0);
 
   static buildSeedInvitationItemsByUser(): Record<string, InvitationMenuItem[]> {
     return Object.fromEntries(
@@ -929,9 +930,17 @@ export class DemoEventsRepositoryBuilder {
   > & {
     seed?: DemoEventSeedOverrides;
   }): DemoEventRecord {
+    const decorations = this.buildRecordDecorations(record);
     return {
       ...record,
-      ...this.buildRecordDecorations(record)
+      ...decorations,
+      timeframe: this.buildSeededTimeframeLabel({
+        hint: record.timeframe,
+        startAtIso: decorations.startAtIso,
+        endAtIso: decorations.endAtIso,
+        frequency: decorations.frequency,
+        slotTemplates: decorations.slotTemplates
+      })
     };
   }
 
@@ -947,6 +956,7 @@ export class DemoEventsRepositoryBuilder {
     | 'isInvitation'
     | 'published'
     | 'creatorUserId'
+    | 'timeframe'
   > & {
     seed?: DemoEventSeedOverrides;
   }): Omit<
@@ -969,8 +979,9 @@ export class DemoEventsRepositoryBuilder {
     | 'trashedAtIso'
   > {
     const creator = this.resolveCreatorUser(record.creatorUserId, record.title);
-    const startAtIso = record.seed?.startAt?.trim() || this.resolveStartAtIso(record);
-    const endAtIso = record.seed?.endAt?.trim() || this.resolveEndAtIso(record, startAtIso);
+    const frequency = record.seed?.frequency?.trim() || this.parseFrequencyFromTimeframe(record.timeframe ?? '');
+    const startAtIso = this.rebaseSeedDateTime(record.seed?.startAt) || this.resolveStartAtIso(record);
+    const endAtIso = this.rebaseSeedDateTime(record.seed?.endAt) || this.resolveEndAtIso(record, startAtIso);
     const distanceKm = Number.isFinite(record.seed?.distanceKm)
       ? Math.max(0, Number(record.seed?.distanceKm))
       : this.resolveDistanceKm(record);
@@ -996,10 +1007,11 @@ export class DemoEventsRepositoryBuilder {
       acceptedMembers,
       this.normalizeCount(record.seed?.capacityTotal) ?? capacityMax ?? acceptedMembers
     );
+    const slotTemplates = this.cloneRebasedSlotTemplates(record.seed?.slotTemplates) ?? [];
     const topics = this.normalizeTopics(record.seed?.topics).length > 0
       ? this.normalizeTopics(record.seed?.topics)
       : this.buildSeededTopics(record.id, record.title, record.subtitle);
-    const subEvents = this.cloneSubEvents(record.seed?.subEvents)
+    const subEvents = this.cloneRebasedSubEvents(record.seed?.subEvents)
       ?? this.buildSeededSubEvents(record, startAtIso, endAtIso, creator.id, capacityRange);
     const rating = Number.isFinite(record.seed?.rating)
       ? Number(record.seed?.rating)
@@ -1030,15 +1042,14 @@ export class DemoEventsRepositoryBuilder {
       capacityMax,
       capacityTotal,
       autoInviter: record.seed?.autoInviter ?? this.resolveAutoInviter(record),
-      frequency: record.seed?.frequency?.trim()
-        || this.parseFrequencyFromTimeframe((record as { timeframe?: string }).timeframe ?? startAtIso),
+      frequency,
       ticketing,
       pricing: record.seed?.pricing
-        ? PricingBuilder.clonePricingConfig(record.seed.pricing)
+        ? this.rebasePricingConfig(record.seed.pricing)
         : PricingBuilder.createSamplePricingConfig(ticketing ? 'hybrid' : 'fixed'),
       policies: this.clonePolicies(record.seed?.policies) ?? [],
       slotsEnabled: record.seed?.slotsEnabled === true,
-      slotTemplates: this.cloneSlotTemplates(record.seed?.slotTemplates) ?? [],
+      slotTemplates,
       parentEventId: null,
       slotTemplateId: null,
       generated: false,
@@ -1175,7 +1186,8 @@ export class DemoEventsRepositoryBuilder {
     const hourSpan = record.type === 'hosting' ? 5 : record.type === 'invitations' ? 6 : 10;
     const hour = hourBase + ((seed >> 3) % hourSpan);
     const minute = ((seed >> 7) % 4) * 15;
-    return new Date(Date.UTC(2026, monthIndex, day, hour, minute, 0)).toISOString();
+    return this.rebaseSeedDateTime(new Date(2026, monthIndex, day, hour, minute, 0, 0))
+      ?? AppUtils.toIsoDateTimeLocal(new Date(2026, monthIndex, day, hour, minute, 0, 0));
   }
 
   private static resolveEndAtIso(
@@ -1184,11 +1196,11 @@ export class DemoEventsRepositoryBuilder {
   ): string {
     const startAt = new Date(startAtIso);
     if (Number.isNaN(startAt.getTime())) {
-      return new Date().toISOString();
+      return AppUtils.toIsoDateTimeLocal(new Date());
     }
     const seed = AppUtils.hashText(`event-duration:${this.recordSeedKey(record)}`);
     const durationMinutes = 90 + ((seed % 5) * 30);
-    return new Date(startAt.getTime() + (durationMinutes * 60 * 1000)).toISOString();
+    return AppUtils.toIsoDateTimeLocal(new Date(startAt.getTime() + (durationMinutes * 60 * 1000)));
   }
 
   private static resolveDistanceKm(
@@ -1538,6 +1550,110 @@ export class DemoEventsRepositoryBuilder {
     return items.map(item => ({ ...item }));
   }
 
+  static rebaseSeedDateTime(value: string | Date | null | undefined): string | undefined {
+    const parsed = this.parseSeedDateTime(value);
+    if (!parsed) {
+      return undefined;
+    }
+    return AppUtils.toIsoDateTimeLocal(this.shiftSeedDate(parsed));
+  }
+
+  private static buildSeededTimeframeLabel(options: {
+    hint?: string | null;
+    startAtIso: string;
+    endAtIso: string;
+    frequency?: string | null;
+    slotTemplates?: readonly AppTypes.EventSlotTemplate[] | null;
+  }): string {
+    const startAt = this.parseSeedDateTime(options.startAtIso);
+    const endAt = this.parseSeedDateTime(options.endAtIso);
+    if (!startAt || !endAt) {
+      return `${options.hint ?? ''}`.trim() || 'Date unavailable';
+    }
+    const frequency = `${options.frequency ?? this.parseFrequencyFromTimeframe(options.hint ?? '')}`.trim();
+    const normalizedFrequency = frequency.toLowerCase();
+    const hasMultipleSlots = (options.slotTemplates?.length ?? 0) > 1;
+    const dateLabel = this.formatSeedMonthDay(startAt);
+    const startTimeLabel = this.formatSeedTime(startAt);
+    const endTimeLabel = this.formatSeedTime(endAt);
+
+    if (normalizedFrequency === 'weekly') {
+      const weekdayLabel = startAt.toLocaleDateString('en-US', { weekday: 'short' });
+      return hasMultipleSlots
+        ? `Every ${weekdayLabel} · ${this.formatSeedMonthDay(startAt)} - ${this.formatSeedMonthDay(endAt)}`
+        : `Every ${weekdayLabel} · ${startTimeLabel}`;
+    }
+
+    if (normalizedFrequency === 'bi-weekly' || normalizedFrequency === 'biweekly') {
+      const weekdayLabel = startAt.toLocaleDateString('en-US', { weekday: 'short' });
+      return `Every 2nd ${weekdayLabel} · ${startTimeLabel}`;
+    }
+
+    if (normalizedFrequency === 'monthly') {
+      return `Monthly · ${this.describeMonthlyOccurrence(startAt)} · ${startTimeLabel}`;
+    }
+
+    if (normalizedFrequency === 'daily') {
+      return `Daily · ${startTimeLabel}`;
+    }
+
+    if (normalizedFrequency === 'yearly' || normalizedFrequency === 'annual') {
+      return `Yearly · ${this.formatSeedMonthDay(startAt)}`;
+    }
+
+    if (hasMultipleSlots) {
+      return `${dateLabel} · multiple slots`;
+    }
+
+    if (endAt.getTime() - startAt.getTime() >= (24 * 60 * 60 * 1000)) {
+      return `${this.formatSeedMonthDay(startAt)} - ${this.formatSeedMonthDay(endAt)}`;
+    }
+
+    return `${dateLabel} · ${startTimeLabel} - ${endTimeLabel}`;
+  }
+
+  private static cloneRebasedSlotTemplates(
+    items: readonly AppTypes.EventSlotTemplate[] | undefined
+  ): AppTypes.EventSlotTemplate[] | undefined {
+    if (!Array.isArray(items)) {
+      return undefined;
+    }
+    return items.map(item => ({
+      ...item,
+      startAt: this.rebaseSeedDateTime(item.startAt) ?? item.startAt,
+      endAt: this.rebaseSeedDateTime(item.endAt) ?? item.endAt,
+      overrideDate: item.overrideDate ? (this.rebaseSeedDateTime(item.overrideDate) ?? item.overrideDate) : item.overrideDate
+    }));
+  }
+
+  private static cloneRebasedSubEvents(
+    items: readonly AppTypes.SubEventFormItem[] | undefined
+  ): AppTypes.SubEventFormItem[] | undefined {
+    if (!Array.isArray(items)) {
+      return undefined;
+    }
+    return items.map(item => ({
+      ...item,
+      startAt: this.rebaseSeedDateTime(item.startAt) ?? item.startAt,
+      endAt: this.rebaseSeedDateTime(item.endAt) ?? item.endAt,
+      location: typeof item.location === 'string' ? item.location : '',
+      pricing: item.pricing ? this.rebasePricingConfig(item.pricing) : undefined,
+      groups: Array.isArray(item.groups)
+        ? item.groups.map((group: AppTypes.SubEventGroupItem) => ({ ...group }))
+        : []
+    }));
+  }
+
+  private static rebasePricingConfig(value: AppTypes.PricingConfig): AppTypes.PricingConfig {
+    const pricing = PricingBuilder.clonePricingConfig(value);
+    pricing.slotOverrides = (pricing.slotOverrides ?? []).map(item => ({
+      ...item,
+      startAt: this.rebaseSeedDateTime(item.startAt) ?? item.startAt,
+      endAt: this.rebaseSeedDateTime(item.endAt) ?? item.endAt
+    }));
+    return pricing;
+  }
+
   private static cloneSlotTemplates(
     items: readonly AppTypes.EventSlotTemplate[] | undefined
   ): AppTypes.EventSlotTemplate[] | undefined {
@@ -1587,6 +1703,44 @@ export class DemoEventsRepositoryBuilder {
       return 'Daily';
     }
     return 'One-time';
+  }
+
+  private static parseSeedDateTime(value: string | Date | null | undefined): Date | null {
+    if (value instanceof Date) {
+      return Number.isNaN(value.getTime()) ? null : new Date(value);
+    }
+    if (!value?.trim()) {
+      return null;
+    }
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  private static shiftSeedDate(value: Date): Date {
+    return new Date(value.getTime() + this.resolveSeedScheduleShiftMs());
+  }
+
+  private static resolveSeedScheduleShiftMs(): number {
+    const today = new Date();
+    const rollingAnchor = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0, 0);
+    const dayMs = 24 * 60 * 60 * 1000;
+    const diffDays = Math.round((rollingAnchor.getTime() - this.SEED_SCHEDULE_REFERENCE_DATE.getTime()) / dayMs);
+    return Math.round(diffDays / 7) * 7 * dayMs;
+  }
+
+  private static formatSeedMonthDay(value: Date): string {
+    return value.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }
+
+  private static formatSeedTime(value: Date): string {
+    return value.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  }
+
+  private static describeMonthlyOccurrence(value: Date): string {
+    const weekday = value.toLocaleDateString('en-US', { weekday: 'short' });
+    const occurrence = Math.floor((value.getDate() - 1) / 7);
+    const labels = ['First', 'Second', 'Third', 'Fourth', 'Fifth'] as const;
+    return `${labels[occurrence] ?? 'Last'} ${weekday}`;
   }
 
   private static resolveLocationCoordinatesFromCreator(creator: DemoUser): LocationCoordinates {

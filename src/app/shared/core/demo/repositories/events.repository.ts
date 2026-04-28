@@ -901,7 +901,7 @@ export class DemoEventsRepository {
   }
 
   private isPastActivitiesRecord(record: DemoEventRecord): boolean {
-    return this.resolveActivitiesEndTimestamp(record) < Date.now();
+    return this.resolveActivitiesEndTimestamp(record) <= Date.now();
   }
 
   private matchesActivitiesSecondaryFilter(
@@ -1799,6 +1799,10 @@ export class DemoEventsRepository {
       if (!currentRecord) {
         return false;
       }
+      if (this.isGeneratedSlotRecord(currentRecord)) {
+        delete nextById[recordKey];
+        return false;
+      }
       if (seededRecordKeys.has(recordKey) || !this.isObsoleteSyntheticSeededRecord(currentRecord)) {
         return true;
       }
@@ -1849,6 +1853,8 @@ export class DemoEventsRepository {
     const shouldPreferSeededSyntheticIdentity = current.id.startsWith('ex-');
     const shouldPreferSeededVisibility = current.id.startsWith('ex-');
     const shouldPreferSeededTopics = current.id.startsWith('ex-');
+    const shouldPreferSeededSchedule = shouldPreferSeededSyntheticIdentity
+      || this.hasSeededScheduleChanged(current, seeded);
     const acceptedMemberUserIds = this.normalizeUserIds(current.acceptedMemberUserIds);
     const pendingMemberUserIds = this.normalizeUserIds(current.pendingMemberUserIds);
     const topics = this.normalizeTopics(current.topics ?? []);
@@ -1885,7 +1891,7 @@ export class DemoEventsRepository {
       avatar: shouldPreferSeededSyntheticIdentity ? seeded.avatar : current.avatar,
       title: shouldPreferSeededSyntheticIdentity ? seeded.title : current.title,
       subtitle: shouldPreferSeededSyntheticIdentity ? seeded.subtitle : current.subtitle,
-      timeframe: shouldPreferSeededSyntheticIdentity ? seeded.timeframe : current.timeframe,
+      timeframe: shouldPreferSeededSchedule ? seeded.timeframe : current.timeframe,
       creatorUserId,
       creatorName: creatorChanged || !current.creatorName?.trim() ? seeded.creatorName : current.creatorName,
       creatorInitials: creatorChanged || !current.creatorInitials?.trim() ? seeded.creatorInitials : current.creatorInitials,
@@ -1897,8 +1903,8 @@ export class DemoEventsRepository {
         ? seeded.visibility
         : this.normalizeVisibility(current.visibility, seeded.visibility),
       blindMode: this.normalizeBlindMode(current.blindMode, seeded.blindMode),
-      startAtIso: shouldPreferSeededSyntheticIdentity ? seeded.startAtIso : (current.startAtIso?.trim() || seeded.startAtIso),
-      endAtIso: shouldPreferSeededSyntheticIdentity ? seeded.endAtIso : (current.endAtIso?.trim() || seeded.endAtIso),
+      startAtIso: shouldPreferSeededSchedule ? seeded.startAtIso : (current.startAtIso?.trim() || seeded.startAtIso),
+      endAtIso: shouldPreferSeededSchedule ? seeded.endAtIso : (current.endAtIso?.trim() || seeded.endAtIso),
       distanceKm: Number.isFinite(current.distanceKm) ? current.distanceKm : seeded.distanceKm,
       imageUrl: current.imageUrl?.trim() || seeded.imageUrl,
       sourceLink: current.sourceLink?.trim() || seeded.sourceLink,
@@ -1908,25 +1914,25 @@ export class DemoEventsRepository {
       capacityMin: this.normalizeCount(current.capacityMin) ?? seeded.capacityMin,
       capacityMax: this.normalizeCount(current.capacityMax) ?? seeded.capacityMax,
       capacityTotal: this.normalizeCount(current.capacityTotal) ?? seeded.capacityTotal,
-      autoInviter: shouldPreferSeededSyntheticIdentity
+      autoInviter: shouldPreferSeededSchedule
         ? seeded.autoInviter
         : (typeof current.autoInviter === 'boolean' ? current.autoInviter : seeded.autoInviter),
-      frequency: shouldPreferSeededSyntheticIdentity ? seeded.frequency : (current.frequency?.trim() || seeded.frequency),
-      ticketing: shouldPreferSeededSyntheticIdentity
+      frequency: shouldPreferSeededSchedule ? seeded.frequency : (current.frequency?.trim() || seeded.frequency),
+      ticketing: shouldPreferSeededSchedule
         ? seeded.ticketing
         : (typeof current.ticketing === 'boolean' ? current.ticketing : seeded.ticketing),
-      pricing: shouldPreferSeededSyntheticIdentity
+      pricing: shouldPreferSeededSchedule
         ? (seeded.pricing ? PricingBuilder.clonePricingConfig(seeded.pricing) : null)
         : (current.pricing
             ? PricingBuilder.clonePricingConfig(current.pricing)
             : (seeded.pricing ? PricingBuilder.clonePricingConfig(seeded.pricing) : null)),
-      policies: shouldPreferSeededSyntheticIdentity
+      policies: shouldPreferSeededSchedule
         ? EventEditorBuilder.cloneEventEditorPolicies(seeded.policies ?? [])
         : EventEditorBuilder.cloneEventEditorPolicies(current.policies ?? seeded.policies ?? []),
-      slotsEnabled: shouldPreferSeededSyntheticIdentity
+      slotsEnabled: shouldPreferSeededSchedule
         ? seeded.slotsEnabled
         : (typeof current.slotsEnabled === 'boolean' ? current.slotsEnabled : seeded.slotsEnabled),
-      slotTemplates: shouldPreferSeededSyntheticIdentity
+      slotTemplates: shouldPreferSeededSchedule
         ? EventEditorBuilder.cloneEventEditorSlotTemplates(seeded.slotTemplates ?? [])
         : (current.slotTemplates ?? []).length > 0
         ? EventEditorBuilder.cloneEventEditorSlotTemplates(current.slotTemplates ?? [])
@@ -1949,20 +1955,39 @@ export class DemoEventsRepository {
       topics: shouldPreferSeededTopics
         ? [...seeded.topics]
         : (topics.length > 0 ? topics : [...seeded.topics]),
-      subEvents: shouldPreferSeededSyntheticIdentity
+      subEvents: shouldPreferSeededSchedule
         ? this.cloneSubEvents(seeded.subEvents)
         : (this.cloneSubEvents(current.subEvents) ?? this.cloneSubEvents(seeded.subEvents)),
-      subEventsDisplayMode: current.subEventsDisplayMode
+      subEventsDisplayMode: shouldPreferSeededSchedule
+        ? (seeded.subEventsDisplayMode
+          ?? (this.cloneSubEvents(seeded.subEvents)?.length
+            ? DemoEventSeedBuilder.inferredSubEventsDisplayMode(this.cloneSubEvents(seeded.subEvents)!)
+            : 'Casual'))
+        : (current.subEventsDisplayMode
         ?? seeded.subEventsDisplayMode
         ?? (this.cloneSubEvents(current.subEvents)?.length
           ? DemoEventSeedBuilder.inferredSubEventsDisplayMode(this.cloneSubEvents(current.subEvents)!)
-          : 'Casual'),
+          : 'Casual')),
       rating: Number.isFinite(current.rating) ? Number(current.rating) : seeded.rating,
       relevance: Number.isFinite(current.relevance) ? Number(current.relevance) : seeded.relevance,
       affinity: Number.isFinite(current.affinity)
         ? Math.max(0, Math.trunc(Number(current.affinity)))
         : seeded.affinity
     };
+  }
+
+  private hasSeededScheduleChanged(current: DemoEventRecord, seeded: DemoEventRecord): boolean {
+    return current.timeframe !== seeded.timeframe
+      || current.startAtIso !== seeded.startAtIso
+      || current.endAtIso !== seeded.endAtIso
+      || `${current.frequency ?? ''}` !== `${seeded.frequency ?? ''}`
+      || current.ticketing !== seeded.ticketing
+      || current.autoInviter !== seeded.autoInviter
+      || current.slotsEnabled !== seeded.slotsEnabled
+      || JSON.stringify(current.slotTemplates ?? []) !== JSON.stringify(seeded.slotTemplates ?? [])
+      || JSON.stringify(current.subEvents ?? []) !== JSON.stringify(seeded.subEvents ?? [])
+      || JSON.stringify(current.policies ?? []) !== JSON.stringify(seeded.policies ?? [])
+      || JSON.stringify(current.pricing ?? null) !== JSON.stringify(seeded.pricing ?? null);
   }
 
   private shouldPreferSeededSyntheticMembershipState(
