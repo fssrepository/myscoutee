@@ -338,7 +338,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
         return 'none';
       }
       if (this.activitiesPrimaryFilter === 'rates') {
-        return 'mandatory';
+        return this.activitiesRates.isEditorDockVisible() ? 'none' : 'mandatory';
       }
       return 'mandatory';
     },
