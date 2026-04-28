@@ -116,48 +116,56 @@
         </div>
         <div class="impressions-shortcuts">
           <button
-            #hostImpressionsButton
-            class="impression-shortcut-btn impression-shortcut-host-btn"
-            [ngClass]="getHostTierToneClass(user.hostTier)"
+            #impressionsButton
+            class="impression-dual-launcher"
             type="button"
             [disabled]="!isOnline()"
-            (click)="openHostImpressions($event)"
-            aria-label="Open host impressions"
-            [title]="user.hostTier"
+            (click)="openImpressions($event)"
+            aria-label="Open impressions"
+            title="Impressions"
             >
-            <span class="navigator-action-ripple" matRipple [matRippleTrigger]="hostImpressionsButton" aria-hidden="true"></span>
-            @if (user.impressionChangeFlags.host) {
-              <span
-                class="card-badge menu-shortcut-badge menu-shortcut-badge-empty"
-              ></span>
+            <span class="navigator-action-ripple" matRipple [matRippleTrigger]="impressionsButton" aria-hidden="true"></span>
+            @if (impressionShortcutBadgeCount(user) > 0) {
+              <span class="card-badge menu-shortcut-badge impression-shortcut-badge">{{ impressionShortcutBadgeCount(user) }}</span>
             }
-            <mat-icon [class]="getHostTierColorClass(user.hostTier)">{{ getHostTierIcon(user.hostTier) }}</mat-icon>
-            <span class="impression-shortcut-label">
-              <span class="impression-shortcut-main">{{ user.hostTier.replace(' Host', '') }}</span>
-              <span class="impression-shortcut-sub">Host</span>
+            <span class="impression-dual-shortcut" aria-hidden="true">
+              <span
+                class="impression-dual-segment impression-dual-segment-host"
+                [ngClass]="getHostTierToneClass(user.hostTier)"
+                >
+                <mat-icon [class]="getHostTierColorClass(user.hostTier)">{{ getHostTierIcon(user.hostTier) }}</mat-icon>
+                <span class="impression-shortcut-label">
+                  <span class="impression-shortcut-main">{{ user.hostTier.replace(' Host', '') }}</span>
+                  <span class="impression-shortcut-sub">Host</span>
+                </span>
+              </span>
+              <span
+                class="impression-dual-segment impression-dual-segment-member"
+                [ngClass]="getTraitToneClass(user.traitLabel)"
+                >
+                <mat-icon [class]="getTraitColorClass(user.traitLabel)">{{ getTraitIcon(user.traitLabel) }}</mat-icon>
+                <span class="impression-shortcut-label">
+                  <span class="impression-shortcut-main">{{ user.memberImpressionTitle.replace(' Attendee', '') }}</span>
+                  <span class="impression-shortcut-sub">Attendee</span>
+                </span>
+              </span>
             </span>
           </button>
           <button
-            #memberImpressionsButton
-            class="impression-shortcut-btn impression-shortcut-member-btn"
-            [ngClass]="getTraitToneClass(user.traitLabel)"
+            #feedbackEventButton
+            class="feedback-shortcut-btn feedback-shortcut-event feedback-shortcut-compact"
             type="button"
             [disabled]="!isOnline()"
-            (click)="openMemberImpressions($event)"
-            aria-label="Open member impressions"
-            [title]="user.memberImpressionTitle"
+            (click)="openEventFeedbackPopup($event)"
+            aria-label="Open feedback"
+            title="Feedback"
             >
-            <span class="navigator-action-ripple" matRipple [matRippleTrigger]="memberImpressionsButton" aria-hidden="true"></span>
-            @if (user.impressionChangeFlags.member) {
-              <span
-                class="card-badge menu-shortcut-badge menu-shortcut-badge-empty"
-              ></span>
+            <span class="navigator-action-ripple" matRipple [matRippleTrigger]="feedbackEventButton" aria-hidden="true"></span>
+            <mat-icon>rate_review</mat-icon>
+            <span class="feedback-shortcut-label">Feedback</span>
+            @if (user.activities.feedback > 0) {
+              <span class="card-badge menu-shortcut-badge">{{ user.activities.feedback | counterBadge }}</span>
             }
-            <mat-icon [class]="getTraitColorClass(user.traitLabel)">{{ getTraitIcon(user.traitLabel) }}</mat-icon>
-            <span class="impression-shortcut-label">
-              <span class="impression-shortcut-main">{{ user.memberImpressionTitle.replace(' Attendee', '') }}</span>
-              <span class="impression-shortcut-sub">Attendee</span>
-            </span>
           </button>
         </div>
         <div class="social-proof-section-head section-social activities-header">
@@ -244,28 +252,6 @@
             <span class="navigator-action-ripple" matRipple [matRippleTrigger]="contactsButton" aria-hidden="true"></span>
             <mat-icon>contacts</mat-icon>
             <span class="asset-shortcut-label">Contacts</span>
-          </button>
-        </div>
-        <div class="social-proof-section-head section-feedback activities-header impressions-menu-header">
-          <span class="section-tag">
-            <mat-icon>rate_review</mat-icon>
-            <span>Feedback</span>
-          </span>
-          <span class="section-line"></span>
-        </div>
-        <div class="feedback-shortcuts">
-          <button #feedbackEventButton class="feedback-shortcut-btn feedback-shortcut-event" type="button" [disabled]="!isOnline()" (click)="openEventFeedbackPopup($event)" aria-label="Open event feedback" title="Event Feedback">
-            <span class="navigator-action-ripple" matRipple [matRippleTrigger]="feedbackEventButton" aria-hidden="true"></span>
-            <mat-icon>rate_review</mat-icon>
-            <span class="feedback-shortcut-label">Event Feedback</span>
-            @if (user.activities.feedback > 0) {
-              <span class="card-badge menu-shortcut-badge">{{ user.activities.feedback | counterBadge }}</span>
-            }
-          </button>
-          <button #feedbackReportButton class="feedback-shortcut-btn feedback-shortcut-report" type="button" [disabled]="!isOnline()" (click)="openReportUserFromFeedback($event)" aria-label="Open report user" title="Report User">
-            <span class="navigator-action-ripple" matRipple [matRippleTrigger]="feedbackReportButton" aria-hidden="true"></span>
-            <mat-icon>flag</mat-icon>
-            <span class="feedback-shortcut-label">Report User</span>
           </button>
         </div>
       </div>

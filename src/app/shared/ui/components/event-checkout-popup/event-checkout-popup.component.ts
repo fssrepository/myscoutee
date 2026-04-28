@@ -13,6 +13,7 @@ import { AppUtils } from '../../../app-utils';
 import { PricingBuilder } from '../../../core/base/builders';
 import type * as AppTypes from '../../../core/base/models';
 import { EventsService } from '../../../core/base/services/events.service';
+import { resolveCurrentDemoDelayMs } from '../../../core/base/services/route-delay.service';
 import type { DemoEventRecord } from '../../../core/demo/models/events.model';
 import { EventCheckoutDraftService } from '../../services/event-checkout-draft.service';
 import { EventCheckoutDialogService, type EventCheckoutDialogState } from '../../services/event-checkout-dialog.service';
@@ -126,6 +127,9 @@ export class EventCheckoutPopupComponent {
     }
     if (dialog.mode === 'invitation') {
       return this.totalAmount() > 0 ? 'Accept Invitation & Pay' : 'Accept Invitation';
+    }
+    if (this.shouldAwaitApprovalBeforePayment()) {
+      return 'Review Join Request';
     }
     return this.totalAmount() > 0 ? 'Review Booking & Pay' : 'Join Event';
   }
@@ -480,6 +484,9 @@ export class EventCheckoutPopupComponent {
     if (this.paymentStep) {
       return 'Buy';
     }
+    if (this.shouldAwaitApprovalBeforePayment()) {
+      return dialog.confirmLabel;
+    }
     if (this.totalAmount() > 0) {
       return 'Checkout';
     }
@@ -490,6 +497,9 @@ export class EventCheckoutPopupComponent {
     const dialog = this.dialog();
     if (!dialog) {
       return 'Working...';
+    }
+    if (this.shouldAwaitApprovalBeforePayment()) {
+      return dialog.busyConfirmLabel;
     }
     if (this.totalAmount() > 0) {
       return this.paymentStep ? 'Buying...' : 'Checking out...';
@@ -510,10 +520,35 @@ export class EventCheckoutPopupComponent {
     return true;
   }
 
+  protected shouldAwaitApprovalBeforePayment(): boolean {
+    const dialog = this.dialog();
+    if (!dialog) {
+      return false;
+    }
+    return dialog.requiresApprovalBeforePayment && !dialog.approvalGranted && this.totalAmount() > 0;
+  }
+
   protected async submit(event?: Event): Promise<void> {
     event?.stopPropagation();
     const dialog = this.dialog();
     if (!dialog || !this.canContinue()) {
+      return;
+    }
+    if (!this.paymentStep && this.shouldAwaitApprovalBeforePayment()) {
+      const startedAt = Date.now();
+      this.busy = true;
+      this.errorMessage = '';
+      try {
+        await Promise.resolve(dialog.onSubmit(this.buildSelection(null, false)));
+        this.persistCheckoutDraft();
+        await this.ensureMinimumBusyDuration(startedAt);
+        this.dialogService.close();
+      } catch (error) {
+        await this.ensureMinimumBusyDuration(startedAt);
+        this.errorMessage = this.resolveErrorMessage(error, dialog.failureMessage);
+      } finally {
+        this.busy = false;
+      }
       return;
     }
     if (!this.paymentStep && this.totalAmount() > 0) {
@@ -631,7 +666,10 @@ export class EventCheckoutPopupComponent {
     this.errorMessage = '';
   }
 
-  private buildSelection(paymentSessionId: string | null): AppTypes.EventCheckoutSelection {
+  private buildSelection(
+    paymentSessionId: string | null,
+    bookingConfirmed = true
+  ): AppTypes.EventCheckoutSelection {
     const dialog = this.dialog();
     if (!dialog) {
       throw new Error('Checkout session is not available.');
@@ -645,7 +683,8 @@ export class EventCheckoutPopupComponent {
       lineItems: this.lineItems(),
       totalAmount: this.totalAmount(),
       currency: this.currency(),
-      paymentSessionId
+      paymentSessionId,
+      bookingConfirmed
     };
   }
 
@@ -950,7 +989,8 @@ export class EventCheckoutPopupComponent {
 
   private async ensureMinimumBusyDuration(startedAt: number): Promise<void> {
     const elapsed = Date.now() - startedAt;
-    const remaining = Math.max(0, EventCheckoutPopupComponent.MIN_BUSY_DURATION_MS - elapsed);
+    const minimumBusyDurationMs = resolveCurrentDemoDelayMs(EventCheckoutPopupComponent.MIN_BUSY_DURATION_MS);
+    const remaining = Math.max(0, minimumBusyDurationMs - elapsed);
     if (remaining > 0) {
       await new Promise(resolve => window.setTimeout(resolve, remaining));
     }

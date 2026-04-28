@@ -1,11 +1,12 @@
 
-import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
 
 import type { RateMenuItem } from '../../../../../shared/core/base/interfaces/activity-feed.interface';
 import type { DemoUser } from '../../../../../shared/core/base/interfaces/user.interface';
 import type * as AppTypes from '../../../../../shared/core/base/models';
 import {
   PairCardComponent,
+  type RateCardPerson,
   type RatingStarBarConfig,
   SingleCardComponent,
   type CardBadgeConfig,
@@ -42,6 +43,8 @@ import {
 
 export interface ActivitiesRateTemplateContext {
   getUsers: () => readonly DemoUser[];
+  getRateCardUsers: () => readonly RateCardPerson[];
+  getRateCardUserById: (userId: string) => RateCardPerson | null;
   getActiveUserGender: () => 'woman' | 'man';
   getDisplayedDirection: (item: RateMenuItem) => RateMenuItem['direction'];
   isSelectedActivityRateRow: (row: AppTypes.ActivityListRow) => boolean;
@@ -61,62 +64,78 @@ export interface ActivitiesRateTemplateContext {
   templateUrl: './activities-rate-template.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class ActivitiesRateTemplateComponent {
+export class ActivitiesRateTemplateComponent implements OnChanges {
   @Input() row: AppTypes.ActivityListRow | null = null;
   @Input() groupLabel: string | null = null;
   @Input() presentation: SingleCardData['presentation'] | PairCardData['presentation'] = 'list';
   @Input() state: SingleCardData['state'] | PairCardData['state'] = 'default';
   @Input() context: ActivitiesRateTemplateContext | null = null;
-  @Input() cardRevision = 0;
+  @Input() cardRevision: string | number = 0;
 
   @Output() readonly badgeClick = new EventEmitter<void>();
 
-  protected get pairCard(): PairCardData | null {
-    const row = this.row;
-    const context = this.context;
-    if (!row || !context || !isActivitiesPairRateRow(row)) {
-      return null;
+  protected pairCard: PairCardData | null = null;
+  protected singleCard: SingleCardData | null = null;
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (
+      changes['row']
+      || changes['groupLabel']
+      || changes['presentation']
+      || changes['state']
+      || changes['context']
+      || changes['cardRevision']
+    ) {
+      this.rebuildCards();
     }
-    return buildActivitiesPairRateCard(row, {
-      groupLabel: this.groupLabel,
-      presentation: this.presentation,
-      state: this.state,
-      displayedDirection: context.getDisplayedDirection(row.source as RateMenuItem),
-      users: context.getUsers(),
-      activeUserGender: context.getActiveUserGender(),
-      fullscreenSplitEnabled: !context.isFullscreenPaginationAnimating(),
-      badge: this.activityRateBadgeConfig(row, context, {
-        layout: this.presentation === 'fullscreen' ? 'pair-overlap' : 'between',
-        interactive: this.presentation !== 'fullscreen',
-        forceActive: this.presentation === 'fullscreen'
-      })
-    });
   }
 
-  protected get singleCard(): SingleCardData | null {
+  protected onBadgeClick(): void {
+    this.badgeClick.emit();
+  }
+
+  private rebuildCards(): void {
     const row = this.row;
     const context = this.context;
-    if (!row || !context || isActivitiesPairRateRow(row)) {
-      return null;
+    if (!row || !context) {
+      this.pairCard = null;
+      this.singleCard = null;
+      return;
     }
-    return buildActivitiesSingleRateCard(row, {
+
+    const sharedOptions = {
       groupLabel: this.groupLabel,
       presentation: this.presentation,
       state: this.state,
       displayedDirection: context.getDisplayedDirection(row.source as RateMenuItem),
-      users: context.getUsers(),
+      availableUsers: context.getRateCardUsers(),
+      resolveUserById: (userId: string) => context.getRateCardUserById(userId),
       activeUserGender: context.getActiveUserGender(),
-      fullscreenSplitEnabled: !context.isFullscreenPaginationAnimating(),
+      fullscreenSplitEnabled: !context.isFullscreenPaginationAnimating()
+    } as const;
+
+    if (isActivitiesPairRateRow(row)) {
+      this.pairCard = buildActivitiesPairRateCard(row, {
+        ...sharedOptions,
+        badge: this.activityRateBadgeConfig(row, context, {
+          layout: this.presentation === 'fullscreen' ? 'pair-overlap' : 'between',
+          interactive: this.presentation !== 'fullscreen',
+          forceActive: this.presentation === 'fullscreen'
+        })
+      });
+      this.singleCard = null;
+      return;
+    }
+
+    this.singleCard = buildActivitiesSingleRateCard(row, {
+      ...sharedOptions,
       badge: this.activityRateBadgeConfig(row, context, {
         layout: 'floating',
         interactive: this.presentation !== 'fullscreen',
         forceActive: this.presentation === 'fullscreen'
       })
     });
-  }
-
-  protected onBadgeClick(): void {
-    this.badgeClick.emit();
+    this.pairCard = null;
   }
 
   private isPairReceivedRateRow(row: AppTypes.ActivityListRow, context: ActivitiesRateTemplateContext): boolean {
@@ -236,7 +255,7 @@ interface ActivitiesRatesControllerDeps {
   setSelectedRateIdInContext: (value: string | null) => void;
   setFullscreenModeInContext: (value: boolean) => void;
   recordActivityRate: (item: RateMenuItem, score: number, direction: RateMenuItem['direction']) => void;
-  refreshRateCards: () => void;
+  refreshRateCards: (rowId?: string | null) => void;
   markForCheck: () => void;
   runAfterNextPaint: (task: () => void) => void;
   runAfterRender: (task: () => void) => void;
@@ -244,9 +263,17 @@ interface ActivitiesRatesControllerDeps {
 
 export class ActivitiesRatesController {
   private static readonly SCORE_SELECTION_DOCK_GUARD_MS = 220;
+  private static readonly EDITOR_DOCK_VISIBILITY_HOLD_MS = 120;
+  private ratingBarBlinkTimeout: ReturnType<typeof setTimeout> | null = null;
+  private isRatingBarBlinking = false;
+  private cachedRateCardUsersSource: readonly DemoUser[] | null = null;
+  private cachedRateCardUsers: readonly RateCardPerson[] = [];
+  private cachedRateCardUsersById = new Map<string, RateCardPerson>();
 
   readonly templateContext: ActivitiesRateTemplateContext = {
     getUsers: () => this.deps.getUsers(),
+    getRateCardUsers: () => this.rateCardUsers(),
+    getRateCardUserById: userId => this.rateCardUserById(userId),
     getActiveUserGender: () => this.deps.getActiveUserGender(),
     getDisplayedDirection: item => this.displayedDirection(item),
     isSelectedActivityRateRow: row => this.isSelectedRow(row),
@@ -262,6 +289,8 @@ export class ActivitiesRatesController {
   private readonly rateEditorPresenter: ActivitiesRateEditorPresenter;
   private selectedListRateRow: AppTypes.ActivityListRow | null = null;
   private suppressDockCloseUntilMs = 0;
+  private dockVisibilityHoldUntilMs = 0;
+  private dockVisibilityHoldTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(private readonly deps: ActivitiesRatesControllerDeps) {
     this.rateEditorPresenter = new ActivitiesRateEditorPresenter({
@@ -280,7 +309,11 @@ export class ActivitiesRatesController {
   }
 
   ratingBarConfig(): RatingStarBarConfig {
-    return this.rateEditorPresenter.barConfig();
+    return {
+      ...this.rateEditorPresenter.barConfig(),
+      blinkOnSelect: false,
+      animation: this.isRatingBarBlinking ? 'blink' : 'default'
+    };
   }
 
   ratingBarValue(): number {
@@ -296,6 +329,7 @@ export class ActivitiesRatesController {
       return;
     }
     this.cancelEditorCloseTransition();
+    this.cancelDockVisibilityHold();
     const wasOpen = this.isEditorOpen();
     if (this.selectedRateId() === row.id) {
       if (this.isSuppressingDockClose()) {
@@ -320,7 +354,11 @@ export class ActivitiesRatesController {
     });
   }
 
-  closeEditorFromUserScroll(): void {
+  closeEditorFromUserScroll(event?: Event): void {
+    const target = event?.target;
+    if (target instanceof Element && target.closest('[data-rating-star-bar-dock]')) {
+      return;
+    }
     if (!this.isEditorOpen()) {
       return;
     }
@@ -335,7 +373,7 @@ export class ActivitiesRatesController {
       return this.currentFullscreenRow() !== null;
     }
     return this.deps.getActivitiesPrimaryFilter() === 'rates'
-      && (!!this.selectedRateId() || this.isEditorClosing());
+      && (!!this.selectedRateId() || this.isEditorClosing() || this.isHoldingDockVisibility());
   }
 
   shouldRenderEditorDock(): boolean {
@@ -403,16 +441,17 @@ export class ActivitiesRatesController {
     if (nextDirection) {
       this.pendingActivityRateDirectionOverrideById()[rateItem.id] = nextDirection;
     }
-    this.refreshRateCards();
+    this.refreshRateCards(row.id);
     this.deps.recordActivityRate(
       rateItem,
       normalized,
       nextDirection ?? this.displayedDirection(rateItem)
     );
+    this.triggerRatingBarBlink();
     this.triggerBlinks(row.id);
   }
 
-  clearEditorState(preserveScrollPosition = false): void {
+  clearEditorState(preserveScrollPosition = true): void {
     if (this.isFullscreenModeActive()) {
       return;
     }
@@ -443,6 +482,7 @@ export class ActivitiesRatesController {
     this.deps.setEditorCloseTimer(setTimeout(() => {
       this.deps.setEditorCloseTimer(null);
       this.deps.setEditorClosing(false);
+      this.holdDockVisibilityAfterClose();
       this.setSelectedRateId(null);
       this.selectedListRateRow = null;
       this.deps.setLastIndicatorPulseRowId(null);
@@ -624,11 +664,35 @@ export class ActivitiesRatesController {
   private holdDockOpenForScoreSelection(): void {
     this.suppressDockCloseUntilMs = Date.now() + ActivitiesRatesController.SCORE_SELECTION_DOCK_GUARD_MS;
     this.cancelEditorCloseTransition();
+    this.cancelDockVisibilityHold();
     this.deps.setEditorClosing(false);
   }
 
   private isSuppressingDockClose(): boolean {
     return Date.now() < this.suppressDockCloseUntilMs;
+  }
+
+  private holdDockVisibilityAfterClose(): void {
+    this.cancelDockVisibilityHold();
+    this.dockVisibilityHoldUntilMs = Date.now() + ActivitiesRatesController.EDITOR_DOCK_VISIBILITY_HOLD_MS;
+    this.dockVisibilityHoldTimer = setTimeout(() => {
+      this.dockVisibilityHoldTimer = null;
+      this.dockVisibilityHoldUntilMs = 0;
+      this.deps.markForCheck();
+    }, ActivitiesRatesController.EDITOR_DOCK_VISIBILITY_HOLD_MS);
+  }
+
+  private cancelDockVisibilityHold(): void {
+    this.dockVisibilityHoldUntilMs = 0;
+    if (!this.dockVisibilityHoldTimer) {
+      return;
+    }
+    clearTimeout(this.dockVisibilityHoldTimer);
+    this.dockVisibilityHoldTimer = null;
+  }
+
+  private isHoldingDockVisibility(): boolean {
+    return Date.now() < this.dockVisibilityHoldUntilMs;
   }
 
   private cancelEditorLiftAnimation(): void {
@@ -714,6 +778,7 @@ export class ActivitiesRatesController {
 
   private resetEditorStateForFullscreenEntry(): void {
     this.cancelEditorCloseTransition();
+    this.cancelDockVisibilityHold();
     this.cancelEditorLiftAnimation();
     this.deps.setEditorClosing(false);
     this.deps.setEditorOpenScrollTop(null);
@@ -764,10 +829,6 @@ export class ActivitiesRatesController {
     this.refreshRateCards();
   }
 
-  private refreshRateCards(): void {
-    this.deps.refreshRateCards();
-  }
-
   private activityRateDraftById(): Record<string, number> {
     return this.deps.getActivityRateDraftById();
   }
@@ -775,4 +836,81 @@ export class ActivitiesRatesController {
   private pendingActivityRateDirectionOverrideById(): Partial<Record<string, RateMenuItem['direction']>> {
     return this.deps.getPendingActivityRateDirectionOverrideById();
   }
+
+  private refreshRateCards(rowId?: string | null): void {
+    this.deps.refreshRateCards(rowId);
+  }
+
+  private triggerRatingBarBlink(): void {
+    if (this.ratingBarBlinkTimeout) {
+      clearTimeout(this.ratingBarBlinkTimeout);
+      this.ratingBarBlinkTimeout = null;
+    }
+    this.isRatingBarBlinking = false;
+    this.deps.markForCheck();
+    const startBlink = () => {
+      this.isRatingBarBlinking = true;
+      this.deps.markForCheck();
+      this.ratingBarBlinkTimeout = setTimeout(() => {
+        this.isRatingBarBlinking = false;
+        this.ratingBarBlinkTimeout = null;
+        this.deps.markForCheck();
+      }, 420);
+    };
+    if (typeof globalThis.requestAnimationFrame === 'function') {
+      globalThis.requestAnimationFrame(() => startBlink());
+      return;
+    }
+    setTimeout(() => startBlink(), 0);
+  }
+
+  private rateCardUsers(): readonly RateCardPerson[] {
+    this.ensureRateCardUsersCache();
+    return this.cachedRateCardUsers;
+  }
+
+  private rateCardUserById(userId: string): RateCardPerson | null {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return null;
+    }
+    this.ensureRateCardUsersCache();
+    return this.cachedRateCardUsersById.get(normalizedUserId) ?? null;
+  }
+
+  private ensureRateCardUsersCache(): void {
+    const users = this.deps.getUsers();
+    if (this.cachedRateCardUsersSource === users) {
+      return;
+    }
+    const nextUsers: RateCardPerson[] = [];
+    const nextUsersById = new Map<string, RateCardPerson>();
+    for (const user of users) {
+      const rateCardUser = toActivitiesRateCardPerson(user);
+      if (!rateCardUser) {
+        continue;
+      }
+      nextUsers.push(rateCardUser);
+      nextUsersById.set(rateCardUser.id, rateCardUser);
+    }
+    this.cachedRateCardUsersSource = users;
+    this.cachedRateCardUsers = nextUsers;
+    this.cachedRateCardUsersById = nextUsersById;
+  }
+}
+
+function toActivitiesRateCardPerson(
+  user: AppTypes.ActivityRateDisplayUser | DemoUser | null | undefined
+): RateCardPerson | null {
+  if (!user) {
+    return null;
+  }
+
+  return {
+    id: user.id,
+    name: user.name,
+    age: user.age,
+    city: user.city,
+    gender: user.gender
+  };
 }

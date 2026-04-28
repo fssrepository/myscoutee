@@ -73,10 +73,11 @@
                 class="event-feedback-info-card-shell"
                 [class.is-feedbacked]="item.isFeedbacked"
                 [class.is-removed]="item.isRemoved"
+                [class.is-own-event]="item.isOwnEvent"
                 >
                 <app-info-card
                   [card]="eventFeedbackInfoCard(item)"
-                  (mediaEndClick)="startEventFeedbackFromCard(item)"
+                  (mediaEndClick)="onEventFeedbackCardPrimaryAction(item)"
                   (menuAction)="onEventFeedbackCardMenuAction(item, $event)"
                 ></app-info-card>
               </div>
@@ -93,13 +94,18 @@
       <div class="app-popup-backdrop" (click)="feedback.closeStackedPopup()"></div>
       <div
         class="app-popup-panel"
-        [class.popup-panel-event-feedback]="feedback.stackedPopupMode() === 'eventFeedback'"
+        [class.popup-panel-event-feedback]="feedback.stackedPopupMode() === 'eventFeedback' || feedback.stackedPopupMode() === 'organizerEventFeedback'"
         (click)="$event.stopPropagation()"
         >
         <div class="popup-header">
           @if (feedback.stackedPopupMode() === 'eventFeedback') {
             <div class="popup-title popup-title-feedback">
               <h2>Event Feedback</h2>
+              <p class="popup-subtitle-activities popup-subtitle-feedback-event">{{ feedback.eventFeedbackCurrentEventTitle() }}</p>
+            </div>
+          } @else if (feedback.stackedPopupMode() === 'organizerEventFeedback') {
+            <div class="popup-title popup-title-feedback">
+              <h2>Own Event Feedback</h2>
               <p class="popup-subtitle-activities popup-subtitle-feedback-event">{{ feedback.eventFeedbackCurrentEventTitle() }}</p>
             </div>
           } @else {
@@ -325,6 +331,136 @@
               }
             </article>
           </ng-template>
+          @if (feedback.stackedPopupMode() === 'organizerEventFeedback') {
+            <div class="support-popup event-feedback-organizer-popup">
+              @if (feedback.selectedOrganizerEventFeedbackItem(); as item) {
+                <article class="editor-list-card support-card event-feedback-organizer-shell">
+                  <div class="event-feedback-organizer-overview-grid">
+                    <div class="event-feedback-info-card-shell event-feedback-organizer-info-card-shell">
+                      <app-info-card
+                        class="event-feedback-organizer-hero-card"
+                        [card]="organizerEventFeedbackDetailInfoCard(item)"
+                      ></app-info-card>
+                    </div>
+
+                    @if (organizerEventFeedbackCarouselSections().length > 0) {
+                      <section class="event-feedback-organizer-carousel-panel">
+                        <div class="event-feedback-organizer-carousel">
+                          <div class="event-feedback-organizer-carousel-pill-strip">
+                            @for (section of organizerEventFeedbackCarouselSections(); track section.key; let index = $index) {
+                              <button
+                                type="button"
+                                class="event-feedback-organizer-carousel-pill"
+                                [ngClass]="[section.toneClass, organizerEventFeedbackCarouselIndex() === index ? 'is-active' : '']"
+                                (click)="selectOrganizerEventFeedbackCarousel(index)"
+                                [attr.aria-label]="'Open organizer feedback section ' + section.label"
+                                >
+                                <span class="event-feedback-organizer-carousel-pill-head">
+                                  <span class="event-feedback-organizer-carousel-pill-label">{{ section.label }}</span>
+                                  <span
+                                    class="event-feedback-organizer-carousel-pill-badge"
+                                    [attr.title]="section.topCount + ' of ' + section.responseCount + ' responses selected this'"
+                                    >
+                                    {{ section.topCount }}
+                                  </span>
+                                </span>
+                              </button>
+                            }
+                          </div>
+
+                          @if (organizerEventFeedbackActiveCarouselSection(); as section) {
+                            <div class="event-feedback-organizer-carousel-card" [ngClass]="section.toneClass">
+                              <div class="event-feedback-organizer-carousel-card-head">
+                                <div class="event-feedback-organizer-carousel-card-title">
+                                  <span class="event-feedback-organizer-carousel-card-icon"><mat-icon>{{ section.icon }}</mat-icon></span>
+                                  <div>
+                                    <strong>{{ section.topLabel }}</strong>
+                                    <p>{{ section.subtitle }}</p>
+                                  </div>
+                                </div>
+                              </div>
+                              <div class="event-feedback-organizer-carousel-card-bar">
+                                <span [style.width.%]="section.progressPercent"></span>
+                              </div>
+                              <div class="event-feedback-organizer-carousel-card-meta">
+                                <span>
+                                  {{ section.topCount }} of {{ section.responseCount }}
+                                  {{ section.responseCount === 1 ? 'response' : 'responses' }}
+                                </span>
+                                <span>
+                                  {{ section.optionCount }}
+                                  {{ section.optionCount === 1 ? 'option' : 'options' }}
+                                </span>
+                              </div>
+                              <div class="event-feedback-organizer-carousel-card-highlights">
+                                @for (stat of section.items; track stat.key) {
+                                  <span class="event-feedback-organizer-carousel-chip">
+                                    <mat-icon>{{ stat.icon }}</mat-icon>
+                                    <span>{{ stat.label }}</span>
+                                    <strong>{{ stat.count }}</strong>
+                                  </span>
+                                }
+                              </div>
+                            </div>
+                          }
+                        </div>
+                      </section>
+                    }
+                  </div>
+
+                  <section class="event-feedback-organizer-messages">
+                    @if (feedback.organizerEventFeedbackMessageGroups().length > 0) {
+                      @for (group of feedback.organizerEventFeedbackMessageGroups(); track group.dayKey) {
+                        <div class="event-feedback-organizer-group-marker">{{ group.label }}</div>
+                        <div class="event-feedback-organizer-message-list">
+                          @for (message of group.items; track message.id) {
+                            <article class="event-feedback-organizer-message-card">
+                              <div class="event-feedback-organizer-message-head">
+                                <div
+                                  class="event-feedback-organizer-message-avatar"
+                                  [ngClass]="'user-color-' + message.viewerGender"
+                                  >
+                                  @if (message.viewerImageUrl) {
+                                    <img [src]="message.viewerImageUrl" [alt]="message.viewerName" />
+                                  } @else {
+                                    <span>{{ message.viewerInitials }}</span>
+                                  }
+                                </div>
+                                <div class="event-feedback-organizer-message-meta">
+                                  <h5>{{ message.viewerName }}</h5>
+                                  <p>{{ message.timeLabel || 'Recent feedback' }}</p>
+                                </div>
+                              </div>
+                              <div class="event-feedback-organizer-message-chips">
+                                @if (message.overallLabel) {
+                                  <span class="event-feedback-organizer-message-chip">{{ message.overallLabel }}</span>
+                                }
+                                @if (message.improveLabel) {
+                                  <span class="event-feedback-organizer-message-chip">{{ message.improveLabel }}</span>
+                                }
+                                @for (traitLabel of message.traitLabels; track traitLabel) {
+                                  <span class="event-feedback-organizer-message-chip event-feedback-organizer-message-chip-trait">{{ traitLabel }}</span>
+                                }
+                              </div>
+                              @if (message.organizerNote) {
+                                <p class="event-feedback-organizer-message-note">{{ message.organizerNote }}</p>
+                              }
+                            </article>
+                          }
+                        </div>
+                      }
+                    } @else {
+                      <p class="event-feedback-organizer-empty-copy">No feedback has been submitted for this event yet.</p>
+                    }
+                  </section>
+                </article>
+              } @else {
+                <article class="editor-list-card support-card event-feedback-empty-card">
+                  <p>Choose an own event to review its feedback.</p>
+                </article>
+              }
+            </div>
+          }
           @if (feedback.stackedPopupMode() === 'eventFeedbackNote') {
             <div class="support-popup">
               @if (!feedback.eventFeedbackNoteSubmitted()) {

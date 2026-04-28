@@ -505,51 +505,6 @@
   gap: 0.28rem;
 }
 
-.navigator-impressions-popup .personality-trait-carousel-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.65rem;
-}
-
-.navigator-impressions-popup .personality-trait-nav {
-  display: inline-flex;
-  width: 2rem;
-  height: 2rem;
-  padding: 0;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid rgba(115, 126, 154, 0.24);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.86);
-  color: #44516e;
-  cursor: pointer;
-  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
-}
-
-.navigator-impressions-popup .personality-trait-nav .mat-icon {
-  display: block;
-  width: 1.1rem;
-  height: 1.1rem;
-  margin: 0;
-  font-size: 1.1rem;
-  line-height: 1.1rem;
-}
-
-.navigator-impressions-popup .personality-trait-nav:hover {
-  transform: translateY(-1px);
-  border-color: rgba(89, 108, 153, 0.34);
-  box-shadow: 0 6px 14px rgba(37, 45, 68, 0.08);
-}
-
-.navigator-impressions-popup .personality-trait-position {
-  color: #5e6987;
-  font-size: 0.74rem;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
 .navigator-impressions-popup .personality-trait-carousel-updated .personality-trait-card,
 .navigator-impressions-popup .personality-trait-carousel-updated .personality-trait-pill {
   animation: navigator-popup-impressions-chip-pulse 0.4s ease;

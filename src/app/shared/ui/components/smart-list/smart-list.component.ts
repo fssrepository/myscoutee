@@ -191,6 +191,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   private loadingStartedAtMs = 0;
   private loadingInterval: ReturnType<typeof setInterval> | null = null;
   private loadingCompleteTimer: ReturnType<typeof setTimeout> | null = null;
+  private suppressVisibleLoadingProgress = false;
   private listSnapSettleTimer: ReturnType<typeof setTimeout> | null = null;
   private listSnapSettleGuardTimer: ReturnType<typeof setTimeout> | null = null;
   private suppressListSnapSettle = false;
@@ -221,12 +222,16 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   private hostedFullscreenTransitionTimer: ReturnType<typeof setTimeout> | null = null;
 
   private suspendSnapReactivation = false;
+  private deferSnapReactivationUntilScroll = false;
+  private lastResolvedBaseSnapMode: 'none' | 'proximity' | 'mandatory' | null = null;
 
-  protected onSurfaceInteraction(): void {
-    if (this.suspendSnapReactivation) {
-      this.suspendSnapReactivation = false;
-      this.updateListSnapNearEndSuppression();
+  private releaseDeferredSnapOnScroll(): void {
+    if (!this.suspendSnapReactivation && !this.deferSnapReactivationUntilScroll) {
+      return;
     }
+    this.suspendSnapReactivation = false;
+    this.deferSnapReactivationUntilScroll = false;
+    this.cdr.markForCheck();
   }
 
   // Add this near your other private properties
@@ -237,8 +242,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     // 1. Mark that the user is touching the screen
     this.isTouchingSurface = true;
     this.cdr.markForCheck();
-    this.onSurfaceInteraction();
-    
+
     // 2. Kill any pending timers that were ABOUT to fire
     this.clearListSnapSettleTimers();
     this.clearCalendarSettleTimers();
@@ -504,7 +508,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   }
 
   public isLoadingActive(): boolean {
-    return this.loading || this.loadingProgress > 0;
+    return !this.suppressVisibleLoadingProgress && (this.loading || this.loadingProgress > 0);
   }
 
   public isFullscreenPaginationAnimating(): boolean {
@@ -649,7 +653,27 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   }
 
   protected resolvedSnapMode(): 'none' | 'proximity' | 'mandatory' {
-    return this.resolveConfigValue(this.config.snapMode, 'none');
+    const snapMode = this.resolveConfigValue(this.config.snapMode, 'none');
+    this.trackSnapModeTransition(snapMode);
+    return this.deferSnapReactivationUntilScroll ? 'none' : snapMode;
+  }
+
+  private trackSnapModeTransition(snapMode: 'none' | 'proximity' | 'mandatory'): void {
+    if (this.currentViewMode !== 'list') {
+      this.lastResolvedBaseSnapMode = snapMode;
+      this.deferSnapReactivationUntilScroll = false;
+      return;
+    }
+
+    const previousSnapMode = this.lastResolvedBaseSnapMode;
+    if (previousSnapMode !== null && previousSnapMode === 'none' && snapMode !== 'none') {
+      this.deferSnapReactivationUntilScroll = true;
+      this.clearListSnapSettleTimer();
+    }
+    if (snapMode === 'none') {
+      this.deferSnapReactivationUntilScroll = false;
+    }
+    this.lastResolvedBaseSnapMode = snapMode;
   }
 
   protected resolvedScrollPaddingTop(): string | null {
@@ -669,6 +693,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
   protected onListScroll(event: Event): void {
     const target = event.target as HTMLDivElement;
+    this.releaseDeferredSnapOnScroll();
     if (this.shouldShowStickyHeader()) {
       this.updateStickyLabel(target.scrollTop);
     } else {
@@ -1019,8 +1044,11 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     this.suppressCalendarEdgeSettle = false;
     this.clearLoadingAnimation();
     this.suspendSnapReactivation = false;
+    this.deferSnapReactivationUntilScroll = false;
+    this.lastResolvedBaseSnapMode = null;
     this.loading = false;
     this.loadSequence += 1;
+    this.suppressVisibleLoadingProgress = false;
     this.items = [];
     this.groups = [];
     this.calendarMonthPages = [];
@@ -1085,8 +1113,16 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
     const query = this.loadQuery(this.pageIndex, isInitial);
     const sequence = ++this.loadSequence;
+    const shouldSuppressVisibleLoadingProgress = !isInitial
+      && this.currentViewMode === 'list'
+      && this.resolvedPresentation() === 'fullscreen'
+      && this.items.length > 0
+      && !this.resolveConfigValue(this.config.showBackgroundLoadingProgress, false);
+    this.suppressVisibleLoadingProgress = shouldSuppressVisibleLoadingProgress;
     this.loading = true;
-    this.startLoadingAnimation();
+    if (!shouldSuppressVisibleLoadingProgress) {
+      this.startLoadingAnimation();
+    }
     this.emitState();
 
     const shouldUseManualPrependRestore = !isInitial
@@ -1141,6 +1177,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
         return;
       }
       this.loading = false;
+      this.suppressVisibleLoadingProgress = false;
       this.awaitScrollReset = true;
       this.awaitScrollResetBaselineTop = null;
       this.awaitScrollResetBaselineReverseDistance = null;
@@ -2104,6 +2141,11 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   private maybeAutoloadToFillViewport(scrollElement?: HTMLDivElement | null): void {
     const target = scrollElement ?? this.scrollHostRef?.nativeElement;
     if (!target || this.currentViewMode !== 'list' || this.loading || !this.hasMore) {
+      return;
+    }
+    if (this.shouldRenderHostedFullscreenOverlay()) {
+      // Hosted fullscreen pagination preloads from cursor position instead of scroll height.
+      // The occluded backing list can be heightless, which would otherwise eagerly drain all pages on mount.
       return;
     }
     const maxVerticalScroll = Math.max(0, target.scrollHeight - target.clientHeight);
@@ -3131,7 +3173,7 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
   }
 
   private mobilePageSizeCapForView(viewKey: string | null = this.currentViewKey): number | null {
-    if (typeof window === 'undefined' || !window.matchMedia('(max-width: 900px)').matches) {
+    if (typeof window === 'undefined' || !window.matchMedia('(max-width: 760px)').matches) {
       return null;
     }
     if (this.resolveViewMode(viewKey) !== 'list') {

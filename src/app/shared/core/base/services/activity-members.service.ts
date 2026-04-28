@@ -27,7 +27,7 @@ export class ActivityMembersService extends BaseRouteModeService {
   }
 
   peekMembersByOwner(owner: ActivityMemberOwnerRef): AppTypes.ActivityMemberEntry[] {
-    return this.activityMembersService.peekMembersByOwner(owner);
+    return this.presentMembers(this.activityMembersService.peekMembersByOwner(owner));
   }
 
   peekMembersByOwnerId(ownerId: string): AppTypes.ActivityMemberEntry[] {
@@ -35,11 +35,11 @@ export class ActivityMembersService extends BaseRouteModeService {
     if (!owner) {
       return [];
     }
-    return this.activityMembersService.peekMembersByOwner(owner);
+    return this.peekMembersByOwner(owner);
   }
 
   async queryMembersByOwner(owner: ActivityMemberOwnerRef): Promise<AppTypes.ActivityMemberEntry[]> {
-    return this.activityMembersService.queryMembersByOwner(owner);
+    return this.presentMembers(await this.activityMembersService.queryMembersByOwner(owner));
   }
 
   async queryMembersByOwnerId(ownerId: string): Promise<AppTypes.ActivityMemberEntry[]> {
@@ -48,7 +48,7 @@ export class ActivityMembersService extends BaseRouteModeService {
       return [];
     }
     const owner = this.peekOwnerRefById(normalizedOwnerId) ?? this.ownerRef('event', normalizedOwnerId);
-    return this.activityMembersService.queryMembersByOwner(owner);
+    return this.queryMembersByOwner(owner);
   }
 
   peekSummaryByOwner(owner: ActivityMemberOwnerRef): ActivityMembersSummary | null {
@@ -86,7 +86,11 @@ export class ActivityMembersService extends BaseRouteModeService {
     members: readonly AppTypes.ActivityMemberEntry[],
     capacityTotal?: number | null
   ): Promise<void> {
-    await this.activityMembersService.replaceMembersByOwner(owner, members, capacityTotal);
+    await this.activityMembersService.replaceMembersByOwner(
+      owner,
+      this.prepareMembersForPersistence(members),
+      capacityTotal
+    );
     this.emitActivityMembersSyncForOwner(owner);
   }
 
@@ -156,5 +160,45 @@ export class ActivityMembersService extends BaseRouteModeService {
       ownerType,
       ownerId
     };
+  }
+
+  private presentMembers(entries: readonly AppTypes.ActivityMemberEntry[]): AppTypes.ActivityMemberEntry[] {
+    const activeUserId = this.appCtx.activeUserId().trim();
+    return entries.map(entry => {
+      const invitedByUserId = `${entry.invitedByUserId ?? ''}`.trim() || null;
+      return {
+        ...entry,
+        invitedByUserId,
+        invitedByActiveUser: this.isInviteOwnedByActiveUser(entry, activeUserId, invitedByUserId)
+      };
+    });
+  }
+
+  private prepareMembersForPersistence(
+    entries: readonly AppTypes.ActivityMemberEntry[]
+  ): AppTypes.ActivityMemberEntry[] {
+    const activeUserId = this.appCtx.activeUserId().trim();
+    return entries.map(entry => {
+      const isPendingInvite = entry.status === 'pending' && entry.requestKind === 'invite';
+      const invitedByUserId = isPendingInvite
+        ? (`${entry.invitedByUserId ?? ''}`.trim() || (entry.invitedByActiveUser && activeUserId ? activeUserId : null))
+        : null;
+      return {
+        ...entry,
+        invitedByUserId,
+        invitedByActiveUser: this.isInviteOwnedByActiveUser(entry, activeUserId, invitedByUserId)
+      };
+    });
+  }
+
+  private isInviteOwnedByActiveUser(
+    entry: AppTypes.ActivityMemberEntry,
+    activeUserId: string,
+    invitedByUserId: string | null
+  ): boolean {
+    if (entry.status !== 'pending' || entry.requestKind !== 'invite') {
+      return false;
+    }
+    return Boolean(invitedByUserId) && invitedByUserId === activeUserId;
   }
 }

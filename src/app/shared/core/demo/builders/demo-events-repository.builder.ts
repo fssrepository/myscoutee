@@ -159,12 +159,72 @@ function buildCheckoutDemoSubEvents(options: {
 
 const SEED_INVITATIONS_BY_USER: Record<string, InvitationMenuItem[]> = {
   u1: [
-    { id: 'i1', avatar: 'LP', inviter: 'Lina', description: 'Jazz Rooftop Session', when: 'Sat Feb 21, 8:00 PM', unread: 1 },
-    { id: 'i2', avatar: 'NH', inviter: 'Noah', description: 'Open Padel Pairs', when: 'Sun Feb 22, 3:00 PM', unread: 1 },
-    { id: 'i3', avatar: 'SY', inviter: 'System', description: 'Chat: Last-minute Ski Carpool', when: 'Sat Feb 21, 9:15 AM', unread: 2 }
+    {
+      id: 'i1',
+      avatar: 'LP',
+      inviter: 'Lina',
+      description: 'Jazz Rooftop Session',
+      when: 'Sat Feb 21, 8:00 PM',
+      unread: 1,
+      acceptedMemberUserIds: ['u5', 'u18', 'u19'],
+      pendingMemberUserIds: ['u1', 'u20'],
+      capacityTotal: 6,
+      startAt: '2026-03-10T20:00:00',
+      endAt: '2026-03-10T22:00:00'
+    },
+    {
+      id: 'i2',
+      avatar: 'NH',
+      inviter: 'Noah',
+      description: 'Open Padel Pairs',
+      when: 'Sun Feb 22, 3:00 PM',
+      unread: 1,
+      acceptedMemberUserIds: ['u7', 'u21', 'u22'],
+      pendingMemberUserIds: ['u1', 'u23'],
+      capacityTotal: 6,
+      startAt: '2026-03-11T15:00:00',
+      endAt: '2026-03-11T17:30:00'
+    },
+    {
+      id: 'i3',
+      avatar: 'SY',
+      inviter: 'System',
+      description: 'Chat: Last-minute Ski Carpool',
+      when: 'Sat Feb 21, 9:15 AM',
+      unread: 2,
+      acceptedMemberUserIds: ['u11', 'u24'],
+      pendingMemberUserIds: ['u1', 'u25'],
+      capacityTotal: 5,
+      startAt: '2026-03-12T09:15:00',
+      endAt: '2026-03-12T11:15:00'
+    }
   ],
-  u2: [{ id: 'i4', avatar: 'MS', inviter: 'Maya', description: 'Foodie Crawl Team', when: 'Sun Feb 22, 6:30 PM', unread: 1 }],
-  u3: [{ id: 'i5', avatar: 'LH', inviter: 'Luca', description: 'Urban Photo Sprint', when: 'Mon Feb 23, 6:00 PM', unread: 1 }]
+  u2: [{
+    id: 'i4',
+    avatar: 'MS',
+    inviter: 'Maya',
+    description: 'Foodie Crawl Team',
+    when: 'Sun Feb 22, 6:30 PM',
+    unread: 1,
+    acceptedMemberUserIds: ['u4', 'u26', 'u27'],
+    pendingMemberUserIds: ['u2', 'u28'],
+    capacityTotal: 6,
+    startAt: '2026-03-13T18:30:00',
+    endAt: '2026-03-13T21:00:00'
+  }],
+  u3: [{
+    id: 'i5',
+    avatar: 'LH',
+    inviter: 'Luca',
+    description: 'Urban Photo Sprint',
+    when: 'Mon Feb 23, 6:00 PM',
+    unread: 1,
+    acceptedMemberUserIds: ['u10', 'u29', 'u30'],
+    pendingMemberUserIds: ['u3', 'u31'],
+    capacityTotal: 6,
+    startAt: '2026-03-14T18:00:00',
+    endAt: '2026-03-14T20:00:00'
+  }]
 };
 
 const SEED_EVENTS_BY_USER: Record<string, EventMenuItem[]> = {
@@ -186,7 +246,9 @@ const SEED_EVENTS_BY_USER: Record<string, EventMenuItem[]> = {
       timeframe: 'Mar 8 · 10:00 AM - 7:00 PM',
       activity: 1,
       isAdmin: false,
-      creatorUserId: 'u10'
+      creatorUserId: 'u10',
+      acceptedMemberUserIds: ['u10', 'u14', 'u15'],
+      pendingMemberUserIds: ['u1', 'u16']
     },
     {
       id: 'e3',
@@ -196,7 +258,9 @@ const SEED_EVENTS_BY_USER: Record<string, EventMenuItem[]> = {
       timeframe: 'Mar 12 · 7:30 PM - 11:30 PM',
       activity: 3,
       isAdmin: false,
-      creatorUserId: 'u3'
+      creatorUserId: 'u3',
+      startAt: '2026-02-21T19:30:00',
+      endAt: '2026-02-21T23:30:00'
     },
     {
       id: 'e6',
@@ -206,7 +270,9 @@ const SEED_EVENTS_BY_USER: Record<string, EventMenuItem[]> = {
       timeframe: 'Mar 14 · 5:00 PM - 8:30 PM',
       activity: 2,
       isAdmin: false,
-      creatorUserId: 'u4'
+      creatorUserId: 'u4',
+      startAt: '2026-02-23T17:00:00',
+      endAt: '2026-02-23T20:30:00'
     },
     {
       id: 'e7',
@@ -215,7 +281,9 @@ const SEED_EVENTS_BY_USER: Record<string, EventMenuItem[]> = {
       shortDescription: 'Small-circle meetup with curated intro prompts.',
       timeframe: 'Mar 16 · 9:30 AM - 11:30 AM',
       activity: 1,
-      isAdmin: true
+      isAdmin: true,
+      startAt: '2026-02-26T09:30:00',
+      endAt: '2026-02-26T11:30:00'
     },
     {
       id: 'e8',
@@ -225,7 +293,9 @@ const SEED_EVENTS_BY_USER: Record<string, EventMenuItem[]> = {
       timeframe: 'Feb 27 · 11:15 AM - 1:00 PM',
       activity: 2,
       isAdmin: false,
-      creatorUserId: 'u12'
+      creatorUserId: 'u12',
+      startAt: '2026-02-25T11:15:00',
+      endAt: '2026-02-25T13:00:00'
     },
     {
       id: 'e9',
@@ -235,7 +305,9 @@ const SEED_EVENTS_BY_USER: Record<string, EventMenuItem[]> = {
       timeframe: 'Feb 27 · 1:30 PM - 3:30 PM',
       activity: 3,
       isAdmin: false,
-      creatorUserId: 'u2'
+      creatorUserId: 'u2',
+      startAt: '2026-02-27T13:30:00',
+      endAt: '2026-02-27T15:30:00'
     },
     {
       id: 'e10',
@@ -274,7 +346,22 @@ const SEED_EVENTS_BY_USER: Record<string, EventMenuItem[]> = {
       shortDescription: 'Easy pace run and social brunch with optional pair mode.',
       timeframe: 'Feb 28 · 8:00 AM - 12:00 PM',
       activity: 2,
-      isAdmin: true
+      isAdmin: false,
+      creatorUserId: 'u13',
+      startAt: '2026-02-24T08:00:00',
+      endAt: '2026-02-24T12:00:00'
+    },
+    {
+      id: 'e13',
+      avatar: 'SY',
+      title: 'Afterwork Tasting Circle',
+      shortDescription: 'Host review pending while the guest list settles for tonight.',
+      timeframe: 'Mar 11 · 6:30 PM - 9:30 PM',
+      activity: 2,
+      isAdmin: false,
+      creatorUserId: 'u8',
+      acceptedMemberUserIds: ['u8', 'u35', 'u36'],
+      pendingMemberUserIds: ['u2', 'u37']
     },
     {
       id: 'checkout-paid-slots',
@@ -341,7 +428,21 @@ const SEED_EVENTS_BY_USER: Record<string, EventMenuItem[]> = {
       timeframe: 'Mar 3 · 6:00 PM - 10:00 PM',
       activity: 2,
       isAdmin: false,
-      creatorUserId: 'u11'
+      creatorUserId: 'u11',
+      startAt: '2026-02-25T18:00:00',
+      endAt: '2026-02-25T22:00:00'
+    },
+    {
+      id: 'e14',
+      avatar: 'SY',
+      title: 'Moonlight Boardwalk Mixer',
+      shortDescription: 'Approval queue is still open while the organizer finalizes the pair rotations.',
+      timeframe: 'Mar 13 · 7:15 PM - 10:15 PM',
+      activity: 2,
+      isAdmin: false,
+      creatorUserId: 'u7',
+      acceptedMemberUserIds: ['u7', 'u38', 'u39'],
+      pendingMemberUserIds: ['u3']
     },
     {
       id: 'checkout-paid-policy',
@@ -496,6 +597,7 @@ interface DemoEventSeedOverrides {
   locationCoordinates?: LocationCoordinates;
   capacityMin?: number | null;
   capacityMax?: number | null;
+  capacityTotal?: number | null;
   acceptedMemberUserIds?: string[];
   pendingMemberUserIds?: string[];
   topics?: string[];
@@ -511,10 +613,16 @@ interface DemoEventSeedOverrides {
 }
 
 export class DemoEventsRepositoryBuilder {
+  private static readonly SEED_SCHEDULE_REFERENCE_DATE = new Date(2026, 2, 1, 0, 0, 0, 0);
 
   static buildSeedInvitationItemsByUser(): Record<string, InvitationMenuItem[]> {
     return Object.fromEntries(
-      Object.entries(SEED_INVITATIONS_BY_USER).map(([userId, items]) => [userId, items.map(item => ({ ...item }))])
+      Object.entries(SEED_INVITATIONS_BY_USER).map(([userId, items]) => [userId, items.map(item => ({
+        ...item,
+        acceptedMemberUserIds: item.acceptedMemberUserIds ? [...item.acceptedMemberUserIds] : item.acceptedMemberUserIds,
+        pendingMemberUserIds: item.pendingMemberUserIds ? [...item.pendingMemberUserIds] : item.pendingMemberUserIds,
+        policies: item.policies ? item.policies.map(policy => ({ ...policy })) : item.policies
+      }))])
     );
   }
 
@@ -604,6 +712,7 @@ export class DemoEventsRepositoryBuilder {
     for (const [userId, items] of Object.entries(options.invitationsByUser)) {
       for (const item of items) {
         const recordKey = this.buildRecordKey(userId, 'invitations', item.id);
+        const creatorUserId = this.resolveInvitationCreatorUserId(item, userId, creatorUserIdByEventId);
         byId[recordKey] = this.buildRecord({
           id: item.id,
           userId,
@@ -621,7 +730,8 @@ export class DemoEventsRepositoryBuilder {
           isTrashed: false,
           published: true,
           trashedAtIso: null,
-          creatorUserId: creatorUserIdByEventId.get(item.id) ?? userId
+          creatorUserId,
+          seed: this.extractSeedOverrides(item)
         });
         ids.push(recordKey);
       }
@@ -861,6 +971,44 @@ export class DemoEventsRepositoryBuilder {
     return map;
   }
 
+  private static resolveInvitationCreatorUserId(
+    item: InvitationMenuItem,
+    inviteeUserId: string,
+    creatorUserIdByEventId: Map<string, string>
+  ): string {
+    const byEventId = creatorUserIdByEventId.get(item.id)?.trim() ?? '';
+    if (byEventId) {
+      return byEventId;
+    }
+    const normalizedInviter = AppUtils.normalizeText(item.inviter);
+    if (normalizedInviter) {
+      const exactMatch = DEMO_EVENT_MEMBER_USERS.find(user => AppUtils.normalizeText(user.name) === normalizedInviter);
+      if (exactMatch) {
+        return exactMatch.id;
+      }
+      const firstNameMatch = DEMO_EVENT_MEMBER_USERS.find(user =>
+        AppUtils.normalizeText(user.name.split(/\s+/)[0] ?? '') === normalizedInviter
+      );
+      if (firstNameMatch) {
+        return firstNameMatch.id;
+      }
+    }
+    const avatarInitials = item.avatar?.trim() || AppUtils.initialsFromText(item.inviter);
+    if (avatarInitials) {
+      const initialsMatch = DEMO_EVENT_MEMBER_USERS.find(user => user.initials === avatarInitials && user.id !== inviteeUserId);
+      if (initialsMatch) {
+        return initialsMatch.id;
+      }
+    }
+    const fallbackCandidates = DEMO_EVENT_MEMBER_USERS.filter(user => user.id !== inviteeUserId);
+    if (fallbackCandidates.length === 0) {
+      return inviteeUserId;
+    }
+    const fallbackIndex = Math.abs(AppUtils.hashText(`invitation-creator:${inviteeUserId}:${item.id}:${item.inviter}`))
+      % fallbackCandidates.length;
+    return fallbackCandidates[fallbackIndex]?.id ?? inviteeUserId;
+  }
+
   private static buildRecord(record: Pick<
     DemoEventRecord,
     | 'id'
@@ -883,9 +1031,17 @@ export class DemoEventsRepositoryBuilder {
   > & {
     seed?: DemoEventSeedOverrides;
   }): DemoEventRecord {
+    const decorations = this.buildRecordDecorations(record);
     return {
       ...record,
-      ...this.buildRecordDecorations(record)
+      ...decorations,
+      timeframe: this.buildSeededTimeframeLabel({
+        hint: record.timeframe,
+        startAtIso: decorations.startAtIso,
+        endAtIso: decorations.endAtIso,
+        frequency: decorations.frequency,
+        slotTemplates: decorations.slotTemplates
+      })
     };
   }
 
@@ -901,6 +1057,7 @@ export class DemoEventsRepositoryBuilder {
     | 'isInvitation'
     | 'published'
     | 'creatorUserId'
+    | 'timeframe'
   > & {
     seed?: DemoEventSeedOverrides;
   }): Omit<
@@ -923,8 +1080,9 @@ export class DemoEventsRepositoryBuilder {
     | 'trashedAtIso'
   > {
     const creator = this.resolveCreatorUser(record.creatorUserId, record.title);
-    const startAtIso = record.seed?.startAt?.trim() || this.resolveStartAtIso(record);
-    const endAtIso = record.seed?.endAt?.trim() || this.resolveEndAtIso(record, startAtIso);
+    const frequency = record.seed?.frequency?.trim() || this.parseFrequencyFromTimeframe(record.timeframe ?? '');
+    const startAtIso = this.rebaseSeedDateTime(record.seed?.startAt) || this.resolveStartAtIso(record);
+    const endAtIso = this.rebaseSeedDateTime(record.seed?.endAt) || this.resolveEndAtIso(record, startAtIso);
     const distanceKm = Number.isFinite(record.seed?.distanceKm)
       ? Math.max(0, Number(record.seed?.distanceKm))
       : this.resolveDistanceKm(record);
@@ -948,12 +1106,13 @@ export class DemoEventsRepositoryBuilder {
     const capacityMax = this.normalizeCount(record.seed?.capacityMax) ?? this.normalizeCount(capacityRange.max);
     const capacityTotal = Math.max(
       acceptedMembers,
-      capacityMax ?? acceptedMembers
+      this.normalizeCount(record.seed?.capacityTotal) ?? capacityMax ?? acceptedMembers
     );
+    const slotTemplates = this.cloneRebasedSlotTemplates(record.seed?.slotTemplates) ?? [];
     const topics = this.normalizeTopics(record.seed?.topics).length > 0
       ? this.normalizeTopics(record.seed?.topics)
       : this.buildSeededTopics(record.id, record.title, record.subtitle);
-    const subEvents = this.cloneSubEvents(record.seed?.subEvents)
+    const subEvents = this.cloneRebasedSubEvents(record.seed?.subEvents)
       ?? this.buildSeededSubEvents(record, startAtIso, endAtIso, creator.id, capacityRange);
     const rating = Number.isFinite(record.seed?.rating)
       ? Number(record.seed?.rating)
@@ -984,15 +1143,14 @@ export class DemoEventsRepositoryBuilder {
       capacityMax,
       capacityTotal,
       autoInviter: record.seed?.autoInviter ?? this.resolveAutoInviter(record),
-      frequency: record.seed?.frequency?.trim()
-        || this.parseFrequencyFromTimeframe((record as { timeframe?: string }).timeframe ?? startAtIso),
+      frequency,
       ticketing,
       pricing: record.seed?.pricing
-        ? PricingBuilder.clonePricingConfig(record.seed.pricing)
+        ? this.rebasePricingConfig(record.seed.pricing)
         : PricingBuilder.createSamplePricingConfig(ticketing ? 'hybrid' : 'fixed'),
       policies: this.clonePolicies(record.seed?.policies) ?? [],
       slotsEnabled: record.seed?.slotsEnabled === true,
-      slotTemplates: this.cloneSlotTemplates(record.seed?.slotTemplates) ?? [],
+      slotTemplates,
       parentEventId: null,
       slotTemplateId: null,
       generated: false,
@@ -1129,7 +1287,8 @@ export class DemoEventsRepositoryBuilder {
     const hourSpan = record.type === 'hosting' ? 5 : record.type === 'invitations' ? 6 : 10;
     const hour = hourBase + ((seed >> 3) % hourSpan);
     const minute = ((seed >> 7) % 4) * 15;
-    return new Date(Date.UTC(2026, monthIndex, day, hour, minute, 0)).toISOString();
+    return this.rebaseSeedDateTime(new Date(2026, monthIndex, day, hour, minute, 0, 0))
+      ?? AppUtils.toIsoDateTimeLocal(new Date(2026, monthIndex, day, hour, minute, 0, 0));
   }
 
   private static resolveEndAtIso(
@@ -1138,11 +1297,11 @@ export class DemoEventsRepositoryBuilder {
   ): string {
     const startAt = new Date(startAtIso);
     if (Number.isNaN(startAt.getTime())) {
-      return new Date().toISOString();
+      return AppUtils.toIsoDateTimeLocal(new Date());
     }
     const seed = AppUtils.hashText(`event-duration:${this.recordSeedKey(record)}`);
     const durationMinutes = 90 + ((seed % 5) * 30);
-    return new Date(startAt.getTime() + (durationMinutes * 60 * 1000)).toISOString();
+    return AppUtils.toIsoDateTimeLocal(new Date(startAt.getTime() + (durationMinutes * 60 * 1000)));
   }
 
   private static resolveDistanceKm(
@@ -1192,14 +1351,32 @@ export class DemoEventsRepositoryBuilder {
     members: { acceptedMemberUserIds: string[]; pendingMemberUserIds: string[] }
   ): { acceptedMemberUserIds: string[]; pendingMemberUserIds: string[] } {
     const ownerUserId = record.userId.trim();
-    const acceptedMemberUserIds = this.normalizeUserIds(members.acceptedMemberUserIds)
+    const normalizedAcceptedMemberUserIds = this.normalizeUserIds(members.acceptedMemberUserIds);
+    const normalizedPendingMemberUserIds = this.normalizeUserIds(members.pendingMemberUserIds)
+      .filter(userId => !normalizedAcceptedMemberUserIds.includes(userId));
+    if (record.isInvitation) {
+      return {
+        acceptedMemberUserIds: normalizedAcceptedMemberUserIds,
+        pendingMemberUserIds: normalizedPendingMemberUserIds
+      };
+    }
+    const ownerHasExplicitAcceptedMembership = normalizedAcceptedMemberUserIds.includes(ownerUserId);
+    const ownerHasExplicitPendingMembership = !ownerHasExplicitAcceptedMembership
+      && normalizedPendingMemberUserIds.includes(ownerUserId);
+    const acceptedMemberUserIds = normalizedAcceptedMemberUserIds
       .filter(userId => userId !== ownerUserId);
-    const pendingMemberUserIds = this.normalizeUserIds(members.pendingMemberUserIds)
+    const pendingMemberUserIds = normalizedPendingMemberUserIds
       .filter(userId => userId !== ownerUserId && !acceptedMemberUserIds.includes(userId));
     if (record.type !== 'events' || record.isInvitation || !ownerUserId) {
       return {
         acceptedMemberUserIds,
         pendingMemberUserIds
+      };
+    }
+    if (ownerHasExplicitPendingMembership) {
+      return {
+        acceptedMemberUserIds,
+        pendingMemberUserIds: [ownerUserId, ...pendingMemberUserIds]
       };
     }
     return {
@@ -1266,15 +1443,41 @@ export class DemoEventsRepositoryBuilder {
   }
 
   private static buildSeededMemberIds(
-    record: Pick<DemoEventRecord, 'id' | 'type' | 'title' | 'subtitle' | 'activity' | 'isAdmin'>,
+    record: Pick<DemoEventRecord, 'id' | 'type' | 'userId' | 'title' | 'subtitle' | 'activity' | 'isAdmin'>,
     startAtIso: string,
     distanceKm: number,
     creator: DemoUser
   ): { acceptedMemberUserIds: string[]; pendingMemberUserIds: string[] } {
     if (record.type === 'invitations') {
+      const invitee = this.resolveCreatorUser(record.userId, record.title);
+      const seed = AppUtils.hashText(`invitation-members:${this.recordSeedKey(record)}:${creator.id}:${invitee.id}`);
+      const acceptedTarget = 1 + (seed % 3);
+      const pendingTarget = Math.max(1, 1 + ((seed >> 3) % 2));
+      const orderedCandidates = DEMO_EVENT_MEMBER_USERS
+        .filter(user => user.id !== invitee.id)
+        .sort((left, right) =>
+          AppUtils.hashText(`invitation-member:${record.id}:${left.id}`)
+          - AppUtils.hashText(`invitation-member:${record.id}:${right.id}`)
+        );
+      const acceptedMemberUserIds = Array.from(new Set([
+        creator.id,
+        ...orderedCandidates
+          .filter(user => user.id !== creator.id)
+          .slice(0, Math.max(0, acceptedTarget - 1))
+          .map(user => user.id)
+      ])).slice(0, acceptedTarget);
+      const pendingMemberUserIds = Array.from(new Set([
+        invitee.id,
+        ...orderedCandidates
+          .filter(user => user.id !== creator.id && !acceptedMemberUserIds.includes(user.id))
+          .slice(0, Math.max(0, pendingTarget - 1))
+          .map(user => user.id)
+      ]))
+        .filter(userId => !acceptedMemberUserIds.includes(userId))
+        .slice(0, pendingTarget);
       return {
-        acceptedMemberUserIds: [],
-        pendingMemberUserIds: []
+        acceptedMemberUserIds,
+        pendingMemberUserIds
       };
     }
     const row: AppTypes.ActivityListRow = {
@@ -1382,32 +1585,35 @@ export class DemoEventsRepositoryBuilder {
     return 50 + (seed % 51);
   }
 
-  private static extractSeedOverrides(item: EventMenuItem | HostingMenuItem): DemoEventSeedOverrides | undefined {
+  private static extractSeedOverrides(item: EventMenuItem | HostingMenuItem | InvitationMenuItem): DemoEventSeedOverrides | undefined {
     const overrides: DemoEventSeedOverrides = {
       startAt: item.startAt,
       endAt: item.endAt,
       distanceKm: item.distanceKm,
-      autoInviter: item.autoInviter,
-      frequency: item.frequency,
-      ticketing: item.ticketing,
-      visibility: item.visibility,
-      blindMode: item.blindMode,
+      autoInviter: 'autoInviter' in item ? item.autoInviter : undefined,
+      frequency: 'frequency' in item ? item.frequency : undefined,
+      ticketing: 'ticketing' in item ? item.ticketing : undefined,
+      visibility: 'visibility' in item ? item.visibility : undefined,
+      blindMode: 'blindMode' in item ? item.blindMode : undefined,
       imageUrl: item.imageUrl,
       sourceLink: item.sourceLink,
       location: item.location,
       locationCoordinates: this.cloneLocationCoordinates(item.locationCoordinates) ?? undefined,
       capacityMin: item.capacityMin,
       capacityMax: item.capacityMax,
-      pricing: item.pricing ? PricingBuilder.clonePricingConfig(item.pricing) : item.pricing,
+      capacityTotal: item.capacityTotal,
+      acceptedMemberUserIds: item.acceptedMemberUserIds ? [...item.acceptedMemberUserIds] : undefined,
+      pendingMemberUserIds: item.pendingMemberUserIds ? [...item.pendingMemberUserIds] : undefined,
+      pricing: 'pricing' in item && item.pricing ? PricingBuilder.clonePricingConfig(item.pricing) : ('pricing' in item ? item.pricing : undefined),
       policies: this.clonePolicies(item.policies) ?? undefined,
-      slotsEnabled: item.slotsEnabled,
-      slotTemplates: this.cloneSlotTemplates(item.slotTemplates) ?? undefined,
-      topics: item.topics,
-      subEvents: this.cloneSubEvents(item.subEvents),
-      subEventsDisplayMode: item.subEventsDisplayMode,
-      rating: item.rating,
-      relevance: item.relevance,
-      affinity: item.affinity
+      slotsEnabled: 'slotsEnabled' in item ? item.slotsEnabled : undefined,
+      slotTemplates: 'slotTemplates' in item ? this.cloneSlotTemplates(item.slotTemplates) ?? undefined : undefined,
+      topics: 'topics' in item ? item.topics : undefined,
+      subEvents: 'subEvents' in item ? this.cloneSubEvents(item.subEvents) : undefined,
+      subEventsDisplayMode: 'subEventsDisplayMode' in item ? item.subEventsDisplayMode : undefined,
+      rating: 'rating' in item ? item.rating : undefined,
+      relevance: 'relevance' in item ? item.relevance : undefined,
+      affinity: 'affinity' in item ? item.affinity : undefined
     };
     if (Object.values(overrides).every(value => value === undefined)) {
       return undefined;
@@ -1452,6 +1658,110 @@ export class DemoEventsRepositoryBuilder {
       return undefined;
     }
     return items.map(item => ({ ...item }));
+  }
+
+  static rebaseSeedDateTime(value: string | Date | null | undefined): string | undefined {
+    const parsed = this.parseSeedDateTime(value);
+    if (!parsed) {
+      return undefined;
+    }
+    return AppUtils.toIsoDateTimeLocal(this.shiftSeedDate(parsed));
+  }
+
+  private static buildSeededTimeframeLabel(options: {
+    hint?: string | null;
+    startAtIso: string;
+    endAtIso: string;
+    frequency?: string | null;
+    slotTemplates?: readonly AppTypes.EventSlotTemplate[] | null;
+  }): string {
+    const startAt = this.parseSeedDateTime(options.startAtIso);
+    const endAt = this.parseSeedDateTime(options.endAtIso);
+    if (!startAt || !endAt) {
+      return `${options.hint ?? ''}`.trim() || 'Date unavailable';
+    }
+    const frequency = `${options.frequency ?? this.parseFrequencyFromTimeframe(options.hint ?? '')}`.trim();
+    const normalizedFrequency = frequency.toLowerCase();
+    const hasMultipleSlots = (options.slotTemplates?.length ?? 0) > 1;
+    const dateLabel = this.formatSeedMonthDay(startAt);
+    const startTimeLabel = this.formatSeedTime(startAt);
+    const endTimeLabel = this.formatSeedTime(endAt);
+
+    if (normalizedFrequency === 'weekly') {
+      const weekdayLabel = startAt.toLocaleDateString('en-US', { weekday: 'short' });
+      return hasMultipleSlots
+        ? `Every ${weekdayLabel} · ${this.formatSeedMonthDay(startAt)} - ${this.formatSeedMonthDay(endAt)}`
+        : `Every ${weekdayLabel} · ${startTimeLabel}`;
+    }
+
+    if (normalizedFrequency === 'bi-weekly' || normalizedFrequency === 'biweekly') {
+      const weekdayLabel = startAt.toLocaleDateString('en-US', { weekday: 'short' });
+      return `Every 2nd ${weekdayLabel} · ${startTimeLabel}`;
+    }
+
+    if (normalizedFrequency === 'monthly') {
+      return `Monthly · ${this.describeMonthlyOccurrence(startAt)} · ${startTimeLabel}`;
+    }
+
+    if (normalizedFrequency === 'daily') {
+      return `Daily · ${startTimeLabel}`;
+    }
+
+    if (normalizedFrequency === 'yearly' || normalizedFrequency === 'annual') {
+      return `Yearly · ${this.formatSeedMonthDay(startAt)}`;
+    }
+
+    if (hasMultipleSlots) {
+      return `${dateLabel} · multiple slots`;
+    }
+
+    if (endAt.getTime() - startAt.getTime() >= (24 * 60 * 60 * 1000)) {
+      return `${this.formatSeedMonthDay(startAt)} - ${this.formatSeedMonthDay(endAt)}`;
+    }
+
+    return `${dateLabel} · ${startTimeLabel} - ${endTimeLabel}`;
+  }
+
+  private static cloneRebasedSlotTemplates(
+    items: readonly AppTypes.EventSlotTemplate[] | undefined
+  ): AppTypes.EventSlotTemplate[] | undefined {
+    if (!Array.isArray(items)) {
+      return undefined;
+    }
+    return items.map(item => ({
+      ...item,
+      startAt: this.rebaseSeedDateTime(item.startAt) ?? item.startAt,
+      endAt: this.rebaseSeedDateTime(item.endAt) ?? item.endAt,
+      overrideDate: item.overrideDate ? (this.rebaseSeedDateTime(item.overrideDate) ?? item.overrideDate) : item.overrideDate
+    }));
+  }
+
+  private static cloneRebasedSubEvents(
+    items: readonly AppTypes.SubEventFormItem[] | undefined
+  ): AppTypes.SubEventFormItem[] | undefined {
+    if (!Array.isArray(items)) {
+      return undefined;
+    }
+    return items.map(item => ({
+      ...item,
+      startAt: this.rebaseSeedDateTime(item.startAt) ?? item.startAt,
+      endAt: this.rebaseSeedDateTime(item.endAt) ?? item.endAt,
+      location: typeof item.location === 'string' ? item.location : '',
+      pricing: item.pricing ? this.rebasePricingConfig(item.pricing) : undefined,
+      groups: Array.isArray(item.groups)
+        ? item.groups.map((group: AppTypes.SubEventGroupItem) => ({ ...group }))
+        : []
+    }));
+  }
+
+  private static rebasePricingConfig(value: AppTypes.PricingConfig): AppTypes.PricingConfig {
+    const pricing = PricingBuilder.clonePricingConfig(value);
+    pricing.slotOverrides = (pricing.slotOverrides ?? []).map(item => ({
+      ...item,
+      startAt: this.rebaseSeedDateTime(item.startAt) ?? item.startAt,
+      endAt: this.rebaseSeedDateTime(item.endAt) ?? item.endAt
+    }));
+    return pricing;
   }
 
   private static cloneSlotTemplates(
@@ -1503,6 +1813,44 @@ export class DemoEventsRepositoryBuilder {
       return 'Daily';
     }
     return 'One-time';
+  }
+
+  private static parseSeedDateTime(value: string | Date | null | undefined): Date | null {
+    if (value instanceof Date) {
+      return Number.isNaN(value.getTime()) ? null : new Date(value);
+    }
+    if (!value?.trim()) {
+      return null;
+    }
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  private static shiftSeedDate(value: Date): Date {
+    return new Date(value.getTime() + this.resolveSeedScheduleShiftMs());
+  }
+
+  private static resolveSeedScheduleShiftMs(): number {
+    const today = new Date();
+    const rollingAnchor = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0, 0);
+    const dayMs = 24 * 60 * 60 * 1000;
+    const diffDays = Math.round((rollingAnchor.getTime() - this.SEED_SCHEDULE_REFERENCE_DATE.getTime()) / dayMs);
+    return Math.round(diffDays / 7) * 7 * dayMs;
+  }
+
+  private static formatSeedMonthDay(value: Date): string {
+    return value.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }
+
+  private static formatSeedTime(value: Date): string {
+    return value.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  }
+
+  private static describeMonthlyOccurrence(value: Date): string {
+    const weekday = value.toLocaleDateString('en-US', { weekday: 'short' });
+    const occurrence = Math.floor((value.getDate() - 1) / 7);
+    const labels = ['First', 'Second', 'Third', 'Fourth', 'Fifth'] as const;
+    return `${labels[occurrence] ?? 'Last'} ${weekday}`;
   }
 
   private static resolveLocationCoordinatesFromCreator(creator: DemoUser): LocationCoordinates {

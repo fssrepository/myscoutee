@@ -10,6 +10,14 @@
   font-family: var(--navigator-popup-font-family);
 }
 
+.app-popup.navigator-settings-popup-shell {
+  z-index: 2400;
+}
+
+.app-popup.navigator-settings-popup-shell.navigator-settings-popup-shell-report-user {
+  z-index: 3900;
+}
+
 .app-popup button,
 .app-popup input,
 .app-popup textarea,

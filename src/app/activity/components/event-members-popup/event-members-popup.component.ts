@@ -33,6 +33,7 @@ import {
   type SmartListStateChange
 } from '../../../shared/ui';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
+import { NavigatorService } from '../../../navigator';
 
 interface MembersSmartListFilters {
   ownerId?: string;
@@ -74,6 +75,7 @@ export class EventMembersPopupComponent {
   private readonly appCtx = inject(AppContext);
   private readonly popupCtx = inject(AppPopupContext);
   private readonly usersService = inject(UsersService);
+  private readonly navigatorService = inject(NavigatorService);
   private readonly membersCacheByOwnerId = new Map<string, AppTypes.ActivityMemberEntry[]>();
   private lastAppliedActivityMembersUpdatedMs = 0;
   private openMembersHydrationTimer: ReturnType<typeof setTimeout> | null = null;
@@ -105,6 +107,8 @@ export class EventMembersPopupComponent {
   private isLocalMembersSource = false;
   private membersChangeHandler: ((members: readonly AppTypes.ActivityMemberEntry[]) => void) | null = null;
   private suppressedOwnerSyncId: string | null = null;
+  private requestedCanManageMembers = false;
+  private viewOnlyMode = false;
 
   protected membersSmartListQuery: Partial<ListQuery<MembersSmartListFilters>> = {};
 
@@ -162,6 +166,7 @@ export class EventMembersPopupComponent {
           ownerType: request.ownerType ?? 'event',
           subtitle: request.subtitle,
           canManage: request.canManage,
+          viewOnly: request.viewOnly,
           acceptedMembers: request.acceptedMembers,
           pendingMembers: request.pendingMembers,
           capacityTotal: request.capacityTotal,
@@ -268,6 +273,8 @@ export class EventMembersPopupComponent {
     this.isLocalMembersSource = false;
     this.membersChangeHandler = null;
     this.suppressedOwnerSyncId = null;
+    this.requestedCanManageMembers = false;
+    this.viewOnlyMode = false;
     this.subtitle = 'Event';
     this.resetSummaryState();
     this.selectedMembersVisible = [];
@@ -295,7 +302,7 @@ export class EventMembersPopupComponent {
   }
 
   protected canShowActionMenu(entry: AppTypes.ActivityMemberEntry): boolean {
-    return this.canApproveMember(entry) || this.canDeleteMember(entry);
+    return this.canApproveMember(entry) || this.canDeleteMember(entry) || this.canReportMember(entry);
   }
 
   protected toggleMemberActionMenu(entry: AppTypes.ActivityMemberEntry, event: Event): void {
@@ -359,6 +366,25 @@ export class EventMembersPopupComponent {
       failureMessage: this.memberRemovalFailureMessage(entry),
       onConfirm: () => this.confirmRemoveMember(entry)
     });
+  }
+
+  protected reportMember(entry: AppTypes.ActivityMemberEntry, event: Event): void {
+    event.stopPropagation();
+    if (!this.canReportMember(entry)) {
+      return;
+    }
+    this.inlineItemActionMenu = null;
+    this.navigatorService.openReportUserPopup({
+      targetUserId: entry.userId,
+      targetName: entry.name,
+      memberEntryId: entry.id,
+      eventId: this.ownerId,
+      eventTitle: this.ownerRecord?.title?.trim() || this.subtitle.trim() || 'Event',
+      eventStartAtIso: this.ownerRecord?.startAtIso ?? null,
+      eventTimeframe: this.ownerRecord?.timeframe ?? null,
+      ownerType: this.ownerRef?.ownerType ?? 'event'
+    });
+    this.cdr.markForCheck();
   }
 
   private async confirmApproveMember(entry: AppTypes.ActivityMemberEntry): Promise<void> {
@@ -505,7 +531,9 @@ export class EventMembersPopupComponent {
       return 'Approved';
     }
     if (entry.requestKind === 'join') {
-      return 'Waiting For Join Approval';
+      return entry.pendingSource === 'admin'
+        ? 'Waiting For Admin Approval'
+        : 'Waiting For Join Approval';
     }
     if (entry.pendingSource === 'admin') {
       return this.ownerRef?.ownerType === 'asset' ? 'Waiting For Admin Approval' : 'Invitation Pending';
@@ -539,6 +567,7 @@ export class EventMembersPopupComponent {
     if (!selectionChanged) {
       return;
     }
+    const activeUserId = this.activeUserId();
     const nowIso = AppUtils.toIsoDateTime(new Date());
     const nextPendingInvites = selectedCandidates.map(candidate => {
       const existing = existingPendingInviteByUserId.get(candidate.userId);
@@ -551,6 +580,7 @@ export class EventMembersPopupComponent {
           pendingSource: 'admin' as const,
           requestKind: 'invite' as const,
           invitedByActiveUser: true,
+          invitedByUserId: activeUserId,
           actionAtIso: existing.actionAtIso || nowIso
         };
       }
@@ -560,6 +590,7 @@ export class EventMembersPopupComponent {
         pendingSource: 'admin' as const,
         requestKind: 'invite' as const,
         invitedByActiveUser: true,
+        invitedByUserId: activeUserId,
         statusText: candidate.statusText?.trim() || 'Waiting for admin approval.',
         actionAtIso: nowIso
       };
@@ -572,6 +603,7 @@ export class EventMembersPopupComponent {
     options?: {
       subtitle?: string;
       canManage?: boolean;
+      viewOnly?: boolean;
       ownerType?: ActivityMemberOwnerType;
       acceptedMembers?: number;
       pendingMembers?: number;
@@ -584,13 +616,14 @@ export class EventMembersPopupComponent {
     if (!normalizedOwnerId) {
       return;
     }
-    const initialMembers = Array.isArray(options?.initialMembers)
+    const ownerType = options?.ownerType ?? 'event';
+    const initialMembers = ownerType !== 'event' && Array.isArray(options?.initialMembers)
       ? this.sortMembersByActionTimeDesc(options.initialMembers)
       : null;
     this.isOpen = true;
     this.ownerId = normalizedOwnerId;
     this.ownerRef = {
-      ownerType: options?.ownerType ?? 'event',
+      ownerType,
       ownerId: normalizedOwnerId
     };
     this.ownerRecord = null;
@@ -601,7 +634,9 @@ export class EventMembersPopupComponent {
     this.selectedMembersVisible = [];
     this.membersCacheByOwnerId.delete(normalizedOwnerId);
     this.resetSummaryState();
-    this.canManageMembers = options?.canManage === true;
+    this.requestedCanManageMembers = options?.canManage === true;
+    this.viewOnlyMode = options?.viewOnly === true;
+    this.canManageMembers = !this.viewOnlyMode && this.requestedCanManageMembers;
     this.canShowInviteButton = this.canManageMembers;
     this.isLocalMembersSource = initialMembers !== null;
     if (initialMembers) {
@@ -611,6 +646,7 @@ export class EventMembersPopupComponent {
           .map(member => `${member.userId ?? ''}`.trim())
           .filter(userId => userId.length > 0)
       );
+      this.syncCanManageMembers(initialMembers);
     }
     this.membersChangeHandler = options?.onMembersChanged ?? null;
     this.membersSmartListQuery = {};
@@ -686,11 +722,7 @@ export class EventMembersPopupComponent {
   ): void {
     this.ownerRecord = record;
     this.subtitle = record.title.trim() || options?.subtitle?.trim() || 'Event';
-    this.canManageMembers = this.canManageMembers
-      || options?.canManage === true
-      || record.isAdmin === true
-      || record.creatorUserId === this.activeUserId();
-    this.canShowInviteButton = this.canManageMembers;
+    this.syncCanManageMembers();
     if (this.acceptedCount <= 0 && this.pendingCount <= 0 && this.capacityTotal <= 0) {
       this.applySummary(record.acceptedMembers, record.pendingMembers, record.capacityTotal);
     }
@@ -723,6 +755,7 @@ export class EventMembersPopupComponent {
         const summary = owner
           ? this.activityMembersService.peekSummaryByOwner(owner)
           : this.activityMembersService.peekSummaryByOwnerId(ownerId);
+        this.syncCanManageMembers(members);
         if (summary) {
           this.applySummary(summary.acceptedMembers, summary.pendingMembers, summary.capacityTotal);
         } else {
@@ -778,6 +811,7 @@ export class EventMembersPopupComponent {
       }
     }
     this.membersCacheByOwnerId.set(this.ownerId, normalizedMembers);
+    this.syncCanManageMembers(normalizedMembers);
     this.applySummaryFromMembers(normalizedMembers);
     this.inlineItemActionMenu = null;
     this.syncVisibleMembers(previousMembers, normalizedMembers);
@@ -821,18 +855,55 @@ export class EventMembersPopupComponent {
   }
 
   protected canApproveMember(entry: AppTypes.ActivityMemberEntry): boolean {
+    if (this.viewOnlyMode) {
+      return false;
+    }
     return this.canManageMembers
       && entry.status === 'pending'
       && (entry.pendingSource === 'member' || entry.requestKind === 'join');
   }
 
   protected canDeleteMember(entry: AppTypes.ActivityMemberEntry): boolean {
+    if (this.viewOnlyMode) {
+      return false;
+    }
     if (this.canManageMembers) {
       return true;
     }
     return entry.status === 'pending'
       && entry.requestKind === 'invite'
       && entry.invitedByActiveUser === true;
+  }
+
+  protected canReportMember(entry: AppTypes.ActivityMemberEntry): boolean {
+    if ((this.ownerRef?.ownerType ?? 'event') !== 'event') {
+      return false;
+    }
+    const activeUserId = this.activeUserId();
+    if (!activeUserId || entry.userId === activeUserId || entry.status !== 'accepted') {
+      return false;
+    }
+    return this.currentOwnerMembers().some(member =>
+      member.userId === activeUserId
+      && member.status === 'accepted'
+    );
+  }
+
+  private syncCanManageMembers(members: readonly AppTypes.ActivityMemberEntry[] = this.currentOwnerMembers()): void {
+    if (this.viewOnlyMode) {
+      this.canManageMembers = false;
+      this.canShowInviteButton = false;
+      return;
+    }
+    const activeUserId = this.activeUserId();
+    const activeMember = members.find(member => member.userId === activeUserId && member.status === 'accepted');
+    const activeMemberCanManage = activeMember?.role === 'Admin' || activeMember?.role === 'Manager';
+    const ownerRecordCanManage = !!this.ownerRecord && (
+      this.ownerRecord.creatorUserId === activeUserId
+      || this.ownerRecord.isAdmin === true
+    );
+    this.canManageMembers = this.requestedCanManageMembers || ownerRecordCanManage || activeMemberCanManage;
+    this.canShowInviteButton = this.canManageMembers || !!activeMember;
   }
 
   private applySummaryFromMembers(members: readonly AppTypes.ActivityMemberEntry[]): void {
@@ -886,6 +957,7 @@ export class EventMembersPopupComponent {
         }
         const normalizedMembers = this.sortMembersByActionTimeDesc(members);
         this.membersCacheByOwnerId.set(sync.id, normalizedMembers);
+        this.syncCanManageMembers(normalizedMembers);
         const summary = this.activityMembersService.peekSummaryByOwner(owner);
         if (summary) {
           this.applySummary(summary.acceptedMembers, summary.pendingMembers, summary.capacityTotal);
@@ -934,7 +1006,7 @@ export class EventMembersPopupComponent {
       this.isMobileView = false;
       return;
     }
-    this.isMobileView = window.innerWidth <= 860;
+    this.isMobileView = window.innerWidth <= 760;
   }
 
   private minimumDeletePendingWindow(): Promise<void> {

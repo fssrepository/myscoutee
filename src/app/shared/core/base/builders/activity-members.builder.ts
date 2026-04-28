@@ -35,7 +35,7 @@ export class ActivityMembersBuilder {
   }
 
   static activityMembersOwnerForRow(row: ActivityListRow): ActivityMemberOwnerRef | null {
-    if (row.type !== 'events' && row.type !== 'hosting') {
+    if (row.type !== 'events' && row.type !== 'hosting' && row.type !== 'invitations') {
       return null;
     }
     return {
@@ -51,7 +51,7 @@ export class ActivityMembersBuilder {
       pendingMembersByRowId: Record<string, number>;
     }
   ): ActivityMembersSummary | null {
-    if (row.type !== 'events' && row.type !== 'hosting') {
+    if (row.type !== 'events' && row.type !== 'hosting' && row.type !== 'invitations') {
       return null;
     }
     const source = options.capacityByRowId[row.id];
@@ -61,7 +61,20 @@ export class ActivityMembersBuilder {
       pendingMembers?: unknown;
       capacityTotal?: unknown;
       capacityMax?: unknown;
+      acceptedMemberUserIds?: readonly unknown[];
+      pendingMemberUserIds?: readonly unknown[];
     };
+    const acceptedMemberUserIds = Array.isArray(sourceRecord.acceptedMemberUserIds)
+      ? [...new Set(sourceRecord.acceptedMemberUserIds
+        .map(userId => `${userId ?? ''}`.trim())
+        .filter(userId => userId.length > 0))]
+      : [];
+    const pendingMemberUserIds = Array.isArray(sourceRecord.pendingMemberUserIds)
+      ? [...new Set(sourceRecord.pendingMemberUserIds
+        .map(userId => `${userId ?? ''}`.trim())
+        .filter(userId => userId.length > 0)
+        .filter(userId => !acceptedMemberUserIds.includes(userId)))]
+      : [];
     const acceptedFromSource = Number(sourceRecord.acceptedMembers);
     const pendingFromSource = Number(sourceRecord.pendingMembers);
     const capacityFromSource = Number(sourceRecord.capacityTotal);
@@ -77,28 +90,36 @@ export class ActivityMembersBuilder {
           acceptedMembers,
           pendingMembers: Number.isFinite(pendingFromSource) ? Math.max(0, Math.trunc(pendingFromSource)) : pendingMembers,
           capacityTotal,
-          acceptedMemberUserIds: [],
-          pendingMemberUserIds: []
+          acceptedMemberUserIds: [...acceptedMemberUserIds],
+          pendingMemberUserIds: [...pendingMemberUserIds]
         };
       }
     }
     if (
       Number.isFinite(acceptedFromSource)
+      || acceptedMemberUserIds.length > 0
+      || pendingMemberUserIds.length > 0
       && (Number.isFinite(capacityFromSource) || Number.isFinite(capacityMaxFromSource))
     ) {
+      const acceptedMembers = Number.isFinite(acceptedFromSource)
+        ? Math.max(0, Math.trunc(acceptedFromSource))
+        : acceptedMemberUserIds.length;
+      const resolvedPendingMembers = Number.isFinite(pendingFromSource)
+        ? Math.max(0, Math.trunc(pendingFromSource))
+        : (pendingMemberUserIds.length > 0 ? pendingMemberUserIds.length : pendingMembers);
       return {
         ownerType: 'event',
         ownerId: row.id,
-        acceptedMembers: Math.max(0, Math.trunc(acceptedFromSource)),
-        pendingMembers: Number.isFinite(pendingFromSource) ? Math.max(0, Math.trunc(pendingFromSource)) : pendingMembers,
+        acceptedMembers,
+        pendingMembers: resolvedPendingMembers,
         capacityTotal: Math.max(
-          Math.max(0, Math.trunc(acceptedFromSource)),
+          acceptedMembers,
           Number.isFinite(capacityFromSource)
             ? Math.max(0, Math.trunc(capacityFromSource))
             : Math.max(0, Math.trunc(capacityMaxFromSource))
         ),
-        acceptedMemberUserIds: [],
-        pendingMemberUserIds: []
+        acceptedMemberUserIds: [...acceptedMemberUserIds],
+        pendingMemberUserIds: [...pendingMemberUserIds]
       };
     }
     return null;
@@ -137,6 +158,9 @@ export class ActivityMembersBuilder {
   ): ActivityMemberEntry[] {
     if (acceptedMembers <= 0 && pendingMembers <= 0) {
       return [];
+    }
+    if (row.type === 'invitations') {
+      return this.buildInvitationSyncedActivityMembersForRow(row, acceptedMembers, pendingMembers, options);
     }
     const rowKey = `${row.type}:${row.id}`;
     const seed = AppUtils.hashText(`${rowKey}:${acceptedMembers}:${pendingMembers}`);
@@ -270,6 +294,16 @@ export class ActivityMembersBuilder {
     activeUser: DemoUser,
     metPlaces: string[] = APP_STATIC_DATA.activityMemberMetPlaces
   ): ActivityMemberEntry[] {
+    if (row.type === 'invitations') {
+      const targets = this.resolveGeneratedMemberTargets(row, AppUtils.hashText(`${row.type}:${row.id}`), users.length);
+      return this.buildInvitationSyncedActivityMembersForRow(
+        row,
+        targets.acceptedTarget,
+        targets.pendingTarget,
+        { activeUser, users },
+        metPlaces
+      );
+    }
     const others = users.filter(user => user.id !== activeUser.id);
     if (others.length === 0) {
       return [this.toActivityMemberEntry(
@@ -372,6 +406,71 @@ export class ActivityMembersBuilder {
     ));
 
     return { acceptedTarget, pendingTarget };
+  }
+
+  private static buildInvitationSyncedActivityMembersForRow(
+    row: ActivityListRow,
+    acceptedMembers: number,
+    pendingMembers: number,
+    options: {
+      activeUser: DemoUser;
+      users: readonly DemoUser[];
+    },
+    metPlaces: string[] = APP_STATIC_DATA.activityMemberMetPlaces
+  ): ActivityMemberEntry[] {
+    const rowKey = `${row.type}:${row.id}`;
+    const orderedCandidates = [...new Map(
+      options.users
+        .filter(user => user.id !== options.activeUser.id)
+        .map(user => [user.id, user] as const)
+    ).values()].sort((left, right) =>
+      AppUtils.hashText(`${rowKey}:${left.id}`) - AppUtils.hashText(`${rowKey}:${right.id}`)
+    );
+    const acceptedPool = orderedCandidates.slice(0, Math.max(0, acceptedMembers));
+    const entries = acceptedPool.map(user => this.toActivityMemberEntry(
+      user,
+      row,
+      rowKey,
+      options.activeUser.id,
+      { status: 'accepted', pendingSource: null, invitedByActiveUser: false },
+      metPlaces
+    ));
+    if (pendingMembers > 0) {
+      const activePendingEntry = this.toActivityMemberEntry(
+        options.activeUser,
+        row,
+        rowKey,
+        options.activeUser.id,
+        { status: 'pending', pendingSource: 'admin', invitedByActiveUser: false },
+        metPlaces
+      );
+      entries.push({
+        ...activePendingEntry,
+        requestKind: 'invite',
+        statusText: 'Invitation pending.'
+      });
+    }
+    const usedUserIds = new Set(entries.map(entry => entry.userId));
+    const additionalPendingCount = Math.max(0, pendingMembers - (usedUserIds.has(options.activeUser.id) ? 1 : 0));
+    const pendingPool = orderedCandidates
+      .filter(user => !usedUserIds.has(user.id))
+      .slice(0, additionalPendingCount);
+    for (const user of pendingPool) {
+      const entry = this.toActivityMemberEntry(
+        user,
+        row,
+        rowKey,
+        options.activeUser.id,
+        { status: 'pending', pendingSource: 'admin', invitedByActiveUser: false },
+        metPlaces
+      );
+      entries.push({
+        ...entry,
+        requestKind: 'invite',
+        statusText: 'Invitation pending.'
+      });
+    }
+    return this.sortActivityMembersByActionTimeDesc(entries);
   }
 
   static sortActivityMembersByActionTimeDesc(entries: readonly ActivityMemberEntry[]): ActivityMemberEntry[] {

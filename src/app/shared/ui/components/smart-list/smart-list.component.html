@@ -203,9 +203,6 @@
           (touchstart)="onSurfaceTouchStart()"
           (touchend)="onSurfaceTouchEnd()"
           (touchcancel)="onSurfaceTouchEnd()"
-          (wheel)="onSurfaceInteraction()"
-          (mousedown)="onSurfaceInteraction()"
-          (keydown)="onSurfaceInteraction()"
         >
           @if (shouldShowStickyHeader()) {
             <div class="smart-list__sticky" [ngClass]="resolvedStickyHeaderClass()">{{ stickyLabel }}</div>

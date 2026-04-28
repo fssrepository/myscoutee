@@ -777,6 +777,7 @@ const EVENT_FEEDBACK_ATTENDEE_REJOIN_OPTIONS: EventFeedbackOption[] = [
   { value: 'context', label: 'Depends on role', icon: 'tune', impressionTag: 'Attendee role-fit' }
 ];
 const EVENT_FEEDBACK_LIST_FILTERS: Array<{ key: EventFeedbackListFilter; label: string; icon: string }> = [
+  { key: 'own-events', label: 'Own Events', icon: 'stadium' },
   { key: 'pending', label: 'Pending', icon: 'schedule' },
   { key: 'feedbacked', label: 'Feedbacked', icon: 'task_alt' },
   { key: 'removed', label: 'Removed', icon: 'delete_outline' }

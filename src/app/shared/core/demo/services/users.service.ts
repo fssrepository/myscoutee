@@ -1,5 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 
+import { AppMemoryDb } from '../../base/db';
 import { DemoUsersRepository } from '../repositories/users.repository';
 import { DemoRouteDelayService } from './demo-route-delay.service';
 import type {
@@ -23,6 +24,8 @@ import {
   DemoUserImpressionsBuilder,
   DemoUserMenuCountersBuilder
 } from '../builders';
+import { DemoActivityMembersRepository } from '../repositories/activity-members.repository';
+import { DemoChatsRepository } from '../repositories/chats.repository';
 import { DemoEventsRepository } from '../repositories/events.repository';
 
 @Injectable({
@@ -37,7 +40,11 @@ export class DemoUsersService extends DemoRouteDelayService implements UserServi
   private static readonly USER_REALTIME_LONG_POLL_SIMULATION_STEP_MS = 30000;
   private static readonly INITIAL_EVENT_FEEDBACK_UNLOCK_DELAY_MS = 2 * 60 * 60 * 1000;
   private static readonly MAX_PROFILE_IMAGE_SLOTS = 8;
+  private static readonly FILTER_PREFERENCES_SAVE_DELAY_MS = 1500;
+  private readonly chatsRepository = inject(DemoChatsRepository);
   private readonly eventsRepository = inject(DemoEventsRepository);
+  private readonly activityMembersRepository = inject(DemoActivityMembersRepository);
+  private readonly memoryDb = inject(AppMemoryDb);
   private readonly usersRepository = inject(DemoUsersRepository);
   private readonly realtimeCursorByUserId: Record<string, number> = {};
   private readonly realtimeLastAdvanceAtByUserId: Record<string, number> = {};
@@ -60,6 +67,7 @@ export class DemoUsersService extends DemoRouteDelayService implements UserServi
   }
 
   async queryUserById(userId?: string): Promise<UserByIdQueryResponse> {
+    await this.memoryDb.whenReady();
     await this.waitForRouteDelay(DemoUsersService.USER_BY_ID_ROUTE);
     const normalizedUserId = typeof userId === 'string' ? userId.trim() : '';
     if (!normalizedUserId) {
@@ -69,14 +77,17 @@ export class DemoUsersService extends DemoRouteDelayService implements UserServi
       };
     }
     const loadedUser = this.usersRepository.queryUserById(normalizedUserId);
-    const user = loadedUser ? DemoUserImpressionsBuilder.withResolvedImpressions(loadedUser) : null;
+    const counterOverrides = loadedUser ? this.buildInitialMenuCounterOverrides(loadedUser) : null;
+    const user = loadedUser
+      ? DemoUserImpressionsBuilder.withResolvedImpressions(this.withSyncedActivityCounts(loadedUser, counterOverrides))
+      : null;
     const allUsers = this.usersRepository.queryGameStackUsers(normalizedUserId);
     const filterCount = allUsers.length;
     const persistedFilterPreferences = this.usersRepository.queryUserFilterPreferences(normalizedUserId);
     return {
       user,
       filterCount,
-      counterOverrides: user ? this.buildInitialMenuCounterOverrides(user) : null,
+      counterOverrides,
       filterPreferences: user
         ? (persistedFilterPreferences ?? DemoUserFilterPreferencesBuilder.buildDefaultFilterPreferences(user))
         : null
@@ -148,6 +159,8 @@ export class DemoUsersService extends DemoRouteDelayService implements UserServi
 
   async saveUserFilterPreferences(userId: string, preferences: UserGameFilterPreferencesDto): Promise<void> {
     this.usersRepository.upsertUserFilterPreferences(userId, preferences);
+    await this.memoryDb.flushToIndexedDb();
+    await this.waitForDelay(DemoUsersService.FILTER_PREFERENCES_SAVE_DELAY_MS);
   }
 
   async saveUserProfile(user: UserDto): Promise<UserDto | null> {
@@ -173,6 +186,37 @@ export class DemoUsersService extends DemoRouteDelayService implements UserServi
     signal?: AbortSignal
   ): Promise<UserSubmitActionResponseDto> {
     await this.waitForRouteDelay(DemoUsersService.USER_REPORT_USER_ROUTE, signal);
+    const normalizedActiveUserId = `${request.userId ?? ''}`.trim();
+    const normalizedTargetUserId = `${request.targetUserId ?? ''}`.trim();
+    const normalizedEventId = `${request.eventId ?? ''}`.trim();
+    if (
+      !normalizedActiveUserId
+      || !normalizedTargetUserId
+      || !normalizedEventId
+      || normalizedActiveUserId === normalizedTargetUserId
+    ) {
+      return {
+        submitted: false,
+        message: 'Reports can only be submitted for members you shared an event with.'
+      };
+    }
+    const members = this.activityMembersRepository.peekMembersByOwner({
+      ownerType: 'event',
+      ownerId: normalizedEventId
+    });
+    const activeMember = members.find(member => member.userId === normalizedActiveUserId && member.status === 'accepted');
+    const targetMember = members.find(member => member.userId === normalizedTargetUserId && member.status === 'accepted');
+    const normalizedMemberEntryId = `${request.memberEntryId ?? ''}`.trim();
+    if (
+      !activeMember
+      || !targetMember
+      || (normalizedMemberEntryId && normalizedMemberEntryId !== targetMember.id)
+    ) {
+      return {
+        submitted: false,
+        message: 'Reports can only be submitted for members you shared an event with.'
+      };
+    }
     const normalizedTarget = request.handle.trim();
     return {
       submitted: true,
@@ -261,13 +305,57 @@ export class DemoUsersService extends DemoRouteDelayService implements UserServi
   }
 
   private buildInitialMenuCounterOverrides(user: UserDto) {
-    return DemoUserMenuCountersBuilder.buildInitialMenuCounterOverrides(user, {
+    const chatItems = this.chatsRepository.queryChatItemsByUser(user.id);
+    const invitationItems = this.eventsRepository.queryInvitationItemsByUser(user.id)
+      .filter(item => !item.isTrashed);
+    const eventItems = this.eventsRepository.queryEventItemsByUser(user.id)
+      .filter(item => !item.isTrashed)
+      .filter(item => item.isAdmin !== true || item.published !== false);
+    const hostingItems = this.eventsRepository.queryHostingItemsByUser(user.id)
+      .filter(item => !item.isTrashed)
+      .filter(item => item.isAdmin === true);
+    const syncedUser: UserDto = {
+      ...user,
+      activities: {
+        ...user.activities,
+        chat: DemoUserMenuCountersBuilder.resolveSectionBadge(
+          chatItems.map(item => item.unread),
+          chatItems.length
+        ),
+        invitations: invitationItems.length,
+        events: eventItems.length,
+        hosting: hostingItems.length
+      }
+    };
+    return DemoUserMenuCountersBuilder.buildInitialMenuCounterOverrides(syncedUser, {
       tickets: this.eventsRepository.countTicketItemsByUser(user.id),
       feedback: this.eventsRepository.countPendingEventFeedbackByUser(
         user.id,
         DemoUsersService.INITIAL_EVENT_FEEDBACK_UNLOCK_DELAY_MS
       )
     });
+  }
+
+  private withSyncedActivityCounts(
+    user: UserDto,
+    counters: ReturnType<DemoUsersService['buildInitialMenuCounterOverrides']> | null
+  ): UserDto {
+    if (!counters) {
+      return user;
+    }
+    return {
+      ...user,
+      activities: {
+        ...user.activities,
+        game: counters.game ?? user.activities.game,
+        chat: counters.chat ?? user.activities.chat,
+        invitations: counters.invitations ?? user.activities.invitations,
+        events: counters.events ?? user.activities.events,
+        hosting: counters.hosting ?? user.activities.hosting,
+        tickets: counters.tickets ?? user.activities.tickets,
+        feedback: counters.feedback ?? user.activities.feedback
+      }
+    };
   }
 
 

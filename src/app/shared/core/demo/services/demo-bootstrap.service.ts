@@ -2,7 +2,9 @@ import { Injectable, inject } from '@angular/core';
 
 import { APP_STATIC_DATA } from '../../../app-static-data';
 import type { EventMenuItem } from '../../base/interfaces/activity-feed.interface';
+import type { UserDto } from '../../base/interfaces/user.interface';
 import { AppMemoryDb } from '../../base/db';
+import type { EventFeedbackPersistedState } from '../../base/models';
 import { DemoEventFeedbackBuilder } from '../builders';
 import { DemoActivityMembersRepository } from '../repositories/activity-members.repository';
 import { DemoActivityResourcesRepository } from '../repositories/activity-resources.repository';
@@ -79,6 +81,7 @@ function demoBootstrapProgressStep(stage: DemoBootstrapProgressStage): DemoBoots
 })
 export class DemoBootstrapService {
   private static readonly EVENT_FEEDBACK_UNLOCK_DELAY_MS = 2 * 60 * 60 * 1000;
+  private static readonly ORGANIZER_FEEDBACK_SHOWCASE_TARGET_COUNT = 3;
   private readonly memoryDb = inject(AppMemoryDb);
   private readonly chatsRepository = inject(DemoChatsRepository);
   private readonly eventsRepository = inject(DemoEventsRepository);
@@ -136,7 +139,14 @@ export class DemoBootstrapService {
 
     await this.ensureReady();
 
+    const filterPreferencesChanged = this.usersRepository.seedDefaultUserFilterPreferencesForUser(normalizedUserId);
+
     if (this.readyUserIds.has(normalizedUserId)) {
+      if (filterPreferencesChanged) {
+        onProgress?.(demoBootstrapProgressStep('sessionIndexedDb'));
+        await this.memoryDb.flushToIndexedDb();
+        await this.waitForUiYield();
+      }
       onProgress?.(demoBootstrapProgressStep('sessionReady'));
       return;
     }
@@ -150,7 +160,7 @@ export class DemoBootstrapService {
       normalizedUserId,
       this.eventsRepository.queryItemsByUser(normalizedUserId)
     );
-    if (contextualChatsChanged) {
+    if (contextualChatsChanged || filterPreferencesChanged) {
       onProgress?.(demoBootstrapProgressStep('sessionIndexedDb'));
       await this.memoryDb.flushToIndexedDb();
       await this.waitForUiYield();
@@ -166,6 +176,7 @@ export class DemoBootstrapService {
       return;
     }
 
+    await this.memoryDb.whenReady();
     await this.runBootstrapStep('selector');
     await this.runBootstrapStep('chats', () => this.chatsRepository.init());
     await this.runBootstrapStep('events', () => this.eventsRepository.init());
@@ -225,6 +236,10 @@ export class DemoBootstrapService {
       }
     }
 
+    if (this.seedOrganizerFeedbackShowcaseRecords(users, nextById, nextIds)) {
+      changed = true;
+    }
+
     if (!changed) {
       return;
     }
@@ -236,6 +251,167 @@ export class DemoBootstrapService {
         ids: nextIds
       }
     }));
+  }
+
+  private seedOrganizerFeedbackShowcaseRecords(
+    users: UserDto[],
+    nextById: Record<string, EventFeedbackPersistedState>,
+    nextIds: string[]
+  ): boolean {
+    const usersById = new Map(users.map(user => [user.id, user]));
+    const hostedEventById = new Map<string, DemoEventRecord>();
+    let changed = false;
+
+    for (const user of users) {
+      for (const record of this.eventsRepository.queryItemsByUser(user.id)) {
+        const eventId = record.id?.trim() ?? '';
+        if (!eventId || record.isAdmin !== true || record.isInvitation || record.isTrashed) {
+          continue;
+        }
+        const current = hostedEventById.get(eventId);
+        if (
+          !current
+          || (current.type !== 'hosting' && record.type === 'hosting')
+          || (current.published === false && record.published !== false)
+        ) {
+          hostedEventById.set(eventId, record);
+        }
+      }
+    }
+
+    for (const record of hostedEventById.values()) {
+      const hostUserId = record.creatorUserId?.trim() || record.userId?.trim();
+      const hostUser = hostUserId ? usersById.get(hostUserId) : null;
+      if (!hostUser) {
+        continue;
+      }
+
+      const viewerUserIds = this.organizerFeedbackShowcaseViewerUserIds(record, users, hostUser.id, usersById);
+      if (viewerUserIds.length === 0) {
+        continue;
+      }
+
+      let visibleEntryCount = viewerUserIds.filter(userId =>
+        this.hasOrganizerVisibleFeedback(nextById[`${userId}::${record.id}`])
+      ).length;
+      if (visibleEntryCount >= DemoBootstrapService.ORGANIZER_FEEDBACK_SHOWCASE_TARGET_COUNT) {
+        continue;
+      }
+
+      const feedbackItem = this.toFeedbackViewerEventMenuItem(record, viewerUserIds);
+      for (const viewerUserId of viewerUserIds) {
+        if (visibleEntryCount >= DemoBootstrapService.ORGANIZER_FEEDBACK_SHOWCASE_TARGET_COUNT) {
+          break;
+        }
+        const existingRecord = nextById[`${viewerUserId}::${record.id}`];
+        if (this.hasOrganizerVisibleFeedback(existingRecord)) {
+          continue;
+        }
+        const viewer = usersById.get(viewerUserId);
+        if (!viewer) {
+          continue;
+        }
+        const seededRecord = DemoEventFeedbackBuilder.buildSeededSubmittedState({
+          eventItem: feedbackItem,
+          users,
+          activeUser: viewer,
+          eventDatesById: {
+            [record.id]: record.startAtIso
+          },
+          activityImageById: {
+            [record.id]: record.imageUrl ?? ''
+          },
+          eventFeedbackUnlockDelayMs: DemoBootstrapService.EVENT_FEEDBACK_UNLOCK_DELAY_MS,
+          eventOverallOptions: APP_STATIC_DATA.eventFeedbackEventOverallOptions,
+          hostImproveOptions: APP_STATIC_DATA.eventFeedbackHostImproveOptions,
+          attendeeCollabOptions: APP_STATIC_DATA.eventFeedbackAttendeeCollabOptions,
+          attendeeRejoinOptions: APP_STATIC_DATA.eventFeedbackAttendeeRejoinOptions,
+          personalityTraitOptions: APP_STATIC_DATA.eventFeedbackPersonalityTraitOptions,
+          seedKey: `organizer-showcase:${record.id}:${viewerUserId}`
+        });
+        if (!seededRecord) {
+          continue;
+        }
+        nextById[seededRecord.id] = {
+          ...seededRecord,
+          answersByCardId: { ...(seededRecord.answersByCardId ?? {}) }
+        };
+        if (!nextIds.includes(seededRecord.id)) {
+          nextIds.push(seededRecord.id);
+        }
+        visibleEntryCount += 1;
+        changed = true;
+      }
+    }
+
+    return changed;
+  }
+
+  private hasOrganizerVisibleFeedback(record: EventFeedbackPersistedState | undefined): boolean {
+    if (!record) {
+      return false;
+    }
+    return Boolean(record.organizerNote?.trim()) || Object.keys(record.answersByCardId ?? {}).length > 0;
+  }
+
+  private organizerFeedbackShowcaseViewerUserIds(
+    record: DemoEventRecord,
+    users: readonly UserDto[],
+    hostUserId: string,
+    usersById: ReadonlyMap<string, UserDto>
+  ): string[] {
+    const memberUserIds = [...new Set([
+      ...record.acceptedMemberUserIds,
+      ...record.pendingMemberUserIds
+    ].map(userId => `${userId}`.trim()).filter(Boolean))]
+      .filter(userId => userId !== hostUserId && usersById.has(userId));
+    if (memberUserIds.length > 0) {
+      return memberUserIds;
+    }
+
+    const candidates = users
+      .map(user => user.id.trim())
+      .filter(userId => userId && userId !== hostUserId);
+    if (candidates.length === 0) {
+      return [];
+    }
+
+    const seed = this.hashText(`organizer-feedback-viewers:${record.id}`);
+    const selected: string[] = [];
+    for (let index = 0; index < candidates.length && selected.length < DemoBootstrapService.ORGANIZER_FEEDBACK_SHOWCASE_TARGET_COUNT; index += 1) {
+      const candidate = candidates[(seed + (index * 5)) % candidates.length];
+      if (!candidate || selected.includes(candidate)) {
+        continue;
+      }
+      selected.push(candidate);
+    }
+    return selected;
+  }
+
+  private toFeedbackViewerEventMenuItem(record: DemoEventRecord, viewerUserIds: readonly string[] = []): EventMenuItem {
+    const acceptedMemberUserIds = [...new Set([
+      ...record.acceptedMemberUserIds,
+      ...viewerUserIds
+    ].map(userId => `${userId}`.trim()).filter(Boolean))];
+    const pendingMemberUserIds = record.pendingMemberUserIds.filter(userId => !acceptedMemberUserIds.includes(userId));
+    return {
+      ...this.toEventMenuItem(record),
+      activity: 0,
+      isAdmin: false,
+      acceptedMembers: Math.max(record.acceptedMembers, acceptedMemberUserIds.length),
+      capacityTotal: Math.max(record.capacityTotal, acceptedMemberUserIds.length),
+      acceptedMemberUserIds,
+      pendingMemberUserIds
+    };
+  }
+
+  private hashText(value: string): number {
+    let hash = 0;
+    for (let index = 0; index < value.length; index += 1) {
+      hash = ((hash << 5) - hash) + value.charCodeAt(index);
+      hash |= 0;
+    }
+    return Math.abs(hash);
   }
 
   private toEventMenuItem(record: DemoEventRecord): EventMenuItem {
@@ -251,6 +427,9 @@ export class DemoBootstrapService {
       startAt: record.startAtIso,
       endAt: record.endAtIso,
       distanceKm: record.distanceKm,
+      acceptedMembers: record.acceptedMembers,
+      pendingMembers: record.pendingMembers,
+      capacityTotal: record.capacityTotal,
       acceptedMemberUserIds: [...record.acceptedMemberUserIds],
       pendingMemberUserIds: [...record.pendingMemberUserIds],
       visibility: record.visibility,

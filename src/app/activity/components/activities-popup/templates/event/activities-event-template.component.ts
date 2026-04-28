@@ -99,11 +99,17 @@ export class ActivitiesEventTemplateComponent implements OnChanges {
 
 type ActivityInfoCardActionId = 'publish' | 'primary' | 'view' | 'approve' | 'secondary' | 'restore';
 type ActivitiesEventsHost = any;
+type InvitationApprovalSyncResult = {
+  syncPayload: Omit<ActivitiesEventSyncPayload, 'syncKey'>;
+  nextMembers: AppTypes.ActivityMemberEntry[] | null;
+  capacityTotal: number;
+};
 
 export class ActivitiesEventsController {
   constructor(private readonly host: ActivitiesEventsHost) {}
 
   private get activeUser() { return this.host.activeUser as any; }
+  private get activitiesContext() { return this.host.activitiesContext; }
   private get activitiesEventScope() { return this.host.activitiesEventScope as AppTypes.ActivitiesEventScope; }
   private set activitiesEventScope(value: AppTypes.ActivitiesEventScope) { this.host.activitiesEventScope = value; }
   private get activitiesRates() { return this.host.activitiesRates; }
@@ -112,6 +118,7 @@ export class ActivitiesEventsController {
   private get activityMembersService() { return this.host.activityMembersService; }
   private get cdr() { return this.host.cdr; }
   private get confirmationDialogService() { return this.host.confirmationDialogService; }
+  private get eventCheckoutDraftService() { return this.host.eventCheckoutDraftService; }
   private get eventCheckoutDialogService() { return this.host.eventCheckoutDialogService; }
   private get eventEditorService() { return this.host.eventEditorService; }
   private get eventItems() { return this.host.eventItems as EventMenuItem[]; }
@@ -122,6 +129,7 @@ export class ActivitiesEventsController {
   private get inlineItemActionMenu() { return this.host.inlineItemActionMenu; }
   private set inlineItemActionMenu(value: any) { this.host.inlineItemActionMenu = value; }
   private get invitationItems() { return this.host.invitationItems as InvitationMenuItem[]; }
+  private set invitationItems(value: InvitationMenuItem[]) { this.host.invitationItems = value; }
   private get isMobileView() { return this.host.isMobileView as boolean; }
   private get pendingActivityMemberDelete() { return this.host.pendingActivityMemberDelete as AppTypes.ActivityMemberEntry | null; }
   private set pendingActivityMemberDelete(value: AppTypes.ActivityMemberEntry | null) { this.host.pendingActivityMemberDelete = value; }
@@ -217,7 +225,13 @@ export class ActivitiesEventsController {
     if (!activeUserId) {
       return false;
     }
-    const source = row.source as { pendingMemberUserIds?: readonly string[] };
+    const source = row.source as {
+      acceptedMemberUserIds?: readonly string[];
+      pendingMemberUserIds?: readonly string[];
+    };
+    if (Array.isArray(source.acceptedMemberUserIds) && source.acceptedMemberUserIds.includes(activeUserId)) {
+      return false;
+    }
     return Array.isArray(source.pendingMemberUserIds) && source.pendingMemberUserIds.includes(activeUserId);
   }
 
@@ -379,11 +393,21 @@ export class ActivitiesEventsController {
   private async openInvitationApprovalFlow(row: AppTypes.ActivityListRow): Promise<void> {
     const activeUserId = this.activeUser.id.trim();
     const record = activeUserId ? await this.eventsService.queryKnownItemById(activeUserId, row.id) : null;
+    const relatedSource = ActivityEventBuilder.resolveEditorSource(row, {
+      eventItems: this.eventItems,
+      hostingItems: this.hostingItems,
+      invitationItems: this.invitationItems
+    }) ?? ActivityEventBuilder.buildInvitationPreviewEventSource(row.source as InvitationMenuItem);
+    const requiresAdminApproval = await this.resolveInvitationRequiresAdminApproval(
+      row.id,
+      record?.creatorUserId ?? relatedSource.creatorUserId
+    );
     if (record && this.shouldUseCheckoutFlow(record)) {
       this.eventCheckoutDialogService.open({
         mode: 'invitation',
         userId: activeUserId,
         record,
+        requiresApprovalBeforePayment: requiresAdminApproval,
         title: 'Accept invitation?',
         subtitle: record.timeframe,
         confirmLabel: 'Accept',
@@ -511,10 +535,42 @@ export class ActivitiesEventsController {
   }
 
   private async confirmActivitySecondaryAction(row: AppTypes.ActivityListRow): Promise<void> {
+    if (row.type === 'events') {
+      await this.confirmActivityLeave(row);
+      return;
+    }
     await this.persistActivityRowTrash(row);
     this.markActivityRowTrashed(row);
     this.removeVisibleActivityRow(row);
     this.cdr.markForCheck();
+  }
+
+  private async confirmActivityLeave(row: AppTypes.ActivityListRow): Promise<void> {
+    const activeUserId = this.activeUser.id.trim();
+    if (!activeUserId) {
+      return;
+    }
+    const syncPayload = await this.buildLeftEventSyncPayload(row);
+    if (!syncPayload) {
+      this.eventCheckoutDraftService.clear(activeUserId, row.id);
+      this.removeVisibleActivityRow(row);
+      this.refreshSectionBadges();
+      this.cdr.markForCheck();
+      return;
+    }
+
+    this.eventCheckoutDraftService.clear(activeUserId, row.id);
+    const persistence = this.activitiesContext.emitActivitiesEventSync(syncPayload);
+
+    if (this.selectedActivityMembersRowId === this.activityRowIdentity(row)) {
+      this.selectedActivityMembers = ActivityMembersBuilder.sortActivityMembersByActionTimeAsc(
+        this.selectedActivityMembers.filter(member => member.userId !== activeUserId)
+      );
+      this.activityMembersByRowId[this.selectedActivityMembersRowId] = [...this.selectedActivityMembers];
+    }
+
+    this.cdr.markForCheck();
+    await persistence;
   }
 
   private shouldUseCheckoutFlow(record: {
@@ -539,19 +595,22 @@ export class ActivitiesEventsController {
     row: AppTypes.ActivityListRow,
     selection?: AppTypes.EventCheckoutSelection | null
   ): Promise<void> {
-    const syncPayload = await this.buildAcceptedInvitationSyncPayload(row, selection);
+    const { syncPayload, nextMembers, capacityTotal } = await this.buildAcceptedInvitationSyncResult(row, selection);
     await Promise.all([
       this.eventsService.syncEventSnapshot(syncPayload),
-      this.activityMembersService.syncEventMembersFromEventSnapshot(syncPayload)
+      nextMembers
+        ? this.activityMembersService.replaceMembersByOwnerId(syncPayload.id, nextMembers, capacityTotal)
+        : this.activityMembersService.syncEventMembersFromEventSnapshot(syncPayload)
     ]);
+    this.removeInvitationItem(syncPayload.id);
     this.applyActivitiesEventSync(syncPayload);
     this.cdr.markForCheck();
   }
 
-  private async buildAcceptedInvitationSyncPayload(
+  private async buildAcceptedInvitationSyncResult(
     row: AppTypes.ActivityListRow,
     selection?: AppTypes.EventCheckoutSelection | null
-  ): Promise<Omit<ActivitiesEventSyncPayload, 'syncKey'>> {
+  ): Promise<InvitationApprovalSyncResult> {
     const activeUserId = this.activeUser.id.trim();
     if (!activeUserId) {
       throw new Error('Unable to resolve active user.');
@@ -564,6 +623,17 @@ export class ActivitiesEventsController {
       invitationItems: this.invitationItems
     }) ?? ActivityEventBuilder.buildInvitationPreviewEventSource(invitationSource);
     const record = await this.eventsService.queryKnownItemById(activeUserId, row.id);
+    const currentMembers = await this.activityMembersService.queryMembersByOwnerId(row.id);
+    const activeInviteEntry = currentMembers.find((member: AppTypes.ActivityMemberEntry) =>
+      member.userId === activeUserId
+      && member.status === 'pending'
+      && member.requestKind === 'invite'
+    ) ?? null;
+    const requiresAdminApproval = this.invitationRequiresAdminApproval(
+      activeInviteEntry,
+      currentMembers,
+      record?.creatorUserId ?? relatedSource.creatorUserId
+    );
 
     const existingAcceptedMemberUserIds = this.uniqueUserIds([
       ...(record?.acceptedMemberUserIds ?? relatedSource.acceptedMemberUserIds ?? [])
@@ -572,24 +642,33 @@ export class ActivitiesEventsController {
       ...(record?.pendingMemberUserIds ?? relatedSource.pendingMemberUserIds ?? [])
     ]);
     const activeUserWasAccepted = existingAcceptedMemberUserIds.includes(activeUserId);
-    const activeUserWasPending = existingPendingMemberUserIds.includes(activeUserId) || !activeUserWasAccepted;
-    const nextAcceptedMemberUserIds = activeUserWasAccepted
-      ? [...existingAcceptedMemberUserIds]
-      : this.uniqueUserIds([...existingAcceptedMemberUserIds, activeUserId]);
-    const nextPendingMemberUserIds = existingPendingMemberUserIds.filter(userId => userId !== activeUserId);
+    const activeUserWasPending = existingPendingMemberUserIds.includes(activeUserId);
+    const nextAcceptedMemberUserIds = requiresAdminApproval
+      ? existingAcceptedMemberUserIds.filter(userId => userId !== activeUserId)
+      : (activeUserWasAccepted
+        ? [...existingAcceptedMemberUserIds]
+        : this.uniqueUserIds([...existingAcceptedMemberUserIds, activeUserId]));
+    const nextPendingMemberUserIds = requiresAdminApproval
+      ? this.uniqueUserIds([...existingPendingMemberUserIds, activeUserId])
+      : existingPendingMemberUserIds.filter(userId => userId !== activeUserId);
 
-    const acceptedMembersBase = this.chatCountValue(record?.acceptedMembers ?? relatedSource.acceptedMembers);
+    const acceptedMembersBase = Math.max(
+      this.chatCountValue(record?.acceptedMembers ?? relatedSource.acceptedMembers),
+      existingAcceptedMemberUserIds.length
+    );
     const pendingMembersBase = this.chatCountValue(
       record?.pendingMembers
       ?? relatedSource.pendingMembers
-      ?? (activeUserWasPending ? 1 : nextPendingMemberUserIds.length)
+      ?? (activeUserWasPending ? 1 : existingPendingMemberUserIds.length)
     );
-    const nextAcceptedMembers = activeUserWasAccepted
-      ? Math.max(acceptedMembersBase, nextAcceptedMemberUserIds.length)
-      : Math.max(nextAcceptedMemberUserIds.length, acceptedMembersBase + 1);
-    const nextPendingMembers = activeUserWasAccepted
-      ? Math.max(pendingMembersBase, nextPendingMemberUserIds.length)
-      : Math.max(0, Math.max(pendingMembersBase, activeUserWasPending ? 1 : 0) - 1);
+    const nextAcceptedMembers = Math.max(
+      nextAcceptedMemberUserIds.length,
+      acceptedMembersBase + (nextAcceptedMemberUserIds.length - existingAcceptedMemberUserIds.length)
+    );
+    const nextPendingMembers = Math.max(
+      nextPendingMemberUserIds.length,
+      pendingMembersBase + (nextPendingMemberUserIds.length - existingPendingMemberUserIds.length)
+    );
 
     const title = record?.title ?? relatedSource.title ?? invitationSource.description ?? row.title;
     const shortDescription = record?.subtitle
@@ -612,62 +691,290 @@ export class ActivitiesEventsController {
       : null;
 
     return {
+      syncPayload: {
+        id: row.id,
+        target: 'events',
+        title,
+        shortDescription,
+        timeframe,
+        activity: this.chatCountValue(record?.activity ?? relatedSource.activity ?? invitationSource.unread ?? row.unread),
+        isAdmin: false,
+        startAt,
+        endAt,
+        distanceKm,
+        imageUrl: record?.imageUrl ?? relatedSource.imageUrl ?? invitationSource.imageUrl ?? '',
+        acceptedMembers: nextAcceptedMembers,
+        pendingMembers: nextPendingMembers,
+        capacityTotal,
+        capacityMin: record?.capacityMin ?? relatedSource.capacityMin ?? null,
+        capacityMax: record?.capacityMax ?? relatedSource.capacityMax ?? capacityTotal,
+        autoInviter: record?.autoInviter ?? relatedSource.autoInviter,
+        frequency: record?.frequency ?? relatedSource.frequency,
+        ticketing: record?.ticketing ?? relatedSource.ticketing,
+        pricing: record?.pricing ?? relatedSource.pricing,
+        policies: Array.isArray(record?.policies)
+          ? record.policies.map((item: AppTypes.EventPolicyItem) => ({ ...item }))
+          : (Array.isArray(relatedSource.policies) ? relatedSource.policies.map((item: AppTypes.EventPolicyItem) => ({ ...item })) : undefined),
+        slotsEnabled: record?.slotsEnabled ?? relatedSource.slotsEnabled,
+        slotTemplates: Array.isArray(record?.slotTemplates)
+          ? record.slotTemplates.map((item: AppTypes.EventSlotTemplate) => ({ ...item }))
+          : (Array.isArray(relatedSource.slotTemplates) ? relatedSource.slotTemplates.map((item: AppTypes.EventSlotTemplate) => ({ ...item })) : undefined),
+        parentEventId: record?.parentEventId ?? relatedSource.parentEventId,
+        slotTemplateId: record?.slotTemplateId ?? relatedSource.slotTemplateId,
+        generated: record?.generated ?? relatedSource.generated,
+        eventType: record?.eventType ?? relatedSource.eventType,
+        nextSlot: selectedSlot
+          ? { ...selectedSlot }
+          : (record?.nextSlot ? { ...record.nextSlot } : (relatedSource.nextSlot ? { ...relatedSource.nextSlot } : undefined)),
+        upcomingSlots: Array.isArray(record?.upcomingSlots)
+          ? record.upcomingSlots.map((item: AppTypes.EventSlotOccurrence) => ({ ...item }))
+          : (Array.isArray(relatedSource.upcomingSlots) ? relatedSource.upcomingSlots.map((item: AppTypes.EventSlotOccurrence) => ({ ...item })) : undefined),
+        visibility: record?.visibility ?? relatedSource.visibility,
+        blindMode: record?.blindMode ?? relatedSource.blindMode,
+        published: record?.published ?? relatedSource.published ?? true,
+        creatorUserId: record?.creatorUserId ?? relatedSource.creatorUserId,
+        creatorName,
+        creatorInitials,
+        creatorGender: record?.creatorGender,
+        creatorCity: record?.creatorCity,
+        location: record?.location ?? relatedSource.location ?? invitationSource.location,
+        locationCoordinates: record?.locationCoordinates ?? relatedSource.locationCoordinates ?? invitationSource.locationCoordinates,
+        sourceLink: record?.sourceLink ?? relatedSource.sourceLink ?? invitationSource.sourceLink,
+        acceptedMemberUserIds: nextAcceptedMemberUserIds,
+        pendingMemberUserIds: nextPendingMemberUserIds,
+        topics: [...(record?.topics ?? relatedSource.topics ?? [])],
+        subEvents: Array.isArray(record?.subEvents)
+          ? this.cloneSyncedSubEventForms(record.subEvents)
+          : (Array.isArray(relatedSource.subEvents) ? this.cloneSyncedSubEventForms(relatedSource.subEvents) : undefined),
+        subEventsDisplayMode: record?.subEventsDisplayMode ?? relatedSource.subEventsDisplayMode,
+        paymentSessionId: selection?.paymentSessionId ?? null
+      },
+      nextMembers: this.buildAcceptedInvitationMembers(currentMembers, activeUserId, requiresAdminApproval),
+      capacityTotal
+    };
+  }
+
+  private async resolveInvitationRequiresAdminApproval(ownerId: string, creatorUserId?: string | null): Promise<boolean> {
+    const activeUserId = this.activeUser.id.trim();
+    if (!activeUserId) {
+      return false;
+    }
+    const currentMembers = await this.activityMembersService.queryMembersByOwnerId(ownerId);
+    const activeInviteEntry = currentMembers.find((member: AppTypes.ActivityMemberEntry) =>
+      member.userId === activeUserId
+      && member.status === 'pending'
+      && member.requestKind === 'invite'
+    ) ?? null;
+    return this.invitationRequiresAdminApproval(activeInviteEntry, currentMembers, creatorUserId);
+  }
+
+  private invitationRequiresAdminApproval(
+    activeInviteEntry: AppTypes.ActivityMemberEntry | null,
+    currentMembers: readonly AppTypes.ActivityMemberEntry[],
+    creatorUserId?: string | null
+  ): boolean {
+    const inviterUserId = `${activeInviteEntry?.invitedByUserId ?? ''}`.trim();
+    if (!inviterUserId) {
+      return false;
+    }
+    if (inviterUserId === `${creatorUserId ?? ''}`.trim()) {
+      return false;
+    }
+    const inviterEntry = currentMembers.find(member =>
+      member.userId === inviterUserId
+      && member.status === 'accepted'
+    );
+    return inviterEntry?.role !== 'Admin' && inviterEntry?.role !== 'Manager';
+  }
+
+  private buildAcceptedInvitationMembers(
+    members: readonly AppTypes.ActivityMemberEntry[],
+    activeUserId: string,
+    requiresAdminApproval: boolean
+  ): AppTypes.ActivityMemberEntry[] | null {
+    const nowIso = AppUtils.toIsoDateTime(new Date());
+    let didUpdate = false;
+    const nextMembers = members.map(member => {
+      if (member.userId !== activeUserId) {
+        return { ...member };
+      }
+      didUpdate = true;
+      if (requiresAdminApproval) {
+        return {
+          ...member,
+          status: 'pending' as const,
+          pendingSource: 'admin' as const,
+          requestKind: 'join' as const,
+          invitedByUserId: null,
+          invitedByActiveUser: false,
+          statusText: 'Waiting for admin approval.',
+          actionAtIso: nowIso
+        };
+      }
+      return {
+        ...member,
+        status: 'accepted' as const,
+        pendingSource: null,
+        requestKind: null,
+        invitedByUserId: null,
+        invitedByActiveUser: false,
+        statusText: member.statusText?.trim() || 'Accepted',
+        actionAtIso: nowIso
+      };
+    });
+    return didUpdate
+      ? ActivityMembersBuilder.sortActivityMembersByActionTimeDesc(nextMembers)
+      : null;
+  }
+
+  private removeInvitationItem(sourceId: string): void {
+    this.invitationItems = this.invitationItems.filter(item => item.id !== sourceId);
+    delete this.activityMembersByRowId[`invitations:${sourceId}`];
+  }
+
+  private async buildLeftEventSyncPayload(
+    row: AppTypes.ActivityListRow
+  ): Promise<Omit<ActivitiesEventSyncPayload, 'syncKey'> | null> {
+    const activeUserId = this.activeUser.id.trim();
+    if (!activeUserId) {
+      return null;
+    }
+
+    const relatedSource = ActivityEventBuilder.resolveEditorSource(row, {
+      eventItems: this.eventItems,
+      hostingItems: this.hostingItems,
+      invitationItems: this.invitationItems
+    });
+    const record = await this.eventsService.queryKnownItemById(activeUserId, row.id);
+    const source = row.source as EventMenuItem;
+    const creatorUserId = record?.creatorUserId ?? relatedSource?.creatorUserId ?? source.creatorUserId ?? '';
+    if (!creatorUserId.trim()) {
+      return null;
+    }
+
+    const existingAcceptedMemberUserIds = this.uniqueUserIds([
+      ...(record?.acceptedMemberUserIds ?? relatedSource?.acceptedMemberUserIds ?? source.acceptedMemberUserIds ?? [])
+    ]);
+    const existingPendingMemberUserIds = this.uniqueUserIds([
+      ...(record?.pendingMemberUserIds ?? relatedSource?.pendingMemberUserIds ?? source.pendingMemberUserIds ?? [])
+    ]);
+    const activeUserWasAccepted = existingAcceptedMemberUserIds.includes(activeUserId);
+    const activeUserWasPending = existingPendingMemberUserIds.includes(activeUserId);
+    const nextAcceptedMemberUserIds = existingAcceptedMemberUserIds.filter(userId => userId !== activeUserId);
+    const nextPendingMemberUserIds = existingPendingMemberUserIds
+      .filter(userId => userId !== activeUserId && !nextAcceptedMemberUserIds.includes(userId));
+
+    const acceptedMembersBase = this.chatCountValue(
+      record?.acceptedMembers
+      ?? relatedSource?.acceptedMembers
+      ?? source.acceptedMembers
+    );
+    const pendingMembersBase = this.chatCountValue(
+      record?.pendingMembers
+      ?? relatedSource?.pendingMembers
+      ?? source.pendingMembers
+    );
+    const nextAcceptedMembers = Math.max(
+      nextAcceptedMemberUserIds.length,
+      Math.max(0, acceptedMembersBase - (activeUserWasAccepted ? 1 : 0))
+    );
+    const nextPendingMembers = Math.max(
+      nextPendingMemberUserIds.length,
+      Math.max(0, pendingMembersBase - (activeUserWasPending ? 1 : 0))
+    );
+
+    const title = record?.title ?? relatedSource?.title ?? source.title ?? row.title;
+    const shortDescription = record?.subtitle
+      ?? relatedSource?.shortDescription
+      ?? source.shortDescription
+      ?? row.subtitle
+      ?? '';
+    const timeframe = record?.timeframe ?? relatedSource?.timeframe ?? source.timeframe ?? row.detail;
+    const startAt = record?.startAtIso ?? relatedSource?.startAt ?? source.startAt ?? row.dateIso;
+    const endAt = record?.endAtIso ?? relatedSource?.endAt ?? source.endAt ?? startAt;
+    const distanceKmRaw = record?.distanceKm ?? relatedSource?.distanceKm ?? source.distanceKm ?? row.distanceKm;
+    const distanceKm = Number.isFinite(Number(distanceKmRaw)) ? Math.max(0, Number(distanceKmRaw)) : 0;
+    const creatorName = record?.creatorName?.trim() || title;
+    const creatorInitials = record?.creatorInitials?.trim()
+      || relatedSource?.avatar?.trim()
+      || source.avatar?.trim()
+      || AppUtils.initialsFromText(creatorName);
+    const capacityTotal = Math.max(
+      nextAcceptedMembers,
+      this.chatCountValue(
+        record?.capacityTotal
+        ?? relatedSource?.capacityTotal
+        ?? source.capacityTotal
+        ?? relatedSource?.capacityMax
+        ?? source.capacityMax
+      )
+    );
+
+    return {
       id: row.id,
       target: 'events',
       title,
       shortDescription,
       timeframe,
-      activity: this.chatCountValue(record?.activity ?? relatedSource.activity ?? invitationSource.unread ?? row.unread),
+      activity: this.chatCountValue(record?.activity ?? relatedSource?.activity ?? source.activity ?? row.unread),
       isAdmin: false,
       startAt,
       endAt,
       distanceKm,
-      imageUrl: record?.imageUrl ?? relatedSource.imageUrl ?? invitationSource.imageUrl ?? '',
+      imageUrl: record?.imageUrl ?? relatedSource?.imageUrl ?? source.imageUrl ?? '',
       acceptedMembers: nextAcceptedMembers,
       pendingMembers: nextPendingMembers,
       capacityTotal,
-      capacityMin: record?.capacityMin ?? relatedSource.capacityMin ?? null,
-      capacityMax: record?.capacityMax ?? relatedSource.capacityMax ?? capacityTotal,
-      autoInviter: record?.autoInviter ?? relatedSource.autoInviter,
-      frequency: record?.frequency ?? relatedSource.frequency,
-      ticketing: record?.ticketing ?? relatedSource.ticketing,
-      pricing: record?.pricing ?? relatedSource.pricing,
+      capacityMin: record?.capacityMin ?? relatedSource?.capacityMin ?? source.capacityMin ?? null,
+      capacityMax: record?.capacityMax ?? relatedSource?.capacityMax ?? source.capacityMax ?? capacityTotal,
+      autoInviter: record?.autoInviter ?? relatedSource?.autoInviter ?? source.autoInviter,
+      frequency: record?.frequency ?? relatedSource?.frequency ?? source.frequency,
+      ticketing: record?.ticketing ?? relatedSource?.ticketing ?? source.ticketing,
+      pricing: record?.pricing ?? relatedSource?.pricing ?? source.pricing,
       policies: Array.isArray(record?.policies)
         ? record.policies.map((item: AppTypes.EventPolicyItem) => ({ ...item }))
-        : (Array.isArray(relatedSource.policies) ? relatedSource.policies.map((item: AppTypes.EventPolicyItem) => ({ ...item })) : undefined),
-      slotsEnabled: record?.slotsEnabled ?? relatedSource.slotsEnabled,
+        : (Array.isArray(relatedSource?.policies)
+            ? relatedSource.policies.map((item: AppTypes.EventPolicyItem) => ({ ...item }))
+            : (Array.isArray(source.policies) ? source.policies.map((item: AppTypes.EventPolicyItem) => ({ ...item })) : undefined)),
+      slotsEnabled: record?.slotsEnabled ?? relatedSource?.slotsEnabled ?? source.slotsEnabled,
       slotTemplates: Array.isArray(record?.slotTemplates)
         ? record.slotTemplates.map((item: AppTypes.EventSlotTemplate) => ({ ...item }))
-        : (Array.isArray(relatedSource.slotTemplates) ? relatedSource.slotTemplates.map((item: AppTypes.EventSlotTemplate) => ({ ...item })) : undefined),
-      parentEventId: record?.parentEventId ?? relatedSource.parentEventId,
-      slotTemplateId: record?.slotTemplateId ?? relatedSource.slotTemplateId,
-      generated: record?.generated ?? relatedSource.generated,
-      eventType: record?.eventType ?? relatedSource.eventType,
-      nextSlot: selectedSlot
-        ? { ...selectedSlot }
-        : (record?.nextSlot ? { ...record.nextSlot } : (relatedSource.nextSlot ? { ...relatedSource.nextSlot } : undefined)),
+        : (Array.isArray(relatedSource?.slotTemplates)
+            ? relatedSource.slotTemplates.map((item: AppTypes.EventSlotTemplate) => ({ ...item }))
+            : (Array.isArray(source.slotTemplates) ? source.slotTemplates.map((item: AppTypes.EventSlotTemplate) => ({ ...item })) : undefined)),
+      parentEventId: record?.parentEventId ?? relatedSource?.parentEventId ?? source.parentEventId,
+      slotTemplateId: record?.slotTemplateId ?? relatedSource?.slotTemplateId ?? source.slotTemplateId,
+      generated: record?.generated ?? relatedSource?.generated ?? source.generated,
+      eventType: record?.eventType ?? relatedSource?.eventType ?? source.eventType,
+      nextSlot: record?.nextSlot
+        ? { ...record.nextSlot }
+        : (relatedSource?.nextSlot ? { ...relatedSource.nextSlot } : (source.nextSlot ? { ...source.nextSlot } : undefined)),
       upcomingSlots: Array.isArray(record?.upcomingSlots)
         ? record.upcomingSlots.map((item: AppTypes.EventSlotOccurrence) => ({ ...item }))
-        : (Array.isArray(relatedSource.upcomingSlots) ? relatedSource.upcomingSlots.map((item: AppTypes.EventSlotOccurrence) => ({ ...item })) : undefined),
-      visibility: record?.visibility ?? relatedSource.visibility,
-      blindMode: record?.blindMode ?? relatedSource.blindMode,
-      published: record?.published ?? relatedSource.published ?? true,
-      creatorUserId: record?.creatorUserId ?? relatedSource.creatorUserId,
+        : (Array.isArray(relatedSource?.upcomingSlots)
+            ? relatedSource.upcomingSlots.map((item: AppTypes.EventSlotOccurrence) => ({ ...item }))
+            : (Array.isArray(source.upcomingSlots) ? source.upcomingSlots.map((item: AppTypes.EventSlotOccurrence) => ({ ...item })) : undefined)),
+      visibility: record?.visibility ?? relatedSource?.visibility ?? source.visibility,
+      blindMode: record?.blindMode ?? relatedSource?.blindMode ?? source.blindMode,
+      published: record?.published ?? relatedSource?.published ?? source.published ?? true,
+      creatorUserId,
       creatorName,
       creatorInitials,
       creatorGender: record?.creatorGender,
       creatorCity: record?.creatorCity,
-      location: record?.location ?? relatedSource.location ?? invitationSource.location,
-      locationCoordinates: record?.locationCoordinates ?? relatedSource.locationCoordinates ?? invitationSource.locationCoordinates,
-      sourceLink: record?.sourceLink ?? relatedSource.sourceLink ?? invitationSource.sourceLink,
+      location: record?.location ?? relatedSource?.location ?? source.location,
+      locationCoordinates: record?.locationCoordinates ?? relatedSource?.locationCoordinates ?? source.locationCoordinates,
+      sourceLink: record?.sourceLink ?? relatedSource?.sourceLink ?? source.sourceLink,
       acceptedMemberUserIds: nextAcceptedMemberUserIds,
       pendingMemberUserIds: nextPendingMemberUserIds,
-      topics: [...(record?.topics ?? relatedSource.topics ?? [])],
+      topics: [...(record?.topics ?? relatedSource?.topics ?? source.topics ?? [])],
       subEvents: Array.isArray(record?.subEvents)
         ? this.cloneSyncedSubEventForms(record.subEvents)
-        : (Array.isArray(relatedSource.subEvents) ? this.cloneSyncedSubEventForms(relatedSource.subEvents) : undefined),
-      subEventsDisplayMode: record?.subEventsDisplayMode ?? relatedSource.subEventsDisplayMode,
-      paymentSessionId: selection?.paymentSessionId ?? null
+        : (Array.isArray(relatedSource?.subEvents)
+            ? this.cloneSyncedSubEventForms(relatedSource.subEvents)
+            : (Array.isArray(source.subEvents) ? this.cloneSyncedSubEventForms(source.subEvents) : undefined)),
+      subEventsDisplayMode: record?.subEventsDisplayMode ?? relatedSource?.subEventsDisplayMode ?? source.subEventsDisplayMode,
+      paymentSessionId: null
     };
   }
 

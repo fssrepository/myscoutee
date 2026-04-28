@@ -54,24 +54,38 @@ export class AppMemoryDb {
   private readonly _tables = signal<DemoMemorySchema>(this.loadInitialState());
   private pendingPersistState: DemoMemorySchema | null = null;
   private persistTimerId: ReturnType<typeof setTimeout> | null = null;
+  private hydrationComplete = false;
+  private readonly hydrationReady: Promise<void>;
 
   readonly tables = this._tables.asReadonly();
 
   constructor() {
-    void this.hydrateFromIndexedDb();
+    this.hydrationReady = this.hydrateFromIndexedDb();
   }
 
   read(): DemoMemorySchema {
     return this._tables();
   }
 
+  async whenReady(): Promise<void> {
+    try {
+      await this.hydrationReady;
+    } catch {
+      // Keep callers unblocked if IndexedDB hydration fails.
+    }
+  }
+
   write(updater: (current: DemoMemorySchema) => DemoMemorySchema): void {
     const next = this.normalizeState(updater(this._tables()));
     this._tables.set(next);
+    if (!this.hydrationComplete) {
+      return;
+    }
     this.schedulePersist(next);
   }
 
   async flushToIndexedDb(): Promise<void> {
+    await this.whenReady();
     if (this.persistTimerId !== null) {
       clearTimeout(this.persistTimerId);
       this.persistTimerId = null;
@@ -202,21 +216,27 @@ export class AppMemoryDb {
   }
 
   private async hydrateFromIndexedDb(): Promise<void> {
-    const snapshot = await this.readFromIndexedDb();
-    if (!snapshot) {
-      void this.persistToIndexedDb(this._tables());
-      return;
+    try {
+      const snapshot = await this.readFromIndexedDb();
+      if (!snapshot) {
+        return;
+      }
+      const normalized = this.normalizeState(snapshot);
+      const current = this._tables();
+      const currentHasUsers = current[USERS_TABLE_NAME].ids.length > 0;
+      const incomingHasUsers = normalized[USERS_TABLE_NAME].ids.length > 0;
+      if (currentHasUsers && !incomingHasUsers) {
+        return;
+      }
+      this._tables.set(normalized);
+    } finally {
+      if (this.persistTimerId !== null) {
+        clearTimeout(this.persistTimerId);
+        this.persistTimerId = null;
+      }
+      this.pendingPersistState = null;
+      this.hydrationComplete = true;
     }
-    const normalized = this.normalizeState(snapshot);
-    const current = this._tables();
-    const currentHasUsers = current[USERS_TABLE_NAME].ids.length > 0;
-    const incomingHasUsers = normalized[USERS_TABLE_NAME].ids.length > 0;
-    if (currentHasUsers && !incomingHasUsers) {
-      return;
-    }
-    this._tables.set(normalized);
-    this.persist(normalized);
-    void this.persistToIndexedDb(normalized);
   }
 
   private async readFromIndexedDb(): Promise<DemoMemorySchema | null> {

@@ -95,17 +95,19 @@ function buildPairRateDisplaySlots(
   item: RateMenuItem,
   options: BuildActivityRateRowsOptions
 ): AppTypes.ActivityRateDisplaySlot[] {
-  return (['woman', 'man'] as const).map(slot => {
-    const user = resolvePairSlotUser(item, slot, options.users);
+  return ([0, 1] as const).map(index => {
+    const slot = index === 0 ? 'woman' : 'man';
+    const label = resolvePairSlotLabel(item, index);
+    const user = resolvePairSlotUserById(index === 0 ? item.userId : item.secondaryUserId, options.users);
     return {
       key: slot,
-      label: slot === 'woman' ? 'Woman' : 'Man',
-      tone: slot,
+      label,
+      tone: user?.gender ?? slot,
       slides: user
         ? buildPairSlotSlides(item, slot, user)
         : [{
             imageUrl: '',
-            primaryLine: `${slot === 'woman' ? 'Woman' : 'Man'} · waiting`,
+            primaryLine: `${label} · waiting`,
             secondaryLine: 'No pair card yet',
             placeholderLabel: '∅'
           }]
@@ -137,37 +139,25 @@ function resolvePrimaryRateUser(
     ?? null;
 }
 
-function resolvePairSlotUser(
-  item: RateMenuItem,
-  gender: DemoUser['gender'],
+function resolvePairSlotUserById(
+  userId: string | undefined,
   users: readonly DemoUser[]
 ): DemoUser | null {
-  const pairUsers = [item.userId, item.secondaryUserId]
-    .filter((userId): userId is string => typeof userId === 'string' && userId.trim().length > 0)
-    .map(userId => users.find(user => user.id === userId) ?? null)
-    .filter((user): user is DemoUser => Boolean(user));
-
-  const directMatch = pairUsers.find(user => user.gender === gender) ?? null;
-  if (directMatch) {
-    return directMatch;
+  const normalizedUserId = `${userId ?? ''}`.trim();
+  if (!normalizedUserId) {
+    return null;
   }
+  return users.find(user => user.id === normalizedUserId) ?? null;
+}
 
-  const primary = pairUsers[0] ?? null;
-  const candidates = users.filter(user =>
-    user.gender === gender
-    && !pairUsers.some(pairUser => pairUser.id === user.id)
-  );
-
-  if (candidates.length > 0) {
-    const seed = AppUtils.hashText(`pair-rate-slot:${item.id}:${gender}`);
-    return candidates[seed % candidates.length] ?? null;
+function resolvePairSlotLabel(item: RateMenuItem, index: 0 | 1): string {
+  if (item.socialContext === 'friends-in-common') {
+    return index === 0 ? 'Person' : 'Common friend';
   }
-
-  if (primary && primary.gender !== gender) {
-    return primary;
+  if (item.socialContext === 'separated-friends') {
+    return index === 0 ? 'Friend A' : 'Friend B';
   }
-
-  return null;
+  return index === 0 ? 'Person A' : 'Person B';
 }
 
 function toActivityRateDisplayUser(user: DemoUser): AppTypes.ActivityRateDisplayUser {

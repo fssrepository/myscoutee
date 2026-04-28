@@ -4,6 +4,7 @@ import {
   AppContext,
   SessionService,
   UsersService,
+  type ActivityMemberOwnerType,
   type ActivityCounterKey,
   type UserDto,
   type UserImpressionsSectionDto,
@@ -18,6 +19,17 @@ export interface NavigatorMenuUiState {
 }
 
 export type NavigatorSettingsPopup = 'help' | 'feedback' | 'privacy' | 'report-user';
+
+export interface NavigatorReportUserContext {
+  targetUserId: string;
+  targetName: string;
+  memberEntryId?: string | null;
+  eventId: string;
+  eventTitle?: string | null;
+  eventStartAtIso?: string | null;
+  eventTimeframe?: string | null;
+  ownerType?: ActivityMemberOwnerType;
+}
 
 export interface NavigatorBindings {
   syncHydratedUser?(user: UserDto): void;
@@ -41,6 +53,7 @@ export class NavigatorService {
   private readonly menuOpenRef = signal(false);
   private readonly settingsMenuOpenRef = signal(false);
   private readonly settingsPopupRef = signal<NavigatorSettingsPopup | null>(null);
+  private readonly reportUserContextRef = signal<NavigatorReportUserContext | null>(null);
   private readonly profileEditorOpenRef = signal(false);
   private readonly impressionsPopupOpenRef = signal(false);
   private readonly impressionsPopupUserIdRef = signal('');
@@ -56,6 +69,7 @@ export class NavigatorService {
   readonly bindings = this.bindingsRef.asReadonly();
   readonly profileEditorOpen = this.profileEditorOpenRef.asReadonly();
   readonly settingsPopup = this.settingsPopupRef.asReadonly();
+  readonly reportUserContext = this.reportUserContextRef.asReadonly();
   readonly impressionsPopupOpen = this.impressionsPopupOpenRef.asReadonly();
   readonly impressionsPopupUserId = this.impressionsPopupUserIdRef.asReadonly();
   readonly menuUiState = computed<NavigatorMenuUiState>(() => ({
@@ -192,12 +206,38 @@ export class NavigatorService {
   }
 
   openSettingsPopup(popup: NavigatorSettingsPopup): void {
+    if (popup !== 'report-user') {
+      this.reportUserContextRef.set(null);
+    }
     this.settingsPopupRef.set(popup);
     this.closeSettingsMenu();
   }
 
   closeSettingsPopup(): void {
+    if (this.settingsPopupRef() === 'report-user') {
+      this.reportUserContextRef.set(null);
+    }
     this.settingsPopupRef.set(null);
+  }
+
+  openReportUserPopup(context: NavigatorReportUserContext): void {
+    const targetUserId = `${context.targetUserId ?? ''}`.trim();
+    const eventId = `${context.eventId ?? ''}`.trim();
+    const targetName = `${context.targetName ?? ''}`.trim();
+    if (!targetUserId || !eventId || !targetName) {
+      return;
+    }
+    this.reportUserContextRef.set({
+      targetUserId,
+      targetName,
+      memberEntryId: `${context.memberEntryId ?? ''}`.trim() || null,
+      eventId,
+      eventTitle: `${context.eventTitle ?? ''}`.trim() || null,
+      eventStartAtIso: `${context.eventStartAtIso ?? ''}`.trim() || null,
+      eventTimeframe: `${context.eventTimeframe ?? ''}`.trim() || null,
+      ownerType: context.ownerType
+    });
+    this.openSettingsPopup('report-user');
   }
 
   openImpressionsPopup(userId?: string): void {

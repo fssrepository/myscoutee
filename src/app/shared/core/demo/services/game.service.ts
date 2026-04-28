@@ -1,6 +1,8 @@
 import { Injectable, inject } from '@angular/core';
 
+import { APP_STATIC_DATA } from '../../../app-static-data';
 import { DemoRouteDelayService } from './demo-route-delay.service';
+import { DemoActivityMembersRepository } from '../repositories/activity-members.repository';
 import { DemoUsersRepository } from '../repositories/users.repository';
 import { DemoUsersRatingsRepository } from '../repositories/users-ratings.repository';
 import type {
@@ -8,8 +10,7 @@ import type {
   UserGameCardsQueryRequest,
   UserGameCardsQueryResponse,
   UserGameDataService,
-  UserGameFilterPreferencesDto,
-  UserRateRecord
+  UserGameFilterPreferencesDto
 } from '../../base/interfaces/game.interface';
 import type { UserDto } from '../../base/interfaces/user.interface';
 
@@ -18,8 +19,10 @@ import type { UserDto } from '../../base/interfaces/user.interface';
 })
 export class DemoGameService extends DemoRouteDelayService implements UserGameDataService {
   private static readonly USER_GAME_CARDS_ROUTE = '/game-cards/query';
+  private readonly activityMembersRepository = inject(DemoActivityMembersRepository);
   private readonly usersRepository = inject(DemoUsersRepository);
   private readonly usersRatingsRepository = inject(DemoUsersRatingsRepository);
+  private readonly userFacetById = APP_STATIC_DATA.homeUserFacetById;
 
   queryGameCardsUsersSnapshot(): UserDto[] {
     return this.usersRepository.queryGameStackUsers();
@@ -43,10 +46,17 @@ export class DemoGameService extends DemoRouteDelayService implements UserGameDa
     const mode = request.mode ?? 'single';
     if (mode === 'separated-friends' || mode === 'friends-in-common') {
       const allUsers = this.usersRepository.queryAllUsers();
-      const allSocialCards = mode === 'separated-friends'
-        ? this.buildSeparatedFriendCards(normalizedUserId, allUsers)
-        : this.buildFriendsInCommonCards(normalizedUserId, allUsers);
+      const usersById = new Map(allUsers.map(user => [user.id, user] as const));
+      const ratedPairKeys = new Set(this.usersRatingsRepository.queryRatedGameCardPairKeys(normalizedUserId));
+      const allSocialCards = this.activityMembersRepository
+        .queryGameSocialCards(normalizedUserId, mode)
+        .filter(card => {
+          const pairKey = this.socialPairKey(card);
+          return pairKey !== null && !ratedPairKeys.has(pairKey);
+        });
       const filteredSocialCards = allSocialCards.filter(card =>
+        this.matchesSocialFilterPreferences(usersById, card, request.filterPreferences ?? null)
+        &&
         this.matchesSocialQuery(allUsers, card, request.leftQuery ?? null, request.rightQuery ?? null)
       );
       const pageSize = this.resolvePageSize(request.pageSize);
@@ -64,8 +74,10 @@ export class DemoGameService extends DemoRouteDelayService implements UserGameDa
     }
     const pageSize = this.resolvePageSize(request.pageSize);
     const offset = this.resolveOffset(request.cursor);
+    const metUserIds = new Set(this.activityMembersRepository.queryMetUserIds(normalizedUserId));
     const allUsers = this.usersRepository.queryGameStackUsers(normalizedUserId);
     const filtered = allUsers
+      .filter(user => !metUserIds.has(user.id))
       .filter(user => this.matchesFilterPreferences(user, request.filterPreferences ?? null));
     const cardUserIds = filtered
       .slice(offset, offset + pageSize)
@@ -81,6 +93,14 @@ export class DemoGameService extends DemoRouteDelayService implements UserGameDa
         nextCursor
       }
     };
+  }
+
+  didUsersMeet(leftUserId: string, rightUserId: string): boolean {
+    return this.activityMembersRepository.didUsersMeet(leftUserId, rightUserId);
+  }
+
+  queryMetUserIds(userId: string): string[] {
+    return this.activityMembersRepository.queryMetUserIds(userId);
   }
 
   private resolvePageSize(value: number | undefined): number {
@@ -150,7 +170,57 @@ export class DemoGameService extends DemoRouteDelayService implements UserGameDa
       const normalized = new Set(right.map(value => value.trim().toLowerCase()));
       return left.some(value => normalized.has(value.trim().toLowerCase()));
     };
+    const facet = this.userFacetById[user.id] ?? {
+      interests: [],
+      values: [],
+      smoking: 'never',
+      drinking: 'never',
+      workout: 'weekly',
+      pets: 'all pets welcome',
+      familyPlans: 'open to both',
+      children: 'no',
+      loveStyle: 'slow-burn connection',
+      communicationStyle: 'direct + warm',
+      sexualOrientation: 'straight',
+      religion: 'not religious'
+    };
 
+    if (!intersectsNormalized(preferences.interests, facet.interests)) {
+      return false;
+    }
+    if (!intersectsNormalized(preferences.values, facet.values)) {
+      return false;
+    }
+    if (!includesNormalized(preferences.smoking, facet.smoking)) {
+      return false;
+    }
+    if (!includesNormalized(preferences.drinking, facet.drinking)) {
+      return false;
+    }
+    if (!includesNormalized(preferences.workout, facet.workout)) {
+      return false;
+    }
+    if (!includesNormalized(preferences.pets, facet.pets)) {
+      return false;
+    }
+    if (!includesNormalized(preferences.familyPlans, facet.familyPlans)) {
+      return false;
+    }
+    if (!includesNormalized(preferences.children, facet.children)) {
+      return false;
+    }
+    if (!includesNormalized(preferences.loveStyles, facet.loveStyle)) {
+      return false;
+    }
+    if (!includesNormalized(preferences.communicationStyles, facet.communicationStyle)) {
+      return false;
+    }
+    if (!includesNormalized(preferences.sexualOrientations, facet.sexualOrientation)) {
+      return false;
+    }
+    if (!includesNormalized(preferences.religions, facet.religion)) {
+      return false;
+    }
     if (!includesNormalized(preferences.physiques, user.physique)) {
       return false;
     }
@@ -171,122 +241,37 @@ export class DemoGameService extends DemoRouteDelayService implements UserGameDa
     return true;
   }
 
-  private buildSeparatedFriendCards(activeUserId: string, users: readonly UserDto[]): UserGameSocialCard[] {
-    const graph = this.buildActivityGraph(users);
-    const neighbors = [...(graph.neighborsByUserId.get(activeUserId) ?? new Set<string>())]
-      .filter(userId => userId !== activeUserId)
-      .sort();
-    const ratedPairKeys = this.queryRatedPairKeys(activeUserId);
-    const cards: UserGameSocialCard[] = [];
-    for (let leftIndex = 0; leftIndex < neighbors.length; leftIndex += 1) {
-      const leftUserId = neighbors[leftIndex];
-      for (let rightIndex = leftIndex + 1; rightIndex < neighbors.length; rightIndex += 1) {
-        const rightUserId = neighbors[rightIndex];
-        const key = this.sortedPairKey(leftUserId, rightUserId);
-        if ((graph.neighborsByUserId.get(leftUserId)?.has(rightUserId) ?? false) || ratedPairKeys.has(key)) {
-          continue;
-        }
-        cards.push({
-          id: `separated-friends:${activeUserId}:${key}`,
-          userId: leftUserId,
-          secondaryUserId: rightUserId,
-          socialContext: 'separated-friends',
-          bridgeCount: 2,
-          eventName: graph.edgeEventNameByKey.get(this.sortedPairKey(activeUserId, leftUserId))
-            ?? graph.edgeEventNameByKey.get(this.sortedPairKey(activeUserId, rightUserId))
-            ?? 'Unconnected Friends'
-        });
-      }
+  private matchesSocialFilterPreferences(
+    usersById: ReadonlyMap<string, UserDto>,
+    card: UserGameSocialCard,
+    preferences: UserGameFilterPreferencesDto | null
+  ): boolean {
+    if (!preferences) {
+      return true;
     }
-    return cards;
+    const participantIds = [
+      card.userId.trim(),
+      (card.secondaryUserId?.trim() || card.bridgeUserId?.trim() || '')
+    ]
+      .filter((id, index, ids) => id.length > 0 && ids.indexOf(id) === index);
+    if (participantIds.length === 0) {
+      return false;
+    }
+    return participantIds.every(userId => {
+      const user = usersById.get(userId);
+      return user ? this.matchesFilterPreferences(user, preferences) : false;
+    });
   }
 
-  private buildFriendsInCommonCards(activeUserId: string, users: readonly UserDto[]): UserGameSocialCard[] {
-    const graph = this.buildActivityGraph(users);
-    const activeNeighbors = graph.neighborsByUserId.get(activeUserId) ?? new Set<string>();
-    const ratedUserIds = new Set(this.usersRatingsRepository.queryRatedGameCardUserIds(activeUserId));
-    const cards: UserGameSocialCard[] = [];
-    for (const user of users) {
-      if (user.id === activeUserId || activeNeighbors.has(user.id) || ratedUserIds.has(user.id)) {
-        continue;
-      }
-      const candidateNeighbors = graph.neighborsByUserId.get(user.id) ?? new Set<string>();
-      const bridges = [...activeNeighbors].filter(bridgeUserId => candidateNeighbors.has(bridgeUserId));
-      if (bridges.length === 0) {
-        continue;
-      }
-      const bridgeUserId = bridges.sort()[0];
-      cards.push({
-        id: `friends-in-common:${activeUserId}:${user.id}`,
-        userId: user.id,
-        socialContext: 'friends-in-common',
-        bridgeUserId,
-        bridgeCount: bridges.length,
-        eventName: graph.edgeEventNameByKey.get(this.sortedPairKey(activeUserId, bridgeUserId))
-          ?? graph.edgeEventNameByKey.get(this.sortedPairKey(user.id, bridgeUserId))
-          ?? 'Connected Friends'
-      });
+  private socialPairKey(card: UserGameSocialCard): string | null {
+    const firstUserId = card.userId.trim();
+    const secondUserId = card.secondaryUserId?.trim() || card.bridgeUserId?.trim() || '';
+    if (!firstUserId || !secondUserId || firstUserId === secondUserId) {
+      return null;
     }
-    return cards.sort((left, right) => (right.bridgeCount ?? 0) - (left.bridgeCount ?? 0) || left.id.localeCompare(right.id));
-  }
-
-  private buildActivityGraph(users: readonly UserDto[]): {
-    neighborsByUserId: Map<string, Set<string>>;
-    edgeEventNameByKey: Map<string, string>;
-  } {
-    const neighborsByUserId = new Map<string, Set<string>>();
-    const edgeEventNameByKey = new Map<string, string>();
-    for (const user of users) {
-      for (const record of this.usersRatingsRepository.queryUserRatesByUserId(user.id)) {
-        if (record.source !== 'activity-rate') {
-          continue;
-        }
-        this.registerActivityEdge(neighborsByUserId, edgeEventNameByKey, record.ownerUserId ?? '', record.fromUserId, record.eventName);
-        this.registerActivityEdge(neighborsByUserId, edgeEventNameByKey, record.ownerUserId ?? '', record.toUserId, record.eventName);
-        if (record.mode === 'single') {
-          this.registerActivityEdge(neighborsByUserId, edgeEventNameByKey, record.fromUserId, record.toUserId, record.eventName);
-        }
-      }
-    }
-    return { neighborsByUserId, edgeEventNameByKey };
-  }
-
-  private registerActivityEdge(
-    neighborsByUserId: Map<string, Set<string>>,
-    edgeEventNameByKey: Map<string, string>,
-    leftUserId: string,
-    rightUserId: string,
-    eventName?: string
-  ): void {
-    const normalizedLeftUserId = leftUserId.trim();
-    const normalizedRightUserId = rightUserId.trim();
-    if (!normalizedLeftUserId || !normalizedRightUserId || normalizedLeftUserId === normalizedRightUserId) {
-      return;
-    }
-    if (!neighborsByUserId.has(normalizedLeftUserId)) {
-      neighborsByUserId.set(normalizedLeftUserId, new Set<string>());
-    }
-    if (!neighborsByUserId.has(normalizedRightUserId)) {
-      neighborsByUserId.set(normalizedRightUserId, new Set<string>());
-    }
-    neighborsByUserId.get(normalizedLeftUserId)?.add(normalizedRightUserId);
-    neighborsByUserId.get(normalizedRightUserId)?.add(normalizedLeftUserId);
-    const key = this.sortedPairKey(normalizedLeftUserId, normalizedRightUserId);
-    if (eventName?.trim()) {
-      edgeEventNameByKey.set(key, eventName.trim());
-    }
-  }
-
-  private queryRatedPairKeys(activeUserId: string): Set<string> {
-    return new Set(
-      this.usersRatingsRepository.queryUserRatesByUserId(activeUserId)
-        .filter((record): record is UserRateRecord => record.source === 'game-card' && record.mode === 'pair' && record.ownerUserId === activeUserId)
-        .map(record => this.sortedPairKey(record.fromUserId, record.toUserId))
-    );
-  }
-
-  private sortedPairKey(leftUserId: string, rightUserId: string): string {
-    return [leftUserId.trim(), rightUserId.trim()].sort((left, right) => left.localeCompare(right)).join(':');
+    return [firstUserId, secondUserId]
+      .sort((left, right) => left.localeCompare(right))
+      .join(':');
   }
 
   private matchesSocialQuery(

@@ -36,6 +36,12 @@ export function buildActivitiesEventInfoCard(
       ...(locationMetaLine ? [locationMetaLine] : [])
     ],
     description: row.subtitle,
+    footerChips: options.isPending
+      ? [{
+          label: 'Waiting for approval',
+          toneClass: 'status-pending'
+        }]
+      : [],
     surfaceTone: options.isDraft
       ? 'draft'
       : options.isPending

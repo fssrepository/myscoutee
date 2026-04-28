@@ -15,6 +15,7 @@ export function toActivitiesPageRequest(query: ListQuery<ActivitiesFeedFilters>)
     chatContextFilter: normalizeActivitiesChatContextFilter(filters?.chatContextFilter),
     hostingPublicationFilter: normalizeHostingPublicationFilter(filters?.hostingPublicationFilter),
     rateFilter: normalizeRateFilter(filters?.rateFilter),
+    rateSocialBadgeEnabled: filters?.rateSocialBadgeEnabled === true,
     view,
     page: Math.max(0, Math.trunc(query.page)),
     pageSize: Math.max(1, Math.trunc(query.pageSize)),
@@ -37,6 +38,7 @@ function normalizeActivitiesPrimaryFilter(filter: AppTypes.ActivitiesPrimaryFilt
 
 function normalizeActivitiesEventScopeFilter(value: unknown): AppTypes.ActivitiesEventScope {
   return value === 'all'
+    || value === 'pending'
     || value === 'invitations'
     || value === 'my-events'
     || value === 'drafts'

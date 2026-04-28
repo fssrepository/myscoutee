@@ -3,12 +3,12 @@ import { Injectable, inject } from '@angular/core';
 
 import { environment } from '../../../../../environments/environment';
 import { PricingBuilder } from '../../../core/base/builders';
-import { RouteDelayService } from '../../../core/base/services/route-delay.service';
 import type {
   ActivitiesEventSyncPayload,
   EventCheckoutAssetSelection,
   EventCheckoutRequest,
   EventCheckoutSession,
+  EventFeedbackReceivedEventDto,
   EventFeedbackNoteRequestDto,
   EventFeedbackStateDto,
   EventFeedbackSubmitRequestDto
@@ -40,7 +40,6 @@ interface HttpEventsFilterRequest {
 export class HttpEventsService {
   private readonly http = inject(HttpClient);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
-  private readonly routeDelayService = inject(RouteDelayService);
 
   async queryItemsByUser(userId: string): Promise<DemoEventRecord[]> {
     return this.getRecords('/activities/events', userId);
@@ -229,6 +228,7 @@ export class HttpEventsService {
       assetSelections?: EventCheckoutAssetSelection[];
       acceptedPolicyIds?: string[];
       paymentSessionId?: string | null;
+      bookingConfirmed?: boolean;
     } = {}
   ): Promise<DemoEventRecord | null> {
     const normalizedUserId = userId.trim();
@@ -246,7 +246,8 @@ export class HttpEventsService {
           optionalSubEventIds: [...(options.optionalSubEventIds ?? [])],
           assetSelections: [...(options.assetSelections ?? [])],
           acceptedPolicyIds: [...(options.acceptedPolicyIds ?? [])],
-          paymentSessionId: options.paymentSessionId?.trim() || null
+          paymentSessionId: options.paymentSessionId?.trim() || null,
+          bookingConfirmed: options.bookingConfirmed === true
         })
         .toPromise();
       return response ? this.cloneRecords([response])[0] ?? null : null;
@@ -257,7 +258,6 @@ export class HttpEventsService {
 
   async createCheckoutSession(request: EventCheckoutRequest): Promise<EventCheckoutSession | null> {
     try {
-      await this.routeDelayService.waitForRouteDelay('/activities/events/checkout');
       return await this.http
         .post<EventCheckoutSession | null>(`${this.apiBaseUrl}/activities/events/checkout`, request)
         .toPromise() ?? null;
@@ -282,8 +282,44 @@ export class HttpEventsService {
             eventId: item.eventId?.trim() ?? '',
             removed: Boolean(item.removed),
             submittedAtIso: item.submittedAtIso?.trim() ?? '',
+            removedAtIso: item.removedAtIso?.trim() ?? '',
             organizerNote: item.organizerNote?.trim() ?? '',
             answersByCardId: this.cloneEventFeedbackAnswersByCardId(item.answersByCardId)
+          })).filter(item => item.eventId)
+        : [];
+    } catch {
+      return [];
+    }
+  }
+
+  async queryReceivedEventFeedback(userId: string): Promise<EventFeedbackReceivedEventDto[]> {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return [];
+    }
+    try {
+      const response = await this.http
+          .get<EventFeedbackReceivedEventDto[] | null>(`${this.apiBaseUrl}/activities/events/feedback/received`, {
+            params: new HttpParams().set('userId', normalizedUserId)
+          })
+          .toPromise();
+      return Array.isArray(response)
+        ? response.map(item => ({
+            eventId: item.eventId?.trim() ?? '',
+            entries: (item.entries ?? []).map(entry => ({
+              viewerUserId: entry.viewerUserId?.trim() ?? '',
+              viewerName: entry.viewerName?.trim() ?? '',
+              viewerInitials: entry.viewerInitials?.trim() ?? '',
+              viewerGender: (entry.viewerGender === 'woman' ? 'woman' : 'man') as 'woman' | 'man',
+              viewerImageUrl: entry.viewerImageUrl?.trim() ?? '',
+              eventId: entry.eventId?.trim() ?? item.eventId?.trim() ?? '',
+              submittedAtIso: entry.submittedAtIso?.trim() ?? '',
+              updatedAtIso: entry.updatedAtIso?.trim() ?? '',
+              organizerNote: entry.organizerNote?.trim() ?? '',
+              answers: Object.values(this.cloneEventFeedbackAnswersByCardId(
+                Object.fromEntries((entry.answers ?? []).map(answer => [answer.cardId ?? '', answer]))
+              ))
+            })).filter(entry => entry.viewerUserId && entry.eventId)
           })).filter(item => item.eventId)
         : [];
     } catch {

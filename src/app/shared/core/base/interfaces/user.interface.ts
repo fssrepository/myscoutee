@@ -126,6 +126,11 @@ export interface UserReportUserSubmitRequestDto {
   handle: string;
   reason: string;
   details: string;
+  targetUserId?: string;
+  memberEntryId?: string | null;
+  eventId?: string;
+  eventTitle?: string | null;
+  eventStartAtIso?: string | null;
 }
 
 export interface UserLogoutRequestDto {

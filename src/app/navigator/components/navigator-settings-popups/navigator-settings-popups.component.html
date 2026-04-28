@@ -1,5 +1,8 @@
 @if (activePopup(); as popup) {
-  <section class="app-popup">
+  <section
+    class="app-popup navigator-settings-popup-shell"
+    [class.navigator-settings-popup-shell-report-user]="popup === 'report-user'"
+    >
     <div class="app-popup-backdrop" (click)="closePopup()"></div>
     <div class="app-popup-panel navigator-settings-popup-panel" (click)="$event.stopPropagation()">
       <div class="popup-header">

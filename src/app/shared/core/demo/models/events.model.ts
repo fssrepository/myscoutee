@@ -6,6 +6,7 @@ export const EVENTS_TABLE_NAME = 'events' as const;
 export type DemoEventScopeFilter =
   | 'all'
   | 'active-events'
+  | 'pending'
   | 'invitations'
   | 'my-events'
   | 'drafts'
