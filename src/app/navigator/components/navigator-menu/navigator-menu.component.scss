@@ -51,6 +51,7 @@
   .header-open-cue,
   .menu-shortcut-btn,
   .impression-shortcut-btn,
+  .impression-dual-launcher,
   .asset-shortcut-btn,
   .feedback-shortcut-btn
 ) {
@@ -96,6 +97,7 @@
 .menu-shortcut-btn .mat-icon,
 .menu-shortcut-label,
 .impression-shortcut-btn .mat-icon,
+.impression-dual-launcher .mat-icon,
 .impression-shortcut-label,
 .asset-shortcut-btn .mat-icon,
 .asset-shortcut-label,
@@ -113,6 +115,7 @@
   .header-open-cue,
   .menu-shortcut-btn,
   .impression-shortcut-btn,
+  .impression-dual-launcher,
   .asset-shortcut-btn,
   .feedback-shortcut-btn
 ):focus-visible {
@@ -128,6 +131,7 @@
     .header-open-cue,
     .menu-shortcut-btn,
     .impression-shortcut-btn,
+    .impression-dual-launcher,
     .asset-shortcut-btn,
     .feedback-shortcut-btn
   ):not(:disabled):not([aria-disabled='true']):hover {
@@ -142,6 +146,7 @@
     .header-open-cue,
     .menu-shortcut-btn,
     .impression-shortcut-btn,
+    .impression-dual-launcher,
     .asset-shortcut-btn,
     .feedback-shortcut-btn
   ):not(:disabled):not([aria-disabled='true']):active {
@@ -151,6 +156,7 @@
 
   .menu-shortcut-btn:hover,
   .impression-shortcut-btn:hover,
+  .impression-dual-launcher:hover,
   .asset-shortcut-btn:hover,
   .feedback-shortcut-btn:hover {
     box-shadow: 0 3px 10px rgba(16, 29, 48, 0.14);
@@ -165,6 +171,7 @@
     .header-open-cue,
     .menu-shortcut-btn,
     .impression-shortcut-btn,
+    .impression-dual-launcher,
     .asset-shortcut-btn,
     .feedback-shortcut-btn
   ):not(:disabled):not([aria-disabled='true']):active {
@@ -281,6 +288,7 @@
   .header-open-cue,
   .menu-shortcut-btn,
   .impression-shortcut-btn,
+  .impression-dual-launcher,
   .asset-shortcut-btn,
   .feedback-shortcut-btn
 ):disabled {
@@ -800,9 +808,65 @@
 
 .impressions-shortcuts {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 0.46rem;
+  align-items: stretch;
   width: 100%;
+}
+
+.impression-dual-launcher {
+  appearance: none;
+  -webkit-appearance: none;
+  position: relative;
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  overflow: visible;
+  cursor: pointer;
+  box-shadow: none;
+}
+
+.impression-shortcut-badge {
+  top: -7px;
+  right: -7px;
+  min-width: 22px;
+  height: 22px;
+  font-size: 11px;
+  z-index: 3;
+}
+
+.impression-dual-shortcut {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0;
+  width: 100%;
+  min-height: 64px;
+  height: 64px;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid rgba(86, 74, 127, 0.22);
+  background: rgba(255, 255, 255, 0.7);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.68);
+  pointer-events: none;
+}
+
+.impression-dual-segment {
+  position: relative;
+  min-height: 64px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.42rem;
+  padding: 0.42rem 0.56rem;
+  text-align: center;
+  background: transparent;
+}
+
+.impression-dual-segment + .impression-dual-segment {
+  border-left: 1px solid rgba(255, 255, 255, 0.74);
 }
 
 .impression-shortcut-btn {
@@ -822,6 +886,13 @@
 }
 
 .impression-shortcut-btn .mat-icon {
+  width: 18px;
+  height: 18px;
+  font-size: 18px;
+  line-height: 18px;
+}
+
+.impression-dual-segment .mat-icon {
   width: 18px;
   height: 18px;
   font-size: 18px;
@@ -891,11 +962,11 @@
 .impression-shortcut-label {
   display: inline-flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  gap: 0.1rem;
+  gap: 0.06rem;
   line-height: 1;
-  text-align: center;
+  text-align: left;
   color: rgba(25, 38, 58, 0.92);
 }
 
@@ -1047,6 +1118,28 @@
 .feedback-shortcut-event .mat-icon,
 .feedback-shortcut-event .feedback-shortcut-label {
   color: #5f3d98;
+}
+
+.feedback-shortcut-compact {
+  width: 84px;
+  min-width: 84px;
+  min-height: 64px;
+  height: 64px;
+  flex-direction: column;
+  gap: 0.18rem;
+  padding: 0.42rem 0.38rem 0.36rem;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .impression-dual-launcher:hover {
+    box-shadow: none;
+  }
+
+  .impression-dual-launcher:hover .impression-dual-shortcut {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.68),
+      0 3px 10px rgba(16, 29, 48, 0.14);
+  }
 }
 
 .feedback-shortcut-report {

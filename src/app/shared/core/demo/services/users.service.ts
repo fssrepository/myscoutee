@@ -24,6 +24,7 @@ import {
   DemoUserImpressionsBuilder,
   DemoUserMenuCountersBuilder
 } from '../builders';
+import { DemoActivityMembersRepository } from '../repositories/activity-members.repository';
 import { DemoChatsRepository } from '../repositories/chats.repository';
 import { DemoEventsRepository } from '../repositories/events.repository';
 
@@ -42,6 +43,7 @@ export class DemoUsersService extends DemoRouteDelayService implements UserServi
   private static readonly FILTER_PREFERENCES_SAVE_DELAY_MS = 1500;
   private readonly chatsRepository = inject(DemoChatsRepository);
   private readonly eventsRepository = inject(DemoEventsRepository);
+  private readonly activityMembersRepository = inject(DemoActivityMembersRepository);
   private readonly memoryDb = inject(AppMemoryDb);
   private readonly usersRepository = inject(DemoUsersRepository);
   private readonly realtimeCursorByUserId: Record<string, number> = {};
@@ -184,6 +186,37 @@ export class DemoUsersService extends DemoRouteDelayService implements UserServi
     signal?: AbortSignal
   ): Promise<UserSubmitActionResponseDto> {
     await this.waitForRouteDelay(DemoUsersService.USER_REPORT_USER_ROUTE, signal);
+    const normalizedActiveUserId = `${request.userId ?? ''}`.trim();
+    const normalizedTargetUserId = `${request.targetUserId ?? ''}`.trim();
+    const normalizedEventId = `${request.eventId ?? ''}`.trim();
+    if (
+      !normalizedActiveUserId
+      || !normalizedTargetUserId
+      || !normalizedEventId
+      || normalizedActiveUserId === normalizedTargetUserId
+    ) {
+      return {
+        submitted: false,
+        message: 'Reports can only be submitted for members you shared an event with.'
+      };
+    }
+    const members = this.activityMembersRepository.peekMembersByOwner({
+      ownerType: 'event',
+      ownerId: normalizedEventId
+    });
+    const activeMember = members.find(member => member.userId === normalizedActiveUserId && member.status === 'accepted');
+    const targetMember = members.find(member => member.userId === normalizedTargetUserId && member.status === 'accepted');
+    const normalizedMemberEntryId = `${request.memberEntryId ?? ''}`.trim();
+    if (
+      !activeMember
+      || !targetMember
+      || (normalizedMemberEntryId && normalizedMemberEntryId !== targetMember.id)
+    ) {
+      return {
+        submitted: false,
+        message: 'Reports can only be submitted for members you shared an event with.'
+      };
+    }
     const normalizedTarget = request.handle.trim();
     return {
       submitted: true,

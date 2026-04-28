@@ -33,6 +33,7 @@ import {
   type SmartListStateChange
 } from '../../../shared/ui';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
+import { NavigatorService } from '../../../navigator';
 
 interface MembersSmartListFilters {
   ownerId?: string;
@@ -74,6 +75,7 @@ export class EventMembersPopupComponent {
   private readonly appCtx = inject(AppContext);
   private readonly popupCtx = inject(AppPopupContext);
   private readonly usersService = inject(UsersService);
+  private readonly navigatorService = inject(NavigatorService);
   private readonly membersCacheByOwnerId = new Map<string, AppTypes.ActivityMemberEntry[]>();
   private lastAppliedActivityMembersUpdatedMs = 0;
   private openMembersHydrationTimer: ReturnType<typeof setTimeout> | null = null;
@@ -300,10 +302,7 @@ export class EventMembersPopupComponent {
   }
 
   protected canShowActionMenu(entry: AppTypes.ActivityMemberEntry): boolean {
-    if (this.viewOnlyMode) {
-      return false;
-    }
-    return this.canApproveMember(entry) || this.canDeleteMember(entry);
+    return this.canApproveMember(entry) || this.canDeleteMember(entry) || this.canReportMember(entry);
   }
 
   protected toggleMemberActionMenu(entry: AppTypes.ActivityMemberEntry, event: Event): void {
@@ -367,6 +366,25 @@ export class EventMembersPopupComponent {
       failureMessage: this.memberRemovalFailureMessage(entry),
       onConfirm: () => this.confirmRemoveMember(entry)
     });
+  }
+
+  protected reportMember(entry: AppTypes.ActivityMemberEntry, event: Event): void {
+    event.stopPropagation();
+    if (!this.canReportMember(entry)) {
+      return;
+    }
+    this.inlineItemActionMenu = null;
+    this.navigatorService.openReportUserPopup({
+      targetUserId: entry.userId,
+      targetName: entry.name,
+      memberEntryId: entry.id,
+      eventId: this.ownerId,
+      eventTitle: this.ownerRecord?.title?.trim() || this.subtitle.trim() || 'Event',
+      eventStartAtIso: this.ownerRecord?.startAtIso ?? null,
+      eventTimeframe: this.ownerRecord?.timeframe ?? null,
+      ownerType: this.ownerRef?.ownerType ?? 'event'
+    });
+    this.cdr.markForCheck();
   }
 
   private async confirmApproveMember(entry: AppTypes.ActivityMemberEntry): Promise<void> {
@@ -854,6 +872,20 @@ export class EventMembersPopupComponent {
     return entry.status === 'pending'
       && entry.requestKind === 'invite'
       && entry.invitedByActiveUser === true;
+  }
+
+  protected canReportMember(entry: AppTypes.ActivityMemberEntry): boolean {
+    if ((this.ownerRef?.ownerType ?? 'event') !== 'event') {
+      return false;
+    }
+    const activeUserId = this.activeUserId();
+    if (!activeUserId || entry.userId === activeUserId || entry.status !== 'accepted') {
+      return false;
+    }
+    return this.currentOwnerMembers().some(member =>
+      member.userId === activeUserId
+      && member.status === 'accepted'
+    );
   }
 
   private syncCanManageMembers(members: readonly AppTypes.ActivityMemberEntry[] = this.currentOwnerMembers()): void {
