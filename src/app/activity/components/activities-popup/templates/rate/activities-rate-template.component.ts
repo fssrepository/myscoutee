@@ -263,6 +263,7 @@ interface ActivitiesRatesControllerDeps {
 
 export class ActivitiesRatesController {
   private static readonly SCORE_SELECTION_DOCK_GUARD_MS = 220;
+  private static readonly EDITOR_DOCK_VISIBILITY_HOLD_MS = 120;
   private ratingBarBlinkTimeout: ReturnType<typeof setTimeout> | null = null;
   private isRatingBarBlinking = false;
   private cachedRateCardUsersSource: readonly DemoUser[] | null = null;
@@ -288,6 +289,8 @@ export class ActivitiesRatesController {
   private readonly rateEditorPresenter: ActivitiesRateEditorPresenter;
   private selectedListRateRow: AppTypes.ActivityListRow | null = null;
   private suppressDockCloseUntilMs = 0;
+  private dockVisibilityHoldUntilMs = 0;
+  private dockVisibilityHoldTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(private readonly deps: ActivitiesRatesControllerDeps) {
     this.rateEditorPresenter = new ActivitiesRateEditorPresenter({
@@ -326,6 +329,7 @@ export class ActivitiesRatesController {
       return;
     }
     this.cancelEditorCloseTransition();
+    this.cancelDockVisibilityHold();
     const wasOpen = this.isEditorOpen();
     if (this.selectedRateId() === row.id) {
       if (this.isSuppressingDockClose()) {
@@ -369,7 +373,7 @@ export class ActivitiesRatesController {
       return this.currentFullscreenRow() !== null;
     }
     return this.deps.getActivitiesPrimaryFilter() === 'rates'
-      && (!!this.selectedRateId() || this.isEditorClosing());
+      && (!!this.selectedRateId() || this.isEditorClosing() || this.isHoldingDockVisibility());
   }
 
   shouldRenderEditorDock(): boolean {
@@ -447,7 +451,7 @@ export class ActivitiesRatesController {
     this.triggerBlinks(row.id);
   }
 
-  clearEditorState(preserveScrollPosition = false): void {
+  clearEditorState(preserveScrollPosition = true): void {
     if (this.isFullscreenModeActive()) {
       return;
     }
@@ -478,6 +482,7 @@ export class ActivitiesRatesController {
     this.deps.setEditorCloseTimer(setTimeout(() => {
       this.deps.setEditorCloseTimer(null);
       this.deps.setEditorClosing(false);
+      this.holdDockVisibilityAfterClose();
       this.setSelectedRateId(null);
       this.selectedListRateRow = null;
       this.deps.setLastIndicatorPulseRowId(null);
@@ -659,11 +664,35 @@ export class ActivitiesRatesController {
   private holdDockOpenForScoreSelection(): void {
     this.suppressDockCloseUntilMs = Date.now() + ActivitiesRatesController.SCORE_SELECTION_DOCK_GUARD_MS;
     this.cancelEditorCloseTransition();
+    this.cancelDockVisibilityHold();
     this.deps.setEditorClosing(false);
   }
 
   private isSuppressingDockClose(): boolean {
     return Date.now() < this.suppressDockCloseUntilMs;
+  }
+
+  private holdDockVisibilityAfterClose(): void {
+    this.cancelDockVisibilityHold();
+    this.dockVisibilityHoldUntilMs = Date.now() + ActivitiesRatesController.EDITOR_DOCK_VISIBILITY_HOLD_MS;
+    this.dockVisibilityHoldTimer = setTimeout(() => {
+      this.dockVisibilityHoldTimer = null;
+      this.dockVisibilityHoldUntilMs = 0;
+      this.deps.markForCheck();
+    }, ActivitiesRatesController.EDITOR_DOCK_VISIBILITY_HOLD_MS);
+  }
+
+  private cancelDockVisibilityHold(): void {
+    this.dockVisibilityHoldUntilMs = 0;
+    if (!this.dockVisibilityHoldTimer) {
+      return;
+    }
+    clearTimeout(this.dockVisibilityHoldTimer);
+    this.dockVisibilityHoldTimer = null;
+  }
+
+  private isHoldingDockVisibility(): boolean {
+    return Date.now() < this.dockVisibilityHoldUntilMs;
   }
 
   private cancelEditorLiftAnimation(): void {
@@ -749,6 +778,7 @@ export class ActivitiesRatesController {
 
   private resetEditorStateForFullscreenEntry(): void {
     this.cancelEditorCloseTransition();
+    this.cancelDockVisibilityHold();
     this.cancelEditorLiftAnimation();
     this.deps.setEditorClosing(false);
     this.deps.setEditorOpenScrollTop(null);
