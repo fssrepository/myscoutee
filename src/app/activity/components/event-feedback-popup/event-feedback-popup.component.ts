@@ -373,12 +373,15 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
         noteCount: 0
       }, true);
     }
+    const detailRows = item.isFeedbacked
+      ? [item.timeframe]
+      : [item.timeframe, this.feedback.eventFeedbackItemStatusLine(item)];
     return {
       rowId: item.eventId,
       title: item.title,
       imageUrl: item.imageUrl,
       metaRows: [item.subtitle],
-      detailRows: [item.timeframe, this.feedback.eventFeedbackItemStatusLine(item)],
+      detailRows,
       leadingIcon: {
         icon: this.eventFeedbackLeadingIcon(item)
       },
