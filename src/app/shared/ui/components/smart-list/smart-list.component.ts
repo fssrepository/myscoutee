@@ -222,12 +222,16 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   private hostedFullscreenTransitionTimer: ReturnType<typeof setTimeout> | null = null;
 
   private suspendSnapReactivation = false;
+  private deferSnapReactivationUntilScroll = false;
+  private lastResolvedBaseSnapMode: 'none' | 'proximity' | 'mandatory' | null = null;
 
-  protected onSurfaceInteraction(): void {
-    if (this.suspendSnapReactivation) {
-      this.suspendSnapReactivation = false;
-      this.updateListSnapNearEndSuppression();
+  private releaseDeferredSnapOnScroll(): void {
+    if (!this.suspendSnapReactivation && !this.deferSnapReactivationUntilScroll) {
+      return;
     }
+    this.suspendSnapReactivation = false;
+    this.deferSnapReactivationUntilScroll = false;
+    this.cdr.markForCheck();
   }
 
   // Add this near your other private properties
@@ -238,8 +242,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     // 1. Mark that the user is touching the screen
     this.isTouchingSurface = true;
     this.cdr.markForCheck();
-    this.onSurfaceInteraction();
-    
+
     // 2. Kill any pending timers that were ABOUT to fire
     this.clearListSnapSettleTimers();
     this.clearCalendarSettleTimers();
@@ -650,7 +653,27 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   }
 
   protected resolvedSnapMode(): 'none' | 'proximity' | 'mandatory' {
-    return this.resolveConfigValue(this.config.snapMode, 'none');
+    const snapMode = this.resolveConfigValue(this.config.snapMode, 'none');
+    this.trackSnapModeTransition(snapMode);
+    return this.deferSnapReactivationUntilScroll ? 'none' : snapMode;
+  }
+
+  private trackSnapModeTransition(snapMode: 'none' | 'proximity' | 'mandatory'): void {
+    if (this.currentViewMode !== 'list') {
+      this.lastResolvedBaseSnapMode = snapMode;
+      this.deferSnapReactivationUntilScroll = false;
+      return;
+    }
+
+    const previousSnapMode = this.lastResolvedBaseSnapMode;
+    if (previousSnapMode !== null && previousSnapMode === 'none' && snapMode !== 'none') {
+      this.deferSnapReactivationUntilScroll = true;
+      this.clearListSnapSettleTimer();
+    }
+    if (snapMode === 'none') {
+      this.deferSnapReactivationUntilScroll = false;
+    }
+    this.lastResolvedBaseSnapMode = snapMode;
   }
 
   protected resolvedScrollPaddingTop(): string | null {
@@ -670,6 +693,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
   protected onListScroll(event: Event): void {
     const target = event.target as HTMLDivElement;
+    this.releaseDeferredSnapOnScroll();
     if (this.shouldShowStickyHeader()) {
       this.updateStickyLabel(target.scrollTop);
     } else {
@@ -1020,6 +1044,8 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     this.suppressCalendarEdgeSettle = false;
     this.clearLoadingAnimation();
     this.suspendSnapReactivation = false;
+    this.deferSnapReactivationUntilScroll = false;
+    this.lastResolvedBaseSnapMode = null;
     this.loading = false;
     this.loadSequence += 1;
     this.suppressVisibleLoadingProgress = false;
