@@ -3,6 +3,8 @@
   --line: rgba(23, 33, 54, 0.12);
   --line-strong: rgba(23, 33, 54, 0.2);
   --danger: #d94a4a;
+  --navigator-shortcut-tile-height: 60px;
+  --navigator-shortcut-grid-gap: 0.42rem;
   --navigator-menu-ripple-color: rgba(22, 49, 81, 0.16);
   --interactive-motion-duration: 0.16s;
   --interactive-motion-ease: cubic-bezier(0.22, 0.61, 0.36, 1);
@@ -687,14 +689,16 @@
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   align-items: flex-start;
-  gap: 0.42rem;
+  gap: var(--navigator-shortcut-grid-gap);
   width: 100%;
 }
 
 .menu-shortcut-btn {
   position: relative;
+  box-sizing: border-box;
   width: 100%;
-  min-height: 64px;
+  min-height: 0;
+  height: var(--navigator-shortcut-tile-height);
   border-radius: 12px;
   border: 1px solid rgba(23, 33, 54, 0.12);
   background: #fff;
@@ -808,8 +812,8 @@
 
 .impressions-shortcuts {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 0.46rem;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: var(--navigator-shortcut-grid-gap);
   align-items: stretch;
   width: 100%;
 }
@@ -820,6 +824,8 @@
   position: relative;
   display: block;
   width: 100%;
+  min-width: 0;
+  grid-column: span 4;
   padding: 0;
   border: 0;
   border-radius: 14px;
@@ -840,11 +846,12 @@
 
 .impression-dual-shortcut {
   display: grid;
+  box-sizing: border-box;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0;
   width: 100%;
-  min-height: 64px;
-  height: 64px;
+  min-height: 0;
+  height: var(--navigator-shortcut-tile-height);
   border-radius: 14px;
   overflow: hidden;
   border: 1px solid rgba(86, 74, 127, 0.22);
@@ -1006,10 +1013,12 @@
 
 .asset-shortcut-btn {
   position: relative;
+  box-sizing: border-box;
   border: 1px solid rgba(86, 74, 127, 0.26);
   border-radius: 12px;
   background: linear-gradient(180deg, #f6f4ff 0%, #efeafd 100%);
-  min-height: 64px;
+  min-height: 0;
+  height: var(--navigator-shortcut-tile-height);
   display: inline-flex;
   flex-direction: column;
   align-items: center;
@@ -1125,10 +1134,12 @@
 }
 
 .feedback-shortcut-compact {
-  width: 84px;
-  min-width: 84px;
-  min-height: 64px;
-  height: 64px;
+  grid-column: span 1;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  height: var(--navigator-shortcut-tile-height);
   flex-direction: column;
   gap: 0.18rem;
   padding: 0.42rem 0.38rem 0.36rem;
