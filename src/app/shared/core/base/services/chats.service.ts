@@ -63,12 +63,24 @@ export class ChatsService extends BaseRouteModeService {
     chat: ChatMenuItem,
     text: string,
     attachments: readonly AppTypes.ChatMessageAttachment[],
-    clientId?: string
+    clientId?: string,
+    replyTo?: AppTypes.ChatPopupMessage['replyTo']
   ): Promise<AppTypes.ChatPopupMessage | null> {
     if (this.isDemoModeEnabled(ChatsService.CHAT_ROUTE)) {
-      return this.demoChatsService.sendChatMessageWithAttachments(chat, text, attachments, clientId);
+      return this.demoChatsService.sendChatMessageWithAttachments(chat, text, attachments, clientId, replyTo);
     }
-    return this.httpChatsService.sendChatMessageWithAttachments(chat, text, attachments, clientId);
+    return this.httpChatsService.sendChatMessageWithAttachments(chat, text, attachments, clientId, replyTo);
+  }
+
+  async updateChatMessage(
+    chat: ChatMenuItem,
+    messageId: string,
+    mutation: AppTypes.ChatMessageMutation
+  ): Promise<AppTypes.ChatPopupMessage | null> {
+    if (this.isDemoModeEnabled(ChatsService.CHAT_ROUTE)) {
+      return this.demoChatsService.updateChatMessage(chat, messageId, mutation);
+    }
+    return this.httpChatsService.updateChatMessage(chat, messageId, mutation);
   }
 
   async watchChatMessages(

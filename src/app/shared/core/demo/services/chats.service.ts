@@ -37,7 +37,8 @@ export class DemoChatsService extends DemoRouteDelayService {
     chat: ChatMenuItem,
     text: string,
     attachments: readonly AppTypes.ChatMessageAttachment[] = [],
-    clientId?: string
+    clientId?: string,
+    replyTo?: AppTypes.ChatPopupMessage['replyTo']
   ): Promise<AppTypes.ChatPopupMessage | null> {
     await this.waitForRouteDelay(DemoChatsService.CHAT_ROUTE);
     const trimmedText = text.trim();
@@ -59,8 +60,18 @@ export class DemoChatsService extends DemoRouteDelayService {
       mine: true,
       readBy: [],
       clientId: `${clientId ?? ''}`.trim() || undefined,
+      replyTo: replyTo ? { ...replyTo } : null,
       attachments: attachments.map(attachment => ({ ...attachment }))
     });
+  }
+
+  async updateChatMessage(
+    chat: ChatMenuItem,
+    messageId: string,
+    mutation: AppTypes.ChatMessageMutation
+  ): Promise<AppTypes.ChatPopupMessage | null> {
+    await this.waitForRouteDelay(DemoChatsService.CHAT_ROUTE);
+    return this.chatsRepository.updateChatMessage(chat, messageId, mutation);
   }
 
   async watchChatMessages(

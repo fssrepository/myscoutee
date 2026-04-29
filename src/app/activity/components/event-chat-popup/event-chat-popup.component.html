@@ -151,9 +151,9 @@
             <div class="chat-compose-box" #chatComposeBox>
               @if (replyTarget) {
                 <div class="chat-reply-draft">
-                  <span>
-                    <mat-icon>reply</mat-icon>
-                    Replying to {{ replyTarget.sender }}
+                  <span class="chat-reply-draft-copy">
+                    <strong>Replying to {{ replyTarget.sender }}</strong>
+                    <small>{{ replyTarget.text }}</small>
                   </span>
                   <button type="button" (click)="clearReplyTarget()" aria-label="Cancel reply">
                     <mat-icon>close</mat-icon>
@@ -236,6 +236,7 @@
     [class.chat-message-pending]="message.deliveryState === 'pending'"
     [class.chat-message-timed-out]="message.deliveryState === 'timed-out'"
     [class.chat-message-selected]="selectedMessageId === message.id"
+    [class.chat-message-highlighted]="highlightedMessageId === message.id"
     (click)="selectMessage(message, $event)"
     (contextmenu)="openMessageActionMenu(message, $event)"
     (touchstart)="startMessageLongPress(message)"
@@ -244,17 +245,26 @@
     [attr.data-group-label]="groupLabel"
     [attr.data-chat-message-id]="message.id"
     >
+    @if (message.replyTo) {
+      <button
+        type="button"
+        class="chat-message-reply-context"
+        (click)="jumpToReplySource(message, $event)"
+        (contextmenu)="$event.preventDefault(); $event.stopPropagation()"
+        aria-label="Open replied message"
+        >
+        <span class="chat-message-reply-label">
+          <mat-icon>reply</mat-icon>
+          {{ message.mine ? 'You replied' : message.sender + ' replied' }} to {{ message.replyTo.sender }}
+        </span>
+        <span class="chat-message-reply-quote">{{ replyPreviewText(message.replyTo) }}</span>
+      </button>
+    }
     <div class="chat-bubble">
       <span class="chat-sender-avatar" [class]="'user-color-' + message.senderAvatar.gender">
         {{ message.senderAvatar.initials }}
       </span>
       <div class="chat-message-content">
-        @if (message.replyTo) {
-          <div class="chat-reply-preview">
-            <mat-icon>reply</mat-icon>
-            <span>{{ message.replyTo.sender }}: {{ message.replyTo.text }}</span>
-          </div>
-        }
         <div class="chat-meta-row">
           <span class="chat-sender-name">{{ message.sender }}</span>
           <span class="chat-time-chip">{{ message.time }}</span>
@@ -275,7 +285,6 @@
                         decoding="async"
                       />
                     }
-                    <figcaption>{{ attachment.title }}</figcaption>
                   </figure>
                 }
               }
@@ -288,14 +297,14 @@
             <span class="chat-edited-label">Edited</span>
           }
         }
-        @if ((message.reactions ?? []).length > 0) {
-          <button type="button" class="chat-reaction-summary" (click)="openReactionDetails(message, $event)">
-            @for (reaction of reactionSummary(message); track reaction.emoji) {
-              <span>{{ reaction.emoji }} {{ reaction.count }}</span>
-            }
-          </button>
-        }
       </div>
+      @if ((message.reactions ?? []).length > 0) {
+        <button type="button" class="chat-reaction-summary" (click)="openReactionDetails(message, $event)">
+          @for (reaction of reactionSummary(message); track reaction.emoji) {
+            <span>{{ reaction.emoji }} {{ reaction.count }}</span>
+          }
+        </button>
+      }
       @if (selectedMessageId === message.id) {
         <div class="chat-message-tools" (click)="$event.stopPropagation()">
           <button type="button" (click)="setReplyTarget(message, $event)" aria-label="Reply">
@@ -320,7 +329,7 @@
         </div>
       }
       @if (messageActionMenuId === message.id) {
-        <div class="chat-message-action-menu" (click)="$event.stopPropagation()">
+        <div class="chat-message-action-menu" [class.chat-message-action-menu-up]="messageActionMenuOpenUp" (click)="$event.stopPropagation()">
           <button type="button" (click)="setReplyTarget(message, $event)">Reply</button>
           @if (message.mine && !message.deletedAtIso) {
             <button type="button" (click)="beginEditMessage(message, $event)">Edit</button>
@@ -330,17 +339,6 @@
           @if (!message.mine) {
             <button type="button" (click)="reportMessage(message, $event)">Report</button>
           }
-        </div>
-      }
-      @if (emojiPickerMessageId === message.id) {
-        <div class="chat-emoji-picker" (click)="$event.stopPropagation()">
-          <input type="search" placeholder="Search emoji" [(ngModel)]="emojiPickerQuery" />
-          <div class="chat-emoji-picker-section">Smileys & people</div>
-          <div class="chat-emoji-grid">
-            @for (emoji of filteredEmojiPickerEmojis(); track emoji) {
-              <button type="button" (click)="toggleReaction(message, emoji, $event)">{{ emoji }}</button>
-            }
-          </div>
         </div>
       }
       @if (visibleReadReceiptsByMessageId[message.id]; as visibleReaders) {
@@ -361,6 +359,36 @@
     </div>
   </article>
 </ng-template>
+
+@if (emojiPickerMessage(); as emojiMessage) {
+  <section class="chat-modal chat-emoji-modal">
+    <div class="chat-modal-backdrop" (click)="emojiPickerMessageId = ''"></div>
+    <div class="chat-emoji-picker" (click)="$event.stopPropagation()">
+      <header class="chat-emoji-picker-header">
+        <input type="search" placeholder="Search emoji" [(ngModel)]="emojiPickerQuery" />
+        <button type="button" (click)="emojiPickerMessageId = ''" aria-label="Close emoji picker"><mat-icon>close</mat-icon></button>
+      </header>
+      <div class="chat-emoji-picker-section">{{ activeEmojiPickerCategoryLabel() }}</div>
+      <div class="chat-emoji-grid">
+        @for (emoji of filteredEmojiPickerEmojis(); track emoji) {
+          <button type="button" (click)="toggleReaction(emojiMessage, emoji, $event)">{{ emoji }}</button>
+        }
+      </div>
+      <div class="chat-emoji-tabs">
+        @for (category of emojiPickerCategories; track category.key) {
+          <button
+            type="button"
+            [class.active]="emojiPickerCategory === category.key"
+            [attr.aria-label]="category.label"
+            (click)="emojiPickerCategory = category.key"
+            >
+            <mat-icon>{{ category.icon }}</mat-icon>
+          </button>
+        }
+      </div>
+    </div>
+  </section>
+}
 
 @if (reactionDetailsMessage(); as reactionMessage) {
   <section class="chat-modal">

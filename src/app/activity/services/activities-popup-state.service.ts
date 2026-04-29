@@ -306,9 +306,18 @@ export class ActivitiesPopupStateService {
     chat: ChatMenuItem,
     text: string,
     attachments: readonly AppTypes.ChatMessageAttachment[],
-    clientId?: string
+    clientId?: string,
+    replyTo?: AppTypes.ChatPopupMessage['replyTo']
   ): Promise<AppTypes.ChatPopupMessage | null> {
-    return this.chatsService.sendChatMessageWithAttachments(chat, text, attachments, clientId);
+    return this.chatsService.sendChatMessageWithAttachments(chat, text, attachments, clientId, replyTo);
+  }
+
+  async updateEventChatMessage(
+    chat: ChatMenuItem,
+    messageId: string,
+    mutation: AppTypes.ChatMessageMutation
+  ): Promise<AppTypes.ChatPopupMessage | null> {
+    return this.chatsService.updateChatMessage(chat, messageId, mutation);
   }
 
   async watchEventChatMessages(

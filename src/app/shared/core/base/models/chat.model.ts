@@ -32,6 +32,19 @@ export interface ChatPopupMessage {
   attachments?: ChatMessageAttachment[];
 }
 
+export interface ChatMessageReplyRef {
+  id: string;
+  sender: string;
+  text: string;
+}
+
+export interface ChatMessageMutation {
+  text?: string;
+  deleted?: boolean;
+  pinned?: boolean;
+  reactionEmoji?: string | null;
+}
+
 export interface ChatMessageReaction {
   emoji: string;
   userId: string;

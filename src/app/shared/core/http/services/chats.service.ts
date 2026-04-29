@@ -43,7 +43,30 @@ interface HttpChatMessageDto {
     initials: string;
     gender: 'woman' | 'man';
   }>;
+  deletedAtIso?: string | null;
+  deletedByUserId?: string | null;
+  deletedByName?: string | null;
+  editedAtIso?: string | null;
+  pinnedAtIso?: string | null;
+  pinnedByUserId?: string | null;
+  replyTo?: HttpChatMessageReplyDto | null;
+  reactions?: HttpChatMessageReactionDto[] | null;
   attachments?: HttpChatMessageAttachmentDto[] | null;
+}
+
+interface HttpChatMessageReplyDto {
+  id: string;
+  sender: string;
+  text: string;
+}
+
+interface HttpChatMessageReactionDto {
+  emoji: string;
+  userId: string;
+  userName: string;
+  userInitials: string;
+  userGender: 'woman' | 'man';
+  reactedAtIso: string;
 }
 
 interface HttpChatMessageAttachmentDto {
@@ -61,6 +84,7 @@ interface HttpChatSocketRequestDto {
   clientId?: string;
   text?: string;
   attachments?: HttpChatMessageAttachmentDto[];
+  replyTo?: HttpChatMessageReplyDto | null;
   typing?: boolean;
   messageIds?: string[];
 }
@@ -235,7 +259,8 @@ export class HttpChatsService {
     chat: ChatMenuItem,
     text: string,
     attachments: readonly AppTypes.ChatMessageAttachment[] = [],
-    clientId?: string
+    clientId?: string,
+    replyTo?: AppTypes.ChatPopupMessage['replyTo']
   ): Promise<AppTypes.ChatPopupMessage | null> {
     const trimmedText = text.trim();
     if (!trimmedText && attachments.length === 0) {
@@ -262,7 +287,8 @@ export class HttpChatsService {
         type: 'message',
         clientId: outboundClientId,
         text: trimmedText,
-        attachments: attachments.map(attachment => this.toHttpChatAttachment(attachment))
+        attachments: attachments.map(attachment => this.toHttpChatAttachment(attachment)),
+        replyTo: this.toHttpChatReply(replyTo)
       };
       socket.send(JSON.stringify(payload));
       return this.waitForSocketMessageAck(outboundClientId);
@@ -302,6 +328,48 @@ export class HttpChatsService {
       messageIds: normalizedIds
     };
     socket.send(JSON.stringify(payload));
+  }
+
+  async updateChatMessage(
+    chat: ChatMenuItem,
+    messageId: string,
+    mutation: AppTypes.ChatMessageMutation
+  ): Promise<AppTypes.ChatPopupMessage | null> {
+    const normalizedChatId = `${chat.id ?? ''}`.trim();
+    const normalizedMessageId = `${messageId ?? ''}`.trim();
+    if (!normalizedChatId || !normalizedMessageId) {
+      return null;
+    }
+    const body: Record<string, unknown> = {};
+    let action = '';
+    if (typeof mutation.text === 'string') {
+      action = 'edit';
+      body['text'] = mutation.text;
+    } else if (mutation.deleted === true) {
+      action = 'delete';
+    } else if (typeof mutation.pinned === 'boolean') {
+      action = 'pin';
+      body['pinned'] = mutation.pinned;
+    } else if (Object.prototype.hasOwnProperty.call(mutation, 'reactionEmoji')) {
+      action = 'reaction';
+      body['emoji'] = mutation.reactionEmoji ?? '';
+    }
+    if (!action) {
+      return null;
+    }
+    const response = await this.http
+      .post<HttpChatMessageDto | null>(
+        `${this.apiBaseUrl}/activities/chats/${encodeURIComponent(normalizedChatId)}/messages/${encodeURIComponent(normalizedMessageId)}/${action}`,
+        body,
+        { params: this.activeUserParams() }
+      )
+      .toPromise();
+    if (!response) {
+      return null;
+    }
+    const message = this.mapChatMessage(response);
+    this.updateCachedChatSummaryAfterMessage(chat, message);
+    return message;
   }
 
   async watchChatEvents(
@@ -414,8 +482,31 @@ export class HttpChatsService {
         initials: reader.initials,
         gender: reader.gender
       })),
+      deletedAtIso: message.deletedAtIso ?? null,
+      deletedByUserId: message.deletedByUserId ?? null,
+      deletedByName: message.deletedByName ?? null,
+      editedAtIso: message.editedAtIso ?? null,
+      pinnedAtIso: message.pinnedAtIso ?? null,
+      pinnedByUserId: message.pinnedByUserId ?? null,
+      replyTo: message.replyTo ? { ...message.replyTo } : null,
+      reactions: (message.reactions ?? []).map(reaction => ({ ...reaction })),
       attachments: (message.attachments ?? []).map(attachment => this.mapChatAttachment(attachment))
     } satisfies AppTypes.ChatPopupMessage;
+  }
+
+  private toHttpChatReply(replyTo: AppTypes.ChatPopupMessage['replyTo']): HttpChatMessageReplyDto | null {
+    if (!replyTo) {
+      return null;
+    }
+    const id = `${replyTo.id ?? ''}`.trim();
+    if (!id) {
+      return null;
+    }
+    return {
+      id,
+      sender: `${replyTo.sender ?? ''}`.trim(),
+      text: `${replyTo.text ?? ''}`.trim()
+    };
   }
 
   private mapChatAttachment(attachment: HttpChatMessageAttachmentDto): AppTypes.ChatMessageAttachment {
@@ -509,6 +600,8 @@ export class HttpChatsService {
     return existingRecord?.messages?.map(message => ({
       ...message,
       readBy: [...(message.readBy ?? [])],
+      replyTo: message.replyTo ? { ...message.replyTo } : message.replyTo,
+      reactions: message.reactions?.map(reaction => ({ ...reaction })),
       attachments: message.attachments?.map(attachment => ({ ...attachment }))
     })) ?? [];
   }
@@ -526,6 +619,8 @@ export class HttpChatsService {
       mergedById.set(identity, {
         ...message,
         readBy: [...(message.readBy ?? [])],
+        replyTo: message.replyTo ? { ...message.replyTo } : message.replyTo,
+        reactions: message.reactions?.map(reaction => ({ ...reaction })),
         attachments: message.attachments?.map(attachment => ({ ...attachment }))
       });
     }
