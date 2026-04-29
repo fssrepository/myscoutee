@@ -32,6 +32,7 @@ import {
   type SmartListLoadPage
 } from '../../../shared/ui';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
+import { HttpMediaService } from '../../../shared/core/http';
 
 interface ChatThreadFilters {
   revision?: number;
@@ -53,6 +54,7 @@ export class EventChatPopupComponent implements OnDestroy {
   private readonly appCtx = inject(AppContext);
   private readonly popupCtx = inject(AppPopupContext);
   private readonly confirmationDialogService = inject(ConfirmationDialogService);
+  private readonly httpMediaService = inject(HttpMediaService);
 
   protected readonly session = computed(() => this.activitiesContext.eventChatSession());
   protected chatInitialLoadPending = false;
@@ -136,6 +138,9 @@ export class EventChatPopupComponent implements OnDestroy {
 
   @ViewChild('messageTextarea')
   private messageTextarea?: ElementRef<HTMLTextAreaElement>;
+
+  @ViewChild('imageAttachmentInput')
+  private imageAttachmentInput?: ElementRef<HTMLInputElement>;
 
   @ViewChild('chatComposeBox')
   private set chatComposeBox(value: ElementRef<HTMLDivElement> | undefined) {
@@ -432,6 +437,24 @@ export class EventChatPopupComponent implements OnDestroy {
     this.composerMenuOpen = !this.composerMenuOpen;
   }
 
+  protected openImageAttachmentPicker(event?: Event): void {
+    event?.stopPropagation();
+    this.composerMenuOpen = false;
+    this.imageAttachmentInput?.nativeElement.click();
+  }
+
+  protected onImageAttachmentSelected(event: Event): void {
+    const input = event.target as HTMLInputElement | null;
+    const file = input?.files?.[0] ?? null;
+    if (input) {
+      input.value = '';
+    }
+    if (!file || !file.type.startsWith('image/')) {
+      return;
+    }
+    void this.sendLocalImageAttachment(file);
+  }
+
   protected selectMessage(message: AppTypes.ChatPopupMessage, event?: Event): void {
     event?.stopPropagation();
     this.selectedMessageId = this.selectedMessageId === message.id ? '' : message.id;
@@ -675,6 +698,107 @@ export class EventChatPopupComponent implements OnDestroy {
         this.markPendingMessageTimedOut(optimisticMessage.id);
         this.cdr.markForCheck();
       });
+  }
+
+  private async sendLocalImageAttachment(file: File): Promise<void> {
+    const session = this.session();
+    if (!session || this.chatInitialLoadPending) {
+      return;
+    }
+    const previewUrl = await this.readFileAsDataUrl(file);
+    const sentAt = new Date();
+    const activeUserId = this.activeUserId();
+    const senderPresentation = this.resolveOptimisticSenderPresentation(activeUserId);
+    const clientId = `pending:image:${activeUserId || 'self'}:${sentAt.getTime()}:${++this.optimisticMessageSequence}`;
+    const attachmentId = `${clientId}:image`;
+    const imageAttachment: AppTypes.ChatMessageAttachment = {
+      id: attachmentId,
+      type: 'image',
+      title: file.name || 'Image',
+      previewUrl,
+      mimeType: file.type || null,
+      sizeBytes: file.size
+    };
+    const imageMessage: AppTypes.ChatPopupMessage = {
+      id: clientId,
+      clientId,
+      sender: senderPresentation.sender,
+      senderAvatar: senderPresentation.senderAvatar,
+      text: this.draftMessage.trim(),
+      time: sentAt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+      sentAtIso: sentAt.toISOString(),
+      mine: true,
+      readBy: [],
+      deliveryState: 'pending',
+      replyTo: this.replyTarget ? { ...this.replyTarget } : null,
+      attachments: [{ ...imageAttachment }]
+    };
+    const caption = this.draftMessage.trim();
+    const sessionKey = `${session.item.id}:${session.openedAtIso}`;
+    this.draftMessage = '';
+    this.replyTarget = null;
+    this.resizeComposerTextareaSoon();
+    this.stopLocalTyping();
+    this.mergeIncomingChatMessage(imageMessage);
+    this.schedulePendingMessageTimeout(imageMessage.id);
+    this.cdr.markForCheck();
+    try {
+      const persistedAttachment = await this.resolvePersistableImageAttachment(session.item, imageAttachment, file);
+      const persistedMessage = await this.activitiesContext.sendEventChatMessageWithAttachments(
+        session.item,
+        caption,
+        [persistedAttachment],
+        imageMessage.clientId
+      );
+      if (this.loadedSessionKey !== sessionKey) {
+        return;
+      }
+      if (persistedMessage) {
+        this.confirmPendingChatMessage(imageMessage.id, persistedMessage);
+        return;
+      }
+      this.markPendingMessageTimedOut(imageMessage.id);
+      this.cdr.markForCheck();
+    } catch {
+      if (this.loadedSessionKey !== sessionKey) {
+        return;
+      }
+      this.markPendingMessageTimedOut(imageMessage.id);
+      this.cdr.markForCheck();
+    }
+  }
+
+  private async resolvePersistableImageAttachment(
+    chat: ChatMenuItem,
+    attachment: AppTypes.ChatMessageAttachment,
+    file: File
+  ): Promise<AppTypes.ChatMessageAttachment> {
+    if (this.activitiesContext.dataMode !== 'http') {
+      return { ...attachment };
+    }
+    const upload = await this.httpMediaService.uploadImage(
+      'chat',
+      this.activeUserId() || 'chat',
+      `${chat.id || 'chat'}-${Date.now()}`,
+      file
+    );
+    if (!upload.uploaded || !upload.imageUrl) {
+      throw new Error('Unable to upload chat image.');
+    }
+    return {
+      ...attachment,
+      url: upload.imageUrl,
+      previewUrl: upload.imageUrl
+    };
+  }
+
+  private readFileAsDataUrl(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(`${reader.result ?? ''}`);
+      reader.onerror = () => reject(reader.error ?? new Error('Unable to read image.'));
+      reader.readAsDataURL(file);
+    });
   }
 
   private commitEditMessage(text: string): void {
@@ -1257,7 +1381,7 @@ export class EventChatPopupComponent implements OnDestroy {
     if (!session) {
       return;
     }
-    const nextLastMessage = `${message.text ?? ''}`.trim();
+    const nextLastMessage = `${message.text ?? ''}`.trim() || this.chatAttachmentSummary(message);
     const nextDateIso = `${message.sentAtIso ?? ''}`.trim();
     const nextLastSenderId = this.resolveChatMessageSenderId(message, session.item.lastSenderId);
     if (!nextLastMessage && !nextDateIso && !nextLastSenderId) {
@@ -1298,6 +1422,27 @@ export class EventChatPopupComponent implements OnDestroy {
       sender: senderPresentation.sender,
       senderAvatar: senderPresentation.senderAvatar
     };
+  }
+
+  private chatAttachmentSummary(message: AppTypes.ChatPopupMessage): string {
+    const firstAttachment = message.attachments?.[0];
+    if (!firstAttachment) {
+      return '';
+    }
+    switch (firstAttachment.type) {
+      case 'image':
+        return 'Sent an image';
+      case 'event':
+        return 'Shared an event';
+      case 'asset':
+        return 'Shared an asset';
+      case 'poll':
+        return 'Created a poll';
+      case 'voice':
+        return 'Sent a voice clip';
+      default:
+        return firstAttachment.title || 'Shared a link';
+    }
   }
 
   private resolveOptimisticSenderPresentation(
@@ -1407,7 +1552,7 @@ export class EventChatPopupComponent implements OnDestroy {
     if (AppUtils.toIsoDate(day) === AppUtils.toIsoDate(yesterday)) {
       return 'Yesterday';
     }
-    return day.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    return day.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
   }
 
   private syncPreparedChatContext(context: AppTypes.EventChatContext | null): void {

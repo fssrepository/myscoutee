@@ -29,6 +29,7 @@ export interface ChatPopupMessage {
     text: string;
   } | null;
   reactions?: ChatMessageReaction[];
+  attachments?: ChatMessageAttachment[];
 }
 
 export interface ChatMessageReaction {
@@ -38,6 +39,18 @@ export interface ChatMessageReaction {
   userInitials: string;
   userGender: 'woman' | 'man';
   reactedAtIso: string;
+}
+
+export type ChatMessageAttachmentType = 'image' | 'event' | 'asset' | 'link' | 'poll' | 'voice';
+
+export interface ChatMessageAttachment {
+  id: string;
+  type: ChatMessageAttachmentType;
+  title: string;
+  url?: string | null;
+  previewUrl?: string | null;
+  mimeType?: string | null;
+  sizeBytes?: number | null;
 }
 
 export interface ChatTypingIndicator {

@@ -174,7 +174,7 @@
               <span class="chat-compose-plus-wrap">
                 @if (composerMenuOpen) {
                   <div class="chat-composer-menu" (click)="$event.stopPropagation()">
-                    <button type="button" class="chat-composer-menu-item chat-composer-menu-item-media" (click)="composerMenuOpen = false">
+                    <button type="button" class="chat-composer-menu-item chat-composer-menu-item-media" (click)="openImageAttachmentPicker($event)">
                       <mat-icon>image</mat-icon>
                       <span>Upload image</span>
                     </button>
@@ -200,6 +200,13 @@
                   <mat-icon>{{ composerMenuOpen ? 'close' : 'add' }}</mat-icon>
                 </button>
               </span>
+              <input
+                #imageAttachmentInput
+                class="chat-attachment-input"
+                type="file"
+                accept="image/*"
+                (change)="onImageAttachmentSelected($event)"
+              />
               <textarea
                 #messageTextarea
                 rows="1"
@@ -238,36 +245,6 @@
     [attr.data-chat-message-id]="message.id"
     >
     <div class="chat-bubble">
-      @if (message.mine && (message.deliveryState === 'pending' || message.deliveryState === 'timed-out')) {
-        <svg
-          class="chat-bubble-progress-ring"
-          viewBox="0 0 100 100"
-          preserveAspectRatio="none"
-          aria-hidden="true"
-          >
-          <defs>
-            <linearGradient id="chat-bubble-progress-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stop-color="rgb(235, 147, 33)"></stop>
-              <stop offset="100%" stop-color="rgb(247, 190, 52)"></stop>
-            </linearGradient>
-            <linearGradient id="chat-bubble-progress-gradient-timeout" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stop-color="rgb(213, 54, 68)"></stop>
-              <stop offset="100%" stop-color="rgb(196, 29, 42)"></stop>
-            </linearGradient>
-          </defs>
-          <path
-            class="chat-bubble-progress-track"
-            d="M50 1.5 H88 A10.5 10.5 0 0 1 98.5 12 V88 A10.5 10.5 0 0 1 88 98.5 H12 A10.5 10.5 0 0 1 1.5 88 V12 A10.5 10.5 0 0 1 12 1.5 H50"
-          ></path>
-          <path
-            class="chat-bubble-progress-stroke"
-            [class.is-loading]="message.deliveryState === 'pending'"
-            [class.is-timed-out]="message.deliveryState === 'timed-out'"
-            d="M50 1.5 H88 A10.5 10.5 0 0 1 98.5 12 V88 A10.5 10.5 0 0 1 88 98.5 H12 A10.5 10.5 0 0 1 1.5 88 V12 A10.5 10.5 0 0 1 12 1.5 H50"
-            pathLength="100"
-          ></path>
-        </svg>
-      }
       <span class="chat-sender-avatar" [class]="'user-color-' + message.senderAvatar.gender">
         {{ message.senderAvatar.initials }}
       </span>
@@ -285,7 +262,28 @@
         @if (message.deletedAtIso) {
           <p class="chat-line chat-line-deleted">{{ deletedMessageLabel(message) }}</p>
         } @else {
-          <p class="chat-line">{{ message.text }}</p>
+          @if ((message.attachments ?? []).length > 0) {
+            <div class="chat-attachment-stack">
+              @for (attachment of message.attachments; track attachment.id) {
+                @if (attachment.type === 'image') {
+                  <figure class="chat-image-attachment">
+                    @if (attachment.previewUrl || attachment.url) {
+                      <img
+                        [src]="attachment.previewUrl || attachment.url"
+                        [alt]="attachment.title"
+                        loading="lazy"
+                        decoding="async"
+                      />
+                    }
+                    <figcaption>{{ attachment.title }}</figcaption>
+                  </figure>
+                }
+              }
+            </div>
+          }
+          @if (message.text) {
+            <p class="chat-line">{{ message.text }}</p>
+          }
           @if (message.editedAtIso) {
             <span class="chat-edited-label">Edited</span>
           }
@@ -296,28 +294,6 @@
               <span>{{ reaction.emoji }} {{ reaction.count }}</span>
             }
           </button>
-        }
-        @if (message.mine) {
-          <div class="chat-delivery-slot">
-            @if (message.deliveryState === 'pending') {
-              <div class="chat-delivery-state">
-                Sending...
-              </div>
-            } @else if (message.deliveryState === 'timed-out') {
-              <div
-                class="chat-delivery-state chat-delivery-state-timed-out"
-                >
-                Taking longer than usual
-              </div>
-            } @else {
-              <div
-                class="chat-delivery-state chat-delivery-state-placeholder"
-                aria-hidden="true"
-                >
-                Sending...
-              </div>
-            }
-          </div>
         }
       </div>
       @if (selectedMessageId === message.id) {

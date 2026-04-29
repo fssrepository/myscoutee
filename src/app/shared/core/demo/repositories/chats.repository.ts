@@ -117,7 +117,7 @@ export class DemoChatsRepository {
             ...currentTable.byId,
             [recordKey]: {
               ...existingRecord,
-              lastMessage: messageClone.text,
+              lastMessage: messageClone.text || this.chatAttachmentSummary(messageClone),
               lastSenderId: messageClone.senderAvatar.id,
               dateIso: messageClone.sentAtIso,
               messages: [
@@ -231,5 +231,22 @@ export class DemoChatsRepository {
       mine: false,
       readBy: []
     }];
+  }
+
+  private chatAttachmentSummary(message: AppTypes.ChatPopupMessage): string {
+    const firstAttachment = message.attachments?.[0];
+    if (!firstAttachment) {
+      return '';
+    }
+    if (firstAttachment.type === 'image') {
+      return 'Sent an image';
+    }
+    if (firstAttachment.type === 'event') {
+      return 'Shared an event';
+    }
+    if (firstAttachment.type === 'asset') {
+      return 'Shared an asset';
+    }
+    return firstAttachment.title || 'Shared an attachment';
   }
 }

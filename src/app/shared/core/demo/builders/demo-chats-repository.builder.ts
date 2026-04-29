@@ -162,7 +162,10 @@ export class DemoChatsRepositoryBuilder {
     return messages.map(message => ({
       ...message,
       senderAvatar: { ...message.senderAvatar },
-      readBy: message.readBy.map(reader => ({ ...reader }))
+      readBy: message.readBy.map(reader => ({ ...reader })),
+      attachments: message.attachments?.map(attachment => ({ ...attachment })),
+      replyTo: message.replyTo ? { ...message.replyTo } : message.replyTo,
+      reactions: message.reactions?.map(reaction => ({ ...reaction }))
     }));
   }
 

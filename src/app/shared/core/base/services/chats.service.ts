@@ -59,6 +59,18 @@ export class ChatsService extends BaseRouteModeService {
     return this.httpChatsService.sendChatMessage(chat, text, clientId);
   }
 
+  async sendChatMessageWithAttachments(
+    chat: ChatMenuItem,
+    text: string,
+    attachments: readonly AppTypes.ChatMessageAttachment[],
+    clientId?: string
+  ): Promise<AppTypes.ChatPopupMessage | null> {
+    if (this.isDemoModeEnabled(ChatsService.CHAT_ROUTE)) {
+      return this.demoChatsService.sendChatMessageWithAttachments(chat, text, attachments, clientId);
+    }
+    return this.httpChatsService.sendChatMessageWithAttachments(chat, text, attachments, clientId);
+  }
+
   async watchChatMessages(
     chat: ChatMenuItem,
     onMessage: (message: AppTypes.ChatPopupMessage) => void

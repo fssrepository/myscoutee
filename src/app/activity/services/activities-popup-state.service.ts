@@ -302,6 +302,15 @@ export class ActivitiesPopupStateService {
     return this.chatsService.sendChatMessage(chat, text, clientId);
   }
 
+  async sendEventChatMessageWithAttachments(
+    chat: ChatMenuItem,
+    text: string,
+    attachments: readonly AppTypes.ChatMessageAttachment[],
+    clientId?: string
+  ): Promise<AppTypes.ChatPopupMessage | null> {
+    return this.chatsService.sendChatMessageWithAttachments(chat, text, attachments, clientId);
+  }
+
   async watchEventChatMessages(
     chat: ChatMenuItem,
     onMessage: (message: AppTypes.ChatPopupMessage) => void

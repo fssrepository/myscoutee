@@ -16,7 +16,7 @@ export class HttpMediaService {
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
 
   async uploadImage(
-    scope: 'event' | 'asset',
+    scope: 'event' | 'asset' | 'chat',
     ownerId: string,
     entityId: string,
     file: File
