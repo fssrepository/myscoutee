@@ -21,7 +21,8 @@ import { resolveCurrentRouteDelayMs } from '../../../shared/core/base/services/r
 import { ActivitiesPopupStateService } from '../../services/activities-popup-state.service';
 import { EventEditorPopupStateService } from '../../services/event-editor-popup-state.service';
 import type { EventChatResourceContext } from '../../../shared/core/base/models';
-import { AppContext, AppPopupContext } from '../../../shared/core';
+import { AppContext, AppPopupContext, EventsService, ShareTokensService } from '../../../shared/core';
+import { toActivityEventRow } from '../../../shared/core/base/converters/activities-event.converter';
 import type { ChatMenuItem, EventMenuItem } from '../../../shared/core/base/interfaces/activity-feed.interface';
 import {
   CounterBadgePipe,
@@ -53,6 +54,8 @@ export class EventChatPopupComponent implements OnDestroy {
   private readonly eventEditorService = inject(EventEditorPopupStateService);
   private readonly appCtx = inject(AppContext);
   private readonly popupCtx = inject(AppPopupContext);
+  private readonly eventsService = inject(EventsService);
+  private readonly shareTokensService = inject(ShareTokensService);
   private readonly confirmationDialogService = inject(ConfirmationDialogService);
   private readonly httpMediaService = inject(HttpMediaService);
 
@@ -348,7 +351,8 @@ export class EventChatPopupComponent implements OnDestroy {
 
   protected openSelectedChatSubEventResource(
     type: 'Members' | 'Car' | 'Accommodation' | 'Supplies',
-    event?: Event
+    event?: Event,
+    openExplore = false
   ): void {
     event?.stopPropagation();
     const session = this.session();
@@ -365,6 +369,7 @@ export class EventChatPopupComponent implements OnDestroy {
       subEvent: context.subEvent,
       assetAssignmentIds: context.assetAssignmentIds,
       assetCardsByType: context.assetCardsByType,
+      openExplore,
       group: context.group
         ? {
             id: context.group.id,
@@ -481,6 +486,69 @@ export class EventChatPopupComponent implements OnDestroy {
       return;
     }
     void this.sendLocalImageAttachment(file);
+  }
+
+  protected shareCurrentEvent(event?: Event): void {
+    event?.stopPropagation();
+    this.composerMenuOpen = false;
+    this.popupCtx.requestActivitiesNavigation({ type: 'eventExplore', stacked: true });
+  }
+
+  protected shareFirstAvailableAsset(event?: Event): void {
+    event?.stopPropagation();
+    this.composerMenuOpen = false;
+    const context = this.preparedChatContext;
+    const resourceType = this.preparedChatAssetResources[0]?.type;
+    if (!context?.subEvent || !resourceType || resourceType === 'Members') {
+      this.popupCtx.requestActivitiesNavigation({ type: 'assetExplore', assetType: 'Car' });
+      return;
+    }
+    this.openSelectedChatSubEventResource(resourceType, undefined, true);
+  }
+
+  protected chatAttachmentIcon(attachment: AppTypes.ChatMessageAttachment): string {
+    switch (attachment.type) {
+      case 'event':
+        return 'event';
+      case 'asset':
+        return 'inventory_2';
+      case 'link':
+        return 'link';
+      default:
+        return 'attachment';
+    }
+  }
+
+  protected chatAttachmentTypeLabel(attachment: AppTypes.ChatMessageAttachment): string {
+    switch (attachment.type) {
+      case 'event':
+        return 'Event';
+      case 'asset':
+        return 'Asset';
+      case 'link':
+        return 'Link';
+      default:
+        return 'Attachment';
+    }
+  }
+
+  protected openChatAttachment(attachment: AppTypes.ChatMessageAttachment, event?: Event): void {
+    event?.stopPropagation();
+    if (attachment.type === 'event') {
+      const attachmentEventId = `${attachment.entityId ?? ''}`.trim();
+      const contextEventId = `${this.preparedChatContext?.eventRow?.id ?? this.session()?.item.eventId ?? ''}`.trim();
+      if (!attachmentEventId || attachmentEventId === contextEventId) {
+        this.openSelectedChatEvent();
+        return;
+      }
+      void this.openSharedEventAttachment(attachment);
+      return;
+    }
+    if (attachment.type === 'asset') {
+      this.openSharedAssetAttachment(attachment);
+      return;
+    }
+    this.openExternalAttachmentUrl(attachment);
   }
 
   protected selectMessage(message: AppTypes.ChatPopupMessage, event?: Event): void {
@@ -829,7 +897,21 @@ export class EventChatPopupComponent implements OnDestroy {
     });
   }
 
-  protected sendMessage(): void {
+  protected messageHasViewableAttachment(message: AppTypes.ChatPopupMessage): boolean {
+    return this.resolveViewableMessageAttachment(message) !== null;
+  }
+
+  protected viewSharedMessage(message: AppTypes.ChatPopupMessage, event?: Event): void {
+    event?.stopPropagation();
+    const attachment = this.resolveViewableMessageAttachment(message);
+    if (!attachment) {
+      return;
+    }
+    this.closeTransientMessageUi();
+    this.openChatAttachment(attachment, event);
+  }
+
+  protected async sendMessage(): Promise<void> {
     const text = this.draftMessage.trim();
     const session = this.session();
     if (!session || !text) {
@@ -837,6 +919,11 @@ export class EventChatPopupComponent implements OnDestroy {
     }
     if (this.editingMessageId) {
       this.commitEditMessage(text);
+      return;
+    }
+    const sharedAttachment = await this.resolveShareAttachmentFromText(text);
+    if (sharedAttachment) {
+      this.sendLocalAttachmentMessage(sharedAttachment, '');
       return;
     }
     const sessionKey = `${session.item.id}:${session.openedAtIso}`;
@@ -933,6 +1020,212 @@ export class EventChatPopupComponent implements OnDestroy {
       this.markPendingMessageTimedOut(imageMessage.id);
       this.cdr.markForCheck();
     }
+  }
+
+  private sendLocalAttachmentMessage(attachment: AppTypes.ChatMessageAttachment, captionOverride?: string): void {
+    const session = this.session();
+    if (!session || this.chatInitialLoadPending) {
+      return;
+    }
+    const caption = captionOverride ?? this.draftMessage.trim();
+    const optimisticMessage = {
+      ...this.buildOptimisticChatMessage(caption),
+      attachments: [{ ...attachment }]
+    } satisfies AppTypes.ChatPopupMessage;
+    const sessionKey = `${session.item.id}:${session.openedAtIso}`;
+    this.draftMessage = '';
+    this.replyTarget = null;
+    this.resizeComposerTextareaSoon();
+    this.stopLocalTyping();
+    this.mergeIncomingChatMessage(optimisticMessage);
+    this.schedulePendingMessageTimeout(optimisticMessage.id);
+    this.cdr.markForCheck();
+    void this.activitiesContext.sendEventChatMessageWithAttachments(
+      session.item,
+      caption,
+      [{ ...attachment }],
+      optimisticMessage.clientId,
+      optimisticMessage.replyTo
+    )
+      .then(message => {
+        if (this.loadedSessionKey !== sessionKey) {
+          return;
+        }
+        if (message) {
+          this.confirmPendingChatMessage(optimisticMessage.id, message);
+          return;
+        }
+        this.markPendingMessageTimedOut(optimisticMessage.id);
+        this.cdr.markForCheck();
+      })
+      .catch(() => {
+        if (this.loadedSessionKey !== sessionKey) {
+          return;
+        }
+        this.markPendingMessageTimedOut(optimisticMessage.id);
+        this.cdr.markForCheck();
+      });
+  }
+
+  private buildCurrentEventAttachment(): AppTypes.ChatMessageAttachment | null {
+    const session = this.session();
+    const row = this.preparedChatContext?.eventRow ?? this.chatEventRow();
+    const source = row?.source as EventMenuItem | undefined;
+    const eventId = `${row?.id ?? session?.item.eventId ?? ''}`.trim();
+    const title = `${row?.title ?? session?.item.title ?? ''}`.trim();
+    if (!eventId || !title) {
+      return null;
+    }
+    return {
+      id: `event:${eventId}:${Date.now()}`,
+      type: 'event',
+      entityId: eventId,
+      title,
+      subtitle: `${source?.timeframe ?? row?.detail ?? ''}`.trim() || null,
+      description: `${source?.shortDescription ?? row?.subtitle ?? ''}`.trim() || null,
+      url: `${source?.sourceLink ?? ''}`.trim() || null,
+      previewUrl: `${source?.imageUrl ?? ''}`.trim() || null
+    };
+  }
+
+  private async resolveShareAttachmentFromText(text: string): Promise<AppTypes.ChatMessageAttachment | null> {
+    const token = this.parseShareToken(text);
+    if (!token) {
+      return null;
+    }
+    const resolved = await this.shareTokensService.resolveToken(token, this.activeUserId());
+    if (!resolved) {
+      this.confirmationDialogService.openInfo('This share token is expired or no longer available.', {
+        title: 'Share link'
+      });
+      return null;
+    }
+    return {
+      id: `${resolved.kind}:${resolved.entityId}:${Date.now()}`,
+      type: resolved.kind,
+      entityId: resolved.entityId,
+      assetType: resolved.kind === 'asset' ? (resolved.assetType ?? null) : null,
+      ownerUserId: resolved.kind === 'asset' ? (resolved.ownerUserId ?? null) : null,
+      title: resolved.title,
+      subtitle: resolved.subtitle ?? null,
+      description: resolved.description ?? null,
+      url: resolved.url ?? null,
+      previewUrl: resolved.imageUrl ?? null
+    };
+  }
+
+  private parseShareToken(text: string): string | null {
+    const normalized = `${text ?? ''}`.trim();
+    return normalized.match(/^myscoutee:token:[A-Za-z0-9-]+$/) ? normalized : null;
+  }
+
+  private buildFirstAssetAttachment(): AppTypes.ChatMessageAttachment | null {
+    const context = this.preparedChatContext;
+    if (!context) {
+      return null;
+    }
+    const assetTypes: Array<'Car' | 'Accommodation' | 'Supplies'> = ['Car', 'Accommodation', 'Supplies'];
+    for (const type of assetTypes) {
+      const card = context.assetCardsByType[type]?.[0];
+      if (!card) {
+        continue;
+      }
+      return {
+        id: `asset:${card.id}:${Date.now()}`,
+        type: 'asset',
+        entityId: card.id,
+        assetType: type,
+        ownerUserId: card.ownerUserId ?? null,
+        title: card.title,
+        subtitle: [type, card.city].filter(Boolean).join(' - ') || null,
+        description: `${card.details || card.subtitle || ''}`.trim() || null,
+        url: `${card.sourceLink ?? ''}`.trim() || null,
+        previewUrl: `${card.imageUrl ?? ''}`.trim() || null
+      };
+    }
+    return null;
+  }
+
+  private findSharedAssetResourceType(
+    attachment: AppTypes.ChatMessageAttachment
+  ): 'Car' | 'Accommodation' | 'Supplies' | null {
+    const assetId = `${attachment.entityId ?? ''}`.trim();
+    const context = this.preparedChatContext;
+    if (!assetId || !context?.subEvent) {
+      return null;
+    }
+    const assetTypes: Array<'Car' | 'Accommodation' | 'Supplies'> = ['Car', 'Accommodation', 'Supplies'];
+    return assetTypes.find(type => context.assetCardsByType[type]?.some(card => card.id === assetId)) ?? null;
+  }
+
+  private openSharedAssetAttachment(attachment: AppTypes.ChatMessageAttachment): void {
+    const resourceType = this.findSharedAssetResourceType(attachment);
+    if (resourceType) {
+      this.openSelectedChatSubEventResource(resourceType);
+      return;
+    }
+    this.popupCtx.requestActivitiesNavigation({
+      type: 'assetExplore',
+      assetType: this.normalizeAttachmentAssetType(attachment.assetType) ?? 'Car',
+      assetId: `${attachment.entityId ?? ''}`.trim() || undefined
+    });
+  }
+
+  private normalizeAttachmentAssetType(value: unknown): AppTypes.AssetType | null {
+    return value === 'Car' || value === 'Accommodation' || value === 'Supplies' ? value : null;
+  }
+
+  private openExternalAttachmentUrl(attachment: AppTypes.ChatMessageAttachment): void {
+    const url = `${attachment.url ?? ''}`.trim();
+    if (!url) {
+      this.confirmationDialogService.openInfo('This shared item is not available from the current chat context.', {
+        title: attachment.title || 'Shared item'
+      });
+      return;
+    }
+    this.confirmationDialogService.open({
+      title: 'Open external link?',
+      message: 'This link opens outside MyScoutee. Please be vigilant before continuing.',
+      confirmLabel: 'OK',
+      cancelLabel: 'Cancel',
+      confirmTone: 'accent',
+      onConfirm: () => {
+        if (typeof window !== 'undefined') {
+          window.open(url, '_blank', 'noopener,noreferrer');
+        }
+      }
+    });
+  }
+
+  private async openSharedEventAttachment(attachment: AppTypes.ChatMessageAttachment): Promise<void> {
+    const eventId = `${attachment.entityId ?? ''}`.trim();
+    if (!eventId) {
+      this.confirmationDialogService.openInfo('This event is not available anymore.', {
+        title: attachment.title || 'Shared event'
+      });
+      return;
+    }
+    const eventRecord = await this.eventsService.queryKnownItemById(this.activeUserId(), eventId);
+    if (!eventRecord) {
+      this.confirmationDialogService.openInfo('This event is not available anymore.', {
+        title: attachment.title || 'Shared event'
+      });
+      return;
+    }
+    this.popupCtx.requestActivitiesNavigation({
+      type: 'eventEditor',
+      row: toActivityEventRow(eventRecord),
+      readOnly: true
+    });
+  }
+
+  private resolveViewableMessageAttachment(message: AppTypes.ChatPopupMessage): AppTypes.ChatMessageAttachment | null {
+    if (message.deletedAtIso) {
+      return null;
+    }
+    return (message.attachments ?? []).find(attachment =>
+      attachment.type === 'event' || attachment.type === 'asset' || attachment.type === 'link'
+    ) ?? null;
   }
 
   private async resolvePersistableImageAttachment(

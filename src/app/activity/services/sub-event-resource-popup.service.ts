@@ -417,10 +417,14 @@ export class SubEventResourcePopupService {
 
     effect(() => {
       const request = this.popupCtx.activitiesNavigationRequest();
-      if (!request || request.type !== 'chatResource') {
+      if (!request || (request.type !== 'chatResource' && request.type !== 'assetExplore')) {
         return;
       }
       this.popupCtx.clearActivitiesNavigationRequest();
+      if (request.type === 'assetExplore') {
+        this.openStandaloneAssetExploreRequest(request);
+        return;
+      }
       this.openFromChatRequest(request);
     });
 
@@ -463,6 +467,46 @@ export class SubEventResourcePopupService {
     );
     this.seedAssignmentsFromRequest(context.subEvent.id, request.assetAssignmentIds, context.fallbackCardsByType);
     this.openPopupContext(context, request.resourceType);
+    if (request.openExplore) {
+      this.openExplorePopup();
+    }
+  }
+
+  private openStandaloneAssetExploreRequest(
+    request: Extract<AppTypes.ActivitiesNavigationRequest, { type: 'assetExplore' }>
+  ): void {
+    const type = request.assetType === 'Accommodation' || request.assetType === 'Supplies'
+      ? request.assetType
+      : 'Car';
+    const now = new Date();
+    const end = new Date(now);
+    end.setHours(end.getHours() + 2);
+    const subEvent: AppTypes.SubEventFormItem = {
+      id: `asset-explore-${this.activeUser().id || 'user'}`,
+      name: 'Asset Explore',
+      description: '',
+      startAt: AppUtils.toIsoDateTimeLocal(now),
+      endAt: AppUtils.toIsoDateTimeLocal(end),
+      optional: true,
+      capacityMin: 0,
+      capacityMax: 0,
+      membersAccepted: 0,
+      membersPending: 0,
+      carsPending: 0,
+      accommodationPending: 0,
+      suppliesPending: 0,
+      carsAccepted: 0,
+      accommodationAccepted: 0,
+      suppliesAccepted: 0
+    };
+    this.openPopupContext({
+      origin: 'chat',
+      ownerId: this.activeUser().id,
+      parentTitle: 'Assets',
+      subEvent,
+      fallbackCardsByType: {}
+    }, type);
+    this.openExplorePopup();
   }
 
   private openFromEventEditorRequest(request: NonNullable<ReturnType<EventEditorPopupStateService['subEventResourcePopupRequest']>>): void {

@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, DoCheck, HostListener, Input, TemplateRef, ViewChild } from '@angular/core';
+import { Component, DoCheck, HostListener, Input, TemplateRef, ViewChild, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DragDropModule } from '@angular/cdk/drag-drop';
 import { MatButtonModule } from '@angular/material/button';
@@ -29,7 +29,9 @@ import {
 import type * as AppTypes from '../../../shared/core/base/models';
 import { AppUtils } from '../../../shared/app-utils';
 import { AssetDefaultsBuilder } from '../../../shared/core/base/builders';
+import { ShareTokensService } from '../../../shared/core';
 import { resolveCurrentDemoDelayMs, resolveCurrentRouteDelayMs } from '../../../shared/core/base/services/route-delay.service';
+import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
 
 interface CapacityEditorState {
   title: string;
@@ -274,6 +276,9 @@ export interface EventResourcePopupHost {
   styleUrls: ['./event-resource-popup.component.scss']
 })
 export class EventResourcePopupComponent implements DoCheck {
+  private readonly confirmationDialogService = inject(ConfirmationDialogService);
+  private readonly shareTokensService = inject(ShareTokensService);
+
   private lastCardsSignature = '';
   private lastContextKey = '';
   private lastCardCount = 0;
@@ -709,6 +714,11 @@ export class EventResourcePopupComponent implements DoCheck {
           label: 'Contact Owner',
           icon: 'support_agent'
         },
+        {
+          id: 'share',
+          label: 'Share Asset',
+          icon: 'ios_share'
+        },
         ...(this.host.canReportAssetExploreOwner(card) ? [{
           id: 'report',
           label: 'Report Owner',
@@ -732,6 +742,11 @@ export class EventResourcePopupComponent implements DoCheck {
     if (event.actionId === 'serviceChat') {
       this.showAssetExploreBorrowBasket = false;
       this.host.openAssetExploreServiceChat(card, new Event('click'));
+      return;
+    }
+    if (event.actionId === 'share') {
+      this.showAssetExploreBorrowBasket = false;
+      this.openAssetExploreShareDialog(card);
       return;
     }
     if (event.actionId === 'report') {
@@ -998,6 +1013,10 @@ export class EventResourcePopupComponent implements DoCheck {
     }
     if (event.actionId === 'serviceChat') {
       this.host.openResourceServiceChat(card, new Event('click'));
+      return;
+    }
+    if (event.actionId === 'share') {
+      this.openResourceShareDialog(card);
       return;
     }
     if (event.actionId === 'report') {
@@ -1349,6 +1368,11 @@ export class EventResourcePopupComponent implements DoCheck {
       label: 'Contact Organizer',
       icon: 'support_agent'
     });
+    actions.push({
+      id: 'share',
+      label: 'Share Asset',
+      icon: 'ios_share'
+    });
     if (this.host.canReportResourceManager(card)) {
       actions.push({
         id: 'report',
@@ -1364,5 +1388,44 @@ export class EventResourcePopupComponent implements DoCheck {
       tone: 'destructive'
     });
     return actions;
+  }
+
+  private openAssetExploreShareDialog(card: AppTypes.AssetCard): void {
+    void this.shareTokensService.createToken({
+      kind: 'asset',
+      entityId: card.id,
+      assetType: card.type,
+      ownerUserId: card.ownerUserId ?? null
+    }).then(token => this.openShareLinkDialog('Share asset', token));
+  }
+
+  private openResourceShareDialog(card: AppTypes.SubEventResourceCard): void {
+    const sourceAssetId = `${card.sourceAssetId ?? ''}`.trim();
+    if (!sourceAssetId || (card.type !== 'Car' && card.type !== 'Accommodation' && card.type !== 'Supplies')) {
+      void this.shareTokensService.createToken({
+        kind: 'asset',
+        entityId: card.id,
+        assetType: card.type as AppTypes.AssetType
+      }).then(token => this.openShareLinkDialog('Share asset', token));
+      return;
+    }
+    void this.shareTokensService.createToken({
+      kind: 'asset',
+      entityId: sourceAssetId,
+      assetType: card.type
+    }).then(token => this.openShareLinkDialog('Share asset', token));
+  }
+
+  private openShareLinkDialog(title: string, shareToken: string): void {
+    this.confirmationDialogService.open({
+      title,
+      message: shareToken,
+      confirmLabel: 'Copy link',
+      cancelLabel: 'Cancel',
+      confirmTone: 'accent',
+      onConfirm: async () => {
+        await navigator.clipboard?.writeText(shareToken);
+      }
+    });
   }
 }

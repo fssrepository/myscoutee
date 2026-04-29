@@ -15,3 +15,4 @@ export type {
 export * from './asset.model';
 export * from './activities-ui.model';
 export * from './activities.model';
+export * from './share-token.model';

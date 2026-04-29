@@ -1,3 +1,5 @@
+import type { AssetType } from './asset.model';
+
 export interface ChatReadAvatar {
   id: string;
   initials: string;
@@ -60,6 +62,11 @@ export interface ChatMessageAttachment {
   id: string;
   type: ChatMessageAttachmentType;
   title: string;
+  entityId?: string | null;
+  assetType?: AssetType | null;
+  ownerUserId?: string | null;
+  subtitle?: string | null;
+  description?: string | null;
   url?: string | null;
   previewUrl?: string | null;
   mimeType?: string | null;

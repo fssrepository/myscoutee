@@ -186,11 +186,11 @@
                       <mat-icon>poll</mat-icon>
                       <span>Create a poll</span>
                     </button>
-                    <button type="button" class="chat-composer-menu-item chat-composer-menu-item-event" (click)="composerMenuOpen = false">
+                    <button type="button" class="chat-composer-menu-item chat-composer-menu-item-event" (click)="shareCurrentEvent($event)">
                       <mat-icon>event</mat-icon>
                       <span>Share event</span>
                     </button>
-                    <button type="button" class="chat-composer-menu-item chat-composer-menu-item-asset" (click)="composerMenuOpen = false">
+                    <button type="button" class="chat-composer-menu-item chat-composer-menu-item-asset" (click)="shareFirstAvailableAsset($event)">
                       <mat-icon>inventory_2</mat-icon>
                       <span>Share asset</span>
                     </button>
@@ -291,6 +291,34 @@
                       />
                     }
                   </figure>
+                } @else if (attachment.type === 'event' || attachment.type === 'asset' || attachment.type === 'link') {
+                  <button
+                    type="button"
+                    class="chat-card-attachment"
+                    [class.chat-card-attachment-event]="attachment.type === 'event'"
+                    [class.chat-card-attachment-asset]="attachment.type === 'asset'"
+                    [class.chat-card-attachment-link]="attachment.type === 'link'"
+                    (click)="selectMessage(message, $event)"
+                    >
+                    @if (attachment.previewUrl) {
+                      <span class="chat-card-attachment-media">
+                        <img [src]="attachment.previewUrl" [alt]="attachment.title" loading="lazy" decoding="async" />
+                      </span>
+                    }
+                    <span class="chat-card-attachment-copy">
+                      <span class="chat-card-attachment-kicker">
+                        <mat-icon>{{ chatAttachmentIcon(attachment) }}</mat-icon>
+                        {{ chatAttachmentTypeLabel(attachment) }}
+                      </span>
+                      <strong>{{ attachment.title }}</strong>
+                      @if (attachment.subtitle) {
+                        <small>{{ attachment.subtitle }}</small>
+                      }
+                      @if (attachment.description) {
+                        <span class="chat-card-attachment-description">{{ attachment.description }}</span>
+                      }
+                    </span>
+                  </button>
                 }
               }
             </div>
@@ -350,6 +378,9 @@
           [class.chat-message-action-menu-tools-down]="selectedMessageToolsDown"
           (click)="$event.stopPropagation()"
           >
+          @if (messageHasViewableAttachment(message)) {
+            <button type="button" (click)="viewSharedMessage(message, $event)">View</button>
+          }
           <button type="button" (click)="setReplyTarget(message, $event)">Reply</button>
           @if (message.mine && !message.deletedAtIso) {
             <button type="button" (click)="beginEditMessage(message, $event)">Edit</button>

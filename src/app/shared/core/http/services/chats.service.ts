@@ -73,6 +73,11 @@ interface HttpChatMessageAttachmentDto {
   id: string;
   type: AppTypes.ChatMessageAttachmentType;
   title: string;
+  entityId?: string | null;
+  assetType?: AppTypes.AssetType | null;
+  ownerUserId?: string | null;
+  subtitle?: string | null;
+  description?: string | null;
   url?: string | null;
   previewUrl?: string | null;
   mimeType?: string | null;
@@ -515,6 +520,11 @@ export class HttpChatsService {
       id: `${attachment.id ?? ''}`.trim(),
       type: attachment.type,
       title: `${attachment.title ?? ''}`.trim(),
+      entityId: typeof attachment.entityId === 'string' ? attachment.entityId.trim() : null,
+      assetType: this.normalizeAssetType(attachment.assetType),
+      ownerUserId: typeof attachment.ownerUserId === 'string' ? attachment.ownerUserId.trim() : null,
+      subtitle: typeof attachment.subtitle === 'string' ? attachment.subtitle.trim() : null,
+      description: typeof attachment.description === 'string' ? attachment.description.trim() : null,
       url: typeof attachment.url === 'string' ? attachment.url.trim() : null,
       previewUrl: typeof attachment.previewUrl === 'string' ? attachment.previewUrl.trim() : null,
       mimeType: typeof attachment.mimeType === 'string' ? attachment.mimeType.trim() : null,
@@ -527,11 +537,20 @@ export class HttpChatsService {
       id: `${attachment.id ?? ''}`.trim(),
       type: attachment.type,
       title: `${attachment.title ?? ''}`.trim(),
+      entityId: attachment.entityId ?? null,
+      assetType: attachment.assetType ?? null,
+      ownerUserId: attachment.ownerUserId ?? null,
+      subtitle: attachment.subtitle ?? null,
+      description: attachment.description ?? null,
       url: attachment.url ?? null,
       previewUrl: attachment.previewUrl ?? null,
       mimeType: attachment.mimeType ?? null,
       sizeBytes: Number.isFinite(Number(attachment.sizeBytes)) ? Math.max(0, Math.trunc(Number(attachment.sizeBytes))) : null
     };
+  }
+
+  private normalizeAssetType(value: unknown): AppTypes.AssetType | null {
+    return value === 'Car' || value === 'Accommodation' || value === 'Supplies' ? value : null;
   }
 
   private updateCachedChatSummaryAfterMessage(

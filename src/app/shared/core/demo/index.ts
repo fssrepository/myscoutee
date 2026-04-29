@@ -12,6 +12,7 @@ export { DemoActivityMembersRepository } from './repositories/activity-members.r
 export { DemoActivityResourcesRepository } from './repositories/activity-resources.repository';
 export { DemoChatsRepository } from './repositories/chats.repository';
 export { DemoEventsRepository } from './repositories/events.repository';
+export { DemoShareTokensRepository } from './repositories/share-tokens.repository';
 export { DemoProfileExperiencesRepository } from './repositories/profile-experiences.repository';
 export { DemoUsersRatingsRepository } from './repositories/users-ratings.repository';
 export { DemoUsersRepository as DemoUsersRepository } from './repositories/users.repository';

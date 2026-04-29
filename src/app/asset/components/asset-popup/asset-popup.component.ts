@@ -11,7 +11,7 @@ import { AssetPopupStateService } from '../../asset-popup-state.service';
 import { OwnedAssetsPopupFacadeService } from '../../owned-assets-popup-facade.service';
 import { AssetCardBuilder, PricingBuilder } from '../../../shared/core/base/builders';
 import type * as AppTypes from '../../../shared/core/base/models';
-import { AppContext, AssetTicketsService } from '../../../shared/core';
+import { AppContext, AssetTicketsService, ShareTokensService } from '../../../shared/core';
 import { resolveCurrentRouteDelayMs } from '../../../shared/core/base/services/route-delay.service';
 import { AssetFormPopupComponent } from '../asset-form-popup/asset-form-popup.component';
 import { AssetTicketCodePopupComponent } from '../asset-ticket-code-popup/asset-ticket-code-popup.component';
@@ -27,6 +27,7 @@ import {
   type SmartListStateChange,
   ConfirmationDialogComponent
 } from '../../../shared/ui';
+import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
 
 interface AssetTicketListFilters {
   userId?: string;
@@ -63,6 +64,8 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
   private readonly assetFacade = inject(AssetFacadeService);
   private readonly appCtx = inject(AppContext);
   private readonly assetTicketsService = inject(AssetTicketsService);
+  private readonly shareTokensService = inject(ShareTokensService);
+  private readonly confirmationDialogService = inject(ConfirmationDialogService);
   protected readonly assetPopup = inject(AssetPopupStateService);
   protected readonly ownedAssets = inject(OwnedAssetsPopupFacadeService);
   protected readonly assetFilterOpen = signal(false);
@@ -228,11 +231,35 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
     if (this.isBasketMode()) {
       return;
     }
+    if (event.actionId === 'share') {
+      this.openOwnedAssetShareDialog(card);
+      return;
+    }
     if (event.actionId === 'delete') {
       this.ownedAssets.runAssetItemDeleteAction(card);
       return;
     }
     this.ownedAssets.runAssetItemEditAction(card);
+  }
+
+  private openOwnedAssetShareDialog(card: AppTypes.AssetCard): void {
+    void this.shareTokensService.createToken({
+      kind: 'asset',
+      entityId: card.id,
+      assetType: card.type,
+      ownerUserId: card.ownerUserId ?? null
+    }).then(token => {
+      this.confirmationDialogService.open({
+        title: 'Share asset',
+        message: token,
+        confirmLabel: 'Copy link',
+        cancelLabel: 'Cancel',
+        confirmTone: 'accent',
+        onConfirm: async () => {
+          await navigator.clipboard?.writeText(token);
+        }
+      });
+    });
   }
 
   protected onOwnedAssetMediaEndClick(card: AppTypes.AssetCard, selectMode: boolean): void {

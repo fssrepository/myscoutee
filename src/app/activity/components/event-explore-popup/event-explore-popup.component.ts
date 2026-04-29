@@ -26,6 +26,7 @@ import {
   EventsService,
   type ActivityMembersSyncState,
   GameService,
+  ShareTokensService,
   UsersService,
   type UserDto
 } from '../../../shared/core';
@@ -75,6 +76,7 @@ export class EventExplorePopupComponent {
   private readonly activitiesService = inject(ActivitiesService);
   private readonly eventsService = inject(EventsService);
   private readonly gameService = inject(GameService);
+  private readonly shareTokensService = inject(ShareTokensService);
   private readonly usersService = inject(UsersService);
   protected readonly navigatorService = inject(NavigatorService);
   private readonly confirmationDialogService = inject(ConfirmationDialogService);
@@ -597,6 +599,10 @@ export class EventExplorePopupComponent {
       this.runEventExploreServiceChatAction(record);
       return;
     }
+    if (action.actionId === 'share') {
+      this.runEventExploreShareAction(record);
+      return;
+    }
     if (action.actionId === 'report') {
       this.runEventExploreReportAction(record);
     }
@@ -842,6 +848,28 @@ export class EventExplorePopupComponent {
     });
     this.cdr.markForCheck();
   }
+
+  private runEventExploreShareAction(record: DemoEventRecord): void {
+    void this.shareTokensService.createToken({
+      kind: 'event',
+      entityId: record.id,
+      ownerUserId: this.activeUserId.trim()
+    }).then(token => this.openShareLinkDialog('Share event', token));
+  }
+
+  private openShareLinkDialog(title: string, shareToken: string): void {
+    this.confirmationDialogService.open({
+      title,
+      message: shareToken,
+      confirmLabel: 'Copy link',
+      cancelLabel: 'Cancel',
+      confirmTone: 'accent',
+      onConfirm: async () => {
+        await navigator.clipboard?.writeText(shareToken);
+      }
+    });
+  }
+
 
   protected closeEventExploreSlotPicker(): void {
     this.slotPickerRecord = null;

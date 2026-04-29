@@ -123,6 +123,11 @@ export class EventExploreBuilder {
       icon: 'support_agent'
     });
     actions.push({
+      id: 'share',
+      label: 'Share Event',
+      icon: 'ios_share'
+    });
+    actions.push({
       id: 'report',
       label: 'Report Organizer',
       icon: 'flag',

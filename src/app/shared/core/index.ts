@@ -27,6 +27,7 @@ export { EventEditorDataService } from './base/services/event-editor-data.servic
 export { ActivityMembersService } from './base/services/activity-members.service';
 export { ActivityResourcesService } from './base/services/activity-resources.service';
 export { AssetsService } from './base/services/assets.service';
+export { ShareTokensService } from './base/services/share-tokens.service';
 export { AssetTicketsService } from './base/services/asset-tickets.service';
 export { ActivityInviteCandidatesService } from './base/services/activity-invite-candidates.service';
 export { ChatsService } from './base/services/chats.service';

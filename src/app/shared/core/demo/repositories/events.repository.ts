@@ -268,6 +268,19 @@ export class DemoEventsRepository {
     return [...byEventId.values()].map(record => DemoEventsRepositoryBuilder.cloneRecord(record));
   }
 
+  peekKnownItemById(userId: string, itemId: string): DemoEventRecord | null {
+    const normalizedUserId = userId.trim();
+    const normalizedItemId = itemId.trim();
+    if (!normalizedUserId || !normalizedItemId) {
+      return null;
+    }
+    const known = [
+      ...this.queryItemsByUser(normalizedUserId),
+      ...this.queryExploreItems(normalizedUserId)
+    ];
+    return known.find(record => record.id === normalizedItemId) ?? null;
+  }
+
   queryEventExplorePage(query: DemoEventExploreQuery): DemoEventExploreQueryResult {
     this.init();
     const normalizedUserId = query.userId.trim();

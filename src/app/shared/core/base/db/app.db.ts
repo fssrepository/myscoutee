@@ -12,6 +12,7 @@ import { CHATS_TABLE_NAME } from '../../demo/models/chats.model';
 import { EVENT_FEEDBACK_TABLE_NAME } from '../../demo/models/event-feedback.model';
 import { EVENTS_TABLE_NAME } from '../../demo/models/events.model';
 import { PROFILE_EXPERIENCES_TABLE_NAME } from '../../demo/models/profile-experiences.model';
+import { SHARE_TOKENS_TABLE_NAME } from '../../demo/models/share-tokens.model';
 import type { DemoMemorySchema } from '../../demo/models/memory.model';
 import {
   USER_FILTER_PREFERENCES_TABLE_NAME,
@@ -152,6 +153,10 @@ export class AppMemoryDb {
       [PROFILE_EXPERIENCES_TABLE_NAME]: {
         byUserId: {},
         userIds: []
+      },
+      [SHARE_TOKENS_TABLE_NAME]: {
+        byToken: {},
+        tokens: []
       },
       [EVENTS_TABLE_NAME]: {
         byId: {},
@@ -569,6 +574,7 @@ export class AppMemoryDb {
     const chatsSource = source[CHATS_TABLE_NAME] as Partial<DemoMemorySchema[typeof CHATS_TABLE_NAME]> | undefined;
     const eventFeedbackSource = source[EVENT_FEEDBACK_TABLE_NAME] as Partial<DemoMemorySchema[typeof EVENT_FEEDBACK_TABLE_NAME]> | undefined;
     const profileExperiencesSource = source[PROFILE_EXPERIENCES_TABLE_NAME] as Partial<DemoMemorySchema[typeof PROFILE_EXPERIENCES_TABLE_NAME]> | undefined;
+    const shareTokensSource = source[SHARE_TOKENS_TABLE_NAME] as Partial<DemoMemorySchema[typeof SHARE_TOKENS_TABLE_NAME]> | undefined;
     const eventsSource = (
       source[EVENTS_TABLE_NAME]
       ?? legacySource['demoEvents']
@@ -643,6 +649,14 @@ export class AppMemoryDb {
         userIds: Array.isArray(profileExperiencesSource?.userIds)
           ? profileExperiencesSource.userIds.map(id => String(id))
           : [...fallback[PROFILE_EXPERIENCES_TABLE_NAME].userIds]
+      },
+      [SHARE_TOKENS_TABLE_NAME]: {
+        byToken: shareTokensSource?.byToken && typeof shareTokensSource.byToken === 'object'
+          ? { ...shareTokensSource.byToken }
+          : { ...fallback[SHARE_TOKENS_TABLE_NAME].byToken },
+        tokens: Array.isArray(shareTokensSource?.tokens)
+          ? shareTokensSource.tokens.map(token => String(token))
+          : [...fallback[SHARE_TOKENS_TABLE_NAME].tokens]
       },
       [EVENTS_TABLE_NAME]: {
         byId: eventsSource?.byId && typeof eventsSource.byId === 'object'

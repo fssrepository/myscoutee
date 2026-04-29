@@ -90,6 +90,17 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
       .sort((left, right) => left.title.localeCompare(right.title));
   }
 
+  peekVisibleAssetById(userId: string, type: AppTypes.AssetType, assetId: string): AppTypes.AssetCard | null {
+    const normalizedUserId = userId.trim();
+    const normalizedAssetId = assetId.trim();
+    if (!normalizedUserId || !normalizedAssetId) {
+      return null;
+    }
+    this.init(this.querySeedUsers().map(user => user.id));
+    return this.readVisibleAssets(normalizedUserId)
+      .find(card => card.type === type && card.id === normalizedAssetId) ?? null;
+  }
+
   override async saveOwnedAsset(userId: string, asset: AppTypes.AssetCard): Promise<AppTypes.AssetCard> {
     const normalizedUserId = userId.trim();
     const normalizedAsset = this.normalizeCard(asset);
