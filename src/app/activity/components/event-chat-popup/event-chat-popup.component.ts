@@ -1155,7 +1155,12 @@ export class EventChatPopupComponent implements OnDestroy {
       return null;
     }
     const assetTypes: Array<'Car' | 'Accommodation' | 'Supplies'> = ['Car', 'Accommodation', 'Supplies'];
-    return assetTypes.find(type => context.assetCardsByType[type]?.some(card => card.id === assetId)) ?? null;
+    return assetTypes.find(type => context.assetCardsByType[type]?.some(card => {
+      const sourceAssetId = 'sourceAssetId' in card
+        ? `${card.sourceAssetId ?? ''}`.trim()
+        : '';
+      return card.id === assetId || sourceAssetId === assetId;
+    })) ?? null;
   }
 
   private openSharedAssetAttachment(attachment: AppTypes.ChatMessageAttachment): void {
