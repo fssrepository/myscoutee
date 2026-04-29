@@ -69,6 +69,7 @@ export type ActivitiesNavigationRequest =
       assetAssignmentIds?: SubEventAssetAssignmentIds;
       assetCardsByType?: SubEventAssetCardsByType;
       openExplore?: boolean;
+      assetViewId?: string;
     }
   | {
       type: 'members';

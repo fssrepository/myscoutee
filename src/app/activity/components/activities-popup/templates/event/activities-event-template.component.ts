@@ -97,7 +97,7 @@ export class ActivitiesEventTemplateComponent implements OnChanges {
   }
 }
 
-type ActivityInfoCardActionId = 'publish' | 'primary' | 'view' | 'serviceChat' | 'report' | 'approve' | 'secondary' | 'restore';
+type ActivityInfoCardActionId = 'publish' | 'primary' | 'view' | 'serviceChat' | 'share' | 'report' | 'approve' | 'secondary' | 'restore';
 type ActivitiesEventsHost = any;
 type InvitationApprovalSyncResult = {
   syncPayload: Omit<ActivitiesEventSyncPayload, 'syncKey'>;
@@ -135,6 +135,7 @@ export class ActivitiesEventsController {
   private set pendingActivityMemberDelete(value: AppTypes.ActivityMemberEntry | null) { this.host.pendingActivityMemberDelete = value; }
   private get popupCtx() { return this.host.popupCtx; }
   private get navigatorService() { return this.host.navigatorService; }
+  private get shareTokensService() { return this.host.shareTokensService; }
   private get publishedHostingIds() { return this.host.publishedHostingIds as ReadonlySet<string>; }
   private set publishedHostingIds(value: ReadonlySet<string>) { this.host.publishedHostingIds = value; }
   private get selectedActivityMembers() { return this.host.selectedActivityMembers as AppTypes.ActivityMemberEntry[]; }
@@ -267,6 +268,13 @@ export class ActivitiesEventsController {
         icon: 'support_agent'
       });
     }
+    if (this.shouldShowActivityShareAction(row)) {
+      actions.push({
+        id: 'share',
+        label: 'Share Event',
+        icon: 'ios_share'
+      });
+    }
     if (this.shouldShowActivityReportAction(row)) {
       actions.push({
         id: 'report',
@@ -312,6 +320,11 @@ export class ActivitiesEventsController {
   }
 
   public shouldShowActivityServiceChatAction(row: AppTypes.ActivityListRow): boolean {
+    return !this.isActivityRowTrashed(row)
+      && (row.type === 'hosting' || row.type === 'events' || row.type === 'invitations');
+  }
+
+  public shouldShowActivityShareAction(row: AppTypes.ActivityListRow): boolean {
     return !this.isActivityRowTrashed(row)
       && (row.type === 'hosting' || row.type === 'events' || row.type === 'invitations');
   }
@@ -394,6 +407,9 @@ export class ActivitiesEventsController {
       case 'serviceChat':
         this.runActivityItemServiceChatAction(row);
         break;
+      case 'share':
+        this.runActivityItemShareAction(row);
+        break;
       case 'report':
         this.runActivityItemReportAction(row);
         break;
@@ -433,6 +449,43 @@ export class ActivitiesEventsController {
       return;
     }
     this.openActivityChat(chat);
+  }
+
+  public runActivityItemShareAction(row: AppTypes.ActivityListRow, event?: Event): void {
+    event?.stopPropagation();
+    this.inlineItemActionMenu = null;
+    const entityId = this.resolveActivityShareEntityId(row);
+    if (!entityId) {
+      return;
+    }
+    void this.shareTokensService.createToken({
+      kind: 'event',
+      entityId,
+      ownerUserId: this.activeUser.id.trim()
+    }).then((token: string) => {
+      if (!token) {
+        return;
+      }
+      this.confirmationDialogService.open({
+        title: 'Share event',
+        message: token,
+        confirmLabel: 'Copy link',
+        cancelLabel: 'Cancel',
+        confirmTone: 'accent',
+        onConfirm: async () => {
+          await navigator.clipboard?.writeText(token);
+        }
+      });
+    });
+  }
+
+  private resolveActivityShareEntityId(row: AppTypes.ActivityListRow): string {
+    const source = ActivityEventBuilder.resolveEditorSource(row, {
+      eventItems: this.eventItems,
+      hostingItems: this.hostingItems,
+      invitationItems: this.invitationItems
+    }) ?? (row.source as Partial<EventMenuItem & HostingMenuItem & InvitationMenuItem>);
+    return `${source.id ?? row.id ?? ''}`.trim();
   }
 
   public runActivityItemReportAction(row: AppTypes.ActivityListRow, event?: Event): void {

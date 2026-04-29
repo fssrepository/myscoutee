@@ -73,6 +73,34 @@
       </div>
       <section class="experience-form-panel" [ngClass]="eventVisibilityClass(assetFormVisibility)" [class.is-saving]="isSavePending">
         <div class="experience-form-grid">
+          <label class="experience-description-field">
+            <span>Image</span>
+            <input #assetImageInput type="file" accept="image/*" hidden (change)="onImageFileChange($event)" />
+            <button type="button" class="asset-image-dropzone" [disabled]="isSavePending" (click)="assetImageInput.click()">
+              <div class="asset-image-preview" [style.backgroundImage]="assetForm.imageUrl ? 'url(' + assetForm.imageUrl + ')' : null">
+                @if (!isEventEditorReadOnly) {
+                  <span class="asset-image-plus">+</span>
+                }
+              </div>
+            </button>
+          </label>
+          <label class="experience-description-field">
+            <span>Source link</span>
+            <div class="asset-source-row">
+              <input type="text" [(ngModel)]="assetForm.sourceLink" [disabled]="isSavePending" placeholder="https://..." />
+              @if (sourceRefreshEnabled) {
+                <button
+                  type="button"
+                  class="asset-source-refresh-btn"
+                  [disabled]="isSavePending"
+                  (click)="refreshAssetFromSourceLink()"
+                  aria-label="Refresh from source"
+                  >
+                  <mat-icon>refresh</mat-icon>
+                </button>
+              }
+            </div>
+          </label>
           <label>
             <span>Type</span>
             @if (!isMobileViewport) {
@@ -278,34 +306,6 @@
               </div>
             </label>
           }
-          <label class="experience-description-field">
-            <span>Source link</span>
-            <div class="asset-source-row">
-              <input type="text" [(ngModel)]="assetForm.sourceLink" [disabled]="isSavePending" placeholder="https://..." />
-              @if (sourceRefreshEnabled) {
-                <button
-                  type="button"
-                  class="asset-source-refresh-btn"
-                  [disabled]="isSavePending"
-                  (click)="refreshAssetFromSourceLink()"
-                  aria-label="Refresh from source"
-                  >
-                  <mat-icon>refresh</mat-icon>
-                </button>
-              }
-            </div>
-          </label>
-          <label class="experience-description-field">
-            <span>Image</span>
-            <input #assetImageInput type="file" accept="image/*" hidden (change)="onImageFileChange($event)" />
-            <button type="button" class="asset-image-dropzone" [disabled]="isSavePending" (click)="assetImageInput.click()">
-              <div class="asset-image-preview" [style.backgroundImage]="assetForm.imageUrl ? 'url(' + assetForm.imageUrl + ')' : null">
-                @if (!isEventEditorReadOnly) {
-                  <span class="asset-image-plus">+</span>
-                }
-              </div>
-            </button>
-          </label>
         </div>
       </section>
 

@@ -84,6 +84,7 @@ import {
   ChatsService,
   EventsService,
   RatesService,
+  ShareTokensService,
   toActivityChatRow,
   UsersService,
   type ActivityMembersSyncState
@@ -146,6 +147,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected readonly activityResourcesService = inject(ActivityResourcesService);
   private readonly chatsService = inject(ChatsService);
   protected readonly eventsService = inject(EventsService);
+  protected readonly shareTokensService = inject(ShareTokensService);
   protected readonly appCtx = inject(AppContext);
   protected readonly popupCtx = inject(AppPopupContext);
   private readonly ownedAssets = inject(OwnedAssetsPopupFacadeService);

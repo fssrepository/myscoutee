@@ -17,28 +17,32 @@
         }
       </span>
     </div>
-    <div class="pricing-editor__head-actions">
-      <button
-        type="button"
-        class="pricing-editor__toggle pricing-editor__toggle--header"
-        [class.is-on]="isPricingEnabled()"
-        [disabled]="readOnly"
-        [attr.aria-pressed]="isPricingEnabled()"
-        (click)="togglePricingEnabled()"
-        >
-        <mat-icon>{{ isPricingEnabled() ? 'toggle_on' : 'toggle_off' }}</mat-icon>
-        <span>{{ isPricingEnabled() ? 'On' : 'Off' }}</span>
-      </button>
-    </div>
+    @if (!(usesSummaryPopup() && readOnly)) {
+      <div class="pricing-editor__head-actions">
+        <button
+          type="button"
+          class="pricing-editor__toggle pricing-editor__toggle--header"
+          [class.is-on]="isPricingEnabled()"
+          [disabled]="readOnly"
+          [attr.aria-pressed]="isPricingEnabled()"
+          (click)="togglePricingEnabled()"
+          >
+          <mat-icon>{{ isPricingEnabled() ? 'toggle_on' : 'toggle_off' }}</mat-icon>
+          <span>{{ isPricingEnabled() ? 'On' : 'Off' }}</span>
+        </button>
+      </div>
+    }
   </header>
 
   @if (usesSummaryPopup() && isPricingEnabled()) {
-    <div class="pricing-editor__summary-actions">
-      <button type="button" class="pricing-editor__open-btn pricing-editor__open-btn--summary" [disabled]="readOnly" (click)="openWizard()">
-        <mat-icon>tune</mat-icon>
-        <span>Open Pricing Setup</span>
-      </button>
-    </div>
+    @if (!readOnly) {
+      <div class="pricing-editor__summary-actions">
+        <button type="button" class="pricing-editor__open-btn pricing-editor__open-btn--summary" (click)="openWizard()">
+          <mat-icon>tune</mat-icon>
+          <span>Open Pricing Setup</span>
+        </button>
+      </div>
+    }
     @if (resolvedShowPreview) {
       <div class="pricing-editor__preview pricing-editor__preview--summary">
         <ng-container [ngTemplateOutlet]="pricingPreviewCards"></ng-container>

@@ -355,7 +355,9 @@
             <app-pricing-editor class="experience-description-field event-pricing-field" [(pricing)]="eventForm.pricing"
               [context]="'event'" [presentation]="'popup-summary'" [slotCatalog]="pricingSlotCatalog()"
               [readOnly]="eventEditorService.readOnly()"
-              [subtitle]="eventForm.ticketing ? 'Configure paid entry for the main event and optional slot overrides.' : 'Keep it free for now or prepare ticketing rules in advance.'"></app-pricing-editor>
+              [subtitle]="eventEditorService.readOnly()
+                ? ''
+                : (eventForm.ticketing ? 'Configure paid entry for the main event and optional slot overrides.' : 'Keep it free for now or prepare ticketing rules in advance.')"></app-pricing-editor>
             <section class="event-policies-panel">
               <div class="event-policies-panel-head">
                 <div class="event-policies-panel-title-wrap">
@@ -363,8 +365,9 @@
                     <mat-icon>policy</mat-icon>
                     <span>Event Policies</span>
                   </span>
-                  <p class="event-policies-panel-subtitle">Add the rules attendees need to read and approve before
-                    joining.</p>
+                  @if (!eventEditorService.readOnly()) {
+                    <p class="event-policies-panel-subtitle">Add the rules attendees need to read and approve before joining.</p>
+                  }
                 </div>
               </div>
               <div class="event-policies-panel-body">
@@ -387,8 +390,11 @@
                       </article>
                     </div>
                     } @else {
-                    <p class="event-slots-summary-note">No policies yet. Add policies if attendees must review terms
-                      before joining or booking.</p>
+                    <p class="event-slots-summary-note">
+                      {{ eventEditorService.readOnly()
+                        ? 'No policies are configured for this event.'
+                        : 'No policies yet. Add policies if attendees must review terms before joining or booking.' }}
+                    </p>
                     }
                   </section>
                 </div>

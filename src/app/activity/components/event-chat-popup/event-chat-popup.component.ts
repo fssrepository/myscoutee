@@ -352,7 +352,8 @@ export class EventChatPopupComponent implements OnDestroy {
   protected openSelectedChatSubEventResource(
     type: 'Members' | 'Car' | 'Accommodation' | 'Supplies',
     event?: Event,
-    openExplore = false
+    openExplore = false,
+    assetViewId?: string
   ): void {
     event?.stopPropagation();
     const session = this.session();
@@ -370,6 +371,7 @@ export class EventChatPopupComponent implements OnDestroy {
       assetAssignmentIds: context.assetAssignmentIds,
       assetCardsByType: context.assetCardsByType,
       openExplore,
+      assetViewId,
       group: context.group
         ? {
             id: context.group.id,
@@ -1166,7 +1168,12 @@ export class EventChatPopupComponent implements OnDestroy {
   private openSharedAssetAttachment(attachment: AppTypes.ChatMessageAttachment): void {
     const resourceType = this.findSharedAssetResourceType(attachment);
     if (resourceType) {
-      this.openSelectedChatSubEventResource(resourceType);
+      this.openSelectedChatSubEventResource(
+        resourceType,
+        undefined,
+        false,
+        `${attachment.entityId ?? ''}`.trim() || undefined
+      );
       return;
     }
     this.popupCtx.requestActivitiesNavigation({

@@ -29,7 +29,8 @@ import type {
   AssetExploreBorrowDraftViewState,
   AssetExploreBorrowDialogViewState,
   AssetExplorePopupViewState,
-  EventResourcePopupHost
+  EventResourcePopupHost,
+  ResourceAssetViewState
 } from '../components/event-resource-popup/event-resource-popup.component';
 import type {
   EventSupplyContributionsPopupHost
@@ -64,6 +65,7 @@ interface RouteEditorState {
   type: 'Car';
   assetId: string;
   title: string;
+  mode: 'view' | 'edit';
   routes: string[];
   routeRowIds: string[];
   busy: boolean;
@@ -202,6 +204,8 @@ export class SubEventResourcePopupService {
   private readonly popupContextRef = signal<ResourcePopupContext | null>(null);
   private readonly resourceFilterRef = signal<AppTypes.AssetType>('Car');
   private readonly inlineItemActionMenuRef = signal<{ id: string; openUp: boolean } | null>(null);
+  private readonly resourceAssetViewIdRef = signal<string | null>(null);
+  private readonly resourceAssetViewModeRef = signal<'view' | 'edit'>('view');
   private readonly capacityEditorRef = signal<CapacityEditorState | null>(null);
   private readonly routeEditorRef = signal<RouteEditorState | null>(null);
   private readonly supplyPopupRef = signal<SupplyContributionPopupState | null>(null);
@@ -268,6 +272,7 @@ export class SubEventResourcePopupService {
     resourceTypeIcon: type => type === 'Members' ? 'groups' : this.ownedAssets.assetTypeIcon(type),
     resourceTypeLabel: type => APP_STATIC_DATA.subEventResourceFilterLabels[type],
     cards: () => this.resourceCards(),
+    resourceAssetView: () => this.resourceAssetView(),
     capacityEditor: () => this.capacityEditorRef(),
     routeEditor: () => this.routeEditorRef(),
     pendingDeleteCard: () => this.pendingResourceDeleteRef(),
@@ -311,6 +316,8 @@ export class SubEventResourcePopupService {
     openBadgeDetails: (card, event) => this.openResourceBadgeDetails(card, event),
     occupancyLabel: card => this.occupancyLabel(card),
     canOpenAssetMembers: card => this.canOpenAssetMembers(card),
+    openResourceAssetView: (card, mode, event) => this.openResourceAssetView(card, mode, event),
+    closeResourceAssetView: event => this.closeResourceAssetView(event),
     isItemActionMenuOpen: card => this.inlineItemActionMenuRef()?.id === card.id,
     isItemActionMenuOpenUp: card => this.inlineItemActionMenuRef()?.id === card.id && this.inlineItemActionMenuRef()?.openUp === true,
     toggleItemActionMenu: (card, event) => this.toggleItemActionMenu(card, event),
@@ -327,7 +334,7 @@ export class SubEventResourcePopupService {
     openCapacityEditor: (card, event) => this.openCapacityEditor(card, event),
     canEditRoute: card => this.canEditRoute(card),
     routeMenuLabel: () => 'Edit Route',
-    openRouteEditor: (card, event) => this.openRouteEditor(card, event),
+    openRouteEditor: (card, event, mode) => this.openRouteEditor(card, event, mode),
     openResourceServiceChat: (card, event) => this.openResourceServiceChat(card, event),
     canReportResourceManager: card => this.canReportResourceManager(card),
     reportResourceManager: (card, event) => this.reportResourceManager(card, event),
@@ -339,6 +346,7 @@ export class SubEventResourcePopupService {
     saveCapacityEditor: event => this.saveCapacityEditor(event),
     closeRouteEditor: event => this.closeRouteEditor(event),
     routeEditorSupportsMultiRoute: () => !!this.routeEditorRef(),
+    routeEditorReadOnly: () => this.routeEditorRef()?.mode === 'view',
     openRouteMap: event => this.openRouteMap(event),
     addRouteStop: () => this.addRouteStop(),
     dropRouteStop: event => this.dropRouteStop(event as CdkDragDrop<string[]>),
@@ -467,6 +475,7 @@ export class SubEventResourcePopupService {
     );
     this.seedAssignmentsFromRequest(context.subEvent.id, request.assetAssignmentIds, context.fallbackCardsByType);
     this.openPopupContext(context, request.resourceType);
+    this.resourceAssetViewIdRef.set(request.assetViewId?.trim() || null);
     if (request.openExplore) {
       this.openExplorePopup();
     }
@@ -559,6 +568,8 @@ export class SubEventResourcePopupService {
     this.popupContextRef.set(context);
     this.resourceFilterRef.set(type);
     this.inlineItemActionMenuRef.set(null);
+    this.resourceAssetViewIdRef.set(null);
+    this.resourceAssetViewModeRef.set('view');
     this.abortPendingCapacitySaveRequest();
     this.capacityEditorRef.set(null);
     this.abortPendingRouteSaveRequest();
@@ -691,6 +702,8 @@ export class SubEventResourcePopupService {
     this.abortPendingRouteSaveRequest();
     this.popupContextRef.set(null);
     this.inlineItemActionMenuRef.set(null);
+    this.resourceAssetViewIdRef.set(null);
+    this.resourceAssetViewModeRef.set('view');
     this.capacityEditorRef.set(null);
     this.routeEditorRef.set(null);
     this.pendingResourceDeleteRef.set(null);
@@ -756,6 +769,55 @@ export class SubEventResourcePopupService {
       return;
     }
     this.openSupplyContributionsPopup(card, event);
+  }
+
+  private resourceAssetView(): ResourceAssetViewState | null {
+    const viewId = `${this.resourceAssetViewIdRef() ?? ''}`.trim();
+    if (!viewId) {
+      return null;
+    }
+    const card = this.resourceCards().find(item => item.id === viewId || `${item.sourceAssetId ?? ''}`.trim() === viewId) ?? null;
+    if (!card) {
+      return null;
+    }
+    const context = this.popupContextRef();
+    const source = context && card.sourceAssetId
+      ? this.resolveSubEventAssignedAssetCard(context.subEvent.id, card.type as AppTypes.AssetType, card.sourceAssetId)
+      : null;
+    return {
+      card,
+      mode: this.resourceAssetViewModeRef(),
+      source,
+      memberLabel: this.occupancyLabel(card),
+      memberCount: Math.max(0, Math.trunc(Number(card.accepted) || 0)),
+      pendingCount: Math.max(0, Math.trunc(Number(card.pending) || 0)),
+      canOpenMembers: this.canOpenResourceBadgeDetails(card),
+      canEditCapacity: this.canEditCapacity(card),
+      canEditRoute: this.canEditRoute(card)
+    };
+  }
+
+  private openResourceAssetView(
+    card: AppTypes.SubEventResourceCard,
+    mode: 'view' | 'edit',
+    event?: Event
+  ): void {
+    event?.stopPropagation();
+    const assetId = `${card.sourceAssetId ?? ''}`.trim();
+    if (!assetId) {
+      return;
+    }
+    this.resourceAssetViewIdRef.set(assetId);
+    this.resourceAssetViewModeRef.set(mode === 'edit' && this.canEditRoute(card) ? 'edit' : 'view');
+    this.inlineItemActionMenuRef.set(null);
+    this.pendingResourceDeleteRef.set(null);
+    this.assetExplorePopupRef.set(null);
+  }
+
+  private closeResourceAssetView(event?: Event): void {
+    event?.stopPropagation();
+    this.resourceAssetViewIdRef.set(null);
+    this.resourceAssetViewModeRef.set('view');
   }
 
   private async openAssetMembersPopup(card: AppTypes.SubEventResourceCard): Promise<void> {
@@ -1123,6 +1185,8 @@ export class SubEventResourcePopupService {
     }
     this.resourceFilterRef.set(filter);
     this.inlineItemActionMenuRef.set(null);
+    this.resourceAssetViewIdRef.set(null);
+    this.resourceAssetViewModeRef.set('view');
     this.capacityEditorRef.set(null);
     this.routeEditorRef.set(null);
     this.assignedAssetJoinDialogRef.set(null);
@@ -1871,10 +1935,14 @@ export class SubEventResourcePopupService {
     controller?.abort();
   }
 
-  private openRouteEditor(card: AppTypes.SubEventResourceCard, event: Event): void {
+  private openRouteEditor(card: AppTypes.SubEventResourceCard, event: Event, mode: 'view' | 'edit' = 'edit'): void {
     event.stopPropagation();
     const context = this.popupContextRef();
-    if (!context || card.type !== 'Car' || !card.sourceAssetId || !this.canEditRoute(card)) {
+    if (!context || card.type !== 'Car' || !card.sourceAssetId) {
+      return;
+    }
+    const resolvedMode: 'view' | 'edit' = mode === 'edit' && this.canEditRoute(card) ? 'edit' : 'view';
+    if (mode === 'edit' && resolvedMode !== 'edit') {
       return;
     }
     const settings = this.getSubEventAssignedAssetSettings(context.subEvent.id, 'Car');
@@ -1886,6 +1954,7 @@ export class SubEventResourcePopupService {
       type: 'Car',
       assetId: card.sourceAssetId,
       title: card.title,
+      mode: resolvedMode,
       routes,
       routeRowIds: this.buildRouteEditorRowIds(routes),
       busy: false,
@@ -2040,7 +2109,7 @@ export class SubEventResourcePopupService {
 
   private addRouteStop(): void {
     const editor = this.routeEditorRef();
-    if (!editor || editor.busy) {
+    if (!editor || editor.busy || editor.mode === 'view') {
       return;
     }
     this.routeEditorRef.set({
@@ -2053,7 +2122,7 @@ export class SubEventResourcePopupService {
 
   private removeRouteStop(index: number): void {
     const editor = this.routeEditorRef();
-    if (!editor || editor.busy || index < 0 || index >= editor.routes.length) {
+    if (!editor || editor.busy || editor.mode === 'view' || index < 0 || index >= editor.routes.length) {
       return;
     }
     this.routeEditorRef.set({
@@ -2066,7 +2135,7 @@ export class SubEventResourcePopupService {
 
   private dropRouteStop(event: CdkDragDrop<string[]>): void {
     const editor = this.routeEditorRef();
-    if (!editor || editor.busy || event.previousIndex === event.currentIndex) {
+    if (!editor || editor.busy || editor.mode === 'view' || event.previousIndex === event.currentIndex) {
       return;
     }
     const routes = [...editor.routes];
@@ -2085,7 +2154,7 @@ export class SubEventResourcePopupService {
 
   private updateRouteStop(index: number, value: string): void {
     const editor = this.routeEditorRef();
-    if (!editor || editor.busy || index < 0 || index >= editor.routes.length) {
+    if (!editor || editor.busy || editor.mode === 'view' || index < 0 || index >= editor.routes.length) {
       return;
     }
     const routes = [...editor.routes];
@@ -2117,13 +2186,13 @@ export class SubEventResourcePopupService {
 
   private canSubmitRouteEditor(): boolean {
     const editor = this.routeEditorRef();
-    return !!editor && !editor.busy && editor.routes.some(stop => stop.trim().length > 0);
+    return !!editor && editor.mode !== 'view' && !editor.busy && editor.routes.some(stop => stop.trim().length > 0);
   }
 
   private saveRouteEditor(event?: Event): void {
     event?.stopPropagation();
     const editor = this.routeEditorRef();
-    if (!editor || editor.busy || !this.canSubmitRouteEditor()) {
+    if (!editor || editor.busy || editor.mode === 'view' || !this.canSubmitRouteEditor()) {
       return;
     }
     const nextState = this.buildPopupResourceState();
