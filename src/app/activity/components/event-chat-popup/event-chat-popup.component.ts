@@ -506,7 +506,8 @@ export class EventChatPopupComponent implements OnDestroy {
     this.messageLongPressTimer = setTimeout(() => {
       this.selectedMessageId = message.id;
       this.quickReactionMessageId = message.id;
-      this.quickReactionOpenDown = false;
+      this.selectedMessageToolsDown = this.shouldOpenMessageToolsDown();
+      this.quickReactionOpenDown = this.shouldOpenQuickReactionsDown();
       this.cdr.markForCheck();
     }, 420);
   }
@@ -652,8 +653,13 @@ export class EventChatPopupComponent implements OnDestroy {
   protected openMessageActionMenu(message: AppTypes.ChatPopupMessage, event?: Event): void {
     event?.preventDefault();
     event?.stopPropagation();
+    if (message.deletedAtIso) {
+      this.closeTransientMessageUi();
+      return;
+    }
     this.bindChatThreadScrollDismissListener();
     this.selectedMessageId = message.id;
+    this.selectedMessageToolsDown = this.shouldOpenMessageToolsDown(event);
     this.quickReactionMessageId = '';
     this.emojiPickerMessageId = '';
     this.messageActionMenuOpenUp = this.shouldOpenMessageActionMenuUp(event);
@@ -801,8 +807,16 @@ export class EventChatPopupComponent implements OnDestroy {
 
   protected selectPinnedMessage(message: AppTypes.ChatPopupMessage): void {
     this.selectedMessageId = message.id;
+    this.selectedMessageToolsDown = false;
+    this.highlightedMessageId = message.id;
     this.closePinnedMessagesDialog();
-    this.scheduleChatThreadScrollToEnd();
+    this.scheduleChatThreadScrollToMessage(message.id);
+    setTimeout(() => {
+      if (this.highlightedMessageId === message.id) {
+        this.highlightedMessageId = '';
+        this.cdr.markForCheck();
+      }
+    }, 1200);
   }
 
   protected reportMessage(message: AppTypes.ChatPopupMessage, event?: Event): void {
@@ -1830,11 +1844,7 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   private shouldOpenMessageActionMenuUp(event?: Event): boolean {
-    const target = event?.currentTarget instanceof HTMLElement
-      ? event.currentTarget
-      : event?.target instanceof HTMLElement
-        ? event.target
-        : null;
+    const target = this.messagePlacementTarget(event);
     const scrollElement = this.chatThreadSmartList?.scrollElement();
     if (!target || !scrollElement) {
       return false;
@@ -1845,11 +1855,7 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   private shouldOpenMessageToolsDown(event?: Event): boolean {
-    const target = event?.currentTarget instanceof HTMLElement
-      ? event.currentTarget
-      : event?.target instanceof HTMLElement
-        ? event.target
-        : null;
+    const target = this.messagePlacementTarget(event);
     const scrollElement = this.chatThreadSmartList?.scrollElement();
     if (!target || !scrollElement) {
       return false;
@@ -1860,11 +1866,7 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   private shouldOpenQuickReactionsDown(event?: Event): boolean {
-    const target = event?.currentTarget instanceof HTMLElement
-      ? event.currentTarget
-      : event?.target instanceof HTMLElement
-        ? event.target
-        : null;
+    const target = this.messagePlacementTarget(event);
     const scrollElement = this.chatThreadSmartList?.scrollElement();
     if (!target || !scrollElement) {
       return false;
@@ -1872,6 +1874,20 @@ export class EventChatPopupComponent implements OnDestroy {
     const targetRect = target.getBoundingClientRect();
     const scrollRect = scrollElement.getBoundingClientRect();
     return (targetRect.top - scrollRect.top) < 92;
+  }
+
+  private messagePlacementTarget(event?: Event): HTMLElement | null {
+    const rawTarget = event?.currentTarget instanceof HTMLElement
+      ? event.currentTarget
+      : event?.target instanceof HTMLElement
+        ? event.target
+        : null;
+    if (!rawTarget) {
+      return null;
+    }
+    return rawTarget.closest<HTMLElement>('.chat-bubble')
+      ?? rawTarget.closest<HTMLElement>('.chat-message')
+      ?? rawTarget;
   }
 
   private isChatThreadNearEnd(): boolean {

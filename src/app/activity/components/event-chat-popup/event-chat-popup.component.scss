@@ -1044,6 +1044,11 @@
   bottom: auto;
 }
 
+.chat-message-action-menu.chat-message-action-menu-up.chat-message-action-menu-tools-down {
+  top: auto;
+  bottom: calc(100% + 1.2rem);
+}
+
 .chat-message-action-menu button {
   padding: 0.46rem 0.52rem;
   border-radius: 8px;
@@ -1719,6 +1724,23 @@
   color: rgba(34, 50, 74, 0.62);
   font-size: 0.76rem;
   font-weight: 800;
+}
+
+.chat-pinned-image-preview {
+  display: block;
+  width: min(260px, 100%);
+  margin-top: 0.22rem;
+  border: 1px solid rgba(33, 54, 82, 0.14);
+  border-radius: 10px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.chat-pinned-image-preview img {
+  display: block;
+  width: 100%;
+  height: clamp(96px, 22vw, 150px);
+  object-fit: contain;
 }
 
 .chat-pinned-dialog-pin {

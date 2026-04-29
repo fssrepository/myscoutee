@@ -308,8 +308,8 @@
           <mat-icon>push_pin</mat-icon>
         </span>
       }
-        @if (!message.deletedAtIso && (message.reactions ?? []).length > 0) {
-          <button type="button" class="chat-reaction-summary" (click)="openReactionDetails(message, $event)">
+      @if (!message.deletedAtIso && (message.reactions ?? []).length > 0) {
+        <button type="button" class="chat-reaction-summary" (click)="openReactionDetails(message, $event)">
           @for (reaction of reactionSummary(message); track reaction.emoji) {
             <span>{{ reaction.emoji }} {{ reaction.count }}</span>
           }
@@ -459,6 +459,18 @@
               </span>
               @if ((message.attachments ?? []).length > 0) {
                 <span class="chat-pinned-attachment">{{ chatAttachmentSummary(message) }}</span>
+                @for (attachment of message.attachments; track attachment.id) {
+                  @if (attachment.type === 'image' && (attachment.previewUrl || attachment.url)) {
+                    <span class="chat-pinned-image-preview">
+                      <img
+                        [src]="attachment.previewUrl || attachment.url"
+                        [alt]="attachment.title"
+                        loading="lazy"
+                        decoding="async"
+                      />
+                    </span>
+                  }
+                }
               }
               @if (message.text) {
                 <span class="chat-line">{{ message.text }}</span>
