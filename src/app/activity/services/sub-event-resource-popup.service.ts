@@ -2681,6 +2681,7 @@ export class SubEventResourcePopupService {
       unread: 0,
       dateIso: new Date().toISOString(),
       channelType: 'serviceEvent',
+      serviceContext: input.title.startsWith('Asset Service') ? 'asset' : 'event',
       eventId: input.eventId,
       subEventId: input.subEventId,
       ownerUserId: activeUserId

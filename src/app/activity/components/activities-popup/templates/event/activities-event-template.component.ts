@@ -355,7 +355,7 @@ export class ActivitiesEventsController {
 
   public activityServiceChatActionLabel(row: AppTypes.ActivityListRow): string {
     if (row.type === 'hosting' && row.isAdmin) {
-      return 'Service Chat';
+      return 'Notify Participants';
     }
     if (row.type === 'invitations') {
       return 'Ask Organizer';
@@ -426,26 +426,29 @@ export class ActivitiesEventsController {
     };
     const title = row.title?.trim() || source.title?.trim() || source.description?.trim() || 'Event';
     const organizerUserId = `${source.creatorUserId ?? ''}`.trim();
+    const isOrganizerNotificationChannel = row.type === 'hosting' && row.isAdmin;
     const acceptedAdmins = row.type === 'hosting'
       ? this.uniqueUserIds([organizerUserId, activeUserId])
       : this.uniqueUserIds([organizerUserId]);
     const memberIds = this.uniqueUserIds([
       activeUserId,
       ...acceptedAdmins,
-      ...(source.acceptedMemberUserIds ?? []).slice(0, row.type === 'hosting' ? 6 : 0)
+      ...(isOrganizerNotificationChannel ? (source.acceptedMemberUserIds ?? []) : []),
+      ...(isOrganizerNotificationChannel ? (source.pendingMemberUserIds ?? []) : [])
     ]);
     const chat: ChatMenuItem & { ownerUserId?: string } = {
       id: `c-service-event-${row.id}-${activeUserId}`,
       avatar: AppUtils.initialsFromText(source.creatorName?.trim() || title),
       title: `${this.activityServiceChatActionLabel(row)} · ${title}`,
-      lastMessage: row.type === 'hosting'
-        ? 'Service requests and participant questions arrive here.'
+      lastMessage: isOrganizerNotificationChannel
+        ? 'Notification channel for cancellations, postponements, and urgent event updates.'
         : `Service chat with the organizer for ${title}.`,
       lastSenderId: organizerUserId || activeUserId,
       memberIds: memberIds.length > 0 ? memberIds : [activeUserId],
       unread: 0,
       dateIso: new Date().toISOString(),
       channelType: 'serviceEvent',
+      serviceContext: isOrganizerNotificationChannel ? 'notification' : 'event',
       eventId: row.id,
       ownerUserId: activeUserId
     };

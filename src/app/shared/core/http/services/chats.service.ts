@@ -20,6 +20,7 @@ interface HttpChatSummaryDto {
   unread: number;
   dateIso?: string;
   channelType?: 'general' | 'mainEvent' | 'optionalSubEvent' | 'groupSubEvent' | 'serviceEvent';
+  serviceContext?: 'event' | 'asset' | 'notification';
   eventId?: string;
   subEventId?: string;
   groupId?: string;
@@ -334,6 +335,7 @@ export class HttpChatsService {
       unread: Math.max(0, Math.trunc(Number(item.unread) || 0)),
       dateIso: item.dateIso,
       channelType: item.channelType,
+      serviceContext: item.serviceContext,
       eventId: item.eventId,
       subEventId: item.subEventId,
       groupId: item.groupId,

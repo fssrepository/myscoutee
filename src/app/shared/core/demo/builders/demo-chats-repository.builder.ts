@@ -193,22 +193,26 @@ export class DemoChatsRepositoryBuilder {
     const memberIds = this.uniqueUserIds([
       ownerUserId,
       organizerUserId,
-      ...(record.type === 'hosting' ? (record.acceptedMemberUserIds ?? []).slice(0, 6) : [])
+      ...(record.type === 'hosting' ? (record.acceptedMemberUserIds ?? []) : []),
+      ...(record.type === 'hosting' ? (record.pendingMemberUserIds ?? []) : [])
     ]);
-    return this.createContextChatItem({
-      id: `c-service-event-${record.id}-${ownerUserId}`,
-      title: `${record.type === 'hosting' ? 'Service Chat' : 'Contact Organizer'} · ${eventTitle}`,
-      lastMessage: record.type === 'hosting'
-        ? 'Service requests and participant questions arrive here.'
-        : `Service chat with the organizer for ${eventTitle}.`,
-      eventId: record.id,
-      subEventId: '',
-      groupId: '',
-      channelType: 'serviceEvent',
-      memberIds: memberIds.length > 0 ? memberIds : [ownerUserId],
-      dateIso: record.startAtIso,
-      unread: 0
-    }, ownerUserId);
+    return {
+      ...this.createContextChatItem({
+        id: `c-service-event-${record.id}-${ownerUserId}`,
+        title: `${record.type === 'hosting' ? 'Notify Participants' : 'Contact Organizer'} · ${eventTitle}`,
+        lastMessage: record.type === 'hosting'
+          ? 'Notification channel for cancellations, postponements, and urgent event updates.'
+          : `Service chat with the organizer for ${eventTitle}.`,
+        eventId: record.id,
+        subEventId: '',
+        groupId: '',
+        channelType: 'serviceEvent',
+        memberIds: memberIds.length > 0 ? memberIds : [ownerUserId],
+        dateIso: record.startAtIso,
+        unread: 0
+      }, ownerUserId),
+      serviceContext: record.type === 'hosting' ? 'notification' : 'event'
+    };
   }
 
   private static buildOptionalContextChat(

@@ -21,6 +21,7 @@ export interface ChatMenuItem {
   distanceKm?: number;
   distanceMetersExact?: number;
   channelType?: 'general' | 'mainEvent' | 'optionalSubEvent' | 'groupSubEvent' | 'serviceEvent';
+  serviceContext?: 'event' | 'asset' | 'notification';
   eventId?: string;
   subEventId?: string;
   groupId?: string;

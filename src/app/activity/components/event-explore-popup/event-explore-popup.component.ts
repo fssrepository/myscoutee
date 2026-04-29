@@ -816,6 +816,7 @@ export class EventExplorePopupComponent {
       unread: 0,
       dateIso: new Date().toISOString(),
       channelType: 'serviceEvent',
+      serviceContext: 'event',
       eventId: record.id,
       ownerUserId: activeUserId
     };

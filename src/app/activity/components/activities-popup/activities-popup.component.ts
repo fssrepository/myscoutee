@@ -773,6 +773,16 @@ export class ActivitiesPopupComponent implements OnDestroy {
             memberIds: [...(activeSessionChat.memberIds ?? [])]
           };
           nextItems = this.sortChatMenuItems(nextItems);
+        } else {
+          const activeSessionRecord = {
+            ...this.cloneChatMenuItem(activeSessionChat),
+            ownerUserId: userId,
+            messages: undefined
+          };
+          nextItems = this.sortChatMenuItems([
+            ...nextItems,
+            activeSessionRecord
+          ]);
         }
       }
       this.chatItems = nextItems;
@@ -786,6 +796,11 @@ export class ActivitiesPopupComponent implements OnDestroy {
   private syncChatItemFromOpenSession(chat: ChatMenuItem): void {
     const currentIndex = this.chatItems.findIndex(item => item.id === chat.id);
     if (currentIndex < 0) {
+      const nextChat = this.cloneChatMenuItem(chat);
+      this.chatItems = this.sortChatMenuItems([...this.chatItems, nextChat]);
+      this.refreshSectionBadges();
+      this.syncVisibleChatRow(nextChat);
+      this.cdr.markForCheck();
       return;
     }
     const nextChat = this.cloneChatMenuItem(chat);
@@ -806,14 +821,23 @@ export class ActivitiesPopupComponent implements OnDestroy {
     if (!smartList || this.activitiesPrimaryFilter !== 'chats' || this.isCalendarLayoutView()) {
       return;
     }
-    const currentItems = [...smartList.itemsSnapshot()];
-    const existingIndex = currentItems.findIndex(row => row.type === 'chats' && row.id === chat.id);
-    if (existingIndex < 0) {
+    if (!this.doesChatMatchActiveContextFilter(chat)) {
       return;
     }
-    const nextItems = currentItems.filter((_row, index) => index !== existingIndex);
+    const currentItems = [...smartList.itemsSnapshot()];
+    const existingIndex = currentItems.findIndex(row => row.type === 'chats' && row.id === chat.id);
+    const nextItems = existingIndex >= 0
+      ? currentItems.filter((_row, index) => index !== existingIndex)
+      : currentItems;
     nextItems.push(this.buildActivityChatRow(chat));
     this.replaceVisibleActivityItems(nextItems);
+  }
+
+  private doesChatMatchActiveContextFilter(chat: ChatMenuItem): boolean {
+    if (this.activitiesChatContextFilter === 'all') {
+      return true;
+    }
+    return this.activitiesChats.activityChatContextFilterKey(chat) === this.activitiesChatContextFilter;
   }
 
   private buildActivityChatRow(chat: ChatMenuItem): AppTypes.ActivityListRow {
