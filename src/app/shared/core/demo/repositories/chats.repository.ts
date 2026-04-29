@@ -330,7 +330,8 @@ export class DemoChatsRepository {
         deletedAtIso: actor.nowIso,
         deletedByUserId: actor.actorId,
         deletedByName: actor.actorName,
-        reactions: []
+        reactions: [],
+        readBy: []
       };
     }
     if (typeof mutation.text === 'string') {

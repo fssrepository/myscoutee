@@ -464,6 +464,7 @@ export class HttpChatsService {
   private mapChatMessage(message: HttpChatMessageDto): AppTypes.ChatPopupMessage {
     const sentAt = new Date(message.sentAtIso);
     const activeUserId = this.activeUserId();
+    const deleted = typeof message.deletedAtIso === 'string' && message.deletedAtIso.trim().length > 0;
     return {
       id: message.id,
       clientId: `${message.clientId ?? ''}`.trim() || undefined,
@@ -473,11 +474,11 @@ export class HttpChatsService {
         initials: message.senderInitials,
         gender: message.senderGender
       },
-      text: message.text,
+      text: deleted ? '' : message.text,
       time: sentAt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
       sentAtIso: message.sentAtIso,
       mine: message.mine === true || (!!activeUserId && message.senderId === activeUserId),
-      readBy: (message.readBy ?? []).map(reader => ({
+      readBy: deleted ? [] : (message.readBy ?? []).map(reader => ({
         id: reader.id,
         initials: reader.initials,
         gender: reader.gender
@@ -485,12 +486,12 @@ export class HttpChatsService {
       deletedAtIso: message.deletedAtIso ?? null,
       deletedByUserId: message.deletedByUserId ?? null,
       deletedByName: message.deletedByName ?? null,
-      editedAtIso: message.editedAtIso ?? null,
-      pinnedAtIso: message.pinnedAtIso ?? null,
-      pinnedByUserId: message.pinnedByUserId ?? null,
-      replyTo: message.replyTo ? { ...message.replyTo } : null,
-      reactions: (message.reactions ?? []).map(reaction => ({ ...reaction })),
-      attachments: (message.attachments ?? []).map(attachment => this.mapChatAttachment(attachment))
+      editedAtIso: deleted ? null : message.editedAtIso ?? null,
+      pinnedAtIso: deleted ? null : message.pinnedAtIso ?? null,
+      pinnedByUserId: deleted ? null : message.pinnedByUserId ?? null,
+      replyTo: deleted ? null : message.replyTo ? { ...message.replyTo } : null,
+      reactions: deleted ? [] : (message.reactions ?? []).map(reaction => ({ ...reaction })),
+      attachments: deleted ? [] : (message.attachments ?? []).map(attachment => this.mapChatAttachment(attachment))
     } satisfies AppTypes.ChatPopupMessage;
   }
 

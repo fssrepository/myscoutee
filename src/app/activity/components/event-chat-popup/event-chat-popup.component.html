@@ -237,6 +237,7 @@
     [class.chat-message-timed-out]="message.deliveryState === 'timed-out'"
     [class.chat-message-selected]="selectedMessageId === message.id"
     [class.chat-message-highlighted]="highlightedMessageId === message.id"
+    [class.chat-message-deleted]="message.deletedAtIso"
     (click)="selectMessage(message, $event)"
     (contextmenu)="openMessageActionMenu(message, $event)"
     (touchstart)="startMessageLongPress(message)"
@@ -245,7 +246,7 @@
     [attr.data-group-label]="groupLabel"
     [attr.data-chat-message-id]="message.id"
     >
-    @if (message.replyTo) {
+    @if (!message.deletedAtIso && message.replyTo) {
       <button
         type="button"
         class="chat-message-reply-context"
@@ -261,14 +262,18 @@
       </button>
     }
     <div class="chat-bubble">
-      <span class="chat-sender-avatar" [class]="'user-color-' + message.senderAvatar.gender">
-        {{ message.senderAvatar.initials }}
-      </span>
+      @if (!message.deletedAtIso) {
+        <span class="chat-sender-avatar" [class]="'user-color-' + message.senderAvatar.gender">
+          {{ message.senderAvatar.initials }}
+        </span>
+      }
       <div class="chat-message-content">
-        <div class="chat-meta-row">
-          <span class="chat-sender-name">{{ message.sender }}</span>
-          <span class="chat-time-chip">{{ message.time }}</span>
-        </div>
+        @if (!message.deletedAtIso) {
+          <div class="chat-meta-row">
+            <span class="chat-sender-name">{{ message.sender }}</span>
+            <span class="chat-time-chip">{{ message.time }}</span>
+          </div>
+        }
         @if (message.deletedAtIso) {
           <p class="chat-line chat-line-deleted">{{ deletedMessageLabel(message) }}</p>
         } @else {
@@ -298,15 +303,20 @@
           }
         }
       </div>
-      @if ((message.reactions ?? []).length > 0) {
-        <button type="button" class="chat-reaction-summary" (click)="openReactionDetails(message, $event)">
+      @if (!message.deletedAtIso && message.pinnedAtIso) {
+        <span class="chat-pin-badge" aria-label="Pinned message">
+          <mat-icon>push_pin</mat-icon>
+        </span>
+      }
+        @if (!message.deletedAtIso && (message.reactions ?? []).length > 0) {
+          <button type="button" class="chat-reaction-summary" (click)="openReactionDetails(message, $event)">
           @for (reaction of reactionSummary(message); track reaction.emoji) {
             <span>{{ reaction.emoji }} {{ reaction.count }}</span>
           }
         </button>
       }
-      @if (selectedMessageId === message.id) {
-        <div class="chat-message-tools" (click)="$event.stopPropagation()">
+      @if (selectedMessageId === message.id && !message.deletedAtIso) {
+        <div class="chat-message-tools" [class.chat-message-tools-down]="selectedMessageToolsDown" (click)="$event.stopPropagation()">
           <button type="button" (click)="setReplyTarget(message, $event)" aria-label="Reply">
             <mat-icon>reply</mat-icon>
           </button>
@@ -319,7 +329,12 @@
         </div>
       }
       @if (quickReactionMessageId === message.id) {
-        <div class="chat-quick-reactions" (click)="$event.stopPropagation()">
+        <div
+          class="chat-quick-reactions"
+          [class.chat-quick-reactions-down]="quickReactionOpenDown"
+          [class.chat-quick-reactions-tools-down]="selectedMessageToolsDown"
+          (click)="$event.stopPropagation()"
+          >
           @for (emoji of quickReactionEmojis; track emoji) {
             <button type="button" (click)="toggleReaction(message, emoji, $event)">{{ emoji }}</button>
           }
@@ -329,7 +344,12 @@
         </div>
       }
       @if (messageActionMenuId === message.id) {
-        <div class="chat-message-action-menu" [class.chat-message-action-menu-up]="messageActionMenuOpenUp" (click)="$event.stopPropagation()">
+        <div
+          class="chat-message-action-menu"
+          [class.chat-message-action-menu-up]="messageActionMenuOpenUp"
+          [class.chat-message-action-menu-tools-down]="selectedMessageToolsDown"
+          (click)="$event.stopPropagation()"
+          >
           <button type="button" (click)="setReplyTarget(message, $event)">Reply</button>
           @if (message.mine && !message.deletedAtIso) {
             <button type="button" (click)="beginEditMessage(message, $event)">Edit</button>
@@ -341,7 +361,7 @@
           }
         </div>
       }
-      @if (visibleReadReceiptsByMessageId[message.id]; as visibleReaders) {
+      @if (!message.deletedAtIso && visibleReadReceiptsByMessageId[message.id]; as visibleReaders) {
         @if (visibleReaders.length > 0) {
           <div class="chat-readers">
             @for (reader of visibleReaders; track trackByChatReader($index, reader)) {
@@ -430,12 +450,37 @@
       </header>
       <div class="chat-pinned-list">
         @for (message of pinnedMessages(); track message.id) {
-          <button type="button" class="chat-pinned-row" (click)="selectPinnedMessage(message)">
-            <span class="chat-reaction-avatar" [class]="'user-color-' + message.senderAvatar.gender">{{ message.senderAvatar.initials }}</span>
-            <span>
-              <strong>{{ message.sender }}</strong>
-              <small>{{ message.deletedAtIso ? deletedMessageLabel(message) : message.text }}</small>
+          <button type="button" class="chat-pinned-message" (click)="selectPinnedMessage(message)">
+            <span class="chat-sender-avatar" [class]="'user-color-' + message.senderAvatar.gender">{{ message.senderAvatar.initials }}</span>
+            <span class="chat-pinned-message-content">
+              <span class="chat-meta-row">
+                <strong class="chat-sender-name">{{ message.sender }}</strong>
+                <span class="chat-time-chip">{{ message.time }}</span>
+              </span>
+              @if ((message.attachments ?? []).length > 0) {
+                <span class="chat-pinned-attachment">{{ chatAttachmentSummary(message) }}</span>
+              }
+              @if (message.text) {
+                <span class="chat-line">{{ message.text }}</span>
+              }
             </span>
+            <span class="chat-pin-badge chat-pinned-dialog-pin" aria-label="Pinned message">
+              <mat-icon>push_pin</mat-icon>
+            </span>
+            @if ((message.reactions ?? []).length > 0) {
+              <span class="chat-reaction-summary chat-pinned-reaction-summary">
+                @for (reaction of reactionSummary(message); track reaction.emoji) {
+                  <span>{{ reaction.emoji }} {{ reaction.count }}</span>
+                }
+              </span>
+            }
+            @if (message.readBy.length > 0) {
+              <span class="chat-readers chat-pinned-readers">
+                @for (reader of message.readBy; track trackByChatReader($index, reader)) {
+                  <span class="chat-reader" [class]="'user-color-' + reader.gender">{{ reader.initials }}</span>
+                }
+              </span>
+            }
           </button>
         } @empty {
           <p>No pinned messages yet.</p>
