@@ -23,6 +23,7 @@ import {
 import { resolveCurrentDemoDelayMs } from '../../shared/core/base/services/route-delay.service';
 import { ActivitiesPopupStateService } from './activities-popup-state.service';
 import { EventEditorPopupStateService } from './event-editor-popup-state.service';
+import { NavigatorService } from '../../navigator';
 import type {
   AssignedAssetJoinDialogViewState,
   AssetExploreBorrowDraftViewState,
@@ -188,6 +189,7 @@ export class SubEventResourcePopupService {
   private readonly appCtx = inject(AppContext);
   private readonly popupCtx = inject(AppPopupContext);
   private readonly usersService = inject(UsersService);
+  private readonly navigatorService = inject(NavigatorService);
 
   private get users(): UserDto[] {
     return this.usersService.peekCachedUsers();
@@ -288,6 +290,8 @@ export class SubEventResourcePopupService {
     assetExploreCanBorrow: card => this.assetExploreAvailableQuantity(card) > 0,
     openAssetExploreBorrowDialog: (card, event) => this.openAssetExploreBorrowDialog(card, event),
     openAssetExploreServiceChat: (card, event) => this.openAssetExploreServiceChat(card, event),
+    canReportAssetExploreOwner: card => this.canReportAssetExploreOwner(card),
+    reportAssetExploreOwner: (card, event) => this.reportAssetExploreOwner(card, event),
     closeAssetExploreBorrowDialog: event => this.closeAssetExploreBorrowDialog(event),
     setAssetExploreBorrowDateRange: (start, end) => this.setAssetExploreBorrowDateRange(start, end),
     setAssetExploreBorrowTime: (edge, value) => this.setAssetExploreBorrowTime(edge, value),
@@ -325,6 +329,8 @@ export class SubEventResourcePopupService {
     routeMenuLabel: () => 'Edit Route',
     openRouteEditor: (card, event) => this.openRouteEditor(card, event),
     openResourceServiceChat: (card, event) => this.openResourceServiceChat(card, event),
+    canReportResourceManager: card => this.canReportResourceManager(card),
+    reportResourceManager: (card, event) => this.reportResourceManager(card, event),
     delete: (card, event) => this.requestDeleteResourceCard(card, event),
     closeCapacityEditor: event => this.closeCapacityEditor(event),
     canSubmitCapacityEditor: () => this.canSubmitCapacityEditor(),
@@ -1879,6 +1885,107 @@ export class SubEventResourcePopupService {
     });
     this.inlineItemActionMenuRef.set(null);
     this.activitiesContext.openEventChat(chat, this.buildServiceChatContext(chat));
+  }
+
+  private canReportAssetExploreOwner(card: AppTypes.AssetCard): boolean {
+    const activeUserId = this.activeUser().id.trim();
+    const ownerUserId = `${card.ownerUserId ?? ''}`.trim();
+    return !!this.popupContextRef() && !!ownerUserId && ownerUserId !== activeUserId;
+  }
+
+  private reportAssetExploreOwner(card: AppTypes.AssetCard, event?: Event): void {
+    event?.stopPropagation();
+    const context = this.popupContextRef();
+    const activeUserId = this.activeUser().id.trim();
+    const ownerUserId = `${card.ownerUserId ?? ''}`.trim();
+    if (!context || !ownerUserId || ownerUserId === activeUserId) {
+      return;
+    }
+    this.navigatorService.openReportUserPopup({
+      targetUserId: ownerUserId,
+      targetName: card.ownerName?.trim() || this.reportTargetName(ownerUserId, 'Owner'),
+      eventId: context.ownerId,
+      eventTitle: card.title,
+      eventStartAtIso: context.subEvent.startAt,
+      eventTimeframe: this.reportContextTimeframe(context),
+      ownerType: 'asset'
+    });
+  }
+
+  private canReportResourceManager(card: AppTypes.SubEventResourceCard): boolean {
+    const target = this.resolveResourceReportTarget(card);
+    return !!target && target.userId !== this.activeUser().id.trim();
+  }
+
+  private reportResourceManager(card: AppTypes.SubEventResourceCard, event: Event): void {
+    event.stopPropagation();
+    const context = this.popupContextRef();
+    const target = this.resolveResourceReportTarget(card);
+    if (!context || !target || target.userId === this.activeUser().id.trim()) {
+      return;
+    }
+    this.inlineItemActionMenuRef.set(null);
+    this.navigatorService.openReportUserPopup({
+      targetUserId: target.userId,
+      targetName: target.name,
+      eventId: context.ownerId,
+      eventTitle: target.ownerType === 'asset' ? card.title : context.parentTitle,
+      eventStartAtIso: context.subEvent.startAt,
+      eventTimeframe: this.reportContextTimeframe(context),
+      ownerType: target.ownerType
+    });
+  }
+
+  private resolveResourceReportTarget(card: AppTypes.SubEventResourceCard): {
+    userId: string;
+    name: string;
+    ownerType: AppTypes.ActivityMemberOwnerType;
+  } | null {
+    const context = this.popupContextRef();
+    if (!context) {
+      return null;
+    }
+    const sourceCard = card.sourceAssetId && card.type !== 'Members'
+      ? this.resolveSubEventAssignedAssetCard(context.subEvent.id, card.type as AppTypes.AssetType, card.sourceAssetId)
+      : null;
+    const managerUserId = sourceCard?.ownerUserId?.trim() || (
+      card.type === 'Car' || card.type === 'Accommodation'
+        ? this.assignedAssetManagerUserId(context.subEvent.id, card.type, card.sourceAssetId || '')
+        : ''
+    );
+    if (managerUserId) {
+      return {
+        userId: managerUserId,
+        name: sourceCard?.ownerName?.trim() || this.reportTargetName(managerUserId, 'Manager'),
+        ownerType: 'asset'
+      };
+    }
+    const eventRecord = this.eventsService.peekKnownItemById(this.activeUser().id.trim(), context.ownerId);
+    const organizerUserId = `${eventRecord?.creatorUserId ?? context.subEvent.createdByUserId ?? ''}`.trim();
+    if (!organizerUserId) {
+      return null;
+    }
+    return {
+      userId: organizerUserId,
+      name: eventRecord?.creatorName?.trim() || this.reportTargetName(organizerUserId, 'Organizer'),
+      ownerType: 'event'
+    };
+  }
+
+  private reportTargetName(userId: string, fallback: string): string {
+    const normalizedUserId = userId.trim();
+    return this.appCtx.getUserProfile(normalizedUserId)?.name?.trim()
+      || (normalizedUserId === this.activeUser().id.trim() ? this.activeUser().name?.trim() : '')
+      || fallback;
+  }
+
+  private reportContextTimeframe(context: ResourcePopupContext): string {
+    const start = context.subEvent.startAt?.trim();
+    const end = context.subEvent.endAt?.trim();
+    if (start && end) {
+      return `${start} - ${end}`;
+    }
+    return start || end || '';
   }
 
   private closeRouteEditor(event?: Event): void {

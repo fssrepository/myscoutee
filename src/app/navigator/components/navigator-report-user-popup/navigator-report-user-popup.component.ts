@@ -106,15 +106,29 @@ export class NavigatorReportUserPopupComponent implements OnDestroy {
     if (!context) {
       return '';
     }
+    const contextLabel = this.reportContextLabel(context.ownerType);
     const lines = [
       `User: ${context.targetName.trim() || 'Unknown user'}`,
-      `Event: ${context.eventTitle?.trim() || 'Unknown event'}`
+      `${contextLabel}: ${context.eventTitle?.trim() || `Unknown ${contextLabel.toLowerCase()}`}`
     ];
     const dateLabel = this.reportEventDateLabel();
     if (dateLabel) {
       lines.push(`Date: ${dateLabel}`);
     }
     return lines.join('\n');
+  }
+
+  private reportContextLabel(ownerType: string | null | undefined): string {
+    switch (ownerType) {
+      case 'asset':
+        return 'Asset';
+      case 'subEvent':
+        return 'Sub-event';
+      case 'group':
+        return 'Group';
+      default:
+        return 'Event';
+    }
   }
 
   protected reportEventDateLabel(): string {

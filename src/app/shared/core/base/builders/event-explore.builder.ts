@@ -122,6 +122,12 @@ export class EventExploreBuilder {
       label: 'Contact Organizer',
       icon: 'support_agent'
     });
+    actions.push({
+      id: 'report',
+      label: 'Report Organizer',
+      icon: 'flag',
+      tone: 'warning'
+    });
     return actions;
   }
 

@@ -54,6 +54,7 @@ import {
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
 import { EventCheckoutDialogService } from '../../../shared/ui/services/event-checkout-dialog.service';
 import { EventCheckoutDraftService, type EventCheckoutDraft } from '../../../shared/ui/services/event-checkout-draft.service';
+import { NavigatorService } from '../../../navigator';
 import { EventChatPopupComponent } from '../event-chat-popup/event-chat-popup.component';
 import { EventExplorePopupComponent } from '../event-explore-popup/event-explore-popup.component';
 import { ActivitiesPopupToolbarController } from './activities-popup-toolbar.controller';
@@ -151,6 +152,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   private readonly usersService = inject(UsersService);
   protected readonly confirmationDialogService = inject(ConfirmationDialogService);
   protected readonly eventCheckoutDialogService = inject(EventCheckoutDialogService);
+  protected readonly navigatorService = inject(NavigatorService);
   private readonly eventCheckoutDraftService = inject(EventCheckoutDraftService);
   readonly activitiesRates = new ActivitiesRatesController({
     getUsers: () => this.users,

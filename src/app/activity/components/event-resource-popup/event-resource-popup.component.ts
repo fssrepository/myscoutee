@@ -181,6 +181,8 @@ export interface EventResourcePopupHost {
   assetExploreCanBorrow(card: AppTypes.AssetCard): boolean;
   openAssetExploreBorrowDialog(card: AppTypes.AssetCard, event?: Event): void;
   openAssetExploreServiceChat(card: AppTypes.AssetCard, event?: Event): void;
+  canReportAssetExploreOwner(card: AppTypes.AssetCard): boolean;
+  reportAssetExploreOwner(card: AppTypes.AssetCard, event?: Event): void;
   closeAssetExploreBorrowDialog(event?: Event): void;
   setAssetExploreBorrowDateRange(start: Date | null, end: Date | null): void;
   setAssetExploreBorrowTime(edge: 'start' | 'end', value: string): void;
@@ -218,6 +220,8 @@ export interface EventResourcePopupHost {
   routeMenuLabel(card: AppTypes.SubEventResourceCard): string;
   openRouteEditor(card: AppTypes.SubEventResourceCard, event: Event): void;
   openResourceServiceChat(card: AppTypes.SubEventResourceCard, event: Event): void;
+  canReportResourceManager(card: AppTypes.SubEventResourceCard): boolean;
+  reportResourceManager(card: AppTypes.SubEventResourceCard, event: Event): void;
   delete(card: AppTypes.SubEventResourceCard, event: Event): void;
   closeCapacityEditor(event?: Event): void;
   canSubmitCapacityEditor(): boolean;
@@ -704,7 +708,13 @@ export class EventResourcePopupComponent implements DoCheck {
           id: 'serviceChat',
           label: 'Contact Owner',
           icon: 'support_agent'
-        }
+        },
+        ...(this.host.canReportAssetExploreOwner(card) ? [{
+          id: 'report',
+          label: 'Report Owner',
+          icon: 'flag',
+          tone: 'warning'
+        } satisfies InfoCardMenuAction] : [])
       ],
       clickable: false
     };
@@ -722,6 +732,11 @@ export class EventResourcePopupComponent implements DoCheck {
     if (event.actionId === 'serviceChat') {
       this.showAssetExploreBorrowBasket = false;
       this.host.openAssetExploreServiceChat(card, new Event('click'));
+      return;
+    }
+    if (event.actionId === 'report') {
+      this.showAssetExploreBorrowBasket = false;
+      this.host.reportAssetExploreOwner(card, new Event('click'));
       return;
     }
     if (event.actionId === 'borrow') {
@@ -983,6 +998,10 @@ export class EventResourcePopupComponent implements DoCheck {
     }
     if (event.actionId === 'serviceChat') {
       this.host.openResourceServiceChat(card, new Event('click'));
+      return;
+    }
+    if (event.actionId === 'report') {
+      this.host.reportResourceManager(card, new Event('click'));
       return;
     }
     this.host.delete(card, new Event('click'));
@@ -1330,6 +1349,14 @@ export class EventResourcePopupComponent implements DoCheck {
       label: 'Contact Organizer',
       icon: 'support_agent'
     });
+    if (this.host.canReportResourceManager(card)) {
+      actions.push({
+        id: 'report',
+        label: card.sourceAssetId ? 'Report Manager' : 'Report Organizer',
+        icon: 'flag',
+        tone: 'warning'
+      });
+    }
     actions.push({
       id: 'delete',
       label: 'Delete',

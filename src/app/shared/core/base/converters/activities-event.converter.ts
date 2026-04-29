@@ -270,6 +270,8 @@ function toInvitationMenuItem(record: DemoEventRecord): InvitationMenuItem {
     description: record.title,
     when: record.timeframe,
     unread: Math.max(0, Math.trunc(Number(record.activity) || 0)),
+    creatorUserId: record.creatorUserId,
+    creatorName: record.creatorName,
     acceptedMembers: record.acceptedMembers,
     pendingMembers: record.pendingMembers,
     capacityTotal: record.capacityTotal,

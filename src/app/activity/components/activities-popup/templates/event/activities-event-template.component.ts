@@ -97,7 +97,7 @@ export class ActivitiesEventTemplateComponent implements OnChanges {
   }
 }
 
-type ActivityInfoCardActionId = 'publish' | 'primary' | 'view' | 'serviceChat' | 'approve' | 'secondary' | 'restore';
+type ActivityInfoCardActionId = 'publish' | 'primary' | 'view' | 'serviceChat' | 'report' | 'approve' | 'secondary' | 'restore';
 type ActivitiesEventsHost = any;
 type InvitationApprovalSyncResult = {
   syncPayload: Omit<ActivitiesEventSyncPayload, 'syncKey'>;
@@ -134,6 +134,7 @@ export class ActivitiesEventsController {
   private get pendingActivityMemberDelete() { return this.host.pendingActivityMemberDelete as AppTypes.ActivityMemberEntry | null; }
   private set pendingActivityMemberDelete(value: AppTypes.ActivityMemberEntry | null) { this.host.pendingActivityMemberDelete = value; }
   private get popupCtx() { return this.host.popupCtx; }
+  private get navigatorService() { return this.host.navigatorService; }
   private get publishedHostingIds() { return this.host.publishedHostingIds as ReadonlySet<string>; }
   private set publishedHostingIds(value: ReadonlySet<string>) { this.host.publishedHostingIds = value; }
   private get selectedActivityMembers() { return this.host.selectedActivityMembers as AppTypes.ActivityMemberEntry[]; }
@@ -266,6 +267,14 @@ export class ActivitiesEventsController {
         icon: 'support_agent'
       });
     }
+    if (this.shouldShowActivityReportAction(row)) {
+      actions.push({
+        id: 'report',
+        label: 'Report Organizer',
+        icon: 'flag',
+        tone: 'warning'
+      });
+    }
     if (this.shouldShowActivityApproveAction(row)) {
       actions.push({ id: 'approve', label: 'Accept', icon: 'done', tone: 'accent' });
     }
@@ -305,6 +314,14 @@ export class ActivitiesEventsController {
   public shouldShowActivityServiceChatAction(row: AppTypes.ActivityListRow): boolean {
     return !this.isActivityRowTrashed(row)
       && (row.type === 'hosting' || row.type === 'events' || row.type === 'invitations');
+  }
+
+  public shouldShowActivityReportAction(row: AppTypes.ActivityListRow): boolean {
+    if (this.isActivityRowTrashed(row) || (row.type !== 'hosting' && row.type !== 'events' && row.type !== 'invitations')) {
+      return false;
+    }
+    const target = this.resolveActivityReportTarget(row);
+    return !!target && target.userId !== this.activeUser.id.trim();
   }
 
   public shouldShowActivityApproveAction(row: AppTypes.ActivityListRow): boolean {
@@ -377,6 +394,9 @@ export class ActivitiesEventsController {
       case 'serviceChat':
         this.runActivityItemServiceChatAction(row);
         break;
+      case 'report':
+        this.runActivityItemReportAction(row);
+        break;
       case 'approve':
         this.runActivityItemApproveAction(row);
         break;
@@ -413,6 +433,54 @@ export class ActivitiesEventsController {
       return;
     }
     this.openActivityChat(chat);
+  }
+
+  public runActivityItemReportAction(row: AppTypes.ActivityListRow, event?: Event): void {
+    event?.stopPropagation();
+    this.inlineItemActionMenu = null;
+    const target = this.resolveActivityReportTarget(row);
+    if (!target || target.userId === this.activeUser.id.trim()) {
+      return;
+    }
+    this.navigatorService.openReportUserPopup({
+      targetUserId: target.userId,
+      targetName: target.name,
+      eventId: row.id,
+      eventTitle: row.title,
+      eventStartAtIso: target.startAtIso,
+      eventTimeframe: target.timeframe,
+      ownerType: 'event'
+    });
+    this.cdr.markForCheck();
+  }
+
+  private resolveActivityReportTarget(row: AppTypes.ActivityListRow): {
+    userId: string;
+    name: string;
+    startAtIso?: string | null;
+    timeframe?: string | null;
+  } | null {
+    const source = ActivityEventBuilder.resolveEditorSource(row, {
+      eventItems: this.eventItems,
+      hostingItems: this.hostingItems,
+      invitationItems: this.invitationItems
+    }) ?? (row.source as Partial<EventMenuItem & HostingMenuItem & InvitationMenuItem> & {
+      creatorName?: string;
+    });
+    const creatorUserId = `${source.creatorUserId ?? ''}`.trim();
+    if (!creatorUserId) {
+      return null;
+    }
+    const creatorName = `${source.creatorName ?? ''}`.trim()
+      || this.users.find(user => user.id === creatorUserId)?.name?.trim()
+      || (row.type === 'invitations' ? `${(row.source as InvitationMenuItem).inviter ?? ''}`.trim() : '')
+      || 'Organizer';
+    return {
+      userId: creatorUserId,
+      name: creatorName,
+      startAtIso: source.startAt ?? null,
+      timeframe: source.timeframe ?? (row.source as InvitationMenuItem).when ?? null
+    };
   }
 
   private buildActivityServiceChat(row: AppTypes.ActivityListRow): ChatMenuItem | null {

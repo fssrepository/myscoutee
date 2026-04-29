@@ -595,6 +595,10 @@ export class EventExplorePopupComponent {
     }
     if (action.actionId === 'serviceChat') {
       this.runEventExploreServiceChatAction(record);
+      return;
+    }
+    if (action.actionId === 'report') {
+      this.runEventExploreReportAction(record);
     }
   }
 
@@ -820,6 +824,23 @@ export class EventExplorePopupComponent {
       eventId: record.id,
       ownerUserId: activeUserId
     };
+  }
+
+  private runEventExploreReportAction(record: DemoEventRecord): void {
+    const targetUserId = `${record.creatorUserId ?? ''}`.trim();
+    if (!targetUserId || targetUserId === this.activeUserId.trim()) {
+      return;
+    }
+    this.navigatorService.openReportUserPopup({
+      targetUserId,
+      targetName: record.creatorName?.trim() || 'Organizer',
+      eventId: record.id,
+      eventTitle: record.title,
+      eventStartAtIso: record.startAtIso,
+      eventTimeframe: record.timeframe,
+      ownerType: 'event'
+    });
+    this.cdr.markForCheck();
   }
 
   protected closeEventExploreSlotPicker(): void {

@@ -34,6 +34,8 @@ export interface InvitationMenuItem {
   description: string;
   when: string;
   unread: number;
+  creatorUserId?: string;
+  creatorName?: string;
   acceptedMembers?: number;
   pendingMembers?: number;
   capacityTotal?: number;
@@ -61,6 +63,7 @@ export interface EventMenuItem {
   activity: number;
   isAdmin: boolean;
   creatorUserId?: string;
+  creatorName?: string;
   startAt?: string;
   endAt?: string;
   distanceKm?: number;
@@ -107,6 +110,7 @@ export interface HostingMenuItem {
   timeframe: string;
   activity: number;
   creatorUserId?: string;
+  creatorName?: string;
   startAt?: string;
   endAt?: string;
   distanceKm?: number;
