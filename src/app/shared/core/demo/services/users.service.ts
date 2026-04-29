@@ -260,9 +260,13 @@ export class DemoUsersService extends DemoRouteDelayService implements UserServi
     const normalizedUserId = request.userId.trim();
     const user = this.usersRepository.queryUserById(normalizedUserId);
     if (user) {
+      const previousProfileStatus = user.profileStatus === 'deleted'
+        ? (user.previousProfileStatus ?? 'public')
+        : user.profileStatus;
       this.usersRepository.upsertUser({
         ...user,
         profileStatus: 'deleted',
+        previousProfileStatus,
         deletedAtIso: new Date().toISOString()
       });
     }

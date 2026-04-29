@@ -92,6 +92,7 @@ export interface UserDto {
   images?: string[];
   impressions?: UserImpressionsDto;
   profileStatus: 'public' | 'friends only' | 'host only' | 'inactive' | 'blocked' | 'deleted';
+  previousProfileStatus?: UserDto['profileStatus'] | null;
   deletedAtIso?: string | null;
   activities: {
     game: number;

@@ -196,7 +196,15 @@ export class EventChatPopupComponent implements OnDestroy {
     this.visibleChatThreadTotal = 0;
     this.loadedSessionKey = null;
     this.chatThreadQuery = {};
+    if (this.isBlockedSupportChat()) {
+      this.activitiesContext.closeActivities();
+      return;
+    }
     this.activitiesContext.closeEventChat();
+  }
+
+  protected isBlockedSupportChat(): boolean {
+    return this.session()?.item.id.startsWith('c-support-blocked-') === true;
   }
 
   protected selectedChatHasSubEventMenu(): boolean {

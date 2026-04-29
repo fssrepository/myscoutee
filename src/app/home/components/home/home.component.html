@@ -107,7 +107,9 @@
   }
 
   <section class="game-layout-single">
-    @if (isBlockedUser) {
+    @if (isBlockedUserStatusPending) {
+      <div class="game-card-deck"></div>
+    } @else if (isBlockedUser) {
       <div class="game-blocked-panel">
         <mat-icon>block</mat-icon>
         <h2>Your account is blocked</h2>

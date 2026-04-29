@@ -19,7 +19,7 @@
             <h2>{{ chatSession.item.title }}</h2>
           </div>
         </div>
-        @if (!selectedChatHasSubEventMenu()) {
+        @if (!isBlockedSupportChat() && !selectedChatHasSubEventMenu()) {
           <button
             type="button"
             class="chat-members-stack chat-members-stack-large chat-header-members event-editor-members-trigger event-editor-members-trigger-members popup-chat-context-btn"
@@ -39,7 +39,7 @@
             }
           </button>
         }
-        @if (selectedChatHasSubEventMenu()) {
+        @if (!isBlockedSupportChat() && selectedChatHasSubEventMenu()) {
           <div class="popup-chat-context-menu-wrap">
             <button
               type="button"

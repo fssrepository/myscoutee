@@ -201,9 +201,11 @@ export class NavigatorService {
         await this.sessionService.logout().finally(() => this.router.navigate(['/entry']));
       },
       onConfirm: async () => {
+        const restoredProfileStatus = this.resolveReactivatedProfileStatus(user);
         const reactivatedUser: UserDto = {
           ...user,
-          profileStatus: 'public',
+          profileStatus: restoredProfileStatus,
+          previousProfileStatus: null,
           deletedAtIso: null
         };
         const saved = await this.usersService.saveUserProfile(reactivatedUser, {
@@ -222,6 +224,19 @@ export class NavigatorService {
         }, 0);
       }
     });
+  }
+
+  private resolveReactivatedProfileStatus(user: UserDto): UserDto['profileStatus'] {
+    switch (user.previousProfileStatus) {
+      case 'blocked':
+      case 'friends only':
+      case 'host only':
+      case 'inactive':
+      case 'public':
+        return user.previousProfileStatus;
+      default:
+        return 'public';
+    }
   }
 
   syncHydratedUser(user: UserDto): void {

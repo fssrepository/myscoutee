@@ -351,7 +351,7 @@ export class HomeComponent implements OnDestroy {
   }
 
   protected get homeHeaderControlsReady(): boolean {
-    if (this.isAccountReactivationPending || this.isBlockedUser || !this.homeSmartListQueryReady) {
+    if (this.isAccountReactivationPending || !this.isAvatarProfileSettled || this.isBlockedUser || !this.homeSmartListQueryReady) {
       return false;
     }
     if (!this.hasCandidatesForCurrentMode) {
@@ -364,11 +364,24 @@ export class HomeComponent implements OnDestroy {
   }
 
   protected get canOpenHistory(): boolean {
+    return this.isAvatarProfileSettled;
+  }
+
+  protected get isAvatarProfileSettled(): boolean {
     return this.appCtx.getLoadingState(USER_BY_ID_LOAD_CONTEXT_KEY).status === 'success';
   }
 
+  protected get isBlockedUserStatusPending(): boolean {
+    return this.activeUser.profileStatus === 'blocked' && !this.isAvatarProfileSettled;
+  }
+
   protected get isBlockedUser(): boolean {
-    return this.activeUser.profileStatus === 'blocked';
+    return this.avatarLoadedUser?.profileStatus === 'blocked' && this.isAvatarProfileSettled;
+  }
+
+  private get avatarLoadedUser(): UserDto | null {
+    const user = this.appCtx.activeUserProfile();
+    return user?.id === this.activeUserId ? user : null;
   }
 
   protected get historyBadgeCount(): number {
@@ -379,7 +392,10 @@ export class HomeComponent implements OnDestroy {
   }
 
   protected gamePageStatusClass(): string {
-    switch (this.activeUser.profileStatus) {
+    const profileStatus = this.isBlockedUserStatusPending
+      ? 'public'
+      : (this.avatarLoadedUser?.profileStatus ?? this.activeUser.profileStatus);
+    switch (profileStatus) {
       case 'friends only':
         return 'game-page-status-friends';
       case 'host only':
@@ -1388,7 +1404,7 @@ export class HomeComponent implements OnDestroy {
   private async loadHomeSmartListPage(
     query: ListQuery<HomeSmartListFilters>
   ): Promise<PageResult<HomeSmartListRow>> {
-    if (this.isBlockedUser) {
+    if (this.isBlockedUserStatusPending || this.isBlockedUser) {
       return {
         items: [],
         total: 0,
