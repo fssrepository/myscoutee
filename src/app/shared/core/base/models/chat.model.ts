@@ -17,6 +17,27 @@ export interface ChatPopupMessage {
   readBy: ChatReadAvatar[];
   clientId?: string;
   deliveryState?: ChatMessageDeliveryState;
+  deletedAtIso?: string | null;
+  deletedByUserId?: string | null;
+  deletedByName?: string | null;
+  editedAtIso?: string | null;
+  pinnedAtIso?: string | null;
+  pinnedByUserId?: string | null;
+  replyTo?: {
+    id: string;
+    sender: string;
+    text: string;
+  } | null;
+  reactions?: ChatMessageReaction[];
+}
+
+export interface ChatMessageReaction {
+  emoji: string;
+  userId: string;
+  userName: string;
+  userInitials: string;
+  userGender: 'woman' | 'man';
+  reactedAtIso: string;
 }
 
 export interface ChatTypingIndicator {

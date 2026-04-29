@@ -31,6 +31,7 @@ import {
   type SmartListConfig,
   type SmartListLoadPage
 } from '../../../shared/ui';
+import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
 
 interface ChatThreadFilters {
   revision?: number;
@@ -51,6 +52,7 @@ export class EventChatPopupComponent implements OnDestroy {
   private readonly eventEditorService = inject(EventEditorPopupStateService);
   private readonly appCtx = inject(AppContext);
   private readonly popupCtx = inject(AppPopupContext);
+  private readonly confirmationDialogService = inject(ConfirmationDialogService);
 
   protected readonly session = computed(() => this.activitiesContext.eventChatSession());
   protected chatInitialLoadPending = false;
@@ -63,6 +65,24 @@ export class EventChatPopupComponent implements OnDestroy {
   protected preparedChatMembersResource: EventChatResourceContext | null = null;
   protected preparedChatAssetResources: EventChatResourceContext[] = [];
   protected typingIndicators: AppTypes.ChatTypingIndicator[] = [];
+  protected composerMenuOpen = false;
+  protected selectedMessageId = '';
+  protected quickReactionMessageId = '';
+  protected emojiPickerMessageId = '';
+  protected emojiPickerQuery = '';
+  protected messageActionMenuId = '';
+  protected reactionDetailsMessageId = '';
+  protected reactionDetailsFilter = 'all';
+  protected pinnedDialogOpen = false;
+  protected replyTarget: AppTypes.ChatPopupMessage['replyTo'] = null;
+  protected editingMessageId = '';
+  protected readonly quickReactionEmojis = ['❤️', '😆', '😮', '😢', '😡', '👍'];
+  protected readonly emojiPickerEmojis = [
+    '😀', '😃', '😄', '😁', '😆', '🥹', '😂', '🤣', '🥲', '😊', '☺️', '😉',
+    '😍', '🥰', '😘', '😗', '😋', '😛', '😝', '🤪', '🤨', '🧐', '😎', '🥳',
+    '😟', '😢', '😭', '😤', '😡', '🤯', '👍', '👎', '👏', '🙌', '🙏', '💪',
+    '❤️', '🧡', '💛', '💚', '💙', '💜', '🔥', '✨', '🎉', '📌'
+  ];
 
   private readonly chatHistoryPageSize = 10;
   private readonly chatInitialLoadMessageCount = 15;
@@ -114,6 +134,9 @@ export class EventChatPopupComponent implements OnDestroy {
   @ViewChild('chatThreadSmartList')
   private chatThreadSmartList?: SmartListComponent<AppTypes.ChatPopupMessage, ChatThreadFilters>;
 
+  @ViewChild('messageTextarea')
+  private messageTextarea?: ElementRef<HTMLTextAreaElement>;
+
   @ViewChild('chatComposeBox')
   private set chatComposeBox(value: ElementRef<HTMLDivElement> | undefined) {
     this.chatComposeBoxRef = value;
@@ -134,6 +157,7 @@ export class EventChatPopupComponent implements OnDestroy {
   private readonly freshReadKeys = new Set<string>();
   private readonly remoteTypingExpiryByUserId: Record<string, ReturnType<typeof setTimeout> | null> = {};
   private readonly pendingMessageTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
+  private messageLongPressTimer: ReturnType<typeof setTimeout> | null = null;
   private optimisticMessageSequence = 0;
 
   protected readonly trackByChatReader = (_index: number, reader: AppTypes.ChatReadAvatar): string => reader.id;
@@ -151,6 +175,9 @@ export class EventChatPopupComponent implements OnDestroy {
       this.loadedSessionKey = sessionKey;
       this.initialChatLoadedSessionKey = null;
       this.draftMessage = '';
+      this.closeTransientMessageUi();
+      this.replyTarget = null;
+      this.editingMessageId = '';
       this.showContextMenu = false;
       this.contextMenuOpenUp = false;
       this.allMessages = [];
@@ -181,6 +208,7 @@ export class EventChatPopupComponent implements OnDestroy {
 
   ngOnDestroy(): void {
     this.clearChatComposeResizeObserver();
+    this.clearMessageLongPress();
     this.stopLocalTyping();
     this.teardownLiveChatUpdates();
     this.clearPendingMessageTimers();
@@ -196,6 +224,7 @@ export class EventChatPopupComponent implements OnDestroy {
     this.visibleChatThreadTotal = 0;
     this.loadedSessionKey = null;
     this.chatThreadQuery = {};
+    this.closeTransientMessageUi();
     if (this.isBlockedSupportChat()) {
       this.activitiesContext.closeActivities();
       return;
@@ -342,6 +371,7 @@ export class EventChatPopupComponent implements OnDestroy {
 
   protected onDraftMessageChange(value: string): void {
     this.draftMessage = value;
+    this.resizeComposerTextarea();
     const session = this.session();
     if (!session || this.chatInitialLoadPending) {
       return;
@@ -379,15 +409,252 @@ export class EventChatPopupComponent implements OnDestroy {
     return this.freshReadKeys.has(`${messageId}:${readerId}`);
   }
 
+  protected onComposerKeydown(event: KeyboardEvent): void {
+    if (event.key !== 'Enter' || event.shiftKey || this.isMobileInputMode()) {
+      return;
+    }
+    event.preventDefault();
+    this.sendMessage();
+  }
+
+  protected resizeComposerTextarea(): void {
+    const textarea = this.messageTextarea?.nativeElement;
+    if (!textarea) {
+      return;
+    }
+    textarea.style.height = 'auto';
+    const lineHeight = Number.parseFloat(getComputedStyle(textarea).lineHeight) || 20;
+    textarea.style.height = `${Math.min(textarea.scrollHeight, Math.round(lineHeight * 6))}px`;
+  }
+
+  protected toggleComposerMenu(event?: Event): void {
+    event?.stopPropagation();
+    this.composerMenuOpen = !this.composerMenuOpen;
+  }
+
+  protected selectMessage(message: AppTypes.ChatPopupMessage, event?: Event): void {
+    event?.stopPropagation();
+    this.selectedMessageId = this.selectedMessageId === message.id ? '' : message.id;
+    this.messageActionMenuId = '';
+    this.quickReactionMessageId = '';
+    this.emojiPickerMessageId = '';
+  }
+
+  protected startMessageLongPress(message: AppTypes.ChatPopupMessage): void {
+    this.clearMessageLongPress();
+    this.messageLongPressTimer = setTimeout(() => {
+      this.selectedMessageId = message.id;
+      this.quickReactionMessageId = message.id;
+      this.cdr.markForCheck();
+    }, 420);
+  }
+
+  protected clearMessageLongPress(): void {
+    if (!this.messageLongPressTimer) {
+      return;
+    }
+    clearTimeout(this.messageLongPressTimer);
+    this.messageLongPressTimer = null;
+  }
+
+  protected toggleQuickReactions(message: AppTypes.ChatPopupMessage, event?: Event): void {
+    event?.stopPropagation();
+    this.selectedMessageId = message.id;
+    this.messageActionMenuId = '';
+    this.emojiPickerMessageId = '';
+    this.quickReactionMessageId = this.quickReactionMessageId === message.id ? '' : message.id;
+  }
+
+  protected openEmojiPicker(message: AppTypes.ChatPopupMessage, event?: Event): void {
+    event?.stopPropagation();
+    this.selectedMessageId = message.id;
+    this.quickReactionMessageId = '';
+    this.messageActionMenuId = '';
+    this.emojiPickerMessageId = message.id;
+    this.emojiPickerQuery = '';
+  }
+
+  protected filteredEmojiPickerEmojis(): string[] {
+    const query = this.emojiPickerQuery.trim().toLowerCase();
+    return query ? this.emojiPickerEmojis.filter(emoji => emoji.includes(query)) : this.emojiPickerEmojis;
+  }
+
+  protected toggleReaction(message: AppTypes.ChatPopupMessage, emoji: string, event?: Event): void {
+    event?.stopPropagation();
+    const activeUserId = this.activeUserId() || 'self';
+    const presentation = this.resolveOptimisticSenderPresentation(activeUserId);
+    this.allMessages = this.allMessages.map(item => {
+      if (item.id !== message.id) {
+        return item;
+      }
+      const withoutMine = (item.reactions ?? []).filter(reaction => reaction.userId !== activeUserId);
+      const sameReaction = (item.reactions ?? []).some(reaction => reaction.userId === activeUserId && reaction.emoji === emoji);
+      return {
+        ...item,
+        reactions: sameReaction ? withoutMine : [
+          ...withoutMine,
+          {
+            emoji,
+            userId: activeUserId,
+            userName: presentation.sender,
+            userInitials: presentation.senderAvatar.initials,
+            userGender: presentation.senderAvatar.gender,
+            reactedAtIso: new Date().toISOString()
+          }
+        ]
+      };
+    });
+    this.quickReactionMessageId = '';
+    this.emojiPickerMessageId = '';
+    this.refreshVisibleChatThreadSurface();
+    this.cdr.markForCheck();
+  }
+
+  protected reactionSummary(message: AppTypes.ChatPopupMessage): Array<{ emoji: string; count: number }> {
+    const counts = new Map<string, number>();
+    for (const reaction of message.reactions ?? []) {
+      counts.set(reaction.emoji, (counts.get(reaction.emoji) ?? 0) + 1);
+    }
+    return Array.from(counts.entries()).map(([emoji, count]) => ({ emoji, count }));
+  }
+
+  protected openReactionDetails(message: AppTypes.ChatPopupMessage, event?: Event): void {
+    event?.stopPropagation();
+    this.reactionDetailsMessageId = message.id;
+    this.reactionDetailsFilter = 'all';
+  }
+
+  protected closeReactionDetails(): void {
+    this.reactionDetailsMessageId = '';
+  }
+
+  protected reactionDetailsMessage(): AppTypes.ChatPopupMessage | null {
+    return this.allMessages.find(message => message.id === this.reactionDetailsMessageId) ?? null;
+  }
+
+  protected reactionDetailsRows(message: AppTypes.ChatPopupMessage): AppTypes.ChatMessageReaction[] {
+    return this.reactionDetailsFilter === 'all'
+      ? (message.reactions ?? [])
+      : (message.reactions ?? []).filter(reaction => reaction.emoji === this.reactionDetailsFilter);
+  }
+
+  protected openMessageActionMenu(message: AppTypes.ChatPopupMessage, event?: Event): void {
+    event?.preventDefault();
+    event?.stopPropagation();
+    this.selectedMessageId = message.id;
+    this.quickReactionMessageId = '';
+    this.emojiPickerMessageId = '';
+    this.messageActionMenuId = this.messageActionMenuId === message.id ? '' : message.id;
+  }
+
+  protected setReplyTarget(message: AppTypes.ChatPopupMessage, event?: Event): void {
+    event?.stopPropagation();
+    if (message.deletedAtIso) {
+      return;
+    }
+    this.replyTarget = { id: message.id, sender: message.sender, text: message.text };
+    this.closeTransientMessageUi();
+    this.focusComposerSoon();
+  }
+
+  protected clearReplyTarget(): void {
+    this.replyTarget = null;
+  }
+
+  protected beginEditMessage(message: AppTypes.ChatPopupMessage, event?: Event): void {
+    event?.stopPropagation();
+    if (!message.mine || message.deletedAtIso) {
+      return;
+    }
+    this.editingMessageId = message.id;
+    this.draftMessage = message.text;
+    this.closeTransientMessageUi({ keepEditing: true });
+    this.focusComposerSoon();
+    this.resizeComposerTextareaSoon();
+  }
+
+  protected cancelEditing(): void {
+    this.editingMessageId = '';
+    this.draftMessage = '';
+    this.resizeComposerTextareaSoon();
+  }
+
+  protected unsendMessage(message: AppTypes.ChatPopupMessage, event?: Event): void {
+    event?.stopPropagation();
+    if (!message.mine) {
+      return;
+    }
+    this.allMessages = this.allMessages.map(item => item.id === message.id
+      ? { ...item, text: '', deletedAtIso: new Date().toISOString(), deletedByUserId: this.activeUserId() || 'self', deletedByName: 'You', reactions: [] }
+      : item);
+    this.closeTransientMessageUi();
+    this.refreshVisibleChatThreadSurface();
+    this.cdr.markForCheck();
+  }
+
+  protected deletedMessageLabel(message: AppTypes.ChatPopupMessage): string {
+    return message.mine || message.deletedByName === 'You'
+      ? 'You deleted this message'
+      : `${message.deletedByName || message.sender} deleted this message`;
+  }
+
+  protected togglePinMessage(message: AppTypes.ChatPopupMessage, event?: Event): void {
+    event?.stopPropagation();
+    const activeUserId = this.activeUserId() || 'self';
+    this.allMessages = this.allMessages.map(item => item.id === message.id
+      ? { ...item, pinnedAtIso: item.pinnedAtIso ? null : new Date().toISOString(), pinnedByUserId: item.pinnedAtIso ? null : activeUserId }
+      : item);
+    this.closeTransientMessageUi();
+    this.refreshVisibleChatThreadSurface();
+    this.cdr.markForCheck();
+  }
+
+  protected pinnedMessages(): AppTypes.ChatPopupMessage[] {
+    return this.allMessages
+      .filter(message => !!message.pinnedAtIso)
+      .sort((first, second) => AppUtils.toSortableDate(second.pinnedAtIso ?? '') - AppUtils.toSortableDate(first.pinnedAtIso ?? ''));
+  }
+
+  protected openPinnedMessagesDialog(event?: Event): void {
+    event?.stopPropagation();
+    this.pinnedDialogOpen = true;
+  }
+
+  protected closePinnedMessagesDialog(): void {
+    this.pinnedDialogOpen = false;
+  }
+
+  protected selectPinnedMessage(message: AppTypes.ChatPopupMessage): void {
+    this.selectedMessageId = message.id;
+    this.closePinnedMessagesDialog();
+    this.scheduleChatThreadScrollToEnd();
+  }
+
+  protected reportMessage(message: AppTypes.ChatPopupMessage, event?: Event): void {
+    event?.stopPropagation();
+    this.messageActionMenuId = '';
+    this.confirmationDialogService.openInfo(`Report prepared for ${message.sender}.`, {
+      title: 'Report message',
+      confirmLabel: 'OK',
+      confirmTone: 'danger'
+    });
+  }
+
   protected sendMessage(): void {
     const text = this.draftMessage.trim();
     const session = this.session();
     if (!session || !text) {
       return;
     }
+    if (this.editingMessageId) {
+      this.commitEditMessage(text);
+      return;
+    }
     const sessionKey = `${session.item.id}:${session.openedAtIso}`;
     const optimisticMessage = this.buildOptimisticChatMessage(text);
     this.draftMessage = '';
+    this.replyTarget = null;
+    this.resizeComposerTextareaSoon();
     this.stopLocalTyping();
     this.mergeIncomingChatMessage(optimisticMessage);
     this.schedulePendingMessageTimeout(optimisticMessage.id);
@@ -408,6 +675,33 @@ export class EventChatPopupComponent implements OnDestroy {
         this.markPendingMessageTimedOut(optimisticMessage.id);
         this.cdr.markForCheck();
       });
+  }
+
+  private commitEditMessage(text: string): void {
+    const editingMessageId = this.editingMessageId;
+    if (!editingMessageId) {
+      return;
+    }
+    this.allMessages = this.allMessages.map(message => message.id === editingMessageId
+      ? {
+          ...message,
+          text,
+          editedAtIso: new Date().toISOString(),
+          deliveryState: 'pending'
+        }
+      : message);
+    this.draftMessage = '';
+    this.editingMessageId = '';
+    this.resizeComposerTextareaSoon();
+    this.refreshVisibleChatThreadSurface();
+    this.cdr.markForCheck();
+    setTimeout(() => {
+      this.allMessages = this.allMessages.map(message => message.id === editingMessageId
+        ? { ...message, deliveryState: undefined }
+        : message);
+      this.refreshVisibleChatThreadSurface();
+      this.cdr.markForCheck();
+    }, 900);
   }
 
   private async loadInitialChatThreadPage(
@@ -519,7 +813,10 @@ export class EventChatPopupComponent implements OnDestroy {
       sentAtIso: sentAt.toISOString(),
       mine: true,
       readBy: [],
-      deliveryState: 'pending'
+      deliveryState: 'pending',
+      replyTo: this.replyTarget
+        ? { ...this.replyTarget }
+        : null
     } satisfies AppTypes.ChatPopupMessage;
   }
 
@@ -1067,6 +1364,36 @@ export class EventChatPopupComponent implements OnDestroy {
     }
   }
 
+  private closeTransientMessageUi(options: { keepEditing?: boolean } = {}): void {
+    this.composerMenuOpen = false;
+    this.selectedMessageId = '';
+    this.quickReactionMessageId = '';
+    this.emojiPickerMessageId = '';
+    this.emojiPickerQuery = '';
+    this.messageActionMenuId = '';
+    this.reactionDetailsMessageId = '';
+    if (!options.keepEditing) {
+      this.editingMessageId = '';
+    }
+  }
+
+  private isMobileInputMode(): boolean {
+    if (typeof window === 'undefined') {
+      return false;
+    }
+    return window.matchMedia('(hover: none), (pointer: coarse), (max-width: 760px)').matches;
+  }
+
+  private focusComposerSoon(): void {
+    setTimeout(() => {
+      this.messageTextarea?.nativeElement.focus();
+    }, 0);
+  }
+
+  private resizeComposerTextareaSoon(): void {
+    setTimeout(() => this.resizeComposerTextarea(), 0);
+  }
+
   private chatDayLabel(value: Date): string {
     if (Number.isNaN(value.getTime())) {
       return 'Unknown day';
@@ -1187,7 +1514,9 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   private syncChatComposeDetachedSpace(): void {
-    const nextSpace = 108;
+    const composeElement = this.chatComposeBoxRef?.nativeElement;
+    const measuredHeight = composeElement?.getBoundingClientRect().height ?? 0;
+    const nextSpace = Math.max(72, Math.ceil(measuredHeight + 16));
     if (nextSpace === this.chatComposeDetachedSpace) {
       return;
     }

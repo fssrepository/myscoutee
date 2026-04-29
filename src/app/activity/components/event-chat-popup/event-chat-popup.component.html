@@ -19,6 +19,9 @@
             <h2>{{ chatSession.item.title }}</h2>
           </div>
         </div>
+        <button type="button" class="popup-chat-pin-btn" [class.has-pins]="pinnedMessages().length > 0" (click)="openPinnedMessagesDialog($event)" aria-label="Open pinned messages">
+          <mat-icon>push_pin</mat-icon>
+        </button>
         @if (!isBlockedSupportChat() && !selectedChatHasSubEventMenu()) {
           <button
             type="button"
@@ -146,11 +149,65 @@
               </div>
             }
             <div class="chat-compose-box" #chatComposeBox>
+              @if (replyTarget) {
+                <div class="chat-reply-draft">
+                  <span>
+                    <mat-icon>reply</mat-icon>
+                    Replying to {{ replyTarget.sender }}
+                  </span>
+                  <button type="button" (click)="clearReplyTarget()" aria-label="Cancel reply">
+                    <mat-icon>close</mat-icon>
+                  </button>
+                </div>
+              }
+              @if (editingMessageId) {
+                <div class="chat-reply-draft chat-edit-draft">
+                  <span>
+                    <mat-icon>edit</mat-icon>
+                    Editing message
+                  </span>
+                  <button type="button" (click)="cancelEditing()" aria-label="Cancel edit">
+                    <mat-icon>close</mat-icon>
+                  </button>
+                </div>
+              }
+              <span class="chat-compose-plus-wrap">
+                @if (composerMenuOpen) {
+                  <div class="chat-composer-menu" (click)="$event.stopPropagation()">
+                    <button type="button" class="chat-composer-menu-item chat-composer-menu-item-media" (click)="composerMenuOpen = false">
+                      <mat-icon>image</mat-icon>
+                      <span>Upload image</span>
+                    </button>
+                    <button type="button" class="chat-composer-menu-item chat-composer-menu-item-voice" (click)="composerMenuOpen = false">
+                      <mat-icon>mic</mat-icon>
+                      <span>Send a voice clip</span>
+                    </button>
+                    <button type="button" class="chat-composer-menu-item chat-composer-menu-item-poll" (click)="composerMenuOpen = false">
+                      <mat-icon>poll</mat-icon>
+                      <span>Create a poll</span>
+                    </button>
+                    <button type="button" class="chat-composer-menu-item chat-composer-menu-item-event" (click)="composerMenuOpen = false">
+                      <mat-icon>event</mat-icon>
+                      <span>Share event</span>
+                    </button>
+                    <button type="button" class="chat-composer-menu-item chat-composer-menu-item-asset" (click)="composerMenuOpen = false">
+                      <mat-icon>inventory_2</mat-icon>
+                      <span>Share asset</span>
+                    </button>
+                  </div>
+                }
+                <button type="button" class="chat-compose-plus-btn" (click)="toggleComposerMenu($event)" aria-label="Open chat tools">
+                  <mat-icon>{{ composerMenuOpen ? 'close' : 'add' }}</mat-icon>
+                </button>
+              </span>
               <textarea
-                rows="3"
+                #messageTextarea
+                rows="1"
                 placeholder="Write message"
                 [(ngModel)]="draftMessage"
                 (ngModelChange)="onDraftMessageChange($event)"
+                (input)="resizeComposerTextarea()"
+                (keydown)="onComposerKeydown($event)"
                 [disabled]="chatInitialLoadPending"
               ></textarea>
               <button type="button" class="chat-send-btn" aria-label="Send message" (click)="sendMessage()" [disabled]="chatInitialLoadPending">
@@ -171,6 +228,12 @@
     [class.chat-message-fresh]="isFreshMessage(message.id)"
     [class.chat-message-pending]="message.deliveryState === 'pending'"
     [class.chat-message-timed-out]="message.deliveryState === 'timed-out'"
+    [class.chat-message-selected]="selectedMessageId === message.id"
+    (click)="selectMessage(message, $event)"
+    (contextmenu)="openMessageActionMenu(message, $event)"
+    (touchstart)="startMessageLongPress(message)"
+    (touchend)="clearMessageLongPress()"
+    (touchcancel)="clearMessageLongPress()"
     [attr.data-group-label]="groupLabel"
     [attr.data-chat-message-id]="message.id"
     >
@@ -209,11 +272,31 @@
         {{ message.senderAvatar.initials }}
       </span>
       <div class="chat-message-content">
+        @if (message.replyTo) {
+          <div class="chat-reply-preview">
+            <mat-icon>reply</mat-icon>
+            <span>{{ message.replyTo.sender }}: {{ message.replyTo.text }}</span>
+          </div>
+        }
         <div class="chat-meta-row">
           <span class="chat-sender-name">{{ message.sender }}</span>
           <span class="chat-time-chip">{{ message.time }}</span>
         </div>
-        <p class="chat-line">{{ message.text }}</p>
+        @if (message.deletedAtIso) {
+          <p class="chat-line chat-line-deleted">{{ deletedMessageLabel(message) }}</p>
+        } @else {
+          <p class="chat-line">{{ message.text }}</p>
+          @if (message.editedAtIso) {
+            <span class="chat-edited-label">Edited</span>
+          }
+        }
+        @if ((message.reactions ?? []).length > 0) {
+          <button type="button" class="chat-reaction-summary" (click)="openReactionDetails(message, $event)">
+            @for (reaction of reactionSummary(message); track reaction.emoji) {
+              <span>{{ reaction.emoji }} {{ reaction.count }}</span>
+            }
+          </button>
+        }
         @if (message.mine) {
           <div class="chat-delivery-slot">
             @if (message.deliveryState === 'pending') {
@@ -237,6 +320,53 @@
           </div>
         }
       </div>
+      @if (selectedMessageId === message.id) {
+        <div class="chat-message-tools" (click)="$event.stopPropagation()">
+          <button type="button" (click)="setReplyTarget(message, $event)" aria-label="Reply">
+            <mat-icon>reply</mat-icon>
+          </button>
+          <button type="button" (click)="toggleQuickReactions(message, $event)" aria-label="React">
+            <mat-icon>mood</mat-icon>
+          </button>
+          <button type="button" (click)="openMessageActionMenu(message, $event)" aria-label="More message actions">
+            <mat-icon>more_vert</mat-icon>
+          </button>
+        </div>
+      }
+      @if (quickReactionMessageId === message.id) {
+        <div class="chat-quick-reactions" (click)="$event.stopPropagation()">
+          @for (emoji of quickReactionEmojis; track emoji) {
+            <button type="button" (click)="toggleReaction(message, emoji, $event)">{{ emoji }}</button>
+          }
+          <button type="button" class="chat-quick-reaction-add" (click)="openEmojiPicker(message, $event)">
+            <mat-icon>add</mat-icon>
+          </button>
+        </div>
+      }
+      @if (messageActionMenuId === message.id) {
+        <div class="chat-message-action-menu" (click)="$event.stopPropagation()">
+          <button type="button" (click)="setReplyTarget(message, $event)">Reply</button>
+          @if (message.mine && !message.deletedAtIso) {
+            <button type="button" (click)="beginEditMessage(message, $event)">Edit</button>
+            <button type="button" (click)="unsendMessage(message, $event)">Unsend</button>
+          }
+          <button type="button" (click)="togglePinMessage(message, $event)">{{ message.pinnedAtIso ? 'Unpin' : 'Pin' }}</button>
+          @if (!message.mine) {
+            <button type="button" (click)="reportMessage(message, $event)">Report</button>
+          }
+        </div>
+      }
+      @if (emojiPickerMessageId === message.id) {
+        <div class="chat-emoji-picker" (click)="$event.stopPropagation()">
+          <input type="search" placeholder="Search emoji" [(ngModel)]="emojiPickerQuery" />
+          <div class="chat-emoji-picker-section">Smileys & people</div>
+          <div class="chat-emoji-grid">
+            @for (emoji of filteredEmojiPickerEmojis(); track emoji) {
+              <button type="button" (click)="toggleReaction(message, emoji, $event)">{{ emoji }}</button>
+            }
+          </div>
+        </div>
+      }
       @if (visibleReadReceiptsByMessageId[message.id]; as visibleReaders) {
         @if (visibleReaders.length > 0) {
           <div class="chat-readers">
@@ -255,3 +385,58 @@
     </div>
   </article>
 </ng-template>
+
+@if (reactionDetailsMessage(); as reactionMessage) {
+  <section class="chat-modal">
+    <div class="chat-modal-backdrop" (click)="closeReactionDetails()"></div>
+    <div class="chat-modal-panel" (click)="$event.stopPropagation()">
+      <header>
+        <h2>Message reactions</h2>
+        <button type="button" (click)="closeReactionDetails()" aria-label="Close reactions"><mat-icon>close</mat-icon></button>
+      </header>
+      <div class="chat-reaction-tabs">
+        <button type="button" [class.active]="reactionDetailsFilter === 'all'" (click)="reactionDetailsFilter = 'all'">All {{ reactionMessage.reactions?.length ?? 0 }}</button>
+        @for (reaction of reactionSummary(reactionMessage); track reaction.emoji) {
+          <button type="button" [class.active]="reactionDetailsFilter === reaction.emoji" (click)="reactionDetailsFilter = reaction.emoji">{{ reaction.emoji }} {{ reaction.count }}</button>
+        }
+      </div>
+      <div class="chat-reaction-list">
+        @for (reaction of reactionDetailsRows(reactionMessage); track reaction.userId + reaction.emoji) {
+          <div class="chat-reaction-row">
+            <span class="chat-reaction-avatar" [class]="'user-color-' + reaction.userGender">{{ reaction.userInitials }}</span>
+            <span>
+              <strong>{{ reaction.userName }}</strong>
+              <small>Reacted with {{ reaction.emoji }}</small>
+            </span>
+            <span class="chat-reaction-row-emoji">{{ reaction.emoji }}</span>
+          </div>
+        }
+      </div>
+    </div>
+  </section>
+}
+
+@if (pinnedDialogOpen) {
+  <section class="chat-modal">
+    <div class="chat-modal-backdrop" (click)="closePinnedMessagesDialog()"></div>
+    <div class="chat-modal-panel chat-pinned-panel" (click)="$event.stopPropagation()">
+      <header>
+        <h2>Pinned messages</h2>
+        <button type="button" (click)="closePinnedMessagesDialog()" aria-label="Close pinned messages"><mat-icon>close</mat-icon></button>
+      </header>
+      <div class="chat-pinned-list">
+        @for (message of pinnedMessages(); track message.id) {
+          <button type="button" class="chat-pinned-row" (click)="selectPinnedMessage(message)">
+            <span class="chat-reaction-avatar" [class]="'user-color-' + message.senderAvatar.gender">{{ message.senderAvatar.initials }}</span>
+            <span>
+              <strong>{{ message.sender }}</strong>
+              <small>{{ message.deletedAtIso ? deletedMessageLabel(message) : message.text }}</small>
+            </span>
+          </button>
+        } @empty {
+          <p>No pinned messages yet.</p>
+        }
+      </div>
+    </div>
+  </section>
+}
