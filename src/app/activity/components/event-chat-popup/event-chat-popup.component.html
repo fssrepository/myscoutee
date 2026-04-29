@@ -349,10 +349,15 @@
             <mat-icon>reply</mat-icon>
           </button>
           <button type="button" (click)="toggleQuickReactions(message, $event)" aria-label="React">
-            <mat-icon>mood</mat-icon>
+            <mat-icon>{{ quickReactionMessageId === message.id || emojiPickerMessageId === message.id ? 'add_reaction' : 'mood' }}</mat-icon>
           </button>
-          <button type="button" (click)="openMessageActionMenu(message, $event)" aria-label="More message actions">
-            <mat-icon>more_vert</mat-icon>
+          <button
+            type="button"
+            [class.chat-tool-btn-open]="messageActionMenuId === message.id"
+            (click)="openMessageActionMenu(message, $event)"
+            aria-label="More message actions"
+            >
+            <mat-icon>{{ messageActionMenuId === message.id ? 'close' : 'more_vert' }}</mat-icon>
           </button>
         </div>
       }
@@ -387,9 +392,7 @@
             <button type="button" (click)="unsendMessage(message, $event)">Unsend</button>
           }
           <button type="button" (click)="togglePinMessage(message, $event)">{{ message.pinnedAtIso ? 'Unpin' : 'Pin' }}</button>
-          @if (!message.mine) {
-            <button type="button" (click)="reportMessage(message, $event)">Report</button>
-          }
+          <button type="button" (click)="reportMessage(message, $event)">Report</button>
         </div>
       }
       @if (!message.deletedAtIso && visibleReadReceiptsByMessageId[message.id]; as visibleReaders) {

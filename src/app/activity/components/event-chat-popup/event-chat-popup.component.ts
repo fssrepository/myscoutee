@@ -34,6 +34,7 @@ import {
 } from '../../../shared/ui';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
 import { HttpMediaService } from '../../../shared/core/http';
+import { NavigatorService } from '../../../navigator';
 
 interface ChatThreadFilters {
   revision?: number;
@@ -58,6 +59,7 @@ export class EventChatPopupComponent implements OnDestroy {
   private readonly shareTokensService = inject(ShareTokensService);
   private readonly confirmationDialogService = inject(ConfirmationDialogService);
   private readonly httpMediaService = inject(HttpMediaService);
+  private readonly navigatorService = inject(NavigatorService);
 
   protected readonly session = computed(() => this.activitiesContext.eventChatSession());
   protected chatInitialLoadPending = false;
@@ -751,6 +753,17 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   protected replyPreviewText(replyTo: AppTypes.ChatPopupMessage['replyTo']): string {
+    const sourceMessage = this.allMessages.find(message => message.id === `${replyTo?.id ?? ''}`.trim());
+    const sourceAttachment = sourceMessage?.attachments?.[0];
+    if (sourceAttachment?.type === 'event') {
+      return this.attachmentReferenceLabel(sourceAttachment, 'Event');
+    }
+    if (sourceAttachment?.type === 'asset') {
+      return this.attachmentReferenceLabel(sourceAttachment, 'Asset');
+    }
+    if (sourceAttachment?.type === 'image') {
+      return 'Image';
+    }
     const text = `${replyTo?.text ?? ''}`.trim();
     return text === 'Sent an image' ? 'Image' : text || 'Message';
   }
@@ -892,11 +905,45 @@ export class EventChatPopupComponent implements OnDestroy {
   protected reportMessage(message: AppTypes.ChatPopupMessage, event?: Event): void {
     event?.stopPropagation();
     this.messageActionMenuId = '';
-    this.confirmationDialogService.openInfo(`Report prepared for ${message.sender}.`, {
-      title: 'Report message',
-      confirmLabel: 'OK',
-      confirmTone: 'danger'
+    const session = this.session();
+    const target = this.resolveChatReportTarget(message, session?.item ?? null);
+    const eventId = `${session?.item.eventId ?? session?.item.id ?? ''}`.trim();
+    if (!target || !eventId) {
+      return;
+    }
+    this.navigatorService.openReportUserPopup({
+      targetUserId: target.userId,
+      targetName: target.name,
+      eventId,
+      eventTitle: session?.item.title ?? null,
+      eventTimeframe: session?.item.dateIso ?? null,
+      ownerType: 'event'
     });
+  }
+
+  private resolveChatReportTarget(
+    message: AppTypes.ChatPopupMessage,
+    chat: ChatMenuItem | null
+  ): { userId: string; name: string } | null {
+    const activeUserId = this.activeUserId();
+    const messageSenderId = `${message.senderAvatar?.id ?? ''}`.trim();
+    if (messageSenderId && messageSenderId !== activeUserId) {
+      return {
+        userId: messageSenderId,
+        name: `${message.sender ?? ''}`.trim() || 'Chat member'
+      };
+    }
+    const candidateId = (chat?.memberIds ?? [])
+      .map(id => `${id ?? ''}`.trim())
+      .find(id => id && id !== activeUserId);
+    if (!candidateId) {
+      return null;
+    }
+    const profile = this.appCtx.getUserProfile(candidateId);
+    return {
+      userId: candidateId,
+      name: profile?.name?.trim() || 'Chat member'
+    };
   }
 
   protected messageHasViewableAttachment(message: AppTypes.ChatPopupMessage): boolean {
@@ -1951,9 +1998,9 @@ export class EventChatPopupComponent implements OnDestroy {
       case 'image':
         return 'Sent an image';
       case 'event':
-        return 'Shared an event';
+        return this.attachmentReferenceLabel(firstAttachment, 'Event');
       case 'asset':
-        return 'Shared an asset';
+        return this.attachmentReferenceLabel(firstAttachment, 'Asset');
       case 'poll':
         return 'Created a poll';
       case 'voice':
@@ -2255,7 +2302,24 @@ export class EventChatPopupComponent implements OnDestroy {
     if (firstAttachment?.type === 'image') {
       return 'Image';
     }
+    if (firstAttachment?.type === 'event') {
+      return this.attachmentReferenceLabel(firstAttachment, 'Event');
+    }
+    if (firstAttachment?.type === 'asset') {
+      return this.attachmentReferenceLabel(firstAttachment, 'Asset');
+    }
     return this.chatAttachmentSummary(message) || 'Message';
+  }
+
+  private attachmentReferenceLabel(attachment: AppTypes.ChatMessageAttachment, fallbackType: string): string {
+    const title = `${attachment.title ?? ''}`.trim();
+    const subtitle = `${attachment.subtitle ?? ''}`.trim();
+    const typeLabel = attachment.type === 'event'
+      ? 'Event'
+      : attachment.type === 'asset'
+        ? 'Asset'
+        : fallbackType;
+    return [typeLabel, title, subtitle].filter(Boolean).join(' · ') || typeLabel;
   }
 
   private observeChatComposeBox(): void {
