@@ -19,7 +19,7 @@ interface HttpChatSummaryDto {
   memberIds: string[];
   unread: number;
   dateIso?: string;
-  channelType?: 'general' | 'mainEvent' | 'optionalSubEvent' | 'groupSubEvent';
+  channelType?: 'general' | 'mainEvent' | 'optionalSubEvent' | 'groupSubEvent' | 'serviceEvent';
   eventId?: string;
   subEventId?: string;
   groupId?: string;

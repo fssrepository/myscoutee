@@ -20,7 +20,7 @@ export interface ChatMenuItem {
   dateIso?: string;
   distanceKm?: number;
   distanceMetersExact?: number;
-  channelType?: 'general' | 'mainEvent' | 'optionalSubEvent' | 'groupSubEvent';
+  channelType?: 'general' | 'mainEvent' | 'optionalSubEvent' | 'groupSubEvent' | 'serviceEvent';
   eventId?: string;
   subEventId?: string;
   groupId?: string;

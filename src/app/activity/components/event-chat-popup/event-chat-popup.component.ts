@@ -857,16 +857,25 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   private refreshVisibleChatThreadSurface(): void {
+    const previousTotal = this.visibleChatThreadTotal;
     this.visibleChatThreadTotal = this.allMessages.length;
     const smartList = this.chatThreadSmartList;
     const visibleCount = smartList?.itemsSnapshot().length ?? 0;
-    if (!smartList || visibleCount === 0) {
+    if (!smartList) {
       this.chatThreadRevision++;
       this.syncChatThreadQuery();
       return;
     }
+    const addedCount = Math.max(0, this.allMessages.length - previousTotal);
+    const nextVisibleCount = visibleCount > 0
+      ? Math.min(this.allMessages.length, visibleCount + addedCount)
+      : Math.min(this.allMessages.length, this.chatInitialLoadMessageCount);
+    if (nextVisibleCount === 0) {
+      smartList.replaceVisibleItems([], { total: 0 });
+      return;
+    }
     smartList.replaceVisibleItems(
-      this.allMessages.slice(0, Math.min(this.allMessages.length, visibleCount)),
+      this.allMessages.slice(0, Math.min(this.allMessages.length, nextVisibleCount)),
       { total: this.allMessages.length }
     );
   }

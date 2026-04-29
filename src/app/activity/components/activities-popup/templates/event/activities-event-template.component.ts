@@ -97,7 +97,7 @@ export class ActivitiesEventTemplateComponent implements OnChanges {
   }
 }
 
-type ActivityInfoCardActionId = 'publish' | 'primary' | 'view' | 'approve' | 'secondary' | 'restore';
+type ActivityInfoCardActionId = 'publish' | 'primary' | 'view' | 'serviceChat' | 'approve' | 'secondary' | 'restore';
 type ActivitiesEventsHost = any;
 type InvitationApprovalSyncResult = {
   syncPayload: Omit<ActivitiesEventSyncPayload, 'syncKey'>;
@@ -259,6 +259,13 @@ export class ActivitiesEventsController {
     if (this.shouldShowActivityViewAction(row)) {
       actions.push({ id: 'view', label: 'View Event', icon: 'visibility' });
     }
+    if (this.shouldShowActivityServiceChatAction(row)) {
+      actions.push({
+        id: 'serviceChat',
+        label: this.activityServiceChatActionLabel(row),
+        icon: 'support_agent'
+      });
+    }
     if (this.shouldShowActivityApproveAction(row)) {
       actions.push({ id: 'approve', label: 'Accept', icon: 'done', tone: 'accent' });
     }
@@ -293,6 +300,11 @@ export class ActivitiesEventsController {
 
   public shouldShowActivityViewAction(row: AppTypes.ActivityListRow): boolean {
     return !this.isActivityRowTrashed(row) && (row.type === 'hosting' || row.type === 'events');
+  }
+
+  public shouldShowActivityServiceChatAction(row: AppTypes.ActivityListRow): boolean {
+    return !this.isActivityRowTrashed(row)
+      && (row.type === 'hosting' || row.type === 'events' || row.type === 'invitations');
   }
 
   public shouldShowActivityApproveAction(row: AppTypes.ActivityListRow): boolean {
@@ -341,6 +353,16 @@ export class ActivitiesEventsController {
     return 'Reject Invitation';
   }
 
+  public activityServiceChatActionLabel(row: AppTypes.ActivityListRow): string {
+    if (row.type === 'hosting' && row.isAdmin) {
+      return 'Service Chat';
+    }
+    if (row.type === 'invitations') {
+      return 'Ask Organizer';
+    }
+    return 'Contact Organizer';
+  }
+
   public onActivityEventInfoCardMenuAction(row: AppTypes.ActivityListRow, action: InfoCardMenuActionEvent): void {
     switch (action.action.id as ActivityInfoCardActionId) {
       case 'publish':
@@ -351,6 +373,9 @@ export class ActivitiesEventsController {
         break;
       case 'view':
         this.runActivityItemViewAction(row);
+        break;
+      case 'serviceChat':
+        this.runActivityItemServiceChatAction(row);
         break;
       case 'approve':
         this.runActivityItemApproveAction(row);
@@ -378,6 +403,53 @@ export class ActivitiesEventsController {
       row,
       readOnly: true
     });
+  }
+
+  public runActivityItemServiceChatAction(row: AppTypes.ActivityListRow, event?: Event): void {
+    event?.stopPropagation();
+    this.inlineItemActionMenu = null;
+    const chat = this.buildActivityServiceChat(row);
+    if (!chat) {
+      return;
+    }
+    this.openActivityChat(chat);
+  }
+
+  private buildActivityServiceChat(row: AppTypes.ActivityListRow): ChatMenuItem | null {
+    const activeUserId = this.activeUser.id.trim();
+    if (!activeUserId) {
+      return null;
+    }
+    const source = row.source as Partial<EventMenuItem & HostingMenuItem & InvitationMenuItem> & {
+      creatorName?: string;
+      creatorInitials?: string;
+    };
+    const title = row.title?.trim() || source.title?.trim() || source.description?.trim() || 'Event';
+    const organizerUserId = `${source.creatorUserId ?? ''}`.trim();
+    const acceptedAdmins = row.type === 'hosting'
+      ? this.uniqueUserIds([organizerUserId, activeUserId])
+      : this.uniqueUserIds([organizerUserId]);
+    const memberIds = this.uniqueUserIds([
+      activeUserId,
+      ...acceptedAdmins,
+      ...(source.acceptedMemberUserIds ?? []).slice(0, row.type === 'hosting' ? 6 : 0)
+    ]);
+    const chat: ChatMenuItem & { ownerUserId?: string } = {
+      id: `c-service-event-${row.id}-${activeUserId}`,
+      avatar: AppUtils.initialsFromText(source.creatorName?.trim() || title),
+      title: `${this.activityServiceChatActionLabel(row)} · ${title}`,
+      lastMessage: row.type === 'hosting'
+        ? 'Service requests and participant questions arrive here.'
+        : `Service chat with the organizer for ${title}.`,
+      lastSenderId: organizerUserId || activeUserId,
+      memberIds: memberIds.length > 0 ? memberIds : [activeUserId],
+      unread: 0,
+      dateIso: new Date().toISOString(),
+      channelType: 'serviceEvent',
+      eventId: row.id,
+      ownerUserId: activeUserId
+    };
+    return chat;
   }
 
   public runActivityItemApproveAction(row: AppTypes.ActivityListRow, event?: Event): void {

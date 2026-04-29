@@ -34,6 +34,7 @@ import type {
   EventSupplyContributionsPopupHost
 } from '../components/event-supply-contributions-popup/event-supply-contributions-popup.component';
 import type { ListQuery, PageResult } from '../../shared/ui';
+import type { ChatMenuItem } from '../../shared/core/base/interfaces/activity-feed.interface';
 
 interface ResourcePopupContext {
   origin: 'chat' | 'eventEditor';
@@ -286,6 +287,7 @@ export class SubEventResourcePopupService {
     assetExploreAvailabilityLabel: card => this.assetExploreAvailabilityLabel(card),
     assetExploreCanBorrow: card => this.assetExploreAvailableQuantity(card) > 0,
     openAssetExploreBorrowDialog: (card, event) => this.openAssetExploreBorrowDialog(card, event),
+    openAssetExploreServiceChat: (card, event) => this.openAssetExploreServiceChat(card, event),
     closeAssetExploreBorrowDialog: event => this.closeAssetExploreBorrowDialog(event),
     setAssetExploreBorrowDateRange: (start, end) => this.setAssetExploreBorrowDateRange(start, end),
     setAssetExploreBorrowTime: (edge, value) => this.setAssetExploreBorrowTime(edge, value),
@@ -322,6 +324,7 @@ export class SubEventResourcePopupService {
     canEditRoute: card => this.canEditRoute(card),
     routeMenuLabel: () => 'Edit Route',
     openRouteEditor: (card, event) => this.openRouteEditor(card, event),
+    openResourceServiceChat: (card, event) => this.openResourceServiceChat(card, event),
     delete: (card, event) => this.requestDeleteResourceCard(card, event),
     closeCapacityEditor: event => this.closeCapacityEditor(event),
     canSubmitCapacityEditor: () => this.canSubmitCapacityEditor(),
@@ -1844,6 +1847,40 @@ export class SubEventResourcePopupService {
     this.inlineItemActionMenuRef.set(null);
   }
 
+  private openResourceServiceChat(card: AppTypes.SubEventResourceCard, event: Event): void {
+    event.stopPropagation();
+    const context = this.popupContextRef();
+    const activeUserId = this.activeUser().id.trim();
+    if (!context || !activeUserId) {
+      return;
+    }
+    const sourceCard = card.sourceAssetId && card.type !== 'Members'
+      ? this.resolveSubEventAssignedAssetCard(context.subEvent.id, card.type as AppTypes.AssetType, card.sourceAssetId)
+      : null;
+    const managerUserId = sourceCard?.ownerUserId?.trim() || (
+      card.type === 'Car' || card.type === 'Accommodation'
+        ? this.assignedAssetManagerUserId(context.subEvent.id, card.type, card.sourceAssetId || '')
+        : null
+    );
+    const titlePrefix = sourceCard ? 'Asset Service' : 'Event Service';
+    const chat = this.buildServiceChatItem({
+      id: sourceCard
+        ? `c-service-asset-${sourceCard.id}-${context.subEvent.id}-${activeUserId}`
+        : `c-service-event-resource-${context.ownerId}-${context.subEvent.id}-${card.id}-${activeUserId}`,
+      title: `${titlePrefix} · ${card.title}`,
+      lastMessage: sourceCard
+        ? `Service chat with the ${card.type.toLowerCase()} manager for ${card.title}.`
+        : `Service chat with the organizer for ${context.parentTitle}.`,
+      eventId: context.ownerId,
+      subEventId: context.subEvent.id,
+      memberIds: [activeUserId, managerUserId].filter((id): id is string => `${id ?? ''}`.trim().length > 0),
+      lastSenderId: managerUserId || activeUserId,
+      avatarSource: sourceCard?.ownerName || sourceCard?.title || card.title
+    });
+    this.inlineItemActionMenuRef.set(null);
+    this.activitiesContext.openEventChat(chat, this.buildServiceChatContext(chat));
+  }
+
   private closeRouteEditor(event?: Event): void {
     event?.stopPropagation();
     this.abortPendingRouteSaveRequest();
@@ -2600,6 +2637,81 @@ export class SubEventResourcePopupService {
       return;
     }
     this.localAssetExploreReservationsByKey.delete(this.assetExploreLocalReservationKey(normalizedSubEventId, normalizedAssetId));
+  }
+
+  private openAssetExploreServiceChat(card: AppTypes.AssetCard, event?: Event): void {
+    event?.stopPropagation();
+    const context = this.popupContextRef();
+    const activeUserId = this.activeUser().id.trim();
+    const ownerUserId = `${card.ownerUserId ?? ''}`.trim();
+    if (!context || !activeUserId) {
+      return;
+    }
+    const chat = this.buildServiceChatItem({
+      id: `c-service-asset-${card.id}-${context.subEvent.id}-${activeUserId}`,
+      title: `Asset Service · ${card.title}`,
+      lastMessage: `Service chat with the ${card.type.toLowerCase()} manager for ${card.title}.`,
+      eventId: context.ownerId,
+      subEventId: context.subEvent.id,
+      memberIds: [activeUserId, ownerUserId].filter(Boolean),
+      lastSenderId: ownerUserId || activeUserId,
+      avatarSource: card.ownerName || card.title
+    });
+    this.activitiesContext.openEventChat(chat, this.buildServiceChatContext(chat));
+  }
+
+  private buildServiceChatItem(input: {
+    id: string;
+    title: string;
+    lastMessage: string;
+    eventId: string;
+    subEventId?: string;
+    memberIds: string[];
+    lastSenderId: string;
+    avatarSource: string;
+  }): ChatMenuItem & { ownerUserId?: string } {
+    const activeUserId = this.activeUser().id.trim();
+    return {
+      id: input.id,
+      avatar: AppUtils.initialsFromText(input.avatarSource || input.title),
+      title: input.title,
+      lastMessage: input.lastMessage,
+      lastSenderId: input.lastSenderId || activeUserId,
+      memberIds: [...new Set(input.memberIds.map(id => `${id ?? ''}`.trim()).filter(Boolean))],
+      unread: 0,
+      dateIso: new Date().toISOString(),
+      channelType: 'serviceEvent',
+      eventId: input.eventId,
+      subEventId: input.subEventId,
+      ownerUserId: activeUserId
+    };
+  }
+
+  private buildServiceChatContext(chat: ChatMenuItem): AppTypes.EventChatContext {
+    return {
+      channelType: 'serviceEvent',
+      hasSubEventMenu: false,
+      actionIcon: 'support_agent',
+      actionLabel: 'View Event',
+      actionToneClass: 'popup-chat-context-btn-tone-main-event',
+      actionBadgeCount: 0,
+      menuTitle: chat.title,
+      eventRow: null,
+      subEventRow: null,
+      subEvent: null,
+      group: null,
+      assetAssignmentIds: {
+        Car: [],
+        Accommodation: [],
+        Supplies: []
+      },
+      assetCardsByType: {
+        Car: [],
+        Accommodation: [],
+        Supplies: []
+      },
+      resources: []
+    };
   }
 
   private openAssetExploreBorrowDialog(card: AppTypes.AssetCard, event?: Event): void {

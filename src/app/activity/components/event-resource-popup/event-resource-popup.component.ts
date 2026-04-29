@@ -180,6 +180,7 @@ export interface EventResourcePopupHost {
   assetExploreAvailabilityLabel(card: AppTypes.AssetCard): string;
   assetExploreCanBorrow(card: AppTypes.AssetCard): boolean;
   openAssetExploreBorrowDialog(card: AppTypes.AssetCard, event?: Event): void;
+  openAssetExploreServiceChat(card: AppTypes.AssetCard, event?: Event): void;
   closeAssetExploreBorrowDialog(event?: Event): void;
   setAssetExploreBorrowDateRange(start: Date | null, end: Date | null): void;
   setAssetExploreBorrowTime(edge: 'start' | 'end', value: string): void;
@@ -216,6 +217,7 @@ export interface EventResourcePopupHost {
   canEditRoute(card: AppTypes.SubEventResourceCard): boolean;
   routeMenuLabel(card: AppTypes.SubEventResourceCard): string;
   openRouteEditor(card: AppTypes.SubEventResourceCard, event: Event): void;
+  openResourceServiceChat(card: AppTypes.SubEventResourceCard, event: Event): void;
   delete(card: AppTypes.SubEventResourceCard, event: Event): void;
   closeCapacityEditor(event?: Event): void;
   canSubmitCapacityEditor(): boolean;
@@ -691,12 +693,19 @@ export class EventResourcePopupComponent implements DoCheck {
         disabled: !canBorrow,
         ariaLabel: canBorrow ? 'Borrow asset' : 'Asset unavailable for this time'
       },
-      menuActions: canBorrow ? [{
-        id: 'borrow',
-        label: 'Borrow',
-        icon: 'volunteer_activism',
-        tone: 'accent'
-      }] : [],
+      menuActions: [
+        ...(canBorrow ? [{
+          id: 'borrow',
+          label: 'Borrow',
+          icon: 'volunteer_activism',
+          tone: 'accent'
+        } satisfies InfoCardMenuAction] : []),
+        {
+          id: 'serviceChat',
+          label: 'Contact Owner',
+          icon: 'support_agent'
+        }
+      ],
       clickable: false
     };
   }
@@ -710,11 +719,15 @@ export class EventResourcePopupComponent implements DoCheck {
   }
 
   protected onAssetExploreInfoCardMenuAction(card: AppTypes.AssetCard, event: InfoCardMenuActionEvent): void {
-    if (event.actionId !== 'borrow') {
+    if (event.actionId === 'serviceChat') {
+      this.showAssetExploreBorrowBasket = false;
+      this.host.openAssetExploreServiceChat(card, new Event('click'));
       return;
     }
-    this.showAssetExploreBorrowBasket = false;
-    this.host.openAssetExploreBorrowDialog(card, new Event('click'));
+    if (event.actionId === 'borrow') {
+      this.showAssetExploreBorrowBasket = false;
+      this.host.openAssetExploreBorrowDialog(card, new Event('click'));
+    }
   }
 
   protected onAssetExploreDateRangeChange(
@@ -966,6 +979,10 @@ export class EventResourcePopupComponent implements DoCheck {
     }
     if (event.actionId === 'route') {
       this.host.openRouteEditor(card, new Event('click'));
+      return;
+    }
+    if (event.actionId === 'serviceChat') {
+      this.host.openResourceServiceChat(card, new Event('click'));
       return;
     }
     this.host.delete(card, new Event('click'));
@@ -1308,6 +1325,11 @@ export class EventResourcePopupComponent implements DoCheck {
         icon: 'route'
       });
     }
+    actions.push({
+      id: 'serviceChat',
+      label: 'Contact Organizer',
+      icon: 'support_agent'
+    });
     actions.push({
       id: 'delete',
       label: 'Delete',

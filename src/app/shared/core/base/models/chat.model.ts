@@ -47,5 +47,5 @@ export interface ChatPopupDayGroup {
   messages: ChatPopupMessage[];
 }
 
-export type ChatChannelType = 'general' | 'mainEvent' | 'optionalSubEvent' | 'groupSubEvent';
-export type ActivitiesChatContextFilter = 'all' | 'event' | 'subEvent' | 'group';
+export type ChatChannelType = 'general' | 'mainEvent' | 'optionalSubEvent' | 'groupSubEvent' | 'serviceEvent';
+export type ActivitiesChatContextFilter = 'all' | 'event' | 'subEvent' | 'group' | 'service';

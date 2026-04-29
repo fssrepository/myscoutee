@@ -117,6 +117,11 @@ export class EventExploreBuilder {
       icon: 'person_add',
       tone: 'accent'
     });
+    actions.push({
+      id: 'serviceChat',
+      label: 'Contact Organizer',
+      icon: 'support_agent'
+    });
     return actions;
   }
 

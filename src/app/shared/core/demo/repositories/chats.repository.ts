@@ -159,8 +159,55 @@ export class DemoChatsRepository {
       if (record) {
         return record;
       }
+      if (chat.channelType === 'serviceEvent') {
+        return this.createServiceChatRecord(ownerUserId, chat);
+      }
     }
     const matchId = table.ids.find(id => table.byId[id]?.id === sourceId);
-    return matchId ? table.byId[matchId] ?? null : null;
+    if (matchId) {
+      return table.byId[matchId] ?? null;
+    }
+    if (chat.channelType === 'serviceEvent') {
+      const fallbackOwnerUserId = (chat.memberIds ?? [])[0]?.trim() ?? '';
+      return fallbackOwnerUserId ? this.createServiceChatRecord(fallbackOwnerUserId, chat) : null;
+    }
+    return null;
+  }
+
+  private createServiceChatRecord(ownerUserId: string, chat: ChatMenuItem): DemoChatRecord | null {
+    const normalizedOwnerUserId = ownerUserId.trim();
+    const sourceId = `${chat.id ?? ''}`.trim();
+    if (!normalizedOwnerUserId || !sourceId) {
+      return null;
+    }
+    const recordKey = DemoChatsRepositoryBuilder.buildRecordKey(normalizedOwnerUserId, sourceId);
+    const existing = this.memoryDb.read()[CHATS_TABLE_NAME].byId[recordKey];
+    if (existing) {
+      return existing;
+    }
+    const record: DemoChatRecord = {
+      ...chat,
+      memberIds: [...(chat.memberIds ?? [])],
+      ownerUserId: normalizedOwnerUserId,
+      dateIso: chat.dateIso ?? new Date().toISOString(),
+      messages: []
+    };
+    this.memoryDb.write(currentState => {
+      const currentTable = currentState[CHATS_TABLE_NAME];
+      if (currentTable.byId[recordKey]) {
+        return currentState;
+      }
+      return {
+        ...currentState,
+        [CHATS_TABLE_NAME]: {
+          byId: {
+            ...currentTable.byId,
+            [recordKey]: record
+          },
+          ids: [...currentTable.ids, recordKey]
+        }
+      };
+    });
+    return record;
   }
 }

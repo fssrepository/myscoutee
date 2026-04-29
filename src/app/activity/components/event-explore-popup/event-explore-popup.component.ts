@@ -48,6 +48,7 @@ import { EventCheckoutDialogService } from '../../../shared/ui/services/event-ch
 import { NavigatorService } from '../../../navigator';
 import type { DemoEventRecord } from '../../../shared/core/demo/models/events.model';
 import { resolveCurrentRouteDelayMs } from '../../../shared/core/base/services/route-delay.service';
+import type { ChatMenuItem } from '../../../shared/core/base/interfaces/activity-feed.interface';
 
 type CheckoutDraftEntry = {
   draft: EventCheckoutDraft;
@@ -590,6 +591,10 @@ export class EventExplorePopupComponent {
     }
     if (action.actionId === 'join') {
       this.runEventExploreJoinAction(record);
+      return;
+    }
+    if (action.actionId === 'serviceChat') {
+      this.runEventExploreServiceChatAction(record);
     }
   }
 
@@ -761,6 +766,59 @@ export class EventExplorePopupComponent {
       topicToneGroups: this.topicFilterGroups,
       state: this.isEventExploreRecordLeaving(record) ? 'leaving' : 'default'
     });
+  }
+
+  private runEventExploreServiceChatAction(record: DemoEventRecord): void {
+    const chat = this.buildEventExploreServiceChat(record);
+    if (!chat) {
+      return;
+    }
+    this.activitiesContext.openEventChat(chat, {
+      channelType: 'serviceEvent',
+      hasSubEventMenu: false,
+      actionIcon: 'support_agent',
+      actionLabel: 'View Event',
+      actionToneClass: 'popup-chat-context-btn-tone-main-event',
+      actionBadgeCount: 0,
+      menuTitle: chat.title,
+      eventRow: EventExploreBuilder.buildActivityRow(record),
+      subEventRow: null,
+      subEvent: null,
+      group: null,
+      assetAssignmentIds: {
+        Car: [],
+        Accommodation: [],
+        Supplies: []
+      },
+      assetCardsByType: {
+        Car: [],
+        Accommodation: [],
+        Supplies: []
+      },
+      resources: []
+    });
+  }
+
+  private buildEventExploreServiceChat(record: DemoEventRecord): (ChatMenuItem & { ownerUserId?: string }) | null {
+    const activeUserId = this.activeUserId.trim();
+    if (!activeUserId) {
+      return null;
+    }
+    const organizerUserId = `${record.creatorUserId ?? ''}`.trim();
+    const memberIds = [activeUserId, organizerUserId].filter(Boolean);
+    return {
+      id: `c-service-event-${record.id}-${activeUserId}`,
+      avatar: AppUtils.initialsFromText(record.creatorName?.trim() || record.title),
+      title: `Contact Organizer · ${record.title}`,
+      lastMessage: `Service chat with the organizer for ${record.title}.`,
+      lastSenderId: organizerUserId || activeUserId,
+      memberIds: [...new Set(memberIds)],
+      unread: 0,
+      dateIso: new Date().toISOString(),
+      channelType: 'serviceEvent',
+      eventId: record.id,
+      ownerUserId: activeUserId
+    };
   }
 
   protected closeEventExploreSlotPicker(): void {

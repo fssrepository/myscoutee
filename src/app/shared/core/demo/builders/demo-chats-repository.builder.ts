@@ -107,6 +107,7 @@ export class DemoChatsRepositoryBuilder {
     }
     const items: ChatMenuItem[] = [];
     for (const record of records) {
+      items.push(this.buildServiceContextChat(normalizedOwnerUserId, record));
       items.push(this.buildMainContextChat(normalizedOwnerUserId, record));
       const subEvents = this.sortSubEventsByStartAsc(record.subEvents ?? []);
       for (const [index, subEvent] of subEvents.entries()) {
@@ -186,6 +187,30 @@ export class DemoChatsRepositoryBuilder {
     }, ownerUserId);
   }
 
+  private static buildServiceContextChat(ownerUserId: string, record: DemoEventRecord): ChatMenuItem {
+    const eventTitle = record.title.trim() || 'Event';
+    const organizerUserId = `${record.creatorUserId ?? ''}`.trim();
+    const memberIds = this.uniqueUserIds([
+      ownerUserId,
+      organizerUserId,
+      ...(record.type === 'hosting' ? (record.acceptedMemberUserIds ?? []).slice(0, 6) : [])
+    ]);
+    return this.createContextChatItem({
+      id: `c-service-event-${record.id}-${ownerUserId}`,
+      title: `${record.type === 'hosting' ? 'Service Chat' : 'Contact Organizer'} · ${eventTitle}`,
+      lastMessage: record.type === 'hosting'
+        ? 'Service requests and participant questions arrive here.'
+        : `Service chat with the organizer for ${eventTitle}.`,
+      eventId: record.id,
+      subEventId: '',
+      groupId: '',
+      channelType: 'serviceEvent',
+      memberIds: memberIds.length > 0 ? memberIds : [ownerUserId],
+      dateIso: record.startAtIso,
+      unread: 0
+    }, ownerUserId);
+  }
+
   private static buildOptionalContextChat(
     ownerUserId: string,
     record: DemoEventRecord,
@@ -261,7 +286,7 @@ export class DemoChatsRepositoryBuilder {
     eventId: string;
     subEventId: string;
     groupId: string;
-    channelType: 'mainEvent' | 'optionalSubEvent' | 'groupSubEvent';
+    channelType: 'mainEvent' | 'optionalSubEvent' | 'groupSubEvent' | 'serviceEvent';
     memberIds: string[];
     dateIso: string;
     unread: number;
