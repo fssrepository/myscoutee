@@ -190,7 +190,7 @@ export class DemoChatsRepository {
       memberIds: [...(chat.memberIds ?? [])],
       ownerUserId: normalizedOwnerUserId,
       dateIso: chat.dateIso ?? new Date().toISOString(),
-      messages: []
+      messages: this.buildInitialServiceMessages(chat)
     };
     this.memoryDb.write(currentState => {
       const currentTable = currentState[CHATS_TABLE_NAME];
@@ -209,5 +209,27 @@ export class DemoChatsRepository {
       };
     });
     return record;
+  }
+
+  private buildInitialServiceMessages(chat: ChatMenuItem): AppTypes.ChatPopupMessage[] {
+    const sourceId = `${chat.id ?? ''}`.trim();
+    if (!sourceId.startsWith('c-support-blocked-')) {
+      return [];
+    }
+    const sentAtIso = chat.dateIso ?? new Date().toISOString();
+    return [{
+      id: `m-${sourceId}-admin`,
+      sender: 'MyScoutee Admin',
+      senderAvatar: {
+        id: 'myscoutee-admin',
+        initials: 'MS',
+        gender: 'woman'
+      },
+      text: 'Your account is blocked. You can reply here to contact MyScoutee support and ask for a review.',
+      time: 'Now',
+      sentAtIso,
+      mine: false,
+      readBy: []
+    }];
   }
 }

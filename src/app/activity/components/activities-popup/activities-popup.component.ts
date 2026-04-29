@@ -309,6 +309,10 @@ export class ActivitiesPopupComponent implements OnDestroy {
     = [...APP_STATIC_DATA.activitiesViewOptions];
   protected activitiesRateSocialBadgeEnabled = false;
 
+  protected get isBlockedUser(): boolean {
+    return this.appCtx.activeUserProfile()?.profileStatus === 'blocked';
+  }
+
   // ── Filter / view state – backed by EventEditorPopupStateService signals ───────────
   // Local copies are kept in sync via an effect() so that OnPush CD fires
   // correctly without needing toSignal() everywhere in the template.

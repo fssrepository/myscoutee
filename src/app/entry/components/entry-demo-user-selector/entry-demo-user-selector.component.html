@@ -80,6 +80,7 @@
                 <button
                   type="button"
                   class="demo-user-item"
+                  [ngClass]="userStatusClass(user)"
                   [disabled]="submitting"
                   matRipple
                   [matRippleColor]="'rgba(72, 111, 196, 0.16)'"
@@ -88,6 +89,9 @@
                   <span class="user-avatar" [class]="'user-color-' + user.gender">{{ user.initials }}</span>
                   <span class="demo-user-name">{{ user.name }}</span>
                   <span class="demo-user-meta">{{ user.gender }} · {{ user.city }}</span>
+                  @if (userStatusLabel(user)) {
+                    <span class="demo-user-status-pill">{{ userStatusLabel(user) }}</span>
+                  }
                 </button>
               }
             </div>

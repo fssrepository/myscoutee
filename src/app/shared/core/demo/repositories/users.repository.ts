@@ -147,7 +147,6 @@ export class DemoUsersRepository {
 
   queryAvailableDemoUsers(): DemoUserListItemDto[] {
     return this.queryAllUsers()
-      .filter(user => user.profileStatus !== 'deleted')
       .map(user => DemoUsersRepositoryBuilder.toDemoUserListItem(user));
   }
 
@@ -198,6 +197,58 @@ export class DemoUsersRepository {
       };
     });
     return DemoUsersRepositoryBuilder.cloneUser(normalizedUser);
+  }
+
+  purgeUser(userId: string): void {
+    this.init();
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return;
+    }
+    this.memoryDb.write(state => {
+      const usersTable = state[USERS_TABLE_NAME];
+      const { [normalizedUserId]: _removedUser, ...nextUsersById } = usersTable.byId;
+      const chatsTable = state[CHATS_TABLE_NAME];
+      const nextChatsById = Object.fromEntries(chatsTable.ids.map(id => {
+        const record = chatsTable.byId[id];
+        if (!record) {
+          return [id, record];
+        }
+        return [id, {
+          ...record,
+          memberIds: (record.memberIds ?? []).filter(memberId => memberId !== normalizedUserId),
+          messages: (record.messages ?? []).map(message => {
+            if (message.senderAvatar?.id !== normalizedUserId) {
+              return message;
+            }
+            return {
+              ...message,
+              sender: 'Deleted user',
+              senderAvatar: {
+                ...message.senderAvatar,
+                initials: this.deletedUserInitials(normalizedUserId)
+              }
+            };
+          })
+        }];
+      })) as DemoMemorySchema[typeof CHATS_TABLE_NAME]['byId'];
+      return {
+        ...state,
+        [USERS_TABLE_NAME]: {
+          byId: nextUsersById,
+          ids: usersTable.ids.filter(id => id !== normalizedUserId)
+        },
+        [CHATS_TABLE_NAME]: {
+          ...chatsTable,
+          byId: nextChatsById
+        }
+      };
+    });
+  }
+
+  private deletedUserInitials(userId: string): string {
+    const hash = [...userId].reduce((total, char) => total + char.charCodeAt(0), 0);
+    return `D${(hash % 9) + 1}`;
   }
 
   queryUserFilterPreferences(userId: string): UserGameFilterPreferencesDto | null {

@@ -1,4 +1,4 @@
-export type ProfileStatus = 'public' | 'friends only' | 'host only' | 'inactive' | 'deleted';
+export type ProfileStatus = 'public' | 'friends only' | 'host only' | 'inactive' | 'blocked' | 'deleted';
 export type DetailPrivacy = 'Public' | 'Friends' | 'Hosts' | 'Private';
 
 export interface ProfileDetailFormRow {

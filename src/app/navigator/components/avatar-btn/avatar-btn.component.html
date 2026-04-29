@@ -38,7 +38,7 @@
                   cy="29"
                   r="26"
                   [attr.stroke-dasharray]="ringCircumference"
-                  [attr.stroke-dashoffset]="hasLoadError() ? 0 : ringCircumference"
+                  [attr.stroke-dashoffset]="hasLoadError() ? 0 : ringDashOffset()"
                 ></circle>
               </svg>
             </span>

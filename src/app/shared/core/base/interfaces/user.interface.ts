@@ -64,6 +64,8 @@ export interface DemoUserListItemDto {
   city: string;
   initials: string;
   gender: 'woman' | 'man';
+  profileStatus?: UserDto['profileStatus'];
+  deletedAtIso?: string | null;
 }
 
 export interface UserDto {
@@ -89,7 +91,8 @@ export interface UserDto {
   partitionKey?: string;
   images?: string[];
   impressions?: UserImpressionsDto;
-  profileStatus: 'public' | 'friends only' | 'host only' | 'inactive' | 'deleted';
+  profileStatus: 'public' | 'friends only' | 'host only' | 'inactive' | 'blocked' | 'deleted';
+  deletedAtIso?: string | null;
   activities: {
     game: number;
     chat: number;

@@ -330,6 +330,10 @@
     linear-gradient(180deg, #f9fbff 0%, #eef4ff 58%, #eaf1ff 100%);
 }
 
+.activities-popup.activities-popup-blocked-user .experience-toolbar {
+  display: none;
+}
+
 // ─── Activities Cards (Event / Chat / Rate) ──────────────────────────────
 .asset-item-card {
   cursor: pointer;

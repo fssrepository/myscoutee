@@ -41,6 +41,7 @@ export interface NavigatorBindings {
 export class NavigatorService {
   private static readonly USER_REALTIME_LONG_POLL_INTERVAL_MS = 30000;
   private static readonly DEMO_USER_REALTIME_LONG_POLL_INTERVAL_MS = 10000;
+  private static readonly ACCOUNT_REACTIVATION_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 
   private readonly usersService = inject(UsersService);
   private readonly sessionService = inject(SessionService);
@@ -54,6 +55,7 @@ export class NavigatorService {
   private readonly settingsMenuOpenRef = signal(false);
   private readonly settingsPopupRef = signal<NavigatorSettingsPopup | null>(null);
   private readonly reportUserContextRef = signal<NavigatorReportUserContext | null>(null);
+  private readonly deletedAccountReactivationPendingRef = signal(false);
   private readonly profileEditorOpenRef = signal(false);
   private readonly impressionsPopupOpenRef = signal(false);
   private readonly impressionsPopupUserIdRef = signal('');
@@ -61,6 +63,7 @@ export class NavigatorService {
   private userRealtimeLongPollTimer: ReturnType<typeof setInterval> | null = null;
   private userRealtimeLongPollInFlight = false;
   private userRealtimeLongPollActiveIntervalMs = NavigatorService.USER_REALTIME_LONG_POLL_INTERVAL_MS;
+  private reactivationPromptUserId = '';
   private readonly userRealtimeLongPollCursorByUserId: Record<string, string> = {};
   private readonly userSeenImpressionsCursorByUserId: Record<string, string> = {};
   private readonly userIgnoreNextImpressionsSnapshotByUserId: Record<string, boolean> = {};
@@ -70,6 +73,7 @@ export class NavigatorService {
   readonly profileEditorOpen = this.profileEditorOpenRef.asReadonly();
   readonly settingsPopup = this.settingsPopupRef.asReadonly();
   readonly reportUserContext = this.reportUserContextRef.asReadonly();
+  readonly deletedAccountReactivationPending = this.deletedAccountReactivationPendingRef.asReadonly();
   readonly impressionsPopupOpen = this.impressionsPopupOpenRef.asReadonly();
   readonly impressionsPopupUserId = this.impressionsPopupUserIdRef.asReadonly();
   readonly menuUiState = computed<NavigatorMenuUiState>(() => ({
@@ -153,9 +157,71 @@ export class NavigatorService {
     if (!loadedUser || requestVersion !== this.hydrationRequestVersion) {
       return null;
     }
+    if (this.shouldPromptDeletedAccountReactivation(loadedUser)) {
+      this.deletedAccountReactivationPendingRef.set(true);
+      this.openDeletedAccountReactivationPrompt(loadedUser, requestVersion);
+      return loadedUser;
+    }
 
     this.syncHydratedUser(loadedUser);
     return loadedUser;
+  }
+
+  private shouldPromptDeletedAccountReactivation(user: UserDto): boolean {
+    if (user.profileStatus !== 'deleted') {
+      return false;
+    }
+    const deletedAtMs = Date.parse(`${user.deletedAtIso ?? ''}`.trim());
+    if (!Number.isFinite(deletedAtMs)) {
+      return true;
+    }
+    return Date.now() - deletedAtMs <= NavigatorService.ACCOUNT_REACTIVATION_WINDOW_MS;
+  }
+
+  private openDeletedAccountReactivationPrompt(user: UserDto, requestVersion: number): void {
+    const userId = user.id.trim();
+    if (!userId || this.reactivationPromptUserId === userId) {
+      return;
+    }
+    this.reactivationPromptUserId = userId;
+    this.confirmationDialogService.open({
+      title: 'Reactivate account?',
+      message: 'This account is scheduled for deletion. You can reactivate it within 30 days and continue using MyScoutee normally.',
+      cancelLabel: 'Cancel',
+      confirmLabel: 'Reactivate',
+      busyConfirmLabel: 'Reactivating...',
+      confirmTone: 'accent',
+      allowBackdropClose: false,
+      allowEscapeClose: false,
+      failureMessage: 'Unable to reactivate account.',
+      onCancel: async () => {
+        this.reactivationPromptUserId = '';
+        this.deletedAccountReactivationPendingRef.set(false);
+        this.clearHydratedUser();
+        await this.sessionService.logout().finally(() => this.router.navigate(['/entry']));
+      },
+      onConfirm: async () => {
+        const reactivatedUser: UserDto = {
+          ...user,
+          profileStatus: 'public',
+          deletedAtIso: null
+        };
+        const saved = await this.usersService.saveUserProfile(reactivatedUser, {
+          minimumDurationMs: this.usersService.demoModeEnabled ? 1500 : 0,
+          returnFallbackOnFailure: false
+        });
+        if (!saved) {
+          throw new Error('Unable to reactivate account.');
+        }
+        this.reactivationPromptUserId = '';
+        setTimeout(() => {
+          if (requestVersion === this.hydrationRequestVersion) {
+            this.syncHydratedUser(saved);
+          }
+          this.deletedAccountReactivationPendingRef.set(false);
+        }, 0);
+      }
+    });
   }
 
   syncHydratedUser(user: UserDto): void {
@@ -166,6 +232,7 @@ export class NavigatorService {
   clearHydrationState(): void {
     this.hydrationRequestVersion += 1;
     this.hydrationRequestKeyRef.set('');
+    this.deletedAccountReactivationPendingRef.set(false);
   }
 
   clearHydratedUser(): void {

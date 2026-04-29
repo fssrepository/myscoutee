@@ -23,6 +23,8 @@ import { CounterBadgePipe } from '../../../shared/ui';
 import { NavigatorService } from '../../navigator.service';
 import { NavigatorSettingsMenuComponent } from '../navigator-settings-menu/navigator-settings-menu.component';
 import { NavigatorContactsService } from '../../navigator-contacts.service';
+import { ActivitiesPopupStateService } from '../../../activity/services/activities-popup-state.service';
+import type { ChatMenuItem } from '../../../shared/core/base/interfaces/activity-feed.interface';
 
 interface NavigatorMenuUser extends Omit<UserDto, 'activities'> {
   activities: ActivityCounters;
@@ -46,6 +48,7 @@ export class NavigatorMenuComponent {
   private readonly popupCtx = inject(AppPopupContext);
   private readonly navigatorService = inject(NavigatorService);
   private readonly navigatorContactsService = inject(NavigatorContactsService);
+  private readonly activitiesContext = inject(ActivitiesPopupStateService);
   private readonly profileSaveLoadState = this.appCtx.selectLoadingState(USER_PROFILE_SAVE_CONTEXT_KEY);
   protected readonly activeUser = this.appCtx.activeUserProfile;
   protected readonly isOnline = this.appCtx.isOnline;
@@ -157,9 +160,19 @@ export class NavigatorMenuComponent {
         return 'status-friends';
       case 'host only':
         return 'status-host';
+      case 'blocked':
+        return 'status-blocked';
       default:
         return 'status-inactive';
     }
+  }
+
+  protected isBlockedUser(user: NavigatorMenuUser | UserDto | null = this.menuUser()): boolean {
+    return user?.profileStatus === 'blocked';
+  }
+
+  protected isPrimaryMenuDisabled(user: NavigatorMenuUser): boolean {
+    return !this.isOnline() || this.isBlockedUser(user);
   }
 
   protected completionBadgeStyle(percent: number): Record<string, string> | null {
@@ -198,7 +211,7 @@ export class NavigatorMenuComponent {
 
   protected openProfileEditor(event?: Event): void {
     event?.stopPropagation();
-    if (!this.isOnline()) {
+    if (!this.isOnline() || this.isBlockedUser()) {
       return;
     }
     this.navigatorService.openProfileEditor();
@@ -210,7 +223,7 @@ export class NavigatorMenuComponent {
 
   protected openImpressions(event?: Event): void {
     event?.stopPropagation();
-    if (!this.isOnline()) {
+    if (!this.isOnline() || this.isBlockedUser()) {
       return;
     }
     this.navigatorService.openImpressionsPopup();
@@ -223,6 +236,10 @@ export class NavigatorMenuComponent {
 
   protected openChatShortcut(event?: Event): void {
     event?.stopPropagation();
+    if (this.isBlockedUser()) {
+      this.openBlockedUserSupportChat();
+      return;
+    }
     this.openActivitiesShortcut('chats');
   }
 
@@ -243,7 +260,7 @@ export class NavigatorMenuComponent {
 
   protected openAssetCarPopup(event?: Event): void {
     event?.stopPropagation();
-    if (!this.isOnline()) {
+    if (!this.isOnline() || this.isBlockedUser()) {
       return;
     }
     this.popupCtx.openNavigatorAssetRequest('Car');
@@ -251,7 +268,7 @@ export class NavigatorMenuComponent {
 
   protected openAssetAccommodationPopup(event?: Event): void {
     event?.stopPropagation();
-    if (!this.isOnline()) {
+    if (!this.isOnline() || this.isBlockedUser()) {
       return;
     }
     this.popupCtx.openNavigatorAssetRequest('Accommodation');
@@ -259,7 +276,7 @@ export class NavigatorMenuComponent {
 
   protected openAssetSuppliesPopup(event?: Event): void {
     event?.stopPropagation();
-    if (!this.isOnline()) {
+    if (!this.isOnline() || this.isBlockedUser()) {
       return;
     }
     this.popupCtx.openNavigatorAssetRequest('Supplies');
@@ -277,7 +294,7 @@ export class NavigatorMenuComponent {
 
   protected openEventFeedbackPopup(event?: Event): void {
     event?.stopPropagation();
-    if (!this.isOnline()) {
+    if (!this.isOnline() || this.isBlockedUser()) {
       return;
     }
     this.popupCtx.openNavigatorEventFeedbackRequest();
@@ -291,10 +308,49 @@ export class NavigatorMenuComponent {
     primaryFilter: 'rates' | 'chats' | 'events',
     eventScope?: 'all' | 'active-events' | 'pending' | 'invitations' | 'my-events' | 'drafts' | 'trash'
   ): void {
-    if (!this.isOnline()) {
+    if (!this.isOnline() || (primaryFilter !== 'chats' && this.isBlockedUser())) {
       return;
     }
     this.popupCtx.openNavigatorActivitiesRequest(primaryFilter, eventScope);
+  }
+
+  private openBlockedUserSupportChat(): void {
+    const user = this.menuUser();
+    if (!user || !this.isOnline()) {
+      return;
+    }
+    const activeUserId = user.id.trim();
+    const adminUserId = 'myscoutee-admin';
+    const chat: ChatMenuItem & { ownerUserId?: string } = {
+      id: `c-support-blocked-${activeUserId}`,
+      avatar: 'MS',
+      title: 'MyScoutee Support',
+      lastMessage: 'Your account is blocked. You can message MyScoutee support here.',
+      lastSenderId: adminUserId,
+      memberIds: [activeUserId, adminUserId],
+      unread: 1,
+      dateIso: new Date().toISOString(),
+      channelType: 'serviceEvent',
+      serviceContext: 'notification',
+      ownerUserId: activeUserId
+    };
+    this.activitiesContext.openActivities('chats');
+    this.activitiesContext.openEventChat(chat, {
+      channelType: 'serviceEvent',
+      hasSubEventMenu: false,
+      actionIcon: 'shield',
+      actionLabel: 'Support',
+      actionToneClass: 'popup-chat-context-btn-tone-main-event',
+      actionBadgeCount: 0,
+      menuTitle: chat.title,
+      eventRow: null,
+      subEventRow: null,
+      subEvent: null,
+      group: null,
+      assetAssignmentIds: { Car: [], Accommodation: [], Supplies: [] },
+      assetCardsByType: { Car: [], Accommodation: [], Supplies: [] },
+      resources: []
+    });
   }
 
   private resolveCompletionPercent(user: UserDto | null): number {

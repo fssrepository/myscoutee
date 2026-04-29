@@ -6,6 +6,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
 import { from } from 'rxjs';
 import { ActivitiesPopupStateService } from '../../../activity/services/activities-popup-state.service';
+import { NavigatorService } from '../../../navigator';
 import {
   CounterBadgePipe,
   PairCardComponent,
@@ -248,6 +249,7 @@ export class HomeComponent implements OnDestroy {
   constructor(
     private readonly cdr: ChangeDetectorRef,
     private readonly activitiesContext: ActivitiesPopupStateService,
+    private readonly navigatorService: NavigatorService,
     private readonly appCtx: AppContext,
     private readonly gameService: GameService,
     private readonly usersService: UsersService
@@ -344,8 +346,29 @@ export class HomeComponent implements OnDestroy {
     return this.mergeActiveUserFromContext(localUser, contextUser);
   }
 
+  protected get isAccountReactivationPending(): boolean {
+    return this.navigatorService.deletedAccountReactivationPending();
+  }
+
+  protected get homeHeaderControlsReady(): boolean {
+    if (this.isAccountReactivationPending || this.isBlockedUser || !this.homeSmartListQueryReady) {
+      return false;
+    }
+    if (!this.hasCandidatesForCurrentMode) {
+      return true;
+    }
+    if (this.isPairMode) {
+      return !this.isPairModeCandidateImageLoading('woman') && !this.isPairModeCandidateImageLoading('man');
+    }
+    return !this.isCandidateImageLoading;
+  }
+
   protected get canOpenHistory(): boolean {
     return this.appCtx.getLoadingState(USER_BY_ID_LOAD_CONTEXT_KEY).status === 'success';
+  }
+
+  protected get isBlockedUser(): boolean {
+    return this.activeUser.profileStatus === 'blocked';
   }
 
   protected get historyBadgeCount(): number {
@@ -363,6 +386,8 @@ export class HomeComponent implements OnDestroy {
         return 'game-page-status-host';
       case 'inactive':
         return 'game-page-status-inactive';
+      case 'blocked':
+        return 'game-page-status-blocked';
       case 'public':
       default:
         return 'game-page-status-public';
@@ -701,7 +726,7 @@ export class HomeComponent implements OnDestroy {
   }
 
   protected openHistory(): void {
-    if (!this.canOpenHistory) {
+    if (!this.canOpenHistory || this.isBlockedUser) {
       return;
     }
     const initialRateFilter = this.isPairMode ? 'pair-given' : 'individual-given';
@@ -719,6 +744,9 @@ export class HomeComponent implements OnDestroy {
   }
 
   protected openFilter(): void {
+    if (this.isBlockedUser) {
+      return;
+    }
     this.gameFilterPopupContext = this.createGameFilterPopupContext();
     this.localPopup = 'filter';
   }
@@ -1360,6 +1388,13 @@ export class HomeComponent implements OnDestroy {
   private async loadHomeSmartListPage(
     query: ListQuery<HomeSmartListFilters>
   ): Promise<PageResult<HomeSmartListRow>> {
+    if (this.isBlockedUser) {
+      return {
+        items: [],
+        total: 0,
+        nextCursor: null
+      };
+    }
     if (!query.filters?.activeUserId?.trim()) {
       return {
         items: [],

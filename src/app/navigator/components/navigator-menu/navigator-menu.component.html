@@ -96,7 +96,7 @@
             </span>
           </div>
         </div>
-        <button #profileEditorButton type="button" class="header-open-cue" [disabled]="!isOnline()" aria-label="Open profile editor" (click)="openProfileEditor($event)">
+        <button #profileEditorButton type="button" class="header-open-cue" [disabled]="!isOnline() || isBlockedUser(user)" aria-label="Open profile editor" (click)="openProfileEditor($event)">
           <span class="navigator-action-ripple" matRipple [matRippleTrigger]="profileEditorButton" aria-hidden="true"></span>
           <mat-icon>edit</mat-icon>
         </button>
@@ -119,7 +119,7 @@
             #impressionsButton
             class="impression-dual-launcher"
             type="button"
-            [disabled]="!isOnline()"
+            [disabled]="isPrimaryMenuDisabled(user)"
             (click)="openImpressions($event)"
             aria-label="Open impressions"
             title="Impressions"
@@ -155,7 +155,7 @@
             #feedbackEventButton
             class="feedback-shortcut-btn feedback-shortcut-event feedback-shortcut-compact"
             type="button"
-            [disabled]="!isOnline()"
+            [disabled]="isPrimaryMenuDisabled(user)"
             (click)="openEventFeedbackPopup($event)"
             aria-label="Open feedback"
             title="Feedback"
@@ -176,7 +176,7 @@
           <span class="section-line"></span>
         </div>
         <div class="menu-shortcuts">
-          <button #ratesButton class="menu-shortcut-btn menu-shortcut-rates" type="button" [disabled]="!isOnline()" (click)="$event.stopPropagation(); openRatesShortcut()" aria-label="Open rates" title="Rates">
+          <button #ratesButton class="menu-shortcut-btn menu-shortcut-rates" type="button" [disabled]="isPrimaryMenuDisabled(user)" (click)="$event.stopPropagation(); openRatesShortcut()" aria-label="Open rates" title="Rates">
             <span class="navigator-action-ripple" matRipple [matRippleTrigger]="ratesButton" aria-hidden="true"></span>
             <mat-icon>star</mat-icon>
             <span class="menu-shortcut-label">Rates</span>
@@ -192,7 +192,7 @@
               <span class="card-badge menu-shortcut-badge">{{ user.activities.chat | counterBadge }}</span>
             }
           </button>
-          <button #invitationsButton class="menu-shortcut-btn menu-shortcut-invitations" type="button" [disabled]="!isOnline()" (click)="$event.stopPropagation(); openInvitationShortcut()" aria-label="Open invitations" title="Invitations">
+          <button #invitationsButton class="menu-shortcut-btn menu-shortcut-invitations" type="button" [disabled]="isPrimaryMenuDisabled(user)" (click)="$event.stopPropagation(); openInvitationShortcut()" aria-label="Open invitations" title="Invitations">
             <span class="navigator-action-ripple" matRipple [matRippleTrigger]="invitationsButton" aria-hidden="true"></span>
             <mat-icon>mail</mat-icon>
             <span class="menu-shortcut-label">Invitations</span>
@@ -200,7 +200,7 @@
               <span class="card-badge menu-shortcut-badge">{{ user.activities.invitations | counterBadge }}</span>
             }
           </button>
-          <button #eventsButton class="menu-shortcut-btn menu-shortcut-events" type="button" [disabled]="!isOnline()" (click)="$event.stopPropagation(); openEventShortcut()" aria-label="Open events" title="Events">
+          <button #eventsButton class="menu-shortcut-btn menu-shortcut-events" type="button" [disabled]="isPrimaryMenuDisabled(user)" (click)="$event.stopPropagation(); openEventShortcut()" aria-label="Open events" title="Events">
             <span class="navigator-action-ripple" matRipple [matRippleTrigger]="eventsButton" aria-hidden="true"></span>
             <mat-icon>event</mat-icon>
             <span class="menu-shortcut-label">Events</span>
@@ -208,7 +208,7 @@
               <span class="card-badge menu-shortcut-badge">{{ user.activities.events | counterBadge }}</span>
             }
           </button>
-          <button #hostingButton class="menu-shortcut-btn menu-shortcut-hosting" type="button" [disabled]="!isOnline()" (click)="$event.stopPropagation(); openHostingShortcut()" aria-label="Open my events" title="My Events">
+          <button #hostingButton class="menu-shortcut-btn menu-shortcut-hosting" type="button" [disabled]="isPrimaryMenuDisabled(user)" (click)="$event.stopPropagation(); openHostingShortcut()" aria-label="Open my events" title="My Events">
             <span class="navigator-action-ripple" matRipple [matRippleTrigger]="hostingButton" aria-hidden="true"></span>
             <mat-icon>stadium</mat-icon>
             <span class="menu-shortcut-label">My Events</span>
@@ -225,22 +225,22 @@
           <span class="section-line"></span>
         </div>
         <div class="assets-shortcuts">
-          <button #assetCarButton class="asset-shortcut-btn asset-shortcut-car" type="button" [disabled]="!isOnline()" (click)="openAssetCarPopup($event)" aria-label="Car">
+          <button #assetCarButton class="asset-shortcut-btn asset-shortcut-car" type="button" [disabled]="isPrimaryMenuDisabled(user)" (click)="openAssetCarPopup($event)" aria-label="Car">
             <span class="navigator-action-ripple" matRipple [matRippleTrigger]="assetCarButton" aria-hidden="true"></span>
             <mat-icon>directions_car</mat-icon>
             <span class="asset-shortcut-label">Car</span>
           </button>
-          <button #assetAccommodationButton class="asset-shortcut-btn asset-shortcut-accommodation" type="button" [disabled]="!isOnline()" (click)="openAssetAccommodationPopup($event)" aria-label="Property">
+          <button #assetAccommodationButton class="asset-shortcut-btn asset-shortcut-accommodation" type="button" [disabled]="isPrimaryMenuDisabled(user)" (click)="openAssetAccommodationPopup($event)" aria-label="Property">
             <span class="navigator-action-ripple" matRipple [matRippleTrigger]="assetAccommodationButton" aria-hidden="true"></span>
             <mat-icon>apartment</mat-icon>
             <span class="asset-shortcut-label">Property</span>
           </button>
-          <button #assetSuppliesButton class="asset-shortcut-btn asset-shortcut-supplies" type="button" [disabled]="!isOnline()" (click)="openAssetSuppliesPopup($event)" aria-label="Supplies">
+          <button #assetSuppliesButton class="asset-shortcut-btn asset-shortcut-supplies" type="button" [disabled]="isPrimaryMenuDisabled(user)" (click)="openAssetSuppliesPopup($event)" aria-label="Supplies">
             <span class="navigator-action-ripple" matRipple [matRippleTrigger]="assetSuppliesButton" aria-hidden="true"></span>
             <mat-icon>inventory_2</mat-icon>
             <span class="asset-shortcut-label">Supplies</span>
           </button>
-          <button #assetTicketButton class="asset-shortcut-btn asset-shortcut-ticket" type="button" (click)="openAssetTicketsPopup($event)" aria-label="Ticket">
+          <button #assetTicketButton class="asset-shortcut-btn asset-shortcut-ticket" type="button" [disabled]="isPrimaryMenuDisabled(user)" (click)="openAssetTicketsPopup($event)" aria-label="Ticket">
             <span class="navigator-action-ripple" matRipple [matRippleTrigger]="assetTicketButton" aria-hidden="true"></span>
             <mat-icon>qr_code_2</mat-icon>
             <span class="asset-shortcut-label">Ticket</span>
@@ -248,7 +248,7 @@
               <span class="card-badge menu-shortcut-badge">{{ user.activities.tickets | counterBadge }}</span>
             }
           </button>
-          <button #contactsButton class="asset-shortcut-btn asset-shortcut-contact" type="button" (click)="openContactsPopup($event)" aria-label="Contacts">
+          <button #contactsButton class="asset-shortcut-btn asset-shortcut-contact" type="button" [disabled]="isPrimaryMenuDisabled(user)" (click)="openContactsPopup($event)" aria-label="Contacts">
             <span class="navigator-action-ripple" matRipple [matRippleTrigger]="contactsButton" aria-hidden="true"></span>
             <mat-icon>contacts</mat-icon>
             <span class="asset-shortcut-label">Contacts</span>

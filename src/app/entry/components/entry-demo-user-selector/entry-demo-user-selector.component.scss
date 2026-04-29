@@ -366,6 +366,16 @@
   cursor: default;
 }
 
+.demo-user-item.demo-user-item-blocked {
+  border-color: rgba(181, 59, 72, 0.35);
+  background: linear-gradient(180deg, #fff6f6 0%, #fde9e9 100%);
+}
+
+.demo-user-item.demo-user-item-deleted {
+  border-color: rgba(97, 105, 118, 0.34);
+  background: linear-gradient(180deg, #f7f8fa 0%, #e9edf2 100%);
+}
+
 .demo-user-item .user-avatar,
 .demo-user-item .demo-user-name,
 .demo-user-item .demo-user-meta {
@@ -412,6 +422,29 @@
 .demo-user-meta {
   font-size: 0.74rem;
   color: var(--entry-text-muted, rgba(34, 50, 74, 0.72));
+}
+
+.demo-user-status-pill {
+  position: absolute;
+  top: 0.48rem;
+  right: 0.5rem;
+  z-index: 1;
+  padding: 0.16rem 0.44rem;
+  border-radius: 999px;
+  font-size: 0.66rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0;
+}
+
+.demo-user-item-blocked .demo-user-status-pill {
+  background: #b53b48;
+  color: #fff;
+}
+
+.demo-user-item-deleted .demo-user-status-pill {
+  background: #657080;
+  color: #fff;
 }
 
 @media (max-width: 1200px) {

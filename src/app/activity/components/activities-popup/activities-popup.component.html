@@ -71,7 +71,7 @@
         </button>
       </div>
       <div class="popup-body popup-body-activities">
-        <div class="activities-popup" [class.activities-popup-rates-fullscreen]="activitiesSmartListPresentation() === 'fullscreen'" (click)="onActivitiesPopupSurfaceClick($event)">
+        <div class="activities-popup" [class.activities-popup-rates-fullscreen]="activitiesSmartListPresentation() === 'fullscreen'" [class.activities-popup-blocked-user]="isBlockedUser" (click)="onActivitiesPopupSurfaceClick($event)">
           <!-- ───── Toolbar ───── -->
           <div class="experience-toolbar assets-toolbar popup-filter-bar">
             <!-- Primary filter — desktop mat-select / mobile button -->

@@ -34,6 +34,12 @@ export const USER_PROFILE_SAVE_CONTEXT_KEY = 'user-profile-save';
 export const USER_LOGOUT_CONTEXT_KEY = 'user-logout';
 export const USER_DELETE_CONTEXT_KEY = 'user-delete';
 
+export interface UserProfileSaveOptions {
+  requestTimeoutMs?: number;
+  minimumDurationMs?: number;
+  returnFallbackOnFailure?: boolean;
+}
+
 class RequestTimeoutError extends Error {
   constructor() {
     super('Users request timeout.');
@@ -260,6 +266,10 @@ export class UsersService extends BaseRouteModeService {
 
       const resolvedUserId = response.user.id.trim() || normalizedUserId;
       const previousActiveUserId = this.appCtx.getActiveUserId().trim();
+      if (response.user.profileStatus === 'deleted') {
+        this.setLoadStatus(USER_BY_ID_LOAD_CONTEXT_KEY, 'success');
+        return response.user;
+      }
       this.appCtx.setUserProfile(response.user);
       if (resolvedUserId && (!normalizedUserId || previousActiveUserId === normalizedUserId)) {
         this.appCtx.setActiveUserId(resolvedUserId);
@@ -298,7 +308,7 @@ export class UsersService extends BaseRouteModeService {
     await this.userService.saveUserFilterPreferences(normalizedUserId, preferences);
   }
 
-  async saveUserProfile(user: UserDto): Promise<UserDto | null> {
+  async saveUserProfile(user: UserDto, options: UserProfileSaveOptions = {}): Promise<UserDto | null> {
     if (!user?.id?.trim()) {
       this.setLoadStatus(USER_PROFILE_SAVE_CONTEXT_KEY, 'error', 'Missing user id.');
       return null;
@@ -306,24 +316,30 @@ export class UsersService extends BaseRouteModeService {
 
     this.appCtx.setUserProfile(user);
     this.setLoadStatus(USER_PROFILE_SAVE_CONTEXT_KEY, 'loading');
+    const normalizedTimeoutMs = this.resolveRequestTimeoutMs(options.requestTimeoutMs);
+    const startedAtMs = Date.now();
+    const minimumDurationMs = Math.max(0, Math.trunc(Number(options.minimumDurationMs) || 0));
+    const returnFallbackOnFailure = options.returnFallbackOnFailure !== false;
 
     try {
       const savedUser = await this.withRequestTimeout(
         this.userService.saveUserProfile(user),
-        UsersService.DEFAULT_REQUEST_TIMEOUT_MS
+        normalizedTimeoutMs
       );
+      await this.ensureMinimumRequestDuration(startedAtMs, minimumDurationMs);
       const resolvedUser = savedUser ?? user;
       this.appCtx.setUserProfile(resolvedUser);
       this.setLoadStatus(USER_PROFILE_SAVE_CONTEXT_KEY, 'success');
       return resolvedUser;
     } catch (error) {
+      await this.ensureMinimumRequestDuration(startedAtMs, minimumDurationMs);
       if (error instanceof RequestTimeoutError) {
         this.setLoadStatus(USER_PROFILE_SAVE_CONTEXT_KEY, 'timeout', 'Profile save request timeout.');
-        return user;
+        return returnFallbackOnFailure ? user : null;
       }
 
       this.setLoadStatus(USER_PROFILE_SAVE_CONTEXT_KEY, 'error', 'Unable to save profile.');
-      return user;
+      return returnFallbackOnFailure ? user : null;
     }
   }
 
