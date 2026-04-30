@@ -27,6 +27,12 @@
   flex-direction: column;
 }
 
+.admin-home-panel {
+  min-height: calc(100vh - 2rem);
+  display: flex;
+  flex-direction: column;
+}
+
 .admin-entry-header,
 .admin-home-header {
   display: flex;
@@ -138,10 +144,6 @@
   align-items: flex-start;
 }
 
-.admin-home-panel {
-  padding-bottom: 0.9rem;
-}
-
 .admin-home-title {
   text-align: right;
 }
@@ -160,55 +162,8 @@
   font-size: clamp(1.4rem, 2.4vw, 2rem);
 }
 
-.admin-home-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.78rem;
-  padding: 0 0.9rem 0.9rem;
-}
-
-.admin-home-card {
-  min-height: 138px;
-  border: 1px solid rgba(31, 56, 94, 0.14);
-  border-radius: 14px;
-  background: #fff;
-  color: #22324a;
-  font: inherit;
-  padding: 1rem;
-  text-align: left;
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  box-shadow: 0 10px 26px rgba(13, 27, 57, 0.06);
-}
-
-.admin-home-card-icon {
-  width: 42px;
-  height: 42px;
-  border-radius: 14px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: #eaf3ff;
-  color: #2666de;
-}
-
-.admin-home-card-copy strong,
-.admin-home-card-copy span {
-  display: block;
-}
-
-.admin-home-card-copy strong {
-  margin-bottom: 0.18rem;
-  color: #121a48;
-  font-size: 1rem;
-}
-
-.admin-home-card-copy span {
-  color: rgba(34, 50, 74, 0.72);
-  font-size: 0.82rem;
-  line-height: 1.35;
+.admin-home-hero {
+  min-height: 0;
 }
 
 @media (max-width: 760px) {
@@ -223,7 +178,4 @@
     min-height: calc(100vh - 1.1rem);
   }
 
-  .admin-home-grid {
-    grid-template-columns: 1fr;
-  }
 }

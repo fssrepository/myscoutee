@@ -12,28 +12,10 @@
         </div>
       </header>
 
-      <section class="admin-home-grid">
-        <button type="button" class="admin-home-card admin-home-card-reports" matRipple (click)="admin.openReports()">
-          <span class="admin-home-card-icon"><mat-icon>report</mat-icon></span>
-          <span class="admin-home-card-copy">
-            <strong>Reports</strong>
-            <span>{{ dashboard.reportedUsers.length }} reported users</span>
-          </span>
-        </button>
-        <button type="button" class="admin-home-card admin-home-card-feedback" matRipple (click)="admin.openFeedback()">
-          <span class="admin-home-card-icon"><mat-icon>feedback</mat-icon></span>
-          <span class="admin-home-card-copy">
-            <strong>Application feedback</strong>
-            <span>{{ dashboard.feedback.length }} messages</span>
-          </span>
-        </button>
-        <button type="button" class="admin-home-card admin-home-card-chat" matRipple (click)="admin.openChat()">
-          <span class="admin-home-card-icon"><mat-icon>chat</mat-icon></span>
-          <span class="admin-home-card-copy">
-            <strong>Chats</strong>
-            <span>Support and moderation conversations</span>
-          </span>
-        </button>
+      <section class="admin-entry-hero admin-home-hero">
+        <p class="admin-eyebrow">MyScoutee admin</p>
+        <h1>Moderation workspace</h1>
+        <p class="admin-entry-lead">{{ dashboard.activeAdmin.name }}</p>
       </section>
     </div>
 
