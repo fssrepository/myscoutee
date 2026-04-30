@@ -187,6 +187,7 @@ export class EventChatPopupComponent implements OnDestroy {
   private readonly pendingMessageTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
   private readonly reactionMutationSequenceByMessageId = new Map<string, number>();
   private chatThreadScrollDismissElement: HTMLElement | null = null;
+  private suppressTouchContextMenuUntilMs = 0;
   private readonly dismissMessageUiOnChatScroll = () => {
     if (!this.selectedMessageId && !this.quickReactionMessageId && !this.messageActionMenuId && !this.emojiPickerMessageId) {
       return;
@@ -574,12 +575,15 @@ export class EventChatPopupComponent implements OnDestroy {
     if (message.deletedAtIso) {
       return;
     }
+    this.suppressTouchContextMenuUntilMs = Date.now() + 1100;
     this.clearMessageLongPress();
     this.messageLongPressTimer = setTimeout(() => {
       this.selectedMessageId = message.id;
-      this.quickReactionMessageId = message.id;
       this.selectedMessageToolsDown = this.shouldOpenMessageToolsDown();
-      this.quickReactionOpenDown = this.shouldOpenQuickReactionsDown();
+      this.quickReactionMessageId = '';
+      this.quickReactionOpenDown = false;
+      this.emojiPickerMessageId = '';
+      this.messageActionMenuId = '';
       this.cdr.markForCheck();
     }, 420);
   }
@@ -736,6 +740,9 @@ export class EventChatPopupComponent implements OnDestroy {
   protected openMessageActionMenu(message: AppTypes.ChatPopupMessage, event?: Event): void {
     event?.preventDefault();
     event?.stopPropagation();
+    if (event?.type === 'contextmenu' && Date.now() < this.suppressTouchContextMenuUntilMs) {
+      return;
+    }
     if (message.deletedAtIso) {
       this.closeTransientMessageUi();
       return;
