@@ -4,10 +4,12 @@
     <span>Help</span>
   </button>
 
-  <button type="button" class="user-settings-item" (click)="openPopup('feedback', $event)">
-    <mat-icon>feedback</mat-icon>
-    <span>Send Feedback</span>
-  </button>
+  @if (!isAdminMode()) {
+    <button type="button" class="user-settings-item" (click)="openPopup('feedback', $event)">
+      <mat-icon>feedback</mat-icon>
+      <span>Send Feedback</span>
+    </button>
+  }
 
   <a
     class="user-settings-item"

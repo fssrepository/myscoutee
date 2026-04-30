@@ -17,6 +17,7 @@ export interface NavigatorActivitiesRequest {
   updatedMs: number;
   primaryFilter: 'rates' | 'chats' | 'events';
   eventScope?: 'all' | 'active-events' | 'pending' | 'invitations' | 'my-events' | 'drafts' | 'trash';
+  adminServiceOnly?: boolean;
 }
 
 export interface NavigatorAssetRequest {
@@ -88,12 +89,14 @@ export class AppPopupContext {
 
   openNavigatorActivitiesRequest(
     primaryFilter: 'rates' | 'chats' | 'events',
-    eventScope?: 'all' | 'active-events' | 'pending' | 'invitations' | 'my-events' | 'drafts' | 'trash'
+    eventScope?: 'all' | 'active-events' | 'pending' | 'invitations' | 'my-events' | 'drafts' | 'trash',
+    options: { adminServiceOnly?: boolean } = {}
   ): void {
     this._navigatorActivitiesRequest.set({
       updatedMs: Date.now(),
       primaryFilter,
-      eventScope
+      eventScope,
+      adminServiceOnly: options.adminServiceOnly === true
     });
   }
 

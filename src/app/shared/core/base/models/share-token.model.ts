@@ -1,6 +1,6 @@
 import type { AssetType } from './asset.model';
 
-export type ShareTokenKind = 'event' | 'asset';
+export type ShareTokenKind = 'event' | 'asset' | 'adminHelp';
 
 export interface ShareTokenRecord {
   token: string;

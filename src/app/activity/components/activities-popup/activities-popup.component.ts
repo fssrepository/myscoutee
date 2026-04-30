@@ -848,6 +848,10 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return this.activitiesChats.activityChatContextFilterKey(chat) === this.activitiesChatContextFilter;
   }
 
+  protected isAdminServiceChatMode(): boolean {
+    return this.activitiesContext.activitiesAdminServiceOnly();
+  }
+
   private buildActivityChatRow(chat: ChatMenuItem): AppTypes.ActivityListRow {
     return toActivityChatRow(chat, {
       users: this.users,
@@ -2491,7 +2495,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
       chatContextFilter: this.activitiesChatContextFilter,
       hostingPublicationFilter: this.hostingPublicationFilter,
       rateFilter: this.activitiesRateFilter,
-      rateSocialBadgeEnabled: this.activitiesRateSocialBadgeEnabled
+      rateSocialBadgeEnabled: this.activitiesRateSocialBadgeEnabled,
+      adminServiceOnly: this.activitiesContext.activitiesAdminServiceOnly()
     };
     const currentFilters = this.activitiesSmartListQuery.filters ?? {};
     if (
@@ -2502,6 +2507,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       && currentFilters['hostingPublicationFilter'] === nextFilters['hostingPublicationFilter']
       && currentFilters['rateFilter'] === nextFilters['rateFilter']
       && currentFilters['rateSocialBadgeEnabled'] === nextFilters['rateSocialBadgeEnabled']
+      && currentFilters['adminServiceOnly'] === nextFilters['adminServiceOnly']
     ) {
       return;
     }

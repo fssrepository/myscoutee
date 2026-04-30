@@ -18,7 +18,7 @@ export class DemoShareTokensRepository {
   createToken(request: AppTypes.ShareTokenCreateRequest): string {
     const kind = request.kind;
     const entityId = `${request.entityId ?? ''}`.trim();
-    if (!entityId || (kind !== 'event' && kind !== 'asset')) {
+    if (!entityId || (kind !== 'event' && kind !== 'asset' && kind !== 'adminHelp')) {
       return '';
     }
     const now = new Date();
@@ -73,6 +73,18 @@ export class DemoShareTokensRepository {
         description: eventRecord.subtitle,
         imageUrl: eventRecord.imageUrl,
         url: eventRecord.sourceLink
+      };
+    }
+    if (record.kind === 'adminHelp') {
+      return {
+        kind: 'adminHelp',
+        entityId: record.entityId,
+        ownerUserId: record.ownerUserId ?? null,
+        title: 'Shared help view',
+        subtitle: 'MyScoutee support session',
+        description: 'The user allowed MyScoutee admin to open their current app view.',
+        imageUrl: null,
+        url: record.entityId
       };
     }
     const assetType = record.assetType;

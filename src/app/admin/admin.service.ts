@@ -7,6 +7,7 @@ import {
   AppPopupContext,
   SessionService,
   USER_BY_ID_LOAD_CONTEXT_KEY,
+  type ShareTokenRecord,
   type DemoUserListItemDto,
   type UserDto
 } from '../shared/core';
@@ -14,6 +15,7 @@ import { AppMemoryDb } from '../shared/core/base/db';
 import type { ChatMenuItem } from '../shared/core/base/interfaces/activity-feed.interface';
 import type { ChatPopupMessage } from '../shared/core/base/models/chat.model';
 import { DemoChatsRepository, DemoUsersRepository } from '../shared/core/demo';
+import { SHARE_TOKENS_TABLE_NAME } from '../shared/core/demo/models/share-tokens.model';
 
 export type AdminPopupKind =
   | 'reports'
@@ -216,7 +218,7 @@ export class AdminService {
   }
 
   openChat(): void {
-    this.popupCtx.openNavigatorActivitiesRequest('chats');
+    this.popupCtx.openNavigatorActivitiesRequest('chats', undefined, { adminServiceOnly: true });
   }
 
   openProfile(): void {
@@ -367,6 +369,7 @@ export class AdminService {
     this.demoChatsRepository.init();
     onProgress?.({ percent: 48, label: 'Creating moderation records', stage: 'records' });
     const store = await this.ensureDemoModerationStore();
+    await this.ensureDemoAdminServiceSeed(admin);
     onProgress?.({ percent: 74, label: 'Resolving reported users', stage: 'records' });
     const dashboard = this.buildDemoDashboard(admin, store);
     onProgress?.({ percent: 92, label: 'Opening admin workspace', stage: 'profile' });
@@ -391,28 +394,28 @@ export class AdminService {
       reports: [
         {
           id: 'admin-demo-report-chat-kai-001',
-          reporterUserId: 'bf057de7c586eede7e84bdc7',
+          reporterUserId: 'u1',
           reporterName: 'Farkas Anna',
-          targetUserId: '7822c5f99eff99d63abe8933',
+          targetUserId: 'u5',
           reason: 'Harassment',
           details: 'The reported chat message made another event member feel unsafe and should be reviewed by moderation.',
           eventId: 'a11a802ee0714a21db94ed4e',
           eventTitle: 'Alpine Weekend 2.0',
           eventStartAtIso: '2026-03-04T09:45:00.000Z',
           sourceType: 'chat',
-          sourceId: 'cc9765dfe5f1b00b8ba39a38',
-          sourceText: 'Synced on arrival windows.',
-          chatId: '60c8f35688886a1030926aed',
-          messageId: 'cc9765dfe5f1b00b8ba39a38',
-          chatTitle: 'Group A · Group Channel',
-          chatMessages: this.demoChatMessages('bf057de7c586eede7e84bdc7', '60c8f35688886a1030926aed'),
+          sourceId: 'c1-4',
+          sourceText: 'I can take one extra seat from downtown pickup.',
+          chatId: 'c1',
+          messageId: 'c1-4',
+          chatTitle: 'Driver Split - Alpine Weekend',
+          chatMessages: this.demoChatMessages('u1', 'c1'),
           createdDate: '2026-04-25T11:12:00.000Z'
         },
         {
           id: 'admin-demo-report-event-kai-002',
-          reporterUserId: 'bf057de7c586eede7e84bdc7',
+          reporterUserId: 'u1',
           reporterName: 'Farkas Anna',
-          targetUserId: '7822c5f99eff99d63abe8933',
+          targetUserId: 'u5',
           reason: 'No-show / unsafe event behavior',
           details: 'The user repeatedly joined event plans and disrupted logistics without updating the host.',
           eventId: 'a11a802ee0714a21db94ed4e',
@@ -425,9 +428,9 @@ export class AdminService {
         },
         {
           id: 'admin-demo-report-asset-kai-003',
-          reporterUserId: 'b5e2db6882d989d8532af12c',
-          reporterName: 'Ava Baker',
-          targetUserId: '7822c5f99eff99d63abe8933',
+          reporterUserId: 'u4',
+          reporterName: 'Maya Stone',
+          targetUserId: 'u5',
           reason: 'Asset misuse',
           details: 'Asset owner asked moderation to review a supplies request before approving future resource sharing.',
           eventId: 'indoor-strategy-social-event',
@@ -444,7 +447,7 @@ export class AdminService {
       feedback: [
         {
           id: 'admin-demo-feedback-report-status-001',
-          userId: 'bf057de7c586eede7e84bdc7',
+          userId: 'u1',
           userName: 'Farkas Anna',
           category: 'Safety',
           subject: 'Need clearer report status',
@@ -453,8 +456,8 @@ export class AdminService {
         },
         {
           id: 'admin-demo-feedback-event-warn-002',
-          userId: '7822c5f99eff99d63abe8933',
-          userName: 'Kai Morgan',
+          userId: 'u5',
+          userName: 'Lina Park',
           category: 'Events',
           subject: 'Review event behavior faster',
           details: 'Hosts need a way to warn members before blocking them from future participation.',
@@ -512,6 +515,93 @@ export class AdminService {
       ...report,
       chatMessages: [...(report.chatMessages ?? [])]
     };
+  }
+
+  private async ensureDemoAdminServiceSeed(admin: AdminUserDto): Promise<void> {
+    const helpUser = this.demoUsersRepository.queryUserById('u1');
+    if (!helpUser) {
+      return;
+    }
+    const token = this.ensureDemoHelpToken(admin, helpUser);
+    const helpUrl = `/admin/help/${encodeURIComponent(token)}`;
+    const nowIso = new Date().toISOString();
+    const chat: ChatMenuItem & { ownerUserId?: string } = {
+      id: `c-admin-service-help-${helpUser.id}`,
+      avatar: helpUser.initials,
+      title: `MyScoutee Support · ${helpUser.name}`,
+      lastMessage: 'Please help me with what I see on MyScoutee.',
+      lastSenderId: helpUser.id,
+      memberIds: [admin.id, helpUser.id],
+      unread: 1,
+      dateIso: nowIso,
+      channelType: 'serviceEvent',
+      serviceContext: 'notification',
+      ownerUserId: admin.id
+    };
+    const existingChat = this.demoChatsRepository.queryChatItemsByUser(admin.id)
+      .find(item => item.id === chat.id);
+    if (existingChat && this.demoChatsRepository.queryChatMessages(existingChat).some(message => message.id === 'm-admin-help-u1')) {
+      return;
+    }
+    const message: ChatPopupMessage = {
+      id: 'm-admin-help-u1',
+      sender: helpUser.name,
+      senderAvatar: {
+        id: helpUser.id,
+        initials: helpUser.initials,
+        gender: helpUser.gender
+      },
+      text: 'Please help me, I am sharing my current MyScoutee screen with support.',
+      time: 'Now',
+      sentAtIso: nowIso,
+      mine: false,
+      readBy: [],
+      attachments: [{
+        id: `admin-help:${helpUser.id}`,
+        type: 'link',
+        title: 'Open shared help view',
+        entityId: token,
+        ownerUserId: helpUser.id,
+        subtitle: 'Limited-time support token',
+        description: 'Open the user view in a new tab.',
+        url: helpUrl
+      }]
+    };
+    this.demoChatsRepository.appendChatMessage(chat, message);
+    await this.memoryDb.flushToIndexedDb();
+  }
+
+  private ensureDemoHelpToken(admin: AdminUserDto, user: UserDto): string {
+    const safeAdminId = admin.id.replace(/[^A-Za-z0-9-]/g, '-');
+    const token = `myscoutee:token:admin-help-${safeAdminId}-${user.id}`;
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+    const record: ShareTokenRecord = {
+      token,
+      kind: 'adminHelp',
+      entityId: '/game',
+      ownerUserId: user.id,
+      createdAtIso: now.toISOString(),
+      expiresAtIso: expiresAt.toISOString()
+    };
+    this.memoryDb.write(state => {
+      const table = state[SHARE_TOKENS_TABLE_NAME];
+      const existing = table.byToken[token];
+      if (existing && Date.parse(existing.expiresAtIso) > Date.now()) {
+        return state;
+      }
+      return {
+        ...state,
+        [SHARE_TOKENS_TABLE_NAME]: {
+          byToken: {
+            ...table.byToken,
+            [token]: record
+          },
+          tokens: table.tokens.includes(token) ? [...table.tokens] : [...table.tokens, token]
+        }
+      };
+    });
+    return token;
   }
 
   private demoChatMessages(ownerUserId: string, chatId: string): AdminChatMessageDto[] {

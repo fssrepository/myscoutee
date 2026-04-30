@@ -326,19 +326,32 @@ export class EventChatPopupComponent implements OnDestroy {
     return this.session()?.item.id.startsWith('c-support-blocked-') === true;
   }
 
+  protected isServiceChat(): boolean {
+    return this.session()?.item.channelType === 'serviceEvent';
+  }
+
   protected selectedChatHasSubEventMenu(): boolean {
     return this.preparedChatContext?.hasSubEventMenu === true;
   }
 
   protected selectedChatHeaderActionIcon(): string {
+    if (this.isServiceChat()) {
+      return 'support_agent';
+    }
     return this.preparedChatContext?.actionIcon ?? 'event';
   }
 
   protected selectedChatHeaderActionLabel(): string {
+    if (this.isServiceChat()) {
+      return 'Service';
+    }
     return this.preparedChatContext?.actionLabel ?? 'View Event';
   }
 
   protected selectedChatHeaderActionToneClass(): string {
+    if (this.isServiceChat()) {
+      return 'popup-chat-context-btn-tone-service';
+    }
     return this.preparedChatContext?.actionToneClass ?? 'popup-chat-context-btn-tone-main-event';
   }
 
@@ -380,6 +393,10 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   protected openSelectedChatPrimaryContext(event?: Event): void {
+    if (this.isServiceChat()) {
+      event?.stopPropagation();
+      return;
+    }
     const channelType = this.preparedChatContext?.channelType;
     if (channelType === 'groupSubEvent') {
       this.openSelectedChatGroup(event);
@@ -1601,6 +1618,19 @@ export class EventChatPopupComponent implements OnDestroy {
       });
       return null;
     }
+    if (resolved.kind === 'adminHelp') {
+      return {
+        id: `adminHelp:${resolved.ownerUserId ?? 'user'}:${Date.now()}`,
+        type: 'link',
+        entityId: token,
+        ownerUserId: resolved.ownerUserId ?? null,
+        title: resolved.title || 'Open shared help view',
+        subtitle: resolved.subtitle ?? null,
+        description: resolved.description ?? null,
+        url: `/admin/help/${encodeURIComponent(token)}`,
+        previewUrl: resolved.imageUrl ?? null
+      };
+    }
     return {
       id: `${resolved.kind}:${resolved.entityId}:${Date.now()}`,
       type: resolved.kind,
@@ -1726,7 +1756,29 @@ export class EventChatPopupComponent implements OnDestroy {
       });
       return;
     }
+    if (this.isInternalHelpUrl(url)) {
+      if (typeof window !== 'undefined') {
+        window.open(url, '_blank', 'noopener,noreferrer');
+      }
+      return;
+    }
     this.confirmExternalLink(url);
+  }
+
+  private isInternalHelpUrl(url: string): boolean {
+    const normalized = `${url ?? ''}`.trim();
+    if (normalized.startsWith('/admin/help/')) {
+      return true;
+    }
+    if (typeof document === 'undefined') {
+      return false;
+    }
+    try {
+      const parsed = new URL(normalized, document.baseURI);
+      return parsed.origin === window.location.origin && parsed.pathname.startsWith('/admin/help/');
+    } catch {
+      return false;
+    }
   }
 
   private confirmExternalLink(url: string): void {

@@ -75,7 +75,7 @@
           <!-- ───── Toolbar ───── -->
           <div class="experience-toolbar assets-toolbar popup-filter-bar">
             <!-- Primary filter — desktop mat-select / mobile button -->
-            @if (!isMobileView) {
+            @if (!isAdminServiceChatMode() && !isMobileView) {
               <div
                 class="profile-status-select-wrap selector-like experience-filter-select popup-compact-select activities-compact-select activities-primary-filter-select"
                 [ngClass]="activitiesToolbar.activitiesPrimaryFilterClass(activitiesPrimaryFilter)"
@@ -111,7 +111,7 @@
                   <span class="rate-filter-count-badge rate-filter-trigger-badge">{{ activitiesToolbar.activitiesPrimaryFilterCount(activitiesPrimaryFilter) | counterBadge }}</span>
                 }
               </div>
-            } @else {
+            } @else if (!isAdminServiceChatMode()) {
               <div class="popup-mobile-filter-picker activities-mobile-primary-filter-picker">
                 <button
                   type="button"
@@ -242,7 +242,7 @@
               }
             }
             <!-- Chat context filter (chats tab only) -->
-            @if (activitiesPrimaryFilter === 'chats') {
+            @if (activitiesPrimaryFilter === 'chats' && !isAdminServiceChatMode()) {
               @if (!isMobileView) {
                 <div
                   class="profile-status-select-wrap selector-like experience-filter-select popup-compact-select activities-compact-select activities-chat-context-filter-select"

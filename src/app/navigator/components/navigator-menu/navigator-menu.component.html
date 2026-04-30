@@ -46,18 +46,18 @@
                 <span>ADMIN</span>
               </span>
             </div>
-            <div class="user-meta user-meta-compact">
-              <span class="user-name">{{ user.name }}</span>
-              <span class="user-city-line">
-                <mat-icon>admin_panel_settings</mat-icon>
-                <span>Admin workspace</span>
-              </span>
-            </div>
+          <div class="user-meta user-meta-compact">
+            <span class="user-name">{{ user.name }}</span>
+            <span class="user-city-line">
+              <mat-icon>admin_panel_settings</mat-icon>
+              <span>Admin workspace</span>
+            </span>
           </div>
-          <button #profileEditorButton type="button" class="header-open-cue" [disabled]="!isOnline()" aria-label="Open admin profile" (click)="openAdminProfileShortcut($event)">
-            <span class="navigator-action-ripple" matRipple [matRippleTrigger]="profileEditorButton" aria-hidden="true"></span>
-            <mat-icon>edit</mat-icon>
-          </button>
+        </div>
+        <button #profileEditorButton type="button" class="header-open-cue" [disabled]="!isOnline()" aria-label="Open admin profile" (click)="openAdminProfileShortcut($event)">
+          <span class="navigator-action-ripple" matRipple [matRippleTrigger]="profileEditorButton" aria-hidden="true"></span>
+          <mat-icon>edit</mat-icon>
+        </button>
         </div>
         <div class="user-menu-content">
           @if (!isOnline()) {
@@ -96,11 +96,6 @@
               @if (user.activities.chat > 0) {
                 <span class="card-badge menu-shortcut-badge">{{ user.activities.chat | counterBadge }}</span>
               }
-            </button>
-            <button #adminProfileButton class="menu-shortcut-btn menu-shortcut-rates" type="button" [disabled]="!isOnline()" (click)="openAdminProfileShortcut($event)" aria-label="Open admin profile" title="Profile">
-              <span class="navigator-action-ripple" matRipple [matRippleTrigger]="adminProfileButton" aria-hidden="true"></span>
-              <mat-icon>badge</mat-icon>
-              <span class="menu-shortcut-label">Profile</span>
             </button>
           </div>
         </div>

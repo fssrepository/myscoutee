@@ -254,6 +254,11 @@
   background: linear-gradient(180deg, #f3fcf5 0%, #e9f7ee 100%);
 }
 
+.popup-chat-context-btn.popup-chat-context-btn-tone-service {
+  border-color: rgba(49, 92, 133, 0.28);
+  background: linear-gradient(180deg, #f7fbff 0%, #edf5fb 100%);
+}
+
 .popup-chat-context-btn.popup-chat-context-btn-tone-main-event .event-editor-members-invite {
   color: #224d7f;
 }
@@ -276,6 +281,14 @@
 
 .popup-chat-context-btn.popup-chat-context-btn-tone-group .event-editor-members-invite .mat-icon {
   color: #2f8e6b;
+}
+
+.popup-chat-context-btn.popup-chat-context-btn-tone-service .event-editor-members-invite {
+  color: #315c85;
+}
+
+.popup-chat-context-btn.popup-chat-context-btn-tone-service .event-editor-members-invite .mat-icon {
+  color: #386f9d;
 }
 
 .item-action-menu {

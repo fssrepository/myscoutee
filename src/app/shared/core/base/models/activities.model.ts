@@ -30,6 +30,7 @@ export interface ActivitiesFeedFilters {
   hostingPublicationFilter?: HostingPublicationFilter;
   rateFilter?: RateFilterKey;
   rateSocialBadgeEnabled?: boolean;
+  adminServiceOnly?: boolean;
 }
 
 export interface EventExploreFeedFilters {

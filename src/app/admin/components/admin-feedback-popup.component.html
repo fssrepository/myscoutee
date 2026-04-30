@@ -11,24 +11,55 @@
           <mat-icon>close</mat-icon>
         </button>
       </div>
-      <div class="popup-body">
-        <div class="admin-popup-body admin-popup-body-single">
-          <div class="admin-list-pane">
-            <app-smart-list
-              class="admin-smart-list"
-              [config]="feedbackConfig"
-              [loadPage]="feedbackLoadPage"
-              [itemTemplate]="itemTemplateRef ?? null"
-            ></app-smart-list>
-            <ng-template #feedbackTemplate let-item>
-              <article class="admin-feedback-card">
-                <h4>{{ item.subject }}</h4>
-                <p class="admin-muted">{{ item.category }} · {{ item.userName }} · {{ item.createdDate }}</p>
-                <p>{{ item.details }}</p>
-              </article>
-            </ng-template>
-          </div>
+
+      <div class="popup-body admin-list-only-body">
+        <app-smart-list
+          class="admin-smart-list admin-simple-list"
+          [config]="feedbackSmartListConfig"
+          [loadPage]="feedbackSmartListLoadPage"
+          [itemTemplate]="feedbackItemTemplateRef ?? null"
+        ></app-smart-list>
+
+        <ng-template #feedbackItemTemplate let-item let-groupLabel="groupLabel">
+          <app-activities-chat-template
+            [row]="item.row"
+            [groupLabel]="groupLabel"
+            [context]="feedbackChatTemplateContext"
+            (rowClick)="selectFeedback(item)"
+          ></app-activities-chat-template>
+        </ng-template>
+      </div>
+    </div>
+  </section>
+}
+
+@if (feedbackDetail; as item) {
+  <section class="app-popup app-popup-stacked">
+    <div class="app-popup-backdrop" (click)="closeFeedbackDetails()"></div>
+    <div class="app-popup-panel popup-panel-admin-detail" (click)="$event.stopPropagation()">
+      <div class="popup-header">
+        <div class="popup-title">
+          <h2>Feedback details</h2>
+          <p class="popup-subtitle">{{ item.userName }} · {{ feedbackListMeta(item) }}</p>
         </div>
+        <button type="button" class="popup-close" (click)="closeFeedbackDetails()" aria-label="Close">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+
+      <div class="popup-body admin-detail-popup-body">
+        <article class="admin-chat-detail-message">
+          <span class="admin-message-avatar">{{ feedbackInitial(item) }}</span>
+          <div class="admin-message-bubble">
+            <div class="admin-message-head">
+              <strong>{{ item.userName }}</strong>
+              <span>{{ shortDate(item.createdDate) }}</span>
+            </div>
+            <span class="admin-category-chip">{{ item.category }}</span>
+            <h3>{{ item.subject }}</h3>
+            <p>{{ item.details }}</p>
+          </div>
+        </article>
       </div>
     </div>
   </section>

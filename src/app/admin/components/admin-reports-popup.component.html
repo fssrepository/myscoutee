@@ -11,74 +11,76 @@
           <mat-icon>close</mat-icon>
         </button>
       </div>
-      <div class="popup-body">
-        <div class="admin-popup-body">
-          <div class="admin-list-pane">
-            <app-smart-list
-              class="admin-smart-list"
-              [config]="reportedUsersConfig"
-              [loadPage]="reportedUsersLoadPage"
-              [itemTemplate]="itemTemplateRef ?? null"
-            ></app-smart-list>
-            <ng-template #reportedUserTemplate let-item>
-              <button
-                type="button"
-                class="admin-list-row"
-                [class.is-selected]="isSelectedUser(item)"
-                (click)="selectUser(item)"
-                >
-                <span class="admin-avatar" [ngClass]="'user-color-' + item.gender">{{ item.initials }}</span>
-                <span class="admin-list-main">
-                  <span class="admin-list-title">{{ item.name }}</span>
-                  <span class="admin-list-meta">{{ item.profileStatus }} · {{ item.city || 'unknown city' }}</span>
-                </span>
-                <span class="admin-pill">{{ item.reportCount | counterBadge }}</span>
-              </button>
-            </ng-template>
-          </div>
 
-          <div class="admin-detail-pane">
-            @if (admin.selectedReportedUser(); as user) {
-              <div class="admin-detail-heading">
-                <span class="admin-avatar" [ngClass]="'user-color-' + user.gender">{{ user.initials }}</span>
-                <div class="admin-detail-heading-main">
-                  <h3>{{ user.name }}</h3>
-                  <p>{{ user.profileStatus }} · last report {{ user.lastReportedAtIso || 'unknown' }}</p>
-                </div>
-              </div>
-              <div class="admin-action-row">
-                <button type="button" class="admin-btn admin-btn-primary" (click)="warnUser(user)">
-                  <mat-icon>chat</mat-icon>
-                  <span>Warn in chat</span>
-                </button>
-                <button type="button" class="admin-btn admin-btn-danger" (click)="blockUser(user)">
-                  <mat-icon>block</mat-icon>
-                  <span>Block user</span>
-                </button>
-              </div>
-              <div class="admin-card-list">
-                @for (report of user.reports; track report.id) {
-                  <article class="admin-report-card" [class.is-selected]="isSelectedReport(report)" (click)="selectReport(user, report)">
-                    <h4>{{ report.reason }}</h4>
-                    <p class="admin-muted">{{ report.reporterName }} · {{ report.createdDate }}</p>
-                    <p>{{ report.details }}</p>
-                    @if (report.sourceText) {
-                      <p class="admin-muted">{{ report.sourceText }}</p>
-                    }
-                    <div class="admin-action-row">
-                      <button type="button" class="admin-btn" (click)="$event.stopPropagation(); reviewReport(report)">
-                        <mat-icon>{{ report.sourceType === 'chat' ? 'forum' : report.sourceType === 'asset' ? 'inventory_2' : 'event' }}</mat-icon>
-                        <span>Open item</span>
-                      </button>
-                    </div>
-                  </article>
-                }
-              </div>
-            } @else {
-              <p class="admin-muted">Select a reported user to review the reports.</p>
-            }
-          </div>
+      <div class="popup-body admin-list-only-body">
+        <app-smart-list
+          class="admin-smart-list admin-simple-list"
+          [config]="reportsSmartListConfig"
+          [loadPage]="reportsSmartListLoadPage"
+          [itemTemplate]="reportItemTemplateRef ?? null"
+        ></app-smart-list>
+
+        <ng-template #reportItemTemplate let-item let-groupLabel="groupLabel">
+          <app-activities-chat-template
+            [row]="item.row"
+            [groupLabel]="groupLabel"
+            [context]="reportChatTemplateContext"
+            (rowClick)="openReportDetails(item)"
+          ></app-activities-chat-template>
+        </ng-template>
+      </div>
+    </div>
+  </section>
+}
+
+@if (reportDetail; as item) {
+  <section class="app-popup app-popup-stacked">
+    <div class="app-popup-backdrop" (click)="closeReportDetails()"></div>
+    <div class="app-popup-panel popup-panel-admin-detail" (click)="$event.stopPropagation()">
+      <div class="popup-header">
+        <div class="popup-title">
+          <h2>Report details</h2>
+          <p class="popup-subtitle">{{ reportListTitle(item) }}</p>
         </div>
+        <button type="button" class="popup-close" (click)="closeReportDetails()" aria-label="Close">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+
+      <div class="popup-body admin-detail-popup-body">
+        <article class="admin-chat-detail-message">
+          <span class="admin-message-avatar">{{ reporterInitial(item.report) }}</span>
+          <div class="admin-message-bubble">
+            <div class="admin-message-head">
+              <strong>{{ item.report.reporterName }}</strong>
+              <span>{{ shortDate(item.report.createdDate) }}</span>
+            </div>
+            <h3>{{ item.report.reason }}</h3>
+            <p>{{ item.report.details }}</p>
+            @if (item.report.sourceText) {
+              <blockquote>{{ item.report.sourceText }}</blockquote>
+            }
+            <div class="admin-detail-meta-grid">
+              <span><strong>Reported user</strong>{{ item.user.name }}</span>
+              <span><strong>Status</strong>{{ item.user.profileStatus }}</span>
+              <span><strong>Source</strong>{{ reportSourceLabel(item.report) }}</span>
+            </div>
+            <div class="admin-action-row">
+              <button type="button" class="admin-btn" (click)="reviewReport(item.report)">
+                <mat-icon>{{ reportSourceIcon(item.report) }}</mat-icon>
+                <span>View source</span>
+              </button>
+              <button type="button" class="admin-btn admin-btn-primary" (click)="warnUser(item.user)">
+                <mat-icon>chat</mat-icon>
+                <span>Warn in chat</span>
+              </button>
+              <button type="button" class="admin-btn admin-btn-danger" (click)="blockUser(item.user)">
+                <mat-icon>block</mat-icon>
+                <span>Block user</span>
+              </button>
+            </div>
+          </div>
+        </article>
       </div>
     </div>
   </section>

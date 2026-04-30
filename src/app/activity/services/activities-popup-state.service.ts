@@ -26,6 +26,7 @@ interface ActivitiesUiState {
   stickyValue: string;
   ratesFullscreenMode: boolean;
   selectedRateId: string | null;
+  adminServiceOnly: boolean;
 }
 
 const DEFAULT_ACTIVITIES_UI_STATE: ActivitiesUiState = {
@@ -43,7 +44,8 @@ const DEFAULT_ACTIVITIES_UI_STATE: ActivitiesUiState = {
   showSecondaryPicker: false,
   stickyValue: '',
   ratesFullscreenMode: false,
-  selectedRateId: null
+  selectedRateId: null,
+  adminServiceOnly: false
 };
 
 @Injectable({
@@ -74,6 +76,7 @@ export class ActivitiesPopupStateService {
   readonly activitiesStickyValue = computed(() => this._uiState().stickyValue);
   readonly activitiesRatesFullscreenMode = computed(() => this._uiState().ratesFullscreenMode);
   readonly activitiesSelectedRateId = computed(() => this._uiState().selectedRateId);
+  readonly activitiesAdminServiceOnly = computed(() => this._uiState().adminServiceOnly);
   readonly activitiesEventSync = this._activitiesEventSync.asReadonly();
   readonly eventChatSession = this._eventChatSession.asReadonly();
 
@@ -88,9 +91,13 @@ export class ActivitiesPopupStateService {
     primaryFilter: AppTypes.ActivitiesPrimaryFilter = 'chats',
     eventScope?: AppTypes.ActivitiesEventScope,
     initialRateFilter?: AppTypes.RateFilterKey,
-    initialRateSocialBadgeEnabled = false
+    initialRateSocialBadgeEnabled = false,
+    options: { adminServiceOnly?: boolean } = {}
   ): void {
-    const normalizedPrimaryFilter = this.normalizeActivitiesPrimaryFilter(primaryFilter);
+    const adminServiceOnly = options.adminServiceOnly === true;
+    const normalizedPrimaryFilter = adminServiceOnly
+      ? 'chats'
+      : this.normalizeActivitiesPrimaryFilter(primaryFilter);
     const resolvedScope = this.resolveActivitiesEventScope(primaryFilter, eventScope);
     const resolvedRateFilter = initialRateFilter ?? 'individual-given';
     this._uiState.update(state => ({
@@ -101,12 +108,14 @@ export class ActivitiesPopupStateService {
       eventScope: resolvedScope,
       secondaryFilter: 'recent',
       hostingPublicationFilter: resolvedScope === 'drafts' ? 'drafts' : 'all',
+      chatContextFilter: adminServiceOnly ? 'service' : 'all',
       showViewPicker: false,
       showSecondaryPicker: false,
       view: normalizedPrimaryFilter === 'rates' ? 'distance' : 'day',
       stickyValue: '',
       ratesFullscreenMode: false,
       selectedRateId: null,
+      adminServiceOnly,
       ...(normalizedPrimaryFilter === 'rates'
         ? {
             rateFilter: resolvedRateFilter,
@@ -117,7 +126,7 @@ export class ActivitiesPopupStateService {
   }
 
   closeActivities(): void {
-    this.patchUiState({ open: false });
+    this.patchUiState({ open: false, adminServiceOnly: false });
     this._eventChatSession.set(null);
   }
 
@@ -126,6 +135,15 @@ export class ActivitiesPopupStateService {
   }
 
   setActivitiesPrimaryFilter(filter: AppTypes.ActivitiesPrimaryFilter): void {
+    if (this._uiState().adminServiceOnly) {
+      this.patchUiState({
+        primaryFilter: 'chats',
+        chatContextFilter: 'service',
+        showViewPicker: false,
+        showSecondaryPicker: false
+      });
+      return;
+    }
     const normalizedFilter = this.normalizeActivitiesPrimaryFilter(filter);
     this._uiState.update(state => ({
       ...state,
@@ -162,7 +180,7 @@ export class ActivitiesPopupStateService {
   }
 
   setActivitiesChatContextFilter(filter: AppTypes.ActivitiesChatContextFilter): void {
-    this.patchUiState({ chatContextFilter: filter });
+    this.patchUiState({ chatContextFilter: this._uiState().adminServiceOnly ? 'service' : filter });
   }
 
   setActivitiesHostingPublicationFilter(filter: AppTypes.HostingPublicationFilter): void {

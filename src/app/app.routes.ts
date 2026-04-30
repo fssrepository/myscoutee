@@ -14,6 +14,10 @@ export const routes: Routes = [
     loadComponent: loadEntryPage
   },
   {
+    path: 'admin/help/:token',
+    loadComponent: () => import('./admin/admin-help-session-page.component').then(m => m.AdminHelpSessionPageComponent)
+  },
+  {
     path: 'admin',
     loadComponent: () => import('./admin/admin-page.component').then(m => m.AdminPageComponent)
   },
