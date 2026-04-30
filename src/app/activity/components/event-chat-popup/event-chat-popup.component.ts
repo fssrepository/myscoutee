@@ -868,13 +868,11 @@ export class EventChatPopupComponent implements OnDestroy {
   protected shareFirstAvailableAsset(event?: Event): void {
     event?.stopPropagation();
     this.composerMenuOpen = false;
-    const context = this.preparedChatContext;
     const resourceType = this.preparedChatAssetResources[0]?.type;
-    if (!context?.subEvent || !resourceType || resourceType === 'Members') {
-      this.popupCtx.requestActivitiesNavigation({ type: 'assetExplore', assetType: 'Car' });
-      return;
-    }
-    this.openSelectedChatSubEventResource(resourceType, undefined, true);
+    this.popupCtx.requestActivitiesNavigation({
+      type: 'assetExplore',
+      assetType: resourceType && resourceType !== 'Members' ? resourceType : 'Car'
+    });
   }
 
   protected chatAttachmentIcon(attachment: AppTypes.ChatMessageAttachment): string {

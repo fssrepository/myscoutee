@@ -893,6 +893,16 @@
   </section>
 }
 
+@if (host.assetExploreOnly()) {
+  <ng-template #assetExploreItemTemplate let-card let-groupLabel="groupLabel">
+    <app-info-card
+      [card]="assetExploreInfoCard(card, { groupLabel })"
+      (mediaEndClick)="openAssetExploreBorrowFromBadge(card)"
+      (menuAction)="onAssetExploreInfoCardMenuAction(card, $event)"
+    ></app-info-card>
+  </ng-template>
+}
+
 @if (host.assetExplorePopup(); as explore) {
   <section class="app-popup app-popup-stacked app-popup-stacked-over-subevents event-resource-popup-shell asset-explore-shell">
     <div class="app-popup-backdrop" (click)="host.closeExplorePopup($event)"></div>
