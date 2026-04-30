@@ -184,7 +184,9 @@ export class DemoUsersService extends DemoRouteDelayService implements UserServi
     if (!user?.id?.trim()) {
       return null;
     }
-    return this.usersRepository.upsertUser(user);
+    const savedUser = this.usersRepository.upsertUser(user);
+    await this.memoryDb.flushToIndexedDb();
+    return savedUser;
   }
 
   async submitUserFeedback(

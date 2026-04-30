@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, HostListener, OnInit, effect, inject } from '@angular/core';
+import { Component, HostListener, effect, inject } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { MatRippleModule } from '@angular/material/core';
 
@@ -33,7 +33,7 @@ import { AdminItemPreviewPopupComponent } from './components/admin-item-preview-
   templateUrl: './admin-page.component.html',
   styleUrl: './admin-page.component.scss'
 })
-export class AdminPageComponent implements OnInit {
+export class AdminPageComponent {
   protected readonly admin = inject(AdminService);
   protected readonly sessionService = inject(SessionService);
   private readonly navigatorService = inject(NavigatorService);
@@ -47,8 +47,6 @@ export class AdminPageComponent implements OnInit {
   protected selectorLoadingLabel = 'Preparing admin data';
   protected selectorLoadingStage: DemoBootstrapProgressStage = 'selector';
   protected selectorErrorMessage = '';
-  protected restoring = false;
-
   constructor() {
     effect(() => {
       const request = this.popupCtx.adminNavigatorRequest();
@@ -72,15 +70,6 @@ export class AdminPageComponent implements OnInit {
           break;
       }
     });
-  }
-
-  async ngOnInit(): Promise<void> {
-    this.restoring = true;
-    try {
-      await this.admin.restoreAdminSession();
-    } finally {
-      this.restoring = false;
-    }
   }
 
   protected async requestAdminLogin(): Promise<void> {

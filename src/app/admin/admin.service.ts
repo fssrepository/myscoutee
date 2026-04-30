@@ -31,6 +31,9 @@ export interface AdminUserDto {
   name: string;
   initials: string;
   email: string;
+  headline?: string | null;
+  about?: string | null;
+  images?: string[] | null;
 }
 
 export interface AdminChatMessageDto {
@@ -339,7 +342,10 @@ export class AdminService {
     const nextAdmin: AdminUserDto = {
       ...admin,
       name: nextUser.name,
-      initials: this.initialsFromName(nextUser.name, admin.initials)
+      initials: this.initialsFromName(nextUser.name, admin.initials),
+      headline: nextUser.headline,
+      about: nextUser.about,
+      images: [...(nextUser.images ?? [])]
     };
     const dashboard = this.dashboardRef();
     if (dashboard) {
@@ -383,6 +389,7 @@ export class AdminService {
     onProgress?.({ percent: 18, label: 'Preparing admin data', stage: 'indexedDb' });
     await this.memoryDb.whenReady();
     this.demoUsersRepository.init();
+    await this.ensureDemoAdminProfiles();
     this.demoChatsRepository.init();
     onProgress?.({ percent: 48, label: 'Creating moderation records', stage: 'records' });
     const store = await this.ensureDemoModerationStore();
@@ -485,6 +492,7 @@ export class AdminService {
   }
 
   private buildDemoDashboard(admin: AdminUserDto, store: AdminModerationStore): AdminDashboardDto {
+    const activeAdmin = this.mergeStoredAdminProfile(admin);
     const reportsByUser = new Map<string, AdminReportDto[]>();
     for (const report of store.reports) {
       const key = report.targetUserId.trim();
@@ -513,11 +521,62 @@ export class AdminService {
       Date.parse(`${second.lastReportedAtIso ?? ''}`) - Date.parse(`${first.lastReportedAtIso ?? ''}`)
     );
     return {
-      activeAdmin: admin,
+      activeAdmin,
       reportedUsers,
       feedback: [...store.feedback].sort((first, second) =>
         Date.parse(second.createdDate) - Date.parse(first.createdDate)
       ).map(item => this.enrichDemoFeedback(item))
+    };
+  }
+
+  private async ensureDemoAdminProfiles(): Promise<void> {
+    const admins = [
+      this.resolveDemoAdmin('admin-demo-ava'),
+      this.resolveDemoAdmin('admin-demo-noel')
+    ];
+    let changed = false;
+    for (const admin of admins) {
+      if (this.demoUsersRepository.queryUserById(admin.id)) {
+        continue;
+      }
+      this.demoUsersRepository.upsertUser(this.buildDemoAdminUser(admin));
+      changed = true;
+    }
+    if (changed) {
+      await this.memoryDb.flushToIndexedDb();
+    }
+  }
+
+  private buildDemoAdminUser(admin: AdminUserDto): UserDto {
+    return {
+      id: admin.id,
+      name: admin.name,
+      age: 0,
+      birthday: '',
+      city: 'Admin',
+      height: '',
+      physique: '',
+      languages: ['English'],
+      horoscope: '',
+      initials: admin.initials,
+      gender: admin.id.includes('noel') ? 'man' : 'woman',
+      statusText: 'Admin workspace',
+      hostTier: 'Admin',
+      traitLabel: 'Safety',
+      completion: 100,
+      headline: `${admin.headline ?? ''}`.trim() || 'Moderation workspace',
+      about: `${admin.about ?? ''}`.trim() || 'Reviews reports, feedback, and support chats.',
+      images: [...(admin.images ?? [])],
+      profileStatus: 'public',
+      activities: {
+        game: 0,
+        chat: 0,
+        invitations: 0,
+        events: 0,
+        hosting: 0,
+        tickets: 0,
+        feedback: 0
+      }
     };
   }
 
@@ -760,7 +819,12 @@ export class AdminService {
 
   private normalizeDashboard(dashboard: AdminDashboardDto): AdminDashboardDto {
     return {
-      activeAdmin: dashboard.activeAdmin,
+      activeAdmin: {
+        ...dashboard.activeAdmin,
+        headline: `${dashboard.activeAdmin.headline ?? ''}`.trim() || null,
+        about: `${dashboard.activeAdmin.about ?? ''}`.trim() || null,
+        images: [...(dashboard.activeAdmin.images ?? [])]
+      },
       reportedUsers: (dashboard.reportedUsers ?? []).map(user => ({
         ...user,
         reports: (user.reports ?? []).map(report => ({
@@ -794,9 +858,16 @@ export class AdminService {
 
   private buildAdminProfile(admin: AdminUserDto, dashboard: AdminDashboardDto): UserDto {
     const existingAdminProfile = this.appCtx.getUserProfile(admin.id) ?? this.demoUsersRepository.queryUserById(admin.id);
+    const name = `${existingAdminProfile?.name ?? admin.name}`.trim() || admin.name;
+    const initials = `${existingAdminProfile?.initials ?? admin.initials}`.trim() || this.initialsFromName(name, admin.initials);
+    const headline = `${existingAdminProfile?.headline ?? admin.headline ?? ''}`.trim() || 'Moderation workspace';
+    const about = `${existingAdminProfile?.about ?? admin.about ?? ''}`.trim() || 'Reviews reports, feedback, and support chats.';
+    const images = (existingAdminProfile?.images?.length ? existingAdminProfile.images : admin.images ?? [])
+      .map(image => `${image ?? ''}`.trim())
+      .filter(image => image.length > 0);
     return {
       id: admin.id,
-      name: admin.name,
+      name,
       age: 0,
       birthday: '',
       city: 'Admin',
@@ -804,15 +875,15 @@ export class AdminService {
       physique: '',
       languages: ['English'],
       horoscope: '',
-      initials: admin.initials,
+      initials,
       gender: admin.id.includes('noel') ? 'man' : 'woman',
       statusText: 'Admin workspace',
       hostTier: 'Admin',
       traitLabel: 'Safety',
       completion: 100,
-      headline: 'Moderation workspace',
-      about: 'Reviews reports, feedback, and support chats.',
-      images: [...(existingAdminProfile?.images ?? [])],
+      headline,
+      about,
+      images,
       profileStatus: 'public',
       activities: {
         game: dashboard.reportedUsers.reduce((total, item) => total + item.reportCount, 0),
@@ -841,6 +912,22 @@ export class AdminService {
       name: 'Ava Moderation',
       initials: 'AM',
       email: 'ava.admin@myscoutee.local'
+    };
+  }
+
+  private mergeStoredAdminProfile(admin: AdminUserDto): AdminUserDto {
+    const stored = this.demoUsersRepository.queryUserById(admin.id);
+    if (!stored) {
+      return admin;
+    }
+    const name = `${stored.name ?? ''}`.trim() || admin.name;
+    return {
+      ...admin,
+      name,
+      initials: `${stored.initials ?? ''}`.trim() || this.initialsFromName(name, admin.initials),
+      headline: `${stored.headline ?? ''}`.trim() || admin.headline || null,
+      about: `${stored.about ?? ''}`.trim() || admin.about || null,
+      images: [...(stored.images ?? admin.images ?? [])]
     };
   }
 

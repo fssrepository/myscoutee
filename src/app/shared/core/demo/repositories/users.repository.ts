@@ -1,21 +1,14 @@
 import { computed, Injectable, inject } from '@angular/core';
 
-import type {
-  UserGameFilterPreferencesDto,
-  UserRateOutboxRecord,
-  UserRateRecord
-} from '../../base/interfaces/game.interface';
+import type { UserGameFilterPreferencesDto } from '../../base/interfaces/game.interface';
 import type { DemoUserListItemDto, UserDto } from '../../base/interfaces/user.interface';
 import {
   USER_FILTER_PREFERENCES_TABLE_NAME,
-  USERS_TABLE_NAME,
-  USER_RATES_OUTBOX_TABLE_NAME,
-  USER_RATES_TABLE_NAME
+  USERS_TABLE_NAME
 } from '../models/users.model';
 import { AppMemoryDb } from '../../base/db';
 import { DemoUserFilterPreferencesBuilder, DemoUserSeedBuilder, DemoUsersRepositoryBuilder } from '../builders';
 import { CHATS_TABLE_NAME } from '../models/chats.model';
-import { EVENTS_TABLE_NAME } from '../models/events.model';
 import type { DemoMemorySchema } from '../models/memory.model';
 import { DemoChatsRepository } from './chats.repository';
 import { DemoEventsRepository } from './events.repository';
@@ -43,13 +36,6 @@ export class DemoUsersRepository {
     const state = this.memoryDb.read();
     const usersTable = state[USERS_TABLE_NAME];
     if (usersTable.ids.length > 0) {
-      if (usersTable.ids.length !== DemoUsersRepository.DEFAULT_DEMO_USERS_COUNT) {
-        const sourceUsers = users ?? DemoUserSeedBuilder.buildExpandedDemoUsers(DemoUsersRepository.DEFAULT_DEMO_USERS_COUNT);
-        const reseededUsersTable = DemoUsersRepositoryBuilder.buildRecordCollection(
-          sourceUsers.map(user => this.applySeededActivityCounts(DemoUsersRepositoryBuilder.cloneUser(user)))
-        );
-        this.memoryDb.write(currentState => this.reseedUsersAndPruneRelations(currentState, reseededUsersTable));
-      }
       this.initialized = true;
       return this.queryUsersFromTable(USERS_TABLE_NAME);
     }
@@ -66,83 +52,6 @@ export class DemoUsersRepository {
     this.initialized = true;
 
     return this.queryUsersFromTable(USERS_TABLE_NAME);
-  }
-
-  private reseedUsersAndPruneRelations(
-    state: DemoMemorySchema,
-    usersTable: { byId: Record<string, UserDto>; ids: string[] }
-  ): DemoMemorySchema {
-    const validUserIds = new Set(usersTable.ids);
-    const currentRates = state[USER_RATES_TABLE_NAME];
-    const nextRatesById: Record<string, UserRateRecord> = {};
-    const nextRateIds: string[] = [];
-    for (const rateId of currentRates.ids) {
-      const record = currentRates.byId[rateId];
-      if (!record) {
-        continue;
-      }
-      if (!validUserIds.has(record.fromUserId) || !validUserIds.has(record.toUserId)) {
-        continue;
-      }
-      nextRatesById[rateId] = { ...record };
-      nextRateIds.push(rateId);
-    }
-    const currentOutbox = state[USER_RATES_OUTBOX_TABLE_NAME];
-    const nextOutboxById: Record<string, UserRateOutboxRecord> = {};
-    const nextOutboxIds: string[] = [];
-    for (const outboxId of currentOutbox.ids) {
-      const record = currentOutbox.byId[outboxId];
-      if (!record) {
-        continue;
-      }
-      if (!validUserIds.has(record.payload.fromUserId) || !validUserIds.has(record.payload.toUserId)) {
-        continue;
-      }
-      nextOutboxById[outboxId] = {
-        ...record,
-        payload: { ...record.payload }
-      };
-      nextOutboxIds.push(outboxId);
-    }
-    return {
-      ...state,
-      [CHATS_TABLE_NAME]: {
-        byId: Object.fromEntries(
-          state[CHATS_TABLE_NAME].ids
-            .filter(id => validUserIds.has(state[CHATS_TABLE_NAME].byId[id]?.ownerUserId ?? ''))
-            .map(id => [id, { ...state[CHATS_TABLE_NAME].byId[id], memberIds: [...state[CHATS_TABLE_NAME].byId[id].memberIds] }])
-        ) as DemoMemorySchema[typeof CHATS_TABLE_NAME]['byId'],
-        ids: state[CHATS_TABLE_NAME].ids
-          .filter(id => validUserIds.has(state[CHATS_TABLE_NAME].byId[id]?.ownerUserId ?? ''))
-      },
-      [EVENTS_TABLE_NAME]: {
-        byId: Object.fromEntries(
-          state[EVENTS_TABLE_NAME].ids
-            .filter(id => validUserIds.has(state[EVENTS_TABLE_NAME].byId[id]?.userId ?? ''))
-            .map(id => [id, { ...state[EVENTS_TABLE_NAME].byId[id] }])
-        ) as DemoMemorySchema[typeof EVENTS_TABLE_NAME]['byId'],
-        ids: state[EVENTS_TABLE_NAME].ids
-          .filter(id => validUserIds.has(state[EVENTS_TABLE_NAME].byId[id]?.userId ?? ''))
-      },
-      [USERS_TABLE_NAME]: usersTable,
-      [USER_RATES_TABLE_NAME]: {
-        ...state[USER_RATES_TABLE_NAME],
-        byId: nextRatesById,
-        ids: nextRateIds
-      },
-      [USER_RATES_OUTBOX_TABLE_NAME]: {
-        byId: nextOutboxById,
-        ids: nextOutboxIds
-      },
-      [USER_FILTER_PREFERENCES_TABLE_NAME]: {
-        byId: Object.fromEntries(
-          state[USER_FILTER_PREFERENCES_TABLE_NAME].ids
-            .filter(userId => validUserIds.has(userId))
-            .map(userId => [userId, { ...state[USER_FILTER_PREFERENCES_TABLE_NAME].byId[userId] }])
-        ) as DemoMemorySchema[typeof USER_FILTER_PREFERENCES_TABLE_NAME]['byId'],
-        ids: state[USER_FILTER_PREFERENCES_TABLE_NAME].ids.filter(userId => validUserIds.has(userId))
-      }
-    };
   }
 
   queryAvailableDemoUsers(): DemoUserListItemDto[] {

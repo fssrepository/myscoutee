@@ -194,7 +194,7 @@ export class ProfileEditorComponent {
     }
     const keyboardEvent = event as KeyboardEvent;
     keyboardEvent.stopPropagation();
-    this.handleCloseAction();
+    void this.handleCloseAction();
   }
 
   protected get activeUser(): UserDto | null {
@@ -283,7 +283,7 @@ export class ProfileEditorComponent {
     return Boolean(user && (user.hostTier === 'Admin' || user.statusText === 'Admin workspace' || user.id.startsWith('admin-')));
   }
 
-  protected handleCloseAction(): void {
+  protected async handleCloseAction(): Promise<void> {
     if (this.mobileProfileSelectorSheet) {
       this.closeMobileProfileSelectorSheet();
       return;
@@ -307,13 +307,13 @@ export class ProfileEditorComponent {
       this.showExperienceQuickActionsMenu = false;
       return;
     }
-    this.commitProfileForm(false);
+    await this.commitProfileForm(false);
     this.navigatorService.closeProfileEditor();
     this.resetTransientUiState();
   }
 
   protected onBackdropClose(): void {
-    this.handleCloseAction();
+    void this.handleCloseAction();
   }
 
   protected toggleProfileStatusHeaderPicker(event?: Event): void {
@@ -2162,12 +2162,12 @@ export class ProfileEditorComponent {
     }
   }
 
-  private commitProfileForm(showAlert: boolean): void {
+  private async commitProfileForm(showAlert: boolean): Promise<void> {
     if (!this.profileUser) {
       return;
     }
     if (this.isAdminProfile()) {
-      this.commitAdminProfileForm(showAlert);
+      await this.commitAdminProfileForm(showAlert);
       return;
     }
     const user = this.cloneUser(this.profileUser);
@@ -2189,7 +2189,7 @@ export class ProfileEditorComponent {
     user.completion = this.calculateProfileCompletionPercent();
     this.profileDetailsFormByUser[user.id] = this.cloneProfileDetailsForm(this.profileDetailsForm);
     this.pushProfileUserToContextAndLegacyMirror(user);
-    void this.usersService.saveUserProfile(this.cloneUser(user));
+    await this.usersService.saveUserProfile(this.cloneUser(user));
     if (showAlert) {
       this.confirmationDialogService.openInfo('Profile saved', {
         title: 'Profile updated',
@@ -2198,7 +2198,7 @@ export class ProfileEditorComponent {
     }
   }
 
-  private commitAdminProfileForm(showAlert: boolean): void {
+  private async commitAdminProfileForm(showAlert: boolean): Promise<void> {
     if (!this.profileUser) {
       return;
     }
@@ -2216,7 +2216,7 @@ export class ProfileEditorComponent {
       headline: user.headline,
       about: user.about
     });
-    void this.usersService.saveUserProfile(this.cloneUser(user));
+    await this.usersService.saveUserProfile(this.cloneUser(user));
     if (showAlert) {
       this.confirmationDialogService.openInfo('Profile saved', {
         title: 'Profile updated',
