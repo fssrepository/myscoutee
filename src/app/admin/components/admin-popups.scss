@@ -61,6 +61,143 @@ app-smart-list.admin-smart-list {
   flex: 1 1 auto;
 }
 
+.admin-feedback-card {
+  position: relative;
+  width: 100%;
+  border: 1px solid rgba(33, 51, 78, 0.14);
+  border-radius: 12px;
+  background: #fff;
+  padding: 0.62rem 0.7rem;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 0.58rem;
+  align-items: center;
+  color: #22324a;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  box-sizing: border-box;
+  transition: background-color 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.admin-feedback-card:hover {
+  box-shadow: 0 10px 26px rgba(23, 33, 54, 0.08);
+}
+
+.admin-feedback-card .activities-card-avatar,
+.admin-feedback-card .admin-message-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.admin-feedback-card .user-color-woman {
+  background: linear-gradient(180deg, #f089b0 0%, #df5d87 100%);
+}
+
+.admin-feedback-card .activities-card-main {
+  min-width: 0;
+}
+
+.admin-feedback-card .activities-card-title,
+.admin-feedback-card .activities-card-subtitle,
+.admin-feedback-card .activities-card-detail {
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.admin-feedback-card .activities-card-title {
+  color: #1f3658;
+  font-size: 0.86rem;
+  font-weight: 900;
+}
+
+.admin-feedback-card .activities-card-subtitle {
+  margin-top: 0.1rem;
+  color: rgba(20, 36, 58, 0.76);
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.admin-feedback-card .activities-card-detail {
+  margin-top: 0.1rem;
+  color: rgba(20, 36, 58, 0.64);
+  font-size: 0.73rem;
+}
+
+.admin-feedback-category-badge {
+  align-self: baseline;
+  justify-self: end;
+  min-width: 0;
+  max-width: 150px;
+  min-height: 28px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.86);
+  background: rgba(26, 45, 71, 0.82);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.64rem;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.68), 0 8px 16px rgba(255, 255, 255, 0.34);
+  font-size: 0.72rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.admin-feedback-tone-general {
+  border-color: rgba(73, 112, 166, 0.24);
+  background: linear-gradient(180deg, #fbfdff 0%, #f2f7ff 100%);
+}
+
+.admin-feedback-tone-general .admin-feedback-category-badge {
+  background: #3d638f;
+}
+
+.admin-feedback-tone-bug-report {
+  border-color: rgba(173, 55, 66, 0.28);
+  background: linear-gradient(180deg, #fffafa 0%, #fff3f3 100%);
+}
+
+.admin-feedback-tone-bug-report .admin-feedback-category-badge {
+  background: #9d3e49;
+}
+
+.admin-feedback-tone-feature-request {
+  border-color: rgba(51, 131, 92, 0.26);
+  background: linear-gradient(180deg, #fbfffc 0%, #f1faf4 100%);
+}
+
+.admin-feedback-tone-feature-request .admin-feedback-category-badge {
+  background: #2f7655;
+}
+
+.admin-feedback-tone-ux-improvement {
+  border-color: rgba(110, 82, 168, 0.25);
+  background: linear-gradient(180deg, #fdfcff 0%, #f6f2ff 100%);
+}
+
+.admin-feedback-tone-ux-improvement .admin-feedback-category-badge {
+  background: #674f9f;
+}
+
+.admin-feedback-tone-performance {
+  border-color: rgba(161, 105, 33, 0.26);
+  background: linear-gradient(180deg, #fffdfa 0%, #fff7eb 100%);
+}
+
+.admin-feedback-tone-performance .admin-feedback-category-badge {
+  background: #8d6330;
+}
+
 .admin-simple-row {
   border: 1px solid rgba(23, 33, 54, 0.1);
   border-radius: 12px;
@@ -281,6 +418,39 @@ app-smart-list.admin-smart-list {
   color: #9e2738;
   font-size: 0.82rem;
   font-weight: 800;
+}
+
+.admin-feedback-detail-bubble {
+  display: grid;
+  gap: 0.66rem;
+}
+
+.admin-feedback-detail-fields {
+  display: grid;
+  gap: 0.52rem;
+}
+
+.admin-feedback-detail-field {
+  display: grid;
+  gap: 0.26rem;
+}
+
+.admin-feedback-detail-field > strong {
+  color: rgba(34, 50, 74, 0.72);
+  font-size: 0.74rem;
+  font-weight: 900;
+}
+
+.admin-feedback-detail-field p {
+  margin: 0;
+  color: #132642;
+  font-size: 0.86rem;
+  line-height: 1.5;
+}
+
+.admin-feedback-detail-field .admin-feedback-category-badge {
+  justify-self: start;
+  align-self: auto;
 }
 
 .admin-detail-meta-grid {

@@ -21,12 +21,25 @@
         ></app-smart-list>
 
         <ng-template #feedbackItemTemplate let-item let-groupLabel="groupLabel">
-          <app-activities-chat-template
-            [row]="item.row"
-            [groupLabel]="groupLabel"
-            [context]="feedbackChatTemplateContext"
-            (rowClick)="selectFeedback(item)"
-          ></app-activities-chat-template>
+          <button
+            type="button"
+            class="admin-feedback-card activities-card activities-card-btn activities-row-item activities-card-chat"
+            [ngClass]="feedbackCategoryToneClass(item.feedback)"
+            [attr.data-group-label]="groupLabel"
+            (click)="selectFeedback(item)"
+            >
+            <span class="activities-card-avatar user-color-woman">
+              {{ feedbackInitial(item.feedback) }}
+            </span>
+            <div class="activities-card-main">
+              <p class="activities-card-title">{{ item.feedback.userName }}</p>
+              <p class="activities-card-subtitle">{{ item.feedback.subject }}</p>
+              <p class="activities-card-detail">{{ item.feedback.details }}</p>
+            </div>
+            <span class="admin-feedback-category-badge">
+              {{ feedbackCategoryLabel(item.feedback) }}
+            </span>
+          </button>
         </ng-template>
       </div>
     </div>
@@ -50,14 +63,27 @@
       <div class="popup-body admin-detail-popup-body">
         <article class="admin-chat-detail-message">
           <span class="admin-message-avatar">{{ feedbackInitial(item) }}</span>
-          <div class="admin-message-bubble">
+          <div class="admin-message-bubble admin-feedback-detail-bubble" [ngClass]="feedbackCategoryToneClass(item)">
             <div class="admin-message-head">
               <strong>{{ item.userName }}</strong>
               <span>{{ shortDate(item.createdDate) }}</span>
             </div>
-            <span class="admin-category-chip">{{ item.category }}</span>
-            <h3>{{ item.subject }}</h3>
-            <p>{{ item.details }}</p>
+            <div class="admin-feedback-detail-fields">
+              <div class="admin-feedback-detail-field">
+                <strong>Category</strong>
+                <span class="admin-feedback-category-badge">
+                  {{ feedbackCategoryLabel(item) }}
+                </span>
+              </div>
+              <div class="admin-feedback-detail-field">
+                <strong>Subject</strong>
+                <p>{{ item.subject }}</p>
+              </div>
+              <div class="admin-feedback-detail-field">
+                <strong>Details</strong>
+                <p>{{ item.details }}</p>
+              </div>
+            </div>
           </div>
         </article>
       </div>

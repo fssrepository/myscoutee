@@ -13,7 +13,6 @@ import {
   type SmartListItemTemplateContext,
   type SmartListLoadPage
 } from '../../shared/ui';
-import { ActivitiesChatTemplateComponent, type ActivitiesChatTemplateContext } from '../../activity/components/activities-popup/templates/chat/activities-chat-template.component';
 import type { ChatMenuItem } from '../../shared/core/base/interfaces/activity-feed.interface';
 import type { DemoUser } from '../../shared/core/base/interfaces/user.interface';
 import { toActivityChatRow } from '../../shared/core/base/converters/activities-chat.converter';
@@ -33,12 +32,13 @@ interface AdminFeedbackListItem {
 @Component({
   selector: 'app-admin-feedback-popup',
   standalone: true,
-  imports: [CommonModule, MatIconModule, SmartListComponent, ActivitiesChatTemplateComponent],
+  imports: [CommonModule, MatIconModule, SmartListComponent],
   templateUrl: './admin-feedback-popup.component.html',
   styleUrl: './admin-popups.scss'
 })
 export class AdminFeedbackPopupComponent {
   protected readonly admin = inject(AdminService);
+  private readonly feedbackCategories = new Set(APP_STATIC_DATA.feedbackCategories);
   protected feedbackDetail: AdminFeedbackDto | null = null;
 
   protected feedbackItemTemplateRef?: TemplateRef<
@@ -81,13 +81,6 @@ export class AdminFeedbackPopupComponent {
     query
   ) => of(this.loadFeedbackPage(query));
 
-  protected readonly feedbackChatTemplateContext: ActivitiesChatTemplateContext = {
-    getActiveUserInitials: () => 'AD',
-    getChatLastSender: (chat) => this.chatUserFromChat(chat),
-    getChatMemberCount: (chat) => chat.memberIds.length,
-    getChatChannelType: () => 'serviceEvent'
-  };
-
   protected selectFeedback(item: AdminFeedbackListItem): void {
     this.feedbackDetail = item.feedback;
   }
@@ -106,6 +99,27 @@ export class AdminFeedbackPopupComponent {
 
   protected feedbackInitial(item: AdminFeedbackDto): string {
     return (item.userName || 'F').trim().charAt(0).toUpperCase() || 'F';
+  }
+
+  protected feedbackCategoryLabel(item: AdminFeedbackDto): string {
+    const category = `${item.category ?? ''}`.trim();
+    if (this.feedbackCategories.has(category)) {
+      return category;
+    }
+    if (category === 'Safety') {
+      return 'UX improvement';
+    }
+    if (category === 'Events') {
+      return 'Feature request';
+    }
+    return 'General';
+  }
+
+  protected feedbackCategoryToneClass(item: AdminFeedbackDto): string {
+    return `admin-feedback-tone-${this.feedbackCategoryLabel(item)
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '') || 'general'}`;
   }
 
   protected shortDate(value: string | null | undefined): string {
@@ -158,10 +172,6 @@ export class AdminFeedbackPopupComponent {
         this.chatUser(feedback.userId, feedback.userName, this.feedbackInitial(feedback), 'woman')
       ]
     });
-  }
-
-  private chatUserFromChat(chat: ChatMenuItem): DemoUser {
-    return this.chatUser(chat.lastSenderId || chat.id, chat.title, chat.avatar, 'woman');
   }
 
   private chatUser(

@@ -465,7 +465,7 @@ export class AdminService {
           id: 'admin-demo-feedback-report-status-001',
           userId: 'u1',
           userName: 'Farkas Anna',
-          category: 'Safety',
+          category: 'UX improvement',
           subject: 'Need clearer report status',
           details: 'After reporting a user, I would like to see whether moderation has reviewed the report.',
           createdDate: '2026-04-24T13:20:00.000Z'
@@ -474,7 +474,7 @@ export class AdminService {
           id: 'admin-demo-feedback-event-warn-002',
           userId: 'u5',
           userName: 'Lina Park',
-          category: 'Events',
+          category: 'Feature request',
           subject: 'Review event behavior faster',
           details: 'Hosts need a way to warn members before blocking them from future participation.',
           createdDate: '2026-04-23T18:05:00.000Z'
