@@ -37,11 +37,11 @@ export function buildActivitiesChatTemplateData(
     groupLabel: options.groupLabel ?? null,
     avatarInitials: avatar ? avatar.slice(0, 2).toUpperCase() : options.activeUserInitials,
     avatarClass: `user-color-${options.lastSenderGender}`,
-    toneClass: activitiesChatToneClass(options.channelType)
+    toneClass: activitiesChatToneClass(options.channelType, chat)
   };
 }
 
-function activitiesChatToneClass(channelType: AppTypes.ChatChannelType): string {
+function activitiesChatToneClass(channelType: AppTypes.ChatChannelType, chat: ChatMenuItem): string {
   if (channelType === 'mainEvent') {
     return 'activities-card-chat-main-event';
   }
@@ -51,5 +51,22 @@ function activitiesChatToneClass(channelType: AppTypes.ChatChannelType): string 
   if (channelType === 'groupSubEvent') {
     return 'activities-card-chat-group-sub-event';
   }
+  if (channelType === 'serviceEvent') {
+    return serviceChatToneClass(chat);
+  }
   return '';
+}
+
+function serviceChatToneClass(chat: ChatMenuItem): string {
+  if (
+    chat.serviceContext === 'notification'
+    || chat.title.startsWith('Notify Participants')
+    || chat.lastMessage.toLowerCase().includes('notification channel')
+  ) {
+    return 'activities-card-chat-service-notification';
+  }
+  if (chat.serviceContext === 'asset' || chat.id.startsWith('c-service-asset-') || chat.title.startsWith('Asset Service')) {
+    return 'activities-card-chat-service-asset';
+  }
+  return 'activities-card-chat-service-event';
 }

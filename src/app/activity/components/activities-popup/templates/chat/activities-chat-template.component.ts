@@ -111,7 +111,12 @@ export class ActivitiesChatsController {
   private runAfterActivitiesRender(task: () => void): void { this.host.runAfterActivitiesRender(task); }
 
   public chatChannelType(item: ChatMenuItem): AppTypes.ChatChannelType {
-    if (item.channelType === 'mainEvent' || item.channelType === 'optionalSubEvent' || item.channelType === 'groupSubEvent') {
+    if (
+      item.channelType === 'mainEvent'
+      || item.channelType === 'optionalSubEvent'
+      || item.channelType === 'groupSubEvent'
+      || item.channelType === 'serviceEvent'
+    ) {
       return item.channelType;
     }
     return 'general';
@@ -582,6 +587,9 @@ export class ActivitiesChatsController {
   }
 
   private eventChatActionIcon(channelType: AppTypes.ChatChannelType): string {
+    if (channelType === 'serviceEvent') {
+      return 'support_agent';
+    }
     if (channelType === 'groupSubEvent') {
       return 'groups';
     }
@@ -592,6 +600,9 @@ export class ActivitiesChatsController {
   }
 
   private eventChatActionLabel(channelType: AppTypes.ChatChannelType): string {
+    if (channelType === 'serviceEvent') {
+      return 'View Event';
+    }
     if (channelType === 'groupSubEvent') {
       return 'View Group';
     }
@@ -602,6 +613,9 @@ export class ActivitiesChatsController {
   }
 
   private eventChatActionTone(channelType: AppTypes.ChatChannelType): EventChatContext['actionToneClass'] {
+    if (channelType === 'serviceEvent') {
+      return 'popup-chat-context-btn-tone-main-event';
+    }
     if (channelType === 'optionalSubEvent') {
       return 'popup-chat-context-btn-tone-optional';
     }
@@ -745,7 +759,7 @@ export class ActivitiesChatsController {
 
   public activityChatContextFilterKey(item: ChatMenuItem): AppTypes.ActivitiesChatContextFilter | null {
     const channelType = this.chatChannelType(item);
-    if (channelType === 'mainEvent' || channelType === 'general') {
+    if (channelType === 'mainEvent') {
       return 'event';
     }
     if (channelType === 'optionalSubEvent') {
@@ -753,6 +767,9 @@ export class ActivitiesChatsController {
     }
     if (channelType === 'groupSubEvent') {
       return 'group';
+    }
+    if (channelType === 'serviceEvent') {
+      return 'service';
     }
     return null;
   }

@@ -12,6 +12,7 @@ import { CHATS_TABLE_NAME } from '../../demo/models/chats.model';
 import { EVENT_FEEDBACK_TABLE_NAME } from '../../demo/models/event-feedback.model';
 import { EVENTS_TABLE_NAME } from '../../demo/models/events.model';
 import { PROFILE_EXPERIENCES_TABLE_NAME } from '../../demo/models/profile-experiences.model';
+import { SHARE_TOKENS_TABLE_NAME } from '../../demo/models/share-tokens.model';
 import type { DemoMemorySchema } from '../../demo/models/memory.model';
 import {
   USER_FILTER_PREFERENCES_TABLE_NAME,
@@ -96,6 +97,36 @@ export class AppMemoryDb {
     await this.persistToIndexedDb(pendingState);
   }
 
+  async readIndexedDbTableEntry<T = unknown>(key: string): Promise<T | null> {
+    const normalizedKey = key.trim();
+    if (!normalizedKey) {
+      return null;
+    }
+    const db = await this.openIndexedDb(AppMemoryDb.INDEXED_DB_NAME, true);
+    if (!db) {
+      return null;
+    }
+    return await this.readIndexedDbEntry(db, normalizedKey) as T | null;
+  }
+
+  async writeIndexedDbTableEntry(key: string, value: unknown): Promise<void> {
+    const normalizedKey = key.trim();
+    if (!normalizedKey) {
+      return;
+    }
+    const db = await this.openIndexedDb(AppMemoryDb.INDEXED_DB_NAME, true);
+    if (!db) {
+      return;
+    }
+    await new Promise<void>(resolve => {
+      const tx = db.transaction(AppMemoryDb.INDEXED_DB_STORE, 'readwrite');
+      tx.objectStore(AppMemoryDb.INDEXED_DB_STORE).put(value, normalizedKey);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => resolve();
+      tx.onabort = () => resolve();
+    });
+  }
+
   async queryActivityRateRecords(query: ActivityRateRecordQuery): Promise<ActivityRateRecordQueryResult> {
     const normalizedQuery = this.normalizeActivityRateRecordQuery(query);
     if (!normalizedQuery) {
@@ -152,6 +183,10 @@ export class AppMemoryDb {
       [PROFILE_EXPERIENCES_TABLE_NAME]: {
         byUserId: {},
         userIds: []
+      },
+      [SHARE_TOKENS_TABLE_NAME]: {
+        byToken: {},
+        tokens: []
       },
       [EVENTS_TABLE_NAME]: {
         byId: {},
@@ -569,6 +604,7 @@ export class AppMemoryDb {
     const chatsSource = source[CHATS_TABLE_NAME] as Partial<DemoMemorySchema[typeof CHATS_TABLE_NAME]> | undefined;
     const eventFeedbackSource = source[EVENT_FEEDBACK_TABLE_NAME] as Partial<DemoMemorySchema[typeof EVENT_FEEDBACK_TABLE_NAME]> | undefined;
     const profileExperiencesSource = source[PROFILE_EXPERIENCES_TABLE_NAME] as Partial<DemoMemorySchema[typeof PROFILE_EXPERIENCES_TABLE_NAME]> | undefined;
+    const shareTokensSource = source[SHARE_TOKENS_TABLE_NAME] as Partial<DemoMemorySchema[typeof SHARE_TOKENS_TABLE_NAME]> | undefined;
     const eventsSource = (
       source[EVENTS_TABLE_NAME]
       ?? legacySource['demoEvents']
@@ -643,6 +679,14 @@ export class AppMemoryDb {
         userIds: Array.isArray(profileExperiencesSource?.userIds)
           ? profileExperiencesSource.userIds.map(id => String(id))
           : [...fallback[PROFILE_EXPERIENCES_TABLE_NAME].userIds]
+      },
+      [SHARE_TOKENS_TABLE_NAME]: {
+        byToken: shareTokensSource?.byToken && typeof shareTokensSource.byToken === 'object'
+          ? { ...shareTokensSource.byToken }
+          : { ...fallback[SHARE_TOKENS_TABLE_NAME].byToken },
+        tokens: Array.isArray(shareTokensSource?.tokens)
+          ? shareTokensSource.tokens.map(token => String(token))
+          : [...fallback[SHARE_TOKENS_TABLE_NAME].tokens]
       },
       [EVENTS_TABLE_NAME]: {
         byId: eventsSource?.byId && typeof eventsSource.byId === 'object'

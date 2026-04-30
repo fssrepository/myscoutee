@@ -57,6 +57,7 @@ export class EntryShellComponent {
   protected demoSelectorLoadingStage: DemoBootstrapProgressStage = 'selector';
   protected demoSelectorErrorMessage = '';
   protected demoSelectorSubmitting = false;
+  protected demoSelectorSelectedUserId = '';
   protected showFirebaseAuthPopup = false;
   private demoSelectorRequestToken = 0;
 
@@ -133,6 +134,7 @@ export class EntryShellComponent {
     this.demoSelectorLoadingStage = 'selector';
     this.demoSelectorErrorMessage = '';
     this.demoSelectorSubmitting = false;
+    this.demoSelectorSelectedUserId = '';
   }
 
   protected onSelectDemoUser(userId: string): void {
@@ -141,6 +143,7 @@ export class EntryShellComponent {
     }
     const requestToken = this.demoSelectorRequestToken;
     this.demoSelectorSubmitting = true;
+    this.demoSelectorSelectedUserId = userId.trim();
     this.demoSelectorLoading = true;
     this.demoSelectorLoadingProgress = 0;
     this.demoSelectorLoadingLabel = 'Preparing demo session';
@@ -207,6 +210,7 @@ export class EntryShellComponent {
     this.demoSelectorLoadingStage = 'selector';
     this.demoSelectorErrorMessage = '';
     this.demoSelectorSubmitting = false;
+    this.demoSelectorSelectedUserId = '';
     this.showFirebaseAuthPopup = false;
   }
 
@@ -283,6 +287,7 @@ export class EntryShellComponent {
     this.demoSelectorLoadingStage = 'selector';
     this.demoSelectorErrorMessage = '';
     this.demoSelectorSubmitting = false;
+    this.demoSelectorSelectedUserId = '';
     void this.loadDemoSelectorUsers(requestToken);
   }
 
@@ -380,6 +385,7 @@ export class EntryShellComponent {
       this.commitDemoSelectorState(() => {
         this.demoSelectorLoading = false;
         this.demoSelectorSubmitting = false;
+        this.demoSelectorSelectedUserId = '';
         this.demoSelectorLoadingProgress = 0;
         this.demoSelectorLoadingLabel = 'Preparing demo data';
         this.demoSelectorLoadingStage = 'selector';

@@ -26,6 +26,7 @@ import {
   EventsService,
   type ActivityMembersSyncState,
   GameService,
+  ShareTokensService,
   UsersService,
   type UserDto
 } from '../../../shared/core';
@@ -48,6 +49,7 @@ import { EventCheckoutDialogService } from '../../../shared/ui/services/event-ch
 import { NavigatorService } from '../../../navigator';
 import type { DemoEventRecord } from '../../../shared/core/demo/models/events.model';
 import { resolveCurrentRouteDelayMs } from '../../../shared/core/base/services/route-delay.service';
+import type { ChatMenuItem } from '../../../shared/core/base/interfaces/activity-feed.interface';
 
 type CheckoutDraftEntry = {
   draft: EventCheckoutDraft;
@@ -74,6 +76,7 @@ export class EventExplorePopupComponent {
   private readonly activitiesService = inject(ActivitiesService);
   private readonly eventsService = inject(EventsService);
   private readonly gameService = inject(GameService);
+  private readonly shareTokensService = inject(ShareTokensService);
   private readonly usersService = inject(UsersService);
   protected readonly navigatorService = inject(NavigatorService);
   private readonly confirmationDialogService = inject(ConfirmationDialogService);
@@ -590,6 +593,18 @@ export class EventExplorePopupComponent {
     }
     if (action.actionId === 'join') {
       this.runEventExploreJoinAction(record);
+      return;
+    }
+    if (action.actionId === 'serviceChat') {
+      this.runEventExploreServiceChatAction(record);
+      return;
+    }
+    if (action.actionId === 'share') {
+      this.runEventExploreShareAction(record);
+      return;
+    }
+    if (action.actionId === 'report') {
+      this.runEventExploreReportAction(record);
     }
   }
 
@@ -762,6 +777,99 @@ export class EventExplorePopupComponent {
       state: this.isEventExploreRecordLeaving(record) ? 'leaving' : 'default'
     });
   }
+
+  private runEventExploreServiceChatAction(record: DemoEventRecord): void {
+    const chat = this.buildEventExploreServiceChat(record);
+    if (!chat) {
+      return;
+    }
+    this.activitiesContext.openEventChat(chat, {
+      channelType: 'serviceEvent',
+      hasSubEventMenu: false,
+      actionIcon: 'support_agent',
+      actionLabel: 'View Event',
+      actionToneClass: 'popup-chat-context-btn-tone-main-event',
+      actionBadgeCount: 0,
+      menuTitle: chat.title,
+      eventRow: EventExploreBuilder.buildActivityRow(record),
+      subEventRow: null,
+      subEvent: null,
+      group: null,
+      assetAssignmentIds: {
+        Car: [],
+        Accommodation: [],
+        Supplies: []
+      },
+      assetCardsByType: {
+        Car: [],
+        Accommodation: [],
+        Supplies: []
+      },
+      resources: []
+    });
+  }
+
+  private buildEventExploreServiceChat(record: DemoEventRecord): (ChatMenuItem & { ownerUserId?: string }) | null {
+    const activeUserId = this.activeUserId.trim();
+    if (!activeUserId) {
+      return null;
+    }
+    const organizerUserId = `${record.creatorUserId ?? ''}`.trim();
+    const memberIds = [activeUserId, organizerUserId].filter(Boolean);
+    return {
+      id: `c-service-event-${record.id}-${activeUserId}`,
+      avatar: AppUtils.initialsFromText(record.creatorName?.trim() || record.title),
+      title: `Contact Organizer · ${record.title}`,
+      lastMessage: `Service chat with the organizer for ${record.title}.`,
+      lastSenderId: organizerUserId || activeUserId,
+      memberIds: [...new Set(memberIds)],
+      unread: 0,
+      dateIso: new Date().toISOString(),
+      channelType: 'serviceEvent',
+      serviceContext: 'event',
+      eventId: record.id,
+      ownerUserId: activeUserId
+    };
+  }
+
+  private runEventExploreReportAction(record: DemoEventRecord): void {
+    const targetUserId = `${record.creatorUserId ?? ''}`.trim();
+    if (!targetUserId || targetUserId === this.activeUserId.trim()) {
+      return;
+    }
+    this.navigatorService.openReportUserPopup({
+      targetUserId,
+      targetName: record.creatorName?.trim() || 'Organizer',
+      eventId: record.id,
+      eventTitle: record.title,
+      eventStartAtIso: record.startAtIso,
+      eventTimeframe: record.timeframe,
+      ownerType: 'event'
+    });
+    this.cdr.markForCheck();
+  }
+
+  private runEventExploreShareAction(record: DemoEventRecord): void {
+    void this.shareTokensService.createToken({
+      kind: 'event',
+      entityId: record.id,
+      ownerUserId: this.activeUserId.trim()
+    }).then(token => this.openShareLinkDialog('Share event', token));
+  }
+
+  private openShareLinkDialog(title: string, shareToken: string): void {
+    this.confirmationDialogService.open({
+      title,
+      message: shareToken,
+      confirmLabel: 'Copy link',
+      cancelLabel: 'Cancel',
+      confirmTone: 'accent',
+      onConfirm: async () => {
+        await navigator.clipboard?.writeText(shareToken);
+      }
+    });
+  }
+
 
   protected closeEventExploreSlotPicker(): void {
     this.slotPickerRecord = null;

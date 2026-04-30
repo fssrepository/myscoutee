@@ -4,10 +4,12 @@
     <span>Help</span>
   </button>
 
-  <button type="button" class="user-settings-item" (click)="openPopup('feedback', $event)">
-    <mat-icon>feedback</mat-icon>
-    <span>Send Feedback</span>
-  </button>
+  @if (!isAdminMode()) {
+    <button type="button" class="user-settings-item" (click)="openPopup('feedback', $event)">
+      <mat-icon>feedback</mat-icon>
+      <span>Send Feedback</span>
+    </button>
+  }
 
   <a
     class="user-settings-item"
@@ -25,10 +27,12 @@
     <span>Privacy</span>
   </button>
 
-  <button type="button" class="user-settings-item danger" (click)="openDeleteAccountConfirm($event)">
-    <mat-icon>delete_forever</mat-icon>
-    <span>Delete account</span>
-  </button>
+  @if (!isAdminMode()) {
+    <button type="button" class="user-settings-item danger" (click)="openDeleteAccountConfirm($event)">
+      <mat-icon>delete_forever</mat-icon>
+      <span>Delete account</span>
+    </button>
+  }
 
   <button type="button" class="user-settings-item" (click)="openLogoutConfirm($event)">
     <mat-icon>logout</mat-icon>

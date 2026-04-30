@@ -1,0 +1,69 @@
+@if (admin.activePopup() === 'chat-review' || admin.activePopup() === 'warn-chat') {
+  <section class="app-popup">
+    <div class="app-popup-backdrop" (click)="admin.closePopup()"></div>
+    <div class="app-popup-panel popup-panel-admin" (click)="$event.stopPropagation()">
+      <div class="popup-header">
+        <div class="popup-title">
+          @if (admin.activePopup() === 'warn-chat') {
+            <h2>Warn user</h2>
+            <p class="popup-subtitle">Send a support chat message before blocking.</p>
+          } @else {
+            <h2>Reported chat message</h2>
+            <p class="popup-subtitle">{{ admin.selectedReport()?.chatTitle || 'Reported conversation' }}</p>
+          }
+        </div>
+        <button type="button" class="popup-close" (click)="admin.closePopup()" aria-label="Close">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+      <div class="popup-body">
+        @if (admin.activePopup() === 'warn-chat') {
+          <form class="admin-form" (ngSubmit)="sendWarning()">
+            @if (admin.selectedReportedUser(); as user) {
+              <div class="admin-detail-heading">
+                <span class="admin-avatar" [ngClass]="'user-color-' + user.gender">{{ user.initials }}</span>
+                <div class="admin-detail-heading-main">
+                  <h3>{{ user.name }}</h3>
+                  <p>{{ user.profileStatus }} · {{ user.reportCount }} reports</p>
+                </div>
+              </div>
+            }
+            <label>
+              <span>Warning message</span>
+              <textarea name="warnMessage" [(ngModel)]="warnMessage"></textarea>
+            </label>
+            <div class="admin-action-row">
+              <button type="submit" class="admin-btn admin-btn-primary" [disabled]="sending || !warnMessage.trim()">
+                <mat-icon>send</mat-icon>
+                <span>{{ sending ? 'Sending...' : 'Send warning' }}</span>
+              </button>
+            </div>
+          </form>
+        } @else if (admin.selectedReport(); as report) {
+          <div class="admin-popup-body admin-popup-body-single">
+            <div class="admin-detail-pane">
+              <div class="admin-detail-heading">
+                <span class="admin-avatar">!</span>
+                <div class="admin-detail-heading-main">
+                  <h3>{{ report.reason }}</h3>
+                  <p>{{ report.reporterName }} · {{ report.createdDate }}</p>
+                </div>
+              </div>
+              <div class="admin-message-list">
+                @for (message of report.chatMessages || []; track message.id) {
+                  <article class="admin-message" [class.is-reported]="isReportedMessage(message)">
+                    <div class="admin-message-head">
+                      <span>{{ message.sender }}</span>
+                      <span>{{ message.time || message.sentAtIso }}</span>
+                    </div>
+                    <p>{{ message.text }}</p>
+                  </article>
+                }
+              </div>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  </section>
+}

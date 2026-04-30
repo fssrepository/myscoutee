@@ -29,6 +29,13 @@ export interface NavigatorReportUserContext {
   eventStartAtIso?: string | null;
   eventTimeframe?: string | null;
   ownerType?: ActivityMemberOwnerType;
+  sourceType?: string | null;
+  sourceId?: string | null;
+  sourceText?: string | null;
+  chatId?: string | null;
+  messageId?: string | null;
+  assetId?: string | null;
+  assetType?: string | null;
 }
 
 export interface NavigatorBindings {
@@ -41,6 +48,7 @@ export interface NavigatorBindings {
 export class NavigatorService {
   private static readonly USER_REALTIME_LONG_POLL_INTERVAL_MS = 30000;
   private static readonly DEMO_USER_REALTIME_LONG_POLL_INTERVAL_MS = 10000;
+  private static readonly ACCOUNT_REACTIVATION_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 
   private readonly usersService = inject(UsersService);
   private readonly sessionService = inject(SessionService);
@@ -54,6 +62,7 @@ export class NavigatorService {
   private readonly settingsMenuOpenRef = signal(false);
   private readonly settingsPopupRef = signal<NavigatorSettingsPopup | null>(null);
   private readonly reportUserContextRef = signal<NavigatorReportUserContext | null>(null);
+  private readonly deletedAccountReactivationPendingRef = signal(false);
   private readonly profileEditorOpenRef = signal(false);
   private readonly impressionsPopupOpenRef = signal(false);
   private readonly impressionsPopupUserIdRef = signal('');
@@ -61,6 +70,7 @@ export class NavigatorService {
   private userRealtimeLongPollTimer: ReturnType<typeof setInterval> | null = null;
   private userRealtimeLongPollInFlight = false;
   private userRealtimeLongPollActiveIntervalMs = NavigatorService.USER_REALTIME_LONG_POLL_INTERVAL_MS;
+  private reactivationPromptUserId = '';
   private readonly userRealtimeLongPollCursorByUserId: Record<string, string> = {};
   private readonly userSeenImpressionsCursorByUserId: Record<string, string> = {};
   private readonly userIgnoreNextImpressionsSnapshotByUserId: Record<string, boolean> = {};
@@ -70,6 +80,7 @@ export class NavigatorService {
   readonly profileEditorOpen = this.profileEditorOpenRef.asReadonly();
   readonly settingsPopup = this.settingsPopupRef.asReadonly();
   readonly reportUserContext = this.reportUserContextRef.asReadonly();
+  readonly deletedAccountReactivationPending = this.deletedAccountReactivationPendingRef.asReadonly();
   readonly impressionsPopupOpen = this.impressionsPopupOpenRef.asReadonly();
   readonly impressionsPopupUserId = this.impressionsPopupUserIdRef.asReadonly();
   readonly menuUiState = computed<NavigatorMenuUiState>(() => ({
@@ -104,6 +115,10 @@ export class NavigatorService {
         this.clearHydrationState();
         return;
       }
+      if (this.isAdminWorkspaceRoute()) {
+        this.clearHydrationState();
+        return;
+      }
 
       const requestKey = session.kind === 'firebase'
         ? `firebase:${session.profile.id}`
@@ -122,6 +137,11 @@ export class NavigatorService {
       const activeUserId = this.appCtx.activeUserId().trim();
 
       if (!session || !activeUserId) {
+        this.stopUserRealtimeLongPoll();
+        this.impressionsPopupOpenRef.set(false);
+        return;
+      }
+      if (this.isAdminWorkspaceRoute() || this.isAdminProfileActive(activeUserId)) {
         this.stopUserRealtimeLongPoll();
         this.impressionsPopupOpenRef.set(false);
         return;
@@ -147,15 +167,95 @@ export class NavigatorService {
   }
 
   async hydrateUserAfterLogin(userId?: string): Promise<UserDto | null> {
+    if (this.isAdminWorkspaceRoute()) {
+      return null;
+    }
     const requestVersion = ++this.hydrationRequestVersion;
     const isFirebaseSession = this.sessionService.currentSession()?.kind === 'firebase';
     const loadedUser = await this.usersService.loadUserById(isFirebaseSession ? undefined : userId);
     if (!loadedUser || requestVersion !== this.hydrationRequestVersion) {
       return null;
     }
+    if (this.shouldPromptDeletedAccountReactivation(loadedUser)) {
+      this.deletedAccountReactivationPendingRef.set(true);
+      this.openDeletedAccountReactivationPrompt(loadedUser, requestVersion);
+      return loadedUser;
+    }
 
     this.syncHydratedUser(loadedUser);
     return loadedUser;
+  }
+
+  private shouldPromptDeletedAccountReactivation(user: UserDto): boolean {
+    if (user.profileStatus !== 'deleted') {
+      return false;
+    }
+    const deletedAtMs = Date.parse(`${user.deletedAtIso ?? ''}`.trim());
+    if (!Number.isFinite(deletedAtMs)) {
+      return true;
+    }
+    return Date.now() - deletedAtMs <= NavigatorService.ACCOUNT_REACTIVATION_WINDOW_MS;
+  }
+
+  private openDeletedAccountReactivationPrompt(user: UserDto, requestVersion: number): void {
+    const userId = user.id.trim();
+    if (!userId || this.reactivationPromptUserId === userId) {
+      return;
+    }
+    this.reactivationPromptUserId = userId;
+    this.confirmationDialogService.open({
+      title: 'Reactivate account?',
+      message: 'This account is scheduled for deletion. You can reactivate it within 30 days and continue using MyScoutee normally.',
+      cancelLabel: 'Cancel',
+      confirmLabel: 'Reactivate',
+      busyConfirmLabel: 'Reactivating...',
+      confirmTone: 'accent',
+      allowBackdropClose: false,
+      allowEscapeClose: false,
+      failureMessage: 'Unable to reactivate account.',
+      onCancel: async () => {
+        this.reactivationPromptUserId = '';
+        this.deletedAccountReactivationPendingRef.set(false);
+        this.clearHydratedUser();
+        await this.sessionService.logout().finally(() => this.router.navigate(['/entry']));
+      },
+      onConfirm: async () => {
+        const restoredProfileStatus = this.resolveReactivatedProfileStatus(user);
+        const reactivatedUser: UserDto = {
+          ...user,
+          profileStatus: restoredProfileStatus,
+          previousProfileStatus: null,
+          deletedAtIso: null
+        };
+        const saved = await this.usersService.saveUserProfile(reactivatedUser, {
+          minimumDurationMs: this.usersService.demoModeEnabled ? 1500 : 0,
+          returnFallbackOnFailure: false
+        });
+        if (!saved) {
+          throw new Error('Unable to reactivate account.');
+        }
+        this.reactivationPromptUserId = '';
+        setTimeout(() => {
+          if (requestVersion === this.hydrationRequestVersion) {
+            this.syncHydratedUser(saved);
+          }
+          this.deletedAccountReactivationPendingRef.set(false);
+        }, 0);
+      }
+    });
+  }
+
+  private resolveReactivatedProfileStatus(user: UserDto): UserDto['profileStatus'] {
+    switch (user.previousProfileStatus) {
+      case 'blocked':
+      case 'friends only':
+      case 'host only':
+      case 'inactive':
+      case 'public':
+        return user.previousProfileStatus;
+      default:
+        return 'public';
+    }
   }
 
   syncHydratedUser(user: UserDto): void {
@@ -166,6 +266,7 @@ export class NavigatorService {
   clearHydrationState(): void {
     this.hydrationRequestVersion += 1;
     this.hydrationRequestKeyRef.set('');
+    this.deletedAccountReactivationPendingRef.set(false);
   }
 
   clearHydratedUser(): void {
@@ -235,7 +336,14 @@ export class NavigatorService {
       eventTitle: `${context.eventTitle ?? ''}`.trim() || null,
       eventStartAtIso: `${context.eventStartAtIso ?? ''}`.trim() || null,
       eventTimeframe: `${context.eventTimeframe ?? ''}`.trim() || null,
-      ownerType: context.ownerType
+      ownerType: context.ownerType,
+      sourceType: `${context.sourceType ?? ''}`.trim() || null,
+      sourceId: `${context.sourceId ?? ''}`.trim() || null,
+      sourceText: `${context.sourceText ?? ''}`.trim() || null,
+      chatId: `${context.chatId ?? ''}`.trim() || null,
+      messageId: `${context.messageId ?? ''}`.trim() || null,
+      assetId: `${context.assetId ?? ''}`.trim() || null,
+      assetType: `${context.assetType ?? ''}`.trim() || null
     });
     this.openSettingsPopup('report-user');
   }
@@ -267,6 +375,13 @@ export class NavigatorService {
         this.closeSettingsPopup();
         this.closeProfileEditor();
         this.closeImpressionsPopup();
+        if (this.router.url.split('?')[0].startsWith('/admin')) {
+          this.clearHydratedUser();
+          localStorage.removeItem('myscoutee-admin-session');
+          window.dispatchEvent(new CustomEvent('adminLogoutRequested'));
+          await this.sessionService.logout().finally(() => this.router.navigate(['/admin']));
+          return;
+        }
         const activeUserId = this.appCtx.activeUserId().trim();
         if (activeUserId) {
           const result = await this.usersService.deleteUser(activeUserId);
@@ -302,6 +417,29 @@ export class NavigatorService {
         this.closeProfileEditor();
         this.closeImpressionsPopup();
         const activeUserId = this.appCtx.activeUserId().trim();
+        if (this.router.url.split('?')[0].startsWith('/admin')) {
+          if (activeUserId) {
+            const result = await this.usersService.logoutUser(activeUserId);
+            if (!result.submitted) {
+              this.confirmationDialogService.openInfo(
+                result.message ?? 'Unable to log out.',
+                {
+                  title: 'Logout',
+                  confirmLabel: 'OK',
+                  confirmTone: 'neutral'
+                }
+              );
+              return;
+            }
+          }
+          this.clearHydratedUser();
+          if (typeof localStorage !== 'undefined') {
+            localStorage.removeItem('myscoutee-admin-session');
+          }
+          window.dispatchEvent(new CustomEvent('adminLogoutRequested'));
+          await this.sessionService.logout().finally(() => this.router.navigate(['/admin']));
+          return;
+        }
         if (activeUserId) {
           const result = await this.usersService.logoutUser(activeUserId);
           if (!result.submitted) {
@@ -388,6 +526,21 @@ export class NavigatorService {
     return this.usersService.demoModeEnabled
       ? NavigatorService.DEMO_USER_REALTIME_LONG_POLL_INTERVAL_MS
       : NavigatorService.USER_REALTIME_LONG_POLL_INTERVAL_MS;
+  }
+
+  private isAdminWorkspaceRoute(): boolean {
+    const [pathWithQuery] = (this.router.url || '').split('?');
+    const [path] = pathWithQuery.split('#');
+    return path === '/admin' || path === '/admin/';
+  }
+
+  private isAdminProfileActive(userId: string): boolean {
+    const normalizedUserId = userId.trim();
+    const activeUser = this.appCtx.activeUserProfile();
+    return activeUser?.hostTier === 'Admin'
+      || activeUser?.statusText === 'Admin workspace'
+      || normalizedUserId === 'admin'
+      || normalizedUserId.startsWith('admin-');
   }
 
   private captureUserRealtimeBaseCounters(userId: string): void {

@@ -1,3 +1,5 @@
+import type { AssetType } from './asset.model';
+
 export interface ChatReadAvatar {
   id: string;
   initials: string;
@@ -17,6 +19,59 @@ export interface ChatPopupMessage {
   readBy: ChatReadAvatar[];
   clientId?: string;
   deliveryState?: ChatMessageDeliveryState;
+  deletedAtIso?: string | null;
+  deletedByUserId?: string | null;
+  deletedByName?: string | null;
+  editedAtIso?: string | null;
+  pinnedAtIso?: string | null;
+  pinnedByUserId?: string | null;
+  replyTo?: {
+    id: string;
+    sender: string;
+    text: string;
+  } | null;
+  reactions?: ChatMessageReaction[];
+  attachments?: ChatMessageAttachment[];
+}
+
+export interface ChatMessageReplyRef {
+  id: string;
+  sender: string;
+  text: string;
+}
+
+export interface ChatMessageMutation {
+  text?: string;
+  deleted?: boolean;
+  pinned?: boolean;
+  reactionEmoji?: string | null;
+  attachments?: ChatMessageAttachment[];
+}
+
+export interface ChatMessageReaction {
+  emoji: string;
+  userId: string;
+  userName: string;
+  userInitials: string;
+  userGender: 'woman' | 'man';
+  reactedAtIso: string;
+}
+
+export type ChatMessageAttachmentType = 'image' | 'event' | 'asset' | 'link' | 'poll' | 'voice';
+
+export interface ChatMessageAttachment {
+  id: string;
+  type: ChatMessageAttachmentType;
+  title: string;
+  entityId?: string | null;
+  assetType?: AssetType | null;
+  ownerUserId?: string | null;
+  subtitle?: string | null;
+  description?: string | null;
+  url?: string | null;
+  previewUrl?: string | null;
+  mimeType?: string | null;
+  sizeBytes?: number | null;
 }
 
 export interface ChatTypingIndicator {
@@ -47,5 +102,5 @@ export interface ChatPopupDayGroup {
   messages: ChatPopupMessage[];
 }
 
-export type ChatChannelType = 'general' | 'mainEvent' | 'optionalSubEvent' | 'groupSubEvent';
-export type ActivitiesChatContextFilter = 'all' | 'event' | 'subEvent' | 'group';
+export type ChatChannelType = 'general' | 'mainEvent' | 'optionalSubEvent' | 'groupSubEvent' | 'serviceEvent';
+export type ActivitiesChatContextFilter = 'all' | 'event' | 'subEvent' | 'group' | 'service';

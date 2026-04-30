@@ -541,16 +541,15 @@ export class HttpUsersService implements UserService {
     if (!id) {
       return null;
     }
-    if (`${user.profileStatus ?? ''}`.trim().toLowerCase() === 'deleted') {
-      return null;
-    }
     const normalizedGender = `${user.gender ?? ''}`.trim().toLowerCase() === 'man' ? 'man' : 'woman';
     return {
       id,
       name: `${user.name ?? ''}`.trim(),
       city: `${user.city ?? ''}`.trim(),
       initials: `${user.initials ?? ''}`.trim(),
-      gender: normalizedGender
+      gender: normalizedGender,
+      profileStatus: user.profileStatus,
+      deletedAtIso: typeof user.deletedAtIso === 'string' ? user.deletedAtIso : null
     };
   }
 

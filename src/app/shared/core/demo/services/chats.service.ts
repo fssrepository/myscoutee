@@ -30,9 +30,19 @@ export class DemoChatsService extends DemoRouteDelayService {
   }
 
   async sendChatMessage(chat: ChatMenuItem, text: string, clientId?: string): Promise<AppTypes.ChatPopupMessage | null> {
+    return this.sendChatMessageWithAttachments(chat, text, [], clientId);
+  }
+
+  async sendChatMessageWithAttachments(
+    chat: ChatMenuItem,
+    text: string,
+    attachments: readonly AppTypes.ChatMessageAttachment[] = [],
+    clientId?: string,
+    replyTo?: AppTypes.ChatPopupMessage['replyTo']
+  ): Promise<AppTypes.ChatPopupMessage | null> {
     await this.waitForRouteDelay(DemoChatsService.CHAT_ROUTE);
     const trimmedText = text.trim();
-    if (!trimmedText) {
+    if (!trimmedText && attachments.length === 0) {
       return null;
     }
     const sentAt = new Date();
@@ -49,8 +59,19 @@ export class DemoChatsService extends DemoRouteDelayService {
       sentAtIso: AppUtils.toIsoDateTime(sentAt),
       mine: true,
       readBy: [],
-      clientId: `${clientId ?? ''}`.trim() || undefined
+      clientId: `${clientId ?? ''}`.trim() || undefined,
+      replyTo: replyTo ? { ...replyTo } : null,
+      attachments: attachments.map(attachment => ({ ...attachment }))
     });
+  }
+
+  async updateChatMessage(
+    chat: ChatMenuItem,
+    messageId: string,
+    mutation: AppTypes.ChatMessageMutation
+  ): Promise<AppTypes.ChatPopupMessage | null> {
+    await this.waitForRouteDelay(DemoChatsService.CHAT_ROUTE);
+    return this.chatsRepository.updateChatMessage(chat, messageId, mutation);
   }
 
   async watchChatMessages(

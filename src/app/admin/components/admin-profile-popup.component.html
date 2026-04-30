@@ -1,0 +1,38 @@
+@if (admin.activePopup() === 'profile') {
+  <section class="app-popup">
+    <div class="app-popup-backdrop" (click)="admin.closePopup()"></div>
+    <div class="app-popup-panel popup-panel-admin" (click)="$event.stopPropagation()">
+      <div class="popup-header">
+        <div class="popup-title">
+          <h2>Admin profile</h2>
+          <p class="popup-subtitle">Only the admin workspace fields are editable here.</p>
+        </div>
+        <button type="button" class="popup-close" (click)="admin.closePopup()" aria-label="Close">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+      <div class="popup-body">
+        <form class="admin-form" (ngSubmit)="save()">
+          <label>
+            <span>Name</span>
+            <input name="name" [(ngModel)]="name" />
+          </label>
+          <label>
+            <span>Headline</span>
+            <input name="headline" [(ngModel)]="headline" />
+          </label>
+          <label>
+            <span>About</span>
+            <textarea name="about" [(ngModel)]="about"></textarea>
+          </label>
+          <div class="admin-action-row">
+            <button type="submit" class="admin-btn admin-btn-primary">
+              <mat-icon>save</mat-icon>
+              <span>Save profile</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </section>
+}

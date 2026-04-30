@@ -336,10 +336,30 @@ export class DemoUserSeedBuilder {
         city: cities[index % cities.length],
         initials,
         gender,
-        images: buildDemoPortraitStack(gender, portraitIndex)
+        images: buildDemoPortraitStack(gender, portraitIndex),
+        ...this.demoLifecycleStatusForIndex(index, totalCount)
       }));
     }
     return expanded;
+  }
+
+  private static demoLifecycleStatusForIndex(index: number, totalCount: number): Partial<DemoUser> {
+    if (index === totalCount - 2) {
+      return {
+        profileStatus: 'blocked',
+        statusText: 'Blocked',
+        activities: { game: 0, chat: 1, invitations: 0, events: 0, hosting: 0 }
+      };
+    }
+    if (index === totalCount - 1) {
+      return {
+        profileStatus: 'deleted',
+        deletedAtIso: new Date().toISOString(),
+        statusText: 'Deleted',
+        activities: { game: 0, chat: 0, invitations: 0, events: 0, hosting: 0 }
+      };
+    }
+    return {};
   }
 
   static resolveDemoLocationCoordinates(city: string, seedKey: string): LocationCoordinates {

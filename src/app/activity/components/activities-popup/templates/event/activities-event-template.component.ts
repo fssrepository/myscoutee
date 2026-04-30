@@ -97,7 +97,7 @@ export class ActivitiesEventTemplateComponent implements OnChanges {
   }
 }
 
-type ActivityInfoCardActionId = 'publish' | 'primary' | 'view' | 'approve' | 'secondary' | 'restore';
+type ActivityInfoCardActionId = 'publish' | 'primary' | 'view' | 'serviceChat' | 'share' | 'report' | 'approve' | 'secondary' | 'restore';
 type ActivitiesEventsHost = any;
 type InvitationApprovalSyncResult = {
   syncPayload: Omit<ActivitiesEventSyncPayload, 'syncKey'>;
@@ -134,6 +134,8 @@ export class ActivitiesEventsController {
   private get pendingActivityMemberDelete() { return this.host.pendingActivityMemberDelete as AppTypes.ActivityMemberEntry | null; }
   private set pendingActivityMemberDelete(value: AppTypes.ActivityMemberEntry | null) { this.host.pendingActivityMemberDelete = value; }
   private get popupCtx() { return this.host.popupCtx; }
+  private get navigatorService() { return this.host.navigatorService; }
+  private get shareTokensService() { return this.host.shareTokensService; }
   private get publishedHostingIds() { return this.host.publishedHostingIds as ReadonlySet<string>; }
   private set publishedHostingIds(value: ReadonlySet<string>) { this.host.publishedHostingIds = value; }
   private get selectedActivityMembers() { return this.host.selectedActivityMembers as AppTypes.ActivityMemberEntry[]; }
@@ -259,6 +261,28 @@ export class ActivitiesEventsController {
     if (this.shouldShowActivityViewAction(row)) {
       actions.push({ id: 'view', label: 'View Event', icon: 'visibility' });
     }
+    if (this.shouldShowActivityServiceChatAction(row)) {
+      actions.push({
+        id: 'serviceChat',
+        label: this.activityServiceChatActionLabel(row),
+        icon: 'support_agent'
+      });
+    }
+    if (this.shouldShowActivityShareAction(row)) {
+      actions.push({
+        id: 'share',
+        label: 'Share Event',
+        icon: 'ios_share'
+      });
+    }
+    if (this.shouldShowActivityReportAction(row)) {
+      actions.push({
+        id: 'report',
+        label: 'Report Organizer',
+        icon: 'flag',
+        tone: 'warning'
+      });
+    }
     if (this.shouldShowActivityApproveAction(row)) {
       actions.push({ id: 'approve', label: 'Accept', icon: 'done', tone: 'accent' });
     }
@@ -293,6 +317,24 @@ export class ActivitiesEventsController {
 
   public shouldShowActivityViewAction(row: AppTypes.ActivityListRow): boolean {
     return !this.isActivityRowTrashed(row) && (row.type === 'hosting' || row.type === 'events');
+  }
+
+  public shouldShowActivityServiceChatAction(row: AppTypes.ActivityListRow): boolean {
+    return !this.isActivityRowTrashed(row)
+      && (row.type === 'hosting' || row.type === 'events' || row.type === 'invitations');
+  }
+
+  public shouldShowActivityShareAction(row: AppTypes.ActivityListRow): boolean {
+    return !this.isActivityRowTrashed(row)
+      && (row.type === 'hosting' || row.type === 'events' || row.type === 'invitations');
+  }
+
+  public shouldShowActivityReportAction(row: AppTypes.ActivityListRow): boolean {
+    if (this.isActivityRowTrashed(row) || (row.type !== 'hosting' && row.type !== 'events' && row.type !== 'invitations')) {
+      return false;
+    }
+    const target = this.resolveActivityReportTarget(row);
+    return !!target && target.userId !== this.activeUser.id.trim();
   }
 
   public shouldShowActivityApproveAction(row: AppTypes.ActivityListRow): boolean {
@@ -341,6 +383,16 @@ export class ActivitiesEventsController {
     return 'Reject Invitation';
   }
 
+  public activityServiceChatActionLabel(row: AppTypes.ActivityListRow): string {
+    if (row.type === 'hosting' && row.isAdmin) {
+      return 'Notify Participants';
+    }
+    if (row.type === 'invitations') {
+      return 'Ask Organizer';
+    }
+    return 'Contact Organizer';
+  }
+
   public onActivityEventInfoCardMenuAction(row: AppTypes.ActivityListRow, action: InfoCardMenuActionEvent): void {
     switch (action.action.id as ActivityInfoCardActionId) {
       case 'publish':
@@ -351,6 +403,15 @@ export class ActivitiesEventsController {
         break;
       case 'view':
         this.runActivityItemViewAction(row);
+        break;
+      case 'serviceChat':
+        this.runActivityItemServiceChatAction(row);
+        break;
+      case 'share':
+        this.runActivityItemShareAction(row);
+        break;
+      case 'report':
+        this.runActivityItemReportAction(row);
         break;
       case 'approve':
         this.runActivityItemApproveAction(row);
@@ -378,6 +439,141 @@ export class ActivitiesEventsController {
       row,
       readOnly: true
     });
+  }
+
+  public runActivityItemServiceChatAction(row: AppTypes.ActivityListRow, event?: Event): void {
+    event?.stopPropagation();
+    this.inlineItemActionMenu = null;
+    const chat = this.buildActivityServiceChat(row);
+    if (!chat) {
+      return;
+    }
+    this.openActivityChat(chat);
+  }
+
+  public runActivityItemShareAction(row: AppTypes.ActivityListRow, event?: Event): void {
+    event?.stopPropagation();
+    this.inlineItemActionMenu = null;
+    const entityId = this.resolveActivityShareEntityId(row);
+    if (!entityId) {
+      return;
+    }
+    void this.shareTokensService.createToken({
+      kind: 'event',
+      entityId,
+      ownerUserId: this.activeUser.id.trim()
+    }).then((token: string) => {
+      if (!token) {
+        return;
+      }
+      this.confirmationDialogService.open({
+        title: 'Share event',
+        message: token,
+        confirmLabel: 'Copy link',
+        cancelLabel: 'Cancel',
+        confirmTone: 'accent',
+        onConfirm: async () => {
+          await navigator.clipboard?.writeText(token);
+        }
+      });
+    });
+  }
+
+  private resolveActivityShareEntityId(row: AppTypes.ActivityListRow): string {
+    const source = ActivityEventBuilder.resolveEditorSource(row, {
+      eventItems: this.eventItems,
+      hostingItems: this.hostingItems,
+      invitationItems: this.invitationItems
+    }) ?? (row.source as Partial<EventMenuItem & HostingMenuItem & InvitationMenuItem>);
+    return `${source.id ?? row.id ?? ''}`.trim();
+  }
+
+  public runActivityItemReportAction(row: AppTypes.ActivityListRow, event?: Event): void {
+    event?.stopPropagation();
+    this.inlineItemActionMenu = null;
+    const target = this.resolveActivityReportTarget(row);
+    if (!target || target.userId === this.activeUser.id.trim()) {
+      return;
+    }
+    this.navigatorService.openReportUserPopup({
+      targetUserId: target.userId,
+      targetName: target.name,
+      eventId: row.id,
+      eventTitle: row.title,
+      eventStartAtIso: target.startAtIso,
+      eventTimeframe: target.timeframe,
+      ownerType: 'event'
+    });
+    this.cdr.markForCheck();
+  }
+
+  private resolveActivityReportTarget(row: AppTypes.ActivityListRow): {
+    userId: string;
+    name: string;
+    startAtIso?: string | null;
+    timeframe?: string | null;
+  } | null {
+    const source = ActivityEventBuilder.resolveEditorSource(row, {
+      eventItems: this.eventItems,
+      hostingItems: this.hostingItems,
+      invitationItems: this.invitationItems
+    }) ?? (row.source as Partial<EventMenuItem & HostingMenuItem & InvitationMenuItem> & {
+      creatorName?: string;
+    });
+    const creatorUserId = `${source.creatorUserId ?? ''}`.trim();
+    if (!creatorUserId) {
+      return null;
+    }
+    const creatorName = `${source.creatorName ?? ''}`.trim()
+      || this.users.find(user => user.id === creatorUserId)?.name?.trim()
+      || (row.type === 'invitations' ? `${(row.source as InvitationMenuItem).inviter ?? ''}`.trim() : '')
+      || 'Organizer';
+    return {
+      userId: creatorUserId,
+      name: creatorName,
+      startAtIso: source.startAt ?? null,
+      timeframe: source.timeframe ?? (row.source as InvitationMenuItem).when ?? null
+    };
+  }
+
+  private buildActivityServiceChat(row: AppTypes.ActivityListRow): ChatMenuItem | null {
+    const activeUserId = this.activeUser.id.trim();
+    if (!activeUserId) {
+      return null;
+    }
+    const source = row.source as Partial<EventMenuItem & HostingMenuItem & InvitationMenuItem> & {
+      creatorName?: string;
+      creatorInitials?: string;
+    };
+    const title = row.title?.trim() || source.title?.trim() || source.description?.trim() || 'Event';
+    const organizerUserId = `${source.creatorUserId ?? ''}`.trim();
+    const isOrganizerNotificationChannel = row.type === 'hosting' && row.isAdmin;
+    const acceptedAdmins = row.type === 'hosting'
+      ? this.uniqueUserIds([organizerUserId, activeUserId])
+      : this.uniqueUserIds([organizerUserId]);
+    const memberIds = this.uniqueUserIds([
+      activeUserId,
+      ...acceptedAdmins,
+      ...(isOrganizerNotificationChannel ? (source.acceptedMemberUserIds ?? []) : []),
+      ...(isOrganizerNotificationChannel ? (source.pendingMemberUserIds ?? []) : [])
+    ]);
+    const chat: ChatMenuItem & { ownerUserId?: string } = {
+      id: `c-service-event-${row.id}-${activeUserId}`,
+      avatar: AppUtils.initialsFromText(source.creatorName?.trim() || title),
+      title: `${this.activityServiceChatActionLabel(row)} · ${title}`,
+      lastMessage: isOrganizerNotificationChannel
+        ? 'Notification channel for cancellations, postponements, and urgent event updates.'
+        : `Service chat with the organizer for ${title}.`,
+      lastSenderId: organizerUserId || activeUserId,
+      memberIds: memberIds.length > 0 ? memberIds : [activeUserId],
+      unread: 0,
+      dateIso: new Date().toISOString(),
+      channelType: 'serviceEvent',
+      serviceContext: isOrganizerNotificationChannel ? 'notification' : 'event',
+      eventId: row.id,
+      ownerUserId: activeUserId
+    };
+    return chat;
   }
 
   public runActivityItemApproveAction(row: AppTypes.ActivityListRow, event?: Event): void {

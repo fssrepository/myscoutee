@@ -1,6 +1,7 @@
 
 import { Component, inject } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
+import { Router } from '@angular/router';
 import { NavigatorService, type NavigatorSettingsPopup } from '../../navigator.service';
 
 @Component({
@@ -12,6 +13,7 @@ import { NavigatorService, type NavigatorSettingsPopup } from '../../navigator.s
 })
 export class NavigatorSettingsMenuComponent {
   private readonly navigatorService = inject(NavigatorService);
+  private readonly router = inject(Router);
 
   protected openPopup(popup: NavigatorSettingsPopup, event: Event): void {
     event.stopPropagation();
@@ -28,6 +30,10 @@ export class NavigatorSettingsMenuComponent {
     event.stopPropagation();
     this.navigatorService.closeSettingsMenu();
     this.navigatorService.openLogoutConfirm();
+  }
+
+  protected isAdminMode(): boolean {
+    return (this.router.url || '').split('?')[0].startsWith('/admin');
   }
 
   protected closeMenu(event: Event): void {

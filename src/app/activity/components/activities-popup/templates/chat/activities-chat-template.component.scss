@@ -47,6 +47,21 @@
   background: linear-gradient(180deg, #f3fcf5 0%, #e9f7ee 100%);
 }
 
+.activities-card-chat-service-event {
+  border-color: rgba(202, 213, 226, 0.90);
+  background: #ffffff;
+}
+
+.activities-card-chat-service-asset {
+  border-color: rgba(190, 199, 210, 0.82);
+  background: linear-gradient(180deg, #fbfcfd 0%, #f3f6f8 100%);
+}
+
+.activities-card-chat-service-notification {
+  border-color: rgba(173, 55, 66, 0.32);
+  background: linear-gradient(180deg, #fff7f7 0%, #fdecec 100%);
+}
+
 .activities-card-chat-main-event .activities-card-title {
   color: #224d7f;
 }
@@ -57,6 +72,18 @@
 
 .activities-card-chat-group-sub-event .activities-card-title {
   color: #216b4e;
+}
+
+.activities-card-chat-service-event .activities-card-title {
+  color: #163763;
+}
+
+.activities-card-chat-service-asset .activities-card-title {
+  color: #324456;
+}
+
+.activities-card-chat-service-notification .activities-card-title {
+  color: #9b2f3a;
 }
 
 .activities-card-avatar {
