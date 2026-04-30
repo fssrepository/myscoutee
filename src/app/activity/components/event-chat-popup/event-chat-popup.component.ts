@@ -22,6 +22,7 @@ import { ActivitiesPopupStateService } from '../../services/activities-popup-sta
 import { EventEditorPopupStateService } from '../../services/event-editor-popup-state.service';
 import type { EventChatResourceContext } from '../../../shared/core/base/models';
 import { AppContext, AppPopupContext, EventsService, ShareTokensService } from '../../../shared/core';
+import { AppMemoryDb } from '../../../shared/core/base';
 import { toActivityEventRow } from '../../../shared/core/base/converters/activities-event.converter';
 import type { ChatMenuItem, EventMenuItem } from '../../../shared/core/base/interfaces/activity-feed.interface';
 import {
@@ -88,6 +89,7 @@ export class EventChatPopupComponent implements OnDestroy {
   private readonly confirmationDialogService = inject(ConfirmationDialogService);
   private readonly httpMediaService = inject(HttpMediaService);
   private readonly navigatorService = inject(NavigatorService);
+  private readonly memoryDb = inject(AppMemoryDb);
 
   protected readonly session = computed(() => this.activitiesContext.eventChatSession());
   protected chatInitialLoadPending = false;
@@ -2770,46 +2772,16 @@ export class EventChatPopupComponent implements OnDestroy {
     });
   }
 
-  private saveVoiceClipToIndexedDb(key: string, clip: StoredVoiceClip): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const request = indexedDB.open('myscoutee-chat-media', 1);
-      request.onupgradeneeded = () => {
-        request.result.createObjectStore('voice-clips');
-      };
-      request.onerror = () => reject(request.error ?? new Error('Unable to open voice storage.'));
-      request.onsuccess = () => {
-        const db = request.result;
-        const transaction = db.transaction('voice-clips', 'readwrite');
-        transaction.objectStore('voice-clips').put(clip, key);
-        transaction.oncomplete = () => {
-          db.close();
-          resolve();
-        };
-        transaction.onerror = () => {
-          db.close();
-          reject(transaction.error ?? new Error('Unable to save voice clip.'));
-        };
-      };
-    });
+  private async saveVoiceClipToIndexedDb(key: string, clip: StoredVoiceClip): Promise<void> {
+    await this.memoryDb.writeIndexedDbTableEntry(this.voiceClipStorageKey(key), clip);
   }
 
-  private loadVoiceClipFromIndexedDb(key: string): Promise<StoredVoiceClip | null> {
-    return new Promise(resolve => {
-      const request = indexedDB.open('myscoutee-chat-media', 1);
-      request.onupgradeneeded = () => {
-        request.result.createObjectStore('voice-clips');
-      };
-      request.onerror = () => resolve(null);
-      request.onsuccess = () => {
-        const db = request.result;
-        const transaction = db.transaction('voice-clips', 'readonly');
-        const getRequest = transaction.objectStore('voice-clips').get(key);
-        getRequest.onsuccess = () => resolve((getRequest.result as StoredVoiceClip | undefined) ?? null);
-        getRequest.onerror = () => resolve(null);
-        transaction.oncomplete = () => db.close();
-        transaction.onerror = () => db.close();
-      };
-    });
+  private async loadVoiceClipFromIndexedDb(key: string): Promise<StoredVoiceClip | null> {
+    return await this.memoryDb.readIndexedDbTableEntry<StoredVoiceClip>(this.voiceClipStorageKey(key));
+  }
+
+  private voiceClipStorageKey(key: string): string {
+    return `chatVoiceClip:${key}`;
   }
 
   protected formatVoiceDuration(seconds: number): string {

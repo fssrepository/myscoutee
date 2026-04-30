@@ -97,6 +97,36 @@ export class AppMemoryDb {
     await this.persistToIndexedDb(pendingState);
   }
 
+  async readIndexedDbTableEntry<T = unknown>(key: string): Promise<T | null> {
+    const normalizedKey = key.trim();
+    if (!normalizedKey) {
+      return null;
+    }
+    const db = await this.openIndexedDb(AppMemoryDb.INDEXED_DB_NAME, true);
+    if (!db) {
+      return null;
+    }
+    return await this.readIndexedDbEntry(db, normalizedKey) as T | null;
+  }
+
+  async writeIndexedDbTableEntry(key: string, value: unknown): Promise<void> {
+    const normalizedKey = key.trim();
+    if (!normalizedKey) {
+      return;
+    }
+    const db = await this.openIndexedDb(AppMemoryDb.INDEXED_DB_NAME, true);
+    if (!db) {
+      return;
+    }
+    await new Promise<void>(resolve => {
+      const tx = db.transaction(AppMemoryDb.INDEXED_DB_STORE, 'readwrite');
+      tx.objectStore(AppMemoryDb.INDEXED_DB_STORE).put(value, normalizedKey);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => resolve();
+      tx.onabort = () => resolve();
+    });
+  }
+
   async queryActivityRateRecords(query: ActivityRateRecordQuery): Promise<ActivityRateRecordQueryResult> {
     const normalizedQuery = this.normalizeActivityRateRecordQuery(query);
     if (!normalizedQuery) {
