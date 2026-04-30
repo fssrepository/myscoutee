@@ -798,14 +798,10 @@
   background: rgba(255, 255, 255, 0.82);
   color: #22324a;
   text-align: left;
-  cursor: pointer;
+  cursor: inherit;
   overflow: hidden;
   box-shadow: 0 8px 20px rgba(24, 42, 68, 0.08);
-}
-
-.chat-card-attachment:hover {
-  border-color: rgba(58, 106, 178, 0.38);
-  background: #fff;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .chat-card-attachment-media {

@@ -299,13 +299,11 @@
                     }
                   </figure>
                 } @else if (attachment.type === 'event' || attachment.type === 'asset' || attachment.type === 'link') {
-                  <button
-                    type="button"
+                  <div
                     class="chat-card-attachment"
                     [class.chat-card-attachment-event]="attachment.type === 'event'"
                     [class.chat-card-attachment-asset]="attachment.type === 'asset'"
                     [class.chat-card-attachment-link]="attachment.type === 'link'"
-                    (click)="selectMessage(message, $event)"
                     >
                     @if (attachment.previewUrl) {
                       <span class="chat-card-attachment-media">
@@ -325,7 +323,7 @@
                         <span class="chat-card-attachment-description">{{ attachment.description }}</span>
                       }
                     </span>
-                  </button>
+                  </div>
                 }
               }
             </div>
