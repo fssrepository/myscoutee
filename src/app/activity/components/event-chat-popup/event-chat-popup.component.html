@@ -403,7 +403,7 @@
                   </div>
                 } @else if (attachment.type === 'poll') {
                   @if (pollState(attachment); as poll) {
-                    <div class="chat-poll-attachment" (click)="$event.stopPropagation()">
+                    <div class="chat-poll-attachment">
                       <strong>{{ poll.question }}</strong>
                       <div class="chat-poll-options">
                         @for (option of poll.options; track option.id) {
