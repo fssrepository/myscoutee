@@ -175,6 +175,7 @@ export interface EventResourcePopupHost {
   resourceTypeLabel(type: AppTypes.SubEventResourceFilter): string;
   cards(): AppTypes.SubEventResourceCard[];
   resourceAssetView(): ResourceAssetViewState | null;
+  standaloneResourceAssetView(): boolean;
   capacityEditor(): CapacityEditorState | null;
   routeEditor(): RouteEditorState | null;
   pendingDeleteCard(): PendingResourceDeleteState | null;

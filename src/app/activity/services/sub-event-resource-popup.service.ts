@@ -206,6 +206,7 @@ export class SubEventResourcePopupService {
   private readonly inlineItemActionMenuRef = signal<{ id: string; openUp: boolean } | null>(null);
   private readonly resourceAssetViewIdRef = signal<string | null>(null);
   private readonly resourceAssetViewModeRef = signal<'view' | 'edit'>('view');
+  private readonly resourceAssetViewReturnToChatRef = signal(false);
   private readonly capacityEditorRef = signal<CapacityEditorState | null>(null);
   private readonly routeEditorRef = signal<RouteEditorState | null>(null);
   private readonly supplyPopupRef = signal<SupplyContributionPopupState | null>(null);
@@ -273,6 +274,7 @@ export class SubEventResourcePopupService {
     resourceTypeLabel: type => APP_STATIC_DATA.subEventResourceFilterLabels[type],
     cards: () => this.resourceCards(),
     resourceAssetView: () => this.resourceAssetView(),
+    standaloneResourceAssetView: () => this.resourceAssetViewReturnToChatRef(),
     capacityEditor: () => this.capacityEditorRef(),
     routeEditor: () => this.routeEditorRef(),
     pendingDeleteCard: () => this.pendingResourceDeleteRef(),
@@ -513,8 +515,15 @@ export class SubEventResourcePopupService {
       ownerId: this.activeUser().id,
       parentTitle: 'Assets',
       subEvent,
-      fallbackCardsByType: {}
-    }, type);
+      fallbackCardsByType: request.fallbackAsset ? { [type]: [this.cloneAsset(request.fallbackAsset)] } : {}
+    }, type, { hydrate: !request.viewOnly });
+    if (request.viewOnly && request.assetId) {
+      this.assignedAssetIdsByKey[this.subEventAssetAssignmentKey(subEvent.id, type)] = [request.assetId];
+      this.resourceAssetViewIdRef.set(request.assetId);
+      this.resourceAssetViewModeRef.set('view');
+      this.resourceAssetViewReturnToChatRef.set(true);
+      return;
+    }
     this.openExplorePopup();
   }
 
@@ -564,12 +573,17 @@ export class SubEventResourcePopupService {
     };
   }
 
-  private openPopupContext(context: ResourcePopupContext, type: AppTypes.AssetType): void {
+  private openPopupContext(
+    context: ResourcePopupContext,
+    type: AppTypes.AssetType,
+    options: { hydrate?: boolean } = {}
+  ): void {
     this.popupContextRef.set(context);
     this.resourceFilterRef.set(type);
     this.inlineItemActionMenuRef.set(null);
     this.resourceAssetViewIdRef.set(null);
     this.resourceAssetViewModeRef.set('view');
+    this.resourceAssetViewReturnToChatRef.set(false);
     this.abortPendingCapacitySaveRequest();
     this.capacityEditorRef.set(null);
     this.abortPendingRouteSaveRequest();
@@ -583,7 +597,9 @@ export class SubEventResourcePopupService {
     this.assetExploreBorrowDialogRef.set(null);
     this.assetExplorePopupRef.set(null);
     this.closeAssignPopup(false);
-    this.hydratePopupResourceState(context);
+    if (options.hydrate !== false) {
+      this.hydratePopupResourceState(context);
+    }
     this.syncPopupSubEventMetrics();
   }
 
@@ -704,6 +720,7 @@ export class SubEventResourcePopupService {
     this.inlineItemActionMenuRef.set(null);
     this.resourceAssetViewIdRef.set(null);
     this.resourceAssetViewModeRef.set('view');
+    this.resourceAssetViewReturnToChatRef.set(false);
     this.capacityEditorRef.set(null);
     this.routeEditorRef.set(null);
     this.pendingResourceDeleteRef.set(null);
@@ -809,6 +826,7 @@ export class SubEventResourcePopupService {
     }
     this.resourceAssetViewIdRef.set(assetId);
     this.resourceAssetViewModeRef.set(mode === 'edit' && this.canEditRoute(card) ? 'edit' : 'view');
+    this.resourceAssetViewReturnToChatRef.set(false);
     this.inlineItemActionMenuRef.set(null);
     this.pendingResourceDeleteRef.set(null);
     this.assetExplorePopupRef.set(null);
@@ -816,6 +834,10 @@ export class SubEventResourcePopupService {
 
   private closeResourceAssetView(event?: Event): void {
     event?.stopPropagation();
+    if (this.resourceAssetViewReturnToChatRef()) {
+      this.closeResourcePopup();
+      return;
+    }
     this.resourceAssetViewIdRef.set(null);
     this.resourceAssetViewModeRef.set('view');
   }

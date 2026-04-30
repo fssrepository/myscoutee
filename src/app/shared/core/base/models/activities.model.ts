@@ -58,7 +58,7 @@ export interface ActivityMembersSummary {
 
 export type ActivitiesNavigationRequest =
   | { type: 'eventExplore'; stacked?: boolean }
-  | { type: 'assetExplore'; assetType?: AssetType; assetId?: string }
+  | { type: 'assetExplore'; assetType?: AssetType; assetId?: string; viewOnly?: boolean; fallbackAsset?: AssetCard }
   | {
       type: 'chatResource';
       ownerId?: string;

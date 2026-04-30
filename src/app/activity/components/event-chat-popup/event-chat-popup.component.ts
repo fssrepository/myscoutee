@@ -1231,8 +1231,40 @@ export class EventChatPopupComponent implements OnDestroy {
     this.popupCtx.requestActivitiesNavigation({
       type: 'assetExplore',
       assetType: this.normalizeAttachmentAssetType(attachment.assetType) ?? 'Car',
-      assetId: `${attachment.entityId ?? ''}`.trim() || undefined
+      assetId: `${attachment.entityId ?? ''}`.trim() || undefined,
+      viewOnly: true,
+      fallbackAsset: this.assetAttachmentToViewCard(attachment)
     });
+  }
+
+  private assetAttachmentToViewCard(attachment: AppTypes.ChatMessageAttachment): AppTypes.AssetCard | undefined {
+    const assetId = `${attachment.entityId ?? ''}`.trim();
+    const assetType = this.normalizeAttachmentAssetType(attachment.assetType) ?? 'Car';
+    if (!assetId) {
+      return undefined;
+    }
+    const subtitle = `${attachment.subtitle ?? ''}`.trim();
+    const subtitleParts = subtitle.split(/\s+-\s+/).map(part => part.trim()).filter(Boolean);
+    return {
+      id: assetId,
+      type: assetType,
+      title: `${attachment.title ?? ''}`.trim() || 'Shared asset',
+      subtitle: subtitleParts.length > 1 ? subtitleParts.slice(1).join(' - ') : subtitle,
+      category: undefined,
+      city: subtitleParts.length > 1 ? subtitleParts[subtitleParts.length - 1] : '',
+      capacityTotal: 1,
+      quantity: 1,
+      details: `${attachment.description ?? ''}`.trim(),
+      imageUrl: `${attachment.previewUrl ?? ''}`.trim(),
+      sourceLink: `${attachment.url ?? ''}`.trim(),
+      routes: [],
+      topics: [],
+      policies: [],
+      pricing: null,
+      visibility: 'Public',
+      ownerUserId: `${attachment.ownerUserId ?? ''}`.trim() || undefined,
+      requests: []
+    };
   }
 
   private normalizeAttachmentAssetType(value: unknown): AppTypes.AssetType | null {

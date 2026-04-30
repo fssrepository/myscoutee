@@ -1,22 +1,28 @@
-<section class="app-popup app-popup-stacked app-popup-stacked-over-subevents event-resource-popup-shell">
+<section
+  class="app-popup app-popup-stacked app-popup-stacked-over-subevents event-resource-popup-shell"
+  [class.event-resource-popup-shell--standalone-asset-view]="host.standaloneResourceAssetView()"
+  >
   <div class="app-popup-backdrop" (click)="host.close()"></div>
   <div class="app-popup-panel popup-panel-asset-members" (click)="$event.stopPropagation()">
-    <div class="popup-header popup-header-members-invite-mobile-layout">
-      <div class="popup-title popup-title-members">
-        <div class="popup-chat-title-block">
-          <h2>{{ host.title() }}</h2>
-          <p>{{ host.subtitle() }}</p>
+    @if (!host.standaloneResourceAssetView()) {
+      <div class="popup-header popup-header-members-invite-mobile-layout">
+        <div class="popup-title popup-title-members">
+          <div class="popup-chat-title-block">
+            <h2>{{ host.title() }}</h2>
+            <p>{{ host.subtitle() }}</p>
+          </div>
         </div>
+        <span class="header-members-count members-header-summary-badge" [ngClass]="host.resourceTypeClass(host.resourceFilter())">{{ host.summary() }}</span>
+        <button mat-icon-button class="popup-close" (click)="host.close()" aria-label="Close">
+          <mat-icon>close</mat-icon>
+        </button>
       </div>
-      <span class="header-members-count members-header-summary-badge" [ngClass]="host.resourceTypeClass(host.resourceFilter())">{{ host.summary() }}</span>
-      <button mat-icon-button class="popup-close" (click)="host.close()" aria-label="Close">
-        <mat-icon>close</mat-icon>
-      </button>
-    </div>
+    }
 
     <div class="popup-body popup-body-members">
       <div class="experience-popup assets-popup subevent-assets-popup">
-        <div class="experience-toolbar assets-toolbar">
+        @if (!host.standaloneResourceAssetView()) {
+          <div class="experience-toolbar assets-toolbar">
           @if (!isMobileResourceFilterSheetViewport()) {
             <div
               class="profile-status-select-wrap selector-like experience-filter-select assets-compact-select"
@@ -134,34 +140,35 @@
               }
             </div>
           </div>
-        </div>
+          </div>
 
-        <app-smart-list
-          #resourceSmartList
-          class="subevent-assets-scroll-list"
-          [config]="resourceSmartListConfig"
-          [loadPage]="resourceSmartListLoadPage"
-          [itemTemplate]="resourceItemTemplateRef ?? null"
-          [query]="resourceSmartListQuery"
-          (stateChange)="onResourceSmartListStateChange($event)"
-        ></app-smart-list>
+          <app-smart-list
+            #resourceSmartList
+            class="subevent-assets-scroll-list"
+            [config]="resourceSmartListConfig"
+            [loadPage]="resourceSmartListLoadPage"
+            [itemTemplate]="resourceItemTemplateRef ?? null"
+            [query]="resourceSmartListQuery"
+            (stateChange)="onResourceSmartListStateChange($event)"
+          ></app-smart-list>
 
-        <ng-template #resourceItemTemplate let-card>
-          <app-info-card
-            [card]="resourceInfoCard(card)"
-            (mediaStartClick)="openResourceCardMap(card)"
-            (mediaEndClick)="openResourceCardBadgeDetails(card)"
-            (menuAction)="onResourceCardMenuAction(card, $event)"
-          ></app-info-card>
-        </ng-template>
+          <ng-template #resourceItemTemplate let-card>
+            <app-info-card
+              [card]="resourceInfoCard(card)"
+              (mediaStartClick)="openResourceCardMap(card)"
+              (mediaEndClick)="openResourceCardBadgeDetails(card)"
+              (menuAction)="onResourceCardMenuAction(card, $event)"
+            ></app-info-card>
+          </ng-template>
 
-        <ng-template #assetExploreItemTemplate let-card let-groupLabel="groupLabel">
-          <app-info-card
-            [card]="assetExploreInfoCard(card, { groupLabel })"
-            (mediaEndClick)="openAssetExploreBorrowFromBadge(card)"
-            (menuAction)="onAssetExploreInfoCardMenuAction(card, $event)"
-          ></app-info-card>
-        </ng-template>
+          <ng-template #assetExploreItemTemplate let-card let-groupLabel="groupLabel">
+            <app-info-card
+              [card]="assetExploreInfoCard(card, { groupLabel })"
+              (mediaEndClick)="openAssetExploreBorrowFromBadge(card)"
+              (menuAction)="onAssetExploreInfoCardMenuAction(card, $event)"
+            ></app-info-card>
+          </ng-template>
+        }
 
         @if (host.resourceAssetView(); as view) {
           <section class="experience-form-overlay subevent-form-overlay subevent-group-form-overlay subevent-asset-view-overlay">
