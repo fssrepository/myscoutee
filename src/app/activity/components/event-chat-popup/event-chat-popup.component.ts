@@ -880,7 +880,7 @@ export class EventChatPopupComponent implements OnDestroy {
   protected openMessageActionMenu(message: AppTypes.ChatPopupMessage, event?: Event): void {
     event?.preventDefault();
     event?.stopPropagation();
-    if (event?.type === 'contextmenu' && Date.now() < this.suppressTouchContextMenuUntilMs) {
+    if (event?.type === 'contextmenu') {
       return;
     }
     if (message.deletedAtIso) {

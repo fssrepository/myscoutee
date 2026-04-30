@@ -799,13 +799,14 @@
   gap: 0.46rem 0.62rem;
   align-items: center;
   border: 1px solid rgba(33, 54, 82, 0.14);
-  border-radius: 10px;
+  border-radius: 16px;
   background: rgba(255, 255, 255, 0.86);
   box-shadow: 0 8px 20px rgba(24, 42, 68, 0.08);
   overflow: hidden;
 }
 
 .chat-voice-attachment-icon {
+  margin: 0.62rem 0 0 0.62rem;
   width: 34px;
   height: 34px;
   border-radius: 50%;
@@ -823,6 +824,7 @@
 }
 
 .chat-voice-attachment-copy {
+  margin: 0.62rem 0.62rem 0 0;
   min-width: 0;
   display: grid;
   gap: 0.1rem;
@@ -854,6 +856,7 @@
   min-width: 190px;
   max-width: 100%;
   overflow: hidden;
+  border-radius: 0 0 9px 9px;
 }
 
 .chat-voice-attachment audio {
@@ -862,6 +865,8 @@
   min-width: 190px;
   max-width: 100%;
   height: 34px;
+  border-radius: 0 0 9px 9px;
+  overflow: hidden;
 }
 
 .chat-card-attachment {
