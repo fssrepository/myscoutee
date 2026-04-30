@@ -215,6 +215,7 @@ export class SubEventResourcePopupService {
   private readonly pendingResourceDeleteRef = signal<PendingResourceDeleteState | null>(null);
   private readonly pendingAssignSaveRef = signal<PendingAssignSaveState | null>(null);
   private readonly assetExplorePopupRef = signal<AssetExplorePopupState | null>(null);
+  private readonly assetExploreOnlyRef = signal(false);
   private readonly assetExploreBorrowDialogRef = signal<AssetExploreBorrowDialogState | null>(null);
   private readonly assignedAssetJoinDialogRef = signal<AssignedAssetJoinDialogState | null>(null);
   private readonly assetExploreBorrowDraftsRef = signal<Record<string, AssetExploreBorrowDraftState>>({});
@@ -256,7 +257,7 @@ export class SubEventResourcePopupService {
   );
 
   readonly supplyContributionsHost = computed<EventSupplyContributionsPopupHost | null>(() =>
-    this.popupContextRef() && this.supplyPopupRef() ? this.eventSupplyContributionsPopupHost : null
+    this.popupContextRef() && !this.assetExploreOnlyRef() && this.supplyPopupRef() ? this.eventSupplyContributionsPopupHost : null
   );
 
   private readonly eventResourcePopupHost: EventResourcePopupHost = {
@@ -275,6 +276,7 @@ export class SubEventResourcePopupService {
     cards: () => this.resourceCards(),
     resourceAssetView: () => this.resourceAssetView(),
     standaloneResourceAssetView: () => this.resourceAssetViewReturnToChatRef(),
+    assetExploreOnly: () => this.assetExploreOnlyRef(),
     capacityEditor: () => this.capacityEditorRef(),
     routeEditor: () => this.routeEditorRef(),
     pendingDeleteCard: () => this.pendingResourceDeleteRef(),
@@ -477,6 +479,7 @@ export class SubEventResourcePopupService {
     );
     this.seedAssignmentsFromRequest(context.subEvent.id, request.assetAssignmentIds, context.fallbackCardsByType);
     this.openPopupContext(context, request.resourceType);
+    this.assetExploreOnlyRef.set(request.openExplore === true);
     this.resourceAssetViewIdRef.set(request.assetViewId?.trim() || null);
     if (request.openExplore) {
       this.openExplorePopup();
@@ -517,6 +520,7 @@ export class SubEventResourcePopupService {
       subEvent,
       fallbackCardsByType: request.fallbackAsset ? { [type]: [this.cloneAsset(request.fallbackAsset)] } : {}
     }, type, { hydrate: !request.viewOnly });
+    this.assetExploreOnlyRef.set(!request.viewOnly);
     if (request.viewOnly && request.assetId) {
       this.assignedAssetIdsByKey[this.subEventAssetAssignmentKey(subEvent.id, type)] = [request.assetId];
       this.resourceAssetViewIdRef.set(request.assetId);
@@ -596,6 +600,7 @@ export class SubEventResourcePopupService {
     this.assignedAssetJoinDialogRef.set(null);
     this.assetExploreBorrowDialogRef.set(null);
     this.assetExplorePopupRef.set(null);
+    this.assetExploreOnlyRef.set(false);
     this.closeAssignPopup(false);
     if (options.hydrate !== false) {
       this.hydratePopupResourceState(context);
@@ -730,6 +735,7 @@ export class SubEventResourcePopupService {
     this.assignedAssetJoinDialogRef.set(null);
     this.assetExploreBorrowDialogRef.set(null);
     this.assetExplorePopupRef.set(null);
+    this.assetExploreOnlyRef.set(false);
     this.closeAssignPopup(false);
   }
 
@@ -2398,6 +2404,10 @@ export class SubEventResourcePopupService {
 
   private closeExplorePopup(event?: Event): void {
     event?.stopPropagation();
+    if (this.assetExploreOnlyRef()) {
+      this.closeResourcePopup();
+      return;
+    }
     this.assetExploreBorrowDialogRef.set(null);
     this.assetExplorePopupRef.set(null);
   }

@@ -1,7 +1,8 @@
-<section
-  class="app-popup app-popup-stacked app-popup-stacked-over-subevents event-resource-popup-shell"
-  [class.event-resource-popup-shell--standalone-asset-view]="host.standaloneResourceAssetView()"
-  >
+@if (!host.assetExploreOnly()) {
+  <section
+    class="app-popup app-popup-stacked app-popup-stacked-over-subevents event-resource-popup-shell"
+    [class.event-resource-popup-shell--standalone-asset-view]="host.standaloneResourceAssetView()"
+    >
   <div class="app-popup-backdrop" (click)="host.close()"></div>
   <div class="app-popup-panel popup-panel-asset-members" (click)="$event.stopPropagation()">
     @if (!host.standaloneResourceAssetView()) {
@@ -889,7 +890,8 @@
       </div>
     </div>
   </div>
-</section>
+  </section>
+}
 
 @if (host.assetExplorePopup(); as explore) {
   <section class="app-popup app-popup-stacked app-popup-stacked-over-subevents event-resource-popup-shell asset-explore-shell">

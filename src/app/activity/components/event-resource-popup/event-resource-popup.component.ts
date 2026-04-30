@@ -176,6 +176,7 @@ export interface EventResourcePopupHost {
   cards(): AppTypes.SubEventResourceCard[];
   resourceAssetView(): ResourceAssetViewState | null;
   standaloneResourceAssetView(): boolean;
+  assetExploreOnly(): boolean;
   capacityEditor(): CapacityEditorState | null;
   routeEditor(): RouteEditorState | null;
   pendingDeleteCard(): PendingResourceDeleteState | null;
