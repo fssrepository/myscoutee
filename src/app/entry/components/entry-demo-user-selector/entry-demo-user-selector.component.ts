@@ -39,6 +39,7 @@ export class EntryDemoUserSelectorComponent {
   @Input() users: DemoUserListItemDto[] = [];
   @Input() title = 'Select demo user';
   @Input() subtitle = 'Login disabled mode. Choose a demo user to open perspective-based data.';
+  @Input() selectedUserId = '';
 
   @Output() readonly closeRequested = new EventEmitter<void>();
   @Output() readonly retryRequested = new EventEmitter<void>();
@@ -85,6 +86,14 @@ export class EntryDemoUserSelectorComponent {
       default:
         return '';
     }
+  }
+
+  protected selectedUser(): DemoUserListItemDto | null {
+    const normalizedUserId = this.selectedUserId.trim();
+    if (!normalizedUserId) {
+      return null;
+    }
+    return this.users.find(user => user.id.trim() === normalizedUserId) ?? null;
   }
 
   protected loadingSegments(): ReadonlyArray<DemoUserProgressSegment> {

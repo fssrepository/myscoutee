@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, NgZone, OnInit, inject } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 
 import { environment } from '../../environments/environment';
@@ -27,6 +27,7 @@ import { EntryDemoUserSelectorComponent } from '../entry/components/entry-demo-u
       [errorMessage]="error"
       [submitting]="selectorSubmitting"
       [users]="selectorUsers"
+      [selectedUserId]="selectorSelectedUserId"
       (closeRequested)="goAdmin()"
       (retryRequested)="retry()"
     ></app-entry-demo-user-selector>
@@ -51,14 +52,17 @@ export class AdminHelpSessionPageComponent implements OnInit {
   private readonly sessionService = inject(SessionService);
   private readonly shareTokens = inject(ShareTokensService);
   private readonly usersService = inject(UsersService);
+  private readonly changeDetectorRef = inject(ChangeDetectorRef);
+  private readonly ngZone = inject(NgZone);
 
   protected selectorOpen = true;
   protected selectorLoading = true;
-  protected selectorSubmitting = true;
+  protected selectorSubmitting = false;
   protected selectorLoadingProgress = 0;
-  protected selectorLoadingLabel = 'Opening shared support session';
-  protected selectorLoadingStage: DemoBootstrapProgressStage = 'session';
+  protected selectorLoadingLabel = 'Preparing demo data';
+  protected selectorLoadingStage: DemoBootstrapProgressStage = 'selector';
   protected selectorUsers: DemoUserListItemDto[] = [];
+  protected selectorSelectedUserId = '';
   protected error = '';
 
   async ngOnInit(): Promise<void> {
@@ -68,11 +72,12 @@ export class AdminHelpSessionPageComponent implements OnInit {
   protected async retry(): Promise<void> {
     this.error = '';
     this.selectorLoading = true;
-    this.selectorSubmitting = true;
+    this.selectorSubmitting = false;
     this.selectorLoadingProgress = 0;
-    this.selectorLoadingStage = 'session';
-    this.selectorLoadingLabel = 'Opening shared support session';
+    this.selectorLoadingStage = 'selector';
+    this.selectorLoadingLabel = 'Preparing demo data';
     this.selectorUsers = [];
+    this.selectorSelectedUserId = '';
     await this.openSharedUserView();
   }
 
@@ -86,6 +91,9 @@ export class AdminHelpSessionPageComponent implements OnInit {
       this.fail('This support link is missing its token.');
       return;
     }
+    const demoUsersPromise = environment.activitiesDataSource !== 'http' || !environment.loginEnabled
+      ? this.prepareDemoSelectorUsers()
+      : Promise.resolve<DemoUserListItemDto[]>([]);
     const resolved = await this.resolveAdminHelpToken(token);
     if (!resolved || resolved.kind !== 'adminHelp' || !resolved.ownerUserId?.trim()) {
       this.fail('This support link expired or is no longer available.');
@@ -94,23 +102,14 @@ export class AdminHelpSessionPageComponent implements OnInit {
     const userId = resolved.ownerUserId.trim();
     const targetUrl = this.safeTargetUrl(resolved.url || resolved.entityId || '/game');
     if (environment.activitiesDataSource !== 'http' || !environment.loginEnabled) {
-      const userAvailable = await this.prepareDemoSelectorForAutoSelectedUser(userId);
-      if (!userAvailable) {
+      this.selectorSelectedUserId = userId;
+      const users = await demoUsersPromise;
+      const selectedUser = users.find(user => user.id.trim() === userId) ?? null;
+      if (!selectedUser) {
         this.fail('This shared support user is not available in the demo selector.');
         return;
       }
-      this.selectorSubmitting = true;
-      this.selectorLoading = true;
-      this.selectorLoadingProgress = 0;
-      this.selectorLoadingStage = 'session';
-      this.selectorLoadingLabel = 'Preparing demo session';
-      await this.usersService.prepareDemoUserSession(userId, state => this.applyProgress(state));
-      this.selectorLoadingProgress = 100;
-      this.selectorLoadingStage = 'sessionReady';
-      this.selectorLoadingLabel = 'Demo session ready';
-      await this.waitForLoaderCompletionBeat();
-      this.sessionService.startDemoSession(userId);
-      await this.router.navigateByUrl(targetUrl);
+      await this.prepareAutoSelectedDemoUser(userId, targetUrl);
       return;
     }
     this.selectorLoadingProgress = 100;
@@ -161,28 +160,64 @@ export class AdminHelpSessionPageComponent implements OnInit {
   }
 
   private applyProgress(state: DemoBootstrapProgressState): void {
-    this.selectorLoadingProgress = state.percent;
-    this.selectorLoadingLabel = state.label;
-    this.selectorLoadingStage = state.stage;
+    this.commitSelectorState(() => {
+      this.selectorLoadingProgress = state.percent;
+      this.selectorLoadingLabel = state.label;
+      this.selectorLoadingStage = state.stage;
+    });
   }
 
-  private async prepareDemoSelectorForAutoSelectedUser(userId: string): Promise<boolean> {
-    this.selectorSubmitting = false;
-    this.selectorLoading = true;
-    this.selectorLoadingProgress = 0;
-    this.selectorLoadingStage = 'selector';
-    this.selectorLoadingLabel = 'Preparing demo data';
+  private async prepareDemoSelectorUsers(): Promise<DemoUserListItemDto[]> {
+    this.commitSelectorState(() => {
+      this.selectorSubmitting = false;
+      this.selectorLoading = true;
+      this.selectorLoadingProgress = 0;
+      this.selectorLoadingStage = 'selector';
+      this.selectorLoadingLabel = 'Preparing demo data';
+    });
     await this.waitForPopupPaint();
 
     const users = await this.usersService.loadAvailableDemoUsers(undefined, state => this.applyProgress(state));
-    this.selectorUsers = users;
-    this.selectorLoading = false;
-    this.selectorLoadingProgress = 100;
-    this.selectorLoadingStage = 'ready';
-    this.selectorLoadingLabel = 'Demo data ready';
+    this.commitSelectorState(() => {
+      this.selectorUsers = users;
+      this.selectorLoadingProgress = 100;
+      this.selectorLoadingStage = 'ready';
+      this.selectorLoadingLabel = 'Demo data ready';
+    });
+    await this.waitForLoaderCompletionBeat();
+
+    return users;
+  }
+
+  private async prepareAutoSelectedDemoUser(userId: string, targetUrl: string): Promise<void> {
+    this.commitSelectorState(() => {
+      this.selectorSubmitting = true;
+      this.selectorLoading = true;
+      this.selectorLoadingProgress = 0;
+      this.selectorLoadingStage = 'session';
+      this.selectorLoadingLabel = 'Preparing demo session';
+    });
     await this.waitForPopupPaint();
 
-    return users.some(user => user.id.trim() === userId);
+    try {
+      await this.usersService.prepareDemoUserSession(userId, state => this.applyProgress(state));
+      this.commitSelectorState(() => {
+        this.selectorLoadingProgress = 100;
+        this.selectorLoadingStage = 'sessionReady';
+        this.selectorLoadingLabel = 'Demo session ready';
+      });
+      await this.waitForLoaderCompletionBeat();
+      this.sessionService.startDemoSession(userId);
+      await this.router.navigateByUrl(targetUrl);
+    } catch {
+      this.commitSelectorState(() => {
+        this.selectorLoading = false;
+        this.selectorSubmitting = false;
+        this.selectorLoadingProgress = 0;
+        this.selectorLoadingStage = 'selector';
+        this.selectorLoadingLabel = 'Preparing demo data';
+      });
+    }
   }
 
   private fail(message: string): void {
@@ -193,6 +228,14 @@ export class AdminHelpSessionPageComponent implements OnInit {
     this.selectorLoadingStage = 'selector';
     this.selectorLoadingLabel = 'Support link unavailable';
     this.selectorUsers = [];
+    this.selectorSelectedUserId = '';
+  }
+
+  private commitSelectorState(update: () => void): void {
+    this.ngZone.run(() => {
+      update();
+      this.changeDetectorRef.detectChanges();
+    });
   }
 
   private waitForPopupPaint(): Promise<void> {

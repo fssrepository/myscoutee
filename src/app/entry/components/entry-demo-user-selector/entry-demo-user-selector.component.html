@@ -24,6 +24,18 @@
             <div class="demo-user-loading-shell">
               <div class="demo-user-loading-copy-group">
                 <p class="demo-user-loading-eyebrow">{{ submitting ? 'Opening demo session' : 'Preparing demo selector' }}</p>
+                @if (submitting && selectedUser(); as user) {
+                  <div class="demo-user-selected-session">
+                    <span class="demo-user-selected-avatar-wrap">
+                      <span class="demo-user-selected-ring" aria-hidden="true"></span>
+                      <span class="user-avatar" [class]="'user-color-' + user.gender">{{ user.initials }}</span>
+                    </span>
+                    <span class="demo-user-selected-copy">
+                      <strong>{{ user.name }}</strong>
+                      <small>Auto selected</small>
+                    </span>
+                  </div>
+                }
                 <p class="demo-user-loading-copy">{{ loadingLabel }}</p>
                 <div
                   class="demo-user-progress"
@@ -81,6 +93,7 @@
                   type="button"
                   class="demo-user-item"
                   [ngClass]="userStatusClass(user)"
+                  [class.demo-user-item-selected]="selectedUserId.trim() === user.id.trim()"
                   [disabled]="submitting"
                   matRipple
                   [matRippleColor]="'rgba(72, 111, 196, 0.16)'"
