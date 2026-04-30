@@ -595,11 +595,15 @@ export class EventChatPopupComponent implements OnDestroy {
   protected toggleQuickReactions(message: AppTypes.ChatPopupMessage, event?: Event): void {
     event?.stopPropagation();
     this.bindChatThreadScrollDismissListener();
+    const wasOpen = this.quickReactionMessageId === message.id;
     this.selectedMessageId = message.id;
     this.messageActionMenuId = '';
     this.emojiPickerMessageId = '';
     this.quickReactionOpenDown = this.shouldOpenQuickReactionsDown(event);
-    this.quickReactionMessageId = this.quickReactionMessageId === message.id ? '' : message.id;
+    this.quickReactionMessageId = wasOpen ? '' : message.id;
+    if (wasOpen) {
+      this.blurEventTarget(event);
+    }
   }
 
   protected openEmojiPicker(message: AppTypes.ChatPopupMessage, event?: Event): void {
@@ -611,6 +615,13 @@ export class EventChatPopupComponent implements OnDestroy {
     this.emojiPickerMessageId = message.id;
     this.emojiPickerQuery = '';
     this.emojiPickerCategory = 'smileys';
+  }
+
+  protected closeEmojiPicker(event?: Event): void {
+    event?.stopPropagation();
+    this.emojiPickerMessageId = '';
+    this.emojiPickerQuery = '';
+    this.blurEventTarget(event);
   }
 
   protected filteredEmojiPickerEmojis(): string[] {
@@ -735,7 +746,11 @@ export class EventChatPopupComponent implements OnDestroy {
     this.quickReactionMessageId = '';
     this.emojiPickerMessageId = '';
     this.messageActionMenuOpenUp = this.shouldOpenMessageActionMenuUp(event);
-    this.messageActionMenuId = this.messageActionMenuId === message.id ? '' : message.id;
+    const wasOpen = this.messageActionMenuId === message.id;
+    this.messageActionMenuId = wasOpen ? '' : message.id;
+    if (wasOpen) {
+      this.blurEventTarget(event);
+    }
   }
 
   protected setReplyTarget(message: AppTypes.ChatPopupMessage, event?: Event): void {
@@ -2124,6 +2139,15 @@ export class EventChatPopupComponent implements OnDestroy {
     if (!options.keepEditing) {
       this.editingMessageId = '';
     }
+  }
+
+  private blurEventTarget(event?: Event): void {
+    const target = event?.currentTarget instanceof HTMLElement
+      ? event.currentTarget
+      : event?.target instanceof HTMLElement
+        ? event.target
+        : null;
+    target?.blur();
   }
 
   private bindChatThreadScrollDismissListener(): void {

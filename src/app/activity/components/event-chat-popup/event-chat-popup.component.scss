@@ -1114,6 +1114,7 @@
   border: 0;
   background: transparent;
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .chat-message-tools button {
@@ -1121,6 +1122,10 @@
   height: 28px;
   border-radius: 50%;
   color: #446280;
+}
+
+.chat-message-tools button.chat-tool-btn-open {
+  background: #eef4ff;
 }
 
 .chat-message-tools .mat-icon {
@@ -1201,11 +1206,29 @@
   font-weight: 700;
 }
 
-.chat-message-action-menu button:hover,
-.chat-message-tools button:hover,
-.chat-quick-reactions button:hover,
-.chat-emoji-picker button:hover {
-  background: #eef4ff;
+@media (hover: hover) and (pointer: fine) {
+  .chat-message-action-menu button:hover,
+  .chat-message-tools button:hover,
+  .chat-quick-reactions button:hover,
+  .chat-emoji-picker button:hover {
+    background: #eef4ff;
+  }
+}
+
+@media (hover: none), (pointer: coarse) {
+  .chat-message-tools button:not(.chat-tool-btn-open):hover,
+  .chat-message-tools button:not(.chat-tool-btn-open):active,
+  .chat-message-tools button:not(.chat-tool-btn-open):focus {
+    background: transparent;
+    outline: none;
+  }
+
+  .chat-message-tools button.chat-tool-btn-open:hover,
+  .chat-message-tools button.chat-tool-btn-open:active,
+  .chat-message-tools button.chat-tool-btn-open:focus {
+    background: #eef4ff;
+    outline: none;
+  }
 }
 
 .chat-emoji-picker {

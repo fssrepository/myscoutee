@@ -355,7 +355,12 @@
           <button type="button" (click)="setReplyTarget(message, $event)" aria-label="Reply">
             <mat-icon>reply</mat-icon>
           </button>
-          <button type="button" (click)="toggleQuickReactions(message, $event)" aria-label="React">
+          <button
+            type="button"
+            [class.chat-tool-btn-open]="quickReactionMessageId === message.id || emojiPickerMessageId === message.id"
+            (click)="toggleQuickReactions(message, $event)"
+            aria-label="React"
+            >
             <mat-icon>{{ quickReactionMessageId === message.id || emojiPickerMessageId === message.id ? 'add_reaction' : 'mood' }}</mat-icon>
           </button>
           <button
@@ -423,11 +428,11 @@
 
 @if (emojiPickerMessage(); as emojiMessage) {
   <section class="chat-modal chat-emoji-modal">
-    <div class="chat-modal-backdrop" (click)="emojiPickerMessageId = ''"></div>
+    <div class="chat-modal-backdrop" (click)="closeEmojiPicker($event)"></div>
     <div class="chat-emoji-picker" (click)="$event.stopPropagation()">
       <header class="chat-emoji-picker-header">
         <input type="search" placeholder="Search emoji" [(ngModel)]="emojiPickerQuery" />
-        <button type="button" (click)="emojiPickerMessageId = ''" aria-label="Close emoji picker"><mat-icon>close</mat-icon></button>
+        <button type="button" (click)="closeEmojiPicker($event)" aria-label="Close emoji picker"><mat-icon>close</mat-icon></button>
       </header>
       <div class="chat-emoji-picker-section">{{ activeEmojiPickerCategoryLabel() }}</div>
       <div class="chat-emoji-grid">
