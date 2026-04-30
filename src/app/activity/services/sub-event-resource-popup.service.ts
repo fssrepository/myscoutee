@@ -1262,7 +1262,7 @@ export class SubEventResourcePopupService {
       ))
       .filter((card): card is AppTypes.AssetCard => card !== null)
       .map(card => {
-      const managerUserId = (type === 'Car' || type === 'Accommodation')
+      const managerUserId = (type === 'Car' || type === 'Accommodation' || type === 'Supplies')
         ? (`${settings[card.id]?.addedByUserId ?? ''}`.trim() || null)
         : null;
       return ({
@@ -3885,7 +3885,7 @@ export class SubEventResourcePopupService {
     const capacityMax = cards.reduce((sum, card) => sum + (settings[card.id]?.capacityMax ?? Math.max(0, card.capacityTotal)), 0);
     const capacityMin = cards.reduce((sum, card) => sum + (settings[card.id]?.capacityMin ?? 0), 0);
     const pending = cards.reduce((sum, card) => {
-      const managerUserId = (type === 'Car' || type === 'Accommodation')
+      const managerUserId = (type === 'Car' || type === 'Accommodation' || type === 'Supplies')
         ? (`${settings[card.id]?.addedByUserId ?? ''}`.trim() || null)
         : null;
       return sum + this.assetPendingCount(card, subEvent.id, managerUserId);
@@ -3900,7 +3900,7 @@ export class SubEventResourcePopupService {
     }
     const joinedIds = new Set<string>();
     for (const card of cards) {
-      const managerUserId = (type === 'Car' || type === 'Accommodation')
+      const managerUserId = (type === 'Car' || type === 'Accommodation' || type === 'Supplies')
         ? (`${settings[card.id]?.addedByUserId ?? ''}`.trim() || null)
         : null;
       for (const request of this.assetRequestsForView(card, subEvent.id, managerUserId)) {

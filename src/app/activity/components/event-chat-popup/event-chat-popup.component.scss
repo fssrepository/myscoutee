@@ -1698,7 +1698,7 @@
 .chat-compose-box {
   position: sticky;
   bottom: 0;
-  z-index: 20;
+  z-index: 70;
   background: #fff;
   padding-top: 0.18rem;
   margin-top: auto;
@@ -1713,7 +1713,7 @@
   position: absolute;
   left: 0;
   bottom: calc(100% + 0.42rem);
-  z-index: 40;
+  z-index: 75;
   display: grid;
   min-width: 220px;
   padding: 0.45rem;
@@ -2617,7 +2617,7 @@
     left: max(0.45rem, env(safe-area-inset-left, 0px));
     right: max(0.45rem, env(safe-area-inset-right, 0px));
     bottom: 0;
-    z-index: 18;
+    z-index: 70;
     margin-top: 0;
     padding: 0.45rem 0.45rem max(0.45rem, env(safe-area-inset-bottom, 0px));
     background: linear-gradient(180deg, rgba(243, 248, 255, 0) 0%, rgba(243, 248, 255, 0.92) 24%, #f3f8ff 100%);

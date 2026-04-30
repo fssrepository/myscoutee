@@ -543,7 +543,9 @@
             <button type="button" (click)="unsendMessage(message, $event)">Unsend</button>
           }
           <button type="button" (click)="togglePinMessage(message, $event)">{{ message.pinnedAtIso ? 'Unpin' : 'Pin' }}</button>
-          <button type="button" (click)="reportMessage(message, $event)">Report</button>
+          @if (canReportMessage()) {
+            <button type="button" (click)="reportMessage(message, $event)">Report</button>
+          }
         </div>
       }
       @if (!message.deletedAtIso && visibleReadReceiptsByMessageId[message.id]; as visibleReaders) {

@@ -1323,6 +1323,9 @@ export class EventChatPopupComponent implements OnDestroy {
   protected reportMessage(message: AppTypes.ChatPopupMessage, event?: Event): void {
     event?.stopPropagation();
     this.messageActionMenuId = '';
+    if (!this.canReportMessage()) {
+      return;
+    }
     const session = this.session();
     const target = this.resolveChatReportTarget(message, session?.item ?? null);
     const eventId = `${session?.item.eventId ?? session?.item.id ?? ''}`.trim();
@@ -1345,6 +1348,19 @@ export class EventChatPopupComponent implements OnDestroy {
       assetId: attachment?.type === 'asset' ? (attachment.entityId ?? attachment.id) : null,
       assetType: attachment?.type === 'asset' ? (attachment.assetType ?? null) : null
     });
+  }
+
+  protected canReportMessage(): boolean {
+    return !this.isAdminRoleActive();
+  }
+
+  private isAdminRoleActive(): boolean {
+    const hostTier = `${this.appCtx.activeUserProfile()?.hostTier ?? ''}`.trim().toLowerCase();
+    if (hostTier === 'admin') {
+      return true;
+    }
+    const activeUserId = this.activeUserId();
+    return activeUserId === 'admin' || activeUserId.startsWith('admin-');
   }
 
   private resolveChatReportTarget(
