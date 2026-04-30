@@ -17,6 +17,7 @@ export interface NavigatorActivitiesRequest {
   updatedMs: number;
   primaryFilter: 'rates' | 'chats' | 'events';
   eventScope?: 'all' | 'active-events' | 'pending' | 'invitations' | 'my-events' | 'drafts' | 'trash';
+  adminServiceOnly?: boolean;
 }
 
 export interface NavigatorAssetRequest {
@@ -28,6 +29,11 @@ export interface NavigatorEventFeedbackRequest {
   updatedMs: number;
 }
 
+export interface AdminNavigatorRequest {
+  updatedMs: number;
+  popup: 'reports' | 'feedback' | 'chat' | 'profile';
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -36,12 +42,14 @@ export class AppPopupContext {
   private readonly _navigatorActivitiesRequest = signal<NavigatorActivitiesRequest | null>(null);
   private readonly _navigatorAssetRequest = signal<NavigatorAssetRequest | null>(null);
   private readonly _navigatorEventFeedbackRequest = signal<NavigatorEventFeedbackRequest | null>(null);
+  private readonly _adminNavigatorRequest = signal<AdminNavigatorRequest | null>(null);
   private readonly _activitiesNavigationRequest = signal<ActivitiesNavigationRequest | null>(null);
 
   readonly activityInvitePopup = this._activityInvitePopup.asReadonly();
   readonly navigatorActivitiesRequest = this._navigatorActivitiesRequest.asReadonly();
   readonly navigatorAssetRequest = this._navigatorAssetRequest.asReadonly();
   readonly navigatorEventFeedbackRequest = this._navigatorEventFeedbackRequest.asReadonly();
+  readonly adminNavigatorRequest = this._adminNavigatorRequest.asReadonly();
   readonly activitiesNavigationRequest = this._activitiesNavigationRequest.asReadonly();
 
   openActivityInvitePopup(payload: {
@@ -81,12 +89,14 @@ export class AppPopupContext {
 
   openNavigatorActivitiesRequest(
     primaryFilter: 'rates' | 'chats' | 'events',
-    eventScope?: 'all' | 'active-events' | 'pending' | 'invitations' | 'my-events' | 'drafts' | 'trash'
+    eventScope?: 'all' | 'active-events' | 'pending' | 'invitations' | 'my-events' | 'drafts' | 'trash',
+    options: { adminServiceOnly?: boolean } = {}
   ): void {
     this._navigatorActivitiesRequest.set({
       updatedMs: Date.now(),
       primaryFilter,
-      eventScope
+      eventScope,
+      adminServiceOnly: options.adminServiceOnly === true
     });
   }
 
@@ -113,6 +123,17 @@ export class AppPopupContext {
 
   clearNavigatorEventFeedbackRequest(): void {
     this._navigatorEventFeedbackRequest.set(null);
+  }
+
+  openAdminNavigatorRequest(popup: AdminNavigatorRequest['popup']): void {
+    this._adminNavigatorRequest.set({
+      updatedMs: Date.now(),
+      popup
+    });
+  }
+
+  clearAdminNavigatorRequest(): void {
+    this._adminNavigatorRequest.set(null);
   }
 
   requestActivitiesNavigation(request: ActivitiesNavigationRequest): void {

@@ -60,7 +60,7 @@ export class App implements OnDestroy {
 
   private shouldShowNavigator(url: string): boolean {
     const normalizedPath = (url || '/').split('?')[0].trim() || '/';
-    return normalizedPath !== '/' && !normalizedPath.startsWith('/entry');
+    return normalizedPath !== '/' && !normalizedPath.startsWith('/entry') && !normalizedPath.startsWith('/admin');
   }
 
   protected async onInstallRequested(): Promise<void> {

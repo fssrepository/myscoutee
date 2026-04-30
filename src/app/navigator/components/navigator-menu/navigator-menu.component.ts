@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, HostListener, computed, inject } from '@angular/core';
 import { MatRippleModule } from '@angular/material/core';
 import { MatIconModule } from '@angular/material/icon';
+import { Router } from '@angular/router';
 import {
   AppContext,
   AppPopupContext,
@@ -10,6 +11,7 @@ import {
   type UserDto,
   type UserImpressionChangeFlags
 } from '../../../shared/core';
+import { USER_LOGOUT_CONTEXT_KEY } from '../../../shared/core/base/services/users.service';
 import {
   resolveHostTierColorClass,
   resolveHostTierIcon,
@@ -23,6 +25,8 @@ import { CounterBadgePipe } from '../../../shared/ui';
 import { NavigatorService } from '../../navigator.service';
 import { NavigatorSettingsMenuComponent } from '../navigator-settings-menu/navigator-settings-menu.component';
 import { NavigatorContactsService } from '../../navigator-contacts.service';
+import { ActivitiesPopupStateService } from '../../../activity/services/activities-popup-state.service';
+import type { ChatMenuItem } from '../../../shared/core/base/interfaces/activity-feed.interface';
 
 interface NavigatorMenuUser extends Omit<UserDto, 'activities'> {
   activities: ActivityCounters;
@@ -44,19 +48,27 @@ export class NavigatorMenuComponent {
   private static readonly PROFILE_SAVE_RING_CIRCUMFERENCE = 2 * Math.PI * NavigatorMenuComponent.PROFILE_SAVE_RING_RADIUS;
   private readonly appCtx = inject(AppContext);
   private readonly popupCtx = inject(AppPopupContext);
+  private readonly router = inject(Router);
   private readonly navigatorService = inject(NavigatorService);
   private readonly navigatorContactsService = inject(NavigatorContactsService);
+  private readonly activitiesContext = inject(ActivitiesPopupStateService);
   private readonly profileSaveLoadState = this.appCtx.selectLoadingState(USER_PROFILE_SAVE_CONTEXT_KEY);
+  private readonly userLogoutLoadState = this.appCtx.selectLoadingState(USER_LOGOUT_CONTEXT_KEY);
   protected readonly activeUser = this.appCtx.activeUserProfile;
   protected readonly isOnline = this.appCtx.isOnline;
   protected readonly profileSaveRingCircumference = NavigatorMenuComponent.PROFILE_SAVE_RING_CIRCUMFERENCE;
   protected readonly isProfileSaving = computed(() => this.profileSaveLoadState().status === 'loading');
+  protected readonly isLoggingOut = computed(() => this.userLogoutLoadState().status === 'loading');
+  protected readonly isAvatarRingLoading = computed(() => this.isProfileSaving() || this.isLoggingOut());
   protected readonly hasProfileSaveError = computed(() => {
     const status = this.profileSaveLoadState().status;
     return status === 'error' || status === 'timeout';
   });
-  protected readonly showProfileSaveRing = computed(() => this.isProfileSaving() || this.hasProfileSaveError());
+  protected readonly showProfileSaveRing = computed(() => this.isAvatarRingLoading() || this.hasProfileSaveError());
   protected readonly profileSaveAvatarTitle = computed(() => {
+    if (this.isLoggingOut()) {
+      return 'Logging out';
+    }
     if (this.isProfileSaving()) {
       return 'Saving profile';
     }
@@ -157,9 +169,19 @@ export class NavigatorMenuComponent {
         return 'status-friends';
       case 'host only':
         return 'status-host';
+      case 'blocked':
+        return 'status-blocked';
       default:
         return 'status-inactive';
     }
+  }
+
+  protected isBlockedUser(user: NavigatorMenuUser | UserDto | null = this.menuUser()): boolean {
+    return user?.profileStatus === 'blocked';
+  }
+
+  protected isPrimaryMenuDisabled(user: NavigatorMenuUser): boolean {
+    return !this.isOnline() || this.isBlockedUser(user);
   }
 
   protected completionBadgeStyle(percent: number): Record<string, string> | null {
@@ -198,7 +220,12 @@ export class NavigatorMenuComponent {
 
   protected openProfileEditor(event?: Event): void {
     event?.stopPropagation();
-    if (!this.isOnline()) {
+    if (!this.isOnline() || this.isBlockedUser()) {
+      return;
+    }
+    if (this.isAdminMode()) {
+      this.popupCtx.openAdminNavigatorRequest('profile');
+      this.navigatorService.closeMenu();
       return;
     }
     this.navigatorService.openProfileEditor();
@@ -210,7 +237,7 @@ export class NavigatorMenuComponent {
 
   protected openImpressions(event?: Event): void {
     event?.stopPropagation();
-    if (!this.isOnline()) {
+    if (!this.isOnline() || this.isBlockedUser()) {
       return;
     }
     this.navigatorService.openImpressionsPopup();
@@ -223,6 +250,10 @@ export class NavigatorMenuComponent {
 
   protected openChatShortcut(event?: Event): void {
     event?.stopPropagation();
+    if (this.isBlockedUser()) {
+      this.openBlockedUserSupportChat();
+      return;
+    }
     this.openActivitiesShortcut('chats');
   }
 
@@ -243,7 +274,7 @@ export class NavigatorMenuComponent {
 
   protected openAssetCarPopup(event?: Event): void {
     event?.stopPropagation();
-    if (!this.isOnline()) {
+    if (!this.isOnline() || this.isBlockedUser()) {
       return;
     }
     this.popupCtx.openNavigatorAssetRequest('Car');
@@ -251,7 +282,7 @@ export class NavigatorMenuComponent {
 
   protected openAssetAccommodationPopup(event?: Event): void {
     event?.stopPropagation();
-    if (!this.isOnline()) {
+    if (!this.isOnline() || this.isBlockedUser()) {
       return;
     }
     this.popupCtx.openNavigatorAssetRequest('Accommodation');
@@ -259,7 +290,7 @@ export class NavigatorMenuComponent {
 
   protected openAssetSuppliesPopup(event?: Event): void {
     event?.stopPropagation();
-    if (!this.isOnline()) {
+    if (!this.isOnline() || this.isBlockedUser()) {
       return;
     }
     this.popupCtx.openNavigatorAssetRequest('Supplies');
@@ -277,10 +308,50 @@ export class NavigatorMenuComponent {
 
   protected openEventFeedbackPopup(event?: Event): void {
     event?.stopPropagation();
-    if (!this.isOnline()) {
+    if (!this.isOnline() || this.isBlockedUser()) {
       return;
     }
     this.popupCtx.openNavigatorEventFeedbackRequest();
+  }
+
+  protected isAdminMode(): boolean {
+    return (this.router.url || '').split('?')[0].startsWith('/admin');
+  }
+
+  protected openAdminReportsShortcut(event?: Event): void {
+    event?.stopPropagation();
+    if (!this.isOnline()) {
+      return;
+    }
+    this.popupCtx.openAdminNavigatorRequest('reports');
+    this.navigatorService.closeMenu();
+  }
+
+  protected openAdminFeedbackShortcut(event?: Event): void {
+    event?.stopPropagation();
+    if (!this.isOnline()) {
+      return;
+    }
+    this.popupCtx.openAdminNavigatorRequest('feedback');
+    this.navigatorService.closeMenu();
+  }
+
+  protected openAdminChatShortcut(event?: Event): void {
+    event?.stopPropagation();
+    if (!this.isOnline()) {
+      return;
+    }
+    this.popupCtx.openAdminNavigatorRequest('chat');
+    this.navigatorService.closeMenu();
+  }
+
+  protected openAdminProfileShortcut(event?: Event): void {
+    event?.stopPropagation();
+    if (!this.isOnline()) {
+      return;
+    }
+    this.popupCtx.openAdminNavigatorRequest('profile');
+    this.navigatorService.closeMenu();
   }
 
   private resolveUserImageUrl(user: UserDto | null): string | null {
@@ -291,10 +362,49 @@ export class NavigatorMenuComponent {
     primaryFilter: 'rates' | 'chats' | 'events',
     eventScope?: 'all' | 'active-events' | 'pending' | 'invitations' | 'my-events' | 'drafts' | 'trash'
   ): void {
-    if (!this.isOnline()) {
+    if (!this.isOnline() || (primaryFilter !== 'chats' && this.isBlockedUser())) {
       return;
     }
     this.popupCtx.openNavigatorActivitiesRequest(primaryFilter, eventScope);
+  }
+
+  private openBlockedUserSupportChat(): void {
+    const user = this.menuUser();
+    if (!user || !this.isOnline()) {
+      return;
+    }
+    const activeUserId = user.id.trim();
+    const adminUserId = 'myscoutee-admin';
+    const chat: ChatMenuItem & { ownerUserId?: string } = {
+      id: `c-support-blocked-${activeUserId}`,
+      avatar: 'MS',
+      title: 'MyScoutee Support',
+      lastMessage: 'Your account is blocked. You can message MyScoutee support here.',
+      lastSenderId: adminUserId,
+      memberIds: [activeUserId, adminUserId],
+      unread: 1,
+      dateIso: new Date().toISOString(),
+      channelType: 'serviceEvent',
+      serviceContext: 'notification',
+      ownerUserId: activeUserId
+    };
+    this.activitiesContext.openActivities('chats');
+    this.activitiesContext.openEventChat(chat, {
+      channelType: 'serviceEvent',
+      hasSubEventMenu: false,
+      actionIcon: 'shield',
+      actionLabel: 'Support',
+      actionToneClass: 'popup-chat-context-btn-tone-main-event',
+      actionBadgeCount: 0,
+      menuTitle: chat.title,
+      eventRow: null,
+      subEventRow: null,
+      subEvent: null,
+      group: null,
+      assetAssignmentIds: { Car: [], Accommodation: [], Supplies: [] },
+      assetCardsByType: { Car: [], Accommodation: [], Supplies: [] },
+      resources: []
+    });
   }
 
   private resolveCompletionPercent(user: UserDto | null): number {

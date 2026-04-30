@@ -12,6 +12,8 @@ export class ActivityEventBuilder {
       timeframe: invitation.when,
       activity: Math.max(0, invitation.unread),
       isAdmin: false,
+      creatorUserId: invitation.creatorUserId,
+      creatorName: invitation.creatorName ?? invitation.inviter,
       startAt: invitation.startAt,
       endAt: invitation.endAt,
       distanceKm: invitation.distanceKm,

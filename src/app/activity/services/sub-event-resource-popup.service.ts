@@ -23,17 +23,20 @@ import {
 import { resolveCurrentDemoDelayMs } from '../../shared/core/base/services/route-delay.service';
 import { ActivitiesPopupStateService } from './activities-popup-state.service';
 import { EventEditorPopupStateService } from './event-editor-popup-state.service';
+import { NavigatorService } from '../../navigator';
 import type {
   AssignedAssetJoinDialogViewState,
   AssetExploreBorrowDraftViewState,
   AssetExploreBorrowDialogViewState,
   AssetExplorePopupViewState,
-  EventResourcePopupHost
+  EventResourcePopupHost,
+  ResourceAssetViewState
 } from '../components/event-resource-popup/event-resource-popup.component';
 import type {
   EventSupplyContributionsPopupHost
 } from '../components/event-supply-contributions-popup/event-supply-contributions-popup.component';
 import type { ListQuery, PageResult } from '../../shared/ui';
+import type { ChatMenuItem } from '../../shared/core/base/interfaces/activity-feed.interface';
 
 interface ResourcePopupContext {
   origin: 'chat' | 'eventEditor';
@@ -62,6 +65,7 @@ interface RouteEditorState {
   type: 'Car';
   assetId: string;
   title: string;
+  mode: 'view' | 'edit';
   routes: string[];
   routeRowIds: string[];
   busy: boolean;
@@ -187,6 +191,7 @@ export class SubEventResourcePopupService {
   private readonly appCtx = inject(AppContext);
   private readonly popupCtx = inject(AppPopupContext);
   private readonly usersService = inject(UsersService);
+  private readonly navigatorService = inject(NavigatorService);
 
   private get users(): UserDto[] {
     return this.usersService.peekCachedUsers();
@@ -199,6 +204,9 @@ export class SubEventResourcePopupService {
   private readonly popupContextRef = signal<ResourcePopupContext | null>(null);
   private readonly resourceFilterRef = signal<AppTypes.AssetType>('Car');
   private readonly inlineItemActionMenuRef = signal<{ id: string; openUp: boolean } | null>(null);
+  private readonly resourceAssetViewIdRef = signal<string | null>(null);
+  private readonly resourceAssetViewModeRef = signal<'view' | 'edit'>('view');
+  private readonly resourceAssetViewReturnToChatRef = signal(false);
   private readonly capacityEditorRef = signal<CapacityEditorState | null>(null);
   private readonly routeEditorRef = signal<RouteEditorState | null>(null);
   private readonly supplyPopupRef = signal<SupplyContributionPopupState | null>(null);
@@ -207,6 +215,7 @@ export class SubEventResourcePopupService {
   private readonly pendingResourceDeleteRef = signal<PendingResourceDeleteState | null>(null);
   private readonly pendingAssignSaveRef = signal<PendingAssignSaveState | null>(null);
   private readonly assetExplorePopupRef = signal<AssetExplorePopupState | null>(null);
+  private readonly assetExploreOnlyRef = signal(false);
   private readonly assetExploreBorrowDialogRef = signal<AssetExploreBorrowDialogState | null>(null);
   private readonly assignedAssetJoinDialogRef = signal<AssignedAssetJoinDialogState | null>(null);
   private readonly assetExploreBorrowDraftsRef = signal<Record<string, AssetExploreBorrowDraftState>>({});
@@ -248,7 +257,7 @@ export class SubEventResourcePopupService {
   );
 
   readonly supplyContributionsHost = computed<EventSupplyContributionsPopupHost | null>(() =>
-    this.popupContextRef() && this.supplyPopupRef() ? this.eventSupplyContributionsPopupHost : null
+    this.popupContextRef() && !this.assetExploreOnlyRef() && this.supplyPopupRef() ? this.eventSupplyContributionsPopupHost : null
   );
 
   private readonly eventResourcePopupHost: EventResourcePopupHost = {
@@ -265,6 +274,9 @@ export class SubEventResourcePopupService {
     resourceTypeIcon: type => type === 'Members' ? 'groups' : this.ownedAssets.assetTypeIcon(type),
     resourceTypeLabel: type => APP_STATIC_DATA.subEventResourceFilterLabels[type],
     cards: () => this.resourceCards(),
+    resourceAssetView: () => this.resourceAssetView(),
+    standaloneResourceAssetView: () => this.resourceAssetViewReturnToChatRef(),
+    assetExploreOnly: () => this.assetExploreOnlyRef(),
     capacityEditor: () => this.capacityEditorRef(),
     routeEditor: () => this.routeEditorRef(),
     pendingDeleteCard: () => this.pendingResourceDeleteRef(),
@@ -286,6 +298,9 @@ export class SubEventResourcePopupService {
     assetExploreAvailabilityLabel: card => this.assetExploreAvailabilityLabel(card),
     assetExploreCanBorrow: card => this.assetExploreAvailableQuantity(card) > 0,
     openAssetExploreBorrowDialog: (card, event) => this.openAssetExploreBorrowDialog(card, event),
+    openAssetExploreServiceChat: (card, event) => this.openAssetExploreServiceChat(card, event),
+    canReportAssetExploreOwner: card => this.canReportAssetExploreOwner(card),
+    reportAssetExploreOwner: (card, event) => this.reportAssetExploreOwner(card, event),
     closeAssetExploreBorrowDialog: event => this.closeAssetExploreBorrowDialog(event),
     setAssetExploreBorrowDateRange: (start, end) => this.setAssetExploreBorrowDateRange(start, end),
     setAssetExploreBorrowTime: (edge, value) => this.setAssetExploreBorrowTime(edge, value),
@@ -305,6 +320,9 @@ export class SubEventResourcePopupService {
     openBadgeDetails: (card, event) => this.openResourceBadgeDetails(card, event),
     occupancyLabel: card => this.occupancyLabel(card),
     canOpenAssetMembers: card => this.canOpenAssetMembers(card),
+    openAssetMembers: (card, event) => void this.openAssetMembersPopup(card, event),
+    openResourceAssetView: (card, mode, event) => this.openResourceAssetView(card, mode, event),
+    closeResourceAssetView: event => this.closeResourceAssetView(event),
     isItemActionMenuOpen: card => this.inlineItemActionMenuRef()?.id === card.id,
     isItemActionMenuOpenUp: card => this.inlineItemActionMenuRef()?.id === card.id && this.inlineItemActionMenuRef()?.openUp === true,
     toggleItemActionMenu: (card, event) => this.toggleItemActionMenu(card, event),
@@ -321,7 +339,10 @@ export class SubEventResourcePopupService {
     openCapacityEditor: (card, event) => this.openCapacityEditor(card, event),
     canEditRoute: card => this.canEditRoute(card),
     routeMenuLabel: () => 'Edit Route',
-    openRouteEditor: (card, event) => this.openRouteEditor(card, event),
+    openRouteEditor: (card, event, mode) => this.openRouteEditor(card, event, mode),
+    openResourceServiceChat: (card, event) => this.openResourceServiceChat(card, event),
+    canReportResourceManager: card => this.canReportResourceManager(card),
+    reportResourceManager: (card, event) => this.reportResourceManager(card, event),
     delete: (card, event) => this.requestDeleteResourceCard(card, event),
     closeCapacityEditor: event => this.closeCapacityEditor(event),
     canSubmitCapacityEditor: () => this.canSubmitCapacityEditor(),
@@ -330,6 +351,7 @@ export class SubEventResourcePopupService {
     saveCapacityEditor: event => this.saveCapacityEditor(event),
     closeRouteEditor: event => this.closeRouteEditor(event),
     routeEditorSupportsMultiRoute: () => !!this.routeEditorRef(),
+    routeEditorReadOnly: () => this.routeEditorRef()?.mode === 'view',
     openRouteMap: event => this.openRouteMap(event),
     addRouteStop: () => this.addRouteStop(),
     dropRouteStop: event => this.dropRouteStop(event as CdkDragDrop<string[]>),
@@ -408,10 +430,14 @@ export class SubEventResourcePopupService {
 
     effect(() => {
       const request = this.popupCtx.activitiesNavigationRequest();
-      if (!request || request.type !== 'chatResource') {
+      if (!request || (request.type !== 'chatResource' && request.type !== 'assetExplore')) {
         return;
       }
       this.popupCtx.clearActivitiesNavigationRequest();
+      if (request.type === 'assetExplore') {
+        this.openStandaloneAssetExploreRequest(request);
+        return;
+      }
       this.openFromChatRequest(request);
     });
 
@@ -454,6 +480,56 @@ export class SubEventResourcePopupService {
     );
     this.seedAssignmentsFromRequest(context.subEvent.id, request.assetAssignmentIds, context.fallbackCardsByType);
     this.openPopupContext(context, request.resourceType);
+    this.assetExploreOnlyRef.set(request.openExplore === true);
+    this.resourceAssetViewIdRef.set(request.assetViewId?.trim() || null);
+    if (request.openExplore) {
+      this.openExplorePopup();
+    }
+  }
+
+  private openStandaloneAssetExploreRequest(
+    request: Extract<AppTypes.ActivitiesNavigationRequest, { type: 'assetExplore' }>
+  ): void {
+    const type = request.assetType === 'Accommodation' || request.assetType === 'Supplies'
+      ? request.assetType
+      : 'Car';
+    const now = new Date();
+    const end = new Date(now);
+    end.setHours(end.getHours() + 2);
+    const subEvent: AppTypes.SubEventFormItem = {
+      id: `asset-explore-${this.activeUser().id || 'user'}`,
+      name: 'Asset Explore',
+      description: '',
+      startAt: AppUtils.toIsoDateTimeLocal(now),
+      endAt: AppUtils.toIsoDateTimeLocal(end),
+      optional: true,
+      capacityMin: 0,
+      capacityMax: 0,
+      membersAccepted: 0,
+      membersPending: 0,
+      carsPending: 0,
+      accommodationPending: 0,
+      suppliesPending: 0,
+      carsAccepted: 0,
+      accommodationAccepted: 0,
+      suppliesAccepted: 0
+    };
+    this.openPopupContext({
+      origin: 'chat',
+      ownerId: this.activeUser().id,
+      parentTitle: 'Assets',
+      subEvent,
+      fallbackCardsByType: request.fallbackAsset ? { [type]: [this.cloneAsset(request.fallbackAsset)] } : {}
+    }, type, { hydrate: !request.viewOnly });
+    this.assetExploreOnlyRef.set(!request.viewOnly);
+    if (request.viewOnly && request.assetId) {
+      this.assignedAssetIdsByKey[this.subEventAssetAssignmentKey(subEvent.id, type)] = [request.assetId];
+      this.resourceAssetViewIdRef.set(request.assetId);
+      this.resourceAssetViewModeRef.set('view');
+      this.resourceAssetViewReturnToChatRef.set(true);
+      return;
+    }
+    this.openExplorePopup();
   }
 
   private openFromEventEditorRequest(request: NonNullable<ReturnType<EventEditorPopupStateService['subEventResourcePopupRequest']>>): void {
@@ -502,10 +578,17 @@ export class SubEventResourcePopupService {
     };
   }
 
-  private openPopupContext(context: ResourcePopupContext, type: AppTypes.AssetType): void {
+  private openPopupContext(
+    context: ResourcePopupContext,
+    type: AppTypes.AssetType,
+    options: { hydrate?: boolean } = {}
+  ): void {
     this.popupContextRef.set(context);
     this.resourceFilterRef.set(type);
     this.inlineItemActionMenuRef.set(null);
+    this.resourceAssetViewIdRef.set(null);
+    this.resourceAssetViewModeRef.set('view');
+    this.resourceAssetViewReturnToChatRef.set(false);
     this.abortPendingCapacitySaveRequest();
     this.capacityEditorRef.set(null);
     this.abortPendingRouteSaveRequest();
@@ -518,8 +601,11 @@ export class SubEventResourcePopupService {
     this.assignedAssetJoinDialogRef.set(null);
     this.assetExploreBorrowDialogRef.set(null);
     this.assetExplorePopupRef.set(null);
+    this.assetExploreOnlyRef.set(false);
     this.closeAssignPopup(false);
-    this.hydratePopupResourceState(context);
+    if (options.hydrate !== false) {
+      this.hydratePopupResourceState(context);
+    }
     this.syncPopupSubEventMetrics();
   }
 
@@ -638,6 +724,9 @@ export class SubEventResourcePopupService {
     this.abortPendingRouteSaveRequest();
     this.popupContextRef.set(null);
     this.inlineItemActionMenuRef.set(null);
+    this.resourceAssetViewIdRef.set(null);
+    this.resourceAssetViewModeRef.set('view');
+    this.resourceAssetViewReturnToChatRef.set(false);
     this.capacityEditorRef.set(null);
     this.routeEditorRef.set(null);
     this.pendingResourceDeleteRef.set(null);
@@ -647,6 +736,7 @@ export class SubEventResourcePopupService {
     this.assignedAssetJoinDialogRef.set(null);
     this.assetExploreBorrowDialogRef.set(null);
     this.assetExplorePopupRef.set(null);
+    this.assetExploreOnlyRef.set(false);
     this.closeAssignPopup(false);
   }
 
@@ -686,7 +776,7 @@ export class SubEventResourcePopupService {
   }
 
   private canOpenAssetMembers(card: AppTypes.SubEventResourceCard): boolean {
-    return !!card.sourceAssetId && (card.type === 'Car' || card.type === 'Accommodation');
+    return !!card.sourceAssetId && (card.type === 'Car' || card.type === 'Accommodation' || card.type === 'Supplies');
   }
 
   private canOpenResourceBadgeDetails(card: AppTypes.SubEventResourceCard): boolean {
@@ -705,16 +795,71 @@ export class SubEventResourcePopupService {
     this.openSupplyContributionsPopup(card, event);
   }
 
-  private async openAssetMembersPopup(card: AppTypes.SubEventResourceCard): Promise<void> {
+  private resourceAssetView(): ResourceAssetViewState | null {
+    const viewId = `${this.resourceAssetViewIdRef() ?? ''}`.trim();
+    if (!viewId) {
+      return null;
+    }
+    const card = this.resourceCards().find(item => item.id === viewId || `${item.sourceAssetId ?? ''}`.trim() === viewId) ?? null;
+    if (!card) {
+      return null;
+    }
     const context = this.popupContextRef();
-    if (!context || !card.sourceAssetId || (card.type !== 'Car' && card.type !== 'Accommodation')) {
+    const source = context && card.sourceAssetId
+      ? this.resolveSubEventAssignedAssetCard(context.subEvent.id, card.type as AppTypes.AssetType, card.sourceAssetId)
+      : null;
+    return {
+      card,
+      mode: this.resourceAssetViewModeRef(),
+      source,
+      memberLabel: this.occupancyLabel(card),
+      memberCount: Math.max(0, Math.trunc(Number(card.accepted) || 0)),
+      pendingCount: Math.max(0, Math.trunc(Number(card.pending) || 0)),
+      canOpenMembers: this.canOpenAssetMembers(card),
+      canEditCapacity: this.canEditCapacity(card),
+      canEditRoute: this.canEditRoute(card)
+    };
+  }
+
+  private openResourceAssetView(
+    card: AppTypes.SubEventResourceCard,
+    mode: 'view' | 'edit',
+    event?: Event
+  ): void {
+    event?.stopPropagation();
+    const assetId = `${card.sourceAssetId ?? ''}`.trim();
+    if (!assetId) {
+      return;
+    }
+    this.resourceAssetViewIdRef.set(assetId);
+    this.resourceAssetViewModeRef.set(mode === 'edit' && this.canEditRoute(card) ? 'edit' : 'view');
+    this.resourceAssetViewReturnToChatRef.set(false);
+    this.inlineItemActionMenuRef.set(null);
+    this.pendingResourceDeleteRef.set(null);
+    this.assetExplorePopupRef.set(null);
+  }
+
+  private closeResourceAssetView(event?: Event): void {
+    event?.stopPropagation();
+    if (this.resourceAssetViewReturnToChatRef()) {
+      this.closeResourcePopup();
+      return;
+    }
+    this.resourceAssetViewIdRef.set(null);
+    this.resourceAssetViewModeRef.set('view');
+  }
+
+  private async openAssetMembersPopup(card: AppTypes.SubEventResourceCard, event?: Event): Promise<void> {
+    event?.stopPropagation();
+    const context = this.popupContextRef();
+    if (!context || !card.sourceAssetId || (card.type !== 'Car' && card.type !== 'Accommodation' && card.type !== 'Supplies')) {
       return;
     }
     const sourceCard = this.resolveSubEventAssignedAssetCard(context.subEvent.id, card.type, card.sourceAssetId);
     if (!sourceCard) {
       return;
     }
-    const assetType: 'Car' | 'Accommodation' = card.type;
+    const assetType: AppTypes.AssetType = card.type;
     const settings = this.getSubEventAssignedAssetSettings(context.subEvent.id, assetType);
     const managerUserId = settings[card.sourceAssetId]?.addedByUserId?.trim() || null;
     const fallbackMembers = this.assetMemberEntries(sourceCard, managerUserId, context.subEvent.id);
@@ -1070,6 +1215,8 @@ export class SubEventResourcePopupService {
     }
     this.resourceFilterRef.set(filter);
     this.inlineItemActionMenuRef.set(null);
+    this.resourceAssetViewIdRef.set(null);
+    this.resourceAssetViewModeRef.set('view');
     this.capacityEditorRef.set(null);
     this.routeEditorRef.set(null);
     this.assignedAssetJoinDialogRef.set(null);
@@ -1115,7 +1262,7 @@ export class SubEventResourcePopupService {
       ))
       .filter((card): card is AppTypes.AssetCard => card !== null)
       .map(card => {
-      const managerUserId = (type === 'Car' || type === 'Accommodation')
+      const managerUserId = (type === 'Car' || type === 'Accommodation' || type === 'Supplies')
         ? (`${settings[card.id]?.addedByUserId ?? ''}`.trim() || null)
         : null;
       return ({
@@ -1818,10 +1965,14 @@ export class SubEventResourcePopupService {
     controller?.abort();
   }
 
-  private openRouteEditor(card: AppTypes.SubEventResourceCard, event: Event): void {
+  private openRouteEditor(card: AppTypes.SubEventResourceCard, event: Event, mode: 'view' | 'edit' = 'edit'): void {
     event.stopPropagation();
     const context = this.popupContextRef();
-    if (!context || card.type !== 'Car' || !card.sourceAssetId || !this.canEditRoute(card)) {
+    if (!context || card.type !== 'Car' || !card.sourceAssetId) {
+      return;
+    }
+    const resolvedMode: 'view' | 'edit' = mode === 'edit' && this.canEditRoute(card) ? 'edit' : 'view';
+    if (mode === 'edit' && resolvedMode !== 'edit') {
       return;
     }
     const settings = this.getSubEventAssignedAssetSettings(context.subEvent.id, 'Car');
@@ -1833,6 +1984,7 @@ export class SubEventResourcePopupService {
       type: 'Car',
       assetId: card.sourceAssetId,
       title: card.title,
+      mode: resolvedMode,
       routes,
       routeRowIds: this.buildRouteEditorRowIds(routes),
       busy: false,
@@ -1844,6 +1996,141 @@ export class SubEventResourcePopupService {
     this.inlineItemActionMenuRef.set(null);
   }
 
+  private openResourceServiceChat(card: AppTypes.SubEventResourceCard, event: Event): void {
+    event.stopPropagation();
+    const context = this.popupContextRef();
+    const activeUserId = this.activeUser().id.trim();
+    if (!context || !activeUserId) {
+      return;
+    }
+    const sourceCard = card.sourceAssetId && card.type !== 'Members'
+      ? this.resolveSubEventAssignedAssetCard(context.subEvent.id, card.type as AppTypes.AssetType, card.sourceAssetId)
+      : null;
+    const managerUserId = sourceCard?.ownerUserId?.trim() || (
+      card.type === 'Car' || card.type === 'Accommodation'
+        ? this.assignedAssetManagerUserId(context.subEvent.id, card.type, card.sourceAssetId || '')
+        : null
+    );
+    const titlePrefix = sourceCard ? 'Asset Service' : 'Event Service';
+    const chat = this.buildServiceChatItem({
+      id: sourceCard
+        ? `c-service-asset-${sourceCard.id}-${context.subEvent.id}-${activeUserId}`
+        : `c-service-event-resource-${context.ownerId}-${context.subEvent.id}-${card.id}-${activeUserId}`,
+      title: `${titlePrefix} · ${card.title}`,
+      lastMessage: sourceCard
+        ? `Service chat with the ${card.type.toLowerCase()} manager for ${card.title}.`
+        : `Service chat with the organizer for ${context.parentTitle}.`,
+      eventId: context.ownerId,
+      subEventId: context.subEvent.id,
+      memberIds: [activeUserId, managerUserId].filter((id): id is string => `${id ?? ''}`.trim().length > 0),
+      lastSenderId: managerUserId || activeUserId,
+      avatarSource: sourceCard?.ownerName || sourceCard?.title || card.title
+    });
+    this.inlineItemActionMenuRef.set(null);
+    this.activitiesContext.openEventChat(chat, this.buildServiceChatContext(chat));
+  }
+
+  private canReportAssetExploreOwner(card: AppTypes.AssetCard): boolean {
+    const activeUserId = this.activeUser().id.trim();
+    const ownerUserId = `${card.ownerUserId ?? ''}`.trim();
+    return !!this.popupContextRef() && !!ownerUserId && ownerUserId !== activeUserId;
+  }
+
+  private reportAssetExploreOwner(card: AppTypes.AssetCard, event?: Event): void {
+    event?.stopPropagation();
+    const context = this.popupContextRef();
+    const activeUserId = this.activeUser().id.trim();
+    const ownerUserId = `${card.ownerUserId ?? ''}`.trim();
+    if (!context || !ownerUserId || ownerUserId === activeUserId) {
+      return;
+    }
+    this.navigatorService.openReportUserPopup({
+      targetUserId: ownerUserId,
+      targetName: card.ownerName?.trim() || this.reportTargetName(ownerUserId, 'Owner'),
+      eventId: context.ownerId,
+      eventTitle: card.title,
+      eventStartAtIso: context.subEvent.startAt,
+      eventTimeframe: this.reportContextTimeframe(context),
+      ownerType: 'asset'
+    });
+  }
+
+  private canReportResourceManager(card: AppTypes.SubEventResourceCard): boolean {
+    const target = this.resolveResourceReportTarget(card);
+    return !!target && target.userId !== this.activeUser().id.trim();
+  }
+
+  private reportResourceManager(card: AppTypes.SubEventResourceCard, event: Event): void {
+    event.stopPropagation();
+    const context = this.popupContextRef();
+    const target = this.resolveResourceReportTarget(card);
+    if (!context || !target || target.userId === this.activeUser().id.trim()) {
+      return;
+    }
+    this.inlineItemActionMenuRef.set(null);
+    this.navigatorService.openReportUserPopup({
+      targetUserId: target.userId,
+      targetName: target.name,
+      eventId: context.ownerId,
+      eventTitle: target.ownerType === 'asset' ? card.title : context.parentTitle,
+      eventStartAtIso: context.subEvent.startAt,
+      eventTimeframe: this.reportContextTimeframe(context),
+      ownerType: target.ownerType
+    });
+  }
+
+  private resolveResourceReportTarget(card: AppTypes.SubEventResourceCard): {
+    userId: string;
+    name: string;
+    ownerType: AppTypes.ActivityMemberOwnerType;
+  } | null {
+    const context = this.popupContextRef();
+    if (!context) {
+      return null;
+    }
+    const sourceCard = card.sourceAssetId && card.type !== 'Members'
+      ? this.resolveSubEventAssignedAssetCard(context.subEvent.id, card.type as AppTypes.AssetType, card.sourceAssetId)
+      : null;
+    const managerUserId = sourceCard?.ownerUserId?.trim() || (
+      card.type === 'Car' || card.type === 'Accommodation'
+        ? this.assignedAssetManagerUserId(context.subEvent.id, card.type, card.sourceAssetId || '')
+        : ''
+    );
+    if (managerUserId) {
+      return {
+        userId: managerUserId,
+        name: sourceCard?.ownerName?.trim() || this.reportTargetName(managerUserId, 'Manager'),
+        ownerType: 'asset'
+      };
+    }
+    const eventRecord = this.eventsService.peekKnownItemById(this.activeUser().id.trim(), context.ownerId);
+    const organizerUserId = `${eventRecord?.creatorUserId ?? context.subEvent.createdByUserId ?? ''}`.trim();
+    if (!organizerUserId) {
+      return null;
+    }
+    return {
+      userId: organizerUserId,
+      name: eventRecord?.creatorName?.trim() || this.reportTargetName(organizerUserId, 'Organizer'),
+      ownerType: 'event'
+    };
+  }
+
+  private reportTargetName(userId: string, fallback: string): string {
+    const normalizedUserId = userId.trim();
+    return this.appCtx.getUserProfile(normalizedUserId)?.name?.trim()
+      || (normalizedUserId === this.activeUser().id.trim() ? this.activeUser().name?.trim() : '')
+      || fallback;
+  }
+
+  private reportContextTimeframe(context: ResourcePopupContext): string {
+    const start = context.subEvent.startAt?.trim();
+    const end = context.subEvent.endAt?.trim();
+    if (start && end) {
+      return `${start} - ${end}`;
+    }
+    return start || end || '';
+  }
+
   private closeRouteEditor(event?: Event): void {
     event?.stopPropagation();
     this.abortPendingRouteSaveRequest();
@@ -1852,7 +2139,7 @@ export class SubEventResourcePopupService {
 
   private addRouteStop(): void {
     const editor = this.routeEditorRef();
-    if (!editor || editor.busy) {
+    if (!editor || editor.busy || editor.mode === 'view') {
       return;
     }
     this.routeEditorRef.set({
@@ -1865,7 +2152,7 @@ export class SubEventResourcePopupService {
 
   private removeRouteStop(index: number): void {
     const editor = this.routeEditorRef();
-    if (!editor || editor.busy || index < 0 || index >= editor.routes.length) {
+    if (!editor || editor.busy || editor.mode === 'view' || index < 0 || index >= editor.routes.length) {
       return;
     }
     this.routeEditorRef.set({
@@ -1878,7 +2165,7 @@ export class SubEventResourcePopupService {
 
   private dropRouteStop(event: CdkDragDrop<string[]>): void {
     const editor = this.routeEditorRef();
-    if (!editor || editor.busy || event.previousIndex === event.currentIndex) {
+    if (!editor || editor.busy || editor.mode === 'view' || event.previousIndex === event.currentIndex) {
       return;
     }
     const routes = [...editor.routes];
@@ -1897,7 +2184,7 @@ export class SubEventResourcePopupService {
 
   private updateRouteStop(index: number, value: string): void {
     const editor = this.routeEditorRef();
-    if (!editor || editor.busy || index < 0 || index >= editor.routes.length) {
+    if (!editor || editor.busy || editor.mode === 'view' || index < 0 || index >= editor.routes.length) {
       return;
     }
     const routes = [...editor.routes];
@@ -1929,13 +2216,13 @@ export class SubEventResourcePopupService {
 
   private canSubmitRouteEditor(): boolean {
     const editor = this.routeEditorRef();
-    return !!editor && !editor.busy && editor.routes.some(stop => stop.trim().length > 0);
+    return !!editor && editor.mode !== 'view' && !editor.busy && editor.routes.some(stop => stop.trim().length > 0);
   }
 
   private saveRouteEditor(event?: Event): void {
     event?.stopPropagation();
     const editor = this.routeEditorRef();
-    if (!editor || editor.busy || !this.canSubmitRouteEditor()) {
+    if (!editor || editor.busy || editor.mode === 'view' || !this.canSubmitRouteEditor()) {
       return;
     }
     const nextState = this.buildPopupResourceState();
@@ -2119,6 +2406,10 @@ export class SubEventResourcePopupService {
 
   private closeExplorePopup(event?: Event): void {
     event?.stopPropagation();
+    if (this.assetExploreOnlyRef()) {
+      this.closeResourcePopup();
+      return;
+    }
     this.assetExploreBorrowDialogRef.set(null);
     this.assetExplorePopupRef.set(null);
   }
@@ -2600,6 +2891,82 @@ export class SubEventResourcePopupService {
       return;
     }
     this.localAssetExploreReservationsByKey.delete(this.assetExploreLocalReservationKey(normalizedSubEventId, normalizedAssetId));
+  }
+
+  private openAssetExploreServiceChat(card: AppTypes.AssetCard, event?: Event): void {
+    event?.stopPropagation();
+    const context = this.popupContextRef();
+    const activeUserId = this.activeUser().id.trim();
+    const ownerUserId = `${card.ownerUserId ?? ''}`.trim();
+    if (!context || !activeUserId) {
+      return;
+    }
+    const chat = this.buildServiceChatItem({
+      id: `c-service-asset-${card.id}-${context.subEvent.id}-${activeUserId}`,
+      title: `Asset Service · ${card.title}`,
+      lastMessage: `Service chat with the ${card.type.toLowerCase()} manager for ${card.title}.`,
+      eventId: context.ownerId,
+      subEventId: context.subEvent.id,
+      memberIds: [activeUserId, ownerUserId].filter(Boolean),
+      lastSenderId: ownerUserId || activeUserId,
+      avatarSource: card.ownerName || card.title
+    });
+    this.activitiesContext.openEventChat(chat, this.buildServiceChatContext(chat));
+  }
+
+  private buildServiceChatItem(input: {
+    id: string;
+    title: string;
+    lastMessage: string;
+    eventId: string;
+    subEventId?: string;
+    memberIds: string[];
+    lastSenderId: string;
+    avatarSource: string;
+  }): ChatMenuItem & { ownerUserId?: string } {
+    const activeUserId = this.activeUser().id.trim();
+    return {
+      id: input.id,
+      avatar: AppUtils.initialsFromText(input.avatarSource || input.title),
+      title: input.title,
+      lastMessage: input.lastMessage,
+      lastSenderId: input.lastSenderId || activeUserId,
+      memberIds: [...new Set(input.memberIds.map(id => `${id ?? ''}`.trim()).filter(Boolean))],
+      unread: 0,
+      dateIso: new Date().toISOString(),
+      channelType: 'serviceEvent',
+      serviceContext: input.title.startsWith('Asset Service') ? 'asset' : 'event',
+      eventId: input.eventId,
+      subEventId: input.subEventId,
+      ownerUserId: activeUserId
+    };
+  }
+
+  private buildServiceChatContext(chat: ChatMenuItem): AppTypes.EventChatContext {
+    return {
+      channelType: 'serviceEvent',
+      hasSubEventMenu: false,
+      actionIcon: 'support_agent',
+      actionLabel: 'View Event',
+      actionToneClass: 'popup-chat-context-btn-tone-main-event',
+      actionBadgeCount: 0,
+      menuTitle: chat.title,
+      eventRow: null,
+      subEventRow: null,
+      subEvent: null,
+      group: null,
+      assetAssignmentIds: {
+        Car: [],
+        Accommodation: [],
+        Supplies: []
+      },
+      assetCardsByType: {
+        Car: [],
+        Accommodation: [],
+        Supplies: []
+      },
+      resources: []
+    };
   }
 
   private openAssetExploreBorrowDialog(card: AppTypes.AssetCard, event?: Event): void {
@@ -3518,7 +3885,7 @@ export class SubEventResourcePopupService {
     const capacityMax = cards.reduce((sum, card) => sum + (settings[card.id]?.capacityMax ?? Math.max(0, card.capacityTotal)), 0);
     const capacityMin = cards.reduce((sum, card) => sum + (settings[card.id]?.capacityMin ?? 0), 0);
     const pending = cards.reduce((sum, card) => {
-      const managerUserId = (type === 'Car' || type === 'Accommodation')
+      const managerUserId = (type === 'Car' || type === 'Accommodation' || type === 'Supplies')
         ? (`${settings[card.id]?.addedByUserId ?? ''}`.trim() || null)
         : null;
       return sum + this.assetPendingCount(card, subEvent.id, managerUserId);
@@ -3533,7 +3900,7 @@ export class SubEventResourcePopupService {
     }
     const joinedIds = new Set<string>();
     for (const card of cards) {
-      const managerUserId = (type === 'Car' || type === 'Accommodation')
+      const managerUserId = (type === 'Car' || type === 'Accommodation' || type === 'Supplies')
         ? (`${settings[card.id]?.addedByUserId ?? ''}`.trim() || null)
         : null;
       for (const request of this.assetRequestsForView(card, subEvent.id, managerUserId)) {
@@ -3615,7 +3982,7 @@ export class SubEventResourcePopupService {
 
   private syncAssetRequestsFromMembers(
     assetId: string,
-    assetType: 'Car' | 'Accommodation',
+    assetType: AppTypes.AssetType,
     members: readonly AppTypes.ActivityMemberEntry[]
   ): void {
     const context = this.popupContextRef();

@@ -322,17 +322,18 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: fit-content;
+  width: 6.5rem;
+  box-sizing: border-box;
   margin: 0.08rem auto 0.3rem;
   border: 1px solid rgba(43, 74, 116, 0.2);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.94);
+  background: rgba(255, 255, 255, 1);
   color: rgba(36, 64, 99, 0.88);
   font-size: 0.66rem;
   font-weight: 800;
   letter-spacing: 0.01em;
   line-height: 1;
-  padding: 0.22rem 0.58rem;
+  white-space: nowrap;
 }
 
 .smart-list__prepend-restore-spacer {

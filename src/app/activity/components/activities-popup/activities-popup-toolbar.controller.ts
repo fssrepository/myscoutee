@@ -180,7 +180,8 @@ export class ActivitiesPopupToolbarController {
       all: 'chat-context-filter-all',
       event: 'chat-context-filter-event',
       subEvent: 'chat-context-filter-sub-event',
-      group: 'chat-context-filter-group'
+      group: 'chat-context-filter-group',
+      service: 'chat-context-filter-service'
     };
     return map[filter] ?? 'chat-context-filter-all';
   }

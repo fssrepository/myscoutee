@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, DoCheck, HostListener, Input, TemplateRef, ViewChild } from '@angular/core';
+import { Component, DoCheck, HostListener, Input, TemplateRef, ViewChild, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DragDropModule } from '@angular/cdk/drag-drop';
 import { MatButtonModule } from '@angular/material/button';
@@ -29,7 +29,9 @@ import {
 import type * as AppTypes from '../../../shared/core/base/models';
 import { AppUtils } from '../../../shared/app-utils';
 import { AssetDefaultsBuilder } from '../../../shared/core/base/builders';
+import { ShareTokensService } from '../../../shared/core';
 import { resolveCurrentDemoDelayMs, resolveCurrentRouteDelayMs } from '../../../shared/core/base/services/route-delay.service';
+import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
 
 interface CapacityEditorState {
   title: string;
@@ -42,6 +44,7 @@ interface CapacityEditorState {
 
 interface RouteEditorState {
   title: string;
+  mode: 'view' | 'edit';
   routes: string[];
   routeRowIds: string[];
   busy: boolean;
@@ -52,6 +55,18 @@ interface PendingResourceDeleteState {
   title: string;
   busy: boolean;
   error: string | null;
+}
+
+export interface ResourceAssetViewState {
+  card: AppTypes.SubEventResourceCard;
+  mode: 'view' | 'edit';
+  source: AppTypes.AssetCard | null;
+  memberLabel: string;
+  memberCount: number;
+  pendingCount: number;
+  canOpenMembers: boolean;
+  canEditCapacity: boolean;
+  canEditRoute: boolean;
 }
 
 interface ResourceSmartListFilters {
@@ -159,6 +174,9 @@ export interface EventResourcePopupHost {
   resourceTypeIcon(type: AppTypes.SubEventResourceFilter): string;
   resourceTypeLabel(type: AppTypes.SubEventResourceFilter): string;
   cards(): AppTypes.SubEventResourceCard[];
+  resourceAssetView(): ResourceAssetViewState | null;
+  standaloneResourceAssetView(): boolean;
+  assetExploreOnly(): boolean;
   capacityEditor(): CapacityEditorState | null;
   routeEditor(): RouteEditorState | null;
   pendingDeleteCard(): PendingResourceDeleteState | null;
@@ -180,6 +198,9 @@ export interface EventResourcePopupHost {
   assetExploreAvailabilityLabel(card: AppTypes.AssetCard): string;
   assetExploreCanBorrow(card: AppTypes.AssetCard): boolean;
   openAssetExploreBorrowDialog(card: AppTypes.AssetCard, event?: Event): void;
+  openAssetExploreServiceChat(card: AppTypes.AssetCard, event?: Event): void;
+  canReportAssetExploreOwner(card: AppTypes.AssetCard): boolean;
+  reportAssetExploreOwner(card: AppTypes.AssetCard, event?: Event): void;
   closeAssetExploreBorrowDialog(event?: Event): void;
   setAssetExploreBorrowDateRange(start: Date | null, end: Date | null): void;
   setAssetExploreBorrowTime(edge: 'start' | 'end', value: string): void;
@@ -199,6 +220,9 @@ export interface EventResourcePopupHost {
   openBadgeDetails(card: AppTypes.SubEventResourceCard, event?: Event): void;
   occupancyLabel(card: AppTypes.SubEventResourceCard): string;
   canOpenAssetMembers(card: AppTypes.SubEventResourceCard): boolean;
+  openAssetMembers(card: AppTypes.SubEventResourceCard, event?: Event): void;
+  openResourceAssetView(card: AppTypes.SubEventResourceCard, mode: 'view' | 'edit', event?: Event): void;
+  closeResourceAssetView(event?: Event): void;
   isItemActionMenuOpen(card: AppTypes.SubEventResourceCard): boolean;
   isItemActionMenuOpenUp(card: AppTypes.SubEventResourceCard): boolean;
   toggleItemActionMenu(card: AppTypes.SubEventResourceCard, event: Event): void;
@@ -215,7 +239,10 @@ export interface EventResourcePopupHost {
   openCapacityEditor(card: AppTypes.SubEventResourceCard, event: Event): void;
   canEditRoute(card: AppTypes.SubEventResourceCard): boolean;
   routeMenuLabel(card: AppTypes.SubEventResourceCard): string;
-  openRouteEditor(card: AppTypes.SubEventResourceCard, event: Event): void;
+  openRouteEditor(card: AppTypes.SubEventResourceCard, event: Event, mode?: 'view' | 'edit'): void;
+  openResourceServiceChat(card: AppTypes.SubEventResourceCard, event: Event): void;
+  canReportResourceManager(card: AppTypes.SubEventResourceCard): boolean;
+  reportResourceManager(card: AppTypes.SubEventResourceCard, event: Event): void;
   delete(card: AppTypes.SubEventResourceCard, event: Event): void;
   closeCapacityEditor(event?: Event): void;
   canSubmitCapacityEditor(): boolean;
@@ -224,6 +251,7 @@ export interface EventResourcePopupHost {
   saveCapacityEditor(event?: Event): void;
   closeRouteEditor(event?: Event): void;
   routeEditorSupportsMultiRoute(): boolean;
+  routeEditorReadOnly(): boolean;
   openRouteMap(event?: Event): void;
   addRouteStop(): void;
   dropRouteStop(event: unknown): void;
@@ -268,6 +296,9 @@ export interface EventResourcePopupHost {
   styleUrls: ['./event-resource-popup.component.scss']
 })
 export class EventResourcePopupComponent implements DoCheck {
+  private readonly confirmationDialogService = inject(ConfirmationDialogService);
+  private readonly shareTokensService = inject(ShareTokensService);
+
   private lastCardsSignature = '';
   private lastContextKey = '';
   private lastCardCount = 0;
@@ -292,11 +323,26 @@ export class EventResourcePopupComponent implements DoCheck {
   protected showAssetExploreCategoryPicker = false;
   protected showAssetExploreOrderPicker = false;
   protected showAssetExploreBorrowBasket = false;
+  protected showAssetViewPoliciesPopup = false;
   protected assetExploreOrder: AssetExploreOrder = 'availability';
   protected readonly assetExploreOrderOptions = ASSET_EXPLORE_ORDER_OPTIONS;
 
   protected routeStopTrackId(stopIndex: number): string {
     return this.host.routeEditor()?.routeRowIds[stopIndex] ?? `route-stop-${stopIndex}`;
+  }
+
+  protected routeEditorVisibleStops(editor: RouteEditorState): string[] {
+    return editor.mode === 'view'
+      ? editor.routes.map(stop => stop.trim()).filter(Boolean)
+      : editor.routes;
+  }
+
+  protected openRouteEditorStopMap(editor: RouteEditorState, stop: string, stopIndex: number, event: Event): void {
+    if (editor.mode === 'view') {
+      this.openAssetViewRouteStopMap(stop, event);
+      return;
+    }
+    this.host.openRouteStopMap(stopIndex, event);
   }
 
   protected resourceSmartListQuery: Partial<ListQuery<ResourceSmartListFilters>> = {
@@ -420,6 +466,10 @@ export class EventResourcePopupComponent implements DoCheck {
   };
 
   ngDoCheck(): void {
+    if (!this.host?.resourceAssetView?.()) {
+      this.showAssetViewPoliciesPopup = false;
+    }
+
     const cards = this.host?.cards?.() ?? [];
     const contextKey = `${this.host?.title?.() ?? ''}:${this.host?.subtitle?.() ?? ''}:${this.host?.resourceFilter?.() ?? ''}`;
     const signature = `${contextKey}:${cards.map(card => [
@@ -580,6 +630,200 @@ export class EventResourcePopupComponent implements DoCheck {
     this.host.openBadgeDetails(card);
   }
 
+  protected openAssetViewMembers(view: ResourceAssetViewState, event: Event): void {
+    event.stopPropagation();
+    if (!view.canOpenMembers) {
+      return;
+    }
+    this.host.openAssetMembers(view.card, event);
+  }
+
+  protected assetViewTitle(view: ResourceAssetViewState): string {
+    return view.mode === 'edit' ? 'Edit Asset' : 'View Asset';
+  }
+
+  protected assetViewCategoryLabel(view: ResourceAssetViewState): string {
+    return AssetDefaultsBuilder.assetCategoryLabel(view.source?.category);
+  }
+
+  protected assetViewCategoryClass(view: ResourceAssetViewState): string {
+    return AssetDefaultsBuilder.assetCategoryClass(view.source?.category);
+  }
+
+  protected assetViewCategoryIcon(view: ResourceAssetViewState): string {
+    return AssetDefaultsBuilder.assetCategoryIcon(view.source?.category);
+  }
+
+  protected assetViewTotalCapacity(view: ResourceAssetViewState): number {
+    return Math.max(1, Number(view.source?.capacityTotal ?? view.card.capacityTotal) || 1);
+  }
+
+  protected assetViewQuantity(view: ResourceAssetViewState): number {
+    return Math.max(1, Number(view.source?.quantity ?? 1) || 1);
+  }
+
+  protected assetViewSourceLink(view: ResourceAssetViewState): string {
+    return `${view.source?.sourceLink ?? view.card.sourceLink ?? ''}`.trim();
+  }
+
+  protected assetViewImageUrl(view: ResourceAssetViewState): string {
+    return `${view.source?.imageUrl ?? view.card.imageUrl ?? ''}`.trim();
+  }
+
+  protected assetViewPolicies(view: ResourceAssetViewState): readonly AppTypes.EventPolicyItem[] {
+    return view.source?.policies ?? [];
+  }
+
+  protected assetViewRequiredPoliciesCount(view: ResourceAssetViewState): number {
+    return this.assetViewPolicies(view).filter(policy => policy.required !== false).length;
+  }
+
+  protected assetViewOptionalPoliciesCount(view: ResourceAssetViewState): number {
+    return Math.max(0, this.assetViewPolicies(view).length - this.assetViewRequiredPoliciesCount(view));
+  }
+
+  protected assetViewPolicyRequirementLabel(policy: AppTypes.EventPolicyItem): string {
+    return policy.required === false ? 'Optional' : 'Required';
+  }
+
+  protected assetViewPolicyMetaLabel(policy: AppTypes.EventPolicyItem): string {
+    return policy.required === false ? 'Optional policy' : 'Required approval';
+  }
+
+  protected assetViewPolicyPreview(policy: AppTypes.EventPolicyItem): string {
+    const description = policy.description.trim();
+    if (description.length > 0) {
+      return description;
+    }
+    return policy.required === false
+      ? 'Borrowers can review this policy before sending the request.'
+      : 'Borrowers must approve this lending policy before sending the request.';
+  }
+
+  protected openAssetViewPoliciesPopup(event: Event): void {
+    event.stopPropagation();
+    this.showAssetViewPoliciesPopup = true;
+  }
+
+  protected closeAssetViewPoliciesPopup(event?: Event): void {
+    event?.stopPropagation();
+    this.showAssetViewPoliciesPopup = false;
+  }
+
+  protected openAssetViewRoutePopup(view: ResourceAssetViewState, event: Event): void {
+    event.stopPropagation();
+    if (!this.assetViewHasRoute(view)) {
+      return;
+    }
+    this.host.openRouteEditor(view.card, event, 'view');
+  }
+
+  protected assetViewRouteStops(view: ResourceAssetViewState): readonly string[] {
+    return view.card.routes.map(stop => stop.trim()).filter(Boolean);
+  }
+
+  protected assetViewHasRoute(view: ResourceAssetViewState): boolean {
+    return this.assetViewRouteStops(view).length > 0;
+  }
+
+  protected assetViewRouteSummaryTitle(view: ResourceAssetViewState): string {
+    const count = this.assetViewRouteStops(view).length;
+    if (count === 0) {
+      return 'No route';
+    }
+    return `${count} ${count === 1 ? 'stop' : 'stops'}`;
+  }
+
+  protected assetViewRouteSummaryMeta(view: ResourceAssetViewState): string {
+    const stops = this.assetViewRouteStops(view);
+    if (stops.length === 0) {
+      return 'No route is set for this event asset.';
+    }
+    return `${stops[0]}${stops.length > 1 ? ' · ' + stops[stops.length - 1] : ''}`;
+  }
+
+  protected assetViewPricingEnabled(view: ResourceAssetViewState): boolean {
+    return Boolean(view.source?.pricing?.enabled);
+  }
+
+  protected assetViewPricingModeLabel(view: ResourceAssetViewState): string {
+    const mode = view.source?.pricing?.mode ?? 'fixed';
+    return mode
+      .split('-')
+      .map(part => part.length > 0 ? `${part[0].toUpperCase()}${part.slice(1)}` : part)
+      .join(' ');
+  }
+
+  protected assetViewPricingBaseLabel(view: ResourceAssetViewState): string {
+    const pricing = view.source?.pricing;
+    return this.assetExploreBorrowFormatMoney(Number(pricing?.basePrice) || 0, pricing?.currency || 'USD');
+  }
+
+  protected assetViewPricingChargeLabel(view: ResourceAssetViewState): string {
+    switch (view.source?.pricing?.chargeType) {
+      case 'per_attendee':
+        return 'per attendee';
+      case 'per_slot':
+        return 'per slot';
+      case 'per_booking':
+      default:
+        return 'per booking';
+    }
+  }
+
+  protected assetViewPricingWhyLabel(view: ResourceAssetViewState): string {
+    const pricing = view.source?.pricing;
+    if (!pricing?.enabled) {
+      return 'Pricing is currently disabled for this asset.';
+    }
+    if (pricing.mode === 'fixed') {
+      return `Pricing Mode is set to Fixed, so demand and time rules are not changing the amount yet.`;
+    }
+    const activeRules = [
+      pricing.demandRulesEnabled ? 'demand rules' : '',
+      pricing.timeRulesEnabled ? 'time rules' : ''
+    ].filter(Boolean);
+    return activeRules.length > 0
+      ? `This preview uses the base price and can be adjusted by ${activeRules.join(' and ')}.`
+      : `This preview is currently showing the base price.`;
+  }
+
+  protected openAssetViewRouteSetup(view: ResourceAssetViewState, event: Event): void {
+    event.stopPropagation();
+    if (view.mode !== 'edit' || !view.canEditRoute) {
+      return;
+    }
+    this.host.openRouteEditor(view.card, event, 'edit');
+  }
+
+  protected openAssetViewRouteMap(view: ResourceAssetViewState, event: Event): void {
+    event.stopPropagation();
+    const routes = view.card.routes.filter(stop => stop.trim().length > 0);
+    if (routes.length === 0 || typeof window === 'undefined') {
+      return;
+    }
+    const destination = routes[routes.length - 1];
+    const waypoints = routes.slice(0, -1);
+    const params = new URLSearchParams({
+      api: '1',
+      destination
+    });
+    if (waypoints.length > 0) {
+      params.set('waypoints', waypoints.join('|'));
+    }
+    window.open(`https://www.google.com/maps/dir/?${params.toString()}`, '_blank', 'noopener,noreferrer');
+  }
+
+  protected openAssetViewRouteStopMap(stop: string, event: Event): void {
+    event.stopPropagation();
+    const query = stop.trim();
+    if (!query || typeof window === 'undefined') {
+      return;
+    }
+    const params = new URLSearchParams({ api: '1', query });
+    window.open(`https://www.google.com/maps/search/?${params.toString()}`, '_blank', 'noopener,noreferrer');
+  }
+
   protected onResourceFilterOpenedChange(isOpen: boolean, select: MatSelect): void {
     this.resourceFilterOpen = isOpen;
     this.host.onResourceFilterOpened(isOpen, select);
@@ -691,12 +935,30 @@ export class EventResourcePopupComponent implements DoCheck {
         disabled: !canBorrow,
         ariaLabel: canBorrow ? 'Borrow asset' : 'Asset unavailable for this time'
       },
-      menuActions: canBorrow ? [{
-        id: 'borrow',
-        label: 'Borrow',
-        icon: 'volunteer_activism',
-        tone: 'accent'
-      }] : [],
+      menuActions: [
+        ...(canBorrow ? [{
+          id: 'borrow',
+          label: 'Borrow',
+          icon: 'volunteer_activism',
+          tone: 'accent'
+        } satisfies InfoCardMenuAction] : []),
+        {
+          id: 'serviceChat',
+          label: 'Contact Owner',
+          icon: 'support_agent'
+        },
+        {
+          id: 'share',
+          label: 'Share Asset',
+          icon: 'ios_share'
+        },
+        ...(this.host.canReportAssetExploreOwner(card) ? [{
+          id: 'report',
+          label: 'Report Owner',
+          icon: 'flag',
+          tone: 'warning'
+        } satisfies InfoCardMenuAction] : [])
+      ],
       clickable: false
     };
   }
@@ -710,11 +972,25 @@ export class EventResourcePopupComponent implements DoCheck {
   }
 
   protected onAssetExploreInfoCardMenuAction(card: AppTypes.AssetCard, event: InfoCardMenuActionEvent): void {
-    if (event.actionId !== 'borrow') {
+    if (event.actionId === 'serviceChat') {
+      this.showAssetExploreBorrowBasket = false;
+      this.host.openAssetExploreServiceChat(card, new Event('click'));
       return;
     }
-    this.showAssetExploreBorrowBasket = false;
-    this.host.openAssetExploreBorrowDialog(card, new Event('click'));
+    if (event.actionId === 'share') {
+      this.showAssetExploreBorrowBasket = false;
+      this.openAssetExploreShareDialog(card);
+      return;
+    }
+    if (event.actionId === 'report') {
+      this.showAssetExploreBorrowBasket = false;
+      this.host.reportAssetExploreOwner(card, new Event('click'));
+      return;
+    }
+    if (event.actionId === 'borrow') {
+      this.showAssetExploreBorrowBasket = false;
+      this.host.openAssetExploreBorrowDialog(card, new Event('click'));
+    }
   }
 
   protected onAssetExploreDateRangeChange(
@@ -952,6 +1228,14 @@ export class EventResourcePopupComponent implements DoCheck {
   };
 
   protected onResourceCardMenuAction(card: AppTypes.SubEventResourceCard, event: InfoCardMenuActionEvent): void {
+    if (event.actionId === 'viewAsset') {
+      this.host.openResourceAssetView(card, 'view', new Event('click'));
+      return;
+    }
+    if (event.actionId === 'editAsset') {
+      this.host.openResourceAssetView(card, 'edit', new Event('click'));
+      return;
+    }
     if (event.actionId === 'join') {
       this.host.join(card, new Event('click'));
       return;
@@ -966,6 +1250,18 @@ export class EventResourcePopupComponent implements DoCheck {
     }
     if (event.actionId === 'route') {
       this.host.openRouteEditor(card, new Event('click'));
+      return;
+    }
+    if (event.actionId === 'serviceChat') {
+      this.host.openResourceServiceChat(card, new Event('click'));
+      return;
+    }
+    if (event.actionId === 'share') {
+      this.openResourceShareDialog(card);
+      return;
+    }
+    if (event.actionId === 'report') {
+      this.host.reportResourceManager(card, new Event('click'));
       return;
     }
     this.host.delete(card, new Event('click'));
@@ -991,6 +1287,12 @@ export class EventResourcePopupComponent implements DoCheck {
       keyboardEvent.preventDefault();
       keyboardEvent.stopPropagation();
       this.host.closeJoinDialog();
+      return;
+    }
+    if (this.host.resourceAssetView()) {
+      keyboardEvent.preventDefault();
+      keyboardEvent.stopPropagation();
+      this.host.closeResourceAssetView();
       return;
     }
     if (this.showAssetExploreBorrowBasket) {
@@ -1279,6 +1581,18 @@ export class EventResourcePopupComponent implements DoCheck {
 
   private resourceMenuActions(card: AppTypes.SubEventResourceCard): readonly InfoCardMenuAction[] {
     const actions: InfoCardMenuAction[] = [];
+    actions.push({
+      id: 'viewAsset',
+      label: 'View Asset',
+      icon: 'edit_square'
+    });
+    if (this.host.canEditRoute(card)) {
+      actions.push({
+        id: 'editAsset',
+        label: 'Edit Asset',
+        icon: 'edit'
+      });
+    }
     if (this.host.canJoin(card)) {
       actions.push({
         id: 'join',
@@ -1294,18 +1608,22 @@ export class EventResourcePopupComponent implements DoCheck {
         tone: 'default'
       });
     }
-    if (this.host.canEditCapacity(card)) {
+    actions.push({
+      id: 'serviceChat',
+      label: 'Contact Organizer',
+      icon: 'support_agent'
+    });
+    actions.push({
+      id: 'share',
+      label: 'Share Asset',
+      icon: 'ios_share'
+    });
+    if (this.host.canReportResourceManager(card)) {
       actions.push({
-        id: 'capacity',
-        label: 'Edit Capacity',
-        icon: 'edit'
-      });
-    }
-    if (this.host.canEditRoute(card)) {
-      actions.push({
-        id: 'route',
-        label: this.host.routeMenuLabel(card),
-        icon: 'route'
+        id: 'report',
+        label: card.sourceAssetId ? 'Report Manager' : 'Report Organizer',
+        icon: 'flag',
+        tone: 'warning'
       });
     }
     actions.push({
@@ -1315,5 +1633,44 @@ export class EventResourcePopupComponent implements DoCheck {
       tone: 'destructive'
     });
     return actions;
+  }
+
+  private openAssetExploreShareDialog(card: AppTypes.AssetCard): void {
+    void this.shareTokensService.createToken({
+      kind: 'asset',
+      entityId: card.id,
+      assetType: card.type,
+      ownerUserId: card.ownerUserId ?? null
+    }).then(token => this.openShareLinkDialog('Share asset', token));
+  }
+
+  private openResourceShareDialog(card: AppTypes.SubEventResourceCard): void {
+    const sourceAssetId = `${card.sourceAssetId ?? ''}`.trim();
+    if (!sourceAssetId || (card.type !== 'Car' && card.type !== 'Accommodation' && card.type !== 'Supplies')) {
+      void this.shareTokensService.createToken({
+        kind: 'asset',
+        entityId: card.id,
+        assetType: card.type as AppTypes.AssetType
+      }).then(token => this.openShareLinkDialog('Share asset', token));
+      return;
+    }
+    void this.shareTokensService.createToken({
+      kind: 'asset',
+      entityId: sourceAssetId,
+      assetType: card.type
+    }).then(token => this.openShareLinkDialog('Share asset', token));
+  }
+
+  private openShareLinkDialog(title: string, shareToken: string): void {
+    this.confirmationDialogService.open({
+      title,
+      message: shareToken,
+      confirmLabel: 'Copy link',
+      cancelLabel: 'Cancel',
+      confirmTone: 'accent',
+      onConfirm: async () => {
+        await navigator.clipboard?.writeText(shareToken);
+      }
+    });
   }
 }

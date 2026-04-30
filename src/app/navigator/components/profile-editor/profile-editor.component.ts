@@ -21,11 +21,13 @@ import { AppContext, UserExperiencesService, UsersService, type UserDto } from '
 import { CounterBadgePipe } from '../../../shared/ui';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
 import { NavigatorService } from '../../navigator.service';
+import { AdminService } from '../../../admin/admin.service';
 
 type ProfileEditorPanel = 'profile' | 'image' | 'values' | 'interest' | 'experience';
 
 interface ProfileFormState {
   fullName: string;
+  headline: string;
   birthday: Date | null;
   city: string;
   heightCm: number | null;
@@ -75,6 +77,7 @@ export class ProfileEditorComponent {
 
   private readonly confirmationDialogService = inject(ConfirmationDialogService);
   private readonly appCtx = inject(AppContext);
+  private readonly adminService = inject(AdminService);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly navigatorService = inject(NavigatorService);
   private readonly userExperiencesService = inject(UserExperiencesService);
@@ -191,7 +194,7 @@ export class ProfileEditorComponent {
     }
     const keyboardEvent = event as KeyboardEvent;
     keyboardEvent.stopPropagation();
-    this.handleCloseAction();
+    void this.handleCloseAction();
   }
 
   protected get activeUser(): UserDto | null {
@@ -257,9 +260,13 @@ export class ProfileEditorComponent {
   }
 
   protected popupTitle(): string {
+    if (this.panel === 'image') {
+      return 'Images';
+    }
+    if (this.isAdminProfile()) {
+      return 'Admin profile';
+    }
     switch (this.panel) {
-      case 'image':
-        return 'Images';
       case 'values':
         return 'Values';
       case 'interest':
@@ -271,7 +278,12 @@ export class ProfileEditorComponent {
     }
   }
 
-  protected handleCloseAction(): void {
+  protected isAdminProfile(): boolean {
+    const user = this.profileUser;
+    return Boolean(user && (user.hostTier === 'Admin' || user.statusText === 'Admin workspace' || user.id.startsWith('admin-')));
+  }
+
+  protected async handleCloseAction(): Promise<void> {
     if (this.mobileProfileSelectorSheet) {
       this.closeMobileProfileSelectorSheet();
       return;
@@ -295,13 +307,13 @@ export class ProfileEditorComponent {
       this.showExperienceQuickActionsMenu = false;
       return;
     }
-    this.commitProfileForm(false);
+    await this.commitProfileForm(false);
     this.navigatorService.closeProfileEditor();
     this.resetTransientUiState();
   }
 
   protected onBackdropClose(): void {
-    this.handleCloseAction();
+    void this.handleCloseAction();
   }
 
   protected toggleProfileStatusHeaderPicker(event?: Event): void {
@@ -1424,6 +1436,7 @@ export class ProfileEditorComponent {
     this.profileDetailsForm = this.profileDetailsForUser(user.id, user);
     this.profileForm = {
       fullName: user.name,
+      headline: user.headline,
       birthday,
       city: user.city,
       heightCm: Number.parseInt(user.height, 10) || null,
@@ -1447,6 +1460,7 @@ export class ProfileEditorComponent {
   private createEmptyProfileForm(): ProfileFormState {
     return {
       fullName: '',
+      headline: '',
       birthday: null,
       city: '',
       heightCm: null,
@@ -2148,12 +2162,17 @@ export class ProfileEditorComponent {
     }
   }
 
-  private commitProfileForm(showAlert: boolean): void {
+  private async commitProfileForm(showAlert: boolean): Promise<void> {
     if (!this.profileUser) {
+      return;
+    }
+    if (this.isAdminProfile()) {
+      await this.commitAdminProfileForm(showAlert);
       return;
     }
     const user = this.cloneUser(this.profileUser);
     user.name = this.profileForm.fullName.trim() || user.name;
+    user.headline = this.profileForm.headline.trim() || user.headline;
     const birthday = this.profileForm.birthday ? AppUtils.toIsoDate(this.profileForm.birthday) : user.birthday;
     user.birthday = birthday;
     user.age = AppUtils.ageFromIsoDate(birthday, user.age);
@@ -2170,7 +2189,34 @@ export class ProfileEditorComponent {
     user.completion = this.calculateProfileCompletionPercent();
     this.profileDetailsFormByUser[user.id] = this.cloneProfileDetailsForm(this.profileDetailsForm);
     this.pushProfileUserToContextAndLegacyMirror(user);
-    void this.usersService.saveUserProfile(this.cloneUser(user));
+    await this.usersService.saveUserProfile(this.cloneUser(user));
+    if (showAlert) {
+      this.confirmationDialogService.openInfo('Profile saved', {
+        title: 'Profile updated',
+        confirmTone: 'neutral'
+      });
+    }
+  }
+
+  private async commitAdminProfileForm(showAlert: boolean): Promise<void> {
+    if (!this.profileUser) {
+      return;
+    }
+    const user = this.cloneUser(this.profileUser);
+    user.name = this.profileForm.fullName.trim() || user.name;
+    user.initials = AppUtils.initialsFromText(user.name);
+    user.headline = this.profileForm.headline.trim() || user.headline || 'Moderation workspace';
+    user.about = this.profileForm.about.trim().slice(0, 160);
+    user.statusText = 'Admin workspace';
+    user.hostTier = 'Admin';
+    user.completion = 100;
+    this.pushProfileUserToContextAndLegacyMirror(user);
+    this.adminService.updateAdminProfile({
+      name: user.name,
+      headline: user.headline,
+      about: user.about
+    });
+    await this.usersService.saveUserProfile(this.cloneUser(user));
     if (showAlert) {
       this.confirmationDialogService.openInfo('Profile saved', {
         title: 'Profile updated',

@@ -30,6 +30,7 @@ export interface ActivitiesFeedFilters {
   hostingPublicationFilter?: HostingPublicationFilter;
   rateFilter?: RateFilterKey;
   rateSocialBadgeEnabled?: boolean;
+  adminServiceOnly?: boolean;
 }
 
 export interface EventExploreFeedFilters {
@@ -58,6 +59,7 @@ export interface ActivityMembersSummary {
 
 export type ActivitiesNavigationRequest =
   | { type: 'eventExplore'; stacked?: boolean }
+  | { type: 'assetExplore'; assetType?: AssetType; assetId?: string; viewOnly?: boolean; fallbackAsset?: AssetCard }
   | {
       type: 'chatResource';
       ownerId?: string;
@@ -67,6 +69,8 @@ export type ActivitiesNavigationRequest =
       group?: { id: string; groupLabel: string } | null;
       assetAssignmentIds?: SubEventAssetAssignmentIds;
       assetCardsByType?: SubEventAssetCardsByType;
+      openExplore?: boolean;
+      assetViewId?: string;
     }
   | {
       type: 'members';

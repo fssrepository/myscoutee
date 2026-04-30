@@ -91,7 +91,9 @@ export class DemoUsersRepositoryBuilder {
       name: user.name,
       city: user.city,
       initials: user.initials,
-      gender: user.gender
+      gender: user.gender,
+      profileStatus: user.profileStatus,
+      deletedAtIso: user.deletedAtIso ?? null
     };
   }
 

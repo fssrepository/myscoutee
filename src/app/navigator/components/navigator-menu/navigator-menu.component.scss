@@ -409,6 +409,11 @@
   border-bottom-color: rgba(91, 101, 115, 0.32);
 }
 
+.user-menu-header.status-blocked {
+  background: linear-gradient(180deg, #fff1f1 0%, #f6d9d9 100%);
+  border-bottom-color: rgba(179, 52, 66, 0.38);
+}
+
 .user-menu-share-btn,
 .user-menu-settings-btn,
 .user-menu-close-btn {

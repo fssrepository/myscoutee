@@ -54,6 +54,7 @@ import {
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
 import { EventCheckoutDialogService } from '../../../shared/ui/services/event-checkout-dialog.service';
 import { EventCheckoutDraftService, type EventCheckoutDraft } from '../../../shared/ui/services/event-checkout-draft.service';
+import { NavigatorService } from '../../../navigator';
 import { EventChatPopupComponent } from '../event-chat-popup/event-chat-popup.component';
 import { EventExplorePopupComponent } from '../event-explore-popup/event-explore-popup.component';
 import { ActivitiesPopupToolbarController } from './activities-popup-toolbar.controller';
@@ -83,6 +84,7 @@ import {
   ChatsService,
   EventsService,
   RatesService,
+  ShareTokensService,
   toActivityChatRow,
   UsersService,
   type ActivityMembersSyncState
@@ -145,12 +147,14 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected readonly activityResourcesService = inject(ActivityResourcesService);
   private readonly chatsService = inject(ChatsService);
   protected readonly eventsService = inject(EventsService);
+  protected readonly shareTokensService = inject(ShareTokensService);
   protected readonly appCtx = inject(AppContext);
   protected readonly popupCtx = inject(AppPopupContext);
   private readonly ownedAssets = inject(OwnedAssetsPopupFacadeService);
   private readonly usersService = inject(UsersService);
   protected readonly confirmationDialogService = inject(ConfirmationDialogService);
   protected readonly eventCheckoutDialogService = inject(EventCheckoutDialogService);
+  protected readonly navigatorService = inject(NavigatorService);
   private readonly eventCheckoutDraftService = inject(EventCheckoutDraftService);
   readonly activitiesRates = new ActivitiesRatesController({
     getUsers: () => this.users,
@@ -306,6 +310,10 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected readonly activitiesViewOptions: Array<{ key: AppTypes.ActivitiesView; label: string; icon: string }>
     = [...APP_STATIC_DATA.activitiesViewOptions];
   protected activitiesRateSocialBadgeEnabled = false;
+
+  protected get isBlockedUser(): boolean {
+    return this.appCtx.activeUserProfile()?.profileStatus === 'blocked';
+  }
 
   // ── Filter / view state – backed by EventEditorPopupStateService signals ───────────
   // Local copies are kept in sync via an effect() so that OnPush CD fires
@@ -773,6 +781,16 @@ export class ActivitiesPopupComponent implements OnDestroy {
             memberIds: [...(activeSessionChat.memberIds ?? [])]
           };
           nextItems = this.sortChatMenuItems(nextItems);
+        } else {
+          const activeSessionRecord = {
+            ...this.cloneChatMenuItem(activeSessionChat),
+            ownerUserId: userId,
+            messages: undefined
+          };
+          nextItems = this.sortChatMenuItems([
+            ...nextItems,
+            activeSessionRecord
+          ]);
         }
       }
       this.chatItems = nextItems;
@@ -786,6 +804,11 @@ export class ActivitiesPopupComponent implements OnDestroy {
   private syncChatItemFromOpenSession(chat: ChatMenuItem): void {
     const currentIndex = this.chatItems.findIndex(item => item.id === chat.id);
     if (currentIndex < 0) {
+      const nextChat = this.cloneChatMenuItem(chat);
+      this.chatItems = this.sortChatMenuItems([...this.chatItems, nextChat]);
+      this.refreshSectionBadges();
+      this.syncVisibleChatRow(nextChat);
+      this.cdr.markForCheck();
       return;
     }
     const nextChat = this.cloneChatMenuItem(chat);
@@ -806,14 +829,27 @@ export class ActivitiesPopupComponent implements OnDestroy {
     if (!smartList || this.activitiesPrimaryFilter !== 'chats' || this.isCalendarLayoutView()) {
       return;
     }
-    const currentItems = [...smartList.itemsSnapshot()];
-    const existingIndex = currentItems.findIndex(row => row.type === 'chats' && row.id === chat.id);
-    if (existingIndex < 0) {
+    if (!this.doesChatMatchActiveContextFilter(chat)) {
       return;
     }
-    const nextItems = currentItems.filter((_row, index) => index !== existingIndex);
+    const currentItems = [...smartList.itemsSnapshot()];
+    const existingIndex = currentItems.findIndex(row => row.type === 'chats' && row.id === chat.id);
+    const nextItems = existingIndex >= 0
+      ? currentItems.filter((_row, index) => index !== existingIndex)
+      : currentItems;
     nextItems.push(this.buildActivityChatRow(chat));
     this.replaceVisibleActivityItems(nextItems);
+  }
+
+  private doesChatMatchActiveContextFilter(chat: ChatMenuItem): boolean {
+    if (this.activitiesChatContextFilter === 'all') {
+      return true;
+    }
+    return this.activitiesChats.activityChatContextFilterKey(chat) === this.activitiesChatContextFilter;
+  }
+
+  protected isAdminServiceChatMode(): boolean {
+    return this.activitiesContext.activitiesAdminServiceOnly();
   }
 
   private buildActivityChatRow(chat: ChatMenuItem): AppTypes.ActivityListRow {
@@ -2459,7 +2495,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
       chatContextFilter: this.activitiesChatContextFilter,
       hostingPublicationFilter: this.hostingPublicationFilter,
       rateFilter: this.activitiesRateFilter,
-      rateSocialBadgeEnabled: this.activitiesRateSocialBadgeEnabled
+      rateSocialBadgeEnabled: this.activitiesRateSocialBadgeEnabled,
+      adminServiceOnly: this.activitiesContext.activitiesAdminServiceOnly()
     };
     const currentFilters = this.activitiesSmartListQuery.filters ?? {};
     if (
@@ -2470,6 +2507,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       && currentFilters['hostingPublicationFilter'] === nextFilters['hostingPublicationFilter']
       && currentFilters['rateFilter'] === nextFilters['rateFilter']
       && currentFilters['rateSocialBadgeEnabled'] === nextFilters['rateSocialBadgeEnabled']
+      && currentFilters['adminServiceOnly'] === nextFilters['adminServiceOnly']
     ) {
       return;
     }

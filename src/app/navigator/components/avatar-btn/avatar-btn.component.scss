@@ -112,7 +112,6 @@
 
 .user-selector-load-ring-progress.is-loading {
   stroke: url(#navigator-load-gradient);
-  animation: navigator-load-ring-progress 3s linear forwards;
 }
 
 .user-selector-load-ring-progress.is-overdue {

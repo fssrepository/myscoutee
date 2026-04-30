@@ -137,7 +137,7 @@ export class DemoBootstrapService {
       return;
     }
 
-    await this.ensureReady();
+    await this.ensureReady(onProgress);
 
     const filterPreferencesChanged = this.usersRepository.seedDefaultUserFilterPreferencesForUser(normalizedUserId);
 

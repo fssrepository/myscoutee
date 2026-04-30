@@ -58,7 +58,7 @@ function normalizeActivitiesSecondaryFilter(
 }
 
 function normalizeActivitiesChatContextFilter(value: unknown): AppTypes.ActivitiesChatContextFilter {
-  return value === 'event' || value === 'subEvent' || value === 'group' ? value : 'all';
+  return value === 'event' || value === 'subEvent' || value === 'group' || value === 'service' ? value : 'all';
 }
 
 function normalizeHostingPublicationFilter(value: unknown): AppTypes.HostingPublicationFilter {

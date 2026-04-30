@@ -56,7 +56,12 @@ function toActivityChatRowWithResolvedOptions(
 }
 
 export function normalizeActivityChatChannelType(item: Pick<ChatMenuItem, 'channelType'>): AppTypes.ChatChannelType {
-  if (item.channelType === 'mainEvent' || item.channelType === 'optionalSubEvent' || item.channelType === 'groupSubEvent') {
+  if (
+    item.channelType === 'mainEvent'
+    || item.channelType === 'optionalSubEvent'
+    || item.channelType === 'groupSubEvent'
+    || item.channelType === 'serviceEvent'
+  ) {
     return item.channelType;
   }
   return 'general';
@@ -74,6 +79,9 @@ export function activityChatContextFilterKey(
   }
   if (channelType === 'groupSubEvent') {
     return 'group';
+  }
+  if (channelType === 'serviceEvent') {
+    return 'service';
   }
   return null;
 }

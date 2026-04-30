@@ -1,5 +1,6 @@
 
 import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatRippleModule } from '@angular/material/core';
 
@@ -20,6 +21,7 @@ type DemoUserProgressSegment = {
   selector: 'app-entry-demo-user-selector',
   standalone: true,
   imports: [
+    CommonModule,
     MatButtonModule,
     MatRippleModule
 ],
@@ -35,6 +37,9 @@ export class EntryDemoUserSelectorComponent {
   @Input() errorMessage = '';
   @Input() submitting = false;
   @Input() users: DemoUserListItemDto[] = [];
+  @Input() title = 'Select demo user';
+  @Input() subtitle = 'Login disabled mode. Choose a demo user to open perspective-based data.';
+  @Input() selectedUserId = '';
 
   @Output() readonly closeRequested = new EventEmitter<void>();
   @Output() readonly retryRequested = new EventEmitter<void>();
@@ -59,6 +64,36 @@ export class EntryDemoUserSelectorComponent {
       return;
     }
     this.retryRequested.emit();
+  }
+
+  protected userStatusClass(user: DemoUserListItemDto): string {
+    switch (user.profileStatus) {
+      case 'blocked':
+        return 'demo-user-item-blocked';
+      case 'deleted':
+        return 'demo-user-item-deleted';
+      default:
+        return '';
+    }
+  }
+
+  protected userStatusLabel(user: DemoUserListItemDto): string {
+    switch (user.profileStatus) {
+      case 'blocked':
+        return 'Blocked';
+      case 'deleted':
+        return 'Deleted';
+      default:
+        return '';
+    }
+  }
+
+  protected selectedUser(): DemoUserListItemDto | null {
+    const normalizedUserId = this.selectedUserId.trim();
+    if (!normalizedUserId) {
+      return null;
+    }
+    return this.users.find(user => user.id.trim() === normalizedUserId) ?? null;
   }
 
   protected loadingSegments(): ReadonlyArray<DemoUserProgressSegment> {

@@ -200,6 +200,11 @@ export class AssetInfoCardBuilder {
     const label = AssetDefaultsBuilder.assetTypeLabel(card.type).toLowerCase();
     return [
       {
+        id: 'share',
+        label: `Share ${label}`,
+        icon: 'ios_share'
+      },
+      {
         id: 'edit',
         label: `Edit ${label}`,
         icon: 'edit'

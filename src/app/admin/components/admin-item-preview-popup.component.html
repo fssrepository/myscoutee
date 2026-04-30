@@ -1,0 +1,54 @@
+@if (admin.activePopup() === 'item-preview') {
+  <section class="app-popup">
+    <div class="app-popup-backdrop" (click)="admin.closePopup()"></div>
+    <div class="app-popup-panel popup-panel-admin" (click)="$event.stopPropagation()">
+      <div class="popup-header">
+        <div class="popup-title">
+          <h2>Reported item</h2>
+          <p class="popup-subtitle">Report-scoped preview only.</p>
+        </div>
+        <button type="button" class="popup-close" (click)="admin.closePopup()" aria-label="Close">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+      <div class="popup-body">
+        @if (admin.selectedReport(); as report) {
+          <div class="admin-detail-pane">
+            <div class="admin-detail-heading">
+              <span class="admin-avatar">
+                <mat-icon>{{ itemIcon(report.sourceType) }}</mat-icon>
+              </span>
+              <div class="admin-detail-heading-main">
+                <h3>{{ report.eventTitle || report.assetType || report.sourceType || 'Reported item' }}</h3>
+                <p>{{ report.eventStartAtIso || report.sourceId || report.assetId }}</p>
+              </div>
+            </div>
+            <article class="admin-report-card">
+              <h4>{{ report.reason }}</h4>
+              <p>{{ report.details }}</p>
+              @if (report.sourceText) {
+                <p class="admin-muted">{{ report.sourceText }}</p>
+              }
+            </article>
+            <div class="admin-card-list">
+              @if (report.eventId) {
+                <article class="admin-feedback-card">
+                  <h4>Event</h4>
+                  <p class="admin-muted">{{ report.eventTitle }}</p>
+                  <p>{{ report.eventId }}</p>
+                </article>
+              }
+              @if (report.assetId) {
+                <article class="admin-feedback-card">
+                  <h4>Asset</h4>
+                  <p class="admin-muted">{{ report.assetType }}</p>
+                  <p>{{ report.assetId }}</p>
+                </article>
+              }
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  </section>
+}

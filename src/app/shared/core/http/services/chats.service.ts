@@ -19,7 +19,8 @@ interface HttpChatSummaryDto {
   memberIds: string[];
   unread: number;
   dateIso?: string;
-  channelType?: 'general' | 'mainEvent' | 'optionalSubEvent' | 'groupSubEvent';
+  channelType?: 'general' | 'mainEvent' | 'optionalSubEvent' | 'groupSubEvent' | 'serviceEvent';
+  serviceContext?: 'event' | 'asset' | 'notification';
   eventId?: string;
   subEventId?: string;
   groupId?: string;
@@ -42,12 +43,53 @@ interface HttpChatMessageDto {
     initials: string;
     gender: 'woman' | 'man';
   }>;
+  deletedAtIso?: string | null;
+  deletedByUserId?: string | null;
+  deletedByName?: string | null;
+  editedAtIso?: string | null;
+  pinnedAtIso?: string | null;
+  pinnedByUserId?: string | null;
+  replyTo?: HttpChatMessageReplyDto | null;
+  reactions?: HttpChatMessageReactionDto[] | null;
+  attachments?: HttpChatMessageAttachmentDto[] | null;
+}
+
+interface HttpChatMessageReplyDto {
+  id: string;
+  sender: string;
+  text: string;
+}
+
+interface HttpChatMessageReactionDto {
+  emoji: string;
+  userId: string;
+  userName: string;
+  userInitials: string;
+  userGender: 'woman' | 'man';
+  reactedAtIso: string;
+}
+
+interface HttpChatMessageAttachmentDto {
+  id: string;
+  type: AppTypes.ChatMessageAttachmentType;
+  title: string;
+  entityId?: string | null;
+  assetType?: AppTypes.AssetType | null;
+  ownerUserId?: string | null;
+  subtitle?: string | null;
+  description?: string | null;
+  url?: string | null;
+  previewUrl?: string | null;
+  mimeType?: string | null;
+  sizeBytes?: number | null;
 }
 
 interface HttpChatSocketRequestDto {
   type: 'message' | 'typing' | 'read';
   clientId?: string;
   text?: string;
+  attachments?: HttpChatMessageAttachmentDto[];
+  replyTo?: HttpChatMessageReplyDto | null;
   typing?: boolean;
   messageIds?: string[];
 }
@@ -215,8 +257,18 @@ export class HttpChatsService {
   }
 
   async sendChatMessage(chat: ChatMenuItem, text: string, clientId?: string): Promise<AppTypes.ChatPopupMessage | null> {
+    return this.sendChatMessageWithAttachments(chat, text, [], clientId);
+  }
+
+  async sendChatMessageWithAttachments(
+    chat: ChatMenuItem,
+    text: string,
+    attachments: readonly AppTypes.ChatMessageAttachment[] = [],
+    clientId?: string,
+    replyTo?: AppTypes.ChatPopupMessage['replyTo']
+  ): Promise<AppTypes.ChatPopupMessage | null> {
     const trimmedText = text.trim();
-    if (!trimmedText) {
+    if (!trimmedText && attachments.length === 0) {
       return null;
     }
 
@@ -239,7 +291,9 @@ export class HttpChatsService {
       const payload: HttpChatSocketRequestDto = {
         type: 'message',
         clientId: outboundClientId,
-        text: trimmedText
+        text: trimmedText,
+        attachments: attachments.map(attachment => this.toHttpChatAttachment(attachment)),
+        replyTo: this.toHttpChatReply(replyTo)
       };
       socket.send(JSON.stringify(payload));
       return this.waitForSocketMessageAck(outboundClientId);
@@ -279,6 +333,51 @@ export class HttpChatsService {
       messageIds: normalizedIds
     };
     socket.send(JSON.stringify(payload));
+  }
+
+  async updateChatMessage(
+    chat: ChatMenuItem,
+    messageId: string,
+    mutation: AppTypes.ChatMessageMutation
+  ): Promise<AppTypes.ChatPopupMessage | null> {
+    const normalizedChatId = `${chat.id ?? ''}`.trim();
+    const normalizedMessageId = `${messageId ?? ''}`.trim();
+    if (!normalizedChatId || !normalizedMessageId) {
+      return null;
+    }
+    const body: Record<string, unknown> = {};
+    let action = '';
+    if (typeof mutation.text === 'string') {
+      action = 'edit';
+      body['text'] = mutation.text;
+    } else if (mutation.deleted === true) {
+      action = 'delete';
+    } else if (typeof mutation.pinned === 'boolean') {
+      action = 'pin';
+      body['pinned'] = mutation.pinned;
+    } else if (Object.prototype.hasOwnProperty.call(mutation, 'reactionEmoji')) {
+      action = 'reaction';
+      body['emoji'] = mutation.reactionEmoji ?? '';
+    } else if (mutation.attachments) {
+      action = 'attachments';
+      body['attachments'] = mutation.attachments.map(attachment => this.toHttpChatAttachment(attachment));
+    }
+    if (!action) {
+      return null;
+    }
+    const response = await this.http
+      .post<HttpChatMessageDto | null>(
+        `${this.apiBaseUrl}/activities/chats/${encodeURIComponent(normalizedChatId)}/messages/${encodeURIComponent(normalizedMessageId)}/${action}`,
+        body,
+        { params: this.activeUserParams() }
+      )
+      .toPromise();
+    if (!response) {
+      return null;
+    }
+    const message = this.mapChatMessage(response);
+    this.updateCachedChatSummaryAfterMessage(chat, message);
+    return message;
   }
 
   async watchChatEvents(
@@ -334,6 +433,7 @@ export class HttpChatsService {
       unread: Math.max(0, Math.trunc(Number(item.unread) || 0)),
       dateIso: item.dateIso,
       channelType: item.channelType,
+      serviceContext: item.serviceContext,
       eventId: item.eventId,
       subEventId: item.subEventId,
       groupId: item.groupId,
@@ -349,7 +449,8 @@ export class HttpChatsService {
       memberIds: [...(record.memberIds ?? [])],
       messages: record.messages?.map(message => ({
         ...message,
-        readBy: [...(message.readBy ?? [])]
+        readBy: [...(message.readBy ?? [])],
+        attachments: message.attachments?.map(attachment => ({ ...attachment }))
       }))
     };
   }
@@ -371,6 +472,7 @@ export class HttpChatsService {
   private mapChatMessage(message: HttpChatMessageDto): AppTypes.ChatPopupMessage {
     const sentAt = new Date(message.sentAtIso);
     const activeUserId = this.activeUserId();
+    const deleted = typeof message.deletedAtIso === 'string' && message.deletedAtIso.trim().length > 0;
     return {
       id: message.id,
       clientId: `${message.clientId ?? ''}`.trim() || undefined,
@@ -380,16 +482,78 @@ export class HttpChatsService {
         initials: message.senderInitials,
         gender: message.senderGender
       },
-      text: message.text,
+      text: deleted ? '' : message.text,
       time: sentAt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
       sentAtIso: message.sentAtIso,
       mine: message.mine === true || (!!activeUserId && message.senderId === activeUserId),
-      readBy: (message.readBy ?? []).map(reader => ({
+      readBy: deleted ? [] : (message.readBy ?? []).map(reader => ({
         id: reader.id,
         initials: reader.initials,
         gender: reader.gender
-      }))
+      })),
+      deletedAtIso: message.deletedAtIso ?? null,
+      deletedByUserId: message.deletedByUserId ?? null,
+      deletedByName: message.deletedByName ?? null,
+      editedAtIso: deleted ? null : message.editedAtIso ?? null,
+      pinnedAtIso: deleted ? null : message.pinnedAtIso ?? null,
+      pinnedByUserId: deleted ? null : message.pinnedByUserId ?? null,
+      replyTo: deleted ? null : message.replyTo ? { ...message.replyTo } : null,
+      reactions: deleted ? [] : (message.reactions ?? []).map(reaction => ({ ...reaction })),
+      attachments: deleted ? [] : (message.attachments ?? []).map(attachment => this.mapChatAttachment(attachment))
     } satisfies AppTypes.ChatPopupMessage;
+  }
+
+  private toHttpChatReply(replyTo: AppTypes.ChatPopupMessage['replyTo']): HttpChatMessageReplyDto | null {
+    if (!replyTo) {
+      return null;
+    }
+    const id = `${replyTo.id ?? ''}`.trim();
+    if (!id) {
+      return null;
+    }
+    return {
+      id,
+      sender: `${replyTo.sender ?? ''}`.trim(),
+      text: `${replyTo.text ?? ''}`.trim()
+    };
+  }
+
+  private mapChatAttachment(attachment: HttpChatMessageAttachmentDto): AppTypes.ChatMessageAttachment {
+    return {
+      id: `${attachment.id ?? ''}`.trim(),
+      type: attachment.type,
+      title: `${attachment.title ?? ''}`.trim(),
+      entityId: typeof attachment.entityId === 'string' ? attachment.entityId.trim() : null,
+      assetType: this.normalizeAssetType(attachment.assetType),
+      ownerUserId: typeof attachment.ownerUserId === 'string' ? attachment.ownerUserId.trim() : null,
+      subtitle: typeof attachment.subtitle === 'string' ? attachment.subtitle.trim() : null,
+      description: typeof attachment.description === 'string' ? attachment.description.trim() : null,
+      url: typeof attachment.url === 'string' ? attachment.url.trim() : null,
+      previewUrl: typeof attachment.previewUrl === 'string' ? attachment.previewUrl.trim() : null,
+      mimeType: typeof attachment.mimeType === 'string' ? attachment.mimeType.trim() : null,
+      sizeBytes: Number.isFinite(Number(attachment.sizeBytes)) ? Math.max(0, Math.trunc(Number(attachment.sizeBytes))) : null
+    };
+  }
+
+  private toHttpChatAttachment(attachment: AppTypes.ChatMessageAttachment): HttpChatMessageAttachmentDto {
+    return {
+      id: `${attachment.id ?? ''}`.trim(),
+      type: attachment.type,
+      title: `${attachment.title ?? ''}`.trim(),
+      entityId: attachment.entityId ?? null,
+      assetType: attachment.assetType ?? null,
+      ownerUserId: attachment.ownerUserId ?? null,
+      subtitle: attachment.subtitle ?? null,
+      description: attachment.description ?? null,
+      url: attachment.url ?? null,
+      previewUrl: attachment.previewUrl ?? null,
+      mimeType: attachment.mimeType ?? null,
+      sizeBytes: Number.isFinite(Number(attachment.sizeBytes)) ? Math.max(0, Math.trunc(Number(attachment.sizeBytes))) : null
+    };
+  }
+
+  private normalizeAssetType(value: unknown): AppTypes.AssetType | null {
+    return value === 'Car' || value === 'Accommodation' || value === 'Supplies' ? value : null;
   }
 
   private updateCachedChatSummaryAfterMessage(
@@ -432,7 +596,7 @@ export class HttpChatsService {
       id: `${chat.id ?? existingRecord?.id ?? ''}`.trim(),
       avatar: `${chat.avatar ?? existingRecord?.avatar ?? ''}`.trim(),
       title: `${chat.title ?? existingRecord?.title ?? ''}`.trim(),
-      lastMessage: `${message.text ?? existingRecord?.lastMessage ?? ''}`.trim(),
+      lastMessage: `${message.text ?? ''}`.trim() || this.chatAttachmentSummary(message) || `${existingRecord?.lastMessage ?? ''}`.trim(),
       lastSenderId: `${message.senderAvatar?.id ?? existingRecord?.lastSenderId ?? ''}`.trim(),
       memberIds: [...((chat.memberIds?.length ? chat.memberIds : existingRecord?.memberIds) ?? [])],
       unread: message.mine ? 0 : Math.max(0, Math.trunc(Number(existingRecord?.unread) || 0)),
@@ -458,7 +622,10 @@ export class HttpChatsService {
     const existingRecord = records.find(record => record.id === normalizedChatId) ?? null;
     return existingRecord?.messages?.map(message => ({
       ...message,
-      readBy: [...(message.readBy ?? [])]
+      readBy: [...(message.readBy ?? [])],
+      replyTo: message.replyTo ? { ...message.replyTo } : message.replyTo,
+      reactions: message.reactions?.map(reaction => ({ ...reaction })),
+      attachments: message.attachments?.map(attachment => ({ ...attachment }))
     })) ?? [];
   }
 
@@ -474,7 +641,10 @@ export class HttpChatsService {
       }
       mergedById.set(identity, {
         ...message,
-        readBy: [...(message.readBy ?? [])]
+        readBy: [...(message.readBy ?? [])],
+        replyTo: message.replyTo ? { ...message.replyTo } : message.replyTo,
+        reactions: message.reactions?.map(reaction => ({ ...reaction })),
+        attachments: message.attachments?.map(attachment => ({ ...attachment }))
       });
     }
     return [...mergedById.values()];
@@ -496,6 +666,23 @@ export class HttpChatsService {
       return '';
     }
     return `fallback:${senderId}:${sentAtIso}:${text}`;
+  }
+
+  private chatAttachmentSummary(message: AppTypes.ChatPopupMessage): string {
+    const firstAttachment = message.attachments?.[0];
+    if (!firstAttachment) {
+      return '';
+    }
+    if (firstAttachment.type === 'image') {
+      return 'Sent an image';
+    }
+    if (firstAttachment.type === 'event') {
+      return 'Shared an event';
+    }
+    if (firstAttachment.type === 'asset') {
+      return 'Shared an asset';
+    }
+    return firstAttachment.title || 'Shared an attachment';
   }
 
   private sortCachedChatRecords(records: readonly DemoChatRecord[]): DemoChatRecord[] {

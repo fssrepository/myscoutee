@@ -151,7 +151,9 @@ export class NavigatorComponent {
         return;
       }
       this.lastHandledActivitiesRequestMs = request.updatedMs;
-      this.activitiesContext.openActivities(request.primaryFilter, request.eventScope);
+      this.activitiesContext.openActivities(request.primaryFilter, request.eventScope, undefined, false, {
+        adminServiceOnly: request.adminServiceOnly === true
+      });
       this.popupCtx.clearNavigatorActivitiesRequest();
     });
 

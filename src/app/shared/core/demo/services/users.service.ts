@@ -41,6 +41,7 @@ export class DemoUsersService extends DemoRouteDelayService implements UserServi
   private static readonly INITIAL_EVENT_FEEDBACK_UNLOCK_DELAY_MS = 2 * 60 * 60 * 1000;
   private static readonly MAX_PROFILE_IMAGE_SLOTS = 8;
   private static readonly FILTER_PREFERENCES_SAVE_DELAY_MS = 1500;
+  private static readonly DELETED_ACCOUNT_PURGE_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
   private readonly chatsRepository = inject(DemoChatsRepository);
   private readonly eventsRepository = inject(DemoEventsRepository);
   private readonly activityMembersRepository = inject(DemoActivityMembersRepository);
@@ -77,6 +78,14 @@ export class DemoUsersService extends DemoRouteDelayService implements UserServi
       };
     }
     const loadedUser = this.usersRepository.queryUserById(normalizedUserId);
+    if (loadedUser?.profileStatus === 'deleted' && this.isDeletedAccountPastPurgeWindow(loadedUser)) {
+      this.usersRepository.purgeUser(normalizedUserId);
+      await this.memoryDb.flushToIndexedDb();
+      return {
+        user: null,
+        filterPreferences: null
+      };
+    }
     const counterOverrides = loadedUser ? this.buildInitialMenuCounterOverrides(loadedUser) : null;
     const user = loadedUser
       ? DemoUserImpressionsBuilder.withResolvedImpressions(this.withSyncedActivityCounts(loadedUser, counterOverrides))
@@ -132,6 +141,14 @@ export class DemoUsersService extends DemoRouteDelayService implements UserServi
     return Math.trunc(parsed);
   }
 
+  private isDeletedAccountPastPurgeWindow(user: UserDto): boolean {
+    const deletedAtMs = Date.parse(`${user.deletedAtIso ?? ''}`.trim());
+    if (!Number.isFinite(deletedAtMs)) {
+      return false;
+    }
+    return Date.now() - deletedAtMs > DemoUsersService.DELETED_ACCOUNT_PURGE_WINDOW_MS;
+  }
+
   private resolveRealtimeCursor(userId: string, cursor: number | null): number {
     const now = Date.now();
     if (cursor === null) {
@@ -167,7 +184,9 @@ export class DemoUsersService extends DemoRouteDelayService implements UserServi
     if (!user?.id?.trim()) {
       return null;
     }
-    return this.usersRepository.upsertUser(user);
+    const savedUser = this.usersRepository.upsertUser(user);
+    await this.memoryDb.flushToIndexedDb();
+    return savedUser;
   }
 
   async submitUserFeedback(
@@ -243,9 +262,14 @@ export class DemoUsersService extends DemoRouteDelayService implements UserServi
     const normalizedUserId = request.userId.trim();
     const user = this.usersRepository.queryUserById(normalizedUserId);
     if (user) {
+      const previousProfileStatus = user.profileStatus === 'deleted'
+        ? (user.previousProfileStatus ?? 'public')
+        : user.profileStatus;
       this.usersRepository.upsertUser({
         ...user,
-        profileStatus: 'deleted'
+        profileStatus: 'deleted',
+        previousProfileStatus,
+        deletedAtIso: new Date().toISOString()
       });
     }
     return {
