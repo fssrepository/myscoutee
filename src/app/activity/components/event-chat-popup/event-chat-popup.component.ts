@@ -822,6 +822,7 @@ export class EventChatPopupComponent implements OnDestroy {
       deliveryState: 'pending'
     };
     this.replaceExistingChatMessage(optimisticMessage);
+    this.closePollVoteDialog();
     this.cdr.markForCheck();
     const session = this.session();
     if (!session) {
@@ -832,7 +833,6 @@ export class EventChatPopupComponent implements OnDestroy {
         if (updated) {
           this.replaceExistingChatMessage(updated);
         }
-        this.closePollVoteDialog();
       })
       .catch(() => {
         this.markPendingMessageTimedOut(message.id);
