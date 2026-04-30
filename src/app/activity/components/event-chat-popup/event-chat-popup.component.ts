@@ -63,6 +63,12 @@ interface ChatPollState {
   options: ChatPollOptionState[];
 }
 
+interface ChatTextSegment {
+  id: string;
+  text: string;
+  url?: string;
+}
+
 @Component({
   selector: 'app-event-chat-popup',
   standalone: true,
@@ -1350,6 +1356,53 @@ export class EventChatPopupComponent implements OnDestroy {
     this.openChatAttachment(attachment, event);
   }
 
+  protected chatTextSegments(text: string): ChatTextSegment[] {
+    const value = `${text ?? ''}`;
+    const urlPattern = /(https?:\/\/[^\s<]+|www\.[^\s<]+)/gi;
+    const segments: ChatTextSegment[] = [];
+    let lastIndex = 0;
+    let match: RegExpExecArray | null;
+    while ((match = urlPattern.exec(value)) !== null) {
+      if (match.index > lastIndex) {
+        segments.push({
+          id: `text:${lastIndex}`,
+          text: value.slice(lastIndex, match.index)
+        });
+      }
+      const rawUrl = match[0].replace(/[),.;!?]+$/g, '');
+      const trailing = match[0].slice(rawUrl.length);
+      segments.push({
+        id: `link:${match.index}`,
+        text: rawUrl,
+        url: rawUrl.startsWith('http') ? rawUrl : `https://${rawUrl}`
+      });
+      if (trailing) {
+        segments.push({
+          id: `text:${match.index + rawUrl.length}`,
+          text: trailing
+        });
+      }
+      lastIndex = match.index + match[0].length;
+    }
+    if (lastIndex < value.length) {
+      segments.push({
+        id: `text:${lastIndex}`,
+        text: value.slice(lastIndex)
+      });
+    }
+    return segments.length > 0 ? segments : [{ id: 'text:0', text: value }];
+  }
+
+  protected openChatTextLink(url: string, event?: Event): void {
+    event?.preventDefault();
+    event?.stopPropagation();
+    const safeUrl = `${url ?? ''}`.trim();
+    if (!safeUrl) {
+      return;
+    }
+    this.confirmExternalLink(safeUrl);
+  }
+
   protected async sendMessage(): Promise<void> {
     const text = this.draftMessage.trim();
     const session = this.session();
@@ -1664,10 +1717,14 @@ export class EventChatPopupComponent implements OnDestroy {
       });
       return;
     }
+    this.confirmExternalLink(url);
+  }
+
+  private confirmExternalLink(url: string): void {
     this.confirmationDialogService.open({
       title: 'Open external link?',
-      message: 'This link opens outside MyScoutee. Please be vigilant before continuing.',
-      confirmLabel: 'OK',
+      message: 'This link opens outside MyScoutee. Be vigilant and continue only if you trust it.',
+      confirmLabel: 'Continue',
       cancelLabel: 'Cancel',
       confirmTone: 'accent',
       onConfirm: () => {
