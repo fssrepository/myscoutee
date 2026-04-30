@@ -7,6 +7,7 @@ export {
   type ActivityCounters,
   type ActivityInvitePopupState,
   type ActivityMembersSyncState,
+  type AdminNavigatorRequest,
   type ConnectivityState,
   type LoadState,
   type LoadStatus,

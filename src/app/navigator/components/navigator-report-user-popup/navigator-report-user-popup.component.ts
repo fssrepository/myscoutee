@@ -57,7 +57,11 @@ export class NavigatorReportUserPopupComponent implements OnDestroy {
         context?.eventId?.trim() ?? '',
         context?.eventTitle?.trim() ?? '',
         context?.eventStartAtIso?.trim() ?? '',
-        context?.eventTimeframe?.trim() ?? ''
+        context?.eventTimeframe?.trim() ?? '',
+        context?.sourceType?.trim() ?? '',
+        context?.sourceId?.trim() ?? '',
+        context?.chatId?.trim() ?? '',
+        context?.messageId?.trim() ?? ''
       ].join('|');
       if (contextKey === this.lastContextKey) {
         return;
@@ -179,7 +183,14 @@ export class NavigatorReportUserPopupComponent implements OnDestroy {
         memberEntryId: `${context.memberEntryId ?? ''}`.trim() || null,
         eventId: context.eventId.trim(),
         eventTitle: `${context.eventTitle ?? ''}`.trim() || null,
-        eventStartAtIso: `${context.eventStartAtIso ?? ''}`.trim() || null
+        eventStartAtIso: `${context.eventStartAtIso ?? ''}`.trim() || null,
+        sourceType: `${context.sourceType ?? ''}`.trim() || null,
+        sourceId: `${context.sourceId ?? ''}`.trim() || null,
+        sourceText: `${context.sourceText ?? ''}`.trim() || null,
+        chatId: `${context.chatId ?? ''}`.trim() || null,
+        messageId: `${context.messageId ?? ''}`.trim() || null,
+        assetId: `${context.assetId ?? ''}`.trim() || null,
+        assetType: `${context.assetType ?? ''}`.trim() || null
       },
       undefined,
       abortController.signal

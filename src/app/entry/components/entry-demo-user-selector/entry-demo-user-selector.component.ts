@@ -37,6 +37,8 @@ export class EntryDemoUserSelectorComponent {
   @Input() errorMessage = '';
   @Input() submitting = false;
   @Input() users: DemoUserListItemDto[] = [];
+  @Input() title = 'Select demo user';
+  @Input() subtitle = 'Login disabled mode. Choose a demo user to open perspective-based data.';
 
   @Output() readonly closeRequested = new EventEmitter<void>();
   @Output() readonly retryRequested = new EventEmitter<void>();

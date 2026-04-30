@@ -4,6 +4,107 @@
       <div class="user-menu-backdrop" [class.open]="ui.open" [class.is-covered]="isCoveredByAssetPopup()" (click)="onCloseMenu()"></div>
     }
     <aside class="user-menu-panel" [class.open]="ui.open" [class.is-covered]="isCoveredByAssetPopup()">
+      @if (isAdminMode()) {
+        <div class="user-menu-header status-friends">
+          <button
+            #settingsButton
+            type="button"
+            class="user-menu-settings-btn"
+            [class.is-open]="ui.settingsOpen"
+            aria-label="Open admin settings menu"
+            [attr.aria-expanded]="ui.settingsOpen"
+            (click)="onToggleSettingsMenu($event)"
+            >
+            <span class="navigator-action-ripple" matRipple [matRippleTrigger]="settingsButton" aria-hidden="true"></span>
+            <mat-icon>settings</mat-icon>
+          </button>
+          <button
+            #closeButton
+            type="button"
+            class="user-menu-close-btn"
+            aria-label="Close menu"
+            (click)="$event.stopPropagation(); onCloseMenu()"
+            >
+            <span class="navigator-action-ripple" matRipple [matRippleTrigger]="closeButton" aria-hidden="true"></span>
+            <mat-icon>close</mat-icon>
+          </button>
+          @if (ui.settingsOpen) {
+            <app-navigator-settings-menu></app-navigator-settings-menu>
+          }
+          <div class="user-header-main">
+            <div class="avatar-stack">
+              <span
+                class="user-avatar user-avatar-large"
+                [ngClass]="'user-color-' + user.gender"
+                >
+                {{ user.initials }}
+              </span>
+              @if (user.totalBadgeCount > 0) {
+                <span class="avatar-activity-badge">{{ user.totalBadgeCount }}</span>
+              }
+              <span class="avatar-bottom-pill avatar-bottom-pill-header" [ngStyle]="completionBadgeStyle(user.completion)">
+                <span>ADMIN</span>
+              </span>
+            </div>
+            <div class="user-meta user-meta-compact">
+              <span class="user-name">{{ user.name }}</span>
+              <span class="user-city-line">
+                <mat-icon>admin_panel_settings</mat-icon>
+                <span>Admin workspace</span>
+              </span>
+            </div>
+          </div>
+          <button #profileEditorButton type="button" class="header-open-cue" [disabled]="!isOnline()" aria-label="Open admin profile" (click)="openAdminProfileShortcut($event)">
+            <span class="navigator-action-ripple" matRipple [matRippleTrigger]="profileEditorButton" aria-hidden="true"></span>
+            <mat-icon>edit</mat-icon>
+          </button>
+        </div>
+        <div class="user-menu-content">
+          @if (!isOnline()) {
+            <div class="user-menu-offline-note">
+              Offline mode is active. Admin actions wait for the connection to return.
+            </div>
+          }
+          <div class="social-proof-section-head section-social activities-header">
+            <span class="section-tag">
+              <mat-icon>admin_panel_settings</mat-icon>
+              <span>Moderation</span>
+            </span>
+            <span class="section-line"></span>
+          </div>
+          <div class="menu-shortcuts admin-menu-shortcuts">
+            <button #adminReportsButton class="menu-shortcut-btn menu-shortcut-events" type="button" [disabled]="!isOnline()" (click)="openAdminReportsShortcut($event)" aria-label="Open reports" title="Reports">
+              <span class="navigator-action-ripple" matRipple [matRippleTrigger]="adminReportsButton" aria-hidden="true"></span>
+              <mat-icon>report</mat-icon>
+              <span class="menu-shortcut-label">Reports</span>
+              @if (user.activities.game > 0) {
+                <span class="card-badge menu-shortcut-badge">{{ user.activities.game | counterBadge }}</span>
+              }
+            </button>
+            <button #adminFeedbackButton class="menu-shortcut-btn menu-shortcut-invitations" type="button" [disabled]="!isOnline()" (click)="openAdminFeedbackShortcut($event)" aria-label="Open application feedback" title="Feedback">
+              <span class="navigator-action-ripple" matRipple [matRippleTrigger]="adminFeedbackButton" aria-hidden="true"></span>
+              <mat-icon>feedback</mat-icon>
+              <span class="menu-shortcut-label">Feedback</span>
+              @if (user.activities.feedback > 0) {
+                <span class="card-badge menu-shortcut-badge">{{ user.activities.feedback | counterBadge }}</span>
+              }
+            </button>
+            <button #adminChatButton class="menu-shortcut-btn menu-shortcut-chat" type="button" [disabled]="!isOnline()" (click)="openAdminChatShortcut($event)" aria-label="Open admin chats" title="Chats">
+              <span class="navigator-action-ripple" matRipple [matRippleTrigger]="adminChatButton" aria-hidden="true"></span>
+              <mat-icon>chat</mat-icon>
+              <span class="menu-shortcut-label">Chats</span>
+              @if (user.activities.chat > 0) {
+                <span class="card-badge menu-shortcut-badge">{{ user.activities.chat | counterBadge }}</span>
+              }
+            </button>
+            <button #adminProfileButton class="menu-shortcut-btn menu-shortcut-rates" type="button" [disabled]="!isOnline()" (click)="openAdminProfileShortcut($event)" aria-label="Open admin profile" title="Profile">
+              <span class="navigator-action-ripple" matRipple [matRippleTrigger]="adminProfileButton" aria-hidden="true"></span>
+              <mat-icon>badge</mat-icon>
+              <span class="menu-shortcut-label">Profile</span>
+            </button>
+          </div>
+        </div>
+      } @else {
       <div
         class="user-menu-header"
         [ngClass]="profileStatusClass(user.profileStatus)"
@@ -255,6 +356,7 @@
           </button>
         </div>
       </div>
+      }
     </aside>
   }
 }

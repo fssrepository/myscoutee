@@ -25,10 +25,12 @@
     <span>Privacy</span>
   </button>
 
-  <button type="button" class="user-settings-item danger" (click)="openDeleteAccountConfirm($event)">
-    <mat-icon>delete_forever</mat-icon>
-    <span>Delete account</span>
-  </button>
+  @if (!isAdminMode()) {
+    <button type="button" class="user-settings-item danger" (click)="openDeleteAccountConfirm($event)">
+      <mat-icon>delete_forever</mat-icon>
+      <span>Delete account</span>
+    </button>
+  }
 
   <button type="button" class="user-settings-item" (click)="openLogoutConfirm($event)">
     <mat-icon>logout</mat-icon>

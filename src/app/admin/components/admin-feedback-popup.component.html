@@ -1,0 +1,35 @@
+@if (admin.activePopup() === 'feedback') {
+  <section class="app-popup">
+    <div class="app-popup-backdrop" (click)="admin.closePopup()"></div>
+    <div class="app-popup-panel popup-panel-admin" (click)="$event.stopPropagation()">
+      <div class="popup-header">
+        <div class="popup-title">
+          <h2>Application feedback</h2>
+          <p class="popup-subtitle">Feedback submitted from the app.</p>
+        </div>
+        <button type="button" class="popup-close" (click)="admin.closePopup()" aria-label="Close">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+      <div class="popup-body">
+        <div class="admin-popup-body admin-popup-body-single">
+          <div class="admin-list-pane">
+            <app-smart-list
+              class="admin-smart-list"
+              [config]="feedbackConfig"
+              [loadPage]="feedbackLoadPage"
+              [itemTemplate]="itemTemplateRef ?? null"
+            ></app-smart-list>
+            <ng-template #feedbackTemplate let-item>
+              <article class="admin-feedback-card">
+                <h4>{{ item.subject }}</h4>
+                <p class="admin-muted">{{ item.category }} · {{ item.userName }} · {{ item.createdDate }}</p>
+                <p>{{ item.details }}</p>
+              </article>
+            </ng-template>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+}

@@ -14,6 +14,10 @@ export const routes: Routes = [
     loadComponent: loadEntryPage
   },
   {
+    path: 'admin',
+    loadComponent: () => import('./admin/admin-page.component').then(m => m.AdminPageComponent)
+  },
+  {
     path: '',
     canActivate: [restrictedAreaGuard],
     children: [

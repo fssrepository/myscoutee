@@ -1,0 +1,229 @@
+:host {
+  display: block;
+  font-family: 'Nunito Sans', 'Segoe UI', sans-serif;
+  color: #22324a;
+}
+
+.admin-entry-shell,
+.admin-workspace {
+  min-height: 100vh;
+  padding: 1rem;
+  box-sizing: border-box;
+}
+
+.admin-entry-panel,
+.admin-home-panel {
+  width: min(1160px, calc(100vw - 2rem));
+  margin: 0 auto;
+  border: 1px solid rgba(30, 51, 85, 0.16);
+  border-radius: 18px;
+  background: #f5f6fb;
+  box-shadow: 0 24px 50px rgba(13, 27, 57, 0.09);
+}
+
+.admin-entry-panel {
+  min-height: calc(100vh - 2rem);
+  display: flex;
+  flex-direction: column;
+}
+
+.admin-entry-header,
+.admin-home-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  padding: 0.9rem;
+}
+
+.admin-brand {
+  display: inline-flex;
+  align-items: flex-end;
+  text-decoration: none;
+  color: #1f3a63;
+  font-weight: 900;
+  background-image: linear-gradient(90deg, #4f7cff, #7b5cff, #ff4d8d);
+  background-repeat: no-repeat;
+  background-size: 100% 3px;
+  background-position: 0 100%;
+}
+
+.admin-brand-mark {
+  width: 38px;
+  height: 38px;
+  object-fit: contain;
+}
+
+.admin-brand-text {
+  font-size: 2rem;
+  line-height: 0.8;
+}
+
+.admin-login-btn {
+  min-height: 40px;
+  border: 0;
+  border-radius: 999px;
+  padding: 0 0.95rem;
+  background: linear-gradient(135deg, #7b49f4 0%, #ff4e98 55%, #ff7b2d 100%);
+  color: #fff;
+  font: inherit;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42rem;
+  cursor: pointer;
+  box-shadow: 0 8px 20px rgba(119, 65, 227, 0.28);
+}
+
+.admin-login-btn:disabled {
+  opacity: 0.62;
+  cursor: default;
+}
+
+.admin-login-btn .mat-icon {
+  width: 18px;
+  height: 18px;
+  font-size: 18px;
+  line-height: 18px;
+}
+
+.admin-entry-hero {
+  flex: 1 1 auto;
+  margin: 0.9rem;
+  border-radius: 14px;
+  padding: clamp(2rem, 8vw, 5rem) 1.2rem;
+  background:
+    radial-gradient(circle, rgba(255, 255, 255, 0.2) 1px, transparent 1px),
+    linear-gradient(125deg, #7446f2 0%, #d93f93 52%, #ff7b2d 100%);
+  background-size: 18px 18px, auto;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.admin-eyebrow {
+  margin: 0 0 0.6rem;
+  color: #fff3b8;
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.admin-entry-hero h1 {
+  margin: 0;
+  font-size: clamp(2rem, 4vw, 3.4rem);
+  line-height: 1.03;
+}
+
+.admin-entry-lead,
+.admin-entry-error {
+  max-width: 58ch;
+  margin: 0.85rem 0 0;
+  font-size: 1rem;
+  line-height: 1.55;
+}
+
+.admin-entry-error {
+  border-radius: 12px;
+  padding: 0.7rem 0.8rem;
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+  font-weight: 800;
+}
+
+.admin-workspace {
+  display: flex;
+  align-items: flex-start;
+}
+
+.admin-home-panel {
+  padding-bottom: 0.9rem;
+}
+
+.admin-home-title {
+  text-align: right;
+}
+
+.admin-home-title span {
+  display: block;
+  color: #2e65a0;
+  font-size: 0.76rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.admin-home-title h1 {
+  margin: 0.1rem 0 0;
+  color: #14243d;
+  font-size: clamp(1.4rem, 2.4vw, 2rem);
+}
+
+.admin-home-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.78rem;
+  padding: 0 0.9rem 0.9rem;
+}
+
+.admin-home-card {
+  min-height: 138px;
+  border: 1px solid rgba(31, 56, 94, 0.14);
+  border-radius: 14px;
+  background: #fff;
+  color: #22324a;
+  font: inherit;
+  padding: 1rem;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-shadow: 0 10px 26px rgba(13, 27, 57, 0.06);
+}
+
+.admin-home-card-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #eaf3ff;
+  color: #2666de;
+}
+
+.admin-home-card-copy strong,
+.admin-home-card-copy span {
+  display: block;
+}
+
+.admin-home-card-copy strong {
+  margin-bottom: 0.18rem;
+  color: #121a48;
+  font-size: 1rem;
+}
+
+.admin-home-card-copy span {
+  color: rgba(34, 50, 74, 0.72);
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+@media (max-width: 760px) {
+  .admin-entry-shell,
+  .admin-workspace {
+    padding: 0.55rem;
+  }
+
+  .admin-entry-panel,
+  .admin-home-panel {
+    width: 100%;
+    min-height: calc(100vh - 1.1rem);
+  }
+
+  .admin-home-grid {
+    grid-template-columns: 1fr;
+  }
+}

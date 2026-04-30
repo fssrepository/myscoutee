@@ -135,6 +135,13 @@ export interface UserReportUserSubmitRequestDto {
   eventId?: string;
   eventTitle?: string | null;
   eventStartAtIso?: string | null;
+  sourceType?: string | null;
+  sourceId?: string | null;
+  sourceText?: string | null;
+  chatId?: string | null;
+  messageId?: string | null;
+  assetId?: string | null;
+  assetType?: string | null;
 }
 
 export interface UserLogoutRequestDto {

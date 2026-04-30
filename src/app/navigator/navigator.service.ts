@@ -29,6 +29,13 @@ export interface NavigatorReportUserContext {
   eventStartAtIso?: string | null;
   eventTimeframe?: string | null;
   ownerType?: ActivityMemberOwnerType;
+  sourceType?: string | null;
+  sourceId?: string | null;
+  sourceText?: string | null;
+  chatId?: string | null;
+  messageId?: string | null;
+  assetId?: string | null;
+  assetType?: string | null;
 }
 
 export interface NavigatorBindings {
@@ -317,7 +324,14 @@ export class NavigatorService {
       eventTitle: `${context.eventTitle ?? ''}`.trim() || null,
       eventStartAtIso: `${context.eventStartAtIso ?? ''}`.trim() || null,
       eventTimeframe: `${context.eventTimeframe ?? ''}`.trim() || null,
-      ownerType: context.ownerType
+      ownerType: context.ownerType,
+      sourceType: `${context.sourceType ?? ''}`.trim() || null,
+      sourceId: `${context.sourceId ?? ''}`.trim() || null,
+      sourceText: `${context.sourceText ?? ''}`.trim() || null,
+      chatId: `${context.chatId ?? ''}`.trim() || null,
+      messageId: `${context.messageId ?? ''}`.trim() || null,
+      assetId: `${context.assetId ?? ''}`.trim() || null,
+      assetType: `${context.assetType ?? ''}`.trim() || null
     });
     this.openSettingsPopup('report-user');
   }
@@ -349,6 +363,13 @@ export class NavigatorService {
         this.closeSettingsPopup();
         this.closeProfileEditor();
         this.closeImpressionsPopup();
+        if (this.router.url.split('?')[0].startsWith('/admin')) {
+          this.clearHydratedUser();
+          localStorage.removeItem('myscoutee-admin-session');
+          window.dispatchEvent(new CustomEvent('adminLogoutRequested'));
+          await this.sessionService.logout().finally(() => this.router.navigate(['/admin']));
+          return;
+        }
         const activeUserId = this.appCtx.activeUserId().trim();
         if (activeUserId) {
           const result = await this.usersService.deleteUser(activeUserId);

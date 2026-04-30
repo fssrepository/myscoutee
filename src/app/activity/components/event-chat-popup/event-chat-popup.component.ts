@@ -1308,13 +1308,21 @@ export class EventChatPopupComponent implements OnDestroy {
     if (!target || !eventId) {
       return;
     }
+    const attachment = this.resolveViewableMessageAttachment(message);
     this.navigatorService.openReportUserPopup({
       targetUserId: target.userId,
       targetName: target.name,
       eventId,
       eventTitle: session?.item.title ?? null,
       eventTimeframe: session?.item.dateIso ?? null,
-      ownerType: 'event'
+      ownerType: 'event',
+      sourceType: 'chat',
+      sourceId: message.id,
+      sourceText: message.text?.trim() || this.chatAttachmentSummary(message),
+      chatId: session?.item.id ?? null,
+      messageId: message.id,
+      assetId: attachment?.type === 'asset' ? (attachment.entityId ?? attachment.id) : null,
+      assetType: attachment?.type === 'asset' ? (attachment.assetType ?? null) : null
     });
   }
 

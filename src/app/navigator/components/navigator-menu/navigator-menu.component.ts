@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, HostListener, computed, inject } from '@angular/core';
 import { MatRippleModule } from '@angular/material/core';
 import { MatIconModule } from '@angular/material/icon';
+import { Router } from '@angular/router';
 import {
   AppContext,
   AppPopupContext,
@@ -46,6 +47,7 @@ export class NavigatorMenuComponent {
   private static readonly PROFILE_SAVE_RING_CIRCUMFERENCE = 2 * Math.PI * NavigatorMenuComponent.PROFILE_SAVE_RING_RADIUS;
   private readonly appCtx = inject(AppContext);
   private readonly popupCtx = inject(AppPopupContext);
+  private readonly router = inject(Router);
   private readonly navigatorService = inject(NavigatorService);
   private readonly navigatorContactsService = inject(NavigatorContactsService);
   private readonly activitiesContext = inject(ActivitiesPopupStateService);
@@ -214,6 +216,11 @@ export class NavigatorMenuComponent {
     if (!this.isOnline() || this.isBlockedUser()) {
       return;
     }
+    if (this.isAdminMode()) {
+      this.popupCtx.openAdminNavigatorRequest('profile');
+      this.navigatorService.closeMenu();
+      return;
+    }
     this.navigatorService.openProfileEditor();
   }
 
@@ -298,6 +305,46 @@ export class NavigatorMenuComponent {
       return;
     }
     this.popupCtx.openNavigatorEventFeedbackRequest();
+  }
+
+  protected isAdminMode(): boolean {
+    return (this.router.url || '').split('?')[0].startsWith('/admin');
+  }
+
+  protected openAdminReportsShortcut(event?: Event): void {
+    event?.stopPropagation();
+    if (!this.isOnline()) {
+      return;
+    }
+    this.popupCtx.openAdminNavigatorRequest('reports');
+    this.navigatorService.closeMenu();
+  }
+
+  protected openAdminFeedbackShortcut(event?: Event): void {
+    event?.stopPropagation();
+    if (!this.isOnline()) {
+      return;
+    }
+    this.popupCtx.openAdminNavigatorRequest('feedback');
+    this.navigatorService.closeMenu();
+  }
+
+  protected openAdminChatShortcut(event?: Event): void {
+    event?.stopPropagation();
+    if (!this.isOnline()) {
+      return;
+    }
+    this.popupCtx.openAdminNavigatorRequest('chat');
+    this.navigatorService.closeMenu();
+  }
+
+  protected openAdminProfileShortcut(event?: Event): void {
+    event?.stopPropagation();
+    if (!this.isOnline()) {
+      return;
+    }
+    this.popupCtx.openAdminNavigatorRequest('profile');
+    this.navigatorService.closeMenu();
   }
 
   private resolveUserImageUrl(user: UserDto | null): string | null {

@@ -1,0 +1,85 @@
+@if (admin.activePopup() === 'reports') {
+  <section class="app-popup">
+    <div class="app-popup-backdrop" (click)="admin.closePopup()"></div>
+    <div class="app-popup-panel popup-panel-admin" (click)="$event.stopPropagation()">
+      <div class="popup-header">
+        <div class="popup-title">
+          <h2>Reported users</h2>
+          <p class="popup-subtitle">Only users with moderation reports are visible here.</p>
+        </div>
+        <button type="button" class="popup-close" (click)="admin.closePopup()" aria-label="Close">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+      <div class="popup-body">
+        <div class="admin-popup-body">
+          <div class="admin-list-pane">
+            <app-smart-list
+              class="admin-smart-list"
+              [config]="reportedUsersConfig"
+              [loadPage]="reportedUsersLoadPage"
+              [itemTemplate]="itemTemplateRef ?? null"
+            ></app-smart-list>
+            <ng-template #reportedUserTemplate let-item>
+              <button
+                type="button"
+                class="admin-list-row"
+                [class.is-selected]="isSelectedUser(item)"
+                (click)="selectUser(item)"
+                >
+                <span class="admin-avatar" [ngClass]="'user-color-' + item.gender">{{ item.initials }}</span>
+                <span class="admin-list-main">
+                  <span class="admin-list-title">{{ item.name }}</span>
+                  <span class="admin-list-meta">{{ item.profileStatus }} · {{ item.city || 'unknown city' }}</span>
+                </span>
+                <span class="admin-pill">{{ item.reportCount | counterBadge }}</span>
+              </button>
+            </ng-template>
+          </div>
+
+          <div class="admin-detail-pane">
+            @if (admin.selectedReportedUser(); as user) {
+              <div class="admin-detail-heading">
+                <span class="admin-avatar" [ngClass]="'user-color-' + user.gender">{{ user.initials }}</span>
+                <div class="admin-detail-heading-main">
+                  <h3>{{ user.name }}</h3>
+                  <p>{{ user.profileStatus }} · last report {{ user.lastReportedAtIso || 'unknown' }}</p>
+                </div>
+              </div>
+              <div class="admin-action-row">
+                <button type="button" class="admin-btn admin-btn-primary" (click)="warnUser(user)">
+                  <mat-icon>chat</mat-icon>
+                  <span>Warn in chat</span>
+                </button>
+                <button type="button" class="admin-btn admin-btn-danger" (click)="blockUser(user)">
+                  <mat-icon>block</mat-icon>
+                  <span>Block user</span>
+                </button>
+              </div>
+              <div class="admin-card-list">
+                @for (report of user.reports; track report.id) {
+                  <article class="admin-report-card" [class.is-selected]="isSelectedReport(report)" (click)="selectReport(user, report)">
+                    <h4>{{ report.reason }}</h4>
+                    <p class="admin-muted">{{ report.reporterName }} · {{ report.createdDate }}</p>
+                    <p>{{ report.details }}</p>
+                    @if (report.sourceText) {
+                      <p class="admin-muted">{{ report.sourceText }}</p>
+                    }
+                    <div class="admin-action-row">
+                      <button type="button" class="admin-btn" (click)="$event.stopPropagation(); reviewReport(report)">
+                        <mat-icon>{{ report.sourceType === 'chat' ? 'forum' : report.sourceType === 'asset' ? 'inventory_2' : 'event' }}</mat-icon>
+                        <span>Open item</span>
+                      </button>
+                    </div>
+                  </article>
+                }
+              </div>
+            } @else {
+              <p class="admin-muted">Select a reported user to review the reports.</p>
+            }
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+}

@@ -13,6 +13,7 @@ export {
 export {
   AppPopupContext,
   type ActivityInvitePopupState,
+  type AdminNavigatorRequest,
   type NavigatorActivitiesRequest,
   type NavigatorAssetRequest,
   type NavigatorEventFeedbackRequest
