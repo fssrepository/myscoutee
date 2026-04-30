@@ -587,14 +587,16 @@ export class EventChatPopupComponent implements OnDestroy {
     if (!this.canCreatePoll()) {
       return;
     }
+    const question = this.pollQuestionDraft.trim();
+    const options = this.pollOptionDrafts
+      .map(option => option.trim())
+      .filter(Boolean)
+      .slice(0, 6);
+    this.closePollComposer();
     const pollId = `poll:${this.activeUserId() || 'self'}:${Date.now()}`;
     const pollState: ChatPollState = {
-      question: this.pollQuestionDraft.trim(),
-      options: this.pollOptionDrafts
-        .map(option => option.trim())
-        .filter(Boolean)
-        .slice(0, 6)
-        .map((option, index) => ({
+      question,
+      options: options.map((option, index) => ({
           id: `${pollId}:option:${index + 1}`,
           text: option,
           votes: []
@@ -606,7 +608,6 @@ export class EventChatPopupComponent implements OnDestroy {
       title: pollState.question,
       description: this.serializePollState(pollState)
     }, '');
-    this.closePollComposer();
   }
 
   protected async startVoiceRecording(event?: Event): Promise<void> {
