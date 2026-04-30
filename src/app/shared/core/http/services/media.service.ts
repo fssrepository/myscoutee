@@ -8,6 +8,11 @@ export interface HttpMediaUploadResult {
   imageUrl: string | null;
 }
 
+export interface HttpMediaAudioUploadResult {
+  uploaded: boolean;
+  audioUrl: string | null;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -58,6 +63,53 @@ export class HttpMediaService {
       return {
         uploaded: false,
         imageUrl: null
+      };
+    }
+  }
+
+  async uploadAudio(
+    scope: 'chat',
+    ownerId: string,
+    entityId: string,
+    file: File
+  ): Promise<HttpMediaAudioUploadResult> {
+    const normalizedOwnerId = ownerId.trim();
+    const normalizedEntityId = entityId.trim();
+    if (!normalizedOwnerId || !normalizedEntityId) {
+      return {
+        uploaded: false,
+        audioUrl: null
+      };
+    }
+    const formData = new FormData();
+    formData.append('scope', scope);
+    formData.append('ownerId', normalizedOwnerId);
+    formData.append('entityId', normalizedEntityId);
+    formData.append('audio', file, file.name);
+    try {
+      type UploadResponse = {
+        uploaded?: boolean | null;
+        audioUrl?: string | null;
+        url?: string | null;
+      };
+      const response = await this.http
+        .post<UploadResponse | null>(`${this.apiBaseUrl}/media/audio`, formData)
+        .toPromise();
+      const audioUrl =
+        (typeof response?.audioUrl === 'string' && response.audioUrl.trim().length > 0
+          ? response.audioUrl.trim()
+          : null)
+        ?? (typeof response?.url === 'string' && response.url.trim().length > 0
+          ? response.url.trim()
+          : null);
+      return {
+        uploaded: response?.uploaded !== false && audioUrl !== null,
+        audioUrl
+      };
+    } catch {
+      return {
+        uploaded: false,
+        audioUrl: null
       };
     }
   }

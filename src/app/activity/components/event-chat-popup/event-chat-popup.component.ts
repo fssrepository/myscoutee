@@ -41,6 +41,13 @@ interface ChatThreadFilters {
   sessionKey?: string;
 }
 
+interface StoredVoiceClip {
+  dataUrl: string;
+  mimeType: string;
+  durationSeconds: number;
+  sizeBytes: number;
+}
+
 @Component({
   selector: 'app-event-chat-popup',
   standalone: true,
@@ -73,6 +80,14 @@ export class EventChatPopupComponent implements OnDestroy {
   protected preparedChatAssetResources: EventChatResourceContext[] = [];
   protected typingIndicators: AppTypes.ChatTypingIndicator[] = [];
   protected composerMenuOpen = false;
+  protected voiceComposerOpen = false;
+  protected voiceRecordingState: 'idle' | 'recording' | 'recorded' | 'saving' = 'idle';
+  protected voiceRecorderSeconds = 0;
+  protected voiceRecorderError = '';
+  protected voiceClipDataUrl = '';
+  protected voiceClipMimeType = '';
+  protected voiceClipSizeBytes = 0;
+  protected voiceAttachmentSrcByKey: Record<string, string> = {};
   protected selectedMessageId = '';
   protected selectedMessageToolsDown = false;
   protected quickReactionMessageId = '';
@@ -185,7 +200,12 @@ export class EventChatPopupComponent implements OnDestroy {
   private readonly freshReadKeys = new Set<string>();
   private readonly remoteTypingExpiryByUserId: Record<string, ReturnType<typeof setTimeout> | null> = {};
   private readonly pendingMessageTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
+  private readonly loadingVoiceClipKeys = new Set<string>();
   private readonly reactionMutationSequenceByMessageId = new Map<string, number>();
+  private voiceRecorder: MediaRecorder | null = null;
+  private voiceRecorderStream: MediaStream | null = null;
+  private voiceRecorderChunks: BlobPart[] = [];
+  private voiceRecorderTimer: ReturnType<typeof setInterval> | null = null;
   private chatThreadScrollDismissElement: HTMLElement | null = null;
   private suppressTouchContextMenuUntilMs = 0;
   private readonly dismissMessageUiOnChatScroll = () => {
@@ -249,6 +269,7 @@ export class EventChatPopupComponent implements OnDestroy {
     this.clearChatThreadScrollDismissListener();
     this.clearMessageLongPress();
     this.stopLocalTyping();
+    this.resetVoiceRecorder();
     this.teardownLiveChatUpdates();
     this.clearPendingMessageTimers();
     this.visibleChatThreadTotal = 0;
@@ -258,6 +279,7 @@ export class EventChatPopupComponent implements OnDestroy {
     this.showContextMenu = false;
     this.contextMenuOpenUp = false;
     this.stopLocalTyping();
+    this.resetVoiceRecorder();
     this.teardownLiveChatUpdates();
     this.clearPendingMessageTimers();
     this.visibleChatThreadTotal = 0;
@@ -479,6 +501,124 @@ export class EventChatPopupComponent implements OnDestroy {
     event?.stopPropagation();
     this.composerMenuOpen = false;
     this.imageAttachmentInput?.nativeElement.click();
+  }
+
+  protected openVoiceComposer(event?: Event): void {
+    event?.stopPropagation();
+    this.composerMenuOpen = false;
+    this.voiceComposerOpen = true;
+    this.voiceRecorderError = '';
+  }
+
+  protected async startVoiceRecording(event?: Event): Promise<void> {
+    event?.stopPropagation();
+    if (this.voiceRecordingState === 'recording' || this.voiceRecordingState === 'saving') {
+      return;
+    }
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
+      this.voiceRecorderError = 'Voice recording is not available on this device.';
+      return;
+    }
+    this.resetVoiceRecorder({ keepOpen: true });
+    this.voiceComposerOpen = true;
+    this.voiceRecordingState = 'recording';
+    this.voiceRecorderError = '';
+    this.cdr.markForCheck();
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream, this.preferredVoiceRecorderOptions());
+      this.voiceRecorderStream = stream;
+      this.voiceRecorder = recorder;
+      this.voiceClipMimeType = recorder.mimeType || 'audio/webm';
+      recorder.ondataavailable = dataEvent => {
+        if (dataEvent.data.size > 0) {
+          this.voiceRecorderChunks.push(dataEvent.data);
+        }
+      };
+      recorder.onstop = () => {
+        void this.finalizeVoiceRecording();
+      };
+      recorder.start();
+      this.voiceRecorderTimer = setInterval(() => {
+        this.voiceRecorderSeconds += 1;
+        this.cdr.markForCheck();
+      }, 1000);
+    } catch {
+      this.voiceRecorderError = 'Microphone access was blocked.';
+      this.resetVoiceRecorder({ keepOpen: true, keepError: true });
+      this.cdr.markForCheck();
+    }
+  }
+
+  protected stopVoiceRecording(event?: Event): void {
+    event?.stopPropagation();
+    if (this.voiceRecorder?.state === 'recording') {
+      this.voiceRecorder.stop();
+      return;
+    }
+    this.resetVoiceRecorder({ keepOpen: true });
+  }
+
+  protected discardVoiceRecording(event?: Event): void {
+    event?.stopPropagation();
+    this.resetVoiceRecorder();
+  }
+
+  protected canSendVoiceClip(): boolean {
+    return this.voiceRecordingState === 'recorded' && !!this.voiceClipDataUrl && !this.chatInitialLoadPending;
+  }
+
+  protected async sendVoiceClip(event?: Event): Promise<void> {
+    event?.stopPropagation();
+    if (!this.canSendVoiceClip()) {
+      return;
+    }
+    this.voiceRecordingState = 'saving';
+    this.voiceRecorderError = '';
+    this.cdr.markForCheck();
+    const voiceKey = `voice:${this.activeUserId() || 'self'}:${Date.now()}`;
+    const voiceUrl = await this.persistVoiceClipByConfiguredMode(voiceKey);
+    if (!voiceUrl) {
+      this.voiceRecordingState = 'recorded';
+      this.cdr.markForCheck();
+      return;
+    }
+    this.sendLocalAttachmentMessage({
+      id: voiceKey,
+      type: 'voice',
+      title: 'Voice clip',
+      subtitle: this.formatVoiceDuration(this.voiceRecorderSeconds),
+      url: voiceUrl,
+      mimeType: this.voiceClipMimeType || null,
+      sizeBytes: this.voiceClipSizeBytes || null
+    }, '');
+    this.resetVoiceRecorder();
+  }
+
+  protected voiceAttachmentAudioSrc(attachment: AppTypes.ChatMessageAttachment): string {
+    const url = `${attachment.url ?? attachment.previewUrl ?? ''}`.trim();
+    if (!url.startsWith('indexeddb:')) {
+      return url;
+    }
+    const key = url.slice('indexeddb:'.length);
+    const cached = this.voiceAttachmentSrcByKey[key];
+    if (cached) {
+      return cached;
+    }
+    if (!this.loadingVoiceClipKeys.has(key)) {
+      this.loadingVoiceClipKeys.add(key);
+      void this.loadVoiceClipFromIndexedDb(key)
+        .then(clip => {
+          if (clip?.dataUrl) {
+            this.voiceAttachmentSrcByKey[key] = clip.dataUrl;
+          }
+        })
+        .finally(() => {
+          this.loadingVoiceClipKeys.delete(key);
+          this.cdr.markForCheck();
+        });
+    }
+    return '';
   }
 
   protected onImageAttachmentSelected(event: Event): void {
@@ -1370,6 +1510,47 @@ export class EventChatPopupComponent implements OnDestroy {
     };
   }
 
+  private async persistVoiceClipByConfiguredMode(voiceKey: string): Promise<string | null> {
+    const mimeType = this.voiceClipMimeType || 'audio/webm';
+    if (this.activitiesContext.dataMode === 'demo') {
+      try {
+        await this.saveVoiceClipToIndexedDb(voiceKey, {
+          dataUrl: this.voiceClipDataUrl,
+          mimeType,
+          durationSeconds: this.voiceRecorderSeconds,
+          sizeBytes: this.voiceClipSizeBytes
+        });
+        this.voiceAttachmentSrcByKey[voiceKey] = this.voiceClipDataUrl;
+        return `indexeddb:${voiceKey}`;
+      } catch {
+        this.voiceRecorderError = 'Voice clip could not be saved on this device.';
+        return null;
+      }
+    }
+
+    const session = this.session();
+    const ownerId = `${session?.item.id ?? this.activeUserId() ?? 'chat'}`.trim();
+    const extension = mimeType.includes('mp4') || mimeType.includes('aac') ? 'm4a' : mimeType.includes('ogg') ? 'ogg' : 'webm';
+    const file = this.dataUrlToFile(this.voiceClipDataUrl, `${voiceKey.replace(/[^a-zA-Z0-9._-]+/g, '-')}.${extension}`, mimeType);
+    const upload = await this.httpMediaService.uploadAudio('chat', ownerId || 'chat', voiceKey, file);
+    if (upload.uploaded && upload.audioUrl) {
+      return upload.audioUrl;
+    }
+    this.voiceRecorderError = 'Voice upload failed.';
+    return null;
+  }
+
+  private dataUrlToFile(dataUrl: string, filename: string, mimeType: string): File {
+    const [meta, encoded] = dataUrl.split(',', 2);
+    const resolvedMimeType = (meta.match(/^data:([^;]+);base64$/)?.[1] ?? mimeType).trim();
+    const binary = atob(encoded ?? '');
+    const bytes = new Uint8Array(binary.length);
+    for (let index = 0; index < binary.length; index++) {
+      bytes[index] = binary.charCodeAt(index);
+    }
+    return new File([bytes], filename, { type: resolvedMimeType });
+  }
+
   private readFileAsDataUrl(file: File): Promise<string> {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -2135,6 +2316,9 @@ export class EventChatPopupComponent implements OnDestroy {
 
   private closeTransientMessageUi(options: { keepEditing?: boolean } = {}): void {
     this.composerMenuOpen = false;
+    if (this.voiceComposerOpen) {
+      this.resetVoiceRecorder();
+    }
     this.selectedMessageId = '';
     this.selectedMessageToolsDown = false;
     this.quickReactionMessageId = '';
@@ -2155,6 +2339,125 @@ export class EventChatPopupComponent implements OnDestroy {
         ? event.target
         : null;
     target?.blur();
+  }
+
+  private async finalizeVoiceRecording(): Promise<void> {
+    this.clearVoiceRecorderTimer();
+    this.stopVoiceRecorderStream();
+    const blob = new Blob(this.voiceRecorderChunks, { type: this.voiceClipMimeType || 'audio/webm' });
+    this.voiceClipSizeBytes = blob.size;
+    this.voiceClipDataUrl = blob.size > 0 ? await this.blobToDataUrl(blob) : '';
+    this.voiceRecordingState = this.voiceClipDataUrl ? 'recorded' : 'idle';
+    this.voiceRecorder = null;
+    this.voiceRecorderChunks = [];
+    if (!this.voiceClipDataUrl) {
+      this.voiceRecorderError = 'No audio was recorded.';
+    }
+    this.cdr.markForCheck();
+  }
+
+  private resetVoiceRecorder(options: { keepOpen?: boolean; keepError?: boolean } = {}): void {
+    this.clearVoiceRecorderTimer();
+    const recorder = this.voiceRecorder;
+    this.voiceRecorder = null;
+    if (recorder?.state === 'recording') {
+      recorder.onstop = null;
+      recorder.stop();
+    }
+    this.stopVoiceRecorderStream();
+    this.voiceRecorderChunks = [];
+    this.voiceRecordingState = 'idle';
+    this.voiceRecorderSeconds = 0;
+    if (!options.keepError) {
+      this.voiceRecorderError = '';
+    }
+    this.voiceClipDataUrl = '';
+    this.voiceClipMimeType = '';
+    this.voiceClipSizeBytes = 0;
+    this.voiceComposerOpen = options.keepOpen === true;
+  }
+
+  private clearVoiceRecorderTimer(): void {
+    if (!this.voiceRecorderTimer) {
+      return;
+    }
+    clearInterval(this.voiceRecorderTimer);
+    this.voiceRecorderTimer = null;
+  }
+
+  private stopVoiceRecorderStream(): void {
+    this.voiceRecorderStream?.getTracks().forEach(track => track.stop());
+    this.voiceRecorderStream = null;
+  }
+
+  private preferredVoiceRecorderOptions(): MediaRecorderOptions | undefined {
+    const candidates = ['audio/mp4', 'audio/webm;codecs=opus', 'audio/webm'];
+    const mimeType = candidates.find(candidate => {
+      try {
+        return MediaRecorder.isTypeSupported(candidate);
+      } catch {
+        return false;
+      }
+    });
+    return mimeType ? { mimeType } : undefined;
+  }
+
+  private blobToDataUrl(blob: Blob): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(`${reader.result ?? ''}`);
+      reader.onerror = () => reject(reader.error ?? new Error('Unable to read voice clip.'));
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  private saveVoiceClipToIndexedDb(key: string, clip: StoredVoiceClip): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open('myscoutee-chat-media', 1);
+      request.onupgradeneeded = () => {
+        request.result.createObjectStore('voice-clips');
+      };
+      request.onerror = () => reject(request.error ?? new Error('Unable to open voice storage.'));
+      request.onsuccess = () => {
+        const db = request.result;
+        const transaction = db.transaction('voice-clips', 'readwrite');
+        transaction.objectStore('voice-clips').put(clip, key);
+        transaction.oncomplete = () => {
+          db.close();
+          resolve();
+        };
+        transaction.onerror = () => {
+          db.close();
+          reject(transaction.error ?? new Error('Unable to save voice clip.'));
+        };
+      };
+    });
+  }
+
+  private loadVoiceClipFromIndexedDb(key: string): Promise<StoredVoiceClip | null> {
+    return new Promise(resolve => {
+      const request = indexedDB.open('myscoutee-chat-media', 1);
+      request.onupgradeneeded = () => {
+        request.result.createObjectStore('voice-clips');
+      };
+      request.onerror = () => resolve(null);
+      request.onsuccess = () => {
+        const db = request.result;
+        const transaction = db.transaction('voice-clips', 'readonly');
+        const getRequest = transaction.objectStore('voice-clips').get(key);
+        getRequest.onsuccess = () => resolve((getRequest.result as StoredVoiceClip | undefined) ?? null);
+        getRequest.onerror = () => resolve(null);
+        transaction.oncomplete = () => db.close();
+        transaction.onerror = () => db.close();
+      };
+    });
+  }
+
+  protected formatVoiceDuration(seconds: number): string {
+    const safeSeconds = Math.max(0, Math.floor(seconds));
+    const minutes = Math.floor(safeSeconds / 60);
+    const remainder = safeSeconds % 60;
+    return `${minutes}:${remainder.toString().padStart(2, '0')}`;
   }
 
   private bindChatThreadScrollDismissListener(): void {
