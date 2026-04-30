@@ -219,7 +219,7 @@
                     <mat-icon>close</mat-icon>
                   </button>
                   @if (voiceRecordingState === 'recorded' && voiceClipDataUrl) {
-                    <audio class="chat-voice-review-player" controls preload="metadata" [src]="voiceClipDataUrl"></audio>
+                    <audio class="chat-voice-review-player" controls controlsList="nodownload noplaybackrate" preload="metadata" [src]="voiceClipDataUrl"></audio>
                   } @else {
                     <span class="chat-voice-recorder-shell" [class.is-recording]="voiceRecordingState === 'recording'">
                       <button
@@ -345,7 +345,7 @@
                     }
                   </figure>
                 } @else if (attachment.type === 'voice') {
-                  <div class="chat-voice-attachment" (click)="$event.stopPropagation()">
+                  <div class="chat-voice-attachment">
                     <span class="chat-voice-attachment-icon">
                       <mat-icon>mic</mat-icon>
                     </span>
@@ -357,7 +357,7 @@
                     </span>
                     @if (voiceAttachmentAudioSrc(attachment)) {
                       <span class="chat-voice-attachment-player">
-                        <audio controls preload="metadata" [src]="voiceAttachmentAudioSrc(attachment)"></audio>
+                        <audio controls controlsList="nodownload noplaybackrate" preload="metadata" [src]="voiceAttachmentAudioSrc(attachment)"></audio>
                       </span>
                     } @else {
                       <small class="chat-voice-attachment-missing">Audio unavailable</small>
