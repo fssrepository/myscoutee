@@ -115,6 +115,10 @@ export class NavigatorService {
         this.clearHydrationState();
         return;
       }
+      if (this.isAdminWorkspaceRoute()) {
+        this.clearHydrationState();
+        return;
+      }
 
       const requestKey = session.kind === 'firebase'
         ? `firebase:${session.profile.id}`
@@ -133,6 +137,11 @@ export class NavigatorService {
       const activeUserId = this.appCtx.activeUserId().trim();
 
       if (!session || !activeUserId) {
+        this.stopUserRealtimeLongPoll();
+        this.impressionsPopupOpenRef.set(false);
+        return;
+      }
+      if (this.isAdminWorkspaceRoute() || this.isAdminProfileActive(activeUserId)) {
         this.stopUserRealtimeLongPoll();
         this.impressionsPopupOpenRef.set(false);
         return;
@@ -158,6 +167,9 @@ export class NavigatorService {
   }
 
   async hydrateUserAfterLogin(userId?: string): Promise<UserDto | null> {
+    if (this.isAdminWorkspaceRoute()) {
+      return null;
+    }
     const requestVersion = ++this.hydrationRequestVersion;
     const isFirebaseSession = this.sessionService.currentSession()?.kind === 'firebase';
     const loadedUser = await this.usersService.loadUserById(isFirebaseSession ? undefined : userId);
@@ -404,6 +416,15 @@ export class NavigatorService {
         this.closeSettingsPopup();
         this.closeProfileEditor();
         this.closeImpressionsPopup();
+        if (this.router.url.split('?')[0].startsWith('/admin')) {
+          this.clearHydratedUser();
+          if (typeof localStorage !== 'undefined') {
+            localStorage.removeItem('myscoutee-admin-session');
+          }
+          window.dispatchEvent(new CustomEvent('adminLogoutRequested'));
+          await this.sessionService.logout().finally(() => this.router.navigate(['/admin']));
+          return;
+        }
         const activeUserId = this.appCtx.activeUserId().trim();
         if (activeUserId) {
           const result = await this.usersService.logoutUser(activeUserId);
@@ -491,6 +512,21 @@ export class NavigatorService {
     return this.usersService.demoModeEnabled
       ? NavigatorService.DEMO_USER_REALTIME_LONG_POLL_INTERVAL_MS
       : NavigatorService.USER_REALTIME_LONG_POLL_INTERVAL_MS;
+  }
+
+  private isAdminWorkspaceRoute(): boolean {
+    const [pathWithQuery] = (this.router.url || '').split('?');
+    const [path] = pathWithQuery.split('#');
+    return path === '/admin' || path === '/admin/';
+  }
+
+  private isAdminProfileActive(userId: string): boolean {
+    const normalizedUserId = userId.trim();
+    const activeUser = this.appCtx.activeUserProfile();
+    return activeUser?.hostTier === 'Admin'
+      || activeUser?.statusText === 'Admin workspace'
+      || normalizedUserId === 'admin'
+      || normalizedUserId.startsWith('admin-');
   }
 
   private captureUserRealtimeBaseCounters(userId: string): void {

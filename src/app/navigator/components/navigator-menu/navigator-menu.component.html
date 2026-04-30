@@ -35,9 +35,12 @@
             <div class="avatar-stack">
               <span
                 class="user-avatar user-avatar-large"
-                [ngClass]="'user-color-' + user.gender"
+                [ngClass]="['user-color-' + user.gender, user.featuredImagePreview ? 'has-photo' : '']"
+                [style.backgroundImage]="user.featuredImagePreview ? 'url(' + user.featuredImagePreview + ')' : null"
                 >
-                {{ user.initials }}
+                @if (!user.featuredImagePreview) {
+                  {{ user.initials }}
+                }
               </span>
               @if (user.totalBadgeCount > 0) {
                 <span class="avatar-activity-badge">{{ user.totalBadgeCount }}</span>

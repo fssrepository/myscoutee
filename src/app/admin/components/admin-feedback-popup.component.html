@@ -28,16 +28,27 @@
             [attr.data-group-label]="groupLabel"
             (click)="selectFeedback(item)"
             >
-            <span class="activities-card-avatar user-color-woman">
-              {{ feedbackInitial(item.feedback) }}
-            </span>
+            @if (feedbackAvatarUrl(item.feedback); as avatarUrl) {
+              <span
+                class="activities-card-avatar user-color-woman has-photo"
+                [style.backgroundImage]="'url(' + avatarUrl + ')'"
+                aria-hidden="true"
+              ></span>
+            } @else {
+              <span class="activities-card-avatar user-color-woman">
+                {{ feedbackInitial(item.feedback) }}
+              </span>
+            }
             <div class="activities-card-main">
               <p class="activities-card-title">{{ item.feedback.userName }}</p>
               <p class="activities-card-subtitle">{{ item.feedback.subject }}</p>
               <p class="activities-card-detail">{{ item.feedback.details }}</p>
             </div>
-            <span class="admin-feedback-category-badge">
-              {{ feedbackCategoryLabel(item.feedback) }}
+            <span class="admin-feedback-card-meta">
+              <span class="admin-feedback-time-badge">{{ feedbackTime(item.feedback.createdDate) }}</span>
+              <span class="admin-feedback-category-badge">
+                {{ feedbackCategoryLabel(item.feedback) }}
+              </span>
             </span>
           </button>
         </ng-template>
@@ -62,7 +73,15 @@
 
       <div class="popup-body admin-detail-popup-body">
         <article class="admin-chat-detail-message">
-          <span class="admin-message-avatar">{{ feedbackInitial(item) }}</span>
+          @if (feedbackAvatarUrl(item); as avatarUrl) {
+            <span
+              class="admin-message-avatar has-photo"
+              [style.backgroundImage]="'url(' + avatarUrl + ')'"
+              aria-hidden="true"
+            ></span>
+          } @else {
+            <span class="admin-message-avatar">{{ feedbackInitial(item) }}</span>
+          }
           <div class="admin-message-bubble admin-feedback-detail-bubble" [ngClass]="feedbackCategoryToneClass(item)">
             <div class="admin-message-head">
               <strong>{{ item.userName }}</strong>

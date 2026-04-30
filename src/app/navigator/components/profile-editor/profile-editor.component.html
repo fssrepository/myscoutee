@@ -98,12 +98,21 @@
           @if (panel === 'profile') {
             @if (isAdminProfile()) {
               <div class="profile-editor-wrap profile-editor-wrap-admin">
-                <div class="profile-identity-card profile-identity-card-large status-public admin-profile-editor-card">
+                <div class="profile-identity-card profile-identity-card-large status-friends admin-profile-editor-card">
                   <div class="avatar-stack avatar-stack-editor">
-                    <span class="user-avatar user-avatar-large" [ngClass]="'user-color-' + user.gender">
-                      {{ user.initials }}
+                    <span
+                      class="user-avatar user-avatar-large"
+                      [ngClass]="['user-color-' + user.gender, featuredImagePreview ? 'has-photo' : '']"
+                      [style.backgroundImage]="featuredImagePreview ? 'url(' + featuredImagePreview + ')' : null"
+                      >
+                      @if (!featuredImagePreview) {
+                        {{ user.initials }}
+                      }
                     </span>
-                    <span class="avatar-bottom-pill avatar-bottom-pill-header">
+                    <button type="button" class="avatar-edit-btn" aria-label="Open image editor" (click)="openImageEditor()">
+                      <mat-icon>edit</mat-icon>
+                    </button>
+                    <span class="avatar-bottom-pill avatar-bottom-pill-header" [ngStyle]="completionBadgeStyle(user.completion)">
                       <span>ADMIN</span>
                     </span>
                   </div>

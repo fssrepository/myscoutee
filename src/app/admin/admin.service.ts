@@ -82,6 +82,7 @@ export interface AdminFeedbackDto {
   id: string;
   userId: string;
   userName: string;
+  userImageUrl?: string | null;
   category: string;
   subject: string;
   details: string;
@@ -516,8 +517,21 @@ export class AdminService {
       reportedUsers,
       feedback: [...store.feedback].sort((first, second) =>
         Date.parse(second.createdDate) - Date.parse(first.createdDate)
-      )
+      ).map(item => this.enrichDemoFeedback(item))
     };
+  }
+
+  private enrichDemoFeedback(feedback: AdminFeedbackDto): AdminFeedbackDto {
+    const user = this.demoUsersRepository.queryUserById(feedback.userId);
+    return {
+      ...feedback,
+      userName: user?.name ?? feedback.userName,
+      userImageUrl: this.firstUserImage(user) ?? feedback.userImageUrl ?? null
+    };
+  }
+
+  private firstUserImage(user: UserDto | null | undefined): string | null {
+    return user?.images?.find(image => image.trim().length > 0) ?? null;
   }
 
   private enrichDemoReport(report: AdminReportDto): AdminReportDto {
@@ -754,7 +768,10 @@ export class AdminService {
           chatMessages: [...(report.chatMessages ?? [])]
         }))
       })),
-      feedback: (dashboard.feedback ?? []).map(item => ({ ...item }))
+      feedback: (dashboard.feedback ?? []).map(item => ({
+        ...item,
+        userImageUrl: `${item.userImageUrl ?? ''}`.trim() || null
+      }))
     };
   }
 
@@ -776,6 +793,7 @@ export class AdminService {
   }
 
   private buildAdminProfile(admin: AdminUserDto, dashboard: AdminDashboardDto): UserDto {
+    const existingAdminProfile = this.appCtx.getUserProfile(admin.id) ?? this.demoUsersRepository.queryUserById(admin.id);
     return {
       id: admin.id,
       name: admin.name,
@@ -794,7 +812,7 @@ export class AdminService {
       completion: 100,
       headline: 'Moderation workspace',
       about: 'Reviews reports, feedback, and support chats.',
-      images: [],
+      images: [...(existingAdminProfile?.images ?? [])],
       profileStatus: 'public',
       activities: {
         game: dashboard.reportedUsers.reduce((total, item) => total + item.reportCount, 0),

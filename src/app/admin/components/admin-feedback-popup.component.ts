@@ -101,6 +101,10 @@ export class AdminFeedbackPopupComponent {
     return (item.userName || 'F').trim().charAt(0).toUpperCase() || 'F';
   }
 
+  protected feedbackAvatarUrl(item: AdminFeedbackDto): string {
+    return `${item.userImageUrl ?? ''}`.trim();
+  }
+
   protected feedbackCategoryLabel(item: AdminFeedbackDto): string {
     const category = `${item.category ?? ''}`.trim();
     if (this.feedbackCategories.has(category)) {
@@ -130,6 +134,17 @@ export class AdminFeedbackPopupComponent {
     return date.toLocaleString('en-US', {
       month: 'short',
       day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit'
+    });
+  }
+
+  protected feedbackTime(value: string | null | undefined): string {
+    const date = new Date(`${value ?? ''}`);
+    if (Number.isNaN(date.getTime())) {
+      return `${value ?? ''}`.trim();
+    }
+    return date.toLocaleTimeString('en-US', {
       hour: 'numeric',
       minute: '2-digit'
     });

@@ -97,6 +97,14 @@ app-smart-list.admin-smart-list {
   justify-content: center;
 }
 
+.admin-feedback-card .activities-card-avatar.has-photo,
+.admin-message-avatar.has-photo {
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  color: transparent;
+}
+
 .admin-feedback-card .user-color-woman {
   background: linear-gradient(180deg, #f089b0 0%, #df5d87 100%);
 }
@@ -133,6 +141,31 @@ app-smart-list.admin-smart-list {
   font-size: 0.73rem;
 }
 
+.admin-feedback-card-meta {
+  align-self: center;
+  justify-self: end;
+  min-width: 0;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.34rem;
+}
+
+.admin-feedback-time-badge {
+  min-width: 56px;
+  height: 18px;
+  border-radius: 999px;
+  background: rgba(20, 32, 52, 0.08);
+  color: rgba(20, 32, 52, 0.58);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 7px;
+  font-size: 0.66rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
 .admin-feedback-category-badge {
   align-self: baseline;
   justify-self: end;
@@ -151,6 +184,10 @@ app-smart-list.admin-smart-list {
   font-size: 0.72rem;
   font-weight: 900;
   white-space: nowrap;
+}
+
+.admin-feedback-card-meta .admin-feedback-category-badge {
+  align-self: flex-end;
 }
 
 .admin-feedback-tone-general {

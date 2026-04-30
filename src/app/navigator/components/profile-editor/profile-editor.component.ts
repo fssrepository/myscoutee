@@ -260,12 +260,13 @@ export class ProfileEditorComponent {
   }
 
   protected popupTitle(): string {
+    if (this.panel === 'image') {
+      return 'Images';
+    }
     if (this.isAdminProfile()) {
       return 'Admin profile';
     }
     switch (this.panel) {
-      case 'image':
-        return 'Images';
       case 'values':
         return 'Values';
       case 'interest':
