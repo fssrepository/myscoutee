@@ -1189,7 +1189,8 @@
 }
 
 .chat-message-reply-quote {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 0.14rem;
   max-width: 100%;
   min-width: 7.5rem;
