@@ -220,6 +220,7 @@ export interface EventResourcePopupHost {
   openBadgeDetails(card: AppTypes.SubEventResourceCard, event?: Event): void;
   occupancyLabel(card: AppTypes.SubEventResourceCard): string;
   canOpenAssetMembers(card: AppTypes.SubEventResourceCard): boolean;
+  openAssetMembers(card: AppTypes.SubEventResourceCard, event?: Event): void;
   openResourceAssetView(card: AppTypes.SubEventResourceCard, mode: 'view' | 'edit', event?: Event): void;
   closeResourceAssetView(event?: Event): void;
   isItemActionMenuOpen(card: AppTypes.SubEventResourceCard): boolean;
@@ -634,7 +635,7 @@ export class EventResourcePopupComponent implements DoCheck {
     if (!view.canOpenMembers) {
       return;
     }
-    this.host.openBadgeDetails(view.card, event);
+    this.host.openAssetMembers(view.card, event);
   }
 
   protected assetViewTitle(view: ResourceAssetViewState): string {

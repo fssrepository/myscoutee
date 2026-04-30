@@ -3,7 +3,17 @@ import { ChangeDetectorRef, Component, NgZone, OnInit, inject } from '@angular/c
 import { ActivatedRoute, Router } from '@angular/router';
 
 import { environment } from '../../environments/environment';
-import { SessionService, ShareTokensService, UsersService, type DemoUserListItemDto, type ShareTokenResolvedItem } from '../shared/core';
+import {
+  AppPopupContext,
+  EventsService,
+  SessionService,
+  ShareTokensService,
+  UsersService,
+  type DemoUserListItemDto,
+  type ShareTokenResolvedItem
+} from '../shared/core';
+import type { AssetCard } from '../shared/core/base/models';
+import { toActivityEventRow } from '../shared/core/base/converters/activities-event.converter';
 import {
   type DemoBootstrapProgressStage,
   type DemoBootstrapProgressState
@@ -52,6 +62,8 @@ export class AdminHelpSessionPageComponent implements OnInit {
   private readonly sessionService = inject(SessionService);
   private readonly shareTokens = inject(ShareTokensService);
   private readonly usersService = inject(UsersService);
+  private readonly eventsService = inject(EventsService);
+  private readonly popupCtx = inject(AppPopupContext);
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
   private readonly ngZone = inject(NgZone);
 
@@ -115,7 +127,7 @@ export class AdminHelpSessionPageComponent implements OnInit {
     this.selectorLoadingProgress = 100;
     this.selectorLoadingStage = 'sessionReady';
     this.selectorLoadingLabel = 'Opening MyScoutee as the user sees it';
-    await this.router.navigateByUrl(targetUrl, { replaceUrl: true });
+    await this.router.navigateByUrl(await this.queueSharedSupportTarget(userId, targetUrl), { replaceUrl: true });
   }
 
   private resolveTokenFromRoute(): string {
@@ -208,7 +220,7 @@ export class AdminHelpSessionPageComponent implements OnInit {
       });
       await this.waitForLoaderCompletionBeat();
       this.sessionService.startDemoSession(userId);
-      await this.router.navigateByUrl(targetUrl);
+      await this.router.navigateByUrl(await this.queueSharedSupportTarget(userId, targetUrl));
     } catch {
       this.commitSelectorState(() => {
         this.selectorLoading = false;
@@ -262,21 +274,137 @@ export class AdminHelpSessionPageComponent implements OnInit {
       return null;
     }
     const payload = token.slice(prefix.length);
-    const ownerUserId = payload.includes('-u')
-      ? `u${payload.split('-u').pop() ?? ''}`.trim()
-      : payload.split('-').pop()?.trim() ?? '';
-    if (!ownerUserId) {
+    const parsed = this.parseDemoAdminHelpPayload(payload);
+    if (!parsed) {
       return null;
     }
+    const targetUrl = this.demoHelpTargetUrl(parsed.targetKey);
     return {
       kind: 'adminHelp',
-      entityId: '/game',
-      ownerUserId,
+      entityId: targetUrl,
+      ownerUserId: parsed.ownerUserId,
       title: 'Shared help view',
       subtitle: 'MyScoutee support session',
       description: 'The user allowed MyScoutee admin to open their current app view.',
       imageUrl: null,
-      url: '/game'
+      url: targetUrl
     };
+  }
+
+  private parseDemoAdminHelpPayload(payload: string): { ownerUserId: string; targetKey: string } | null {
+    const targetKeys = ['service-chat', 'events', 'asset-supplies', 'asset-car'];
+    const targetKey = targetKeys.find(key => payload.endsWith(`-${key}`)) ?? 'current';
+    const userPayload = targetKey === 'current' ? payload : payload.slice(0, -(targetKey.length + 1));
+    const ownerUserId = userPayload.split('-').pop()?.trim() ?? '';
+    return ownerUserId ? { ownerUserId, targetKey } : null;
+  }
+
+  private demoHelpTargetUrl(targetKey: string): string {
+    switch (targetKey) {
+      case 'service-chat':
+        return '/game?supportTarget=service-chat';
+      case 'events':
+        return '/game?supportTarget=event&eventId=e1';
+      case 'asset-supplies':
+        return '/game?supportTarget=asset&assetFilter=Supplies&assetId=asset-sup-2&assetTitle=Game%20Night%20Box&assetSubtitle=Board%20games%20%2B%20cards%20%2B%20speakers&assetCity=Austin&assetDetails=Board%20games%2C%20cards%2C%20and%20speakers%20ready%20for%20the%20venue.&assetPreview=https%3A%2F%2Fpicsum.photos%2Fseed%2Fsupplies-gear-asset-sup-2%2F1200%2F700';
+      case 'asset-car':
+        return '/game?supportTarget=asset&assetFilter=Car';
+      default:
+        return '/game';
+    }
+  }
+
+  private async queueSharedSupportTarget(userId: string, targetUrl: string): Promise<string> {
+    const normalized = this.safeTargetUrl(targetUrl);
+    const parsed = this.parseRelativeUrl(normalized);
+    if (!parsed) {
+      return normalized;
+    }
+    const supportTarget = `${parsed.searchParams.get('supportTarget') ?? ''}`.trim();
+    if (supportTarget === 'service-chat' || supportTarget === 'chats') {
+      this.popupCtx.openNavigatorActivitiesRequest('chats');
+    } else if (supportTarget === 'event') {
+      const eventId = `${parsed.searchParams.get('eventId') ?? ''}`.trim();
+      const eventRecord = eventId ? await this.eventsService.queryKnownItemById(userId, eventId) : null;
+      if (eventRecord) {
+        this.popupCtx.requestActivitiesNavigation({
+          type: 'eventEditor',
+          row: toActivityEventRow(eventRecord),
+          readOnly: true
+        });
+      } else {
+        this.popupCtx.openNavigatorActivitiesRequest('events');
+      }
+    } else if (supportTarget === 'events') {
+      this.popupCtx.openNavigatorActivitiesRequest('events');
+    } else if (supportTarget === 'rates') {
+      this.popupCtx.openNavigatorActivitiesRequest('rates');
+    } else if (supportTarget === 'asset') {
+      const assetFilter = this.toAssetFilter(parsed.searchParams.get('assetFilter'));
+      if (assetFilter) {
+        const assetId = `${parsed.searchParams.get('assetId') ?? ''}`.trim();
+        this.popupCtx.requestActivitiesNavigation({
+          type: 'assetExplore',
+          assetType: assetFilter,
+          assetId: assetId || undefined,
+          viewOnly: Boolean(assetId),
+          fallbackAsset: this.buildSupportFallbackAsset(assetFilter, parsed)
+        });
+      }
+    }
+    return parsed.pathname || '/game';
+  }
+
+  private buildSupportFallbackAsset(assetType: 'Car' | 'Accommodation' | 'Supplies', parsed: URL): AssetCard | undefined {
+    const assetId = `${parsed.searchParams.get('assetId') ?? ''}`.trim();
+    if (!assetId) {
+      return undefined;
+    }
+    const title = `${parsed.searchParams.get('assetTitle') ?? ''}`.trim() || 'Shared asset';
+    const subtitle = `${parsed.searchParams.get('assetSubtitle') ?? ''}`.trim();
+    const city = `${parsed.searchParams.get('assetCity') ?? ''}`.trim();
+    return {
+      id: assetId,
+      type: assetType,
+      title,
+      subtitle,
+      city,
+      capacityTotal: 1,
+      quantity: 1,
+      details: `${parsed.searchParams.get('assetDetails') ?? ''}`.trim(),
+      imageUrl: `${parsed.searchParams.get('assetPreview') ?? ''}`.trim(),
+      sourceLink: '',
+      routes: [],
+      topics: [],
+      policies: [],
+      pricing: null,
+      visibility: 'Public',
+      ownerUserId: '',
+      requests: []
+    };
+  }
+
+  private parseRelativeUrl(value: string): URL | null {
+    try {
+      const origin = typeof window !== 'undefined' && window.location?.origin
+        ? window.location.origin
+        : 'http://localhost';
+      return new URL(value, origin);
+    } catch {
+      return null;
+    }
+  }
+
+  private toAssetFilter(value: string | null): 'Car' | 'Accommodation' | 'Supplies' | null {
+    switch (`${value ?? ''}`.trim()) {
+      case 'Car':
+        return 'Car';
+      case 'Accommodation':
+        return 'Accommodation';
+      case 'Supplies':
+        return 'Supplies';
+      default:
+        return null;
+    }
   }
 }

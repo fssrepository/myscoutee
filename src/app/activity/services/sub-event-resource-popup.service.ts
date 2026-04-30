@@ -320,6 +320,7 @@ export class SubEventResourcePopupService {
     openBadgeDetails: (card, event) => this.openResourceBadgeDetails(card, event),
     occupancyLabel: card => this.occupancyLabel(card),
     canOpenAssetMembers: card => this.canOpenAssetMembers(card),
+    openAssetMembers: (card, event) => void this.openAssetMembersPopup(card, event),
     openResourceAssetView: (card, mode, event) => this.openResourceAssetView(card, mode, event),
     closeResourceAssetView: event => this.closeResourceAssetView(event),
     isItemActionMenuOpen: card => this.inlineItemActionMenuRef()?.id === card.id,
@@ -775,7 +776,7 @@ export class SubEventResourcePopupService {
   }
 
   private canOpenAssetMembers(card: AppTypes.SubEventResourceCard): boolean {
-    return !!card.sourceAssetId && (card.type === 'Car' || card.type === 'Accommodation');
+    return !!card.sourceAssetId && (card.type === 'Car' || card.type === 'Accommodation' || card.type === 'Supplies');
   }
 
   private canOpenResourceBadgeDetails(card: AppTypes.SubEventResourceCard): boolean {
@@ -814,7 +815,7 @@ export class SubEventResourcePopupService {
       memberLabel: this.occupancyLabel(card),
       memberCount: Math.max(0, Math.trunc(Number(card.accepted) || 0)),
       pendingCount: Math.max(0, Math.trunc(Number(card.pending) || 0)),
-      canOpenMembers: this.canOpenResourceBadgeDetails(card),
+      canOpenMembers: this.canOpenAssetMembers(card),
       canEditCapacity: this.canEditCapacity(card),
       canEditRoute: this.canEditRoute(card)
     };
@@ -848,16 +849,17 @@ export class SubEventResourcePopupService {
     this.resourceAssetViewModeRef.set('view');
   }
 
-  private async openAssetMembersPopup(card: AppTypes.SubEventResourceCard): Promise<void> {
+  private async openAssetMembersPopup(card: AppTypes.SubEventResourceCard, event?: Event): Promise<void> {
+    event?.stopPropagation();
     const context = this.popupContextRef();
-    if (!context || !card.sourceAssetId || (card.type !== 'Car' && card.type !== 'Accommodation')) {
+    if (!context || !card.sourceAssetId || (card.type !== 'Car' && card.type !== 'Accommodation' && card.type !== 'Supplies')) {
       return;
     }
     const sourceCard = this.resolveSubEventAssignedAssetCard(context.subEvent.id, card.type, card.sourceAssetId);
     if (!sourceCard) {
       return;
     }
-    const assetType: 'Car' | 'Accommodation' = card.type;
+    const assetType: AppTypes.AssetType = card.type;
     const settings = this.getSubEventAssignedAssetSettings(context.subEvent.id, assetType);
     const managerUserId = settings[card.sourceAssetId]?.addedByUserId?.trim() || null;
     const fallbackMembers = this.assetMemberEntries(sourceCard, managerUserId, context.subEvent.id);
@@ -3980,7 +3982,7 @@ export class SubEventResourcePopupService {
 
   private syncAssetRequestsFromMembers(
     assetId: string,
-    assetType: 'Car' | 'Accommodation',
+    assetType: AppTypes.AssetType,
     members: readonly AppTypes.ActivityMemberEntry[]
   ): void {
     const context = this.popupContextRef();

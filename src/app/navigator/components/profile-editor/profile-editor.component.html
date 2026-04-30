@@ -55,7 +55,7 @@
               }
             </div>
           }
-          @if (panel === 'profile') {
+          @if (panel === 'profile' && !isAdminProfile()) {
             <div class="event-visibility-picker profile-status-header-picker">
               <button
                 type="button"
@@ -96,6 +96,53 @@
           [class.popup-body-experience]="panel === 'experience'"
           >
           @if (panel === 'profile') {
+            @if (isAdminProfile()) {
+              <div class="profile-editor-wrap profile-editor-wrap-admin">
+                <div class="profile-identity-card profile-identity-card-large status-public admin-profile-editor-card">
+                  <div class="avatar-stack avatar-stack-editor">
+                    <span class="user-avatar user-avatar-large" [ngClass]="'user-color-' + user.gender">
+                      {{ user.initials }}
+                    </span>
+                    <span class="avatar-bottom-pill avatar-bottom-pill-header">
+                      <span>ADMIN</span>
+                    </span>
+                  </div>
+                  <div class="profile-header-text">
+                    <h3 class="profile-name-line">
+                      <span>{{ profileForm.fullName || user.name }}</span>
+                    </h3>
+                    <span class="profile-city-line">
+                      <mat-icon>admin_panel_settings</mat-icon>
+                      <span>{{ profileForm.headline || user.headline || 'Admin workspace' }}</span>
+                    </span>
+                  </div>
+                </div>
+                <div class="profile-editor-scroll-area">
+                  <div class="profile-details-structured">
+                    <label class="profile-about-field">
+                      <div class="profile-about-head">
+                        <span>About</span>
+                        <small>{{ profileForm.about.length }}/160</small>
+                      </div>
+                      <textarea rows="3" maxlength="160" [(ngModel)]="profileForm.about"></textarea>
+                    </label>
+                    <section class="profile-details-group profile-details-group-basics">
+                      <h4>Basics</h4>
+                      <div class="profile-form-grid profile-details-form-grid basics-moved-grid admin-profile-details-grid">
+                        <label class="name-field">
+                          <span>Name</span>
+                          <input type="text" [(ngModel)]="profileForm.fullName" />
+                        </label>
+                        <label class="city-field">
+                          <span>Headline</span>
+                          <input type="text" [(ngModel)]="profileForm.headline" />
+                        </label>
+                      </div>
+                    </section>
+                  </div>
+                </div>
+              </div>
+            } @else {
             <div class="profile-editor-wrap">
               <div class="profile-identity-card profile-identity-card-large" [ngClass]="profileStatusClass(profileForm.profileStatus)">
                 <div class="avatar-stack avatar-stack-editor">
@@ -494,6 +541,7 @@
                 </div>
               </div>
             </div>
+            }
           }
           @if (panel === 'image') {
             <div class="image-editor-wrap">

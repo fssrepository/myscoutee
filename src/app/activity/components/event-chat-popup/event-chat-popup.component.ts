@@ -926,6 +926,10 @@ export class EventChatPopupComponent implements OnDestroy {
 
   protected openChatAttachment(attachment: AppTypes.ChatMessageAttachment, event?: Event): void {
     event?.stopPropagation();
+    if (this.isInternalHelpUrl(`${attachment.url ?? ''}`)) {
+      this.openExternalAttachmentUrl(attachment);
+      return;
+    }
     if (attachment.type === 'event') {
       const attachmentEventId = `${attachment.entityId ?? ''}`.trim();
       const contextEventId = `${this.preparedChatContext?.eventRow?.id ?? this.session()?.item.eventId ?? ''}`.trim();

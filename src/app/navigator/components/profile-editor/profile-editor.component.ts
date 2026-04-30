@@ -21,11 +21,13 @@ import { AppContext, UserExperiencesService, UsersService, type UserDto } from '
 import { CounterBadgePipe } from '../../../shared/ui';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
 import { NavigatorService } from '../../navigator.service';
+import { AdminService } from '../../../admin/admin.service';
 
 type ProfileEditorPanel = 'profile' | 'image' | 'values' | 'interest' | 'experience';
 
 interface ProfileFormState {
   fullName: string;
+  headline: string;
   birthday: Date | null;
   city: string;
   heightCm: number | null;
@@ -75,6 +77,7 @@ export class ProfileEditorComponent {
 
   private readonly confirmationDialogService = inject(ConfirmationDialogService);
   private readonly appCtx = inject(AppContext);
+  private readonly adminService = inject(AdminService);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly navigatorService = inject(NavigatorService);
   private readonly userExperiencesService = inject(UserExperiencesService);
@@ -257,6 +260,9 @@ export class ProfileEditorComponent {
   }
 
   protected popupTitle(): string {
+    if (this.isAdminProfile()) {
+      return 'Admin profile';
+    }
     switch (this.panel) {
       case 'image':
         return 'Images';
@@ -269,6 +275,11 @@ export class ProfileEditorComponent {
       default:
         return 'Profile';
     }
+  }
+
+  protected isAdminProfile(): boolean {
+    const user = this.profileUser;
+    return Boolean(user && (user.hostTier === 'Admin' || user.statusText === 'Admin workspace' || user.id.startsWith('admin-')));
   }
 
   protected handleCloseAction(): void {
@@ -1424,6 +1435,7 @@ export class ProfileEditorComponent {
     this.profileDetailsForm = this.profileDetailsForUser(user.id, user);
     this.profileForm = {
       fullName: user.name,
+      headline: user.headline,
       birthday,
       city: user.city,
       heightCm: Number.parseInt(user.height, 10) || null,
@@ -1447,6 +1459,7 @@ export class ProfileEditorComponent {
   private createEmptyProfileForm(): ProfileFormState {
     return {
       fullName: '',
+      headline: '',
       birthday: null,
       city: '',
       heightCm: null,
@@ -2152,8 +2165,13 @@ export class ProfileEditorComponent {
     if (!this.profileUser) {
       return;
     }
+    if (this.isAdminProfile()) {
+      this.commitAdminProfileForm(showAlert);
+      return;
+    }
     const user = this.cloneUser(this.profileUser);
     user.name = this.profileForm.fullName.trim() || user.name;
+    user.headline = this.profileForm.headline.trim() || user.headline;
     const birthday = this.profileForm.birthday ? AppUtils.toIsoDate(this.profileForm.birthday) : user.birthday;
     user.birthday = birthday;
     user.age = AppUtils.ageFromIsoDate(birthday, user.age);
@@ -2170,6 +2188,33 @@ export class ProfileEditorComponent {
     user.completion = this.calculateProfileCompletionPercent();
     this.profileDetailsFormByUser[user.id] = this.cloneProfileDetailsForm(this.profileDetailsForm);
     this.pushProfileUserToContextAndLegacyMirror(user);
+    void this.usersService.saveUserProfile(this.cloneUser(user));
+    if (showAlert) {
+      this.confirmationDialogService.openInfo('Profile saved', {
+        title: 'Profile updated',
+        confirmTone: 'neutral'
+      });
+    }
+  }
+
+  private commitAdminProfileForm(showAlert: boolean): void {
+    if (!this.profileUser) {
+      return;
+    }
+    const user = this.cloneUser(this.profileUser);
+    user.name = this.profileForm.fullName.trim() || user.name;
+    user.initials = AppUtils.initialsFromText(user.name);
+    user.headline = this.profileForm.headline.trim() || user.headline || 'Moderation workspace';
+    user.about = this.profileForm.about.trim().slice(0, 160);
+    user.statusText = 'Admin workspace';
+    user.hostTier = 'Admin';
+    user.completion = 100;
+    this.pushProfileUserToContextAndLegacyMirror(user);
+    this.adminService.updateAdminProfile({
+      name: user.name,
+      headline: user.headline,
+      about: user.about
+    });
     void this.usersService.saveUserProfile(this.cloneUser(user));
     if (showAlert) {
       this.confirmationDialogService.openInfo('Profile saved', {

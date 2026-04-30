@@ -8,11 +8,11 @@ import { EntryDemoUserSelectorComponent } from '../entry/components/entry-demo-u
 import { SessionService, AppPopupContext } from '../shared/core';
 import type { DemoBootstrapProgressStage } from '../shared/core/demo';
 import { ConfirmationDialogComponent } from '../shared/ui/components/confirmation-dialog/confirmation-dialog.component';
+import { NavigatorService } from '../navigator/navigator.service';
 import { AdminService, type AdminBootstrapProgressState } from './admin.service';
 import { AdminReportsPopupComponent } from './components/admin-reports-popup.component';
 import { AdminFeedbackPopupComponent } from './components/admin-feedback-popup.component';
 import { AdminChatReviewPopupComponent } from './components/admin-chat-review-popup.component';
-import { AdminProfilePopupComponent } from './components/admin-profile-popup.component';
 import { AdminItemPreviewPopupComponent } from './components/admin-item-preview-popup.component';
 
 @Component({
@@ -28,7 +28,6 @@ import { AdminItemPreviewPopupComponent } from './components/admin-item-preview-
     AdminReportsPopupComponent,
     AdminFeedbackPopupComponent,
     AdminChatReviewPopupComponent,
-    AdminProfilePopupComponent,
     AdminItemPreviewPopupComponent
   ],
   templateUrl: './admin-page.component.html',
@@ -37,6 +36,7 @@ import { AdminItemPreviewPopupComponent } from './components/admin-item-preview-
 export class AdminPageComponent implements OnInit {
   protected readonly admin = inject(AdminService);
   protected readonly sessionService = inject(SessionService);
+  private readonly navigatorService = inject(NavigatorService);
   private readonly popupCtx = inject(AppPopupContext);
   private lastHandledAdminRequestMs = 0;
 
@@ -68,7 +68,7 @@ export class AdminPageComponent implements OnInit {
           this.admin.openChat();
           break;
         case 'profile':
-          this.admin.openProfile();
+          this.navigatorService.openProfileEditor();
           break;
       }
     });

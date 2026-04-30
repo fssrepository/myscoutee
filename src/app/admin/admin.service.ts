@@ -100,6 +100,21 @@ interface AdminModerationStore {
   feedback: AdminFeedbackDto[];
 }
 
+interface DemoAdminHelpTarget {
+  key: string;
+  messageId: string;
+  attachmentId: string;
+  attachmentType: 'link' | 'event' | 'asset';
+  attachmentEntityId: string;
+  assetType?: 'Car' | 'Accommodation' | 'Supplies' | null;
+  title: string;
+  subtitle: string;
+  description: string;
+  previewUrl?: string | null;
+  text: string;
+  targetUrl: string;
+}
+
 type AdminBootstrapProgressStage = 'selector' | 'indexedDb' | 'records' | 'profile' | 'ready';
 
 export interface AdminBootstrapProgressState {
@@ -347,9 +362,10 @@ export class AdminService {
   }
 
   private async loadHttpDashboard(adminUserId?: string): Promise<AdminDashboardDto> {
+    const normalizedAdminUserId = adminUserId?.trim() ?? '';
     const dashboard = await this.http
-      .post<AdminDashboardDto>(`${this.apiBaseUrl}/admin/bootstrap`, {
-        adminUserId: adminUserId?.trim() ?? ''
+      .get<AdminDashboardDto>(`${this.apiBaseUrl}/admin/dashboard`, {
+        params: normalizedAdminUserId ? { adminUserId: normalizedAdminUserId } : {}
       })
       .toPromise();
     if (!dashboard) {
@@ -522,9 +538,7 @@ export class AdminService {
     if (!helpUser) {
       return;
     }
-    const token = this.ensureDemoHelpToken(admin, helpUser);
-    const helpUrl = `/admin/help/${encodeURIComponent(token)}`;
-    const nowIso = new Date().toISOString();
+    const now = new Date();
     const chat: ChatMenuItem & { ownerUserId?: string } = {
       id: `c-admin-service-help-${helpUser.id}`,
       avatar: helpUser.initials,
@@ -533,53 +547,118 @@ export class AdminService {
       lastSenderId: helpUser.id,
       memberIds: [admin.id, helpUser.id],
       unread: 1,
-      dateIso: nowIso,
+      dateIso: now.toISOString(),
       channelType: 'serviceEvent',
       serviceContext: 'notification',
       ownerUserId: admin.id
     };
     const existingChat = this.demoChatsRepository.queryChatItemsByUser(admin.id)
       .find(item => item.id === chat.id);
-    if (existingChat && this.demoChatsRepository.queryChatMessages(existingChat).some(message => message.id === 'm-admin-help-u1')) {
+    const existingMessageIds = new Set(
+      existingChat ? this.demoChatsRepository.queryChatMessages(existingChat).map(message => message.id) : []
+    );
+    let changed = false;
+    this.demoAdminHelpTargets().forEach((target, index) => {
+      const token = this.ensureDemoHelpToken(admin, helpUser, target);
+      const helpUrl = `/admin/help/${encodeURIComponent(token)}`;
+      const sentAt = new Date(now.getTime() + index * 1000);
+      const sentAtIso = sentAt.toISOString();
+      const message: ChatPopupMessage = {
+        id: target.messageId,
+        sender: helpUser.name,
+        senderAvatar: {
+          id: helpUser.id,
+          initials: helpUser.initials,
+          gender: helpUser.gender
+        },
+        text: target.text,
+        time: sentAt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+        sentAtIso,
+        mine: false,
+        readBy: [],
+        attachments: [{
+          id: target.attachmentId,
+          type: target.attachmentType,
+          title: target.title,
+          entityId: target.attachmentType === 'link' ? token : target.attachmentEntityId,
+          assetType: target.assetType ?? null,
+          ownerUserId: helpUser.id,
+          subtitle: target.subtitle,
+          description: target.description,
+          url: helpUrl,
+          previewUrl: target.previewUrl ?? null
+        }]
+      };
+      if (existingMessageIds.has(target.messageId) && existingChat) {
+        this.demoChatsRepository.updateChatMessage(existingChat, target.messageId, {
+          attachments: message.attachments ?? []
+        });
+        changed = true;
+        return;
+      }
+      this.demoChatsRepository.appendChatMessage(chat, message);
+      changed = true;
+    });
+    if (!changed) {
       return;
     }
-    const message: ChatPopupMessage = {
-      id: 'm-admin-help-u1',
-      sender: helpUser.name,
-      senderAvatar: {
-        id: helpUser.id,
-        initials: helpUser.initials,
-        gender: helpUser.gender
-      },
-      text: 'Please help me, I am sharing my current MyScoutee screen with support.',
-      time: 'Now',
-      sentAtIso: nowIso,
-      mine: false,
-      readBy: [],
-      attachments: [{
-        id: `admin-help:${helpUser.id}`,
-        type: 'link',
-        title: 'Open shared help view',
-        entityId: token,
-        ownerUserId: helpUser.id,
-        subtitle: 'Limited-time support token',
-        description: 'Open the user view in a new tab.',
-        url: helpUrl
-      }]
-    };
-    this.demoChatsRepository.appendChatMessage(chat, message);
     await this.memoryDb.flushToIndexedDb();
   }
 
-  private ensureDemoHelpToken(admin: AdminUserDto, user: UserDto): string {
+  private demoAdminHelpTargets(): DemoAdminHelpTarget[] {
+    return [
+      {
+        key: 'current',
+        messageId: 'm-admin-help-u1',
+        attachmentId: 'admin-help:u1:current',
+        attachmentType: 'link',
+        attachmentEntityId: '',
+        title: 'Open shared help view',
+        subtitle: 'Limited-time support token',
+        description: 'Open the user view in a new tab.',
+        text: 'Please help me, I am sharing my current MyScoutee screen with support.',
+        targetUrl: '/game'
+      },
+      {
+        key: 'events',
+        messageId: 'm-admin-help-u1-events',
+        attachmentId: 'admin-help:u1:events',
+        attachmentType: 'event',
+        attachmentEntityId: 'e1',
+        title: 'Alpine Weekend 2.0',
+        subtitle: 'Feb 27 - Mar 1',
+        description: 'Multi-day ski meetup with social dinner and pair game.',
+        previewUrl: 'https://picsum.photos/seed/demo-event-events%3Au1%3Ae1%3Aalpine-weekend-2.0/1200/700',
+        text: 'Please check what I see on this event screen.',
+        targetUrl: '/game?supportTarget=event&eventId=e1'
+      },
+      {
+        key: 'asset-supplies',
+        messageId: 'm-admin-help-u1-asset-supplies',
+        attachmentId: 'admin-help:u1:asset-supplies',
+        attachmentType: 'asset',
+        attachmentEntityId: 'asset-sup-2',
+        assetType: 'Supplies',
+        title: 'Game Night Box',
+        subtitle: 'Supplies - Austin',
+        description: 'Board games, cards, and speakers ready for the venue.',
+        previewUrl: 'https://picsum.photos/seed/supplies-gear-asset-sup-2/1200/700',
+        text: 'Please check this shared asset screen.',
+        targetUrl: '/game?supportTarget=asset&assetFilter=Supplies&assetId=asset-sup-2&assetTitle=Game%20Night%20Box&assetSubtitle=Board%20games%20%2B%20cards%20%2B%20speakers&assetCity=Austin&assetDetails=Board%20games%2C%20cards%2C%20and%20speakers%20ready%20for%20the%20venue.&assetPreview=https%3A%2F%2Fpicsum.photos%2Fseed%2Fsupplies-gear-asset-sup-2%2F1200%2F700'
+      }
+    ];
+  }
+
+  private ensureDemoHelpToken(admin: AdminUserDto, user: UserDto, target: DemoAdminHelpTarget): string {
     const safeAdminId = admin.id.replace(/[^A-Za-z0-9-]/g, '-');
-    const token = `myscoutee:token:admin-help-${safeAdminId}-${user.id}`;
+    const targetSuffix = target.key === 'current' ? '' : `-${target.key}`;
+    const token = `myscoutee:token:admin-help-${safeAdminId}-${user.id}${targetSuffix}`;
     const now = new Date();
     const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000);
     const record: ShareTokenRecord = {
       token,
       kind: 'adminHelp',
-      entityId: '/game',
+      entityId: target.targetUrl,
       ownerUserId: user.id,
       createdAtIso: now.toISOString(),
       expiresAtIso: expiresAt.toISOString()
@@ -587,7 +666,7 @@ export class AdminService {
     this.memoryDb.write(state => {
       const table = state[SHARE_TOKENS_TABLE_NAME];
       const existing = table.byToken[token];
-      if (existing && Date.parse(existing.expiresAtIso) > Date.now()) {
+      if (existing && Date.parse(existing.expiresAtIso) > Date.now() && existing.entityId === target.targetUrl) {
         return state;
       }
       return {
@@ -624,7 +703,8 @@ export class AdminService {
 
   private async appendDemoSupportMessage(userId: string, text: string): Promise<void> {
     const admin = this.activeAdmin() ?? this.resolveDemoAdmin();
-    const nowIso = new Date().toISOString();
+    const now = new Date();
+    const nowIso = now.toISOString();
     const chat: ChatMenuItem & { ownerUserId?: string } = {
       id: `c-support-admin-${userId}`,
       avatar: admin.initials,
@@ -647,7 +727,7 @@ export class AdminService {
         gender: 'woman'
       },
       text,
-      time: 'Now',
+      time: now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
       sentAtIso: nowIso,
       mine: false,
       readBy: []
