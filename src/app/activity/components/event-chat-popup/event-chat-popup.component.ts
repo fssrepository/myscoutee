@@ -48,6 +48,21 @@ interface StoredVoiceClip {
   sizeBytes: number;
 }
 
+interface ChatPollOptionState {
+  id: string;
+  text: string;
+  votes: Array<{
+    userId: string;
+    initials: string;
+    gender: 'woman' | 'man';
+  }>;
+}
+
+interface ChatPollState {
+  question: string;
+  options: ChatPollOptionState[];
+}
+
 @Component({
   selector: 'app-event-chat-popup',
   standalone: true,
@@ -88,6 +103,12 @@ export class EventChatPopupComponent implements OnDestroy {
   protected voiceClipMimeType = '';
   protected voiceClipSizeBytes = 0;
   protected voiceAttachmentSrcByKey: Record<string, string> = {};
+  protected pollComposerOpen = false;
+  protected pollQuestionDraft = '';
+  protected pollOptionDrafts = ['', ''];
+  protected selectedPollOptionByMessageId: Record<string, string> = {};
+  protected pollVoteMessageId = '';
+  protected pollVoteAttachmentId = '';
   protected selectedMessageId = '';
   protected selectedMessageToolsDown = false;
   protected quickReactionMessageId = '';
@@ -506,8 +527,80 @@ export class EventChatPopupComponent implements OnDestroy {
   protected openVoiceComposer(event?: Event): void {
     event?.stopPropagation();
     this.composerMenuOpen = false;
+    this.pollComposerOpen = false;
     this.voiceComposerOpen = true;
     this.voiceRecorderError = '';
+  }
+
+  protected openPollComposer(event?: Event): void {
+    event?.stopPropagation();
+    this.composerMenuOpen = false;
+    this.resetVoiceRecorder();
+    this.pollComposerOpen = true;
+    if (this.pollOptionDrafts.length < 2) {
+      this.pollOptionDrafts = ['', ''];
+    }
+  }
+
+  protected closePollComposer(event?: Event): void {
+    event?.stopPropagation();
+    this.pollComposerOpen = false;
+    this.pollQuestionDraft = '';
+    this.pollOptionDrafts = ['', ''];
+  }
+
+  protected addPollOption(event?: Event): void {
+    event?.stopPropagation();
+    if (this.pollOptionDrafts.length >= 6) {
+      return;
+    }
+    this.pollOptionDrafts = [...this.pollOptionDrafts, ''];
+  }
+
+  protected removePollOption(index: number, event?: Event): void {
+    event?.stopPropagation();
+    if (this.pollOptionDrafts.length <= 2) {
+      this.pollOptionDrafts = this.pollOptionDrafts.map((value, valueIndex) => valueIndex === index ? '' : value);
+      return;
+    }
+    this.pollOptionDrafts = this.pollOptionDrafts.filter((_value, valueIndex) => valueIndex !== index);
+  }
+
+  protected pollDraftOptionTrack(index: number): number {
+    return index;
+  }
+
+  protected canCreatePoll(): boolean {
+    return this.pollQuestionDraft.trim().length > 0
+      && this.pollOptionDrafts.filter(option => option.trim().length > 0).length >= 2
+      && !this.chatInitialLoadPending;
+  }
+
+  protected sendPoll(event?: Event): void {
+    event?.stopPropagation();
+    if (!this.canCreatePoll()) {
+      return;
+    }
+    const pollId = `poll:${this.activeUserId() || 'self'}:${Date.now()}`;
+    const pollState: ChatPollState = {
+      question: this.pollQuestionDraft.trim(),
+      options: this.pollOptionDrafts
+        .map(option => option.trim())
+        .filter(Boolean)
+        .slice(0, 6)
+        .map((option, index) => ({
+          id: `${pollId}:option:${index + 1}`,
+          text: option,
+          votes: []
+        }))
+    };
+    this.sendLocalAttachmentMessage({
+      id: pollId,
+      type: 'poll',
+      title: pollState.question,
+      description: this.serializePollState(pollState)
+    }, '');
+    this.closePollComposer();
   }
 
   protected async startVoiceRecording(event?: Event): Promise<void> {
@@ -621,6 +714,132 @@ export class EventChatPopupComponent implements OnDestroy {
     return '';
   }
 
+  protected pollState(attachment: AppTypes.ChatMessageAttachment): ChatPollState {
+    return this.parsePollState(attachment);
+  }
+
+  protected pollTotalVotes(poll: ChatPollState): number {
+    return poll.options.reduce((total, option) => total + option.votes.length, 0);
+  }
+
+  protected pollOptionPercent(poll: ChatPollState, option: ChatPollOptionState): number {
+    const memberTotal = Math.max(0, this.session()?.item.memberIds?.length ?? 0);
+    const total = Math.max(memberTotal, this.pollTotalVotes(poll), 1);
+    return total > 0 ? Math.round((option.votes.length / total) * 100) : 0;
+  }
+
+  protected selectedPollOptionId(message: AppTypes.ChatPopupMessage, attachment: AppTypes.ChatMessageAttachment): string {
+    return this.selectedPollOptionByMessageId[message.id] || this.pollOwnVoteOptionId(attachment);
+  }
+
+  protected openPollVoteDialog(message: AppTypes.ChatPopupMessage, attachment: AppTypes.ChatMessageAttachment, event?: Event): void {
+    event?.stopPropagation();
+    this.pollVoteMessageId = message.id;
+    this.pollVoteAttachmentId = attachment.id;
+    this.selectedPollOptionByMessageId = {
+      ...this.selectedPollOptionByMessageId,
+      [message.id]: this.selectedPollOptionId(message, attachment)
+    };
+  }
+
+  protected closePollVoteDialog(): void {
+    this.pollVoteMessageId = '';
+    this.pollVoteAttachmentId = '';
+  }
+
+  protected pollVoteDialogContext(): {
+    message: AppTypes.ChatPopupMessage;
+    attachment: AppTypes.ChatMessageAttachment;
+    poll: ChatPollState;
+  } | null {
+    const message = this.allMessages.find(item => item.id === this.pollVoteMessageId) ?? null;
+    const attachment = message?.attachments?.find(item => item.id === this.pollVoteAttachmentId && item.type === 'poll') ?? null;
+    return message && attachment
+      ? {
+          message,
+          attachment,
+          poll: this.parsePollState(attachment)
+        }
+      : null;
+  }
+
+  protected selectPollOption(
+    message: AppTypes.ChatPopupMessage,
+    attachment: AppTypes.ChatMessageAttachment,
+    option: ChatPollOptionState,
+    event?: Event
+  ): void {
+    event?.stopPropagation();
+    this.selectedPollOptionByMessageId = {
+      ...this.selectedPollOptionByMessageId,
+      [message.id]: option.id
+    };
+  }
+
+  protected canSubmitPollVote(message: AppTypes.ChatPopupMessage, attachment: AppTypes.ChatMessageAttachment): boolean {
+    const selectedOptionId = this.selectedPollOptionByMessageId[message.id] || '';
+    return !!selectedOptionId && selectedOptionId !== this.pollOwnVoteOptionId(attachment);
+  }
+
+  protected submitPollVote(
+    message: AppTypes.ChatPopupMessage,
+    attachment: AppTypes.ChatMessageAttachment,
+    event?: Event
+  ): void {
+    event?.stopPropagation();
+    const selectedOptionId = this.selectedPollOptionByMessageId[message.id] || '';
+    if (!selectedOptionId) {
+      return;
+    }
+    const activeUserId = this.activeUserId() || 'self';
+    const presentation = this.resolveOptimisticSenderPresentation(activeUserId);
+    const poll = this.parsePollState(attachment);
+    const nextPoll: ChatPollState = {
+      ...poll,
+      options: poll.options.map(option => ({
+        ...option,
+        votes: [
+          ...option.votes.filter(vote => vote.userId !== activeUserId),
+          ...(option.id === selectedOptionId
+            ? [{
+                userId: activeUserId,
+                initials: presentation.senderAvatar.initials,
+                gender: presentation.senderAvatar.gender
+              }]
+            : [])
+        ]
+      }))
+    };
+    const nextAttachment: AppTypes.ChatMessageAttachment = {
+      ...attachment,
+      title: nextPoll.question,
+      description: this.serializePollState(nextPoll)
+    };
+    const nextAttachments = (message.attachments ?? []).map(item => item.id === attachment.id ? nextAttachment : { ...item });
+    const optimisticMessage: AppTypes.ChatPopupMessage = {
+      ...message,
+      attachments: nextAttachments,
+      deliveryState: 'pending'
+    };
+    this.replaceExistingChatMessage(optimisticMessage);
+    this.cdr.markForCheck();
+    const session = this.session();
+    if (!session) {
+      return;
+    }
+    void this.activitiesContext.updateEventChatMessage(session.item, message.id, { attachments: nextAttachments })
+      .then(updated => {
+        if (updated) {
+          this.replaceExistingChatMessage(updated);
+        }
+        this.closePollVoteDialog();
+      })
+      .catch(() => {
+        this.markPendingMessageTimedOut(message.id);
+        this.cdr.markForCheck();
+      });
+  }
+
   protected onImageAttachmentSelected(event: Event): void {
     const input = event.target as HTMLInputElement | null;
     const file = input?.files?.[0] ?? null;
@@ -659,6 +878,8 @@ export class EventChatPopupComponent implements OnDestroy {
         return 'inventory_2';
       case 'link':
         return 'link';
+      case 'poll':
+        return 'poll';
       default:
         return 'attachment';
     }
@@ -672,6 +893,8 @@ export class EventChatPopupComponent implements OnDestroy {
         return 'Asset';
       case 'link':
         return 'Link';
+      case 'poll':
+        return 'Poll';
       default:
         return 'Attachment';
     }
@@ -1540,6 +1763,82 @@ export class EventChatPopupComponent implements OnDestroy {
     return null;
   }
 
+  private parsePollState(attachment: AppTypes.ChatMessageAttachment): ChatPollState {
+    const fallbackOptions = `${attachment.subtitle ?? ''}`
+      .split('\n')
+      .map(option => option.trim())
+      .filter(Boolean);
+    try {
+      const parsed = JSON.parse(`${attachment.description ?? ''}`);
+      const question = `${parsed?.question ?? attachment.title ?? ''}`.trim();
+      const options = Array.isArray(parsed?.options)
+        ? parsed.options
+            .map((option: unknown, index: number): ChatPollOptionState | null => {
+              const value = option as Partial<ChatPollOptionState>;
+              const text = `${value.text ?? ''}`.trim();
+              if (!text) {
+                return null;
+              }
+              return {
+                id: `${value.id ?? `${attachment.id}:option:${index + 1}`}`,
+                text,
+                votes: Array.isArray(value.votes)
+                  ? value.votes
+                      .map((vote: unknown): ChatPollOptionState['votes'][number] | null => {
+                        const voteValue = vote as { userId?: unknown; initials?: unknown; gender?: unknown };
+                        const userId = `${voteValue.userId ?? ''}`.trim();
+                        if (!userId) {
+                          return null;
+                        }
+                        return {
+                          userId,
+                          initials: `${voteValue.initials ?? 'ME'}`.trim() || 'ME',
+                          gender: voteValue.gender === 'woman' ? 'woman' as const : 'man' as const
+                        };
+                      })
+                      .filter((vote: ChatPollOptionState['votes'][number] | null): vote is ChatPollOptionState['votes'][number] => vote !== null)
+                  : []
+              };
+            })
+            .filter((option: ChatPollOptionState | null): option is ChatPollOptionState => option !== null)
+        : [];
+      if (question && options.length > 0) {
+        return { question, options };
+      }
+    } catch {
+      // Older poll data may not be JSON; fall through to the attachment fields.
+    }
+    return {
+      question: `${attachment.title ?? 'Poll'}`.trim() || 'Poll',
+      options: fallbackOptions.map((option, index) => ({
+        id: `${attachment.id}:option:${index + 1}`,
+        text: option,
+        votes: []
+      }))
+    };
+  }
+
+  private serializePollState(poll: ChatPollState): string {
+    return JSON.stringify({
+      question: poll.question,
+      options: poll.options.map(option => ({
+        id: option.id,
+        text: option.text,
+        votes: option.votes.map(vote => ({
+          userId: vote.userId,
+          initials: vote.initials,
+          gender: vote.gender
+        }))
+      }))
+    });
+  }
+
+  protected pollOwnVoteOptionId(attachment: AppTypes.ChatMessageAttachment): string {
+    const activeUserId = this.activeUserId() || 'self';
+    const poll = this.parsePollState(attachment);
+    return poll.options.find(option => option.votes.some(vote => vote.userId === activeUserId))?.id ?? '';
+  }
+
   private dataUrlToFile(dataUrl: string, filename: string, mimeType: string): File {
     const [meta, encoded] = dataUrl.split(',', 2);
     const resolvedMimeType = (meta.match(/^data:([^;]+);base64$/)?.[1] ?? mimeType).trim();
@@ -2319,6 +2618,9 @@ export class EventChatPopupComponent implements OnDestroy {
     if (this.voiceComposerOpen) {
       this.resetVoiceRecorder();
     }
+    if (this.pollComposerOpen) {
+      this.closePollComposer();
+    }
     this.selectedMessageId = '';
     this.selectedMessageToolsDown = false;
     this.quickReactionMessageId = '';
@@ -2327,6 +2629,7 @@ export class EventChatPopupComponent implements OnDestroy {
     this.emojiPickerQuery = '';
     this.messageActionMenuId = '';
     this.reactionDetailsMessageId = '';
+    this.closePollVoteDialog();
     if (!options.keepEditing) {
       this.editingMessageId = '';
     }

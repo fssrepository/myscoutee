@@ -182,7 +182,7 @@
                       <mat-icon>mic</mat-icon>
                       <span>Send a voice clip</span>
                     </button>
-                    <button type="button" class="chat-composer-menu-item chat-composer-menu-item-poll" (click)="composerMenuOpen = false">
+                    <button type="button" class="chat-composer-menu-item chat-composer-menu-item-poll" (click)="openPollComposer($event)">
                       <mat-icon>poll</mat-icon>
                       <span>Create a poll</span>
                     </button>
@@ -250,6 +250,44 @@
                   @if (voiceRecorderError) {
                     <span class="chat-voice-error">{{ voiceRecorderError }}</span>
                   }
+                </div>
+              } @else if (pollComposerOpen) {
+                <div class="chat-poll-composer" (click)="$event.stopPropagation()">
+                  <div class="chat-poll-composer-header">
+                    <input
+                      type="text"
+                      placeholder="Ask a question"
+                      [(ngModel)]="pollQuestionDraft"
+                      [disabled]="chatInitialLoadPending"
+                    />
+                    <button type="button" aria-label="Cancel poll" (click)="closePollComposer($event)">
+                      <mat-icon>close</mat-icon>
+                    </button>
+                  </div>
+                  <div class="chat-poll-composer-options">
+                    @for (option of pollOptionDrafts; track $index; let index = $index) {
+                      <span class="chat-poll-composer-option">
+                        <input
+                          type="text"
+                          [placeholder]="'Option ' + (index + 1)"
+                          [(ngModel)]="pollOptionDrafts[index]"
+                          [disabled]="chatInitialLoadPending"
+                        />
+                        <button type="button" [attr.aria-label]="'Remove option ' + (index + 1)" (click)="removePollOption(index, $event)">
+                          <mat-icon>close</mat-icon>
+                        </button>
+                      </span>
+                    }
+                  </div>
+                  <div class="chat-poll-composer-actions">
+                    <button type="button" class="chat-poll-add-option-btn" (click)="addPollOption($event)" [disabled]="pollOptionDrafts.length >= 6">
+                      <mat-icon>add_circle</mat-icon>
+                      Add option...
+                    </button>
+                    <button type="button" class="chat-poll-create-btn" (click)="sendPoll($event)" [disabled]="!canCreatePoll()">
+                      Create Poll
+                    </button>
+                  </div>
                 </div>
               } @else {
                 <textarea
@@ -363,6 +401,36 @@
                       <small class="chat-voice-attachment-missing">Audio unavailable</small>
                     }
                   </div>
+                } @else if (attachment.type === 'poll') {
+                  @if (pollState(attachment); as poll) {
+                    <div class="chat-poll-attachment" (click)="$event.stopPropagation()">
+                      <strong>{{ poll.question }}</strong>
+                      <div class="chat-poll-options">
+                        @for (option of poll.options; track option.id) {
+                          <div class="chat-poll-option">
+                            <span class="chat-poll-option-row">
+                              <span class="chat-poll-option-text">{{ option.text }}</span>
+                              <span class="chat-poll-voters">
+                                @for (vote of option.votes.slice(0, 3); track vote.userId) {
+                                  <span class="chat-poll-voter-avatar" [class]="'user-color-' + vote.gender">{{ vote.initials }}</span>
+                                }
+                              </span>
+                            </span>
+                            <span class="chat-poll-bar">
+                              <span [style.width.%]="pollOptionPercent(poll, option)"></span>
+                            </span>
+                          </div>
+                        }
+                      </div>
+                      <button
+                        type="button"
+                        class="chat-poll-vote-btn"
+                        (click)="openPollVoteDialog(message, attachment, $event)"
+                      >
+                        {{ pollOwnVoteOptionId(attachment) ? 'Change vote' : 'Vote' }}
+                      </button>
+                    </div>
+                  }
                 } @else if (attachment.type === 'event' || attachment.type === 'asset' || attachment.type === 'link') {
                   <div
                     class="chat-card-attachment"
@@ -545,6 +613,49 @@
           </div>
         }
       </div>
+    </div>
+  </section>
+}
+
+@if (pollVoteDialogContext(); as pollContext) {
+  <section class="chat-modal">
+    <div class="chat-modal-backdrop" (click)="closePollVoteDialog()"></div>
+    <div class="chat-modal-panel chat-poll-vote-panel" (click)="$event.stopPropagation()">
+      <header>
+        <h2>Vote</h2>
+        <button type="button" (click)="closePollVoteDialog()" aria-label="Close poll"><mat-icon>close</mat-icon></button>
+      </header>
+      <div class="chat-poll-vote-body">
+        <strong>{{ pollContext.poll.question }}</strong>
+        <div class="chat-poll-vote-options">
+          @for (option of pollContext.poll.options; track option.id) {
+            <button
+              type="button"
+              class="chat-poll-vote-option"
+              [class.is-selected]="selectedPollOptionId(pollContext.message, pollContext.attachment) === option.id"
+              (click)="selectPollOption(pollContext.message, pollContext.attachment, option, $event)"
+            >
+              <span class="chat-poll-check">
+                @if (selectedPollOptionId(pollContext.message, pollContext.attachment) === option.id) {
+                  <mat-icon>check</mat-icon>
+                }
+              </span>
+              <span>{{ option.text }}</span>
+            </button>
+          }
+        </div>
+      </div>
+      <footer class="chat-poll-vote-actions">
+        <button type="button" class="chat-poll-vote-cancel" (click)="closePollVoteDialog()">Cancel</button>
+        <button
+          type="button"
+          class="chat-poll-vote-submit"
+          (click)="submitPollVote(pollContext.message, pollContext.attachment, $event)"
+          [disabled]="!canSubmitPollVote(pollContext.message, pollContext.attachment)"
+        >
+          Submit
+        </button>
+      </footer>
     </div>
   </section>
 }

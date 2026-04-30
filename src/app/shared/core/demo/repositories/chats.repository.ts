@@ -371,6 +371,12 @@ export class DemoChatsRepository {
           : withoutMine
       };
     }
+    if (mutation.attachments) {
+      return {
+        ...message,
+        attachments: mutation.attachments.map(attachment => ({ ...attachment }))
+      };
+    }
     return message;
   }
 

@@ -45,6 +45,7 @@ export interface ChatMessageMutation {
   deleted?: boolean;
   pinned?: boolean;
   reactionEmoji?: string | null;
+  attachments?: ChatMessageAttachment[];
 }
 
 export interface ChatMessageReaction {

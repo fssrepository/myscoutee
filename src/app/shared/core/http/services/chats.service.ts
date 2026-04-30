@@ -358,6 +358,9 @@ export class HttpChatsService {
     } else if (Object.prototype.hasOwnProperty.call(mutation, 'reactionEmoji')) {
       action = 'reaction';
       body['emoji'] = mutation.reactionEmoji ?? '';
+    } else if (mutation.attachments) {
+      action = 'attachments';
+      body['attachments'] = mutation.attachments.map(attachment => this.toHttpChatAttachment(attachment));
     }
     if (!action) {
       return null;
