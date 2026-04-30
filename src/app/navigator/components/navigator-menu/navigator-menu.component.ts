@@ -11,6 +11,7 @@ import {
   type UserDto,
   type UserImpressionChangeFlags
 } from '../../../shared/core';
+import { USER_LOGOUT_CONTEXT_KEY } from '../../../shared/core/base/services/users.service';
 import {
   resolveHostTierColorClass,
   resolveHostTierIcon,
@@ -52,16 +53,22 @@ export class NavigatorMenuComponent {
   private readonly navigatorContactsService = inject(NavigatorContactsService);
   private readonly activitiesContext = inject(ActivitiesPopupStateService);
   private readonly profileSaveLoadState = this.appCtx.selectLoadingState(USER_PROFILE_SAVE_CONTEXT_KEY);
+  private readonly userLogoutLoadState = this.appCtx.selectLoadingState(USER_LOGOUT_CONTEXT_KEY);
   protected readonly activeUser = this.appCtx.activeUserProfile;
   protected readonly isOnline = this.appCtx.isOnline;
   protected readonly profileSaveRingCircumference = NavigatorMenuComponent.PROFILE_SAVE_RING_CIRCUMFERENCE;
   protected readonly isProfileSaving = computed(() => this.profileSaveLoadState().status === 'loading');
+  protected readonly isLoggingOut = computed(() => this.userLogoutLoadState().status === 'loading');
+  protected readonly isAvatarRingLoading = computed(() => this.isProfileSaving() || this.isLoggingOut());
   protected readonly hasProfileSaveError = computed(() => {
     const status = this.profileSaveLoadState().status;
     return status === 'error' || status === 'timeout';
   });
-  protected readonly showProfileSaveRing = computed(() => this.isProfileSaving() || this.hasProfileSaveError());
+  protected readonly showProfileSaveRing = computed(() => this.isAvatarRingLoading() || this.hasProfileSaveError());
   protected readonly profileSaveAvatarTitle = computed(() => {
+    if (this.isLoggingOut()) {
+      return 'Logging out';
+    }
     if (this.isProfileSaving()) {
       return 'Saving profile';
     }

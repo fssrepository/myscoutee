@@ -416,7 +416,22 @@ export class NavigatorService {
         this.closeSettingsPopup();
         this.closeProfileEditor();
         this.closeImpressionsPopup();
+        const activeUserId = this.appCtx.activeUserId().trim();
         if (this.router.url.split('?')[0].startsWith('/admin')) {
+          if (activeUserId) {
+            const result = await this.usersService.logoutUser(activeUserId);
+            if (!result.submitted) {
+              this.confirmationDialogService.openInfo(
+                result.message ?? 'Unable to log out.',
+                {
+                  title: 'Logout',
+                  confirmLabel: 'OK',
+                  confirmTone: 'neutral'
+                }
+              );
+              return;
+            }
+          }
           this.clearHydratedUser();
           if (typeof localStorage !== 'undefined') {
             localStorage.removeItem('myscoutee-admin-session');
@@ -425,7 +440,6 @@ export class NavigatorService {
           await this.sessionService.logout().finally(() => this.router.navigate(['/admin']));
           return;
         }
-        const activeUserId = this.appCtx.activeUserId().trim();
         if (activeUserId) {
           const result = await this.usersService.logoutUser(activeUserId);
           if (!result.submitted) {

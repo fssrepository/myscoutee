@@ -160,7 +160,7 @@
                   <circle class="avatar-save-ring-track" cx="56" cy="56" r="51"></circle>
                   <circle
                     class="avatar-save-ring-progress"
-                    [class.is-loading]="isProfileSaving() && !hasProfileSaveError()"
+                    [class.is-loading]="isAvatarRingLoading() && !hasProfileSaveError()"
                     [class.is-overdue]="hasProfileSaveError()"
                     cx="56"
                     cy="56"
