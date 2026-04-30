@@ -187,12 +187,31 @@
 
 @media (max-width: 900px) {
   .entry-consent-overlay {
-    padding: 0.4rem;
+    align-items: stretch;
+    justify-content: stretch;
+    padding: 0;
   }
 
   .entry-consent-panel {
-    width: min(100vw, calc(100vw - 0.8rem));
-    max-height: calc(100vh - 0.8rem);
+    width: 100vw;
+    min-height: 100vh;
+    min-height: 100dvh;
+    max-height: none;
+    border: 0;
+    border-radius: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .entry-consent-head {
+    flex: 0 0 auto;
+    padding-top: max(0.9rem, env(safe-area-inset-top));
+  }
+
+  .entry-consent-content {
+    flex: 1 1 auto;
+    max-height: none;
+    overscroll-behavior: contain;
   }
 
   .entry-consent-grid {
@@ -200,6 +219,12 @@
   }
 
   .entry-consent-actions {
+    flex: 0 0 auto;
     flex-direction: column;
+    padding-bottom: max(0.9rem, env(safe-area-inset-bottom));
+  }
+
+  .entry-consent-btn {
+    width: 100%;
   }
 }
