@@ -753,19 +753,24 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   protected replyPreviewText(replyTo: AppTypes.ChatPopupMessage['replyTo']): string {
+    const preview = this.replyPreviewParts(replyTo);
+    return preview.meta ? `${preview.title} · ${preview.meta}` : preview.title;
+  }
+
+  protected replyPreviewParts(replyTo: AppTypes.ChatPopupMessage['replyTo']): { title: string; meta: string } {
     const sourceMessage = this.allMessages.find(message => message.id === `${replyTo?.id ?? ''}`.trim());
     const sourceAttachment = sourceMessage?.attachments?.[0];
     if (sourceAttachment?.type === 'event') {
-      return this.attachmentReferenceLabel(sourceAttachment, 'Event');
+      return this.attachmentReferenceParts(sourceAttachment, 'Event');
     }
     if (sourceAttachment?.type === 'asset') {
-      return this.attachmentReferenceLabel(sourceAttachment, 'Asset');
+      return this.attachmentReferenceParts(sourceAttachment, 'Asset');
     }
     if (sourceAttachment?.type === 'image') {
-      return 'Image';
+      return { title: 'Image', meta: '' };
     }
     const text = `${replyTo?.text ?? ''}`.trim();
-    return text === 'Sent an image' ? 'Image' : text || 'Message';
+    return { title: text === 'Sent an image' ? 'Image' : text || 'Message', meta: '' };
   }
 
   protected jumpToReplySource(message: AppTypes.ChatPopupMessage, event?: Event): void {
@@ -2312,6 +2317,11 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   private attachmentReferenceLabel(attachment: AppTypes.ChatMessageAttachment, fallbackType: string): string {
+    const parts = this.attachmentReferenceParts(attachment, fallbackType);
+    return [parts.title, parts.meta].filter(Boolean).join(' · ') || fallbackType;
+  }
+
+  private attachmentReferenceParts(attachment: AppTypes.ChatMessageAttachment, fallbackType: string): { title: string; meta: string } {
     const title = `${attachment.title ?? ''}`.trim();
     const subtitle = `${attachment.subtitle ?? ''}`.trim();
     const typeLabel = attachment.type === 'event'
@@ -2319,7 +2329,10 @@ export class EventChatPopupComponent implements OnDestroy {
       : attachment.type === 'asset'
         ? 'Asset'
         : fallbackType;
-    return [typeLabel, title, subtitle].filter(Boolean).join(' · ') || typeLabel;
+    return {
+      title: [typeLabel, title].filter(Boolean).join(' · ') || typeLabel,
+      meta: subtitle
+    };
   }
 
   private observeChatComposeBox(): void {

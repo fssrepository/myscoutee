@@ -258,7 +258,14 @@
           <mat-icon>reply</mat-icon>
           {{ message.mine ? 'You replied' : message.sender + ' replied' }} to {{ message.replyTo.sender }}
         </span>
-        <span class="chat-message-reply-quote">{{ replyPreviewText(message.replyTo) }}</span>
+        @if (replyPreviewParts(message.replyTo); as replyPreview) {
+          <span class="chat-message-reply-quote" [class.chat-message-reply-quote--structured]="replyPreview.meta">
+            <span class="chat-message-reply-title">{{ replyPreview.title }}</span>
+            @if (replyPreview.meta) {
+              <span class="chat-message-reply-meta">{{ replyPreview.meta }}</span>
+            }
+          </span>
+        }
       </button>
     }
     <div class="chat-bubble">

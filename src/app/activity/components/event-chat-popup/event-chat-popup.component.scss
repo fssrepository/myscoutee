@@ -973,6 +973,8 @@
 }
 
 .chat-message-reply-quote {
+  display: grid;
+  gap: 0.14rem;
   max-width: 100%;
   min-width: 7.5rem;
   padding: 0.44rem 0.78rem 0.56rem;
@@ -984,12 +986,29 @@
   font-weight: 650;
   line-height: 1.25;
   overflow: hidden;
-  text-overflow: ellipsis;
   text-align: left;
 }
 
 .chat-message.mine .chat-message-reply-quote {
   background: rgba(238, 241, 245, 0.92);
+  margin-right: 0.42rem;
+}
+
+.chat-message-reply-title,
+.chat-message-reply-meta {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chat-message-reply-title {
+  font-weight: 800;
+}
+
+.chat-message-reply-meta {
+  color: rgba(45, 61, 84, 0.58);
+  font-size: 0.72rem;
+  font-weight: 650;
 }
 
 .chat-bubble {
@@ -1003,8 +1022,8 @@
 
 .chat-pin-badge {
   position: absolute;
-  top: -0.48rem;
-  right: 0.32rem;
+  top: -0.6rem;
+  right: -0.15rem;
   z-index: 4;
   width: 18px;
   height: 18px;
