@@ -962,6 +962,7 @@
   display: inline-flex;
   align-items: center;
   gap: 0.18rem;
+  color: rgba(43, 61, 88, 0.82);
   font-weight: 700;
 }
 
@@ -974,15 +975,16 @@
 .chat-message-reply-quote {
   max-width: 100%;
   min-width: 7.5rem;
-  padding: 0.42rem 0.72rem;
+  padding: 0.44rem 0.78rem 0.56rem;
   border: 1px solid rgba(33, 54, 82, 0.09);
   border-radius: 16px;
   background: rgba(238, 241, 245, 0.92);
-  color: rgba(38, 52, 72, 0.62);
+  color: rgba(35, 49, 70, 0.78);
   box-shadow: 0 8px 18px rgba(20, 32, 52, 0.06);
+  font-weight: 650;
+  line-height: 1.25;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
   text-align: left;
 }
 
