@@ -2046,6 +2046,10 @@
     max-width: 78%;
   }
 
+  .chat-message.mine .chat-message-reply-quote--structured {
+    transform: translateX(-4.5rem);
+  }
+
   .chat-message {
     margin-bottom: 0.8rem;
   }
