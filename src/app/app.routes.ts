@@ -19,11 +19,11 @@ export const routes: Routes = [
   },
   {
     path: 'admin/workspace',
-    loadComponent: () => import('./admin/admin-page.component').then(m => m.AdminPageComponent)
+    loadComponent: () => import('./admin/components/admin-page/admin-page.component').then(m => m.AdminPageComponent)
   },
   {
     path: 'admin',
-    loadComponent: () => import('./admin/admin-page.component').then(m => m.AdminPageComponent)
+    loadComponent: () => import('./admin/components/admin-page/admin-page.component').then(m => m.AdminPageComponent)
   },
   {
     path: '',

@@ -2,14 +2,14 @@ import { CommonModule } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
-import { AdminService } from '../admin.service';
+import { AdminService } from '../../admin.service';
 
 @Component({
   selector: 'app-admin-item-preview-popup',
   standalone: true,
   imports: [CommonModule, MatIconModule],
   templateUrl: './admin-item-preview-popup.component.html',
-  styleUrl: './admin-popups.scss'
+  styleUrl: '../admin-popups.scss'
 })
 export class AdminItemPreviewPopupComponent {
   protected readonly admin = inject(AdminService);

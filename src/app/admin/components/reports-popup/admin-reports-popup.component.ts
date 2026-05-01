@@ -4,8 +4,8 @@ import { Component, TemplateRef, ViewChild, inject } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { of } from 'rxjs';
 
-import { APP_STATIC_DATA } from '../../shared/app-static-data';
-import { AppUtils } from '../../shared/app-utils';
+import { APP_STATIC_DATA } from '../../../shared/app-static-data';
+import { AppUtils } from '../../../shared/app-utils';
 import {
   SmartListComponent,
   type ListQuery,
@@ -13,13 +13,13 @@ import {
   type SmartListConfig,
   type SmartListItemTemplateContext,
   type SmartListLoadPage
-} from '../../shared/ui';
-import type { ChatMenuItem } from '../../shared/core/base/interfaces/activity-feed.interface';
-import type { DemoUser } from '../../shared/core/base/interfaces/user.interface';
-import { toActivityChatRow } from '../../shared/core/base/converters/activities-chat.converter';
-import type { ActivityListRow } from '../../shared/core/base/models';
-import { ConfirmationDialogService } from '../../shared/ui/services/confirmation-dialog.service';
-import { AdminService, type AdminReportedUserDto, type AdminReportDto } from '../admin.service';
+} from '../../../shared/ui';
+import type { ChatMenuItem } from '../../../shared/core/base/interfaces/activity-feed.interface';
+import type { DemoUser } from '../../../shared/core/base/interfaces/user.interface';
+import { toActivityChatRow } from '../../../shared/core/base/converters/activities-chat.converter';
+import type { ActivityListRow } from '../../../shared/core/base/models';
+import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
+import { AdminService, type AdminReportedUserDto, type AdminReportDto } from '../../admin.service';
 
 interface AdminReportListItem {
   id: string;
@@ -47,7 +47,7 @@ interface AdminBlockedUserListFilters {
   standalone: true,
   imports: [CommonModule, MatIconModule, SmartListComponent],
   templateUrl: './admin-reports-popup.component.html',
-  styleUrl: './admin-popups.scss'
+  styleUrl: '../admin-popups.scss'
 })
 export class AdminReportsPopupComponent {
   protected readonly admin = inject(AdminService);

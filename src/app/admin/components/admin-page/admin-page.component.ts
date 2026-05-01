@@ -4,17 +4,17 @@ import { Router } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { MatRippleModule } from '@angular/material/core';
 
-import { NavigatorComponent } from '../navigator';
-import { EntryDemoUserSelectorComponent } from '../entry/components/entry-demo-user-selector/entry-demo-user-selector.component';
-import { SessionService, AppPopupContext } from '../shared/core';
-import type { DemoBootstrapProgressStage } from '../shared/core/demo';
-import { ConfirmationDialogComponent } from '../shared/ui/components/confirmation-dialog/confirmation-dialog.component';
-import { NavigatorService } from '../navigator/navigator.service';
-import { AdminService, type AdminBootstrapProgressState } from './admin.service';
-import { AdminReportsPopupComponent } from './components/admin-reports-popup.component';
-import { AdminFeedbackPopupComponent } from './components/admin-feedback-popup.component';
-import { AdminChatReviewPopupComponent } from './components/admin-chat-review-popup.component';
-import { AdminItemPreviewPopupComponent } from './components/admin-item-preview-popup.component';
+import { NavigatorComponent } from '../../../navigator';
+import { EntryDemoUserSelectorComponent } from '../../../entry/components/entry-demo-user-selector/entry-demo-user-selector.component';
+import { SessionService, AppPopupContext } from '../../../shared/core';
+import type { DemoBootstrapProgressStage } from '../../../shared/core/demo';
+import { ConfirmationDialogComponent } from '../../../shared/ui/components/confirmation-dialog/confirmation-dialog.component';
+import { NavigatorService } from '../../../navigator/navigator.service';
+import { AdminService, type AdminBootstrapProgressState } from '../../admin.service';
+import { AdminReportsPopupComponent } from '../reports-popup/admin-reports-popup.component';
+import { AdminFeedbackPopupComponent } from '../feedback-popup/admin-feedback-popup.component';
+import { AdminChatReviewPopupComponent } from '../chat-review-popup/admin-chat-review-popup.component';
+import { AdminItemPreviewPopupComponent } from '../item-preview-popup/admin-item-preview-popup.component';
 
 @Component({
   selector: 'app-admin-page',
