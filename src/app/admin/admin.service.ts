@@ -86,6 +86,8 @@ export interface AdminReportedUserDto {
   reportCount: number;
   lastReportedAtIso?: string | null;
   blockedAtIso?: string | null;
+  hasSupportChat?: boolean | null;
+  supportChatUnread?: number | null;
   reports: AdminReportDto[];
 }
 
@@ -283,14 +285,13 @@ export class AdminService {
     this.selectedReportedUserRef.set(user);
     this.activePopupRef.set(null);
     const chat = this.buildAdminSupportChat(user);
-    this.activitiesContext.openActivities('chats', undefined, undefined, false, { adminServiceOnly: true });
     this.activitiesContext.openEventChat(chat, {
       channelType: 'serviceEvent',
       hasSubEventMenu: false,
       actionIcon: 'shield',
       actionLabel: 'Support',
       actionToneClass: 'popup-chat-context-btn-tone-main-event',
-      actionBadgeCount: Math.max(0, Number(user.reportCount) || 0),
+      actionBadgeCount: this.supportChatUnread(user),
       menuTitle: chat.title,
       eventRow: null,
       subEventRow: null,
@@ -304,8 +305,17 @@ export class AdminService {
 
   hasSupportChat(user: AdminReportedUserDto): boolean {
     const userId = `${user.userId ?? ''}`.trim();
-    return this.isUserBlocked(user)
+    const resolved = this.resolveDashboardReportedUser(userId) ?? user;
+    return Boolean(resolved.hasSupportChat)
+      || this.demoSupportChatExists(userId)
       || this.warnedUserIdsRef().has(userId);
+  }
+
+  supportChatUnread(user: AdminReportedUserDto): number {
+    const userId = `${user.userId ?? ''}`.trim();
+    const resolved = this.resolveDashboardReportedUser(userId) ?? user;
+    const explicit = Math.max(0, Math.trunc(Number(resolved.supportChatUnread) || 0));
+    return this.usesHttpAdminApi ? explicit : explicit || this.demoSupportChatUnread(userId);
   }
 
   isUserBlocked(user: AdminReportedUserDto | null | undefined): boolean {
@@ -619,6 +629,8 @@ export class AdminService {
         reportCount: sortedReports.length,
         lastReportedAtIso: sortedReports[0]?.createdDate ?? null,
         blockedAtIso: user?.profileStatus === 'blocked' ? sortedReports[0]?.createdDate ?? store.seededAtIso : null,
+        hasSupportChat: this.demoSupportChatExists(userId),
+        supportChatUnread: this.demoSupportChatUnread(userId),
         reports: sortedReports
       };
     }).sort((first, second) =>
@@ -656,6 +668,8 @@ export class AdminService {
         reportCount: reports.length,
         lastReportedAtIso: reports[0]?.createdDate ?? store.seededAtIso,
         blockedAtIso: reports[0]?.createdDate ?? store.seededAtIso,
+        hasSupportChat: this.demoSupportChatExists(user.id),
+        supportChatUnread: this.demoSupportChatUnread(user.id),
         reports
       };
     }).sort((first, second) =>
@@ -838,7 +852,7 @@ export class AdminService {
         attachmentEntityId: '',
         title: 'Open shared help view',
         subtitle: 'Limited-time support token',
-        description: 'Open the user view in a new tab.',
+        description: '',
         text: 'Please help me, I am sharing my current MyScoutee screen with support.',
         targetUrl: '/game'
       },
@@ -977,7 +991,7 @@ export class AdminService {
     const adminMessage: ChatPopupMessage = {
       ...userMessage,
       mine: true,
-      readBy: [adminAvatar]
+      readBy: []
     };
     this.upsertDemoSupportChatMessage(userChat, userMessage, true);
     this.upsertDemoSupportChatMessage(adminChat, adminMessage, false);
@@ -998,7 +1012,9 @@ export class AdminService {
           ...existingMessages.map(item => ({
             ...item,
             senderAvatar: { ...item.senderAvatar },
-            readBy: item.readBy.map(reader => ({ ...reader })),
+            readBy: item.readBy
+              .filter(reader => `${reader.id ?? ''}`.trim() !== `${item.senderAvatar.id ?? ''}`.trim())
+              .map(reader => ({ ...reader })),
             attachments: item.attachments?.map(attachment => ({ ...attachment })),
             replyTo: item.replyTo ? { ...item.replyTo } : item.replyTo,
             reactions: item.reactions?.map(reaction => ({ ...reaction }))
@@ -1045,6 +1061,27 @@ export class AdminService {
     });
   }
 
+  private demoSupportChatExists(userId: string): boolean {
+    const normalizedUserId = `${userId ?? ''}`.trim();
+    const adminId = this.activeAdmin()?.id ?? this.readStoredAdminId() ?? '';
+    if (!normalizedUserId || !adminId) {
+      return false;
+    }
+    return this.demoChatsRepository.queryChatItemsByUser(adminId)
+      .some(chat => chat.id === `c-support-admin-${normalizedUserId}`);
+  }
+
+  private demoSupportChatUnread(userId: string): number {
+    const normalizedUserId = `${userId ?? ''}`.trim();
+    const adminId = this.activeAdmin()?.id ?? this.readStoredAdminId() ?? '';
+    if (!normalizedUserId || !adminId) {
+      return 0;
+    }
+    const chat = this.demoChatsRepository.queryChatItemsByUser(adminId)
+      .find(item => item.id === `c-support-admin-${normalizedUserId}`);
+    return Math.max(0, Math.trunc(Number(chat?.unread) || 0));
+  }
+
   private refreshSelectedReportedUser(userId: string): void {
     const selected = this.selectedReportedUserRef();
     if (!selected || selected.userId !== userId) {
@@ -1064,7 +1101,7 @@ export class AdminService {
         : 'MyScoutee support conversation.',
       lastSenderId: admin.id,
       memberIds: [user.userId, admin.id],
-      unread: Math.max(0, Number(user.reportCount) || 0),
+      unread: this.supportChatUnread(user),
       dateIso: user.lastReportedAtIso || new Date().toISOString(),
       channelType: 'serviceEvent',
       serviceContext: 'notification',
@@ -1092,6 +1129,8 @@ export class AdminService {
         ...user,
         imageUrl: `${user.imageUrl ?? ''}`.trim() || null,
         blockedAtIso: `${user.blockedAtIso ?? ''}`.trim() || null,
+        hasSupportChat: user.hasSupportChat === true,
+        supportChatUnread: Math.max(0, Math.trunc(Number(user.supportChatUnread) || 0)),
         reports: (user.reports ?? []).map(report => ({
           ...report,
           reporterImageUrl: `${report.reporterImageUrl ?? ''}`.trim() || null,
@@ -1102,6 +1141,8 @@ export class AdminService {
         ...user,
         imageUrl: `${user.imageUrl ?? ''}`.trim() || null,
         blockedAtIso: `${user.blockedAtIso ?? user.lastReportedAtIso ?? ''}`.trim() || null,
+        hasSupportChat: user.hasSupportChat === true,
+        supportChatUnread: Math.max(0, Math.trunc(Number(user.supportChatUnread) || 0)),
         reports: (user.reports ?? []).map(report => ({
           ...report,
           reporterImageUrl: `${report.reporterImageUrl ?? ''}`.trim() || null,

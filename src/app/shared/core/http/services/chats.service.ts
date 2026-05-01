@@ -486,11 +486,13 @@ export class HttpChatsService {
       time: sentAt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
       sentAtIso: message.sentAtIso,
       mine: message.mine === true || (!!activeUserId && message.senderId === activeUserId),
-      readBy: deleted ? [] : (message.readBy ?? []).map(reader => ({
-        id: reader.id,
-        initials: reader.initials,
-        gender: reader.gender
-      })),
+      readBy: deleted ? [] : (message.readBy ?? [])
+        .filter(reader => `${reader.id ?? ''}`.trim() !== `${message.senderId ?? ''}`.trim())
+        .map(reader => ({
+          id: reader.id,
+          initials: reader.initials,
+          gender: reader.gender
+        })),
       deletedAtIso: message.deletedAtIso ?? null,
       deletedByUserId: message.deletedByUserId ?? null,
       deletedByName: message.deletedByName ?? null,

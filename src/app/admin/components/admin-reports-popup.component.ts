@@ -259,6 +259,10 @@ export class AdminReportsPopupComponent {
     return this.admin.hasSupportChat(user);
   }
 
+  protected supportChatUnread(user: AdminReportedUserDto): number {
+    return this.admin.supportChatUnread(user);
+  }
+
   protected isSelectedUser(user: AdminReportedUserDto): boolean {
     return this.admin.selectedReportedUser()?.userId === user.userId;
   }
@@ -603,6 +607,8 @@ export class AdminReportsPopupComponent {
       if (report.eventTitle) {
         params.set('assetSubtitle', report.eventTitle);
       }
+      params.set('assetCategory', this.assetCategoryFromReport(report));
+      params.set('assetPreview', this.assetPreviewUrl(report));
       const assetCity = this.assetCityFromEventTitle(report.eventTitle);
       if (assetCity) {
         params.set('assetCity', assetCity);
@@ -618,6 +624,35 @@ export class AdminReportsPopupComponent {
       params.set('eventId', report.eventId || report.sourceId || '');
     }
     return `/game?${params.toString()}`;
+  }
+
+  private assetCategoryFromReport(report: AdminReportDto): string {
+    const text = [
+      report.sourceText,
+      report.details,
+      report.eventTitle
+    ].join(' ').toLowerCase();
+    if (text.includes('game') || text.includes('box') || text.includes('card')) {
+      return 'Games';
+    }
+    if (text.includes('speaker') || text.includes('audio')) {
+      return 'Audio';
+    }
+    if (text.includes('first aid') || text.includes('safety')) {
+      return 'Safety';
+    }
+    if (text.includes('camp') || text.includes('tent')) {
+      return 'Camping';
+    }
+    return 'Games';
+  }
+
+  private assetPreviewUrl(report: AdminReportDto): string {
+    const seed = encodeURIComponent([
+      `${report.assetType ?? report.sourceType ?? 'asset'}`.toLowerCase(),
+      report.assetId || report.sourceId || report.sourceText || report.eventTitle || 'reported-asset'
+    ].filter(Boolean).join('-'));
+    return `https://picsum.photos/seed/${seed}/1200/700`;
   }
 
   private adminHelpUrl(ownerUserId: string, targetUrl: string): string {

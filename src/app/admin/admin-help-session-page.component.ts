@@ -5,6 +5,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { environment } from '../../environments/environment';
 import {
   AppPopupContext,
+  AssetDefaultsBuilder,
   EventsService,
   SessionService,
   ShareTokensService,
@@ -420,17 +421,24 @@ export class AdminHelpSessionPageComponent implements OnInit {
     const subtitle = `${parsed.searchParams.get('assetSubtitle') ?? ''}`.trim();
     const city = `${parsed.searchParams.get('assetCity') ?? ''}`.trim();
     const details = `${parsed.searchParams.get('assetDetails') ?? ''}`.trim();
+    const category = AssetDefaultsBuilder.normalizeCategory(
+      assetType,
+      `${parsed.searchParams.get('assetCategory') ?? ''}`.trim()
+    );
+    const imageUrl = this.safeImageUrl(parsed.searchParams.get('assetPreview'))
+      || this.defaultSupportAssetImage(assetType, assetId || title);
     return {
       id: assetId,
       type: assetType,
       title,
       subtitle,
-      city,
-      capacityTotal: 1,
-      quantity: 1,
+      category,
+      city: city || this.defaultSupportAssetCity(assetType),
+      capacityTotal: this.positiveIntegerParam(parsed, 'assetCapacity') || (assetType === 'Supplies' ? 4 : 1),
+      quantity: this.positiveIntegerParam(parsed, 'assetQuantity') || (assetType === 'Supplies' ? 4 : 1),
       details: details || subtitle || title,
-      imageUrl: this.safeImageUrl(parsed.searchParams.get('assetPreview')),
-      sourceLink: title,
+      imageUrl,
+      sourceLink: this.safeImageUrl(parsed.searchParams.get('assetSourceLink')) || imageUrl,
       routes: [],
       topics: [],
       policies: [],
@@ -439,6 +447,24 @@ export class AdminHelpSessionPageComponent implements OnInit {
       ownerUserId: '',
       requests: []
     };
+  }
+
+  private positiveIntegerParam(parsed: URL, key: string): number {
+    return Math.max(0, Math.trunc(Number(parsed.searchParams.get(key)) || 0));
+  }
+
+  private defaultSupportAssetCity(assetType: 'Car' | 'Accommodation' | 'Supplies'): string {
+    return assetType === 'Supplies' ? 'Austin' : '';
+  }
+
+  private defaultSupportAssetImage(assetType: 'Car' | 'Accommodation' | 'Supplies', seed: string): string {
+    const flavor = assetType === 'Car'
+      ? 'road'
+      : assetType === 'Accommodation'
+        ? 'stay'
+        : 'gear';
+    const normalizedSeed = encodeURIComponent(`${assetType.toLowerCase()}-${flavor}-${seed || assetType.toLowerCase()}`);
+    return `https://picsum.photos/seed/${normalizedSeed}/1200/700`;
   }
 
   private safeImageUrl(value: string | null): string {

@@ -134,16 +134,16 @@
                       <button type="button" (click)="viewBlockedUserChat(item.user, $event)">
                         <mat-icon>forum</mat-icon>
                         <span>View chat</span>
-                        @if (item.user.reportCount > 0) {
-                          <span class="card-badge admin-blocked-menu-item-badge">{{ item.user.reportCount }}</span>
+                        @if (supportChatUnread(item.user) > 0) {
+                          <span class="card-badge admin-blocked-menu-item-badge">{{ supportChatUnread(item.user) }}</span>
                         }
                       </button>
                     } @else if (hasSupportChat(item.user)) {
                       <button type="button" (click)="viewBlockedUserChat(item.user, $event)">
                         <mat-icon>forum</mat-icon>
                         <span>View chat</span>
-                        @if (item.user.reportCount > 0) {
-                          <span class="card-badge admin-blocked-menu-item-badge">{{ item.user.reportCount }}</span>
+                        @if (supportChatUnread(item.user) > 0) {
+                          <span class="card-badge admin-blocked-menu-item-badge">{{ supportChatUnread(item.user) }}</span>
                         }
                       </button>
                       <button type="button" class="danger" (click)="blockUser(item.user)">
@@ -218,7 +218,7 @@
 @if (blockedUsersOpen) {
   <section class="app-popup app-popup-stacked">
     <div class="app-popup-backdrop" (click)="closeBlockedUsers()"></div>
-    <div class="app-popup-panel popup-panel-admin-detail" (click)="$event.stopPropagation()">
+    <div class="app-popup-panel popup-panel-admin admin-blocked-users-panel" (click)="$event.stopPropagation()">
       <div class="popup-header">
         <div class="popup-title">
           <h2>Blocked users</h2>
@@ -263,8 +263,8 @@
               aria-label="Blocked user actions"
               >
               <mat-icon>more_horiz</mat-icon>
-              @if (item.user.reportCount > 0) {
-                <span class="card-badge admin-blocked-user-menu-badge">{{ item.user.reportCount }}</span>
+              @if (supportChatUnread(item.user) > 0) {
+                <span class="card-badge admin-blocked-user-menu-badge">{{ supportChatUnread(item.user) }}</span>
               }
             </button>
             @if (isBlockedUserMenuOpen(item.user)) {
@@ -276,8 +276,8 @@
                 <button type="button" (click)="viewBlockedUserChat(item.user, $event)">
                   <mat-icon>forum</mat-icon>
                   <span>View chat</span>
-                  @if (item.user.reportCount > 0) {
-                    <span class="card-badge admin-blocked-menu-item-badge">{{ item.user.reportCount }}</span>
+                  @if (supportChatUnread(item.user) > 0) {
+                    <span class="card-badge admin-blocked-menu-item-badge">{{ supportChatUnread(item.user) }}</span>
                   }
                 </button>
               </div>

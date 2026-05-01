@@ -1647,7 +1647,7 @@ export class EventChatPopupComponent implements OnDestroy {
         ownerUserId: resolved.ownerUserId ?? null,
         title: resolved.title || 'Open shared help view',
         subtitle: resolved.subtitle ?? null,
-        description: resolved.description ?? null,
+        description: null,
         url: this.location.prepareExternalUrl(`/admin/help/${encodeURIComponent(token)}`),
         previewUrl: resolved.imageUrl ?? null
       };
