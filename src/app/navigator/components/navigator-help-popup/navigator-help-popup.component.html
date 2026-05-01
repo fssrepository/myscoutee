@@ -1,75 +1,47 @@
 <div class="support-popup support-help-popup">
-  <article class="editor-list-card support-help-hero">
-    <h4>What you can do in MyScoutee</h4>
-    <p>MyScoutee helps you plan events end-to-end: invite people, split into stages/groups, assign resources, and coordinate in context chats.</p>
-  </article>
+  @if (activeRevision(); as revision) {
+    <article class="editor-list-card support-help-hero">
+      <span class="support-help-version">v{{ revision.version }}</span>
+      <h4>{{ revision.summary || revision.title }}</h4>
+      <p>{{ revision.description || defaultHelpDescription }}</p>
+    </article>
 
-  <div class="support-help-tabs support-help-tabs-desktop" role="tablist" aria-label="Help topics">
-    @for (section of sections; track section) {
-      <button
-        type="button"
-        class="support-help-tab-btn"
-        role="tab"
-        [class.is-active]="section.id === activeSectionId"
-        [attr.aria-selected]="section.id === activeSectionId"
-        (click)="selectSection(section.id, $event)"
-        >
-        <span class="support-help-tab-head">
-          <mat-icon>{{ section.icon }}</mat-icon>
-          <span>{{ section.title }}</span>
-        </span>
-        <span class="support-help-tab-blurb">{{ section.blurb }}</span>
-      </button>
-    }
-  </div>
-
-  @if (activeSection; as section) {
-    <article class="editor-list-card support-help-detail support-help-detail-desktop">
-      <h4><mat-icon>{{ section.icon }}</mat-icon><span>{{ section.title }}</span></h4>
-      <p class="support-help-detail-lead">{{ section.blurb }}</p>
-      @for (paragraph of section.details; track paragraph) {
-        <p>{{ paragraph }}</p>
+    <div class="support-help-accordion" aria-label="Help topics">
+      @for (section of sections(); track section.id) {
+        <article
+          class="editor-list-card support-help-accordion-item"
+          [class.is-open]="section.id === openAccordionSectionId"
+          >
+          <button
+            type="button"
+            class="support-help-accordion-btn"
+            [attr.aria-expanded]="section.id === openAccordionSectionId"
+            (click)="toggleAccordionSection(section.id, $event)"
+            >
+            <span class="support-help-tab-head">
+              <mat-icon>{{ section.icon }}</mat-icon>
+              <span>{{ section.title }}</span>
+            </span>
+            <mat-icon class="support-help-accordion-caret">expand_more</mat-icon>
+          </button>
+          <div class="support-help-accordion-panel-wrap" [class.is-open]="section.id === openAccordionSectionId">
+            <div class="support-help-accordion-panel">
+              @if (section.id === openAccordionSectionId) {
+                @if (section.blurb) {
+                  <p class="support-help-detail-lead">{{ section.blurb }}</p>
+                }
+                <div class="support-help-html" [innerHTML]="section.contentHtml"></div>
+              }
+            </div>
+          </div>
+        </article>
       }
-      <ul class="support-help-detail-list">
-        @for (point of section.points; track point) {
-          <li>{{ point }}</li>
-        }
-      </ul>
+    </div>
+  } @else {
+    <article class="editor-list-card support-help-empty">
+      <mat-icon>help_outline</mat-icon>
+      <h4>Help is not available</h4>
+      <p>No active help revision has been published yet.</p>
     </article>
   }
-
-  <div class="support-help-accordion" aria-label="Help topics">
-    @for (section of sections; track section) {
-      <article
-        class="editor-list-card support-help-accordion-item"
-        [class.is-open]="section.id === openAccordionSectionId"
-        >
-        <button
-          type="button"
-          class="support-help-accordion-btn"
-          [attr.aria-expanded]="section.id === openAccordionSectionId"
-          (click)="toggleAccordionSection(section.id, $event)"
-          >
-          <span class="support-help-tab-head">
-            <mat-icon>{{ section.icon }}</mat-icon>
-            <span>{{ section.title }}</span>
-          </span>
-          <mat-icon class="support-help-accordion-caret">expand_more</mat-icon>
-        </button>
-        <div class="support-help-accordion-panel-wrap" [class.is-open]="section.id === openAccordionSectionId">
-          <div class="support-help-accordion-panel">
-            <p class="support-help-detail-lead">{{ section.blurb }}</p>
-            @for (paragraph of section.details; track paragraph) {
-              <p>{{ paragraph }}</p>
-            }
-            <ul class="support-help-detail-list">
-              @for (point of section.points; track point) {
-                <li>{{ point }}</li>
-              }
-            </ul>
-          </div>
-        </div>
-      </article>
-    }
-  </div>
 </div>

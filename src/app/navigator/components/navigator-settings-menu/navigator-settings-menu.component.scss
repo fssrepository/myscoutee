@@ -44,11 +44,40 @@
 }
 
 .user-settings-item .mat-icon {
+  flex: 0 0 auto;
   width: 17px;
   height: 17px;
   font-size: 17px;
   line-height: 17px;
   color: #416c9f;
+}
+
+.user-settings-item span:not(.user-settings-version) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-settings-item:disabled {
+  opacity: 0.52;
+  cursor: default;
+}
+
+.user-settings-version {
+  margin-left: auto;
+  min-width: 34px;
+  height: 20px;
+  border-radius: 999px;
+  background: rgba(54, 101, 161, 0.12);
+  color: #315d94;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.38rem;
+  box-sizing: border-box;
+  font-size: 0.68rem;
+  font-weight: 900;
 }
 
 .user-settings-item:focus-visible {
@@ -65,13 +94,13 @@
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .user-settings-item:hover {
+  .user-settings-item:not(:disabled):hover {
     background: rgba(212, 226, 247, 0.45);
     transform: translateY(-1px) scale(1.01);
     filter: brightness(1.02);
   }
 
-  .user-settings-item:active {
+  .user-settings-item:not(:disabled):active {
     transform: scale(0.98);
     filter: brightness(0.96);
   }

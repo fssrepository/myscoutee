@@ -2,6 +2,7 @@ import { Injectable, computed, effect, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import {
   AppContext,
+  HelpCenterService,
   SessionService,
   UsersService,
   type ActivityMemberOwnerType,
@@ -51,6 +52,7 @@ export class NavigatorService {
   private static readonly ACCOUNT_REACTIVATION_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 
   private readonly usersService = inject(UsersService);
+  private readonly helpCenterService = inject(HelpCenterService);
   private readonly sessionService = inject(SessionService);
   private readonly appCtx = inject(AppContext);
   private readonly router = inject(Router);
@@ -183,6 +185,7 @@ export class NavigatorService {
     }
 
     this.syncHydratedUser(loadedUser);
+    void this.helpCenterService.preload();
     return loadedUser;
   }
 

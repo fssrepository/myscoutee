@@ -783,12 +783,23 @@ const EVENT_FEEDBACK_LIST_FILTERS: Array<{ key: EventFeedbackListFilter; label: 
   { key: 'feedbacked', label: 'Feedbacked', icon: 'task_alt' },
   { key: 'removed', label: 'Removed', icon: 'delete_outline' }
 ];
+const DEFAULT_HELP_CENTER_DESCRIPTION = 'MyScoutee helps you plan events end-to-end: invite people, split into stages/groups, assign resources, and coordinate in context chats.';
 const HELP_CENTER_SECTIONS: HelpCenterSection[] = [
   {
     id: 'events',
     icon: 'event_note',
     title: 'Events and Sub Events',
     blurb: 'Build the full event flow with stages or optional items.',
+    contentHtml: `
+      <p><strong>Build the full event flow with stages or optional items.</strong></p>
+      <p>Create a main event, then split execution into sub events for stages, side activities, or optional sessions.</p>
+      <p>Each sub event carries its own date range, description, and status so planning stays clean and trackable.</p>
+      <ul>
+        <li>Supports casual and tournament structures</li>
+        <li>Keeps stage context visible in related screens</li>
+        <li>Lets hosts edit details without losing hierarchy</li>
+      </ul>
+    `,
     details: [
       'Create a main event, then split execution into sub events for stages, side activities, or optional sessions.',
       'Each sub event carries its own date range, description, and status so planning stays clean and trackable.'
@@ -804,6 +815,16 @@ const HELP_CENTER_SECTIONS: HelpCenterSection[] = [
     icon: 'inventory_2',
     title: 'Resources and Capacity',
     blurb: 'Assign people, cars, accommodation, and supplies with limits.',
+    contentHtml: `
+      <p><strong>Assign people, cars, accommodation, and supplies with limits.</strong></p>
+      <p>Use resource menus to assign assets into sub events and groups, then adjust capacity ranges directly where needed.</p>
+      <p>Badges summarize pending requests and remaining capacity so action priorities are visible at a glance.</p>
+      <ul>
+        <li>Capacity min/max control per assignment</li>
+        <li>Contextual badges for pending requests</li>
+        <li>Route and location support for travel resources</li>
+      </ul>
+    `,
     details: [
       'Use resource menus to assign assets into sub events and groups, then adjust capacity ranges directly where needed.',
       'Badges summarize pending requests and remaining capacity so action priorities are visible at a glance.'
@@ -819,6 +840,16 @@ const HELP_CENTER_SECTIONS: HelpCenterSection[] = [
     icon: 'forum',
     title: 'Activities and Chats',
     blurb: 'Coordinate with context-aware channels and filters.',
+    contentHtml: `
+      <p><strong>Coordinate with context-aware channels and filters.</strong></p>
+      <p>Chat channels follow event scope: main event, optional sub event, and group channels can all coexist.</p>
+      <p>Context actions in chat headers help jump directly to related event/sub-event views and resources.</p>
+      <ul>
+        <li>Fast channel filtering by context</li>
+        <li>Unread counters scoped to relevant channels</li>
+        <li>Works for both mobile and desktop flows</li>
+      </ul>
+    `,
     details: [
       'Chat channels follow event scope: main event, optional sub event, and group channels can all coexist.',
       'Context actions in chat headers help jump directly to related event/sub-event views and resources.'
@@ -834,6 +865,16 @@ const HELP_CENTER_SECTIONS: HelpCenterSection[] = [
     icon: 'verified_user',
     title: 'Profiles and Safety',
     blurb: 'Improve trust with profile quality and moderation tools.',
+    contentHtml: `
+      <p><strong>Improve trust with profile quality and moderation tools.</strong></p>
+      <p>Profile completion updates in real time as users fill key fields and detail sections.</p>
+      <p>Safety controls include report tools, privacy visibility options, and clear moderation pathways.</p>
+      <ul>
+        <li>Live profile completion feedback</li>
+        <li>Report user and feedback workflows</li>
+        <li>Privacy and access visibility controls</li>
+      </ul>
+    `,
     details: [
       'Profile completion updates in real time as users fill key fields and detail sections.',
       'Safety controls include report tools, privacy visibility options, and clear moderation pathways.'
@@ -897,5 +938,19 @@ export const APP_STATIC_DATA = {
   eventFeedbackAttendeeRejoinOptions: EVENT_FEEDBACK_ATTENDEE_REJOIN_OPTIONS,
   eventFeedbackPersonalityTraitOptions: EVENT_FEEDBACK_PERSONALITY_TRAIT_OPTIONS,
   eventFeedbackListFilters: EVENT_FEEDBACK_LIST_FILTERS,
-  helpCenterSections: HELP_CENTER_SECTIONS
+  helpCenterSections: HELP_CENTER_SECTIONS,
+  defaultHelpCenterDescription: DEFAULT_HELP_CENTER_DESCRIPTION,
+  defaultHelpCenterRevision: {
+    id: 'help-default-v1',
+    version: 1,
+    title: 'MyScoutee help',
+    summary: 'What you can do in MyScoutee',
+    description: DEFAULT_HELP_CENTER_DESCRIPTION,
+    sections: HELP_CENTER_SECTIONS,
+    active: true,
+    createdAtIso: '2026-05-01T00:00:00.000Z',
+    createdByUserId: 'system',
+    updatedAtIso: '2026-05-01T00:00:00.000Z',
+    updatedByUserId: 'system'
+  }
 };

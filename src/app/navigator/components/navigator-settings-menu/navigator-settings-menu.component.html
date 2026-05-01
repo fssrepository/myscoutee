@@ -1,7 +1,10 @@
 <div class="user-settings-menu" (click)="closeMenu($event)">
-  <button type="button" class="user-settings-item" (click)="openPopup('help', $event)">
+  <button type="button" class="user-settings-item" [disabled]="!hasActiveHelpRevision()" (click)="openPopup('help', $event)">
     <mat-icon>help_outline</mat-icon>
     <span>Help</span>
+    @if (helpVersionLabel()) {
+      <span class="user-settings-version">{{ helpVersionLabel() }}</span>
+    }
   </button>
 
   @if (!isAdminMode()) {

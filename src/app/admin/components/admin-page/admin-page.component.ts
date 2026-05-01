@@ -15,6 +15,7 @@ import { AdminReportsPopupComponent } from '../reports-popup/admin-reports-popup
 import { AdminFeedbackPopupComponent } from '../feedback-popup/admin-feedback-popup.component';
 import { AdminChatReviewPopupComponent } from '../chat-review-popup/admin-chat-review-popup.component';
 import { AdminItemPreviewPopupComponent } from '../item-preview-popup/admin-item-preview-popup.component';
+import { AdminHelpEditorPopupComponent } from '../help-editor-popup/admin-help-editor-popup.component';
 
 @Component({
   selector: 'app-admin-page',
@@ -29,7 +30,8 @@ import { AdminItemPreviewPopupComponent } from '../item-preview-popup/admin-item
     AdminReportsPopupComponent,
     AdminFeedbackPopupComponent,
     AdminChatReviewPopupComponent,
-    AdminItemPreviewPopupComponent
+    AdminItemPreviewPopupComponent,
+    AdminHelpEditorPopupComponent
   ],
   templateUrl: './admin-page.component.html',
   styleUrl: './admin-page.component.scss'
@@ -73,6 +75,9 @@ export class AdminPageComponent implements OnInit {
           break;
         case 'profile':
           this.navigatorService.openProfileEditor();
+          break;
+        case 'help-editor':
+          this.admin.openHelpEditor();
           break;
       }
     });

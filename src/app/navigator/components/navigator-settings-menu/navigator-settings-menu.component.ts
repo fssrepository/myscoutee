@@ -2,6 +2,7 @@
 import { Component, inject } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { Router } from '@angular/router';
+import { HelpCenterService } from '../../../shared/core';
 import { NavigatorService, type NavigatorSettingsPopup } from '../../navigator.service';
 
 @Component({
@@ -13,10 +14,20 @@ import { NavigatorService, type NavigatorSettingsPopup } from '../../navigator.s
 })
 export class NavigatorSettingsMenuComponent {
   private readonly navigatorService = inject(NavigatorService);
+  private readonly helpCenter = inject(HelpCenterService);
   private readonly router = inject(Router);
+  protected readonly helpVersionLabel = this.helpCenter.activeVersionLabel;
+  protected readonly hasActiveHelpRevision = this.helpCenter.hasActiveRevision;
+
+  constructor() {
+    void this.helpCenter.preload();
+  }
 
   protected openPopup(popup: NavigatorSettingsPopup, event: Event): void {
     event.stopPropagation();
+    if (popup === 'help' && !this.hasActiveHelpRevision()) {
+      return;
+    }
     this.navigatorService.openSettingsPopup(popup);
   }
 

@@ -6,6 +6,7 @@ import { environment } from '../../environments/environment';
 import {
   AppContext,
   AppPopupContext,
+  HelpCenterService,
   SessionService,
   USER_BY_ID_LOAD_CONTEXT_KEY,
   type ShareTokenRecord,
@@ -27,6 +28,7 @@ export type AdminPopupKind =
   | 'chat-review'
   | 'warn-chat'
   | 'profile'
+  | 'help-editor'
   | 'item-preview';
 
 export interface AdminUserDto {
@@ -148,6 +150,7 @@ export class AdminService {
   private readonly http = inject(HttpClient);
   private readonly appCtx = inject(AppContext);
   private readonly popupCtx = inject(AppPopupContext);
+  private readonly helpCenter = inject(HelpCenterService);
   private readonly location = inject(Location);
   private readonly sessionService = inject(SessionService);
   private readonly memoryDb = inject(AppMemoryDb);
@@ -237,6 +240,7 @@ export class AdminService {
         : await this.loadDemoDashboard(adminUserId, onProgress);
       this.dashboardRef.set(dashboard);
       this.activateAdminProfile(dashboard);
+      void this.helpCenter.preload();
       this.persistAdminSession(dashboard.activeAdmin.id);
       return dashboard;
     } catch (error) {
@@ -264,6 +268,10 @@ export class AdminService {
 
   openProfile(): void {
     this.activePopupRef.set('profile');
+  }
+
+  openHelpEditor(): void {
+    this.activePopupRef.set('help-editor');
   }
 
   openReportDetail(user: AdminReportedUserDto, report: AdminReportDto): void {

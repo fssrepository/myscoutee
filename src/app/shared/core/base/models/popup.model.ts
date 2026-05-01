@@ -56,8 +56,50 @@ export interface HelpCenterSection {
   icon: string;
   title: string;
   blurb: string;
-  details: string[];
-  points: string[];
+  contentHtml: string;
+  details?: string[];
+  points?: string[];
+}
+
+export type HelpCenterAuditAction = 'seed' | 'create' | 'update' | 'activate' | 'delete';
+
+export interface HelpCenterRevision {
+  id: string;
+  version: number;
+  title: string;
+  summary: string;
+  description: string;
+  sections: HelpCenterSection[];
+  active: boolean;
+  createdAtIso: string;
+  createdByUserId: string;
+  updatedAtIso: string;
+  updatedByUserId: string;
+}
+
+export interface HelpCenterAuditEntry {
+  id: string;
+  revisionId: string | null;
+  version: number | null;
+  action: HelpCenterAuditAction;
+  actorUserId: string;
+  createdAtIso: string;
+  message: string;
+}
+
+export interface HelpCenterState {
+  activeRevision: HelpCenterRevision | null;
+  revisions: HelpCenterRevision[];
+  auditTrail: HelpCenterAuditEntry[];
+}
+
+export interface HelpCenterRevisionSaveRequest {
+  actorUserId: string;
+  baseRevisionId?: string | null;
+  title: string;
+  summary: string;
+  description: string;
+  sections: HelpCenterSection[];
 }
 
 export interface BrowserBarcodeDetectorResult {
@@ -76,4 +118,3 @@ export interface SubEventAssetBadgeContext {
   subEventId: string;
   assetType: AssetType;
 }
-
