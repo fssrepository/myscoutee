@@ -9,7 +9,9 @@ import type {
   HelpCenterRevision,
   HelpCenterRevisionSaveRequest,
   HelpCenterSection,
-  HelpCenterState
+  HelpCenterState,
+  PrivacyConsentRecord,
+  PrivacyConsentSaveRequest
 } from '../../base/models';
 
 @Injectable({
@@ -25,6 +27,40 @@ export class HttpHelpCenterService {
       .get<Partial<HelpCenterState> | null>(`${this.apiBaseUrl}/${documentKind}/active`)
       .toPromise();
     return this.normalizeState(response, documentKind);
+  }
+
+  async loadPrivacyConsent(
+    userId: string,
+    revisionId: string,
+    revisionVersion?: number
+  ): Promise<PrivacyConsentRecord | null> {
+    const normalizedUserId = userId.trim();
+    const normalizedRevisionId = revisionId.trim();
+    if (!normalizedUserId || !normalizedRevisionId) {
+      return null;
+    }
+    const minimumRevisionVersion = Math.trunc(Number(revisionVersion) || 0);
+    const response = await this.http
+      .get<Partial<PrivacyConsentRecord> | null>(`${this.apiBaseUrl}/privacy/consents`, {
+        params: {
+          userId: normalizedUserId,
+          revisionId: normalizedRevisionId,
+          ...(minimumRevisionVersion > 0 ? { revisionVersion: `${minimumRevisionVersion}` } : {})
+        }
+      })
+      .toPromise();
+    return this.normalizePrivacyConsent(response);
+  }
+
+  async savePrivacyConsent(request: PrivacyConsentSaveRequest): Promise<PrivacyConsentRecord> {
+    const response = await this.http
+      .post<Partial<PrivacyConsentRecord> | null>(`${this.apiBaseUrl}/privacy/consents`, request)
+      .toPromise();
+    const consent = this.normalizePrivacyConsent(response);
+    if (!consent) {
+      throw new Error('Privacy consent could not be saved.');
+    }
+    return consent;
   }
 
   async loadAdminState(adminUserId: string, kind: HelpCenterDocumentKind = 'help'): Promise<HelpCenterState> {
@@ -143,6 +179,31 @@ export class HttpHelpCenterService {
       actorUserId: `${value?.actorUserId ?? ''}`.trim(),
       createdAtIso: `${value?.createdAtIso ?? ''}`.trim(),
       message: `${value?.message ?? ''}`.trim()
+    };
+  }
+
+  private normalizePrivacyConsent(value: Partial<PrivacyConsentRecord> | null | undefined): PrivacyConsentRecord | null {
+    const userId = `${value?.userId ?? ''}`.trim();
+    const revisionId = `${value?.revisionId ?? ''}`.trim();
+    if (!userId || !revisionId) {
+      return null;
+    }
+    const id = `${value?.id ?? `${userId}::${revisionId}`}`.trim();
+    const revisionVersion = Math.max(1, Math.trunc(Number(value?.revisionVersion) || 1));
+    const approvedOptionalSectionIds = Array.from(new Set(
+      (Array.isArray(value?.approvedOptionalSectionIds) ? value.approvedOptionalSectionIds : [])
+        .map(sectionId => `${sectionId ?? ''}`.trim())
+        .filter(Boolean)
+    )).sort();
+    return {
+      id,
+      userId,
+      revisionId,
+      revisionVersion,
+      approvedOptionalSectionIds,
+      acceptedAtIso: `${value?.acceptedAtIso ?? ''}`.trim(),
+      updatedAtIso: `${value?.updatedAtIso ?? value?.acceptedAtIso ?? ''}`.trim(),
+      source: value?.source === 'entry' ? 'entry' : 'settings'
     };
   }
 

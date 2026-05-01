@@ -10,7 +10,7 @@
         <article
           class="editor-list-card support-help-accordion-item support-privacy-accordion-item"
           [class.is-open]="section.id === openAccordionSectionId"
-          [class.is-approved]="isSectionApproved(section.id)"
+          [class.is-approved]="isSectionOptional(section) && isSectionApproved(section.id)"
           [class.is-mandatory]="!isSectionOptional(section)"
           [class.is-optional]="isSectionOptional(section)"
           >
@@ -27,20 +27,22 @@
               </span>
             </button>
             <span class="support-privacy-accordion-actions">
-              <button
-                type="button"
-                class="support-privacy-section-check"
-                [class.is-approved]="isSectionApproved(section.id)"
-                [attr.aria-pressed]="isSectionApproved(section.id)"
-                [attr.aria-label]="isSectionApproved(section.id) ? 'Privacy section approved' : (isSectionOptional(section) ? 'Approve optional privacy section' : 'Approve required privacy section')"
-                (pointerover)="stopNestedAccordionEvent($event)"
-                (mouseover)="stopNestedAccordionEvent($event)"
-                (mousedown)="stopNestedAccordionEvent($event)"
-                (keydown)="stopNestedAccordionEvent($event)"
-                (click)="toggleSectionApproval(section.id, $event)"
-                >
-                <mat-icon>{{ isSectionApproved(section.id) ? 'check' : 'done_outline' }}</mat-icon>
-              </button>
+              @if (isSectionOptional(section)) {
+                <button
+                  type="button"
+                  class="support-privacy-section-check"
+                  [class.is-approved]="isSectionApproved(section.id)"
+                  [attr.aria-pressed]="isSectionApproved(section.id)"
+                  [attr.aria-label]="isSectionApproved(section.id) ? 'Privacy section approved' : 'Approve optional privacy section'"
+                  (pointerover)="stopNestedAccordionEvent($event)"
+                  (mouseover)="stopNestedAccordionEvent($event)"
+                  (mousedown)="stopNestedAccordionEvent($event)"
+                  (keydown)="stopNestedAccordionEvent($event)"
+                  (click)="toggleSectionApproval(section, $event)"
+                  >
+                  <mat-icon>{{ isSectionApproved(section.id) ? 'check' : 'done_outline' }}</mat-icon>
+                </button>
+              }
               <button
                 type="button"
                 class="support-privacy-caret-btn"
@@ -65,6 +67,59 @@
         </article>
       }
     </div>
+    @if (shouldShowPrivacySaveAction()) {
+      <div class="support-privacy-actions">
+        @if (consentSaveError) {
+          <span class="support-privacy-save-status support-privacy-save-status-error" role="alert">{{ consentSaveError }}</span>
+        } @else if (consentSaveMessage) {
+          <span class="support-privacy-save-status">{{ consentSaveMessage }}</span>
+        }
+        <span
+          class="support-privacy-save-shell"
+          [class.is-loading]="savingConsent"
+          [class.is-error]="!savingConsent && !!consentSaveError"
+          >
+          @if (savingConsent || consentSaveError) {
+            <span class="support-privacy-save-ring" aria-hidden="true">
+              <svg viewBox="0 0 132 44" preserveAspectRatio="none" class="support-privacy-save-ring-svg">
+                <defs>
+                  <linearGradient id="support-privacy-save-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="rgb(235, 147, 33)"></stop>
+                    <stop offset="100%" stop-color="rgb(247, 190, 52)"></stop>
+                  </linearGradient>
+                  <linearGradient id="support-privacy-save-gradient-error" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="rgb(213, 54, 68)"></stop>
+                    <stop offset="100%" stop-color="rgb(196, 29, 42)"></stop>
+                  </linearGradient>
+                </defs>
+                <path
+                  class="support-privacy-save-ring-track"
+                  d="M66 2 H112 A14 14 0 0 1 130 16 V28 A14 14 0 0 1 112 42 H20 A14 14 0 0 1 2 28 V16 A14 14 0 0 1 20 2 H66"
+                ></path>
+                <path
+                  class="support-privacy-save-ring-progress"
+                  [class.is-loading]="savingConsent"
+                  [class.is-error]="!savingConsent && !!consentSaveError"
+                  d="M66 2 H112 A14 14 0 0 1 130 16 V28 A14 14 0 0 1 112 42 H20 A14 14 0 0 1 2 28 V16 A14 14 0 0 1 20 2 H66"
+                  pathLength="100"
+                  stroke-dasharray="100"
+                  [attr.stroke-dashoffset]="savingConsent ? 100 : 0"
+                ></path>
+              </svg>
+            </span>
+          }
+          <button
+            type="button"
+            class="support-privacy-save-btn"
+            [disabled]="!canSavePrivacyChoices()"
+            (click)="savePrivacyChoices()"
+            >
+            <mat-icon>{{ savingConsent ? 'hourglass_top' : 'check_circle' }}</mat-icon>
+            <span>{{ privacySaveButtonLabel() }}</span>
+          </button>
+        </span>
+      </div>
+    }
   } @else {
     <article class="editor-list-card support-help-empty">
       <mat-icon>policy</mat-icon>

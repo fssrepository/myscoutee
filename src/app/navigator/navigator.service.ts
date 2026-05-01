@@ -7,6 +7,9 @@ import {
   UsersService,
   type ActivityMemberOwnerType,
   type ActivityCounterKey,
+  type EntryConsentState,
+  type HelpCenterRevision,
+  type PrivacyConsentRecord,
   type UserDto,
   type UserImpressionsSectionDto,
   type UserRealtimeLongPollResponseDto
@@ -50,6 +53,8 @@ export class NavigatorService {
   private static readonly USER_REALTIME_LONG_POLL_INTERVAL_MS = 30000;
   private static readonly DEMO_USER_REALTIME_LONG_POLL_INTERVAL_MS = 10000;
   private static readonly ACCOUNT_REACTIVATION_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
+  private static readonly ENTRY_CONSENT_KEY = 'entry-gdpr-consent';
+  private static readonly OPTIONAL_PRIVACY_APPROVAL_KEY = 'myscoutee-privacy-optional-approvals';
 
   private readonly usersService = inject(UsersService);
   private readonly helpCenterService = inject(HelpCenterService);
@@ -65,6 +70,8 @@ export class NavigatorService {
   private readonly settingsPopupRef = signal<NavigatorSettingsPopup | null>(null);
   private readonly reportUserContextRef = signal<NavigatorReportUserContext | null>(null);
   private readonly deletedAccountReactivationPendingRef = signal(false);
+  private readonly privacyConsentCheckKeyRef = signal('');
+  private readonly privacyConsentRequiredKeyRef = signal('');
   private readonly profileEditorOpenRef = signal(false);
   private readonly impressionsPopupOpenRef = signal(false);
   private readonly impressionsPopupUserIdRef = signal('');
@@ -73,6 +80,7 @@ export class NavigatorService {
   private userRealtimeLongPollInFlight = false;
   private userRealtimeLongPollActiveIntervalMs = NavigatorService.USER_REALTIME_LONG_POLL_INTERVAL_MS;
   private reactivationPromptUserId = '';
+  private privacyConsentCheckToken = 0;
   private readonly userRealtimeLongPollCursorByUserId: Record<string, string> = {};
   private readonly userSeenImpressionsCursorByUserId: Record<string, string> = {};
   private readonly userIgnoreNextImpressionsSnapshotByUserId: Record<string, boolean> = {};
@@ -81,6 +89,7 @@ export class NavigatorService {
   readonly bindings = this.bindingsRef.asReadonly();
   readonly profileEditorOpen = this.profileEditorOpenRef.asReadonly();
   readonly settingsPopup = this.settingsPopupRef.asReadonly();
+  readonly privacyConsentRequired = computed(() => this.privacyConsentRequiredKeyRef().length > 0);
   readonly reportUserContext = this.reportUserContextRef.asReadonly();
   readonly deletedAccountReactivationPending = this.deletedAccountReactivationPendingRef.asReadonly();
   readonly impressionsPopupOpen = this.impressionsPopupOpenRef.asReadonly();
@@ -150,6 +159,32 @@ export class NavigatorService {
       }
 
       this.activateUserRealtimeLongPoll(activeUserId);
+    });
+
+    effect(() => {
+      const session = this.sessionService.session();
+      const activeUserId = this.appCtx.activeUserId().trim();
+      const revision = this.helpCenterService.activePrivacyRevision();
+      const shouldCheckPrivacyConsent = Boolean(activeUserId)
+        && (Boolean(session) || this.isAdminWorkspaceRoute());
+
+      if (!shouldCheckPrivacyConsent) {
+        this.privacyConsentCheckKeyRef.set('');
+        this.privacyConsentRequiredKeyRef.set('');
+        return;
+      }
+      if (!revision) {
+        void this.helpCenterService.preload('privacy');
+        return;
+      }
+
+      const checkKey = this.privacyConsentKey(activeUserId, revision);
+      if (this.privacyConsentCheckKeyRef() === checkKey) {
+        return;
+      }
+
+      this.privacyConsentCheckKeyRef.set(checkKey);
+      void this.ensureActivePrivacyConsent(activeUserId, revision, checkKey);
     });
   }
 
@@ -248,6 +283,148 @@ export class NavigatorService {
     });
   }
 
+  private async ensureActivePrivacyConsent(userId: string, revision: HelpCenterRevision, checkKey: string): Promise<void> {
+    const requestToken = ++this.privacyConsentCheckToken;
+    try {
+      const existingConsent = await this.helpCenterService.loadPrivacyConsent(userId, revision.id, revision.version);
+      if (!this.isCurrentPrivacyConsentCheck(checkKey, requestToken)) {
+        return;
+      }
+      if (this.isPrivacyConsentCurrent(existingConsent, revision)) {
+        this.privacyConsentRequiredKeyRef.set('');
+        return;
+      }
+
+      const syncedAnonymousConsent = await this.syncAnonymousEntryConsent(userId, revision);
+      if (!this.isCurrentPrivacyConsentCheck(checkKey, requestToken)) {
+        return;
+      }
+      if (syncedAnonymousConsent) {
+        this.privacyConsentRequiredKeyRef.set('');
+        return;
+      }
+
+      this.privacyConsentRequiredKeyRef.set(checkKey);
+      this.openSettingsPopup('privacy');
+    } catch {
+      if (this.isCurrentPrivacyConsentCheck(checkKey, requestToken)) {
+        this.privacyConsentRequiredKeyRef.set(checkKey);
+        this.openSettingsPopup('privacy');
+      }
+    }
+  }
+
+  private async syncAnonymousEntryConsent(userId: string, revision: HelpCenterRevision): Promise<boolean> {
+    const entryConsent = this.loadAnonymousEntryConsent(revision);
+    if (!entryConsent) {
+      return false;
+    }
+    await this.helpCenterService.savePrivacyConsent({
+      userId,
+      revisionId: revision.id,
+      revisionVersion: revision.version,
+      approvedOptionalSectionIds: this.loadAnonymousOptionalApprovalIds(revision),
+      source: 'entry'
+    });
+    return true;
+  }
+
+  private loadAnonymousEntryConsent(revision: HelpCenterRevision): EntryConsentState | null {
+    if (typeof localStorage === 'undefined') {
+      return null;
+    }
+    const raw = localStorage.getItem(NavigatorService.ENTRY_CONSENT_KEY);
+    if (!raw) {
+      return null;
+    }
+    try {
+      const parsed = JSON.parse(raw) as Partial<EntryConsentState>;
+      if (
+        parsed.version !== this.entryConsentVersion(revision) ||
+        parsed.accepted !== true ||
+        typeof parsed.acceptedAtIso !== 'string' ||
+        parsed.acceptedAtIso.trim().length === 0
+      ) {
+        return null;
+      }
+      return {
+        version: parsed.version,
+        accepted: true,
+        acceptedAtIso: parsed.acceptedAtIso
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  private loadAnonymousOptionalApprovalIds(revision: HelpCenterRevision): string[] {
+    if (typeof localStorage === 'undefined') {
+      return [];
+    }
+    try {
+      const raw = localStorage.getItem(NavigatorService.OPTIONAL_PRIVACY_APPROVAL_KEY);
+      const parsed = raw
+        ? JSON.parse(raw) as { revisionKey?: unknown; approvedSectionIds?: unknown }
+        : null;
+      if (
+        !parsed ||
+        parsed.revisionKey !== this.optionalPrivacyRevisionKey(revision) ||
+        !Array.isArray(parsed.approvedSectionIds)
+      ) {
+        return [];
+      }
+      const optionalSectionIds = new Set(
+        revision.sections
+          .filter(section => section.optional === true)
+          .map(section => section.id)
+      );
+      return Array.from(new Set(
+        parsed.approvedSectionIds
+          .map(sectionId => `${sectionId ?? ''}`.trim())
+          .filter(sectionId => optionalSectionIds.has(sectionId))
+      )).sort();
+    } catch {
+      return [];
+    }
+  }
+
+  private isCurrentPrivacyConsentCheck(checkKey: string, requestToken: number): boolean {
+    return this.privacyConsentCheckToken === requestToken
+      && this.privacyConsentCheckKeyRef() === checkKey;
+  }
+
+  private isPrivacyConsentCurrent(consent: PrivacyConsentRecord | null, revision: HelpCenterRevision): boolean {
+    if (!consent) {
+      return false;
+    }
+    const consentRevisionId = `${consent.revisionId ?? ''}`.trim();
+    const consentVersion = Math.trunc(Number(consent.revisionVersion) || 0);
+    const currentVersion = Math.trunc(Number(revision.version) || 0);
+    return consentRevisionId === revision.id && consentVersion >= currentVersion && currentVersion > 0;
+  }
+
+  private privacyConsentKey(userId: string, revision: HelpCenterRevision): string {
+    return `${userId.trim()}::${revision.id}:v${revision.version}`;
+  }
+
+  private isActivePrivacyConsentRequired(): boolean {
+    const requiredKey = this.privacyConsentRequiredKeyRef();
+    const activeUserId = this.appCtx.activeUserId().trim();
+    const revision = this.helpCenterService.activePrivacyRevision();
+    if (!requiredKey || !activeUserId || !revision) {
+      return false;
+    }
+    return requiredKey === this.privacyConsentKey(activeUserId, revision);
+  }
+
+  private entryConsentVersion(revision: HelpCenterRevision): string {
+    return `privacy:${revision.id}:v${revision.version}`;
+  }
+
+  private optionalPrivacyRevisionKey(revision: HelpCenterRevision): string {
+    return `${revision.id}:v${revision.version}`;
+  }
+
   private resolveReactivatedProfileStatus(user: UserDto): UserDto['profileStatus'] {
     switch (user.previousProfileStatus) {
       case 'blocked':
@@ -318,10 +495,19 @@ export class NavigatorService {
   }
 
   closeSettingsPopup(): void {
+    if (this.settingsPopupRef() === 'privacy' && this.isActivePrivacyConsentRequired()) {
+      return;
+    }
     if (this.settingsPopupRef() === 'report-user') {
       this.reportUserContextRef.set(null);
     }
     this.settingsPopupRef.set(null);
+  }
+
+  markActivePrivacyConsentApproved(): void {
+    if (this.isActivePrivacyConsentRequired()) {
+      this.privacyConsentRequiredKeyRef.set('');
+    }
   }
 
   openReportUserPopup(context: NavigatorReportUserContext): void {

@@ -5,7 +5,7 @@ import { MatIconModule } from '@angular/material/icon';
 
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { HelpCenterService } from '../../../shared/core';
-import type { HelpCenterSection } from '../../../shared/core/base/models';
+import type { HelpCenterRevision, HelpCenterSection } from '../../../shared/core/base/models';
 
 @Component({
   selector: 'app-entry-consent-popup',
@@ -15,11 +15,14 @@ import type { HelpCenterSection } from '../../../shared/core/base/models';
   styleUrl: './entry-consent-popup.component.scss'
 })
 export class EntryConsentPopupComponent {
+  private static readonly OPTIONAL_PRIVACY_APPROVAL_KEY = 'myscoutee-privacy-optional-approvals';
+
   private readonly helpCenter = inject(HelpCenterService);
 
   @Input() open = false;
   @Input() viewOnly = false;
   @Input() loading = false;
+  @Input() approvalRequired = false;
 
   @Output() readonly closeRequested = new EventEmitter<void>();
   @Output() readonly acceptRequested = new EventEmitter<void>();
@@ -31,13 +34,16 @@ export class EntryConsentPopupComponent {
   protected readonly defaultPrivacyDescription = APP_STATIC_DATA.defaultPrivacyCenterDescription;
   protected openAccordionSectionId = '';
   protected approvedSectionIds = new Set<string>();
+  protected savingChoices = false;
+  protected choiceSaveMessage = '';
+  protected choiceSaveError = '';
+  private optionalApprovalsLoadedForRevision = '';
 
   constructor() {
     effect(() => {
       const sections = this.sections();
-      this.approvedSectionIds = new Set(
-        Array.from(this.approvedSectionIds).filter(sectionId => sections.some(section => section.id === sectionId))
-      );
+      const revision = this.activeRevision();
+      this.syncOptionalApprovalsForRevision(sections, revision);
       if (sections.length === 0) {
         this.openAccordionSectionId = '';
         return;
@@ -52,10 +58,11 @@ export class EntryConsentPopupComponent {
     this.closeRequested.emit();
   }
 
-  protected requestAccept(): void {
+  protected async requestAccept(): Promise<void> {
     if (!this.canAccept()) {
       return;
     }
+    await this.saveApprovalState();
     this.acceptRequested.emit();
   }
 
@@ -68,16 +75,21 @@ export class EntryConsentPopupComponent {
     this.openAccordionSectionId = this.openAccordionSectionId === sectionId ? '' : sectionId;
   }
 
-  protected toggleSectionApproval(sectionId: string, event?: Event): void {
+  protected toggleSectionApproval(section: HelpCenterSection, event?: Event): void {
     event?.preventDefault();
     this.stopNestedAccordionEvent(event);
+    if (!this.isSectionOptional(section)) {
+      return;
+    }
     const next = new Set(this.approvedSectionIds);
-    if (next.has(sectionId)) {
-      next.delete(sectionId);
+    if (next.has(section.id)) {
+      next.delete(section.id);
     } else {
-      next.add(sectionId);
+      next.add(section.id);
     }
     this.approvedSectionIds = next;
+    this.choiceSaveMessage = '';
+    this.choiceSaveError = '';
   }
 
   protected stopNestedAccordionEvent(event?: Event): void {
@@ -91,12 +103,54 @@ export class EntryConsentPopupComponent {
 
   protected canAccept(): boolean {
     const sections = this.sections();
-    const mandatorySections = sections.filter(section => !this.isSectionOptional(section));
     return !this.viewOnly
       && !this.loading
       && Boolean(this.activeRevision())
-      && sections.length > 0
-      && mandatorySections.every(section => this.approvedSectionIds.has(section.id));
+      && sections.length > 0;
+  }
+
+  protected hasOptionalSections(): boolean {
+    return this.sections().some(section => this.isSectionOptional(section));
+  }
+
+  protected shouldShowPrivacySaveAction(): boolean {
+    return this.viewOnly && (this.approvalRequired || this.hasOptionalSections());
+  }
+
+  protected canSavePrivacyChoices(): boolean {
+    return Boolean(this.activeRevision())
+      && this.shouldShowPrivacySaveAction()
+      && !this.loading
+      && !this.savingChoices;
+  }
+
+  protected privacySaveButtonLabel(): string {
+    if (this.savingChoices) {
+      return 'Saving...';
+    }
+    return this.approvalRequired ? 'Approve privacy' : 'Save choices';
+  }
+
+  protected async savePrivacyChoices(): Promise<void> {
+    if (!this.canSavePrivacyChoices()) {
+      return;
+    }
+    this.savingChoices = true;
+    this.choiceSaveMessage = '';
+    this.choiceSaveError = '';
+    try {
+      await this.saveApprovalState();
+      this.choiceSaveMessage = 'Privacy choices saved.';
+      if (this.approvalRequired) {
+        this.acceptRequested.emit();
+      } else if (this.viewOnly) {
+        this.requestClose();
+      }
+    } catch {
+      this.choiceSaveError = 'Privacy choices could not be saved.';
+    } finally {
+      this.savingChoices = false;
+    }
   }
 
   protected isSectionOptional(section: HelpCenterSection): boolean {
@@ -127,5 +181,78 @@ export class EntryConsentPopupComponent {
       default:
         return 'amber';
     }
+  }
+
+  private syncOptionalApprovalsForRevision(
+    sections: readonly HelpCenterSection[],
+    revision: HelpCenterRevision | null
+  ): void {
+    const optionalSectionIds = new Set(
+      sections.filter(section => this.isSectionOptional(section)).map(section => section.id)
+    );
+    const revisionKey = revision ? this.privacyRevisionKey(revision) : '';
+    if (revision && revisionKey && this.optionalApprovalsLoadedForRevision !== revisionKey) {
+      this.approvedSectionIds = this.loadOptionalApprovalState(revision, optionalSectionIds);
+      this.optionalApprovalsLoadedForRevision = revisionKey;
+      return;
+    }
+    this.approvedSectionIds = new Set(
+      Array.from(this.approvedSectionIds).filter(sectionId => optionalSectionIds.has(sectionId))
+    );
+  }
+
+  private async saveApprovalState(): Promise<void> {
+    const revision = this.activeRevision();
+    if (!revision) {
+      return;
+    }
+    const approvedSectionIds = this.approvedOptionalSectionIds();
+    this.saveOptionalApprovalState(revision, approvedSectionIds);
+  }
+
+  private saveOptionalApprovalState(revision: HelpCenterRevision, approvedSectionIds: string[]): void {
+    if (typeof localStorage === 'undefined') {
+      return;
+    }
+    localStorage.setItem(EntryConsentPopupComponent.OPTIONAL_PRIVACY_APPROVAL_KEY, JSON.stringify({
+      revisionKey: this.privacyRevisionKey(revision),
+      approvedSectionIds
+    }));
+  }
+
+  private approvedOptionalSectionIds(): string[] {
+    const optionalSectionIds = new Set(
+      this.sections().filter(section => this.isSectionOptional(section)).map(section => section.id)
+    );
+    return Array.from(this.approvedSectionIds)
+      .filter(sectionId => optionalSectionIds.has(sectionId))
+      .sort();
+  }
+
+  private loadOptionalApprovalState(
+    revision: HelpCenterRevision,
+    optionalSectionIds: ReadonlySet<string>
+  ): Set<string> {
+    if (typeof localStorage === 'undefined') {
+      return new Set();
+    }
+    try {
+      const raw = localStorage.getItem(EntryConsentPopupComponent.OPTIONAL_PRIVACY_APPROVAL_KEY);
+      const parsed = raw ? JSON.parse(raw) as { revisionKey?: unknown; approvedSectionIds?: unknown } : null;
+      if (!parsed || parsed.revisionKey !== this.privacyRevisionKey(revision) || !Array.isArray(parsed.approvedSectionIds)) {
+        return new Set();
+      }
+      return new Set(
+        parsed.approvedSectionIds
+          .map(sectionId => `${sectionId ?? ''}`.trim())
+          .filter(sectionId => optionalSectionIds.has(sectionId))
+      );
+    } catch {
+      return new Set();
+    }
+  }
+
+  private privacyRevisionKey(revision: HelpCenterRevision): string {
+    return `${revision.id}:v${revision.version}`;
   }
 }

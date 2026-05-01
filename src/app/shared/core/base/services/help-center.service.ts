@@ -2,7 +2,13 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 
 import { DemoHelpCenterService } from '../../demo/services/help-center.service';
 import { HttpHelpCenterService } from '../../http/services/help-center.service';
-import type { HelpCenterDocumentKind, HelpCenterRevisionSaveRequest, HelpCenterState } from '../models';
+import type {
+  HelpCenterDocumentKind,
+  HelpCenterRevisionSaveRequest,
+  HelpCenterState,
+  PrivacyConsentRecord,
+  PrivacyConsentSaveRequest
+} from '../models';
 import { BaseRouteModeService } from './base-route-mode.service';
 
 export const HELP_CENTER_LOAD_CONTEXT_KEY = 'help-center-load';
@@ -45,6 +51,19 @@ export class HelpCenterService extends BaseRouteModeService {
 
   async refresh(kind: HelpCenterDocumentKind = 'help'): Promise<HelpCenterState> {
     return this.loadState(this.normalizeKind(kind));
+  }
+
+  async loadPrivacyConsent(
+    userId: string,
+    revisionId: string,
+    revisionVersion?: number
+  ): Promise<PrivacyConsentRecord | null> {
+    const consent = await this.helpService('privacy').loadPrivacyConsent(userId, revisionId, revisionVersion);
+    return consent ? this.clonePrivacyConsent(consent) : null;
+  }
+
+  async savePrivacyConsent(request: PrivacyConsentSaveRequest): Promise<PrivacyConsentRecord> {
+    return this.clonePrivacyConsent(await this.helpService('privacy').savePrivacyConsent(request));
   }
 
   async loadAdminState(adminUserId: string, kind: HelpCenterDocumentKind = 'help'): Promise<HelpCenterState> {
@@ -118,6 +137,13 @@ export class HelpCenterService extends BaseRouteModeService {
         sections: revision.sections.map(section => ({ ...section }))
       })),
       auditTrail: state.auditTrail.map(entry => ({ ...entry }))
+    };
+  }
+
+  private clonePrivacyConsent(consent: PrivacyConsentRecord): PrivacyConsentRecord {
+    return {
+      ...consent,
+      approvedOptionalSectionIds: [...consent.approvedOptionalSectionIds]
     };
   }
 }

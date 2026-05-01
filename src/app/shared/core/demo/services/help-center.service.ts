@@ -8,7 +8,9 @@ import type {
   HelpCenterRevision,
   HelpCenterRevisionSaveRequest,
   HelpCenterSection,
-  HelpCenterState
+  HelpCenterState,
+  PrivacyConsentRecord,
+  PrivacyConsentSaveRequest
 } from '../../base/models';
 import { RouteDelayService } from '../../base/services/route-delay.service';
 import { HELP_CENTER_TABLE_NAME, type DemoHelpCenterTable } from '../models/help-center.model';
@@ -28,6 +30,76 @@ export class DemoHelpCenterService {
       await this.memoryDb.flushToIndexedDb();
     }
     return this.stateFromTable(this.table(), documentKind);
+  }
+
+  async loadPrivacyConsent(
+    userId: string,
+    revisionId: string,
+    revisionVersion?: number
+  ): Promise<PrivacyConsentRecord | null> {
+    await this.memoryDb.whenReady();
+    const normalizedUserId = this.nonEmptyText(userId, '');
+    const normalizedRevisionId = this.nonEmptyText(revisionId, '');
+    if (!normalizedUserId || !normalizedRevisionId) {
+      return null;
+    }
+    const table = this.table();
+    const consentId = this.privacyConsentRecordId(normalizedUserId, normalizedRevisionId);
+    const consent = table.privacyConsentsById?.[consentId] ?? null;
+    const minimumRevisionVersion = Math.trunc(Number(revisionVersion) || 0);
+    if (consent && minimumRevisionVersion > 0 && Math.trunc(Number(consent.revisionVersion) || 0) < minimumRevisionVersion) {
+      return null;
+    }
+    return consent ? this.clonePrivacyConsent(consent) : null;
+  }
+
+  async savePrivacyConsent(request: PrivacyConsentSaveRequest): Promise<PrivacyConsentRecord> {
+    await this.memoryDb.whenReady();
+    const userId = this.nonEmptyText(request?.userId, '');
+    const revisionId = this.nonEmptyText(request?.revisionId, '');
+    if (!userId || !revisionId) {
+      throw new Error('A user and privacy revision are required to save consent.');
+    }
+    const table = this.table();
+    const revision = table.revisionsById[revisionId];
+    if (!revision || this.revisionKind(revision) !== 'privacy') {
+      throw new Error('Privacy revision not found.');
+    }
+    const id = this.privacyConsentRecordId(userId, revisionId);
+    const current = table.privacyConsentsById?.[id] ?? null;
+    const nowIso = new Date().toISOString();
+    const revisionVersion = Math.max(1, Math.trunc(Number(revision.version || request?.revisionVersion) || 1));
+    const currentRevisionVersion = Math.max(0, Math.trunc(Number(current?.revisionVersion) || 0));
+    const consent: PrivacyConsentRecord = {
+      id,
+      userId,
+      revisionId,
+      revisionVersion,
+      approvedOptionalSectionIds: this.approvedOptionalSectionIds(request?.approvedOptionalSectionIds, revision),
+      acceptedAtIso: currentRevisionVersion >= revisionVersion && current?.acceptedAtIso ? current.acceptedAtIso : nowIso,
+      updatedAtIso: nowIso,
+      source: this.normalizeConsentSource(request?.source)
+    };
+    this.memoryDb.write(state => {
+      const currentTable = state[HELP_CENTER_TABLE_NAME];
+      const consentsById = {
+        ...(currentTable.privacyConsentsById ?? {}),
+        [id]: consent
+      };
+      return {
+        ...state,
+        [HELP_CENTER_TABLE_NAME]: {
+          ...currentTable,
+          privacyConsentsById: consentsById,
+          privacyConsentIds: [...new Set([...(currentTable.privacyConsentIds ?? []), id])]
+        }
+      };
+    });
+    await Promise.all([
+      this.memoryDb.flushToIndexedDb(),
+      this.routeDelay.waitForRouteDelay('/privacy/consents', undefined, undefined, 1500)
+    ]);
+    return this.clonePrivacyConsent(consent);
   }
 
   async saveRevision(request: HelpCenterRevisionSaveRequest, kind: HelpCenterDocumentKind = 'help'): Promise<HelpCenterState> {
@@ -286,6 +358,33 @@ export class DemoHelpCenterService {
     return this.memoryDb.read()[HELP_CENTER_TABLE_NAME];
   }
 
+  private privacyConsentRecordId(userId: string, revisionId: string): string {
+    return `${userId.trim()}::${revisionId.trim()}`;
+  }
+
+  private approvedOptionalSectionIds(
+    approvedSectionIds: readonly string[] | null | undefined,
+    revision: HelpCenterRevision
+  ): string[] {
+    const optionalSectionIds = new Set(
+      this.normalizeSections(revision.sections, 'privacy')
+        .filter(section => section.optional === true)
+        .map(section => section.id)
+    );
+    return Array.from(new Set(
+      (Array.isArray(approvedSectionIds) ? approvedSectionIds : [])
+        .map(sectionId => `${sectionId ?? ''}`.trim())
+        .filter(sectionId => optionalSectionIds.has(sectionId))
+    )).sort();
+  }
+
+  private clonePrivacyConsent(consent: PrivacyConsentRecord): PrivacyConsentRecord {
+    return {
+      ...consent,
+      approvedOptionalSectionIds: [...consent.approvedOptionalSectionIds]
+    };
+  }
+
   private stateFromTable(table: DemoHelpCenterTable, kind: HelpCenterDocumentKind): HelpCenterState {
     const revisions = this.revisionsForKind(table, kind)
       .map(revision => this.cloneRevision(revision, kind))
@@ -489,6 +588,10 @@ export class DemoHelpCenterService {
 
   private normalizeActor(actorUserId: string): string {
     return this.nonEmptyText(actorUserId, 'admin');
+  }
+
+  private normalizeConsentSource(source: string | null | undefined): PrivacyConsentRecord['source'] {
+    return source === 'entry' ? 'entry' : 'settings';
   }
 
   private nonEmptyText(value: string | null | undefined, fallback: string): string {

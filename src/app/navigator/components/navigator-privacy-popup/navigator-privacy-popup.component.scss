@@ -206,7 +206,8 @@
 
 .support-privacy-accordion-toggle:focus-visible,
 .support-privacy-caret-btn:focus-visible,
-.support-privacy-section-check:focus-visible {
+.support-privacy-section-check:focus-visible,
+.support-privacy-save-btn:focus-visible {
   outline: 2px solid rgba(47, 101, 170, 0.34);
   outline-offset: 2px;
 }
@@ -276,6 +277,142 @@
   height: 17px;
   font-size: 17px;
   line-height: 17px;
+}
+
+.support-privacy-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.58rem;
+  padding: 0.2rem 0 0;
+}
+
+.support-privacy-save-status {
+  color: rgba(30, 83, 57, 0.88);
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.support-privacy-save-status-error {
+  color: #9d2c37;
+}
+
+.support-privacy-save-shell {
+  position: relative;
+  display: inline-flex;
+  align-items: stretch;
+  justify-content: center;
+  min-width: 146px;
+  min-height: 44px;
+  border-radius: 999px;
+  padding: 2px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.support-privacy-save-btn {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  min-height: 40px;
+  border: 0;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #6550ff 0%, #ff4f97 100%);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.34rem;
+  padding: 0 0.74rem;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: 0 8px 18px rgba(101, 80, 255, 0.22);
+}
+
+.support-privacy-save-ring {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.support-privacy-save-ring-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  filter: drop-shadow(0 8px 18px rgba(68, 18, 18, 0.14));
+}
+
+.support-privacy-save-ring-track,
+.support-privacy-save-ring-progress {
+  fill: none;
+  stroke-width: 4;
+}
+
+.support-privacy-save-ring-track {
+  stroke: rgba(133, 100, 42, 0.18);
+}
+
+.support-privacy-save-ring-progress {
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.support-privacy-save-ring-progress.is-loading {
+  stroke: url(#support-privacy-save-gradient);
+  animation: support-privacy-save-ring-progress 3s linear forwards;
+}
+
+.support-privacy-save-ring-progress.is-error {
+  stroke: url(#support-privacy-save-gradient-error);
+}
+
+.support-privacy-save-shell.is-loading .support-privacy-save-btn,
+.support-privacy-save-shell.is-loading .support-privacy-save-btn:hover,
+.support-privacy-save-shell.is-loading .support-privacy-save-btn:disabled {
+  border: 0;
+  background: linear-gradient(180deg, #ffe7bf 0%, #ffd085 100%);
+  color: #8e4f0d;
+  opacity: 1;
+  cursor: wait;
+  box-shadow: none;
+}
+
+.support-privacy-save-shell.is-error .support-privacy-save-btn,
+.support-privacy-save-shell.is-error .support-privacy-save-btn:hover {
+  background: linear-gradient(180deg, #f36a79 0%, #d4374a 100%);
+  color: #fff;
+  opacity: 1;
+  box-shadow: none;
+}
+
+.support-privacy-save-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.56;
+  box-shadow: none;
+}
+
+.support-privacy-save-shell.is-loading .support-privacy-save-btn:disabled,
+.support-privacy-save-shell.is-error .support-privacy-save-btn:disabled {
+  opacity: 1;
+}
+
+.support-privacy-save-btn .mat-icon {
+  width: 17px;
+  height: 17px;
+  font-size: 17px;
+  line-height: 17px;
+}
+
+@keyframes support-privacy-save-ring-progress {
+  from {
+    stroke-dashoffset: 100;
+  }
+
+  to {
+    stroke-dashoffset: 0;
+  }
 }
 
 .support-help-empty,

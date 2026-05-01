@@ -3,7 +3,7 @@
     <div class="entry-consent-backdrop" (click)="viewOnly && requestClose()"></div>
     <article class="entry-consent-panel">
       <header class="entry-consent-head" [ngClass]="headerColorClass()">
-        <div class="entry-consent-head-row">
+        <div class="entry-consent-head-row" [class.has-close]="viewOnly">
           <div class="entry-consent-title-wrap">
             <h2>
               <span>{{ activeRevision()?.summary || 'Privacy first' }}</span>
@@ -40,7 +40,7 @@
               <article
                 class="entry-consent-accordion-item"
                 [class.is-open]="openAccordionSectionId === section.id"
-                [class.is-approved]="isSectionApproved(section.id)"
+                [class.is-approved]="isSectionOptional(section) && isSectionApproved(section.id)"
                 [class.is-mandatory]="!isSectionOptional(section)"
                 [class.is-optional]="isSectionOptional(section)"
                 >
@@ -57,20 +57,22 @@
                     </span>
                   </button>
                   <span class="entry-consent-section-actions">
-                    <button
-                      type="button"
-                      class="entry-consent-section-check"
-                      [class.is-approved]="isSectionApproved(section.id)"
-                      [attr.aria-pressed]="isSectionApproved(section.id)"
-                      [attr.aria-label]="isSectionApproved(section.id) ? 'Privacy section approved' : (isSectionOptional(section) ? 'Approve optional privacy section' : 'Approve required privacy section')"
-                      (pointerover)="stopNestedAccordionEvent($event)"
-                      (mouseover)="stopNestedAccordionEvent($event)"
-                      (mousedown)="stopNestedAccordionEvent($event)"
-                      (keydown)="stopNestedAccordionEvent($event)"
-                      (click)="toggleSectionApproval(section.id, $event)"
-                      >
-                      <mat-icon>{{ isSectionApproved(section.id) ? 'check' : 'done_outline' }}</mat-icon>
-                    </button>
+                    @if (isSectionOptional(section)) {
+                      <button
+                        type="button"
+                        class="entry-consent-section-check"
+                        [class.is-approved]="isSectionApproved(section.id)"
+                        [attr.aria-pressed]="isSectionApproved(section.id)"
+                        [attr.aria-label]="isSectionApproved(section.id) ? 'Optional privacy section approved' : 'Approve optional privacy section'"
+                        (pointerover)="stopNestedAccordionEvent($event)"
+                        (mouseover)="stopNestedAccordionEvent($event)"
+                        (mousedown)="stopNestedAccordionEvent($event)"
+                        (keydown)="stopNestedAccordionEvent($event)"
+                        (click)="toggleSectionApproval(section, $event)"
+                        >
+                        <mat-icon>{{ isSectionApproved(section.id) ? 'check' : 'done_outline' }}</mat-icon>
+                      </button>
+                    }
                     <button
                       type="button"
                       class="entry-consent-caret-btn"
@@ -101,7 +103,26 @@
         }
       </div>
 
-      @if (!viewOnly) {
+      @if (viewOnly && shouldShowPrivacySaveAction()) {
+        <footer class="entry-consent-actions entry-consent-choice-actions">
+          @if (choiceSaveError) {
+            <span class="entry-consent-save-status entry-consent-save-status-error" role="alert">{{ choiceSaveError }}</span>
+          } @else if (choiceSaveMessage) {
+            <span class="entry-consent-save-status">{{ choiceSaveMessage }}</span>
+          }
+          <button
+            type="button"
+            class="entry-consent-btn entry-consent-btn-primary"
+            matRipple
+            [matRippleColor]="'rgba(255, 255, 255, 0.24)'"
+            [disabled]="!canSavePrivacyChoices()"
+            (click)="savePrivacyChoices()"
+            >
+            <mat-icon>{{ savingChoices ? 'hourglass_top' : 'check_circle' }}</mat-icon>
+            <span>{{ privacySaveButtonLabel() }}</span>
+          </button>
+        </footer>
+      } @else if (!viewOnly) {
         <footer class="entry-consent-actions">
           <button
             type="button"

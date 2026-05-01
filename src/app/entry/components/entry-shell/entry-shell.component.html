@@ -10,6 +10,7 @@
   [open]="showEntryConsentPopup"
   [viewOnly]="entryConsentViewOnly"
   [loading]="entryPrivacyLoading"
+  [approvalRequired]="!hasEntryConsent"
   (closeRequested)="closeEntryConsentPopup()"
   (acceptRequested)="acceptEntryConsent()"
   (rejectRequested)="rejectEntryConsent()"

@@ -189,7 +189,9 @@ export class AppMemoryDb {
         revisionsById: {},
         revisionIds: [],
         auditById: {},
-        auditIds: []
+        auditIds: [],
+        privacyConsentsById: {},
+        privacyConsentIds: []
       },
       [PROFILE_EXPERIENCES_TABLE_NAME]: {
         byUserId: {},
@@ -714,7 +716,13 @@ export class AppMemoryDb {
           : { ...fallback[HELP_CENTER_TABLE_NAME].auditById },
         auditIds: Array.isArray(helpCenterSource?.auditIds)
           ? helpCenterSource.auditIds.map(id => String(id))
-          : [...fallback[HELP_CENTER_TABLE_NAME].auditIds]
+          : [...fallback[HELP_CENTER_TABLE_NAME].auditIds],
+        privacyConsentsById: helpCenterSource?.privacyConsentsById && typeof helpCenterSource.privacyConsentsById === 'object'
+          ? { ...helpCenterSource.privacyConsentsById }
+          : { ...(fallback[HELP_CENTER_TABLE_NAME].privacyConsentsById ?? {}) },
+        privacyConsentIds: Array.isArray(helpCenterSource?.privacyConsentIds)
+          ? helpCenterSource.privacyConsentIds.map(id => String(id))
+          : [...(fallback[HELP_CENTER_TABLE_NAME].privacyConsentIds ?? [])]
       },
       [PROFILE_EXPERIENCES_TABLE_NAME]: {
         byUserId: this.normalizeProfileExperiencesByUserId(profileExperiencesSource?.byUserId, fallback[PROFILE_EXPERIENCES_TABLE_NAME].byUserId),

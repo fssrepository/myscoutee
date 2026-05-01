@@ -100,6 +100,27 @@ export interface HelpCenterState {
   auditTrail: HelpCenterAuditEntry[];
 }
 
+export type PrivacyConsentSource = 'entry' | 'settings';
+
+export interface PrivacyConsentRecord {
+  id: string;
+  userId: string;
+  revisionId: string;
+  revisionVersion: number;
+  approvedOptionalSectionIds: string[];
+  acceptedAtIso: string;
+  updatedAtIso: string;
+  source: PrivacyConsentSource;
+}
+
+export interface PrivacyConsentSaveRequest {
+  userId: string;
+  revisionId: string;
+  revisionVersion: number;
+  approvedOptionalSectionIds: string[];
+  source?: PrivacyConsentSource;
+}
+
 export interface HelpCenterRevisionSaveRequest {
   actorUserId: string;
   baseRevisionId?: string | null;

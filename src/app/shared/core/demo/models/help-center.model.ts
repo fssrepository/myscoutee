@@ -1,4 +1,4 @@
-import type { HelpCenterAuditEntry, HelpCenterRevision } from '../../base/models';
+import type { HelpCenterAuditEntry, HelpCenterRevision, PrivacyConsentRecord } from '../../base/models';
 
 export const HELP_CENTER_TABLE_NAME = 'helpCenter';
 
@@ -11,6 +11,8 @@ export interface DemoHelpCenterTable {
   revisionIds: string[];
   auditById: Record<string, HelpCenterAuditEntry>;
   auditIds: string[];
+  privacyConsentsById?: Record<string, PrivacyConsentRecord>;
+  privacyConsentIds?: string[];
 }
 
 export interface DemoHelpCenterMemorySchema {

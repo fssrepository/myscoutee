@@ -176,7 +176,7 @@ export class EntryShellComponent {
   }
 
   protected closeEntryConsentPopup(): void {
-    if (!this.entryConsentViewOnly && (!this.hasEntryConsent || this.entryPrivacyLoading)) {
+    if (this.entryPrivacyLoading || !this.hasEntryConsent) {
       return;
     }
     this.showEntryConsentPopup = false;
