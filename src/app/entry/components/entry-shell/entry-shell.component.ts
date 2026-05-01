@@ -1,6 +1,6 @@
 import { ChangeDetectorRef, Component, EventEmitter, HostListener, Injector, Input, NgZone, Output, inject } from '@angular/core';
 
-import { AppContext, USERS_LOAD_CONTEXT_KEY, UsersService, type DemoUserListItemDto } from '../../../shared/core';
+import { AppContext, HelpCenterService, USERS_LOAD_CONTEXT_KEY, UsersService, type DemoUserListItemDto } from '../../../shared/core';
 import type { DemoBootstrapProgressStage } from '../../../shared/core/demo';
 import type * as AppTypes from '../../../shared/core/base/models';
 import type { LocationCoordinates } from '../../../shared/core/base/interfaces/location.interface';
@@ -27,13 +27,13 @@ import { EntryLandingComponent } from '../entry-landing/entry-landing.component'
 export class EntryShellComponent {
   private static readonly ENTRY_CONSENT_KEY = 'entry-gdpr-consent';
   private static readonly ENTRY_CONSENT_AUDIT_KEY = 'entry-gdpr-consent-audit';
-  private static readonly ENTRY_CONSENT_VERSION = '2026-02-26-v1';
   private static readonly ENTRY_CONSENT_AUDIT_MAX = 30;
 
   private readonly injector = inject(Injector);
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
   private readonly ngZone = inject(NgZone);
   private readonly appCtx = inject(AppContext);
+  private readonly helpCenter = inject(HelpCenterService);
   private readonly confirmationDialogService = inject(ConfirmationDialogService);
   private usersServiceRef: UsersService | null = null;
   private loginEligibilityBusy = false;
@@ -49,6 +49,7 @@ export class EntryShellComponent {
 
   protected showEntryConsentPopup = false;
   protected entryConsentViewOnly = false;
+  protected entryPrivacyLoading = true;
   protected showUserSelector = false;
   protected demoSelectorUsers: DemoUserListItemDto[] = [];
   protected demoSelectorLoading = false;
@@ -86,7 +87,7 @@ export class EntryShellComponent {
   }
 
   protected get hasEntryConsent(): boolean {
-    return this.loadEntryConsentState() !== null;
+    return !this.entryPrivacyLoading && this.loadEntryConsentState() !== null;
   }
 
   protected openEntryDemo(): void {
@@ -166,12 +167,16 @@ export class EntryShellComponent {
   }
 
   protected openEntryConsentPopup(viewOnly = false): void {
+    if (this.helpCenter.privacyState() === null) {
+      this.entryPrivacyLoading = true;
+      void this.loadEntryPrivacyContent();
+    }
     this.entryConsentViewOnly = viewOnly;
     this.showEntryConsentPopup = true;
   }
 
   protected closeEntryConsentPopup(): void {
-    if (!this.entryConsentViewOnly && !this.hasEntryConsent) {
+    if (!this.entryConsentViewOnly && (!this.hasEntryConsent || this.entryPrivacyLoading)) {
       return;
     }
     this.showEntryConsentPopup = false;
@@ -179,9 +184,13 @@ export class EntryShellComponent {
   }
 
   protected acceptEntryConsent(): void {
+    const version = this.entryConsentVersion();
+    if (this.entryPrivacyLoading || !version) {
+      return;
+    }
     const nowIso = new Date().toISOString();
     const consent: AppTypes.EntryConsentState = {
-      version: EntryShellComponent.ENTRY_CONSENT_VERSION,
+      version,
       accepted: true,
       acceptedAtIso: nowIso
     };
@@ -200,9 +209,10 @@ export class EntryShellComponent {
   }
 
   private initializeEntryFlow(): void {
-    const hasConsent = this.loadEntryConsentState() !== null;
+    const hasStoredConsent = Boolean(localStorage.getItem(EntryShellComponent.ENTRY_CONSENT_KEY));
     this.entryConsentViewOnly = false;
-    this.showEntryConsentPopup = !hasConsent;
+    this.showEntryConsentPopup = !hasStoredConsent;
+    this.entryPrivacyLoading = true;
     this.showUserSelector = false;
     this.demoSelectorLoading = false;
     this.demoSelectorLoadingProgress = 0;
@@ -212,6 +222,7 @@ export class EntryShellComponent {
     this.demoSelectorSubmitting = false;
     this.demoSelectorSelectedUserId = '';
     this.showFirebaseAuthPopup = false;
+    void this.loadEntryPrivacyContent();
   }
 
   private get usersService(): UsersService {
@@ -224,6 +235,10 @@ export class EntryShellComponent {
   private ensureEntryConsent(): boolean {
     if (this.hasEntryConsent) {
       return true;
+    }
+    if (this.helpCenter.privacyState() === null) {
+      this.entryPrivacyLoading = true;
+      void this.loadEntryPrivacyContent();
     }
     this.entryConsentViewOnly = false;
     this.showEntryConsentPopup = true;
@@ -449,6 +464,10 @@ export class EntryShellComponent {
   }
 
   private loadEntryConsentState(): AppTypes.EntryConsentState | null {
+    const expectedVersion = this.entryConsentVersion();
+    if (!expectedVersion) {
+      return null;
+    }
     const raw = localStorage.getItem(EntryShellComponent.ENTRY_CONSENT_KEY);
     if (!raw) {
       return null;
@@ -456,7 +475,7 @@ export class EntryShellComponent {
     try {
       const parsed = JSON.parse(raw) as Partial<AppTypes.EntryConsentState>;
       if (
-        parsed.version !== EntryShellComponent.ENTRY_CONSENT_VERSION ||
+        parsed.version !== expectedVersion ||
         parsed.accepted !== true ||
         typeof parsed.acceptedAtIso !== 'string' ||
         parsed.acceptedAtIso.length === 0
@@ -477,7 +496,7 @@ export class EntryShellComponent {
     const record: AppTypes.EntryConsentAuditRecord = {
       tsIso,
       action,
-      version: EntryShellComponent.ENTRY_CONSENT_VERSION,
+      version: this.entryConsentVersion(),
       source: 'entry',
       userAgent: navigator.userAgent
     };
@@ -498,5 +517,28 @@ export class EntryShellComponent {
     } catch {
       return [];
     }
+  }
+
+  private async loadEntryPrivacyContent(): Promise<void> {
+    this.entryPrivacyLoading = true;
+    try {
+      await this.helpCenter.preload('privacy');
+    } finally {
+      this.ngZone.run(() => {
+        this.entryPrivacyLoading = false;
+        if (!this.entryConsentViewOnly) {
+          this.showEntryConsentPopup = this.loadEntryConsentState() === null;
+        }
+        this.changeDetectorRef.detectChanges();
+      });
+    }
+  }
+
+  private entryConsentVersion(): string {
+    const revision = this.helpCenter.activePrivacyRevision();
+    if (!revision) {
+      return '';
+    }
+    return `privacy:${revision.id}:v${revision.version}`;
   }
 }

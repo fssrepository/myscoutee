@@ -100,10 +100,10 @@
                 <span class="card-badge menu-shortcut-badge">{{ user.activities.chat | counterBadge }}</span>
               }
             </button>
-            <button #adminHelpEditorButton class="menu-shortcut-btn menu-shortcut-help-editor" type="button" [disabled]="!isOnline()" (click)="openAdminHelpEditorShortcut($event)" aria-label="Open help editor" title="Help Editor">
+            <button #adminHelpEditorButton class="menu-shortcut-btn menu-shortcut-help-editor" type="button" [disabled]="!isOnline()" (click)="openAdminHelpEditorShortcut($event)" aria-label="Open content editor" title="Content Editor">
               <span class="navigator-action-ripple" matRipple [matRippleTrigger]="adminHelpEditorButton" aria-hidden="true"></span>
               <mat-icon>edit_note</mat-icon>
-              <span class="menu-shortcut-label">Help</span>
+              <span class="menu-shortcut-label">Content</span>
             </button>
           </div>
         </div>

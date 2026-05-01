@@ -31,7 +31,15 @@ export const ROUTE_CONFIG: RouteConfig = {
       demoDelayMs: 1500
     },
     {
+      routePrefix: '/privacy',
+      demoDelayMs: 1500
+    },
+    {
       routePrefix: '/admin/help',
+      demoDelayMs: 1500
+    },
+    {
+      routePrefix: '/admin/privacy',
       demoDelayMs: 1500
     },
     {

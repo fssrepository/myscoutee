@@ -32,7 +32,6 @@
 
 .support-help-hero {
   position: relative;
-  padding-right: 4rem;
   background: linear-gradient(180deg, #fbf4e8 0%, #fffaf0 100%);
   border-color: rgba(157, 118, 41, 0.24);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
@@ -44,23 +43,6 @@
 
 .support-help-hero p {
   color: rgba(108, 74, 19, 0.84);
-}
-
-.support-help-version {
-  position: absolute;
-  top: 0.54rem;
-  right: 0.58rem;
-  min-width: 2.4rem;
-  height: 24px;
-  border-radius: 999px;
-  background: rgba(124, 86, 24, 0.12);
-  color: #704a12;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 0.48rem;
-  font-size: 0.72rem;
-  font-weight: 900;
 }
 
 .support-help-accordion {

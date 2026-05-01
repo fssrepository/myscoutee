@@ -184,6 +184,8 @@ export class AppMemoryDb {
       [HELP_CENTER_TABLE_NAME]: {
         seeded: false,
         activeRevisionId: null,
+        seededKinds: {},
+        activeRevisionIdsByKind: {},
         revisionsById: {},
         revisionIds: [],
         auditById: {},
@@ -695,6 +697,12 @@ export class AppMemoryDb {
         activeRevisionId: typeof helpCenterSource?.activeRevisionId === 'string'
           ? helpCenterSource.activeRevisionId
           : fallback[HELP_CENTER_TABLE_NAME].activeRevisionId,
+        seededKinds: helpCenterSource?.seededKinds && typeof helpCenterSource.seededKinds === 'object'
+          ? { ...helpCenterSource.seededKinds }
+          : { ...(fallback[HELP_CENTER_TABLE_NAME].seededKinds ?? {}) },
+        activeRevisionIdsByKind: helpCenterSource?.activeRevisionIdsByKind && typeof helpCenterSource.activeRevisionIdsByKind === 'object'
+          ? { ...helpCenterSource.activeRevisionIdsByKind }
+          : { ...(fallback[HELP_CENTER_TABLE_NAME].activeRevisionIdsByKind ?? {}) },
         revisionsById: helpCenterSource?.revisionsById && typeof helpCenterSource.revisionsById === 'object'
           ? { ...helpCenterSource.revisionsById }
           : { ...fallback[HELP_CENTER_TABLE_NAME].revisionsById },

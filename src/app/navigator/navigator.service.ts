@@ -185,7 +185,7 @@ export class NavigatorService {
     }
 
     this.syncHydratedUser(loadedUser);
-    void this.helpCenterService.preload();
+    void this.helpCenterService.preloadAll();
     return loadedUser;
   }
 

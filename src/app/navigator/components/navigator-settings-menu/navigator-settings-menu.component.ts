@@ -18,14 +18,19 @@ export class NavigatorSettingsMenuComponent {
   private readonly router = inject(Router);
   protected readonly helpVersionLabel = this.helpCenter.activeVersionLabel;
   protected readonly hasActiveHelpRevision = this.helpCenter.hasActiveRevision;
+  protected readonly privacyVersionLabel = this.helpCenter.activePrivacyVersionLabel;
+  protected readonly hasActivePrivacyRevision = this.helpCenter.hasActivePrivacyRevision;
 
   constructor() {
-    void this.helpCenter.preload();
+    void this.helpCenter.preloadAll();
   }
 
   protected openPopup(popup: NavigatorSettingsPopup, event: Event): void {
     event.stopPropagation();
     if (popup === 'help' && !this.hasActiveHelpRevision()) {
+      return;
+    }
+    if (popup === 'privacy' && !this.hasActivePrivacyRevision()) {
       return;
     }
     this.navigatorService.openSettingsPopup(popup);

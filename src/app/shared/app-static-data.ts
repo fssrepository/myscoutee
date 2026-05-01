@@ -14,6 +14,7 @@ import type {
   EventExploreOrder,
   EventVisibility,
   ExperienceEntry,
+  HelpCenterRevision,
   HelpCenterSection,
   InterestOptionGroup,
   ProfileStatus,
@@ -24,6 +25,7 @@ import type {
   TournamentLeaderboardType,
   ValuesOptionGroup
 } from './core/base/models';
+import { GDPR_CONTENT } from './gdpr-data';
 
 interface PersonalityTraitCatalogEntry {
   id: string;
@@ -784,6 +786,7 @@ const EVENT_FEEDBACK_LIST_FILTERS: Array<{ key: EventFeedbackListFilter; label: 
   { key: 'removed', label: 'Removed', icon: 'delete_outline' }
 ];
 const DEFAULT_HELP_CENTER_DESCRIPTION = 'MyScoutee helps you plan events end-to-end: invite people, split into stages/groups, assign resources, and coordinate in context chats.';
+const DEFAULT_PRIVACY_CENTER_DESCRIPTION = 'Before continuing, please review and accept how your data is used in MyScoutee.';
 const HELP_CENTER_SECTIONS: HelpCenterSection[] = [
   {
     id: 'events',
@@ -887,6 +890,80 @@ const HELP_CENTER_SECTIONS: HelpCenterSection[] = [
   }
 ];
 
+const htmlList = (items: readonly string[]): string => `<ul>${items.map(item => `<li>${item}</li>`).join('')}</ul>`;
+const PRIVACY_CENTER_SECTIONS: HelpCenterSection[] = [
+  {
+    id: 'privacy',
+    icon: 'policy',
+    title: GDPR_CONTENT.title,
+    blurb: GDPR_CONTENT.subtitle,
+    contentHtml: `
+      <p>${GDPR_CONTENT.subtitle}</p>
+      <p><strong>Last updated:</strong> February 1, 2026</p>
+    `
+  },
+  {
+    id: 'contact-details',
+    icon: 'contact_mail',
+    title: 'Contact details',
+    blurb: 'Who to contact about privacy and data protection.',
+    contentHtml: htmlList(GDPR_CONTENT.contacts.map(contact => `<strong>${contact.label}:</strong> ${contact.value}`))
+  },
+  {
+    id: 'legal-basis',
+    icon: 'gavel',
+    title: 'Legal basis',
+    blurb: 'Why MyScoutee processes data for product and safety workflows.',
+    contentHtml: htmlList(GDPR_CONTENT.legalBases)
+  },
+  {
+    id: 'your-rights',
+    icon: 'fact_check',
+    title: 'Your rights',
+    blurb: 'Rights available for your account and personal data.',
+    contentHtml: GDPR_CONTENT.rights
+      .map(section => `<h4>${section.title}</h4>${htmlList(section.items)}`)
+      .join('\n')
+  },
+  {
+    id: 'data-categories',
+    icon: 'category',
+    title: 'Data categories',
+    blurb: 'Types of data MyScoutee may process.',
+    contentHtml: GDPR_CONTENT.dataCategories
+      .map(section => `<h4>${section.category}</h4>${htmlList(section.items)}`)
+      .join('\n')
+  },
+  {
+    id: 'purposes',
+    icon: 'tips_and_updates',
+    title: 'Purposes',
+    blurb: 'How data supports profile, event, chat, and trust features.',
+    contentHtml: htmlList(GDPR_CONTENT.purposes)
+  },
+  {
+    id: 'retention',
+    icon: 'schedule',
+    title: 'Retention',
+    blurb: 'How long data is kept.',
+    contentHtml: htmlList(GDPR_CONTENT.retention)
+  },
+  {
+    id: 'sharing',
+    icon: 'share',
+    title: 'Third-party sharing',
+    blurb: 'When data may be shared outside MyScoutee.',
+    contentHtml: htmlList(GDPR_CONTENT.sharing)
+  },
+  {
+    id: 'security',
+    icon: 'security',
+    title: 'Security',
+    blurb: 'Controls used to protect data.',
+    contentHtml: htmlList(GDPR_CONTENT.security)
+  }
+];
+
 export const APP_STATIC_DATA = {
   vibeCategories: VIBE_CATEGORIES,
   hostedEventTypes: HOSTED_EVENT_TYPES,
@@ -939,18 +1016,37 @@ export const APP_STATIC_DATA = {
   eventFeedbackPersonalityTraitOptions: EVENT_FEEDBACK_PERSONALITY_TRAIT_OPTIONS,
   eventFeedbackListFilters: EVENT_FEEDBACK_LIST_FILTERS,
   helpCenterSections: HELP_CENTER_SECTIONS,
+  privacyCenterSections: PRIVACY_CENTER_SECTIONS,
   defaultHelpCenterDescription: DEFAULT_HELP_CENTER_DESCRIPTION,
+  defaultPrivacyCenterDescription: DEFAULT_PRIVACY_CENTER_DESCRIPTION,
   defaultHelpCenterRevision: {
     id: 'help-default-v1',
+    documentKind: 'help',
     version: 1,
     title: 'MyScoutee help',
     summary: 'What you can do in MyScoutee',
     description: DEFAULT_HELP_CENTER_DESCRIPTION,
+    headerColor: 'amber',
     sections: HELP_CENTER_SECTIONS,
     active: true,
     createdAtIso: '2026-05-01T00:00:00.000Z',
     createdByUserId: 'system',
     updatedAtIso: '2026-05-01T00:00:00.000Z',
     updatedByUserId: 'system'
-  }
+  } satisfies HelpCenterRevision,
+  defaultPrivacyCenterRevision: {
+    id: 'privacy-default-v1',
+    documentKind: 'privacy',
+    version: 1,
+    title: 'Data privacy',
+    summary: 'Privacy first',
+    description: DEFAULT_PRIVACY_CENTER_DESCRIPTION,
+    headerColor: 'amber',
+    sections: PRIVACY_CENTER_SECTIONS,
+    active: true,
+    createdAtIso: '2026-02-01T00:00:00.000Z',
+    createdByUserId: 'system',
+    updatedAtIso: '2026-02-01T00:00:00.000Z',
+    updatedByUserId: 'system'
+  } satisfies HelpCenterRevision
 };

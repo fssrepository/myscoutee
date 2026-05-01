@@ -57,18 +57,24 @@ export interface HelpCenterSection {
   title: string;
   blurb: string;
   contentHtml: string;
+  optional?: boolean;
   details?: string[];
   points?: string[];
 }
+
+export type HelpCenterDocumentKind = 'help' | 'privacy';
+export type HelpCenterHeaderColor = 'amber' | 'blue' | 'green' | 'rose' | 'violet' | 'slate';
 
 export type HelpCenterAuditAction = 'seed' | 'create' | 'update' | 'activate' | 'delete';
 
 export interface HelpCenterRevision {
   id: string;
+  documentKind?: HelpCenterDocumentKind;
   version: number;
   title: string;
   summary: string;
   description: string;
+  headerColor?: HelpCenterHeaderColor;
   sections: HelpCenterSection[];
   active: boolean;
   createdAtIso: string;
@@ -79,6 +85,7 @@ export interface HelpCenterRevision {
 
 export interface HelpCenterAuditEntry {
   id: string;
+  documentKind?: HelpCenterDocumentKind;
   revisionId: string | null;
   version: number | null;
   action: HelpCenterAuditAction;
@@ -99,6 +106,7 @@ export interface HelpCenterRevisionSaveRequest {
   title: string;
   summary: string;
   description: string;
+  headerColor?: HelpCenterHeaderColor;
   sections: HelpCenterSection[];
 }
 

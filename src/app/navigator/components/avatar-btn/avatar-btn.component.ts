@@ -163,7 +163,7 @@ export class AvatarBtnComponent implements OnDestroy {
       }
 
       if (!hasBindings || status === 'loading' || status === 'idle') {
-        void this.helpCenterService.preload();
+        void this.helpCenterService.preloadAll();
         this.beginUserMenuLoadWindow();
         return;
       }

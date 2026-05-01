@@ -1,93 +1,75 @@
-<div class="gdpr-popup">
-  <article class="editor-list-card gdpr-lead-card">
-    <h4>{{ gdprContent.title }}</h4>
-    <p>{{ gdprContent.subtitle }}</p>
-    <p><strong>Last updated:</strong> {{ gdprContent.updatedAt | date:'mediumDate' }}</p>
-  </article>
-
-  <article class="editor-list-card gdpr-card">
-    <h4>Contacts</h4>
-    <ul class="gdpr-list">
-      @for (contact of gdprContent.contacts; track contact) {
-        <li><strong>{{ contact.label }}:</strong> {{ contact.value }}</li>
-      }
-    </ul>
-  </article>
-
-  <article class="editor-list-card gdpr-card">
-    <h4>Legal Basis</h4>
-    <ul class="gdpr-list">
-      @for (item of gdprContent.legalBases; track item) {
-        <li>{{ item }}</li>
-      }
-    </ul>
-  </article>
-
-  <article class="editor-list-card gdpr-card">
-    <h4>Your Rights</h4>
-    <div class="gdpr-rights-grid">
-      @for (right of gdprContent.rights; track right) {
-        <section class="gdpr-right-item">
-          <h5>{{ right.title }}</h5>
-          <ul class="gdpr-list">
-            @for (item of right.items; track item) {
-              <li>{{ item }}</li>
-            }
-          </ul>
-        </section>
+<div class="support-popup support-privacy-popup">
+  @if (loading) {
+    <article class="editor-list-card support-privacy-loading">
+      <span class="support-privacy-spinner" aria-hidden="true"></span>
+      <span>Loading privacy content</span>
+    </article>
+  } @else if (activeRevision(); as revision) {
+    <div class="support-help-accordion" aria-label="Privacy topics">
+      @for (section of sections(); track section.id) {
+        <article
+          class="editor-list-card support-help-accordion-item support-privacy-accordion-item"
+          [class.is-open]="section.id === openAccordionSectionId"
+          [class.is-approved]="isSectionApproved(section.id)"
+          [class.is-mandatory]="!isSectionOptional(section)"
+          [class.is-optional]="isSectionOptional(section)"
+          >
+          <div class="support-help-accordion-btn support-privacy-accordion-head">
+            <button
+              type="button"
+              class="support-privacy-accordion-toggle"
+              [attr.aria-expanded]="section.id === openAccordionSectionId"
+              (click)="toggleAccordionSection(section.id, $event)"
+              >
+              <span class="support-help-tab-head">
+                <mat-icon>{{ section.icon }}</mat-icon>
+                <span>{{ section.title }}</span>
+              </span>
+            </button>
+            <span class="support-privacy-accordion-actions">
+              <button
+                type="button"
+                class="support-privacy-section-check"
+                [class.is-approved]="isSectionApproved(section.id)"
+                [attr.aria-pressed]="isSectionApproved(section.id)"
+                [attr.aria-label]="isSectionApproved(section.id) ? 'Privacy section approved' : (isSectionOptional(section) ? 'Approve optional privacy section' : 'Approve required privacy section')"
+                (pointerover)="stopNestedAccordionEvent($event)"
+                (mouseover)="stopNestedAccordionEvent($event)"
+                (mousedown)="stopNestedAccordionEvent($event)"
+                (keydown)="stopNestedAccordionEvent($event)"
+                (click)="toggleSectionApproval(section.id, $event)"
+                >
+                <mat-icon>{{ isSectionApproved(section.id) ? 'check' : 'done_outline' }}</mat-icon>
+              </button>
+              <button
+                type="button"
+                class="support-privacy-caret-btn"
+                [attr.aria-expanded]="section.id === openAccordionSectionId"
+                [attr.aria-label]="section.id === openAccordionSectionId ? 'Collapse privacy section' : 'Expand privacy section'"
+                (click)="toggleAccordionSection(section.id, $event)"
+                >
+                <mat-icon class="support-help-accordion-caret">expand_more</mat-icon>
+              </button>
+            </span>
+          </div>
+          <div class="support-help-accordion-panel-wrap" [class.is-open]="section.id === openAccordionSectionId">
+            <div class="support-help-accordion-panel">
+              @if (section.id === openAccordionSectionId) {
+                @if (section.blurb) {
+                  <p class="support-help-detail-lead">{{ section.blurb }}</p>
+                }
+                <div class="support-help-html" [innerHTML]="section.contentHtml"></div>
+              }
+            </div>
+          </div>
+        </article>
       }
     </div>
-  </article>
-
-  <article class="editor-list-card gdpr-card">
-    <h4>Data We Process</h4>
-    <div class="gdpr-data-grid">
-      @for (section of gdprContent.dataCategories; track section) {
-        <section class="gdpr-data-item">
-          <h5>{{ section.category }}</h5>
-          <ul class="gdpr-list">
-            @for (item of section.items; track item) {
-              <li>{{ item }}</li>
-            }
-          </ul>
-        </section>
-      }
-    </div>
-  </article>
-
-  <article class="editor-list-card gdpr-card">
-    <h4>Purposes</h4>
-    <ul class="gdpr-list">
-      @for (item of gdprContent.purposes; track item) {
-        <li>{{ item }}</li>
-      }
-    </ul>
-  </article>
-
-  <article class="editor-list-card gdpr-card">
-    <h4>Retention</h4>
-    <ul class="gdpr-list">
-      @for (item of gdprContent.retention; track item) {
-        <li>{{ item }}</li>
-      }
-    </ul>
-  </article>
-
-  <article class="editor-list-card gdpr-card">
-    <h4>Third-Party Sharing</h4>
-    <ul class="gdpr-list">
-      @for (item of gdprContent.sharing; track item) {
-        <li>{{ item }}</li>
-      }
-    </ul>
-  </article>
-
-  <article class="editor-list-card gdpr-card">
-    <h4>Security</h4>
-    <ul class="gdpr-list">
-      @for (item of gdprContent.security; track item) {
-        <li>{{ item }}</li>
-      }
-    </ul>
-  </article>
+  } @else {
+    <article class="editor-list-card support-help-empty">
+      <mat-icon>policy</mat-icon>
+      <h4>Privacy is not available</h4>
+      <p>No active privacy revision has been published yet.</p>
+    </article>
+  }
 </div>

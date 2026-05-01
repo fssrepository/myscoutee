@@ -5,7 +5,13 @@ import { MatIconModule } from '@angular/material/icon';
 
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { HelpCenterService } from '../../../shared/core';
-import type { HelpCenterRevision, HelpCenterSection } from '../../../shared/core/base/models';
+import type {
+  HelpCenterDocumentKind,
+  HelpCenterHeaderColor,
+  HelpCenterRevision,
+  HelpCenterSection,
+  HelpCenterState
+} from '../../../shared/core/base/models';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
 import { AdminService } from '../../admin.service';
 
@@ -24,6 +30,7 @@ interface HelpEditorSectionDraft {
   title: string;
   blurb: string;
   contentHtml: string;
+  optional: boolean;
   mode: EditorTab;
 }
 
@@ -32,6 +39,7 @@ interface HelpEditorRevisionDraft {
   title: string;
   summary: string;
   description: string;
+  headerColor: HelpCenterHeaderColor;
   sections: HelpEditorSectionDraft[];
 }
 
@@ -70,7 +78,7 @@ export class AdminHelpEditorPopupComponent {
   private readonly helpCenter = inject(HelpCenterService);
   private readonly confirmationDialog = inject(ConfirmationDialogService);
 
-  protected readonly helpState = this.helpCenter.state;
+  protected documentKind: HelpCenterDocumentKind = 'help';
   protected loading = false;
   protected saving = false;
   protected activatingRevisionId = '';
@@ -83,11 +91,22 @@ export class AdminHelpEditorPopupComponent {
   protected draftAccordionOpen = true;
   protected openDraftSectionId = '';
   protected iconPickerSectionId = '';
+  protected documentMenuOpen = false;
+  protected colorPickerOpen = false;
   protected iconPickerSearch = '';
   protected iconPickerGroup: HelpIconOption['group'] = 'Common';
   private stateLoadedForPopup = false;
   protected readonly actionRingPerimeter = 100;
   protected readonly defaultHelpDescription = APP_STATIC_DATA.defaultHelpCenterDescription;
+  protected readonly defaultPrivacyDescription = APP_STATIC_DATA.defaultPrivacyCenterDescription;
+  protected readonly headerColorOptions: Array<{ id: HelpCenterHeaderColor; label: string }> = [
+    { id: 'amber', label: 'Amber' },
+    { id: 'blue', label: 'Blue' },
+    { id: 'green', label: 'Green' },
+    { id: 'rose', label: 'Rose' },
+    { id: 'violet', label: 'Violet' },
+    { id: 'slate', label: 'Slate' }
+  ];
   protected readonly iconPickerGroups: HelpIconOption['group'][] = ['Common', 'Planning', 'People', 'Logistics', 'Safety'];
   protected readonly helpIconOptions: HelpIconOption[] = [
     { icon: 'help_outline', label: 'Help', group: 'Common', keywords: ['support', 'question', 'guide'] },
@@ -173,7 +192,9 @@ export class AdminHelpEditorPopupComponent {
         this.stateLoadedForPopup = false;
         this.editing = false;
         this.draft = null;
+        this.closeDocumentMenu();
         this.closeIconPicker();
+        this.closeColorPicker();
         return;
       }
       if (!this.stateLoadedForPopup) {
@@ -185,12 +206,14 @@ export class AdminHelpEditorPopupComponent {
 
   @HostListener('window:keydown.escape', ['$event'])
   protected onEscape(event: Event): void {
-    if (!this.iconPickerSectionId) {
+    if (!this.iconPickerSectionId && !this.documentMenuOpen && !this.colorPickerOpen) {
       return;
     }
     event.preventDefault();
     event.stopPropagation();
+    this.closeDocumentMenu();
     this.closeIconPicker();
+    this.closeColorPicker();
   }
 
   protected async load(): Promise<void> {
@@ -200,25 +223,68 @@ export class AdminHelpEditorPopupComponent {
     this.loading = true;
     this.error = '';
     try {
-      const state = await this.helpCenter.loadAdminState(this.actorUserId());
+      const state = await this.helpCenter.loadAdminState(this.actorUserId(), this.documentKind);
       this.selectInitialRevision(state.revisions, state.activeRevision);
     } catch {
-      this.error = 'Unable to load help revisions.';
+      this.error = `Unable to load ${this.documentLabelLower()} revisions.`;
     } finally {
       this.loading = false;
     }
+  }
+
+  protected selectDocumentKind(kind: HelpCenterDocumentKind, event?: Event): void {
+    event?.stopPropagation();
+    this.closeDocumentMenu();
+    if (this.documentKind === kind || this.loading || this.isAnyActionPending()) {
+      return;
+    }
+    this.documentKind = kind;
+    this.editing = false;
+    this.draft = null;
+    this.draftAccordionOpen = true;
+    this.selectedRevisionId = '';
+    this.openRevisionId = '';
+    this.openPreviewSectionId = '';
+    this.openDraftSectionId = '';
+    this.error = '';
+    this.closeIconPicker();
+    this.closeColorPicker();
+    void this.load();
   }
 
   protected close(): void {
     this.editing = false;
     this.draft = null;
     this.draftAccordionOpen = true;
+    this.closeDocumentMenu();
     this.closeIconPicker();
+    this.closeColorPicker();
     this.admin.closePopup();
   }
 
+  protected toggleDocumentMenu(event?: Event): void {
+    event?.stopPropagation();
+    if (this.loading || this.isAnyActionPending()) {
+      return;
+    }
+    this.documentMenuOpen = !this.documentMenuOpen;
+    this.closeIconPicker();
+    this.closeColorPicker();
+  }
+
+  protected closeDocumentMenu(event?: Event): void {
+    event?.stopPropagation();
+    this.documentMenuOpen = false;
+  }
+
+  protected currentState(): HelpCenterState | null {
+    return this.documentKind === 'privacy'
+      ? this.helpCenter.privacyState()
+      : this.helpCenter.state();
+  }
+
   protected revisions(): HelpCenterRevision[] {
-    return this.helpState()?.revisions ?? [];
+    return this.currentState()?.revisions ?? [];
   }
 
   protected revisionRows(): HelpEditorRevisionRow[] {
@@ -244,7 +310,7 @@ export class AdminHelpEditorPopupComponent {
   }
 
   protected activeRevision(): HelpCenterRevision | null {
-    return this.helpState()?.activeRevision ?? null;
+    return this.currentState()?.activeRevision ?? null;
   }
 
   protected selectedRevision(): HelpCenterRevision | null {
@@ -295,6 +361,7 @@ export class AdminHelpEditorPopupComponent {
     this.draftAccordionOpen = true;
     this.error = '';
     this.closeIconPicker();
+    this.closeColorPicker();
   }
 
   protected toggleDraftRevision(event?: Event): void {
@@ -309,10 +376,11 @@ export class AdminHelpEditorPopupComponent {
     }
     const next: HelpEditorSectionDraft = {
       localId: this.newLocalId(),
-      icon: 'help_outline',
-      title: 'New help section',
+      icon: this.defaultSectionIcon(),
+      title: `New ${this.documentLabelLower()} section`,
       blurb: '',
-      contentHtml: '<p>Describe this help section.</p>',
+      contentHtml: `<p>Describe this ${this.documentLabelLower()} section.</p>`,
+      optional: false,
       mode: 'html'
     };
     this.draft.sections = [...this.draft.sections, next];
@@ -460,19 +528,20 @@ export class AdminHelpEditorPopupComponent {
       title: this.draft.title,
       summary: this.draft.summary,
       description: this.draft.description,
+      headerColor: this.draft.headerColor,
       sections: this.toSections(this.draft.sections)
     };
     this.saving = true;
     this.error = '';
     try {
-      const state = await this.withMinimumActionTime(this.helpCenter.saveRevision(request));
+      const state = await this.withMinimumActionTime(this.helpCenter.saveRevision(request, this.documentKind));
       this.editing = false;
       this.draft = null;
       this.draftAccordionOpen = true;
       this.closeIconPicker();
       this.selectNewestRevision(state.revisions, state.activeRevision);
     } catch {
-      this.error = 'Unable to save help revision.';
+      this.error = `Unable to save ${this.documentLabelLower()} revision.`;
     } finally {
       this.saving = false;
     }
@@ -486,10 +555,10 @@ export class AdminHelpEditorPopupComponent {
     this.activatingRevisionId = revision.id;
     this.error = '';
     try {
-      const state = await this.withMinimumActionTime(this.helpCenter.activateRevision(revision.id, this.actorUserId()));
+      const state = await this.withMinimumActionTime(this.helpCenter.activateRevision(revision.id, this.actorUserId(), this.documentKind));
       this.selectInitialRevision(state.revisions, state.activeRevision);
     } catch {
-      this.error = 'Unable to activate help revision.';
+      this.error = `Unable to activate ${this.documentLabelLower()} revision.`;
     } finally {
       this.activatingRevisionId = '';
     }
@@ -510,10 +579,10 @@ export class AdminHelpEditorPopupComponent {
         this.saving = true;
         this.error = '';
         try {
-          const state = await this.helpCenter.deleteRevision(revision.id, this.actorUserId());
+          const state = await this.helpCenter.deleteRevision(revision.id, this.actorUserId(), this.documentKind);
           this.selectInitialRevision(state.revisions, state.activeRevision);
         } catch {
-          this.error = 'Unable to delete help revision.';
+          this.error = `Unable to delete ${this.documentLabelLower()} revision.`;
         } finally {
           this.saving = false;
         }
@@ -526,7 +595,7 @@ export class AdminHelpEditorPopupComponent {
   }
 
   protected revisionDescription(revision: Pick<HelpCenterRevision, 'description'>): string {
-    return revision.description?.trim() || this.defaultHelpDescription;
+    return revision.description?.trim() || this.defaultDescription();
   }
 
   protected nextRevisionVersion(): number {
@@ -568,6 +637,55 @@ export class AdminHelpEditorPopupComponent {
     return this.admin.activeAdmin()?.id?.trim() || 'admin';
   }
 
+  protected documentLabel(): string {
+    return this.documentKind === 'privacy' ? 'Privacy' : 'Help';
+  }
+
+  protected documentIcon(kind: HelpCenterDocumentKind): string {
+    return kind === 'privacy' ? 'policy' : 'help_outline';
+  }
+
+  protected documentLabelLower(): string {
+    return this.documentKind === 'privacy' ? 'privacy' : 'help';
+  }
+
+  protected editorTitle(): string {
+    return `${this.documentLabel()} editor`;
+  }
+
+  protected defaultDescription(): string {
+    return this.documentKind === 'privacy'
+      ? this.defaultPrivacyDescription
+      : this.defaultHelpDescription;
+  }
+
+  protected defaultSectionIcon(): string {
+    return this.documentKind === 'privacy' ? 'policy' : 'help_outline';
+  }
+
+  protected headerColorClass(color: string | null | undefined): string {
+    return `help-editor-header-color-${this.normalizeHeaderColor(color)}`;
+  }
+
+  protected openColorPicker(event?: Event): void {
+    event?.stopPropagation();
+    this.colorPickerOpen = true;
+    this.closeIconPicker();
+  }
+
+  protected closeColorPicker(event?: Event): void {
+    event?.stopPropagation();
+    this.colorPickerOpen = false;
+  }
+
+  protected selectHeaderColor(color: HelpCenterHeaderColor, event?: Event): void {
+    event?.stopPropagation();
+    if (this.draft) {
+      this.draft.headerColor = color;
+    }
+    this.closeColorPicker();
+  }
+
   private selectInitialRevision(revisions: HelpCenterRevision[], activeRevision: HelpCenterRevision | null): void {
     const selected = activeRevision ?? revisions[0] ?? null;
     this.selectedRevisionId = selected?.id ?? '';
@@ -605,6 +723,7 @@ export class AdminHelpEditorPopupComponent {
     this.openPreviewSectionId = '';
     this.openDraftSectionId = draft.sections[0]?.localId ?? '';
     this.closeIconPicker();
+    this.closeColorPicker();
     this.editing = true;
   }
 
@@ -613,13 +732,15 @@ export class AdminHelpEditorPopupComponent {
       baseRevisionId: revision.id,
       title: revision.title,
       summary: revision.summary,
-      description: revision.description?.trim() || this.defaultHelpDescription,
+      description: revision.description?.trim() || this.defaultDescription(),
+      headerColor: this.normalizeHeaderColor(revision.headerColor),
       sections: revision.sections.map(section => ({
         localId: this.newLocalId(),
-        icon: section.icon || 'help_outline',
-        title: section.title?.trim() || 'Untitled help section',
+        icon: section.icon || this.defaultSectionIcon(),
+        title: section.title?.trim() || `Untitled ${this.documentLabelLower()} section`,
         blurb: section.blurb,
         contentHtml: this.formatHtmlFragment(this.sectionContentHtml(section)),
+        optional: section.optional === true,
         mode: 'html'
       }))
     };
@@ -628,16 +749,18 @@ export class AdminHelpEditorPopupComponent {
   private emptyDraft(): HelpEditorRevisionDraft {
     return {
       baseRevisionId: null,
-      title: 'New help revision',
+      title: `New ${this.documentLabelLower()} revision`,
       summary: '',
       description: '',
+      headerColor: 'amber',
       sections: [
         {
           localId: this.newLocalId(),
-          icon: 'help_outline',
+          icon: this.defaultSectionIcon(),
           title: '',
           blurb: '',
           contentHtml: '',
+          optional: false,
           mode: 'html'
         }
       ]
@@ -648,7 +771,7 @@ export class AdminHelpEditorPopupComponent {
     const seenIds = new Set<string>();
     return drafts
       .map((draft, index) => {
-        const title = draft.title.trim() || `Help section ${index + 1}`;
+        const title = draft.title.trim() || `${this.documentLabel()} section ${index + 1}`;
         const baseId = this.slugify(title) || `section-${index + 1}`;
         let id = baseId;
         let duplicateIndex = 2;
@@ -658,10 +781,11 @@ export class AdminHelpEditorPopupComponent {
         seenIds.add(id);
         return {
           id,
-          icon: draft.icon.trim() || 'help_outline',
+          icon: draft.icon.trim() || this.defaultSectionIcon(),
           title,
           blurb: draft.blurb.trim(),
-          contentHtml: draft.contentHtml.trim()
+          contentHtml: draft.contentHtml.trim(),
+          optional: this.documentKind === 'privacy' && draft.optional === true
         };
       })
       .filter(section => section.contentHtml.length > 0);
@@ -691,6 +815,19 @@ export class AdminHelpEditorPopupComponent {
       ...details.map(detail => `<p>${this.escapeHtml(detail)}</p>`),
       points.length ? `<ul>${points.map(point => `<li>${this.escapeHtml(point)}</li>`).join('')}</ul>` : ''
     ].join('\n');
+  }
+
+  private normalizeHeaderColor(value: string | null | undefined): HelpCenterHeaderColor {
+    switch (`${value ?? ''}`.trim()) {
+      case 'blue':
+      case 'green':
+      case 'rose':
+      case 'violet':
+      case 'slate':
+        return value as HelpCenterHeaderColor;
+      default:
+        return 'amber';
+    }
   }
 
   private escapeHtml(value: string): string {

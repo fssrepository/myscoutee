@@ -1,11 +1,5 @@
 <div class="support-popup support-help-popup">
   @if (activeRevision(); as revision) {
-    <article class="editor-list-card support-help-hero">
-      <span class="support-help-version">v{{ revision.version }}</span>
-      <h4>{{ revision.summary || revision.title }}</h4>
-      <p>{{ revision.description || defaultHelpDescription }}</p>
-    </article>
-
     <div class="support-help-accordion" aria-label="Help topics">
       @for (section of sections(); track section.id) {
         <article

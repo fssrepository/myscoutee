@@ -9,6 +9,7 @@
 <app-entry-consent-popup
   [open]="showEntryConsentPopup"
   [viewOnly]="entryConsentViewOnly"
+  [loading]="entryPrivacyLoading"
   (closeRequested)="closeEntryConsentPopup()"
   (acceptRequested)="acceptEntryConsent()"
   (rejectRequested)="rejectEntryConsent()"

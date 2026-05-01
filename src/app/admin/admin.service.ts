@@ -240,7 +240,7 @@ export class AdminService {
         : await this.loadDemoDashboard(adminUserId, onProgress);
       this.dashboardRef.set(dashboard);
       this.activateAdminProfile(dashboard);
-      void this.helpCenter.preload();
+      void this.helpCenter.preloadAll();
       this.persistAdminSession(dashboard.activeAdmin.id);
       return dashboard;
     } catch (error) {
