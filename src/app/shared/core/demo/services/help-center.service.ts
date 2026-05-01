@@ -46,11 +46,10 @@ export class DemoHelpCenterService {
     const table = this.table();
     const consentId = this.privacyConsentRecordId(normalizedUserId, normalizedRevisionId);
     const consent = table.privacyConsentsById?.[consentId] ?? null;
-    const minimumRevisionVersion = Math.trunc(Number(revisionVersion) || 0);
-    if (consent && minimumRevisionVersion > 0 && Math.trunc(Number(consent.revisionVersion) || 0) < minimumRevisionVersion) {
-      return null;
+    if (consent) {
+      return this.clonePrivacyConsent(consent);
     }
-    return consent ? this.clonePrivacyConsent(consent) : null;
+    return this.latestPrivacyConsentForUser(table, normalizedUserId);
   }
 
   async savePrivacyConsent(request: PrivacyConsentSaveRequest): Promise<PrivacyConsentRecord> {
@@ -360,6 +359,22 @@ export class DemoHelpCenterService {
 
   private privacyConsentRecordId(userId: string, revisionId: string): string {
     return `${userId.trim()}::${revisionId.trim()}`;
+  }
+
+  private latestPrivacyConsentForUser(table: DemoHelpCenterTable, userId: string): PrivacyConsentRecord | null {
+    const consentsById = table.privacyConsentsById ?? {};
+    const latest = Object.values(consentsById)
+      .filter(consent => consent?.userId?.trim() === userId)
+      .sort((left, right) => this.privacyConsentSortValue(right) - this.privacyConsentSortValue(left))[0] ?? null;
+    return latest ? this.clonePrivacyConsent(latest) : null;
+  }
+
+  private privacyConsentSortValue(consent: PrivacyConsentRecord): number {
+    const updatedAtMs = Date.parse(consent.updatedAtIso || consent.acceptedAtIso || '');
+    if (Number.isFinite(updatedAtMs)) {
+      return updatedAtMs;
+    }
+    return Math.max(0, Math.trunc(Number(consent.revisionVersion) || 0));
   }
 
   private approvedOptionalSectionIds(

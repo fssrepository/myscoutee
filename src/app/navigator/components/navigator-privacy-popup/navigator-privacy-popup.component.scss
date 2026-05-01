@@ -59,6 +59,10 @@
   border-color: rgba(177, 111, 24, 0.28);
 }
 
+.support-privacy-accordion-item.is-optional.is-approved {
+  border-color: rgba(31, 122, 73, 0.36);
+}
+
 .support-help-accordion-btn {
   width: 100%;
   border: 0;
@@ -81,6 +85,11 @@
 .support-privacy-accordion-item.is-mandatory .support-help-accordion-btn,
 .support-privacy-accordion-item.is-mandatory.is-open .support-help-accordion-btn {
   background: linear-gradient(180deg, #fff4e3 0%, #ffe8c5 100%);
+}
+
+.support-privacy-accordion-item.is-optional.is-approved .support-help-accordion-btn,
+.support-privacy-accordion-item.is-optional.is-approved.is-open .support-help-accordion-btn {
+  background: linear-gradient(180deg, #ecf9f2 0%, #ddf3e7 100%);
 }
 
 .support-privacy-accordion-item.is-mandatory .support-help-tab-head,
@@ -237,8 +246,8 @@
 .support-privacy-section-check {
   position: relative;
   z-index: 1;
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   border-radius: 999px;
   border: 2px solid rgba(47, 101, 170, 0.48);
   background: #fff;
@@ -259,6 +268,36 @@
   box-shadow: 0 1px 5px rgba(31, 122, 73, 0.18);
 }
 
+.support-privacy-check-glyph {
+  position: relative;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  border: 2px solid currentColor;
+  display: block;
+  box-sizing: border-box;
+  pointer-events: none;
+}
+
+.support-privacy-check-glyph.is-approved {
+  width: 18px;
+  height: 18px;
+  border: 0;
+  background: #12633d;
+}
+
+.support-privacy-check-glyph.is-approved::after {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 3px;
+  width: 5px;
+  height: 9px;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
 .support-privacy-section-check:hover {
   border-color: rgba(23, 77, 134, 0.78);
   background: #fff;
@@ -273,10 +312,10 @@
 }
 
 .support-privacy-section-check .mat-icon {
-  width: 17px;
-  height: 17px;
-  font-size: 17px;
-  line-height: 17px;
+  width: 21px;
+  height: 21px;
+  font-size: 21px;
+  line-height: 21px;
 }
 
 .support-privacy-actions {

@@ -40,7 +40,15 @@
                   (keydown)="stopNestedAccordionEvent($event)"
                   (click)="toggleSectionApproval(section, $event)"
                   >
-                  <mat-icon>{{ isSectionApproved(section.id) ? 'check' : 'done_outline' }}</mat-icon>
+                  @if (isSectionApproved(section.id)) {
+                    @if (isAdminPrivacyContext()) {
+                      <mat-icon>check</mat-icon>
+                    } @else {
+                      <span class="support-privacy-check-glyph is-approved" aria-hidden="true"></span>
+                    }
+                  } @else {
+                    <span class="support-privacy-check-glyph" aria-hidden="true"></span>
+                  }
                 </button>
               }
               <button

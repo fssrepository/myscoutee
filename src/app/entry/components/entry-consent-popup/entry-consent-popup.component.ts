@@ -37,6 +37,7 @@ export class EntryConsentPopupComponent {
   protected savingChoices = false;
   protected choiceSaveMessage = '';
   protected choiceSaveError = '';
+  private loadedApprovedSectionIds = new Set<string>();
   private optionalApprovalsLoadedForRevision = '';
 
   constructor() {
@@ -114,7 +115,7 @@ export class EntryConsentPopupComponent {
   }
 
   protected shouldShowPrivacySaveAction(): boolean {
-    return this.viewOnly && (this.approvalRequired || this.hasOptionalSections());
+    return this.viewOnly && (this.approvalRequired || (this.hasOptionalSections() && this.hasPrivacyChoiceChanges()));
   }
 
   protected canSavePrivacyChoices(): boolean {
@@ -140,6 +141,7 @@ export class EntryConsentPopupComponent {
     this.choiceSaveError = '';
     try {
       await this.saveApprovalState();
+      this.loadedApprovedSectionIds = new Set(this.approvedOptionalSectionIds());
       this.choiceSaveMessage = 'Privacy choices saved.';
       if (this.approvalRequired) {
         this.acceptRequested.emit();
@@ -192,13 +194,14 @@ export class EntryConsentPopupComponent {
     );
     const revisionKey = revision ? this.privacyRevisionKey(revision) : '';
     if (revision && revisionKey && this.optionalApprovalsLoadedForRevision !== revisionKey) {
-      this.approvedSectionIds = this.loadOptionalApprovalState(revision, optionalSectionIds);
+      const approvedSectionIds = this.loadOptionalApprovalState(revision, optionalSectionIds);
+      this.loadedApprovedSectionIds = new Set(approvedSectionIds);
+      this.approvedSectionIds = approvedSectionIds;
       this.optionalApprovalsLoadedForRevision = revisionKey;
       return;
     }
-    this.approvedSectionIds = new Set(
-      Array.from(this.approvedSectionIds).filter(sectionId => optionalSectionIds.has(sectionId))
-    );
+    this.loadedApprovedSectionIds = this.filteredSectionIds(this.loadedApprovedSectionIds, optionalSectionIds);
+    this.approvedSectionIds = this.filteredSectionIds(this.approvedSectionIds, optionalSectionIds);
   }
 
   private async saveApprovalState(): Promise<void> {
@@ -226,6 +229,28 @@ export class EntryConsentPopupComponent {
     );
     return Array.from(this.approvedSectionIds)
       .filter(sectionId => optionalSectionIds.has(sectionId))
+      .sort();
+  }
+
+  private hasPrivacyChoiceChanges(): boolean {
+    const optionalSectionIds = new Set(
+      this.sections().filter(section => this.isSectionOptional(section)).map(section => section.id)
+    );
+    const currentIds = this.sortedFilteredIds(this.approvedSectionIds, optionalSectionIds);
+    const loadedIds = this.sortedFilteredIds(this.loadedApprovedSectionIds, optionalSectionIds);
+    if (currentIds.length !== loadedIds.length) {
+      return true;
+    }
+    return currentIds.some((sectionId, index) => sectionId !== loadedIds[index]);
+  }
+
+  private filteredSectionIds(source: ReadonlySet<string>, allowedIds: ReadonlySet<string>): Set<string> {
+    return new Set(Array.from(source).filter(sectionId => allowedIds.has(sectionId)));
+  }
+
+  private sortedFilteredIds(source: ReadonlySet<string>, allowedIds: ReadonlySet<string>): string[] {
+    return Array.from(source)
+      .filter(sectionId => allowedIds.has(sectionId))
       .sort();
   }
 

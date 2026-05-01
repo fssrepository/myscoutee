@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, effect, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, computed, effect, inject } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
+import { Router } from '@angular/router';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { AppContext, HelpCenterService } from '../../../shared/core';
 import type { HelpCenterRevision, HelpCenterSection } from '../../../shared/core/base/models';
@@ -17,6 +18,8 @@ export class NavigatorPrivacyPopupComponent {
   private readonly helpCenter = inject(HelpCenterService);
   private readonly appCtx = inject(AppContext);
   private readonly navigatorService = inject(NavigatorService);
+  private readonly router = inject(Router);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   protected readonly activeRevision = this.helpCenter.activePrivacyRevision;
   protected readonly activeUserId = this.appCtx.activeUserId;
@@ -30,6 +33,7 @@ export class NavigatorPrivacyPopupComponent {
   protected consentSaveError = '';
   protected consentLoadPending = false;
   protected activeRevisionConsentSaved = false;
+  private loadedApprovedSectionIds = new Set<string>();
   private consentLoadedForKey = '';
   private consentLoadToken = 0;
 
@@ -88,6 +92,10 @@ export class NavigatorPrivacyPopupComponent {
     return section.optional === true;
   }
 
+  protected isAdminPrivacyContext(): boolean {
+    return this.router.url.startsWith('/admin');
+  }
+
   protected hasOptionalSections(): boolean {
     return this.sections().some(section => this.isSectionOptional(section));
   }
@@ -96,7 +104,7 @@ export class NavigatorPrivacyPopupComponent {
     if (!this.activeRevision() || !this.activeUserId().trim()) {
       return false;
     }
-    if (this.hasOptionalSections()) {
+    if (this.hasOptionalSections() && this.hasPrivacyChoiceChanges()) {
       return true;
     }
     if (this.activeRevisionConsentSaved) {
@@ -146,6 +154,7 @@ export class NavigatorPrivacyPopupComponent {
         source: 'settings'
       });
       this.approvedSectionIds = new Set(consent.approvedOptionalSectionIds);
+      this.loadedApprovedSectionIds = new Set(consent.approvedOptionalSectionIds);
       this.consentLoadedForKey = revisionKey;
       this.activeRevisionConsentSaved = this.isPrivacyConsentCurrent(consent, revision);
       if (!this.activeRevisionConsentSaved) {
@@ -159,6 +168,7 @@ export class NavigatorPrivacyPopupComponent {
       this.consentSaveError = 'Privacy approval could not be saved.';
     } finally {
       this.savingConsent = false;
+      this.repaint();
     }
   }
 
@@ -175,6 +185,7 @@ export class NavigatorPrivacyPopupComponent {
       await this.helpCenter.preload('privacy');
     } finally {
       this.loading = false;
+      this.repaint();
     }
   }
 
@@ -189,6 +200,7 @@ export class NavigatorPrivacyPopupComponent {
       this.consentLoadedForKey = '';
       this.consentLoadPending = false;
       this.activeRevisionConsentSaved = false;
+      this.loadedApprovedSectionIds = new Set();
       this.approvedSectionIds = this.filteredApprovedSectionIds(optionalSectionIds);
       return;
     }
@@ -196,7 +208,9 @@ export class NavigatorPrivacyPopupComponent {
       return;
     }
     if (this.consentLoadedForKey === revisionKey) {
-      this.approvedSectionIds = this.filteredApprovedSectionIds(optionalSectionIds);
+      this.approvedSectionIds = new Set(
+        Array.from(this.loadedApprovedSectionIds).filter(sectionId => optionalSectionIds.has(sectionId))
+      );
       return;
     }
     this.consentLoadedForKey = revisionKey;
@@ -216,9 +230,12 @@ export class NavigatorPrivacyPopupComponent {
         if (this.activeRevisionConsentSaved) {
           this.navigatorService.markActivePrivacyConsentApproved();
         }
-        this.approvedSectionIds = new Set(
+        const approvedIds = new Set(
           (consent?.approvedOptionalSectionIds ?? []).filter(sectionId => optionalSectionIds.has(sectionId))
         );
+        this.loadedApprovedSectionIds = new Set(approvedIds);
+        this.approvedSectionIds = approvedIds;
+        this.repaint();
       })
       .catch(() => {
         if (loadToken !== this.consentLoadToken || this.consentLoadedForKey !== revisionKey) {
@@ -226,8 +243,10 @@ export class NavigatorPrivacyPopupComponent {
         }
         this.consentLoadPending = false;
         this.activeRevisionConsentSaved = false;
+        this.loadedApprovedSectionIds = new Set();
         this.approvedSectionIds = new Set();
         this.consentSaveError = 'Privacy choices could not be loaded.';
+        this.repaint();
       });
   }
 
@@ -250,6 +269,22 @@ export class NavigatorPrivacyPopupComponent {
     );
   }
 
+  private hasPrivacyChoiceChanges(): boolean {
+    const optionalSectionIds = this.optionalSectionIds(this.sections());
+    const currentIds = this.sortedFilteredIds(this.approvedSectionIds, optionalSectionIds);
+    const loadedIds = this.sortedFilteredIds(this.loadedApprovedSectionIds, optionalSectionIds);
+    if (currentIds.length !== loadedIds.length) {
+      return true;
+    }
+    return currentIds.some((sectionId, index) => sectionId !== loadedIds[index]);
+  }
+
+  private sortedFilteredIds(source: ReadonlySet<string>, allowedIds: ReadonlySet<string>): string[] {
+    return Array.from(source)
+      .filter(sectionId => allowedIds.has(sectionId))
+      .sort();
+  }
+
   private isPrivacyConsentCurrent(
     consent: { revisionId?: string | null; revisionVersion?: number | null } | null,
     revision: HelpCenterRevision
@@ -265,5 +300,13 @@ export class NavigatorPrivacyPopupComponent {
 
   private privacyConsentKey(userId: string, revision: HelpCenterRevision): string {
     return `${userId.trim()}::${revision.id}:v${revision.version}`;
+  }
+
+  private repaint(): void {
+    try {
+      this.cdr.detectChanges();
+    } catch {
+      // The popup may have closed before an async consent request resolves.
+    }
   }
 }

@@ -269,7 +269,7 @@ export class AppMemoryDb {
       if (!snapshot) {
         return;
       }
-      const normalized = this.normalizeState(snapshot);
+      const normalized = this.mergeHydratedStateWithCurrent(this.normalizeState(snapshot), this._tables());
       const current = this._tables();
       const currentHasUsers = current[USERS_TABLE_NAME].ids.length > 0;
       const incomingHasUsers = normalized[USERS_TABLE_NAME].ids.length > 0;
@@ -285,6 +285,32 @@ export class AppMemoryDb {
       this.pendingPersistState = null;
       this.hydrationComplete = true;
     }
+  }
+
+  private mergeHydratedStateWithCurrent(incoming: DemoMemorySchema, current: DemoMemorySchema): DemoMemorySchema {
+    const currentHelpCenter = current[HELP_CENTER_TABLE_NAME];
+    const incomingHelpCenter = incoming[HELP_CENTER_TABLE_NAME];
+    const currentPrivacyConsentsById = currentHelpCenter.privacyConsentsById ?? {};
+    const incomingPrivacyConsentsById = incomingHelpCenter.privacyConsentsById ?? {};
+    const mergedPrivacyConsentsById = {
+      ...currentPrivacyConsentsById,
+      ...incomingPrivacyConsentsById
+    };
+    const mergedPrivacyConsentIds = [
+      ...(currentHelpCenter.privacyConsentIds ?? []),
+      ...(incomingHelpCenter.privacyConsentIds ?? [])
+    ];
+    return {
+      ...incoming,
+      [HELP_CENTER_TABLE_NAME]: {
+        ...incomingHelpCenter,
+        privacyConsentsById: mergedPrivacyConsentsById,
+        privacyConsentIds: [...new Set([
+          ...mergedPrivacyConsentIds,
+          ...Object.keys(mergedPrivacyConsentsById)
+        ])]
+      }
+    };
   }
 
   private async readFromIndexedDb(): Promise<DemoMemorySchema | null> {
