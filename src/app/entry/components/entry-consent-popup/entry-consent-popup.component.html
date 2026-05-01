@@ -70,7 +70,11 @@
                         (keydown)="stopNestedAccordionEvent($event)"
                         (click)="toggleSectionApproval(section, $event)"
                         >
-                        <mat-icon>{{ isSectionApproved(section.id) ? 'check' : 'done_outline' }}</mat-icon>
+                        @if (isSectionApproved(section.id)) {
+                          <mat-icon>check</mat-icon>
+                        } @else {
+                          <span class="entry-consent-check-glyph" aria-hidden="true"></span>
+                        }
                       </button>
                     }
                     <button

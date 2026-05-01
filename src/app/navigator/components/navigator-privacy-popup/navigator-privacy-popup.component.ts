@@ -1,7 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectorRef, Component, computed, effect, inject } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
-import { Router } from '@angular/router';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { AppContext, HelpCenterService } from '../../../shared/core';
 import type { HelpCenterRevision, HelpCenterSection } from '../../../shared/core/base/models';
@@ -18,7 +17,6 @@ export class NavigatorPrivacyPopupComponent {
   private readonly helpCenter = inject(HelpCenterService);
   private readonly appCtx = inject(AppContext);
   private readonly navigatorService = inject(NavigatorService);
-  private readonly router = inject(Router);
   private readonly cdr = inject(ChangeDetectorRef);
 
   protected readonly activeRevision = this.helpCenter.activePrivacyRevision;
@@ -90,10 +88,6 @@ export class NavigatorPrivacyPopupComponent {
 
   protected isSectionOptional(section: HelpCenterSection): boolean {
     return section.optional === true;
-  }
-
-  protected isAdminPrivacyContext(): boolean {
-    return this.router.url.startsWith('/admin');
   }
 
   protected hasOptionalSections(): boolean {

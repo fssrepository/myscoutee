@@ -314,8 +314,8 @@
 .entry-consent-section-check {
   position: relative;
   z-index: 1;
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   border-radius: 999px;
   border: 2px solid rgba(47, 101, 170, 0.48);
   background: #fff;
@@ -336,6 +336,17 @@
   box-shadow: 0 1px 5px rgba(31, 122, 73, 0.18);
 }
 
+.entry-consent-check-glyph {
+  position: relative;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  border: 2px solid currentColor;
+  display: block;
+  box-sizing: border-box;
+  pointer-events: none;
+}
+
 .entry-consent-section-check:hover {
   border-color: rgba(23, 77, 134, 0.78);
   background: #fff;
@@ -350,10 +361,10 @@
 }
 
 .entry-consent-section-check .mat-icon {
-  width: 17px;
-  height: 17px;
-  font-size: 17px;
-  line-height: 17px;
+  width: 21px;
+  height: 21px;
+  font-size: 21px;
+  line-height: 21px;
 }
 
 .entry-consent-caret {

@@ -279,25 +279,6 @@
   pointer-events: none;
 }
 
-.support-privacy-check-glyph.is-approved {
-  width: 18px;
-  height: 18px;
-  border: 0;
-  background: #12633d;
-}
-
-.support-privacy-check-glyph.is-approved::after {
-  content: '';
-  position: absolute;
-  left: 5px;
-  top: 3px;
-  width: 5px;
-  height: 9px;
-  border: solid #fff;
-  border-width: 0 2px 2px 0;
-  transform: rotate(45deg);
-}
-
 .support-privacy-section-check:hover {
   border-color: rgba(23, 77, 134, 0.78);
   background: #fff;

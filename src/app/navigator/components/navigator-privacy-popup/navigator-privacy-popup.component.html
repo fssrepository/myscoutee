@@ -41,11 +41,7 @@
                   (click)="toggleSectionApproval(section, $event)"
                   >
                   @if (isSectionApproved(section.id)) {
-                    @if (isAdminPrivacyContext()) {
-                      <mat-icon>check</mat-icon>
-                    } @else {
-                      <span class="support-privacy-check-glyph is-approved" aria-hidden="true"></span>
-                    }
+                    <mat-icon>check</mat-icon>
                   } @else {
                     <span class="support-privacy-check-glyph" aria-hidden="true"></span>
                   }
