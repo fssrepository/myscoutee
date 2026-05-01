@@ -73,27 +73,26 @@
 
       <div class="popup-body admin-detail-popup-body">
         <article class="admin-chat-detail-message">
-          @if (feedbackAvatarUrl(item); as avatarUrl) {
-            <span
-              class="admin-message-avatar has-photo"
-              [style.backgroundImage]="'url(' + avatarUrl + ')'"
-              aria-hidden="true"
-            ></span>
-          } @else {
-            <span class="admin-message-avatar">{{ feedbackInitial(item) }}</span>
-          }
           <div class="admin-message-bubble admin-feedback-detail-bubble" [ngClass]="feedbackCategoryToneClass(item)">
             <div class="admin-message-head">
-              <strong>{{ item.userName }}</strong>
-              <span>{{ shortDate(item.createdDate) }}</span>
+              <span class="admin-message-head-title">
+                @if (feedbackAvatarUrl(item); as avatarUrl) {
+                  <span
+                    class="admin-message-avatar admin-message-avatar-inline has-photo"
+                    [style.backgroundImage]="'url(' + avatarUrl + ')'"
+                    aria-hidden="true"
+                  ></span>
+                } @else {
+                  <span class="admin-message-avatar admin-message-avatar-inline">{{ feedbackInitial(item) }}</span>
+                }
+                <strong>{{ item.userName }}</strong>
+              </span>
+              <span class="admin-feedback-time-badge admin-feedback-detail-time">{{ shortDate(item.createdDate) }}</span>
             </div>
+            <span class="admin-feedback-category-badge admin-feedback-detail-badge">
+              {{ feedbackCategoryLabel(item) }}
+            </span>
             <div class="admin-feedback-detail-fields">
-              <div class="admin-feedback-detail-field">
-                <strong>Category</strong>
-                <span class="admin-feedback-category-badge">
-                  {{ feedbackCategoryLabel(item) }}
-                </span>
-              </div>
               <div class="admin-feedback-detail-field">
                 <strong>Subject</strong>
                 <p>{{ item.subject }}</p>

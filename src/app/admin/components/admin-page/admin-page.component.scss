@@ -144,24 +144,6 @@
   align-items: flex-start;
 }
 
-.admin-home-title {
-  text-align: right;
-}
-
-.admin-home-title span {
-  display: block;
-  color: #2e65a0;
-  font-size: 0.76rem;
-  font-weight: 900;
-  text-transform: uppercase;
-}
-
-.admin-home-title h1 {
-  margin: 0.1rem 0 0;
-  color: #14243d;
-  font-size: clamp(1.4rem, 2.4vw, 2rem);
-}
-
 .admin-home-hero {
   min-height: 0;
 }
@@ -169,10 +151,6 @@
 .admin-workspace-restoring {
   position: relative;
   min-height: 100vh;
-}
-
-.admin-home-title-pending h1 {
-  opacity: 0;
 }
 
 .admin-restore-avatar-button {

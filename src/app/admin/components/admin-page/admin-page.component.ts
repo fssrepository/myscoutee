@@ -169,10 +169,6 @@ export class AdminPageComponent implements OnInit {
     this.openSelector();
   }
 
-  protected adminDisplayName(name: string | null | undefined): string {
-    return `${name ?? ''}`.trim().replace(/\s+Moderation$/i, '') || 'Admin';
-  }
-
   @HostListener('window:adminLogoutRequested')
   protected onAdminLogoutRequested(): void {
     this.admin.clearAdminSession();

@@ -1078,8 +1078,23 @@ app-smart-list.admin-smart-list {
 }
 
 .admin-feedback-detail-bubble {
+  position: relative;
   display: grid;
   gap: 0.66rem;
+  padding-right: min(230px, 36%);
+}
+
+.admin-feedback-detail-badge {
+  position: absolute;
+  top: 2.42rem;
+  right: 0.72rem;
+  line-height: 1.5;
+}
+
+.admin-feedback-detail-time {
+  position: absolute;
+  top: 0.72rem;
+  right: 0.72rem;
 }
 
 .admin-feedback-detail-fields {
