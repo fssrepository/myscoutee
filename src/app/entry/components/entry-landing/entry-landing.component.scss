@@ -645,10 +645,10 @@
   margin-bottom: 0.9rem;
   padding: 0.72rem;
   box-shadow: 0 10px 24px rgba(13, 27, 57, 0.06);
+  cursor: default;
 }
 
 .entry-ideas-head,
-.entry-ideas-actions,
 .entry-ideas-more-row,
 .entry-ideas-tag {
   display: flex;
@@ -677,11 +677,6 @@
   color: #c8921e;
 }
 
-.entry-ideas-actions {
-  gap: 0.34rem;
-}
-
-.entry-ideas-icon-btn,
 .entry-ideas-popup-close,
 .entry-ideas-pagination button {
   border: 1px solid rgba(47, 86, 139, 0.18);
@@ -695,12 +690,6 @@
   cursor: pointer;
 }
 
-.entry-ideas-icon-btn {
-  width: 34px;
-  height: 34px;
-}
-
-.entry-ideas-icon-btn .mat-icon,
 .entry-ideas-popup-close .mat-icon,
 .entry-ideas-pagination .mat-icon {
   width: 18px;
@@ -718,6 +707,7 @@
   overscroll-behavior-x: contain;
   scroll-snap-type: x proximity;
   padding: 0.1rem 0.05rem 0.4rem;
+  cursor: default;
 }
 
 .entry-ideas-carousel::-webkit-scrollbar {
@@ -838,13 +828,6 @@
   color: #a76513;
   font-size: 0.76rem;
   font-weight: 900;
-}
-
-.entry-idea-card-link .mat-icon {
-  width: 15px;
-  height: 15px;
-  font-size: 15px;
-  line-height: 15px;
 }
 
 .entry-ideas-more-row {

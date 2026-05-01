@@ -291,14 +291,6 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
     this.showIdeaPage(this.ideaPageIndex + 1, event);
   }
 
-  protected scrollIdeaCarousel(scroller: HTMLElement, direction: -1 | 1, event?: Event): void {
-    event?.stopPropagation();
-    scroller.scrollBy({
-      left: direction * Math.min(360, Math.max(260, scroller.clientWidth * 0.82)),
-      behavior: 'smooth'
-    });
-  }
-
   protected ideaImageUrl(post: AppTypes.IdeaPost | null): string {
     return `${post?.imageUrl ?? post?.imageUrls?.[0] ?? ''}`.trim();
   }

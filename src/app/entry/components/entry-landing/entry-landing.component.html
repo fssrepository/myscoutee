@@ -132,28 +132,8 @@
             <mat-icon>tips_and_updates</mat-icon>
             <span>Ideas</span>
           </span>
-          <div class="entry-ideas-actions">
-            <button
-              type="button"
-              class="entry-ideas-icon-btn"
-              aria-label="Previous ideas"
-              title="Previous ideas"
-              (click)="scrollIdeaCarousel(ideasScroller, -1, $event)"
-              >
-              <mat-icon>chevron_left</mat-icon>
-            </button>
-            <button
-              type="button"
-              class="entry-ideas-icon-btn"
-              aria-label="Next ideas"
-              title="Next ideas"
-              (click)="scrollIdeaCarousel(ideasScroller, 1, $event)"
-              >
-              <mat-icon>chevron_right</mat-icon>
-            </button>
-          </div>
         </div>
-        <div #ideasScroller class="entry-ideas-carousel" tabindex="0" aria-label="Featured idea posts">
+        <div class="entry-ideas-carousel" aria-label="Featured idea posts">
           @for (post of featuredIdeaPosts(); track post.id) {
             <button type="button" class="entry-idea-card" (click)="openIdeasPopup(post, $event)">
               @if (ideaImageUrl(post); as imageUrl) {
@@ -172,7 +152,6 @@
                 <span class="entry-idea-card-excerpt">{{ post.excerpt }}</span>
                 <span class="entry-idea-card-link">
                   <span>Read more</span>
-                  <mat-icon>arrow_forward</mat-icon>
                 </span>
               </span>
             </button>
