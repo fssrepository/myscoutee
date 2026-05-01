@@ -287,28 +287,11 @@
 
 .help-editor-help-hero {
   position: relative;
-  padding: 0.7rem 4.65rem 0.72rem 0.76rem;
+  padding: 0.7rem 0.76rem 0.72rem;
   border: 1px solid rgba(157, 118, 41, 0.24);
   border-radius: 8px;
   background: linear-gradient(180deg, #fbf4e8 0%, #fffaf0 100%);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
-}
-
-.help-editor-help-version {
-  position: absolute;
-  top: 0.54rem;
-  right: 0.58rem;
-  min-width: 2.4rem;
-  height: 24px;
-  border-radius: 999px;
-  background: rgba(124, 86, 24, 0.12);
-  color: #704a12;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 0.48rem;
-  font-size: 0.72rem;
-  font-weight: 900;
 }
 
 .help-editor-help-hero h3,
@@ -332,6 +315,7 @@
 .help-editor-help-hero-edit {
   display: grid;
   gap: 0.46rem;
+  padding-right: 4.65rem;
 }
 
 .help-editor-inline-field,
@@ -646,6 +630,7 @@
   display: flex;
   align-items: stretch;
   background: linear-gradient(180deg, #f9fbff 0%, #f1f6ff 100%);
+  cursor: pointer;
 }
 
 .help-editor-revision-card.is-open > .help-editor-revision-head {

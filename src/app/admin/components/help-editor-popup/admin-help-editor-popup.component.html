@@ -228,7 +228,7 @@
                     }
                   } @else if (row.revision; as revision) {
                     <article class="help-editor-revision-card" [class.is-open]="isRevisionOpen(revision)" [class.is-active]="revision.active">
-                      <div class="help-editor-revision-head">
+                      <div class="help-editor-revision-head" (click)="toggleRevision(revision, $event)">
                         <button
                           type="button"
                           class="help-editor-revision-toggle"
@@ -307,7 +307,6 @@
                       @if (isRevisionOpen(revision)) {
                         <div class="help-editor-revision-preview">
                           <article class="help-editor-help-hero">
-                            <span class="help-editor-help-version">v{{ revision.version }}</span>
                             <h3>{{ revision.summary || revision.title }}</h3>
                             <p>{{ revisionDescription(revision) }}</p>
                           </article>
