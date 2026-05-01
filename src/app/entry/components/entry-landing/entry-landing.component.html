@@ -5,10 +5,6 @@
         <img class="entry-brand-mark" src="assets/logo/heart.webp" alt="MyScoutee logo" />
         <span class="entry-brand-text">yScoutee</span>
       </a>
-      <nav class="entry-nav" aria-label="Landing sections">
-        <a href="#why" (click)="scrollEntryTo('why', $event)">Why</a>
-        <a href="#how" (click)="scrollEntryTo('how', $event)">How it works</a>
-      </nav>
       <button
         type="button"
         class="entry-auth-btn"
@@ -28,7 +24,7 @@
 
     <section class="entry-hero" id="top">
       <div class="entry-hero-main">
-        <div class="entry-hero-content" id="why">
+        <div class="entry-hero-content">
           <p class="entry-eyebrow">Your preferences come first</p>
           <h1>Stop Swiping.</h1>
           <h1>Start Connecting.</h1>
@@ -54,96 +50,79 @@
           </div>
         </div>
 
-        <aside class="entry-hero-stats" aria-label="Why this works">
-          <article class="entry-stat-card">
-            <header class="entry-stat-head">
-              <span class="entry-stat-icon"><mat-icon>tune</mat-icon></span>
-              <div>
-                <span class="entry-stat-value">1-10 score, not just yes/no</span>
-                <span class="entry-stat-label">Show real interest level from low to high with clearer signals.</span>
+        <aside class="entry-hero-how" id="how" aria-label="How it works">
+          <div
+            class="entry-steps-carousel"
+            role="region"
+            aria-label="How it works carousel"
+            aria-roledescription="carousel"
+            >
+            @if (!isFirstHowSlide) {
+              <button
+                type="button"
+                class="entry-carousel-arrow entry-carousel-arrow-prev"
+                aria-label="Previous step"
+                matRipple
+                [matRippleColor]="'rgba(61, 102, 190, 0.14)'"
+                (click)="showPreviousHowSlide()"
+                >
+                <mat-icon>chevron_left</mat-icon>
+              </button>
+            }
+            <div
+              class="entry-steps-carousel-window"
+              (pointerdown)="beginHowCarouselSwipe($event)"
+              (pointerup)="endHowCarouselSwipe($event)"
+              (pointercancel)="cancelHowCarouselSwipe($event)"
+              >
+              <div
+                class="entry-steps-track"
+                [style.transform]="'translateX(-' + activeHowSlideIndex * 100 + '%)'"
+                >
+                @for (slide of howSlides; track slide.index; let slideIndex = $index) {
+                  <article
+                    class="entry-step-card entry-step-card-visual {{ slide.visualClass }}"
+                    [attr.aria-hidden]="activeHowSlideIndex === slideIndex ? null : 'true'"
+                    >
+                    <div class="entry-step-headline">
+                      <span class="entry-step-index">{{ slide.index }}</span>
+                      <div class="entry-step-heading-copy">
+                        <h3>{{ slide.title }}</h3>
+                        <p>{{ slide.message }}</p>
+                      </div>
+                    </div>
+                    <div class="entry-step-visual" aria-hidden="true"></div>
+                  </article>
+                }
               </div>
-            </header>
-            <span class="entry-stat-tags"><span>Best for social & dating</span></span>
-            <div class="entry-stat-meter" role="img" aria-label="Priority range from low intent to high intent">
-              <span class="entry-stat-meter-fill meter-priority"></span>
             </div>
-          </article>
-          <article class="entry-stat-card">
-            <header class="entry-stat-head">
-              <span class="entry-stat-icon"><mat-icon>groups</mat-icon></span>
-              <div>
-                <span class="entry-stat-value">Group-first chat</span>
-                <span class="entry-stat-label">A small group where interest matches both ways.</span>
-              </div>
-            </header>
-            <span class="entry-stat-tags"><span>Best for communities</span></span>
-          </article>
-          <article class="entry-stat-card">
-            <header class="entry-stat-head">
-              <span class="entry-stat-icon"><mat-icon>hub</mat-icon></span>
-              <div>
-                <span class="entry-stat-value">Live updates</span>
-                <span class="entry-stat-label">Change priorities anytime, with less pressure.</span>
-              </div>
-            </header>
-            <span class="entry-stat-tags"><span>Best for jobs & ideas</span></span>
-          </article>
+            @if (!isLastHowSlide) {
+              <button
+                type="button"
+                class="entry-carousel-arrow entry-carousel-arrow-next"
+                aria-label="Next step"
+                matRipple
+                [matRippleColor]="'rgba(61, 102, 190, 0.14)'"
+                (click)="showNextHowSlide()"
+                >
+                <mat-icon>chevron_right</mat-icon>
+              </button>
+            }
+            <div class="entry-carousel-dots" aria-label="How it works slides">
+              @for (slide of howSlides; track slide.index; let slideIndex = $index) {
+                <button
+                  type="button"
+                  class="entry-carousel-dot"
+                  [class.is-active]="activeHowSlideIndex === slideIndex"
+                  [attr.aria-current]="activeHowSlideIndex === slideIndex ? 'true' : null"
+                  [attr.aria-label]="'Show step ' + slide.index"
+                  (click)="showHowSlide(slideIndex)"
+                  ></button>
+              }
+            </div>
+          </div>
         </aside>
       </div>
-    </section>
-
-    <section class="entry-section" id="how">
-      <header class="entry-section-head">
-        <h2>How it works</h2>
-      </header>
-      <div class="entry-steps-grid">
-        <article class="entry-step-card entry-step-card-visual entry-step-card-visual-1">
-          <div class="entry-step-headline">
-            <span class="entry-step-index">01</span>
-            <h3>Set priorities and feedback</h3>
-          </div>
-          <p>Rate people 1–10 for <strong>better matches</strong>.</p>
-          <div class="entry-step-visual" aria-hidden="true"></div>
-        </article>
-        <article class="entry-step-card entry-step-card-visual entry-step-card-visual-2">
-          <div class="entry-step-headline">
-            <span class="entry-step-index">02</span>
-            <h3>Start in a matched group chat</h3>
-          </div>
-          <p>Join a group chat with your <strong>top matches</strong>.</p>
-          <div class="entry-step-visual" aria-hidden="true"></div>
-        </article>
-        <article class="entry-step-card entry-step-card-visual entry-step-card-visual-3">
-          <div class="entry-step-headline">
-            <span class="entry-step-index">03</span>
-            <h3>Meet through events</h3>
-          </div>
-          <p>Join an event or create your own and <strong>go offline</strong>.</p>
-          <div class="entry-step-visual" aria-hidden="true"></div>
-        </article>
-        <article class="entry-step-card entry-step-card-visual entry-step-card-visual-4">
-          <div class="entry-step-headline">
-            <span class="entry-step-index">04</span>
-            <h3>Host your own events</h3>
-          </div>
-          <p>Create events for everyone, friends, or <strong>invite-only</strong>.</p>
-          <div class="entry-step-visual" aria-hidden="true"></div>
-        </article>
-      </div>
-    </section>
-
-    <section class="entry-final-cta">
-      <h2>Stop guessing. Start prioritizing.</h2>
-      <button
-        type="button"
-        class="entry-cta entry-cta-primary"
-        matRipple
-        [matRippleColor]="'rgba(112, 59, 242, 0.14)'"
-        (click)="requestDemo()"
-        >
-        <mat-icon>login</mat-icon>
-        <span>Open demo</span>
-      </button>
     </section>
 
     <footer class="entry-footer" aria-label="Site footer">
@@ -159,8 +138,6 @@
 
         <section class="entry-footer-links">
           <h3>Explore</h3>
-          <a href="#why" (click)="scrollEntryTo('why', $event)">Why</a>
-          <a href="#how" (click)="scrollEntryTo('how', $event)">How it works</a>
           <a href="#" (click)="requestConsent($event)">Data privacy</a>
         </section>
 

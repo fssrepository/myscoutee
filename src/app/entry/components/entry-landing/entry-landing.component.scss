@@ -54,27 +54,6 @@
   color: #1f3a63;
 }
 
-.entry-nav {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.24rem;
-}
-
-.entry-nav a {
-  color: #1e3f6d;
-  text-decoration: none;
-  font-size: 0.92rem;
-  font-weight: 700;
-  padding: 0.46rem 0.7rem;
-  border-radius: 999px;
-  transition: background-color 0.18s ease, color 0.18s ease;
-}
-
-.entry-nav a:hover {
-  background: rgba(125, 84, 244, 0.13);
-  color: #6e3bf1;
-}
-
 .entry-auth-btn {
   position: relative;
   overflow: hidden;
@@ -244,6 +223,13 @@
   gap: 0.5rem;
 }
 
+.entry-hero-how {
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+}
+
 .entry-stat-card {
   border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.34);
@@ -356,6 +342,141 @@
   gap: 0.82rem;
 }
 
+.entry-steps-carousel {
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 0 2rem 1.75rem;
+  box-sizing: border-box;
+}
+
+.entry-steps-carousel-window {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+  border-radius: 30px;
+  contain: paint;
+  cursor: grab;
+  touch-action: pan-y;
+  user-select: none;
+}
+
+.entry-steps-carousel-window:active {
+  cursor: grabbing;
+}
+
+.entry-steps-track {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  transition: transform 0.36s cubic-bezier(0.22, 0.61, 0.36, 1);
+  will-change: transform;
+}
+
+.entry-steps-track .entry-step-card {
+  flex: 0 0 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.entry-steps-carousel .entry-step-visual {
+  height: 178px;
+}
+
+.entry-carousel-arrow {
+  position: absolute;
+  top: calc(50% - 2.05rem);
+  transform: translateY(-50%);
+  z-index: 2;
+  width: 42px;
+  height: 42px;
+  border: 1px solid rgba(51, 84, 137, 0.22);
+  border-radius: 50%;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.92);
+  color: #31588e;
+  box-shadow: 0 10px 20px rgba(29, 52, 91, 0.14);
+  cursor: pointer;
+  transition:
+    background-color 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease,
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.entry-carousel-arrow:hover {
+  background: #ffffff;
+  border-color: rgba(64, 101, 169, 0.36);
+  color: #4e43d9;
+  box-shadow: 0 12px 24px rgba(29, 52, 91, 0.2);
+}
+
+.entry-carousel-arrow:active {
+  transform: translateY(-50%) scale(0.96);
+}
+
+.entry-carousel-arrow:focus-visible,
+.entry-carousel-dot:focus-visible {
+  outline: 2px solid rgba(83, 111, 230, 0.42);
+  outline-offset: 2px;
+}
+
+.entry-carousel-arrow-prev {
+  left: 0.15rem;
+}
+
+.entry-carousel-arrow-next {
+  right: 0.15rem;
+}
+
+.entry-carousel-arrow .mat-icon {
+  width: 24px;
+  height: 24px;
+  font-size: 24px;
+  line-height: 24px;
+}
+
+.entry-carousel-dots {
+  position: absolute;
+  left: 50%;
+  bottom: 0.68rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42rem;
+  transform: translateX(-50%);
+}
+
+.entry-carousel-dot {
+  width: 10px;
+  height: 10px;
+  border: 1px solid rgba(56, 89, 140, 0.22);
+  border-radius: 999px;
+  padding: 0;
+  background: #d8e2f2;
+  cursor: pointer;
+  transition:
+    width 0.18s ease,
+    background-color 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.entry-carousel-dot.is-active {
+  width: 28px;
+  border-color: transparent;
+  background: linear-gradient(90deg, #4f74e8 0%, #8a58ec 50%, #f1569a 100%);
+  box-shadow: 0 6px 12px rgba(80, 70, 210, 0.22);
+}
+
 .entry-step-card {
   position: relative;
   padding: 0;
@@ -379,8 +500,12 @@
 .entry-step-headline {
   padding: 0.78rem 0.9rem 0.16rem;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.52rem;
+}
+
+.entry-step-heading-copy {
+  min-width: 0;
 }
 
 .entry-step-index {
@@ -406,6 +531,14 @@
   line-height: 1.14;
   letter-spacing: -0.015em;
   font-weight: 780;
+}
+
+.entry-step-heading-copy p {
+  margin: 0.24rem 0 0;
+  color: #3a3f6c;
+  font-size: clamp(0.74rem, 0.9vw, 0.86rem);
+  line-height: 1.28;
+  font-weight: 600;
 }
 
 .entry-step-card > p {
@@ -496,29 +629,8 @@
   --slice-y: 99%;
 }
 
-.entry-final-cta {
-  border-radius: 20px;
-  padding: 1rem 0;
-  background:
-    radial-gradient(circle, rgba(255, 255, 255, 0.18) 1px, transparent 1px),
-    linear-gradient(120deg, #7446f2 0%, #d93f93 52%, #ff7b2d 100%);
-  background-size: 18px 18px, auto;
-  color: #fff;
-  text-align: center;
-  box-shadow: 0 16px 32px rgba(120, 62, 235, 0.24);
-}
-
-.entry-final-cta h2 {
-  margin: 0;
-  font-size: clamp(1.42rem, 2.4vw, 2rem);
-}
-
-.entry-final-cta .entry-cta-primary {
-  margin: 1.2rem auto 0;
-}
-
 .entry-footer {
-  margin-top: 0.9rem;
+  margin-top: 0;
   border-radius: 16px;
   overflow: hidden;
   border: 1px solid rgba(27, 54, 95, 0.18);
@@ -746,15 +858,6 @@
   box-shadow: 0 16px 36px rgba(21, 42, 79, 0.08);
 }
 
-.entry-nav a {
-  color: #2f4f7b;
-}
-
-.entry-nav a:hover {
-  background: rgba(91, 88, 238, 0.12);
-  color: #5143da;
-}
-
 .entry-auth-btn {
   border-color: rgba(116, 79, 230, 0.35);
   background: linear-gradient(135deg, #6b4eff 0%, #f04eab 60%, #ff8a3c 100%);
@@ -832,7 +935,11 @@
 .entry-steps-grid .entry-step-card:nth-child(1)::before,
 .entry-steps-grid .entry-step-card:nth-child(2)::before,
 .entry-steps-grid .entry-step-card:nth-child(3)::before,
-.entry-steps-grid .entry-step-card:nth-child(4)::before {
+.entry-steps-grid .entry-step-card:nth-child(4)::before,
+.entry-step-card-visual-1::before,
+.entry-step-card-visual-2::before,
+.entry-step-card-visual-3::before,
+.entry-step-card-visual-4::before {
   background: linear-gradient(90deg, #5b66e8, #8b59eb);
   height: 3px;
 }
@@ -850,93 +957,95 @@
   color: #5c48df;
 }
 
-.entry-steps-grid .entry-step-card:nth-child(1) {
+.entry-steps-grid .entry-step-card:nth-child(1),
+.entry-step-card-visual-1 {
   background: linear-gradient(180deg, #eef5ff 0%, #ffffff 100%);
   border-color: rgba(62, 125, 229, 0.3);
 }
 
-.entry-steps-grid .entry-step-card:nth-child(2) {
+.entry-steps-grid .entry-step-card:nth-child(2),
+.entry-step-card-visual-2 {
   background: linear-gradient(180deg, #f2eeff 0%, #ffffff 100%);
   border-color: rgba(120, 90, 228, 0.3);
 }
 
-.entry-steps-grid .entry-step-card:nth-child(3) {
+.entry-steps-grid .entry-step-card:nth-child(3),
+.entry-step-card-visual-3 {
   background: linear-gradient(180deg, #fff0f9 0%, #ffffff 100%);
   border-color: rgba(226, 83, 168, 0.3);
 }
 
-.entry-steps-grid .entry-step-card:nth-child(4) {
+.entry-steps-grid .entry-step-card:nth-child(4),
+.entry-step-card-visual-4 {
   background: linear-gradient(180deg, #fff1eb 0%, #ffffff 100%);
   border-color: rgba(239, 108, 74, 0.3);
 }
 
-.entry-steps-grid .entry-step-card:nth-child(1)::before {
+.entry-steps-grid .entry-step-card:nth-child(1)::before,
+.entry-step-card-visual-1::before {
   background: linear-gradient(90deg, #3d85e7, #5ca1ff);
 }
 
-.entry-steps-grid .entry-step-card:nth-child(2)::before {
+.entry-steps-grid .entry-step-card:nth-child(2)::before,
+.entry-step-card-visual-2::before {
   background: linear-gradient(90deg, #6752dd, #8a63ee);
 }
 
-.entry-steps-grid .entry-step-card:nth-child(3)::before {
+.entry-steps-grid .entry-step-card:nth-child(3)::before,
+.entry-step-card-visual-3::before {
   background: linear-gradient(90deg, #db4ea8, #f167bc);
 }
 
-.entry-steps-grid .entry-step-card:nth-child(4)::before {
+.entry-steps-grid .entry-step-card:nth-child(4)::before,
+.entry-step-card-visual-4::before {
   background: linear-gradient(90deg, #eb6745, #ff8a5e);
 }
 
-.entry-steps-grid .entry-step-card:nth-child(1) .entry-step-index {
+.entry-steps-grid .entry-step-card:nth-child(1) .entry-step-index,
+.entry-step-card-visual-1 .entry-step-index {
   color: #2f76d8;
   background: linear-gradient(135deg, #deedff 0%, #ebf4ff 100%);
 }
 
-.entry-steps-grid .entry-step-card:nth-child(2) .entry-step-index {
+.entry-steps-grid .entry-step-card:nth-child(2) .entry-step-index,
+.entry-step-card-visual-2 .entry-step-index {
   color: #6848d1;
   background: linear-gradient(135deg, #ece5ff 0%, #f3eeff 100%);
 }
 
-.entry-steps-grid .entry-step-card:nth-child(3) .entry-step-index {
+.entry-steps-grid .entry-step-card:nth-child(3) .entry-step-index,
+.entry-step-card-visual-3 .entry-step-index {
   color: #d14699;
   background: linear-gradient(135deg, #ffe5f3 0%, #fff0f8 100%);
 }
 
-.entry-steps-grid .entry-step-card:nth-child(4) .entry-step-index {
+.entry-steps-grid .entry-step-card:nth-child(4) .entry-step-index,
+.entry-step-card-visual-4 .entry-step-index {
   color: #dc5b3c;
   background: linear-gradient(135deg, #ffe7df 0%, #fff1ec 100%);
 }
 
-.entry-final-cta {
-  background:
-    radial-gradient(circle, rgba(255, 255, 255, 0.2) 1px, transparent 1px),
-    linear-gradient(120deg, #4f5de7 0%, #8458eb 50%, #f1569a 100%);
-  background-size: 18px 18px, auto;
-}
-
-.entry-final-cta .entry-cta-primary {
-  background: #fff;
-  color: #5b3ff1;
-  box-shadow: 0 8px 18px rgba(35, 16, 81, 0.2);
-}
-
 @media (max-width: 1024px) {
-  .entry-nav {
-    display: none;
-  }
-
   .entry-hero-main {
     grid-template-columns: 1fr;
+  }
+
+  .entry-hero-how {
+    margin-top: 0.1rem;
   }
 }
 
 @media (max-width: 900px) {
   .entry-shell {
-    padding: 0;
+    padding: 0.35rem;
   }
 
   .entry-shell-panel {
     border-radius: 0;
-    padding: 0.7rem;
+    border: 0;
+    padding: 0;
+    background: transparent;
+    box-shadow: none;
   }
 
   .entry-shell-header {
@@ -948,6 +1057,7 @@
   }
 
   .entry-hero {
+    overflow: visible;
     padding: 1.1rem;
   }
 
@@ -961,6 +1071,37 @@
 
   .entry-steps-grid {
     grid-template-columns: 1fr;
+  }
+
+  .entry-steps-carousel {
+    max-width: 100%;
+    padding: 0 0 1.95rem;
+  }
+
+  .entry-steps-carousel-window {
+    border-radius: 26px;
+  }
+
+  .entry-carousel-arrow {
+    top: calc(50% - 2.15rem);
+    width: 36px;
+    height: 36px;
+    background: rgba(255, 255, 255, 0.88);
+  }
+
+  .entry-carousel-arrow-prev {
+    left: -1.125rem;
+  }
+
+  .entry-carousel-arrow-next {
+    right: -1.125rem;
+  }
+
+  .entry-carousel-arrow .mat-icon {
+    width: 21px;
+    height: 21px;
+    font-size: 21px;
+    line-height: 21px;
   }
 
   .entry-step-visual {
@@ -999,6 +1140,11 @@
     line-height: 1.32;
   }
 
+  #how .entry-step-heading-copy p {
+    font-size: clamp(0.82rem, 3.3vw, 0.94rem);
+    line-height: 1.28;
+  }
+
   #how .entry-step-card-visual .entry-step-index {
     min-width: 42px;
     min-height: 42px;
@@ -1014,12 +1160,12 @@
   }
 
   .entry-shell {
-    padding: 0.55rem;
+    padding: 0.35rem;
   }
 
   .entry-shell-panel {
-    border-radius: 16px;
-    padding: 0.55rem;
+    border-radius: 0;
+    padding: 0;
   }
 
   .entry-brand-text {
