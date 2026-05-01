@@ -531,7 +531,10 @@ export class NavigatorService {
   private isAdminWorkspaceRoute(): boolean {
     const [pathWithQuery] = (this.router.url || '').split('?');
     const [path] = pathWithQuery.split('#');
-    return path === '/admin' || path === '/admin/';
+    return path === '/admin'
+      || path === '/admin/'
+      || path === '/admin/workspace'
+      || path === '/admin/workspace/';
   }
 
   private isAdminProfileActive(userId: string): boolean {

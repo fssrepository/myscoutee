@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
-import { Component, HostListener, effect, inject } from '@angular/core';
+import { Component, HostListener, OnInit, effect, inject } from '@angular/core';
+import { Router } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { MatRippleModule } from '@angular/material/core';
 
@@ -33,9 +34,10 @@ import { AdminItemPreviewPopupComponent } from './components/admin-item-preview-
   templateUrl: './admin-page.component.html',
   styleUrl: './admin-page.component.scss'
 })
-export class AdminPageComponent {
+export class AdminPageComponent implements OnInit {
   protected readonly admin = inject(AdminService);
   protected readonly sessionService = inject(SessionService);
+  private readonly router = inject(Router);
   private readonly navigatorService = inject(NavigatorService);
   private readonly popupCtx = inject(AppPopupContext);
   private lastHandledAdminRequestMs = 0;
@@ -72,6 +74,16 @@ export class AdminPageComponent {
     });
   }
 
+  async ngOnInit(): Promise<void> {
+    if (!this.isWorkspaceRoute() || this.admin.dashboard()) {
+      return;
+    }
+    const restored = await this.admin.restoreAdminSession();
+    if (!restored) {
+      await this.router.navigateByUrl('/admin', { replaceUrl: true });
+    }
+  }
+
   protected async requestAdminLogin(): Promise<void> {
     this.selectorErrorMessage = '';
     if (!this.admin.isFirebaseAdminMode) {
@@ -82,7 +94,10 @@ export class AdminPageComponent {
     if (!session) {
       return;
     }
-    await this.admin.bootstrapAdmin();
+    const dashboard = await this.admin.bootstrapAdmin();
+    if (dashboard) {
+      await this.router.navigateByUrl('/admin/workspace', { replaceUrl: true });
+    }
   }
 
   protected openSelector(): void {
@@ -122,6 +137,7 @@ export class AdminPageComponent {
       this.selectorOpen = false;
       this.selectorLoading = false;
       this.selectorSubmitting = false;
+      await this.router.navigateByUrl('/admin/workspace', { replaceUrl: true });
       return;
     }
     this.selectorLoading = false;
@@ -155,5 +171,9 @@ export class AdminPageComponent {
       default:
         return 'selector';
     }
+  }
+
+  private isWorkspaceRoute(): boolean {
+    return this.router.url.split('?')[0] === '/admin/workspace';
   }
 }

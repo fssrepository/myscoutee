@@ -18,6 +18,10 @@ export const routes: Routes = [
     loadComponent: () => import('./admin/admin-help-session-page.component').then(m => m.AdminHelpSessionPageComponent)
   },
   {
+    path: 'admin/workspace',
+    loadComponent: () => import('./admin/admin-page.component').then(m => m.AdminPageComponent)
+  },
+  {
     path: 'admin',
     loadComponent: () => import('./admin/admin-page.component').then(m => m.AdminPageComponent)
   },
