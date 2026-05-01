@@ -16,3 +16,4 @@ export * from './asset.model';
 export * from './activities-ui.model';
 export * from './activities.model';
 export * from './share-token.model';
+export * from './idea-post.model';

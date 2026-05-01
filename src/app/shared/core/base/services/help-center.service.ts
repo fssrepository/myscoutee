@@ -49,6 +49,10 @@ export class HelpCenterService extends BaseRouteModeService {
     ]);
   }
 
+  applyState(kind: HelpCenterDocumentKind, state: HelpCenterState): void {
+    this.setState(this.normalizeKind(kind), state);
+  }
+
   async refresh(kind: HelpCenterDocumentKind = 'help'): Promise<HelpCenterState> {
     return this.loadState(this.normalizeKind(kind));
   }

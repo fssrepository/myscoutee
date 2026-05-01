@@ -29,6 +29,7 @@ export type AdminPopupKind =
   | 'warn-chat'
   | 'profile'
   | 'help-editor'
+  | 'idea-editor'
   | 'item-preview';
 
 export interface AdminUserDto {
@@ -272,6 +273,10 @@ export class AdminService {
 
   openHelpEditor(): void {
     this.activePopupRef.set('help-editor');
+  }
+
+  openIdeaEditor(): void {
+    this.activePopupRef.set('idea-editor');
   }
 
   openReportDetail(user: AdminReportedUserDto, report: AdminReportDto): void {

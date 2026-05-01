@@ -1,6 +1,6 @@
 import { ChangeDetectorRef, Component, EventEmitter, HostListener, Injector, Input, NgZone, Output, inject } from '@angular/core';
 
-import { AppContext, HelpCenterService, USERS_LOAD_CONTEXT_KEY, UsersService, type DemoUserListItemDto } from '../../../shared/core';
+import { AppContext, HelpCenterService, LandingContentService, USERS_LOAD_CONTEXT_KEY, UsersService, type DemoUserListItemDto } from '../../../shared/core';
 import type { DemoBootstrapProgressStage } from '../../../shared/core/demo';
 import type * as AppTypes from '../../../shared/core/base/models';
 import type { LocationCoordinates } from '../../../shared/core/base/interfaces/location.interface';
@@ -34,6 +34,7 @@ export class EntryShellComponent {
   private readonly ngZone = inject(NgZone);
   private readonly appCtx = inject(AppContext);
   private readonly helpCenter = inject(HelpCenterService);
+  private readonly landingContent = inject(LandingContentService);
   private readonly confirmationDialogService = inject(ConfirmationDialogService);
   private usersServiceRef: UsersService | null = null;
   private loginEligibilityBusy = false;
@@ -50,6 +51,7 @@ export class EntryShellComponent {
   protected showEntryConsentPopup = false;
   protected entryConsentViewOnly = false;
   protected entryPrivacyLoading = true;
+  protected landingIdeaPosts: AppTypes.IdeaPost[] = [];
   protected showUserSelector = false;
   protected demoSelectorUsers: DemoUserListItemDto[] = [];
   protected demoSelectorLoading = false;
@@ -522,7 +524,8 @@ export class EntryShellComponent {
   private async loadEntryPrivacyContent(): Promise<void> {
     this.entryPrivacyLoading = true;
     try {
-      await this.helpCenter.preload('privacy');
+      const state = await this.landingContent.loadOnce();
+      this.landingIdeaPosts = state.ideas;
     } finally {
       this.ngZone.run(() => {
         this.entryPrivacyLoading = false;

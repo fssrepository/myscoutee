@@ -4,6 +4,7 @@ export { ACTIVITY_RESOURCES_TABLE_NAME, type DemoActivitySubEventResourceRecord,
 export { CHATS_TABLE_NAME, type DemoChatRecord, type DemoChatsMemorySchema } from './models/chats.model';
 export { EVENTS_TABLE_NAME, type DemoEventRecord, type DemoEventsMemorySchema } from './models/events.model';
 export { HELP_CENTER_TABLE_NAME, type DemoHelpCenterMemorySchema } from './models/help-center.model';
+export { IDEA_POSTS_TABLE_NAME, type DemoIdeaPostsMemorySchema } from './models/idea-posts.model';
 export { PROFILE_EXPERIENCES_TABLE_NAME, type DemoProfileExperiencesMemorySchema } from './models/profile-experiences.model';
 export { USERS_TABLE_NAME, type DemoUsersMemorySchema } from './models/users.model';
 export { DemoAssetsRepository } from './repositories/assets.repository';
@@ -34,6 +35,8 @@ export { DemoEventEditorDataService } from './services/event-editor-data.service
 export { DemoEventsService } from './services/events.service';
 export { DemoGameService } from './services/game.service';
 export { DemoHelpCenterService } from './services/help-center.service';
+export { DemoIdeaPostsService } from './services/idea-posts.service';
+export { DemoLandingContentService } from './services/landing-content.service';
 export { DemoUserExperiencesService } from './services/user-experiences.service';
 export { DemoRatesService } from './services/rates.service';
 export { DemoUsersService } from './services/users.service';

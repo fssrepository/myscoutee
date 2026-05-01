@@ -125,6 +125,68 @@
       </div>
     </section>
 
+    @if (featuredIdeaPosts().length > 0) {
+      <section class="entry-ideas" aria-label="MyScoutee ideas">
+        <div class="entry-ideas-head">
+          <span class="entry-ideas-tag">
+            <mat-icon>tips_and_updates</mat-icon>
+            <span>Ideas</span>
+          </span>
+          <div class="entry-ideas-actions">
+            <button
+              type="button"
+              class="entry-ideas-icon-btn"
+              aria-label="Previous ideas"
+              title="Previous ideas"
+              (click)="scrollIdeaCarousel(ideasScroller, -1, $event)"
+              >
+              <mat-icon>chevron_left</mat-icon>
+            </button>
+            <button
+              type="button"
+              class="entry-ideas-icon-btn"
+              aria-label="Next ideas"
+              title="Next ideas"
+              (click)="scrollIdeaCarousel(ideasScroller, 1, $event)"
+              >
+              <mat-icon>chevron_right</mat-icon>
+            </button>
+          </div>
+        </div>
+        <div #ideasScroller class="entry-ideas-carousel" tabindex="0" aria-label="Featured idea posts">
+          @for (post of featuredIdeaPosts(); track post.id) {
+            <button type="button" class="entry-idea-card" (click)="openIdeasPopup(post, $event)">
+              @if (ideaImageUrl(post); as imageUrl) {
+                <span class="entry-idea-card-media" [style.backgroundImage]="'url(' + imageUrl + ')'"></span>
+              } @else {
+                <span class="entry-idea-card-media entry-idea-card-media-empty">
+                  <mat-icon>image_not_supported</mat-icon>
+                </span>
+              }
+              <span class="entry-idea-card-body">
+                <span class="entry-idea-card-date">
+                  <mat-icon>calendar_today</mat-icon>
+                  <span>{{ ideaDateLabel(post) }}</span>
+                </span>
+                <strong>{{ post.title }}</strong>
+                <span class="entry-idea-card-excerpt">{{ post.excerpt }}</span>
+                <span class="entry-idea-card-link">
+                  <span>Read more</span>
+                  <mat-icon>arrow_forward</mat-icon>
+                </span>
+              </span>
+            </button>
+          }
+        </div>
+        <div class="entry-ideas-more-row">
+          <button type="button" class="entry-ideas-more-btn" (click)="openIdeasPopup(undefined, $event)">
+            <mat-icon>auto_stories</mat-icon>
+            <span>More ideas</span>
+          </button>
+        </div>
+      </section>
+    }
+
     <footer class="entry-footer" aria-label="Site footer">
       <div class="entry-footer-topline"></div>
       <div class="entry-footer-grid">
@@ -168,3 +230,94 @@
     </footer>
   </div>
 </section>
+
+@if (ideasPopupOpen) {
+  <section class="entry-ideas-popup" role="dialog" aria-modal="true" aria-label="MyScoutee ideas">
+    <div class="entry-ideas-popup-backdrop" (click)="closeIdeasPopup()"></div>
+    <div class="entry-ideas-popup-panel">
+      <header class="entry-ideas-popup-header">
+        <div>
+          <h2>MyScoutee ideas</h2>
+          <p>{{ publishedIdeaPosts().length }} article{{ publishedIdeaPosts().length === 1 ? '' : 's' }}</p>
+        </div>
+        <button type="button" class="entry-ideas-popup-close" (click)="closeIdeasPopup()" aria-label="Close ideas">
+          <mat-icon>close</mat-icon>
+        </button>
+      </header>
+      <div class="entry-ideas-popup-body">
+        <aside class="entry-ideas-list" aria-label="Idea posts">
+          <div class="entry-ideas-list-items">
+            @for (post of pagedIdeaPosts(); track post.id) {
+              <button
+                type="button"
+                class="entry-ideas-list-item"
+                [class.is-active]="selectedIdeaPost()?.id === post.id"
+                (click)="selectIdeaPost(post, $event)"
+                >
+                @if (ideaImageUrl(post); as imageUrl) {
+                  <span class="entry-ideas-list-image" [style.backgroundImage]="'url(' + imageUrl + ')'"></span>
+                } @else {
+                  <span class="entry-ideas-list-image entry-ideas-list-image-empty">
+                    <mat-icon>image_not_supported</mat-icon>
+                  </span>
+                }
+                <span class="entry-ideas-list-copy">
+                  <span>{{ ideaDateLabel(post) }}</span>
+                  <strong>{{ post.title }}</strong>
+                </span>
+              </button>
+            }
+          </div>
+          <nav class="entry-ideas-pagination" aria-label="Idea pages">
+            <button type="button" [disabled]="ideaPageIndex === 0" (click)="showPreviousIdeaPage($event)" aria-label="Previous page">
+              <mat-icon>chevron_left</mat-icon>
+            </button>
+            @for (button of ideaPageButtons(); track ideaPageButtonTrack($index, button)) {
+              @if (isIdeaPageNumber(button)) {
+                <button
+                  type="button"
+                  class="entry-ideas-page-number"
+                  [class.is-active]="ideaPageIndex === ideaPageNumber(button)"
+                  [attr.aria-current]="ideaPageIndex === ideaPageNumber(button) ? 'page' : null"
+                  (click)="showIdeaPage(ideaPageNumber(button), $event)"
+                  >
+                  {{ ideaPageButtonLabel(button) }}
+                </button>
+              } @else {
+                <span class="entry-ideas-page-ellipsis">{{ ideaPageButtonLabel(button) }}</span>
+              }
+            }
+            <button type="button" [disabled]="ideaPageIndex >= ideaPageCount() - 1" (click)="showNextIdeaPage($event)" aria-label="Next page">
+              <mat-icon>chevron_right</mat-icon>
+            </button>
+          </nav>
+        </aside>
+
+        @if (selectedIdeaPost(); as post) {
+          <article class="entry-ideas-article">
+            <header class="entry-ideas-article-head">
+              <div>
+                <span class="entry-ideas-article-date">
+                  <mat-icon>calendar_today</mat-icon>
+                  <span>{{ ideaDateLabel(post) }}</span>
+                </span>
+                <h2>{{ post.title }}</h2>
+                @if (post.excerpt) {
+                  <p>{{ post.excerpt }}</p>
+                }
+              </div>
+            </header>
+            @if (ideaImageUrl(post); as imageUrl) {
+              <div class="entry-ideas-article-image" [style.backgroundImage]="'url(' + imageUrl + ')'"></div>
+            } @else {
+              <div class="entry-ideas-article-image entry-ideas-article-image-empty">
+                <mat-icon>image_not_supported</mat-icon>
+              </div>
+            }
+            <div class="entry-ideas-article-html" [innerHTML]="post.contentHtml"></div>
+          </article>
+        }
+      </div>
+    </div>
+  </section>
+}

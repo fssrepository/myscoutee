@@ -12,6 +12,7 @@ import { CHATS_TABLE_NAME } from '../../demo/models/chats.model';
 import { EVENT_FEEDBACK_TABLE_NAME } from '../../demo/models/event-feedback.model';
 import { EVENTS_TABLE_NAME } from '../../demo/models/events.model';
 import { HELP_CENTER_TABLE_NAME } from '../../demo/models/help-center.model';
+import { IDEA_POSTS_TABLE_NAME } from '../../demo/models/idea-posts.model';
 import { PROFILE_EXPERIENCES_TABLE_NAME } from '../../demo/models/profile-experiences.model';
 import { SHARE_TOKENS_TABLE_NAME } from '../../demo/models/share-tokens.model';
 import type { DemoMemorySchema } from '../../demo/models/memory.model';
@@ -193,6 +194,11 @@ export class AppMemoryDb {
         privacyConsentsById: {},
         privacyConsentIds: []
       },
+      [IDEA_POSTS_TABLE_NAME]: {
+        seeded: false,
+        byId: {},
+        ids: []
+      },
       [PROFILE_EXPERIENCES_TABLE_NAME]: {
         byUserId: {},
         userIds: []
@@ -347,6 +353,7 @@ export class AppMemoryDb {
     const chats = await this.readIndexedDbEntry(db, CHATS_TABLE_NAME);
     const eventFeedback = await this.readIndexedDbEntry(db, EVENT_FEEDBACK_TABLE_NAME);
     const helpCenter = await this.readIndexedDbEntry(db, HELP_CENTER_TABLE_NAME);
+    const ideaPosts = await this.readIndexedDbEntry(db, IDEA_POSTS_TABLE_NAME);
     const profileExperiences = await this.readIndexedDbEntry(db, PROFILE_EXPERIENCES_TABLE_NAME);
     const events = await this.readIndexedDbEntry(db, EVENTS_TABLE_NAME)
       ?? await this.readIndexedDbEntry(db, 'demoEvents');
@@ -361,6 +368,7 @@ export class AppMemoryDb {
       || chats !== null
       || eventFeedback !== null
       || helpCenter !== null
+      || ideaPosts !== null
       || profileExperiences !== null
       || events !== null;
     if (!hasSegmentedState) {
@@ -402,6 +410,9 @@ export class AppMemoryDb {
     if (helpCenter !== null) {
       partialState[HELP_CENTER_TABLE_NAME] = helpCenter as DemoMemorySchema[typeof HELP_CENTER_TABLE_NAME];
     }
+    if (ideaPosts !== null) {
+      partialState[IDEA_POSTS_TABLE_NAME] = ideaPosts as DemoMemorySchema[typeof IDEA_POSTS_TABLE_NAME];
+    }
     if (profileExperiences !== null) {
       partialState[PROFILE_EXPERIENCES_TABLE_NAME] = profileExperiences as DemoMemorySchema[typeof PROFILE_EXPERIENCES_TABLE_NAME];
     }
@@ -429,6 +440,7 @@ export class AppMemoryDb {
       tablesStore.put(state[CHATS_TABLE_NAME], CHATS_TABLE_NAME);
       tablesStore.put(state[EVENT_FEEDBACK_TABLE_NAME], EVENT_FEEDBACK_TABLE_NAME);
       tablesStore.put(state[HELP_CENTER_TABLE_NAME], HELP_CENTER_TABLE_NAME);
+      tablesStore.put(state[IDEA_POSTS_TABLE_NAME], IDEA_POSTS_TABLE_NAME);
       tablesStore.put(state[PROFILE_EXPERIENCES_TABLE_NAME], PROFILE_EXPERIENCES_TABLE_NAME);
       tablesStore.put(state[EVENTS_TABLE_NAME], EVENTS_TABLE_NAME);
       tablesStore.delete('demoEvents');
@@ -649,6 +661,7 @@ export class AppMemoryDb {
     const chatsSource = source[CHATS_TABLE_NAME] as Partial<DemoMemorySchema[typeof CHATS_TABLE_NAME]> | undefined;
     const eventFeedbackSource = source[EVENT_FEEDBACK_TABLE_NAME] as Partial<DemoMemorySchema[typeof EVENT_FEEDBACK_TABLE_NAME]> | undefined;
     const helpCenterSource = source[HELP_CENTER_TABLE_NAME] as Partial<DemoMemorySchema[typeof HELP_CENTER_TABLE_NAME]> | undefined;
+    const ideaPostsSource = source[IDEA_POSTS_TABLE_NAME] as Partial<DemoMemorySchema[typeof IDEA_POSTS_TABLE_NAME]> | undefined;
     const profileExperiencesSource = source[PROFILE_EXPERIENCES_TABLE_NAME] as Partial<DemoMemorySchema[typeof PROFILE_EXPERIENCES_TABLE_NAME]> | undefined;
     const shareTokensSource = source[SHARE_TOKENS_TABLE_NAME] as Partial<DemoMemorySchema[typeof SHARE_TOKENS_TABLE_NAME]> | undefined;
     const eventsSource = (
@@ -749,6 +762,15 @@ export class AppMemoryDb {
         privacyConsentIds: Array.isArray(helpCenterSource?.privacyConsentIds)
           ? helpCenterSource.privacyConsentIds.map(id => String(id))
           : [...(fallback[HELP_CENTER_TABLE_NAME].privacyConsentIds ?? [])]
+      },
+      [IDEA_POSTS_TABLE_NAME]: {
+        seeded: ideaPostsSource?.seeded === true || fallback[IDEA_POSTS_TABLE_NAME].seeded === true,
+        byId: ideaPostsSource?.byId && typeof ideaPostsSource.byId === 'object'
+          ? { ...ideaPostsSource.byId }
+          : { ...fallback[IDEA_POSTS_TABLE_NAME].byId },
+        ids: Array.isArray(ideaPostsSource?.ids)
+          ? ideaPostsSource.ids.map(id => String(id))
+          : [...fallback[IDEA_POSTS_TABLE_NAME].ids]
       },
       [PROFILE_EXPERIENCES_TABLE_NAME]: {
         byUserId: this.normalizeProfileExperiencesByUserId(profileExperiencesSource?.byUserId, fallback[PROFILE_EXPERIENCES_TABLE_NAME].byUserId),

@@ -105,6 +105,11 @@
               <mat-icon>edit_note</mat-icon>
               <span class="menu-shortcut-label">Content</span>
             </button>
+            <button #adminIdeaEditorButton class="menu-shortcut-btn menu-shortcut-idea-editor" type="button" [disabled]="!isOnline()" (click)="openAdminIdeaEditorShortcut($event)" aria-label="Open idea editor" title="Ideas">
+              <span class="navigator-action-ripple" matRipple [matRippleTrigger]="adminIdeaEditorButton" aria-hidden="true"></span>
+              <mat-icon>tips_and_updates</mat-icon>
+              <span class="menu-shortcut-label">Ideas</span>
+            </button>
           </div>
         </div>
       } @else {

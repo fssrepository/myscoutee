@@ -104,6 +104,10 @@ export class HttpHelpCenterService {
     return this.normalizeState(response, documentKind);
   }
 
+  normalizeExternalState(response: Partial<HelpCenterState> | null | undefined, kind: HelpCenterDocumentKind = 'help'): HelpCenterState {
+    return this.normalizeState(response, this.normalizeKind(kind));
+  }
+
   private normalizeState(response: Partial<HelpCenterState> | null | undefined, kind: HelpCenterDocumentKind): HelpCenterState {
     const revisions = Array.isArray(response?.revisions)
       ? response.revisions.map(revision => this.normalizeRevision(revision, kind)).filter((revision): revision is HelpCenterRevision => Boolean(revision))

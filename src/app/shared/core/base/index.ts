@@ -17,6 +17,8 @@ export { EventsService } from './services/events.service';
 export { EventEditorDataService } from './services/event-editor-data.service';
 export { GameService } from './services/game.service';
 export { HelpCenterService, HELP_CENTER_LOAD_CONTEXT_KEY } from './services/help-center.service';
+export { IdeaPostsService } from './services/idea-posts.service';
+export { LandingContentService } from './services/landing-content.service';
 export { RouteDelayService } from './services/route-delay.service';
 export { ActivityMembersService } from './services/activity-members.service';
 export { ActivityResourcesService } from './services/activity-resources.service';
