@@ -67,6 +67,12 @@
   background: #fff6f7;
 }
 
+.help-editor-confirm-btn {
+  border-color: rgba(34, 123, 74, 0.28);
+  color: #1f7649;
+  background: #f2fff7;
+}
+
 .popup-body.help-editor-body {
   min-height: 0;
   display: flex;
@@ -173,16 +179,6 @@
   flex: 0 0 auto;
 }
 
-.help-editor-save-ring-shell {
-  border-radius: 999px;
-}
-
-.help-editor-save-ring-shell .help-editor-primary-btn {
-  min-width: 126px;
-  position: relative;
-  z-index: 1;
-}
-
 .help-editor-circle-ring-shell {
   width: 34px;
   height: 34px;
@@ -194,7 +190,6 @@
   z-index: 1;
 }
 
-.help-editor-pill-ring,
 .help-editor-circle-ring {
   position: absolute;
   inset: 0;
@@ -202,7 +197,6 @@
   pointer-events: none;
 }
 
-.help-editor-pill-ring-svg,
 .help-editor-circle-ring-svg {
   width: 100%;
   height: 100%;
@@ -210,28 +204,20 @@
   filter: drop-shadow(0 4px 12px rgba(22, 94, 51, 0.12));
 }
 
-.help-editor-pill-ring-track,
-.help-editor-pill-ring-progress,
 .help-editor-circle-ring-track,
 .help-editor-circle-ring-progress {
   fill: none;
   stroke-width: 3;
 }
 
-.help-editor-pill-ring-track,
 .help-editor-circle-ring-track {
   stroke: rgba(133, 100, 42, 0.18);
 }
 
-.help-editor-pill-ring-progress,
 .help-editor-circle-ring-progress {
   stroke-linecap: round;
   stroke-linejoin: round;
-  transition: stroke-dashoffset 1.8s linear;
-}
-
-.help-editor-pill-ring-progress.is-loading {
-  stroke: #eb9321;
+  transition: stroke-dashoffset 3000ms linear;
 }
 
 .help-editor-circle-ring-progress {
@@ -243,9 +229,6 @@
   stroke: #eb9321;
 }
 
-.help-editor-action-ring-shell.is-loading .help-editor-primary-btn,
-.help-editor-action-ring-shell.is-loading .help-editor-primary-btn:hover,
-.help-editor-action-ring-shell.is-loading .help-editor-primary-btn:disabled,
 .help-editor-circle-ring-shell.is-loading .help-editor-icon-btn,
 .help-editor-circle-ring-shell.is-loading .help-editor-icon-btn:hover,
 .help-editor-circle-ring-shell.is-loading .help-editor-icon-btn:disabled {
@@ -259,6 +242,47 @@
 
 .help-editor-draft-title-input {
   min-width: 0;
+}
+
+.help-editor-draft-row {
+  margin: 0;
+}
+
+.help-editor-draft-card {
+  border-color: rgba(178, 124, 38, 0.3);
+  background: #fff;
+}
+
+.help-editor-draft-card.is-open {
+  border-color: rgba(178, 124, 38, 0.44);
+  box-shadow: 0 10px 24px rgba(111, 76, 20, 0.08);
+}
+
+.help-editor-draft-toggle {
+  cursor: default;
+}
+
+.help-editor-draft-card .help-editor-version-pill {
+  border-color: rgba(136, 78, 14, 0.22);
+  background: #b66a15;
+  color: #fff;
+}
+
+.help-editor-draft-title-wrap {
+  flex: 1 1 auto;
+}
+
+.help-editor-draft-title-wrap .help-editor-draft-title-input {
+  max-width: min(56vw, 760px);
+}
+
+.help-editor-draft-header-actions {
+  align-items: center;
+  gap: 0.44rem;
+}
+
+.help-editor-draft-body {
+  background: #fff;
 }
 
 .help-editor-help-hero {
@@ -408,7 +432,13 @@
 }
 
 .help-editor-revision-card.is-active {
-  background: #fbfdff;
+  border-color: rgba(58, 143, 91, 0.36);
+  background: #f3fbf6;
+}
+
+.help-editor-revision-card.is-active.is-open {
+  border-color: rgba(42, 128, 77, 0.46);
+  box-shadow: 0 10px 24px rgba(32, 104, 63, 0.1);
 }
 
 .help-editor-preview-section-toggle,
@@ -622,6 +652,19 @@
   background: linear-gradient(180deg, #e8f3ff 0%, #dbeaff 100%);
 }
 
+.help-editor-draft-card > .help-editor-draft-head,
+.help-editor-draft-card.is-open > .help-editor-draft-head {
+  background: linear-gradient(180deg, #fff2df 0%, #f3dfbd 100%);
+}
+
+.help-editor-revision-card.is-active > .help-editor-revision-head {
+  background: linear-gradient(180deg, #f0fbf3 0%, #e2f6e8 100%);
+}
+
+.help-editor-revision-card.is-active.is-open > .help-editor-revision-head {
+  background: linear-gradient(180deg, #e2f6e8 0%, #d1efdc 100%);
+}
+
 .help-editor-revision-toggle {
   min-width: 0;
   flex: 1 1 auto;
@@ -677,17 +720,33 @@
 .help-editor-version-pill {
   min-width: 42px;
   height: 28px;
-  background: #edf4ff;
-  color: #285b94;
+  border: 1px solid rgba(36, 91, 156, 0.2);
+  background: #d7e8ff;
+  color: #174d86;
   font-size: 0.74rem;
+  padding: 0 0.54rem;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+.help-editor-draft-version-pill {
+  min-width: 96px;
+  padding: 0 0.72rem;
+  white-space: nowrap;
 }
 
 .help-editor-active-badge {
   min-width: 52px;
   height: 24px;
-  background: #e9f8ef;
-  color: #2a7043;
+  background: #246b42;
+  color: #fff;
   font-size: 0.68rem;
+  box-shadow: 0 0 0 1px rgba(24, 86, 51, 0.16);
+}
+
+.help-editor-revision-card.is-active .help-editor-version-pill {
+  border-color: rgba(17, 92, 50, 0.24);
+  background: #1f7a49;
+  color: #fff;
 }
 
 .help-editor-revision-actions {

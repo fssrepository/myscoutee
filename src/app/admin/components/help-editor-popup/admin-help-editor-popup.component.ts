@@ -35,6 +35,12 @@ interface HelpEditorRevisionDraft {
   sections: HelpEditorSectionDraft[];
 }
 
+interface HelpEditorRevisionRow {
+  id: string;
+  kind: 'revision' | 'draft';
+  revision: HelpCenterRevision | null;
+}
+
 @Component({
   selector: 'app-admin-help-editor-popup',
   standalone: true,
@@ -74,6 +80,7 @@ export class AdminHelpEditorPopupComponent {
   protected openPreviewSectionId = '';
   protected editing = false;
   protected draft: HelpEditorRevisionDraft | null = null;
+  protected draftAccordionOpen = true;
   protected openDraftSectionId = '';
   protected iconPickerSectionId = '';
   protected iconPickerSearch = '';
@@ -205,12 +212,35 @@ export class AdminHelpEditorPopupComponent {
   protected close(): void {
     this.editing = false;
     this.draft = null;
+    this.draftAccordionOpen = true;
     this.closeIconPicker();
     this.admin.closePopup();
   }
 
   protected revisions(): HelpCenterRevision[] {
     return this.helpState()?.revisions ?? [];
+  }
+
+  protected revisionRows(): HelpEditorRevisionRow[] {
+    const revisions = this.revisions();
+    const active = this.activeRevision();
+    const activeId = active?.id ?? '';
+    const draft = this.editing ? this.draft : null;
+    const rows: HelpEditorRevisionRow[] = [];
+    const inactiveRevisions = revisions
+      .filter(revision => revision.id !== activeId)
+      .sort((left, right) => right.version - left.version);
+
+    if (active) {
+      rows.push(this.revisionRow(active));
+    }
+    if (draft) {
+      rows.push(this.draftRow());
+    }
+    for (const revision of inactiveRevisions) {
+      rows.push(this.revisionRow(revision));
+    }
+    return rows;
   }
 
   protected activeRevision(): HelpCenterRevision | null {
@@ -234,11 +264,6 @@ export class AdminHelpEditorPopupComponent {
     this.selectedRevisionId = revision.id;
     this.openRevisionId = this.openRevisionId === revision.id ? '' : revision.id;
     this.openPreviewSectionId = revision.sections[0]?.id ?? '';
-    if (this.editing) {
-      this.editing = false;
-      this.draft = null;
-      this.closeIconPicker();
-    }
   }
 
   protected togglePreviewSection(sectionId: string, event?: Event): void {
@@ -255,8 +280,6 @@ export class AdminHelpEditorPopupComponent {
   protected startEditingRevision(revision: HelpCenterRevision, event?: Event): void {
     event?.stopPropagation();
     this.selectedRevisionId = revision.id;
-    this.openRevisionId = revision.id;
-    this.openPreviewSectionId = revision.sections[0]?.id ?? '';
     this.beginEditingDraft(this.draftFromRevision(revision));
   }
 
@@ -269,8 +292,14 @@ export class AdminHelpEditorPopupComponent {
     event?.stopPropagation();
     this.editing = false;
     this.draft = null;
+    this.draftAccordionOpen = true;
     this.error = '';
     this.closeIconPicker();
+  }
+
+  protected toggleDraftRevision(event?: Event): void {
+    event?.stopPropagation();
+    this.draftAccordionOpen = !this.draftAccordionOpen;
   }
 
   protected addDraftSection(event?: Event): void {
@@ -420,24 +449,26 @@ export class AdminHelpEditorPopupComponent {
   }
 
   protected async saveDraft(event?: Event): Promise<void> {
+    event?.preventDefault();
     event?.stopPropagation();
     if (!this.draft || this.saving) {
       return;
     }
-    const sections = this.toSections(this.draft.sections);
+    const request = {
+      actorUserId: this.actorUserId(),
+      baseRevisionId: this.draft.baseRevisionId,
+      title: this.draft.title,
+      summary: this.draft.summary,
+      description: this.draft.description,
+      sections: this.toSections(this.draft.sections)
+    };
     this.saving = true;
     this.error = '';
     try {
-      const state = await this.withMinimumActionTime(this.helpCenter.saveRevision({
-        actorUserId: this.actorUserId(),
-        baseRevisionId: this.draft.baseRevisionId,
-        title: this.draft.title,
-        summary: this.draft.summary,
-        description: this.draft.description,
-        sections
-      }));
+      const state = await this.withMinimumActionTime(this.helpCenter.saveRevision(request));
       this.editing = false;
       this.draft = null;
+      this.draftAccordionOpen = true;
       this.closeIconPicker();
       this.selectNewestRevision(state.revisions, state.activeRevision);
     } catch {
@@ -504,6 +535,14 @@ export class AdminHelpEditorPopupComponent {
       .reduce((max, version) => Math.max(max, version), 0) + 1;
   }
 
+  protected draftVersionLabel(): string {
+    const nextVersion = this.nextRevisionVersion();
+    const baseRevision = this.draft?.baseRevisionId
+      ? this.revisions().find(revision => revision.id === this.draft?.baseRevisionId)
+      : null;
+    return baseRevision ? `v${baseRevision.version} -> v${nextVersion}` : `v${nextVersion}`;
+  }
+
   protected isAnyActionPending(): boolean {
     return this.saving || Boolean(this.activatingRevisionId);
   }
@@ -543,8 +582,27 @@ export class AdminHelpEditorPopupComponent {
     this.openPreviewSectionId = newest?.sections[0]?.id ?? '';
   }
 
+  private revisionRow(revision: HelpCenterRevision): HelpEditorRevisionRow {
+    return {
+      id: `revision-${revision.id}`,
+      kind: 'revision',
+      revision
+    };
+  }
+
+  private draftRow(): HelpEditorRevisionRow {
+    return {
+      id: 'draft',
+      kind: 'draft',
+      revision: null
+    };
+  }
+
   private beginEditingDraft(draft: HelpEditorRevisionDraft): void {
     this.draft = draft;
+    this.draftAccordionOpen = true;
+    this.openRevisionId = '';
+    this.openPreviewSectionId = '';
     this.openDraftSectionId = draft.sections[0]?.localId ?? '';
     this.closeIconPicker();
     this.editing = true;

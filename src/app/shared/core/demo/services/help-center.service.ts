@@ -9,6 +9,7 @@ import type {
   HelpCenterSection,
   HelpCenterState
 } from '../../base/models';
+import { RouteDelayService } from '../../base/services/route-delay.service';
 import { HELP_CENTER_TABLE_NAME, type DemoHelpCenterTable } from '../models/help-center.model';
 
 @Injectable({
@@ -16,6 +17,7 @@ import { HELP_CENTER_TABLE_NAME, type DemoHelpCenterTable } from '../models/help
 })
 export class DemoHelpCenterService {
   private readonly memoryDb = inject(AppMemoryDb);
+  private readonly routeDelay = inject(RouteDelayService);
 
   async loadState(): Promise<HelpCenterState> {
     await this.memoryDb.whenReady();
@@ -78,7 +80,10 @@ export class DemoHelpCenterService {
         }
       };
     });
-    await this.memoryDb.flushToIndexedDb();
+    await Promise.all([
+      this.memoryDb.flushToIndexedDb(),
+      this.routeDelay.waitForRouteDelay('/admin/help/revisions', undefined, undefined, 1500)
+    ]);
     return this.stateFromTable(this.table());
   }
 
@@ -117,7 +122,10 @@ export class DemoHelpCenterService {
         }
       };
     });
-    await this.memoryDb.flushToIndexedDb();
+    await Promise.all([
+      this.memoryDb.flushToIndexedDb(),
+      this.routeDelay.waitForRouteDelay('/admin/help/revisions/activate', undefined, undefined, 1500)
+    ]);
     return this.stateFromTable(this.table());
   }
 
@@ -167,7 +175,10 @@ export class DemoHelpCenterService {
         }
       };
     });
-    await this.memoryDb.flushToIndexedDb();
+    await Promise.all([
+      this.memoryDb.flushToIndexedDb(),
+      this.routeDelay.waitForRouteDelay('/admin/help/revisions/delete', undefined, undefined, 1500)
+    ]);
     return this.stateFromTable(this.table());
   }
 
