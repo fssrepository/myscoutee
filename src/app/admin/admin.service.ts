@@ -16,7 +16,9 @@ import { AppMemoryDb } from '../shared/core/base/db';
 import type { ChatMenuItem } from '../shared/core/base/interfaces/activity-feed.interface';
 import type { ChatPopupMessage } from '../shared/core/base/models/chat.model';
 import { DemoChatsRepository, DemoUsersRepository } from '../shared/core/demo';
+import { CHATS_TABLE_NAME, type DemoChatRecord } from '../shared/core/demo/models/chats.model';
 import { SHARE_TOKENS_TABLE_NAME } from '../shared/core/demo/models/share-tokens.model';
+import { ActivitiesPopupStateService } from '../activity/services/activities-popup-state.service';
 
 export type AdminPopupKind =
   | 'reports'
@@ -52,12 +54,15 @@ export interface AdminReportDto {
   id: string;
   reporterUserId: string;
   reporterName: string;
+  reporterImageUrl?: string | null;
   targetUserId: string;
+  handle?: string | null;
   reason: string;
   details: string;
   eventId?: string | null;
   eventTitle?: string | null;
   eventStartAtIso?: string | null;
+  memberEntryId?: string | null;
   sourceType?: string | null;
   sourceId?: string | null;
   sourceText?: string | null;
@@ -76,9 +81,11 @@ export interface AdminReportedUserDto {
   initials: string;
   gender: 'woman' | 'man' | string;
   city: string;
+  imageUrl?: string | null;
   profileStatus: UserDto['profileStatus'] | string;
   reportCount: number;
   lastReportedAtIso?: string | null;
+  blockedAtIso?: string | null;
   reports: AdminReportDto[];
 }
 
@@ -96,6 +103,7 @@ export interface AdminFeedbackDto {
 export interface AdminDashboardDto {
   activeAdmin: AdminUserDto;
   reportedUsers: AdminReportedUserDto[];
+  blockedUsers: AdminReportedUserDto[];
   feedback: AdminFeedbackDto[];
 }
 
@@ -143,6 +151,7 @@ export class AdminService {
   private readonly memoryDb = inject(AppMemoryDb);
   private readonly demoUsersRepository = inject(DemoUsersRepository);
   private readonly demoChatsRepository = inject(DemoChatsRepository);
+  private readonly activitiesContext = inject(ActivitiesPopupStateService);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
   private readonly dashboardRef = signal<AdminDashboardDto | null>(null);
   private readonly busyRef = signal(false);
@@ -150,6 +159,7 @@ export class AdminService {
   private readonly activePopupRef = signal<AdminPopupKind | null>(null);
   private readonly selectedReportedUserRef = signal<AdminReportedUserDto | null>(null);
   private readonly selectedReportRef = signal<AdminReportDto | null>(null);
+  private readonly warnedUserIdsRef = signal<Set<string>>(new Set());
 
   readonly dashboard = this.dashboardRef.asReadonly();
   readonly busy = this.busyRef.asReadonly();
@@ -161,7 +171,7 @@ export class AdminService {
   readonly adminUsers = signal<DemoUserListItemDto[]>([
     {
       id: 'admin-demo-ava',
-      name: 'Ava Moderation',
+      name: 'Ava',
       city: 'Safety desk',
       initials: 'AM',
       gender: 'woman',
@@ -200,6 +210,14 @@ export class AdminService {
       this.clearAdminSession();
       return false;
     }
+  }
+
+  restoreAdminPreview(): DemoUserListItemDto | null {
+    const adminId = this.readStoredAdminId();
+    if (!adminId) {
+      return null;
+    }
+    return this.adminUsers().find(user => user.id === adminId) ?? null;
   }
 
   async bootstrapAdmin(
@@ -261,6 +279,40 @@ export class AdminService {
     this.activePopupRef.set('warn-chat');
   }
 
+  openBlockedUserChat(user: AdminReportedUserDto): void {
+    this.selectedReportedUserRef.set(user);
+    this.activePopupRef.set(null);
+    const chat = this.buildAdminSupportChat(user);
+    this.activitiesContext.openActivities('chats', undefined, undefined, false, { adminServiceOnly: true });
+    this.activitiesContext.openEventChat(chat, {
+      channelType: 'serviceEvent',
+      hasSubEventMenu: false,
+      actionIcon: 'shield',
+      actionLabel: 'Support',
+      actionToneClass: 'popup-chat-context-btn-tone-main-event',
+      actionBadgeCount: Math.max(0, Number(user.reportCount) || 0),
+      menuTitle: chat.title,
+      eventRow: null,
+      subEventRow: null,
+      subEvent: null,
+      group: null,
+      assetAssignmentIds: { Car: [], Accommodation: [], Supplies: [] },
+      assetCardsByType: { Car: [], Accommodation: [], Supplies: [] },
+      resources: []
+    });
+  }
+
+  hasSupportChat(user: AdminReportedUserDto): boolean {
+    const userId = `${user.userId ?? ''}`.trim();
+    return this.isUserBlocked(user)
+      || this.warnedUserIdsRef().has(userId);
+  }
+
+  isUserBlocked(user: AdminReportedUserDto | null | undefined): boolean {
+    const resolved = user?.userId ? this.resolveDashboardReportedUser(user.userId) : null;
+    return `${resolved?.profileStatus ?? user?.profileStatus ?? ''}`.trim() === 'blocked';
+  }
+
   openItemPreview(report: AdminReportDto): void {
     this.selectedReportRef.set(report);
     this.activePopupRef.set('item-preview');
@@ -285,11 +337,13 @@ export class AdminService {
       ).toPromise();
       if (dashboard) {
         this.dashboardRef.set(this.normalizeDashboard(dashboard));
+        this.markUserWarned(normalizedUserId);
         this.activateAdminProfile(this.dashboardRef() as AdminDashboardDto);
       }
       return;
     }
     await this.appendDemoSupportMessage(normalizedUserId, message);
+    this.markUserWarned(normalizedUserId);
     this.dashboardRef.set(await this.loadDemoDashboard(this.activeAdmin()?.id));
     this.activateAdminProfile(this.dashboardRef() as AdminDashboardDto);
   }
@@ -309,6 +363,8 @@ export class AdminService {
       ).toPromise();
       if (dashboard) {
         this.dashboardRef.set(this.normalizeDashboard(dashboard));
+        this.markUserWarned(normalizedUserId);
+        this.refreshSelectedReportedUser(normalizedUserId);
         this.activateAdminProfile(this.dashboardRef() as AdminDashboardDto);
       }
       return;
@@ -322,8 +378,46 @@ export class AdminService {
       });
     }
     await this.appendDemoSupportMessage(normalizedUserId, message);
+    this.markUserWarned(normalizedUserId);
     await this.memoryDb.flushToIndexedDb();
     this.dashboardRef.set(await this.loadDemoDashboard(this.activeAdmin()?.id));
+    this.refreshSelectedReportedUser(normalizedUserId);
+    this.activateAdminProfile(this.dashboardRef() as AdminDashboardDto);
+  }
+
+  async unblockUser(userId: string): Promise<void> {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return;
+    }
+    if (this.usesHttpAdminApi) {
+      const dashboard = await this.http.post<AdminDashboardDto>(
+        `${this.apiBaseUrl}/admin/users/${encodeURIComponent(normalizedUserId)}/unblock`,
+        {
+          adminUserId: this.activeAdmin()?.id ?? '',
+          message: ''
+        }
+      ).toPromise();
+      if (dashboard) {
+        this.dashboardRef.set(this.normalizeDashboard(dashboard));
+        this.refreshSelectedReportedUser(normalizedUserId);
+        this.activateAdminProfile(this.dashboardRef() as AdminDashboardDto);
+      }
+      return;
+    }
+    const user = this.demoUsersRepository.queryUserById(normalizedUserId);
+    if (user) {
+      this.demoUsersRepository.upsertUser({
+        ...user,
+        previousProfileStatus: undefined,
+        profileStatus: user.previousProfileStatus && user.previousProfileStatus !== 'blocked'
+          ? user.previousProfileStatus
+          : 'public'
+      });
+      await this.memoryDb.flushToIndexedDb();
+    }
+    this.dashboardRef.set(await this.loadDemoDashboard(this.activeAdmin()?.id));
+    this.refreshSelectedReportedUser(normalizedUserId);
     this.activateAdminProfile(this.dashboardRef() as AdminDashboardDto);
   }
 
@@ -422,7 +516,9 @@ export class AdminService {
           id: 'admin-demo-report-chat-kai-001',
           reporterUserId: 'u1',
           reporterName: 'Farkas Anna',
+          reporterImageUrl: this.firstUserImage(this.demoUsersRepository.queryUserById('u1')),
           targetUserId: 'u5',
+          handle: 'Lina Park',
           reason: 'Harassment',
           details: 'The reported chat message made another event member feel unsafe and should be reviewed by moderation.',
           eventId: 'a11a802ee0714a21db94ed4e',
@@ -441,7 +537,9 @@ export class AdminService {
           id: 'admin-demo-report-event-kai-002',
           reporterUserId: 'u1',
           reporterName: 'Farkas Anna',
+          reporterImageUrl: this.firstUserImage(this.demoUsersRepository.queryUserById('u1')),
           targetUserId: 'u5',
+          handle: 'Lina Park',
           reason: 'No-show / unsafe event behavior',
           details: 'The user repeatedly joined event plans and disrupted logistics without updating the host.',
           eventId: 'a11a802ee0714a21db94ed4e',
@@ -456,7 +554,9 @@ export class AdminService {
           id: 'admin-demo-report-asset-kai-003',
           reporterUserId: 'u4',
           reporterName: 'Maya Stone',
+          reporterImageUrl: this.firstUserImage(this.demoUsersRepository.queryUserById('u4')),
           targetUserId: 'u5',
+          handle: 'Lina Park',
           reason: 'Asset misuse',
           details: 'Asset owner asked moderation to review a supplies request before approving future resource sharing.',
           eventId: 'indoor-strategy-social-event',
@@ -514,9 +614,11 @@ export class AdminService {
         initials: user?.initials ?? '??',
         gender: user?.gender ?? 'woman',
         city: user?.city ?? '',
+        imageUrl: this.firstUserImage(user),
         profileStatus: user?.profileStatus ?? 'public',
         reportCount: sortedReports.length,
         lastReportedAtIso: sortedReports[0]?.createdDate ?? null,
+        blockedAtIso: user?.profileStatus === 'blocked' ? sortedReports[0]?.createdDate ?? store.seededAtIso : null,
         reports: sortedReports
       };
     }).sort((first, second) =>
@@ -525,10 +627,40 @@ export class AdminService {
     return {
       activeAdmin,
       reportedUsers,
+      blockedUsers: this.demoBlockedUsers(store, reportsByUser),
       feedback: [...store.feedback].sort((first, second) =>
         Date.parse(second.createdDate) - Date.parse(first.createdDate)
       ).map(item => this.enrichDemoFeedback(item))
     };
+  }
+
+  private demoBlockedUsers(
+    store: AdminModerationStore,
+    reportsByUser: Map<string, AdminReportDto[]>
+  ): AdminReportedUserDto[] {
+    const reportedBlocked = [...reportsByUser.keys()]
+      .map(userId => this.demoUsersRepository.queryUserById(userId))
+      .filter((user): user is UserDto => user?.profileStatus === 'blocked');
+    return reportedBlocked.map(user => {
+      const reports = [...(reportsByUser.get(user.id) ?? [])].sort((first, second) =>
+        Date.parse(second.createdDate) - Date.parse(first.createdDate)
+      );
+      return {
+        userId: user.id,
+        name: user.name,
+        initials: user.initials,
+        gender: user.gender,
+        city: user.city,
+        imageUrl: this.firstUserImage(user),
+        profileStatus: user.profileStatus,
+        reportCount: reports.length,
+        lastReportedAtIso: reports[0]?.createdDate ?? store.seededAtIso,
+        blockedAtIso: reports[0]?.createdDate ?? store.seededAtIso,
+        reports
+      };
+    }).sort((first, second) =>
+      Date.parse(`${second.lastReportedAtIso ?? ''}`) - Date.parse(`${first.lastReportedAtIso ?? ''}`)
+    );
   }
 
   private async ensureDemoAdminProfiles(): Promise<void> {
@@ -538,7 +670,20 @@ export class AdminService {
     ];
     let changed = false;
     for (const admin of admins) {
-      if (this.demoUsersRepository.queryUserById(admin.id)) {
+      const existing = this.demoUsersRepository.queryUserById(admin.id);
+      if (existing) {
+        const seededImages = this.demoAdminImages(admin.id);
+        const existingImages = existing.images ?? [];
+        if (
+          seededImages.length > 0
+          && (existingImages.length === 0 || existingImages.some(image => this.isLegacyDemoAdminImage(image)))
+        ) {
+          this.demoUsersRepository.upsertUser({
+            ...existing,
+            images: seededImages
+          });
+          changed = true;
+        }
         continue;
       }
       this.demoUsersRepository.upsertUser(this.buildDemoAdminUser(admin));
@@ -568,7 +713,7 @@ export class AdminService {
       completion: 100,
       headline: `${admin.headline ?? ''}`.trim() || 'Moderation workspace',
       about: `${admin.about ?? ''}`.trim() || 'Reviews reports, feedback, and support chats.',
-      images: [...(admin.images ?? [])],
+      images: [...(admin.images?.length ? admin.images : this.demoAdminImages(admin.id))],
       profileStatus: 'public',
       activities: {
         game: 0,
@@ -596,14 +741,17 @@ export class AdminService {
   }
 
   private enrichDemoReport(report: AdminReportDto): AdminReportDto {
+    const reporter = this.demoUsersRepository.queryUserById(report.reporterUserId);
     if (report.chatId && (!report.chatMessages || report.chatMessages.length === 0)) {
       return {
         ...report,
+        reporterImageUrl: this.firstUserImage(reporter) ?? report.reporterImageUrl ?? null,
         chatMessages: this.demoChatMessages(report.reporterUserId, report.chatId)
       };
     }
     return {
       ...report,
+      reporterImageUrl: this.firstUserImage(reporter) ?? report.reporterImageUrl ?? null,
       chatMessages: [...(report.chatMessages ?? [])]
     };
   }
@@ -778,10 +926,18 @@ export class AdminService {
 
   private async appendDemoSupportMessage(userId: string, text: string): Promise<void> {
     const admin = this.activeAdmin() ?? this.resolveDemoAdmin();
+    const reportedUser = this.resolveDashboardReportedUser(userId);
     const now = new Date();
     const nowIso = now.toISOString();
-    const chat: ChatMenuItem & { ownerUserId?: string } = {
-      id: `c-support-admin-${userId}`,
+    const chatId = `c-support-admin-${userId}`;
+    const messageId = `m-admin-${Date.now()}`;
+    const adminAvatar = {
+      id: admin.id,
+      initials: admin.initials,
+      gender: 'woman' as const
+    };
+    const userChat: DemoChatRecord = {
+      id: chatId,
       avatar: admin.initials,
       title: 'MyScoutee Support',
       lastMessage: text,
@@ -791,24 +947,129 @@ export class AdminService {
       dateIso: nowIso,
       channelType: 'serviceEvent',
       serviceContext: 'notification',
-      ownerUserId: userId
+      ownerUserId: userId,
+      messages: []
     };
-    const message: ChatPopupMessage = {
-      id: `m-admin-${Date.now()}`,
+    const userMessage: ChatPopupMessage = {
+      id: messageId,
       sender: admin.name,
-      senderAvatar: {
-        id: admin.id,
-        initials: admin.initials,
-        gender: 'woman'
-      },
+      senderAvatar: adminAvatar,
       text,
       time: now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
       sentAtIso: nowIso,
       mine: false,
       readBy: []
     };
-    this.demoChatsRepository.appendChatMessage(chat, message);
+    const adminChat: DemoChatRecord = {
+      id: chatId,
+      avatar: reportedUser?.initials || 'U',
+      title: `MyScoutee Support · ${reportedUser?.name || 'Reported user'}`,
+      lastMessage: text,
+      lastSenderId: admin.id,
+      memberIds: [userId, admin.id],
+      unread: 0,
+      dateIso: nowIso,
+      channelType: 'serviceEvent',
+      serviceContext: 'notification',
+      ownerUserId: admin.id,
+      messages: []
+    };
+    const adminMessage: ChatPopupMessage = {
+      ...userMessage,
+      mine: true,
+      readBy: [adminAvatar]
+    };
+    this.upsertDemoSupportChatMessage(userChat, userMessage, true);
+    this.upsertDemoSupportChatMessage(adminChat, adminMessage, false);
     await this.memoryDb.flushToIndexedDb();
+  }
+
+  private upsertDemoSupportChatMessage(chat: DemoChatRecord, message: ChatPopupMessage, unreadForOwner: boolean): void {
+    this.memoryDb.write(currentState => {
+      const currentTable = currentState[CHATS_TABLE_NAME];
+      const recordKey = `${chat.ownerUserId}:${chat.id}`;
+      const existing = currentTable.byId[recordKey];
+      const existingMessages = existing?.messages ?? [];
+      const nextRecord: DemoChatRecord = {
+        ...(existing ?? chat),
+        ...chat,
+        unread: unreadForOwner ? Math.max(1, (existing?.unread ?? 0) + 1) : 0,
+        messages: [
+          ...existingMessages.map(item => ({
+            ...item,
+            senderAvatar: { ...item.senderAvatar },
+            readBy: item.readBy.map(reader => ({ ...reader })),
+            attachments: item.attachments?.map(attachment => ({ ...attachment })),
+            replyTo: item.replyTo ? { ...item.replyTo } : item.replyTo,
+            reactions: item.reactions?.map(reaction => ({ ...reaction }))
+          })),
+          message
+        ]
+      };
+      return {
+        ...currentState,
+        [CHATS_TABLE_NAME]: {
+          byId: {
+            ...currentTable.byId,
+            [recordKey]: nextRecord
+          },
+          ids: currentTable.ids.includes(recordKey)
+            ? [...currentTable.ids]
+            : [...currentTable.ids, recordKey]
+        }
+      };
+    });
+  }
+
+  private resolveDashboardReportedUser(userId: string): AdminReportedUserDto | null {
+    const dashboard = this.dashboardRef();
+    if (!dashboard) {
+      return null;
+    }
+    const normalizedUserId = userId.trim();
+    return [
+      ...(dashboard.reportedUsers ?? []),
+      ...(dashboard.blockedUsers ?? [])
+    ].find(user => user.userId === normalizedUserId) ?? null;
+  }
+
+  private markUserWarned(userId: string): void {
+    const normalizedUserId = `${userId ?? ''}`.trim();
+    if (!normalizedUserId) {
+      return;
+    }
+    this.warnedUserIdsRef.update(current => {
+      const next = new Set(current);
+      next.add(normalizedUserId);
+      return next;
+    });
+  }
+
+  private refreshSelectedReportedUser(userId: string): void {
+    const selected = this.selectedReportedUserRef();
+    if (!selected || selected.userId !== userId) {
+      return;
+    }
+    this.selectedReportedUserRef.set(this.resolveDashboardReportedUser(userId) ?? selected);
+  }
+
+  private buildAdminSupportChat(user: AdminReportedUserDto): ChatMenuItem & { ownerUserId?: string } {
+    const admin = this.activeAdmin() ?? this.resolveDemoAdmin();
+    return {
+      id: `c-support-admin-${user.userId}`,
+      avatar: user.initials || 'U',
+      title: `MyScoutee Support · ${user.name}`,
+      lastMessage: user.profileStatus === 'blocked'
+        ? 'Your account has been blocked after moderation review.'
+        : 'MyScoutee support conversation.',
+      lastSenderId: admin.id,
+      memberIds: [user.userId, admin.id],
+      unread: Math.max(0, Number(user.reportCount) || 0),
+      dateIso: user.lastReportedAtIso || new Date().toISOString(),
+      channelType: 'serviceEvent',
+      serviceContext: 'notification',
+      ownerUserId: admin.id
+    };
   }
 
   private normalizeStore(store: AdminModerationStore): AdminModerationStore {
@@ -829,8 +1090,21 @@ export class AdminService {
       },
       reportedUsers: (dashboard.reportedUsers ?? []).map(user => ({
         ...user,
+        imageUrl: `${user.imageUrl ?? ''}`.trim() || null,
+        blockedAtIso: `${user.blockedAtIso ?? ''}`.trim() || null,
         reports: (user.reports ?? []).map(report => ({
           ...report,
+          reporterImageUrl: `${report.reporterImageUrl ?? ''}`.trim() || null,
+          chatMessages: [...(report.chatMessages ?? [])]
+        }))
+      })),
+      blockedUsers: (dashboard.blockedUsers ?? []).map(user => ({
+        ...user,
+        imageUrl: `${user.imageUrl ?? ''}`.trim() || null,
+        blockedAtIso: `${user.blockedAtIso ?? user.lastReportedAtIso ?? ''}`.trim() || null,
+        reports: (user.reports ?? []).map(report => ({
+          ...report,
+          reporterImageUrl: `${report.reporterImageUrl ?? ''}`.trim() || null,
           chatMessages: [...(report.chatMessages ?? [])]
         }))
       })),
@@ -906,15 +1180,29 @@ export class AdminService {
         id: 'admin-demo-noel',
         name: 'Noel Safety',
         initials: 'NS',
-        email: 'noel.admin@myscoutee.local'
+        email: 'noel.admin@myscoutee.local',
+        images: this.demoAdminImages('admin-demo-noel')
       };
     }
     return {
       id: 'admin-demo-ava',
-      name: 'Ava Moderation',
+      name: 'Ava',
       initials: 'AM',
-      email: 'ava.admin@myscoutee.local'
+      email: 'ava.admin@myscoutee.local',
+      images: this.demoAdminImages('admin-demo-ava')
     };
+  }
+
+  private demoAdminImages(adminUserId: string): string[] {
+    return adminUserId.includes('noel')
+      ? ['https://randomuser.me/api/portraits/men/75.jpg']
+      : ['https://randomuser.me/api/portraits/women/65.jpg'];
+  }
+
+  private isLegacyDemoAdminImage(imageUrl: string | null | undefined): boolean {
+    const normalized = `${imageUrl ?? ''}`.trim();
+    return normalized.includes('picsum.photos/seed/admin-ava-moderation')
+      || normalized.includes('picsum.photos/seed/admin-noel-safety');
   }
 
   private mergeStoredAdminProfile(admin: AdminUserDto): AdminUserDto {
@@ -922,7 +1210,7 @@ export class AdminService {
     if (!stored) {
       return admin;
     }
-    const name = `${stored.name ?? ''}`.trim() || admin.name;
+    const name = this.adminDisplayName(`${stored.name ?? ''}`.trim() || admin.name);
     return {
       ...admin,
       name,
@@ -931,6 +1219,10 @@ export class AdminService {
       about: `${stored.about ?? ''}`.trim() || admin.about || null,
       images: [...(stored.images ?? admin.images ?? [])]
     };
+  }
+
+  private adminDisplayName(name: string): string {
+    return `${name ?? ''}`.trim().replace(/\s+Moderation$/i, '') || 'Admin';
   }
 
   private persistAdminSession(adminUserId: string): void {

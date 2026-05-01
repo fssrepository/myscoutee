@@ -16,6 +16,8 @@ export class AdminChatReviewPopupComponent {
   protected readonly admin = inject(AdminService);
   protected warnMessage = 'Please update the reported behavior before your account is blocked.';
   protected sending = false;
+  protected sendState: 'idle' | 'sending' | 'success' | 'error' = 'idle';
+  protected sendStatus = '';
 
   protected isReportedMessage(message: AdminChatMessageDto): boolean {
     return message.id === this.admin.selectedReport()?.messageId;
@@ -28,9 +30,16 @@ export class AdminChatReviewPopupComponent {
       return;
     }
     this.sending = true;
+    this.sendState = 'sending';
+    this.sendStatus = '';
     try {
       await this.admin.warnUser(user.userId, message);
-      this.admin.closePopup();
+      this.sendState = 'success';
+      this.sendStatus = 'Warning message was sent to the user.';
+      this.warnMessage = '';
+    } catch {
+      this.sendState = 'error';
+      this.sendStatus = 'Warning message could not be sent. Please try again.';
     } finally {
       this.sending = false;
     }

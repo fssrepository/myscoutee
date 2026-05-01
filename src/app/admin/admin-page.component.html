@@ -1,4 +1,46 @@
-@if (admin.dashboard(); as dashboard) {
+@if (restoringWorkspace()) {
+  <section class="admin-workspace admin-workspace-restoring" aria-busy="true">
+    <div class="admin-home-panel">
+      <header class="admin-home-header">
+        <a class="admin-brand" aria-label="MyScoutee admin">
+          <img class="admin-brand-mark" src="assets/logo/heart.webp" alt="MyScoutee logo" />
+          <span class="admin-brand-text">yScoutee</span>
+        </a>
+        <div class="admin-home-title admin-home-title-pending" aria-hidden="true">
+          <span>Admin</span>
+          <h1>&nbsp;</h1>
+        </div>
+      </header>
+
+      <section class="admin-entry-hero admin-home-hero admin-home-hero-pending">
+        <p class="admin-eyebrow">MyScoutee admin</p>
+        <h1>Moderation workspace</h1>
+        <p class="admin-entry-lead">Review reported users, support chats, and application feedback with the same app tools.</p>
+      </section>
+    </div>
+    @if (admin.restoreAdminPreview(); as preview) {
+      <button type="button" class="admin-restore-avatar-button" aria-label="Restoring admin workspace" aria-busy="true" disabled>
+        @if (restoreAvatarGateActive()) {
+          <span class="admin-restore-button-ring" aria-hidden="true">
+            <svg viewBox="0 0 58 58" class="admin-restore-button-ring-svg">
+              <defs>
+                <linearGradient id="admin-restore-load-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="rgb(235, 147, 33)"></stop>
+                  <stop offset="100%" stop-color="rgb(247, 190, 52)"></stop>
+                </linearGradient>
+              </defs>
+              <circle class="admin-restore-button-ring-track" cx="29" cy="29" r="26"></circle>
+              <circle class="admin-restore-button-ring-progress" cx="29" cy="29" r="26"></circle>
+            </svg>
+          </span>
+        }
+        <span class="admin-restore-button-avatar is-placeholder">
+          <mat-icon>schedule</mat-icon>
+        </span>
+      </button>
+    }
+  </section>
+} @else if (admin.dashboard(); as dashboard) {
   <section class="admin-workspace">
     <div class="admin-home-panel">
       <header class="admin-home-header">
@@ -8,14 +50,14 @@
         </a>
         <div class="admin-home-title">
           <span>Admin</span>
-          <h1>{{ dashboard.activeAdmin.name }}</h1>
+          <h1>{{ adminDisplayName(dashboard.activeAdmin.name) }}</h1>
         </div>
       </header>
 
       <section class="admin-entry-hero admin-home-hero">
         <p class="admin-eyebrow">MyScoutee admin</p>
         <h1>Moderation workspace</h1>
-        <p class="admin-entry-lead">{{ dashboard.activeAdmin.name }}</p>
+        <p class="admin-entry-lead">Review reported users, support chats, and application feedback with the same app tools.</p>
       </section>
     </div>
 

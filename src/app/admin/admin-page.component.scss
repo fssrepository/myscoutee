@@ -166,6 +166,109 @@
   min-height: 0;
 }
 
+.admin-workspace-restoring {
+  position: relative;
+  min-height: 100vh;
+}
+
+.admin-home-title-pending h1 {
+  opacity: 0;
+}
+
+.admin-restore-avatar-button {
+  position: fixed;
+  top: max(1.2rem, env(safe-area-inset-top));
+  right: max(1.2rem, env(safe-area-inset-right));
+  width: 58px;
+  height: 58px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  padding: 5px;
+  display: inline-grid;
+  place-items: center;
+  box-shadow: none;
+  cursor: default;
+  z-index: 30;
+}
+
+.admin-restore-button-ring {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.admin-restore-button-ring-svg {
+  width: 58px;
+  height: 58px;
+  display: block;
+  filter: drop-shadow(0 10px 26px rgba(13, 24, 44, 0.2));
+  transform: rotate(-90deg);
+}
+
+.admin-restore-button-ring-track,
+.admin-restore-button-ring-progress {
+  fill: none;
+  stroke-width: 4;
+}
+
+.admin-restore-button-ring-track {
+  stroke: rgba(46, 114, 184, 0.12);
+}
+
+.admin-restore-button-ring-progress {
+  stroke: url(#admin-restore-load-gradient);
+  stroke-linecap: round;
+  stroke-dasharray: 163.3628;
+  stroke-dashoffset: 163.3628;
+  animation: admin-restore-button-ring-progress 3s linear forwards;
+}
+
+.admin-restore-button-avatar {
+  position: relative;
+  z-index: 1;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #c8653b 0%, #a84c28 100%);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.92rem;
+  font-weight: 900;
+  box-shadow: 0 12px 28px rgba(147, 73, 35, 0.28);
+}
+
+.admin-restore-button-avatar.user-color-woman {
+  background: linear-gradient(180deg, #f089b0 0%, #df5d87 100%);
+}
+
+.admin-restore-button-avatar.user-color-man {
+  background: linear-gradient(180deg, #5b84aa 0%, #365873 100%);
+}
+
+.admin-restore-button-avatar.is-placeholder {
+  background: linear-gradient(180deg, #d9e2f2 0%, #c9d4e8 100%);
+  color: rgba(29, 51, 83, 0.72);
+}
+
+.admin-restore-button-avatar .mat-icon {
+  width: 22px;
+  height: 22px;
+  font-size: 22px;
+  line-height: 22px;
+}
+
+@keyframes admin-restore-button-ring-progress {
+  from {
+    stroke-dashoffset: 163.3628;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
 @media (max-width: 760px) {
   .admin-entry-shell,
   .admin-workspace {

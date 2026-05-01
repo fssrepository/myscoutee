@@ -7,9 +7,24 @@
           <h2>Reported users</h2>
           <p class="popup-subtitle">Only users with moderation reports are visible here.</p>
         </div>
-        <button type="button" class="popup-close" (click)="admin.closePopup()" aria-label="Close">
-          <mat-icon>close</mat-icon>
-        </button>
+        <div class="admin-report-header-actions">
+          <button
+            type="button"
+            class="admin-blocked-users-btn"
+            [disabled]="blockedUsersCount() === 0"
+            (click)="openBlockedUsers($event)"
+            aria-label="Open blocked users"
+            >
+            <mat-icon>person_off</mat-icon>
+            <span>Blocked users</span>
+            @if (blockedUsersCount() > 0) {
+              <span class="card-badge admin-blocked-users-badge">{{ blockedUsersCount() }}</span>
+            }
+          </button>
+          <button type="button" class="popup-close" (click)="admin.closePopup()" aria-label="Close">
+            <mat-icon>close</mat-icon>
+          </button>
+        </div>
       </div>
 
       <div class="popup-body admin-list-only-body">
@@ -21,12 +36,36 @@
         ></app-smart-list>
 
         <ng-template #reportItemTemplate let-item let-groupLabel="groupLabel">
-          <app-activities-chat-template
-            [row]="item.row"
-            [groupLabel]="groupLabel"
-            [context]="reportChatTemplateContext"
-            (rowClick)="openReportDetails(item)"
-          ></app-activities-chat-template>
+          <button
+            type="button"
+            class="admin-report-card admin-feedback-card activities-card activities-card-btn activities-row-item activities-card-chat"
+            [ngClass]="reportReasonToneClass(item.report)"
+            [attr.data-group-label]="groupLabel"
+            (click)="openReportDetails(item)"
+            >
+            @if (reporterImageUrl(item.report); as reporterImageUrl) {
+              <span
+                class="activities-card-avatar has-photo"
+                [style.backgroundImage]="'url(' + reporterImageUrl + ')'"
+                aria-hidden="true"
+              ></span>
+            } @else {
+              <span class="activities-card-avatar" [ngClass]="'user-color-' + item.user.gender">
+                {{ reporterInitial(item.report) }}
+              </span>
+            }
+            <div class="activities-card-main">
+              <p class="activities-card-title">{{ item.report.reporterName }}</p>
+              <p class="activities-card-subtitle">{{ item.report.reporterName }} reported {{ reportedHandle(item) }}</p>
+              <p class="activities-card-detail">{{ item.report.details }}</p>
+            </div>
+            <span class="admin-report-card-meta">
+              <span class="admin-report-time-badge">{{ reportTime(item.report.createdDate) }}</span>
+              <span class="admin-report-reason-badge">
+                {{ reportBadgeLabel(item.report) }}
+              </span>
+            </span>
+          </button>
         </ng-template>
       </div>
     </div>
@@ -49,38 +88,202 @@
 
       <div class="popup-body admin-detail-popup-body">
         <article class="admin-chat-detail-message">
-          <span class="admin-message-avatar">{{ reporterInitial(item.report) }}</span>
-          <div class="admin-message-bubble">
+          <div class="admin-message-bubble admin-report-detail-bubble" [ngClass]="reportReasonToneClass(item.report)">
             <div class="admin-message-head">
-              <strong>{{ item.report.reporterName }}</strong>
+              <span class="admin-message-head-title">
+                @if (reporterImageUrl(item.report); as reporterImageUrl) {
+                  <span
+                    class="admin-message-avatar admin-message-avatar-inline has-photo"
+                    [style.backgroundImage]="'url(' + reporterImageUrl + ')'"
+                    aria-hidden="true"
+                  ></span>
+                } @else {
+                  <span class="admin-message-avatar admin-message-avatar-inline">{{ reporterInitial(item.report) }}</span>
+                }
+                <strong>{{ item.report.reporterName }}</strong>
+              </span>
               <span>{{ shortDate(item.report.createdDate) }}</span>
             </div>
-            <h3>{{ item.report.reason }}</h3>
+            <span class="admin-report-reason-badge admin-report-detail-badge">{{ reportBadgeLabel(item.report) }}</span>
             <p>{{ item.report.details }}</p>
             @if (item.report.sourceText) {
               <blockquote>{{ item.report.sourceText }}</blockquote>
             }
-            <div class="admin-detail-meta-grid">
-              <span><strong>Reported user</strong>{{ item.user.name }}</span>
-              <span><strong>Status</strong>{{ item.user.profileStatus }}</span>
-              <span><strong>Source</strong>{{ reportSourceLabel(item.report) }}</span>
-            </div>
-            <div class="admin-action-row">
-              <button type="button" class="admin-btn" (click)="reviewReport(item.report)">
-                <mat-icon>{{ reportSourceIcon(item.report) }}</mat-icon>
-                <span>View source</span>
-              </button>
-              <button type="button" class="admin-btn admin-btn-primary" (click)="warnUser(item.user)">
-                <mat-icon>chat</mat-icon>
-                <span>Warn in chat</span>
-              </button>
-              <button type="button" class="admin-btn admin-btn-danger" (click)="blockUser(item.user)">
-                <mat-icon>block</mat-icon>
-                <span>Block user</span>
+
+            <div class="admin-report-context-grid">
+              <div
+                class="admin-report-context-card admin-report-member-card"
+                [class.has-member-image]="memberImageUrl(item.user)"
+                (click)="openSharedUrl(reportMemberUrl(item), $event)"
+                >
+                <button
+                  type="button"
+                  class="admin-report-member-menu-btn"
+                  (click)="toggleReportDetailMenu($event)"
+                  aria-label="Member moderation actions"
+                  >
+                  <mat-icon>more_horiz</mat-icon>
+                </button>
+                @if (reportDetailMenuOpen) {
+                  <div class="admin-report-member-menu" (click)="$event.stopPropagation()">
+                    @if (isUserBlocked(item.user)) {
+                      <button type="button" (click)="unblockUser(item.user, $event)">
+                        <mat-icon>lock_open</mat-icon>
+                        <span>Unblock user</span>
+                      </button>
+                      <button type="button" (click)="viewBlockedUserChat(item.user, $event)">
+                        <mat-icon>forum</mat-icon>
+                        <span>View chat</span>
+                        @if (item.user.reportCount > 0) {
+                          <span class="card-badge admin-blocked-menu-item-badge">{{ item.user.reportCount }}</span>
+                        }
+                      </button>
+                    } @else if (hasSupportChat(item.user)) {
+                      <button type="button" (click)="viewBlockedUserChat(item.user, $event)">
+                        <mat-icon>forum</mat-icon>
+                        <span>View chat</span>
+                        @if (item.user.reportCount > 0) {
+                          <span class="card-badge admin-blocked-menu-item-badge">{{ item.user.reportCount }}</span>
+                        }
+                      </button>
+                      <button type="button" class="danger" (click)="blockUser(item.user)">
+                        <mat-icon>block</mat-icon>
+                        <span>Block user</span>
+                      </button>
+                    } @else {
+                      <button type="button" (click)="warnUser(item.user)">
+                        <mat-icon>chat</mat-icon>
+                        <span>Warn in chat</span>
+                      </button>
+                      <button type="button" class="danger" (click)="blockUser(item.user)">
+                        <mat-icon>block</mat-icon>
+                        <span>Block user</span>
+                      </button>
+                    }
+                  </div>
+                }
+                <div class="admin-report-member-image-card">
+                  <span class="admin-member-card-status" aria-hidden="true">
+                    <mat-icon>{{ isUserBlocked(item.user) ? 'person_off' : 'person' }}</mat-icon>
+                  </span>
+                  @if (memberImageUrl(item.user); as imageUrl) {
+                    <img
+                      class="admin-report-member-image"
+                      [src]="imageUrl"
+                      [alt]="reportedHandle(item)"
+                    />
+                  } @else {
+                    <span class="admin-report-member-image admin-report-member-image-empty" [ngClass]="'user-color-' + item.user.gender">
+                      {{ item.user.initials }}
+                    </span>
+                  }
+                  <span class="admin-report-member-image-copy">
+                    <strong>{{ memberCardTitle(item.user, reportedHandle(item)) }}</strong>
+                    <small>{{ memberDescription(item.user) }}</small>
+                  </span>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                class="admin-report-context-card"
+                (click)="openSharedUrl(reportSourceUrl(item.report), $event)"
+                >
+                <span class="admin-report-context-head">
+                  <span class="admin-report-context-avatar admin-report-context-source-avatar">
+                    <mat-icon>{{ reportSourceIcon(item.report) }}</mat-icon>
+                  </span>
+                  <span class="admin-report-context-copy">
+                    <strong>{{ sourceCardTitle(item.report) }}</strong>
+                    <small>{{ sourceCardMeta(item.report) || reportSourceLabel(item.report) }}</small>
+                    @if (eventDateLabel(item.report)) {
+                      <small class="admin-report-context-date">{{ eventDateLabel(item.report) }}</small>
+                    }
+                  </span>
+                </span>
+                <span class="admin-report-context-detail">{{ sourceCardSubtitle(item.report) }}</span>
+                <span class="admin-report-context-foot">
+                  <mat-icon>open_in_new</mat-icon>
+                  <span>Open shared source</span>
+                </span>
               </button>
             </div>
           </div>
         </article>
+      </div>
+    </div>
+  </section>
+}
+
+@if (blockedUsersOpen) {
+  <section class="app-popup app-popup-stacked">
+    <div class="app-popup-backdrop" (click)="closeBlockedUsers()"></div>
+    <div class="app-popup-panel popup-panel-admin-detail" (click)="$event.stopPropagation()">
+      <div class="popup-header">
+        <div class="popup-title">
+          <h2>Blocked users</h2>
+          <p class="popup-subtitle">Profiles currently blocked by moderation.</p>
+        </div>
+        <button type="button" class="popup-close" (click)="closeBlockedUsers()" aria-label="Close">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+      <div class="popup-body admin-blocked-users-body">
+        <app-smart-list
+          class="admin-smart-list admin-blocked-smart-list-host"
+          [config]="blockedUsersSmartListConfig"
+          [loadPage]="blockedUsersSmartListLoadPage"
+          [itemTemplate]="blockedUserItemTemplateRef ?? null"
+        ></app-smart-list>
+
+        <ng-template #blockedUserItemTemplate let-item>
+          <article class="admin-blocked-user-card" [class.has-member-image]="memberImageUrl(item.user)">
+            <span class="admin-member-card-status admin-blocked-card-status" aria-hidden="true">
+              <mat-icon>person_off</mat-icon>
+            </span>
+            @if (memberImageUrl(item.user); as imageUrl) {
+              <span
+                class="admin-blocked-user-image"
+                [style.backgroundImage]="'url(' + imageUrl + ')'"
+                aria-hidden="true"
+              ></span>
+            } @else {
+              <span class="admin-blocked-user-image admin-blocked-user-image-empty" [ngClass]="'user-color-' + item.user.gender">
+                {{ item.user.initials }}
+              </span>
+            }
+            <span class="admin-blocked-user-copy">
+              <strong>{{ memberCardTitle(item.user) }}</strong>
+              <small>{{ memberDescription(item.user) }}</small>
+            </span>
+            <button
+              type="button"
+              class="admin-report-member-menu-btn admin-blocked-user-menu-btn"
+              (click)="toggleBlockedUserMenu(item.user, $event)"
+              aria-label="Blocked user actions"
+              >
+              <mat-icon>more_horiz</mat-icon>
+              @if (item.user.reportCount > 0) {
+                <span class="card-badge admin-blocked-user-menu-badge">{{ item.user.reportCount }}</span>
+              }
+            </button>
+            @if (isBlockedUserMenuOpen(item.user)) {
+              <div class="admin-report-member-menu admin-blocked-user-menu" (click)="$event.stopPropagation()">
+                <button type="button" (click)="unblockUser(item.user, $event)">
+                  <mat-icon>lock_open</mat-icon>
+                  <span>Unblock user</span>
+                </button>
+                <button type="button" (click)="viewBlockedUserChat(item.user, $event)">
+                  <mat-icon>forum</mat-icon>
+                  <span>View chat</span>
+                  @if (item.user.reportCount > 0) {
+                    <span class="card-badge admin-blocked-menu-item-badge">{{ item.user.reportCount }}</span>
+                  }
+                </button>
+              </div>
+            }
+          </article>
+        </ng-template>
       </div>
     </div>
   </section>

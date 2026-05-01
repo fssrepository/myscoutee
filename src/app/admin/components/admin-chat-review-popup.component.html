@@ -28,16 +28,62 @@
                 </div>
               </div>
             }
-            <label>
-              <span>Warning message</span>
-              <textarea name="warnMessage" [(ngModel)]="warnMessage"></textarea>
-            </label>
-            <div class="admin-action-row">
-              <button type="submit" class="admin-btn admin-btn-primary" [disabled]="sending || !warnMessage.trim()">
-                <mat-icon>send</mat-icon>
-                <span>{{ sending ? 'Sending...' : 'Send warning' }}</span>
-              </button>
-            </div>
+            @if (sendState !== 'success') {
+              <label>
+                <span>Warning message</span>
+                <textarea name="warnMessage" [(ngModel)]="warnMessage"></textarea>
+              </label>
+            }
+            @if (sendStatus) {
+              <p class="admin-warning-status" [class.is-success]="sendState === 'success'" [class.is-error]="sendState === 'error'">
+                {{ sendStatus }}
+              </p>
+            }
+            @if (sendState !== 'success') {
+              <div class="admin-action-row">
+              <span
+                class="admin-warning-submit-shell"
+                [class.is-loading]="sendState === 'sending'"
+                [class.is-error]="sendState === 'error'"
+              >
+                <button type="submit" class="admin-btn admin-btn-primary admin-warning-submit-btn" [disabled]="sending || !warnMessage.trim()">
+                  <mat-icon>send</mat-icon>
+                  <span>Send warning</span>
+                </button>
+                @if (sendState === 'sending' || sendState === 'error') {
+                  <span class="admin-warning-submit-ring" aria-hidden="true">
+                    <svg class="admin-warning-submit-ring-svg" viewBox="0 0 100 40" preserveAspectRatio="none">
+                      <defs>
+                        <linearGradient id="admin-warning-submit-gradient" x1="0" y1="0" x2="1" y2="1">
+                          <stop offset="0%" stop-color="#5b8cf7" />
+                          <stop offset="100%" stop-color="#2f6fd6" />
+                        </linearGradient>
+                        <linearGradient id="admin-warning-submit-gradient-success" x1="0" y1="0" x2="1" y2="1">
+                          <stop offset="0%" stop-color="#3bbf7a" />
+                          <stop offset="100%" stop-color="#1d8652" />
+                        </linearGradient>
+                        <linearGradient id="admin-warning-submit-gradient-error" x1="0" y1="0" x2="1" y2="1">
+                          <stop offset="0%" stop-color="#f87171" />
+                          <stop offset="100%" stop-color="#bd2d42" />
+                        </linearGradient>
+                      </defs>
+                      <rect class="admin-warning-submit-ring-track" x="2" y="2" width="96" height="36" rx="12" />
+                      <rect
+                        class="admin-warning-submit-ring-progress"
+                        [class.is-loading]="sendState === 'sending'"
+                        [class.is-error]="sendState === 'error'"
+                        x="2"
+                        y="2"
+                        width="96"
+                        height="36"
+                        rx="12"
+                      />
+                    </svg>
+                  </span>
+                }
+              </span>
+              </div>
+            }
           </form>
         } @else if (admin.selectedReport(); as report) {
           <div class="admin-popup-body admin-popup-body-single">

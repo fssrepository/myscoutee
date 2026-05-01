@@ -57,11 +57,73 @@ app-smart-list.admin-smart-list {
   width: 100%;
 }
 
+.admin-report-header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.44rem;
+}
+
+.admin-blocked-users-btn {
+  position: relative;
+  min-height: 34px;
+  border: 1px solid rgba(183, 88, 104, 0.42);
+  border-radius: 999px;
+  background: linear-gradient(180deg, #fff4f5 0%, #ffe8eb 100%);
+  color: #9b3345;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.32rem;
+  padding: 0 0.72rem;
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.admin-blocked-users-btn:disabled {
+  opacity: 0.54;
+  cursor: default;
+}
+
+.admin-blocked-users-btn .mat-icon {
+  width: 17px;
+  height: 17px;
+  font-size: 17px;
+  line-height: 17px;
+}
+
+.admin-blocked-users-badge,
+.admin-blocked-user-menu-badge,
+.admin-blocked-menu-item-badge {
+  min-width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: #d84d4d;
+  color: #fff;
+  border: 1px solid #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 5px;
+  box-sizing: border-box;
+  font-size: 0.68rem;
+  font-weight: 900;
+  line-height: 1;
+  box-shadow: 0 2px 8px rgba(120, 24, 24, 0.22);
+}
+
+.admin-blocked-users-badge {
+  position: absolute;
+  top: -9px;
+  right: -8px;
+}
+
 .admin-simple-list {
   flex: 1 1 auto;
 }
 
-.admin-feedback-card {
+.admin-feedback-card,
+.admin-report-card {
   position: relative;
   width: 100%;
   border: 1px solid rgba(33, 51, 78, 0.14);
@@ -80,11 +142,18 @@ app-smart-list.admin-smart-list {
   transition: background-color 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
 }
 
-.admin-feedback-card:hover {
+.admin-report-card {
+  grid-template-columns: auto minmax(0, 1fr) minmax(120px, auto);
+  overflow: hidden;
+}
+
+.admin-feedback-card:hover,
+.admin-report-card:hover {
   box-shadow: 0 10px 26px rgba(23, 33, 54, 0.08);
 }
 
 .admin-feedback-card .activities-card-avatar,
+.admin-report-card .activities-card-avatar,
 .admin-feedback-card .admin-message-avatar {
   width: 36px;
   height: 36px;
@@ -109,39 +178,47 @@ app-smart-list.admin-smart-list {
   background: linear-gradient(180deg, #f089b0 0%, #df5d87 100%);
 }
 
-.admin-feedback-card .activities-card-main {
+.admin-feedback-card .activities-card-main,
+.admin-report-card .activities-card-main {
   min-width: 0;
 }
 
 .admin-feedback-card .activities-card-title,
 .admin-feedback-card .activities-card-subtitle,
-.admin-feedback-card .activities-card-detail {
+.admin-feedback-card .activities-card-detail,
+.admin-report-card .activities-card-title,
+.admin-report-card .activities-card-subtitle,
+.admin-report-card .activities-card-detail {
   margin: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.admin-feedback-card .activities-card-title {
+.admin-feedback-card .activities-card-title,
+.admin-report-card .activities-card-title {
   color: #1f3658;
   font-size: 0.86rem;
   font-weight: 900;
 }
 
-.admin-feedback-card .activities-card-subtitle {
+.admin-feedback-card .activities-card-subtitle,
+.admin-report-card .activities-card-subtitle {
   margin-top: 0.1rem;
   color: rgba(20, 36, 58, 0.76);
   font-size: 0.76rem;
   font-weight: 800;
 }
 
-.admin-feedback-card .activities-card-detail {
+.admin-feedback-card .activities-card-detail,
+.admin-report-card .activities-card-detail {
   margin-top: 0.1rem;
   color: rgba(20, 36, 58, 0.64);
   font-size: 0.73rem;
 }
 
-.admin-feedback-card-meta {
+.admin-feedback-card-meta,
+.admin-report-card-meta {
   align-self: center;
   justify-self: end;
   min-width: 0;
@@ -151,7 +228,8 @@ app-smart-list.admin-smart-list {
   gap: 0.34rem;
 }
 
-.admin-feedback-time-badge {
+.admin-feedback-time-badge,
+.admin-report-time-badge {
   min-width: 56px;
   height: 18px;
   border-radius: 999px;
@@ -166,11 +244,12 @@ app-smart-list.admin-smart-list {
   line-height: 1;
 }
 
-.admin-feedback-category-badge {
+.admin-feedback-category-badge,
+.admin-report-reason-badge {
   align-self: baseline;
   justify-self: end;
   min-width: 0;
-  max-width: 150px;
+  max-width: min(260px, 30vw);
   min-height: 28px;
   border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.86);
@@ -179,14 +258,21 @@ app-smart-list.admin-smart-list {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0 0.64rem;
+  padding: 0 0.78rem;
   box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.68), 0 8px 16px rgba(255, 255, 255, 0.34);
   font-size: 0.72rem;
   font-weight: 900;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-sizing: border-box;
 }
 
 .admin-feedback-card-meta .admin-feedback-category-badge {
+  align-self: flex-end;
+}
+
+.admin-report-card-meta .admin-report-reason-badge {
   align-self: flex-end;
 }
 
@@ -233,6 +319,54 @@ app-smart-list.admin-smart-list {
 
 .admin-feedback-tone-performance .admin-feedback-category-badge {
   background: #8d6330;
+}
+
+.admin-report-card .user-color-woman {
+  background: linear-gradient(180deg, #f089b0 0%, #df5d87 100%);
+}
+
+.admin-report-card .user-color-man {
+  background: linear-gradient(180deg, #5b84aa 0%, #365873 100%);
+}
+
+.admin-report-tone-general,
+.admin-report-tone-no-show-unsafe-event-behavior {
+  border-color: rgba(173, 55, 66, 0.28);
+  background: linear-gradient(180deg, #fffafa 0%, #fff3f3 100%);
+}
+
+.admin-report-tone-chat {
+  border-color: rgba(108, 83, 168, 0.26);
+  background: linear-gradient(180deg, #fdfcff 0%, #f6f2ff 100%);
+}
+
+.admin-report-tone-asset,
+.admin-report-tone-asset-misuse {
+  border-color: rgba(161, 105, 33, 0.26);
+  background: linear-gradient(180deg, #fffdfa 0%, #fff7eb 100%);
+}
+
+.admin-report-tone-harassment {
+  border-color: rgba(184, 48, 88, 0.28);
+  background: linear-gradient(180deg, #fff9fb 0%, #fff0f5 100%);
+}
+
+.admin-report-tone-chat .admin-report-reason-badge {
+  background: #674f9f;
+}
+
+.admin-report-tone-asset .admin-report-reason-badge,
+.admin-report-tone-asset-misuse .admin-report-reason-badge {
+  background: #8d6330;
+}
+
+.admin-report-tone-harassment .admin-report-reason-badge {
+  background: #a73e62;
+}
+
+.admin-report-tone-general .admin-report-reason-badge,
+.admin-report-tone-no-show-unsafe-event-behavior .admin-report-reason-badge {
+  background: #9d3e49;
 }
 
 .admin-simple-row {
@@ -394,10 +528,7 @@ app-smart-list.admin-smart-list {
 }
 
 .admin-chat-detail-message {
-  display: grid;
-  grid-template-columns: 34px minmax(0, 1fr);
-  gap: 0.52rem;
-  align-items: start;
+  display: block;
 }
 
 .admin-thread-message {
@@ -427,12 +558,501 @@ app-smart-list.admin-smart-list {
 }
 
 .admin-message-bubble {
+  position: relative;
   min-width: 0;
   border: 1px solid rgba(23, 33, 54, 0.12);
   border-radius: 14px;
   background: #fff;
   padding: 0.72rem;
   box-shadow: 0 8px 20px rgba(23, 33, 54, 0.05);
+}
+
+.admin-report-detail-bubble {
+  padding: 0.76rem;
+}
+
+.admin-report-detail-bubble .admin-message-head {
+  padding-right: min(230px, 36%);
+}
+
+.admin-message-head-title {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42rem;
+}
+
+.admin-message-avatar-inline {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+}
+
+.admin-message-avatar-inline.has-photo {
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  color: transparent;
+}
+
+.admin-report-detail-badge {
+  position: absolute;
+  top: 0.72rem;
+  right: 0.72rem;
+  max-width: min(210px, 32%);
+}
+
+.admin-report-context-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.52rem;
+  margin-top: 0.7rem;
+}
+
+.admin-report-context-card {
+  position: relative;
+  min-width: 0;
+  min-height: 112px;
+  border: 1px solid rgba(23, 33, 54, 0.12);
+  border-radius: 10px;
+  background: #f8fbff;
+  color: #132642;
+  font: inherit;
+  text-align: left;
+  padding: 0.62rem;
+  display: grid;
+  align-content: space-between;
+  gap: 0.44rem;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.admin-report-context-card:hover {
+  border-color: rgba(47, 111, 214, 0.28);
+  background: #f2f7ff;
+}
+
+.admin-report-context-card-main {
+  min-width: 0;
+  width: 100%;
+  min-height: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  padding: 0;
+  display: grid;
+  align-content: space-between;
+  gap: 0.44rem;
+  cursor: pointer;
+}
+
+.admin-report-context-head {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.48rem;
+}
+
+.admin-report-context-avatar {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.admin-report-context-avatar.user-color-woman {
+  background: linear-gradient(180deg, #f089b0 0%, #df5d87 100%);
+}
+
+.admin-report-context-avatar.user-color-man {
+  background: linear-gradient(180deg, #5b84aa 0%, #365873 100%);
+}
+
+.admin-report-context-source-avatar {
+  background: #2f5f8f;
+}
+
+.admin-report-context-source-avatar .mat-icon {
+  width: 18px;
+  height: 18px;
+  font-size: 18px;
+  line-height: 18px;
+}
+
+.admin-report-context-copy {
+  min-width: 0;
+  display: grid;
+  gap: 0.08rem;
+}
+
+.admin-report-context-copy strong,
+.admin-report-context-copy small,
+.admin-report-context-detail {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.admin-report-context-copy strong {
+  color: #132642;
+  font-size: 0.84rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.admin-report-context-copy small,
+.admin-report-context-detail {
+  color: rgba(34, 50, 74, 0.66);
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.admin-report-context-detail {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.admin-report-context-foot {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.26rem;
+  color: #2f6fd6;
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.admin-report-context-foot .mat-icon {
+  width: 15px;
+  height: 15px;
+  font-size: 15px;
+  line-height: 15px;
+}
+
+.admin-report-member-card {
+  padding: 0;
+  overflow: hidden;
+  background: #fff;
+  min-height: 200px;
+  display: block;
+}
+
+.admin-report-member-image-card {
+  position: relative;
+  min-width: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 200px;
+  display: block;
+}
+
+.admin-report-member-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background-size: cover;
+  background-position: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 1.6rem;
+  font-weight: 900;
+}
+
+.admin-report-member-image-card::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 46%;
+  background: linear-gradient(180deg, rgba(9, 19, 34, 0) 0%, rgba(9, 19, 34, 0.68) 100%);
+  pointer-events: none;
+}
+
+.admin-report-member-image-empty.user-color-woman {
+  background: linear-gradient(180deg, #f089b0 0%, #df5d87 100%);
+}
+
+.admin-report-member-image-empty.user-color-man {
+  background: linear-gradient(180deg, #5b84aa 0%, #365873 100%);
+}
+
+.admin-report-member-image-copy {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1;
+  min-width: 0;
+  padding: 0.56rem 2.55rem 0.62rem 0.64rem;
+  display: grid;
+  gap: 0.1rem;
+}
+
+.admin-report-member-image-copy strong,
+.admin-report-member-image-copy small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-report-member-image-copy strong {
+  color: #fff;
+  font-size: 0.86rem;
+  font-weight: 900;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.38);
+}
+
+.admin-report-member-image-copy small {
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.36);
+}
+
+.admin-report-member-menu-btn {
+  position: absolute;
+  top: 0.42rem;
+  right: 0.42rem;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(19, 38, 66, 0.08);
+  color: #1f3658;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 2;
+}
+
+.admin-member-card-status {
+  position: absolute;
+  top: 0.52rem;
+  left: 0.52rem;
+  z-index: 2;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.74);
+  background: linear-gradient(180deg, rgba(239, 252, 245, 0.96) 0%, rgba(214, 242, 226, 0.96) 100%);
+  color: #247d4d;
+  box-shadow: 0 7px 16px rgba(9, 19, 34, 0.22);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.admin-member-card-status .mat-icon {
+  width: 18px;
+  height: 18px;
+  font-size: 18px;
+  line-height: 18px;
+}
+
+.admin-blocked-card-status {
+  background: linear-gradient(180deg, rgba(255, 244, 245, 0.98) 0%, rgba(255, 225, 229, 0.98) 100%);
+  color: #a93546;
+}
+
+.admin-blocked-users-body {
+  display: flex;
+  min-height: 0;
+  padding: 0.52rem;
+  background: linear-gradient(180deg, #f8fbff 0%, #ffffff 100%);
+}
+
+.admin-blocked-smart-list-host {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.admin-blocked-user-card {
+  position: relative;
+  min-height: 222px;
+  border: 1px solid rgba(183, 88, 104, 0.32);
+  border-radius: 8px;
+  background: #fff;
+  overflow: hidden;
+  display: block;
+  box-shadow: 0 8px 20px rgba(23, 33, 54, 0.05);
+}
+
+.admin-blocked-user-card::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 52%;
+  background: linear-gradient(180deg, rgba(9, 19, 34, 0) 0%, rgba(9, 19, 34, 0.76) 100%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.admin-blocked-user-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background-size: cover;
+  background-position: center;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.7rem;
+  font-weight: 900;
+}
+
+.admin-blocked-user-image-empty.user-color-woman {
+  background: linear-gradient(180deg, #f089b0 0%, #df5d87 100%);
+}
+
+.admin-blocked-user-image-empty.user-color-man {
+  background: linear-gradient(180deg, #5b84aa 0%, #365873 100%);
+}
+
+.admin-blocked-user-copy {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2;
+  min-width: 0;
+  padding: 0.56rem 2.7rem 0.68rem 0.7rem;
+  display: grid;
+  gap: 0.12rem;
+}
+
+.admin-blocked-user-copy strong,
+.admin-blocked-user-copy small {
+  margin: 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-blocked-user-copy strong {
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 900;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.38);
+}
+
+.admin-blocked-user-copy small {
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.36);
+}
+
+.admin-blocked-user-menu-btn {
+  top: 0.52rem;
+  right: 0.52rem;
+  bottom: auto;
+  background: rgba(255, 255, 255, 0.88);
+}
+
+.admin-blocked-user-menu-badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  padding: 0;
+}
+
+.admin-blocked-user-menu {
+  top: 2.72rem;
+  bottom: auto;
+}
+
+.admin-blocked-menu-item-badge {
+  margin-left: auto;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  font-size: 0.64rem;
+}
+
+.admin-blocked-users-empty {
+  margin: 0;
+  color: rgba(34, 50, 74, 0.62);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.admin-report-member-menu-btn .mat-icon {
+  width: 18px;
+  height: 18px;
+  font-size: 18px;
+  line-height: 18px;
+}
+
+.admin-report-member-menu {
+  position: absolute;
+  top: 2.38rem;
+  right: 0.42rem;
+  z-index: 4;
+  width: 156px;
+  border: 1px solid rgba(36, 67, 107, 0.2);
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 12px 24px rgba(16, 32, 58, 0.18);
+  padding: 0.28rem;
+  display: grid;
+  gap: 0.12rem;
+}
+
+.admin-report-member-menu button {
+  min-height: 32px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #1f3658;
+  font: inherit;
+  font-size: 0.74rem;
+  font-weight: 900;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 0.34rem;
+  padding: 0 0.42rem;
+  cursor: pointer;
+}
+
+.admin-report-member-menu button:hover {
+  background: #eef5ff;
+}
+
+.admin-report-member-menu button.danger {
+  color: #aa2e2e;
+}
+
+.admin-report-member-menu .mat-icon {
+  width: 16px;
+  height: 16px;
+  font-size: 16px;
+  line-height: 16px;
+}
+
+.admin-report-context-ids {
+  margin: 0.52rem 0 0;
+  color: rgba(34, 50, 74, 0.5);
+  font-size: 0.68rem;
+  font-weight: 800;
+  overflow-wrap: anywhere;
 }
 
 .admin-message-bubble h3 {
@@ -507,6 +1127,10 @@ app-smart-list.admin-smart-list {
   font-size: 0.78rem;
   font-weight: 800;
   overflow-wrap: anywhere;
+}
+
+.admin-detail-meta-grid .admin-detail-meta-wide {
+  grid-column: span 3;
 }
 
 .admin-detail-meta-grid strong {
@@ -698,6 +1322,97 @@ app-smart-list.admin-smart-list {
   color: #fff;
 }
 
+.admin-warning-status {
+  margin: 0.68rem 0 0;
+  border-radius: 12px;
+  padding: 0.62rem 0.74rem;
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.admin-warning-status.is-success {
+  border: 1px solid rgba(32, 140, 82, 0.22);
+  background: #ecfdf3;
+  color: #14683e;
+}
+
+.admin-warning-status.is-error {
+  border: 1px solid rgba(189, 45, 66, 0.22);
+  background: #fff1f2;
+  color: #9f2135;
+}
+
+.admin-warning-submit-shell {
+  position: relative;
+  display: inline-flex;
+  border-radius: 14px;
+  padding: 2px;
+}
+
+.admin-warning-submit-btn {
+  position: relative;
+  z-index: 1;
+  border-color: transparent;
+}
+
+.admin-warning-submit-ring {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.admin-warning-submit-ring-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 8px 20px rgba(13, 24, 44, 0.14));
+}
+
+.admin-warning-submit-ring-track,
+.admin-warning-submit-ring-progress {
+  fill: none;
+  stroke-width: 4;
+}
+
+.admin-warning-submit-ring-track {
+  stroke: rgba(47, 111, 214, 0.12);
+}
+
+.admin-warning-submit-ring-progress {
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.admin-warning-submit-ring-progress.is-loading {
+  stroke: url(#admin-warning-submit-gradient);
+  animation: admin-warning-submit-ring-progress 3s linear forwards;
+}
+
+.admin-warning-submit-ring-progress.is-success {
+  stroke: url(#admin-warning-submit-gradient-success);
+}
+
+.admin-warning-submit-ring-progress.is-error {
+  stroke: url(#admin-warning-submit-gradient-error);
+}
+
+.admin-warning-submit-shell.is-loading .admin-warning-submit-btn {
+  background: linear-gradient(180deg, #d9e2f2 0%, #c9d4e8 100%);
+  border-color: rgba(74, 103, 145, 0.32);
+  color: rgba(29, 51, 83, 0.72);
+  cursor: not-allowed;
+  opacity: 1;
+}
+
+@keyframes admin-warning-submit-ring-progress {
+  from {
+    stroke-dasharray: 0 264;
+  }
+  to {
+    stroke-dasharray: 264 264;
+  }
+}
+
 .admin-card-list {
   display: grid;
   gap: 0.52rem;
@@ -817,6 +1532,57 @@ app-smart-list.admin-smart-list {
   }
 
   .admin-detail-meta-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-detail-meta-grid .admin-detail-meta-wide {
+    grid-column: auto;
+  }
+
+  .admin-feedback-card,
+  .admin-report-card {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .admin-feedback-card .activities-card-main,
+  .admin-report-card .activities-card-main {
+    padding-right: 6.9rem;
+  }
+
+  .admin-feedback-card-meta,
+  .admin-report-card-meta {
+    position: absolute;
+    top: 0.62rem;
+    right: 0.7rem;
+    max-width: 6.4rem;
+    justify-self: end;
+    align-items: flex-end;
+    flex-direction: column;
+    margin-top: 0;
+    z-index: 1;
+  }
+
+  .admin-feedback-card-meta .admin-feedback-category-badge,
+  .admin-report-card-meta .admin-report-reason-badge {
+    max-width: 6.4rem;
+  }
+
+  .admin-feedback-category-badge,
+  .admin-report-reason-badge {
+    max-width: min(240px, 64vw);
+  }
+
+  .admin-report-detail-bubble .admin-message-head {
+    padding-right: 0;
+  }
+
+  .admin-report-detail-badge {
+    position: static;
+    max-width: 100%;
+    margin-top: 0.5rem;
+  }
+
+  .admin-report-context-grid {
     grid-template-columns: 1fr;
   }
 }
