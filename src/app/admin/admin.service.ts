@@ -1,4 +1,5 @@
 import { HttpClient } from '@angular/common/http';
+import { Location } from '@angular/common';
 import { Injectable, computed, inject, signal } from '@angular/core';
 
 import { environment } from '../../environments/environment';
@@ -137,6 +138,7 @@ export class AdminService {
   private readonly http = inject(HttpClient);
   private readonly appCtx = inject(AppContext);
   private readonly popupCtx = inject(AppPopupContext);
+  private readonly location = inject(Location);
   private readonly sessionService = inject(SessionService);
   private readonly memoryDb = inject(AppMemoryDb);
   private readonly demoUsersRepository = inject(DemoUsersRepository);
@@ -633,7 +635,7 @@ export class AdminService {
     let changed = false;
     this.demoAdminHelpTargets().forEach((target, index) => {
       const token = this.ensureDemoHelpToken(admin, helpUser, target);
-      const helpUrl = `/admin/help/${encodeURIComponent(token)}`;
+      const helpUrl = this.location.prepareExternalUrl(`/admin/help/${encodeURIComponent(token)}`);
       const sentAt = new Date(now.getTime() + index * 1000);
       const sentAtIso = sentAt.toISOString();
       const message: ChatPopupMessage = {

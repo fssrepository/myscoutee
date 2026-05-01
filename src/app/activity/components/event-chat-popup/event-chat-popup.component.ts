@@ -9,7 +9,7 @@ import {
   effect,
   inject
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, Location } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -89,6 +89,7 @@ export class EventChatPopupComponent implements OnDestroy {
   private readonly confirmationDialogService = inject(ConfirmationDialogService);
   private readonly httpMediaService = inject(HttpMediaService);
   private readonly navigatorService = inject(NavigatorService);
+  private readonly location = inject(Location);
   private readonly memoryDb = inject(AppMemoryDb);
 
   protected readonly session = computed(() => this.activitiesContext.eventChatSession());
@@ -1647,7 +1648,7 @@ export class EventChatPopupComponent implements OnDestroy {
         title: resolved.title || 'Open shared help view',
         subtitle: resolved.subtitle ?? null,
         description: resolved.description ?? null,
-        url: `/admin/help/${encodeURIComponent(token)}`,
+        url: this.location.prepareExternalUrl(`/admin/help/${encodeURIComponent(token)}`),
         previewUrl: resolved.imageUrl ?? null
       };
     }
@@ -1795,7 +1796,10 @@ export class EventChatPopupComponent implements OnDestroy {
     }
     try {
       const parsed = new URL(normalized, document.baseURI);
-      return parsed.origin === window.location.origin && parsed.pathname.startsWith('/admin/help/');
+      const basePath = new URL(document.baseURI).pathname.replace(/\/$/, '');
+      const baseHelpPath = `${basePath}/admin/help/`.replace(/\/{2,}/g, '/');
+      return parsed.origin === window.location.origin
+        && (parsed.pathname.startsWith('/admin/help/') || parsed.pathname.startsWith(baseHelpPath));
     } catch {
       return false;
     }
