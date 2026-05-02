@@ -1,0 +1,545 @@
+@if (admin.activePopup() === 'help-editor') {
+  <section class="app-popup">
+    <div class="app-popup-backdrop" (click)="close()"></div>
+    <div class="app-popup-panel popup-panel-admin popup-panel-help-editor" (click)="closeDocumentMenu($event)">
+      <div class="popup-header">
+        <div class="popup-title">
+          <h2>{{ editorTitle() }}</h2>
+          <p class="popup-subtitle">
+            @if (activeRevision(); as active) {
+              <span class="help-editor-active-subtitle-main">Active {{ documentLabelLower() }} v{{ active.version }}</span>
+              <span class="help-editor-active-subtitle-title">{{ active.title }}</span>
+            } @else {
+              No active {{ documentLabelLower() }} revision
+            }
+          </p>
+        </div>
+        <div class="help-editor-header-actions">
+          <div class="help-editor-document-menu-wrap">
+            <button
+              type="button"
+              class="help-editor-document-menu-btn"
+              [disabled]="loading || isAnyActionPending()"
+              [attr.aria-expanded]="documentMenuOpen"
+              aria-haspopup="menu"
+              data-motion="none"
+              (click)="toggleDocumentMenu($event)"
+              >
+              <mat-icon>{{ documentIcon(documentKind) }}</mat-icon>
+              <span>{{ documentLabel() }}</span>
+              <mat-icon class="help-editor-document-menu-caret">expand_more</mat-icon>
+            </button>
+            @if (documentMenuOpen) {
+              <div class="help-editor-document-menu" role="menu" (click)="$event.stopPropagation()">
+                <button
+                  type="button"
+                  role="menuitemradio"
+                  [class.is-active]="documentKind === 'help'"
+                  [attr.aria-checked]="documentKind === 'help'"
+                  [disabled]="loading || isAnyActionPending()"
+                  data-motion="none"
+                  (click)="selectDocumentKind('help', $event)"
+                  >
+                  <mat-icon>help_outline</mat-icon>
+                  <span>Help</span>
+                </button>
+                <button
+                  type="button"
+                  role="menuitemradio"
+                  [class.is-active]="documentKind === 'privacy'"
+                  [attr.aria-checked]="documentKind === 'privacy'"
+                  [disabled]="loading || isAnyActionPending()"
+                  data-motion="none"
+                  (click)="selectDocumentKind('privacy', $event)"
+                  >
+                  <mat-icon>policy</mat-icon>
+                  <span>Privacy</span>
+                </button>
+              </div>
+            }
+          </div>
+          <button
+            type="button"
+            class="help-editor-icon-btn"
+            [disabled]="loading || isAnyActionPending()"
+            (click)="startNewRevision($event)"
+            [attr.aria-label]="'Create ' + documentLabelLower() + ' revision'"
+            title="Create empty revision"
+            >
+            <mat-icon>add</mat-icon>
+          </button>
+          <button type="button" class="popup-close" (click)="close()" aria-label="Close">
+            <mat-icon>close</mat-icon>
+          </button>
+        </div>
+      </div>
+
+      <div class="popup-body help-editor-body">
+        @if (loading) {
+          <div class="help-editor-state-card">
+            <mat-icon>sync</mat-icon>
+            <span>Loading {{ documentLabelLower() }} revisions</span>
+          </div>
+        } @else {
+          @if (error) {
+            <div class="help-editor-error">
+              <mat-icon>warning</mat-icon>
+              <span>{{ error }}</span>
+            </div>
+          }
+
+          <section class="help-editor-revisions-pane">
+            @let rows = revisionRows();
+            @if (rows.length > 0) {
+              <div class="help-editor-revision-list" [attr.aria-label]="documentLabel() + ' revisions'">
+                @for (row of rows; track row.id) {
+                  @if (row.kind === 'draft') {
+                    @if (draft; as editDraft) {
+                      <form class="help-editor-form help-editor-draft-row" (ngSubmit)="saveDraft($event)">
+                        <article class="help-editor-revision-card help-editor-draft-card" [class.is-open]="draftAccordionOpen">
+                          <div class="help-editor-revision-head help-editor-draft-head">
+                            <div class="help-editor-revision-toggle help-editor-draft-toggle">
+                              <span class="help-editor-version-pill help-editor-draft-version-pill">{{ draftVersionLabel() }}</span>
+                              <span class="help-editor-revision-copy help-editor-draft-title-wrap">
+                                <input
+                                  class="help-editor-draft-title-input"
+                                  type="text"
+                                  name="helpTitle"
+                                  [(ngModel)]="editDraft.title"
+                                  placeholder="Revision title"
+                                  required
+                                />
+                              </span>
+                            </div>
+                            <div class="help-editor-revision-actions help-editor-draft-header-actions">
+                              <span class="help-editor-action-ring-shell help-editor-circle-ring-shell" [class.is-loading]="saving">
+                                <span class="help-editor-circle-ring" aria-hidden="true">
+                                  <svg viewBox="0 0 34 34" preserveAspectRatio="none" class="help-editor-circle-ring-svg">
+                                    <circle class="help-editor-circle-ring-track" cx="17" cy="17" r="15"></circle>
+                                    <circle
+                                      class="help-editor-circle-ring-progress"
+                                      [class.is-loading]="saving"
+                                      cx="17"
+                                      cy="17"
+                                      r="15"
+                                      pathLength="100"
+                                      [attr.stroke-dasharray]="actionRingPerimeter"
+                                      [attr.stroke-dashoffset]="saving ? 0 : actionRingPerimeter"
+                                    ></circle>
+                                  </svg>
+                                </span>
+                                <button
+                                  type="submit"
+                                  class="help-editor-icon-btn help-editor-confirm-btn"
+                                  [disabled]="saving"
+                                  [attr.aria-label]="saving ? 'Saving revision' : 'Save v' + nextRevisionVersion()"
+                                  [title]="saving ? 'Saving revision' : 'Save v' + nextRevisionVersion()"
+                                  >
+                                  <mat-icon>check</mat-icon>
+                                </button>
+                              </span>
+                              <button
+                                type="button"
+                                class="help-editor-icon-btn"
+                                [disabled]="saving"
+                                (click)="cancelEditing($event)"
+                                aria-label="Cancel editing"
+                                title="Cancel editing"
+                                >
+                                <mat-icon>close</mat-icon>
+                              </button>
+                              <button
+                                type="button"
+                                class="help-editor-inline-icon-btn help-editor-caret-btn"
+                                [attr.aria-expanded]="draftAccordionOpen"
+                                (click)="toggleDraftRevision($event)"
+                                aria-label="Toggle draft revision"
+                                >
+                                <mat-icon class="help-editor-section-caret">expand_more</mat-icon>
+                              </button>
+                            </div>
+                          </div>
+
+                          @if (draftAccordionOpen) {
+                          <div class="help-editor-revision-preview help-editor-draft-body">
+                            <div class="help-editor-description-edit help-editor-summary-edit-panel" [ngClass]="headerColorClass(editDraft.headerColor)">
+                              <div class="help-editor-description-row">
+                                <div class="help-editor-summary-line">
+                                  <label class="help-editor-inline-field">
+                                    <span>Header</span>
+                                    <input
+                                      class="help-editor-draft-summary-input"
+                                      type="text"
+                                      name="helpSummary"
+                                      [(ngModel)]="editDraft.summary"
+                                      [placeholder]="documentLabel() + ' popup header'"
+                                      required
+                                    />
+                                  </label>
+                                  <button
+                                    type="button"
+                                    class="help-editor-icon-btn help-editor-color-btn help-editor-summary-color-btn"
+                                    [disabled]="saving"
+                                    (click)="openColorPicker($event)"
+                                    aria-label="Choose header color"
+                                    title="Header color"
+                                    >
+                                    <mat-icon>palette</mat-icon>
+                                  </button>
+                                </div>
+                                <div class="help-editor-description-line">
+                                  <label class="help-editor-inline-field help-editor-inline-field-compact">
+                                    <span>Description</span>
+                                    <textarea
+                                      name="helpDescription"
+                                      [(ngModel)]="editDraft.description"
+                                      [placeholder]="documentLabel() + ' description'"
+                                      rows="3"
+                                      required
+                                    ></textarea>
+                                  </label>
+                                  <button
+                                    type="button"
+                                    class="help-editor-hero-add-section-btn"
+                                    (click)="addDraftSection($event)"
+                                    [attr.aria-label]="'Add ' + documentLabelLower() + ' section'"
+                                    title="Add section"
+                                    >
+                                    <mat-icon>add</mat-icon>
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div class="help-editor-preview-accordion" [attr.aria-label]="'Editable ' + documentLabelLower() + ' sections'">
+                              @for (section of editDraft.sections; track section.localId; let sectionIndex = $index) {
+                                <article
+                                  class="help-editor-preview-section help-editor-edit-section"
+                                  [class.is-open]="openDraftSectionId === section.localId"
+                                  [class.is-privacy-mandatory]="documentKind === 'privacy' && !section.optional"
+                                  [class.is-privacy-optional]="documentKind === 'privacy' && section.optional"
+                                  >
+                                  <div class="help-editor-edit-section-head">
+                                    <button
+                                      type="button"
+                                      class="help-editor-icon-picker-trigger"
+                                      [class.is-active]="iconPickerSectionId === section.localId"
+                                      (click)="openIconPicker(section, $event)"
+                                      aria-label="Change section icon"
+                                      title="Change icon"
+                                      >
+                                      <mat-icon>{{ section.icon || defaultSectionIcon() }}</mat-icon>
+                                    </button>
+                                    <input
+                                      class="help-editor-section-title-input"
+                                      type="text"
+                                      [name]="'sectionTitle' + sectionIndex"
+                                      [(ngModel)]="section.title"
+                                      [ngModelOptions]="{ standalone: true }"
+                                      placeholder="Section label"
+                                      required
+                                      [attr.aria-label]="documentLabel() + ' section title'"
+                                    />
+                                    @if (documentKind === 'privacy') {
+                                      <label
+                                        class="help-editor-privacy-optional-toggle"
+                                        [class.is-optional]="section.optional"
+                                        [class.is-mandatory]="!section.optional"
+                                        (click)="$event.stopPropagation()"
+                                        title="Optional sections do not block privacy approval"
+                                        >
+                                        <input
+                                          type="checkbox"
+                                          [name]="'sectionOptional' + sectionIndex"
+                                          [(ngModel)]="section.optional"
+                                          [ngModelOptions]="{ standalone: true }"
+                                          [attr.aria-label]="section.optional ? 'Mark section mandatory' : 'Mark section optional'"
+                                        />
+                                        <span>
+                                          <mat-icon>{{ section.optional ? 'check_circle' : 'priority_high' }}</mat-icon>
+                                          <span>{{ section.optional ? 'Optional' : 'Mandatory' }}</span>
+                                        </span>
+                                      </label>
+                                    }
+                                    <button
+                                      type="button"
+                                      class="help-editor-mode-toggle"
+                                      (click)="toggleDraftSectionMode(section, $event)"
+                                      [attr.aria-label]="section.mode === 'html' ? 'Switch to preview' : 'Switch to HTML'"
+                                      [title]="section.mode === 'html' ? 'Switch to preview' : 'Switch to HTML'"
+                                      >
+                                      <mat-icon>{{ section.mode === 'html' ? 'code' : 'visibility' }}</mat-icon>
+                                      <span>{{ section.mode === 'html' ? 'HTML' : 'Preview' }}</span>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      class="help-editor-inline-icon-btn help-editor-danger-btn"
+                                      (click)="removeDraftSection(section, $event)"
+                                      [attr.aria-label]="'Remove ' + documentLabelLower() + ' section'"
+                                      title="Remove section"
+                                      >
+                                      <mat-icon>delete</mat-icon>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      class="help-editor-inline-icon-btn help-editor-caret-btn"
+                                      [attr.aria-expanded]="openDraftSectionId === section.localId"
+                                      (click)="toggleDraftSection(section, $event)"
+                                      [attr.aria-label]="'Toggle ' + documentLabelLower() + ' section'"
+                                      >
+                                      <mat-icon class="help-editor-section-caret">expand_more</mat-icon>
+                                    </button>
+                                  </div>
+                                  @if (openDraftSectionId === section.localId) {
+                                    <div class="help-editor-preview-section-body help-editor-section-edit">
+                                      @if (section.mode === 'html') {
+                                        <textarea
+                                          class="help-editor-html-textarea"
+                                          [name]="'sectionHtml' + sectionIndex"
+                                          [(ngModel)]="section.contentHtml"
+                                          [ngModelOptions]="{ standalone: true }"
+                                          placeholder="Paste or edit the section HTML"
+                                          spellcheck="false"
+                                          (paste)="formatPastedSectionHtml(section, $event)"
+                                        ></textarea>
+                                      } @else {
+                                        <div class="help-editor-preview-card">
+                                          <div class="help-editor-html-preview" [innerHTML]="section.contentHtml"></div>
+                                        </div>
+                                      }
+                                    </div>
+                                  }
+                                </article>
+                              }
+                            </div>
+                          </div>
+                          }
+                        </article>
+                      </form>
+                    }
+                  } @else if (row.revision; as revision) {
+                    <article class="help-editor-revision-card" [class.is-open]="isRevisionOpen(revision)" [class.is-active]="revision.active">
+                      <div class="help-editor-revision-head" (click)="toggleRevision(revision, $event)">
+                        <button
+                          type="button"
+                          class="help-editor-revision-toggle"
+                          [attr.aria-expanded]="isRevisionOpen(revision)"
+                          (click)="toggleRevision(revision, $event)"
+                          >
+                          <span class="help-editor-version-pill">v{{ revision.version }}</span>
+                          <span class="help-editor-revision-copy">
+                            <strong>{{ revision.summary || revision.title }}</strong>
+                            <small>{{ revisionSubtitle(revision) }}</small>
+                          </span>
+                          @if (revision.active) {
+                            <span class="help-editor-active-badge">Active</span>
+                          }
+                        </button>
+                        <div class="help-editor-revision-actions">
+                          <button
+                            type="button"
+                            class="help-editor-icon-btn"
+                            [disabled]="saving || !!activatingRevisionId"
+                            (click)="startEditingRevision(revision, $event)"
+                            aria-label="Edit revision"
+                            title="Edit this revision"
+                            >
+                            <mat-icon>edit</mat-icon>
+                          </button>
+                          <span class="help-editor-action-ring-shell help-editor-circle-ring-shell" [class.is-loading]="activatingRevisionId === revision.id">
+                            <span class="help-editor-circle-ring" aria-hidden="true">
+                              <svg viewBox="0 0 34 34" preserveAspectRatio="none" class="help-editor-circle-ring-svg">
+                                <circle class="help-editor-circle-ring-track" cx="17" cy="17" r="15"></circle>
+                                <circle
+                                  class="help-editor-circle-ring-progress"
+                                  [class.is-loading]="activatingRevisionId === revision.id"
+                                  cx="17"
+                                  cy="17"
+                                  r="15"
+                                  pathLength="100"
+                                  [attr.stroke-dasharray]="actionRingPerimeter"
+                                  [attr.stroke-dashoffset]="activatingRevisionId === revision.id ? 0 : actionRingPerimeter"
+                                ></circle>
+                              </svg>
+                            </span>
+                            <button
+                              type="button"
+                              class="help-editor-icon-btn"
+                              [disabled]="revision.active || saving || !!activatingRevisionId"
+                              (click)="activateRevision(revision, $event)"
+                              aria-label="Activate revision"
+                              title="Switch to this revision"
+                              >
+                              <mat-icon>published_with_changes</mat-icon>
+                            </button>
+                          </span>
+                          <button
+                            type="button"
+                            class="help-editor-icon-btn help-editor-danger-btn"
+                            [disabled]="saving || !!activatingRevisionId"
+                            (click)="deleteRevision(revision, $event)"
+                            aria-label="Delete revision"
+                            title="Delete revision"
+                            >
+                            <mat-icon>delete</mat-icon>
+                          </button>
+                          <button
+                            type="button"
+                            class="help-editor-inline-icon-btn help-editor-caret-btn"
+                            [attr.aria-expanded]="isRevisionOpen(revision)"
+                            (click)="toggleRevision(revision, $event)"
+                            aria-label="Toggle revision"
+                            >
+                            <mat-icon class="help-editor-section-caret">expand_more</mat-icon>
+                          </button>
+                        </div>
+                      </div>
+
+                      @if (isRevisionOpen(revision)) {
+                        <div class="help-editor-revision-preview">
+                          <div class="help-editor-preview-accordion">
+                            @for (section of revision.sections; track section.id) {
+                              <article
+                                class="help-editor-preview-section"
+                                [class.is-open]="openPreviewSectionId === section.id"
+                                [class.is-privacy-mandatory]="documentKind === 'privacy' && !section.optional"
+                                [class.is-privacy-optional]="documentKind === 'privacy' && section.optional"
+                                >
+                                <button
+                                  type="button"
+                                  class="help-editor-preview-section-toggle"
+                                  [attr.aria-expanded]="openPreviewSectionId === section.id"
+                                  (click)="togglePreviewSection(section.id, $event)"
+                                  >
+                                  <span>
+                                    <mat-icon>{{ section.icon }}</mat-icon>
+                                    <strong>{{ section.title }}</strong>
+                                  </span>
+                                  <mat-icon class="help-editor-section-caret">expand_more</mat-icon>
+                                </button>
+                                @if (openPreviewSectionId === section.id) {
+                                  <div class="help-editor-preview-section-body">
+                                    @if (section.blurb) {
+                                      <p class="help-editor-preview-lead">{{ section.blurb }}</p>
+                                    }
+                                    <div class="help-editor-html-preview" [innerHTML]="section.contentHtml"></div>
+                                  </div>
+                                }
+                              </article>
+                            }
+                          </div>
+                        </div>
+                      }
+                    </article>
+                  }
+                }
+                </div>
+              } @else {
+                <div class="help-editor-empty-state">
+                  <mat-icon>{{ defaultSectionIcon() }}</mat-icon>
+                  <h3>No {{ documentLabelLower() }} revisions</h3>
+                  <p>Create a revision to enable the {{ documentLabelLower() }} popup.</p>
+                  <button type="button" class="help-editor-primary-btn" (click)="startNewRevision($event)">
+                    <mat-icon>add</mat-icon>
+                    <span>Create revision</span>
+                  </button>
+                </div>
+              }
+          </section>
+        }
+      </div>
+    </div>
+    @if (iconPickerSection(); as pickerSection) {
+      <section class="help-editor-icon-modal" role="dialog" aria-modal="true" aria-label="Choose section icon">
+        <div class="help-editor-icon-modal-backdrop" (click)="closeIconPicker($event)"></div>
+        <div class="help-editor-icon-picker" (click)="$event.stopPropagation()">
+          <header class="help-editor-icon-picker-head">
+            <span class="help-editor-icon-picker-title">
+              <mat-icon>{{ pickerSection.icon || defaultSectionIcon() }}</mat-icon>
+              <strong>Section icon</strong>
+            </span>
+            <button type="button" class="help-editor-icon-picker-close" data-motion="none" (click)="closeIconPicker($event)" aria-label="Close icon picker">
+              <mat-icon>close</mat-icon>
+            </button>
+          </header>
+          <div class="help-editor-icon-picker-search">
+            <mat-icon>search</mat-icon>
+            <input
+              type="search"
+              name="iconSearchModal"
+              [ngModel]="iconPickerSearch"
+              (ngModelChange)="setIconPickerSearch($event)"
+              [ngModelOptions]="{ standalone: true }"
+              placeholder="Search Material icons"
+              autocomplete="off"
+            />
+          </div>
+          <div class="help-editor-icon-picker-section">
+            <span>{{ iconPickerActiveLabel }}</span>
+            <small>{{ iconPickerActiveCount }}</small>
+          </div>
+          <div class="help-editor-icon-grid">
+            @for (option of visibleIconOptions; track option.icon) {
+              <button
+                type="button"
+                data-motion="none"
+                [class.is-selected]="pickerSection.icon === option.icon"
+                (click)="selectIcon(pickerSection, option.icon, $event)"
+                [attr.aria-label]="'Use ' + option.label + ' icon'"
+                >
+                <mat-icon>{{ option.icon }}</mat-icon>
+              </button>
+            } @empty {
+              <span class="help-editor-icon-empty">No icons found</span>
+            }
+          </div>
+          <div class="help-editor-icon-picker-tabs" role="tablist" aria-label="Icon groups">
+            @for (group of iconPickerGroups; track group) {
+              <button
+                type="button"
+                data-motion="none"
+                [class.is-active]="iconPickerGroup === group"
+                [attr.aria-label]="group"
+                (click)="setIconPickerGroup(group, $event)"
+                >
+                <mat-icon>{{ iconPickerGroupIcon(group) }}</mat-icon>
+                <span>{{ group }}</span>
+              </button>
+            }
+          </div>
+        </div>
+      </section>
+    }
+    @if (colorPickerOpen && draft; as editDraft) {
+      <section class="help-editor-icon-modal" role="dialog" aria-modal="true" aria-label="Choose header color">
+        <div class="help-editor-icon-modal-backdrop" (click)="closeColorPicker($event)"></div>
+        <div class="help-editor-icon-picker help-editor-color-picker" (click)="$event.stopPropagation()">
+          <header class="help-editor-icon-picker-head">
+            <span class="help-editor-icon-picker-title">
+              <mat-icon>palette</mat-icon>
+              <strong>Header color</strong>
+            </span>
+            <button type="button" class="help-editor-icon-picker-close" data-motion="none" (click)="closeColorPicker($event)" aria-label="Close color picker">
+              <mat-icon>close</mat-icon>
+            </button>
+          </header>
+          <div class="help-editor-color-grid">
+            @for (option of headerColorOptions; track option.id) {
+              <button
+                type="button"
+                class="help-editor-color-option"
+                [ngClass]="headerColorClass(option.id)"
+                [class.is-selected]="editDraft.headerColor === option.id"
+                (click)="selectHeaderColor(option.id, $event)"
+                [attr.aria-label]="'Use ' + option.label + ' header'"
+                >
+                <span class="help-editor-color-swatch" aria-hidden="true"></span>
+                <span>{{ option.label }}</span>
+              </button>
+            }
+          </div>
+        </div>
+      </section>
+    }
+  </section>
+}

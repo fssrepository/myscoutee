@@ -83,8 +83,14 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
   private eventRecordsLoadUserId = '';
   private eventFeedbackViewportScrollLockTargetIndex: number | null = null;
   private eventFeedbackViewportScrollLockTimer: ReturnType<typeof setTimeout> | null = null;
+  private eventFeedbackSurfaceSwipePointerId: number | null = null;
+  private eventFeedbackSurfaceSwipeStartX = 0;
+  private eventFeedbackSurfaceSwipeStartY = 0;
+  private eventFeedbackSurfaceSwipeStartScrollLeft = 0;
+  private eventFeedbackSurfaceSwipeActive = false;
 
   protected readonly isMobileEventFeedbackViewport = signal(this.readViewportWidth() <= 720);
+  protected readonly eventFeedbackPendingIndicatorIndex = signal<number | null>(null);
   protected readonly organizerEventFeedbackCarouselIndex = signal(0);
   protected readonly organizerEventFeedbackCarouselSections = computed<OrganizerEventFeedbackCarouselSection[]>(() => {
     const totalEntries = this.feedback.selectedOrganizerEventFeedbackEntries().length;
@@ -521,6 +527,7 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
     this.isMobileEventFeedbackViewport.set(nextIsMobileViewport);
     if (!nextIsMobileViewport) {
       this.clearEventFeedbackViewportScrollLock();
+      this.resetEventFeedbackViewportScroll();
       return;
     }
     this.queueMobileEventFeedbackViewportSync('auto');
@@ -582,11 +589,99 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
     if (nextIndex === this.feedback.eventFeedbackIndex()) {
       return;
     }
+    this.eventFeedbackPendingIndicatorIndex.set(null);
     this.feedback.eventFeedbackIndex.set(nextIndex);
+  }
+
+  protected eventFeedbackVisibleSlideIndex(): number {
+    const cards = this.feedback.eventFeedbackCards();
+    if (cards.length === 0) {
+      return 0;
+    }
+    const pendingIndex = this.eventFeedbackPendingIndicatorIndex();
+    const rawIndex = pendingIndex ?? this.feedback.eventFeedbackIndex();
+    return Math.max(0, Math.min(rawIndex, cards.length - 1));
+  }
+
+  protected eventFeedbackVisibleSlideCounterLabel(): string {
+    const cards = this.feedback.eventFeedbackCards();
+    if (cards.length === 0) {
+      return '';
+    }
+    return `${this.eventFeedbackVisibleSlideIndex() + 1} / ${cards.length}`;
+  }
+
+  protected isEventFeedbackDotActive(index: number): boolean {
+    return this.eventFeedbackVisibleSlideIndex() === index;
+  }
+
+  protected beginEventFeedbackSurfaceSwipe(event: PointerEvent): void {
+    if (!this.isMobileEventFeedbackViewport() || event.pointerType === 'mouse' && event.button !== 0) {
+      return;
+    }
+    if (this.isEventFeedbackInteractiveSwipeTarget(event.target)) {
+      return;
+    }
+    const viewport = this.eventFeedbackViewportRef?.nativeElement;
+    if (!viewport) {
+      return;
+    }
+    this.eventFeedbackSurfaceSwipePointerId = event.pointerId;
+    this.eventFeedbackSurfaceSwipeStartX = event.clientX;
+    this.eventFeedbackSurfaceSwipeStartY = event.clientY;
+    this.eventFeedbackSurfaceSwipeStartScrollLeft = viewport.scrollLeft;
+    this.eventFeedbackSurfaceSwipeActive = false;
+    const target = event.currentTarget as HTMLElement | null;
+    target?.setPointerCapture?.(event.pointerId);
+  }
+
+  protected moveEventFeedbackSurfaceSwipe(event: PointerEvent): void {
+    if (this.eventFeedbackSurfaceSwipePointerId !== event.pointerId) {
+      return;
+    }
+    const viewport = this.eventFeedbackViewportRef?.nativeElement;
+    if (!viewport) {
+      this.resetEventFeedbackSurfaceSwipe();
+      return;
+    }
+    const deltaX = event.clientX - this.eventFeedbackSurfaceSwipeStartX;
+    const deltaY = event.clientY - this.eventFeedbackSurfaceSwipeStartY;
+    if (!this.eventFeedbackSurfaceSwipeActive) {
+      if (Math.abs(deltaX) < 10 || Math.abs(deltaX) <= Math.abs(deltaY)) {
+        return;
+      }
+      this.eventFeedbackSurfaceSwipeActive = true;
+    }
+    if (event.cancelable) {
+      event.preventDefault();
+    }
+    viewport.scrollLeft = this.eventFeedbackSurfaceSwipeStartScrollLeft - deltaX;
+  }
+
+  protected endEventFeedbackSurfaceSwipe(event: PointerEvent): void {
+    if (this.eventFeedbackSurfaceSwipePointerId !== event.pointerId) {
+      return;
+    }
+    const viewport = this.eventFeedbackViewportRef?.nativeElement;
+    const wasActive = this.eventFeedbackSurfaceSwipeActive;
+    this.resetEventFeedbackSurfaceSwipe();
+    if (!viewport || !wasActive) {
+      return;
+    }
+    const nextIndex = this.currentMobileEventFeedbackSlideIndex(viewport);
+    this.queueMobileEventFeedbackViewportSync('smooth', nextIndex);
+  }
+
+  protected cancelEventFeedbackSurfaceSwipe(event: PointerEvent): void {
+    if (this.eventFeedbackSurfaceSwipePointerId !== event.pointerId) {
+      return;
+    }
+    this.resetEventFeedbackSurfaceSwipe();
   }
 
   ngOnDestroy(): void {
     this.clearEventFeedbackViewportScrollLock();
+    this.resetEventFeedbackSurfaceSwipe();
     this.feedback.registerSource(null);
   }
 
@@ -832,6 +927,7 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
   private queueMobileEventFeedbackViewportSync(behavior: ScrollBehavior, targetIndex = this.feedback.eventFeedbackIndex()): void {
     if (!this.isMobileEventFeedbackViewport()) {
       this.clearEventFeedbackViewportScrollLock();
+      this.resetEventFeedbackViewportScroll();
       return;
     }
 
@@ -842,10 +938,14 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
     }
 
     const normalizedTargetIndex = Math.max(0, Math.min(targetIndex, cards.length - 1));
+    if (behavior === 'smooth' && normalizedTargetIndex !== this.feedback.eventFeedbackIndex()) {
+      this.eventFeedbackPendingIndicatorIndex.set(normalizedTargetIndex);
+    }
     if (behavior === 'smooth') {
       this.eventFeedbackViewportScrollLockTargetIndex = normalizedTargetIndex;
       this.scheduleEventFeedbackViewportScrollLockRelease();
     } else {
+      this.eventFeedbackPendingIndicatorIndex.set(null);
       this.clearEventFeedbackViewportScrollLock();
     }
 
@@ -889,6 +989,7 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
         ? this.currentMobileEventFeedbackSlideIndex(viewport)
         : this.eventFeedbackViewportScrollLockTargetIndex;
       this.eventFeedbackViewportScrollLockTargetIndex = null;
+      this.eventFeedbackPendingIndicatorIndex.set(null);
       if (finalIndex === null || finalIndex === this.feedback.eventFeedbackIndex()) {
         return;
       }
@@ -902,6 +1003,20 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
       this.eventFeedbackViewportScrollLockTimer = null;
     }
     this.eventFeedbackViewportScrollLockTargetIndex = null;
+    this.eventFeedbackPendingIndicatorIndex.set(null);
+  }
+
+  private resetEventFeedbackSurfaceSwipe(): void {
+    this.eventFeedbackSurfaceSwipePointerId = null;
+    this.eventFeedbackSurfaceSwipeStartX = 0;
+    this.eventFeedbackSurfaceSwipeStartY = 0;
+    this.eventFeedbackSurfaceSwipeStartScrollLeft = 0;
+    this.eventFeedbackSurfaceSwipeActive = false;
+  }
+
+  private isEventFeedbackInteractiveSwipeTarget(target: EventTarget | null): boolean {
+    const element = target instanceof Element ? target : null;
+    return !!element?.closest('button, a, input, textarea, select, [role="button"], .event-feedback-form');
   }
 
   private currentMobileEventFeedbackSlideIndex(viewport: HTMLDivElement): number {
@@ -932,6 +1047,13 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
     const normalizedIndex = Math.max(0, Math.min(slideIndex, slides.length - 1));
     const targetSlide = slides[normalizedIndex] ?? null;
     return targetSlide ? Math.max(0, targetSlide.offsetLeft) : -1;
+  }
+
+  private resetEventFeedbackViewportScroll(): void {
+    const viewport = this.eventFeedbackViewportRef?.nativeElement;
+    if (viewport && viewport.scrollLeft !== 0) {
+      viewport.scrollLeft = 0;
+    }
   }
 
   private readViewportWidth(): number {

@@ -5,6 +5,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { environment } from '../../environments/environment';
 import {
   AppPopupContext,
+  AssetDefaultsBuilder,
   EventsService,
   SessionService,
   ShareTokensService,
@@ -269,6 +270,10 @@ export class AdminHelpSessionPageComponent implements OnInit {
   }
 
   private resolveDemoAdminHelpToken(token: string): ShareTokenResolvedItem | null {
+    const reportToken = this.resolveDemoAdminReportToken(token);
+    if (reportToken) {
+      return reportToken;
+    }
     const prefix = 'myscoutee:token:admin-help-';
     if (!token.startsWith(prefix)) {
       return null;
@@ -289,6 +294,44 @@ export class AdminHelpSessionPageComponent implements OnInit {
       imageUrl: null,
       url: targetUrl
     };
+  }
+
+  private resolveDemoAdminReportToken(token: string): ShareTokenResolvedItem | null {
+    const prefix = 'myscoutee:token:admin-report:';
+    if (!token.startsWith(prefix)) {
+      return null;
+    }
+    const payload = token.slice(prefix.length);
+    const [ownerUserId, encodedTarget] = payload.split(':');
+    const targetUrl = this.decodeDemoTokenPayload(encodedTarget);
+    if (!ownerUserId?.trim() || !targetUrl) {
+      return null;
+    }
+    return {
+      kind: 'adminHelp',
+      entityId: targetUrl,
+      ownerUserId: ownerUserId.trim(),
+      title: 'Shared report context',
+      subtitle: 'MyScoutee support session',
+      description: 'MyScoutee admin opened a report context as the reporting user sees it.',
+      imageUrl: null,
+      url: targetUrl
+    };
+  }
+
+  private decodeDemoTokenPayload(value: string | undefined): string {
+    const normalized = `${value ?? ''}`.trim();
+    if (!normalized) {
+      return '';
+    }
+    try {
+      const padded = normalized.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(normalized.length / 4) * 4, '=');
+      const binary = atob(padded);
+      const bytes = Uint8Array.from(binary, char => char.charCodeAt(0));
+      return new TextDecoder().decode(bytes);
+    } catch {
+      return '';
+    }
   }
 
   private parseDemoAdminHelpPayload(payload: string): { ownerUserId: string; targetKey: string } | null {
@@ -321,8 +364,22 @@ export class AdminHelpSessionPageComponent implements OnInit {
       return normalized;
     }
     const supportTarget = `${parsed.searchParams.get('supportTarget') ?? ''}`.trim();
-    if (supportTarget === 'service-chat' || supportTarget === 'chats') {
+    if (supportTarget === 'service-chat' || supportTarget === 'chats' || supportTarget === 'chat-message') {
       this.popupCtx.openNavigatorActivitiesRequest('chats');
+    } else if (supportTarget === 'member') {
+      const ownerId = `${parsed.searchParams.get('ownerId') ?? ''}`.trim();
+      if (ownerId) {
+        this.popupCtx.requestActivitiesNavigation({
+          type: 'members',
+          ownerId,
+          ownerType: 'event',
+          viewOnly: true,
+          canManage: false,
+          subtitle: 'Reported member context'
+        });
+      } else {
+        this.popupCtx.openNavigatorActivitiesRequest('events');
+      }
     } else if (supportTarget === 'event') {
       const eventId = `${parsed.searchParams.get('eventId') ?? ''}`.trim();
       const eventRecord = eventId ? await this.eventsService.queryKnownItemById(userId, eventId) : null;
@@ -363,17 +420,25 @@ export class AdminHelpSessionPageComponent implements OnInit {
     const title = `${parsed.searchParams.get('assetTitle') ?? ''}`.trim() || 'Shared asset';
     const subtitle = `${parsed.searchParams.get('assetSubtitle') ?? ''}`.trim();
     const city = `${parsed.searchParams.get('assetCity') ?? ''}`.trim();
+    const details = `${parsed.searchParams.get('assetDetails') ?? ''}`.trim();
+    const category = AssetDefaultsBuilder.normalizeCategory(
+      assetType,
+      `${parsed.searchParams.get('assetCategory') ?? ''}`.trim()
+    );
+    const imageUrl = this.safeImageUrl(parsed.searchParams.get('assetPreview'))
+      || this.defaultSupportAssetImage(assetType, assetId || title);
     return {
       id: assetId,
       type: assetType,
       title,
       subtitle,
-      city,
-      capacityTotal: 1,
-      quantity: 1,
-      details: `${parsed.searchParams.get('assetDetails') ?? ''}`.trim(),
-      imageUrl: `${parsed.searchParams.get('assetPreview') ?? ''}`.trim(),
-      sourceLink: '',
+      category,
+      city: city || this.defaultSupportAssetCity(assetType),
+      capacityTotal: this.positiveIntegerParam(parsed, 'assetCapacity') || (assetType === 'Supplies' ? 4 : 1),
+      quantity: this.positiveIntegerParam(parsed, 'assetQuantity') || (assetType === 'Supplies' ? 4 : 1),
+      details: details || subtitle || title,
+      imageUrl,
+      sourceLink: this.safeImageUrl(parsed.searchParams.get('assetSourceLink')) || imageUrl,
       routes: [],
       topics: [],
       policies: [],
@@ -382,6 +447,34 @@ export class AdminHelpSessionPageComponent implements OnInit {
       ownerUserId: '',
       requests: []
     };
+  }
+
+  private positiveIntegerParam(parsed: URL, key: string): number {
+    return Math.max(0, Math.trunc(Number(parsed.searchParams.get(key)) || 0));
+  }
+
+  private defaultSupportAssetCity(assetType: 'Car' | 'Accommodation' | 'Supplies'): string {
+    return assetType === 'Supplies' ? 'Austin' : '';
+  }
+
+  private defaultSupportAssetImage(assetType: 'Car' | 'Accommodation' | 'Supplies', seed: string): string {
+    const flavor = assetType === 'Car'
+      ? 'road'
+      : assetType === 'Accommodation'
+        ? 'stay'
+        : 'gear';
+    const normalizedSeed = encodeURIComponent(`${assetType.toLowerCase()}-${flavor}-${seed || assetType.toLowerCase()}`);
+    return `https://picsum.photos/seed/${normalizedSeed}/1200/700`;
+  }
+
+  private safeImageUrl(value: string | null): string {
+    const normalized = `${value ?? ''}`.trim();
+    if (!normalized) {
+      return '';
+    }
+    return normalized.startsWith('http://') || normalized.startsWith('https://') || normalized.startsWith('/')
+      ? normalized
+      : '';
   }
 
   private parseRelativeUrl(value: string): URL | null {

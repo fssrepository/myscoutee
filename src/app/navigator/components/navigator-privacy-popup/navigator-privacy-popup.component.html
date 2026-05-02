@@ -1,93 +1,134 @@
-<div class="gdpr-popup">
-  <article class="editor-list-card gdpr-lead-card">
-    <h4>{{ gdprContent.title }}</h4>
-    <p>{{ gdprContent.subtitle }}</p>
-    <p><strong>Last updated:</strong> {{ gdprContent.updatedAt | date:'mediumDate' }}</p>
-  </article>
-
-  <article class="editor-list-card gdpr-card">
-    <h4>Contacts</h4>
-    <ul class="gdpr-list">
-      @for (contact of gdprContent.contacts; track contact) {
-        <li><strong>{{ contact.label }}:</strong> {{ contact.value }}</li>
-      }
-    </ul>
-  </article>
-
-  <article class="editor-list-card gdpr-card">
-    <h4>Legal Basis</h4>
-    <ul class="gdpr-list">
-      @for (item of gdprContent.legalBases; track item) {
-        <li>{{ item }}</li>
-      }
-    </ul>
-  </article>
-
-  <article class="editor-list-card gdpr-card">
-    <h4>Your Rights</h4>
-    <div class="gdpr-rights-grid">
-      @for (right of gdprContent.rights; track right) {
-        <section class="gdpr-right-item">
-          <h5>{{ right.title }}</h5>
-          <ul class="gdpr-list">
-            @for (item of right.items; track item) {
-              <li>{{ item }}</li>
-            }
-          </ul>
-        </section>
+<div class="support-popup support-privacy-popup">
+  @if (loading) {
+    <article class="editor-list-card support-privacy-loading">
+      <span class="support-privacy-spinner" aria-hidden="true"></span>
+      <span>Loading privacy content</span>
+    </article>
+  } @else if (activeRevision(); as revision) {
+    <div class="support-help-accordion" aria-label="Privacy topics">
+      @for (section of sections(); track section.id) {
+        <article
+          class="editor-list-card support-help-accordion-item support-privacy-accordion-item"
+          [class.is-open]="section.id === openAccordionSectionId"
+          [class.is-approved]="isSectionOptional(section) && isSectionApproved(section.id)"
+          [class.is-mandatory]="!isSectionOptional(section)"
+          [class.is-optional]="isSectionOptional(section)"
+          >
+          <div class="support-help-accordion-btn support-privacy-accordion-head">
+            <button
+              type="button"
+              class="support-privacy-accordion-toggle"
+              [attr.aria-expanded]="section.id === openAccordionSectionId"
+              (click)="toggleAccordionSection(section.id, $event)"
+              >
+              <span class="support-help-tab-head">
+                <mat-icon>{{ section.icon }}</mat-icon>
+                <span>{{ section.title }}</span>
+              </span>
+            </button>
+            <span class="support-privacy-accordion-actions">
+              @if (isSectionOptional(section)) {
+                <button
+                  type="button"
+                  class="support-privacy-section-check"
+                  [class.is-approved]="isSectionApproved(section.id)"
+                  [attr.aria-pressed]="isSectionApproved(section.id)"
+                  [attr.aria-label]="isSectionApproved(section.id) ? 'Privacy section approved' : 'Approve optional privacy section'"
+                  (pointerover)="stopNestedAccordionEvent($event)"
+                  (mouseover)="stopNestedAccordionEvent($event)"
+                  (mousedown)="stopNestedAccordionEvent($event)"
+                  (keydown)="stopNestedAccordionEvent($event)"
+                  (click)="toggleSectionApproval(section, $event)"
+                  >
+                  @if (isSectionApproved(section.id)) {
+                    <mat-icon>check</mat-icon>
+                  } @else {
+                    <span class="support-privacy-check-glyph" aria-hidden="true"></span>
+                  }
+                </button>
+              }
+              <button
+                type="button"
+                class="support-privacy-caret-btn"
+                [attr.aria-expanded]="section.id === openAccordionSectionId"
+                [attr.aria-label]="section.id === openAccordionSectionId ? 'Collapse privacy section' : 'Expand privacy section'"
+                (click)="toggleAccordionSection(section.id, $event)"
+                >
+                <mat-icon class="support-help-accordion-caret">expand_more</mat-icon>
+              </button>
+            </span>
+          </div>
+          <div class="support-help-accordion-panel-wrap" [class.is-open]="section.id === openAccordionSectionId">
+            <div class="support-help-accordion-panel">
+              @if (section.id === openAccordionSectionId) {
+                @if (section.blurb) {
+                  <p class="support-help-detail-lead">{{ section.blurb }}</p>
+                }
+                <div class="support-help-html" [innerHTML]="section.contentHtml"></div>
+              }
+            </div>
+          </div>
+        </article>
       }
     </div>
-  </article>
-
-  <article class="editor-list-card gdpr-card">
-    <h4>Data We Process</h4>
-    <div class="gdpr-data-grid">
-      @for (section of gdprContent.dataCategories; track section) {
-        <section class="gdpr-data-item">
-          <h5>{{ section.category }}</h5>
-          <ul class="gdpr-list">
-            @for (item of section.items; track item) {
-              <li>{{ item }}</li>
-            }
-          </ul>
-        </section>
-      }
-    </div>
-  </article>
-
-  <article class="editor-list-card gdpr-card">
-    <h4>Purposes</h4>
-    <ul class="gdpr-list">
-      @for (item of gdprContent.purposes; track item) {
-        <li>{{ item }}</li>
-      }
-    </ul>
-  </article>
-
-  <article class="editor-list-card gdpr-card">
-    <h4>Retention</h4>
-    <ul class="gdpr-list">
-      @for (item of gdprContent.retention; track item) {
-        <li>{{ item }}</li>
-      }
-    </ul>
-  </article>
-
-  <article class="editor-list-card gdpr-card">
-    <h4>Third-Party Sharing</h4>
-    <ul class="gdpr-list">
-      @for (item of gdprContent.sharing; track item) {
-        <li>{{ item }}</li>
-      }
-    </ul>
-  </article>
-
-  <article class="editor-list-card gdpr-card">
-    <h4>Security</h4>
-    <ul class="gdpr-list">
-      @for (item of gdprContent.security; track item) {
-        <li>{{ item }}</li>
-      }
-    </ul>
-  </article>
+    @if (shouldShowPrivacySaveAction()) {
+      <div class="support-privacy-actions">
+        @if (consentSaveError) {
+          <span class="support-privacy-save-status support-privacy-save-status-error" role="alert">{{ consentSaveError }}</span>
+        } @else if (consentSaveMessage) {
+          <span class="support-privacy-save-status">{{ consentSaveMessage }}</span>
+        }
+        <span
+          class="support-privacy-save-shell"
+          [class.is-loading]="savingConsent"
+          [class.is-error]="!savingConsent && !!consentSaveError"
+          >
+          @if (savingConsent || consentSaveError) {
+            <span class="support-privacy-save-ring" aria-hidden="true">
+              <svg viewBox="0 0 132 44" preserveAspectRatio="none" class="support-privacy-save-ring-svg">
+                <defs>
+                  <linearGradient id="support-privacy-save-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="rgb(235, 147, 33)"></stop>
+                    <stop offset="100%" stop-color="rgb(247, 190, 52)"></stop>
+                  </linearGradient>
+                  <linearGradient id="support-privacy-save-gradient-error" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="rgb(213, 54, 68)"></stop>
+                    <stop offset="100%" stop-color="rgb(196, 29, 42)"></stop>
+                  </linearGradient>
+                </defs>
+                <path
+                  class="support-privacy-save-ring-track"
+                  d="M66 2 H112 A14 14 0 0 1 130 16 V28 A14 14 0 0 1 112 42 H20 A14 14 0 0 1 2 28 V16 A14 14 0 0 1 20 2 H66"
+                ></path>
+                <path
+                  class="support-privacy-save-ring-progress"
+                  [class.is-loading]="savingConsent"
+                  [class.is-error]="!savingConsent && !!consentSaveError"
+                  d="M66 2 H112 A14 14 0 0 1 130 16 V28 A14 14 0 0 1 112 42 H20 A14 14 0 0 1 2 28 V16 A14 14 0 0 1 20 2 H66"
+                  pathLength="100"
+                  stroke-dasharray="100"
+                  [attr.stroke-dashoffset]="savingConsent ? 100 : 0"
+                ></path>
+              </svg>
+            </span>
+          }
+          <button
+            type="button"
+            class="support-privacy-save-btn"
+            [disabled]="!canSavePrivacyChoices()"
+            (click)="savePrivacyChoices()"
+            >
+            <mat-icon>{{ savingConsent ? 'hourglass_top' : 'check_circle' }}</mat-icon>
+            <span>{{ privacySaveButtonLabel() }}</span>
+          </button>
+        </span>
+      </div>
+    }
+  } @else {
+    <article class="editor-list-card support-help-empty">
+      <mat-icon>policy</mat-icon>
+      <h4>Privacy is not available</h4>
+      <p>No active privacy revision has been published yet.</p>
+    </article>
+  }
 </div>
