@@ -144,6 +144,7 @@ export class InfoCardComponent {
     if (!this.card) {
       return;
     }
+    event.preventDefault();
     event.stopPropagation();
     this.menuAction.emit({
       rowId: this.card.rowId,

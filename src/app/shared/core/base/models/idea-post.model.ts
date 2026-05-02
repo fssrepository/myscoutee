@@ -9,6 +9,9 @@ export interface IdeaPost {
   imageUrls: string[];
   featured: boolean;
   published: boolean;
+  trashed: boolean;
+  trashedAtIso: string;
+  trashedByUserId: string;
   submittedAtIso: string;
   createdAtIso: string;
   createdByUserId: string;

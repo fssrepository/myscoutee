@@ -20,7 +20,7 @@ export class DemoIdeaPostsService {
     if (changed) {
       await this.persistBestEffort();
     }
-    return this.sortedPosts(this.table()).filter(post => post.published);
+    return this.sortedPosts(this.table()).filter(post => post.published && !post.trashed);
   }
 
   async loadAdminPosts(_adminUserId = ''): Promise<IdeaPost[]> {
@@ -50,6 +50,9 @@ export class DemoIdeaPostsService {
       imageUrls,
       featured: request.featured === true,
       published: request.published !== false,
+      trashed: false,
+      trashedAtIso: '',
+      trashedByUserId: '',
       submittedAtIso: this.submittedAtIso(request.submittedAtIso, existing?.submittedAtIso, nowIso),
       createdAtIso: existing?.createdAtIso || nowIso,
       createdByUserId: existing?.createdByUserId || request.actorUserId.trim() || 'admin',
@@ -78,21 +81,37 @@ export class DemoIdeaPostsService {
     return this.clonePost(post);
   }
 
-  async deletePost(postId: string, _actorUserId = ''): Promise<IdeaPost[]> {
+  async deletePost(postId: string, actorUserId = ''): Promise<IdeaPost[]> {
     await this.memoryDb.whenReady();
     const normalizedPostId = postId.trim();
     if (!normalizedPostId) {
       return this.sortedPosts(this.table());
     }
+    const nowIso = new Date().toISOString();
+    const actor = actorUserId.trim() || 'admin';
     this.memoryDb.write(state => {
       const table = state[IDEA_POSTS_TABLE_NAME];
-      const { [normalizedPostId]: _removed, ...byId } = table.byId;
+      const post = table.byId[normalizedPostId];
+      if (!post) {
+        return state;
+      }
       return {
         ...state,
         [IDEA_POSTS_TABLE_NAME]: {
           ...table,
-          byId,
-          ids: table.ids.filter(id => id !== normalizedPostId)
+          byId: {
+            ...table.byId,
+            [normalizedPostId]: {
+              ...this.normalizePost(post),
+              featured: false,
+              published: false,
+              trashed: true,
+              trashedAtIso: nowIso,
+              trashedByUserId: actor,
+              updatedAtIso: nowIso,
+              updatedByUserId: actor
+            }
+          }
         }
       };
     });
@@ -101,6 +120,49 @@ export class DemoIdeaPostsService {
       this.routeDelay.waitForRouteDelay('/admin/ideas', undefined, undefined, 900)
     ]);
     return this.sortedPosts(this.table());
+  }
+
+  async restorePost(postId: string, actorUserId = ''): Promise<IdeaPost> {
+    await this.memoryDb.whenReady();
+    const normalizedPostId = postId.trim();
+    const nowIso = new Date().toISOString();
+    const actor = actorUserId.trim() || 'admin';
+    let restored: IdeaPost | null = null;
+    this.memoryDb.write(state => {
+      const table = state[IDEA_POSTS_TABLE_NAME];
+      const post = table.byId[normalizedPostId];
+      if (!normalizedPostId || !post) {
+        return state;
+      }
+      restored = {
+        ...this.normalizePost(post),
+        featured: false,
+        published: false,
+        trashed: false,
+        trashedAtIso: '',
+        trashedByUserId: '',
+        updatedAtIso: nowIso,
+        updatedByUserId: actor
+      };
+      return {
+        ...state,
+        [IDEA_POSTS_TABLE_NAME]: {
+          ...table,
+          byId: {
+            ...table.byId,
+            [normalizedPostId]: restored
+          }
+        }
+      };
+    });
+    await Promise.all([
+      this.persistBestEffort(),
+      this.routeDelay.waitForRouteDelay('/admin/ideas', undefined, undefined, 900)
+    ]);
+    if (!restored) {
+      throw new Error('Article could not be restored.');
+    }
+    return this.clonePost(restored);
   }
 
   async uploadImage(_ownerId: string, _entityId: string, file: File): Promise<{ uploaded: boolean; imageUrl: string | null }> {
@@ -163,6 +225,9 @@ export class DemoIdeaPostsService {
       imageUrls,
       featured: post.featured === true,
       published: post.published !== false,
+      trashed: post.trashed === true,
+      trashedAtIso: `${post.trashedAtIso ?? ''}`.trim(),
+      trashedByUserId: `${post.trashedByUserId ?? ''}`.trim(),
       submittedAtIso: `${post.submittedAtIso ?? ''}`.trim() || `${post.updatedAtIso ?? ''}`.trim() || new Date().toISOString(),
       createdAtIso: `${post.createdAtIso ?? ''}`.trim(),
       createdByUserId: `${post.createdByUserId ?? ''}`.trim(),
@@ -283,6 +348,9 @@ export class DemoIdeaPostsService {
       imageUrls: [imageUrl],
       featured: options.featured,
       published: true,
+      trashed: false,
+      trashedAtIso: '',
+      trashedByUserId: '',
       submittedAtIso: options.submittedAtIso,
       createdAtIso: options.nowIso,
       createdByUserId: 'system',

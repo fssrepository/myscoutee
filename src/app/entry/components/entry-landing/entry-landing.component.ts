@@ -299,7 +299,7 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
 
   protected publishedIdeaPosts(): AppTypes.IdeaPost[] {
     return [...(this.ideaPosts ?? [])]
-      .filter(post => post.published !== false)
+      .filter(post => post.published !== false && post.trashed !== true)
       .sort((left, right) => this.ideaSortValue(right) - this.ideaSortValue(left));
   }
 

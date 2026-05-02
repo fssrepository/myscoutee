@@ -18,7 +18,9 @@ export class IdeaPostsService extends BaseRouteModeService {
   readonly adminPosts = this.adminPostsRef.asReadonly();
 
   applyPublishedPosts(posts: readonly IdeaPost[]): void {
-    this.postsRef.set(this.clonePosts(posts).filter(post => post.published).sort((left, right) => this.sortValue(right) - this.sortValue(left)));
+    this.postsRef.set(this.clonePosts(posts)
+      .filter(post => post.published && !post.trashed)
+      .sort((left, right) => this.sortValue(right) - this.sortValue(left)));
   }
 
   async loadPublishedPosts(): Promise<IdeaPost[]> {
@@ -47,6 +49,12 @@ export class IdeaPostsService extends BaseRouteModeService {
     this.adminPostsRef.set(cloned);
     this.applyPublishedPosts(cloned.filter(post => post.published));
     return this.clonePosts(cloned);
+  }
+
+  async restorePost(postId: string, actorUserId: string): Promise<IdeaPost> {
+    const post = await this.ideaService().restorePost(postId, actorUserId);
+    this.mergeAdminPost(post);
+    return { ...post, imageUrls: [...post.imageUrls] };
   }
 
   async uploadImage(ownerId: string, entityId: string, file: File): Promise<{ uploaded: boolean; imageUrl: string | null }> {

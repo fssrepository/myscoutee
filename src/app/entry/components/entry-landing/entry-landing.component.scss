@@ -1002,24 +1002,32 @@
 
 .entry-ideas-article-image {
   width: 100%;
+  max-width: 100%;
   aspect-ratio: 16 / 7;
   min-height: 220px;
   border-radius: 12px;
   margin: 1rem 0;
   background-color: #edf3fb;
+  box-sizing: border-box;
 }
 
 .entry-ideas-article-body {
   flex: 1 1 auto;
   min-height: 0;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 0 clamp(0.84rem, 2vw, 1.35rem) clamp(0.84rem, 2vw, 1.35rem);
 }
 
 .entry-ideas-article-html {
+  max-width: 100%;
   color: rgba(25, 48, 77, 0.92);
   font-size: 0.96rem;
   line-height: 1.62;
+  overflow-wrap: anywhere;
 }
 
 .entry-ideas-article-html :is(p, ul, ol, figure) {
@@ -1043,9 +1051,14 @@
 .entry-ideas-article-html img {
   display: block;
   width: 100%;
+  max-width: 100%;
   max-height: 460px;
   object-fit: cover;
   border-radius: 12px;
+}
+
+.entry-ideas-article-html :is(video, iframe, table) {
+  max-width: 100%;
 }
 
 .entry-ideas-article-html figcaption {

@@ -23,7 +23,7 @@ import { ConfirmationDialogService } from '../../../shared/ui/services/confirmat
 import { AdminService } from '../../admin.service';
 
 type IdeaEditorMode = 'html' | 'preview';
-type IdeaPostFilter = 'all' | 'featured' | 'drafts';
+type IdeaPostFilter = 'all' | 'featured' | 'published' | 'drafts' | 'trashed';
 
 interface IdeaPostDraft {
   id: string | null;
@@ -61,13 +61,13 @@ export class AdminIdeaEditorPopupComponent {
 
   protected loading = false;
   protected saving = false;
-  protected publishing = false;
   protected uploading = false;
   protected error = '';
   protected copiedImageUrl = '';
   protected editing = false;
   protected draft: IdeaPostDraft | null = null;
   protected viewerPostId = '';
+  protected viewerPost: IdeaPost | null = null;
   protected filterMenuOpen = false;
   protected ideaFilter: IdeaPostFilter = 'all';
   protected ideaListFilters: IdeaSmartListFilters = { status: 'all', revision: 0 };
@@ -84,7 +84,9 @@ export class AdminIdeaEditorPopupComponent {
   protected readonly filterOptions: Array<{ id: IdeaPostFilter; label: string; icon: string }> = [
     { id: 'all', label: 'All', icon: 'view_day' },
     { id: 'featured', label: 'Featured', icon: 'star' },
-    { id: 'drafts', label: 'Drafts', icon: 'drafts' }
+    { id: 'published', label: 'Published', icon: 'visibility' },
+    { id: 'drafts', label: 'Drafts', icon: 'drafts' },
+    { id: 'trashed', label: 'Trashed', icon: 'delete_outline' }
   ];
 
   protected readonly ideaSmartListConfig: SmartListConfig<IdeaPost, IdeaSmartListFilters> = {
@@ -178,6 +180,7 @@ export class AdminIdeaEditorPopupComponent {
         this.editing = false;
         this.draft = null;
         this.viewerPostId = '';
+        this.viewerPost = null;
         this.filterMenuOpen = false;
         this.error = '';
         this.copiedImageUrl = '';
@@ -201,7 +204,7 @@ export class AdminIdeaEditorPopupComponent {
       return;
     }
     if (this.editing) {
-      void this.closeEditorAndSaveDraft();
+      this.closeEditor();
       return;
     }
     this.close();
@@ -212,7 +215,9 @@ export class AdminIdeaEditorPopupComponent {
   }
 
   protected selectedViewerPost(): IdeaPost | null {
-    return this.posts().find(post => post.id === this.viewerPostId) ?? null;
+    return this.viewerPost
+      ?? this.posts().find(post => post.id === this.viewerPostId)
+      ?? null;
   }
 
   protected async load(): Promise<void> {
@@ -228,6 +233,7 @@ export class AdminIdeaEditorPopupComponent {
     this.editing = false;
     this.draft = null;
     this.viewerPostId = '';
+    this.viewerPost = null;
     this.admin.closePopup();
   }
 
@@ -250,16 +256,21 @@ export class AdminIdeaEditorPopupComponent {
   protected openViewer(post: IdeaPost, event?: Event): void {
     event?.stopPropagation();
     this.viewerPostId = post.id;
+    this.viewerPost = this.clonePost(post);
+    this.refreshView();
   }
 
   protected closeViewer(event?: Event): void {
     event?.stopPropagation();
     this.viewerPostId = '';
+    this.viewerPost = null;
+    this.refreshView();
   }
 
   protected startEditing(post: IdeaPost, event?: Event): void {
     event?.stopPropagation();
     this.viewerPostId = '';
+    this.viewerPost = null;
     this.beginEditing({
       id: post.id,
       title: post.title,
@@ -267,93 +278,73 @@ export class AdminIdeaEditorPopupComponent {
       contentHtml: this.formatHtmlFragment(post.contentHtml),
       imageUrl: post.imageUrl,
       imageUrls: [...post.imageUrls],
-      featured: post.featured,
-      published: post.published,
+      featured: false,
+      published: false,
       submittedAtLocal: this.toDateTimeLocal(post.submittedAtIso || post.updatedAtIso || post.createdAtIso),
       mode: 'html'
     });
   }
 
-  protected async closeEditorAndSaveDraft(event?: Event): Promise<void> {
+  protected closeEditor(event?: Event): void {
     event?.stopPropagation();
-    if (!this.draft) {
-      this.editing = false;
-      return;
-    }
-    if (!this.hasMeaningfulDraft(this.draft)) {
-      this.editing = false;
-      this.draft = null;
-      return;
-    }
-    await this.saveDraft(event, { closeAfterSave: true });
+    this.editing = false;
+    this.draft = null;
+    this.copiedImageUrl = '';
   }
 
-  protected toggleDraftMode(event?: Event): void {
+  protected openDraftPreview(event?: Event): void {
     event?.stopPropagation();
     if (!this.draft) {
       return;
     }
-    this.draft.mode = this.draft.mode === 'html' ? 'preview' : 'html';
+    const submittedAtIso = this.fromDateTimeLocal(this.draft.submittedAtLocal);
+    const contentHtml = this.draft.contentHtml.trim() || '<p></p>';
+    const imageUrls = this.uniqueImageUrls([this.draft.imageUrl, ...this.draft.imageUrls]);
+    this.viewerPostId = this.draft.id || 'draft-preview';
+    this.viewerPost = {
+      id: this.draft.id || 'draft-preview',
+      title: this.draft.title.trim() || 'Untitled article',
+      excerpt: this.draft.excerpt.trim() || this.excerptFromHtml(contentHtml),
+      contentHtml,
+      imageUrl: this.draft.imageUrl.trim() || imageUrls[0] || '',
+      imageUrls,
+      featured: false,
+      published: false,
+      trashed: false,
+      trashedAtIso: '',
+      trashedByUserId: '',
+      submittedAtIso,
+      createdAtIso: submittedAtIso,
+      createdByUserId: this.actorUserId(),
+      updatedAtIso: submittedAtIso,
+      updatedByUserId: this.actorUserId()
+    };
+    this.refreshView();
   }
 
-  protected async saveDraft(
-    event?: Event,
-    options: { closeAfterSave?: boolean; publishState?: boolean | null } = {}
-  ): Promise<IdeaPost | null> {
+  protected async saveDraft(event?: Event): Promise<IdeaPost | null> {
     event?.preventDefault();
     event?.stopPropagation();
     const activeDraft = this.draft;
     if (!activeDraft || this.saving || this.uploading) {
       return null;
     }
-    const previousPublished = activeDraft.published;
-    if (options.publishState !== undefined && options.publishState !== null) {
-      activeDraft.published = options.publishState;
-    }
+    const previousId = activeDraft.id;
     const request = this.requestFromDraft(activeDraft);
     this.saving = true;
     this.error = '';
     this.refreshView();
     try {
       const saved = await this.ideaPosts.savePost(request);
-      this.refreshIdeaList();
-      if (options.closeAfterSave !== false) {
-        this.editing = false;
-        this.draft = null;
-      } else {
-        activeDraft.id = saved.id;
-        activeDraft.published = saved.published;
-        activeDraft.featured = saved.featured;
-        activeDraft.imageUrl = saved.imageUrl;
-        activeDraft.imageUrls = [...saved.imageUrls];
-      }
+      this.syncSavedPostInVisibleList(saved, previousId);
+      this.editing = false;
+      this.draft = null;
       return saved;
     } catch {
-      activeDraft.published = previousPublished;
       this.error = 'Unable to save article.';
       return null;
     } finally {
       this.saving = false;
-      if (options.publishState === undefined || options.publishState === null) {
-        this.publishing = false;
-      }
-      this.refreshView();
-    }
-  }
-
-  protected async toggleDraftPublished(event?: Event): Promise<void> {
-    event?.stopPropagation();
-    if (!this.draft || this.saving || this.uploading) {
-      return;
-    }
-    this.publishing = true;
-    try {
-      await Promise.all([
-        this.saveDraft(event, { closeAfterSave: false, publishState: !this.draft.published }),
-        this.delay(650)
-      ]);
-    } finally {
-      this.publishing = false;
       this.refreshView();
     }
   }
@@ -361,10 +352,10 @@ export class AdminIdeaEditorPopupComponent {
   protected deletePost(post: IdeaPost, event?: Event): void {
     event?.stopPropagation();
     this.confirmationDialog.open({
-      title: 'Delete article?',
+      title: 'Move article to trash?',
       message: post.title,
-      confirmLabel: 'Delete',
-      busyConfirmLabel: 'Deleting...',
+      confirmLabel: 'Move to trash',
+      busyConfirmLabel: 'Moving...',
       confirmTone: 'danger',
       onConfirm: async () => {
         this.saving = true;
@@ -374,14 +365,15 @@ export class AdminIdeaEditorPopupComponent {
           await this.ideaPosts.deletePost(post.id, this.actorUserId());
           if (this.viewerPostId === post.id) {
             this.viewerPostId = '';
+            this.viewerPost = null;
           }
           if (this.draft?.id === post.id) {
             this.editing = false;
             this.draft = null;
           }
-          this.refreshIdeaList();
+          this.removeVisibleIdeaPost(post.id);
         } catch {
-          this.error = 'Unable to delete article.';
+          this.error = 'Unable to move article to trash.';
         } finally {
           this.saving = false;
           this.refreshView();
@@ -390,9 +382,101 @@ export class AdminIdeaEditorPopupComponent {
     });
   }
 
+  protected togglePublishedFromCard(post: IdeaPost, event?: Event): void {
+    event?.stopPropagation();
+    if (post.trashed) {
+      return;
+    }
+    const nextPublished = !post.published;
+    this.confirmationDialog.open({
+      title: nextPublished ? 'Publish article?' : 'Unpublish article?',
+      message: post.title,
+      cancelLabel: 'Cancel',
+      confirmLabel: nextPublished ? 'Publish' : 'Unpublish',
+      busyConfirmLabel: nextPublished ? 'Publishing...' : 'Unpublishing...',
+      confirmTone: nextPublished ? 'accent' : 'danger',
+      failureMessage: nextPublished ? 'Unable to publish article.' : 'Unable to unpublish article.',
+      onConfirm: () => this.confirmPublishedToggle(post, nextPublished)
+    });
+  }
+
+  protected async restorePost(post: IdeaPost, event?: Event): Promise<void> {
+    event?.stopPropagation();
+    if (!post.trashed || this.saving) {
+      return;
+    }
+    this.confirmationDialog.open({
+      title: 'Restore article?',
+      message: post.title,
+      cancelLabel: 'Cancel',
+      confirmLabel: 'Restore',
+      busyConfirmLabel: 'Restoring...',
+      confirmTone: 'accent',
+      failureMessage: 'Unable to restore article.',
+      onConfirm: () => this.confirmRestorePost(post)
+    });
+  }
+
+  private async confirmRestorePost(post: IdeaPost): Promise<void> {
+    this.saving = true;
+    this.error = '';
+    this.refreshView();
+    try {
+      const restored = await this.ideaPosts.restorePost(post.id, this.actorUserId());
+      if (this.viewerPostId === post.id) {
+        this.viewerPost = this.clonePost(restored);
+      }
+      if (this.ideaFilter === 'trashed') {
+        this.removeVisibleIdeaPost(post.id);
+      } else {
+        this.syncSavedPostInVisibleList(restored, post.id);
+      }
+    } catch {
+      this.error = 'Unable to restore article.';
+      throw new Error(this.error);
+    } finally {
+      this.saving = false;
+      this.refreshView();
+    }
+  }
+
+  private async confirmPublishedToggle(post: IdeaPost, nextPublished: boolean): Promise<void> {
+    this.saving = true;
+    this.error = '';
+    this.refreshView();
+    try {
+      const saved = await this.ideaPosts.savePost({
+        actorUserId: this.actorUserId(),
+        id: post.id,
+        title: post.title,
+        excerpt: post.excerpt,
+        contentHtml: post.contentHtml,
+        imageUrl: post.imageUrl,
+        imageUrls: post.imageUrls,
+        featured: nextPublished ? post.featured : false,
+        published: nextPublished,
+        submittedAtIso: post.submittedAtIso
+      });
+      if (this.viewerPostId === post.id) {
+        this.viewerPost = this.clonePost(saved);
+      }
+      if (this.draft?.id === post.id) {
+        this.draft.published = saved.published;
+        this.draft.featured = saved.featured;
+      }
+      this.syncSavedPostInVisibleList(saved, post.id);
+    } catch {
+      this.error = nextPublished ? 'Unable to publish article.' : 'Unable to unpublish article.';
+      throw new Error(this.error);
+    } finally {
+      this.saving = false;
+      this.refreshView();
+    }
+  }
+
   protected async toggleFeaturedFromCard(post: IdeaPost, event?: Event): Promise<void> {
     event?.stopPropagation();
-    if (this.featuredPendingIds.has(post.id)) {
+    if (post.trashed || this.featuredPendingIds.has(post.id)) {
       return;
     }
     const nextFeatured = !post.featured;
@@ -454,6 +538,24 @@ export class AdminIdeaEditorPopupComponent {
     );
   }
 
+  private syncSavedPostInVisibleList(post: IdeaPost, previousId: string | null = post.id): void {
+    const smartList = this.ideaSmartList;
+    if (!smartList) {
+      return;
+    }
+    const saved = this.clonePost(post);
+    const savedMatchesFilter = this.filterPosts([saved], this.ideaFilter).length > 0;
+    const currentItems = smartList.itemsSnapshot()
+      .filter(item => item.id !== saved.id && item.id !== previousId)
+      .map(item => this.clonePost(item));
+    const nextItems = savedMatchesFilter
+      ? this.sortedPosts([...currentItems, saved])
+      : currentItems;
+    smartList.replaceVisibleItems(nextItems, {
+      total: this.filterCount(this.ideaFilter)
+    });
+  }
+
   private removeVisibleIdeaPost(postId: string): void {
     const smartList = this.ideaSmartList;
     if (!smartList) {
@@ -461,8 +563,12 @@ export class AdminIdeaEditorPopupComponent {
     }
     const nextItems = smartList.itemsSnapshot().filter(item => item.id !== postId);
     smartList.replaceVisibleItems(nextItems, {
-      total: Math.max(nextItems.length, this.filterCount(this.ideaFilter))
+      total: this.filterCount(this.ideaFilter)
     });
+  }
+
+  private clonePost(post: IdeaPost): IdeaPost {
+    return { ...post, imageUrls: [...post.imageUrls] };
   }
 
   protected isFeatureTogglePending(postId: string): boolean {
@@ -481,6 +587,13 @@ export class AdminIdeaEditorPopupComponent {
       case 'edit':
         this.startEditing(post);
         break;
+      case 'publish':
+      case 'unpublish':
+        this.togglePublishedFromCard(post);
+        break;
+      case 'restore':
+        void this.restorePost(post);
+        break;
       case 'delete':
         this.deletePost(post);
         break;
@@ -492,6 +605,17 @@ export class AdminIdeaEditorPopupComponent {
     options: { groupLabel?: string | null; renderState?: SmartListItemRenderState | null } = {}
   ): InfoCardData {
     const statusLabel = this.postStatusLabel(post);
+    const publicationAction = post.published
+      ? { id: 'unpublish', label: 'Unpublish', icon: 'visibility_off', tone: 'warning' as const }
+      : { id: 'publish', label: 'Publish', icon: 'published_with_changes', tone: 'accent' as const };
+    const menuActions = post.trashed
+      ? [{ id: 'restore', label: 'Restore', icon: 'restore_from_trash' }]
+      : [
+          { id: 'view', label: 'View', icon: 'visibility' },
+          { id: 'edit', label: 'Edit', icon: 'edit', tone: 'accent' as const },
+          publicationAction,
+          { id: 'delete', label: 'Delete', icon: 'delete', tone: 'destructive' as const }
+        ];
     return {
       rowId: `idea:${post.id}`,
       groupLabel: options.groupLabel ?? null,
@@ -502,12 +626,12 @@ export class AdminIdeaEditorPopupComponent {
       metaRowsLimit: 2,
       description: post.excerpt,
       descriptionLines: 3,
-      surfaceTone: !post.published ? 'draft' : post.featured ? 'series' : 'default',
+      surfaceTone: post.trashed ? 'draft' : !post.published ? 'draft' : post.featured ? 'series' : 'default',
       leadingIcon: {
-        icon: post.published ? 'article' : 'drafts',
-        tone: post.published ? 'public' : 'pending'
+        icon: post.trashed ? 'delete_outline' : post.published ? 'article' : 'drafts',
+        tone: post.published && !post.trashed ? 'public' : 'pending'
       },
-      mediaEnd: {
+      mediaEnd: post.trashed ? null : {
         variant: 'badge',
         tone: post.featured ? 'selected' : 'inactive',
         icon: post.featured ? 'star' : 'star_border',
@@ -520,14 +644,11 @@ export class AdminIdeaEditorPopupComponent {
         disabled: this.isFeatureTogglePending(post.id),
         progressRing: this.isFeatureRingActive(post.id)
       },
-      menuActions: [
-        { id: 'view', label: 'View', icon: 'visibility' },
-        { id: 'edit', label: 'Edit', icon: 'edit', tone: 'accent' },
-        { id: 'delete', label: 'Delete', icon: 'delete', tone: 'destructive' }
-      ],
+      menuActions,
       menuTitle: null,
       footerChips: [
-        ...(!post.published ? [{ label: 'Draft', toneClass: 'idea-chip-draft' }] : [])
+        ...(post.trashed ? [{ label: 'Trashed', toneClass: 'idea-chip-trash' }] : []),
+        ...(!post.published && !post.trashed ? [{ label: 'Draft', toneClass: 'idea-chip-draft' }] : [])
       ],
       clickable: false,
       state: options.renderState === 'active' ? 'active' : options.renderState === 'leaving' ? 'leaving' : 'default'
@@ -668,7 +789,10 @@ export class AdminIdeaEditorPopupComponent {
     return new URL(normalized, window.location.origin).toString();
   }
 
-  protected postStatusLabel(post: Pick<IdeaPost, 'published' | 'featured'>): string {
+  protected postStatusLabel(post: Pick<IdeaPost, 'published' | 'featured' | 'trashed'>): string {
+    if (post.trashed) {
+      return 'Trashed';
+    }
     if (!post.published) {
       return 'Draft';
     }
@@ -714,8 +838,8 @@ export class AdminIdeaEditorPopupComponent {
       contentHtml: draft.contentHtml,
       imageUrl: draft.imageUrl,
       imageUrls: draft.imageUrls,
-      featured: draft.featured,
-      published: draft.published,
+      featured: false,
+      published: false,
       submittedAtIso: this.fromDateTimeLocal(draft.submittedAtLocal)
     };
   }
@@ -732,8 +856,17 @@ export class AdminIdeaEditorPopupComponent {
 
   private filterPosts(posts: readonly IdeaPost[], filter: IdeaPostFilter): IdeaPost[] {
     return posts.filter(post => {
+      if (filter === 'trashed') {
+        return post.trashed === true;
+      }
+      if (post.trashed) {
+        return false;
+      }
       if (filter === 'featured') {
         return post.featured === true;
+      }
+      if (filter === 'published') {
+        return post.published === true;
       }
       if (filter === 'drafts') {
         return post.published === false;
@@ -768,8 +901,14 @@ export class AdminIdeaEditorPopupComponent {
     if (filter === 'featured') {
       return 'No featured articles';
     }
+    if (filter === 'published') {
+      return 'No published articles';
+    }
     if (filter === 'drafts') {
       return 'No draft articles';
+    }
+    if (filter === 'trashed') {
+      return 'No trashed articles';
     }
     return 'No articles';
   }
@@ -778,21 +917,16 @@ export class AdminIdeaEditorPopupComponent {
     if (filter === 'featured') {
       return 'Feature an article card with the star action.';
     }
+    if (filter === 'published') {
+      return 'Publish an article from the card menu.';
+    }
     if (filter === 'drafts') {
-      return 'Close the editor with unpublished content to keep a draft.';
+      return 'Save an edited article to keep it as a draft until it is republished.';
+    }
+    if (filter === 'trashed') {
+      return 'Deleted articles appear here until they are restored.';
     }
     return 'Create the first landing article card.';
-  }
-
-  private hasMeaningfulDraft(draft: IdeaPostDraft): boolean {
-    return Boolean(
-      draft.id
-      || draft.title.trim()
-      || draft.excerpt.trim()
-      || this.htmlToText(draft.contentHtml).trim()
-      || draft.imageUrl.trim()
-      || draft.imageUrls.length > 0
-    );
   }
 
   private htmlToText(value: string): string {
@@ -802,6 +936,11 @@ export class AdminIdeaEditorPopupComponent {
     const template = document.createElement('template');
     template.innerHTML = value;
     return `${template.content.textContent ?? ''}`.replace(/\s+/g, ' ').trim();
+  }
+
+  private excerptFromHtml(value: string): string {
+    const text = this.htmlToText(value);
+    return text.length <= 180 ? text : `${text.slice(0, 179).trim()}...`;
   }
 
   private uniqueImageUrls(urls: readonly string[]): string[] {

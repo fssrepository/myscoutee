@@ -5,7 +5,6 @@
       <div class="popup-header">
         <div class="popup-title">
           <h2>Article editor</h2>
-          <p class="popup-subtitle">{{ filterDescription() }} · newest first</p>
         </div>
         <div class="idea-editor-header-actions">
           <div class="idea-editor-filter-wrap">
@@ -45,7 +44,7 @@
           <button
             type="button"
             class="idea-editor-icon-btn idea-editor-add-btn"
-            [disabled]="loading || saving"
+            [disabled]="saving"
             (click)="startNew($event)"
             aria-label="New article"
             title="New article"
@@ -125,7 +124,7 @@
 
   @if (editing && draft; as editDraft) {
     <section class="idea-editor-nested-popup" role="dialog" aria-modal="true" aria-label="Edit article">
-      <div class="idea-editor-nested-backdrop" (click)="closeEditorAndSaveDraft($event)"></div>
+      <div class="idea-editor-nested-backdrop" (click)="closeEditor($event)"></div>
       <form class="idea-editor-nested-panel idea-editor-form-panel" (ngSubmit)="saveDraft($event)">
         <header class="idea-editor-form-head">
           <div class="idea-editor-form-title">
@@ -133,49 +132,55 @@
             <h3>{{ editDraft.id ? 'Edit article' : 'New article' }}</h3>
           </div>
           <div class="idea-editor-form-actions">
-            <span class="idea-editor-action-ring-shell idea-editor-circle-ring-shell" [class.is-loading]="publishing">
+            <button
+              type="button"
+              class="idea-editor-icon-btn idea-editor-preview-btn"
+              [disabled]="saving || uploading"
+              (click)="openDraftPreview($event)"
+              aria-label="Preview article"
+              title="Preview"
+              >
+              <mat-icon>visibility</mat-icon>
+            </button>
+            <span class="idea-editor-action-ring-shell idea-editor-circle-ring-shell" [class.is-loading]="saving">
               <span class="idea-editor-circle-ring" aria-hidden="true">
                 <svg viewBox="0 0 34 34" preserveAspectRatio="none" class="idea-editor-circle-ring-svg">
+                  <defs>
+                    <linearGradient id="idea-editor-save-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stop-color="rgb(235, 147, 33)"></stop>
+                      <stop offset="100%" stop-color="rgb(247, 190, 52)"></stop>
+                    </linearGradient>
+                  </defs>
                   <circle class="idea-editor-circle-ring-track" cx="17" cy="17" r="15"></circle>
                   <circle
                     class="idea-editor-circle-ring-progress"
-                    [class.is-loading]="publishing"
+                    [class.is-loading]="saving"
                     cx="17"
                     cy="17"
                     r="15"
                     pathLength="100"
                     [attr.stroke-dasharray]="actionRingPerimeter"
-                    [attr.stroke-dashoffset]="publishing ? 0 : actionRingPerimeter"
+                    [style.stroke-dashoffset]="saving ? 0 : actionRingPerimeter"
                   ></circle>
                 </svg>
               </span>
               <button
-                type="button"
-                class="idea-editor-icon-btn idea-editor-publish-btn"
-                [disabled]="saving || uploading || publishing"
-                (click)="toggleDraftPublished($event)"
-                [attr.aria-label]="editDraft.published ? 'Save as draft' : 'Publish article'"
-                [title]="editDraft.published ? 'Save as draft' : 'Publish article'"
+                type="submit"
+                class="idea-editor-icon-btn idea-editor-confirm-btn"
+                [disabled]="saving || uploading"
+                aria-label="Save article"
+                title="Save"
                 >
-                <mat-icon>{{ editDraft.published ? 'visibility' : 'published_with_changes' }}</mat-icon>
+                <mat-icon>check</mat-icon>
               </button>
             </span>
             <button
-              type="submit"
-              class="idea-editor-icon-btn idea-editor-confirm-btn"
-              [disabled]="saving || uploading || publishing"
-              aria-label="Save article"
-              title="Save"
-              >
-              <mat-icon>check</mat-icon>
-            </button>
-            <button
               type="button"
               class="idea-editor-icon-btn"
-              [disabled]="saving || uploading || publishing"
-              (click)="closeEditorAndSaveDraft($event)"
-              aria-label="Close editor and save draft"
-              title="Close and save draft"
+              [disabled]="saving || uploading"
+              (click)="closeEditor($event)"
+              aria-label="Close editor"
+              title="Close"
               >
               <mat-icon>close</mat-icon>
             </button>
@@ -197,20 +202,6 @@
           </label>
         </div>
 
-        <div class="idea-editor-toggle-row">
-          <span class="idea-editor-state-pill" [class.is-draft]="!editDraft.published">
-            <mat-icon>{{ editDraft.published ? 'visibility' : 'drafts' }}</mat-icon>
-            <span>{{ editDraft.published ? 'Published' : 'Draft' }}</span>
-          </span>
-          <label class="idea-editor-switch">
-            <input type="checkbox" name="ideaFeatured" [(ngModel)]="editDraft.featured" />
-            <span>
-              <mat-icon>{{ editDraft.featured ? 'star' : 'star_border' }}</mat-icon>
-              <span>{{ editDraft.featured ? 'Featured' : 'Not featured' }}</span>
-            </span>
-          </label>
-        </div>
-
         <section class="idea-editor-image-panel">
           <div
             class="idea-editor-image-preview"
@@ -225,7 +216,7 @@
             <label class="idea-editor-file-btn" [class.is-uploading]="uploading">
               <mat-icon>{{ uploading ? 'sync' : 'upload' }}</mat-icon>
               <span>{{ uploading ? 'Uploading' : 'Upload image' }}</span>
-              <input type="file" accept="image/*" [disabled]="uploading || saving || publishing" (change)="uploadDraftImage($event)" />
+              <input type="file" accept="image/*" [disabled]="uploading || saving" (change)="uploadDraftImage($event)" />
             </label>
             <label class="idea-editor-field">
               <span>Primary image link</span>
@@ -268,22 +259,14 @@
         <section class="idea-editor-html-panel">
           <div class="idea-editor-html-head">
             <span>Article HTML</span>
-            <button type="button" class="idea-editor-mode-btn" (click)="toggleDraftMode($event)">
-              <mat-icon>{{ editDraft.mode === 'html' ? 'code' : 'visibility' }}</mat-icon>
-              <span>{{ editDraft.mode === 'html' ? 'HTML' : 'Preview' }}</span>
-            </button>
           </div>
-          @if (editDraft.mode === 'html') {
-            <textarea
-              class="idea-editor-html-textarea"
-              name="ideaContentHtml"
-              [(ngModel)]="editDraft.contentHtml"
-              spellcheck="false"
-              (paste)="formatPastedHtml($event)"
-            ></textarea>
-          } @else {
-            <div class="idea-editor-html-preview" [innerHTML]="editDraft.contentHtml"></div>
-          }
+          <textarea
+            class="idea-editor-html-textarea"
+            name="ideaContentHtml"
+            [(ngModel)]="editDraft.contentHtml"
+            spellcheck="false"
+            (paste)="formatPastedHtml($event)"
+          ></textarea>
         </section>
       </form>
     </section>

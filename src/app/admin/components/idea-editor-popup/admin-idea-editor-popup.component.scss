@@ -167,7 +167,7 @@
   color: #1f7649;
 }
 
-.idea-editor-publish-btn {
+.idea-editor-preview-btn {
   border-color: rgba(181, 117, 23, 0.28);
   background: #fff9ed;
   color: #a06312;
@@ -266,16 +266,23 @@
   color: #5e6d86 !important;
 }
 
+:host ::ng-deep .idea-chip-trash {
+  background: linear-gradient(180deg, #fff4f1 0%, #ffe7df 100%) !important;
+  border-color: rgba(167, 72, 47, 0.24) !important;
+  color: #98452f !important;
+}
+
 .idea-editor-nested-popup {
   position: fixed;
   inset: 0;
-  z-index: 1400;
+  z-index: 2400;
   display: grid;
   place-items: center;
   padding: 1rem;
 }
 
 .idea-editor-article-popup {
+  z-index: 2500;
   display: flex;
   align-items: flex-start;
   justify-content: center;
@@ -411,10 +418,12 @@
 
 .idea-editor-viewer-image {
   width: 100%;
+  max-width: 100%;
   aspect-ratio: 16 / 7;
   min-height: 220px;
   margin: 1rem 0;
   background-color: #edf3fb;
+  box-sizing: border-box;
 }
 
 .idea-editor-empty-image,
@@ -431,7 +440,11 @@
 .idea-editor-viewer-body {
   flex: 1 1 auto;
   min-height: 0;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 0 clamp(0.84rem, 2vw, 1.35rem) clamp(0.84rem, 2vw, 1.35rem);
 }
 
@@ -702,12 +715,18 @@
 }
 
 .idea-editor-viewer-html {
+  max-width: 100%;
   border: 0;
   padding: 0;
   background: transparent;
   color: rgba(25, 48, 77, 0.92);
   font-size: 0.96rem;
   line-height: 1.62;
+  overflow-wrap: anywhere;
+}
+
+.idea-editor-viewer-html :is(img, video, iframe, table) {
+  max-width: 100%;
 }
 
 .idea-editor-html-preview :where(p, ul, ol, figure) {
@@ -786,7 +805,7 @@
 }
 
 .idea-editor-circle-ring-progress.is-loading {
-  stroke: #eb9321;
+  stroke: url(#idea-editor-save-gradient);
 }
 
 .idea-editor-circle-ring-shell.is-loading .idea-editor-icon-btn,

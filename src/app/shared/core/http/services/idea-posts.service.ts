@@ -51,6 +51,20 @@ export class HttpIdeaPostsService {
     return this.normalizePosts(response);
   }
 
+  async restorePost(postId: string, actorUserId: string): Promise<IdeaPost> {
+    const response = await this.http
+      .post<Partial<IdeaPost> | null>(
+        `${this.apiBaseUrl}/admin/ideas/${encodeURIComponent(postId)}/restore`,
+        { actorUserId }
+      )
+      .toPromise();
+    const post = this.normalizePost(response);
+    if (!post) {
+      throw new Error('Idea post could not be restored.');
+    }
+    return post;
+  }
+
   async uploadImage(ownerId: string, entityId: string, file: File): Promise<{ uploaded: boolean; imageUrl: string | null }> {
     return this.media.uploadImage('idea', ownerId, entityId, file);
   }
@@ -87,6 +101,9 @@ export class HttpIdeaPostsService {
       imageUrls,
       featured: value?.featured === true,
       published: value?.published !== false,
+      trashed: value?.trashed === true,
+      trashedAtIso: `${value?.trashedAtIso ?? ''}`.trim(),
+      trashedByUserId: `${value?.trashedByUserId ?? ''}`.trim(),
       submittedAtIso: `${value?.submittedAtIso ?? value?.updatedAtIso ?? value?.createdAtIso ?? ''}`.trim(),
       createdAtIso: `${value?.createdAtIso ?? ''}`.trim(),
       createdByUserId: `${value?.createdByUserId ?? ''}`.trim(),
