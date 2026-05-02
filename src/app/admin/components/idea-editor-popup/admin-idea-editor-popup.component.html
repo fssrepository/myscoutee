@@ -4,13 +4,53 @@
     <div class="app-popup-panel popup-panel-admin popup-panel-idea-editor">
       <div class="popup-header">
         <div class="popup-title">
-          <h2>Idea editor</h2>
-          <p class="popup-subtitle">Landing carousel articles, featured cards, and article popup content</p>
+          <h2>Article editor</h2>
+          <p class="popup-subtitle">{{ filterDescription() }} · newest first</p>
         </div>
         <div class="idea-editor-header-actions">
-          <button type="button" class="idea-editor-primary-btn" [disabled]="loading || saving" (click)="startNew($event)">
+          <div class="idea-editor-filter-wrap">
+            <button
+              type="button"
+              class="idea-editor-filter-btn"
+              [class.is-open]="filterMenuOpen"
+              (click)="toggleFilterMenu($event)"
+              [attr.aria-expanded]="filterMenuOpen"
+              aria-label="Filter articles"
+              >
+              <mat-icon>{{ filterIcon() }}</mat-icon>
+              <span>{{ filterLabel() }}</span>
+              <strong>{{ filterCount() }}</strong>
+              <mat-icon class="idea-editor-filter-caret">expand_more</mat-icon>
+            </button>
+            @if (filterMenuOpen) {
+              <div class="idea-editor-filter-menu" role="menu" (click)="$event.stopPropagation()">
+                @for (option of filterOptions; track option.id) {
+                  <button
+                    type="button"
+                    class="idea-editor-filter-option"
+                    [class.is-active]="ideaFilter === option.id"
+                    (click)="setIdeaFilter(option.id, $event)"
+                    role="menuitemradio"
+                    [attr.aria-checked]="ideaFilter === option.id"
+                    >
+                    <mat-icon>{{ option.icon }}</mat-icon>
+                    <span>{{ option.label }}</span>
+                    <strong>{{ filterCount(option.id) }}</strong>
+                  </button>
+                }
+              </div>
+            }
+          </div>
+
+          <button
+            type="button"
+            class="idea-editor-icon-btn idea-editor-add-btn"
+            [disabled]="loading || saving"
+            (click)="startNew($event)"
+            aria-label="New article"
+            title="New article"
+            >
             <mat-icon>add</mat-icon>
-            <span>New idea</span>
           </button>
           <button type="button" class="popup-close" (click)="close()" aria-label="Close">
             <mat-icon>close</mat-icon>
@@ -26,196 +66,226 @@
           </div>
         }
 
-        @if (loading) {
-          <div class="idea-editor-state">
-            <mat-icon>sync</mat-icon>
-            <span>Loading ideas</span>
-          </div>
-        } @else {
-          <aside class="idea-editor-list-pane">
-            <div class="idea-editor-list">
-              @for (post of posts(); track post.id) {
-                <button
-                  type="button"
-                  class="idea-editor-row"
-                  [class.is-active]="selectedPost()?.id === post.id"
-                  (click)="selectPost(post, $event)"
-                  >
-                  @if (post.imageUrl) {
-                    <span class="idea-editor-row-image" [style.backgroundImage]="'url(' + post.imageUrl + ')'"></span>
-                  } @else {
-                    <span class="idea-editor-row-image idea-editor-row-image-empty">
-                      <mat-icon>image_not_supported</mat-icon>
-                    </span>
-                  }
-                  <span class="idea-editor-row-main">
-                    <strong>{{ post.title }}</strong>
-                    <span>{{ postDateLabel(post) }}</span>
-                  </span>
-                  <span class="idea-editor-status" [class.is-draft]="!post.published" [class.is-featured]="post.featured">
-                    {{ postStatusLabel(post) }}
-                  </span>
-                </button>
-              } @empty {
-                <div class="idea-editor-empty">
-                  <mat-icon>tips_and_updates</mat-icon>
-                  <h3>No idea posts</h3>
-                  <p>Create the first landing idea card.</p>
-                  <button type="button" class="idea-editor-primary-btn" (click)="startNew($event)">
-                    <mat-icon>add</mat-icon>
-                    <span>New idea</span>
-                  </button>
-                </div>
-              }
-            </div>
-          </aside>
+        <app-smart-list
+          #ideaSmartList
+          class="idea-editor-smart-list"
+          [config]="ideaSmartListConfig"
+          [loadPage]="ideaSmartListLoadPage"
+          [filters]="ideaListFilters"
+          [itemTemplate]="ideaCardTemplate"
+        ></app-smart-list>
 
-          <section class="idea-editor-detail-pane">
-            @if (editing && draft; as editDraft) {
-              <form class="idea-editor-form" (ngSubmit)="saveDraft($event)">
-                <div class="idea-editor-form-head">
-                  <div>
-                    <h3>{{ editDraft.id ? 'Edit idea' : 'New idea' }}</h3>
-                    <p>{{ editDraft.published ? 'Visible on landing when saved' : 'Saved as draft' }}</p>
-                  </div>
-                  <div class="idea-editor-form-actions">
-                    <button type="submit" class="idea-editor-icon-btn idea-editor-confirm-btn" [disabled]="saving || uploading" aria-label="Save idea" title="Save">
-                      <mat-icon>check</mat-icon>
-                    </button>
-                    <button type="button" class="idea-editor-icon-btn" [disabled]="saving" (click)="cancelEditing($event)" aria-label="Cancel" title="Cancel">
-                      <mat-icon>close</mat-icon>
-                    </button>
-                  </div>
-                </div>
-
-                <div class="idea-editor-fields">
-                  <label class="idea-editor-field idea-editor-field-title">
-                    <span>Title</span>
-                    <input type="text" name="ideaTitle" [(ngModel)]="editDraft.title" required />
-                  </label>
-                  <label class="idea-editor-field">
-                    <span>Submitted</span>
-                    <input type="datetime-local" name="ideaSubmitted" [(ngModel)]="editDraft.submittedAtLocal" required />
-                  </label>
-                  <label class="idea-editor-field idea-editor-field-wide">
-                    <span>Excerpt</span>
-                    <textarea name="ideaExcerpt" [(ngModel)]="editDraft.excerpt" rows="3" placeholder="Short card text"></textarea>
-                  </label>
-                </div>
-
-                <div class="idea-editor-toggle-row">
-                  <label class="idea-editor-switch">
-                    <input type="checkbox" name="ideaPublished" [(ngModel)]="editDraft.published" />
-                    <span>
-                      <mat-icon>{{ editDraft.published ? 'visibility' : 'visibility_off' }}</mat-icon>
-                      <span>{{ editDraft.published ? 'Published' : 'Draft' }}</span>
-                    </span>
-                  </label>
-                  <label class="idea-editor-switch">
-                    <input type="checkbox" name="ideaFeatured" [(ngModel)]="editDraft.featured" />
-                    <span>
-                      <mat-icon>{{ editDraft.featured ? 'star' : 'star_border' }}</mat-icon>
-                      <span>{{ editDraft.featured ? 'Featured' : 'Not featured' }}</span>
-                    </span>
-                  </label>
-                </div>
-
-                <section class="idea-editor-image-panel">
-                  <div class="idea-editor-image-preview" [class.is-empty]="!draftImageUrl()" [style.backgroundImage]="draftImageUrl() ? 'url(' + draftImageUrl() + ')' : null">
-                    @if (!draftImageUrl()) {
-                      <mat-icon>image_not_supported</mat-icon>
-                    }
-                  </div>
-                  <div class="idea-editor-image-tools">
-                    <label class="idea-editor-file-btn" [class.is-uploading]="uploading">
-                      <mat-icon>{{ uploading ? 'sync' : 'upload' }}</mat-icon>
-                      <span>{{ uploading ? 'Uploading' : 'Upload image' }}</span>
-                      <input type="file" accept="image/*" [disabled]="uploading || saving" (change)="uploadDraftImage($event)" />
-                    </label>
-                    <label class="idea-editor-field">
-                      <span>Primary image link</span>
-                      <input type="url" name="ideaImageUrl" [(ngModel)]="editDraft.imageUrl" placeholder="https:// or /media/public?..."/>
-                    </label>
-                  </div>
-
-                  @if (editDraft.imageUrls.length > 0) {
-                    <div class="idea-editor-upload-list">
-                      @for (imageUrl of editDraft.imageUrls; track imageUrl) {
-                        <div class="idea-editor-upload-row">
-                          <span class="idea-editor-upload-thumb" [style.backgroundImage]="'url(' + imageUrl + ')'"></span>
-                          <input type="text" [value]="copyableImageLink(imageUrl)" readonly />
-                          <button type="button" class="idea-editor-icon-btn" (click)="copyImageLink(imageUrl, $event)" [attr.aria-label]="'Copy image link'" title="Copy link">
-                            <mat-icon>{{ copiedImageUrl === imageUrl ? 'done' : 'content_copy' }}</mat-icon>
-                          </button>
-                          <button type="button" class="idea-editor-icon-btn" (click)="setPrimaryImage(imageUrl, $event)" aria-label="Use as primary" title="Use as primary">
-                            <mat-icon>{{ editDraft.imageUrl === imageUrl ? 'radio_button_checked' : 'radio_button_unchecked' }}</mat-icon>
-                          </button>
-                          <button type="button" class="idea-editor-icon-btn idea-editor-danger-btn" (click)="removeDraftImage(imageUrl, $event)" aria-label="Remove image" title="Remove">
-                            <mat-icon>delete</mat-icon>
-                          </button>
-                        </div>
-                      }
-                    </div>
-                  }
-                </section>
-
-                <section class="idea-editor-html-panel">
-                  <div class="idea-editor-html-head">
-                    <span>Article HTML</span>
-                    <button type="button" class="idea-editor-mode-btn" (click)="toggleDraftMode($event)">
-                      <mat-icon>{{ editDraft.mode === 'html' ? 'code' : 'visibility' }}</mat-icon>
-                      <span>{{ editDraft.mode === 'html' ? 'HTML' : 'Preview' }}</span>
-                    </button>
-                  </div>
-                  @if (editDraft.mode === 'html') {
-                    <textarea
-                      class="idea-editor-html-textarea"
-                      name="ideaContentHtml"
-                      [(ngModel)]="editDraft.contentHtml"
-                      spellcheck="false"
-                      (paste)="formatPastedHtml($event)"
-                    ></textarea>
-                  } @else {
-                    <div class="idea-editor-html-preview" [innerHTML]="editDraft.contentHtml"></div>
-                  }
-                </section>
-              </form>
-            } @else if (selectedPost(); as post) {
-              <article class="idea-editor-preview">
-                <div class="idea-editor-preview-actions">
-                  <button type="button" class="idea-editor-icon-btn" (click)="startEditing(post, $event)" aria-label="Edit idea" title="Edit">
-                    <mat-icon>edit</mat-icon>
-                  </button>
-                  <button type="button" class="idea-editor-icon-btn idea-editor-danger-btn" [disabled]="saving" (click)="deletePost(post, $event)" aria-label="Delete idea" title="Delete">
-                    <mat-icon>delete</mat-icon>
-                  </button>
-                </div>
-                @if (post.imageUrl) {
-                  <div class="idea-editor-preview-image" [style.backgroundImage]="'url(' + post.imageUrl + ')'"></div>
-                } @else {
-                  <div class="idea-editor-preview-image idea-editor-preview-image-empty">
-                    <mat-icon>image_not_supported</mat-icon>
-                  </div>
-                }
-                <div class="idea-editor-preview-copy">
-                  <span>{{ postDateLabel(post) }} · {{ postStatusLabel(post) }}</span>
-                  <h3>{{ post.title }}</h3>
-                  @if (post.excerpt) {
-                    <p>{{ post.excerpt }}</p>
-                  }
-                </div>
-                <div class="idea-editor-html-preview" [innerHTML]="post.contentHtml"></div>
-              </article>
-            } @else {
-              <div class="idea-editor-empty idea-editor-empty-detail">
-                <mat-icon>tips_and_updates</mat-icon>
-                <h3>No idea selected</h3>
-                <p>Create or select an idea post.</p>
-              </div>
-            }
-          </section>
-        }
+        <ng-template #ideaCardTemplate let-post let-groupLabel="groupLabel" let-renderState="renderState">
+          <app-info-card
+            class="idea-info-card"
+            [class.is-feature-toggle-pending]="isFeatureTogglePending(post.id)"
+            [card]="ideaInfoCard(post, { groupLabel: groupLabel, renderState: renderState })"
+            (mediaEndClick)="toggleFeaturedFromCard(post)"
+            (menuAction)="onIdeaCardMenuAction(post, $event)"
+          ></app-info-card>
+        </ng-template>
       </div>
     </div>
   </section>
+
+  @if (selectedViewerPost(); as post) {
+    <section class="idea-editor-nested-popup idea-editor-article-popup" role="dialog" aria-modal="true" aria-label="Article">
+      <div class="idea-editor-nested-backdrop" (click)="closeViewer($event)"></div>
+      <article class="idea-editor-nested-panel idea-editor-viewer-panel">
+        <header class="idea-editor-viewer-head">
+          <div class="idea-editor-viewer-title">
+            <span class="idea-editor-viewer-date">
+              <mat-icon>calendar_today</mat-icon>
+              <span>{{ postDateLabel(post) }}</span>
+            </span>
+            <h2>{{ post.title }}</h2>
+            @if (post.excerpt) {
+              <p>{{ post.excerpt }}</p>
+            }
+          </div>
+          <button type="button" class="idea-editor-icon-btn idea-editor-viewer-close" (click)="closeViewer($event)" aria-label="Close article" title="Close">
+            <mat-icon>close</mat-icon>
+          </button>
+        </header>
+
+        <div class="idea-editor-viewer-body">
+          @if (ideaImageUrl(post); as imageUrl) {
+            <div class="idea-editor-viewer-image" [style.backgroundImage]="'url(' + imageUrl + ')'"></div>
+          } @else {
+            <div class="idea-editor-viewer-image idea-editor-empty-image">
+              <mat-icon>image_not_supported</mat-icon>
+            </div>
+          }
+
+          <div class="idea-editor-html-preview idea-editor-viewer-html" [innerHTML]="post.contentHtml"></div>
+        </div>
+      </article>
+    </section>
+  }
+
+  @if (editing && draft; as editDraft) {
+    <section class="idea-editor-nested-popup" role="dialog" aria-modal="true" aria-label="Edit article">
+      <div class="idea-editor-nested-backdrop" (click)="closeEditorAndSaveDraft($event)"></div>
+      <form class="idea-editor-nested-panel idea-editor-form-panel" (ngSubmit)="saveDraft($event)">
+        <header class="idea-editor-form-head">
+          <div class="idea-editor-form-title">
+            <span>{{ editDraft.published ? 'Published' : 'Draft' }}</span>
+            <h3>{{ editDraft.id ? 'Edit article' : 'New article' }}</h3>
+          </div>
+          <div class="idea-editor-form-actions">
+            <span class="idea-editor-action-ring-shell idea-editor-circle-ring-shell" [class.is-loading]="publishing">
+              <span class="idea-editor-circle-ring" aria-hidden="true">
+                <svg viewBox="0 0 34 34" preserveAspectRatio="none" class="idea-editor-circle-ring-svg">
+                  <circle class="idea-editor-circle-ring-track" cx="17" cy="17" r="15"></circle>
+                  <circle
+                    class="idea-editor-circle-ring-progress"
+                    [class.is-loading]="publishing"
+                    cx="17"
+                    cy="17"
+                    r="15"
+                    pathLength="100"
+                    [attr.stroke-dasharray]="actionRingPerimeter"
+                    [attr.stroke-dashoffset]="publishing ? 0 : actionRingPerimeter"
+                  ></circle>
+                </svg>
+              </span>
+              <button
+                type="button"
+                class="idea-editor-icon-btn idea-editor-publish-btn"
+                [disabled]="saving || uploading || publishing"
+                (click)="toggleDraftPublished($event)"
+                [attr.aria-label]="editDraft.published ? 'Save as draft' : 'Publish article'"
+                [title]="editDraft.published ? 'Save as draft' : 'Publish article'"
+                >
+                <mat-icon>{{ editDraft.published ? 'visibility' : 'published_with_changes' }}</mat-icon>
+              </button>
+            </span>
+            <button
+              type="submit"
+              class="idea-editor-icon-btn idea-editor-confirm-btn"
+              [disabled]="saving || uploading || publishing"
+              aria-label="Save article"
+              title="Save"
+              >
+              <mat-icon>check</mat-icon>
+            </button>
+            <button
+              type="button"
+              class="idea-editor-icon-btn"
+              [disabled]="saving || uploading || publishing"
+              (click)="closeEditorAndSaveDraft($event)"
+              aria-label="Close editor and save draft"
+              title="Close and save draft"
+              >
+              <mat-icon>close</mat-icon>
+            </button>
+          </div>
+        </header>
+
+        <div class="idea-editor-fields">
+          <label class="idea-editor-field idea-editor-field-title">
+            <span>Title</span>
+            <input type="text" name="ideaTitle" [(ngModel)]="editDraft.title" required />
+          </label>
+          <label class="idea-editor-field">
+            <span>Submitted</span>
+            <input type="datetime-local" name="ideaSubmitted" [(ngModel)]="editDraft.submittedAtLocal" required />
+          </label>
+          <label class="idea-editor-field idea-editor-field-wide">
+            <span>Excerpt</span>
+            <textarea name="ideaExcerpt" [(ngModel)]="editDraft.excerpt" rows="3" placeholder="Short card text"></textarea>
+          </label>
+        </div>
+
+        <div class="idea-editor-toggle-row">
+          <span class="idea-editor-state-pill" [class.is-draft]="!editDraft.published">
+            <mat-icon>{{ editDraft.published ? 'visibility' : 'drafts' }}</mat-icon>
+            <span>{{ editDraft.published ? 'Published' : 'Draft' }}</span>
+          </span>
+          <label class="idea-editor-switch">
+            <input type="checkbox" name="ideaFeatured" [(ngModel)]="editDraft.featured" />
+            <span>
+              <mat-icon>{{ editDraft.featured ? 'star' : 'star_border' }}</mat-icon>
+              <span>{{ editDraft.featured ? 'Featured' : 'Not featured' }}</span>
+            </span>
+          </label>
+        </div>
+
+        <section class="idea-editor-image-panel">
+          <div
+            class="idea-editor-image-preview"
+            [class.is-empty]="!draftImageUrl()"
+            [style.backgroundImage]="draftImageUrl() ? 'url(' + draftImageUrl() + ')' : null"
+            >
+            @if (!draftImageUrl()) {
+              <mat-icon>image_not_supported</mat-icon>
+            }
+          </div>
+          <div class="idea-editor-image-tools">
+            <label class="idea-editor-file-btn" [class.is-uploading]="uploading">
+              <mat-icon>{{ uploading ? 'sync' : 'upload' }}</mat-icon>
+              <span>{{ uploading ? 'Uploading' : 'Upload image' }}</span>
+              <input type="file" accept="image/*" [disabled]="uploading || saving || publishing" (change)="uploadDraftImage($event)" />
+            </label>
+            <label class="idea-editor-field">
+              <span>Primary image link</span>
+              <input type="url" name="ideaImageUrl" [(ngModel)]="editDraft.imageUrl" placeholder="https:// or /media/public?..." />
+            </label>
+          </div>
+
+          @if (editDraft.imageUrls.length > 0) {
+            <div class="idea-editor-image-card-grid">
+              @for (imageUrl of editDraft.imageUrls; track imageUrl) {
+                <article class="idea-editor-image-card" [class.is-primary]="editDraft.imageUrl === imageUrl">
+                  <div class="idea-editor-image-card-preview" [style.backgroundImage]="'url(' + imageUrl + ')'">
+                    <button
+                      type="button"
+                      class="idea-editor-image-copy-btn"
+                      (click)="copyImageLink(imageUrl, $event)"
+                      [attr.aria-label]="'Copy image link'"
+                      title="Copy link"
+                      >
+                      <mat-icon>{{ copiedImageUrl === imageUrl ? 'done' : 'content_copy' }}</mat-icon>
+                    </button>
+                  </div>
+                  <div class="idea-editor-image-card-footer">
+                    <input type="text" [value]="copyableImageLink(imageUrl)" readonly />
+                    <div class="idea-editor-image-card-actions">
+                      <button type="button" class="idea-editor-icon-btn" (click)="setPrimaryImage(imageUrl, $event)" aria-label="Use as primary" title="Use as primary">
+                        <mat-icon>{{ editDraft.imageUrl === imageUrl ? 'radio_button_checked' : 'radio_button_unchecked' }}</mat-icon>
+                      </button>
+                      <button type="button" class="idea-editor-icon-btn idea-editor-danger-btn" (click)="removeDraftImage(imageUrl, $event)" aria-label="Remove image" title="Remove">
+                        <mat-icon>delete</mat-icon>
+                      </button>
+                    </div>
+                  </div>
+                </article>
+              }
+            </div>
+          }
+        </section>
+
+        <section class="idea-editor-html-panel">
+          <div class="idea-editor-html-head">
+            <span>Article HTML</span>
+            <button type="button" class="idea-editor-mode-btn" (click)="toggleDraftMode($event)">
+              <mat-icon>{{ editDraft.mode === 'html' ? 'code' : 'visibility' }}</mat-icon>
+              <span>{{ editDraft.mode === 'html' ? 'HTML' : 'Preview' }}</span>
+            </button>
+          </div>
+          @if (editDraft.mode === 'html') {
+            <textarea
+              class="idea-editor-html-textarea"
+              name="ideaContentHtml"
+              [(ngModel)]="editDraft.contentHtml"
+              spellcheck="false"
+              (paste)="formatPastedHtml($event)"
+            ></textarea>
+          } @else {
+            <div class="idea-editor-html-preview" [innerHTML]="editDraft.contentHtml"></div>
+          }
+        </section>
+      </form>
+    </section>
+  }
 }

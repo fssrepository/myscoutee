@@ -37,7 +37,7 @@ export class IdeaPostsService extends BaseRouteModeService {
 
   async savePost(request: IdeaPostSaveRequest): Promise<IdeaPost> {
     const post = await this.ideaService().savePost(request);
-    await this.refreshAdminPostsAfterMutation(request.actorUserId);
+    this.mergeAdminPost(post);
     return { ...post, imageUrls: [...post.imageUrls] };
   }
 
@@ -53,13 +53,13 @@ export class IdeaPostsService extends BaseRouteModeService {
     return this.ideaService().uploadImage(ownerId, entityId, file);
   }
 
-  private async refreshAdminPostsAfterMutation(actorUserId: string): Promise<void> {
-    try {
-      await this.loadAdminPosts(actorUserId);
-    } catch {
-      const current = this.adminPostsRef();
-      this.applyPublishedPosts(current.filter(post => post.published));
-    }
+  private mergeAdminPost(post: IdeaPost): void {
+    const merged = this.clonePosts([
+      ...this.adminPostsRef().filter(current => current.id !== post.id),
+      post
+    ]).sort((left, right) => this.sortValue(right) - this.sortValue(left));
+    this.adminPostsRef.set(merged);
+    this.applyPublishedPosts(merged.filter(current => current.published));
   }
 
   private ideaService(): DemoIdeaPostsService | HttpIdeaPostsService {

@@ -36,7 +36,7 @@ export const ROUTE_CONFIG: RouteConfig = {
     },
     {
       routePrefix: '/landing/content',
-      demoDelayMs: 1200
+      demoDelayMs: 1500
     },
     {
       routePrefix: '/admin/help',
@@ -48,7 +48,7 @@ export const ROUTE_CONFIG: RouteConfig = {
     },
     {
       routePrefix: '/admin/ideas',
-      demoDelayMs: 1200
+      demoDelayMs: 1500
     },
     {
       routePrefix: '/game-cards/query',

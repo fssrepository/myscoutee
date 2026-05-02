@@ -202,6 +202,10 @@ export class InfoCardComponent {
     return action?.detailIcon ?? null;
   }
 
+  protected overlayProgressRing(action: InfoCardOverlayAction | null | undefined): boolean {
+    return action?.progressRing === true;
+  }
+
   protected visibleMetaRows(): readonly string[] {
     const rows = this.card?.metaRows ?? [];
     const limit = this.card?.metaRowsLimit;
@@ -222,6 +226,13 @@ export class InfoCardComponent {
 
   protected hasMenuActions(): boolean {
     return (this.card?.menuActions?.length ?? 0) > 0;
+  }
+
+  protected resolvedMenuTitle(): string {
+    if (this.card?.menuTitle === null) {
+      return '';
+    }
+    return `${this.card?.menuTitle ?? this.card?.title ?? ''}`.trim();
   }
 
   protected hasFooterChips(): boolean {

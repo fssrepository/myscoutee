@@ -114,6 +114,7 @@
             [class.ui-info-card__overlay-action--tone-6]="overlayTone(mediaEnd) === 'tone-6'"
             [class.ui-info-card__overlay-action--tone-7]="overlayTone(mediaEnd) === 'tone-7'"
             [class.ui-info-card__overlay-action--tone-8]="overlayTone(mediaEnd) === 'tone-8'"
+            [class.ui-info-card__overlay-action--ring-active]="overlayProgressRing(mediaEnd)"
             [attr.aria-label]="mediaEnd.ariaLabel || overlayLabel(mediaEnd)"
             [disabled]="mediaEnd.disabled"
             (click)="onMediaEndActivated($event)"
@@ -121,6 +122,29 @@
             <ng-container *ngTemplateOutlet="overlayContent; context: { $implicit: mediaEnd }"></ng-container>
             @if ((mediaEnd.pendingCount ?? 0) > 0) {
               <span class="ui-info-card__pending-badge card-badge asset-request-badge">{{ mediaEnd.pendingCount | counterBadge }}</span>
+            }
+            @if (overlayProgressRing(mediaEnd)) {
+              <span class="ui-info-card__overlay-action-ring" aria-hidden="true">
+                <svg viewBox="0 0 104 48" preserveAspectRatio="none" class="ui-info-card__overlay-action-ring-svg">
+                  <defs>
+                    <linearGradient id="ui-info-card-overlay-ring-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stop-color="rgb(235, 147, 33)"></stop>
+                      <stop offset="100%" stop-color="rgb(247, 190, 52)"></stop>
+                    </linearGradient>
+                  </defs>
+                  <path
+                    class="ui-info-card__overlay-action-ring-track"
+                    d="M52 2 H88 A14 14 0 0 1 102 16 V32 A14 14 0 0 1 88 46 H16 A14 14 0 0 1 2 32 V16 A14 14 0 0 1 16 2 H52"
+                  ></path>
+                  <path
+                    class="ui-info-card__overlay-action-ring-progress"
+                    d="M52 2 H88 A14 14 0 0 1 102 16 V32 A14 14 0 0 1 88 46 H16 A14 14 0 0 1 2 32 V16 A14 14 0 0 1 16 2 H52"
+                    pathLength="100"
+                    stroke-dasharray="100"
+                    stroke-dashoffset="100"
+                  ></path>
+                </svg>
+              </span>
             }
           </button>
         } @else {
@@ -220,7 +244,9 @@
             [class.is-open-up]="menuOpenUp"
             (click)="$event.stopPropagation()"
             >
-            <div class="ui-info-card__menu-title item-action-menu-title">{{ card?.title }}</div>
+            @if (resolvedMenuTitle(); as menuTitle) {
+              <div class="ui-info-card__menu-title item-action-menu-title">{{ menuTitle }}</div>
+            }
             @for (action of card?.menuActions; track trackByActionId($index, action)) {
               <button
                 type="button"
