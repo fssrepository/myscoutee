@@ -129,6 +129,7 @@
       <section class="entry-ideas" aria-label="MyScoutee articles">
         <div
           class="entry-ideas-carousel"
+          [class.entry-ideas-carousel--with-dots]="ideaCarouselPageCount() > 1"
           role="region"
           aria-label="Featured article posts"
           aria-roledescription="carousel"

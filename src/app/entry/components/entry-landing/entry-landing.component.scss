@@ -671,8 +671,12 @@
 .entry-ideas-carousel {
   --entry-ideas-per-page: 4;
   position: relative;
-  padding: 0.1rem 2rem 1.62rem;
+  padding: 0.1rem 2rem 0.42rem;
   box-sizing: border-box;
+}
+
+.entry-ideas-carousel--with-dots {
+  padding-bottom: 1.62rem;
 }
 
 .entry-ideas-article-image {
@@ -1595,7 +1599,11 @@
 
   .entry-ideas-carousel {
     --entry-ideas-per-page: 1;
-    padding: 0 1.22rem 1.7rem;
+    padding: 0 0.72rem 0.6rem;
+  }
+
+  .entry-ideas-carousel--with-dots {
+    padding-bottom: 2.12rem;
   }
 
   .entry-ideas-carousel-arrow {
@@ -1603,11 +1611,11 @@
   }
 
   .entry-ideas-carousel .entry-carousel-arrow-prev {
-    left: 0.04rem;
+    left: -0.42rem;
   }
 
   .entry-ideas-carousel .entry-carousel-arrow-next {
-    right: 0.04rem;
+    right: -0.42rem;
   }
 
   :host ::ng-deep app-info-card.entry-idea-info-card .ui-info-card {

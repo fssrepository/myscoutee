@@ -1,5 +1,5 @@
 import { DOCUMENT } from '@angular/common';
-import { Component, EventEmitter, HostListener, Input, OnDestroy, OnInit, Output, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, EventEmitter, HostListener, Input, OnDestroy, OnInit, Output, inject } from '@angular/core';
 import { MatRippleModule } from '@angular/material/core';
 import { MatIconModule } from '@angular/material/icon';
 import { Observable, of } from 'rxjs';
@@ -40,6 +40,7 @@ interface HowStepSlide {
 })
 export class EntryLandingComponent implements OnInit, OnDestroy {
   private readonly documentRef = inject(DOCUMENT);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   @Input({ required: true }) authMode: AppTypes.AuthMode = 'selector';
   @Input() firebaseAuthProfile: AppTypes.FirebaseAuthProfile | null = null;
@@ -201,20 +202,18 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
 
   protected showPreviousHowSlide(): void {
     if (this.isFirstHowSlide) {
-      this.restartHowCarouselAutoplay();
       return;
     }
-
-    this.setHowSlideIndex(this.activeHowSlideIndex - 1, true);
+    this.setHowSlideIndex(this.activeHowSlideIndex - 1, false);
+    this.stopHowCarouselAutoplay();
   }
 
   protected showNextHowSlide(): void {
     if (this.isLastHowSlide) {
-      this.restartHowCarouselAutoplay();
       return;
     }
-
-    this.setHowSlideIndex(this.activeHowSlideIndex + 1, true);
+    this.setHowSlideIndex(this.activeHowSlideIndex + 1, false);
+    this.stopHowCarouselAutoplay();
   }
 
   protected showHowSlide(index: number): void {
@@ -496,6 +495,7 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
 
   private setHowSlideIndex(index: number, restartAutoplay: boolean): void {
     this.activeHowSlideIndex = this.clampHowSlideIndex(index);
+    this.cdr.markForCheck();
     if (restartAutoplay) {
       this.restartHowCarouselAutoplay();
     }
