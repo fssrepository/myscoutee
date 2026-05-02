@@ -17,3 +17,4 @@ export * from './activities-ui.model';
 export * from './activities.model';
 export * from './share-token.model';
 export * from './idea-post.model';
+export * from './admin-notification.model';

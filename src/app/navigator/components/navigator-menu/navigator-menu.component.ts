@@ -372,6 +372,15 @@ export class NavigatorMenuComponent {
     this.navigatorService.closeMenu();
   }
 
+  protected openAdminNotificationsShortcut(event?: Event): void {
+    event?.stopPropagation();
+    if (!this.isOnline()) {
+      return;
+    }
+    this.popupCtx.openAdminNavigatorRequest('notifications');
+    this.navigatorService.closeMenu();
+  }
+
   private resolveUserImageUrl(user: UserDto | null): string | null {
     return user?.images?.find(image => image.trim().length > 0) ?? null;
   }

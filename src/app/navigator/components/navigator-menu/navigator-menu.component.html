@@ -68,14 +68,14 @@
               Offline mode is active. Admin actions wait for the connection to return.
             </div>
           }
-          <div class="social-proof-section-head section-social activities-header">
+          <div class="social-proof-section-head section-social activities-header admin-moderation-header">
             <span class="section-tag">
               <mat-icon>admin_panel_settings</mat-icon>
-              <span>Admin tools</span>
+              <span>Moderation & support</span>
             </span>
             <span class="section-line"></span>
           </div>
-          <div class="menu-shortcuts admin-menu-shortcuts">
+          <div class="menu-shortcuts admin-menu-shortcuts admin-menu-shortcuts-moderation">
             <button #adminReportsButton class="menu-shortcut-btn menu-shortcut-events" type="button" [disabled]="!isOnline()" (click)="openAdminReportsShortcut($event)" aria-label="Open reports" title="Reports">
               <span class="navigator-action-ripple" matRipple [matRippleTrigger]="adminReportsButton" aria-hidden="true"></span>
               <mat-icon>report</mat-icon>
@@ -99,6 +99,20 @@
               @if (user.activities.chat > 0) {
                 <span class="card-badge menu-shortcut-badge">{{ user.activities.chat | counterBadge }}</span>
               }
+            </button>
+          </div>
+          <div class="social-proof-section-head section-social activities-header admin-configuration-header">
+            <span class="section-tag">
+              <mat-icon>tune</mat-icon>
+              <span>Configuration</span>
+            </span>
+            <span class="section-line"></span>
+          </div>
+          <div class="menu-shortcuts admin-menu-shortcuts admin-menu-shortcuts-configuration">
+            <button #adminNotificationsButton class="menu-shortcut-btn menu-shortcut-notifications" type="button" [disabled]="!isOnline()" (click)="openAdminNotificationsShortcut($event)" aria-label="Open notification rules" title="Notifications">
+              <span class="navigator-action-ripple" matRipple [matRippleTrigger]="adminNotificationsButton" aria-hidden="true"></span>
+              <mat-icon>notifications</mat-icon>
+              <span class="menu-shortcut-label">Notification</span>
             </button>
             <button #adminHelpEditorButton class="menu-shortcut-btn menu-shortcut-help-editor" type="button" [disabled]="!isOnline()" (click)="openAdminHelpEditorShortcut($event)" aria-label="Open content editor" title="Content Editor">
               <span class="navigator-action-ripple" matRipple [matRippleTrigger]="adminHelpEditorButton" aria-hidden="true"></span>

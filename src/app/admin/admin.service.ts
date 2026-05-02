@@ -11,6 +11,12 @@ import {
   USER_BY_ID_LOAD_CONTEXT_KEY,
   type ShareTokenRecord,
   type DemoUserListItemDto,
+  type AdminNotificationCenterState,
+  type AdminNotificationRule,
+  type AdminNotificationRunResult,
+  type AdminNotificationTemplateOption,
+  type AdminNotificationTimingMode,
+  type AdminNotificationTriggerKind,
   type UserDto
 } from '../shared/core';
 import { AppMemoryDb } from '../shared/core/base/db';
@@ -30,6 +36,7 @@ export type AdminPopupKind =
   | 'profile'
   | 'help-editor'
   | 'idea-editor'
+  | 'notifications'
   | 'item-preview';
 
 export interface AdminUserDto {
@@ -143,6 +150,9 @@ export interface AdminBootstrapProgressState {
 
 const ADMIN_SESSION_STORAGE_KEY = 'myscoutee-admin-session';
 const ADMIN_MODERATION_STORE_KEY = 'adminModeration';
+const ADMIN_NOTIFICATION_STORE_KEY = 'adminNotificationRules';
+const ADMIN_NOTIFICATION_STORAGE_TIMEOUT_MS = 2500;
+const ADMIN_NOTIFICATION_HTTP_TIMEOUT_MS = 12000;
 
 @Injectable({
   providedIn: 'root'
@@ -279,6 +289,10 @@ export class AdminService {
     this.activePopupRef.set('idea-editor');
   }
 
+  openNotifications(): void {
+    this.activePopupRef.set('notifications');
+  }
+
   openReportDetail(user: AdminReportedUserDto, report: AdminReportDto): void {
     this.selectedReportedUserRef.set(user);
     this.selectedReportRef.set(report);
@@ -343,6 +357,114 @@ export class AdminService {
 
   closePopup(): void {
     this.activePopupRef.set(null);
+  }
+
+  async loadNotificationCenter(): Promise<AdminNotificationCenterState> {
+    if (this.usesHttpAdminApi) {
+      const state = await this.withNotificationHttpTimeout(this.http
+        .get<AdminNotificationCenterState>(`${this.apiBaseUrl}/admin/notifications`, {
+          params: { adminUserId: this.activeAdmin()?.id ?? '' }
+        })
+        .toPromise());
+      return this.normalizeNotificationCenter(state ?? this.buildDefaultNotificationCenter());
+    }
+    await this.withNotificationStorageFallback(this.memoryDb.whenReady(), undefined);
+    const existing = await this.withNotificationStorageFallback(
+      this.memoryDb.readIndexedDbTableEntry<AdminNotificationCenterState>(ADMIN_NOTIFICATION_STORE_KEY),
+      null
+    );
+    if (existing?.rules?.length) {
+      return this.normalizeNotificationCenter(existing);
+    }
+    const seeded = this.buildDefaultNotificationCenter();
+    void this.withNotificationStorageFallback(
+      this.memoryDb.writeIndexedDbTableEntry(ADMIN_NOTIFICATION_STORE_KEY, seeded),
+      undefined
+    );
+    return seeded;
+  }
+
+  async saveNotificationCenter(rules: readonly AdminNotificationRule[]): Promise<AdminNotificationCenterState> {
+    const normalizedRules = rules.map(rule => this.normalizeNotificationRule(rule));
+    if (this.usesHttpAdminApi) {
+      const state = await this.withNotificationHttpTimeout(this.http
+        .post<AdminNotificationCenterState>(`${this.apiBaseUrl}/admin/notifications`, {
+          adminUserId: this.activeAdmin()?.id ?? '',
+          rules: normalizedRules
+        })
+        .toPromise());
+      return this.normalizeNotificationCenter(state ?? {
+        rules: normalizedRules,
+        emailTemplates: [],
+        updatedDate: new Date().toISOString()
+      });
+    }
+    const existing = await this.loadNotificationCenter();
+    const next = this.normalizeNotificationCenter({
+      rules: normalizedRules,
+      emailTemplates: existing.emailTemplates,
+      updatedDate: new Date().toISOString()
+    });
+    await this.withNotificationStorageFallback(
+      this.memoryDb.writeIndexedDbTableEntry(ADMIN_NOTIFICATION_STORE_KEY, next),
+      undefined
+    );
+    return next;
+  }
+
+  async runNotificationRule(ruleKey: string): Promise<AdminNotificationRunResult> {
+    const normalizedRuleKey = `${ruleKey ?? ''}`.trim();
+    if (!normalizedRuleKey) {
+      return {
+        ruleKey: '',
+        label: '',
+        affectedCount: 0,
+        status: 'skipped',
+        detail: 'Missing rule key.',
+        ranAtIso: new Date().toISOString()
+      };
+    }
+    if (this.usesHttpAdminApi) {
+      const result = await this.withNotificationHttpTimeout(this.http
+        .post<AdminNotificationRunResult>(
+          `${this.apiBaseUrl}/admin/notifications/${encodeURIComponent(normalizedRuleKey)}/run`,
+          { adminUserId: this.activeAdmin()?.id ?? '' }
+        )
+        .toPromise());
+      return this.normalizeNotificationRunResult(result, normalizedRuleKey);
+    }
+    const state = await this.loadNotificationCenter();
+    const nowIso = new Date().toISOString();
+    const nextRules = state.rules.map(rule => {
+      if (rule.ruleKey !== normalizedRuleKey) {
+        return rule;
+      }
+      const count = rule.triggerKind === 'scheduled_process'
+        ? this.demoScheduledRunCount(rule.ruleKey)
+        : 0;
+      return {
+        ...rule,
+        runState: {
+          lastRunAtIso: nowIso,
+          lastRunStatus: rule.manualRunEnabled ? 'completed' : 'skipped',
+          lastRunDetail: rule.manualRunEnabled ? 'Demo run recorded.' : 'This rule is action driven.',
+          lastRunCount: count,
+          lastRunUser: this.activeAdmin()?.id ?? 'demo-admin'
+        },
+        updatedDate: nowIso,
+        updatedUser: this.activeAdmin()?.id ?? 'demo-admin'
+      };
+    });
+    const saved = await this.saveNotificationCenter(nextRules);
+    const updated = saved.rules.find(rule => rule.ruleKey === normalizedRuleKey);
+    return {
+      ruleKey: normalizedRuleKey,
+      label: updated?.label ?? normalizedRuleKey,
+      affectedCount: updated?.runState.lastRunCount ?? 0,
+      status: updated?.runState.lastRunStatus ?? 'skipped',
+      detail: updated?.runState.lastRunDetail ?? 'Rule was not found.',
+      ranAtIso: updated?.runState.lastRunAtIso ?? nowIso
+    };
   }
 
   async warnUser(userId: string, message: string): Promise<void> {
@@ -1279,6 +1401,364 @@ export class AdminService {
     return `${name ?? ''}`.trim().replace(/\s+Moderation$/i, '') || 'Admin';
   }
 
+  private buildDefaultNotificationCenter(): AdminNotificationCenterState {
+    return this.normalizeNotificationCenter({
+      rules: [
+        this.defaultNotificationRule({
+          ruleKey: 'chat-message',
+          label: 'Chat message',
+          category: 'Action',
+          description: 'Notify offline recipients when a chat message arrives.',
+          actionKey: 'chat.message.created',
+          triggerKind: 'action',
+          enabled: true,
+          manualRunEnabled: false,
+          priority: 10,
+          pushEnabled: true,
+          emailEnabled: false,
+          timingMode: 'immediate',
+          emailSubject: 'New message from @sender_name',
+          emailBody: '@sender_name sent a message in @chat_title.'
+        }),
+        this.defaultNotificationRule({
+          ruleKey: 'event-invitation',
+          label: 'Event invitation',
+          category: 'Action',
+          description: 'Notify members when an organizer invites them to an event.',
+          actionKey: 'event.invitation.created',
+          triggerKind: 'action',
+          enabled: true,
+          manualRunEnabled: false,
+          priority: 20,
+          pushEnabled: true,
+          emailEnabled: false,
+          timingMode: 'immediate',
+          emailSubject: 'You were invited to @event_title',
+          emailBody: '@event_title starts @event_start_at.'
+        }),
+        this.defaultNotificationRule({
+          ruleKey: 'event-feedback-ready',
+          label: 'Event feedback ready',
+          category: 'Timed',
+          description: 'Yearly or manual feedback reminder rule for post-event feedback windows.',
+          actionKey: 'event.feedback.ready',
+          triggerKind: 'timed',
+          enabled: false,
+          manualRunEnabled: true,
+          priority: 30,
+          pushEnabled: false,
+          emailEnabled: true,
+          timingMode: 'yearly',
+          month: 5,
+          dayOfMonth: 1,
+          emailSubject: 'Feedback is open for @event_title',
+          emailBody: 'Share feedback for @event_title while it is fresh.'
+        }),
+        this.defaultNotificationRule({
+          ruleKey: 'ticket-swap-grace-cancelled',
+          label: 'Ticket swap grace cancellation',
+          category: 'Action',
+          description: 'Fixed grace-window rule for future ticket replacement flows.',
+          actionKey: 'ticket.swap.grace.cancelled',
+          triggerKind: 'action',
+          enabled: false,
+          manualRunEnabled: false,
+          priority: 40,
+          pushEnabled: true,
+          emailEnabled: false,
+          timingMode: 'immediate',
+          emailSubject: 'Ticket spot released',
+          emailBody: 'A ticket was cancelled close to the event start and can be reassigned.'
+        }),
+        this.defaultNotificationRule({
+          ruleKey: 'promotional-email-planner',
+          label: 'Promotional email planner',
+          category: 'Scheduled',
+          description: 'Builds eligible email outbox rows from campaign rules.',
+          actionKey: 'email.promotional.plan',
+          triggerKind: 'scheduled_process',
+          enabled: true,
+          manualRunEnabled: true,
+          priority: 100,
+          pushEnabled: false,
+          emailEnabled: true,
+          timingMode: 'interval',
+          intervalMinutes: 60
+        }),
+        this.defaultNotificationRule({
+          ruleKey: 'email-outbox-delivery',
+          label: 'Email outbox delivery',
+          category: 'Scheduled',
+          description: 'Sends pending email outbox rows that are due.',
+          actionKey: 'email.outbox.deliver',
+          triggerKind: 'scheduled_process',
+          enabled: true,
+          manualRunEnabled: true,
+          priority: 110,
+          pushEnabled: false,
+          emailEnabled: true,
+          timingMode: 'interval',
+          intervalMinutes: 1
+        }),
+        this.defaultNotificationRule({
+          ruleKey: 'event-random-groups',
+          label: 'Random group planner',
+          category: 'Scheduled',
+          description: 'Assigns accepted members into generated event groups.',
+          actionKey: 'event.scheduler.random-groups',
+          triggerKind: 'scheduled_process',
+          enabled: false,
+          manualRunEnabled: true,
+          priority: 200,
+          pushEnabled: false,
+          emailEnabled: false,
+          timingMode: 'interval',
+          intervalMinutes: 15
+        }),
+        this.defaultNotificationRule({
+          ruleKey: 'event-priority-inviter',
+          label: 'Priority inviter',
+          category: 'Scheduled',
+          description: 'Fills open event capacity with priority-based invitation batches.',
+          actionKey: 'event.scheduler.priority-inviter',
+          triggerKind: 'scheduled_process',
+          enabled: false,
+          manualRunEnabled: true,
+          priority: 210,
+          pushEnabled: false,
+          emailEnabled: false,
+          timingMode: 'interval',
+          intervalMinutes: 15
+        }),
+        this.defaultNotificationRule({
+          ruleKey: 'event-score-leaderboard',
+          label: 'Score leaderboard materializer',
+          category: 'Scheduled',
+          description: 'Materializes generated groups for score and tournament stages.',
+          actionKey: 'event.scheduler.score-leaderboard',
+          triggerKind: 'scheduled_process',
+          enabled: false,
+          manualRunEnabled: true,
+          priority: 220,
+          pushEnabled: false,
+          emailEnabled: false,
+          timingMode: 'interval',
+          intervalMinutes: 15
+        })
+      ],
+      emailTemplates: this.defaultNotificationTemplateOptions(),
+      updatedDate: new Date().toISOString()
+    });
+  }
+
+  private defaultNotificationRule(options: {
+    ruleKey: string;
+    label: string;
+    category: string;
+    description: string;
+    actionKey: string;
+    triggerKind: AdminNotificationTriggerKind;
+    enabled: boolean;
+    manualRunEnabled: boolean;
+    priority: number;
+    pushEnabled: boolean;
+    emailEnabled: boolean;
+    timingMode: AdminNotificationTimingMode;
+    intervalMinutes?: number;
+    month?: number;
+    dayOfMonth?: number;
+    emailSubject?: string;
+    emailBody?: string;
+  }): AdminNotificationRule {
+    return {
+      ruleKey: options.ruleKey,
+      label: options.label,
+      category: options.category,
+      description: options.description,
+      actionKey: options.actionKey,
+      triggerKind: options.triggerKind,
+      enabled: options.enabled,
+      manualRunEnabled: options.manualRunEnabled,
+      priority: options.priority,
+      channels: {
+        pushEnabled: options.pushEnabled,
+        emailEnabled: options.emailEnabled,
+        inAppEnabled: false,
+        supportChatEnabled: false
+      },
+      timing: {
+        mode: options.timingMode,
+        delayMinutes: 0,
+        intervalMinutes: options.intervalMinutes ?? 60,
+        month: options.month ?? 1,
+        dayOfMonth: options.dayOfMonth ?? 1,
+        time: '09:00',
+        timezone: 'UTC'
+      },
+      message: {
+        pushTitle: options.emailSubject ?? '',
+        pushBody: options.emailBody ?? '',
+        emailTemplateKey: '',
+        emailSubject: options.emailSubject ?? '',
+        emailBody: options.emailBody ?? '',
+        ctaPath: '/game'
+      },
+      runState: {
+        lastRunAtIso: '',
+        lastRunStatus: '',
+        lastRunDetail: '',
+        lastRunCount: 0,
+        lastRunUser: ''
+      },
+      updatedDate: '',
+      updatedUser: ''
+    };
+  }
+
+  private defaultNotificationTemplateOptions(): AdminNotificationTemplateOption[] {
+    return [
+      {
+        templateKey: 'email-template-promo-profile-completion-v1',
+        name: 'Profile completion reminder',
+        category: 'promotional',
+        description: 'Promotional reminder for incomplete active profiles.'
+      },
+      {
+        templateKey: 'email-template-promo-first-host-event-v1',
+        name: 'First host event prompt',
+        category: 'promotional',
+        description: 'Promotional reminder for members who have not hosted yet.'
+      },
+      {
+        templateKey: 'email-template-promo-country-broadcast-v1',
+        name: 'Country broadcast',
+        category: 'promotional',
+        description: 'Reusable country-level promotional email.'
+      }
+    ];
+  }
+
+  private normalizeNotificationCenter(state: AdminNotificationCenterState): AdminNotificationCenterState {
+    return {
+      rules: (state.rules ?? [])
+        .map(rule => this.normalizeNotificationRule(rule))
+        .sort((left, right) => left.priority - right.priority || left.ruleKey.localeCompare(right.ruleKey)),
+      emailTemplates: (state.emailTemplates ?? []).map(template => ({
+        templateKey: `${template.templateKey ?? ''}`.trim(),
+        name: `${template.name ?? ''}`.trim(),
+        category: `${template.category ?? ''}`.trim(),
+        description: `${template.description ?? ''}`.trim()
+      })).filter(template => template.templateKey.length > 0),
+      updatedDate: `${state.updatedDate ?? ''}`.trim() || new Date().toISOString()
+    };
+  }
+
+  private normalizeNotificationRule(rule: AdminNotificationRule): AdminNotificationRule {
+    const triggerKind = this.normalizeNotificationTriggerKind(rule.triggerKind);
+    const timingMode = this.normalizeNotificationTimingMode(rule.timing?.mode, triggerKind);
+    return {
+      id: `${rule.id ?? ''}`.trim() || null,
+      ruleKey: `${rule.ruleKey ?? ''}`.trim(),
+      label: `${rule.label ?? ''}`.trim() || `${rule.ruleKey ?? ''}`.trim(),
+      category: `${rule.category ?? ''}`.trim() || 'Action',
+      description: `${rule.description ?? ''}`.trim(),
+      actionKey: `${rule.actionKey ?? ''}`.trim(),
+      triggerKind,
+      enabled: rule.enabled === true,
+      manualRunEnabled: rule.manualRunEnabled === true,
+      priority: Math.max(0, Math.trunc(Number(rule.priority) || 1000)),
+      channels: {
+        pushEnabled: rule.channels?.pushEnabled === true,
+        emailEnabled: rule.channels?.emailEnabled === true,
+        inAppEnabled: rule.channels?.inAppEnabled === true,
+        supportChatEnabled: rule.channels?.supportChatEnabled === true
+      },
+      timing: {
+        mode: timingMode,
+        delayMinutes: Math.max(0, Math.trunc(Number(rule.timing?.delayMinutes) || 0)),
+        intervalMinutes: Math.max(1, Math.trunc(Number(rule.timing?.intervalMinutes) || 60)),
+        month: this.clampInteger(rule.timing?.month, 1, 12, 1),
+        dayOfMonth: this.clampInteger(rule.timing?.dayOfMonth, 1, 31, 1),
+        time: this.normalizeNotificationTime(rule.timing?.time),
+        timezone: `${rule.timing?.timezone ?? ''}`.trim() || 'UTC'
+      },
+      message: {
+        pushTitle: `${rule.message?.pushTitle ?? ''}`.trim(),
+        pushBody: `${rule.message?.pushBody ?? ''}`.trim(),
+        emailTemplateKey: `${rule.message?.emailTemplateKey ?? ''}`.trim(),
+        emailSubject: `${rule.message?.emailSubject ?? ''}`.trim(),
+        emailBody: `${rule.message?.emailBody ?? ''}`.trim(),
+        ctaPath: `${rule.message?.ctaPath ?? ''}`.trim() || '/game'
+      },
+      runState: {
+        lastRunAtIso: `${rule.runState?.lastRunAtIso ?? ''}`.trim(),
+        lastRunStatus: `${rule.runState?.lastRunStatus ?? ''}`.trim(),
+        lastRunDetail: `${rule.runState?.lastRunDetail ?? ''}`.trim(),
+        lastRunCount: Math.max(0, Math.trunc(Number(rule.runState?.lastRunCount) || 0)),
+        lastRunUser: `${rule.runState?.lastRunUser ?? ''}`.trim()
+      },
+      updatedDate: `${rule.updatedDate ?? ''}`.trim() || null,
+      updatedUser: `${rule.updatedUser ?? ''}`.trim() || null
+    };
+  }
+
+  private normalizeNotificationRunResult(
+    result: AdminNotificationRunResult | null | undefined,
+    fallbackRuleKey: string
+  ): AdminNotificationRunResult {
+    return {
+      ruleKey: `${result?.ruleKey ?? fallbackRuleKey}`.trim(),
+      label: `${result?.label ?? fallbackRuleKey}`.trim(),
+      affectedCount: Math.max(0, Math.trunc(Number(result?.affectedCount) || 0)),
+      status: `${result?.status ?? 'completed'}`.trim(),
+      detail: `${result?.detail ?? ''}`.trim(),
+      ranAtIso: `${result?.ranAtIso ?? ''}`.trim() || new Date().toISOString()
+    };
+  }
+
+  private normalizeNotificationTriggerKind(value: string | undefined): AdminNotificationTriggerKind {
+    return value === 'timed' || value === 'scheduled_process' ? value : 'action';
+  }
+
+  private normalizeNotificationTimingMode(
+    value: string | undefined,
+    triggerKind: AdminNotificationTriggerKind
+  ): AdminNotificationTimingMode {
+    if (value === 'delay' || value === 'interval' || value === 'yearly' || value === 'manual') {
+      return value;
+    }
+    return triggerKind === 'scheduled_process' ? 'interval' : 'immediate';
+  }
+
+  private normalizeNotificationTime(value: string | undefined): string {
+    const normalized = `${value ?? ''}`.trim();
+    return /^\d{2}:\d{2}$/.test(normalized) ? normalized : '09:00';
+  }
+
+  private demoScheduledRunCount(ruleKey: string): number {
+    switch (ruleKey) {
+      case 'promotional-email-planner':
+        return 3;
+      case 'email-outbox-delivery':
+        return 2;
+      case 'event-priority-inviter':
+        return 4;
+      case 'event-random-groups':
+      case 'event-score-leaderboard':
+        return 1;
+      default:
+        return 0;
+    }
+  }
+
+  private clampInteger(value: number | undefined, min: number, max: number, fallback: number): number {
+    const parsed = Math.trunc(Number(value));
+    if (!Number.isFinite(parsed)) {
+      return fallback;
+    }
+    return Math.max(min, Math.min(max, parsed));
+  }
+
   private persistAdminSession(adminUserId: string): void {
     if (typeof localStorage === 'undefined') {
       return;
@@ -1316,6 +1796,49 @@ export class AdminService {
       return error.message;
     }
     return 'Admin workspace is unavailable.';
+  }
+
+  private withNotificationStorageFallback<T>(task: Promise<T>, fallback: T): Promise<T> {
+    return new Promise<T>(resolve => {
+      let finished = false;
+      let timeoutId: ReturnType<typeof setTimeout> | null = null;
+      const finish = (value: T) => {
+        if (finished) {
+          return;
+        }
+        finished = true;
+        if (timeoutId !== null) {
+          clearTimeout(timeoutId);
+          timeoutId = null;
+        }
+        resolve(value);
+      };
+      timeoutId = setTimeout(() => finish(fallback), ADMIN_NOTIFICATION_STORAGE_TIMEOUT_MS);
+      task.then(finish).catch(() => finish(fallback));
+    });
+  }
+
+  private withNotificationHttpTimeout<T>(task: Promise<T>): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+      let finished = false;
+      let timeoutId: ReturnType<typeof setTimeout> | null = null;
+      const finish = (callback: () => void) => {
+        if (finished) {
+          return;
+        }
+        finished = true;
+        if (timeoutId !== null) {
+          clearTimeout(timeoutId);
+          timeoutId = null;
+        }
+        callback();
+      };
+      timeoutId = setTimeout(
+        () => finish(() => reject(new Error('Notification rules request timed out.'))),
+        ADMIN_NOTIFICATION_HTTP_TIMEOUT_MS
+      );
+      task.then(value => finish(() => resolve(value))).catch(error => finish(() => reject(error)));
+    });
   }
 
   private waitForBeat(): Promise<void> {

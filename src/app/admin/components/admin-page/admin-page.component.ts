@@ -17,6 +17,7 @@ import { AdminChatReviewPopupComponent } from '../chat-review-popup/admin-chat-r
 import { AdminItemPreviewPopupComponent } from '../item-preview-popup/admin-item-preview-popup.component';
 import { AdminHelpEditorPopupComponent } from '../help-editor-popup/admin-help-editor-popup.component';
 import { AdminIdeaEditorPopupComponent } from '../idea-editor-popup/admin-idea-editor-popup.component';
+import { AdminNotificationsPopupComponent } from '../notifications-popup/admin-notifications-popup.component';
 
 @Component({
   selector: 'app-admin-page',
@@ -33,7 +34,8 @@ import { AdminIdeaEditorPopupComponent } from '../idea-editor-popup/admin-idea-e
     AdminChatReviewPopupComponent,
     AdminItemPreviewPopupComponent,
     AdminHelpEditorPopupComponent,
-    AdminIdeaEditorPopupComponent
+    AdminIdeaEditorPopupComponent,
+    AdminNotificationsPopupComponent
   ],
   templateUrl: './admin-page.component.html',
   styleUrl: './admin-page.component.scss'
@@ -83,6 +85,9 @@ export class AdminPageComponent implements OnInit {
           break;
         case 'idea-editor':
           this.admin.openIdeaEditor();
+          break;
+        case 'notifications':
+          this.admin.openNotifications();
           break;
       }
     });

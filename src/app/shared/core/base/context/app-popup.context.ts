@@ -31,7 +31,7 @@ export interface NavigatorEventFeedbackRequest {
 
 export interface AdminNavigatorRequest {
   updatedMs: number;
-  popup: 'reports' | 'feedback' | 'chat' | 'profile' | 'help-editor' | 'idea-editor';
+  popup: 'reports' | 'feedback' | 'chat' | 'profile' | 'help-editor' | 'idea-editor' | 'notifications';
 }
 
 @Injectable({
