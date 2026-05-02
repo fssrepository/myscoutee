@@ -108,7 +108,9 @@
         </header>
 
         <div class="idea-editor-viewer-body">
-          <div class="idea-editor-html-preview idea-editor-viewer-html" [innerHTML]="articlePreviewHtml(post)"></div>
+          <div class="idea-editor-html-preview idea-editor-viewer-html">
+            <div class="idea-editor-html-preview-body" [innerHTML]="articlePreviewHtml(post)"></div>
+          </div>
         </div>
       </article>
     </section>

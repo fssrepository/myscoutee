@@ -797,6 +797,12 @@
     0 8px 18px rgba(154, 104, 27, 0.12);
 }
 
+.idea-editor-image-slot.is-filled {
+  background-color: #f8fbff;
+  background-position: center top;
+  background-size: contain;
+}
+
 .idea-editor-image-slot:not(.is-filled) {
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.72), rgba(228, 238, 247, 0.88)),
@@ -825,14 +831,24 @@
 }
 
 .idea-editor-image-slot-index {
+  display: grid;
+  place-items: center;
   bottom: 0.28rem;
   left: 0.32rem;
+  width: 1.08rem;
+  height: 1.08rem;
+  box-sizing: border-box;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.88);
-  color: rgba(27, 47, 77, 0.72);
-  padding: 0 0.28rem;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  background: rgba(10, 29, 55, 0.82);
+  color: #ffffff;
+  padding: 0;
   font-size: 0.62rem;
   font-weight: 900;
+  line-height: 1;
+  text-shadow: 0 1px 2px rgba(4, 15, 31, 0.7);
+  box-shadow: 0 4px 12px rgba(7, 20, 38, 0.2);
+  backdrop-filter: blur(6px);
 }
 
 .idea-editor-image-slot-add {
@@ -958,7 +974,10 @@
 }
 
 .idea-editor-viewer-html {
+  width: 100%;
   max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   border: 0;
   padding: 0;
   background: transparent;
@@ -966,31 +985,54 @@
   font-size: 0.96rem;
   line-height: 1.62;
   overflow-wrap: anywhere;
+  overflow-x: hidden;
 }
 
-.idea-editor-viewer-html :is(img, video, iframe, table) {
+.idea-editor-html-preview-body {
+  width: 100%;
   max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
-.idea-editor-html-preview :where(p, ul, ol, figure) {
+:host ::ng-deep .idea-editor-html-preview-body :is(img, video, iframe, table) {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+:host ::ng-deep .idea-editor-html-preview-body :where(p, ul, ol, figure) {
   margin: 0 0 0.72rem;
 }
 
-.idea-editor-html-preview :where(h2, h3, h4) {
+:host ::ng-deep .idea-editor-html-preview-body :where(h2, h3, h4) {
   margin: 0.7rem 0 0.38rem;
   color: #183456;
   line-height: 1.2;
 }
 
-.idea-editor-html-preview :where(img) {
+:host ::ng-deep .idea-editor-html-preview-body :where(img) {
   display: block;
+  width: auto;
   max-width: 100%;
   height: auto;
+  border: 1px solid rgba(47, 86, 139, 0.12);
   border-radius: 10px;
-  margin: 0.38rem 0;
+  background: #edf4fb;
+  margin: 0.38rem 0 0.72rem;
 }
 
-.idea-editor-html-preview :where(figcaption) {
+:host ::ng-deep .idea-editor-viewer-html .idea-editor-html-preview-body :where(img) {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  margin-top: 0;
+}
+
+:host ::ng-deep .idea-editor-html-preview-body :where(figcaption) {
   color: #667b95;
   font-size: 0.78rem;
   font-weight: 700;
