@@ -406,7 +406,7 @@ button.ui-info-card__overlay-action {
   animation: ui-info-card-overlay-ring-progress 1500ms linear forwards;
 }
 
-.ui-info-card__overlay-action--badge > span,
+.ui-info-card__overlay-action--badge > span:not(.ui-info-card__pending-badge):not(.ui-info-card__overlay-action-ring),
 .ui-info-card__overlay-action--badge > .mat-icon {
   display: inline-flex;
   align-items: center;
