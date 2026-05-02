@@ -650,8 +650,16 @@
 }
 
 .entry-ideas-popup-close {
+  flex: 0 0 34px;
+  width: 34px;
+  min-width: 34px;
+  max-width: 34px;
+  height: 34px;
+  min-height: 34px;
+  max-height: 34px;
+  box-sizing: border-box;
   border: 1px solid rgba(47, 86, 139, 0.18);
-  border-radius: 50%;
+  border-radius: 999px;
   background: #fff;
   color: #31588e;
   display: inline-flex;
@@ -905,11 +913,6 @@
   color: rgba(31, 54, 88, 0.62);
   font-size: 0.74rem;
   font-weight: 800;
-}
-
-.entry-ideas-popup-close {
-  width: 34px;
-  height: 34px;
 }
 
 .entry-ideas-popup-body {
@@ -1520,6 +1523,30 @@
 
   .entry-steps-carousel-window {
     border-radius: 26px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    touch-action: pan-x;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+  }
+
+  .entry-steps-carousel-window::-webkit-scrollbar {
+    display: none;
+  }
+
+  .entry-steps-track {
+    transition: none;
+    transform: none;
+  }
+
+  .entry-steps-track .entry-step-card {
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+    contain: layout paint style;
   }
 
   .entry-carousel-arrow {
@@ -1616,6 +1643,37 @@
 
   .entry-ideas-carousel .entry-carousel-arrow-next {
     right: -0.42rem;
+  }
+
+  .entry-ideas-carousel-window {
+    overflow-x: auto;
+    overflow-y: hidden;
+    touch-action: pan-x;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+  }
+
+  .entry-ideas-carousel-window::-webkit-scrollbar {
+    display: none;
+  }
+
+  .entry-ideas-carousel-track {
+    transition: none;
+    transform: none;
+  }
+
+  .entry-ideas-carousel-page {
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+    contain: layout paint style;
+  }
+
+  :host ::ng-deep .entry-ideas-carousel-window app-info-card.entry-idea-info-card .ui-info-card {
+    touch-action: pan-x pan-y;
   }
 
   :host ::ng-deep app-info-card.entry-idea-info-card .ui-info-card {

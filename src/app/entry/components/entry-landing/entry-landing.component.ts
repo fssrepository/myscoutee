@@ -1,5 +1,5 @@
 import { DOCUMENT } from '@angular/common';
-import { ChangeDetectorRef, Component, EventEmitter, HostListener, Input, OnDestroy, OnInit, Output, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, ElementRef, EventEmitter, HostListener, Input, OnDestroy, OnInit, Output, ViewChild, inject } from '@angular/core';
 import { MatRippleModule } from '@angular/material/core';
 import { MatIconModule } from '@angular/material/icon';
 import { Observable, of } from 'rxjs';
@@ -39,6 +39,12 @@ interface HowStepSlide {
   styleUrl: './entry-landing.component.scss'
 })
 export class EntryLandingComponent implements OnInit, OnDestroy {
+  @ViewChild('howCarouselViewport')
+  private howCarouselViewportRef?: ElementRef<HTMLDivElement>;
+
+  @ViewChild('ideaCarouselViewport')
+  private ideaCarouselViewportRef?: ElementRef<HTMLDivElement>;
+
   private readonly documentRef = inject(DOCUMENT);
   private readonly cdr = inject(ChangeDetectorRef);
 
@@ -139,6 +145,10 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
   private ideaCarouselSwipeStartX: number | null = null;
   private ideaCarouselSwipePointerId: number | null = null;
   private ideaCarouselSwipeStartTarget: EventTarget | null = null;
+  private howCarouselScrollLockTargetIndex: number | null = null;
+  private howCarouselScrollLockTimer: ReturnType<typeof setTimeout> | null = null;
+  private ideaCarouselScrollLockTargetIndex: number | null = null;
+  private ideaCarouselScrollLockTimer: ReturnType<typeof setTimeout> | null = null;
   private landingPopupScrollLocked = false;
   private previousBodyOverflow = '';
 
@@ -149,6 +159,8 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.stopHowCarouselAutoplay();
+    this.clearHowCarouselScrollLock();
+    this.clearIdeaCarouselScrollLock();
     this.restoreLandingPopupScrollLock();
   }
 
@@ -167,6 +179,7 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
 
   @HostListener('window:resize')
   protected onViewportResize(): void {
+    this.scheduleHowCarouselViewportSync('auto');
     this.syncIdeaCarouselPageSize();
   }
 
@@ -221,6 +234,11 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
   }
 
   protected beginHowCarouselSwipe(event: PointerEvent): void {
+    if (this.isHowCarouselNativeSnap()) {
+      this.stopHowCarouselAutoplay();
+      return;
+    }
+
     if (event.pointerType === 'mouse' && event.button !== 0) {
       return;
     }
@@ -234,6 +252,10 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
   }
 
   protected endHowCarouselSwipe(event: PointerEvent): void {
+    if (this.isHowCarouselNativeSnap()) {
+      return;
+    }
+
     if (this.howCarouselSwipePointerId !== event.pointerId) {
       return;
     }
@@ -255,12 +277,40 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
   }
 
   protected cancelHowCarouselSwipe(event: PointerEvent): void {
+    if (this.isHowCarouselNativeSnap()) {
+      return;
+    }
+
     if (this.howCarouselSwipePointerId !== event.pointerId) {
       return;
     }
 
     this.resetHowCarouselSwipe();
     this.restartHowCarouselAutoplay();
+  }
+
+  protected onHowCarouselScroll(): void {
+    if (!this.isHowCarouselNativeSnap()) {
+      return;
+    }
+    const viewport = this.howCarouselViewportRef?.nativeElement;
+    if (!viewport) {
+      return;
+    }
+    if (this.howCarouselScrollLockTargetIndex !== null) {
+      this.scheduleHowCarouselScrollLockRelease();
+      return;
+    }
+    const nextSlideIndex = this.currentCarouselPageIndex(
+      viewport,
+      '.entry-step-card',
+      this.howSlides.length - 1
+    );
+    if (nextSlideIndex === this.activeHowSlideIndex) {
+      return;
+    }
+    this.activeHowSlideIndex = nextSlideIndex;
+    this.cdr.markForCheck();
   }
 
   protected requestDemo(): void {
@@ -368,6 +418,7 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
   protected showIdeaCarouselPage(pageIndex: number, event?: Event): void {
     event?.stopPropagation();
     this.activeIdeaCarouselPage = this.clampIdeaCarouselPage(pageIndex);
+    this.scheduleIdeaCarouselViewportSync('smooth');
   }
 
   protected showPreviousIdeaCarouselPage(event?: Event): void {
@@ -379,6 +430,10 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
   }
 
   protected beginIdeaCarouselSwipe(event: PointerEvent): void {
+    if (this.isIdeaCarouselNativeSnap()) {
+      return;
+    }
+
     if (event.pointerType === 'mouse' && event.button !== 0) {
       return;
     }
@@ -392,6 +447,10 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
   }
 
   protected endIdeaCarouselSwipe(event: PointerEvent): void {
+    if (this.isIdeaCarouselNativeSnap()) {
+      return;
+    }
+
     if (this.ideaCarouselSwipePointerId !== event.pointerId) {
       return;
     }
@@ -415,10 +474,50 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
   }
 
   protected cancelIdeaCarouselSwipe(event: PointerEvent): void {
+    if (this.isIdeaCarouselNativeSnap()) {
+      return;
+    }
+
     if (this.ideaCarouselSwipePointerId !== event.pointerId) {
       return;
     }
     this.resetIdeaCarouselSwipe();
+  }
+
+  protected onIdeaCarouselScroll(): void {
+    if (!this.isIdeaCarouselNativeSnap()) {
+      return;
+    }
+    const viewport = this.ideaCarouselViewportRef?.nativeElement;
+    if (!viewport) {
+      return;
+    }
+    if (this.ideaCarouselScrollLockTargetIndex !== null) {
+      this.scheduleIdeaCarouselScrollLockRelease();
+      return;
+    }
+    const nextPageIndex = this.currentCarouselPageIndex(
+      viewport,
+      '.entry-ideas-carousel-page',
+      this.ideaCarouselPageCount() - 1
+    );
+    if (nextPageIndex === this.activeIdeaCarouselPage) {
+      return;
+    }
+    this.activeIdeaCarouselPage = nextPageIndex;
+    this.cdr.markForCheck();
+  }
+
+  protected howCarouselTrackTransform(): string | null {
+    return this.isHowCarouselNativeSnap()
+      ? null
+      : `translateX(-${this.activeHowSlideIndex * 100}%)`;
+  }
+
+  protected ideaCarouselTrackTransform(): string | null {
+    return this.isIdeaCarouselNativeSnap()
+      ? null
+      : `translateX(-${this.activeIdeaCarouselPage * 100}%)`;
   }
 
   protected entryIdeaInfoCard(post: AppTypes.IdeaPost): InfoCardData {
@@ -496,6 +595,7 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
   private setHowSlideIndex(index: number, restartAutoplay: boolean): void {
     this.activeHowSlideIndex = this.clampHowSlideIndex(index);
     this.cdr.markForCheck();
+    this.scheduleHowCarouselViewportSync('smooth');
     if (restartAutoplay) {
       this.restartHowCarouselAutoplay();
     }
@@ -532,10 +632,12 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
     const nextPageSize = width <= 720 ? 1 : width < 1080 ? 3 : 4;
     if (nextPageSize === this.ideaCarouselCardsPerPage) {
       this.activeIdeaCarouselPage = this.clampIdeaCarouselPage(this.activeIdeaCarouselPage);
+      this.scheduleIdeaCarouselViewportSync('auto');
       return;
     }
     this.ideaCarouselCardsPerPage = nextPageSize;
     this.activeIdeaCarouselPage = this.clampIdeaCarouselPage(this.activeIdeaCarouselPage);
+    this.scheduleIdeaCarouselViewportSync('auto');
   }
 
   private startHowCarouselAutoplay(): void {
@@ -572,6 +674,196 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
     this.ideaCarouselSwipeStartX = null;
     this.ideaCarouselSwipePointerId = null;
     this.ideaCarouselSwipeStartTarget = null;
+  }
+
+  private isHowCarouselNativeSnap(): boolean {
+    return this.readViewportWidth() <= 900;
+  }
+
+  private isIdeaCarouselNativeSnap(): boolean {
+    return this.readViewportWidth() <= 720;
+  }
+
+  private readViewportWidth(): number {
+    return typeof window === 'undefined' ? 1180 : window.innerWidth;
+  }
+
+  private scheduleHowCarouselViewportSync(behavior: ScrollBehavior): void {
+    if (!this.isHowCarouselNativeSnap()) {
+      this.clearHowCarouselScrollLock();
+      this.resetCarouselViewportScroll(this.howCarouselViewportRef?.nativeElement);
+      return;
+    }
+    const targetIndex = this.activeHowSlideIndex;
+    this.queueCarouselViewportSync(
+      () => this.howCarouselViewportRef?.nativeElement,
+      '.entry-step-card',
+      targetIndex,
+      behavior,
+      () => {
+        if (behavior === 'smooth') {
+          this.howCarouselScrollLockTargetIndex = targetIndex;
+          this.scheduleHowCarouselScrollLockRelease();
+        } else {
+          this.clearHowCarouselScrollLock();
+        }
+      }
+    );
+  }
+
+  private scheduleIdeaCarouselViewportSync(behavior: ScrollBehavior): void {
+    if (!this.isIdeaCarouselNativeSnap()) {
+      this.clearIdeaCarouselScrollLock();
+      this.resetCarouselViewportScroll(this.ideaCarouselViewportRef?.nativeElement);
+      return;
+    }
+    const targetIndex = this.activeIdeaCarouselPage;
+    this.queueCarouselViewportSync(
+      () => this.ideaCarouselViewportRef?.nativeElement,
+      '.entry-ideas-carousel-page',
+      targetIndex,
+      behavior,
+      () => {
+        if (behavior === 'smooth') {
+          this.ideaCarouselScrollLockTargetIndex = targetIndex;
+          this.scheduleIdeaCarouselScrollLockRelease();
+        } else {
+          this.clearIdeaCarouselScrollLock();
+        }
+      }
+    );
+  }
+
+  private queueCarouselViewportSync(
+    resolveViewport: () => HTMLDivElement | undefined,
+    itemSelector: string,
+    targetIndex: number,
+    behavior: ScrollBehavior,
+    prepare: () => void
+  ): void {
+    prepare();
+    const sync = () => {
+      const viewport = resolveViewport();
+      if (!viewport) {
+        return;
+      }
+      const targetLeft = this.carouselPageOffsetLeft(viewport, itemSelector, targetIndex);
+      if (targetLeft < 0) {
+        return;
+      }
+      const previousScrollBehavior = viewport.style.scrollBehavior;
+      viewport.style.scrollBehavior = behavior;
+      viewport.scrollLeft = targetLeft;
+      const restore = () => {
+        viewport.style.scrollBehavior = previousScrollBehavior;
+      };
+      if (typeof globalThis.requestAnimationFrame === 'function') {
+        globalThis.requestAnimationFrame(() => restore());
+      } else {
+        setTimeout(restore, 0);
+      }
+    };
+
+    if (typeof globalThis.requestAnimationFrame === 'function') {
+      globalThis.requestAnimationFrame(() => globalThis.requestAnimationFrame(sync));
+      return;
+    }
+    setTimeout(sync, 0);
+  }
+
+  private scheduleHowCarouselScrollLockRelease(): void {
+    if (this.howCarouselScrollLockTimer) {
+      clearTimeout(this.howCarouselScrollLockTimer);
+    }
+    this.howCarouselScrollLockTimer = setTimeout(() => {
+      this.howCarouselScrollLockTimer = null;
+      const viewport = this.howCarouselViewportRef?.nativeElement;
+      const finalIndex = viewport
+        ? this.currentCarouselPageIndex(viewport, '.entry-step-card', this.howSlides.length - 1)
+        : this.howCarouselScrollLockTargetIndex;
+      this.howCarouselScrollLockTargetIndex = null;
+      if (finalIndex === null || finalIndex === this.activeHowSlideIndex) {
+        return;
+      }
+      this.activeHowSlideIndex = finalIndex;
+      this.cdr.markForCheck();
+    }, 96);
+  }
+
+  private clearHowCarouselScrollLock(): void {
+    if (this.howCarouselScrollLockTimer) {
+      clearTimeout(this.howCarouselScrollLockTimer);
+      this.howCarouselScrollLockTimer = null;
+    }
+    this.howCarouselScrollLockTargetIndex = null;
+  }
+
+  private scheduleIdeaCarouselScrollLockRelease(): void {
+    if (this.ideaCarouselScrollLockTimer) {
+      clearTimeout(this.ideaCarouselScrollLockTimer);
+    }
+    this.ideaCarouselScrollLockTimer = setTimeout(() => {
+      this.ideaCarouselScrollLockTimer = null;
+      const viewport = this.ideaCarouselViewportRef?.nativeElement;
+      const finalIndex = viewport
+        ? this.currentCarouselPageIndex(viewport, '.entry-ideas-carousel-page', this.ideaCarouselPageCount() - 1)
+        : this.ideaCarouselScrollLockTargetIndex;
+      this.ideaCarouselScrollLockTargetIndex = null;
+      if (finalIndex === null || finalIndex === this.activeIdeaCarouselPage) {
+        return;
+      }
+      this.activeIdeaCarouselPage = finalIndex;
+      this.cdr.markForCheck();
+    }, 96);
+  }
+
+  private clearIdeaCarouselScrollLock(): void {
+    if (this.ideaCarouselScrollLockTimer) {
+      clearTimeout(this.ideaCarouselScrollLockTimer);
+      this.ideaCarouselScrollLockTimer = null;
+    }
+    this.ideaCarouselScrollLockTargetIndex = null;
+  }
+
+  private currentCarouselPageIndex(
+    viewport: HTMLDivElement,
+    itemSelector: string,
+    maxIndex: number
+  ): number {
+    const items = Array.from(viewport.querySelectorAll<HTMLElement>(itemSelector));
+    if (items.length === 0) {
+      return 0;
+    }
+    const currentLeft = viewport.scrollLeft;
+    let closestIndex = 0;
+    let closestDistance = Number.POSITIVE_INFINITY;
+    items.forEach((item, index) => {
+      const distance = Math.abs(item.offsetLeft - currentLeft);
+      if (distance < closestDistance) {
+        closestDistance = distance;
+        closestIndex = index;
+      }
+    });
+    return Math.max(0, Math.min(Math.max(0, maxIndex), closestIndex));
+  }
+
+  private carouselPageOffsetLeft(
+    viewport: HTMLDivElement,
+    itemSelector: string,
+    targetIndex: number
+  ): number {
+    const items = Array.from(viewport.querySelectorAll<HTMLElement>(itemSelector));
+    if (items.length === 0) {
+      return -1;
+    }
+    const boundedIndex = Math.max(0, Math.min(items.length - 1, targetIndex));
+    return Math.max(0, items[boundedIndex]?.offsetLeft ?? 0);
+  }
+
+  private resetCarouselViewportScroll(viewport: HTMLDivElement | undefined): void {
+    if (viewport && viewport.scrollLeft !== 0) {
+      viewport.scrollLeft = 0;
+    }
   }
 
   private openIdeaCardFromCarouselTarget(target: EventTarget | null): void {

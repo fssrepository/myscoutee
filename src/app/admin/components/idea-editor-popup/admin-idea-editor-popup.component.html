@@ -208,7 +208,11 @@
                   <mat-icon>chevron_left</mat-icon>
                 </button>
               }
-              <div class="idea-editor-image-carousel-window">
+              <div
+                #imageSlotCarouselViewport
+                class="idea-editor-image-carousel-window"
+                (scroll)="onImageSlotCarouselScroll()"
+                >
                 <div class="idea-editor-image-slot-strip" [style.transform]="imageSlotCarouselTransform()">
                   @for (page of imagePages; track $index) {
                     <div class="idea-editor-image-carousel-page">

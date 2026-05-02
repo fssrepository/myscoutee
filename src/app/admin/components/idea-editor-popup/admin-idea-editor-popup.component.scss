@@ -1219,8 +1219,20 @@
     min-height: 208px;
     padding: 0;
     margin: 0;
-    overflow: hidden;
+    overflow-x: auto;
+    overflow-y: hidden;
+    touch-action: pan-x;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
     clip-path: inset(0 round 12px);
+  }
+
+  .idea-editor-image-carousel-window::-webkit-scrollbar {
+    display: none;
   }
 
   .idea-editor-image-slot-strip,
@@ -1228,9 +1240,21 @@
     height: 100%;
   }
 
+  .idea-editor-image-slot-strip {
+    transition: none;
+    transform: none;
+  }
+
   .idea-editor-image-carousel-page {
     align-items: center;
     padding: 0 1px;
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+    contain: layout paint style;
+  }
+
+  .idea-editor-image-slot-hit {
+    touch-action: pan-x pan-y;
   }
 
   .idea-editor-image-carousel-arrow {

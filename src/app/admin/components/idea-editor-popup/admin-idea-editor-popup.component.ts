@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectorRef, Component, HostListener, ViewChild, effect, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, ElementRef, HostListener, OnDestroy, ViewChild, effect, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { Observable, from } from 'rxjs';
@@ -50,9 +50,12 @@ interface IdeaSmartListFilters {
   templateUrl: './admin-idea-editor-popup.component.html',
   styleUrl: './admin-idea-editor-popup.component.scss'
 })
-export class AdminIdeaEditorPopupComponent {
+export class AdminIdeaEditorPopupComponent implements OnDestroy {
   @ViewChild('ideaSmartList')
   private ideaSmartList?: SmartListComponent<IdeaPost, IdeaSmartListFilters>;
+
+  @ViewChild('imageSlotCarouselViewport')
+  private imageSlotCarouselViewportRef?: ElementRef<HTMLDivElement>;
 
   protected readonly admin = inject(AdminService);
   private readonly ideaPosts = inject(IdeaPostsService);
@@ -81,6 +84,8 @@ export class AdminIdeaEditorPopupComponent {
   private adminPostsLoadGeneration = 0;
   private listRevision = 0;
   private readonly featuredPendingIds = new Set<string>();
+  private imageSlotCarouselScrollLockTargetIndex: number | null = null;
+  private imageSlotCarouselScrollLockTimer: ReturnType<typeof setTimeout> | null = null;
 
   protected readonly filterOptions: Array<{ id: IdeaPostFilter; label: string; icon: string }> = [
     { id: 'all', label: 'All', icon: 'view_day' },
@@ -187,9 +192,14 @@ export class AdminIdeaEditorPopupComponent {
         this.copiedImageUrl = '';
         this.imageSlotCarouselIndex = 0;
         this.uploadingImageSlotIndex = null;
+        this.clearImageSlotCarouselScrollLock();
         return;
       }
     });
+  }
+
+  ngOnDestroy(): void {
+    this.clearImageSlotCarouselScrollLock();
   }
 
   @HostListener('window:keydown.escape', ['$event'])
@@ -216,6 +226,7 @@ export class AdminIdeaEditorPopupComponent {
   @HostListener('window:resize')
   protected onResize(): void {
     this.imageSlotCarouselIndex = this.clampImageSlotPageIndex(this.imageSlotCarouselIndex);
+    this.scheduleImageSlotCarouselViewportSync('auto');
   }
 
   protected posts(): IdeaPost[] {
@@ -725,6 +736,7 @@ export class AdminIdeaEditorPopupComponent {
     this.uploading = true;
     this.uploadingImageSlotIndex = normalizedSlotIndex;
     this.imageSlotCarouselIndex = this.imageSlotPageForSlot(normalizedSlotIndex);
+    this.scheduleImageSlotCarouselViewportSync('auto');
     this.error = '';
     this.refreshView();
     try {
@@ -788,8 +800,10 @@ export class AdminIdeaEditorPopupComponent {
     this.draft.imageUrls = this.uniqueImageUrls([this.draft.imageUrl, ...this.draft.imageUrls]);
   }
 
-  protected imageSlotCarouselTransform(): string {
-    return `translateX(-${this.imageSlotCarouselIndex * 100}%)`;
+  protected imageSlotCarouselTransform(): string | null {
+    return this.isImageSlotCarouselNativeSnap()
+      ? null
+      : `translateX(-${this.imageSlotCarouselIndex * 100}%)`;
   }
 
   protected showPreviousImageSlotPage(event?: Event): void {
@@ -805,6 +819,27 @@ export class AdminIdeaEditorPopupComponent {
   protected showImageSlotPage(index: number, event?: Event): void {
     event?.stopPropagation();
     this.imageSlotCarouselIndex = this.clampImageSlotPageIndex(index);
+    this.scheduleImageSlotCarouselViewportSync('smooth');
+  }
+
+  protected onImageSlotCarouselScroll(): void {
+    if (!this.isImageSlotCarouselNativeSnap()) {
+      return;
+    }
+    const viewport = this.imageSlotCarouselViewportRef?.nativeElement;
+    if (!viewport) {
+      return;
+    }
+    if (this.imageSlotCarouselScrollLockTargetIndex !== null) {
+      this.scheduleImageSlotCarouselScrollLockRelease();
+      return;
+    }
+    const nextPageIndex = this.currentImageSlotCarouselPageIndex(viewport);
+    if (nextPageIndex === this.imageSlotCarouselIndex) {
+      return;
+    }
+    this.imageSlotCarouselIndex = nextPageIndex;
+    this.refreshView();
   }
 
   protected isImageSlotUploading(slotIndex: number): boolean {
@@ -923,6 +958,7 @@ export class AdminIdeaEditorPopupComponent {
     this.copiedImageUrl = '';
     this.imageSlotCarouselIndex = 0;
     this.uploadingImageSlotIndex = null;
+    this.scheduleImageSlotCarouselViewportSync('auto');
   }
 
   private applyDraftImageSlots(slots: readonly (string | null)[]): void {
@@ -943,13 +979,11 @@ export class AdminIdeaEditorPopupComponent {
   }
 
   private imageSlotsPerCarouselPage(): number {
-    if (typeof window === 'undefined') {
-      return 4;
-    }
-    if (window.innerWidth <= 720) {
+    const viewportWidth = this.readViewportWidth();
+    if (viewportWidth <= 720) {
       return 1;
     }
-    if (window.innerWidth <= 980) {
+    if (viewportWidth <= 980) {
       return 3;
     }
     return 4;
@@ -966,6 +1000,118 @@ export class AdminIdeaEditorPopupComponent {
       return 0;
     }
     return Math.max(0, Math.min(maxPageIndex, parsed));
+  }
+
+  private isImageSlotCarouselNativeSnap(): boolean {
+    return this.readViewportWidth() <= 720;
+  }
+
+  private readViewportWidth(): number {
+    return typeof window === 'undefined' ? 1180 : window.innerWidth;
+  }
+
+  private scheduleImageSlotCarouselViewportSync(behavior: ScrollBehavior): void {
+    if (!this.isImageSlotCarouselNativeSnap()) {
+      this.clearImageSlotCarouselScrollLock();
+      this.resetImageSlotCarouselViewportScroll();
+      return;
+    }
+    const targetPageIndex = this.imageSlotCarouselIndex;
+    if (behavior === 'smooth') {
+      this.imageSlotCarouselScrollLockTargetIndex = targetPageIndex;
+      this.scheduleImageSlotCarouselScrollLockRelease();
+    } else {
+      this.clearImageSlotCarouselScrollLock();
+    }
+
+    const sync = () => {
+      const viewport = this.imageSlotCarouselViewportRef?.nativeElement;
+      if (!viewport) {
+        return;
+      }
+      const targetLeft = this.imageSlotCarouselPageOffsetLeft(viewport, targetPageIndex);
+      if (targetLeft < 0) {
+        return;
+      }
+      const previousScrollBehavior = viewport.style.scrollBehavior;
+      viewport.style.scrollBehavior = behavior;
+      viewport.scrollLeft = targetLeft;
+      const restore = () => {
+        viewport.style.scrollBehavior = previousScrollBehavior;
+      };
+      if (typeof globalThis.requestAnimationFrame === 'function') {
+        globalThis.requestAnimationFrame(() => restore());
+      } else {
+        setTimeout(restore, 0);
+      }
+    };
+
+    if (typeof globalThis.requestAnimationFrame === 'function') {
+      globalThis.requestAnimationFrame(() => globalThis.requestAnimationFrame(sync));
+      return;
+    }
+    setTimeout(sync, 0);
+  }
+
+  private scheduleImageSlotCarouselScrollLockRelease(): void {
+    if (this.imageSlotCarouselScrollLockTimer) {
+      clearTimeout(this.imageSlotCarouselScrollLockTimer);
+    }
+    this.imageSlotCarouselScrollLockTimer = setTimeout(() => {
+      this.imageSlotCarouselScrollLockTimer = null;
+      const viewport = this.imageSlotCarouselViewportRef?.nativeElement;
+      const finalPageIndex = viewport
+        ? this.currentImageSlotCarouselPageIndex(viewport)
+        : this.imageSlotCarouselScrollLockTargetIndex;
+      this.imageSlotCarouselScrollLockTargetIndex = null;
+      if (finalPageIndex === null || finalPageIndex === this.imageSlotCarouselIndex) {
+        return;
+      }
+      this.imageSlotCarouselIndex = finalPageIndex;
+      this.refreshView();
+    }, 96);
+  }
+
+  private clearImageSlotCarouselScrollLock(): void {
+    if (this.imageSlotCarouselScrollLockTimer) {
+      clearTimeout(this.imageSlotCarouselScrollLockTimer);
+      this.imageSlotCarouselScrollLockTimer = null;
+    }
+    this.imageSlotCarouselScrollLockTargetIndex = null;
+  }
+
+  private currentImageSlotCarouselPageIndex(viewport: HTMLDivElement): number {
+    const pages = Array.from(viewport.querySelectorAll<HTMLElement>('.idea-editor-image-carousel-page'));
+    if (pages.length === 0) {
+      return 0;
+    }
+    const currentLeft = viewport.scrollLeft;
+    let closestIndex = 0;
+    let closestDistance = Number.POSITIVE_INFINITY;
+    pages.forEach((page, index) => {
+      const distance = Math.abs(page.offsetLeft - currentLeft);
+      if (distance < closestDistance) {
+        closestDistance = distance;
+        closestIndex = index;
+      }
+    });
+    return Math.max(0, Math.min(Math.max(0, pages.length - 1), closestIndex));
+  }
+
+  private imageSlotCarouselPageOffsetLeft(viewport: HTMLDivElement, pageIndex: number): number {
+    const pages = Array.from(viewport.querySelectorAll<HTMLElement>('.idea-editor-image-carousel-page'));
+    if (pages.length === 0) {
+      return -1;
+    }
+    const targetIndex = Math.max(0, Math.min(pages.length - 1, pageIndex));
+    return Math.max(0, pages[targetIndex]?.offsetLeft ?? 0);
+  }
+
+  private resetImageSlotCarouselViewportScroll(): void {
+    const viewport = this.imageSlotCarouselViewportRef?.nativeElement;
+    if (viewport && viewport.scrollLeft !== 0) {
+      viewport.scrollLeft = 0;
+    }
   }
 
   private requestFromDraft(draft: IdeaPostDraft): IdeaPostSaveRequest {
