@@ -1,0 +1,325 @@
+@if (admin.activePopup() === 'idea-editor') {
+  <section class="app-popup">
+    <div class="app-popup-backdrop" (click)="close()"></div>
+    <div class="app-popup-panel popup-panel-admin popup-panel-idea-editor">
+      <div class="popup-header">
+        <div class="popup-title">
+          <h2>Article editor</h2>
+        </div>
+        <div class="idea-editor-header-actions">
+          <div class="idea-editor-filter-wrap">
+            <button
+              type="button"
+              class="idea-editor-filter-btn"
+              [class.is-open]="filterMenuOpen"
+              (click)="toggleFilterMenu($event)"
+              [attr.aria-expanded]="filterMenuOpen"
+              aria-label="Filter articles"
+              >
+              <mat-icon>{{ filterIcon() }}</mat-icon>
+              <span>{{ filterLabel() }}</span>
+              <strong>{{ filterCount() }}</strong>
+              <mat-icon class="idea-editor-filter-caret">expand_more</mat-icon>
+            </button>
+            @if (filterMenuOpen) {
+              <div class="idea-editor-filter-menu" role="menu" (click)="$event.stopPropagation()">
+                @for (option of filterOptions; track option.id) {
+                  <button
+                    type="button"
+                    class="idea-editor-filter-option"
+                    [class.is-active]="ideaFilter === option.id"
+                    (click)="setIdeaFilter(option.id, $event)"
+                    role="menuitemradio"
+                    [attr.aria-checked]="ideaFilter === option.id"
+                    >
+                    <mat-icon>{{ option.icon }}</mat-icon>
+                    <span>{{ option.label }}</span>
+                    <strong>{{ filterCount(option.id) }}</strong>
+                  </button>
+                }
+              </div>
+            }
+          </div>
+
+          <button
+            type="button"
+            class="idea-editor-icon-btn idea-editor-add-btn"
+            [disabled]="saving"
+            (click)="startNew($event)"
+            aria-label="New article"
+            title="New article"
+            >
+            <mat-icon>add</mat-icon>
+          </button>
+          <button type="button" class="popup-close" (click)="close()" aria-label="Close">
+            <mat-icon>close</mat-icon>
+          </button>
+        </div>
+      </div>
+
+      <div class="popup-body idea-editor-body">
+        @if (error) {
+          <div class="idea-editor-error">
+            <mat-icon>warning</mat-icon>
+            <span>{{ error }}</span>
+          </div>
+        }
+
+        <app-smart-list
+          #ideaSmartList
+          class="idea-editor-smart-list"
+          [config]="ideaSmartListConfig"
+          [loadPage]="ideaSmartListLoadPage"
+          [filters]="ideaListFilters"
+          [itemTemplate]="ideaCardTemplate"
+        ></app-smart-list>
+
+        <ng-template #ideaCardTemplate let-post let-groupLabel="groupLabel" let-renderState="renderState">
+          <app-info-card
+            class="idea-info-card"
+            [class.is-feature-toggle-pending]="isFeatureTogglePending(post.id)"
+            [card]="ideaInfoCard(post, { groupLabel: groupLabel, renderState: renderState })"
+            (menuAction)="onIdeaCardMenuAction(post, $event)"
+          ></app-info-card>
+        </ng-template>
+      </div>
+    </div>
+  </section>
+
+  @if (selectedViewerPost(); as post) {
+    <section class="idea-editor-nested-popup idea-editor-article-popup" role="dialog" aria-modal="true" aria-label="Article">
+      <div class="idea-editor-nested-backdrop" (click)="closeViewer($event)"></div>
+      <article class="idea-editor-nested-panel idea-editor-viewer-panel">
+        <header class="idea-editor-viewer-head">
+          <div class="idea-editor-viewer-title">
+            <span class="idea-editor-viewer-date">
+              <mat-icon>calendar_today</mat-icon>
+              <span>{{ postDateLabel(post) }}</span>
+            </span>
+            <h2>{{ post.title }}</h2>
+            @if (post.excerpt) {
+              <p>{{ post.excerpt }}</p>
+            }
+          </div>
+          <button type="button" class="idea-editor-icon-btn idea-editor-viewer-close" (click)="closeViewer($event)" aria-label="Close article" title="Close">
+            <mat-icon>close</mat-icon>
+          </button>
+        </header>
+
+        <div class="idea-editor-viewer-body">
+          <div class="idea-editor-html-preview idea-editor-viewer-html">
+            <div class="idea-editor-html-preview-body" [innerHTML]="articlePreviewHtml(post)"></div>
+          </div>
+        </div>
+      </article>
+    </section>
+  }
+
+  @if (editing && draft; as editDraft) {
+    <section class="idea-editor-nested-popup" role="dialog" aria-modal="true" aria-label="Edit article">
+      <div class="idea-editor-nested-backdrop" (click)="closeEditor($event)"></div>
+      <form class="idea-editor-nested-panel idea-editor-form-panel" (ngSubmit)="saveDraft($event)">
+        <header class="idea-editor-form-head">
+          <div class="idea-editor-form-title">
+            <span>{{ editDraft.published ? 'Published' : 'Draft' }}</span>
+            <h3>{{ editDraft.id ? 'Edit article' : 'New article' }}</h3>
+          </div>
+          <div class="idea-editor-form-actions">
+            <button
+              type="button"
+              class="idea-editor-icon-btn idea-editor-preview-btn"
+              [disabled]="saving || uploading"
+              (click)="openDraftPreview($event)"
+              aria-label="Preview article"
+              title="Preview"
+              >
+              <mat-icon>visibility</mat-icon>
+            </button>
+            <span class="idea-editor-action-ring-shell idea-editor-circle-ring-shell" [class.is-loading]="saving">
+              <span class="idea-editor-circle-ring" aria-hidden="true">
+                <svg viewBox="0 0 34 34" preserveAspectRatio="none" class="idea-editor-circle-ring-svg">
+                  <defs>
+                    <linearGradient id="idea-editor-save-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stop-color="rgb(235, 147, 33)"></stop>
+                      <stop offset="100%" stop-color="rgb(247, 190, 52)"></stop>
+                    </linearGradient>
+                  </defs>
+                  <circle class="idea-editor-circle-ring-track" cx="17" cy="17" r="15"></circle>
+                  <circle
+                    class="idea-editor-circle-ring-progress"
+                    [class.is-loading]="saving"
+                    cx="17"
+                    cy="17"
+                    r="15"
+                    pathLength="100"
+                    [attr.stroke-dasharray]="actionRingPerimeter"
+                    [style.stroke-dashoffset]="saving ? 0 : actionRingPerimeter"
+                  ></circle>
+                </svg>
+              </span>
+              <button
+                type="submit"
+                class="idea-editor-icon-btn idea-editor-confirm-btn"
+                [disabled]="saving || uploading"
+                aria-label="Save article"
+                title="Save"
+                >
+                <mat-icon>check</mat-icon>
+              </button>
+            </span>
+            <button
+              type="button"
+              class="idea-editor-icon-btn"
+              [disabled]="saving || uploading"
+              (click)="closeEditor($event)"
+              aria-label="Close editor"
+              title="Close"
+              >
+              <mat-icon>close</mat-icon>
+            </button>
+          </div>
+        </header>
+
+        <div class="idea-editor-form-content">
+          <div class="idea-editor-fields">
+            <label class="idea-editor-field idea-editor-field-title">
+              <span>Title</span>
+              <input type="text" name="ideaTitle" [(ngModel)]="editDraft.title" required />
+            </label>
+            <label class="idea-editor-field idea-editor-field-wide">
+              <span>Description</span>
+              <textarea name="ideaExcerpt" [(ngModel)]="editDraft.excerpt" rows="3" placeholder="Short card description"></textarea>
+            </label>
+          </div>
+
+          <section class="idea-editor-image-panel">
+            @let imageSlots = draftImageSlots();
+            @let imagePages = imageSlotPages();
+            <div class="idea-editor-image-carousel" role="region" aria-label="Article image slots" aria-roledescription="carousel">
+              @if (imagePages.length > 1 && imageSlotCarouselIndex > 0) {
+                <button
+                  type="button"
+                  class="idea-editor-image-carousel-arrow idea-editor-image-carousel-arrow-prev"
+                  [disabled]="saving || uploading"
+                  (click)="showPreviousImageSlotPage($event)"
+                  aria-label="Previous image slot"
+                  title="Previous"
+                  >
+                  <mat-icon>chevron_left</mat-icon>
+                </button>
+              }
+              <div
+                #imageSlotCarouselViewport
+                class="idea-editor-image-carousel-window"
+                (scroll)="onImageSlotCarouselScroll()"
+                >
+                <div class="idea-editor-image-slot-strip" [style.transform]="imageSlotCarouselTransform()">
+                  @for (page of imagePages; track $index) {
+                    <div class="idea-editor-image-carousel-page">
+                      @for (slotIndex of page; track slotIndex) {
+                        @let imageUrl = imageSlots[slotIndex];
+                        <article
+                          class="idea-editor-image-slot"
+                          [class.is-primary]="slotIndex === 0"
+                          [class.is-filled]="imageUrl"
+                          [class.is-uploading]="isImageSlotUploading(slotIndex)"
+                          [style.backgroundImage]="imageUrl ? 'url(' + imageUrl + ')' : 'none'"
+                          >
+                          <span class="idea-editor-image-slot-index">{{ slotIndex + 1 }}</span>
+                          @if (isImageSlotUploading(slotIndex)) {
+                            <span class="idea-editor-image-slot-upload-ring" aria-label="Uploading image">
+                              <svg viewBox="0 0 44 44" class="idea-editor-image-slot-upload-ring-svg" aria-hidden="true">
+                                <circle class="idea-editor-image-slot-upload-ring-track" cx="22" cy="22" r="17"></circle>
+                                <circle class="idea-editor-image-slot-upload-ring-progress" cx="22" cy="22" r="17"></circle>
+                              </svg>
+                            </span>
+                          } @else if (imageUrl) {
+                            <button
+                              type="button"
+                              class="idea-editor-image-slot-action idea-editor-image-slot-copy"
+                              (click)="copyImageLink(imageUrl, $event)"
+                              aria-label="Copy image link"
+                              title="Copy link"
+                              >
+                              <mat-icon>content_copy</mat-icon>
+                            </button>
+                            <button
+                              type="button"
+                              class="idea-editor-image-slot-action idea-editor-image-slot-remove"
+                              (click)="removeDraftImageSlot(slotIndex, $event)"
+                              aria-label="Remove image"
+                              title="Remove"
+                              >
+                              <mat-icon>close</mat-icon>
+                            </button>
+                          } @else {
+                            <span class="idea-editor-image-slot-add">+</span>
+                          }
+                          <input
+                            #imageSlotInput
+                            class="idea-editor-image-slot-input"
+                            type="file"
+                            accept="image/*"
+                            [disabled]="uploading || saving"
+                            (change)="uploadDraftImage($event, slotIndex)"
+                          />
+                          <button
+                            type="button"
+                            class="idea-editor-image-slot-hit"
+                            [disabled]="uploading || saving || isImageSlotUploading(slotIndex)"
+                            (click)="openDraftImageSlot(imageSlotInput, $event)"
+                            [attr.aria-label]="imageUrl ? 'Replace image slot ' + (slotIndex + 1) : 'Upload image slot ' + (slotIndex + 1)"
+                            [title]="imageUrl ? 'Replace image' : 'Upload image'"
+                          ></button>
+                        </article>
+                      }
+                    </div>
+                  }
+                </div>
+              </div>
+              @if (imagePages.length > 1 && imageSlotCarouselIndex < imagePages.length - 1) {
+                <button
+                  type="button"
+                  class="idea-editor-image-carousel-arrow idea-editor-image-carousel-arrow-next"
+                  [disabled]="saving || uploading"
+                  (click)="showNextImageSlotPage($event)"
+                  aria-label="Next image slot"
+                  title="Next"
+                  >
+                  <mat-icon>chevron_right</mat-icon>
+                </button>
+              }
+              @if (imagePages.length > 1) {
+                <div class="idea-editor-image-carousel-dots" aria-label="Image slot pages">
+                  @for (page of imagePages; track $index; let pageIndex = $index) {
+                    <button
+                      type="button"
+                      class="idea-editor-image-carousel-dot"
+                      [class.is-active]="imageSlotCarouselIndex === pageIndex"
+                      [attr.aria-current]="imageSlotCarouselIndex === pageIndex ? 'true' : null"
+                      [attr.aria-label]="'Show image slot page ' + (pageIndex + 1)"
+                      (click)="showImageSlotPage(pageIndex, $event)"
+                      ></button>
+                  }
+                </div>
+              }
+            </div>
+          </section>
+
+          <section class="idea-editor-html-panel">
+            <div class="idea-editor-html-head">
+              <span>Article HTML</span>
+            </div>
+            <textarea
+              class="idea-editor-html-textarea"
+              name="ideaContentHtml"
+              [(ngModel)]="editDraft.contentHtml"
+              spellcheck="false"
+              (paste)="formatPastedHtml($event)"
+            ></textarea>
+          </section>
+        </div>
+      </form>
+    </section>
+  }
+}

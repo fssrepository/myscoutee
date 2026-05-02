@@ -1,0 +1,295 @@
+@if (admin.activePopup() === 'notifications') {
+  <section class="app-popup">
+    <div class="app-popup-backdrop" (click)="close()"></div>
+    <div class="app-popup-panel popup-panel-admin popup-panel-notifications" (click)="$event.stopPropagation()">
+      <div class="popup-header">
+        <div class="popup-title">
+          <h2>Notifications</h2>
+          <p class="popup-subtitle">
+            @if (state(); as currentState) {
+              {{ currentState.rules.length }} rules · {{ currentState.updatedDate | date: 'MMM d, h:mm a' }}
+            } @else {
+              Delivery rules
+            }
+          </p>
+        </div>
+        <div class="notification-header-actions">
+          <button
+            type="button"
+            class="notification-primary-btn"
+            [disabled]="loading() || saving() || !state()"
+            (click)="save()"
+            aria-label="Save notification rules"
+            title="Save"
+          >
+            <mat-icon>{{ saving() ? 'sync' : 'save' }}</mat-icon>
+            <span>{{ saving() ? 'Saving' : 'Save' }}</span>
+          </button>
+          <button type="button" class="popup-close" (click)="close()" aria-label="Close">
+            <mat-icon>close</mat-icon>
+          </button>
+        </div>
+      </div>
+
+      <div class="popup-body notifications-body">
+        @if (loading()) {
+          <div class="notifications-state">
+            <mat-icon>sync</mat-icon>
+            <span>Loading notification rules</span>
+          </div>
+        } @else {
+          @if (error()) {
+            <div class="notifications-error">
+              <mat-icon>warning</mat-icon>
+              <span>{{ error() }}</span>
+            </div>
+          }
+
+          <div class="notifications-tabs" role="tablist" aria-label="Notification rule groups">
+            @for (tab of triggerTabs; track tab.key) {
+              <button
+                type="button"
+                role="tab"
+                class="notifications-tab"
+                [class.is-active]="activeTriggerTab() === tab.key"
+                [attr.aria-selected]="activeTriggerTab() === tab.key"
+                (click)="selectTriggerTab(tab.key)"
+              >
+                <mat-icon>{{ tab.icon }}</mat-icon>
+                <span>{{ tab.label }}</span>
+              </button>
+            }
+          </div>
+
+          <div class="notifications-layout">
+            <aside class="notifications-list" aria-label="Notification rules">
+              @for (rule of rules(); track trackRule($index, rule)) {
+                <button
+                  type="button"
+                  class="notification-rule-row"
+                  [class.is-selected]="selectedRuleKey() === rule.ruleKey"
+                  [class.is-disabled-rule]="!rule.enabled"
+                  (click)="selectRule(rule)"
+                >
+                  <span class="notification-rule-icon">
+                    <mat-icon>{{ triggerIcon(rule.triggerKind) }}</mat-icon>
+                  </span>
+                  <span class="notification-rule-main">
+                    <span class="notification-rule-title">{{ rule.label }}</span>
+                    <span class="notification-rule-meta">{{ channelSummary(rule) }} · {{ timingLabel(rule) }}</span>
+                  </span>
+                  <span class="notification-rule-side">
+                    <span class="notification-status-pill" [class.is-on]="rule.enabled">{{ ruleStatusLabel(rule) }}</span>
+                    @if (rule.manualRunEnabled) {
+                      <button
+                        type="button"
+                        class="notification-run-mini"
+                        [disabled]="!!runningRuleKey()"
+                        (click)="run(rule, $event)"
+                        aria-label="Run notification rule now"
+                        title="Run now"
+                      >
+                        <mat-icon>{{ runningRuleKey() === rule.ruleKey ? 'sync' : 'play_arrow' }}</mat-icon>
+                      </button>
+                    }
+                  </span>
+                </button>
+              } @empty {
+                <div class="notifications-state notifications-state-small">
+                  <mat-icon>rule</mat-icon>
+                  <span>No rules</span>
+                </div>
+              }
+            </aside>
+
+            @if (selectedRule(); as rule) {
+              <section class="notification-detail" [class.is-disabled-rule]="!rule.enabled">
+                <div class="notification-detail-head">
+                  <div>
+                    <span class="notification-detail-kicker">
+                      <mat-icon>{{ triggerIcon(rule.triggerKind) }}</mat-icon>
+                      <span>{{ triggerLabel(rule.triggerKind) }}</span>
+                    </span>
+                    <input
+                      class="notification-title-input"
+                      type="text"
+                      [(ngModel)]="rule.label"
+                      aria-label="Rule label"
+                    />
+                  </div>
+                  <label class="notification-switch" [class.is-on]="rule.enabled">
+                    <input
+                      type="checkbox"
+                      [ngModel]="rule.enabled"
+                      (ngModelChange)="setRuleEnabled(rule, $event)"
+                      aria-label="Toggle rule"
+                    />
+                    <span></span>
+                  </label>
+                </div>
+
+                <div class="notification-detail-grid">
+                  <label class="notification-field notification-field-wide">
+                    <span>Description</span>
+                    <textarea rows="2" [(ngModel)]="rule.description"></textarea>
+                  </label>
+                  <label class="notification-field">
+                    <span>Action</span>
+                    <input type="text" [(ngModel)]="rule.actionKey" />
+                  </label>
+                  <label class="notification-field">
+                    <span>Priority</span>
+                    <input type="number" min="0" step="1" [(ngModel)]="rule.priority" />
+                  </label>
+                </div>
+
+                <section class="notification-section">
+                  <h3>Channels</h3>
+                  <div class="notification-channel-grid">
+                    <label class="notification-channel" [class.is-on]="rule.channels.pushEnabled">
+                      <input
+                        type="checkbox"
+                        [ngModel]="rule.channels.pushEnabled"
+                        (ngModelChange)="setChannel(rule, 'pushEnabled', $event)"
+                      />
+                      <mat-icon>notifications</mat-icon>
+                      <span>Push</span>
+                    </label>
+                    <label class="notification-channel" [class.is-on]="rule.channels.emailEnabled">
+                      <input
+                        type="checkbox"
+                        [ngModel]="rule.channels.emailEnabled"
+                        (ngModelChange)="setChannel(rule, 'emailEnabled', $event)"
+                      />
+                      <mat-icon>mail</mat-icon>
+                      <span>Email</span>
+                    </label>
+                    <label class="notification-channel" [class.is-on]="rule.channels.inAppEnabled">
+                      <input
+                        type="checkbox"
+                        [ngModel]="rule.channels.inAppEnabled"
+                        (ngModelChange)="setChannel(rule, 'inAppEnabled', $event)"
+                      />
+                      <mat-icon>web_asset</mat-icon>
+                      <span>In-app</span>
+                    </label>
+                    <label class="notification-channel" [class.is-on]="rule.channels.supportChatEnabled">
+                      <input
+                        type="checkbox"
+                        [ngModel]="rule.channels.supportChatEnabled"
+                        (ngModelChange)="setChannel(rule, 'supportChatEnabled', $event)"
+                      />
+                      <mat-icon>support_agent</mat-icon>
+                      <span>Support</span>
+                    </label>
+                  </div>
+                </section>
+
+                <section class="notification-section">
+                  <h3>Timing</h3>
+                  <div class="notification-timing-grid">
+                    <label class="notification-field">
+                      <span>Mode</span>
+                      <select [ngModel]="rule.timing.mode" (ngModelChange)="setTimingMode(rule, $event)">
+                        @for (mode of timingModes(rule); track mode) {
+                          <option [value]="mode">{{ mode }}</option>
+                        }
+                      </select>
+                    </label>
+                    @if (rule.timing.mode === 'delay') {
+                      <label class="notification-field">
+                        <span>Delay minutes</span>
+                        <input type="number" min="0" step="1" [(ngModel)]="rule.timing.delayMinutes" />
+                      </label>
+                    }
+                    @if (rule.timing.mode === 'interval') {
+                      <label class="notification-field">
+                        <span>Interval minutes</span>
+                        <input type="number" min="1" step="1" [(ngModel)]="rule.timing.intervalMinutes" />
+                      </label>
+                    }
+                    @if (rule.timing.mode === 'yearly') {
+                      <label class="notification-field">
+                        <span>Month</span>
+                        <input type="number" min="1" max="12" step="1" [(ngModel)]="rule.timing.month" />
+                      </label>
+                      <label class="notification-field">
+                        <span>Day</span>
+                        <input type="number" min="1" max="31" step="1" [(ngModel)]="rule.timing.dayOfMonth" />
+                      </label>
+                      <label class="notification-field">
+                        <span>Time</span>
+                        <input type="time" [(ngModel)]="rule.timing.time" />
+                      </label>
+                      <label class="notification-field">
+                        <span>Timezone</span>
+                        <input type="text" [(ngModel)]="rule.timing.timezone" />
+                      </label>
+                    }
+                  </div>
+                </section>
+
+                @if (canShowMessageFields(rule)) {
+                  <section class="notification-section">
+                    <h3>Message</h3>
+                    <div class="notification-detail-grid">
+                      <label class="notification-field">
+                        <span>Push title</span>
+                        <input type="text" [(ngModel)]="rule.message.pushTitle" />
+                      </label>
+                      <label class="notification-field">
+                        <span>Email template</span>
+                        <select [(ngModel)]="rule.message.emailTemplateKey">
+                          <option value="">Custom</option>
+                          @for (template of state()?.emailTemplates ?? []; track template.templateKey) {
+                            <option [value]="template.templateKey">{{ template.name || template.templateKey }}</option>
+                          }
+                        </select>
+                      </label>
+                      <label class="notification-field notification-field-wide">
+                        <span>Push body</span>
+                        <textarea rows="2" [(ngModel)]="rule.message.pushBody"></textarea>
+                      </label>
+                      <label class="notification-field">
+                        <span>Email subject</span>
+                        <input type="text" [(ngModel)]="rule.message.emailSubject" />
+                      </label>
+                      <label class="notification-field">
+                        <span>CTA path</span>
+                        <input type="text" [(ngModel)]="rule.message.ctaPath" />
+                      </label>
+                      <label class="notification-field notification-field-wide">
+                        <span>Email body</span>
+                        <textarea rows="3" [(ngModel)]="rule.message.emailBody"></textarea>
+                      </label>
+                    </div>
+                  </section>
+                }
+
+                <section class="notification-section notification-run-section">
+                  <h3>Run</h3>
+                  <div class="notification-run-card">
+                    <div>
+                      <span class="notification-run-main">{{ lastRunLabel(rule) }}</span>
+                      <span class="notification-run-sub">{{ rule.runState.lastRunDetail || rule.runState.lastRunStatus || 'Not run yet' }}</span>
+                    </div>
+                    <span class="notification-run-count">{{ runCountLabel(rule) }}</span>
+                    <button
+                      type="button"
+                      class="notification-primary-btn notification-run-btn"
+                      [disabled]="!rule.manualRunEnabled || !!runningRuleKey()"
+                      (click)="run(rule, $event)"
+                    >
+                      <mat-icon>{{ runningRuleKey() === rule.ruleKey ? 'sync' : 'play_arrow' }}</mat-icon>
+                      <span>{{ runningRuleKey() === rule.ruleKey ? 'Running' : 'Run now' }}</span>
+                    </button>
+                  </div>
+                </section>
+              </section>
+            }
+          </div>
+        }
+      </div>
+    </div>
+  </section>
+}

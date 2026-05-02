@@ -6,6 +6,7 @@ import { NavigationEnd, Router } from '@angular/router';
 import type { Subscription } from 'rxjs';
 import {
   AppContext,
+  HelpCenterService,
   USER_BY_ID_LOAD_CONTEXT_KEY,
   USER_PROFILE_SAVE_CONTEXT_KEY,
   type ActivityCounterKey,
@@ -34,6 +35,7 @@ export class AvatarBtnComponent implements OnDestroy {
 
   private readonly router = inject(Router);
   private readonly appCtx = inject(AppContext);
+  private readonly helpCenterService = inject(HelpCenterService);
   private readonly navigatorService = inject(NavigatorService);
   private readonly currentUrlRef = signal(this.normalizeRouteUrl(this.router.url));
   private readonly userMenuLoadOverdueRef = signal(false);
@@ -161,6 +163,7 @@ export class AvatarBtnComponent implements OnDestroy {
       }
 
       if (!hasBindings || status === 'loading' || status === 'idle') {
+        void this.helpCenterService.preloadAll();
         this.beginUserMenuLoadWindow();
         return;
       }
@@ -279,6 +282,13 @@ export class AvatarBtnComponent implements OnDestroy {
   }
 
   private resolveUserBadgeCount(user: UserDto): number {
+    if (this.isAdminProfile(user)) {
+      return (
+        this.resolveActivityBadge(user, 'game') +
+        this.resolveActivityBadge(user, 'chat') +
+        this.resolveActivityBadge(user, 'feedback')
+      );
+    }
     const impressionFlags = this.appCtx.getUserImpressionChangeFlags(user.id);
     return (
       (impressionFlags.host ? 1 : 0) +
@@ -302,6 +312,13 @@ export class AvatarBtnComponent implements OnDestroy {
       return 0;
     }
     return user.activities?.[key] ?? 0;
+  }
+
+  private isAdminProfile(user: UserDto): boolean {
+    return user.hostTier === 'Admin'
+      || user.statusText === 'Admin workspace'
+      || user.id === 'admin'
+      || user.id.startsWith('admin-');
   }
 
   private resolveUserImageUrl(user: UserDto | null): string | null {

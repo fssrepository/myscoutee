@@ -56,8 +56,79 @@ export interface HelpCenterSection {
   icon: string;
   title: string;
   blurb: string;
-  details: string[];
-  points: string[];
+  contentHtml: string;
+  optional?: boolean;
+  details?: string[];
+  points?: string[];
+}
+
+export type HelpCenterDocumentKind = 'help' | 'privacy';
+export type HelpCenterHeaderColor = 'amber' | 'blue' | 'green' | 'rose' | 'violet' | 'slate';
+
+export type HelpCenterAuditAction = 'seed' | 'create' | 'update' | 'activate' | 'delete';
+
+export interface HelpCenterRevision {
+  id: string;
+  documentKind?: HelpCenterDocumentKind;
+  version: number;
+  title: string;
+  summary: string;
+  description: string;
+  headerColor?: HelpCenterHeaderColor;
+  sections: HelpCenterSection[];
+  active: boolean;
+  createdAtIso: string;
+  createdByUserId: string;
+  updatedAtIso: string;
+  updatedByUserId: string;
+}
+
+export interface HelpCenterAuditEntry {
+  id: string;
+  documentKind?: HelpCenterDocumentKind;
+  revisionId: string | null;
+  version: number | null;
+  action: HelpCenterAuditAction;
+  actorUserId: string;
+  createdAtIso: string;
+  message: string;
+}
+
+export interface HelpCenterState {
+  activeRevision: HelpCenterRevision | null;
+  revisions: HelpCenterRevision[];
+  auditTrail: HelpCenterAuditEntry[];
+}
+
+export type PrivacyConsentSource = 'entry' | 'settings';
+
+export interface PrivacyConsentRecord {
+  id: string;
+  userId: string;
+  revisionId: string;
+  revisionVersion: number;
+  approvedOptionalSectionIds: string[];
+  acceptedAtIso: string;
+  updatedAtIso: string;
+  source: PrivacyConsentSource;
+}
+
+export interface PrivacyConsentSaveRequest {
+  userId: string;
+  revisionId: string;
+  revisionVersion: number;
+  approvedOptionalSectionIds: string[];
+  source?: PrivacyConsentSource;
+}
+
+export interface HelpCenterRevisionSaveRequest {
+  actorUserId: string;
+  baseRevisionId?: string | null;
+  title: string;
+  summary: string;
+  description: string;
+  headerColor?: HelpCenterHeaderColor;
+  sections: HelpCenterSection[];
 }
 
 export interface BrowserBarcodeDetectorResult {
@@ -76,4 +147,3 @@ export interface SubEventAssetBadgeContext {
   subEventId: string;
   assetType: AssetType;
 }
-

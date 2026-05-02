@@ -22,6 +22,12 @@ export {
   GameService,
   USER_GAME_CARDS_LOAD_CONTEXT_KEY
 } from './base/services/game.service';
+export {
+  HelpCenterService,
+  HELP_CENTER_LOAD_CONTEXT_KEY
+} from './base/services/help-center.service';
+export { IdeaPostsService } from './base/services/idea-posts.service';
+export { LandingContentService } from './base/services/landing-content.service';
 export { EventsService } from './base/services/events.service';
 export { RouteDelayService } from './base/services/route-delay.service';
 export { EventEditorDataService } from './base/services/event-editor-data.service';

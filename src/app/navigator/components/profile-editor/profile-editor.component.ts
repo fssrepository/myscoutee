@@ -110,6 +110,7 @@ export class ProfileEditorComponent {
   protected imageSlots: Array<string | null> = this.createEmptyImageSlots();
   protected selectedImageIndex = 0;
   protected pendingSlotUploadIndex: number | null = null;
+  protected uploadingImageSlotIndex: number | null = null;
   protected languageInput = '';
   protected mobileProfileSelectorSheet: AppTypes.MobileProfileSelectorSheet | null = null;
   protected openPrivacyFab: { groupIndex: number; rowIndex: number } | null = null;
@@ -378,8 +379,13 @@ export class ProfileEditorComponent {
   }
 
   protected selectImageSlot(index: number): void {
+    if (this.uploadingImageSlotIndex !== null) {
+      return;
+    }
+    const isSelectedSlot = this.selectedImageIndex === index;
+    const hasImage = Boolean(this.imageSlots[index]);
     this.selectedImageIndex = index;
-    if (this.imageSlots[index]) {
+    if (hasImage && !isSelectedSlot) {
       return;
     }
     this.pendingSlotUploadIndex = index;
@@ -394,6 +400,9 @@ export class ProfileEditorComponent {
   }
 
   protected removeImage(index: number): void {
+    if (this.uploadingImageSlotIndex === index) {
+      return;
+    }
     this.revokeObjectUrl(this.imageSlots[index]);
     this.imageSlots[index] = null;
     this.persistActiveUserImageSlots();
@@ -414,6 +423,14 @@ export class ProfileEditorComponent {
     }
     target.value = '';
     void this.uploadAndRefreshProfileImageSlot(file, slotIndex);
+  }
+
+  protected isImageSlotUploading(index: number): boolean {
+    return this.uploadingImageSlotIndex === index;
+  }
+
+  protected isSelectedImageUploading(): boolean {
+    return this.uploadingImageSlotIndex !== null && this.uploadingImageSlotIndex === this.selectedImageIndex;
   }
 
   protected toggleExperienceQuickActionsMenu(event?: Event): void {
@@ -2097,34 +2114,40 @@ export class ProfileEditorComponent {
     }
     const userId = this.profileUser.id;
     const previousImage = this.imageSlots[slotIndex] ?? null;
-    this.syncActiveUserImageSlotsState(true);
-    if (this.usersService.demoModeEnabled && this.profileUser) {
-      await this.usersService.saveUserProfile(this.cloneUser(this.profileUser));
-    }
-    const uploadResult = await this.usersService.uploadUserProfileImage(userId, file, slotIndex);
-    if (!uploadResult.uploaded) {
-      this.confirmationDialogService.openInfo('Unable to upload image', {
-        title: 'Upload failed',
-        confirmTone: 'neutral'
-      });
-      return;
-    }
-    const verifiedImageUrl = await this.reloadUploadedImageUrl(userId, slotIndex, uploadResult.imageUrl);
-    if (!verifiedImageUrl) {
-      this.confirmationDialogService.openInfo('Image uploaded but profile refresh failed', {
-        title: 'Upload incomplete',
-        confirmTone: 'neutral'
-      });
-      return;
-    }
-    this.revokeObjectUrl(previousImage);
-    this.imageSlots[slotIndex] = verifiedImageUrl;
-    this.selectedImageIndex = this.resolveSelectedImageIndexAfterUpload(slotIndex);
-    this.syncActiveUserImageSlotsState(true);
-    if (this.usersService.demoModeEnabled && this.profileUser) {
-      await this.usersService.saveUserProfile(this.cloneUser(this.profileUser));
-    }
+    this.uploadingImageSlotIndex = slotIndex;
     this.cdr.markForCheck();
+    try {
+      this.syncActiveUserImageSlotsState(true);
+      if (this.usersService.demoModeEnabled && this.profileUser) {
+        await this.usersService.saveUserProfile(this.cloneUser(this.profileUser));
+      }
+      const uploadResult = await this.usersService.uploadUserProfileImage(userId, file, slotIndex);
+      if (!uploadResult.uploaded) {
+        this.confirmationDialogService.openInfo('Unable to upload image', {
+          title: 'Upload failed',
+          confirmTone: 'neutral'
+        });
+        return;
+      }
+      const verifiedImageUrl = await this.reloadUploadedImageUrl(userId, slotIndex, uploadResult.imageUrl);
+      if (!verifiedImageUrl) {
+        this.confirmationDialogService.openInfo('Image uploaded but profile refresh failed', {
+          title: 'Upload incomplete',
+          confirmTone: 'neutral'
+        });
+        return;
+      }
+      this.revokeObjectUrl(previousImage);
+      this.imageSlots[slotIndex] = verifiedImageUrl;
+      this.selectedImageIndex = this.resolveSelectedImageIndexAfterUpload(slotIndex);
+      this.syncActiveUserImageSlotsState(true);
+      if (this.usersService.demoModeEnabled && this.profileUser) {
+        await this.usersService.saveUserProfile(this.cloneUser(this.profileUser));
+      }
+    } finally {
+      this.uploadingImageSlotIndex = null;
+      this.cdr.markForCheck();
+    }
   }
 
   private async reloadUploadedImageUrl(

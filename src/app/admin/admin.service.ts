@@ -1,21 +1,31 @@
 import { HttpClient } from '@angular/common/http';
+import { Location } from '@angular/common';
 import { Injectable, computed, inject, signal } from '@angular/core';
 
 import { environment } from '../../environments/environment';
 import {
   AppContext,
   AppPopupContext,
+  HelpCenterService,
   SessionService,
   USER_BY_ID_LOAD_CONTEXT_KEY,
   type ShareTokenRecord,
   type DemoUserListItemDto,
+  type AdminNotificationCenterState,
+  type AdminNotificationRule,
+  type AdminNotificationRunResult,
+  type AdminNotificationTemplateOption,
+  type AdminNotificationTimingMode,
+  type AdminNotificationTriggerKind,
   type UserDto
 } from '../shared/core';
 import { AppMemoryDb } from '../shared/core/base/db';
 import type { ChatMenuItem } from '../shared/core/base/interfaces/activity-feed.interface';
 import type { ChatPopupMessage } from '../shared/core/base/models/chat.model';
 import { DemoChatsRepository, DemoUsersRepository } from '../shared/core/demo';
+import { CHATS_TABLE_NAME, type DemoChatRecord } from '../shared/core/demo/models/chats.model';
 import { SHARE_TOKENS_TABLE_NAME } from '../shared/core/demo/models/share-tokens.model';
+import { ActivitiesPopupStateService } from '../activity/services/activities-popup-state.service';
 
 export type AdminPopupKind =
   | 'reports'
@@ -24,6 +34,9 @@ export type AdminPopupKind =
   | 'chat-review'
   | 'warn-chat'
   | 'profile'
+  | 'help-editor'
+  | 'idea-editor'
+  | 'notifications'
   | 'item-preview';
 
 export interface AdminUserDto {
@@ -51,12 +64,15 @@ export interface AdminReportDto {
   id: string;
   reporterUserId: string;
   reporterName: string;
+  reporterImageUrl?: string | null;
   targetUserId: string;
+  handle?: string | null;
   reason: string;
   details: string;
   eventId?: string | null;
   eventTitle?: string | null;
   eventStartAtIso?: string | null;
+  memberEntryId?: string | null;
   sourceType?: string | null;
   sourceId?: string | null;
   sourceText?: string | null;
@@ -75,9 +91,13 @@ export interface AdminReportedUserDto {
   initials: string;
   gender: 'woman' | 'man' | string;
   city: string;
+  imageUrl?: string | null;
   profileStatus: UserDto['profileStatus'] | string;
   reportCount: number;
   lastReportedAtIso?: string | null;
+  blockedAtIso?: string | null;
+  hasSupportChat?: boolean | null;
+  supportChatUnread?: number | null;
   reports: AdminReportDto[];
 }
 
@@ -95,6 +115,7 @@ export interface AdminFeedbackDto {
 export interface AdminDashboardDto {
   activeAdmin: AdminUserDto;
   reportedUsers: AdminReportedUserDto[];
+  blockedUsers: AdminReportedUserDto[];
   feedback: AdminFeedbackDto[];
 }
 
@@ -129,6 +150,9 @@ export interface AdminBootstrapProgressState {
 
 const ADMIN_SESSION_STORAGE_KEY = 'myscoutee-admin-session';
 const ADMIN_MODERATION_STORE_KEY = 'adminModeration';
+const ADMIN_NOTIFICATION_STORE_KEY = 'adminNotificationRules';
+const ADMIN_NOTIFICATION_STORAGE_TIMEOUT_MS = 2500;
+const ADMIN_NOTIFICATION_HTTP_TIMEOUT_MS = 12000;
 
 @Injectable({
   providedIn: 'root'
@@ -137,10 +161,13 @@ export class AdminService {
   private readonly http = inject(HttpClient);
   private readonly appCtx = inject(AppContext);
   private readonly popupCtx = inject(AppPopupContext);
+  private readonly helpCenter = inject(HelpCenterService);
+  private readonly location = inject(Location);
   private readonly sessionService = inject(SessionService);
   private readonly memoryDb = inject(AppMemoryDb);
   private readonly demoUsersRepository = inject(DemoUsersRepository);
   private readonly demoChatsRepository = inject(DemoChatsRepository);
+  private readonly activitiesContext = inject(ActivitiesPopupStateService);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
   private readonly dashboardRef = signal<AdminDashboardDto | null>(null);
   private readonly busyRef = signal(false);
@@ -148,6 +175,7 @@ export class AdminService {
   private readonly activePopupRef = signal<AdminPopupKind | null>(null);
   private readonly selectedReportedUserRef = signal<AdminReportedUserDto | null>(null);
   private readonly selectedReportRef = signal<AdminReportDto | null>(null);
+  private readonly warnedUserIdsRef = signal<Set<string>>(new Set());
 
   readonly dashboard = this.dashboardRef.asReadonly();
   readonly busy = this.busyRef.asReadonly();
@@ -159,7 +187,7 @@ export class AdminService {
   readonly adminUsers = signal<DemoUserListItemDto[]>([
     {
       id: 'admin-demo-ava',
-      name: 'Ava Moderation',
+      name: 'Ava',
       city: 'Safety desk',
       initials: 'AM',
       gender: 'woman',
@@ -200,6 +228,14 @@ export class AdminService {
     }
   }
 
+  restoreAdminPreview(): DemoUserListItemDto | null {
+    const adminId = this.readStoredAdminId();
+    if (!adminId) {
+      return null;
+    }
+    return this.adminUsers().find(user => user.id === adminId) ?? null;
+  }
+
   async bootstrapAdmin(
     adminUserId?: string,
     onProgress?: (state: AdminBootstrapProgressState) => void
@@ -215,6 +251,7 @@ export class AdminService {
         : await this.loadDemoDashboard(adminUserId, onProgress);
       this.dashboardRef.set(dashboard);
       this.activateAdminProfile(dashboard);
+      void this.helpCenter.preloadAll();
       this.persistAdminSession(dashboard.activeAdmin.id);
       return dashboard;
     } catch (error) {
@@ -244,6 +281,18 @@ export class AdminService {
     this.activePopupRef.set('profile');
   }
 
+  openHelpEditor(): void {
+    this.activePopupRef.set('help-editor');
+  }
+
+  openIdeaEditor(): void {
+    this.activePopupRef.set('idea-editor');
+  }
+
+  openNotifications(): void {
+    this.activePopupRef.set('notifications');
+  }
+
   openReportDetail(user: AdminReportedUserDto, report: AdminReportDto): void {
     this.selectedReportedUserRef.set(user);
     this.selectedReportRef.set(report);
@@ -259,6 +308,48 @@ export class AdminService {
     this.activePopupRef.set('warn-chat');
   }
 
+  openBlockedUserChat(user: AdminReportedUserDto): void {
+    this.selectedReportedUserRef.set(user);
+    this.activePopupRef.set(null);
+    const chat = this.buildAdminSupportChat(user);
+    this.activitiesContext.openEventChat(chat, {
+      channelType: 'serviceEvent',
+      hasSubEventMenu: false,
+      actionIcon: 'shield',
+      actionLabel: 'Support',
+      actionToneClass: 'popup-chat-context-btn-tone-main-event',
+      actionBadgeCount: this.supportChatUnread(user),
+      menuTitle: chat.title,
+      eventRow: null,
+      subEventRow: null,
+      subEvent: null,
+      group: null,
+      assetAssignmentIds: { Car: [], Accommodation: [], Supplies: [] },
+      assetCardsByType: { Car: [], Accommodation: [], Supplies: [] },
+      resources: []
+    });
+  }
+
+  hasSupportChat(user: AdminReportedUserDto): boolean {
+    const userId = `${user.userId ?? ''}`.trim();
+    const resolved = this.resolveDashboardReportedUser(userId) ?? user;
+    return Boolean(resolved.hasSupportChat)
+      || this.demoSupportChatExists(userId)
+      || this.warnedUserIdsRef().has(userId);
+  }
+
+  supportChatUnread(user: AdminReportedUserDto): number {
+    const userId = `${user.userId ?? ''}`.trim();
+    const resolved = this.resolveDashboardReportedUser(userId) ?? user;
+    const explicit = Math.max(0, Math.trunc(Number(resolved.supportChatUnread) || 0));
+    return this.usesHttpAdminApi ? explicit : explicit || this.demoSupportChatUnread(userId);
+  }
+
+  isUserBlocked(user: AdminReportedUserDto | null | undefined): boolean {
+    const resolved = user?.userId ? this.resolveDashboardReportedUser(user.userId) : null;
+    return `${resolved?.profileStatus ?? user?.profileStatus ?? ''}`.trim() === 'blocked';
+  }
+
   openItemPreview(report: AdminReportDto): void {
     this.selectedReportRef.set(report);
     this.activePopupRef.set('item-preview');
@@ -266,6 +357,114 @@ export class AdminService {
 
   closePopup(): void {
     this.activePopupRef.set(null);
+  }
+
+  async loadNotificationCenter(): Promise<AdminNotificationCenterState> {
+    if (this.usesHttpAdminApi) {
+      const state = await this.withNotificationHttpTimeout(this.http
+        .get<AdminNotificationCenterState>(`${this.apiBaseUrl}/admin/notifications`, {
+          params: { adminUserId: this.activeAdmin()?.id ?? '' }
+        })
+        .toPromise());
+      return this.normalizeNotificationCenter(state ?? this.buildDefaultNotificationCenter());
+    }
+    await this.withNotificationStorageFallback(this.memoryDb.whenReady(), undefined);
+    const existing = await this.withNotificationStorageFallback(
+      this.memoryDb.readIndexedDbTableEntry<AdminNotificationCenterState>(ADMIN_NOTIFICATION_STORE_KEY),
+      null
+    );
+    if (existing?.rules?.length) {
+      return this.normalizeNotificationCenter(existing);
+    }
+    const seeded = this.buildDefaultNotificationCenter();
+    void this.withNotificationStorageFallback(
+      this.memoryDb.writeIndexedDbTableEntry(ADMIN_NOTIFICATION_STORE_KEY, seeded),
+      undefined
+    );
+    return seeded;
+  }
+
+  async saveNotificationCenter(rules: readonly AdminNotificationRule[]): Promise<AdminNotificationCenterState> {
+    const normalizedRules = rules.map(rule => this.normalizeNotificationRule(rule));
+    if (this.usesHttpAdminApi) {
+      const state = await this.withNotificationHttpTimeout(this.http
+        .post<AdminNotificationCenterState>(`${this.apiBaseUrl}/admin/notifications`, {
+          adminUserId: this.activeAdmin()?.id ?? '',
+          rules: normalizedRules
+        })
+        .toPromise());
+      return this.normalizeNotificationCenter(state ?? {
+        rules: normalizedRules,
+        emailTemplates: [],
+        updatedDate: new Date().toISOString()
+      });
+    }
+    const existing = await this.loadNotificationCenter();
+    const next = this.normalizeNotificationCenter({
+      rules: normalizedRules,
+      emailTemplates: existing.emailTemplates,
+      updatedDate: new Date().toISOString()
+    });
+    await this.withNotificationStorageFallback(
+      this.memoryDb.writeIndexedDbTableEntry(ADMIN_NOTIFICATION_STORE_KEY, next),
+      undefined
+    );
+    return next;
+  }
+
+  async runNotificationRule(ruleKey: string): Promise<AdminNotificationRunResult> {
+    const normalizedRuleKey = `${ruleKey ?? ''}`.trim();
+    if (!normalizedRuleKey) {
+      return {
+        ruleKey: '',
+        label: '',
+        affectedCount: 0,
+        status: 'skipped',
+        detail: 'Missing rule key.',
+        ranAtIso: new Date().toISOString()
+      };
+    }
+    if (this.usesHttpAdminApi) {
+      const result = await this.withNotificationHttpTimeout(this.http
+        .post<AdminNotificationRunResult>(
+          `${this.apiBaseUrl}/admin/notifications/${encodeURIComponent(normalizedRuleKey)}/run`,
+          { adminUserId: this.activeAdmin()?.id ?? '' }
+        )
+        .toPromise());
+      return this.normalizeNotificationRunResult(result, normalizedRuleKey);
+    }
+    const state = await this.loadNotificationCenter();
+    const nowIso = new Date().toISOString();
+    const nextRules = state.rules.map(rule => {
+      if (rule.ruleKey !== normalizedRuleKey) {
+        return rule;
+      }
+      const count = rule.triggerKind === 'scheduled_process'
+        ? this.demoScheduledRunCount(rule.ruleKey)
+        : 0;
+      return {
+        ...rule,
+        runState: {
+          lastRunAtIso: nowIso,
+          lastRunStatus: rule.manualRunEnabled ? 'completed' : 'skipped',
+          lastRunDetail: rule.manualRunEnabled ? 'Demo run recorded.' : 'This rule is action driven.',
+          lastRunCount: count,
+          lastRunUser: this.activeAdmin()?.id ?? 'demo-admin'
+        },
+        updatedDate: nowIso,
+        updatedUser: this.activeAdmin()?.id ?? 'demo-admin'
+      };
+    });
+    const saved = await this.saveNotificationCenter(nextRules);
+    const updated = saved.rules.find(rule => rule.ruleKey === normalizedRuleKey);
+    return {
+      ruleKey: normalizedRuleKey,
+      label: updated?.label ?? normalizedRuleKey,
+      affectedCount: updated?.runState.lastRunCount ?? 0,
+      status: updated?.runState.lastRunStatus ?? 'skipped',
+      detail: updated?.runState.lastRunDetail ?? 'Rule was not found.',
+      ranAtIso: updated?.runState.lastRunAtIso ?? nowIso
+    };
   }
 
   async warnUser(userId: string, message: string): Promise<void> {
@@ -283,11 +482,13 @@ export class AdminService {
       ).toPromise();
       if (dashboard) {
         this.dashboardRef.set(this.normalizeDashboard(dashboard));
+        this.markUserWarned(normalizedUserId);
         this.activateAdminProfile(this.dashboardRef() as AdminDashboardDto);
       }
       return;
     }
     await this.appendDemoSupportMessage(normalizedUserId, message);
+    this.markUserWarned(normalizedUserId);
     this.dashboardRef.set(await this.loadDemoDashboard(this.activeAdmin()?.id));
     this.activateAdminProfile(this.dashboardRef() as AdminDashboardDto);
   }
@@ -307,6 +508,8 @@ export class AdminService {
       ).toPromise();
       if (dashboard) {
         this.dashboardRef.set(this.normalizeDashboard(dashboard));
+        this.markUserWarned(normalizedUserId);
+        this.refreshSelectedReportedUser(normalizedUserId);
         this.activateAdminProfile(this.dashboardRef() as AdminDashboardDto);
       }
       return;
@@ -320,8 +523,46 @@ export class AdminService {
       });
     }
     await this.appendDemoSupportMessage(normalizedUserId, message);
+    this.markUserWarned(normalizedUserId);
     await this.memoryDb.flushToIndexedDb();
     this.dashboardRef.set(await this.loadDemoDashboard(this.activeAdmin()?.id));
+    this.refreshSelectedReportedUser(normalizedUserId);
+    this.activateAdminProfile(this.dashboardRef() as AdminDashboardDto);
+  }
+
+  async unblockUser(userId: string): Promise<void> {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return;
+    }
+    if (this.usesHttpAdminApi) {
+      const dashboard = await this.http.post<AdminDashboardDto>(
+        `${this.apiBaseUrl}/admin/users/${encodeURIComponent(normalizedUserId)}/unblock`,
+        {
+          adminUserId: this.activeAdmin()?.id ?? '',
+          message: ''
+        }
+      ).toPromise();
+      if (dashboard) {
+        this.dashboardRef.set(this.normalizeDashboard(dashboard));
+        this.refreshSelectedReportedUser(normalizedUserId);
+        this.activateAdminProfile(this.dashboardRef() as AdminDashboardDto);
+      }
+      return;
+    }
+    const user = this.demoUsersRepository.queryUserById(normalizedUserId);
+    if (user) {
+      this.demoUsersRepository.upsertUser({
+        ...user,
+        previousProfileStatus: undefined,
+        profileStatus: user.previousProfileStatus && user.previousProfileStatus !== 'blocked'
+          ? user.previousProfileStatus
+          : 'public'
+      });
+      await this.memoryDb.flushToIndexedDb();
+    }
+    this.dashboardRef.set(await this.loadDemoDashboard(this.activeAdmin()?.id));
+    this.refreshSelectedReportedUser(normalizedUserId);
     this.activateAdminProfile(this.dashboardRef() as AdminDashboardDto);
   }
 
@@ -420,7 +661,9 @@ export class AdminService {
           id: 'admin-demo-report-chat-kai-001',
           reporterUserId: 'u1',
           reporterName: 'Farkas Anna',
+          reporterImageUrl: this.firstUserImage(this.demoUsersRepository.queryUserById('u1')),
           targetUserId: 'u5',
+          handle: 'Lina Park',
           reason: 'Harassment',
           details: 'The reported chat message made another event member feel unsafe and should be reviewed by moderation.',
           eventId: 'a11a802ee0714a21db94ed4e',
@@ -439,7 +682,9 @@ export class AdminService {
           id: 'admin-demo-report-event-kai-002',
           reporterUserId: 'u1',
           reporterName: 'Farkas Anna',
+          reporterImageUrl: this.firstUserImage(this.demoUsersRepository.queryUserById('u1')),
           targetUserId: 'u5',
+          handle: 'Lina Park',
           reason: 'No-show / unsafe event behavior',
           details: 'The user repeatedly joined event plans and disrupted logistics without updating the host.',
           eventId: 'a11a802ee0714a21db94ed4e',
@@ -454,7 +699,9 @@ export class AdminService {
           id: 'admin-demo-report-asset-kai-003',
           reporterUserId: 'u4',
           reporterName: 'Maya Stone',
+          reporterImageUrl: this.firstUserImage(this.demoUsersRepository.queryUserById('u4')),
           targetUserId: 'u5',
+          handle: 'Lina Park',
           reason: 'Asset misuse',
           details: 'Asset owner asked moderation to review a supplies request before approving future resource sharing.',
           eventId: 'indoor-strategy-social-event',
@@ -512,9 +759,13 @@ export class AdminService {
         initials: user?.initials ?? '??',
         gender: user?.gender ?? 'woman',
         city: user?.city ?? '',
+        imageUrl: this.firstUserImage(user),
         profileStatus: user?.profileStatus ?? 'public',
         reportCount: sortedReports.length,
         lastReportedAtIso: sortedReports[0]?.createdDate ?? null,
+        blockedAtIso: user?.profileStatus === 'blocked' ? sortedReports[0]?.createdDate ?? store.seededAtIso : null,
+        hasSupportChat: this.demoSupportChatExists(userId),
+        supportChatUnread: this.demoSupportChatUnread(userId),
         reports: sortedReports
       };
     }).sort((first, second) =>
@@ -523,10 +774,42 @@ export class AdminService {
     return {
       activeAdmin,
       reportedUsers,
+      blockedUsers: this.demoBlockedUsers(store, reportsByUser),
       feedback: [...store.feedback].sort((first, second) =>
         Date.parse(second.createdDate) - Date.parse(first.createdDate)
       ).map(item => this.enrichDemoFeedback(item))
     };
+  }
+
+  private demoBlockedUsers(
+    store: AdminModerationStore,
+    reportsByUser: Map<string, AdminReportDto[]>
+  ): AdminReportedUserDto[] {
+    const reportedBlocked = [...reportsByUser.keys()]
+      .map(userId => this.demoUsersRepository.queryUserById(userId))
+      .filter((user): user is UserDto => user?.profileStatus === 'blocked');
+    return reportedBlocked.map(user => {
+      const reports = [...(reportsByUser.get(user.id) ?? [])].sort((first, second) =>
+        Date.parse(second.createdDate) - Date.parse(first.createdDate)
+      );
+      return {
+        userId: user.id,
+        name: user.name,
+        initials: user.initials,
+        gender: user.gender,
+        city: user.city,
+        imageUrl: this.firstUserImage(user),
+        profileStatus: user.profileStatus,
+        reportCount: reports.length,
+        lastReportedAtIso: reports[0]?.createdDate ?? store.seededAtIso,
+        blockedAtIso: reports[0]?.createdDate ?? store.seededAtIso,
+        hasSupportChat: this.demoSupportChatExists(user.id),
+        supportChatUnread: this.demoSupportChatUnread(user.id),
+        reports
+      };
+    }).sort((first, second) =>
+      Date.parse(`${second.lastReportedAtIso ?? ''}`) - Date.parse(`${first.lastReportedAtIso ?? ''}`)
+    );
   }
 
   private async ensureDemoAdminProfiles(): Promise<void> {
@@ -536,7 +819,20 @@ export class AdminService {
     ];
     let changed = false;
     for (const admin of admins) {
-      if (this.demoUsersRepository.queryUserById(admin.id)) {
+      const existing = this.demoUsersRepository.queryUserById(admin.id);
+      if (existing) {
+        const seededImages = this.demoAdminImages(admin.id);
+        const existingImages = existing.images ?? [];
+        if (
+          seededImages.length > 0
+          && (existingImages.length === 0 || existingImages.some(image => this.isLegacyDemoAdminImage(image)))
+        ) {
+          this.demoUsersRepository.upsertUser({
+            ...existing,
+            images: seededImages
+          });
+          changed = true;
+        }
         continue;
       }
       this.demoUsersRepository.upsertUser(this.buildDemoAdminUser(admin));
@@ -566,7 +862,7 @@ export class AdminService {
       completion: 100,
       headline: `${admin.headline ?? ''}`.trim() || 'Moderation workspace',
       about: `${admin.about ?? ''}`.trim() || 'Reviews reports, feedback, and support chats.',
-      images: [...(admin.images ?? [])],
+      images: [...(admin.images?.length ? admin.images : this.demoAdminImages(admin.id))],
       profileStatus: 'public',
       activities: {
         game: 0,
@@ -594,14 +890,17 @@ export class AdminService {
   }
 
   private enrichDemoReport(report: AdminReportDto): AdminReportDto {
+    const reporter = this.demoUsersRepository.queryUserById(report.reporterUserId);
     if (report.chatId && (!report.chatMessages || report.chatMessages.length === 0)) {
       return {
         ...report,
+        reporterImageUrl: this.firstUserImage(reporter) ?? report.reporterImageUrl ?? null,
         chatMessages: this.demoChatMessages(report.reporterUserId, report.chatId)
       };
     }
     return {
       ...report,
+      reporterImageUrl: this.firstUserImage(reporter) ?? report.reporterImageUrl ?? null,
       chatMessages: [...(report.chatMessages ?? [])]
     };
   }
@@ -633,7 +932,7 @@ export class AdminService {
     let changed = false;
     this.demoAdminHelpTargets().forEach((target, index) => {
       const token = this.ensureDemoHelpToken(admin, helpUser, target);
-      const helpUrl = `/admin/help/${encodeURIComponent(token)}`;
+      const helpUrl = this.location.prepareExternalUrl(`/admin/help/${encodeURIComponent(token)}`);
       const sentAt = new Date(now.getTime() + index * 1000);
       const sentAtIso = sentAt.toISOString();
       const message: ChatPopupMessage = {
@@ -688,7 +987,7 @@ export class AdminService {
         attachmentEntityId: '',
         title: 'Open shared help view',
         subtitle: 'Limited-time support token',
-        description: 'Open the user view in a new tab.',
+        description: '',
         text: 'Please help me, I am sharing my current MyScoutee screen with support.',
         targetUrl: '/game'
       },
@@ -776,10 +1075,18 @@ export class AdminService {
 
   private async appendDemoSupportMessage(userId: string, text: string): Promise<void> {
     const admin = this.activeAdmin() ?? this.resolveDemoAdmin();
+    const reportedUser = this.resolveDashboardReportedUser(userId);
     const now = new Date();
     const nowIso = now.toISOString();
-    const chat: ChatMenuItem & { ownerUserId?: string } = {
-      id: `c-support-admin-${userId}`,
+    const chatId = `c-support-admin-${userId}`;
+    const messageId = `m-admin-${Date.now()}`;
+    const adminAvatar = {
+      id: admin.id,
+      initials: admin.initials,
+      gender: 'woman' as const
+    };
+    const userChat: DemoChatRecord = {
+      id: chatId,
       avatar: admin.initials,
       title: 'MyScoutee Support',
       lastMessage: text,
@@ -789,24 +1096,152 @@ export class AdminService {
       dateIso: nowIso,
       channelType: 'serviceEvent',
       serviceContext: 'notification',
-      ownerUserId: userId
+      ownerUserId: userId,
+      messages: []
     };
-    const message: ChatPopupMessage = {
-      id: `m-admin-${Date.now()}`,
+    const userMessage: ChatPopupMessage = {
+      id: messageId,
       sender: admin.name,
-      senderAvatar: {
-        id: admin.id,
-        initials: admin.initials,
-        gender: 'woman'
-      },
+      senderAvatar: adminAvatar,
       text,
       time: now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
       sentAtIso: nowIso,
       mine: false,
       readBy: []
     };
-    this.demoChatsRepository.appendChatMessage(chat, message);
+    const adminChat: DemoChatRecord = {
+      id: chatId,
+      avatar: reportedUser?.initials || 'U',
+      title: `MyScoutee Support · ${reportedUser?.name || 'Reported user'}`,
+      lastMessage: text,
+      lastSenderId: admin.id,
+      memberIds: [userId, admin.id],
+      unread: 0,
+      dateIso: nowIso,
+      channelType: 'serviceEvent',
+      serviceContext: 'notification',
+      ownerUserId: admin.id,
+      messages: []
+    };
+    const adminMessage: ChatPopupMessage = {
+      ...userMessage,
+      mine: true,
+      readBy: []
+    };
+    this.upsertDemoSupportChatMessage(userChat, userMessage, true);
+    this.upsertDemoSupportChatMessage(adminChat, adminMessage, false);
     await this.memoryDb.flushToIndexedDb();
+  }
+
+  private upsertDemoSupportChatMessage(chat: DemoChatRecord, message: ChatPopupMessage, unreadForOwner: boolean): void {
+    this.memoryDb.write(currentState => {
+      const currentTable = currentState[CHATS_TABLE_NAME];
+      const recordKey = `${chat.ownerUserId}:${chat.id}`;
+      const existing = currentTable.byId[recordKey];
+      const existingMessages = existing?.messages ?? [];
+      const nextRecord: DemoChatRecord = {
+        ...(existing ?? chat),
+        ...chat,
+        unread: unreadForOwner ? Math.max(1, (existing?.unread ?? 0) + 1) : 0,
+        messages: [
+          ...existingMessages.map(item => ({
+            ...item,
+            senderAvatar: { ...item.senderAvatar },
+            readBy: item.readBy
+              .filter(reader => `${reader.id ?? ''}`.trim() !== `${item.senderAvatar.id ?? ''}`.trim())
+              .map(reader => ({ ...reader })),
+            attachments: item.attachments?.map(attachment => ({ ...attachment })),
+            replyTo: item.replyTo ? { ...item.replyTo } : item.replyTo,
+            reactions: item.reactions?.map(reaction => ({ ...reaction }))
+          })),
+          message
+        ]
+      };
+      return {
+        ...currentState,
+        [CHATS_TABLE_NAME]: {
+          byId: {
+            ...currentTable.byId,
+            [recordKey]: nextRecord
+          },
+          ids: currentTable.ids.includes(recordKey)
+            ? [...currentTable.ids]
+            : [...currentTable.ids, recordKey]
+        }
+      };
+    });
+  }
+
+  private resolveDashboardReportedUser(userId: string): AdminReportedUserDto | null {
+    const dashboard = this.dashboardRef();
+    if (!dashboard) {
+      return null;
+    }
+    const normalizedUserId = userId.trim();
+    return [
+      ...(dashboard.reportedUsers ?? []),
+      ...(dashboard.blockedUsers ?? [])
+    ].find(user => user.userId === normalizedUserId) ?? null;
+  }
+
+  private markUserWarned(userId: string): void {
+    const normalizedUserId = `${userId ?? ''}`.trim();
+    if (!normalizedUserId) {
+      return;
+    }
+    this.warnedUserIdsRef.update(current => {
+      const next = new Set(current);
+      next.add(normalizedUserId);
+      return next;
+    });
+  }
+
+  private demoSupportChatExists(userId: string): boolean {
+    const normalizedUserId = `${userId ?? ''}`.trim();
+    const adminId = this.activeAdmin()?.id ?? this.readStoredAdminId() ?? '';
+    if (!normalizedUserId || !adminId) {
+      return false;
+    }
+    return this.demoChatsRepository.queryChatItemsByUser(adminId)
+      .some(chat => chat.id === `c-support-admin-${normalizedUserId}`);
+  }
+
+  private demoSupportChatUnread(userId: string): number {
+    const normalizedUserId = `${userId ?? ''}`.trim();
+    const adminId = this.activeAdmin()?.id ?? this.readStoredAdminId() ?? '';
+    if (!normalizedUserId || !adminId) {
+      return 0;
+    }
+    const chat = this.demoChatsRepository.queryChatItemsByUser(adminId)
+      .find(item => item.id === `c-support-admin-${normalizedUserId}`);
+    return Math.max(0, Math.trunc(Number(chat?.unread) || 0));
+  }
+
+  private refreshSelectedReportedUser(userId: string): void {
+    const selected = this.selectedReportedUserRef();
+    if (!selected || selected.userId !== userId) {
+      return;
+    }
+    this.selectedReportedUserRef.set(this.resolveDashboardReportedUser(userId) ?? selected);
+  }
+
+  private buildAdminSupportChat(user: AdminReportedUserDto): ChatMenuItem & { ownerUserId?: string } {
+    const admin = this.activeAdmin() ?? this.resolveDemoAdmin();
+    return {
+      id: `c-support-admin-${user.userId}`,
+      avatar: user.initials || 'U',
+      title: `MyScoutee Support · ${user.name}`,
+      lastMessage: user.profileStatus === 'blocked'
+        ? 'Your account has been blocked after moderation review.'
+        : 'MyScoutee support conversation.',
+      lastSenderId: admin.id,
+      memberIds: [user.userId, admin.id],
+      unread: this.supportChatUnread(user),
+      dateIso: user.lastReportedAtIso || new Date().toISOString(),
+      channelType: 'serviceEvent',
+      serviceContext: 'notification',
+      ownerUserId: admin.id
+    };
   }
 
   private normalizeStore(store: AdminModerationStore): AdminModerationStore {
@@ -827,8 +1262,25 @@ export class AdminService {
       },
       reportedUsers: (dashboard.reportedUsers ?? []).map(user => ({
         ...user,
+        imageUrl: `${user.imageUrl ?? ''}`.trim() || null,
+        blockedAtIso: `${user.blockedAtIso ?? ''}`.trim() || null,
+        hasSupportChat: user.hasSupportChat === true,
+        supportChatUnread: Math.max(0, Math.trunc(Number(user.supportChatUnread) || 0)),
         reports: (user.reports ?? []).map(report => ({
           ...report,
+          reporterImageUrl: `${report.reporterImageUrl ?? ''}`.trim() || null,
+          chatMessages: [...(report.chatMessages ?? [])]
+        }))
+      })),
+      blockedUsers: (dashboard.blockedUsers ?? []).map(user => ({
+        ...user,
+        imageUrl: `${user.imageUrl ?? ''}`.trim() || null,
+        blockedAtIso: `${user.blockedAtIso ?? user.lastReportedAtIso ?? ''}`.trim() || null,
+        hasSupportChat: user.hasSupportChat === true,
+        supportChatUnread: Math.max(0, Math.trunc(Number(user.supportChatUnread) || 0)),
+        reports: (user.reports ?? []).map(report => ({
+          ...report,
+          reporterImageUrl: `${report.reporterImageUrl ?? ''}`.trim() || null,
           chatMessages: [...(report.chatMessages ?? [])]
         }))
       })),
@@ -904,15 +1356,29 @@ export class AdminService {
         id: 'admin-demo-noel',
         name: 'Noel Safety',
         initials: 'NS',
-        email: 'noel.admin@myscoutee.local'
+        email: 'noel.admin@myscoutee.local',
+        images: this.demoAdminImages('admin-demo-noel')
       };
     }
     return {
       id: 'admin-demo-ava',
-      name: 'Ava Moderation',
+      name: 'Ava',
       initials: 'AM',
-      email: 'ava.admin@myscoutee.local'
+      email: 'ava.admin@myscoutee.local',
+      images: this.demoAdminImages('admin-demo-ava')
     };
+  }
+
+  private demoAdminImages(adminUserId: string): string[] {
+    return adminUserId.includes('noel')
+      ? ['https://randomuser.me/api/portraits/men/75.jpg']
+      : ['https://randomuser.me/api/portraits/women/65.jpg'];
+  }
+
+  private isLegacyDemoAdminImage(imageUrl: string | null | undefined): boolean {
+    const normalized = `${imageUrl ?? ''}`.trim();
+    return normalized.includes('picsum.photos/seed/admin-ava-moderation')
+      || normalized.includes('picsum.photos/seed/admin-noel-safety');
   }
 
   private mergeStoredAdminProfile(admin: AdminUserDto): AdminUserDto {
@@ -920,7 +1386,7 @@ export class AdminService {
     if (!stored) {
       return admin;
     }
-    const name = `${stored.name ?? ''}`.trim() || admin.name;
+    const name = this.adminDisplayName(`${stored.name ?? ''}`.trim() || admin.name);
     return {
       ...admin,
       name,
@@ -929,6 +1395,368 @@ export class AdminService {
       about: `${stored.about ?? ''}`.trim() || admin.about || null,
       images: [...(stored.images ?? admin.images ?? [])]
     };
+  }
+
+  private adminDisplayName(name: string): string {
+    return `${name ?? ''}`.trim().replace(/\s+Moderation$/i, '') || 'Admin';
+  }
+
+  private buildDefaultNotificationCenter(): AdminNotificationCenterState {
+    return this.normalizeNotificationCenter({
+      rules: [
+        this.defaultNotificationRule({
+          ruleKey: 'chat-message',
+          label: 'Chat message',
+          category: 'Action',
+          description: 'Notify offline recipients when a chat message arrives.',
+          actionKey: 'chat.message.created',
+          triggerKind: 'action',
+          enabled: true,
+          manualRunEnabled: false,
+          priority: 10,
+          pushEnabled: true,
+          emailEnabled: false,
+          timingMode: 'immediate',
+          emailSubject: 'New message from @sender_name',
+          emailBody: '@sender_name sent a message in @chat_title.'
+        }),
+        this.defaultNotificationRule({
+          ruleKey: 'event-invitation',
+          label: 'Event invitation',
+          category: 'Action',
+          description: 'Notify members when an organizer invites them to an event.',
+          actionKey: 'event.invitation.created',
+          triggerKind: 'action',
+          enabled: true,
+          manualRunEnabled: false,
+          priority: 20,
+          pushEnabled: true,
+          emailEnabled: false,
+          timingMode: 'immediate',
+          emailSubject: 'You were invited to @event_title',
+          emailBody: '@event_title starts @event_start_at.'
+        }),
+        this.defaultNotificationRule({
+          ruleKey: 'event-feedback-ready',
+          label: 'Event feedback ready',
+          category: 'Timed',
+          description: 'Yearly or manual feedback reminder rule for post-event feedback windows.',
+          actionKey: 'event.feedback.ready',
+          triggerKind: 'timed',
+          enabled: false,
+          manualRunEnabled: true,
+          priority: 30,
+          pushEnabled: false,
+          emailEnabled: true,
+          timingMode: 'yearly',
+          month: 5,
+          dayOfMonth: 1,
+          emailSubject: 'Feedback is open for @event_title',
+          emailBody: 'Share feedback for @event_title while it is fresh.'
+        }),
+        this.defaultNotificationRule({
+          ruleKey: 'ticket-swap-grace-cancelled',
+          label: 'Ticket swap grace cancellation',
+          category: 'Action',
+          description: 'Fixed grace-window rule for future ticket replacement flows.',
+          actionKey: 'ticket.swap.grace.cancelled',
+          triggerKind: 'action',
+          enabled: false,
+          manualRunEnabled: false,
+          priority: 40,
+          pushEnabled: true,
+          emailEnabled: false,
+          timingMode: 'immediate',
+          emailSubject: 'Ticket spot released',
+          emailBody: 'A ticket was cancelled close to the event start and can be reassigned.'
+        }),
+        this.defaultNotificationRule({
+          ruleKey: 'promotional-email-planner',
+          label: 'Promotional email planner',
+          category: 'Scheduled',
+          description: 'Builds eligible email outbox rows from campaign rules.',
+          actionKey: 'email.promotional.plan',
+          triggerKind: 'scheduled_process',
+          enabled: true,
+          manualRunEnabled: true,
+          priority: 100,
+          pushEnabled: false,
+          emailEnabled: true,
+          timingMode: 'interval',
+          intervalMinutes: 60
+        }),
+        this.defaultNotificationRule({
+          ruleKey: 'email-outbox-delivery',
+          label: 'Email outbox delivery',
+          category: 'Scheduled',
+          description: 'Sends pending email outbox rows that are due.',
+          actionKey: 'email.outbox.deliver',
+          triggerKind: 'scheduled_process',
+          enabled: true,
+          manualRunEnabled: true,
+          priority: 110,
+          pushEnabled: false,
+          emailEnabled: true,
+          timingMode: 'interval',
+          intervalMinutes: 1
+        }),
+        this.defaultNotificationRule({
+          ruleKey: 'event-random-groups',
+          label: 'Random group planner',
+          category: 'Scheduled',
+          description: 'Assigns accepted members into generated event groups.',
+          actionKey: 'event.scheduler.random-groups',
+          triggerKind: 'scheduled_process',
+          enabled: false,
+          manualRunEnabled: true,
+          priority: 200,
+          pushEnabled: false,
+          emailEnabled: false,
+          timingMode: 'interval',
+          intervalMinutes: 15
+        }),
+        this.defaultNotificationRule({
+          ruleKey: 'event-priority-inviter',
+          label: 'Priority inviter',
+          category: 'Scheduled',
+          description: 'Fills open event capacity with priority-based invitation batches.',
+          actionKey: 'event.scheduler.priority-inviter',
+          triggerKind: 'scheduled_process',
+          enabled: false,
+          manualRunEnabled: true,
+          priority: 210,
+          pushEnabled: false,
+          emailEnabled: false,
+          timingMode: 'interval',
+          intervalMinutes: 15
+        }),
+        this.defaultNotificationRule({
+          ruleKey: 'event-score-leaderboard',
+          label: 'Score leaderboard materializer',
+          category: 'Scheduled',
+          description: 'Materializes generated groups for score and tournament stages.',
+          actionKey: 'event.scheduler.score-leaderboard',
+          triggerKind: 'scheduled_process',
+          enabled: false,
+          manualRunEnabled: true,
+          priority: 220,
+          pushEnabled: false,
+          emailEnabled: false,
+          timingMode: 'interval',
+          intervalMinutes: 15
+        })
+      ],
+      emailTemplates: this.defaultNotificationTemplateOptions(),
+      updatedDate: new Date().toISOString()
+    });
+  }
+
+  private defaultNotificationRule(options: {
+    ruleKey: string;
+    label: string;
+    category: string;
+    description: string;
+    actionKey: string;
+    triggerKind: AdminNotificationTriggerKind;
+    enabled: boolean;
+    manualRunEnabled: boolean;
+    priority: number;
+    pushEnabled: boolean;
+    emailEnabled: boolean;
+    timingMode: AdminNotificationTimingMode;
+    intervalMinutes?: number;
+    month?: number;
+    dayOfMonth?: number;
+    emailSubject?: string;
+    emailBody?: string;
+  }): AdminNotificationRule {
+    return {
+      ruleKey: options.ruleKey,
+      label: options.label,
+      category: options.category,
+      description: options.description,
+      actionKey: options.actionKey,
+      triggerKind: options.triggerKind,
+      enabled: options.enabled,
+      manualRunEnabled: options.manualRunEnabled,
+      priority: options.priority,
+      channels: {
+        pushEnabled: options.pushEnabled,
+        emailEnabled: options.emailEnabled,
+        inAppEnabled: false,
+        supportChatEnabled: false
+      },
+      timing: {
+        mode: options.timingMode,
+        delayMinutes: 0,
+        intervalMinutes: options.intervalMinutes ?? 60,
+        month: options.month ?? 1,
+        dayOfMonth: options.dayOfMonth ?? 1,
+        time: '09:00',
+        timezone: 'UTC'
+      },
+      message: {
+        pushTitle: options.emailSubject ?? '',
+        pushBody: options.emailBody ?? '',
+        emailTemplateKey: '',
+        emailSubject: options.emailSubject ?? '',
+        emailBody: options.emailBody ?? '',
+        ctaPath: '/game'
+      },
+      runState: {
+        lastRunAtIso: '',
+        lastRunStatus: '',
+        lastRunDetail: '',
+        lastRunCount: 0,
+        lastRunUser: ''
+      },
+      updatedDate: '',
+      updatedUser: ''
+    };
+  }
+
+  private defaultNotificationTemplateOptions(): AdminNotificationTemplateOption[] {
+    return [
+      {
+        templateKey: 'email-template-promo-profile-completion-v1',
+        name: 'Profile completion reminder',
+        category: 'promotional',
+        description: 'Promotional reminder for incomplete active profiles.'
+      },
+      {
+        templateKey: 'email-template-promo-first-host-event-v1',
+        name: 'First host event prompt',
+        category: 'promotional',
+        description: 'Promotional reminder for members who have not hosted yet.'
+      },
+      {
+        templateKey: 'email-template-promo-country-broadcast-v1',
+        name: 'Country broadcast',
+        category: 'promotional',
+        description: 'Reusable country-level promotional email.'
+      }
+    ];
+  }
+
+  private normalizeNotificationCenter(state: AdminNotificationCenterState): AdminNotificationCenterState {
+    return {
+      rules: (state.rules ?? [])
+        .map(rule => this.normalizeNotificationRule(rule))
+        .sort((left, right) => left.priority - right.priority || left.ruleKey.localeCompare(right.ruleKey)),
+      emailTemplates: (state.emailTemplates ?? []).map(template => ({
+        templateKey: `${template.templateKey ?? ''}`.trim(),
+        name: `${template.name ?? ''}`.trim(),
+        category: `${template.category ?? ''}`.trim(),
+        description: `${template.description ?? ''}`.trim()
+      })).filter(template => template.templateKey.length > 0),
+      updatedDate: `${state.updatedDate ?? ''}`.trim() || new Date().toISOString()
+    };
+  }
+
+  private normalizeNotificationRule(rule: AdminNotificationRule): AdminNotificationRule {
+    const triggerKind = this.normalizeNotificationTriggerKind(rule.triggerKind);
+    const timingMode = this.normalizeNotificationTimingMode(rule.timing?.mode, triggerKind);
+    return {
+      id: `${rule.id ?? ''}`.trim() || null,
+      ruleKey: `${rule.ruleKey ?? ''}`.trim(),
+      label: `${rule.label ?? ''}`.trim() || `${rule.ruleKey ?? ''}`.trim(),
+      category: `${rule.category ?? ''}`.trim() || 'Action',
+      description: `${rule.description ?? ''}`.trim(),
+      actionKey: `${rule.actionKey ?? ''}`.trim(),
+      triggerKind,
+      enabled: rule.enabled === true,
+      manualRunEnabled: rule.manualRunEnabled === true,
+      priority: Math.max(0, Math.trunc(Number(rule.priority) || 1000)),
+      channels: {
+        pushEnabled: rule.channels?.pushEnabled === true,
+        emailEnabled: rule.channels?.emailEnabled === true,
+        inAppEnabled: rule.channels?.inAppEnabled === true,
+        supportChatEnabled: rule.channels?.supportChatEnabled === true
+      },
+      timing: {
+        mode: timingMode,
+        delayMinutes: Math.max(0, Math.trunc(Number(rule.timing?.delayMinutes) || 0)),
+        intervalMinutes: Math.max(1, Math.trunc(Number(rule.timing?.intervalMinutes) || 60)),
+        month: this.clampInteger(rule.timing?.month, 1, 12, 1),
+        dayOfMonth: this.clampInteger(rule.timing?.dayOfMonth, 1, 31, 1),
+        time: this.normalizeNotificationTime(rule.timing?.time),
+        timezone: `${rule.timing?.timezone ?? ''}`.trim() || 'UTC'
+      },
+      message: {
+        pushTitle: `${rule.message?.pushTitle ?? ''}`.trim(),
+        pushBody: `${rule.message?.pushBody ?? ''}`.trim(),
+        emailTemplateKey: `${rule.message?.emailTemplateKey ?? ''}`.trim(),
+        emailSubject: `${rule.message?.emailSubject ?? ''}`.trim(),
+        emailBody: `${rule.message?.emailBody ?? ''}`.trim(),
+        ctaPath: `${rule.message?.ctaPath ?? ''}`.trim() || '/game'
+      },
+      runState: {
+        lastRunAtIso: `${rule.runState?.lastRunAtIso ?? ''}`.trim(),
+        lastRunStatus: `${rule.runState?.lastRunStatus ?? ''}`.trim(),
+        lastRunDetail: `${rule.runState?.lastRunDetail ?? ''}`.trim(),
+        lastRunCount: Math.max(0, Math.trunc(Number(rule.runState?.lastRunCount) || 0)),
+        lastRunUser: `${rule.runState?.lastRunUser ?? ''}`.trim()
+      },
+      updatedDate: `${rule.updatedDate ?? ''}`.trim() || null,
+      updatedUser: `${rule.updatedUser ?? ''}`.trim() || null
+    };
+  }
+
+  private normalizeNotificationRunResult(
+    result: AdminNotificationRunResult | null | undefined,
+    fallbackRuleKey: string
+  ): AdminNotificationRunResult {
+    return {
+      ruleKey: `${result?.ruleKey ?? fallbackRuleKey}`.trim(),
+      label: `${result?.label ?? fallbackRuleKey}`.trim(),
+      affectedCount: Math.max(0, Math.trunc(Number(result?.affectedCount) || 0)),
+      status: `${result?.status ?? 'completed'}`.trim(),
+      detail: `${result?.detail ?? ''}`.trim(),
+      ranAtIso: `${result?.ranAtIso ?? ''}`.trim() || new Date().toISOString()
+    };
+  }
+
+  private normalizeNotificationTriggerKind(value: string | undefined): AdminNotificationTriggerKind {
+    return value === 'timed' || value === 'scheduled_process' ? value : 'action';
+  }
+
+  private normalizeNotificationTimingMode(
+    value: string | undefined,
+    triggerKind: AdminNotificationTriggerKind
+  ): AdminNotificationTimingMode {
+    if (value === 'delay' || value === 'interval' || value === 'yearly' || value === 'manual') {
+      return value;
+    }
+    return triggerKind === 'scheduled_process' ? 'interval' : 'immediate';
+  }
+
+  private normalizeNotificationTime(value: string | undefined): string {
+    const normalized = `${value ?? ''}`.trim();
+    return /^\d{2}:\d{2}$/.test(normalized) ? normalized : '09:00';
+  }
+
+  private demoScheduledRunCount(ruleKey: string): number {
+    switch (ruleKey) {
+      case 'promotional-email-planner':
+        return 3;
+      case 'email-outbox-delivery':
+        return 2;
+      case 'event-priority-inviter':
+        return 4;
+      case 'event-random-groups':
+      case 'event-score-leaderboard':
+        return 1;
+      default:
+        return 0;
+    }
+  }
+
+  private clampInteger(value: number | undefined, min: number, max: number, fallback: number): number {
+    const parsed = Math.trunc(Number(value));
+    if (!Number.isFinite(parsed)) {
+      return fallback;
+    }
+    return Math.max(min, Math.min(max, parsed));
   }
 
   private persistAdminSession(adminUserId: string): void {
@@ -968,6 +1796,49 @@ export class AdminService {
       return error.message;
     }
     return 'Admin workspace is unavailable.';
+  }
+
+  private withNotificationStorageFallback<T>(task: Promise<T>, fallback: T): Promise<T> {
+    return new Promise<T>(resolve => {
+      let finished = false;
+      let timeoutId: ReturnType<typeof setTimeout> | null = null;
+      const finish = (value: T) => {
+        if (finished) {
+          return;
+        }
+        finished = true;
+        if (timeoutId !== null) {
+          clearTimeout(timeoutId);
+          timeoutId = null;
+        }
+        resolve(value);
+      };
+      timeoutId = setTimeout(() => finish(fallback), ADMIN_NOTIFICATION_STORAGE_TIMEOUT_MS);
+      task.then(finish).catch(() => finish(fallback));
+    });
+  }
+
+  private withNotificationHttpTimeout<T>(task: Promise<T>): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+      let finished = false;
+      let timeoutId: ReturnType<typeof setTimeout> | null = null;
+      const finish = (callback: () => void) => {
+        if (finished) {
+          return;
+        }
+        finished = true;
+        if (timeoutId !== null) {
+          clearTimeout(timeoutId);
+          timeoutId = null;
+        }
+        callback();
+      };
+      timeoutId = setTimeout(
+        () => finish(() => reject(new Error('Notification rules request timed out.'))),
+        ADMIN_NOTIFICATION_HTTP_TIMEOUT_MS
+      );
+      task.then(value => finish(() => resolve(value))).catch(error => finish(() => reject(error)));
+    });
   }
 
   private waitForBeat(): Promise<void> {

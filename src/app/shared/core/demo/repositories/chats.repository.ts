@@ -89,7 +89,10 @@ export class DemoChatsRepository {
   queryChatMessages(chat: ChatMenuItem): AppTypes.ChatPopupMessage[] {
     this.init();
     const record = this.resolveChatRecord(chat);
-    return record ? DemoChatsRepositoryBuilder.cloneMessages(record.messages ?? []) : [];
+    return record ? DemoChatsRepositoryBuilder.cloneMessages(record.messages ?? []).map(message => ({
+      ...message,
+      readBy: message.readBy.filter(reader => `${reader.id ?? ''}`.trim() !== `${message.senderAvatar.id ?? ''}`.trim())
+    })) : [];
   }
 
   appendChatMessage(chat: ChatMenuItem, message: AppTypes.ChatPopupMessage): AppTypes.ChatPopupMessage | null {

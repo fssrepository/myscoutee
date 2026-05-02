@@ -139,8 +139,14 @@
             <div class="support-popup event-feedback-popup">
               @if (!feedback.eventFeedbackSubmittedState()) {
                 @if (feedback.hasEventFeedbackCards()) {
-                  <article class="editor-list-card support-card event-feedback-shell">
-                    <span class="event-feedback-mobile-counter">{{ feedback.eventFeedbackSlideCounterLabel() }}</span>
+                  <article
+                    class="editor-list-card support-card event-feedback-shell"
+                    (pointerdown)="beginEventFeedbackSurfaceSwipe($event)"
+                    (pointermove)="moveEventFeedbackSurfaceSwipe($event)"
+                    (pointerup)="endEventFeedbackSurfaceSwipe($event)"
+                    (pointercancel)="cancelEventFeedbackSurfaceSwipe($event)"
+                    >
+                    <span class="event-feedback-mobile-counter">{{ eventFeedbackVisibleSlideCounterLabel() }}</span>
                     <div class="event-feedback-card-wrap">
                       <div
                         #eventFeedbackViewport
@@ -297,7 +303,7 @@
                           <button
                             type="button"
                             class="event-feedback-dot"
-                            [class.is-active]="feedback.eventFeedbackIndex() === index"
+                            [class.is-active]="isEventFeedbackDotActive(index)"
                             (click)="selectEventFeedbackSlide(index, $event)"
                             [attr.aria-label]="'Open feedback card ' + (index + 1)"
                           ></button>

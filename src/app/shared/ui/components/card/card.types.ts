@@ -127,6 +127,7 @@ export interface InfoCardOverlayAction {
   selected?: boolean;
   selectedLabel?: string | null;
   selectedIcon?: string | null;
+  progressRing?: boolean;
 }
 
 export interface InfoCardMenuAction {
@@ -159,6 +160,7 @@ export interface InfoCardData {
   mediaStart?: InfoCardOverlayAction | null;
   mediaEnd?: InfoCardOverlayAction | null;
   menuActions?: readonly InfoCardMenuAction[];
+  menuTitle?: string | null;
   menuBadgeCount?: number | null;
   clickable?: boolean;
   state?: CardRenderState;
