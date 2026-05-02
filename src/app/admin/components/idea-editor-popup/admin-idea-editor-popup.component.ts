@@ -76,14 +76,11 @@ export class AdminIdeaEditorPopupComponent {
   protected readonly actionRingPerimeter = 100;
   protected readonly ideaImageSlotCount = 8;
   protected readonly ideaImageSlotIndexes = Array.from({ length: this.ideaImageSlotCount }, (_value, index) => index);
-  private readonly featuredRingDurationMs = 1500;
-  private readonly featuredUpdateWindowMs = 3000;
   private stateLoadedForPopup = false;
   private adminPostsLoadPromise: Promise<void> | null = null;
   private adminPostsLoadGeneration = 0;
   private listRevision = 0;
   private readonly featuredPendingIds = new Set<string>();
-  private readonly featuredRingIds = new Set<string>();
 
   protected readonly filterOptions: Array<{ id: IdeaPostFilter; label: string; icon: string }> = [
     { id: 'all', label: 'All', icon: 'view_day' },
@@ -486,51 +483,62 @@ export class AdminIdeaEditorPopupComponent {
     }
   }
 
-  protected async toggleFeaturedFromCard(post: IdeaPost, event?: Event): Promise<void> {
+  protected toggleFeaturedFromCard(post: IdeaPost, event?: Event): void {
     event?.stopPropagation();
-    if (post.trashed || this.featuredPendingIds.has(post.id)) {
+    if (post.trashed || !post.published || this.featuredPendingIds.has(post.id)) {
       return;
     }
     const nextFeatured = !post.featured;
+    this.confirmationDialog.open({
+      title: nextFeatured ? 'Feature article?' : 'Remove featured article?',
+      message: post.title,
+      cancelLabel: 'Cancel',
+      confirmLabel: nextFeatured ? 'Feature' : 'Unfeature',
+      busyConfirmLabel: nextFeatured ? 'Featuring...' : 'Unfeaturing...',
+      confirmTone: nextFeatured ? 'accent' : 'danger',
+      failureMessage: nextFeatured ? 'Unable to feature article.' : 'Unable to unfeature article.',
+      onConfirm: () => this.confirmFeaturedToggle(post, nextFeatured)
+    });
+  }
+
+  private async confirmFeaturedToggle(post: IdeaPost, nextFeatured: boolean): Promise<void> {
     const previousPost = { ...post, imageUrls: [...post.imageUrls] };
     const removeFromFeaturedFilter = this.ideaFilter === 'featured' && post.featured && !nextFeatured;
     this.featuredPendingIds.add(post.id);
-    this.featuredRingIds.add(post.id);
+    this.saving = true;
+    this.error = '';
     this.refreshView();
-    const ringTimer = this.delay(this.featuredRingDurationMs).finally(() => {
-      this.featuredRingIds.delete(post.id);
-      this.refreshView();
-    });
     try {
-      const [saved] = await Promise.all([
-        this.withTimeout(
-          this.ideaPosts.savePost({
-            actorUserId: this.actorUserId(),
-            id: post.id,
-            title: post.title,
-            excerpt: post.excerpt,
-            contentHtml: post.contentHtml,
-            imageUrl: post.imageUrl,
-            imageUrls: post.imageUrls,
-            featured: nextFeatured,
-            published: post.published,
-            submittedAtIso: post.submittedAtIso
-          }),
-          this.featuredUpdateWindowMs
-        ),
-        ringTimer
-      ]);
+      const saved = await this.ideaPosts.savePost({
+        actorUserId: this.actorUserId(),
+        id: post.id,
+        title: post.title,
+        excerpt: post.excerpt,
+        contentHtml: post.contentHtml,
+        imageUrl: post.imageUrl,
+        imageUrls: post.imageUrls,
+        featured: nextFeatured,
+        published: post.published,
+        submittedAtIso: post.submittedAtIso
+      });
       if (removeFromFeaturedFilter) {
         this.removeVisibleIdeaPost(saved.id);
       } else {
         this.replaceVisibleIdeaPost(saved);
       }
+      if (this.viewerPostId === post.id) {
+        this.viewerPost = this.clonePost(saved);
+      }
+      if (this.draft?.id === post.id) {
+        this.draft.featured = saved.featured;
+      }
     } catch {
       this.replaceVisibleIdeaPost(previousPost);
-      this.error = 'Unable to update featured state.';
+      this.error = nextFeatured ? 'Unable to feature article.' : 'Unable to unfeature article.';
+      throw new Error(this.error);
     } finally {
       this.featuredPendingIds.delete(post.id);
-      await ringTimer;
+      this.saving = false;
       this.refreshView();
     }
   }
@@ -587,10 +595,6 @@ export class AdminIdeaEditorPopupComponent {
     return this.featuredPendingIds.has(postId);
   }
 
-  protected isFeatureRingActive(postId: string): boolean {
-    return this.featuredRingIds.has(postId);
-  }
-
   protected onIdeaCardMenuAction(post: IdeaPost, event: InfoCardMenuActionEvent): void {
     switch (event.actionId) {
       case 'view':
@@ -602,6 +606,10 @@ export class AdminIdeaEditorPopupComponent {
       case 'publish':
       case 'unpublish':
         this.togglePublishedFromCard(post);
+        break;
+      case 'feature':
+      case 'unfeature':
+        this.toggleFeaturedFromCard(post);
         break;
       case 'restore':
         void this.restorePost(post);
@@ -620,12 +628,16 @@ export class AdminIdeaEditorPopupComponent {
     const publicationAction = post.published
       ? { id: 'unpublish', label: 'Unpublish', icon: 'visibility_off', tone: 'warning' as const }
       : { id: 'publish', label: 'Publish', icon: 'published_with_changes', tone: 'accent' as const };
+    const featuredAction = post.featured
+      ? { id: 'unfeature', label: 'Unfeature', icon: 'star_outline', tone: 'warning' as const }
+      : { id: 'feature', label: 'Feature', icon: 'star', tone: 'accent' as const };
     const menuActions = post.trashed
       ? [{ id: 'restore', label: 'Restore', icon: 'restore_from_trash' }]
       : [
           { id: 'view', label: 'View', icon: 'visibility' },
           { id: 'edit', label: 'Edit', icon: 'edit', tone: 'accent' as const },
           publicationAction,
+          ...(post.published ? [featuredAction] : []),
           { id: 'delete', label: 'Delete', icon: 'delete', tone: 'destructive' as const }
         ];
     return {
@@ -650,18 +662,16 @@ export class AdminIdeaEditorPopupComponent {
         label: statusLabel,
         ariaLabel: statusLabel
       },
-      mediaEnd: post.trashed || !post.published ? null : {
+      mediaEnd: post.trashed || !post.published || !post.featured ? null : {
         variant: 'badge',
-        tone: post.featured ? 'selected' : 'inactive',
-        icon: post.featured ? 'star' : 'star_border',
-        label: post.featured ? 'Featured' : 'Feature',
-        selected: post.featured,
-        selectedLabel: post.featured ? 'Featured' : 'Feature',
+        tone: 'selected',
+        icon: 'star',
+        label: 'Featured',
+        selected: true,
+        selectedLabel: 'Featured',
         selectedIcon: 'star',
-        ariaLabel: post.featured ? 'Remove from featured articles' : 'Feature this article',
-        interactive: true,
-        disabled: this.isFeatureTogglePending(post.id),
-        progressRing: this.isFeatureRingActive(post.id)
+        ariaLabel: 'Featured article',
+        interactive: false
       },
       menuActions,
       menuTitle: null,
@@ -1199,26 +1209,6 @@ export class AdminIdeaEditorPopupComponent {
       } catch {
         // The popup may have been closed before the async demo request completed.
       }
-    });
-  }
-
-  private delay(durationMs: number): Promise<void> {
-    return new Promise(resolve => window.setTimeout(resolve, Math.max(0, durationMs)));
-  }
-
-  private withTimeout<T>(promise: Promise<T>, durationMs: number): Promise<T> {
-    return new Promise((resolve, reject) => {
-      const timer = window.setTimeout(() => reject(new Error('Timed out')), Math.max(0, durationMs));
-      promise.then(
-        value => {
-          window.clearTimeout(timer);
-          resolve(value);
-        },
-        error => {
-          window.clearTimeout(timer);
-          reject(error);
-        }
-      );
     });
   }
 

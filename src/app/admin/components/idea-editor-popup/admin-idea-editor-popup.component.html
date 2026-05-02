@@ -79,7 +79,6 @@
             class="idea-info-card"
             [class.is-feature-toggle-pending]="isFeatureTogglePending(post.id)"
             [card]="ideaInfoCard(post, { groupLabel: groupLabel, renderState: renderState })"
-            (mediaEndClick)="toggleFeaturedFromCard(post)"
             (menuAction)="onIdeaCardMenuAction(post, $event)"
           ></app-info-card>
         </ng-template>

@@ -228,26 +228,24 @@
   height: 100%;
 }
 
-:host ::ng-deep app-info-card.idea-info-card.is-feature-toggle-pending .ui-info-card__overlay-action--end {
-  cursor: wait;
-}
-
 :host ::ng-deep app-info-card.idea-info-card .ui-info-card__overlay-action--start.ui-info-card__overlay-action--badge,
 :host ::ng-deep app-info-card.idea-info-card .ui-info-card__overlay-action--end.ui-info-card__overlay-action--badge {
   height: 28px;
   padding: 0 0.46rem;
   gap: 0.18rem;
   white-space: nowrap;
-}
-
-:host ::ng-deep app-info-card.idea-info-card .ui-info-card__overlay-action--start.ui-info-card__overlay-action--badge {
-  left: 0.42rem;
   cursor: default;
   pointer-events: none;
 }
 
+:host ::ng-deep app-info-card.idea-info-card .ui-info-card__overlay-action--start.ui-info-card__overlay-action--badge {
+  left: 0.42rem;
+}
+
 :host ::ng-deep app-info-card.idea-info-card .ui-info-card__overlay-action--start.ui-info-card__overlay-action--badge:hover,
-:host ::ng-deep app-info-card.idea-info-card .ui-info-card__overlay-action--start.ui-info-card__overlay-action--badge:active {
+:host ::ng-deep app-info-card.idea-info-card .ui-info-card__overlay-action--start.ui-info-card__overlay-action--badge:active,
+:host ::ng-deep app-info-card.idea-info-card .ui-info-card__overlay-action--end.ui-info-card__overlay-action--badge:hover,
+:host ::ng-deep app-info-card.idea-info-card .ui-info-card__overlay-action--end.ui-info-card__overlay-action--badge:active {
   transform: none;
   filter: none;
 }
@@ -1151,11 +1149,17 @@
   }
 
   .idea-editor-header-actions {
-    gap: 0.28rem;
+    gap: 0.38rem;
   }
 
-  .idea-editor-filter-btn span {
-    display: none;
+  .idea-editor-filter-btn {
+    min-width: 126px;
+    padding-left: 0.62rem;
+  }
+
+  .idea-editor-add-btn,
+  .idea-editor-header-actions > .popup-close {
+    flex: 0 0 34px;
   }
 
   .idea-editor-fields {
