@@ -558,6 +558,14 @@
                 @if (!selectedImagePreview) {
                   <span>Select a slot to upload image</span>
                 }
+                @if (isSelectedImageUploading()) {
+                  <span class="slot-upload-ring image-editor-main-upload-ring" aria-label="Uploading image">
+                    <svg viewBox="0 0 44 44" class="slot-upload-ring-svg image-editor-main-upload-ring-svg" aria-hidden="true">
+                      <circle class="slot-upload-ring-track" cx="22" cy="22" r="17"></circle>
+                      <circle class="slot-upload-ring-progress" cx="22" cy="22" r="17"></circle>
+                    </svg>
+                  </span>
+                }
               </div>
               <p class="image-editor-hint">Click a thumbnail to upload or replace image.</p>
               <input #slotImageInput class="image-file-input-hidden" type="file" accept="image/*" (change)="onSlotImageFileChange($event)" />

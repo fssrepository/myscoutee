@@ -1699,6 +1699,16 @@
   stroke-dasharray: 70 38;
 }
 
+.image-editor-main-upload-ring {
+  background: rgba(244, 248, 253, 0.72);
+  backdrop-filter: blur(2px);
+}
+
+.image-editor-main-upload-ring-svg {
+  width: 54px;
+  height: 54px;
+}
+
 .remove-slot {
   position: absolute;
   top: 4px;

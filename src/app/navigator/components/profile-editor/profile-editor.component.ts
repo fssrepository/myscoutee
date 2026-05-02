@@ -382,8 +382,10 @@ export class ProfileEditorComponent {
     if (this.uploadingImageSlotIndex !== null) {
       return;
     }
+    const isSelectedSlot = this.selectedImageIndex === index;
+    const hasImage = Boolean(this.imageSlots[index]);
     this.selectedImageIndex = index;
-    if (this.imageSlots[index]) {
+    if (hasImage && !isSelectedSlot) {
       return;
     }
     this.pendingSlotUploadIndex = index;
@@ -425,6 +427,10 @@ export class ProfileEditorComponent {
 
   protected isImageSlotUploading(index: number): boolean {
     return this.uploadingImageSlotIndex === index;
+  }
+
+  protected isSelectedImageUploading(): boolean {
+    return this.uploadingImageSlotIndex !== null && this.uploadingImageSlotIndex === this.selectedImageIndex;
   }
 
   protected toggleExperienceQuickActionsMenu(event?: Event): void {
