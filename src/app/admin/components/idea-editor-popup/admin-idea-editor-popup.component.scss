@@ -367,6 +367,8 @@
   flex: 1 1 auto;
   min-height: 0;
   display: grid;
+  align-content: start;
+  grid-auto-rows: max-content;
   gap: 0.66rem;
   overflow-y: auto;
   overflow-x: hidden;
@@ -611,6 +613,8 @@
 .idea-editor-image-carousel {
   --idea-editor-image-slot-gap: 0.5rem;
   --idea-editor-image-slots-per-page: 4;
+  --idea-editor-image-carousel-footer-half: 0.67rem;
+  --idea-editor-image-carousel-arrow-half: 17px;
   position: relative;
   min-width: 0;
   padding: 0 0.74rem 1.34rem;
@@ -639,6 +643,7 @@
 
 .idea-editor-image-carousel-page {
   flex: 0 0 100%;
+  max-width: 100%;
   min-width: 0;
   display: grid;
   grid-template-columns: repeat(var(--idea-editor-image-slots-per-page), minmax(0, 1fr));
@@ -649,7 +654,7 @@
 
 .idea-editor-image-carousel-arrow {
   position: absolute;
-  top: calc(50% - 1.1rem);
+  top: calc(50% - var(--idea-editor-image-carousel-footer-half) - var(--idea-editor-image-carousel-arrow-half));
   z-index: 5;
   width: 34px;
   height: 34px;
@@ -722,6 +727,7 @@
   position: relative;
   width: 100%;
   min-width: 0;
+  box-sizing: border-box;
   overflow: hidden;
   border: 1px solid rgba(47, 86, 139, 0.14);
   border-radius: 10px;
@@ -1018,6 +1024,23 @@
   }
 }
 
+@keyframes idea-editor-carousel-arrow-touch-feedback {
+  0% {
+    transform: translateY(-50%) scale(1);
+    filter: brightness(1);
+  }
+
+  45% {
+    transform: translateY(-50%) scale(var(--interactive-press-scale, 0.97));
+    filter: brightness(var(--interactive-press-brightness, 0.97));
+  }
+
+  100% {
+    transform: translateY(-50%) scale(1);
+    filter: brightness(1);
+  }
+}
+
 @media (max-width: 980px) {
   .idea-editor-form-panel,
   .idea-editor-viewer-panel {
@@ -1067,23 +1090,37 @@
     border: 0;
     border-radius: 0;
     box-shadow: none;
-    padding: 0.72rem;
+    padding: 0;
+  }
+
+  .idea-editor-form-head {
+    padding: 0.72rem 0.72rem 0;
+  }
+
+  .idea-editor-form-content {
+    padding: 0.66rem 0.72rem calc(0.72rem + env(safe-area-inset-bottom));
+    scrollbar-gutter: stable;
   }
 
   .idea-editor-image-carousel {
     --idea-editor-image-slots-per-page: 1;
-    height: 178px;
-    padding: 0 1.16rem 1.6rem;
+    height: 240px;
+    min-height: 240px;
+    padding: 0 0.22rem 1.82rem;
     overflow: visible;
   }
 
   .idea-editor-image-panel {
+    height: 266px;
+    min-height: 266px;
+    box-sizing: border-box;
+    padding-inline: 0.4rem;
     overflow: visible;
   }
 
   .idea-editor-image-carousel-window {
-    height: 150px;
-    min-height: 150px;
+    height: 208px;
+    min-height: 208px;
     padding: 0;
     margin: 0;
     overflow: hidden;
@@ -1096,25 +1133,32 @@
   }
 
   .idea-editor-image-carousel-page {
-    padding: 0;
+    align-items: center;
+    padding: 0 1px;
   }
 
   .idea-editor-image-carousel-arrow {
-    top: 75px;
+    top: 104px;
     background: rgba(255, 255, 255, 0.86);
     transform: translateY(-50%);
   }
 
+  .idea-editor-image-carousel-arrow:not(:disabled):active {
+    transform: translateY(-50%) scale(var(--interactive-press-scale, 0.97)) !important;
+    filter: brightness(var(--interactive-press-brightness, 0.97)) !important;
+    animation: idea-editor-carousel-arrow-touch-feedback 0.2s ease !important;
+  }
+
   .idea-editor-image-carousel-arrow-prev {
-    left: 0.04rem;
+    left: -0.72rem;
   }
 
   .idea-editor-image-carousel-arrow-next {
-    right: 0.04rem;
+    right: -0.72rem;
   }
 
   .idea-editor-image-slot {
-    height: 150px;
+    height: 200px;
     min-height: 0;
     aspect-ratio: auto;
   }
