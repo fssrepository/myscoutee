@@ -584,11 +584,11 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
   }
 
   protected scrollEntryTo(sectionId: string, event?: Event): void {
-    event?.preventDefault();
     const target = document.getElementById(sectionId);
     if (!target) {
       return;
     }
+    event?.preventDefault();
     target.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 

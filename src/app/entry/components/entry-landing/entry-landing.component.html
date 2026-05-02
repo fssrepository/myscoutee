@@ -43,7 +43,7 @@
               <mat-icon>rocket_launch</mat-icon>
               <span>Start exploring</span>
             </button>
-            <a class="entry-cta entry-cta-ghost" href="#how" (click)="scrollEntryTo('how', $event)">
+            <a class="entry-cta entry-cta-ghost" href="#articles" (click)="scrollEntryTo('articles', $event)">
               <mat-icon>timeline</mat-icon>
               <span>See how it works</span>
             </a>
@@ -128,7 +128,7 @@
     </section>
 
     @if (featuredIdeaPosts().length > 0) {
-      <section class="entry-ideas" aria-label="MyScoutee articles">
+      <section class="entry-ideas" id="articles" aria-label="MyScoutee articles">
         <div
           class="entry-ideas-carousel"
           [class.entry-ideas-carousel--with-dots]="ideaCarouselPageCount() > 1"
