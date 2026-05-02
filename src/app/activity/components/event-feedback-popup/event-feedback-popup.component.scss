@@ -1074,6 +1074,22 @@ app-smart-list.event-feedback-list-surface {
   scroll-snap-stop: always;
 }
 
+.event-feedback-card-viewport-mobile .event-feedback-card-slide,
+.event-feedback-card-viewport-mobile .event-feedback-card,
+.event-feedback-card-viewport-mobile .event-feedback-head,
+.event-feedback-card-viewport-mobile .event-feedback-info-card-shell,
+.event-feedback-card-viewport-mobile .event-feedback-carousel-identity-card,
+.event-feedback-card-viewport-mobile .event-feedback-form,
+.event-feedback-card-viewport-mobile .event-feedback-question,
+.event-feedback-card-viewport-mobile .event-feedback-options,
+.event-feedback-card-viewport-mobile .event-feedback-option-btn {
+  touch-action: pan-x pan-y;
+}
+
+:host ::ng-deep .event-feedback-card-viewport-mobile app-info-card.event-feedback-carousel-info-card .ui-info-card {
+  touch-action: pan-x pan-y;
+}
+
 .event-feedback-card-slide.is-active {
   z-index: 1;
 }
