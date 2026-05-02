@@ -634,14 +634,21 @@ export class AdminIdeaEditorPopupComponent {
       title: post.title,
       imageUrl: this.ideaImageUrl(post) || null,
       placeholderLabel: 'No image',
-      metaRows: [this.postDateLabel(post), statusLabel],
-      metaRowsLimit: 2,
+      metaRows: [this.postDateLabel(post)],
+      metaRowsLimit: 1,
       description: post.excerpt,
       descriptionLines: 3,
       surfaceTone: post.trashed ? 'draft' : !post.published ? 'draft' : post.featured ? 'series' : 'default',
       leadingIcon: {
         icon: post.trashed ? 'delete_outline' : post.published ? 'article' : 'drafts',
         tone: post.published && !post.trashed ? 'public' : 'pending'
+      },
+      mediaStart: {
+        variant: 'badge',
+        tone: post.trashed ? 'full' : post.published ? 'public' : 'inactive',
+        icon: post.trashed ? 'delete_outline' : post.published ? 'visibility' : 'drafts',
+        label: statusLabel,
+        ariaLabel: statusLabel
       },
       mediaEnd: post.trashed ? null : {
         variant: 'badge',
@@ -658,10 +665,7 @@ export class AdminIdeaEditorPopupComponent {
       },
       menuActions,
       menuTitle: null,
-      footerChips: [
-        ...(post.trashed ? [{ label: 'Trashed', toneClass: 'idea-chip-trash' }] : []),
-        ...(!post.published && !post.trashed ? [{ label: 'Draft', toneClass: 'idea-chip-draft' }] : [])
-      ],
+      footerChips: [],
       clickable: false,
       state: options.renderState === 'active' ? 'active' : options.renderState === 'leaving' ? 'leaving' : 'default'
     };

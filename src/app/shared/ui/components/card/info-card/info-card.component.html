@@ -5,8 +5,14 @@
   [attr.data-info-card-row-id]="card?.rowId"
   (click)="onCardActivated($event)"
   >
-  @if (card?.imageUrl; as imageUrl) {
-    <div class="ui-info-card__media" [appLazyBgImage]="imageUrl">
+  <div
+    class="ui-info-card__media"
+    [class.ui-info-card__media--placeholder]="!card?.imageUrl"
+    [appLazyBgImage]="card?.imageUrl || null"
+    >
+      @if (!card?.imageUrl) {
+        <mat-icon class="ui-info-card__placeholder-icon">image_not_supported</mat-icon>
+      }
       @if (card?.mediaStart; as mediaStart) {
         @if (isOverlayInteractive(mediaStart)) {
           <button
@@ -187,12 +193,7 @@
           </span>
         }
       }
-    </div>
-  } @else {
-    <div class="ui-info-card__media ui-info-card__media--placeholder">
-      <mat-icon class="ui-info-card__placeholder-icon">image_not_supported</mat-icon>
-    </div>
-  }
+  </div>
 
   <div
     class="ui-info-card__head"
