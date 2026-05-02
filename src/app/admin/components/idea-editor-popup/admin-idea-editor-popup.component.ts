@@ -650,7 +650,7 @@ export class AdminIdeaEditorPopupComponent {
         label: statusLabel,
         ariaLabel: statusLabel
       },
-      mediaEnd: post.trashed ? null : {
+      mediaEnd: post.trashed || !post.published ? null : {
         variant: 'badge',
         tone: post.featured ? 'selected' : 'inactive',
         icon: post.featured ? 'star' : 'star_border',
@@ -870,7 +870,7 @@ export class AdminIdeaEditorPopupComponent {
     if (!post.published) {
       return 'Draft';
     }
-    return post.featured ? 'Featured' : 'Published';
+    return 'Published';
   }
 
   protected postDateLabel(post: Pick<IdeaPost, 'submittedAtIso' | 'updatedAtIso' | 'createdAtIso'> | null): string {

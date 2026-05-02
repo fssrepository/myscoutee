@@ -242,6 +242,14 @@
 
 :host ::ng-deep app-info-card.idea-info-card .ui-info-card__overlay-action--start.ui-info-card__overlay-action--badge {
   left: 0.42rem;
+  cursor: default;
+  pointer-events: none;
+}
+
+:host ::ng-deep app-info-card.idea-info-card .ui-info-card__overlay-action--start.ui-info-card__overlay-action--badge:hover,
+:host ::ng-deep app-info-card.idea-info-card .ui-info-card__overlay-action--start.ui-info-card__overlay-action--badge:active {
+  transform: none;
+  filter: none;
 }
 
 :host ::ng-deep app-info-card.idea-info-card .ui-info-card__overlay-action--end.ui-info-card__overlay-action--badge {
