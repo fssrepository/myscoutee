@@ -282,6 +282,13 @@ export class AvatarBtnComponent implements OnDestroy {
   }
 
   private resolveUserBadgeCount(user: UserDto): number {
+    if (this.isAdminProfile(user)) {
+      return (
+        this.resolveActivityBadge(user, 'game') +
+        this.resolveActivityBadge(user, 'chat') +
+        this.resolveActivityBadge(user, 'feedback')
+      );
+    }
     const impressionFlags = this.appCtx.getUserImpressionChangeFlags(user.id);
     return (
       (impressionFlags.host ? 1 : 0) +
@@ -305,6 +312,13 @@ export class AvatarBtnComponent implements OnDestroy {
       return 0;
     }
     return user.activities?.[key] ?? 0;
+  }
+
+  private isAdminProfile(user: UserDto): boolean {
+    return user.hostTier === 'Admin'
+      || user.statusText === 'Admin workspace'
+      || user.id === 'admin'
+      || user.id.startsWith('admin-');
   }
 
   private resolveUserImageUrl(user: UserDto | null): string | null {
