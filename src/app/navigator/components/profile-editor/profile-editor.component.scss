@@ -1633,6 +1633,10 @@
   justify-content: center;
 }
 
+.image-editor-grid button:disabled {
+  cursor: progress;
+}
+
 .image-editor-grid button.slot-featured {
   border-color: rgba(204, 130, 27, 0.9);
   box-shadow: inset 0 0 0 1px rgba(226, 158, 41, 0.46);
@@ -1660,6 +1664,41 @@
   color: rgba(17, 30, 50, 0.7);
 }
 
+.slot-upload-ring {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border-radius: inherit;
+  background: rgba(244, 248, 253, 0.64);
+  backdrop-filter: blur(1px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.slot-upload-ring-svg {
+  width: 34px;
+  height: 34px;
+  filter: drop-shadow(0 8px 18px rgba(31, 61, 96, 0.18));
+  animation: profile-image-upload-ring-spin 1.05s linear infinite;
+}
+
+.slot-upload-ring-track,
+.slot-upload-ring-progress {
+  fill: none;
+  stroke-width: 4;
+}
+
+.slot-upload-ring-track {
+  stroke: rgba(47, 86, 139, 0.16);
+}
+
+.slot-upload-ring-progress {
+  stroke: #2f75c2;
+  stroke-linecap: round;
+  stroke-dasharray: 70 38;
+}
+
 .remove-slot {
   position: absolute;
   top: 4px;
@@ -1672,6 +1711,12 @@
   font-size: 12px;
   line-height: 18px;
   text-align: center;
+}
+
+@keyframes profile-image-upload-ring-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .mobile-profile-language-entry {

@@ -567,14 +567,23 @@
                     type="button"
                     [class.slot-selected]="selectedImageIndex === i"
                     [class.slot-featured]="i === 0"
+                    [class.slot-uploading]="isImageSlotUploading(i)"
                     [style.backgroundImage]="slot ? 'url(' + slot + ')' : 'none'"
+                    [disabled]="isImageSlotUploading(i)"
                     (click)="selectImageSlot(i)"
                     >
                     <span class="slot-index">{{ i + 1 }}</span>
-                    @if (!slot) {
+                    @if (isImageSlotUploading(i)) {
+                      <span class="slot-upload-ring" aria-label="Uploading image">
+                        <svg viewBox="0 0 44 44" class="slot-upload-ring-svg" aria-hidden="true">
+                          <circle class="slot-upload-ring-track" cx="22" cy="22" r="17"></circle>
+                          <circle class="slot-upload-ring-progress" cx="22" cy="22" r="17"></circle>
+                        </svg>
+                      </span>
+                    } @else if (!slot) {
                       <span class="slot-add">+</span>
                     }
-                    @if (slot) {
+                    @if (slot && !isImageSlotUploading(i)) {
                       <span class="remove-slot" (click)="$event.stopPropagation(); removeImage(i)">×</span>
                     }
                   </button>

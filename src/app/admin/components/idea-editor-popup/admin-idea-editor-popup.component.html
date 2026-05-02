@@ -108,15 +108,7 @@
         </header>
 
         <div class="idea-editor-viewer-body">
-          @if (ideaImageUrl(post); as imageUrl) {
-            <div class="idea-editor-viewer-image" [style.backgroundImage]="'url(' + imageUrl + ')'"></div>
-          } @else {
-            <div class="idea-editor-viewer-image idea-editor-empty-image">
-              <mat-icon>image_not_supported</mat-icon>
-            </div>
-          }
-
-          <div class="idea-editor-html-preview idea-editor-viewer-html" [innerHTML]="post.contentHtml"></div>
+          <div class="idea-editor-html-preview idea-editor-viewer-html" [innerHTML]="articlePreviewHtml(post)"></div>
         </div>
       </article>
     </section>
@@ -187,87 +179,141 @@
           </div>
         </header>
 
-        <div class="idea-editor-fields">
-          <label class="idea-editor-field idea-editor-field-title">
-            <span>Title</span>
-            <input type="text" name="ideaTitle" [(ngModel)]="editDraft.title" required />
-          </label>
-          <label class="idea-editor-field">
-            <span>Submitted</span>
-            <input type="datetime-local" name="ideaSubmitted" [(ngModel)]="editDraft.submittedAtLocal" required />
-          </label>
-          <label class="idea-editor-field idea-editor-field-wide">
-            <span>Excerpt</span>
-            <textarea name="ideaExcerpt" [(ngModel)]="editDraft.excerpt" rows="3" placeholder="Short card text"></textarea>
-          </label>
-        </div>
-
-        <section class="idea-editor-image-panel">
-          <div
-            class="idea-editor-image-preview"
-            [class.is-empty]="!draftImageUrl()"
-            [style.backgroundImage]="draftImageUrl() ? 'url(' + draftImageUrl() + ')' : null"
-            >
-            @if (!draftImageUrl()) {
-              <mat-icon>image_not_supported</mat-icon>
-            }
-          </div>
-          <div class="idea-editor-image-tools">
-            <label class="idea-editor-file-btn" [class.is-uploading]="uploading">
-              <mat-icon>{{ uploading ? 'sync' : 'upload' }}</mat-icon>
-              <span>{{ uploading ? 'Uploading' : 'Upload image' }}</span>
-              <input type="file" accept="image/*" [disabled]="uploading || saving" (change)="uploadDraftImage($event)" />
+        <div class="idea-editor-form-content">
+          <div class="idea-editor-fields">
+            <label class="idea-editor-field idea-editor-field-title">
+              <span>Title</span>
+              <input type="text" name="ideaTitle" [(ngModel)]="editDraft.title" required />
             </label>
-            <label class="idea-editor-field">
-              <span>Primary image link</span>
-              <input type="url" name="ideaImageUrl" [(ngModel)]="editDraft.imageUrl" placeholder="https:// or /media/public?..." />
+            <label class="idea-editor-field idea-editor-field-wide">
+              <span>Description</span>
+              <textarea name="ideaExcerpt" [(ngModel)]="editDraft.excerpt" rows="3" placeholder="Short card description"></textarea>
             </label>
           </div>
 
-          @if (editDraft.imageUrls.length > 0) {
-            <div class="idea-editor-image-card-grid">
-              @for (imageUrl of editDraft.imageUrls; track imageUrl) {
-                <article class="idea-editor-image-card" [class.is-primary]="editDraft.imageUrl === imageUrl">
-                  <div class="idea-editor-image-card-preview" [style.backgroundImage]="'url(' + imageUrl + ')'">
+          <section class="idea-editor-image-panel">
+            @let imageSlots = draftImageSlots();
+            @let imagePages = imageSlotPages();
+            <div class="idea-editor-image-carousel" role="region" aria-label="Article image slots" aria-roledescription="carousel">
+              @if (imagePages.length > 1 && imageSlotCarouselIndex > 0) {
+                <button
+                  type="button"
+                  class="idea-editor-image-carousel-arrow idea-editor-image-carousel-arrow-prev"
+                  [disabled]="saving || uploading"
+                  (click)="showPreviousImageSlotPage($event)"
+                  aria-label="Previous image slot"
+                  title="Previous"
+                  >
+                  <mat-icon>chevron_left</mat-icon>
+                </button>
+              }
+              <div class="idea-editor-image-carousel-window">
+                <div class="idea-editor-image-slot-strip" [style.transform]="imageSlotCarouselTransform()">
+                  @for (page of imagePages; track $index) {
+                    <div class="idea-editor-image-carousel-page">
+                      @for (slotIndex of page; track slotIndex) {
+                        @let imageUrl = imageSlots[slotIndex];
+                        <article
+                          class="idea-editor-image-slot"
+                          [class.is-primary]="slotIndex === 0"
+                          [class.is-filled]="imageUrl"
+                          [class.is-uploading]="isImageSlotUploading(slotIndex)"
+                          [style.backgroundImage]="imageUrl ? 'url(' + imageUrl + ')' : 'none'"
+                          >
+                          <span class="idea-editor-image-slot-index">{{ slotIndex + 1 }}</span>
+                          @if (isImageSlotUploading(slotIndex)) {
+                            <span class="idea-editor-image-slot-upload-ring" aria-label="Uploading image">
+                              <svg viewBox="0 0 44 44" class="idea-editor-image-slot-upload-ring-svg" aria-hidden="true">
+                                <circle class="idea-editor-image-slot-upload-ring-track" cx="22" cy="22" r="17"></circle>
+                                <circle class="idea-editor-image-slot-upload-ring-progress" cx="22" cy="22" r="17"></circle>
+                              </svg>
+                            </span>
+                          } @else if (imageUrl) {
+                            <button
+                              type="button"
+                              class="idea-editor-image-slot-action idea-editor-image-slot-copy"
+                              (click)="copyImageLink(imageUrl, $event)"
+                              aria-label="Copy image link"
+                              title="Copy link"
+                              >
+                              <mat-icon>content_copy</mat-icon>
+                            </button>
+                            <button
+                              type="button"
+                              class="idea-editor-image-slot-action idea-editor-image-slot-remove"
+                              (click)="removeDraftImageSlot(slotIndex, $event)"
+                              aria-label="Remove image"
+                              title="Remove"
+                              >
+                              <mat-icon>close</mat-icon>
+                            </button>
+                          } @else {
+                            <span class="idea-editor-image-slot-add">+</span>
+                          }
+                          <input
+                            #imageSlotInput
+                            class="idea-editor-image-slot-input"
+                            type="file"
+                            accept="image/*"
+                            [disabled]="uploading || saving"
+                            (change)="uploadDraftImage($event, slotIndex)"
+                          />
+                          <button
+                            type="button"
+                            class="idea-editor-image-slot-hit"
+                            [disabled]="uploading || saving || isImageSlotUploading(slotIndex)"
+                            (click)="openDraftImageSlot(imageSlotInput, $event)"
+                            [attr.aria-label]="imageUrl ? 'Replace image slot ' + (slotIndex + 1) : 'Upload image slot ' + (slotIndex + 1)"
+                            [title]="imageUrl ? 'Replace image' : 'Upload image'"
+                          ></button>
+                        </article>
+                      }
+                    </div>
+                  }
+                </div>
+              </div>
+              @if (imagePages.length > 1 && imageSlotCarouselIndex < imagePages.length - 1) {
+                <button
+                  type="button"
+                  class="idea-editor-image-carousel-arrow idea-editor-image-carousel-arrow-next"
+                  [disabled]="saving || uploading"
+                  (click)="showNextImageSlotPage($event)"
+                  aria-label="Next image slot"
+                  title="Next"
+                  >
+                  <mat-icon>chevron_right</mat-icon>
+                </button>
+              }
+              @if (imagePages.length > 1) {
+                <div class="idea-editor-image-carousel-dots" aria-label="Image slot pages">
+                  @for (page of imagePages; track $index; let pageIndex = $index) {
                     <button
                       type="button"
-                      class="idea-editor-image-copy-btn"
-                      (click)="copyImageLink(imageUrl, $event)"
-                      [attr.aria-label]="'Copy image link'"
-                      title="Copy link"
-                      >
-                      <mat-icon>{{ copiedImageUrl === imageUrl ? 'done' : 'content_copy' }}</mat-icon>
-                    </button>
-                  </div>
-                  <div class="idea-editor-image-card-footer">
-                    <input type="text" [value]="copyableImageLink(imageUrl)" readonly />
-                    <div class="idea-editor-image-card-actions">
-                      <button type="button" class="idea-editor-icon-btn" (click)="setPrimaryImage(imageUrl, $event)" aria-label="Use as primary" title="Use as primary">
-                        <mat-icon>{{ editDraft.imageUrl === imageUrl ? 'radio_button_checked' : 'radio_button_unchecked' }}</mat-icon>
-                      </button>
-                      <button type="button" class="idea-editor-icon-btn idea-editor-danger-btn" (click)="removeDraftImage(imageUrl, $event)" aria-label="Remove image" title="Remove">
-                        <mat-icon>delete</mat-icon>
-                      </button>
-                    </div>
-                  </div>
-                </article>
+                      class="idea-editor-image-carousel-dot"
+                      [class.is-active]="imageSlotCarouselIndex === pageIndex"
+                      [attr.aria-current]="imageSlotCarouselIndex === pageIndex ? 'true' : null"
+                      [attr.aria-label]="'Show image slot page ' + (pageIndex + 1)"
+                      (click)="showImageSlotPage(pageIndex, $event)"
+                      ></button>
+                  }
+                </div>
               }
             </div>
-          }
-        </section>
+          </section>
 
-        <section class="idea-editor-html-panel">
-          <div class="idea-editor-html-head">
-            <span>Article HTML</span>
-          </div>
-          <textarea
-            class="idea-editor-html-textarea"
-            name="ideaContentHtml"
-            [(ngModel)]="editDraft.contentHtml"
-            spellcheck="false"
-            (paste)="formatPastedHtml($event)"
-          ></textarea>
-        </section>
+          <section class="idea-editor-html-panel">
+            <div class="idea-editor-html-head">
+              <span>Article HTML</span>
+            </div>
+            <textarea
+              class="idea-editor-html-textarea"
+              name="ideaContentHtml"
+              [(ngModel)]="editDraft.contentHtml"
+              spellcheck="false"
+              (paste)="formatPastedHtml($event)"
+            ></textarea>
+          </section>
+        </div>
       </form>
     </section>
   }

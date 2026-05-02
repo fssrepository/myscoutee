@@ -165,8 +165,11 @@ export class DemoIdeaPostsService {
     return this.clonePost(restored);
   }
 
-  async uploadImage(_ownerId: string, _entityId: string, file: File): Promise<{ uploaded: boolean; imageUrl: string | null }> {
-    const imageUrl = await this.readImageDataUrl(file);
+  async uploadImage(ownerId: string, entityId: string, file: File): Promise<{ uploaded: boolean; imageUrl: string | null }> {
+    const imageUrl = this.createDemoObjectUrl(file) ?? await this.readImageDataUrl(file);
+    if (imageUrl && !imageUrl.startsWith('data:')) {
+      await this.persistDemoImageObject(ownerId, entityId, file, imageUrl);
+    }
     return {
       uploaded: Boolean(imageUrl),
       imageUrl
@@ -482,6 +485,35 @@ export class DemoIdeaPostsService {
       reader.onerror = () => resolve(null);
       reader.readAsDataURL(file);
     });
+  }
+
+  private createDemoObjectUrl(file: File): string | null {
+    if (!file || !file.type.toLowerCase().startsWith('image/') || typeof URL === 'undefined' || !URL.createObjectURL) {
+      return null;
+    }
+    try {
+      return URL.createObjectURL(file);
+    } catch {
+      return null;
+    }
+  }
+
+  private async persistDemoImageObject(ownerId: string, entityId: string, file: File, imageUrl: string): Promise<void> {
+    try {
+      await this.memoryDb.writeIndexedDbTableEntry(`ideaImage:${this.newId('media')}`, {
+        scope: 'idea',
+        ownerId: ownerId.trim() || 'admin',
+        entityId: entityId.trim() || 'draft-idea',
+        fileName: file.name,
+        contentType: file.type,
+        size: file.size,
+        imageUrl,
+        blob: file,
+        createdAtIso: new Date().toISOString()
+      });
+    } catch {
+      // The object URL is still usable in the current demo session.
+    }
   }
 
   private newId(prefix: string): string {

@@ -68,10 +68,14 @@ export class AdminIdeaEditorPopupComponent {
   protected draft: IdeaPostDraft | null = null;
   protected viewerPostId = '';
   protected viewerPost: IdeaPost | null = null;
+  protected imageSlotCarouselIndex = 0;
+  protected uploadingImageSlotIndex: number | null = null;
   protected filterMenuOpen = false;
   protected ideaFilter: IdeaPostFilter = 'all';
   protected ideaListFilters: IdeaSmartListFilters = { status: 'all', revision: 0 };
   protected readonly actionRingPerimeter = 100;
+  protected readonly ideaImageSlotCount = 8;
+  protected readonly ideaImageSlotIndexes = Array.from({ length: this.ideaImageSlotCount }, (_value, index) => index);
   private readonly featuredRingDurationMs = 1500;
   private readonly featuredUpdateWindowMs = 3000;
   private stateLoadedForPopup = false;
@@ -184,6 +188,8 @@ export class AdminIdeaEditorPopupComponent {
         this.filterMenuOpen = false;
         this.error = '';
         this.copiedImageUrl = '';
+        this.imageSlotCarouselIndex = 0;
+        this.uploadingImageSlotIndex = null;
         return;
       }
     });
@@ -210,6 +216,11 @@ export class AdminIdeaEditorPopupComponent {
     this.close();
   }
 
+  @HostListener('window:resize')
+  protected onResize(): void {
+    this.imageSlotCarouselIndex = this.clampImageSlotPageIndex(this.imageSlotCarouselIndex);
+  }
+
   protected posts(): IdeaPost[] {
     return this.ideaPosts.adminPosts();
   }
@@ -234,6 +245,7 @@ export class AdminIdeaEditorPopupComponent {
     this.draft = null;
     this.viewerPostId = '';
     this.viewerPost = null;
+    this.uploadingImageSlotIndex = null;
     this.admin.closePopup();
   }
 
@@ -689,13 +701,16 @@ export class AdminIdeaEditorPopupComponent {
     return this.ideaFilter === 'all' ? `${total} article${total === 1 ? '' : 's'}` : `${visible} of ${total}`;
   }
 
-  protected async uploadDraftImage(event: Event): Promise<void> {
+  protected async uploadDraftImage(event: Event, slotIndex = 0): Promise<void> {
     const input = event.target instanceof HTMLInputElement ? event.target : null;
     const file = input?.files?.[0] ?? null;
+    const normalizedSlotIndex = this.clampImageSlotIndex(slotIndex);
     if (!file || !this.draft || this.uploading) {
       return;
     }
     this.uploading = true;
+    this.uploadingImageSlotIndex = normalizedSlotIndex;
+    this.imageSlotCarouselIndex = this.imageSlotPageForSlot(normalizedSlotIndex);
     this.error = '';
     this.refreshView();
     try {
@@ -704,20 +719,28 @@ export class AdminIdeaEditorPopupComponent {
         this.error = 'Image upload did not return a link.';
         return;
       }
-      this.draft.imageUrls = this.uniqueImageUrls([result.imageUrl, ...this.draft.imageUrls]);
-      if (!this.draft.imageUrl.trim()) {
-        this.draft.imageUrl = result.imageUrl;
-      }
+      const slots = this.draftImageSlots();
+      slots[normalizedSlotIndex] = result.imageUrl;
+      this.applyDraftImageSlots(slots);
       await this.copyImageLink(result.imageUrl);
     } catch {
       this.error = 'Unable to upload image.';
     } finally {
       this.uploading = false;
+      this.uploadingImageSlotIndex = null;
       if (input) {
         input.value = '';
       }
       this.refreshView();
     }
+  }
+
+  protected openDraftImageSlot(input: HTMLInputElement, event?: Event): void {
+    event?.stopPropagation();
+    if (this.uploading || this.saving) {
+      return;
+    }
+    input.click();
   }
 
   protected removeDraftImage(imageUrl: string, event?: Event): void {
@@ -732,6 +755,16 @@ export class AdminIdeaEditorPopupComponent {
     }
   }
 
+  protected removeDraftImageSlot(slotIndex: number, event?: Event): void {
+    event?.stopPropagation();
+    if (!this.draft) {
+      return;
+    }
+    const slots = this.draftImageSlots();
+    slots[this.clampImageSlotIndex(slotIndex)] = null;
+    this.applyDraftImageSlots(slots);
+  }
+
   protected setPrimaryImage(imageUrl: string, event?: Event): void {
     event?.stopPropagation();
     if (!this.draft) {
@@ -739,6 +772,38 @@ export class AdminIdeaEditorPopupComponent {
     }
     this.draft.imageUrl = imageUrl.trim();
     this.draft.imageUrls = this.uniqueImageUrls([this.draft.imageUrl, ...this.draft.imageUrls]);
+  }
+
+  protected imageSlotCarouselTransform(): string {
+    return `translateX(-${this.imageSlotCarouselIndex * 100}%)`;
+  }
+
+  protected showPreviousImageSlotPage(event?: Event): void {
+    event?.stopPropagation();
+    this.showImageSlotPage(this.imageSlotCarouselIndex - 1, event);
+  }
+
+  protected showNextImageSlotPage(event?: Event): void {
+    event?.stopPropagation();
+    this.showImageSlotPage(this.imageSlotCarouselIndex + 1, event);
+  }
+
+  protected showImageSlotPage(index: number, event?: Event): void {
+    event?.stopPropagation();
+    this.imageSlotCarouselIndex = this.clampImageSlotPageIndex(index);
+  }
+
+  protected isImageSlotUploading(slotIndex: number): boolean {
+    return this.uploadingImageSlotIndex === slotIndex;
+  }
+
+  protected imageSlotPages(): number[][] {
+    const slotsPerPage = this.imageSlotsPerCarouselPage();
+    const pages: number[][] = [];
+    for (let index = 0; index < this.ideaImageSlotIndexes.length; index += slotsPerPage) {
+      pages.push(this.ideaImageSlotIndexes.slice(index, index + slotsPerPage));
+    }
+    return pages;
   }
 
   protected async copyImageLink(imageUrl: string, event?: Event): Promise<void> {
@@ -761,9 +826,10 @@ export class AdminIdeaEditorPopupComponent {
     if (!this.draft) {
       return;
     }
-    const pasted = event.clipboardData?.getData('text/html')
-      || event.clipboardData?.getData('text/plain')
-      || '';
+    const pasted = this.htmlFromClipboardPayload(
+      event.clipboardData?.getData('text/html') ?? '',
+      event.clipboardData?.getData('text/plain') ?? ''
+    );
     if (!pasted.trim()) {
       return;
     }
@@ -787,6 +853,10 @@ export class AdminIdeaEditorPopupComponent {
       return normalized;
     }
     return new URL(normalized, window.location.origin).toString();
+  }
+
+  protected articlePreviewHtml(post: Pick<IdeaPost, 'contentHtml'> | null): string {
+    return this.expandPlainImageLinksInHtml(post?.contentHtml ?? '');
   }
 
   protected postStatusLabel(post: Pick<IdeaPost, 'published' | 'featured' | 'trashed'>): string {
@@ -815,6 +885,15 @@ export class AdminIdeaEditorPopupComponent {
     return `${this.draft?.imageUrl ?? this.draft?.imageUrls?.[0] ?? ''}`.trim();
   }
 
+  protected draftImageSlots(): Array<string | null> {
+    if (!this.draft) {
+      return Array.from({ length: this.ideaImageSlotCount }, () => null);
+    }
+    const urls = this.uniqueImageUrls([this.draft.imageUrl, ...this.draft.imageUrls])
+      .slice(0, this.ideaImageSlotCount);
+    return Array.from({ length: this.ideaImageSlotCount }, (_value, index) => urls[index] ?? null);
+  }
+
   protected ideaImageUrl(post: Pick<IdeaPost, 'imageUrl' | 'imageUrls'> | null): string {
     return `${post?.imageUrl ?? post?.imageUrls?.[0] ?? ''}`.trim();
   }
@@ -825,8 +904,54 @@ export class AdminIdeaEditorPopupComponent {
 
   private beginEditing(draft: IdeaPostDraft): void {
     this.draft = draft;
+    this.applyDraftImageSlots(this.draftImageSlots());
     this.editing = true;
     this.copiedImageUrl = '';
+    this.imageSlotCarouselIndex = 0;
+    this.uploadingImageSlotIndex = null;
+  }
+
+  private applyDraftImageSlots(slots: readonly (string | null)[]): void {
+    if (!this.draft) {
+      return;
+    }
+    const urls = this.uniqueImageUrls(slots.map(slot => slot ?? '').slice(0, this.ideaImageSlotCount));
+    this.draft.imageUrls = urls;
+    this.draft.imageUrl = urls[0] ?? '';
+  }
+
+  private clampImageSlotIndex(slotIndex: number): number {
+    const parsed = Math.trunc(Number(slotIndex));
+    if (!Number.isFinite(parsed)) {
+      return 0;
+    }
+    return Math.max(0, Math.min(this.ideaImageSlotCount - 1, parsed));
+  }
+
+  private imageSlotsPerCarouselPage(): number {
+    if (typeof window === 'undefined') {
+      return 4;
+    }
+    if (window.innerWidth <= 720) {
+      return 1;
+    }
+    if (window.innerWidth <= 980) {
+      return 3;
+    }
+    return 4;
+  }
+
+  private imageSlotPageForSlot(slotIndex: number): number {
+    return this.clampImageSlotPageIndex(Math.floor(this.clampImageSlotIndex(slotIndex) / this.imageSlotsPerCarouselPage()));
+  }
+
+  private clampImageSlotPageIndex(pageIndex: number): number {
+    const parsed = Math.trunc(Number(pageIndex));
+    const maxPageIndex = Math.max(0, Math.ceil(this.ideaImageSlotCount / this.imageSlotsPerCarouselPage()) - 1);
+    if (!Number.isFinite(parsed)) {
+      return 0;
+    }
+    return Math.max(0, Math.min(maxPageIndex, parsed));
   }
 
   private requestFromDraft(draft: IdeaPostDraft): IdeaPostSaveRequest {
@@ -927,6 +1052,95 @@ export class AdminIdeaEditorPopupComponent {
       return 'Deleted articles appear here until they are restored.';
     }
     return 'Create the first landing article card.';
+  }
+
+  private htmlFromClipboardPayload(html: string, text: string): string {
+    const normalizedHtml = `${html ?? ''}`.trim();
+    if (normalizedHtml) {
+      return normalizedHtml;
+    }
+    const normalizedText = `${text ?? ''}`.trim();
+    if (this.isEmbeddableImageUrl(normalizedText)) {
+      return `<img src="${this.escapeHtmlAttribute(normalizedText)}" alt="">`;
+    }
+    return text;
+  }
+
+  private expandPlainImageLinksInHtml(value: string): string {
+    const html = `${value ?? ''}`.trim();
+    if (!html || typeof document === 'undefined') {
+      return html;
+    }
+    const template = document.createElement('template');
+    template.innerHTML = html;
+    const textNodes: Text[] = [];
+    const walker = document.createTreeWalker(template.content, NodeFilter.SHOW_TEXT);
+    let current = walker.nextNode();
+    while (current) {
+      if (current instanceof Text && !this.isImageLinkExcludedTextNode(current)) {
+        textNodes.push(current);
+      }
+      current = walker.nextNode();
+    }
+    textNodes.forEach(node => this.replaceImageLinksInTextNode(node));
+    return template.innerHTML;
+  }
+
+  private isImageLinkExcludedTextNode(node: Text): boolean {
+    return Boolean(node.parentElement?.closest('a, code, pre, script, style, textarea'));
+  }
+
+  private replaceImageLinksInTextNode(node: Text): void {
+    const text = node.textContent ?? '';
+    const imageLinkPattern = /(data:image\/[^\s<>"']+|blob:https?:\/\/[^\s<>"']+|\/media\/public\?[^\s<>"']+|https?:\/\/[^\s<>"']+\/media\/public\?[^\s<>"']+|https?:\/\/[^\s<>"']+\.(?:png|jpe?g|gif|webp|avif|svg)(?:\?[^\s<>"']*)?)/gi;
+    if (!imageLinkPattern.test(text)) {
+      return;
+    }
+    imageLinkPattern.lastIndex = 0;
+    const fragment = document.createDocumentFragment();
+    let cursor = 0;
+    for (const match of text.matchAll(imageLinkPattern)) {
+      const matchIndex = match.index ?? 0;
+      const rawImageUrl = match[0] ?? '';
+      if (matchIndex > cursor) {
+        fragment.append(document.createTextNode(text.slice(cursor, matchIndex)));
+      }
+      const { imageUrl, trailing } = this.stripTrailingImageUrlPunctuation(rawImageUrl);
+      const img = document.createElement('img');
+      img.src = imageUrl;
+      img.alt = '';
+      fragment.append(img);
+      if (trailing) {
+        fragment.append(document.createTextNode(trailing));
+      }
+      cursor = matchIndex + rawImageUrl.length;
+    }
+    if (cursor < text.length) {
+      fragment.append(document.createTextNode(text.slice(cursor)));
+    }
+    node.parentNode?.replaceChild(fragment, node);
+  }
+
+  private stripTrailingImageUrlPunctuation(value: string): { imageUrl: string; trailing: string } {
+    if (/^data:image\//i.test(value)) {
+      return { imageUrl: value, trailing: '' };
+    }
+    let imageUrl = value;
+    let trailing = '';
+    while (/[),.;:!?]$/.test(imageUrl)) {
+      trailing = `${imageUrl.slice(-1)}${trailing}`;
+      imageUrl = imageUrl.slice(0, -1);
+    }
+    return { imageUrl, trailing };
+  }
+
+  private isEmbeddableImageUrl(value: string): boolean {
+    const normalized = `${value ?? ''}`.trim();
+    return /^data:image\//i.test(normalized)
+      || /^blob:https?:\/\//i.test(normalized)
+      || /^\/media\/public\?[^\s<>"']+$/i.test(normalized)
+      || /^https?:\/\/[^\s<>"']+\/media\/public\?[^\s<>"']+$/i.test(normalized)
+      || /^https?:\/\/[^\s<>"']+\.(?:png|jpe?g|gif|webp|avif|svg)(?:\?[^\s<>"']*)?$/i.test(normalized);
   }
 
   private htmlToText(value: string): string {
