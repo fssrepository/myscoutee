@@ -197,6 +197,7 @@ export interface EventResourcePopupHost {
   assetExploreAvailableQuantity(card: AppTypes.AssetCard): number;
   assetExploreAvailabilityLabel(card: AppTypes.AssetCard): string;
   assetExploreCanBorrow(card: AppTypes.AssetCard): boolean;
+  openAssetExploreAssetView(card: AppTypes.AssetCard, event?: Event): void;
   openAssetExploreBorrowDialog(card: AppTypes.AssetCard, event?: Event): void;
   openAssetExploreServiceChat(card: AppTypes.AssetCard, event?: Event): void;
   canReportAssetExploreOwner(card: AppTypes.AssetCard): boolean;
@@ -223,6 +224,7 @@ export interface EventResourcePopupHost {
   openAssetMembers(card: AppTypes.SubEventResourceCard, event?: Event): void;
   openResourceAssetView(card: AppTypes.SubEventResourceCard, mode: 'view' | 'edit', event?: Event): void;
   closeResourceAssetView(event?: Event): void;
+  openAssetViewRouteEditor(view: ResourceAssetViewState, event: Event, mode?: 'view' | 'edit'): void;
   isItemActionMenuOpen(card: AppTypes.SubEventResourceCard): boolean;
   isItemActionMenuOpenUp(card: AppTypes.SubEventResourceCard): boolean;
   toggleItemActionMenu(card: AppTypes.SubEventResourceCard, event: Event): void;
@@ -638,6 +640,14 @@ export class EventResourcePopupComponent implements DoCheck {
     this.host.openAssetMembers(view.card, event);
   }
 
+  protected closeResourceShellBackdrop(event: Event): void {
+    if (this.host.assetExploreOnly() && this.host.resourceAssetView()) {
+      this.host.closeResourceAssetView(event);
+      return;
+    }
+    this.host.close();
+  }
+
   protected assetViewTitle(view: ResourceAssetViewState): string {
     return view.mode === 'edit' ? 'Edit Asset' : 'View Asset';
   }
@@ -715,7 +725,7 @@ export class EventResourcePopupComponent implements DoCheck {
     if (!this.assetViewHasRoute(view)) {
       return;
     }
-    this.host.openRouteEditor(view.card, event, 'view');
+    this.host.openAssetViewRouteEditor(view, event, 'view');
   }
 
   protected assetViewRouteStops(view: ResourceAssetViewState): readonly string[] {
@@ -793,7 +803,7 @@ export class EventResourcePopupComponent implements DoCheck {
     if (view.mode !== 'edit' || !view.canEditRoute) {
       return;
     }
-    this.host.openRouteEditor(view.card, event, 'edit');
+    this.host.openAssetViewRouteEditor(view, event, 'edit');
   }
 
   protected openAssetViewRouteMap(view: ResourceAssetViewState, event: Event): void {
@@ -936,6 +946,11 @@ export class EventResourcePopupComponent implements DoCheck {
         ariaLabel: canBorrow ? 'Borrow asset' : 'Asset unavailable for this time'
       },
       menuActions: [
+        {
+          id: 'viewAsset',
+          label: 'View Asset',
+          icon: 'edit_square'
+        },
         ...(canBorrow ? [{
           id: 'borrow',
           label: 'Borrow',
@@ -972,6 +987,11 @@ export class EventResourcePopupComponent implements DoCheck {
   }
 
   protected onAssetExploreInfoCardMenuAction(card: AppTypes.AssetCard, event: InfoCardMenuActionEvent): void {
+    if (event.actionId === 'viewAsset') {
+      this.showAssetExploreBorrowBasket = false;
+      this.host.openAssetExploreAssetView(card, new Event('click'));
+      return;
+    }
     if (event.actionId === 'serviceChat') {
       this.showAssetExploreBorrowBasket = false;
       this.host.openAssetExploreServiceChat(card, new Event('click'));

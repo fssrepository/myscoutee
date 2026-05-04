@@ -358,6 +358,7 @@
               [subtitle]="eventEditorService.readOnly()
                 ? ''
                 : (eventForm.ticketing ? 'Configure paid entry for the main event and optional slot overrides.' : 'Keep it free for now or prepare ticketing rules in advance.')"></app-pricing-editor>
+            @if (!eventEditorService.readOnly() || eventForm.policies.length > 0) {
             <section class="event-policies-panel">
               <div class="event-policies-panel-head">
                 <div class="event-policies-panel-title-wrap">
@@ -400,6 +401,7 @@
                 </div>
               </div>
             </section>
+            }
             <label class="experience-description-field event-location-field">
               <span>Location</span>
               <div class="asset-route-row asset-route-row-inline">
