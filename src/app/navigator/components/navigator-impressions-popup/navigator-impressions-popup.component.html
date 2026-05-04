@@ -63,9 +63,9 @@
                 <span class="section-line"></span>
               </div>
               @if (vm.hostTraitCards.length > 0) {
-                <div class="personality-trait-carousel" [class.personality-trait-carousel-updated]="vm.pulseFlags.hostChips">
+                <div class="personality-trait-carousel">
                   <div class="personality-trait-pill-strip">
-                    @for (item of vm.hostTraitCards; track item; let index = $index) {
+                    @for (item of vm.hostTraitCards; track item.id; let index = $index) {
                       <button
                         type="button"
                         class="personality-trait-pill"
@@ -168,9 +168,9 @@
                 <span class="section-line"></span>
               </div>
               @if (vm.memberTraitCards.length > 0) {
-                <div class="personality-trait-carousel" [class.personality-trait-carousel-updated]="vm.pulseFlags.memberChips">
+                <div class="personality-trait-carousel">
                   <div class="personality-trait-pill-strip">
-                    @for (item of vm.memberTraitCards; track item; let index = $index) {
+                    @for (item of vm.memberTraitCards; track item.id; let index = $index) {
                       <button
                         type="button"
                         class="personality-trait-pill"

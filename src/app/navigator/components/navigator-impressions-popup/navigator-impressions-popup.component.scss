@@ -542,10 +542,6 @@
   gap: 0.28rem;
 }
 
-.navigator-impressions-popup .personality-trait-carousel-updated .personality-trait-card {
-  animation: navigator-popup-impressions-chip-pulse 0.4s ease;
-}
-
 .navigator-impressions-popup .personality-trait-card.trait-tone-social {
   --trait-accent: #dd5c82;
   --trait-accent-soft: rgba(221, 92, 130, 0.22);
@@ -681,13 +677,22 @@
 
   .navigator-impressions-popup .popup-impressions-badge-segment {
     min-height: 34px;
-    flex: 0 1 auto;
+    min-width: 0;
+    flex: 1 1 0;
     padding: 0.2rem 0.34rem;
   }
 
   .navigator-impressions-popup .popup-impressions-badge-label {
+    display: -webkit-box;
+    width: 100%;
+    min-width: 0;
     font-size: 0.7rem;
-    white-space: nowrap;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    text-align: center;
+    white-space: normal;
+    overflow-wrap: anywhere;
   }
 
   .navigator-impressions-popup .popup-impressions-badge-value {
