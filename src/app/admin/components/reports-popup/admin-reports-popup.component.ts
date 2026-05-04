@@ -21,6 +21,8 @@ import type { ActivityListRow } from '../../../shared/core/base/models';
 import { resolveCurrentRouteDelayMs } from '../../../shared/core/base/services/route-delay.service';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
 import { AdminService, type AdminReportedUserDto, type AdminReportDto } from '../../admin.service';
+import { AdminChatReviewPopupComponent } from '../chat-review-popup/admin-chat-review-popup.component';
+import { AdminItemPreviewPopupComponent } from '../item-preview-popup/admin-item-preview-popup.component';
 
 interface AdminReportListItem {
   id: string;
@@ -46,7 +48,7 @@ interface AdminBlockedUserListFilters {
 @Component({
   selector: 'app-admin-reports-popup',
   standalone: true,
-  imports: [CommonModule, MatIconModule, SmartListComponent],
+  imports: [CommonModule, MatIconModule, SmartListComponent, AdminChatReviewPopupComponent, AdminItemPreviewPopupComponent],
   templateUrl: './admin-reports-popup.component.html',
   styleUrl: '../admin-popups.scss'
 })

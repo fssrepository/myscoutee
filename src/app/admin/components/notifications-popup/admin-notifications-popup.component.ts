@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, effect, inject, signal } from '@angular/core';
+import { Component, OnDestroy, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 
@@ -9,6 +9,7 @@ import type {
   AdminNotificationTimingMode,
   AdminNotificationTriggerKind
 } from '../../../shared/core';
+import { RouteDelayService } from '../../../shared/core/base/services/route-delay.service';
 import { AdminService } from '../../admin.service';
 
 @Component({
@@ -18,16 +19,23 @@ import { AdminService } from '../../admin.service';
   templateUrl: './admin-notifications-popup.component.html',
   styleUrl: './admin-notifications-popup.component.scss'
 })
-export class AdminNotificationsPopupComponent {
+export class AdminNotificationsPopupComponent implements OnDestroy {
+  private static readonly LOAD_DEMO_DELAY_MS = 1500;
+  private static readonly LOAD_PROGRESS_WINDOW_MS = 3000;
   protected readonly admin = inject(AdminService);
+  private readonly routeDelay = inject(RouteDelayService);
 
   protected readonly loading = signal(false);
+  protected readonly loadingProgress = signal(0);
   protected readonly saving = signal(false);
   protected readonly runningRuleKey = signal('');
   protected readonly error = signal('');
   protected readonly state = signal<AdminNotificationCenterState | null>(null);
   protected readonly selectedRuleKey = signal('');
+  protected readonly loadingRingPerimeter = 100;
   private loadedForOpen = false;
+  private loadingProgressTimer: ReturnType<typeof setInterval> | null = null;
+  private loadingProgressStartedAtMs = 0;
 
   protected readonly triggerTabs: Array<{ key: AdminNotificationTriggerKind | 'all'; label: string; icon: string }> = [
     { key: 'all', label: 'All', icon: 'rule' },
@@ -42,6 +50,7 @@ export class AdminNotificationsPopupComponent {
       if (this.admin.activePopup() !== 'notifications') {
         this.loadedForOpen = false;
         this.error.set('');
+        this.clearLoadingProgress();
         return;
       }
       if (!this.loadedForOpen) {
@@ -51,21 +60,39 @@ export class AdminNotificationsPopupComponent {
     });
   }
 
+  ngOnDestroy(): void {
+    this.clearLoadingProgress();
+  }
+
   protected async load(): Promise<void> {
     if (this.loading()) {
       return;
     }
     this.loading.set(true);
     this.error.set('');
+    this.beginLoadingProgress();
     try {
-      const state = await this.admin.loadNotificationCenter();
+      const [state] = await Promise.all([
+        this.admin.loadNotificationCenter(),
+        this.routeDelay.waitForRouteDelay(
+          '/admin/notifications',
+          undefined,
+          undefined,
+          AdminNotificationsPopupComponent.LOAD_DEMO_DELAY_MS
+        )
+      ]);
       this.state.set(state);
       this.selectedRuleKey.set(state.rules[0]?.ruleKey ?? '');
     } catch {
       this.error.set('Unable to load notification rules.');
     } finally {
       this.loading.set(false);
+      this.endLoadingProgress();
     }
+  }
+
+  protected loadingRingDashOffset(): number {
+    return this.loadingRingPerimeter * (1 - Math.min(1, Math.max(0, this.loadingProgress())));
   }
 
   protected close(): void {
@@ -259,6 +286,45 @@ export class AdminNotificationsPopupComponent {
 
   protected trackRule(_: number, rule: AdminNotificationRule): string {
     return rule.ruleKey;
+  }
+
+  private beginLoadingProgress(): void {
+    this.clearLoadingProgress();
+    this.loadingProgressStartedAtMs = this.nowMs();
+    this.loadingProgressTimer = setInterval(() => this.updateLoadingProgress(), 100);
+    this.updateLoadingProgress();
+  }
+
+  private updateLoadingProgress(): void {
+    if (!this.loadingProgressStartedAtMs) {
+      this.loadingProgress.set(0);
+      return;
+    }
+    const elapsedMs = Math.max(0, this.nowMs() - this.loadingProgressStartedAtMs);
+    this.loadingProgress.set(Math.min(0.96, elapsedMs / AdminNotificationsPopupComponent.LOAD_PROGRESS_WINDOW_MS));
+  }
+
+  private endLoadingProgress(): void {
+    this.clearLoadingProgressTimer();
+    this.loadingProgress.set(1);
+  }
+
+  private clearLoadingProgress(): void {
+    this.clearLoadingProgressTimer();
+    this.loadingProgressStartedAtMs = 0;
+    this.loadingProgress.set(0);
+  }
+
+  private clearLoadingProgressTimer(): void {
+    if (!this.loadingProgressTimer) {
+      return;
+    }
+    clearInterval(this.loadingProgressTimer);
+    this.loadingProgressTimer = null;
+  }
+
+  private nowMs(): number {
+    return typeof performance !== 'undefined' ? performance.now() : Date.now();
   }
 
   private patchRule(ruleKey: string, update: (rule: AdminNotificationRule) => AdminNotificationRule): void {

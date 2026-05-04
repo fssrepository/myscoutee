@@ -37,9 +37,6 @@ export class AdminPageComponent implements OnInit {
   private lastHandledAdminRequestMs = 0;
   private readonly reportsPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly feedbackPopupComponentRef = signal<Type<unknown> | null>(null);
-  private readonly chatReviewPopupComponentRef = signal<Type<unknown> | null>(null);
-  private readonly itemPreviewPopupComponentRef = signal<Type<unknown> | null>(null);
-  private readonly profilePopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly helpEditorPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly ideaEditorPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly notificationsPopupComponentRef = signal<Type<unknown> | null>(null);
@@ -55,9 +52,6 @@ export class AdminPageComponent implements OnInit {
   protected readonly restoreAvatarGateActive = signal(false);
   protected readonly reportsPopupComponent = this.reportsPopupComponentRef.asReadonly();
   protected readonly feedbackPopupComponent = this.feedbackPopupComponentRef.asReadonly();
-  protected readonly chatReviewPopupComponent = this.chatReviewPopupComponentRef.asReadonly();
-  protected readonly itemPreviewPopupComponent = this.itemPreviewPopupComponentRef.asReadonly();
-  protected readonly profilePopupComponent = this.profilePopupComponentRef.asReadonly();
   protected readonly helpEditorPopupComponent = this.helpEditorPopupComponentRef.asReadonly();
   protected readonly ideaEditorPopupComponent = this.ideaEditorPopupComponentRef.asReadonly();
   protected readonly notificationsPopupComponent = this.notificationsPopupComponentRef.asReadonly();
@@ -70,16 +64,6 @@ export class AdminPageComponent implements OnInit {
           break;
         case 'feedback':
           void this.ensureFeedbackPopupLoaded();
-          break;
-        case 'chat-review':
-        case 'warn-chat':
-          void this.ensureChatReviewPopupLoaded();
-          break;
-        case 'item-preview':
-          void this.ensureItemPreviewPopupLoaded();
-          break;
-        case 'profile':
-          void this.ensureProfilePopupLoaded();
           break;
         case 'help-editor':
           void this.ensureHelpEditorPopupLoaded();
@@ -263,30 +247,6 @@ export class AdminPageComponent implements OnInit {
     }
     const module = await import('../feedback-popup/admin-feedback-popup.component');
     this.feedbackPopupComponentRef.set(module.AdminFeedbackPopupComponent);
-  }
-
-  private async ensureChatReviewPopupLoaded(): Promise<void> {
-    if (this.chatReviewPopupComponentRef()) {
-      return;
-    }
-    const module = await import('../chat-review-popup/admin-chat-review-popup.component');
-    this.chatReviewPopupComponentRef.set(module.AdminChatReviewPopupComponent);
-  }
-
-  private async ensureItemPreviewPopupLoaded(): Promise<void> {
-    if (this.itemPreviewPopupComponentRef()) {
-      return;
-    }
-    const module = await import('../item-preview-popup/admin-item-preview-popup.component');
-    this.itemPreviewPopupComponentRef.set(module.AdminItemPreviewPopupComponent);
-  }
-
-  private async ensureProfilePopupLoaded(): Promise<void> {
-    if (this.profilePopupComponentRef()) {
-      return;
-    }
-    const module = await import('../profile-popup/admin-profile-popup.component');
-    this.profilePopupComponentRef.set(module.AdminProfilePopupComponent);
   }
 
   private async ensureHelpEditorPopupLoaded(): Promise<void> {

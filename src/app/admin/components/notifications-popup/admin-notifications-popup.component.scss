@@ -78,6 +78,48 @@
   min-height: 64px;
 }
 
+.notifications-loading-state {
+  min-height: 280px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  text-align: center;
+}
+
+.notifications-loading-ring {
+  width: 58px;
+  height: 58px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.notifications-loading-ring-svg {
+  width: 58px;
+  height: 58px;
+  display: block;
+  filter: drop-shadow(0 8px 18px rgba(29, 81, 139, 0.16));
+}
+
+.notifications-loading-ring-track,
+.notifications-loading-ring-progress {
+  fill: none;
+  stroke-width: 5;
+}
+
+.notifications-loading-ring-track {
+  stroke: rgba(42, 81, 129, 0.16);
+}
+
+.notifications-loading-ring-progress {
+  stroke: #2f75bc;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transform: rotate(-90deg);
+  transform-origin: 50% 50%;
+  transition: stroke-dashoffset 120ms linear;
+}
+
 .notifications-error {
   min-height: 42px;
   justify-content: flex-start;

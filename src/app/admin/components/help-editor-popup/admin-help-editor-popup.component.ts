@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, HostListener, effect, inject } from '@angular/core';
+import { Component, HostListener, OnDestroy, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 
@@ -12,6 +12,7 @@ import type {
   HelpCenterSection,
   HelpCenterState
 } from '../../../shared/core/base/models';
+import { RouteDelayService } from '../../../shared/core/base/services/route-delay.service';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
 import { AdminService } from '../../admin.service';
 
@@ -56,8 +57,10 @@ interface HelpEditorRevisionRow {
   templateUrl: './admin-help-editor-popup.component.html',
   styleUrl: './admin-help-editor-popup.component.scss'
 })
-export class AdminHelpEditorPopupComponent {
+export class AdminHelpEditorPopupComponent implements OnDestroy {
   private static readonly ACTION_PENDING_WINDOW_MS = 1500;
+  private static readonly LOAD_DEMO_DELAY_MS = 1500;
+  private static readonly LOAD_PROGRESS_WINDOW_MS = 3000;
   private static readonly VOID_HTML_TAGS = new Set([
     'area',
     'base',
@@ -76,10 +79,11 @@ export class AdminHelpEditorPopupComponent {
   ]);
   protected readonly admin = inject(AdminService);
   private readonly helpCenter = inject(HelpCenterService);
+  private readonly routeDelay = inject(RouteDelayService);
   private readonly confirmationDialog = inject(ConfirmationDialogService);
 
   protected documentKind: HelpCenterDocumentKind = 'help';
-  protected loading = false;
+  protected readonly loading = signal(false);
   protected saving = false;
   protected activatingRevisionId = '';
   protected error = '';
@@ -97,6 +101,8 @@ export class AdminHelpEditorPopupComponent {
   protected iconPickerGroup: HelpIconOption['group'] = 'Common';
   private stateLoadedForPopup = false;
   protected readonly actionRingPerimeter = 100;
+  protected readonly loadingRingPerimeter = 100;
+  protected readonly loadingProgress = signal(0);
   protected readonly defaultHelpDescription = APP_STATIC_DATA.defaultHelpCenterDescription;
   protected readonly defaultPrivacyDescription = APP_STATIC_DATA.defaultPrivacyCenterDescription;
   protected readonly headerColorOptions: Array<{ id: HelpCenterHeaderColor; label: string }> = [
@@ -185,6 +191,8 @@ export class AdminHelpEditorPopupComponent {
   protected visibleIconOptions: HelpIconOption[] = [];
   protected iconPickerActiveLabel = 'Common icons';
   protected iconPickerActiveCount = 0;
+  private loadingProgressTimer: ReturnType<typeof setInterval> | null = null;
+  private loadingProgressStartedAtMs = 0;
 
   constructor() {
     effect(() => {
@@ -192,6 +200,7 @@ export class AdminHelpEditorPopupComponent {
         this.stateLoadedForPopup = false;
         this.editing = false;
         this.draft = null;
+        this.clearLoadingProgress();
         this.closeDocumentMenu();
         this.closeIconPicker();
         this.closeColorPicker();
@@ -202,6 +211,10 @@ export class AdminHelpEditorPopupComponent {
         void this.load();
       }
     });
+  }
+
+  ngOnDestroy(): void {
+    this.clearLoadingProgress();
   }
 
   @HostListener('window:keydown.escape', ['$event'])
@@ -217,25 +230,35 @@ export class AdminHelpEditorPopupComponent {
   }
 
   protected async load(): Promise<void> {
-    if (this.loading) {
+    if (this.loading()) {
       return;
     }
-    this.loading = true;
+    this.loading.set(true);
     this.error = '';
+    this.beginLoadingProgress();
     try {
-      const state = await this.helpCenter.loadAdminState(this.actorUserId(), this.documentKind);
+      const [state] = await Promise.all([
+        this.helpCenter.loadAdminState(this.actorUserId(), this.documentKind),
+        this.routeDelay.waitForRouteDelay(
+          this.adminContentRoute(),
+          undefined,
+          undefined,
+          AdminHelpEditorPopupComponent.LOAD_DEMO_DELAY_MS
+        )
+      ]);
       this.selectInitialRevision(state.revisions, state.activeRevision);
     } catch {
       this.error = `Unable to load ${this.documentLabelLower()} revisions.`;
     } finally {
-      this.loading = false;
+      this.loading.set(false);
+      this.endLoadingProgress();
     }
   }
 
   protected selectDocumentKind(kind: HelpCenterDocumentKind, event?: Event): void {
     event?.stopPropagation();
     this.closeDocumentMenu();
-    if (this.documentKind === kind || this.loading || this.isAnyActionPending()) {
+    if (this.documentKind === kind || this.loading() || this.isAnyActionPending()) {
       return;
     }
     this.documentKind = kind;
@@ -252,6 +275,10 @@ export class AdminHelpEditorPopupComponent {
     void this.load();
   }
 
+  protected loadingRingDashOffset(): number {
+    return this.loadingRingPerimeter * (1 - Math.min(1, Math.max(0, this.loadingProgress())));
+  }
+
   protected close(): void {
     this.editing = false;
     this.draft = null;
@@ -264,7 +291,7 @@ export class AdminHelpEditorPopupComponent {
 
   protected toggleDocumentMenu(event?: Event): void {
     event?.stopPropagation();
-    if (this.loading || this.isAnyActionPending()) {
+    if (this.loading() || this.isAnyActionPending()) {
       return;
     }
     this.documentMenuOpen = !this.documentMenuOpen;
@@ -910,6 +937,49 @@ export class AdminHelpEditorPopupComponent {
 
   private normalizedHtmlText(value: string): string {
     return `${value ?? ''}`.replace(/\s+/g, ' ').trim();
+  }
+
+  private adminContentRoute(): string {
+    return this.documentKind === 'privacy' ? '/admin/privacy' : '/admin/help';
+  }
+
+  private beginLoadingProgress(): void {
+    this.clearLoadingProgress();
+    this.loadingProgressStartedAtMs = this.nowMs();
+    this.loadingProgressTimer = setInterval(() => this.updateLoadingProgress(), 100);
+    this.updateLoadingProgress();
+  }
+
+  private updateLoadingProgress(): void {
+    if (!this.loadingProgressStartedAtMs) {
+      this.loadingProgress.set(0);
+      return;
+    }
+    const elapsedMs = Math.max(0, this.nowMs() - this.loadingProgressStartedAtMs);
+    this.loadingProgress.set(Math.min(0.96, elapsedMs / AdminHelpEditorPopupComponent.LOAD_PROGRESS_WINDOW_MS));
+  }
+
+  private endLoadingProgress(): void {
+    this.clearLoadingProgressTimer();
+    this.loadingProgress.set(1);
+  }
+
+  private clearLoadingProgress(): void {
+    this.clearLoadingProgressTimer();
+    this.loadingProgressStartedAtMs = 0;
+    this.loadingProgress.set(0);
+  }
+
+  private clearLoadingProgressTimer(): void {
+    if (!this.loadingProgressTimer) {
+      return;
+    }
+    clearInterval(this.loadingProgressTimer);
+    this.loadingProgressTimer = null;
+  }
+
+  private nowMs(): number {
+    return typeof performance !== 'undefined' ? performance.now() : Date.now();
   }
 
   private async withMinimumActionTime<T>(action: Promise<T>): Promise<T> {
