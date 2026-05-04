@@ -1,6 +1,6 @@
 const CACHE_PREFIX = 'myscoutee-runtime';
-const CACHE_VERSION = "build-ebcdffdd0f0b-20260504195314";
-const BUILD_ID = "ebcdffdd0f0b-20260504195314";
+const CACHE_VERSION = "build-a39fcffc1f0e-20260504233347";
+const BUILD_ID = "a39fcffc1f0e-20260504233347";
 const APP_CACHE = `${CACHE_PREFIX}-app-${CACHE_VERSION}`;
 const API_CACHE = `${CACHE_PREFIX}-api-${CACHE_VERSION}`;
 const MEDIA_CACHE = `${CACHE_PREFIX}-media-${CACHE_VERSION}`;
@@ -14,7 +14,9 @@ const PRECACHE_URLS = [
   './assets/icon/android-chrome-192x192.png',
   './assets/icon/android-chrome-512x512.png',
   './assets/logo/heart.png',
-  './assets/logo/cards_no_edges.png'
+  './assets/logo/cards_no_edges.png',
+  './assets/i18n/en.json',
+  './assets/i18n/hu.json'
 ];
 
 self.addEventListener('install', event => {
@@ -106,6 +108,9 @@ function isApiCacheable(url) {
 function isStaticAsset(url, request) {
   if (url.pathname.endsWith('/app-sw.js')) {
     return false;
+  }
+  if (url.pathname.includes('/assets/i18n/')) {
+    return true;
   }
   if (request.destination === 'script'
     || request.destination === 'style'
