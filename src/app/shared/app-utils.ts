@@ -200,18 +200,27 @@ export class AppUtils {
       return this.smartListDayLabel(parsed);
     }
     if (activitiesView === 'month') {
-      return parsed.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+      return parsed.toLocaleDateString(this.browserLocale(), { month: 'long', year: 'numeric' });
     }
     return `${labels.weekPrefix} ${this.isoWeekNumber(parsed)}, ${parsed.getFullYear()}`;
   }
 
   static smartListDayLabel(value: Date): string {
-    return value.toLocaleDateString('en-US', {
+    return value.toLocaleDateString(this.browserLocale(), {
       weekday: 'short',
       month: 'short',
       day: 'numeric',
       year: 'numeric'
     });
+  }
+
+  static browserLocale(): string | string[] | undefined {
+    if (typeof navigator === 'undefined') {
+      return undefined;
+    }
+    return Array.isArray(navigator.languages) && navigator.languages.length > 0
+      ? navigator.languages
+      : (navigator.language || undefined);
   }
 
   static findUserByName(users: DemoUser[], name: string): DemoUser | undefined {

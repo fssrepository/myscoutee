@@ -4,6 +4,7 @@ import { Injectable, inject } from '@angular/core';
 import { environment } from '../../../../../environments/environment';
 import { APP_STATIC_DATA } from '../../../app-static-data';
 import type {
+  ContentLanguage,
   HelpCenterAuditEntry,
   HelpCenterDocumentKind,
   HelpCenterRevision,
@@ -21,10 +22,12 @@ export class HttpHelpCenterService {
   private readonly http = inject(HttpClient);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
 
-  async loadState(kind: HelpCenterDocumentKind = 'help'): Promise<HelpCenterState> {
+  async loadState(kind: HelpCenterDocumentKind = 'help', lang = 'en'): Promise<HelpCenterState> {
     const documentKind = this.normalizeKind(kind);
     const response = await this.http
-      .get<Partial<HelpCenterState> | null>(`${this.apiBaseUrl}/${documentKind}/active`)
+      .get<Partial<HelpCenterState> | null>(`${this.apiBaseUrl}/${documentKind}/active`, {
+        params: { lang: this.normalizeLang(lang) }
+      })
       .toPromise();
     return this.normalizeState(response, documentKind);
   }
@@ -63,11 +66,15 @@ export class HttpHelpCenterService {
     return consent;
   }
 
-  async loadAdminState(adminUserId: string, kind: HelpCenterDocumentKind = 'help'): Promise<HelpCenterState> {
+  async loadAdminState(adminUserId: string, kind: HelpCenterDocumentKind = 'help', lang = 'en'): Promise<HelpCenterState> {
     const documentKind = this.normalizeKind(kind);
+    const params: Record<string, string> = { lang: this.normalizeLang(lang) };
+    if (adminUserId.trim()) {
+      params['adminUserId'] = adminUserId.trim();
+    }
     const response = await this.http
       .get<Partial<HelpCenterState> | null>(`${this.apiBaseUrl}/admin/${documentKind}`, {
-        params: adminUserId.trim() ? { adminUserId: adminUserId.trim() } : {}
+        params
       })
       .toPromise();
     return this.normalizeState(response, documentKind);
@@ -121,7 +128,8 @@ export class HttpHelpCenterService {
     return {
       activeRevision,
       revisions: revisions.sort((left, right) => right.version - left.version),
-      auditTrail: auditTrail.sort((left, right) => right.createdAtIso.localeCompare(left.createdAtIso))
+      auditTrail: auditTrail.sort((left, right) => right.createdAtIso.localeCompare(left.createdAtIso)),
+      availableLanguages: this.normalizeAvailableLanguages(response?.availableLanguages)
     };
   }
 
@@ -134,6 +142,8 @@ export class HttpHelpCenterService {
     return {
       id,
       documentKind: kind,
+      lang: this.normalizeLang(value?.lang),
+      languageLabel: this.languageLabel(value?.lang, value?.languageLabel),
       version,
       title: `${value?.title ?? `${kind === 'privacy' ? 'Privacy' : 'Help'} revision v${version}`}`.trim(),
       summary: `${value?.summary ?? ''}`.trim(),
@@ -177,6 +187,8 @@ export class HttpHelpCenterService {
     return {
       id,
       documentKind: this.normalizeKind(value?.documentKind ?? kind),
+      lang: this.normalizeLang(value?.lang),
+      languageLabel: this.languageLabel(value?.lang, value?.languageLabel),
       revisionId: `${value?.revisionId ?? ''}`.trim() || null,
       version: Number.isFinite(Number(value?.version)) ? Math.max(0, Math.trunc(Number(value?.version))) : null,
       action,
@@ -213,6 +225,38 @@ export class HttpHelpCenterService {
 
   private normalizeKind(kind: string | null | undefined): HelpCenterDocumentKind {
     return kind === 'privacy' ? 'privacy' : 'help';
+  }
+
+  private normalizeLang(lang: string | null | undefined): string {
+    const normalized = `${lang ?? ''}`.trim().toLowerCase().split('-')[0] || 'en';
+    return normalized === 'hu' ? 'hu' : 'en';
+  }
+
+  private languageLabel(lang: string | null | undefined, label: string | null | undefined): string {
+    const explicit = `${label ?? ''}`.trim();
+    if (explicit) {
+      return explicit;
+    }
+    return this.normalizeLang(lang) === 'hu' ? 'Magyar' : 'English';
+  }
+
+  private normalizeAvailableLanguages(value: readonly Partial<ContentLanguage>[] | null | undefined): ContentLanguage[] {
+    const source = Array.isArray(value) && value.length > 0
+      ? value
+      : APP_STATIC_DATA.contentLanguages;
+    const seen = new Set<string>();
+    return source
+      .map(item => {
+        const lang = this.normalizeLang(item?.lang);
+        return { lang, label: this.languageLabel(lang, item?.label) };
+      })
+      .filter(item => {
+        if (seen.has(item.lang)) {
+          return false;
+        }
+        seen.add(item.lang);
+        return true;
+      });
   }
 
   private normalizeHeaderColor(value: string | null | undefined): HelpCenterRevision['headerColor'] {

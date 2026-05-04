@@ -13,7 +13,9 @@ const PRECACHE_URLS = [
   './assets/icon/android-chrome-192x192.png',
   './assets/icon/android-chrome-512x512.png',
   './assets/logo/heart.png',
-  './assets/logo/cards_no_edges.png'
+  './assets/logo/cards_no_edges.png',
+  './assets/i18n/en.json',
+  './assets/i18n/hu.json'
 ];
 
 self.addEventListener('install', event => {
@@ -105,6 +107,9 @@ function isApiCacheable(url) {
 function isStaticAsset(url, request) {
   if (url.pathname.endsWith('/app-sw.js')) {
     return false;
+  }
+  if (url.pathname.includes('/assets/i18n/')) {
+    return true;
   }
   if (request.destination === 'script'
     || request.destination === 'style'

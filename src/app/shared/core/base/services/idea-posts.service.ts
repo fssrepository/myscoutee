@@ -13,6 +13,7 @@ export class IdeaPostsService extends BaseRouteModeService {
   private readonly httpIdeaPostsService = inject(HttpIdeaPostsService);
   private readonly postsRef = signal<IdeaPost[]>([]);
   private readonly adminPostsRef = signal<IdeaPost[]>([]);
+  private adminPostsLang = 'en';
 
   readonly posts = this.postsRef.asReadonly();
   readonly adminPosts = this.adminPostsRef.asReadonly();
@@ -23,18 +24,24 @@ export class IdeaPostsService extends BaseRouteModeService {
       .sort((left, right) => this.sortValue(right) - this.sortValue(left)));
   }
 
-  async loadPublishedPosts(): Promise<IdeaPost[]> {
-    const posts = await this.ideaService().loadPublishedPosts();
+  async loadPublishedPosts(lang = 'en'): Promise<IdeaPost[]> {
+    const posts = await this.ideaService().loadPublishedPosts(lang);
     this.applyPublishedPosts(posts);
     return this.clonePosts(this.postsRef());
   }
 
-  async loadAdminPosts(adminUserId: string): Promise<IdeaPost[]> {
-    const posts = await this.ideaService().loadAdminPosts(adminUserId);
+  async loadAdminPosts(adminUserId: string, lang = 'en'): Promise<IdeaPost[]> {
+    const posts = await this.ideaService().loadAdminPosts(adminUserId, lang);
     const cloned = this.clonePosts(posts).sort((left, right) => this.sortValue(right) - this.sortValue(left));
+    this.adminPostsLang = this.normalizeLang(lang);
     this.adminPostsRef.set(cloned);
     this.applyPublishedPosts(cloned.filter(post => post.published));
     return this.clonePosts(cloned);
+  }
+
+  async loadAdminPostsSnapshot(adminUserId: string, lang = 'en'): Promise<IdeaPost[]> {
+    const posts = await this.ideaService().loadAdminPosts(adminUserId, lang);
+    return this.clonePosts(posts).sort((left, right) => this.sortValue(right) - this.sortValue(left));
   }
 
   async savePost(request: IdeaPostSaveRequest): Promise<IdeaPost> {
@@ -45,7 +52,9 @@ export class IdeaPostsService extends BaseRouteModeService {
 
   async deletePost(postId: string, actorUserId: string): Promise<IdeaPost[]> {
     const posts = await this.ideaService().deletePost(postId, actorUserId);
-    const cloned = this.clonePosts(posts).sort((left, right) => this.sortValue(right) - this.sortValue(left));
+    const cloned = this.clonePosts(posts)
+      .filter(post => this.normalizeLang(post.lang) === this.adminPostsLang)
+      .sort((left, right) => this.sortValue(right) - this.sortValue(left));
     this.adminPostsRef.set(cloned);
     this.applyPublishedPosts(cloned.filter(post => post.published));
     return this.clonePosts(cloned);
@@ -62,6 +71,9 @@ export class IdeaPostsService extends BaseRouteModeService {
   }
 
   private mergeAdminPost(post: IdeaPost): void {
+    if (this.normalizeLang(post.lang) !== this.adminPostsLang) {
+      return;
+    }
     const merged = this.clonePosts([
       ...this.adminPostsRef().filter(current => current.id !== post.id),
       post
@@ -81,5 +93,10 @@ export class IdeaPostsService extends BaseRouteModeService {
   private sortValue(post: Pick<IdeaPost, 'submittedAtIso' | 'updatedAtIso' | 'createdAtIso'>): number {
     const parsed = Date.parse(post.submittedAtIso || post.updatedAtIso || post.createdAtIso || '');
     return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  private normalizeLang(lang: string | null | undefined): string {
+    const normalized = `${lang ?? ''}`.trim().toLowerCase().split('-')[0];
+    return normalized === 'hu' ? 'hu' : 'en';
   }
 }

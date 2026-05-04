@@ -83,6 +83,7 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
   private readonly confirmationDialog = inject(ConfirmationDialogService);
 
   protected documentKind: HelpCenterDocumentKind = 'help';
+  protected selectedContentLang = 'en';
   protected readonly loading = signal(false);
   protected saving = false;
   protected activatingRevisionId = '';
@@ -96,6 +97,7 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
   protected openDraftSectionId = '';
   protected iconPickerSectionId = '';
   protected documentMenuOpen = false;
+  protected languageMenuOpen = false;
   protected colorPickerOpen = false;
   protected iconPickerSearch = '';
   protected iconPickerGroup: HelpIconOption['group'] = 'Common';
@@ -202,6 +204,7 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
         this.draft = null;
         this.clearLoadingProgress();
         this.closeDocumentMenu();
+        this.closeLanguageMenu();
         this.closeIconPicker();
         this.closeColorPicker();
         return;
@@ -219,12 +222,13 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
 
   @HostListener('window:keydown.escape', ['$event'])
   protected onEscape(event: Event): void {
-    if (!this.iconPickerSectionId && !this.documentMenuOpen && !this.colorPickerOpen) {
+    if (!this.iconPickerSectionId && !this.documentMenuOpen && !this.languageMenuOpen && !this.colorPickerOpen) {
       return;
     }
     event.preventDefault();
     event.stopPropagation();
     this.closeDocumentMenu();
+    this.closeLanguageMenu();
     this.closeIconPicker();
     this.closeColorPicker();
   }
@@ -238,7 +242,7 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
     this.beginLoadingProgress();
     try {
       const [state] = await Promise.all([
-        this.helpCenter.loadAdminState(this.actorUserId(), this.documentKind),
+        this.helpCenter.loadAdminState(this.actorUserId(), this.documentKind, this.selectedContentLang),
         this.routeDelay.waitForRouteDelay(
           this.adminContentRoute(),
           undefined,
@@ -258,6 +262,7 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
   protected selectDocumentKind(kind: HelpCenterDocumentKind, event?: Event): void {
     event?.stopPropagation();
     this.closeDocumentMenu();
+    this.closeLanguageMenu();
     if (this.documentKind === kind || this.loading() || this.isAnyActionPending()) {
       return;
     }
@@ -275,6 +280,52 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
     void this.load();
   }
 
+  protected contentLanguages(): Array<{ lang: string; label: string }> {
+    return this.currentState()?.availableLanguages?.length
+      ? this.currentState()!.availableLanguages
+      : APP_STATIC_DATA.contentLanguages;
+  }
+
+  protected selectedContentLanguageLabel(): string {
+    return this.contentLanguages().find(language => language.lang === this.selectedContentLang)?.label ?? 'English';
+  }
+
+  protected contentLanguageFlag(lang: string): string {
+    const flags: Record<string, string> = { en: '🇬🇧', hu: '🇭🇺' };
+    return flags[this.normalizeContentLang(lang)] ?? '🌐';
+  }
+
+  protected toggleLanguageMenu(event?: Event): void {
+    event?.stopPropagation();
+    if (this.loading() || this.isAnyActionPending()) {
+      return;
+    }
+    this.closeDocumentMenu();
+    this.closeIconPicker();
+    this.closeColorPicker();
+    this.languageMenuOpen = !this.languageMenuOpen;
+  }
+
+  protected selectContentLanguage(lang: string, event?: Event): void {
+    event?.stopPropagation();
+    const normalized = this.normalizeContentLang(lang);
+    if (normalized === this.selectedContentLang || this.loading() || this.isAnyActionPending()) {
+      this.closeLanguageMenu();
+      return;
+    }
+    this.selectedContentLang = normalized;
+    this.closeLanguageMenu();
+    this.editing = false;
+    this.draft = null;
+    this.draftAccordionOpen = true;
+    this.selectedRevisionId = '';
+    this.openRevisionId = '';
+    this.openPreviewSectionId = '';
+    this.openDraftSectionId = '';
+    this.error = '';
+    void this.load();
+  }
+
   protected loadingRingDashOffset(): number {
     return this.loadingRingPerimeter * (1 - Math.min(1, Math.max(0, this.loadingProgress())));
   }
@@ -284,6 +335,7 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
     this.draft = null;
     this.draftAccordionOpen = true;
     this.closeDocumentMenu();
+    this.closeLanguageMenu();
     this.closeIconPicker();
     this.closeColorPicker();
     this.admin.closePopup();
@@ -294,6 +346,7 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
     if (this.loading() || this.isAnyActionPending()) {
       return;
     }
+    this.closeLanguageMenu();
     this.documentMenuOpen = !this.documentMenuOpen;
     this.closeIconPicker();
     this.closeColorPicker();
@@ -302,6 +355,11 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
   protected closeDocumentMenu(event?: Event): void {
     event?.stopPropagation();
     this.documentMenuOpen = false;
+  }
+
+  protected closeLanguageMenu(event?: Event): void {
+    event?.stopPropagation();
+    this.languageMenuOpen = false;
   }
 
   protected currentState(): HelpCenterState | null {
@@ -552,6 +610,7 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
     const request = {
       actorUserId: this.actorUserId(),
       baseRevisionId: this.draft.baseRevisionId,
+      lang: this.selectedContentLang,
       title: this.draft.title,
       summary: this.draft.summary,
       description: this.draft.description,
@@ -855,6 +914,11 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
       default:
         return 'amber';
     }
+  }
+
+  private normalizeContentLang(lang: string | null | undefined): string {
+    const normalized = `${lang ?? ''}`.trim().toLowerCase().split('-')[0];
+    return normalized === 'hu' ? 'hu' : 'en';
   }
 
   private escapeHtml(value: string): string {

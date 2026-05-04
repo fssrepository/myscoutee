@@ -1,7 +1,7 @@
 @if (admin.activePopup() === 'help-editor') {
   <section class="app-popup">
     <div class="app-popup-backdrop" (click)="close()"></div>
-    <div class="app-popup-panel popup-panel-admin popup-panel-help-editor" (click)="closeDocumentMenu($event)">
+    <div class="app-popup-panel popup-panel-admin popup-panel-help-editor" (click)="closeDocumentMenu($event); closeLanguageMenu($event)">
       <div class="popup-header">
         <div class="popup-title">
           <h2>{{ editorTitle() }}</h2>
@@ -71,6 +71,46 @@
           <button type="button" class="popup-close" (click)="close()" aria-label="Close">
             <mat-icon>close</mat-icon>
           </button>
+        </div>
+        <div class="help-editor-language-row" aria-label="Content language" data-i18n-ignore>
+          <div class="help-editor-language-menu-wrap">
+            <button
+              type="button"
+              class="help-editor-language-menu-btn"
+              [disabled]="loading() || isAnyActionPending()"
+              [attr.aria-expanded]="languageMenuOpen"
+              aria-haspopup="menu"
+              data-motion="none"
+              (click)="toggleLanguageMenu($event)"
+              >
+              <span class="help-editor-language-flag" aria-hidden="true">{{ contentLanguageFlag(selectedContentLang) }}</span>
+              <span>{{ selectedContentLanguageLabel() }}</span>
+              <mat-icon class="help-editor-language-menu-caret">expand_more</mat-icon>
+            </button>
+            @if (languageMenuOpen) {
+              <div class="help-editor-language-menu" role="menu" (click)="$event.stopPropagation()">
+                @for (language of contentLanguages(); track language.lang) {
+                  <button
+                    type="button"
+                    role="menuitemradio"
+                    [class.is-active]="selectedContentLang === language.lang"
+                    [attr.aria-checked]="selectedContentLang === language.lang"
+                    [disabled]="loading() || isAnyActionPending()"
+                    data-motion="none"
+                    (click)="selectContentLanguage(language.lang, $event)"
+                    >
+                    <span class="help-editor-language-option-label">
+                      <span class="help-editor-language-flag" aria-hidden="true">{{ contentLanguageFlag(language.lang) }}</span>
+                      <span>{{ language.label }}</span>
+                    </span>
+                    @if (selectedContentLang === language.lang) {
+                      <mat-icon class="help-editor-language-check">check</mat-icon>
+                    }
+                  </button>
+                }
+              </div>
+            }
+          </div>
         </div>
       </div>
 

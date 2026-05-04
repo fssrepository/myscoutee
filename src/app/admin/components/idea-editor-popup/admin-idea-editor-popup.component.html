@@ -55,6 +55,44 @@
             <mat-icon>close</mat-icon>
           </button>
         </div>
+        <div class="idea-editor-language-row" aria-label="Content language" data-i18n-ignore>
+          <div class="idea-editor-language-menu-wrap">
+            <button
+              type="button"
+              class="idea-editor-language-menu-btn"
+              [class.is-open]="languageMenuOpen"
+              [disabled]="loading || saving || uploading"
+              [attr.aria-expanded]="languageMenuOpen"
+              (click)="toggleLanguageMenu($event)"
+              >
+              <span class="idea-editor-language-flag" aria-hidden="true">{{ contentLanguageFlag(selectedContentLang) }}</span>
+              <span>{{ selectedContentLanguageLabel() }}</span>
+              <mat-icon class="idea-editor-language-caret">expand_more</mat-icon>
+            </button>
+            @if (languageMenuOpen) {
+              <div class="idea-editor-language-menu" role="menu" (click)="$event.stopPropagation()">
+                @for (language of contentLanguages(); track language.lang) {
+                  <button
+                    type="button"
+                    class="idea-editor-language-option"
+                    [class.is-active]="selectedContentLang === language.lang"
+                    (click)="selectListContentLanguage(language.lang, $event)"
+                    role="menuitemradio"
+                    [attr.aria-checked]="selectedContentLang === language.lang"
+                    >
+                    <span class="idea-editor-language-option-label">
+                      <span class="idea-editor-language-flag" aria-hidden="true">{{ contentLanguageFlag(language.lang) }}</span>
+                      <span>{{ language.label }}</span>
+                    </span>
+                    @if (selectedContentLang === language.lang) {
+                      <mat-icon>check</mat-icon>
+                    }
+                  </button>
+                }
+              </div>
+            }
+          </div>
+        </div>
       </div>
 
       <div class="popup-body idea-editor-body">
@@ -177,6 +215,44 @@
               >
               <mat-icon>close</mat-icon>
             </button>
+          </div>
+          <div class="idea-editor-language-row idea-editor-form-language-row" aria-label="Content language" data-i18n-ignore>
+            <div class="idea-editor-language-menu-wrap">
+              <button
+                type="button"
+                class="idea-editor-language-menu-btn"
+                [class.is-open]="formLanguageMenuOpen"
+                [disabled]="saving || uploading"
+                [attr.aria-expanded]="formLanguageMenuOpen"
+                (click)="toggleFormLanguageMenu($event)"
+                >
+                <span class="idea-editor-language-flag" aria-hidden="true">{{ contentLanguageFlag(draftContentLang) }}</span>
+                <span>{{ draftContentLanguageLabel() }}</span>
+                <mat-icon class="idea-editor-language-caret">expand_more</mat-icon>
+              </button>
+              @if (formLanguageMenuOpen) {
+                <div class="idea-editor-language-menu" role="menu" (click)="$event.stopPropagation()">
+                  @for (language of contentLanguages(); track language.lang) {
+                    <button
+                      type="button"
+                      class="idea-editor-language-option"
+                      [class.is-active]="draftContentLang === language.lang"
+                      (click)="selectDraftContentLanguage(language.lang, $event)"
+                      role="menuitemradio"
+                      [attr.aria-checked]="draftContentLang === language.lang"
+                      >
+                      <span class="idea-editor-language-option-label">
+                        <span class="idea-editor-language-flag" aria-hidden="true">{{ contentLanguageFlag(language.lang) }}</span>
+                        <span>{{ language.label }}</span>
+                      </span>
+                      @if (draftContentLang === language.lang) {
+                        <mat-icon>check</mat-icon>
+                      }
+                    </button>
+                  }
+                </div>
+              }
+            </div>
           </div>
         </header>
 

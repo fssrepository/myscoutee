@@ -13,17 +13,23 @@ export class HttpIdeaPostsService {
   private readonly media = inject(HttpMediaService);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
 
-  async loadPublishedPosts(): Promise<IdeaPost[]> {
+  async loadPublishedPosts(lang = 'en'): Promise<IdeaPost[]> {
     const response = await this.http
-      .get<{ ideas?: Array<Partial<IdeaPost>> | null } | null>(`${this.apiBaseUrl}/landing/content`)
+      .get<{ ideas?: Array<Partial<IdeaPost>> | null } | null>(`${this.apiBaseUrl}/landing/content`, {
+        params: { lang: this.normalizeLang(lang) }
+      })
       .toPromise();
     return this.normalizePosts(response?.ideas);
   }
 
-  async loadAdminPosts(adminUserId: string): Promise<IdeaPost[]> {
+  async loadAdminPosts(adminUserId: string, lang = 'en'): Promise<IdeaPost[]> {
+    const params: Record<string, string> = { lang: this.normalizeLang(lang) };
+    if (adminUserId.trim()) {
+      params['adminUserId'] = adminUserId.trim();
+    }
     const response = await this.http
       .get<Array<Partial<IdeaPost>> | null>(`${this.apiBaseUrl}/admin/ideas`, {
-        params: adminUserId.trim() ? { adminUserId: adminUserId.trim() } : {}
+        params
       })
       .toPromise();
     return this.normalizePosts(response);
@@ -94,6 +100,9 @@ export class HttpIdeaPostsService {
     }
     return {
       id,
+      contentKey: this.contentKey(value?.contentKey, id),
+      lang: this.normalizeLang(value?.lang),
+      languageLabel: this.languageLabel(value?.lang, value?.languageLabel),
       title,
       excerpt: `${value?.excerpt ?? ''}`.trim() || this.excerptFromHtml(contentHtml),
       contentHtml,
@@ -115,6 +124,24 @@ export class HttpIdeaPostsService {
   private excerptFromHtml(value: string): string {
     const text = `${value ?? ''}`.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
     return text.length <= 180 ? text : `${text.slice(0, 179).trim()}...`;
+  }
+
+  private normalizeLang(lang: string | null | undefined): string {
+    const normalized = `${lang ?? ''}`.trim().toLowerCase().split('-')[0];
+    return normalized === 'hu' ? 'hu' : 'en';
+  }
+
+  private contentKey(value: string | null | undefined, id: string): string {
+    const explicit = `${value ?? ''}`.trim();
+    if (explicit) {
+      return explicit;
+    }
+    return id.endsWith('-hu') ? id.slice(0, -3) : id;
+  }
+
+  private languageLabel(lang: string | null | undefined, label: string | null | undefined): string {
+    const explicit = `${label ?? ''}`.trim();
+    return explicit || (this.normalizeLang(lang) === 'hu' ? 'Magyar' : 'English');
   }
 
   private sortValue(post: Pick<IdeaPost, 'submittedAtIso' | 'updatedAtIso' | 'createdAtIso'>): number {

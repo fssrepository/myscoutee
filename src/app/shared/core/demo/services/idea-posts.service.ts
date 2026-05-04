@@ -14,35 +14,47 @@ export class DemoIdeaPostsService {
   private readonly memoryDb = inject(AppMemoryDb);
   private readonly routeDelay = inject(RouteDelayService);
 
-  async loadPublishedPosts(): Promise<IdeaPost[]> {
+  async loadPublishedPosts(lang = 'en'): Promise<IdeaPost[]> {
     await this.memoryDb.whenReady();
     const changed = this.ensureSeeded();
     if (changed) {
       await this.persistBestEffort();
     }
-    return this.sortedPosts(this.table()).filter(post => post.published && !post.trashed);
+    const language = this.normalizeLang(lang);
+    const posts = this.sortedPosts(this.table()).filter(post => post.published && !post.trashed && post.lang === language);
+    return posts.length > 0 ? posts : this.sortedPosts(this.table()).filter(post => post.published && !post.trashed && post.lang === 'en');
   }
 
-  async loadAdminPosts(_adminUserId = ''): Promise<IdeaPost[]> {
+  async loadAdminPosts(_adminUserId = '', lang = 'en'): Promise<IdeaPost[]> {
     await this.memoryDb.whenReady();
     const changed = this.ensureSeeded();
     if (changed) {
       await this.persistBestEffort();
     }
     await this.routeDelay.waitForRouteDelay('/admin/ideas', undefined, undefined, 900);
-    return this.sortedPosts(this.table());
+    const language = this.normalizeLang(lang);
+    return this.sortedPosts(this.table()).filter(post => post.lang === language);
   }
 
   async savePost(request: IdeaPostSaveRequest): Promise<IdeaPost> {
     await this.memoryDb.whenReady();
     this.ensureSeeded();
     const nowIso = new Date().toISOString();
-    const existing = request.id ? this.table().byId[request.id] ?? null : null;
-    const id = request.id?.trim() || this.newId('idea');
+    const language = this.normalizeLang(request.lang);
+    const requestedContentKey = `${request.contentKey ?? ''}`.trim();
+    const matchingTranslation = !request.id && requestedContentKey
+      ? this.sortedPosts(this.table()).find(post => post.contentKey === requestedContentKey && post.lang === language) ?? null
+      : null;
+    const existing = request.id ? this.table().byId[request.id] ?? null : matchingTranslation;
+    const id = request.id?.trim() || existing?.id || this.newId('idea');
+    const contentKey = requestedContentKey || existing?.contentKey || this.contentKeyFromId(id);
     const contentHtml = this.normalizeHtml(request.contentHtml);
     const imageUrls = this.imageUrls(request.imageUrls, request.imageUrl);
     const post: IdeaPost = {
       id,
+      contentKey,
+      lang: language,
+      languageLabel: this.languageLabel(language),
       title: request.title.trim() || 'Untitled idea',
       excerpt: this.excerpt(request.excerpt, contentHtml),
       contentHtml,
@@ -178,16 +190,20 @@ export class DemoIdeaPostsService {
 
   private ensureSeeded(): boolean {
     const table = this.table();
-    if (table.ids.length > 0) {
+    const defaultPosts = this.defaultPosts();
+    const missingPosts = defaultPosts.filter(post => !table.byId[post.id]);
+    if (missingPosts.length === 0) {
       return false;
     }
-    const posts = this.defaultPosts();
     this.memoryDb.write(state => ({
       ...state,
       [IDEA_POSTS_TABLE_NAME]: {
         seeded: true,
-        byId: Object.fromEntries(posts.map(post => [post.id, post])),
-        ids: posts.map(post => post.id)
+        byId: {
+          ...state[IDEA_POSTS_TABLE_NAME].byId,
+          ...Object.fromEntries(missingPosts.map(post => [post.id, post]))
+        },
+        ids: [...new Set([...state[IDEA_POSTS_TABLE_NAME].ids, ...missingPosts.map(post => post.id)])]
       }
     }));
     return true;
@@ -221,6 +237,9 @@ export class DemoIdeaPostsService {
     const imageUrls = this.imageUrls(post.imageUrls, post.imageUrl);
     return {
       id: `${post.id ?? ''}`.trim(),
+      contentKey: this.contentKeyFromId(`${post.contentKey ?? post.id ?? ''}`),
+      lang: this.normalizeLang(post.lang),
+      languageLabel: this.languageLabel(post.lang),
       title: `${post.title ?? ''}`.trim() || 'Untitled idea',
       excerpt: this.excerpt(post.excerpt, contentHtml),
       contentHtml,
@@ -248,9 +267,10 @@ export class DemoIdeaPostsService {
 
   private defaultPosts(): IdeaPost[] {
     const nowIso = new Date().toISOString();
-    return [
+    const enPosts = [
       this.defaultPost({
         id: 'idea-why-priority-matching',
+        lang: 'en',
         title: 'Why priority matching feels calmer than swiping',
         excerpt: 'MyScoutee starts with intent, context, and real plans instead of an endless yes/no loop.',
         contentHtml: `
@@ -269,6 +289,7 @@ export class DemoIdeaPostsService {
       }),
       this.defaultPost({
         id: 'idea-social-first-dating',
+        lang: 'en',
         title: 'From lonely browsing to social-first meeting',
         excerpt: 'Groups, hosts, and event context make introductions feel more natural and lower-pressure.',
         contentHtml: `
@@ -285,6 +306,7 @@ export class DemoIdeaPostsService {
       }),
       this.defaultPost({
         id: 'idea-host-use-case',
+        lang: 'en',
         title: 'Use case: host a small event and let the right people join',
         excerpt: 'Hosts can describe the plan, capacity, resources, and tone before inviting or approving members.',
         contentHtml: `
@@ -302,6 +324,7 @@ export class DemoIdeaPostsService {
       }),
       this.defaultPost({
         id: 'idea-trust-context',
+        lang: 'en',
         title: 'Trust grows faster when context stays attached',
         excerpt: 'Profiles, event history, feedback, and scoped chats help people understand who they are meeting.',
         contentHtml: `
@@ -314,6 +337,7 @@ export class DemoIdeaPostsService {
       }),
       this.defaultPost({
         id: 'idea-register-value',
+        lang: 'en',
         title: 'What viewers unlock when they register',
         excerpt: 'Registration turns a static landing page into matching, event discovery, hosting, chat, and feedback.',
         contentHtml: `
@@ -330,10 +354,64 @@ export class DemoIdeaPostsService {
         nowIso
       })
     ];
+    const huPosts = [
+      this.defaultPost({
+        id: 'idea-why-priority-matching-hu',
+        lang: 'hu',
+        title: 'Miért nyugodtabb a preferenciaalapú párosítás, mint a swipe-olás',
+        excerpt: 'A MyScoutee szándékkal, kontextussal és valódi tervekkel indul a végtelen igen/nem kör helyett.',
+        contentHtml: '<p><strong>A legtöbb társkereső gyors reakciókra optimalizál. A MyScoutee olyan döntésekre épül, amelyekből valódi tervek lehetnek.</strong></p><p>A tagok nem csak igent vagy nemet jeleznek, hanem prioritást is, így az érdeklődés árnyaltabb és a következő lépés tisztább.</p><ul><li>A prioritási pontszám erősebb szándékot mutat.</li><li>A kontextus segít megérteni, miért van értelme egy találatnak.</li><li>Az események természetes következő lépést adnak.</li></ul>',
+        featured: true,
+        submittedAtIso: '2026-04-29T10:00:00.000Z',
+        nowIso
+      }),
+      this.defaultPost({
+        id: 'idea-social-first-dating-hu',
+        lang: 'hu',
+        title: 'Magányos böngészésből közösségi találkozás',
+        excerpt: 'A csoportok, szervezők és eseménykontextus természetesebbé és kevésbé nyomasztóvá teszik a bemutatkozást.',
+        contentHtml: '<p>A MyScoutee akkor hasznos, amikor valaki úgy szeretne emberekkel találkozni, hogy ne minden beszélgetés interjúnak érződjön.</p><p>Egy szervezett program már az első üzenet előtt közös kontextust ad.</p>',
+        featured: true,
+        submittedAtIso: '2026-04-24T12:30:00.000Z',
+        nowIso
+      }),
+      this.defaultPost({
+        id: 'idea-host-use-case-hu',
+        lang: 'hu',
+        title: 'Példa: szervezz kis eseményt, és engedd csatlakozni a megfelelő embereket',
+        excerpt: 'A szervezők még meghívás vagy jóváhagyás előtt leírhatják a tervet, létszámot, erőforrásokat és hangulatot.',
+        contentHtml: '<p>A szervező létrehozhat egy kisebb tervet, opcionális részekre bonthatja, és a logisztikát elejétől láthatóvá teheti.</p><ul><li>Jó brunchhoz, sétához, játékhoz, sporthoz vagy laza találkozóhoz.</li><li>Hasznos, ha a szervező konkrét hangulatot és csoportméretet szeretne.</li></ul>',
+        featured: true,
+        submittedAtIso: '2026-04-20T09:15:00.000Z',
+        nowIso
+      }),
+      this.defaultPost({
+        id: 'idea-trust-context-hu',
+        lang: 'hu',
+        title: 'A bizalom gyorsabban nő, ha a kontextus megmarad',
+        excerpt: 'Profilok, eseménytörténet, visszajelzés és célzott csevegések segítik megérteni, kivel találkozol.',
+        contentHtml: '<p>A bizalom könnyebb, ha a termék láthatóan tartja a kontextust. Egy ember nem csak fotó: az is számít, hogyan csatlakozik, szervez és kommunikál.</p>',
+        featured: true,
+        submittedAtIso: '2026-04-16T16:45:00.000Z',
+        nowIso
+      }),
+      this.defaultPost({
+        id: 'idea-register-value-hu',
+        lang: 'hu',
+        title: 'Mit nyit meg a regisztráció',
+        excerpt: 'A regisztrációból lesz párosítás, eseményfelfedezés, szervezés, chat és visszajelzés.',
+        contentHtml: '<p>A látogatók a landing oldalon megértik az ötletet, de az érték akkor indul, amikor regisztrálnak és profilt építenek.</p><ul><li>Emberek felfedezése prioritások és aktivitások alapján.</li><li>Tervekhez csatlakozás vagy szervezés tisztább elvárásokkal.</li></ul>',
+        featured: false,
+        submittedAtIso: '2026-04-11T13:20:00.000Z',
+        nowIso
+      })
+    ];
+    return [...enPosts, ...huPosts];
   }
 
   private defaultPost(options: {
     id: string;
+    lang: string;
     title: string;
     excerpt: string;
     contentHtml: string;
@@ -344,6 +422,9 @@ export class DemoIdeaPostsService {
     const imageUrl = this.seedImageUrl(options.id);
     return {
       id: options.id,
+      contentKey: this.contentKeyFromId(options.id),
+      lang: this.normalizeLang(options.lang),
+      languageLabel: this.languageLabel(options.lang),
       title: options.title,
       excerpt: options.excerpt,
       contentHtml: this.normalizeHtml(options.contentHtml.replaceAll('@image_url', imageUrl)),
@@ -441,6 +522,20 @@ export class DemoIdeaPostsService {
   private truncate(value: string): string {
     const normalized = `${value ?? ''}`.replace(/\s+/g, ' ').trim();
     return normalized.length <= 180 ? normalized : `${normalized.slice(0, 179).trim()}...`;
+  }
+
+  private normalizeLang(lang: string | null | undefined): string {
+    const normalized = `${lang ?? ''}`.trim().toLowerCase().split('-')[0];
+    return normalized === 'hu' ? 'hu' : 'en';
+  }
+
+  private languageLabel(lang: string | null | undefined): string {
+    return this.normalizeLang(lang) === 'hu' ? 'Magyar' : 'English';
+  }
+
+  private contentKeyFromId(id: string | null | undefined): string {
+    const normalized = `${id ?? ''}`.trim();
+    return normalized.endsWith('-hu') ? normalized.slice(0, -3) : normalized;
   }
 
   private imageUrls(imageUrls: readonly string[] | null | undefined, primaryImageUrl: string | null | undefined): string[] {

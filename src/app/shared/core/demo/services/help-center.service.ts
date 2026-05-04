@@ -22,14 +22,18 @@ export class DemoHelpCenterService {
   private readonly memoryDb = inject(AppMemoryDb);
   private readonly routeDelay = inject(RouteDelayService);
 
-  async loadState(kind: HelpCenterDocumentKind = 'help'): Promise<HelpCenterState> {
+  async loadState(kind: HelpCenterDocumentKind = 'help', lang = 'en'): Promise<HelpCenterState> {
     await this.memoryDb.whenReady();
     const documentKind = this.normalizeKind(kind);
-    const changed = this.ensureSeeded(documentKind) || this.ensureRevisionDescriptions(documentKind);
+    const language = this.normalizeLang(lang);
+    let changed = false;
+    for (const option of this.availableLanguages()) {
+      changed = this.ensureSeeded(documentKind, option.lang) || this.ensureRevisionDescriptions(documentKind, option.lang) || changed;
+    }
     if (changed) {
       await this.memoryDb.flushToIndexedDb();
     }
-    return this.stateFromTable(this.table(), documentKind);
+    return this.stateFromTable(this.table(), documentKind, language);
   }
 
   async loadPrivacyConsent(
@@ -104,14 +108,17 @@ export class DemoHelpCenterService {
   async saveRevision(request: HelpCenterRevisionSaveRequest, kind: HelpCenterDocumentKind = 'help'): Promise<HelpCenterState> {
     await this.memoryDb.whenReady();
     const documentKind = this.normalizeKind(kind);
+    const language = this.normalizeLang(request?.lang);
     const table = this.table();
     const nowIso = new Date().toISOString();
     const actorUserId = this.normalizeActor(request.actorUserId);
-    const version = this.nextVersion(table, documentKind);
+    const version = this.nextVersion(table, documentKind, language);
     const revisionId = this.newId(`${documentKind}-rev`);
     const revision: HelpCenterRevision = {
       id: revisionId,
       documentKind,
+      lang: language,
+      languageLabel: this.languageLabel(language),
       version,
       title: this.nonEmptyText(request.title, this.defaultTitle(documentKind, version)),
       summary: this.nonEmptyText(request.summary, this.defaultSummary(documentKind)),
@@ -159,12 +166,13 @@ export class DemoHelpCenterService {
       this.memoryDb.flushToIndexedDb(),
       this.routeDelay.waitForRouteDelay(`/admin/${documentKind}/revisions`, undefined, undefined, 1500)
     ]);
-    return this.stateFromTable(this.table(), documentKind);
+    return this.stateFromTable(this.table(), documentKind, language);
   }
 
   async activateRevision(revisionId: string, actorUserId: string, kind: HelpCenterDocumentKind = 'help'): Promise<HelpCenterState> {
     await this.memoryDb.whenReady();
     const documentKind = this.normalizeKind(kind);
+    const language = this.normalizeLang(this.table().revisionsById[revisionId.trim()]?.lang);
     const normalizedRevisionId = revisionId.trim();
     const table = this.table();
     const revision = table.revisionsById[normalizedRevisionId];
@@ -185,17 +193,18 @@ export class DemoHelpCenterService {
           .map(id => {
             const item = current.revisionsById[id];
             const itemKind = this.revisionKind(item);
-            return [id, { ...item, documentKind: itemKind, active: itemKind === documentKind ? id === normalizedRevisionId : item.active }];
+            const itemLang = this.revisionLang(item);
+            return [id, { ...item, documentKind: itemKind, lang: itemLang, languageLabel: this.languageLabel(itemLang), active: itemKind === documentKind && itemLang === language ? id === normalizedRevisionId : item.active }];
           })
       ) as Record<string, HelpCenterRevision>;
       return {
         ...state,
         [HELP_CENTER_TABLE_NAME]: {
           ...current,
-          activeRevisionId: documentKind === 'help' ? normalizedRevisionId : current.activeRevisionId,
+          activeRevisionId: documentKind === 'help' && language === 'en' ? normalizedRevisionId : current.activeRevisionId,
           activeRevisionIdsByKind: {
             ...(current.activeRevisionIdsByKind ?? {}),
-            [documentKind]: normalizedRevisionId
+            [this.activeRevisionKey(documentKind, language)]: normalizedRevisionId
           },
           revisionsById,
           auditById: {
@@ -210,7 +219,7 @@ export class DemoHelpCenterService {
       this.memoryDb.flushToIndexedDb(),
       this.routeDelay.waitForRouteDelay(`/admin/${documentKind}/revisions/activate`, undefined, undefined, 1500)
     ]);
-    return this.stateFromTable(this.table(), documentKind);
+    return this.stateFromTable(this.table(), documentKind, language);
   }
 
   async deleteRevision(revisionId: string, actorUserId: string, kind: HelpCenterDocumentKind = 'help'): Promise<HelpCenterState> {
@@ -219,6 +228,7 @@ export class DemoHelpCenterService {
     const normalizedRevisionId = revisionId.trim();
     const table = this.table();
     const revision = table.revisionsById[normalizedRevisionId];
+    const language = this.normalizeLang(revision?.lang);
     if (!revision || this.revisionKind(revision) !== documentKind) {
       return this.stateFromTable(table, documentKind);
     }
@@ -226,9 +236,9 @@ export class DemoHelpCenterService {
     const remainingRevisions = remainingIds
       .map(id => table.revisionsById[id])
       .filter((item): item is HelpCenterRevision => Boolean(item))
-      .filter(item => this.revisionKind(item) === documentKind)
+      .filter(item => this.revisionKind(item) === documentKind && this.revisionLang(item) === language)
       .sort((left, right) => right.version - left.version);
-    const currentActiveRevisionId = this.activeRevisionId(table, documentKind);
+    const currentActiveRevisionId = this.activeRevisionId(table, documentKind, language);
     const nextActiveRevisionId = currentActiveRevisionId === normalizedRevisionId
       ? (remainingRevisions[0]?.id ?? null)
       : currentActiveRevisionId;
@@ -248,7 +258,8 @@ export class DemoHelpCenterService {
           .map(id => {
             const item = revisionsById[id];
             const itemKind = this.revisionKind(item);
-            return [id, { ...item, documentKind: itemKind, active: itemKind === documentKind ? id === nextActiveRevisionId : item.active }];
+            const itemLang = this.revisionLang(item);
+            return [id, { ...item, documentKind: itemKind, lang: itemLang, languageLabel: this.languageLabel(itemLang), active: itemKind === documentKind && itemLang === language ? id === nextActiveRevisionId : item.active }];
           })
       ) as Record<string, HelpCenterRevision>;
       return {
@@ -256,10 +267,10 @@ export class DemoHelpCenterService {
         [HELP_CENTER_TABLE_NAME]: {
           ...current,
           seeded: true,
-          activeRevisionId: documentKind === 'help' ? nextActiveRevisionId : current.activeRevisionId,
+          activeRevisionId: documentKind === 'help' && language === 'en' ? nextActiveRevisionId : current.activeRevisionId,
           activeRevisionIdsByKind: {
             ...(current.activeRevisionIdsByKind ?? {}),
-            [documentKind]: nextActiveRevisionId
+            [this.activeRevisionKey(documentKind, language)]: nextActiveRevisionId
           },
           revisionsById: normalizedRevisionsById,
           revisionIds: remainingIds,
@@ -275,15 +286,16 @@ export class DemoHelpCenterService {
       this.memoryDb.flushToIndexedDb(),
       this.routeDelay.waitForRouteDelay(`/admin/${documentKind}/revisions/delete`, undefined, undefined, 1500)
     ]);
-    return this.stateFromTable(this.table(), documentKind);
+    return this.stateFromTable(this.table(), documentKind, language);
   }
 
-  private ensureSeeded(kind: HelpCenterDocumentKind): boolean {
+  private ensureSeeded(kind: HelpCenterDocumentKind, lang = 'en'): boolean {
     const table = this.table();
-    if (this.revisionsForKind(table, kind).length > 0) {
+    const language = this.normalizeLang(lang);
+    if (this.revisionsForKind(table, kind, language).length > 0) {
       return false;
     }
-    const revision = this.cloneRevision(this.defaultRevision(kind), kind);
+    const revision = this.cloneRevision(this.defaultRevision(kind, language), kind);
     const audit = this.auditEntry({
       action: 'seed',
       actorUserId: 'system',
@@ -298,10 +310,10 @@ export class DemoHelpCenterService {
           ...current,
           seeded: current.seeded || kind === 'help',
           seededKinds: { ...(current.seededKinds ?? {}), [kind]: true },
-          activeRevisionId: kind === 'help' ? revision.id : current.activeRevisionId,
+          activeRevisionId: kind === 'help' && language === 'en' ? revision.id : current.activeRevisionId,
           activeRevisionIdsByKind: {
             ...(current.activeRevisionIdsByKind ?? {}),
-            [kind]: revision.id
+            [this.activeRevisionKey(kind, language)]: revision.id
           },
           revisionsById: {
             ...this.normalizedRevisionsById(current),
@@ -319,12 +331,14 @@ export class DemoHelpCenterService {
     return true;
   }
 
-  private ensureRevisionDescriptions(kind: HelpCenterDocumentKind): boolean {
+  private ensureRevisionDescriptions(kind: HelpCenterDocumentKind, lang = 'en'): boolean {
     const table = this.table();
+    const language = this.normalizeLang(lang);
     const missingIds = table.revisionIds.filter(id => {
       const revision = table.revisionsById[id] as HelpCenterRevision | undefined;
       return Boolean(revision)
         && this.revisionKind(revision) === kind
+        && this.revisionLang(revision) === language
         && !this.nonEmptyText(revision?.description, '');
     });
     if (missingIds.length === 0) {
@@ -400,11 +414,12 @@ export class DemoHelpCenterService {
     };
   }
 
-  private stateFromTable(table: DemoHelpCenterTable, kind: HelpCenterDocumentKind): HelpCenterState {
-    const revisions = this.revisionsForKind(table, kind)
+  private stateFromTable(table: DemoHelpCenterTable, kind: HelpCenterDocumentKind, lang = 'en'): HelpCenterState {
+    const language = this.normalizeLang(lang);
+    const revisions = this.revisionsForKind(table, kind, language)
       .map(revision => this.cloneRevision(revision, kind))
       .sort((left, right) => right.version - left.version);
-    const activeRevisionId = this.activeRevisionId(table, kind);
+    const activeRevisionId = this.activeRevisionId(table, kind, language);
     const activeRevision = activeRevisionId
       ? revisions.find(revision => revision.id === activeRevisionId) ?? null
       : null;
@@ -412,37 +427,47 @@ export class DemoHelpCenterService {
       .map(id => table.auditById[id])
       .filter((entry): entry is HelpCenterAuditEntry => Boolean(entry))
       .filter(entry => this.auditKind(entry) === kind)
-      .map(entry => ({ ...entry, documentKind: kind }))
+      .map(entry => {
+        const entryLang = this.normalizeLang(entry.lang);
+        return { ...entry, documentKind: kind, lang: entryLang, languageLabel: this.languageLabel(entryLang) };
+      })
       .sort((left, right) => right.createdAtIso.localeCompare(left.createdAtIso));
     return {
       activeRevision: activeRevision ? this.cloneRevision(activeRevision, kind) : null,
       revisions,
-      auditTrail
+      auditTrail: auditTrail.filter(entry => this.normalizeLang(entry.lang) === language),
+      availableLanguages: this.availableLanguages()
     };
   }
 
-  private nextVersion(table: DemoHelpCenterTable, kind: HelpCenterDocumentKind): number {
-    const currentMax = this.revisionsForKind(table, kind)
+  private nextVersion(table: DemoHelpCenterTable, kind: HelpCenterDocumentKind, lang = 'en'): number {
+    const currentMax = this.revisionsForKind(table, kind, this.normalizeLang(lang))
       .map(revision => revision.version ?? 0)
       .reduce((max, version) => Math.max(max, Math.trunc(Number(version) || 0)), 0);
     return currentMax + 1;
   }
 
-  private activeRevisionId(table: DemoHelpCenterTable, kind: HelpCenterDocumentKind): string | null {
-    if (table.activeRevisionIdsByKind && kind in table.activeRevisionIdsByKind) {
+  private activeRevisionId(table: DemoHelpCenterTable, kind: HelpCenterDocumentKind, lang = 'en'): string | null {
+    const language = this.normalizeLang(lang);
+    const activeKey = this.activeRevisionKey(kind, language);
+    if (table.activeRevisionIdsByKind && activeKey in table.activeRevisionIdsByKind) {
+      return table.activeRevisionIdsByKind[activeKey] ?? null;
+    }
+    if (language === 'en' && table.activeRevisionIdsByKind && kind in table.activeRevisionIdsByKind) {
       return table.activeRevisionIdsByKind[kind] ?? null;
     }
-    if (kind === 'help') {
+    if (kind === 'help' && language === 'en') {
       return table.activeRevisionId ?? null;
     }
-    return this.revisionsForKind(table, kind).find(revision => revision.active)?.id ?? null;
+    return this.revisionsForKind(table, kind, language).find(revision => revision.active)?.id ?? null;
   }
 
-  private revisionsForKind(table: DemoHelpCenterTable, kind: HelpCenterDocumentKind): HelpCenterRevision[] {
+  private revisionsForKind(table: DemoHelpCenterTable, kind: HelpCenterDocumentKind, lang = 'en'): HelpCenterRevision[] {
+    const language = this.normalizeLang(lang);
     return table.revisionIds
       .map(id => table.revisionsById[id])
       .filter((revision): revision is HelpCenterRevision => Boolean(revision))
-      .filter(revision => this.revisionKind(revision) === kind);
+      .filter(revision => this.revisionKind(revision) === kind && this.revisionLang(revision) === language);
   }
 
   private normalizedRevisionsById(table: DemoHelpCenterTable): Record<string, HelpCenterRevision> {
@@ -451,7 +476,8 @@ export class DemoHelpCenterService {
         .filter(id => Boolean(table.revisionsById[id]))
         .map(id => {
           const revision = table.revisionsById[id];
-          return [id, { ...revision, documentKind: this.revisionKind(revision) }];
+          const lang = this.revisionLang(revision);
+          return [id, { ...revision, documentKind: this.revisionKind(revision), lang, languageLabel: this.languageLabel(lang) }];
         })
     ) as Record<string, HelpCenterRevision>;
   }
@@ -466,6 +492,8 @@ export class DemoHelpCenterService {
     return {
       id: this.newId(`${documentKind}-audit`),
       documentKind,
+      lang: this.revisionLang(options.revision),
+      languageLabel: this.languageLabel(this.revisionLang(options.revision)),
       revisionId: options.revision.id,
       version: options.revision.version,
       action: options.action,
@@ -540,22 +568,152 @@ export class DemoHelpCenterService {
   }
 
   private cloneRevision(revision: HelpCenterRevision, kind = this.revisionKind(revision)): HelpCenterRevision {
+    const lang = this.revisionLang(revision);
     return {
       ...revision,
       documentKind: kind,
+      lang,
+      languageLabel: this.languageLabel(lang),
       description: this.nonEmptyText(revision.description, this.defaultDescription(kind)),
       headerColor: this.normalizeHeaderColor(revision.headerColor),
       sections: this.normalizeSections(revision.sections, kind)
     };
   }
 
-  private defaultRevision(kind: HelpCenterDocumentKind): HelpCenterRevision {
+  private defaultRevision(kind: HelpCenterDocumentKind, lang = 'en'): HelpCenterRevision {
+    const language = this.normalizeLang(lang);
+    if (language === 'hu') {
+      return this.cloneRevision(this.huDefaultRevision(kind), kind);
+    }
     return this.cloneRevision(
       kind === 'privacy'
         ? APP_STATIC_DATA.defaultPrivacyCenterRevision
         : APP_STATIC_DATA.defaultHelpCenterRevision,
       kind
     );
+  }
+
+  private huDefaultRevision(kind: HelpCenterDocumentKind): HelpCenterRevision {
+    const nowIso = kind === 'privacy' ? '2026-02-01T00:00:00.000Z' : '2026-05-01T00:00:00.000Z';
+    const base = kind === 'privacy'
+      ? APP_STATIC_DATA.defaultPrivacyCenterRevision
+      : APP_STATIC_DATA.defaultHelpCenterRevision;
+    return {
+      ...base,
+      id: kind === 'privacy' ? 'privacy-default-hu-v1' : 'help-default-hu-v1',
+      documentKind: kind,
+      lang: 'hu',
+      languageLabel: 'Magyar',
+      title: kind === 'privacy' ? 'Adatvédelem' : 'MyScoutee súgó',
+      summary: kind === 'privacy' ? 'Adatvédelem elsőként' : 'Mit tehetsz a MyScoutee-ban',
+      description: kind === 'privacy'
+        ? 'Folytatás előtt nézd át és fogadd el, hogyan használja a MyScoutee az adataidat.'
+        : 'A MyScoutee segít az eseményeket elejétől végéig megtervezni: meghívások, szakaszok és csoportok, erőforrások, valamint kontextushoz kötött csevegések.',
+      sections: kind === 'privacy' ? this.huPrivacySections() : this.huHelpSections(),
+      createdAtIso: nowIso,
+      updatedAtIso: nowIso
+    };
+  }
+
+  private huHelpSections(): HelpCenterSection[] {
+    return [
+      {
+        id: 'events',
+        icon: 'event_note',
+        title: 'Események és alesemények',
+        blurb: 'Építsd fel a teljes eseményfolyamatot szakaszokkal vagy opcionális elemekkel.',
+        contentHtml: '<p><strong>Építsd fel a teljes eseményfolyamatot szakaszokkal vagy opcionális elemekkel.</strong></p><p>Hozz létre fő eseményt, majd bontsd aleseményekre szakaszokhoz, mellékprogramokhoz vagy opcionális alkalmakhoz.</p><ul><li>Alkalmi és verseny jellegű struktúrák támogatása</li><li>A szakaszkontextus látható marad a kapcsolódó képernyőkön</li><li>A szervezők a hierarchia elvesztése nélkül szerkeszthetnek</li></ul>'
+      },
+      {
+        id: 'resources',
+        icon: 'inventory_2',
+        title: 'Erőforrások és kapacitás',
+        blurb: 'Rendelj embereket, autókat, szállást és kellékeket limitekkel.',
+        contentHtml: '<p><strong>Rendelj embereket, autókat, szállást és kellékeket limitekkel.</strong></p><p>Az erőforrásmenükben eszközöket rendelhetsz aleseményekhez és csoportokhoz, majd közvetlenül állíthatod a kapacitásokat.</p><ul><li>Minimum/maximum kapacitás feladatonként</li><li>Kontextusos jelvények függő kérésekhez</li><li>Útvonal- és helytámogatás utazási erőforrásokhoz</li></ul>'
+      },
+      {
+        id: 'activities',
+        icon: 'forum',
+        title: 'Tevékenységek és csevegések',
+        blurb: 'Koordinálj kontextustudatos csatornákkal és szűrőkkel.',
+        contentHtml: '<p><strong>Koordinálj kontextustudatos csatornákkal és szűrőkkel.</strong></p><p>A csevegőcsatornák követik az esemény hatókörét: fő esemény, opcionális alesemény és csoportcsatorna is együtt létezhet.</p><ul><li>Gyors csatornaszűrés kontextus szerint</li><li>Olvasatlan számlálók releváns csatornákra szűkítve</li><li>Mobilon és asztali nézetben is működik</li></ul>'
+      },
+      {
+        id: 'safety',
+        icon: 'verified_user',
+        title: 'Profilok és biztonság',
+        blurb: 'Erősítsd a bizalmat profilminőséggel és moderációs eszközökkel.',
+        contentHtml: '<p><strong>Erősítsd a bizalmat profilminőséggel és moderációs eszközökkel.</strong></p><p>A profilkészültség valós időben frissül, ahogy a felhasználók kitöltik a fontos mezőket.</p><ul><li>Élő profilkészültségi visszajelzés</li><li>Felhasználójelentési és visszajelzési folyamatok</li><li>Adatvédelmi és hozzáférési láthatósági kontrollok</li></ul>'
+      }
+    ];
+  }
+
+  private huPrivacySections(): HelpCenterSection[] {
+    return [
+      {
+        id: 'privacy',
+        icon: 'policy',
+        title: 'Adatvédelem',
+        blurb: 'Hogyan kezeli a MyScoutee a profilhoz, eseményekhez és közösségi aktivitáshoz kapcsolódó személyes adatokat.',
+        contentHtml: '<p>Hogyan kezeli a MyScoutee a profilhoz, eseményekhez és közösségi aktivitáshoz kapcsolódó személyes adatokat.</p><p><strong>Utolsó frissítés:</strong> 2026. február 1.</p>'
+      },
+      {
+        id: 'contact-details',
+        icon: 'contact_mail',
+        title: 'Kapcsolati adatok',
+        blurb: 'Kihez fordulhatsz adatvédelemmel és adatkezeléssel kapcsolatban.',
+        contentHtml: '<ul><li><strong>Adatkezelő:</strong> MyScoutee demo platform</li><li><strong>Támogatási email:</strong> privacy@myscoutee.app</li><li><strong>DPO kapcsolat:</strong> dpo@myscoutee.app</li></ul>'
+      },
+      {
+        id: 'legal-basis',
+        icon: 'gavel',
+        title: 'Jogalap',
+        blurb: 'Miért kezel adatokat a MyScoutee a termék- és biztonsági folyamatokhoz.',
+        contentHtml: '<ul><li>Szerződés teljesítése a fiók- és eseményfunkciókhoz.</li><li>Jogos érdek a platform biztonsága és a visszaélések megelőzése érdekében.</li><li>Hozzájárulás opcionális profiladatokhoz, pontos helykoordinátákhoz és marketingkommunikációhoz.</li><li>Jogi kötelezettség biztonsági naplókhoz és megfelelőségi nyilvántartásokhoz.</li></ul>'
+      },
+      {
+        id: 'your-rights',
+        icon: 'fact_check',
+        title: 'Jogaid',
+        blurb: 'A fiókodhoz és személyes adataidhoz kapcsolódó jogaid.',
+        contentHtml: '<h4>Hozzáférés</h4><ul><li>Kérhetsz másolatot a tárolt személyes adataidról.</li></ul><h4>Helyesbítés</h4><ul><li>Javíthatod a pontatlan profil- vagy fiókadatokat.</li></ul><h4>Törlés</h4><ul><li>Kérheted a fiók és a személyes adatok törlését, ahol ez jogilag lehetséges.</li></ul><h4>Adathordozhatóság</h4><ul><li>Kérheted adataid exportját géppel olvasható formátumban.</li></ul>'
+      },
+      {
+        id: 'data-categories',
+        icon: 'category',
+        title: 'Adatkategóriák',
+        blurb: 'Milyen adattípusokat kezelhet a MyScoutee.',
+        contentHtml: '<h4>Fiók és azonosítás</h4><ul><li>Név</li><li>Születésnap</li><li>Lakóhely városa</li><li>Nem</li><li>Profilképek</li></ul><h4>Aktivitási adatok</h4><ul><li>Csevegések</li><li>Meghívások</li><li>Események</li><li>Szervezési interakciók</li><li>Értékelések</li></ul>'
+      },
+      {
+        id: 'purposes',
+        icon: 'tips_and_updates',
+        title: 'Célok',
+        blurb: 'Hogyan támogatják az adatok a profil-, esemény-, chat- és bizalmi funkciókat.',
+        contentHtml: '<ul><li>Profil-, chat-, esemény- és szervezői funkciók működtetése.</li><li>Releváns tagok ajánlása és a felfedezés minőségének javítása.</li><li>Visszaélések, spam és gyanús aktivitás észlelése.</li><li>Fiókkérések és megfelelőségi folyamatok támogatása.</li></ul>'
+      },
+      {
+        id: 'retention',
+        icon: 'schedule',
+        title: 'Megőrzés',
+        blurb: 'Mennyi ideig őrizzük meg az adatokat.',
+        contentHtml: '<ul><li>Fiókprofil-adatok: amíg a fiók aktív.</li><li>Pontos helykoordináták: csak az aktív helyalapú funkciókhoz szükséges ideig.</li><li>Biztonsági és auditnaplók: jogi vagy megfelelőségi igény szerint.</li><li>Törölt fiókok: az adatok a megőrzési idő után törlődnek vagy anonimizálódnak.</li></ul>'
+      },
+      {
+        id: 'sharing',
+        icon: 'share',
+        title: 'Harmadik felekkel megosztás',
+        blurb: 'Mikor kerülhetnek adatok a MyScoutee-n kívülre.',
+        contentHtml: '<ul><li>Szolgáltatókkal tárhely, analitika és támogatási működés céljából.</li><li>Hatóságokkal csak akkor, ha alkalmazandó jog előírja.</li><li>Személyes adatot nem értékesítünk.</li></ul>'
+      },
+      {
+        id: 'security',
+        icon: 'security',
+        title: 'Biztonság',
+        blurb: 'Az adatok védelmét szolgáló kontrollok.',
+        contentHtml: '<ul><li>Szerepköralapú hozzáférés belső eszközökhöz.</li><li>Titkosított adatátvitel.</li><li>Üzemeltetési monitorozás és incidenskezelési folyamatok.</li></ul>'
+      }
+    ];
   }
 
   private defaultTitle(kind: HelpCenterDocumentKind, version: number): string {
@@ -593,12 +751,36 @@ export class DemoHelpCenterService {
     return this.normalizeKind(revision?.documentKind);
   }
 
+  private revisionLang(revision: HelpCenterRevision | null | undefined): string {
+    return this.normalizeLang(revision?.lang);
+  }
+
   private auditKind(entry: HelpCenterAuditEntry | null | undefined): HelpCenterDocumentKind {
     return this.normalizeKind(entry?.documentKind);
   }
 
   private normalizeKind(kind: string | null | undefined): HelpCenterDocumentKind {
     return kind === 'privacy' ? 'privacy' : 'help';
+  }
+
+  private normalizeLang(lang: string | null | undefined): string {
+    const normalized = `${lang ?? ''}`.trim().toLowerCase().split('-')[0];
+    return normalized === 'hu' ? 'hu' : 'en';
+  }
+
+  private languageLabel(lang: string | null | undefined): string {
+    return this.normalizeLang(lang) === 'hu' ? 'Magyar' : 'English';
+  }
+
+  private availableLanguages(): Array<{ lang: string; label: string }> {
+    return APP_STATIC_DATA.contentLanguages.map(language => ({
+      lang: this.normalizeLang(language.lang),
+      label: language.label
+    }));
+  }
+
+  private activeRevisionKey(kind: HelpCenterDocumentKind, lang: string): string {
+    return `${kind}:${this.normalizeLang(lang)}`;
   }
 
   private normalizeActor(actorUserId: string): string {

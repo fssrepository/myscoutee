@@ -58,7 +58,8 @@ export class LandingContentService extends BaseRouteModeService {
           ...revision,
           sections: revision.sections.map(section => ({ ...section }))
         })),
-        auditTrail: state.privacy.auditTrail.map(entry => ({ ...entry }))
+        auditTrail: state.privacy.auditTrail.map(entry => ({ ...entry })),
+        availableLanguages: state.privacy.availableLanguages.map(language => ({ ...language }))
       },
       ideas: state.ideas.map(post => ({ ...post, imageUrls: [...post.imageUrls] }))
     };

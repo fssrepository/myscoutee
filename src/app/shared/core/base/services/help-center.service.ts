@@ -70,12 +70,12 @@ export class HelpCenterService extends BaseRouteModeService {
     return this.clonePrivacyConsent(await this.helpService('privacy').savePrivacyConsent(request));
   }
 
-  async loadAdminState(adminUserId: string, kind: HelpCenterDocumentKind = 'help'): Promise<HelpCenterState> {
+  async loadAdminState(adminUserId: string, kind: HelpCenterDocumentKind = 'help', lang = 'en'): Promise<HelpCenterState> {
     const documentKind = this.normalizeKind(kind);
     const service = this.helpService(documentKind);
     const state = service instanceof HttpHelpCenterService
-      ? await service.loadAdminState(adminUserId, documentKind)
-      : await service.loadState(documentKind);
+      ? await service.loadAdminState(adminUserId, documentKind, lang)
+      : await service.loadState(documentKind, lang);
     this.setState(documentKind, state);
     return this.cloneState(state);
   }
@@ -101,8 +101,8 @@ export class HelpCenterService extends BaseRouteModeService {
     return this.cloneState(state);
   }
 
-  private async loadState(kind: HelpCenterDocumentKind): Promise<HelpCenterState> {
-    const state = await this.helpService(kind).loadState(kind);
+  private async loadState(kind: HelpCenterDocumentKind, lang = 'en'): Promise<HelpCenterState> {
+    const state = await this.helpService(kind).loadState(kind, lang);
     this.setState(kind, state);
     return this.cloneState(state);
   }
@@ -140,7 +140,8 @@ export class HelpCenterService extends BaseRouteModeService {
         ...revision,
         sections: revision.sections.map(section => ({ ...section }))
       })),
-      auditTrail: state.auditTrail.map(entry => ({ ...entry }))
+      auditTrail: state.auditTrail.map(entry => ({ ...entry })),
+      availableLanguages: state.availableLanguages.map(language => ({ ...language }))
     };
   }
 

@@ -2,6 +2,9 @@ import type { HelpCenterState } from './popup.model';
 
 export interface IdeaPost {
   id: string;
+  contentKey: string;
+  lang: string;
+  languageLabel: string;
   title: string;
   excerpt: string;
   contentHtml: string;
@@ -22,6 +25,8 @@ export interface IdeaPost {
 export interface IdeaPostSaveRequest {
   actorUserId: string;
   id?: string | null;
+  contentKey?: string | null;
+  lang?: string | null;
   title: string;
   excerpt: string;
   contentHtml: string;

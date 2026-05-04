@@ -18,6 +18,139 @@
   gap: 0.44rem;
 }
 
+.popup-panel-help-editor .popup-header {
+  flex-wrap: wrap;
+}
+
+.help-editor-language-row {
+  flex: 0 0 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.34rem;
+  margin-top: 0.44rem;
+}
+
+.help-editor-language-menu-wrap {
+  position: relative;
+  z-index: 122;
+}
+
+.help-editor-language-menu-btn {
+  min-width: 118px;
+  min-height: 30px;
+  border: 1px solid rgba(47, 86, 139, 0.2);
+  border-radius: 999px;
+  background: #f7faff;
+  color: #25476e;
+  padding: 0 0.72rem;
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 900;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.34rem;
+}
+
+.help-editor-language-menu-btn[aria-expanded='true'] {
+  border-color: rgba(35, 124, 88, 0.34);
+  background: #eaf8f1;
+  color: #176445;
+}
+
+.help-editor-language-menu-btn:disabled {
+  opacity: 0.58;
+  cursor: default;
+}
+
+.help-editor-language-menu-btn .mat-icon {
+  width: 17px;
+  height: 17px;
+  font-size: 17px;
+  line-height: 17px;
+}
+
+.help-editor-language-menu-caret {
+  transition: transform 0.16s ease;
+}
+
+.help-editor-language-menu-btn[aria-expanded='true'] .help-editor-language-menu-caret {
+  transform: rotate(180deg);
+}
+
+.help-editor-language-menu {
+  position: absolute;
+  z-index: 123;
+  top: calc(100% + 0.42rem);
+  right: 0;
+  min-width: 158px;
+  padding: 0.36rem;
+  border: 1px solid rgba(31, 61, 99, 0.16);
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 18px 34px rgba(26, 42, 68, 0.18);
+  display: grid;
+  gap: 0.12rem;
+}
+
+.help-editor-language-menu,
+.help-editor-language-menu * {
+  transform: none !important;
+  filter: none !important;
+}
+
+.help-editor-language-menu button {
+  width: 100%;
+  min-height: 38px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #233d62;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.46rem;
+  padding: 0 0.56rem;
+  text-align: left;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.help-editor-language-menu button:hover,
+.help-editor-language-menu button.is-active {
+  background: #e8f2ff;
+  color: #174d86;
+}
+
+.help-editor-language-menu button:disabled {
+  opacity: 0.58;
+  cursor: default;
+}
+
+.help-editor-language-menu button .mat-icon {
+  width: 17px;
+  height: 17px;
+  font-size: 17px;
+  line-height: 17px;
+}
+
+.help-editor-language-flag {
+  width: 1.35em;
+  font-size: 1rem;
+  line-height: 1;
+  text-align: center;
+}
+
+.help-editor-language-option-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42rem;
+}
+
 .help-editor-active-subtitle-main,
 .help-editor-active-subtitle-title {
   display: inline;

@@ -159,6 +159,10 @@ const LANGUAGE_SUGGESTIONS = [
   'Korean',
   'Mandarin'
 ];
+const CONTENT_LANGUAGES = [
+  { lang: 'en', label: 'English' },
+  { lang: 'hu', label: 'Magyar' }
+];
 const PROFILE_STATUS_OPTIONS: Array<{ value: ProfileStatus; icon: string }> = [
   { value: 'public', icon: 'public' },
   { value: 'friends only', icon: 'groups' },
@@ -984,6 +988,7 @@ export const APP_STATIC_DATA = {
   homeGameFilterValuesGroups: HOME_GAME_FILTER_VALUES_GROUPS,
   homeUserFacetById: HOME_USER_FACET_BY_ID,
   profileStatusOptions: PROFILE_STATUS_OPTIONS,
+  contentLanguages: CONTENT_LANGUAGES,
   profileDetailValueOptions: PROFILE_DETAIL_VALUE_OPTIONS,
   profileDetailGroupTemplates: PROFILE_DETAIL_GROUP_TEMPLATES,
   beliefsValuesOptionGroups: BELIEFS_VALUES_OPTION_GROUPS,
@@ -1022,6 +1027,8 @@ export const APP_STATIC_DATA = {
   defaultHelpCenterRevision: {
     id: 'help-default-v1',
     documentKind: 'help',
+    lang: 'en',
+    languageLabel: 'English',
     version: 1,
     title: 'MyScoutee help',
     summary: 'What you can do in MyScoutee',
@@ -1037,6 +1044,8 @@ export const APP_STATIC_DATA = {
   defaultPrivacyCenterRevision: {
     id: 'privacy-default-v1',
     documentKind: 'privacy',
+    lang: 'en',
+    languageLabel: 'English',
     version: 1,
     title: 'Data privacy',
     summary: 'Privacy first',

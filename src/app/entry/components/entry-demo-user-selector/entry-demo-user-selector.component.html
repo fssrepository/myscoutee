@@ -100,8 +100,24 @@
                   (click)="requestUserSelect(user.id)"
                   >
                   <span class="user-avatar" [ngClass]="userAvatarClass(user)">{{ user.initials }}</span>
-                  <span class="demo-user-name">{{ userDisplayName(user) }}</span>
-                  <span class="demo-user-meta">{{ userDisplayMeta(user) }}</span>
+                  @if (user.name.trim()) {
+                    <span class="demo-user-name" data-i18n-ignore>{{ user.name.trim() }}</span>
+                  } @else {
+                    <span class="demo-user-name">New demo profile</span>
+                  }
+                  <span class="demo-user-meta">
+                    @if (isNewProfile(user)) {
+                      <span>Needs setup</span>
+                    } @else {
+                      <span>{{ userGenderLabel(user) }}</span>
+                      <span class="demo-user-meta-separator" aria-hidden="true"> · </span>
+                      @if (user.city.trim()) {
+                        <span class="demo-user-city" data-i18n-ignore>{{ user.city.trim() }}</span>
+                      } @else {
+                        <span class="demo-user-city">Needs setup</span>
+                      }
+                    }
+                  </span>
                   @if (userStatusLabel(user)) {
                     <span class="demo-user-status-pill">{{ userStatusLabel(user) }}</span>
                   }

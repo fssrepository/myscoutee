@@ -24,6 +24,96 @@
   margin-left: auto;
 }
 
+.popup-panel-idea-editor .popup-header,
+.idea-editor-form-head {
+  flex-wrap: wrap;
+}
+
+.idea-editor-language-row {
+  flex: 0 0 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.34rem;
+  margin-top: 0.44rem;
+}
+
+.idea-editor-language-menu-wrap {
+  position: relative;
+  z-index: 140;
+}
+
+.idea-editor-language-menu-btn,
+.idea-editor-language-option {
+  min-height: 30px;
+  border: 1px solid rgba(47, 86, 139, 0.2);
+  border-radius: 999px;
+  background: #fff;
+  color: #25476e;
+  padding: 0 0.72rem;
+  font: inherit;
+  font-size: 0.74rem;
+  font-weight: 900;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.32rem;
+}
+
+.idea-editor-language-menu-btn.is-open,
+.idea-editor-language-option.is-active {
+  border-color: rgba(35, 124, 88, 0.34);
+  background: #eaf8f1;
+  color: #176445;
+}
+
+.idea-editor-language-menu-btn:disabled,
+.idea-editor-language-option:disabled {
+  opacity: 0.58;
+  cursor: default;
+}
+
+.idea-editor-language-menu-btn .mat-icon,
+.idea-editor-language-option .mat-icon {
+  width: 16px;
+  height: 16px;
+  font-size: 16px;
+}
+
+.idea-editor-language-flag {
+  width: 1.35em;
+  font-size: 1rem;
+  line-height: 1;
+  text-align: center;
+}
+
+.idea-editor-language-option-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.idea-editor-language-menu {
+  position: absolute;
+  top: calc(100% + 0.28rem);
+  right: 0;
+  min-width: 150px;
+  padding: 0.3rem;
+  border: 1px solid rgba(47, 86, 139, 0.18);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 16px 34px rgba(23, 42, 69, 0.18);
+}
+
+.idea-editor-language-option {
+  width: 100%;
+  min-height: 34px;
+  border-color: transparent;
+  border-radius: 9px;
+  justify-content: space-between;
+}
+
 .popup-body.idea-editor-body {
   min-height: 0;
   flex: 1 1 auto;

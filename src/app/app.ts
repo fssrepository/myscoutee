@@ -9,6 +9,7 @@ import { AppInstallPromptComponent } from './shared/ui/components/app-install-pr
 import { AppLocationService } from './shared/core/base/services/app-location.service';
 import { FirebaseMessagingService } from './shared/core/base/services/firebase-messaging.service';
 import { PwaService } from './shared/core/base/services/pwa.service';
+import { I18nService } from './shared/i18n';
 
 @Component({
   selector: 'app-root',
@@ -29,6 +30,7 @@ export class App implements OnDestroy {
   private readonly pwaService = inject(PwaService);
   private readonly appLocationService = inject(AppLocationService);
   private readonly firebaseMessagingService = inject(FirebaseMessagingService);
+  private readonly i18nService = inject(I18nService);
   protected readonly navigatorService = inject(NavigatorService);
   private readonly navigatorBindings: NavigatorBindings = {};
   private readonly routerEventsSubscription: Subscription;
@@ -37,6 +39,7 @@ export class App implements OnDestroy {
   protected readonly installPromptBusy = this.pwaService.installBusy;
 
   constructor() {
+    this.i18nService.initialize();
     void this.pwaService.initialize();
     this.appLocationService.initialize();
     this.firebaseMessagingService.initialize();

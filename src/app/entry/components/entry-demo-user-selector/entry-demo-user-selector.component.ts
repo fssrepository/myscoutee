@@ -88,23 +88,15 @@ export class EntryDemoUserSelectorComponent {
     }
   }
 
-  protected userDisplayName(user: DemoUserListItemDto): string {
-    return user.name.trim() || 'New demo profile';
-  }
-
-  protected userDisplayMeta(user: DemoUserListItemDto): string {
-    if (this.isNewProfile(user)) {
-      return 'Needs setup';
-    }
-    const city = user.city.trim() || 'Needs setup';
-    return `${user.gender} · ${city}`;
+  protected userGenderLabel(user: DemoUserListItemDto): string {
+    return user.gender === 'woman' ? 'woman' : 'man';
   }
 
   protected userAvatarClass(user: DemoUserListItemDto): string {
     return this.isNewProfile(user) ? 'user-color-setup' : `user-color-${user.gender}`;
   }
 
-  private isNewProfile(user: DemoUserListItemDto): boolean {
+  protected isNewProfile(user: DemoUserListItemDto): boolean {
     const statusText = `${user.statusText ?? ''}`.trim().toLowerCase();
     const hasProfileStateSignal = user.completion !== undefined || user.profileFormVersion !== undefined;
     const completion = Math.max(0, Math.trunc(Number(user.completion) || 0));
