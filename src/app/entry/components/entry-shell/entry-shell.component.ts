@@ -11,6 +11,12 @@ import { EntryDemoUserSelectorComponent } from '../entry-demo-user-selector/entr
 import { EntryFirebaseAuthPopupComponent } from '../entry-firebase-auth-popup/entry-firebase-auth-popup.component';
 import { EntryLandingComponent } from '../entry-landing/entry-landing.component';
 
+export interface EntryDemoUserSelectionEvent {
+  userId: string;
+  complete: () => void;
+  fail: () => void;
+}
+
 @Component({
   selector: 'app-entry-shell',
   standalone: true,
@@ -44,7 +50,7 @@ export class EntryShellComponent {
   @Input() firebaseAuthIsBusy = false;
   @Input() isMobileView = false;
 
-  @Output() readonly demoUserSelected = new EventEmitter<string>();
+  @Output() readonly demoUserSelected = new EventEmitter<EntryDemoUserSelectionEvent>();
   @Output() readonly firebaseAuthRequested = new EventEmitter<void>();
   @Output() readonly firebaseSessionContinueRequested = new EventEmitter<void>();
   @Output() readonly entryConsentStateChanged = new EventEmitter<boolean>();
@@ -151,10 +157,7 @@ export class EntryShellComponent {
     }
     const selectedUser = this.demoSelectorUsers.find(user => user.id.trim() === normalizedUserId) ?? null;
     if (selectedUser && this.isNewDemoProfile(selectedUser)) {
-      this.ngZone.run(() => {
-        this.demoUserSelected.emit(normalizedUserId);
-        this.completeDemoUserSelection();
-      });
+      this.emitDemoUserSelection(normalizedUserId, this.demoSelectorRequestToken);
       return;
     }
     const requestToken = this.demoSelectorRequestToken;
@@ -411,23 +414,42 @@ export class EntryShellComponent {
         return;
       }
       const normalizedUserId = userId.trim();
-      this.ngZone.run(() => {
-        this.demoUserSelected.emit(normalizedUserId);
-        this.completeDemoUserSelection();
-      });
+      this.emitDemoUserSelection(normalizedUserId, requestToken);
     } catch {
       if (!this.isCurrentDemoSelectorRequest(requestToken)) {
         return;
       }
-      this.commitDemoSelectorState(() => {
-        this.demoSelectorLoading = false;
-        this.demoSelectorSubmitting = false;
-        this.demoSelectorSelectedUserId = '';
-        this.demoSelectorLoadingProgress = 0;
-        this.demoSelectorLoadingLabel = 'Preparing demo data';
-        this.demoSelectorLoadingStage = 'selector';
-      });
+      this.resetDemoUserSelectionFailure();
     }
+  }
+
+  private emitDemoUserSelection(userId: string, requestToken: number): void {
+    this.ngZone.run(() => {
+      this.demoUserSelected.emit({
+        userId,
+        complete: () => {
+          if (this.isCurrentDemoSelectorRequest(requestToken)) {
+            this.completeDemoUserSelection();
+          }
+        },
+        fail: () => {
+          if (this.isCurrentDemoSelectorRequest(requestToken)) {
+            this.resetDemoUserSelectionFailure();
+          }
+        }
+      });
+    });
+  }
+
+  private resetDemoUserSelectionFailure(): void {
+    this.commitDemoSelectorState(() => {
+      this.demoSelectorLoading = false;
+      this.demoSelectorSubmitting = false;
+      this.demoSelectorSelectedUserId = '';
+      this.demoSelectorLoadingProgress = 0;
+      this.demoSelectorLoadingLabel = 'Preparing demo data';
+      this.demoSelectorLoadingStage = 'selector';
+    });
   }
 
   private isNewDemoProfile(user: DemoUserListItemDto): boolean {

@@ -3,7 +3,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 
 import { ProfileOnboardingService, SessionService, UsersService, type AppSession, type UserDto } from '../../../shared/core';
-import { EntryShellComponent } from '../entry-shell/entry-shell.component';
+import { EntryShellComponent, type EntryDemoUserSelectionEvent } from '../entry-shell/entry-shell.component';
 import { ProfileOnboardingPopupComponent } from '../profile-onboarding-popup/profile-onboarding-popup.component';
 
 @Component({
@@ -63,9 +63,10 @@ export class EntryPageComponent implements OnInit, OnDestroy {
     this.syncMobileView();
   }
 
-  protected async onDemoUserSelected(userId: string): Promise<void> {
-    const normalizedUserId = userId.trim();
+  protected async onDemoUserSelected(selection: EntryDemoUserSelectionEvent): Promise<void> {
+    const normalizedUserId = selection.userId.trim();
     if (!normalizedUserId) {
+      selection.fail();
       return;
     }
     const selectedUser = this.usersService.peekCachedUserById(normalizedUserId);
@@ -74,13 +75,22 @@ export class EntryPageComponent implements OnInit, OnDestroy {
       this.pendingRedirectAfterOnboarding = this.redirectUrl();
       this.onboardingUser = selectedUser;
       this.onboardingOpen = true;
+      selection.complete();
       return;
     }
     const session = this.sessionService.startDemoSession(normalizedUserId);
     if (!session) {
+      selection.fail();
       return;
     }
-    await this.router.navigateByUrl(this.redirectUrl());
+    try {
+      const navigated = await this.router.navigateByUrl(this.redirectUrl());
+      if (!navigated) {
+        selection.fail();
+      }
+    } catch {
+      selection.fail();
+    }
   }
 
   protected async onFirebaseAuthRequested(): Promise<void> {
@@ -105,16 +115,28 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   }
 
   protected async onOnboardingCompleted(_user: UserDto): Promise<void> {
-    this.onboardingOpen = false;
-    this.onboardingUser = null;
     const redirect = this.pendingRedirectAfterOnboarding || this.redirectUrl();
     const demoSessionUserId = this.pendingDemoSessionUserId;
     this.pendingRedirectAfterOnboarding = '';
     this.pendingDemoSessionUserId = '';
     if (demoSessionUserId) {
-      this.sessionService.startDemoSession(demoSessionUserId);
+      const session = this.sessionService.startDemoSession(demoSessionUserId);
+      if (!session) {
+        this.onboardingOpen = false;
+        this.onboardingUser = null;
+        return;
+      }
     }
-    await this.router.navigateByUrl(redirect);
+    try {
+      const navigated = await this.router.navigateByUrl(redirect);
+      if (!navigated) {
+        this.onboardingOpen = false;
+        this.onboardingUser = null;
+      }
+    } catch {
+      this.onboardingOpen = false;
+      this.onboardingUser = null;
+    }
   }
 
   protected async onOnboardingDismissed(): Promise<void> {

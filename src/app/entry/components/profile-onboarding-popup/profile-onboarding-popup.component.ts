@@ -620,6 +620,7 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
     this.saveError = '';
     this.persistDraft();
     const payload = this.buildUserPayload(this.user, this.draft);
+    let completionEmitted = false;
     try {
       const savedUser = await this.usersService.saveUserProfile(payload, {
         requestTimeoutMs: 8000,
@@ -633,11 +634,14 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
         await this.userExperiencesService.saveUserExperiences(savedUser.id, this.draft.form.experienceEntries);
       }
       this.onboarding.clearDraft(savedUser.id);
+      completionEmitted = true;
       this.completed.emit(savedUser);
     } catch {
       this.saveError = 'Profile could not be saved. Please check the required fields and try again.';
     } finally {
-      this.saving = false;
+      if (!completionEmitted) {
+        this.saving = false;
+      }
     }
   }
 
