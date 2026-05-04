@@ -4,8 +4,9 @@ import type * as AppTypes from '../../../core/base/models';
 import { AppUtils } from '../../../app-utils';
 import { AppMemoryDb } from '../../base/db';
 import type { ChatMenuItem } from '../../base/interfaces/activity-feed.interface';
-import { DemoChatsRepositoryBuilder } from '../builders';
+import { DemoChatsRepositoryBuilder, DemoUserSeedBuilder } from '../builders';
 import { CHATS_TABLE_NAME, type DemoChatRecord } from '../models/chats.model';
+import { USERS_TABLE_NAME } from '../models/users.model';
 
 @Injectable({
   providedIn: 'root'
@@ -47,7 +48,7 @@ export class DemoChatsRepository {
   seedContextualRecordsForUser(userId: string, eventRecords: readonly import('../models/events.model').DemoEventRecord[]): boolean {
     this.init();
     const normalizedUserId = userId.trim();
-    if (!normalizedUserId) {
+    if (!normalizedUserId || this.isSetupRequiredDemoProfile(normalizedUserId)) {
       return false;
     }
     const seeded = DemoChatsRepositoryBuilder.buildContextualRecordCollectionForUser(normalizedUserId, eventRecords);
@@ -199,7 +200,7 @@ export class DemoChatsRepository {
 
   private queryUserRecords(userId: string): DemoChatRecord[] {
     const normalizedUserId = userId.trim();
-    if (!normalizedUserId) {
+    if (!normalizedUserId || this.isSetupRequiredDemoProfile(normalizedUserId)) {
       return [];
     }
     const table = this.memoryDb.read()[CHATS_TABLE_NAME];
@@ -208,6 +209,17 @@ export class DemoChatsRepository {
       .filter((record): record is DemoChatRecord => Boolean(record))
       .filter(record => record.ownerUserId === normalizedUserId)
       .map(record => DemoChatsRepositoryBuilder.cloneRecord(record, { includeMessages: false }));
+  }
+
+  private isSetupRequiredDemoProfile(userId: string): boolean {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return false;
+    }
+    const user = this.memoryDb.read()[USERS_TABLE_NAME].byId[normalizedUserId] ?? null;
+    return user
+      ? DemoUserSeedBuilder.isEmptyOnboardingProfile(user)
+      : DemoUserSeedBuilder.isEmptyOnboardingProfileUserId(normalizedUserId);
   }
 
   private resolveChatRecord(chat: ChatMenuItem): DemoChatRecord | null {

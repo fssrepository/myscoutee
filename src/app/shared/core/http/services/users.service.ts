@@ -351,6 +351,7 @@ export class HttpUsersService implements UserService {
         : undefined,
       languages: [...(user.languages ?? [])],
       images: [...(user.images ?? [])],
+      profileDetails: this.cloneProfileDetails(user.profileDetails),
       impressions: this.cloneImpressions(user.impressions),
       activities: {
         game: Math.max(0, Math.trunc(Number(user.activities?.game) || 0)),
@@ -362,6 +363,21 @@ export class HttpUsersService implements UserService {
         feedback: Math.max(0, Math.trunc(Number(user.activities?.feedback) || 0))
       }
     };
+  }
+
+  private cloneProfileDetails(groups: UserDto['profileDetails']): UserDto['profileDetails'] {
+    if (!groups) {
+      return undefined;
+    }
+    return groups.map(group => ({
+      title: `${group.title ?? ''}`,
+      rows: (group.rows ?? []).map(row => ({
+        label: `${row.label ?? ''}`,
+        value: `${row.value ?? ''}`,
+        privacy: row.privacy,
+        options: [...(row.options ?? [])]
+      }))
+    }));
   }
 
   private cacheUserResponse(response: UserByIdQueryResponse): UserByIdQueryResponse {
@@ -548,6 +564,13 @@ export class HttpUsersService implements UserService {
       city: `${user.city ?? ''}`.trim(),
       initials: `${user.initials ?? ''}`.trim(),
       gender: normalizedGender,
+      statusText: `${user.statusText ?? ''}`.trim(),
+      completion: user.completion === undefined || user.completion === null
+        ? undefined
+        : Math.max(0, Math.trunc(Number(user.completion) || 0)),
+      profileFormVersion: user.profileFormVersion === undefined || user.profileFormVersion === null
+        ? undefined
+        : Math.max(0, Math.trunc(Number(user.profileFormVersion) || 0)),
       profileStatus: user.profileStatus,
       deletedAtIso: typeof user.deletedAtIso === 'string' ? user.deletedAtIso : null
     };

@@ -1,0 +1,613 @@
+@if (open && draft && user) {
+  @if (form; as f) {
+    <section
+      class="profile-onboarding-shell"
+      [class.profile-onboarding-shell--mobile]="mobile"
+      aria-modal="true"
+      role="dialog"
+      >
+      <div class="profile-onboarding-backdrop"></div>
+      <div class="profile-onboarding-panel">
+        <header class="profile-onboarding-header">
+          <div>
+            <span class="profile-onboarding-kicker">Profile setup</span>
+            <h2>{{ currentStep().title }}</h2>
+          </div>
+          <div class="profile-onboarding-progress" aria-label="Profile setup progress">
+            <span>{{ currentStepIndex() + 1 }}/{{ steps.length }}</span>
+            <div class="profile-onboarding-progress-track">
+              <span [style.width.%]="progressPercent()"></span>
+            </div>
+          </div>
+          <button
+            type="button"
+            class="profile-onboarding-close-btn"
+            [disabled]="saving || uploadingImageSlotIndex !== null"
+            (click)="requestDismiss()"
+            aria-label="Close profile setup"
+            >
+            <mat-icon>close</mat-icon>
+          </button>
+        </header>
+        <nav class="profile-onboarding-steps" aria-label="Profile setup steps">
+          @for (step of steps; track step.id; let index = $index) {
+            <button
+              type="button"
+              [class.active]="step.id === currentStep().id"
+              [class.done]="stepDone(step.id)"
+              [class.skipped]="stepSkipped(step.id)"
+              [disabled]="saving || uploadingImageSlotIndex !== null"
+              (click)="setStep(step.id)"
+              >
+              <mat-icon>{{ stepDone(step.id) ? 'done' : stepSkipped(step.id) ? 'remove' : step.optional ? 'radio_button_unchecked' : 'priority_high' }}</mat-icon>
+              <span>{{ step.title }}</span>
+            </button>
+          }
+        </nav>
+
+        <main class="profile-onboarding-body">
+          @if (currentStep().id === 'basics') {
+            <section class="profile-onboarding-page">
+              <div class="profile-onboarding-required">
+                <mat-icon>lock</mat-icon>
+                <span>These fields are required before the app opens.</span>
+              </div>
+              @if (basicsErrorVisible()) {
+                <div class="profile-onboarding-error">
+                  <mat-icon>error</mat-icon>
+                  <span>Missing: {{ requiredMissingLabels().join(', ') }}</span>
+                </div>
+              }
+              <div class="profile-onboarding-grid">
+                <label>
+                  <span>Name</span>
+                  <input type="text" [(ngModel)]="f.fullName" (ngModelChange)="persistDraft()" autocomplete="name" />
+                </label>
+                <label class="profile-onboarding-date-field">
+                  <span>Birthday</span>
+                  <div class="profile-onboarding-date-input-wrap">
+                    <input
+                      [matDatepicker]="birthdayPicker"
+                      [ngModel]="birthdayDate"
+                      (ngModelChange)="onBirthdayDateChange($event)"
+                      autocomplete="bday"
+                      />
+                    <button type="button" (click)="birthdayPicker.open()" aria-label="Open birthday picker">
+                      <mat-icon>calendar_month</mat-icon>
+                    </button>
+                    <mat-datepicker #birthdayPicker></mat-datepicker>
+                  </div>
+                </label>
+                <label>
+                  <span>City</span>
+                  <input type="text" [(ngModel)]="f.city" (ngModelChange)="persistDraft()" autocomplete="address-level2" />
+                </label>
+                <label>
+                  <span>Height (cm)</span>
+                  <input type="number" min="40" max="250" step="1" [(ngModel)]="f.heightCm" (ngModelChange)="persistDraft()" />
+                </label>
+                <label>
+                  <span>Physique</span>
+                  <mat-select class="profile-onboarding-select" [(ngModel)]="f.physique" (ngModelChange)="persistDraft()">
+                    @for (option of physiqueOptions; track option) {
+                      <mat-option [value]="option">{{ option }}</mat-option>
+                    }
+                  </mat-select>
+                </label>
+                <div class="profile-onboarding-language-field profile-onboarding-field">
+                  <span>Languages</span>
+                  <mat-select
+                    #languageSelectRoot
+                    class="profile-onboarding-select profile-onboarding-language-select"
+                    multiple
+                    [value]="f.languages"
+                    (selectionChange)="onLanguagesChange($event.value)"
+                    (openedChange)="onLanguageSelectOpened($event)"
+                    (click)="syncLanguagePanelWidth()"
+                    (focus)="syncLanguagePanelWidth()"
+                    [disableRipple]="true"
+                    [disableOptionCentering]="true"
+                    [panelWidth]="languagePanelWidth"
+                    panelClass="profile-onboarding-language-panel profile-onboarding-language-panel--above"
+                    aria-label="Languages"
+                    placeholder="Select languages"
+                    >
+                    <mat-select-trigger>
+                      @if (f.languages.length > 0) {
+                        <span class="profile-onboarding-language-summary">{{ f.languages.join(', ') }}</span>
+                      } @else {
+                        <span class="profile-onboarding-language-placeholder">Select languages</span>
+                      }
+                    </mat-select-trigger>
+                    @for (language of languageSuggestions; track language) {
+                      <mat-option [value]="language">{{ language }}</mat-option>
+                    }
+                  </mat-select>
+                </div>
+              </div>
+            </section>
+          }
+
+          @if (currentStep().id === 'photos') {
+            <section class="profile-onboarding-page profile-onboarding-photos-page">
+              <div class="profile-onboarding-photo-preview" [style.backgroundImage]="selectedImagePreview() ? 'url(' + selectedImagePreview() + ')' : 'none'">
+                @if (!selectedImagePreview()) {
+                  <span>Select a slot to upload an image</span>
+                }
+                @if (isSelectedImageUploading()) {
+                  <span class="profile-onboarding-slot-upload-ring profile-onboarding-photo-preview-ring" aria-label="Uploading image">
+                    <svg viewBox="0 0 44 44" class="profile-onboarding-slot-upload-ring-svg" aria-hidden="true">
+                      <circle class="profile-onboarding-slot-upload-ring-track" cx="22" cy="22" r="17"></circle>
+                      <circle class="profile-onboarding-slot-upload-ring-progress" cx="22" cy="22" r="17"></circle>
+                    </svg>
+                  </span>
+                }
+              </div>
+              <div class="profile-onboarding-photo-toolbar">
+                <span>{{ imageCount() }}/8 images</span>
+                @if (imageUploadError) {
+                  <span class="profile-onboarding-photo-error">{{ imageUploadError }}</span>
+                }
+              </div>
+              <input #onboardingImageInput class="profile-onboarding-image-file-input" type="file" accept="image/*" (change)="onImageFileChange($event)" />
+              <div class="profile-onboarding-image-grid" aria-label="Profile image slots">
+                @for (slot of imageSlots; track i; let i = $index) {
+                  <button
+                    type="button"
+                    [class.slot-selected]="selectedImageIndex === i"
+                    [class.slot-featured]="i === 0"
+                    [class.slot-uploading]="isImageSlotUploading(i)"
+                    [style.backgroundImage]="slot ? 'url(' + slot + ')' : 'none'"
+                    [disabled]="isImageSlotUploading(i)"
+                    (click)="selectImageSlot(i)"
+                    >
+                    <span class="profile-onboarding-slot-index">{{ i + 1 }}</span>
+                    @if (isImageSlotUploading(i)) {
+                      <span class="profile-onboarding-slot-upload-ring" aria-label="Uploading image">
+                        <svg viewBox="0 0 44 44" class="profile-onboarding-slot-upload-ring-svg" aria-hidden="true">
+                          <circle class="profile-onboarding-slot-upload-ring-track" cx="22" cy="22" r="17"></circle>
+                          <circle class="profile-onboarding-slot-upload-ring-progress" cx="22" cy="22" r="17"></circle>
+                        </svg>
+                      </span>
+                    } @else if (!slot) {
+                      <span class="profile-onboarding-slot-add">+</span>
+                    }
+                    @if (slot && !isImageSlotUploading(i)) {
+                      <span class="profile-onboarding-remove-slot" (click)="$event.stopPropagation(); removeImage(i)">×</span>
+                    }
+                  </button>
+                }
+              </div>
+            </section>
+          }
+
+          @if (currentStep().id === 'identity') {
+            <section class="profile-onboarding-page">
+              <div class="profile-onboarding-grid">
+                <label>
+                  <span>Headline</span>
+                  <input type="text" maxlength="72" [(ngModel)]="f.headline" (ngModelChange)="persistDraft()" />
+                </label>
+                <label>
+                  <span>Visibility</span>
+                  <mat-select class="profile-onboarding-select" [(ngModel)]="f.profileStatus" (ngModelChange)="persistDraft()">
+                    <mat-select-trigger>
+                      <span class="profile-onboarding-status-trigger">{{ f.profileStatus }}</span>
+                    </mat-select-trigger>
+                    @for (option of profileStatusOptions; track option.value) {
+                      <mat-option [value]="option.value">
+                        <span class="profile-onboarding-option">
+                          <mat-icon>{{ option.icon }}</mat-icon>
+                          <span>{{ option.value }}</span>
+                        </span>
+                      </mat-option>
+                    }
+                  </mat-select>
+                </label>
+                <label>
+                  <span>Gender</span>
+                  <mat-select class="profile-onboarding-select" [(ngModel)]="f.genderDetail" (ngModelChange)="persistDraft()">
+                    @for (option of detailOptions('Gender'); track option) {
+                      <mat-option [value]="option">{{ option }}</mat-option>
+                    }
+                  </mat-select>
+                </label>
+              </div>
+            </section>
+          }
+
+          @if (currentStep().id === 'about') {
+            <section class="profile-onboarding-page">
+              <label class="profile-onboarding-about">
+                <span>About me</span>
+                <textarea rows="6" maxlength="160" [(ngModel)]="f.about" (ngModelChange)="persistDraft()"></textarea>
+                <small>{{ f.about.length }}/160</small>
+              </label>
+            </section>
+          }
+
+          @if (currentStep().id === 'lifestyle') {
+            <section class="profile-onboarding-page">
+              <div class="profile-onboarding-grid">
+                <label>
+                  <span>Drinking</span>
+                  <mat-select class="profile-onboarding-select" [(ngModel)]="f.drinking" (ngModelChange)="persistDraft()">
+                    @for (option of detailOptions('Drinking'); track option) {
+                      <mat-option [value]="option">{{ option }}</mat-option>
+                    }
+                  </mat-select>
+                </label>
+                <label>
+                  <span>Smoking</span>
+                  <mat-select class="profile-onboarding-select" [(ngModel)]="f.smoking" (ngModelChange)="persistDraft()">
+                    @for (option of detailOptions('Smoking'); track option) {
+                      <mat-option [value]="option">{{ option }}</mat-option>
+                    }
+                  </mat-select>
+                </label>
+                <label>
+                  <span>Workout</span>
+                  <mat-select class="profile-onboarding-select" [(ngModel)]="f.workout" (ngModelChange)="persistDraft()">
+                    @for (option of detailOptions('Workout'); track option) {
+                      <mat-option [value]="option">{{ option }}</mat-option>
+                    }
+                  </mat-select>
+                </label>
+                <label>
+                  <span>Pets</span>
+                  <mat-select class="profile-onboarding-select" [(ngModel)]="f.pets" (ngModelChange)="persistDraft()">
+                    @for (option of detailOptions('Pets'); track option) {
+                      <mat-option [value]="option">{{ option }}</mat-option>
+                    }
+                  </mat-select>
+                </label>
+                <label>
+                  <span>Family plans</span>
+                  <mat-select class="profile-onboarding-select" [(ngModel)]="f.familyPlans" (ngModelChange)="persistDraft()">
+                    @for (option of detailOptions('Family plans'); track option) {
+                      <mat-option [value]="option">{{ option }}</mat-option>
+                    }
+                  </mat-select>
+                </label>
+                <label>
+                  <span>Children</span>
+                  <mat-select class="profile-onboarding-select" [(ngModel)]="f.children" (ngModelChange)="persistDraft()">
+                    @for (option of detailOptions('Children'); track option) {
+                      <mat-option [value]="option">{{ option }}</mat-option>
+                    }
+                  </mat-select>
+                </label>
+                <label>
+                  <span>Love style</span>
+                  <mat-select class="profile-onboarding-select" [(ngModel)]="f.loveStyle" (ngModelChange)="persistDraft()">
+                    @for (option of detailOptions('Love style'); track option) {
+                      <mat-option [value]="option">{{ option }}</mat-option>
+                    }
+                  </mat-select>
+                </label>
+                <label>
+                  <span>Communication</span>
+                  <mat-select class="profile-onboarding-select" [(ngModel)]="f.communicationStyle" (ngModelChange)="persistDraft()">
+                    @for (option of detailOptions('Communication style'); track option) {
+                      <mat-option [value]="option">{{ option }}</mat-option>
+                    }
+                  </mat-select>
+                </label>
+                <label>
+                  <span>Orientation</span>
+                  <mat-select class="profile-onboarding-select" [(ngModel)]="f.sexualOrientation" (ngModelChange)="persistDraft()">
+                    @for (option of detailOptions('Sexual orientation'); track option) {
+                      <mat-option [value]="option">{{ option }}</mat-option>
+                    }
+                  </mat-select>
+                </label>
+                <label>
+                  <span>Religion</span>
+                  <mat-select class="profile-onboarding-select" [(ngModel)]="f.religion" (ngModelChange)="persistDraft()">
+                    @for (option of detailOptions('Religion'); track option) {
+                      <mat-option [value]="option">{{ option }}</mat-option>
+                    }
+                  </mat-select>
+                </label>
+              </div>
+            </section>
+          }
+
+          @if (currentStep().id === 'values') {
+            <section class="profile-onboarding-page profile-onboarding-selector-page">
+              <div class="profile-onboarding-selector-head">
+                <span>Values</span>
+                <button
+                  type="button"
+                  [class.is-hidden]="f.values.length === 0"
+                  [disabled]="f.values.length === 0"
+                  (click)="clearValues()"
+                  >
+                  Clear
+                </button>
+              </div>
+              @if (f.values.length > 0) {
+                <div class="profile-onboarding-selector-selected">
+                  @for (item of f.values; track item) {
+                    <button type="button" (click)="removeValueOption(item)">
+                      <span>{{ item }}</span>
+                      <mat-icon>close</mat-icon>
+                    </button>
+                  }
+                </div>
+              } @else {
+                <p class="profile-onboarding-selector-empty">No items selected yet.</p>
+              }
+              @for (group of beliefsValuesOptionGroups; track group.title) {
+                <div class="profile-onboarding-selector-group" [class]="group.toneClass">
+                  <div class="profile-onboarding-selector-group-head">
+                    <span class="profile-onboarding-selector-group-tag" [class]="group.toneClass">
+                      <mat-icon>{{ profileSelectorToneIcon(group.toneClass) }}</mat-icon>
+                      <span>{{ group.shortTitle }}</span>
+                    </span>
+                    <span class="profile-onboarding-selector-group-line" [class]="group.toneClass"></span>
+                  </div>
+                  <div class="profile-onboarding-selector-chip-grid">
+                    @for (option of group.options; track option) {
+                      <button type="button" [class.active]="isValueSelected(option)" (click)="toggleValue(option)">
+                        <span>{{ option }}</span>
+                      </button>
+                    }
+                  </div>
+                </div>
+              }
+            </section>
+          }
+
+          @if (currentStep().id === 'interests') {
+            <section class="profile-onboarding-page profile-onboarding-selector-page">
+              <div class="profile-onboarding-selector-head">
+                <span>Interests</span>
+                <button
+                  type="button"
+                  [class.is-hidden]="f.interests.length === 0"
+                  [disabled]="f.interests.length === 0"
+                  (click)="clearInterests()"
+                  >
+                  Clear
+                </button>
+              </div>
+              @if (f.interests.length > 0) {
+                <div class="profile-onboarding-selector-selected">
+                  @for (item of f.interests; track item) {
+                    <button type="button" (click)="removeInterestOption(item)">
+                      <span>{{ item }}</span>
+                      <mat-icon>close</mat-icon>
+                    </button>
+                  }
+                </div>
+              } @else {
+                <p class="profile-onboarding-selector-empty">No items selected yet.</p>
+              }
+              @for (group of interestOptionGroups; track group.title) {
+                <div class="profile-onboarding-selector-group" [class]="group.toneClass">
+                  <div class="profile-onboarding-selector-group-head">
+                    <span class="profile-onboarding-selector-group-tag" [class]="group.toneClass">
+                      <mat-icon>{{ profileSelectorToneIcon(group.toneClass) }}</mat-icon>
+                      <span>{{ group.shortTitle }}</span>
+                    </span>
+                    <span class="profile-onboarding-selector-group-line" [class]="group.toneClass"></span>
+                  </div>
+                  <div class="profile-onboarding-selector-chip-grid">
+                    @for (option of group.options; track option) {
+                      <button type="button" [class.active]="isInterestSelected(option)" (click)="toggleInterest(option)">
+                        <span>{{ option }}</span>
+                      </button>
+                    }
+                  </div>
+                </div>
+              }
+            </section>
+          }
+
+          @if (currentStep().id === 'experience') {
+            <section class="profile-onboarding-page">
+              <div class="profile-onboarding-experience-head">
+                <span>{{ f.experienceEntries.length }} entries</span>
+                <button type="button" class="profile-onboarding-add-btn" (click)="openExperienceForm()">
+                  <mat-icon>add</mat-icon>
+                </button>
+              </div>
+              @if (experienceFormVisible) {
+                <div class="profile-onboarding-experience-form">
+                  <mat-select class="profile-onboarding-select" [(ngModel)]="experienceForm.type">
+                    @for (option of experienceTypeOptions; track option) {
+                      <mat-option [value]="option">{{ option }}</mat-option>
+                    }
+                  </mat-select>
+                  <input type="text" placeholder="Title" [(ngModel)]="experienceForm.title" />
+                  <input type="text" placeholder="Organization" [(ngModel)]="experienceForm.org" />
+                  <input type="text" placeholder="City" [(ngModel)]="experienceForm.city" />
+                  <label class="profile-onboarding-experience-date-range experience-date-range-label">
+                    <span>Date range</span>
+                    <mat-form-field appearance="fill" class="profile-onboarding-date-range-field experience-date-range-field" subscriptSizing="dynamic">
+                      <mat-label>Enter a date range</mat-label>
+                      <mat-date-range-input [rangePicker]="experienceDateRangePicker">
+                        <input matStartDate [(ngModel)]="experienceRangeStart" name="onboardingExperienceRangeStart" placeholder="YYYY/MM/DD" />
+                        <input matEndDate [(ngModel)]="experienceRangeEnd" name="onboardingExperienceRangeEnd" placeholder="YYYY/MM/DD" />
+                      </mat-date-range-input>
+                      <mat-datepicker-toggle matSuffix [for]="experienceDateRangePicker"></mat-datepicker-toggle>
+                      <mat-hint>Leave end empty for Present</mat-hint>
+                      <mat-date-range-picker #experienceDateRangePicker></mat-date-range-picker>
+                    </mat-form-field>
+                  </label>
+                  <textarea rows="3" placeholder="Description" [(ngModel)]="experienceForm.description"></textarea>
+                  <div class="profile-onboarding-form-actions">
+                    <button type="button" class="profile-onboarding-secondary-btn" (click)="closeExperienceForm()">Cancel</button>
+                    <button type="button" class="profile-onboarding-primary-btn" [disabled]="!canAddExperience()" (click)="addExperienceEntry()">Add</button>
+                  </div>
+                </div>
+              }
+              <div class="profile-onboarding-experience-list">
+                @for (entry of f.experienceEntries; track entry.id) {
+                  <article>
+                    <mat-icon>{{ entry.type === 'School' ? 'school' : entry.type === 'Workspace' ? 'apartment' : 'rocket_launch' }}</mat-icon>
+                    <div>
+                      <h4>{{ entry.title }}</h4>
+                      <p>{{ entry.org }} &middot; {{ entry.dateFrom }} - {{ entry.dateTo }}</p>
+                    </div>
+                    <button type="button" (click)="removeExperienceEntry(entry.id)" aria-label="Remove experience">
+                      <mat-icon>delete</mat-icon>
+                    </button>
+                  </article>
+                }
+              </div>
+            </section>
+          }
+
+          @if (currentStep().id === 'review') {
+            <section class="profile-onboarding-page profile-onboarding-review">
+              <div class="profile-onboarding-review-photos">
+                <div class="profile-onboarding-review-section-title">
+                  <span>Photos</span>
+                  <strong>{{ imageCount() }}/8</strong>
+                </div>
+                @if (imageCount() > 0) {
+                  <div class="profile-onboarding-review-photo-carousel" aria-label="Profile photo review">
+                    @for (slot of imageSlots; track i; let i = $index) {
+                      @if (slot) {
+                        <article class="profile-onboarding-review-photo-slide">
+                        <img [src]="slot" alt="Profile photo slot {{ i + 1 }}" />
+                        </article>
+                      }
+                    }
+                  </div>
+                } @else {
+                  <p>No photos</p>
+                }
+              </div>
+              <div class="profile-onboarding-review-section">
+                <div class="profile-onboarding-review-section-title">
+                  <span>Basics</span>
+                  <strong>{{ progressPercent() }}%</strong>
+                </div>
+                <dl>
+                  <div><dt>Name</dt><dd>{{ reviewValue(f.fullName) }}</dd></div>
+                  <div><dt>Birthday</dt><dd>{{ reviewValue(f.birthday) }}</dd></div>
+                  <div><dt>City</dt><dd>{{ reviewValue(f.city) }}</dd></div>
+                  <div><dt>Height</dt><dd>{{ reviewValue(f.heightCm) }} cm</dd></div>
+                  <div><dt>Physique</dt><dd>{{ reviewValue(f.physique) }}</dd></div>
+                  <div><dt>Languages</dt><dd>{{ reviewList(f.languages) }}</dd></div>
+                </dl>
+              </div>
+              <div class="profile-onboarding-review-section">
+                <div class="profile-onboarding-review-section-title">
+                  <span>Identity</span>
+                </div>
+                <dl>
+                  <div><dt>Headline</dt><dd>{{ reviewValue(f.headline) }}</dd></div>
+                  <div><dt>Visibility</dt><dd><mat-icon>{{ statusIcon(f.profileStatus) }}</mat-icon>{{ f.profileStatus }}</dd></div>
+                  <div><dt>Gender</dt><dd>{{ reviewValue(f.genderDetail) }}</dd></div>
+                </dl>
+              </div>
+              <div class="profile-onboarding-review-section profile-onboarding-review-section-wide">
+                <div class="profile-onboarding-review-section-title">
+                  <span>About</span>
+                </div>
+                <p>{{ reviewValue(f.about) }}</p>
+              </div>
+              <div class="profile-onboarding-review-section profile-onboarding-review-section-wide">
+                <div class="profile-onboarding-review-section-title">
+                  <span>Lifestyle</span>
+                </div>
+                <dl>
+                  <div><dt>Drinking</dt><dd>{{ reviewValue(f.drinking) }}</dd></div>
+                  <div><dt>Smoking</dt><dd>{{ reviewValue(f.smoking) }}</dd></div>
+                  <div><dt>Workout</dt><dd>{{ reviewValue(f.workout) }}</dd></div>
+                  <div><dt>Pets</dt><dd>{{ reviewValue(f.pets) }}</dd></div>
+                  <div><dt>Family plans</dt><dd>{{ reviewValue(f.familyPlans) }}</dd></div>
+                  <div><dt>Children</dt><dd>{{ reviewValue(f.children) }}</dd></div>
+                  <div><dt>Love style</dt><dd>{{ reviewValue(f.loveStyle) }}</dd></div>
+                  <div><dt>Communication</dt><dd>{{ reviewValue(f.communicationStyle) }}</dd></div>
+                  <div><dt>Orientation</dt><dd>{{ reviewValue(f.sexualOrientation) }}</dd></div>
+                  <div><dt>Religion</dt><dd>{{ reviewValue(f.religion) }}</dd></div>
+                </dl>
+              </div>
+              <div class="profile-onboarding-review-section">
+                <div class="profile-onboarding-review-section-title">
+                  <span>Values</span>
+                </div>
+                <p>{{ reviewList(f.values) }}</p>
+              </div>
+              <div class="profile-onboarding-review-section">
+                <div class="profile-onboarding-review-section-title">
+                  <span>Interests</span>
+                </div>
+                <p>{{ reviewList(f.interests) }}</p>
+              </div>
+              <div class="profile-onboarding-review-section profile-onboarding-review-section-wide">
+                <div class="profile-onboarding-review-section-title">
+                  <span>Experience</span>
+                  <strong>{{ f.experienceEntries.length }}</strong>
+                </div>
+                @if (f.experienceEntries.length > 0) {
+                  <div class="profile-onboarding-review-experience-list">
+                    @for (entry of f.experienceEntries; track entry.id) {
+                      <article>
+                        <strong>{{ entry.title }}</strong>
+                        <span>{{ entry.org }} &middot; {{ entry.dateFrom }} - {{ entry.dateTo }}</span>
+                      </article>
+                    }
+                  </div>
+                } @else {
+                  <p>Not set</p>
+                }
+              </div>
+              @if (saveError) {
+                <div class="profile-onboarding-error">
+                  <mat-icon>error</mat-icon>
+                  <span>{{ saveError }}</span>
+                </div>
+              }
+            </section>
+          }
+        </main>
+
+        <footer class="profile-onboarding-actions">
+          <button type="button" class="profile-onboarding-secondary-btn" [disabled]="saving || uploadingImageSlotIndex !== null || currentStepIndex() === 0" (click)="goBack()">
+            Back
+          </button>
+          @if (currentStep().optional) {
+            <button type="button" class="profile-onboarding-secondary-btn" [disabled]="saving || uploadingImageSlotIndex !== null" (click)="skipStep()">
+              Skip
+            </button>
+          }
+          <span class="profile-onboarding-save-shell" [class.is-loading]="saving">
+            @if (saving) {
+              <span class="profile-onboarding-save-ring" aria-hidden="true">
+                <svg viewBox="0 0 108 44" preserveAspectRatio="none" class="profile-onboarding-save-ring-svg">
+                  <defs>
+                    <linearGradient id="profile-onboarding-save-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stop-color="rgb(235, 147, 33)"></stop>
+                      <stop offset="100%" stop-color="rgb(247, 190, 52)"></stop>
+                    </linearGradient>
+                  </defs>
+                  <path
+                    class="profile-onboarding-save-ring-track"
+                    d="M54 2 H86 A20 20 0 0 1 86 42 H22 A20 20 0 0 1 22 2 H54"
+                  ></path>
+                  <path
+                    class="profile-onboarding-save-ring-progress"
+                    [class.is-loading]="saving"
+                    d="M54 2 H86 A20 20 0 0 1 86 42 H22 A20 20 0 0 1 22 2 H54"
+                    pathLength="100"
+                    [attr.stroke-dasharray]="saveRingPerimeter"
+                    [attr.stroke-dashoffset]="saving ? saveRingPerimeter : 0"
+                  ></path>
+                </svg>
+              </span>
+            }
+            <button type="button" class="profile-onboarding-primary-btn" [disabled]="!canContinue()" (click)="goNext()">
+              <span>{{ primaryActionLabel() }}</span>
+            </button>
+          </span>
+        </footer>
+      </div>
+    </section>
+  }
+}

@@ -14,7 +14,8 @@ import type {
   DemoRepositoryEventItemType
 } from '../models/events.model';
 
-const DEMO_EVENT_MEMBER_USERS = DemoUserSeedBuilder.buildExpandedDemoUsers(50);
+const DEMO_EVENT_MEMBER_USERS = DemoUserSeedBuilder.buildExpandedDemoUsers(50)
+  .filter(user => !DemoUserSeedBuilder.isEmptyOnboardingProfileUserId(user.id));
 
 function buildCheckoutDemoPolicies(): AppTypes.EventPolicyItem[] {
   return [

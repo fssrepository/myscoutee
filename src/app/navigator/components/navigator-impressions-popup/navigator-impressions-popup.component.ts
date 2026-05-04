@@ -30,6 +30,7 @@ interface NavigatorImpressionsPulseFlags {
 
 interface NavigatorImpressionsViewModel {
   user: UserDto;
+  hasAvailableData: boolean;
   pulseFlags: NavigatorImpressionsPulseFlags;
   memberImpressionTitle: string;
   hostAverageRating: string;
@@ -111,12 +112,14 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
     if (!user) {
       return null;
     }
-    const hostTraitCards = this.resolveTraitCards(user, 'host');
-    const memberTraitCards = this.resolveTraitCards(user, 'member');
+    const hasAvailableData = this.hasUserImpressionsData(user);
+    const hostTraitCards = hasAvailableData ? this.resolveTraitCards(user, 'host') : [];
+    const memberTraitCards = hasAvailableData ? this.resolveTraitCards(user, 'member') : [];
     const hostTraitIndex = this.normalizeTraitIndex(this.hostTraitIndexRef(), hostTraitCards.length);
     const memberTraitIndex = this.normalizeTraitIndex(this.memberTraitIndexRef(), memberTraitCards.length);
     return {
       user,
+      hasAvailableData,
       pulseFlags: this.pulseFlagsRef(),
       memberImpressionTitle: resolveMemberImpressionTitle(user.traitLabel ?? ''),
       hostAverageRating: this.resolveHostAverageRating(user),
@@ -216,6 +219,12 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
 
   ngOnDestroy(): void {
     this.clearPulseTimers();
+  }
+
+  private hasUserImpressionsData(user: UserDto): boolean {
+    return DemoUserImpressionsBuilder.hasImpressionsData(
+      this.appCtx.getUserImpressions(user.id) ?? user.impressions
+    );
   }
 
   protected getHostTierColorClass(tier: string): string {

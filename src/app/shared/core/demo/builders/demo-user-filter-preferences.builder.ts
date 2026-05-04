@@ -3,10 +3,11 @@ import type { UserDto } from '../../base/interfaces/user.interface';
 
 export class DemoUserFilterPreferencesBuilder {
   static buildDefaultFilterPreferences(user: UserDto): UserGameFilterPreferencesDto {
+    const baseAge = Number.isFinite(user.age) && user.age >= 18 ? Math.trunc(Number(user.age)) : 30;
     const parsedHeight = this.parseHeightCm(user.height);
     return {
-      ageMin: Math.max(18, user.age - 5),
-      ageMax: Math.min(120, user.age + 5),
+      ageMin: Math.max(18, baseAge - 5),
+      ageMax: Math.min(120, baseAge + 5),
       heightMinCm: Math.max(40, (parsedHeight ?? 170) - 10),
       heightMaxCm: Math.min(250, (parsedHeight ?? 170) + 10),
       interests: [],

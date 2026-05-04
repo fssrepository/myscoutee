@@ -47,6 +47,7 @@ export class EntryShellComponent {
   @Output() readonly demoUserSelected = new EventEmitter<string>();
   @Output() readonly firebaseAuthRequested = new EventEmitter<void>();
   @Output() readonly firebaseSessionContinueRequested = new EventEmitter<void>();
+  @Output() readonly entryConsentStateChanged = new EventEmitter<boolean>();
 
   protected showEntryConsentPopup = false;
   protected entryConsentViewOnly = false;
@@ -144,20 +145,33 @@ export class EntryShellComponent {
     if (this.demoSelectorLoading || this.demoSelectorSubmitting) {
       return;
     }
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return;
+    }
+    const selectedUser = this.demoSelectorUsers.find(user => user.id.trim() === normalizedUserId) ?? null;
+    if (selectedUser && this.isNewDemoProfile(selectedUser)) {
+      this.ngZone.run(() => {
+        this.demoUserSelected.emit(normalizedUserId);
+        this.completeDemoUserSelection();
+      });
+      return;
+    }
     const requestToken = this.demoSelectorRequestToken;
     this.demoSelectorSubmitting = true;
-    this.demoSelectorSelectedUserId = userId.trim();
+    this.demoSelectorSelectedUserId = normalizedUserId;
     this.demoSelectorLoading = true;
     this.demoSelectorLoadingProgress = 0;
     this.demoSelectorLoadingLabel = 'Preparing demo session';
     this.demoSelectorLoadingStage = 'session';
-    void this.prepareSelectedDemoUser(userId, requestToken);
+    void this.prepareSelectedDemoUser(normalizedUserId, requestToken);
   }
 
   protected onContinueWithFirebaseAuth(): void {
     if (this.firebaseAuthIsBusy) {
       return;
     }
+    this.showFirebaseAuthPopup = false;
     this.firebaseAuthRequested.emit();
   }
 
@@ -200,6 +214,7 @@ export class EntryShellComponent {
     this.appendEntryConsentAudit('accepted', nowIso);
     this.showEntryConsentPopup = false;
     this.entryConsentViewOnly = false;
+    this.entryConsentStateChanged.emit(true);
   }
 
   protected rejectEntryConsent(): void {
@@ -208,6 +223,7 @@ export class EntryShellComponent {
     this.appendEntryConsentAudit('rejected', nowIso);
     this.showEntryConsentPopup = false;
     this.entryConsentViewOnly = false;
+    this.entryConsentStateChanged.emit(false);
   }
 
   private initializeEntryFlow(): void {
@@ -394,7 +410,11 @@ export class EntryShellComponent {
       if (!this.isCurrentDemoSelectorRequest(requestToken)) {
         return;
       }
-      this.demoUserSelected.emit(userId);
+      const normalizedUserId = userId.trim();
+      this.ngZone.run(() => {
+        this.demoUserSelected.emit(normalizedUserId);
+        this.completeDemoUserSelection();
+      });
     } catch {
       if (!this.isCurrentDemoSelectorRequest(requestToken)) {
         return;
@@ -410,8 +430,31 @@ export class EntryShellComponent {
     }
   }
 
+  private isNewDemoProfile(user: DemoUserListItemDto): boolean {
+    const statusText = `${user.statusText ?? ''}`.trim().toLowerCase();
+    const hasProfileStateSignal = user.completion !== undefined || user.profileFormVersion !== undefined;
+    const completion = Math.max(0, Math.trunc(Number(user.completion) || 0));
+    const profileFormVersion = Math.max(0, Math.trunc(Number(user.profileFormVersion) || 0));
+    return statusText === 'new'
+      || statusText === 'new profile'
+      || (hasProfileStateSignal && completion === 0 && profileFormVersion === 0);
+  }
+
   private isCurrentDemoSelectorRequest(requestToken: number): boolean {
     return this.showUserSelector && this.demoSelectorRequestToken === requestToken;
+  }
+
+  private completeDemoUserSelection(): void {
+    this.demoSelectorRequestToken += 1;
+    this.showUserSelector = false;
+    this.demoSelectorLoading = false;
+    this.demoSelectorSubmitting = false;
+    this.demoSelectorSelectedUserId = '';
+    this.demoSelectorLoadingProgress = 0;
+    this.demoSelectorLoadingLabel = 'Preparing demo data';
+    this.demoSelectorLoadingStage = 'selector';
+    this.demoSelectorErrorMessage = '';
+    this.changeDetectorRef.detectChanges();
   }
 
   private async requestCurrentLocation(): Promise<LocationCoordinates | null> {
@@ -533,6 +576,7 @@ export class EntryShellComponent {
           this.showEntryConsentPopup = this.loadEntryConsentState() === null;
         }
         this.changeDetectorRef.detectChanges();
+        this.entryConsentStateChanged.emit(this.hasEntryConsent);
       });
     }
   }

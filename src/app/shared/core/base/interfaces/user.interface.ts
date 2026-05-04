@@ -1,5 +1,6 @@
 import type { UserGameFilterPreferencesDto } from './game.interface';
 import type { LocationCoordinates } from './location.interface';
+import type { ProfileDetailFormGroup } from '../models/profile.model';
 
 export interface UserPersonalityTraitDto {
   id: string;
@@ -64,6 +65,9 @@ export interface DemoUserListItemDto {
   city: string;
   initials: string;
   gender: 'woman' | 'man';
+  statusText?: string;
+  completion?: number;
+  profileFormVersion?: number;
   profileStatus?: UserDto['profileStatus'];
   deletedAtIso?: string | null;
 }
@@ -84,12 +88,14 @@ export interface UserDto {
   hostTier: string;
   traitLabel: string;
   completion: number;
+  profileFormVersion?: number;
   headline: string;
   about: string;
   affinity?: number;
   locationCoordinates?: LocationCoordinates;
   partitionKey?: string;
   images?: string[];
+  profileDetails?: ProfileDetailFormGroup[];
   impressions?: UserImpressionsDto;
   profileStatus: 'public' | 'friends only' | 'host only' | 'inactive' | 'blocked' | 'deleted';
   previousProfileStatus?: UserDto['profileStatus'] | null;

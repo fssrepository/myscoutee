@@ -685,6 +685,9 @@ export class DemoEventsRepository {
     if (!normalizedUserId) {
       return [];
     }
+    if (this.isSetupRequiredDemoProfile(normalizedUserId)) {
+      return [];
+    }
     const table = this.memoryDb.read()[EVENTS_TABLE_NAME];
     const preferredRecords = this.computePreferredEventRecords(table);
     const preferredRecordByEventId = new Map(preferredRecords.map(record => [record.id, record]));
@@ -738,11 +741,22 @@ export class DemoEventsRepository {
     userId: string
   ): boolean {
     const normalizedUserId = userId.trim();
-    if (!normalizedUserId) {
+    if (!normalizedUserId || this.isSetupRequiredDemoProfile(normalizedUserId)) {
       return false;
     }
     return record.acceptedMemberUserIds.includes(normalizedUserId)
       || record.pendingMemberUserIds.includes(normalizedUserId);
+  }
+
+  private isSetupRequiredDemoProfile(userId: string): boolean {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return false;
+    }
+    const user = this.memoryDb.read()[USERS_TABLE_NAME].byId[normalizedUserId] ?? null;
+    return user
+      ? DemoUserSeedBuilder.isEmptyOnboardingProfile(user)
+      : DemoUserSeedBuilder.isEmptyOnboardingProfileUserId(normalizedUserId);
   }
 
   private computePreferredEventRecords(table: DemoEventRecordCollection): DemoEventRecord[] {
@@ -1377,7 +1391,8 @@ export class DemoEventsRepository {
   }
 
   private buildEventsByUserWithSyntheticSeed(): Record<string, readonly EventMenuItem[]> {
-    const users = DemoUserSeedBuilder.buildExpandedDemoUsers(50);
+    const users = DemoUserSeedBuilder.buildExpandedDemoUsers(50)
+      .filter(user => !DemoUserSeedBuilder.isEmptyOnboardingProfileUserId(user.id));
     const userById = new Map(users.map(user => [user.id, user]));
     const seeded: Record<string, readonly EventMenuItem[]> = {};
     const seedEventsByUser = DemoEventsRepositoryBuilder.buildSeedEventItemsByUser();

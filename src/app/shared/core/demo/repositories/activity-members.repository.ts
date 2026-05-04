@@ -64,6 +64,7 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
       (ownerUserIds ?? this.demoUsersRepository.queryAvailableDemoUsers().map(user => user.id))
         .map(userId => userId.trim())
         .filter(userId => userId.length > 0)
+        .filter(userId => !DemoUserSeedBuilder.isEmptyOnboardingProfileUserId(userId))
     ));
     if (normalizedOwnerUserIds.length > 0) {
       this.demoAssetsRepository.init(normalizedOwnerUserIds);
@@ -76,7 +77,8 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
       return;
     }
 
-    this.demoActivityMemberUsersSnapshot = this.demoUsersRepository.queryAllUsers() as DemoUser[];
+    this.demoActivityMemberUsersSnapshot = (this.demoUsersRepository.queryAllUsers() as DemoUser[])
+      .filter(user => !DemoUserSeedBuilder.isEmptyOnboardingProfileUserId(user.id));
     this.preferredEventRecordsSnapshot = this.computePreferredEventRecords(eventsTable);
     this.invitationPreviewRecordsSnapshot = this.computeInvitationPreviewRecords(eventsTable);
     this.eventCapacitySnapshotByEventId = this.buildEventCapacitySnapshot(eventsTable);
@@ -482,7 +484,8 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
 
   private get demoActivityMemberUsers(): DemoUser[] {
     return this.demoActivityMemberUsersSnapshot
-      ?? this.demoUsersRepository.queryAllUsers() as DemoUser[];
+      ?? (this.demoUsersRepository.queryAllUsers() as DemoUser[])
+        .filter(user => !DemoUserSeedBuilder.isEmptyOnboardingProfileUserId(user.id));
   }
 
   private readSummaryByOwner(owner: ActivityMemberOwnerRef): ActivityMembersSummary | null {
@@ -1008,7 +1011,7 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
       }
     }
 
-    for (const user of this.demoUsersRepository.queryAvailableDemoUsers()) {
+    for (const user of this.demoUsersRepository.queryAvailableDemoUsers().filter(item => !DemoUserSeedBuilder.isEmptyOnboardingProfileUserId(item.id))) {
       const ownedAsset = this.demoAssetsRepository.peekOwnedAssetsByUser(user.id).find(asset => asset.id === normalizedOwnerId);
       if (ownedAsset) {
         return {

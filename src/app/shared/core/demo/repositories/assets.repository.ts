@@ -497,7 +497,8 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
   }
 
   private querySeedUsers(): DemoUser[] {
-    return this.usersRepository.queryGameStackUsers() as DemoUser[];
+    return (this.usersRepository.queryGameStackUsers() as DemoUser[])
+      .filter(user => !DemoUserSeedBuilder.isEmptyOnboardingProfileUserId(user.id));
   }
 
   private readOwnerAssets(ownerUserId: string): AppTypes.AssetCard[] {

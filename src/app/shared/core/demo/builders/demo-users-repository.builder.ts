@@ -34,6 +34,17 @@ export class DemoUsersRepositoryBuilder {
         : undefined,
       languages: [...(user.languages ?? [])],
       images: [...(user.images ?? [])],
+      profileDetails: user.profileDetails
+        ? user.profileDetails.map(group => ({
+          title: `${group.title ?? ''}`,
+          rows: (group.rows ?? []).map(row => ({
+            label: `${row.label ?? ''}`,
+            value: `${row.value ?? ''}`,
+            privacy: row.privacy,
+            options: [...(row.options ?? [])]
+          }))
+        }))
+        : undefined,
       impressions: user.impressions
         ? {
           host: user.impressions.host
@@ -92,6 +103,9 @@ export class DemoUsersRepositoryBuilder {
       city: user.city,
       initials: user.initials,
       gender: user.gender,
+      statusText: user.statusText,
+      completion: user.completion,
+      profileFormVersion: user.profileFormVersion,
       profileStatus: user.profileStatus,
       deletedAtIso: user.deletedAtIso ?? null
     };

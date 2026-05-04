@@ -439,6 +439,11 @@
   background: linear-gradient(180deg, #f7f8fa 0%, #e9edf2 100%);
 }
 
+.demo-user-item.demo-user-item-new {
+  border-color: rgba(38, 130, 97, 0.38);
+  background: linear-gradient(180deg, #f7fffb 0%, #e8f8ef 100%);
+}
+
 .demo-user-item .user-avatar,
 .demo-user-item .demo-user-name,
 .demo-user-item .demo-user-meta {
@@ -476,6 +481,10 @@
   background: linear-gradient(180deg, #74a2ff 0%, #3968d8 100%);
 }
 
+.user-avatar.user-color-setup {
+  background: linear-gradient(180deg, #78d4b8 0%, #2a8f73 100%);
+}
+
 .demo-user-name {
   font-size: 0.86rem;
   font-weight: 700;
@@ -507,6 +516,11 @@
 
 .demo-user-item-deleted .demo-user-status-pill {
   background: #657080;
+  color: #fff;
+}
+
+.demo-user-item-new .demo-user-status-pill {
+  background: #268261;
   color: #fff;
 }
 

@@ -53,7 +53,8 @@ export class FirebaseAuthService {
         id: parsed.id,
         name: parsed.name,
         email: parsed.email,
-        initials: parsed.initials
+        initials: parsed.initials,
+        imageUrl: `${parsed.imageUrl ?? ''}`.trim() || undefined
       };
     } catch {
       return null;
@@ -240,7 +241,8 @@ export class FirebaseAuthService {
       id: user.uid,
       name: fallbackName,
       email: user.email?.trim() || `${user.uid}@firebase.local`,
-      initials: this.initialsFromText(fallbackName)
+      initials: this.initialsFromText(fallbackName),
+      imageUrl: user.photoURL?.trim() || undefined
     };
   }
 

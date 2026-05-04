@@ -13,6 +13,13 @@
         </button>
       </div>
       <div class="popup-body popup-body-impressions">
+        @if (!vm.hasAvailableData) {
+          <div class="navigator-impressions-empty-state">
+            <mat-icon>insights</mat-icon>
+            <strong>No available data yet</strong>
+            <span>Impressions appear after real host or attendee activity.</span>
+          </div>
+        } @else {
         <div class="social-proof-grid">
           <div
             class="editor-list-card social-proof-card social-proof-card-modern social-proof-card-host"
@@ -225,6 +232,7 @@
             </div>
           </div>
         </div>
+        }
       </div>
     </div>
   </section>

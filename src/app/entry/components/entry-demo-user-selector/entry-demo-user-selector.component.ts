@@ -73,7 +73,7 @@ export class EntryDemoUserSelectorComponent {
       case 'deleted':
         return 'demo-user-item-deleted';
       default:
-        return '';
+        return this.isNewProfile(user) ? 'demo-user-item-new' : '';
     }
   }
 
@@ -84,8 +84,34 @@ export class EntryDemoUserSelectorComponent {
       case 'deleted':
         return 'Deleted';
       default:
-        return '';
+        return this.isNewProfile(user) ? 'New' : '';
     }
+  }
+
+  protected userDisplayName(user: DemoUserListItemDto): string {
+    return user.name.trim() || 'New demo profile';
+  }
+
+  protected userDisplayMeta(user: DemoUserListItemDto): string {
+    if (this.isNewProfile(user)) {
+      return 'Needs setup';
+    }
+    const city = user.city.trim() || 'Needs setup';
+    return `${user.gender} · ${city}`;
+  }
+
+  protected userAvatarClass(user: DemoUserListItemDto): string {
+    return this.isNewProfile(user) ? 'user-color-setup' : `user-color-${user.gender}`;
+  }
+
+  private isNewProfile(user: DemoUserListItemDto): boolean {
+    const statusText = `${user.statusText ?? ''}`.trim().toLowerCase();
+    const hasProfileStateSignal = user.completion !== undefined || user.profileFormVersion !== undefined;
+    const completion = Math.max(0, Math.trunc(Number(user.completion) || 0));
+    const profileFormVersion = Math.max(0, Math.trunc(Number(user.profileFormVersion) || 0));
+    return statusText === 'new'
+      || statusText === 'new profile'
+      || (hasProfileStateSignal && completion === 0 && profileFormVersion === 0);
   }
 
   protected selectedUser(): DemoUserListItemDto | null {

@@ -2,6 +2,7 @@ import { AppUtils } from '../../../app-utils';
 import type * as AppTypes from '../../base/models';
 import type { EventMenuItem, HostingMenuItem } from '../../base/interfaces/activity-feed.interface';
 import type { DemoUser } from '../../base/interfaces/user.interface';
+import { DemoUserSeedBuilder } from './demo-user-seed.builder';
 
 export class DemoEventSeedBuilder {
   static seededTournamentGroupIdForUser<TGroup extends { id: string }>(
@@ -23,9 +24,14 @@ export class DemoEventSeedBuilder {
     users: readonly DemoUser[],
     activeUserId: string
   ): string[] {
-    const count = Math.max(4, Math.min(Math.max(4, targetCount), users.length));
-    const others = users.filter(user => user.id !== activeUserId);
-    const seeded: string[] = [activeUserId];
+    const normalizedActiveUserId = activeUserId.trim();
+    if (!normalizedActiveUserId || DemoUserSeedBuilder.isEmptyOnboardingProfileUserId(normalizedActiveUserId)) {
+      return [];
+    }
+    const seedableUsers = users.filter(user => !DemoUserSeedBuilder.isEmptyOnboardingProfileUserId(user.id));
+    const count = Math.max(4, Math.min(Math.max(4, targetCount), seedableUsers.length));
+    const others = seedableUsers.filter(user => user.id !== normalizedActiveUserId);
+    const seeded: string[] = [normalizedActiveUserId];
     if (others.length === 0) {
       return seeded;
     }

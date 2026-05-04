@@ -78,13 +78,14 @@ export class AppLocationService {
     const bootstrapUser = this.buildFirebaseBootstrapUser(
       session.profile.id,
       session.profile.name,
-      session.profile.initials
+      session.profile.initials,
+      session.profile.imageUrl
     );
     this.appCtx.setUserProfile(bootstrapUser);
     return bootstrapUser;
   }
 
-  private buildFirebaseBootstrapUser(userId: string, name: string, initials: string): UserDto {
+  private buildFirebaseBootstrapUser(userId: string, name: string, initials: string, imageUrl?: string): UserDto {
     return {
       id: userId.trim(),
       name: name.trim() || 'Firebase User',
@@ -103,7 +104,7 @@ export class AppLocationService {
       completion: 0,
       headline: '',
       about: '',
-      images: [],
+      images: imageUrl?.trim() ? [imageUrl.trim()] : [],
       profileStatus: 'public',
       activities: {
         game: 0,

@@ -100,7 +100,9 @@ export function parseGameHeightCm(height: string): number | null {
 }
 
 export function createInitialGameFilter(activeUser?: Pick<DemoUser, 'age' | 'height'> | null): GameFilterForm {
-  const activeAge = typeof activeUser?.age === 'number' ? activeUser.age : 30;
+  const activeAge = typeof activeUser?.age === 'number' && activeUser.age >= GAME_FILTER_AGE_MIN
+    ? activeUser.age
+    : 30;
   const activeHeight = parseGameHeightCm(activeUser?.height ?? '');
   const preferredMin = Math.max(GAME_FILTER_AGE_MIN, activeAge - 5);
   const preferredMax = Math.min(GAME_FILTER_AGE_MAX, activeAge + 5);

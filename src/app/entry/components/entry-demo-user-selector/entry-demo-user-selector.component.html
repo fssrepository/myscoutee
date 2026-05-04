@@ -28,7 +28,7 @@
                   <div class="demo-user-selected-session">
                     <span class="demo-user-selected-avatar-wrap">
                       <span class="demo-user-selected-ring" aria-hidden="true"></span>
-                      <span class="user-avatar" [class]="'user-color-' + user.gender">{{ user.initials }}</span>
+                      <span class="user-avatar" [ngClass]="userAvatarClass(user)">{{ user.initials }}</span>
                     </span>
                     <span class="demo-user-selected-copy">
                       <strong>{{ user.name }}</strong>
@@ -99,9 +99,9 @@
                   [matRippleColor]="'rgba(72, 111, 196, 0.16)'"
                   (click)="requestUserSelect(user.id)"
                   >
-                  <span class="user-avatar" [class]="'user-color-' + user.gender">{{ user.initials }}</span>
-                  <span class="demo-user-name">{{ user.name }}</span>
-                  <span class="demo-user-meta">{{ user.gender }} · {{ user.city }}</span>
+                  <span class="user-avatar" [ngClass]="userAvatarClass(user)">{{ user.initials }}</span>
+                  <span class="demo-user-name">{{ userDisplayName(user) }}</span>
+                  <span class="demo-user-meta">{{ userDisplayMeta(user) }}</span>
                   @if (userStatusLabel(user)) {
                     <span class="demo-user-status-pill">{{ userStatusLabel(user) }}</span>
                   }
