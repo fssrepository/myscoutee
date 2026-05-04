@@ -12,6 +12,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { AppCalendarDateAdapter, AppCalendarDateFormats } from '../../../shared/app-calendar-date-adapter';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { AppUtils } from '../../../shared/app-utils';
+import { I18nPipe } from '../../../shared/i18n';
 import {
   ProfileOnboardingService,
   UserExperiencesService,
@@ -48,7 +49,8 @@ type ExperienceFormDraft = Omit<ExperienceEntry, 'id'> & { current: boolean };
     MatIconModule,
     MatInputModule,
     MatNativeDateModule,
-    MatSelectModule
+    MatSelectModule,
+    I18nPipe
   ],
   providers: [
     { provide: DateAdapter, useClass: AppCalendarDateAdapter },
@@ -219,7 +221,7 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
 
   protected primaryActionLabel(): string {
     if (this.saving) {
-      return 'Saving';
+      return 'Saving...';
     }
     return this.currentStep().id === 'review' ? 'Save' : 'Next';
   }

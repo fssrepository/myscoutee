@@ -4,6 +4,7 @@ import { CommonModule } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatRippleModule } from '@angular/material/core';
 
+import { I18nPipe } from '../../../shared/i18n';
 import {
   DEMO_BOOTSTRAP_PROGRESS_STEPS,
   DEMO_SESSION_PROGRESS_STEPS,
@@ -23,8 +24,9 @@ type DemoUserProgressSegment = {
   imports: [
     CommonModule,
     MatButtonModule,
-    MatRippleModule
-],
+    MatRippleModule,
+    I18nPipe
+  ],
   templateUrl: './entry-demo-user-selector.component.html',
   styleUrl: './entry-demo-user-selector.component.scss'
 })

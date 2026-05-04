@@ -4,8 +4,8 @@
     <div class="demo-login-panel" (click)="$event.stopPropagation()">
       <div class="demo-login-header">
         <div>
-          <h2>{{ title }}</h2>
-          <p>{{ subtitle }}</p>
+          <h2>{{ title | i18n }}</h2>
+          <p>{{ subtitle | i18n }}</p>
         </div>
         <button
           mat-icon-button
@@ -13,7 +13,7 @@
           class="popup-close"
           [disabled]="submitting"
           (click)="requestClose()"
-          aria-label="Close demo user popup"
+          [attr.aria-label]="'Close demo user popup' | i18n"
           >
           <span class="popup-close-glyph" aria-hidden="true">×</span>
         </button>
@@ -23,7 +23,9 @@
           <div class="demo-user-grid demo-user-grid-loading">
             <div class="demo-user-loading-shell">
               <div class="demo-user-loading-copy-group">
-                <p class="demo-user-loading-eyebrow">{{ submitting ? 'Opening demo session' : 'Preparing demo selector' }}</p>
+                <p class="demo-user-loading-eyebrow">
+                  {{ (submitting ? 'Opening demo session' : 'Preparing demo selector') | i18n }}
+                </p>
                 @if (submitting && selectedUser(); as user) {
                   <div class="demo-user-selected-session">
                     <span class="demo-user-selected-avatar-wrap">
@@ -32,15 +34,15 @@
                     </span>
                     <span class="demo-user-selected-copy">
                       <strong>{{ user.name }}</strong>
-                      <small>Auto selected</small>
+                      <small>{{ 'Auto selected' | i18n }}</small>
                     </span>
                   </div>
                 }
-                <p class="demo-user-loading-copy">{{ loadingLabel }}</p>
+                <p class="demo-user-loading-copy">{{ loadingLabel | i18n }}</p>
                 <div
                   class="demo-user-progress"
                   role="progressbar"
-                  aria-label="Demo data loading progress"
+                  [attr.aria-label]="'Demo data loading progress' | i18n"
                   [attr.data-stage]="loadingStage"
                   [attr.aria-valuemin]="0"
                   [attr.aria-valuemax]="100"
@@ -72,8 +74,8 @@
             <div class="demo-user-grid demo-user-grid-loading">
               <div class="demo-user-loading-shell">
                 <div class="demo-user-loading-copy-group">
-                  <p class="demo-user-loading-eyebrow">Selector unavailable</p>
-                  <p class="demo-user-loading-copy">{{ errorMessage }}</p>
+                  <p class="demo-user-loading-eyebrow">{{ 'Selector unavailable' | i18n }}</p>
+                  <p class="demo-user-loading-copy">{{ errorMessage | i18n }}</p>
                   <button
                     mat-flat-button
                     type="button"
@@ -81,7 +83,7 @@
                     [disabled]="submitting"
                     (click)="requestRetry()"
                   >
-                    Try again
+                    {{ 'Try again' | i18n }}
                   </button>
                 </div>
               </div>
@@ -103,36 +105,36 @@
                   @if (user.name.trim()) {
                     <span class="demo-user-name" data-i18n-ignore>{{ user.name.trim() }}</span>
                   } @else {
-                    <span class="demo-user-name">New demo profile</span>
+                    <span class="demo-user-name">{{ 'New demo profile' | i18n }}</span>
                   }
                   <span class="demo-user-meta">
                     @if (isNewProfile(user)) {
-                      <span>Needs setup</span>
+                      <span>{{ 'Needs setup' | i18n }}</span>
                     } @else {
-                      <span>{{ userGenderLabel(user) }}</span>
+                      <span>{{ userGenderLabel(user) | i18n }}</span>
                       <span class="demo-user-meta-separator" aria-hidden="true"> · </span>
                       @if (user.city.trim()) {
                         <span class="demo-user-city" data-i18n-ignore>{{ user.city.trim() }}</span>
                       } @else {
-                        <span class="demo-user-city">Needs setup</span>
+                        <span class="demo-user-city">{{ 'Needs setup' | i18n }}</span>
                       }
                     }
                   </span>
                   @if (userStatusLabel(user)) {
-                    <span class="demo-user-status-pill">{{ userStatusLabel(user) }}</span>
+                    <span class="demo-user-status-pill">{{ userStatusLabel(user) | i18n }}</span>
                   }
                 </button>
               }
             </div>
           } @else {
             <div class="demo-user-grid demo-user-grid-loading">
-              <p class="demo-user-loading-copy">No demo users available.</p>
+              <p class="demo-user-loading-copy">{{ 'No demo users available.' | i18n }}</p>
             </div>
           }
         }
         @if (submitting && !loading) {
           <div class="demo-user-submit-overlay">
-            <p class="demo-user-loading-copy">Opening demo session...</p>
+            <p class="demo-user-loading-copy">{{ 'Opening demo session...' | i18n }}</p>
           </div>
         }
       </div>

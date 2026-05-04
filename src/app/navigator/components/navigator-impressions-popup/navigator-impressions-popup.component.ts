@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, HostListener, OnDestroy, computed, effect, inject, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
+import { MatRippleModule } from '@angular/material/core';
 import { MatIconModule } from '@angular/material/icon';
 import { DemoUserImpressionsBuilder } from '../../../shared/core/demo/builders';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
@@ -71,7 +72,7 @@ interface NavigatorImpressionsTraitCardViewModel {
 @Component({
   selector: 'app-navigator-impressions-popup',
   standalone: true,
-  imports: [CommonModule, MatButtonModule, MatIconModule],
+  imports: [CommonModule, MatButtonModule, MatIconModule, MatRippleModule],
   templateUrl: './navigator-impressions-popup.component.html',
   styleUrl: './navigator-impressions-popup.component.scss'
 })

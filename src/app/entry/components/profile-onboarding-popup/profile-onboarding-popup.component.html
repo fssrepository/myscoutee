@@ -10,10 +10,10 @@
       <div class="profile-onboarding-panel">
         <header class="profile-onboarding-header">
           <div>
-            <span class="profile-onboarding-kicker">Profile setup</span>
-            <h2>{{ currentStep().title }}</h2>
+            <span class="profile-onboarding-kicker">{{ 'Profile setup' | i18n }}</span>
+            <h2>{{ currentStep().title | i18n }}</h2>
           </div>
-          <div class="profile-onboarding-progress" aria-label="Profile setup progress">
+          <div class="profile-onboarding-progress" [attr.aria-label]="'Profile setup progress' | i18n">
             <span>{{ currentStepIndex() + 1 }}/{{ steps.length }}</span>
             <div class="profile-onboarding-progress-track">
               <span [style.width.%]="progressPercent()"></span>
@@ -24,12 +24,12 @@
             class="profile-onboarding-close-btn"
             [disabled]="saving || uploadingImageSlotIndex !== null"
             (click)="requestDismiss()"
-            aria-label="Close profile setup"
+            [attr.aria-label]="'Close profile setup' | i18n"
             >
             <mat-icon>close</mat-icon>
           </button>
         </header>
-        <nav class="profile-onboarding-steps" aria-label="Profile setup steps">
+        <nav class="profile-onboarding-steps" [attr.aria-label]="'Profile setup steps' | i18n">
           @for (step of steps; track step.id; let index = $index) {
             <button
               type="button"
@@ -40,7 +40,7 @@
               (click)="setStep(step.id)"
               >
               <mat-icon>{{ stepDone(step.id) ? 'done' : stepSkipped(step.id) ? 'remove' : step.optional ? 'radio_button_unchecked' : 'priority_high' }}</mat-icon>
-              <span>{{ step.title }}</span>
+              <span>{{ step.title | i18n }}</span>
             </button>
           }
         </nav>
@@ -50,12 +50,12 @@
             <section class="profile-onboarding-page">
               <div class="profile-onboarding-required">
                 <mat-icon>lock</mat-icon>
-                <span>These fields are required before the app opens.</span>
+                <span>{{ 'These fields are required before the app opens.' | i18n }}</span>
               </div>
               @if (basicsErrorVisible()) {
                 <div class="profile-onboarding-error">
                   <mat-icon>error</mat-icon>
-                  <span>Missing: {{ requiredMissingLabels().join(', ') }}</span>
+                  <span>{{ 'Missing' | i18n }}: {{ requiredMissingLabels().join(', ') | i18n }}</span>
                 </div>
               }
               <div class="profile-onboarding-grid">
@@ -144,13 +144,13 @@
                 }
               </div>
               <div class="profile-onboarding-photo-toolbar">
-                <span>{{ imageCount() }}/8 images</span>
+                <span>{{ imageCount() }}/8 {{ 'images' | i18n }}</span>
                 @if (imageUploadError) {
                   <span class="profile-onboarding-photo-error">{{ imageUploadError }}</span>
                 }
               </div>
               <input #onboardingImageInput class="profile-onboarding-image-file-input" type="file" accept="image/*" (change)="onImageFileChange($event)" />
-              <div class="profile-onboarding-image-grid" aria-label="Profile image slots">
+              <div class="profile-onboarding-image-grid" [attr.aria-label]="'Profile image slots' | i18n">
                 @for (slot of imageSlots; track i; let i = $index) {
                   <button
                     type="button"
@@ -316,14 +316,14 @@
           @if (currentStep().id === 'values') {
             <section class="profile-onboarding-page profile-onboarding-selector-page">
               <div class="profile-onboarding-selector-head">
-                <span>Values</span>
+                <span>{{ 'Values' | i18n }}</span>
                 <button
                   type="button"
                   [class.is-hidden]="f.values.length === 0"
                   [disabled]="f.values.length === 0"
                   (click)="clearValues()"
                   >
-                  Clear
+                  {{ 'Clear' | i18n }}
                 </button>
               </div>
               @if (f.values.length > 0) {
@@ -336,7 +336,7 @@
                   }
                 </div>
               } @else {
-                <p class="profile-onboarding-selector-empty">No items selected yet.</p>
+                <p class="profile-onboarding-selector-empty">{{ 'No items selected yet.' | i18n }}</p>
               }
               @for (group of beliefsValuesOptionGroups; track group.title) {
                 <div class="profile-onboarding-selector-group" [class]="group.toneClass">
@@ -362,14 +362,14 @@
           @if (currentStep().id === 'interests') {
             <section class="profile-onboarding-page profile-onboarding-selector-page">
               <div class="profile-onboarding-selector-head">
-                <span>Interests</span>
+                <span>{{ 'Interests' | i18n }}</span>
                 <button
                   type="button"
                   [class.is-hidden]="f.interests.length === 0"
                   [disabled]="f.interests.length === 0"
                   (click)="clearInterests()"
                   >
-                  Clear
+                  {{ 'Clear' | i18n }}
                 </button>
               </div>
               @if (f.interests.length > 0) {
@@ -382,7 +382,7 @@
                   }
                 </div>
               } @else {
-                <p class="profile-onboarding-selector-empty">No items selected yet.</p>
+                <p class="profile-onboarding-selector-empty">{{ 'No items selected yet.' | i18n }}</p>
               }
               @for (group of interestOptionGroups; track group.title) {
                 <div class="profile-onboarding-selector-group" [class]="group.toneClass">
@@ -408,7 +408,7 @@
           @if (currentStep().id === 'experience') {
             <section class="profile-onboarding-page">
               <div class="profile-onboarding-experience-head">
-                <span>{{ f.experienceEntries.length }} entries</span>
+                <span>{{ f.experienceEntries.length }} {{ 'entries' | i18n }}</span>
                 <button type="button" class="profile-onboarding-add-btn" (click)="openExperienceForm()">
                   <mat-icon>add</mat-icon>
                 </button>
@@ -451,7 +451,7 @@
                       <h4>{{ entry.title }}</h4>
                       <p>{{ entry.org }} &middot; {{ entry.dateFrom }} - {{ entry.dateTo }}</p>
                     </div>
-                    <button type="button" (click)="removeExperienceEntry(entry.id)" aria-label="Remove experience">
+                    <button type="button" (click)="removeExperienceEntry(entry.id)" [attr.aria-label]="'Remove experience' | i18n">
                       <mat-icon>delete</mat-icon>
                     </button>
                   </article>
@@ -464,11 +464,11 @@
             <section class="profile-onboarding-page profile-onboarding-review">
               <div class="profile-onboarding-review-photos">
                 <div class="profile-onboarding-review-section-title">
-                  <span>Photos</span>
+                  <span>{{ 'Photos' | i18n }}</span>
                   <strong>{{ imageCount() }}/8</strong>
                 </div>
                 @if (imageCount() > 0) {
-                  <div class="profile-onboarding-review-photo-carousel" aria-label="Profile photo review">
+                  <div class="profile-onboarding-review-photo-carousel" [attr.aria-label]="'Profile photo review' | i18n">
                     @for (slot of imageSlots; track i; let i = $index) {
                       @if (slot) {
                         <article class="profile-onboarding-review-photo-slide">
@@ -478,12 +478,12 @@
                     }
                   </div>
                 } @else {
-                  <p>No photos</p>
+                  <p>{{ 'No photos' | i18n }}</p>
                 }
               </div>
               <div class="profile-onboarding-review-section">
                 <div class="profile-onboarding-review-section-title">
-                  <span>Basics</span>
+                  <span>{{ 'Basics' | i18n }}</span>
                   <strong>{{ progressPercent() }}%</strong>
                 </div>
                 <dl>
@@ -497,7 +497,7 @@
               </div>
               <div class="profile-onboarding-review-section">
                 <div class="profile-onboarding-review-section-title">
-                  <span>Identity</span>
+                  <span>{{ 'Identity' | i18n }}</span>
                 </div>
                 <dl>
                   <div><dt>Headline</dt><dd>{{ reviewValue(f.headline) }}</dd></div>
@@ -507,13 +507,13 @@
               </div>
               <div class="profile-onboarding-review-section profile-onboarding-review-section-wide">
                 <div class="profile-onboarding-review-section-title">
-                  <span>About</span>
+                  <span>{{ 'About' | i18n }}</span>
                 </div>
                 <p>{{ reviewValue(f.about) }}</p>
               </div>
               <div class="profile-onboarding-review-section profile-onboarding-review-section-wide">
                 <div class="profile-onboarding-review-section-title">
-                  <span>Lifestyle</span>
+                  <span>{{ 'Lifestyle' | i18n }}</span>
                 </div>
                 <dl>
                   <div><dt>Drinking</dt><dd>{{ reviewValue(f.drinking) }}</dd></div>
@@ -530,19 +530,19 @@
               </div>
               <div class="profile-onboarding-review-section">
                 <div class="profile-onboarding-review-section-title">
-                  <span>Values</span>
+                  <span>{{ 'Values' | i18n }}</span>
                 </div>
                 <p>{{ reviewList(f.values) }}</p>
               </div>
               <div class="profile-onboarding-review-section">
                 <div class="profile-onboarding-review-section-title">
-                  <span>Interests</span>
+                  <span>{{ 'Interests' | i18n }}</span>
                 </div>
                 <p>{{ reviewList(f.interests) }}</p>
               </div>
               <div class="profile-onboarding-review-section profile-onboarding-review-section-wide">
                 <div class="profile-onboarding-review-section-title">
-                  <span>Experience</span>
+                  <span>{{ 'Experience' | i18n }}</span>
                   <strong>{{ f.experienceEntries.length }}</strong>
                 </div>
                 @if (f.experienceEntries.length > 0) {
@@ -555,7 +555,7 @@
                     }
                   </div>
                 } @else {
-                  <p>Not set</p>
+                  <p>{{ 'Not set' | i18n }}</p>
                 }
               </div>
               @if (saveError) {
@@ -570,11 +570,11 @@
 
         <footer class="profile-onboarding-actions">
           <button type="button" class="profile-onboarding-secondary-btn" [disabled]="saving || uploadingImageSlotIndex !== null || currentStepIndex() === 0" (click)="goBack()">
-            Back
+            {{ 'Back' | i18n }}
           </button>
           @if (currentStep().optional) {
             <button type="button" class="profile-onboarding-secondary-btn" [disabled]="saving || uploadingImageSlotIndex !== null" (click)="skipStep()">
-              Skip
+              {{ 'Skip' | i18n }}
             </button>
           }
           <span class="profile-onboarding-save-shell" [class.is-loading]="saving">
@@ -603,7 +603,7 @@
               </span>
             }
             <button type="button" class="profile-onboarding-primary-btn" [disabled]="!canContinue()" (click)="goNext()">
-              <span>{{ primaryActionLabel() }}</span>
+              <span>{{ primaryActionLabel() | i18n }}</span>
             </button>
           </span>
         </footer>

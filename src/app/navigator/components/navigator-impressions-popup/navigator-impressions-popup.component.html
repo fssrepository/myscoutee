@@ -71,6 +71,8 @@
                         class="personality-trait-pill"
                         [class.is-active]="index === vm.hostTraitIndex"
                         (click)="selectHostTrait(index)"
+                        matRipple
+                        [matRippleColor]="'rgba(84, 112, 176, 0.16)'"
                         [attr.aria-label]="'Open host trait ' + item.label"
                         >
                         <span class="personality-trait-pill-rank">#{{ index + 1 }}</span>
@@ -174,6 +176,8 @@
                         class="personality-trait-pill"
                         [class.is-active]="index === vm.memberTraitIndex"
                         (click)="selectMemberTrait(index)"
+                        matRipple
+                        [matRippleColor]="'rgba(84, 112, 176, 0.16)'"
                         [attr.aria-label]="'Open member trait ' + item.label"
                         >
                         <span class="personality-trait-pill-rank">#{{ index + 1 }}</span>
