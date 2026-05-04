@@ -543,7 +543,7 @@
             <button type="button" (click)="unsendMessage(message, $event)">Unsend</button>
           }
           <button type="button" (click)="togglePinMessage(message, $event)">{{ message.pinnedAtIso ? 'Unpin' : 'Pin' }}</button>
-          @if (canReportMessage()) {
+          @if (canReportMessage(message)) {
             <button type="button" (click)="reportMessage(message, $event)">Report</button>
           }
         </div>

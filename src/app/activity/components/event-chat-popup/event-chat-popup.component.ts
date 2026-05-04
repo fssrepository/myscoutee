@@ -1324,7 +1324,7 @@ export class EventChatPopupComponent implements OnDestroy {
   protected reportMessage(message: AppTypes.ChatPopupMessage, event?: Event): void {
     event?.stopPropagation();
     this.messageActionMenuId = '';
-    if (!this.canReportMessage()) {
+    if (!this.canReportMessage(message)) {
       return;
     }
     const session = this.session();
@@ -1351,8 +1351,11 @@ export class EventChatPopupComponent implements OnDestroy {
     });
   }
 
-  protected canReportMessage(): boolean {
-    return !this.isAdminRoleActive();
+  protected canReportMessage(message: AppTypes.ChatPopupMessage): boolean {
+    if (this.isAdminRoleActive() || message.mine) {
+      return false;
+    }
+    return this.resolveChatReportTarget(message, this.session()?.item ?? null) !== null;
   }
 
   private isAdminRoleActive(): boolean {
@@ -1368,6 +1371,9 @@ export class EventChatPopupComponent implements OnDestroy {
     message: AppTypes.ChatPopupMessage,
     chat: ChatMenuItem | null
   ): { userId: string; name: string } | null {
+    if (message.mine) {
+      return null;
+    }
     const activeUserId = this.activeUserId();
     const messageSenderId = `${message.senderAvatar?.id ?? ''}`.trim();
     if (messageSenderId && messageSenderId !== activeUserId) {

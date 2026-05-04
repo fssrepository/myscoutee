@@ -1669,7 +1669,7 @@
 .chat-message.chat-message-pending .chat-bubble::after {
   --chat-progress-angle: 0deg;
   background: conic-gradient(
-    from 0deg,
+    from -90deg,
     rgb(235, 147, 33) 0deg,
     rgb(247, 190, 52) var(--chat-progress-angle),
     transparent var(--chat-progress-angle),
