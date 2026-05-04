@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, HostListener, OnInit, effect, inject, signal } from '@angular/core';
+import { Component, HostListener, OnInit, Type, effect, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { MatRippleModule } from '@angular/material/core';
@@ -11,13 +11,6 @@ import type { DemoBootstrapProgressStage } from '../../../shared/core/demo';
 import { ConfirmationDialogComponent } from '../../../shared/ui/components/confirmation-dialog/confirmation-dialog.component';
 import { NavigatorService } from '../../../navigator/navigator.service';
 import { AdminService, type AdminBootstrapProgressState } from '../../admin.service';
-import { AdminReportsPopupComponent } from '../reports-popup/admin-reports-popup.component';
-import { AdminFeedbackPopupComponent } from '../feedback-popup/admin-feedback-popup.component';
-import { AdminChatReviewPopupComponent } from '../chat-review-popup/admin-chat-review-popup.component';
-import { AdminItemPreviewPopupComponent } from '../item-preview-popup/admin-item-preview-popup.component';
-import { AdminHelpEditorPopupComponent } from '../help-editor-popup/admin-help-editor-popup.component';
-import { AdminIdeaEditorPopupComponent } from '../idea-editor-popup/admin-idea-editor-popup.component';
-import { AdminNotificationsPopupComponent } from '../notifications-popup/admin-notifications-popup.component';
 
 @Component({
   selector: 'app-admin-page',
@@ -28,14 +21,7 @@ import { AdminNotificationsPopupComponent } from '../notifications-popup/admin-n
     MatRippleModule,
     NavigatorComponent,
     EntryDemoUserSelectorComponent,
-    ConfirmationDialogComponent,
-    AdminReportsPopupComponent,
-    AdminFeedbackPopupComponent,
-    AdminChatReviewPopupComponent,
-    AdminItemPreviewPopupComponent,
-    AdminHelpEditorPopupComponent,
-    AdminIdeaEditorPopupComponent,
-    AdminNotificationsPopupComponent
+    ConfirmationDialogComponent
   ],
   templateUrl: './admin-page.component.html',
   styleUrl: './admin-page.component.scss'
@@ -49,6 +35,14 @@ export class AdminPageComponent implements OnInit {
   private readonly navigatorService = inject(NavigatorService);
   private readonly popupCtx = inject(AppPopupContext);
   private lastHandledAdminRequestMs = 0;
+  private readonly reportsPopupComponentRef = signal<Type<unknown> | null>(null);
+  private readonly feedbackPopupComponentRef = signal<Type<unknown> | null>(null);
+  private readonly chatReviewPopupComponentRef = signal<Type<unknown> | null>(null);
+  private readonly itemPreviewPopupComponentRef = signal<Type<unknown> | null>(null);
+  private readonly profilePopupComponentRef = signal<Type<unknown> | null>(null);
+  private readonly helpEditorPopupComponentRef = signal<Type<unknown> | null>(null);
+  private readonly ideaEditorPopupComponentRef = signal<Type<unknown> | null>(null);
+  private readonly notificationsPopupComponentRef = signal<Type<unknown> | null>(null);
 
   protected selectorOpen = false;
   protected selectorLoading = false;
@@ -59,7 +53,46 @@ export class AdminPageComponent implements OnInit {
   protected selectorErrorMessage = '';
   protected readonly restoringWorkspace = signal(this.currentRouteIsWorkspace());
   protected readonly restoreAvatarGateActive = signal(false);
+  protected readonly reportsPopupComponent = this.reportsPopupComponentRef.asReadonly();
+  protected readonly feedbackPopupComponent = this.feedbackPopupComponentRef.asReadonly();
+  protected readonly chatReviewPopupComponent = this.chatReviewPopupComponentRef.asReadonly();
+  protected readonly itemPreviewPopupComponent = this.itemPreviewPopupComponentRef.asReadonly();
+  protected readonly profilePopupComponent = this.profilePopupComponentRef.asReadonly();
+  protected readonly helpEditorPopupComponent = this.helpEditorPopupComponentRef.asReadonly();
+  protected readonly ideaEditorPopupComponent = this.ideaEditorPopupComponentRef.asReadonly();
+  protected readonly notificationsPopupComponent = this.notificationsPopupComponentRef.asReadonly();
+
   constructor() {
+    effect(() => {
+      switch (this.admin.activePopup()) {
+        case 'reports':
+          void this.ensureReportsPopupLoaded();
+          break;
+        case 'feedback':
+          void this.ensureFeedbackPopupLoaded();
+          break;
+        case 'chat-review':
+        case 'warn-chat':
+          void this.ensureChatReviewPopupLoaded();
+          break;
+        case 'item-preview':
+          void this.ensureItemPreviewPopupLoaded();
+          break;
+        case 'profile':
+          void this.ensureProfilePopupLoaded();
+          break;
+        case 'help-editor':
+          void this.ensureHelpEditorPopupLoaded();
+          break;
+        case 'idea-editor':
+          void this.ensureIdeaEditorPopupLoaded();
+          break;
+        case 'notifications':
+          void this.ensureNotificationsPopupLoaded();
+          break;
+      }
+    });
+
     effect(() => {
       const request = this.popupCtx.adminNavigatorRequest();
       if (!request || request.updatedMs <= this.lastHandledAdminRequestMs) {
@@ -214,6 +247,70 @@ export class AdminPageComponent implements OnInit {
 
   private currentRouteIsWorkspace(): boolean {
     return this.router.url.split('?')[0] === '/admin/workspace';
+  }
+
+  private async ensureReportsPopupLoaded(): Promise<void> {
+    if (this.reportsPopupComponentRef()) {
+      return;
+    }
+    const module = await import('../reports-popup/admin-reports-popup.component');
+    this.reportsPopupComponentRef.set(module.AdminReportsPopupComponent);
+  }
+
+  private async ensureFeedbackPopupLoaded(): Promise<void> {
+    if (this.feedbackPopupComponentRef()) {
+      return;
+    }
+    const module = await import('../feedback-popup/admin-feedback-popup.component');
+    this.feedbackPopupComponentRef.set(module.AdminFeedbackPopupComponent);
+  }
+
+  private async ensureChatReviewPopupLoaded(): Promise<void> {
+    if (this.chatReviewPopupComponentRef()) {
+      return;
+    }
+    const module = await import('../chat-review-popup/admin-chat-review-popup.component');
+    this.chatReviewPopupComponentRef.set(module.AdminChatReviewPopupComponent);
+  }
+
+  private async ensureItemPreviewPopupLoaded(): Promise<void> {
+    if (this.itemPreviewPopupComponentRef()) {
+      return;
+    }
+    const module = await import('../item-preview-popup/admin-item-preview-popup.component');
+    this.itemPreviewPopupComponentRef.set(module.AdminItemPreviewPopupComponent);
+  }
+
+  private async ensureProfilePopupLoaded(): Promise<void> {
+    if (this.profilePopupComponentRef()) {
+      return;
+    }
+    const module = await import('../profile-popup/admin-profile-popup.component');
+    this.profilePopupComponentRef.set(module.AdminProfilePopupComponent);
+  }
+
+  private async ensureHelpEditorPopupLoaded(): Promise<void> {
+    if (this.helpEditorPopupComponentRef()) {
+      return;
+    }
+    const module = await import('../help-editor-popup/admin-help-editor-popup.component');
+    this.helpEditorPopupComponentRef.set(module.AdminHelpEditorPopupComponent);
+  }
+
+  private async ensureIdeaEditorPopupLoaded(): Promise<void> {
+    if (this.ideaEditorPopupComponentRef()) {
+      return;
+    }
+    const module = await import('../idea-editor-popup/admin-idea-editor-popup.component');
+    this.ideaEditorPopupComponentRef.set(module.AdminIdeaEditorPopupComponent);
+  }
+
+  private async ensureNotificationsPopupLoaded(): Promise<void> {
+    if (this.notificationsPopupComponentRef()) {
+      return;
+    }
+    const module = await import('../notifications-popup/admin-notifications-popup.component');
+    this.notificationsPopupComponentRef.set(module.AdminNotificationsPopupComponent);
   }
 
   private delay(durationMs: number): Promise<void> {

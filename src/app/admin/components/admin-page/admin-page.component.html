@@ -54,13 +54,30 @@
     </div>
 
     <app-navigator></app-navigator>
-    <app-admin-reports-popup></app-admin-reports-popup>
-    <app-admin-feedback-popup></app-admin-feedback-popup>
-    <app-admin-chat-review-popup></app-admin-chat-review-popup>
-    <app-admin-item-preview-popup></app-admin-item-preview-popup>
-    <app-admin-help-editor-popup></app-admin-help-editor-popup>
-    <app-admin-idea-editor-popup></app-admin-idea-editor-popup>
-    <app-admin-notifications-popup></app-admin-notifications-popup>
+    @if (reportsPopupComponent(); as reportsComponent) {
+      <ng-container *ngComponentOutlet="reportsComponent"></ng-container>
+    }
+    @if (feedbackPopupComponent(); as feedbackComponent) {
+      <ng-container *ngComponentOutlet="feedbackComponent"></ng-container>
+    }
+    @if (chatReviewPopupComponent(); as chatReviewComponent) {
+      <ng-container *ngComponentOutlet="chatReviewComponent"></ng-container>
+    }
+    @if (itemPreviewPopupComponent(); as itemPreviewComponent) {
+      <ng-container *ngComponentOutlet="itemPreviewComponent"></ng-container>
+    }
+    @if (profilePopupComponent(); as profileComponent) {
+      <ng-container *ngComponentOutlet="profileComponent"></ng-container>
+    }
+    @if (helpEditorPopupComponent(); as helpEditorComponent) {
+      <ng-container *ngComponentOutlet="helpEditorComponent"></ng-container>
+    }
+    @if (ideaEditorPopupComponent(); as ideaEditorComponent) {
+      <ng-container *ngComponentOutlet="ideaEditorComponent"></ng-container>
+    }
+    @if (notificationsPopupComponent(); as notificationsComponent) {
+      <ng-container *ngComponentOutlet="notificationsComponent"></ng-container>
+    }
     <app-confirmation-dialog></app-confirmation-dialog>
   </section>
 } @else {
