@@ -289,6 +289,7 @@ export class DemoEventsService extends DemoRouteDelayService {
       acceptedPolicyIds?: string[];
       paymentSessionId?: string | null;
       bookingConfirmed?: boolean;
+      pendingReason?: 'approval' | 'waitlist' | null;
     } = {}
   ): Promise<DemoEventRecord | null> {
     await this.waitForRouteDelay(DemoEventsService.EVENTS_ROUTE);
@@ -297,7 +298,8 @@ export class DemoEventsService extends DemoRouteDelayService {
       userId,
       sourceId,
       options.slotSourceId ?? null,
-      options.bookingConfirmed === true && !hasPendingCheckout
+      options.bookingConfirmed === true && !hasPendingCheckout && options.pendingReason !== 'waitlist',
+      options.pendingReason === 'waitlist'
     );
     await this.memoryDb.flushToIndexedDb();
     return record;

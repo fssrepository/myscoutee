@@ -128,6 +128,9 @@ export class EventCheckoutPopupComponent {
     if (dialog.mode === 'invitation') {
       return this.totalAmount() > 0 ? 'Accept Invitation & Pay' : 'Accept Invitation';
     }
+    if (this.isWaitingListSelection()) {
+      return 'Join Waiting List';
+    }
     if (this.shouldAwaitApprovalBeforePayment()) {
       return 'Review Join Request';
     }
@@ -484,7 +487,7 @@ export class EventCheckoutPopupComponent {
     if (this.paymentStep) {
       return 'Buy';
     }
-    if (this.shouldAwaitApprovalBeforePayment()) {
+    if (this.shouldAwaitApprovalBeforePayment() || this.isWaitingListSelection()) {
       return dialog.confirmLabel;
     }
     if (this.totalAmount() > 0) {
@@ -498,7 +501,7 @@ export class EventCheckoutPopupComponent {
     if (!dialog) {
       return 'Working...';
     }
-    if (this.shouldAwaitApprovalBeforePayment()) {
+    if (this.shouldAwaitApprovalBeforePayment() || this.isWaitingListSelection()) {
       return dialog.busyConfirmLabel;
     }
     if (this.totalAmount() > 0) {
@@ -528,13 +531,45 @@ export class EventCheckoutPopupComponent {
     return dialog.requiresApprovalBeforePayment && !dialog.approvalGranted && this.totalAmount() > 0;
   }
 
+  protected isWaitingListSelection(): boolean {
+    const dialog = this.dialog();
+    if (!dialog || dialog.approvalGranted) {
+      return false;
+    }
+    const slot = this.selectedSlot();
+    if (slot) {
+      return this.isSlotFull(slot);
+    }
+    if (this.requiresSlotSelection()) {
+      return dialog.pendingReason === 'waitlist';
+    }
+    return this.isRecordFull(dialog.record) || dialog.pendingReason === 'waitlist';
+  }
+
+  protected pendingNoticeTitle(): string {
+    return this.isWaitingListSelection() ? 'Waiting List' : 'Approval Required';
+  }
+
+  protected pendingNoticeText(): string {
+    if (this.isWaitingListSelection()) {
+      return 'Send the wait request now. Payment stays locked in the basket until a spot opens and the system invites you to finish checkout.';
+    }
+    return 'Send the request now. Payment unlocks in the basket after the event admin approves it.';
+  }
+
+  protected slotCapacityLabel(slot: AppTypes.EventSlotOccurrence): string {
+    return this.isSlotFull(slot)
+      ? `${slot.acceptedMembers} / ${slot.capacityTotal} · full`
+      : `${slot.acceptedMembers} / ${slot.capacityTotal}`;
+  }
+
   protected async submit(event?: Event): Promise<void> {
     event?.stopPropagation();
     const dialog = this.dialog();
     if (!dialog || !this.canContinue()) {
       return;
     }
-    if (!this.paymentStep && this.shouldAwaitApprovalBeforePayment()) {
+    if (!this.paymentStep && (this.shouldAwaitApprovalBeforePayment() || this.isWaitingListSelection())) {
       const startedAt = Date.now();
       this.busy = true;
       this.errorMessage = '';
@@ -684,7 +719,8 @@ export class EventCheckoutPopupComponent {
       totalAmount: this.totalAmount(),
       currency: this.currency(),
       paymentSessionId,
-      bookingConfirmed
+      bookingConfirmed,
+      pendingReason: this.isWaitingListSelection() ? 'waitlist' : (this.shouldAwaitApprovalBeforePayment() ? 'approval' : null)
     };
   }
 
@@ -702,7 +738,8 @@ export class EventCheckoutPopupComponent {
       acceptedPolicyIds: [...this.acceptedPolicyIds],
       lineItems: this.lineItems(),
       totalAmount: this.totalAmount(),
-      currency: this.currency()
+      currency: this.currency(),
+      pendingReason: this.isWaitingListSelection() ? 'waitlist' : (this.shouldAwaitApprovalBeforePayment() ? 'approval' : null)
     };
   }
 
@@ -951,7 +988,7 @@ export class EventCheckoutPopupComponent {
 
   private persistCheckoutDraft(): void {
     const dialog = this.dialog();
-    if (!dialog || this.totalAmount() <= 0) {
+    if (!dialog || (this.totalAmount() <= 0 && !this.isWaitingListSelection())) {
       return;
     }
     this.checkoutDraftService.save({
@@ -967,6 +1004,7 @@ export class EventCheckoutPopupComponent {
       totalAmount: this.totalAmount(),
       currency: this.currency(),
       checkoutSessionId: this.checkoutSessionId,
+      pendingReason: this.isWaitingListSelection() ? 'waitlist' : (this.shouldAwaitApprovalBeforePayment() ? 'approval' : null),
       updatedAtMs: Date.now()
     });
   }
@@ -1030,5 +1068,15 @@ export class EventCheckoutPopupComponent {
       count: item.count
     }));
     this.availableSlotDateKeySet = new Set(this.availableSlotDateEntriesCache.map(item => item.key));
+  }
+
+  private isRecordFull(record: DemoEventRecord): boolean {
+    return Math.max(0, Math.trunc(Number(record.capacityTotal) || 0)) > 0
+      && Math.max(0, Math.trunc(Number(record.acceptedMembers) || 0)) >= Math.max(0, Math.trunc(Number(record.capacityTotal) || 0));
+  }
+
+  private isSlotFull(slot: AppTypes.EventSlotOccurrence): boolean {
+    return Math.max(0, Math.trunc(Number(slot.capacityTotal) || 0)) > 0
+      && Math.max(0, Math.trunc(Number(slot.acceptedMembers) || 0)) >= Math.max(0, Math.trunc(Number(slot.capacityTotal) || 0));
   }
 }

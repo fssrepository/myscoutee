@@ -295,7 +295,9 @@ export class DemoEventsRepository {
     const selectedTopic = this.normalizeExploreTopic(query.topic);
     const viewerCoordinates = this.queryUserLocationCoordinates(normalizedUserId);
     const viewerAffinity = this.queryUserAffinity(normalizedUserId);
+    const excludedSourceIds = new Set(this.normalizeUserIds(query.excludedSourceIds));
     const normalizedRecords = this.queryExploreItems(normalizedUserId)
+      .filter(record => !excludedSourceIds.has(record.id))
       .map(record => this.withResolvedDistance(record, viewerCoordinates))
       .filter(record => !query.friendsOnly || this.exploreHasFriendGoing(record, normalizedUserId))
       .filter(record => !query.openSpotsOnly || this.exploreHasOpenSpots(record))
@@ -372,6 +374,7 @@ export class DemoEventsRepository {
           isHosting: false
         });
       }
+      this.processDemoWaitlistForRecord(table, nextById, nextIds, normalizedId, true);
       return {
         ...state,
         [EVENTS_TABLE_NAME]: {
@@ -406,7 +409,13 @@ export class DemoEventsRepository {
     });
   }
 
-  requestJoin(userId: string, sourceId: string, slotSourceId: string | null = null, accepted = false): DemoEventRecord | null {
+  requestJoin(
+    userId: string,
+    sourceId: string,
+    slotSourceId: string | null = null,
+    accepted = false,
+    waitingList = false
+  ): DemoEventRecord | null {
     this.init();
     this.materializeSlotRecords();
     const normalizedUserId = userId.trim();
@@ -433,6 +442,7 @@ export class DemoEventsRepository {
     this.memoryDb.write(state => {
       const table = state[EVENTS_TABLE_NAME];
       const nextById = { ...table.byId };
+      const nextIds = [...table.ids];
 
       for (const recordKey of table.ids) {
         const current = table.byId[recordKey];
@@ -462,11 +472,17 @@ export class DemoEventsRepository {
         };
       }
 
+      if (accepted && !waitingList) {
+        for (const joinedId of idsToJoin) {
+          this.processDemoWaitlistForRecord(table, nextById, nextIds, joinedId, true);
+        }
+      }
+
       return {
         ...state,
         [EVENTS_TABLE_NAME]: {
           byId: nextById,
-          ids: [...table.ids]
+          ids: nextIds
         }
       };
     });
@@ -1276,6 +1292,87 @@ export class DemoEventsRepository {
       rating,
       relevance,
       affinity
+    };
+  }
+
+  private processDemoWaitlistForRecord(
+    table: DemoEventRecordCollection,
+    nextById: Record<string, DemoEventRecord>,
+    nextIds: string[],
+    sourceId: string,
+    promoteSingle: boolean
+  ): void {
+    const normalizedSourceId = sourceId.trim();
+    if (!normalizedSourceId) {
+      return;
+    }
+    const nextTable: DemoEventRecordCollection = {
+      byId: nextById,
+      ids: nextIds
+    };
+    const preferredRecord = this.computePreferredEventRecords(nextTable)
+      .find(record => record.id === normalizedSourceId && !record.isInvitation);
+    if (!preferredRecord) {
+      return;
+    }
+    const acceptedMemberUserIds = this.normalizeUserIds(preferredRecord.acceptedMemberUserIds);
+    const pendingMemberUserIds = this.normalizeUserIds(preferredRecord.pendingMemberUserIds)
+      .filter(userId => !acceptedMemberUserIds.includes(userId));
+    const capacityTotal = Math.max(0, this.normalizeCount(preferredRecord.capacityTotal) ?? 0);
+    if (capacityTotal <= 0 || pendingMemberUserIds.length === 0) {
+      return;
+    }
+
+    if (acceptedMemberUserIds.length >= capacityTotal) {
+      this.deleteDemoWaitlistInvitationRecords(table, nextById, nextIds, normalizedSourceId, pendingMemberUserIds);
+      return;
+    }
+
+    const pendingWithoutInvitation = pendingMemberUserIds.filter(userId =>
+      !nextById[DemoEventsRepositoryBuilder.buildRecordKey(userId, 'invitations', normalizedSourceId)]
+    );
+    const usersToInvite = promoteSingle
+      ? pendingWithoutInvitation.slice(0, 1)
+      : pendingWithoutInvitation;
+    for (const userId of usersToInvite) {
+      this.upsertRecord(nextById, nextIds, this.buildDemoWaitlistInvitationRecord(preferredRecord, userId));
+    }
+  }
+
+  private deleteDemoWaitlistInvitationRecords(
+    table: DemoEventRecordCollection,
+    nextById: Record<string, DemoEventRecord>,
+    nextIds: string[],
+    sourceId: string,
+    userIds: readonly string[]
+  ): void {
+    for (const userId of this.normalizeUserIds(userIds)) {
+      const recordKey = DemoEventsRepositoryBuilder.buildRecordKey(userId, 'invitations', sourceId);
+      if (!table.byId[recordKey] && !nextById[recordKey]) {
+        continue;
+      }
+      delete nextById[recordKey];
+      const index = nextIds.indexOf(recordKey);
+      if (index >= 0) {
+        nextIds.splice(index, 1);
+      }
+    }
+  }
+
+  private buildDemoWaitlistInvitationRecord(record: DemoEventRecord, userId: string): DemoEventRecord {
+    return {
+      ...DemoEventsRepositoryBuilder.cloneRecord(record),
+      userId,
+      type: 'invitations',
+      status: 'invitation',
+      inviter: record.creatorName,
+      unread: Math.max(1, record.unread),
+      isAdmin: false,
+      isInvitation: true,
+      isHosting: false,
+      isTrashed: false,
+      trashedAtIso: null,
+      published: true
     };
   }
 

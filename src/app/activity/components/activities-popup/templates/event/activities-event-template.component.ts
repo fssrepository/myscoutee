@@ -28,6 +28,7 @@ export interface ActivitiesEventTemplateContext {
   getActivityCalendarDateRange: (row: AppTypes.ActivityListRow) => { start: Date; end: Date } | null;
   isActivityDraft: (row: AppTypes.ActivityListRow) => boolean;
   isPendingActivityRow: (row: AppTypes.ActivityListRow) => boolean;
+  getActivityPendingStatusLabel: (row: AppTypes.ActivityListRow) => string;
   isActivityFull: (row: AppTypes.ActivityListRow) => boolean;
   getActivityLeadingIcon: (row: AppTypes.ActivityListRow) => string;
   getActivityLeadingIconTone: (row: AppTypes.ActivityListRow) => NonNullable<InfoCardData['leadingIcon']>['tone'];
@@ -76,6 +77,7 @@ export class ActivitiesEventTemplateComponent implements OnChanges {
       range: context.getActivityCalendarDateRange(row),
       isDraft: context.isActivityDraft(row),
       isPending: context.isPendingActivityRow(row),
+      pendingStatusLabel: context.getActivityPendingStatusLabel(row),
       isFull: context.isActivityFull(row),
       leadingIcon: context.getActivityLeadingIcon(row),
       leadingTone: context.getActivityLeadingIconTone(row),
@@ -1278,10 +1280,13 @@ export class ActivitiesEventsController {
     if (this.selectedActivityMembersRow?.isAdmin !== true) {
       return false;
     }
-    return entry.status === 'pending' && (entry.pendingSource === 'member' || entry.requestKind === 'join');
+    return entry.status === 'pending' && this.isActivityJoinRequest(entry);
   }
 
   public canDeleteActivityMember(entry: AppTypes.ActivityMemberEntry): boolean {
+    if (this.isActivityWaitlistMember(entry)) {
+      return false;
+    }
     if (this.selectedActivityMembersRow?.isAdmin === true) {
       return true;
     }
@@ -1312,7 +1317,10 @@ export class ActivitiesEventsController {
     if (entry.status === 'accepted') {
       return 'Approved';
     }
-    if (entry.requestKind === 'join') {
+    if (this.isActivityWaitlistMember(entry)) {
+      return 'Waiting list';
+    }
+    if (this.isActivityJoinRequest(entry)) {
       return 'Waiting For Join Approval';
     }
     if (entry.pendingSource === 'admin') {
@@ -1325,7 +1333,7 @@ export class ActivitiesEventsController {
     if (entry.status === 'accepted') {
       return entry.role === 'Admin' ? 'admin_panel_settings' : 'person';
     }
-    if (entry.requestKind === 'join' || entry.pendingSource === 'member') {
+    if (this.isActivityJoinRequest(entry)) {
       return 'pending_actions';
     }
     return 'outgoing_mail';
@@ -1335,7 +1343,7 @@ export class ActivitiesEventsController {
     if (entry.status === 'accepted') {
       return entry.role === 'Admin' ? 'member-status-admin' : 'member-status-member';
     }
-    if (entry.requestKind === 'join' || entry.pendingSource === 'member') {
+    if (this.isActivityJoinRequest(entry)) {
       return 'member-status-awaiting-approval';
     }
     return 'member-status-invite-pending';
@@ -1345,7 +1353,7 @@ export class ActivitiesEventsController {
     if (entry.status === 'accepted') {
       return entry.role === 'Admin' ? 'member-card-tone-admin' : 'member-card-tone-accepted';
     }
-    if (entry.requestKind === 'join' || entry.pendingSource === 'member') {
+    if (this.isActivityJoinRequest(entry)) {
       return 'member-card-tone-awaiting-approval';
     }
     return 'member-card-tone-invite-pending';
@@ -1356,6 +1364,15 @@ export class ActivitiesEventsController {
       return entry.role === 'Admin' ? 'Admin' : 'Member';
     }
     return this.activityMemberStatusLabel(entry);
+  }
+
+  private isActivityJoinRequest(entry: AppTypes.ActivityMemberEntry): boolean {
+    return entry.requestKind === 'join'
+      || (entry.requestKind == null && entry.pendingSource === 'member');
+  }
+
+  private isActivityWaitlistMember(entry: AppTypes.ActivityMemberEntry): boolean {
+    return entry.requestKind === 'waitlist' || entry.requestKind === 'waitlist-invite';
   }
 
   public approveActivityMember(entry: AppTypes.ActivityMemberEntry, event?: Event): void {

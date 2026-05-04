@@ -1784,7 +1784,8 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
     const normalizedOwner = this.normalizeOwnerRef(owner)!;
     const nowMs = Date.now();
     const nowIso = new Date(nowMs).toISOString();
-    const invitedByUserId = member.status === 'pending' && member.requestKind === 'invite'
+    const invitedByUserId = member.status === 'pending'
+      && (member.requestKind === 'invite' || member.requestKind === 'waitlist-invite')
       ? member.invitedByUserId?.trim() || null
       : null;
     return {

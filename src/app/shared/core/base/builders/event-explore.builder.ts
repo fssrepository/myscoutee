@@ -104,6 +104,7 @@ export class EventExploreBuilder {
   }
 
   private static infoCardMenuActions(record: DemoEventRecord): readonly InfoCardMenuAction[] {
+    const full = this.isFull(record);
     const actions: InfoCardMenuAction[] = [
       {
         id: 'view',
@@ -114,7 +115,7 @@ export class EventExploreBuilder {
     actions.push({
       id: 'join',
       label: this.joinActionLabel(record),
-      icon: 'person_add',
+      icon: full ? 'hourglass_empty' : 'person_add',
       tone: 'accent'
     });
     actions.push({
@@ -199,6 +200,9 @@ export class EventExploreBuilder {
   }
 
   private static joinActionLabel(record: DemoEventRecord): string {
+    if (this.isFull(record)) {
+      return 'Join waiting list';
+    }
     return this.requiresBookingFlow(record)
       ? 'Book event'
       : 'Request join';

@@ -151,7 +151,8 @@ export class ActivitiesService extends BaseRouteModeService {
       view: this.normalizeEventExploreView(input?.view),
       friendsOnly: input?.friendsOnly === true,
       openSpotsOnly: input?.openSpotsOnly === true,
-      topic: this.normalizeEventExploreTopic(input?.topic ?? '')
+      topic: this.normalizeEventExploreTopic(input?.topic ?? ''),
+      excludedSourceIds: this.normalizeEventExploreExcludedSourceIds(input?.excludedSourceIds)
     };
   }
 
@@ -170,6 +171,15 @@ export class ActivitiesService extends BaseRouteModeService {
 
   private normalizeEventExploreTopic(value: string | null | undefined): string {
     return AppUtils.normalizeText(`${value ?? ''}`.replace(/^#+\s*/, '').trim());
+  }
+
+  private normalizeEventExploreExcludedSourceIds(value: readonly string[] | null | undefined): string[] {
+    if (!Array.isArray(value)) {
+      return [];
+    }
+    return [...new Set(value
+      .map(sourceId => `${sourceId ?? ''}`.trim())
+      .filter(sourceId => sourceId.length > 0))];
   }
 
   private resolveExplorePageSize(value: number): number {

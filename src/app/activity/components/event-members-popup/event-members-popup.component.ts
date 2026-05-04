@@ -488,7 +488,7 @@ export class EventMembersPopupComponent {
       }
       return 'member-card-tone-accepted';
     }
-    if (entry.requestKind === 'join' || entry.pendingSource === 'member') {
+    if (this.isJoinRequest(entry)) {
       return 'member-card-tone-awaiting-approval';
     }
     return 'member-card-tone-invite-pending';
@@ -504,7 +504,7 @@ export class EventMembersPopupComponent {
       }
       return 'member-status-member';
     }
-    if (entry.requestKind === 'join' || entry.pendingSource === 'member') {
+    if (this.isJoinRequest(entry)) {
       return 'member-status-awaiting-approval';
     }
     return 'member-status-invite-pending';
@@ -520,7 +520,7 @@ export class EventMembersPopupComponent {
       }
       return 'person';
     }
-    if (entry.requestKind === 'join' || entry.pendingSource === 'member') {
+    if (this.isJoinRequest(entry)) {
       return 'pending_actions';
     }
     return 'outgoing_mail';
@@ -551,7 +551,7 @@ export class EventMembersPopupComponent {
     if (entry.status === 'accepted') {
       return 'Approved';
     }
-    if (entry.requestKind === 'join') {
+    if (this.isJoinRequest(entry)) {
       return entry.pendingSource === 'admin'
         ? 'Waiting For Admin Approval'
         : 'Waiting For Join Approval';
@@ -674,14 +674,14 @@ export class EventMembersPopupComponent {
     if (initialMembers && !Number.isFinite(Number(options?.acceptedMembers)) && !Number.isFinite(Number(options?.pendingMembers)) && !Number.isFinite(Number(options?.capacityTotal))) {
       this.applySummaryFromMembers(initialMembers);
     }
-    if (
+    const hasProvidedSummary =
       Number.isFinite(Number(options?.acceptedMembers))
       || Number.isFinite(Number(options?.pendingMembers))
-      || Number.isFinite(Number(options?.capacityTotal))
-    ) {
+      || Number.isFinite(Number(options?.capacityTotal));
+    if (hasProvidedSummary) {
       this.applySummary(
         Number(options?.acceptedMembers) || 0,
-        Number(options?.pendingMembers) || 0,
+        ownerType === 'event' && !initialMembers ? 0 : Number(options?.pendingMembers) || 0,
         Number(options?.capacityTotal) || 0
       );
     }
@@ -745,7 +745,7 @@ export class EventMembersPopupComponent {
     this.subtitle = record.title.trim() || options?.subtitle?.trim() || 'Event';
     this.syncCanManageMembers();
     if (this.acceptedCount <= 0 && this.pendingCount <= 0 && this.capacityTotal <= 0) {
-      this.applySummary(record.acceptedMembers, record.pendingMembers, record.capacityTotal);
+      this.applySummary(record.acceptedMembers, 0, record.capacityTotal);
     }
     this.cdr.markForCheck();
   }
@@ -773,21 +773,12 @@ export class EventMembersPopupComponent {
       void this.usersService.warmCachedUsers(members.map(member => member.userId));
       this.membersCacheByOwnerId.set(ownerId, members);
       if (this.isOpen && this.ownerId === ownerId) {
-        const summary = owner
-          ? this.activityMembersService.peekSummaryByOwner(owner)
-          : this.activityMembersService.peekSummaryByOwnerId(ownerId);
         this.syncCanManageMembers(members);
-        if (summary) {
-          this.applySummary(summary.acceptedMembers, summary.pendingMembers, summary.capacityTotal);
-        } else {
-          this.applySummaryFromMembers(members);
-        }
+        this.applySummaryFromMembers(members);
       }
     }
 
-    const filteredMembers = query.filters?.pendingOnly
-      ? members.filter(member => member.status === 'pending')
-      : members;
+    const filteredMembers = this.filterMembersForView(members, query.filters?.pendingOnly === true);
     const pageSize = Math.max(1, Number(query.pageSize) || 16);
     const startIndex = Math.max(0, Number(query.page) || 0) * pageSize;
     return {
@@ -864,11 +855,13 @@ export class EventMembersPopupComponent {
   }
 
   private filterMembersForView(
-    members: readonly AppTypes.ActivityMemberEntry[]
+    members: readonly AppTypes.ActivityMemberEntry[],
+    pendingOnly = this.pendingOnly
   ): AppTypes.ActivityMemberEntry[] {
-    return this.pendingOnly
-      ? members.filter(member => member.status === 'pending')
-      : [...members];
+    const visibleMembers = members.filter(member => !this.isWaitlistMember(member));
+    return pendingOnly
+      ? visibleMembers.filter(member => member.status === 'pending')
+      : [...visibleMembers];
   }
 
   private currentOwnerMembers(): AppTypes.ActivityMemberEntry[] {
@@ -881,7 +874,7 @@ export class EventMembersPopupComponent {
     }
     return this.canManageMembers
       && entry.status === 'pending'
-      && (entry.pendingSource === 'member' || entry.requestKind === 'join');
+      && this.isJoinRequest(entry);
   }
 
   protected canDeleteMember(entry: AppTypes.ActivityMemberEntry): boolean {
@@ -925,8 +918,9 @@ export class EventMembersPopupComponent {
   }
 
   private applySummaryFromMembers(members: readonly AppTypes.ActivityMemberEntry[]): void {
-    const acceptedCount = members.filter(member => member.status === 'accepted').length;
-    const pendingCount = members.filter(member => member.status === 'pending').length;
+    const visibleMembers = members.filter(member => !this.isWaitlistMember(member));
+    const acceptedCount = visibleMembers.filter(member => member.status === 'accepted').length;
+    const pendingCount = visibleMembers.filter(member => member.status === 'pending').length;
     this.applySummary(
       acceptedCount,
       pendingCount,
@@ -963,7 +957,7 @@ export class EventMembersPopupComponent {
     const owner = this.ownerRef && this.ownerRef.ownerId === sync.id ? this.ownerRef : null;
     if (!owner) {
       this.membersCacheByOwnerId.delete(sync.id);
-      this.applySummary(sync.acceptedMembers, sync.pendingMembers, sync.capacityTotal);
+      this.applySummary(sync.acceptedMembers, 0, sync.capacityTotal);
       this.cdr.markForCheck();
       return;
     }
@@ -976,12 +970,7 @@ export class EventMembersPopupComponent {
         const normalizedMembers = this.sortMembersByActionTimeDesc(members);
         this.membersCacheByOwnerId.set(sync.id, normalizedMembers);
         this.syncCanManageMembers(normalizedMembers);
-        const summary = this.activityMembersService.peekSummaryByOwner(owner);
-        if (summary) {
-          this.applySummary(summary.acceptedMembers, summary.pendingMembers, summary.capacityTotal);
-        } else {
-          this.applySummaryFromMembers(normalizedMembers);
-        }
+        this.applySummaryFromMembers(normalizedMembers);
         this.syncVisibleMembers(previousMembers, normalizedMembers);
         this.cdr.markForCheck();
       })
@@ -989,9 +978,18 @@ export class EventMembersPopupComponent {
         if (!this.isOpen || this.ownerId !== sync.id) {
           return;
         }
-        this.applySummary(sync.acceptedMembers, sync.pendingMembers, sync.capacityTotal);
+        this.applySummary(sync.acceptedMembers, 0, sync.capacityTotal);
         this.cdr.markForCheck();
       });
+  }
+
+  private isJoinRequest(entry: AppTypes.ActivityMemberEntry): boolean {
+    return entry.requestKind === 'join'
+      || (entry.requestKind == null && entry.pendingSource === 'member');
+  }
+
+  private isWaitlistMember(entry: AppTypes.ActivityMemberEntry): boolean {
+    return entry.requestKind === 'waitlist' || entry.requestKind === 'waitlist-invite';
   }
 
   private sortMembersByActionTimeDesc(

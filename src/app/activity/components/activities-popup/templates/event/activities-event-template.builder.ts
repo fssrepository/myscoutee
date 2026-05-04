@@ -8,6 +8,7 @@ interface BuildActivitiesEventInfoCardOptions {
   range: { start: Date; end: Date } | null;
   isDraft: boolean;
   isPending: boolean;
+  pendingStatusLabel: string;
   isFull: boolean;
   leadingIcon: string;
   leadingTone: NonNullable<InfoCardData['leadingIcon']>['tone'];
@@ -24,6 +25,7 @@ export function buildActivitiesEventInfoCard(
   options: BuildActivitiesEventInfoCardOptions
 ): InfoCardData {
   const locationMetaLine = buildActivitiesLocationMetaLine(row);
+  const waitlistPending = options.isPending && options.pendingStatusLabel.toLowerCase().includes('waiting list');
 
   return {
     rowId: options.rowId,
@@ -38,14 +40,14 @@ export function buildActivitiesEventInfoCard(
     description: row.subtitle,
     footerChips: options.isPending
       ? [{
-          label: 'Waiting for approval',
-          toneClass: 'status-pending'
+          label: options.pendingStatusLabel || 'Waiting for approval',
+          toneClass: waitlistPending ? 'status-waitlist' : 'status-pending'
         }]
       : [],
     surfaceTone: options.isDraft
       ? 'draft'
       : options.isPending
-        ? 'pending'
+        ? (waitlistPending ? 'waitlist' : 'pending')
         : options.isFull
           ? 'full'
           : 'default',

@@ -1,7 +1,7 @@
 export type CardPresentation = 'list' | 'fullscreen';
 export type CardRenderState = 'default' | 'active' | 'leaving';
 export type CardBadgeLayout = 'floating' | 'between' | 'pair-overlap';
-export type InfoCardSurfaceTone = 'default' | 'draft' | 'full' | 'pending' | 'series';
+export type InfoCardSurfaceTone = 'default' | 'draft' | 'full' | 'pending' | 'series' | 'waitlist';
 export type InfoCardOverlayVariant = 'avatar' | 'badge' | 'toggle';
 export type InfoCardOverlayLayout = 'default' | 'avatar-metric' | 'badge-with-leading-accessory';
 export type InfoCardOverlayTone =

@@ -149,6 +149,7 @@ export class EventsService extends BaseRouteModeService {
       acceptedPolicyIds?: string[];
       paymentSessionId?: string | null;
       bookingConfirmed?: boolean;
+      pendingReason?: 'approval' | 'waitlist' | null;
     } = {}
   ): Promise<DemoEventRecord | null> {
     return this.eventsService.requestJoin(userId, sourceId, options);

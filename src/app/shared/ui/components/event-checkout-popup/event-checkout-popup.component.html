@@ -43,8 +43,16 @@
         @if (shouldAwaitApprovalBeforePayment()) {
           <section class="event-checkout-card">
             <div class="event-checkout-card__head">
-              <h3>Approval Required</h3>
-              <span>Send the request now. Payment unlocks in the basket after the event admin approves it.</span>
+              <h3>{{ pendingNoticeTitle() }}</h3>
+              <span>{{ pendingNoticeText() }}</span>
+            </div>
+          </section>
+        }
+        @if (!shouldAwaitApprovalBeforePayment() && isWaitingListSelection()) {
+          <section class="event-checkout-card">
+            <div class="event-checkout-card__head">
+              <h3>{{ pendingNoticeTitle() }}</h3>
+              <span>{{ pendingNoticeText() }}</span>
             </div>
           </section>
         }
@@ -145,7 +153,7 @@
                     >
                     <span class="event-checkout-slot-card__title">{{ slot.title }}</span>
                     <span class="event-checkout-slot-card__meta">{{ slot.timeframe }}</span>
-                    <span class="event-checkout-slot-card__capacity">{{ slot.acceptedMembers }} / {{ slot.capacityTotal }}</span>
+                    <span class="event-checkout-slot-card__capacity">{{ slotCapacityLabel(slot) }}</span>
                   </button>
                 }
               </div>

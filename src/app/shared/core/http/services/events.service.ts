@@ -172,7 +172,8 @@ export class HttpEventsService {
           `${this.apiBaseUrl}/activities/events/explore`,
           {
             ...query,
-            userId: normalizedUserId
+            userId: normalizedUserId,
+            excludedSourceIds: this.normalizeSourceIds(query.excludedSourceIds)
           }
         )
         .toPromise();
@@ -229,6 +230,7 @@ export class HttpEventsService {
       acceptedPolicyIds?: string[];
       paymentSessionId?: string | null;
       bookingConfirmed?: boolean;
+      pendingReason?: 'approval' | 'waitlist' | null;
     } = {}
   ): Promise<DemoEventRecord | null> {
     const normalizedUserId = userId.trim();
@@ -247,7 +249,10 @@ export class HttpEventsService {
           assetSelections: [...(options.assetSelections ?? [])],
           acceptedPolicyIds: [...(options.acceptedPolicyIds ?? [])],
           paymentSessionId: options.paymentSessionId?.trim() || null,
-          bookingConfirmed: options.bookingConfirmed === true
+          bookingConfirmed: options.bookingConfirmed === true,
+          pendingReason: options.pendingReason === 'waitlist'
+            ? 'waitlist'
+            : (options.pendingReason === 'approval' ? 'approval' : null)
         })
         .toPromise();
       return response ? this.cloneRecords([response])[0] ?? null : null;
@@ -418,5 +423,14 @@ export class HttpEventsService {
       };
     }
     return next;
+  }
+
+  private normalizeSourceIds(sourceIds: readonly string[] | null | undefined): string[] {
+    if (!Array.isArray(sourceIds)) {
+      return [];
+    }
+    return [...new Set(sourceIds
+      .map(sourceId => `${sourceId ?? ''}`.trim())
+      .filter(sourceId => sourceId.length > 0))];
   }
 }

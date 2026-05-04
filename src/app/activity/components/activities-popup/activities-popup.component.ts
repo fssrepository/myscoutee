@@ -218,6 +218,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     getActivityCalendarDateRange: (row) => this.activityCalendarDateRange(row),
     isActivityDraft: (row) => this.isActivityDraft(row),
     isPendingActivityRow: (row) => this.activitiesEvents.isPendingActivityRow(row),
+    getActivityPendingStatusLabel: (row) => this.activityPendingStatusLabel(row),
     isActivityFull: (row) => this.isActivityFull(row),
     getActivityLeadingIcon: (row) => this.activitiesEvents.activityLeadingIcon(row),
     getActivityLeadingIconTone: (row) => this.activitiesEvents.activityLeadingIconTone(row),
@@ -1420,12 +1421,17 @@ export class ActivitiesPopupComponent implements OnDestroy {
       return null;
     }
     const checkoutStarted = Boolean(draft.checkoutSessionId?.trim());
-    const pendingDescription = checkoutStarted
-      ? 'Checkout in progress.'
-      : 'Waiting for admin approval before payment.';
-    const pendingTimeframe = checkoutStarted
-      ? 'Booking pending.'
-      : 'Approval pending.';
+    const waitingList = draft.pendingReason === 'waitlist';
+    const pendingDescription = waitingList
+      ? 'Waiting list.'
+      : checkoutStarted
+        ? 'Checkout in progress.'
+        : 'Waiting for admin approval before payment.';
+    const pendingTimeframe = waitingList
+      ? 'Waiting for a spot.'
+      : checkoutStarted
+        ? 'Booking pending.'
+        : 'Approval pending.';
 
     const knownRecord = this.eventsService.peekKnownItemById(activeUserId, sourceId);
     if (!knownRecord) {
@@ -1500,7 +1506,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   private shouldTrackPendingCheckoutDraft(draft: EventCheckoutDraft | null | undefined): boolean {
-    return Math.max(0, Number(draft?.totalAmount) || 0) > 0;
+    return draft?.pendingReason === 'waitlist'
+      || Math.max(0, Number(draft?.totalAmount) || 0) > 0;
   }
 
   // =========================================================================
@@ -1671,6 +1678,17 @@ export class ActivitiesPopupComponent implements OnDestroy {
       return summary.pendingMembers;
     }
     return Math.max(0, Math.trunc(Number(this.activityPendingMembersById[row.id]) || 0));
+  }
+
+  protected activityPendingStatusLabel(row: AppTypes.ActivityListRow): string {
+    const activeUserId = this.activeUser?.id?.trim() ?? '';
+    if (!activeUserId || row.type !== 'events') {
+      return 'Waiting for approval';
+    }
+    const draft = this.eventCheckoutDraftService.read(activeUserId, row.id);
+    return draft?.pendingReason === 'waitlist'
+      ? 'Waiting list'
+      : 'Waiting for approval';
   }
 
   protected isActivityFull(row: AppTypes.ActivityListRow): boolean {

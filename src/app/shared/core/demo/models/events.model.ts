@@ -85,6 +85,7 @@ export interface DemoEventExploreQuery {
   topic: string;
   limit: number;
   cursor?: string | null;
+  excludedSourceIds?: string[];
 }
 
 export interface DemoEventExploreQueryResult {

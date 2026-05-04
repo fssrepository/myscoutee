@@ -3,7 +3,7 @@ import type { UserDto } from '../interfaces/user.interface';
 export type ActivityMemberStatus = 'pending' | 'accepted';
 export type ActivityPendingSource = 'admin' | 'member' | null;
 export type ActivityInviteSort = 'recent' | 'relevant';
-export type ActivityMemberRequestKind = 'invite' | 'join' | null;
+export type ActivityMemberRequestKind = 'invite' | 'join' | 'waitlist' | 'waitlist-invite' | null;
 export type ActivityMemberRole = 'Admin' | 'Member' | 'Manager';
 
 export interface ActivityMemberEntry {

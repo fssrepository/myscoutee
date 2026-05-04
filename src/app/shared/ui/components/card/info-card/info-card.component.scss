@@ -102,6 +102,12 @@ button.asset-occupancy-badge:active::after,
   box-shadow: 0 8px 18px rgba(171, 122, 40, 0.12);
 }
 
+.ui-info-card--tone-waitlist {
+  border-color: rgba(73, 119, 154, 0.36);
+  background: linear-gradient(180deg, #f3fbff 0%, #e7f2f7 100%);
+  box-shadow: 0 8px 18px rgba(50, 98, 135, 0.12);
+}
+
 .ui-info-card--tone-series {
   border-color: rgba(42, 126, 134, 0.34);
   background: linear-gradient(180deg, #f2fbfb 0%, #e4f4f5 100%);
@@ -897,6 +903,12 @@ button.ui-info-card__overlay-action {
   background: linear-gradient(180deg, #fff8e8 0%, #ffefc9 100%);
   border-color: rgba(201, 144, 39, 0.34);
   color: #9b6714;
+}
+
+.ui-info-card__footer-chip.status-waitlist {
+  background: linear-gradient(180deg, #eef8ff 0%, #dcecf5 100%);
+  border-color: rgba(55, 115, 158, 0.36);
+  color: #2e668f;
 }
 
 @media (hover: hover) and (pointer: fine) {
