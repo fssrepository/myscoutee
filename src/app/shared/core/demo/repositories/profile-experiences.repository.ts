@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 
 import type { ExperienceEntry } from '../../base/models/profile.model';
 import { AppMemoryDb } from '../../base/db';
+import { DemoProfileExperienceSeedBuilder } from '../builders';
 import { PROFILE_EXPERIENCES_TABLE_NAME } from '../models/profile-experiences.model';
 
 @Injectable({
@@ -9,8 +10,44 @@ import { PROFILE_EXPERIENCES_TABLE_NAME } from '../models/profile-experiences.mo
 })
 export class DemoProfileExperiencesRepository {
   private readonly memoryDb = inject(AppMemoryDb);
+  private initialized = false;
+
+  init(): void {
+    if (this.initialized) {
+      return;
+    }
+
+    const seededByUserId = DemoProfileExperienceSeedBuilder.buildSeededExperiencesByUserId();
+    const table = this.memoryDb.read()[PROFILE_EXPERIENCES_TABLE_NAME];
+    const nextByUserId = { ...table.byUserId };
+    const nextUserIds = [...table.userIds];
+    let changed = false;
+
+    for (const [userId, entries] of Object.entries(seededByUserId)) {
+      const normalizedUserId = userId.trim();
+      if (!normalizedUserId || Object.prototype.hasOwnProperty.call(nextByUserId, normalizedUserId)) {
+        continue;
+      }
+      nextByUserId[normalizedUserId] = this.cloneEntries(entries);
+      nextUserIds.push(normalizedUserId);
+      changed = true;
+    }
+
+    if (changed) {
+      this.memoryDb.write(state => ({
+        ...state,
+        [PROFILE_EXPERIENCES_TABLE_NAME]: {
+          byUserId: nextByUserId,
+          userIds: [...new Set(nextUserIds)]
+        }
+      }));
+    }
+
+    this.initialized = true;
+  }
 
   queryUserExperiences(userId: string): ExperienceEntry[] {
+    this.init();
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return [];
@@ -20,6 +57,7 @@ export class DemoProfileExperiencesRepository {
   }
 
   replaceUserExperiences(userId: string, entries: readonly ExperienceEntry[]): ExperienceEntry[] {
+    this.init();
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return [];

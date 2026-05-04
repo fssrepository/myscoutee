@@ -571,6 +571,7 @@
               [state]="renderState"
               [context]="activitiesRateTemplateContext"
               [cardRevision]="activitiesRateCardRevisionForRow(row)"
+              (profileClick)="openProfileView($event)"
             ></app-activities-rate-template>
           }
         </ng-template>
@@ -618,6 +619,7 @@
               [context]="activitiesRateTemplateContext"
               [cardRevision]="activitiesRateCardRevisionForRow(row)"
               (badgeClick)="activitiesRates.openEditor(row)"
+              (profileClick)="openProfileView($event)"
             ></app-activities-rate-template>
           </ng-template>
         </div><!-- /activities-popup -->

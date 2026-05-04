@@ -39,6 +39,7 @@ import type * as AppTypes from '../../../shared/core/base/models';
 import {
   CounterBadgePipe,
   EventCheckoutPopupComponent,
+  type CardProfileViewData,
   SmartListComponent,
   type InfoCardData,
   type InfoCardMenuAction,
@@ -528,6 +529,10 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   protected onActivityEventInfoCardMenuAction(row: AppTypes.ActivityListRow, action: InfoCardMenuActionEvent): void {
     this.activitiesEvents.onActivityEventInfoCardMenuAction(row, action);
+  }
+
+  protected openProfileView(profileView: CardProfileViewData): void {
+    this.navigatorService.openProfileView(profileView);
   }
 
   protected isActivityIdentityTrashed(type: AppTypes.ActivityListRow['type'], id: string): boolean {

@@ -4533,7 +4533,8 @@ export class SubEventResourcePopupService {
           actionAtIso,
           metWhere: card.title,
           relevance: 40 + (seed % 61),
-          avatarUrl: AppUtils.firstImageUrl(matchedUser?.images)
+          avatarUrl: AppUtils.firstImageUrl(matchedUser?.images),
+          profile: matchedUser ?? null
         };
       })
       .sort((left, right) => AppUtils.toSortableDate(right.actionAtIso) - AppUtils.toSortableDate(left.actionAtIso));

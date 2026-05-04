@@ -77,8 +77,18 @@
                 >
                 <mat-icon>{{ memberCardStatusIcon(member) }}</mat-icon>
               </span>
+              @if (canViewMemberProfile(member)) {
+                <button
+                  type="button"
+                  class="friends-picker-card-add-btn subevent-member-profile-trigger"
+                  (click)="viewMemberProfile(member, $event)"
+                  aria-label="View profile"
+                  >
+                  <mat-icon>visibility</mat-icon>
+                </button>
+              }
               @if (canShowActionMenu(member)) {
-                <div class="subevent-member-menu-anchor">
+                <div class="subevent-member-menu-anchor" [class.has-profile-view]="canViewMemberProfile(member)">
                   <button
                     type="button"
                     class="friends-picker-card-add-btn subevent-member-menu-trigger experience-action-menu-trigger"

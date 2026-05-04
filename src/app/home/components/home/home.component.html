@@ -123,10 +123,12 @@
           @if (row.mode === 'pair') {
             <app-pair-card
               [card]="homePairCard(row, { presentation: 'fullscreen', state: renderState })"
+              (profileClick)="openProfileView($event)"
             ></app-pair-card>
           } @else {
             <app-single-card
               [card]="homeSingleCard(row, { presentation: 'fullscreen', state: renderState })"
+              (profileClick)="openProfileView($event)"
             ></app-single-card>
           }
         }

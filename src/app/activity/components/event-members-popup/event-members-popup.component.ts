@@ -302,7 +302,9 @@ export class EventMembersPopupComponent {
   }
 
   protected canShowActionMenu(entry: AppTypes.ActivityMemberEntry): boolean {
-    return this.canApproveMember(entry) || this.canDeleteMember(entry) || this.canReportMember(entry);
+    return this.canApproveMember(entry)
+      || this.canDeleteMember(entry)
+      || this.canReportMember(entry);
   }
 
   protected toggleMemberActionMenu(entry: AppTypes.ActivityMemberEntry, event: Event): void {
@@ -383,6 +385,25 @@ export class EventMembersPopupComponent {
       eventStartAtIso: this.ownerRecord?.startAtIso ?? null,
       eventTimeframe: this.ownerRecord?.timeframe ?? null,
       ownerType: this.ownerRef?.ownerType ?? 'event'
+    });
+    this.cdr.markForCheck();
+  }
+
+  protected canViewMemberProfile(entry: AppTypes.ActivityMemberEntry): boolean {
+    return Boolean(`${entry.userId ?? ''}`.trim());
+  }
+
+  protected viewMemberProfile(entry: AppTypes.ActivityMemberEntry, event: Event): void {
+    event.stopPropagation();
+    const userId = `${entry.userId ?? ''}`.trim();
+    if (!userId) {
+      return;
+    }
+    this.inlineItemActionMenu = null;
+    this.navigatorService.openProfileView({
+      userId,
+      user: entry.profile ?? this.usersService.peekCachedUserById(userId),
+      label: entry.name
     });
     this.cdr.markForCheck();
   }
@@ -513,7 +534,7 @@ export class EventMembersPopupComponent {
   }
 
   protected age(entry: AppTypes.ActivityMemberEntry): number {
-    return this.usersService.peekCachedUserById(entry.userId)?.age ?? 0;
+    return entry.profile?.age ?? this.usersService.peekCachedUserById(entry.userId)?.age ?? 0;
   }
 
   protected roleLabel(entry: AppTypes.ActivityMemberEntry): string {
@@ -876,9 +897,6 @@ export class EventMembersPopupComponent {
   }
 
   protected canReportMember(entry: AppTypes.ActivityMemberEntry): boolean {
-    if ((this.ownerRef?.ownerType ?? 'event') !== 'event') {
-      return false;
-    }
     const activeUserId = this.activeUserId();
     if (!activeUserId || entry.userId === activeUserId || entry.status !== 'accepted') {
       return false;

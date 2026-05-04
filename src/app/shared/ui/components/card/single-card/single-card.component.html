@@ -81,6 +81,17 @@
       </div>
     }
 
+    @if (card?.profileView; as profileView) {
+      <button
+        type="button"
+        class="shared-card-profile-view-btn"
+        (click)="onProfileClick(profileView, $event)"
+        [attr.aria-label]="'View ' + (profileView.label || 'profile')"
+        >
+        <mat-icon>visibility</mat-icon>
+      </button>
+    }
+
     @if (card?.badge; as cardBadge) {
       @if (isBadgeInteractive()) {
         <button

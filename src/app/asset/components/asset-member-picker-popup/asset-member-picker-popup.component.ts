@@ -34,8 +34,10 @@ import {
   ActivityMembersService,
   AppContext,
   AppPopupContext,
-  NavigatorContactsService
+  NavigatorContactsService,
+  UsersService
 } from '../../../shared/core';
+import { NavigatorService } from '../../../navigator';
 import { OwnedAssetsPopupFacadeService } from '../../owned-assets-popup-facade.service';
 
 interface ActivityInviteFilters {
@@ -67,6 +69,8 @@ export class AssetMemberPickerPopupComponent {
   private readonly activityMembersService = inject(ActivityMembersService);
   private readonly ownedAssets = inject(OwnedAssetsPopupFacadeService);
   private readonly navigatorContactsService = inject(NavigatorContactsService);
+  private readonly navigatorService = inject(NavigatorService);
+  private readonly usersService = inject(UsersService);
 
   protected isOpen = false;
   protected title = 'Invite members';
@@ -325,6 +329,19 @@ export class AssetMemberPickerPopupComponent {
       ? ''
       : parsed.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
     return dateLabel ? `${entry.metWhere} · ${dateLabel}` : entry.metWhere;
+  }
+
+  protected viewCandidateProfile(candidate: AppTypes.ActivityMemberEntry, event: Event): void {
+    event.stopPropagation();
+    const userId = `${candidate.userId ?? ''}`.trim();
+    if (!userId) {
+      return;
+    }
+    this.navigatorService.openProfileView({
+      userId,
+      user: candidate.profile ?? this.usersService.peekCachedUserById(userId),
+      label: candidate.name
+    });
   }
 
   private resetState(): void {

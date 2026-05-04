@@ -6,6 +6,7 @@ import type { DemoUser } from '../../../../../shared/core/base/interfaces/user.i
 import type * as AppTypes from '../../../../../shared/core/base/models';
 import {
   PairCardComponent,
+  type CardProfileViewData,
   type RateCardPerson,
   type RatingStarBarConfig,
   SingleCardComponent,
@@ -73,6 +74,7 @@ export class ActivitiesRateTemplateComponent implements OnChanges {
   @Input() cardRevision: string | number = 0;
 
   @Output() readonly badgeClick = new EventEmitter<void>();
+  @Output() readonly profileClick = new EventEmitter<CardProfileViewData>();
 
   protected pairCard: PairCardData | null = null;
   protected singleCard: SingleCardData | null = null;
@@ -92,6 +94,10 @@ export class ActivitiesRateTemplateComponent implements OnChanges {
 
   protected onBadgeClick(): void {
     this.badgeClick.emit();
+  }
+
+  protected onProfileClick(event: CardProfileViewData): void {
+    this.profileClick.emit(event);
   }
 
   private rebuildCards(): void {
@@ -911,6 +917,7 @@ function toActivitiesRateCardPerson(
     name: user.name,
     age: user.age,
     city: user.city,
-    gender: user.gender
+    gender: user.gender,
+    profile: 'images' in user || 'profileDetails' in user ? user : null
   };
 }

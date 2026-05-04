@@ -1055,7 +1055,8 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
           actionAtIso,
           metWhere: asset.title,
           relevance: 48 + (seed % 46),
-          avatarUrl: AppUtils.firstImageUrl(matchedUser.images)
+          avatarUrl: AppUtils.firstImageUrl(matchedUser.images),
+          profile: matchedUser
         };
       })
       .sort((left, right) => AppUtils.toSortableDate(right.actionAtIso) - AppUtils.toSortableDate(left.actionAtIso));
@@ -1819,7 +1820,8 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
       actionAtIso: record.actionAtIso,
       metWhere: record.metWhere,
       relevance: record.relevance,
-      avatarUrl: record.avatarUrl
+      avatarUrl: record.avatarUrl,
+      profile: this.resolveDemoUser(record.userId, record.name, record.initials, record.city, record.gender)
     };
   }
 

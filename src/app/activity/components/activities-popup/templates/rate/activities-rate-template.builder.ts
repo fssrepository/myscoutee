@@ -53,6 +53,8 @@ function buildActivitiesRateCardInput(
   const item = row.source as RateMenuItem;
   const presentation = options.presentation ?? 'list';
   const rateDisplay = row.rateDisplay;
+  const resolvedPrimaryUser = resolveActivitiesRatePrimaryUser(row, options.resolveUserById);
+  const displayPrimaryUser = toActivitiesRateCardPerson(rateDisplay?.primaryUser);
 
   return {
     rowId: row.id,
@@ -63,11 +65,11 @@ function buildActivitiesRateCardInput(
     direction: options.displayedDirection,
     eventName: item.eventName,
     happenedOnLabel: rateDisplay?.happenedOnLabel ?? 'Unknown',
-    primaryUser: toActivitiesRateCardPerson(rateDisplay?.primaryUser) ?? resolveActivitiesRatePrimaryUser(row, options.resolveUserById),
+    primaryUser: mergeActivitiesRateCardPerson(displayPrimaryUser, resolvedPrimaryUser),
     pairUsers: buildActivitiesRateCardPairUsers(row, options.resolveUserById),
     availableUsers: options.availableUsers,
     singleImageUrls: resolveActivitiesRateImageUrls(rateDisplay?.imageUrls),
-    pairSlots: buildActivitiesRateCardPairSlots(row),
+    pairSlots: buildActivitiesRateCardPairSlots(row, options.resolveUserById),
     fallbackGender: options.activeUserGender,
     stackClasses: buildActivitiesRateCardStackClasses(item.mode, options.displayedDirection),
     presentation,
@@ -86,7 +88,10 @@ function buildActivitiesRateCardStackClasses(
   ];
 }
 
-function buildActivitiesRateCardPairSlots(row: AppTypes.ActivityListRow): PairCardData['slots'] | undefined {
+function buildActivitiesRateCardPairSlots(
+  row: AppTypes.ActivityListRow,
+  resolveUserById: (userId: string) => RateCardPerson | null
+): PairCardData['slots'] | undefined {
   if (!row.rateDisplay?.pairSlots?.length) {
     return undefined;
   }
@@ -98,12 +103,24 @@ function buildActivitiesRateCardPairSlots(row: AppTypes.ActivityListRow): PairCa
     return undefined;
   }
 
-  return row.rateDisplay.pairSlots.map(slot => ({
-    key: slot.key,
-    label: slot.label,
-    tone: slot.tone,
-    slides: slot.slides.map(slide => ({ ...slide }))
-  }));
+  const pairUsers = buildActivitiesRateCardPairUsers(row, resolveUserById);
+  const pairUserByGender = new Map(pairUsers.map(user => [user.gender, user]));
+  return row.rateDisplay.pairSlots.map((slot, index) => {
+    const profileUser = (slot.tone ? pairUserByGender.get(slot.tone) : null) ?? pairUsers[index] ?? null;
+    return {
+      key: slot.key,
+      label: slot.label,
+      tone: slot.tone,
+      slides: slot.slides.map(slide => ({ ...slide })),
+      profileView: profileUser
+        ? {
+            userId: profileUser.id,
+            user: profileUser.profile ?? null,
+            label: profileUser.name
+          }
+        : null
+    };
+  });
 }
 
 function buildActivitiesRateCardPairUsers(
@@ -155,6 +172,23 @@ function toActivitiesRateCardPerson(
     name: user.name,
     age: user.age,
     city: user.city,
-    gender: user.gender
+    gender: user.gender,
+    profile: 'profile' in user ? user.profile : null
+  };
+}
+
+function mergeActivitiesRateCardPerson(
+  displayUser: RateCardPerson | null,
+  resolvedUser: RateCardPerson | null
+): RateCardPerson | null {
+  if (!displayUser) {
+    return resolvedUser;
+  }
+  if (displayUser.profile || !resolvedUser?.profile) {
+    return displayUser;
+  }
+  return {
+    ...displayUser,
+    profile: resolvedUser.profile
   };
 }

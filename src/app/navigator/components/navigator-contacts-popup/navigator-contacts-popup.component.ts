@@ -25,6 +25,8 @@ import {
   type NavigatorContactMethodItem,
   type NavigatorContactMethodType
 } from '../../navigator-contacts.service';
+import { UsersService } from '../../../shared/core';
+import { NavigatorService } from '../../navigator.service';
 
 @Component({
   selector: 'app-navigator-contacts-popup',
@@ -42,6 +44,8 @@ import {
 })
 export class NavigatorContactsPopupComponent {
   private readonly confirmationDialogService = inject(ConfirmationDialogService);
+  private readonly navigatorService = inject(NavigatorService);
+  private readonly usersService = inject(UsersService);
   protected readonly contactsService = inject(NavigatorContactsService);
   protected readonly contactMethodOptions = NAVIGATOR_CONTACT_METHOD_OPTIONS;
   protected readonly isMobileViewport = signal(this.detectMobileViewport());
@@ -212,6 +216,20 @@ export class NavigatorContactsPopupComponent {
     this.closeActionMenu();
     this.formErrorMessage.set('');
     this.editingContact.set(this.contactsService.createFormValue(contact));
+  }
+
+  protected viewContactProfile(contact: NavigatorContactListItem, event?: Event): void {
+    event?.stopPropagation();
+    this.closeActionMenu();
+    const userId = `${contact.userId ?? ''}`.trim();
+    if (!userId) {
+      return;
+    }
+    this.navigatorService.openProfileView({
+      userId,
+      user: this.usersService.peekCachedUserById(userId),
+      label: contact.name
+    });
   }
 
   protected closeFormPopup(event?: Event): void {

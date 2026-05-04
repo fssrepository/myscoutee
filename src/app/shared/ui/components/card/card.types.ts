@@ -62,6 +62,12 @@ export interface CardImageSlide {
   placeholderLabel?: string | null;
 }
 
+export interface CardProfileViewData {
+  userId: string;
+  user?: unknown | null;
+  label?: string | null;
+}
+
 export interface PairCardSlot {
   key: string;
   label: string;
@@ -69,6 +75,7 @@ export interface PairCardSlot {
   slides: readonly CardImageSlide[];
   statusBadgeLabel?: string | null;
   collapsed?: boolean;
+  profileView?: CardProfileViewData | null;
 }
 
 export interface SingleCardData {
@@ -76,6 +83,7 @@ export interface SingleCardData {
   groupLabel?: string | null;
   slides: readonly CardImageSlide[];
   statusBadgeLabel?: string | null;
+  profileView?: CardProfileViewData | null;
   stackClasses?: readonly string[];
   badge?: CardBadgeConfig | null;
   presentation?: CardPresentation;
