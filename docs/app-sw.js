@@ -1,5 +1,6 @@
 const CACHE_PREFIX = 'myscoutee-runtime';
-const CACHE_VERSION = 'v1';
+const CACHE_VERSION = "build-ebcdffdd0f0b-20260504195314";
+const BUILD_ID = "ebcdffdd0f0b-20260504195314";
 const APP_CACHE = `${CACHE_PREFIX}-app-${CACHE_VERSION}`;
 const API_CACHE = `${CACHE_PREFIX}-api-${CACHE_VERSION}`;
 const MEDIA_CACHE = `${CACHE_PREFIX}-media-${CACHE_VERSION}`;
