@@ -101,7 +101,7 @@ export class HelpCenterService extends BaseRouteModeService {
     return this.cloneState(state);
   }
 
-  private async loadState(kind: HelpCenterDocumentKind, lang = 'en'): Promise<HelpCenterState> {
+  private async loadState(kind: HelpCenterDocumentKind, lang?: string | null): Promise<HelpCenterState> {
     const state = await this.helpService(kind).loadState(kind, lang);
     this.setState(kind, state);
     return this.cloneState(state);

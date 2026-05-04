@@ -22,11 +22,12 @@ export class HttpHelpCenterService {
   private readonly http = inject(HttpClient);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
 
-  async loadState(kind: HelpCenterDocumentKind = 'help', lang = 'en'): Promise<HelpCenterState> {
+  async loadState(kind: HelpCenterDocumentKind = 'help', lang?: string | null): Promise<HelpCenterState> {
     const documentKind = this.normalizeKind(kind);
+    const requestLang = this.requestLang(lang);
     const response = await this.http
       .get<Partial<HelpCenterState> | null>(`${this.apiBaseUrl}/${documentKind}/active`, {
-        params: { lang: this.normalizeLang(lang) }
+        params: { lang: requestLang }
       })
       .toPromise();
     return this.normalizeState(response, documentKind);
@@ -230,6 +231,40 @@ export class HttpHelpCenterService {
   private normalizeLang(lang: string | null | undefined): string {
     const normalized = `${lang ?? ''}`.trim().toLowerCase().split('-')[0] || 'en';
     return normalized === 'hu' ? 'hu' : 'en';
+  }
+
+  private requestLang(lang?: string | null): string {
+    const explicit = this.normalizeRequestLanguage(lang);
+    if (explicit) {
+      return explicit;
+    }
+    return this.browserLanguage();
+  }
+
+  private browserLanguage(): string {
+    const languages = this.browserLanguages()
+      .map(value => this.normalizeRequestLanguage(value))
+      .filter(Boolean);
+    return languages.find(lang => lang !== 'en') ?? languages[0] ?? 'en';
+  }
+
+  private browserLanguages(): string[] {
+    if (typeof navigator === 'undefined') {
+      return [];
+    }
+    return Array.isArray(navigator.languages) && navigator.languages.length > 0
+      ? navigator.languages
+      : [navigator.language];
+  }
+
+  private normalizeRequestLanguage(lang?: string | null): string {
+    return `${lang ?? ''}`
+      .trim()
+      .toLowerCase()
+      .split(',')[0]
+      .split(';')[0]
+      .split('-')[0]
+      .replace(/[^a-z]/g, '');
   }
 
   private languageLabel(lang: string | null | undefined, label: string | null | undefined): string {

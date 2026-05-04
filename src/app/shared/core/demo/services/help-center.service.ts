@@ -22,15 +22,14 @@ export class DemoHelpCenterService {
   private readonly memoryDb = inject(AppMemoryDb);
   private readonly routeDelay = inject(RouteDelayService);
 
-  async loadState(kind: HelpCenterDocumentKind = 'help', lang = 'en'): Promise<HelpCenterState> {
+  async loadState(kind: HelpCenterDocumentKind = 'help', lang?: string | null): Promise<HelpCenterState> {
     await this.memoryDb.whenReady();
     const documentKind = this.normalizeKind(kind);
-    const language = this.normalizeLang(lang);
+    const language = this.requestContentLang(lang);
     let changed = false;
     for (const option of this.availableLanguages()) {
       changed = this.ensureSeeded(documentKind, option.lang)
         || this.ensureRevisionDescriptions(documentKind, option.lang)
-        || this.ensureLocalizedRevisionDefaults(documentKind, option.lang)
         || changed;
     }
     if (changed) {
@@ -585,182 +584,10 @@ export class DemoHelpCenterService {
 
   private defaultRevision(kind: HelpCenterDocumentKind, lang = 'en'): HelpCenterRevision {
     const language = this.normalizeLang(lang);
-    if (language === 'hu') {
-      return this.cloneRevision(this.huDefaultRevision(kind), kind);
-    }
-    return this.cloneRevision(
-      kind === 'privacy'
-        ? APP_STATIC_DATA.defaultPrivacyCenterRevision
-        : APP_STATIC_DATA.defaultHelpCenterRevision,
-      kind
-    );
-  }
-
-  private huDefaultRevision(kind: HelpCenterDocumentKind): HelpCenterRevision {
-    const nowIso = kind === 'privacy' ? '2026-02-01T00:00:00.000Z' : '2026-05-01T00:00:00.000Z';
-    const base = kind === 'privacy'
-      ? APP_STATIC_DATA.defaultPrivacyCenterRevision
-      : APP_STATIC_DATA.defaultHelpCenterRevision;
-    return {
-      ...base,
-      id: kind === 'privacy' ? 'privacy-default-hu-v1' : 'help-default-hu-v1',
-      documentKind: kind,
-      lang: 'hu',
-      languageLabel: 'Magyar',
-      title: kind === 'privacy' ? 'Adatvédelem' : 'MyScoutee súgó',
-      summary: kind === 'privacy' ? 'Adatvédelem elsőként' : 'Mit tehetsz a MyScoutee-ban',
-      description: kind === 'privacy'
-        ? 'Folytatás előtt nézd át és fogadd el, hogyan használja a MyScoutee az adataidat.'
-        : 'A MyScoutee segít az eseményeket elejétől végéig megtervezni: meghívások, szakaszok és csoportok, erőforrások, valamint kontextushoz kötött csevegések.',
-      sections: kind === 'privacy' ? this.huPrivacySections() : this.huHelpSections(),
-      createdAtIso: nowIso,
-      updatedAtIso: nowIso
-    };
-  }
-
-  private huHelpSections(): HelpCenterSection[] {
-    return [
-      {
-        id: 'events',
-        icon: 'event_note',
-        title: 'Események és alesemények',
-        blurb: 'Építsd fel a teljes eseményfolyamatot szakaszokkal vagy opcionális elemekkel.',
-        contentHtml: '<p><strong>Építsd fel a teljes eseményfolyamatot szakaszokkal vagy opcionális elemekkel.</strong></p><p>Hozz létre fő eseményt, majd bontsd aleseményekre szakaszokhoz, mellékprogramokhoz vagy opcionális alkalmakhoz.</p><ul><li>Alkalmi és verseny jellegű struktúrák támogatása</li><li>A szakaszkontextus látható marad a kapcsolódó képernyőkön</li><li>A szervezők a hierarchia elvesztése nélkül szerkeszthetnek</li></ul>'
-      },
-      {
-        id: 'resources',
-        icon: 'inventory_2',
-        title: 'Erőforrások és kapacitás',
-        blurb: 'Rendelj embereket, autókat, szállást és kellékeket limitekkel.',
-        contentHtml: '<p><strong>Rendelj embereket, autókat, szállást és kellékeket limitekkel.</strong></p><p>Az erőforrásmenükben eszközöket rendelhetsz aleseményekhez és csoportokhoz, majd közvetlenül állíthatod a kapacitásokat.</p><ul><li>Minimum/maximum kapacitás feladatonként</li><li>Kontextusos jelvények függő kérésekhez</li><li>Útvonal- és helytámogatás utazási erőforrásokhoz</li></ul>'
-      },
-      {
-        id: 'activities',
-        icon: 'forum',
-        title: 'Tevékenységek és csevegések',
-        blurb: 'Koordinálj kontextustudatos csatornákkal és szűrőkkel.',
-        contentHtml: '<p><strong>Koordinálj kontextustudatos csatornákkal és szűrőkkel.</strong></p><p>A csevegőcsatornák követik az esemény hatókörét: fő esemény, opcionális alesemény és csoportcsatorna is együtt létezhet.</p><ul><li>Gyors csatornaszűrés kontextus szerint</li><li>Olvasatlan számlálók releváns csatornákra szűkítve</li><li>Mobilon és asztali nézetben is működik</li></ul>'
-      },
-      {
-        id: 'safety',
-        icon: 'verified_user',
-        title: 'Profilok és biztonság',
-        blurb: 'Erősítsd a bizalmat profilminőséggel és moderációs eszközökkel.',
-        contentHtml: '<p><strong>Erősítsd a bizalmat profilminőséggel és moderációs eszközökkel.</strong></p><p>A profilkészültség valós időben frissül, ahogy a felhasználók kitöltik a fontos mezőket.</p><ul><li>Élő profilkészültségi visszajelzés</li><li>Felhasználójelentési és visszajelzési folyamatok</li><li>Adatvédelmi és hozzáférési láthatósági kontrollok</li></ul>'
-      }
-    ];
-  }
-
-  private huPrivacySections(): HelpCenterSection[] {
-    return [
-      {
-        id: 'privacy',
-        icon: 'policy',
-        title: 'Adatvédelem',
-        blurb: 'Hogyan kezeli a MyScoutee a profilhoz, eseményekhez és közösségi aktivitáshoz kapcsolódó személyes adatokat.',
-        contentHtml: '<p>Hogyan kezeli a MyScoutee a profilhoz, eseményekhez és közösségi aktivitáshoz kapcsolódó személyes adatokat.</p><p><strong>Utolsó frissítés:</strong> 2026. február 1.</p>'
-      },
-      {
-        id: 'contact-details',
-        icon: 'contact_mail',
-        title: 'Kapcsolati adatok',
-        blurb: 'Kihez fordulhatsz adatvédelemmel és adatkezeléssel kapcsolatban.',
-        contentHtml: '<ul><li><strong>Adatkezelő:</strong> MyScoutee demo platform</li><li><strong>Támogatási email:</strong> privacy@myscoutee.app</li><li><strong>DPO kapcsolat:</strong> dpo@myscoutee.app</li></ul>'
-      },
-      {
-        id: 'legal-basis',
-        icon: 'gavel',
-        title: 'Jogalap',
-        blurb: 'Miért kezel adatokat a MyScoutee a termék- és biztonsági folyamatokhoz.',
-        contentHtml: '<ul><li>Szerződés teljesítése a fiók- és eseményfunkciókhoz.</li><li>Jogos érdek a platform biztonsága és a visszaélések megelőzése érdekében.</li><li>Hozzájárulás opcionális profiladatokhoz, pontos helykoordinátákhoz és marketingkommunikációhoz.</li><li>Jogi kötelezettség biztonsági naplókhoz és megfelelőségi nyilvántartásokhoz.</li></ul>'
-      },
-      {
-        id: 'your-rights',
-        icon: 'fact_check',
-        title: 'Jogaid',
-        blurb: 'A fiókodhoz és személyes adataidhoz kapcsolódó jogaid.',
-        contentHtml: '<h4>Hozzáférés</h4><ul><li>Kérhetsz másolatot a tárolt személyes adataidról.</li></ul><h4>Helyesbítés</h4><ul><li>Javíthatod a pontatlan profil- vagy fiókadatokat.</li></ul><h4>Törlés</h4><ul><li>Kérheted a fiók és a személyes adatok törlését, ahol ez jogilag lehetséges.</li></ul><h4>Adathordozhatóság</h4><ul><li>Kérheted adataid exportját géppel olvasható formátumban.</li></ul>'
-      },
-      {
-        id: 'data-categories',
-        icon: 'category',
-        title: 'Adatkategóriák',
-        blurb: 'Milyen adattípusokat kezelhet a MyScoutee.',
-        contentHtml: '<h4>Fiók és azonosítás</h4><ul><li>Név</li><li>Születésnap</li><li>Lakóhely városa</li><li>Nem</li><li>Profilképek</li></ul><h4>Aktivitási adatok</h4><ul><li>Csevegések</li><li>Meghívások</li><li>Események</li><li>Szervezési interakciók</li><li>Értékelések</li></ul>'
-      },
-      {
-        id: 'purposes',
-        icon: 'tips_and_updates',
-        title: 'Célok',
-        blurb: 'Hogyan támogatják az adatok a profil-, esemény-, chat- és bizalmi funkciókat.',
-        contentHtml: '<ul><li>Profil-, chat-, esemény- és szervezői funkciók működtetése.</li><li>Releváns tagok ajánlása és a felfedezés minőségének javítása.</li><li>Visszaélések, spam és gyanús aktivitás észlelése.</li><li>Fiókkérések és megfelelőségi folyamatok támogatása.</li></ul>'
-      },
-      {
-        id: 'retention',
-        icon: 'schedule',
-        title: 'Megőrzés',
-        blurb: 'Mennyi ideig őrizzük meg az adatokat.',
-        contentHtml: '<ul><li>Fiókprofil-adatok: amíg a fiók aktív.</li><li>Pontos helykoordináták: csak az aktív helyalapú funkciókhoz szükséges ideig.</li><li>Biztonsági és auditnaplók: jogi vagy megfelelőségi igény szerint.</li><li>Törölt fiókok: az adatok a megőrzési idő után törlődnek vagy anonimizálódnak.</li></ul>'
-      },
-      {
-        id: 'sharing',
-        icon: 'share',
-        title: 'Harmadik felekkel megosztás',
-        blurb: 'Mikor kerülhetnek adatok a MyScoutee-n kívülre.',
-        contentHtml: '<ul><li>Szolgáltatókkal tárhely, analitika és támogatási működés céljából.</li><li>Hatóságokkal csak akkor, ha alkalmazandó jog előírja.</li><li>Személyes adatot nem értékesítünk.</li></ul>'
-      },
-      {
-        id: 'security',
-        icon: 'security',
-        title: 'Biztonság',
-        blurb: 'Az adatok védelmét szolgáló kontrollok.',
-        contentHtml: '<ul><li>Szerepköralapú hozzáférés belső eszközökhöz.</li><li>Titkosított adatátvitel.</li><li>Üzemeltetési monitorozás és incidenskezelési folyamatok.</li></ul>'
-      }
-    ];
-  }
-
-  private ensureLocalizedRevisionDefaults(kind: HelpCenterDocumentKind, lang = 'en'): boolean {
-    const language = this.normalizeLang(lang);
-    if (language !== 'hu') {
-      return false;
-    }
-    const table = this.table();
-    const revisions = this.revisionsForKind(table, kind, language);
-    const englishRevisionTitle = kind === 'privacy' ? 'Data privacy' : 'MyScoutee help';
-    const englishSummary = kind === 'privacy' ? 'Privacy first' : 'What you can do in MyScoutee';
-    const englishDescription = this.defaultDescription(kind, 'en');
-    const changedIds = revisions
-      .filter(revision => revision.title === englishRevisionTitle
-        || revision.summary === englishSummary
-        || revision.description === englishDescription)
-      .map(revision => revision.id);
-    if (changedIds.length === 0) {
-      return false;
-    }
-    this.memoryDb.write(state => {
-      const current = state[HELP_CENTER_TABLE_NAME];
-      const revisionsById = this.normalizedRevisionsById(current);
-      for (const id of changedIds) {
-        const revision = revisionsById[id];
-        if (!revision) {
-          continue;
-        }
-        revisionsById[id] = {
-          ...revision,
-          title: revision.title === englishRevisionTitle ? this.defaultRevisionTitle(kind, language) : revision.title,
-          summary: revision.summary === englishSummary ? this.defaultSummary(kind, language) : revision.summary,
-          description: revision.description === englishDescription ? this.defaultDescription(kind, language) : revision.description
-        };
-      }
-      return {
-        ...state,
-        [HELP_CENTER_TABLE_NAME]: {
-          ...current,
-          revisionsById
-        }
-      };
-    });
-    return true;
+    const revisionsByLang = kind === 'privacy'
+      ? APP_STATIC_DATA.defaultPrivacyCenterRevisionsByLang
+      : APP_STATIC_DATA.defaultHelpCenterRevisionsByLang;
+    return this.cloneRevision(language === 'hu' ? revisionsByLang.hu : revisionsByLang.en, kind);
   }
 
   private defaultTitle(kind: HelpCenterDocumentKind, version: number, lang = 'en'): string {
@@ -768,13 +595,6 @@ export class DemoHelpCenterService {
       return kind === 'privacy' ? `Adatvédelmi verzió v${version}` : `Súgó verzió v${version}`;
     }
     return kind === 'privacy' ? `Privacy revision v${version}` : `Help revision v${version}`;
-  }
-
-  private defaultRevisionTitle(kind: HelpCenterDocumentKind, lang = 'en'): string {
-    if (this.normalizeLang(lang) === 'hu') {
-      return kind === 'privacy' ? 'Adatvédelem' : 'MyScoutee súgó';
-    }
-    return kind === 'privacy' ? 'Data privacy' : 'MyScoutee help';
   }
 
   private defaultSummary(kind: HelpCenterDocumentKind, lang = 'en'): string {
@@ -831,6 +651,46 @@ export class DemoHelpCenterService {
   private normalizeLang(lang: string | null | undefined): string {
     const normalized = `${lang ?? ''}`.trim().toLowerCase().split('-')[0];
     return normalized === 'hu' ? 'hu' : 'en';
+  }
+
+  private requestContentLang(lang: string | null | undefined): string {
+    const explicit = this.supportedContentLang(lang);
+    if (explicit) {
+      return explicit;
+    }
+    return this.supportedContentLang(this.browserLanguage()) || 'en';
+  }
+
+  private browserLanguage(): string {
+    const languages = this.browserLanguages()
+      .map(value => this.normalizeRequestLanguage(value))
+      .filter(Boolean);
+    return languages.find(lang => lang !== 'en') ?? languages[0] ?? 'en';
+  }
+
+  private browserLanguages(): string[] {
+    if (typeof navigator === 'undefined') {
+      return [];
+    }
+    return Array.isArray(navigator.languages) && navigator.languages.length > 0
+      ? navigator.languages
+      : [navigator.language];
+  }
+
+  private supportedContentLang(lang: string | null | undefined): string | null {
+    const requested = this.normalizeRequestLanguage(lang);
+    return this.availableLanguages().some(language => language.lang === requested) ? requested : null;
+  }
+
+  private normalizeRequestLanguage(lang: string | null | undefined): string {
+    const normalized = `${lang ?? ''}`
+      .trim()
+      .toLowerCase()
+      .split(',')[0]
+      .split(';')[0]
+      .split('-')[0]
+      .replace(/[^a-z]/g, '');
+    return normalized;
   }
 
   private languageLabel(lang: string | null | undefined): string {

@@ -24,7 +24,7 @@ export class IdeaPostsService extends BaseRouteModeService {
       .sort((left, right) => this.sortValue(right) - this.sortValue(left)));
   }
 
-  async loadPublishedPosts(lang = 'en'): Promise<IdeaPost[]> {
+  async loadPublishedPosts(lang?: string | null): Promise<IdeaPost[]> {
     const posts = await this.ideaService().loadPublishedPosts(lang);
     this.applyPublishedPosts(posts);
     return this.clonePosts(this.postsRef());

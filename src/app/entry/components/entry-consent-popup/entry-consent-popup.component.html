@@ -1,14 +1,14 @@
 @if (open) {
-  <section class="entry-consent-overlay" aria-label="GDPR consent">
+  <section class="entry-consent-overlay" [attr.aria-label]="uiText('GDPR consent')">
     <div class="entry-consent-backdrop" (click)="viewOnly && requestClose()"></div>
     <article class="entry-consent-panel">
       <header class="entry-consent-head" [ngClass]="headerColorClass()">
         <div class="entry-consent-head-row" [class.has-close]="viewOnly">
           <div class="entry-consent-title-wrap">
             <h2>
-              <span>{{ activeRevision()?.summary || 'Privacy first' }}</span>
+              <span data-i18n-ignore>{{ activeSummaryLabel() }}</span>
             </h2>
-            <p>{{ activeRevision()?.description || defaultPrivacyDescription }}</p>
+            <p data-i18n-ignore>{{ activeDescriptionLabel() }}</p>
           </div>
           @if (versionLabel()) {
             <span class="entry-consent-version">{{ versionLabel() }}</span>
@@ -20,7 +20,7 @@
               matRipple
               [matRippleColor]="'rgba(41, 78, 128, 0.12)'"
               (click)="requestClose()"
-              aria-label="Close privacy popup"
+              [attr.aria-label]="uiText('Close privacy popup')"
               >
               <span class="popup-close-glyph" aria-hidden="true">×</span>
             </button>
@@ -32,10 +32,10 @@
         @if (loading) {
           <section class="entry-consent-loading">
             <span class="entry-consent-spinner" aria-hidden="true"></span>
-            <span>Loading privacy content</span>
+            <span>{{ uiText('Loading privacy content') }}</span>
           </section>
         } @else if (activeRevision()) {
-          <div class="entry-consent-accordion" aria-label="Privacy sections">
+          <div class="entry-consent-accordion" [attr.aria-label]="uiText('Privacy sections')">
             @for (section of sections(); track section.id) {
               <article
                 class="entry-consent-accordion-item"
@@ -53,7 +53,7 @@
                     >
                     <span class="entry-consent-section-title">
                     <mat-icon>{{ section.icon }}</mat-icon>
-                    <span>{{ section.title }}</span>
+                    <span data-i18n-ignore>{{ section.title }}</span>
                     </span>
                   </button>
                   <span class="entry-consent-section-actions">
@@ -63,7 +63,7 @@
                         class="entry-consent-section-check"
                         [class.is-approved]="isSectionApproved(section.id)"
                         [attr.aria-pressed]="isSectionApproved(section.id)"
-                        [attr.aria-label]="isSectionApproved(section.id) ? 'Optional privacy section approved' : 'Approve optional privacy section'"
+                        [attr.aria-label]="uiText(isSectionApproved(section.id) ? 'Optional privacy section approved' : 'Approve optional privacy section')"
                         (pointerover)="stopNestedAccordionEvent($event)"
                         (mouseover)="stopNestedAccordionEvent($event)"
                         (mousedown)="stopNestedAccordionEvent($event)"
@@ -81,7 +81,7 @@
                       type="button"
                       class="entry-consent-caret-btn"
                       [attr.aria-expanded]="openAccordionSectionId === section.id"
-                      [attr.aria-label]="openAccordionSectionId === section.id ? 'Collapse privacy section' : 'Expand privacy section'"
+                      [attr.aria-label]="uiText(openAccordionSectionId === section.id ? 'Collapse privacy section' : 'Expand privacy section')"
                       (click)="toggleAccordionSection(section.id, $event)"
                       >
                       <mat-icon class="entry-consent-caret">expand_more</mat-icon>
@@ -91,9 +91,9 @@
                 @if (openAccordionSectionId === section.id) {
                   <div class="entry-consent-accordion-body">
                     @if (section.blurb) {
-                      <p class="entry-consent-lead">{{ section.blurb }}</p>
+                      <p class="entry-consent-lead" data-i18n-ignore>{{ section.blurb }}</p>
                     }
-                    <div class="entry-consent-html" [innerHTML]="section.contentHtml"></div>
+                    <div class="entry-consent-html" data-i18n-ignore [innerHTML]="section.contentHtml"></div>
                   </div>
                 }
               </article>
@@ -102,7 +102,7 @@
         } @else {
           <section class="entry-consent-loading">
             <mat-icon>policy</mat-icon>
-            <span>Privacy content is not available right now.</span>
+            <span>{{ uiText('Privacy content is not available right now.') }}</span>
           </section>
         }
       </div>
@@ -135,7 +135,7 @@
             [matRippleColor]="'rgba(47, 78, 122, 0.14)'"
             (click)="requestReject()"
             >
-            Cancel
+            {{ uiText('Cancel') }}
           </button>
           <button
             type="button"
@@ -145,7 +145,7 @@
             [disabled]="!canAccept()"
             (click)="requestAccept()"
             >
-            Accept and continue
+            {{ uiText('Accept and continue') }}
           </button>
         </footer>
       }

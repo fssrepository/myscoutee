@@ -13,10 +13,11 @@ export class HttpIdeaPostsService {
   private readonly media = inject(HttpMediaService);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
 
-  async loadPublishedPosts(lang = 'en'): Promise<IdeaPost[]> {
+  async loadPublishedPosts(lang?: string | null): Promise<IdeaPost[]> {
+    const requestLang = this.requestLang(lang);
     const response = await this.http
       .get<{ ideas?: Array<Partial<IdeaPost>> | null } | null>(`${this.apiBaseUrl}/landing/content`, {
-        params: { lang: this.normalizeLang(lang) }
+        params: { lang: requestLang }
       })
       .toPromise();
     return this.normalizePosts(response?.ideas);
@@ -129,6 +130,40 @@ export class HttpIdeaPostsService {
   private normalizeLang(lang: string | null | undefined): string {
     const normalized = `${lang ?? ''}`.trim().toLowerCase().split('-')[0];
     return normalized === 'hu' ? 'hu' : 'en';
+  }
+
+  private requestLang(lang?: string | null): string {
+    const explicit = this.normalizeRequestLanguage(lang);
+    if (explicit) {
+      return explicit;
+    }
+    return this.browserLanguage();
+  }
+
+  private browserLanguage(): string {
+    const languages = this.browserLanguages()
+      .map(value => this.normalizeRequestLanguage(value))
+      .filter(Boolean);
+    return languages.find(lang => lang !== 'en') ?? languages[0] ?? 'en';
+  }
+
+  private browserLanguages(): string[] {
+    if (typeof navigator === 'undefined') {
+      return [];
+    }
+    return Array.isArray(navigator.languages) && navigator.languages.length > 0
+      ? navigator.languages
+      : [navigator.language];
+  }
+
+  private normalizeRequestLanguage(lang?: string | null): string {
+    return `${lang ?? ''}`
+      .trim()
+      .toLowerCase()
+      .split(',')[0]
+      .split(';')[0]
+      .split('-')[0]
+      .replace(/[^a-z]/g, '');
   }
 
   private contentKey(value: string | null | undefined, id: string): string {

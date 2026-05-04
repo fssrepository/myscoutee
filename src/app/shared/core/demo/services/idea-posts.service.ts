@@ -1,5 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 
+import { APP_STATIC_DATA } from '../../../app-static-data';
 import { AppMemoryDb } from '../../base/db';
 import type { IdeaPost, IdeaPostSaveRequest } from '../../base/models';
 import { IDEA_POSTS_TABLE_NAME, type DemoIdeaPostsTable } from '../models/idea-posts.model';
@@ -14,13 +15,13 @@ export class DemoIdeaPostsService {
   private readonly memoryDb = inject(AppMemoryDb);
   private readonly routeDelay = inject(RouteDelayService);
 
-  async loadPublishedPosts(lang = 'en'): Promise<IdeaPost[]> {
+  async loadPublishedPosts(lang?: string | null): Promise<IdeaPost[]> {
     await this.memoryDb.whenReady();
     const changed = this.ensureSeeded();
     if (changed) {
       await this.persistBestEffort();
     }
-    const language = this.normalizeLang(lang);
+    const language = this.requestContentLang(lang);
     const posts = this.sortedPosts(this.table()).filter(post => post.published && !post.trashed && post.lang === language);
     return posts.length > 0 ? posts : this.sortedPosts(this.table()).filter(post => post.published && !post.trashed && post.lang === 'en');
   }
@@ -527,6 +528,48 @@ export class DemoIdeaPostsService {
   private normalizeLang(lang: string | null | undefined): string {
     const normalized = `${lang ?? ''}`.trim().toLowerCase().split('-')[0];
     return normalized === 'hu' ? 'hu' : 'en';
+  }
+
+  private requestContentLang(lang: string | null | undefined): string {
+    const explicit = this.supportedContentLang(lang);
+    if (explicit) {
+      return explicit;
+    }
+    return this.supportedContentLang(this.browserLanguage()) || 'en';
+  }
+
+  private browserLanguage(): string {
+    const languages = this.browserLanguages()
+      .map(value => this.normalizeRequestLanguage(value))
+      .filter(Boolean);
+    return languages.find(lang => lang !== 'en') ?? languages[0] ?? 'en';
+  }
+
+  private browserLanguages(): string[] {
+    if (typeof navigator === 'undefined') {
+      return [];
+    }
+    return Array.isArray(navigator.languages) && navigator.languages.length > 0
+      ? navigator.languages
+      : [navigator.language];
+  }
+
+  private supportedContentLang(lang: string | null | undefined): string | null {
+    const requested = this.normalizeRequestLanguage(lang);
+    return APP_STATIC_DATA.contentLanguages.some(language => this.normalizeLang(language.lang) === requested)
+      ? requested
+      : null;
+  }
+
+  private normalizeRequestLanguage(lang: string | null | undefined): string {
+    const normalized = `${lang ?? ''}`
+      .trim()
+      .toLowerCase()
+      .split(',')[0]
+      .split(';')[0]
+      .split('-')[0]
+      .replace(/[^a-z]/g, '');
+    return normalized;
   }
 
   private languageLabel(lang: string | null | undefined): string {

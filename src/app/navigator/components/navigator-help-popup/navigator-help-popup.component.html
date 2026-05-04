@@ -14,7 +14,7 @@
             >
             <span class="support-help-tab-head">
               <mat-icon>{{ section.icon }}</mat-icon>
-              <span>{{ section.title }}</span>
+              <span data-i18n-ignore>{{ section.title }}</span>
             </span>
             <mat-icon class="support-help-accordion-caret">expand_more</mat-icon>
           </button>
@@ -22,9 +22,9 @@
             <div class="support-help-accordion-panel">
               @if (section.id === openAccordionSectionId) {
                 @if (section.blurb) {
-                  <p class="support-help-detail-lead">{{ section.blurb }}</p>
+                  <p class="support-help-detail-lead" data-i18n-ignore>{{ section.blurb }}</p>
                 }
-                <div class="support-help-html" [innerHTML]="section.contentHtml"></div>
+                <div class="support-help-html" data-i18n-ignore [innerHTML]="section.contentHtml"></div>
               }
             </div>
           </div>
