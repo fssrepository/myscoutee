@@ -217,8 +217,11 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   private calendarPendingPageAnchor: Date | null = null;
   private calendarPendingVisualKey: string | null = null;
   private calendarProgrammaticTargetKey: string | null = null;
+  private calendarSwipeEdgeDirection: -1 | 1 | null = null;
+  private calendarLastScrollLeft: number | null = null;
   private calendarScrollInProgress = false;
   private calendarRenderDeferred = false;
+  private readonly calendarDeferredPageKeys = new Set<string>();
   private calendarFrozenProgress: number | null = null;
   private weekRateViewportPageKey: string | null = null;
   private forceAnimatedLoadingCompletion = false;
@@ -355,8 +358,11 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     this.loadSequence += 1;
     this.calendarLoadAbortController?.abort();
     this.calendarLoadAbortController = null;
+    this.calendarSwipeEdgeDirection = null;
+    this.calendarLastScrollLeft = null;
     this.calendarScrollInProgress = false;
     this.calendarRenderDeferred = false;
+    this.calendarDeferredPageKeys.clear();
     this.clearListSnapSettleTimers();
     this.clearCalendarSettleTimers();
     this.clearLoadingAnimation();
@@ -699,7 +705,10 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
   protected onCalendarScroll(event: Event): void {
     const target = event.target as HTMLDivElement;
+    const scrollDirection = this.calendarScrollDirection(target.scrollLeft);
     this.calendarScrollInProgress = true;
+    this.prepareCalendarSlotsForEdgeSwipe(target, scrollDirection);
+    this.calendarLastScrollLeft = target.scrollLeft;
     this.updateCalendarSurface(target);
     this.emitState();
     const visiblePage = this.currentCalendarPage(target);
@@ -1056,8 +1065,11 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     this.calendarPendingPageAnchor = null;
     this.calendarPendingVisualKey = null;
     this.calendarProgrammaticTargetKey = null;
+    this.calendarSwipeEdgeDirection = null;
+    this.calendarLastScrollLeft = null;
     this.calendarScrollInProgress = false;
     this.calendarRenderDeferred = false;
+    this.calendarDeferredPageKeys.clear();
     this.calendarFrozenProgress = null;
     this.weekRateViewportPageKey = null;
 
@@ -1290,9 +1302,12 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     this.calendarPageTotals.set(pageKey, Math.max(nextItems.length, total));
     this.initialLoading = false;
     if (options.deferRender === true) {
+      this.calendarDeferredPageKeys.add(pageKey);
       this.calendarRenderDeferred = true;
       return;
     }
+    this.calendarDeferredPageKeys.delete(pageKey);
+    this.calendarRenderDeferred = this.calendarDeferredPageKeys.size > 0;
     this.items = [...nextItems];
     this.total = Math.max(nextItems.length, total);
     this.pageIndex = 0;
@@ -1991,8 +2006,11 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     }
   }
 
-  private syncCalendarPages(): void {
-    this.calendarRenderDeferred = false;
+  private syncCalendarPages(options: { flushDeferred?: boolean } = {}): void {
+    if (options.flushDeferred === true) {
+      this.calendarDeferredPageKeys.clear();
+      this.calendarRenderDeferred = false;
+    }
     if (!this.isCalendarMode() || !this.calendarConfig()) {
       this.calendarMonthPages = [];
       this.calendarWeekPages = [];
@@ -2079,8 +2097,11 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     this.calendarPendingPageAnchor = null;
     this.calendarPendingVisualKey = null;
     this.calendarProgrammaticTargetKey = null;
+    this.calendarSwipeEdgeDirection = null;
+    this.calendarLastScrollLeft = null;
     this.calendarScrollInProgress = false;
     this.calendarRenderDeferred = false;
+    this.calendarDeferredPageKeys.clear();
     this.calendarFrozenProgress = null;
   }
 
@@ -3241,7 +3262,11 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
   }
 
   private calendarItemsForAnchor(anchor: Date): T[] {
-    return this.calendarPageItems.get(this.calendarPageKey(anchor)) ?? [];
+    const pageKey = this.calendarPageKey(anchor);
+    if (this.calendarDeferredPageKeys.has(pageKey)) {
+      return [];
+    }
+    return this.calendarPageItems.get(pageKey) ?? [];
   }
 
   private maybeLoadCurrentCalendarPage(
@@ -3342,6 +3367,7 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
       this.calendarPageItems.set(pageKey, []);
       this.calendarPageTotals.set(pageKey, 0);
       if (!isInitial && this.calendarScrollInProgress) {
+        this.calendarDeferredPageKeys.add(pageKey);
         this.calendarRenderDeferred = true;
         this.initialLoading = false;
         return;
@@ -3386,6 +3412,9 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
     this.calendarPendingPageAnchor = null;
     this.calendarPendingVisualKey = null;
     this.calendarProgrammaticTargetKey = null;
+    if (!this.calendarScrollInProgress) {
+      this.calendarSwipeEdgeDirection = null;
+    }
     this.calendarFrozenProgress = null;
     this.loading = false;
     this.clearLoadingAnimation();
@@ -3419,6 +3448,11 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
     const step = delta < 0 ? -1 : 1;
     const currentIndex = this.currentCalendarPageIndex(scrollElement, pages.length);
     const targetIndex = currentIndex + step;
+    const preparedTargetIndex = this.prepareCalendarSlotsForArrowNavigation(scrollElement, currentIndex, step);
+    if (preparedTargetIndex !== null) {
+      this.scrollCalendarToPage(preparedTargetIndex, 'smooth');
+      return;
+    }
     if (targetIndex >= 0 && targetIndex < pages.length) {
       this.scrollCalendarToPage(targetIndex, 'smooth');
       return;
@@ -3460,6 +3494,33 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
         setTimeout(slide, 0);
       }
     }, 0);
+  }
+
+  private prepareCalendarSlotsForArrowNavigation(
+    scrollElement: HTMLDivElement,
+    currentIndex: number,
+    direction: -1 | 1
+  ): number | null {
+    const pages = this.currentCalendarPages();
+    const centerIndex = this.desiredCalendarPageIndex(pages.length);
+    if (pages.length < 3 || centerIndex <= 0 || centerIndex >= pages.length - 1) {
+      return null;
+    }
+    const movingTowardEdge = direction > 0
+      ? currentIndex >= pages.length - 2
+      : currentIndex <= 1;
+    if (!movingTowardEdge) {
+      return null;
+    }
+    const pageWidth = this.calendarViewportWidth(scrollElement);
+    if (pageWidth <= 0) {
+      return null;
+    }
+    this.rotateCalendarSlotsAhead(scrollElement, direction, pageWidth, centerIndex);
+    const shiftedCurrentIndex = direction > 0
+      ? Math.max(0, currentIndex - 1)
+      : Math.min(pages.length - 1, currentIndex + 1);
+    return Math.max(0, Math.min(pages.length - 1, shiftedCurrentIndex + direction));
   }
 
   private scrollCalendarToAnchor(anchor: Date): boolean {
@@ -3676,6 +3737,109 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
     return this.clamp(interpolatedIndex / Math.max(1, modelAnchors.length - 1));
   }
 
+  private calendarScrollDirection(scrollLeft: number): -1 | 1 | null {
+    if (this.calendarLastScrollLeft === null) {
+      return null;
+    }
+    const delta = scrollLeft - this.calendarLastScrollLeft;
+    if (Math.abs(delta) < 1) {
+      return null;
+    }
+    return delta > 0 ? 1 : -1;
+  }
+
+  private prepareCalendarSlotsForEdgeSwipe(
+    scrollElement: HTMLDivElement,
+    scrollDirection: -1 | 1 | null
+  ): void {
+    if (!this.isCalendarMode() || this.suppressCalendarEdgeSettle || this.calendarSwipeEdgeDirection) {
+      return;
+    }
+    const pages = this.currentCalendarPages();
+    const centerIndex = this.desiredCalendarPageIndex(pages.length);
+    if (pages.length < 3 || centerIndex <= 0 || centerIndex >= pages.length - 1) {
+      return;
+    }
+    const pageWidth = this.calendarViewportWidth(scrollElement);
+    if (pageWidth <= 0) {
+      return;
+    }
+    const currentIndex = this.currentCalendarPageIndex(scrollElement, pages.length);
+    const currentLeft = this.calendarPageOffsetLeft(scrollElement, currentIndex);
+    if (currentLeft < 0) {
+      return;
+    }
+    const threshold = Math.max(8, pageWidth * 0.035);
+    const delta = scrollElement.scrollLeft - currentLeft;
+    const direction: -1 | 1 | null =
+      scrollDirection === 1 && currentIndex >= pages.length - 2 && (delta > threshold || currentIndex === pages.length - 1)
+        ? 1
+        : (scrollDirection === -1 && currentIndex <= 1 && (delta < -threshold || currentIndex === 0) ? -1 : null);
+    if (!direction) {
+      return;
+    }
+    this.calendarSwipeEdgeDirection = direction;
+    this.rotateCalendarSlotsAhead(scrollElement, direction, pageWidth, centerIndex);
+  }
+
+  private rotateCalendarSlotsAhead(
+    scrollElement: HTMLDivElement,
+    direction: -1 | 1,
+    pageWidth: number,
+    centerIndex: number
+  ): void {
+    const pages = this.currentCalendarPages();
+    if (pages.length < 3) {
+      return;
+    }
+    const previousScrollLeft = scrollElement.scrollLeft;
+    const anchors = direction > 0
+      ? [
+          ...pages.slice(1).map(page => page.anchor),
+          this.calendarAdjacentAnchor(pages[pages.length - 1]!.anchor, 1)
+        ]
+      : [
+          this.calendarAdjacentAnchor(pages[0]!.anchor, -1),
+          ...pages.slice(0, pages.length - 1).map(page => page.anchor)
+        ];
+    this.setCalendarAnchorPages(anchors, anchors[centerIndex] ?? pages[centerIndex]?.anchor ?? pages[0]!.anchor);
+
+    const previousScrollBehavior = scrollElement.style.scrollBehavior;
+    const previousSnapType = scrollElement.style.scrollSnapType;
+    this.suppressCalendarEdgeSettle = true;
+    scrollElement.style.scrollBehavior = 'auto';
+    scrollElement.style.scrollSnapType = 'none';
+    this.syncCalendarPages();
+    this.cdr.detectChanges();
+    const nextScrollLeft = direction > 0
+      ? previousScrollLeft - pageWidth
+      : previousScrollLeft + pageWidth;
+    const maxScrollLeft = Math.max(0, scrollElement.scrollWidth - scrollElement.clientWidth);
+    scrollElement.scrollLeft = Math.max(0, Math.min(maxScrollLeft, nextScrollLeft));
+    this.calendarLastScrollLeft = scrollElement.scrollLeft;
+    scrollElement.style.scrollBehavior = previousScrollBehavior;
+    scrollElement.style.scrollSnapType = previousSnapType;
+    this.suppressCalendarEdgeSettle = false;
+  }
+
+  private calendarAdjacentAnchor(anchor: Date, direction: -1 | 1): Date {
+    return this.isMonthMode()
+      ? AppUtils.addMonths(AppUtils.startOfMonth(anchor), direction)
+      : AppUtils.addDays(AppUtils.startOfWeekMonday(anchor), direction * 7);
+  }
+
+  private setCalendarAnchorPages(anchors: ReadonlyArray<Date>, focus: Date): void {
+    if (this.isMonthMode()) {
+      this.calendarMonthFocusDate = AppUtils.startOfMonth(focus);
+      this.calendarMonthAnchorPages = anchors.map(anchor => AppUtils.startOfMonth(anchor));
+      return;
+    }
+    if (this.isWeekMode()) {
+      this.calendarWeekFocusDate = AppUtils.startOfWeekMonday(focus);
+      this.calendarWeekAnchorPages = anchors.map(anchor => AppUtils.startOfWeekMonday(anchor));
+    }
+  }
+
   private clearCalendarSettleTimers(): void {
     if (this.calendarEdgeSettleTimer) {
       clearTimeout(this.calendarEdgeSettleTimer);
@@ -3722,6 +3886,8 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
       return;
     }
     this.clearCalendarSettleTimers();
+    this.calendarSwipeEdgeDirection = null;
+    this.calendarLastScrollLeft = scrollElement.scrollLeft;
     this.calendarScrollInProgress = false;
     this.updateCalendarSurface(scrollElement);
     const visiblePage = this.currentCalendarPage(scrollElement);
@@ -3745,7 +3911,7 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
     if (!this.calendarRenderDeferred) {
       return;
     }
-    this.syncCalendarPages();
+    this.syncCalendarPages({ flushDeferred: true });
     this.updateCalendarSurface(scrollElement);
     this.focusVisibleWeekRateHourSoon();
   }
