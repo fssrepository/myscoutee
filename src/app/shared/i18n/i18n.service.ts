@@ -654,6 +654,11 @@ export class I18nService {
     messages: Record<string, string>,
     sourceKeyByText: Record<string, string>
   ): string | null {
+    const helpEditorTranslation = this.translateHelpEditorSource(normalizedSource, messages);
+    if (helpEditorTranslation) {
+      return helpEditorTranslation;
+    }
+
     const composite = this.translateCompositeSource(normalizedSource, messages, sourceKeyByText);
     if (composite) {
       return composite;
@@ -754,6 +759,109 @@ export class I18nService {
     }
 
     return null;
+  }
+
+  private translateHelpEditorSource(
+    normalizedSource: string,
+    messages: Record<string, string>
+  ): string | null {
+    const sectionsWithDateMatch = normalizedSource.match(/^(\d+) sections? · (.+)$/i);
+    if (sectionsWithDateMatch) {
+      const countText = this.translateCount(messages, 'sections.count', sectionsWithDateMatch[1] ?? '0');
+      return countText ? `${countText} · ${sectionsWithDateMatch[2] ?? ''}` : null;
+    }
+
+    const sectionsMatch = normalizedSource.match(/^(\d+) sections?$/i);
+    if (sectionsMatch) {
+      return this.translateCount(messages, 'sections.count', sectionsMatch[1] ?? '0');
+    }
+
+    const activeMatch = normalizedSource.match(/^Active (help|privacy) v(\d+)$/i);
+    if (activeMatch) {
+      return this.interpolateDocumentMessage(messages, `active.${this.documentKey(activeMatch[1])}.version`, {
+        version: activeMatch[2] ?? '0'
+      });
+    }
+
+    const noActiveMatch = normalizedSource.match(/^No active (help|privacy) revision$/i);
+    if (noActiveMatch) {
+      return this.documentMessage(messages, `no.active.${this.documentKey(noActiveMatch[1])}.revision`);
+    }
+
+    const loadingMatch = normalizedSource.match(/^Loading (help|privacy) revisions$/i);
+    if (loadingMatch) {
+      return this.documentMessage(messages, `loading.${this.documentKey(loadingMatch[1])}.revisions`);
+    }
+
+    const noRevisionsMatch = normalizedSource.match(/^No (help|privacy) revisions$/i);
+    if (noRevisionsMatch) {
+      return this.documentMessage(messages, `no.${this.documentKey(noRevisionsMatch[1])}.revisions`);
+    }
+
+    const enablePopupMatch = normalizedSource.match(/^Create a revision to enable the (help|privacy) popup\.$/i);
+    if (enablePopupMatch) {
+      return this.documentMessage(messages, `create.revision.to.enable.${this.documentKey(enablePopupMatch[1])}.popup`);
+    }
+
+    const revisionsLabelMatch = normalizedSource.match(/^(Help|Privacy) revisions$/i);
+    if (revisionsLabelMatch) {
+      return this.documentMessage(messages, `${this.documentKey(revisionsLabelMatch[1])}.revisions`);
+    }
+
+    const popupHeaderMatch = normalizedSource.match(/^(Help|Privacy) popup header$/i);
+    if (popupHeaderMatch) {
+      return this.documentMessage(messages, `${this.documentKey(popupHeaderMatch[1])}.popup.header`);
+    }
+
+    const descriptionMatch = normalizedSource.match(/^(Help|Privacy) description$/i);
+    if (descriptionMatch) {
+      return this.documentMessage(messages, `${this.documentKey(descriptionMatch[1])}.description`);
+    }
+
+    const sectionTitleMatch = normalizedSource.match(/^(Help|Privacy) section title$/i);
+    if (sectionTitleMatch) {
+      return this.documentMessage(messages, `${this.documentKey(sectionTitleMatch[1])}.section.title`);
+    }
+
+    const sectionActionMatch = normalizedSource.match(/^(Add|Remove|Toggle) (help|privacy) section$/i);
+    if (sectionActionMatch) {
+      return this.documentMessage(
+        messages,
+        `${sectionActionMatch[1]?.toLocaleLowerCase('en-US')}.${this.documentKey(sectionActionMatch[2])}.section`
+      );
+    }
+
+    const unableMatch = normalizedSource.match(/^Unable to (load|save|activate|delete) (help|privacy) revision(s)?\.$/i);
+    if (unableMatch) {
+      return this.documentMessage(
+        messages,
+        `unable.to.${unableMatch[1]?.toLocaleLowerCase('en-US')}.${this.documentKey(unableMatch[2])}.revisions`
+      );
+    }
+
+    return null;
+  }
+
+  private documentKey(value: string | undefined): 'help' | 'privacy' {
+    return `${value ?? ''}`.trim().toLocaleLowerCase('en-US') === 'privacy' ? 'privacy' : 'help';
+  }
+
+  private documentMessage(messages: Record<string, string>, key: string): string | null {
+    return messages[key] ?? null;
+  }
+
+  private interpolateDocumentMessage(
+    messages: Record<string, string>,
+    key: string,
+    values: Record<string, string>
+  ): string | null {
+    const template = this.documentMessage(messages, key);
+    return template ? this.interpolate(template, values) : null;
+  }
+
+  private translateCount(messages: Record<string, string>, key: string, count: string): string | null {
+    const template = messages[key];
+    return template ? this.interpolate(template, { count }) : null;
   }
 
   private translateEnglishDateSource(normalizedSource: string): string | null {

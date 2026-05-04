@@ -7,10 +7,10 @@
           <h2>{{ editorTitle() }}</h2>
           <p class="popup-subtitle">
             @if (activeRevision(); as active) {
-              <span class="help-editor-active-subtitle-main">Active {{ documentLabelLower() }} v{{ active.version }}</span>
-              <span class="help-editor-active-subtitle-title">{{ active.title }}</span>
+              <span class="help-editor-active-subtitle-main">{{ activeRevisionLabel(active.version) }}</span>
+              <span class="help-editor-active-subtitle-title" data-i18n-ignore>{{ active.title }}</span>
             } @else {
-              No active {{ documentLabelLower() }} revision
+              {{ noActiveRevisionLabel() }}
             }
           </p>
         </div>
@@ -26,7 +26,7 @@
               (click)="toggleDocumentMenu($event)"
               >
               <mat-icon>{{ documentIcon(documentKind) }}</mat-icon>
-              <span>{{ documentLabel() }}</span>
+              <span>{{ uiDocumentLabel() }}</span>
               <mat-icon class="help-editor-document-menu-caret">expand_more</mat-icon>
             </button>
             @if (documentMenuOpen) {
@@ -41,7 +41,7 @@
                   (click)="selectDocumentKind('help', $event)"
                   >
                   <mat-icon>help_outline</mat-icon>
-                  <span>Help</span>
+                  <span>{{ uiText('Help') }}</span>
                 </button>
                 <button
                   type="button"
@@ -53,7 +53,7 @@
                   (click)="selectDocumentKind('privacy', $event)"
                   >
                   <mat-icon>policy</mat-icon>
-                  <span>Privacy</span>
+                  <span>{{ uiText('Privacy') }}</span>
                 </button>
               </div>
             }
@@ -63,7 +63,7 @@
             class="help-editor-icon-btn"
             [disabled]="loading() || isAnyActionPending()"
             (click)="startNewRevision($event)"
-            [attr.aria-label]="'Create ' + documentLabelLower() + ' revision'"
+            [attr.aria-label]="createRevisionLabel()"
             title="Create empty revision"
             >
             <mat-icon>add</mat-icon>
@@ -131,7 +131,7 @@
                 ></circle>
               </svg>
             </span>
-            <span>Loading {{ documentLabelLower() }} revisions</span>
+            <span>{{ loadingRevisionsLabel() }}</span>
           </div>
         } @else {
           @if (error) {
@@ -144,7 +144,7 @@
           <section class="help-editor-revisions-pane">
             @let rows = revisionRows();
             @if (rows.length > 0) {
-              <div class="help-editor-revision-list" [attr.aria-label]="documentLabel() + ' revisions'">
+              <div class="help-editor-revision-list" [attr.aria-label]="revisionsAriaLabel()">
                 @for (row of rows; track row.id) {
                   @if (row.kind === 'draft') {
                     @if (draft; as editDraft) {
@@ -225,7 +225,7 @@
                                       type="text"
                                       name="helpSummary"
                                       [(ngModel)]="editDraft.summary"
-                                      [placeholder]="documentLabel() + ' popup header'"
+                                      [placeholder]="popupHeaderPlaceholder()"
                                       required
                                     />
                                   </label>
@@ -246,7 +246,7 @@
                                     <textarea
                                       name="helpDescription"
                                       [(ngModel)]="editDraft.description"
-                                      [placeholder]="documentLabel() + ' description'"
+                                      [placeholder]="descriptionPlaceholder()"
                                       rows="3"
                                       required
                                     ></textarea>
@@ -255,7 +255,7 @@
                                     type="button"
                                     class="help-editor-hero-add-section-btn"
                                     (click)="addDraftSection($event)"
-                                    [attr.aria-label]="'Add ' + documentLabelLower() + ' section'"
+                                    [attr.aria-label]="addSectionLabel()"
                                     title="Add section"
                                     >
                                     <mat-icon>add</mat-icon>
@@ -264,7 +264,7 @@
                               </div>
                             </div>
 
-                            <div class="help-editor-preview-accordion" [attr.aria-label]="'Editable ' + documentLabelLower() + ' sections'">
+                            <div class="help-editor-preview-accordion" [attr.aria-label]="editableSectionsAriaLabel()">
                               @for (section of editDraft.sections; track section.localId; let sectionIndex = $index) {
                                 <article
                                   class="help-editor-preview-section help-editor-edit-section"
@@ -291,7 +291,7 @@
                                       [ngModelOptions]="{ standalone: true }"
                                       placeholder="Section label"
                                       required
-                                      [attr.aria-label]="documentLabel() + ' section title'"
+                                      [attr.aria-label]="sectionTitleAriaLabel()"
                                     />
                                     @if (documentKind === 'privacy') {
                                       <label
@@ -328,7 +328,7 @@
                                       type="button"
                                       class="help-editor-inline-icon-btn help-editor-danger-btn"
                                       (click)="removeDraftSection(section, $event)"
-                                      [attr.aria-label]="'Remove ' + documentLabelLower() + ' section'"
+                                      [attr.aria-label]="removeSectionLabel()"
                                       title="Remove section"
                                       >
                                       <mat-icon>delete</mat-icon>
@@ -338,7 +338,7 @@
                                       class="help-editor-inline-icon-btn help-editor-caret-btn"
                                       [attr.aria-expanded]="openDraftSectionId === section.localId"
                                       (click)="toggleDraftSection(section, $event)"
-                                      [attr.aria-label]="'Toggle ' + documentLabelLower() + ' section'"
+                                      [attr.aria-label]="toggleSectionLabel()"
                                       >
                                       <mat-icon class="help-editor-section-caret">expand_more</mat-icon>
                                     </button>
@@ -357,7 +357,7 @@
                                         ></textarea>
                                       } @else {
                                         <div class="help-editor-preview-card">
-                                          <div class="help-editor-html-preview" [innerHTML]="section.contentHtml"></div>
+                                          <div class="help-editor-html-preview" data-i18n-ignore [innerHTML]="section.contentHtml"></div>
                                         </div>
                                       }
                                     </div>
@@ -381,7 +381,7 @@
                           >
                           <span class="help-editor-version-pill">v{{ revision.version }}</span>
                           <span class="help-editor-revision-copy">
-                            <strong>{{ revision.summary || revision.title }}</strong>
+                            <strong data-i18n-ignore>{{ revision.summary || revision.title }}</strong>
                             <small>{{ revisionSubtitle(revision) }}</small>
                           </span>
                           @if (revision.active) {
@@ -466,16 +466,16 @@
                                   >
                                   <span>
                                     <mat-icon>{{ section.icon }}</mat-icon>
-                                    <strong>{{ section.title }}</strong>
+                                    <strong data-i18n-ignore>{{ section.title }}</strong>
                                   </span>
                                   <mat-icon class="help-editor-section-caret">expand_more</mat-icon>
                                 </button>
                                 @if (openPreviewSectionId === section.id) {
                                   <div class="help-editor-preview-section-body">
                                     @if (section.blurb) {
-                                      <p class="help-editor-preview-lead">{{ section.blurb }}</p>
+                                      <p class="help-editor-preview-lead" data-i18n-ignore>{{ section.blurb }}</p>
                                     }
-                                    <div class="help-editor-html-preview" [innerHTML]="section.contentHtml"></div>
+                                    <div class="help-editor-html-preview" data-i18n-ignore [innerHTML]="section.contentHtml"></div>
                                   </div>
                                 }
                               </article>
@@ -490,8 +490,8 @@
               } @else {
                 <div class="help-editor-empty-state">
                   <mat-icon>{{ defaultSectionIcon() }}</mat-icon>
-                  <h3>No {{ documentLabelLower() }} revisions</h3>
-                  <p>Create a revision to enable the {{ documentLabelLower() }} popup.</p>
+                  <h3>{{ noRevisionsLabel() }}</h3>
+                  <p>{{ createRevisionToEnablePopupLabel() }}</p>
                   <button type="button" class="help-editor-primary-btn" (click)="startNewRevision($event)">
                     <mat-icon>add</mat-icon>
                     <span>Create revision</span>

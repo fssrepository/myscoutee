@@ -530,6 +530,7 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
       metaRowsLimit: 1,
       description: post.excerpt,
       descriptionLines: 3,
+      i18nIgnoreContent: true,
       leadingIcon: {
         icon: 'calendar_today',
         tone: 'public'

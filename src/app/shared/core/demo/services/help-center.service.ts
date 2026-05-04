@@ -28,7 +28,10 @@ export class DemoHelpCenterService {
     const language = this.normalizeLang(lang);
     let changed = false;
     for (const option of this.availableLanguages()) {
-      changed = this.ensureSeeded(documentKind, option.lang) || this.ensureRevisionDescriptions(documentKind, option.lang) || changed;
+      changed = this.ensureSeeded(documentKind, option.lang)
+        || this.ensureRevisionDescriptions(documentKind, option.lang)
+        || this.ensureLocalizedRevisionDefaults(documentKind, option.lang)
+        || changed;
     }
     if (changed) {
       await this.memoryDb.flushToIndexedDb();
@@ -120,9 +123,9 @@ export class DemoHelpCenterService {
       lang: language,
       languageLabel: this.languageLabel(language),
       version,
-      title: this.nonEmptyText(request.title, this.defaultTitle(documentKind, version)),
-      summary: this.nonEmptyText(request.summary, this.defaultSummary(documentKind)),
-      description: this.nonEmptyText(request.description, this.defaultDescription(documentKind)),
+      title: this.nonEmptyText(request.title, this.defaultTitle(documentKind, version, language)),
+      summary: this.nonEmptyText(request.summary, this.defaultSummary(documentKind, language)),
+      description: this.nonEmptyText(request.description, this.defaultDescription(documentKind, language)),
       headerColor: this.normalizeHeaderColor(request.headerColor),
       sections: this.normalizeSections(request.sections, documentKind),
       active: false,
@@ -352,7 +355,7 @@ export class DemoHelpCenterService {
         if (revision) {
           revisionsById[id] = {
             ...revision,
-            description: this.defaultDescription(kind)
+            description: this.defaultDescription(kind, language)
           };
         }
       }
@@ -574,7 +577,7 @@ export class DemoHelpCenterService {
       documentKind: kind,
       lang,
       languageLabel: this.languageLabel(lang),
-      description: this.nonEmptyText(revision.description, this.defaultDescription(kind)),
+      description: this.nonEmptyText(revision.description, this.defaultDescription(kind, lang)),
       headerColor: this.normalizeHeaderColor(revision.headerColor),
       sections: this.normalizeSections(revision.sections, kind)
     };
@@ -716,15 +719,77 @@ export class DemoHelpCenterService {
     ];
   }
 
-  private defaultTitle(kind: HelpCenterDocumentKind, version: number): string {
+  private ensureLocalizedRevisionDefaults(kind: HelpCenterDocumentKind, lang = 'en'): boolean {
+    const language = this.normalizeLang(lang);
+    if (language !== 'hu') {
+      return false;
+    }
+    const table = this.table();
+    const revisions = this.revisionsForKind(table, kind, language);
+    const englishRevisionTitle = kind === 'privacy' ? 'Data privacy' : 'MyScoutee help';
+    const englishSummary = kind === 'privacy' ? 'Privacy first' : 'What you can do in MyScoutee';
+    const englishDescription = this.defaultDescription(kind, 'en');
+    const changedIds = revisions
+      .filter(revision => revision.title === englishRevisionTitle
+        || revision.summary === englishSummary
+        || revision.description === englishDescription)
+      .map(revision => revision.id);
+    if (changedIds.length === 0) {
+      return false;
+    }
+    this.memoryDb.write(state => {
+      const current = state[HELP_CENTER_TABLE_NAME];
+      const revisionsById = this.normalizedRevisionsById(current);
+      for (const id of changedIds) {
+        const revision = revisionsById[id];
+        if (!revision) {
+          continue;
+        }
+        revisionsById[id] = {
+          ...revision,
+          title: revision.title === englishRevisionTitle ? this.defaultRevisionTitle(kind, language) : revision.title,
+          summary: revision.summary === englishSummary ? this.defaultSummary(kind, language) : revision.summary,
+          description: revision.description === englishDescription ? this.defaultDescription(kind, language) : revision.description
+        };
+      }
+      return {
+        ...state,
+        [HELP_CENTER_TABLE_NAME]: {
+          ...current,
+          revisionsById
+        }
+      };
+    });
+    return true;
+  }
+
+  private defaultTitle(kind: HelpCenterDocumentKind, version: number, lang = 'en'): string {
+    if (this.normalizeLang(lang) === 'hu') {
+      return kind === 'privacy' ? `Adatvédelmi verzió v${version}` : `Súgó verzió v${version}`;
+    }
     return kind === 'privacy' ? `Privacy revision v${version}` : `Help revision v${version}`;
   }
 
-  private defaultSummary(kind: HelpCenterDocumentKind): string {
+  private defaultRevisionTitle(kind: HelpCenterDocumentKind, lang = 'en'): string {
+    if (this.normalizeLang(lang) === 'hu') {
+      return kind === 'privacy' ? 'Adatvédelem' : 'MyScoutee súgó';
+    }
+    return kind === 'privacy' ? 'Data privacy' : 'MyScoutee help';
+  }
+
+  private defaultSummary(kind: HelpCenterDocumentKind, lang = 'en'): string {
+    if (this.normalizeLang(lang) === 'hu') {
+      return kind === 'privacy' ? 'Adatvédelem elsőként' : 'Mit tehetsz a MyScoutee-ban';
+    }
     return kind === 'privacy' ? 'Privacy first' : 'What you can do in MyScoutee';
   }
 
-  private defaultDescription(kind: HelpCenterDocumentKind): string {
+  private defaultDescription(kind: HelpCenterDocumentKind, lang = 'en'): string {
+    if (this.normalizeLang(lang) === 'hu') {
+      return kind === 'privacy'
+        ? 'Folytatás előtt nézd át és fogadd el, hogyan használja a MyScoutee az adataidat.'
+        : 'A MyScoutee segít az eseményeket elejétől végéig megtervezni: meghívások, szakaszok és csoportok, erőforrások, valamint kontextushoz kötött csevegések.';
+    }
     return kind === 'privacy'
       ? APP_STATIC_DATA.defaultPrivacyCenterDescription
       : APP_STATIC_DATA.defaultHelpCenterDescription;

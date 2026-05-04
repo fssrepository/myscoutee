@@ -968,6 +968,161 @@ const PRIVACY_CENTER_SECTIONS: HelpCenterSection[] = [
   }
 ];
 
+const HELP_CENTER_SECTIONS_HU: HelpCenterSection[] = [
+  {
+    id: 'events',
+    icon: 'event_note',
+    title: 'Események és alesemények',
+    blurb: 'Építsd fel a teljes eseményfolyamatot szakaszokkal vagy opcionális elemekkel.',
+    contentHtml: '<p><strong>Építsd fel a teljes eseményfolyamatot szakaszokkal vagy opcionális elemekkel.</strong></p><p>Hozz létre fő eseményt, majd bontsd aleseményekre szakaszokhoz, mellékprogramokhoz vagy opcionális alkalmakhoz.</p><ul><li>Alkalmi és verseny jellegű struktúrák támogatása</li><li>A szakaszkontextus látható marad a kapcsolódó képernyőkön</li><li>A szervezők a hierarchia elvesztése nélkül szerkeszthetnek</li></ul>'
+  },
+  {
+    id: 'resources',
+    icon: 'inventory_2',
+    title: 'Erőforrások és kapacitás',
+    blurb: 'Rendelj embereket, autókat, szállást és kellékeket limitekkel.',
+    contentHtml: '<p><strong>Rendelj embereket, autókat, szállást és kellékeket limitekkel.</strong></p><p>Az erőforrásmenükben eszközöket rendelhetsz aleseményekhez és csoportokhoz, majd közvetlenül állíthatod a kapacitásokat.</p><ul><li>Minimum/maximum kapacitás feladatonként</li><li>Kontextusos jelvények függő kérésekhez</li><li>Útvonal- és helytámogatás utazási erőforrásokhoz</li></ul>'
+  },
+  {
+    id: 'activities',
+    icon: 'forum',
+    title: 'Tevékenységek és csevegések',
+    blurb: 'Koordinálj kontextustudatos csatornákkal és szűrőkkel.',
+    contentHtml: '<p><strong>Koordinálj kontextustudatos csatornákkal és szűrőkkel.</strong></p><p>A csevegőcsatornák követik az esemény hatókörét: fő esemény, opcionális alesemény és csoportcsatorna is együtt létezhet.</p><ul><li>Gyors csatornaszűrés kontextus szerint</li><li>Olvasatlan számlálók releváns csatornákra szűkítve</li><li>Mobilon és asztali nézetben is működik</li></ul>'
+  },
+  {
+    id: 'safety',
+    icon: 'verified_user',
+    title: 'Profilok és biztonság',
+    blurb: 'Erősítsd a bizalmat profilminőséggel és moderációs eszközökkel.',
+    contentHtml: '<p><strong>Erősítsd a bizalmat profilminőséggel és moderációs eszközökkel.</strong></p><p>A profilkészültség valós időben frissül, ahogy a felhasználók kitöltik a fontos mezőket.</p><ul><li>Élő profilkészültségi visszajelzés</li><li>Felhasználójelentési és visszajelzési folyamatok</li><li>Adatvédelmi és hozzáférési láthatósági kontrollok</li></ul>'
+  }
+];
+
+const PRIVACY_CENTER_SECTIONS_HU: HelpCenterSection[] = [
+  {
+    id: 'privacy',
+    icon: 'policy',
+    title: 'Adatvédelem',
+    blurb: 'Hogyan kezeli a MyScoutee a profilhoz, eseményekhez és közösségi aktivitáshoz kapcsolódó személyes adatokat.',
+    contentHtml: '<p>Hogyan kezeli a MyScoutee a profilhoz, eseményekhez és közösségi aktivitáshoz kapcsolódó személyes adatokat.</p><p><strong>Utolsó frissítés:</strong> 2026. február 1.</p>'
+  },
+  {
+    id: 'contact-details',
+    icon: 'contact_mail',
+    title: 'Kapcsolati adatok',
+    blurb: 'Kihez fordulhatsz adatvédelemmel és adatkezeléssel kapcsolatban.',
+    contentHtml: '<ul><li><strong>Adatkezelő:</strong> MyScoutee demo platform</li><li><strong>Támogatási email:</strong> privacy@myscoutee.app</li><li><strong>DPO kapcsolat:</strong> dpo@myscoutee.app</li></ul>'
+  },
+  {
+    id: 'legal-basis',
+    icon: 'gavel',
+    title: 'Jogalap',
+    blurb: 'Miért kezel adatokat a MyScoutee a termék- és biztonsági folyamatokhoz.',
+    contentHtml: '<ul><li>Szerződés teljesítése a fiók- és eseményfunkciókhoz.</li><li>Jogos érdek a platform biztonsága és a visszaélések megelőzése érdekében.</li><li>Hozzájárulás opcionális profiladatokhoz, pontos helykoordinátákhoz és marketingkommunikációhoz.</li><li>Jogi kötelezettség biztonsági naplókhoz és megfelelőségi nyilvántartásokhoz.</li></ul>'
+  },
+  {
+    id: 'your-rights',
+    icon: 'fact_check',
+    title: 'Jogaid',
+    blurb: 'A fiókoddal és személyes adataiddal kapcsolatos jogaid.',
+    contentHtml: '<h4>Hozzáférés</h4><ul><li>Kérhetsz másolatot a tárolt személyes adataidról.</li></ul><h4>Helyesbítés</h4><ul><li>Javíthatod a pontatlan profil- vagy fiókadatokat.</li></ul><h4>Törlés</h4><ul><li>Kérheted a fiók és a személyes adatok törlését, ahol ezt jogszabály lehetővé teszi.</li></ul><h4>Adathordozhatóság</h4><ul><li>Exportálhatod az adataidat általánosan használt, géppel olvasható formátumban.</li></ul><h4>Korlátozás / tiltakozás</h4><ul><li>Korlátozhatod vagy kifogásolhatod egyes adatkezelési tevékenységeket.</li></ul>'
+  },
+  {
+    id: 'data-categories',
+    icon: 'category',
+    title: 'Adatkategóriák',
+    blurb: 'Milyen típusú adatokat kezelhet a MyScoutee.',
+    contentHtml: '<h4>Fiók és azonosítás</h4><ul><li>Név</li><li>Születésnap</li><li>Lakóhely városa</li><li>Nem</li><li>Profilképek</li></ul><h4>Hely és koordináták</h4><ul><li>Hozzávetőleges hely (város/régió)</li><li>Pontos GPS-koordináták (szélesség/hosszúság), ha kéred</li><li>Helyfrissítési időbélyegek eseménylogisztikához</li></ul><h4>Aktivitási adatok</h4><ul><li>Csevegések</li><li>Meghívások</li><li>Események</li><li>Szervezési interakciók</li><li>Értékelések</li></ul><h4>Preferenciaadatok</h4><ul><li>Érdeklődési körök</li><li>Értékek</li><li>Láthatósági beállítások</li><li>Nyelvi preferenciák</li></ul><h4>Technikai adatok</h4><ul><li>Eszköz- és böngészőmetaadatok</li><li>IP- és naplórekordok</li><li>Munkamenetesemények</li></ul>'
+  },
+  {
+    id: 'purposes',
+    icon: 'tips_and_updates',
+    title: 'Célok',
+    blurb: 'Hogyan támogatják az adatok a profil-, esemény-, chat- és bizalmi funkciókat.',
+    contentHtml: '<ul><li>Profil-, chat-, esemény- és szervezési funkciók működtetése.</li><li>Releváns tagok ajánlása és a felfedezés minőségének javítása.</li><li>Helyalapú párosítás és távolságtudatos eseménykoordináció támogatása.</li><li>Visszaélések, spam és gyanús platformaktivitás észlelése.</li><li>Fiókkérések és megfelelőségi folyamatok támogatása.</li></ul>'
+  },
+  {
+    id: 'retention',
+    icon: 'schedule',
+    title: 'Megőrzés',
+    blurb: 'Mennyi ideig őrizzük meg az adatokat.',
+    contentHtml: '<ul><li>Fiókprofil-adatok: amíg a fiók aktív.</li><li>Pontos helykoordináták: csak az aktív helyalapú funkciókhoz szükséges ideig.</li><li>Biztonsági és auditnaplók: jogi vagy megfelelőségi igény szerint.</li><li>Törölt fiókok: az adatok a megőrzési idő után törlődnek vagy anonimizálódnak.</li></ul>'
+  },
+  {
+    id: 'sharing',
+    icon: 'share',
+    title: 'Harmadik felekkel megosztás',
+    blurb: 'Mikor kerülhetnek adatok a MyScoutee-n kívülre.',
+    contentHtml: '<ul><li>Szolgáltatókkal tárhely, analitika és támogatási működés céljából.</li><li>Hatóságokkal csak akkor, ha alkalmazandó jog előírja.</li><li>Személyes adatot nem értékesítünk.</li></ul>'
+  },
+  {
+    id: 'security',
+    icon: 'security',
+    title: 'Biztonság',
+    blurb: 'Az adatok védelmét szolgáló kontrollok.',
+    contentHtml: '<ul><li>Szerepköralapú hozzáférés belső eszközökhöz.</li><li>Titkosított adatátvitel.</li><li>Üzemeltetési monitorozás és incidenskezelési folyamatok.</li></ul>'
+  }
+];
+
+const DEFAULT_HELP_CENTER_REVISION: HelpCenterRevision = {
+  id: 'help-default-v1',
+  documentKind: 'help',
+  lang: 'en',
+  languageLabel: 'English',
+  version: 1,
+  title: 'MyScoutee help',
+  summary: 'What you can do in MyScoutee',
+  description: DEFAULT_HELP_CENTER_DESCRIPTION,
+  headerColor: 'amber',
+  sections: HELP_CENTER_SECTIONS,
+  active: true,
+  createdAtIso: '2026-05-01T00:00:00.000Z',
+  createdByUserId: 'system',
+  updatedAtIso: '2026-05-01T00:00:00.000Z',
+  updatedByUserId: 'system'
+};
+
+const DEFAULT_HELP_CENTER_REVISION_HU: HelpCenterRevision = {
+  ...DEFAULT_HELP_CENTER_REVISION,
+  id: 'help-default-hu-v1',
+  lang: 'hu',
+  languageLabel: 'Magyar',
+  title: 'MyScoutee súgó',
+  summary: 'Mit tehetsz a MyScoutee-ban',
+  description: 'A MyScoutee segít az eseményeket elejétől végéig megtervezni: meghívások, szakaszok és csoportok, erőforrások, valamint kontextushoz kötött csevegések.',
+  sections: HELP_CENTER_SECTIONS_HU
+};
+
+const DEFAULT_PRIVACY_CENTER_REVISION: HelpCenterRevision = {
+  id: 'privacy-default-v1',
+  documentKind: 'privacy',
+  lang: 'en',
+  languageLabel: 'English',
+  version: 1,
+  title: 'Data privacy',
+  summary: 'Privacy first',
+  description: DEFAULT_PRIVACY_CENTER_DESCRIPTION,
+  headerColor: 'amber',
+  sections: PRIVACY_CENTER_SECTIONS,
+  active: true,
+  createdAtIso: '2026-02-01T00:00:00.000Z',
+  createdByUserId: 'system',
+  updatedAtIso: '2026-02-01T00:00:00.000Z',
+  updatedByUserId: 'system'
+};
+
+const DEFAULT_PRIVACY_CENTER_REVISION_HU: HelpCenterRevision = {
+  ...DEFAULT_PRIVACY_CENTER_REVISION,
+  id: 'privacy-default-hu-v1',
+  lang: 'hu',
+  languageLabel: 'Magyar',
+  title: 'Adatvédelem',
+  summary: 'Adatvédelem elsőként',
+  description: 'Folytatás előtt nézd át és fogadd el, hogyan használja a MyScoutee az adataidat.',
+  sections: PRIVACY_CENTER_SECTIONS_HU
+};
+
 export const APP_STATIC_DATA = {
   vibeCategories: VIBE_CATEGORIES,
   hostedEventTypes: HOSTED_EVENT_TYPES,
@@ -1021,41 +1176,25 @@ export const APP_STATIC_DATA = {
   eventFeedbackPersonalityTraitOptions: EVENT_FEEDBACK_PERSONALITY_TRAIT_OPTIONS,
   eventFeedbackListFilters: EVENT_FEEDBACK_LIST_FILTERS,
   helpCenterSections: HELP_CENTER_SECTIONS,
+  helpCenterSectionsByLang: {
+    en: HELP_CENTER_SECTIONS,
+    hu: HELP_CENTER_SECTIONS_HU
+  },
   privacyCenterSections: PRIVACY_CENTER_SECTIONS,
+  privacyCenterSectionsByLang: {
+    en: PRIVACY_CENTER_SECTIONS,
+    hu: PRIVACY_CENTER_SECTIONS_HU
+  },
   defaultHelpCenterDescription: DEFAULT_HELP_CENTER_DESCRIPTION,
   defaultPrivacyCenterDescription: DEFAULT_PRIVACY_CENTER_DESCRIPTION,
-  defaultHelpCenterRevision: {
-    id: 'help-default-v1',
-    documentKind: 'help',
-    lang: 'en',
-    languageLabel: 'English',
-    version: 1,
-    title: 'MyScoutee help',
-    summary: 'What you can do in MyScoutee',
-    description: DEFAULT_HELP_CENTER_DESCRIPTION,
-    headerColor: 'amber',
-    sections: HELP_CENTER_SECTIONS,
-    active: true,
-    createdAtIso: '2026-05-01T00:00:00.000Z',
-    createdByUserId: 'system',
-    updatedAtIso: '2026-05-01T00:00:00.000Z',
-    updatedByUserId: 'system'
-  } satisfies HelpCenterRevision,
-  defaultPrivacyCenterRevision: {
-    id: 'privacy-default-v1',
-    documentKind: 'privacy',
-    lang: 'en',
-    languageLabel: 'English',
-    version: 1,
-    title: 'Data privacy',
-    summary: 'Privacy first',
-    description: DEFAULT_PRIVACY_CENTER_DESCRIPTION,
-    headerColor: 'amber',
-    sections: PRIVACY_CENTER_SECTIONS,
-    active: true,
-    createdAtIso: '2026-02-01T00:00:00.000Z',
-    createdByUserId: 'system',
-    updatedAtIso: '2026-02-01T00:00:00.000Z',
-    updatedByUserId: 'system'
-  } satisfies HelpCenterRevision
+  defaultHelpCenterRevision: DEFAULT_HELP_CENTER_REVISION,
+  defaultHelpCenterRevisionsByLang: {
+    en: DEFAULT_HELP_CENTER_REVISION,
+    hu: DEFAULT_HELP_CENTER_REVISION_HU
+  },
+  defaultPrivacyCenterRevision: DEFAULT_PRIVACY_CENTER_REVISION,
+  defaultPrivacyCenterRevisionsByLang: {
+    en: DEFAULT_PRIVACY_CENTER_REVISION,
+    hu: DEFAULT_PRIVACY_CENTER_REVISION_HU
+  }
 };

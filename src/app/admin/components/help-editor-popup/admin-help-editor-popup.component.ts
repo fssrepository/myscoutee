@@ -5,6 +5,7 @@ import { MatIconModule } from '@angular/material/icon';
 
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { HelpCenterService } from '../../../shared/core';
+import { I18nService } from '../../../shared/i18n/i18n.service';
 import type {
   HelpCenterDocumentKind,
   HelpCenterHeaderColor,
@@ -81,6 +82,7 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
   private readonly helpCenter = inject(HelpCenterService);
   private readonly routeDelay = inject(RouteDelayService);
   private readonly confirmationDialog = inject(ConfirmationDialogService);
+  private readonly i18n = inject(I18nService);
 
   protected documentKind: HelpCenterDocumentKind = 'help';
   protected selectedContentLang = 'en';
@@ -252,7 +254,7 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
       ]);
       this.selectInitialRevision(state.revisions, state.activeRevision);
     } catch {
-      this.error = `Unable to load ${this.documentLabelLower()} revisions.`;
+      this.error = this.loadErrorLabel();
     } finally {
       this.loading.set(false);
       this.endLoadingProgress();
@@ -306,13 +308,14 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
     this.languageMenuOpen = !this.languageMenuOpen;
   }
 
-  protected selectContentLanguage(lang: string, event?: Event): void {
+  protected async selectContentLanguage(lang: string, event?: Event): Promise<void> {
     event?.stopPropagation();
     const normalized = this.normalizeContentLang(lang);
     if (normalized === this.selectedContentLang || this.loading() || this.isAnyActionPending()) {
       this.closeLanguageMenu();
       return;
     }
+    const reopenEditor = this.editing;
     this.selectedContentLang = normalized;
     this.closeLanguageMenu();
     this.editing = false;
@@ -323,7 +326,11 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
     this.openPreviewSectionId = '';
     this.openDraftSectionId = '';
     this.error = '';
-    void this.load();
+    await this.load();
+    if (reopenEditor && !this.error) {
+      const revision = this.selectedRevision();
+      this.beginEditingDraft(revision ? this.draftFromRevision(revision) : this.emptyDraft());
+    }
   }
 
   protected loadingRingDashOffset(): number {
@@ -462,9 +469,9 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
     const next: HelpEditorSectionDraft = {
       localId: this.newLocalId(),
       icon: this.defaultSectionIcon(),
-      title: `New ${this.documentLabelLower()} section`,
+      title: this.defaultContentSectionTitle(),
       blurb: '',
-      contentHtml: `<p>Describe this ${this.documentLabelLower()} section.</p>`,
+      contentHtml: this.defaultContentSectionHtml(),
       optional: false,
       mode: 'html'
     };
@@ -627,7 +634,7 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
       this.closeIconPicker();
       this.selectNewestRevision(state.revisions, state.activeRevision);
     } catch {
-      this.error = `Unable to save ${this.documentLabelLower()} revision.`;
+      this.error = this.saveErrorLabel();
     } finally {
       this.saving = false;
     }
@@ -644,7 +651,7 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
       const state = await this.withMinimumActionTime(this.helpCenter.activateRevision(revision.id, this.actorUserId(), this.documentKind));
       this.selectInitialRevision(state.revisions, state.activeRevision);
     } catch {
-      this.error = `Unable to activate ${this.documentLabelLower()} revision.`;
+      this.error = this.activateErrorLabel();
     } finally {
       this.activatingRevisionId = '';
     }
@@ -668,7 +675,7 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
           const state = await this.helpCenter.deleteRevision(revision.id, this.actorUserId(), this.documentKind);
           this.selectInitialRevision(state.revisions, state.activeRevision);
         } catch {
-          this.error = `Unable to delete ${this.documentLabelLower()} revision.`;
+          this.error = this.deleteErrorLabel();
         } finally {
           this.saving = false;
         }
@@ -677,7 +684,8 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
   }
 
   protected revisionSubtitle(revision: HelpCenterRevision): string {
-    return `${revision.sections.length} section${revision.sections.length === 1 ? '' : 's'} · ${this.fullDate(revision.updatedAtIso || revision.createdAtIso)}`;
+    const count = revision.sections.length;
+    return `${this.uiText(`${count} section${count === 1 ? '' : 's'}`)} · ${this.fullDate(revision.updatedAtIso || revision.createdAtIso)}`;
   }
 
   protected revisionDescription(revision: Pick<HelpCenterRevision, 'description'>): string {
@@ -736,7 +744,88 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
   }
 
   protected editorTitle(): string {
-    return `${this.documentLabel()} editor`;
+    return this.uiText(this.documentKind === 'privacy' ? 'Privacy editor' : 'Help editor');
+  }
+
+  protected uiDocumentLabel(): string {
+    return this.uiText(this.documentLabel());
+  }
+
+  protected activeRevisionLabel(version: number | null | undefined): string {
+    const normalizedVersion = Math.max(0, Math.trunc(Number(version) || 0));
+    return this.uiText(`Active ${this.documentLabelLower()} v${normalizedVersion}`);
+  }
+
+  protected noActiveRevisionLabel(): string {
+    return this.uiText(`No active ${this.documentLabelLower()} revision`);
+  }
+
+  protected loadingRevisionsLabel(): string {
+    return this.uiText(`Loading ${this.documentLabelLower()} revisions`);
+  }
+
+  protected revisionsAriaLabel(): string {
+    return this.uiText(`${this.documentLabel()} revisions`);
+  }
+
+  protected createRevisionLabel(): string {
+    return this.uiText(`Create ${this.documentLabelLower()} revision`);
+  }
+
+  protected popupHeaderPlaceholder(): string {
+    return this.uiText(`${this.documentLabel()} popup header`);
+  }
+
+  protected descriptionPlaceholder(): string {
+    return this.uiText(`${this.documentLabel()} description`);
+  }
+
+  protected addSectionLabel(): string {
+    return this.uiText(`Add ${this.documentLabelLower()} section`);
+  }
+
+  protected editableSectionsAriaLabel(): string {
+    return this.uiText(`Editable ${this.documentLabelLower()} sections`);
+  }
+
+  protected sectionTitleAriaLabel(): string {
+    return this.uiText(`${this.documentLabel()} section title`);
+  }
+
+  protected removeSectionLabel(): string {
+    return this.uiText(`Remove ${this.documentLabelLower()} section`);
+  }
+
+  protected toggleSectionLabel(): string {
+    return this.uiText(`Toggle ${this.documentLabelLower()} section`);
+  }
+
+  protected noRevisionsLabel(): string {
+    return this.uiText(`No ${this.documentLabelLower()} revisions`);
+  }
+
+  protected createRevisionToEnablePopupLabel(): string {
+    return this.uiText(`Create a revision to enable the ${this.documentLabelLower()} popup.`);
+  }
+
+  private loadErrorLabel(): string {
+    return this.uiText(`Unable to load ${this.documentLabelLower()} revisions.`);
+  }
+
+  private saveErrorLabel(): string {
+    return this.uiText(`Unable to save ${this.documentLabelLower()} revision.`);
+  }
+
+  private activateErrorLabel(): string {
+    return this.uiText(`Unable to activate ${this.documentLabelLower()} revision.`);
+  }
+
+  private deleteErrorLabel(): string {
+    return this.uiText(`Unable to delete ${this.documentLabelLower()} revision.`);
+  }
+
+  protected uiText(source: string): string {
+    return this.i18n.translate(source);
   }
 
   protected defaultDescription(): string {
@@ -823,7 +912,7 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
       sections: revision.sections.map(section => ({
         localId: this.newLocalId(),
         icon: section.icon || this.defaultSectionIcon(),
-        title: section.title?.trim() || `Untitled ${this.documentLabelLower()} section`,
+        title: section.title?.trim() || this.defaultUntitledContentSectionTitle(),
         blurb: section.blurb,
         contentHtml: this.formatHtmlFragment(this.sectionContentHtml(section)),
         optional: section.optional === true,
@@ -835,7 +924,7 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
   private emptyDraft(): HelpEditorRevisionDraft {
     return {
       baseRevisionId: null,
-      title: `New ${this.documentLabelLower()} revision`,
+      title: this.defaultContentRevisionTitle(),
       summary: '',
       description: '',
       headerColor: 'amber',
@@ -857,7 +946,7 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
     const seenIds = new Set<string>();
     return drafts
       .map((draft, index) => {
-        const title = draft.title.trim() || `${this.documentLabel()} section ${index + 1}`;
+        const title = draft.title.trim() || this.defaultNumberedContentSectionTitle(index + 1);
         const baseId = this.slugify(title) || `section-${index + 1}`;
         let id = baseId;
         let duplicateIndex = 2;
@@ -887,6 +976,47 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
 
   private newLocalId(): string {
     return `draft-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  }
+
+  private defaultContentRevisionTitle(): string {
+    if (this.selectedContentLanguageIsHungarian()) {
+      return this.documentKind === 'privacy' ? 'Új adatvédelmi verzió' : 'Új súgóverzió';
+    }
+    return `New ${this.documentLabelLower()} revision`;
+  }
+
+  private defaultContentSectionTitle(): string {
+    if (this.selectedContentLanguageIsHungarian()) {
+      return this.documentKind === 'privacy' ? 'Új adatvédelmi szakasz' : 'Új súgó szakasz';
+    }
+    return `New ${this.documentLabelLower()} section`;
+  }
+
+  private defaultUntitledContentSectionTitle(): string {
+    if (this.selectedContentLanguageIsHungarian()) {
+      return this.documentKind === 'privacy' ? 'Névtelen adatvédelmi szakasz' : 'Névtelen súgó szakasz';
+    }
+    return `Untitled ${this.documentLabelLower()} section`;
+  }
+
+  private defaultNumberedContentSectionTitle(index: number): string {
+    if (this.selectedContentLanguageIsHungarian()) {
+      return this.documentKind === 'privacy' ? `Adatvédelmi szakasz ${index}` : `Súgó szakasz ${index}`;
+    }
+    return `${this.documentLabel()} section ${index}`;
+  }
+
+  private defaultContentSectionHtml(): string {
+    if (this.selectedContentLanguageIsHungarian()) {
+      return this.documentKind === 'privacy'
+        ? '<p>Írd le ezt az adatvédelmi szakaszt.</p>'
+        : '<p>Írd le ezt a súgó szakaszt.</p>';
+    }
+    return `<p>Describe this ${this.documentLabelLower()} section.</p>`;
+  }
+
+  private selectedContentLanguageIsHungarian(): boolean {
+    return this.normalizeContentLang(this.selectedContentLang) === 'hu';
   }
 
   private sectionContentHtml(section: HelpCenterSection): string {

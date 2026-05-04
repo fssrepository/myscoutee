@@ -1,12 +1,12 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectorRef, Component, ElementRef, HostListener, OnDestroy, ViewChild, effect, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, ElementRef, HostListener, OnDestroy, ViewChild, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { Observable, from } from 'rxjs';
 
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { IdeaPostsService, type IdeaPost, type IdeaPostSaveRequest } from '../../../shared/core';
-import { resolveCurrentRouteDelayMs } from '../../../shared/core/base/services/route-delay.service';
+import { resolveCurrentRouteDelayMs, RouteDelayService } from '../../../shared/core/base/services/route-delay.service';
 import {
   InfoCardComponent,
   type InfoCardData,
@@ -25,6 +25,7 @@ import { AdminService } from '../../admin.service';
 
 type IdeaEditorMode = 'html' | 'preview';
 type IdeaPostFilter = 'all' | 'featured' | 'published' | 'drafts' | 'trashed';
+type IdeaPanelLoadingMode = 'viewer' | 'editor';
 
 interface IdeaPostDraft {
   id: string | null;
@@ -53,6 +54,7 @@ interface IdeaSmartListFilters {
   styleUrl: './admin-idea-editor-popup.component.scss'
 })
 export class AdminIdeaEditorPopupComponent implements OnDestroy {
+  private static readonly LOAD_PROGRESS_WINDOW_MS = 3000;
   @ViewChild('ideaSmartList')
   private ideaSmartList?: SmartListComponent<IdeaPost, IdeaSmartListFilters>;
 
@@ -61,6 +63,7 @@ export class AdminIdeaEditorPopupComponent implements OnDestroy {
 
   protected readonly admin = inject(AdminService);
   private readonly ideaPosts = inject(IdeaPostsService);
+  private readonly routeDelay = inject(RouteDelayService);
   private readonly confirmationDialog = inject(ConfirmationDialogService);
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
 
@@ -73,6 +76,8 @@ export class AdminIdeaEditorPopupComponent implements OnDestroy {
   protected draft: IdeaPostDraft | null = null;
   protected viewerPostId = '';
   protected viewerPost: IdeaPost | null = null;
+  protected articlePanelLoading = false;
+  protected articlePanelLoadingMode: IdeaPanelLoadingMode | null = null;
   protected imageSlotCarouselIndex = 0;
   protected uploadingImageSlotIndex: number | null = null;
   protected filterMenuOpen = false;
@@ -83,11 +88,16 @@ export class AdminIdeaEditorPopupComponent implements OnDestroy {
   protected draftContentLang = 'en';
   protected ideaListFilters: IdeaSmartListFilters = { status: 'all', revision: 0 };
   protected readonly actionRingPerimeter = 100;
+  protected readonly loadingRingPerimeter = 100;
   protected readonly ideaImageSlotCount = 8;
   protected readonly ideaImageSlotIndexes = Array.from({ length: this.ideaImageSlotCount }, (_value, index) => index);
+  protected readonly loadingProgress = signal(0);
   private stateLoadedForPopup = false;
   private adminPostsLoadPromise: Promise<void> | null = null;
   private adminPostsLoadGeneration = 0;
+  private articlePanelLoadGeneration = 0;
+  private loadingProgressTimer: ReturnType<typeof setInterval> | null = null;
+  private loadingProgressStartedAtMs = 0;
   private listRevision = 0;
   private readonly postsByLang = new Map<string, IdeaPost[]>();
   private readonly featuredPendingIds = new Set<string>();
@@ -195,6 +205,10 @@ export class AdminIdeaEditorPopupComponent implements OnDestroy {
         this.draft = null;
         this.viewerPostId = '';
         this.viewerPost = null;
+        this.articlePanelLoading = false;
+        this.articlePanelLoadingMode = null;
+        this.articlePanelLoadGeneration += 1;
+        this.clearLoadingProgress();
         this.filterMenuOpen = false;
         this.languageMenuOpen = false;
         this.formLanguageMenuOpen = false;
@@ -210,6 +224,7 @@ export class AdminIdeaEditorPopupComponent implements OnDestroy {
 
   ngOnDestroy(): void {
     this.clearImageSlotCarouselScrollLock();
+    this.clearLoadingProgress();
   }
 
   @HostListener('window:keydown.escape', ['$event'])
@@ -268,19 +283,30 @@ export class AdminIdeaEditorPopupComponent implements OnDestroy {
     this.draft = null;
     this.viewerPostId = '';
     this.viewerPost = null;
+    this.cancelArticlePanelLoad();
     this.uploadingImageSlotIndex = null;
     this.admin.closePopup();
   }
 
-  protected startNew(event?: Event): void {
+  protected async startNew(event?: Event): Promise<void> {
     event?.stopPropagation();
-    this.draftContentLang = this.selectedContentLang;
+    const targetLang = this.selectedContentLang;
+    const generation = this.beginArticlePanelLoad('editor');
+    this.draftContentLang = targetLang;
+    this.editing = false;
+    this.draft = null;
+    this.viewerPostId = '';
+    this.viewerPost = null;
+    await this.waitForArticlePanelLoad();
+    if (!this.isCurrentArticlePanelLoad(generation, 'editor')) {
+      return;
+    }
     this.beginEditing({
       id: null,
       contentKey: '',
       title: '',
       excerpt: '',
-      contentHtml: this.defaultDraftHtml(this.draftContentLang),
+      contentHtml: this.defaultDraftHtml(targetLang),
       imageUrl: '',
       imageUrls: [],
       featured: false,
@@ -288,55 +314,86 @@ export class AdminIdeaEditorPopupComponent implements OnDestroy {
       submittedAtLocal: this.toDateTimeLocal(new Date().toISOString()),
       mode: 'html'
     });
+    this.finishArticlePanelLoad(generation, 'editor');
   }
 
-  protected openViewer(post: IdeaPost, event?: Event): void {
+  protected async openViewer(post: IdeaPost, event?: Event): Promise<void> {
     event?.stopPropagation();
-    this.viewerPostId = post.id;
-    this.viewerPost = this.clonePost(post);
-    this.refreshView();
+    const targetPost = this.clonePost(post);
+    const generation = this.beginArticlePanelLoad('viewer');
+    this.viewerPostId = '';
+    this.viewerPost = null;
+    await this.waitForArticlePanelLoad();
+    if (!this.isCurrentArticlePanelLoad(generation, 'viewer')) {
+      return;
+    }
+    this.viewerPostId = targetPost.id;
+    this.viewerPost = targetPost;
+    this.finishArticlePanelLoad(generation, 'viewer');
   }
 
   protected closeViewer(event?: Event): void {
     event?.stopPropagation();
+    if (this.articlePanelLoadingMode === 'viewer') {
+      this.cancelArticlePanelLoad();
+    }
     this.viewerPostId = '';
     this.viewerPost = null;
     this.refreshView();
   }
 
-  protected startEditing(post: IdeaPost, event?: Event): void {
+  protected async startEditing(post: IdeaPost, event?: Event): Promise<void> {
     event?.stopPropagation();
+    const targetPost = this.clonePost(post);
+    const generation = this.beginArticlePanelLoad('editor');
     this.viewerPostId = '';
     this.viewerPost = null;
-    this.draftContentLang = this.normalizeContentLang(post.lang);
-    this.beginEditing(this.draftFromPost(post));
+    this.editing = false;
+    this.draft = null;
+    this.draftContentLang = this.normalizeContentLang(targetPost.lang);
+    await this.waitForArticlePanelLoad();
+    if (!this.isCurrentArticlePanelLoad(generation, 'editor')) {
+      return;
+    }
+    this.beginEditing(this.draftFromPost(targetPost));
+    this.finishArticlePanelLoad(generation, 'editor');
   }
 
   protected closeEditor(event?: Event): void {
     event?.stopPropagation();
+    if (this.articlePanelLoadingMode === 'editor') {
+      this.cancelArticlePanelLoad();
+    }
     this.editing = false;
     this.draft = null;
     this.copiedImageUrl = '';
   }
 
-  protected openDraftPreview(event?: Event): void {
+  protected async openDraftPreview(event?: Event): Promise<void> {
     event?.stopPropagation();
     if (!this.draft) {
       return;
     }
-    const submittedAtIso = this.fromDateTimeLocal(this.draft.submittedAtLocal);
-    const contentHtml = this.draft.contentHtml.trim() || '<p></p>';
-    const imageUrls = this.uniqueImageUrls([this.draft.imageUrl, ...this.draft.imageUrls]);
-    this.viewerPostId = this.draft.id || 'draft-preview';
+    const activeDraft = this.draft;
+    const activeDraftLang = this.draftContentLang;
+    const submittedAtIso = this.fromDateTimeLocal(activeDraft.submittedAtLocal);
+    const contentHtml = activeDraft.contentHtml.trim() || '<p></p>';
+    const imageUrls = this.uniqueImageUrls([activeDraft.imageUrl, ...activeDraft.imageUrls]);
+    const generation = this.beginArticlePanelLoad('viewer');
+    await this.waitForArticlePanelLoad();
+    if (!this.isCurrentArticlePanelLoad(generation, 'viewer')) {
+      return;
+    }
+    this.viewerPostId = activeDraft.id || 'draft-preview';
     this.viewerPost = {
-      id: this.draft.id || 'draft-preview',
-      contentKey: this.draft.contentKey || 'draft-preview',
-      lang: this.draftContentLang,
-      languageLabel: this.contentLanguageLabel(this.draftContentLang),
-      title: this.draft.title.trim() || 'Untitled article',
-      excerpt: this.draft.excerpt.trim() || this.excerptFromHtml(contentHtml),
+      id: activeDraft.id || 'draft-preview',
+      contentKey: activeDraft.contentKey || 'draft-preview',
+      lang: activeDraftLang,
+      languageLabel: this.contentLanguageLabel(activeDraftLang),
+      title: activeDraft.title.trim() || 'Untitled article',
+      excerpt: activeDraft.excerpt.trim() || this.excerptFromHtml(contentHtml),
       contentHtml,
-      imageUrl: this.draft.imageUrl.trim() || imageUrls[0] || '',
+      imageUrl: activeDraft.imageUrl.trim() || imageUrls[0] || '',
       imageUrls,
       featured: false,
       published: false,
@@ -349,7 +406,7 @@ export class AdminIdeaEditorPopupComponent implements OnDestroy {
       updatedAtIso: submittedAtIso,
       updatedByUserId: this.actorUserId()
     };
-    this.refreshView();
+    this.finishArticlePanelLoad(generation, 'viewer');
   }
 
   protected async saveDraft(event?: Event): Promise<IdeaPost | null> {
@@ -659,10 +716,10 @@ export class AdminIdeaEditorPopupComponent implements OnDestroy {
   protected onIdeaCardMenuAction(post: IdeaPost, event: InfoCardMenuActionEvent): void {
     switch (event.actionId) {
       case 'view':
-        this.openViewer(post);
+        void this.openViewer(post);
         break;
       case 'edit':
-        this.startEditing(post);
+        void this.startEditing(post);
         break;
       case 'publish':
       case 'unpublish':
@@ -711,6 +768,7 @@ export class AdminIdeaEditorPopupComponent implements OnDestroy {
       metaRowsLimit: 1,
       description: post.excerpt,
       descriptionLines: 3,
+      i18nIgnoreContent: true,
       surfaceTone: post.trashed ? 'draft' : !post.published ? 'draft' : post.featured ? 'series' : 'default',
       leadingIcon: {
         icon: post.trashed ? 'delete_outline' : post.published ? 'article' : 'drafts',
@@ -773,6 +831,7 @@ export class AdminIdeaEditorPopupComponent implements OnDestroy {
     this.draft = null;
     this.viewerPostId = '';
     this.viewerPost = null;
+    this.cancelArticlePanelLoad();
     this.stateLoadedForPopup = false;
     this.adminPostsLoadGeneration += 1;
     this.refreshIdeaList();
@@ -788,9 +847,17 @@ export class AdminIdeaEditorPopupComponent implements OnDestroy {
     }
     const currentDraft = this.draft;
     this.formLanguageMenuOpen = false;
-    const translation = await this.findArticleTranslation(currentDraft.contentKey, normalized);
+    const generation = this.beginArticlePanelLoad('editor');
+    const [translation] = await Promise.all([
+      this.findArticleTranslation(currentDraft.contentKey, normalized),
+      this.waitForArticlePanelLoad()
+    ]);
+    if (!this.isCurrentArticlePanelLoad(generation, 'editor')) {
+      return;
+    }
     this.draftContentLang = normalized;
     this.beginEditing(translation ? this.draftFromPost(translation) : this.emptyTranslationDraftFrom(currentDraft));
+    this.finishArticlePanelLoad(generation, 'editor');
   }
 
   protected setIdeaFilter(filter: IdeaPostFilter, event?: Event): void {
@@ -819,6 +886,16 @@ export class AdminIdeaEditorPopupComponent implements OnDestroy {
   protected toggleFormLanguageMenu(event?: Event): void {
     event?.stopPropagation();
     this.formLanguageMenuOpen = !this.formLanguageMenuOpen;
+  }
+
+  protected articlePanelLoadingLabel(): string {
+    return this.articlePanelLoadingMode === 'viewer'
+      ? 'Loading article'
+      : 'Loading article editor';
+  }
+
+  protected loadingRingDashOffset(): number {
+    return this.loadingRingPerimeter * (1 - Math.min(1, Math.max(0, this.loadingProgress())));
   }
 
   protected filterLabel(): string {
@@ -1062,6 +1139,83 @@ export class AdminIdeaEditorPopupComponent implements OnDestroy {
 
   protected actorUserId(): string {
     return this.admin.activeAdmin()?.id?.trim() || 'admin';
+  }
+
+  private beginArticlePanelLoad(mode: IdeaPanelLoadingMode): number {
+    const generation = ++this.articlePanelLoadGeneration;
+    this.beginLoadingProgress();
+    this.articlePanelLoadingMode = mode;
+    this.articlePanelLoading = true;
+    this.error = '';
+    this.refreshView();
+    return generation;
+  }
+
+  private finishArticlePanelLoad(generation: number, mode: IdeaPanelLoadingMode): void {
+    if (!this.isCurrentArticlePanelLoad(generation, mode)) {
+      return;
+    }
+    this.articlePanelLoading = false;
+    this.articlePanelLoadingMode = null;
+    this.endLoadingProgress();
+    this.refreshView();
+  }
+
+  private cancelArticlePanelLoad(): void {
+    this.articlePanelLoadGeneration += 1;
+    this.articlePanelLoading = false;
+    this.articlePanelLoadingMode = null;
+    this.clearLoadingProgress();
+  }
+
+  private isCurrentArticlePanelLoad(generation: number, mode: IdeaPanelLoadingMode): boolean {
+    return this.admin.activePopup() === 'idea-editor'
+      && this.articlePanelLoadGeneration === generation
+      && this.articlePanelLoading
+      && this.articlePanelLoadingMode === mode;
+  }
+
+  private async waitForArticlePanelLoad(): Promise<void> {
+    await this.routeDelay.waitForRouteDelay('/admin/ideas', undefined, undefined, 450);
+  }
+
+  private beginLoadingProgress(): void {
+    this.clearLoadingProgress();
+    this.loadingProgressStartedAtMs = this.nowMs();
+    this.loadingProgressTimer = setInterval(() => this.updateLoadingProgress(), 100);
+    this.updateLoadingProgress();
+  }
+
+  private updateLoadingProgress(): void {
+    if (!this.loadingProgressStartedAtMs) {
+      this.loadingProgress.set(0);
+      return;
+    }
+    const elapsedMs = Math.max(0, this.nowMs() - this.loadingProgressStartedAtMs);
+    this.loadingProgress.set(Math.min(0.96, elapsedMs / AdminIdeaEditorPopupComponent.LOAD_PROGRESS_WINDOW_MS));
+  }
+
+  private endLoadingProgress(): void {
+    this.clearLoadingProgressTimer();
+    this.loadingProgress.set(1);
+  }
+
+  private clearLoadingProgress(): void {
+    this.clearLoadingProgressTimer();
+    this.loadingProgressStartedAtMs = 0;
+    this.loadingProgress.set(0);
+  }
+
+  private clearLoadingProgressTimer(): void {
+    if (!this.loadingProgressTimer) {
+      return;
+    }
+    clearInterval(this.loadingProgressTimer);
+    this.loadingProgressTimer = null;
+  }
+
+  private nowMs(): number {
+    return typeof performance !== 'undefined' ? performance.now() : Date.now();
   }
 
   private beginEditing(draft: IdeaPostDraft): void {

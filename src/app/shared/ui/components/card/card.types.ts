@@ -162,6 +162,7 @@ export interface InfoCardData {
   descriptionLines?: number | null;
   detailRows?: readonly string[];
   detailStyle?: InfoCardDetailStyle | null;
+  i18nIgnoreContent?: boolean;
   footerChips?: readonly InfoCardFooterChip[];
   surfaceTone?: InfoCardSurfaceTone | null;
   leadingIcon?: InfoCardLeadingIconConfig | null;

@@ -480,6 +480,65 @@
   box-sizing: border-box;
 }
 
+.idea-editor-panel-loading {
+  display: grid;
+  place-items: center;
+}
+
+.idea-editor-panel-loading-card {
+  display: grid;
+  justify-items: center;
+  gap: 0.58rem;
+  color: #173a62;
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.idea-editor-form-loading-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  border-radius: 16px;
+  background: rgba(251, 253, 255, 0.9);
+  backdrop-filter: blur(2px);
+  display: grid;
+  place-items: center;
+}
+
+.idea-editor-loading-ring {
+  width: 58px;
+  height: 58px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.idea-editor-loading-ring-svg {
+  width: 58px;
+  height: 58px;
+  display: block;
+  filter: drop-shadow(0 8px 18px rgba(29, 81, 139, 0.16));
+}
+
+.idea-editor-loading-ring-track,
+.idea-editor-loading-ring-progress {
+  fill: none;
+  stroke-width: 5;
+}
+
+.idea-editor-loading-ring-track {
+  stroke: rgba(42, 81, 129, 0.16);
+}
+
+.idea-editor-loading-ring-progress {
+  stroke: #2f76bd;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transform: rotate(-90deg);
+  transform-origin: 50% 50%;
+  transition: stroke-dashoffset 120ms linear;
+}
+
 .idea-editor-viewer-head,
 .idea-editor-form-head {
   flex: 0 0 auto;
