@@ -35,9 +35,10 @@ export class DemoRatesService extends DemoRouteDelayService {
 
   async queryActivitiesRatePage(
     userId: string,
-    request: ActivitiesPageRequest
+    request: ActivitiesPageRequest,
+    signal?: AbortSignal
   ): Promise<ActivityRatePageResult> {
-    await this.waitForRouteDelay(DemoRatesService.RATES_ROUTE);
+    await this.waitForRouteDelay(DemoRatesService.RATES_ROUTE, signal);
     const page = await this.usersRatingsRepository.queryActivityRateItemsPage(
       this.toActivityRateRecordQuery(userId, request)
     );

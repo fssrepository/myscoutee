@@ -1,5 +1,6 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
+import { Observable } from 'rxjs';
 
 import { environment } from '../../../../../environments/environment';
 import { PricingBuilder } from '../../../core/base/builders';
@@ -32,6 +33,9 @@ interface HttpEventsFilterRequest {
   view?: 'month' | 'week' | 'day' | 'distance';
   limit?: number;
   cursor?: string | null;
+  anchorDate?: string;
+  rangeStart?: string;
+  rangeEnd?: string;
 }
 
 @Injectable({
@@ -88,7 +92,10 @@ export class HttpEventsService {
     }
   }
 
-  async queryActivitiesEventPage(query: DemoEventActivitiesQuery): Promise<DemoEventActivitiesQueryResult> {
+  async queryActivitiesEventPage(
+    query: DemoEventActivitiesQuery,
+    signal?: AbortSignal
+  ): Promise<DemoEventActivitiesQueryResult> {
     const normalizedUserId = query.userId.trim();
     if (!normalizedUserId) {
       return {
@@ -98,8 +105,8 @@ export class HttpEventsService {
       };
     }
     try {
-      const response = await this.http
-        .post<DemoEventRecord[] | DemoEventActivitiesQueryResult | null>(
+      const response = await this.requestWithAbort(
+        this.http.post<DemoEventRecord[] | DemoEventActivitiesQueryResult | null>(
           `${this.apiBaseUrl}/activities/events/filter`,
           {
             userId: normalizedUserId,
@@ -109,10 +116,14 @@ export class HttpEventsService {
             sort: query.sort,
             view: query.view,
             limit: query.limit,
-            cursor: query.cursor ?? null
+            cursor: query.cursor ?? null,
+            anchorDate: query.anchorDate,
+            rangeStart: query.rangeStart,
+            rangeEnd: query.rangeEnd
           } satisfies HttpEventsFilterRequest
-        )
-        .toPromise();
+        ),
+        signal
+      );
       if (Array.isArray(response)) {
         const records = this.cloneRecords(response);
         return {
@@ -127,13 +138,69 @@ export class HttpEventsService {
         total: Number.isFinite(response?.total) ? Math.max(0, Math.trunc(Number(response?.total))) : records.length,
         nextCursor: typeof response?.nextCursor === 'string' ? response.nextCursor : null
       };
-    } catch {
+    } catch (error) {
+      if (this.isAbortError(error)) {
+        throw error;
+      }
       return {
         records: [],
         total: 0,
         nextCursor: null
       };
     }
+  }
+
+  private requestWithAbort<T>(request$: Observable<T>, signal?: AbortSignal): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+      if (signal?.aborted) {
+        reject(this.createAbortError());
+        return;
+      }
+      let settled = false;
+      let subscription: { unsubscribe: () => void } | null = null;
+      const cleanup = () => {
+        signal?.removeEventListener('abort', onAbort);
+      };
+      const onAbort = () => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        subscription?.unsubscribe();
+        cleanup();
+        reject(this.createAbortError());
+      };
+      signal?.addEventListener('abort', onAbort, { once: true });
+      subscription = request$.subscribe({
+        next: value => {
+          if (settled) {
+            return;
+          }
+          settled = true;
+          cleanup();
+          resolve(value);
+        },
+        error: error => {
+          if (settled) {
+            return;
+          }
+          settled = true;
+          cleanup();
+          reject(error);
+        },
+        complete: () => cleanup()
+      });
+    });
+  }
+
+  private createAbortError(): Error {
+    const error = new Error('Request aborted.');
+    error.name = 'AbortError';
+    return error;
+  }
+
+  private isAbortError(error: unknown): boolean {
+    return error instanceof Error && error.name === 'AbortError';
   }
 
   async queryExploreItems(userId: string): Promise<DemoEventRecord[]> {

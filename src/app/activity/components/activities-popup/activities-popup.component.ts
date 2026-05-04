@@ -47,6 +47,7 @@ import {
   type ListQuery,
   type PageResult,
   type SmartListConfig,
+  type SmartListLoadContext,
   type SmartListLoadPage,
   type SmartListItemSelectEvent,
   type SmartListPresentation,
@@ -412,7 +413,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     }
   };
   protected readonly activitiesSmartListLoadPage: SmartListLoadPage<AppTypes.ActivityListRow, ActivitiesSmartListFilters>
-    = query => from(this.loadActivitiesSmartListPage(query));
+    = (query, context) => from(this.loadActivitiesSmartListPage(query, context));
   // ── Inline action menu ────────────────────────────────────────────────────
   protected inlineItemActionMenu: {
     scope: 'activityMember';
@@ -2589,10 +2590,12 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   private async loadActivitiesSmartListPage(
-    query: ListQuery<ActivitiesSmartListFilters>
+    query: ListQuery<ActivitiesSmartListFilters>,
+    context?: SmartListLoadContext
   ): Promise<PageResult<AppTypes.ActivityListRow>> {
     const page = await this.activitiesService.loadActivities(query, {
-      chatItems: this.chatItems
+      chatItems: this.chatItems,
+      signal: context?.signal
     });
     const requestedPrimaryFilter = query.filters?.primaryFilter ?? this.activitiesPrimaryFilter;
     if (requestedPrimaryFilter === 'rates') {

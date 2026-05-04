@@ -76,8 +76,11 @@ export class DemoEventsService extends DemoRouteDelayService {
     return this.eventsRepository.queryEventItemsByFilter(userId, filter, hostingPublicationFilter);
   }
 
-  async queryActivitiesEventPage(query: DemoEventActivitiesQuery): Promise<DemoEventActivitiesQueryResult> {
-    await this.waitForRouteDelay(DemoEventsService.EVENTS_ROUTE);
+  async queryActivitiesEventPage(
+    query: DemoEventActivitiesQuery,
+    signal?: AbortSignal
+  ): Promise<DemoEventActivitiesQueryResult> {
+    await this.waitForRouteDelay(DemoEventsService.EVENTS_ROUTE, signal);
     return this.eventsRepository.queryActivitiesEventPage(query);
   }
 

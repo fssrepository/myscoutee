@@ -41,9 +41,7 @@
             [class.smart-list--presentation-list]="resolvedPresentation() === 'list'"
             [class.smart-list--presentation-fullscreen]="resolvedPresentation() === 'fullscreen'"
             (scroll)="onCalendarScroll($event)"
-            (touchstart)="onSurfaceTouchStart()"
-            (touchend)="onSurfaceTouchEnd()"
-            (touchcancel)="onSurfaceTouchEnd()"
+            (scrollend)="onCalendarScrollEnd($event)"
           >
             @if (hasCalendarItems()) {
               @if (isMonthMode()) {

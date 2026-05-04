@@ -38,14 +38,14 @@ export class ActivitiesService extends BaseRouteModeService {
 
   async loadActivities(
     query: ListQuery<ActivitiesFeedFilters>,
-    options: { chatItems?: readonly ChatMenuItem[] } = {}
+    options: { chatItems?: readonly ChatMenuItem[]; signal?: AbortSignal } = {}
   ): Promise<PageResult<AppTypes.ActivityListRow>> {
     const request = toActivitiesPageRequest(query);
     if (request.primaryFilter === 'rates') {
-      return this.loadRates(request);
+      return this.loadRates(request, options.signal);
     }
     if (request.primaryFilter === 'events') {
-      return this.loadEvents(request);
+      return this.loadEvents(request, options.signal);
     }
 
     return this.loadChats(request, options);
@@ -65,9 +65,12 @@ export class ActivitiesService extends BaseRouteModeService {
     };
   }
 
-  private async loadRates(request: ActivitiesPageRequest): Promise<PageResult<AppTypes.ActivityListRow>> {
+  private async loadRates(
+    request: ActivitiesPageRequest,
+    signal?: AbortSignal
+  ): Promise<PageResult<AppTypes.ActivityListRow>> {
     const activeUserId = this.resolveActiveUserId();
-    const page = await this.ratesService.queryActivitiesRatePage(activeUserId, request);
+    const page = await this.ratesService.queryActivitiesRatePage(activeUserId, request, signal);
     this.cacheActivityUsers(page.users);
     const knownUsers = this.resolveActivityUsers(page.users);
     return {
@@ -84,7 +87,10 @@ export class ActivitiesService extends BaseRouteModeService {
     };
   }
 
-  private async loadEvents(request: ActivitiesPageRequest): Promise<PageResult<AppTypes.ActivityListRow>> {
+  private async loadEvents(
+    request: ActivitiesPageRequest,
+    signal?: AbortSignal
+  ): Promise<PageResult<AppTypes.ActivityListRow>> {
     const activeUserId = this.resolveActiveUserId();
     const page = await this.eventsService.queryActivitiesEventPage({
       userId: activeUserId,
@@ -94,8 +100,11 @@ export class ActivitiesService extends BaseRouteModeService {
       sort: this.normalizeEventActivitiesSort(request.sort),
       view: request.view,
       limit: request.pageSize,
-      cursor: request.cursor ?? null
-    });
+      cursor: request.cursor ?? null,
+      anchorDate: request.anchorDate,
+      rangeStart: request.rangeStart,
+      rangeEnd: request.rangeEnd
+    }, signal);
     const rows = buildActivityEventRows(page.records);
     if (this.isCalendarActivitiesView(request.view)) {
       return this.paginateActivitiesRows(rows, request);

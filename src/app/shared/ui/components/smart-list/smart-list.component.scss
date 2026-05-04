@@ -639,12 +639,15 @@
   scroll-behavior: smooth;
   scrollbar-width: none;
   -ms-overflow-style: none;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  touch-action: pan-x;
   padding-bottom: calc(0.8rem + env(safe-area-inset-bottom));
 }
 
 .smart-list--calendar.smart-list--week {
   overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x pan-y;
   overscroll-behavior-y: contain;
   padding-bottom: 0;
 }
@@ -764,6 +767,7 @@
   height: 100%;
   scroll-snap-align: start;
   scroll-snap-stop: always;
+  touch-action: pan-x pan-y;
   padding-right: 0;
   padding-bottom: 0.48rem;
   box-sizing: border-box;
@@ -905,6 +909,7 @@
   overflow: hidden;
   text-overflow: clip;
   cursor: pointer;
+  touch-action: pan-x pan-y;
 }
 
 .smart-list__calendar-badge.calendar-badge-tone-1 {
@@ -975,6 +980,7 @@
   grid-template-rows: auto auto;
   gap: 0;
   min-height: calc((var(--week-slot-count) * var(--week-slot-h)) + 34px);
+  touch-action: pan-x pan-y;
 }
 
 .smart-list__week-board-corner {

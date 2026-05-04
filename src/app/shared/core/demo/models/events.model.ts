@@ -103,6 +103,9 @@ export interface DemoEventActivitiesQuery {
   view: AppTypes.ActivitiesView;
   limit: number;
   cursor?: string | null;
+  anchorDate?: string;
+  rangeStart?: string;
+  rangeEnd?: string;
 }
 
 export interface DemoEventActivitiesQueryResult {
