@@ -14,6 +14,7 @@ import {
   type AdminNotificationCenterState,
   type AdminNotificationRule,
   type AdminNotificationRunResult,
+  type AdminNotificationScheduleSlot,
   type AdminNotificationTemplateOption,
   type AdminNotificationTimingMode,
   type AdminNotificationTriggerKind,
@@ -1490,6 +1491,7 @@ export class AdminService {
         timezone: 'UTC',
         cronExpression: this.intervalCron(options.intervalMinutes ?? 60)
       },
+      scheduleSlots: this.defaultScheduleSlots(options.timingMode),
       message: {
         pushTitle: options.emailSubject ?? '',
         pushBody: options.emailBody ?? '',
@@ -1586,6 +1588,7 @@ export class AdminService {
         cronExpression: `${rule.timing?.cronExpression ?? ''}`.trim()
           || this.intervalCron(Math.max(1, Math.trunc(Number(rule.timing?.intervalMinutes) || 60)))
       },
+      scheduleSlots: this.normalizeScheduleSlots(rule.scheduleSlots, timingMode),
       message: {
         pushTitle: `${rule.message?.pushTitle ?? ''}`.trim(),
         pushBody: `${rule.message?.pushBody ?? ''}`.trim(),
@@ -1654,6 +1657,86 @@ export class AdminService {
   private normalizeNotificationTime(value: string | undefined): string {
     const normalized = `${value ?? ''}`.trim();
     return /^\d{2}:\d{2}$/.test(normalized) ? normalized : '09:00';
+  }
+
+  private normalizeScheduleSlots(
+    slots: AdminNotificationRule['scheduleSlots'] | undefined,
+    timingMode: AdminNotificationTimingMode
+  ): NonNullable<AdminNotificationRule['scheduleSlots']> {
+    const normalized = (slots ?? [])
+      .map((slot, index) => {
+        const frequency: AdminNotificationScheduleSlot['frequency'] =
+          slot?.frequency === 'one-time'
+          || slot?.frequency === 'weekly'
+          || slot?.frequency === 'bi-weekly'
+          || slot?.frequency === 'monthly'
+          || slot?.frequency === 'yearly'
+            ? slot.frequency
+            : 'daily';
+        const time = this.normalizeNotificationTime(slot?.time);
+        const dayOfWeek = this.clampInteger(slot?.dayOfWeek, 1, 7, 1);
+        const date = `${slot?.date ?? ''}`.trim();
+        return {
+          id: `${slot?.id ?? ''}`.trim() || `run-window-${index + 1}`,
+          frequency,
+          date,
+          dayOfWeek,
+          time,
+          timezone: `${slot?.timezone ?? ''}`.trim() || 'UTC',
+          cronExpression: `${slot?.cronExpression ?? ''}`.trim() || this.scheduleSlotCron({ frequency, date, dayOfWeek, time }),
+          enabled: slot?.enabled !== false
+        };
+      });
+    return normalized.length > 0 ? normalized : this.defaultScheduleSlots(timingMode);
+  }
+
+  private defaultScheduleSlots(timingMode: AdminNotificationTimingMode): NonNullable<AdminNotificationRule['scheduleSlots']> {
+    if (timingMode !== 'interval') {
+      return [];
+    }
+    return [{
+      id: 'run-window-default',
+      frequency: 'daily',
+      date: '',
+      dayOfWeek: 1,
+      time: '09:00',
+      timezone: 'UTC',
+      cronExpression: '0 0 9 * * ?',
+      enabled: true
+    }];
+  }
+
+  private scheduleSlotCron(input: { frequency: string; date: string; dayOfWeek: number; time: string }): string {
+    const [hour, minute] = this.normalizeNotificationTime(input.time).split(':').map(value => Math.max(0, Math.trunc(Number(value) || 0)));
+    if (input.frequency === 'weekly') {
+      const quartzDay = (this.clampInteger(input.dayOfWeek, 1, 7, 1) % 7) + 1;
+      return `0 ${minute} ${hour} ? * ${quartzDay}`;
+    }
+    if (input.frequency === 'bi-weekly') {
+      const quartzDay = (this.clampInteger(input.dayOfWeek, 1, 7, 1) % 7) + 1;
+      return `0 ${minute} ${hour} ? * ${quartzDay}`;
+    }
+    if (input.frequency === 'monthly') {
+      const day = this.scheduleDateParts(input.date).day;
+      return `0 ${minute} ${hour} ${day} * ?`;
+    }
+    if (input.frequency === 'yearly') {
+      const date = this.scheduleDateParts(input.date);
+      return `0 ${minute} ${hour} ${date.day} ${date.month} ?`;
+    }
+    if (input.frequency === 'one-time' && /^\d{4}-\d{2}-\d{2}$/.test(input.date)) {
+      const [, month, day] = input.date.split('-').map(value => Math.max(1, Math.trunc(Number(value) || 1)));
+      return `0 ${minute} ${hour} ${day} ${month} ?`;
+    }
+    return `0 ${minute} ${hour} * * ?`;
+  }
+
+  private scheduleDateParts(value: string): { month: number; day: number } {
+    const match = `${value || ''}`.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    return {
+      month: match ? this.clampInteger(Number(match[2]), 1, 12, 1) : 1,
+      day: match ? this.clampInteger(Number(match[3]), 1, 31, 1) : 1
+    };
   }
 
   private demoScheduledRunCount(ruleKey: string): number {

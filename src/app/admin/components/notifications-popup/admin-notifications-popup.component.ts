@@ -6,7 +6,8 @@ import { MatIconModule } from '@angular/material/icon';
 import type {
   AdminNotificationCenterState,
   AdminNotificationRule,
-  AdminNotificationRunHistoryEntry
+  AdminNotificationRunHistoryEntry,
+  AdminNotificationScheduleSlot
 } from '../../../shared/core';
 import { RouteDelayService } from '../../../shared/core/base/services/route-delay.service';
 import { AdminService } from '../../admin.service';
@@ -44,6 +45,7 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
   protected readonly error = signal('');
   protected readonly state = signal<AdminNotificationCenterState | null>(null);
   protected readonly selectedRuleKey = signal('event-random-groups');
+  protected readonly scheduleEditorOpen = signal(false);
   private loadedForOpen = false;
   private pollTimer: ReturnType<typeof setInterval> | null = null;
   private loadingProgressTimer: ReturnType<typeof setInterval> | null = null;
@@ -59,11 +61,23 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
     }
   ];
 
-  protected readonly frequencyOptions = [
-    { minutes: 5, label: 'Every 5m' },
-    { minutes: 15, label: 'Every 15m' },
-    { minutes: 30, label: 'Every 30m' },
-    { minutes: 60, label: 'Hourly' }
+  protected readonly scheduleFrequencyOptions = [
+    { value: 'daily', label: 'Daily' },
+    { value: 'weekly', label: 'Weekly' },
+    { value: 'bi-weekly', label: 'Bi-weekly' },
+    { value: 'monthly', label: 'Monthly' },
+    { value: 'yearly', label: 'Yearly' },
+    { value: 'one-time', label: 'One time' }
+  ] as const;
+
+  protected readonly weekDays = [
+    { value: 1, label: 'Monday' },
+    { value: 2, label: 'Tuesday' },
+    { value: 3, label: 'Wednesday' },
+    { value: 4, label: 'Thursday' },
+    { value: 5, label: 'Friday' },
+    { value: 6, label: 'Saturday' },
+    { value: 7, label: 'Sunday' }
   ];
 
   constructor() {
@@ -71,6 +85,7 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
       if (this.admin.activePopup() !== 'notifications') {
         this.loadedForOpen = false;
         this.error.set('');
+        this.scheduleEditorOpen.set(false);
         this.stopPolling();
         return;
       }
@@ -88,6 +103,9 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
   }
 
   protected async load(silent = false): Promise<void> {
+    if (silent && this.scheduleEditorOpen()) {
+      return;
+    }
     if (this.loading() || this.saving()) {
       return;
     }
@@ -103,7 +121,11 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
           ? Promise.resolve()
           : this.routeDelay.waitForRouteDelay('/admin/notifications', undefined, undefined, AdminNotificationsPopupComponent.LOAD_DEMO_DELAY_MS)
       ]);
-      this.state.set(this.ensureProcessRules(state));
+      if (silent) {
+        this.mergeRuntimeState(state);
+      } else {
+        this.state.set(this.ensureProcessRules(state));
+      }
       if (!this.processTabs.some(tab => tab.key === this.selectedRuleKey())) {
         this.selectedRuleKey.set(this.processTabs[0].key);
       }
@@ -215,6 +237,7 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
 
   protected selectRule(ruleKey: string): void {
     this.selectedRuleKey.set(ruleKey);
+    this.scheduleEditorOpen.set(false);
   }
 
   protected selectedTab(): ProcessTab {
@@ -236,6 +259,13 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
     if (this.runningRuleKey() === rule.ruleKey || rule.runState.currentStatus === 'running') {
       return 'Running';
     }
+    const lastStatus = `${rule.runState.lastRunStatus || rule.runState.currentStatus || ''}`.trim().toLowerCase();
+    if (['failed', 'error'].includes(lastStatus)) {
+      return 'Failed';
+    }
+    if (['missed', 'skipped'].includes(lastStatus)) {
+      return 'Missed';
+    }
     if (!rule.enabled || rule.runState.currentStatus === 'suspended') {
       return 'Suspended';
     }
@@ -253,17 +283,101 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
     return Math.max(0, Math.min(100, rule.runState.progressPercent || 0));
   }
 
-  protected cronFor(rule: AdminNotificationRule): string {
-    const interval = Math.max(1, Math.trunc(Number(rule.timing.intervalMinutes) || 15));
-    rule.timing.cronExpression = `0 0/${interval} * * * ?`;
-    return rule.timing.cronExpression;
+  protected runWindows(rule: AdminNotificationRule): AdminNotificationScheduleSlot[] {
+    if (!rule.scheduleSlots || rule.scheduleSlots.length === 0) {
+      rule.scheduleSlots = [this.newRunWindow()];
+    }
+    return rule.scheduleSlots;
   }
 
-  protected setFrequency(rule: AdminNotificationRule, minutes: string | number): void {
-    const interval = Math.max(1, Math.trunc(Number(minutes) || 15));
-    rule.timing.mode = 'interval';
-    rule.timing.intervalMinutes = interval;
-    rule.timing.cronExpression = `0 0/${interval} * * * ?`;
+  protected openScheduleEditor(): void {
+    this.stopPolling();
+    this.scheduleEditorOpen.set(true);
+  }
+
+  protected closeScheduleEditor(): void {
+    this.scheduleEditorOpen.set(false);
+    if (this.admin.activePopup() === 'notifications') {
+      this.startPolling();
+    }
+  }
+
+  protected async saveScheduleEditor(): Promise<void> {
+    this.syncPrimaryTiming(this.selectedRule());
+    await this.save();
+    if (!this.error()) {
+      this.closeScheduleEditor();
+    }
+  }
+
+  protected addRunWindow(rule: AdminNotificationRule): void {
+    rule.scheduleSlots = [...this.runWindows(rule), this.newRunWindow()];
+    this.syncPrimaryTiming(rule);
+  }
+
+  protected removeRunWindow(rule: AdminNotificationRule, index: number): void {
+    const next = this.runWindows(rule).filter((_, currentIndex) => currentIndex !== index);
+    rule.scheduleSlots = next.length > 0 ? next : [this.newRunWindow()];
+    this.syncPrimaryTiming(rule);
+  }
+
+  protected updateRunWindow(rule: AdminNotificationRule, slot: AdminNotificationScheduleSlot): void {
+    slot.time = this.normalizeTime(slot.time);
+    slot.dayOfWeek = Math.max(1, Math.min(7, Math.trunc(Number(slot.dayOfWeek) || 1)));
+    slot.cronExpression = this.cronForSlot(slot);
+    this.syncPrimaryTiming(rule);
+  }
+
+  protected runWindowSummary(rule: AdminNotificationRule): string {
+    const windows = this.runWindows(rule).filter(slot => slot.enabled !== false);
+    if (windows.length === 0) {
+      return 'No active run windows';
+    }
+    return windows.map(slot => this.runWindowLabel(slot)).join(' · ');
+  }
+
+  protected runWindowLabel(slot: AdminNotificationScheduleSlot): string {
+    const time = this.normalizeTime(slot.time);
+    if (slot.frequency === 'one-time') {
+      return `${slot.date || 'One-time date'} at ${time}`;
+    }
+    if (slot.frequency === 'yearly') {
+      return `Yearly ${this.monthDayLabel(slot.date)} at ${time}`;
+    }
+    if (slot.frequency === 'monthly') {
+      return `Monthly on day ${this.dayOfMonth(slot.date)} at ${time}`;
+    }
+    if (slot.frequency === 'bi-weekly') {
+      return `Bi-weekly ${this.weekDayLabel(slot.dayOfWeek)} at ${time}`;
+    }
+    if (slot.frequency === 'weekly') {
+      return `Weekly ${this.weekDayLabel(slot.dayOfWeek)} at ${time}`;
+    }
+    return `Daily at ${time}`;
+  }
+
+  protected cronForSlot(slot: AdminNotificationScheduleSlot): string {
+    const [hour, minute] = this.normalizeTime(slot.time).split(':').map(value => Math.max(0, Math.trunc(Number(value) || 0)));
+    if (slot.frequency === 'weekly') {
+      const quartzDay = (Math.max(1, Math.min(7, Math.trunc(Number(slot.dayOfWeek) || 1))) % 7) + 1;
+      return `0 ${minute} ${hour} ? * ${quartzDay}`;
+    }
+    if (slot.frequency === 'bi-weekly') {
+      const quartzDay = (Math.max(1, Math.min(7, Math.trunc(Number(slot.dayOfWeek) || 1))) % 7) + 1;
+      return `0 ${minute} ${hour} ? * ${quartzDay}`;
+    }
+    if (slot.frequency === 'monthly') {
+      return `0 ${minute} ${hour} ${this.dayOfMonth(slot.date)} * ?`;
+    }
+    if (slot.frequency === 'yearly') {
+      const parsed = this.monthDayParts(slot.date);
+      return `0 ${minute} ${hour} ${parsed.day} ${parsed.month} ?`;
+    }
+    if (slot.frequency === 'one-time' && /^\d{4}-\d{2}-\d{2}$/.test(slot.date || '')) {
+      const [, month, day] = slot.date.split('-').map(value => Math.max(1, Math.trunc(Number(value) || 1)));
+      return `0 ${minute} ${hour} ${day} ${month} ?`;
+    }
+    return `0 ${minute} ${hour} * * ?`;
   }
 
   protected history(rule: AdminNotificationRule): AdminNotificationRunHistoryEntry[] {
@@ -286,6 +400,11 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
       return `${value}ms`;
     }
     return `${(value / 1000).toFixed(value < 10000 ? 1 : 0)}s`;
+  }
+
+  protected affectedLabel(count: number): string {
+    const value = Math.max(0, Math.trunc(Number(count) || 0));
+    return `${value} affected`;
   }
 
   protected loadingRingDashOffset(): number {
@@ -356,8 +475,34 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
     };
   }
 
+  private mergeRuntimeState(incomingState: AdminNotificationCenterState): void {
+    const currentState = this.state();
+    if (!currentState) {
+      this.state.set(this.ensureProcessRules(incomingState));
+      return;
+    }
+    const incomingRules = this.ensureProcessRules(incomingState).rules;
+    this.state.set({
+      ...currentState,
+      rules: currentState.rules.map(rule => {
+        const incoming = incomingRules.find(item => item.ruleKey === rule.ruleKey);
+        if (!incoming) {
+          return rule;
+        }
+        return {
+          ...rule,
+          runState: incoming.runState,
+          runHistory: incoming.runHistory ?? [],
+          updatedDate: incoming.updatedDate || rule.updatedDate,
+          updatedUser: incoming.updatedUser || rule.updatedUser
+        };
+      }),
+      updatedDate: incomingState.updatedDate || currentState.updatedDate
+    });
+  }
+
   private fallbackRule(tab: ProcessTab): AdminNotificationRule {
-    const intervalMinutes = 15;
+    const firstWindow = this.newRunWindow();
     return {
       ruleKey: tab.key,
       label: tab.label,
@@ -372,13 +517,14 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
       timing: {
         mode: 'interval',
         delayMinutes: 0,
-        intervalMinutes,
+        intervalMinutes: 1440,
         month: 1,
         dayOfMonth: 1,
         time: '09:00',
         timezone: 'UTC',
-        cronExpression: `0 0/${intervalMinutes} * * * ?`
+        cronExpression: firstWindow.cronExpression
       },
+      scheduleSlots: [firstWindow],
       message: { pushTitle: '', pushBody: '', emailTemplateKey: '', emailSubject: '', emailBody: '', ctaPath: '/game' },
       runState: {
         currentStatus: 'suspended',
@@ -415,5 +561,66 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
     const started = Date.parse(startedAtIso || '');
     const finished = Date.parse(finishedAtIso || '');
     return Number.isFinite(started) && Number.isFinite(finished) ? Math.max(0, finished - started) : 0;
+  }
+
+  private newRunWindow(): AdminNotificationScheduleSlot {
+    const slot: AdminNotificationScheduleSlot = {
+      id: `run-window-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      frequency: 'daily',
+      date: this.todayIsoDate(),
+      dayOfWeek: 1,
+      time: '09:00',
+      timezone: 'UTC',
+      cronExpression: '',
+      enabled: true
+    };
+    slot.cronExpression = this.cronForSlot(slot);
+    return slot;
+  }
+
+  private syncPrimaryTiming(rule: AdminNotificationRule): void {
+    const first = this.runWindows(rule)[0];
+    rule.timing.mode = 'interval';
+    rule.timing.time = this.normalizeTime(first.time);
+    rule.timing.timezone = first.timezone || 'UTC';
+    rule.timing.cronExpression = first.cronExpression || this.cronForSlot(first);
+    rule.timing.intervalMinutes = 1440;
+  }
+
+  private isLastRunProblem(rule: AdminNotificationRule): boolean {
+    const status = `${rule.runState.lastRunStatus || rule.runState.currentStatus || ''}`.trim().toLowerCase();
+    return ['failed', 'missed', 'error', 'skipped'].includes(status);
+  }
+
+  private weekDayLabel(value: number): string {
+    return this.weekDays.find(day => day.value === Math.max(1, Math.min(7, Math.trunc(Number(value) || 1))))?.label ?? 'Monday';
+  }
+
+  private dayOfMonth(value: string): number {
+    return this.monthDayParts(value).day;
+  }
+
+  private monthDayLabel(value: string): string {
+    const { month, day } = this.monthDayParts(value);
+    return new Date(Date.UTC(2026, month - 1, day)).toLocaleString([], { month: 'short', day: 'numeric', timeZone: 'UTC' });
+  }
+
+  private monthDayParts(value: string): { month: number; day: number } {
+    const match = `${value || ''}`.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    const month = match ? Math.max(1, Math.min(12, Math.trunc(Number(match[2]) || 1))) : 1;
+    const day = match ? Math.max(1, Math.min(31, Math.trunc(Number(match[3]) || 1))) : 1;
+    return { month, day };
+  }
+
+  private normalizeTime(value: string): string {
+    const normalized = `${value || ''}`.trim();
+    return /^\d{2}:\d{2}$/.test(normalized) ? normalized : '09:00';
+  }
+
+  private todayIsoDate(): string {
+    const now = new Date();
+    const month = `${now.getMonth() + 1}`.padStart(2, '0');
+    const day = `${now.getDate()}`.padStart(2, '0');
+    return `${now.getFullYear()}-${month}-${day}`;
   }
 }

@@ -10,11 +10,6 @@
           </p>
         </div>
         <div class="notification-header-actions">
-          @if (selectedRule(); as headerRule) {
-            <span class="process-status-pill" [ngClass]="statusClass(headerRule)">
-              {{ statusLabel(headerRule) }}
-            </span>
-          }
           <span class="notification-action-ring-shell notification-circle-ring-shell" [class.is-loading]="saving()">
             <span class="notification-circle-ring" aria-hidden="true">
               <svg viewBox="0 0 34 34" preserveAspectRatio="none" class="notification-circle-ring-svg">
@@ -108,9 +103,6 @@
                     <p>{{ tab.summary }}</p>
                   </div>
                   <div class="process-actions">
-                    <span class="process-status-pill" [ngClass]="statusClass(rule)">
-                      {{ statusLabel(rule) }}
-                    </span>
                     <button
                       type="button"
                       class="process-soft-btn"
@@ -128,7 +120,7 @@
                       (click)="run(rule)"
                     >
                       <mat-icon>{{ runningRuleKey() === rule.ruleKey ? 'sync' : 'play_arrow' }}</mat-icon>
-                      <span>{{ runningRuleKey() === rule.ruleKey ? 'Running' : 'Start' }}</span>
+                      <span>{{ runningRuleKey() === rule.ruleKey ? 'Running' : 'Run' }}</span>
                     </button>
                   </div>
                 </div>
@@ -150,23 +142,16 @@
 
                   <section class="process-card">
                     <div class="process-card-head">
-                      <h3>Slot</h3>
-                      <label class="process-frequency">
+                      <h3>Run Windows</h3>
+                      <button type="button" class="process-frequency" (click)="openScheduleEditor()">
                         <mat-icon>schedule</mat-icon>
-                        <select
-                          [ngModel]="rule.timing.intervalMinutes"
-                          (ngModelChange)="setFrequency(rule, $event)"
-                          aria-label="Frequency"
-                        >
-                          @for (option of frequencyOptions; track option.minutes) {
-                            <option [value]="option.minutes">{{ option.label }}</option>
-                          }
-                        </select>
-                      </label>
+                        <span>Edit</span>
+                      </button>
                     </div>
                     <div class="process-cron">
-                      <span>Quartz</span>
-                      <code>{{ cronFor(rule) }}</code>
+                      @for (slot of runWindows(rule); track slot.id) {
+                        <code>{{ runWindowLabel(slot) }}</code>
+                      }
                     </div>
                   </section>
 
@@ -179,7 +164,7 @@
                       <span>{{ rule.runState.lastRunDetail || 'Not run yet' }}</span>
                     </div>
                     <div class="process-last-run-stats">
-                      <span>{{ rule.runState.lastRunCount || 0 }} records</span>
+                      <span>{{ affectedLabel(rule.runState.lastRunCount || 0) }}</span>
                       <span>{{ durationLabel(rule.runState.durationMillis) }}</span>
                     </div>
                   </section>
@@ -193,7 +178,7 @@
                     <div class="process-history-row process-history-head">
                       <span>When</span>
                       <span>Duration</span>
-                      <span>Records</span>
+                      <span>Affected</span>
                       <span>Status</span>
                       <span>Detail</span>
                     </div>
@@ -215,6 +200,77 @@
           }
         }
       </div>
+
+      @if (scheduleEditorOpen() && selectedRule(); as scheduleRule) {
+        <div class="run-window-backdrop" (click)="closeScheduleEditor()"></div>
+        <section class="run-window-popup" (click)="$event.stopPropagation()">
+          <div class="run-window-popup-head">
+            <div>
+              <h3>Run Windows</h3>
+              <p>Configure when this scheduled process should run.</p>
+            </div>
+            <button type="button" class="run-window-close" (click)="closeScheduleEditor()" aria-label="Close run window editor">
+              <mat-icon>close</mat-icon>
+            </button>
+          </div>
+          <div class="run-window-list">
+            @for (slot of runWindows(scheduleRule); track slot.id; let index = $index) {
+              <article class="run-window-row">
+                <div class="run-window-row-head">
+                  <strong>Run window {{ index + 1 }}</strong>
+                  <div class="run-window-row-tools">
+                    <code>{{ slot.cronExpression || cronForSlot(slot) }}</code>
+                    <button type="button" class="run-window-remove" (click)="removeRunWindow(scheduleRule, index)" aria-label="Remove run window">
+                      <mat-icon>delete_outline</mat-icon>
+                    </button>
+                  </div>
+                </div>
+                <div class="run-window-grid">
+                  <label>
+                    <span>Frequency</span>
+                    <select [(ngModel)]="slot.frequency" (ngModelChange)="updateRunWindow(scheduleRule, slot)">
+                      @for (option of scheduleFrequencyOptions; track option.value) {
+                        <option [value]="option.value">{{ option.label }}</option>
+                      }
+                    </select>
+                  </label>
+                  @if (slot.frequency === 'one-time' || slot.frequency === 'monthly' || slot.frequency === 'yearly') {
+                    <label>
+                      <span>Date</span>
+                      <input type="date" [(ngModel)]="slot.date" (ngModelChange)="updateRunWindow(scheduleRule, slot)" />
+                    </label>
+                  }
+                  @if (slot.frequency === 'weekly' || slot.frequency === 'bi-weekly') {
+                    <label>
+                      <span>Day</span>
+                      <select [(ngModel)]="slot.dayOfWeek" (ngModelChange)="updateRunWindow(scheduleRule, slot)">
+                        @for (day of weekDays; track day.value) {
+                          <option [value]="day.value">{{ day.label }}</option>
+                        }
+                      </select>
+                    </label>
+                  }
+                  <label>
+                    <span>Time</span>
+                    <input type="time" [(ngModel)]="slot.time" (ngModelChange)="updateRunWindow(scheduleRule, slot)" />
+                  </label>
+                </div>
+                <p class="run-window-readable">{{ runWindowLabel(slot) }}</p>
+              </article>
+            }
+          </div>
+          <div class="run-window-actions">
+            <button type="button" class="process-soft-btn" (click)="addRunWindow(scheduleRule)">
+              <mat-icon>add</mat-icon>
+              <span>Add run window</span>
+            </button>
+            <button type="button" class="notification-primary-btn" (click)="saveScheduleEditor()">
+              <mat-icon>check</mat-icon>
+              <span>Done</span>
+            </button>
+          </div>
+        </section>
+      }
     </div>
   </section>
 }

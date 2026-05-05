@@ -19,6 +19,19 @@ export interface AdminNotificationTiming {
   cronExpression: string;
 }
 
+export type AdminNotificationScheduleFrequency = 'one-time' | 'daily' | 'weekly' | 'bi-weekly' | 'monthly' | 'yearly';
+
+export interface AdminNotificationScheduleSlot {
+  id: string;
+  frequency: AdminNotificationScheduleFrequency;
+  date: string;
+  dayOfWeek: number;
+  time: string;
+  timezone: string;
+  cronExpression: string;
+  enabled: boolean;
+}
+
 export interface AdminNotificationMessage {
   pushTitle: string;
   pushBody: string;
@@ -67,6 +80,7 @@ export interface AdminNotificationRule {
   priority: number;
   channels: AdminNotificationChannels;
   timing: AdminNotificationTiming;
+  scheduleSlots?: AdminNotificationScheduleSlot[];
   message: AdminNotificationMessage;
   runState: AdminNotificationRunState;
   runHistory: AdminNotificationRunHistoryEntry[];
