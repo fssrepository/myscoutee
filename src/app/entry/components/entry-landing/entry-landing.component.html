@@ -127,11 +127,12 @@
       </div>
     </section>
 
-    @if (featuredIdeaPosts().length > 0) {
+    @if (articlesLoading || featuredIdeaPosts().length > 0) {
       <section class="entry-ideas" id="articles" aria-label="MyScoutee articles">
         <div
           class="entry-ideas-carousel"
-          [class.entry-ideas-carousel--with-dots]="ideaCarouselPageCount() > 1"
+          [class.entry-ideas-carousel--loading]="articlesLoading"
+          [class.entry-ideas-carousel--with-dots]="articlesLoading || ideaCarouselPageCount() > 1"
           role="region"
           aria-label="Featured article posts"
           aria-roledescription="carousel"
@@ -174,6 +175,17 @@
               }
             </div>
           </div>
+          @if (articlesLoading) {
+            <div
+              class="entry-ideas-carousel-loading"
+              aria-live="polite"
+              aria-busy="true"
+              [style.--entry-ideas-loading-progress]="articlesLoadingProgress"
+              >
+              <span class="entry-ideas-carousel-progress-ring" aria-hidden="true"></span>
+              <span class="entry-ideas-carousel-loading-label">{{ 'Loading articles' | i18n }}</span>
+            </div>
+          }
           @if (ideaCarouselPageCount() > 1 && !isLastIdeaCarouselPage) {
             <button
               type="button"

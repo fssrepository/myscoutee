@@ -18,6 +18,7 @@ import {
   type SmartListItemRenderState,
   type SmartListLoadPage
 } from '../../../shared/ui/components/smart-list';
+import { I18nPipe } from '../../../shared/i18n';
 
 interface HowStepSlide {
   readonly index: string;
@@ -33,7 +34,8 @@ interface HowStepSlide {
     InfoCardComponent,
     SmartListComponent,
     MatRippleModule,
-    MatIconModule
+    MatIconModule,
+    I18nPipe
   ],
   templateUrl: './entry-landing.component.html',
   styleUrl: './entry-landing.component.scss'
@@ -50,6 +52,8 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
 
   @Input({ required: true }) authMode: AppTypes.AuthMode = 'selector';
   @Input() firebaseAuthProfile: AppTypes.FirebaseAuthProfile | null = null;
+  @Input() articlesLoading = false;
+  @Input() articlesLoadingProgress = 0;
   @Input() ideaPosts: AppTypes.IdeaPost[] = [];
 
   @Output() readonly demoRequested = new EventEmitter<void>();

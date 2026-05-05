@@ -1,6 +1,8 @@
 <app-entry-landing
   [authMode]="authMode"
   [firebaseAuthProfile]="firebaseAuthProfile"
+  [articlesLoading]="landingArticlesLoading"
+  [articlesLoadingProgress]="landingArticlesLoadingProgress"
   [ideaPosts]="landingIdeaPosts"
   (demoRequested)="openEntryDemo()"
   (firebaseAuthRequested)="openEntryFirebaseAuth()"

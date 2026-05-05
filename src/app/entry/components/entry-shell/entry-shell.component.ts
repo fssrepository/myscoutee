@@ -1,9 +1,10 @@
-import { ChangeDetectorRef, Component, EventEmitter, HostListener, Injector, Input, NgZone, Output, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, EventEmitter, HostListener, Injector, Input, NgZone, OnDestroy, Output, inject } from '@angular/core';
 
 import { AppContext, HelpCenterService, LandingContentService, USERS_LOAD_CONTEXT_KEY, UsersService, type DemoUserListItemDto } from '../../../shared/core';
 import type { DemoBootstrapProgressStage } from '../../../shared/core/demo';
 import type * as AppTypes from '../../../shared/core/base/models';
 import type { LocationCoordinates } from '../../../shared/core/base/interfaces/location.interface';
+import { resolveCurrentRouteDelayMs } from '../../../shared/core/base/services/route-delay.service';
 import { ConfirmationDialogComponent } from '../../../shared/ui/components/confirmation-dialog/confirmation-dialog.component';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
 import { EntryConsentPopupComponent } from '../entry-consent-popup/entry-consent-popup.component';
@@ -30,10 +31,12 @@ export interface EntryDemoUserSelectionEvent {
   templateUrl: './entry-shell.component.html',
   styleUrl: './entry-shell.component.scss'
 })
-export class EntryShellComponent {
+export class EntryShellComponent implements OnDestroy {
   private static readonly ENTRY_CONSENT_KEY = 'entry-gdpr-consent';
   private static readonly ENTRY_CONSENT_AUDIT_KEY = 'entry-gdpr-consent-audit';
   private static readonly ENTRY_CONSENT_AUDIT_MAX = 30;
+  private static readonly LANDING_ARTICLES_LOADING_DELAY_MS = 1500;
+  private static readonly LANDING_ARTICLES_LOADING_WINDOW_MS = 3000;
 
   private readonly injector = inject(Injector);
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
@@ -58,6 +61,8 @@ export class EntryShellComponent {
   protected showEntryConsentPopup = false;
   protected entryConsentViewOnly = false;
   protected entryPrivacyLoading = true;
+  protected landingArticlesLoading = true;
+  protected landingArticlesLoadingProgress = 0;
   protected landingIdeaPosts: AppTypes.IdeaPost[] = [];
   protected showUserSelector = false;
   protected demoSelectorUsers: DemoUserListItemDto[] = [];
@@ -70,9 +75,17 @@ export class EntryShellComponent {
   protected demoSelectorSelectedUserId = '';
   protected showFirebaseAuthPopup = false;
   private demoSelectorRequestToken = 0;
+  private landingContentRequestToken = 0;
+  private landingArticlesLoadingStartedAtMs = 0;
+  private landingArticlesLoadingInterval: ReturnType<typeof setInterval> | null = null;
 
   constructor() {
     this.initializeEntryFlow();
+  }
+
+  ngOnDestroy(): void {
+    this.landingContentRequestToken += 1;
+    this.clearLandingArticlesLoadingWindow();
   }
 
   @HostListener('window:keydown.escape', ['$event'])
@@ -234,6 +247,8 @@ export class EntryShellComponent {
     this.entryConsentViewOnly = false;
     this.showEntryConsentPopup = !hasStoredConsent;
     this.entryPrivacyLoading = true;
+    this.landingArticlesLoading = true;
+    this.landingArticlesLoadingProgress = 0;
     this.showUserSelector = false;
     this.demoSelectorLoading = false;
     this.demoSelectorLoadingProgress = 0;
@@ -587,13 +602,22 @@ export class EntryShellComponent {
   }
 
   private async loadEntryPrivacyContent(): Promise<void> {
+    const requestToken = ++this.landingContentRequestToken;
     this.entryPrivacyLoading = true;
+    this.startLandingArticlesLoadingWindow();
     try {
-      const state = await this.landingContent.loadOnce();
+      const [state] = await Promise.all([
+        this.landingContent.loadOnce(),
+        this.wait(this.landingArticlesLoadingDelayMs())
+      ]);
       this.landingIdeaPosts = state.ideas;
     } finally {
       this.ngZone.run(() => {
+        if (requestToken !== this.landingContentRequestToken) {
+          return;
+        }
         this.entryPrivacyLoading = false;
+        this.endLandingArticlesLoadingWindow();
         if (!this.entryConsentViewOnly) {
           this.showEntryConsentPopup = this.loadEntryConsentState() === null;
         }
@@ -609,5 +633,67 @@ export class EntryShellComponent {
       return '';
     }
     return `privacy:${revision.id}:v${revision.version}`;
+  }
+
+  private startLandingArticlesLoadingWindow(): void {
+    this.clearLandingArticlesLoadingWindow();
+    this.landingArticlesLoading = true;
+    this.landingArticlesLoadingProgress = 0.02;
+    this.landingArticlesLoadingStartedAtMs = performance.now();
+    this.updateLandingArticlesLoadingWindow();
+    this.landingArticlesLoadingInterval = this.ngZone.runOutsideAngular(() =>
+      setInterval(() => {
+        this.ngZone.run(() => {
+          this.updateLandingArticlesLoadingWindow();
+          this.changeDetectorRef.markForCheck();
+        });
+      }, 16)
+    );
+  }
+
+  private endLandingArticlesLoadingWindow(): void {
+    this.clearLandingArticlesLoadingWindow();
+    this.landingArticlesLoadingProgress = 1;
+    this.changeDetectorRef.detectChanges();
+    setTimeout(() => {
+      this.ngZone.run(() => {
+        this.landingArticlesLoading = false;
+        this.landingArticlesLoadingProgress = 0;
+        this.landingArticlesLoadingStartedAtMs = 0;
+        this.changeDetectorRef.detectChanges();
+      });
+    }, 100);
+  }
+
+  private updateLandingArticlesLoadingWindow(): void {
+    if (!this.landingArticlesLoading) {
+      return;
+    }
+    const elapsed = Math.max(0, performance.now() - this.landingArticlesLoadingStartedAtMs);
+    const nextProgress = Math.min(1, elapsed / EntryShellComponent.LANDING_ARTICLES_LOADING_WINDOW_MS);
+    this.landingArticlesLoadingProgress = Math.max(this.landingArticlesLoadingProgress, nextProgress);
+  }
+
+  private clearLandingArticlesLoadingWindow(): void {
+    if (!this.landingArticlesLoadingInterval) {
+      return;
+    }
+    clearInterval(this.landingArticlesLoadingInterval);
+    this.landingArticlesLoadingInterval = null;
+  }
+
+  private landingArticlesLoadingDelayMs(): number {
+    const routeDelayMs = resolveCurrentRouteDelayMs(
+      '/landing/content',
+      EntryShellComponent.LANDING_ARTICLES_LOADING_DELAY_MS
+    );
+    return routeDelayMs > 0 ? routeDelayMs : EntryShellComponent.LANDING_ARTICLES_LOADING_DELAY_MS;
+  }
+
+  private wait(delayMs: number): Promise<void> {
+    if (delayMs <= 0) {
+      return Promise.resolve();
+    }
+    return new Promise(resolve => setTimeout(resolve, delayMs));
   }
 }
