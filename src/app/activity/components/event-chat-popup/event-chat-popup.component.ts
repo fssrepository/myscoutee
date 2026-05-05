@@ -1418,7 +1418,7 @@ export class EventChatPopupComponent implements OnDestroy {
       return;
     }
     const session = this.session();
-    const target = this.resolveChatReportTarget(message, session?.item ?? null);
+    const target = this.resolveChatReportTarget(message);
     const eventId = `${session?.item.eventId ?? session?.item.id ?? ''}`.trim();
     if (!target || !eventId) {
       return;
@@ -1445,7 +1445,7 @@ export class EventChatPopupComponent implements OnDestroy {
     if (this.isAdminRoleActive() || message.mine) {
       return false;
     }
-    return this.resolveChatReportTarget(message, this.session()?.item ?? null) !== null;
+    return this.resolveChatReportTarget(message) !== null;
   }
 
   private isAdminRoleActive(): boolean {
@@ -1457,10 +1457,7 @@ export class EventChatPopupComponent implements OnDestroy {
     return activeUserId === 'admin' || activeUserId.startsWith('admin-');
   }
 
-  private resolveChatReportTarget(
-    message: AppTypes.ChatPopupMessage,
-    chat: ChatMenuItem | null
-  ): { userId: string; name: string } | null {
+  private resolveChatReportTarget(message: AppTypes.ChatPopupMessage): { userId: string; name: string } | null {
     if (message.mine) {
       return null;
     }
@@ -2932,10 +2929,16 @@ export class EventChatPopupComponent implements OnDestroy {
       return normalizedMessage;
     }
     const senderPresentation = this.resolveOptimisticSenderPresentation(normalizedMessage.senderAvatar?.id || this.activeUserId());
+    const senderAvatar = normalizedMessage.senderAvatar;
     return {
       ...normalizedMessage,
       sender: senderPresentation.sender,
-      senderAvatar: senderPresentation.senderAvatar
+      senderAvatar: {
+        id: `${senderAvatar?.id ?? ''}`.trim() || senderPresentation.senderAvatar.id,
+        initials: `${senderAvatar?.initials ?? ''}`.trim() || senderPresentation.senderAvatar.initials,
+        gender: senderAvatar?.gender ?? senderPresentation.senderAvatar.gender,
+        imageUrl: senderAvatar?.imageUrl ?? senderPresentation.senderAvatar.imageUrl ?? null
+      }
     };
   }
 
@@ -2999,7 +3002,8 @@ export class EventChatPopupComponent implements OnDestroy {
       senderAvatar: {
         id: activeUser?.id?.trim() || activeUserId || 'self',
         initials: initials || 'ME',
-        gender: activeUser?.gender ?? 'man'
+        gender: activeUser?.gender ?? 'man',
+        imageUrl: activeUser?.images?.map(image => image.trim()).find(Boolean) ?? null
       }
     };
   }

@@ -4,6 +4,7 @@ export interface ChatReadAvatar {
   id: string;
   initials: string;
   gender: 'woman' | 'man';
+  imageUrl?: string | null;
 }
 
 export type ChatMessageDeliveryState = 'pending' | 'timed-out';

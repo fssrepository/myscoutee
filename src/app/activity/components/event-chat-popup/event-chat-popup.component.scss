@@ -609,7 +609,11 @@
   overflow-y: auto;
   overflow-x: hidden;
   display: block;
-  padding-right: 0.12rem;
+  padding: 0 0.12rem 1.1rem 0;
+}
+
+:host ::ng-deep .smart-list--list.chat-thread-list {
+  padding: 0 0.12rem 1.45rem 0;
 }
 
 .chat-day-sticky {
@@ -642,6 +646,10 @@
   margin-bottom: 0.8rem;
   position: relative;
   z-index: 1;
+}
+
+.chat-message:has(.chat-readers) {
+  margin-bottom: 1.15rem;
 }
 
 .chat-message.mine {
@@ -732,6 +740,14 @@
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
+  overflow: hidden;
+}
+
+.chat-sender-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .user-color-woman {
@@ -1720,6 +1736,14 @@
   align-items: center;
   justify-content: center;
   box-shadow: 0 2px 6px rgba(15, 23, 42, 0.18);
+  overflow: hidden;
+}
+
+.chat-reader img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .chat-reader.chat-reader-fresh {

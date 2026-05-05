@@ -355,7 +355,11 @@
     <div class="chat-bubble">
       @if (!message.deletedAtIso) {
         <span class="chat-sender-avatar" [class]="'user-color-' + message.senderAvatar.gender">
-          {{ message.senderAvatar.initials }}
+          @if (message.senderAvatar.imageUrl) {
+            <img [src]="message.senderAvatar.imageUrl" [alt]="message.sender" loading="lazy" decoding="async" />
+          } @else {
+            {{ message.senderAvatar.initials }}
+          }
         </span>
       }
       <div class="chat-message-content">
@@ -557,7 +561,11 @@
                 [class]="'user-color-' + reader.gender"
                 [class.chat-reader-fresh]="isFreshRead(message.id, reader.id)"
                 >
-                {{ reader.initials }}
+                @if (reader.imageUrl) {
+                  <img [src]="reader.imageUrl" [alt]="reader.initials" loading="lazy" decoding="async" />
+                } @else {
+                  {{ reader.initials }}
+                }
               </span>
             }
           </div>
@@ -681,7 +689,13 @@
       <div class="chat-pinned-list">
         @for (message of pinnedMessages(); track message.id) {
           <button type="button" class="chat-pinned-message" (click)="selectPinnedMessage(message)">
-            <span class="chat-sender-avatar" [class]="'user-color-' + message.senderAvatar.gender">{{ message.senderAvatar.initials }}</span>
+            <span class="chat-sender-avatar" [class]="'user-color-' + message.senderAvatar.gender">
+              @if (message.senderAvatar.imageUrl) {
+                <img [src]="message.senderAvatar.imageUrl" [alt]="message.sender" loading="lazy" decoding="async" />
+              } @else {
+                {{ message.senderAvatar.initials }}
+              }
+            </span>
             <span class="chat-pinned-message-content">
               <span class="chat-meta-row">
                 <strong class="chat-sender-name">{{ message.sender }}</strong>
@@ -719,7 +733,13 @@
             @if (message.readBy.length > 0) {
               <span class="chat-readers chat-pinned-readers">
                 @for (reader of message.readBy; track trackByChatReader($index, reader)) {
-                  <span class="chat-reader" [class]="'user-color-' + reader.gender">{{ reader.initials }}</span>
+                  <span class="chat-reader" [class]="'user-color-' + reader.gender">
+                    @if (reader.imageUrl) {
+                      <img [src]="reader.imageUrl" [alt]="reader.initials" loading="lazy" decoding="async" />
+                    } @else {
+                      {{ reader.initials }}
+                    }
+                  </span>
                 }
               </span>
             }

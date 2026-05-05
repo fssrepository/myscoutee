@@ -33,6 +33,9 @@ interface HttpChatSenderAvatarDto {
   id?: string | null;
   initials?: string | null;
   gender?: string | null;
+  imageUrl?: string | null;
+  avatarUrl?: string | null;
+  url?: string | null;
 }
 
 interface HttpChatMessageDto {
@@ -42,6 +45,7 @@ interface HttpChatMessageDto {
   senderName?: string | null;
   senderInitials?: string | null;
   senderGender?: string | null;
+  senderImageUrl?: string | null;
   sender?: string | null;
   senderAvatar?: HttpChatSenderAvatarDto | null;
   text?: string | null;
@@ -52,6 +56,7 @@ interface HttpChatMessageDto {
     id: string;
     initials: string;
     gender: 'woman' | 'man';
+    imageUrl?: string | null;
   }>;
   deletedAtIso?: string | null;
   deletedByUserId?: string | null;
@@ -519,6 +524,8 @@ export class HttpChatsService {
       || this.normalizeHttpText(senderAvatar?.initials)
       || AppUtils.initialsFromText(senderName || senderId || 'User');
     const senderGender = this.normalizeHttpGender(message.senderGender ?? senderAvatar?.gender);
+    const senderImageUrl = this.normalizeHttpMediaUrl(message.senderImageUrl)
+      ?? this.resolveHttpChatAvatarImageUrl(senderId, senderAvatar);
     const text = this.normalizeHttpText(message.text);
     const sentAtIso = this.normalizeHttpText(message.sentAtIso) || new Date().toISOString();
     const sentAt = new Date(sentAtIso);
@@ -537,7 +544,8 @@ export class HttpChatsService {
       senderAvatar: {
         id: senderId,
         initials: senderInitials,
-        gender: senderGender
+        gender: senderGender,
+        imageUrl: senderImageUrl
       },
       text: deleted ? '' : text,
       time: Number.isNaN(sentAt.getTime())
@@ -550,7 +558,9 @@ export class HttpChatsService {
         .map(reader => ({
           id: `${reader.id ?? ''}`.trim(),
           initials: `${reader.initials ?? ''}`.trim(),
-          gender: this.normalizeHttpGender(reader.gender)
+          gender: this.normalizeHttpGender(reader.gender),
+          imageUrl: this.normalizeHttpMediaUrl(reader.imageUrl)
+            ?? this.resolveHttpChatAvatarImageUrl(`${reader.id ?? ''}`.trim(), null)
         })),
       deletedAtIso: message.deletedAtIso ?? null,
       deletedByUserId: message.deletedByUserId ?? null,
@@ -610,6 +620,14 @@ export class HttpChatsService {
     return normalized === 'woman' || normalized.startsWith('w') || normalized.startsWith('f')
       ? 'woman'
       : 'man';
+  }
+
+  private resolveHttpChatAvatarImageUrl(
+    userId: string,
+    avatar: HttpChatSenderAvatarDto | null
+  ): string | null {
+    void userId;
+    return this.normalizeHttpMediaUrl(avatar?.imageUrl ?? avatar?.avatarUrl ?? avatar?.url);
   }
 
   private normalizeHttpMediaUrl(value: unknown): string | null {
