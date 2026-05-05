@@ -1455,22 +1455,6 @@ export class AdminService {
           emailBody: 'Share feedback for @event_title while it is fresh.'
         }),
         this.defaultNotificationRule({
-          ruleKey: 'ticket-swap-grace-cancelled',
-          label: 'Ticket swap grace cancellation',
-          category: 'Action',
-          description: 'Fixed grace-window rule for future ticket replacement flows.',
-          actionKey: 'ticket.swap.grace.cancelled',
-          triggerKind: 'action',
-          enabled: false,
-          manualRunEnabled: false,
-          priority: 40,
-          pushEnabled: true,
-          emailEnabled: false,
-          timingMode: 'immediate',
-          emailSubject: 'Ticket spot released',
-          emailBody: 'A ticket was cancelled close to the event start and can be reassigned.'
-        }),
-        this.defaultNotificationRule({
           ruleKey: 'promotional-email-planner',
           label: 'Promotional email planner',
           category: 'Scheduled',
