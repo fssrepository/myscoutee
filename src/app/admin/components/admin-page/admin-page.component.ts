@@ -118,7 +118,7 @@ export class AdminPageComponent implements OnInit {
     this.restoringWorkspace.set(true);
     this.restoreAvatarGateActive.set(false);
     const restored = await this.admin.restoreAdminSession();
-    if (restored && !this.admin.isFirebaseAdminMode) {
+    if (restored && this.shouldUseDemoAvatarGate()) {
       this.restoreAvatarGateActive.set(true);
       await this.delay(AdminPageComponent.DEMO_RESTORE_MIN_DELAY_MS);
     }
@@ -183,8 +183,8 @@ export class AdminPageComponent implements OnInit {
       this.selectorLoading = false;
       this.selectorSubmitting = false;
       this.restoringWorkspace.set(true);
-      this.restoreAvatarGateActive.set(true);
-      if (!this.admin.isFirebaseAdminMode) {
+      if (this.shouldUseDemoAvatarGate()) {
+        this.restoreAvatarGateActive.set(true);
         await this.delay(AdminPageComponent.DEMO_RESTORE_MIN_DELAY_MS);
       }
       this.restoreAvatarGateActive.set(false);
@@ -231,6 +231,10 @@ export class AdminPageComponent implements OnInit {
 
   private currentRouteIsWorkspace(): boolean {
     return this.router.url.split('?')[0] === '/admin/workspace';
+  }
+
+  private shouldUseDemoAvatarGate(): boolean {
+    return !this.admin.usesHttpAdminApi;
   }
 
   private async ensureReportsPopupLoaded(): Promise<void> {
