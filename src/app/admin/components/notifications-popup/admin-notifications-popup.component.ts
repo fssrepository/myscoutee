@@ -41,7 +41,6 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
   private static readonly LOAD_PROGRESS_WINDOW_MS = 3000;
   private static readonly SAVE_DEMO_DELAY_MS = 1500;
   private static readonly ROW_ACTION_DELAY_MS = 1500;
-  private static readonly RUNTIME_FALLBACK_REFRESH_MS = 5000;
 
   protected readonly admin = inject(AdminService);
   private readonly routeDelay = inject(RouteDelayService);
@@ -62,8 +61,6 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
   protected readonly processFilterMenuOpen = signal(false);
   private loadedForOpen = false;
   private unsubscribeRuntimeUpdates: (() => void) | null = null;
-  private runtimeFallbackTimer: ReturnType<typeof setTimeout> | null = null;
-  private runtimeFallbackRuleKey = '';
   private loadingProgressTimer: ReturnType<typeof setInterval> | null = null;
   private loadingProgressStartedAtMs = 0;
 
@@ -225,7 +222,6 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
         : current);
       const saved = await this.save(rulesToSave);
       if (saved) {
-        this.clearRuntimeFallback();
         this.patchRule(rule.ruleKey, current => ({
           ...current,
           enabled: nextEnabled,
@@ -252,20 +248,18 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
     this.rowActionKey.set(`${rule.ruleKey}:run`);
     this.error.set('');
     const requestStartedAtIso = new Date().toISOString();
-    if (!this.admin.usesHttpAdminApi) {
-      this.patchRule(rule.ruleKey, current => ({
-        ...current,
-        runState: {
-          ...current.runState,
-          currentStatus: 'running',
-          progressPercent: 0,
-          progressDetail: 'Manual run started.',
-          startedAtIso: requestStartedAtIso,
-          finishedAtIso: '',
-          durationMillis: 0
-        }
-      }));
-    }
+    this.patchRule(rule.ruleKey, current => ({
+      ...current,
+      runState: {
+        ...current.runState,
+        currentStatus: 'running',
+        progressPercent: 0,
+        progressDetail: 'Manual run started.',
+        startedAtIso: requestStartedAtIso,
+        finishedAtIso: '',
+        durationMillis: 0
+      }
+    }));
     try {
       const [result] = this.admin.usesHttpAdminApi
         ? [await this.admin.runNotificationRule(rule.ruleKey)]
@@ -276,11 +270,14 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
       const finishedAtIso = result.ranAtIso || new Date().toISOString();
       this.patchRule(rule.ruleKey, current => {
         const isRunningResponse = `${result.status || ''}`.trim().toLowerCase() === 'running';
-        const startedAtIso = isRunningResponse ? requestStartedAtIso : (current.runState.startedAtIso || finishedAtIso);
+        const startedAtIso = isRunningResponse
+          ? (current.runState.startedAtIso || result.ranAtIso || requestStartedAtIso)
+          : (current.runState.startedAtIso || finishedAtIso);
         const durationMillis = this.durationBetween(startedAtIso, finishedAtIso);
         if (isRunningResponse && this.hasNewerFinishedRun(current, requestStartedAtIso)) {
           return current;
         }
+        const runningProgressPercent = Math.max(0, Math.min(99, current.runState.progressPercent || 0));
         const entry: AdminNotificationRunHistoryEntry | null = isRunningResponse ? null : {
           id: `run-${Date.now()}`,
           trigger: 'manual',
@@ -297,11 +294,11 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
           runState: {
             ...current.runState,
             currentStatus: result.status,
-            progressPercent: isRunningResponse ? 0 : 100,
-            progressDetail: result.detail,
+            progressPercent: isRunningResponse ? runningProgressPercent : 100,
+            progressDetail: isRunningResponse ? (current.runState.progressDetail || result.detail) : result.detail,
             startedAtIso,
-            finishedAtIso: isRunningResponse ? '' : finishedAtIso,
-            durationMillis: isRunningResponse ? 0 : durationMillis,
+            finishedAtIso: isRunningResponse ? (current.runState.finishedAtIso || '') : finishedAtIso,
+            durationMillis: isRunningResponse ? Math.max(0, current.runState.durationMillis || 0) : durationMillis,
             lastRunAtIso: isRunningResponse ? current.runState.lastRunAtIso : finishedAtIso,
             lastRunStatus: isRunningResponse ? current.runState.lastRunStatus : result.status,
             lastRunDetail: isRunningResponse ? current.runState.lastRunDetail : result.detail,
@@ -313,9 +310,6 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
           updatedUser: this.admin.activeAdmin()?.id ?? current.updatedUser
         };
       });
-      if (`${result.status || ''}`.trim().toLowerCase() === 'running') {
-        this.scheduleRuntimeFallback(rule.ruleKey);
-      }
     } catch {
       this.error.set(`Unable to run ${rule.label}.`);
     } finally {
@@ -616,7 +610,6 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
   }
 
   private stopRuntimeUpdates(): void {
-    this.clearRuntimeFallback();
     if (!this.unsubscribeRuntimeUpdates) {
       return;
     }
@@ -636,66 +629,6 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
       updatedDate: event.updatedDate || current.updatedDate,
       updatedUser: event.updatedUser || current.updatedUser
     }));
-    const updated = this.processRules().find(rule => rule.ruleKey === ruleKey);
-    if (updated && this.isProcessRunning(updated)) {
-      this.scheduleRuntimeFallback(ruleKey);
-    } else if (this.runtimeFallbackRuleKey === ruleKey) {
-      this.clearRuntimeFallback();
-    }
-  }
-
-  private scheduleRuntimeFallback(ruleKey: string): void {
-    if (!this.admin.usesHttpAdminApi || this.admin.activePopup() !== 'notifications') {
-      return;
-    }
-    const normalizedRuleKey = `${ruleKey || ''}`.trim();
-    if (!normalizedRuleKey) {
-      return;
-    }
-    this.runtimeFallbackRuleKey = normalizedRuleKey;
-    if (this.runtimeFallbackTimer) {
-      return;
-    }
-    this.runtimeFallbackTimer = setTimeout(() => {
-      this.runtimeFallbackTimer = null;
-      void this.refreshRuntimeFallback(normalizedRuleKey);
-    }, AdminNotificationsPopupComponent.RUNTIME_FALLBACK_REFRESH_MS);
-  }
-
-  private async refreshRuntimeFallback(ruleKey: string): Promise<void> {
-    if (this.admin.activePopup() !== 'notifications') {
-      this.clearRuntimeFallback();
-      return;
-    }
-    try {
-      const rule = await this.admin.loadNotificationRuleRuntime(ruleKey);
-      if (!rule) {
-        this.clearRuntimeFallback();
-        return;
-      }
-      this.patchRule(rule.ruleKey, current => ({
-        ...current,
-        runState: rule.runState,
-        runHistory: rule.runHistory ?? [],
-        updatedDate: rule.updatedDate || current.updatedDate,
-        updatedUser: rule.updatedUser || current.updatedUser
-      }));
-      if (this.isProcessRunning(rule)) {
-        this.scheduleRuntimeFallback(rule.ruleKey);
-      } else {
-        this.clearRuntimeFallback();
-      }
-    } catch {
-      this.scheduleRuntimeFallback(ruleKey);
-    }
-  }
-
-  private clearRuntimeFallback(): void {
-    if (this.runtimeFallbackTimer) {
-      clearTimeout(this.runtimeFallbackTimer);
-      this.runtimeFallbackTimer = null;
-    }
-    this.runtimeFallbackRuleKey = '';
   }
 
   private beginLoadingProgress(): void {
