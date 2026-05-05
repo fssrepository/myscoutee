@@ -1438,21 +1438,6 @@ export class AdminService {
           emailEnabled: false,
           timingMode: 'interval',
           intervalMinutes: 15
-        }),
-        this.defaultNotificationRule({
-          ruleKey: 'event-stage-materializer',
-          label: 'Stage event',
-          category: 'Scheduled',
-          description: 'Materializes generated groups for score and tournament stages.',
-          actionKey: 'event.scheduler.stage-materializer',
-          triggerKind: 'scheduled_process',
-          enabled: false,
-          manualRunEnabled: true,
-          priority: 210,
-          pushEnabled: false,
-          emailEnabled: false,
-          timingMode: 'interval',
-          intervalMinutes: 15
         })
       ],
       emailTemplates: this.defaultNotificationTemplateOptions(),
@@ -1673,8 +1658,6 @@ export class AdminService {
 
   private demoScheduledRunCount(ruleKey: string): number {
     switch (ruleKey) {
-      case 'event-stage-materializer':
-        return 2;
       case 'event-random-groups':
         return 1;
       default:

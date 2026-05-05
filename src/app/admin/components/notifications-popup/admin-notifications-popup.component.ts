@@ -56,13 +56,6 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
       icon: 'casino',
       summary: 'Creates balanced random groups for published events that already have accepted members.',
       detail: 'The process scans published events, reads accepted member snapshots, builds the rate graph once, and writes generated group assignments for eligible sub-events.'
-    },
-    {
-      key: 'event-stage-materializer',
-      label: 'Stage event',
-      icon: 'stacked_line_chart',
-      summary: 'Materializes generated groups for score and tournament event stages.',
-      detail: 'The process advances score or tournament style sub-events by reading leaderboard state, resolving advancing members, and preparing the next stage groups.'
     }
   ];
 
@@ -370,11 +363,11 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
       label: tab.label,
       category: 'Scheduled',
       description: tab.detail,
-      actionKey: tab.key === 'event-stage-materializer' ? 'event.scheduler.stage-materializer' : 'event.scheduler.random-groups',
+      actionKey: 'event.scheduler.random-groups',
       triggerKind: 'scheduled_process',
       enabled: false,
       manualRunEnabled: true,
-      priority: tab.key === 'event-stage-materializer' ? 210 : 200,
+      priority: 200,
       channels: { pushEnabled: false, emailEnabled: false, inAppEnabled: false, supportChatEnabled: false },
       timing: {
         mode: 'interval',
