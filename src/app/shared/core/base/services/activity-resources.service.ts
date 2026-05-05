@@ -24,13 +24,13 @@ export class ActivityResourcesService extends BaseRouteModeService {
   }
 
   activeAssetOwnerUserId(): string {
-    return this.appCtx.activeUserId().trim();
+    return this.normalizeId(this.appCtx.activeUserId());
   }
 
   peekSubEventResourceState(
-    ownerId: string,
-    subEventId: string,
-    assetOwnerUserId = this.activeAssetOwnerUserId()
+    ownerId: string | null | undefined,
+    subEventId: string | null | undefined,
+    assetOwnerUserId: string | null | undefined = this.activeAssetOwnerUserId()
   ): AppTypes.ActivitySubEventResourceState | null {
     const ref = this.normalizeRef(ownerId, subEventId, assetOwnerUserId);
     if (!ref) {
@@ -40,9 +40,9 @@ export class ActivityResourcesService extends BaseRouteModeService {
   }
 
   async querySubEventResourceState(
-    ownerId: string,
-    subEventId: string,
-    assetOwnerUserId = this.activeAssetOwnerUserId()
+    ownerId: string | null | undefined,
+    subEventId: string | null | undefined,
+    assetOwnerUserId: string | null | undefined = this.activeAssetOwnerUserId()
   ): Promise<AppTypes.ActivitySubEventResourceState | null> {
     const ref = this.normalizeRef(ownerId, subEventId, assetOwnerUserId);
     if (!ref) {
@@ -52,9 +52,12 @@ export class ActivityResourcesService extends BaseRouteModeService {
   }
 
   async replaceSubEventResourceState(
-    state: AppTypes.ActivitySubEventResourceState,
+    state: AppTypes.ActivitySubEventResourceState | null | undefined,
     signal?: AbortSignal
   ): Promise<AppTypes.ActivitySubEventResourceState | null> {
+    if (!state) {
+      return null;
+    }
     const normalizedState = this.normalizeRef(state.ownerId, state.subEventId, state.assetOwnerUserId);
     if (!normalizedState) {
       return null;
@@ -68,13 +71,13 @@ export class ActivityResourcesService extends BaseRouteModeService {
   }
 
   private normalizeRef(
-    ownerId: string,
-    subEventId: string,
-    assetOwnerUserId: string
+    ownerId: string | null | undefined,
+    subEventId: string | null | undefined,
+    assetOwnerUserId: string | null | undefined
   ): AppTypes.ActivitySubEventResourceStateRef | null {
-    const normalizedOwnerId = ownerId.trim();
-    const normalizedSubEventId = subEventId.trim();
-    const normalizedAssetOwnerUserId = assetOwnerUserId.trim();
+    const normalizedOwnerId = this.normalizeId(ownerId);
+    const normalizedSubEventId = this.normalizeId(subEventId);
+    const normalizedAssetOwnerUserId = this.normalizeId(assetOwnerUserId);
     if (!normalizedOwnerId || !normalizedSubEventId || !normalizedAssetOwnerUserId) {
       return null;
     }
@@ -83,5 +86,9 @@ export class ActivityResourcesService extends BaseRouteModeService {
       subEventId: normalizedSubEventId,
       assetOwnerUserId: normalizedAssetOwnerUserId
     };
+  }
+
+  private normalizeId(value: string | null | undefined): string {
+    return typeof value === 'string' ? value.trim() : '';
   }
 }

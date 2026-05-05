@@ -319,8 +319,8 @@
     [class.chat-message-fresh]="isFreshMessage(message.id)"
     [class.chat-message-pending]="message.deliveryState === 'pending'"
     [class.chat-message-timed-out]="message.deliveryState === 'timed-out'"
-    [class.chat-message-selected]="selectedMessageId === message.id"
-    [class.chat-message-highlighted]="highlightedMessageId === message.id"
+    [class.chat-message-selected]="selectedMessageId && selectedMessageId === message.id"
+    [class.chat-message-highlighted]="highlightedMessageId && highlightedMessageId === message.id"
     [class.chat-message-deleted]="message.deletedAtIso"
     (click)="selectMessage(message, $event)"
     (contextmenu)="openMessageActionMenu(message, $event)"
@@ -489,30 +489,30 @@
           }
         </button>
       }
-      @if (selectedMessageId === message.id && !message.deletedAtIso) {
+      @if (message.id && selectedMessageId === message.id && !message.deletedAtIso) {
         <div class="chat-message-tools" [class.chat-message-tools-down]="selectedMessageToolsDown" (click)="$event.stopPropagation()">
           <button type="button" (click)="setReplyTarget(message, $event)" aria-label="Reply">
             <mat-icon>reply</mat-icon>
           </button>
           <button
             type="button"
-            [class.chat-tool-btn-open]="quickReactionMessageId === message.id || emojiPickerMessageId === message.id"
+            [class.chat-tool-btn-open]="(quickReactionMessageId && quickReactionMessageId === message.id) || (emojiPickerMessageId && emojiPickerMessageId === message.id)"
             (click)="toggleQuickReactions(message, $event)"
             aria-label="React"
             >
-            <mat-icon>{{ quickReactionMessageId === message.id || emojiPickerMessageId === message.id ? 'add_reaction' : 'mood' }}</mat-icon>
+            <mat-icon>{{ (quickReactionMessageId && quickReactionMessageId === message.id) || (emojiPickerMessageId && emojiPickerMessageId === message.id) ? 'add_reaction' : 'mood' }}</mat-icon>
           </button>
           <button
             type="button"
-            [class.chat-tool-btn-open]="messageActionMenuId === message.id"
+            [class.chat-tool-btn-open]="messageActionMenuId && messageActionMenuId === message.id"
             (click)="openMessageActionMenu(message, $event)"
             aria-label="More message actions"
             >
-            <mat-icon>{{ messageActionMenuId === message.id ? 'close' : 'more_vert' }}</mat-icon>
+            <mat-icon>{{ messageActionMenuId && messageActionMenuId === message.id ? 'close' : 'more_vert' }}</mat-icon>
           </button>
         </div>
       }
-      @if (quickReactionMessageId === message.id) {
+      @if (message.id && quickReactionMessageId === message.id) {
         <div
           class="chat-quick-reactions"
           [class.chat-quick-reactions-down]="quickReactionOpenDown"
@@ -527,7 +527,7 @@
           </button>
         </div>
       }
-      @if (messageActionMenuId === message.id) {
+      @if (message.id && messageActionMenuId === message.id) {
         <div
           class="chat-message-action-menu"
           [class.chat-message-action-menu-up]="messageActionMenuOpenUp"
@@ -548,7 +548,7 @@
           }
         </div>
       }
-      @if (!message.deletedAtIso && visibleReadReceiptsByMessageId[message.id]; as visibleReaders) {
+      @if (message.id && !message.deletedAtIso && visibleReadReceiptsByMessageId[message.id]; as visibleReaders) {
         @if (visibleReaders.length > 0) {
           <div class="chat-readers">
             @for (reader of visibleReaders; track trackByChatReader($index, reader)) {

@@ -8,6 +8,7 @@ import type { ChatMenuItem } from '../../base/interfaces/activity-feed.interface
 import type { ActivitiesPageRequest } from '../../base/models';
 import { AppContext } from '../../base/context';
 import { FirebaseAuthService } from '../../base/services/firebase-auth.service';
+import { SessionService } from '../../base/services/session.service';
 import type { DemoChatRecord } from '../../demo/models/chats.model';
 
 interface HttpChatSummaryDto {
@@ -28,15 +29,24 @@ interface HttpChatSummaryDto {
   distanceMetersExact?: number;
 }
 
+interface HttpChatSenderAvatarDto {
+  id?: string | null;
+  initials?: string | null;
+  gender?: string | null;
+}
+
 interface HttpChatMessageDto {
-  id: string;
-  clientId?: string;
-  senderId: string;
-  senderName: string;
-  senderInitials: string;
-  senderGender: 'woman' | 'man';
-  text: string;
-  sentAtIso: string;
+  id?: string | null;
+  clientId?: string | null;
+  senderId?: string | null;
+  senderName?: string | null;
+  senderInitials?: string | null;
+  senderGender?: string | null;
+  sender?: string | null;
+  senderAvatar?: HttpChatSenderAvatarDto | null;
+  text?: string | null;
+  time?: string | null;
+  sentAtIso?: string | null;
   mine?: boolean;
   readBy?: Array<{
     id: string;
@@ -85,11 +95,14 @@ interface HttpChatMessageAttachmentDto {
 }
 
 interface HttpChatSocketRequestDto {
-  type: 'message' | 'typing' | 'read';
+  type: 'message' | 'typing' | 'read' | 'edit' | 'delete' | 'pin' | 'reaction' | 'attachments';
+  messageId?: string;
   clientId?: string;
   text?: string;
   attachments?: HttpChatMessageAttachmentDto[];
   replyTo?: HttpChatMessageReplyDto | null;
+  pinned?: boolean;
+  emoji?: string;
   typing?: boolean;
   messageIds?: string[];
 }
@@ -111,11 +124,14 @@ interface HttpChatReadReceiptDto {
 }
 
 interface HttpChatSocketEventDto {
-  type: 'message' | 'typing' | 'read';
+  type: 'message' | 'typing' | 'read' | 'error';
   chatId: string;
   message?: HttpChatMessageDto | null;
   typing?: HttpChatTypingDto | null;
   read?: HttpChatReadReceiptDto | null;
+  messageId?: string | null;
+  clientId?: string | null;
+  error?: string | null;
 }
 
 @Injectable({
@@ -124,11 +140,12 @@ interface HttpChatSocketEventDto {
 export class HttpChatsService {
   private static readonly SOCKET_RECONNECT_BASE_DELAY_MS = 750;
   private static readonly SOCKET_RECONNECT_MAX_DELAY_MS = 8000;
-  private static readonly SOCKET_MESSAGE_ACK_TIMEOUT_MS = 12000;
+  private static readonly SOCKET_MESSAGE_ACK_TIMEOUT_MS = 3000;
 
   private readonly http = inject(HttpClient);
   private readonly appCtx = inject(AppContext);
   private readonly firebaseAuthService = inject(FirebaseAuthService);
+  private readonly sessionService = inject(SessionService);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
   private readonly chatItemsByUserId = new Map<string, DemoChatRecord[]>();
   private socket: WebSocket | null = null;
@@ -139,6 +156,13 @@ export class HttpChatsService {
   private readonly pendingSocketMessageIds = new Set<string>();
   private readonly pendingSocketMessageTimers = new Map<string, ReturnType<typeof setTimeout>>();
   private readonly pendingSocketAckResolvers = new Map<
+    string,
+    {
+      resolve: (message: AppTypes.ChatPopupMessage | null) => void;
+      timer: ReturnType<typeof setTimeout>;
+    }
+  >();
+  private readonly pendingSocketUpdateResolvers = new Map<
     string,
     {
       resolve: (message: AppTypes.ChatPopupMessage | null) => void;
@@ -249,7 +273,7 @@ export class HttpChatsService {
       })
       .toPromise();
 
-    const messages = (response ?? []).map(message => this.mapChatMessage(message));
+    const messages = (response ?? []).map((message, index) => this.mapChatMessage(message, chat.id, index));
     const cachedMessages = this.resolveCachedChatMessages(chat);
 
     return this.mergeCachedChatMessages(messages, cachedMessages)
@@ -295,6 +319,7 @@ export class HttpChatsService {
         attachments: attachments.map(attachment => this.toHttpChatAttachment(attachment)),
         replyTo: this.toHttpChatReply(replyTo)
       };
+      this.logSocketDebug('send', payload);
       socket.send(JSON.stringify(payload));
       return this.waitForSocketMessageAck(outboundClientId);
     } catch {
@@ -314,6 +339,7 @@ export class HttpChatsService {
       type: 'typing',
       typing
     };
+    this.logSocketDebug('send', payload);
     socket.send(JSON.stringify(payload));
   }
 
@@ -332,6 +358,7 @@ export class HttpChatsService {
       type: 'read',
       messageIds: normalizedIds
     };
+    this.logSocketDebug('send', payload);
     socket.send(JSON.stringify(payload));
   }
 
@@ -345,39 +372,48 @@ export class HttpChatsService {
     if (!normalizedChatId || !normalizedMessageId) {
       return null;
     }
-    const body: Record<string, unknown> = {};
     let action = '';
+    const payload: HttpChatSocketRequestDto = {
+      type: 'message',
+      messageId: normalizedMessageId
+    };
     if (typeof mutation.text === 'string') {
       action = 'edit';
-      body['text'] = mutation.text;
+      payload.text = mutation.text;
     } else if (mutation.deleted === true) {
       action = 'delete';
     } else if (typeof mutation.pinned === 'boolean') {
       action = 'pin';
-      body['pinned'] = mutation.pinned;
+      payload.pinned = mutation.pinned;
     } else if (Object.prototype.hasOwnProperty.call(mutation, 'reactionEmoji')) {
       action = 'reaction';
-      body['emoji'] = mutation.reactionEmoji ?? '';
+      payload.emoji = mutation.reactionEmoji ?? '';
     } else if (mutation.attachments) {
       action = 'attachments';
-      body['attachments'] = mutation.attachments.map(attachment => this.toHttpChatAttachment(attachment));
+      payload.attachments = mutation.attachments.map(attachment => this.toHttpChatAttachment(attachment));
     }
     if (!action) {
       return null;
     }
-    const response = await this.http
-      .post<HttpChatMessageDto | null>(
-        `${this.apiBaseUrl}/activities/chats/${encodeURIComponent(normalizedChatId)}/messages/${encodeURIComponent(normalizedMessageId)}/${action}`,
-        body,
-        { params: this.activeUserParams() }
-      )
-      .toPromise();
-    if (!response) {
+    payload.type = action as HttpChatSocketRequestDto['type'];
+
+    try {
+      const socket = await this.ensureSocket(chat);
+      if (!socket || socket.readyState !== WebSocket.OPEN) {
+        return null;
+      }
+      const pendingUpdate = this.waitForSocketMessageUpdate(normalizedMessageId);
+      this.logSocketDebug('send', payload);
+      socket.send(JSON.stringify(payload));
+      const updatedMessage = await pendingUpdate;
+      if (updatedMessage) {
+        this.updateCachedChatSummaryAfterMessage(chat, updatedMessage);
+      }
+      return updatedMessage;
+    } catch {
+      this.resolvePendingSocketUpdate(normalizedMessageId, null);
       return null;
     }
-    const message = this.mapChatMessage(response);
-    this.updateCachedChatSummaryAfterMessage(chat, message);
-    return message;
   }
 
   async watchChatEvents(
@@ -450,6 +486,8 @@ export class HttpChatsService {
       messages: record.messages?.map(message => ({
         ...message,
         readBy: [...(message.readBy ?? [])],
+        replyTo: message.replyTo ? { ...message.replyTo } : message.replyTo,
+        reactions: message.reactions?.map(reaction => ({ ...reaction })),
         attachments: message.attachments?.map(attachment => ({ ...attachment }))
       }))
     };
@@ -469,29 +507,50 @@ export class HttpChatsService {
     return [...uniqueById.values()];
   }
 
-  private mapChatMessage(message: HttpChatMessageDto): AppTypes.ChatPopupMessage {
-    const sentAt = new Date(message.sentAtIso);
+  private mapChatMessage(
+    message: HttpChatMessageDto,
+    chatId = '',
+    fallbackIndex: number | null = null
+  ): AppTypes.ChatPopupMessage {
+    const senderAvatar = message.senderAvatar ?? null;
+    const senderId = this.normalizeHttpText(message.senderId) || this.normalizeHttpText(senderAvatar?.id);
+    const senderName = this.normalizeHttpText(message.senderName) || this.normalizeHttpText(message.sender) || senderId || 'User';
+    const senderInitials = this.normalizeHttpText(message.senderInitials)
+      || this.normalizeHttpText(senderAvatar?.initials)
+      || AppUtils.initialsFromText(senderName || senderId || 'User');
+    const senderGender = this.normalizeHttpGender(message.senderGender ?? senderAvatar?.gender);
+    const text = this.normalizeHttpText(message.text);
+    const sentAtIso = this.normalizeHttpText(message.sentAtIso) || new Date().toISOString();
+    const sentAt = new Date(sentAtIso);
     const activeUserId = this.activeUserId();
     const deleted = typeof message.deletedAtIso === 'string' && message.deletedAtIso.trim().length > 0;
+    const id = this.resolveHttpChatMessageId(message, {
+      chatId,
+      senderId,
+      sentAtIso,
+      text
+    });
     return {
-      id: message.id,
-      clientId: `${message.clientId ?? ''}`.trim() || undefined,
-      sender: message.senderName,
+      id,
+      clientId: this.normalizeHttpText(message.clientId) || undefined,
+      sender: senderName,
       senderAvatar: {
-        id: message.senderId,
-        initials: message.senderInitials,
-        gender: message.senderGender
+        id: senderId,
+        initials: senderInitials,
+        gender: senderGender
       },
-      text: deleted ? '' : message.text,
-      time: sentAt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
-      sentAtIso: message.sentAtIso,
-      mine: message.mine === true || (!!activeUserId && message.senderId === activeUserId),
+      text: deleted ? '' : text,
+      time: Number.isNaN(sentAt.getTime())
+        ? this.normalizeHttpText(message.time)
+        : sentAt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+      sentAtIso,
+      mine: message.mine === true || (!!activeUserId && senderId === activeUserId),
       readBy: deleted ? [] : (message.readBy ?? [])
-        .filter(reader => `${reader.id ?? ''}`.trim() !== `${message.senderId ?? ''}`.trim())
+        .filter(reader => `${reader.id ?? ''}`.trim() !== senderId)
         .map(reader => ({
-          id: reader.id,
-          initials: reader.initials,
-          gender: reader.gender
+          id: `${reader.id ?? ''}`.trim(),
+          initials: `${reader.initials ?? ''}`.trim(),
+          gender: this.normalizeHttpGender(reader.gender)
         })),
       deletedAtIso: message.deletedAtIso ?? null,
       deletedByUserId: message.deletedByUserId ?? null,
@@ -500,9 +559,75 @@ export class HttpChatsService {
       pinnedAtIso: deleted ? null : message.pinnedAtIso ?? null,
       pinnedByUserId: deleted ? null : message.pinnedByUserId ?? null,
       replyTo: deleted ? null : message.replyTo ? { ...message.replyTo } : null,
-      reactions: deleted ? [] : (message.reactions ?? []).map(reaction => ({ ...reaction })),
+      reactions: deleted ? [] : (message.reactions ?? []).map(reaction => ({
+        ...reaction,
+        userGender: this.normalizeHttpGender(reaction.userGender)
+      })),
       attachments: deleted ? [] : (message.attachments ?? []).map(attachment => this.mapChatAttachment(attachment))
     } satisfies AppTypes.ChatPopupMessage;
+  }
+
+  private resolveHttpChatMessageId(
+    message: HttpChatMessageDto,
+    context: {
+      chatId: string;
+      senderId: string;
+      sentAtIso: string;
+      text: string;
+    }
+  ): string {
+    const id = this.normalizeHttpText(message.id);
+    if (id) {
+      return id;
+    }
+    const clientId = this.normalizeHttpText(message.clientId);
+    if (clientId) {
+      return `client:${clientId}`;
+    }
+    const attachmentKey = (message.attachments ?? [])
+      .map(attachment => [
+        this.normalizeHttpText(attachment.id),
+        this.normalizeHttpText(attachment.type),
+        this.normalizeHttpText(attachment.title)
+      ].join(':'))
+      .join(',');
+    const seed = [
+      this.normalizeHttpText(context.chatId),
+      context.senderId,
+      context.sentAtIso,
+      context.text,
+      attachmentKey
+    ].join('|');
+    return `http-message:${AppUtils.hashText(seed)}`;
+  }
+
+  private normalizeHttpText(value: unknown): string {
+    return `${value ?? ''}`.trim();
+  }
+
+  private normalizeHttpGender(value: unknown): 'woman' | 'man' {
+    const normalized = this.normalizeHttpText(value).toLowerCase();
+    return normalized === 'woman' || normalized.startsWith('w') || normalized.startsWith('f')
+      ? 'woman'
+      : 'man';
+  }
+
+  private normalizeHttpMediaUrl(value: unknown): string | null {
+    const url = this.normalizeHttpText(value);
+    if (!url) {
+      return null;
+    }
+    if (/^(?:https?:|data:|blob:|indexeddb:)/i.test(url) || url.startsWith('/api/')) {
+      return url;
+    }
+    const baseUrl = this.apiBaseUrl.replace(/\/+$/, '');
+    if (url.startsWith('/media/')) {
+      return `${baseUrl}${url}`;
+    }
+    if (url.startsWith('media/')) {
+      return `${baseUrl}/${url}`;
+    }
+    return url;
   }
 
   private toHttpChatReply(replyTo: AppTypes.ChatPopupMessage['replyTo']): HttpChatMessageReplyDto | null {
@@ -530,8 +655,8 @@ export class HttpChatsService {
       ownerUserId: typeof attachment.ownerUserId === 'string' ? attachment.ownerUserId.trim() : null,
       subtitle: typeof attachment.subtitle === 'string' ? attachment.subtitle.trim() : null,
       description: typeof attachment.description === 'string' ? attachment.description.trim() : null,
-      url: typeof attachment.url === 'string' ? attachment.url.trim() : null,
-      previewUrl: typeof attachment.previewUrl === 'string' ? attachment.previewUrl.trim() : null,
+      url: this.normalizeHttpMediaUrl(attachment.url),
+      previewUrl: this.normalizeHttpMediaUrl(attachment.previewUrl),
       mimeType: typeof attachment.mimeType === 'string' ? attachment.mimeType.trim() : null,
       sizeBytes: Number.isFinite(Number(attachment.sizeBytes)) ? Math.max(0, Math.trunc(Number(attachment.sizeBytes))) : null
     };
@@ -700,11 +825,11 @@ export class HttpChatsService {
     payload: HttpChatMessageDto | HttpChatSocketEventDto,
     fallbackChatId: string
   ): AppTypes.ChatLiveEvent | null {
-    if ('senderId' in payload) {
+    if (this.isHttpChatMessagePayload(payload)) {
       return {
         type: 'message',
         chatId: fallbackChatId,
-        message: this.mapChatMessage(payload)
+        message: this.mapChatMessage(payload, fallbackChatId)
       };
     }
 
@@ -731,19 +856,38 @@ export class HttpChatsService {
           userId: `${payload.read.userId ?? ''}`.trim(),
           userInitials: `${payload.read.userInitials ?? ''}`.trim(),
           userGender: payload.read.userGender === 'woman' ? 'woman' : 'man',
-          messageIds: (payload.read.messageIds ?? []).map(messageId => `${messageId ?? ''}`.trim()).filter(Boolean),
+          messageIds: (payload.read.messageIds ?? []).map((messageId: unknown) => `${messageId ?? ''}`.trim()).filter(Boolean),
           readAtIso: `${payload.read.readAtIso ?? ''}`.trim()
         }
+      };
+    }
+    if (type === 'error') {
+      return {
+        type: 'error',
+        chatId,
+        messageId: `${payload.messageId ?? ''}`.trim() || undefined,
+        clientId: `${payload.clientId ?? ''}`.trim() || undefined,
+        error: `${payload.error ?? ''}`.trim() || undefined
       };
     }
     if (payload.message) {
       return {
         type: 'message',
         chatId,
-        message: this.mapChatMessage(payload.message)
+        message: this.mapChatMessage(payload.message, chatId)
       };
     }
     return null;
+  }
+
+  private isHttpChatMessagePayload(
+    payload: HttpChatMessageDto | HttpChatSocketEventDto
+  ): payload is HttpChatMessageDto {
+    return !Object.prototype.hasOwnProperty.call(payload, 'type')
+      || Object.prototype.hasOwnProperty.call(payload, 'senderId')
+      || Object.prototype.hasOwnProperty.call(payload, 'senderName')
+      || Object.prototype.hasOwnProperty.call(payload, 'senderAvatar')
+      || Object.prototype.hasOwnProperty.call(payload, 'sentAtIso');
   }
 
   private async ensureSocket(chat: ChatMenuItem): Promise<WebSocket | null> {
@@ -797,6 +941,7 @@ export class HttpChatsService {
         this.clearSocketReconnectTimer();
         this.socketReconnectAttempt = 0;
         this.shouldEmitReconnectEvent = false;
+        this.logSocketDebug('open', { chatId });
         finalize(socket);
         if (emitReconnect) {
           this.emitSocketEvent({
@@ -807,8 +952,11 @@ export class HttpChatsService {
       };
       socket.onmessage = event => {
         try {
-          const parsed = JSON.parse(`${event.data ?? ''}`) as HttpChatMessageDto | HttpChatSocketEventDto;
+          const raw = `${event.data ?? ''}`;
+          this.logSocketDebug('recv:raw', raw);
+          const parsed = JSON.parse(raw) as HttpChatMessageDto | HttpChatSocketEventDto;
           const liveEvent = this.mapSocketEvent(parsed, chatId);
+          this.logSocketDebug('recv:mapped', liveEvent);
           if (!liveEvent) {
             return;
           }
@@ -818,6 +966,7 @@ export class HttpChatsService {
         }
       };
       socket.onerror = () => {
+        this.logSocketDebug('error', { chatId });
         if (this.intentionalSocketClosures.delete(socket)) {
           finalize(null);
           return;
@@ -826,6 +975,7 @@ export class HttpChatsService {
         finalize(null);
       };
       socket.onclose = () => {
+        this.logSocketDebug('close', { chatId, code: socket.readyState });
         if (this.intentionalSocketClosures.delete(socket)) {
           finalize(null);
           return;
@@ -846,6 +996,9 @@ export class HttpChatsService {
     const activeUserId = this.activeUserId();
     if (activeUserId) {
       baseUrl.searchParams.set('userId', activeUserId);
+    }
+    if (this.sessionService.currentSession()?.kind === 'demo') {
+      baseUrl.searchParams.set('sessionKind', 'demo');
     }
     if (this.firebaseAuthService.enabled) {
       const token = await this.firebaseAuthService.getIdToken();
@@ -893,9 +1046,18 @@ export class HttpChatsService {
   private emitSocketEvent(event: AppTypes.ChatLiveEvent): void {
     if (event.type === 'message') {
       const normalizedClientId = `${event.message.clientId ?? ''}`.trim();
+      const normalizedMessageId = `${event.message.id ?? ''}`.trim();
       this.clearPendingSocketMessage(normalizedClientId);
       this.resolvePendingSocketAck(normalizedClientId, event.message);
+      this.resolvePendingSocketUpdate(normalizedMessageId, event.message);
       this.updateCachedChatSummaryFromSocketEvent(event.chatId, event.message);
+    }
+    if (event.type === 'error') {
+      const normalizedClientId = `${event.clientId ?? ''}`.trim();
+      const normalizedMessageId = `${event.messageId ?? ''}`.trim();
+      this.clearPendingSocketMessage(normalizedClientId);
+      this.resolvePendingSocketAck(normalizedClientId, null);
+      this.resolvePendingSocketUpdate(normalizedMessageId, null);
     }
     for (const listener of this.socketListeners) {
       listener(event);
@@ -974,7 +1136,7 @@ export class HttpChatsService {
   }
 
   private closeSocketIfIdle(): void {
-    if (this.socketListeners.size > 0 || this.pendingSocketMessageIds.size > 0) {
+    if (this.socketListeners.size > 0 || this.pendingSocketMessageIds.size > 0 || this.pendingSocketUpdateResolvers.size > 0) {
       return;
     }
     this.closeSocket();
@@ -1023,6 +1185,11 @@ export class HttpChatsService {
       pending.resolve(null);
       this.pendingSocketAckResolvers.delete(clientId);
     }
+    for (const [messageId, pending] of this.pendingSocketUpdateResolvers.entries()) {
+      clearTimeout(pending.timer);
+      pending.resolve(null);
+      this.pendingSocketUpdateResolvers.delete(messageId);
+    }
   }
 
   private waitForSocketMessageAck(clientId: string): Promise<AppTypes.ChatPopupMessage | null> {
@@ -1062,5 +1229,69 @@ export class HttpChatsService {
     clearTimeout(pending.timer);
     this.pendingSocketAckResolvers.delete(normalizedClientId);
     pending.resolve(message);
+  }
+
+  private waitForSocketMessageUpdate(messageId: string): Promise<AppTypes.ChatPopupMessage | null> {
+    const normalizedMessageId = `${messageId ?? ''}`.trim();
+    if (!normalizedMessageId) {
+      return Promise.resolve(null);
+    }
+    const existingPending = this.pendingSocketUpdateResolvers.get(normalizedMessageId);
+    if (existingPending) {
+      clearTimeout(existingPending.timer);
+      this.pendingSocketUpdateResolvers.delete(normalizedMessageId);
+      existingPending.resolve(null);
+    }
+    return new Promise<AppTypes.ChatPopupMessage | null>(resolve => {
+      const timer = setTimeout(() => {
+        this.pendingSocketUpdateResolvers.delete(normalizedMessageId);
+        resolve(null);
+        this.closeSocketIfIdle();
+      }, HttpChatsService.SOCKET_MESSAGE_ACK_TIMEOUT_MS);
+      this.pendingSocketUpdateResolvers.set(normalizedMessageId, { resolve, timer });
+    });
+  }
+
+  private resolvePendingSocketUpdate(
+    messageId: string,
+    message: AppTypes.ChatPopupMessage | null
+  ): void {
+    const normalizedMessageId = `${messageId ?? ''}`.trim();
+    if (!normalizedMessageId) {
+      return;
+    }
+    const pending = this.pendingSocketUpdateResolvers.get(normalizedMessageId);
+    if (!pending) {
+      return;
+    }
+    clearTimeout(pending.timer);
+    this.pendingSocketUpdateResolvers.delete(normalizedMessageId);
+    pending.resolve(message);
+  }
+
+  private logSocketDebug(label: string, payload: unknown): void {
+    if (typeof console === 'undefined') {
+      return;
+    }
+    console.log('[chat-http-ws]', label, this.sanitizeSocketLogPayload(payload));
+  }
+
+  private sanitizeSocketLogPayload(payload: unknown): unknown {
+    if (typeof payload === 'string') {
+      return payload.length > 1000 ? `${payload.slice(0, 1000)}...` : payload;
+    }
+    if (!payload || typeof payload !== 'object') {
+      return payload;
+    }
+    if (Array.isArray(payload)) {
+      return payload.map(item => this.sanitizeSocketLogPayload(item));
+    }
+    const source = payload as Record<string, unknown>;
+    return Object.fromEntries(Object.entries(source).map(([key, value]) => {
+      if ((key === 'url' || key === 'previewUrl') && typeof value === 'string' && value.length > 160) {
+        return [key, `${value.slice(0, 160)}...`];
+      }
+      return [key, this.sanitizeSocketLogPayload(value)];
+    }));
   }
 }

@@ -94,6 +94,7 @@ export type ChatLiveEvent =
   | { type: 'message'; chatId: string; message: ChatPopupMessage }
   | { type: 'typing'; chatId: string; typing: ChatTypingIndicator }
   | { type: 'read'; chatId: string; read: ChatReadReceipt }
+  | { type: 'error'; chatId: string; messageId?: string; clientId?: string; error?: string }
   | { type: 'reconnected'; chatId: string };
 
 export interface ChatPopupDayGroup {
