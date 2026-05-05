@@ -616,6 +616,15 @@
   color: #174d86;
 }
 
+.process-icon-btn-primary.is-running,
+.process-icon-btn-primary.is-running:disabled {
+  border-color: rgba(32, 136, 130, 0.62);
+  background: linear-gradient(180deg, #d7f5ef 0%, #a9dfd3 100%);
+  color: #12645e;
+  opacity: 1;
+  cursor: wait;
+}
+
 .process-icon-btn:disabled {
   opacity: 0.48;
   cursor: default;

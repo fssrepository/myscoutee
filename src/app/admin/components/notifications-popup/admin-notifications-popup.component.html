@@ -159,6 +159,7 @@
                           <button
                             type="button"
                             class="process-icon-btn process-icon-btn-primary"
+                            [class.is-running]="isProcessRunning(rule)"
                             [disabled]="!rule.manualRunEnabled || !rule.enabled || isProcessRunning(rule) || !!runningRuleKey() || !!rowActionKey()"
                             (click)="run(rule)"
                             aria-label="Run scheduled process"

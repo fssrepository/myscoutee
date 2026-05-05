@@ -258,7 +258,7 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
         runState: {
           ...current.runState,
           currentStatus: 'running',
-          progressPercent: 18,
+          progressPercent: 0,
           progressDetail: 'Manual run started.',
           startedAtIso: requestStartedAtIso,
           finishedAtIso: '',
@@ -297,7 +297,7 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
           runState: {
             ...current.runState,
             currentStatus: result.status,
-            progressPercent: isRunningResponse ? Math.max(18, current.runState.progressPercent || 18) : 100,
+            progressPercent: isRunningResponse ? 0 : 100,
             progressDetail: result.detail,
             startedAtIso,
             finishedAtIso: isRunningResponse ? '' : finishedAtIso,
@@ -459,7 +459,7 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
 
   protected progressValue(rule: AdminNotificationRule): number {
     if (this.isProcessRunning(rule)) {
-      return Math.max(18, Math.min(92, rule.runState.progressPercent || 18));
+      return Math.max(0, Math.min(99, rule.runState.progressPercent || 0));
     }
     return Math.max(0, Math.min(100, rule.runState.progressPercent || 0));
   }
