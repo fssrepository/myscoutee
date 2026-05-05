@@ -169,11 +169,9 @@
                         </span>
                       </span>
                     </span>
-                    @if (isProcessRunning(rule)) {
-                      <span class="process-list-live-progress" [attr.aria-label]="'Runtime progress ' + progressValue(rule) + '%'">
-                        <span [style.width.%]="progressValue(rule)"></span>
-                      </span>
-                    }
+                    <span class="process-list-live-progress" [attr.aria-label]="'Runtime progress ' + progressValue(rule) + '%'">
+                      <span [style.width.%]="progressValue(rule)"></span>
+                    </span>
                   </div>
                 }
               } @empty {
