@@ -16,6 +16,7 @@ export interface AdminNotificationTiming {
   dayOfMonth: number;
   time: string;
   timezone: string;
+  cronExpression: string;
 }
 
 export interface AdminNotificationMessage {
@@ -28,11 +29,29 @@ export interface AdminNotificationMessage {
 }
 
 export interface AdminNotificationRunState {
+  currentStatus: string;
+  progressPercent: number;
+  progressDetail: string;
+  startedAtIso: string;
+  finishedAtIso: string;
+  durationMillis: number;
   lastRunAtIso: string;
   lastRunStatus: string;
   lastRunDetail: string;
   lastRunCount: number;
   lastRunUser: string;
+}
+
+export interface AdminNotificationRunHistoryEntry {
+  id: string;
+  trigger: string;
+  runnerUser: string;
+  startedAtIso: string;
+  finishedAtIso: string;
+  durationMillis: number;
+  processedCount: number;
+  status: string;
+  detail: string;
 }
 
 export interface AdminNotificationRule {
@@ -50,6 +69,7 @@ export interface AdminNotificationRule {
   timing: AdminNotificationTiming;
   message: AdminNotificationMessage;
   runState: AdminNotificationRunState;
+  runHistory: AdminNotificationRunHistoryEntry[];
   updatedDate?: string | null;
   updatedUser?: string | null;
 }

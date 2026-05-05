@@ -4,27 +4,44 @@
     <div class="app-popup-panel popup-panel-admin popup-panel-notifications" (click)="$event.stopPropagation()">
       <div class="popup-header">
         <div class="popup-title">
-          <h2>Notifications</h2>
+          <h2>Értesítések</h2>
           <p class="popup-subtitle">
-            @if (state(); as currentState) {
-              {{ currentState.rules.length }} rules · {{ currentState.updatedDate | date: 'MMM d, h:mm a' }}
-            } @else {
-              Delivery rules
-            }
+            Scheduled event processes · {{ processRules().length }} configurable jobs
           </p>
         </div>
         <div class="notification-header-actions">
-          <button
-            type="button"
-            class="notification-primary-btn"
-            [disabled]="loading() || saving() || !state()"
-            (click)="save()"
-            aria-label="Save notification rules"
-            title="Save"
-          >
-            <mat-icon>{{ saving() ? 'sync' : 'save' }}</mat-icon>
-            <span>{{ saving() ? 'Saving' : 'Save' }}</span>
-          </button>
+          @if (selectedRule(); as headerRule) {
+            <span class="process-status-pill" [ngClass]="statusClass(headerRule)">
+              {{ statusLabel(headerRule) }}
+            </span>
+          }
+          <span class="notification-action-ring-shell notification-circle-ring-shell" [class.is-loading]="saving()">
+            <span class="notification-circle-ring" aria-hidden="true">
+              <svg viewBox="0 0 34 34" preserveAspectRatio="none" class="notification-circle-ring-svg">
+                <circle class="notification-circle-ring-track" cx="17" cy="17" r="15"></circle>
+                <circle
+                  class="notification-circle-ring-progress"
+                  [class.is-loading]="saving()"
+                  cx="17"
+                  cy="17"
+                  r="15"
+                  pathLength="100"
+                  [attr.stroke-dasharray]="actionRingPerimeter"
+                  [attr.stroke-dashoffset]="saving() ? 0 : actionRingPerimeter"
+                ></circle>
+              </svg>
+            </span>
+            <button
+              type="button"
+              class="notification-icon-btn notification-confirm-btn"
+              [disabled]="loading() || saving() || !state()"
+              (click)="save()"
+              [attr.aria-label]="saving() ? 'Saving scheduled process settings' : 'Save scheduled process settings'"
+              [title]="saving() ? 'Saving' : 'Save'"
+            >
+              <mat-icon>check</mat-icon>
+            </button>
+          </span>
           <button type="button" class="popup-close" (click)="close()" aria-label="Close">
             <mat-icon>close</mat-icon>
           </button>
@@ -48,7 +65,7 @@
                 ></circle>
               </svg>
             </span>
-            <span>Loading notification rules</span>
+            <span>Loading scheduled processes</span>
           </div>
         } @else {
           @if (error()) {
@@ -58,249 +75,144 @@
             </div>
           }
 
-          <div class="notifications-tabs" role="tablist" aria-label="Notification rule groups">
-            @for (tab of triggerTabs; track tab.key) {
-              <button
-                type="button"
-                role="tab"
-                class="notifications-tab"
-                [class.is-active]="activeTriggerTab() === tab.key"
-                [attr.aria-selected]="activeTriggerTab() === tab.key"
-                (click)="selectTriggerTab(tab.key)"
-              >
-                <mat-icon>{{ tab.icon }}</mat-icon>
-                <span>{{ tab.label }}</span>
-              </button>
+          <div class="process-tabs" role="tablist" aria-label="Scheduled event processes">
+            @for (tab of processTabs; track tab.key) {
+              @if (processRules()[$index]; as tabRule) {
+                <button
+                  type="button"
+                  role="tab"
+                  class="process-tab"
+                  [class.is-active]="selectedRuleKey() === tab.key"
+                  [ngClass]="statusClass(tabRule)"
+                  [attr.aria-selected]="selectedRuleKey() === tab.key"
+                  (click)="selectRule(tab.key)"
+                >
+                  <mat-icon>{{ tab.icon }}</mat-icon>
+                  <span>{{ tab.label }}</span>
+                  <span class="process-tab-badge">{{ statusLabel(tabRule) }}</span>
+                </button>
+              }
             }
           </div>
 
-          <div class="notifications-layout">
-            <aside class="notifications-list" aria-label="Notification rules">
-              @for (rule of rules(); track trackRule($index, rule)) {
-                <button
-                  type="button"
-                  class="notification-rule-row"
-                  [class.is-selected]="selectedRuleKey() === rule.ruleKey"
-                  [class.is-disabled-rule]="!rule.enabled"
-                  (click)="selectRule(rule)"
-                >
-                  <span class="notification-rule-icon">
-                    <mat-icon>{{ triggerIcon(rule.triggerKind) }}</mat-icon>
-                  </span>
-                  <span class="notification-rule-main">
-                    <span class="notification-rule-title">{{ rule.label }}</span>
-                    <span class="notification-rule-meta">{{ channelSummary(rule) }} · {{ timingLabel(rule) }}</span>
-                  </span>
-                  <span class="notification-rule-side">
-                    <span class="notification-status-pill" [class.is-on]="rule.enabled">{{ ruleStatusLabel(rule) }}</span>
-                    @if (rule.manualRunEnabled) {
-                      <button
-                        type="button"
-                        class="notification-run-mini"
-                        [disabled]="!!runningRuleKey()"
-                        (click)="run(rule, $event)"
-                        aria-label="Run notification rule now"
-                        title="Run now"
-                      >
-                        <mat-icon>{{ runningRuleKey() === rule.ruleKey ? 'sync' : 'play_arrow' }}</mat-icon>
-                      </button>
-                    }
-                  </span>
-                </button>
-              } @empty {
-                <div class="notifications-state notifications-state-small">
-                  <mat-icon>rule</mat-icon>
-                  <span>No rules</span>
-                </div>
-              }
-            </aside>
-
-            @if (selectedRule(); as rule) {
-              <section class="notification-detail" [class.is-disabled-rule]="!rule.enabled">
-                <div class="notification-detail-head">
-                  <div>
+          @if (selectedRule(); as rule) {
+            @if (selectedTab(); as tab) {
+              <section class="process-console" [ngClass]="statusClass(rule)">
+                <div class="process-hero">
+                  <div class="process-hero-main">
                     <span class="notification-detail-kicker">
-                      <mat-icon>{{ triggerIcon(rule.triggerKind) }}</mat-icon>
-                      <span>{{ triggerLabel(rule.triggerKind) }}</span>
+                      <mat-icon>{{ tab.icon }}</mat-icon>
+                      <span>Scheduled event process</span>
                     </span>
-                    <input
-                      class="notification-title-input"
-                      type="text"
-                      [(ngModel)]="rule.label"
-                      aria-label="Rule label"
-                    />
+                    <h3>{{ tab.label }}</h3>
+                    <p>{{ tab.summary }}</p>
                   </div>
-                  <label class="notification-switch" [class.is-on]="rule.enabled">
-                    <input
-                      type="checkbox"
-                      [ngModel]="rule.enabled"
-                      (ngModelChange)="setRuleEnabled(rule, $event)"
-                      aria-label="Toggle rule"
-                    />
-                    <span></span>
-                  </label>
+                  <div class="process-actions">
+                    <span class="process-status-pill" [ngClass]="statusClass(rule)">
+                      {{ statusLabel(rule) }}
+                    </span>
+                    <button
+                      type="button"
+                      class="process-soft-btn"
+                      [class.is-suspended]="!rule.enabled"
+                      [disabled]="saving() || !!runningRuleKey()"
+                      (click)="toggleSuspended(rule)"
+                    >
+                      <mat-icon>{{ rule.enabled ? 'pause_circle' : 'play_circle' }}</mat-icon>
+                      <span>{{ rule.enabled ? 'Suspend' : 'Unsuspend' }}</span>
+                    </button>
+                    <button
+                      type="button"
+                      class="notification-primary-btn process-start-btn"
+                      [disabled]="!rule.manualRunEnabled || !rule.enabled || !!runningRuleKey()"
+                      (click)="run(rule)"
+                    >
+                      <mat-icon>{{ runningRuleKey() === rule.ruleKey ? 'sync' : 'play_arrow' }}</mat-icon>
+                      <span>{{ runningRuleKey() === rule.ruleKey ? 'Running' : 'Start' }}</span>
+                    </button>
+                  </div>
                 </div>
 
-                <div class="notification-detail-grid">
-                  <label class="notification-field notification-field-wide">
-                    <span>Description</span>
-                    <textarea rows="2" [(ngModel)]="rule.description"></textarea>
-                  </label>
-                  <label class="notification-field">
-                    <span>Action</span>
-                    <input type="text" [(ngModel)]="rule.actionKey" />
-                  </label>
-                  <label class="notification-field">
-                    <span>Priority</span>
-                    <input type="number" min="0" step="1" [(ngModel)]="rule.priority" />
-                  </label>
-                </div>
+                <div class="process-grid">
+                  <section class="process-card process-card-wide">
+                    <div class="process-card-head">
+                      <h3>What It Does</h3>
+                    </div>
+                    <p>{{ tab.detail }}</p>
+                    <div class="process-progress">
+                      <span>{{ rule.runState.progressDetail || statusLabel(rule) }}</span>
+                      <span>{{ progressValue(rule) }}%</span>
+                    </div>
+                    <div class="process-progress-bar" aria-hidden="true">
+                      <span [style.width.%]="progressValue(rule)"></span>
+                    </div>
+                  </section>
 
-                <section class="notification-section">
-                  <h3>Channels</h3>
-                  <div class="notification-channel-grid">
-                    <label class="notification-channel" [class.is-on]="rule.channels.pushEnabled">
-                      <input
-                        type="checkbox"
-                        [ngModel]="rule.channels.pushEnabled"
-                        (ngModelChange)="setChannel(rule, 'pushEnabled', $event)"
-                      />
-                      <mat-icon>notifications</mat-icon>
-                      <span>Push</span>
-                    </label>
-                    <label class="notification-channel" [class.is-on]="rule.channels.emailEnabled">
-                      <input
-                        type="checkbox"
-                        [ngModel]="rule.channels.emailEnabled"
-                        (ngModelChange)="setChannel(rule, 'emailEnabled', $event)"
-                      />
-                      <mat-icon>mail</mat-icon>
-                      <span>Email</span>
-                    </label>
-                    <label class="notification-channel" [class.is-on]="rule.channels.inAppEnabled">
-                      <input
-                        type="checkbox"
-                        [ngModel]="rule.channels.inAppEnabled"
-                        (ngModelChange)="setChannel(rule, 'inAppEnabled', $event)"
-                      />
-                      <mat-icon>web_asset</mat-icon>
-                      <span>In-app</span>
-                    </label>
-                    <label class="notification-channel" [class.is-on]="rule.channels.supportChatEnabled">
-                      <input
-                        type="checkbox"
-                        [ngModel]="rule.channels.supportChatEnabled"
-                        (ngModelChange)="setChannel(rule, 'supportChatEnabled', $event)"
-                      />
-                      <mat-icon>support_agent</mat-icon>
-                      <span>Support</span>
-                    </label>
-                  </div>
-                </section>
-
-                <section class="notification-section">
-                  <h3>Timing</h3>
-                  <div class="notification-timing-grid">
-                    <label class="notification-field">
-                      <span>Mode</span>
-                      <select [ngModel]="rule.timing.mode" (ngModelChange)="setTimingMode(rule, $event)">
-                        @for (mode of timingModes(rule); track mode) {
-                          <option [value]="mode">{{ mode }}</option>
-                        }
-                      </select>
-                    </label>
-                    @if (rule.timing.mode === 'delay') {
-                      <label class="notification-field">
-                        <span>Delay minutes</span>
-                        <input type="number" min="0" step="1" [(ngModel)]="rule.timing.delayMinutes" />
-                      </label>
-                    }
-                    @if (rule.timing.mode === 'interval') {
-                      <label class="notification-field">
-                        <span>Interval minutes</span>
-                        <input type="number" min="1" step="1" [(ngModel)]="rule.timing.intervalMinutes" />
-                      </label>
-                    }
-                    @if (rule.timing.mode === 'yearly') {
-                      <label class="notification-field">
-                        <span>Month</span>
-                        <input type="number" min="1" max="12" step="1" [(ngModel)]="rule.timing.month" />
-                      </label>
-                      <label class="notification-field">
-                        <span>Day</span>
-                        <input type="number" min="1" max="31" step="1" [(ngModel)]="rule.timing.dayOfMonth" />
-                      </label>
-                      <label class="notification-field">
-                        <span>Time</span>
-                        <input type="time" [(ngModel)]="rule.timing.time" />
-                      </label>
-                      <label class="notification-field">
-                        <span>Timezone</span>
-                        <input type="text" [(ngModel)]="rule.timing.timezone" />
-                      </label>
-                    }
-                  </div>
-                </section>
-
-                @if (canShowMessageFields(rule)) {
-                  <section class="notification-section">
-                    <h3>Message</h3>
-                    <div class="notification-detail-grid">
-                      <label class="notification-field">
-                        <span>Push title</span>
-                        <input type="text" [(ngModel)]="rule.message.pushTitle" />
-                      </label>
-                      <label class="notification-field">
-                        <span>Email template</span>
-                        <select [(ngModel)]="rule.message.emailTemplateKey">
-                          <option value="">Custom</option>
-                          @for (template of state()?.emailTemplates ?? []; track template.templateKey) {
-                            <option [value]="template.templateKey">{{ template.name || template.templateKey }}</option>
+                  <section class="process-card">
+                    <div class="process-card-head">
+                      <h3>Slot</h3>
+                      <label class="process-frequency">
+                        <mat-icon>schedule</mat-icon>
+                        <select
+                          [ngModel]="rule.timing.intervalMinutes"
+                          (ngModelChange)="setFrequency(rule, $event)"
+                          aria-label="Frequency"
+                        >
+                          @for (option of frequencyOptions; track option.minutes) {
+                            <option [value]="option.minutes">{{ option.label }}</option>
                           }
                         </select>
                       </label>
-                      <label class="notification-field notification-field-wide">
-                        <span>Push body</span>
-                        <textarea rows="2" [(ngModel)]="rule.message.pushBody"></textarea>
-                      </label>
-                      <label class="notification-field">
-                        <span>Email subject</span>
-                        <input type="text" [(ngModel)]="rule.message.emailSubject" />
-                      </label>
-                      <label class="notification-field">
-                        <span>CTA path</span>
-                        <input type="text" [(ngModel)]="rule.message.ctaPath" />
-                      </label>
-                      <label class="notification-field notification-field-wide">
-                        <span>Email body</span>
-                        <textarea rows="3" [(ngModel)]="rule.message.emailBody"></textarea>
-                      </label>
+                    </div>
+                    <div class="process-cron">
+                      <span>Quartz</span>
+                      <code>{{ cronFor(rule) }}</code>
                     </div>
                   </section>
-                }
 
-                <section class="notification-section notification-run-section">
-                  <h3>Run</h3>
-                  <div class="notification-run-card">
-                    <div>
-                      <span class="notification-run-main">{{ lastRunLabel(rule) }}</span>
-                      <span class="notification-run-sub">{{ rule.runState.lastRunDetail || rule.runState.lastRunStatus || 'Not run yet' }}</span>
+                  <section class="process-card">
+                    <div class="process-card-head">
+                      <h3>Last Run</h3>
                     </div>
-                    <span class="notification-run-count">{{ runCountLabel(rule) }}</span>
-                    <button
-                      type="button"
-                      class="notification-primary-btn notification-run-btn"
-                      [disabled]="!rule.manualRunEnabled || !!runningRuleKey()"
-                      (click)="run(rule, $event)"
-                    >
-                      <mat-icon>{{ runningRuleKey() === rule.ruleKey ? 'sync' : 'play_arrow' }}</mat-icon>
-                      <span>{{ runningRuleKey() === rule.ruleKey ? 'Running' : 'Run now' }}</span>
-                    </button>
+                    <div class="process-last-run">
+                      <strong>{{ shortDate(rule.runState.lastRunAtIso) }}</strong>
+                      <span>{{ rule.runState.lastRunDetail || 'Not run yet' }}</span>
+                    </div>
+                    <div class="process-last-run-stats">
+                      <span>{{ rule.runState.lastRunCount || 0 }} records</span>
+                      <span>{{ durationLabel(rule.runState.durationMillis) }}</span>
+                    </div>
+                  </section>
+                </div>
+
+                <section class="process-card process-history-card">
+                  <div class="process-card-head">
+                    <h3>Runner History</h3>
+                  </div>
+                  <div class="process-history-table">
+                    <div class="process-history-row process-history-head">
+                      <span>When</span>
+                      <span>Duration</span>
+                      <span>Records</span>
+                      <span>Status</span>
+                      <span>Detail</span>
+                    </div>
+                    @for (entry of history(rule); track entry.id) {
+                      <div class="process-history-row">
+                        <span>{{ shortDate(entry.finishedAtIso || entry.startedAtIso) }}</span>
+                        <span>{{ durationLabel(entry.durationMillis) }}</span>
+                        <span>{{ entry.processedCount }}</span>
+                        <span>{{ entry.status }}</span>
+                        <span>{{ entry.detail }}</span>
+                      </div>
+                    } @empty {
+                      <div class="process-history-empty">No runs recorded yet.</div>
+                    }
                   </div>
                 </section>
               </section>
             }
-          </div>
+          }
         }
       </div>
     </div>

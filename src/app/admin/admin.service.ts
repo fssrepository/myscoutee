@@ -442,15 +442,35 @@ export class AdminService {
       const count = rule.triggerKind === 'scheduled_process'
         ? this.demoScheduledRunCount(rule.ruleKey)
         : 0;
+      const status = rule.manualRunEnabled ? 'completed' : 'skipped';
+      const detail = rule.manualRunEnabled ? 'Demo run recorded.' : 'This rule is action driven.';
+      const startedAtIso = new Date(Date.now() - 1150).toISOString();
       return {
         ...rule,
         runState: {
+          currentStatus: status,
+          progressPercent: 100,
+          progressDetail: detail,
+          startedAtIso,
+          finishedAtIso: nowIso,
+          durationMillis: 1150,
           lastRunAtIso: nowIso,
-          lastRunStatus: rule.manualRunEnabled ? 'completed' : 'skipped',
-          lastRunDetail: rule.manualRunEnabled ? 'Demo run recorded.' : 'This rule is action driven.',
+          lastRunStatus: status,
+          lastRunDetail: detail,
           lastRunCount: count,
           lastRunUser: this.activeAdmin()?.id ?? 'demo-admin'
         },
+        runHistory: [{
+          id: `run-${Date.now()}`,
+          trigger: 'manual',
+          runnerUser: this.activeAdmin()?.id ?? 'demo-admin',
+          startedAtIso,
+          finishedAtIso: nowIso,
+          durationMillis: 1150,
+          processedCount: count,
+          status,
+          detail
+        }, ...(rule.runHistory ?? [])].slice(0, 12),
         updatedDate: nowIso,
         updatedUser: this.activeAdmin()?.id ?? 'demo-admin'
       };
@@ -1405,30 +1425,30 @@ export class AdminService {
     return this.normalizeNotificationCenter({
       rules: [
         this.defaultNotificationRule({
-          ruleKey: 'promotional-email-planner',
-          label: 'Promotional email planner',
-          category: 'Scheduled',
-          description: 'Builds eligible email outbox rows from campaign rules.',
-          actionKey: 'email.promotional.plan',
-          triggerKind: 'scheduled_process',
-          enabled: true,
-          manualRunEnabled: true,
-          priority: 100,
-          pushEnabled: false,
-          emailEnabled: true,
-          timingMode: 'interval',
-          intervalMinutes: 60
-        }),
-        this.defaultNotificationRule({
           ruleKey: 'event-random-groups',
-          label: 'Random group planner',
+          label: 'Random event',
           category: 'Scheduled',
-          description: 'Assigns accepted members into generated event groups.',
+          description: 'Assigns accepted event members into generated random groups.',
           actionKey: 'event.scheduler.random-groups',
           triggerKind: 'scheduled_process',
           enabled: false,
           manualRunEnabled: true,
           priority: 200,
+          pushEnabled: false,
+          emailEnabled: false,
+          timingMode: 'interval',
+          intervalMinutes: 15
+        }),
+        this.defaultNotificationRule({
+          ruleKey: 'event-stage-materializer',
+          label: 'Stage event',
+          category: 'Scheduled',
+          description: 'Materializes generated groups for score and tournament stages.',
+          actionKey: 'event.scheduler.stage-materializer',
+          triggerKind: 'scheduled_process',
+          enabled: false,
+          manualRunEnabled: true,
+          priority: 210,
           pushEnabled: false,
           emailEnabled: false,
           timingMode: 'interval',
@@ -1482,7 +1502,8 @@ export class AdminService {
         month: options.month ?? 1,
         dayOfMonth: options.dayOfMonth ?? 1,
         time: '09:00',
-        timezone: 'UTC'
+        timezone: 'UTC',
+        cronExpression: this.intervalCron(options.intervalMinutes ?? 60)
       },
       message: {
         pushTitle: options.emailSubject ?? '',
@@ -1493,12 +1514,19 @@ export class AdminService {
         ctaPath: '/game'
       },
       runState: {
+        currentStatus: options.enabled ? 'idle' : 'suspended',
+        progressPercent: 0,
+        progressDetail: '',
+        startedAtIso: '',
+        finishedAtIso: '',
+        durationMillis: 0,
         lastRunAtIso: '',
         lastRunStatus: '',
         lastRunDetail: '',
         lastRunCount: 0,
         lastRunUser: ''
       },
+      runHistory: [],
       updatedDate: '',
       updatedUser: ''
     };
@@ -1569,7 +1597,9 @@ export class AdminService {
         month: this.clampInteger(rule.timing?.month, 1, 12, 1),
         dayOfMonth: this.clampInteger(rule.timing?.dayOfMonth, 1, 31, 1),
         time: this.normalizeNotificationTime(rule.timing?.time),
-        timezone: `${rule.timing?.timezone ?? ''}`.trim() || 'UTC'
+        timezone: `${rule.timing?.timezone ?? ''}`.trim() || 'UTC',
+        cronExpression: `${rule.timing?.cronExpression ?? ''}`.trim()
+          || this.intervalCron(Math.max(1, Math.trunc(Number(rule.timing?.intervalMinutes) || 60)))
       },
       message: {
         pushTitle: `${rule.message?.pushTitle ?? ''}`.trim(),
@@ -1580,12 +1610,29 @@ export class AdminService {
         ctaPath: `${rule.message?.ctaPath ?? ''}`.trim() || '/game'
       },
       runState: {
+        currentStatus: `${rule.runState?.currentStatus ?? ''}`.trim() || (rule.enabled ? 'idle' : 'suspended'),
+        progressPercent: this.clampInteger(rule.runState?.progressPercent, 0, 100, 0),
+        progressDetail: `${rule.runState?.progressDetail ?? ''}`.trim(),
+        startedAtIso: `${rule.runState?.startedAtIso ?? ''}`.trim(),
+        finishedAtIso: `${rule.runState?.finishedAtIso ?? ''}`.trim(),
+        durationMillis: Math.max(0, Math.trunc(Number(rule.runState?.durationMillis) || 0)),
         lastRunAtIso: `${rule.runState?.lastRunAtIso ?? ''}`.trim(),
         lastRunStatus: `${rule.runState?.lastRunStatus ?? ''}`.trim(),
         lastRunDetail: `${rule.runState?.lastRunDetail ?? ''}`.trim(),
         lastRunCount: Math.max(0, Math.trunc(Number(rule.runState?.lastRunCount) || 0)),
         lastRunUser: `${rule.runState?.lastRunUser ?? ''}`.trim()
       },
+      runHistory: (rule.runHistory ?? []).map((entry, index) => ({
+        id: `${entry?.id ?? ''}`.trim() || `run-${index}`,
+        trigger: `${entry?.trigger ?? ''}`.trim() || 'manual',
+        runnerUser: `${entry?.runnerUser ?? ''}`.trim(),
+        startedAtIso: `${entry?.startedAtIso ?? ''}`.trim(),
+        finishedAtIso: `${entry?.finishedAtIso ?? ''}`.trim(),
+        durationMillis: Math.max(0, Math.trunc(Number(entry?.durationMillis) || 0)),
+        processedCount: Math.max(0, Math.trunc(Number(entry?.processedCount) || 0)),
+        status: `${entry?.status ?? ''}`.trim() || 'completed',
+        detail: `${entry?.detail ?? ''}`.trim()
+      })).sort((left, right) => Date.parse(right.finishedAtIso || right.startedAtIso) - Date.parse(left.finishedAtIso || left.startedAtIso)).slice(0, 12),
       updatedDate: `${rule.updatedDate ?? ''}`.trim() || null,
       updatedUser: `${rule.updatedUser ?? ''}`.trim() || null
     };
@@ -1626,13 +1673,17 @@ export class AdminService {
 
   private demoScheduledRunCount(ruleKey: string): number {
     switch (ruleKey) {
-      case 'promotional-email-planner':
-        return 3;
+      case 'event-stage-materializer':
+        return 2;
       case 'event-random-groups':
         return 1;
       default:
         return 0;
     }
+  }
+
+  private intervalCron(intervalMinutes: number): string {
+    return `0 0/${Math.max(1, Math.trunc(Number(intervalMinutes) || 60))} * * * ?`;
   }
 
   private clampInteger(value: number | undefined, min: number, max: number, fallback: number): number {

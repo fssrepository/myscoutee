@@ -6,11 +6,18 @@ import { MatIconModule } from '@angular/material/icon';
 import type {
   AdminNotificationCenterState,
   AdminNotificationRule,
-  AdminNotificationTimingMode,
-  AdminNotificationTriggerKind
+  AdminNotificationRunHistoryEntry
 } from '../../../shared/core';
 import { RouteDelayService } from '../../../shared/core/base/services/route-delay.service';
 import { AdminService } from '../../admin.service';
+
+interface ProcessTab {
+  key: string;
+  label: string;
+  icon: string;
+  summary: string;
+  detail: string;
+}
 
 @Component({
   selector: 'app-admin-notifications-popup',
@@ -22,107 +29,100 @@ import { AdminService } from '../../admin.service';
 export class AdminNotificationsPopupComponent implements OnDestroy {
   private static readonly LOAD_DEMO_DELAY_MS = 1500;
   private static readonly LOAD_PROGRESS_WINDOW_MS = 3000;
+  private static readonly SAVE_DEMO_DELAY_MS = 1500;
+  private static readonly POLL_INTERVAL_MS = 2500;
+
   protected readonly admin = inject(AdminService);
   private readonly routeDelay = inject(RouteDelayService);
 
   protected readonly loading = signal(false);
-  protected readonly loadingProgress = signal(0);
   protected readonly saving = signal(false);
+  protected readonly actionRingPerimeter = 100;
+  protected readonly loadingRingPerimeter = 100;
+  protected readonly loadingProgress = signal(0);
   protected readonly runningRuleKey = signal('');
   protected readonly error = signal('');
   protected readonly state = signal<AdminNotificationCenterState | null>(null);
-  protected readonly selectedRuleKey = signal('');
-  protected readonly loadingRingPerimeter = 100;
+  protected readonly selectedRuleKey = signal('event-random-groups');
   private loadedForOpen = false;
+  private pollTimer: ReturnType<typeof setInterval> | null = null;
   private loadingProgressTimer: ReturnType<typeof setInterval> | null = null;
   private loadingProgressStartedAtMs = 0;
 
-  protected readonly triggerTabs: Array<{ key: AdminNotificationTriggerKind | 'all'; label: string; icon: string }> = [
-    { key: 'all', label: 'All', icon: 'rule' },
-    { key: 'action', label: 'Actions', icon: 'bolt' },
-    { key: 'timed', label: 'Timed', icon: 'event_repeat' },
-    { key: 'scheduled_process', label: 'Processes', icon: 'settings_suggest' }
+  protected readonly processTabs: ProcessTab[] = [
+    {
+      key: 'event-random-groups',
+      label: 'Random event',
+      icon: 'casino',
+      summary: 'Creates balanced random groups for published events that already have accepted members.',
+      detail: 'The process scans published events, reads accepted member snapshots, builds the rate graph once, and writes generated group assignments for eligible sub-events.'
+    },
+    {
+      key: 'event-stage-materializer',
+      label: 'Stage event',
+      icon: 'stacked_line_chart',
+      summary: 'Materializes generated groups for score and tournament event stages.',
+      detail: 'The process advances score or tournament style sub-events by reading leaderboard state, resolving advancing members, and preparing the next stage groups.'
+    }
   ];
-  protected readonly activeTriggerTab = signal<AdminNotificationTriggerKind | 'all'>('all');
+
+  protected readonly frequencyOptions = [
+    { minutes: 5, label: 'Every 5m' },
+    { minutes: 15, label: 'Every 15m' },
+    { minutes: 30, label: 'Every 30m' },
+    { minutes: 60, label: 'Hourly' }
+  ];
 
   constructor() {
     effect(() => {
       if (this.admin.activePopup() !== 'notifications') {
         this.loadedForOpen = false;
         this.error.set('');
-        this.clearLoadingProgress();
+        this.stopPolling();
         return;
       }
       if (!this.loadedForOpen) {
         this.loadedForOpen = true;
         void this.load();
       }
+      this.startPolling();
     });
   }
 
   ngOnDestroy(): void {
+    this.stopPolling();
     this.clearLoadingProgress();
   }
 
-  protected async load(): Promise<void> {
-    if (this.loading()) {
+  protected async load(silent = false): Promise<void> {
+    if (this.loading() || this.saving()) {
       return;
     }
-    this.loading.set(true);
+    if (!silent) {
+      this.loading.set(true);
+      this.beginLoadingProgress();
+    }
     this.error.set('');
-    this.beginLoadingProgress();
     try {
       const [state] = await Promise.all([
         this.admin.loadNotificationCenter(),
-        this.routeDelay.waitForRouteDelay(
-          '/admin/notifications',
-          undefined,
-          undefined,
-          AdminNotificationsPopupComponent.LOAD_DEMO_DELAY_MS
-        )
+        silent
+          ? Promise.resolve()
+          : this.routeDelay.waitForRouteDelay('/admin/notifications', undefined, undefined, AdminNotificationsPopupComponent.LOAD_DEMO_DELAY_MS)
       ]);
-      this.state.set(state);
-      this.selectedRuleKey.set(state.rules[0]?.ruleKey ?? '');
+      this.state.set(this.ensureProcessRules(state));
+      if (!this.processTabs.some(tab => tab.key === this.selectedRuleKey())) {
+        this.selectedRuleKey.set(this.processTabs[0].key);
+      }
     } catch {
-      this.error.set('Unable to load notification rules.');
+      if (!silent) {
+        this.error.set('Unable to load scheduled processes.');
+      }
     } finally {
-      this.loading.set(false);
-      this.endLoadingProgress();
-    }
-  }
-
-  protected loadingRingDashOffset(): number {
-    return this.loadingRingPerimeter * (1 - Math.min(1, Math.max(0, this.loadingProgress())));
-  }
-
-  protected close(): void {
-    this.admin.closePopup();
-  }
-
-  protected rules(): AdminNotificationRule[] {
-    const rules = this.state()?.rules ?? [];
-    const activeTriggerTab = this.activeTriggerTab();
-    return activeTriggerTab === 'all'
-      ? rules
-      : rules.filter(rule => rule.triggerKind === activeTriggerTab);
-  }
-
-  protected selectedRule(): AdminNotificationRule | null {
-    const state = this.state();
-    return state?.rules.find(rule => rule.ruleKey === this.selectedRuleKey())
-      ?? state?.rules[0]
-      ?? null;
-  }
-
-  protected selectRule(rule: AdminNotificationRule): void {
-    this.selectedRuleKey.set(rule.ruleKey);
-  }
-
-  protected selectTriggerTab(tab: AdminNotificationTriggerKind | 'all'): void {
-    this.activeTriggerTab.set(tab);
-    const visible = this.rules();
-    if (!visible.some(rule => rule.ruleKey === this.selectedRuleKey())) {
-      this.selectedRuleKey.set(visible[0]?.ruleKey ?? '');
+      if (!silent) {
+        this.loading.set(false);
+        this.endLoadingProgress();
+      }
     }
   }
 
@@ -134,39 +134,81 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
     this.saving.set(true);
     this.error.set('');
     try {
-      const savedState = await this.admin.saveNotificationCenter(state.rules);
-      this.state.set(savedState);
-      if (!savedState.rules.some(rule => rule.ruleKey === this.selectedRuleKey())) {
-        this.selectedRuleKey.set(savedState.rules[0]?.ruleKey ?? '');
-      }
+      const [savedState] = await Promise.all([
+        this.admin.saveNotificationCenter(this.processRules()),
+        this.routeDelay.waitForRouteDelay('/admin/notifications/save', undefined, undefined, AdminNotificationsPopupComponent.SAVE_DEMO_DELAY_MS)
+      ]);
+      this.state.set(this.ensureProcessRules(savedState));
     } catch {
-      this.error.set('Unable to save notification rules.');
+      this.error.set('Unable to save scheduled process settings.');
     } finally {
       this.saving.set(false);
     }
   }
 
-  protected async run(rule: AdminNotificationRule, event?: Event): Promise<void> {
-    event?.stopPropagation();
+  protected async toggleSuspended(rule: AdminNotificationRule): Promise<void> {
+    rule.enabled = !rule.enabled;
+    rule.runState.currentStatus = rule.enabled ? 'idle' : 'suspended';
+    rule.runState.progressDetail = rule.enabled ? 'Ready for the next scheduled slot.' : 'Suspended by admin.';
+    await this.save();
+  }
+
+  protected async run(rule: AdminNotificationRule): Promise<void> {
     if (!rule.manualRunEnabled || this.runningRuleKey()) {
       return;
     }
     this.runningRuleKey.set(rule.ruleKey);
     this.error.set('');
+    this.patchRule(rule.ruleKey, current => ({
+      ...current,
+      runState: {
+        ...current.runState,
+        currentStatus: 'running',
+        progressPercent: 18,
+        progressDetail: 'Manual run started.',
+        startedAtIso: new Date().toISOString(),
+        finishedAtIso: '',
+        durationMillis: 0
+      }
+    }));
     try {
       const result = await this.admin.runNotificationRule(rule.ruleKey);
-      this.patchRule(rule.ruleKey, current => ({
-        ...current,
-        runState: {
-          lastRunAtIso: result.ranAtIso,
-          lastRunStatus: result.status,
-          lastRunDetail: result.detail,
-          lastRunCount: result.affectedCount,
-          lastRunUser: this.admin.activeAdmin()?.id ?? current.runState.lastRunUser
-        },
-        updatedDate: result.ranAtIso,
-        updatedUser: this.admin.activeAdmin()?.id ?? current.updatedUser
-      }));
+      const finishedAtIso = result.ranAtIso || new Date().toISOString();
+      this.patchRule(rule.ruleKey, current => {
+        const startedAtIso = current.runState.startedAtIso || finishedAtIso;
+        const durationMillis = this.durationBetween(startedAtIso, finishedAtIso);
+        const entry: AdminNotificationRunHistoryEntry = {
+          id: `run-${Date.now()}`,
+          trigger: 'manual',
+          runnerUser: this.admin.activeAdmin()?.id ?? current.runState.lastRunUser,
+          startedAtIso,
+          finishedAtIso,
+          durationMillis,
+          processedCount: result.affectedCount,
+          status: result.status,
+          detail: result.detail
+        };
+        return {
+          ...current,
+          runState: {
+            ...current.runState,
+            currentStatus: result.status,
+            progressPercent: 100,
+            progressDetail: result.detail,
+            finishedAtIso,
+            durationMillis,
+            lastRunAtIso: finishedAtIso,
+            lastRunStatus: result.status,
+            lastRunDetail: result.detail,
+            lastRunCount: result.affectedCount,
+            lastRunUser: this.admin.activeAdmin()?.id ?? current.runState.lastRunUser
+          },
+          runHistory: [entry, ...(current.runHistory ?? [])].slice(0, 12),
+          updatedDate: finishedAtIso,
+          updatedUser: this.admin.activeAdmin()?.id ?? current.updatedUser
+        };
+      });
+      void this.load(true);
     } catch {
       this.error.set(`Unable to run ${rule.label}.`);
     } finally {
@@ -174,118 +216,102 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
     }
   }
 
-  protected setRuleEnabled(rule: AdminNotificationRule, value: boolean): void {
-    rule.enabled = value;
+  protected close(): void {
+    this.admin.closePopup();
   }
 
-  protected setChannel(rule: AdminNotificationRule, channel: keyof AdminNotificationRule['channels'], value: boolean): void {
-    rule.channels[channel] = value;
+  protected selectRule(ruleKey: string): void {
+    this.selectedRuleKey.set(ruleKey);
   }
 
-  protected setTimingMode(rule: AdminNotificationRule, mode: string): void {
-    rule.timing.mode = this.normalizeTimingMode(mode, rule.triggerKind);
+  protected selectedTab(): ProcessTab {
+    return this.processTabs.find(tab => tab.key === this.selectedRuleKey()) ?? this.processTabs[0];
   }
 
-  protected triggerLabel(kind: AdminNotificationTriggerKind): string {
-    switch (kind) {
-      case 'timed':
-        return 'Timed';
-      case 'scheduled_process':
-        return 'Process';
-      default:
-        return 'Action';
-    }
+  protected selectedRule(): AdminNotificationRule {
+    return this.processRules().find(rule => rule.ruleKey === this.selectedRuleKey())
+      ?? this.processRules()[0]
+      ?? this.fallbackRule(this.processTabs[0]);
   }
 
-  protected triggerIcon(kind: AdminNotificationTriggerKind): string {
-    switch (kind) {
-      case 'timed':
-        return 'event_repeat';
-      case 'scheduled_process':
-        return 'settings_suggest';
-      default:
-        return 'bolt';
-    }
+  protected processRules(): AdminNotificationRule[] {
+    const rules = this.state()?.rules ?? [];
+    return this.processTabs.map(tab => rules.find(rule => rule.ruleKey === tab.key) ?? this.fallbackRule(tab));
   }
 
-  protected ruleStatusLabel(rule: AdminNotificationRule): string {
-    return rule.enabled ? 'Enabled' : 'Off';
+  protected statusLabel(rule: AdminNotificationRule): string {
+    if (this.runningRuleKey() === rule.ruleKey || rule.runState.currentStatus === 'running') {
+      return 'Running';
+    }
+    if (!rule.enabled || rule.runState.currentStatus === 'suspended') {
+      return 'Suspended';
+    }
+    return 'Ready';
   }
 
-  protected channelSummary(rule: AdminNotificationRule): string {
-    const channels: string[] = [];
-    if (rule.channels.pushEnabled) {
-      channels.push('Push');
-    }
-    if (rule.channels.emailEnabled) {
-      channels.push('Email');
-    }
-    if (rule.channels.inAppEnabled) {
-      channels.push('In-app');
-    }
-    if (rule.channels.supportChatEnabled) {
-      channels.push('Support');
-    }
-    return channels.join(' + ') || 'No channel';
+  protected statusClass(rule: AdminNotificationRule): string {
+    return `is-${this.statusLabel(rule).toLowerCase()}`;
   }
 
-  protected timingLabel(rule: AdminNotificationRule): string {
-    switch (rule.timing.mode) {
-      case 'delay':
-        return `${rule.timing.delayMinutes}m delay`;
-      case 'interval':
-        return `Every ${rule.timing.intervalMinutes}m`;
-      case 'yearly':
-        return `${this.monthLabel(rule.timing.month)} ${rule.timing.dayOfMonth} ${rule.timing.time}`;
-      case 'manual':
-        return 'Manual';
-      default:
-        return 'Immediate';
+  protected progressValue(rule: AdminNotificationRule): number {
+    if (this.runningRuleKey() === rule.ruleKey) {
+      return Math.max(18, Math.min(92, rule.runState.progressPercent || 18));
     }
+    return Math.max(0, Math.min(100, rule.runState.progressPercent || 0));
   }
 
-  protected lastRunLabel(rule: AdminNotificationRule): string {
-    const value = rule.runState.lastRunAtIso;
-    if (!value) {
-      return 'Never';
-    }
-    const parsed = Date.parse(value);
+  protected cronFor(rule: AdminNotificationRule): string {
+    const interval = Math.max(1, Math.trunc(Number(rule.timing.intervalMinutes) || 15));
+    rule.timing.cronExpression = `0 0/${interval} * * * ?`;
+    return rule.timing.cronExpression;
+  }
+
+  protected setFrequency(rule: AdminNotificationRule, minutes: string | number): void {
+    const interval = Math.max(1, Math.trunc(Number(minutes) || 15));
+    rule.timing.mode = 'interval';
+    rule.timing.intervalMinutes = interval;
+    rule.timing.cronExpression = `0 0/${interval} * * * ?`;
+  }
+
+  protected history(rule: AdminNotificationRule): AdminNotificationRunHistoryEntry[] {
+    return [...(rule.runHistory ?? [])].sort((left, right) =>
+      Date.parse(right.finishedAtIso || right.startedAtIso) - Date.parse(left.finishedAtIso || left.startedAtIso)
+    );
+  }
+
+  protected shortDate(value: string): string {
+    const parsed = Date.parse(value || '');
     if (!Number.isFinite(parsed)) {
-      return value;
+      return value || 'Never';
     }
-    return new Date(parsed).toLocaleString([], {
-      month: 'short',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit'
-    });
+    return new Date(parsed).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
   }
 
-  protected runCountLabel(rule: AdminNotificationRule): string {
-    return `${Math.max(0, rule.runState.lastRunCount || 0)}`;
-  }
-
-  protected canShowMessageFields(rule: AdminNotificationRule): boolean {
-    return rule.triggerKind !== 'scheduled_process' || rule.channels.emailEnabled || rule.channels.pushEnabled;
-  }
-
-  protected timingModes(rule: AdminNotificationRule): AdminNotificationTimingMode[] {
-    if (rule.triggerKind === 'scheduled_process') {
-      return ['interval', 'yearly', 'manual'];
+  protected durationLabel(ms: number): string {
+    const value = Math.max(0, Math.trunc(Number(ms) || 0));
+    if (value < 1000) {
+      return `${value}ms`;
     }
-    if (rule.triggerKind === 'timed') {
-      return ['yearly', 'manual'];
+    return `${(value / 1000).toFixed(value < 10000 ? 1 : 0)}s`;
+  }
+
+  protected loadingRingDashOffset(): number {
+    return this.loadingRingPerimeter * (1 - Math.min(1, Math.max(0, this.loadingProgress())));
+  }
+
+  private startPolling(): void {
+    if (this.pollTimer) {
+      return;
     }
-    return ['immediate', 'delay'];
+    this.pollTimer = setInterval(() => void this.load(true), AdminNotificationsPopupComponent.POLL_INTERVAL_MS);
   }
 
-  protected monthLabel(month: number): string {
-    const date = new Date(2026, Math.max(0, Math.min(11, month - 1)), 1);
-    return date.toLocaleString([], { month: 'short' });
-  }
-
-  protected trackRule(_: number, rule: AdminNotificationRule): string {
-    return rule.ruleKey;
+  private stopPolling(): void {
+    if (!this.pollTimer) {
+      return;
+    }
+    clearInterval(this.pollTimer);
+    this.pollTimer = null;
   }
 
   private beginLoadingProgress(): void {
@@ -327,6 +353,59 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
     return typeof performance !== 'undefined' ? performance.now() : Date.now();
   }
 
+  private ensureProcessRules(state: AdminNotificationCenterState): AdminNotificationCenterState {
+    const existing = state.rules ?? [];
+    const processRules = this.processTabs.map(tab => existing.find(rule => rule.ruleKey === tab.key) ?? this.fallbackRule(tab));
+    return {
+      ...state,
+      rules: processRules,
+      updatedDate: state.updatedDate || new Date().toISOString()
+    };
+  }
+
+  private fallbackRule(tab: ProcessTab): AdminNotificationRule {
+    const intervalMinutes = 15;
+    return {
+      ruleKey: tab.key,
+      label: tab.label,
+      category: 'Scheduled',
+      description: tab.detail,
+      actionKey: tab.key === 'event-stage-materializer' ? 'event.scheduler.stage-materializer' : 'event.scheduler.random-groups',
+      triggerKind: 'scheduled_process',
+      enabled: false,
+      manualRunEnabled: true,
+      priority: tab.key === 'event-stage-materializer' ? 210 : 200,
+      channels: { pushEnabled: false, emailEnabled: false, inAppEnabled: false, supportChatEnabled: false },
+      timing: {
+        mode: 'interval',
+        delayMinutes: 0,
+        intervalMinutes,
+        month: 1,
+        dayOfMonth: 1,
+        time: '09:00',
+        timezone: 'UTC',
+        cronExpression: `0 0/${intervalMinutes} * * * ?`
+      },
+      message: { pushTitle: '', pushBody: '', emailTemplateKey: '', emailSubject: '', emailBody: '', ctaPath: '/game' },
+      runState: {
+        currentStatus: 'suspended',
+        progressPercent: 0,
+        progressDetail: 'Suspended by default.',
+        startedAtIso: '',
+        finishedAtIso: '',
+        durationMillis: 0,
+        lastRunAtIso: '',
+        lastRunStatus: '',
+        lastRunDetail: '',
+        lastRunCount: 0,
+        lastRunUser: ''
+      },
+      runHistory: [],
+      updatedDate: '',
+      updatedUser: ''
+    };
+  }
+
   private patchRule(ruleKey: string, update: (rule: AdminNotificationRule) => AdminNotificationRule): void {
     const state = this.state();
     if (!state) {
@@ -339,10 +418,9 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
     });
   }
 
-  private normalizeTimingMode(value: string, triggerKind: AdminNotificationTriggerKind): AdminNotificationTimingMode {
-    if (value === 'delay' || value === 'interval' || value === 'yearly' || value === 'manual') {
-      return value;
-    }
-    return triggerKind === 'scheduled_process' ? 'interval' : 'immediate';
+  private durationBetween(startedAtIso: string, finishedAtIso: string): number {
+    const started = Date.parse(startedAtIso || '');
+    const finished = Date.parse(finishedAtIso || '');
+    return Number.isFinite(started) && Number.isFinite(finished) ? Math.max(0, finished - started) : 0;
   }
 }
