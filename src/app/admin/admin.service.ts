@@ -1405,56 +1405,6 @@ export class AdminService {
     return this.normalizeNotificationCenter({
       rules: [
         this.defaultNotificationRule({
-          ruleKey: 'chat-message',
-          label: 'Chat message',
-          category: 'Action',
-          description: 'Notify offline recipients when a chat message arrives.',
-          actionKey: 'chat.message.created',
-          triggerKind: 'action',
-          enabled: true,
-          manualRunEnabled: false,
-          priority: 10,
-          pushEnabled: true,
-          emailEnabled: false,
-          timingMode: 'immediate',
-          emailSubject: 'New message from @sender_name',
-          emailBody: '@sender_name sent a message in @chat_title.'
-        }),
-        this.defaultNotificationRule({
-          ruleKey: 'event-invitation',
-          label: 'Event invitation',
-          category: 'Action',
-          description: 'Notify members when an organizer invites them to an event.',
-          actionKey: 'event.invitation.created',
-          triggerKind: 'action',
-          enabled: true,
-          manualRunEnabled: false,
-          priority: 20,
-          pushEnabled: true,
-          emailEnabled: false,
-          timingMode: 'immediate',
-          emailSubject: 'You were invited to @event_title',
-          emailBody: '@event_title starts @event_start_at.'
-        }),
-        this.defaultNotificationRule({
-          ruleKey: 'event-feedback-ready',
-          label: 'Event feedback ready',
-          category: 'Timed',
-          description: 'Yearly or manual feedback reminder rule for post-event feedback windows.',
-          actionKey: 'event.feedback.ready',
-          triggerKind: 'timed',
-          enabled: false,
-          manualRunEnabled: true,
-          priority: 30,
-          pushEnabled: false,
-          emailEnabled: true,
-          timingMode: 'yearly',
-          month: 5,
-          dayOfMonth: 1,
-          emailSubject: 'Feedback is open for @event_title',
-          emailBody: 'Share feedback for @event_title while it is fresh.'
-        }),
-        this.defaultNotificationRule({
           ruleKey: 'promotional-email-planner',
           label: 'Promotional email planner',
           category: 'Scheduled',
@@ -1470,21 +1420,6 @@ export class AdminService {
           intervalMinutes: 60
         }),
         this.defaultNotificationRule({
-          ruleKey: 'email-outbox-delivery',
-          label: 'Email outbox delivery',
-          category: 'Scheduled',
-          description: 'Sends pending email outbox rows that are due.',
-          actionKey: 'email.outbox.deliver',
-          triggerKind: 'scheduled_process',
-          enabled: true,
-          manualRunEnabled: true,
-          priority: 110,
-          pushEnabled: false,
-          emailEnabled: true,
-          timingMode: 'interval',
-          intervalMinutes: 1
-        }),
-        this.defaultNotificationRule({
           ruleKey: 'event-random-groups',
           label: 'Random group planner',
           category: 'Scheduled',
@@ -1494,36 +1429,6 @@ export class AdminService {
           enabled: false,
           manualRunEnabled: true,
           priority: 200,
-          pushEnabled: false,
-          emailEnabled: false,
-          timingMode: 'interval',
-          intervalMinutes: 15
-        }),
-        this.defaultNotificationRule({
-          ruleKey: 'event-priority-inviter',
-          label: 'Priority inviter',
-          category: 'Scheduled',
-          description: 'Fills open event capacity with priority-based invitation batches.',
-          actionKey: 'event.scheduler.priority-inviter',
-          triggerKind: 'scheduled_process',
-          enabled: false,
-          manualRunEnabled: true,
-          priority: 210,
-          pushEnabled: false,
-          emailEnabled: false,
-          timingMode: 'interval',
-          intervalMinutes: 15
-        }),
-        this.defaultNotificationRule({
-          ruleKey: 'event-score-leaderboard',
-          label: 'Score leaderboard materializer',
-          category: 'Scheduled',
-          description: 'Materializes generated groups for score and tournament stages.',
-          actionKey: 'event.scheduler.score-leaderboard',
-          triggerKind: 'scheduled_process',
-          enabled: false,
-          manualRunEnabled: true,
-          priority: 220,
           pushEnabled: false,
           emailEnabled: false,
           timingMode: 'interval',
@@ -1723,12 +1628,7 @@ export class AdminService {
     switch (ruleKey) {
       case 'promotional-email-planner':
         return 3;
-      case 'email-outbox-delivery':
-        return 2;
-      case 'event-priority-inviter':
-        return 4;
       case 'event-random-groups':
-      case 'event-score-leaderboard':
         return 1;
       default:
         return 0;
