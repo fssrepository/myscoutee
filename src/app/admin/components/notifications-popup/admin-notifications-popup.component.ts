@@ -171,10 +171,10 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
     }
   }
 
-  protected async save(): Promise<void> {
+  protected async save(): Promise<boolean> {
     const state = this.state();
     if (!state || this.saving()) {
-      return;
+      return false;
     }
     this.saving.set(true);
     this.error.set('');
@@ -184,10 +184,19 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
         this.routeDelay.waitForRouteDelay('/admin/notifications/save', undefined, undefined, AdminNotificationsPopupComponent.SAVE_DEMO_DELAY_MS)
       ]);
       this.state.set(this.ensureProcessRules(savedState));
+      return true;
     } catch {
       this.error.set('Unable to save scheduled process settings.');
+      return false;
     } finally {
       this.saving.set(false);
+    }
+  }
+
+  protected async saveAndCloseDetail(): Promise<void> {
+    const saved = await this.save();
+    if (saved) {
+      this.closeDetail();
     }
   }
 
@@ -429,8 +438,8 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
 
   protected async saveScheduleEditor(): Promise<void> {
     this.syncPrimaryTiming(this.selectedRule());
-    await this.save();
-    if (!this.error()) {
+    const saved = await this.save();
+    if (saved) {
       this.closeScheduleEditor();
     }
   }
