@@ -171,7 +171,7 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
     }
   }
 
-  protected async save(): Promise<boolean> {
+  protected async save(rulesToSave: readonly AdminNotificationRule[] = this.processRules()): Promise<boolean> {
     const state = this.state();
     if (!state || this.saving()) {
       return false;
@@ -180,7 +180,7 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
     this.error.set('');
     try {
       const [savedState] = await Promise.all([
-        this.admin.saveNotificationCenter(this.processRules()),
+        this.admin.saveNotificationCenter(rulesToSave),
         this.routeDelay.waitForRouteDelay('/admin/notifications/save', undefined, undefined, AdminNotificationsPopupComponent.SAVE_DEMO_DELAY_MS)
       ]);
       this.state.set(this.ensureProcessRules(savedState));
@@ -206,10 +206,21 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
     }
     this.rowActionKey.set(`${rule.ruleKey}:suspend`);
     try {
-      rule.enabled = !rule.enabled;
-      rule.runState.currentStatus = rule.enabled ? 'idle' : 'suspended';
-      rule.runState.progressDetail = rule.enabled ? 'Ready for the next scheduled slot.' : 'Suspended by admin.';
-      await this.save();
+      const nextEnabled = !rule.enabled;
+      const rulesToSave = this.processRules().map(current => current.ruleKey === rule.ruleKey
+        ? {
+          ...current,
+          enabled: nextEnabled,
+          runState: {
+            ...current.runState,
+            currentStatus: nextEnabled ? 'idle' : 'suspended',
+            progressDetail: nextEnabled ? 'Ready for the next scheduled slot.' : 'Suspended by admin.'
+          },
+          updatedDate: new Date().toISOString(),
+          updatedUser: this.admin.activeAdmin()?.id ?? current.updatedUser
+        }
+        : current);
+      await this.save(rulesToSave);
     } finally {
       this.rowActionKey.set('');
     }
