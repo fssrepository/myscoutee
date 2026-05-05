@@ -506,10 +506,34 @@
 }
 
 .process-list-actions {
+  display: grid;
+  justify-items: end;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.process-list-action-buttons {
   display: inline-flex;
   align-items: center;
   justify-content: flex-end;
   gap: 0.3rem;
+}
+
+.process-list-live-progress {
+  grid-column: 1 / -1;
+  width: 100%;
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(45, 81, 125, 0.14);
+  overflow: hidden;
+}
+
+.process-list-live-progress span {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #2f75bc 0%, #75c893 100%);
+  display: block;
+  transition: width 180ms ease;
 }
 
 .process-icon-btn {
@@ -944,43 +968,6 @@
   font-weight: 900;
 }
 
-.process-action-field {
-  margin-top: 0.52rem;
-  display: grid;
-  gap: 0.28rem;
-}
-
-.process-action-field label {
-  display: grid;
-  gap: 0.22rem;
-}
-
-.process-action-field label span {
-  color: rgba(31, 55, 86, 0.62);
-  font-size: 0.68rem;
-  font-weight: 900;
-  text-transform: uppercase;
-}
-
-.process-action-field select {
-  min-height: 36px;
-  border: 1px solid rgba(42, 81, 129, 0.16);
-  border-radius: 8px;
-  background: #fff;
-  color: #213a5d;
-  font: inherit;
-  font-size: 0.8rem;
-  font-weight: 850;
-  padding: 0 0.48rem;
-}
-
-.process-action-field small {
-  color: rgba(31, 55, 86, 0.64);
-  font-size: 0.74rem;
-  font-weight: 800;
-  line-height: 1.35;
-}
-
 .process-cron code {
   min-width: 0;
   border-radius: 8px;
@@ -1217,6 +1204,10 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.5rem;
+}
+
+.run-window-action-field {
+  grid-column: 1 / -1;
 }
 
 .run-window-grid label {
@@ -1660,6 +1651,12 @@
   .process-list-actions {
     grid-column: 2;
     justify-content: flex-end;
+    justify-items: end;
+  }
+
+  .process-list-live-progress {
+    grid-column: 1 / -1;
+    width: 100%;
   }
 
   .notifications-layout {

@@ -12,6 +12,7 @@ import {
   type ShareTokenRecord,
   type DemoUserListItemDto,
   type AdminNotificationCenterState,
+  type AdminNotificationRuleLiveEvent,
   type AdminNotificationRule,
   type AdminNotificationRunResult,
   type AdminNotificationScheduleSlot,
@@ -27,6 +28,7 @@ import { DemoChatsRepository, DemoUsersRepository } from '../shared/core/demo';
 import { CHATS_TABLE_NAME, type DemoChatRecord } from '../shared/core/demo/models/chats.model';
 import { SHARE_TOKENS_TABLE_NAME } from '../shared/core/demo/models/share-tokens.model';
 import { ActivitiesPopupStateService } from '../activity/services/activities-popup-state.service';
+import { FirebaseAuthService } from '../shared/core/base/services/firebase-auth.service';
 
 export type AdminPopupKind =
   | 'reports'
@@ -165,6 +167,7 @@ export class AdminService {
   private readonly helpCenter = inject(HelpCenterService);
   private readonly location = inject(Location);
   private readonly sessionService = inject(SessionService);
+  private readonly firebaseAuthService = inject(FirebaseAuthService);
   private readonly memoryDb = inject(AppMemoryDb);
   private readonly demoUsersRepository = inject(DemoUsersRepository);
   private readonly demoChatsRepository = inject(DemoChatsRepository);
@@ -485,6 +488,53 @@ export class AdminService {
       status: updated?.runState.lastRunStatus ?? 'skipped',
       detail: updated?.runState.lastRunDetail ?? 'Rule was not found.',
       ranAtIso: updated?.runState.lastRunAtIso ?? nowIso
+    };
+  }
+
+  async loadNotificationRuleRuntime(ruleKey: string): Promise<AdminNotificationRule | null> {
+    const normalizedRuleKey = `${ruleKey ?? ''}`.trim();
+    if (!normalizedRuleKey || !this.usesHttpAdminApi) {
+      return null;
+    }
+    const rule = await this.withNotificationHttpTimeout(this.http
+      .get<AdminNotificationRule | null>(
+        `${this.apiBaseUrl}/admin/notifications/${encodeURIComponent(normalizedRuleKey)}/runtime`,
+        { params: { adminUserId: this.activeAdmin()?.id ?? '' } }
+      )
+      .toPromise());
+    return rule ? this.normalizeNotificationRule(rule) : null;
+  }
+
+  subscribeNotificationRuleUpdates(onEvent: (event: AdminNotificationRuleLiveEvent) => void): () => void {
+    if (!this.usesHttpAdminApi || typeof WebSocket === 'undefined' || typeof window === 'undefined') {
+      return () => {};
+    }
+    let closed = false;
+    let socket: WebSocket | null = null;
+    void this.buildNotificationSocketUrl().then(socketUrl => {
+      if (!socketUrl || closed) {
+        return;
+      }
+      socket = new WebSocket(socketUrl);
+      socket.onmessage = message => {
+        try {
+          const event = JSON.parse(`${message.data ?? ''}`) as AdminNotificationRuleLiveEvent;
+          if (event?.type === 'rule-runtime' && `${event.ruleKey ?? ''}`.trim()) {
+            onEvent(this.normalizeNotificationRuleLiveEvent(event));
+          }
+        } catch {
+          // Ignore malformed admin notification socket events.
+        }
+      };
+      socket.onerror = () => {
+        socket?.close();
+      };
+    });
+    return () => {
+      closed = true;
+      if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) {
+        socket.close();
+      }
     };
   }
 
@@ -1434,6 +1484,7 @@ export class AdminService {
           triggerKind: 'scheduled_process',
           enabled: false,
           manualRunEnabled: true,
+          adminManageable: true,
           priority: 200,
           pushEnabled: false,
           emailEnabled: false,
@@ -1455,6 +1506,7 @@ export class AdminService {
     triggerKind: AdminNotificationTriggerKind;
     enabled: boolean;
     manualRunEnabled: boolean;
+    adminManageable?: boolean;
     priority: number;
     pushEnabled: boolean;
     emailEnabled: boolean;
@@ -1474,6 +1526,7 @@ export class AdminService {
       triggerKind: options.triggerKind,
       enabled: options.enabled,
       manualRunEnabled: options.manualRunEnabled,
+      adminManageable: options.adminManageable !== false,
       priority: options.priority,
       channels: {
         pushEnabled: options.pushEnabled,
@@ -1570,6 +1623,7 @@ export class AdminService {
       triggerKind,
       enabled: rule.enabled === true,
       manualRunEnabled: rule.manualRunEnabled === true,
+      adminManageable: this.normalizeAdminManageable(rule),
       priority: Math.max(0, Math.trunc(Number(rule.priority) || 1000)),
       channels: {
         pushEnabled: rule.channels?.pushEnabled === true,
@@ -1640,6 +1694,68 @@ export class AdminService {
     };
   }
 
+  private normalizeAdminManageable(rule: AdminNotificationRule): boolean {
+    const raw = (rule as AdminNotificationRule & { adminManageable?: unknown }).adminManageable;
+    if (raw !== undefined && raw !== null) {
+      return raw === true;
+    }
+    return `${rule.ruleKey ?? ''}`.trim() === 'event-random-groups';
+  }
+
+  private async buildNotificationSocketUrl(): Promise<string | null> {
+    if (typeof window === 'undefined') {
+      return null;
+    }
+    const baseUrl = new URL(`${this.apiBaseUrl.replace(/\/+$/, '')}/admin/notifications/ws`, window.location.origin);
+    baseUrl.protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const adminUserId = this.activeAdmin()?.id ?? '';
+    if (adminUserId) {
+      baseUrl.searchParams.set('adminUserId', adminUserId);
+      baseUrl.searchParams.set('userId', adminUserId);
+    }
+    if (this.firebaseAuthService.enabled) {
+      const token = await this.firebaseAuthService.getIdToken();
+      if (!token) {
+        return null;
+      }
+      baseUrl.searchParams.set('token', token);
+    }
+    return baseUrl.toString();
+  }
+
+  private normalizeNotificationRuleLiveEvent(event: AdminNotificationRuleLiveEvent): AdminNotificationRuleLiveEvent {
+    return {
+      type: 'rule-runtime',
+      ruleKey: `${event.ruleKey ?? ''}`.trim(),
+      runState: {
+        currentStatus: `${event.runState?.currentStatus ?? ''}`.trim(),
+        progressPercent: this.clampInteger(event.runState?.progressPercent, 0, 100, 0),
+        progressDetail: `${event.runState?.progressDetail ?? ''}`.trim(),
+        startedAtIso: `${event.runState?.startedAtIso ?? ''}`.trim(),
+        finishedAtIso: `${event.runState?.finishedAtIso ?? ''}`.trim(),
+        durationMillis: Math.max(0, Math.trunc(Number(event.runState?.durationMillis) || 0)),
+        lastRunAtIso: `${event.runState?.lastRunAtIso ?? ''}`.trim(),
+        lastRunStatus: `${event.runState?.lastRunStatus ?? ''}`.trim(),
+        lastRunDetail: `${event.runState?.lastRunDetail ?? ''}`.trim(),
+        lastRunCount: Math.max(0, Math.trunc(Number(event.runState?.lastRunCount) || 0)),
+        lastRunUser: `${event.runState?.lastRunUser ?? ''}`.trim()
+      },
+      runHistory: (event.runHistory ?? []).map((entry, index) => ({
+        id: `${entry?.id ?? ''}`.trim() || `run-${index}`,
+        trigger: `${entry?.trigger ?? ''}`.trim() || 'scheduled',
+        runnerUser: `${entry?.runnerUser ?? ''}`.trim(),
+        startedAtIso: `${entry?.startedAtIso ?? ''}`.trim(),
+        finishedAtIso: `${entry?.finishedAtIso ?? ''}`.trim(),
+        durationMillis: Math.max(0, Math.trunc(Number(entry?.durationMillis) || 0)),
+        processedCount: Math.max(0, Math.trunc(Number(entry?.processedCount) || 0)),
+        status: `${entry?.status ?? ''}`.trim() || 'completed',
+        detail: `${entry?.detail ?? ''}`.trim()
+      })),
+      updatedDate: `${event.updatedDate ?? ''}`.trim(),
+      updatedUser: `${event.updatedUser ?? ''}`.trim()
+    };
+  }
+
   private normalizeNotificationTriggerKind(value: string | undefined): AdminNotificationTriggerKind {
     return value === 'timed' || value === 'scheduled_process' ? value : 'action';
   }
@@ -1684,6 +1800,7 @@ export class AdminService {
           time,
           timezone: `${slot?.timezone ?? ''}`.trim() || 'UTC',
           cronExpression: `${slot?.cronExpression ?? ''}`.trim() || this.scheduleSlotCron({ frequency, date, dayOfWeek, time }),
+          actionKey: `${slot?.actionKey ?? ''}`.trim(),
           enabled: slot?.enabled !== false
         };
       });
@@ -1702,6 +1819,7 @@ export class AdminService {
       time: '09:00',
       timezone: 'UTC',
       cronExpression: '0 0 9 * * ?',
+      actionKey: '',
       enabled: true
     }];
   }

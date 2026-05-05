@@ -6,6 +6,7 @@ import { MatIconModule } from '@angular/material/icon';
 import type {
   AdminNotificationCenterState,
   AdminNotificationRule,
+  AdminNotificationRuleLiveEvent,
   AdminNotificationRunHistoryEntry,
   AdminNotificationScheduleSlot
 } from '../../../shared/core';
@@ -40,7 +41,7 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
   private static readonly LOAD_PROGRESS_WINDOW_MS = 3000;
   private static readonly SAVE_DEMO_DELAY_MS = 1500;
   private static readonly ROW_ACTION_DELAY_MS = 1500;
-  private static readonly POLL_INTERVAL_MS = 2500;
+  private static readonly RUNTIME_FALLBACK_REFRESH_MS = 5000;
 
   protected readonly admin = inject(AdminService);
   private readonly routeDelay = inject(RouteDelayService);
@@ -60,7 +61,9 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
   protected readonly processFilter = signal<ProcessListFilter>('all');
   protected readonly processFilterMenuOpen = signal(false);
   private loadedForOpen = false;
-  private pollTimer: ReturnType<typeof setInterval> | null = null;
+  private unsubscribeRuntimeUpdates: (() => void) | null = null;
+  private runtimeFallbackTimer: ReturnType<typeof setTimeout> | null = null;
+  private runtimeFallbackRuleKey = '';
   private loadingProgressTimer: ReturnType<typeof setInterval> | null = null;
   private loadingProgressStartedAtMs = 0;
 
@@ -116,19 +119,19 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
         this.detailOpen.set(false);
         this.scheduleEditorOpen.set(false);
         this.processFilterMenuOpen.set(false);
-        this.stopPolling();
+        this.stopRuntimeUpdates();
         return;
       }
       if (!this.loadedForOpen) {
         this.loadedForOpen = true;
         void this.load();
       }
-      this.startPolling();
+      this.startRuntimeUpdates();
     });
   }
 
   ngOnDestroy(): void {
-    this.stopPolling();
+    this.stopRuntimeUpdates();
     this.clearLoadingProgress();
   }
 
@@ -220,7 +223,22 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
           updatedUser: this.admin.activeAdmin()?.id ?? current.updatedUser
         }
         : current);
-      await this.save(rulesToSave);
+      const saved = await this.save(rulesToSave);
+      if (saved) {
+        this.clearRuntimeFallback();
+        this.patchRule(rule.ruleKey, current => ({
+          ...current,
+          enabled: nextEnabled,
+          runState: {
+            ...current.runState,
+            currentStatus: nextEnabled ? 'idle' : 'suspended',
+            progressPercent: 0,
+            progressDetail: nextEnabled ? 'Ready for the next scheduled slot.' : 'Suspended by admin.',
+            finishedAtIso: nextEnabled ? current.runState.finishedAtIso : '',
+            durationMillis: nextEnabled ? current.runState.durationMillis : 0
+          }
+        }));
+      }
     } finally {
       this.rowActionKey.set('');
     }
@@ -233,28 +251,37 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
     this.runningRuleKey.set(rule.ruleKey);
     this.rowActionKey.set(`${rule.ruleKey}:run`);
     this.error.set('');
-    this.patchRule(rule.ruleKey, current => ({
-      ...current,
-      runState: {
-        ...current.runState,
-        currentStatus: 'running',
-        progressPercent: 18,
-        progressDetail: 'Manual run started.',
-        startedAtIso: new Date().toISOString(),
-        finishedAtIso: '',
-        durationMillis: 0
-      }
-    }));
+    const requestStartedAtIso = new Date().toISOString();
+    if (!this.admin.usesHttpAdminApi) {
+      this.patchRule(rule.ruleKey, current => ({
+        ...current,
+        runState: {
+          ...current.runState,
+          currentStatus: 'running',
+          progressPercent: 18,
+          progressDetail: 'Manual run started.',
+          startedAtIso: requestStartedAtIso,
+          finishedAtIso: '',
+          durationMillis: 0
+        }
+      }));
+    }
     try {
-      const [result] = await Promise.all([
-        this.admin.runNotificationRule(rule.ruleKey),
-        this.routeDelay.waitForRouteDelay('/admin/notifications/run', undefined, undefined, AdminNotificationsPopupComponent.ROW_ACTION_DELAY_MS)
-      ]);
+      const [result] = this.admin.usesHttpAdminApi
+        ? [await this.admin.runNotificationRule(rule.ruleKey)]
+        : await Promise.all([
+          this.admin.runNotificationRule(rule.ruleKey),
+          this.routeDelay.waitForRouteDelay('/admin/notifications/run', undefined, undefined, AdminNotificationsPopupComponent.ROW_ACTION_DELAY_MS)
+        ]);
       const finishedAtIso = result.ranAtIso || new Date().toISOString();
       this.patchRule(rule.ruleKey, current => {
-        const startedAtIso = current.runState.startedAtIso || finishedAtIso;
+        const isRunningResponse = `${result.status || ''}`.trim().toLowerCase() === 'running';
+        const startedAtIso = isRunningResponse ? requestStartedAtIso : (current.runState.startedAtIso || finishedAtIso);
         const durationMillis = this.durationBetween(startedAtIso, finishedAtIso);
-        const entry: AdminNotificationRunHistoryEntry = {
+        if (isRunningResponse && this.hasNewerFinishedRun(current, requestStartedAtIso)) {
+          return current;
+        }
+        const entry: AdminNotificationRunHistoryEntry | null = isRunningResponse ? null : {
           id: `run-${Date.now()}`,
           trigger: 'manual',
           runnerUser: this.admin.activeAdmin()?.id ?? current.runState.lastRunUser,
@@ -270,22 +297,25 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
           runState: {
             ...current.runState,
             currentStatus: result.status,
-            progressPercent: 100,
+            progressPercent: isRunningResponse ? Math.max(18, current.runState.progressPercent || 18) : 100,
             progressDetail: result.detail,
-            finishedAtIso,
-            durationMillis,
-            lastRunAtIso: finishedAtIso,
-            lastRunStatus: result.status,
-            lastRunDetail: result.detail,
-            lastRunCount: result.affectedCount,
+            startedAtIso,
+            finishedAtIso: isRunningResponse ? '' : finishedAtIso,
+            durationMillis: isRunningResponse ? 0 : durationMillis,
+            lastRunAtIso: isRunningResponse ? current.runState.lastRunAtIso : finishedAtIso,
+            lastRunStatus: isRunningResponse ? current.runState.lastRunStatus : result.status,
+            lastRunDetail: isRunningResponse ? current.runState.lastRunDetail : result.detail,
+            lastRunCount: isRunningResponse ? current.runState.lastRunCount : result.affectedCount,
             lastRunUser: this.admin.activeAdmin()?.id ?? current.runState.lastRunUser
           },
-          runHistory: [entry, ...(current.runHistory ?? [])].slice(0, 12),
+          runHistory: entry ? [entry, ...(current.runHistory ?? [])].slice(0, 12) : current.runHistory,
           updatedDate: finishedAtIso,
           updatedUser: this.admin.activeAdmin()?.id ?? current.updatedUser
         };
       });
-      void this.load(true);
+      if (`${result.status || ''}`.trim().toLowerCase() === 'running') {
+        this.scheduleRuntimeFallback(rule.ruleKey);
+      }
     } catch {
       this.error.set(`Unable to run ${rule.label}.`);
     } finally {
@@ -326,7 +356,7 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
 
   protected processRules(): AdminNotificationRule[] {
     const rules = this.state()?.rules ?? [];
-    const existingProcessRules = rules.filter(rule => rule.triggerKind === 'scheduled_process');
+    const existingProcessRules = rules.filter(rule => this.isAdminManageableProcess(rule));
     const rulesByKey = new Map(existingProcessRules.map(rule => [rule.ruleKey, rule] as const));
     for (const definition of this.processDefinitions) {
       if (!rulesByKey.has(definition.key)) {
@@ -397,10 +427,10 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
   }
 
   protected statusLabel(rule: AdminNotificationRule): string {
-    if (this.runningRuleKey() === rule.ruleKey || rule.runState.currentStatus === 'running') {
+    const lastStatus = `${rule.runState.lastRunStatus || rule.runState.currentStatus || ''}`.trim().toLowerCase();
+    if (this.isProcessRunning(rule)) {
       return 'Running';
     }
-    const lastStatus = `${rule.runState.lastRunStatus || rule.runState.currentStatus || ''}`.trim().toLowerCase();
     if (['failed', 'error'].includes(lastStatus)) {
       return 'Failed';
     }
@@ -421,8 +451,14 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
     return this.rowActionKey() === `${rule.ruleKey}:${action}`;
   }
 
+  protected isProcessRunning(rule: AdminNotificationRule): boolean {
+    const currentStatus = `${rule.runState.currentStatus || ''}`.trim().toLowerCase();
+    const localRunPending = this.runningRuleKey() === rule.ruleKey && !this.hasFinishedCurrentRun(rule);
+    return localRunPending || (currentStatus === 'running' && !this.hasFinishedCurrentRun(rule));
+  }
+
   protected progressValue(rule: AdminNotificationRule): number {
-    if (this.runningRuleKey() === rule.ruleKey) {
+    if (this.isProcessRunning(rule)) {
       return Math.max(18, Math.min(92, rule.runState.progressPercent || 18));
     }
     return Math.max(0, Math.min(100, rule.runState.progressPercent || 0));
@@ -436,15 +472,11 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
   }
 
   protected openScheduleEditor(): void {
-    this.stopPolling();
     this.scheduleEditorOpen.set(true);
   }
 
   protected closeScheduleEditor(): void {
     this.scheduleEditorOpen.set(false);
-    if (this.admin.activePopup() === 'notifications') {
-      this.startPolling();
-    }
   }
 
   protected async saveScheduleEditor(): Promise<void> {
@@ -471,6 +503,10 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
     slot.dayOfWeek = Math.max(1, Math.min(7, Math.trunc(Number(slot.dayOfWeek) || 1)));
     slot.cronExpression = this.cronForSlot(slot);
     this.syncPrimaryTiming(rule);
+  }
+
+  protected updateRunWindowAction(slot: AdminNotificationScheduleSlot, value: string): void {
+    slot.actionKey = `${value || ''}`.trim();
   }
 
   protected runWindowSummary(rule: AdminNotificationRule): string {
@@ -572,19 +608,94 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
     return this.loadingRingPerimeter * (1 - Math.min(1, Math.max(0, this.loadingProgress())));
   }
 
-  private startPolling(): void {
-    if (this.pollTimer) {
+  private startRuntimeUpdates(): void {
+    if (this.unsubscribeRuntimeUpdates) {
       return;
     }
-    this.pollTimer = setInterval(() => void this.load(true), AdminNotificationsPopupComponent.POLL_INTERVAL_MS);
+    this.unsubscribeRuntimeUpdates = this.admin.subscribeNotificationRuleUpdates(event => this.applyRuntimeEvent(event));
   }
 
-  private stopPolling(): void {
-    if (!this.pollTimer) {
+  private stopRuntimeUpdates(): void {
+    this.clearRuntimeFallback();
+    if (!this.unsubscribeRuntimeUpdates) {
       return;
     }
-    clearInterval(this.pollTimer);
-    this.pollTimer = null;
+    this.unsubscribeRuntimeUpdates();
+    this.unsubscribeRuntimeUpdates = null;
+  }
+
+  private applyRuntimeEvent(event: AdminNotificationRuleLiveEvent): void {
+    const ruleKey = `${event.ruleKey ?? ''}`.trim();
+    if (!ruleKey) {
+      return;
+    }
+    this.patchRule(ruleKey, current => ({
+      ...current,
+      runState: event.runState,
+      runHistory: event.runHistory ?? [],
+      updatedDate: event.updatedDate || current.updatedDate,
+      updatedUser: event.updatedUser || current.updatedUser
+    }));
+    const updated = this.processRules().find(rule => rule.ruleKey === ruleKey);
+    if (updated && this.isProcessRunning(updated)) {
+      this.scheduleRuntimeFallback(ruleKey);
+    } else if (this.runtimeFallbackRuleKey === ruleKey) {
+      this.clearRuntimeFallback();
+    }
+  }
+
+  private scheduleRuntimeFallback(ruleKey: string): void {
+    if (!this.admin.usesHttpAdminApi || this.admin.activePopup() !== 'notifications') {
+      return;
+    }
+    const normalizedRuleKey = `${ruleKey || ''}`.trim();
+    if (!normalizedRuleKey) {
+      return;
+    }
+    this.runtimeFallbackRuleKey = normalizedRuleKey;
+    if (this.runtimeFallbackTimer) {
+      return;
+    }
+    this.runtimeFallbackTimer = setTimeout(() => {
+      this.runtimeFallbackTimer = null;
+      void this.refreshRuntimeFallback(normalizedRuleKey);
+    }, AdminNotificationsPopupComponent.RUNTIME_FALLBACK_REFRESH_MS);
+  }
+
+  private async refreshRuntimeFallback(ruleKey: string): Promise<void> {
+    if (this.admin.activePopup() !== 'notifications') {
+      this.clearRuntimeFallback();
+      return;
+    }
+    try {
+      const rule = await this.admin.loadNotificationRuleRuntime(ruleKey);
+      if (!rule) {
+        this.clearRuntimeFallback();
+        return;
+      }
+      this.patchRule(rule.ruleKey, current => ({
+        ...current,
+        runState: rule.runState,
+        runHistory: rule.runHistory ?? [],
+        updatedDate: rule.updatedDate || current.updatedDate,
+        updatedUser: rule.updatedUser || current.updatedUser
+      }));
+      if (this.isProcessRunning(rule)) {
+        this.scheduleRuntimeFallback(rule.ruleKey);
+      } else {
+        this.clearRuntimeFallback();
+      }
+    } catch {
+      this.scheduleRuntimeFallback(ruleKey);
+    }
+  }
+
+  private clearRuntimeFallback(): void {
+    if (this.runtimeFallbackTimer) {
+      clearTimeout(this.runtimeFallbackTimer);
+      this.runtimeFallbackTimer = null;
+    }
+    this.runtimeFallbackRuleKey = '';
   }
 
   private beginLoadingProgress(): void {
@@ -639,7 +750,7 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
   private processRulesFrom(rules: readonly AdminNotificationRule[]): AdminNotificationRule[] {
     const rulesByKey = new Map(
       rules
-        .filter(rule => rule.triggerKind === 'scheduled_process')
+        .filter(rule => this.isAdminManageableProcess(rule))
         .map(rule => [rule.ruleKey, rule] as const)
     );
     for (const definition of this.processDefinitions) {
@@ -798,6 +909,7 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
       triggerKind: 'scheduled_process',
       enabled: false,
       manualRunEnabled: true,
+      adminManageable: true,
       priority: 200,
       channels: { pushEnabled: false, emailEnabled: false, inAppEnabled: false, supportChatEnabled: false },
       timing: {
@@ -843,10 +955,33 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
     });
   }
 
+  private isAdminManageableProcess(rule: AdminNotificationRule): boolean {
+    return rule.triggerKind === 'scheduled_process' && rule.adminManageable === true;
+  }
+
   private durationBetween(startedAtIso: string, finishedAtIso: string): number {
     const started = Date.parse(startedAtIso || '');
     const finished = Date.parse(finishedAtIso || '');
     return Number.isFinite(started) && Number.isFinite(finished) ? Math.max(0, finished - started) : 0;
+  }
+
+  private hasNewerFinishedRun(rule: AdminNotificationRule, requestStartedAtIso: string): boolean {
+    const lastRunAt = Date.parse(rule.runState.lastRunAtIso || rule.runState.finishedAtIso || '');
+    const requestStartedAt = Date.parse(requestStartedAtIso || '');
+    const status = `${rule.runState.lastRunStatus || rule.runState.currentStatus || ''}`.trim().toLowerCase();
+    return Number.isFinite(lastRunAt)
+      && Number.isFinite(requestStartedAt)
+      && lastRunAt >= requestStartedAt
+      && status !== 'running';
+  }
+
+  private hasFinishedCurrentRun(rule: AdminNotificationRule): boolean {
+    const startedAt = Date.parse(rule.runState.startedAtIso || '');
+    const finishedAt = Date.parse(rule.runState.finishedAtIso || rule.runState.lastRunAtIso || '');
+    const lastStatus = `${rule.runState.lastRunStatus || ''}`.trim().toLowerCase();
+    return Number.isFinite(finishedAt)
+      && (!Number.isFinite(startedAt) || finishedAt >= startedAt)
+      && ['completed', 'failed', 'error', 'missed', 'skipped'].includes(lastStatus);
   }
 
   private newRunWindow(): AdminNotificationScheduleSlot {
@@ -858,6 +993,7 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
       time: '09:00',
       timezone: 'UTC',
       cronExpression: '',
+      actionKey: '',
       enabled: true
     };
     slot.cronExpression = this.cronForSlot(slot);

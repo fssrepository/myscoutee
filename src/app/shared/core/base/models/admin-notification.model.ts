@@ -29,6 +29,7 @@ export interface AdminNotificationScheduleSlot {
   time: string;
   timezone: string;
   cronExpression: string;
+  actionKey: string;
   enabled: boolean;
 }
 
@@ -77,6 +78,7 @@ export interface AdminNotificationRule {
   triggerKind: AdminNotificationTriggerKind;
   enabled: boolean;
   manualRunEnabled: boolean;
+  adminManageable: boolean;
   priority: number;
   channels: AdminNotificationChannels;
   timing: AdminNotificationTiming;
@@ -108,4 +110,13 @@ export interface AdminNotificationRunResult {
   status: string;
   detail: string;
   ranAtIso: string;
+}
+
+export interface AdminNotificationRuleLiveEvent {
+  type: 'rule-runtime';
+  ruleKey: string;
+  runState: AdminNotificationRunState;
+  runHistory: AdminNotificationRunHistoryEntry[];
+  updatedDate: string;
+  updatedUser: string;
 }
