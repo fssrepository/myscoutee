@@ -12,13 +12,21 @@ import type {
 import { RouteDelayService } from '../../../shared/core/base/services/route-delay.service';
 import { AdminService } from '../../admin.service';
 
-interface ProcessTab {
+interface ProcessDefinition {
   key: string;
   label: string;
   icon: string;
   summary: string;
   detail: string;
 }
+
+interface ScheduledActionOption {
+  key: string;
+  label: string;
+  description: string;
+}
+
+type ProcessListFilter = 'all' | 'active' | 'suspended' | 'running' | 'failed';
 
 @Component({
   selector: 'app-admin-notifications-popup',
@@ -31,6 +39,7 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
   private static readonly LOAD_DEMO_DELAY_MS = 1500;
   private static readonly LOAD_PROGRESS_WINDOW_MS = 3000;
   private static readonly SAVE_DEMO_DELAY_MS = 1500;
+  private static readonly ROW_ACTION_DELAY_MS = 1500;
   private static readonly POLL_INTERVAL_MS = 2500;
 
   protected readonly admin = inject(AdminService);
@@ -42,16 +51,20 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
   protected readonly loadingRingPerimeter = 100;
   protected readonly loadingProgress = signal(0);
   protected readonly runningRuleKey = signal('');
+  protected readonly rowActionKey = signal('');
   protected readonly error = signal('');
   protected readonly state = signal<AdminNotificationCenterState | null>(null);
   protected readonly selectedRuleKey = signal('event-random-groups');
+  protected readonly detailOpen = signal(false);
   protected readonly scheduleEditorOpen = signal(false);
+  protected readonly processFilter = signal<ProcessListFilter>('all');
+  protected readonly processFilterMenuOpen = signal(false);
   private loadedForOpen = false;
   private pollTimer: ReturnType<typeof setInterval> | null = null;
   private loadingProgressTimer: ReturnType<typeof setInterval> | null = null;
   private loadingProgressStartedAtMs = 0;
 
-  protected readonly processTabs: ProcessTab[] = [
+  protected readonly processDefinitions: ProcessDefinition[] = [
     {
       key: 'event-random-groups',
       label: 'Random event',
@@ -59,6 +72,21 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
       summary: 'Creates balanced random groups for published events that already have accepted members.',
       detail: 'The process scans published events, reads accepted member snapshots, builds the rate graph once, and writes generated group assignments for eligible sub-events.'
     }
+  ];
+
+  protected readonly scheduledActionOptions: ScheduledActionOption[] = [
+    { key: '', label: 'None', description: 'No app action is executed; the process only keeps its schedule and runtime status.' },
+    { key: 'event.scheduler.random-groups', label: 'Random event groups', description: 'Builds balanced generated groups for eligible published random events.' },
+    { key: 'user.profile.inactivate-after-inactivity', label: 'Inactivate inactive profile', description: 'Marks a user profile inactive when the inactivity task becomes due.' },
+    { key: 'event.stage.reminder', label: 'Event stage reminder', description: 'Marks stage reminders due for published event stage schedules.' }
+  ];
+
+  protected readonly processFilterOptions: Array<{ key: ProcessListFilter; label: string; icon: string }> = [
+    { key: 'all', label: 'Összes', icon: 'list' },
+    { key: 'active', label: 'Aktív', icon: 'play_circle' },
+    { key: 'suspended', label: 'Felfüggesztett', icon: 'pause_circle' },
+    { key: 'running', label: 'Fut', icon: 'sync' },
+    { key: 'failed', label: 'Sikertelen', icon: 'error_outline' }
   ];
 
   protected readonly scheduleFrequencyOptions = [
@@ -85,7 +113,9 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
       if (this.admin.activePopup() !== 'notifications') {
         this.loadedForOpen = false;
         this.error.set('');
+        this.detailOpen.set(false);
         this.scheduleEditorOpen.set(false);
+        this.processFilterMenuOpen.set(false);
         this.stopPolling();
         return;
       }
@@ -126,8 +156,8 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
       } else {
         this.state.set(this.ensureProcessRules(state));
       }
-      if (!this.processTabs.some(tab => tab.key === this.selectedRuleKey())) {
-        this.selectedRuleKey.set(this.processTabs[0].key);
+      if (!this.processRules().some(rule => rule.ruleKey === this.selectedRuleKey())) {
+        this.selectedRuleKey.set(this.processRules()[0]?.ruleKey ?? 'event-random-groups');
       }
     } catch {
       if (!silent) {
@@ -162,17 +192,26 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
   }
 
   protected async toggleSuspended(rule: AdminNotificationRule): Promise<void> {
-    rule.enabled = !rule.enabled;
-    rule.runState.currentStatus = rule.enabled ? 'idle' : 'suspended';
-    rule.runState.progressDetail = rule.enabled ? 'Ready for the next scheduled slot.' : 'Suspended by admin.';
-    await this.save();
+    if (this.rowActionKey()) {
+      return;
+    }
+    this.rowActionKey.set(`${rule.ruleKey}:suspend`);
+    try {
+      rule.enabled = !rule.enabled;
+      rule.runState.currentStatus = rule.enabled ? 'idle' : 'suspended';
+      rule.runState.progressDetail = rule.enabled ? 'Ready for the next scheduled slot.' : 'Suspended by admin.';
+      await this.save();
+    } finally {
+      this.rowActionKey.set('');
+    }
   }
 
   protected async run(rule: AdminNotificationRule): Promise<void> {
-    if (!rule.manualRunEnabled || this.runningRuleKey()) {
+    if (!rule.manualRunEnabled || this.runningRuleKey() || this.rowActionKey()) {
       return;
     }
     this.runningRuleKey.set(rule.ruleKey);
+    this.rowActionKey.set(`${rule.ruleKey}:run`);
     this.error.set('');
     this.patchRule(rule.ruleKey, current => ({
       ...current,
@@ -187,7 +226,10 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
       }
     }));
     try {
-      const result = await this.admin.runNotificationRule(rule.ruleKey);
+      const [result] = await Promise.all([
+        this.admin.runNotificationRule(rule.ruleKey),
+        this.routeDelay.waitForRouteDelay('/admin/notifications/run', undefined, undefined, AdminNotificationsPopupComponent.ROW_ACTION_DELAY_MS)
+      ]);
       const finishedAtIso = result.ranAtIso || new Date().toISOString();
       this.patchRule(rule.ruleKey, current => {
         const startedAtIso = current.runState.startedAtIso || finishedAtIso;
@@ -228,6 +270,7 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
       this.error.set(`Unable to run ${rule.label}.`);
     } finally {
       this.runningRuleKey.set('');
+      this.rowActionKey.set('');
     }
   }
 
@@ -235,24 +278,102 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
     this.admin.closePopup();
   }
 
+  protected openDetail(rule: AdminNotificationRule): void {
+    this.selectedRuleKey.set(rule.ruleKey);
+    this.processFilterMenuOpen.set(false);
+    this.detailOpen.set(true);
+  }
+
+  protected closeDetail(): void {
+    this.detailOpen.set(false);
+    this.scheduleEditorOpen.set(false);
+  }
+
   protected selectRule(ruleKey: string): void {
     this.selectedRuleKey.set(ruleKey);
     this.scheduleEditorOpen.set(false);
   }
 
-  protected selectedTab(): ProcessTab {
-    return this.processTabs.find(tab => tab.key === this.selectedRuleKey()) ?? this.processTabs[0];
+  protected selectedProcessDefinition(): ProcessDefinition {
+    return this.processDefinition(this.selectedRule());
   }
 
   protected selectedRule(): AdminNotificationRule {
     return this.processRules().find(rule => rule.ruleKey === this.selectedRuleKey())
       ?? this.processRules()[0]
-      ?? this.fallbackRule(this.processTabs[0]);
+      ?? this.fallbackRule(this.processDefinitions[0]);
   }
 
   protected processRules(): AdminNotificationRule[] {
     const rules = this.state()?.rules ?? [];
-    return this.processTabs.map(tab => rules.find(rule => rule.ruleKey === tab.key) ?? this.fallbackRule(tab));
+    const existingProcessRules = rules.filter(rule => rule.triggerKind === 'scheduled_process');
+    const rulesByKey = new Map(existingProcessRules.map(rule => [rule.ruleKey, rule] as const));
+    for (const definition of this.processDefinitions) {
+      if (!rulesByKey.has(definition.key)) {
+        rulesByKey.set(definition.key, this.fallbackRule(definition));
+      }
+    }
+    return this.sortProcessRules([...rulesByKey.values()]);
+  }
+
+  protected filteredProcessRules(): AdminNotificationRule[] {
+    const filter = this.processFilter();
+    return this.sortFilteredProcessRules(
+      this.processRules().filter(rule => this.matchesProcessFilter(rule, filter)),
+      filter
+    );
+  }
+
+  protected processFilterLabel(filter: ProcessListFilter = this.processFilter()): string {
+    return this.processFilterOptions.find(option => option.key === filter)?.label ?? 'Összes';
+  }
+
+  protected processFilterIcon(filter: ProcessListFilter = this.processFilter()): string {
+    return this.processFilterOptions.find(option => option.key === filter)?.icon ?? 'list';
+  }
+
+  protected processFilterCount(filter: ProcessListFilter = this.processFilter()): number {
+    return this.processRules().filter(rule => this.matchesProcessFilter(rule, filter)).length;
+  }
+
+  protected toggleProcessFilterMenu(event?: Event): void {
+    event?.preventDefault();
+    event?.stopPropagation();
+    this.processFilterMenuOpen.set(!this.processFilterMenuOpen());
+  }
+
+  protected selectProcessFilter(filter: ProcessListFilter, event?: Event): void {
+    event?.preventDefault();
+    event?.stopPropagation();
+    this.processFilter.set(filter);
+    this.processFilterMenuOpen.set(false);
+  }
+
+  private matchesProcessFilter(rule: AdminNotificationRule, filter: ProcessListFilter): boolean {
+    const status = this.statusLabel(rule).toLowerCase();
+    if (filter === 'active') {
+      return rule.enabled && status !== 'failed' && status !== 'missed';
+    }
+    if (filter === 'suspended') {
+      return status === 'suspended';
+    }
+    if (filter === 'running') {
+      return status === 'running';
+    }
+    if (filter === 'failed') {
+      return status === 'failed' || status === 'missed';
+    }
+    return true;
+  }
+
+  protected processDefinition(rule: AdminNotificationRule): ProcessDefinition {
+    return this.processDefinitions.find(definition => definition.key === rule.ruleKey) ?? {
+      key: rule.ruleKey,
+      label: rule.label || rule.ruleKey,
+      icon: 'settings_suggest',
+      summary: rule.description || 'Scheduled process configured by the server.',
+      detail: rule.description || 'This scheduled process is loaded from configuration and can be monitored or adjusted here.'
+    };
   }
 
   protected statusLabel(rule: AdminNotificationRule): string {
@@ -274,6 +395,10 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
 
   protected statusClass(rule: AdminNotificationRule): string {
     return `is-${this.statusLabel(rule).toLowerCase()}`;
+  }
+
+  protected isRowActionPending(rule: AdminNotificationRule, action: 'suspend' | 'run'): boolean {
+    return this.rowActionKey() === `${rule.ruleKey}:${action}`;
   }
 
   protected progressValue(rule: AdminNotificationRule): number {
@@ -407,6 +532,22 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
     return `${value} affected`;
   }
 
+  protected actionLabel(actionKey: string): string {
+    const normalized = `${actionKey || ''}`.trim();
+    return this.scheduledActionOptions.find(option => option.key === normalized)?.label
+      ?? (normalized || 'None');
+  }
+
+  protected actionDescription(actionKey: string): string {
+    const normalized = `${actionKey || ''}`.trim();
+    return this.scheduledActionOptions.find(option => option.key === normalized)?.description
+      ?? 'Custom action key loaded from server configuration.';
+  }
+
+  protected updateActionKey(rule: AdminNotificationRule, value: string): void {
+    rule.actionKey = `${value || ''}`.trim();
+  }
+
   protected loadingRingDashOffset(): number {
     return this.loadingRingPerimeter * (1 - Math.min(1, Math.max(0, this.loadingProgress())));
   }
@@ -467,12 +608,137 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
 
   private ensureProcessRules(state: AdminNotificationCenterState): AdminNotificationCenterState {
     const existing = state.rules ?? [];
-    const processRules = this.processTabs.map(tab => existing.find(rule => rule.ruleKey === tab.key) ?? this.fallbackRule(tab));
+    const processRules = this.processRulesFrom(existing);
     return {
       ...state,
       rules: processRules,
       updatedDate: state.updatedDate || new Date().toISOString()
     };
+  }
+
+  private processRulesFrom(rules: readonly AdminNotificationRule[]): AdminNotificationRule[] {
+    const rulesByKey = new Map(
+      rules
+        .filter(rule => rule.triggerKind === 'scheduled_process')
+        .map(rule => [rule.ruleKey, rule] as const)
+    );
+    for (const definition of this.processDefinitions) {
+      if (!rulesByKey.has(definition.key)) {
+        rulesByKey.set(definition.key, this.fallbackRule(definition));
+      }
+    }
+    return this.sortProcessRules([...rulesByKey.values()]);
+  }
+
+  private sortProcessRules(rules: AdminNotificationRule[]): AdminNotificationRule[] {
+    return rules.sort((left, right) =>
+      (left.priority || 1000) - (right.priority || 1000)
+      || left.label.localeCompare(right.label)
+      || left.ruleKey.localeCompare(right.ruleKey)
+    );
+  }
+
+  private sortFilteredProcessRules(rules: AdminNotificationRule[], filter: ProcessListFilter): AdminNotificationRule[] {
+    if (filter === 'active' || filter === 'running') {
+      return rules.sort((left, right) =>
+        this.nextRunSortValue(left) - this.nextRunSortValue(right)
+        || this.processStableSort(left, right)
+      );
+    }
+    if (filter === 'failed') {
+      return rules.sort((left, right) =>
+        this.lastFailedSortValue(right) - this.lastFailedSortValue(left)
+        || this.processStableSort(left, right)
+      );
+    }
+    return rules.sort((left, right) =>
+      this.lastUpdatedSortValue(right) - this.lastUpdatedSortValue(left)
+      || this.processStableSort(left, right)
+    );
+  }
+
+  private processStableSort(left: AdminNotificationRule, right: AdminNotificationRule): number {
+    return (left.priority || 1000) - (right.priority || 1000)
+      || left.label.localeCompare(right.label)
+      || left.ruleKey.localeCompare(right.ruleKey);
+  }
+
+  private lastUpdatedSortValue(rule: AdminNotificationRule): number {
+    return this.parseDateSortValue(rule.updatedDate)
+      || this.parseDateSortValue(rule.runState.lastRunAtIso)
+      || 0;
+  }
+
+  private lastFailedSortValue(rule: AdminNotificationRule): number {
+    const historyValue = Math.max(0, ...this.history(rule)
+      .filter(entry => ['failed', 'error', 'missed', 'skipped'].includes(`${entry.status || ''}`.trim().toLowerCase()))
+      .map(entry => this.parseDateSortValue(entry.finishedAtIso || entry.startedAtIso)));
+    if (historyValue > 0) {
+      return historyValue;
+    }
+    const lastStatus = `${rule.runState.lastRunStatus || rule.runState.currentStatus || ''}`.trim().toLowerCase();
+    return ['failed', 'error', 'missed', 'skipped'].includes(lastStatus)
+      ? this.parseDateSortValue(rule.runState.lastRunAtIso || rule.runState.finishedAtIso)
+      : 0;
+  }
+
+  private parseDateSortValue(value: string | null | undefined): number {
+    const parsed = Date.parse(`${value || ''}`);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  private nextRunSortValue(rule: AdminNotificationRule): number {
+    const values = this.runWindows(rule)
+      .filter(slot => slot.enabled !== false)
+      .map(slot => this.slotSortValue(slot))
+      .filter(value => Number.isFinite(value));
+    return values.length > 0 ? Math.min(...values) : Number.MAX_SAFE_INTEGER;
+  }
+
+  private slotSortValue(slot: AdminNotificationScheduleSlot): number {
+    const [hour, minute] = this.normalizeTime(slot.time).split(':').map(value => Math.max(0, Math.trunc(Number(value) || 0)));
+    const dateTime = (date: Date): number => {
+      date.setHours(hour, minute, 0, 0);
+      return date.getTime();
+    };
+    if (slot.frequency === 'one-time' && /^\d{4}-\d{2}-\d{2}$/.test(slot.date || '')) {
+      return dateTime(new Date(`${slot.date}T00:00:00`));
+    }
+    const today = new Date();
+    if (slot.frequency === 'weekly' || slot.frequency === 'bi-weekly') {
+      const targetDay = Math.max(1, Math.min(7, Math.trunc(Number(slot.dayOfWeek) || 1)));
+      const currentDay = today.getDay() === 0 ? 7 : today.getDay();
+      const offsetDays = (targetDay - currentDay + 7) % 7;
+      const next = new Date(today);
+      next.setDate(today.getDate() + offsetDays);
+      const value = dateTime(next);
+      return value >= Date.now() ? value : value + 7 * 24 * 60 * 60 * 1000;
+    }
+    if (slot.frequency === 'monthly' || slot.frequency === 'yearly') {
+      const { month, day } = this.monthDayParts(slot.date);
+      const next = new Date(today);
+      next.setDate(Math.min(day, 28));
+      if (slot.frequency === 'yearly') {
+        next.setMonth(month - 1, Math.min(day, 28));
+      }
+      let value = dateTime(next);
+      if (value < Date.now()) {
+        if (slot.frequency === 'yearly') {
+          next.setFullYear(next.getFullYear() + 1);
+        } else {
+          next.setMonth(next.getMonth() + 1);
+        }
+        value = dateTime(next);
+      }
+      return value;
+    }
+    const next = new Date();
+    let value = dateTime(next);
+    if (value < Date.now()) {
+      next.setDate(next.getDate() + 1);
+      value = dateTime(next);
+    }
+    return value;
   }
 
   private mergeRuntimeState(incomingState: AdminNotificationCenterState): void {
@@ -501,7 +767,7 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
     });
   }
 
-  private fallbackRule(tab: ProcessTab): AdminNotificationRule {
+  private fallbackRule(tab: ProcessDefinition): AdminNotificationRule {
     const firstWindow = this.newRunWindow();
     return {
       ruleKey: tab.key,

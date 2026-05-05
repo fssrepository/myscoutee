@@ -10,33 +10,41 @@
           </p>
         </div>
         <div class="notification-header-actions">
-          <span class="notification-action-ring-shell notification-circle-ring-shell" [class.is-loading]="saving()">
-            <span class="notification-circle-ring" aria-hidden="true">
-              <svg viewBox="0 0 34 34" preserveAspectRatio="none" class="notification-circle-ring-svg">
-                <circle class="notification-circle-ring-track" cx="17" cy="17" r="15"></circle>
-                <circle
-                  class="notification-circle-ring-progress"
-                  [class.is-loading]="saving()"
-                  cx="17"
-                  cy="17"
-                  r="15"
-                  pathLength="100"
-                  [attr.stroke-dasharray]="actionRingPerimeter"
-                  [attr.stroke-dashoffset]="saving() ? 0 : actionRingPerimeter"
-                ></circle>
-              </svg>
-            </span>
-            <button
-              type="button"
-              class="notification-icon-btn notification-confirm-btn"
-              [disabled]="loading() || saving() || !state()"
-              (click)="save()"
-              [attr.aria-label]="saving() ? 'Saving scheduled process settings' : 'Save scheduled process settings'"
-              [title]="saving() ? 'Saving' : 'Save'"
-            >
-              <mat-icon>check</mat-icon>
-            </button>
-          </span>
+          @if (!loading() && !detailOpen()) {
+            <div class="process-filter-wrap">
+              <button
+                type="button"
+                class="process-filter-btn"
+                [class.is-open]="processFilterMenuOpen()"
+                (click)="toggleProcessFilterMenu($event)"
+                [attr.aria-expanded]="processFilterMenuOpen()"
+                aria-label="Filter scheduled processes"
+              >
+                <mat-icon>{{ processFilterIcon() }}</mat-icon>
+                <span>{{ processFilterLabel() }}</span>
+                <strong>{{ processFilterCount() }}</strong>
+                <mat-icon class="process-filter-caret">expand_more</mat-icon>
+              </button>
+              @if (processFilterMenuOpen()) {
+                <div class="process-filter-menu" role="menu" (click)="$event.stopPropagation()">
+                  @for (option of processFilterOptions; track option.key) {
+                    <button
+                      type="button"
+                      class="process-filter-option"
+                      [class.is-active]="processFilter() === option.key"
+                      (click)="selectProcessFilter(option.key, $event)"
+                      role="menuitemradio"
+                      [attr.aria-checked]="processFilter() === option.key"
+                    >
+                      <mat-icon>{{ option.icon }}</mat-icon>
+                      <span>{{ option.label }}</span>
+                      <strong>{{ processFilterCount(option.key) }}</strong>
+                    </button>
+                  }
+                </div>
+              }
+            </div>
+          }
           <button type="button" class="popup-close" (click)="close()" aria-label="Close">
             <mat-icon>close</mat-icon>
           </button>
@@ -70,29 +78,144 @@
             </div>
           }
 
-          <div class="process-tabs" role="tablist" aria-label="Scheduled event processes">
-            @for (tab of processTabs; track tab.key) {
-              @if (processRules()[$index]; as tabRule) {
-                <button
-                  type="button"
-                  role="tab"
-                  class="process-tab"
-                  [class.is-active]="selectedRuleKey() === tab.key"
-                  [ngClass]="statusClass(tabRule)"
-                  [attr.aria-selected]="selectedRuleKey() === tab.key"
-                  (click)="selectRule(tab.key)"
-                >
-                  <mat-icon>{{ tab.icon }}</mat-icon>
-                  <span>{{ tab.label }}</span>
-                  <span class="process-tab-badge">{{ statusLabel(tabRule) }}</span>
-                </button>
+          <section class="process-list-card">
+            <div class="process-list-table">
+              <div class="process-list-row process-list-head">
+                <span>Process</span>
+                <span>Status</span>
+                <span>Last run</span>
+                <span>Affected</span>
+                <span>Duration</span>
+                <span>Run windows</span>
+                <span>Actions</span>
+              </div>
+              @for (rule of filteredProcessRules(); track rule.ruleKey) {
+                @if (processDefinition(rule); as rowDefinition) {
+                  <div class="process-list-row" [ngClass]="statusClass(rule)">
+                    <span class="process-list-name">
+                      <span class="process-list-icon" [ngClass]="statusClass(rule)">
+                        <mat-icon>{{ rowDefinition.icon }}</mat-icon>
+                      </span>
+                      <span>
+                        <strong>{{ rule.label || rowDefinition.label }}</strong>
+                        <small>{{ actionLabel(rule.actionKey) }}</small>
+                      </span>
+                    </span>
+                    <span>
+                      <span class="process-status-pill" [ngClass]="statusClass(rule)">{{ statusLabel(rule) }}</span>
+                    </span>
+                    <span>{{ shortDate(rule.runState.lastRunAtIso) }}</span>
+                    <span>{{ rule.runState.lastRunCount || 0 }}</span>
+                    <span>{{ durationLabel(rule.runState.durationMillis) }}</span>
+                    <span class="process-list-windows">{{ runWindowSummary(rule) }}</span>
+                    <span class="process-list-actions">
+                      <button type="button" class="process-icon-btn" (click)="openDetail(rule)" aria-label="View scheduled process">
+                        <mat-icon>visibility</mat-icon>
+                      </button>
+                      <span class="process-icon-ring-shell" [class.is-loading]="isRowActionPending(rule, 'suspend')">
+                        <span class="process-icon-ring" aria-hidden="true">
+                          <svg viewBox="0 0 30 30" preserveAspectRatio="none">
+                            <circle class="process-icon-ring-track" cx="15" cy="15" r="13"></circle>
+                            <circle
+                              class="process-icon-ring-progress"
+                              [class.is-loading]="isRowActionPending(rule, 'suspend')"
+                              cx="15"
+                              cy="15"
+                              r="13"
+                              pathLength="100"
+                              [attr.stroke-dasharray]="actionRingPerimeter"
+                              [attr.stroke-dashoffset]="isRowActionPending(rule, 'suspend') ? 0 : actionRingPerimeter"
+                            ></circle>
+                          </svg>
+                        </span>
+                        <button
+                          type="button"
+                          class="process-icon-btn"
+                          [class.is-suspended]="!rule.enabled"
+                          [disabled]="saving() || !!runningRuleKey() || !!rowActionKey()"
+                          (click)="toggleSuspended(rule)"
+                          [attr.aria-label]="rule.enabled ? 'Suspend scheduled process' : 'Unsuspend scheduled process'"
+                        >
+                          <mat-icon>{{ rule.enabled ? 'pause' : 'lock_open' }}</mat-icon>
+                        </button>
+                      </span>
+                      <span class="process-icon-ring-shell" [class.is-loading]="isRowActionPending(rule, 'run')">
+                        <span class="process-icon-ring" aria-hidden="true">
+                          <svg viewBox="0 0 30 30" preserveAspectRatio="none">
+                            <circle class="process-icon-ring-track" cx="15" cy="15" r="13"></circle>
+                            <circle
+                              class="process-icon-ring-progress"
+                              [class.is-loading]="isRowActionPending(rule, 'run')"
+                              cx="15"
+                              cy="15"
+                              r="13"
+                              pathLength="100"
+                              [attr.stroke-dasharray]="actionRingPerimeter"
+                              [attr.stroke-dashoffset]="isRowActionPending(rule, 'run') ? 0 : actionRingPerimeter"
+                            ></circle>
+                          </svg>
+                        </span>
+                        <button
+                          type="button"
+                          class="process-icon-btn process-icon-btn-primary"
+                          [disabled]="!rule.manualRunEnabled || !rule.enabled || !!runningRuleKey() || !!rowActionKey()"
+                          (click)="run(rule)"
+                          aria-label="Run scheduled process"
+                        >
+                          <mat-icon>{{ runningRuleKey() === rule.ruleKey ? 'sync' : 'play_arrow' }}</mat-icon>
+                        </button>
+                      </span>
+                    </span>
+                  </div>
+                }
+              } @empty {
+                <div class="process-list-empty">No scheduled processes in this filter.</div>
               }
-            }
-          </div>
+            </div>
+          </section>
 
-          @if (selectedRule(); as rule) {
-            @if (selectedTab(); as tab) {
-              <section class="process-console" [ngClass]="statusClass(rule)">
+          @if (detailOpen() && selectedRule(); as rule) {
+            @if (selectedProcessDefinition(); as tab) {
+              <div class="process-detail-backdrop" (click)="closeDetail()"></div>
+              <section class="process-console process-detail-popup" [ngClass]="statusClass(rule)">
+                <div class="process-detail-header">
+                  <div class="popup-title">
+                    <h2>{{ rule.label || tab.label }}</h2>
+                    <p class="popup-subtitle">Scheduled event process · {{ statusLabel(rule) }}</p>
+                  </div>
+                  <div class="notification-header-actions">
+                    <span class="notification-action-ring-shell notification-circle-ring-shell" [class.is-loading]="saving()">
+                      <span class="notification-circle-ring" aria-hidden="true">
+                        <svg viewBox="0 0 34 34" preserveAspectRatio="none" class="notification-circle-ring-svg">
+                          <circle class="notification-circle-ring-track" cx="17" cy="17" r="15"></circle>
+                          <circle
+                            class="notification-circle-ring-progress"
+                            [class.is-loading]="saving()"
+                            cx="17"
+                            cy="17"
+                            r="15"
+                            pathLength="100"
+                            [attr.stroke-dasharray]="actionRingPerimeter"
+                            [attr.stroke-dashoffset]="saving() ? 0 : actionRingPerimeter"
+                          ></circle>
+                        </svg>
+                      </span>
+                      <button
+                        type="button"
+                        class="notification-icon-btn notification-confirm-btn"
+                        [disabled]="loading() || saving() || !state()"
+                        (click)="save()"
+                        aria-label="Save scheduled process"
+                        title="Save"
+                      >
+                        <mat-icon>check</mat-icon>
+                      </button>
+                    </span>
+                    <button type="button" class="popup-close" (click)="closeDetail()" aria-label="Close scheduled process detail">
+                      <mat-icon>close</mat-icon>
+                    </button>
+                  </div>
+                </div>
                 <div class="process-hero">
                   <div class="process-hero-main">
                     <span class="notification-detail-kicker">
@@ -110,7 +233,7 @@
                       [disabled]="saving() || !!runningRuleKey()"
                       (click)="toggleSuspended(rule)"
                     >
-                      <mat-icon>{{ rule.enabled ? 'pause_circle' : 'play_circle' }}</mat-icon>
+                      <mat-icon>{{ rule.enabled ? 'pause' : 'lock_open' }}</mat-icon>
                       <span>{{ rule.enabled ? 'Suspend' : 'Unsuspend' }}</span>
                     </button>
                     <button
@@ -131,6 +254,17 @@
                       <h3>What It Does</h3>
                     </div>
                     <p>{{ tab.detail }}</p>
+                    <div class="process-action-field">
+                      <label>
+                        <span>Action</span>
+                        <select [ngModel]="rule.actionKey" (ngModelChange)="updateActionKey(rule, $event)">
+                          @for (option of scheduledActionOptions; track option.key) {
+                            <option [value]="option.key">{{ option.label }}</option>
+                          }
+                        </select>
+                      </label>
+                      <small>{{ actionDescription(rule.actionKey) }}</small>
+                    </div>
                     <div class="process-progress">
                       <span>{{ rule.runState.progressDetail || statusLabel(rule) }}</span>
                       <span>{{ progressValue(rule) }}%</span>
