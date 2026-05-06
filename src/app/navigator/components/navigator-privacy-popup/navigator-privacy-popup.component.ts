@@ -4,6 +4,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { AppContext, HelpCenterService } from '../../../shared/core';
 import type { HelpCenterRevision, HelpCenterSection } from '../../../shared/core/base/models';
+import { I18nService } from '../../../shared/i18n';
 import { NavigatorService } from '../../navigator.service';
 
 @Component({
@@ -18,6 +19,7 @@ export class NavigatorPrivacyPopupComponent {
   private readonly appCtx = inject(AppContext);
   private readonly navigatorService = inject(NavigatorService);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly i18n = inject(I18nService);
 
   protected readonly activeRevision = this.helpCenter.activePrivacyRevision;
   protected readonly activeUserId = this.appCtx.activeUserId;
@@ -119,12 +121,16 @@ export class NavigatorPrivacyPopupComponent {
 
   protected privacySaveButtonLabel(): string {
     if (this.savingConsent) {
-      return 'Saving...';
+      return this.uiText('Saving...');
     }
     if (this.navigatorService.privacyConsentRequired() || !this.activeRevisionConsentSaved) {
-      return 'Approve privacy';
+      return this.uiText('Approve privacy');
     }
-    return 'Save choices';
+    return this.uiText('Save choices');
+  }
+
+  protected uiText(value: string): string {
+    return this.i18n.translate(value);
   }
 
   protected async savePrivacyChoices(): Promise<void> {
@@ -152,14 +158,14 @@ export class NavigatorPrivacyPopupComponent {
       this.consentLoadedForKey = revisionKey;
       this.activeRevisionConsentSaved = this.isPrivacyConsentCurrent(consent, revision);
       if (!this.activeRevisionConsentSaved) {
-        this.consentSaveError = 'Privacy approval could not be saved.';
+        this.consentSaveError = this.uiText('Privacy approval could not be saved.');
         return;
       }
       this.navigatorService.markActivePrivacyConsentApproved();
       this.navigatorService.closeSettingsPopup();
     } catch {
       this.activeRevisionConsentSaved = false;
-      this.consentSaveError = 'Privacy approval could not be saved.';
+      this.consentSaveError = this.uiText('Privacy approval could not be saved.');
     } finally {
       this.savingConsent = false;
       this.repaint();
@@ -239,7 +245,7 @@ export class NavigatorPrivacyPopupComponent {
         this.activeRevisionConsentSaved = false;
         this.loadedApprovedSectionIds = new Set();
         this.approvedSectionIds = new Set();
-        this.consentSaveError = 'Privacy choices could not be loaded.';
+        this.consentSaveError = this.uiText('Privacy choices could not be loaded.');
         this.repaint();
       });
   }

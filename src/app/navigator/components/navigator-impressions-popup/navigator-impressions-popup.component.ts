@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, HostListener, OnDestroy, computed, effect, inject, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
+import { MatRippleModule } from '@angular/material/core';
 import { MatIconModule } from '@angular/material/icon';
 import { DemoUserImpressionsBuilder } from '../../../shared/core/demo/builders';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
@@ -30,6 +31,7 @@ interface NavigatorImpressionsPulseFlags {
 
 interface NavigatorImpressionsViewModel {
   user: UserDto;
+  hasAvailableData: boolean;
   pulseFlags: NavigatorImpressionsPulseFlags;
   memberImpressionTitle: string;
   hostAverageRating: string;
@@ -70,7 +72,7 @@ interface NavigatorImpressionsTraitCardViewModel {
 @Component({
   selector: 'app-navigator-impressions-popup',
   standalone: true,
-  imports: [CommonModule, MatButtonModule, MatIconModule],
+  imports: [CommonModule, MatButtonModule, MatIconModule, MatRippleModule],
   templateUrl: './navigator-impressions-popup.component.html',
   styleUrl: './navigator-impressions-popup.component.scss'
 })
@@ -111,12 +113,14 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
     if (!user) {
       return null;
     }
-    const hostTraitCards = this.resolveTraitCards(user, 'host');
-    const memberTraitCards = this.resolveTraitCards(user, 'member');
+    const hasAvailableData = this.hasUserImpressionsData(user);
+    const hostTraitCards = hasAvailableData ? this.resolveTraitCards(user, 'host') : [];
+    const memberTraitCards = hasAvailableData ? this.resolveTraitCards(user, 'member') : [];
     const hostTraitIndex = this.normalizeTraitIndex(this.hostTraitIndexRef(), hostTraitCards.length);
     const memberTraitIndex = this.normalizeTraitIndex(this.memberTraitIndexRef(), memberTraitCards.length);
     return {
       user,
+      hasAvailableData,
       pulseFlags: this.pulseFlagsRef(),
       memberImpressionTitle: resolveMemberImpressionTitle(user.traitLabel ?? ''),
       hostAverageRating: this.resolveHostAverageRating(user),
@@ -216,6 +220,12 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
 
   ngOnDestroy(): void {
     this.clearPulseTimers();
+  }
+
+  private hasUserImpressionsData(user: UserDto): boolean {
+    return DemoUserImpressionsBuilder.hasImpressionsData(
+      this.appCtx.getUserImpressions(user.id) ?? user.impressions
+    );
   }
 
   protected getHostTierColorClass(tier: string): string {

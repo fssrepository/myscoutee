@@ -1,11 +1,12 @@
-@if (!host.assetExploreOnly()) {
+@if (!host.assetExploreOnly() || host.resourceAssetView()) {
   <section
     class="app-popup app-popup-stacked app-popup-stacked-over-subevents event-resource-popup-shell"
     [class.event-resource-popup-shell--standalone-asset-view]="host.standaloneResourceAssetView()"
+    [class.event-resource-popup-shell--asset-explore-view]="host.assetExploreOnly() && host.resourceAssetView()"
     >
-  <div class="app-popup-backdrop" (click)="host.close()"></div>
+  <div class="app-popup-backdrop" (click)="closeResourceShellBackdrop($event)"></div>
   <div class="app-popup-panel popup-panel-asset-members" (click)="$event.stopPropagation()">
-    @if (!host.standaloneResourceAssetView()) {
+    @if (!host.standaloneResourceAssetView() && !host.assetExploreOnly()) {
       <div class="popup-header popup-header-members-invite-mobile-layout">
         <div class="popup-title popup-title-members">
           <div class="popup-chat-title-block">
@@ -22,7 +23,7 @@
 
     <div class="popup-body popup-body-members">
       <div class="experience-popup assets-popup subevent-assets-popup">
-        @if (!host.standaloneResourceAssetView()) {
+        @if (!host.standaloneResourceAssetView() && !host.assetExploreOnly()) {
           <div class="experience-toolbar assets-toolbar">
           @if (!isMobileResourceFilterSheetViewport()) {
             <div
@@ -512,7 +513,7 @@
         }
 
         @if (host.routeEditor(); as editor) {
-          <section class="experience-form-overlay subevent-form-overlay subevent-group-form-overlay subevent-asset-capacity-overlay">
+          <section class="experience-form-overlay subevent-form-overlay subevent-group-form-overlay subevent-asset-capacity-overlay subevent-asset-route-overlay">
             <div class="experience-form-overlay-backdrop" (click)="host.closeRouteEditor($event)"></div>
             <div class="experience-form-popup subevent-form-popup subevent-group-popup">
               <div class="experience-form-header subevent-group-header">

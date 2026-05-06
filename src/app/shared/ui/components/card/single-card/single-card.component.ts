@@ -18,7 +18,7 @@ import {
 import { MatIconModule } from '@angular/material/icon';
 
 import { LazyBgImageDirective } from '../../../directives/lazy-bg-image.directive';
-import type { CardImageSlide, SingleCardData } from '../card.types';
+import type { CardImageSlide, CardProfileViewData, SingleCardData } from '../card.types';
 
 @Component({
   selector: 'app-single-card',
@@ -46,6 +46,7 @@ export class SingleCardComponent implements AfterViewInit, OnChanges, OnDestroy 
   @Input() card: SingleCardData | null = null;
 
   @Output() readonly badgeClick = new EventEmitter<string>();
+  @Output() readonly profileClick = new EventEmitter<CardProfileViewData>();
 
   protected activeIndex = 0;
   protected loading = false;
@@ -198,6 +199,18 @@ export class SingleCardComponent implements AfterViewInit, OnChanges, OnDestroy 
       return;
     }
     this.badgeClick.emit(this.card.rowId);
+  }
+
+  protected onProfileClick(profileView: CardProfileViewData | null | undefined, event: MouseEvent): void {
+    event.stopPropagation();
+    const userId = `${profileView?.userId ?? ''}`.trim();
+    if (!userId) {
+      return;
+    }
+    this.profileClick.emit({
+      ...profileView,
+      userId
+    });
   }
 
   private syncStateFromCard(): void {

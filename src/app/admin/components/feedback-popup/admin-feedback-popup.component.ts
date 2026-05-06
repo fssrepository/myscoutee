@@ -17,6 +17,7 @@ import type { ChatMenuItem } from '../../../shared/core/base/interfaces/activity
 import type { DemoUser } from '../../../shared/core/base/interfaces/user.interface';
 import { toActivityChatRow } from '../../../shared/core/base/converters/activities-chat.converter';
 import type { ActivityListRow } from '../../../shared/core/base/models';
+import { resolveCurrentRouteDelayMs } from '../../../shared/core/base/services/route-delay.service';
 import { AdminService, type AdminFeedbackDto } from '../../admin.service';
 
 interface AdminFeedbackListFilters {
@@ -55,7 +56,8 @@ export class AdminFeedbackPopupComponent {
   protected readonly feedbackSmartListConfig: SmartListConfig<AdminFeedbackListItem, AdminFeedbackListFilters> = {
     pageSize: 10,
     initialPageSize: 20,
-    loadingDelayMs: 0,
+    loadingDelayMs: resolveCurrentRouteDelayMs('/admin/feedback', 1500),
+    loadingWindowMs: 3000,
     defaultView: 'day',
     emptyLabel: 'No feedback',
     emptyDescription: 'No application feedback has been submitted.',

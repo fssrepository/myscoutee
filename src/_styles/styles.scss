@@ -32,6 +32,31 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
+.app-root,
+app-root,
+body,
+.app-popup,
+.app-popup-panel,
+.popup-panel,
+.popup-surface,
+.mat-mdc-dialog-container,
+.smart-list,
+.smart-list * {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+input,
+textarea,
+select,
+[contenteditable='true'],
+[contenteditable='true'] *,
+.selectable-text,
+.selectable-text * {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
 /* Hide focus outlines for non-keyboard (touch) interactions, but keep them for keyboard navigation */
 :focus:not(:focus-visible) {
   outline: none;

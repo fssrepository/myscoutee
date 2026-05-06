@@ -247,6 +247,50 @@
   z-index: 4;
 }
 
+.shared-card-profile-view-btn {
+  position: absolute;
+  right: 0.56rem;
+  bottom: 0.56rem;
+  z-index: 32;
+  width: 2.22rem;
+  height: 2.22rem;
+  border: 1px solid rgba(41, 99, 143, 0.28);
+  border-radius: 999px;
+  background: rgba(232, 246, 251, 0.94);
+  color: #226d83;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  box-shadow: 0 8px 18px rgba(6, 24, 44, 0.2);
+  cursor: pointer;
+  pointer-events: auto;
+  transition: background 0.16s ease, border-color 0.16s ease, transform 0.16s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.shared-card-profile-view-btn:hover,
+.shared-card-profile-view-btn:focus-visible {
+  background: rgba(218, 241, 249, 0.98);
+  border-color: rgba(31, 124, 153, 0.44);
+  transform: translateY(-1px);
+  outline: none;
+}
+
+.shared-card-profile-view-btn .mat-icon {
+  width: 1.12rem;
+  height: 1.12rem;
+  font-size: 1.12rem;
+  line-height: 1;
+}
+
+.activities-rate-pair-inline-card .shared-card-profile-view-btn {
+  right: 0.44rem;
+  bottom: 0.44rem;
+  width: 2rem;
+  height: 2rem;
+}
+
 .activities-rate-profile-overlay {
   padding: 0.74rem 0.8rem 0.72rem;
 }

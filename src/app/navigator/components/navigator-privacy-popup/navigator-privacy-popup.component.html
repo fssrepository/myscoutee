@@ -2,10 +2,10 @@
   @if (loading) {
     <article class="editor-list-card support-privacy-loading">
       <span class="support-privacy-spinner" aria-hidden="true"></span>
-      <span>Loading privacy content</span>
+      <span>{{ uiText('Loading privacy content') }}</span>
     </article>
   } @else if (activeRevision(); as revision) {
-    <div class="support-help-accordion" aria-label="Privacy topics">
+    <div class="support-help-accordion" [attr.aria-label]="uiText('Privacy topics')">
       @for (section of sections(); track section.id) {
         <article
           class="editor-list-card support-help-accordion-item support-privacy-accordion-item"
@@ -23,7 +23,7 @@
               >
               <span class="support-help-tab-head">
                 <mat-icon>{{ section.icon }}</mat-icon>
-                <span>{{ section.title }}</span>
+                <span data-i18n-ignore>{{ section.title }}</span>
               </span>
             </button>
             <span class="support-privacy-accordion-actions">
@@ -33,7 +33,7 @@
                   class="support-privacy-section-check"
                   [class.is-approved]="isSectionApproved(section.id)"
                   [attr.aria-pressed]="isSectionApproved(section.id)"
-                  [attr.aria-label]="isSectionApproved(section.id) ? 'Privacy section approved' : 'Approve optional privacy section'"
+                  [attr.aria-label]="uiText(isSectionApproved(section.id) ? 'Privacy section approved' : 'Approve optional privacy section')"
                   (pointerover)="stopNestedAccordionEvent($event)"
                   (mouseover)="stopNestedAccordionEvent($event)"
                   (mousedown)="stopNestedAccordionEvent($event)"
@@ -51,7 +51,7 @@
                 type="button"
                 class="support-privacy-caret-btn"
                 [attr.aria-expanded]="section.id === openAccordionSectionId"
-                [attr.aria-label]="section.id === openAccordionSectionId ? 'Collapse privacy section' : 'Expand privacy section'"
+                [attr.aria-label]="uiText(section.id === openAccordionSectionId ? 'Collapse privacy section' : 'Expand privacy section')"
                 (click)="toggleAccordionSection(section.id, $event)"
                 >
                 <mat-icon class="support-help-accordion-caret">expand_more</mat-icon>
@@ -62,9 +62,9 @@
             <div class="support-help-accordion-panel">
               @if (section.id === openAccordionSectionId) {
                 @if (section.blurb) {
-                  <p class="support-help-detail-lead">{{ section.blurb }}</p>
+                  <p class="support-help-detail-lead" data-i18n-ignore>{{ section.blurb }}</p>
                 }
-                <div class="support-help-html" [innerHTML]="section.contentHtml"></div>
+                <div class="support-help-html" data-i18n-ignore [innerHTML]="section.contentHtml"></div>
               }
             </div>
           </div>
@@ -127,8 +127,8 @@
   } @else {
     <article class="editor-list-card support-help-empty">
       <mat-icon>policy</mat-icon>
-      <h4>Privacy is not available</h4>
-      <p>No active privacy revision has been published yet.</p>
+      <h4>{{ uiText('Privacy is not available') }}</h4>
+      <p>{{ uiText('No active privacy revision has been published yet.') }}</p>
     </article>
   }
 </div>

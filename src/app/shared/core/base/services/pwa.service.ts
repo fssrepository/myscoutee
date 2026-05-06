@@ -13,12 +13,19 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<BeforeInstallPromptChoice>;
 }
 
+interface AppVersionPayload {
+  buildId?: unknown;
+}
+
 @Injectable({
   providedIn: 'root'
 })
 export class PwaService {
   private static readonly DEV_OVERRIDE_STORAGE_KEY = 'myscoutee.dev.service-worker';
   private static readonly INSTALL_DISMISSED_STORAGE_KEY = 'myscoutee.install-prompt.dismissed';
+  private static readonly UPDATE_RELOAD_ATTEMPT_STORAGE_KEY = 'myscoutee.update-reload-attempt';
+  private static readonly BUILD_ID_META_NAME = 'myscoutee-build-id';
+  private static readonly APP_VERSION_URL = 'app-version.json';
   private static readonly CACHE_PREFIX = 'myscoutee-runtime';
 
   private readonly installPromptRef = signal<BeforeInstallPromptEvent | null>(null);
@@ -26,8 +33,6 @@ export class PwaService {
   private readonly installDismissedRef = signal(this.loadInstallDismissed());
   private readonly registrationRef = signal<ServiceWorkerRegistration | null>(null);
   private initialized = false;
-  private controllerChangeHandled = false;
-  private updateTimer: ReturnType<typeof setInterval> | null = null;
   private onBeforeInstallPrompt = (event: Event) => {
     const promptEvent = event as BeforeInstallPromptEvent;
     promptEvent.preventDefault();
@@ -129,43 +134,108 @@ export class PwaService {
       updateViaCache: 'none'
     });
     this.registrationRef.set(registration);
-    this.bindRegistrationLifecycle(registration);
-    await registration.update().catch(() => undefined);
+    await this.checkForPageLoadBundleUpdate(registration);
   }
 
-  private bindRegistrationLifecycle(registration: ServiceWorkerRegistration): void {
-    navigator.serviceWorker.addEventListener('controllerchange', () => {
-      if (this.controllerChangeHandled) {
-        return;
-      }
-      this.controllerChangeHandled = true;
-      window.location.reload();
-    });
+  private async checkForPageLoadBundleUpdate(registration: ServiceWorkerRegistration): Promise<void> {
+    if (!environment.production || typeof document === 'undefined') {
+      return;
+    }
 
-    registration.addEventListener('updatefound', () => {
-      const installing = registration.installing;
-      if (!installing) {
-        return;
-      }
-      installing.addEventListener('statechange', () => {
-        if (installing.state === 'installed' && navigator.serviceWorker.controller) {
-          registration.waiting?.postMessage({ type: 'SKIP_WAITING' });
+    const currentBuildId = this.readDocumentBuildId();
+    if (!currentBuildId) {
+      await registration.update().catch(() => undefined);
+      return;
+    }
+
+    const latestBuildId = await this.fetchLatestBuildId();
+    if (!latestBuildId || latestBuildId === currentBuildId) {
+      this.clearReloadAttempt();
+      await registration.update().catch(() => undefined);
+      return;
+    }
+
+    const attemptKey = `${currentBuildId}->${latestBuildId}`;
+    if (this.reloadWasAlreadyAttempted(attemptKey)) {
+      return;
+    }
+
+    this.markReloadAttempted(attemptKey);
+    await registration.update().catch(() => undefined);
+    registration.waiting?.postMessage({ type: 'SKIP_WAITING' });
+    window.location.reload();
+  }
+
+  private readDocumentBuildId(): string {
+    const selector = `meta[name="${PwaService.BUILD_ID_META_NAME}"]`;
+    const meta = document.querySelector<HTMLMetaElement>(selector);
+    return this.normalizeBuildId(meta?.content);
+  }
+
+  private async fetchLatestBuildId(): Promise<string> {
+    try {
+      const versionUrl = new URL(PwaService.APP_VERSION_URL, document.baseURI).toString();
+      const response = await fetch(versionUrl, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache'
         }
       });
-    });
-
-    if (this.updateTimer) {
-      clearInterval(this.updateTimer);
-    }
-    this.updateTimer = setInterval(() => {
-      void registration.update().catch(() => undefined);
-    }, environment.production ? 5 * 60 * 1000 : 30 * 1000);
-
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible') {
-        void registration.update().catch(() => undefined);
+      if (!response.ok) {
+        return '';
       }
-    });
+      const payload = await response.json() as AppVersionPayload;
+      return this.normalizeBuildId(payload.buildId);
+    } catch {
+      return '';
+    }
+  }
+
+  private normalizeBuildId(value: unknown): string {
+    return typeof value === 'string' ? value.trim() : '';
+  }
+
+  private reloadWasAlreadyAttempted(attemptKey: string): boolean {
+    if (typeof sessionStorage === 'undefined') {
+      return this.isReloadNavigation();
+    }
+    try {
+      return sessionStorage.getItem(PwaService.UPDATE_RELOAD_ATTEMPT_STORAGE_KEY) === attemptKey;
+    } catch {
+      return this.isReloadNavigation();
+    }
+  }
+
+  private isReloadNavigation(): boolean {
+    if (typeof performance === 'undefined') {
+      return false;
+    }
+    const navigation = performance.getEntriesByType('navigation')[0] as
+      | PerformanceNavigationTiming
+      | undefined;
+    return navigation?.type === 'reload';
+  }
+
+  private markReloadAttempted(attemptKey: string): void {
+    if (typeof sessionStorage === 'undefined') {
+      return;
+    }
+    try {
+      sessionStorage.setItem(PwaService.UPDATE_RELOAD_ATTEMPT_STORAGE_KEY, attemptKey);
+    } catch {
+      // A blocked sessionStorage should not break startup.
+    }
+  }
+
+  private clearReloadAttempt(): void {
+    if (typeof sessionStorage === 'undefined') {
+      return;
+    }
+    try {
+      sessionStorage.removeItem(PwaService.UPDATE_RELOAD_ATTEMPT_STORAGE_KEY);
+    } catch {
+      // A blocked sessionStorage should not break startup.
+    }
   }
 
   private async unregisterServiceWorkers(): Promise<void> {

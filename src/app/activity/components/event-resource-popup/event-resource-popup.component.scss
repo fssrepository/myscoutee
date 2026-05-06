@@ -542,6 +542,10 @@
   z-index: calc(var(--event-resource-shell-z-index) + 14);
 }
 
+.app-popup.event-resource-popup-shell.event-resource-popup-shell--asset-explore-view {
+  z-index: calc(var(--event-resource-shell-z-index) + 28);
+}
+
 .asset-explore-shell .asset-explore-shell-panel {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
@@ -1612,6 +1616,10 @@
   display: flex;
   align-items: center;
   padding: 0;
+}
+
+.event-resource-popup-shell .experience-form-overlay.subevent-asset-route-overlay {
+  z-index: 96;
 }
 
 .event-resource-popup-shell .experience-form-overlay-backdrop {

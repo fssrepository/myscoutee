@@ -67,9 +67,16 @@ export type HelpCenterHeaderColor = 'amber' | 'blue' | 'green' | 'rose' | 'viole
 
 export type HelpCenterAuditAction = 'seed' | 'create' | 'update' | 'activate' | 'delete';
 
+export interface ContentLanguage {
+  lang: string;
+  label: string;
+}
+
 export interface HelpCenterRevision {
   id: string;
   documentKind?: HelpCenterDocumentKind;
+  lang: string;
+  languageLabel: string;
   version: number;
   title: string;
   summary: string;
@@ -86,6 +93,8 @@ export interface HelpCenterRevision {
 export interface HelpCenterAuditEntry {
   id: string;
   documentKind?: HelpCenterDocumentKind;
+  lang?: string;
+  languageLabel?: string;
   revisionId: string | null;
   version: number | null;
   action: HelpCenterAuditAction;
@@ -98,6 +107,7 @@ export interface HelpCenterState {
   activeRevision: HelpCenterRevision | null;
   revisions: HelpCenterRevision[];
   auditTrail: HelpCenterAuditEntry[];
+  availableLanguages: ContentLanguage[];
 }
 
 export type PrivacyConsentSource = 'entry' | 'settings';
@@ -124,6 +134,7 @@ export interface PrivacyConsentSaveRequest {
 export interface HelpCenterRevisionSaveRequest {
   actorUserId: string;
   baseRevisionId?: string | null;
+  lang?: string | null;
   title: string;
   summary: string;
   description: string;

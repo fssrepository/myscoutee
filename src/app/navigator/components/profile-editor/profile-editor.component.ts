@@ -17,7 +17,7 @@ import type {
 } from '../../../shared/core/base/interfaces/experience.interface';
 import type * as AppTypes from '../../../shared/core/base/models';
 import { AppUtils } from '../../../shared/app-utils';
-import { AppContext, UserExperiencesService, UsersService, type UserDto } from '../../../shared/core';
+import { AppContext, ProfileOnboardingService, UserExperiencesService, UsersService, type UserDto } from '../../../shared/core';
 import { CounterBadgePipe } from '../../../shared/ui';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
 import { NavigatorService } from '../../navigator.service';
@@ -80,6 +80,7 @@ export class ProfileEditorComponent {
   private readonly adminService = inject(AdminService);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly navigatorService = inject(NavigatorService);
+  private readonly profileOnboardingService = inject(ProfileOnboardingService);
   private readonly userExperiencesService = inject(UserExperiencesService);
   private readonly usersService = inject(UsersService);
   private readonly languageSheetHeightCssVar = '--mobile-language-sheet-height';
@@ -1519,6 +1520,10 @@ export class ProfileEditorComponent {
   }
 
   private createProfileDetailsFormForUser(user: UserDto): AppTypes.ProfileDetailFormGroup[] {
+    const persisted = this.hydratePersistedProfileDetails(user);
+    if (persisted.length > 0) {
+      return persisted;
+    }
     const beliefsValuesOptions = this.beliefsValuesAllOptions();
     const interestOptions = this.interestAllOptions();
     return APP_STATIC_DATA.profileDetailGroupTemplates.map(group => ({
@@ -1535,6 +1540,55 @@ export class ProfileEditorComponent {
               : this.profileDetailValueOptions[row.label] ?? [this.profileDetailSeedValue(user, row.label, '')]
       }))
     }));
+  }
+
+  private hydratePersistedProfileDetails(user: UserDto): AppTypes.ProfileDetailFormGroup[] {
+    if (!Array.isArray(user.profileDetails) || user.profileDetails.length === 0) {
+      return [];
+    }
+    const rowByLabel = new Map<string, AppTypes.ProfileDetailFormRow>();
+    for (const group of user.profileDetails) {
+      for (const row of group.rows ?? []) {
+        const normalizedLabel = AppUtils.normalizeText(`${row.label ?? ''}`.trim());
+        if (!normalizedLabel) {
+          continue;
+        }
+        rowByLabel.set(normalizedLabel, {
+          label: row.label,
+          value: row.value,
+          privacy: this.isDetailPrivacy(row.privacy) ? row.privacy : 'Public',
+          options: [...(row.options ?? [])]
+        });
+      }
+    }
+    return APP_STATIC_DATA.profileDetailGroupTemplates.map(group => ({
+      title: group.title,
+      rows: group.rows.map(row => {
+        const persisted = rowByLabel.get(AppUtils.normalizeText(row.label));
+        return {
+          label: row.label,
+          value: persisted?.value ?? this.profileDetailSeedValue(user, row.label, ''),
+          privacy: persisted?.privacy ?? row.privacy,
+          options: this.profileDetailOptionsForLabel(row.label, persisted?.options ?? [])
+        };
+      })
+    }));
+  }
+
+  private profileDetailOptionsForLabel(label: string, persistedOptions: readonly string[] = []): string[] {
+    const defaults = label === 'Values'
+      ? this.beliefsValuesAllOptions()
+      : label === 'Interest'
+        ? this.interestAllOptions()
+        : this.profileDetailValueOptions[label] ?? [];
+    const merged = [...defaults];
+    for (const option of persistedOptions) {
+      const normalized = option.trim();
+      if (normalized && !merged.includes(normalized)) {
+        merged.push(normalized);
+      }
+    }
+    return merged;
   }
 
   private profileDetailSeedValue(user: UserDto, label: string, fallback: string): string {
@@ -2209,7 +2263,9 @@ export class ProfileEditorComponent {
     user.initials = AppUtils.initialsFromText(user.name);
     user.images = this.collectPersistedProfileImages(user.images ?? []);
     this.syncProfileBasicsIntoDetailRows(user);
+    user.profileDetails = this.cloneProfileDetailsForm(this.profileDetailsForm);
     user.completion = this.calculateProfileCompletionPercent();
+    user.profileFormVersion = this.profileOnboardingService.currentProfileFormVersion;
     this.profileDetailsFormByUser[user.id] = this.cloneProfileDetailsForm(this.profileDetailsForm);
     this.pushProfileUserToContextAndLegacyMirror(user);
     await this.usersService.saveUserProfile(this.cloneUser(user));
@@ -2233,6 +2289,7 @@ export class ProfileEditorComponent {
     user.statusText = 'Admin workspace';
     user.hostTier = 'Admin';
     user.completion = 100;
+    user.profileFormVersion = this.profileOnboardingService.currentProfileFormVersion;
     this.pushProfileUserToContextAndLegacyMirror(user);
     this.adminService.updateAdminProfile({
       name: user.name,
@@ -2260,12 +2317,15 @@ export class ProfileEditorComponent {
       ...user,
       languages: [...(user.languages ?? [])],
       images: [...(user.images ?? [])],
+      profileDetails: user.profileDetails ? this.cloneProfileDetailsForm(user.profileDetails) : undefined,
       activities: {
         game: user.activities?.game ?? 0,
         chat: user.activities?.chat ?? 0,
         invitations: user.activities?.invitations ?? 0,
         events: user.activities?.events ?? 0,
-        hosting: user.activities?.hosting ?? 0
+        hosting: user.activities?.hosting ?? 0,
+        tickets: user.activities?.tickets ?? 0,
+        feedback: user.activities?.feedback ?? 0
       },
       impressions: user.impressions
         ? {

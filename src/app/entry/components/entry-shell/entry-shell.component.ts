@@ -1,15 +1,22 @@
-import { ChangeDetectorRef, Component, EventEmitter, HostListener, Injector, Input, NgZone, Output, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, EventEmitter, HostListener, Injector, Input, NgZone, OnDestroy, Output, inject } from '@angular/core';
 
 import { AppContext, HelpCenterService, LandingContentService, USERS_LOAD_CONTEXT_KEY, UsersService, type DemoUserListItemDto } from '../../../shared/core';
 import type { DemoBootstrapProgressStage } from '../../../shared/core/demo';
 import type * as AppTypes from '../../../shared/core/base/models';
 import type { LocationCoordinates } from '../../../shared/core/base/interfaces/location.interface';
+import { resolveCurrentRouteDelayMs } from '../../../shared/core/base/services/route-delay.service';
 import { ConfirmationDialogComponent } from '../../../shared/ui/components/confirmation-dialog/confirmation-dialog.component';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
 import { EntryConsentPopupComponent } from '../entry-consent-popup/entry-consent-popup.component';
 import { EntryDemoUserSelectorComponent } from '../entry-demo-user-selector/entry-demo-user-selector.component';
 import { EntryFirebaseAuthPopupComponent } from '../entry-firebase-auth-popup/entry-firebase-auth-popup.component';
 import { EntryLandingComponent } from '../entry-landing/entry-landing.component';
+
+export interface EntryDemoUserSelectionEvent {
+  userId: string;
+  complete: () => void;
+  fail: () => void;
+}
 
 @Component({
   selector: 'app-entry-shell',
@@ -24,10 +31,12 @@ import { EntryLandingComponent } from '../entry-landing/entry-landing.component'
   templateUrl: './entry-shell.component.html',
   styleUrl: './entry-shell.component.scss'
 })
-export class EntryShellComponent {
+export class EntryShellComponent implements OnDestroy {
   private static readonly ENTRY_CONSENT_KEY = 'entry-gdpr-consent';
   private static readonly ENTRY_CONSENT_AUDIT_KEY = 'entry-gdpr-consent-audit';
   private static readonly ENTRY_CONSENT_AUDIT_MAX = 30;
+  private static readonly LANDING_ARTICLES_LOADING_DELAY_MS = 1500;
+  private static readonly LANDING_ARTICLES_LOADING_WINDOW_MS = 3000;
 
   private readonly injector = inject(Injector);
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
@@ -44,13 +53,16 @@ export class EntryShellComponent {
   @Input() firebaseAuthIsBusy = false;
   @Input() isMobileView = false;
 
-  @Output() readonly demoUserSelected = new EventEmitter<string>();
+  @Output() readonly demoUserSelected = new EventEmitter<EntryDemoUserSelectionEvent>();
   @Output() readonly firebaseAuthRequested = new EventEmitter<void>();
   @Output() readonly firebaseSessionContinueRequested = new EventEmitter<void>();
+  @Output() readonly entryConsentStateChanged = new EventEmitter<boolean>();
 
   protected showEntryConsentPopup = false;
   protected entryConsentViewOnly = false;
   protected entryPrivacyLoading = true;
+  protected landingArticlesLoading = true;
+  protected landingArticlesLoadingProgress = 0;
   protected landingIdeaPosts: AppTypes.IdeaPost[] = [];
   protected showUserSelector = false;
   protected demoSelectorUsers: DemoUserListItemDto[] = [];
@@ -63,9 +75,17 @@ export class EntryShellComponent {
   protected demoSelectorSelectedUserId = '';
   protected showFirebaseAuthPopup = false;
   private demoSelectorRequestToken = 0;
+  private landingContentRequestToken = 0;
+  private landingArticlesLoadingStartedAtMs = 0;
+  private landingArticlesLoadingInterval: ReturnType<typeof setInterval> | null = null;
 
   constructor() {
     this.initializeEntryFlow();
+  }
+
+  ngOnDestroy(): void {
+    this.landingContentRequestToken += 1;
+    this.clearLandingArticlesLoadingWindow();
   }
 
   @HostListener('window:keydown.escape', ['$event'])
@@ -144,20 +164,30 @@ export class EntryShellComponent {
     if (this.demoSelectorLoading || this.demoSelectorSubmitting) {
       return;
     }
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return;
+    }
+    const selectedUser = this.demoSelectorUsers.find(user => user.id.trim() === normalizedUserId) ?? null;
+    if (selectedUser && this.isNewDemoProfile(selectedUser)) {
+      this.emitDemoUserSelection(normalizedUserId, this.demoSelectorRequestToken);
+      return;
+    }
     const requestToken = this.demoSelectorRequestToken;
     this.demoSelectorSubmitting = true;
-    this.demoSelectorSelectedUserId = userId.trim();
+    this.demoSelectorSelectedUserId = normalizedUserId;
     this.demoSelectorLoading = true;
     this.demoSelectorLoadingProgress = 0;
     this.demoSelectorLoadingLabel = 'Preparing demo session';
     this.demoSelectorLoadingStage = 'session';
-    void this.prepareSelectedDemoUser(userId, requestToken);
+    void this.prepareSelectedDemoUser(normalizedUserId, requestToken);
   }
 
   protected onContinueWithFirebaseAuth(): void {
     if (this.firebaseAuthIsBusy) {
       return;
     }
+    this.showFirebaseAuthPopup = false;
     this.firebaseAuthRequested.emit();
   }
 
@@ -200,6 +230,7 @@ export class EntryShellComponent {
     this.appendEntryConsentAudit('accepted', nowIso);
     this.showEntryConsentPopup = false;
     this.entryConsentViewOnly = false;
+    this.entryConsentStateChanged.emit(true);
   }
 
   protected rejectEntryConsent(): void {
@@ -208,6 +239,7 @@ export class EntryShellComponent {
     this.appendEntryConsentAudit('rejected', nowIso);
     this.showEntryConsentPopup = false;
     this.entryConsentViewOnly = false;
+    this.entryConsentStateChanged.emit(false);
   }
 
   private initializeEntryFlow(): void {
@@ -215,6 +247,8 @@ export class EntryShellComponent {
     this.entryConsentViewOnly = false;
     this.showEntryConsentPopup = !hasStoredConsent;
     this.entryPrivacyLoading = true;
+    this.landingArticlesLoading = true;
+    this.landingArticlesLoadingProgress = 0;
     this.showUserSelector = false;
     this.demoSelectorLoading = false;
     this.demoSelectorLoadingProgress = 0;
@@ -394,24 +428,70 @@ export class EntryShellComponent {
       if (!this.isCurrentDemoSelectorRequest(requestToken)) {
         return;
       }
-      this.demoUserSelected.emit(userId);
+      const normalizedUserId = userId.trim();
+      this.emitDemoUserSelection(normalizedUserId, requestToken);
     } catch {
       if (!this.isCurrentDemoSelectorRequest(requestToken)) {
         return;
       }
-      this.commitDemoSelectorState(() => {
-        this.demoSelectorLoading = false;
-        this.demoSelectorSubmitting = false;
-        this.demoSelectorSelectedUserId = '';
-        this.demoSelectorLoadingProgress = 0;
-        this.demoSelectorLoadingLabel = 'Preparing demo data';
-        this.demoSelectorLoadingStage = 'selector';
-      });
+      this.resetDemoUserSelectionFailure();
     }
+  }
+
+  private emitDemoUserSelection(userId: string, requestToken: number): void {
+    this.ngZone.run(() => {
+      this.demoUserSelected.emit({
+        userId,
+        complete: () => {
+          if (this.isCurrentDemoSelectorRequest(requestToken)) {
+            this.completeDemoUserSelection();
+          }
+        },
+        fail: () => {
+          if (this.isCurrentDemoSelectorRequest(requestToken)) {
+            this.resetDemoUserSelectionFailure();
+          }
+        }
+      });
+    });
+  }
+
+  private resetDemoUserSelectionFailure(): void {
+    this.commitDemoSelectorState(() => {
+      this.demoSelectorLoading = false;
+      this.demoSelectorSubmitting = false;
+      this.demoSelectorSelectedUserId = '';
+      this.demoSelectorLoadingProgress = 0;
+      this.demoSelectorLoadingLabel = 'Preparing demo data';
+      this.demoSelectorLoadingStage = 'selector';
+    });
+  }
+
+  private isNewDemoProfile(user: DemoUserListItemDto): boolean {
+    const statusText = `${user.statusText ?? ''}`.trim().toLowerCase();
+    const hasProfileStateSignal = user.completion !== undefined || user.profileFormVersion !== undefined;
+    const completion = Math.max(0, Math.trunc(Number(user.completion) || 0));
+    const profileFormVersion = Math.max(0, Math.trunc(Number(user.profileFormVersion) || 0));
+    return statusText === 'new'
+      || statusText === 'new profile'
+      || (hasProfileStateSignal && completion === 0 && profileFormVersion === 0);
   }
 
   private isCurrentDemoSelectorRequest(requestToken: number): boolean {
     return this.showUserSelector && this.demoSelectorRequestToken === requestToken;
+  }
+
+  private completeDemoUserSelection(): void {
+    this.demoSelectorRequestToken += 1;
+    this.showUserSelector = false;
+    this.demoSelectorLoading = false;
+    this.demoSelectorSubmitting = false;
+    this.demoSelectorSelectedUserId = '';
+    this.demoSelectorLoadingProgress = 0;
+    this.demoSelectorLoadingLabel = 'Preparing demo data';
+    this.demoSelectorLoadingStage = 'selector';
+    this.demoSelectorErrorMessage = '';
+    this.changeDetectorRef.detectChanges();
   }
 
   private async requestCurrentLocation(): Promise<LocationCoordinates | null> {
@@ -522,17 +602,27 @@ export class EntryShellComponent {
   }
 
   private async loadEntryPrivacyContent(): Promise<void> {
+    const requestToken = ++this.landingContentRequestToken;
     this.entryPrivacyLoading = true;
+    this.startLandingArticlesLoadingWindow();
     try {
-      const state = await this.landingContent.loadOnce();
+      const [state] = await Promise.all([
+        this.landingContent.loadOnce(),
+        this.wait(this.landingArticlesLoadingDelayMs())
+      ]);
       this.landingIdeaPosts = state.ideas;
     } finally {
       this.ngZone.run(() => {
+        if (requestToken !== this.landingContentRequestToken) {
+          return;
+        }
         this.entryPrivacyLoading = false;
+        this.endLandingArticlesLoadingWindow();
         if (!this.entryConsentViewOnly) {
           this.showEntryConsentPopup = this.loadEntryConsentState() === null;
         }
         this.changeDetectorRef.detectChanges();
+        this.entryConsentStateChanged.emit(this.hasEntryConsent);
       });
     }
   }
@@ -543,5 +633,67 @@ export class EntryShellComponent {
       return '';
     }
     return `privacy:${revision.id}:v${revision.version}`;
+  }
+
+  private startLandingArticlesLoadingWindow(): void {
+    this.clearLandingArticlesLoadingWindow();
+    this.landingArticlesLoading = true;
+    this.landingArticlesLoadingProgress = 0.02;
+    this.landingArticlesLoadingStartedAtMs = performance.now();
+    this.updateLandingArticlesLoadingWindow();
+    this.landingArticlesLoadingInterval = this.ngZone.runOutsideAngular(() =>
+      setInterval(() => {
+        this.ngZone.run(() => {
+          this.updateLandingArticlesLoadingWindow();
+          this.changeDetectorRef.markForCheck();
+        });
+      }, 16)
+    );
+  }
+
+  private endLandingArticlesLoadingWindow(): void {
+    this.clearLandingArticlesLoadingWindow();
+    this.landingArticlesLoadingProgress = 1;
+    this.changeDetectorRef.detectChanges();
+    setTimeout(() => {
+      this.ngZone.run(() => {
+        this.landingArticlesLoading = false;
+        this.landingArticlesLoadingProgress = 0;
+        this.landingArticlesLoadingStartedAtMs = 0;
+        this.changeDetectorRef.detectChanges();
+      });
+    }, 100);
+  }
+
+  private updateLandingArticlesLoadingWindow(): void {
+    if (!this.landingArticlesLoading) {
+      return;
+    }
+    const elapsed = Math.max(0, performance.now() - this.landingArticlesLoadingStartedAtMs);
+    const nextProgress = Math.min(1, elapsed / EntryShellComponent.LANDING_ARTICLES_LOADING_WINDOW_MS);
+    this.landingArticlesLoadingProgress = Math.max(this.landingArticlesLoadingProgress, nextProgress);
+  }
+
+  private clearLandingArticlesLoadingWindow(): void {
+    if (!this.landingArticlesLoadingInterval) {
+      return;
+    }
+    clearInterval(this.landingArticlesLoadingInterval);
+    this.landingArticlesLoadingInterval = null;
+  }
+
+  private landingArticlesLoadingDelayMs(): number {
+    const routeDelayMs = resolveCurrentRouteDelayMs(
+      '/landing/content',
+      EntryShellComponent.LANDING_ARTICLES_LOADING_DELAY_MS
+    );
+    return routeDelayMs > 0 ? routeDelayMs : EntryShellComponent.LANDING_ARTICLES_LOADING_DELAY_MS;
+  }
+
+  private wait(delayMs: number): Promise<void> {
+    if (delayMs <= 0) {
+      return Promise.resolve();
+    }
+    return new Promise(resolve => setTimeout(resolve, delayMs));
   }
 }

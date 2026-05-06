@@ -641,7 +641,18 @@ export class EventExplorePopupComponent {
   }
 
   protected checkoutDraftActionLabel(entry: CheckoutDraftEntry): string {
-    return this.canContinueCheckoutDraft(entry) ? 'Continue' : 'Waiting for approval';
+    if (this.canContinueCheckoutDraft(entry)) {
+      return 'Continue';
+    }
+    return this.checkoutDraftPendingReason(entry) === 'waitlist'
+      ? 'Waiting for spot'
+      : 'Waiting for approval';
+  }
+
+  protected checkoutDraftPendingLabel(entry: CheckoutDraftEntry): string {
+    return this.checkoutDraftPendingReason(entry) === 'waitlist'
+      ? 'Waiting for a spot to open before payment.'
+      : 'Waiting for admin approval before payment.';
   }
 
   protected isCheckoutDraftClearing(sourceId: string): boolean {
@@ -686,6 +697,30 @@ export class EventExplorePopupComponent {
     this.openEventExploreCheckout(record, {
       approvalGranted: this.canContinueCheckoutDraft({ draft, record })
     });
+  }
+
+  protected async viewCheckoutDraftEvent(
+    entry: CheckoutDraftEntry,
+    event?: { stopPropagation?: () => void; preventDefault?: () => void }
+  ): Promise<void> {
+    this.stopDomEvent(event);
+    if (this.isCheckoutDraftClearing(entry.draft.sourceId)) {
+      return;
+    }
+    const sourceId = entry.draft.sourceId.trim();
+    const record = entry.record
+      ?? this.eventsService.peekKnownItemById(this.activeUserId, sourceId)
+      ?? await this.eventsService.queryKnownItemById(this.activeUserId, sourceId);
+    if (!record) {
+      this.confirmationDialogService.openInfo('This event can no longer be opened.', {
+        title: 'Event unavailable',
+        confirmTone: 'neutral'
+      });
+      this.cdr.markForCheck();
+      return;
+    }
+    this.showCheckoutDraftBasket = false;
+    this.runEventExploreViewAction(record);
   }
 
   protected async clearCheckoutDraft(
@@ -754,7 +789,18 @@ export class EventExplorePopupComponent {
   private async loadEventExplorePage(
     query: ListQuery<EventExploreFeedFilters>
   ): Promise<PageResult<DemoEventRecord>> {
-    const page = await this.activitiesService.loadExplore(query);
+    const page = await this.activitiesService.loadExplore({
+      ...query,
+      filters: {
+        userId: query.filters?.userId ?? this.activeUserId,
+        order: query.filters?.order ?? this.eventExploreOrder,
+        view: query.filters?.view ?? this.eventExploreView,
+        friendsOnly: query.filters?.friendsOnly === true,
+        openSpotsOnly: query.filters?.openSpotsOnly === true,
+        topic: query.filters?.topic ?? this.normalizeTopic(this.eventExploreFilterTopic),
+        excludedSourceIds: [...this.pendingCheckoutDraftSourceIds()]
+      }
+    });
     const activeUserId = this.activeUserId.trim();
     if (!activeUserId) {
       return page;
@@ -977,6 +1023,14 @@ export class EventExplorePopupComponent {
     const currentIndex = currentItems.findIndex(record => record.id === sync.id);
 
     if (currentIndex >= 0) {
+      if (userJoinedEvent) {
+        currentItems.splice(currentIndex, 1);
+        this.eventExploreSmartList.replaceVisibleItems(currentItems, {
+          total: Math.max(currentItems.length, this.eventExploreSmartList.cursorState().total - 1)
+        });
+        this.cdr.markForCheck();
+        return;
+      }
       const existing = currentItems[currentIndex];
       if (existing) {
         const nextEndIso = sync.endAt ?? sync.startAt;
@@ -1166,6 +1220,13 @@ export class EventExplorePopupComponent {
     return Math.max(0, Number(draft?.totalAmount) || 0) > 0;
   }
 
+  private checkoutDraftPendingReason(entry: CheckoutDraftEntry): 'approval' | 'waitlist' {
+    if (entry.draft.pendingReason === 'waitlist') {
+      return 'waitlist';
+    }
+    return this.isEventExploreRecordFull(entry.record) ? 'waitlist' : 'approval';
+  }
+
   private resolveCheckoutDraftMembershipStatus(
     sourceId: string,
     record: DemoEventRecord | null
@@ -1197,13 +1258,17 @@ export class EventExplorePopupComponent {
   }
 
   private isTrackableCheckoutDraft(draft: EventCheckoutDraft | null | undefined): boolean {
-    return Math.max(0, Number(draft?.totalAmount) || 0) > 0;
+    return Math.max(0, Number(draft?.totalAmount) || 0) > 0
+      || draft?.pendingReason === 'waitlist';
   }
 
   private eventExploreJoinDialogTitle(
     record: DemoEventRecord,
     options: { approvalGranted?: boolean } = {}
   ): string {
+    if (this.isEventExploreRecordFull(record) && options.approvalGranted !== true) {
+      return 'Join waiting list?';
+    }
     if (this.requiresApprovalBeforePayment(record) && options.approvalGranted !== true) {
       return 'Request to join?';
     }
@@ -1214,6 +1279,9 @@ export class EventExplorePopupComponent {
     record: DemoEventRecord,
     options: { approvalGranted?: boolean } = {}
   ): string {
+    if (this.isEventExploreRecordFull(record) && options.approvalGranted !== true) {
+      return 'Join waiting list';
+    }
     if (this.requiresApprovalBeforePayment(record) && options.approvalGranted !== true) {
       return 'Send request';
     }
@@ -1224,6 +1292,9 @@ export class EventExplorePopupComponent {
     record: DemoEventRecord,
     options: { approvalGranted?: boolean } = {}
   ): string {
+    if (this.isEventExploreRecordFull(record) && options.approvalGranted !== true) {
+      return 'Joining waitlist...';
+    }
     if (this.requiresApprovalBeforePayment(record) && options.approvalGranted !== true) {
       return 'Sending request...';
     }
@@ -1234,6 +1305,9 @@ export class EventExplorePopupComponent {
     record: DemoEventRecord,
     options: { approvalGranted?: boolean } = {}
   ): string {
+    if (this.isEventExploreRecordFull(record) && options.approvalGranted !== true) {
+      return 'Unable to join the waiting list right now.';
+    }
     if (this.requiresApprovalBeforePayment(record) && options.approvalGranted !== true) {
       return 'Unable to send request.';
     }
@@ -1241,6 +1315,9 @@ export class EventExplorePopupComponent {
   }
 
   private shouldUseCheckoutFlow(record: DemoEventRecord): boolean {
+    if (this.isEventExploreRecordFull(record)) {
+      return true;
+    }
     if ((record.upcomingSlots?.length ?? 0) > 0) {
       return true;
     }
@@ -1266,6 +1343,7 @@ export class EventExplorePopupComponent {
       record,
       requiresApprovalBeforePayment: this.requiresApprovalBeforePayment(record),
       approvalGranted: dialogOptions.approvalGranted,
+      pendingReason: this.isEventExploreRecordFull(record) ? 'waitlist' : 'approval',
       title: this.eventExploreJoinDialogTitle(record, dialogOptions),
       subtitle: record.timeframe,
       confirmLabel: this.eventExploreJoinConfirmLabel(record, dialogOptions),
@@ -1316,10 +1394,11 @@ export class EventExplorePopupComponent {
       return;
     }
 
+    const pendingReason = selection?.pendingReason ?? (this.isEventExploreSelectionFull(record, selection) ? 'waitlist' : null);
     const isAcceptedBooking = this.isConfirmedEventExploreBooking(record, selection);
     const nextMembers = this.sortMembersByActionTimeDesc([
       ...existingMembers,
-      this.buildJoinRequestEntry(record, isAcceptedBooking)
+      this.buildJoinRequestEntry(record, isAcceptedBooking, pendingReason)
     ]);
     const rollbackPayload = this.buildActivitiesEventSyncPayload(record, existingMembers);
     const nextPayload = this.buildActivitiesEventSyncPayload(record, nextMembers, selection?.paymentSessionId ?? null);
@@ -1332,7 +1411,8 @@ export class EventExplorePopupComponent {
         assetSelections: selection?.assetSelections ?? [],
         acceptedPolicyIds: selection?.acceptedPolicyIds ?? [],
         paymentSessionId: selection?.paymentSessionId ?? null,
-        bookingConfirmed: isAcceptedBooking
+        bookingConfirmed: isAcceptedBooking,
+        pendingReason
       });
       await Promise.all([exitPromise, delayPromise, requestJoinPromise]);
       if (this.selectedMembersRecord?.id === record.id) {
@@ -1504,7 +1584,11 @@ export class EventExplorePopupComponent {
       };
   }
 
-  private buildJoinRequestEntry(record: DemoEventRecord, accepted = false): AppTypes.ActivityMemberEntry {
+  private buildJoinRequestEntry(
+    record: DemoEventRecord,
+    accepted = false,
+    pendingReason: 'approval' | 'waitlist' | null = null
+  ): AppTypes.ActivityMemberEntry {
     const user = this.resolveUser(this.activeUserId, record);
     const row = EventExploreBuilder.buildActivityRow(record);
     const entry = ActivityMembersBuilder.toActivityMemberEntry(
@@ -1522,8 +1606,12 @@ export class EventExplorePopupComponent {
     return {
       ...entry,
       role: 'Member',
-      requestKind: accepted ? null : 'join',
-      statusText: accepted ? 'Joined event.' : 'Waiting for admin approval.'
+      requestKind: accepted ? null : (pendingReason === 'waitlist' ? 'waitlist' : 'join'),
+      statusText: accepted
+        ? 'Joined event.'
+        : pendingReason === 'waitlist'
+          ? 'Waiting list.'
+          : 'Waiting for admin approval.'
     };
   }
 
@@ -1531,6 +1619,9 @@ export class EventExplorePopupComponent {
     record: DemoEventRecord,
     selection?: AppTypes.EventCheckoutSelection | null
   ): boolean {
+    if (this.isEventExploreSelectionFull(record, selection)) {
+      return false;
+    }
     if (Boolean(selection?.paymentSessionId?.trim())) {
       return false;
     }
@@ -1541,6 +1632,37 @@ export class EventExplorePopupComponent {
       return true;
     }
     return !selection && !this.shouldUseCheckoutFlow(record);
+  }
+
+  private isEventExploreSelectionFull(
+    record: DemoEventRecord,
+    selection?: AppTypes.EventCheckoutSelection | null
+  ): boolean {
+    const slotSourceId = `${selection?.slotSourceId ?? ''}`.trim();
+    if (slotSourceId) {
+      const slot = (record.upcomingSlots ?? []).find(item => item.id === slotSourceId) ?? null;
+      return slot ? this.isEventExploreSlotFull(slot) : this.isEventExploreRecordFull(record);
+    }
+    if ((record.upcomingSlots?.length ?? 0) > 0) {
+      return false;
+    }
+    return this.isEventExploreRecordFull(record);
+  }
+
+  private isEventExploreRecordFull(record: DemoEventRecord | null): boolean {
+    const capacityTotal = Math.max(0, Math.trunc(Number(record?.capacityTotal) || 0));
+    if (capacityTotal <= 0) {
+      return false;
+    }
+    return Math.max(0, Math.trunc(Number(record?.acceptedMembers) || 0)) >= capacityTotal;
+  }
+
+  private isEventExploreSlotFull(slot: AppTypes.EventSlotOccurrence): boolean {
+    const capacityTotal = Math.max(0, Math.trunc(Number(slot.capacityTotal) || 0));
+    if (capacityTotal <= 0) {
+      return false;
+    }
+    return Math.max(0, Math.trunc(Number(slot.acceptedMembers) || 0)) >= capacityTotal;
   }
 
   private buildActivitiesEventSyncPayload(
@@ -1673,7 +1795,10 @@ export class EventExplorePopupComponent {
     if (entry.status === 'accepted') {
       return 'Approved';
     }
-    if (entry.requestKind === 'join') {
+    if (entry.requestKind === 'waitlist' || entry.requestKind === 'waitlist-invite') {
+      return 'Waiting list';
+    }
+    if (this.isActivityJoinRequest(entry)) {
       return 'Waiting For Join Approval';
     }
     if (entry.pendingSource === 'admin') {
@@ -1686,7 +1811,7 @@ export class EventExplorePopupComponent {
     if (entry.status === 'accepted') {
       return entry.role === 'Admin' ? 'admin_panel_settings' : 'person';
     }
-    if (entry.requestKind === 'join' || entry.pendingSource === 'member') {
+    if (this.isActivityJoinRequest(entry)) {
       return 'pending_actions';
     }
     return 'outgoing_mail';
@@ -1696,7 +1821,7 @@ export class EventExplorePopupComponent {
     if (entry.status === 'accepted') {
       return entry.role === 'Admin' ? 'member-status-admin' : 'member-status-member';
     }
-    if (entry.requestKind === 'join' || entry.pendingSource === 'member') {
+    if (this.isActivityJoinRequest(entry)) {
       return 'member-status-awaiting-approval';
     }
     return 'member-status-invite-pending';
@@ -1706,7 +1831,7 @@ export class EventExplorePopupComponent {
     if (entry.status === 'accepted') {
       return entry.role === 'Admin' ? 'member-card-tone-admin' : 'member-card-tone-accepted';
     }
-    if (entry.requestKind === 'join' || entry.pendingSource === 'member') {
+    if (this.isActivityJoinRequest(entry)) {
       return 'member-card-tone-awaiting-approval';
     }
     return 'member-card-tone-invite-pending';
@@ -1717,6 +1842,11 @@ export class EventExplorePopupComponent {
       return entry.role;
     }
     return this.activityMemberStatusLabel(entry);
+  }
+
+  private isActivityJoinRequest(entry: AppTypes.ActivityMemberEntry): boolean {
+    return entry.requestKind === 'join'
+      || (entry.requestKind == null && entry.pendingSource === 'member');
   }
 
   private activityMemberDeleteLabel(entry: AppTypes.ActivityMemberEntry): string {

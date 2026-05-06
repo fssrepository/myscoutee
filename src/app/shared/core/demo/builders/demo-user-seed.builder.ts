@@ -23,6 +23,8 @@ function buildDemoPortraitStack(
   return indexes.map(index => `https://randomuser.me/api/portraits/${folder}/${index}.jpg`);
 }
 
+const CURRENT_PROFILE_FORM_VERSION = 2;
+
 const BASE_DEMO_USERS: DemoUser[] = [
   {
     id: 'u1',
@@ -290,6 +292,33 @@ const BASE_DEMO_USERS: DemoUser[] = [
   }
 ];
 
+const ONBOARDING_DEMO_USER: DemoUser = {
+  id: 'u-onboarding',
+  name: '',
+  age: 0,
+  birthday: '',
+  city: '',
+  height: '',
+  physique: '',
+  languages: [],
+  horoscope: '',
+  initials: 'NP',
+  gender: 'woman',
+  statusText: 'New',
+  hostTier: '',
+  traitLabel: '',
+  completion: 0,
+  profileFormVersion: 0,
+  headline: '',
+  about: '',
+  affinity: 990000,
+  locationCoordinates: { latitude: 30.2672, longitude: -97.7431 },
+  images: [],
+  profileDetails: [],
+  profileStatus: 'public',
+  activities: { game: 0, chat: 0, invitations: 0, events: 0, hosting: 0 }
+};
+
 export class DemoUserSeedBuilder {
   private static readonly CITY_LOCATION_COORDINATES_BY_NAME: Record<string, LocationCoordinates> = {
     Austin: { latitude: 30.2672, longitude: -97.7431 },
@@ -305,9 +334,13 @@ export class DemoUserSeedBuilder {
   };
 
   static buildExpandedDemoUsers(totalCount: number, baseUsers: readonly DemoUser[] = BASE_DEMO_USERS): DemoUser[] {
+    const includeOnboardingProfile = baseUsers === BASE_DEMO_USERS;
     const normalizedBaseUsers = baseUsers.map(user => this.withResolvedLocationCoordinates(user));
     if (baseUsers.length >= totalCount) {
-      return normalizedBaseUsers.slice(0, totalCount);
+      return this.withOptionalOnboardingProfile(
+        normalizedBaseUsers.slice(0, totalCount),
+        includeOnboardingProfile
+      );
     }
     const expanded: DemoUser[] = [...normalizedBaseUsers];
     const firstNamesWomen = ['Emma', 'Sophia', 'Olivia', 'Mia', 'Lina', 'Nora', 'Chloe', 'Ivy', 'Ava', 'Zoe'];
@@ -340,7 +373,7 @@ export class DemoUserSeedBuilder {
         ...this.demoLifecycleStatusForIndex(index, totalCount)
       }));
     }
-    return expanded;
+    return this.withOptionalOnboardingProfile(expanded, includeOnboardingProfile);
   }
 
   private static demoLifecycleStatusForIndex(index: number, totalCount: number): Partial<DemoUser> {
@@ -411,12 +444,59 @@ export class DemoUserSeedBuilder {
   }
 
   static isFriendOfActiveUser(userId: string, activeUserId: string): boolean {
-    if (!userId || userId === activeUserId) {
+    if (
+      !userId
+      || userId === activeUserId
+      || this.isEmptyOnboardingProfileUserId(userId)
+      || this.isEmptyOnboardingProfileUserId(activeUserId)
+    ) {
       return false;
     }
     const [firstId, secondId] = [activeUserId.trim(), userId.trim()].sort();
     const seed = AppUtils.hashText(`friend-pair:${firstId}:${secondId}`);
     return (seed % 100) < 32;
+  }
+
+  static isEmptyOnboardingProfileUserId(userId: string): boolean {
+    return userId.trim() === ONBOARDING_DEMO_USER.id;
+  }
+
+  static isEmptyOnboardingProfile(
+    user: Partial<Pick<
+      DemoUser,
+      | 'id'
+      | 'name'
+      | 'birthday'
+      | 'city'
+      | 'height'
+      | 'physique'
+      | 'languages'
+      | 'statusText'
+      | 'completion'
+      | 'profileFormVersion'
+      | 'images'
+      | 'profileDetails'
+    >>
+  ): boolean {
+    const statusText = `${user.statusText ?? ''}`.trim().toLowerCase();
+    const completion = Math.max(0, Math.trunc(Number(user.completion) || 0));
+    const profileFormVersion = Math.max(0, Math.trunc(Number(user.profileFormVersion) || 0));
+    const hasSeededProfileData = Boolean(
+      `${user.name ?? ''}`.trim()
+      || `${user.birthday ?? ''}`.trim()
+      || `${user.city ?? ''}`.trim()
+      || `${user.height ?? ''}`.trim()
+      || `${user.physique ?? ''}`.trim()
+      || (user.languages ?? []).some(language => language.trim().length > 0)
+      || (user.images ?? []).some(image => image.trim().length > 0)
+      || (user.profileDetails ?? []).some(group => (group.rows ?? []).some(row => `${row.value ?? ''}`.trim().length > 0))
+    );
+    return !hasSeededProfileData
+      && (
+        statusText === 'new'
+        || statusText === 'new profile'
+        || (completion === 0 && profileFormVersion === 0)
+      );
   }
 
   static friendUsersForActiveUser<T extends Pick<DemoUser, 'id' | 'city' | 'gender'>>(
@@ -425,11 +505,12 @@ export class DemoUserSeedBuilder {
     limit = 12
   ): T[] {
     const normalizedActiveUserId = activeUserId.trim();
-    if (!normalizedActiveUserId || limit <= 0) {
+    if (!normalizedActiveUserId || limit <= 0 || this.isEmptyOnboardingProfileUserId(normalizedActiveUserId)) {
       return [];
     }
-    const activeUser = users.find(user => user.id === normalizedActiveUserId) ?? null;
-    return users
+    const seedableUsers = users.filter(user => !this.isEmptyOnboardingProfileUserId(user.id) && !this.isEmptyOnboardingProfile(user));
+    const activeUser = seedableUsers.find(user => user.id === normalizedActiveUserId) ?? null;
+    return seedableUsers
       .filter(user => user.id.trim().length > 0 && user.id !== normalizedActiveUserId)
       .map(user => ({
         user,
@@ -443,6 +524,7 @@ export class DemoUserSeedBuilder {
   private static withResolvedLocationCoordinates(user: DemoUser): DemoUser {
     const nextUser = {
       ...user,
+      profileFormVersion: this.resolveSeedProfileFormVersion(user.profileFormVersion),
       locationCoordinates: this.cloneLocationCoordinates(user.locationCoordinates)
         ?? this.resolveDemoLocationCoordinates(user.city, user.id)
     };
@@ -452,6 +534,18 @@ export class DemoUserSeedBuilder {
         ? Number(nextUser.affinity)
         : this.resolveUserAffinity(nextUser)
     };
+  }
+
+  private static withOptionalOnboardingProfile(users: DemoUser[], include: boolean): DemoUser[] {
+    if (!include || users.some(user => user.id === ONBOARDING_DEMO_USER.id)) {
+      return users;
+    }
+    return [...users, this.withResolvedLocationCoordinates(ONBOARDING_DEMO_USER)];
+  }
+
+  private static resolveSeedProfileFormVersion(value: unknown): number {
+    const parsed = Math.trunc(Number(value));
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : CURRENT_PROFILE_FORM_VERSION;
   }
 
   private static cloneLocationCoordinates(

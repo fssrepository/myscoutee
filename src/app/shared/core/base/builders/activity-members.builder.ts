@@ -243,7 +243,8 @@ export class ActivityMembersBuilder {
       actionAtIso: AppUtils.toIsoDateTime(metAt),
       metWhere: place,
       relevance: 40 + (seed % 61),
-      avatarUrl: AppUtils.firstImageUrl(user.images)
+      avatarUrl: AppUtils.firstImageUrl(user.images),
+      profile: user
     };
   }
 
@@ -263,6 +264,7 @@ export class ActivityMembersBuilder {
       const ordinal = Math.floor(index / templates.length);
       const isSelf = index === 0;
       const userId = isSelf ? activeUser.id : `${template.id}-force-${ordinal + 1}-${index + 1}`;
+      const profile = isSelf ? activeUser : { ...template, id: userId };
       const when = AppUtils.addDays(new Date('2026-02-24T12:00:00'), -((index % 30) + 1));
       members.push({
         id: `${rowKey}:${userId}`,
@@ -281,7 +283,8 @@ export class ActivityMembersBuilder {
         actionAtIso: AppUtils.toIsoDateTime(when),
         metWhere: forcedMetWhere,
         relevance: 60 + ((index * 7) % 40),
-        avatarUrl: AppUtils.firstImageUrl(template.images)
+        avatarUrl: AppUtils.firstImageUrl(template.images),
+        profile
       });
     }
     return members;

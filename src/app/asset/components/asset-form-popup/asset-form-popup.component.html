@@ -18,7 +18,7 @@
               <span>{{ assetFormVisibility }}</span>
             </button>
             @if (showVisibilityPicker) {
-              <div class="activities-view-picker-panel">
+              <div class="activities-view-picker-panel" [ngClass]="eventVisibilityClass(assetFormVisibility)">
                 @for (option of assetVisibilityOptions; track option) {
                   <button
                     type="button"

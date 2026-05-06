@@ -16,6 +16,21 @@ export interface AdminNotificationTiming {
   dayOfMonth: number;
   time: string;
   timezone: string;
+  cronExpression: string;
+}
+
+export type AdminNotificationScheduleFrequency = 'one-time' | 'daily' | 'weekly' | 'bi-weekly' | 'monthly' | 'yearly';
+
+export interface AdminNotificationScheduleSlot {
+  id: string;
+  frequency: AdminNotificationScheduleFrequency;
+  date: string;
+  dayOfWeek: number;
+  time: string;
+  timezone: string;
+  cronExpression: string;
+  actionKey: string;
+  enabled: boolean;
 }
 
 export interface AdminNotificationMessage {
@@ -28,11 +43,29 @@ export interface AdminNotificationMessage {
 }
 
 export interface AdminNotificationRunState {
+  currentStatus: string;
+  progressPercent: number;
+  progressDetail: string;
+  startedAtIso: string;
+  finishedAtIso: string;
+  durationMillis: number;
   lastRunAtIso: string;
   lastRunStatus: string;
   lastRunDetail: string;
   lastRunCount: number;
   lastRunUser: string;
+}
+
+export interface AdminNotificationRunHistoryEntry {
+  id: string;
+  trigger: string;
+  runnerUser: string;
+  startedAtIso: string;
+  finishedAtIso: string;
+  durationMillis: number;
+  processedCount: number;
+  status: string;
+  detail: string;
 }
 
 export interface AdminNotificationRule {
@@ -45,11 +78,14 @@ export interface AdminNotificationRule {
   triggerKind: AdminNotificationTriggerKind;
   enabled: boolean;
   manualRunEnabled: boolean;
+  adminManageable: boolean;
   priority: number;
   channels: AdminNotificationChannels;
   timing: AdminNotificationTiming;
+  scheduleSlots?: AdminNotificationScheduleSlot[];
   message: AdminNotificationMessage;
   runState: AdminNotificationRunState;
+  runHistory: AdminNotificationRunHistoryEntry[];
   updatedDate?: string | null;
   updatedUser?: string | null;
 }
@@ -74,4 +110,13 @@ export interface AdminNotificationRunResult {
   status: string;
   detail: string;
   ranAtIso: string;
+}
+
+export interface AdminNotificationRuleLiveEvent {
+  type: 'rule-runtime';
+  ruleKey: string;
+  runState: AdminNotificationRunState;
+  runHistory: AdminNotificationRunHistoryEntry[];
+  updatedDate: string;
+  updatedUser: string;
 }

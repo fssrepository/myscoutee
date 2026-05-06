@@ -42,13 +42,14 @@ export class RatesService extends BaseRouteModeService {
 
   async queryActivitiesRatePage(
     userId: string,
-    request: ActivitiesPageRequest
+    request: ActivitiesPageRequest,
+    signal?: AbortSignal
   ): Promise<ActivityRatePageResult> {
     if (this.isDemoModeEnabled('/activities/rates')) {
-      return this.demoRatesService.queryActivitiesRatePage(userId, request);
+      return this.demoRatesService.queryActivitiesRatePage(userId, request, signal);
     }
     const { value } = await this.loadWithRecovery(
-      () => this.httpRatesService.queryActivitiesRatePage(userId, request),
+      () => this.httpRatesService.queryActivitiesRatePage(userId, request, signal),
       () => this.buildLocalActivitiesRatePage(request, this.peekRateItemsByUser(userId)),
       {
         shouldRecover: next =>

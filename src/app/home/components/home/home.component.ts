@@ -9,6 +9,7 @@ import { ActivitiesPopupStateService } from '../../../activity/services/activiti
 import { NavigatorService } from '../../../navigator';
 import {
   CounterBadgePipe,
+  type CardProfileViewData,
   PairCardComponent,
   SingleCardComponent,
   SmartListComponent,
@@ -610,6 +611,13 @@ export class HomeComponent implements OnDestroy {
       statusBadgeLabel: row?.mode === 'single' && row.socialCard
         ? this.homeSocialStatusBadge(row.socialCard)
         : this.candidateActivityBadge(candidate),
+      profileView: candidate
+        ? {
+            userId: candidate.id,
+            user: candidate,
+            label: candidate.name
+          }
+        : null,
       presentation: options?.presentation ?? 'fullscreen',
       state: options?.state ?? 'default'
     };
@@ -661,6 +669,10 @@ export class HomeComponent implements OnDestroy {
       return;
     }
     this.maybeStartGameStackPaginationLoad();
+  }
+
+  protected openProfileView(profileView: CardProfileViewData): void {
+    this.navigatorService.openProfileView(profileView);
   }
 
   protected setRating(value: number): void {
@@ -1646,7 +1658,14 @@ export class HomeComponent implements OnDestroy {
       label,
       tone: gender,
       slides: this.homeCandidateSlides(candidate, socialCard),
-      statusBadgeLabel: socialCard ? this.homeSocialStatusBadge(socialCard) : this.candidateActivityBadge(candidate)
+      statusBadgeLabel: socialCard ? this.homeSocialStatusBadge(socialCard) : this.candidateActivityBadge(candidate),
+      profileView: candidate
+        ? {
+            userId: candidate.id,
+            user: candidate,
+            label: candidate.name
+          }
+        : null
     };
   }
 

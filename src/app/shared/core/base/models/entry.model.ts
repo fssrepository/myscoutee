@@ -5,6 +5,7 @@ export interface FirebaseAuthProfile {
   name: string;
   email: string;
   initials: string;
+  imageUrl?: string;
 }
 
 export interface EntryConsentState {
@@ -20,4 +21,3 @@ export interface EntryConsentAuditRecord {
   source: 'entry';
   userAgent: string;
 }
-

@@ -15,6 +15,7 @@ import { ASSETS_TABLE_NAME, type DemoAssetsRecordCollection } from '../models/as
 import { EVENTS_TABLE_NAME, type DemoEventRecord } from '../models/events.model';
 import { DemoEventsRepository } from './events.repository';
 import { DemoUsersRepository } from './users.repository';
+import { DemoUserSeedBuilder } from '../builders';
 
 @Injectable({
   providedIn: 'root'
@@ -37,7 +38,8 @@ export class DemoActivityResourcesRepository extends HttpActivityResourcesReposi
       (ownerUserIds ?? this.usersRepository.queryAvailableDemoUsers().map(user => user.id))
         .map(userId => userId.trim())
     ))
-      .filter(userId => userId.length > 0);
+      .filter(userId => userId.length > 0)
+      .filter(userId => !DemoUserSeedBuilder.isEmptyOnboardingProfileUserId(userId));
     if (normalizedUserIds.length === 0) {
       return;
     }

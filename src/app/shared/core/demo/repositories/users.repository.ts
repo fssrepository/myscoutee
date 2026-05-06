@@ -4,7 +4,8 @@ import type { UserGameFilterPreferencesDto } from '../../base/interfaces/game.in
 import type { DemoUserListItemDto, UserDto } from '../../base/interfaces/user.interface';
 import {
   USER_FILTER_PREFERENCES_TABLE_NAME,
-  USERS_TABLE_NAME
+  USERS_TABLE_NAME,
+  type DemoUsersRecordCollection
 } from '../models/users.model';
 import { AppMemoryDb } from '../../base/db';
 import { DemoUserFilterPreferencesBuilder, DemoUserSeedBuilder, DemoUsersRepositoryBuilder } from '../builders';
@@ -35,14 +36,22 @@ export class DemoUsersRepository {
     }
     const state = this.memoryDb.read();
     const usersTable = state[USERS_TABLE_NAME];
+    const sourceUsers = users ?? DemoUserSeedBuilder.buildExpandedDemoUsers(DemoUsersRepository.DEFAULT_DEMO_USERS_COUNT);
+    const seededUsers = sourceUsers.map(user => this.applySeededActivityCounts(DemoUsersRepositoryBuilder.cloneUser(user)));
     if (usersTable.ids.length > 0) {
+      const migration = this.mergeSeededUsers(usersTable, seededUsers);
+      if (migration.changed) {
+        this.memoryDb.write(currentState => ({
+          ...currentState,
+          [USERS_TABLE_NAME]: migration.table
+        }));
+      }
       this.initialized = true;
       return this.queryUsersFromTable(USERS_TABLE_NAME);
     }
 
-    const sourceUsers = users ?? DemoUserSeedBuilder.buildExpandedDemoUsers(DemoUsersRepository.DEFAULT_DEMO_USERS_COUNT);
     const seededUsersTable = DemoUsersRepositoryBuilder.buildRecordCollection(
-      sourceUsers.map(user => this.applySeededActivityCounts(DemoUsersRepositoryBuilder.cloneUser(user)))
+      seededUsers
     );
 
     this.memoryDb.write(currentState => ({
@@ -54,9 +63,75 @@ export class DemoUsersRepository {
     return this.queryUsersFromTable(USERS_TABLE_NAME);
   }
 
+  private mergeSeededUsers(
+    currentTable: DemoUsersRecordCollection,
+    seededUsers: readonly UserDto[]
+  ): { table: DemoUsersRecordCollection; changed: boolean } {
+    const nextById = { ...currentTable.byId };
+    const nextIds = [...currentTable.ids];
+    let changed = false;
+
+    for (const seededUser of seededUsers) {
+      const userId = seededUser.id.trim();
+      if (!userId) {
+        continue;
+      }
+      const existing = currentTable.byId[userId];
+      if (!existing) {
+        nextById[userId] = DemoUsersRepositoryBuilder.cloneUser(seededUser);
+        nextIds.push(userId);
+        changed = true;
+        continue;
+      }
+      if (this.shouldStampCurrentProfileFormVersion(existing, seededUser)) {
+        nextById[userId] = {
+          ...existing,
+          profileFormVersion: seededUser.profileFormVersion
+        };
+        changed = true;
+      }
+    }
+
+    return {
+      table: {
+        byId: nextById,
+        ids: [...new Set(nextIds)]
+      },
+      changed
+    };
+  }
+
+  private shouldStampCurrentProfileFormVersion(existing: UserDto, seeded: UserDto): boolean {
+    const existingVersion = Math.trunc(Number(existing.profileFormVersion) || 0);
+    const seededVersion = Math.trunc(Number(seeded.profileFormVersion) || 0);
+    return existingVersion <= 0
+      && seededVersion > 0
+      && this.hasRequiredProfileFields(existing);
+  }
+
+  private hasRequiredProfileFields(user: UserDto): boolean {
+    return Boolean(
+      user.name?.trim()
+      && user.birthday?.trim()
+      && user.city?.trim()
+      && user.height?.trim()
+      && user.physique?.trim()
+      && (user.languages ?? []).some(language => language.trim().length > 0)
+    );
+  }
+
   queryAvailableDemoUsers(): DemoUserListItemDto[] {
     return this.queryAllUsers()
+      .sort((left, right) => this.compareSelectableDemoUsers(left, right))
       .map(user => DemoUsersRepositoryBuilder.toDemoUserListItem(user));
+  }
+
+  private compareSelectableDemoUsers(left: UserDto, right: UserDto): number {
+    const affinityDelta = Math.trunc(Number(right.affinity) || 0) - Math.trunc(Number(left.affinity) || 0);
+    if (affinityDelta !== 0) {
+      return affinityDelta;
+    }
+    return left.id.localeCompare(right.id);
   }
 
   queryAllUsers(): UserDto[] {
@@ -233,7 +308,8 @@ export class DemoUsersRepository {
 
   queryGameStackUsers(raterUserId?: string): UserDto[] {
     this.init();
-    const users = this.queryUsersFromTable(USERS_TABLE_NAME);
+    const users = this.queryUsersFromTable(USERS_TABLE_NAME)
+      .filter(user => !DemoUserSeedBuilder.isEmptyOnboardingProfileUserId(user.id));
     const normalizedRaterId = raterUserId?.trim() ?? '';
     if (!normalizedRaterId) {
       return users;
@@ -259,6 +335,12 @@ export class DemoUsersRepository {
   }
 
   private applySeededActivityCounts(user: UserDto): UserDto {
+    if (DemoUserSeedBuilder.isEmptyOnboardingProfile(user)) {
+      return {
+        ...user,
+        activities: { game: 0, chat: 0, invitations: 0, events: 0, hosting: 0, tickets: 0, feedback: 0 }
+      };
+    }
     return DemoUsersRepositoryBuilder.applySeededActivityCounts(user, {
       chatItems: this.chatsRepository.queryChatItemsByUser(user.id),
       invitationItems: this.eventsRepository.queryInvitationItemsByUser(user.id),

@@ -40,6 +40,7 @@ export interface EventExploreFeedFilters {
   friendsOnly: boolean;
   openSpotsOnly: boolean;
   topic: string;
+  excludedSourceIds?: string[];
 }
 
 export interface ActivityMemberOwnerRef {
@@ -181,6 +182,7 @@ export interface EventCheckoutRequest {
   lineItems: import('./event.model').EventCheckoutLineItem[];
   totalAmount: number;
   currency: string;
+  pendingReason?: 'approval' | 'waitlist' | null;
 }
 
 export type { EventCheckoutSession };

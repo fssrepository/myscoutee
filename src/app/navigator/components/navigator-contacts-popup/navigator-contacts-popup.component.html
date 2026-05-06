@@ -78,6 +78,14 @@
                 <div class="navigator-contact-menu-anchor">
                   <button
                     type="button"
+                    class="experience-action-btn navigator-contact-profile-trigger"
+                    aria-label="View profile"
+                    (click)="viewContactProfile(contact, $event)"
+                    >
+                    <mat-icon>visibility</mat-icon>
+                  </button>
+                  <button
+                    type="button"
                     class="experience-action-btn experience-action-menu-trigger"
                     [class.is-open]="isActionMenuOpen(contact)"
                     [attr.aria-label]="isActionMenuOpen(contact) ? 'Close contact actions' : 'Open contact actions'"

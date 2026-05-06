@@ -25,6 +25,42 @@
   text-align: left;
 }
 
+.navigator-impressions-popup .navigator-impressions-empty-state {
+  min-height: 260px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 2rem;
+  border: 1px dashed rgba(48, 78, 116, 0.28);
+  border-radius: 14px;
+  background: linear-gradient(180deg, #f8fbff 0%, #f2f7fb 100%);
+  color: #30435f;
+  text-align: center;
+}
+
+.navigator-impressions-popup .navigator-impressions-empty-state .mat-icon {
+  width: 32px;
+  height: 32px;
+  font-size: 32px;
+  line-height: 32px;
+  color: #64809f;
+}
+
+.navigator-impressions-popup .navigator-impressions-empty-state strong {
+  font-size: 1rem;
+  font-weight: 900;
+}
+
+.navigator-impressions-popup .navigator-impressions-empty-state span {
+  max-width: 320px;
+  color: #62738b;
+  font-size: 0.84rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
 .navigator-impressions-popup .social-proof-grid {
   display: grid;
   width: min(980px, 100%);
@@ -351,6 +387,8 @@
 }
 
 .navigator-impressions-popup .personality-trait-pill {
+  position: relative;
+  overflow: hidden;
   display: grid;
   gap: 0.12rem;
   padding: 0.52rem 0.6rem;
@@ -360,11 +398,10 @@
   color: #3b4560;
   text-align: left;
   cursor: pointer;
-  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
 }
 
 .navigator-impressions-popup .personality-trait-pill:hover {
-  transform: translateY(-1px);
   border-color: rgba(89, 108, 153, 0.34);
   box-shadow: 0 6px 16px rgba(37, 45, 68, 0.08);
 }
@@ -505,11 +542,6 @@
   gap: 0.28rem;
 }
 
-.navigator-impressions-popup .personality-trait-carousel-updated .personality-trait-card,
-.navigator-impressions-popup .personality-trait-carousel-updated .personality-trait-pill {
-  animation: navigator-popup-impressions-chip-pulse 0.4s ease;
-}
-
 .navigator-impressions-popup .personality-trait-card.trait-tone-social {
   --trait-accent: #dd5c82;
   --trait-accent-soft: rgba(221, 92, 130, 0.22);
@@ -645,13 +677,22 @@
 
   .navigator-impressions-popup .popup-impressions-badge-segment {
     min-height: 34px;
-    flex: 0 1 auto;
+    min-width: 0;
+    flex: 1 1 0;
     padding: 0.2rem 0.34rem;
   }
 
   .navigator-impressions-popup .popup-impressions-badge-label {
+    display: -webkit-box;
+    width: 100%;
+    min-width: 0;
     font-size: 0.7rem;
-    white-space: nowrap;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    text-align: center;
+    white-space: normal;
+    overflow-wrap: anywhere;
   }
 
   .navigator-impressions-popup .popup-impressions-badge-value {

@@ -12,8 +12,10 @@ import {
   type ShareTokenRecord,
   type DemoUserListItemDto,
   type AdminNotificationCenterState,
+  type AdminNotificationRuleLiveEvent,
   type AdminNotificationRule,
   type AdminNotificationRunResult,
+  type AdminNotificationScheduleSlot,
   type AdminNotificationTemplateOption,
   type AdminNotificationTimingMode,
   type AdminNotificationTriggerKind,
@@ -26,6 +28,7 @@ import { DemoChatsRepository, DemoUsersRepository } from '../shared/core/demo';
 import { CHATS_TABLE_NAME, type DemoChatRecord } from '../shared/core/demo/models/chats.model';
 import { SHARE_TOKENS_TABLE_NAME } from '../shared/core/demo/models/share-tokens.model';
 import { ActivitiesPopupStateService } from '../activity/services/activities-popup-state.service';
+import { FirebaseAuthService } from '../shared/core/base/services/firebase-auth.service';
 
 export type AdminPopupKind =
   | 'reports'
@@ -164,6 +167,7 @@ export class AdminService {
   private readonly helpCenter = inject(HelpCenterService);
   private readonly location = inject(Location);
   private readonly sessionService = inject(SessionService);
+  private readonly firebaseAuthService = inject(FirebaseAuthService);
   private readonly memoryDb = inject(AppMemoryDb);
   private readonly demoUsersRepository = inject(DemoUsersRepository);
   private readonly demoChatsRepository = inject(DemoChatsRepository);
@@ -442,15 +446,35 @@ export class AdminService {
       const count = rule.triggerKind === 'scheduled_process'
         ? this.demoScheduledRunCount(rule.ruleKey)
         : 0;
+      const status = rule.manualRunEnabled ? 'completed' : 'skipped';
+      const detail = rule.manualRunEnabled ? 'Demo run recorded.' : 'This rule is action driven.';
+      const startedAtIso = new Date(Date.now() - 1150).toISOString();
       return {
         ...rule,
         runState: {
+          currentStatus: status,
+          progressPercent: 100,
+          progressDetail: detail,
+          startedAtIso,
+          finishedAtIso: nowIso,
+          durationMillis: 1150,
           lastRunAtIso: nowIso,
-          lastRunStatus: rule.manualRunEnabled ? 'completed' : 'skipped',
-          lastRunDetail: rule.manualRunEnabled ? 'Demo run recorded.' : 'This rule is action driven.',
+          lastRunStatus: status,
+          lastRunDetail: detail,
           lastRunCount: count,
           lastRunUser: this.activeAdmin()?.id ?? 'demo-admin'
         },
+        runHistory: [{
+          id: `run-${Date.now()}`,
+          trigger: 'manual',
+          runnerUser: this.activeAdmin()?.id ?? 'demo-admin',
+          startedAtIso,
+          finishedAtIso: nowIso,
+          durationMillis: 1150,
+          processedCount: count,
+          status,
+          detail
+        }, ...(rule.runHistory ?? [])].slice(0, 12),
         updatedDate: nowIso,
         updatedUser: this.activeAdmin()?.id ?? 'demo-admin'
       };
@@ -464,6 +488,53 @@ export class AdminService {
       status: updated?.runState.lastRunStatus ?? 'skipped',
       detail: updated?.runState.lastRunDetail ?? 'Rule was not found.',
       ranAtIso: updated?.runState.lastRunAtIso ?? nowIso
+    };
+  }
+
+  async loadNotificationRuleRuntime(ruleKey: string): Promise<AdminNotificationRule | null> {
+    const normalizedRuleKey = `${ruleKey ?? ''}`.trim();
+    if (!normalizedRuleKey || !this.usesHttpAdminApi) {
+      return null;
+    }
+    const rule = await this.withNotificationHttpTimeout(this.http
+      .get<AdminNotificationRule | null>(
+        `${this.apiBaseUrl}/admin/notifications/${encodeURIComponent(normalizedRuleKey)}/runtime`,
+        { params: { adminUserId: this.activeAdmin()?.id ?? '' } }
+      )
+      .toPromise());
+    return rule ? this.normalizeNotificationRule(rule) : null;
+  }
+
+  subscribeNotificationRuleUpdates(onEvent: (event: AdminNotificationRuleLiveEvent) => void): () => void {
+    if (!this.usesHttpAdminApi || typeof WebSocket === 'undefined' || typeof window === 'undefined') {
+      return () => {};
+    }
+    let closed = false;
+    let socket: WebSocket | null = null;
+    void this.buildNotificationSocketUrl().then(socketUrl => {
+      if (!socketUrl || closed) {
+        return;
+      }
+      socket = new WebSocket(socketUrl);
+      socket.onmessage = message => {
+        try {
+          const event = JSON.parse(`${message.data ?? ''}`) as AdminNotificationRuleLiveEvent;
+          if (event?.type === 'rule-runtime' && `${event.ruleKey ?? ''}`.trim()) {
+            onEvent(this.normalizeNotificationRuleLiveEvent(event));
+          }
+        } catch {
+          // Ignore malformed admin notification socket events.
+        }
+      };
+      socket.onerror = () => {
+        socket?.close();
+      };
+    });
+    return () => {
+      closed = true;
+      if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) {
+        socket.close();
+      }
     };
   }
 
@@ -1405,141 +1476,16 @@ export class AdminService {
     return this.normalizeNotificationCenter({
       rules: [
         this.defaultNotificationRule({
-          ruleKey: 'chat-message',
-          label: 'Chat message',
-          category: 'Action',
-          description: 'Notify offline recipients when a chat message arrives.',
-          actionKey: 'chat.message.created',
-          triggerKind: 'action',
-          enabled: true,
-          manualRunEnabled: false,
-          priority: 10,
-          pushEnabled: true,
-          emailEnabled: false,
-          timingMode: 'immediate',
-          emailSubject: 'New message from @sender_name',
-          emailBody: '@sender_name sent a message in @chat_title.'
-        }),
-        this.defaultNotificationRule({
-          ruleKey: 'event-invitation',
-          label: 'Event invitation',
-          category: 'Action',
-          description: 'Notify members when an organizer invites them to an event.',
-          actionKey: 'event.invitation.created',
-          triggerKind: 'action',
-          enabled: true,
-          manualRunEnabled: false,
-          priority: 20,
-          pushEnabled: true,
-          emailEnabled: false,
-          timingMode: 'immediate',
-          emailSubject: 'You were invited to @event_title',
-          emailBody: '@event_title starts @event_start_at.'
-        }),
-        this.defaultNotificationRule({
-          ruleKey: 'event-feedback-ready',
-          label: 'Event feedback ready',
-          category: 'Timed',
-          description: 'Yearly or manual feedback reminder rule for post-event feedback windows.',
-          actionKey: 'event.feedback.ready',
-          triggerKind: 'timed',
-          enabled: false,
-          manualRunEnabled: true,
-          priority: 30,
-          pushEnabled: false,
-          emailEnabled: true,
-          timingMode: 'yearly',
-          month: 5,
-          dayOfMonth: 1,
-          emailSubject: 'Feedback is open for @event_title',
-          emailBody: 'Share feedback for @event_title while it is fresh.'
-        }),
-        this.defaultNotificationRule({
-          ruleKey: 'ticket-swap-grace-cancelled',
-          label: 'Ticket swap grace cancellation',
-          category: 'Action',
-          description: 'Fixed grace-window rule for future ticket replacement flows.',
-          actionKey: 'ticket.swap.grace.cancelled',
-          triggerKind: 'action',
-          enabled: false,
-          manualRunEnabled: false,
-          priority: 40,
-          pushEnabled: true,
-          emailEnabled: false,
-          timingMode: 'immediate',
-          emailSubject: 'Ticket spot released',
-          emailBody: 'A ticket was cancelled close to the event start and can be reassigned.'
-        }),
-        this.defaultNotificationRule({
-          ruleKey: 'promotional-email-planner',
-          label: 'Promotional email planner',
-          category: 'Scheduled',
-          description: 'Builds eligible email outbox rows from campaign rules.',
-          actionKey: 'email.promotional.plan',
-          triggerKind: 'scheduled_process',
-          enabled: true,
-          manualRunEnabled: true,
-          priority: 100,
-          pushEnabled: false,
-          emailEnabled: true,
-          timingMode: 'interval',
-          intervalMinutes: 60
-        }),
-        this.defaultNotificationRule({
-          ruleKey: 'email-outbox-delivery',
-          label: 'Email outbox delivery',
-          category: 'Scheduled',
-          description: 'Sends pending email outbox rows that are due.',
-          actionKey: 'email.outbox.deliver',
-          triggerKind: 'scheduled_process',
-          enabled: true,
-          manualRunEnabled: true,
-          priority: 110,
-          pushEnabled: false,
-          emailEnabled: true,
-          timingMode: 'interval',
-          intervalMinutes: 1
-        }),
-        this.defaultNotificationRule({
           ruleKey: 'event-random-groups',
-          label: 'Random group planner',
+          label: 'Random event',
           category: 'Scheduled',
-          description: 'Assigns accepted members into generated event groups.',
+          description: 'Assigns accepted event members into generated random groups.',
           actionKey: 'event.scheduler.random-groups',
           triggerKind: 'scheduled_process',
           enabled: false,
           manualRunEnabled: true,
+          adminManageable: true,
           priority: 200,
-          pushEnabled: false,
-          emailEnabled: false,
-          timingMode: 'interval',
-          intervalMinutes: 15
-        }),
-        this.defaultNotificationRule({
-          ruleKey: 'event-priority-inviter',
-          label: 'Priority inviter',
-          category: 'Scheduled',
-          description: 'Fills open event capacity with priority-based invitation batches.',
-          actionKey: 'event.scheduler.priority-inviter',
-          triggerKind: 'scheduled_process',
-          enabled: false,
-          manualRunEnabled: true,
-          priority: 210,
-          pushEnabled: false,
-          emailEnabled: false,
-          timingMode: 'interval',
-          intervalMinutes: 15
-        }),
-        this.defaultNotificationRule({
-          ruleKey: 'event-score-leaderboard',
-          label: 'Score leaderboard materializer',
-          category: 'Scheduled',
-          description: 'Materializes generated groups for score and tournament stages.',
-          actionKey: 'event.scheduler.score-leaderboard',
-          triggerKind: 'scheduled_process',
-          enabled: false,
-          manualRunEnabled: true,
-          priority: 220,
           pushEnabled: false,
           emailEnabled: false,
           timingMode: 'interval',
@@ -1560,6 +1506,7 @@ export class AdminService {
     triggerKind: AdminNotificationTriggerKind;
     enabled: boolean;
     manualRunEnabled: boolean;
+    adminManageable?: boolean;
     priority: number;
     pushEnabled: boolean;
     emailEnabled: boolean;
@@ -1579,6 +1526,7 @@ export class AdminService {
       triggerKind: options.triggerKind,
       enabled: options.enabled,
       manualRunEnabled: options.manualRunEnabled,
+      adminManageable: options.adminManageable !== false,
       priority: options.priority,
       channels: {
         pushEnabled: options.pushEnabled,
@@ -1593,8 +1541,10 @@ export class AdminService {
         month: options.month ?? 1,
         dayOfMonth: options.dayOfMonth ?? 1,
         time: '09:00',
-        timezone: 'UTC'
+        timezone: 'UTC',
+        cronExpression: this.intervalCron(options.intervalMinutes ?? 60)
       },
+      scheduleSlots: this.defaultScheduleSlots(options.timingMode),
       message: {
         pushTitle: options.emailSubject ?? '',
         pushBody: options.emailBody ?? '',
@@ -1604,12 +1554,19 @@ export class AdminService {
         ctaPath: '/game'
       },
       runState: {
+        currentStatus: options.enabled ? 'idle' : 'suspended',
+        progressPercent: 0,
+        progressDetail: '',
+        startedAtIso: '',
+        finishedAtIso: '',
+        durationMillis: 0,
         lastRunAtIso: '',
         lastRunStatus: '',
         lastRunDetail: '',
         lastRunCount: 0,
         lastRunUser: ''
       },
+      runHistory: [],
       updatedDate: '',
       updatedUser: ''
     };
@@ -1666,6 +1623,7 @@ export class AdminService {
       triggerKind,
       enabled: rule.enabled === true,
       manualRunEnabled: rule.manualRunEnabled === true,
+      adminManageable: this.normalizeAdminManageable(rule),
       priority: Math.max(0, Math.trunc(Number(rule.priority) || 1000)),
       channels: {
         pushEnabled: rule.channels?.pushEnabled === true,
@@ -1680,8 +1638,11 @@ export class AdminService {
         month: this.clampInteger(rule.timing?.month, 1, 12, 1),
         dayOfMonth: this.clampInteger(rule.timing?.dayOfMonth, 1, 31, 1),
         time: this.normalizeNotificationTime(rule.timing?.time),
-        timezone: `${rule.timing?.timezone ?? ''}`.trim() || 'UTC'
+        timezone: `${rule.timing?.timezone ?? ''}`.trim() || 'UTC',
+        cronExpression: `${rule.timing?.cronExpression ?? ''}`.trim()
+          || this.intervalCron(Math.max(1, Math.trunc(Number(rule.timing?.intervalMinutes) || 60)))
       },
+      scheduleSlots: this.normalizeScheduleSlots(rule.scheduleSlots, timingMode),
       message: {
         pushTitle: `${rule.message?.pushTitle ?? ''}`.trim(),
         pushBody: `${rule.message?.pushBody ?? ''}`.trim(),
@@ -1691,12 +1652,29 @@ export class AdminService {
         ctaPath: `${rule.message?.ctaPath ?? ''}`.trim() || '/game'
       },
       runState: {
+        currentStatus: `${rule.runState?.currentStatus ?? ''}`.trim() || (rule.enabled ? 'idle' : 'suspended'),
+        progressPercent: this.clampInteger(rule.runState?.progressPercent, 0, 100, 0),
+        progressDetail: `${rule.runState?.progressDetail ?? ''}`.trim(),
+        startedAtIso: `${rule.runState?.startedAtIso ?? ''}`.trim(),
+        finishedAtIso: `${rule.runState?.finishedAtIso ?? ''}`.trim(),
+        durationMillis: Math.max(0, Math.trunc(Number(rule.runState?.durationMillis) || 0)),
         lastRunAtIso: `${rule.runState?.lastRunAtIso ?? ''}`.trim(),
         lastRunStatus: `${rule.runState?.lastRunStatus ?? ''}`.trim(),
         lastRunDetail: `${rule.runState?.lastRunDetail ?? ''}`.trim(),
         lastRunCount: Math.max(0, Math.trunc(Number(rule.runState?.lastRunCount) || 0)),
         lastRunUser: `${rule.runState?.lastRunUser ?? ''}`.trim()
       },
+      runHistory: (rule.runHistory ?? []).map((entry, index) => ({
+        id: `${entry?.id ?? ''}`.trim() || `run-${index}`,
+        trigger: `${entry?.trigger ?? ''}`.trim() || 'manual',
+        runnerUser: `${entry?.runnerUser ?? ''}`.trim(),
+        startedAtIso: `${entry?.startedAtIso ?? ''}`.trim(),
+        finishedAtIso: `${entry?.finishedAtIso ?? ''}`.trim(),
+        durationMillis: Math.max(0, Math.trunc(Number(entry?.durationMillis) || 0)),
+        processedCount: Math.max(0, Math.trunc(Number(entry?.processedCount) || 0)),
+        status: `${entry?.status ?? ''}`.trim() || 'completed',
+        detail: `${entry?.detail ?? ''}`.trim()
+      })).sort((left, right) => Date.parse(right.finishedAtIso || right.startedAtIso) - Date.parse(left.finishedAtIso || left.startedAtIso)).slice(0, 12),
       updatedDate: `${rule.updatedDate ?? ''}`.trim() || null,
       updatedUser: `${rule.updatedUser ?? ''}`.trim() || null
     };
@@ -1713,6 +1691,68 @@ export class AdminService {
       status: `${result?.status ?? 'completed'}`.trim(),
       detail: `${result?.detail ?? ''}`.trim(),
       ranAtIso: `${result?.ranAtIso ?? ''}`.trim() || new Date().toISOString()
+    };
+  }
+
+  private normalizeAdminManageable(rule: AdminNotificationRule): boolean {
+    const raw = (rule as AdminNotificationRule & { adminManageable?: unknown }).adminManageable;
+    if (raw !== undefined && raw !== null) {
+      return raw === true;
+    }
+    return `${rule.ruleKey ?? ''}`.trim() === 'event-random-groups';
+  }
+
+  private async buildNotificationSocketUrl(): Promise<string | null> {
+    if (typeof window === 'undefined') {
+      return null;
+    }
+    const baseUrl = new URL(`${this.apiBaseUrl.replace(/\/+$/, '')}/admin/notifications/ws`, window.location.origin);
+    baseUrl.protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const adminUserId = this.activeAdmin()?.id ?? '';
+    if (adminUserId) {
+      baseUrl.searchParams.set('adminUserId', adminUserId);
+      baseUrl.searchParams.set('userId', adminUserId);
+    }
+    if (this.firebaseAuthService.enabled) {
+      const token = await this.firebaseAuthService.getIdToken();
+      if (!token) {
+        return null;
+      }
+      baseUrl.searchParams.set('token', token);
+    }
+    return baseUrl.toString();
+  }
+
+  private normalizeNotificationRuleLiveEvent(event: AdminNotificationRuleLiveEvent): AdminNotificationRuleLiveEvent {
+    return {
+      type: 'rule-runtime',
+      ruleKey: `${event.ruleKey ?? ''}`.trim(),
+      runState: {
+        currentStatus: `${event.runState?.currentStatus ?? ''}`.trim(),
+        progressPercent: this.clampInteger(event.runState?.progressPercent, 0, 100, 0),
+        progressDetail: `${event.runState?.progressDetail ?? ''}`.trim(),
+        startedAtIso: `${event.runState?.startedAtIso ?? ''}`.trim(),
+        finishedAtIso: `${event.runState?.finishedAtIso ?? ''}`.trim(),
+        durationMillis: Math.max(0, Math.trunc(Number(event.runState?.durationMillis) || 0)),
+        lastRunAtIso: `${event.runState?.lastRunAtIso ?? ''}`.trim(),
+        lastRunStatus: `${event.runState?.lastRunStatus ?? ''}`.trim(),
+        lastRunDetail: `${event.runState?.lastRunDetail ?? ''}`.trim(),
+        lastRunCount: Math.max(0, Math.trunc(Number(event.runState?.lastRunCount) || 0)),
+        lastRunUser: `${event.runState?.lastRunUser ?? ''}`.trim()
+      },
+      runHistory: (event.runHistory ?? []).map((entry, index) => ({
+        id: `${entry?.id ?? ''}`.trim() || `run-${index}`,
+        trigger: `${entry?.trigger ?? ''}`.trim() || 'scheduled',
+        runnerUser: `${entry?.runnerUser ?? ''}`.trim(),
+        startedAtIso: `${entry?.startedAtIso ?? ''}`.trim(),
+        finishedAtIso: `${entry?.finishedAtIso ?? ''}`.trim(),
+        durationMillis: Math.max(0, Math.trunc(Number(entry?.durationMillis) || 0)),
+        processedCount: Math.max(0, Math.trunc(Number(entry?.processedCount) || 0)),
+        status: `${entry?.status ?? ''}`.trim() || 'completed',
+        detail: `${entry?.detail ?? ''}`.trim()
+      })),
+      updatedDate: `${event.updatedDate ?? ''}`.trim(),
+      updatedUser: `${event.updatedUser ?? ''}`.trim()
     };
   }
 
@@ -1735,20 +1775,99 @@ export class AdminService {
     return /^\d{2}:\d{2}$/.test(normalized) ? normalized : '09:00';
   }
 
+  private normalizeScheduleSlots(
+    slots: AdminNotificationRule['scheduleSlots'] | undefined,
+    timingMode: AdminNotificationTimingMode
+  ): NonNullable<AdminNotificationRule['scheduleSlots']> {
+    const normalized = (slots ?? [])
+      .map((slot, index) => {
+        const frequency: AdminNotificationScheduleSlot['frequency'] =
+          slot?.frequency === 'one-time'
+          || slot?.frequency === 'weekly'
+          || slot?.frequency === 'bi-weekly'
+          || slot?.frequency === 'monthly'
+          || slot?.frequency === 'yearly'
+            ? slot.frequency
+            : 'daily';
+        const time = this.normalizeNotificationTime(slot?.time);
+        const dayOfWeek = this.clampInteger(slot?.dayOfWeek, 1, 7, 1);
+        const date = `${slot?.date ?? ''}`.trim();
+        return {
+          id: `${slot?.id ?? ''}`.trim() || `run-window-${index + 1}`,
+          frequency,
+          date,
+          dayOfWeek,
+          time,
+          timezone: `${slot?.timezone ?? ''}`.trim() || 'UTC',
+          cronExpression: `${slot?.cronExpression ?? ''}`.trim() || this.scheduleSlotCron({ frequency, date, dayOfWeek, time }),
+          actionKey: `${slot?.actionKey ?? ''}`.trim(),
+          enabled: slot?.enabled !== false
+        };
+      });
+    return normalized.length > 0 ? normalized : this.defaultScheduleSlots(timingMode);
+  }
+
+  private defaultScheduleSlots(timingMode: AdminNotificationTimingMode): NonNullable<AdminNotificationRule['scheduleSlots']> {
+    if (timingMode !== 'interval') {
+      return [];
+    }
+    return [{
+      id: 'run-window-default',
+      frequency: 'daily',
+      date: '',
+      dayOfWeek: 1,
+      time: '09:00',
+      timezone: 'UTC',
+      cronExpression: '0 0 9 * * ?',
+      actionKey: '',
+      enabled: true
+    }];
+  }
+
+  private scheduleSlotCron(input: { frequency: string; date: string; dayOfWeek: number; time: string }): string {
+    const [hour, minute] = this.normalizeNotificationTime(input.time).split(':').map(value => Math.max(0, Math.trunc(Number(value) || 0)));
+    if (input.frequency === 'weekly') {
+      const quartzDay = (this.clampInteger(input.dayOfWeek, 1, 7, 1) % 7) + 1;
+      return `0 ${minute} ${hour} ? * ${quartzDay}`;
+    }
+    if (input.frequency === 'bi-weekly') {
+      const quartzDay = (this.clampInteger(input.dayOfWeek, 1, 7, 1) % 7) + 1;
+      return `0 ${minute} ${hour} ? * ${quartzDay}`;
+    }
+    if (input.frequency === 'monthly') {
+      const day = this.scheduleDateParts(input.date).day;
+      return `0 ${minute} ${hour} ${day} * ?`;
+    }
+    if (input.frequency === 'yearly') {
+      const date = this.scheduleDateParts(input.date);
+      return `0 ${minute} ${hour} ${date.day} ${date.month} ?`;
+    }
+    if (input.frequency === 'one-time' && /^\d{4}-\d{2}-\d{2}$/.test(input.date)) {
+      const [, month, day] = input.date.split('-').map(value => Math.max(1, Math.trunc(Number(value) || 1)));
+      return `0 ${minute} ${hour} ${day} ${month} ?`;
+    }
+    return `0 ${minute} ${hour} * * ?`;
+  }
+
+  private scheduleDateParts(value: string): { month: number; day: number } {
+    const match = `${value || ''}`.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    return {
+      month: match ? this.clampInteger(Number(match[2]), 1, 12, 1) : 1,
+      day: match ? this.clampInteger(Number(match[3]), 1, 31, 1) : 1
+    };
+  }
+
   private demoScheduledRunCount(ruleKey: string): number {
     switch (ruleKey) {
-      case 'promotional-email-planner':
-        return 3;
-      case 'email-outbox-delivery':
-        return 2;
-      case 'event-priority-inviter':
-        return 4;
       case 'event-random-groups':
-      case 'event-score-leaderboard':
         return 1;
       default:
         return 0;
     }
+  }
+
+  private intervalCron(intervalMinutes: number): string {
+    return `0 0/${Math.max(1, Math.trunc(Number(intervalMinutes) || 60))} * * * ?`;
   }
 
   private clampInteger(value: number | undefined, min: number, max: number, fallback: number): number {

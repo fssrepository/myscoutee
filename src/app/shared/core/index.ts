@@ -41,6 +41,13 @@ export { ChatsService } from './base/services/chats.service';
 export { RatesService } from './base/services/rates.service';
 export { UserExperiencesService } from './base/services/user-experiences.service';
 export {
+  ProfileOnboardingService,
+  type ProfileOnboardingAssessment,
+  type ProfileOnboardingDraft,
+  type ProfileOnboardingForm,
+  type ProfileOnboardingStepId
+} from './base/services/profile-onboarding.service';
+export {
   USER_FEEDBACK_SUBMIT_CONTEXT_KEY,
   USER_REPORT_USER_SUBMIT_CONTEXT_KEY,
   USER_BY_ID_LOAD_CONTEXT_KEY,

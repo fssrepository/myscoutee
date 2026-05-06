@@ -56,6 +56,9 @@ export abstract class BaseRouteModeService {
         recovered: false
       };
     } catch (error) {
+      if (this.isLoadAbortError(error)) {
+        throw error;
+      }
       const recoveredValue = await recover();
       if (hasRecoveryValue(recoveredValue)) {
         return {
@@ -65,5 +68,9 @@ export abstract class BaseRouteModeService {
       }
       throw error;
     }
+  }
+
+  private isLoadAbortError(error: unknown): boolean {
+    return error instanceof Error && error.name === 'AbortError';
   }
 }

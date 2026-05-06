@@ -15,6 +15,7 @@ export interface EventCheckoutDraft {
   totalAmount: number;
   currency: string;
   checkoutSessionId: string | null;
+  pendingReason: 'approval' | 'waitlist' | null;
   updatedAtMs: number;
 }
 
@@ -97,6 +98,11 @@ export class EventCheckoutDraftService {
       totalAmount: Math.max(0, Number(draft?.totalAmount) || 0),
       currency: draft?.currency?.trim() || 'USD',
       checkoutSessionId: draft?.checkoutSessionId?.trim() || null,
+      pendingReason: draft?.pendingReason === 'waitlist'
+        ? 'waitlist'
+        : draft?.pendingReason === 'approval'
+          ? 'approval'
+          : null,
       updatedAtMs: Math.max(0, Math.trunc(Number(draft?.updatedAtMs) || Date.now()))
     };
   }

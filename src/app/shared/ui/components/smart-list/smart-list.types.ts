@@ -43,8 +43,12 @@ export interface PageResult<T> {
   nextCursor?: string | null;
 }
 
+export interface SmartListLoadContext {
+  signal?: AbortSignal;
+}
+
 export type SmartListLoadPage<T, TFilters extends SmartListFilters = SmartListFilters>
-  = (query: ListQuery<TFilters>) => Observable<PageResult<T>>;
+  = (query: ListQuery<TFilters>, context?: SmartListLoadContext) => Observable<PageResult<T>>;
 export type SmartListLoaders<T, TFilters extends SmartListFilters = SmartListFilters>
   = Partial<Record<string, SmartListLoadPage<T, TFilters>>>;
 

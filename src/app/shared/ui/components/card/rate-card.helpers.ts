@@ -1,5 +1,6 @@
 import type {
   CardBadgeConfig,
+  CardProfileViewData,
   CardPresentation,
   CardRenderState,
   PairCardData,
@@ -17,6 +18,7 @@ export interface RateCardPerson {
   age: number;
   city: string;
   gender: RateCardGender;
+  profile?: unknown | null;
 }
 
 export interface RateCardDataInput {
@@ -46,6 +48,7 @@ export function buildSingleRateCardData(input: RateCardDataInput): SingleCardDat
     rowId: input.rowId,
     groupLabel: input.groupLabel ?? null,
     slides: buildSingleRateSlides(input),
+    profileView: profileViewForUser(input.primaryUser),
     stackClasses: input.stackClasses ?? [],
     badge: input.badge ?? null,
     presentation: input.presentation ?? 'list',
@@ -129,9 +132,22 @@ function buildPairRateSlots(input: RateCardDataInput): readonly PairCardSlot[] {
       key: slot,
       label: slot === 'woman' ? 'Woman' : 'Man',
       tone: slot,
-      slides
+      slides,
+      profileView: profileViewForUser(user)
     };
   });
+}
+
+function profileViewForUser(user: RateCardPerson | null | undefined): CardProfileViewData | null {
+  const userId = `${user?.id ?? ''}`.trim();
+  if (!userId) {
+    return null;
+  }
+  return {
+    userId,
+    user: user?.profile ?? null,
+    label: user?.name ?? null
+  };
 }
 
 function resolvePairSlotUser(input: RateCardDataInput, gender: RateCardGender): RateCardPerson | null {

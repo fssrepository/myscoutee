@@ -29,10 +29,10 @@ export interface GdprContent {
 
 export const GDPR_CONTENT: GdprContent = {
   title: 'Privacy',
-  subtitle: 'How myscoutee handles personal data for profile, events, and social activity (including GDPR rights).',
+  subtitle: 'How MyScoutee handles personal data for profile, events, and social activity (including GDPR rights).',
   updatedAt: '2026-02-01',
   contacts: [
-    { label: 'Data Controller', value: 'myscoutee demo platform' },
+    { label: 'Data Controller', value: 'MyScoutee demo platform' },
     { label: 'Support Email', value: 'privacy@myscoutee.app' },
     { label: 'DPO Contact', value: 'dpo@myscoutee.app' }
   ],

@@ -9,6 +9,7 @@ export interface EventCheckoutDialogConfig {
   record: DemoEventRecord;
   requiresApprovalBeforePayment?: boolean;
   approvalGranted?: boolean;
+  pendingReason?: 'approval' | 'waitlist' | null;
   title?: string | null;
   subtitle?: string | null;
   confirmLabel?: string | null;
@@ -26,6 +27,7 @@ export interface EventCheckoutDialogState {
   record: DemoEventRecord;
   requiresApprovalBeforePayment: boolean;
   approvalGranted: boolean;
+  pendingReason: 'approval' | 'waitlist' | null;
   title: string;
   subtitle: string;
   confirmLabel: string;
@@ -58,6 +60,11 @@ export class EventCheckoutDialogService {
       record: config.record,
       requiresApprovalBeforePayment: config.requiresApprovalBeforePayment === true,
       approvalGranted: config.approvalGranted === true,
+      pendingReason: config.pendingReason === 'waitlist'
+        ? 'waitlist'
+        : config.pendingReason === 'approval'
+          ? 'approval'
+          : null,
       title: config.title?.trim() || (config.mode === 'invitation' ? 'Accept Invitation' : 'Join Event'),
       subtitle: config.subtitle?.trim() || config.record.title,
       confirmLabel: config.confirmLabel?.trim() || 'Confirm',

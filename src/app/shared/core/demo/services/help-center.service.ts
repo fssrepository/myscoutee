@@ -22,14 +22,20 @@ export class DemoHelpCenterService {
   private readonly memoryDb = inject(AppMemoryDb);
   private readonly routeDelay = inject(RouteDelayService);
 
-  async loadState(kind: HelpCenterDocumentKind = 'help'): Promise<HelpCenterState> {
+  async loadState(kind: HelpCenterDocumentKind = 'help', lang?: string | null): Promise<HelpCenterState> {
     await this.memoryDb.whenReady();
     const documentKind = this.normalizeKind(kind);
-    const changed = this.ensureSeeded(documentKind) || this.ensureRevisionDescriptions(documentKind);
+    const language = this.requestContentLang(lang);
+    let changed = false;
+    for (const option of this.availableLanguages()) {
+      changed = this.ensureSeeded(documentKind, option.lang)
+        || this.ensureRevisionDescriptions(documentKind, option.lang)
+        || changed;
+    }
     if (changed) {
       await this.memoryDb.flushToIndexedDb();
     }
-    return this.stateFromTable(this.table(), documentKind);
+    return this.stateFromTable(this.table(), documentKind, language);
   }
 
   async loadPrivacyConsent(
@@ -104,18 +110,21 @@ export class DemoHelpCenterService {
   async saveRevision(request: HelpCenterRevisionSaveRequest, kind: HelpCenterDocumentKind = 'help'): Promise<HelpCenterState> {
     await this.memoryDb.whenReady();
     const documentKind = this.normalizeKind(kind);
+    const language = this.normalizeLang(request?.lang);
     const table = this.table();
     const nowIso = new Date().toISOString();
     const actorUserId = this.normalizeActor(request.actorUserId);
-    const version = this.nextVersion(table, documentKind);
+    const version = this.nextVersion(table, documentKind, language);
     const revisionId = this.newId(`${documentKind}-rev`);
     const revision: HelpCenterRevision = {
       id: revisionId,
       documentKind,
+      lang: language,
+      languageLabel: this.languageLabel(language),
       version,
-      title: this.nonEmptyText(request.title, this.defaultTitle(documentKind, version)),
-      summary: this.nonEmptyText(request.summary, this.defaultSummary(documentKind)),
-      description: this.nonEmptyText(request.description, this.defaultDescription(documentKind)),
+      title: this.nonEmptyText(request.title, this.defaultTitle(documentKind, version, language)),
+      summary: this.nonEmptyText(request.summary, this.defaultSummary(documentKind, language)),
+      description: this.nonEmptyText(request.description, this.defaultDescription(documentKind, language)),
       headerColor: this.normalizeHeaderColor(request.headerColor),
       sections: this.normalizeSections(request.sections, documentKind),
       active: false,
@@ -159,12 +168,13 @@ export class DemoHelpCenterService {
       this.memoryDb.flushToIndexedDb(),
       this.routeDelay.waitForRouteDelay(`/admin/${documentKind}/revisions`, undefined, undefined, 1500)
     ]);
-    return this.stateFromTable(this.table(), documentKind);
+    return this.stateFromTable(this.table(), documentKind, language);
   }
 
   async activateRevision(revisionId: string, actorUserId: string, kind: HelpCenterDocumentKind = 'help'): Promise<HelpCenterState> {
     await this.memoryDb.whenReady();
     const documentKind = this.normalizeKind(kind);
+    const language = this.normalizeLang(this.table().revisionsById[revisionId.trim()]?.lang);
     const normalizedRevisionId = revisionId.trim();
     const table = this.table();
     const revision = table.revisionsById[normalizedRevisionId];
@@ -185,17 +195,18 @@ export class DemoHelpCenterService {
           .map(id => {
             const item = current.revisionsById[id];
             const itemKind = this.revisionKind(item);
-            return [id, { ...item, documentKind: itemKind, active: itemKind === documentKind ? id === normalizedRevisionId : item.active }];
+            const itemLang = this.revisionLang(item);
+            return [id, { ...item, documentKind: itemKind, lang: itemLang, languageLabel: this.languageLabel(itemLang), active: itemKind === documentKind && itemLang === language ? id === normalizedRevisionId : item.active }];
           })
       ) as Record<string, HelpCenterRevision>;
       return {
         ...state,
         [HELP_CENTER_TABLE_NAME]: {
           ...current,
-          activeRevisionId: documentKind === 'help' ? normalizedRevisionId : current.activeRevisionId,
+          activeRevisionId: documentKind === 'help' && language === 'en' ? normalizedRevisionId : current.activeRevisionId,
           activeRevisionIdsByKind: {
             ...(current.activeRevisionIdsByKind ?? {}),
-            [documentKind]: normalizedRevisionId
+            [this.activeRevisionKey(documentKind, language)]: normalizedRevisionId
           },
           revisionsById,
           auditById: {
@@ -210,7 +221,7 @@ export class DemoHelpCenterService {
       this.memoryDb.flushToIndexedDb(),
       this.routeDelay.waitForRouteDelay(`/admin/${documentKind}/revisions/activate`, undefined, undefined, 1500)
     ]);
-    return this.stateFromTable(this.table(), documentKind);
+    return this.stateFromTable(this.table(), documentKind, language);
   }
 
   async deleteRevision(revisionId: string, actorUserId: string, kind: HelpCenterDocumentKind = 'help'): Promise<HelpCenterState> {
@@ -219,6 +230,7 @@ export class DemoHelpCenterService {
     const normalizedRevisionId = revisionId.trim();
     const table = this.table();
     const revision = table.revisionsById[normalizedRevisionId];
+    const language = this.normalizeLang(revision?.lang);
     if (!revision || this.revisionKind(revision) !== documentKind) {
       return this.stateFromTable(table, documentKind);
     }
@@ -226,9 +238,9 @@ export class DemoHelpCenterService {
     const remainingRevisions = remainingIds
       .map(id => table.revisionsById[id])
       .filter((item): item is HelpCenterRevision => Boolean(item))
-      .filter(item => this.revisionKind(item) === documentKind)
+      .filter(item => this.revisionKind(item) === documentKind && this.revisionLang(item) === language)
       .sort((left, right) => right.version - left.version);
-    const currentActiveRevisionId = this.activeRevisionId(table, documentKind);
+    const currentActiveRevisionId = this.activeRevisionId(table, documentKind, language);
     const nextActiveRevisionId = currentActiveRevisionId === normalizedRevisionId
       ? (remainingRevisions[0]?.id ?? null)
       : currentActiveRevisionId;
@@ -248,7 +260,8 @@ export class DemoHelpCenterService {
           .map(id => {
             const item = revisionsById[id];
             const itemKind = this.revisionKind(item);
-            return [id, { ...item, documentKind: itemKind, active: itemKind === documentKind ? id === nextActiveRevisionId : item.active }];
+            const itemLang = this.revisionLang(item);
+            return [id, { ...item, documentKind: itemKind, lang: itemLang, languageLabel: this.languageLabel(itemLang), active: itemKind === documentKind && itemLang === language ? id === nextActiveRevisionId : item.active }];
           })
       ) as Record<string, HelpCenterRevision>;
       return {
@@ -256,10 +269,10 @@ export class DemoHelpCenterService {
         [HELP_CENTER_TABLE_NAME]: {
           ...current,
           seeded: true,
-          activeRevisionId: documentKind === 'help' ? nextActiveRevisionId : current.activeRevisionId,
+          activeRevisionId: documentKind === 'help' && language === 'en' ? nextActiveRevisionId : current.activeRevisionId,
           activeRevisionIdsByKind: {
             ...(current.activeRevisionIdsByKind ?? {}),
-            [documentKind]: nextActiveRevisionId
+            [this.activeRevisionKey(documentKind, language)]: nextActiveRevisionId
           },
           revisionsById: normalizedRevisionsById,
           revisionIds: remainingIds,
@@ -275,15 +288,16 @@ export class DemoHelpCenterService {
       this.memoryDb.flushToIndexedDb(),
       this.routeDelay.waitForRouteDelay(`/admin/${documentKind}/revisions/delete`, undefined, undefined, 1500)
     ]);
-    return this.stateFromTable(this.table(), documentKind);
+    return this.stateFromTable(this.table(), documentKind, language);
   }
 
-  private ensureSeeded(kind: HelpCenterDocumentKind): boolean {
+  private ensureSeeded(kind: HelpCenterDocumentKind, lang = 'en'): boolean {
     const table = this.table();
-    if (this.revisionsForKind(table, kind).length > 0) {
+    const language = this.normalizeLang(lang);
+    if (this.revisionsForKind(table, kind, language).length > 0) {
       return false;
     }
-    const revision = this.cloneRevision(this.defaultRevision(kind), kind);
+    const revision = this.cloneRevision(this.defaultRevision(kind, language), kind);
     const audit = this.auditEntry({
       action: 'seed',
       actorUserId: 'system',
@@ -298,10 +312,10 @@ export class DemoHelpCenterService {
           ...current,
           seeded: current.seeded || kind === 'help',
           seededKinds: { ...(current.seededKinds ?? {}), [kind]: true },
-          activeRevisionId: kind === 'help' ? revision.id : current.activeRevisionId,
+          activeRevisionId: kind === 'help' && language === 'en' ? revision.id : current.activeRevisionId,
           activeRevisionIdsByKind: {
             ...(current.activeRevisionIdsByKind ?? {}),
-            [kind]: revision.id
+            [this.activeRevisionKey(kind, language)]: revision.id
           },
           revisionsById: {
             ...this.normalizedRevisionsById(current),
@@ -319,12 +333,14 @@ export class DemoHelpCenterService {
     return true;
   }
 
-  private ensureRevisionDescriptions(kind: HelpCenterDocumentKind): boolean {
+  private ensureRevisionDescriptions(kind: HelpCenterDocumentKind, lang = 'en'): boolean {
     const table = this.table();
+    const language = this.normalizeLang(lang);
     const missingIds = table.revisionIds.filter(id => {
       const revision = table.revisionsById[id] as HelpCenterRevision | undefined;
       return Boolean(revision)
         && this.revisionKind(revision) === kind
+        && this.revisionLang(revision) === language
         && !this.nonEmptyText(revision?.description, '');
     });
     if (missingIds.length === 0) {
@@ -338,7 +354,7 @@ export class DemoHelpCenterService {
         if (revision) {
           revisionsById[id] = {
             ...revision,
-            description: this.defaultDescription(kind)
+            description: this.defaultDescription(kind, language)
           };
         }
       }
@@ -400,11 +416,12 @@ export class DemoHelpCenterService {
     };
   }
 
-  private stateFromTable(table: DemoHelpCenterTable, kind: HelpCenterDocumentKind): HelpCenterState {
-    const revisions = this.revisionsForKind(table, kind)
+  private stateFromTable(table: DemoHelpCenterTable, kind: HelpCenterDocumentKind, lang = 'en'): HelpCenterState {
+    const language = this.normalizeLang(lang);
+    const revisions = this.revisionsForKind(table, kind, language)
       .map(revision => this.cloneRevision(revision, kind))
       .sort((left, right) => right.version - left.version);
-    const activeRevisionId = this.activeRevisionId(table, kind);
+    const activeRevisionId = this.activeRevisionId(table, kind, language);
     const activeRevision = activeRevisionId
       ? revisions.find(revision => revision.id === activeRevisionId) ?? null
       : null;
@@ -412,37 +429,47 @@ export class DemoHelpCenterService {
       .map(id => table.auditById[id])
       .filter((entry): entry is HelpCenterAuditEntry => Boolean(entry))
       .filter(entry => this.auditKind(entry) === kind)
-      .map(entry => ({ ...entry, documentKind: kind }))
+      .map(entry => {
+        const entryLang = this.normalizeLang(entry.lang);
+        return { ...entry, documentKind: kind, lang: entryLang, languageLabel: this.languageLabel(entryLang) };
+      })
       .sort((left, right) => right.createdAtIso.localeCompare(left.createdAtIso));
     return {
       activeRevision: activeRevision ? this.cloneRevision(activeRevision, kind) : null,
       revisions,
-      auditTrail
+      auditTrail: auditTrail.filter(entry => this.normalizeLang(entry.lang) === language),
+      availableLanguages: this.availableLanguages()
     };
   }
 
-  private nextVersion(table: DemoHelpCenterTable, kind: HelpCenterDocumentKind): number {
-    const currentMax = this.revisionsForKind(table, kind)
+  private nextVersion(table: DemoHelpCenterTable, kind: HelpCenterDocumentKind, lang = 'en'): number {
+    const currentMax = this.revisionsForKind(table, kind, this.normalizeLang(lang))
       .map(revision => revision.version ?? 0)
       .reduce((max, version) => Math.max(max, Math.trunc(Number(version) || 0)), 0);
     return currentMax + 1;
   }
 
-  private activeRevisionId(table: DemoHelpCenterTable, kind: HelpCenterDocumentKind): string | null {
-    if (table.activeRevisionIdsByKind && kind in table.activeRevisionIdsByKind) {
+  private activeRevisionId(table: DemoHelpCenterTable, kind: HelpCenterDocumentKind, lang = 'en'): string | null {
+    const language = this.normalizeLang(lang);
+    const activeKey = this.activeRevisionKey(kind, language);
+    if (table.activeRevisionIdsByKind && activeKey in table.activeRevisionIdsByKind) {
+      return table.activeRevisionIdsByKind[activeKey] ?? null;
+    }
+    if (language === 'en' && table.activeRevisionIdsByKind && kind in table.activeRevisionIdsByKind) {
       return table.activeRevisionIdsByKind[kind] ?? null;
     }
-    if (kind === 'help') {
+    if (kind === 'help' && language === 'en') {
       return table.activeRevisionId ?? null;
     }
-    return this.revisionsForKind(table, kind).find(revision => revision.active)?.id ?? null;
+    return this.revisionsForKind(table, kind, language).find(revision => revision.active)?.id ?? null;
   }
 
-  private revisionsForKind(table: DemoHelpCenterTable, kind: HelpCenterDocumentKind): HelpCenterRevision[] {
+  private revisionsForKind(table: DemoHelpCenterTable, kind: HelpCenterDocumentKind, lang = 'en'): HelpCenterRevision[] {
+    const language = this.normalizeLang(lang);
     return table.revisionIds
       .map(id => table.revisionsById[id])
       .filter((revision): revision is HelpCenterRevision => Boolean(revision))
-      .filter(revision => this.revisionKind(revision) === kind);
+      .filter(revision => this.revisionKind(revision) === kind && this.revisionLang(revision) === language);
   }
 
   private normalizedRevisionsById(table: DemoHelpCenterTable): Record<string, HelpCenterRevision> {
@@ -451,7 +478,8 @@ export class DemoHelpCenterService {
         .filter(id => Boolean(table.revisionsById[id]))
         .map(id => {
           const revision = table.revisionsById[id];
-          return [id, { ...revision, documentKind: this.revisionKind(revision) }];
+          const lang = this.revisionLang(revision);
+          return [id, { ...revision, documentKind: this.revisionKind(revision), lang, languageLabel: this.languageLabel(lang) }];
         })
     ) as Record<string, HelpCenterRevision>;
   }
@@ -466,6 +494,8 @@ export class DemoHelpCenterService {
     return {
       id: this.newId(`${documentKind}-audit`),
       documentKind,
+      lang: this.revisionLang(options.revision),
+      languageLabel: this.languageLabel(this.revisionLang(options.revision)),
       revisionId: options.revision.id,
       version: options.revision.version,
       action: options.action,
@@ -540,33 +570,46 @@ export class DemoHelpCenterService {
   }
 
   private cloneRevision(revision: HelpCenterRevision, kind = this.revisionKind(revision)): HelpCenterRevision {
+    const lang = this.revisionLang(revision);
     return {
       ...revision,
       documentKind: kind,
-      description: this.nonEmptyText(revision.description, this.defaultDescription(kind)),
+      lang,
+      languageLabel: this.languageLabel(lang),
+      description: this.nonEmptyText(revision.description, this.defaultDescription(kind, lang)),
       headerColor: this.normalizeHeaderColor(revision.headerColor),
       sections: this.normalizeSections(revision.sections, kind)
     };
   }
 
-  private defaultRevision(kind: HelpCenterDocumentKind): HelpCenterRevision {
-    return this.cloneRevision(
-      kind === 'privacy'
-        ? APP_STATIC_DATA.defaultPrivacyCenterRevision
-        : APP_STATIC_DATA.defaultHelpCenterRevision,
-      kind
-    );
+  private defaultRevision(kind: HelpCenterDocumentKind, lang = 'en'): HelpCenterRevision {
+    const language = this.normalizeLang(lang);
+    const revisionsByLang = kind === 'privacy'
+      ? APP_STATIC_DATA.defaultPrivacyCenterRevisionsByLang
+      : APP_STATIC_DATA.defaultHelpCenterRevisionsByLang;
+    return this.cloneRevision(language === 'hu' ? revisionsByLang.hu : revisionsByLang.en, kind);
   }
 
-  private defaultTitle(kind: HelpCenterDocumentKind, version: number): string {
+  private defaultTitle(kind: HelpCenterDocumentKind, version: number, lang = 'en'): string {
+    if (this.normalizeLang(lang) === 'hu') {
+      return kind === 'privacy' ? `Adatvédelmi verzió v${version}` : `Súgó verzió v${version}`;
+    }
     return kind === 'privacy' ? `Privacy revision v${version}` : `Help revision v${version}`;
   }
 
-  private defaultSummary(kind: HelpCenterDocumentKind): string {
+  private defaultSummary(kind: HelpCenterDocumentKind, lang = 'en'): string {
+    if (this.normalizeLang(lang) === 'hu') {
+      return kind === 'privacy' ? 'Adatvédelem elsőként' : 'Mit tehetsz a MyScoutee-ban';
+    }
     return kind === 'privacy' ? 'Privacy first' : 'What you can do in MyScoutee';
   }
 
-  private defaultDescription(kind: HelpCenterDocumentKind): string {
+  private defaultDescription(kind: HelpCenterDocumentKind, lang = 'en'): string {
+    if (this.normalizeLang(lang) === 'hu') {
+      return kind === 'privacy'
+        ? 'Folytatás előtt nézd át és fogadd el, hogyan használja a MyScoutee az adataidat.'
+        : 'A MyScoutee segít az eseményeket elejétől végéig megtervezni: meghívások, szakaszok és csoportok, erőforrások, valamint kontextushoz kötött csevegések.';
+    }
     return kind === 'privacy'
       ? APP_STATIC_DATA.defaultPrivacyCenterDescription
       : APP_STATIC_DATA.defaultHelpCenterDescription;
@@ -593,12 +636,76 @@ export class DemoHelpCenterService {
     return this.normalizeKind(revision?.documentKind);
   }
 
+  private revisionLang(revision: HelpCenterRevision | null | undefined): string {
+    return this.normalizeLang(revision?.lang);
+  }
+
   private auditKind(entry: HelpCenterAuditEntry | null | undefined): HelpCenterDocumentKind {
     return this.normalizeKind(entry?.documentKind);
   }
 
   private normalizeKind(kind: string | null | undefined): HelpCenterDocumentKind {
     return kind === 'privacy' ? 'privacy' : 'help';
+  }
+
+  private normalizeLang(lang: string | null | undefined): string {
+    const normalized = `${lang ?? ''}`.trim().toLowerCase().split('-')[0];
+    return normalized === 'hu' ? 'hu' : 'en';
+  }
+
+  private requestContentLang(lang: string | null | undefined): string {
+    const explicit = this.supportedContentLang(lang);
+    if (explicit) {
+      return explicit;
+    }
+    return this.supportedContentLang(this.browserLanguage()) || 'en';
+  }
+
+  private browserLanguage(): string {
+    const languages = this.browserLanguages()
+      .map(value => this.normalizeRequestLanguage(value))
+      .filter(Boolean);
+    return languages.find(lang => lang !== 'en') ?? languages[0] ?? 'en';
+  }
+
+  private browserLanguages(): string[] {
+    if (typeof navigator === 'undefined') {
+      return [];
+    }
+    return Array.isArray(navigator.languages) && navigator.languages.length > 0
+      ? navigator.languages
+      : [navigator.language];
+  }
+
+  private supportedContentLang(lang: string | null | undefined): string | null {
+    const requested = this.normalizeRequestLanguage(lang);
+    return this.availableLanguages().some(language => language.lang === requested) ? requested : null;
+  }
+
+  private normalizeRequestLanguage(lang: string | null | undefined): string {
+    const normalized = `${lang ?? ''}`
+      .trim()
+      .toLowerCase()
+      .split(',')[0]
+      .split(';')[0]
+      .split('-')[0]
+      .replace(/[^a-z]/g, '');
+    return normalized;
+  }
+
+  private languageLabel(lang: string | null | undefined): string {
+    return this.normalizeLang(lang) === 'hu' ? 'Magyar' : 'English';
+  }
+
+  private availableLanguages(): Array<{ lang: string; label: string }> {
+    return APP_STATIC_DATA.contentLanguages.map(language => ({
+      lang: this.normalizeLang(language.lang),
+      label: language.label
+    }));
+  }
+
+  private activeRevisionKey(kind: HelpCenterDocumentKind, lang: string): string {
+    return `${kind}:${this.normalizeLang(lang)}`;
   }
 
   private normalizeActor(actorUserId: string): string {

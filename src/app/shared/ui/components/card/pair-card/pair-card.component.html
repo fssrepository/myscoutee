@@ -95,6 +95,16 @@
               {{ currentSlide(slot)?.placeholderLabel }}
             </span>
           }
+          @if (slot.profileView; as profileView) {
+            <button
+              type="button"
+              class="shared-card-profile-view-btn"
+              (click)="onProfileClick(profileView, $event)"
+              [attr.aria-label]="'View ' + (profileView.label || slot.label + ' profile')"
+              >
+              <mat-icon>visibility</mat-icon>
+            </button>
+          }
         </div>
       }
 

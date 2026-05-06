@@ -688,7 +688,7 @@ export class UsersService extends BaseRouteModeService {
       completion: 0,
       headline: '',
       about: '',
-      images: [],
+      images: session.profile.imageUrl?.trim() ? [session.profile.imageUrl.trim()] : [],
       profileStatus: 'public',
       activities: {
         game: 0,
@@ -713,6 +713,7 @@ export class UsersService extends BaseRouteModeService {
         : undefined,
       languages: [...(user.languages ?? [])],
       images: [...(user.images ?? [])],
+      profileDetails: this.cloneProfileDetails(user.profileDetails),
       impressions: user.impressions
         ? {
             host: user.impressions.host
@@ -745,5 +746,20 @@ export class UsersService extends BaseRouteModeService {
         feedback: Math.max(0, Math.trunc(Number(user.activities?.feedback) || 0))
       }
     };
+  }
+
+  private cloneProfileDetails(groups: UserDto['profileDetails']): UserDto['profileDetails'] {
+    if (!groups) {
+      return undefined;
+    }
+    return groups.map(group => ({
+      title: `${group.title ?? ''}`,
+      rows: (group.rows ?? []).map(row => ({
+        label: `${row.label ?? ''}`,
+        value: `${row.value ?? ''}`,
+        privacy: row.privacy,
+        options: [...(row.options ?? [])]
+      }))
+    }));
   }
 }

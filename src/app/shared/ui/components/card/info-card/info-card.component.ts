@@ -7,6 +7,7 @@ import {
   EventEmitter,
   HostListener,
   Input,
+  OnDestroy,
   Output,
   inject
 } from '@angular/core';
@@ -20,6 +21,8 @@ import type {
   InfoCardFooterChip,
   InfoCardMenuAction,
   InfoCardMenuActionEvent,
+  InfoCardMenuRequestEvent,
+  InfoCardMenuTriggerRect,
   InfoCardOverlayAccessory,
   InfoCardOverlayLayout,
   InfoCardOverlayAction,
@@ -36,24 +39,43 @@ import type {
   styleUrl: './info-card.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class InfoCardComponent {
+export class InfoCardComponent implements OnDestroy {
   private static readonly MOBILE_BREAKPOINT_PX = 760;
+  private static activeSharedMenuInstance: InfoCardComponent | null = null;
+  private static activeDocumentMenuInstance: InfoCardComponent | null = null;
+  private static documentPointerDownListener: ((event: PointerEvent) => void) | null = null;
+  private static documentPointerDownTarget: Document | null = null;
   private readonly hostRef = inject(ElementRef<HTMLElement>);
   private readonly cdr = inject(ChangeDetectorRef);
 
   @Input() card: InfoCardData | null = null;
+  @Input() useSharedMenu = false;
 
   @Output() readonly cardClick = new EventEmitter<InfoCardClickEvent>();
   @Output() readonly mediaStartClick = new EventEmitter<InfoCardClickEvent>();
   @Output() readonly mediaEndClick = new EventEmitter<InfoCardClickEvent>();
   @Output() readonly menuAction = new EventEmitter<InfoCardMenuActionEvent>();
+  @Output() readonly menuRequest = new EventEmitter<InfoCardMenuRequestEvent>();
 
   protected isMobileView = false;
   protected menuOpen = false;
   protected menuOpenUp = false;
 
+  protected get menuTriggerOpen(): boolean {
+    return this.menuOpen;
+  }
+
   constructor() {
     this.syncMobileViewFromViewport();
+  }
+
+  ngOnDestroy(): void {
+    if (InfoCardComponent.activeSharedMenuInstance === this) {
+      InfoCardComponent.activeSharedMenuInstance = null;
+    }
+    if (InfoCardComponent.activeDocumentMenuInstance === this) {
+      InfoCardComponent.clearDocumentMenuInstance(this);
+    }
   }
 
   @HostListener('window:resize')
@@ -67,18 +89,6 @@ export class InfoCardComponent {
       return;
     }
     event.stopPropagation();
-    this.closeMenu();
-  }
-
-  @HostListener('document:pointerdown', ['$event'])
-  protected onDocumentPointerDown(event: PointerEvent): void {
-    if (!this.menuOpen) {
-      return;
-    }
-    const target = event.target;
-    if (target instanceof Node && this.hostRef.nativeElement.contains(target)) {
-      return;
-    }
     this.closeMenu();
   }
 
@@ -120,11 +130,37 @@ export class InfoCardComponent {
     if (!this.card?.menuActions?.length) {
       return;
     }
+    const trigger = event.currentTarget as HTMLElement | null;
+    if (this.useSharedMenu) {
+      const wasOpen = this.menuOpen;
+      if (wasOpen) {
+        this.closeMenu();
+        if (InfoCardComponent.activeSharedMenuInstance === this) {
+          InfoCardComponent.activeSharedMenuInstance = null;
+        }
+      } else {
+        InfoCardComponent.activeSharedMenuInstance?.closeMenu();
+        InfoCardComponent.activeSharedMenuInstance = this;
+        this.menuOpenUp = this.shouldOpenMenuUp(trigger);
+        this.menuOpen = true;
+        this.cdr.markForCheck();
+      }
+      this.menuRequest.emit({
+        rowId: this.card.rowId,
+        card: this.card,
+        actions: this.card.menuActions,
+        triggerRect: this.resolveMenuTriggerRect(trigger),
+        openUp: this.shouldOpenMenuUp(trigger),
+        closeTrigger: () => this.closeMenu()
+      });
+      return;
+    }
     if (this.menuOpen) {
       this.closeMenu();
       return;
     }
-    const trigger = event.currentTarget as HTMLElement | null;
+    InfoCardComponent.activeDocumentMenuInstance?.closeMenu();
+    InfoCardComponent.setDocumentMenuInstance(this);
     this.menuOpenUp = this.shouldOpenMenuUp(trigger);
     this.menuOpen = true;
     this.cdr.markForCheck();
@@ -137,6 +173,12 @@ export class InfoCardComponent {
     }
     this.menuOpen = false;
     this.menuOpenUp = false;
+    if (InfoCardComponent.activeSharedMenuInstance === this) {
+      InfoCardComponent.activeSharedMenuInstance = null;
+    }
+    if (InfoCardComponent.activeDocumentMenuInstance === this) {
+      InfoCardComponent.clearDocumentMenuInstance(this);
+    }
     this.cdr.markForCheck();
   }
 
@@ -298,4 +340,71 @@ export class InfoCardComponent {
     const spaceAbove = rect.top;
     return spaceBelow < estimatedMenuHeight && spaceAbove > spaceBelow;
   }
+
+  private resolveMenuTriggerRect(trigger: HTMLElement | null): InfoCardMenuTriggerRect | null {
+    if (typeof window === 'undefined' || !trigger) {
+      return null;
+    }
+    const rect = trigger.getBoundingClientRect();
+    return {
+      left: rect.left,
+      top: rect.top,
+      right: rect.right,
+      bottom: rect.bottom,
+      width: rect.width,
+      height: rect.height
+    };
+  }
+
+  private static setDocumentMenuInstance(instance: InfoCardComponent): void {
+    InfoCardComponent.activeDocumentMenuInstance = instance;
+    InfoCardComponent.ensureDocumentPointerDownListener(instance.hostRef.nativeElement.ownerDocument);
+  }
+
+  private static clearDocumentMenuInstance(instance: InfoCardComponent): void {
+    if (InfoCardComponent.activeDocumentMenuInstance !== instance) {
+      return;
+    }
+    InfoCardComponent.activeDocumentMenuInstance = null;
+    InfoCardComponent.releaseDocumentPointerDownListener();
+  }
+
+  private static ensureDocumentPointerDownListener(documentRef: Document): void {
+    if (
+      InfoCardComponent.documentPointerDownListener
+      && InfoCardComponent.documentPointerDownTarget === documentRef
+    ) {
+      return;
+    }
+    InfoCardComponent.releaseDocumentPointerDownListener();
+    const listener = (event: PointerEvent) => InfoCardComponent.onDocumentPointerDown(event);
+    documentRef.addEventListener('pointerdown', listener);
+    InfoCardComponent.documentPointerDownListener = listener;
+    InfoCardComponent.documentPointerDownTarget = documentRef;
+  }
+
+  private static releaseDocumentPointerDownListener(): void {
+    if (!InfoCardComponent.documentPointerDownListener || !InfoCardComponent.documentPointerDownTarget) {
+      return;
+    }
+    InfoCardComponent.documentPointerDownTarget.removeEventListener(
+      'pointerdown',
+      InfoCardComponent.documentPointerDownListener
+    );
+    InfoCardComponent.documentPointerDownListener = null;
+    InfoCardComponent.documentPointerDownTarget = null;
+  }
+
+  private static onDocumentPointerDown(event: PointerEvent): void {
+    const instance = InfoCardComponent.activeDocumentMenuInstance;
+    if (!instance?.menuOpen) {
+      return;
+    }
+    const target = event.target;
+    if (target instanceof Node && instance.hostRef.nativeElement.contains(target)) {
+      return;
+    }
+    instance.closeMenu();
+  }
+
 }

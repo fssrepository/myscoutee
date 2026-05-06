@@ -43,6 +43,7 @@ export class NavigatorComponent {
   private lastHandledEventFeedbackRequestMs = 0;
   private readonly navigatorImpressionsPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly profileEditorComponentRef = signal<Type<unknown> | null>(null);
+  private readonly profileViewPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly eventMembersPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly eventResourcePopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly eventSupplyContributionsPopupComponentRef = signal<Type<unknown> | null>(null);
@@ -55,6 +56,7 @@ export class NavigatorComponent {
 
   protected readonly navigatorImpressionsPopupComponent = this.navigatorImpressionsPopupComponentRef.asReadonly();
   protected readonly profileEditorComponent = this.profileEditorComponentRef.asReadonly();
+  protected readonly profileViewPopupComponent = this.profileViewPopupComponentRef.asReadonly();
   protected readonly eventMembersPopupComponent = this.eventMembersPopupComponentRef.asReadonly();
   protected readonly eventResourcePopupComponent = this.eventResourcePopupComponentRef.asReadonly();
   protected readonly eventSupplyContributionsPopupComponent = this.eventSupplyContributionsPopupComponentRef.asReadonly();
@@ -77,6 +79,13 @@ export class NavigatorComponent {
       const isOpen = this.navigatorService.profileEditorOpen();
       if (isOpen && !this.profileEditorComponentRef()) {
         void this.ensureProfileEditorLoaded();
+      }
+    });
+
+    effect(() => {
+      const isOpen = this.navigatorService.profileViewOpen();
+      if (isOpen && !this.profileViewPopupComponentRef()) {
+        void this.ensureProfileViewPopupLoaded();
       }
     });
 
@@ -202,6 +211,14 @@ export class NavigatorComponent {
     }
     const module = await import('../profile-editor/profile-editor.component');
     this.profileEditorComponentRef.set(module.ProfileEditorComponent);
+  }
+
+  private async ensureProfileViewPopupLoaded(): Promise<void> {
+    if (this.profileViewPopupComponentRef()) {
+      return;
+    }
+    const module = await import('../profile-view-popup/profile-view-popup.component');
+    this.profileViewPopupComponentRef.set(module.ProfileViewPopupComponent);
   }
 
   private async ensureEventMembersPopupLoaded(): Promise<void> {

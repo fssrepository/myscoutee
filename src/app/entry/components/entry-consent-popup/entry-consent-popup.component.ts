@@ -6,6 +6,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { HelpCenterService } from '../../../shared/core';
 import type { HelpCenterRevision, HelpCenterSection } from '../../../shared/core/base/models';
+import { I18nService } from '../../../shared/i18n';
 
 @Component({
   selector: 'app-entry-consent-popup',
@@ -18,6 +19,7 @@ export class EntryConsentPopupComponent {
   private static readonly OPTIONAL_PRIVACY_APPROVAL_KEY = 'myscoutee-privacy-optional-approvals';
 
   private readonly helpCenter = inject(HelpCenterService);
+  private readonly i18n = inject(I18nService);
 
   @Input() open = false;
   @Input() viewOnly = false;
@@ -127,9 +129,21 @@ export class EntryConsentPopupComponent {
 
   protected privacySaveButtonLabel(): string {
     if (this.savingChoices) {
-      return 'Saving...';
+      return this.uiText('Saving...');
     }
-    return this.approvalRequired ? 'Approve privacy' : 'Save choices';
+    return this.uiText(this.approvalRequired ? 'Approve privacy' : 'Save choices');
+  }
+
+  protected activeSummaryLabel(): string {
+    return this.activeRevision()?.summary || this.uiText('Privacy first');
+  }
+
+  protected activeDescriptionLabel(): string {
+    return this.activeRevision()?.description || this.uiText(this.defaultPrivacyDescription);
+  }
+
+  protected uiText(value: string): string {
+    return this.i18n.translate(value);
   }
 
   protected async savePrivacyChoices(): Promise<void> {
@@ -142,14 +156,14 @@ export class EntryConsentPopupComponent {
     try {
       await this.saveApprovalState();
       this.loadedApprovedSectionIds = new Set(this.approvedOptionalSectionIds());
-      this.choiceSaveMessage = 'Privacy choices saved.';
+      this.choiceSaveMessage = this.uiText('Privacy choices saved.');
       if (this.approvalRequired) {
         this.acceptRequested.emit();
       } else if (this.viewOnly) {
         this.requestClose();
       }
     } catch {
-      this.choiceSaveError = 'Privacy choices could not be saved.';
+      this.choiceSaveError = this.uiText('Privacy choices could not be saved.');
     } finally {
       this.savingChoices = false;
     }
