@@ -3561,10 +3561,11 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
     if (pages.length < 3 || centerIndex <= 0 || centerIndex >= pages.length - 1) {
       return null;
     }
-    const movingTowardEdge = direction > 0
+    const isCentered = currentIndex === centerIndex;
+    const isNearEdge = direction > 0
       ? currentIndex >= pages.length - 2
       : currentIndex <= 1;
-    if (!movingTowardEdge) {
+    if (!isCentered && !isNearEdge) {
       return null;
     }
     const pageWidth = this.calendarViewportWidth(scrollElement);
