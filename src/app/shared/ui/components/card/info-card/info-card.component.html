@@ -239,7 +239,7 @@
             <span class="ui-info-card__pending-badge card-badge asset-request-badge">{{ card?.menuBadgeCount }}</span>
           }
         </button>
-        @if (menuOpen && !isMobileView) {
+        @if (menuOpen && !useSharedMenu) {
           <div
             class="ui-info-card__menu item-action-menu"
             [class.is-open]="menuOpen"

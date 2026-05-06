@@ -1898,6 +1898,13 @@ button.activities-rate-score-badge-between:not(.is-disabled):active .activities-
   bottom: calc(100% + 6px);
   animation: item-action-menu-slide-up 0.16s ease-out;
 }
+.activities-event-action-menu.item-action-menu-desktop {
+  position: fixed;
+  right: auto;
+}
+.activities-event-action-menu.item-action-menu-desktop.is-open-up {
+  bottom: auto;
+}
 .item-action-menu-title {
   margin: 0 0 0.1rem;
   padding: 0.34rem 0.46rem 0.42rem;

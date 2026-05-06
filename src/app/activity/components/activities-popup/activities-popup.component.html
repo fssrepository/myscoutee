@@ -599,7 +599,7 @@
               [groupLabel]="groupLabel"
               [context]="activitiesEventTemplateContext"
               [cardRevision]="activitiesEventCardRevision"
-              [mobileMenuOpenRowId]="activityEventMobileActionMenu?.card?.rowId ?? null"
+              [sharedMenuOpenRowId]="activityEventActionMenu?.card?.rowId ?? null"
               (mediaEndClick)="openActivityMembers(row)"
               (menuAction)="onActivityEventInfoCardMenuAction(row, $event)"
               (menuRequest)="openActivityEventMobileActionMenu(row, $event)"
@@ -624,13 +624,15 @@
             ></app-activities-rate-template>
           </ng-template>
         </div><!-- /activities-popup -->
-        @if (activityEventMobileActionMenu; as actionMenu) {
+        @if (activityEventActionMenu; as actionMenu) {
           <div
-            class="item-action-menu-dismiss-layer"
-            (click)="closeActivityEventMobileActionMenu()"
-          ></div>
-          <div
-            class="item-action-menu item-action-menu-mobile is-open activities-event-mobile-action-menu"
+            class="item-action-menu is-open activities-event-action-menu"
+            [class.item-action-menu-mobile]="isMobileView"
+            [class.item-action-menu-desktop]="!isMobileView"
+            [class.is-open-up]="!isMobileView && actionMenu.openUp"
+            [style.left.px]="!isMobileView ? actionMenu.desktopLeft : null"
+            [style.top.px]="!isMobileView ? actionMenu.desktopTop : null"
+            [style.bottom]="!isMobileView ? 'auto' : null"
             (click)="$event.stopPropagation()"
           >
             @if (actionMenu.title) {

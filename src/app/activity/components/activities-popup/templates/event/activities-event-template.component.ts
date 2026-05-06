@@ -53,7 +53,7 @@ export class ActivitiesEventTemplateComponent implements OnChanges {
   @Input() groupLabel: string | null = null;
   @Input() context: ActivitiesEventTemplateContext | null = null;
   @Input() cardRevision = 0;
-  @Input() mobileMenuOpenRowId: string | null = null;
+  @Input() sharedMenuOpenRowId: string | null = null;
 
   @Output() readonly mediaEndClick = new EventEmitter<void>();
   @Output() readonly menuAction = new EventEmitter<InfoCardMenuActionEvent>();

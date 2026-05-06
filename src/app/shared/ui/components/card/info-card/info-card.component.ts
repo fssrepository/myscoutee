@@ -21,6 +21,7 @@ import type {
   InfoCardMenuAction,
   InfoCardMenuActionEvent,
   InfoCardMenuRequestEvent,
+  InfoCardMenuTriggerRect,
   InfoCardOverlayAccessory,
   InfoCardOverlayLayout,
   InfoCardOverlayAction,
@@ -43,7 +44,8 @@ export class InfoCardComponent {
   private readonly cdr = inject(ChangeDetectorRef);
 
   @Input() card: InfoCardData | null = null;
-  @Input() mobileMenuOpenRowId: string | null = null;
+  @Input() useSharedMenu = false;
+  @Input() sharedMenuOpenRowId: string | null = null;
 
   @Output() readonly cardClick = new EventEmitter<InfoCardClickEvent>();
   @Output() readonly mediaStartClick = new EventEmitter<InfoCardClickEvent>();
@@ -56,10 +58,10 @@ export class InfoCardComponent {
   protected menuOpenUp = false;
 
   protected get menuTriggerOpen(): boolean {
-    if (!this.isMobileView) {
+    if (!this.useSharedMenu) {
       return this.menuOpen;
     }
-    return !!this.card?.rowId && this.mobileMenuOpenRowId === this.card.rowId;
+    return !!this.card?.rowId && this.sharedMenuOpenRowId === this.card.rowId;
   }
 
   constructor() {
@@ -130,11 +132,14 @@ export class InfoCardComponent {
     if (!this.card?.menuActions?.length) {
       return;
     }
-    if (this.isMobileView) {
+    const trigger = event.currentTarget as HTMLElement | null;
+    if (this.useSharedMenu) {
       this.menuRequest.emit({
         rowId: this.card.rowId,
         card: this.card,
-        actions: this.card.menuActions
+        actions: this.card.menuActions,
+        triggerRect: this.resolveMenuTriggerRect(trigger),
+        openUp: this.shouldOpenMenuUp(trigger)
       });
       return;
     }
@@ -142,7 +147,6 @@ export class InfoCardComponent {
       this.closeMenu();
       return;
     }
-    const trigger = event.currentTarget as HTMLElement | null;
     this.menuOpenUp = this.shouldOpenMenuUp(trigger);
     this.menuOpen = true;
     this.cdr.markForCheck();
@@ -315,5 +319,20 @@ export class InfoCardComponent {
     const spaceBelow = viewportHeight - rect.bottom;
     const spaceAbove = rect.top;
     return spaceBelow < estimatedMenuHeight && spaceAbove > spaceBelow;
+  }
+
+  private resolveMenuTriggerRect(trigger: HTMLElement | null): InfoCardMenuTriggerRect | null {
+    if (typeof window === 'undefined' || !trigger) {
+      return null;
+    }
+    const rect = trigger.getBoundingClientRect();
+    return {
+      left: rect.left,
+      top: rect.top,
+      right: rect.right,
+      bottom: rect.bottom,
+      width: rect.width,
+      height: rect.height
+    };
   }
 }

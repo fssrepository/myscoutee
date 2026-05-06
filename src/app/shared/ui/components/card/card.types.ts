@@ -187,8 +187,19 @@ export interface InfoCardMenuActionEvent {
   card: InfoCardData;
 }
 
+export interface InfoCardMenuTriggerRect {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+  width: number;
+  height: number;
+}
+
 export interface InfoCardMenuRequestEvent {
   rowId: string;
   card: InfoCardData;
   actions: readonly InfoCardMenuAction[];
+  triggerRect: InfoCardMenuTriggerRect | null;
+  openUp: boolean;
 }

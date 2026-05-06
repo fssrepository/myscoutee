@@ -422,11 +422,14 @@ export class ActivitiesPopupComponent implements OnDestroy {
     title: string;
     openUp: boolean;
   } | null = null;
-  protected activityEventMobileActionMenu: {
+  protected activityEventActionMenu: {
     row: AppTypes.ActivityListRow;
     card: InfoCardData;
     title: string;
     actions: readonly InfoCardMenuAction[];
+    openUp: boolean;
+    desktopLeft: number | null;
+    desktopTop: number | null;
   } | null = null;
 
   // ── Scroll / sticky ───────────────────────────────────────────────────────
@@ -544,36 +547,40 @@ export class ActivitiesPopupComponent implements OnDestroy {
     row: AppTypes.ActivityListRow,
     event: InfoCardMenuRequestEvent
   ): void {
-    if (this.activityEventMobileActionMenu?.card.rowId === event.card.rowId) {
-      this.activityEventMobileActionMenu = null;
+    if (this.activityEventActionMenu?.card.rowId === event.card.rowId) {
+      this.activityEventActionMenu = null;
       this.cdr.markForCheck();
       return;
     }
-    this.activityEventMobileActionMenu = {
+    const desktopPosition = this.resolveActivityEventActionMenuDesktopPosition(event);
+    this.activityEventActionMenu = {
       row,
       card: event.card,
       title: this.resolveActivityEventMobileActionMenuTitle(event.card),
-      actions: event.actions
+      actions: event.actions,
+      openUp: event.openUp,
+      desktopLeft: desktopPosition.left,
+      desktopTop: desktopPosition.top
     };
     this.cdr.markForCheck();
   }
 
   protected closeActivityEventMobileActionMenu(): void {
-    if (!this.activityEventMobileActionMenu) {
+    if (!this.activityEventActionMenu) {
       return;
     }
-    this.activityEventMobileActionMenu = null;
+    this.activityEventActionMenu = null;
     this.cdr.markForCheck();
   }
 
   protected onActivityEventMobileActionSelected(action: InfoCardMenuAction, event: Event): void {
     event.preventDefault();
     event.stopPropagation();
-    const actionMenu = this.activityEventMobileActionMenu;
+    const actionMenu = this.activityEventActionMenu;
     if (!actionMenu) {
       return;
     }
-    this.activityEventMobileActionMenu = null;
+    this.activityEventActionMenu = null;
     this.onActivityEventInfoCardMenuAction(actionMenu.row, {
       rowId: actionMenu.card.rowId,
       actionId: action.id,
@@ -588,6 +595,28 @@ export class ActivitiesPopupComponent implements OnDestroy {
       return '';
     }
     return `${card.menuTitle ?? card.title ?? ''}`.trim();
+  }
+
+  private resolveActivityEventActionMenuDesktopPosition(event: InfoCardMenuRequestEvent): {
+    left: number | null;
+    top: number | null;
+  } {
+    if (this.isMobileView || !event.triggerRect || typeof window === 'undefined') {
+      return { left: null, top: null };
+    }
+    const menuWidth = 220;
+    const estimatedMenuHeight = Math.min(320, 24 + event.actions.length * 38 + (event.card.menuTitle === null ? 0 : 42));
+    const margin = 8;
+    const viewportWidth = window.innerWidth || document.documentElement.clientWidth;
+    const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+    const left = Math.min(
+      Math.max(margin, event.triggerRect.right - menuWidth),
+      Math.max(margin, viewportWidth - menuWidth - margin)
+    );
+    const top = event.openUp
+      ? Math.max(margin, event.triggerRect.top - estimatedMenuHeight - margin)
+      : Math.min(event.triggerRect.bottom + margin, Math.max(margin, viewportHeight - estimatedMenuHeight - margin));
+    return { left, top };
   }
 
   protected openProfileView(profileView: CardProfileViewData): void {
@@ -760,7 +789,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   private resetActivitiesStateForOpen(): void {
     this.inlineItemActionMenu = null;
-    this.activityEventMobileActionMenu = null;
+    this.activityEventActionMenu = null;
     this.visibleActivityRows = [];
     this.activitiesStickyValue = '';
     this.lastRateIndicatorPulseRowId = null;
@@ -2136,6 +2165,10 @@ export class ActivitiesPopupComponent implements OnDestroy {
     }
     if (this.inlineItemActionMenu) {
       this.inlineItemActionMenu = null;
+      this.cdr.markForCheck();
+    }
+    if (this.activityEventActionMenu) {
+      this.activityEventActionMenu = null;
       this.cdr.markForCheck();
     }
     if (!(target instanceof Element)) {
