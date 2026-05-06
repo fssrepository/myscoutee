@@ -598,7 +598,7 @@
               [row]="row"
               [groupLabel]="groupLabel"
               [context]="activitiesEventTemplateContext"
-              [cardRevision]="activitiesEventCardRevision"
+              [cardRevision]="activitiesEventCardRevisionForRow(row)"
               (mediaEndClick)="openActivityMembers(row)"
               (menuAction)="onActivityEventInfoCardMenuAction(row, $event)"
               (menuRequest)="openActivityEventMobileActionMenu(row, $event)"

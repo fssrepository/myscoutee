@@ -275,7 +275,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected readonly eventSubEventsById: Record<string, AppTypes.SubEventFormItem[]> = {};
   private lastPendingCheckoutDraftSourceIds = new Set<string>();
   protected readonly activityMembersByRowId: Record<string, AppTypes.ActivityMemberEntry[]> = {};
-  protected activitiesEventCardRevision = 0;
+  private readonly activitiesEventCardRevisionByRowId: Record<string, number> = {};
   protected activitiesRateCardRevision = 0;
   protected readonly activityRateCardRevisionByRowId: Record<string, number> = {};
   protected readonly leavingActivityRowIds = new Set<string>();
@@ -1060,11 +1060,33 @@ export class ActivitiesPopupComponent implements OnDestroy {
     if (!nextRow && currentIndex < 0) {
       return;
     }
+    if (nextRow && existingRow && existingRow.type === nextRow.type && this.canPatchVisibleEventRowInPlace(currentItems, currentIndex, nextRow)) {
+      smartList.patchVisibleItem(
+        (_row, index) => index === currentIndex,
+        () => nextRow
+      );
+      return;
+    }
     const nextItems = currentItems.filter(row => row.id !== sync.id);
     if (nextRow) {
       nextItems.push(nextRow);
     }
     this.replaceVisibleActivityItems(nextItems, (nextRow ? 1 : 0) - (currentIndex >= 0 ? 1 : 0));
+  }
+
+  private canPatchVisibleEventRowInPlace(
+    currentItems: readonly AppTypes.ActivityListRow[],
+    currentIndex: number,
+    nextRow: AppTypes.ActivityListRow
+  ): boolean {
+    if (currentIndex < 0) {
+      return false;
+    }
+    const patchedItems = [...currentItems];
+    patchedItems[currentIndex] = nextRow;
+    const sortedItems = this.sortVisibleEventRows(patchedItems);
+    return sortedItems.length === currentItems.length
+      && sortedItems.every((row, index) => this.activityRowIdentity(row) === this.activityRowIdentity(currentItems[index]));
   }
 
   private buildVisibleEventRowFromSync(
@@ -1919,7 +1941,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   private applyActivityMembersSummary(row: AppTypes.ActivityListRow, summary: ActivityMembersSummary): void {
     this.activityCapacityById[row.id] = `${summary.acceptedMembers} / ${summary.capacityTotal}`;
     this.activityPendingMembersById[row.id] = summary.pendingMembers;
-    this.bumpActivitiesEventCardRevision();
+    this.bumpActivitiesEventCardRevision(row);
   }
 
   private applyActivityMembersSyncState(sync: ActivityMembersSyncState): void {
@@ -1931,7 +1953,9 @@ export class ActivitiesPopupComponent implements OnDestroy {
     );
     this.activityCapacityById[sync.id] = `${acceptedMembers} / ${capacityTotal}`;
     this.activityPendingMembersById[sync.id] = pendingMembers;
-    this.bumpActivitiesEventCardRevision();
+    this.bumpActivitiesEventCardRevision(`events:${sync.id}`);
+    this.bumpActivitiesEventCardRevision(`hosting:${sync.id}`);
+    this.bumpActivitiesEventCardRevision(`invitations:${sync.id}`);
   }
 
   private async loadActivityMembersForRow(
@@ -2019,12 +2043,13 @@ export class ActivitiesPopupComponent implements OnDestroy {
         const members = this.activityMembersService.peekMembersByOwner(owner);
         if (members.length > 0) {
           this.activityMembersByRowId[rowKey] = ActivityMembersBuilder.sortActivityMembersByActionTimeDesc(members);
+          this.bumpActivitiesEventCardRevision(rowKey);
           continue;
         }
       }
       delete this.activityMembersByRowId[rowKey];
+      this.bumpActivitiesEventCardRevision(rowKey);
     }
-    this.bumpActivitiesEventCardRevision();
   }
 
   private maybeDismissActivityRateEditor(target: Element): void {
@@ -2222,12 +2247,22 @@ export class ActivitiesPopupComponent implements OnDestroy {
     this.patchVisibleActivityRowsFromEventSync(sync);
     this.upsertVisibleEventRowFromSync(sync);
     this.applyActivitiesEventMemberSnapshot(sync);
-    this.bumpActivitiesEventCardRevision();
+    this.bumpActivitiesEventCardRevision(`events:${sync.id}`);
+    this.bumpActivitiesEventCardRevision(`hosting:${sync.id}`);
+    this.bumpActivitiesEventCardRevision(`invitations:${sync.id}`);
     this.refreshSectionBadges();
   }
 
-  private bumpActivitiesEventCardRevision(): void {
-    this.activitiesEventCardRevision += 1;
+  protected activitiesEventCardRevisionForRow(row: AppTypes.ActivityListRow): number {
+    return this.activitiesEventCardRevisionByRowId[this.activityRowIdentity(row)] ?? 0;
+  }
+
+  private bumpActivitiesEventCardRevision(row?: AppTypes.ActivityListRow | string | null): void {
+    if (!row) {
+      return;
+    }
+    const rowId = typeof row === 'string' ? row : this.activityRowIdentity(row);
+    this.activitiesEventCardRevisionByRowId[rowId] = (this.activitiesEventCardRevisionByRowId[rowId] ?? 0) + 1;
   }
 
   private refreshActivitiesRateCards(rowId?: string | null): void {
@@ -2380,38 +2415,65 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   private patchVisibleActivityRowsFromEventSync(sync: ActivitiesEventSyncPayload): void {
+    const patchRow = (row: AppTypes.ActivityListRow): AppTypes.ActivityListRow => {
+      if (row.id !== sync.id) {
+        return row;
+      }
+
+      if (row.type === 'events') {
+        const nextSource = this.buildSyncedEventMenuItem(sync, row.source as EventMenuItem);
+        return {
+          ...row,
+          title: nextSource.title,
+          subtitle: nextSource.shortDescription,
+          detail: nextSource.timeframe,
+          dateIso: nextSource.startAt ?? sync.startAt,
+          distanceKm: nextSource.distanceKm ?? sync.distanceKm,
+          distanceMetersExact: Math.max(0, Math.round((Number(nextSource.distanceKm ?? sync.distanceKm) || 0) * 1000)),
+          unread: nextSource.activity,
+          metricScore: Math.max(0, row.metricScore || sync.activity),
+          isAdmin: nextSource.isAdmin,
+          source: nextSource
+        };
+      }
+
+      if (row.type === 'hosting') {
+        const nextSource = this.buildSyncedHostingMenuItem(sync, row.source as HostingMenuItem);
+        return {
+          ...row,
+          title: nextSource.title,
+          subtitle: nextSource.shortDescription,
+          detail: nextSource.timeframe,
+          dateIso: nextSource.startAt ?? sync.startAt,
+          distanceKm: nextSource.distanceKm ?? sync.distanceKm,
+          distanceMetersExact: Math.max(0, Math.round((Number(nextSource.distanceKm ?? sync.distanceKm) || 0) * 1000)),
+          unread: nextSource.activity,
+          metricScore: Math.max(20 + nextSource.activity, row.metricScore || 0),
+          isAdmin: true,
+          source: nextSource
+        };
+      }
+
+      return row;
+    };
+
+    this.activitiesSmartList?.patchVisibleItem(
+      row => row.id === sync.id && (row.type === 'events' || row.type === 'hosting'),
+      row => patchRow(row)
+    );
+
     for (const row of this.visibleActivityRows) {
       if (row.id !== sync.id) {
         continue;
       }
 
       if (row.type === 'events') {
-        const nextSource = this.buildSyncedEventMenuItem(sync, row.source as EventMenuItem);
-        row.title = nextSource.title;
-        row.subtitle = nextSource.shortDescription;
-        row.detail = nextSource.timeframe;
-        row.dateIso = nextSource.startAt ?? sync.startAt;
-        row.distanceKm = nextSource.distanceKm ?? sync.distanceKm;
-        row.distanceMetersExact = Math.max(0, Math.round((Number(row.distanceKm) || 0) * 1000));
-        row.unread = nextSource.activity;
-        row.metricScore = Math.max(0, row.metricScore || sync.activity);
-        row.isAdmin = nextSource.isAdmin;
-        row.source = nextSource;
+        Object.assign(row, patchRow(row));
         continue;
       }
 
       if (row.type === 'hosting') {
-        const nextSource = this.buildSyncedHostingMenuItem(sync, row.source as HostingMenuItem);
-        row.title = nextSource.title;
-        row.subtitle = nextSource.shortDescription;
-        row.detail = nextSource.timeframe;
-        row.dateIso = nextSource.startAt ?? sync.startAt;
-        row.distanceKm = nextSource.distanceKm ?? sync.distanceKm;
-        row.distanceMetersExact = Math.max(0, Math.round((Number(row.distanceKm) || 0) * 1000));
-        row.unread = nextSource.activity;
-        row.metricScore = Math.max(20 + nextSource.activity, row.metricScore || 0);
-        row.isAdmin = true;
-        row.source = nextSource;
+        Object.assign(row, patchRow(row));
       }
     }
   }

@@ -3462,6 +3462,34 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
     this.cdr.markForCheck();
   }
 
+  public patchVisibleItem(
+    predicate: (item: T, index: number) => boolean,
+    patcher: (item: T, index: number) => T
+  ): boolean {
+    if (this.currentViewMode !== 'list') {
+      return false;
+    }
+    const index = this.items.findIndex(predicate);
+    if (index < 0) {
+      return false;
+    }
+    const currentItem = this.items[index];
+    if (currentItem === undefined) {
+      return false;
+    }
+    const nextItem = patcher(currentItem, index);
+    if (nextItem === currentItem) {
+      return false;
+    }
+    const nextItems = [...this.items];
+    nextItems[index] = nextItem;
+    this.items = nextItems;
+    this.syncGroups();
+    this.emitState();
+    this.cdr.markForCheck();
+    return true;
+  }
+
   private cancelPendingCalendarPreload(): void {
     this.calendarPreloadAbortController?.abort();
     this.calendarPreloadAbortController = null;
