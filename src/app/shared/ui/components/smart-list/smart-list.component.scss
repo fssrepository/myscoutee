@@ -641,7 +641,7 @@
   -ms-overflow-style: none;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-x: contain;
-  touch-action: pan-x;
+  touch-action: pan-x pan-y;
   padding-bottom: calc(0.8rem + env(safe-area-inset-bottom));
 }
 
