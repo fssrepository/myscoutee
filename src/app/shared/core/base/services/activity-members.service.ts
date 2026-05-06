@@ -179,7 +179,8 @@ export class ActivityMembersService extends BaseRouteModeService {
   ): AppTypes.ActivityMemberEntry[] {
     const activeUserId = this.appCtx.activeUserId().trim();
     return entries.map(entry => {
-      const isPendingInvite = entry.status === 'pending' && entry.requestKind === 'invite';
+      const isPendingInvite = entry.status === 'pending'
+        && (entry.requestKind === 'invite' || entry.requestKind === 'waitlist-invite');
       const invitedByUserId = isPendingInvite
         ? (`${entry.invitedByUserId ?? ''}`.trim() || (entry.invitedByActiveUser && activeUserId ? activeUserId : null))
         : null;
@@ -196,7 +197,7 @@ export class ActivityMembersService extends BaseRouteModeService {
     activeUserId: string,
     invitedByUserId: string | null
   ): boolean {
-    if (entry.status !== 'pending' || entry.requestKind !== 'invite') {
+    if (entry.status !== 'pending' || (entry.requestKind !== 'invite' && entry.requestKind !== 'waitlist-invite')) {
       return false;
     }
     return Boolean(invitedByUserId) && invitedByUserId === activeUserId;

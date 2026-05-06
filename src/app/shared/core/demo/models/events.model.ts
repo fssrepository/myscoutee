@@ -85,6 +85,7 @@ export interface DemoEventExploreQuery {
   topic: string;
   limit: number;
   cursor?: string | null;
+  excludedSourceIds?: string[];
 }
 
 export interface DemoEventExploreQueryResult {
@@ -102,6 +103,9 @@ export interface DemoEventActivitiesQuery {
   view: AppTypes.ActivitiesView;
   limit: number;
   cursor?: string | null;
+  anchorDate?: string;
+  rangeStart?: string;
+  rangeEnd?: string;
 }
 
 export interface DemoEventActivitiesQueryResult {

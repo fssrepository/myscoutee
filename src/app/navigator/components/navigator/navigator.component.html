@@ -8,6 +8,9 @@
 @if (profileEditorComponent(); as profileComponent) {
   <ng-container *ngComponentOutlet="profileComponent"></ng-container>
 }
+@if (profileViewPopupComponent(); as profileViewComponent) {
+  <ng-container *ngComponentOutlet="profileViewComponent"></ng-container>
+}
 
 <app-confirmation-dialog></app-confirmation-dialog>
 
@@ -44,4 +47,3 @@
 @if (assetPopupComponent(); as assetComponent) {
   <ng-container *ngComponentOutlet="assetComponent"></ng-container>
 }
-

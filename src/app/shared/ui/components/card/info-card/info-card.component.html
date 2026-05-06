@@ -213,9 +213,15 @@
     }
 
     <div class="ui-info-card__meta">
-      <h4 class="ui-info-card__title">{{ card?.title }}</h4>
+      <h4
+        class="ui-info-card__title"
+        [attr.data-i18n-ignore]="card?.i18nIgnoreContent ? '' : null"
+        >{{ card?.title }}</h4>
       @for (row of visibleMetaRows(); track row) {
-        <p class="ui-info-card__meta-row">{{ row }}</p>
+        <p
+          class="ui-info-card__meta-row"
+          [attr.data-i18n-ignore]="card?.i18nIgnoreContent ? '' : null"
+          >{{ row }}</p>
       }
     </div>
 
@@ -224,16 +230,16 @@
         <button
           type="button"
           class="ui-info-card__menu-trigger experience-action-btn experience-action-menu-trigger"
-          [class.is-open]="menuOpen"
-          [attr.aria-label]="menuOpen ? 'Close card actions' : 'Open card actions'"
+          [class.is-open]="menuTriggerOpen"
+          [attr.aria-label]="menuTriggerOpen ? 'Close card actions' : 'Open card actions'"
           (click)="toggleMenu($event)"
           >
-          <mat-icon>{{ menuOpen ? 'close' : 'more_vert' }}</mat-icon>
+          <mat-icon>{{ menuTriggerOpen ? 'close' : 'more_vert' }}</mat-icon>
           @if ((card?.menuBadgeCount ?? 0) > 0) {
             <span class="ui-info-card__pending-badge card-badge asset-request-badge">{{ card?.menuBadgeCount }}</span>
           }
         </button>
-        @if (menuOpen) {
+        @if (menuOpen && !useSharedMenu) {
           <div
             class="ui-info-card__menu item-action-menu"
             [class.is-open]="menuOpen"
@@ -271,6 +277,7 @@
   @if (card?.description) {
     <p
       class="ui-info-card__description"
+      [attr.data-i18n-ignore]="card?.i18nIgnoreContent ? '' : null"
       [style.--ui-info-card-description-lines]="descriptionLines()"
       >
       {{ card?.description }}
@@ -281,6 +288,7 @@
     <p
       class="ui-info-card__detail-row"
       [class.ui-info-card__detail-row--mono]="detailStyle() === 'mono'"
+      [attr.data-i18n-ignore]="card?.i18nIgnoreContent ? '' : null"
       >
       {{ row }}
     </p>

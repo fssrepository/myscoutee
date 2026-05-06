@@ -1,0 +1,174 @@
+@if (target(); as currentTarget) {
+  <section class="app-popup app-popup-stacked app-popup-super-stacked profile-view-popup-shell">
+    <div class="app-popup-backdrop" (click)="closePopup($event)"></div>
+    <div class="app-popup-panel popup-panel-profile-view popup-panel-full-height" (click)="$event.stopPropagation()">
+      <div class="popup-header profile-view-header">
+        <div class="popup-title profile-view-title">
+          <h2>{{ headerTitle(user()) }}</h2>
+          <p class="popup-subtitle-activities">{{ headerSubtitle(user()) }}</p>
+        </div>
+        <button type="button" class="popup-close" (click)="closePopup($event)" aria-label="Close profile">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+
+      <div class="popup-body profile-view-body">
+        @if (user(); as profile) {
+          <div class="profile-view-top-layout">
+            <section class="profile-view-card-stage">
+              <article
+                class="profile-view-card"
+                [class.has-photo]="!!activePhoto()"
+                [ngClass]="avatarClass(profile)"
+                [style.backgroundImage]="activePhoto() ? 'url(' + activePhoto() + ')' : null"
+                >
+                @if (!activePhoto()) {
+                  <span class="profile-view-card-initials">{{ initials(profile) }}</span>
+                }
+                @if (photos().length > 1) {
+                  <div class="profile-view-card-indicators" aria-hidden="true">
+                    @for (photo of photos(); track trackPhoto($index, photo); let index = $index) {
+                      <span [class.active]="index === activePhotoIndex()"></span>
+                    }
+                  </div>
+                  <div class="profile-view-card-hit-area">
+                    @for (photo of photos(); track trackPhoto($index, photo); let index = $index) {
+                      <button
+                        type="button"
+                        (click)="selectPhoto(index, $event)"
+                        [attr.aria-label]="'Show profile photo ' + (index + 1)"
+                      ></button>
+                    }
+                  </div>
+                }
+                <div class="profile-view-card-overlay">
+                  <h3>{{ displayTitle(profile) }}</h3>
+                  <p>
+                    <mat-icon>location_on</mat-icon>
+                    <span>{{ profile.city || 'City not set yet' }}</span>
+                  </p>
+                  @if (profile.headline || profile.statusText) {
+                    <small>{{ profile.headline || profile.statusText }}</small>
+                  }
+                </div>
+              </article>
+            </section>
+
+            <section class="profile-view-section profile-view-section-basics">
+              <header class="profile-view-section-header">
+                <h3>Basics</h3>
+              </header>
+              <div class="profile-view-grid">
+                @for (row of basicsRows(); track trackRow($index, row)) {
+                  <div class="profile-view-row">
+                    <mat-icon>{{ row.icon }}</mat-icon>
+                    <span>{{ row.label }}</span>
+                    @if (badgeParts(row.label, row.value).length > 1) {
+                      <div class="profile-view-chip-row profile-view-chip-row-field">
+                        @for (item of badgeParts(row.label, row.value); track item) {
+                          <span class="profile-view-chip">{{ item }}</span>
+                        }
+                      </div>
+                    } @else {
+                      <strong>{{ row.value }}</strong>
+                    }
+                  </div>
+                }
+              </div>
+            </section>
+          </div>
+
+          <section class="profile-view-section profile-view-section-about">
+            <header class="profile-view-section-header">
+              <h3>About</h3>
+            </header>
+            <div class="profile-view-list">
+              @for (row of aboutRows(); track trackRow($index, row)) {
+                <div class="profile-view-text-row">
+                  <span>
+                    <mat-icon>{{ row.icon }}</mat-icon>
+                    {{ row.label }}
+                  </span>
+                  <p>{{ row.value }}</p>
+                </div>
+              }
+            </div>
+          </section>
+
+          @for (group of detailGroups(); track trackGroup($index, group)) {
+            <section class="profile-view-section" [ngClass]="detailGroupClass(group.title)">
+              <header class="profile-view-section-header">
+                <h3>{{ group.title }}</h3>
+              </header>
+              <div class="profile-view-list">
+                @for (row of group.rows; track trackRow($index, row)) {
+                  <div class="profile-view-text-row">
+                    <span>
+                      <mat-icon>label</mat-icon>
+                      {{ row.label }}
+                    </span>
+                    @if (detailValueParts(row).length > 1) {
+                      <div class="profile-view-chip-row">
+                        @for (item of detailValueParts(row); track item) {
+                          <span class="profile-view-chip">{{ item }}</span>
+                        }
+                      </div>
+                    } @else {
+                      <p>{{ displayDetailValue(row) }}</p>
+                    }
+                  </div>
+                }
+              </div>
+            </section>
+          }
+
+          <section class="profile-view-section profile-view-section-experience">
+            <header class="profile-view-section-header">
+              <h3>Experience</h3>
+            </header>
+            @if (loadingExperiences()) {
+              <div class="profile-view-inline-loading">
+                <span class="profile-view-spinner" aria-hidden="true"></span>
+                <span>Loading experience</span>
+              </div>
+            } @else if (isExperienceEmpty()) {
+              <div class="profile-view-empty-inline">
+                <mat-icon>work_history</mat-icon>
+                <span>No experience added yet.</span>
+              </div>
+            } @else {
+              <div class="profile-view-experience-table">
+                @for (item of experiences(); track trackExperience($index, item)) {
+                  <article class="profile-view-experience-row" [ngClass]="experienceTypeClass(item.type)">
+                    <span class="profile-view-experience-type">
+                      <mat-icon>{{ experienceTypeIcon(item.type) }}</mat-icon>
+                      <span>{{ item.type }}</span>
+                    </span>
+                    <strong>{{ item.title || 'Untitled experience' }}</strong>
+                    <span>{{ item.org || 'Organization not set' }} · {{ item.city || 'City not set' }}</span>
+                    <time>{{ formattedExperienceDates(item) }}</time>
+                    @if (item.description) {
+                      <span class="profile-view-experience-description">{{ item.description }}</span>
+                    }
+                  </article>
+                }
+              </div>
+            }
+          </section>
+
+        } @else if (loadingUser()) {
+          <div class="profile-view-loading-state">
+            <span class="profile-view-spinner" aria-hidden="true"></span>
+            <strong>Loading profile</strong>
+          </div>
+        } @else {
+          <div class="profile-view-empty-state">
+            <mat-icon>person_search</mat-icon>
+            <strong>Profile unavailable</strong>
+            <span>{{ currentTarget.label || currentTarget.userId }}</span>
+          </div>
+        }
+      </div>
+    </div>
+  </section>
+}

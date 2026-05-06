@@ -7,6 +7,7 @@ import { AfterViewInit, Directive, ElementRef, Input, OnChanges, OnDestroy, Rend
 export class LazyBgImageDirective implements AfterViewInit, OnChanges, OnDestroy {
   @Input() appLazyBgImage: string | null = null;
 
+  private static readonly PRELOAD_ROOT_MARGIN = '1200px 0px';
   private static readonly loadedUrls = new Set<string>();
   private static readonly loadingPromises = new Map<string, Promise<boolean>>();
 
@@ -105,7 +106,7 @@ export class LazyBgImageDirective implements AfterViewInit, OnChanges, OnDestroy
         });
         this.disconnectObserver();
       },
-      { rootMargin: '200px 0px' }
+      { rootMargin: LazyBgImageDirective.PRELOAD_ROOT_MARGIN }
     );
 
     this.observer.observe(this.elementRef.nativeElement);
@@ -156,14 +157,21 @@ export class LazyBgImageDirective implements AfterViewInit, OnChanges, OnDestroy
     const loadingPromise = new Promise<boolean>(resolve => {
       const img = new Image();
       img.onload = () => {
-        LazyBgImageDirective.loadedUrls.add(url);
-        LazyBgImageDirective.loadingPromises.delete(url);
-        resolve(true);
+        const decodePromise = typeof img.decode === 'function'
+          ? img.decode().catch(() => undefined)
+          : Promise.resolve();
+        decodePromise.then(() => {
+          LazyBgImageDirective.loadedUrls.add(url);
+          LazyBgImageDirective.loadingPromises.delete(url);
+          resolve(true);
+        });
       };
       img.onerror = () => {
         LazyBgImageDirective.loadingPromises.delete(url);
         resolve(false);
       };
+      img.decoding = 'async';
+      img.loading = 'eager';
       img.src = url;
     });
 

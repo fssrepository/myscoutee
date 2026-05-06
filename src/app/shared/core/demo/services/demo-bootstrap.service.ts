@@ -11,6 +11,7 @@ import { DemoActivityResourcesRepository } from '../repositories/activity-resour
 import { DemoAssetsRepository } from '../repositories/assets.repository';
 import { DemoChatsRepository } from '../repositories/chats.repository';
 import { DemoEventsRepository } from '../repositories/events.repository';
+import { DemoProfileExperiencesRepository } from '../repositories/profile-experiences.repository';
 import { EVENT_FEEDBACK_TABLE_NAME } from '../models/event-feedback.model';
 import type { DemoEventRecord } from '../models/events.model';
 import { DemoUsersRatingsRepository } from '../repositories/users-ratings.repository';
@@ -90,6 +91,7 @@ export class DemoBootstrapService {
   private readonly activityMembersRepository = inject(DemoActivityMembersRepository);
   private readonly assetsRepository = inject(DemoAssetsRepository);
   private readonly activityResourcesRepository = inject(DemoActivityResourcesRepository);
+  private readonly profileExperiencesRepository = inject(DemoProfileExperiencesRepository);
 
   private bootstrapPromise: Promise<void> | null = null;
   private ready = false;
@@ -181,6 +183,7 @@ export class DemoBootstrapService {
     await this.runBootstrapStep('chats', () => this.chatsRepository.init());
     await this.runBootstrapStep('events', () => this.eventsRepository.init());
     await this.runBootstrapStep('users', () => { this.usersRepository.init(); });
+    this.profileExperiencesRepository.init();
     await this.runBootstrapStep('feedback', () => this.seedEventFeedbackStates());
     await this.runBootstrapStep('ratings', () => this.usersRatingsRepository.init());
     await this.runBootstrapStep('assets', () => this.assetsRepository.init());

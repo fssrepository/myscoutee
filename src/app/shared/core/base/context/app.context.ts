@@ -637,6 +637,7 @@ export class AppContext {
       ...user,
       languages: [...(user.languages ?? [])],
       images: [...(user.images ?? [])],
+      profileDetails: this.cloneProfileDetails(user.profileDetails),
       activities: {
         game: user.activities?.game ?? 0,
         chat: user.activities?.chat ?? 0,
@@ -648,5 +649,20 @@ export class AppContext {
       },
       impressions: user.impressions ? this.cloneImpressions(user.impressions) : undefined
     };
+  }
+
+  private cloneProfileDetails(groups: UserDto['profileDetails']): UserDto['profileDetails'] {
+    if (!groups) {
+      return undefined;
+    }
+    return groups.map(group => ({
+      title: `${group.title ?? ''}`,
+      rows: (group.rows ?? []).map(row => ({
+        label: `${row.label ?? ''}`,
+        value: `${row.value ?? ''}`,
+        privacy: row.privacy,
+        options: [...(row.options ?? [])]
+      }))
+    }));
   }
 }

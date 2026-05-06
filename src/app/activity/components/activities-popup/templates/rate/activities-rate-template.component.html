@@ -2,12 +2,14 @@
   <app-pair-card
     [card]="pairCard"
     (badgeClick)="onBadgeClick()"
+    (profileClick)="onProfileClick($event)"
   ></app-pair-card>
 } @else {
   @if (singleCard) {
     <app-single-card
       [card]="singleCard"
       (badgeClick)="onBadgeClick()"
+      (profileClick)="onProfileClick($event)"
     ></app-single-card>
   }
 }

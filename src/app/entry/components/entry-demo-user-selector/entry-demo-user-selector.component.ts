@@ -4,6 +4,7 @@ import { CommonModule } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatRippleModule } from '@angular/material/core';
 
+import { I18nPipe } from '../../../shared/i18n';
 import {
   DEMO_BOOTSTRAP_PROGRESS_STEPS,
   DEMO_SESSION_PROGRESS_STEPS,
@@ -23,8 +24,9 @@ type DemoUserProgressSegment = {
   imports: [
     CommonModule,
     MatButtonModule,
-    MatRippleModule
-],
+    MatRippleModule,
+    I18nPipe
+  ],
   templateUrl: './entry-demo-user-selector.component.html',
   styleUrl: './entry-demo-user-selector.component.scss'
 })
@@ -73,7 +75,7 @@ export class EntryDemoUserSelectorComponent {
       case 'deleted':
         return 'demo-user-item-deleted';
       default:
-        return '';
+        return this.isNewProfile(user) ? 'demo-user-item-new' : '';
     }
   }
 
@@ -84,8 +86,26 @@ export class EntryDemoUserSelectorComponent {
       case 'deleted':
         return 'Deleted';
       default:
-        return '';
+        return this.isNewProfile(user) ? 'New' : '';
     }
+  }
+
+  protected userGenderLabel(user: DemoUserListItemDto): string {
+    return user.gender === 'woman' ? 'woman' : 'man';
+  }
+
+  protected userAvatarClass(user: DemoUserListItemDto): string {
+    return this.isNewProfile(user) ? 'user-color-setup' : `user-color-${user.gender}`;
+  }
+
+  protected isNewProfile(user: DemoUserListItemDto): boolean {
+    const statusText = `${user.statusText ?? ''}`.trim().toLowerCase();
+    const hasProfileStateSignal = user.completion !== undefined || user.profileFormVersion !== undefined;
+    const completion = Math.max(0, Math.trunc(Number(user.completion) || 0));
+    const profileFormVersion = Math.max(0, Math.trunc(Number(user.profileFormVersion) || 0));
+    return statusText === 'new'
+      || statusText === 'new profile'
+      || (hasProfileStateSignal && completion === 0 && profileFormVersion === 0);
   }
 
   protected selectedUser(): DemoUserListItemDto | null {

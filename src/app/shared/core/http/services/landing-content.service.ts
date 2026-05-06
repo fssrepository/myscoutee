@@ -20,12 +20,41 @@ export class HttpLandingContentService {
       privacy?: Partial<HelpCenterState> | null;
       ideas?: unknown;
     };
+    const lang = this.browserLanguage();
     const response = await this.http
-      .get<LandingContentResponse | null>(`${this.apiBaseUrl}/landing/content`)
+      .get<LandingContentResponse | null>(`${this.apiBaseUrl}/landing/content`, {
+        params: { lang }
+      })
       .toPromise();
     return {
       privacy: this.helpCenter.normalizeExternalState(response?.privacy, 'privacy'),
       ideas: this.ideaPosts.normalizePosts(Array.isArray(response?.ideas) ? response?.ideas : [])
     };
+  }
+
+  private browserLanguage(): string {
+    const languages = this.browserLanguages()
+      .map(value => this.normalizeLanguage(value))
+      .filter(Boolean);
+    return languages.find(lang => lang !== 'en') ?? languages[0] ?? 'en';
+  }
+
+  private browserLanguages(): string[] {
+    if (typeof navigator === 'undefined') {
+      return [];
+    }
+    return Array.isArray(navigator.languages) && navigator.languages.length > 0
+      ? navigator.languages
+      : [navigator.language];
+  }
+
+  private normalizeLanguage(value: string | null | undefined): string {
+    return `${value ?? ''}`
+      .trim()
+      .toLowerCase()
+      .split(',')[0]
+      .split(';')[0]
+      .split('-')[0]
+      .replace(/[^a-z]/g, '');
   }
 }

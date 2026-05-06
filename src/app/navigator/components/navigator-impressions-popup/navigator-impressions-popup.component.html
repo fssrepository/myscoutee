@@ -13,6 +13,13 @@
         </button>
       </div>
       <div class="popup-body popup-body-impressions">
+        @if (!vm.hasAvailableData) {
+          <div class="navigator-impressions-empty-state">
+            <mat-icon>insights</mat-icon>
+            <strong>No available data yet</strong>
+            <span>Impressions appear after real host or attendee activity.</span>
+          </div>
+        } @else {
         <div class="social-proof-grid">
           <div
             class="editor-list-card social-proof-card social-proof-card-modern social-proof-card-host"
@@ -56,14 +63,16 @@
                 <span class="section-line"></span>
               </div>
               @if (vm.hostTraitCards.length > 0) {
-                <div class="personality-trait-carousel" [class.personality-trait-carousel-updated]="vm.pulseFlags.hostChips">
+                <div class="personality-trait-carousel">
                   <div class="personality-trait-pill-strip">
-                    @for (item of vm.hostTraitCards; track item; let index = $index) {
+                    @for (item of vm.hostTraitCards; track item.id; let index = $index) {
                       <button
                         type="button"
                         class="personality-trait-pill"
                         [class.is-active]="index === vm.hostTraitIndex"
                         (click)="selectHostTrait(index)"
+                        matRipple
+                        [matRippleColor]="'rgba(84, 112, 176, 0.16)'"
                         [attr.aria-label]="'Open host trait ' + item.label"
                         >
                         <span class="personality-trait-pill-rank">#{{ index + 1 }}</span>
@@ -159,14 +168,16 @@
                 <span class="section-line"></span>
               </div>
               @if (vm.memberTraitCards.length > 0) {
-                <div class="personality-trait-carousel" [class.personality-trait-carousel-updated]="vm.pulseFlags.memberChips">
+                <div class="personality-trait-carousel">
                   <div class="personality-trait-pill-strip">
-                    @for (item of vm.memberTraitCards; track item; let index = $index) {
+                    @for (item of vm.memberTraitCards; track item.id; let index = $index) {
                       <button
                         type="button"
                         class="personality-trait-pill"
                         [class.is-active]="index === vm.memberTraitIndex"
                         (click)="selectMemberTrait(index)"
+                        matRipple
+                        [matRippleColor]="'rgba(84, 112, 176, 0.16)'"
                         [attr.aria-label]="'Open member trait ' + item.label"
                         >
                         <span class="personality-trait-pill-rank">#{{ index + 1 }}</span>
@@ -225,6 +236,7 @@
             </div>
           </div>
         </div>
+        }
       </div>
     </div>
   </section>

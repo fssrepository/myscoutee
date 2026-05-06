@@ -131,10 +131,18 @@
                           @if (isCheckoutDraftClearing(entry.draft.sourceId)) {
                             <span>Releasing this basket item...</span>
                           } @else if (!canContinueCheckoutDraft(entry)) {
-                            <span>Waiting for admin approval before payment.</span>
+                            <span>{{ checkoutDraftPendingLabel(entry) }}</span>
                           }
                         </div>
                         <div class="event-explore-basket-item__actions">
+                          <button
+                            type="button"
+                            class="event-explore-basket-item__btn"
+                            [disabled]="isCheckoutDraftClearing(entry.draft.sourceId)"
+                            (click)="viewCheckoutDraftEvent(entry, $event)"
+                          >
+                            View
+                          </button>
                           <button
                             type="button"
                             class="event-explore-basket-item__btn"

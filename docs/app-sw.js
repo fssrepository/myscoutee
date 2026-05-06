@@ -1,5 +1,6 @@
 const CACHE_PREFIX = 'myscoutee-runtime';
-const CACHE_VERSION = 'v1';
+const CACHE_VERSION = "build-5fb5d51bfb5d-20260506173029";
+const BUILD_ID = "5fb5d51bfb5d-20260506173029";
 const APP_CACHE = `${CACHE_PREFIX}-app-${CACHE_VERSION}`;
 const API_CACHE = `${CACHE_PREFIX}-api-${CACHE_VERSION}`;
 const MEDIA_CACHE = `${CACHE_PREFIX}-media-${CACHE_VERSION}`;
@@ -13,7 +14,9 @@ const PRECACHE_URLS = [
   './assets/icon/android-chrome-192x192.png',
   './assets/icon/android-chrome-512x512.png',
   './assets/logo/heart.png',
-  './assets/logo/cards_no_edges.png'
+  './assets/logo/cards_no_edges.png',
+  './assets/i18n/en.json',
+  './assets/i18n/hu.json'
 ];
 
 self.addEventListener('install', event => {
@@ -54,6 +57,11 @@ self.addEventListener('fetch', event => {
 
   if (request.mode === 'navigate') {
     event.respondWith(networkFirst(request, APP_CACHE));
+    return;
+  }
+
+  if (isImageRequest(request)) {
+    event.respondWith(cacheFirst(request, MEDIA_CACHE));
     return;
   }
 
@@ -106,6 +114,9 @@ function isStaticAsset(url, request) {
   if (url.pathname.endsWith('/app-sw.js')) {
     return false;
   }
+  if (url.pathname.includes('/assets/i18n/')) {
+    return true;
+  }
   if (request.destination === 'script'
     || request.destination === 'style'
     || request.destination === 'font'
@@ -115,6 +126,10 @@ function isStaticAsset(url, request) {
     return true;
   }
   return url.pathname === '/' || url.pathname.endsWith('/index.html');
+}
+
+function isImageRequest(request) {
+  return request.destination === 'image';
 }
 
 async function networkFirst(request, cacheName) {

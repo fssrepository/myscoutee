@@ -116,6 +116,15 @@
             </span>
             <button
               type="button"
+              class="friends-picker-card-view-btn"
+              [disabled]="isConfirmPending"
+              (click)="viewCandidateProfile(candidate, $event)"
+              aria-label="View profile"
+              >
+              <mat-icon>visibility</mat-icon>
+            </button>
+            <button
+              type="button"
               class="friends-picker-card-add-btn"
               [class.active]="isInviteCandidateSelected(candidate.userId)"
               [class.is-persisted]="isInviteCandidatePersisted(candidate.userId)"

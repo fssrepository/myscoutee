@@ -428,14 +428,15 @@ export class NavigatorContactsService {
   }
 
   private toMemberEntry(contact: NavigatorStoredContact): ActivityMemberEntry {
+    const user = this.usersService.peekCachedUserById(contact.userId);
     return {
       id: contact.id,
       userId: contact.userId,
-      name: contact.name,
-      initials: contact.initials,
-      gender: contact.gender === 'woman' ? 'woman' : 'man',
-      city: contact.city,
-      statusText: contact.headline,
+      name: user?.name ?? contact.name,
+      initials: user?.initials ?? contact.initials,
+      gender: user?.gender ?? (contact.gender === 'woman' ? 'woman' : 'man'),
+      city: user?.city ?? contact.city,
+      statusText: user?.headline ?? user?.statusText ?? contact.headline,
       role: 'Member',
       status: 'accepted',
       pendingSource: null,
@@ -445,7 +446,8 @@ export class NavigatorContactsService {
       actionAtIso: contact.updatedAtIso,
       metWhere: '',
       relevance: 100,
-      avatarUrl: contact.avatarUrl
+      avatarUrl: this.resolveUserAvatarUrl(user) || contact.avatarUrl,
+      profile: user
     };
   }
 

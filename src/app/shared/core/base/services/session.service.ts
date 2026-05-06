@@ -179,7 +179,8 @@ export class SessionService {
             id: parsed.profile.id,
             name: parsed.profile.name,
             email: parsed.profile.email,
-            initials: parsed.profile.initials
+            initials: parsed.profile.initials,
+            imageUrl: `${parsed.profile.imageUrl ?? ''}`.trim() || undefined
           }
         };
       }

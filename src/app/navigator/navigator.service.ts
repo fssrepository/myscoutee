@@ -46,6 +46,18 @@ export interface NavigatorBindings {
   syncHydratedUser?(user: UserDto): void;
 }
 
+export interface NavigatorProfileViewRequest {
+  userId: string;
+  user?: unknown | null;
+  label?: string | null;
+}
+
+export interface NavigatorProfileViewTarget {
+  userId: string;
+  user: UserDto | null;
+  label: string | null;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -73,6 +85,7 @@ export class NavigatorService {
   private readonly privacyConsentCheckKeyRef = signal('');
   private readonly privacyConsentRequiredKeyRef = signal('');
   private readonly profileEditorOpenRef = signal(false);
+  private readonly profileViewTargetRef = signal<NavigatorProfileViewTarget | null>(null);
   private readonly impressionsPopupOpenRef = signal(false);
   private readonly impressionsPopupUserIdRef = signal('');
   private hydrationRequestVersion = 0;
@@ -88,6 +101,8 @@ export class NavigatorService {
 
   readonly bindings = this.bindingsRef.asReadonly();
   readonly profileEditorOpen = this.profileEditorOpenRef.asReadonly();
+  readonly profileViewTarget = this.profileViewTargetRef.asReadonly();
+  readonly profileViewOpen = computed(() => this.profileViewTargetRef() !== null);
   readonly settingsPopup = this.settingsPopupRef.asReadonly();
   readonly privacyConsentRequired = computed(() => this.privacyConsentRequiredKeyRef().length > 0);
   readonly reportUserContext = this.reportUserContextRef.asReadonly();
@@ -201,6 +216,7 @@ export class NavigatorService {
     this.closeSettingsPopup();
     this.closeImpressionsPopup();
     this.closeProfileEditor();
+    this.closeProfileView();
   }
 
   async hydrateUserAfterLogin(userId?: string): Promise<UserDto | null> {
@@ -222,6 +238,17 @@ export class NavigatorService {
     this.syncHydratedUser(loadedUser);
     void this.helpCenterService.preloadAll();
     return loadedUser;
+  }
+
+  private asUserDto(value: unknown): UserDto | null {
+    if (!value || typeof value !== 'object') {
+      return null;
+    }
+    const candidate = value as Partial<UserDto>;
+    if (typeof candidate.id !== 'string' || !candidate.id.trim()) {
+      return null;
+    }
+    return candidate as UserDto;
   }
 
   private shouldPromptDeletedAccountReactivation(user: UserDto): boolean {
@@ -476,6 +503,30 @@ export class NavigatorService {
 
   closeProfileEditor(): void {
     this.profileEditorOpenRef.set(false);
+  }
+
+  openProfileView(request: NavigatorProfileViewRequest): void {
+    const userId = `${request?.userId ?? ''}`.trim();
+    if (!userId) {
+      return;
+    }
+    const embeddedUser = this.asUserDto(request.user);
+    this.profileViewTargetRef.set({
+      userId: embeddedUser?.id?.trim() || userId,
+      user: embeddedUser,
+      label: `${request.label ?? embeddedUser?.name ?? ''}`.trim() || null
+    });
+  }
+
+  openProfileViewById(userId: string, label?: string | null): void {
+    this.openProfileView({
+      userId,
+      label: label ?? null
+    });
+  }
+
+  closeProfileView(): void {
+    this.profileViewTargetRef.set(null);
   }
 
   closeSettingsMenu(): void {

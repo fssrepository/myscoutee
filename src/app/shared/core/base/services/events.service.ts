@@ -70,11 +70,14 @@ export class EventsService extends BaseRouteModeService {
     return this.eventsService.queryEventItemsByFilter(userId, filter, hostingPublicationFilter);
   }
 
-  async queryActivitiesEventPage(query: DemoEventActivitiesQuery): Promise<DemoEventActivitiesQueryResult> {
+  async queryActivitiesEventPage(
+    query: DemoEventActivitiesQuery,
+    signal?: AbortSignal
+  ): Promise<DemoEventActivitiesQueryResult> {
     if (this.isDemoModeEnabled('/activities/events')) {
-      return this.demoEventsService.queryActivitiesEventPage(query);
+      return this.demoEventsService.queryActivitiesEventPage(query, signal);
     }
-    return this.httpEventsService.queryActivitiesEventPage(query);
+    return this.httpEventsService.queryActivitiesEventPage(query, signal);
   }
 
   queryExploreItems(userId: string): Promise<DemoEventRecord[]> {
@@ -149,6 +152,7 @@ export class EventsService extends BaseRouteModeService {
       acceptedPolicyIds?: string[];
       paymentSessionId?: string | null;
       bookingConfirmed?: boolean;
+      pendingReason?: 'approval' | 'waitlist' | null;
     } = {}
   ): Promise<DemoEventRecord | null> {
     return this.eventsService.requestJoin(userId, sourceId, options);

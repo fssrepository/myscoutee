@@ -83,9 +83,11 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
     if (usersTable.ids.length > 0) {
       return usersTable.ids
         .map(id => usersTable.byId[id])
-        .filter((user): user is UserDto => Boolean(user?.id?.trim()));
+        .filter((user): user is UserDto => Boolean(user?.id?.trim()))
+        .filter(user => !DemoUserSeedBuilder.isEmptyOnboardingProfileUserId(user.id));
     }
-    return DemoUserSeedBuilder.buildExpandedDemoUsers(DemoUsersRatingsRepository.DEFAULT_DEMO_USERS_COUNT);
+    return DemoUserSeedBuilder.buildExpandedDemoUsers(DemoUsersRatingsRepository.DEFAULT_DEMO_USERS_COUNT)
+      .filter(user => !DemoUserSeedBuilder.isEmptyOnboardingProfileUserId(user.id));
   }
 
   private collectOwnerIdsNeedingActivityRateSeed(
@@ -144,7 +146,7 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
   queryRatedGameCardUserIds(raterUserId: string, mode: UserGameMode = 'single'): string[] {
     this.init();
     const normalizedRaterId = raterUserId.trim();
-    if (!normalizedRaterId) {
+    if (!normalizedRaterId || DemoUserSeedBuilder.isEmptyOnboardingProfileUserId(normalizedRaterId)) {
       return [];
     }
     const collectPairUsers = mode !== 'single';
@@ -227,13 +229,15 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
       }
     }
 
-    return Array.from(ratedUserIds).filter(id => id.length > 0);
+    return Array.from(ratedUserIds)
+      .filter(id => id.length > 0)
+      .filter(id => !DemoUserSeedBuilder.isEmptyOnboardingProfileUserId(id));
   }
 
   override queryRatedGameCardPairKeys(ownerUserId: string): string[] {
     this.init();
     const normalizedOwnerUserId = ownerUserId.trim();
-    if (!normalizedOwnerUserId) {
+    if (!normalizedOwnerUserId || DemoUserSeedBuilder.isEmptyOnboardingProfileUserId(normalizedOwnerUserId)) {
       return [];
     }
     const pairKeys = new Set(this.queryPendingRatedGameCardPairKeys(normalizedOwnerUserId));
@@ -334,6 +338,9 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
     if (!normalizedUserId) {
       return [];
     }
+    if (DemoUserSeedBuilder.isEmptyOnboardingProfileUserId(normalizedUserId)) {
+      return [];
+    }
     const ratesTable = this.memoryDb.read()[USER_RATES_TABLE_NAME];
     const outboxTable = this.memoryDb.read()[USER_RATES_OUTBOX_TABLE_NAME];
     const recordsById = new Map<string, UserRateRecord>();
@@ -354,7 +361,14 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
     return [...recordsById.values()]
       .filter((record): record is UserRateRecord => Boolean(record))
       .flatMap(record => this.buildDynamicRateItemsForUser(record, normalizedUserId))
+      .filter(item => !this.referencesEmptyOnboardingProfile(item))
       .sort((left, right) => AppUtils.toSortableDate(right.happenedAt) - AppUtils.toSortableDate(left.happenedAt));
+  }
+
+  private referencesEmptyOnboardingProfile(item: RateMenuItem): boolean {
+    return DemoUserSeedBuilder.isEmptyOnboardingProfileUserId(item.userId)
+      || DemoUserSeedBuilder.isEmptyOnboardingProfileUserId(item.secondaryUserId ?? '')
+      || DemoUserSeedBuilder.isEmptyOnboardingProfileUserId(item.bridgeUserId ?? '');
   }
 
   private buildDynamicRateItemsForUser(record: UserRateRecord, normalizedUserId: string): RateMenuItem[] {

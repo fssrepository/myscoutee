@@ -556,7 +556,7 @@
 }
 
 .activities-view-option {
-  border: 0;
+  border: 1px solid transparent;
   background: #fff;
   border-radius: 8px;
   min-height: 32px;
@@ -566,6 +566,11 @@
   gap: 0.34rem;
   color: #1e3658;
   cursor: pointer;
+  transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease, transform 0.16s ease;
+}
+
+.activities-view-option:hover {
+  transform: translateY(-1px);
 }
 
 .activities-view-option .mat-icon {
@@ -580,15 +585,36 @@
 }
 
 .activities-view-picker-panel .activities-view-option.event-visibility-public {
-  background: linear-gradient(0deg, #ffffff, #eef7ff);
+  background: linear-gradient(180deg, #f7fbff 0%, #e8f3ff 100%);
+  border-color: rgba(47, 108, 174, 0.18);
+  color: #2f6cae;
 }
 
 .activities-view-picker-panel .activities-view-option.event-visibility-friends {
-  background: linear-gradient(0deg, #ffffff, #eff8ec);
+  background: linear-gradient(180deg, #f8fcf6 0%, #eaf6e7 100%);
+  border-color: rgba(54, 129, 72, 0.18);
+  color: #368148;
 }
 
 .activities-view-picker-panel .activities-view-option.event-visibility-invitation {
-  background: linear-gradient(0deg, #ffffff, #fff4e8);
+  background: linear-gradient(180deg, #fffaf4 0%, #ffeddf 100%);
+  border-color: rgba(185, 113, 45, 0.2);
+  color: #b9712d;
+}
+
+.activities-view-picker-panel .activities-view-option.event-visibility-public:hover {
+  background: linear-gradient(180deg, #eef7ff 0%, #dcebff 100%);
+  border-color: rgba(47, 108, 174, 0.3);
+}
+
+.activities-view-picker-panel .activities-view-option.event-visibility-friends:hover {
+  background: linear-gradient(180deg, #f0f9ed 0%, #deefda 100%);
+  border-color: rgba(54, 129, 72, 0.3);
+}
+
+.activities-view-picker-panel .activities-view-option.event-visibility-invitation:hover {
+  background: linear-gradient(180deg, #fff3e6 0%, #ffe2cb 100%);
+  border-color: rgba(185, 113, 45, 0.32);
 }
 
 .event-visibility-trigger.event-editor-readonly-control,

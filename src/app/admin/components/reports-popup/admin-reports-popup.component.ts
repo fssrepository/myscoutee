@@ -18,8 +18,11 @@ import type { ChatMenuItem } from '../../../shared/core/base/interfaces/activity
 import type { DemoUser } from '../../../shared/core/base/interfaces/user.interface';
 import { toActivityChatRow } from '../../../shared/core/base/converters/activities-chat.converter';
 import type { ActivityListRow } from '../../../shared/core/base/models';
+import { resolveCurrentRouteDelayMs } from '../../../shared/core/base/services/route-delay.service';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
 import { AdminService, type AdminReportedUserDto, type AdminReportDto } from '../../admin.service';
+import { AdminChatReviewPopupComponent } from '../chat-review-popup/admin-chat-review-popup.component';
+import { AdminItemPreviewPopupComponent } from '../item-preview-popup/admin-item-preview-popup.component';
 
 interface AdminReportListItem {
   id: string;
@@ -45,7 +48,7 @@ interface AdminBlockedUserListFilters {
 @Component({
   selector: 'app-admin-reports-popup',
   standalone: true,
-  imports: [CommonModule, MatIconModule, SmartListComponent],
+  imports: [CommonModule, MatIconModule, SmartListComponent, AdminChatReviewPopupComponent, AdminItemPreviewPopupComponent],
   templateUrl: './admin-reports-popup.component.html',
   styleUrl: '../admin-popups.scss'
 })
@@ -82,7 +85,8 @@ export class AdminReportsPopupComponent {
   protected readonly reportsSmartListConfig: SmartListConfig<AdminReportListItem, AdminReportListFilters> = {
     pageSize: 10,
     initialPageSize: 20,
-    loadingDelayMs: 0,
+    loadingDelayMs: resolveCurrentRouteDelayMs('/admin/reports', 1500),
+    loadingWindowMs: 3000,
     defaultView: 'day',
     emptyLabel: 'No reports',
     emptyDescription: 'No moderation reports are waiting for review.',
@@ -111,7 +115,8 @@ export class AdminReportsPopupComponent {
   protected readonly blockedUsersSmartListConfig: SmartListConfig<AdminBlockedUserListItem, AdminBlockedUserListFilters> = {
     pageSize: 12,
     initialPageSize: 12,
-    loadingDelayMs: 0,
+    loadingDelayMs: resolveCurrentRouteDelayMs('/admin/reports/blocked-users', 1500),
+    loadingWindowMs: 3000,
     defaultView: 'day',
     emptyLabel: 'No blocked users',
     emptyDescription: 'No profiles are currently blocked by moderation.',

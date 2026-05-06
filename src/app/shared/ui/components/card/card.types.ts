@@ -1,7 +1,7 @@
 export type CardPresentation = 'list' | 'fullscreen';
 export type CardRenderState = 'default' | 'active' | 'leaving';
 export type CardBadgeLayout = 'floating' | 'between' | 'pair-overlap';
-export type InfoCardSurfaceTone = 'default' | 'draft' | 'full' | 'pending' | 'series';
+export type InfoCardSurfaceTone = 'default' | 'draft' | 'full' | 'pending' | 'series' | 'waitlist';
 export type InfoCardOverlayVariant = 'avatar' | 'badge' | 'toggle';
 export type InfoCardOverlayLayout = 'default' | 'avatar-metric' | 'badge-with-leading-accessory';
 export type InfoCardOverlayTone =
@@ -62,6 +62,12 @@ export interface CardImageSlide {
   placeholderLabel?: string | null;
 }
 
+export interface CardProfileViewData {
+  userId: string;
+  user?: unknown | null;
+  label?: string | null;
+}
+
 export interface PairCardSlot {
   key: string;
   label: string;
@@ -69,6 +75,7 @@ export interface PairCardSlot {
   slides: readonly CardImageSlide[];
   statusBadgeLabel?: string | null;
   collapsed?: boolean;
+  profileView?: CardProfileViewData | null;
 }
 
 export interface SingleCardData {
@@ -76,6 +83,7 @@ export interface SingleCardData {
   groupLabel?: string | null;
   slides: readonly CardImageSlide[];
   statusBadgeLabel?: string | null;
+  profileView?: CardProfileViewData | null;
   stackClasses?: readonly string[];
   badge?: CardBadgeConfig | null;
   presentation?: CardPresentation;
@@ -154,6 +162,7 @@ export interface InfoCardData {
   descriptionLines?: number | null;
   detailRows?: readonly string[];
   detailStyle?: InfoCardDetailStyle | null;
+  i18nIgnoreContent?: boolean;
   footerChips?: readonly InfoCardFooterChip[];
   surfaceTone?: InfoCardSurfaceTone | null;
   leadingIcon?: InfoCardLeadingIconConfig | null;
@@ -176,4 +185,22 @@ export interface InfoCardMenuActionEvent {
   actionId: string;
   action: InfoCardMenuAction;
   card: InfoCardData;
+}
+
+export interface InfoCardMenuTriggerRect {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+  width: number;
+  height: number;
+}
+
+export interface InfoCardMenuRequestEvent {
+  rowId: string;
+  card: InfoCardData;
+  actions: readonly InfoCardMenuAction[];
+  triggerRect: InfoCardMenuTriggerRect | null;
+  openUp: boolean;
+  closeTrigger: () => void;
 }

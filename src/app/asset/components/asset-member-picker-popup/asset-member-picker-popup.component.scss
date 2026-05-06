@@ -296,6 +296,23 @@
   cursor: pointer;
 }
 
+.asset-member-picker-popup-shell .friends-picker-card-view-btn {
+  position: absolute;
+  right: 0.48rem;
+  bottom: 0.48rem;
+  z-index: 2;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid rgba(41, 99, 143, 0.24);
+  background: rgba(232, 246, 251, 0.94);
+  color: #226d83;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
 .asset-member-picker-popup-shell .friends-picker-card-add-btn .mat-icon {
   width: 18px;
   height: 18px;
@@ -304,6 +321,21 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+}
+
+.asset-member-picker-popup-shell .friends-picker-card-view-btn .mat-icon {
+  width: 18px;
+  height: 18px;
+  font-size: 18px;
+  line-height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.asset-member-picker-popup-shell .friends-picker-card-view-btn:disabled {
+  cursor: wait;
+  opacity: 0.82;
 }
 
 .asset-member-picker-popup-shell .friends-picker-card-add-btn.active {

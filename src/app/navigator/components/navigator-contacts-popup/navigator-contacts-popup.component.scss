@@ -260,6 +260,9 @@
 .navigator-contact-menu-anchor {
   position: relative;
   flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.36rem;
 }
 
 .experience-action-menu-trigger {
@@ -280,6 +283,14 @@
   height: 18px;
   font-size: 18px;
   line-height: 18px;
+}
+
+.navigator-contact-profile-trigger {
+  width: 36px;
+  height: 36px;
+  border: 1px solid rgba(41, 99, 143, 0.24);
+  background: rgba(232, 246, 251, 0.92);
+  color: #226d83;
 }
 
 .experience-action-menu-trigger.is-open {

@@ -12,6 +12,12 @@ export class DemoUserImpressionsBuilder {
   private static readonly personalityTraitCatalog = APP_STATIC_DATA.personalityTraitCatalog;
 
   static withResolvedImpressions(user: UserDto): UserDto {
+    if (!this.hasImpressionActivity(user) && !this.hasImpressionsData(user.impressions)) {
+      return {
+        ...user,
+        impressions: undefined
+      };
+    }
     const defaults = this.buildDefaultImpressions(user);
     const current = user.impressions ?? {};
     return {
@@ -24,6 +30,19 @@ export class DemoUserImpressionsBuilder {
   }
 
   static buildSimulatedRealtimeCounters(user: UserDto, cursor: number): UserRealtimeCountersDto {
+    if (!this.hasImpressionActivity(user) && !this.hasImpressionsData(user.impressions)) {
+      return {
+        game: 0,
+        chat: 0,
+        invitations: 0,
+        events: 0,
+        hosting: 0,
+        tickets: 0,
+        feedback: 0,
+        impressionsHostChanged: false,
+        impressionsMemberChanged: false
+      };
+    }
     const buildPendingTotal = (
       seedSuffix: string,
       stepMax: number,
@@ -111,6 +130,49 @@ export class DemoUserImpressionsBuilder {
       host,
       member
     };
+  }
+
+  static hasImpressionsData(impressions: UserImpressionsDto | undefined): boolean {
+    return this.hasImpressionsSectionData(impressions?.host)
+      || this.hasImpressionsSectionData(impressions?.member);
+  }
+
+  private static hasImpressionActivity(user: UserDto): boolean {
+    const activities = user.activities ?? {};
+    return [
+      activities.chat,
+      activities.invitations,
+      activities.events,
+      activities.hosting,
+      activities.tickets,
+      activities.feedback
+    ].some(value => Number.isFinite(value) && Math.trunc(Number(value)) > 0);
+  }
+
+  private static hasImpressionsSectionData(section: UserImpressionsSectionDto | undefined): boolean {
+    if (!section) {
+      return false;
+    }
+    const hasPositiveMetric = [
+      section.averageRating,
+      section.peopleMet,
+      section.totalEvents,
+      section.repeatCount,
+      section.noShowCount
+    ].some(value => Number.isFinite(value) && Number(value) > 0);
+    const hasBadges = [
+      section.vibeBadges,
+      section.personalityBadges,
+      section.categoryBadges
+    ].some(items => (items ?? []).some(item => item.trim().length > 0));
+    const hasTraits = (section.personalityTraits ?? []).some(trait =>
+      `${trait.id ?? trait.label ?? ''}`.trim().length > 0
+      && (
+        (Number.isFinite(trait.percent) && Number(trait.percent) > 0)
+        || (Number.isFinite(trait.evidenceCount) && Number(trait.evidenceCount) > 0)
+      )
+    );
+    return hasPositiveMetric || hasBadges || hasTraits;
   }
 
   static seededMetric(

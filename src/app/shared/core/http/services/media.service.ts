@@ -48,13 +48,14 @@ export class HttpMediaService {
       const response = await this.http
         .post<UploadResponse | null>(`${this.apiBaseUrl}/media/images`, formData)
         .toPromise();
-      const imageUrl =
+      const imageUrl = this.normalizeReturnedMediaUrl(
         (typeof response?.imageUrl === 'string' && response.imageUrl.trim().length > 0
           ? response.imageUrl.trim()
           : null)
         ?? (typeof response?.url === 'string' && response.url.trim().length > 0
           ? response.url.trim()
-          : null);
+          : null)
+      );
       return {
         uploaded: response?.uploaded !== false && imageUrl !== null,
         imageUrl
@@ -95,13 +96,14 @@ export class HttpMediaService {
       const response = await this.http
         .post<UploadResponse | null>(`${this.apiBaseUrl}/media/audio`, formData)
         .toPromise();
-      const audioUrl =
+      const audioUrl = this.normalizeReturnedMediaUrl(
         (typeof response?.audioUrl === 'string' && response.audioUrl.trim().length > 0
           ? response.audioUrl.trim()
           : null)
         ?? (typeof response?.url === 'string' && response.url.trim().length > 0
           ? response.url.trim()
-          : null);
+          : null)
+      );
       return {
         uploaded: response?.uploaded !== false && audioUrl !== null,
         audioUrl
@@ -112,5 +114,23 @@ export class HttpMediaService {
         audioUrl: null
       };
     }
+  }
+
+  private normalizeReturnedMediaUrl(value: string | null): string | null {
+    const url = `${value ?? ''}`.trim();
+    if (!url) {
+      return null;
+    }
+    if (/^(?:https?:|data:|blob:|indexeddb:)/i.test(url) || url.startsWith('/api/')) {
+      return url;
+    }
+    const baseUrl = this.apiBaseUrl.replace(/\/+$/, '');
+    if (url.startsWith('/media/')) {
+      return `${baseUrl}${url}`;
+    }
+    if (url.startsWith('media/')) {
+      return `${baseUrl}/${url}`;
+    }
+    return url;
   }
 }

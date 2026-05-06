@@ -201,6 +201,16 @@
   scroll-snap-type: none;
 }
 
+.smart-list--list.smart-list--snap-none .smart-list__item-shell,
+:host ::ng-deep .smart-list--list.smart-list--snap-none .activities-row-item,
+:host ::ng-deep .smart-list--list.smart-list--snap-none .asset-item-card,
+:host ::ng-deep .smart-list--list.smart-list--snap-none .activities-card,
+:host ::ng-deep .smart-list--list.smart-list--snap-none .event-explore-card,
+:host ::ng-deep .smart-list--list.smart-list--snap-none .experience-item-card {
+  scroll-snap-align: none;
+  scroll-snap-stop: normal;
+}
+
 @media (max-width: 760px) {
   .smart-list--calendar.smart-list--month {
     padding-bottom: 0;
@@ -639,18 +649,26 @@
   scroll-behavior: smooth;
   scrollbar-width: none;
   -ms-overflow-style: none;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  touch-action: pan-x pan-y;
   padding-bottom: calc(0.8rem + env(safe-area-inset-bottom));
 }
 
 .smart-list--calendar.smart-list--week {
   overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x pan-y;
   overscroll-behavior-y: contain;
   padding-bottom: 0;
 }
 
 .smart-list--calendar.smart-list--month {
   overflow-y: clip;
+}
+
+.smart-list--calendar.smart-list--calendar-touching {
+  scroll-snap-type: none;
+  scroll-behavior: auto;
 }
 
 .smart-list--calendar::-webkit-scrollbar {
@@ -764,9 +782,15 @@
   height: 100%;
   scroll-snap-align: start;
   scroll-snap-stop: always;
+  touch-action: pan-x pan-y;
   padding-right: 0;
   padding-bottom: 0.48rem;
   box-sizing: border-box;
+}
+
+.smart-list--calendar-touching .smart-list__calendar-page {
+  scroll-snap-align: none;
+  scroll-snap-stop: normal;
 }
 
 .smart-list__calendar-page--month {
@@ -905,6 +929,7 @@
   overflow: hidden;
   text-overflow: clip;
   cursor: pointer;
+  touch-action: pan-x pan-y;
 }
 
 .smart-list__calendar-badge.calendar-badge-tone-1 {
@@ -975,6 +1000,7 @@
   grid-template-rows: auto auto;
   gap: 0;
   min-height: calc((var(--week-slot-count) * var(--week-slot-h)) + 34px);
+  touch-action: pan-x pan-y;
 }
 
 .smart-list__week-board-corner {

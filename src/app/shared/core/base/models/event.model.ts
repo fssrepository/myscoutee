@@ -32,6 +32,7 @@ export interface EventCheckoutSelection {
   currency: string;
   paymentSessionId?: string | null;
   bookingConfirmed?: boolean;
+  pendingReason?: 'approval' | 'waitlist' | null;
 }
 
 export interface EventCheckoutSession {

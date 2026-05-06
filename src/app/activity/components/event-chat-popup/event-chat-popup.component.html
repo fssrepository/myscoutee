@@ -319,8 +319,8 @@
     [class.chat-message-fresh]="isFreshMessage(message.id)"
     [class.chat-message-pending]="message.deliveryState === 'pending'"
     [class.chat-message-timed-out]="message.deliveryState === 'timed-out'"
-    [class.chat-message-selected]="selectedMessageId === message.id"
-    [class.chat-message-highlighted]="highlightedMessageId === message.id"
+    [class.chat-message-selected]="selectedMessageId && selectedMessageId === message.id"
+    [class.chat-message-highlighted]="highlightedMessageId && highlightedMessageId === message.id"
     [class.chat-message-deleted]="message.deletedAtIso"
     (click)="selectMessage(message, $event)"
     (contextmenu)="openMessageActionMenu(message, $event)"
@@ -355,7 +355,11 @@
     <div class="chat-bubble">
       @if (!message.deletedAtIso) {
         <span class="chat-sender-avatar" [class]="'user-color-' + message.senderAvatar.gender">
-          {{ message.senderAvatar.initials }}
+          @if (message.senderAvatar.imageUrl) {
+            <img [src]="message.senderAvatar.imageUrl" [alt]="message.sender" loading="lazy" decoding="async" />
+          } @else {
+            {{ message.senderAvatar.initials }}
+          }
         </span>
       }
       <div class="chat-message-content">
@@ -489,30 +493,30 @@
           }
         </button>
       }
-      @if (selectedMessageId === message.id && !message.deletedAtIso) {
+      @if (message.id && selectedMessageId === message.id && !message.deletedAtIso) {
         <div class="chat-message-tools" [class.chat-message-tools-down]="selectedMessageToolsDown" (click)="$event.stopPropagation()">
           <button type="button" (click)="setReplyTarget(message, $event)" aria-label="Reply">
             <mat-icon>reply</mat-icon>
           </button>
           <button
             type="button"
-            [class.chat-tool-btn-open]="quickReactionMessageId === message.id || emojiPickerMessageId === message.id"
+            [class.chat-tool-btn-open]="(quickReactionMessageId && quickReactionMessageId === message.id) || (emojiPickerMessageId && emojiPickerMessageId === message.id)"
             (click)="toggleQuickReactions(message, $event)"
             aria-label="React"
             >
-            <mat-icon>{{ quickReactionMessageId === message.id || emojiPickerMessageId === message.id ? 'add_reaction' : 'mood' }}</mat-icon>
+            <mat-icon>{{ (quickReactionMessageId && quickReactionMessageId === message.id) || (emojiPickerMessageId && emojiPickerMessageId === message.id) ? 'add_reaction' : 'mood' }}</mat-icon>
           </button>
           <button
             type="button"
-            [class.chat-tool-btn-open]="messageActionMenuId === message.id"
+            [class.chat-tool-btn-open]="messageActionMenuId && messageActionMenuId === message.id"
             (click)="openMessageActionMenu(message, $event)"
             aria-label="More message actions"
             >
-            <mat-icon>{{ messageActionMenuId === message.id ? 'close' : 'more_vert' }}</mat-icon>
+            <mat-icon>{{ messageActionMenuId && messageActionMenuId === message.id ? 'close' : 'more_vert' }}</mat-icon>
           </button>
         </div>
       }
-      @if (quickReactionMessageId === message.id) {
+      @if (message.id && quickReactionMessageId === message.id) {
         <div
           class="chat-quick-reactions"
           [class.chat-quick-reactions-down]="quickReactionOpenDown"
@@ -527,7 +531,7 @@
           </button>
         </div>
       }
-      @if (messageActionMenuId === message.id) {
+      @if (message.id && messageActionMenuId === message.id) {
         <div
           class="chat-message-action-menu"
           [class.chat-message-action-menu-up]="messageActionMenuOpenUp"
@@ -543,12 +547,12 @@
             <button type="button" (click)="unsendMessage(message, $event)">Unsend</button>
           }
           <button type="button" (click)="togglePinMessage(message, $event)">{{ message.pinnedAtIso ? 'Unpin' : 'Pin' }}</button>
-          @if (canReportMessage()) {
+          @if (canReportMessage(message)) {
             <button type="button" (click)="reportMessage(message, $event)">Report</button>
           }
         </div>
       }
-      @if (!message.deletedAtIso && visibleReadReceiptsByMessageId[message.id]; as visibleReaders) {
+      @if (message.id && !message.deletedAtIso && visibleReadReceiptsByMessageId[message.id]; as visibleReaders) {
         @if (visibleReaders.length > 0) {
           <div class="chat-readers">
             @for (reader of visibleReaders; track trackByChatReader($index, reader)) {
@@ -557,7 +561,11 @@
                 [class]="'user-color-' + reader.gender"
                 [class.chat-reader-fresh]="isFreshRead(message.id, reader.id)"
                 >
-                {{ reader.initials }}
+                @if (reader.imageUrl) {
+                  <img [src]="reader.imageUrl" [alt]="reader.initials" loading="lazy" decoding="async" />
+                } @else {
+                  {{ reader.initials }}
+                }
               </span>
             }
           </div>
@@ -681,7 +689,13 @@
       <div class="chat-pinned-list">
         @for (message of pinnedMessages(); track message.id) {
           <button type="button" class="chat-pinned-message" (click)="selectPinnedMessage(message)">
-            <span class="chat-sender-avatar" [class]="'user-color-' + message.senderAvatar.gender">{{ message.senderAvatar.initials }}</span>
+            <span class="chat-sender-avatar" [class]="'user-color-' + message.senderAvatar.gender">
+              @if (message.senderAvatar.imageUrl) {
+                <img [src]="message.senderAvatar.imageUrl" [alt]="message.sender" loading="lazy" decoding="async" />
+              } @else {
+                {{ message.senderAvatar.initials }}
+              }
+            </span>
             <span class="chat-pinned-message-content">
               <span class="chat-meta-row">
                 <strong class="chat-sender-name">{{ message.sender }}</strong>
@@ -719,7 +733,13 @@
             @if (message.readBy.length > 0) {
               <span class="chat-readers chat-pinned-readers">
                 @for (reader of message.readBy; track trackByChatReader($index, reader)) {
-                  <span class="chat-reader" [class]="'user-color-' + reader.gender">{{ reader.initials }}</span>
+                  <span class="chat-reader" [class]="'user-color-' + reader.gender">
+                    @if (reader.imageUrl) {
+                      <img [src]="reader.imageUrl" [alt]="reader.initials" loading="lazy" decoding="async" />
+                    } @else {
+                      {{ reader.initials }}
+                    }
+                  </span>
                 }
               </span>
             }
