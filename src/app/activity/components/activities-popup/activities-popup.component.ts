@@ -60,6 +60,10 @@ import { EventCheckoutDraftService, type EventCheckoutDraft } from '../../../sha
 import { NavigatorService } from '../../../navigator';
 import { EventChatPopupComponent } from '../event-chat-popup/event-chat-popup.component';
 import { EventExplorePopupComponent } from '../event-explore-popup/event-explore-popup.component';
+import {
+  ActivitiesEventActionMenuComponent,
+  type ActivitiesEventActionMenuSelectedEvent
+} from './activities-event-action-menu.component';
 import { ActivitiesPopupToolbarController } from './activities-popup-toolbar.controller';
 import {
   ActivitiesChatTemplateComponent,
@@ -122,6 +126,7 @@ interface ActivitiesEventScopeOption {
     MatSelectModule,
     SmartListComponent,
     ActivitiesEventTemplateComponent,
+    ActivitiesEventActionMenuComponent,
     ActivitiesChatTemplateComponent,
     ActivitiesRateTemplateComponent,
     EventChatPopupComponent,
@@ -286,6 +291,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   @ViewChild('activitiesSmartList')
   protected activitiesSmartList?: SmartListComponent<AppTypes.ActivityListRow, ActivitiesSmartListFilters>;
+  @ViewChild(ActivitiesEventActionMenuComponent)
+  private activityEventActionMenu?: ActivitiesEventActionMenuComponent;
 
   // ── Static data ───────────────────────────────────────────────────────────
   protected readonly activityRatingScale   = APP_STATIC_DATA.activityRatingScale;
@@ -422,16 +429,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
     title: string;
     openUp: boolean;
   } | null = null;
-  protected activityEventActionMenu: {
-    row: AppTypes.ActivityListRow;
-    card: InfoCardData;
-    title: string;
-    actions: readonly InfoCardMenuAction[];
-    openUp: boolean;
-    desktopLeft: number | null;
-    desktopTop: number | null;
-    closeTrigger: () => void;
-  } | null = null;
 
   // ── Scroll / sticky ───────────────────────────────────────────────────────
   protected activitiesListScrollable  = true;
@@ -549,80 +546,20 @@ export class ActivitiesPopupComponent implements OnDestroy {
     row: AppTypes.ActivityListRow,
     event: InfoCardMenuRequestEvent
   ): void {
-    if (this.activityEventActionMenu?.card.rowId === event.card.rowId) {
-      this.activityEventActionMenu = null;
-      this.cdr.markForCheck();
-      return;
-    }
-    const desktopPosition = this.resolveActivityEventActionMenuDesktopPosition(event);
-    this.activityEventActionMenu = {
-      row,
-      card: event.card,
-      title: this.resolveActivityEventMobileActionMenuTitle(event.card),
-      actions: event.actions,
-      openUp: event.openUp,
-      desktopLeft: desktopPosition.left,
-      desktopTop: desktopPosition.top,
-      closeTrigger: event.closeTrigger
-    };
-    this.cdr.markForCheck();
+    this.activityEventActionMenu?.open(row, event, this.isMobileView);
   }
 
   protected closeActivityEventMobileActionMenu(): void {
-    if (!this.activityEventActionMenu) {
-      return;
-    }
-    const actionMenu = this.activityEventActionMenu;
-    this.activityEventActionMenu = null;
-    actionMenu.closeTrigger();
-    this.cdr.markForCheck();
+    this.activityEventActionMenu?.close();
   }
 
-  protected onActivityEventMobileActionSelected(action: InfoCardMenuAction, event: Event): void {
-    event.preventDefault();
-    event.stopPropagation();
-    const actionMenu = this.activityEventActionMenu;
-    if (!actionMenu) {
-      return;
-    }
-    this.activityEventActionMenu = null;
-    actionMenu.closeTrigger();
-    this.onActivityEventInfoCardMenuAction(actionMenu.row, {
-      rowId: actionMenu.card.rowId,
-      actionId: action.id,
-      action,
-      card: actionMenu.card
+  protected onActivityEventActionMenuSelected(event: ActivitiesEventActionMenuSelectedEvent): void {
+    this.onActivityEventInfoCardMenuAction(event.row, {
+      rowId: event.card.rowId,
+      actionId: event.action.id,
+      action: event.action,
+      card: event.card
     });
-    this.cdr.markForCheck();
-  }
-
-  private resolveActivityEventMobileActionMenuTitle(card: InfoCardData): string {
-    if (card.menuTitle === null) {
-      return '';
-    }
-    return `${card.menuTitle ?? card.title ?? ''}`.trim();
-  }
-
-  private resolveActivityEventActionMenuDesktopPosition(event: InfoCardMenuRequestEvent): {
-    left: number | null;
-    top: number | null;
-  } {
-    if (this.isMobileView || !event.triggerRect || typeof window === 'undefined') {
-      return { left: null, top: null };
-    }
-    const menuWidth = 220;
-    const estimatedMenuHeight = Math.min(320, 24 + event.actions.length * 38 + (event.card.menuTitle === null ? 0 : 42));
-    const margin = 8;
-    const viewportWidth = window.innerWidth || document.documentElement.clientWidth;
-    const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
-    const left = Math.min(
-      Math.max(margin, event.triggerRect.right - menuWidth),
-      Math.max(margin, viewportWidth - menuWidth - margin)
-    );
-    const top = event.openUp
-      ? Math.max(margin, event.triggerRect.top - estimatedMenuHeight - margin)
-      : Math.min(event.triggerRect.bottom + margin, Math.max(margin, viewportHeight - estimatedMenuHeight - margin));
-    return { left, top };
   }
 
   protected openProfileView(profileView: CardProfileViewData): void {
@@ -795,7 +732,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   private resetActivitiesStateForOpen(): void {
     this.inlineItemActionMenu = null;
-    this.activityEventActionMenu = null;
+    this.activityEventActionMenu?.close();
     this.visibleActivityRows = [];
     this.visibleActivityRowsSource = null;
     this.activitiesStickyValue = '';
@@ -2175,11 +2112,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       this.inlineItemActionMenu = null;
       this.cdr.markForCheck();
     }
-    if (this.activityEventActionMenu) {
-      this.activityEventActionMenu.closeTrigger();
-      this.activityEventActionMenu = null;
-      this.cdr.markForCheck();
-    }
+    this.activityEventActionMenu?.close();
     if (!(target instanceof Element)) {
       return;
     }

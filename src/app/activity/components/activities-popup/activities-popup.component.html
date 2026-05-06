@@ -623,35 +623,9 @@
             ></app-activities-rate-template>
           </ng-template>
         </div><!-- /activities-popup -->
-        @if (activityEventActionMenu; as actionMenu) {
-          <div
-            class="item-action-menu is-open activities-event-action-menu"
-            [class.item-action-menu-mobile]="isMobileView"
-            [class.item-action-menu-desktop]="!isMobileView"
-            [class.is-open-up]="!isMobileView && actionMenu.openUp"
-            [style.left.px]="!isMobileView ? actionMenu.desktopLeft : null"
-            [style.top.px]="!isMobileView ? actionMenu.desktopTop : null"
-            [style.bottom]="!isMobileView ? 'auto' : null"
-            (click)="$event.stopPropagation()"
-          >
-            @if (actionMenu.title) {
-              <div class="item-action-menu-title">{{ actionMenu.title }}</div>
-            }
-            @for (action of actionMenu.actions; track action.id) {
-              <button
-                type="button"
-                class="item-action-menu-btn"
-                [class.item-action-menu-btn-publish]="action.tone === 'accent'"
-                [class.item-action-menu-btn-warning]="action.tone === 'warning'"
-                [class.item-action-menu-btn-destructive]="action.tone === 'destructive'"
-                (click)="onActivityEventMobileActionSelected(action, $event)"
-              >
-                <mat-icon>{{ action.icon }}</mat-icon>
-                <span>{{ action.label }}</span>
-              </button>
-            }
-          </div>
-        }
+        <app-activities-event-action-menu
+          (actionSelect)="onActivityEventActionMenuSelected($event)"
+        ></app-activities-event-action-menu>
       </div><!-- /popup-body -->
     </div><!-- /app-popup-panel -->
     <app-event-chat-popup></app-event-chat-popup>
