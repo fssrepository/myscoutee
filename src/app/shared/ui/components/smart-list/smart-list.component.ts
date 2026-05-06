@@ -123,7 +123,6 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   private static readonly HOSTED_FULLSCREEN_PAGE_CURL_DURATION_MS = 420;
   private static readonly LIST_SNAP_SETTLE_DELAY_MS = 250;
   private static readonly LIST_SNAP_SETTLE_GUARD_MS = 280;
-  private static readonly LIST_TOUCH_SNAP_SETTLE_SUPPRESS_MS = 700;
   private static readonly CALENDAR_SCROLL_END_DEBOUNCE_MS = 96;
   private static readonly CALENDAR_SCROLL_STABLE_DELAY_MS = 64;
   private static readonly CALENDAR_SCROLL_SETTLE_TOLERANCE_PX = 1;
@@ -250,11 +249,9 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
   protected isTouchingSurface = false;
   private touchStartScrollSnapType: string | null = null;
-  private listTouchSnapSettleSuppressedUntilMs = 0;
 
   protected onSurfaceTouchStart(): void {
     this.isTouchingSurface = true;
-    this.listTouchSnapSettleSuppressedUntilMs = Number.POSITIVE_INFINITY;
     this.cdr.markForCheck();
 
     this.clearListSnapSettleTimers();
@@ -289,9 +286,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     this.touchStartScrollSnapType = null;
 
     if (this.currentViewMode === 'list') {
-      this.listTouchSnapSettleSuppressedUntilMs =
-        performance.now() + SmartListComponent.LIST_TOUCH_SNAP_SETTLE_SUPPRESS_MS;
-      this.clearListSnapSettleTimer();
+      this.scheduleListSnapSettle(scrollElement);
       return;
     }
 
@@ -2415,15 +2410,10 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     return !this.suppressListSnapSettle
       && !this.suppressListSnapNearEnd
       && !this.isTouchingSurface
-      && !this.isListTouchSnapSettleSuppressed()
       && this.currentViewMode === 'list'
       && this.resolvedListLayout() === 'card-grid'
       && this.resolvedSnapMode() !== 'none'
       && scrollElement === this.scrollHostRef?.nativeElement;
-  }
-
-  private isListTouchSnapSettleSuppressed(): boolean {
-    return performance.now() < this.listTouchSnapSettleSuppressedUntilMs;
   }
 
   private settleListSnapSmoothly(scrollElement: HTMLDivElement): void {
