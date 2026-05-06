@@ -18,7 +18,8 @@ import {
   InfoCardComponent,
   type InfoCardData,
   type InfoCardMenuAction,
-  type InfoCardMenuActionEvent
+  type InfoCardMenuActionEvent,
+  type InfoCardMenuRequestEvent
 } from '../../../../../shared/ui';
 import { buildActivitiesEventInfoCard } from './activities-event-template.builder';
 
@@ -52,9 +53,11 @@ export class ActivitiesEventTemplateComponent implements OnChanges {
   @Input() groupLabel: string | null = null;
   @Input() context: ActivitiesEventTemplateContext | null = null;
   @Input() cardRevision = 0;
+  @Input() mobileMenuOpenRowId: string | null = null;
 
   @Output() readonly mediaEndClick = new EventEmitter<void>();
   @Output() readonly menuAction = new EventEmitter<InfoCardMenuActionEvent>();
+  @Output() readonly menuRequest = new EventEmitter<InfoCardMenuRequestEvent>();
 
   protected card: InfoCardData | null = null;
 
@@ -96,6 +99,10 @@ export class ActivitiesEventTemplateComponent implements OnChanges {
 
   protected onMenuAction(event: InfoCardMenuActionEvent): void {
     this.menuAction.emit(event);
+  }
+
+  protected onMenuRequest(event: InfoCardMenuRequestEvent): void {
+    this.menuRequest.emit(event);
   }
 }
 

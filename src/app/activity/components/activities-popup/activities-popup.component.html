@@ -599,8 +599,10 @@
               [groupLabel]="groupLabel"
               [context]="activitiesEventTemplateContext"
               [cardRevision]="activitiesEventCardRevision"
+              [mobileMenuOpenRowId]="activityEventMobileActionMenu?.card?.rowId ?? null"
               (mediaEndClick)="openActivityMembers(row)"
               (menuAction)="onActivityEventInfoCardMenuAction(row, $event)"
+              (menuRequest)="openActivityEventMobileActionMenu(row, $event)"
             ></app-activities-event-template>
           </ng-template>
           <ng-template #activitiesChatSmartListItemTemplate let-row let-groupLabel="groupLabel">
@@ -622,6 +624,33 @@
             ></app-activities-rate-template>
           </ng-template>
         </div><!-- /activities-popup -->
+        @if (activityEventMobileActionMenu; as actionMenu) {
+          <div
+            class="item-action-menu-dismiss-layer"
+            (click)="closeActivityEventMobileActionMenu()"
+          ></div>
+          <div
+            class="item-action-menu item-action-menu-mobile is-open activities-event-mobile-action-menu"
+            (click)="$event.stopPropagation()"
+          >
+            @if (actionMenu.title) {
+              <div class="item-action-menu-title">{{ actionMenu.title }}</div>
+            }
+            @for (action of actionMenu.actions; track action.id) {
+              <button
+                type="button"
+                class="item-action-menu-btn"
+                [class.item-action-menu-btn-publish]="action.tone === 'accent'"
+                [class.item-action-menu-btn-warning]="action.tone === 'warning'"
+                [class.item-action-menu-btn-destructive]="action.tone === 'destructive'"
+                (click)="onActivityEventMobileActionSelected(action, $event)"
+              >
+                <mat-icon>{{ action.icon }}</mat-icon>
+                <span>{{ action.label }}</span>
+              </button>
+            }
+          </div>
+        }
       </div><!-- /popup-body -->
     </div><!-- /app-popup-panel -->
     <app-event-chat-popup></app-event-chat-popup>

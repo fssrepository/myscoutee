@@ -20,6 +20,7 @@ import type {
   InfoCardFooterChip,
   InfoCardMenuAction,
   InfoCardMenuActionEvent,
+  InfoCardMenuRequestEvent,
   InfoCardOverlayAccessory,
   InfoCardOverlayLayout,
   InfoCardOverlayAction,
@@ -42,15 +43,24 @@ export class InfoCardComponent {
   private readonly cdr = inject(ChangeDetectorRef);
 
   @Input() card: InfoCardData | null = null;
+  @Input() mobileMenuOpenRowId: string | null = null;
 
   @Output() readonly cardClick = new EventEmitter<InfoCardClickEvent>();
   @Output() readonly mediaStartClick = new EventEmitter<InfoCardClickEvent>();
   @Output() readonly mediaEndClick = new EventEmitter<InfoCardClickEvent>();
   @Output() readonly menuAction = new EventEmitter<InfoCardMenuActionEvent>();
+  @Output() readonly menuRequest = new EventEmitter<InfoCardMenuRequestEvent>();
 
   protected isMobileView = false;
   protected menuOpen = false;
   protected menuOpenUp = false;
+
+  protected get menuTriggerOpen(): boolean {
+    if (!this.isMobileView) {
+      return this.menuOpen;
+    }
+    return !!this.card?.rowId && this.mobileMenuOpenRowId === this.card.rowId;
+  }
 
   constructor() {
     this.syncMobileViewFromViewport();
@@ -118,6 +128,14 @@ export class InfoCardComponent {
   protected toggleMenu(event: Event): void {
     event.stopPropagation();
     if (!this.card?.menuActions?.length) {
+      return;
+    }
+    if (this.isMobileView) {
+      this.menuRequest.emit({
+        rowId: this.card.rowId,
+        card: this.card,
+        actions: this.card.menuActions
+      });
       return;
     }
     if (this.menuOpen) {

@@ -44,6 +44,7 @@ import {
   type InfoCardData,
   type InfoCardMenuAction,
   type InfoCardMenuActionEvent,
+  type InfoCardMenuRequestEvent,
   type ListQuery,
   type PageResult,
   type SmartListConfig,
@@ -421,6 +422,12 @@ export class ActivitiesPopupComponent implements OnDestroy {
     title: string;
     openUp: boolean;
   } | null = null;
+  protected activityEventMobileActionMenu: {
+    row: AppTypes.ActivityListRow;
+    card: InfoCardData;
+    title: string;
+    actions: readonly InfoCardMenuAction[];
+  } | null = null;
 
   // ── Scroll / sticky ───────────────────────────────────────────────────────
   protected activitiesListScrollable  = true;
@@ -531,6 +538,56 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   protected onActivityEventInfoCardMenuAction(row: AppTypes.ActivityListRow, action: InfoCardMenuActionEvent): void {
     this.activitiesEvents.onActivityEventInfoCardMenuAction(row, action);
+  }
+
+  protected openActivityEventMobileActionMenu(
+    row: AppTypes.ActivityListRow,
+    event: InfoCardMenuRequestEvent
+  ): void {
+    if (this.activityEventMobileActionMenu?.card.rowId === event.card.rowId) {
+      this.activityEventMobileActionMenu = null;
+      this.cdr.markForCheck();
+      return;
+    }
+    this.activityEventMobileActionMenu = {
+      row,
+      card: event.card,
+      title: this.resolveActivityEventMobileActionMenuTitle(event.card),
+      actions: event.actions
+    };
+    this.cdr.markForCheck();
+  }
+
+  protected closeActivityEventMobileActionMenu(): void {
+    if (!this.activityEventMobileActionMenu) {
+      return;
+    }
+    this.activityEventMobileActionMenu = null;
+    this.cdr.markForCheck();
+  }
+
+  protected onActivityEventMobileActionSelected(action: InfoCardMenuAction, event: Event): void {
+    event.preventDefault();
+    event.stopPropagation();
+    const actionMenu = this.activityEventMobileActionMenu;
+    if (!actionMenu) {
+      return;
+    }
+    this.activityEventMobileActionMenu = null;
+    this.onActivityEventInfoCardMenuAction(actionMenu.row, {
+      rowId: actionMenu.card.rowId,
+      actionId: action.id,
+      action,
+      card: actionMenu.card
+    });
+    this.cdr.markForCheck();
+  }
+
+  private resolveActivityEventMobileActionMenuTitle(card: InfoCardData): string {
+    if (card.menuTitle === null) {
+      return '';
+    }
+    return `${card.menuTitle ?? card.title ?? ''}`.trim();
   }
 
   protected openProfileView(profileView: CardProfileViewData): void {
@@ -703,6 +760,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   private resetActivitiesStateForOpen(): void {
     this.inlineItemActionMenu = null;
+    this.activityEventMobileActionMenu = null;
     this.visibleActivityRows = [];
     this.activitiesStickyValue = '';
     this.lastRateIndicatorPulseRowId = null;

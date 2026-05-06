@@ -186,3 +186,9 @@ export interface InfoCardMenuActionEvent {
   action: InfoCardMenuAction;
   card: InfoCardData;
 }
+
+export interface InfoCardMenuRequestEvent {
+  rowId: string;
+  card: InfoCardData;
+  actions: readonly InfoCardMenuAction[];
+}

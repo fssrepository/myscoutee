@@ -1,7 +1,9 @@
 @if (card) {
   <app-info-card
     [card]="card"
+    [mobileMenuOpenRowId]="mobileMenuOpenRowId"
     (mediaEndClick)="onMediaEndClick()"
     (menuAction)="onMenuAction($event)"
+    (menuRequest)="onMenuRequest($event)"
   ></app-info-card>
 }
