@@ -656,6 +656,11 @@
   overflow-y: clip;
 }
 
+.smart-list--calendar.smart-list--calendar-touching {
+  scroll-snap-type: none;
+  scroll-behavior: auto;
+}
+
 .smart-list--calendar::-webkit-scrollbar {
   display: none;
 }
@@ -771,6 +776,11 @@
   padding-right: 0;
   padding-bottom: 0.48rem;
   box-sizing: border-box;
+}
+
+.smart-list--calendar-touching .smart-list__calendar-page {
+  scroll-snap-align: none;
+  scroll-snap-stop: normal;
 }
 
 .smart-list__calendar-page--month {

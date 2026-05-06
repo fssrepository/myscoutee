@@ -40,8 +40,12 @@
             [class.smart-list--week]="isWeekMode()"
             [class.smart-list--presentation-list]="resolvedPresentation() === 'list'"
             [class.smart-list--presentation-fullscreen]="resolvedPresentation() === 'fullscreen'"
+            [class.smart-list--calendar-touching]="isTouchingSurface"
             (scroll)="onCalendarScroll($event)"
             (scrollend)="onCalendarScrollEnd($event)"
+            (touchstart)="onSurfaceTouchStart()"
+            (touchend)="onSurfaceTouchEnd()"
+            (touchcancel)="onSurfaceTouchEnd()"
           >
             @if (hasCalendarItems()) {
               @if (isMonthMode()) {

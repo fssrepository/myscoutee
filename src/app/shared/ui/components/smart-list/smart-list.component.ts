@@ -262,6 +262,9 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       const currentLeft = scrollElement.scrollLeft;
 
       scrollElement.style.scrollBehavior = 'auto';
+      if (this.isCalendarMode()) {
+        scrollElement.style.scrollSnapType = 'none';
+      }
       scrollElement.scrollTop = currentTop;
       scrollElement.scrollLeft = currentLeft;
       scrollElement.style.scrollBehavior = '';
@@ -279,6 +282,12 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
     if (this.currentViewMode === 'list') {
       this.scheduleListSnapSettle(scrollElement);
+      return;
+    }
+
+    if (this.isCalendarMode()) {
+      scrollElement.style.scrollSnapType = '';
+      this.scheduleCalendarScrollEnd(scrollElement);
     }
   }
 
@@ -730,6 +739,9 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       && (!this.calendarProgrammaticTargetKey || this.calendarProgrammaticTargetKey === visiblePage.key)
     ) {
       this.cancelPendingCalendarPageLoad();
+    }
+    if (this.isTouchingSurface) {
+      return;
     }
     if (this.calendarProgrammaticTargetKey && visiblePage?.key !== this.calendarProgrammaticTargetKey) {
       this.scheduleCalendarScrollEnd(target);
@@ -3899,7 +3911,12 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
   }
 
   private handleCalendarScrollEnd(scrollElement: HTMLDivElement): void {
-    if (!this.isCalendarMode() || this.suppressCalendarEdgeSettle || scrollElement !== this.scrollHostRef?.nativeElement) {
+    if (
+      !this.isCalendarMode()
+      || this.isTouchingSurface
+      || this.suppressCalendarEdgeSettle
+      || scrollElement !== this.scrollHostRef?.nativeElement
+    ) {
       return;
     }
     if (!this.isCalendarScrollPageAligned(scrollElement)) {
