@@ -438,6 +438,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected activitiesStickyValue     = '';
   protected activitiesInitialLoadPending = false;
   private visibleActivityRows: AppTypes.ActivityListRow[] = [];
+  private visibleActivityRowsSource: readonly AppTypes.ActivityListRow[] | null = null;
   private lastHandledActivitiesOpenRevision = 0;
   protected readonly activitiesPageSize  = 10;
 
@@ -796,6 +797,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     this.inlineItemActionMenu = null;
     this.activityEventActionMenu = null;
     this.visibleActivityRows = [];
+    this.visibleActivityRowsSource = null;
     this.activitiesStickyValue = '';
     this.lastRateIndicatorPulseRowId = null;
     this.showActivitiesPrimaryPicker = false;
@@ -2134,6 +2136,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected resetActivitiesScroll(): void {
     this.activitiesSmartList?.clearHostedLoading();
     this.visibleActivityRows = [];
+    this.visibleActivityRowsSource = null;
     this.activitiesStickyValue = '';
     this.activitiesContext.setActivitiesStickyValue('');
     this.activitiesListScrollable = true;
@@ -2644,14 +2647,17 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected onActivitiesSmartListStateChange(change: SmartListStateChange<AppTypes.ActivityListRow, ActivitiesSmartListFilters>): void {
     let shouldMarkForCheck = false;
 
-    const currentVisibleIds = this.visibleActivityRows.map(row => this.activityRowIdentity(row));
-    const nextVisibleIds = change.items.map(row => this.activityRowIdentity(row));
-    if (
-      currentVisibleIds.length !== nextVisibleIds.length
-      || currentVisibleIds.some((id, index) => id !== nextVisibleIds[index])
-    ) {
-      this.visibleActivityRows = [...change.items];
-      shouldMarkForCheck = true;
+    if (this.visibleActivityRowsSource !== change.items) {
+      const currentVisibleIds = this.visibleActivityRows.map(row => this.activityRowIdentity(row));
+      const nextVisibleIds = change.items.map(row => this.activityRowIdentity(row));
+      if (
+        currentVisibleIds.length !== nextVisibleIds.length
+        || currentVisibleIds.some((id, index) => id !== nextVisibleIds[index])
+      ) {
+        this.visibleActivityRows = [...change.items];
+        shouldMarkForCheck = true;
+      }
+      this.visibleActivityRowsSource = change.items;
     }
 
     if (this.activitiesInitialLoadPending !== change.initialLoading) {
