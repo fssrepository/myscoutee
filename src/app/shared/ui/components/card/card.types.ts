@@ -202,4 +202,5 @@ export interface InfoCardMenuRequestEvent {
   actions: readonly InfoCardMenuAction[];
   triggerRect: InfoCardMenuTriggerRect | null;
   openUp: boolean;
+  closeTrigger: () => void;
 }

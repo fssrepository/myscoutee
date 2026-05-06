@@ -1901,6 +1901,10 @@ button.activities-rate-score-badge-between:not(.is-disabled):active .activities-
 .activities-event-action-menu.item-action-menu-desktop {
   position: fixed;
   right: auto;
+  z-index: 120;
+}
+.activities-event-action-menu.item-action-menu-mobile {
+  z-index: 120;
 }
 .activities-event-action-menu.item-action-menu-desktop.is-open-up {
   bottom: auto;

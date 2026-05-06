@@ -7,6 +7,7 @@ import {
   EventEmitter,
   HostListener,
   Input,
+  OnDestroy,
   Output,
   inject
 } from '@angular/core';
@@ -38,14 +39,14 @@ import type {
   styleUrl: './info-card.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class InfoCardComponent {
+export class InfoCardComponent implements OnDestroy {
   private static readonly MOBILE_BREAKPOINT_PX = 760;
+  private static readonly sharedMenuInstances = new Set<InfoCardComponent>();
   private readonly hostRef = inject(ElementRef<HTMLElement>);
   private readonly cdr = inject(ChangeDetectorRef);
 
   @Input() card: InfoCardData | null = null;
   @Input() useSharedMenu = false;
-  @Input() sharedMenuOpenRowId: string | null = null;
 
   @Output() readonly cardClick = new EventEmitter<InfoCardClickEvent>();
   @Output() readonly mediaStartClick = new EventEmitter<InfoCardClickEvent>();
@@ -58,14 +59,16 @@ export class InfoCardComponent {
   protected menuOpenUp = false;
 
   protected get menuTriggerOpen(): boolean {
-    if (!this.useSharedMenu) {
-      return this.menuOpen;
-    }
-    return !!this.card?.rowId && this.sharedMenuOpenRowId === this.card.rowId;
+    return this.menuOpen;
   }
 
   constructor() {
+    InfoCardComponent.sharedMenuInstances.add(this);
     this.syncMobileViewFromViewport();
+  }
+
+  ngOnDestroy(): void {
+    InfoCardComponent.sharedMenuInstances.delete(this);
   }
 
   @HostListener('window:resize')
@@ -134,12 +137,22 @@ export class InfoCardComponent {
     }
     const trigger = event.currentTarget as HTMLElement | null;
     if (this.useSharedMenu) {
+      const wasOpen = this.menuOpen;
+      if (wasOpen) {
+        this.closeMenu();
+      } else {
+        this.closeOtherSharedMenus();
+        this.menuOpenUp = this.shouldOpenMenuUp(trigger);
+        this.menuOpen = true;
+        this.cdr.markForCheck();
+      }
       this.menuRequest.emit({
         rowId: this.card.rowId,
         card: this.card,
         actions: this.card.menuActions,
         triggerRect: this.resolveMenuTriggerRect(trigger),
-        openUp: this.shouldOpenMenuUp(trigger)
+        openUp: this.shouldOpenMenuUp(trigger),
+        closeTrigger: () => this.closeMenu()
       });
       return;
     }
@@ -334,5 +347,14 @@ export class InfoCardComponent {
       width: rect.width,
       height: rect.height
     };
+  }
+
+  private closeOtherSharedMenus(): void {
+    for (const instance of InfoCardComponent.sharedMenuInstances) {
+      if (instance === this || !instance.useSharedMenu) {
+        continue;
+      }
+      instance.closeMenu();
+    }
   }
 }

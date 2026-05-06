@@ -430,6 +430,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     openUp: boolean;
     desktopLeft: number | null;
     desktopTop: number | null;
+    closeTrigger: () => void;
   } | null = null;
 
   // ── Scroll / sticky ───────────────────────────────────────────────────────
@@ -560,7 +561,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
       actions: event.actions,
       openUp: event.openUp,
       desktopLeft: desktopPosition.left,
-      desktopTop: desktopPosition.top
+      desktopTop: desktopPosition.top,
+      closeTrigger: event.closeTrigger
     };
     this.cdr.markForCheck();
   }
@@ -569,7 +571,9 @@ export class ActivitiesPopupComponent implements OnDestroy {
     if (!this.activityEventActionMenu) {
       return;
     }
+    const actionMenu = this.activityEventActionMenu;
     this.activityEventActionMenu = null;
+    actionMenu.closeTrigger();
     this.cdr.markForCheck();
   }
 
@@ -581,6 +585,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       return;
     }
     this.activityEventActionMenu = null;
+    actionMenu.closeTrigger();
     this.onActivityEventInfoCardMenuAction(actionMenu.row, {
       rowId: actionMenu.card.rowId,
       actionId: action.id,
@@ -2168,6 +2173,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       this.cdr.markForCheck();
     }
     if (this.activityEventActionMenu) {
+      this.activityEventActionMenu.closeTrigger();
       this.activityEventActionMenu = null;
       this.cdr.markForCheck();
     }
