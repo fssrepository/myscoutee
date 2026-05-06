@@ -219,6 +219,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   private calendarPendingPageAnchor: Date | null = null;
   private calendarPendingVisualKey: string | null = null;
   private calendarProgrammaticTargetKey: string | null = null;
+  private calendarLastSettledPageKey: string | null = null;
   private calendarScrollStartLeft: number | null = null;
   private calendarPreparedAheadPageKey: string | null = null;
   private calendarScrollInProgress = false;
@@ -363,6 +364,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     this.calendarPreloadAbortController?.abort();
     this.calendarPreloadAbortController = null;
     this.calendarPreloadPageKey = null;
+    this.calendarLastSettledPageKey = null;
     this.calendarScrollInProgress = false;
     this.calendarScrollStartLeft = null;
     this.calendarPreparedAheadPageKey = null;
@@ -1075,6 +1077,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     this.calendarPendingPageAnchor = null;
     this.calendarPendingVisualKey = null;
     this.calendarProgrammaticTargetKey = null;
+    this.calendarLastSettledPageKey = null;
     this.calendarScrollInProgress = false;
     this.calendarScrollStartLeft = null;
     this.calendarPreparedAheadPageKey = null;
@@ -1264,6 +1267,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       this.cdr.markForCheck();
       return;
     }
+    this.calendarLastSettledPageKey = this.calendarPageKey(anchor);
     await this.loadCalendarPage(anchor, true);
   }
 
@@ -2110,6 +2114,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     this.calendarPendingPageAnchor = null;
     this.calendarPendingVisualKey = null;
     this.calendarProgrammaticTargetKey = null;
+    this.calendarLastSettledPageKey = null;
     this.calendarScrollInProgress = false;
     this.calendarScrollStartLeft = null;
     this.calendarPreparedAheadPageKey = null;
@@ -3312,7 +3317,7 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
   private async loadCalendarPage(
     anchor: Date,
     isInitial = false,
-    options: { replacePending?: boolean } = {}
+    options: { replacePending?: boolean; force?: boolean } = {}
   ): Promise<void> {
     const loader = this.resolveLoadPage();
     if (!loader || !this.isCalendarMode()) {
@@ -3325,7 +3330,10 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
     }
 
     const pageKey = this.calendarPageKey(anchor);
-    if (this.calendarPageItems.has(pageKey)) {
+    if (options.force === true && this.calendarPreloadPageKey) {
+      this.cancelPendingCalendarPreload();
+    }
+    if (this.calendarPageItems.has(pageKey) && options.force !== true) {
       if (isInitial) {
         this.initialLoading = false;
         this.items = [...(this.calendarPageItems.get(pageKey) ?? [])];
@@ -3434,6 +3442,12 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
     this.clearLoadingAnimation();
     this.emitState();
     this.cdr.markForCheck();
+  }
+
+  private cancelPendingCalendarPreload(): void {
+    this.calendarPreloadAbortController?.abort();
+    this.calendarPreloadAbortController = null;
+    this.calendarPreloadPageKey = null;
   }
 
   private shiftCalendarFocus(delta: number): void {
@@ -3868,24 +3882,14 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
       this.clearCalendarSettleTimers();
       return;
     }
-    if (this.supportsNativeCalendarScrollEnd(scrollElement)) {
-      if (this.calendarEdgeSettleTimer) {
-        clearTimeout(this.calendarEdgeSettleTimer);
-        this.calendarEdgeSettleTimer = null;
-      }
-      return;
-    }
     if (this.calendarEdgeSettleTimer) {
       clearTimeout(this.calendarEdgeSettleTimer);
     }
+    // Touch-driven scroll snapping can miss native scrollend; keep the timer as a guard.
     this.calendarEdgeSettleTimer = setTimeout(() => {
       this.calendarEdgeSettleTimer = null;
       this.handleCalendarScrollEnd(scrollElement);
     }, SmartListComponent.CALENDAR_SCROLL_END_DEBOUNCE_MS);
-  }
-
-  private supportsNativeCalendarScrollEnd(scrollElement: HTMLDivElement): boolean {
-    return 'onscrollend' in scrollElement;
   }
 
   private handleCalendarScrollEnd(scrollElement: HTMLDivElement): void {
@@ -3967,6 +3971,16 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
   }
 
   private loadCalendarPageForSettledPage(page: SmartListCalendarPage<T>): void {
+    const settledPageChanged = this.calendarLastSettledPageKey !== page.key;
+    this.calendarLastSettledPageKey = page.key;
+    if (settledPageChanged) {
+      if (this.calendarPendingPageKey === page.key) {
+        return;
+      }
+      this.cancelPendingCalendarPreload();
+      void this.loadCalendarPage(page.anchor, false, { replacePending: true, force: true });
+      return;
+    }
     if (
       this.calendarPageItems.has(page.key)
       || this.calendarPendingPageKey === page.key
