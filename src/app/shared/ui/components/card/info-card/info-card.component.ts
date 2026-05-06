@@ -41,7 +41,7 @@ import type {
 })
 export class InfoCardComponent implements OnDestroy {
   private static readonly MOBILE_BREAKPOINT_PX = 760;
-  private static readonly sharedMenuInstances = new Set<InfoCardComponent>();
+  private static activeSharedMenuInstance: InfoCardComponent | null = null;
   private readonly hostRef = inject(ElementRef<HTMLElement>);
   private readonly cdr = inject(ChangeDetectorRef);
 
@@ -63,12 +63,13 @@ export class InfoCardComponent implements OnDestroy {
   }
 
   constructor() {
-    InfoCardComponent.sharedMenuInstances.add(this);
     this.syncMobileViewFromViewport();
   }
 
   ngOnDestroy(): void {
-    InfoCardComponent.sharedMenuInstances.delete(this);
+    if (InfoCardComponent.activeSharedMenuInstance === this) {
+      InfoCardComponent.activeSharedMenuInstance = null;
+    }
   }
 
   @HostListener('window:resize')
@@ -140,8 +141,12 @@ export class InfoCardComponent implements OnDestroy {
       const wasOpen = this.menuOpen;
       if (wasOpen) {
         this.closeMenu();
+        if (InfoCardComponent.activeSharedMenuInstance === this) {
+          InfoCardComponent.activeSharedMenuInstance = null;
+        }
       } else {
-        this.closeOtherSharedMenus();
+        InfoCardComponent.activeSharedMenuInstance?.closeMenu();
+        InfoCardComponent.activeSharedMenuInstance = this;
         this.menuOpenUp = this.shouldOpenMenuUp(trigger);
         this.menuOpen = true;
         this.cdr.markForCheck();
@@ -172,6 +177,9 @@ export class InfoCardComponent implements OnDestroy {
     }
     this.menuOpen = false;
     this.menuOpenUp = false;
+    if (InfoCardComponent.activeSharedMenuInstance === this) {
+      InfoCardComponent.activeSharedMenuInstance = null;
+    }
     this.cdr.markForCheck();
   }
 
@@ -349,12 +357,4 @@ export class InfoCardComponent implements OnDestroy {
     };
   }
 
-  private closeOtherSharedMenus(): void {
-    for (const instance of InfoCardComponent.sharedMenuInstances) {
-      if (instance === this || !instance.useSharedMenu) {
-        continue;
-      }
-      instance.closeMenu();
-    }
-  }
 }
