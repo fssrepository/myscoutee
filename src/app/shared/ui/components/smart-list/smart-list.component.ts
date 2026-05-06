@@ -2637,7 +2637,6 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
     this.loadingInterval = this.ngZone.runOutsideAngular(() =>
       setInterval(() => {
         this.updateLoadingWindow();
-        this.emitState();
         this.flushSoon();
       }, 16)
     );
