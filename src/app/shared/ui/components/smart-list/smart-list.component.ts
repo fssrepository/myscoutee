@@ -124,6 +124,8 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   private static readonly LIST_SNAP_SETTLE_DELAY_MS = 250;
   private static readonly LIST_SNAP_SETTLE_GUARD_MS = 280;
   private static readonly CALENDAR_SCROLL_END_DEBOUNCE_MS = 96;
+  private static readonly CALENDAR_SCROLL_STABLE_DELAY_MS = 64;
+  private static readonly CALENDAR_SCROLL_SETTLE_TOLERANCE_PX = 1;
   private static readonly LIST_CARD_SNAP_TARGET_SELECTOR =
     '.activities-row-item, .asset-item-card, .activities-card, .event-explore-card, .experience-item-card';
   private readonly cdr = inject(ChangeDetectorRef);
@@ -3882,6 +3884,10 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
       this.clearCalendarSettleTimers();
       return;
     }
+    if (this.calendarPostSettleTimer) {
+      clearTimeout(this.calendarPostSettleTimer);
+      this.calendarPostSettleTimer = null;
+    }
     if (this.calendarEdgeSettleTimer) {
       clearTimeout(this.calendarEdgeSettleTimer);
     }
@@ -3894,6 +3900,10 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
 
   private handleCalendarScrollEnd(scrollElement: HTMLDivElement): void {
     if (!this.isCalendarMode() || this.suppressCalendarEdgeSettle || scrollElement !== this.scrollHostRef?.nativeElement) {
+      return;
+    }
+    if (!this.isCalendarScrollPageAligned(scrollElement)) {
+      this.scheduleCalendarStableScrollEnd(scrollElement);
       return;
     }
     this.clearCalendarSettleTimers();
@@ -3921,6 +3931,57 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
     this.flushDeferredCalendarRender(scrollElement);
     this.emitState();
     this.cdr.markForCheck();
+  }
+
+  private scheduleCalendarStableScrollEnd(scrollElement: HTMLDivElement): void {
+    if (this.calendarPostSettleTimer) {
+      clearTimeout(this.calendarPostSettleTimer);
+    }
+    const scrollLeftSnapshot = scrollElement.scrollLeft;
+    this.calendarPostSettleTimer = setTimeout(() => {
+      this.calendarPostSettleTimer = null;
+      if (!this.isCalendarMode() || this.suppressCalendarEdgeSettle || scrollElement !== this.scrollHostRef?.nativeElement) {
+        return;
+      }
+      const scrollDelta = Math.abs(scrollElement.scrollLeft - scrollLeftSnapshot);
+      if (scrollDelta > SmartListComponent.CALENDAR_SCROLL_SETTLE_TOLERANCE_PX) {
+        this.scheduleCalendarScrollEnd(scrollElement);
+        return;
+      }
+      if (!this.isCalendarScrollPageAligned(scrollElement)) {
+        this.alignCalendarScrollToNearestPage(scrollElement);
+      }
+      this.handleCalendarScrollEnd(scrollElement);
+    }, SmartListComponent.CALENDAR_SCROLL_STABLE_DELAY_MS);
+  }
+
+  private isCalendarScrollPageAligned(scrollElement: HTMLDivElement): boolean {
+    const nearestPageLeft = this.nearestCalendarPageLeft(scrollElement);
+    if (nearestPageLeft === null) {
+      return true;
+    }
+    return Math.abs(scrollElement.scrollLeft - nearestPageLeft) <= SmartListComponent.CALENDAR_SCROLL_SETTLE_TOLERANCE_PX;
+  }
+
+  private alignCalendarScrollToNearestPage(scrollElement: HTMLDivElement): void {
+    const nearestPageLeft = this.nearestCalendarPageLeft(scrollElement);
+    if (nearestPageLeft === null) {
+      return;
+    }
+    const previousScrollBehavior = scrollElement.style.scrollBehavior;
+    scrollElement.style.scrollBehavior = 'auto';
+    scrollElement.scrollLeft = nearestPageLeft;
+    scrollElement.style.scrollBehavior = previousScrollBehavior;
+  }
+
+  private nearestCalendarPageLeft(scrollElement: HTMLDivElement): number | null {
+    const pages = this.currentCalendarPages();
+    if (pages.length === 0) {
+      return null;
+    }
+    const nearestPageIndex = this.currentCalendarPageIndex(scrollElement, pages.length);
+    const nearestPageLeft = this.calendarPageOffsetLeft(scrollElement, nearestPageIndex);
+    return nearestPageLeft < 0 ? null : nearestPageLeft;
   }
 
   private flushDeferredCalendarRender(scrollElement?: HTMLDivElement | null): void {
@@ -3963,7 +4024,7 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
     }
     this.loadCalendarPageForSettledPage(activePage);
     const desiredIndex = this.desiredCalendarPageIndex(pages.length);
-    if (currentIndex !== desiredIndex) {
+    if (currentIndex !== desiredIndex && (currentIndex === 0 || currentIndex === pages.length - 1)) {
       this.recenterCalendarWindow(activePage.anchor, desiredIndex, { loadAfterRecenter: false });
       return true;
     }
