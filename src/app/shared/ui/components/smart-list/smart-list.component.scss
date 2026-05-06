@@ -201,6 +201,16 @@
   scroll-snap-type: none;
 }
 
+.smart-list--list.smart-list--snap-none .smart-list__item-shell,
+:host ::ng-deep .smart-list--list.smart-list--snap-none .activities-row-item,
+:host ::ng-deep .smart-list--list.smart-list--snap-none .asset-item-card,
+:host ::ng-deep .smart-list--list.smart-list--snap-none .activities-card,
+:host ::ng-deep .smart-list--list.smart-list--snap-none .event-explore-card,
+:host ::ng-deep .smart-list--list.smart-list--snap-none .experience-item-card {
+  scroll-snap-align: none;
+  scroll-snap-stop: normal;
+}
+
 @media (max-width: 760px) {
   .smart-list--calendar.smart-list--month {
     padding-bottom: 0;

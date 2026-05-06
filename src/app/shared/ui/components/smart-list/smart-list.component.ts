@@ -248,6 +248,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   }
 
   protected isTouchingSurface = false;
+  private touchStartScrollSnapType: string | null = null;
 
   protected onSurfaceTouchStart(): void {
     this.isTouchingSurface = true;
@@ -262,9 +263,10 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       const currentLeft = scrollElement.scrollLeft;
 
       scrollElement.style.scrollBehavior = 'auto';
-      if (this.isCalendarMode()) {
-        scrollElement.style.scrollSnapType = 'none';
+      if (this.touchStartScrollSnapType === null) {
+        this.touchStartScrollSnapType = scrollElement.style.scrollSnapType;
       }
+      scrollElement.style.scrollSnapType = 'none';
       scrollElement.scrollTop = currentTop;
       scrollElement.scrollLeft = currentLeft;
       scrollElement.style.scrollBehavior = '';
@@ -274,11 +276,14 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   protected onSurfaceTouchEnd(): void {
     this.isTouchingSurface = false;
     this.cdr.markForCheck();
-    
+
     const scrollElement = this.scrollHostRef?.nativeElement;
     if (!scrollElement) {
+      this.touchStartScrollSnapType = null;
       return;
     }
+    scrollElement.style.scrollSnapType = this.touchStartScrollSnapType ?? '';
+    this.touchStartScrollSnapType = null;
 
     if (this.currentViewMode === 'list') {
       this.scheduleListSnapSettle(scrollElement);
@@ -286,7 +291,6 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     }
 
     if (this.isCalendarMode()) {
-      scrollElement.style.scrollSnapType = '';
       this.scheduleCalendarScrollEnd(scrollElement);
     }
   }
