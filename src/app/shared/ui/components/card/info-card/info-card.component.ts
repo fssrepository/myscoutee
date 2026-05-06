@@ -42,6 +42,9 @@ import type {
 export class InfoCardComponent implements OnDestroy {
   private static readonly MOBILE_BREAKPOINT_PX = 760;
   private static activeSharedMenuInstance: InfoCardComponent | null = null;
+  private static activeDocumentMenuInstance: InfoCardComponent | null = null;
+  private static documentPointerDownListener: ((event: PointerEvent) => void) | null = null;
+  private static documentPointerDownTarget: Document | null = null;
   private readonly hostRef = inject(ElementRef<HTMLElement>);
   private readonly cdr = inject(ChangeDetectorRef);
 
@@ -70,6 +73,9 @@ export class InfoCardComponent implements OnDestroy {
     if (InfoCardComponent.activeSharedMenuInstance === this) {
       InfoCardComponent.activeSharedMenuInstance = null;
     }
+    if (InfoCardComponent.activeDocumentMenuInstance === this) {
+      InfoCardComponent.clearDocumentMenuInstance(this);
+    }
   }
 
   @HostListener('window:resize')
@@ -83,18 +89,6 @@ export class InfoCardComponent implements OnDestroy {
       return;
     }
     event.stopPropagation();
-    this.closeMenu();
-  }
-
-  @HostListener('document:pointerdown', ['$event'])
-  protected onDocumentPointerDown(event: PointerEvent): void {
-    if (!this.menuOpen) {
-      return;
-    }
-    const target = event.target;
-    if (target instanceof Node && this.hostRef.nativeElement.contains(target)) {
-      return;
-    }
     this.closeMenu();
   }
 
@@ -165,6 +159,8 @@ export class InfoCardComponent implements OnDestroy {
       this.closeMenu();
       return;
     }
+    InfoCardComponent.activeDocumentMenuInstance?.closeMenu();
+    InfoCardComponent.setDocumentMenuInstance(this);
     this.menuOpenUp = this.shouldOpenMenuUp(trigger);
     this.menuOpen = true;
     this.cdr.markForCheck();
@@ -179,6 +175,9 @@ export class InfoCardComponent implements OnDestroy {
     this.menuOpenUp = false;
     if (InfoCardComponent.activeSharedMenuInstance === this) {
       InfoCardComponent.activeSharedMenuInstance = null;
+    }
+    if (InfoCardComponent.activeDocumentMenuInstance === this) {
+      InfoCardComponent.clearDocumentMenuInstance(this);
     }
     this.cdr.markForCheck();
   }
@@ -355,6 +354,57 @@ export class InfoCardComponent implements OnDestroy {
       width: rect.width,
       height: rect.height
     };
+  }
+
+  private static setDocumentMenuInstance(instance: InfoCardComponent): void {
+    InfoCardComponent.activeDocumentMenuInstance = instance;
+    InfoCardComponent.ensureDocumentPointerDownListener(instance.hostRef.nativeElement.ownerDocument);
+  }
+
+  private static clearDocumentMenuInstance(instance: InfoCardComponent): void {
+    if (InfoCardComponent.activeDocumentMenuInstance !== instance) {
+      return;
+    }
+    InfoCardComponent.activeDocumentMenuInstance = null;
+    InfoCardComponent.releaseDocumentPointerDownListener();
+  }
+
+  private static ensureDocumentPointerDownListener(documentRef: Document): void {
+    if (
+      InfoCardComponent.documentPointerDownListener
+      && InfoCardComponent.documentPointerDownTarget === documentRef
+    ) {
+      return;
+    }
+    InfoCardComponent.releaseDocumentPointerDownListener();
+    const listener = (event: PointerEvent) => InfoCardComponent.onDocumentPointerDown(event);
+    documentRef.addEventListener('pointerdown', listener);
+    InfoCardComponent.documentPointerDownListener = listener;
+    InfoCardComponent.documentPointerDownTarget = documentRef;
+  }
+
+  private static releaseDocumentPointerDownListener(): void {
+    if (!InfoCardComponent.documentPointerDownListener || !InfoCardComponent.documentPointerDownTarget) {
+      return;
+    }
+    InfoCardComponent.documentPointerDownTarget.removeEventListener(
+      'pointerdown',
+      InfoCardComponent.documentPointerDownListener
+    );
+    InfoCardComponent.documentPointerDownListener = null;
+    InfoCardComponent.documentPointerDownTarget = null;
+  }
+
+  private static onDocumentPointerDown(event: PointerEvent): void {
+    const instance = InfoCardComponent.activeDocumentMenuInstance;
+    if (!instance?.menuOpen) {
+      return;
+    }
+    const target = event.target;
+    if (target instanceof Node && instance.hostRef.nativeElement.contains(target)) {
+      return;
+    }
+    instance.closeMenu();
   }
 
 }
