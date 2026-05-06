@@ -1,0 +1,1 @@
+import{a as r}from"./chunk-NQHIANC4.js";import{Da as p,Q as o}from"./chunk-PWBI42UN.js";var e=class n{i18n=o(r);transform(t,i){return this.i18n.revision(),this.i18n.translate(t,i)}static \u0275fac=function(i){return new(i||n)};static \u0275pipe=p({name:"i18n",type:n,pure:!1})};export{e as a};

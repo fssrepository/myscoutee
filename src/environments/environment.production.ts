@@ -4,7 +4,7 @@ export const environment = {
   activitiesDataSource: 'demo' as 'demo' | 'http',
   demoBootstrapEnabled: true,
   apiBaseUrl: '/api',
-  serviceWorkerEnabled: true,
+  serviceWorkerEnabled: false,
   firebaseMessagingEnabled: true,
   assetSourceRefreshEnabled: true,
   paymentIntegrationEnabled: false,
