@@ -59,6 +59,11 @@ self.addEventListener('fetch', event => {
     return;
   }
 
+  if (isImageRequest(request)) {
+    event.respondWith(cacheFirst(request, MEDIA_CACHE));
+    return;
+  }
+
   if (url.origin === self.location.origin) {
     if (isApiCacheable(url)) {
       event.respondWith(networkFirst(request, API_CACHE));
@@ -120,6 +125,10 @@ function isStaticAsset(url, request) {
     return true;
   }
   return url.pathname === '/' || url.pathname.endsWith('/index.html');
+}
+
+function isImageRequest(request) {
+  return request.destination === 'image';
 }
 
 async function networkFirst(request, cacheName) {

@@ -1,6 +1,6 @@
 const CACHE_PREFIX = 'myscoutee-runtime';
-const CACHE_VERSION = "build-bb1470e98b91-20260506133825";
-const BUILD_ID = "bb1470e98b91-20260506133825";
+const CACHE_VERSION = "build-dcc8eed590da-20260506134247";
+const BUILD_ID = "dcc8eed590da-20260506134247";
 const APP_CACHE = `${CACHE_PREFIX}-app-${CACHE_VERSION}`;
 const API_CACHE = `${CACHE_PREFIX}-api-${CACHE_VERSION}`;
 const MEDIA_CACHE = `${CACHE_PREFIX}-media-${CACHE_VERSION}`;
@@ -57,6 +57,11 @@ self.addEventListener('fetch', event => {
 
   if (request.mode === 'navigate') {
     event.respondWith(networkFirst(request, APP_CACHE));
+    return;
+  }
+
+  if (isImageRequest(request)) {
+    event.respondWith(cacheFirst(request, MEDIA_CACHE));
     return;
   }
 
@@ -121,6 +126,10 @@ function isStaticAsset(url, request) {
     return true;
   }
   return url.pathname === '/' || url.pathname.endsWith('/index.html');
+}
+
+function isImageRequest(request) {
+  return request.destination === 'image';
 }
 
 async function networkFirst(request, cacheName) {
