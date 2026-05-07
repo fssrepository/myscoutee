@@ -137,7 +137,7 @@ export class RatesService extends BaseRouteModeService {
     if (Number.isFinite(item.distanceMetersExact)) {
       return Math.max(0, Math.trunc(Number(item.distanceMetersExact)));
     }
-    return Math.max(0, Math.round((Number(item.distanceKm) || 0) * 1000));
+    return 0;
   }
 
   private rateRelevanceScore(item: RateMenuItem): number {

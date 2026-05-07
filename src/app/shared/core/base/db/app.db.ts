@@ -3,6 +3,7 @@ import { Injectable, signal } from '@angular/core';
 import type {
   ActivityRateRecordQuery,
   ActivityRateRecordQueryResult,
+  UserRateOutboxRecord,
   UserRateRecord
 } from '../interfaces/game.interface';
 import { ASSETS_TABLE_NAME } from '../../demo/models/assets.model';
@@ -692,18 +693,14 @@ export class AppMemoryDb {
           : [...fallback[USERS_TABLE_NAME].ids]
       },
       [USER_RATES_TABLE_NAME]: {
-        byId: ratesSource?.byId && typeof ratesSource.byId === 'object'
-          ? { ...ratesSource.byId }
-          : { ...fallback[USER_RATES_TABLE_NAME].byId },
+        byId: this.normalizeUserRatesById(ratesSource?.byId, fallback[USER_RATES_TABLE_NAME].byId),
         ids: Array.isArray(ratesSource?.ids)
           ? ratesSource.ids.map(id => String(id))
           : [...fallback[USER_RATES_TABLE_NAME].ids],
         idsByRelevantUserId: this.normalizeUserRatesIdsByRelevantUserId(ratesSource)
       },
       [USER_RATES_OUTBOX_TABLE_NAME]: {
-        byId: outboxSource?.byId && typeof outboxSource.byId === 'object'
-          ? { ...outboxSource.byId }
-          : { ...fallback[USER_RATES_OUTBOX_TABLE_NAME].byId },
+        byId: this.normalizeUserRatesOutboxById(outboxSource?.byId, fallback[USER_RATES_OUTBOX_TABLE_NAME].byId),
         ids: Array.isArray(outboxSource?.ids)
           ? outboxSource.ids.map(id => String(id))
           : [...fallback[USER_RATES_OUTBOX_TABLE_NAME].ids]
@@ -825,6 +822,67 @@ export class AppMemoryDb {
     return value && typeof value === 'object'
       ? { ...(value as DemoMemorySchema[typeof ASSETS_TABLE_NAME]['byId']) }
       : { ...fallback };
+  }
+
+  private normalizeUserRatesById(
+    value: unknown,
+    fallback: DemoMemorySchema[typeof USER_RATES_TABLE_NAME]['byId']
+  ): DemoMemorySchema[typeof USER_RATES_TABLE_NAME]['byId'] {
+    const source = value && typeof value === 'object'
+      ? value as Record<string, unknown>
+      : fallback as Record<string, unknown>;
+    const next: DemoMemorySchema[typeof USER_RATES_TABLE_NAME]['byId'] = {};
+    for (const [id, record] of Object.entries(source)) {
+      const normalized = this.normalizeUserRateRecord(record);
+      if (normalized) {
+        next[id] = normalized;
+      }
+    }
+    return next;
+  }
+
+  private normalizeUserRatesOutboxById(
+    value: unknown,
+    fallback: DemoMemorySchema[typeof USER_RATES_OUTBOX_TABLE_NAME]['byId']
+  ): DemoMemorySchema[typeof USER_RATES_OUTBOX_TABLE_NAME]['byId'] {
+    const source = value && typeof value === 'object'
+      ? value as Record<string, unknown>
+      : fallback as Record<string, unknown>;
+    const next: DemoMemorySchema[typeof USER_RATES_OUTBOX_TABLE_NAME]['byId'] = {};
+    for (const [id, record] of Object.entries(source)) {
+      if (!record || typeof record !== 'object') {
+        continue;
+      }
+      const outboxRecord = record as UserRateOutboxRecord;
+      const payload = this.normalizeUserRateRecord(outboxRecord.payload);
+      if (!payload) {
+        continue;
+      }
+      next[id] = {
+        ...outboxRecord,
+        payload
+      };
+    }
+    return next;
+  }
+
+  private normalizeUserRateRecord(value: unknown): UserRateRecord | null {
+    if (!value || typeof value !== 'object') {
+      return null;
+    }
+    const {
+      distanceKm: legacyDistanceKm,
+      ...rest
+    } = value as UserRateRecord & { distanceKm?: unknown };
+    const normalized = { ...rest } as UserRateRecord;
+    if (Number.isFinite(normalized.distanceMetersExact)) {
+      normalized.distanceMetersExact = Math.max(0, Math.trunc(Number(normalized.distanceMetersExact)));
+    } else if (Number.isFinite(legacyDistanceKm)) {
+      normalized.distanceMetersExact = Math.max(0, Math.round(Number(legacyDistanceKm) * 1000));
+    } else {
+      normalized.distanceMetersExact = 0;
+    }
+    return normalized;
   }
 
   private normalizeProfileExperiencesByUserId(
@@ -971,9 +1029,7 @@ export class AppMemoryDb {
   private normalizeUserRatesIdsByRelevantUserId(
     source: Partial<DemoMemorySchema[typeof USER_RATES_TABLE_NAME]> | undefined
   ): Record<string, string[]> {
-    const normalizedById = source?.byId && typeof source.byId === 'object'
-      ? { ...source.byId }
-      : {};
+    const normalizedById = this.normalizeUserRatesById(source?.byId, {});
     const normalizedIds = this.normalizeIdList(source?.ids, []);
     const next: Record<string, string[]> = {};
 
@@ -1026,13 +1082,11 @@ export class AppMemoryDb {
     return Number.isFinite(parsed) ? parsed : 0;
   }
 
-  private userRateDistanceValue(record: { distanceKm?: number; distanceMetersExact?: number } | null | undefined): number {
+  private userRateDistanceValue(record: { distanceMetersExact?: number } | null | undefined): number {
     if (Number.isFinite(record?.distanceMetersExact)) {
       return Math.max(0, Math.trunc(Number(record?.distanceMetersExact)));
     }
-    return Number.isFinite(record?.distanceKm)
-      ? Math.max(0, Math.round(Number(record?.distanceKm) * 1000))
-      : 0;
+    return 0;
   }
 
   private userRateRelevanceScore(record: UserRateRecord | null | undefined): number {

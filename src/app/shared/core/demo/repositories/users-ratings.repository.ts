@@ -423,7 +423,6 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
       scoreReceived,
       eventName: record.eventName?.trim() || 'Pair rate',
       happenedAt: record.happenedAtIso?.trim() || record.updatedAtIso,
-      distanceKm: Number.isFinite(record.distanceKm) ? Number(record.distanceKm) : 0,
       distanceMetersExact: this.dynamicDistanceMetersExact(record)
     };
   }
@@ -566,14 +565,17 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
     if (Number.isFinite(record.distanceMetersExact)) {
       return Math.max(0, Math.trunc(Number(record.distanceMetersExact)));
     }
-    return Math.max(0, Math.round((Number(record.distanceKm) || 0) * 1000));
+    const legacyDistanceKm = (record as UserRateRecord & { distanceKm?: unknown }).distanceKm;
+    return Number.isFinite(legacyDistanceKm)
+      ? Math.max(0, Math.round(Number(legacyDistanceKm) * 1000))
+      : 0;
   }
 
   private dynamicDistanceValue(item: RateMenuItem): number {
     if (Number.isFinite(item.distanceMetersExact)) {
       return Math.max(0, Math.trunc(Number(item.distanceMetersExact)));
     }
-    return Math.max(0, Math.round((Number(item.distanceKm) || 0) * 1000));
+    return 0;
   }
 
   private dynamicRelevanceScore(item: RateMenuItem): number {

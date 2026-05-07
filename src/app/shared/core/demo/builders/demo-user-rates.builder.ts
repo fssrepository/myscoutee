@@ -145,8 +145,7 @@ export class DemoUserRatesBuilder {
       scoreReceived,
       eventName: item.eventName,
       happenedAtIso,
-      distanceKm: Number.isFinite(item.distanceKm) ? Number(item.distanceKm) : 0,
-      distanceMetersExact: this.normalizeDistanceMetersExact(item.distanceMetersExact, item.distanceKm, activityRateId)
+      distanceMetersExact: this.normalizeDistanceMetersExact(item.distanceMetersExact)
     };
   }
 
@@ -178,8 +177,10 @@ export class DemoUserRatesBuilder {
             scoreReceived: this.normalizeRateScore(record.scoreReceived),
             eventName: record.eventName?.trim() || 'Rate',
             happenedAt: record.happenedAtIso?.trim() || record.updatedAtIso,
-            distanceKm: Number.isFinite(record.distanceKm) ? Number(record.distanceKm) : 0,
-            distanceMetersExact: this.normalizeDistanceMetersExact(record.distanceMetersExact, record.distanceKm, record.id)
+            distanceMetersExact: this.normalizeDistanceMetersExact(
+              record.distanceMetersExact,
+              this.legacyDistanceKm(record)
+            )
           };
         }
         if (secondUserId === ownerUserId) {
@@ -196,8 +197,10 @@ export class DemoUserRatesBuilder {
             scoreReceived: this.normalizeRateScore(record.scoreReceived),
             eventName: record.eventName?.trim() || 'Rate',
             happenedAt: record.happenedAtIso?.trim() || record.updatedAtIso,
-            distanceKm: Number.isFinite(record.distanceKm) ? Number(record.distanceKm) : 0,
-            distanceMetersExact: this.normalizeDistanceMetersExact(record.distanceMetersExact, record.distanceKm, record.id)
+            distanceMetersExact: this.normalizeDistanceMetersExact(
+              record.distanceMetersExact,
+              this.legacyDistanceKm(record)
+            )
           };
         }
       } else if (firstUserId === ownerUserId || secondUserId === ownerUserId) {
@@ -216,8 +219,10 @@ export class DemoUserRatesBuilder {
         scoreReceived: this.normalizeRateScore(record.scoreReceived),
         eventName: record.eventName?.trim() || 'Rate',
         happenedAt: record.happenedAtIso?.trim() || record.updatedAtIso,
-        distanceKm: Number.isFinite(record.distanceKm) ? Number(record.distanceKm) : 0,
-        distanceMetersExact: this.normalizeDistanceMetersExact(record.distanceMetersExact, record.distanceKm, record.id)
+        distanceMetersExact: this.normalizeDistanceMetersExact(
+          record.distanceMetersExact,
+          this.legacyDistanceKm(record)
+        )
       };
     }
     const counterpartyUserId = record.fromUserId === ownerUserId
@@ -235,8 +240,10 @@ export class DemoUserRatesBuilder {
       scoreReceived: this.normalizeRateScore(record.scoreReceived),
       eventName: record.eventName?.trim() || 'Rate',
       happenedAt: record.happenedAtIso?.trim() || record.updatedAtIso,
-      distanceKm: Number.isFinite(record.distanceKm) ? Number(record.distanceKm) : 0,
-      distanceMetersExact: this.normalizeDistanceMetersExact(record.distanceMetersExact, record.distanceKm, record.id)
+      distanceMetersExact: this.normalizeDistanceMetersExact(
+        record.distanceMetersExact,
+        this.legacyDistanceKm(record)
+      )
     };
   }
 
@@ -272,6 +279,8 @@ export class DemoUserRatesBuilder {
       scoreReceived = 0;
     }
     const variantSuffix = variantIndex > 0 ? `-v${variantIndex}` : '';
+    const distanceMetersExact = ((2 + ((seed + laneIndex + userIndex) % 33)) * 1000)
+      + Math.abs(seed % 1000);
     return {
       id: this.createRateId(),
       userId: targetUserId,
@@ -285,8 +294,7 @@ export class DemoUserRatesBuilder {
         ? `${mode === 'pair' ? 'Pair' : 'Single'} ${direction} ${variantIndex + 1}`
         : `${mode === 'pair' ? 'Pair' : 'Single'} ${direction}`,
       happenedAt,
-      distanceKm: 2 + ((seed + laneIndex + userIndex) % 33),
-      distanceMetersExact: this.seedDistanceMetersExact(2 + ((seed + laneIndex + userIndex) % 33), seed)
+      distanceMetersExact
     };
   }
 
@@ -377,17 +385,17 @@ export class DemoUserRatesBuilder {
     return Math.max(0, Math.min(1, Number(value)));
   }
 
-  private static normalizeDistanceMetersExact(value: unknown, distanceKm: unknown, seedKey: string): number {
+  private static normalizeDistanceMetersExact(value: unknown, legacyDistanceKm?: unknown): number {
     if (Number.isFinite(value)) {
       return Math.max(0, Math.trunc(Number(value)));
     }
-    const normalizedDistanceKm = Number.isFinite(distanceKm) ? Math.max(0, Number(distanceKm)) : 0;
-    return this.seedDistanceMetersExact(normalizedDistanceKm, AppUtils.hashText(`distance:${seedKey}`));
+    if (Number.isFinite(legacyDistanceKm)) {
+      return Math.max(0, Math.round(Number(legacyDistanceKm) * 1000));
+    }
+    return 0;
   }
 
-  private static seedDistanceMetersExact(distanceKm: number, seed: number): number {
-    const kmFloor = Math.max(0, Math.trunc(distanceKm));
-    const fractionalMeters = seed % 1000;
-    return (kmFloor * 1000) + fractionalMeters;
+  private static legacyDistanceKm(record: UserRateRecord): unknown {
+    return (record as UserRateRecord & { distanceKm?: unknown }).distanceKm;
   }
 }

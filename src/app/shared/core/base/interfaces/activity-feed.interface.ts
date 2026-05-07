@@ -163,6 +163,5 @@ export interface RateMenuItem {
   scoreReceived: number;
   eventName: string;
   happenedAt: string;
-  distanceKm: number;
   distanceMetersExact?: number;
 }

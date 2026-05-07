@@ -362,7 +362,7 @@ export class HttpUsersRatingsRepository {
       scoreReceived: 0,
       eventName: 'Single rate',
       happenedAt: nowIso,
-      distanceKm: 0
+      distanceMetersExact: 0
     });
   }
 
@@ -393,10 +393,9 @@ export class HttpUsersRatingsRepository {
       scoreReceived: this.normalizeRateScore(item.scoreReceived),
       eventName: item.eventName?.trim() || 'Rate',
       happenedAt: item.happenedAt?.trim() || new Date().toISOString(),
-      distanceKm: Number.isFinite(item.distanceKm) ? Number(item.distanceKm) : 0,
       distanceMetersExact: Number.isFinite(item.distanceMetersExact)
         ? Math.max(0, Math.trunc(Number(item.distanceMetersExact)))
-        : undefined
+        : 0
     });
   }
 
@@ -436,7 +435,7 @@ export class HttpUsersRatingsRepository {
       scoreReceived: 0,
       eventName: 'Pair rate',
       happenedAt: nowIso,
-      distanceKm: 0
+      distanceMetersExact: 0
     });
   }
 

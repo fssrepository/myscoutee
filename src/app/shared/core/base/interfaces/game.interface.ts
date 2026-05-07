@@ -84,7 +84,6 @@ export interface UserRateRecord {
   scoreReceived?: number;
   eventName?: string;
   happenedAtIso?: string;
-  distanceKm?: number;
   distanceMetersExact?: number;
 }
 
