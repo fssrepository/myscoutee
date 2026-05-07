@@ -502,7 +502,6 @@ export class AppMemoryDb {
     const filtered = ratesTable.ids
       .map(id => ratesTable.byId[id])
       .filter((record): record is UserRateRecord => Boolean(record))
-      .filter(record => record.source === 'activity-rate')
       .filter(record => (record.ownerUserId?.trim() ?? '') === query.ownerUserId)
       .filter(record => record.mode === query.mode)
       .filter(record => (record.displayDirection ?? '') === query.displayDirection)

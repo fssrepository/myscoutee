@@ -133,7 +133,6 @@ export class DemoUserRatesBuilder {
       toUserId,
       rate,
       mode: item.mode === 'pair' ? 'pair' : 'single',
-      source: 'activity-rate',
       createdAtIso: happenedAtIso,
       updatedAtIso: happenedAtIso,
       ownerUserId: normalizedOwnerUserId,
@@ -152,9 +151,6 @@ export class DemoUserRatesBuilder {
   }
 
   static toRateMenuItem(record: UserRateRecord): RateMenuItem | null {
-    if (record.source !== 'activity-rate') {
-      return null;
-    }
     const direction = record.displayDirection;
     const ownerUserId = record.ownerUserId?.trim() ?? '';
     if (!direction || !ownerUserId) {
@@ -239,83 +235,6 @@ export class DemoUserRatesBuilder {
       scoreReceived: this.normalizeRateScore(record.scoreReceived),
       eventName: record.eventName?.trim() || 'Rate',
       happenedAt: record.happenedAtIso?.trim() || record.updatedAtIso,
-      distanceKm: Number.isFinite(record.distanceKm) ? Number(record.distanceKm) : 0,
-      distanceMetersExact: this.normalizeDistanceMetersExact(record.distanceMetersExact, record.distanceKm, record.id)
-    };
-  }
-
-  static toGameCardRateMenuItem(record: UserRateRecord, ownerUserId: string): RateMenuItem | null {
-    if (record.source !== 'game-card') {
-      return null;
-    }
-    const normalizedOwnerUserId = ownerUserId.trim();
-    if (!normalizedOwnerUserId) {
-      return null;
-    }
-    if (record.mode === 'pair') {
-      const firstUserId = record.fromUserId.trim();
-      const secondUserId = record.toUserId.trim();
-      if (!firstUserId || !secondUserId || firstUserId === secondUserId) {
-        return null;
-      }
-      const recordOwnerUserId = record.ownerUserId?.trim() ?? '';
-      const normalizedScore = this.normalizeRateScore(record.rate);
-      if (recordOwnerUserId === normalizedOwnerUserId) {
-        return {
-          id: record.id,
-          userId: firstUserId,
-          secondaryUserId: secondUserId,
-          mode: 'pair',
-          direction: 'given',
-          socialContext: 'separated-friends',
-          scoreGiven: normalizedScore,
-          scoreReceived: 0,
-          eventName: 'Pair rate',
-          happenedAt: record.updatedAtIso,
-          distanceKm: Number.isFinite(record.distanceKm) ? Number(record.distanceKm) : 0,
-          distanceMetersExact: this.normalizeDistanceMetersExact(record.distanceMetersExact, record.distanceKm, record.id)
-        };
-      }
-      if (firstUserId === normalizedOwnerUserId || secondUserId === normalizedOwnerUserId) {
-        const otherUserId = firstUserId === normalizedOwnerUserId ? secondUserId : firstUserId;
-        return {
-          id: record.id,
-          userId: otherUserId,
-          secondaryUserId: normalizedOwnerUserId,
-          mode: 'pair',
-          direction: 'received',
-          socialContext: 'friends-in-common',
-          bridgeUserId: recordOwnerUserId || undefined,
-          bridgeCount: 1,
-          scoreGiven: 0,
-          scoreReceived: normalizedScore,
-          eventName: 'Pair rate',
-          happenedAt: record.updatedAtIso,
-          distanceKm: Number.isFinite(record.distanceKm) ? Number(record.distanceKm) : 0,
-          distanceMetersExact: this.normalizeDistanceMetersExact(record.distanceMetersExact, record.distanceKm, record.id)
-        };
-      }
-      return null;
-    }
-    const isGiven = record.fromUserId === normalizedOwnerUserId;
-    const isReceived = record.toUserId === normalizedOwnerUserId;
-    if (!isGiven && !isReceived) {
-      return null;
-    }
-    const counterpartyUserId = isGiven ? record.toUserId : record.fromUserId;
-    if (!counterpartyUserId.trim()) {
-      return null;
-    }
-    const normalizedScore = this.normalizeRateScore(record.rate);
-    return {
-      id: record.id,
-      userId: counterpartyUserId,
-      mode: 'individual',
-      direction: isGiven ? 'given' : 'received',
-      scoreGiven: isGiven ? normalizedScore : 0,
-      scoreReceived: isReceived ? normalizedScore : 0,
-      eventName: 'Single rate',
-      happenedAt: record.updatedAtIso,
       distanceKm: Number.isFinite(record.distanceKm) ? Number(record.distanceKm) : 0,
       distanceMetersExact: this.normalizeDistanceMetersExact(record.distanceMetersExact, record.distanceKm, record.id)
     };

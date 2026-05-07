@@ -105,7 +105,7 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
     const ratesTable = this.memoryDb.read()[USER_RATES_TABLE_NAME];
     for (const id of ratesTable.ids) {
       const record = ratesTable.byId[id];
-      if (!record || record.source !== 'activity-rate') {
+      if (!record) {
         continue;
       }
       const ownerUserId = record.ownerUserId?.trim() ?? '';
@@ -149,7 +149,6 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
     if (!normalizedRaterId || DemoUserSeedBuilder.isEmptyOnboardingProfileUserId(normalizedRaterId)) {
       return [];
     }
-    const collectPairUsers = mode !== 'single';
     const state = this.memoryDb.read();
     const ratesTable = state[USER_RATES_TABLE_NAME];
     const outboxTable = state[USER_RATES_OUTBOX_TABLE_NAME];
@@ -161,19 +160,7 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
       if (!record) {
         continue;
       }
-      if (record.source === 'game-card') {
-        if (record.mode === 'pair' && record.ownerUserId?.trim() === normalizedRaterId) {
-          if (!collectPairUsers) {
-            continue;
-          }
-          ratedUserIds.add(record.fromUserId.trim());
-          ratedUserIds.add(record.toUserId.trim());
-        } else if (mode === 'single' && record.fromUserId === normalizedRaterId) {
-          ratedUserIds.add(record.toUserId.trim());
-        }
-        continue;
-      }
-      if (record.source !== 'activity-rate' || record.ownerUserId?.trim() !== normalizedRaterId) {
+      if (record.ownerUserId?.trim() !== normalizedRaterId) {
         continue;
       }
       const item = DemoUserRatesBuilder.toRateMenuItem(record);
@@ -198,19 +185,7 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
       if (!payload || outboxRecord.status !== 'pending') {
         continue;
       }
-      if (payload.source === 'game-card') {
-        if (payload.mode === 'pair' && payload.ownerUserId?.trim() === normalizedRaterId) {
-          if (!collectPairUsers) {
-            continue;
-          }
-          ratedUserIds.add(payload.fromUserId.trim());
-          ratedUserIds.add(payload.toUserId.trim());
-        } else if (mode === 'single' && payload.fromUserId === normalizedRaterId) {
-          ratedUserIds.add(payload.toUserId.trim());
-        }
-        continue;
-      }
-      if (payload.source !== 'activity-rate' || payload.ownerUserId?.trim() !== normalizedRaterId) {
+      if (payload.ownerUserId?.trim() !== normalizedRaterId) {
         continue;
       }
       const item = DemoUserRatesBuilder.toRateMenuItem(payload);
@@ -247,17 +222,7 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
       if (!record) {
         continue;
       }
-      if (record.source === 'game-card') {
-        if (record.mode !== 'pair' || record.ownerUserId?.trim() !== normalizedOwnerUserId) {
-          continue;
-        }
-        const pairKey = this.sortedPairKey(record.fromUserId, record.toUserId);
-        if (pairKey) {
-          pairKeys.add(pairKey);
-        }
-        continue;
-      }
-      if (record.source !== 'activity-rate' || record.ownerUserId?.trim() !== normalizedOwnerUserId) {
+      if (record.ownerUserId?.trim() !== normalizedOwnerUserId) {
         continue;
       }
       const item = DemoUserRatesBuilder.toRateMenuItem(record);
@@ -372,11 +337,6 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
   }
 
   private buildDynamicRateItemsForUser(record: UserRateRecord, normalizedUserId: string): RateMenuItem[] {
-    if (record.source !== 'activity-rate') {
-      const item = DemoUserRatesBuilder.toGameCardRateMenuItem(record, normalizedUserId);
-      return item ? [item] : [];
-    }
-
     if (record.mode === 'pair') {
       return this.buildDynamicPairRateItemsForUser(record, normalizedUserId);
     }
@@ -724,37 +684,7 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
   }
 
   private normalizeIncomingRateRecord(record: UserRateRecord): UserRateRecord | null {
-    if (record.source === 'activity-rate') {
-      return this.normalizeIncomingActivityRateRecord(record);
-    }
-    const normalized = record.mode === 'pair' && record.ownerUserId
-      ? this.buildNormalizedPairRateRecord(
-          record.ownerUserId,
-          record.fromUserId,
-          record.toUserId,
-          record.rate
-        )
-      : this.buildNormalizedRateRecord(
-          record.fromUserId,
-          record.toUserId,
-          record.rate,
-          record.mode
-        );
-    if (!normalized) {
-      return null;
-    }
-    const createdAtIso = typeof record.createdAtIso === 'string' && record.createdAtIso.trim().length > 0
-      ? record.createdAtIso
-      : normalized.createdAtIso;
-    const updatedAtIso = typeof record.updatedAtIso === 'string' && record.updatedAtIso.trim().length > 0
-      ? record.updatedAtIso
-      : normalized.updatedAtIso;
-    return {
-      ...normalized,
-      ownerUserId: record.mode === 'pair' ? record.ownerUserId?.trim() || normalized.ownerUserId : normalized.ownerUserId,
-      createdAtIso,
-      updatedAtIso
-    };
+    return this.normalizeIncomingActivityRateRecord(record);
   }
 
   private normalizeIncomingActivityRateRecord(record: UserRateRecord): UserRateRecord | null {

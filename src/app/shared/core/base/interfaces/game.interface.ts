@@ -72,7 +72,6 @@ export interface UserRateRecord {
   toUserId: string;
   rate: number;
   mode: 'single' | 'pair';
-  source: 'game-card' | 'activity-rate';
   createdAtIso: string;
   updatedAtIso: string;
   ownerUserId?: string;

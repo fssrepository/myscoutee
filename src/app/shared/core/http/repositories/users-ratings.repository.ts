@@ -53,7 +53,6 @@ export class HttpUsersRatingsRepository {
     if (!normalizedRaterId) {
       return [];
     }
-    const collectPairUsers = mode !== 'single';
     const ratedUserIds = new Set<string>();
     const outboxTable = this.memoryDb.read()[USER_RATES_OUTBOX_TABLE_NAME];
     for (const id of outboxTable.ids) {
@@ -62,33 +61,7 @@ export class HttpUsersRatingsRepository {
       if (!payload || outboxRecord.status !== 'pending') {
         continue;
       }
-      if (payload.source === 'game-card') {
-        if (payload.mode === 'pair' && payload.ownerUserId?.trim() === normalizedRaterId) {
-          if (!collectPairUsers) {
-            continue;
-          }
-          const firstUserId = payload.fromUserId.trim();
-          const secondUserId = payload.toUserId.trim();
-          if (firstUserId) {
-            ratedUserIds.add(firstUserId);
-          }
-          if (secondUserId) {
-            ratedUserIds.add(secondUserId);
-          }
-          continue;
-        }
-        if (mode === 'single' && payload.fromUserId.trim() === normalizedRaterId) {
-          const ratedUserId = payload.toUserId.trim();
-          if (ratedUserId) {
-            ratedUserIds.add(ratedUserId);
-          }
-        }
-        continue;
-      }
-      if (payload.source !== 'activity-rate') {
-        continue;
-      }
-      const item = this.toRateMenuItem(payload, normalizedRaterId);
+      const item = this.toRateMenuItem(payload);
       if (!this.shouldExcludePendingItemFromHome(item)) {
         continue;
       }
@@ -130,24 +103,12 @@ export class HttpUsersRatingsRepository {
       ) {
         continue;
       }
-      let firstUserId = '';
-      let secondUserId = '';
-      if (payload.source === 'game-card') {
-        if (payload.mode !== 'pair' || payload.ownerUserId?.trim() !== normalizedOwnerUserId) {
-          continue;
-        }
-        firstUserId = payload.fromUserId.trim();
-        secondUserId = payload.toUserId.trim();
-      } else if (payload.source === 'activity-rate') {
-        const item = this.toRateMenuItem(payload, normalizedOwnerUserId);
-        if (!this.shouldExcludePendingItemFromHome(item) || item.mode !== 'pair') {
-          continue;
-        }
-        firstUserId = item.userId.trim();
-        secondUserId = item.secondaryUserId?.trim() ?? '';
-      } else {
+      const item = this.toRateMenuItem(payload);
+      if (!this.shouldExcludePendingItemFromHome(item) || item.mode !== 'pair') {
         continue;
       }
+      const firstUserId = item.userId.trim();
+      const secondUserId = item.secondaryUserId?.trim() ?? '';
       const pairKey = this.toSortedPairKey(firstUserId, secondUserId);
       if (pairKey) {
         pairKeys.add(pairKey);
@@ -527,7 +488,7 @@ export class HttpUsersRatingsRepository {
     const outboxTable = this.memoryDb.read()[USER_RATES_OUTBOX_TABLE_NAME];
     for (const id of outboxTable.ids) {
       const record = outboxTable.byId[id];
-      const item = record?.payload ? this.toRateMenuItem(record.payload, normalizedUserId) : null;
+      const item = record?.payload ? this.toRateMenuItem(record.payload) : null;
       if (!item?.id?.trim()) {
         continue;
       }
@@ -537,11 +498,8 @@ export class HttpUsersRatingsRepository {
       .sort((left, right) => right.happenedAt.localeCompare(left.happenedAt) || left.id.localeCompare(right.id));
   }
 
-  private toRateMenuItem(record: UserRateRecord, ownerUserId: string): RateMenuItem | null {
-    if (record.source === 'activity-rate') {
-      return DemoUserRatesBuilder.toRateMenuItem(record);
-    }
-    return DemoUserRatesBuilder.toGameCardRateMenuItem(record, ownerUserId);
+  private toRateMenuItem(record: UserRateRecord): RateMenuItem | null {
+    return DemoUserRatesBuilder.toRateMenuItem(record);
   }
 
   private normalizeRateDirection(direction: RateMenuItem['direction'] | string | null | undefined): RateMenuItem['direction'] | null {
