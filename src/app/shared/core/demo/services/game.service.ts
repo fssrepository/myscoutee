@@ -20,6 +20,11 @@ import type { UserDto } from '../../base/interfaces/user.interface';
 })
 export class DemoGameService extends DemoRouteDelayService implements UserGameDataService {
   private static readonly USER_GAME_CARDS_ROUTE = '/game-cards/query';
+  private static readonly HOME_DISTANCE_BUCKET_KM = 5;
+  private static readonly HOME_DISTANCE_MAX_BUCKETS = 12;
+  private static readonly HOME_DISTANCE_SCORE = 120000;
+  private static readonly HOME_FRESHNESS_SCORE = 120000;
+  private static readonly HOME_FRESHNESS_HALF_LIFE_DAYS = 14;
   private readonly activityMembersRepository = inject(DemoActivityMembersRepository);
   private readonly usersRepository = inject(DemoUsersRepository);
   private readonly usersRatingsRepository = inject(DemoUsersRatingsRepository);
@@ -109,10 +114,17 @@ export class DemoGameService extends DemoRouteDelayService implements UserGameDa
     const metUserIds = new Set(this.activityMembersRepository.queryMetUserIds(normalizedUserId));
     const socialCandidateUserIds = this.queryFriendsInCommonCandidateUserIds(normalizedUserId);
     const allUsers = this.usersRepository.queryGameStackUsers(normalizedUserId);
+    const activeUserForRanking = this.usersRepository.queryUserById(normalizedUserId);
+    const latestActivityMsByUserId = this.queryLatestHomeActivityMsByUserId();
     const filtered = allUsers
       .filter(user => !metUserIds.has(user.id))
       .filter(user => !socialCandidateUserIds.has(user.id))
-      .filter(user => this.matchesFilterPreferences(user, request.filterPreferences ?? null));
+      .filter(user => this.matchesFilterPreferences(user, request.filterPreferences ?? null))
+      .sort((left, right) => {
+        const delta = this.homeUserScore(right, activeUserForRanking, latestActivityMsByUserId)
+          - this.homeUserScore(left, activeUserForRanking, latestActivityMsByUserId);
+        return delta !== 0 ? delta : left.id.localeCompare(right.id);
+      });
     const cardUserIds = filtered
       .slice(offset, offset + pageSize)
       .map(user => user.id);
@@ -308,6 +320,110 @@ export class DemoGameService extends DemoRouteDelayService implements UserGameDa
       .filter(card => this.isSocialCardVisible(usersById, card, 'friends-in-common'))
       .map(card => card.userId.trim())
       .filter(userId => userId.length > 0));
+  }
+
+  private queryLatestHomeActivityMsByUserId(): ReadonlyMap<string, number> {
+    const latestByUserId = new Map<string, number>();
+    for (const user of this.usersRepository.queryAllUsers()) {
+      const score = this.statusFreshnessMs(user);
+      if (score > 0) {
+        latestByUserId.set(user.id, score);
+      }
+    }
+    for (const user of this.usersRepository.queryAllUsers()) {
+      for (const rate of this.usersRatingsRepository.queryUserRatesByUserId(user.id)) {
+        const timestamp = Date.parse(rate.happenedAtIso?.trim() || rate.updatedAtIso || rate.createdAtIso || '');
+        if (!Number.isFinite(timestamp) || timestamp <= 0) {
+          continue;
+        }
+        this.rememberLatestActivityMs(latestByUserId, rate.ownerUserId, timestamp);
+        this.rememberLatestActivityMs(latestByUserId, rate.fromUserId, timestamp);
+        this.rememberLatestActivityMs(latestByUserId, rate.toUserId, timestamp);
+      }
+    }
+    return latestByUserId;
+  }
+
+  private rememberLatestActivityMs(target: Map<string, number>, userId: string | undefined, timestamp: number): void {
+    const normalizedUserId = `${userId ?? ''}`.trim();
+    if (!normalizedUserId || !Number.isFinite(timestamp) || timestamp <= 0) {
+      return;
+    }
+    const current = target.get(normalizedUserId) ?? 0;
+    if (timestamp > current) {
+      target.set(normalizedUserId, timestamp);
+    }
+  }
+
+  private statusFreshnessMs(user: UserDto): number {
+    const normalized = `${user.statusText ?? ''}`.trim().toLowerCase();
+    if (normalized === 'new' || normalized === 'new profile') {
+      return Date.now();
+    }
+    if (normalized.includes('recent')) {
+      return Date.now() - (2 * 24 * 60 * 60 * 1000);
+    }
+    return 0;
+  }
+
+  private homeUserScore(
+    candidate: UserDto,
+    activeUser: UserDto | null,
+    latestActivityMsByUserId: ReadonlyMap<string, number>
+  ): number {
+    return (Number(candidate.affinity) || 0)
+      + this.homeDistanceScore(activeUser, candidate)
+      + this.homeFreshnessScore(candidate.id, latestActivityMsByUserId);
+  }
+
+  private homeDistanceScore(activeUser: UserDto | null, candidate: UserDto): number {
+    const distanceMeters = this.distanceMeters(activeUser?.locationCoordinates, candidate.locationCoordinates);
+    if (distanceMeters === null) {
+      return 0;
+    }
+    const distanceKm = Math.max(0, distanceMeters / 1000);
+    const bucketIndex = Math.floor(distanceKm / DemoGameService.HOME_DISTANCE_BUCKET_KM);
+    const signal = Math.max(0, 1 - (Math.min(bucketIndex, DemoGameService.HOME_DISTANCE_MAX_BUCKETS) / DemoGameService.HOME_DISTANCE_MAX_BUCKETS));
+    return signal * DemoGameService.HOME_DISTANCE_SCORE;
+  }
+
+  private homeFreshnessScore(
+    candidateUserId: string,
+    latestActivityMsByUserId: ReadonlyMap<string, number>
+  ): number {
+    const latestActivityMs = latestActivityMsByUserId.get(candidateUserId.trim()) ?? 0;
+    if (latestActivityMs <= 0) {
+      return 0;
+    }
+    const ageMs = Math.max(0, Date.now() - latestActivityMs);
+    const ageDays = ageMs / (24 * 60 * 60 * 1000);
+    const signal = 1 / (1 + (ageDays / DemoGameService.HOME_FRESHNESS_HALF_LIFE_DAYS));
+    return signal * DemoGameService.HOME_FRESHNESS_SCORE;
+  }
+
+  private distanceMeters(
+    left: UserDto['locationCoordinates'] | undefined,
+    right: UserDto['locationCoordinates'] | undefined
+  ): number | null {
+    const leftLat = Number(left?.latitude);
+    const leftLon = Number(left?.longitude);
+    const rightLat = Number(right?.latitude);
+    const rightLon = Number(right?.longitude);
+    if (![leftLat, leftLon, rightLat, rightLon].every(Number.isFinite)) {
+      return null;
+    }
+    const earthRadiusMeters = 6371000;
+    const latitudeDelta = this.toRadians(rightLat - leftLat);
+    const longitudeDelta = this.toRadians(rightLon - leftLon);
+    const leftLatitude = this.toRadians(leftLat);
+    const rightLatitude = this.toRadians(rightLat);
+    const haversine = Math.sin(latitudeDelta / 2) ** 2
+      + Math.cos(leftLatitude) * Math.cos(rightLatitude) * (Math.sin(longitudeDelta / 2) ** 2);
+    return earthRadiusMeters * 2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine));
+  }
+
+  private toRadians(value: number): number {
+    return value * Math.PI / 180;
   }
 
   private isSocialCardVisible(

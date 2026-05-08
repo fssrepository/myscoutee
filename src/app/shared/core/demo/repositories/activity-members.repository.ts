@@ -331,12 +331,79 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
       }
       cards['friends-in-common'].sort((left, right) => {
         const bridgeDelta = (right.bridgeCount ?? 0) - (left.bridgeCount ?? 0);
-        return bridgeDelta !== 0 ? bridgeDelta : left.id.localeCompare(right.id);
+        if (bridgeDelta !== 0) {
+          return bridgeDelta;
+        }
+        const scoreDelta = this.singleDistanceScore(activeUserId, right, usersById)
+          - this.singleDistanceScore(activeUserId, left, usersById);
+        return scoreDelta !== 0 ? scoreDelta : left.id.localeCompare(right.id);
       });
-      cards['separated-friends'].sort((left, right) => left.id.localeCompare(right.id));
+      cards['separated-friends'].sort((left, right) => {
+        const scoreDelta = this.pairDistanceScore(activeUserId, right, usersById)
+          - this.pairDistanceScore(activeUserId, left, usersById);
+        return scoreDelta !== 0 ? scoreDelta : left.id.localeCompare(right.id);
+      });
       this.gameSocialCardsByUserId.set(activeUserId, cards);
     }
     this.gameSocialCardsCacheToken = graphToken;
+  }
+
+  private pairDistanceScore(
+    activeUserId: string,
+    card: UserGameSocialCard,
+    usersById: ReadonlyMap<string, DemoUser>
+  ): number {
+    const activeUser = usersById.get(activeUserId);
+    const leftUser = usersById.get(card.userId.trim());
+    const rightUser = usersById.get((card.secondaryUserId ?? '').trim());
+    const pairScore = this.distanceBucketScore(leftUser, rightUser);
+    const triangleScore = (
+      this.distanceBucketScore(activeUser, leftUser)
+      + this.distanceBucketScore(activeUser, rightUser)
+    ) / 2;
+    return pairScore + (triangleScore * 0.35);
+  }
+
+  private singleDistanceScore(
+    activeUserId: string,
+    card: UserGameSocialCard,
+    usersById: ReadonlyMap<string, DemoUser>
+  ): number {
+    return this.distanceBucketScore(usersById.get(activeUserId), usersById.get(card.userId.trim()));
+  }
+
+  private distanceBucketScore(left: DemoUser | undefined, right: DemoUser | undefined): number {
+    const distanceMeters = this.distanceMeters(left?.locationCoordinates, right?.locationCoordinates);
+    if (distanceMeters === null) {
+      return 0;
+    }
+    const bucketIndex = Math.floor(Math.max(0, distanceMeters / 1000) / 5);
+    return Math.max(0, 1 - (Math.min(bucketIndex, 12) / 12));
+  }
+
+  private distanceMeters(
+    left: DemoUser['locationCoordinates'] | undefined,
+    right: DemoUser['locationCoordinates'] | undefined
+  ): number | null {
+    const leftLat = Number(left?.latitude);
+    const leftLon = Number(left?.longitude);
+    const rightLat = Number(right?.latitude);
+    const rightLon = Number(right?.longitude);
+    if (![leftLat, leftLon, rightLat, rightLon].every(Number.isFinite)) {
+      return null;
+    }
+    const earthRadiusMeters = 6371000;
+    const latitudeDelta = this.toRadians(rightLat - leftLat);
+    const longitudeDelta = this.toRadians(rightLon - leftLon);
+    const leftLatitude = this.toRadians(leftLat);
+    const rightLatitude = this.toRadians(rightLat);
+    const haversine = Math.sin(latitudeDelta / 2) ** 2
+      + Math.cos(leftLatitude) * Math.cos(rightLatitude) * (Math.sin(longitudeDelta / 2) ** 2);
+    return earthRadiusMeters * 2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine));
+  }
+
+  private toRadians(value: number): number {
+    return value * Math.PI / 180;
   }
 
   private strongestBridgeUserId(
