@@ -95,8 +95,18 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
       let changed = false;
 
       const appendSeededRecords = (records: readonly DemoActivityMemberRecord[]): void => {
+        const recordsByOwnerKey = new Map<string, DemoActivityMemberRecord[]>();
         for (const record of records) {
-          if (existingOwnerKeys.has(record.ownerKey)) {
+          const ownerKey = record.ownerKey?.trim() ?? '';
+          if (!ownerKey) {
+            continue;
+          }
+          const bucket = recordsByOwnerKey.get(ownerKey) ?? [];
+          bucket.push(record);
+          recordsByOwnerKey.set(ownerKey, bucket);
+        }
+        for (const [ownerKey, ownerRecords] of recordsByOwnerKey.entries()) {
+          if (existingOwnerKeys.has(ownerKey)) {
             continue;
           }
           if (!changed) {
@@ -105,17 +115,20 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
             nextIdsByOwnerKey = this.cloneOwnerKeyIndex(currentTable.idsByOwnerKey);
             changed = true;
           }
-          nextById![record.id] = { ...record };
-          nextIds!.push(record.id);
-          const ownerBucket = nextIdsByOwnerKey![record.ownerKey] ?? [];
-          ownerBucket.push(record.id);
-          nextIdsByOwnerKey![record.ownerKey] = ownerBucket;
-          existingOwnerKeys.add(record.ownerKey);
+          const ownerBucket = nextIdsByOwnerKey![ownerKey] ?? [];
+          for (const record of ownerRecords) {
+            nextById![record.id] = { ...record };
+            nextIds!.push(record.id);
+            ownerBucket.push(record.id);
+          }
+          nextIdsByOwnerKey![ownerKey] = ownerBucket;
+          existingOwnerKeys.add(ownerKey);
         }
       };
 
       appendSeededRecords(this.buildSeededEventOwnerRecords(existingOwnerKeys));
       appendSeededRecords(this.buildSeededInvitationOwnerRecords(existingOwnerKeys));
+      appendSeededRecords(this.buildSeededHomeSocialBridgeRecords(existingOwnerKeys));
       for (const userId of normalizedOwnerUserIds) {
         appendSeededRecords(this.buildSeededAssetOwnerRecordsForUser(userId, existingOwnerKeys));
       }
@@ -750,6 +763,54 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
       records.push(...this.buildSeededRecordsForInvitation(invitationRecord));
     }
     return records;
+  }
+
+  private buildSeededHomeSocialBridgeRecords(existingOwnerKeys: ReadonlySet<string> = new Set()): DemoActivityMemberRecord[] {
+    const seedGroups: Array<{ ownerId: string; metWhere: string; userIds: [string, string] }> = [
+      { ownerId: 'demo-home-fic-u1-bridge', metWhere: 'Coffee Social Bridge', userIds: ['u1', 'u2'] },
+      { ownerId: 'demo-home-fic-u1-candidate', metWhere: 'Coffee Social Bridge', userIds: ['u2', 'u42'] },
+      { ownerId: 'demo-home-fic-u4-bridge', metWhere: 'Workshop Social Bridge', userIds: ['u4', 'u3'] },
+      { ownerId: 'demo-home-fic-u4-candidate', metWhere: 'Workshop Social Bridge', userIds: ['u3', 'u43'] },
+      { ownerId: 'demo-home-fic-u6-bridge', metWhere: 'Gallery Social Bridge', userIds: ['u6', 'u8'] },
+      { ownerId: 'demo-home-fic-u6-candidate', metWhere: 'Gallery Social Bridge', userIds: ['u8', 'u46'] }
+    ];
+    const records: DemoActivityMemberRecord[] = [];
+    for (const group of seedGroups) {
+      const owner: ActivityMemberOwnerRef = { ownerType: 'group', ownerId: group.ownerId };
+      if (existingOwnerKeys.has(this.ownerKey(owner))) {
+        continue;
+      }
+      for (const userId of group.userIds) {
+        records.push(this.toRecord(owner, this.buildSeededHomeSocialBridgeEntry(userId, group.ownerId, group.metWhere)));
+      }
+    }
+    return records;
+  }
+
+  private buildSeededHomeSocialBridgeEntry(userId: string, ownerId: string, metWhere: string): AppTypes.ActivityMemberEntry {
+    const user = this.resolveDemoUser(userId);
+    const metAtIso = '2026-03-22T18:00:00.000Z';
+    return {
+      id: `home-fic-seed:${ownerId}:${user.id}`.toLowerCase().replace(/[^a-z0-9:-]+/g, '-'),
+      userId: user.id,
+      name: user.name,
+      initials: user.initials,
+      gender: user.gender,
+      city: user.city,
+      statusText: 'Met at event.',
+      role: 'Member',
+      status: 'accepted',
+      pendingSource: null,
+      requestKind: null,
+      invitedByActiveUser: false,
+      invitedByUserId: null,
+      metAtIso,
+      actionAtIso: metAtIso,
+      metWhere,
+      relevance: this.resolveUserAffinity(user),
+      avatarUrl: user.images?.[0] ?? '',
+      profile: user
+    };
   }
 
   private batchRefreshInvalidSeededRecordOwners(table: DemoActivityMembersRecordCollection): void {

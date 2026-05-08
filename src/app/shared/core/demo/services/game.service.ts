@@ -107,9 +107,11 @@ export class DemoGameService extends DemoRouteDelayService implements UserGameDa
     const pageSize = this.resolvePageSize(request.pageSize);
     const offset = this.resolveOffset(request.cursor);
     const metUserIds = new Set(this.activityMembersRepository.queryMetUserIds(normalizedUserId));
+    const socialCandidateUserIds = this.queryFriendsInCommonCandidateUserIds(normalizedUserId);
     const allUsers = this.usersRepository.queryGameStackUsers(normalizedUserId);
     const filtered = allUsers
       .filter(user => !metUserIds.has(user.id))
+      .filter(user => !socialCandidateUserIds.has(user.id))
       .filter(user => this.matchesFilterPreferences(user, request.filterPreferences ?? null));
     const cardUserIds = filtered
       .slice(offset, offset + pageSize)
@@ -296,6 +298,16 @@ export class DemoGameService extends DemoRouteDelayService implements UserGameDa
       const user = usersById.get(userId);
       return user ? this.matchesFilterPreferences(user, preferences) : false;
     });
+  }
+
+  private queryFriendsInCommonCandidateUserIds(activeUserId: string): Set<string> {
+    const allUsers = this.usersRepository.queryAllUsers();
+    const usersById = new Map(allUsers.map(user => [user.id, user] as const));
+    return new Set(this.activityMembersRepository
+      .queryGameSocialCards(activeUserId, 'friends-in-common')
+      .filter(card => this.isSocialCardVisible(usersById, card, 'friends-in-common'))
+      .map(card => card.userId.trim())
+      .filter(userId => userId.length > 0));
   }
 
   private isSocialCardVisible(
