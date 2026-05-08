@@ -198,27 +198,27 @@ export class ProfileOnboardingService {
       genderDetail: emptyProfile
         ? ''
         : user.gender === 'woman' ? 'Woman' : user.gender === 'man' ? 'Man' : '',
-      drinking: this.profileDetailValue(user, 'Drinking'),
-      smoking: this.profileDetailValue(user, 'Smoking'),
-      workout: this.profileDetailValue(user, 'Workout'),
-      pets: this.profileDetailValue(user, 'Pets'),
-      familyPlans: this.profileDetailValue(user, 'Family plans'),
-      children: this.profileDetailValue(user, 'Children'),
-      loveStyle: this.profileDetailValue(user, 'Love style'),
-      communicationStyle: this.profileDetailValue(user, 'Communication style'),
-      sexualOrientation: this.profileDetailValue(user, 'Sexual orientation'),
-      religion: this.profileDetailValue(user, 'Religion'),
-      values: this.parseCommaValues(this.profileDetailValue(user, 'Values')),
-      interests: this.parseCommaValues(this.profileDetailValue(user, 'Interest')),
+      drinking: this.profileDetailValue(user, 'profile.details.drinking'),
+      smoking: this.profileDetailValue(user, 'profile.details.smoking'),
+      workout: this.profileDetailValue(user, 'profile.details.workout'),
+      pets: this.profileDetailValue(user, 'profile.details.pets'),
+      familyPlans: this.profileDetailValue(user, 'profile.details.familyPlans'),
+      children: this.profileDetailValue(user, 'profile.details.children'),
+      loveStyle: this.profileDetailValue(user, 'profile.details.loveStyle'),
+      communicationStyle: this.profileDetailValue(user, 'profile.details.communicationStyle'),
+      sexualOrientation: this.profileDetailValue(user, 'profile.details.sexualOrientation'),
+      religion: this.profileDetailValue(user, 'profile.details.religion'),
+      values: this.parseCommaValues(this.profileDetailValue(user, 'profile.details.values')),
+      interests: this.parseCommaValues(this.profileDetailValue(user, 'profile.details.interest')),
       experienceEntries: []
     };
   }
 
-  private profileDetailValue(user: UserDto, label: string): string {
-    const normalizedLabel = this.normalizeToken(label);
+  private profileDetailValue(user: UserDto, labelKey: string): string {
+    const normalizedLabel = this.normalizeToken(labelKey);
     for (const group of user.profileDetails ?? []) {
       for (const row of group.rows ?? []) {
-        if (this.normalizeToken(row.label) === normalizedLabel) {
+        if (this.normalizeToken(row.labelKey) === normalizedLabel) {
           return `${row.value ?? ''}`.trim();
         }
       }

@@ -292,16 +292,16 @@
                         <div class="profile-form-grid profile-details-form-grid">
                           @for (row of group.rows; track row; let rowIndex = $index) {
                             <div class="profile-details-field">
-                              <span>{{ row.label }}</span>
+                              <span>{{ row.labelKey | i18n }}</span>
                               <div class="profile-details-control-row">
-                                @if (row.label === 'Values' || row.label === 'Interest') {
+                                @if (row.labelKey === 'profile.details.values' || row.labelKey === 'profile.details.interest') {
                                   <button
                                     type="button"
                                     class="profile-status-select-wrap selector-like profile-details-values-btn"
-                                    [ngClass]="row.label === 'Values' ? 'profile-details-values-tone-values' : 'profile-details-values-tone-interest'"
-                                    (click)="row.label === 'Values' ? openValuesSelector(groupIndex, rowIndex) : openInterestSelector(groupIndex, rowIndex)"
+                                    [ngClass]="row.labelKey === 'profile.details.values' ? 'profile-details-values-tone-values' : 'profile-details-values-tone-interest'"
+                                    (click)="row.labelKey === 'profile.details.values' ? openValuesSelector(groupIndex, rowIndex) : openInterestSelector(groupIndex, rowIndex)"
                                     >
-                                    @if (row.label === 'Values') {
+                                    @if (row.labelKey === 'profile.details.values') {
                                       <span class="status-option-content profile-details-selected-badges">
                                         @if (valuesRowPreviewOptions(row.value, 1).length > 0) {
                                           <span class="profile-details-selected-chip-list">
@@ -350,11 +350,11 @@
                                   </button>
                                 } @else {
                                   @if (!isMobileView) {
-                                    <div class="profile-status-select-wrap selector-like profile-details-select" [ngClass]="detailSelectedClass(row.label, row.value, row.options)">
+                                    <div class="profile-status-select-wrap selector-like profile-details-select" [ngClass]="detailSelectedClass(row.labelKey, row.value, row.options)">
                                       <mat-select [(ngModel)]="row.value" disableOptionCentering panelClass="selector-options-panel profile-bottom-sheet-panel">
                                         <mat-select-trigger>
                                           <span class="status-option-content">
-                                            <mat-icon>{{ detailOptionIcon(row.label, row.value) }}</mat-icon>
+                                            <mat-icon>{{ detailOptionIcon(row.labelKey, row.value) }}</mat-icon>
                                             <span>{{ row.value }}</span>
                                           </span>
                                         </mat-select-trigger>
@@ -362,11 +362,11 @@
                                           <mat-option
                                             [value]="item"
                                             class="status-option"
-                                            [ngClass]="detailOptionClass(row.label, item, row.options)"
+                                            [ngClass]="detailOptionClass(row.labelKey, item, row.options)"
                                             [class.hide-selected-option]="item === row.value"
                                             >
                                             <span class="status-option-content">
-                                              <mat-icon>{{ detailOptionIcon(row.label, item) }}</mat-icon>
+                                              <mat-icon>{{ detailOptionIcon(row.labelKey, item) }}</mat-icon>
                                               <span>{{ item }}</span>
                                             </span>
                                           </mat-option>
@@ -377,11 +377,11 @@
                                     <button
                                       type="button"
                                       class="profile-status-select-wrap selector-like profile-details-select"
-                                      [ngClass]="detailSelectedClass(row.label, row.value, row.options)"
+                                      [ngClass]="detailSelectedClass(row.labelKey, row.value, row.options)"
                                       (click)="openMobileDetailValueSelector(groupIndex, rowIndex, $event)"
                                       >
                                       <span class="status-option-content">
-                                        <mat-icon>{{ detailOptionIcon(row.label, row.value) }}</mat-icon>
+                                        <mat-icon>{{ detailOptionIcon(row.labelKey, row.value) }}</mat-icon>
                                         <span>{{ row.value }}</span>
                                       </span>
                                       <mat-icon>expand_more</mat-icon>

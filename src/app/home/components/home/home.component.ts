@@ -94,11 +94,34 @@ interface HomeModeOption {
   icon: string;
 }
 
-const PUBLIC_PROFILE_DETAIL_LABELS = new Set(
+const PROFILE_DETAIL_LABEL_KEYS: Record<string, string> = {
+  name: 'profile.name',
+  city: 'profile.city',
+  birthday: 'profile.birthday',
+  height: 'profile.height',
+  physique: 'profile.physique',
+  languages: 'profile.languages',
+  horoscope: 'profile.horoscope',
+  gender: 'profile.gender',
+  interest: 'profile.details.interest',
+  drinking: 'profile.details.drinking',
+  smoking: 'profile.details.smoking',
+  workout: 'profile.details.workout',
+  pets: 'profile.details.pets',
+  'family plans': 'profile.details.familyPlans',
+  children: 'profile.details.children',
+  'love style': 'profile.details.loveStyle',
+  'communication style': 'profile.details.communicationStyle',
+  'sexual orientation': 'profile.details.sexualOrientation',
+  religion: 'profile.details.religion',
+  values: 'profile.details.values'
+};
+
+const PUBLIC_PROFILE_DETAIL_KEYS = new Set(
   APP_STATIC_DATA.profileDetailGroupTemplates.flatMap(group =>
     group.rows
       .filter(row => row.privacy === 'Public')
-      .map(row => row.label.trim().toLowerCase())
+      .map(row => row.labelKey.trim().toLowerCase())
   )
 );
 
@@ -923,48 +946,49 @@ export class HomeComponent implements OnDestroy {
 
   private publicOverlayDetailValue(candidate: DemoUser, label: string): string {
     const normalizedLabel = this.normalizeOverlayLabel(label);
-    if (!PUBLIC_PROFILE_DETAIL_LABELS.has(normalizedLabel)) {
+    const normalizedKey = this.normalizeOverlayLabel(PROFILE_DETAIL_LABEL_KEYS[normalizedLabel] ?? label);
+    if (!PUBLIC_PROFILE_DETAIL_KEYS.has(normalizedKey)) {
       return '';
     }
     const facet = this.userFacet(candidate);
-    switch (normalizedLabel) {
-      case 'name':
+    switch (normalizedKey) {
+      case 'profile.name':
         return candidate.name;
-      case 'city':
+      case 'profile.city':
         return candidate.city;
-      case 'languages':
+      case 'profile.languages':
         return this.compactList(candidate.languages, 2);
-      case 'horoscope':
+      case 'profile.horoscope':
         return candidate.horoscope;
-      case 'gender':
+      case 'profile.gender':
         return candidate.gender === 'woman' ? 'Woman' : 'Man';
-      case 'workout':
+      case 'profile.details.workout':
         return facet.workout;
-      case 'pets':
+      case 'profile.details.pets':
         return facet.pets;
-      case 'height':
+      case 'profile.height':
         return candidate.height;
-      case 'physique':
+      case 'profile.physique':
         return candidate.physique;
-      case 'drinking':
+      case 'profile.details.drinking':
         return facet.drinking;
-      case 'smoking':
+      case 'profile.details.smoking':
         return facet.smoking;
-      case 'interest':
+      case 'profile.details.interest':
         return this.compactList(this.userInterests(candidate), 2);
-      case 'values':
+      case 'profile.details.values':
         return this.compactList(this.userValues(candidate), 2);
-      case 'communication style':
+      case 'profile.details.communicationstyle':
         return facet.communicationStyle;
-      case 'love style':
+      case 'profile.details.lovestyle':
         return facet.loveStyle;
-      case 'family plans':
+      case 'profile.details.familyplans':
         return facet.familyPlans;
-      case 'children':
+      case 'profile.details.children':
         return facet.children;
-      case 'religion':
+      case 'profile.details.religion':
         return facet.religion;
-      case 'sexual orientation':
+      case 'profile.details.sexualorientation':
         return facet.sexualOrientation;
       default:
         return '';

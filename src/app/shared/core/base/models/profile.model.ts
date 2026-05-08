@@ -2,7 +2,7 @@ export type ProfileStatus = 'public' | 'friends only' | 'host only' | 'inactive'
 export type DetailPrivacy = 'Public' | 'Friends' | 'Hosts' | 'Private';
 
 export interface ProfileDetailFormRow {
-  label: string;
+  labelKey: string;
   value: string;
   privacy: DetailPrivacy;
   options: string[];
