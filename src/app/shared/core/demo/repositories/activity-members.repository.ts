@@ -253,10 +253,17 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
     this.acceptedMemberGraphCache = graph;
     this.acceptedMemberGraphCacheToken = graphToken;
     this.gameSocialCardsByUserId.clear();
-    for (const activeUserId of [...graph.neighborsByUserId.keys()].sort()) {
+    const graphUserIds = [...graph.neighborsByUserId.keys()].sort();
+    const usersById = new Map(this.demoActivityMemberUsers.map(user => [user.id, user] as const));
+    for (const activeUserId of graphUserIds) {
+      if (!DemoUserSeedBuilder.isPublicGameProfile(usersById.get(activeUserId))) {
+        continue;
+      }
       const activeNeighbors = [...(graph.neighborsByUserId.get(activeUserId) ?? new Set<string>())]
         .filter(userId => userId !== activeUserId)
+        .filter(userId => DemoUserSeedBuilder.isInsideNetworkGameProfile(usersById.get(userId)))
         .sort();
+      const activeNeighborIds = new Set(activeNeighbors);
       const cards: Record<'friends-in-common' | 'separated-friends', UserGameSocialCard[]> = {
         'friends-in-common': [],
         'separated-friends': []
@@ -266,32 +273,73 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
         for (let rightIndex = leftIndex + 1; rightIndex < activeNeighbors.length; rightIndex += 1) {
           const rightUserId = activeNeighbors[rightIndex];
           const key = this.sortedPairKey(leftUserId, rightUserId);
-          const isConnected = graph.neighborsByUserId.get(leftUserId)?.has(rightUserId) ?? false;
-          const mode: Extract<UserGameMode, 'friends-in-common' | 'separated-friends'> = isConnected
-            ? 'friends-in-common'
-            : 'separated-friends';
-          cards[mode].push({
-            id: `${mode}:${activeUserId}:${key}`,
+          if (graph.neighborsByUserId.get(leftUserId)?.has(rightUserId)) {
+            continue;
+          }
+          cards['separated-friends'].push({
+            id: `separated-friends:${activeUserId}:${key}`,
             userId: leftUserId,
             secondaryUserId: rightUserId,
-            bridgeUserId: rightUserId,
-            socialContext: mode,
-            bridgeCount: isConnected ? 1 : 2,
-            eventName: isConnected
-              ? (graph.edgeEventNameByKey.get(key) ?? 'Connected Friends')
-              : (
-                graph.edgeEventNameByKey.get(this.sortedPairKey(activeUserId, leftUserId))
-                ?? graph.edgeEventNameByKey.get(this.sortedPairKey(activeUserId, rightUserId))
-                ?? 'Unconnected Friends'
-              )
+            socialContext: 'separated-friends',
+            bridgeCount: 2,
+            eventName: graph.edgeEventNameByKey.get(this.sortedPairKey(activeUserId, leftUserId))
+              ?? graph.edgeEventNameByKey.get(this.sortedPairKey(activeUserId, rightUserId))
+              ?? 'Inside Network'
           });
         }
       }
-      cards['friends-in-common'].sort((left, right) => left.id.localeCompare(right.id));
+      for (const candidateUserId of graphUserIds) {
+        if (
+          candidateUserId === activeUserId
+          || activeNeighborIds.has(candidateUserId)
+          || !DemoUserSeedBuilder.isPublicGameProfile(usersById.get(candidateUserId))
+        ) {
+          continue;
+        }
+        const candidateNeighbors = graph.neighborsByUserId.get(candidateUserId) ?? new Set<string>();
+        const bridgeUserIds = activeNeighbors
+          .filter(bridgeUserId => candidateNeighbors.has(bridgeUserId))
+          .filter(bridgeUserId => DemoUserSeedBuilder.isInsideNetworkGameProfile(usersById.get(bridgeUserId)))
+          .sort();
+        if (bridgeUserIds.length === 0) {
+          continue;
+        }
+        const bridgeUserId = this.strongestBridgeUserId(bridgeUserIds, usersById);
+        cards['friends-in-common'].push({
+          id: `friends-in-common:${activeUserId}:${candidateUserId}`,
+          userId: candidateUserId,
+          socialContext: 'friends-in-common',
+          bridgeUserId,
+          bridgeCount: bridgeUserIds.length,
+          eventName: graph.edgeEventNameByKey.get(this.sortedPairKey(activeUserId, bridgeUserId))
+            ?? graph.edgeEventNameByKey.get(this.sortedPairKey(candidateUserId, bridgeUserId))
+            ?? 'Friends in Common'
+        });
+      }
+      cards['friends-in-common'].sort((left, right) => {
+        const bridgeDelta = (right.bridgeCount ?? 0) - (left.bridgeCount ?? 0);
+        return bridgeDelta !== 0 ? bridgeDelta : left.id.localeCompare(right.id);
+      });
       cards['separated-friends'].sort((left, right) => left.id.localeCompare(right.id));
       this.gameSocialCardsByUserId.set(activeUserId, cards);
     }
     this.gameSocialCardsCacheToken = graphToken;
+  }
+
+  private strongestBridgeUserId(
+    bridgeUserIds: readonly string[],
+    usersById: ReadonlyMap<string, DemoUser>
+  ): string {
+    return [...bridgeUserIds]
+      .sort((left, right) => {
+        const affinityDelta = this.resolveUserAffinity(usersById.get(right)) - this.resolveUserAffinity(usersById.get(left));
+        return affinityDelta !== 0 ? affinityDelta : left.localeCompare(right);
+      })[0] ?? '';
+  }
+
+  private resolveUserAffinity(user: DemoUser | undefined): number {
+    const value = Number(user?.affinity);
+    return Number.isFinite(value) ? Math.max(0, value) : 0;
   }
 
   private queryAcceptedMemberGraph(): {

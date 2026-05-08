@@ -116,6 +116,12 @@
         <p>Your profile is still visible to you, but rating, matching, profile editing, assets, events, and invitations are paused.</p>
         <p>Open Chats from the menu to contact MyScoutee support. They can review the block and tell you what information is needed.</p>
       </div>
+    } @else if (isGameVisibilityPaused) {
+      <div class="game-blocked-panel game-visibility-panel">
+        <mat-icon>visibility_off</mat-icon>
+        <h2>{{ gameVisibilityPausedTitle }}</h2>
+        <p>{{ gameVisibilityPausedDescription }}</p>
+      </div>
     } @else {
     <div class="game-card-deck">
       <ng-template #homeFullscreenItemTemplate let-row let-renderState="renderState">

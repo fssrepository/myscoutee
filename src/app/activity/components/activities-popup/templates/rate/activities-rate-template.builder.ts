@@ -4,6 +4,7 @@ import {
   buildPairRateCardData,
   buildSingleRateCardData,
   type CardBadgeConfig,
+  type CardContextBadgeConfig,
   type PairCardData,
   type RateCardPerson,
   type SingleCardData
@@ -32,7 +33,8 @@ export function buildActivitiesSingleRateCard(
 ): SingleCardData {
   return buildSingleRateCardData({
     ...buildActivitiesRateCardInput(row, options),
-    badge: options.badge
+    badge: options.badge,
+    contextBadge: buildActivitiesRateContextBadge(row, options.resolveUserById)
   });
 }
 
@@ -150,6 +152,51 @@ function resolveActivitiesRatePrimaryUser(
   return resolveUserById(item.userId);
 }
 
+function buildActivitiesRateContextBadge(
+  row: AppTypes.ActivityListRow,
+  resolveUserById: (userId: string) => RateCardPerson | null
+): CardContextBadgeConfig | null {
+  if (row.type !== 'rates') {
+    return null;
+  }
+
+  const item = row.source as RateMenuItem;
+  if (item.mode !== 'individual' || item.socialContext !== 'friends-in-common') {
+    return null;
+  }
+
+  const bridgeUserId = item.bridgeUserId?.trim() ?? '';
+  if (!bridgeUserId) {
+    return null;
+  }
+
+  const bridgeUser = resolveUserById(bridgeUserId);
+  if (!bridgeUser) {
+    return null;
+  }
+
+  const bridgeCount = Math.max(0, Math.trunc(Number(item.bridgeCount) || 0));
+  return {
+    label: initialsFromName(bridgeUser.name),
+    imageUrl: firstProfileImageUrl(bridgeUser),
+    counterLabel: bridgeCount > 1 ? `+${bridgeCount - 1}` : null,
+    title: contextBadgeTitle(bridgeUser.name, bridgeCount),
+    ariaLabel: `View ${bridgeUser.name} profile`,
+    profileView: {
+      userId: bridgeUser.id,
+      user: bridgeUser.profile ?? null,
+      label: bridgeUser.name
+    }
+  };
+}
+
+function contextBadgeTitle(bridgeName: string, bridgeCount: number): string {
+  const extraCount = Math.max(0, Math.trunc(Number(bridgeCount) || 0) - 1);
+  return extraCount > 0
+    ? `Shown via ${bridgeName} and ${extraCount} more`
+    : `Shown via ${bridgeName}`;
+}
+
 function resolveActivitiesRateImageUrls(imageUrls: readonly string[] | null | undefined): readonly string[] | undefined {
   if (!imageUrls?.length) {
     return undefined;
@@ -191,4 +238,24 @@ function mergeActivitiesRateCardPerson(
     ...displayUser,
     profile: resolvedUser.profile
   };
+}
+
+function firstProfileImageUrl(user: RateCardPerson): string | null {
+  const profile = user.profile as { images?: readonly string[] } | null | undefined;
+  const imageUrl = profile?.images
+    ?.map(image => `${image ?? ''}`.trim())
+    .find(image => image.length > 0);
+  return imageUrl ?? null;
+}
+
+function initialsFromName(name: string): string {
+  const initials = name
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map(part => part[0] ?? '')
+    .join('')
+    .toUpperCase();
+  return initials || '?';
 }

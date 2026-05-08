@@ -69,6 +69,7 @@ export class RatesService extends BaseRouteModeService {
     const [mode, direction] = request.rateFilter.split('-') as ['individual' | 'pair', RateMenuItem['direction']];
     const filtered = items
       .filter(item => item.mode === mode && item.direction === direction)
+      .filter(item => this.matchesRateSocialFilter(item, request.rateSocialBadgeEnabled === true))
       .filter(item => this.matchesRateRange(item, request))
       .sort((left, right) => this.compareRateItems(left, right, request));
     const cursorId = this.resolveRateCursorId(request.cursor);
@@ -98,6 +99,18 @@ export class RatesService extends BaseRouteModeService {
     }
     if (rangeEndMs !== null && happenedAtMs > rangeEndMs) {
       return false;
+    }
+    return true;
+  }
+
+  private matchesRateSocialFilter(item: RateMenuItem, socialBadgeEnabled: boolean): boolean {
+    if (item.mode === 'individual') {
+      const friendsInCommon = item.socialContext === 'friends-in-common';
+      return socialBadgeEnabled ? friendsInCommon : !friendsInCommon;
+    }
+    if (item.mode === 'pair') {
+      const insideNetwork = item.socialContext === 'separated-friends';
+      return socialBadgeEnabled ? insideNetwork : !insideNetwork;
     }
     return true;
   }

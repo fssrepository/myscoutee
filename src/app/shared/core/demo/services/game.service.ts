@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 
 import { APP_STATIC_DATA } from '../../../app-static-data';
 import { DemoRouteDelayService } from './demo-route-delay.service';
+import { DemoUserSeedBuilder } from '../builders';
 import { DemoActivityMembersRepository } from '../repositories/activity-members.repository';
 import { DemoUsersRepository } from '../repositories/users.repository';
 import { DemoUsersRatingsRepository } from '../repositories/users-ratings.repository';
@@ -25,16 +26,30 @@ export class DemoGameService extends DemoRouteDelayService implements UserGameDa
   private readonly userFacetById = APP_STATIC_DATA.homeUserFacetById;
 
   queryGameCardsUsersSnapshot(): UserDto[] {
-    return this.usersRepository.queryGameStackUsers();
+    return this.usersRepository.queryAllUsers()
+      .filter(user => user.id.trim().length > 0)
+      .filter(user => !DemoUserSeedBuilder.isEmptyOnboardingProfileUserId(user.id))
+      .filter(user => DemoUserSeedBuilder.isActivityRateVisibleProfile(user));
   }
 
   recordGameCardRating(
     raterUserId: string,
     ratedUserId: string,
     rating: number,
-    mode: 'single' | 'pair' = 'single'
+    mode: 'single' | 'pair' = 'single',
+    socialContext?: UserGameSocialCard['socialContext'],
+    bridgeUserId?: string,
+    bridgeCount?: number
   ): void {
-    this.usersRatingsRepository.enqueueGameCardRatingOutbox(raterUserId, ratedUserId, rating, mode);
+    this.usersRatingsRepository.enqueueGameCardRatingOutbox(
+      raterUserId,
+      ratedUserId,
+      rating,
+      mode,
+      socialContext,
+      bridgeUserId,
+      bridgeCount
+    );
   }
 
   async queryUserGameCardsByFilter(request: UserGameCardsQueryRequest): Promise<UserGameCardsQueryResponse> {
@@ -43,14 +58,31 @@ export class DemoGameService extends DemoRouteDelayService implements UserGameDa
     if (!normalizedUserId) {
       return { cards: null };
     }
+    const activeUser = this.usersRepository.queryUserById(normalizedUserId);
+    if (!DemoUserSeedBuilder.isPublicGameProfile(activeUser)) {
+      return {
+        cards: {
+          filterCount: 0,
+          cardUserIds: [],
+          socialCards: [],
+          nextCursor: null
+        }
+      };
+    }
     const mode = request.mode ?? 'single';
     if (mode === 'separated-friends' || mode === 'friends-in-common') {
       const allUsers = this.usersRepository.queryAllUsers();
       const usersById = new Map(allUsers.map(user => [user.id, user] as const));
       const ratedPairKeys = new Set(this.usersRatingsRepository.queryRatedGameCardPairKeys(normalizedUserId));
+      const ratedSingleUserIds = new Set(this.usersRatingsRepository.queryRatedGameCardUserIds(normalizedUserId, 'single'));
       const allSocialCards = this.activityMembersRepository
         .queryGameSocialCards(normalizedUserId, mode)
+        .filter(card => this.isSocialCardVisible(usersById, card, mode))
         .filter(card => {
+          if (mode === 'friends-in-common') {
+            const candidateUserId = card.userId.trim();
+            return candidateUserId.length > 0 && !ratedSingleUserIds.has(candidateUserId);
+          }
           const pairKey = this.socialPairKey(card);
           return pairKey !== null && !ratedPairKeys.has(pairKey);
         });
@@ -249,18 +281,38 @@ export class DemoGameService extends DemoRouteDelayService implements UserGameDa
     if (!preferences) {
       return true;
     }
-    const participantIds = [
-      card.userId.trim(),
-      (card.secondaryUserId?.trim() || card.bridgeUserId?.trim() || '')
-    ]
+    const participantIds = card.socialContext === 'friends-in-common'
+      ? [card.userId.trim()]
+      : [
+        card.userId.trim(),
+        (card.secondaryUserId?.trim() || card.bridgeUserId?.trim() || '')
+      ];
+    const uniqueParticipantIds = participantIds
       .filter((id, index, ids) => id.length > 0 && ids.indexOf(id) === index);
-    if (participantIds.length === 0) {
+    if (uniqueParticipantIds.length === 0) {
       return false;
     }
-    return participantIds.every(userId => {
+    return uniqueParticipantIds.every(userId => {
       const user = usersById.get(userId);
       return user ? this.matchesFilterPreferences(user, preferences) : false;
     });
+  }
+
+  private isSocialCardVisible(
+    usersById: ReadonlyMap<string, UserDto>,
+    card: UserGameSocialCard,
+    mode: UserGameSocialCard['socialContext']
+  ): boolean {
+    const candidate = usersById.get(card.userId.trim());
+    if (mode === 'friends-in-common') {
+      const bridge = usersById.get(card.bridgeUserId?.trim() ?? '');
+      return DemoUserSeedBuilder.isPublicGameProfile(candidate)
+        && DemoUserSeedBuilder.isInsideNetworkGameProfile(bridge);
+    }
+
+    const secondUser = usersById.get((card.secondaryUserId?.trim() || card.bridgeUserId?.trim() || ''));
+    return DemoUserSeedBuilder.isInsideNetworkGameProfile(candidate)
+      && DemoUserSeedBuilder.isInsideNetworkGameProfile(secondUser);
   }
 
   private socialPairKey(card: UserGameSocialCard): string | null {

@@ -30,9 +30,20 @@ export class HttpGameService implements UserGameDataService {
     raterUserId: string,
     ratedUserId: string,
     rating: number,
-    mode: 'single' | 'pair' = 'single'
+    mode: 'single' | 'pair' = 'single',
+    socialContext?: UserGameSocialCard['socialContext'],
+    bridgeUserId?: string,
+    bridgeCount?: number
   ): void {
-    this.usersRatingsRepository.enqueueGameCardRatingOutbox(raterUserId, ratedUserId, rating, mode);
+    this.usersRatingsRepository.enqueueGameCardRatingOutbox(
+      raterUserId,
+      ratedUserId,
+      rating,
+      mode,
+      socialContext,
+      bridgeUserId,
+      bridgeCount
+    );
   }
 
   async queryUserGameCardsByFilter(request: UserGameCardsQueryRequest): Promise<UserGameCardsQueryResponse> {
@@ -103,7 +114,7 @@ export class HttpGameService implements UserGameDataService {
   ): UserGameCardsDto {
     const mode = request.mode ?? 'single';
     const pendingRatedUserIds = new Set(
-      mode === 'single'
+      mode === 'single' || mode === 'friends-in-common'
         ? this.usersRatingsRepository.queryPendingRatedGameCardUserIds(userId, 'single')
         : []
     );
@@ -113,10 +124,7 @@ export class HttpGameService implements UserGameDataService {
     }
 
     if (mode === 'friends-in-common') {
-      const socialCards = (cards.socialCards ?? []).filter(card => {
-        const pairKey = this.toSocialPairKey(card);
-        return !pairKey || !pendingRatedPairKeys.has(pairKey);
-      });
+      const socialCards = (cards.socialCards ?? []).filter(card => !pendingRatedUserIds.has(card.userId.trim()));
       return {
         ...cards,
         filterCount: Math.max(0, cards.filterCount - ((cards.socialCards ?? []).length - socialCards.length)),

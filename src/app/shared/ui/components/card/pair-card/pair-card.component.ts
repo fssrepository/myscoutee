@@ -44,7 +44,6 @@ export class PairCardComponent implements AfterViewInit, OnChanges, OnDestroy {
   private badgeBlinkTimer: ReturnType<typeof setTimeout> | null = null;
   private fullscreenResizeObserver: ResizeObserver | null = null;
   private previousRowId = '';
-  private previousBadgeActive = false;
   private previousBadgeLabel = '';
   private splitPointerId: number | null = null;
   private splitBounds: { left: number; width: number } | null = null;
@@ -140,15 +139,10 @@ export class PairCardComponent implements AfterViewInit, OnChanges, OnDestroy {
     }
 
     const rowId = this.card?.rowId ?? '';
-    const badgeActive = !!this.card?.badge?.active;
     const badgeLabel = this.card?.badge?.label ?? '';
 
     if (rowId !== this.previousRowId) {
       this.syncStateFromCard();
-    }
-
-    if (badgeActive && (!this.previousBadgeActive || rowId !== this.previousRowId)) {
-      this.pulseAllSlots();
     }
 
     if (rowId === this.previousRowId && badgeLabel !== this.previousBadgeLabel && this.card?.badge?.blink !== true) {
@@ -156,7 +150,6 @@ export class PairCardComponent implements AfterViewInit, OnChanges, OnDestroy {
     }
 
     this.previousRowId = rowId;
-    this.previousBadgeActive = badgeActive;
     this.previousBadgeLabel = badgeLabel;
     this.scheduleFullscreenLayoutSync();
   }
@@ -280,7 +273,12 @@ export class PairCardComponent implements AfterViewInit, OnChanges, OnDestroy {
     this.startLoadingPulse(slot.key);
   }
 
+  protected onBadgePointerDown(event: Event): void {
+    event.stopPropagation();
+  }
+
   protected onBadgeClick(event: MouseEvent): void {
+    event.preventDefault();
     event.stopPropagation();
     if (!this.isBadgeInteractive() || this.card?.badge?.disabled || !this.card?.rowId) {
       return;
@@ -377,10 +375,6 @@ export class PairCardComponent implements AfterViewInit, OnChanges, OnDestroy {
     this.transientBadgeBlink = false;
     this.stopSplitDrag();
     this.cdr.markForCheck();
-  }
-
-  private pulseAllSlots(): void {
-    this.resolvedSlots().forEach(slot => this.startLoadingPulse(slot.key));
   }
 
   private startLoadingPulse(slotKey: string): void {

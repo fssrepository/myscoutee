@@ -136,7 +136,10 @@ export interface UserGameDataService {
     raterUserId: string,
     ratedUserId: string,
     rating: number,
-    mode?: 'single' | 'pair'
+    mode?: 'single' | 'pair',
+    socialContext?: UserGameSocialCard['socialContext'],
+    bridgeUserId?: string,
+    bridgeCount?: number
   ): void;
   queryUserGameCardsByFilter(request: UserGameCardsQueryRequest): Promise<UserGameCardsQueryResponse>;
 }

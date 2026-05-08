@@ -87,6 +87,35 @@ export class DemoUserRatesBuilder {
         )
       );
     }
+    const socialTargetUsers = extraUsers.length > 0 ? extraUsers : seededUsers;
+    const socialLanes: Array<{ direction: Extract<RateMenuItem['direction'], 'given' | 'met'>; variantIndex: number }> = [
+      { direction: 'given', variantIndex: 701 },
+      { direction: 'met', variantIndex: 702 }
+    ];
+    for (const lane of socialLanes) {
+      const targetUser = socialTargetUsers[(lane.variantIndex + socialTargetUsers.length) % socialTargetUsers.length];
+      if (!targetUser) {
+        continue;
+      }
+      const bridgeUserId = this.selectSocialBridgeUserId(otherUsers, targetUser.id, lane.variantIndex);
+      const item = this.buildGeneratedRateItemForLane(
+        activeUserId,
+        targetUser.id,
+        'individual',
+        lane.direction,
+        lane.direction === 'met' ? 3 : 0,
+        seededUsers.length + lane.variantIndex,
+        lane.variantIndex,
+        undefined,
+        'friends-in-common',
+        bridgeUserId,
+        1 + (AppUtils.hashText(`rate-social-bridge-count:${activeUserId}:${targetUser.id}:${lane.direction}`) % 3)
+      );
+      generated.push({
+        ...item,
+        scoreReceived: lane.direction === 'given' ? 0 : item.scoreReceived
+      });
+    }
     return generated;
   }
 
@@ -177,10 +206,7 @@ export class DemoUserRatesBuilder {
             scoreReceived: this.normalizeRateScore(record.scoreReceived),
             eventName: record.eventName?.trim() || 'Rate',
             happenedAt: record.happenedAtIso?.trim() || record.updatedAtIso,
-            distanceMetersExact: this.normalizeDistanceMetersExact(
-              record.distanceMetersExact,
-              this.legacyDistanceKm(record)
-            )
+            distanceMetersExact: this.normalizeDistanceMetersExact(record.distanceMetersExact)
           };
         }
         if (secondUserId === ownerUserId) {
@@ -197,10 +223,7 @@ export class DemoUserRatesBuilder {
             scoreReceived: this.normalizeRateScore(record.scoreReceived),
             eventName: record.eventName?.trim() || 'Rate',
             happenedAt: record.happenedAtIso?.trim() || record.updatedAtIso,
-            distanceMetersExact: this.normalizeDistanceMetersExact(
-              record.distanceMetersExact,
-              this.legacyDistanceKm(record)
-            )
+            distanceMetersExact: this.normalizeDistanceMetersExact(record.distanceMetersExact)
           };
         }
       } else if (firstUserId === ownerUserId || secondUserId === ownerUserId) {
@@ -219,10 +242,7 @@ export class DemoUserRatesBuilder {
         scoreReceived: this.normalizeRateScore(record.scoreReceived),
         eventName: record.eventName?.trim() || 'Rate',
         happenedAt: record.happenedAtIso?.trim() || record.updatedAtIso,
-        distanceMetersExact: this.normalizeDistanceMetersExact(
-          record.distanceMetersExact,
-          this.legacyDistanceKm(record)
-        )
+        distanceMetersExact: this.normalizeDistanceMetersExact(record.distanceMetersExact)
       };
     }
     const counterpartyUserId = record.fromUserId === ownerUserId
@@ -240,10 +260,7 @@ export class DemoUserRatesBuilder {
       scoreReceived: this.normalizeRateScore(record.scoreReceived),
       eventName: record.eventName?.trim() || 'Rate',
       happenedAt: record.happenedAtIso?.trim() || record.updatedAtIso,
-      distanceMetersExact: this.normalizeDistanceMetersExact(
-        record.distanceMetersExact,
-        this.legacyDistanceKm(record)
-      )
+      distanceMetersExact: this.normalizeDistanceMetersExact(record.distanceMetersExact)
     };
   }
 
@@ -255,7 +272,10 @@ export class DemoUserRatesBuilder {
     laneIndex: number,
     userIndex: number,
     variantIndex = 0,
-    secondaryUserId?: string
+    secondaryUserId?: string,
+    socialContextOverride?: RateMenuItem['socialContext'],
+    bridgeUserId?: string,
+    bridgeCount?: number
   ): RateMenuItem {
     const seed = AppUtils.hashText(
       `rate-grid:${activeUserId}:${targetUserId}:${secondaryUserId ?? ''}:${mode}:${direction}:${variantIndex}`
@@ -281,13 +301,22 @@ export class DemoUserRatesBuilder {
     const variantSuffix = variantIndex > 0 ? `-v${variantIndex}` : '';
     const distanceMetersExact = ((2 + ((seed + laneIndex + userIndex) % 33)) * 1000)
       + Math.abs(seed % 1000);
+    const socialContext: RateMenuItem['socialContext'] | undefined =
+      socialContextOverride
+      ?? (mode === 'individual' && direction !== 'met' && seed % 4 === 0
+        ? 'friends-in-common'
+        : mode === 'pair' && seed % 3 === 0
+          ? 'separated-friends'
+          : undefined);
     return {
       id: this.createRateId(),
       userId: targetUserId,
       ...(secondaryUserId ? { secondaryUserId } : {}),
       mode,
       direction,
-      ...(mode === 'pair' ? { socialContext: this.generatedPairSocialContext(direction) } : {}),
+      ...(socialContext ? { socialContext } : {}),
+      ...(bridgeUserId ? { bridgeUserId } : {}),
+      ...(Number.isFinite(bridgeCount) ? { bridgeCount: Math.max(1, Math.trunc(Number(bridgeCount))) } : {}),
       scoreGiven,
       scoreReceived,
       eventName: variantIndex > 0
@@ -325,6 +354,21 @@ export class DemoUserRatesBuilder {
     return pool[index]?.id;
   }
 
+  private static selectSocialBridgeUserId<TUser extends RateUserRef>(
+    users: readonly TUser[],
+    targetUserId: string,
+    variantIndex: number
+  ): string | undefined {
+    const candidates = users
+      .filter(user => user.id !== targetUserId)
+      .sort((left, right) =>
+        AppUtils.hashText(`rate-social-bridge:${targetUserId}:${variantIndex}:${left.id}`)
+        - AppUtils.hashText(`rate-social-bridge:${targetUserId}:${variantIndex}:${right.id}`)
+        || left.id.localeCompare(right.id)
+      );
+    return candidates[0]?.id;
+  }
+
   private static oppositeGender(gender: 'woman' | 'man'): 'woman' | 'man' {
     return gender === 'woman' ? 'man' : 'woman';
   }
@@ -332,19 +376,7 @@ export class DemoUserRatesBuilder {
   private static resolvePairSocialContext(
     record: UserRateRecord
   ): RateMenuItem['socialContext'] {
-    return record.socialContext ?? this.generatedPairSocialContext(record.displayDirection);
-  }
-
-  private static generatedPairSocialContext(
-    direction: UserRateRecord['displayDirection'] | RateMenuItem['direction']
-  ): RateMenuItem['socialContext'] | undefined {
-    if (direction === 'given') {
-      return 'separated-friends';
-    }
-    if (direction === 'received') {
-      return 'friends-in-common';
-    }
-    return undefined;
+    return record.socialContext;
   }
 
   private static selectSeedUsers<TUser extends RateUserRef>(
@@ -385,17 +417,10 @@ export class DemoUserRatesBuilder {
     return Math.max(0, Math.min(1, Number(value)));
   }
 
-  private static normalizeDistanceMetersExact(value: unknown, legacyDistanceKm?: unknown): number {
+  private static normalizeDistanceMetersExact(value: unknown): number {
     if (Number.isFinite(value)) {
       return Math.max(0, Math.trunc(Number(value)));
     }
-    if (Number.isFinite(legacyDistanceKm)) {
-      return Math.max(0, Math.round(Number(legacyDistanceKm) * 1000));
-    }
     return 0;
-  }
-
-  private static legacyDistanceKm(record: UserRateRecord): unknown {
-    return (record as UserRateRecord & { distanceKm?: unknown }).distanceKm;
   }
 }

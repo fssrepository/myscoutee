@@ -57,6 +57,7 @@ export class HttpRatesService {
       .set('mode', mode === 'pair' ? 'pair' : 'single')
       .set('direction', direction)
       .set('sort', request.sort ?? 'happenedAt')
+      .set('socialBadgeEnabled', request.rateSocialBadgeEnabled === true ? 'true' : 'false')
       .set('limit', String(Math.max(1, Math.trunc(request.pageSize || 10))));
     if (request.secondaryFilter === 'recent' || request.secondaryFilter === 'past' || request.secondaryFilter === 'relevant') {
       params = params.set('secondaryFilter', request.secondaryFilter);

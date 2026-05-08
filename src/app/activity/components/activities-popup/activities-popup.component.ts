@@ -170,6 +170,9 @@ export class ActivitiesPopupComponent implements OnDestroy {
     getActivitiesPrimaryFilter: () => this.activitiesPrimaryFilter,
     getActivitiesRateFilter: () => this.activitiesRateFilter,
     getActivitiesRateSocialBadgeEnabled: () => this.activitiesRateSocialBadgeEnabled,
+    getActivitiesRateSocialBadgeEnabledForFilter: filter => filter.startsWith('pair')
+      ? this.activitiesPairRateSocialBadgeEnabled
+      : this.activitiesIndividualRateSocialBadgeEnabled,
     getFilteredActivityRows: () => this.filteredActivityRows,
     getRateItems: () => this.rateItems,
     getSmartListCursorItem: () => this.activitiesSmartList?.cursorItem() ?? null,
@@ -321,6 +324,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected readonly activitiesViewOptions: Array<{ key: AppTypes.ActivitiesView; label: string; icon: string }>
     = [...APP_STATIC_DATA.activitiesViewOptions];
   protected activitiesRateSocialBadgeEnabled = false;
+  protected activitiesIndividualRateSocialBadgeEnabled = false;
+  protected activitiesPairRateSocialBadgeEnabled = false;
 
   protected get isBlockedUser(): boolean {
     return this.appCtx.activeUserProfile()?.profileStatus === 'blocked';
@@ -596,6 +601,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
       this.hostingPublicationFilter      = svc.activitiesHostingPublicationFilter() as AppTypes.HostingPublicationFilter;
       this.activitiesRateFilter          = svc.activitiesRateFilter() as AppTypes.RateFilterKey;
       this.activitiesRateSocialBadgeEnabled = svc.activitiesRateSocialBadgeEnabled();
+      this.activitiesIndividualRateSocialBadgeEnabled = svc.activitiesIndividualRateSocialBadgeEnabled();
+      this.activitiesPairRateSocialBadgeEnabled = svc.activitiesPairRateSocialBadgeEnabled();
       this.activitiesView                = svc.activitiesView() as AppTypes.ActivitiesView;
       this.activitiesSmartListConfig.loadingDelayMs = this.resolveActivitiesLoadingDelayMs();
       this.showActivitiesViewPicker      = svc.activitiesShowViewPicker();

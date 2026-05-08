@@ -255,9 +255,20 @@ export class HttpUsersRatingsRepository {
     raterUserId: string,
     ratedUserId: string,
     rating: number,
-    mode: 'single' | 'pair' = 'single'
+    mode: 'single' | 'pair' = 'single',
+    socialContext?: UserRateRecord['socialContext'],
+    bridgeUserId?: string,
+    bridgeCount?: number
   ): void {
-    const nextRecord = this.buildNormalizedRateRecord(raterUserId, ratedUserId, rating, mode);
+    const nextRecord = this.buildNormalizedRateRecord(
+      raterUserId,
+      ratedUserId,
+      rating,
+      mode,
+      socialContext,
+      bridgeUserId,
+      bridgeCount
+    );
     if (!nextRecord) {
       return;
     }
@@ -268,9 +279,16 @@ export class HttpUsersRatingsRepository {
     raterUserId: string,
     firstRatedUserId: string,
     secondRatedUserId: string,
-    rating: number
+    rating: number,
+    socialContext?: UserRateRecord['socialContext']
   ): void {
-    const nextRecord = this.buildNormalizedPairRateRecord(raterUserId, firstRatedUserId, secondRatedUserId, rating);
+    const nextRecord = this.buildNormalizedPairRateRecord(
+      raterUserId,
+      firstRatedUserId,
+      secondRatedUserId,
+      rating,
+      socialContext
+    );
     if (!nextRecord) {
       return;
     }
@@ -298,17 +316,34 @@ export class HttpUsersRatingsRepository {
         error: null
       };
     }
+    const payloadRates: UserRateRecord[] = [];
+    const invalidRateIds: string[] = [];
+    for (const rate of rates) {
+      const payload = this.toUserRateSyncPayload(rate);
+      if (payload) {
+        payloadRates.push(payload);
+      } else if (rate.id?.trim()) {
+        invalidRateIds.push(rate.id.trim());
+      }
+    }
+    if (payloadRates.length === 0) {
+      return {
+        syncedRateIds: [],
+        failedRateIds: this.dedupeIds([...invalidRateIds, ...rates.map(rate => rate.id)]),
+        error: 'No valid user rates to sync'
+      };
+    }
     try {
       const response = await this.http
         .post<{ syncedRateIds?: string[]; failedRateIds?: string[] } | null>(
           `${this.apiBaseUrl}${HttpUsersRatingsRepository.USER_RATES_SYNC_ROUTE}`,
-          { rates }
+          { rates: payloadRates }
         )
         .toPromise();
       if (!response) {
         return {
           syncedRateIds: [],
-          failedRateIds: rates.map(rate => rate.id),
+          failedRateIds: this.dedupeIds([...payloadRates.map(rate => rate.id), ...invalidRateIds]),
           error: 'Empty sync response'
         };
       }
@@ -324,13 +359,13 @@ export class HttpUsersRatingsRepository {
         : [];
       return {
         syncedRateIds,
-        failedRateIds,
+        failedRateIds: this.dedupeIds([...failedRateIds, ...invalidRateIds]),
         error: null
       };
     } catch {
       return {
         syncedRateIds: [],
-        failedRateIds: rates.map(rate => rate.id),
+        failedRateIds: this.dedupeIds([...payloadRates.map(rate => rate.id), ...invalidRateIds]),
         error: 'User rates sync request failed'
       };
     }
@@ -340,7 +375,10 @@ export class HttpUsersRatingsRepository {
     raterUserId: string,
     ratedUserId: string,
     rating: number,
-    mode: 'single' | 'pair'
+    mode: 'single' | 'pair',
+    socialContext?: UserRateRecord['socialContext'],
+    bridgeUserId?: string,
+    bridgeCount?: number
   ): UserRateRecord | null {
     const normalizedRaterId = raterUserId.trim();
     const normalizedRatedUserId = ratedUserId.trim();
@@ -352,12 +390,21 @@ export class HttpUsersRatingsRepository {
       return null;
     }
     const nowIso = new Date().toISOString();
+    const normalizedSocialContext = this.normalizeRateSocialContext(mode, socialContext);
+    const normalizedBridgeUserId = normalizedSocialContext === 'friends-in-common'
+      ? bridgeUserId?.trim() ?? ''
+      : '';
+    const normalizedBridgeCount = normalizedSocialContext === 'friends-in-common' && Number.isFinite(Number(bridgeCount))
+      ? Math.max(1, Math.trunc(Number(bridgeCount)))
+      : undefined;
     return DemoUserRatesBuilder.toActivityRateRecord(normalizedRaterId, {
       id: `game-card:${normalizedRaterId}:${normalizedRatedUserId}`,
       userId: normalizedRatedUserId,
       mode: mode === 'pair' ? 'pair' : 'individual',
       direction: 'given',
-      socialContext: mode === 'pair' ? 'separated-friends' : undefined,
+      socialContext: normalizedSocialContext ?? undefined,
+      ...(normalizedBridgeUserId ? { bridgeUserId: normalizedBridgeUserId } : {}),
+      ...(normalizedBridgeCount ? { bridgeCount: normalizedBridgeCount } : {}),
       scoreGiven: normalizedRating,
       scoreReceived: 0,
       eventName: 'Single rate',
@@ -390,7 +437,7 @@ export class HttpUsersRatingsRepository {
       bridgeUserId: item.bridgeUserId?.trim() || undefined,
       bridgeCount: Number.isFinite(item.bridgeCount) ? Math.max(0, Math.trunc(Number(item.bridgeCount))) : undefined,
       scoreGiven: this.normalizeRateScore(rating),
-      scoreReceived: this.normalizeRateScore(item.scoreReceived),
+      scoreReceived: this.normalizeOptionalRateScore(item.scoreReceived),
       eventName: item.eventName?.trim() || 'Rate',
       happenedAt: item.happenedAt?.trim() || new Date().toISOString(),
       distanceMetersExact: Number.isFinite(item.distanceMetersExact)
@@ -403,7 +450,8 @@ export class HttpUsersRatingsRepository {
     raterUserId: string,
     firstRatedUserId: string,
     secondRatedUserId: string,
-    rating: number
+    rating: number,
+    socialContext?: UserRateRecord['socialContext']
   ): UserRateRecord | null {
     const normalizedOwnerUserId = raterUserId.trim();
     const normalizedFirstUserId = firstRatedUserId.trim();
@@ -430,7 +478,7 @@ export class HttpUsersRatingsRepository {
       secondaryUserId: toUserId,
       mode: 'pair',
       direction: 'given',
-      socialContext: 'separated-friends',
+      socialContext: this.normalizeRateSocialContext('pair', socialContext) ?? undefined,
       scoreGiven: normalizedRating,
       scoreReceived: 0,
       eventName: 'Pair rate',
@@ -510,6 +558,89 @@ export class HttpUsersRatingsRepository {
 
   private normalizeRateScore(value: number): number {
     return Math.max(1, Math.min(10, Math.trunc(Number(value) || 0)));
+  }
+
+  private normalizeOptionalRateScore(value: unknown): number {
+    if (!Number.isFinite(Number(value))) {
+      return 0;
+    }
+    return Math.max(0, Math.min(10, Math.trunc(Number(value))));
+  }
+
+  private toUserRateSyncPayload(record: UserRateRecord): UserRateRecord | null {
+    const id = record.id?.trim() ?? '';
+    const fromUserId = record.fromUserId?.trim() ?? '';
+    const toUserId = record.toUserId?.trim() ?? '';
+    const mode = record.mode === 'pair' ? 'pair' : record.mode === 'single' ? 'single' : null;
+    if (!id || !fromUserId || !toUserId || !mode || fromUserId === toUserId) {
+      return null;
+    }
+
+    const nowIso = new Date().toISOString();
+    const createdAtIso = record.createdAtIso?.trim() || record.happenedAtIso?.trim() || record.updatedAtIso?.trim() || nowIso;
+    const updatedAtIso = record.updatedAtIso?.trim() || createdAtIso;
+    const payload: UserRateRecord = {
+      id,
+      fromUserId,
+      toUserId,
+      rate: this.normalizeOptionalRateScore(record.rate),
+      mode,
+      createdAtIso,
+      updatedAtIso
+    };
+    const ownerUserId = record.ownerUserId?.trim() ?? '';
+    if (ownerUserId) {
+      payload.ownerUserId = ownerUserId;
+    }
+    const displayId = record.displayId?.trim() ?? '';
+    if (displayId) {
+      payload.displayId = displayId;
+    }
+    const displayDirection = this.normalizeRateDirection(record.displayDirection);
+    if (displayDirection) {
+      payload.displayDirection = displayDirection;
+    }
+    const socialContext = this.normalizeRateSocialContext(mode, record.socialContext);
+    if (socialContext) {
+      payload.socialContext = socialContext;
+    }
+    const bridgeUserId = record.bridgeUserId?.trim() ?? '';
+    if (bridgeUserId) {
+      payload.bridgeUserId = bridgeUserId;
+    }
+    if (Number.isFinite(Number(record.bridgeCount))) {
+      payload.bridgeCount = Math.max(0, Math.trunc(Number(record.bridgeCount)));
+    }
+    payload.scoreGiven = this.normalizeOptionalRateScore(record.scoreGiven);
+    payload.scoreReceived = this.normalizeOptionalRateScore(record.scoreReceived);
+    const eventName = record.eventName?.trim() ?? '';
+    if (eventName) {
+      payload.eventName = eventName;
+    }
+    const happenedAtIso = record.happenedAtIso?.trim() ?? '';
+    if (happenedAtIso) {
+      payload.happenedAtIso = happenedAtIso;
+    }
+    if (Number.isFinite(Number(record.distanceMetersExact))) {
+      payload.distanceMetersExact = Math.max(0, Math.trunc(Number(record.distanceMetersExact)));
+    }
+    return payload;
+  }
+
+  private normalizeRateSocialContext(
+    mode: 'single' | 'pair',
+    value: unknown
+  ): UserRateRecord['socialContext'] | null {
+    if (mode === 'single') {
+      return value === 'friends-in-common' ? 'friends-in-common' : null;
+    }
+    return value === 'separated-friends' ? 'separated-friends' : null;
+  }
+
+  private dedupeIds(ids: readonly string[]): string[] {
+    return [...new Set(ids
+      .map(id => `${id ?? ''}`.trim())
+      .filter(id => id.length > 0))];
   }
 
   private shouldExcludePendingItemFromHome(item: RateMenuItem | null): item is RateMenuItem {

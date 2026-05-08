@@ -136,8 +136,8 @@ export class HomeComponent implements OnDestroy {
   private readonly userFacetById: Record<string, GameUserFacet> = APP_STATIC_DATA.homeUserFacetById;
   protected readonly homeModeOptions: ReadonlyArray<HomeModeOption> = [
     { key: 'single', label: 'Preferences', icon: 'person' },
-    { key: 'friends-in-common', label: 'Connected', icon: 'diversity_3' },
-    { key: 'separated-friends', label: 'Unconnected', icon: 'group_add' },
+    { key: 'friends-in-common', label: 'Friends in Common', icon: 'diversity_3' },
+    { key: 'separated-friends', label: 'Inside Network', icon: 'group_add' },
     { key: 'pair', label: 'Outside Network', icon: 'groups' }
   ];
   private users: DemoUser[] = [];
@@ -231,8 +231,7 @@ export class HomeComponent implements OnDestroy {
 
   protected get isPairMode(): boolean {
     return this.selectedHomeMode === 'pair'
-      || this.selectedHomeMode === 'separated-friends'
-      || this.selectedHomeMode === 'friends-in-common';
+      || this.selectedHomeMode === 'separated-friends';
   }
 
   private get isSyntheticPairMode(): boolean {
@@ -352,7 +351,13 @@ export class HomeComponent implements OnDestroy {
   }
 
   protected get homeHeaderControlsReady(): boolean {
-    if (this.isAccountReactivationPending || !this.isAvatarProfileSettled || this.isBlockedUser || !this.homeSmartListQueryReady) {
+    if (
+      this.isAccountReactivationPending
+      || !this.isAvatarProfileSettled
+      || this.isBlockedUser
+      || this.isGameVisibilityPaused
+      || !this.homeSmartListQueryReady
+    ) {
       return false;
     }
     if (!this.hasCandidatesForCurrentMode) {
@@ -380,9 +385,38 @@ export class HomeComponent implements OnDestroy {
     return this.avatarLoadedUser?.profileStatus === 'blocked' && this.isAvatarProfileSettled;
   }
 
+  protected get isGameVisibilityPaused(): boolean {
+    if (!this.isAvatarProfileSettled || this.isBlockedUser) {
+      return false;
+    }
+    const status = this.resolvedActiveProfileStatus();
+    return status === 'friends only'
+      || status === 'host only'
+      || status === 'inactive'
+      || status === 'deleted';
+  }
+
+  protected get gameVisibilityPausedTitle(): string {
+    if (this.resolvedActiveProfileStatus() === 'inactive') {
+      return 'Your profile is inactive';
+    }
+    return 'Game discovery is paused';
+  }
+
+  protected get gameVisibilityPausedDescription(): string {
+    if (this.resolvedActiveProfileStatus() === 'inactive') {
+      return 'Set your profile back to Public if you want to rate profiles and appear in game suggestions.';
+    }
+    return 'Change your profile visibility to Public if you want to rate profiles and appear in game suggestions.';
+  }
+
   private get avatarLoadedUser(): UserDto | null {
     const user = this.appCtx.activeUserProfile();
     return user?.id === this.activeUserId ? user : null;
+  }
+
+  private resolvedActiveProfileStatus(): UserDto['profileStatus'] {
+    return this.avatarLoadedUser?.profileStatus ?? this.activeUser.profileStatus ?? 'public';
   }
 
   protected get historyBadgeCount(): number {
@@ -419,7 +453,7 @@ export class HomeComponent implements OnDestroy {
       || serviceStack.filterCount !== null;
     if (this.isFriendsInCommonMode && hasResolvedServiceStack) {
       const usersById = new Map(this.users.map(user => [user.id, user] as const));
-      return serviceStack.socialCards
+      return this.visibleFriendsInCommonSocialCards(serviceStack.socialCards)
         .map(card => usersById.get(card.userId))
         .filter((user): user is DemoUser => !!user);
     }
@@ -435,6 +469,7 @@ export class HomeComponent implements OnDestroy {
       : new Set(this.gameService.queryMetUserIds(this.activeUserId));
     return this.users
       .filter(user => user.id !== this.activeUserId)
+      .filter(user => this.isGameCandidateVisibleForSelectedMode(user))
       .filter(user => !excludedUserIds.has(user.id))
       .filter(user => !metUserIds || !metUserIds.has(user.id))
       .filter(user => this.matchesFilter(user));
@@ -484,8 +519,11 @@ export class HomeComponent implements OnDestroy {
   }
 
   protected get hasFilteredCandidates(): boolean {
-    if (this.isSeparatedFriendsMode || this.isFriendsInCommonMode) {
-      return this.activeSocialPairRows().length > 0;
+    if (this.isFriendsInCommonMode) {
+      return this.socialFriendsInCommonSingleRows().length > 0;
+    }
+    if (this.isSeparatedFriendsMode) {
+      return this.socialPairRows().length > 0;
     }
     if (this.isSyntheticPairMode) {
       return this.pairModeCycleSize() > 0;
@@ -575,12 +613,14 @@ export class HomeComponent implements OnDestroy {
   }
 
   protected showSocialQueryInputs(): boolean {
-    return this.isSeparatedFriendsMode || this.isFriendsInCommonMode;
+    return this.isSeparatedFriendsMode;
   }
 
   protected socialQuerySuggestions(side: 'left' | 'right'): string[] {
     const values = new Set<string>();
-    const socialCards = this.gameService.peekUserGameCardsStackSnapshot(this.activeUserId).socialCards;
+    const socialCards = this.socialCardsForCurrentMode(
+      this.gameService.peekUserGameCardsStackSnapshot(this.activeUserId).socialCards
+    );
     for (const card of socialCards) {
       const primaryUser = this.userById(card.userId);
       const secondaryUser = this.userById(side === 'left' ? card.userId : (card.secondaryUserId ?? card.bridgeUserId ?? ''));
@@ -608,9 +648,7 @@ export class HomeComponent implements OnDestroy {
     return {
       rowId: row?.id ?? 'home-single-empty',
       slides: this.homeCandidateSlides(candidate, row?.mode === 'single' ? row.socialCard : undefined),
-      statusBadgeLabel: row?.mode === 'single' && row.socialCard
-        ? this.homeSocialStatusBadge(row.socialCard)
-        : this.candidateActivityBadge(candidate),
+      statusBadgeLabel: this.candidateActivityBadge(candidate),
       profileView: candidate
         ? {
             userId: candidate.id,
@@ -618,6 +656,7 @@ export class HomeComponent implements OnDestroy {
             label: candidate.name
           }
         : null,
+      contextBadge: row?.mode === 'single' ? this.homeSocialContextBadge(row.socialCard) : null,
       presentation: options?.presentation ?? 'fullscreen',
       state: options?.state ?? 'default'
     };
@@ -694,9 +733,28 @@ export class HomeComponent implements OnDestroy {
         this.maybeStartGameStackPaginationLoad();
         return;
       }
-      this.gameService.recordUserGameCardPairRating(this.activeUserId, woman.id, man.id, value);
+      this.gameService.recordUserGameCardPairRating(
+        this.activeUserId,
+        woman.id,
+        man.id,
+        value,
+        this.isSeparatedFriendsMode ? 'separated-friends' : undefined
+      );
     } else {
-      this.gameService.recordUserGameCardRating(this.activeUserId, currentCandidate.id, value, 'single');
+      const activeSocialCard = this.isFriendsInCommonMode
+        ? this.visibleFriendsInCommonSocialCards(
+          this.gameService.peekUserGameCardsStackSnapshot(this.activeUserId).socialCards
+        ).find(card => card.userId.trim() === currentCandidate.id)
+        : undefined;
+      this.gameService.recordUserGameCardRating(
+        this.activeUserId,
+        currentCandidate.id,
+        value,
+        'single',
+        activeSocialCard?.socialContext === 'friends-in-common' ? 'friends-in-common' : undefined,
+        activeSocialCard?.bridgeUserId,
+        activeSocialCard?.bridgeCount
+      );
     }
     this.selectedRating = value;
     this.triggerRatingBarBlink();
@@ -1416,7 +1474,7 @@ export class HomeComponent implements OnDestroy {
   private async loadHomeSmartListPage(
     query: ListQuery<HomeSmartListFilters>
   ): Promise<PageResult<HomeSmartListRow>> {
-    if (this.isBlockedUserStatusPending || this.isBlockedUser) {
+    if (this.isBlockedUserStatusPending || this.isBlockedUser || this.isGameVisibilityPaused) {
       return {
         items: [],
         total: 0,
@@ -1507,11 +1565,15 @@ export class HomeComponent implements OnDestroy {
 
   private loadedServiceRowsCount(serviceStack: {
     cardUserIds: string[];
-    socialCards: { id: string }[];
+    socialCards: UserGameSocialCard[];
   }): number {
-    return this.isSeparatedFriendsMode || this.isFriendsInCommonMode
-      ? serviceStack.socialCards.length
-      : serviceStack.cardUserIds.length;
+    if (this.isFriendsInCommonMode) {
+      return this.visibleFriendsInCommonSocialCards(serviceStack.socialCards).length;
+    }
+    if (this.isSeparatedFriendsMode) {
+      return this.socialCardsForCurrentMode(serviceStack.socialCards).length;
+    }
+    return serviceStack.cardUserIds.length;
   }
 
   private loadedRemainingServiceRowsCount(serviceStack: {
@@ -1519,9 +1581,12 @@ export class HomeComponent implements OnDestroy {
     cardUserIds: string[];
     socialCards: UserGameSocialCard[];
   }): number {
-    if (this.isSeparatedFriendsMode || this.isFriendsInCommonMode) {
+    if (this.isFriendsInCommonMode) {
+      return this.visibleFriendsInCommonSocialCards(serviceStack.socialCards).length;
+    }
+    if (this.isSeparatedFriendsMode) {
       const ratedPairKeys = new Set(this.gameService.queryExcludedGameCardPairKeys(this.activeUserId));
-      return serviceStack.socialCards.filter(card => {
+      return this.socialCardsForCurrentMode(serviceStack.socialCards).filter(card => {
         const secondUserId = card.secondaryUserId?.trim() || card.bridgeUserId?.trim() || '';
         return !ratedPairKeys.has(this.sortedHomePairKey(card.userId, secondUserId));
       }).length;
@@ -1543,15 +1608,21 @@ export class HomeComponent implements OnDestroy {
 
   private availableServiceRowsCount(): number {
     const snapshot = this.gameService.peekUserGameCardsStackSnapshot(this.activeUserId);
-    if (this.isSeparatedFriendsMode || this.isFriendsInCommonMode) {
-      return snapshot.socialCards.length;
+    if (this.isFriendsInCommonMode) {
+      return this.visibleFriendsInCommonSocialCards(snapshot.socialCards).length;
+    }
+    if (this.isSeparatedFriendsMode) {
+      return this.socialCardsForCurrentMode(snapshot.socialCards).length;
     }
     return this.candidatePool.length;
   }
 
   private homeSmartListRowsPage(startIndex: number, endIndex: number): HomeSmartListRow[] {
-    if (this.isSeparatedFriendsMode || this.isFriendsInCommonMode) {
-      return this.activeSocialPairRows().slice(startIndex, endIndex);
+    if (this.isFriendsInCommonMode) {
+      return this.socialFriendsInCommonSingleRows().slice(startIndex, endIndex);
+    }
+    if (this.isSeparatedFriendsMode) {
+      return this.socialPairRows().slice(startIndex, endIndex);
     }
     if (this.isSyntheticPairMode) {
       return this.pairModeRounds()
@@ -1604,9 +1675,23 @@ export class HomeComponent implements OnDestroy {
       if (!woman || !man) {
         return;
       }
-      this.gameService.recordUserGameCardPairRating(this.activeUserId, woman.id, man.id, score);
+      this.gameService.recordUserGameCardPairRating(
+        this.activeUserId,
+        woman.id,
+        man.id,
+        score,
+        row.round.socialCard?.socialContext === 'separated-friends' ? 'separated-friends' : undefined
+      );
     } else {
-      this.gameService.recordUserGameCardRating(this.activeUserId, row.candidate.id, score, 'single');
+      this.gameService.recordUserGameCardRating(
+        this.activeUserId,
+        row.candidate.id,
+        score,
+        'single',
+        row.socialCard?.socialContext === 'friends-in-common' ? 'friends-in-common' : undefined,
+        row.socialCard?.bridgeUserId,
+        row.socialCard?.bridgeCount
+      );
     }
     const ratedRowId = row.id;
     this.selectedRating = score;
@@ -1658,7 +1743,7 @@ export class HomeComponent implements OnDestroy {
       label,
       tone: gender,
       slides: this.homeCandidateSlides(candidate, socialCard),
-      statusBadgeLabel: socialCard ? this.homeSocialStatusBadge(socialCard) : this.candidateActivityBadge(candidate),
+      statusBadgeLabel: this.candidateActivityBadge(candidate),
       profileView: candidate
         ? {
             userId: candidate.id,
@@ -1670,8 +1755,7 @@ export class HomeComponent implements OnDestroy {
   }
 
   private socialPairRows(): HomePairSmartListRow[] {
-    return this.gameService.peekUserGameCardsStackSnapshot(this.activeUserId).socialCards
-      .filter(card => card.socialContext === 'separated-friends')
+    return this.socialCardsForCurrentMode(this.gameService.peekUserGameCardsStackSnapshot(this.activeUserId).socialCards)
       .map(card => ({
         id: card.id,
         mode: 'pair' as const,
@@ -1684,25 +1768,48 @@ export class HomeComponent implements OnDestroy {
       .filter(row => !!row.round.woman && !!row.round.man);
   }
 
-  private socialFriendsInCommonPairRows(): HomePairSmartListRow[] {
-    return this.gameService.peekUserGameCardsStackSnapshot(this.activeUserId).socialCards
-      .filter(card => card.socialContext === 'friends-in-common')
-      .map(card => ({
-        id: card.id,
-        mode: 'pair' as const,
-        round: {
-          woman: this.userById(card.userId),
-          man: this.userById(card.bridgeUserId ?? ''),
-          socialCard: card
-        }
-      }))
-      .filter(row => !!row.round.woman && !!row.round.man);
+  private socialFriendsInCommonSingleRows(): HomeSingleSmartListRow[] {
+    return this.visibleFriendsInCommonSocialCards(this.gameService.peekUserGameCardsStackSnapshot(this.activeUserId).socialCards)
+      .flatMap(card => {
+        const candidate = this.userById(card.userId);
+        return candidate
+          ? [{
+              id: card.id,
+              mode: 'single' as const,
+              candidate,
+              socialCard: card
+            }]
+          : [];
+      });
   }
 
-  private activeSocialPairRows(): HomePairSmartListRow[] {
-    return this.isFriendsInCommonMode
-      ? this.socialFriendsInCommonPairRows()
-      : this.socialPairRows();
+  private socialCardsForCurrentMode(cards: readonly UserGameSocialCard[]): UserGameSocialCard[] {
+    if (this.isFriendsInCommonMode) {
+      return cards.filter(card => card.socialContext === 'friends-in-common');
+    }
+    if (this.isSeparatedFriendsMode) {
+      return cards.filter(card => card.socialContext === 'separated-friends');
+    }
+    return [];
+  }
+
+  private visibleFriendsInCommonSocialCards(cards: readonly UserGameSocialCard[]): UserGameSocialCard[] {
+    const excludedUserIds = new Set(this.gameService.queryExcludedGameCardUserIds(this.activeUserId, 'friends-in-common'));
+    const byCandidateUserId = new Map<string, UserGameSocialCard>();
+    for (const card of cards) {
+      if (card.socialContext !== 'friends-in-common') {
+        continue;
+      }
+      const candidateUserId = card.userId.trim();
+      if (!candidateUserId || excludedUserIds.has(candidateUserId)) {
+        continue;
+      }
+      const existing = byCandidateUserId.get(candidateUserId);
+      if (!existing || (card.bridgeCount ?? 0) > (existing.bridgeCount ?? 0)) {
+        byCandidateUserId.set(candidateUserId, card);
+      }
+    }
+    return [...byCandidateUserId.values()];
   }
 
   private sortedHomePairKey(leftUserId: string, rightUserId: string): string {
@@ -1711,12 +1818,47 @@ export class HomeComponent implements OnDestroy {
       .join(':');
   }
 
+  private isGameCandidateVisibleForSelectedMode(user: DemoUser): boolean {
+    if (this.isSeparatedFriendsMode) {
+      return user.profileStatus === 'public' || user.profileStatus === 'friends only';
+    }
+    return user.profileStatus === 'public';
+  }
+
   private userById(userId: string): DemoUser | null {
     return this.users.find(user => user.id === userId) ?? null;
   }
 
-  private homeSocialStatusBadge(card: UserGameSocialCard): string {
-    return card.socialContext === 'friends-in-common' ? 'Connected' : 'Unconnected';
+  private homeSocialContextBadge(card: UserGameSocialCard | undefined): SingleCardData['contextBadge'] {
+    if (card?.socialContext !== 'friends-in-common') {
+      return null;
+    }
+
+    const bridgeUser = this.userById(card.bridgeUserId ?? '');
+    if (!bridgeUser) {
+      return null;
+    }
+
+    const bridgeCount = Math.max(0, Math.trunc(Number(card.bridgeCount) || 0));
+    return {
+      label: bridgeUser.initials || this.initialsForCandidate(bridgeUser),
+      imageUrl: this.imageStackForCandidate(bridgeUser)[0] ?? null,
+      counterLabel: bridgeCount > 1 ? `+${bridgeCount - 1}` : null,
+      title: this.homeSocialContextBadgeTitle(bridgeUser.name, bridgeCount),
+      ariaLabel: `View ${bridgeUser.name} profile`,
+      profileView: {
+        userId: bridgeUser.id,
+        user: bridgeUser,
+        label: bridgeUser.name
+      }
+    };
+  }
+
+  private homeSocialContextBadgeTitle(bridgeName: string, bridgeCount: number): string {
+    const extraCount = Math.max(0, Math.trunc(Number(bridgeCount) || 0) - 1);
+    return extraCount > 0
+      ? `Shown via ${bridgeName} and ${extraCount} more`
+      : `Shown via ${bridgeName}`;
   }
 
   private homePairSlotLabel(
@@ -1916,8 +2058,8 @@ export class HomeComponent implements OnDestroy {
   }
 
   private pairModeRounds(): PairModeRoundState[] {
-    if (this.isSeparatedFriendsMode || this.isFriendsInCommonMode) {
-      return this.activeSocialPairRows().map(row => row.round);
+    if (this.isSeparatedFriendsMode) {
+      return this.socialPairRows().map(row => row.round);
     }
     const excludedPairKeys = new Set(this.gameService.queryExcludedGameCardPairKeys(this.activeUserId));
     const candidates = this.candidatePool;
@@ -2341,13 +2483,13 @@ export class HomeComponent implements OnDestroy {
 
   private syncGameStackLoadedStateFromSnapshot(serviceStack: {
     cardUserIds: string[];
-    socialCards: { id: string }[];
+    socialCards: UserGameSocialCard[];
     nextCursor: string | null;
   }): void {
     this.cancelGameStackPaginationLoad();
     this.gameStackPaginationKey = this.gameStackPaginationStateKey();
     const loadedCount = this.isSeparatedFriendsMode || this.isFriendsInCommonMode
-      ? serviceStack.socialCards.length
+      ? this.loadedServiceRowsCount(serviceStack)
       : serviceStack.cardUserIds.length;
     this.gameStackCardsLoaded = loadedCount;
     this.gameStackExhausted = loadedCount <= 0 && serviceStack.nextCursor === null;
@@ -2432,9 +2574,7 @@ export class HomeComponent implements OnDestroy {
       this.mergeGameStackUsersIntoHomeUsers();
       const previousLoaded = this.gameStackCardsLoaded;
       const totalRounds = this.totalRoundsForCurrentMode();
-      const loadedCount = this.isSeparatedFriendsMode || this.isFriendsInCommonMode
-        ? serviceStack.socialCards.length
-        : serviceStack.cardUserIds.length;
+      const loadedCount = this.loadedServiceRowsCount(serviceStack);
       this.gameStackCardsLoaded = Math.min(totalRounds, loadedCount);
       const loadedMoreCards = this.gameStackCardsLoaded > previousLoaded;
       this.gameStackExhausted = !loadedMoreCards && !serviceStack.nextCursor;

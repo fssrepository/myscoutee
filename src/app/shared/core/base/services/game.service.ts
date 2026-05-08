@@ -102,7 +102,7 @@ export class GameService extends BaseRouteModeService {
     if (!normalizedUserId) {
       return [];
     }
-    if (mode !== 'single') {
+    if (mode !== 'single' && mode !== 'friends-in-common') {
       return [];
     }
     if (this.isDemoModeEnabled('/activities/rates')) {
@@ -126,10 +126,13 @@ export class GameService extends BaseRouteModeService {
     raterUserId: string,
     ratedUserId: string,
     rating: number,
-    mode: 'single' | 'pair' = 'single'
+    mode: 'single' | 'pair' = 'single',
+    socialContext?: UserGameSocialCard['socialContext'],
+    bridgeUserId?: string,
+    bridgeCount?: number
   ): void {
     this.resolveRouteService('/activities/rates', this.demoGameService, this.httpGameService)
-      .recordGameCardRating(raterUserId, ratedUserId, rating, mode);
+      .recordGameCardRating(raterUserId, ratedUserId, rating, mode, socialContext, bridgeUserId, bridgeCount);
     this.decrementUserGameCardsStackFilterCount(raterUserId);
     this.scheduleUserRatesOutboxFlushFromNow();
   }
@@ -138,7 +141,8 @@ export class GameService extends BaseRouteModeService {
     raterUserId: string,
     firstRatedUserId: string,
     secondRatedUserId: string,
-    rating: number
+    rating: number,
+    socialContext?: UserGameSocialCard['socialContext']
   ): void {
     const normalizedFirstId = firstRatedUserId.trim();
     const normalizedSecondId = secondRatedUserId.trim();
@@ -149,7 +153,8 @@ export class GameService extends BaseRouteModeService {
       raterUserId,
       normalizedFirstId,
       normalizedSecondId,
-      rating
+      rating,
+      socialContext
     );
     this.decrementUserGameCardsStackFilterCount(raterUserId);
     this.scheduleUserRatesOutboxFlushFromNow();
@@ -400,7 +405,7 @@ export class GameService extends BaseRouteModeService {
     const existingSocialCards = reset
       ? []
       : fallbackSocialCards
-        .filter(card => this.shouldKeepExistingGameSocialCard(card, mode))
+        .filter(card => this.shouldKeepGameSocialCard(card, mode, excludedUserIds, excludedPairKeys))
         .map(card => ({ ...card }));
     const existingCursor = reset
       ? null
@@ -458,7 +463,7 @@ export class GameService extends BaseRouteModeService {
           }
           socialCardsById.set(card.id.trim(), { ...card });
         }
-        state.socialCards = [...socialCardsById.values()];
+        state.socialCards = this.normalizeGameSocialCardsForMode([...socialCardsById.values()], mode);
         state.nextCursor = cards.nextCursor;
       } else if (reset) {
         state.filterCount = null;
@@ -535,20 +540,6 @@ export class GameService extends BaseRouteModeService {
     return normalizedUserId.length > 0 && normalizedUserId !== activeUserId;
   }
 
-  private shouldKeepExistingGameSocialCard(
-    card: UserGameSocialCard,
-    mode: UserGameCardsQueryRequest['mode']
-  ): boolean {
-    const userId = card.userId.trim();
-    if (!userId) {
-      return false;
-    }
-    if (mode === 'single') {
-      return true;
-    }
-    return this.socialPairKey(card) !== null;
-  }
-
   private shouldKeepGameSocialCard(
     card: UserGameSocialCard,
     mode: UserGameCardsQueryRequest['mode'],
@@ -559,11 +550,32 @@ export class GameService extends BaseRouteModeService {
     if (!userId || excludedUserIds.has(userId)) {
       return false;
     }
-    if (mode === 'single') {
+    if (mode === 'single' || mode === 'friends-in-common') {
       return true;
     }
     const pairKey = this.socialPairKey(card);
     return !pairKey || !excludedPairKeys.has(pairKey);
+  }
+
+  private normalizeGameSocialCardsForMode(
+    cards: readonly UserGameSocialCard[],
+    mode: UserGameCardsQueryRequest['mode']
+  ): UserGameSocialCard[] {
+    if (mode !== 'friends-in-common') {
+      return cards.map(card => ({ ...card }));
+    }
+    const byCandidateUserId = new Map<string, UserGameSocialCard>();
+    for (const card of cards) {
+      const candidateUserId = card.userId.trim();
+      if (!candidateUserId) {
+        continue;
+      }
+      const existing = byCandidateUserId.get(candidateUserId);
+      if (!existing || (card.bridgeCount ?? 0) > (existing.bridgeCount ?? 0)) {
+        byCandidateUserId.set(candidateUserId, { ...card });
+      }
+    }
+    return [...byCandidateUserId.values()];
   }
 
   private socialPairKey(card: UserGameSocialCard): string | null {

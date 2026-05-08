@@ -309,7 +309,8 @@ export class DemoUsersRepository {
   queryGameStackUsers(raterUserId?: string): UserDto[] {
     this.init();
     const users = this.queryUsersFromTable(USERS_TABLE_NAME)
-      .filter(user => !DemoUserSeedBuilder.isEmptyOnboardingProfileUserId(user.id));
+      .filter(user => !DemoUserSeedBuilder.isEmptyOnboardingProfileUserId(user.id))
+      .filter(user => DemoUserSeedBuilder.isPublicGameProfile(user));
     const normalizedRaterId = raterUserId?.trim() ?? '';
     if (!normalizedRaterId) {
       return users;

@@ -55,6 +55,15 @@ export interface CardBadgeConfig {
   layout?: CardBadgeLayout;
 }
 
+export interface CardContextBadgeConfig {
+  label: string;
+  ariaLabel?: string | null;
+  title?: string | null;
+  imageUrl?: string | null;
+  counterLabel?: string | null;
+  profileView?: CardProfileViewData | null;
+}
+
 export interface CardImageSlide {
   imageUrl: string;
   primaryLine?: string | null;
@@ -86,6 +95,7 @@ export interface SingleCardData {
   profileView?: CardProfileViewData | null;
   stackClasses?: readonly string[];
   badge?: CardBadgeConfig | null;
+  contextBadge?: CardContextBadgeConfig | null;
   presentation?: CardPresentation;
   state?: CardRenderState;
   initialActiveIndex?: number;

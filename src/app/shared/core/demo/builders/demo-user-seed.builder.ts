@@ -320,6 +320,8 @@ const ONBOARDING_DEMO_USER: DemoUser = {
 };
 
 export class DemoUserSeedBuilder {
+  private static readonly INSIDE_NETWORK_GAME_PROFILE_STATUSES = new Set(['public', 'friends only']);
+  private static readonly HARD_HIDDEN_PROFILE_STATUSES = new Set(['blocked', 'inactive', 'deleted']);
   private static readonly CITY_LOCATION_COORDINATES_BY_NAME: Record<string, LocationCoordinates> = {
     Austin: { latitude: 30.2672, longitude: -97.7431 },
     Seattle: { latitude: 47.6062, longitude: -122.3321 },
@@ -455,6 +457,18 @@ export class DemoUserSeedBuilder {
     const [firstId, secondId] = [activeUserId.trim(), userId.trim()].sort();
     const seed = AppUtils.hashText(`friend-pair:${firstId}:${secondId}`);
     return (seed % 100) < 32;
+  }
+
+  static isPublicGameProfile(user: Pick<DemoUser, 'profileStatus'> | null | undefined): boolean {
+    return user?.profileStatus === 'public';
+  }
+
+  static isInsideNetworkGameProfile(user: Pick<DemoUser, 'profileStatus'> | null | undefined): boolean {
+    return this.INSIDE_NETWORK_GAME_PROFILE_STATUSES.has(user?.profileStatus ?? '');
+  }
+
+  static isActivityRateVisibleProfile(user: Pick<DemoUser, 'profileStatus'> | null | undefined): boolean {
+    return Boolean(user) && !this.HARD_HIDDEN_PROFILE_STATUSES.has(user?.profileStatus ?? '');
   }
 
   static isEmptyOnboardingProfileUserId(userId: string): boolean {

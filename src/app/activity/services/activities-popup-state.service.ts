@@ -20,6 +20,8 @@ interface ActivitiesUiState {
   hostingPublicationFilter: AppTypes.HostingPublicationFilter;
   rateFilter: AppTypes.RateFilterKey;
   rateSocialBadgeEnabled: boolean;
+  rateIndividualSocialBadgeEnabled: boolean;
+  ratePairSocialBadgeEnabled: boolean;
   view: AppTypes.ActivitiesView;
   showViewPicker: boolean;
   showSecondaryPicker: boolean;
@@ -39,6 +41,8 @@ const DEFAULT_ACTIVITIES_UI_STATE: ActivitiesUiState = {
   hostingPublicationFilter: 'all',
   rateFilter: 'individual-given',
   rateSocialBadgeEnabled: false,
+  rateIndividualSocialBadgeEnabled: false,
+  ratePairSocialBadgeEnabled: false,
   view: 'day',
   showViewPicker: false,
   showSecondaryPicker: false,
@@ -69,7 +73,9 @@ export class ActivitiesPopupStateService {
   readonly activitiesChatContextFilter = computed(() => this._uiState().chatContextFilter);
   readonly activitiesHostingPublicationFilter = computed(() => this._uiState().hostingPublicationFilter);
   readonly activitiesRateFilter = computed(() => this._uiState().rateFilter);
-  readonly activitiesRateSocialBadgeEnabled = computed(() => this._uiState().rateSocialBadgeEnabled);
+  readonly activitiesRateSocialBadgeEnabled = computed(() => this.resolveRateSocialBadgeEnabled(this._uiState()));
+  readonly activitiesIndividualRateSocialBadgeEnabled = computed(() => this._uiState().rateIndividualSocialBadgeEnabled);
+  readonly activitiesPairRateSocialBadgeEnabled = computed(() => this._uiState().ratePairSocialBadgeEnabled);
   readonly activitiesView = computed(() => this._uiState().view);
   readonly activitiesShowViewPicker = computed(() => this._uiState().showViewPicker);
   readonly activitiesShowSecondaryPicker = computed(() => this._uiState().showSecondaryPicker);
@@ -119,9 +125,19 @@ export class ActivitiesPopupStateService {
       ...(normalizedPrimaryFilter === 'rates'
         ? {
             rateFilter: resolvedRateFilter,
-            rateSocialBadgeEnabled: initialRateSocialBadgeEnabled
+            rateSocialBadgeEnabled: initialRateSocialBadgeEnabled,
+            rateIndividualSocialBadgeEnabled: resolvedRateFilter.startsWith('individual')
+              ? initialRateSocialBadgeEnabled
+              : false,
+            ratePairSocialBadgeEnabled: resolvedRateFilter.startsWith('pair')
+              ? initialRateSocialBadgeEnabled
+              : false
           }
-        : { rateSocialBadgeEnabled: false })
+        : {
+            rateSocialBadgeEnabled: false,
+            rateIndividualSocialBadgeEnabled: false,
+            ratePairSocialBadgeEnabled: false
+          })
     }));
   }
 
@@ -155,7 +171,9 @@ export class ActivitiesPopupStateService {
       chatContextFilter: 'all',
       ratesFullscreenMode: normalizedFilter !== 'rates' ? false : state.ratesFullscreenMode,
       rateFilter: normalizedFilter === 'rates' ? 'individual-given' : state.rateFilter,
-      rateSocialBadgeEnabled: normalizedFilter === 'rates' ? state.rateSocialBadgeEnabled : false,
+      rateSocialBadgeEnabled: normalizedFilter === 'rates' ? this.resolveRateSocialBadgeEnabled(state) : false,
+      rateIndividualSocialBadgeEnabled: normalizedFilter === 'rates' ? state.rateIndividualSocialBadgeEnabled : false,
+      ratePairSocialBadgeEnabled: normalizedFilter === 'rates' ? state.ratePairSocialBadgeEnabled : false,
       view: normalizedFilter === 'rates'
         ? 'distance'
         : normalizedFilter === 'chats'
@@ -188,11 +206,41 @@ export class ActivitiesPopupStateService {
   }
 
   setActivitiesRateFilter(filter: AppTypes.RateFilterKey): void {
-    this.patchUiState({ rateFilter: filter });
+    this._uiState.update(state => {
+      const nextState = {
+        ...state,
+        rateFilter: filter
+      };
+      return {
+        ...nextState,
+        rateSocialBadgeEnabled: this.resolveRateSocialBadgeEnabled(nextState)
+      };
+    });
   }
 
   setActivitiesRateSocialBadgeEnabled(enabled: boolean): void {
-    this.patchUiState({ rateSocialBadgeEnabled: enabled });
+    this._uiState.update(state => ({
+      ...state,
+      rateSocialBadgeEnabled: enabled,
+      ...(state.rateFilter.startsWith('pair')
+        ? { ratePairSocialBadgeEnabled: enabled }
+        : { rateIndividualSocialBadgeEnabled: enabled })
+    }));
+  }
+
+  setActivitiesRateSocialBadgeEnabledForGroup(group: 'individual' | 'pair', enabled: boolean): void {
+    this._uiState.update(state => {
+      const nextState = {
+        ...state,
+        ...(group === 'pair'
+          ? { ratePairSocialBadgeEnabled: enabled }
+          : { rateIndividualSocialBadgeEnabled: enabled })
+      };
+      return {
+        ...nextState,
+        rateSocialBadgeEnabled: this.resolveRateSocialBadgeEnabled(nextState)
+      };
+    });
   }
 
   setActivitiesView(view: AppTypes.ActivitiesView): void {
@@ -365,6 +413,14 @@ export class ActivitiesPopupStateService {
       ...state,
       ...patch
     }));
+  }
+
+  private resolveRateSocialBadgeEnabled(state: Pick<ActivitiesUiState,
+    'rateFilter' | 'rateIndividualSocialBadgeEnabled' | 'ratePairSocialBadgeEnabled'
+  >): boolean {
+    return state.rateFilter.startsWith('pair')
+      ? state.ratePairSocialBadgeEnabled
+      : state.rateIndividualSocialBadgeEnabled;
   }
 
   private normalizeActivitiesPrimaryFilter(filter: AppTypes.ActivitiesPrimaryFilter): AppTypes.ActivitiesPrimaryFilter {

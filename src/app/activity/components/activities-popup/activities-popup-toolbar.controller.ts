@@ -16,6 +16,10 @@ export class ActivitiesPopupToolbarController {
   private get activitiesRateFilter() { return this.host.activitiesRateFilter as AppTypes.RateFilterKey; }
   private get activitiesRateSocialBadgeEnabled() { return this.host.activitiesRateSocialBadgeEnabled as boolean; }
   private set activitiesRateSocialBadgeEnabled(value: boolean) { this.host.activitiesRateSocialBadgeEnabled = value; }
+  private get activitiesIndividualRateSocialBadgeEnabled() { return this.host.activitiesIndividualRateSocialBadgeEnabled as boolean; }
+  private set activitiesIndividualRateSocialBadgeEnabled(value: boolean) { this.host.activitiesIndividualRateSocialBadgeEnabled = value; }
+  private get activitiesPairRateSocialBadgeEnabled() { return this.host.activitiesPairRateSocialBadgeEnabled as boolean; }
+  private set activitiesPairRateSocialBadgeEnabled(value: boolean) { this.host.activitiesPairRateSocialBadgeEnabled = value; }
   private get activitiesView() { return this.host.activitiesView as AppTypes.ActivitiesView; }
   private get activitiesViewOptions() { return this.host.activitiesViewOptions as typeof this.host.activitiesViewOptions; }
   private get activitiesRates() { return this.host.activitiesRates; }
@@ -61,6 +65,7 @@ export class ActivitiesPopupToolbarController {
   private activitiesEventScopeLabel(): string { return this.host.activitiesEventScopeLabel(); }
   private effectiveActivitiesSecondaryFilter(): AppTypes.ActivitiesSecondaryFilter { return this.host.effectiveActivitiesSecondaryFilter(); }
   private resetActivitiesScroll(): void { this.host.resetActivitiesScroll(); }
+  private syncActivitiesSmartListQuery(): void { this.host.syncActivitiesSmartListQuery(); }
   private openActivityRowInEventModule(row: AppTypes.ActivityListRow, readOnly: boolean): void { this.host.openActivityRowInEventModule(row, readOnly); }
 
   activitiesPrimaryFilterLabel(): string {
@@ -224,9 +229,6 @@ export class ActivitiesPopupToolbarController {
   activitiesRateFilterLabel(): string {
     const label = this.rateFilterLabelForKey(this.activitiesRateFilter);
     if (!label) { return 'Preferences · Given'; }
-    if (this.activitiesRateSocialBadgeEnabled && this.activitiesRateFilter.startsWith('pair')) {
-      return label;
-    }
     const group = this.rateGroupLabelForKey(this.activitiesRateFilter);
     return `${group} · ${label}`;
   }
@@ -271,31 +273,86 @@ export class ActivitiesPopupToolbarController {
     return this.activitiesPrimaryFilter === 'rates';
   }
 
+  shouldShowRateSocialBadgeToggleForGroup(label: string): boolean {
+    if (!this.shouldShowRateSocialBadgeToggle()) {
+      return false;
+    }
+    const normalizedLabel = label.trim().toLowerCase();
+    return normalizedLabel === this.rateGroupLabelForKey('individual-given').toLowerCase()
+      || normalizedLabel === this.rateGroupLabelForKey('pair-given').toLowerCase();
+  }
+
   rateSocialBadgeButtonLabel(): string {
     return this.activitiesRateSocialBadgeEnabled ? 'Social on' : 'Social off';
   }
 
+  rateSocialBadgeButtonLabelForGroup(label: string): string {
+    return this.isRateSocialBadgeToggleActiveForGroup(label) ? 'Social on' : 'Social off';
+  }
+
+  rateSocialBadgeToggleIconForGroup(label: string): string {
+    return this.isRateSocialBadgeToggleActiveForGroup(label) ? 'sell' : 'sell_off';
+  }
+
+  rateSocialBadgeGroupIconForGroup(label: string): string {
+    return this.rateSocialGroupForLabel(label) === 'pair' ? 'groups_2' : 'person';
+  }
+
+  rateSocialBadgeGroupClassForGroup(label: string): string {
+    return this.rateSocialGroupForLabel(label) === 'pair' ? 'rate-filter-group-pair' : 'rate-filter-group-single';
+  }
+
+  isRateSocialBadgeToggleActiveForGroup(label: string): boolean {
+    const group = this.rateSocialGroupForLabel(label);
+    return group === 'pair'
+      ? this.activitiesPairRateSocialBadgeEnabled
+      : this.activitiesIndividualRateSocialBadgeEnabled;
+  }
+
   toggleRateSocialBadge(): void {
-    this.activitiesRateSocialBadgeEnabled = !this.activitiesRateSocialBadgeEnabled;
-    this.activitiesContext.setActivitiesRateSocialBadgeEnabled(this.activitiesRateSocialBadgeEnabled);
-    if (this.activitiesRateFilter.startsWith('pair')) {
+    const group = this.activitiesRateFilter.startsWith('pair') ? 'pair' : 'individual';
+    this.toggleRateSocialBadgeForGroup(group);
+  }
+
+  toggleRateSocialBadgeForGroup(labelOrGroup: string): void {
+    const group = this.rateSocialGroupForLabel(labelOrGroup);
+    const nextEnabled = group === 'pair'
+      ? !this.activitiesPairRateSocialBadgeEnabled
+      : !this.activitiesIndividualRateSocialBadgeEnabled;
+    if (group === 'pair') {
+      this.activitiesPairRateSocialBadgeEnabled = nextEnabled;
+    } else {
+      this.activitiesIndividualRateSocialBadgeEnabled = nextEnabled;
+    }
+    if (this.activitiesRateFilter.startsWith(group)) {
+      this.activitiesRateSocialBadgeEnabled = nextEnabled;
+    }
+    this.activitiesContext.setActivitiesRateSocialBadgeEnabledForGroup(group, nextEnabled);
+    if (this.activitiesRateFilter.startsWith(group)) {
+      this.lastRateIndicatorPulseRowId = null;
+      this.selectedActivityRateId = null;
+      this.activitiesContext.setActivitiesSelectedRateId(null);
+      this.resetActivitiesScroll();
+      this.syncActivitiesSmartListQuery();
       this.activitiesSmartList?.reload();
     }
     this.cdr.markForCheck();
   }
 
   private rateFilterLabelForKey(key: AppTypes.RateFilterKey): string {
-    if (this.activitiesRateSocialBadgeEnabled && key === 'pair-given') {
-      return 'Network';
-    }
-    if (this.activitiesRateSocialBadgeEnabled && key === 'pair-received') {
-      return 'Suggested via Connection';
-    }
     return this.rateFilters.find((option: any) => option.key === key)?.label ?? 'Given';
   }
 
   private rateGroupLabelForKey(key: AppTypes.RateFilterKey): string {
     return key.startsWith('individual') ? 'Preferences' : 'Suggestions';
+  }
+
+  private rateSocialGroupForLabel(labelOrGroup: string): 'individual' | 'pair' {
+    const normalized = labelOrGroup.trim().toLowerCase();
+    if (normalized === 'pair' || normalized === this.rateGroupLabelForKey('pair-given').toLowerCase()) {
+      return 'pair';
+    }
+    return 'individual';
   }
 
   totalRateFilterCount(): number {

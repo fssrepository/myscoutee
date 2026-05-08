@@ -144,7 +144,7 @@
   position: absolute;
   top: 0.64rem;
   right: 0.56rem;
-  z-index: 5;
+  z-index: 80;
   max-width: calc(100% - 1.24rem);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -159,6 +159,66 @@
   line-height: 1;
   padding: 0.17rem 0.5rem;
   pointer-events: none;
+}
+
+.shared-card-context-avatar-badge {
+  position: absolute;
+  top: 0.68rem;
+  left: 0.62rem;
+  z-index: 90;
+  width: 2.08rem;
+  height: 2.08rem;
+  display: inline-grid;
+  place-items: center;
+  border: 2px solid rgba(255, 255, 255, 0.84);
+  border-radius: 999px;
+  background: rgba(8, 18, 35, 0.74);
+  color: #f7fbff;
+  box-shadow:
+    0 7px 16px rgba(4, 12, 26, 0.36),
+    inset 0 0 0 1px rgba(15, 35, 58, 0.26);
+  overflow: visible;
+  pointer-events: auto;
+  touch-action: manipulation;
+}
+
+button.shared-card-context-avatar-badge {
+  cursor: pointer;
+}
+
+.shared-card-context-avatar-badge img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
+}
+
+.shared-card-context-avatar-badge > span {
+  font-size: 0.68rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.shared-card-context-avatar-badge em {
+  position: absolute;
+  top: -0.74rem;
+  right: -0.72rem;
+  z-index: 2;
+  min-width: 1rem;
+  height: 1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.88);
+  border-radius: 999px;
+  background: #d94c4c;
+  color: #fff;
+  font-size: 0.54rem;
+  font-style: normal;
+  font-weight: 900;
+  line-height: 1;
+  padding: 0 0.16rem;
+  box-shadow: 0 4px 10px rgba(77, 12, 24, 0.32);
 }
 
 .activities-rate-pair-inline-overlay,

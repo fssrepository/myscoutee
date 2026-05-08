@@ -358,23 +358,23 @@
                         <mat-option class="status-option rate-filter-group-option" [class.is-group-separator]="activitiesToolbar.isRateGroupSeparator(option.label)" disabled>
                           <span
                             class="status-option-content rate-filter-group-label"
-                            [class.rate-filter-group-label-with-toggle]="activitiesToolbar.isRateGroupSeparator(option.label) && activitiesToolbar.shouldShowRateSocialBadgeToggle()"
+                            [class.rate-filter-group-label-with-toggle]="activitiesToolbar.shouldShowRateSocialBadgeToggleForGroup(option.label)"
                             >
                             <span class="rate-filter-group-title-chip">
                               <span class="rate-filter-group-title">{{ option.label }}</span>
                             </span>
-                            @if (activitiesToolbar.isRateGroupSeparator(option.label) && activitiesToolbar.shouldShowRateSocialBadgeToggle()) {
+                            @if (activitiesToolbar.shouldShowRateSocialBadgeToggleForGroup(option.label)) {
                               <button
                                 type="button"
                                 class="activities-rate-social-badge-toggle activities-rate-social-badge-toggle-inline"
-                                [class.is-active]="activitiesRateSocialBadgeEnabled"
-                                aria-label="Toggle social pair filter"
+                                [class.is-active]="activitiesToolbar.isRateSocialBadgeToggleActiveForGroup(option.label)"
+                                aria-label="Toggle social rate filter"
                                 (pointerdown)="$event.preventDefault(); $event.stopPropagation()"
                                 (mousedown)="$event.preventDefault(); $event.stopPropagation()"
-                                (click)="$event.preventDefault(); $event.stopPropagation(); activitiesToolbar.toggleRateSocialBadge()"
+                                (click)="$event.preventDefault(); $event.stopPropagation(); activitiesToolbar.toggleRateSocialBadgeForGroup(option.label)"
                                 >
-                                <mat-icon>{{ activitiesRateSocialBadgeEnabled ? 'sell' : 'sell_off' }}</mat-icon>
-                                <span>{{ activitiesToolbar.rateSocialBadgeButtonLabel() }}</span>
+                                <mat-icon>{{ activitiesToolbar.rateSocialBadgeToggleIconForGroup(option.label) }}</mat-icon>
+                                <span>{{ activitiesToolbar.rateSocialBadgeButtonLabelForGroup(option.label) }}</span>
                               </button>
                             }
                           </span>
@@ -428,29 +428,30 @@
                       </div>
                       @for (option of rateFilterEntries; track option) {
                         @if (option.kind === 'group') {
-                          @if (activitiesToolbar.isRateGroupSeparator(option.label) && activitiesToolbar.shouldShowRateSocialBadgeToggle()) {
+                          @if (activitiesToolbar.shouldShowRateSocialBadgeToggleForGroup(option.label)) {
                             <div
                               class="activities-mobile-rate-filter-group-row"
                               >
                               <span
-                                class="popup-filter-option activities-view-option activities-mobile-rate-filter-group mobile-profile-selector-option mobile-profile-selector-option-group rate-filter-group-pair is-group-separator-mobile"
+                                class="popup-filter-option activities-view-option activities-mobile-rate-filter-group mobile-profile-selector-option mobile-profile-selector-option-group"
+                                [ngClass]="activitiesToolbar.rateSocialBadgeGroupClassForGroup(option.label)"
                                 >
                                 <span class="mobile-profile-selector-option-main">
-                                  <mat-icon>groups_2</mat-icon>
+                                  <mat-icon>{{ activitiesToolbar.rateSocialBadgeGroupIconForGroup(option.label) }}</mat-icon>
                                   <span>{{ option.label }}</span>
                                 </span>
                               </span>
                               <button
                                 type="button"
                                 class="activities-rate-social-badge-toggle activities-rate-social-badge-toggle-inline activities-rate-social-badge-toggle-mobile"
-                                [class.is-active]="activitiesRateSocialBadgeEnabled"
-                                aria-label="Toggle social pair filter"
+                                [class.is-active]="activitiesToolbar.isRateSocialBadgeToggleActiveForGroup(option.label)"
+                                aria-label="Toggle social rate filter"
                                 (pointerdown)="$event.preventDefault(); $event.stopPropagation()"
                                 (mousedown)="$event.preventDefault(); $event.stopPropagation()"
-                                (click)="$event.preventDefault(); $event.stopPropagation(); activitiesToolbar.toggleRateSocialBadge()"
+                                (click)="$event.preventDefault(); $event.stopPropagation(); activitiesToolbar.toggleRateSocialBadgeForGroup(option.label)"
                                 >
-                                <mat-icon>{{ activitiesRateSocialBadgeEnabled ? 'sell' : 'sell_off' }}</mat-icon>
-                                <span>{{ activitiesToolbar.rateSocialBadgeButtonLabel() }}</span>
+                                <mat-icon>{{ activitiesToolbar.rateSocialBadgeToggleIconForGroup(option.label) }}</mat-icon>
+                                <span>{{ activitiesToolbar.rateSocialBadgeButtonLabelForGroup(option.label) }}</span>
                               </button>
                             </div>
                           } @else {

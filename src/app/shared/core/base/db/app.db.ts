@@ -870,19 +870,73 @@ export class AppMemoryDb {
     if (!value || typeof value !== 'object') {
       return null;
     }
-    const {
-      distanceKm: legacyDistanceKm,
-      ...rest
-    } = value as UserRateRecord & { distanceKm?: unknown };
-    const normalized = { ...rest } as UserRateRecord;
-    if (Number.isFinite(normalized.distanceMetersExact)) {
-      normalized.distanceMetersExact = Math.max(0, Math.trunc(Number(normalized.distanceMetersExact)));
-    } else if (Number.isFinite(legacyDistanceKm)) {
-      normalized.distanceMetersExact = Math.max(0, Math.round(Number(legacyDistanceKm) * 1000));
+    const source = value as Partial<UserRateRecord>;
+    const normalized: UserRateRecord = {
+      id: this.normalizeRateText(source.id),
+      fromUserId: this.normalizeRateText(source.fromUserId),
+      toUserId: this.normalizeRateText(source.toUserId),
+      rate: this.normalizeRateNumber(source.rate),
+      mode: source.mode === 'pair' ? 'pair' : 'single',
+      createdAtIso: this.normalizeRateText(source.createdAtIso),
+      updatedAtIso: this.normalizeRateText(source.updatedAtIso)
+    };
+    const ownerUserId = this.normalizeRateText(source.ownerUserId);
+    if (ownerUserId) {
+      normalized.ownerUserId = ownerUserId;
+    }
+    const displayId = this.normalizeRateText(source.displayId);
+    if (displayId) {
+      normalized.displayId = displayId;
+    }
+    if (
+      source.displayDirection === 'given'
+      || source.displayDirection === 'received'
+      || source.displayDirection === 'mutual'
+      || source.displayDirection === 'met'
+    ) {
+      normalized.displayDirection = source.displayDirection;
+    }
+    if (source.socialContext === 'separated-friends' || source.socialContext === 'friends-in-common') {
+      normalized.socialContext = source.socialContext;
+    }
+    const bridgeUserId = this.normalizeRateText(source.bridgeUserId);
+    if (bridgeUserId) {
+      normalized.bridgeUserId = bridgeUserId;
+    }
+    if (Number.isFinite(Number(source.bridgeCount))) {
+      normalized.bridgeCount = Math.max(0, Math.trunc(Number(source.bridgeCount)));
+    }
+    if (Number.isFinite(Number(source.scoreGiven))) {
+      normalized.scoreGiven = this.normalizeRateNumber(source.scoreGiven);
+    }
+    if (Number.isFinite(Number(source.scoreReceived))) {
+      normalized.scoreReceived = this.normalizeRateNumber(source.scoreReceived);
+    }
+    const eventName = this.normalizeRateText(source.eventName);
+    if (eventName) {
+      normalized.eventName = eventName;
+    }
+    const happenedAtIso = this.normalizeRateText(source.happenedAtIso);
+    if (happenedAtIso) {
+      normalized.happenedAtIso = happenedAtIso;
+    }
+    if (Number.isFinite(Number(source.distanceMetersExact))) {
+      normalized.distanceMetersExact = Math.max(0, Math.trunc(Number(source.distanceMetersExact)));
     } else {
       normalized.distanceMetersExact = 0;
     }
     return normalized;
+  }
+
+  private normalizeRateText(value: unknown): string {
+    return `${value ?? ''}`.trim();
+  }
+
+  private normalizeRateNumber(value: unknown): number {
+    if (!Number.isFinite(Number(value))) {
+      return 0;
+    }
+    return Math.trunc(Number(value));
   }
 
   private normalizeProfileExperiencesByUserId(
