@@ -1207,7 +1207,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       if (this.activitiesView === 'distance') {
         if (secondaryFilter === 'relevant') {
           return this.activityRowDistanceOrderValue(left) - this.activityRowDistanceOrderValue(right)
-            || this.activityRowBoostOrderValue(left) - this.activityRowBoostOrderValue(right)
+            || this.activityRowBoostOrderValue(right) - this.activityRowBoostOrderValue(left)
             || this.activityRowTimestampOrderValue(right) - this.activityRowTimestampOrderValue(left)
             || this.activityRowIdentity(left).localeCompare(this.activityRowIdentity(right));
         }
@@ -1217,7 +1217,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       }
       if (secondaryFilter === 'relevant') {
         return this.activityRowDayOrderValue(left) - this.activityRowDayOrderValue(right)
-          || this.activityRowBoostOrderValue(left) - this.activityRowBoostOrderValue(right)
+          || this.activityRowBoostOrderValue(right) - this.activityRowBoostOrderValue(left)
           || this.activityRowTimestampOrderValue(right) - this.activityRowTimestampOrderValue(left)
           || this.activityRowIdentity(left).localeCompare(this.activityRowIdentity(right));
       }

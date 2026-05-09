@@ -5,6 +5,8 @@ export const ASSETS_TABLE_NAME = 'assets' as const;
 export interface DemoAssetRecord extends AppTypes.AssetCard {
   ownerUserId: string;
   visibility: AppTypes.EventVisibility;
+  affinity?: number;
+  boost?: number;
   createdMs: number;
   updatedMs: number;
   createdAtIso: string;

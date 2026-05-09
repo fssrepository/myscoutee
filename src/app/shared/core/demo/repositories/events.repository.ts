@@ -42,6 +42,7 @@ interface DemoEventExploreCursor {
 })
 export class DemoEventsRepository {
   private static readonly MIN_DEMO_EVENT_ITEMS_PER_USER = 15;
+  private static readonly AFFINITY_DISTANCE_BOOST_SCALE = 10_000;
   private static readonly SYNTHETIC_EVENT_TITLE_PREFIXES = [
     'Lantern',
     'Harbor',
@@ -850,7 +851,7 @@ export class DemoEventsRepository {
     if (query.view === 'distance' || query.sort === 'distance') {
       if (query.secondaryFilter === 'relevant') {
         return this.distanceOrderValue(left) - this.distanceOrderValue(right)
-          || this.boostOrderValue(left) - this.boostOrderValue(right)
+          || this.boostOrderValue(right) - this.boostOrderValue(left)
           || this.timestampOrderValue(right) - this.timestampOrderValue(left)
           || this.compareRecordIdentity(left, right);
       }
@@ -861,7 +862,7 @@ export class DemoEventsRepository {
 
     if (query.secondaryFilter === 'relevant') {
       return this.dayOrderValue(left) - this.dayOrderValue(right)
-        || this.boostOrderValue(left) - this.boostOrderValue(right)
+        || this.boostOrderValue(right) - this.boostOrderValue(left)
         || this.timestampOrderValue(right) - this.timestampOrderValue(left)
         || this.compareRecordIdentity(left, right);
     }
@@ -1060,6 +1061,7 @@ export class DemoEventsRepository {
     const distanceMeters = this.distanceOrderValue(record);
     const ratingValue = -Math.round(AppUtils.clampNumber(Number(record.rating) || 0, 0, 10) * 100);
     const affinityDistance = Math.abs(this.affinityOrderValue(record) - viewerAffinity);
+    const boostAffinityRank = this.boostAffinityRank(record, affinityDistance);
     const isPast = startAtMs < Date.now() ? 1 : 0;
     const pastPriority = isPast === 1 ? 0 : 1;
 
@@ -1074,7 +1076,7 @@ export class DemoEventsRepository {
         return [distanceMeters, isPast, ratingValue, startAtMs];
       }
       if (query.order === 'most-relevant') {
-        return [distanceMeters, isPast, affinityDistance, startAtMs];
+        return [distanceMeters, isPast, boostAffinityRank, startAtMs];
       }
       return [distanceMeters, isPast, startAtMs, affinityDistance];
     }
@@ -1089,9 +1091,15 @@ export class DemoEventsRepository {
       return [isPast, dayKey, ratingValue, startAtMs];
     }
     if (query.order === 'most-relevant') {
-      return [isPast, dayKey, affinityDistance, startAtMs];
+      return [isPast, dayKey, boostAffinityRank, startAtMs];
     }
     return [isPast, dayKey, startAtMs, distanceMeters];
+  }
+
+  private boostAffinityRank(record: DemoEventRecord, affinityDistance: number): number {
+    const score = this.boostOrderValue(record)
+      - (Math.max(0, affinityDistance) / DemoEventsRepository.AFFINITY_DISTANCE_BOOST_SCALE);
+    return -Math.round(score * 1_000_000);
   }
 
   private compareExploreSortTuple(

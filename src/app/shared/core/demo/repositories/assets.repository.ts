@@ -1,5 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 
+import { AppUtils } from '../../../app-utils';
 import { AssetCardBuilder, AssetDefaultsBuilder, PricingBuilder } from '../../../core/base/builders';
 import { DemoAssetBuilder, DemoUserSeedBuilder } from '../builders';
 import type * as AppTypes from '../../../core/base/models';
@@ -18,6 +19,7 @@ import {
 })
 export class DemoAssetsRepository extends HttpAssetsRepository {
   private static readonly VISIBLE_EXPLORE_OWNER_LIMIT = 12;
+  private static readonly AFFINITY_DISTANCE_BOOST_SCALE = 10_000;
   private readonly memoryDb = inject(AppMemoryDb);
   private readonly usersRepository = inject(DemoUsersRepository);
 
@@ -86,8 +88,7 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
     const normalizedCategory = `${query.category ?? ''}`.trim();
     return this.readVisibleAssets(normalizedUserId)
       .filter(card => card.type === query.type)
-      .filter(card => !normalizedCategory || card.category === normalizedCategory)
-      .sort((left, right) => left.title.localeCompare(right.title));
+      .filter(card => !normalizedCategory || card.category === normalizedCategory);
   }
 
   peekVisibleAssetById(userId: string, type: AppTypes.AssetType, assetId: string): AppTypes.AssetCard | null {
@@ -114,7 +115,7 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
     this.memoryDb.write(state => {
       const table = this.normalizeCollection(state[ASSETS_TABLE_NAME]);
       const existing = table.byId[normalizedAsset.id];
-      const nextRecord: DemoAssetRecord = {
+      const nextRecord = this.withResolvedAssetRelevance({
         ...normalizedAsset,
         ownerUserId: normalizedUserId,
         visibility: normalizedAsset.visibility ?? existing?.visibility ?? 'Public',
@@ -122,7 +123,7 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
         updatedAtIso: nowIso,
         createdMs: existing?.createdMs ?? nowMs,
         updatedMs: nowMs
-      };
+      });
       return {
         ...state,
         [ASSETS_TABLE_NAME]: this.upsertRecordCollection(table, nextRecord)
@@ -158,7 +159,7 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
       const existing = currentTable.byId[asset.id];
       const nowMs = timestampMs;
       timestampMs += 1;
-      nextRecords.push({
+      nextRecords.push(this.withResolvedAssetRelevance({
         ...asset,
         ownerUserId: normalizedUserId,
         visibility: asset.visibility ?? existing?.visibility ?? 'Public',
@@ -166,7 +167,7 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
         updatedAtIso: new Date(nowMs).toISOString(),
         createdMs: existing?.createdMs ?? nowMs,
         updatedMs: nowMs
-      });
+      }));
       seenIds.add(asset.id);
     }
 
@@ -231,7 +232,8 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
       const createdAtIso = new Date(createdMs).toISOString();
       const imageUrl = DemoAssetBuilder.defaultAssetImage(card.type, `${ownerUserId}-${card.id}`);
       const category = this.seededCategoryForCard(card, ownerIndex, index);
-      return {
+      const requests = this.buildSeededRequests(ownerUserId, card, otherUsers, index);
+      return this.withResolvedAssetRelevance({
         ...card,
         id: `${ownerUserId}:${card.id}`,
         category: AssetDefaultsBuilder.normalizeCategory(card.type, category),
@@ -245,12 +247,12 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
         ownerUserId,
         ownerName: owner.name,
         visibility: this.seededVisibilityForCard(card, index),
-        requests: this.buildSeededRequests(ownerUserId, card, otherUsers, index),
+        requests,
         createdAtIso,
         updatedAtIso: createdAtIso,
         createdMs,
         updatedMs: createdMs
-      };
+      });
     });
   }
 
@@ -513,6 +515,7 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
   private readVisibleAssets(activeUserId: string): AppTypes.AssetCard[] {
     const table = this.normalizeCollection(this.memoryDb.read()[ASSETS_TABLE_NAME]);
     const visibleOwnerIds = new Set(this.queryVisibleExploreOwners(activeUserId).map(user => user.id));
+    const viewerAffinity = this.queryUserAffinity(activeUserId);
     return table.ids
       .map(id => table.byId[id])
       .filter((record): record is DemoAssetRecord => Boolean(record))
@@ -520,7 +523,39 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
       .filter(record => visibleOwnerIds.size === 0 || visibleOwnerIds.has(record.ownerUserId))
       .filter(record => record.visibility === 'Public'
         || (record.visibility === 'Friends only' && DemoUserSeedBuilder.isFriendOfActiveUser(record.ownerUserId, activeUserId)))
+      .sort((left, right) => this.compareVisibleAssetRecords(left, right, viewerAffinity))
       .map(record => this.toAssetCard(record));
+  }
+
+  private compareVisibleAssetRecords(
+    left: DemoAssetRecord,
+    right: DemoAssetRecord,
+    viewerAffinity: number
+  ): number {
+    const scoreDelta = this.assetExploreScore(right, viewerAffinity) - this.assetExploreScore(left, viewerAffinity);
+    if (scoreDelta !== 0) {
+      return scoreDelta;
+    }
+    return left.title.localeCompare(right.title) || left.id.localeCompare(right.id);
+  }
+
+  private assetExploreScore(record: DemoAssetRecord, viewerAffinity: number): number {
+    const assetAffinity = this.assetAffinityOrderValue(record);
+    const boost = this.assetBoostOrderValue(record);
+    if (viewerAffinity > 0 && assetAffinity > 0) {
+      return boost - (Math.abs(viewerAffinity - assetAffinity) / DemoAssetsRepository.AFFINITY_DISTANCE_BOOST_SCALE);
+    }
+    return boost + (assetAffinity / DemoAssetsRepository.AFFINITY_DISTANCE_BOOST_SCALE);
+  }
+
+  private assetAffinityOrderValue(record: DemoAssetRecord): number {
+    const stored = Number(record.affinity);
+    return Number.isFinite(stored) ? Math.max(0, Math.trunc(stored)) : this.resolveAssetAffinity(record);
+  }
+
+  private assetBoostOrderValue(record: DemoAssetRecord): number {
+    const stored = Number(record.boost);
+    return Number.isFinite(stored) ? Math.max(0, stored) : this.resolveAssetBoost(record);
   }
 
   private toAssetCard(record: DemoAssetRecord): AppTypes.AssetCard {
@@ -549,6 +584,51 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
       ownerName: record.ownerName,
       requests: record.requests.map(request => this.cloneRequest(request))
     };
+  }
+
+  private withResolvedAssetRelevance(record: DemoAssetRecord): DemoAssetRecord {
+    return {
+      ...record,
+      affinity: this.resolveAssetAffinity(record),
+      boost: this.resolveAssetBoost(record),
+      routes: [...(record.routes ?? [])],
+      topics: [...(record.topics ?? [])],
+      policies: (record.policies ?? []).map(item => ({ ...item })),
+      pricing: record.pricing ? PricingBuilder.clonePricingConfig(record.pricing) : undefined,
+      requests: record.requests.map(request => this.cloneRequest(request))
+    };
+  }
+
+  private resolveAssetAffinity(record: DemoAssetRecord): number {
+    const ownerAffinity = this.queryUserAffinity(record.ownerUserId);
+    const tokenScore = AppUtils.hashText([
+      record.type,
+      record.title,
+      record.subtitle,
+      record.category,
+      record.city,
+      record.visibility,
+      record.details,
+      ...(record.routes ?? [])
+    ].join('|')) % 997;
+    return Math.max(0, Math.trunc(ownerAffinity + (tokenScore * 83)));
+  }
+
+  private resolveAssetBoost(record: DemoAssetRecord): number {
+    const acceptedRequests = record.requests.filter(request => request.status === 'accepted').length;
+    const capacityAvailable = Math.max(0, Math.trunc(Number(record.capacityTotal) || 0) - acceptedRequests);
+    const quantity = Math.max(0, Math.trunc(Number(record.quantity) || 0));
+    const requestCount = Math.max(0, record.requests.length);
+    return Math.max(0, (capacityAvailable * 7) + (quantity * 11) + (requestCount * 13));
+  }
+
+  private queryUserAffinity(userId: string): number {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return 0;
+    }
+    const user = this.querySeedUsers().find(item => item.id === normalizedUserId);
+    return Math.max(0, Math.trunc(Number(user?.affinity) || 0));
   }
 
   private seededVisibilityForCard(card: Pick<AppTypes.AssetCard, 'type' | 'title'>, index: number): AppTypes.EventVisibility {
