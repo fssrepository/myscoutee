@@ -114,7 +114,6 @@ export class NavigatorComponent {
 
     effect(() => {
       const isActivitiesOpen = this.activitiesContext.activitiesOpen();
-      this.activitiesContext.activitiesOpenRevision();
       if (isActivitiesOpen && !this.activitiesPopupComponentRef()) {
         void this.ensureActivitiesPopupLoaded();
       }
@@ -164,7 +163,6 @@ export class NavigatorComponent {
       this.activitiesContext.openActivities(request.primaryFilter, request.eventScope, undefined, false, {
         adminServiceOnly: request.adminServiceOnly === true
       });
-      void this.ensureActivitiesPopupLoaded();
       this.popupCtx.clearNavigatorActivitiesRequest();
     });
 
