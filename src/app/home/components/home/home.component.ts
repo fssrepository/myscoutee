@@ -35,6 +35,7 @@ import {
   type UserGameSocialCard
 } from '../../../shared/core';
 import { HomeGameFilterPopupComponent } from './home-game-filter-popup.component';
+import { I18nPipe } from '../../../shared/i18n';
 import {
   GameFilterForm,
   GameFilterOptionGroup,
@@ -139,7 +140,8 @@ const PUBLIC_PROFILE_DETAIL_KEYS = new Set(
     SingleCardComponent,
     PairCardComponent,
     HomeGameFilterPopupComponent,
-    CounterBadgePipe
+    CounterBadgePipe,
+    I18nPipe
   ],
   templateUrl: './home.component.html',
   styleUrls: ['./home.component.scss']
@@ -421,16 +423,16 @@ export class HomeComponent implements OnDestroy {
 
   protected get gameVisibilityPausedTitle(): string {
     if (this.resolvedActiveProfileStatus() === 'inactive') {
-      return 'Your profile is inactive';
+      return 'your.profile.is.inactive';
     }
-    return 'Game discovery is paused';
+    return 'game.discovery.is.paused';
   }
 
   protected get gameVisibilityPausedDescription(): string {
     if (this.resolvedActiveProfileStatus() === 'inactive') {
-      return 'Set your profile back to Public if you want to rate profiles and appear in game suggestions.';
+      return 'set.your.profile.back.to.public.if.you.want.to.rate.profiles.and.appear.in.game.suggestions';
     }
-    return 'Change your profile visibility to Public if you want to rate profiles and appear in game suggestions.';
+    return 'change.your.profile.visibility.to.public.if.you.want.to.rate.profiles.and.appear.in.game.suggestions';
   }
 
   private get avatarLoadedUser(): UserDto | null {

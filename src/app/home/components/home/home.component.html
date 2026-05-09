@@ -112,15 +112,15 @@
     } @else if (isBlockedUser) {
       <div class="game-blocked-panel">
         <mat-icon>block</mat-icon>
-        <h2>Your account is blocked</h2>
-        <p>Your profile is still visible to you, but rating, matching, profile editing, assets, events, and invitations are paused.</p>
-        <p>Open Chats from the menu to contact MyScoutee support. They can review the block and tell you what information is needed.</p>
+        <h2>{{ 'your.account.is.blocked' | i18n: 'Your account is blocked' }}</h2>
+        <p>{{ 'your.profile.is.still.visible.to.you.but.rating.matching.profile.editing.assets.events.and.invitations.are.paused' | i18n: 'Your profile is still visible to you, but rating, matching, profile editing, assets, events, and invitations are paused.' }}</p>
+        <p>{{ 'open.chats.from.the.menu.to.contact.myscoutee.support.they.can.review.the.block.and.tell.you.what.information.is.needed' | i18n: 'Open Chats from the menu to contact MyScoutee support. They can review the block and tell you what information is needed.' }}</p>
       </div>
     } @else if (isGameVisibilityPaused) {
       <div class="game-blocked-panel game-visibility-panel">
         <mat-icon>visibility_off</mat-icon>
-        <h2>{{ gameVisibilityPausedTitle }}</h2>
-        <p>{{ gameVisibilityPausedDescription }}</p>
+        <h2>{{ gameVisibilityPausedTitle | i18n }}</h2>
+        <p>{{ gameVisibilityPausedDescription | i18n }}</p>
       </div>
     } @else {
     <div class="game-card-deck">
