@@ -334,8 +334,12 @@ export class DemoEventsRepository {
     const startAtIso = payload.startAt?.trim() || new Date().toISOString();
     const endAtIso = payload.endAt?.trim()
       || new Date(new Date(startAtIso).getTime() + (2 * 60 * 60 * 1000)).toISOString();
-    const acceptedMemberUserIds = this.normalizeUserIds(payload.acceptedMemberUserIds);
-    const pendingMemberUserIds = this.normalizeUserIds(payload.pendingMemberUserIds);
+    const existingTable = this.memoryDb.read()[EVENTS_TABLE_NAME];
+    const existingEvent = existingTable.ids
+      .map(recordKey => existingTable.byId[recordKey])
+      .find(record => record?.id === normalizedId && record.type !== 'invitations');
+    const acceptedMemberUserIds = this.normalizeUserIds(existingEvent?.acceptedMemberUserIds);
+    const pendingMemberUserIds = this.normalizeUserIds(existingEvent?.pendingMemberUserIds);
     const acceptedMembers = this.normalizeCount(payload.acceptedMembers) ?? acceptedMemberUserIds.length;
     const pendingMembers = this.normalizeCount(payload.pendingMembers) ?? pendingMemberUserIds.length;
     const capacityTotal = Math.max(

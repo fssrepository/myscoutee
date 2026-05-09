@@ -3,8 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import type {
   ActivityMemberOwnerType,
   ActivityMemberOwnerRef,
-  ActivityMembersSummary,
-  ActivitiesEventSyncPayload
+  ActivityMembersSummary
 } from '../../../core/base/models';
 import type * as AppTypes from '../../../core/base/models';
 import { AppContext } from '../context';
@@ -105,18 +104,6 @@ export class ActivityMembersService extends BaseRouteModeService {
     }
     const owner = this.peekOwnerRefById(normalizedOwnerId) ?? this.ownerRef('event', normalizedOwnerId);
     await this.replaceMembersByOwner(owner, members, capacityTotal);
-  }
-
-  async syncEventMembersFromEventSnapshot(payload: Omit<ActivitiesEventSyncPayload, 'syncKey'>): Promise<void> {
-    await this.activityMembersService.syncEventMembersFromEventSnapshot(payload);
-    this.appCtx.emitActivityMembersSync({
-      id: payload.id,
-      acceptedMembers: Number.isFinite(Number(payload.acceptedMembers)) ? Number(payload.acceptedMembers) : 0,
-      pendingMembers: Number.isFinite(Number(payload.pendingMembers)) ? Number(payload.pendingMembers) : 0,
-      capacityTotal: Number.isFinite(Number(payload.capacityTotal))
-        ? Number(payload.capacityTotal)
-        : (Number.isFinite(Number(payload.acceptedMembers)) ? Number(payload.acceptedMembers) : 0)
-    });
   }
 
   private emitActivityMembersSyncForOwner(owner: ActivityMemberOwnerRef): void {

@@ -2,8 +2,7 @@ import { Injectable, inject } from '@angular/core';
 
 import type {
   ActivityMemberOwnerRef,
-  ActivityMembersSummary,
-  ActivitiesEventSyncPayload
+  ActivityMembersSummary
 } from '../../../core/base/models';
 import { ActivityMembersBuilder } from '../../base/builders/activity-members.builder';
 import { APP_STATIC_DATA } from '../../../app-static-data';
@@ -524,59 +523,6 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
     }
     const summary = this.writeOwnerMembers(normalizedOwner, members, capacityTotal, true);
     this.cacheMembers(normalizedOwner, members, summary.capacityTotal);
-  }
-
-  override async syncEventMembersFromEventSnapshot(payload: Omit<ActivitiesEventSyncPayload, 'syncKey'>): Promise<void> {
-    this.ensureLightweightSyncReady();
-    const eventId = payload.id.trim();
-    if (!eventId) {
-      return;
-    }
-
-    const owner: ActivityMemberOwnerRef = {
-      ownerType: 'event',
-      ownerId: eventId
-    };
-    const row = this.buildActivityRowFromPayload(payload);
-    const creator = this.resolveDemoUser(
-      payload.creatorUserId?.trim() || 'u1',
-      payload.creatorName?.trim() || payload.title,
-      payload.creatorInitials?.trim() || AppUtils.initialsFromText(payload.title),
-      payload.creatorCity?.trim() || '',
-      payload.creatorGender === 'woman' ? 'woman' : 'man'
-    );
-    const entryContext = this.buildEntryContext(row, creator);
-    const acceptedMemberUserIds = this.normalizeMemberUserIds(payload.acceptedMemberUserIds);
-    const pendingMemberUserIds = this.normalizeMemberUserIds(payload.pendingMemberUserIds)
-      .filter(userId => !acceptedMemberUserIds.includes(userId));
-    const hasExplicitMemberUserIds = Array.isArray(payload.acceptedMemberUserIds) || Array.isArray(payload.pendingMemberUserIds);
-    const acceptedTarget = hasExplicitMemberUserIds
-      ? acceptedMemberUserIds.length
-      : (this.normalizeMemberCount(payload.acceptedMembers) ?? acceptedMemberUserIds.length);
-    const pendingTarget = hasExplicitMemberUserIds
-      ? pendingMemberUserIds.length
-      : (this.normalizeMemberCount(payload.pendingMembers) ?? pendingMemberUserIds.length);
-    const entries = this.buildEntriesFromUserIds(
-      owner,
-      entryContext,
-      acceptedMemberUserIds,
-      pendingMemberUserIds,
-      acceptedTarget,
-      pendingTarget,
-      {
-        allowAcceptedBackfill: !hasExplicitMemberUserIds,
-        allowPendingBackfill: !hasExplicitMemberUserIds
-      }
-    );
-    const summary = this.writeOwnerMembers(
-      owner,
-      entries,
-      this.normalizeMemberCount(payload.capacityTotal)
-        ?? this.normalizeMemberCount(payload.capacityMax)
-        ?? Math.max(acceptedTarget, entries.filter(entry => entry.status === 'accepted').length),
-      true
-    );
-    this.cacheMembers(owner, entries, summary.capacityTotal);
   }
 
   private ensureLightweightSyncReady(): void {
@@ -1836,43 +1782,6 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
         location: record.location,
         locationCoordinates: record.locationCoordinates,
         policies: (record.policies ?? []).map(item => ({ ...item }))
-      } as AppTypes.ActivityListRow['source']
-    };
-  }
-
-  private buildActivityRowFromPayload(payload: Omit<ActivitiesEventSyncPayload, 'syncKey'>): AppTypes.ActivityListRow {
-    return {
-      id: payload.id,
-      type: payload.target === 'hosting' ? 'hosting' : 'events',
-      title: payload.title,
-      subtitle: payload.shortDescription,
-      detail: payload.timeframe,
-      dateIso: payload.startAt,
-      distanceKm: Math.max(0, Number(payload.distanceKm) || 0),
-      unread: Math.max(0, Math.trunc(Number(payload.activity) || 0)),
-      metricScore: Math.max(0, Math.trunc(Number(payload.activity) || 0)),
-      isAdmin: true,
-      source: {
-        id: payload.id,
-        avatar: payload.creatorInitials?.trim() || AppUtils.initialsFromText(payload.title),
-        title: payload.title,
-        shortDescription: payload.shortDescription,
-        timeframe: payload.timeframe,
-        activity: Math.max(0, Math.trunc(Number(payload.activity) || 0)),
-        isAdmin: true,
-        creatorUserId: payload.creatorUserId,
-        startAt: payload.startAt,
-        endAt: payload.endAt,
-        distanceKm: payload.distanceKm,
-        visibility: payload.visibility,
-        blindMode: payload.blindMode,
-        imageUrl: payload.imageUrl,
-        sourceLink: payload.sourceLink,
-        location: payload.location,
-        capacityMin: payload.capacityMin,
-        capacityMax: payload.capacityMax,
-        topics: payload.topics ? [...payload.topics] : payload.topics,
-        published: payload.published
       } as AppTypes.ActivityListRow['source']
     };
   }

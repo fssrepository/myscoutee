@@ -164,8 +164,6 @@ export interface ActivitiesEventSyncPayload {
   locationCoordinates?: LocationCoordinates;
   sourceLink?: string;
   policies?: EventPolicyItem[];
-  acceptedMemberUserIds?: string[];
-  pendingMemberUserIds?: string[];
   topics?: string[];
   subEvents?: SubEventFormItem[];
   subEventsDisplayMode?: import('./event.model').SubEventsDisplayMode;

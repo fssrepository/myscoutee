@@ -1394,10 +1394,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     if (this.pendingCheckoutDraftSourceIds().has(sync.id)) {
       return true;
     }
-    if ((sync.acceptedMemberUserIds ?? []).includes(activeUserId)) {
-      return false;
-    }
-    return (sync.pendingMemberUserIds ?? []).includes(activeUserId);
+    return false;
   }
 
   private isAcceptedEventSync(sync: ActivitiesEventSyncPayload): boolean {
@@ -1408,7 +1405,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     if (this.pendingCheckoutDraftSourceIds().has(sync.id)) {
       return false;
     }
-    return (sync.acceptedMemberUserIds ?? []).includes(activeUserId);
+    return false;
   }
 
   private syncActivityCounterOverrides(): void {
@@ -2288,9 +2285,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
     if (!activeUserId) {
       return;
     }
-    if (!Array.isArray(sync.acceptedMemberUserIds) || !sync.acceptedMemberUserIds.includes(activeUserId)) {
-      return;
-    }
     this.invitationItems = this.invitationItems.filter(item => item.id !== sync.id);
     delete this.activityMembersByRowId[`invitations:${sync.id}`];
   }
@@ -2312,8 +2306,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
       acceptedMembers: Number.isFinite(Number(sync.acceptedMembers)) ? Math.max(0, Math.trunc(Number(sync.acceptedMembers))) : existing?.acceptedMembers,
       pendingMembers: Number.isFinite(Number(sync.pendingMembers)) ? Math.max(0, Math.trunc(Number(sync.pendingMembers))) : existing?.pendingMembers,
       capacityTotal: Number.isFinite(Number(sync.capacityTotal)) ? Math.max(0, Math.trunc(Number(sync.capacityTotal))) : existing?.capacityTotal,
-      acceptedMemberUserIds: Array.isArray(sync.acceptedMemberUserIds) ? [...sync.acceptedMemberUserIds] : [...(existing?.acceptedMemberUserIds ?? [])],
-      pendingMemberUserIds: Array.isArray(sync.pendingMemberUserIds) ? [...sync.pendingMemberUserIds] : [...(existing?.pendingMemberUserIds ?? [])],
+      acceptedMemberUserIds: [...(existing?.acceptedMemberUserIds ?? [])],
+      pendingMemberUserIds: [...(existing?.pendingMemberUserIds ?? [])],
       visibility: sync.visibility ?? existing?.visibility,
       blindMode: sync.blindMode ?? existing?.blindMode,
       imageUrl: imageUrl || existing?.imageUrl,
@@ -2365,8 +2359,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
       acceptedMembers: Number.isFinite(Number(sync.acceptedMembers)) ? Math.max(0, Math.trunc(Number(sync.acceptedMembers))) : existing?.acceptedMembers,
       pendingMembers: Number.isFinite(Number(sync.pendingMembers)) ? Math.max(0, Math.trunc(Number(sync.pendingMembers))) : existing?.pendingMembers,
       capacityTotal: Number.isFinite(Number(sync.capacityTotal)) ? Math.max(0, Math.trunc(Number(sync.capacityTotal))) : existing?.capacityTotal,
-      acceptedMemberUserIds: Array.isArray(sync.acceptedMemberUserIds) ? [...sync.acceptedMemberUserIds] : [...(existing?.acceptedMemberUserIds ?? [])],
-      pendingMemberUserIds: Array.isArray(sync.pendingMemberUserIds) ? [...sync.pendingMemberUserIds] : [...(existing?.pendingMemberUserIds ?? [])],
+      acceptedMemberUserIds: [...(existing?.acceptedMemberUserIds ?? [])],
+      pendingMemberUserIds: [...(existing?.pendingMemberUserIds ?? [])],
       visibility: sync.visibility ?? existing?.visibility,
       blindMode: sync.blindMode ?? existing?.blindMode,
       imageUrl: imageUrl || existing?.imageUrl,
@@ -2567,8 +2561,14 @@ export class ActivitiesPopupComponent implements OnDestroy {
       source: hostingSource
     };
 
-    const acceptedMemberUserIds = this.uniqueUserIds(sync.acceptedMemberUserIds ?? []);
-    const pendingMemberUserIds = this.uniqueUserIds(sync.pendingMemberUserIds ?? [])
+    const acceptedMemberUserIds = this.uniqueUserIds([
+      ...(eventSource.acceptedMemberUserIds ?? []),
+      ...(hostingSource.acceptedMemberUserIds ?? [])
+    ]);
+    const pendingMemberUserIds = this.uniqueUserIds([
+      ...(eventSource.pendingMemberUserIds ?? []),
+      ...(hostingSource.pendingMemberUserIds ?? [])
+    ])
       .filter(userId => !acceptedMemberUserIds.includes(userId));
     const summary: ActivityMembersSummary = {
       ownerType: 'event',

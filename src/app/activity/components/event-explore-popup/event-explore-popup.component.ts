@@ -1006,11 +1006,7 @@ export class EventExplorePopupComponent {
   }
 
   private applyActivitiesEventSync(sync: AppTypes.ActivitiesEventSyncPayload): void {
-    const activeUserId = this.activeUserId.trim();
-    const userJoinedEvent = activeUserId.length > 0 && (
-      (Array.isArray(sync.acceptedMemberUserIds) && sync.acceptedMemberUserIds.includes(activeUserId))
-      || (Array.isArray(sync.pendingMemberUserIds) && sync.pendingMemberUserIds.includes(activeUserId))
-    );
+    const userJoinedEvent = false;
     if (userJoinedEvent) {
       this.locallyTrackedMembershipSourceIds.add(sync.id);
     } else {
@@ -1055,12 +1051,8 @@ export class EventExplorePopupComponent {
           pendingMembers: Number.isFinite(Number(sync.pendingMembers))
             ? Math.max(0, Math.trunc(Number(sync.pendingMembers)))
             : existing.pendingMembers,
-          acceptedMemberUserIds: Array.isArray(sync.acceptedMemberUserIds)
-            ? [...sync.acceptedMemberUserIds]
-            : [...existing.acceptedMemberUserIds],
-          pendingMemberUserIds: Array.isArray(sync.pendingMemberUserIds)
-            ? [...sync.pendingMemberUserIds]
-            : [...existing.pendingMemberUserIds],
+          acceptedMemberUserIds: [...existing.acceptedMemberUserIds],
+          pendingMemberUserIds: [...existing.pendingMemberUserIds],
           capacityMin: sync.capacityMin ?? existing.capacityMin,
           capacityMax: sync.capacityMax ?? existing.capacityMax,
           capacityTotal: Math.max(
@@ -1706,8 +1698,6 @@ export class EventExplorePopupComponent {
       location: record.location,
       locationCoordinates: record.locationCoordinates ?? undefined,
       sourceLink: record.sourceLink,
-      acceptedMemberUserIds: [...summary.acceptedMemberUserIds],
-      pendingMemberUserIds: [...summary.pendingMemberUserIds],
       topics: [...record.topics],
       subEvents: Array.isArray(record.subEvents)
         ? record.subEvents.map(item => ({

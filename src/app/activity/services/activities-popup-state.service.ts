@@ -2,7 +2,7 @@ import { computed, Injectable, inject, signal } from '@angular/core';
 
 import { environment } from '../../../environments/environment';
 import type * as AppTypes from '../../shared/core/base/models';
-import { ActivityMembersService, ChatsService, EventsService } from '../../shared/core';
+import { ChatsService, EventsService } from '../../shared/core';
 import type {
   ActivitiesEventSyncPayload,
   EventChatContext,
@@ -58,7 +58,6 @@ const DEFAULT_ACTIVITIES_UI_STATE: ActivitiesUiState = {
 export class ActivitiesPopupStateService {
   private readonly eventsService = inject(EventsService);
   private readonly chatsService = inject(ChatsService);
-  private readonly activityMembersService = inject(ActivityMembersService);
 
   private readonly _uiState = signal<ActivitiesUiState>(DEFAULT_ACTIVITIES_UI_STATE);
   private _activitiesEventSync = signal<ActivitiesEventSyncPayload | null>(null);
@@ -289,14 +288,9 @@ export class ActivitiesPopupStateService {
 
   private runDeferredEventPersistence(payload: Omit<ActivitiesEventSyncPayload, 'syncKey'>): Promise<void> {
     const persist = async () => {
-      await Promise.all([
-        this.eventsService.syncEventSnapshot(payload).catch(() => {
+      await this.eventsService.syncEventSnapshot(payload).catch(() => {
         // Demo persistence is best-effort; UI state stays optimistic.
-        }),
-        this.activityMembersService.syncEventMembersFromEventSnapshot(payload).catch(() => {
-        // Demo persistence is best-effort; UI state stays optimistic.
-        })
-      ]);
+      });
     };
 
     return new Promise(resolve => {

@@ -764,7 +764,18 @@ export class ActivitiesEventsController {
     }
 
     this.eventCheckoutDraftService.clear(activeUserId, row.id);
-    const persistence = this.activitiesContext.emitActivitiesEventSync(syncPayload);
+    const currentMembers = await this.activityMembersService.queryMembersByOwnerId(row.id);
+    const nextMembers = currentMembers.filter((member: AppTypes.ActivityMemberEntry) => member.userId !== activeUserId);
+    const capacityTotal = Math.max(
+      Math.max(0, Math.trunc(Number(syncPayload.acceptedMembers) || 0)),
+      Math.max(0, Math.trunc(Number(syncPayload.capacityTotal) || 0))
+    );
+    const persistence = Promise.all([
+      this.activitiesContext.emitActivitiesEventSync(syncPayload),
+      currentMembers.length > nextMembers.length
+        ? this.activityMembersService.replaceMembersByOwnerId(row.id, nextMembers, capacityTotal)
+        : Promise.resolve()
+    ]);
 
     if (this.selectedActivityMembersRowId === this.activityRowIdentity(row)) {
       this.selectedActivityMembers = ActivityMembersBuilder.sortActivityMembersByActionTimeAsc(
@@ -804,7 +815,7 @@ export class ActivitiesEventsController {
       this.eventsService.syncEventSnapshot(syncPayload),
       nextMembers
         ? this.activityMembersService.replaceMembersByOwnerId(syncPayload.id, nextMembers, capacityTotal)
-        : this.activityMembersService.syncEventMembersFromEventSnapshot(syncPayload)
+        : Promise.resolve()
     ]);
     this.removeInvitationItem(syncPayload.id);
     this.applyActivitiesEventSync(syncPayload);
@@ -944,8 +955,6 @@ export class ActivitiesEventsController {
         location: record?.location ?? relatedSource.location ?? invitationSource.location,
         locationCoordinates: record?.locationCoordinates ?? relatedSource.locationCoordinates ?? invitationSource.locationCoordinates,
         sourceLink: record?.sourceLink ?? relatedSource.sourceLink ?? invitationSource.sourceLink,
-        acceptedMemberUserIds: nextAcceptedMemberUserIds,
-        pendingMemberUserIds: nextPendingMemberUserIds,
         topics: [...(record?.topics ?? relatedSource.topics ?? [])],
         subEvents: Array.isArray(record?.subEvents)
           ? this.cloneSyncedSubEventForms(record.subEvents)
@@ -1169,8 +1178,6 @@ export class ActivitiesEventsController {
       location: record?.location ?? relatedSource?.location ?? source.location,
       locationCoordinates: record?.locationCoordinates ?? relatedSource?.locationCoordinates ?? source.locationCoordinates,
       sourceLink: record?.sourceLink ?? relatedSource?.sourceLink ?? source.sourceLink,
-      acceptedMemberUserIds: nextAcceptedMemberUserIds,
-      pendingMemberUserIds: nextPendingMemberUserIds,
       topics: [...(record?.topics ?? relatedSource?.topics ?? source.topics ?? [])],
       subEvents: Array.isArray(record?.subEvents)
         ? this.cloneSyncedSubEventForms(record.subEvents)
