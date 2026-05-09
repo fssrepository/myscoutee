@@ -142,6 +142,10 @@ export class EventsService extends BaseRouteModeService {
     return this.eventsService.restoreItem(userId, type, sourceId);
   }
 
+  takeOverItem(userId: string, type: DemoRepositoryEventItemType, sourceId: string): Promise<void> {
+    return this.eventsService.takeOverItem(userId, type, sourceId);
+  }
+
   requestJoin(
     userId: string,
     sourceId: string,

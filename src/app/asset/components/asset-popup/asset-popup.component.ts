@@ -239,6 +239,19 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
       this.ownedAssets.runAssetItemDeleteAction(card);
       return;
     }
+    if (event.actionId === 'takeOver') {
+      this.confirmationDialogService.open({
+        title: 'Take over asset?',
+        message: card.title,
+        cancelLabel: 'Cancel',
+        confirmLabel: 'Take Over',
+        busyConfirmLabel: 'Taking over...',
+        confirmTone: 'accent',
+        failureMessage: 'Unable to take over asset.',
+        onConfirm: () => this.ownedAssets.takeOverAssetCardById(card.id)
+      });
+      return;
+    }
     this.ownedAssets.runAssetItemEditAction(card);
   }
 

@@ -217,6 +217,31 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
     });
   }
 
+  override async takeOverOwnedAsset(userId: string, assetId: string): Promise<void> {
+    const normalizedUserId = userId.trim();
+    const normalizedAssetId = assetId.trim();
+    if (!normalizedUserId || !normalizedAssetId) {
+      return;
+    }
+    this.memoryDb.write(state => {
+      const table = this.normalizeCollection(state[ASSETS_TABLE_NAME]);
+      const current = table.byId[normalizedAssetId];
+      if (!current || current.ownerUserId !== normalizedUserId || this.normalizeAssetStatus(current.status) !== 'UR') {
+        return state;
+      }
+      return {
+        ...state,
+        [ASSETS_TABLE_NAME]: this.upsertRecordCollection(table, {
+          ...current,
+          status: this.restoredAssetStatus(current),
+          statusBeforeSuppression: null,
+          updatedMs: Date.now(),
+          updatedAtIso: new Date().toISOString()
+        })
+      };
+    });
+  }
+
   private buildSeededOwnerRecords(ownerUserId: string): DemoAssetRecord[] {
     const allUsers = this.querySeedUsers();
     const owner = allUsers.find(user => user.id === ownerUserId) ?? allUsers[0] ?? null;
@@ -247,6 +272,8 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
         ownerUserId,
         ownerName: owner.name,
         visibility: this.seededVisibilityForCard(card, index),
+        status: index === 0 ? 'UR' : index === 1 ? 'D' : 'A',
+        statusBeforeSuppression: index === 0 || index === 1 ? 'A' : null,
         requests,
         createdAtIso,
         updatedAtIso: createdAtIso,

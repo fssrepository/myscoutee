@@ -287,6 +287,10 @@ export class HttpEventsService {
     await this.postVoid('/activities/events/restore', { userId: userId.trim(), type, sourceId: sourceId.trim() });
   }
 
+  async takeOverItem(userId: string, type: DemoRepositoryEventItemType, sourceId: string): Promise<void> {
+    await this.postVoid('/activities/events/take-over', { userId: userId.trim(), type, sourceId: sourceId.trim() });
+  }
+
   async requestJoin(
     userId: string,
     sourceId: string,

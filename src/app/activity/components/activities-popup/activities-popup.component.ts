@@ -230,6 +230,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
     isPendingActivityRow: (row) => this.activitiesEvents.isPendingActivityRow(row),
     getActivityPendingStatusLabel: (row) => this.activityPendingStatusLabel(row),
     isActivityFull: (row) => this.isActivityFull(row),
+    getActivityStatusBadgeLabel: (row) => this.activitiesEvents.activityStatusBadgeLabel(row),
+    getActivityStatusTone: (row) => this.activitiesEvents.activityStatusTone(row),
     getActivityLeadingIcon: (row) => this.activitiesEvents.activityLeadingIcon(row),
     getActivityLeadingIconTone: (row) => this.activitiesEvents.activityLeadingIconTone(row),
     shouldShowActivitySourceIcon: (row) => this.showActivitySourceIcon(row),
@@ -1265,6 +1267,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       shortDescription: record.subtitle,
       timeframe: record.timeframe,
       activity: record.activity,
+      status: record.status,
       isAdmin: record.isAdmin,
       creatorUserId: record.creatorUserId,
       startAt: record.startAtIso,
@@ -1314,6 +1317,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       description: record.title,
       when: record.timeframe,
       unread: record.unread,
+      status: record.status,
       acceptedMembers: record.acceptedMembers,
       pendingMembers: record.pendingMembers,
       capacityTotal: record.capacityTotal,
@@ -1352,16 +1356,19 @@ export class ActivitiesPopupComponent implements OnDestroy {
     this.invitationsBadge = visibleInvitations.length;
     const visibleMemberEvents = memberEventItems
       .filter(item => !this.isActivityIdentityTrashed('events', item.id))
+      .filter(item => !this.isTrashScopeEventMenuItem(item))
       .filter(item => this.isAcceptedEventMenuItem(item) || this.isPendingEventMenuItem(item));
     const visiblePendingEvents = visibleMemberEvents
       .filter(item => this.isPendingEventMenuItem(item));
     const visibleActiveEvents = visibleMemberEvents
       .filter(item => this.isAcceptedEventMenuItem(item));
     this.eventsBadge = visibleActiveEvents.length;
-    this.pendingBadge = visiblePendingEvents.length;
     const adminEvents = this.hostingItems
       .filter(item => item.isAdmin)
-      .filter(item => !this.isActivityIdentityTrashed('hosting', item.id));
+      .filter(item => !this.isActivityIdentityTrashed('hosting', item.id))
+      .filter(item => !this.isTrashScopeEventMenuItem(item));
+    const adminReviewEvents = adminEvents.filter(item => this.isPendingReviewEventMenuItem(item));
+    this.pendingBadge = visiblePendingEvents.length + adminReviewEvents.length;
     this.hostingBadge = adminEvents.length;
     this.gameBadge = this.activeUser.activities.game;
     this.syncActivityCounterOverrides();
@@ -1372,6 +1379,9 @@ export class ActivitiesPopupComponent implements OnDestroy {
     if (!activeUserId || item.isAdmin === true) {
       return false;
     }
+    if (this.isPendingReviewEventMenuItem(item)) {
+      return false;
+    }
     return (item.acceptedMemberUserIds ?? []).includes(activeUserId);
   }
 
@@ -1380,10 +1390,51 @@ export class ActivitiesPopupComponent implements OnDestroy {
     if (!activeUserId || item.isAdmin === true) {
       return false;
     }
+    if (this.isPendingReviewEventMenuItem(item)) {
+      return true;
+    }
     if ((item.acceptedMemberUserIds ?? []).includes(activeUserId)) {
       return false;
     }
     return (item.pendingMemberUserIds ?? []).includes(activeUserId);
+  }
+
+  private isPendingReviewEventMenuItem(item: EventMenuItem | HostingMenuItem): boolean {
+    const status = this.activityMenuItemStatusCode(item);
+    return status === 'UR' || status === 'B';
+  }
+
+  private isTrashScopeEventMenuItem(item: EventMenuItem | HostingMenuItem | InvitationMenuItem): boolean {
+    const status = this.activityMenuItemStatusCode(item);
+    return status === 'T' || status === 'D' || status === 'I';
+  }
+
+  private activityMenuItemStatusCode(item: EventMenuItem | HostingMenuItem | InvitationMenuItem): string {
+    const status = `${item.status ?? ''}`.trim();
+    switch (status) {
+      case 'active':
+        return 'A';
+      case 'hosting':
+        return 'H';
+      case 'invitation':
+        return 'INV';
+      case 'draft':
+        return 'DR';
+      case 'trashed':
+      case 'trash':
+        return 'T';
+      case 'under-review':
+      case 'under review':
+        return 'UR';
+      case 'blocked':
+        return 'B';
+      case 'deleted':
+        return 'D';
+      case 'inactive':
+        return 'I';
+      default:
+        return status || 'A';
+    }
   }
 
   private isPendingEventSync(sync: ActivitiesEventSyncPayload): boolean {

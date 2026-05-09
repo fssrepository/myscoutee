@@ -145,10 +145,11 @@ function resolveDistanceMetersExact(distanceKm: number): number {
 }
 
 function resolveActivityEventRowType(record: DemoEventRecord): AppTypes.ActivityListRow['type'] {
-  if (record.status === 'invitation') {
+  const status = normalizeEventStatusCode(record.status);
+  if (status === 'INV') {
     return 'invitations';
   }
-  if (record.status === 'hosting' || record.status === 'draft') {
+  if (status === 'H' || status === 'DR') {
     return 'hosting';
   }
   if (record.isInvitation || record.type === 'invitations') {
@@ -163,6 +164,7 @@ function resolveActivityEventRowType(record: DemoEventRecord): AppTypes.Activity
 function toEventMenuItem(record: DemoEventRecord): EventMenuItem {
   return {
     id: record.id,
+    status: normalizeEventStatusCode(record.status),
     avatar: record.creatorInitials,
     title: record.title,
     shortDescription: record.subtitle,
@@ -214,6 +216,7 @@ function toEventMenuItem(record: DemoEventRecord): EventMenuItem {
 function toHostingMenuItem(record: DemoEventRecord): HostingMenuItem {
   return {
     id: record.id,
+    status: normalizeEventStatusCode(record.status),
     avatar: record.creatorInitials,
     title: record.title,
     shortDescription: record.subtitle,
@@ -265,6 +268,7 @@ function toHostingMenuItem(record: DemoEventRecord): HostingMenuItem {
 function toInvitationMenuItem(record: DemoEventRecord): InvitationMenuItem {
   return {
     id: record.id,
+    status: normalizeEventStatusCode(record.status),
     avatar: record.creatorInitials,
     inviter: record.creatorName,
     description: record.title,
@@ -289,4 +293,32 @@ function toInvitationMenuItem(record: DemoEventRecord): InvitationMenuItem {
     locationCoordinates: record.locationCoordinates ?? undefined,
     policies: (record.policies ?? []).map(item => ({ ...item }))
   };
+}
+
+function normalizeEventStatusCode(status: string | null | undefined): string {
+  const normalized = `${status ?? ''}`.trim();
+  switch (normalized) {
+    case 'active':
+      return 'A';
+    case 'hosting':
+      return 'H';
+    case 'invitation':
+      return 'INV';
+    case 'draft':
+      return 'DR';
+    case 'trashed':
+    case 'trash':
+      return 'T';
+    case 'under-review':
+    case 'under review':
+      return 'UR';
+    case 'blocked':
+      return 'B';
+    case 'deleted':
+      return 'D';
+    case 'inactive':
+      return 'I';
+    default:
+      return normalized || 'A';
+  }
 }

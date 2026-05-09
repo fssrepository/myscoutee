@@ -57,6 +57,7 @@ interface ActivitiesEventActionMenuState {
             type="button"
             class="item-action-menu-btn"
             [class.item-action-menu-btn-publish]="action.tone === 'accent'"
+            [class.item-action-menu-btn-review]="action.tone === 'review'"
             [class.item-action-menu-btn-warning]="action.tone === 'warning'"
             [class.item-action-menu-btn-destructive]="action.tone === 'destructive'"
             (click)="selectAction(action, $event)"

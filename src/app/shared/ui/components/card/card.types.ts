@@ -1,7 +1,17 @@
 export type CardPresentation = 'list' | 'fullscreen';
 export type CardRenderState = 'default' | 'active' | 'leaving';
 export type CardBadgeLayout = 'floating' | 'between' | 'pair-overlap';
-export type InfoCardSurfaceTone = 'default' | 'draft' | 'full' | 'pending' | 'series' | 'waitlist';
+export type InfoCardSurfaceTone =
+  | 'default'
+  | 'draft'
+  | 'full'
+  | 'pending'
+  | 'series'
+  | 'waitlist'
+  | 'review'
+  | 'blocked'
+  | 'deleted'
+  | 'inactive';
 export type InfoCardOverlayVariant = 'avatar' | 'badge' | 'toggle';
 export type InfoCardOverlayLayout = 'default' | 'avatar-metric' | 'badge-with-leading-accessory';
 export type InfoCardOverlayTone =
@@ -9,6 +19,9 @@ export type InfoCardOverlayTone =
   | 'full'
   | 'inactive'
   | 'selected'
+  | 'review'
+  | 'blocked'
+  | 'deleted'
   | 'cool'
   | 'cool-mid'
   | 'neutral'
@@ -41,7 +54,7 @@ export type InfoCardOverlayAccessoryTone =
   | 'tone-6'
   | 'tone-7'
   | 'tone-8';
-export type InfoCardMenuActionTone = 'default' | 'accent' | 'warning' | 'destructive';
+export type InfoCardMenuActionTone = 'default' | 'accent' | 'warning' | 'destructive' | 'review';
 export type InfoCardDetailStyle = 'default' | 'mono';
 
 export interface CardBadgeConfig {

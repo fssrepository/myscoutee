@@ -33,6 +33,10 @@ export class HttpAssetsService {
     await this.assetsRepository.deleteOwnedAsset(userId, assetId);
   }
 
+  async takeOverOwnedAsset(userId: string, assetId: string): Promise<void> {
+    await this.assetsRepository.takeOverOwnedAsset(userId, assetId);
+  }
+
   async refreshAssetSourcePreview(
     userId: string,
     type: AppTypes.AssetType,

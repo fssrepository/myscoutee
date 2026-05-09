@@ -10,6 +10,8 @@ interface BuildActivitiesEventInfoCardOptions {
   isPending: boolean;
   pendingStatusLabel: string;
   isFull: boolean;
+  statusBadgeLabel?: string | null;
+  statusTone?: Extract<NonNullable<InfoCardData['surfaceTone']>, 'review' | 'blocked' | 'deleted' | 'inactive'> | null;
   leadingIcon: string;
   leadingTone: NonNullable<InfoCardData['leadingIcon']>['tone'];
   showSourceIcon: boolean;
@@ -26,6 +28,8 @@ export function buildActivitiesEventInfoCard(
 ): InfoCardData {
   const locationMetaLine = buildActivitiesLocationMetaLine(row);
   const waitlistPending = options.isPending && options.pendingStatusLabel.toLowerCase().includes('waiting list');
+  const statusTone = options.statusTone ?? null;
+  const statusBadgeLabel = options.statusBadgeLabel?.trim() ?? '';
 
   return {
     rowId: options.rowId,
@@ -38,13 +42,20 @@ export function buildActivitiesEventInfoCard(
       ...(locationMetaLine ? [locationMetaLine] : [])
     ],
     description: row.subtitle,
-    footerChips: options.isPending
+    footerChips: statusBadgeLabel
+      ? [{
+          label: statusBadgeLabel,
+          toneClass: `status-${statusTone ?? 'review'}`
+        }]
+      : options.isPending
       ? [{
           label: options.pendingStatusLabel || 'Waiting for approval',
           toneClass: waitlistPending ? 'status-waitlist' : 'status-pending'
         }]
       : [],
-    surfaceTone: options.isDraft
+    surfaceTone: statusTone
+      ? statusTone
+      : options.isDraft
       ? 'draft'
       : options.isPending
         ? (waitlistPending ? 'waitlist' : 'pending')
@@ -65,11 +76,11 @@ export function buildActivitiesEventInfoCard(
       : null,
     mediaEnd: {
       variant: 'badge',
-      tone: options.isFull ? 'full' : 'default',
-      label: options.capacityLabel,
-      ariaLabel: 'Open members',
-      interactive: true,
-      pendingCount: options.pendingCount
+      tone: statusTone ?? (options.isFull ? 'full' : 'default'),
+      label: statusBadgeLabel || options.capacityLabel,
+      ariaLabel: statusBadgeLabel ? statusBadgeLabel : 'Open members',
+      interactive: !statusBadgeLabel,
+      pendingCount: statusBadgeLabel ? 0 : options.pendingCount
     },
     menuActions: options.menuActions,
     clickable: false

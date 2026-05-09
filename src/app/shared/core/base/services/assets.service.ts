@@ -64,6 +64,10 @@ export class AssetsService extends BaseRouteModeService {
     await this.assetsService.deleteOwnedAsset(userId, assetId);
   }
 
+  async takeOverOwnedAsset(userId: string, assetId: string): Promise<void> {
+    await this.assetsService.takeOverOwnedAsset(userId, assetId);
+  }
+
   async refreshAssetSourcePreview(
     userId: string,
     type: AppTypes.AssetType,

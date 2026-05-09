@@ -29,6 +29,7 @@ export interface ChatMenuItem {
 
 export interface InvitationMenuItem {
   id: string;
+  status?: string;
   avatar: string;
   inviter: string;
   description: string;
@@ -56,6 +57,7 @@ export interface InvitationMenuItem {
 
 export interface EventMenuItem {
   id: string;
+  status?: string;
   avatar: string;
   title: string;
   shortDescription: string;
@@ -104,6 +106,7 @@ export interface EventMenuItem {
 
 export interface HostingMenuItem {
   id: string;
+  status?: string;
   avatar: string;
   title: string;
   shortDescription: string;

@@ -127,7 +127,7 @@ export class DemoEventsRepository {
 
   queryTrashedItemsByUser(userId: string): DemoEventRecord[] {
     this.init();
-    return this.queryUserRecords(userId).filter(record => record.isTrashed);
+    return this.queryUserRecords(userId).filter(record => this.isTrashScopeStatus(record));
   }
 
   queryEventItemsByFilter(
@@ -141,26 +141,27 @@ export class DemoEventsRepository {
     const memberEventItems = userItems
       .filter(record => record.type === 'events')
       .filter(record => record.isAdmin !== true)
-      .filter(record => !record.isTrashed)
+      .filter(record => !this.isTrashScopeStatus(record))
       .filter(record => this.isAcceptedEventRecord(record, userId) || this.isPendingEventRecord(record, userId));
     const pendingEventItems = memberEventItems
-      .filter(record => this.isPendingEventRecord(record, userId));
+      .filter(record => this.isPendingEventRecord(record, userId) || this.isPendingReviewStatus(record));
     const activeEventItems = memberEventItems
-      .filter(record => this.isAcceptedEventRecord(record, userId));
+      .filter(record => this.isAcceptedEventRecord(record, userId) && !this.isPendingReviewStatus(record));
     const invitationItems = userItems
       .filter(record => record.isInvitation)
-      .filter(record => !record.isTrashed);
+      .filter(record => !this.isTrashScopeStatus(record));
     const myEventItems = userItems
       .filter(record => record.type === 'hosting')
       .filter(record => record.isAdmin)
-      .filter(record => !record.isTrashed);
+      .filter(record => !this.isTrashScopeStatus(record));
     const draftItems = myEventItems.filter(record => record.published === false);
+    const reviewItems = myEventItems.filter(record => this.isPendingReviewStatus(record));
 
     if (filter === 'all') {
       return [...activeEventItems, ...pendingEventItems, ...invitationItems, ...myEventItems];
     }
     if (filter === 'pending') {
-      return pendingEventItems;
+      return [...pendingEventItems, ...reviewItems];
     }
     if (filter === 'invitations') {
       return invitationItems;
@@ -172,7 +173,7 @@ export class DemoEventsRepository {
       return draftItems;
     }
     if (filter === 'trash') {
-      return userItems.filter(record => record.isTrashed);
+      return userItems.filter(record => this.isTrashScopeStatus(record));
     }
     return activeEventItems;
   }
@@ -186,6 +187,55 @@ export class DemoEventsRepository {
       return false;
     }
     return (record.pendingMemberUserIds ?? []).includes(normalizedUserId);
+  }
+
+  private isPendingReviewStatus(record: DemoEventRecord): boolean {
+    const status = this.normalizeEventStatus(record.status);
+    return status === 'UR' || status === 'B';
+  }
+
+  private isTrashScopeStatus(record: DemoEventRecord): boolean {
+    if (record.isTrashed) {
+      return true;
+    }
+    const status = this.normalizeEventStatus(record.status);
+    return status === 'T' || status === 'D' || status === 'I';
+  }
+
+  private restoredStatusForRecord(record: DemoEventRecord): DemoEventRecord['status'] {
+    const previous = this.normalizeEventStatus(record.statusBeforeSuppression);
+    if (previous && !['UR', 'B', 'D', 'I', 'T'].includes(previous)) {
+      return previous as DemoEventRecord['status'];
+    }
+    return record.type === 'hosting' ? 'H' : 'A';
+  }
+
+  private normalizeEventStatus(status: string | null | undefined): string {
+    const normalized = `${status ?? ''}`.trim();
+    switch (normalized) {
+      case 'active':
+        return 'A';
+      case 'hosting':
+        return 'H';
+      case 'invitation':
+        return 'INV';
+      case 'draft':
+        return 'DR';
+      case 'trashed':
+      case 'trash':
+        return 'T';
+      case 'under-review':
+      case 'under review':
+        return 'UR';
+      case 'blocked':
+        return 'B';
+      case 'deleted':
+        return 'D';
+      case 'inactive':
+        return 'I';
+      default:
+        return normalized || 'A';
+    }
   }
 
   private isAcceptedEventRecord(record: DemoEventRecord, userId: string): boolean {
@@ -394,6 +444,7 @@ export class DemoEventsRepository {
   trashItem(userId: string, type: DemoRepositoryEventItemType, sourceId: string): void {
     this.init();
     this.updateItemState(userId, type, sourceId, {
+      status: 'T',
       isTrashed: true,
       trashedAtIso: new Date().toISOString()
     });
@@ -402,6 +453,7 @@ export class DemoEventsRepository {
   publishItem(userId: string, type: DemoRepositoryEventItemType, sourceId: string): void {
     this.init();
     this.updateItemState(userId, type, sourceId, {
+      status: type === 'hosting' ? 'H' : 'A',
       published: true
     });
   }
@@ -409,8 +461,48 @@ export class DemoEventsRepository {
   restoreItem(userId: string, type: DemoRepositoryEventItemType, sourceId: string): void {
     this.init();
     this.updateItemState(userId, type, sourceId, {
+      status: type === 'hosting' ? 'H' : 'A',
+      statusBeforeSuppression: null,
       isTrashed: false,
       trashedAtIso: null
+    });
+  }
+
+  takeOverItem(userId: string, type: DemoRepositoryEventItemType, sourceId: string): void {
+    this.init();
+    const normalizedSourceId = sourceId.trim();
+    if (!normalizedSourceId) {
+      return;
+    }
+    this.memoryDb.write(state => {
+      const table = state[EVENTS_TABLE_NAME];
+      const nextById = { ...table.byId };
+      let changed = false;
+      for (const id of table.ids) {
+        const current = table.byId[id];
+        if (!current || current.id !== normalizedSourceId || this.normalizeEventStatus(current.status) !== 'UR') {
+          continue;
+        }
+        const restoredStatus = this.restoredStatusForRecord(current);
+        nextById[id] = {
+          ...current,
+          status: restoredStatus,
+          statusBeforeSuppression: null,
+          isTrashed: false,
+          trashedAtIso: null,
+          published: restoredStatus !== 'DR'
+        };
+        changed = true;
+      }
+      return changed
+        ? {
+            ...state,
+            [EVENTS_TABLE_NAME]: {
+              ...table,
+              byId: nextById
+            }
+          }
+        : state;
     });
   }
 
@@ -1161,6 +1253,9 @@ export class DemoEventsRepository {
     if (record.isTrashed || record.isInvitation) {
       return false;
     }
+    if (this.normalizeEventStatus(record.status) !== 'A') {
+      return false;
+    }
     if (record.published === false) {
       return false;
     }
@@ -1376,7 +1471,7 @@ export class DemoEventsRepository {
       ...DemoEventsRepositoryBuilder.cloneRecord(record),
       userId,
       type: 'invitations',
-      status: 'invitation',
+      status: 'INV',
       inviter: record.creatorName,
       unread: Math.max(1, record.unread),
       isAdmin: false,

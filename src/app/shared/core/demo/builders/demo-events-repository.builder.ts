@@ -846,7 +846,45 @@ export class DemoEventsRepositoryBuilder {
       }
     }
 
+    this.applyLifecycleDemoStatuses(byId, ids);
     return this.rebalanceVisibleActiveEventParticipation({ byId, ids });
+  }
+
+  private static applyLifecycleDemoStatuses(byId: Record<string, DemoEventRecord>, ids: readonly string[]): void {
+    const lifecycleSeeds: readonly {
+      sourceId: string;
+      status: DemoEventRecord['status'];
+      statusBeforeSuppression: DemoEventRecord['status'];
+    }[] = [
+      { sourceId: 'h1', status: 'UR', statusBeforeSuppression: 'H' },
+      { sourceId: 'e13', status: 'B', statusBeforeSuppression: 'A' },
+      { sourceId: 'e2', status: 'D', statusBeforeSuppression: 'A' },
+      { sourceId: 'e14', status: 'I', statusBeforeSuppression: 'A' }
+    ];
+
+    for (const seed of lifecycleSeeds) {
+      this.applyLifecycleDemoStatusToSource(byId, seed.sourceId, seed.status, seed.statusBeforeSuppression);
+    }
+  }
+
+  private static applyLifecycleDemoStatusToSource(
+    byId: Record<string, DemoEventRecord>,
+    sourceId: string,
+    status: DemoEventRecord['status'],
+    statusBeforeSuppression: DemoEventRecord['status']
+  ): void {
+    for (const [recordKey, record] of Object.entries(byId)) {
+      if (!record || record.id !== sourceId || record.type === 'invitations') {
+        continue;
+      }
+      byId[recordKey] = {
+        ...record,
+        status,
+        statusBeforeSuppression,
+        isTrashed: false,
+        trashedAtIso: null
+      };
+    }
   }
 
   private static rebalanceVisibleActiveEventParticipation(
@@ -1089,6 +1127,8 @@ export class DemoEventsRepositoryBuilder {
     return {
       ...record,
       ...decorations,
+      status: this.resolveLifecycleStatus(record),
+      statusBeforeSuppression: null,
       timeframe: this.buildSeededTimeframeLabel({
         hint: record.timeframe,
         startAtIso: decorations.startAtIso,
@@ -1097,6 +1137,22 @@ export class DemoEventsRepositoryBuilder {
         slotTemplates: decorations.slotTemplates
       })
     };
+  }
+
+  private static resolveLifecycleStatus(record: Pick<DemoEventRecord, 'type' | 'isInvitation' | 'isTrashed' | 'published'>): DemoEventRecord['status'] {
+    if (record.isTrashed) {
+      return 'T';
+    }
+    if (record.isInvitation || record.type === 'invitations') {
+      return 'INV';
+    }
+    if (record.published === false) {
+      return 'DR';
+    }
+    if (record.type === 'hosting') {
+      return 'H';
+    }
+    return 'A';
   }
 
   private static buildRecordDecorations(record: Pick<

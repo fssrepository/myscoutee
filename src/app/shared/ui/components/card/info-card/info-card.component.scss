@@ -114,6 +114,30 @@ button.asset-occupancy-badge:active::after,
   box-shadow: 0 8px 18px rgba(31, 111, 118, 0.12);
 }
 
+.ui-info-card--tone-review {
+  border-color: rgba(126, 82, 35, 0.5);
+  background: linear-gradient(180deg, #f6ead8 0%, #ecd5b5 100%);
+  box-shadow: 0 8px 18px rgba(105, 68, 29, 0.16);
+}
+
+.ui-info-card--tone-blocked {
+  border-color: rgba(180, 52, 64, 0.28);
+  background: linear-gradient(180deg, #fff2f2 0%, #f8dede 100%);
+  box-shadow: 0 8px 18px rgba(150, 48, 61, 0.12);
+}
+
+.ui-info-card--tone-deleted {
+  border-color: rgba(97, 105, 118, 0.34);
+  background: linear-gradient(180deg, #f7f8fa 0%, #e9edf2 100%);
+  box-shadow: 0 8px 18px rgba(60, 70, 88, 0.1);
+}
+
+.ui-info-card--tone-inactive {
+  border-color: rgba(102, 112, 128, 0.28);
+  background: linear-gradient(180deg, #f2f3f5 0%, #e8ebef 100%);
+  box-shadow: 0 8px 18px rgba(60, 70, 88, 0.1);
+}
+
 .ui-info-card--state-leaving {
   opacity: 0;
   transform: translateY(10px) scale(0.97);
@@ -653,6 +677,24 @@ button.ui-info-card__overlay-action {
   border-color: rgba(44, 60, 84, 0.28);
 }
 
+.ui-info-card__overlay-action--tone-review {
+  background: linear-gradient(180deg, #9d681c 0%, #765018 100%);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.82);
+}
+
+.ui-info-card__overlay-action--tone-blocked {
+  background: linear-gradient(180deg, #b84558 0%, #8f3143 100%);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.82);
+}
+
+.ui-info-card__overlay-action--tone-deleted {
+  background: linear-gradient(180deg, #59677d 0%, #435066 100%);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.82);
+}
+
 .ui-info-card__overlay-action--tone-selected.ui-info-card__overlay-action--toggle {
   background: linear-gradient(180deg, #e9f7ee 0%, #d6f0de 100%);
   color: #2c7c52;
@@ -836,6 +878,11 @@ button.ui-info-card__overlay-action {
   color: #975316;
 }
 
+.ui-info-card__menu-action--review {
+  background: rgba(255, 241, 215, 0.82);
+  color: #8b5713;
+}
+
 .ui-info-card__menu-action--warning {
   color: #8c5a19;
 }
@@ -909,6 +956,30 @@ button.ui-info-card__overlay-action {
   background: linear-gradient(180deg, #eef8ff 0%, #dcecf5 100%);
   border-color: rgba(55, 115, 158, 0.36);
   color: #2e668f;
+}
+
+.ui-info-card__footer-chip.status-review {
+  background: linear-gradient(180deg, #f6e6ce 0%, #e9cda6 100%);
+  border-color: rgba(126, 82, 35, 0.42);
+  color: #714817;
+}
+
+.ui-info-card__footer-chip.status-blocked {
+  background: linear-gradient(180deg, #fff2f2 0%, #f8dede 100%);
+  border-color: rgba(180, 52, 64, 0.3);
+  color: #9d2f3d;
+}
+
+.ui-info-card__footer-chip.status-deleted {
+  background: linear-gradient(180deg, #f7f8fa 0%, #e9edf2 100%);
+  border-color: rgba(97, 105, 118, 0.34);
+  color: #4f5968;
+}
+
+.ui-info-card__footer-chip.status-inactive {
+  background: linear-gradient(180deg, #f2f3f5 0%, #e8ebef 100%);
+  border-color: rgba(102, 112, 128, 0.3);
+  color: #556171;
 }
 
 @media (hover: hover) and (pointer: fine) {

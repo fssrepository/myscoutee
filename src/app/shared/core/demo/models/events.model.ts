@@ -14,13 +14,28 @@ export type DemoEventScopeFilter =
 
 export type DemoRepositoryEventItemType = 'events' | 'hosting' | 'invitations';
 export type DemoEventActivitiesSort = 'date' | 'distance' | 'relevance';
-export type DemoEventStatus = 'active' | 'hosting' | 'invitation' | 'draft' | 'trashed';
+export type DemoEventStatus =
+  | 'A'
+  | 'H'
+  | 'INV'
+  | 'DR'
+  | 'T'
+  | 'UR'
+  | 'B'
+  | 'D'
+  | 'I'
+  | 'active'
+  | 'hosting'
+  | 'invitation'
+  | 'draft'
+  | 'trashed';
 
 export interface DemoEventRecord {
   id: string;
   userId: string;
   type: DemoRepositoryEventItemType;
   status?: DemoEventStatus;
+  statusBeforeSuppression?: DemoEventStatus | null;
   avatar: string;
   title: string;
   subtitle: string;

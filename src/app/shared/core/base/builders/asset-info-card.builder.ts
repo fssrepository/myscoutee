@@ -64,6 +64,7 @@ export class AssetInfoCardBuilder {
       }),
       metaRows: [this.ownedAssetMetaLine(card, options.fallbackSubtitle ?? '')],
       description: card.details,
+      surfaceTone: this.assetStatusSurfaceTone(card),
       leadingIcon: {
         icon: AssetDefaultsBuilder.assetTypeIcon(card.type)
       },
@@ -198,7 +199,16 @@ export class AssetInfoCardBuilder {
 
   private static ownedAssetMenuActions(card: AppTypes.AssetCard): readonly InfoCardMenuAction[] {
     const label = AssetDefaultsBuilder.assetTypeLabel(card.type).toLowerCase();
-    return [
+    const actions: InfoCardMenuAction[] = [];
+    if (this.assetStatusCode(card) === 'UR') {
+      actions.push({
+        id: 'takeOver',
+        label: 'Take Over',
+        icon: 'verified_user',
+        tone: 'review'
+      });
+    }
+    actions.push(
       {
         id: 'share',
         label: `Share ${label}`,
@@ -215,10 +225,21 @@ export class AssetInfoCardBuilder {
         icon: 'delete',
         tone: 'destructive'
       }
-    ];
+    );
+    return actions;
   }
 
   private static ownedAssetMediaEnd(card: AppTypes.AssetCard): NonNullable<InfoCardData['mediaEnd']> | null {
+    const statusLabel = this.assetStatusBadgeLabel(card);
+    if (statusLabel) {
+      return {
+        variant: 'badge',
+        tone: this.assetStatusOverlayTone(card),
+        label: statusLabel,
+        interactive: false,
+        ariaLabel: statusLabel
+      };
+    }
     const pendingCount = card.requests.filter(request => request.status === 'pending' && request.requestKind !== 'manual').length;
     return {
       variant: 'badge',
@@ -229,5 +250,76 @@ export class AssetInfoCardBuilder {
       pendingCount,
       ariaLabel: 'Open asset requests and assignments'
     };
+  }
+
+  private static assetStatusCode(card: AppTypes.AssetCard): string {
+    const status = `${card.status ?? ''}`.trim();
+    switch (status) {
+      case 'active':
+        return 'A';
+      case 'under-review':
+      case 'under review':
+        return 'UR';
+      case 'blocked':
+        return 'B';
+      case 'deleted':
+        return 'D';
+      case 'inactive':
+        return 'I';
+      case 'trashed':
+      case 'trash':
+        return 'T';
+      default:
+        return status || 'A';
+    }
+  }
+
+  private static assetStatusBadgeLabel(card: AppTypes.AssetCard): string | null {
+    switch (this.assetStatusCode(card)) {
+      case 'UR':
+        return 'Under Review';
+      case 'B':
+        return 'Blocked User';
+      case 'D':
+        return 'Deleted User';
+      case 'T':
+        return 'Deleted';
+      case 'I':
+        return 'Inactive User';
+      default:
+        return null;
+    }
+  }
+
+  private static assetStatusSurfaceTone(card: AppTypes.AssetCard): InfoCardData['surfaceTone'] {
+    switch (this.assetStatusCode(card)) {
+      case 'UR':
+        return 'review';
+      case 'B':
+        return 'blocked';
+      case 'D':
+      case 'T':
+        return 'deleted';
+      case 'I':
+        return 'inactive';
+      default:
+        return 'default';
+    }
+  }
+
+  private static assetStatusOverlayTone(card: AppTypes.AssetCard): NonNullable<InfoCardData['mediaEnd']>['tone'] {
+    switch (this.assetStatusCode(card)) {
+      case 'UR':
+        return 'review';
+      case 'B':
+        return 'blocked';
+      case 'D':
+      case 'T':
+        return 'deleted';
+      case 'I':
+        return 'inactive';
+      default:
+        return 'default';
+    }
   }
 }

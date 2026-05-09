@@ -282,6 +282,11 @@ export class DemoEventsService extends DemoRouteDelayService {
     this.eventsRepository.restoreItem(userId, type, sourceId);
   }
 
+  async takeOverItem(userId: string, type: DemoRepositoryEventItemType, sourceId: string): Promise<void> {
+    await this.waitForRouteDelay(DemoEventsService.EVENTS_ROUTE);
+    this.eventsRepository.takeOverItem(userId, type, sourceId);
+  }
+
   async requestJoin(
     userId: string,
     sourceId: string,

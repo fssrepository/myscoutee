@@ -696,6 +696,36 @@ export class OwnedAssetsPopupFacadeService {
     return true;
   }
 
+  async takeOverAssetCardById(cardId: string): Promise<void> {
+    const normalizedCardId = cardId.trim();
+    if (!normalizedCardId) {
+      return;
+    }
+    const ownerUserId = this.resolveOwnerUserId();
+    if (!ownerUserId) {
+      return;
+    }
+    const current = this.assetCardsRef.find(card => card.id === normalizedCardId);
+    if (!current) {
+      return;
+    }
+    const nextStatus = this.restoredAssetStatus(current);
+    await this.assetsService.takeOverOwnedAsset(ownerUserId, normalizedCardId);
+    this.markAssetMutation();
+    this.applyAssetCards(this.assetCardsRef.map(card =>
+      card.id === normalizedCardId
+        ? { ...card, status: nextStatus }
+        : card
+    ), {
+      persist: false,
+      reloadList: false
+    });
+    for (const hooks of this.runtimeHooks) {
+      hooks.onAssetsChanged?.();
+    }
+    this.touchUiState();
+  }
+
   async confirmAssetDelete(): Promise<void> {
     if (!this.pendingAssetDeleteCardId || this.isAssetDeletePending) {
       return;
@@ -769,6 +799,32 @@ export class OwnedAssetsPopupFacadeService {
       }
     }
     return 'Unable to delete asset right now.';
+  }
+
+  private restoredAssetStatus(card: AppTypes.AssetCard): string {
+    return 'A';
+  }
+
+  private normalizeAssetStatus(status: string | null | undefined): string {
+    const normalized = `${status ?? ''}`.trim();
+    switch (normalized) {
+      case 'active':
+        return 'A';
+      case 'under-review':
+      case 'under review':
+        return 'UR';
+      case 'blocked':
+        return 'B';
+      case 'deleted':
+        return 'D';
+      case 'inactive':
+        return 'I';
+      case 'trashed':
+      case 'trash':
+        return 'T';
+      default:
+        return normalized || 'A';
+    }
   }
 
   private async awaitAssetMutationCompletion(persistPromise: Promise<void>): Promise<void> {
