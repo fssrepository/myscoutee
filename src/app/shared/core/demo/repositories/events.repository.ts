@@ -26,7 +26,7 @@ import type { LocationCoordinates } from '../../base/interfaces';
 interface DemoEventActivitiesCursor {
   id: string;
   distanceMeters: number;
-  relevance: number;
+  boost: number;
   startAtMs: number;
 }
 
@@ -850,7 +850,7 @@ export class DemoEventsRepository {
     if (query.view === 'distance' || query.sort === 'distance') {
       if (query.secondaryFilter === 'relevant') {
         return this.distanceOrderValue(left) - this.distanceOrderValue(right)
-          || this.relevanceOrderValue(left) - this.relevanceOrderValue(right)
+          || this.boostOrderValue(left) - this.boostOrderValue(right)
           || this.timestampOrderValue(right) - this.timestampOrderValue(left)
           || this.compareRecordIdentity(left, right);
       }
@@ -861,7 +861,7 @@ export class DemoEventsRepository {
 
     if (query.secondaryFilter === 'relevant') {
       return this.dayOrderValue(left) - this.dayOrderValue(right)
-        || this.relevanceOrderValue(left) - this.relevanceOrderValue(right)
+        || this.boostOrderValue(left) - this.boostOrderValue(right)
         || this.timestampOrderValue(right) - this.timestampOrderValue(left)
         || this.compareRecordIdentity(left, right);
     }
@@ -886,7 +886,7 @@ export class DemoEventsRepository {
       ...DemoEventsRepositoryBuilder.cloneRecord(record),
       id: cursor.id,
       distanceKm: cursor.distanceMeters / 1000,
-      relevance: cursor.relevance,
+      boost: cursor.boost,
       startAtIso: new Date(cursor.startAtMs).toISOString()
     };
     return this.compareActivitiesRecords(record, cursorRecord, query);
@@ -896,7 +896,7 @@ export class DemoEventsRepository {
     return {
       id: record.id,
       distanceMeters: this.distanceOrderValue(record),
-      relevance: this.relevanceOrderValue(record),
+      boost: this.boostOrderValue(record),
       startAtMs: this.timestampOrderValue(record)
     };
   }
@@ -915,7 +915,7 @@ export class DemoEventsRepository {
       if (
         typeof parsed.id !== 'string'
         || !Number.isFinite(parsed.distanceMeters)
-        || !Number.isFinite(parsed.relevance)
+        || !Number.isFinite(parsed.boost)
         || !Number.isFinite(parsed.startAtMs)
       ) {
         return null;
@@ -923,7 +923,7 @@ export class DemoEventsRepository {
       return {
         id: parsed.id,
         distanceMeters: Math.max(0, Math.trunc(Number(parsed.distanceMeters))),
-        relevance: Math.max(0, Number(parsed.relevance)),
+        boost: Math.max(0, Number(parsed.boost)),
         startAtMs: Math.trunc(Number(parsed.startAtMs))
       };
     } catch {
@@ -935,8 +935,8 @@ export class DemoEventsRepository {
     return Math.max(0, Math.round((Number(record.distanceKm) || 0) * 1000));
   }
 
-  private relevanceOrderValue(record: DemoEventRecord): number {
-    return Math.max(0, Number(record.relevance) || 0);
+  private boostOrderValue(record: DemoEventRecord): number {
+    return Math.max(0, Number(record.boost) || 0);
   }
 
   private resolveActivitiesEndTimestamp(record: DemoEventRecord): number {
@@ -1216,7 +1216,7 @@ export class DemoEventsRepository {
       PricingBuilder.slotCatalogFromEventSlotTemplates(payload.slotTemplates ?? existing?.slotTemplates ?? [])
     );
     const rating = existing?.rating ?? (6 + ((AppUtils.hashText(`${context.type}:${payload.id}:${payload.title}`) % 35) / 10));
-    const relevance = existing?.relevance ?? (50 + (AppUtils.hashText(`${context.type}:${payload.id}:${payload.title}`) % 51));
+    const boost = existing?.boost ?? (50 + (AppUtils.hashText(`${context.type}:${payload.id}:${payload.title}`) % 51));
     const usersTable = this.memoryDb.read()[USERS_TABLE_NAME];
     const creator = usersTable.byId[context.userId] ?? null;
     const acceptedUsers = context.acceptedMemberUserIds
@@ -1294,7 +1294,7 @@ export class DemoEventsRepository {
         ?? existing?.subEventsDisplayMode
         ?? (subEvents ? DemoEventSeedBuilder.inferredSubEventsDisplayMode(subEvents) : 'Casual'),
       rating,
-      relevance,
+      boost,
       affinity
     };
   }
@@ -1567,7 +1567,7 @@ export class DemoEventsRepository {
           capacityMin: 6 + (index % 10),
           capacityMax: 12 + (index % 18),
           rating: 6 + ((seed % 35) / 10),
-          relevance: 50 + (seed % 51),
+          boost: 50 + (seed % 51),
           ...checkoutVariation
         });
       }
@@ -1885,7 +1885,7 @@ export class DemoEventsRepository {
         capacityMax: 14,
         topics,
         rating: 8.4,
-        relevance: 96
+        boost: 96
       };
     };
 
@@ -2107,7 +2107,7 @@ export class DemoEventsRepository {
           ? DemoEventSeedBuilder.inferredSubEventsDisplayMode(this.cloneSubEvents(current.subEvents)!)
           : 'Casual')),
       rating: Number.isFinite(current.rating) ? Number(current.rating) : seeded.rating,
-      relevance: Number.isFinite(current.relevance) ? Number(current.relevance) : seeded.relevance,
+      boost: Number.isFinite(current.boost) ? Number(current.boost) : seeded.boost,
       affinity: Number.isFinite(current.affinity)
         ? Math.max(0, Math.trunc(Number(current.affinity)))
         : seeded.affinity
@@ -2411,7 +2411,7 @@ export class DemoEventsRepository {
           subEvents: this.materializeSubEventsForSlotOccurrence(parent.subEvents, startAt, endAt) ?? undefined,
           subEventsDisplayMode: parent.subEventsDisplayMode,
           rating: parent.rating,
-          relevance: parent.relevance,
+          boost: parent.boost,
           affinity: parent.affinity
         });
       }
@@ -2506,7 +2506,7 @@ export class DemoEventsRepository {
         subEvents: this.materializeSubEventsForSlotOccurrence(parent.subEvents, startAt, endAt) ?? undefined,
         subEventsDisplayMode: parent.subEventsDisplayMode,
         rating: parent.rating,
-        relevance: parent.relevance,
+        boost: parent.boost,
         affinity: parent.affinity
       });
     }

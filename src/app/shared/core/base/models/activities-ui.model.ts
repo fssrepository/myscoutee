@@ -129,7 +129,7 @@ export interface EventExploreCard {
   timeframe: string;
   imageUrl: string;
   distanceKm: number;
-  relevance: number;
+  boost: number;
   rating: number;
   startSort: number;
   isPast: boolean;

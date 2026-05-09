@@ -130,7 +130,7 @@ export function toActivityEventRow(record: DemoEventRecord): AppTypes.ActivityLi
     distanceKm: record.distanceKm,
     distanceMetersExact: Math.max(0, Math.round((Number(record.distanceKm) || 0) * 1000)),
     unread: Math.max(0, Math.trunc(Number(record.activity) || 0)),
-    metricScore: Math.max(0, Number(record.relevance) || 0),
+    metricScore: Math.max(0, Number(record.boost) || 0),
     isAdmin: record.isAdmin,
     source: rowType === 'invitations'
       ? toInvitationMenuItem(record)
@@ -206,7 +206,7 @@ function toEventMenuItem(record: DemoEventRecord): EventMenuItem {
     })),
     subEventsDisplayMode: record.subEventsDisplayMode,
     rating: record.rating,
-    relevance: record.relevance,
+    boost: record.boost,
     published: record.published
   };
 }
@@ -256,7 +256,7 @@ function toHostingMenuItem(record: DemoEventRecord): HostingMenuItem {
     })),
     subEventsDisplayMode: record.subEventsDisplayMode,
     rating: record.rating,
-    relevance: record.relevance,
+    boost: record.boost,
     published: record.published,
     isAdmin: record.isAdmin
   };

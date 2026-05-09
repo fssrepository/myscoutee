@@ -96,7 +96,7 @@ export interface EventMenuItem {
   subEventsDisplayMode?: SubEventsDisplayMode;
   policies?: EventPolicyItem[];
   rating?: number;
-  relevance?: number;
+  boost?: number;
   affinity?: number;
   ticketing?: boolean;
   published?: boolean;
@@ -143,7 +143,7 @@ export interface HostingMenuItem {
   subEventsDisplayMode?: SubEventsDisplayMode;
   policies?: EventPolicyItem[];
   rating?: number;
-  relevance?: number;
+  boost?: number;
   affinity?: number;
   ticketing?: boolean;
   published?: boolean;

@@ -72,7 +72,7 @@ export interface DemoEventRecord {
   subEvents?: AppTypes.SubEventFormItem[];
   subEventsDisplayMode?: AppTypes.SubEventsDisplayMode;
   rating: number;
-  relevance: number;
+  boost: number;
   affinity: number;
 }
 

@@ -389,7 +389,7 @@ const SEED_EVENTS_BY_USER: Record<string, EventMenuItem[]> = {
       policies: buildCheckoutDemoPolicies(),
       topics: ['Food', 'Small Group', 'Waitlist'],
       rating: 9.4,
-      relevance: 100
+      boost: 100
     },
     {
       id: 'checkout-paid-slots',
@@ -444,7 +444,7 @@ const SEED_EVENTS_BY_USER: Record<string, EventMenuItem[]> = {
         includePaidOptional: true
       }),
       rating: 9.2,
-      relevance: 99
+      boost: 99
     }
   ],
   u3: [
@@ -496,7 +496,7 @@ const SEED_EVENTS_BY_USER: Record<string, EventMenuItem[]> = {
       policies: buildCheckoutDemoPolicies(),
       topics: ['Music', 'Culture', 'Waitlist'],
       rating: 9.0,
-      relevance: 99
+      boost: 99
     },
     {
       id: 'checkout-paid-policy',
@@ -527,7 +527,7 @@ const SEED_EVENTS_BY_USER: Record<string, EventMenuItem[]> = {
         includePaidOptional: true
       }),
       rating: 9.1,
-      relevance: 98
+      boost: 98
     },
     {
       id: 'checkout-free-slots',
@@ -570,7 +570,7 @@ const SEED_EVENTS_BY_USER: Record<string, EventMenuItem[]> = {
         includePaidOptional: false
       }),
       rating: 8.9,
-      relevance: 97
+      boost: 97
     }
   ]
 };
@@ -662,7 +662,7 @@ interface DemoEventSeedOverrides {
   subEvents?: AppTypes.SubEventFormItem[];
   subEventsDisplayMode?: AppTypes.SubEventsDisplayMode;
   rating?: number;
-  relevance?: number;
+  boost?: number;
   affinity?: number;
 }
 
@@ -1219,9 +1219,9 @@ export class DemoEventsRepositoryBuilder {
       subEvents,
       subEventsDisplayMode: record.seed?.subEventsDisplayMode ?? DemoEventSeedBuilder.inferredSubEventsDisplayMode(subEvents),
       rating,
-      relevance: Number.isFinite(record.seed?.relevance)
-        ? Number(record.seed?.relevance)
-        : this.buildSeededRelevance(record.id, record.title, record.type),
+      boost: Number.isFinite(record.seed?.boost)
+        ? Number(record.seed?.boost)
+        : this.buildSeededBoost(record.id, record.title, record.type),
       affinity: Number.isFinite(record.seed?.affinity)
         ? Math.max(0, Math.trunc(Number(record.seed?.affinity)))
         : this.resolveEventAffinity({
@@ -1634,7 +1634,7 @@ export class DemoEventsRepositoryBuilder {
     return 6 + ((seed % 35) / 10);
   }
 
-  private static buildSeededRelevance(id: string, title: string, type: DemoRepositoryEventItemType): number {
+  private static buildSeededBoost(id: string, title: string, type: DemoRepositoryEventItemType): number {
     const seed = AppUtils.hashText(`${type}:${id}:${title}`);
     return 50 + (seed % 51);
   }
@@ -1666,7 +1666,7 @@ export class DemoEventsRepositoryBuilder {
       subEvents: 'subEvents' in item ? this.cloneSubEvents(item.subEvents) : undefined,
       subEventsDisplayMode: 'subEventsDisplayMode' in item ? item.subEventsDisplayMode : undefined,
       rating: 'rating' in item ? item.rating : undefined,
-      relevance: 'relevance' in item ? item.relevance : undefined,
+      boost: 'boost' in item ? item.boost : undefined,
       affinity: 'affinity' in item ? item.affinity : undefined
     };
     if (Object.values(overrides).every(value => value === undefined)) {

@@ -23,7 +23,6 @@ export interface ActivityMemberEntry {
   metAtIso: string;
   actionAtIso: string;
   metWhere: string;
-  relevance: number;
   avatarUrl: string;
   profile?: UserDto | null;
 }

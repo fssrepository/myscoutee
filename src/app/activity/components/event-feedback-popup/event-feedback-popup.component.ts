@@ -1106,7 +1106,7 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
       subEvents: record.subEvents ? [...record.subEvents] : undefined,
       subEventsDisplayMode: record.subEventsDisplayMode,
       rating: record.rating,
-      relevance: record.relevance,
+      boost: record.boost,
       affinity: record.affinity,
       ticketing: record.ticketing,
       published: record.published

@@ -1111,7 +1111,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
           dateIso: source.startAt ?? sync.startAt,
           distanceKm: source.distanceKm ?? sync.distanceKm
         }),
-        metricScore: existingRow?.metricScore ?? source.relevance ?? source.activity
+        metricScore: existingRow?.metricScore ?? source.boost ?? source.activity
       };
     }
     if (rowType === 'hosting') {
@@ -1124,7 +1124,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
           dateIso: source.startAt ?? sync.startAt,
           distanceKm: source.distanceKm ?? sync.distanceKm
         }),
-        metricScore: existingRow?.metricScore ?? source.relevance ?? (20 + source.activity)
+        metricScore: existingRow?.metricScore ?? source.boost ?? (20 + source.activity)
       };
     }
     return null;
@@ -1207,7 +1207,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       if (this.activitiesView === 'distance') {
         if (secondaryFilter === 'relevant') {
           return this.activityRowDistanceOrderValue(left) - this.activityRowDistanceOrderValue(right)
-            || this.activityRowRelevanceOrderValue(left) - this.activityRowRelevanceOrderValue(right)
+            || this.activityRowBoostOrderValue(left) - this.activityRowBoostOrderValue(right)
             || this.activityRowTimestampOrderValue(right) - this.activityRowTimestampOrderValue(left)
             || this.activityRowIdentity(left).localeCompare(this.activityRowIdentity(right));
         }
@@ -1217,7 +1217,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       }
       if (secondaryFilter === 'relevant') {
         return this.activityRowDayOrderValue(left) - this.activityRowDayOrderValue(right)
-          || this.activityRowRelevanceOrderValue(left) - this.activityRowRelevanceOrderValue(right)
+          || this.activityRowBoostOrderValue(left) - this.activityRowBoostOrderValue(right)
           || this.activityRowTimestampOrderValue(right) - this.activityRowTimestampOrderValue(left)
           || this.activityRowIdentity(left).localeCompare(this.activityRowIdentity(right));
       }
@@ -1237,10 +1237,10 @@ export class ActivitiesPopupComponent implements OnDestroy {
       ?? Math.max(0, Math.round((Number(row.distanceKm) || 0) * 1000));
   }
 
-  private activityRowRelevanceOrderValue(row: AppTypes.ActivityListRow): number {
-    const sourceRelevance = Number((row.source as { relevance?: unknown }).relevance);
-    if (Number.isFinite(sourceRelevance)) {
-      return Math.max(0, sourceRelevance);
+  private activityRowBoostOrderValue(row: AppTypes.ActivityListRow): number {
+    const sourceBoost = Number((row.source as { boost?: unknown }).boost);
+    if (Number.isFinite(sourceBoost)) {
+      return Math.max(0, sourceBoost);
     }
     return Math.max(0, Number(row.metricScore) || 0);
   }
@@ -1292,7 +1292,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       })),
       subEventsDisplayMode: record.subEventsDisplayMode,
       rating: record.rating,
-      relevance: record.relevance,
+      boost: record.boost,
       affinity: record.affinity,
       ticketing: record.ticketing,
       published: record.published
@@ -2336,7 +2336,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
         : (existing?.subEvents ? this.cloneSyncedSubEventForms(existing.subEvents) : undefined),
       subEventsDisplayMode: sync.subEventsDisplayMode ?? existing?.subEventsDisplayMode,
       rating: existing?.rating,
-      relevance: existing?.relevance,
+      boost: existing?.boost,
       affinity: existing?.affinity,
       ticketing: sync.ticketing ?? existing?.ticketing,
       published: this.publishedHostingIds.has(sync.id) ? true : (sync.published ?? existing?.published)
@@ -2389,7 +2389,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
         : (existing?.subEvents ? this.cloneSyncedSubEventForms(existing.subEvents) : undefined),
       subEventsDisplayMode: sync.subEventsDisplayMode ?? existing?.subEventsDisplayMode,
       rating: existing?.rating,
-      relevance: existing?.relevance,
+      boost: existing?.boost,
       affinity: existing?.affinity,
       ticketing: sync.ticketing ?? existing?.ticketing,
       published: this.publishedHostingIds.has(sync.id) ? true : (sync.published ?? existing?.published),

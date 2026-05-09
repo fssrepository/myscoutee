@@ -4645,7 +4645,6 @@ export class SubEventResourcePopupService {
           metAtIso: actionAtIso,
           actionAtIso,
           metWhere: card.title,
-          relevance: 40 + (seed % 61),
           avatarUrl: AppUtils.firstImageUrl(matchedUser?.images),
           profile: matchedUser ?? null
         };

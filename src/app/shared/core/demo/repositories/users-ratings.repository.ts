@@ -397,7 +397,10 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
       if (!direction) {
         return [];
       }
-      if (direction === 'met' && !this.didUsersMeetFromIndexedDb(normalizedUserId, relatedUserId)) {
+      if (direction === 'met' && (
+        !this.didUsersMeetFromIndexedDb(normalizedUserId, relatedUserId)
+        || !this.isFinishedMetActivity(happenedAt)
+      )) {
         return [];
       }
       return [{
@@ -420,6 +423,14 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
       return [];
     }
 
+    const participantDirection: RateMenuItem['direction'] = record.displayDirection === 'met' ? 'met' : 'received';
+    if (participantDirection === 'met' && (
+      !this.didUsersMeetFromIndexedDb(normalizedUserId, ownerUserId)
+      || !this.isFinishedMetActivity(happenedAt)
+    )) {
+      return [];
+    }
+
     const incomingScore = scoreGiven > 0 ? scoreGiven : scoreReceived;
     if (incomingScore <= 0) {
       return [];
@@ -428,13 +439,13 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
       id: `${record.displayId?.trim() || record.id}:received:${normalizedUserId}`,
       userId: ownerUserId,
       mode: 'individual',
-      direction: 'received',
+      direction: participantDirection,
       ...(socialContext ? { socialContext } : {}),
       bridgeUserId: record.bridgeUserId,
       bridgeCount: record.bridgeCount,
       scoreGiven: 0,
       scoreReceived: incomingScore,
-      eventName: record.eventName?.trim() || 'Rate',
+      eventName: record.eventName?.trim() || (participantDirection === 'met' ? 'Met' : 'Rate'),
       happenedAt,
       distanceMetersExact: this.dynamicDistanceMetersExact(record)
     }];
@@ -657,6 +668,11 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
       return false;
     }
     return true;
+  }
+
+  private isFinishedMetActivity(happenedAt: string): boolean {
+    const happenedAtMs = AppUtils.toSortableDate(happenedAt);
+    return happenedAtMs <= 0 || happenedAtMs <= Date.now();
   }
 
   private matchesDynamicSocialFilter(item: RateMenuItem, socialBadgeEnabled: boolean): boolean {

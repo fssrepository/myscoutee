@@ -820,7 +820,6 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
       metAtIso,
       actionAtIso: metAtIso,
       metWhere,
-      relevance: this.resolveUserAffinity(user),
       avatarUrl: user.images?.[0] ?? '',
       profile: user
     };
@@ -1176,7 +1175,6 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
           metAtIso: actionAtIso,
           actionAtIso,
           metWhere: asset.title,
-          relevance: 48 + (seed % 46),
           avatarUrl: AppUtils.firstImageUrl(matchedUser.images),
           profile: matchedUser
         };
@@ -1721,7 +1719,7 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
       dateIso: record.startAtIso,
       distanceKm: record.distanceKm,
       unread: record.activity,
-      metricScore: record.relevance,
+      metricScore: record.boost,
       isAdmin: true,
       source: {
         id: record.id,
@@ -1744,7 +1742,7 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
         capacityMax: record.capacityMax,
         topics: [...record.topics],
         rating: record.rating,
-        relevance: record.relevance,
+        boost: record.boost,
         published: record.published
       } as AppTypes.ActivityListRow['source']
     };
@@ -1760,7 +1758,7 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
       dateIso: record.startAtIso,
       distanceKm: record.distanceKm,
       unread: Math.max(0, Math.trunc(Number(record.unread) || 0)),
-      metricScore: Math.max(0, Number(record.relevance) || 0),
+      metricScore: Math.max(0, Number(record.boost) || 0),
       isAdmin: false,
       source: {
         id: record.id,
@@ -1905,7 +1903,6 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
       metAtIso: record.metAtIso,
       actionAtIso: record.actionAtIso,
       metWhere: record.metWhere,
-      relevance: record.relevance,
       avatarUrl: record.avatarUrl,
       profile: this.resolveDemoUser(record.userId, record.name, record.initials, record.city, record.gender)
     };
