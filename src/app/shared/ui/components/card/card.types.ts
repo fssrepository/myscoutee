@@ -1,7 +1,17 @@
 export type CardPresentation = 'list' | 'fullscreen';
 export type CardRenderState = 'default' | 'active' | 'leaving';
 export type CardBadgeLayout = 'floating' | 'between' | 'pair-overlap';
-export type InfoCardSurfaceTone = 'default' | 'draft' | 'full' | 'pending' | 'series' | 'waitlist';
+export type InfoCardSurfaceTone =
+  | 'default'
+  | 'draft'
+  | 'full'
+  | 'pending'
+  | 'series'
+  | 'waitlist'
+  | 'review'
+  | 'blocked'
+  | 'deleted'
+  | 'inactive';
 export type InfoCardOverlayVariant = 'avatar' | 'badge' | 'toggle';
 export type InfoCardOverlayLayout = 'default' | 'avatar-metric' | 'badge-with-leading-accessory';
 export type InfoCardOverlayTone =
@@ -9,6 +19,9 @@ export type InfoCardOverlayTone =
   | 'full'
   | 'inactive'
   | 'selected'
+  | 'review'
+  | 'blocked'
+  | 'deleted'
   | 'cool'
   | 'cool-mid'
   | 'neutral'
@@ -41,7 +54,7 @@ export type InfoCardOverlayAccessoryTone =
   | 'tone-6'
   | 'tone-7'
   | 'tone-8';
-export type InfoCardMenuActionTone = 'default' | 'accent' | 'warning' | 'destructive';
+export type InfoCardMenuActionTone = 'default' | 'accent' | 'warning' | 'destructive' | 'review';
 export type InfoCardDetailStyle = 'default' | 'mono';
 
 export interface CardBadgeConfig {
@@ -53,6 +66,15 @@ export interface CardBadgeConfig {
   blink?: boolean;
   interactive?: boolean;
   layout?: CardBadgeLayout;
+}
+
+export interface CardContextBadgeConfig {
+  label: string;
+  ariaLabel?: string | null;
+  title?: string | null;
+  imageUrl?: string | null;
+  counterLabel?: string | null;
+  profileView?: CardProfileViewData | null;
 }
 
 export interface CardImageSlide {
@@ -86,6 +108,7 @@ export interface SingleCardData {
   profileView?: CardProfileViewData | null;
   stackClasses?: readonly string[];
   badge?: CardBadgeConfig | null;
+  contextBadge?: CardContextBadgeConfig | null;
   presentation?: CardPresentation;
   state?: CardRenderState;
   initialActiveIndex?: number;
@@ -138,20 +161,74 @@ export interface InfoCardOverlayAction {
   progressRing?: boolean;
 }
 
-export interface InfoCardMenuAction {
-  id: string;
+export type InfoCardMenuAction = string;
+
+export interface InfoCardMenuActionConfig {
   label: string;
   icon: string;
   tone?: InfoCardMenuActionTone;
 }
+
+export interface InfoCardResolvedMenuAction extends InfoCardMenuActionConfig {
+  id: string;
+}
+
+export const INFO_CARD_AVAILABLE_ACTIONS: Readonly<Record<string, InfoCardMenuActionConfig>> = {
+  accept: { label: 'accept', icon: 'done', tone: 'accent' },
+  addOrganizerNote: { label: 'add.organizer.note', icon: 'edit_note' },
+  askOrganizer: { label: 'ask.organizer', icon: 'support_agent' },
+  bookEvent: { label: 'book.event', icon: 'person_add', tone: 'accent' },
+  borrowAsset: { label: 'borrow', icon: 'volunteer_activism', tone: 'accent' },
+  capacity: { label: 'capacity', icon: 'groups' },
+  contactOrganizer: { label: 'contact.organizer', icon: 'support_agent' },
+  contactOwner: { label: 'contact.owner', icon: 'support_agent' },
+  delete: { label: 'delete', icon: 'delete', tone: 'destructive' },
+  deleteEvent: { label: 'delete.event', icon: 'delete', tone: 'destructive' },
+  edit: { label: 'edit', icon: 'edit', tone: 'accent' },
+  editAsset: { label: 'edit.asset', icon: 'edit' },
+  editEvent: { label: 'edit.event', icon: 'edit' },
+  editOrganizerNote: { label: 'edit.organizer.note', icon: 'edit_note' },
+  feature: { label: 'feature', icon: 'star', tone: 'accent' },
+  joinResource: { label: 'join.resource', icon: 'login', tone: 'accent' },
+  joinWaitlist: { label: 'join.waiting.list', icon: 'hourglass_empty', tone: 'accent' },
+  leaveEvent: { label: 'leave.event', icon: 'exit_to_app', tone: 'warning' },
+  leaveResource: { label: 'leave.resource', icon: 'logout' },
+  notifyParticipants: { label: 'notify.participants', icon: 'support_agent' },
+  publish: { label: 'publish', icon: 'campaign', tone: 'accent' },
+  rejectInvitation: { label: 'reject.invitation', icon: 'block', tone: 'destructive' },
+  removeFeedback: { label: 'remove', icon: 'remove_circle', tone: 'destructive' },
+  reportManager: { label: 'report.manager', icon: 'flag', tone: 'warning' },
+  reportOrganizer: { label: 'report.organizer', icon: 'flag', tone: 'warning' },
+  reportOwner: { label: 'report.owner', icon: 'flag', tone: 'warning' },
+  requestJoin: { label: 'request.join', icon: 'person_add', tone: 'accent' },
+  restore: { label: 'restore', icon: 'restore_from_trash' },
+  restoreFeedback: { label: 'restore.feedback', icon: 'restore' },
+  route: { label: 'route', icon: 'route' },
+  shareAsset: { label: 'share.asset', icon: 'ios_share' },
+  shareEvent: { label: 'share.event', icon: 'ios_share' },
+  startFeedback: { label: 'start.feedback', icon: 'play_arrow' },
+  takeOver: { label: 'take.over', icon: 'verified_user', tone: 'review' },
+  unfeature: { label: 'unfeature', icon: 'star_outline', tone: 'warning' },
+  unpublish: { label: 'unpublish', icon: 'visibility_off', tone: 'warning' },
+  view: { label: 'view.event', icon: 'visibility' },
+  viewArticle: { label: 'view', icon: 'visibility' },
+  viewAsset: { label: 'view.asset', icon: 'edit_square' },
+  viewInvitation: { label: 'view.invitation', icon: 'visibility' }
+};
 
 export interface InfoCardFooterChip {
   label: string;
   toneClass?: string | null;
 }
 
-export interface InfoCardData {
+export interface DisplayData<TDetailRecord = unknown> {
   rowId: string;
+  ownerId?: string | null;
+  detailRecord?: TDetailRecord | null;
+}
+
+export interface InfoCardData<TDetailRecord = unknown> extends DisplayData<TDetailRecord> {
+  status?: string | null;
   groupLabel?: string | null;
   title: string;
   imageUrl?: string | null;
@@ -183,7 +260,7 @@ export interface InfoCardClickEvent {
 export interface InfoCardMenuActionEvent {
   rowId: string;
   actionId: string;
-  action: InfoCardMenuAction;
+  action: InfoCardResolvedMenuAction;
   card: InfoCardData;
 }
 

@@ -345,8 +345,6 @@ export class EventEditorBuilder {
       slotTemplateId: params.existingRecord?.slotTemplateId ?? null,
       generated: params.existingRecord?.generated ?? false,
       eventType: params.existingRecord?.eventType ?? 'main',
-      acceptedMemberUserIds: Array.from(new Set(params.acceptedMemberUserIds.filter(id => id.trim().length > 0))),
-      pendingMemberUserIds: Array.from(new Set(params.pendingMemberUserIds.filter(id => id.trim().length > 0))),
       topics: [...params.form.topics],
       subEvents: this.buildPersistedEventEditorSubEvents(params.form.subEvents),
       subEventsDisplayMode: params.subEventsDisplayMode

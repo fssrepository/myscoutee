@@ -445,7 +445,6 @@ export class NavigatorContactsService {
       metAtIso: contact.createdAtIso,
       actionAtIso: contact.updatedAtIso,
       metWhere: '',
-      relevance: 100,
       avatarUrl: this.resolveUserAvatarUrl(user) || contact.avatarUrl,
       profile: user
     };

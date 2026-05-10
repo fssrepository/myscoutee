@@ -379,13 +379,10 @@ export class AssetMemberPickerPopupComponent {
 
   private sortLocalCandidates(sort: AppTypes.ActivityInviteSort): AppTypes.ActivityMemberEntry[] {
     const candidates = this.localCandidates.map(candidate => ({ ...candidate }));
+    if (sort === 'relevant') {
+      return candidates;
+    }
     return candidates.sort((left, right) => {
-      if (sort === 'relevant') {
-        if (right.relevance !== left.relevance) {
-          return right.relevance - left.relevance;
-        }
-        return AppUtils.toSortableDate(right.actionAtIso) - AppUtils.toSortableDate(left.actionAtIso);
-      }
       return AppUtils.toSortableDate(right.actionAtIso) - AppUtils.toSortableDate(left.actionAtIso);
     });
   }
@@ -480,13 +477,18 @@ export class AssetMemberPickerPopupComponent {
       const current = mergedByUserId.get(candidate.userId);
       mergedByUserId.set(candidate.userId, current ? { ...current, ...candidate, userId: candidate.userId } : { ...candidate });
     }
+    const relevantOrderByUserId = new Map(candidates.map((candidate, index) => [candidate.userId, index]));
     return [...mergedByUserId.values()].sort((left, right) => {
       const selectedDelta = Number(this.selectedUserIds.includes(right.userId)) - Number(this.selectedUserIds.includes(left.userId));
       if (selectedDelta !== 0) {
         return selectedDelta;
       }
-      if (sort === 'relevant' && right.relevance !== left.relevance) {
-        return right.relevance - left.relevance;
+      if (sort === 'relevant') {
+        const leftOrder = relevantOrderByUserId.get(left.userId) ?? Number.MAX_SAFE_INTEGER;
+        const rightOrder = relevantOrderByUserId.get(right.userId) ?? Number.MAX_SAFE_INTEGER;
+        if (leftOrder !== rightOrder) {
+          return leftOrder - rightOrder;
+        }
       }
       return AppUtils.toSortableDate(right.actionAtIso) - AppUtils.toSortableDate(left.actionAtIso);
     });

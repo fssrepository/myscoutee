@@ -18,6 +18,7 @@ import type {
 import type * as AppTypes from '../../../shared/core/base/models';
 import { AppUtils } from '../../../shared/app-utils';
 import { AppContext, ProfileOnboardingService, UserExperiencesService, UsersService, type UserDto } from '../../../shared/core';
+import { I18nPipe, I18nService } from '../../../shared/i18n';
 import { CounterBadgePipe } from '../../../shared/ui';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
 import { NavigatorService } from '../../navigator.service';
@@ -62,6 +63,7 @@ interface ExperienceImportDialogState {
     MatInputModule,
     MatNativeDateModule,
     MatSelectModule,
+    I18nPipe,
     CounterBadgePipe
   ],
   providers: [
@@ -79,6 +81,7 @@ export class ProfileEditorComponent {
   private readonly appCtx = inject(AppContext);
   private readonly adminService = inject(AdminService);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly i18n = inject(I18nService);
   private readonly navigatorService = inject(NavigatorService);
   private readonly profileOnboardingService = inject(ProfileOnboardingService);
   private readonly userExperiencesService = inject(UserExperiencesService);
@@ -680,13 +683,13 @@ export class ProfileEditorComponent {
       return;
     }
     this.mobileProfileSelectorSheet = {
-      title: row.label,
+      title: this.i18n.translate(row.labelKey),
       selected: row.value,
       options: row.options.map(option => ({
         value: option,
         label: option,
-        icon: this.detailOptionIcon(row.label, option),
-        toneClass: this.detailOptionClass(row.label, option, row.options)
+        icon: this.detailOptionIcon(row.labelKey, option),
+        toneClass: this.detailOptionClass(row.labelKey, option, row.options)
       })),
       context: { kind: 'detailValue', groupIndex, rowIndex }
     };
@@ -886,7 +889,7 @@ export class ProfileEditorComponent {
       return;
     }
     this.mobileProfileSelectorSheet = {
-      title: `${row.label} visibility`,
+      title: `${this.i18n.translate(row.labelKey)} visibility`,
       selected: row.privacy,
       options: this.privacySelectorOptions(),
       context: { kind: 'detailPrivacy', groupIndex, rowIndex }
@@ -1070,28 +1073,28 @@ export class ProfileEditorComponent {
     return Math.max(0, this.parseCommaValues(value).length - Math.max(0, max));
   }
 
-  protected detailOptionClass(label: string, option: string, options: string[]): string {
-    if (label === 'Values') {
+  protected detailOptionClass(labelKey: string, option: string, options: string[]): string {
+    if (labelKey === 'profile.details.values') {
       return this.valuesDominantToneClass(option);
     }
-    if (label === 'Interest') {
+    if (labelKey === 'profile.details.interest') {
       return this.interestDominantToneClass(option);
     }
     return this.detailToneFromOptions(option, options);
   }
 
-  protected detailSelectedClass(label: string, value: string, options: string[]): string {
-    if (label === 'Values') {
+  protected detailSelectedClass(labelKey: string, value: string, options: string[]): string {
+    if (labelKey === 'profile.details.values') {
       return this.valuesDominantToneClass(value);
     }
-    if (label === 'Interest') {
+    if (labelKey === 'profile.details.interest') {
       return this.interestDominantToneClass(value);
     }
     return this.detailToneFromOptions(value, options);
   }
 
-  protected detailOptionIcon(label: string, option: string): string {
-    const normalizedLabel = AppUtils.normalizeText(label);
+  protected detailOptionIcon(labelKey: string, option: string): string {
+    const normalizedLabel = AppUtils.normalizeText(labelKey);
     const normalizedOption = AppUtils.normalizeText(option);
 
     if (normalizedLabel.includes('drinking')) {
@@ -1529,15 +1532,15 @@ export class ProfileEditorComponent {
     return APP_STATIC_DATA.profileDetailGroupTemplates.map(group => ({
       title: group.title,
       rows: group.rows.map(row => ({
-        label: row.label,
-        value: this.profileDetailSeedValue(user, row.label, ''),
+        labelKey: row.labelKey,
+        value: this.profileDetailSeedValue(user, row.labelKey, ''),
         privacy: row.privacy,
         options:
-          row.label === 'Values'
+          row.labelKey === 'profile.details.values'
             ? beliefsValuesOptions
-            : row.label === 'Interest'
+            : row.labelKey === 'profile.details.interest'
               ? interestOptions
-              : this.profileDetailValueOptions[row.label] ?? [this.profileDetailSeedValue(user, row.label, '')]
+              : this.profileDetailValueOptions[row.labelKey] ?? [this.profileDetailSeedValue(user, row.labelKey, '')]
       }))
     }));
   }
@@ -1546,15 +1549,15 @@ export class ProfileEditorComponent {
     if (!Array.isArray(user.profileDetails) || user.profileDetails.length === 0) {
       return [];
     }
-    const rowByLabel = new Map<string, AppTypes.ProfileDetailFormRow>();
+    const rowByKey = new Map<string, AppTypes.ProfileDetailFormRow>();
     for (const group of user.profileDetails) {
       for (const row of group.rows ?? []) {
-        const normalizedLabel = AppUtils.normalizeText(`${row.label ?? ''}`.trim());
-        if (!normalizedLabel) {
+        const normalizedKey = AppUtils.normalizeText(`${row.labelKey ?? ''}`.trim());
+        if (!normalizedKey) {
           continue;
         }
-        rowByLabel.set(normalizedLabel, {
-          label: row.label,
+        rowByKey.set(normalizedKey, {
+          labelKey: row.labelKey,
           value: row.value,
           privacy: this.isDetailPrivacy(row.privacy) ? row.privacy : 'Public',
           options: [...(row.options ?? [])]
@@ -1564,23 +1567,23 @@ export class ProfileEditorComponent {
     return APP_STATIC_DATA.profileDetailGroupTemplates.map(group => ({
       title: group.title,
       rows: group.rows.map(row => {
-        const persisted = rowByLabel.get(AppUtils.normalizeText(row.label));
+        const persisted = rowByKey.get(AppUtils.normalizeText(row.labelKey));
         return {
-          label: row.label,
-          value: persisted?.value ?? this.profileDetailSeedValue(user, row.label, ''),
+          labelKey: row.labelKey,
+          value: persisted?.value ?? this.profileDetailSeedValue(user, row.labelKey, ''),
           privacy: persisted?.privacy ?? row.privacy,
-          options: this.profileDetailOptionsForLabel(row.label, persisted?.options ?? [])
+          options: this.profileDetailOptionsForKey(row.labelKey, persisted?.options ?? [])
         };
       })
     }));
   }
 
-  private profileDetailOptionsForLabel(label: string, persistedOptions: readonly string[] = []): string[] {
-    const defaults = label === 'Values'
+  private profileDetailOptionsForKey(labelKey: string, persistedOptions: readonly string[] = []): string[] {
+    const defaults = labelKey === 'profile.details.values'
       ? this.beliefsValuesAllOptions()
-      : label === 'Interest'
+      : labelKey === 'profile.details.interest'
         ? this.interestAllOptions()
-        : this.profileDetailValueOptions[label] ?? [];
+        : this.profileDetailValueOptions[labelKey] ?? [];
     const merged = [...defaults];
     for (const option of persistedOptions) {
       const normalized = option.trim();
@@ -1591,47 +1594,47 @@ export class ProfileEditorComponent {
     return merged;
   }
 
-  private profileDetailSeedValue(user: UserDto, label: string, fallback: string): string {
-    switch (label) {
-      case 'Name':
+  private profileDetailSeedValue(user: UserDto, labelKey: string, fallback: string): string {
+    switch (labelKey) {
+      case 'profile.name':
         return user.name;
-      case 'City':
+      case 'profile.city':
         return user.city;
-      case 'Birthday': {
+      case 'profile.birthday': {
         const parsed = AppUtils.fromIsoDate(user.birthday);
         return parsed
           ? parsed.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
           : fallback;
       }
-      case 'Height':
+      case 'profile.height':
         return user.height;
-      case 'Physique':
+      case 'profile.physique':
         return user.physique;
-      case 'Languages':
+      case 'profile.languages':
         return user.languages.join(', ');
-      case 'Horoscope':
+      case 'profile.horoscope':
         return user.horoscope;
-      case 'Gender':
+      case 'profile.gender':
         return user.gender === 'woman' ? 'Woman' : 'Man';
-      case 'Interest':
-        return this.seededOptionsForUser(user, this.interestAllOptions(), 3, label).join(', ');
-      case 'Values':
-        return this.seededOptionsForUser(user, this.beliefsValuesAllOptions(), 3, label).join(', ');
+      case 'profile.details.interest':
+        return this.seededOptionsForUser(user, this.interestAllOptions(), 3, labelKey).join(', ');
+      case 'profile.details.values':
+        return this.seededOptionsForUser(user, this.beliefsValuesAllOptions(), 3, labelKey).join(', ');
       default: {
-        const options = this.profileDetailValueOptions[label] ?? [];
+        const options = this.profileDetailValueOptions[labelKey] ?? [];
         if (options.length === 0) {
           return fallback;
         }
-        return this.seededOptionForUser(user, options, label);
+        return this.seededOptionForUser(user, options, labelKey);
       }
     }
   }
 
-  private profileDetailRowByLabel(userId: string, label: string): AppTypes.ProfileDetailFormRow | null {
-    const target = AppUtils.normalizeText(label);
+  private profileDetailRowByKey(userId: string, labelKey: string): AppTypes.ProfileDetailFormRow | null {
+    const target = AppUtils.normalizeText(labelKey);
     for (const group of this.profileDetailsForUser(userId, this.profileUser ?? undefined)) {
       for (const row of group.rows) {
-        if (AppUtils.normalizeText(row.label) === target) {
+        if (AppUtils.normalizeText(row.labelKey) === target) {
           return row;
         }
       }
@@ -1665,27 +1668,27 @@ export class ProfileEditorComponent {
   }
 
   private syncProfileBasicsIntoDetailRows(user: UserDto): void {
-    const setRowValue = (label: string, value: string): void => {
-      const row = this.profileDetailRowByLabel(user.id, label);
+    const setRowValue = (labelKey: string, value: string): void => {
+      const row = this.profileDetailRowByKey(user.id, labelKey);
       if (!row) {
         return;
       }
       row.value = value;
     };
     const birthdayDate = AppUtils.fromIsoDate(user.birthday);
-    setRowValue('Name', user.name);
-    setRowValue('City', user.city);
+    setRowValue('profile.name', user.name);
+    setRowValue('profile.city', user.city);
     setRowValue(
-      'Birthday',
+      'profile.birthday',
       birthdayDate
         ? birthdayDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
         : ''
     );
-    setRowValue('Height', user.height);
-    setRowValue('Physique', user.physique);
-    setRowValue('Languages', user.languages.join(', '));
-    setRowValue('Horoscope', user.horoscope);
-    setRowValue('Gender', user.gender === 'woman' ? 'Woman' : 'Man');
+    setRowValue('profile.height', user.height);
+    setRowValue('profile.physique', user.physique);
+    setRowValue('profile.languages', user.languages.join(', '));
+    setRowValue('profile.horoscope', user.horoscope);
+    setRowValue('profile.gender', user.gender === 'woman' ? 'Woman' : 'Man');
   }
 
   private calculateProfileCompletionPercent(): number {
@@ -1702,15 +1705,15 @@ export class ProfileEditorComponent {
         completed += 1;
       }
     };
-    const hasDetail = (label: string, minLength = 1): boolean => {
-      const row = this.profileDetailRowByLabel(activeUserId, label);
+    const hasDetail = (labelKey: string, minLength = 1): boolean => {
+      const row = this.profileDetailRowByKey(activeUserId, labelKey);
       return AppUtils.hasText(row?.value, minLength);
     };
 
     const languages = this.profileForm.languages.filter(item => AppUtils.hasText(item));
     const imageCount = this.imageSlots.filter(slot => AppUtils.hasText(slot ?? '')).length;
-    const valuesCount = this.parseCommaValues(this.profileDetailRowByLabel(activeUserId, 'Values')?.value ?? '').length;
-    const interestCount = this.parseCommaValues(this.profileDetailRowByLabel(activeUserId, 'Interest')?.value ?? '').length;
+    const valuesCount = this.parseCommaValues(this.profileDetailRowByKey(activeUserId, 'profile.details.values')?.value ?? '').length;
+    const interestCount = this.parseCommaValues(this.profileDetailRowByKey(activeUserId, 'profile.details.interest')?.value ?? '').length;
     const aboutLength = this.profileForm.about.trim().length;
 
     add(AppUtils.hasText(this.profileForm.fullName));
@@ -1730,17 +1733,17 @@ export class ProfileEditorComponent {
     add(valuesCount >= 3);
     add(interestCount > 0);
     add(interestCount >= 3);
-    add(hasDetail('Drinking'));
-    add(hasDetail('Smoking'));
-    add(hasDetail('Workout'));
-    add(hasDetail('Pets'));
-    add(hasDetail('Family plans'));
-    add(hasDetail('Children'));
-    add(hasDetail('Love style'));
-    add(hasDetail('Communication style'));
-    add(hasDetail('Sexual orientation'));
-    add(hasDetail('Religion'));
-    add(hasDetail('Gender'));
+    add(hasDetail('profile.details.drinking'));
+    add(hasDetail('profile.details.smoking'));
+    add(hasDetail('profile.details.workout'));
+    add(hasDetail('profile.details.pets'));
+    add(hasDetail('profile.details.familyPlans'));
+    add(hasDetail('profile.details.children'));
+    add(hasDetail('profile.details.loveStyle'));
+    add(hasDetail('profile.details.communicationStyle'));
+    add(hasDetail('profile.details.sexualOrientation'));
+    add(hasDetail('profile.details.religion'));
+    add(hasDetail('profile.gender'));
 
     for (let index = 0; index < 8; index += 1) {
       add(imageCount > index);
@@ -2340,7 +2343,7 @@ export class ProfileEditorComponent {
     return groups.map(group => ({
       title: group.title,
       rows: group.rows.map(row => ({
-        label: row.label,
+        labelKey: row.labelKey,
         value: row.value,
         privacy: row.privacy,
         options: [...row.options]

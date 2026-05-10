@@ -18,7 +18,7 @@ import {
 import { MatIconModule } from '@angular/material/icon';
 
 import { LazyBgImageDirective } from '../../../directives/lazy-bg-image.directive';
-import type { CardImageSlide, CardProfileViewData, SingleCardData } from '../card.types';
+import type { CardContextBadgeConfig, CardImageSlide, CardProfileViewData, SingleCardData } from '../card.types';
 
 @Component({
   selector: 'app-single-card',
@@ -39,7 +39,6 @@ export class SingleCardComponent implements AfterViewInit, OnChanges, OnDestroy 
   private badgeBlinkTimer: ReturnType<typeof setTimeout> | null = null;
   private fullscreenResizeObserver: ResizeObserver | null = null;
   private previousRowId = '';
-  private previousBadgeActive = false;
   private previousBadgeLabel = '';
   private fullscreenShellElementRef?: ElementRef<HTMLElement>;
 
@@ -82,15 +81,10 @@ export class SingleCardComponent implements AfterViewInit, OnChanges, OnDestroy 
     }
 
     const rowId = this.card?.rowId ?? '';
-    const badgeActive = !!this.card?.badge?.active;
     const badgeLabel = this.card?.badge?.label ?? '';
 
     if (rowId !== this.previousRowId) {
       this.syncStateFromCard();
-    }
-
-    if (badgeActive && (!this.previousBadgeActive || rowId !== this.previousRowId)) {
-      this.startLoadingPulse();
     }
 
     if (rowId === this.previousRowId && badgeLabel !== this.previousBadgeLabel && this.card?.badge?.blink !== true) {
@@ -98,7 +92,6 @@ export class SingleCardComponent implements AfterViewInit, OnChanges, OnDestroy 
     }
 
     this.previousRowId = rowId;
-    this.previousBadgeActive = badgeActive;
     this.previousBadgeLabel = badgeLabel;
     this.scheduleFullscreenLayoutSync();
   }
@@ -133,6 +126,10 @@ export class SingleCardComponent implements AfterViewInit, OnChanges, OnDestroy 
 
   protected resolvedStackClasses(): readonly string[] {
     return this.card?.stackClasses ?? [];
+  }
+
+  protected contextBadgeLabel(badge: CardContextBadgeConfig): string {
+    return badge.label.trim().slice(0, 3).toUpperCase();
   }
 
   protected currentSlide(): CardImageSlide | null {
@@ -193,7 +190,12 @@ export class SingleCardComponent implements AfterViewInit, OnChanges, OnDestroy 
     this.startLoadingPulse();
   }
 
+  protected onBadgePointerDown(event: Event): void {
+    event.stopPropagation();
+  }
+
   protected onBadgeClick(event: MouseEvent): void {
+    event.preventDefault();
     event.stopPropagation();
     if (!this.isBadgeInteractive() || this.card?.badge?.disabled || !this.card?.rowId) {
       return;
@@ -205,6 +207,19 @@ export class SingleCardComponent implements AfterViewInit, OnChanges, OnDestroy 
     event.stopPropagation();
     const userId = `${profileView?.userId ?? ''}`.trim();
     if (!userId) {
+      return;
+    }
+    this.profileClick.emit({
+      ...profileView,
+      userId
+    });
+  }
+
+  protected onContextBadgeClick(badge: CardContextBadgeConfig, event: MouseEvent): void {
+    event.stopPropagation();
+    const profileView = badge.profileView;
+    const userId = `${profileView?.userId ?? ''}`.trim();
+    if (!profileView || !userId) {
       return;
     }
     this.profileClick.emit({

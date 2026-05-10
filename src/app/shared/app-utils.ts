@@ -189,7 +189,10 @@ export class AppUtils {
     labels: { dateUnavailable: string; weekPrefix: string }
   ): string {
     if (activitiesView === 'distance') {
-      const bucket = Math.max(5, Math.ceil(row.distanceKm / 5) * 5);
+      const distanceMeters = Number.isFinite(row.distanceMetersExact)
+        ? Math.max(0, Math.trunc(Number(row.distanceMetersExact)))
+        : Math.max(0, Math.round((Number(row.distanceKm) || 0) * 1000));
+      const bucket = Math.max(5, Math.ceil(distanceMeters / 5000) * 5);
       return `${bucket} km`;
     }
     const parsed = new Date(row.dateIso);

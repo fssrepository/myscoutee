@@ -18,7 +18,13 @@ import { AppUtils } from '../../../shared/app-utils';
 import { EventEditorBuilder, PricingBuilder } from '../../../shared/core/base/builders';
 import { EventEditorConverter } from '../../../shared/core/base/converters';
 import type * as AppTypes from '../../../shared/core/base/models';
-import { ActivityMembersService, AppContext, AppPopupContext, EventEditorDataService } from '../../../shared/core';
+import {
+  ActivitiesService,
+  ActivityMembersService,
+  AppContext,
+  AppPopupContext,
+  EventEditorDataService
+} from '../../../shared/core';
 import { HttpMediaService } from '../../../shared/core/http';
 import type { DemoEventRecord } from '../../../shared/core/demo/models/events.model';
 import { CounterBadgePipe, PricingEditorComponent, TopicPickerPopupComponent } from '../../../shared/ui';
@@ -52,6 +58,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   private static readonly DRAFT_AUTOSAVE_INTERVAL_MS = 5000;
   protected readonly eventEditorService = inject(EventEditorPopupStateService);
   private readonly activitiesContext = inject(ActivitiesPopupStateService);
+  private readonly activitiesService = inject(ActivitiesService);
   private readonly eventEditorDataService = inject(EventEditorDataService);
   private readonly activityMembersService = inject(ActivityMembersService);
   private readonly appCtx = inject(AppContext);
@@ -763,6 +770,19 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     return `Stage ${index + 1} - ${baseName}`;
   }
 
+  subEventPanelChipTrackId(index: number, subEvent: AppTypes.EventEditorSubEventItem): string {
+    const id = `${subEvent.id ?? ''}`.trim();
+    if (id) {
+      return id;
+    }
+    return [
+      index,
+      `${subEvent.startAt ?? ''}`.trim(),
+      `${subEvent.endAt ?? ''}`.trim(),
+      this.subEventName(subEvent).trim()
+    ].join(':');
+  }
+
   subEventCardRange(subEvent: AppTypes.EventEditorSubEventItem): string {
     const start = EventEditorConverter.parseEventEditorDateValue(subEvent.startAt);
     const end = EventEditorConverter.parseEventEditorDateValue(subEvent.endAt);
@@ -1403,7 +1423,10 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       pendingMemberUserIds: memberSummary.pendingMemberUserIds
     });
 
-    await this.activitiesContext.emitActivitiesEventSync(payload);
+    const displaySync = await this.activitiesService.saveActivitiesEventSync(payload, {
+      activeUserId
+    });
+    this.activitiesContext.emitActivitiesEventDisplaySync(displaySync);
     return true;
   }
 

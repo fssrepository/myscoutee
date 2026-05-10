@@ -26,7 +26,7 @@ import type { LocationCoordinates } from '../../base/interfaces';
 interface DemoEventActivitiesCursor {
   id: string;
   distanceMeters: number;
-  relevance: number;
+  boost: number;
   startAtMs: number;
 }
 
@@ -42,6 +42,7 @@ interface DemoEventExploreCursor {
 })
 export class DemoEventsRepository {
   private static readonly MIN_DEMO_EVENT_ITEMS_PER_USER = 15;
+  private static readonly AFFINITY_DISTANCE_BOOST_SCALE = 10_000;
   private static readonly SYNTHETIC_EVENT_TITLE_PREFIXES = [
     'Lantern',
     'Harbor',
@@ -126,7 +127,7 @@ export class DemoEventsRepository {
 
   queryTrashedItemsByUser(userId: string): DemoEventRecord[] {
     this.init();
-    return this.queryUserRecords(userId).filter(record => record.isTrashed);
+    return this.queryUserRecords(userId).filter(record => this.isTrashScopeStatus(record));
   }
 
   queryEventItemsByFilter(
@@ -140,26 +141,27 @@ export class DemoEventsRepository {
     const memberEventItems = userItems
       .filter(record => record.type === 'events')
       .filter(record => record.isAdmin !== true)
-      .filter(record => !record.isTrashed)
+      .filter(record => !this.isTrashScopeStatus(record))
       .filter(record => this.isAcceptedEventRecord(record, userId) || this.isPendingEventRecord(record, userId));
     const pendingEventItems = memberEventItems
-      .filter(record => this.isPendingEventRecord(record, userId));
+      .filter(record => this.isPendingEventRecord(record, userId) || this.isPendingReviewStatus(record));
     const activeEventItems = memberEventItems
-      .filter(record => this.isAcceptedEventRecord(record, userId));
+      .filter(record => this.isAcceptedEventRecord(record, userId) && !this.isPendingReviewStatus(record));
     const invitationItems = userItems
       .filter(record => record.isInvitation)
-      .filter(record => !record.isTrashed);
+      .filter(record => !this.isTrashScopeStatus(record));
     const myEventItems = userItems
       .filter(record => record.type === 'hosting')
       .filter(record => record.isAdmin)
-      .filter(record => !record.isTrashed);
+      .filter(record => !this.isTrashScopeStatus(record));
     const draftItems = myEventItems.filter(record => record.published === false);
+    const reviewItems = myEventItems.filter(record => this.isPendingReviewStatus(record));
 
     if (filter === 'all') {
       return [...activeEventItems, ...pendingEventItems, ...invitationItems, ...myEventItems];
     }
     if (filter === 'pending') {
-      return pendingEventItems;
+      return [...pendingEventItems, ...reviewItems];
     }
     if (filter === 'invitations') {
       return invitationItems;
@@ -171,7 +173,7 @@ export class DemoEventsRepository {
       return draftItems;
     }
     if (filter === 'trash') {
-      return userItems.filter(record => record.isTrashed);
+      return userItems.filter(record => this.isTrashScopeStatus(record));
     }
     return activeEventItems;
   }
@@ -185,6 +187,55 @@ export class DemoEventsRepository {
       return false;
     }
     return (record.pendingMemberUserIds ?? []).includes(normalizedUserId);
+  }
+
+  private isPendingReviewStatus(record: DemoEventRecord): boolean {
+    const status = this.normalizeEventStatus(record.status);
+    return status === 'UR' || status === 'B';
+  }
+
+  private isTrashScopeStatus(record: DemoEventRecord): boolean {
+    if (record.isTrashed) {
+      return true;
+    }
+    const status = this.normalizeEventStatus(record.status);
+    return status === 'T' || status === 'D' || status === 'I';
+  }
+
+  private restoredStatusForRecord(record: DemoEventRecord): DemoEventRecord['status'] {
+    const previous = this.normalizeEventStatus(record.statusBeforeSuppression);
+    if (previous && !['UR', 'B', 'D', 'I', 'T'].includes(previous)) {
+      return previous as DemoEventRecord['status'];
+    }
+    return record.type === 'hosting' ? 'H' : 'A';
+  }
+
+  private normalizeEventStatus(status: string | null | undefined): string {
+    const normalized = `${status ?? ''}`.trim();
+    switch (normalized) {
+      case 'active':
+        return 'A';
+      case 'hosting':
+        return 'H';
+      case 'invitation':
+        return 'INV';
+      case 'draft':
+        return 'DR';
+      case 'trashed':
+      case 'trash':
+        return 'T';
+      case 'under-review':
+      case 'under review':
+        return 'UR';
+      case 'blocked':
+        return 'B';
+      case 'deleted':
+        return 'D';
+      case 'inactive':
+        return 'I';
+      default:
+        return normalized || 'A';
+    }
   }
 
   private isAcceptedEventRecord(record: DemoEventRecord, userId: string): boolean {
@@ -321,12 +372,12 @@ export class DemoEventsRepository {
     };
   }
 
-  syncEventSnapshot(payload: Omit<ActivitiesEventSyncPayload, 'syncKey'>): void {
+  syncEventSnapshot(payload: Omit<ActivitiesEventSyncPayload, 'syncKey'>): DemoEventRecord | null {
     this.init();
     const normalizedId = payload.id.trim();
     const creatorUserId = payload.creatorUserId?.trim() ?? '';
     if (!normalizedId || !creatorUserId) {
-      return;
+      return null;
     }
 
     const creatorName = payload.creatorName?.trim() || 'Unknown Host';
@@ -334,8 +385,12 @@ export class DemoEventsRepository {
     const startAtIso = payload.startAt?.trim() || new Date().toISOString();
     const endAtIso = payload.endAt?.trim()
       || new Date(new Date(startAtIso).getTime() + (2 * 60 * 60 * 1000)).toISOString();
-    const acceptedMemberUserIds = this.normalizeUserIds(payload.acceptedMemberUserIds);
-    const pendingMemberUserIds = this.normalizeUserIds(payload.pendingMemberUserIds);
+    const existingTable = this.memoryDb.read()[EVENTS_TABLE_NAME];
+    const existingEvent = existingTable.ids
+      .map(recordKey => existingTable.byId[recordKey])
+      .find(record => record?.id === normalizedId && record.type !== 'invitations');
+    const acceptedMemberUserIds = this.normalizeUserIds(existingEvent?.acceptedMemberUserIds);
+    const pendingMemberUserIds = this.normalizeUserIds(existingEvent?.pendingMemberUserIds);
     const acceptedMembers = this.normalizeCount(payload.acceptedMembers) ?? acceptedMemberUserIds.length;
     const pendingMembers = this.normalizeCount(payload.pendingMembers) ?? pendingMemberUserIds.length;
     const capacityTotal = Math.max(
@@ -384,11 +439,13 @@ export class DemoEventsRepository {
       };
     });
     this.materializeSlotRecords();
+    return this.peekKnownItemById(creatorUserId, normalizedId);
   }
 
   trashItem(userId: string, type: DemoRepositoryEventItemType, sourceId: string): void {
     this.init();
     this.updateItemState(userId, type, sourceId, {
+      status: 'T',
       isTrashed: true,
       trashedAtIso: new Date().toISOString()
     });
@@ -397,6 +454,7 @@ export class DemoEventsRepository {
   publishItem(userId: string, type: DemoRepositoryEventItemType, sourceId: string): void {
     this.init();
     this.updateItemState(userId, type, sourceId, {
+      status: type === 'hosting' ? 'H' : 'A',
       published: true
     });
   }
@@ -404,8 +462,48 @@ export class DemoEventsRepository {
   restoreItem(userId: string, type: DemoRepositoryEventItemType, sourceId: string): void {
     this.init();
     this.updateItemState(userId, type, sourceId, {
+      status: type === 'hosting' ? 'H' : 'A',
+      statusBeforeSuppression: null,
       isTrashed: false,
       trashedAtIso: null
+    });
+  }
+
+  takeOverItem(userId: string, type: DemoRepositoryEventItemType, sourceId: string): void {
+    this.init();
+    const normalizedSourceId = sourceId.trim();
+    if (!normalizedSourceId) {
+      return;
+    }
+    this.memoryDb.write(state => {
+      const table = state[EVENTS_TABLE_NAME];
+      const nextById = { ...table.byId };
+      let changed = false;
+      for (const id of table.ids) {
+        const current = table.byId[id];
+        if (!current || current.id !== normalizedSourceId || this.normalizeEventStatus(current.status) !== 'UR') {
+          continue;
+        }
+        const restoredStatus = this.restoredStatusForRecord(current);
+        nextById[id] = {
+          ...current,
+          status: restoredStatus,
+          statusBeforeSuppression: null,
+          isTrashed: false,
+          trashedAtIso: null,
+          published: restoredStatus !== 'DR'
+        };
+        changed = true;
+      }
+      return changed
+        ? {
+            ...state,
+            [EVENTS_TABLE_NAME]: {
+              ...table,
+              byId: nextById
+            }
+          }
+        : state;
     });
   }
 
@@ -846,7 +944,7 @@ export class DemoEventsRepository {
     if (query.view === 'distance' || query.sort === 'distance') {
       if (query.secondaryFilter === 'relevant') {
         return this.distanceOrderValue(left) - this.distanceOrderValue(right)
-          || this.relevanceOrderValue(left) - this.relevanceOrderValue(right)
+          || this.boostOrderValue(right) - this.boostOrderValue(left)
           || this.timestampOrderValue(right) - this.timestampOrderValue(left)
           || this.compareRecordIdentity(left, right);
       }
@@ -857,7 +955,7 @@ export class DemoEventsRepository {
 
     if (query.secondaryFilter === 'relevant') {
       return this.dayOrderValue(left) - this.dayOrderValue(right)
-        || this.relevanceOrderValue(left) - this.relevanceOrderValue(right)
+        || this.boostOrderValue(right) - this.boostOrderValue(left)
         || this.timestampOrderValue(right) - this.timestampOrderValue(left)
         || this.compareRecordIdentity(left, right);
     }
@@ -882,7 +980,7 @@ export class DemoEventsRepository {
       ...DemoEventsRepositoryBuilder.cloneRecord(record),
       id: cursor.id,
       distanceKm: cursor.distanceMeters / 1000,
-      relevance: cursor.relevance,
+      boost: cursor.boost,
       startAtIso: new Date(cursor.startAtMs).toISOString()
     };
     return this.compareActivitiesRecords(record, cursorRecord, query);
@@ -892,7 +990,7 @@ export class DemoEventsRepository {
     return {
       id: record.id,
       distanceMeters: this.distanceOrderValue(record),
-      relevance: this.relevanceOrderValue(record),
+      boost: this.boostOrderValue(record),
       startAtMs: this.timestampOrderValue(record)
     };
   }
@@ -911,7 +1009,7 @@ export class DemoEventsRepository {
       if (
         typeof parsed.id !== 'string'
         || !Number.isFinite(parsed.distanceMeters)
-        || !Number.isFinite(parsed.relevance)
+        || !Number.isFinite(parsed.boost)
         || !Number.isFinite(parsed.startAtMs)
       ) {
         return null;
@@ -919,7 +1017,7 @@ export class DemoEventsRepository {
       return {
         id: parsed.id,
         distanceMeters: Math.max(0, Math.trunc(Number(parsed.distanceMeters))),
-        relevance: Math.max(0, Number(parsed.relevance)),
+        boost: Math.max(0, Number(parsed.boost)),
         startAtMs: Math.trunc(Number(parsed.startAtMs))
       };
     } catch {
@@ -931,8 +1029,8 @@ export class DemoEventsRepository {
     return Math.max(0, Math.round((Number(record.distanceKm) || 0) * 1000));
   }
 
-  private relevanceOrderValue(record: DemoEventRecord): number {
-    return Math.max(0, Number(record.relevance) || 0);
+  private boostOrderValue(record: DemoEventRecord): number {
+    return Math.max(0, Number(record.boost) || 0);
   }
 
   private resolveActivitiesEndTimestamp(record: DemoEventRecord): number {
@@ -1056,6 +1154,7 @@ export class DemoEventsRepository {
     const distanceMeters = this.distanceOrderValue(record);
     const ratingValue = -Math.round(AppUtils.clampNumber(Number(record.rating) || 0, 0, 10) * 100);
     const affinityDistance = Math.abs(this.affinityOrderValue(record) - viewerAffinity);
+    const boostAffinityRank = this.boostAffinityRank(record, affinityDistance);
     const isPast = startAtMs < Date.now() ? 1 : 0;
     const pastPriority = isPast === 1 ? 0 : 1;
 
@@ -1070,7 +1169,7 @@ export class DemoEventsRepository {
         return [distanceMeters, isPast, ratingValue, startAtMs];
       }
       if (query.order === 'most-relevant') {
-        return [distanceMeters, isPast, affinityDistance, startAtMs];
+        return [distanceMeters, isPast, boostAffinityRank, startAtMs];
       }
       return [distanceMeters, isPast, startAtMs, affinityDistance];
     }
@@ -1085,9 +1184,15 @@ export class DemoEventsRepository {
       return [isPast, dayKey, ratingValue, startAtMs];
     }
     if (query.order === 'most-relevant') {
-      return [isPast, dayKey, affinityDistance, startAtMs];
+      return [isPast, dayKey, boostAffinityRank, startAtMs];
     }
     return [isPast, dayKey, startAtMs, distanceMeters];
+  }
+
+  private boostAffinityRank(record: DemoEventRecord, affinityDistance: number): number {
+    const score = this.boostOrderValue(record)
+      - (Math.max(0, affinityDistance) / DemoEventsRepository.AFFINITY_DISTANCE_BOOST_SCALE);
+    return -Math.round(score * 1_000_000);
   }
 
   private compareExploreSortTuple(
@@ -1147,6 +1252,9 @@ export class DemoEventsRepository {
 
   private shouldIncludeExploreRecord(record: DemoEventRecord, activeUserId: string): boolean {
     if (record.isTrashed || record.isInvitation) {
+      return false;
+    }
+    if (this.normalizeEventStatus(record.status) !== 'A') {
       return false;
     }
     if (record.published === false) {
@@ -1212,7 +1320,7 @@ export class DemoEventsRepository {
       PricingBuilder.slotCatalogFromEventSlotTemplates(payload.slotTemplates ?? existing?.slotTemplates ?? [])
     );
     const rating = existing?.rating ?? (6 + ((AppUtils.hashText(`${context.type}:${payload.id}:${payload.title}`) % 35) / 10));
-    const relevance = existing?.relevance ?? (50 + (AppUtils.hashText(`${context.type}:${payload.id}:${payload.title}`) % 51));
+    const boost = existing?.boost ?? (50 + (AppUtils.hashText(`${context.type}:${payload.id}:${payload.title}`) % 51));
     const usersTable = this.memoryDb.read()[USERS_TABLE_NAME];
     const creator = usersTable.byId[context.userId] ?? null;
     const acceptedUsers = context.acceptedMemberUserIds
@@ -1290,7 +1398,7 @@ export class DemoEventsRepository {
         ?? existing?.subEventsDisplayMode
         ?? (subEvents ? DemoEventSeedBuilder.inferredSubEventsDisplayMode(subEvents) : 'Casual'),
       rating,
-      relevance,
+      boost,
       affinity
     };
   }
@@ -1364,7 +1472,7 @@ export class DemoEventsRepository {
       ...DemoEventsRepositoryBuilder.cloneRecord(record),
       userId,
       type: 'invitations',
-      status: 'invitation',
+      status: 'INV',
       inviter: record.creatorName,
       unread: Math.max(1, record.unread),
       isAdmin: false,
@@ -1563,7 +1671,7 @@ export class DemoEventsRepository {
           capacityMin: 6 + (index % 10),
           capacityMax: 12 + (index % 18),
           rating: 6 + ((seed % 35) / 10),
-          relevance: 50 + (seed % 51),
+          boost: 50 + (seed % 51),
           ...checkoutVariation
         });
       }
@@ -1881,7 +1989,7 @@ export class DemoEventsRepository {
         capacityMax: 14,
         topics,
         rating: 8.4,
-        relevance: 96
+        boost: 96
       };
     };
 
@@ -2103,7 +2211,7 @@ export class DemoEventsRepository {
           ? DemoEventSeedBuilder.inferredSubEventsDisplayMode(this.cloneSubEvents(current.subEvents)!)
           : 'Casual')),
       rating: Number.isFinite(current.rating) ? Number(current.rating) : seeded.rating,
-      relevance: Number.isFinite(current.relevance) ? Number(current.relevance) : seeded.relevance,
+      boost: Number.isFinite(current.boost) ? Number(current.boost) : seeded.boost,
       affinity: Number.isFinite(current.affinity)
         ? Math.max(0, Math.trunc(Number(current.affinity)))
         : seeded.affinity
@@ -2407,7 +2515,7 @@ export class DemoEventsRepository {
           subEvents: this.materializeSubEventsForSlotOccurrence(parent.subEvents, startAt, endAt) ?? undefined,
           subEventsDisplayMode: parent.subEventsDisplayMode,
           rating: parent.rating,
-          relevance: parent.relevance,
+          boost: parent.boost,
           affinity: parent.affinity
         });
       }
@@ -2502,7 +2610,7 @@ export class DemoEventsRepository {
         subEvents: this.materializeSubEventsForSlotOccurrence(parent.subEvents, startAt, endAt) ?? undefined,
         subEventsDisplayMode: parent.subEventsDisplayMode,
         rating: parent.rating,
-        relevance: parent.relevance,
+        boost: parent.boost,
         affinity: parent.affinity
       });
     }

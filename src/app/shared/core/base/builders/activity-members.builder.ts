@@ -242,7 +242,6 @@ export class ActivityMembersBuilder {
       metAtIso: AppUtils.toIsoDateTime(metAt),
       actionAtIso: AppUtils.toIsoDateTime(metAt),
       metWhere: place,
-      relevance: 40 + (seed % 61),
       avatarUrl: AppUtils.firstImageUrl(user.images),
       profile: user
     };
@@ -282,7 +281,6 @@ export class ActivityMembersBuilder {
         metAtIso: AppUtils.toIsoDateTime(when),
         actionAtIso: AppUtils.toIsoDateTime(when),
         metWhere: forcedMetWhere,
-        relevance: 60 + ((index * 7) % 40),
         avatarUrl: AppUtils.firstImageUrl(template.images),
         profile
       });

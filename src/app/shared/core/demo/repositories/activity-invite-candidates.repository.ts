@@ -4,6 +4,7 @@ import { ActivityMembersBuilder } from '../../base/builders/activity-members.bui
 import type * as AppTypes from '../../../core/base/models';
 import { AppUtils } from '../../../app-utils';
 import type { DemoUser } from '../../base/interfaces/user.interface';
+import type { RateMenuItem } from '../../base/interfaces/activity-feed.interface';
 import type {
   ActivityInviteCandidatesQuery,
   ActivityInviteCandidatesRepository
@@ -25,7 +26,6 @@ export class DemoActivityInviteCandidatesRepository implements ActivityInviteCan
       return [];
     }
 
-    const allUsers = this.usersRepository.queryAllUsers();
     const activeUser = this.usersRepository.queryUserById(activeUserId);
     if (!activeUser) {
       return [];
@@ -55,46 +55,34 @@ export class DemoActivityInviteCandidatesRepository implements ActivityInviteCan
       }
     }
 
-    const latestMetByUserId = new Map<string, { metAtIso: string; metWhere: string; relevance: number }>();
-    for (const rate of this.usersRatingsRepository.queryUserRatesByUserId(activeUserId)) {
-      const counterpartIds = this.counterpartUserIds(rate, activeUserId);
-      const metAtIso = rate.happenedAtIso?.trim() || rate.updatedAtIso || rate.createdAtIso;
-      const metWhere = rate.eventName?.trim() || 'Met on MyScoutee';
-      const relevance = this.normalizeRelevance(rate);
-      for (const counterpartId of counterpartIds) {
-        const current = latestMetByUserId.get(counterpartId);
-        if (!current || AppUtils.toSortableDate(metAtIso) > AppUtils.toSortableDate(current.metAtIso)) {
-          latestMetByUserId.set(counterpartId, {
-            metAtIso,
-            metWhere,
-            relevance
-          });
-        }
+    const latestMetByUserId = new Map<string, { metAtIso: string; metWhere: string; userRateAffinity: number }>();
+    for (const item of await this.queryMetRateItems(activeUserId, query.sort)) {
+      const candidateUserId = item.userId?.trim() ?? '';
+      if (!candidateUserId || candidateUserId === activeUserId) {
+        continue;
       }
-    }
-
-
-    if (latestMetByUserId.size < 12) {
-      for (const user of allUsers) {
-        if (user.id === activeUserId || existingUserIds.has(user.id) || latestMetByUserId.has(user.id)) {
-          continue;
-        }
-        latestMetByUserId.set(user.id, {
-          metAtIso: AppUtils.toIsoDateTime(AppUtils.addDays(new Date('2026-02-24T12:00:00'), -((AppUtils.hashText(`${activeUserId}:community:${ownerId}:${user.id}`) % 90) + 1))),
-          metWhere: 'MyScoutee community',
-          relevance: 56 + (AppUtils.hashText(`${activeUserId}:community:${user.id}`) % 18)
+      const metAtIso = item.happenedAt?.trim() || new Date().toISOString();
+      if (!this.isFinishedMetActivity(metAtIso)) {
+        continue;
+      }
+      const metWhere = item.eventName?.trim() || 'Met on MyScoutee';
+      const userRateAffinity = this.normalizeRateItemAffinity(item);
+      const current = latestMetByUserId.get(candidateUserId);
+      if (!current || AppUtils.toSortableDate(metAtIso) > AppUtils.toSortableDate(current.metAtIso)) {
+        latestMetByUserId.set(candidateUserId, {
+          metAtIso,
+          metWhere,
+          userRateAffinity
         });
-        if (latestMetByUserId.size >= 12) {
-          break;
-        }
       }
     }
 
     const row = this.buildOwnerRow(query);
     const rowKey = `${row.type}:${row.id}`;
-    const candidates = allUsers
-      .filter(user => !existingUserIds.has(user.id))
-      .filter(user => latestMetByUserId.has(user.id))
+    const candidates = [...latestMetByUserId.keys()]
+      .filter(userId => !existingUserIds.has(userId))
+      .map(userId => this.usersRepository.queryUserById(userId))
+      .filter((user): user is DemoUser => Boolean(user))
       .map(user => {
         const entry = ActivityMembersBuilder.toActivityMemberEntry(
           user as unknown as DemoUser,
@@ -113,7 +101,6 @@ export class DemoActivityInviteCandidatesRepository implements ActivityInviteCan
           metAtIso: latestMet.metAtIso,
           actionAtIso: latestMet.metAtIso,
           metWhere: latestMet.metWhere,
-          relevance: latestMet.relevance,
           status: 'pending' as const,
           pendingSource: 'admin' as const,
           requestKind: 'invite' as const,
@@ -122,8 +109,12 @@ export class DemoActivityInviteCandidatesRepository implements ActivityInviteCan
       });
 
     candidates.sort((left, right) => {
-      if (query.sort === 'relevant' && right.relevance !== left.relevance) {
-        return right.relevance - left.relevance;
+      if (query.sort === 'relevant') {
+        const leftUserRateAffinity = latestMetByUserId.get(left.userId)?.userRateAffinity ?? 0;
+        const rightUserRateAffinity = latestMetByUserId.get(right.userId)?.userRateAffinity ?? 0;
+        if (rightUserRateAffinity !== leftUserRateAffinity) {
+          return rightUserRateAffinity - leftUserRateAffinity;
+        }
       }
       return AppUtils.toSortableDate(right.metAtIso) - AppUtils.toSortableDate(left.metAtIso);
     });
@@ -157,35 +148,39 @@ export class DemoActivityInviteCandidatesRepository implements ActivityInviteCan
     } as AppTypes.ActivityListRow;
   }
 
-  private counterpartUserIds(
-    rate: {
-      fromUserId: string;
-      toUserId: string;
-      ownerUserId?: string;
-      mode: 'single' | 'pair';
-    },
-    activeUserId: string
-  ): string[] {
-    if (rate.mode === 'pair' && rate.ownerUserId?.trim() === activeUserId) {
-      return [rate.fromUserId.trim(), rate.toUserId.trim()].filter(userId => userId && userId !== activeUserId);
+  private async queryMetRateItems(
+    activeUserId: string,
+    sort: AppTypes.ActivityInviteSort
+  ): Promise<RateMenuItem[]> {
+    const itemsById = new Map<string, RateMenuItem>();
+    for (const socialBadgeEnabled of [false, true]) {
+      const page = await this.usersRatingsRepository.queryActivityRateItemsPage({
+        ownerUserId: activeUserId,
+        mode: 'single',
+        displayDirection: 'met',
+        socialBadgeEnabled,
+        sort: sort === 'relevant' ? 'relevance' : 'happenedAt',
+        sortDirection: 'desc',
+        limit: 500
+      });
+      for (const item of page.items) {
+        itemsById.set(item.id, { ...item });
+      }
     }
-    if (rate.fromUserId.trim() === activeUserId) {
-      return [rate.toUserId.trim()].filter(Boolean);
-    }
-    if (rate.toUserId.trim() === activeUserId) {
-      return [rate.fromUserId.trim()].filter(Boolean);
-    }
-    return [];
+    return [...itemsById.values()];
   }
 
-  private normalizeRelevance(rate: {
-    rate: number;
-    scoreGiven?: number;
-    scoreReceived?: number;
-  }): number {
-    const base = Number.isFinite(Number(rate.rate)) ? Number(rate.rate) : 5;
-    const given = Number.isFinite(Number(rate.scoreGiven)) ? Number(rate.scoreGiven) : base;
-    const received = Number.isFinite(Number(rate.scoreReceived)) ? Number(rate.scoreReceived) : base;
-    return Math.max(40, Math.min(100, Math.round(((given + received) / 2) * 10)));
+  private normalizeRateItemAffinity(item: RateMenuItem): number {
+    const scoreGiven = Number.isFinite(Number(item.scoreGiven)) ? Math.max(0, Number(item.scoreGiven)) : 0;
+    const scoreReceived = Number.isFinite(Number(item.scoreReceived)) ? Math.max(0, Number(item.scoreReceived)) : 0;
+    const score = scoreGiven > 0 && scoreReceived > 0
+      ? (2 * scoreGiven * scoreReceived) / (scoreGiven + scoreReceived)
+      : (scoreGiven > 0 ? scoreGiven : scoreReceived > 0 ? scoreReceived : 5);
+    return Math.max(40, Math.min(100, Math.round(score * 10)));
+  }
+
+  private isFinishedMetActivity(happenedAt: string): boolean {
+    const happenedAtMs = AppUtils.toSortableDate(happenedAt);
+    return happenedAtMs <= 0 || happenedAtMs <= Date.now();
   }
 }

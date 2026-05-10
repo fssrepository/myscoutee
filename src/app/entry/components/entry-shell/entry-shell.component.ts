@@ -4,9 +4,9 @@ import { AppContext, HelpCenterService, LandingContentService, USERS_LOAD_CONTEX
 import type { DemoBootstrapProgressStage } from '../../../shared/core/demo';
 import type * as AppTypes from '../../../shared/core/base/models';
 import type { LocationCoordinates } from '../../../shared/core/base/interfaces/location.interface';
-import { resolveCurrentRouteDelayMs } from '../../../shared/core/base/services/route-delay.service';
 import { ConfirmationDialogComponent } from '../../../shared/ui/components/confirmation-dialog/confirmation-dialog.component';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
+import type { InfoCardData } from '../../../shared/ui';
 import { EntryConsentPopupComponent } from '../entry-consent-popup/entry-consent-popup.component';
 import { EntryDemoUserSelectorComponent } from '../entry-demo-user-selector/entry-demo-user-selector.component';
 import { EntryFirebaseAuthPopupComponent } from '../entry-firebase-auth-popup/entry-firebase-auth-popup.component';
@@ -35,7 +35,6 @@ export class EntryShellComponent implements OnDestroy {
   private static readonly ENTRY_CONSENT_KEY = 'entry-gdpr-consent';
   private static readonly ENTRY_CONSENT_AUDIT_KEY = 'entry-gdpr-consent-audit';
   private static readonly ENTRY_CONSENT_AUDIT_MAX = 30;
-  private static readonly LANDING_ARTICLES_LOADING_DELAY_MS = 1500;
   private static readonly LANDING_ARTICLES_LOADING_WINDOW_MS = 3000;
 
   private readonly injector = inject(Injector);
@@ -47,6 +46,7 @@ export class EntryShellComponent implements OnDestroy {
   private readonly confirmationDialogService = inject(ConfirmationDialogService);
   private usersServiceRef: UsersService | null = null;
   private loginEligibilityBusy = false;
+  private entryContentLoadPromise: Promise<void> | null = null;
 
   @Input({ required: true }) authMode: AppTypes.AuthMode = 'selector';
   @Input() firebaseAuthProfile: AppTypes.FirebaseAuthProfile | null = null;
@@ -63,7 +63,7 @@ export class EntryShellComponent implements OnDestroy {
   protected entryPrivacyLoading = true;
   protected landingArticlesLoading = true;
   protected landingArticlesLoadingProgress = 0;
-  protected landingIdeaPosts: AppTypes.IdeaPost[] = [];
+  protected landingIdeaCards: InfoCardData[] = [];
   protected showUserSelector = false;
   protected demoSelectorUsers: DemoUserListItemDto[] = [];
   protected demoSelectorLoading = false;
@@ -201,7 +201,7 @@ export class EntryShellComponent implements OnDestroy {
   protected openEntryConsentPopup(viewOnly = false): void {
     if (this.helpCenter.privacyState() === null) {
       this.entryPrivacyLoading = true;
-      void this.loadEntryPrivacyContent();
+      void this.loadEntryContent();
     }
     this.entryConsentViewOnly = viewOnly;
     this.showEntryConsentPopup = true;
@@ -243,9 +243,8 @@ export class EntryShellComponent implements OnDestroy {
   }
 
   private initializeEntryFlow(): void {
-    const hasStoredConsent = Boolean(localStorage.getItem(EntryShellComponent.ENTRY_CONSENT_KEY));
     this.entryConsentViewOnly = false;
-    this.showEntryConsentPopup = !hasStoredConsent;
+    this.showEntryConsentPopup = false;
     this.entryPrivacyLoading = true;
     this.landingArticlesLoading = true;
     this.landingArticlesLoadingProgress = 0;
@@ -258,7 +257,7 @@ export class EntryShellComponent implements OnDestroy {
     this.demoSelectorSubmitting = false;
     this.demoSelectorSelectedUserId = '';
     this.showFirebaseAuthPopup = false;
-    void this.loadEntryPrivacyContent();
+    void this.loadEntryContent();
   }
 
   private get usersService(): UsersService {
@@ -274,10 +273,18 @@ export class EntryShellComponent implements OnDestroy {
     }
     if (this.helpCenter.privacyState() === null) {
       this.entryPrivacyLoading = true;
-      void this.loadEntryPrivacyContent();
+      void this.loadEntryContent();
+      this.entryConsentViewOnly = false;
+      this.showEntryConsentPopup = false;
+      return false;
+    }
+    if (this.entryPrivacyLoading) {
+      this.entryConsentViewOnly = false;
+      this.showEntryConsentPopup = false;
+      return false;
     }
     this.entryConsentViewOnly = false;
-    this.showEntryConsentPopup = true;
+    this.showEntryConsentPopup = this.loadEntryConsentState() === null;
     return false;
   }
 
@@ -601,17 +608,17 @@ export class EntryShellComponent implements OnDestroy {
     }
   }
 
-  private async loadEntryPrivacyContent(): Promise<void> {
+  private async loadEntryContent(): Promise<void> {
+    if (this.entryContentLoadPromise) {
+      return this.entryContentLoadPromise;
+    }
     const requestToken = ++this.landingContentRequestToken;
     this.entryPrivacyLoading = true;
     this.startLandingArticlesLoadingWindow();
-    try {
-      const [state] = await Promise.all([
-        this.landingContent.loadOnce(),
-        this.wait(this.landingArticlesLoadingDelayMs())
-      ]);
-      this.landingIdeaPosts = state.ideas;
-    } finally {
+    this.entryContentLoadPromise = (async () => {
+      const displayState = await this.landingContent.loadDisplayState();
+      this.landingIdeaCards = displayState.ideaCards;
+    })().finally(() => {
       this.ngZone.run(() => {
         if (requestToken !== this.landingContentRequestToken) {
           return;
@@ -624,7 +631,9 @@ export class EntryShellComponent implements OnDestroy {
         this.changeDetectorRef.detectChanges();
         this.entryConsentStateChanged.emit(this.hasEntryConsent);
       });
-    }
+      this.entryContentLoadPromise = null;
+    });
+    return this.entryContentLoadPromise;
   }
 
   private entryConsentVersion(): string {
@@ -682,18 +691,4 @@ export class EntryShellComponent implements OnDestroy {
     this.landingArticlesLoadingInterval = null;
   }
 
-  private landingArticlesLoadingDelayMs(): number {
-    const routeDelayMs = resolveCurrentRouteDelayMs(
-      '/landing/content',
-      EntryShellComponent.LANDING_ARTICLES_LOADING_DELAY_MS
-    );
-    return routeDelayMs > 0 ? routeDelayMs : EntryShellComponent.LANDING_ARTICLES_LOADING_DELAY_MS;
-  }
-
-  private wait(delayMs: number): Promise<void> {
-    if (delayMs <= 0) {
-      return Promise.resolve();
-    }
-    return new Promise(resolve => setTimeout(resolve, delayMs));
-  }
 }

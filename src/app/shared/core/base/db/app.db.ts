@@ -3,6 +3,7 @@ import { Injectable, signal } from '@angular/core';
 import type {
   ActivityRateRecordQuery,
   ActivityRateRecordQueryResult,
+  UserRateOutboxRecord,
   UserRateRecord
 } from '../interfaces/game.interface';
 import { ASSETS_TABLE_NAME } from '../../demo/models/assets.model';
@@ -122,7 +123,7 @@ export class AppMemoryDb {
     }
     await new Promise<void>(resolve => {
       const tx = db.transaction(AppMemoryDb.INDEXED_DB_STORE, 'readwrite');
-      tx.objectStore(AppMemoryDb.INDEXED_DB_STORE).put(value, normalizedKey);
+      tx.objectStore(AppMemoryDb.INDEXED_DB_STORE).put(this.indexedDbEntryForPersistence(normalizedKey, value), normalizedKey);
       tx.oncomplete = () => resolve();
       tx.onerror = () => resolve();
       tx.onabort = () => resolve();
@@ -246,7 +247,7 @@ export class AppMemoryDb {
       return;
     }
     try {
-      localStorage.setItem(AppMemoryDb.STORAGE_KEY, JSON.stringify(state));
+      localStorage.setItem(AppMemoryDb.STORAGE_KEY, JSON.stringify(this.stateForPersistence(state)));
     } catch {
       // Ignore quota/private-mode write failures in demo mode.
     }
@@ -427,22 +428,23 @@ export class AppMemoryDb {
     if (!db) {
       return;
     }
+    const persistedState = this.stateForPersistence(state);
     await new Promise<void>(resolve => {
       const tx = db.transaction(AppMemoryDb.INDEXED_DB_STORE, 'readwrite');
       const tablesStore = tx.objectStore(AppMemoryDb.INDEXED_DB_STORE);
-      tablesStore.put(state[USERS_TABLE_NAME], USERS_TABLE_NAME);
-      tablesStore.put(state[ASSETS_TABLE_NAME], ASSETS_TABLE_NAME);
-      tablesStore.put(state[ACTIVITY_MEMBERS_TABLE_NAME], ACTIVITY_MEMBERS_TABLE_NAME);
-      tablesStore.put(state[ACTIVITY_RESOURCES_TABLE_NAME], ACTIVITY_RESOURCES_TABLE_NAME);
-      tablesStore.put(state[USER_RATES_TABLE_NAME], USER_RATES_TABLE_NAME);
-      tablesStore.put(state[USER_RATES_OUTBOX_TABLE_NAME], USER_RATES_OUTBOX_TABLE_NAME);
-      tablesStore.put(state[USER_FILTER_PREFERENCES_TABLE_NAME], USER_FILTER_PREFERENCES_TABLE_NAME);
-      tablesStore.put(state[CHATS_TABLE_NAME], CHATS_TABLE_NAME);
-      tablesStore.put(state[EVENT_FEEDBACK_TABLE_NAME], EVENT_FEEDBACK_TABLE_NAME);
-      tablesStore.put(state[HELP_CENTER_TABLE_NAME], HELP_CENTER_TABLE_NAME);
-      tablesStore.put(state[IDEA_POSTS_TABLE_NAME], IDEA_POSTS_TABLE_NAME);
-      tablesStore.put(state[PROFILE_EXPERIENCES_TABLE_NAME], PROFILE_EXPERIENCES_TABLE_NAME);
-      tablesStore.put(state[EVENTS_TABLE_NAME], EVENTS_TABLE_NAME);
+      tablesStore.put(persistedState[USERS_TABLE_NAME], USERS_TABLE_NAME);
+      tablesStore.put(persistedState[ASSETS_TABLE_NAME], ASSETS_TABLE_NAME);
+      tablesStore.put(persistedState[ACTIVITY_MEMBERS_TABLE_NAME], ACTIVITY_MEMBERS_TABLE_NAME);
+      tablesStore.put(persistedState[ACTIVITY_RESOURCES_TABLE_NAME], ACTIVITY_RESOURCES_TABLE_NAME);
+      tablesStore.put(persistedState[USER_RATES_TABLE_NAME], USER_RATES_TABLE_NAME);
+      tablesStore.put(persistedState[USER_RATES_OUTBOX_TABLE_NAME], USER_RATES_OUTBOX_TABLE_NAME);
+      tablesStore.put(persistedState[USER_FILTER_PREFERENCES_TABLE_NAME], USER_FILTER_PREFERENCES_TABLE_NAME);
+      tablesStore.put(persistedState[CHATS_TABLE_NAME], CHATS_TABLE_NAME);
+      tablesStore.put(persistedState[EVENT_FEEDBACK_TABLE_NAME], EVENT_FEEDBACK_TABLE_NAME);
+      tablesStore.put(persistedState[HELP_CENTER_TABLE_NAME], HELP_CENTER_TABLE_NAME);
+      tablesStore.put(persistedState[IDEA_POSTS_TABLE_NAME], IDEA_POSTS_TABLE_NAME);
+      tablesStore.put(persistedState[PROFILE_EXPERIENCES_TABLE_NAME], PROFILE_EXPERIENCES_TABLE_NAME);
+      tablesStore.put(persistedState[EVENTS_TABLE_NAME], EVENTS_TABLE_NAME);
       tablesStore.delete('demoEvents');
       tablesStore.delete('rates');
       tablesStore.delete(AppMemoryDb.LEGACY_INDEXED_DB_STATE_KEY);
@@ -451,6 +453,35 @@ export class AppMemoryDb {
       tx.onerror = () => resolve();
       tx.onabort = () => resolve();
     });
+  }
+
+  private indexedDbEntryForPersistence(key: string, value: unknown): unknown {
+    return key === EVENTS_TABLE_NAME
+      ? this.eventsTableForPersistence(value as DemoMemorySchema[typeof EVENTS_TABLE_NAME])
+      : value;
+  }
+
+  private stateForPersistence(state: DemoMemorySchema): DemoMemorySchema {
+    return {
+      ...state,
+      [EVENTS_TABLE_NAME]: this.eventsTableForPersistence(state[EVENTS_TABLE_NAME])
+    };
+  }
+
+  private eventsTableForPersistence(
+    table: DemoMemorySchema[typeof EVENTS_TABLE_NAME]
+  ): DemoMemorySchema[typeof EVENTS_TABLE_NAME] {
+    const byId: DemoMemorySchema[typeof EVENTS_TABLE_NAME]['byId'] = {};
+    for (const [id, record] of Object.entries(table?.byId ?? {})) {
+      const next = { ...(record as unknown as Record<string, unknown>) };
+      delete next['acceptedMemberUserIds'];
+      delete next['pendingMemberUserIds'];
+      byId[id] = next as unknown as DemoMemorySchema[typeof EVENTS_TABLE_NAME]['byId'][string];
+    }
+    return {
+      byId,
+      ids: Array.isArray(table?.ids) ? [...table.ids] : []
+    };
   }
 
   private readIndexedDbEntry(db: IDBDatabase, key: string): Promise<unknown | null> {
@@ -502,7 +533,6 @@ export class AppMemoryDb {
     const filtered = ratesTable.ids
       .map(id => ratesTable.byId[id])
       .filter((record): record is UserRateRecord => Boolean(record))
-      .filter(record => record.source === 'activity-rate')
       .filter(record => (record.ownerUserId?.trim() ?? '') === query.ownerUserId)
       .filter(record => record.mode === query.mode)
       .filter(record => (record.displayDirection ?? '') === query.displayDirection)
@@ -693,18 +723,14 @@ export class AppMemoryDb {
           : [...fallback[USERS_TABLE_NAME].ids]
       },
       [USER_RATES_TABLE_NAME]: {
-        byId: ratesSource?.byId && typeof ratesSource.byId === 'object'
-          ? { ...ratesSource.byId }
-          : { ...fallback[USER_RATES_TABLE_NAME].byId },
+        byId: this.normalizeUserRatesById(ratesSource?.byId, fallback[USER_RATES_TABLE_NAME].byId),
         ids: Array.isArray(ratesSource?.ids)
           ? ratesSource.ids.map(id => String(id))
           : [...fallback[USER_RATES_TABLE_NAME].ids],
         idsByRelevantUserId: this.normalizeUserRatesIdsByRelevantUserId(ratesSource)
       },
       [USER_RATES_OUTBOX_TABLE_NAME]: {
-        byId: outboxSource?.byId && typeof outboxSource.byId === 'object'
-          ? { ...outboxSource.byId }
-          : { ...fallback[USER_RATES_OUTBOX_TABLE_NAME].byId },
+        byId: this.normalizeUserRatesOutboxById(outboxSource?.byId, fallback[USER_RATES_OUTBOX_TABLE_NAME].byId),
         ids: Array.isArray(outboxSource?.ids)
           ? outboxSource.ids.map(id => String(id))
           : [...fallback[USER_RATES_OUTBOX_TABLE_NAME].ids]
@@ -826,6 +852,121 @@ export class AppMemoryDb {
     return value && typeof value === 'object'
       ? { ...(value as DemoMemorySchema[typeof ASSETS_TABLE_NAME]['byId']) }
       : { ...fallback };
+  }
+
+  private normalizeUserRatesById(
+    value: unknown,
+    fallback: DemoMemorySchema[typeof USER_RATES_TABLE_NAME]['byId']
+  ): DemoMemorySchema[typeof USER_RATES_TABLE_NAME]['byId'] {
+    const source = value && typeof value === 'object'
+      ? value as Record<string, unknown>
+      : fallback as Record<string, unknown>;
+    const next: DemoMemorySchema[typeof USER_RATES_TABLE_NAME]['byId'] = {};
+    for (const [id, record] of Object.entries(source)) {
+      const normalized = this.normalizeUserRateRecord(record);
+      if (normalized) {
+        next[id] = normalized;
+      }
+    }
+    return next;
+  }
+
+  private normalizeUserRatesOutboxById(
+    value: unknown,
+    fallback: DemoMemorySchema[typeof USER_RATES_OUTBOX_TABLE_NAME]['byId']
+  ): DemoMemorySchema[typeof USER_RATES_OUTBOX_TABLE_NAME]['byId'] {
+    const source = value && typeof value === 'object'
+      ? value as Record<string, unknown>
+      : fallback as Record<string, unknown>;
+    const next: DemoMemorySchema[typeof USER_RATES_OUTBOX_TABLE_NAME]['byId'] = {};
+    for (const [id, record] of Object.entries(source)) {
+      if (!record || typeof record !== 'object') {
+        continue;
+      }
+      const outboxRecord = record as UserRateOutboxRecord;
+      const payload = this.normalizeUserRateRecord(outboxRecord.payload);
+      if (!payload) {
+        continue;
+      }
+      next[id] = {
+        ...outboxRecord,
+        payload
+      };
+    }
+    return next;
+  }
+
+  private normalizeUserRateRecord(value: unknown): UserRateRecord | null {
+    if (!value || typeof value !== 'object') {
+      return null;
+    }
+    const source = value as Partial<UserRateRecord>;
+    const normalized: UserRateRecord = {
+      id: this.normalizeRateText(source.id),
+      fromUserId: this.normalizeRateText(source.fromUserId),
+      toUserId: this.normalizeRateText(source.toUserId),
+      rate: this.normalizeRateNumber(source.rate),
+      mode: source.mode === 'pair' ? 'pair' : 'single',
+      createdAtIso: this.normalizeRateText(source.createdAtIso),
+      updatedAtIso: this.normalizeRateText(source.updatedAtIso)
+    };
+    const ownerUserId = this.normalizeRateText(source.ownerUserId);
+    if (ownerUserId) {
+      normalized.ownerUserId = ownerUserId;
+    }
+    const displayId = this.normalizeRateText(source.displayId);
+    if (displayId) {
+      normalized.displayId = displayId;
+    }
+    if (
+      source.displayDirection === 'given'
+      || source.displayDirection === 'received'
+      || source.displayDirection === 'mutual'
+      || source.displayDirection === 'met'
+    ) {
+      normalized.displayDirection = source.displayDirection;
+    }
+    if (source.socialContext === 'separated-friends' || source.socialContext === 'friends-in-common') {
+      normalized.socialContext = source.socialContext;
+    }
+    const bridgeUserId = this.normalizeRateText(source.bridgeUserId);
+    if (bridgeUserId) {
+      normalized.bridgeUserId = bridgeUserId;
+    }
+    if (Number.isFinite(Number(source.bridgeCount))) {
+      normalized.bridgeCount = Math.max(0, Math.trunc(Number(source.bridgeCount)));
+    }
+    if (Number.isFinite(Number(source.scoreGiven))) {
+      normalized.scoreGiven = this.normalizeRateNumber(source.scoreGiven);
+    }
+    if (Number.isFinite(Number(source.scoreReceived))) {
+      normalized.scoreReceived = this.normalizeRateNumber(source.scoreReceived);
+    }
+    const eventName = this.normalizeRateText(source.eventName);
+    if (eventName) {
+      normalized.eventName = eventName;
+    }
+    const happenedAtIso = this.normalizeRateText(source.happenedAtIso);
+    if (happenedAtIso) {
+      normalized.happenedAtIso = happenedAtIso;
+    }
+    if (Number.isFinite(Number(source.distanceMetersExact))) {
+      normalized.distanceMetersExact = Math.max(0, Math.trunc(Number(source.distanceMetersExact)));
+    } else {
+      normalized.distanceMetersExact = 0;
+    }
+    return normalized;
+  }
+
+  private normalizeRateText(value: unknown): string {
+    return `${value ?? ''}`.trim();
+  }
+
+  private normalizeRateNumber(value: unknown): number {
+    if (!Number.isFinite(Number(value))) {
+      return 0;
+    }
+    return Math.trunc(Number(value));
   }
 
   private normalizeProfileExperiencesByUserId(
@@ -972,9 +1113,7 @@ export class AppMemoryDb {
   private normalizeUserRatesIdsByRelevantUserId(
     source: Partial<DemoMemorySchema[typeof USER_RATES_TABLE_NAME]> | undefined
   ): Record<string, string[]> {
-    const normalizedById = source?.byId && typeof source.byId === 'object'
-      ? { ...source.byId }
-      : {};
+    const normalizedById = this.normalizeUserRatesById(source?.byId, {});
     const normalizedIds = this.normalizeIdList(source?.ids, []);
     const next: Record<string, string[]> = {};
 
@@ -1027,13 +1166,11 @@ export class AppMemoryDb {
     return Number.isFinite(parsed) ? parsed : 0;
   }
 
-  private userRateDistanceValue(record: { distanceKm?: number; distanceMetersExact?: number } | null | undefined): number {
+  private userRateDistanceValue(record: { distanceMetersExact?: number } | null | undefined): number {
     if (Number.isFinite(record?.distanceMetersExact)) {
       return Math.max(0, Math.trunc(Number(record?.distanceMetersExact)));
     }
-    return Number.isFinite(record?.distanceKm)
-      ? Math.max(0, Math.round(Number(record?.distanceKm) * 1000))
-      : 0;
+    return 0;
   }
 
   private userRateRelevanceScore(record: UserRateRecord | null | undefined): number {

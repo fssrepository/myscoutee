@@ -320,6 +320,8 @@ const ONBOARDING_DEMO_USER: DemoUser = {
 };
 
 export class DemoUserSeedBuilder {
+  private static readonly INSIDE_NETWORK_GAME_PROFILE_STATUSES = new Set(['public', 'friends only']);
+  private static readonly HARD_HIDDEN_PROFILE_STATUSES = new Set(['blocked', 'inactive', 'deleted']);
   private static readonly CITY_LOCATION_COORDINATES_BY_NAME: Record<string, LocationCoordinates> = {
     Austin: { latitude: 30.2672, longitude: -97.7431 },
     Seattle: { latitude: 47.6062, longitude: -122.3321 },
@@ -347,19 +349,27 @@ export class DemoUserSeedBuilder {
     const firstNamesMen = ['Liam', 'Noah', 'Ethan', 'Mason', 'Lucas', 'Owen', 'Elijah', 'Leo', 'Ryan', 'Alex'];
     const lastNames = ['Parker', 'Reed', 'Stone', 'Lane', 'Baker', 'Hale', 'Rivera', 'Turner', 'Brooks', 'Grant'];
     const cities = ['Austin', 'Seattle', 'Chicago', 'Denver', 'Miami', 'Boston', 'Phoenix', 'Nashville', 'San Diego', 'Portland'];
+    const usedPrimaryPortraitUrls = new Set(
+      expanded
+        .map(user => user.images?.[0]?.trim() ?? '')
+        .filter(Boolean)
+    );
+    let generatedWomenCount = 0;
+    let generatedMenCount = 0;
 
     for (let index = baseUsers.length; index < totalCount; index += 1) {
       const id = `u${index + 1}`;
       const template = normalizedBaseUsers[index % normalizedBaseUsers.length];
       const gender = index % 2 === 0 ? 'woman' : 'man';
       const firstNamePool = gender === 'woman' ? firstNamesWomen : firstNamesMen;
-      const firstName = firstNamePool[index % firstNamePool.length];
-      const lastName = lastNames[(index * 3) % lastNames.length];
+      const generatedGenderIndex = gender === 'woman' ? generatedWomenCount++ : generatedMenCount++;
+      const firstName = firstNamePool[generatedGenderIndex % firstNamePool.length];
+      const lastName = lastNames[(generatedGenderIndex * 3 + Math.floor(generatedGenderIndex / firstNamePool.length)) % lastNames.length];
       const name = `${firstName} ${lastName}`;
       const initials = `${firstName[0] ?? 'U'}${lastName[0] ?? 'S'}`.toUpperCase();
       const age = 24 + (index % 12);
       const birthday = new Date(1990 + (index % 11), index % 12, 1 + (index % 27));
-      const portraitIndex = (index * 7) % 100;
+      const images = this.buildUniquePrimaryPortraitStack(gender, (index * 7) % 100, usedPrimaryPortraitUrls);
       expanded.push(this.withResolvedLocationCoordinates({
         ...template,
         id,
@@ -369,11 +379,32 @@ export class DemoUserSeedBuilder {
         city: cities[index % cities.length],
         initials,
         gender,
-        images: buildDemoPortraitStack(gender, portraitIndex),
+        images,
         ...this.demoLifecycleStatusForIndex(index, totalCount)
       }));
     }
     return this.withOptionalOnboardingProfile(expanded, includeOnboardingProfile);
+  }
+
+  private static buildUniquePrimaryPortraitStack(
+    gender: DemoUser['gender'],
+    seedIndex: number,
+    usedPrimaryPortraitUrls: Set<string>
+  ): string[] {
+    for (let offset = 0; offset < 100; offset += 1) {
+      const images = buildDemoPortraitStack(gender, seedIndex + offset);
+      const primaryImageUrl = images[0]?.trim() ?? '';
+      if (primaryImageUrl && !usedPrimaryPortraitUrls.has(primaryImageUrl)) {
+        usedPrimaryPortraitUrls.add(primaryImageUrl);
+        return images;
+      }
+    }
+    const images = buildDemoPortraitStack(gender, seedIndex);
+    const primaryImageUrl = images[0]?.trim() ?? '';
+    if (primaryImageUrl) {
+      usedPrimaryPortraitUrls.add(primaryImageUrl);
+    }
+    return images;
   }
 
   private static demoLifecycleStatusForIndex(index: number, totalCount: number): Partial<DemoUser> {
@@ -455,6 +486,18 @@ export class DemoUserSeedBuilder {
     const [firstId, secondId] = [activeUserId.trim(), userId.trim()].sort();
     const seed = AppUtils.hashText(`friend-pair:${firstId}:${secondId}`);
     return (seed % 100) < 32;
+  }
+
+  static isPublicGameProfile(user: Pick<DemoUser, 'profileStatus'> | null | undefined): boolean {
+    return user?.profileStatus === 'public';
+  }
+
+  static isInsideNetworkGameProfile(user: Pick<DemoUser, 'profileStatus'> | null | undefined): boolean {
+    return this.INSIDE_NETWORK_GAME_PROFILE_STATUSES.has(user?.profileStatus ?? '');
+  }
+
+  static isActivityRateVisibleProfile(user: Pick<DemoUser, 'profileStatus'> | null | undefined): boolean {
+    return Boolean(user) && !this.HARD_HIDDEN_PROFILE_STATUSES.has(user?.profileStatus ?? '');
   }
 
   static isEmptyOnboardingProfileUserId(userId: string): boolean {

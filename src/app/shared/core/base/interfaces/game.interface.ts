@@ -72,7 +72,6 @@ export interface UserRateRecord {
   toUserId: string;
   rate: number;
   mode: 'single' | 'pair';
-  source: 'game-card' | 'activity-rate';
   createdAtIso: string;
   updatedAtIso: string;
   ownerUserId?: string;
@@ -85,7 +84,6 @@ export interface UserRateRecord {
   scoreReceived?: number;
   eventName?: string;
   happenedAtIso?: string;
-  distanceKm?: number;
   distanceMetersExact?: number;
 }
 
@@ -138,7 +136,10 @@ export interface UserGameDataService {
     raterUserId: string,
     ratedUserId: string,
     rating: number,
-    mode?: 'single' | 'pair'
+    mode?: 'single' | 'pair',
+    socialContext?: UserGameSocialCard['socialContext'],
+    bridgeUserId?: string,
+    bridgeCount?: number
   ): void;
   queryUserGameCardsByFilter(request: UserGameCardsQueryRequest): Promise<UserGameCardsQueryResponse>;
 }

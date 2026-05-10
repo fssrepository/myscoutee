@@ -446,7 +446,7 @@
                 }
                 @if (eventForm.subEvents.length > 0) {
                 <span class="event-subevents-panel-body">
-                  @for (subEvent of eventForm.subEvents; track subEvent; let index = $index) {
+                  @for (subEvent of eventForm.subEvents; track subEventPanelChipTrackId(index, subEvent); let index = $index) {
                   <span class="event-subevent-panel-chip"
                     [class.event-subevent-panel-chip-current]="subEventPanelChipIsCurrent(subEvent)"
                     [ngStyle]="subEventPanelChipStyle(index)">

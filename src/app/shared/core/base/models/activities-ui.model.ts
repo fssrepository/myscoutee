@@ -1,10 +1,4 @@
-import type {
-  ChatMenuItem,
-  EventMenuItem,
-  HostingMenuItem,
-  InvitationMenuItem,
-  RateMenuItem
-} from '../interfaces/activity-feed.interface';
+import type { InfoCardData } from '../../../ui';
 
 export type ActivitiesPrimaryFilter = 'chats' | 'invitations' | 'events' | 'hosting' | 'rates';
 export type ActivitiesEventScope = 'all' | 'active-events' | 'pending' | 'invitations' | 'my-events' | 'drafts' | 'trash';
@@ -67,7 +61,8 @@ export interface ActivityListRow {
   metricScore: number;
   isAdmin?: boolean;
   rateDisplay?: ActivityRateDisplay | null;
-  source: ChatMenuItem | InvitationMenuItem | EventMenuItem | HostingMenuItem | RateMenuItem;
+  infoCard?: InfoCardData | null;
+  source?: unknown;
 }
 
 export interface ActivityGroup {
@@ -129,7 +124,7 @@ export interface EventExploreCard {
   timeframe: string;
   imageUrl: string;
   distanceKm: number;
-  relevance: number;
+  boost: number;
   rating: number;
   startSort: number;
   isPast: boolean;

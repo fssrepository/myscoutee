@@ -187,16 +187,6 @@ export class EventFeedbackPopupStateService {
     return !item.isRemoved && item.pendingCards > 0;
   }
 
-  public eventFeedbackItemStatusLine(item: AppTypes.EventFeedbackEventCard): string {
-    if (item.isRemoved) {
-      return 'Removed without feedback.';
-    }
-    if (item.isFeedbacked) {
-      return 'Feedbacked.';
-    }
-    return `${item.pendingCards}/${item.totalCards} feedback item${item.totalCards === 1 ? '' : 's'} pending.`;
-  }
-
   public eventFeedbackCurrentEventTitle(): string {
     const eventId =
       this.selectedOrganizerEventFeedbackEventId()

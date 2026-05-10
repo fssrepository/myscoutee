@@ -172,63 +172,63 @@ const PROFILE_STATUS_OPTIONS: Array<{ value: ProfileStatus; icon: string }> = [
 
 const PROFILE_DETAIL_GROUP_TEMPLATES: Array<{
   title: string;
-  rows: Array<{ label: string; privacy: DetailPrivacy }>;
+  rows: Array<{ labelKey: string; privacy: DetailPrivacy }>;
 }> = [
   {
     title: 'Basics',
     rows: [
-      { label: 'Name', privacy: 'Public' },
-      { label: 'City', privacy: 'Public' },
-      { label: 'Birthday', privacy: 'Friends' },
-      { label: 'Height', privacy: 'Friends' },
-      { label: 'Physique', privacy: 'Friends' },
-      { label: 'Languages', privacy: 'Public' },
-      { label: 'Horoscope', privacy: 'Public' }
+      { labelKey: 'profile.name', privacy: 'Public' },
+      { labelKey: 'profile.city', privacy: 'Public' },
+      { labelKey: 'profile.birthday', privacy: 'Friends' },
+      { labelKey: 'profile.height', privacy: 'Friends' },
+      { labelKey: 'profile.physique', privacy: 'Friends' },
+      { labelKey: 'profile.languages', privacy: 'Public' },
+      { labelKey: 'profile.horoscope', privacy: 'Public' }
     ]
   },
   {
     title: 'Lifestyle',
     rows: [
-      { label: 'Interest', privacy: 'Friends' },
-      { label: 'Drinking', privacy: 'Friends' },
-      { label: 'Smoking', privacy: 'Friends' },
-      { label: 'Workout', privacy: 'Public' },
-      { label: 'Pets', privacy: 'Public' }
+      { labelKey: 'profile.details.interest', privacy: 'Friends' },
+      { labelKey: 'profile.details.drinking', privacy: 'Friends' },
+      { labelKey: 'profile.details.smoking', privacy: 'Friends' },
+      { labelKey: 'profile.details.workout', privacy: 'Public' },
+      { labelKey: 'profile.details.pets', privacy: 'Public' }
     ]
   },
   {
     title: 'Relationships',
     rows: [
-      { label: 'Family plans', privacy: 'Hosts' },
-      { label: 'Children', privacy: 'Private' },
-      { label: 'Love style', privacy: 'Hosts' },
-      { label: 'Communication style', privacy: 'Friends' },
-      { label: 'Sexual orientation', privacy: 'Hosts' },
-      { label: 'Gender', privacy: 'Public' }
+      { labelKey: 'profile.details.familyPlans', privacy: 'Hosts' },
+      { labelKey: 'profile.details.children', privacy: 'Private' },
+      { labelKey: 'profile.details.loveStyle', privacy: 'Hosts' },
+      { labelKey: 'profile.details.communicationStyle', privacy: 'Friends' },
+      { labelKey: 'profile.details.sexualOrientation', privacy: 'Hosts' },
+      { labelKey: 'profile.gender', privacy: 'Public' }
     ]
   },
   {
     title: 'Beliefs',
     rows: [
-      { label: 'Religion', privacy: 'Private' },
-      { label: 'Values', privacy: 'Friends' }
+      { labelKey: 'profile.details.religion', privacy: 'Private' },
+      { labelKey: 'profile.details.values', privacy: 'Friends' }
     ]
   }
 ];
 
 const PROFILE_DETAIL_VALUE_OPTIONS: Record<string, string[]> = {
-  Drinking: ['Never', 'Socially', 'Occasionally', 'Weekends only'],
-  Smoking: ['Never', 'Socially', 'Occasionally', 'Trying to quit'],
-  Workout: ['Daily', '4x / week', '2-3x / week', 'Rarely'],
-  Pets: ['Dog-friendly', 'Cat-friendly', 'All pets welcome', 'No pets'],
-  'Family plans': ['Wants children', 'Open to children', 'Not sure yet', 'Does not want children'],
-  Children: ['No', 'Yes', 'Prefer not to say'],
-  'Love style': ['Long-term partnership', 'Slow-burn connection', 'Open relationship', 'Exploring'],
-  'Communication style': ['Direct + warm', 'Calm + reflective', 'Playful + light', 'Honest + concise'],
-  'Sexual orientation': ['Straight', 'Bisexual', 'Gay', 'Lesbian', 'Pansexual', 'Asexual', 'Prefer not to say'],
-  Gender: ['Woman', 'Man', 'Non-binary', 'Prefer not to say'],
-  Religion: ['Spiritual but not religious', 'Christian', 'Muslim', 'Jewish', 'Buddhist', 'Hindu', 'Atheist', 'Prefer not to say'],
-  Values: [
+  'profile.details.drinking': ['Never', 'Socially', 'Occasionally', 'Weekends only'],
+  'profile.details.smoking': ['Never', 'Socially', 'Occasionally', 'Trying to quit'],
+  'profile.details.workout': ['Daily', '4x / week', '2-3x / week', 'Rarely'],
+  'profile.details.pets': ['Dog-friendly', 'Cat-friendly', 'All pets welcome', 'No pets'],
+  'profile.details.familyPlans': ['Wants children', 'Open to children', 'Not sure yet', 'Does not want children'],
+  'profile.details.children': ['No', 'Yes', 'Prefer not to say'],
+  'profile.details.loveStyle': ['Long-term partnership', 'Slow-burn connection', 'Open relationship', 'Exploring'],
+  'profile.details.communicationStyle': ['Direct + warm', 'Calm + reflective', 'Playful + light', 'Honest + concise'],
+  'profile.details.sexualOrientation': ['Straight', 'Bisexual', 'Gay', 'Lesbian', 'Pansexual', 'Asexual', 'Prefer not to say'],
+  'profile.gender': ['Woman', 'Man', 'Non-binary', 'Prefer not to say'],
+  'profile.details.religion': ['Spiritual but not religious', 'Christian', 'Muslim', 'Jewish', 'Buddhist', 'Hindu', 'Atheist', 'Prefer not to say'],
+  'profile.details.values': [
     'Family-first, social impact, balanced life',
     'Career-driven, growth-oriented, adventurous',
     'Sustainability, empathy, community',

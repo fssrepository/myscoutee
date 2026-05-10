@@ -37,6 +37,17 @@ export interface IdeaPostSaveRequest {
   submittedAtIso: string;
 }
 
+export interface IdeaArticleDetail {
+  id: string;
+  title: string;
+  excerpt: string;
+  contentHtml: string;
+  imageUrl: string;
+  dateLabel: string;
+  sortAtIso: string;
+  featured: boolean;
+}
+
 export interface LandingContentState {
   privacy: HelpCenterState;
   ideas: IdeaPost[];

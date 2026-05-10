@@ -2,7 +2,8 @@ import { Injectable, inject, signal } from '@angular/core';
 
 import { DemoIdeaPostsService } from '../../demo/services/idea-posts.service';
 import { HttpIdeaPostsService } from '../../http/services/idea-posts.service';
-import type { IdeaPost, IdeaPostSaveRequest } from '../models';
+import type { IdeaArticleDetail, IdeaPost, IdeaPostSaveRequest } from '../models';
+import type { InfoCardData, InfoCardMenuAction } from '../../../ui';
 import { BaseRouteModeService } from './base-route-mode.service';
 
 @Injectable({
@@ -70,6 +71,104 @@ export class IdeaPostsService extends BaseRouteModeService {
     return this.ideaService().uploadImage(ownerId, entityId, file);
   }
 
+  publishedIdeaInfoCards(): InfoCardData<IdeaArticleDetail>[] {
+    return this.postsRef().map(post => this.entryIdeaInfoCard(post));
+  }
+
+  adminIdeaInfoCards(): InfoCardData<IdeaArticleDetail>[] {
+    return this.adminPostsRef().map(post => this.adminIdeaInfoCard(post));
+  }
+
+  private entryIdeaInfoCard(post: IdeaPost): InfoCardData<IdeaArticleDetail> {
+    return {
+      rowId: `entry-idea:${post.id}`,
+      title: post.title,
+      imageUrl: this.ideaImageUrl(post) || null,
+      placeholderLabel: 'No image',
+      metaRows: [this.ideaDateLabel(post, 'Fresh article')],
+      metaRowsLimit: 1,
+      description: post.excerpt,
+      descriptionLines: 3,
+      i18nIgnoreContent: true,
+      leadingIcon: {
+        icon: 'calendar_today',
+        tone: 'public'
+      },
+      mediaEnd: post.featured
+        ? {
+            variant: 'badge',
+            tone: 'selected',
+            icon: 'star',
+            label: 'Featured',
+            selected: true,
+            selectedIcon: 'star',
+            selectedLabel: 'Featured',
+            ariaLabel: 'Featured article',
+            interactive: false
+          }
+        : null,
+      footerChips: [
+        { label: 'Read more', toneClass: 'entry-idea-read-chip' }
+      ],
+      clickable: true,
+      detailRecord: this.ideaArticleDetail(post, 'Fresh article')
+    };
+  }
+
+  private adminIdeaInfoCard(post: IdeaPost): InfoCardData<IdeaArticleDetail> {
+    const statusLabel = this.adminPostStatusLabel(post);
+    const publicationAction: InfoCardMenuAction = post.published ? 'unpublish' : 'publish';
+    const featuredAction: InfoCardMenuAction = post.featured ? 'unfeature' : 'feature';
+    const menuActions: readonly InfoCardMenuAction[] = post.trashed
+      ? ['restore']
+      : [
+          'viewArticle',
+          'edit',
+          publicationAction,
+          ...(post.published ? [featuredAction] : []),
+          'delete'
+        ];
+    return {
+      rowId: `idea:${post.id}`,
+      title: post.title,
+      imageUrl: this.ideaImageUrl(post) || null,
+      placeholderLabel: 'No image',
+      metaRows: [this.ideaDateLabel(post, 'No date')],
+      metaRowsLimit: 1,
+      description: post.excerpt,
+      descriptionLines: 3,
+      i18nIgnoreContent: true,
+      surfaceTone: post.trashed ? 'draft' : !post.published ? 'draft' : post.featured ? 'series' : 'default',
+      leadingIcon: {
+        icon: post.trashed ? 'delete_outline' : post.published ? 'article' : 'drafts',
+        tone: post.published && !post.trashed ? 'public' : 'pending'
+      },
+      mediaStart: {
+        variant: 'badge',
+        tone: post.trashed ? 'full' : post.published ? 'public' : 'inactive',
+        icon: post.trashed ? 'delete_outline' : post.published ? 'visibility' : 'drafts',
+        label: statusLabel,
+        ariaLabel: statusLabel
+      },
+      mediaEnd: post.trashed || !post.published || !post.featured ? null : {
+        variant: 'badge',
+        tone: 'selected',
+        icon: 'star',
+        label: 'Featured',
+        selected: true,
+        selectedLabel: 'Featured',
+        selectedIcon: 'star',
+        ariaLabel: 'Featured article',
+        interactive: false
+      },
+      menuActions,
+      menuTitle: null,
+      footerChips: [],
+      clickable: false,
+      detailRecord: this.ideaArticleDetail(post, 'No date')
+    };
+  }
+
   private mergeAdminPost(post: IdeaPost): void {
     if (this.normalizeLang(post.lang) !== this.adminPostsLang) {
       return;
@@ -90,6 +189,19 @@ export class IdeaPostsService extends BaseRouteModeService {
     return posts.map(post => ({ ...post, imageUrls: [...post.imageUrls] }));
   }
 
+  private ideaArticleDetail(post: IdeaPost, fallbackDateLabel: string): IdeaArticleDetail {
+    return {
+      id: post.id,
+      title: post.title,
+      excerpt: post.excerpt,
+      contentHtml: post.contentHtml,
+      imageUrl: this.ideaImageUrl(post),
+      dateLabel: this.ideaDateLabel(post, fallbackDateLabel),
+      sortAtIso: post.submittedAtIso || post.updatedAtIso || post.createdAtIso || '',
+      featured: post.featured === true
+    };
+  }
+
   private sortValue(post: Pick<IdeaPost, 'submittedAtIso' | 'updatedAtIso' | 'createdAtIso'>): number {
     const parsed = Date.parse(post.submittedAtIso || post.updatedAtIso || post.createdAtIso || '');
     return Number.isFinite(parsed) ? parsed : 0;
@@ -99,4 +211,34 @@ export class IdeaPostsService extends BaseRouteModeService {
     const normalized = `${lang ?? ''}`.trim().toLowerCase().split('-')[0];
     return normalized === 'hu' ? 'hu' : 'en';
   }
+
+  private ideaImageUrl(post: Pick<IdeaPost, 'imageUrl' | 'imageUrls'> | null): string {
+    return `${post?.imageUrl ?? post?.imageUrls?.[0] ?? ''}`.trim();
+  }
+
+  private ideaDateLabel(
+    post: Pick<IdeaPost, 'submittedAtIso' | 'updatedAtIso' | 'createdAtIso'> | null,
+    fallback: string
+  ): string {
+    const parsed = Date.parse(post?.submittedAtIso || post?.updatedAtIso || post?.createdAtIso || '');
+    if (!Number.isFinite(parsed)) {
+      return fallback;
+    }
+    return new Intl.DateTimeFormat(undefined, {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    }).format(new Date(parsed));
+  }
+
+  private adminPostStatusLabel(post: Pick<IdeaPost, 'published' | 'trashed'>): string {
+    if (post.trashed) {
+      return 'Trashed';
+    }
+    if (!post.published) {
+      return 'Draft';
+    }
+    return 'Published';
+  }
+
 }

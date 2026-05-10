@@ -111,12 +111,12 @@
           [itemTemplate]="ideaCardTemplate"
         ></app-smart-list>
 
-        <ng-template #ideaCardTemplate let-post let-groupLabel="groupLabel" let-renderState="renderState">
+        <ng-template #ideaCardTemplate let-card>
           <app-info-card
             class="idea-info-card"
-            [class.is-feature-toggle-pending]="isFeatureTogglePending(post.id)"
-            [card]="ideaInfoCard(post, { groupLabel: groupLabel, renderState: renderState })"
-            (menuAction)="onIdeaCardMenuAction(post, $event)"
+            [class.is-feature-toggle-pending]="isFeatureTogglePending(ideaCardPostId(card))"
+            [card]="card"
+            (menuAction)="onIdeaCardMenuAction(card, $event)"
           ></app-info-card>
         </ng-template>
       </div>

@@ -2,8 +2,7 @@ import { Injectable, inject } from '@angular/core';
 
 import type {
   ActivityMemberOwnerRef,
-  ActivityMembersSummary,
-  ActivitiesEventSyncPayload
+  ActivityMembersSummary
 } from '../../../core/base/models';
 import type * as AppTypes from '../../../core/base/models';
 import { HttpActivityMembersRepository } from '../repositories/activity-members.repository';
@@ -38,7 +37,4 @@ export class HttpActivityMembersService {
     await this.activityMembersRepository.replaceMembersByOwner(owner, members, capacityTotal);
   }
 
-  async syncEventMembersFromEventSnapshot(payload: Omit<ActivitiesEventSyncPayload, 'syncKey'>): Promise<void> {
-    await this.activityMembersRepository.syncEventMembersFromEventSnapshot(payload);
-  }
 }

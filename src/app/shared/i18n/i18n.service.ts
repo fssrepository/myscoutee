@@ -75,6 +75,7 @@ export class I18nService {
   private readonly zone = inject(NgZone);
   private readonly currentLanguageSignal = signal(I18nService.DEFAULT_LANGUAGE);
   private readonly messagesSignal = signal<Record<string, string>>({});
+  private readonly sourceMessagesSignal = signal<Record<string, string>>({});
   private readonly sourceKeyByTextSignal = signal<Record<string, string>>({});
   private readonly revisionSignal = signal(0);
   private readonly textNodeSources = new WeakMap<Text, string>();
@@ -99,11 +100,16 @@ export class I18nService {
   }
 
   translate(value: string | null | undefined, fallback?: string | null): string {
-    const source = `${value ?? fallback ?? ''}`;
+    const source = `${value ?? ''}`;
     if (!source) {
-      return '';
+      return `${fallback ?? ''}`;
     }
-    return this.translateRaw(source);
+    const translated = this.translateRaw(source);
+    const fallbackText = `${fallback ?? ''}`.trim();
+    if (fallbackText && translated === source && fallbackText !== source.trim()) {
+      return this.translateRaw(fallbackText);
+    }
+    return translated;
   }
 
   private async loadPreferredLanguage(): Promise<void> {
@@ -292,6 +298,7 @@ export class I18nService {
   }
 
   private applySourceBundle(data: Record<string, string>): void {
+    this.sourceMessagesSignal.set(data);
     this.sourceKeyByTextSignal.set(this.buildSourceKeyIndex(data));
     this.bumpRevision();
     this.scheduleDomScan();
@@ -637,12 +644,14 @@ export class I18nService {
       return source;
     }
     const messages = this.messagesSignal();
+    const sourceMessages = this.sourceMessagesSignal();
     const sourceKeyByText = this.sourceKeyByTextSignal();
     const dynamicTranslated = this.translateDynamicSource(normalizedKey, messages, sourceKeyByText);
     if (dynamicTranslated) {
       return this.replaceCoreText(source, dynamicTranslated);
     }
-    const translated = this.resolveCoreTranslation(normalizedKey, messages, sourceKeyByText);
+    const translated = this.resolveCoreTranslation(normalizedKey, messages, sourceKeyByText)
+      ?? this.resolveCoreTranslation(normalizedKey, sourceMessages, sourceKeyByText);
     if (!translated) {
       return source;
     }

@@ -231,7 +231,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
     if (this.isBasketMode()) {
       return;
     }
-    if (event.actionId === 'share') {
+    if (event.actionId === 'shareAsset') {
       this.openOwnedAssetShareDialog(card);
       return;
     }
@@ -239,7 +239,22 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
       this.ownedAssets.runAssetItemDeleteAction(card);
       return;
     }
-    this.ownedAssets.runAssetItemEditAction(card);
+    if (event.actionId === 'takeOver') {
+      this.confirmationDialogService.open({
+        title: 'Take over asset?',
+        message: card.title,
+        cancelLabel: 'Cancel',
+        confirmLabel: 'Take Over',
+        busyConfirmLabel: 'Taking over...',
+        confirmTone: 'accent',
+        failureMessage: 'Unable to take over asset.',
+        onConfirm: () => this.ownedAssets.takeOverAssetCardById(card.id)
+      });
+      return;
+    }
+    if (event.actionId === 'editAsset') {
+      this.ownedAssets.runAssetItemEditAction(card);
+    }
   }
 
   private openOwnedAssetShareDialog(card: AppTypes.AssetCard): void {

@@ -50,6 +50,7 @@ function toActivityRateRow(
   const direction = displayedRateDirection(item, options.directionOverrides);
   const primaryUser = resolvePrimaryRateUser(item, options.users, options.activeUserId);
   const ownScore = rateOwnScore(item);
+  const distanceMetersExact = exactDistanceMeters(item);
 
   return {
     id: item.id,
@@ -58,8 +59,8 @@ function toActivityRateRow(
     subtitle: '',
     detail: '',
     dateIso: item.happenedAt ?? '',
-    distanceKm: item.distanceKm ?? 0,
-    distanceMetersExact: exactDistanceMeters(item),
+    distanceKm: distanceKmFromMeters(distanceMetersExact),
+    distanceMetersExact,
     unread: 0,
     metricScore: direction === 'mutual' ? ownScore + Math.max(item.scoreReceived, 0) : ownScore,
     rateDisplay: buildActivityRateDisplay(item, primaryUser, options),
@@ -124,7 +125,7 @@ function buildPairSlotSlides(
   return buildDisplayImageUrls(user.images, seededCount).map(imageUrl => ({
     imageUrl,
     primaryLine: `${user.name}, ${user.age}`,
-    secondaryLine: `${user.city} · ${item.distanceKm ?? 0} km`,
+    secondaryLine: `${user.city} · ${distanceKmFromMeters(exactDistanceMeters(item))} km`,
     placeholderLabel: AppUtils.initialsFromText(user.name)
   }));
 }
@@ -212,12 +213,17 @@ function exactDistanceMeters(item: RateMenuItem): number {
   if (Number.isFinite(item.distanceMetersExact)) {
     return Math.max(0, Math.trunc(Number(item.distanceMetersExact)));
   }
-  return Math.max(0, Math.round((Number(item.distanceKm) || 0) * 1000));
+  return 0;
+}
+
+function distanceKmFromMeters(distanceMeters: number): number {
+  const meters = Math.max(0, Math.trunc(Number(distanceMeters) || 0));
+  return Math.round((meters / 1000) * 10) / 10;
 }
 
 function activityRowDistanceMeters(row: AppTypes.ActivityListRow): number {
   if (Number.isFinite(row.distanceMetersExact)) {
     return Math.max(0, Math.trunc(Number(row.distanceMetersExact)));
   }
-  return Math.max(0, Math.round((Number(row.distanceKm) || 0) * 1000));
+  return 0;
 }

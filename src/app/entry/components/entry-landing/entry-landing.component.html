@@ -127,7 +127,7 @@
       </div>
     </section>
 
-    @if (articlesLoading || featuredIdeaPosts().length > 0) {
+    @if (articlesLoading || featuredIdeaCards().length > 0) {
       <section class="entry-ideas" id="articles" aria-label="MyScoutee articles">
         <div
           class="entry-ideas-carousel"
@@ -163,12 +163,12 @@
               >
               @for (page of featuredIdeaPages(); track $index) {
                 <div class="entry-ideas-carousel-page">
-                  @for (post of page; track post.id) {
+                  @for (card of page; track card.rowId) {
                     <app-info-card
                       class="entry-idea-info-card"
-                      [attr.data-entry-idea-post-id]="post.id"
-                      [card]="entryIdeaInfoCard(post)"
-                      (cardClick)="openIdeaCard(post)"
+                      [attr.data-entry-idea-post-id]="ideaCardDetail(card)?.id"
+                      [card]="card"
+                      (cardClick)="openIdeaCard(card)"
                     ></app-info-card>
                   }
                 </div>
@@ -273,7 +273,7 @@
       <header class="entry-ideas-popup-header">
         <div>
           <h2>MyScoutee articles</h2>
-          <p>{{ publishedIdeaPosts().length }} article{{ publishedIdeaPosts().length === 1 ? '' : 's' }}</p>
+          <p>{{ publishedIdeaCards().length }} article{{ publishedIdeaCards().length === 1 ? '' : 's' }}</p>
         </div>
         <button type="button" class="entry-ideas-popup-close" (click)="closeIdeasPopup()" aria-label="Close articles">
           <mat-icon>close</mat-icon>
@@ -287,11 +287,11 @@
           [itemTemplate]="entryIdeaListCardTemplate"
         ></app-smart-list>
 
-        <ng-template #entryIdeaListCardTemplate let-post let-groupLabel="groupLabel" let-renderState="renderState">
+        <ng-template #entryIdeaListCardTemplate let-card let-groupLabel="groupLabel" let-renderState="renderState">
           <app-info-card
             class="entry-ideas-list-info-card"
-            [card]="entryIdeaListInfoCard(post, { groupLabel: groupLabel, renderState: renderState })"
-            (cardClick)="openIdeaArticlePopup(post)"
+            [card]="entryIdeaListInfoCard(card, { groupLabel: groupLabel, renderState: renderState })"
+            (cardClick)="openIdeaArticlePopup(card)"
           ></app-info-card>
         </ng-template>
       </div>
@@ -299,7 +299,7 @@
   </section>
 }
 
-@if (ideaArticlePopupOpen && selectedIdeaPost(); as post) {
+@if (ideaArticlePopupOpen && selectedIdeaDetail(); as post) {
   <section class="entry-idea-article-popup" role="dialog" aria-modal="true" aria-label="Article">
     <div class="entry-idea-article-popup-backdrop" (click)="closeIdeaArticlePopup()"></div>
     <article class="entry-idea-article-popup-panel">

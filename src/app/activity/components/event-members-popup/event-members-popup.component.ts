@@ -847,7 +847,7 @@ export class EventMembersPopupComponent {
     const allMembersWereVisible = visibleCount >= previousFilteredMembers.length;
     let nextVisibleCount = Math.min(nextFilteredMembers.length, visibleCount);
     if (nextFilteredMembers.length > previousFilteredMembers.length && allMembersWereVisible) {
-      nextVisibleCount = Math.min(nextFilteredMembers.length, visibleCount + 1);
+      nextVisibleCount = nextFilteredMembers.length;
     }
     this.membersSmartList.replaceVisibleItems(nextFilteredMembers.slice(0, nextVisibleCount), {
       total: nextFilteredMembers.length

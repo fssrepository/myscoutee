@@ -105,7 +105,7 @@
                   <div class="profile-view-text-row">
                     <span>
                       <mat-icon>label</mat-icon>
-                      {{ row.label }}
+                      {{ row.labelKey | i18n }}
                     </span>
                     @if (detailValueParts(row).length > 1) {
                       <div class="profile-view-chip-row">
