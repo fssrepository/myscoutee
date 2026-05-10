@@ -223,6 +223,7 @@ export interface InfoCardFooterChip {
 
 export interface DisplayData<TDetailRecord = unknown> {
   rowId: string;
+  ownerId?: string | null;
   detailRecord?: TDetailRecord | null;
 }
 

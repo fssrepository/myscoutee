@@ -12,6 +12,7 @@ import { DemoChatsService } from '../../demo';
 import { HttpChatsService } from '../../http';
 import { BaseRouteModeService } from './base-route-mode.service';
 import { DemoUsersRepository } from '../../demo';
+import { ActivityMembersService } from './activity-members.service';
 
 @Injectable({
   providedIn: 'root'
@@ -22,6 +23,7 @@ export class ChatsService extends BaseRouteModeService {
   private readonly demoChatsService = inject(DemoChatsService);
   private readonly httpChatsService = inject(HttpChatsService);
   private readonly demoUsersRepository = inject(DemoUsersRepository);
+  private readonly activityMembersService = inject(ActivityMembersService);
 
   async queryChatItemsByUser(userId: string): Promise<DemoChatRecord[]> {
     if (this.isDemoModeEnabled(ChatsService.CHAT_ROUTE)) {
@@ -115,6 +117,139 @@ export class ChatsService extends BaseRouteModeService {
       return this.demoChatsService.markChatRead(chat, messageIds);
     }
     return this.httpChatsService.markChatRead(chat, messageIds);
+  }
+
+  async resolveEventServiceChat(input: {
+    activeUserId: string;
+    eventId: string;
+    ownerId: string;
+    title: string;
+    actionLabel: string;
+    creatorName?: string | null;
+    acceptedMemberUserIds?: readonly string[] | null;
+    pendingMemberUserIds?: readonly string[] | null;
+    hosting?: boolean;
+    notification: boolean;
+  }): Promise<(ChatMenuItem & { ownerUserId?: string }) | null> {
+    const activeUserId = input.activeUserId.trim();
+    const eventId = input.eventId.trim();
+    const ownerId = input.ownerId.trim();
+    const title = input.title.trim() || 'Event';
+    if (!activeUserId || !eventId || !ownerId) {
+      return null;
+    }
+
+    const existingChat = this.resolveExistingEventServiceChat(
+      await this.queryChatItemsByUser(activeUserId),
+      {
+        activeUserId,
+        eventId,
+        notification: input.notification
+      }
+    );
+    if (existingChat) {
+      return existingChat;
+    }
+
+    const memberSummary = input.notification
+      ? await this.activityMembersService.querySummaryByOwnerId(eventId)
+      : null;
+    return this.buildActivityServiceChat({
+      activeUserId,
+      eventId,
+      ownerId,
+      title,
+      actionLabel: input.actionLabel,
+      creatorName: input.creatorName,
+      hosting: input.hosting === true,
+      notification: input.notification,
+      acceptedMemberUserIds: input.acceptedMemberUserIds ?? memberSummary?.acceptedMemberUserIds ?? [],
+      pendingMemberUserIds: input.pendingMemberUserIds ?? memberSummary?.pendingMemberUserIds ?? []
+    });
+  }
+
+  private resolveExistingEventServiceChat(
+    chats: readonly ChatMenuItem[],
+    input: {
+      activeUserId: string;
+      eventId: string;
+      notification: boolean;
+    }
+  ): (ChatMenuItem & { ownerUserId?: string }) | null {
+    const expectedId = `c-service-event-${input.eventId}-${input.activeUserId}`;
+    const expectedServiceContext = input.notification ? 'notification' : 'event';
+    const match = chats.find(chat => chat.id === expectedId)
+      ?? chats.find(chat =>
+        chat.channelType === 'serviceEvent'
+        && chat.serviceContext === expectedServiceContext
+        && chat.eventId === input.eventId
+      );
+    return match
+      ? {
+          ...match,
+          memberIds: [...(match.memberIds ?? [])]
+        }
+      : null;
+  }
+
+  buildActivityServiceChat(input: {
+    activeUserId: string;
+    eventId: string;
+    ownerId: string;
+    title: string;
+    actionLabel: string;
+    creatorName?: string | null;
+    acceptedMemberUserIds: readonly string[];
+    pendingMemberUserIds: readonly string[];
+    hosting: boolean;
+    notification: boolean;
+  }): ChatMenuItem & { ownerUserId?: string } {
+    const acceptedAdmins = input.hosting
+      ? this.uniqueUserIds([input.ownerId, input.activeUserId])
+      : this.uniqueUserIds([input.ownerId]);
+    const memberIds = this.uniqueUserIds([
+      input.activeUserId,
+      ...acceptedAdmins,
+      ...(input.notification ? input.acceptedMemberUserIds : []),
+      ...(input.notification ? input.pendingMemberUserIds : [])
+    ]);
+    const creatorName = `${input.creatorName ?? ''}`.trim();
+
+    return {
+      id: `c-service-event-${input.eventId}-${input.activeUserId}`,
+      avatar: AppUtils.initialsFromText(creatorName || input.title),
+      title: `${input.actionLabel.trim() || 'Contact Organizer'} · ${input.title}`,
+      lastMessage: input.notification
+        ? 'Notification channel for cancellations, postponements, and urgent event updates.'
+        : `Service chat with the organizer for ${input.title}.`,
+      lastSenderId: input.ownerId || input.activeUserId,
+      memberIds: memberIds.length > 0 ? memberIds : [input.activeUserId],
+      unread: 0,
+      dateIso: new Date().toISOString(),
+      channelType: 'serviceEvent',
+      serviceContext: input.notification ? 'notification' : 'event',
+      eventId: input.eventId,
+      ownerUserId: input.activeUserId
+    };
+  }
+
+  async resolveRepositoryEventServiceChat(chat: ChatMenuItem): Promise<(ChatMenuItem & { ownerUserId?: string }) | null> {
+    if (chat.channelType !== 'serviceEvent') {
+      return null;
+    }
+    const eventId = `${chat.eventId ?? ''}`.trim();
+    const activeUserId = this.resolveChatOwnerUserId(chat, eventId);
+    if (!eventId || !activeUserId) {
+      return null;
+    }
+    return this.resolveExistingEventServiceChat(
+      await this.queryChatItemsByUser(activeUserId),
+      {
+        activeUserId,
+        eventId,
+        notification: chat.serviceContext === 'notification'
+      }
+    );
   }
 
   async queryActivitiesChatPage(
@@ -256,6 +391,20 @@ export class ChatsService extends BaseRouteModeService {
       return uniqueIds.size;
     }
     return hasFallbackUser ? 1 : 0;
+  }
+
+  private uniqueUserIds(userIds: readonly string[]): string[] {
+    return [...new Set(userIds.map(userId => userId.trim()).filter(Boolean))];
+  }
+
+  private resolveChatOwnerUserId(chat: ChatMenuItem, eventId: string): string {
+    const ownerUserId = `${(chat as { ownerUserId?: string | null }).ownerUserId ?? ''}`.trim();
+    if (ownerUserId) {
+      return ownerUserId;
+    }
+    const chatId = `${chat.id ?? ''}`.trim();
+    const prefix = `c-service-event-${eventId}-`;
+    return chatId.startsWith(prefix) ? chatId.slice(prefix.length).trim() : '';
   }
 
   private buildUserById(users: readonly DemoUser[]): ReadonlyMap<string, DemoUser> {

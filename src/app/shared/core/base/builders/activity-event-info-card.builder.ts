@@ -28,6 +28,7 @@ export class ActivityEventInfoCardBuilder {
     return {
       rowId: `${rowType}:${record.id}`,
       status,
+      ownerId: record.creatorUserId,
       groupLabel: options.groupLabel ?? null,
       title,
       surfaceTone: this.surfaceTone(status),

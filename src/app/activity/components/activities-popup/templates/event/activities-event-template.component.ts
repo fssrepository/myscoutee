@@ -99,6 +99,7 @@ export class ActivitiesEventsController {
   private get activitiesSmartList() { return this.host.activitiesSmartList; }
   private get activityMembersByRowId() { return this.host.activityMembersByRowId as Record<string, AppTypes.ActivityMemberEntry[]>; }
   private get activityMembersService() { return this.host.activityMembersService; }
+  private get chatsService() { return this.host.chatsService; }
   private get cdr() { return this.host.cdr; }
   private get confirmationDialogService() { return this.host.confirmationDialogService; }
   private get eventCheckoutDraftService() { return this.host.eventCheckoutDraftService; }
@@ -211,13 +212,13 @@ export class ActivitiesEventsController {
       case 'notifyParticipants':
       case 'askOrganizer':
       case 'contactOrganizer':
-        this.runActivityItemServiceChatAction(row);
+        this.runActivityItemServiceChatAction(row, action.card);
         break;
       case 'shareEvent':
-        this.runActivityItemShareAction(row);
+        this.runActivityItemShareAction(row, action.card);
         break;
       case 'reportOrganizer':
-        this.runActivityItemReportAction(row);
+        this.runActivityItemReportAction(row, action.card);
         break;
       case 'accept':
         this.runActivityItemApproveAction(row);
@@ -249,20 +250,28 @@ export class ActivitiesEventsController {
     });
   }
 
-  public runActivityItemServiceChatAction(row: AppTypes.ActivityListRow, event?: Event): void {
+  public runActivityItemServiceChatAction(
+    row: AppTypes.ActivityListRow,
+    card: InfoCardData | null = null,
+    event?: Event
+  ): void {
     event?.stopPropagation();
     this.inlineItemActionMenu = null;
-    const chat = this.buildActivityServiceChat(row);
+    const chat = this.resolveActivityServiceChat(row, card);
     if (!chat) {
       return;
     }
     this.openActivityChat(chat);
   }
 
-  public runActivityItemShareAction(row: AppTypes.ActivityListRow, event?: Event): void {
+  public runActivityItemShareAction(
+    row: AppTypes.ActivityListRow,
+    card: InfoCardData | null = null,
+    event?: Event
+  ): void {
     event?.stopPropagation();
     this.inlineItemActionMenu = null;
-    const entityId = this.resolveActivityShareEntityId(row);
+    const entityId = this.resolveActivityShareEntityId(row, card);
     if (!entityId) {
       return;
     }
@@ -287,26 +296,26 @@ export class ActivitiesEventsController {
     });
   }
 
-  private resolveActivityShareEntityId(row: AppTypes.ActivityListRow): string {
-    const source = ActivityEventBuilder.resolveEditorSource(row, {
-      eventItems: this.eventItems,
-      hostingItems: this.hostingItems,
-      invitationItems: this.invitationItems
-    }) ?? (row.source as ActivityEventRecordLike);
-    return `${source.id ?? row.id ?? ''}`.trim();
+  private resolveActivityShareEntityId(row: AppTypes.ActivityListRow, card: InfoCardData | null = null): string {
+    return `${this.activityInfoCardEntityId(card ?? row.infoCard) || row.id || ''}`.trim();
   }
 
-  public runActivityItemReportAction(row: AppTypes.ActivityListRow, event?: Event): void {
+  public runActivityItemReportAction(
+    row: AppTypes.ActivityListRow,
+    card: InfoCardData | null = null,
+    event?: Event
+  ): void {
     event?.stopPropagation();
     this.inlineItemActionMenu = null;
-    const target = this.resolveActivityReportTarget(row);
+    const target = this.resolveActivityReportTarget(row, card ?? row.infoCard);
     if (!target || target.userId === this.activeUser.id.trim()) {
       return;
     }
+    const entityId = this.resolveActivityShareEntityId(row, card);
     this.navigatorService.openReportUserPopup({
       targetUserId: target.userId,
       targetName: target.name,
-      eventId: row.id,
+      eventId: entityId || row.id,
       eventTitle: row.title,
       eventStartAtIso: target.startAtIso,
       eventTimeframe: target.timeframe,
@@ -315,7 +324,7 @@ export class ActivitiesEventsController {
     this.cdr.markForCheck();
   }
 
-  private resolveActivityReportTarget(row: AppTypes.ActivityListRow): {
+  private resolveActivityReportTarget(row: AppTypes.ActivityListRow, card: InfoCardData | null = null): {
     userId: string;
     name: string;
     startAtIso?: string | null;
@@ -325,63 +334,78 @@ export class ActivitiesEventsController {
       eventItems: this.eventItems,
       hostingItems: this.hostingItems,
       invitationItems: this.invitationItems
-    }) ?? (row.source as ActivityEventRecordLike & {
+    }) as (ActivityEventRecordLike & {
       creatorName?: string;
-    });
-    const creatorUserId = `${source.creatorUserId ?? ''}`.trim();
-    if (!creatorUserId) {
+      inviter?: string;
+      startAt?: string | null;
+      timeframe?: string | null;
+      when?: string | null;
+    }) | null;
+    const ownerId = `${source?.creatorUserId ?? this.activityInfoCardOwnerId(card)}`.trim();
+    if (!ownerId) {
       return null;
     }
-    const creatorName = `${source.creatorName ?? ''}`.trim()
-      || this.users.find(user => user.id === creatorUserId)?.name?.trim()
-      || (row.type === 'invitations' ? `${(row.source as ActivityEventRecordLike).inviter ?? ''}`.trim() : '')
+    const ownerName = `${source?.creatorName ?? ''}`.trim()
+      || this.users.find(user => user.id === ownerId)?.name?.trim()
+      || (row.type === 'invitations' ? `${source?.inviter ?? ''}`.trim() : '')
       || 'Organizer';
     return {
-      userId: creatorUserId,
-      name: creatorName,
-      startAtIso: source.startAt ?? null,
-      timeframe: source.timeframe ?? (row.source as ActivityEventRecordLike).when ?? null
+      userId: ownerId,
+      name: ownerName,
+      startAtIso: source?.startAt ?? row.dateIso ?? null,
+      timeframe: source?.timeframe ?? source?.when ?? row.detail ?? null
     };
   }
 
-  private buildActivityServiceChat(row: AppTypes.ActivityListRow): ChatMenuItem | null {
+  private resolveActivityServiceChat(row: AppTypes.ActivityListRow, card: InfoCardData | null = null): ChatMenuItem | null {
     const activeUserId = this.activeUser.id.trim();
     if (!activeUserId) {
       return null;
     }
-    const source = row.source as ActivityEventRecordLike & {
+    const source = ActivityEventBuilder.resolveEditorSource(row, {
+      eventItems: this.eventItems,
+      hostingItems: this.hostingItems,
+      invitationItems: this.invitationItems
+    }) as (ActivityEventRecordLike & {
       creatorName?: string;
-      creatorInitials?: string;
-    };
-    const title = row.title?.trim() || source.title?.trim() || source.description?.trim() || 'Event';
-    const organizerUserId = `${source.creatorUserId ?? ''}`.trim();
-    const isOrganizerNotificationChannel = row.type === 'hosting' && row.isAdmin;
-    const acceptedAdmins = row.type === 'hosting'
-      ? this.uniqueUserIds([organizerUserId, activeUserId])
-      : this.uniqueUserIds([organizerUserId]);
-    const memberIds = this.uniqueUserIds([
+      acceptedMemberUserIds?: readonly string[];
+      pendingMemberUserIds?: readonly string[];
+    }) | null;
+    const eventId = `${source?.id ?? this.resolveActivityShareEntityId(row, card)}`.trim();
+    const ownerId = `${source?.creatorUserId ?? this.activityInfoCardOwnerId(card ?? row.infoCard)}`.trim();
+    if (!eventId || !ownerId) {
+      return null;
+    }
+    const title = row.title?.trim()
+      || `${source?.title ?? source?.description ?? ''}`.trim()
+      || card?.title?.trim()
+      || row.infoCard?.title?.trim()
+      || 'Event';
+    return this.chatsService.buildActivityServiceChat({
       activeUserId,
-      ...acceptedAdmins,
-      ...(isOrganizerNotificationChannel ? (source.acceptedMemberUserIds ?? []) : []),
-      ...(isOrganizerNotificationChannel ? (source.pendingMemberUserIds ?? []) : [])
-    ]);
-    const chat: ChatMenuItem & { ownerUserId?: string } = {
-      id: `c-service-event-${row.id}-${activeUserId}`,
-      avatar: AppUtils.initialsFromText(source.creatorName?.trim() || title),
-      title: `${this.activityServiceChatActionLabel(row)} · ${title}`,
-      lastMessage: isOrganizerNotificationChannel
-        ? 'Notification channel for cancellations, postponements, and urgent event updates.'
-        : `Service chat with the organizer for ${title}.`,
-      lastSenderId: organizerUserId || activeUserId,
-      memberIds: memberIds.length > 0 ? memberIds : [activeUserId],
-      unread: 0,
-      dateIso: new Date().toISOString(),
-      channelType: 'serviceEvent',
-      serviceContext: isOrganizerNotificationChannel ? 'notification' : 'event',
-      eventId: row.id,
-      ownerUserId: activeUserId
-    };
-    return chat;
+      eventId,
+      ownerId,
+      title,
+      actionLabel: this.activityServiceChatActionLabel(row),
+      creatorName: source?.creatorName ?? null,
+      acceptedMemberUserIds: source?.acceptedMemberUserIds,
+      pendingMemberUserIds: source?.pendingMemberUserIds,
+      hosting: row.type === 'hosting',
+      notification: row.type === 'hosting' && row.isAdmin
+    });
+  }
+
+  private activityInfoCardEntityId(card: InfoCardData | null | undefined): string {
+    const rowId = `${card?.rowId ?? ''}`.trim();
+    if (!rowId) {
+      return '';
+    }
+    const separatorIndex = rowId.indexOf(':');
+    return separatorIndex >= 0 ? rowId.slice(separatorIndex + 1).trim() : rowId;
+  }
+
+  private activityInfoCardOwnerId(card: InfoCardData | null | undefined): string {
+    return `${card?.ownerId ?? ''}`.trim();
   }
 
   public runActivityItemApproveAction(row: AppTypes.ActivityListRow, event?: Event): void {
