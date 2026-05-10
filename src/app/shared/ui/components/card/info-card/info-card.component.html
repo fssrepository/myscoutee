@@ -48,7 +48,7 @@
             [class.ui-info-card__overlay-action--tone-6]="overlayTone(mediaStart) === 'tone-6'"
             [class.ui-info-card__overlay-action--tone-7]="overlayTone(mediaStart) === 'tone-7'"
             [class.ui-info-card__overlay-action--tone-8]="overlayTone(mediaStart) === 'tone-8'"
-            [attr.aria-label]="mediaStart.ariaLabel || overlayLabel(mediaStart)"
+            [attr.aria-label]="(mediaStart.ariaLabel || overlayLabel(mediaStart)) | i18n"
             [disabled]="mediaStart.disabled"
             (click)="onMediaStartActivated($event)"
             >
@@ -130,7 +130,7 @@
             [class.ui-info-card__overlay-action--tone-7]="overlayTone(mediaEnd) === 'tone-7'"
             [class.ui-info-card__overlay-action--tone-8]="overlayTone(mediaEnd) === 'tone-8'"
             [class.ui-info-card__overlay-action--ring-active]="overlayProgressRing(mediaEnd)"
-            [attr.aria-label]="mediaEnd.ariaLabel || overlayLabel(mediaEnd)"
+            [attr.aria-label]="(mediaEnd.ariaLabel || overlayLabel(mediaEnd)) | i18n"
             [disabled]="mediaEnd.disabled"
             (click)="onMediaEndActivated($event)"
             >
@@ -243,7 +243,7 @@
           type="button"
           class="ui-info-card__menu-trigger experience-action-btn experience-action-menu-trigger"
           [class.is-open]="menuTriggerOpen"
-          [attr.aria-label]="menuTriggerOpen ? 'Close card actions' : 'Open card actions'"
+          [attr.aria-label]="(menuTriggerOpen ? 'close.card.actions' : 'open.card.actions') | i18n"
           (click)="toggleMenu($event)"
           >
           <mat-icon>{{ menuTriggerOpen ? 'close' : 'more_vert' }}</mat-icon>
@@ -316,7 +316,7 @@
           class="ui-info-card__footer-chip values-selected-chip"
           [ngClass]="chip.toneClass"
           >
-          {{ chip.label }}
+          {{ chip.label | i18n }}
         </span>
       }
     </div>
@@ -383,12 +383,12 @@
               <mat-icon>{{ accessory.icon }}</mat-icon>
             }
             @if (accessory.label) {
-              <span>{{ accessory.label }}</span>
+              <span>{{ accessory.label | i18n }}</span>
             }
           </span>
         }
         @if (overlayLabel(action)) {
-          <span>{{ overlayLabel(action) }}</span>
+          <span>{{ overlayLabel(action) | i18n }}</span>
         }
       </span>
     }
@@ -397,7 +397,7 @@
         <mat-icon>{{ overlayActionIcon }}</mat-icon>
       }
       @if (overlayLabel(action)) {
-        <span>{{ overlayLabel(action) }}</span>
+        <span>{{ overlayLabel(action) | i18n }}</span>
       }
     }
   }

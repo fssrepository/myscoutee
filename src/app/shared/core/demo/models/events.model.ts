@@ -83,6 +83,7 @@ export interface DemoEventRecord {
   pendingMembers: number;
   acceptedMemberUserIds: string[];
   pendingMemberUserIds: string[];
+  pendingReason?: 'approval' | 'waitlist' | null;
   topics: string[];
   subEvents?: AppTypes.SubEventFormItem[];
   subEventsDisplayMode?: AppTypes.SubEventsDisplayMode;

@@ -2,12 +2,7 @@
 import { ChangeDetectionStrategy, Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
 
 import { AppUtils } from '../../../../../shared/app-utils';
-import type {
-  ChatMenuItem,
-  EventMenuItem,
-  HostingMenuItem,
-  InvitationMenuItem
-} from '../../../../../shared/core/base/interfaces/activity-feed.interface';
+import type { ChatMenuItem } from '../../../../../shared/core/base/interfaces/activity-feed.interface';
 import type { ActivitiesEventSyncPayload } from '../../../../../shared/core/base/models';
 import type * as AppTypes from '../../../../../shared/core/base/models';
 import {
@@ -86,6 +81,7 @@ type ActivityInfoCardActionId =
   | 'view'
   | 'viewInvitation';
 type ActivitiesEventsHost = any;
+type ActivityEventRecordLike = any;
 type InvitationApprovalSyncResult = {
   syncPayload: Omit<ActivitiesEventSyncPayload, 'syncKey'>;
   nextMembers: AppTypes.ActivityMemberEntry[] | null;
@@ -108,15 +104,15 @@ export class ActivitiesEventsController {
   private get eventCheckoutDraftService() { return this.host.eventCheckoutDraftService; }
   private get eventCheckoutDialogService() { return this.host.eventCheckoutDialogService; }
   private get eventEditorService() { return this.host.eventEditorService; }
-  private get eventItems() { return this.host.eventItems as EventMenuItem[]; }
-  private set eventItems(value: EventMenuItem[]) { this.host.eventItems = value; }
+  private get eventItems() { return this.host.eventItems as ActivityEventRecordLike[]; }
+  private set eventItems(value: ActivityEventRecordLike[]) { this.host.eventItems = value; }
   private get eventsService() { return this.host.eventsService; }
-  private get hostingItems() { return this.host.hostingItems as HostingMenuItem[]; }
-  private set hostingItems(value: HostingMenuItem[]) { this.host.hostingItems = value; }
+  private get hostingItems() { return this.host.hostingItems as ActivityEventRecordLike[]; }
+  private set hostingItems(value: ActivityEventRecordLike[]) { this.host.hostingItems = value; }
   private get inlineItemActionMenu() { return this.host.inlineItemActionMenu; }
   private set inlineItemActionMenu(value: any) { this.host.inlineItemActionMenu = value; }
-  private get invitationItems() { return this.host.invitationItems as InvitationMenuItem[]; }
-  private set invitationItems(value: InvitationMenuItem[]) { this.host.invitationItems = value; }
+  private get invitationItems() { return this.host.invitationItems as ActivityEventRecordLike[]; }
+  private set invitationItems(value: ActivityEventRecordLike[]) { this.host.invitationItems = value; }
   private get isMobileView() { return this.host.isMobileView as boolean; }
   private get pendingActivityMemberDelete() { return this.host.pendingActivityMemberDelete as AppTypes.ActivityMemberEntry | null; }
   private set pendingActivityMemberDelete(value: AppTypes.ActivityMemberEntry | null) { this.host.pendingActivityMemberDelete = value; }
@@ -296,7 +292,7 @@ export class ActivitiesEventsController {
       eventItems: this.eventItems,
       hostingItems: this.hostingItems,
       invitationItems: this.invitationItems
-    }) ?? (row.source as Partial<EventMenuItem & HostingMenuItem & InvitationMenuItem>);
+    }) ?? (row.source as ActivityEventRecordLike);
     return `${source.id ?? row.id ?? ''}`.trim();
   }
 
@@ -329,7 +325,7 @@ export class ActivitiesEventsController {
       eventItems: this.eventItems,
       hostingItems: this.hostingItems,
       invitationItems: this.invitationItems
-    }) ?? (row.source as Partial<EventMenuItem & HostingMenuItem & InvitationMenuItem> & {
+    }) ?? (row.source as ActivityEventRecordLike & {
       creatorName?: string;
     });
     const creatorUserId = `${source.creatorUserId ?? ''}`.trim();
@@ -338,13 +334,13 @@ export class ActivitiesEventsController {
     }
     const creatorName = `${source.creatorName ?? ''}`.trim()
       || this.users.find(user => user.id === creatorUserId)?.name?.trim()
-      || (row.type === 'invitations' ? `${(row.source as InvitationMenuItem).inviter ?? ''}`.trim() : '')
+      || (row.type === 'invitations' ? `${(row.source as ActivityEventRecordLike).inviter ?? ''}`.trim() : '')
       || 'Organizer';
     return {
       userId: creatorUserId,
       name: creatorName,
       startAtIso: source.startAt ?? null,
-      timeframe: source.timeframe ?? (row.source as InvitationMenuItem).when ?? null
+      timeframe: source.timeframe ?? (row.source as ActivityEventRecordLike).when ?? null
     };
   }
 
@@ -353,7 +349,7 @@ export class ActivitiesEventsController {
     if (!activeUserId) {
       return null;
     }
-    const source = row.source as Partial<EventMenuItem & HostingMenuItem & InvitationMenuItem> & {
+    const source = row.source as ActivityEventRecordLike & {
       creatorName?: string;
       creatorInitials?: string;
     };
@@ -405,7 +401,7 @@ export class ActivitiesEventsController {
       eventItems: this.eventItems,
       hostingItems: this.hostingItems,
       invitationItems: this.invitationItems
-    }) ?? ActivityEventBuilder.buildInvitationPreviewEventSource(row.source as InvitationMenuItem);
+    }) ?? ActivityEventBuilder.buildInvitationPreviewEventSource(row.source as ActivityEventRecordLike);
     const requiresAdminApproval = await this.resolveInvitationRequiresAdminApproval(
       row.id,
       record?.creatorUserId ?? relatedSource.creatorUserId
@@ -685,7 +681,7 @@ export class ActivitiesEventsController {
       throw new Error('Unable to resolve active user.');
     }
 
-    const invitationSource = row.source as InvitationMenuItem;
+    const invitationSource = row.source as ActivityEventRecordLike;
     const relatedSource = ActivityEventBuilder.resolveEditorSource(row, {
       eventItems: this.eventItems,
       hostingItems: this.hostingItems,
@@ -913,7 +909,7 @@ export class ActivitiesEventsController {
       invitationItems: this.invitationItems
     });
     const record = await this.eventsService.queryKnownItemById(activeUserId, row.id);
-    const source = row.source as EventMenuItem;
+    const source = row.source as ActivityEventRecordLike;
     const creatorUserId = record?.creatorUserId ?? relatedSource?.creatorUserId ?? source.creatorUserId ?? '';
     if (!creatorUserId.trim()) {
       return null;
@@ -1082,7 +1078,7 @@ export class ActivitiesEventsController {
     return trashedKeys.size;
   }
 
-  private isTrashScopeMenuItem(item: EventMenuItem | HostingMenuItem | InvitationMenuItem): boolean {
+  private isTrashScopeMenuItem(item: ActivityEventRecordLike): boolean {
     const status = this.normalizeActivityStatusCode(item.status);
     return status === 'T' || status === 'D' || status === 'I';
   }

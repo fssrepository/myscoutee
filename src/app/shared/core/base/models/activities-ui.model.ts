@@ -1,10 +1,3 @@
-import type {
-  ChatMenuItem,
-  EventMenuItem,
-  HostingMenuItem,
-  InvitationMenuItem,
-  RateMenuItem
-} from '../interfaces/activity-feed.interface';
 import type { InfoCardData } from '../../../ui';
 
 export type ActivitiesPrimaryFilter = 'chats' | 'invitations' | 'events' | 'hosting' | 'rates';
@@ -69,7 +62,7 @@ export interface ActivityListRow {
   isAdmin?: boolean;
   rateDisplay?: ActivityRateDisplay | null;
   infoCard?: InfoCardData | null;
-  source: ChatMenuItem | InvitationMenuItem | EventMenuItem | HostingMenuItem | RateMenuItem;
+  source?: unknown;
 }
 
 export interface ActivityGroup {

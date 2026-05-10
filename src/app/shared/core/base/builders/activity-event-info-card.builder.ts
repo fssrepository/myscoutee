@@ -1,87 +1,83 @@
 import { AppUtils } from '../../../app-utils';
-import type {
-  EventMenuItem,
-  HostingMenuItem,
-  InvitationMenuItem
-} from '../interfaces/activity-feed.interface';
+import type { DemoEventRecord } from '../../demo/models/events.model';
 import type * as AppTypes from '../models';
 import type {
   InfoCardData,
-  InfoCardMenuAction,
-  InfoCardOverlayTone
+  InfoCardMenuAction
 } from '../../../ui';
-
-type ActivityEventSource = EventMenuItem | HostingMenuItem | InvitationMenuItem;
 
 export interface ActivityEventInfoCardOptions {
   activeUserId?: string | null;
   groupLabel?: string | null;
   state?: InfoCardData['state'];
+  rowType?: AppTypes.ActivityListRow['type'];
 }
 
 export class ActivityEventInfoCardBuilder {
   static build(
-    row: AppTypes.ActivityListRow,
+    record: DemoEventRecord,
     options: ActivityEventInfoCardOptions = {}
   ): InfoCardData {
-    const source = row.source as Partial<ActivityEventSource> & { isTrashed?: boolean; city?: string; creatorCity?: string };
-    const status = this.statusCode(source.status);
-    const statusTone = this.statusTone(status);
-    const statusBadgeLabel = this.statusBadgeLabel(status);
-    const pending = this.isPending(row, options.activeUserId ?? '');
-    const pendingStatusLabel = this.pendingStatusLabel(source);
-    const full = this.isFull(row);
-    const draft = this.isDraft(row);
+    const rowType = options.rowType ?? this.resolveRowType(record);
+    const status = this.statusCode(record.status);
+    const statusBadgeLabelKey = this.statusBadgeLabelKey(status);
+    const pending = this.isPending(record, rowType, options.activeUserId ?? '');
+    const pendingStatusLabelKey = this.pendingStatusLabelKey();
+    const title = record.title;
 
     return {
-      rowId: this.rowId(row),
+      rowId: `${rowType}:${record.id}`,
+      status,
       groupLabel: options.groupLabel ?? null,
-      title: row.title,
-      imageUrl: this.imageUrl(source),
-      placeholderLabel: this.imageUrl(source) ? null : row.title,
+      title,
+      surfaceTone: this.surfaceTone(status),
+      imageUrl: record.imageUrl?.trim() || null,
+      placeholderLabel: record.imageUrl?.trim() ? null : title,
       metaRows: [
-        this.dateRangeLabel(row),
-        ...this.locationMetaRows(row)
+        this.dateRangeLabel(record),
+        ...this.locationMetaRows(record)
       ],
-      description: row.subtitle,
-      footerChips: this.footerChips(statusBadgeLabel, statusTone, pending, pendingStatusLabel),
-      surfaceTone: statusTone ?? (draft ? 'draft' : pending ? this.pendingSurfaceTone(source) : full ? 'full' : 'default'),
+      description: rowType === 'invitations'
+        ? record.creatorName
+        : record.eventType === 'slot'
+          ? `Slot occurrence${record.subtitle ? ' · ' + record.subtitle : ''}`
+          : record.subtitle,
+      footerChips: this.footerChips(statusBadgeLabelKey, pending, pendingStatusLabelKey),
       leadingIcon: {
-        icon: this.leadingIcon(row, statusTone, pending),
-        tone: this.leadingIconTone(row, statusTone, pending)
+        icon: this.leadingIcon(record, rowType, status, pending)
       },
-      mediaStart: this.mediaStart(row),
+      mediaStart: this.mediaStart(record, rowType),
       mediaEnd: {
         variant: 'badge',
-        tone: statusTone ?? (full ? 'full' : 'default'),
-        label: statusBadgeLabel || this.capacityLabel(row),
-        ariaLabel: statusBadgeLabel || 'Open members',
-        interactive: !statusBadgeLabel,
-        pendingCount: statusBadgeLabel ? 0 : this.pendingMemberCount(row)
+        tone: this.mediaEndTone(status, record, rowType),
+        label: statusBadgeLabelKey || this.capacityLabel(record),
+        ariaLabel: statusBadgeLabelKey || 'open.members',
+        interactive: !statusBadgeLabelKey,
+        pendingCount: statusBadgeLabelKey ? 0 : this.pendingMemberCount(record)
       },
-      menuActions: this.menuActions(row, options.activeUserId ?? ''),
+      menuActions: this.menuActions(record, rowType, options.activeUserId ?? ''),
       clickable: false,
       state: options.state ?? 'default'
     };
   }
 
-  private static rowId(row: AppTypes.ActivityListRow): string {
-    return `${row.type}:${row.id}`;
-  }
-
-  private static imageUrl(source: Partial<ActivityEventSource>): string | null {
-    const value = `${source.imageUrl ?? ''}`.trim();
-    return value || null;
-  }
-
-  private static dateRangeLabel(row: AppTypes.ActivityListRow): string {
-    const source = row.source as Partial<EventMenuItem & HostingMenuItem & InvitationMenuItem>;
-    const start = this.validDate(source.startAt ?? row.dateIso);
-    const end = this.validDate(source.endAt ?? null);
-    if (!start) {
-      return source.timeframe ?? (source as InvitationMenuItem).when ?? 'Date unavailable';
+  private static resolveRowType(record: DemoEventRecord): AppTypes.ActivityListRow['type'] {
+    const status = this.statusCode(record.status);
+    if (status === 'INV' || record.isInvitation || record.type === 'invitations') {
+      return 'invitations';
     }
+    if (status === 'H' || status === 'DR' || record.type === 'hosting' || record.isHosting) {
+      return 'hosting';
+    }
+    return 'events';
+  }
 
+  private static dateRangeLabel(record: DemoEventRecord): string {
+    const start = this.validDate(record.startAtIso);
+    const end = this.validDate(record.endAtIso);
+    if (!start) {
+      return record.timeframe || 'Date unavailable';
+    }
     const safeEnd = end && end.getTime() > start.getTime()
       ? end
       : new Date(start.getTime() + (2 * 60 * 60 * 1000));
@@ -101,233 +97,152 @@ export class ActivityEventInfoCardBuilder {
     return Number.isFinite(date.getTime()) ? date : null;
   }
 
-  private static locationMetaRows(row: AppTypes.ActivityListRow): string[] {
-    const source = row.source as Partial<ActivityEventSource> & { city?: string; creatorCity?: string };
-    const location = `${source.location ?? source.city ?? source.creatorCity ?? ''}`.trim();
-    const distanceLabel = this.distanceLabel(row);
+  private static locationMetaRows(record: DemoEventRecord): string[] {
+    const location = `${record.location ?? record.creatorCity ?? ''}`.trim();
+    const distanceLabel = this.distanceLabel(record);
     const line = location && distanceLabel
       ? `${location} · ${distanceLabel}`
       : location || distanceLabel;
     return line ? [line] : [];
   }
 
-  private static distanceLabel(row: AppTypes.ActivityListRow): string {
-    if (Number.isFinite(Number(row.distanceKm))) {
-      return `${row.distanceKm} km`;
-    }
-    const source = row.source as { distanceKm?: number; distanceMetersExact?: number };
-    if (Number.isFinite(Number(source.distanceKm))) {
-      return `${source.distanceKm} km`;
-    }
-    const meters = Number(row.distanceMetersExact ?? source.distanceMetersExact);
-    if (!Number.isFinite(meters) || meters < 0) {
+  private static distanceLabel(record: DemoEventRecord): string {
+    const distanceKm = Number(record.distanceKm);
+    if (!Number.isFinite(distanceKm)) {
       return '';
     }
-    return `${Math.round((meters / 1000) * 10) / 10} km`;
+    return `${distanceKm} km`;
   }
 
   private static footerChips(
-    statusBadgeLabel: string,
-    statusTone: InfoCardData['surfaceTone'] | null,
+    statusBadgeLabelKey: string,
     pending: boolean,
-    pendingStatusLabel: string
+    pendingStatusLabelKey: string
   ): NonNullable<InfoCardData['footerChips']> {
-    if (statusBadgeLabel) {
-      return [{
-        label: statusBadgeLabel,
-        toneClass: `status-${statusTone ?? 'review'}`
-      }];
+    if (statusBadgeLabelKey) {
+      return [{ label: statusBadgeLabelKey }];
     }
     if (!pending) {
       return [];
     }
-    const waitlist = pendingStatusLabel.toLowerCase().includes('waiting list');
-    return [{
-      label: pendingStatusLabel || 'Waiting for approval',
-      toneClass: waitlist ? 'status-waitlist' : 'status-pending'
-    }];
+    return [{ label: pendingStatusLabelKey }];
   }
 
-  private static mediaStart(row: AppTypes.ActivityListRow): InfoCardData['mediaStart'] {
-    if (row.type !== 'events' && row.type !== 'invitations') {
+  private static mediaStart(record: DemoEventRecord, rowType: AppTypes.ActivityListRow['type']): InfoCardData['mediaStart'] {
+    if (rowType !== 'events' && rowType !== 'invitations') {
       return null;
     }
     return {
       variant: 'avatar',
-      tone: this.sourceAvatarTone(row),
-      label: this.sourceAvatarLabel(row),
+      label: rowType === 'invitations'
+        ? AppUtils.initialsFromText(record.inviter ?? record.creatorName ?? record.title)
+        : AppUtils.initialsFromText(record.creatorInitials ?? record.creatorName ?? record.title),
       interactive: false
     };
   }
 
-  private static sourceAvatarTone(row: AppTypes.ActivityListRow): Extract<InfoCardOverlayTone, `tone-${number}`> | 'default' {
-    const source = row.source as Partial<EventMenuItem & InvitationMenuItem>;
-    const toneSeed = row.type === 'invitations'
-      ? `${row.id}-${source.inviter ?? ''}`
-      : `${row.id}-${row.title}`;
-    const toneIndex = (AppUtils.hashText(toneSeed) % 8) + 1;
-    const tone = `tone-${toneIndex}`;
-    switch (tone) {
-      case 'tone-1':
-      case 'tone-2':
-      case 'tone-3':
-      case 'tone-4':
-      case 'tone-5':
-      case 'tone-6':
-      case 'tone-7':
-      case 'tone-8':
-        return tone;
+  private static isDraft(record: DemoEventRecord, rowType: AppTypes.ActivityListRow['type']): boolean {
+    return rowType === 'hosting' && (record.published === false || this.statusCode(record.status) === 'DR');
+  }
+
+  private static isPending(record: DemoEventRecord, rowType: AppTypes.ActivityListRow['type'], activeUserId: string): boolean {
+    if (this.isPendingReview(record)) {
+      return true;
+    }
+    if (rowType !== 'events') {
+      return false;
+    }
+    const userId = activeUserId.trim();
+    if (!userId || record.acceptedMemberUserIds.includes(userId)) {
+      return false;
+    }
+    return record.pendingMemberUserIds.includes(userId);
+  }
+
+  private static pendingStatusLabelKey(): string {
+    return 'waiting.for.approval';
+  }
+
+  private static isFull(record: DemoEventRecord, rowType: AppTypes.ActivityListRow['type']): boolean {
+    return rowType === 'events'
+      && record.capacityTotal > 0
+      && record.acceptedMembers >= record.capacityTotal;
+  }
+
+  private static capacityLabel(record: DemoEventRecord): string {
+    return `${Math.max(0, record.acceptedMembers)} / ${Math.max(record.acceptedMembers, record.capacityTotal)}`;
+  }
+
+  private static pendingMemberCount(record: DemoEventRecord): number {
+    return Math.max(0, Math.trunc(Number(record.pendingMembers) || 0));
+  }
+
+  private static surfaceTone(status: string): InfoCardData['surfaceTone'] {
+    switch (status) {
+      case 'UR':
+        return 'review';
+      case 'B':
+        return 'blocked';
+      case 'D':
+      case 'T':
+        return 'deleted';
+      case 'I':
+        return 'inactive';
+      case 'DR':
+        return 'draft';
       default:
         return 'default';
     }
   }
 
-  private static sourceAvatarLabel(row: AppTypes.ActivityListRow): string {
-    const source = row.source as Partial<EventMenuItem & HostingMenuItem & InvitationMenuItem>;
-    if (row.type === 'invitations') {
-      return AppUtils.initialsFromText(source.inviter ?? source.creatorName ?? row.title);
+  private static mediaEndTone(
+    status: string,
+    record: DemoEventRecord,
+    rowType: AppTypes.ActivityListRow['type']
+  ): NonNullable<InfoCardData['mediaEnd']>['tone'] {
+    switch (status) {
+      case 'UR':
+        return 'review';
+      case 'B':
+        return 'blocked';
+      case 'D':
+      case 'T':
+        return 'deleted';
+      case 'I':
+        return 'inactive';
+      default:
+        return this.isFull(record, rowType) ? 'full' : 'default';
     }
-    if (row.type === 'events' || row.type === 'hosting') {
-      return AppUtils.initialsFromText(source.avatar ?? source.creatorName ?? source.title ?? row.title);
-    }
-    return AppUtils.initialsFromText(row.title);
-  }
-
-  private static isDraft(row: AppTypes.ActivityListRow): boolean {
-    if (row.type !== 'hosting') {
-      return false;
-    }
-    const source = row.source as Partial<HostingMenuItem>;
-    return source.published === false || this.statusCode(source.status) === 'DR';
-  }
-
-  private static isPending(row: AppTypes.ActivityListRow, activeUserId: string): boolean {
-    if (this.isPendingReview(row)) {
-      return true;
-    }
-    if (row.type !== 'events') {
-      return false;
-    }
-    const userId = activeUserId.trim();
-    if (!userId) {
-      return false;
-    }
-    const source = row.source as Partial<EventMenuItem>;
-    if (source.acceptedMemberUserIds?.includes(userId)) {
-      return false;
-    }
-    return source.pendingMemberUserIds?.includes(userId) === true;
-  }
-
-  private static pendingStatusLabel(source: Partial<ActivityEventSource>): string {
-    return source.pendingReason === 'waitlist'
-      ? 'Waiting list'
-      : 'Waiting for approval';
-  }
-
-  private static pendingSurfaceTone(source: Partial<ActivityEventSource>): InfoCardData['surfaceTone'] {
-    return source.pendingReason === 'waitlist' ? 'waitlist' : 'pending';
-  }
-
-  private static isFull(row: AppTypes.ActivityListRow): boolean {
-    if (row.type !== 'events') {
-      return false;
-    }
-    const acceptedMembers = this.acceptedMemberCount(row);
-    const capacityTotal = this.capacityTotal(row, acceptedMembers);
-    return capacityTotal > 0 && acceptedMembers >= capacityTotal;
-  }
-
-  private static capacityLabel(row: AppTypes.ActivityListRow): string {
-    const acceptedMembers = this.acceptedMemberCount(row);
-    return `${acceptedMembers} / ${this.capacityTotal(row, acceptedMembers)}`;
-  }
-
-  private static acceptedMemberCount(row: AppTypes.ActivityListRow): number {
-    const source = row.source as Partial<ActivityEventSource>;
-    if (Number.isFinite(Number(source.acceptedMembers))) {
-      return Math.max(0, Math.trunc(Number(source.acceptedMembers)));
-    }
-    return Math.max(0, Array.isArray(source.acceptedMemberUserIds) ? source.acceptedMemberUserIds.length : 0);
-  }
-
-  private static pendingMemberCount(row: AppTypes.ActivityListRow): number {
-    const source = row.source as Partial<ActivityEventSource>;
-    if (Number.isFinite(Number(source.pendingMembers))) {
-      return Math.max(0, Math.trunc(Number(source.pendingMembers)));
-    }
-    return Math.max(0, Array.isArray(source.pendingMemberUserIds) ? source.pendingMemberUserIds.length : 0);
-  }
-
-  private static capacityTotal(row: AppTypes.ActivityListRow, fallbackBase = 0): number {
-    const source = row.source as Partial<ActivityEventSource>;
-    const capacityMax = Number(source.capacityMax);
-    if (Number.isFinite(capacityMax) && capacityMax >= 0) {
-      return Math.max(fallbackBase, Math.trunc(capacityMax));
-    }
-    const capacityTotal = Number(source.capacityTotal);
-    if (Number.isFinite(capacityTotal) && capacityTotal >= 0) {
-      return Math.max(fallbackBase, Math.trunc(capacityTotal));
-    }
-    return fallbackBase;
   }
 
   private static leadingIcon(
-    row: AppTypes.ActivityListRow,
-    statusTone: InfoCardData['surfaceTone'] | null,
+    record: DemoEventRecord,
+    rowType: AppTypes.ActivityListRow['type'],
+    status: string,
     pending: boolean
   ): string {
-    if (statusTone === 'review') {
+    if (status === 'UR') {
       return 'pending_actions';
     }
-    if (statusTone === 'blocked') {
+    if (status === 'B') {
       return 'block';
     }
-    if (statusTone === 'deleted') {
+    if (status === 'D' || status === 'T') {
       return 'delete';
     }
-    if (statusTone === 'inactive') {
+    if (status === 'I') {
       return 'visibility_off';
     }
     if (pending) {
       return 'pending_actions';
     }
-    if (row.type === 'hosting' || row.type === 'events') {
-      return this.visibilityIcon(this.visibility(row));
+    if (rowType === 'hosting' || rowType === 'events') {
+      return this.visibilityIcon(record.visibility);
     }
-    if (row.type === 'invitations') {
+    if (rowType === 'invitations') {
       return 'mail';
     }
     return 'event';
-  }
-
-  private static leadingIconTone(
-    row: AppTypes.ActivityListRow,
-    statusTone: InfoCardData['surfaceTone'] | null,
-    pending: boolean
-  ): NonNullable<InfoCardData['leadingIcon']>['tone'] {
-    if (statusTone === 'review' || pending) {
-      return 'pending';
-    }
-    if (statusTone === 'blocked' || statusTone === 'deleted' || statusTone === 'inactive') {
-      return 'default';
-    }
-    if (row.type !== 'hosting' && row.type !== 'events') {
-      return 'default';
-    }
-    const visibility = this.visibility(row);
-    if (visibility === 'Public') {
-      return 'public';
-    }
-    if (visibility === 'Friends only') {
-      return 'friends';
-    }
-    return 'invitation';
-  }
-
-  private static visibility(row: AppTypes.ActivityListRow): AppTypes.EventVisibility {
-    return ((row.source as { visibility?: AppTypes.EventVisibility }).visibility)
-      ?? (row.type === 'hosting' ? 'Invitation only' : 'Public');
   }
 
   private static visibilityIcon(option: AppTypes.EventVisibility): string {
@@ -341,162 +256,123 @@ export class ActivityEventInfoCardBuilder {
     }
   }
 
-  private static menuActions(row: AppTypes.ActivityListRow, activeUserId: string): readonly InfoCardMenuAction[] {
-    if (row.type === 'chats' || row.type === 'rates') {
-      return [];
+  private static menuActions(record: DemoEventRecord, rowType: AppTypes.ActivityListRow['type'], activeUserId: string): readonly InfoCardMenuAction[] {
+    if (this.isTrashed(record)) {
+      return this.shouldRestore(record) ? ['restore'] : [];
     }
-    if (this.isTrashed(row)) {
-      return this.shouldRestore(row) ? ['restore'] : [];
-    }
-
     const actions: InfoCardMenuAction[] = [];
-    if (this.shouldTakeOver(row)) {
+    if (this.shouldTakeOver(record, rowType)) {
       actions.push('takeOver');
     }
-    if (this.shouldPublish(row)) {
+    if (this.shouldPublish(record, rowType)) {
       actions.push('publish');
     }
-    if (this.shouldPrimaryAction(row)) {
-      actions.push(row.type === 'invitations' ? 'viewInvitation' : 'editEvent');
+    if (this.shouldPrimaryAction(record, rowType)) {
+      actions.push(rowType === 'invitations' ? 'viewInvitation' : 'editEvent');
     }
-    if (this.shouldView(row)) {
+    if (this.shouldView(record, rowType)) {
       actions.push('view');
     }
-    if (this.shouldServiceChat(row)) {
-      actions.push(this.serviceChatActionId(row));
-    }
-    if (this.shouldShare(row)) {
+    if (rowType === 'hosting' || rowType === 'events' || rowType === 'invitations') {
+      actions.push(this.serviceChatActionId(rowType, record.isAdmin));
       actions.push('shareEvent');
     }
-    if (this.shouldReport(row, activeUserId)) {
+    if (this.shouldReport(record, activeUserId)) {
       actions.push('reportOrganizer');
     }
-    if (row.type === 'invitations') {
+    if (rowType === 'invitations') {
       actions.push('accept');
     }
-    if (this.shouldSecondaryAction(row)) {
-      actions.push(row.type === 'events' ? 'leaveEvent' : row.type === 'hosting' ? 'deleteEvent' : 'rejectInvitation');
+    if (this.shouldSecondaryAction(record, rowType)) {
+      actions.push(rowType === 'events' ? 'leaveEvent' : rowType === 'hosting' ? 'deleteEvent' : 'rejectInvitation');
     }
     return actions;
   }
 
-  private static serviceChatActionId(row: AppTypes.ActivityListRow): InfoCardMenuAction {
-    if (row.type === 'hosting' && row.isAdmin) {
+  private static serviceChatActionId(rowType: AppTypes.ActivityListRow['type'], isAdmin: boolean): InfoCardMenuAction {
+    if (rowType === 'hosting' && isAdmin) {
       return 'notifyParticipants';
     }
-    if (row.type === 'invitations') {
+    if (rowType === 'invitations') {
       return 'askOrganizer';
     }
     return 'contactOrganizer';
   }
 
-  private static shouldTakeOver(row: AppTypes.ActivityListRow): boolean {
-    return this.statusCode((row.source as { status?: string | null }).status) === 'UR'
-      && row.isAdmin === true
-      && (row.type === 'hosting' || row.type === 'events');
+  private static shouldTakeOver(record: DemoEventRecord, rowType: AppTypes.ActivityListRow['type']): boolean {
+    return this.statusCode(record.status) === 'UR'
+      && record.isAdmin === true
+      && (rowType === 'hosting' || rowType === 'events');
   }
 
-  private static shouldPublish(row: AppTypes.ActivityListRow): boolean {
-    return !this.isTrashed(row)
-      && !this.isPendingReview(row)
-      && row.type === 'hosting'
-      && row.isAdmin === true
-      && this.isDraft(row);
+  private static shouldPublish(record: DemoEventRecord, rowType: AppTypes.ActivityListRow['type']): boolean {
+    return !this.isTrashed(record)
+      && !this.isPendingReview(record)
+      && rowType === 'hosting'
+      && record.isAdmin === true
+      && this.isDraft(record, rowType);
   }
 
-  private static shouldPrimaryAction(row: AppTypes.ActivityListRow): boolean {
-    if (this.isTrashed(row) || this.isPendingReview(row)) {
+  private static shouldPrimaryAction(record: DemoEventRecord, rowType: AppTypes.ActivityListRow['type']): boolean {
+    if (this.isTrashed(record) || this.isPendingReview(record)) {
       return false;
     }
-    if ((row.type === 'hosting' || row.type === 'events') && !row.isAdmin) {
-      return false;
-    }
-    return true;
-  }
-
-  private static shouldView(row: AppTypes.ActivityListRow): boolean {
-    return !this.isTrashed(row) && (row.type === 'hosting' || row.type === 'events');
-  }
-
-  private static shouldServiceChat(row: AppTypes.ActivityListRow): boolean {
-    return !this.isTrashed(row)
-      && (row.type === 'hosting' || row.type === 'events' || row.type === 'invitations');
-  }
-
-  private static shouldShare(row: AppTypes.ActivityListRow): boolean {
-    return !this.isTrashed(row)
-      && (row.type === 'hosting' || row.type === 'events' || row.type === 'invitations');
-  }
-
-  private static shouldReport(row: AppTypes.ActivityListRow, activeUserId: string): boolean {
-    if (this.isTrashed(row) || (row.type !== 'hosting' && row.type !== 'events' && row.type !== 'invitations')) {
-      return false;
-    }
-    const creatorUserId = `${(row.source as { creatorUserId?: string }).creatorUserId ?? ''}`.trim();
-    return !!creatorUserId && creatorUserId !== activeUserId.trim();
-  }
-
-  private static shouldSecondaryAction(row: AppTypes.ActivityListRow): boolean {
-    if (this.isTrashed(row)) {
-      return false;
-    }
-    if (this.isPendingReview(row) && row.type !== 'events') {
-      return false;
-    }
-    if (row.type === 'hosting' && !row.isAdmin) {
+    if ((rowType === 'hosting' || rowType === 'events') && !record.isAdmin) {
       return false;
     }
     return true;
   }
 
-  private static shouldRestore(row: AppTypes.ActivityListRow): boolean {
-    const status = this.statusCode((row.source as { status?: string | null }).status);
-    return status === 'T';
+  private static shouldView(record: DemoEventRecord, rowType: AppTypes.ActivityListRow['type']): boolean {
+    return !this.isTrashed(record) && (rowType === 'hosting' || rowType === 'events');
   }
 
-  private static isPendingReview(row: AppTypes.ActivityListRow): boolean {
-    const status = this.statusCode((row.source as { status?: string | null }).status);
+  private static shouldReport(record: DemoEventRecord, activeUserId: string): boolean {
+    const creatorUserId = record.creatorUserId.trim();
+    return !this.isTrashed(record) && !!creatorUserId && creatorUserId !== activeUserId.trim();
+  }
+
+  private static shouldSecondaryAction(record: DemoEventRecord, rowType: AppTypes.ActivityListRow['type']): boolean {
+    if (this.isTrashed(record)) {
+      return false;
+    }
+    if (this.isPendingReview(record) && rowType !== 'events') {
+      return false;
+    }
+    if (rowType === 'hosting' && !record.isAdmin) {
+      return false;
+    }
+    return true;
+  }
+
+  private static shouldRestore(record: DemoEventRecord): boolean {
+    return this.statusCode(record.status) === 'T';
+  }
+
+  private static isPendingReview(record: DemoEventRecord): boolean {
+    const status = this.statusCode(record.status);
     return status === 'UR' || status === 'B';
   }
 
-  private static isTrashed(row: AppTypes.ActivityListRow): boolean {
-    if ((row.source as { isTrashed?: boolean }).isTrashed === true) {
-      return true;
-    }
-    const status = this.statusCode((row.source as { status?: string | null }).status);
-    return status === 'T' || status === 'D' || status === 'I';
+  private static isTrashed(record: DemoEventRecord): boolean {
+    const status = this.statusCode(record.status);
+    return record.isTrashed === true || status === 'T' || status === 'D' || status === 'I';
   }
 
-  private static statusBadgeLabel(status: string): string {
+  private static statusBadgeLabelKey(status: string): string {
     switch (status) {
       case 'UR':
-        return 'Under Review';
+        return 'under.review';
       case 'B':
-        return 'Blocked User';
-      case 'T':
-        return 'Deleted';
-      case 'D':
-        return 'Deleted User';
-      case 'I':
-        return 'Inactive User';
-      default:
-        return '';
-    }
-  }
-
-  private static statusTone(status: string): Extract<NonNullable<InfoCardData['surfaceTone']>, 'review' | 'blocked' | 'deleted' | 'inactive'> | null {
-    switch (status) {
-      case 'UR':
-        return 'review';
-      case 'B':
-        return 'blocked';
-      case 'D':
+        return 'blocked.user';
       case 'T':
         return 'deleted';
+      case 'D':
+        return 'deleted.user';
       case 'I':
-        return 'inactive';
+        return 'inactive.user';
       default:
-        return null;
+        return '';
     }
   }
 

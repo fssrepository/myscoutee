@@ -2,21 +2,18 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
 
 import { AppUtils } from '../../../../../shared/app-utils';
-import type {
-  ChatMenuItem,
-  EventMenuItem,
-  HostingMenuItem
-} from '../../../../../shared/core/base/interfaces/activity-feed.interface';
+import type { ChatMenuItem } from '../../../../../shared/core/base/interfaces/activity-feed.interface';
 import type { DemoUser } from '../../../../../shared/core/base/interfaces/user.interface';
 import type {
   EventChatContext,
   EventChatResourceContext
 } from '../../../../../shared/core/base/models';
 import type * as AppTypes from '../../../../../shared/core/base/models';
+import type { DemoEventRecord } from '../../../../../shared/core/demo/models/events.model';
 import { CounterBadgePipe } from '../../../../../shared/ui';
 import {
   ActivityResourceBuilder,
-  toActivitySourceRowFromMenuItem
+  toActivityEventRow
 } from '../../../../../shared/core';
 import {
   buildActivitiesChatTemplateData,
@@ -98,11 +95,11 @@ export class ActivitiesChatsController {
   private get eventDatesById() { return this.host.eventDatesById as Record<string, string>; }
   private get eventDistanceById() { return this.host.eventDistanceById as Record<string, number>; }
   private get eventEditorService() { return this.host.eventEditorService; }
-  private get eventItems() { return this.host.eventItems as EventMenuItem[]; }
+  private get eventItems() { return this.host.eventItems as DemoEventRecord[]; }
   private get eventSubEventsById() { return this.host.eventSubEventsById as Record<string, AppTypes.SubEventFormItem[]>; }
   private get hostingDatesById() { return this.host.hostingDatesById as Record<string, string>; }
   private get hostingDistanceById() { return this.host.hostingDistanceById as Record<string, number>; }
-  private get hostingItems() { return this.host.hostingItems as HostingMenuItem[]; }
+  private get hostingItems() { return this.host.hostingItems as DemoEventRecord[]; }
   private get users() { return this.host.users as DemoUser[]; }
 
   private activityPendingMemberCount(row: AppTypes.ActivityListRow): number { return this.host.activityPendingMemberCount(row); }
@@ -219,7 +216,7 @@ export class ActivitiesChatsController {
     return eventPending + subEventsPending;
   }
 
-  private resolveChatEventSource(item: ChatMenuItem): EventMenuItem | HostingMenuItem | null {
+  private resolveChatEventSource(item: ChatMenuItem): DemoEventRecord | null {
     const eventId = this.normalizeLocationValue(item.eventId).trim();
     if (!eventId) {
       return this.resolveChatFocusEventSource();
@@ -229,12 +226,13 @@ export class ActivitiesChatsController {
       ?? this.resolveEventEditorSource();
   }
 
-  private buildChatSourceActivityRow(source: EventMenuItem | HostingMenuItem): AppTypes.ActivityListRow {
-    return toActivitySourceRowFromMenuItem(source, {
-      isHosting: this.hostingItems.some(item => item.id === source.id),
-      dateIso: this.eventDatesById[source.id] ?? this.hostingDatesById[source.id] ?? this.defaultEventStartIso(),
-      distanceKm: this.eventDistanceById[source.id] ?? this.hostingDistanceById[source.id] ?? 0,
-      metricScore: source.activity
+  private buildChatSourceActivityRow(source: DemoEventRecord): AppTypes.ActivityListRow {
+    return toActivityEventRow({
+      ...source,
+      startAtIso: this.eventDatesById[source.id] ?? this.hostingDatesById[source.id] ?? source.startAtIso ?? this.defaultEventStartIso(),
+      distanceKm: this.eventDistanceById[source.id] ?? this.hostingDistanceById[source.id] ?? source.distanceKm ?? 0
+    }, {
+      activeUserId: this.activeUser.id
     });
   }
 
@@ -242,7 +240,7 @@ export class ActivitiesChatsController {
     return `Stage ${index + 1}`;
   }
 
-  private resolveChatFocusEventSource(): EventMenuItem | HostingMenuItem | null {
+  private resolveChatFocusEventSource(): DemoEventRecord | null {
     const editorSource = this.resolveEventEditorSource();
     if (editorSource) {
       return editorSource;
@@ -254,7 +252,7 @@ export class ActivitiesChatsController {
     return this.eventItems[0] ?? this.hostingItems[0] ?? null;
   }
 
-  private resolveEventEditorSource(): EventMenuItem | HostingMenuItem | null {
+  private resolveEventEditorSource(): DemoEventRecord | null {
     if (!this.eventEditorService.isOpen()) {
       return null;
     }
@@ -276,20 +274,99 @@ export class ActivitiesChatsController {
     if (hostingMatch) {
       return hostingMatch;
     }
-    const fallbackSource = source as Partial<EventMenuItem | HostingMenuItem>;
+    return this.buildFallbackEventEditorRecord(source, sourceId);
+  }
+
+  private buildFallbackEventEditorRecord(source: object, sourceId: string): DemoEventRecord {
+    const value = source as Partial<DemoEventRecord> & {
+      shortDescription?: string;
+      startAt?: string;
+      endAt?: string;
+    };
+    const title = typeof value.title === 'string' && value.title.trim() ? value.title : 'Event';
+    const subtitle = typeof value.subtitle === 'string'
+      ? value.subtitle
+      : typeof value.shortDescription === 'string'
+        ? value.shortDescription
+        : '';
+    const startAtIso = typeof value.startAtIso === 'string'
+      ? value.startAtIso
+      : typeof value.startAt === 'string'
+        ? value.startAt
+        : this.defaultEventStartIso();
+    const endAtIso = typeof value.endAtIso === 'string'
+      ? value.endAtIso
+      : typeof value.endAt === 'string'
+        ? value.endAt
+        : startAtIso;
+    const type = value.type === 'hosting' || value.type === 'invitations' ? value.type : 'events';
+    const creatorInitials = value.creatorInitials ?? value.avatar ?? AppUtils.initialsFromText(title);
     return {
       id: sourceId,
-      avatar: typeof fallbackSource.avatar === 'string'
-        ? fallbackSource.avatar
-        : AppUtils.initialsFromText(typeof fallbackSource.title === 'string' ? fallbackSource.title : 'Event'),
-      title: typeof fallbackSource.title === 'string' ? fallbackSource.title : 'Event',
-      shortDescription: typeof fallbackSource.shortDescription === 'string' ? fallbackSource.shortDescription : '',
-      timeframe: typeof fallbackSource.timeframe === 'string' ? fallbackSource.timeframe : '',
-      activity: Number.isFinite(Number(fallbackSource.activity)) ? Number(fallbackSource.activity) : 0,
-      ...(typeof (fallbackSource as EventMenuItem).isAdmin === 'boolean'
-        ? { isAdmin: (fallbackSource as EventMenuItem).isAdmin }
-        : {})
-    } as EventMenuItem | HostingMenuItem;
+      userId: value.userId ?? this.activeUser.id,
+      type,
+      status: value.status ?? (type === 'hosting' ? 'H' : type === 'invitations' ? 'INV' : 'A'),
+      statusBeforeSuppression: value.statusBeforeSuppression ?? null,
+      avatar: value.avatar ?? creatorInitials,
+      title,
+      subtitle,
+      timeframe: value.timeframe ?? '',
+      inviter: value.inviter ?? null,
+      unread: value.unread ?? 0,
+      activity: Number.isFinite(Number(value.activity)) ? Number(value.activity) : 0,
+      isAdmin: value.isAdmin ?? type === 'hosting',
+      isInvitation: type === 'invitations',
+      isHosting: type === 'hosting',
+      isTrashed: value.isTrashed ?? false,
+      published: value.published ?? true,
+      trashedAtIso: value.trashedAtIso ?? null,
+      creatorUserId: value.creatorUserId ?? this.activeUser.id,
+      creatorName: value.creatorName ?? title,
+      creatorInitials,
+      creatorGender: value.creatorGender ?? 'man',
+      creatorCity: value.creatorCity ?? '',
+      visibility: value.visibility ?? 'Public',
+      blindMode: value.blindMode ?? 'Open Event',
+      startAtIso,
+      endAtIso,
+      distanceKm: Number.isFinite(Number(value.distanceKm)) ? Number(value.distanceKm) : 0,
+      imageUrl: value.imageUrl ?? '',
+      sourceLink: value.sourceLink ?? '',
+      location: value.location ?? '',
+      locationCoordinates: value.locationCoordinates ?? null,
+      capacityMin: value.capacityMin ?? null,
+      capacityMax: value.capacityMax ?? null,
+      capacityTotal: value.capacityTotal ?? 0,
+      autoInviter: value.autoInviter,
+      frequency: value.frequency,
+      ticketing: value.ticketing ?? false,
+      pricing: value.pricing ?? null,
+      policies: value.policies ? value.policies.map(policy => ({ ...policy })) : [],
+      slotsEnabled: value.slotsEnabled,
+      slotTemplates: value.slotTemplates ? value.slotTemplates.map(item => ({ ...item })) : undefined,
+      parentEventId: value.parentEventId ?? null,
+      slotTemplateId: value.slotTemplateId ?? null,
+      generated: value.generated,
+      eventType: value.eventType,
+      nextSlot: value.nextSlot ? { ...value.nextSlot } : null,
+      upcomingSlots: value.upcomingSlots ? value.upcomingSlots.map(item => ({ ...item })) : undefined,
+      acceptedMembers: value.acceptedMembers ?? 0,
+      pendingMembers: value.pendingMembers ?? 0,
+      acceptedMemberUserIds: [...(value.acceptedMemberUserIds ?? [])],
+      pendingMemberUserIds: [...(value.pendingMemberUserIds ?? [])],
+      pendingReason: value.pendingReason ?? null,
+      topics: [...(value.topics ?? [])],
+      subEvents: value.subEvents
+        ? value.subEvents.map(item => ({
+          ...item,
+          groups: [...(item.groups ?? [])]
+        }))
+        : undefined,
+      subEventsDisplayMode: value.subEventsDisplayMode,
+      rating: value.rating ?? 0,
+      boost: value.boost ?? 0,
+      affinity: value.affinity ?? 0
+    };
   }
 
   private chatEventSubEvents(eventId: string): AppTypes.SubEventFormItem[] {
