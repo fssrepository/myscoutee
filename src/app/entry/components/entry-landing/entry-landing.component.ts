@@ -20,6 +20,8 @@ import {
 } from '../../../shared/ui/components/smart-list';
 import { I18nPipe } from '../../../shared/i18n';
 
+type IdeaInfoCard = InfoCardData<AppTypes.IdeaArticleDetail>;
+
 interface HowStepSlide {
   readonly index: string;
   readonly title: string;
@@ -54,7 +56,7 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
   @Input() firebaseAuthProfile: AppTypes.FirebaseAuthProfile | null = null;
   @Input() articlesLoading = false;
   @Input() articlesLoadingProgress = 0;
-  @Input() ideaPosts: AppTypes.IdeaPost[] = [];
+  @Input() ideaCards: InfoCardData[] = [];
 
   @Output() readonly demoRequested = new EventEmitter<void>();
   @Output() readonly firebaseAuthRequested = new EventEmitter<void>();
@@ -94,7 +96,7 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
   protected ideaArticlePopupOpen = false;
   protected selectedIdeaId = '';
 
-  protected readonly entryIdeaSmartListConfig: SmartListConfig<AppTypes.IdeaPost> = {
+  protected readonly entryIdeaSmartListConfig: SmartListConfig<IdeaInfoCard> = {
     pageSize: 10,
     initialPageSize: 10,
     initialPageCount: 1,
@@ -109,8 +111,8 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
     showStickyHeader: true,
     showFirstGroupMarker: true,
     showGroupMarker: ({ groupIndex, scrollable }) => groupIndex > 0 || scrollable,
-    groupBy: post => this.ideaDayGroupLabel(post),
-    trackBy: (_index, post) => post.id,
+    groupBy: card => this.ideaDayGroupLabel(this.ideaCardDetail(card)),
+    trackBy: (_index, card) => card.rowId,
     listLayout: 'card-grid',
     desktopColumns: 3,
     snapMode: 'mandatory',
@@ -127,18 +129,18 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
     }
   };
 
-  protected readonly entryIdeaSmartListLoadPage: SmartListLoadPage<AppTypes.IdeaPost> = (
+  protected readonly entryIdeaSmartListLoadPage: SmartListLoadPage<IdeaInfoCard> = (
     query: ListQuery
-  ): Observable<PageResult<AppTypes.IdeaPost>> => {
-    const posts = this.publishedIdeaPosts();
+  ): Observable<PageResult<IdeaInfoCard>> => {
+    const cards = this.publishedIdeaCards();
     const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || Number(this.entryIdeaSmartListConfig.pageSize) || 10));
     const page = Math.max(0, Math.trunc(Number(query.page) || 0));
     const start = page * pageSize;
-    const items = posts.slice(start, start + pageSize);
+    const items = cards.slice(start, start + pageSize);
     return of({
       items,
-      total: posts.length,
-      nextCursor: start + items.length < posts.length ? `${start + items.length}` : null
+      total: cards.length,
+      nextCursor: start + items.length < cards.length ? `${start + items.length}` : null
     });
   };
 
@@ -334,33 +336,44 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
     this.consentRequested.emit();
   }
 
-  protected featuredIdeaPosts(): AppTypes.IdeaPost[] {
-    const published = this.publishedIdeaPosts();
-    const featured = published.filter(post => post.featured);
+  protected featuredIdeaCards(): IdeaInfoCard[] {
+    const published = this.publishedIdeaCards();
+    const featured = published.filter(card => this.ideaCardDetail(card)?.featured === true);
     return (featured.length > 0 ? featured : published).slice(0, 8);
   }
 
-  protected featuredIdeaPages(): AppTypes.IdeaPost[][] {
+  protected featuredIdeaPages(): IdeaInfoCard[][] {
     const pageSize = Math.max(1, this.ideaCarouselCardsPerPage);
-    const posts = this.featuredIdeaPosts();
-    const pages: AppTypes.IdeaPost[][] = [];
-    for (let index = 0; index < posts.length; index += pageSize) {
-      pages.push(posts.slice(index, index + pageSize));
+    const cards = this.featuredIdeaCards();
+    const pages: IdeaInfoCard[][] = [];
+    for (let index = 0; index < cards.length; index += pageSize) {
+      pages.push(cards.slice(index, index + pageSize));
     }
     return pages;
   }
 
-  protected publishedIdeaPosts(): AppTypes.IdeaPost[] {
-    return [...(this.ideaPosts ?? [])]
-      .filter(post => post.published !== false && post.trashed !== true)
-      .sort((left, right) => this.ideaSortValue(right) - this.ideaSortValue(left));
+  protected publishedIdeaCards(): IdeaInfoCard[] {
+    return [...(this.ideaCards ?? [])]
+      .map(card => this.asIdeaInfoCard(card))
+      .filter(card => {
+        const detail = this.ideaCardDetail(card);
+        return Boolean(detail);
+      })
+      .sort((left, right) => this.ideaSortValue(this.ideaCardDetail(right)) - this.ideaSortValue(this.ideaCardDetail(left)));
   }
 
-  protected selectedIdeaPost(): AppTypes.IdeaPost | null {
-    const published = this.publishedIdeaPosts();
-    return published.find(post => post.id === this.selectedIdeaId)
+  protected selectedIdeaDetail(): AppTypes.IdeaArticleDetail | null {
+    const published = this.publishedIdeaCards()
+      .map(card => this.ideaCardDetail(card))
+      .filter((detail): detail is AppTypes.IdeaArticleDetail => Boolean(detail));
+    return published.find(detail => detail.id === this.selectedIdeaId)
       ?? published[0]
       ?? null;
+  }
+
+  protected ideaCardDetail(card: InfoCardData | null | undefined): AppTypes.IdeaArticleDetail | null {
+    const detail = card?.detailRecord;
+    return this.isIdeaArticleDetail(detail) ? detail : null;
   }
 
   protected ideaCarouselPageCount(): number {
@@ -375,33 +388,37 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
     return this.activeIdeaCarouselPage >= this.ideaCarouselPageCount() - 1;
   }
 
-  protected openIdeasPopup(post?: AppTypes.IdeaPost, event?: Event): void {
+  protected openIdeasPopup(card?: InfoCardData, event?: Event): void {
     event?.preventDefault();
     event?.stopPropagation();
-    const published = this.publishedIdeaPosts();
+    const published = this.publishedIdeaCards();
     if (published.length === 0) {
       return;
     }
-    if (post) {
-      this.openIdeaArticlePopup(post);
+    if (card) {
+      this.openIdeaArticlePopup(card, event);
       return;
     }
-    this.selectedIdeaId = published[0]?.id ?? '';
+    this.selectedIdeaId = this.ideaCardDetail(published[0])?.id ?? '';
     this.ideasPopupOpen = true;
     this.syncLandingPopupScrollLock();
   }
 
-  protected openIdeaCard(post: AppTypes.IdeaPost, event?: Event): void {
+  protected openIdeaCard(card: InfoCardData, event?: Event): void {
     event?.preventDefault();
     event?.stopPropagation();
     this.ideasPopupOpen = false;
-    this.openIdeaArticlePopup(post);
+    this.openIdeaArticlePopup(card, event);
   }
 
-  protected openIdeaArticlePopup(post: AppTypes.IdeaPost, event?: Event): void {
+  protected openIdeaArticlePopup(card: InfoCardData, event?: Event): void {
     event?.preventDefault();
     event?.stopPropagation();
-    this.selectedIdeaId = post.id;
+    const detail = this.ideaCardDetail(card);
+    if (!detail) {
+      return;
+    }
+    this.selectedIdeaId = detail.id;
     this.ideaArticlePopupOpen = true;
     this.syncLandingPopupScrollLock();
   }
@@ -524,68 +541,23 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
       : `translateX(-${this.activeIdeaCarouselPage * 100}%)`;
   }
 
-  protected entryIdeaInfoCard(post: AppTypes.IdeaPost): InfoCardData {
-    return {
-      rowId: `entry-idea:${post.id}`,
-      title: post.title,
-      imageUrl: this.ideaImageUrl(post) || null,
-      placeholderLabel: 'No image',
-      metaRows: [this.ideaDateLabel(post)],
-      metaRowsLimit: 1,
-      description: post.excerpt,
-      descriptionLines: 3,
-      i18nIgnoreContent: true,
-      leadingIcon: {
-        icon: 'calendar_today',
-        tone: 'public'
-      },
-      mediaEnd: post.featured
-        ? {
-            variant: 'badge',
-            tone: 'selected',
-            icon: 'star',
-            label: 'Featured',
-            selected: true,
-            selectedIcon: 'star',
-            selectedLabel: 'Featured',
-            ariaLabel: 'Featured article',
-            interactive: false
-          }
-        : null,
-      footerChips: [
-        { label: 'Read more', toneClass: 'entry-idea-read-chip' }
-      ],
-      clickable: true
-    };
-  }
-
   protected entryIdeaListInfoCard(
-    post: AppTypes.IdeaPost,
+    card: InfoCardData,
     options: { groupLabel?: string | null; renderState?: SmartListItemRenderState | null } = {}
   ): InfoCardData {
     return {
-      ...this.entryIdeaInfoCard(post),
-      groupLabel: options.groupLabel ?? null,
-      rowId: `entry-idea-list:${post.id}`,
-      descriptionLines: 4,
-      state: options.renderState === 'active' ? 'active' : options.renderState === 'leaving' ? 'leaving' : 'default'
+      ...card,
+      groupLabel: options.groupLabel ?? card.groupLabel ?? null,
+      state: options.renderState === 'active' ? 'active' : options.renderState === 'leaving' ? 'leaving' : card.state ?? 'default'
     };
   }
 
-  protected ideaImageUrl(post: AppTypes.IdeaPost | null): string {
-    return `${post?.imageUrl ?? post?.imageUrls?.[0] ?? ''}`.trim();
+  protected ideaImageUrl(detail: AppTypes.IdeaArticleDetail | null): string {
+    return `${detail?.imageUrl ?? ''}`.trim();
   }
 
-  protected ideaDateLabel(post: AppTypes.IdeaPost | null): string {
-    const parsed = Date.parse(post?.submittedAtIso || post?.updatedAtIso || post?.createdAtIso || '');
-    if (!Number.isFinite(parsed)) {
-      return 'Fresh article';
-    }
-    return new Intl.DateTimeFormat(undefined, {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    }).format(new Date(parsed));
+  protected ideaDateLabel(detail: AppTypes.IdeaArticleDetail | null): string {
+    return detail?.dateLabel?.trim() || 'Fresh article';
   }
 
   protected scrollEntryTo(sectionId: string, event?: Event): void {
@@ -597,6 +569,18 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
     target.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
+  private asIdeaInfoCard(card: InfoCardData): IdeaInfoCard {
+    return card as IdeaInfoCard;
+  }
+
+  private isIdeaArticleDetail(value: unknown): value is AppTypes.IdeaArticleDetail {
+    return Boolean(value)
+      && typeof value === 'object'
+      && typeof (value as { id?: unknown }).id === 'string'
+      && typeof (value as { title?: unknown }).title === 'string'
+      && typeof (value as { contentHtml?: unknown }).contentHtml === 'string';
+  }
+
   private setHowSlideIndex(index: number, restartAutoplay: boolean): void {
     this.activeHowSlideIndex = this.clampHowSlideIndex(index);
     this.cdr.markForCheck();
@@ -606,8 +590,8 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
     }
   }
 
-  private ideaSortValue(post: Pick<AppTypes.IdeaPost, 'submittedAtIso' | 'updatedAtIso' | 'createdAtIso'>): number {
-    const parsed = Date.parse(post.submittedAtIso || post.updatedAtIso || post.createdAtIso || '');
+  private ideaSortValue(detail: AppTypes.IdeaArticleDetail | null): number {
+    const parsed = Date.parse(detail?.sortAtIso ?? '');
     return Number.isFinite(parsed) ? parsed : 0;
   }
 
@@ -615,8 +599,8 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
     return Math.min(Math.max(index, 0), this.howSlides.length - 1);
   }
 
-  private ideaDayGroupLabel(post: AppTypes.IdeaPost): string {
-    const parsed = Date.parse(post.submittedAtIso || post.updatedAtIso || post.createdAtIso || '');
+  private ideaDayGroupLabel(detail: AppTypes.IdeaArticleDetail | null): string {
+    const parsed = Date.parse(detail?.sortAtIso ?? '');
     if (!Number.isFinite(parsed)) {
       return 'Fresh articles';
     }
@@ -876,13 +860,13 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
       ? target.closest<HTMLElement>('[data-entry-idea-post-id]')
       : null;
     const postId = element?.dataset['entryIdeaPostId'];
-    const post = postId
-      ? this.publishedIdeaPosts().find(candidate => candidate.id === postId)
+    const card = postId
+      ? this.publishedIdeaCards().find(candidate => this.ideaCardDetail(candidate)?.id === postId)
       : null;
-    if (!post) {
+    if (!card) {
       return;
     }
-    this.openIdeaCard(post);
+    this.openIdeaCard(card);
   }
 
   private syncLandingPopupScrollLock(): void {

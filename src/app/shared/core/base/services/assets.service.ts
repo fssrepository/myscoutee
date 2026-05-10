@@ -1,6 +1,8 @@
 import { Injectable, inject } from '@angular/core';
 
 import type * as AppTypes from '../../../core/base/models';
+import type { InfoCardData } from '../../../ui';
+import { AssetInfoCardBuilder } from '../builders';
 import { DemoAssetsService } from '../../demo/services/assets.service';
 import { HttpAssetsService } from '../../http/services/assets.service';
 import { BaseRouteModeService } from './base-route-mode.service';
@@ -66,6 +68,18 @@ export class AssetsService extends BaseRouteModeService {
 
   async takeOverOwnedAsset(userId: string, assetId: string): Promise<void> {
     await this.assetsService.takeOverOwnedAsset(userId, assetId);
+  }
+
+  exploreAssetInfoCard(
+    card: AppTypes.AssetCard,
+    options: {
+      groupLabel?: string | null;
+      availabilityLabel: string;
+      canBorrow: boolean;
+      canReportOwner: boolean;
+    }
+  ): InfoCardData {
+    return AssetInfoCardBuilder.buildExploreAssetInfoCard(card, options);
   }
 
   async refreshAssetSourcePreview(

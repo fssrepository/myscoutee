@@ -13,7 +13,6 @@ import {
   InfoCardComponent,
   SmartListComponent,
   type InfoCardData,
-  type InfoCardMenuAction,
   type InfoCardMenuActionEvent,
   type ListQuery,
   type SmartListConfig,
@@ -368,41 +367,9 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
   }
 
   protected eventFeedbackInfoCard(item: AppTypes.EventFeedbackEventCard): InfoCardData {
-    if (item.isOwnEvent) {
-      return this.organizerEventFeedbackCardData({
-        eventId: item.eventId,
-        title: item.title,
-        subtitle: item.subtitle,
-        timeframe: item.timeframe,
-        imageUrl: item.imageUrl,
-        responseCount: item.pendingCards,
-        noteCount: 0
-      }, true);
-    }
-    const detailRows = item.isFeedbacked
-      ? [item.timeframe]
-      : [item.timeframe, this.feedback.eventFeedbackItemStatusLine(item)];
-    return {
-      rowId: item.eventId,
-      title: item.title,
-      imageUrl: item.imageUrl,
-      metaRows: [item.subtitle],
-      detailRows,
-      leadingIcon: {
-        icon: this.eventFeedbackLeadingIcon(item)
-      },
-      mediaEnd: {
-        variant: 'badge',
-        tone: 'default',
-        label: this.eventFeedbackStartBadgeLabel(item),
-        interactive: this.feedback.isEventFeedbackStartAvailable(item),
-        ariaLabel: this.feedback.isEventFeedbackStartAvailable(item)
-          ? 'Start event feedback'
-          : 'Event feedback unavailable'
-      },
-      menuActions: this.eventFeedbackMenuActions(item),
-      clickable: false
-    };
+    return this.eventsService.eventFeedbackInfoCard(item, {
+      hasOrganizerNote: this.feedback.hasEventFeedbackOrganizerNote(item.eventId)
+    });
   }
 
   protected onEventFeedbackCardPrimaryAction(item: AppTypes.EventFeedbackEventCard): void {
@@ -436,19 +403,7 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
   }
 
   protected eventFeedbackCarouselInfoCard(card: AppTypes.EventFeedbackCard): InfoCardData {
-    const detailRows = [card.identityTitle].filter((row): row is string => !!row?.trim());
-    return {
-      rowId: card.id,
-      title: card.heading,
-      imageUrl: card.imageUrl,
-      metaRows: [card.subheading],
-      metaRowsLimit: 1,
-      detailRows,
-      leadingIcon: {
-        icon: card.icon
-      },
-      clickable: false
-    };
+    return this.eventsService.eventFeedbackCarouselInfoCard(card);
   }
 
   protected organizerEventFeedbackInfoCard(item: {
@@ -460,7 +415,7 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
     responseCount: number;
     noteCount: number;
   }): InfoCardData {
-    return this.organizerEventFeedbackCardData(item, true);
+    return this.eventsService.organizerEventFeedbackInfoCard(item);
   }
 
   protected organizerEventFeedbackDetailInfoCard(item: {
@@ -472,39 +427,7 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
     responseCount: number;
     noteCount: number;
   }): InfoCardData {
-    return this.organizerEventFeedbackCardData(item, false);
-  }
-
-  private organizerEventFeedbackCardData(item: {
-    eventId: string;
-    title: string;
-    subtitle: string;
-    timeframe: string;
-    imageUrl: string;
-    responseCount: number;
-    noteCount: number;
-  }, showAction: boolean): InfoCardData {
-    return {
-      rowId: item.eventId,
-      title: item.title,
-      imageUrl: item.imageUrl,
-      metaRows: [item.subtitle],
-      detailRows: [item.timeframe],
-      leadingIcon: {
-        icon: 'stadium'
-      },
-      mediaEnd: showAction
-        ? {
-          variant: 'badge',
-          tone: 'default',
-          label: 'View Feedbacks',
-          pendingCount: item.responseCount,
-          interactive: true,
-          ariaLabel: `Open feedback details for ${item.title}`
-        }
-        : null,
-      clickable: false
-    };
+    return this.eventsService.organizerEventFeedbackDetailInfoCard(item);
   }
 
   protected openOrganizerEventFeedback(eventId: string): void {
@@ -820,55 +743,6 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
         feedback: 0
       }
     };
-  }
-
-  private eventFeedbackLeadingIcon(item: AppTypes.EventFeedbackEventCard): string {
-    if (item.isOwnEvent) {
-      return 'stadium';
-    }
-    if (item.isFeedbacked) {
-      return 'task_alt';
-    }
-    if (item.isRemoved) {
-      return 'delete_outline';
-    }
-    return 'rate_review';
-  }
-
-  private eventFeedbackStartBadgeLabel(item: AppTypes.EventFeedbackEventCard): string {
-    if (item.isOwnEvent) {
-      return 'View Feedbacks';
-    }
-    if (item.isRemoved) {
-      return 'Removed';
-    }
-    if (item.isFeedbacked) {
-      return 'Feedbacked';
-    }
-    return 'Start Feedback';
-  }
-
-  private eventFeedbackMenuActions(item: AppTypes.EventFeedbackEventCard): readonly InfoCardMenuAction[] {
-    if (item.isOwnEvent) {
-      return [];
-    }
-    const actions: InfoCardMenuAction[] = [];
-
-    if (this.feedback.isEventFeedbackStartAvailable(item)) {
-      actions.push('startFeedback');
-    }
-
-    if (!item.isRemoved && !item.isFeedbacked) {
-      actions.push('removeFeedback');
-    }
-
-    if (item.isRemoved) {
-      actions.push('restoreFeedback');
-    }
-
-    actions.push(this.feedback.hasEventFeedbackOrganizerNote(item.eventId) ? 'editOrganizerNote' : 'addOrganizerNote');
-
-    return actions;
   }
 
   private eventFeedbackGroupLabel(

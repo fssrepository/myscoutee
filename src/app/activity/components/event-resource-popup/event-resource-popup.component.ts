@@ -18,7 +18,6 @@ import {
   SmartListComponent,
   type HeaderProgressBarConfig,
   type InfoCardData,
-  type InfoCardMenuAction,
   type InfoCardMenuActionEvent,
   type ListQuery,
   type SmartListConfig,
@@ -197,6 +196,7 @@ export interface EventResourcePopupHost {
   assetExploreAvailableQuantity(card: AppTypes.AssetCard): number;
   assetExploreAvailabilityLabel(card: AppTypes.AssetCard): string;
   assetExploreCanBorrow(card: AppTypes.AssetCard): boolean;
+  assetExploreInfoCard(card: AppTypes.AssetCard, options?: { groupLabel?: string | null }): InfoCardData;
   openAssetExploreAssetView(card: AppTypes.AssetCard, event?: Event): void;
   openAssetExploreBorrowDialog(card: AppTypes.AssetCard, event?: Event): void;
   openAssetExploreServiceChat(card: AppTypes.AssetCard, event?: Event): void;
@@ -220,6 +220,7 @@ export interface EventResourcePopupHost {
   canOpenBadgeDetails(card: AppTypes.SubEventResourceCard): boolean;
   openBadgeDetails(card: AppTypes.SubEventResourceCard, event?: Event): void;
   occupancyLabel(card: AppTypes.SubEventResourceCard): string;
+  resourceInfoCard(card: AppTypes.SubEventResourceCard, options?: { groupLabel?: string | null }): InfoCardData;
   canOpenAssetMembers(card: AppTypes.SubEventResourceCard): boolean;
   openAssetMembers(card: AppTypes.SubEventResourceCard, event?: Event): void;
   openResourceAssetView(card: AppTypes.SubEventResourceCard, mode: 'view' | 'edit', event?: Event): void;
@@ -592,30 +593,7 @@ export class EventResourcePopupComponent implements DoCheck {
     card: AppTypes.SubEventResourceCard,
     options: { groupLabel?: string | null } = {}
   ): InfoCardData {
-    return {
-      rowId: card.id,
-      groupLabel: options.groupLabel ?? null,
-      title: card.title,
-      imageUrl: card.imageUrl,
-      metaRows: [`${card.type} · ${card.subtitle} · ${card.city}`],
-      description: card.details,
-      leadingIcon: {
-        icon: this.host.resourceTypeIcon(card.type)
-      },
-      mediaStart: this.resourceMediaStart(card),
-      mediaEnd: {
-        variant: 'badge',
-        tone: 'default',
-        label: this.host.occupancyLabel(card),
-        interactive: this.host.canOpenBadgeDetails(card),
-        pendingCount: card.pending,
-        ariaLabel: this.host.canOpenAssetMembers(card)
-          ? 'Open member requests'
-          : 'Open resource details'
-      },
-      menuActions: this.resourceMenuActions(card),
-      clickable: false
-    };
+    return this.host.resourceInfoCard(card, options);
   }
 
   protected openResourceCardMap(card: AppTypes.SubEventResourceCard): void {
@@ -891,69 +869,7 @@ export class EventResourcePopupComponent implements DoCheck {
     card: AppTypes.AssetCard,
     options: { groupLabel?: string | null } = {}
   ): InfoCardData {
-    const visibility = card.visibility === 'Friends only'
-      ? 'Friends only'
-      : card.visibility === 'Invitation only'
-        ? 'Invitation only'
-        : 'Public';
-    const canBorrow = this.host.assetExploreCanBorrow(card);
-    const priceLabel = this.assetExplorePriceLabel(card);
-    const policyLabel = this.assetExplorePolicyLabel(card);
-    return {
-      rowId: `asset-explore:${card.id}`,
-      groupLabel: options.groupLabel ?? null,
-      title: card.title,
-      imageUrl: card.imageUrl,
-      metaRows: [[
-        this.host.resourceTypeLabel(card.type),
-        card.category ?? '',
-        card.city
-      ].filter(Boolean).join(' · ')],
-      description: card.details,
-      detailRows: [[
-        card.ownerName?.trim() || 'Unknown owner',
-        visibility
-      ].filter(Boolean).join(' · ')],
-      footerChips: [
-        { label: priceLabel },
-        { label: policyLabel }
-      ],
-      leadingIcon: {
-        icon: visibility === 'Friends only'
-          ? 'groups'
-          : visibility === 'Invitation only'
-            ? 'mail_lock'
-            : 'public',
-        tone: visibility === 'Friends only'
-          ? 'friends'
-          : visibility === 'Invitation only'
-            ? 'invitation'
-            : 'public'
-      },
-      mediaStart: {
-        variant: 'avatar',
-        tone: `tone-${(AppUtils.hashText(`${card.ownerUserId ?? card.id}:${card.ownerName ?? card.title}`) % 8) + 1}` as NonNullable<InfoCardData['mediaStart']>['tone'],
-        label: AppUtils.initialsFromText(card.ownerName?.trim() || card.title),
-        interactive: false,
-        ariaLabel: null
-      },
-      mediaEnd: {
-        variant: 'badge',
-        tone: canBorrow ? 'default' : 'inactive',
-        label: this.host.assetExploreAvailabilityLabel(card),
-        interactive: canBorrow,
-        disabled: !canBorrow,
-        ariaLabel: canBorrow ? 'Borrow asset' : 'Asset unavailable for this time'
-      },
-      menuActions: [
-        'viewAsset',
-        ...(canBorrow ? ['borrowAsset'] : []),
-        'contactOwner',
-        'shareAsset',
-        ...(this.host.canReportAssetExploreOwner(card) ? ['reportOwner'] : [])
-      ],
-      clickable: false
-    };
+    return this.host.assetExploreInfoCard(card, options);
   }
 
   protected openAssetExploreBorrowFromBadge(card: AppTypes.AssetCard): void {
@@ -1562,39 +1478,6 @@ export class EventResourcePopupComponent implements DoCheck {
       return configuredInitialPageSize;
     }
     return basePageSize;
-  }
-
-  private resourceMediaStart(card: AppTypes.SubEventResourceCard): NonNullable<InfoCardData['mediaStart']> | null {
-    if (!this.host.canOpenMap(card)) {
-      return null;
-    }
-    return {
-      variant: 'avatar',
-      tone: 'default',
-      icon: 'location_on',
-      interactive: true,
-      ariaLabel: card.type === 'Car' ? 'Open route map' : 'Open accommodation map'
-    };
-  }
-
-  private resourceMenuActions(card: AppTypes.SubEventResourceCard): readonly InfoCardMenuAction[] {
-    const actions: InfoCardMenuAction[] = [];
-    actions.push('viewAsset');
-    if (this.host.canEditRoute(card)) {
-      actions.push('editAsset');
-    }
-    if (this.host.canJoin(card)) {
-      actions.push('joinResource');
-    } else if (this.host.canLeave(card)) {
-      actions.push('leaveResource');
-    }
-    actions.push('contactOrganizer');
-    actions.push('shareAsset');
-    if (this.host.canReportResourceManager(card)) {
-      actions.push(card.sourceAssetId ? 'reportManager' : 'reportOrganizer');
-    }
-    actions.push('delete');
-    return actions;
   }
 
   private openAssetExploreShareDialog(card: AppTypes.AssetCard): void {

@@ -5,6 +5,8 @@ import type {
   EventCheckoutAssetSelection,
   EventCheckoutRequest,
   EventCheckoutSession,
+  EventFeedbackCard,
+  EventFeedbackEventCard,
   EventFeedbackReceivedEventDto,
   EventFeedbackNoteRequestDto,
   EventFeedbackStateDto,
@@ -21,6 +23,7 @@ import type {
   DemoEventScopeFilter,
   DemoRepositoryEventItemType
 } from '../../demo/models/events.model';
+import type { InfoCardData, InfoCardMenuAction } from '../../../ui';
 import { BaseRouteModeService } from './base-route-mode.service';
 
 @Injectable({
@@ -190,7 +193,187 @@ export class EventsService extends BaseRouteModeService {
     return this.eventsService.restoreEventFeedbackEvent(userId, eventId);
   }
 
+  eventFeedbackInfoCard(
+    item: EventFeedbackEventCard,
+    options: { hasOrganizerNote?: boolean } = {}
+  ): InfoCardData {
+    if (item.isOwnEvent) {
+      return this.organizerEventFeedbackInfoCard({
+        eventId: item.eventId,
+        title: item.title,
+        subtitle: item.subtitle,
+        timeframe: item.timeframe,
+        imageUrl: item.imageUrl,
+        responseCount: item.pendingCards,
+        noteCount: 0
+      });
+    }
+    const startAvailable = this.isEventFeedbackStartAvailable(item);
+    const detailRows = item.isFeedbacked
+      ? [item.timeframe]
+      : [item.timeframe, this.eventFeedbackItemStatusLine(item)];
+    return {
+      rowId: item.eventId,
+      title: item.title,
+      imageUrl: item.imageUrl,
+      metaRows: [item.subtitle],
+      detailRows,
+      leadingIcon: {
+        icon: this.eventFeedbackLeadingIcon(item)
+      },
+      mediaEnd: {
+        variant: 'badge',
+        tone: 'default',
+        label: this.eventFeedbackStartBadgeLabel(item),
+        interactive: startAvailable,
+        ariaLabel: startAvailable
+          ? 'Start event feedback'
+          : 'Event feedback unavailable'
+      },
+      menuActions: this.eventFeedbackMenuActions(item, options.hasOrganizerNote === true),
+      clickable: false
+    };
+  }
+
+  eventFeedbackCarouselInfoCard(card: EventFeedbackCard): InfoCardData {
+    const detailRows = [card.identityTitle].filter((row): row is string => !!row?.trim());
+    return {
+      rowId: card.id,
+      title: card.heading,
+      imageUrl: card.imageUrl,
+      metaRows: [card.subheading],
+      metaRowsLimit: 1,
+      detailRows,
+      leadingIcon: {
+        icon: card.icon
+      },
+      clickable: false
+    };
+  }
+
+  organizerEventFeedbackInfoCard(item: {
+    eventId: string;
+    title: string;
+    subtitle: string;
+    timeframe: string;
+    imageUrl: string;
+    responseCount: number;
+    noteCount: number;
+  }): InfoCardData {
+    return this.organizerEventFeedbackCardData(item, true);
+  }
+
+  organizerEventFeedbackDetailInfoCard(item: {
+    eventId: string;
+    title: string;
+    subtitle: string;
+    timeframe: string;
+    imageUrl: string;
+    responseCount: number;
+    noteCount: number;
+  }): InfoCardData {
+    return this.organizerEventFeedbackCardData(item, false);
+  }
+
   async syncEventSnapshot(payload: Omit<ActivitiesEventSyncPayload, 'syncKey'>): Promise<DemoEventRecord | null> {
     return this.eventsService.syncEventSnapshot(payload);
+  }
+
+  private isEventFeedbackStartAvailable(item: EventFeedbackEventCard): boolean {
+    return !item.isRemoved && item.pendingCards > 0;
+  }
+
+  private eventFeedbackItemStatusLine(item: EventFeedbackEventCard): string {
+    if (item.isRemoved) {
+      return 'Removed without feedback.';
+    }
+    if (item.isFeedbacked) {
+      return 'Feedbacked.';
+    }
+    return `${item.pendingCards}/${item.totalCards} feedback item${item.totalCards === 1 ? '' : 's'} pending.`;
+  }
+
+  private eventFeedbackLeadingIcon(item: EventFeedbackEventCard): string {
+    if (item.isOwnEvent) {
+      return 'stadium';
+    }
+    if (item.isFeedbacked) {
+      return 'task_alt';
+    }
+    if (item.isRemoved) {
+      return 'delete_outline';
+    }
+    return 'rate_review';
+  }
+
+  private eventFeedbackStartBadgeLabel(item: EventFeedbackEventCard): string {
+    if (item.isOwnEvent) {
+      return 'View Feedbacks';
+    }
+    if (item.isRemoved) {
+      return 'Removed';
+    }
+    if (item.isFeedbacked) {
+      return 'Feedbacked';
+    }
+    return 'Start Feedback';
+  }
+
+  private eventFeedbackMenuActions(
+    item: EventFeedbackEventCard,
+    hasOrganizerNote: boolean
+  ): readonly InfoCardMenuAction[] {
+    if (item.isOwnEvent) {
+      return [];
+    }
+    const actions: InfoCardMenuAction[] = [];
+
+    if (this.isEventFeedbackStartAvailable(item)) {
+      actions.push('startFeedback');
+    }
+
+    if (!item.isRemoved && !item.isFeedbacked) {
+      actions.push('removeFeedback');
+    }
+
+    if (item.isRemoved) {
+      actions.push('restoreFeedback');
+    }
+
+    actions.push(hasOrganizerNote ? 'editOrganizerNote' : 'addOrganizerNote');
+
+    return actions;
+  }
+
+  private organizerEventFeedbackCardData(item: {
+    eventId: string;
+    title: string;
+    subtitle: string;
+    timeframe: string;
+    imageUrl: string;
+    responseCount: number;
+    noteCount: number;
+  }, showAction: boolean): InfoCardData {
+    return {
+      rowId: item.eventId,
+      title: item.title,
+      imageUrl: item.imageUrl,
+      metaRows: [item.subtitle],
+      detailRows: [item.timeframe],
+      leadingIcon: {
+        icon: 'stadium'
+      },
+      mediaEnd: showAction
+        ? {
+          variant: 'badge',
+          tone: 'default',
+          label: 'View Feedbacks',
+          pendingCount: item.responseCount,
+          interactive: true,
+          ariaLabel: `Open feedback details for ${item.title}`
+        }
+        : null,
+      clickable: false
+    };
   }
 }

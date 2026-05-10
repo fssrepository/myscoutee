@@ -86,6 +86,60 @@ export class AssetInfoCardBuilder {
     };
   }
 
+  static buildExploreAssetInfoCard(
+    card: AppTypes.AssetCard,
+    options: {
+      groupLabel?: string | null;
+      availabilityLabel: string;
+      canBorrow: boolean;
+      canReportOwner: boolean;
+    }
+  ): InfoCardData {
+    const visibility = this.assetExploreVisibility(card);
+    const canBorrow = options.canBorrow === true;
+    return {
+      rowId: `asset-explore:${card.id}`,
+      groupLabel: options.groupLabel ?? null,
+      title: card.title,
+      imageUrl: card.imageUrl,
+      metaRows: [[
+        AssetDefaultsBuilder.assetTypeLabel(card.type),
+        card.category ?? '',
+        card.city
+      ].filter(Boolean).join(' · ')],
+      description: card.details,
+      detailRows: [[
+        card.ownerName?.trim() || 'Unknown owner',
+        visibility
+      ].filter(Boolean).join(' · ')],
+      footerChips: [
+        { label: this.assetExplorePriceLabel(card) },
+        { label: this.assetExplorePolicyLabel(card) }
+      ],
+      leadingIcon: {
+        icon: this.assetExploreVisibilityIcon(visibility),
+        tone: this.assetExploreVisibilityTone(visibility)
+      },
+      mediaStart: {
+        variant: 'avatar',
+        tone: this.assetExploreOwnerAvatarTone(card),
+        label: AppUtils.initialsFromText(card.ownerName?.trim() || card.title),
+        interactive: false,
+        ariaLabel: null
+      },
+      mediaEnd: {
+        variant: 'badge',
+        tone: canBorrow ? 'default' : 'inactive',
+        label: options.availabilityLabel,
+        interactive: canBorrow,
+        disabled: !canBorrow,
+        ariaLabel: canBorrow ? 'Borrow asset' : 'Asset unavailable for this time'
+      },
+      menuActions: this.assetExploreMenuActions(canBorrow, options.canReportOwner === true),
+      clickable: false
+    };
+  }
+
   static buildTicketGroupLabel(dateIso: string): string {
     const parsed = new Date(dateIso);
     if (Number.isNaN(parsed.getTime())) {
@@ -182,6 +236,87 @@ export class AssetInfoCardBuilder {
     const subtitle = card.subtitle.trim() || fallbackSubtitle.trim();
     const city = card.city.trim();
     return [AssetDefaultsBuilder.assetTypeLabel(card.type), subtitle, city].filter(Boolean).join(' · ');
+  }
+
+  private static assetExploreVisibility(card: AppTypes.AssetCard): AppTypes.EventVisibility {
+    if (card.visibility === 'Friends only' || card.visibility === 'Invitation only') {
+      return card.visibility;
+    }
+    return 'Public';
+  }
+
+  private static assetExploreVisibilityIcon(visibility: AppTypes.EventVisibility): string {
+    if (visibility === 'Friends only') {
+      return 'groups';
+    }
+    if (visibility === 'Invitation only') {
+      return 'mail_lock';
+    }
+    return 'public';
+  }
+
+  private static assetExploreVisibilityTone(
+    visibility: AppTypes.EventVisibility
+  ): NonNullable<InfoCardData['leadingIcon']>['tone'] {
+    if (visibility === 'Friends only') {
+      return 'friends';
+    }
+    if (visibility === 'Invitation only') {
+      return 'invitation';
+    }
+    return 'public';
+  }
+
+  private static assetExploreOwnerAvatarTone(card: AppTypes.AssetCard): NonNullable<InfoCardData['mediaStart']>['tone'] {
+    return `tone-${(AppUtils.hashText(`${card.ownerUserId ?? card.id}:${card.ownerName ?? card.title}`) % 8) + 1}` as NonNullable<InfoCardData['mediaStart']>['tone'];
+  }
+
+  private static assetExploreMenuActions(
+    canBorrow: boolean,
+    canReportOwner: boolean
+  ): readonly InfoCardMenuAction[] {
+    const actions: InfoCardMenuAction[] = ['viewAsset'];
+    if (canBorrow) {
+      actions.push('borrowAsset');
+    }
+    actions.push('contactOwner');
+    actions.push('shareAsset');
+    if (canReportOwner) {
+      actions.push('reportOwner');
+    }
+    return actions;
+  }
+
+  private static assetExplorePriceLabel(card: AppTypes.AssetCard): string {
+    const amount = this.assetExplorePriceAmount(card);
+    const currency = card.pricing?.currency || 'USD';
+    if (amount <= 0) {
+      return 'Free borrow';
+    }
+    try {
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency,
+        maximumFractionDigits: 0
+      }).format(amount);
+    } catch {
+      return `${currency} ${amount.toFixed(0)}`;
+    }
+  }
+
+  private static assetExplorePriceAmount(card: AppTypes.AssetCard): number {
+    if (!card.pricing?.enabled) {
+      return 0;
+    }
+    return Math.max(0, Number(card.pricing.basePrice) || 0);
+  }
+
+  private static assetExplorePolicyLabel(card: AppTypes.AssetCard): string {
+    const count = (card.policies ?? []).length;
+    if (count <= 0) {
+      return 'No policy';
+    }
+    return count === 1 ? '1 policy' : `${count} policies`;
   }
 
   private static ownedAssetMediaStart(card: AppTypes.AssetCard): NonNullable<InfoCardData['mediaStart']> | null {

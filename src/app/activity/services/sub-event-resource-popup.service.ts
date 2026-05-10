@@ -297,6 +297,12 @@ export class SubEventResourcePopupService {
     assetExploreAvailableQuantity: card => this.assetExploreAvailableQuantity(card),
     assetExploreAvailabilityLabel: card => this.assetExploreAvailabilityLabel(card),
     assetExploreCanBorrow: card => this.assetExploreAvailableQuantity(card) > 0,
+    assetExploreInfoCard: (card, options) => this.assetsService.exploreAssetInfoCard(card, {
+      groupLabel: options?.groupLabel ?? null,
+      availabilityLabel: this.assetExploreAvailabilityLabel(card),
+      canBorrow: this.assetExploreAvailableQuantity(card) > 0,
+      canReportOwner: this.canReportAssetExploreOwner(card)
+    }),
     openAssetExploreAssetView: (card, event) => this.openAssetExploreAssetView(card, event),
     openAssetExploreBorrowDialog: (card, event) => this.openAssetExploreBorrowDialog(card, event),
     openAssetExploreServiceChat: (card, event) => this.openAssetExploreServiceChat(card, event),
@@ -320,6 +326,17 @@ export class SubEventResourcePopupService {
     canOpenBadgeDetails: card => this.canOpenResourceBadgeDetails(card),
     openBadgeDetails: (card, event) => this.openResourceBadgeDetails(card, event),
     occupancyLabel: card => this.occupancyLabel(card),
+    resourceInfoCard: (card, options) => this.activityResourcesService.subEventResourceInfoCard(card, {
+      groupLabel: options?.groupLabel ?? null,
+      canOpenMap: this.canOpenResourceMap(card),
+      occupancyLabel: this.occupancyLabel(card),
+      canOpenBadgeDetails: this.canOpenResourceBadgeDetails(card),
+      canOpenAssetMembers: this.canOpenAssetMembers(card),
+      canEditRoute: this.canEditRoute(card),
+      canJoin: this.canJoin(card),
+      canLeave: this.canLeave(card),
+      canReportResourceManager: this.canReportResourceManager(card)
+    }),
     canOpenAssetMembers: card => this.canOpenAssetMembers(card),
     openAssetMembers: (card, event) => void this.openAssetMembersPopup(card, event),
     openResourceAssetView: (card, mode, event) => this.openResourceAssetView(card, mode, event),

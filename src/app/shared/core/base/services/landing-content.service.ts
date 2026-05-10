@@ -3,18 +3,27 @@ import { Injectable, inject, signal } from '@angular/core';
 import { DemoLandingContentService } from '../../demo/services/landing-content.service';
 import { HttpLandingContentService } from '../../http/services/landing-content.service';
 import type { LandingContentState } from '../models';
+import type { InfoCardData } from '../../../ui';
 import { BaseRouteModeService } from './base-route-mode.service';
 import { HelpCenterService } from './help-center.service';
 import { IdeaPostsService } from './idea-posts.service';
+import { RouteDelayService } from './route-delay.service';
+
+export interface LandingContentDisplayState {
+  state: LandingContentState;
+  ideaCards: InfoCardData[];
+}
 
 @Injectable({
   providedIn: 'root'
 })
 export class LandingContentService extends BaseRouteModeService {
+  private static readonly LANDING_CONTENT_ROUTE = '/landing/content';
   private readonly demoLandingContentService = inject(DemoLandingContentService);
   private readonly httpLandingContentService = inject(HttpLandingContentService);
   private readonly helpCenter = inject(HelpCenterService);
   private readonly ideaPosts = inject(IdeaPostsService);
+  private readonly routeDelay = inject(RouteDelayService);
   private readonly stateRef = signal<LandingContentState | null>(null);
   private loadPromise: Promise<LandingContentState> | null = null;
 
@@ -41,8 +50,31 @@ export class LandingContentService extends BaseRouteModeService {
     return this.cloneState(await this.loadPromise);
   }
 
+  async loadDisplayState(): Promise<LandingContentDisplayState> {
+    const [state] = await Promise.all([
+      this.loadOnce(),
+      this.waitForRouteDelay()
+    ]);
+    return {
+      state,
+      ideaCards: this.ideaInfoCards()
+    };
+  }
+
+  ideaInfoCards(): InfoCardData[] {
+    return this.ideaPosts.publishedIdeaInfoCards().map(card => ({ ...card }));
+  }
+
   private landingService(): DemoLandingContentService | HttpLandingContentService {
-    return this.resolveRouteService('/landing/content', this.demoLandingContentService, this.httpLandingContentService);
+    return this.resolveRouteService(
+      LandingContentService.LANDING_CONTENT_ROUTE,
+      this.demoLandingContentService,
+      this.httpLandingContentService
+    );
+  }
+
+  private waitForRouteDelay(): Promise<void> {
+    return this.routeDelay.waitForRouteDelay(LandingContentService.LANDING_CONTENT_ROUTE);
   }
 
   private cloneState(state: LandingContentState): LandingContentState {

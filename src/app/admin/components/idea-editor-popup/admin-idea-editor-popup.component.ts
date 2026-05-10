@@ -5,7 +5,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { Observable, from } from 'rxjs';
 
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
-import { IdeaPostsService, type IdeaPost, type IdeaPostSaveRequest } from '../../../shared/core';
+import { IdeaPostsService, type IdeaArticleDetail, type IdeaPost, type IdeaPostSaveRequest } from '../../../shared/core';
 import { resolveCurrentRouteDelayMs, RouteDelayService } from '../../../shared/core/base/services/route-delay.service';
 import {
   InfoCardComponent,
@@ -17,7 +17,6 @@ import {
   type ListQuery,
   type PageResult,
   type SmartListConfig,
-  type SmartListItemRenderState,
   type SmartListLoadPage
 } from '../../../shared/ui/components/smart-list';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
@@ -26,6 +25,7 @@ import { AdminService } from '../../admin.service';
 type IdeaEditorMode = 'html' | 'preview';
 type IdeaPostFilter = 'all' | 'featured' | 'published' | 'drafts' | 'trashed';
 type IdeaPanelLoadingMode = 'viewer' | 'editor';
+type IdeaInfoCard = InfoCardData<IdeaArticleDetail>;
 
 interface IdeaPostDraft {
   id: string | null;
@@ -46,6 +46,13 @@ interface IdeaSmartListFilters {
   revision: number;
 }
 
+interface IdeaPostLangCache {
+  posts: IdeaPost[];
+  byId: Map<string, IdeaPost>;
+  byContentKey: Map<string, IdeaPost>;
+  indexById: Map<string, number>;
+}
+
 @Component({
   selector: 'app-admin-idea-editor-popup',
   standalone: true,
@@ -56,7 +63,7 @@ interface IdeaSmartListFilters {
 export class AdminIdeaEditorPopupComponent implements OnDestroy {
   private static readonly LOAD_PROGRESS_WINDOW_MS = 3000;
   @ViewChild('ideaSmartList')
-  private ideaSmartList?: SmartListComponent<IdeaPost, IdeaSmartListFilters>;
+  private ideaSmartList?: SmartListComponent<IdeaInfoCard, IdeaSmartListFilters>;
 
   @ViewChild('imageSlotCarouselViewport')
   private imageSlotCarouselViewportRef?: ElementRef<HTMLDivElement>;
@@ -99,7 +106,11 @@ export class AdminIdeaEditorPopupComponent implements OnDestroy {
   private loadingProgressTimer: ReturnType<typeof setInterval> | null = null;
   private loadingProgressStartedAtMs = 0;
   private listRevision = 0;
-  private readonly postsByLang = new Map<string, IdeaPost[]>();
+  private readonly postsByLang = new Map<string, IdeaPostLangCache>();
+  private adminPostList: IdeaPost[] = [];
+  private adminPostIndex = new Map<string, IdeaPost>();
+  private adminIdeaCardList: IdeaInfoCard[] = [];
+  private adminIdeaCardIndex = new Map<string, IdeaInfoCard>();
   private readonly featuredPendingIds = new Set<string>();
   private imageSlotCarouselScrollLockTargetIndex: number | null = null;
   private imageSlotCarouselScrollLockTimer: ReturnType<typeof setTimeout> | null = null;
@@ -112,7 +123,7 @@ export class AdminIdeaEditorPopupComponent implements OnDestroy {
     { id: 'trashed', label: 'Trashed', icon: 'delete_outline' }
   ];
 
-  protected readonly ideaSmartListConfig: SmartListConfig<IdeaPost, IdeaSmartListFilters> = {
+  protected readonly ideaSmartListConfig: SmartListConfig<IdeaInfoCard, IdeaSmartListFilters> = {
     pageSize: 10,
     initialPageSize: 10,
     initialPageCount: 1,
@@ -127,8 +138,8 @@ export class AdminIdeaEditorPopupComponent implements OnDestroy {
     showStickyHeader: true,
     showFirstGroupMarker: true,
     showGroupMarker: ({ groupIndex, scrollable }) => groupIndex > 0 || scrollable,
-    groupBy: post => this.ideaDayGroupLabel(post),
-    trackBy: (_index, post) => post.id,
+    groupBy: card => this.ideaCardDayGroupLabel(card),
+    trackBy: (_index, card) => card.rowId,
     listLayout: 'card-grid',
     desktopColumns: 3,
     snapMode: 'mandatory',
@@ -145,19 +156,23 @@ export class AdminIdeaEditorPopupComponent implements OnDestroy {
     }
   };
 
-  protected readonly ideaSmartListLoadPage: SmartListLoadPage<IdeaPost, IdeaSmartListFilters> = (
+  protected readonly ideaSmartListLoadPage: SmartListLoadPage<IdeaInfoCard, IdeaSmartListFilters> = (
     query: ListQuery<IdeaSmartListFilters>
-  ): Observable<PageResult<IdeaPost>> => from(this.loadIdeaPostsPage(query));
+  ): Observable<PageResult<IdeaInfoCard>> => from(this.loadIdeaPostsPage(query));
 
-  private async loadIdeaPostsPage(query: ListQuery<IdeaSmartListFilters>): Promise<PageResult<IdeaPost>> {
+  private async loadIdeaPostsPage(query: ListQuery<IdeaSmartListFilters>): Promise<PageResult<IdeaInfoCard>> {
     await this.ensureAdminPostsLoaded();
     const filter = query.filters?.status ?? this.ideaFilter;
     const allPosts = this.sortedPosts(this.posts());
     const filtered = this.filterPosts(allPosts, filter);
+    const cardsByPostId = this.adminIdeaCardIndex;
     const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || Number(this.ideaSmartListConfig.pageSize) || 24));
     const page = Math.max(0, Math.trunc(Number(query.page) || 0));
     const start = page * pageSize;
-    const items = filtered.slice(start, start + pageSize);
+    const items = filtered
+      .slice(start, start + pageSize)
+      .map(post => cardsByPostId.get(post.id) ?? null)
+      .filter((card): card is IdeaInfoCard => Boolean(card));
     return {
       items,
       total: filtered.length,
@@ -177,6 +192,7 @@ export class AdminIdeaEditorPopupComponent implements OnDestroy {
         this.refreshView();
         try {
           const posts = await this.ideaPosts.loadAdminPosts(this.actorUserId(), this.selectedContentLang);
+          this.reindexAdminPosts();
           this.cachePosts(this.selectedContentLang, posts);
           if (this.admin.activePopup() === 'idea-editor' && this.adminPostsLoadGeneration === loadGeneration) {
             this.stateLoadedForPopup = true;
@@ -216,6 +232,7 @@ export class AdminIdeaEditorPopupComponent implements OnDestroy {
         this.copiedImageUrl = '';
         this.imageSlotCarouselIndex = 0;
         this.uploadingImageSlotIndex = null;
+        this.clearAdminIndexes();
         this.clearImageSlotCarouselScrollLock();
         return;
       }
@@ -260,12 +277,12 @@ export class AdminIdeaEditorPopupComponent implements OnDestroy {
   }
 
   protected posts(): IdeaPost[] {
-    return this.ideaPosts.adminPosts();
+    return this.adminPostList;
   }
 
   protected selectedViewerPost(): IdeaPost | null {
     return this.viewerPost
-      ?? this.posts().find(post => post.id === this.viewerPostId)
+      ?? this.adminPostById(this.viewerPostId)
       ?? null;
   }
 
@@ -423,6 +440,7 @@ export class AdminIdeaEditorPopupComponent implements OnDestroy {
     this.refreshView();
     try {
       const saved = await this.ideaPosts.savePost(request);
+      this.reindexAdminPosts();
       this.cachePost(saved);
       if (saved.lang === this.selectedContentLang) {
         this.syncSavedPostInVisibleList(saved, previousId);
@@ -455,6 +473,7 @@ export class AdminIdeaEditorPopupComponent implements OnDestroy {
         this.refreshView();
         try {
           await this.ideaPosts.deletePost(post.id, this.actorUserId());
+          this.reindexAdminPosts();
           if (this.viewerPostId === post.id) {
             this.viewerPostId = '';
             this.viewerPost = null;
@@ -515,6 +534,7 @@ export class AdminIdeaEditorPopupComponent implements OnDestroy {
     this.refreshView();
     try {
       const restored = await this.ideaPosts.restorePost(post.id, this.actorUserId());
+      this.reindexAdminPosts();
       if (this.viewerPostId === post.id) {
         this.viewerPost = this.clonePost(restored);
       }
@@ -550,6 +570,7 @@ export class AdminIdeaEditorPopupComponent implements OnDestroy {
         published: nextPublished,
         submittedAtIso: post.submittedAtIso
       });
+      this.reindexAdminPosts();
       if (this.viewerPostId === post.id) {
         this.viewerPost = this.clonePost(saved);
       }
@@ -606,6 +627,7 @@ export class AdminIdeaEditorPopupComponent implements OnDestroy {
         published: post.published,
         submittedAtIso: post.submittedAtIso
       });
+      this.reindexAdminPosts();
       if (removeFromFeaturedFilter) {
         this.removeVisibleIdeaPost(saved.id);
       } else {
@@ -634,11 +656,23 @@ export class AdminIdeaEditorPopupComponent implements OnDestroy {
       return;
     }
     const currentItems = smartList.itemsSnapshot();
-    if (!currentItems.some(item => item.id === post.id)) {
+    const replacement = this.adminIdeaCardForPostId(post.id);
+    if (!replacement) {
+      return;
+    }
+    let replaced = false;
+    const nextItems = currentItems.map(item => {
+      if (this.ideaCardPostId(item) !== post.id) {
+        return item;
+      }
+      replaced = true;
+      return replacement;
+    });
+    if (!replaced) {
       return;
     }
     smartList.replaceVisibleItems(
-      currentItems.map(item => item.id === post.id ? { ...post, imageUrls: [...post.imageUrls] } : item),
+      nextItems,
       { total: this.filterCount(this.ideaFilter) }
     );
   }
@@ -649,12 +683,16 @@ export class AdminIdeaEditorPopupComponent implements OnDestroy {
       return;
     }
     const saved = this.clonePost(post);
-    const savedMatchesFilter = this.filterPosts([saved], this.ideaFilter).length > 0;
-    const currentItems = smartList.itemsSnapshot()
-      .filter(item => item.id !== saved.id && item.id !== previousId)
-      .map(item => this.clonePost(item));
-    const nextItems = savedMatchesFilter
-      ? this.sortedPosts([...currentItems, saved])
+    const savedMatchesFilter = this.matchesPostFilter(saved, this.ideaFilter);
+    const currentSnapshot = smartList.itemsSnapshot();
+    const currentItems = currentSnapshot
+      .filter(item => {
+        const postId = this.ideaCardPostId(item);
+        return postId !== saved.id && postId !== previousId;
+      });
+    const savedCard = this.adminIdeaCardForPostId(saved.id);
+    const nextItems = savedMatchesFilter && savedCard
+      ? this.sortedIdeaCards([...currentItems, savedCard])
       : currentItems;
     smartList.replaceVisibleItems(nextItems, {
       total: this.filterCount(this.ideaFilter)
@@ -666,7 +704,7 @@ export class AdminIdeaEditorPopupComponent implements OnDestroy {
     if (!smartList) {
       return;
     }
-    const nextItems = smartList.itemsSnapshot().filter(item => item.id !== postId);
+    const nextItems = smartList.itemsSnapshot().filter(item => this.ideaCardPostId(item) !== postId);
     smartList.replaceVisibleItems(nextItems, {
       total: this.filterCount(this.ideaFilter)
     });
@@ -676,17 +714,64 @@ export class AdminIdeaEditorPopupComponent implements OnDestroy {
     return { ...post, imageUrls: [...post.imageUrls] };
   }
 
+  private reindexAdminPosts(): void {
+    const posts = this.ideaPosts.adminPosts();
+    const postIndex = new Map<string, IdeaPost>();
+    for (const post of posts) {
+      postIndex.set(post.id, post);
+    }
+
+    const cards = this.ideaPosts.adminIdeaInfoCards();
+    const cardIndex = new Map<string, IdeaInfoCard>();
+    for (const card of cards) {
+      const postId = this.ideaCardPostId(card);
+      if (postId) {
+        cardIndex.set(postId, card);
+      }
+    }
+
+    this.adminPostList = posts;
+    this.adminPostIndex = postIndex;
+    this.adminIdeaCardList = cards;
+    this.adminIdeaCardIndex = cardIndex;
+  }
+
+  private clearAdminIndexes(): void {
+    this.adminPostList = [];
+    this.adminPostIndex.clear();
+    this.adminIdeaCardList = [];
+    this.adminIdeaCardIndex.clear();
+  }
+
   private cachePosts(lang: string, posts: readonly IdeaPost[]): void {
-    this.postsByLang.set(this.normalizeContentLang(lang), posts.map(post => this.clonePost(post)));
+    this.setPostsCache(this.normalizeContentLang(lang), posts);
   }
 
   private cachePost(post: IdeaPost): void {
     const lang = this.normalizeContentLang(post.lang);
-    const current = this.postsByLang.get(lang) ?? [];
-    this.postsByLang.set(lang, this.sortedPosts([
-      ...current.filter(item => item.id !== post.id && item.contentKey !== post.contentKey),
-      this.clonePost(post)
-    ]));
+    const cache = this.postsByLang.get(lang);
+    if (!cache) {
+      this.setPostsCache(lang, [post]);
+      return;
+    }
+    const clonedPost = this.clonePost(post);
+    const oldContentKeyPost = cache.byContentKey.get(clonedPost.contentKey);
+    if (oldContentKeyPost && oldContentKeyPost.id !== clonedPost.id) {
+      this.removeCachedPost(cache, oldContentKeyPost.id);
+    }
+    const oldPost = cache.byId.get(clonedPost.id);
+    if (oldPost) {
+      cache.byContentKey.delete(oldPost.contentKey);
+    }
+    const existingIndex = cache.indexById.get(clonedPost.id);
+    if (existingIndex === undefined) {
+      cache.indexById.set(clonedPost.id, cache.posts.length);
+      cache.posts.push(clonedPost);
+    } else {
+      cache.posts[existingIndex] = clonedPost;
+    }
+    cache.byId.set(clonedPost.id, clonedPost);
+    cache.byContentKey.set(clonedPost.contentKey, clonedPost);
   }
 
   private async findArticleTranslation(contentKey: string, lang: string): Promise<IdeaPost | null> {
@@ -695,25 +780,70 @@ export class AdminIdeaEditorPopupComponent implements OnDestroy {
     if (!normalizedContentKey) {
       return null;
     }
-    const cached = this.postsByLang.get(normalizedLang)?.find(post => post.contentKey === normalizedContentKey);
+    const cached = this.postsByLang.get(normalizedLang)?.byContentKey.get(normalizedContentKey);
     if (cached) {
       return this.clonePost(cached);
     }
     try {
       const posts = await this.ideaPosts.loadAdminPostsSnapshot(this.actorUserId(), normalizedLang);
       this.cachePosts(normalizedLang, posts);
-      return posts.find(post => post.contentKey === normalizedContentKey) ?? null;
+      const loaded = this.postsByLang.get(normalizedLang)?.byContentKey.get(normalizedContentKey);
+      return loaded ? this.clonePost(loaded) : null;
     } catch {
       this.error = 'Unable to load article language version.';
       return null;
     }
   }
 
+  private setPostsCache(lang: string, posts: readonly IdeaPost[]): void {
+    const clonedPosts = posts.map(post => this.clonePost(post));
+    const byId = new Map<string, IdeaPost>();
+    const byContentKey = new Map<string, IdeaPost>();
+    for (const post of clonedPosts) {
+      byId.set(post.id, post);
+      byContentKey.set(post.contentKey, post);
+    }
+    this.postsByLang.set(lang, {
+      posts: clonedPosts,
+      byId,
+      byContentKey,
+      indexById: this.indexPostsById(clonedPosts)
+    });
+  }
+
+  private indexPostsById(posts: readonly IdeaPost[]): Map<string, number> {
+    const indexById = new Map<string, number>();
+    posts.forEach((post, index) => indexById.set(post.id, index));
+    return indexById;
+  }
+
+  private removeCachedPost(cache: IdeaPostLangCache, postId: string): void {
+    const index = cache.indexById.get(postId);
+    const post = cache.byId.get(postId);
+    if (index === undefined || !post) {
+      return;
+    }
+    const lastIndex = cache.posts.length - 1;
+    const lastPost = cache.posts[lastIndex];
+    if (index !== lastIndex && lastPost) {
+      cache.posts[index] = lastPost;
+      cache.indexById.set(lastPost.id, index);
+    }
+    cache.posts.pop();
+    cache.byId.delete(post.id);
+    cache.byContentKey.delete(post.contentKey);
+    cache.indexById.delete(post.id);
+  }
+
   protected isFeatureTogglePending(postId: string): boolean {
     return this.featuredPendingIds.has(postId);
   }
 
-  protected onIdeaCardMenuAction(post: IdeaPost, event: InfoCardMenuActionEvent): void {
+  protected onIdeaCardMenuAction(card: IdeaInfoCard, event: InfoCardMenuActionEvent): void {
+    const post = this.ideaPostFromCard(card);
+    if (!post) {
+      return;
+    }
     switch (event.actionId) {
       case 'viewArticle':
         void this.openViewer(post);
@@ -736,64 +866,6 @@ export class AdminIdeaEditorPopupComponent implements OnDestroy {
         this.deletePost(post);
         break;
     }
-  }
-
-  protected ideaInfoCard(
-    post: IdeaPost,
-    options: { groupLabel?: string | null; renderState?: SmartListItemRenderState | null } = {}
-  ): InfoCardData {
-    const statusLabel = this.postStatusLabel(post);
-    const publicationAction = post.published ? 'unpublish' : 'publish';
-    const featuredAction = post.featured ? 'unfeature' : 'feature';
-    const menuActions = post.trashed
-      ? ['restore']
-      : [
-          'viewArticle',
-          'edit',
-          publicationAction,
-          ...(post.published ? [featuredAction] : []),
-          'delete'
-        ];
-    return {
-      rowId: `idea:${post.id}`,
-      groupLabel: options.groupLabel ?? null,
-      title: post.title,
-      imageUrl: this.ideaImageUrl(post) || null,
-      placeholderLabel: 'No image',
-      metaRows: [this.postDateLabel(post)],
-      metaRowsLimit: 1,
-      description: post.excerpt,
-      descriptionLines: 3,
-      i18nIgnoreContent: true,
-      surfaceTone: post.trashed ? 'draft' : !post.published ? 'draft' : post.featured ? 'series' : 'default',
-      leadingIcon: {
-        icon: post.trashed ? 'delete_outline' : post.published ? 'article' : 'drafts',
-        tone: post.published && !post.trashed ? 'public' : 'pending'
-      },
-      mediaStart: {
-        variant: 'badge',
-        tone: post.trashed ? 'full' : post.published ? 'public' : 'inactive',
-        icon: post.trashed ? 'delete_outline' : post.published ? 'visibility' : 'drafts',
-        label: statusLabel,
-        ariaLabel: statusLabel
-      },
-      mediaEnd: post.trashed || !post.published || !post.featured ? null : {
-        variant: 'badge',
-        tone: 'selected',
-        icon: 'star',
-        label: 'Featured',
-        selected: true,
-        selectedLabel: 'Featured',
-        selectedIcon: 'star',
-        ariaLabel: 'Featured article',
-        interactive: false
-      },
-      menuActions,
-      menuTitle: null,
-      footerChips: [],
-      clickable: false,
-      state: options.renderState === 'active' ? 'active' : options.renderState === 'leaving' ? 'leaving' : 'default'
-    };
   }
 
   protected contentLanguages(): Array<{ lang: string; label: string }> {
@@ -829,6 +901,7 @@ export class AdminIdeaEditorPopupComponent implements OnDestroy {
     this.viewerPost = null;
     this.cancelArticlePanelLoad();
     this.stateLoadedForPopup = false;
+    this.clearAdminIndexes();
     this.adminPostsLoadGeneration += 1;
     this.refreshIdeaList();
     void this.ensureAdminPostsLoaded();
@@ -1459,28 +1532,34 @@ export class AdminIdeaEditorPopupComponent implements OnDestroy {
   }
 
   private filterPosts(posts: readonly IdeaPost[], filter: IdeaPostFilter): IdeaPost[] {
-    return posts.filter(post => {
-      if (filter === 'trashed') {
-        return post.trashed === true;
-      }
-      if (post.trashed) {
-        return false;
-      }
-      if (filter === 'featured') {
-        return post.featured === true;
-      }
-      if (filter === 'published') {
-        return post.published === true;
-      }
-      if (filter === 'drafts') {
-        return post.published === false;
-      }
-      return true;
-    });
+    return posts.filter(post => this.matchesPostFilter(post, filter));
+  }
+
+  private matchesPostFilter(post: IdeaPost, filter: IdeaPostFilter): boolean {
+    if (filter === 'trashed') {
+      return post.trashed === true;
+    }
+    if (post.trashed) {
+      return false;
+    }
+    if (filter === 'featured') {
+      return post.featured === true;
+    }
+    if (filter === 'published') {
+      return post.published === true;
+    }
+    if (filter === 'drafts') {
+      return post.published === false;
+    }
+    return true;
   }
 
   private sortedPosts(posts: readonly IdeaPost[]): IdeaPost[] {
     return [...posts].sort((left, right) => this.sortValue(right) - this.sortValue(left));
+  }
+
+  private sortedIdeaCards(cards: readonly IdeaInfoCard[]): IdeaInfoCard[] {
+    return [...cards].sort((left, right) => this.ideaCardSortValue(right) - this.ideaCardSortValue(left));
   }
 
   private sortValue(post: Pick<IdeaPost, 'submittedAtIso' | 'updatedAtIso' | 'createdAtIso'>): number {
@@ -1488,8 +1567,33 @@ export class AdminIdeaEditorPopupComponent implements OnDestroy {
     return Number.isFinite(parsed) ? parsed : 0;
   }
 
-  private ideaDayGroupLabel(post: IdeaPost): string {
-    const parsed = Date.parse(post.submittedAtIso || post.updatedAtIso || post.createdAtIso || '');
+  private adminIdeaCardForPostId(postId: string): IdeaInfoCard | null {
+    return this.adminIdeaCardIndex.get(postId) ?? null;
+  }
+
+  private ideaPostFromCard(card: IdeaInfoCard): IdeaPost | null {
+    return this.adminPostById(this.ideaCardPostId(card));
+  }
+
+  private adminPostById(postId: string): IdeaPost | null {
+    const normalizedPostId = `${postId ?? ''}`.trim();
+    if (!normalizedPostId) {
+      return null;
+    }
+    return this.adminPostIndex.get(normalizedPostId) ?? null;
+  }
+
+  protected ideaCardPostId(card: IdeaInfoCard | null | undefined): string {
+    return `${card?.detailRecord?.id ?? ''}`.trim();
+  }
+
+  private ideaCardSortValue(card: IdeaInfoCard): number {
+    const parsed = Date.parse(card.detailRecord?.sortAtIso ?? '');
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  private ideaCardDayGroupLabel(card: IdeaInfoCard): string {
+    const parsed = Date.parse(card.detailRecord?.sortAtIso ?? '');
     if (!Number.isFinite(parsed)) {
       return 'No date';
     }

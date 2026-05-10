@@ -221,8 +221,12 @@ export interface InfoCardFooterChip {
   toneClass?: string | null;
 }
 
-export interface InfoCardData {
+export interface DisplayData<TDetailRecord = unknown> {
   rowId: string;
+  detailRecord?: TDetailRecord | null;
+}
+
+export interface InfoCardData<TDetailRecord = unknown> extends DisplayData<TDetailRecord> {
   status?: string | null;
   groupLabel?: string | null;
   title: string;
