@@ -420,15 +420,15 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
     if (item.isOwnEvent) {
       return;
     }
-    if (event.actionId === 'start') {
+    if (event.actionId === 'startFeedback') {
       this.feedback.startEventFeedback(item);
       return;
     }
-    if (event.actionId === 'remove') {
+    if (event.actionId === 'removeFeedback') {
       this.feedback.removeEventFeedbackItem(item);
       return;
     }
-    if (event.actionId === 'restore') {
+    if (event.actionId === 'restoreFeedback') {
       this.feedback.restoreRemovedEventFeedbackItem(item);
       return;
     }
@@ -855,35 +855,18 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
     const actions: InfoCardMenuAction[] = [];
 
     if (this.feedback.isEventFeedbackStartAvailable(item)) {
-      actions.push({
-        id: 'start',
-        label: 'Start Feedback',
-        icon: 'play_arrow'
-      });
+      actions.push('startFeedback');
     }
 
     if (!item.isRemoved && !item.isFeedbacked) {
-      actions.push({
-        id: 'remove',
-        label: 'Remove',
-        icon: 'remove_circle',
-        tone: 'destructive'
-      });
+      actions.push('removeFeedback');
     }
 
     if (item.isRemoved) {
-      actions.push({
-        id: 'restore',
-        label: 'Restore',
-        icon: 'restore'
-      });
+      actions.push('restoreFeedback');
     }
 
-    actions.push({
-      id: 'note',
-      label: this.feedback.hasEventFeedbackOrganizerNote(item.eventId) ? 'Edit Organizer Note' : 'Add Organizer Note',
-      icon: 'edit_note'
-    });
+    actions.push(this.feedback.hasEventFeedbackOrganizerNote(item.eventId) ? 'editOrganizerNote' : 'addOrganizerNote');
 
     return actions;
   }

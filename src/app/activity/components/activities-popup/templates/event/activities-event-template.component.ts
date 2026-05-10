@@ -109,7 +109,22 @@ export class ActivitiesEventTemplateComponent implements OnChanges {
   }
 }
 
-type ActivityInfoCardActionId = 'publish' | 'takeOver' | 'primary' | 'view' | 'serviceChat' | 'share' | 'report' | 'approve' | 'secondary' | 'restore';
+type ActivityInfoCardActionId =
+  | 'accept'
+  | 'askOrganizer'
+  | 'contactOrganizer'
+  | 'deleteEvent'
+  | 'editEvent'
+  | 'leaveEvent'
+  | 'notifyParticipants'
+  | 'publish'
+  | 'rejectInvitation'
+  | 'reportOrganizer'
+  | 'restore'
+  | 'shareEvent'
+  | 'takeOver'
+  | 'view'
+  | 'viewInvitation';
 type ActivitiesEventsHost = any;
 type InvitationApprovalSyncResult = {
   syncPayload: Omit<ActivitiesEventSyncPayload, 'syncKey'>;
@@ -349,59 +364,37 @@ export class ActivitiesEventsController {
     }
     if (this.isActivityRowTrashed(row)) {
       return this.shouldShowActivityRestoreAction(row)
-        ? [{ id: 'restore', label: 'Restore', icon: 'restore_from_trash' }]
+        ? ['restore']
         : [];
     }
 
     const actions: InfoCardMenuAction[] = [];
     if (this.shouldShowActivityTakeOverAction(row)) {
-      actions.push({ id: 'takeOver', label: 'Take Over', icon: 'verified_user', tone: 'review' });
+      actions.push('takeOver');
     }
     if (this.shouldShowActivityPublishAction(row)) {
-      actions.push({ id: 'publish', label: 'Publish', icon: 'campaign', tone: 'accent' });
+      actions.push('publish');
     }
     if (this.shouldShowActivityPrimaryAction(row)) {
-      actions.push({
-        id: 'primary',
-        label: this.activityPrimaryActionLabel(row),
-        icon: this.activityPrimaryActionIcon(row)
-      });
+      actions.push(this.activityPrimaryActionId(row));
     }
     if (this.shouldShowActivityViewAction(row)) {
-      actions.push({ id: 'view', label: 'View Event', icon: 'visibility' });
+      actions.push('view');
     }
     if (this.shouldShowActivityServiceChatAction(row)) {
-      actions.push({
-        id: 'serviceChat',
-        label: this.activityServiceChatActionLabel(row),
-        icon: 'support_agent'
-      });
+      actions.push(this.activityServiceChatActionId(row));
     }
     if (this.shouldShowActivityShareAction(row)) {
-      actions.push({
-        id: 'share',
-        label: 'Share Event',
-        icon: 'ios_share'
-      });
+      actions.push('shareEvent');
     }
     if (this.shouldShowActivityReportAction(row)) {
-      actions.push({
-        id: 'report',
-        label: 'Report Organizer',
-        icon: 'flag',
-        tone: 'warning'
-      });
+      actions.push('reportOrganizer');
     }
     if (this.shouldShowActivityApproveAction(row)) {
-      actions.push({ id: 'approve', label: 'Accept', icon: 'done', tone: 'accent' });
+      actions.push('accept');
     }
     if (this.shouldShowActivitySecondaryAction(row)) {
-      actions.push({
-        id: 'secondary',
-        label: this.activitySecondaryActionLabel(row),
-        icon: this.activitySecondaryActionIcon(row),
-        tone: this.isExitActivityRow(row) ? 'warning' : 'destructive'
-      });
+      actions.push(this.activitySecondaryActionId(row));
     }
     return actions;
   }
@@ -476,28 +469,25 @@ export class ActivitiesEventsController {
     return row.type === 'events';
   }
 
-  public activityPrimaryActionIcon(row: AppTypes.ActivityListRow): string {
-    if (row.type === 'hosting') { return 'edit'; }
-    if (row.type === 'invitations') { return 'visibility'; }
-    return 'edit';
+  public activityPrimaryActionId(row: AppTypes.ActivityListRow): InfoCardMenuAction {
+    if (row.type === 'invitations') { return 'viewInvitation'; }
+    return 'editEvent';
   }
 
-  public activityPrimaryActionLabel(row: AppTypes.ActivityListRow): string {
-    if (row.type === 'hosting') { return 'Edit Event'; }
-    if (row.type === 'invitations') { return 'View Invitation'; }
-    return 'Edit Event';
+  public activitySecondaryActionId(row: AppTypes.ActivityListRow): InfoCardMenuAction {
+    if (row.type === 'events') { return 'leaveEvent'; }
+    if (row.type === 'hosting') { return 'deleteEvent'; }
+    return 'rejectInvitation';
   }
 
-  public activitySecondaryActionIcon(row: AppTypes.ActivityListRow): string {
-    if (row.type === 'events') { return 'exit_to_app'; }
-    if (row.type === 'hosting') { return 'delete'; }
-    return 'block';
-  }
-
-  public activitySecondaryActionLabel(row: AppTypes.ActivityListRow): string {
-    if (row.type === 'events') { return 'Leave Event'; }
-    if (row.type === 'hosting') { return 'Delete Event'; }
-    return 'Reject Invitation';
+  public activityServiceChatActionId(row: AppTypes.ActivityListRow): InfoCardMenuAction {
+    if (row.type === 'hosting' && row.isAdmin) {
+      return 'notifyParticipants';
+    }
+    if (row.type === 'invitations') {
+      return 'askOrganizer';
+    }
+    return 'contactOrganizer';
   }
 
   public activityServiceChatActionLabel(row: AppTypes.ActivityListRow): string {
@@ -511,32 +501,37 @@ export class ActivitiesEventsController {
   }
 
   public onActivityEventInfoCardMenuAction(row: AppTypes.ActivityListRow, action: InfoCardMenuActionEvent): void {
-    switch (action.action.id as ActivityInfoCardActionId) {
+    switch (action.actionId as ActivityInfoCardActionId) {
       case 'publish':
         this.runActivityItemPublishAction(row);
         break;
       case 'takeOver':
         this.runActivityItemTakeOverAction(row);
         break;
-      case 'primary':
+      case 'editEvent':
+      case 'viewInvitation':
         this.runActivityItemPrimaryAction(row);
         break;
       case 'view':
         this.runActivityItemViewAction(row);
         break;
-      case 'serviceChat':
+      case 'notifyParticipants':
+      case 'askOrganizer':
+      case 'contactOrganizer':
         this.runActivityItemServiceChatAction(row);
         break;
-      case 'share':
+      case 'shareEvent':
         this.runActivityItemShareAction(row);
         break;
-      case 'report':
+      case 'reportOrganizer':
         this.runActivityItemReportAction(row);
         break;
-      case 'approve':
+      case 'accept':
         this.runActivityItemApproveAction(row);
         break;
-      case 'secondary':
+      case 'leaveEvent':
+      case 'deleteEvent':
+      case 'rejectInvitation':
         this.runActivityItemSecondaryAction(row);
         break;
       case 'restore':

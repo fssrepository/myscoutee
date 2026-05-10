@@ -198,34 +198,11 @@ export class AssetInfoCardBuilder {
   }
 
   private static ownedAssetMenuActions(card: AppTypes.AssetCard): readonly InfoCardMenuAction[] {
-    const label = AssetDefaultsBuilder.assetTypeLabel(card.type).toLowerCase();
     const actions: InfoCardMenuAction[] = [];
     if (this.assetStatusCode(card) === 'UR') {
-      actions.push({
-        id: 'takeOver',
-        label: 'Take Over',
-        icon: 'verified_user',
-        tone: 'review'
-      });
+      actions.push('takeOver');
     }
-    actions.push(
-      {
-        id: 'share',
-        label: `Share ${label}`,
-        icon: 'ios_share'
-      },
-      {
-        id: 'edit',
-        label: `Edit ${label}`,
-        icon: 'edit'
-      },
-      {
-        id: 'delete',
-        label: `Delete ${label}`,
-        icon: 'delete',
-        tone: 'destructive'
-      }
-    );
+    actions.push('shareAsset', 'editAsset', 'delete');
     return actions;
   }
 

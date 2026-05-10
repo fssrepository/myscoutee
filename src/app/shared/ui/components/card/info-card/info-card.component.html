@@ -267,19 +267,21 @@
               <div class="ui-info-card__menu-title item-action-menu-title">{{ menuTitle }}</div>
             }
             @for (action of card?.menuActions; track trackByActionId($index, action)) {
-              <button
-                type="button"
-                class="ui-info-card__menu-action item-action-menu-btn"
-                [ngClass]="menuActionClass(action)"
-                [class.item-action-menu-btn-publish]="action.tone === 'accent'"
-                [class.item-action-menu-btn-review]="action.tone === 'review'"
-                [class.item-action-menu-btn-warning]="action.tone === 'warning'"
-                [class.item-action-menu-btn-destructive]="action.tone === 'destructive'"
-                (click)="onMenuActionSelected(action, $event)"
-                >
-                <mat-icon>{{ action.icon }}</mat-icon>
-                <span>{{ action.label }}</span>
-              </button>
+              @if (availableActions[action]; as menuAction) {
+                <button
+                  type="button"
+                  class="ui-info-card__menu-action item-action-menu-btn"
+                  [ngClass]="'ui-info-card__menu-action--' + (menuAction.tone ?? 'default')"
+                  [class.item-action-menu-btn-publish]="menuAction.tone === 'accent'"
+                  [class.item-action-menu-btn-review]="menuAction.tone === 'review'"
+                  [class.item-action-menu-btn-warning]="menuAction.tone === 'warning'"
+                  [class.item-action-menu-btn-destructive]="menuAction.tone === 'destructive'"
+                  (click)="onMenuActionSelected(action, menuAction, $event)"
+                  >
+                  <mat-icon>{{ menuAction.icon }}</mat-icon>
+                  <span>{{ menuAction.label | i18n }}</span>
+                </button>
+              }
             }
           </div>
         }

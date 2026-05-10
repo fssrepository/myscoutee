@@ -715,7 +715,7 @@ export class AdminIdeaEditorPopupComponent implements OnDestroy {
 
   protected onIdeaCardMenuAction(post: IdeaPost, event: InfoCardMenuActionEvent): void {
     switch (event.actionId) {
-      case 'view':
+      case 'viewArticle':
         void this.openViewer(post);
         break;
       case 'edit':
@@ -743,20 +743,16 @@ export class AdminIdeaEditorPopupComponent implements OnDestroy {
     options: { groupLabel?: string | null; renderState?: SmartListItemRenderState | null } = {}
   ): InfoCardData {
     const statusLabel = this.postStatusLabel(post);
-    const publicationAction = post.published
-      ? { id: 'unpublish', label: 'Unpublish', icon: 'visibility_off', tone: 'warning' as const }
-      : { id: 'publish', label: 'Publish', icon: 'published_with_changes', tone: 'accent' as const };
-    const featuredAction = post.featured
-      ? { id: 'unfeature', label: 'Unfeature', icon: 'star_outline', tone: 'warning' as const }
-      : { id: 'feature', label: 'Feature', icon: 'star', tone: 'accent' as const };
+    const publicationAction = post.published ? 'unpublish' : 'publish';
+    const featuredAction = post.featured ? 'unfeature' : 'feature';
     const menuActions = post.trashed
-      ? [{ id: 'restore', label: 'Restore', icon: 'restore_from_trash' }]
+      ? ['restore']
       : [
-          { id: 'view', label: 'View', icon: 'visibility' },
-          { id: 'edit', label: 'Edit', icon: 'edit', tone: 'accent' as const },
+          'viewArticle',
+          'edit',
           publicationAction,
           ...(post.published ? [featuredAction] : []),
-          { id: 'delete', label: 'Delete', icon: 'delete', tone: 'destructive' as const }
+          'delete'
         ];
     return {
       rowId: `idea:${post.id}`,

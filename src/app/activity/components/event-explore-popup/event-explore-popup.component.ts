@@ -591,19 +591,19 @@ export class EventExplorePopupComponent {
       this.runEventExploreViewAction(record);
       return;
     }
-    if (action.actionId === 'join') {
+    if (action.actionId === 'joinWaitlist' || action.actionId === 'bookEvent' || action.actionId === 'requestJoin') {
       this.runEventExploreJoinAction(record);
       return;
     }
-    if (action.actionId === 'serviceChat') {
+    if (action.actionId === 'contactOrganizer') {
       this.runEventExploreServiceChatAction(record);
       return;
     }
-    if (action.actionId === 'share') {
+    if (action.actionId === 'shareEvent') {
       this.runEventExploreShareAction(record);
       return;
     }
-    if (action.actionId === 'report') {
+    if (action.actionId === 'reportOrganizer') {
       this.runEventExploreReportAction(record);
     }
   }

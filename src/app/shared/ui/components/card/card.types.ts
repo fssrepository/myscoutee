@@ -161,12 +161,60 @@ export interface InfoCardOverlayAction {
   progressRing?: boolean;
 }
 
-export interface InfoCardMenuAction {
-  id: string;
+export type InfoCardMenuAction = string;
+
+export interface InfoCardMenuActionConfig {
   label: string;
   icon: string;
   tone?: InfoCardMenuActionTone;
 }
+
+export interface InfoCardResolvedMenuAction extends InfoCardMenuActionConfig {
+  id: string;
+}
+
+export const INFO_CARD_AVAILABLE_ACTIONS: Readonly<Record<string, InfoCardMenuActionConfig>> = {
+  accept: { label: 'Accept', icon: 'done', tone: 'accent' },
+  addOrganizerNote: { label: 'Add Organizer Note', icon: 'edit_note' },
+  askOrganizer: { label: 'Ask Organizer', icon: 'support_agent' },
+  bookEvent: { label: 'Book Event', icon: 'person_add', tone: 'accent' },
+  borrowAsset: { label: 'Borrow', icon: 'volunteer_activism', tone: 'accent' },
+  capacity: { label: 'Capacity', icon: 'groups' },
+  contactOrganizer: { label: 'Contact Organizer', icon: 'support_agent' },
+  contactOwner: { label: 'Contact Owner', icon: 'support_agent' },
+  delete: { label: 'Delete', icon: 'delete', tone: 'destructive' },
+  deleteEvent: { label: 'Delete Event', icon: 'delete', tone: 'destructive' },
+  edit: { label: 'Edit', icon: 'edit', tone: 'accent' },
+  editAsset: { label: 'Edit Asset', icon: 'edit' },
+  editEvent: { label: 'Edit Event', icon: 'edit' },
+  editOrganizerNote: { label: 'Edit Organizer Note', icon: 'edit_note' },
+  feature: { label: 'Feature', icon: 'star', tone: 'accent' },
+  joinResource: { label: 'Join', icon: 'login', tone: 'accent' },
+  joinWaitlist: { label: 'Join waiting list', icon: 'hourglass_empty', tone: 'accent' },
+  leaveEvent: { label: 'Leave Event', icon: 'exit_to_app', tone: 'warning' },
+  leaveResource: { label: 'Leave', icon: 'logout' },
+  notifyParticipants: { label: 'Notify Participants', icon: 'support_agent' },
+  publish: { label: 'Publish', icon: 'campaign', tone: 'accent' },
+  rejectInvitation: { label: 'Reject Invitation', icon: 'block', tone: 'destructive' },
+  removeFeedback: { label: 'Remove', icon: 'remove_circle', tone: 'destructive' },
+  reportManager: { label: 'Report Manager', icon: 'flag', tone: 'warning' },
+  reportOrganizer: { label: 'Report Organizer', icon: 'flag', tone: 'warning' },
+  reportOwner: { label: 'Report Owner', icon: 'flag', tone: 'warning' },
+  requestJoin: { label: 'Request join', icon: 'person_add', tone: 'accent' },
+  restore: { label: 'Restore', icon: 'restore_from_trash' },
+  restoreFeedback: { label: 'Restore', icon: 'restore' },
+  route: { label: 'Route', icon: 'route' },
+  shareAsset: { label: 'Share Asset', icon: 'ios_share' },
+  shareEvent: { label: 'Share Event', icon: 'ios_share' },
+  startFeedback: { label: 'Start Feedback', icon: 'play_arrow' },
+  takeOver: { label: 'Take Over', icon: 'verified_user', tone: 'review' },
+  unfeature: { label: 'Unfeature', icon: 'star_outline', tone: 'warning' },
+  unpublish: { label: 'Unpublish', icon: 'visibility_off', tone: 'warning' },
+  view: { label: 'View Event', icon: 'visibility' },
+  viewArticle: { label: 'View', icon: 'visibility' },
+  viewAsset: { label: 'View Asset', icon: 'edit_square' },
+  viewInvitation: { label: 'View Invitation', icon: 'visibility' }
+};
 
 export interface InfoCardFooterChip {
   label: string;
@@ -206,7 +254,7 @@ export interface InfoCardClickEvent {
 export interface InfoCardMenuActionEvent {
   rowId: string;
   actionId: string;
-  action: InfoCardMenuAction;
+  action: InfoCardResolvedMenuAction;
   card: InfoCardData;
 }
 

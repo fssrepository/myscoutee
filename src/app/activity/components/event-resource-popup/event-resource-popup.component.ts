@@ -946,33 +946,11 @@ export class EventResourcePopupComponent implements DoCheck {
         ariaLabel: canBorrow ? 'Borrow asset' : 'Asset unavailable for this time'
       },
       menuActions: [
-        {
-          id: 'viewAsset',
-          label: 'View Asset',
-          icon: 'edit_square'
-        },
-        ...(canBorrow ? [{
-          id: 'borrow',
-          label: 'Borrow',
-          icon: 'volunteer_activism',
-          tone: 'accent'
-        } satisfies InfoCardMenuAction] : []),
-        {
-          id: 'serviceChat',
-          label: 'Contact Owner',
-          icon: 'support_agent'
-        },
-        {
-          id: 'share',
-          label: 'Share Asset',
-          icon: 'ios_share'
-        },
-        ...(this.host.canReportAssetExploreOwner(card) ? [{
-          id: 'report',
-          label: 'Report Owner',
-          icon: 'flag',
-          tone: 'warning'
-        } satisfies InfoCardMenuAction] : [])
+        'viewAsset',
+        ...(canBorrow ? ['borrowAsset'] : []),
+        'contactOwner',
+        'shareAsset',
+        ...(this.host.canReportAssetExploreOwner(card) ? ['reportOwner'] : [])
       ],
       clickable: false
     };
@@ -992,22 +970,22 @@ export class EventResourcePopupComponent implements DoCheck {
       this.host.openAssetExploreAssetView(card, new Event('click'));
       return;
     }
-    if (event.actionId === 'serviceChat') {
+    if (event.actionId === 'contactOwner') {
       this.showAssetExploreBorrowBasket = false;
       this.host.openAssetExploreServiceChat(card, new Event('click'));
       return;
     }
-    if (event.actionId === 'share') {
+    if (event.actionId === 'shareAsset') {
       this.showAssetExploreBorrowBasket = false;
       this.openAssetExploreShareDialog(card);
       return;
     }
-    if (event.actionId === 'report') {
+    if (event.actionId === 'reportOwner') {
       this.showAssetExploreBorrowBasket = false;
       this.host.reportAssetExploreOwner(card, new Event('click'));
       return;
     }
-    if (event.actionId === 'borrow') {
+    if (event.actionId === 'borrowAsset') {
       this.showAssetExploreBorrowBasket = false;
       this.host.openAssetExploreBorrowDialog(card, new Event('click'));
     }
@@ -1256,11 +1234,11 @@ export class EventResourcePopupComponent implements DoCheck {
       this.host.openResourceAssetView(card, 'edit', new Event('click'));
       return;
     }
-    if (event.actionId === 'join') {
+    if (event.actionId === 'joinResource') {
       this.host.join(card, new Event('click'));
       return;
     }
-    if (event.actionId === 'leave') {
+    if (event.actionId === 'leaveResource') {
       this.host.leave(card, new Event('click'));
       return;
     }
@@ -1272,15 +1250,15 @@ export class EventResourcePopupComponent implements DoCheck {
       this.host.openRouteEditor(card, new Event('click'));
       return;
     }
-    if (event.actionId === 'serviceChat') {
+    if (event.actionId === 'contactOrganizer') {
       this.host.openResourceServiceChat(card, new Event('click'));
       return;
     }
-    if (event.actionId === 'share') {
+    if (event.actionId === 'shareAsset') {
       this.openResourceShareDialog(card);
       return;
     }
-    if (event.actionId === 'report') {
+    if (event.actionId === 'reportManager' || event.actionId === 'reportOrganizer') {
       this.host.reportResourceManager(card, new Event('click'));
       return;
     }
@@ -1601,57 +1579,21 @@ export class EventResourcePopupComponent implements DoCheck {
 
   private resourceMenuActions(card: AppTypes.SubEventResourceCard): readonly InfoCardMenuAction[] {
     const actions: InfoCardMenuAction[] = [];
-    actions.push({
-      id: 'viewAsset',
-      label: 'View Asset',
-      icon: 'edit_square'
-    });
+    actions.push('viewAsset');
     if (this.host.canEditRoute(card)) {
-      actions.push({
-        id: 'editAsset',
-        label: 'Edit Asset',
-        icon: 'edit'
-      });
+      actions.push('editAsset');
     }
     if (this.host.canJoin(card)) {
-      actions.push({
-        id: 'join',
-        label: 'Join',
-        icon: 'login',
-        tone: 'accent'
-      });
+      actions.push('joinResource');
     } else if (this.host.canLeave(card)) {
-      actions.push({
-        id: 'leave',
-        label: 'Leave',
-        icon: 'logout',
-        tone: 'default'
-      });
+      actions.push('leaveResource');
     }
-    actions.push({
-      id: 'serviceChat',
-      label: 'Contact Organizer',
-      icon: 'support_agent'
-    });
-    actions.push({
-      id: 'share',
-      label: 'Share Asset',
-      icon: 'ios_share'
-    });
+    actions.push('contactOrganizer');
+    actions.push('shareAsset');
     if (this.host.canReportResourceManager(card)) {
-      actions.push({
-        id: 'report',
-        label: card.sourceAssetId ? 'Report Manager' : 'Report Organizer',
-        icon: 'flag',
-        tone: 'warning'
-      });
+      actions.push(card.sourceAssetId ? 'reportManager' : 'reportOrganizer');
     }
-    actions.push({
-      id: 'delete',
-      label: 'Delete',
-      icon: 'delete',
-      tone: 'destructive'
-    });
+    actions.push('delete');
     return actions;
   }
 

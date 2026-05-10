@@ -231,7 +231,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
     if (this.isBasketMode()) {
       return;
     }
-    if (event.actionId === 'share') {
+    if (event.actionId === 'shareAsset') {
       this.openOwnedAssetShareDialog(card);
       return;
     }
@@ -252,7 +252,9 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
       });
       return;
     }
-    this.ownedAssets.runAssetItemEditAction(card);
+    if (event.actionId === 'editAsset') {
+      this.ownedAssets.runAssetItemEditAction(card);
+    }
   }
 
   private openOwnedAssetShareDialog(card: AppTypes.AssetCard): void {

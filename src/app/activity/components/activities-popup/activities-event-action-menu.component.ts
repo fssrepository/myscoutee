@@ -10,16 +10,20 @@ import {
 import { MatIconModule } from '@angular/material/icon';
 
 import type * as AppTypes from '../../../shared/core/base/models';
+import { I18nPipe } from '../../../shared/i18n';
+import { INFO_CARD_AVAILABLE_ACTIONS } from '../../../shared/ui';
 import type {
   InfoCardData,
   InfoCardMenuAction,
+  InfoCardMenuActionConfig,
+  InfoCardResolvedMenuAction,
   InfoCardMenuRequestEvent
 } from '../../../shared/ui';
 
 export interface ActivitiesEventActionMenuSelectedEvent {
   row: AppTypes.ActivityListRow;
   card: InfoCardData;
-  action: InfoCardMenuAction;
+  action: InfoCardResolvedMenuAction;
 }
 
 interface ActivitiesEventActionMenuState {
@@ -36,7 +40,7 @@ interface ActivitiesEventActionMenuState {
 @Component({
   selector: 'app-activities-event-action-menu',
   standalone: true,
-  imports: [CommonModule, MatIconModule],
+  imports: [CommonModule, MatIconModule, I18nPipe],
   template: `
     @if (menu; as actionMenu) {
       <div
@@ -52,19 +56,21 @@ interface ActivitiesEventActionMenuState {
         @if (actionMenu.title) {
           <div class="item-action-menu-title">{{ actionMenu.title }}</div>
         }
-        @for (action of actionMenu.actions; track action.id) {
-          <button
-            type="button"
-            class="item-action-menu-btn"
-            [class.item-action-menu-btn-publish]="action.tone === 'accent'"
-            [class.item-action-menu-btn-review]="action.tone === 'review'"
-            [class.item-action-menu-btn-warning]="action.tone === 'warning'"
-            [class.item-action-menu-btn-destructive]="action.tone === 'destructive'"
-            (click)="selectAction(action, $event)"
-          >
-            <mat-icon>{{ action.icon }}</mat-icon>
-            <span>{{ action.label }}</span>
-          </button>
+        @for (action of actionMenu.actions; track action) {
+          @if (availableActions[action]; as menuAction) {
+            <button
+              type="button"
+              class="item-action-menu-btn"
+              [class.item-action-menu-btn-publish]="menuAction.tone === 'accent'"
+              [class.item-action-menu-btn-review]="menuAction.tone === 'review'"
+              [class.item-action-menu-btn-warning]="menuAction.tone === 'warning'"
+              [class.item-action-menu-btn-destructive]="menuAction.tone === 'destructive'"
+              (click)="selectAction(action, menuAction, $event)"
+            >
+              <mat-icon>{{ menuAction.icon }}</mat-icon>
+              <span>{{ menuAction.label | i18n }}</span>
+            </button>
+          }
         }
       </div>
     }
@@ -74,6 +80,7 @@ interface ActivitiesEventActionMenuState {
 })
 export class ActivitiesEventActionMenuComponent {
   private readonly cdr = inject(ChangeDetectorRef);
+  protected readonly availableActions = INFO_CARD_AVAILABLE_ACTIONS;
 
   @Output() readonly actionSelect = new EventEmitter<ActivitiesEventActionMenuSelectedEvent>();
 
@@ -111,19 +118,27 @@ export class ActivitiesEventActionMenuComponent {
     this.cdr.markForCheck();
   }
 
-  protected selectAction(action: InfoCardMenuAction, event: Event): void {
+  protected selectAction(
+    action: InfoCardMenuAction,
+    config: InfoCardMenuActionConfig,
+    event: Event
+  ): void {
     event.preventDefault();
     event.stopPropagation();
     const menu = this.menu;
     if (!menu) {
       return;
     }
+    const resolvedAction: InfoCardResolvedMenuAction = {
+      id: action,
+      ...config
+    };
     this.menu = null;
     menu.closeTrigger();
     this.actionSelect.emit({
       row: menu.row,
       card: menu.card,
-      action
+      action: resolvedAction
     });
     this.cdr.markForCheck();
   }
