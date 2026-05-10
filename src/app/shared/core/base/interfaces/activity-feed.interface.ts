@@ -29,6 +29,7 @@ export interface ChatMenuItem {
 
 export interface InvitationMenuItem {
   id: string;
+  status?: string;
   avatar: string;
   inviter: string;
   description: string;
@@ -43,6 +44,7 @@ export interface InvitationMenuItem {
   capacityMax?: number | null;
   acceptedMemberUserIds?: string[];
   pendingMemberUserIds?: string[];
+  pendingReason?: 'approval' | 'waitlist' | null;
   startAt?: string;
   endAt?: string;
   distanceKm?: number;
@@ -56,6 +58,7 @@ export interface InvitationMenuItem {
 
 export interface EventMenuItem {
   id: string;
+  status?: string;
   avatar: string;
   title: string;
   shortDescription: string;
@@ -72,6 +75,7 @@ export interface EventMenuItem {
   capacityTotal?: number;
   acceptedMemberUserIds?: string[];
   pendingMemberUserIds?: string[];
+  pendingReason?: 'approval' | 'waitlist' | null;
   visibility?: 'Public' | 'Friends only' | 'Invitation only';
   blindMode?: 'Open Event' | 'Blind Event';
   imageUrl?: string;
@@ -96,7 +100,7 @@ export interface EventMenuItem {
   subEventsDisplayMode?: SubEventsDisplayMode;
   policies?: EventPolicyItem[];
   rating?: number;
-  relevance?: number;
+  boost?: number;
   affinity?: number;
   ticketing?: boolean;
   published?: boolean;
@@ -104,6 +108,7 @@ export interface EventMenuItem {
 
 export interface HostingMenuItem {
   id: string;
+  status?: string;
   avatar: string;
   title: string;
   shortDescription: string;
@@ -119,6 +124,7 @@ export interface HostingMenuItem {
   capacityTotal?: number;
   acceptedMemberUserIds?: string[];
   pendingMemberUserIds?: string[];
+  pendingReason?: 'approval' | 'waitlist' | null;
   visibility?: 'Public' | 'Friends only' | 'Invitation only';
   blindMode?: 'Open Event' | 'Blind Event';
   imageUrl?: string;
@@ -143,7 +149,7 @@ export interface HostingMenuItem {
   subEventsDisplayMode?: SubEventsDisplayMode;
   policies?: EventPolicyItem[];
   rating?: number;
-  relevance?: number;
+  boost?: number;
   affinity?: number;
   ticketing?: boolean;
   published?: boolean;
@@ -163,6 +169,5 @@ export interface RateMenuItem {
   scoreReceived: number;
   eventName: string;
   happenedAt: string;
-  distanceKm: number;
   distanceMetersExact?: number;
 }

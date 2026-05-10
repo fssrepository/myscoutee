@@ -15,6 +15,7 @@ import {
   ACTIVITY_MEMBERS_TABLE_NAME,
 } from '../models/activity-members.model';
 import {
+  type UserRatesRecordCollection,
   USER_RATES_OUTBOX_TABLE_NAME,
   USER_RATES_TABLE_NAME,
   USERS_TABLE_NAME
@@ -37,13 +38,14 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
       return;
     }
     const users = this.querySeedUsers();
-    const ownerIdsToSeed = this.collectOwnerIdsNeedingActivityRateSeed(users);
+    const visibleSeedUsers = users.filter(user => DemoUserSeedBuilder.isActivityRateVisibleProfile(user));
+    const ownerIdsToSeed = this.collectOwnerIdsNeedingActivityRateSeed(visibleSeedUsers);
     if (ownerIdsToSeed.length === 0) {
       this.initialized = true;
       return;
     }
     const records = ownerIdsToSeed.flatMap((ownerUserId, ownerIndex) =>
-      DemoUserRatesBuilder.buildGeneratedRateItemsForUser(users, ownerUserId, {
+      DemoUserRatesBuilder.buildGeneratedRateItemsForUser(visibleSeedUsers, ownerUserId, {
         extraSingleGivenCount: ownerIndex < DemoUsersRatingsRepository.FEATURED_DEMO_ACTIVITY_RATE_OWNER_COUNT
           ? DemoUsersRatingsRepository.FEATURED_DEMO_ACTIVITY_RATE_EXTRA_SINGLE_GIVEN_COUNT
           : DemoUsersRatingsRepository.DEFAULT_DEMO_ACTIVITY_RATE_EXTRA_SINGLE_GIVEN_COUNT,
@@ -68,11 +70,11 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
       }
       return {
         ...state,
-        [USER_RATES_TABLE_NAME]: {
+        [USER_RATES_TABLE_NAME]: this.rebuildUserRatesTableIndex({
           ...current,
           byId,
           ids
-        }
+        })
       };
     });
     this.initialized = true;
@@ -105,7 +107,7 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
     const ratesTable = this.memoryDb.read()[USER_RATES_TABLE_NAME];
     for (const id of ratesTable.ids) {
       const record = ratesTable.byId[id];
-      if (!record || record.source !== 'activity-rate') {
+      if (!record) {
         continue;
       }
       const ownerUserId = record.ownerUserId?.trim() ?? '';
@@ -149,7 +151,6 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
     if (!normalizedRaterId || DemoUserSeedBuilder.isEmptyOnboardingProfileUserId(normalizedRaterId)) {
       return [];
     }
-    const collectPairUsers = mode !== 'single';
     const state = this.memoryDb.read();
     const ratesTable = state[USER_RATES_TABLE_NAME];
     const outboxTable = state[USER_RATES_OUTBOX_TABLE_NAME];
@@ -161,19 +162,7 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
       if (!record) {
         continue;
       }
-      if (record.source === 'game-card') {
-        if (record.mode === 'pair' && record.ownerUserId?.trim() === normalizedRaterId) {
-          if (!collectPairUsers) {
-            continue;
-          }
-          ratedUserIds.add(record.fromUserId.trim());
-          ratedUserIds.add(record.toUserId.trim());
-        } else if (mode === 'single' && record.fromUserId === normalizedRaterId) {
-          ratedUserIds.add(record.toUserId.trim());
-        }
-        continue;
-      }
-      if (record.source !== 'activity-rate' || record.ownerUserId?.trim() !== normalizedRaterId) {
+      if (record.ownerUserId?.trim() !== normalizedRaterId) {
         continue;
       }
       const item = DemoUserRatesBuilder.toRateMenuItem(record);
@@ -198,19 +187,7 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
       if (!payload || outboxRecord.status !== 'pending') {
         continue;
       }
-      if (payload.source === 'game-card') {
-        if (payload.mode === 'pair' && payload.ownerUserId?.trim() === normalizedRaterId) {
-          if (!collectPairUsers) {
-            continue;
-          }
-          ratedUserIds.add(payload.fromUserId.trim());
-          ratedUserIds.add(payload.toUserId.trim());
-        } else if (mode === 'single' && payload.fromUserId === normalizedRaterId) {
-          ratedUserIds.add(payload.toUserId.trim());
-        }
-        continue;
-      }
-      if (payload.source !== 'activity-rate' || payload.ownerUserId?.trim() !== normalizedRaterId) {
+      if (payload.ownerUserId?.trim() !== normalizedRaterId) {
         continue;
       }
       const item = DemoUserRatesBuilder.toRateMenuItem(payload);
@@ -247,17 +224,7 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
       if (!record) {
         continue;
       }
-      if (record.source === 'game-card') {
-        if (record.mode !== 'pair' || record.ownerUserId?.trim() !== normalizedOwnerUserId) {
-          continue;
-        }
-        const pairKey = this.sortedPairKey(record.fromUserId, record.toUserId);
-        if (pairKey) {
-          pairKeys.add(pairKey);
-        }
-        continue;
-      }
-      if (record.source !== 'activity-rate' || record.ownerUserId?.trim() !== normalizedOwnerUserId) {
+      if (record.ownerUserId?.trim() !== normalizedOwnerUserId) {
         continue;
       }
       const item = DemoUserRatesBuilder.toRateMenuItem(record);
@@ -313,7 +280,7 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
       .filter(item => item.mode === mode)
       .filter(item => item.direction === query.displayDirection)
       .filter(item => this.matchesDynamicRateRange(item, query))
-      .filter(item => this.matchesDynamicPairSocialFilter(item, query.socialBadgeEnabled === true))
+      .filter(item => this.matchesDynamicSocialFilter(item, query.socialBadgeEnabled === true))
       .sort((left, right) => this.compareDynamicRateItems(left, right, query));
     const cursorId = this.resolveDynamicRateCursorId(query.cursor);
     const limit = Math.max(1, Math.trunc(Number(query.limit) || 50));
@@ -344,6 +311,7 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
     const ratesTable = this.memoryDb.read()[USER_RATES_TABLE_NAME];
     const outboxTable = this.memoryDb.read()[USER_RATES_OUTBOX_TABLE_NAME];
     const recordsById = new Map<string, UserRateRecord>();
+    const usersById = this.usersById();
     const indexedIds = ratesTable.idsByRelevantUserId[normalizedUserId] ?? [];
     for (const id of indexedIds) {
       const record = ratesTable.byId[id];
@@ -362,6 +330,7 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
       .filter((record): record is UserRateRecord => Boolean(record))
       .flatMap(record => this.buildDynamicRateItemsForUser(record, normalizedUserId))
       .filter(item => !this.referencesEmptyOnboardingProfile(item))
+      .filter(item => this.activityRateItemUsersAreVisible(item, normalizedUserId, usersById))
       .sort((left, right) => AppUtils.toSortableDate(right.happenedAt) - AppUtils.toSortableDate(left.happenedAt));
   }
 
@@ -371,28 +340,115 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
       || DemoUserSeedBuilder.isEmptyOnboardingProfileUserId(item.bridgeUserId ?? '');
   }
 
-  private buildDynamicRateItemsForUser(record: UserRateRecord, normalizedUserId: string): RateMenuItem[] {
-    if (record.source !== 'activity-rate') {
-      const item = DemoUserRatesBuilder.toGameCardRateMenuItem(record, normalizedUserId);
-      return item ? [item] : [];
-    }
+  private activityRateItemUsersAreVisible(
+    item: RateMenuItem,
+    ownerUserId: string,
+    usersById: ReadonlyMap<string, UserDto>
+  ): boolean {
+    const normalizedOwnerUserId = ownerUserId.trim();
+    const displayedUserIds = [
+      item.userId?.trim() ?? '',
+      item.secondaryUserId?.trim() ?? '',
+      item.bridgeUserId?.trim() ?? ''
+    ].filter((userId, index, ids) =>
+      userId.length > 0
+      && userId !== normalizedOwnerUserId
+      && ids.indexOf(userId) === index
+    );
+    return displayedUserIds.every(userId =>
+      DemoUserSeedBuilder.isActivityRateVisibleProfile(usersById.get(userId))
+    );
+  }
 
+  private usersById(): Map<string, UserDto> {
+    const usersTable = this.memoryDb.read()[USERS_TABLE_NAME];
+    return new Map(usersTable.ids
+      .map(id => usersTable.byId[id])
+      .filter((user): user is UserDto => Boolean(user?.id?.trim()))
+      .map(user => [user.id, user] as const));
+  }
+
+  private buildDynamicRateItemsForUser(record: UserRateRecord, normalizedUserId: string): RateMenuItem[] {
     if (record.mode === 'pair') {
       return this.buildDynamicPairRateItemsForUser(record, normalizedUserId);
     }
 
-    if (record.ownerUserId?.trim() !== normalizedUserId) {
+    return this.buildDynamicSingleRateItemsForUser(record, normalizedUserId);
+  }
+
+  private buildDynamicSingleRateItemsForUser(record: UserRateRecord, normalizedUserId: string): RateMenuItem[] {
+    const ownerUserId = record.ownerUserId?.trim() ?? '';
+    if (!ownerUserId) {
       return [];
     }
 
-    const item = DemoUserRatesBuilder.toRateMenuItem(record);
-    if (!item) {
+    const relatedUserId = this.resolveSingleRelatedUserId(record, ownerUserId);
+    if (!relatedUserId || relatedUserId === ownerUserId) {
       return [];
     }
-    if (item.direction === 'met' && !this.didUsersMeetFromIndexedDb(normalizedUserId, item.userId)) {
+
+    const scoreGiven = this.dynamicScoreGiven(record);
+    const scoreReceived = this.dynamicScoreReceived(record);
+    const happenedAt = record.happenedAtIso?.trim() || record.updatedAtIso;
+    const socialContext = this.resolveStoredSingleSocialContext(record);
+
+    if (ownerUserId === normalizedUserId) {
+      const direction = this.deriveOwnerSingleDirection(record, scoreGiven, scoreReceived);
+      if (!direction) {
+        return [];
+      }
+      if (direction === 'met' && (
+        !this.didUsersMeetFromIndexedDb(normalizedUserId, relatedUserId)
+        || !this.isFinishedMetActivity(happenedAt)
+      )) {
+        return [];
+      }
+      return [{
+        id: record.displayId?.trim() || record.id,
+        userId: relatedUserId,
+        mode: 'individual',
+        direction,
+        ...(socialContext ? { socialContext } : {}),
+        bridgeUserId: record.bridgeUserId,
+        bridgeCount: record.bridgeCount,
+        scoreGiven,
+        scoreReceived,
+        eventName: record.eventName?.trim() || (direction === 'met' ? 'Met' : 'Rate'),
+        happenedAt,
+        distanceMetersExact: this.dynamicDistanceMetersExact(record)
+      }];
+    }
+
+    if (record.fromUserId.trim() !== normalizedUserId && record.toUserId.trim() !== normalizedUserId) {
       return [];
     }
-    return [item];
+
+    const participantDirection: RateMenuItem['direction'] = record.displayDirection === 'met' ? 'met' : 'received';
+    if (participantDirection === 'met' && (
+      !this.didUsersMeetFromIndexedDb(normalizedUserId, ownerUserId)
+      || !this.isFinishedMetActivity(happenedAt)
+    )) {
+      return [];
+    }
+
+    const incomingScore = scoreGiven > 0 ? scoreGiven : scoreReceived;
+    if (incomingScore <= 0) {
+      return [];
+    }
+    return [{
+      id: `${record.displayId?.trim() || record.id}:received:${normalizedUserId}`,
+      userId: ownerUserId,
+      mode: 'individual',
+      direction: participantDirection,
+      ...(socialContext ? { socialContext } : {}),
+      bridgeUserId: record.bridgeUserId,
+      bridgeCount: record.bridgeCount,
+      scoreGiven: 0,
+      scoreReceived: incomingScore,
+      eventName: record.eventName?.trim() || (participantDirection === 'met' ? 'Met' : 'Rate'),
+      happenedAt,
+      distanceMetersExact: this.dynamicDistanceMetersExact(record)
+    }];
   }
 
   private buildDynamicPairRateItemsForUser(record: UserRateRecord, normalizedUserId: string): RateMenuItem[] {
@@ -403,25 +459,39 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
     }
 
     const items: RateMenuItem[] = [];
-    const dynamicSocialContext = this.resolveDynamicPairSocialContext(ownerUserId, pairUserIds[0], pairUserIds[1]);
+    const pairSocialContext = this.resolveStoredPairSocialContext(record)
+      ?? this.resolveDynamicPairSocialContext(ownerUserId, pairUserIds[0], pairUserIds[1]);
+
+    const scoreGiven = this.dynamicScoreGiven(record);
+    const scoreReceived = this.dynamicScoreReceived(record);
+    const isParticipant = pairUserIds.includes(normalizedUserId);
 
     if (ownerUserId === normalizedUserId) {
-      const ownerItem = DemoUserRatesBuilder.toRateMenuItem(record);
-      if (
-        ownerItem
-        && ownerItem.mode === 'pair'
-        && ownerItem.direction === 'given'
-        && dynamicSocialContext
-      ) {
+      if (isParticipant && scoreGiven <= 0 && scoreReceived > 0) {
+        const receivedItem = this.buildDynamicReceivedPairItem(record, normalizedUserId, ownerUserId, pairUserIds, pairSocialContext);
+        return receivedItem ? [receivedItem] : [];
+      }
+      if (scoreGiven > 0 || scoreReceived > 0) {
         items.push({
-          ...ownerItem,
-          socialContext: dynamicSocialContext
+          id: record.displayId?.trim() || record.id,
+          userId: pairUserIds[0],
+          secondaryUserId: pairUserIds[1],
+          mode: 'pair',
+          direction: 'given',
+          ...(pairSocialContext ? { socialContext: pairSocialContext } : {}),
+          bridgeUserId: pairSocialContext ? ownerUserId : undefined,
+          bridgeCount: pairSocialContext === 'separated-friends' ? 2 : undefined,
+          scoreGiven,
+          scoreReceived,
+          eventName: record.eventName?.trim() || 'Pair rate',
+          happenedAt: record.happenedAtIso?.trim() || record.updatedAtIso,
+          distanceMetersExact: this.dynamicDistanceMetersExact(record)
         });
       }
       return items;
     }
 
-    const receivedItem = this.buildDynamicReceivedPairItem(record, normalizedUserId, ownerUserId, pairUserIds, dynamicSocialContext);
+    const receivedItem = this.buildDynamicReceivedPairItem(record, normalizedUserId, ownerUserId, pairUserIds, pairSocialContext);
     return receivedItem ? [receivedItem] : [];
   }
 
@@ -430,12 +500,12 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
     normalizedUserId: string,
     ownerUserId: string,
     pairUserIds: [string, string],
-    dynamicSocialContext: RateMenuItem['socialContext'] | null
+    socialContext: RateMenuItem['socialContext'] | null
   ): RateMenuItem | null {
     const [firstUserId, secondUserId] = pairUserIds;
     if (
-      !dynamicSocialContext
-      || (firstUserId !== normalizedUserId && secondUserId !== normalizedUserId)
+      firstUserId !== normalizedUserId
+      && secondUserId !== normalizedUserId
     ) {
       return null;
     }
@@ -444,6 +514,8 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
     const scoreReceived = this.normalizeDynamicRateScore(
       Number.isFinite(Number(record.scoreGiven)) && Number(record.scoreGiven) > 0
         ? Number(record.scoreGiven)
+        : Number.isFinite(Number(record.scoreReceived)) && Number(record.scoreReceived) > 0
+          ? Number(record.scoreReceived)
         : record.rate
     );
     if (scoreReceived <= 0) {
@@ -456,16 +528,50 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
       secondaryUserId: normalizedUserId,
       mode: 'pair',
       direction: 'received',
-      socialContext: dynamicSocialContext,
-      bridgeUserId: ownerUserId,
-      bridgeCount: dynamicSocialContext === 'friends-in-common' ? 1 : undefined,
+      ...(socialContext ? { socialContext } : {}),
+      bridgeUserId: socialContext ? ownerUserId : undefined,
+      bridgeCount: socialContext === 'separated-friends' ? 2 : undefined,
       scoreGiven: 0,
       scoreReceived,
       eventName: record.eventName?.trim() || 'Pair rate',
       happenedAt: record.happenedAtIso?.trim() || record.updatedAtIso,
-      distanceKm: Number.isFinite(record.distanceKm) ? Number(record.distanceKm) : 0,
       distanceMetersExact: this.dynamicDistanceMetersExact(record)
     };
+  }
+
+  private resolveSingleRelatedUserId(record: UserRateRecord, ownerUserId: string): string | null {
+    const fromUserId = record.fromUserId.trim();
+    const toUserId = record.toUserId.trim();
+    if (!fromUserId || !toUserId || fromUserId === toUserId) {
+      return null;
+    }
+    if (fromUserId === ownerUserId) {
+      return toUserId;
+    }
+    if (toUserId === ownerUserId) {
+      return fromUserId;
+    }
+    return toUserId;
+  }
+
+  private deriveOwnerSingleDirection(
+    record: UserRateRecord,
+    scoreGiven: number,
+    scoreReceived: number
+  ): RateMenuItem['direction'] | null {
+    if (record.displayDirection === 'met') {
+      return 'met';
+    }
+    if (scoreGiven > 0 && scoreReceived > 0) {
+      return 'mutual';
+    }
+    if (scoreGiven > 0) {
+      return 'given';
+    }
+    if (scoreReceived > 0) {
+      return 'received';
+    }
+    return null;
   }
 
   private resolvePairUserIdsFromRecord(record: UserRateRecord): [string, string] | null {
@@ -499,15 +605,18 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
     const ownerMetFirst = this.didUsersMeetFromIndexedDb(normalizedOwnerUserId, normalizedFirstUserId);
     const ownerMetSecond = this.didUsersMeetFromIndexedDb(normalizedOwnerUserId, normalizedSecondUserId);
     if (ownerMetFirst && ownerMetSecond) {
-      return 'friends-in-common';
-    }
-
-    const pairMet = this.didUsersMeetFromIndexedDb(normalizedFirstUserId, normalizedSecondUserId);
-    if (!ownerMetFirst && !ownerMetSecond && !pairMet) {
       return 'separated-friends';
     }
 
     return null;
+  }
+
+  private resolveStoredPairSocialContext(record: UserRateRecord): RateMenuItem['socialContext'] | null {
+    return record.socialContext === 'separated-friends' ? 'separated-friends' : null;
+  }
+
+  private resolveStoredSingleSocialContext(record: UserRateRecord): RateMenuItem['socialContext'] | null {
+    return record.socialContext === 'friends-in-common' ? 'friends-in-common' : null;
   }
 
   private didUsersMeetFromIndexedDb(leftUserId: string, rightUserId: string): boolean {
@@ -561,14 +670,21 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
     return true;
   }
 
-  private matchesDynamicPairSocialFilter(item: RateMenuItem, socialBadgeEnabled: boolean): boolean {
-    if (item.mode !== 'pair') {
-      return true;
+  private isFinishedMetActivity(happenedAt: string): boolean {
+    const happenedAtMs = AppUtils.toSortableDate(happenedAt);
+    return happenedAtMs <= 0 || happenedAtMs <= Date.now();
+  }
+
+  private matchesDynamicSocialFilter(item: RateMenuItem, socialBadgeEnabled: boolean): boolean {
+    if (item.mode === 'individual') {
+      const friendsInCommon = item.socialContext === 'friends-in-common';
+      return socialBadgeEnabled ? friendsInCommon : !friendsInCommon;
     }
-    if (socialBadgeEnabled) {
-      return item.socialContext === 'friends-in-common';
+    if (item.mode === 'pair') {
+      const insideNetwork = item.socialContext === 'separated-friends';
+      return socialBadgeEnabled ? insideNetwork : !insideNetwork;
     }
-    return item.socialContext === 'separated-friends' || !item.socialContext;
+    return true;
   }
 
   private compareDynamicRateItems(left: RateMenuItem, right: RateMenuItem, query: ActivityRateRecordQuery): number {
@@ -606,14 +722,14 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
     if (Number.isFinite(record.distanceMetersExact)) {
       return Math.max(0, Math.trunc(Number(record.distanceMetersExact)));
     }
-    return Math.max(0, Math.round((Number(record.distanceKm) || 0) * 1000));
+    return 0;
   }
 
   private dynamicDistanceValue(item: RateMenuItem): number {
     if (Number.isFinite(item.distanceMetersExact)) {
       return Math.max(0, Math.trunc(Number(item.distanceMetersExact)));
     }
-    return Math.max(0, Math.round((Number(item.distanceKm) || 0) * 1000));
+    return 0;
   }
 
   private dynamicRelevanceScore(item: RateMenuItem): number {
@@ -627,6 +743,28 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
       return scoreGiven + scoreReceived;
     }
     return scoreGiven > 0 ? scoreGiven : 5;
+  }
+
+  private dynamicScoreGiven(record: UserRateRecord): number {
+    if (Number.isFinite(Number(record.scoreGiven))) {
+      return this.normalizeDynamicRateScore(Number(record.scoreGiven));
+    }
+    const ownerUserId = record.ownerUserId?.trim() ?? '';
+    if (record.fromUserId.trim() === ownerUserId && Number.isFinite(Number(record.rate))) {
+      return this.normalizeDynamicRateScore(Number(record.rate));
+    }
+    return 0;
+  }
+
+  private dynamicScoreReceived(record: UserRateRecord): number {
+    if (Number.isFinite(Number(record.scoreReceived))) {
+      return this.normalizeDynamicRateScore(Number(record.scoreReceived));
+    }
+    const ownerUserId = record.ownerUserId?.trim() ?? '';
+    if (record.toUserId.trim() === ownerUserId && Number.isFinite(Number(record.rate))) {
+      return this.normalizeDynamicRateScore(Number(record.rate));
+    }
+    return 0;
   }
 
   private normalizeDynamicRateScore(value: number): number {
@@ -693,14 +831,50 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
       }
       return {
         ...state,
-        [USER_RATES_TABLE_NAME]: {
+        [USER_RATES_TABLE_NAME]: this.rebuildUserRatesTableIndex({
           ...table,
           byId,
           ids
-        }
+        })
       };
     });
     return normalizedRecords.map(record => record.id);
+  }
+
+  private rebuildUserRatesTableIndex(table: UserRatesRecordCollection): UserRatesRecordCollection {
+    const idsByRelevantUserId: Record<string, string[]> = {};
+    for (const id of table.ids) {
+      const record = table.byId[id];
+      if (!record) {
+        continue;
+      }
+      for (const userId of this.relevantUserRateUserIds(record)) {
+        const bucket = idsByRelevantUserId[userId] ?? [];
+        bucket.push(id);
+        idsByRelevantUserId[userId] = bucket;
+      }
+    }
+    for (const ids of Object.values(idsByRelevantUserId)) {
+      ids.sort((leftId, rightId) => {
+        const left = table.byId[leftId];
+        const right = table.byId[rightId];
+        return this.dynamicRecordDateValue(right) - this.dynamicRecordDateValue(left);
+      });
+    }
+    return {
+      ...table,
+      idsByRelevantUserId
+    };
+  }
+
+  private relevantUserRateUserIds(record: UserRateRecord): string[] {
+    return [...new Set([record.ownerUserId, record.fromUserId, record.toUserId]
+      .map(value => `${value ?? ''}`.trim())
+      .filter(Boolean))];
+  }
+
+  private dynamicRecordDateValue(record: UserRateRecord | null | undefined): number {
+    return AppUtils.toSortableDate(record?.happenedAtIso ?? record?.updatedAtIso ?? record?.createdAtIso ?? '');
   }
 
   protected override async syncUserRatesBatch(rates: UserRateRecord[]): Promise<UserRatesSyncResult> {
@@ -724,37 +898,7 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
   }
 
   private normalizeIncomingRateRecord(record: UserRateRecord): UserRateRecord | null {
-    if (record.source === 'activity-rate') {
-      return this.normalizeIncomingActivityRateRecord(record);
-    }
-    const normalized = record.mode === 'pair' && record.ownerUserId
-      ? this.buildNormalizedPairRateRecord(
-          record.ownerUserId,
-          record.fromUserId,
-          record.toUserId,
-          record.rate
-        )
-      : this.buildNormalizedRateRecord(
-          record.fromUserId,
-          record.toUserId,
-          record.rate,
-          record.mode
-        );
-    if (!normalized) {
-      return null;
-    }
-    const createdAtIso = typeof record.createdAtIso === 'string' && record.createdAtIso.trim().length > 0
-      ? record.createdAtIso
-      : normalized.createdAtIso;
-    const updatedAtIso = typeof record.updatedAtIso === 'string' && record.updatedAtIso.trim().length > 0
-      ? record.updatedAtIso
-      : normalized.updatedAtIso;
-    return {
-      ...normalized,
-      ownerUserId: record.mode === 'pair' ? record.ownerUserId?.trim() || normalized.ownerUserId : normalized.ownerUserId,
-      createdAtIso,
-      updatedAtIso
-    };
+    return this.normalizeIncomingActivityRateRecord(record);
   }
 
   private normalizeIncomingActivityRateRecord(record: UserRateRecord): UserRateRecord | null {

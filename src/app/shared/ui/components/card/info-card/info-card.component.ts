@@ -14,13 +14,16 @@ import {
 import { MatIconModule } from '@angular/material/icon';
 
 import { LazyBgImageDirective } from '../../../directives/lazy-bg-image.directive';
+import { I18nPipe } from '../../../../i18n';
 import { CounterBadgePipe } from '../../../pipes/counter-badge.pipe';
 import type {
   InfoCardClickEvent,
   InfoCardData,
   InfoCardFooterChip,
   InfoCardMenuAction,
+  InfoCardMenuActionConfig,
   InfoCardMenuActionEvent,
+  InfoCardResolvedMenuAction,
   InfoCardMenuRequestEvent,
   InfoCardMenuTriggerRect,
   InfoCardOverlayAccessory,
@@ -30,11 +33,12 @@ import type {
   InfoCardOverlayTone,
   InfoCardOverlayVariant
 } from '../card.types';
+import { INFO_CARD_AVAILABLE_ACTIONS } from '../card.types';
 
 @Component({
   selector: 'app-info-card',
   standalone: true,
-  imports: [CommonModule, MatIconModule, LazyBgImageDirective, CounterBadgePipe],
+  imports: [CommonModule, MatIconModule, LazyBgImageDirective, CounterBadgePipe, I18nPipe],
   templateUrl: './info-card.component.html',
   styleUrl: './info-card.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -47,6 +51,7 @@ export class InfoCardComponent implements OnDestroy {
   private static documentPointerDownTarget: Document | null = null;
   private readonly hostRef = inject(ElementRef<HTMLElement>);
   private readonly cdr = inject(ChangeDetectorRef);
+  protected readonly availableActions = INFO_CARD_AVAILABLE_ACTIONS;
 
   @Input() card: InfoCardData | null = null;
   @Input() useSharedMenu = false;
@@ -182,16 +187,24 @@ export class InfoCardComponent implements OnDestroy {
     this.cdr.markForCheck();
   }
 
-  protected onMenuActionSelected(action: InfoCardMenuAction, event: Event): void {
+  protected onMenuActionSelected(
+    action: InfoCardMenuAction,
+    config: InfoCardMenuActionConfig,
+    event: Event
+  ): void {
     if (!this.card) {
       return;
     }
+    const resolvedAction: InfoCardResolvedMenuAction = {
+      id: action,
+      ...config
+    };
     event.preventDefault();
     event.stopPropagation();
     this.menuAction.emit({
       rowId: this.card.rowId,
-      actionId: action.id,
-      action,
+      actionId: resolvedAction.id,
+      action: resolvedAction,
       card: this.card
     });
     this.closeMenu();
@@ -285,15 +298,11 @@ export class InfoCardComponent implements OnDestroy {
   protected trackByActionId(index: number, action: InfoCardMenuAction): string | number {
     // Keep menu buttons stable while the menu is open; recreating them can
     // interact badly with the document-level pointerdown closer.
-    return action.id;
+    return action || index;
   }
 
   protected trackByFooterChip(index: number, chip: InfoCardFooterChip): string | number {
     return `${chip.label}:${chip.toneClass ?? ''}:${index}`;
-  }
-
-  protected menuActionClass(action: InfoCardMenuAction): string {
-    return `ui-info-card__menu-action--${action.tone ?? 'default'}`;
   }
 
   protected rootClassList(): string[] {

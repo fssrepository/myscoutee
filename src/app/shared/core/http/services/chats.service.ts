@@ -272,17 +272,21 @@ export class HttpChatsService {
   }
 
   async loadChatMessages(chat: ChatMenuItem): Promise<AppTypes.ChatPopupMessage[]> {
-    const response = await this.http
-      .get<HttpChatMessageDto[]>(`${this.apiBaseUrl}/activities/chats/${encodeURIComponent(chat.id)}/messages`, {
-        params: this.activeUserParams()
-      })
-      .toPromise();
+    try {
+      const response = await this.http
+        .get<HttpChatMessageDto[]>(`${this.apiBaseUrl}/activities/chats/${encodeURIComponent(chat.id)}/messages`, {
+          params: this.activeUserParams()
+        })
+        .toPromise();
 
-    const messages = (response ?? []).map((message, index) => this.mapChatMessage(message, chat.id, index));
-    const cachedMessages = this.resolveCachedChatMessages(chat);
+      const messages = (response ?? []).map((message, index) => this.mapChatMessage(message, chat.id, index));
+      const cachedMessages = this.resolveCachedChatMessages(chat);
 
-    return this.mergeCachedChatMessages(messages, cachedMessages)
-      .sort((first, second) => AppUtils.toSortableDate(first.sentAtIso) - AppUtils.toSortableDate(second.sentAtIso));
+      return this.mergeCachedChatMessages(messages, cachedMessages)
+        .sort((first, second) => AppUtils.toSortableDate(first.sentAtIso) - AppUtils.toSortableDate(second.sentAtIso));
+    } catch {
+      return this.resolveCachedChatMessages(chat);
+    }
   }
 
   async sendChatMessage(chat: ChatMenuItem, text: string, clientId?: string): Promise<AppTypes.ChatPopupMessage | null> {

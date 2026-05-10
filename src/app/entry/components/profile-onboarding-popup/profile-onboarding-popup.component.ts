@@ -607,7 +607,7 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
   }
 
   protected detailOptions(label: string): string[] {
-    return this.profileDetailValueOptions[label] ?? [];
+    return this.profileDetailValueOptions[this.profileDetailKeyFromLabel(label)] ?? [];
   }
 
   protected basicsErrorVisible(): boolean {
@@ -720,56 +720,56 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
   private buildProfileDetails(user: UserDto, draft: ProfileOnboardingDraft): ProfileDetailFormGroup[] {
     const form = draft.form;
     const basicValues: Record<string, string> = {
-      Name: form.fullName.trim(),
-      City: form.city.trim(),
-      Birthday: this.formatDateForDetail(form.birthday),
-      Height: `${form.heightCm ?? 0} cm`,
-      Physique: form.physique.trim(),
-      Languages: form.languages.join(', '),
-      Horoscope: AppUtils.fromIsoDate(form.birthday)
+      'profile.name': form.fullName.trim(),
+      'profile.city': form.city.trim(),
+      'profile.birthday': this.formatDateForDetail(form.birthday),
+      'profile.height': `${form.heightCm ?? 0} cm`,
+      'profile.physique': form.physique.trim(),
+      'profile.languages': form.languages.join(', '),
+      'profile.horoscope': AppUtils.fromIsoDate(form.birthday)
         ? AppUtils.horoscopeByDate(AppUtils.fromIsoDate(form.birthday) as Date)
         : '',
-      Gender: form.genderDetail.trim()
+      'profile.gender': form.genderDetail.trim()
     };
     const optionalValues: Record<string, string> = {
-      Interest: form.interests.join(', '),
-      Drinking: form.drinking,
-      Smoking: form.smoking,
-      Workout: form.workout,
-      Pets: form.pets,
-      'Family plans': form.familyPlans,
-      Children: form.children,
-      'Love style': form.loveStyle,
-      'Communication style': form.communicationStyle,
-      'Sexual orientation': form.sexualOrientation,
-      Religion: form.religion,
-      Values: form.values.join(', ')
+      'profile.details.interest': form.interests.join(', '),
+      'profile.details.drinking': form.drinking,
+      'profile.details.smoking': form.smoking,
+      'profile.details.workout': form.workout,
+      'profile.details.pets': form.pets,
+      'profile.details.familyPlans': form.familyPlans,
+      'profile.details.children': form.children,
+      'profile.details.loveStyle': form.loveStyle,
+      'profile.details.communicationStyle': form.communicationStyle,
+      'profile.details.sexualOrientation': form.sexualOrientation,
+      'profile.details.religion': form.religion,
+      'profile.details.values': form.values.join(', ')
     };
     return APP_STATIC_DATA.profileDetailGroupTemplates.map(group => ({
       title: group.title,
       rows: group.rows.map(row => ({
-        label: row.label,
-        value: basicValues[row.label] ?? optionalValues[row.label] ?? this.existingDetailValue(user, row.label),
-        privacy: this.existingDetailPrivacy(user, row.label, row.privacy),
-        options: this.detailOptionsForRow(row.label)
+        labelKey: row.labelKey,
+        value: basicValues[row.labelKey] ?? optionalValues[row.labelKey] ?? this.existingDetailValue(user, row.labelKey),
+        privacy: this.existingDetailPrivacy(user, row.labelKey, row.privacy),
+        options: this.detailOptionsForRow(row.labelKey)
       }))
     }));
   }
 
-  private detailOptionsForRow(label: string): string[] {
-    if (label === 'Values') {
+  private detailOptionsForRow(labelKey: string): string[] {
+    if (labelKey === 'profile.details.values') {
       return this.beliefsValuesAllOptions();
     }
-    if (label === 'Interest') {
+    if (labelKey === 'profile.details.interest') {
       return this.interestAllOptions();
     }
-    return this.profileDetailValueOptions[label] ?? [];
+    return this.profileDetailValueOptions[labelKey] ?? [];
   }
 
-  private existingDetailValue(user: UserDto, label: string): string {
-    const target = AppUtils.normalizeText(label);
+  private existingDetailValue(user: UserDto, labelKey: string): string {
+    const target = AppUtils.normalizeText(labelKey);
     for (const group of user.profileDetails ?? []) {
-      const row = (group.rows ?? []).find(candidate => AppUtils.normalizeText(candidate.label) === target);
+      const row = (group.rows ?? []).find(candidate => AppUtils.normalizeText(candidate.labelKey) === target);
       if (row) {
         return row.value;
       }
@@ -777,15 +777,48 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
     return '';
   }
 
-  private existingDetailPrivacy(user: UserDto, label: string, fallback: DetailPrivacy): DetailPrivacy {
-    const target = AppUtils.normalizeText(label);
+  private existingDetailPrivacy(user: UserDto, labelKey: string, fallback: DetailPrivacy): DetailPrivacy {
+    const target = AppUtils.normalizeText(labelKey);
     for (const group of user.profileDetails ?? []) {
-      const row = (group.rows ?? []).find(candidate => AppUtils.normalizeText(candidate.label) === target);
+      const row = (group.rows ?? []).find(candidate => AppUtils.normalizeText(candidate.labelKey) === target);
       if (row && this.isDetailPrivacy(row.privacy)) {
         return row.privacy;
       }
     }
     return fallback;
+  }
+
+  private profileDetailKeyFromLabel(label: string): string {
+    switch (label) {
+      case 'Gender':
+        return 'profile.gender';
+      case 'Drinking':
+        return 'profile.details.drinking';
+      case 'Smoking':
+        return 'profile.details.smoking';
+      case 'Workout':
+        return 'profile.details.workout';
+      case 'Pets':
+        return 'profile.details.pets';
+      case 'Family plans':
+        return 'profile.details.familyPlans';
+      case 'Children':
+        return 'profile.details.children';
+      case 'Love style':
+        return 'profile.details.loveStyle';
+      case 'Communication style':
+        return 'profile.details.communicationStyle';
+      case 'Sexual orientation':
+        return 'profile.details.sexualOrientation';
+      case 'Religion':
+        return 'profile.details.religion';
+      case 'Values':
+        return 'profile.details.values';
+      case 'Interest':
+        return 'profile.details.interest';
+      default:
+        return label;
+    }
   }
 
   private isDetailPrivacy(value: string): value is DetailPrivacy {

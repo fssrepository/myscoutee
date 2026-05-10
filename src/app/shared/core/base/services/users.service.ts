@@ -755,7 +755,7 @@ export class UsersService extends BaseRouteModeService {
     return groups.map(group => ({
       title: `${group.title ?? ''}`,
       rows: (group.rows ?? []).map(row => ({
-        label: `${row.label ?? ''}`,
+        labelKey: `${row.labelKey ?? ''}`,
         value: `${row.value ?? ''}`,
         privacy: row.privacy,
         options: [...(row.options ?? [])]

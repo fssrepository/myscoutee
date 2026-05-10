@@ -11,6 +11,7 @@ export type AssetRequestStatus = 'pending' | 'accepted';
 export type AssetTicketOrder = 'upcoming' | 'past';
 export type AssetRequestKind = 'manual' | 'borrow';
 export type AssetCategory = string;
+export type AssetLifecycleStatus = 'A' | 'UR' | 'B' | 'D' | 'I' | 'T' | 'active' | 'under-review' | 'blocked' | 'deleted' | 'inactive' | 'trashed';
 
 export interface AssetHireRequestBooking {
   eventId?: string;
@@ -60,6 +61,7 @@ export interface AssetCard {
   policies?: EventPolicyItem[];
   pricing?: PricingConfig | null;
   visibility?: EventVisibility;
+  status?: AssetLifecycleStatus | string;
   ownerUserId?: string;
   ownerName?: string;
   requests: AssetMemberRequest[];

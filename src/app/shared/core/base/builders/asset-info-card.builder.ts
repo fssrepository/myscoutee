@@ -64,6 +64,7 @@ export class AssetInfoCardBuilder {
       }),
       metaRows: [this.ownedAssetMetaLine(card, options.fallbackSubtitle ?? '')],
       description: card.details,
+      surfaceTone: this.assetStatusSurfaceTone(card),
       leadingIcon: {
         icon: AssetDefaultsBuilder.assetTypeIcon(card.type)
       },
@@ -81,6 +82,60 @@ export class AssetInfoCardBuilder {
           }
         : this.ownedAssetMediaEnd(card),
       menuActions: selectMode ? [] : this.ownedAssetMenuActions(card),
+      clickable: false
+    };
+  }
+
+  static buildExploreAssetInfoCard(
+    card: AppTypes.AssetCard,
+    options: {
+      groupLabel?: string | null;
+      availabilityLabel: string;
+      canBorrow: boolean;
+      canReportOwner: boolean;
+    }
+  ): InfoCardData {
+    const visibility = this.assetExploreVisibility(card);
+    const canBorrow = options.canBorrow === true;
+    return {
+      rowId: `asset-explore:${card.id}`,
+      groupLabel: options.groupLabel ?? null,
+      title: card.title,
+      imageUrl: card.imageUrl,
+      metaRows: [[
+        AssetDefaultsBuilder.assetTypeLabel(card.type),
+        card.category ?? '',
+        card.city
+      ].filter(Boolean).join(' · ')],
+      description: card.details,
+      detailRows: [[
+        card.ownerName?.trim() || 'Unknown owner',
+        visibility
+      ].filter(Boolean).join(' · ')],
+      footerChips: [
+        { label: this.assetExplorePriceLabel(card) },
+        { label: this.assetExplorePolicyLabel(card) }
+      ],
+      leadingIcon: {
+        icon: this.assetExploreVisibilityIcon(visibility),
+        tone: this.assetExploreVisibilityTone(visibility)
+      },
+      mediaStart: {
+        variant: 'avatar',
+        tone: this.assetExploreOwnerAvatarTone(card),
+        label: AppUtils.initialsFromText(card.ownerName?.trim() || card.title),
+        interactive: false,
+        ariaLabel: null
+      },
+      mediaEnd: {
+        variant: 'badge',
+        tone: canBorrow ? 'default' : 'inactive',
+        label: options.availabilityLabel,
+        interactive: canBorrow,
+        disabled: !canBorrow,
+        ariaLabel: canBorrow ? 'Borrow asset' : 'Asset unavailable for this time'
+      },
+      menuActions: this.assetExploreMenuActions(canBorrow, options.canReportOwner === true),
       clickable: false
     };
   }
@@ -183,6 +238,87 @@ export class AssetInfoCardBuilder {
     return [AssetDefaultsBuilder.assetTypeLabel(card.type), subtitle, city].filter(Boolean).join(' · ');
   }
 
+  private static assetExploreVisibility(card: AppTypes.AssetCard): AppTypes.EventVisibility {
+    if (card.visibility === 'Friends only' || card.visibility === 'Invitation only') {
+      return card.visibility;
+    }
+    return 'Public';
+  }
+
+  private static assetExploreVisibilityIcon(visibility: AppTypes.EventVisibility): string {
+    if (visibility === 'Friends only') {
+      return 'groups';
+    }
+    if (visibility === 'Invitation only') {
+      return 'mail_lock';
+    }
+    return 'public';
+  }
+
+  private static assetExploreVisibilityTone(
+    visibility: AppTypes.EventVisibility
+  ): NonNullable<InfoCardData['leadingIcon']>['tone'] {
+    if (visibility === 'Friends only') {
+      return 'friends';
+    }
+    if (visibility === 'Invitation only') {
+      return 'invitation';
+    }
+    return 'public';
+  }
+
+  private static assetExploreOwnerAvatarTone(card: AppTypes.AssetCard): NonNullable<InfoCardData['mediaStart']>['tone'] {
+    return `tone-${(AppUtils.hashText(`${card.ownerUserId ?? card.id}:${card.ownerName ?? card.title}`) % 8) + 1}` as NonNullable<InfoCardData['mediaStart']>['tone'];
+  }
+
+  private static assetExploreMenuActions(
+    canBorrow: boolean,
+    canReportOwner: boolean
+  ): readonly InfoCardMenuAction[] {
+    const actions: InfoCardMenuAction[] = ['viewAsset'];
+    if (canBorrow) {
+      actions.push('borrowAsset');
+    }
+    actions.push('contactOwner');
+    actions.push('shareAsset');
+    if (canReportOwner) {
+      actions.push('reportOwner');
+    }
+    return actions;
+  }
+
+  private static assetExplorePriceLabel(card: AppTypes.AssetCard): string {
+    const amount = this.assetExplorePriceAmount(card);
+    const currency = card.pricing?.currency || 'USD';
+    if (amount <= 0) {
+      return 'Free borrow';
+    }
+    try {
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency,
+        maximumFractionDigits: 0
+      }).format(amount);
+    } catch {
+      return `${currency} ${amount.toFixed(0)}`;
+    }
+  }
+
+  private static assetExplorePriceAmount(card: AppTypes.AssetCard): number {
+    if (!card.pricing?.enabled) {
+      return 0;
+    }
+    return Math.max(0, Number(card.pricing.basePrice) || 0);
+  }
+
+  private static assetExplorePolicyLabel(card: AppTypes.AssetCard): string {
+    const count = (card.policies ?? []).length;
+    if (count <= 0) {
+      return 'No policy';
+    }
+    return count === 1 ? '1 policy' : `${count} policies`;
+  }
+
   private static ownedAssetMediaStart(card: AppTypes.AssetCard): NonNullable<InfoCardData['mediaStart']> | null {
     if (!AssetCardBuilder.canOpenMap(card)) {
       return null;
@@ -197,28 +333,25 @@ export class AssetInfoCardBuilder {
   }
 
   private static ownedAssetMenuActions(card: AppTypes.AssetCard): readonly InfoCardMenuAction[] {
-    const label = AssetDefaultsBuilder.assetTypeLabel(card.type).toLowerCase();
-    return [
-      {
-        id: 'share',
-        label: `Share ${label}`,
-        icon: 'ios_share'
-      },
-      {
-        id: 'edit',
-        label: `Edit ${label}`,
-        icon: 'edit'
-      },
-      {
-        id: 'delete',
-        label: `Delete ${label}`,
-        icon: 'delete',
-        tone: 'destructive'
-      }
-    ];
+    const actions: InfoCardMenuAction[] = [];
+    if (this.assetStatusCode(card) === 'UR') {
+      actions.push('takeOver');
+    }
+    actions.push('shareAsset', 'editAsset', 'delete');
+    return actions;
   }
 
   private static ownedAssetMediaEnd(card: AppTypes.AssetCard): NonNullable<InfoCardData['mediaEnd']> | null {
+    const statusLabel = this.assetStatusBadgeLabel(card);
+    if (statusLabel) {
+      return {
+        variant: 'badge',
+        tone: this.assetStatusOverlayTone(card),
+        label: statusLabel,
+        interactive: false,
+        ariaLabel: statusLabel
+      };
+    }
     const pendingCount = card.requests.filter(request => request.status === 'pending' && request.requestKind !== 'manual').length;
     return {
       variant: 'badge',
@@ -229,5 +362,76 @@ export class AssetInfoCardBuilder {
       pendingCount,
       ariaLabel: 'Open asset requests and assignments'
     };
+  }
+
+  private static assetStatusCode(card: AppTypes.AssetCard): string {
+    const status = `${card.status ?? ''}`.trim();
+    switch (status) {
+      case 'active':
+        return 'A';
+      case 'under-review':
+      case 'under review':
+        return 'UR';
+      case 'blocked':
+        return 'B';
+      case 'deleted':
+        return 'D';
+      case 'inactive':
+        return 'I';
+      case 'trashed':
+      case 'trash':
+        return 'T';
+      default:
+        return status || 'A';
+    }
+  }
+
+  private static assetStatusBadgeLabel(card: AppTypes.AssetCard): string | null {
+    switch (this.assetStatusCode(card)) {
+      case 'UR':
+        return 'Under Review';
+      case 'B':
+        return 'Blocked User';
+      case 'D':
+        return 'Deleted User';
+      case 'T':
+        return 'Deleted';
+      case 'I':
+        return 'Inactive User';
+      default:
+        return null;
+    }
+  }
+
+  private static assetStatusSurfaceTone(card: AppTypes.AssetCard): InfoCardData['surfaceTone'] {
+    switch (this.assetStatusCode(card)) {
+      case 'UR':
+        return 'review';
+      case 'B':
+        return 'blocked';
+      case 'D':
+      case 'T':
+        return 'deleted';
+      case 'I':
+        return 'inactive';
+      default:
+        return 'default';
+    }
+  }
+
+  private static assetStatusOverlayTone(card: AppTypes.AssetCard): NonNullable<InfoCardData['mediaEnd']>['tone'] {
+    switch (this.assetStatusCode(card)) {
+      case 'UR':
+        return 'review';
+      case 'B':
+        return 'blocked';
+      case 'D':
+      case 'T':
+        return 'deleted';
+      case 'I':
+        return 'inactive';
+      default:
+        return 'default';
+    }
   }
 }

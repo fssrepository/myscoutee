@@ -21,7 +21,7 @@ import { resolveCurrentRouteDelayMs } from '../../../shared/core/base/services/r
 import { ActivitiesPopupStateService } from '../../services/activities-popup-state.service';
 import { EventEditorPopupStateService } from '../../services/event-editor-popup-state.service';
 import type { EventChatResourceContext } from '../../../shared/core/base/models';
-import { AppContext, AppPopupContext, EventsService, ShareTokensService } from '../../../shared/core';
+import { AppContext, AppPopupContext, ChatsService, EventsService, ShareTokensService } from '../../../shared/core';
 import { AppMemoryDb } from '../../../shared/core/base';
 import { toActivityEventRow } from '../../../shared/core/base/converters/activities-event.converter';
 import type { ChatMenuItem, EventMenuItem } from '../../../shared/core/base/interfaces/activity-feed.interface';
@@ -84,6 +84,7 @@ export class EventChatPopupComponent implements OnDestroy {
   private readonly eventEditorService = inject(EventEditorPopupStateService);
   private readonly appCtx = inject(AppContext);
   private readonly popupCtx = inject(AppPopupContext);
+  private readonly chatsService = inject(ChatsService);
   private readonly eventsService = inject(EventsService);
   private readonly shareTokensService = inject(ShareTokensService);
   private readonly confirmationDialogService = inject(ConfirmationDialogService);
@@ -2126,7 +2127,16 @@ export class EventChatPopupComponent implements OnDestroy {
     this.clearOpenChatUnreadState();
     this.cdr.markForCheck();
     try {
-      const nextMessages = await this.activitiesContext.loadEventChatMessages(session.item);
+      const initialChat = session.item;
+      const resolvedChatPromise = this.chatsService
+        .resolveRepositoryEventServiceChat(initialChat)
+        .catch(() => null);
+      const messagesPromise = this.activitiesContext.loadEventChatMessages(initialChat);
+      const [resolvedChat, nextMessages] = await Promise.all([resolvedChatPromise, messagesPromise]);
+      if (this.loadedSessionKey !== sessionKey) {
+        return this.chatThreadPageResult(query);
+      }
+      const chat = this.applyResolvedInitialChatItem(initialChat, resolvedChat, sessionKey);
       if (this.loadedSessionKey !== sessionKey) {
         return this.chatThreadPageResult(query);
       }
@@ -2135,8 +2145,8 @@ export class EventChatPopupComponent implements OnDestroy {
       this.rebuildVisibleReadReceipts();
       this.syncEventChatSummaryFromLatestMessage();
       this.initialChatLoadedSessionKey = sessionKey;
-      this.markLoadedChatThreadAsRead(session.item, this.allMessages);
-      await this.startLiveChatUpdates(session.item, sessionKey);
+      this.markLoadedChatThreadAsRead(chat, this.allMessages);
+      await this.startLiveChatUpdates(chat, sessionKey);
       return this.chatThreadPageResult(query);
     } catch {
       if (this.loadedSessionKey !== sessionKey) {
@@ -2153,6 +2163,22 @@ export class EventChatPopupComponent implements OnDestroy {
         this.cdr.markForCheck();
       }
     }
+  }
+
+  private applyResolvedInitialChatItem(
+    chat: ChatMenuItem,
+    resolvedChat: ChatMenuItem | null,
+    sessionKey: string
+  ): ChatMenuItem {
+    if (!resolvedChat || this.loadedSessionKey !== sessionKey || resolvedChat.id !== chat.id) {
+      return chat;
+    }
+    this.activitiesContext.patchEventChatSessionItem(current =>
+      current.id === chat.id
+        ? resolvedChat
+        : current
+    );
+    return resolvedChat;
   }
 
   private chatThreadPageResult(query: ListQuery<ChatThreadFilters>): PageResult<AppTypes.ChatPopupMessage> {

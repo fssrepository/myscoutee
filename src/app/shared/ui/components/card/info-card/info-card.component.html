@@ -35,6 +35,9 @@
             [class.ui-info-card__overlay-action--tone-full]="overlayTone(mediaStart) === 'full'"
             [class.ui-info-card__overlay-action--tone-inactive]="overlayTone(mediaStart) === 'inactive'"
             [class.ui-info-card__overlay-action--tone-selected]="overlayTone(mediaStart) === 'selected'"
+            [class.ui-info-card__overlay-action--tone-review]="overlayTone(mediaStart) === 'review'"
+            [class.ui-info-card__overlay-action--tone-blocked]="overlayTone(mediaStart) === 'blocked'"
+            [class.ui-info-card__overlay-action--tone-deleted]="overlayTone(mediaStart) === 'deleted'"
             [class.ui-info-card__overlay-action--tone-woman]="overlayTone(mediaStart) === 'woman'"
             [class.ui-info-card__overlay-action--tone-man]="overlayTone(mediaStart) === 'man'"
             [class.ui-info-card__overlay-action--tone-1]="overlayTone(mediaStart) === 'tone-1'"
@@ -45,7 +48,7 @@
             [class.ui-info-card__overlay-action--tone-6]="overlayTone(mediaStart) === 'tone-6'"
             [class.ui-info-card__overlay-action--tone-7]="overlayTone(mediaStart) === 'tone-7'"
             [class.ui-info-card__overlay-action--tone-8]="overlayTone(mediaStart) === 'tone-8'"
-            [attr.aria-label]="mediaStart.ariaLabel || overlayLabel(mediaStart)"
+            [attr.aria-label]="(mediaStart.ariaLabel || overlayLabel(mediaStart)) | i18n"
             [disabled]="mediaStart.disabled"
             (click)="onMediaStartActivated($event)"
             >
@@ -71,6 +74,9 @@
             [class.ui-info-card__overlay-action--tone-full]="overlayTone(mediaStart) === 'full'"
             [class.ui-info-card__overlay-action--tone-inactive]="overlayTone(mediaStart) === 'inactive'"
             [class.ui-info-card__overlay-action--tone-selected]="overlayTone(mediaStart) === 'selected'"
+            [class.ui-info-card__overlay-action--tone-review]="overlayTone(mediaStart) === 'review'"
+            [class.ui-info-card__overlay-action--tone-blocked]="overlayTone(mediaStart) === 'blocked'"
+            [class.ui-info-card__overlay-action--tone-deleted]="overlayTone(mediaStart) === 'deleted'"
             [class.ui-info-card__overlay-action--tone-woman]="overlayTone(mediaStart) === 'woman'"
             [class.ui-info-card__overlay-action--tone-man]="overlayTone(mediaStart) === 'man'"
             [class.ui-info-card__overlay-action--tone-1]="overlayTone(mediaStart) === 'tone-1'"
@@ -110,6 +116,9 @@
             [class.ui-info-card__overlay-action--tone-full]="overlayTone(mediaEnd) === 'full'"
             [class.ui-info-card__overlay-action--tone-inactive]="overlayTone(mediaEnd) === 'inactive'"
             [class.ui-info-card__overlay-action--tone-selected]="overlayTone(mediaEnd) === 'selected'"
+            [class.ui-info-card__overlay-action--tone-review]="overlayTone(mediaEnd) === 'review'"
+            [class.ui-info-card__overlay-action--tone-blocked]="overlayTone(mediaEnd) === 'blocked'"
+            [class.ui-info-card__overlay-action--tone-deleted]="overlayTone(mediaEnd) === 'deleted'"
             [class.ui-info-card__overlay-action--tone-woman]="overlayTone(mediaEnd) === 'woman'"
             [class.ui-info-card__overlay-action--tone-man]="overlayTone(mediaEnd) === 'man'"
             [class.ui-info-card__overlay-action--tone-1]="overlayTone(mediaEnd) === 'tone-1'"
@@ -121,7 +130,7 @@
             [class.ui-info-card__overlay-action--tone-7]="overlayTone(mediaEnd) === 'tone-7'"
             [class.ui-info-card__overlay-action--tone-8]="overlayTone(mediaEnd) === 'tone-8'"
             [class.ui-info-card__overlay-action--ring-active]="overlayProgressRing(mediaEnd)"
-            [attr.aria-label]="mediaEnd.ariaLabel || overlayLabel(mediaEnd)"
+            [attr.aria-label]="(mediaEnd.ariaLabel || overlayLabel(mediaEnd)) | i18n"
             [disabled]="mediaEnd.disabled"
             (click)="onMediaEndActivated($event)"
             >
@@ -174,6 +183,9 @@
             [class.ui-info-card__overlay-action--tone-full]="overlayTone(mediaEnd) === 'full'"
             [class.ui-info-card__overlay-action--tone-inactive]="overlayTone(mediaEnd) === 'inactive'"
             [class.ui-info-card__overlay-action--tone-selected]="overlayTone(mediaEnd) === 'selected'"
+            [class.ui-info-card__overlay-action--tone-review]="overlayTone(mediaEnd) === 'review'"
+            [class.ui-info-card__overlay-action--tone-blocked]="overlayTone(mediaEnd) === 'blocked'"
+            [class.ui-info-card__overlay-action--tone-deleted]="overlayTone(mediaEnd) === 'deleted'"
             [class.ui-info-card__overlay-action--tone-woman]="overlayTone(mediaEnd) === 'woman'"
             [class.ui-info-card__overlay-action--tone-man]="overlayTone(mediaEnd) === 'man'"
             [class.ui-info-card__overlay-action--tone-1]="overlayTone(mediaEnd) === 'tone-1'"
@@ -231,7 +243,7 @@
           type="button"
           class="ui-info-card__menu-trigger experience-action-btn experience-action-menu-trigger"
           [class.is-open]="menuTriggerOpen"
-          [attr.aria-label]="menuTriggerOpen ? 'Close card actions' : 'Open card actions'"
+          [attr.aria-label]="(menuTriggerOpen ? 'close.card.actions' : 'open.card.actions') | i18n"
           (click)="toggleMenu($event)"
           >
           <mat-icon>{{ menuTriggerOpen ? 'close' : 'more_vert' }}</mat-icon>
@@ -255,18 +267,21 @@
               <div class="ui-info-card__menu-title item-action-menu-title">{{ menuTitle }}</div>
             }
             @for (action of card?.menuActions; track trackByActionId($index, action)) {
-              <button
-                type="button"
-                class="ui-info-card__menu-action item-action-menu-btn"
-                [ngClass]="menuActionClass(action)"
-                [class.item-action-menu-btn-publish]="action.tone === 'accent'"
-                [class.item-action-menu-btn-warning]="action.tone === 'warning'"
-                [class.item-action-menu-btn-destructive]="action.tone === 'destructive'"
-                (click)="onMenuActionSelected(action, $event)"
-                >
-                <mat-icon>{{ action.icon }}</mat-icon>
-                <span>{{ action.label }}</span>
-              </button>
+              @if (availableActions[action]; as menuAction) {
+                <button
+                  type="button"
+                  class="ui-info-card__menu-action item-action-menu-btn"
+                  [ngClass]="'ui-info-card__menu-action--' + (menuAction.tone ?? 'default')"
+                  [class.item-action-menu-btn-publish]="menuAction.tone === 'accent'"
+                  [class.item-action-menu-btn-review]="menuAction.tone === 'review'"
+                  [class.item-action-menu-btn-warning]="menuAction.tone === 'warning'"
+                  [class.item-action-menu-btn-destructive]="menuAction.tone === 'destructive'"
+                  (click)="onMenuActionSelected(action, menuAction, $event)"
+                  >
+                  <mat-icon>{{ menuAction.icon }}</mat-icon>
+                  <span>{{ menuAction.label | i18n }}</span>
+                </button>
+              }
             }
           </div>
         }
@@ -301,7 +316,7 @@
           class="ui-info-card__footer-chip values-selected-chip"
           [ngClass]="chip.toneClass"
           >
-          {{ chip.label }}
+          {{ chip.label | i18n }}
         </span>
       }
     </div>
@@ -368,12 +383,12 @@
               <mat-icon>{{ accessory.icon }}</mat-icon>
             }
             @if (accessory.label) {
-              <span>{{ accessory.label }}</span>
+              <span>{{ accessory.label | i18n }}</span>
             }
           </span>
         }
         @if (overlayLabel(action)) {
-          <span>{{ overlayLabel(action) }}</span>
+          <span>{{ overlayLabel(action) | i18n }}</span>
         }
       </span>
     }
@@ -382,7 +397,7 @@
         <mat-icon>{{ overlayActionIcon }}</mat-icon>
       }
       @if (overlayLabel(action)) {
-        <span>{{ overlayLabel(action) }}</span>
+        <span>{{ overlayLabel(action) | i18n }}</span>
       }
     }
   }

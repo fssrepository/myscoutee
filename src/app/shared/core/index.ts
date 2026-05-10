@@ -17,7 +17,10 @@ export {
   type UserImpressionChangeFlags
 } from './base/context';
 export { restrictedAreaGuard } from './base/guards';
-export { ActivitiesService } from './base/services/activities.service';
+export {
+  ActivitiesService,
+  type ActivitiesEventDisplaySync
+} from './base/services/activities.service';
 export {
   GameService,
   USER_GAME_CARDS_LOAD_CONTEXT_KEY

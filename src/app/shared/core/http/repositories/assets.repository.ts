@@ -150,6 +150,33 @@ export class HttpAssetsRepository {
     }
   }
 
+  async takeOverOwnedAsset(userId: string, assetId: string): Promise<void> {
+    const normalizedUserId = userId.trim();
+    const normalizedAssetId = assetId.trim();
+    if (!normalizedUserId || !normalizedAssetId) {
+      return;
+    }
+    const next = this.peekOwnedAssetsByUser(normalizedUserId).map(card =>
+      card.id === normalizedAssetId
+        ? {
+            ...card,
+            status: this.restoredAssetStatus(card)
+          }
+        : card
+    );
+    this.cachedAssetsByUserId[normalizedUserId] = next;
+    try {
+      await this.http
+        .post(`${this.apiBaseUrl}/assets/take-over`, {
+          userId: normalizedUserId,
+          assetId: normalizedAssetId
+        })
+        .toPromise();
+    } catch {
+      // Keep optimistic state while concrete endpoint wiring lands.
+    }
+  }
+
   async refreshAssetSourcePreview(
     userId: string,
     type: AppTypes.AssetType,
@@ -258,6 +285,7 @@ export class HttpAssetsRepository {
         : card?.visibility === 'Invitation only'
           ? 'Invitation only'
           : 'Public',
+      status: this.normalizeAssetStatus(card?.status),
       ownerUserId: `${card?.ownerUserId ?? ''}`.trim() || undefined,
       ownerName: `${card?.ownerName ?? ''}`.trim() || undefined,
       requests: Array.isArray(card?.requests)
@@ -301,6 +329,32 @@ export class HttpAssetsRepository {
           .filter(request => request.id.length > 0)
         : []
     };
+  }
+
+  protected restoredAssetStatus(card: AppTypes.AssetCard): string {
+    return 'A';
+  }
+
+  protected normalizeAssetStatus(status: string | null | undefined): string {
+    const normalized = `${status ?? ''}`.trim();
+    switch (normalized) {
+      case 'active':
+        return 'A';
+      case 'under-review':
+      case 'under review':
+        return 'UR';
+      case 'blocked':
+        return 'B';
+      case 'deleted':
+        return 'D';
+      case 'inactive':
+        return 'I';
+      case 'trashed':
+      case 'trash':
+        return 'T';
+      default:
+        return normalized || 'A';
+    }
   }
 
   private upsertCard(

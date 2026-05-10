@@ -1,5 +1,6 @@
 import type {
   CardBadgeConfig,
+  CardContextBadgeConfig,
   CardProfileViewData,
   CardPresentation,
   CardRenderState,
@@ -38,6 +39,7 @@ export interface RateCardDataInput {
   pairSlots?: readonly PairCardSlot[];
   stackClasses?: readonly string[];
   badge?: CardBadgeConfig | null;
+  contextBadge?: CardContextBadgeConfig | null;
   presentation?: CardPresentation;
   state?: CardRenderState;
   fullscreenSplitEnabled?: boolean;
@@ -51,6 +53,7 @@ export function buildSingleRateCardData(input: RateCardDataInput): SingleCardDat
     profileView: profileViewForUser(input.primaryUser),
     stackClasses: input.stackClasses ?? [],
     badge: input.badge ?? null,
+    contextBadge: input.contextBadge ?? null,
     presentation: input.presentation ?? 'list',
     state: input.state ?? 'default'
   };

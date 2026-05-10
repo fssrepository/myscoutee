@@ -226,6 +226,7 @@ interface ActivitiesRatesControllerDeps {
   getActivitiesPrimaryFilter: () => AppTypes.ActivitiesPrimaryFilter;
   getActivitiesRateFilter: () => AppTypes.RateFilterKey;
   getActivitiesRateSocialBadgeEnabled: () => boolean;
+  getActivitiesRateSocialBadgeEnabledForFilter: (filter: AppTypes.RateFilterKey) => boolean;
   getFilteredActivityRows: () => readonly AppTypes.ActivityListRow[];
   getRateItems: () => readonly RateMenuItem[];
   getSmartListCursorItem: () => AppTypes.ActivityListRow | null;
@@ -584,7 +585,7 @@ export class ActivitiesRatesController {
     return matchesActivitiesRateFilter(
       item,
       filter,
-      this.deps.getActivitiesRateSocialBadgeEnabled(),
+      this.deps.getActivitiesRateSocialBadgeEnabledForFilter(filter),
       candidate => this.displayedDirection(candidate)
     );
   }

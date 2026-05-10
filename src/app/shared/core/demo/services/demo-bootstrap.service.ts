@@ -445,7 +445,7 @@ export class DemoBootstrapService {
       ticketing: record.ticketing,
       topics: [...record.topics],
       rating: record.rating,
-      relevance: record.relevance,
+      boost: record.boost,
       published: record.published
     };
   }

@@ -4,6 +4,7 @@ import { MatIconModule } from '@angular/material/icon';
 
 import { AppUtils } from '../../../shared/app-utils';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
+import { I18nPipe } from '../../../shared/i18n';
 import {
   UserExperiencesService,
   UsersService,
@@ -25,7 +26,8 @@ interface ProfileViewRow {
   standalone: true,
   imports: [
     CommonModule,
-    MatIconModule
+    MatIconModule,
+    I18nPipe
   ],
   templateUrl: './profile-view-popup.component.html',
   styleUrl: './profile-view-popup.component.scss',
@@ -120,7 +122,7 @@ export class ProfileViewPopupComponent {
   }
 
   protected trackRow(_index: number, row: ProfileViewRow | ProfileDetailFormRow): string {
-    return `${row.label}:${'value' in row ? row.value : ''}`;
+    return `${'labelKey' in row ? row.labelKey : row.label}:${'value' in row ? row.value : ''}`;
   }
 
   protected trackGroup(_index: number, group: ProfileDetailFormGroup): string {
@@ -132,11 +134,11 @@ export class ProfileViewPopupComponent {
   }
 
   protected detailValueParts(row: ProfileDetailFormRow): string[] {
-    return this.badgeParts(row.label, row.value);
+    return this.badgeParts(row.labelKey, row.value);
   }
 
-  protected badgeParts(label: string, value: string): string[] {
-    if (!this.isBadgeListLabel(label)) {
+  protected badgeParts(labelKey: string, value: string): string[] {
+    if (!this.isBadgeListKey(labelKey)) {
       return [];
     }
     return this.splitListValue(value);
@@ -284,12 +286,20 @@ export class ProfileViewPopupComponent {
       return [];
     }
     const groups = this.profileDetailGroupsForUser(user);
-    const duplicatedBasics = new Set(['name', 'city', 'birthday', 'height', 'physique', 'languages', 'horoscope']);
+    const duplicatedBasics = new Set([
+      'profile.name',
+      'profile.city',
+      'profile.birthday',
+      'profile.height',
+      'profile.physique',
+      'profile.languages',
+      'profile.horoscope'
+    ]);
     return groups
       .map(group => ({
         ...group,
         rows: (group.rows ?? [])
-          .filter(row => !duplicatedBasics.has(AppUtils.normalizeText(row.label)))
+          .filter(row => !duplicatedBasics.has(AppUtils.normalizeText(row.labelKey)))
           .filter(row => `${row.value ?? ''}`.trim().length > 0)
       }))
       .filter(group => group.rows.length > 0);
@@ -306,10 +316,10 @@ export class ProfileViewPopupComponent {
     return APP_STATIC_DATA.profileDetailGroupTemplates.map(group => ({
       title: group.title,
       rows: group.rows.map(row => ({
-        label: row.label,
-        value: this.profileDetailSeedValue(user, row.label, ''),
+        labelKey: row.labelKey,
+        value: this.profileDetailSeedValue(user, row.labelKey, ''),
         privacy: row.privacy,
-        options: this.profileDetailOptionsForLabel(row.label)
+        options: this.profileDetailOptionsForKey(row.labelKey)
       }))
     }));
   }
@@ -318,15 +328,15 @@ export class ProfileViewPopupComponent {
     if (!Array.isArray(user.profileDetails) || user.profileDetails.length === 0) {
       return [];
     }
-    const rowByLabel = new Map<string, ProfileDetailFormRow>();
+    const rowByKey = new Map<string, ProfileDetailFormRow>();
     for (const group of user.profileDetails) {
       for (const row of group.rows ?? []) {
-        const normalizedLabel = AppUtils.normalizeText(`${row.label ?? ''}`.trim());
-        if (!normalizedLabel) {
+        const normalizedKey = AppUtils.normalizeText(`${row.labelKey ?? ''}`.trim());
+        if (!normalizedKey) {
           continue;
         }
-        rowByLabel.set(normalizedLabel, {
-          label: row.label,
+        rowByKey.set(normalizedKey, {
+          labelKey: row.labelKey,
           value: row.value,
           privacy: row.privacy,
           options: [...(row.options ?? [])]
@@ -336,23 +346,23 @@ export class ProfileViewPopupComponent {
     return APP_STATIC_DATA.profileDetailGroupTemplates.map(group => ({
       title: group.title,
       rows: group.rows.map(row => {
-        const persisted = rowByLabel.get(AppUtils.normalizeText(row.label));
+        const persisted = rowByKey.get(AppUtils.normalizeText(row.labelKey));
         return {
-          label: row.label,
-          value: persisted?.value ?? this.profileDetailSeedValue(user, row.label, ''),
+          labelKey: row.labelKey,
+          value: persisted?.value ?? this.profileDetailSeedValue(user, row.labelKey, ''),
           privacy: persisted?.privacy ?? row.privacy,
-          options: this.profileDetailOptionsForLabel(row.label, persisted?.options ?? [])
+          options: this.profileDetailOptionsForKey(row.labelKey, persisted?.options ?? [])
         };
       })
     }));
   }
 
-  private profileDetailOptionsForLabel(label: string, persistedOptions: readonly string[] = []): string[] {
-    const defaults = AppUtils.normalizeText(label) === 'values'
+  private profileDetailOptionsForKey(labelKey: string, persistedOptions: readonly string[] = []): string[] {
+    const defaults = labelKey === 'profile.details.values'
       ? this.beliefsValuesAllOptions()
-      : AppUtils.normalizeText(label) === 'interest'
+      : labelKey === 'profile.details.interest'
         ? this.interestAllOptions()
-        : APP_STATIC_DATA.profileDetailValueOptions[label] ?? [];
+        : APP_STATIC_DATA.profileDetailValueOptions[labelKey] ?? [];
     const merged = [...defaults];
     for (const option of persistedOptions) {
       const normalized = `${option ?? ''}`.trim();
@@ -363,34 +373,34 @@ export class ProfileViewPopupComponent {
     return merged;
   }
 
-  private profileDetailSeedValue(user: UserDto, label: string, fallback: string): string {
-    switch (label) {
-      case 'Name':
+  private profileDetailSeedValue(user: UserDto, labelKey: string, fallback: string): string {
+    switch (labelKey) {
+      case 'profile.name':
         return user.name;
-      case 'City':
+      case 'profile.city':
         return user.city;
-      case 'Birthday':
+      case 'profile.birthday':
         return this.formatDate(user.birthday) === 'Not set' ? fallback : this.formatDate(user.birthday);
-      case 'Height':
+      case 'profile.height':
         return user.height;
-      case 'Physique':
+      case 'profile.physique':
         return user.physique;
-      case 'Languages':
+      case 'profile.languages':
         return user.languages.join(', ');
-      case 'Horoscope':
+      case 'profile.horoscope':
         return user.horoscope;
-      case 'Gender':
+      case 'profile.gender':
         return user.gender === 'woman' ? 'Woman' : 'Man';
-      case 'Interest':
-        return this.seededOptionsForUser(user, this.interestAllOptions(), 3, label).join(', ');
-      case 'Values':
-        return this.seededOptionsForUser(user, this.beliefsValuesAllOptions(), 3, label).join(', ');
+      case 'profile.details.interest':
+        return this.seededOptionsForUser(user, this.interestAllOptions(), 3, labelKey).join(', ');
+      case 'profile.details.values':
+        return this.seededOptionsForUser(user, this.beliefsValuesAllOptions(), 3, labelKey).join(', ');
       default: {
-        const options = APP_STATIC_DATA.profileDetailValueOptions[label] ?? [];
+        const options = APP_STATIC_DATA.profileDetailValueOptions[labelKey] ?? [];
         if (options.length === 0) {
           return fallback;
         }
-        return this.seededOptionForUser(user, options, label);
+        return this.seededOptionForUser(user, options, labelKey);
       }
     }
   }
@@ -443,9 +453,14 @@ export class ProfileViewPopupComponent {
     ].some(value => `${value ?? ''}`.trim().length > 0);
   }
 
-  private isBadgeListLabel(label: string): boolean {
-    const normalized = AppUtils.normalizeText(label);
-    return normalized === 'languages' || normalized === 'interest' || normalized === 'values';
+  private isBadgeListKey(labelKey: string): boolean {
+    const normalized = AppUtils.normalizeText(labelKey);
+    return labelKey === 'profile.languages'
+      || labelKey === 'profile.details.interest'
+      || labelKey === 'profile.details.values'
+      || normalized === 'languages'
+      || normalized === 'interest'
+      || normalized === 'values';
   }
 
   private splitListValue(value: string): string[] {

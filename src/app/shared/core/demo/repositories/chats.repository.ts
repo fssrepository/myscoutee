@@ -89,7 +89,7 @@ export class DemoChatsRepository {
 
   queryChatMessages(chat: ChatMenuItem): AppTypes.ChatPopupMessage[] {
     this.init();
-    const record = this.resolveChatRecord(chat);
+    const record = this.resolveChatRecord(chat, { createServiceChat: false });
     return record ? DemoChatsRepositoryBuilder.cloneMessages(record.messages ?? []).map(message => ({
       ...message,
       readBy: message.readBy.filter(reader => `${reader.id ?? ''}`.trim() !== `${message.senderAvatar.id ?? ''}`.trim())
@@ -142,7 +142,7 @@ export class DemoChatsRepository {
     mutation: AppTypes.ChatMessageMutation
   ): AppTypes.ChatPopupMessage | null {
     this.init();
-    const record = this.resolveChatRecord(chat);
+    const record = this.resolveChatRecord(chat, { createServiceChat: false });
     const normalizedMessageId = `${messageId ?? ''}`.trim();
     if (!record || !normalizedMessageId) {
       return null;
@@ -222,7 +222,10 @@ export class DemoChatsRepository {
       : DemoUserSeedBuilder.isEmptyOnboardingProfileUserId(normalizedUserId);
   }
 
-  private resolveChatRecord(chat: ChatMenuItem): DemoChatRecord | null {
+  private resolveChatRecord(
+    chat: ChatMenuItem,
+    options: { createServiceChat?: boolean } = {}
+  ): DemoChatRecord | null {
     const sourceId = `${chat.id ?? ''}`.trim();
     if (!sourceId) {
       return null;
@@ -236,7 +239,7 @@ export class DemoChatsRepository {
       if (record) {
         return record;
       }
-      if (chat.channelType === 'serviceEvent') {
+      if (options.createServiceChat !== false && chat.channelType === 'serviceEvent') {
         return this.createServiceChatRecord(ownerUserId, chat);
       }
     }
@@ -244,7 +247,7 @@ export class DemoChatsRepository {
     if (matchId) {
       return table.byId[matchId] ?? null;
     }
-    if (chat.channelType === 'serviceEvent') {
+    if (options.createServiceChat !== false && chat.channelType === 'serviceEvent') {
       const fallbackOwnerUserId = (chat.memberIds ?? [])[0]?.trim() ?? '';
       return fallbackOwnerUserId ? this.createServiceChatRecord(fallbackOwnerUserId, chat) : null;
     }

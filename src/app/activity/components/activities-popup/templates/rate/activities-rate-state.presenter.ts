@@ -11,16 +11,14 @@ export function matchesActivitiesRateFilter(
   if (item.mode !== modeKey || displayedDirection(item) !== directionKey) {
     return false;
   }
-  if (modeKey !== 'pair') {
-    return true;
+  if (modeKey === 'individual') {
+    return socialBadgeEnabled
+      ? item.socialContext === 'friends-in-common'
+      : item.socialContext !== 'friends-in-common';
   }
-  if (!socialBadgeEnabled) {
-    return item.socialContext === 'separated-friends' || !item.socialContext;
-  }
-  if (filter === 'pair-given' || filter === 'pair-received') {
-    return item.socialContext === 'friends-in-common';
-  }
-  return true;
+  return socialBadgeEnabled
+    ? item.socialContext === 'separated-friends'
+    : item.socialContext !== 'separated-friends';
 }
 
 export function displayedActivitiesRateDirection(

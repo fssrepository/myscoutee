@@ -27,6 +27,8 @@
     class="activities-rate-profile-stack"
     [ngClass]="resolvedStackClasses()"
     [class.is-pane-loading]="loading"
+    [class.has-card-score-badge]="!!card?.badge"
+    [class.has-card-context-badge]="!!card?.contextBadge"
     >
     @if (resolvedSlides().length > 1) {
       <div class="image-stack-indicators activities-rate-profile-indicators">
@@ -55,11 +57,6 @@
       class="activities-rate-profile-layer activities-rate-profile-layer-active"
       [appLazyBgImage]="currentSlide()?.imageUrl ?? ''"
       >
-      @if (card?.statusBadgeLabel; as statusBadge) {
-        <span class="shared-card-status-badge">
-          {{ statusBadge }}
-        </span>
-      }
       @if (hasOverlay(currentSlide())) {
         <div class="activities-rate-profile-overlay">
           <p class="activities-rate-profile-line activities-rate-profile-line-primary">{{ currentSlide()?.primaryLine }}</p>
@@ -79,6 +76,48 @@
           ></button>
         }
       </div>
+    }
+
+    @if (card?.statusBadgeLabel; as statusBadge) {
+      <span class="shared-card-status-badge">
+        {{ statusBadge }}
+      </span>
+    }
+
+    @if (card?.contextBadge; as contextBadge) {
+      @if (contextBadge.profileView) {
+        <button
+          type="button"
+          class="shared-card-context-avatar-badge"
+          [attr.aria-label]="contextBadge.ariaLabel || contextBadge.title || 'View related profile'"
+          [attr.title]="contextBadge.title || contextBadge.ariaLabel || null"
+          (click)="onContextBadgeClick(contextBadge, $event)"
+          >
+          @if (contextBadge.imageUrl) {
+            <img [src]="contextBadge.imageUrl" alt="" />
+          } @else {
+            <span>{{ contextBadgeLabel(contextBadge) }}</span>
+          }
+          @if (contextBadge.counterLabel) {
+            <em>{{ contextBadge.counterLabel }}</em>
+          }
+        </button>
+      } @else {
+        <span
+          class="shared-card-context-avatar-badge"
+          [attr.aria-label]="contextBadge.ariaLabel || contextBadge.title || 'Related profile'"
+          [attr.title]="contextBadge.title || contextBadge.ariaLabel || null"
+          >
+          @if (contextBadge.imageUrl) {
+            <img [src]="contextBadge.imageUrl" alt="" />
+          } @else {
+            <span>{{ contextBadgeLabel(contextBadge) }}</span>
+          }
+          @if (contextBadge.counterLabel) {
+            <em>{{ contextBadge.counterLabel }}</em>
+          }
+        </span>
+      }
     }
 
     @if (card?.profileView; as profileView) {
@@ -106,6 +145,9 @@
           [class.is-blink]="isBadgeBlinking()"
           [disabled]="cardBadge.disabled"
           [attr.aria-label]="cardBadge.ariaLabel"
+          (pointerdown)="onBadgePointerDown($event)"
+          (mousedown)="onBadgePointerDown($event)"
+          (touchstart)="onBadgePointerDown($event)"
           (click)="onBadgeClick($event)"
           >
           <mat-icon>star</mat-icon>

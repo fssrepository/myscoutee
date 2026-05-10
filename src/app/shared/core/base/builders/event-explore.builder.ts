@@ -106,34 +106,12 @@ export class EventExploreBuilder {
   private static infoCardMenuActions(record: DemoEventRecord): readonly InfoCardMenuAction[] {
     const full = this.isFull(record);
     const actions: InfoCardMenuAction[] = [
-      {
-        id: 'view',
-        label: record.type === 'hosting' ? 'View hosted event' : 'View event',
-        icon: this.visibilityIcon(record.visibility)
-      }
+      'view'
     ];
-    actions.push({
-      id: 'join',
-      label: this.joinActionLabel(record),
-      icon: full ? 'hourglass_empty' : 'person_add',
-      tone: 'accent'
-    });
-    actions.push({
-      id: 'serviceChat',
-      label: 'Contact Organizer',
-      icon: 'support_agent'
-    });
-    actions.push({
-      id: 'share',
-      label: 'Share Event',
-      icon: 'ios_share'
-    });
-    actions.push({
-      id: 'report',
-      label: 'Report Organizer',
-      icon: 'flag',
-      tone: 'warning'
-    });
+    actions.push(this.joinActionId(record));
+    actions.push('contactOrganizer');
+    actions.push('shareEvent');
+    actions.push('reportOrganizer');
     return actions;
   }
 
@@ -199,13 +177,13 @@ export class EventExploreBuilder {
     return record.blindMode === 'Open Event';
   }
 
-  private static joinActionLabel(record: DemoEventRecord): string {
+  private static joinActionId(record: DemoEventRecord): InfoCardMenuAction {
     if (this.isFull(record)) {
-      return 'Join waiting list';
+      return 'joinWaitlist';
     }
     return this.requiresBookingFlow(record)
-      ? 'Book event'
-      : 'Request join';
+      ? 'bookEvent'
+      : 'requestJoin';
   }
 
   private static requiresBookingFlow(record: DemoEventRecord): boolean {

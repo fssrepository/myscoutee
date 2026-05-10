@@ -4,8 +4,7 @@ import { Injectable, inject } from '@angular/core';
 import { environment } from '../../../../../environments/environment';
 import type {
   ActivityMemberOwnerRef,
-  ActivityMembersSummary,
-  ActivitiesEventSyncPayload
+  ActivityMembersSummary
 } from '../../../core/base/models';
 import type * as AppTypes from '../../../core/base/models';
 import { AppMemoryDb } from '../../base/db';
@@ -96,10 +95,6 @@ export class HttpActivityMembersRepository {
       members: this.cloneEntries(members),
       capacityTotal: this.normalizeCount(capacityTotal)
     });
-  }
-
-  async syncEventMembersFromEventSnapshot(payload: Omit<ActivitiesEventSyncPayload, 'syncKey'>): Promise<void> {
-    await this.postVoid('/activities/events/members/sync', payload);
   }
 
   protected ownerKey(owner: ActivityMemberOwnerRef): string {

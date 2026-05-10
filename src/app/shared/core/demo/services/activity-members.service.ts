@@ -2,8 +2,7 @@ import { Injectable, inject } from '@angular/core';
 
 import type {
   ActivityMemberOwnerRef,
-  ActivityMembersSummary,
-  ActivitiesEventSyncPayload
+  ActivityMembersSummary
 } from '../../../core/base/models';
 import type * as AppTypes from '../../../core/base/models';
 import { AppMemoryDb } from '../../../core/base';
@@ -42,12 +41,6 @@ export class DemoActivityMembersService extends DemoRouteDelayService {
     capacityTotal?: number | null
   ): Promise<void> {
     await this.activityMembersRepository.replaceMembersByOwner(owner, members, capacityTotal);
-  }
-
-  async syncEventMembersFromEventSnapshot(payload: Omit<ActivitiesEventSyncPayload, 'syncKey'>): Promise<void> {
-    await this.waitForRouteDelay(DemoActivityMembersService.MEMBERS_ROUTE);
-    await this.activityMembersRepository.syncEventMembersFromEventSnapshot(payload);
-    await this.memoryDb.flushToIndexedDb();
   }
 
 }

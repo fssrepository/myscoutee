@@ -2,8 +2,7 @@ import { Injectable, inject } from '@angular/core';
 
 import type {
   ActivityMemberOwnerRef,
-  ActivityMembersSummary,
-  ActivitiesEventSyncPayload
+  ActivityMembersSummary
 } from '../../../core/base/models';
 import { ActivityMembersBuilder } from '../../base/builders/activity-members.builder';
 import { APP_STATIC_DATA } from '../../../app-static-data';
@@ -95,8 +94,18 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
       let changed = false;
 
       const appendSeededRecords = (records: readonly DemoActivityMemberRecord[]): void => {
+        const recordsByOwnerKey = new Map<string, DemoActivityMemberRecord[]>();
         for (const record of records) {
-          if (existingOwnerKeys.has(record.ownerKey)) {
+          const ownerKey = record.ownerKey?.trim() ?? '';
+          if (!ownerKey) {
+            continue;
+          }
+          const bucket = recordsByOwnerKey.get(ownerKey) ?? [];
+          bucket.push(record);
+          recordsByOwnerKey.set(ownerKey, bucket);
+        }
+        for (const [ownerKey, ownerRecords] of recordsByOwnerKey.entries()) {
+          if (existingOwnerKeys.has(ownerKey)) {
             continue;
           }
           if (!changed) {
@@ -105,17 +114,20 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
             nextIdsByOwnerKey = this.cloneOwnerKeyIndex(currentTable.idsByOwnerKey);
             changed = true;
           }
-          nextById![record.id] = { ...record };
-          nextIds!.push(record.id);
-          const ownerBucket = nextIdsByOwnerKey![record.ownerKey] ?? [];
-          ownerBucket.push(record.id);
-          nextIdsByOwnerKey![record.ownerKey] = ownerBucket;
-          existingOwnerKeys.add(record.ownerKey);
+          const ownerBucket = nextIdsByOwnerKey![ownerKey] ?? [];
+          for (const record of ownerRecords) {
+            nextById![record.id] = { ...record };
+            nextIds!.push(record.id);
+            ownerBucket.push(record.id);
+          }
+          nextIdsByOwnerKey![ownerKey] = ownerBucket;
+          existingOwnerKeys.add(ownerKey);
         }
       };
 
       appendSeededRecords(this.buildSeededEventOwnerRecords(existingOwnerKeys));
       appendSeededRecords(this.buildSeededInvitationOwnerRecords(existingOwnerKeys));
+      appendSeededRecords(this.buildSeededHomeSocialBridgeRecords(existingOwnerKeys));
       for (const userId of normalizedOwnerUserIds) {
         appendSeededRecords(this.buildSeededAssetOwnerRecordsForUser(userId, existingOwnerKeys));
       }
@@ -253,10 +265,17 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
     this.acceptedMemberGraphCache = graph;
     this.acceptedMemberGraphCacheToken = graphToken;
     this.gameSocialCardsByUserId.clear();
-    for (const activeUserId of [...graph.neighborsByUserId.keys()].sort()) {
+    const graphUserIds = [...graph.neighborsByUserId.keys()].sort();
+    const usersById = new Map(this.demoActivityMemberUsers.map(user => [user.id, user] as const));
+    for (const activeUserId of graphUserIds) {
+      if (!DemoUserSeedBuilder.isPublicGameProfile(usersById.get(activeUserId))) {
+        continue;
+      }
       const activeNeighbors = [...(graph.neighborsByUserId.get(activeUserId) ?? new Set<string>())]
         .filter(userId => userId !== activeUserId)
+        .filter(userId => DemoUserSeedBuilder.isInsideNetworkGameProfile(usersById.get(userId)))
         .sort();
+      const activeNeighborIds = new Set(activeNeighbors);
       const cards: Record<'friends-in-common' | 'separated-friends', UserGameSocialCard[]> = {
         'friends-in-common': [],
         'separated-friends': []
@@ -266,32 +285,140 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
         for (let rightIndex = leftIndex + 1; rightIndex < activeNeighbors.length; rightIndex += 1) {
           const rightUserId = activeNeighbors[rightIndex];
           const key = this.sortedPairKey(leftUserId, rightUserId);
-          const isConnected = graph.neighborsByUserId.get(leftUserId)?.has(rightUserId) ?? false;
-          const mode: Extract<UserGameMode, 'friends-in-common' | 'separated-friends'> = isConnected
-            ? 'friends-in-common'
-            : 'separated-friends';
-          cards[mode].push({
-            id: `${mode}:${activeUserId}:${key}`,
+          if (graph.neighborsByUserId.get(leftUserId)?.has(rightUserId)) {
+            continue;
+          }
+          cards['separated-friends'].push({
+            id: `separated-friends:${activeUserId}:${key}`,
             userId: leftUserId,
             secondaryUserId: rightUserId,
-            bridgeUserId: rightUserId,
-            socialContext: mode,
-            bridgeCount: isConnected ? 1 : 2,
-            eventName: isConnected
-              ? (graph.edgeEventNameByKey.get(key) ?? 'Connected Friends')
-              : (
-                graph.edgeEventNameByKey.get(this.sortedPairKey(activeUserId, leftUserId))
-                ?? graph.edgeEventNameByKey.get(this.sortedPairKey(activeUserId, rightUserId))
-                ?? 'Unconnected Friends'
-              )
+            socialContext: 'separated-friends',
+            bridgeCount: 2,
+            eventName: graph.edgeEventNameByKey.get(this.sortedPairKey(activeUserId, leftUserId))
+              ?? graph.edgeEventNameByKey.get(this.sortedPairKey(activeUserId, rightUserId))
+              ?? 'Inside Network'
           });
         }
       }
-      cards['friends-in-common'].sort((left, right) => left.id.localeCompare(right.id));
-      cards['separated-friends'].sort((left, right) => left.id.localeCompare(right.id));
+      for (const candidateUserId of graphUserIds) {
+        if (
+          candidateUserId === activeUserId
+          || activeNeighborIds.has(candidateUserId)
+          || !DemoUserSeedBuilder.isPublicGameProfile(usersById.get(candidateUserId))
+        ) {
+          continue;
+        }
+        const candidateNeighbors = graph.neighborsByUserId.get(candidateUserId) ?? new Set<string>();
+        const bridgeUserIds = activeNeighbors
+          .filter(bridgeUserId => candidateNeighbors.has(bridgeUserId))
+          .filter(bridgeUserId => DemoUserSeedBuilder.isInsideNetworkGameProfile(usersById.get(bridgeUserId)))
+          .sort();
+        if (bridgeUserIds.length === 0) {
+          continue;
+        }
+        const bridgeUserId = this.strongestBridgeUserId(bridgeUserIds, usersById);
+        cards['friends-in-common'].push({
+          id: `friends-in-common:${activeUserId}:${candidateUserId}`,
+          userId: candidateUserId,
+          socialContext: 'friends-in-common',
+          bridgeUserId,
+          bridgeCount: bridgeUserIds.length,
+          eventName: graph.edgeEventNameByKey.get(this.sortedPairKey(activeUserId, bridgeUserId))
+            ?? graph.edgeEventNameByKey.get(this.sortedPairKey(candidateUserId, bridgeUserId))
+            ?? 'Friends in Common'
+        });
+      }
+      cards['friends-in-common'].sort((left, right) => {
+        const bridgeDelta = (right.bridgeCount ?? 0) - (left.bridgeCount ?? 0);
+        if (bridgeDelta !== 0) {
+          return bridgeDelta;
+        }
+        const scoreDelta = this.singleDistanceScore(activeUserId, right, usersById)
+          - this.singleDistanceScore(activeUserId, left, usersById);
+        return scoreDelta !== 0 ? scoreDelta : left.id.localeCompare(right.id);
+      });
+      cards['separated-friends'].sort((left, right) => {
+        const scoreDelta = this.pairDistanceScore(activeUserId, right, usersById)
+          - this.pairDistanceScore(activeUserId, left, usersById);
+        return scoreDelta !== 0 ? scoreDelta : left.id.localeCompare(right.id);
+      });
       this.gameSocialCardsByUserId.set(activeUserId, cards);
     }
     this.gameSocialCardsCacheToken = graphToken;
+  }
+
+  private pairDistanceScore(
+    activeUserId: string,
+    card: UserGameSocialCard,
+    usersById: ReadonlyMap<string, DemoUser>
+  ): number {
+    const activeUser = usersById.get(activeUserId);
+    const leftUser = usersById.get(card.userId.trim());
+    const rightUser = usersById.get((card.secondaryUserId ?? '').trim());
+    const pairScore = this.distanceBucketScore(leftUser, rightUser);
+    const triangleScore = (
+      this.distanceBucketScore(activeUser, leftUser)
+      + this.distanceBucketScore(activeUser, rightUser)
+    ) / 2;
+    return pairScore + (triangleScore * 0.35);
+  }
+
+  private singleDistanceScore(
+    activeUserId: string,
+    card: UserGameSocialCard,
+    usersById: ReadonlyMap<string, DemoUser>
+  ): number {
+    return this.distanceBucketScore(usersById.get(activeUserId), usersById.get(card.userId.trim()));
+  }
+
+  private distanceBucketScore(left: DemoUser | undefined, right: DemoUser | undefined): number {
+    const distanceMeters = this.distanceMeters(left?.locationCoordinates, right?.locationCoordinates);
+    if (distanceMeters === null) {
+      return 0;
+    }
+    const bucketIndex = Math.floor(Math.max(0, distanceMeters / 1000) / 5);
+    return Math.max(0, 1 - (Math.min(bucketIndex, 12) / 12));
+  }
+
+  private distanceMeters(
+    left: DemoUser['locationCoordinates'] | undefined,
+    right: DemoUser['locationCoordinates'] | undefined
+  ): number | null {
+    const leftLat = Number(left?.latitude);
+    const leftLon = Number(left?.longitude);
+    const rightLat = Number(right?.latitude);
+    const rightLon = Number(right?.longitude);
+    if (![leftLat, leftLon, rightLat, rightLon].every(Number.isFinite)) {
+      return null;
+    }
+    const earthRadiusMeters = 6371000;
+    const latitudeDelta = this.toRadians(rightLat - leftLat);
+    const longitudeDelta = this.toRadians(rightLon - leftLon);
+    const leftLatitude = this.toRadians(leftLat);
+    const rightLatitude = this.toRadians(rightLat);
+    const haversine = Math.sin(latitudeDelta / 2) ** 2
+      + Math.cos(leftLatitude) * Math.cos(rightLatitude) * (Math.sin(longitudeDelta / 2) ** 2);
+    return earthRadiusMeters * 2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine));
+  }
+
+  private toRadians(value: number): number {
+    return value * Math.PI / 180;
+  }
+
+  private strongestBridgeUserId(
+    bridgeUserIds: readonly string[],
+    usersById: ReadonlyMap<string, DemoUser>
+  ): string {
+    return [...bridgeUserIds]
+      .sort((left, right) => {
+        const affinityDelta = this.resolveUserAffinity(usersById.get(right)) - this.resolveUserAffinity(usersById.get(left));
+        return affinityDelta !== 0 ? affinityDelta : left.localeCompare(right);
+      })[0] ?? '';
+  }
+
+  private resolveUserAffinity(user: DemoUser | undefined): number {
+    const value = Number(user?.affinity);
+    return Number.isFinite(value) ? Math.max(0, value) : 0;
   }
 
   private queryAcceptedMemberGraph(): {
@@ -396,59 +523,6 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
     }
     const summary = this.writeOwnerMembers(normalizedOwner, members, capacityTotal, true);
     this.cacheMembers(normalizedOwner, members, summary.capacityTotal);
-  }
-
-  override async syncEventMembersFromEventSnapshot(payload: Omit<ActivitiesEventSyncPayload, 'syncKey'>): Promise<void> {
-    this.ensureLightweightSyncReady();
-    const eventId = payload.id.trim();
-    if (!eventId) {
-      return;
-    }
-
-    const owner: ActivityMemberOwnerRef = {
-      ownerType: 'event',
-      ownerId: eventId
-    };
-    const row = this.buildActivityRowFromPayload(payload);
-    const creator = this.resolveDemoUser(
-      payload.creatorUserId?.trim() || 'u1',
-      payload.creatorName?.trim() || payload.title,
-      payload.creatorInitials?.trim() || AppUtils.initialsFromText(payload.title),
-      payload.creatorCity?.trim() || '',
-      payload.creatorGender === 'woman' ? 'woman' : 'man'
-    );
-    const entryContext = this.buildEntryContext(row, creator);
-    const acceptedMemberUserIds = this.normalizeMemberUserIds(payload.acceptedMemberUserIds);
-    const pendingMemberUserIds = this.normalizeMemberUserIds(payload.pendingMemberUserIds)
-      .filter(userId => !acceptedMemberUserIds.includes(userId));
-    const hasExplicitMemberUserIds = Array.isArray(payload.acceptedMemberUserIds) || Array.isArray(payload.pendingMemberUserIds);
-    const acceptedTarget = hasExplicitMemberUserIds
-      ? acceptedMemberUserIds.length
-      : (this.normalizeMemberCount(payload.acceptedMembers) ?? acceptedMemberUserIds.length);
-    const pendingTarget = hasExplicitMemberUserIds
-      ? pendingMemberUserIds.length
-      : (this.normalizeMemberCount(payload.pendingMembers) ?? pendingMemberUserIds.length);
-    const entries = this.buildEntriesFromUserIds(
-      owner,
-      entryContext,
-      acceptedMemberUserIds,
-      pendingMemberUserIds,
-      acceptedTarget,
-      pendingTarget,
-      {
-        allowAcceptedBackfill: !hasExplicitMemberUserIds,
-        allowPendingBackfill: !hasExplicitMemberUserIds
-      }
-    );
-    const summary = this.writeOwnerMembers(
-      owner,
-      entries,
-      this.normalizeMemberCount(payload.capacityTotal)
-        ?? this.normalizeMemberCount(payload.capacityMax)
-        ?? Math.max(acceptedTarget, entries.filter(entry => entry.status === 'accepted').length),
-      true
-    );
-    this.cacheMembers(owner, entries, summary.capacityTotal);
   }
 
   private ensureLightweightSyncReady(): void {
@@ -702,6 +776,53 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
       records.push(...this.buildSeededRecordsForInvitation(invitationRecord));
     }
     return records;
+  }
+
+  private buildSeededHomeSocialBridgeRecords(existingOwnerKeys: ReadonlySet<string> = new Set()): DemoActivityMemberRecord[] {
+    const seedGroups: Array<{ ownerId: string; metWhere: string; userIds: [string, string] }> = [
+      { ownerId: 'demo-home-fic-u1-bridge', metWhere: 'Coffee Social Bridge', userIds: ['u1', 'u2'] },
+      { ownerId: 'demo-home-fic-u1-candidate', metWhere: 'Coffee Social Bridge', userIds: ['u2', 'u42'] },
+      { ownerId: 'demo-home-fic-u4-bridge', metWhere: 'Workshop Social Bridge', userIds: ['u4', 'u3'] },
+      { ownerId: 'demo-home-fic-u4-candidate', metWhere: 'Workshop Social Bridge', userIds: ['u3', 'u43'] },
+      { ownerId: 'demo-home-fic-u6-bridge', metWhere: 'Gallery Social Bridge', userIds: ['u6', 'u8'] },
+      { ownerId: 'demo-home-fic-u6-candidate', metWhere: 'Gallery Social Bridge', userIds: ['u8', 'u46'] }
+    ];
+    const records: DemoActivityMemberRecord[] = [];
+    for (const group of seedGroups) {
+      const owner: ActivityMemberOwnerRef = { ownerType: 'group', ownerId: group.ownerId };
+      if (existingOwnerKeys.has(this.ownerKey(owner))) {
+        continue;
+      }
+      for (const userId of group.userIds) {
+        records.push(this.toRecord(owner, this.buildSeededHomeSocialBridgeEntry(userId, group.ownerId, group.metWhere)));
+      }
+    }
+    return records;
+  }
+
+  private buildSeededHomeSocialBridgeEntry(userId: string, ownerId: string, metWhere: string): AppTypes.ActivityMemberEntry {
+    const user = this.resolveDemoUser(userId);
+    const metAtIso = '2026-03-22T18:00:00.000Z';
+    return {
+      id: `home-fic-seed:${ownerId}:${user.id}`.toLowerCase().replace(/[^a-z0-9:-]+/g, '-'),
+      userId: user.id,
+      name: user.name,
+      initials: user.initials,
+      gender: user.gender,
+      city: user.city,
+      statusText: 'Met at event.',
+      role: 'Member',
+      status: 'accepted',
+      pendingSource: null,
+      requestKind: null,
+      invitedByActiveUser: false,
+      invitedByUserId: null,
+      metAtIso,
+      actionAtIso: metAtIso,
+      metWhere,
+      avatarUrl: user.images?.[0] ?? '',
+      profile: user
+    };
   }
 
   private batchRefreshInvalidSeededRecordOwners(table: DemoActivityMembersRecordCollection): void {
@@ -1054,7 +1175,6 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
           metAtIso: actionAtIso,
           actionAtIso,
           metWhere: asset.title,
-          relevance: 48 + (seed % 46),
           avatarUrl: AppUtils.firstImageUrl(matchedUser.images),
           profile: matchedUser
         };
@@ -1599,7 +1719,7 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
       dateIso: record.startAtIso,
       distanceKm: record.distanceKm,
       unread: record.activity,
-      metricScore: record.relevance,
+      metricScore: record.boost,
       isAdmin: true,
       source: {
         id: record.id,
@@ -1622,7 +1742,7 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
         capacityMax: record.capacityMax,
         topics: [...record.topics],
         rating: record.rating,
-        relevance: record.relevance,
+        boost: record.boost,
         published: record.published
       } as AppTypes.ActivityListRow['source']
     };
@@ -1638,7 +1758,7 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
       dateIso: record.startAtIso,
       distanceKm: record.distanceKm,
       unread: Math.max(0, Math.trunc(Number(record.unread) || 0)),
-      metricScore: Math.max(0, Number(record.relevance) || 0),
+      metricScore: Math.max(0, Number(record.boost) || 0),
       isAdmin: false,
       source: {
         id: record.id,
@@ -1660,43 +1780,6 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
         location: record.location,
         locationCoordinates: record.locationCoordinates,
         policies: (record.policies ?? []).map(item => ({ ...item }))
-      } as AppTypes.ActivityListRow['source']
-    };
-  }
-
-  private buildActivityRowFromPayload(payload: Omit<ActivitiesEventSyncPayload, 'syncKey'>): AppTypes.ActivityListRow {
-    return {
-      id: payload.id,
-      type: payload.target === 'hosting' ? 'hosting' : 'events',
-      title: payload.title,
-      subtitle: payload.shortDescription,
-      detail: payload.timeframe,
-      dateIso: payload.startAt,
-      distanceKm: Math.max(0, Number(payload.distanceKm) || 0),
-      unread: Math.max(0, Math.trunc(Number(payload.activity) || 0)),
-      metricScore: Math.max(0, Math.trunc(Number(payload.activity) || 0)),
-      isAdmin: true,
-      source: {
-        id: payload.id,
-        avatar: payload.creatorInitials?.trim() || AppUtils.initialsFromText(payload.title),
-        title: payload.title,
-        shortDescription: payload.shortDescription,
-        timeframe: payload.timeframe,
-        activity: Math.max(0, Math.trunc(Number(payload.activity) || 0)),
-        isAdmin: true,
-        creatorUserId: payload.creatorUserId,
-        startAt: payload.startAt,
-        endAt: payload.endAt,
-        distanceKm: payload.distanceKm,
-        visibility: payload.visibility,
-        blindMode: payload.blindMode,
-        imageUrl: payload.imageUrl,
-        sourceLink: payload.sourceLink,
-        location: payload.location,
-        capacityMin: payload.capacityMin,
-        capacityMax: payload.capacityMax,
-        topics: payload.topics ? [...payload.topics] : payload.topics,
-        published: payload.published
       } as AppTypes.ActivityListRow['source']
     };
   }
@@ -1820,7 +1903,6 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
       metAtIso: record.metAtIso,
       actionAtIso: record.actionAtIso,
       metWhere: record.metWhere,
-      relevance: record.relevance,
       avatarUrl: record.avatarUrl,
       profile: this.resolveDemoUser(record.userId, record.name, record.initials, record.city, record.gender)
     };
