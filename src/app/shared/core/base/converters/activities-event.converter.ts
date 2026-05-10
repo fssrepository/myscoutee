@@ -5,10 +5,17 @@ import type {
   InvitationMenuItem
 } from '../interfaces/activity-feed.interface';
 import type { DemoEventRecord } from '../../demo/models/events.model';
+import {
+  ActivityEventInfoCardBuilder,
+  type ActivityEventInfoCardOptions
+} from '../builders/activity-event-info-card.builder';
 import { PricingBuilder } from '../builders/pricing.builder';
 
-export function buildActivityEventRows(records: readonly DemoEventRecord[]): AppTypes.ActivityListRow[] {
-  return records.map(record => toActivityEventRow(record));
+export function buildActivityEventRows(
+  records: readonly DemoEventRecord[],
+  options: ActivityEventInfoCardOptions = {}
+): AppTypes.ActivityListRow[] {
+  return records.map(record => toActivityEventRow(record, options));
 }
 
 export function toActivityEventRowFromMenuItem(
@@ -16,10 +23,11 @@ export function toActivityEventRowFromMenuItem(
   options: {
     dateIso?: string;
     distanceKm?: number;
+    activeUserId?: string | null;
   } = {}
 ): AppTypes.ActivityListRow {
   const distanceKm = options.distanceKm ?? item.distanceKm ?? 0;
-  return {
+  return withActivityEventInfoCard({
     id: item.id,
     type: 'events',
     title: item.title,
@@ -32,7 +40,7 @@ export function toActivityEventRowFromMenuItem(
     metricScore: (item.isAdmin ? 20 : 0) + item.activity,
     isAdmin: item.isAdmin,
     source: item
-  };
+  }, options);
 }
 
 export function toActivityHostingRowFromMenuItem(
@@ -40,10 +48,11 @@ export function toActivityHostingRowFromMenuItem(
   options: {
     dateIso?: string;
     distanceKm?: number;
+    activeUserId?: string | null;
   } = {}
 ): AppTypes.ActivityListRow {
   const distanceKm = options.distanceKm ?? item.distanceKm ?? 0;
-  return {
+  return withActivityEventInfoCard({
     id: item.id,
     type: 'hosting',
     title: item.title,
@@ -56,7 +65,7 @@ export function toActivityHostingRowFromMenuItem(
     metricScore: 20 + item.activity,
     isAdmin: item.isAdmin,
     source: item
-  };
+  }, options);
 }
 
 export function toActivityInvitationRowFromMenuItem(
@@ -64,10 +73,11 @@ export function toActivityInvitationRowFromMenuItem(
   options: {
     dateIso?: string;
     distanceKm?: number;
+    activeUserId?: string | null;
   } = {}
 ): AppTypes.ActivityListRow {
   const distanceKm = options.distanceKm ?? item.distanceKm ?? 0;
-  return {
+  return withActivityEventInfoCard({
     id: item.id,
     type: 'invitations',
     title: item.description,
@@ -79,7 +89,7 @@ export function toActivityInvitationRowFromMenuItem(
     unread: item.unread,
     metricScore: item.unread * 10,
     source: item
-  };
+  }, options);
 }
 
 export function toActivitySourceRowFromMenuItem(
@@ -89,6 +99,7 @@ export function toActivitySourceRowFromMenuItem(
     dateIso?: string;
     distanceKm?: number;
     metricScore?: number;
+    activeUserId?: string | null;
   }
 ): AppTypes.ActivityListRow {
   const metricScore = typeof options.metricScore === 'number' && Number.isFinite(options.metricScore)
@@ -97,26 +108,39 @@ export function toActivitySourceRowFromMenuItem(
   if (options.isHosting) {
     const row = toActivityHostingRowFromMenuItem(source as HostingMenuItem, {
       dateIso: options.dateIso,
-      distanceKm: options.distanceKm
+      distanceKm: options.distanceKm,
+      activeUserId: options.activeUserId
     });
     return {
       ...row,
-      metricScore: metricScore ?? row.metricScore
+      metricScore: metricScore ?? row.metricScore,
+      infoCard: ActivityEventInfoCardBuilder.build({
+        ...row,
+        metricScore: metricScore ?? row.metricScore
+      }, options)
     };
   }
   const row = toActivityEventRowFromMenuItem(source as EventMenuItem, {
     dateIso: options.dateIso,
-    distanceKm: options.distanceKm
+    distanceKm: options.distanceKm,
+    activeUserId: options.activeUserId
   });
   return {
     ...row,
-    metricScore: metricScore ?? row.metricScore
+    metricScore: metricScore ?? row.metricScore,
+    infoCard: ActivityEventInfoCardBuilder.build({
+      ...row,
+      metricScore: metricScore ?? row.metricScore
+    }, options)
   };
 }
 
-export function toActivityEventRow(record: DemoEventRecord): AppTypes.ActivityListRow {
+export function toActivityEventRow(
+  record: DemoEventRecord,
+  options: ActivityEventInfoCardOptions = {}
+): AppTypes.ActivityListRow {
   const rowType = resolveActivityEventRowType(record);
-  return {
+  return withActivityEventInfoCard({
     id: record.id,
     type: rowType,
     title: rowType === 'invitations' ? record.title : record.title,
@@ -137,6 +161,16 @@ export function toActivityEventRow(record: DemoEventRecord): AppTypes.ActivityLi
       : rowType === 'hosting'
         ? toHostingMenuItem(record)
         : toEventMenuItem(record)
+  }, options);
+}
+
+export function withActivityEventInfoCard(
+  row: AppTypes.ActivityListRow,
+  options: ActivityEventInfoCardOptions = {}
+): AppTypes.ActivityListRow {
+  return {
+    ...row,
+    infoCard: ActivityEventInfoCardBuilder.build(row, options)
   };
 }
 

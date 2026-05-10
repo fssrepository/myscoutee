@@ -5,6 +5,7 @@ import type {
   InvitationMenuItem,
   RateMenuItem
 } from '../interfaces/activity-feed.interface';
+import type { InfoCardData } from '../../../ui';
 
 export type ActivitiesPrimaryFilter = 'chats' | 'invitations' | 'events' | 'hosting' | 'rates';
 export type ActivitiesEventScope = 'all' | 'active-events' | 'pending' | 'invitations' | 'my-events' | 'drafts' | 'trash';
@@ -67,6 +68,7 @@ export interface ActivityListRow {
   metricScore: number;
   isAdmin?: boolean;
   rateDisplay?: ActivityRateDisplay | null;
+  infoCard?: InfoCardData | null;
   source: ChatMenuItem | InvitationMenuItem | EventMenuItem | HostingMenuItem | RateMenuItem;
 }
 

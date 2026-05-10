@@ -44,6 +44,7 @@ export interface InvitationMenuItem {
   capacityMax?: number | null;
   acceptedMemberUserIds?: string[];
   pendingMemberUserIds?: string[];
+  pendingReason?: 'approval' | 'waitlist' | null;
   startAt?: string;
   endAt?: string;
   distanceKm?: number;
@@ -74,6 +75,7 @@ export interface EventMenuItem {
   capacityTotal?: number;
   acceptedMemberUserIds?: string[];
   pendingMemberUserIds?: string[];
+  pendingReason?: 'approval' | 'waitlist' | null;
   visibility?: 'Public' | 'Friends only' | 'Invitation only';
   blindMode?: 'Open Event' | 'Blind Event';
   imageUrl?: string;
@@ -122,6 +124,7 @@ export interface HostingMenuItem {
   capacityTotal?: number;
   acceptedMemberUserIds?: string[];
   pendingMemberUserIds?: string[];
+  pendingReason?: 'approval' | 'waitlist' | null;
   visibility?: 'Public' | 'Friends only' | 'Invitation only';
   blindMode?: 'Open Event' | 'Blind Event';
   imageUrl?: string;

@@ -17,31 +17,9 @@ import {
 import {
   InfoCardComponent,
   type InfoCardData,
-  type InfoCardMenuAction,
   type InfoCardMenuActionEvent,
   type InfoCardMenuRequestEvent
 } from '../../../../../shared/ui';
-import { buildActivitiesEventInfoCard } from './activities-event-template.builder';
-
-export interface ActivitiesEventTemplateContext {
-  getActivityRowIdentity: (row: AppTypes.ActivityListRow) => string;
-  getActivityImageUrl: (row: AppTypes.ActivityListRow) => string | null;
-  getActivityCalendarDateRange: (row: AppTypes.ActivityListRow) => { start: Date; end: Date } | null;
-  isActivityDraft: (row: AppTypes.ActivityListRow) => boolean;
-  isPendingActivityRow: (row: AppTypes.ActivityListRow) => boolean;
-  getActivityPendingStatusLabel: (row: AppTypes.ActivityListRow) => string;
-  isActivityFull: (row: AppTypes.ActivityListRow) => boolean;
-  getActivityStatusBadgeLabel: (row: AppTypes.ActivityListRow) => string | null;
-  getActivityStatusTone: (row: AppTypes.ActivityListRow) => Extract<NonNullable<InfoCardData['surfaceTone']>, 'review' | 'blocked' | 'deleted' | 'inactive'> | null;
-  getActivityLeadingIcon: (row: AppTypes.ActivityListRow) => string;
-  getActivityLeadingIconTone: (row: AppTypes.ActivityListRow) => NonNullable<InfoCardData['leadingIcon']>['tone'];
-  shouldShowActivitySourceIcon: (row: AppTypes.ActivityListRow) => boolean;
-  getActivitySourceAvatarTone: (row: AppTypes.ActivityListRow) => NonNullable<InfoCardData['mediaStart']>['tone'] | null | undefined;
-  getActivitySourceAvatarLabel: (row: AppTypes.ActivityListRow) => string;
-  getActivityCapacityLabel: (row: AppTypes.ActivityListRow) => string;
-  getActivityPendingMemberCount: (row: AppTypes.ActivityListRow) => number;
-  getActivityEventInfoCardMenuActions: (row: AppTypes.ActivityListRow) => readonly InfoCardMenuAction[];
-}
 
 @Component({
   selector: 'app-activities-event-template',
@@ -53,7 +31,6 @@ export interface ActivitiesEventTemplateContext {
 export class ActivitiesEventTemplateComponent implements OnChanges {
   @Input() row: AppTypes.ActivityListRow | null = null;
   @Input() groupLabel: string | null = null;
-  @Input() context: ActivitiesEventTemplateContext | null = null;
   @Input() cardRevision = 0;
 
   @Output() readonly mediaEndClick = new EventEmitter<void>();
@@ -63,37 +40,20 @@ export class ActivitiesEventTemplateComponent implements OnChanges {
   protected card: InfoCardData | null = null;
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes['row'] || changes['groupLabel'] || changes['context'] || changes['cardRevision']) {
+    if (changes['row'] || changes['groupLabel'] || changes['cardRevision']) {
       this.card = this.buildCard();
     }
   }
 
   private buildCard(): InfoCardData | null {
     const row = this.row;
-    const context = this.context;
-    if (!row || !context) {
+    if (!row?.infoCard) {
       return null;
     }
-    return buildActivitiesEventInfoCard(row, {
-      groupLabel: this.groupLabel,
-      rowId: context.getActivityRowIdentity(row),
-      imageUrl: context.getActivityImageUrl(row),
-      range: context.getActivityCalendarDateRange(row),
-      isDraft: context.isActivityDraft(row),
-      isPending: context.isPendingActivityRow(row),
-      pendingStatusLabel: context.getActivityPendingStatusLabel(row),
-      isFull: context.isActivityFull(row),
-      statusBadgeLabel: context.getActivityStatusBadgeLabel(row),
-      statusTone: context.getActivityStatusTone(row),
-      leadingIcon: context.getActivityLeadingIcon(row),
-      leadingTone: context.getActivityLeadingIconTone(row),
-      showSourceIcon: context.shouldShowActivitySourceIcon(row),
-      sourceAvatarTone: context.getActivitySourceAvatarTone(row),
-      sourceAvatarLabel: context.getActivitySourceAvatarLabel(row),
-      capacityLabel: context.getActivityCapacityLabel(row),
-      pendingCount: context.getActivityPendingMemberCount(row),
-      menuActions: context.getActivityEventInfoCardMenuActions(row)
-    });
+    return {
+      ...row.infoCard,
+      groupLabel: this.groupLabel
+    };
   }
 
   protected onMediaEndClick(): void {
@@ -150,7 +110,6 @@ export class ActivitiesEventsController {
   private get eventEditorService() { return this.host.eventEditorService; }
   private get eventItems() { return this.host.eventItems as EventMenuItem[]; }
   private set eventItems(value: EventMenuItem[]) { this.host.eventItems = value; }
-  private get eventVisibilityById() { return this.host.eventVisibilityById as Record<string, AppTypes.EventVisibility>; }
   private get eventsService() { return this.host.eventsService; }
   private get hostingItems() { return this.host.hostingItems as HostingMenuItem[]; }
   private set hostingItems(value: HostingMenuItem[]) { this.host.hostingItems = value; }
@@ -177,7 +136,6 @@ export class ActivitiesEventsController {
   private applyActivitiesEventSync(sync: ActivitiesEventSyncPayload): void { this.host.applyActivitiesEventSync(sync); }
   private chatCountValue(value: unknown): number { return this.host.chatCountValue(value); }
   private cloneSyncedSubEventForms(items: AppTypes.SubEventFormItem[]): AppTypes.SubEventFormItem[] { return this.host.cloneSyncedSubEventForms(items); }
-  private isHostingPublished(id: string): boolean { return this.host.isHostingPublished(id); }
   private openActivityChat(chat: ChatMenuItem): void { this.host.openActivityChat(chat); }
   private persistSelectedActivityMembers(): void { this.host.persistSelectedActivityMembers(); }
   private refreshSectionBadges(): void { this.host.refreshSectionBadges(); }
@@ -186,144 +144,11 @@ export class ActivitiesEventsController {
     this.host.replaceVisibleActivityItems(items, totalDelta);
   }
   private uniqueUserIds(userIds: readonly string[]): string[] { return this.host.uniqueUserIds(userIds); }
-
-  public activityLeadingIcon(row: AppTypes.ActivityListRow): string {
-    const statusTone = this.activityStatusTone(row);
-    if (statusTone === 'review') {
-      return 'pending_actions';
-    }
-    if (statusTone === 'blocked') {
-      return 'block';
-    }
-    if (statusTone === 'deleted') {
-      return 'delete';
-    }
-    if (statusTone === 'inactive') {
-      return 'visibility_off';
-    }
-    if (this.isPendingActivityRow(row)) {
-      return 'pending_actions';
-    }
-    if (row.type === 'hosting' || row.type === 'events') {
-      return this.eventVisibilityIcon(this.activityVisibility(row));
-    }
-    return this.activityTypeIcon(row);
+  private withActivityEventInfoCard(row: AppTypes.ActivityListRow): AppTypes.ActivityListRow {
+    return this.host.withActivityEventInfoCard(row);
   }
-
-  private activityVisibility(row: AppTypes.ActivityListRow): AppTypes.EventVisibility {
-    return ((row.source as { visibility?: AppTypes.EventVisibility }).visibility)
-      ?? this.eventVisibilityById[row.id]
-      ?? (row.type === 'hosting' ? 'Invitation only' : 'Public');
-  }
-
-  public activityTypeIcon(row: AppTypes.ActivityListRow): string {
-    if (row.type === 'events') {
-      return 'event';
-    }
-    if (row.type === 'hosting') {
-      return 'stadium';
-    }
-    if (row.type === 'invitations') {
-      return 'mail';
-    }
-    if (row.type === 'rates') {
-      return 'star';
-    }
-    return 'chat';
-  }
-
-  private eventVisibilityIcon(option: AppTypes.EventVisibility): string {
-    switch (option) {
-      case 'Public':
-        return 'public';
-      case 'Friends only':
-        return 'groups';
-      default:
-        return 'mail_lock';
-    }
-  }
-
-  public activityLeadingIconTone(row: AppTypes.ActivityListRow): NonNullable<InfoCardData['leadingIcon']>['tone'] {
-    const statusTone = this.activityStatusTone(row);
-    if (statusTone === 'review') {
-      return 'pending';
-    }
-    if (statusTone === 'blocked' || statusTone === 'deleted' || statusTone === 'inactive') {
-      return 'default';
-    }
-    if (this.isPendingActivityRow(row)) {
-      return 'pending';
-    }
-    if (row.type !== 'hosting' && row.type !== 'events') {
-      return 'default';
-    }
-    const visibility = this.activityVisibility(row);
-    if (visibility === 'Public') {
-      return 'public';
-    }
-    if (visibility === 'Friends only') {
-      return 'friends';
-    }
-    return 'invitation';
-  }
-
-  public isPendingActivityRow(row: AppTypes.ActivityListRow): boolean {
-    if (this.isPendingReviewActivityRow(row)) {
-      return true;
-    }
-    if (row.type !== 'events') {
-      return false;
-    }
-    const activeUserId = this.activeUser.id.trim();
-    if (!activeUserId) {
-      return false;
-    }
-    const source = row.source as {
-      acceptedMemberUserIds?: readonly string[];
-      pendingMemberUserIds?: readonly string[];
-    };
-    if (Array.isArray(source.acceptedMemberUserIds) && source.acceptedMemberUserIds.includes(activeUserId)) {
-      return false;
-    }
-    return Array.isArray(source.pendingMemberUserIds) && source.pendingMemberUserIds.includes(activeUserId);
-  }
-
-  public activityStatusBadgeLabel(row: AppTypes.ActivityListRow): string | null {
-    switch (this.activityStatusCode(row)) {
-      case 'UR':
-        return 'Under Review';
-      case 'B':
-        return 'Blocked User';
-      case 'T':
-        return 'Deleted';
-      case 'D':
-        return 'Deleted User';
-      case 'I':
-        return 'Inactive User';
-      default:
-        return null;
-    }
-  }
-
-  public activityStatusTone(row: AppTypes.ActivityListRow): Extract<NonNullable<InfoCardData['surfaceTone']>, 'review' | 'blocked' | 'deleted' | 'inactive'> | null {
-    switch (this.activityStatusCode(row)) {
-      case 'UR':
-        return 'review';
-      case 'B':
-        return 'blocked';
-      case 'D':
-      case 'T':
-        return 'deleted';
-      case 'I':
-        return 'inactive';
-      default:
-        return null;
-    }
-  }
-
-  private isPendingReviewActivityRow(row: AppTypes.ActivityListRow): boolean {
-    const status = this.activityStatusCode(row);
-    return status === 'UR' || status === 'B';
+  private refreshActivityEventInfoCard(row: AppTypes.ActivityListRow): void {
+    this.host.refreshActivityEventInfoCard(row);
   }
 
   private activityStatusCode(row: AppTypes.ActivityListRow): string {
@@ -358,136 +183,8 @@ export class ActivitiesEventsController {
     }
   }
 
-  public activityEventInfoCardMenuActions(row: AppTypes.ActivityListRow): readonly InfoCardMenuAction[] {
-    if (!this.canManageActivityRow(row)) {
-      return [];
-    }
-    if (this.isActivityRowTrashed(row)) {
-      return this.shouldShowActivityRestoreAction(row)
-        ? ['restore']
-        : [];
-    }
-
-    const actions: InfoCardMenuAction[] = [];
-    if (this.shouldShowActivityTakeOverAction(row)) {
-      actions.push('takeOver');
-    }
-    if (this.shouldShowActivityPublishAction(row)) {
-      actions.push('publish');
-    }
-    if (this.shouldShowActivityPrimaryAction(row)) {
-      actions.push(this.activityPrimaryActionId(row));
-    }
-    if (this.shouldShowActivityViewAction(row)) {
-      actions.push('view');
-    }
-    if (this.shouldShowActivityServiceChatAction(row)) {
-      actions.push(this.activityServiceChatActionId(row));
-    }
-    if (this.shouldShowActivityShareAction(row)) {
-      actions.push('shareEvent');
-    }
-    if (this.shouldShowActivityReportAction(row)) {
-      actions.push('reportOrganizer');
-    }
-    if (this.shouldShowActivityApproveAction(row)) {
-      actions.push('accept');
-    }
-    if (this.shouldShowActivitySecondaryAction(row)) {
-      actions.push(this.activitySecondaryActionId(row));
-    }
-    return actions;
-  }
-
-  public canManageActivityRow(row: AppTypes.ActivityListRow): boolean {
-    return row.type !== 'chats' && row.type !== 'rates';
-  }
-
-  public shouldShowActivityPublishAction(row: AppTypes.ActivityListRow): boolean {
-    return !this.isActivityRowTrashed(row) && !this.isPendingReviewActivityRow(row) && row.type === 'hosting' && !!row.isAdmin && !this.isHostingPublished(row.id);
-  }
-
-  public shouldShowActivityTakeOverAction(row: AppTypes.ActivityListRow): boolean {
-    return this.activityStatusCode(row) === 'UR' && row.isAdmin === true && (row.type === 'hosting' || row.type === 'events');
-  }
-
-  public shouldShowActivityPrimaryAction(row: AppTypes.ActivityListRow): boolean {
-    if (this.isActivityRowTrashed(row) || this.isPendingReviewActivityRow(row)) {
-      return false;
-    }
-    if ((row.type === 'hosting' || row.type === 'events') && !row.isAdmin) {
-      return false;
-    }
-    return true;
-  }
-
-  public shouldShowActivityViewAction(row: AppTypes.ActivityListRow): boolean {
-    return !this.isActivityRowTrashed(row) && (row.type === 'hosting' || row.type === 'events');
-  }
-
-  public shouldShowActivityServiceChatAction(row: AppTypes.ActivityListRow): boolean {
-    return !this.isActivityRowTrashed(row)
-      && (row.type === 'hosting' || row.type === 'events' || row.type === 'invitations');
-  }
-
-  public shouldShowActivityShareAction(row: AppTypes.ActivityListRow): boolean {
-    return !this.isActivityRowTrashed(row)
-      && (row.type === 'hosting' || row.type === 'events' || row.type === 'invitations');
-  }
-
-  public shouldShowActivityReportAction(row: AppTypes.ActivityListRow): boolean {
-    if (this.isActivityRowTrashed(row) || (row.type !== 'hosting' && row.type !== 'events' && row.type !== 'invitations')) {
-      return false;
-    }
-    const target = this.resolveActivityReportTarget(row);
-    return !!target && target.userId !== this.activeUser.id.trim();
-  }
-
-  public shouldShowActivityApproveAction(row: AppTypes.ActivityListRow): boolean {
-    return !this.isActivityRowTrashed(row) && row.type === 'invitations';
-  }
-
-  public shouldShowActivitySecondaryAction(row: AppTypes.ActivityListRow): boolean {
-    if (this.isActivityRowTrashed(row)) {
-      return false;
-    }
-    if (this.isPendingReviewActivityRow(row) && row.type !== 'events') {
-      return false;
-    }
-    if (row.type === 'hosting' && !row.isAdmin) {
-      return false;
-    }
-    return true;
-  }
-
-  public shouldShowActivityRestoreAction(row: AppTypes.ActivityListRow): boolean {
-    const status = this.activityStatusCode(row);
-    return status === 'T' || (status !== 'D' && status !== 'I' && this.isActivityIdentityTrashed(row.type, row.id));
-  }
-
   public isExitActivityRow(row: AppTypes.ActivityListRow): boolean {
     return row.type === 'events';
-  }
-
-  public activityPrimaryActionId(row: AppTypes.ActivityListRow): InfoCardMenuAction {
-    if (row.type === 'invitations') { return 'viewInvitation'; }
-    return 'editEvent';
-  }
-
-  public activitySecondaryActionId(row: AppTypes.ActivityListRow): InfoCardMenuAction {
-    if (row.type === 'events') { return 'leaveEvent'; }
-    if (row.type === 'hosting') { return 'deleteEvent'; }
-    return 'rejectInvitation';
-  }
-
-  public activityServiceChatActionId(row: AppTypes.ActivityListRow): InfoCardMenuAction {
-    if (row.type === 'hosting' && row.isAdmin) {
-      return 'notifyParticipants';
-    }
-    if (row.type === 'invitations') {
-      return 'askOrganizer';
-    }
-    return 'contactOrganizer';
   }
 
   public activityServiceChatActionLabel(row: AppTypes.ActivityListRow): string {
@@ -810,6 +507,7 @@ export class ActivitiesEventsController {
         if (rowIndex >= 0) {
           const updatedRow = { ...currentItems[rowIndex] };
           updatedRow.source = { ...(updatedRow.source as any), status: nextStatus };
+          this.refreshActivityEventInfoCard(updatedRow);
           const nextItems = [...currentItems];
           nextItems[rowIndex] = updatedRow;
           this.replaceVisibleActivityItems(nextItems, 0);
@@ -842,6 +540,7 @@ export class ActivitiesEventsController {
         if (rowIndex >= 0) {
           const updatedRow = { ...currentItems[rowIndex] };
           updatedRow.source = { ...updatedRow.source as any, published: true };
+          this.refreshActivityEventInfoCard(updatedRow);
           const nextItems = [...currentItems];
           nextItems[rowIndex] = updatedRow;
           this.replaceVisibleActivityItems(nextItems, 0);
@@ -1389,7 +1088,10 @@ export class ActivitiesEventsController {
   }
 
   private markActivityRowTrashed(row: AppTypes.ActivityListRow): void {
-    this.trashedActivityRowsByKey[this.activityRowIdentity(row)] = { ...row };
+    this.trashedActivityRowsByKey[this.activityRowIdentity(row)] = this.withActivityEventInfoCard({
+      ...row,
+      source: { ...(row.source as any), status: 'T' }
+    });
     this.refreshSectionBadges();
   }
 

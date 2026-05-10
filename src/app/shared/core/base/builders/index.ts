@@ -1,4 +1,5 @@
 export { ActivityEventBuilder } from './activity-event.builder';
+export { ActivityEventInfoCardBuilder } from './activity-event-info-card.builder';
 export { ActivityMembersBuilder } from './activity-members.builder';
 export { ActivityResourceBuilder } from './activity-resource.builder';
 export { AssetCardBuilder } from './asset-card.builder';

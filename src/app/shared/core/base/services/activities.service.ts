@@ -105,7 +105,7 @@ export class ActivitiesService extends BaseRouteModeService {
       rangeStart: request.rangeStart,
       rangeEnd: request.rangeEnd
     }, signal);
-    const rows = buildActivityEventRows(page.records);
+    const rows = buildActivityEventRows(page.records, { activeUserId });
     if (this.isCalendarActivitiesView(request.view)) {
       return this.paginateActivitiesRows(rows, request);
     }
