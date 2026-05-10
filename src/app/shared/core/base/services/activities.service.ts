@@ -13,6 +13,7 @@ import type { ListQuery, PageResult } from '../../../ui';
 import {
   buildActivityEventRows,
   buildActivityRateRows,
+  toActivityEventRow,
   toActivitiesPageRequest
 } from '../converters';
 import { AppContext } from '../context';
@@ -24,6 +25,11 @@ import { SessionService } from './session.service';
 import { UsersService } from './users.service';
 import { DemoUsersRepository } from '../../demo';
 import { BaseRouteModeService } from './base-route-mode.service';
+
+export interface ActivitiesEventDisplaySync extends AppTypes.ActivitiesEventSyncPayload {
+  displayRecord: DemoEventRecord;
+  displayRow: AppTypes.ActivityListRow;
+}
 
 @Injectable({
   providedIn: 'root'
@@ -62,6 +68,25 @@ export class ActivitiesService extends BaseRouteModeService {
       items: result.records.map(record => this.cloneExploreRecord(record)),
       total: result.total,
       nextCursor: result.nextCursor
+    };
+  }
+
+  async saveActivitiesEventSync(
+    payload: Omit<AppTypes.ActivitiesEventSyncPayload, 'syncKey'>,
+    options: {
+      activeUserId?: string | null;
+    } = {}
+  ): Promise<ActivitiesEventDisplaySync> {
+    const displayRecord = await this.eventsService.syncEventSnapshot(payload);
+    if (!displayRecord) {
+      throw new Error('Event sync did not return a display record.');
+    }
+    const activeUserId = `${options.activeUserId ?? displayRecord.userId ?? this.resolveActiveUserId()}`.trim();
+    const displayRow = toActivityEventRow(displayRecord, { activeUserId });
+    return {
+      ...payload,
+      displayRecord,
+      displayRow
     };
   }
 

@@ -419,8 +419,15 @@ export class HttpEventsService {
     await this.postVoid('/activities/events/feedback/restore', { userId: userId.trim(), eventId: eventId.trim() });
   }
 
-  async syncEventSnapshot(payload: Omit<ActivitiesEventSyncPayload, 'syncKey'>): Promise<void> {
-    await this.postVoid('/activities/events/sync', payload);
+  async syncEventSnapshot(payload: Omit<ActivitiesEventSyncPayload, 'syncKey'>): Promise<DemoEventRecord | null> {
+    try {
+      const response = await this.http
+        .post<DemoEventRecord | null>(`${this.apiBaseUrl}/activities/events/sync`, payload)
+        .toPromise();
+      return this.cloneRecords(response ? [response] : [])[0] ?? null;
+    } catch {
+      return null;
+    }
   }
 
   private async getRecords(route: string, userId: string): Promise<DemoEventRecord[]> {

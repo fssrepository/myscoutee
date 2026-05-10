@@ -372,12 +372,12 @@ export class DemoEventsRepository {
     };
   }
 
-  syncEventSnapshot(payload: Omit<ActivitiesEventSyncPayload, 'syncKey'>): void {
+  syncEventSnapshot(payload: Omit<ActivitiesEventSyncPayload, 'syncKey'>): DemoEventRecord | null {
     this.init();
     const normalizedId = payload.id.trim();
     const creatorUserId = payload.creatorUserId?.trim() ?? '';
     if (!normalizedId || !creatorUserId) {
-      return;
+      return null;
     }
 
     const creatorName = payload.creatorName?.trim() || 'Unknown Host';
@@ -439,6 +439,7 @@ export class DemoEventsRepository {
       };
     });
     this.materializeSlotRecords();
+    return this.peekKnownItemById(creatorUserId, normalizedId);
   }
 
   trashItem(userId: string, type: DemoRepositoryEventItemType, sourceId: string): void {

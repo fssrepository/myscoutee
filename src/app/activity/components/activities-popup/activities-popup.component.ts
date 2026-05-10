@@ -23,6 +23,7 @@ import type {
 } from '../../../shared/core/base/interfaces/activity-feed.interface';
 import type { DemoUser } from '../../../shared/core/base/interfaces/user.interface';
 import { AppUtils } from '../../../shared/app-utils';
+import type { ActivitiesEventDisplaySync } from '../../../shared/core';
 import { ActivitiesPopupStateService } from '../../services/activities-popup-state.service';
 import { EventEditorPopupStateService } from '../../services/event-editor-popup-state.service';
 import { OwnedAssetsPopupFacadeService } from '../../../asset/owned-assets-popup-facade.service';
@@ -103,6 +104,7 @@ import type {
 // ---------------------------------------------------------------------------
 
 type ActivitiesSmartListFilters = ActivitiesFeedFilters;
+type ActivitiesEventSyncMessage = ActivitiesEventSyncPayload | ActivitiesEventDisplaySync;
 
 interface ActivitiesEventScopeOption {
   key: AppTypes.ActivitiesEventScope;
@@ -1055,33 +1057,15 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   private buildVisibleEventRowFromSync(
-    sync: ActivitiesEventSyncPayload,
+    sync: ActivitiesEventSyncMessage,
     existingRow: AppTypes.ActivityListRow | null = null
   ): AppTypes.ActivityListRow | null {
     const rowType = this.resolveVisibleEventRowTypeFromSync(sync);
     if (rowType === 'events') {
-      const record = this.buildSyncedEventRecord(
-        sync,
-        this.eventItems.find(item => item.id === sync.id),
-        'events'
-      );
-      const row = toActivityEventRow(record, { activeUserId: this.activeUser.id });
-      return {
-        ...row,
-        metricScore: existingRow?.metricScore ?? row.metricScore
-      };
+      return this.activityDisplayRowForSync(sync, 'events', existingRow);
     }
     if (rowType === 'hosting') {
-      const record = this.buildSyncedEventRecord(
-        sync,
-        this.hostingItems.find(item => item.id === sync.id),
-        'hosting'
-      );
-      const row = toActivityEventRow(record, { activeUserId: this.activeUser.id });
-      return {
-        ...row,
-        metricScore: existingRow?.metricScore ?? row.metricScore
-      };
+      return this.activityDisplayRowForSync(sync, 'hosting', existingRow);
     }
     return null;
   }
@@ -2080,7 +2064,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return Math.max(0, Math.trunc(Number(value) || 0));
   }
 
-  protected applyActivitiesEventSync(sync: ActivitiesEventSyncPayload): void {
+  protected applyActivitiesEventSync(sync: ActivitiesEventSyncMessage): void {
     let eventUpdated = false;
     let hostingUpdated = false;
 
@@ -2089,7 +2073,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
         return item;
       }
       eventUpdated = true;
-      return this.buildSyncedEventRecord(sync, item, 'events');
+      return this.activityDisplayRecordForSync(sync, item, 'events');
     });
 
     this.hostingItems = this.hostingItems.map(item => {
@@ -2097,15 +2081,15 @@ export class ActivitiesPopupComponent implements OnDestroy {
         return item;
       }
       hostingUpdated = true;
-      return this.buildSyncedEventRecord(sync, item, 'hosting');
+      return this.activityDisplayRecordForSync(sync, item, 'hosting');
     });
 
     if (!eventUpdated) {
-      this.eventItems = [this.buildSyncedEventRecord(sync, undefined, 'events'), ...this.eventItems];
+      this.eventItems = [this.activityDisplayRecordForSync(sync, undefined, 'events'), ...this.eventItems];
     }
 
     if (sync.target === 'hosting' && !hostingUpdated) {
-      this.hostingItems = [this.buildSyncedEventRecord(sync, undefined, 'hosting'), ...this.hostingItems];
+      this.hostingItems = [this.activityDisplayRecordForSync(sync, undefined, 'hosting'), ...this.hostingItems];
     }
 
     this.activityDateTimeRangeById[sync.id] = {
@@ -2281,6 +2265,62 @@ export class ActivitiesPopupComponent implements OnDestroy {
     };
   }
 
+  private activityDisplayRecordForSync(
+    sync: ActivitiesEventSyncMessage,
+    existing: DemoEventRecord | undefined,
+    type: DemoRepositoryEventItemType
+  ): DemoEventRecord {
+    if (this.isActivitiesEventDisplaySync(sync) && sync.displayRecord.type === type) {
+      return {
+        ...sync.displayRecord,
+        acceptedMemberUserIds: [...sync.displayRecord.acceptedMemberUserIds],
+        pendingMemberUserIds: [...sync.displayRecord.pendingMemberUserIds],
+        topics: [...sync.displayRecord.topics],
+        subEvents: sync.displayRecord.subEvents
+          ? this.cloneSyncedSubEventForms(sync.displayRecord.subEvents)
+          : undefined,
+        slotTemplates: this.cloneSyncedSlotTemplates(sync.displayRecord.slotTemplates),
+        upcomingSlots: sync.displayRecord.upcomingSlots
+          ? sync.displayRecord.upcomingSlots.map(item => ({ ...item }))
+          : undefined,
+        policies: sync.displayRecord.policies
+          ? sync.displayRecord.policies.map(policy => ({ ...policy }))
+          : undefined
+      };
+    }
+    return this.buildSyncedEventRecord(sync, existing, type);
+  }
+
+  private activityDisplayRowForSync(
+    sync: ActivitiesEventSyncMessage,
+    rowType: AppTypes.ActivityListRow['type'],
+    existingRow: AppTypes.ActivityListRow | null
+  ): AppTypes.ActivityListRow {
+    if (this.isActivitiesEventDisplaySync(sync) && sync.displayRow.type === rowType) {
+      return {
+        ...sync.displayRow,
+        metricScore: existingRow?.metricScore ?? sync.displayRow.metricScore,
+        infoCard: sync.displayRow.infoCard ? { ...sync.displayRow.infoCard } : sync.displayRow.infoCard
+      };
+    }
+    const record = this.activityDisplayRecordForSync(
+      sync,
+      rowType === 'hosting'
+        ? this.hostingItems.find(item => item.id === sync.id)
+        : this.eventItems.find(item => item.id === sync.id),
+      rowType === 'hosting' ? 'hosting' : 'events'
+    );
+    const row = toActivityEventRow(record, { activeUserId: this.activeUser.id });
+    return {
+      ...row,
+      metricScore: existingRow?.metricScore ?? row.metricScore
+    };
+  }
+
+  private isActivitiesEventDisplaySync(sync: ActivitiesEventSyncMessage): sync is ActivitiesEventDisplaySync {
+    return Boolean((sync as ActivitiesEventDisplaySync).displayRecord && (sync as ActivitiesEventDisplaySync).displayRow);
+  }
+
   protected cloneSyncedSubEventForms(items: readonly AppTypes.SubEventFormItem[]): AppTypes.SubEventFormItem[] {
     return items.map(item => ({
       ...item,
@@ -2299,36 +2339,18 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return items.map(item => ({ ...item }));
   }
 
-  private patchVisibleActivityRowsFromEventSync(sync: ActivitiesEventSyncPayload): void {
+  private patchVisibleActivityRowsFromEventSync(sync: ActivitiesEventSyncMessage): void {
     const patchRow = (row: AppTypes.ActivityListRow): AppTypes.ActivityListRow => {
       if (row.id !== sync.id) {
         return row;
       }
 
       if (row.type === 'events') {
-        const record = this.buildSyncedEventRecord(
-          sync,
-          this.eventItems.find(item => item.id === sync.id),
-          'events'
-        );
-        const nextRow = toActivityEventRow(record, { activeUserId: this.activeUser.id });
-        return {
-          ...nextRow,
-          metricScore: Math.max(0, row.metricScore || sync.activity)
-        };
+        return this.activityDisplayRowForSync(sync, 'events', row);
       }
 
       if (row.type === 'hosting') {
-        const record = this.buildSyncedEventRecord(
-          sync,
-          this.hostingItems.find(item => item.id === sync.id),
-          'hosting'
-        );
-        const nextRow = toActivityEventRow(record, { activeUserId: this.activeUser.id });
-        return {
-          ...nextRow,
-          metricScore: Math.max(20 + sync.activity, row.metricScore || 0)
-        };
+        return this.activityDisplayRowForSync(sync, 'hosting', row);
       }
 
       return row;
@@ -2355,7 +2377,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     }
   }
 
-  private applyActivitiesEventMemberSnapshot(sync: ActivitiesEventSyncPayload): void {
+  private applyActivitiesEventMemberSnapshot(sync: ActivitiesEventSyncMessage): void {
     const acceptedRaw = Number(sync.acceptedMembers);
     const pendingRaw = Number(sync.pendingMembers);
     const hasAccepted = Number.isFinite(acceptedRaw);
@@ -2366,9 +2388,9 @@ export class ActivitiesPopupComponent implements OnDestroy {
     const acceptedMembers = hasAccepted ? Math.max(0, Math.trunc(acceptedRaw)) : 0;
     const pendingMembers = hasPending ? Math.max(0, Math.trunc(pendingRaw)) : 0;
     const eventSource = this.eventItems.find(item => item.id === sync.id)
-      ?? this.buildSyncedEventRecord(sync, undefined, 'events');
+      ?? this.activityDisplayRecordForSync(sync, undefined, 'events');
     const hostingSource = this.hostingItems.find(item => item.id === sync.id)
-      ?? this.buildSyncedEventRecord(sync, undefined, 'hosting');
+      ?? this.activityDisplayRecordForSync(sync, undefined, 'hosting');
     const capacityRaw = Number(sync.capacityTotal);
     const capacityTotal = Number.isFinite(capacityRaw)
       ? Math.max(acceptedMembers, Math.trunc(capacityRaw))

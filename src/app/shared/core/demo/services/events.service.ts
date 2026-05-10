@@ -261,10 +261,11 @@ export class DemoEventsService extends DemoRouteDelayService {
     await this.memoryDb.flushToIndexedDb();
   }
 
-  async syncEventSnapshot(payload: Omit<ActivitiesEventSyncPayload, 'syncKey'>): Promise<void> {
+  async syncEventSnapshot(payload: Omit<ActivitiesEventSyncPayload, 'syncKey'>): Promise<DemoEventRecord | null> {
     await this.waitForRouteDelay(DemoEventsService.EVENTS_ROUTE);
-    this.eventsRepository.syncEventSnapshot(payload);
+    const record = this.eventsRepository.syncEventSnapshot(payload);
     await this.memoryDb.flushToIndexedDb();
+    return record;
   }
 
   async trashItem(userId: string, type: DemoRepositoryEventItemType, sourceId: string): Promise<void> {

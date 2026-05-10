@@ -190,7 +190,7 @@ export class EventsService extends BaseRouteModeService {
     return this.eventsService.restoreEventFeedbackEvent(userId, eventId);
   }
 
-  async syncEventSnapshot(payload: Omit<ActivitiesEventSyncPayload, 'syncKey'>): Promise<void> {
-    await this.eventsService.syncEventSnapshot(payload);
+  async syncEventSnapshot(payload: Omit<ActivitiesEventSyncPayload, 'syncKey'>): Promise<DemoEventRecord | null> {
+    return this.eventsService.syncEventSnapshot(payload);
   }
 }

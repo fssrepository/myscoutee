@@ -1315,21 +1315,10 @@ export class ActivitiesEventsController {
   }
 
   public openActivityRowInEventModule(row: AppTypes.ActivityListRow, readOnly: boolean): void {
-    const source = ActivityEventBuilder.resolveEditorSource(row, {
-      eventItems: this.eventItems,
-      hostingItems: this.hostingItems,
-      invitationItems: this.invitationItems
+    this.popupCtx.requestActivitiesNavigation({
+      type: 'eventEditor',
+      row,
+      readOnly: row.type === 'invitations' ? true : readOnly
     });
-    if (!source) {
-      return;
-    }
-    const effectiveReadOnly = row.type === 'invitations'
-      ? true
-      : readOnly;
-    if (effectiveReadOnly) {
-      this.eventEditorService.openView(source);
-      return;
-    }
-    this.eventEditorService.openEdit(source);
   }
 }

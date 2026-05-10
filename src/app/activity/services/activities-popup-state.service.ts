@@ -8,6 +8,7 @@ import type {
   EventChatContext,
   EventChatSession
 } from '../../shared/core/base/models';
+import type { ActivitiesEventDisplaySync } from '../../shared/core/base/services/activities.service';
 import type { ChatMenuItem } from '../../shared/core/base/interfaces/activity-feed.interface';
 
 interface ActivitiesUiState {
@@ -60,7 +61,7 @@ export class ActivitiesPopupStateService {
   private readonly chatsService = inject(ChatsService);
 
   private readonly _uiState = signal<ActivitiesUiState>(DEFAULT_ACTIVITIES_UI_STATE);
-  private _activitiesEventSync = signal<ActivitiesEventSyncPayload | null>(null);
+  private _activitiesEventSync = signal<ActivitiesEventSyncPayload | ActivitiesEventDisplaySync | null>(null);
   private _eventChatSession = signal<EventChatSession | null>(null);
 
   readonly activitiesUiState = this._uiState.asReadonly();
@@ -284,6 +285,10 @@ export class ActivitiesPopupStateService {
   emitActivitiesEventSync(payload: Omit<ActivitiesEventSyncPayload, 'syncKey'>): Promise<void> {
     this._activitiesEventSync.set({ ...payload });
     return this.runDeferredEventPersistence(payload);
+  }
+
+  emitActivitiesEventDisplaySync(sync: ActivitiesEventDisplaySync): void {
+    this._activitiesEventSync.set(sync);
   }
 
   private runDeferredEventPersistence(payload: Omit<ActivitiesEventSyncPayload, 'syncKey'>): Promise<void> {
