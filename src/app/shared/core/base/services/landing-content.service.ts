@@ -26,6 +26,7 @@ export class LandingContentService extends BaseRouteModeService {
   private readonly routeDelay = inject(RouteDelayService);
   private readonly stateRef = signal<LandingContentState | null>(null);
   private loadPromise: Promise<LandingContentState> | null = null;
+  private displayLoadPromise: Promise<LandingContentDisplayState> | null = null;
 
   readonly state = this.stateRef.asReadonly();
 
@@ -51,14 +52,21 @@ export class LandingContentService extends BaseRouteModeService {
   }
 
   async loadDisplayState(): Promise<LandingContentDisplayState> {
-    const [state] = await Promise.all([
-      this.loadOnce(),
-      this.waitForRouteDelay()
-    ]);
-    return {
-      state,
-      ideaCards: this.ideaInfoCards()
-    };
+    const current = this.stateRef();
+    if (current) {
+      return this.cloneDisplayState(current);
+    }
+    if (!this.displayLoadPromise) {
+      this.displayLoadPromise = Promise.all([
+        this.loadOnce(),
+        this.waitForRouteDelay()
+      ])
+        .then(([state]) => this.cloneDisplayState(state))
+        .finally(() => {
+          this.displayLoadPromise = null;
+        });
+    }
+    return this.cloneDisplayState((await this.displayLoadPromise).state);
   }
 
   ideaInfoCards(): InfoCardData[] {
@@ -75,6 +83,13 @@ export class LandingContentService extends BaseRouteModeService {
 
   private waitForRouteDelay(): Promise<void> {
     return this.routeDelay.waitForRouteDelay(LandingContentService.LANDING_CONTENT_ROUTE);
+  }
+
+  private cloneDisplayState(state: LandingContentState): LandingContentDisplayState {
+    return {
+      state: this.cloneState(state),
+      ideaCards: this.ideaInfoCards()
+    };
   }
 
   private cloneState(state: LandingContentState): LandingContentState {

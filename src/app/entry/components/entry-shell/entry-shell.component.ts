@@ -46,6 +46,7 @@ export class EntryShellComponent implements OnDestroy {
   private readonly confirmationDialogService = inject(ConfirmationDialogService);
   private usersServiceRef: UsersService | null = null;
   private loginEligibilityBusy = false;
+  private entryContentLoadPromise: Promise<void> | null = null;
 
   @Input({ required: true }) authMode: AppTypes.AuthMode = 'selector';
   @Input() firebaseAuthProfile: AppTypes.FirebaseAuthProfile | null = null;
@@ -242,9 +243,8 @@ export class EntryShellComponent implements OnDestroy {
   }
 
   private initializeEntryFlow(): void {
-    const hasStoredConsent = Boolean(localStorage.getItem(EntryShellComponent.ENTRY_CONSENT_KEY));
     this.entryConsentViewOnly = false;
-    this.showEntryConsentPopup = !hasStoredConsent;
+    this.showEntryConsentPopup = false;
     this.entryPrivacyLoading = true;
     this.landingArticlesLoading = true;
     this.landingArticlesLoadingProgress = 0;
@@ -274,9 +274,17 @@ export class EntryShellComponent implements OnDestroy {
     if (this.helpCenter.privacyState() === null) {
       this.entryPrivacyLoading = true;
       void this.loadEntryContent();
+      this.entryConsentViewOnly = false;
+      this.showEntryConsentPopup = false;
+      return false;
+    }
+    if (this.entryPrivacyLoading) {
+      this.entryConsentViewOnly = false;
+      this.showEntryConsentPopup = false;
+      return false;
     }
     this.entryConsentViewOnly = false;
-    this.showEntryConsentPopup = true;
+    this.showEntryConsentPopup = this.loadEntryConsentState() === null;
     return false;
   }
 
@@ -601,13 +609,16 @@ export class EntryShellComponent implements OnDestroy {
   }
 
   private async loadEntryContent(): Promise<void> {
+    if (this.entryContentLoadPromise) {
+      return this.entryContentLoadPromise;
+    }
     const requestToken = ++this.landingContentRequestToken;
     this.entryPrivacyLoading = true;
     this.startLandingArticlesLoadingWindow();
-    try {
+    this.entryContentLoadPromise = (async () => {
       const displayState = await this.landingContent.loadDisplayState();
       this.landingIdeaCards = displayState.ideaCards;
-    } finally {
+    })().finally(() => {
       this.ngZone.run(() => {
         if (requestToken !== this.landingContentRequestToken) {
           return;
@@ -620,7 +631,9 @@ export class EntryShellComponent implements OnDestroy {
         this.changeDetectorRef.detectChanges();
         this.entryConsentStateChanged.emit(this.hasEntryConsent);
       });
-    }
+      this.entryContentLoadPromise = null;
+    });
+    return this.entryContentLoadPromise;
   }
 
   private entryConsentVersion(): string {
