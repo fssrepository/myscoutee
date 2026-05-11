@@ -4,9 +4,9 @@
     <div class="app-popup-panel popup-panel-admin popup-panel-notifications" (click)="$event.stopPropagation()">
       <div class="popup-header">
         <div class="popup-title">
-          <h2>Értesítések</h2>
+          <h2>{{ 'jobs' | i18n }}</h2>
           <p class="popup-subtitle">
-            {{ processRules().length }} configurable jobs
+            {{ processRules().length }} {{ 'configurable.jobs' | i18n }}
           </p>
         </div>
         <div class="notification-header-actions">

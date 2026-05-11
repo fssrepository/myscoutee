@@ -702,9 +702,19 @@
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 4.6rem), 1fr));
 }
 
+.admin-menu-shortcuts-configuration {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.32rem;
+}
+
 .admin-menu-shortcuts .menu-shortcut-btn {
   height: var(--navigator-shortcut-tile-height);
   gap: 0.18rem;
+}
+
+.admin-menu-shortcuts-configuration .menu-shortcut-btn {
+  min-width: 0;
+  padding-inline: 0.18rem;
 }
 
 .admin-menu-shortcuts .menu-shortcut-btn .mat-icon {
@@ -829,17 +839,43 @@
   color: #2a6470;
 }
 
-.menu-shortcut-notifications {
+.menu-shortcut-jobs {
   background: #eef4ff;
   border-color: #bbc9ef;
 }
 
-.menu-shortcut-notifications .mat-icon {
+.menu-shortcut-jobs .mat-icon {
   color: #4d67c8;
 }
 
-.menu-shortcut-notifications .menu-shortcut-label {
+.menu-shortcut-jobs .menu-shortcut-label {
   color: #344581;
+}
+
+.menu-shortcut-params {
+  background: #f4efff;
+  border-color: #c8b9ef;
+}
+
+.menu-shortcut-params .mat-icon {
+  color: #7254c8;
+}
+
+.menu-shortcut-params .menu-shortcut-label {
+  color: #4e3b83;
+}
+
+.menu-shortcut-stats {
+  background: #eefbf4;
+  border-color: #b9e5cb;
+}
+
+.menu-shortcut-stats .mat-icon {
+  color: #2f8a54;
+}
+
+.menu-shortcut-stats .menu-shortcut-label {
+  color: #28623f;
 }
 
 .menu-shortcut-help-editor {

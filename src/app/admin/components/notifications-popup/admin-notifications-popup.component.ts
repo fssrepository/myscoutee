@@ -10,6 +10,7 @@ import type {
   AdminNotificationRunHistoryEntry,
   AdminNotificationScheduleSlot
 } from '../../../shared/core';
+import { I18nPipe } from '../../../shared/i18n';
 import { RouteDelayService } from '../../../shared/core/base/services/route-delay.service';
 import { AdminService } from '../../admin.service';
 
@@ -32,7 +33,7 @@ type ProcessListFilter = 'all' | 'active' | 'suspended' | 'running' | 'failed';
 @Component({
   selector: 'app-admin-notifications-popup',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatIconModule],
+  imports: [CommonModule, FormsModule, MatIconModule, I18nPipe],
   templateUrl: './admin-notifications-popup.component.html',
   styleUrl: './admin-notifications-popup.component.scss'
 })

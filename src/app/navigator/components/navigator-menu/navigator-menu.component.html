@@ -109,10 +109,20 @@
             <span class="section-line"></span>
           </div>
           <div class="menu-shortcuts admin-menu-shortcuts admin-menu-shortcuts-configuration">
-            <button #adminNotificationsButton class="menu-shortcut-btn menu-shortcut-notifications" type="button" [disabled]="!isOnline()" (click)="openAdminNotificationsShortcut($event)" aria-label="Open notification rules" title="Notifications">
-              <span class="navigator-action-ripple" matRipple [matRippleTrigger]="adminNotificationsButton" aria-hidden="true"></span>
-              <mat-icon>notifications</mat-icon>
-              <span class="menu-shortcut-label">Notification</span>
+            <button #adminJobsButton class="menu-shortcut-btn menu-shortcut-jobs" type="button" [disabled]="!isOnline()" (click)="openAdminNotificationsShortcut($event)" [attr.aria-label]="'open.jobs' | i18n" [title]="'jobs' | i18n">
+              <span class="navigator-action-ripple" matRipple [matRippleTrigger]="adminJobsButton" aria-hidden="true"></span>
+              <mat-icon>pending_actions</mat-icon>
+              <span class="menu-shortcut-label">{{ 'jobs' | i18n }}</span>
+            </button>
+            <button #adminParamsButton class="menu-shortcut-btn menu-shortcut-params" type="button" [disabled]="!isOnline()" [attr.aria-label]="'open.parameters' | i18n" [title]="'parameters' | i18n">
+              <span class="navigator-action-ripple" matRipple [matRippleTrigger]="adminParamsButton" aria-hidden="true"></span>
+              <mat-icon>tune</mat-icon>
+              <span class="menu-shortcut-label">{{ 'params' | i18n }}</span>
+            </button>
+            <button #adminStatsButton class="menu-shortcut-btn menu-shortcut-stats" type="button" [disabled]="!isOnline()" [attr.aria-label]="'open.stats' | i18n" [title]="'stats' | i18n">
+              <span class="navigator-action-ripple" matRipple [matRippleTrigger]="adminStatsButton" aria-hidden="true"></span>
+              <mat-icon>query_stats</mat-icon>
+              <span class="menu-shortcut-label">{{ 'stats' | i18n }}</span>
             </button>
             <button #adminHelpEditorButton class="menu-shortcut-btn menu-shortcut-help-editor" type="button" [disabled]="!isOnline()" (click)="openAdminHelpEditorShortcut($event)" aria-label="Open content editor" title="Content Editor">
               <span class="navigator-action-ripple" matRipple [matRippleTrigger]="adminHelpEditorButton" aria-hidden="true"></span>

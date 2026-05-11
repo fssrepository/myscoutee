@@ -22,6 +22,7 @@ import {
   resolveTraitToneClass
 } from '../../navigator-presenters';
 import { CounterBadgePipe } from '../../../shared/ui';
+import { I18nPipe } from '../../../shared/i18n';
 import { NavigatorService } from '../../navigator.service';
 import { NavigatorSettingsMenuComponent } from '../navigator-settings-menu/navigator-settings-menu.component';
 import { NavigatorContactsService } from '../../navigator-contacts.service';
@@ -39,7 +40,7 @@ interface NavigatorMenuUser extends Omit<UserDto, 'activities'> {
 @Component({
   selector: 'app-navigator-menu',
   standalone: true,
-  imports: [CommonModule, MatIconModule, MatRippleModule, NavigatorSettingsMenuComponent, CounterBadgePipe],
+  imports: [CommonModule, MatIconModule, MatRippleModule, NavigatorSettingsMenuComponent, CounterBadgePipe, I18nPipe],
   templateUrl: './navigator-menu.component.html',
   styleUrl: './navigator-menu.component.scss'
 })
