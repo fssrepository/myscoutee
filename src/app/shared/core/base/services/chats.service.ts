@@ -199,19 +199,25 @@ export class ChatsService extends BaseRouteModeService {
     title: string;
     actionLabel: string;
     creatorName?: string | null;
-    acceptedMemberUserIds: readonly string[];
-    pendingMemberUserIds: readonly string[];
+    acceptedMemberUserIds?: readonly string[] | null;
+    pendingMemberUserIds?: readonly string[] | null;
     hosting: boolean;
     notification: boolean;
   }): ChatMenuItem & { ownerUserId?: string } {
+    const acceptedMemberUserIds = Array.isArray(input.acceptedMemberUserIds)
+      ? input.acceptedMemberUserIds
+      : [];
+    const pendingMemberUserIds = Array.isArray(input.pendingMemberUserIds)
+      ? input.pendingMemberUserIds
+      : [];
     const acceptedAdmins = input.hosting
       ? this.uniqueUserIds([input.ownerId, input.activeUserId])
       : this.uniqueUserIds([input.ownerId]);
     const memberIds = this.uniqueUserIds([
       input.activeUserId,
       ...acceptedAdmins,
-      ...(input.notification ? input.acceptedMemberUserIds : []),
-      ...(input.notification ? input.pendingMemberUserIds : [])
+      ...(input.notification ? acceptedMemberUserIds : []),
+      ...(input.notification ? pendingMemberUserIds : [])
     ]);
     const creatorName = `${input.creatorName ?? ''}`.trim();
 
