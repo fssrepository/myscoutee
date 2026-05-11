@@ -95,7 +95,6 @@
                   <p>{{ 'stats.graph.subtitle' | i18n }}</p>
                 </div>
                 <div class="stats-graph-header-actions">
-                  <span class="stats-graph-health-badge">{{ socialGraph.healthLabelKey | i18n }}</span>
                   <button
                     type="button"
                     class="stats-graph-help-btn"
@@ -109,53 +108,76 @@
               <div class="stats-graph-layout">
                 <div class="stats-graph-map">
                   <svg viewBox="0 0 100 100" role="img" [attr.aria-label]="'stats.graph.title' | i18n">
-                    <circle class="stats-graph-ring" cx="50" cy="50" r="39"></circle>
-                    <circle class="stats-graph-ring stats-graph-ring-inner" cx="50" cy="50" r="23"></circle>
+                    @for (bridge of graphBridgeUsers(); track bridge.key; let index = $index) {
+                      <line
+                        class="stats-graph-link"
+                        [attr.x1]="graphBridgeX(index, graphBridgeUsers().length)"
+                        [attr.y1]="graphBridgeY(index, graphBridgeUsers().length)"
+                        [attr.x2]="graphCommunityX(graphBridgeCommunityIndex(index, graphCommunities().length, 0), graphCommunities().length)"
+                        [attr.y2]="graphCommunityY(graphBridgeCommunityIndex(index, graphCommunities().length, 0), graphCommunities().length)">
+                      </line>
+                      <line
+                        class="stats-graph-link"
+                        [attr.x1]="graphBridgeX(index, graphBridgeUsers().length)"
+                        [attr.y1]="graphBridgeY(index, graphBridgeUsers().length)"
+                        [attr.x2]="graphCommunityX(graphBridgeCommunityIndex(index, graphCommunities().length, 1), graphCommunities().length)"
+                        [attr.y2]="graphCommunityY(graphBridgeCommunityIndex(index, graphCommunities().length, 1), graphCommunities().length)">
+                      </line>
+                    }
                     @for (community of graphCommunities(); track community.key; let index = $index) {
-                      <circle
+                      <g
                         class="stats-graph-community"
                         [ngClass]="toneClass(community)"
-                        [attr.cx]="graphNodeX(index, graphCommunities().length, 25)"
-                        [attr.cy]="graphNodeY(index, graphCommunities().length, 25)"
-                        [attr.r]="graphNodeRadius(community) + 4"
                         tabindex="0"
                         role="button"
                         (click)="selectGraphFocus(itemLabel(community), community.value)"
                         (focus)="selectGraphFocus(itemLabel(community), community.value)">
-                      </circle>
+                        <circle
+                          [attr.cx]="graphCommunityX(index, graphCommunities().length)"
+                          [attr.cy]="graphCommunityY(index, graphCommunities().length)"
+                          [attr.r]="graphCommunityRadius(community)">
+                        </circle>
+                        <text
+                          class="stats-graph-community-count"
+                          [attr.x]="graphCommunityX(index, graphCommunities().length)"
+                          [attr.y]="graphCommunityY(index, graphCommunities().length) - 1">
+                          {{ compactGraphValue(community.value) }}
+                        </text>
+                        <text
+                          class="stats-graph-community-caption"
+                          [attr.x]="graphCommunityX(index, graphCommunities().length)"
+                          [attr.y]="graphCommunityY(index, graphCommunities().length) + 5.4">
+                          {{ 'stats.graph.map.people.short' | i18n }}
+                        </text>
+                      </g>
                     }
                     @for (bridge of graphBridgeUsers(); track bridge.key; let index = $index) {
-                      <line
-                        class="stats-graph-link"
-                        x1="50"
-                        y1="50"
-                        [attr.x2]="graphNodeX(index, graphBridgeUsers().length, 37)"
-                        [attr.y2]="graphNodeY(index, graphBridgeUsers().length, 37)">
-                      </line>
-                      <circle
+                      <g
                         class="stats-graph-node"
                         [ngClass]="toneClass(bridge)"
-                        [attr.cx]="graphNodeX(index, graphBridgeUsers().length, 37)"
-                        [attr.cy]="graphNodeY(index, graphBridgeUsers().length, 37)"
-                        [attr.r]="graphNodeRadius(bridge)"
                         tabindex="0"
                         role="button"
                         (click)="selectGraphFocus(itemLabel(bridge), bridge.value)"
                         (focus)="selectGraphFocus(itemLabel(bridge), bridge.value)">
+                      <circle
+                          [attr.cx]="graphBridgeX(index, graphBridgeUsers().length)"
+                          [attr.cy]="graphBridgeY(index, graphBridgeUsers().length)"
+                          [attr.r]="graphBridgeRadius(bridge)">
                       </circle>
+                      <text
+                          class="stats-graph-node-count"
+                          [attr.x]="graphBridgeX(index, graphBridgeUsers().length)"
+                          [attr.y]="graphBridgeY(index, graphBridgeUsers().length)">
+                        {{ compactGraphValue(bridge.value) }}
+                      </text>
+                      </g>
                     }
-                    <circle
-                      class="stats-graph-core"
-                      cx="50"
-                      cy="50"
-                      r="9"
-                      tabindex="0"
-                      role="button"
-                      (click)="selectGraphFocus(null, socialGraph.healthScore, 'stats.graph.metric.health')"
-                      (focus)="selectGraphFocus(null, socialGraph.healthScore, 'stats.graph.metric.health')">
-                    </circle>
-                    <text x="50" y="50" text-anchor="middle" dominant-baseline="middle">{{ socialGraph.healthScore }}</text>
                   </svg>
+                  <div class="stats-graph-map-legend">
+                    <span><i class="is-community"></i>{{ 'stats.graph.map.community.legend' | i18n }}</span>
+                    <span><i class="is-bridge"></i>{{ 'stats.graph.map.bridge.legend' | i18n }}</span>
+                    <span><i class="is-link"></i>{{ 'stats.graph.map.link.legend' | i18n }}</span>
+                  </div>
                 </div>
 
                 <div class="stats-graph-copy">
@@ -516,7 +538,6 @@
             <article class="stats-panel stats-panel-wide">
               <header>
                 <h3>{{ 'stats.segment.overview' | i18n }}</h3>
-                <span>{{ dashboard.source }}</span>
               </header>
               <div class="stats-segments">
                 @for (segment of topSegments(); track segment.key) {

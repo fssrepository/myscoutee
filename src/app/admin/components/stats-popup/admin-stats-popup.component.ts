@@ -460,6 +460,80 @@ export class AdminStatsPopupComponent implements OnDestroy {
     return this.clamp(5 + this.itemPercent(item) / 10, 6, 14);
   }
 
+  protected graphCommunityX(index: number, total: number): number {
+    return this.graphFixedPoint(index, total, [
+      [26, 28],
+      [70, 30],
+      [30, 72],
+      [72, 70],
+      [50, 18]
+    ], 0);
+  }
+
+  protected graphCommunityY(index: number, total: number): number {
+    return this.graphFixedPoint(index, total, [
+      [26, 28],
+      [70, 30],
+      [30, 72],
+      [72, 70],
+      [50, 18]
+    ], 1);
+  }
+
+  protected graphBridgeX(index: number, total: number): number {
+    return this.graphFixedPoint(index, total, [
+      [50, 50],
+      [49, 32],
+      [50, 68],
+      [39, 51],
+      [62, 52]
+    ], 0);
+  }
+
+  protected graphBridgeY(index: number, total: number): number {
+    return this.graphFixedPoint(index, total, [
+      [50, 50],
+      [49, 32],
+      [50, 68],
+      [39, 51],
+      [62, 52]
+    ], 1);
+  }
+
+  protected graphCommunityRadius(item: AdminStatsBreakdownItemDto): number {
+    return this.clamp(9 + this.itemPercent(item) / 7, 10, 16);
+  }
+
+  protected graphBridgeRadius(item: AdminStatsBreakdownItemDto): number {
+    return this.clamp(5 + this.itemPercent(item) / 18, 6, 10);
+  }
+
+  protected graphBridgeCommunityIndex(index: number, total: number, offset: number): number {
+    if (total <= 0) {
+      return 0;
+    }
+    return (Math.max(0, index) + Math.max(0, offset)) % total;
+  }
+
+  protected compactGraphValue(value: number | string | null | undefined): string {
+    const numericValue = Math.max(0, Math.trunc(Number(value) || 0));
+    if (numericValue >= 1000) {
+      return `${Math.round(numericValue / 100) / 10}k`;
+    }
+    return `${numericValue}`;
+  }
+
+  private graphFixedPoint(index: number, total: number, points: number[][], axis: 0 | 1): number {
+    if (index >= 0 && index < points.length) {
+      return points[index][axis] ?? 50;
+    }
+    const angle = this.graphNodeAngle(index, Math.max(1, total));
+    const radius = axis === 0 ? 32 : 30;
+    const center = axis === 0 ? 50 : 50;
+    const trig = axis === 0 ? Math.cos(angle) : Math.sin(angle);
+    return Math.round(center + trig * radius);
+  }
+
   protected graphAdminActions(graph: AdminStatsGraphDto): AdminStatsGraphAction[] {
     const signalValue = (key: string): number => {
       const signal = graph.signals.find(item => item.key === key);
