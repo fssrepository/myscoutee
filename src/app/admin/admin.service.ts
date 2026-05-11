@@ -168,6 +168,47 @@ export interface AdminStatsTimelinePointDto {
   moderation: number;
 }
 
+export interface AdminStatsGraphTimelinePointDto {
+  dateKey: string;
+  label: string;
+  activeEdges: number;
+  newEdges: number;
+  recurringEdges: number;
+  weakTies: number;
+  bridgeUsers: number;
+  communities: number;
+  networkQuality: number;
+  clusterQuality: number;
+}
+
+export interface AdminStatsGraphDto {
+  healthScore: number;
+  healthLabelKey: string;
+  insightKey: string;
+  metrics: AdminStatsMetricDto[];
+  bridgeUsers: AdminStatsBreakdownItemDto[];
+  communities: AdminStatsBreakdownItemDto[];
+  signals: AdminStatsBreakdownItemDto[];
+  timeline: AdminStatsGraphTimelinePointDto[];
+}
+
+export interface AdminStatsRevenueTimelinePointDto {
+  dateKey: string;
+  label: string;
+  payableEvents: number;
+  payableAssets: number;
+  projectedEventCents: number;
+  projectedAssetCents: number;
+  actualPaymentCents: number;
+  payingUsers: number;
+}
+
+export interface AdminStatsRevenueDto {
+  metrics: AdminStatsMetricDto[];
+  assetCategories: AdminStatsBreakdownItemDto[];
+  timeline: AdminStatsRevenueTimelinePointDto[];
+}
+
 export interface AdminStatsDashboardDto {
   generatedAtIso: string;
   source: 'demo' | 'http' | 'fallback';
@@ -182,6 +223,8 @@ export interface AdminStatsDashboardDto {
   timeline: AdminStatsTimelinePointDto[];
   eventTypes: AdminStatsBreakdownItemDto[];
   activityMix: AdminStatsBreakdownItemDto[];
+  graph: AdminStatsGraphDto;
+  revenue: AdminStatsRevenueDto;
 }
 
 interface AdminModerationStore {
@@ -1601,6 +1644,15 @@ export class AdminService {
       icon: string,
       tone: AdminStatsMetricDto['tone']
     ): AdminStatsBreakdownItemDto => ({ key, labelKey, value, total, icon, tone });
+    const metric = (
+      key: string,
+      labelKey: string,
+      value: number,
+      valueLabel: string,
+      icon: string,
+      tone: AdminStatsMetricDto['tone'],
+      percent: number
+    ): AdminStatsMetricDto => ({ key, labelKey, value, valueLabel, icon, tone, percent });
     const timeline: AdminStatsTimelinePointDto[] = [
       ['2026-04-28', 'Apr 28', 3, 24, 18, 4, 2, 38, 1],
       ['2026-04-29', 'Apr 29', 5, 31, 22, 6, 3, 44, 2],
@@ -1626,6 +1678,31 @@ export class AdminService {
       assets: Number(assets),
       messages: Number(messages),
       moderation: Number(moderation)
+    }));
+    const revenueTimeline: AdminStatsRevenueTimelinePointDto[] = [
+      ['2026-04-28', 'Apr 28', 1, 1, 18000, 12000, 0, 0],
+      ['2026-04-29', 'Apr 29', 1, 2, 12500, 22000, 4200, 2],
+      ['2026-04-30', 'Apr 30', 0, 1, 0, 9500, 3800, 1],
+      ['2026-05-01', 'May 1', 2, 1, 26000, 18000, 6200, 3],
+      ['2026-05-02', 'May 2', 1, 2, 14500, 24000, 5300, 2],
+      ['2026-05-03', 'May 3', 0, 1, 0, 8500, 0, 0],
+      ['2026-05-04', 'May 4', 2, 1, 31000, 13000, 7800, 4],
+      ['2026-05-05', 'May 5', 1, 1, 16500, 16000, 2900, 1],
+      ['2026-05-06', 'May 6', 0, 2, 0, 28000, 6100, 3],
+      ['2026-05-07', 'May 7', 2, 1, 27500, 14000, 4500, 2],
+      ['2026-05-08', 'May 8', 1, 0, 15500, 0, 0, 0],
+      ['2026-05-09', 'May 9', 1, 2, 21000, 34000, 8200, 3],
+      ['2026-05-10', 'May 10', 0, 1, 0, 15000, 3200, 1],
+      ['2026-05-11', 'May 11', 0, 0, 0, 0, 0, 0]
+    ].map(([dateKey, label, payableEvents, payableAssets, projectedEventCents, projectedAssetCents, actualPaymentCents, payingUsers]) => ({
+      dateKey: `${dateKey}`,
+      label: `${label}`,
+      payableEvents: Number(payableEvents),
+      payableAssets: Number(payableAssets),
+      projectedEventCents: Number(projectedEventCents),
+      projectedAssetCents: Number(projectedAssetCents),
+      actualPaymentCents: Number(actualPaymentCents),
+      payingUsers: Number(payingUsers)
     }));
 
     return this.normalizeStatsDashboard({
@@ -1700,7 +1777,92 @@ export class AdminService {
         item('assets', 'stats.domain.assets', 18, 1001, 'inventory_2', 'gold'),
         item('chats', 'stats.domain.chats', 426, 1001, 'chat', 'blue'),
         item('moderation', 'stats.domain.moderation', 14, 1001, 'shield', 'red')
-      ]
+      ],
+      graph: {
+        healthScore: 78,
+        healthLabelKey: 'stats.graph.health.watch',
+        insightKey: 'stats.graph.insight.healthy',
+        metrics: [
+          metric('graph-health', 'stats.graph.metric.health', 78, '78', 'monitoring', 'green', 78),
+          metric('graph-users', 'stats.graph.metric.users', 42, '42', 'person', 'blue', 100),
+          metric('graph-edges', 'stats.graph.metric.edges', 116, '116', 'share', 'purple', 92),
+          metric('graph-avg-degree', 'stats.graph.metric.avg.degree', 55, '5.5', 'hub', 'gold', 100),
+          metric('graph-communities', 'stats.graph.metric.communities', 6, '6', 'bubble_chart', 'green', 57),
+          metric('graph-bridges', 'stats.graph.metric.bridges', 8, '8', 'conversion_path', 'red', 100),
+          metric('graph-network-quality', 'stats.graph.metric.network.quality', 64, '64%', 'ssid_chart', 'blue', 64),
+          metric('graph-cluster-quality', 'stats.graph.metric.cluster.quality', 79, '79%', 'bubble_chart', 'green', 79),
+          metric('gender-female-to-male', 'stats.graph.metric.gender.female.to.male', 73, '7.3', 'female', 'purple', 73),
+          metric('gender-male-to-female', 'stats.graph.metric.gender.male.to.female', 69, '6.9', 'male', 'gold', 69)
+        ],
+        bridgeUsers: [
+          { key: 'lina-stone', labelKey: '', label: 'Lina Stone', value: 96, total: 320, icon: 'conversion_path', tone: 'red' },
+          { key: 'luca-hale', labelKey: '', label: 'Luca Hale', value: 84, total: 320, icon: 'conversion_path', tone: 'purple' },
+          { key: 'ava-baker', labelKey: '', label: 'Ava Baker', value: 71, total: 320, icon: 'conversion_path', tone: 'green' },
+          { key: 'mason-grant', labelKey: '', label: 'Mason Grant', value: 62, total: 320, icon: 'conversion_path', tone: 'gold' }
+        ],
+        communities: [
+          { key: 'community-1', labelKey: '', label: 'Austin event circle', value: 14, total: 42, icon: 'bubble_chart', tone: 'green' },
+          { key: 'community-2', labelKey: '', label: 'Seattle creators', value: 9, total: 42, icon: 'bubble_chart', tone: 'blue' },
+          { key: 'community-3', labelKey: '', label: 'Denver assets', value: 7, total: 42, icon: 'bubble_chart', tone: 'gold' },
+          { key: 'community-4', labelKey: '', label: 'Miami mixed', value: 5, total: 42, icon: 'bubble_chart', tone: 'purple' }
+        ],
+        signals: [
+          item('reachability-2-hop', 'stats.graph.signal.reachability', 68, 100, 'travel_explore', 'blue'),
+          item('weak-tie-ratio', 'stats.graph.signal.weak.ties', 34, 100, 'lan', 'purple'),
+          item('clustering', 'stats.graph.signal.clustering', 42, 100, 'bubble_chart', 'green'),
+          item('recurring-edge-ratio', 'stats.graph.signal.recurring', 31, 100, 'repeat', 'gold'),
+          item('bridge-coverage', 'stats.graph.signal.bridge.coverage', 19, 100, 'conversion_path', 'red'),
+          item('largest-community', 'stats.graph.signal.largest.community', 33, 100, 'groups', 'slate'),
+          item('network-quality', 'stats.graph.signal.network.quality', 64, 100, 'ssid_chart', 'blue'),
+          item('cluster-quality', 'stats.graph.signal.cluster.quality', 79, 100, 'bubble_chart', 'green')
+        ],
+        timeline: [
+          ['2026-04-28', 'Apr 28', 56, 8, 5, 19, 5, 7, 51, 69],
+          ['2026-04-29', 'Apr 29', 62, 7, 8, 21, 5, 7, 53, 70],
+          ['2026-04-30', 'Apr 30', 68, 9, 7, 23, 6, 7, 55, 71],
+          ['2026-05-01', 'May 1', 74, 10, 9, 25, 6, 7, 57, 72],
+          ['2026-05-02', 'May 2', 80, 11, 11, 28, 7, 7, 58, 73],
+          ['2026-05-03', 'May 3', 83, 6, 10, 29, 7, 7, 59, 74],
+          ['2026-05-04', 'May 4', 88, 12, 13, 31, 7, 6, 60, 75],
+          ['2026-05-05', 'May 5', 94, 14, 12, 32, 8, 6, 61, 76],
+          ['2026-05-06', 'May 6', 97, 7, 14, 32, 8, 6, 62, 76],
+          ['2026-05-07', 'May 7', 103, 13, 16, 35, 8, 6, 63, 77],
+          ['2026-05-08', 'May 8', 108, 8, 15, 36, 8, 6, 63, 78],
+          ['2026-05-09', 'May 9', 113, 12, 18, 38, 8, 6, 64, 78],
+          ['2026-05-10', 'May 10', 116, 9, 17, 39, 8, 6, 64, 79],
+          ['2026-05-11', 'May 11', 116, 5, 14, 40, 8, 6, 64, 79]
+        ].map(([dateKey, label, activeEdges, newEdges, recurringEdges, weakTies, bridgeUsers, communities, networkQuality, clusterQuality]) => ({
+          dateKey: `${dateKey}`,
+          label: `${label}`,
+          activeEdges: Number(activeEdges),
+          newEdges: Number(newEdges),
+          recurringEdges: Number(recurringEdges),
+          weakTies: Number(weakTies),
+          bridgeUsers: Number(bridgeUsers),
+          communities: Number(communities),
+          networkQuality: Number(networkQuality),
+          clusterQuality: Number(clusterQuality)
+        }))
+      },
+      revenue: {
+        metrics: [
+          metric('payable-events', 'stats.revenue.metric.payable.events', 12, '12', 'confirmation_number', 'green', 30),
+          metric('projected-event-revenue', 'stats.revenue.metric.projected.events', 202500, '$2,025.00', 'event_available', 'green', 48),
+          metric('avg-event-ticket', 'stats.revenue.metric.avg.event.ticket', 1688, '$16.88', 'sell', 'gold', 17),
+          metric('payable-assets', 'stats.revenue.metric.payable.assets', 16, '16', 'inventory_2', 'purple', 40),
+          metric('projected-asset-revenue', 'stats.revenue.metric.projected.assets', 213000, '$2,130.00', 'category', 'blue', 52),
+          metric('avg-asset-price', 'stats.revenue.metric.avg.asset.price', 13313, '$133.13', 'payments', 'slate', 100),
+          metric('actual-paid', 'stats.revenue.metric.actual.paid', 52200, '$522.00', 'paid', 'blue', 13),
+          metric('paying-users', 'stats.revenue.metric.paying.users', 22, '22', 'group', 'red', 88),
+          metric('avg-payment', 'stats.revenue.metric.avg.payment', 2373, '$23.73', 'receipt_long', 'purple', 24)
+        ],
+        assetCategories: [
+          { key: 'accommodation', labelKey: 'accommodation', label: '', value: 84000, total: 213000, icon: 'hotel', tone: 'gold' },
+          { key: 'car', labelKey: 'car', label: '', value: 77000, total: 213000, icon: 'directions_car', tone: 'blue' },
+          { key: 'supplies', labelKey: 'supplies', label: '', value: 52000, total: 213000, icon: 'category', tone: 'green' }
+        ],
+        timeline: revenueTimeline
+      }
     }, 'demo');
   }
 
@@ -1722,7 +1884,9 @@ export class AdminService {
       topTopics: (dashboard.topTopics ?? []).map(item => this.normalizeStatsBreakdownItem(item)),
       timeline: (dashboard.timeline ?? []).map(point => this.normalizeStatsTimelinePoint(point)),
       eventTypes: (dashboard.eventTypes ?? []).map(item => this.normalizeStatsBreakdownItem(item)),
-      activityMix: (dashboard.activityMix ?? []).map(item => this.normalizeStatsBreakdownItem(item))
+      activityMix: (dashboard.activityMix ?? []).map(item => this.normalizeStatsBreakdownItem(item)),
+      graph: this.normalizeStatsGraph(dashboard.graph),
+      revenue: this.normalizeStatsRevenue(dashboard.revenue)
     };
   }
 
@@ -1780,12 +1944,66 @@ export class AdminService {
     };
   }
 
+  private normalizeStatsGraph(graph: AdminStatsGraphDto | null | undefined): AdminStatsGraphDto {
+    return {
+      healthScore: this.clampInteger(graph?.healthScore ?? 0, 0, 100, 0),
+      healthLabelKey: `${graph?.healthLabelKey ?? ''}`.trim() || 'stats.graph.health.cold',
+      insightKey: `${graph?.insightKey ?? ''}`.trim() || 'stats.graph.insight.cold',
+      metrics: (graph?.metrics ?? []).map(metric => this.normalizeStatsMetric(metric)),
+      bridgeUsers: (graph?.bridgeUsers ?? []).map(item => this.normalizeStatsBreakdownItem(item)),
+      communities: (graph?.communities ?? []).map(item => this.normalizeStatsBreakdownItem(item)),
+      signals: (graph?.signals ?? []).map(item => this.normalizeStatsBreakdownItem(item)),
+      timeline: (graph?.timeline ?? []).map(point => this.normalizeStatsGraphTimelinePoint(point))
+    };
+  }
+
+  private normalizeStatsGraphTimelinePoint(point: AdminStatsGraphTimelinePointDto): AdminStatsGraphTimelinePointDto {
+    return {
+      dateKey: `${point.dateKey ?? ''}`.trim(),
+      label: `${point.label ?? ''}`.trim(),
+      activeEdges: Math.max(0, Math.trunc(Number(point.activeEdges) || 0)),
+      newEdges: Math.max(0, Math.trunc(Number(point.newEdges) || 0)),
+      recurringEdges: Math.max(0, Math.trunc(Number(point.recurringEdges) || 0)),
+      weakTies: Math.max(0, Math.trunc(Number(point.weakTies) || 0)),
+      bridgeUsers: Math.max(0, Math.trunc(Number(point.bridgeUsers) || 0)),
+      communities: Math.max(0, Math.trunc(Number(point.communities) || 0)),
+      networkQuality: Math.max(0, Math.trunc(Number(point.networkQuality) || 0)),
+      clusterQuality: Math.max(0, Math.trunc(Number(point.clusterQuality) || 0))
+    };
+  }
+
+  private normalizeStatsRevenue(revenue: AdminStatsRevenueDto | null | undefined): AdminStatsRevenueDto {
+    return {
+      metrics: (revenue?.metrics ?? []).map(metric => this.normalizeStatsMetric(metric)),
+      assetCategories: (revenue?.assetCategories ?? []).map(item => this.normalizeStatsBreakdownItem(item)),
+      timeline: (revenue?.timeline ?? []).map(point => this.normalizeStatsRevenueTimelinePoint(point))
+    };
+  }
+
+  private normalizeStatsRevenueTimelinePoint(point: AdminStatsRevenueTimelinePointDto): AdminStatsRevenueTimelinePointDto {
+    return {
+      dateKey: `${point.dateKey ?? ''}`.trim(),
+      label: `${point.label ?? ''}`.trim(),
+      payableEvents: Math.max(0, Math.trunc(Number(point.payableEvents) || 0)),
+      payableAssets: Math.max(0, Math.trunc(Number(point.payableAssets) || 0)),
+      projectedEventCents: Math.max(0, Math.trunc(Number(point.projectedEventCents) || 0)),
+      projectedAssetCents: Math.max(0, Math.trunc(Number(point.projectedAssetCents) || 0)),
+      actualPaymentCents: Math.max(0, Math.trunc(Number(point.actualPaymentCents) || 0)),
+      payingUsers: Math.max(0, Math.trunc(Number(point.payingUsers) || 0))
+    };
+  }
+
   private isFreshStatsDemoSnapshot(snapshot: AdminStatsDashboardDto): boolean {
     return snapshot.timeline.length > 0
       && snapshot.eventTypes.length > 0
       && snapshot.segments.some(segment => segment.key === 'community')
       && snapshot.segments.some(segment => segment.items.some(item => item.key === 'all-events'))
-      && snapshot.segments.some(segment => segment.items.some(item => item.key === 'profile-fill-average'));
+      && snapshot.segments.some(segment => segment.items.some(item => item.key === 'profile-fill-average'))
+      && snapshot.graph.timeline.length > 0
+      && snapshot.graph.metrics.some(metric => metric.key === 'graph-network-quality')
+      && snapshot.revenue.timeline.length > 0
+      && snapshot.revenue.assetCategories.some(item => item.key === 'car')
+      && !snapshot.revenue.assetCategories.some(item => item.key === 'equipment' || item.key === 'transport');
   }
 
   private normalizeStatsTone(value: string | null | undefined): AdminStatsMetricDto['tone'] {

@@ -485,7 +485,7 @@ export class EventCheckoutPopupComponent {
       return 'Continue';
     }
     if (this.paymentStep) {
-      return 'Buy';
+      return this.paymentDisabled() ? dialog.confirmLabel : 'Buy';
     }
     if (this.shouldAwaitApprovalBeforePayment() || this.isWaitingListSelection()) {
       return dialog.confirmLabel;
@@ -505,9 +505,15 @@ export class EventCheckoutPopupComponent {
       return dialog.busyConfirmLabel;
     }
     if (this.totalAmount() > 0) {
-      return this.paymentStep ? 'Buying...' : 'Checking out...';
+      return this.paymentStep
+        ? (this.paymentDisabled() ? dialog.busyConfirmLabel : 'Buying...')
+        : 'Checking out...';
     }
     return dialog.busyConfirmLabel;
+  }
+
+  protected paymentDisabled(): boolean {
+    return !environment.paymentIntegrationEnabled;
   }
 
   protected canContinue(): boolean {
