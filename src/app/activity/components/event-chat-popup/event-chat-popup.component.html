@@ -441,6 +441,8 @@
                     [class.chat-card-attachment-event]="attachment.type === 'event'"
                     [class.chat-card-attachment-asset]="attachment.type === 'asset'"
                     [class.chat-card-attachment-link]="attachment.type === 'link'"
+                    [class.chat-card-attachment-unavailable]="isAttachmentUnavailable(attachment)"
+                    [attr.aria-disabled]="isAttachmentUnavailable(attachment)"
                     >
                     @if (attachment.previewUrl) {
                       <span class="chat-card-attachment-media">
@@ -453,6 +455,9 @@
                         {{ chatAttachmentTypeLabel(attachment) }}
                       </span>
                       <strong>{{ attachment.title }}</strong>
+                      @if (isAttachmentUnavailable(attachment)) {
+                        <small class="chat-card-attachment-status">{{ unavailableAttachmentLabel(attachment) }}</small>
+                      }
                       @if (attachment.subtitle) {
                         <small>{{ attachment.subtitle }}</small>
                       }

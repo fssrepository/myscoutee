@@ -55,7 +55,7 @@ interface HttpChatMessageDto {
   readBy?: Array<{
     id: string;
     initials: string;
-    gender: 'woman' | 'man';
+    gender: AppTypes.ChatUserGender;
     imageUrl?: string | null;
   }>;
   deletedAtIso?: string | null;
@@ -80,7 +80,7 @@ interface HttpChatMessageReactionDto {
   userId: string;
   userName: string;
   userInitials: string;
-  userGender: 'woman' | 'man';
+  userGender: AppTypes.ChatUserGender;
   reactedAtIso: string;
 }
 
@@ -116,14 +116,14 @@ interface HttpChatTypingDto {
   userId: string;
   userName: string;
   userInitials: string;
-  userGender: 'woman' | 'man';
+  userGender: AppTypes.ChatUserGender;
   typing: boolean;
 }
 
 interface HttpChatReadReceiptDto {
   userId: string;
   userInitials: string;
-  userGender: 'woman' | 'man';
+  userGender: AppTypes.ChatUserGender;
   messageIds: string[];
   readAtIso: string;
 }
@@ -619,8 +619,11 @@ export class HttpChatsService {
     return `${value ?? ''}`.trim();
   }
 
-  private normalizeHttpGender(value: unknown): 'woman' | 'man' {
+  private normalizeHttpGender(value: unknown): AppTypes.ChatUserGender {
     const normalized = this.normalizeHttpText(value).toLowerCase();
+    if (normalized === 'deleted' || normalized === 'du') {
+      return 'deleted';
+    }
     return normalized === 'woman' || normalized.startsWith('w') || normalized.startsWith('f')
       ? 'woman'
       : 'man';
@@ -865,7 +868,7 @@ export class HttpChatsService {
           userId: `${payload.typing.userId ?? ''}`.trim(),
           userName: `${payload.typing.userName ?? ''}`.trim(),
           userInitials: `${payload.typing.userInitials ?? ''}`.trim(),
-          userGender: payload.typing.userGender === 'woman' ? 'woman' : 'man',
+          userGender: this.normalizeHttpGender(payload.typing.userGender),
           typing: payload.typing.typing === true
         }
       };
@@ -877,7 +880,7 @@ export class HttpChatsService {
         read: {
           userId: `${payload.read.userId ?? ''}`.trim(),
           userInitials: `${payload.read.userInitials ?? ''}`.trim(),
-          userGender: payload.read.userGender === 'woman' ? 'woman' : 'man',
+          userGender: this.normalizeHttpGender(payload.read.userGender),
           messageIds: (payload.read.messageIds ?? []).map((messageId: unknown) => `${messageId ?? ''}`.trim()).filter(Boolean),
           readAtIso: `${payload.read.readAtIso ?? ''}`.trim()
         }

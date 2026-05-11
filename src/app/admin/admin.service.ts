@@ -1907,6 +1907,7 @@ export class AdminService {
       kpis: [
         { key: 'active-users', labelKey: 'stats.kpi.active.users', value: 42, valueLabel: '42', icon: 'person', tone: 'blue', percent: 33 },
         { key: 'returning-users', labelKey: 'stats.kpi.returning.users', value: 31, valueLabel: '31', icon: 'repeat', tone: 'purple', percent: 24 },
+        { key: 'departed-users', labelKey: 'stats.kpi.departed.users', value: 7, valueLabel: '7', icon: 'person_remove', tone: 'slate', percent: 5 },
         { key: 'active-events', labelKey: 'stats.kpi.active.events', value: 18, valueLabel: '18', icon: 'event_available', tone: 'green', percent: 45 },
         { key: 'active-assets', labelKey: 'stats.kpi.active.assets', value: 27, valueLabel: '27', icon: 'inventory_2', tone: 'gold', percent: 68 },
         { key: 'moderation-pressure', labelKey: 'stats.kpi.moderation.pressure', value: 14, valueLabel: '14', icon: 'shield', tone: 'red', percent: 18 }
@@ -1917,6 +1918,8 @@ export class AdminService {
           item('active-users-7d', 'stats.event.active.users.7d', 42, 128, 'person', 'blue'),
           item('active-users-30d', 'stats.event.active.users.30d', 68, 128, 'calendar_month', 'green'),
           item('returning-users', 'stats.event.returning.users', 31, 128, 'repeat', 'purple'),
+          item('profile.deleted', 'stats.event.profile.deleted', 7, 135, 'person_remove', 'slate'),
+          item('deleted-median-days', 'stats.event.deleted.median.days', 46, 46, 'timer', 'gold'),
           item('profile-fill-average', 'stats.event.profile.fill.average', 74, 100, 'fact_check', 'gold'),
           item('tried-users', 'stats.event.tried.users', 128, 128, 'group', 'slate')
         ]),

@@ -607,6 +607,7 @@ export class NavigatorService {
     this.confirmationDialogService.open({
       title: 'Delete account?',
       message: activeUserName,
+      warningMessage: 'You can reactivate within 30 days. After that, the account is permanently purged.',
       cancelLabel: 'Cancel',
       confirmLabel: 'Delete',
       confirmTone: 'danger',
