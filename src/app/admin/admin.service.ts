@@ -230,24 +230,36 @@ export interface AdminStatsDashboardDto {
 
 export type AdminParamValueType = 'number' | 'text';
 
+export interface AdminParamOptionDto {
+  value: string;
+  label: string;
+  labelKey?: string | null;
+}
+
 export interface AdminParamFieldDto {
   key: string;
   label: string;
+  labelKey?: string | null;
   group: string;
+  groupKey?: string | null;
   valueType: AdminParamValueType;
   numberValue?: number | null;
   textValue?: string | null;
   unit?: string | null;
+  options?: AdminParamOptionDto[] | null;
   strategy?: string | null;
+  strategyKey?: string | null;
 }
 
 export interface AdminParamsSectionDto {
   key: string;
   label: string;
+  labelKey?: string | null;
   version: number;
   changedDate: string;
   changedBy: string;
   summary: string;
+  summaryKey?: string | null;
   fields: AdminParamFieldDto[];
 }
 
@@ -262,6 +274,7 @@ export interface AdminParamsHistoryItemDto {
   changedDate: string;
   changedBy: string;
   summary: string;
+  summaryKey?: string | null;
   active: boolean;
   fields: AdminParamFieldDto[];
 }
@@ -269,6 +282,7 @@ export interface AdminParamsHistoryItemDto {
 export interface AdminParamsHistoryDto {
   sectionKey: string;
   label: string;
+  labelKey?: string | null;
   versions: AdminParamsHistoryItemDto[];
 }
 
@@ -604,6 +618,7 @@ export class AdminService {
           changedDate: nowIso,
           changedBy: this.activeAdmin()?.id ?? 'demo-admin',
           summary: summary.trim() || `Updated ${section.label} parameters.`,
+          summaryKey: this.paramSummaryKey(summary.trim() || `Updated ${section.label} parameters.`, section.key),
           fields: normalizedFields.map(field => ({ ...field }))
         }
       : section
@@ -621,6 +636,7 @@ export class AdminService {
               changedDate: nowIso,
               changedBy: this.activeAdmin()?.id ?? 'demo-admin',
               summary: updatedSection.summary,
+              summaryKey: updatedSection.summaryKey,
               active: true,
               fields: updatedSection.fields.map(field => ({ ...field }))
             }, ...(store.historyBySection[normalizedSectionKey] ?? []).map(item => ({ ...item, active: false }))]
@@ -654,6 +670,7 @@ export class AdminService {
     return this.normalizeParamsHistory({
       sectionKey: normalizedSectionKey,
       label: section?.label ?? normalizedSectionKey,
+      labelKey: section?.labelKey ?? this.paramSectionLabelKey(normalizedSectionKey),
       versions: store.historyBySection[normalizedSectionKey] ?? []
     });
   }
@@ -2297,6 +2314,7 @@ export class AdminService {
           changedDate: section.changedDate,
           changedBy: section.changedBy,
           summary: section.summary,
+          summaryKey: section.summaryKey,
           active: true,
           fields: section.fields.map(field => ({ ...field }))
         },
@@ -2306,6 +2324,7 @@ export class AdminService {
           changedDate,
           changedBy: 'system',
           summary: 'Initial parameter seed.',
+          summaryKey: this.paramSummaryKey('Initial parameter seed.', section.key),
           active: section.version === 1,
           fields: section.fields.map(field => ({ ...field }))
         }
@@ -2331,10 +2350,12 @@ export class AdminService {
     return {
       key,
       label,
+      labelKey: this.paramSectionLabelKey(key),
       version,
       changedDate,
       changedBy,
       summary,
+      summaryKey: this.paramSummaryKey(summary, key),
       fields: fields.map(field => this.normalizeParamField(field))
     };
   }
@@ -2347,7 +2368,20 @@ export class AdminService {
     unit: string,
     strategy = ''
   ): AdminParamFieldDto {
-    return { key, label, group, valueType: 'number', numberValue, textValue: null, unit, strategy };
+    return {
+      key,
+      label,
+      labelKey: this.paramFieldLabelKey(key),
+      group,
+      groupKey: this.paramGroupLabelKey(group),
+      valueType: 'number',
+      numberValue,
+      textValue: null,
+      unit,
+      options: [],
+      strategy,
+      strategyKey: this.paramStrategyLabelKey(strategy)
+    };
   }
 
   private textParam(
@@ -2357,7 +2391,20 @@ export class AdminService {
     textValue: string,
     strategy = ''
   ): AdminParamFieldDto {
-    return { key, label, group, valueType: 'text', numberValue: null, textValue, unit: null, strategy };
+    return {
+      key,
+      label,
+      labelKey: this.paramFieldLabelKey(key),
+      group,
+      groupKey: this.paramGroupLabelKey(group),
+      valueType: 'text',
+      numberValue: null,
+      textValue,
+      unit: null,
+      options: this.paramOptionsFor(key),
+      strategy,
+      strategyKey: this.paramStrategyLabelKey(strategy)
+    };
   }
 
   private normalizeParamsState(state: AdminParamsStateDto): AdminParamsStateDto {
@@ -2396,10 +2443,12 @@ export class AdminService {
     return {
       key: `${section.key ?? ''}`.trim(),
       label: `${section.label ?? ''}`.trim() || `${section.key ?? ''}`.trim(),
+      labelKey: `${section.labelKey ?? ''}`.trim() || this.paramSectionLabelKey(section.key),
       version: Math.max(1, Math.trunc(Number(section.version) || 1)),
       changedDate: `${section.changedDate ?? ''}`.trim() || new Date().toISOString(),
       changedBy: `${section.changedBy ?? ''}`.trim() || 'system',
       summary: `${section.summary ?? ''}`.trim(),
+      summaryKey: `${section.summaryKey ?? ''}`.trim() || this.paramSummaryKey(section.summary, section.key),
       fields: (section.fields ?? []).map(field => this.normalizeParamField(field))
     };
   }
@@ -2412,12 +2461,25 @@ export class AdminService {
     return {
       key: `${field.key ?? ''}`.trim(),
       label: `${field.label ?? ''}`.trim() || `${field.key ?? ''}`.trim(),
+      labelKey: `${field.labelKey ?? ''}`.trim() || this.paramFieldLabelKey(field.key),
       group: `${field.group ?? ''}`.trim() || 'General',
+      groupKey: `${field.groupKey ?? ''}`.trim() || this.paramGroupLabelKey(field.group),
       valueType,
       numberValue,
       textValue: valueType === 'text' ? `${field.textValue ?? ''}`.trim() : null,
       unit: `${field.unit ?? ''}`.trim(),
-      strategy: `${field.strategy ?? ''}`.trim()
+      options: (field.options ?? []).map(option => this.normalizeParamOption(option)),
+      strategy: `${field.strategy ?? ''}`.trim(),
+      strategyKey: `${field.strategyKey ?? ''}`.trim() || this.paramStrategyLabelKey(field.strategy)
+    };
+  }
+
+  private normalizeParamOption(option: AdminParamOptionDto): AdminParamOptionDto {
+    const value = `${option.value ?? ''}`.trim();
+    return {
+      value,
+      label: `${option.label ?? ''}`.trim() || value,
+      labelKey: `${option.labelKey ?? ''}`.trim() || this.paramStrategyLabelKey(value)
     };
   }
 
@@ -2425,6 +2487,7 @@ export class AdminService {
     return {
       sectionKey: `${history.sectionKey ?? ''}`.trim(),
       label: `${history.label ?? ''}`.trim() || `${history.sectionKey ?? ''}`.trim(),
+      labelKey: `${history.labelKey ?? ''}`.trim() || this.paramSectionLabelKey(history.sectionKey),
       versions: (history.versions ?? [])
         .map(item => this.normalizeParamsHistoryItem(item))
         .sort((left, right) => right.version - left.version)
@@ -2438,9 +2501,62 @@ export class AdminService {
       changedDate: `${item.changedDate ?? ''}`.trim() || new Date().toISOString(),
       changedBy: `${item.changedBy ?? ''}`.trim() || 'system',
       summary: `${item.summary ?? ''}`.trim(),
+      summaryKey: `${item.summaryKey ?? ''}`.trim(),
       active: item.active === true,
       fields: (item.fields ?? []).map(field => this.normalizeParamField(field))
     };
+  }
+
+  private paramSectionLabelKey(sectionKey: string | null | undefined): string {
+    const normalized = `${sectionKey ?? ''}`.trim();
+    return normalized ? `admin.params.section.${normalized}` : 'admin.params.platform';
+  }
+
+  private paramFieldLabelKey(fieldKey: string | null | undefined): string {
+    const normalized = `${fieldKey ?? ''}`.trim();
+    return normalized ? `admin.params.field.${normalized}` : '';
+  }
+
+  private paramGroupLabelKey(group: string | null | undefined): string {
+    const normalized = this.paramsI18nSegment(group);
+    return normalized ? `admin.params.group.${normalized}` : 'admin.params.group.general';
+  }
+
+  private paramStrategyLabelKey(strategy: string | null | undefined): string {
+    const normalized = `${strategy ?? ''}`.trim();
+    return normalized ? `admin.params.strategy.${normalized}` : '';
+  }
+
+  private paramOptionsFor(fieldKey: string | null | undefined): AdminParamOptionDto[] {
+    if (`${fieldKey ?? ''}`.trim() !== 'distance.strategy') {
+      return [];
+    }
+    return ['linear', 'exponential', 'bucketed'].map(value => ({
+      value,
+      label: value.charAt(0).toUpperCase() + value.slice(1),
+      labelKey: this.paramStrategyLabelKey(value)
+    }));
+  }
+
+  private paramSummaryKey(summary: string | null | undefined, sectionKey: string | null | undefined): string {
+    const normalizedSummary = `${summary ?? ''}`.trim();
+    const normalizedSection = `${sectionKey ?? ''}`.trim();
+    if (!normalizedSummary || !normalizedSection) {
+      return '';
+    }
+    if (/^Updated\s+.+?\s+parameters\.$/i.test(normalizedSummary)) {
+      return `admin.params.summary.updated.${normalizedSection}`;
+    }
+    return '';
+  }
+
+  private paramsI18nSegment(value: string | null | undefined): string {
+    return `${value ?? ''}`
+      .trim()
+      .replace(/([a-z0-9])([A-Z])/g, '$1.$2')
+      .replace(/[^a-zA-Z0-9]+/g, '.')
+      .replace(/^\.+|\.+$/g, '')
+      .toLocaleLowerCase('en-US');
   }
 
   private nextDemoParamsVersion(store: AdminParamsDemoStore): number {

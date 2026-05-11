@@ -4,21 +4,23 @@ import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 
 import { RouteDelayService } from '../../../shared/core/base/services/route-delay.service';
+import { I18nPipe } from '../../../shared/i18n';
 import {
   AdminService,
   type AdminParamFieldDto,
+  type AdminParamOptionDto,
   type AdminParamsHistoryDto,
   type AdminParamsHistoryItemDto,
   type AdminParamsSectionDto,
   type AdminParamsStateDto
 } from '../../admin.service';
 
-type AdminParamOption = Readonly<{ value: string; label: string }>;
+type AdminParamOption = Readonly<AdminParamOptionDto>;
 
 @Component({
   selector: 'app-admin-params-popup',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatIconModule],
+  imports: [CommonModule, FormsModule, MatIconModule, I18nPipe],
   templateUrl: './admin-params-popup.component.html',
   styleUrl: './admin-params-popup.component.scss'
 })
@@ -188,13 +190,21 @@ export class AdminParamsPopupComponent implements OnDestroy {
     }
   }
 
-  protected fieldsByGroup(fields: readonly AdminParamFieldDto[]): { group: string; fields: AdminParamFieldDto[] }[] {
+  protected fieldsByGroup(fields: readonly AdminParamFieldDto[]): { group: string; groupKey: string; fields: AdminParamFieldDto[] }[] {
     const groups = new Map<string, AdminParamFieldDto[]>();
+    const groupKeys = new Map<string, string>();
     for (const field of fields) {
       const group = `${field.group ?? ''}`.trim() || 'General';
+      if (!groupKeys.has(group)) {
+        groupKeys.set(group, `${field.groupKey ?? ''}`.trim());
+      }
       groups.set(group, [...(groups.get(group) ?? []), field]);
     }
-    return [...groups.entries()].map(([group, groupFields]) => ({ group, fields: groupFields }));
+    return [...groups.entries()].map(([group, groupFields]) => ({
+      group,
+      groupKey: groupKeys.get(group) ?? '',
+      fields: groupFields
+    }));
   }
 
   protected sectionDate(value: string | null | undefined): string {
@@ -202,7 +212,7 @@ export class AdminParamsPopupComponent implements OnDestroy {
     if (Number.isNaN(date.getTime())) {
       return `${value ?? ''}`.trim();
     }
-    return date.toLocaleString('en-US', {
+    return date.toLocaleString(undefined, {
       month: 'short',
       day: 'numeric',
       hour: 'numeric',
@@ -212,7 +222,7 @@ export class AdminParamsPopupComponent implements OnDestroy {
 
   protected fieldValueLabel(field: AdminParamFieldDto): string {
     if (field.valueType === 'text') {
-      return `${field.textValue ?? ''}`.trim();
+      return this.textFieldOptionLabel(field);
     }
     const value = Number(field.numberValue);
     const formatted = Number.isInteger(value) ? `${value}` : value.toFixed(2).replace(/\.?0+$/, '');
@@ -220,16 +230,7 @@ export class AdminParamsPopupComponent implements OnDestroy {
   }
 
   protected textFieldOptions(field: AdminParamFieldDto): readonly AdminParamOption[] {
-    switch (`${field.key ?? ''}`.trim()) {
-      case 'distance.strategy':
-        return [
-          { value: 'linear', label: 'Linear' },
-          { value: 'exponential', label: 'Exponential' },
-          { value: 'bucketed', label: 'Bucketed' }
-        ];
-      default:
-        return [];
-    }
+    return field.options ?? [];
   }
 
   protected textFieldOptionLabel(field: AdminParamFieldDto): string {

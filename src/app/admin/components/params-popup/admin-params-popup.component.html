@@ -4,11 +4,11 @@
     <div class="app-popup-panel admin-params-panel" (click)="$event.stopPropagation()">
       <div class="popup-header">
         <div class="popup-title">
-          <h2>Params</h2>
-          <p class="popup-subtitle">{{ selectedSection()?.label ?? 'Platform' }} · v{{ selectedSection()?.version ?? 1 }}</p>
+          <h2>{{ 'params' | i18n }}</h2>
+          <p class="popup-subtitle">{{ (selectedSection()?.labelKey || selectedSection()?.label || 'Platform') | i18n: (selectedSection()?.label || 'Platform') }} · v{{ selectedSection()?.version ?? 1 }}</p>
         </div>
         <div class="admin-params-header-actions">
-          <button type="button" class="popup-close" (click)="close()" aria-label="Close">
+          <button type="button" class="popup-close" (click)="close()" [attr.aria-label]="'close' | i18n">
             <mat-icon>close</mat-icon>
           </button>
         </div>
@@ -31,47 +31,47 @@
                 ></circle>
               </svg>
             </span>
-            <span>Loading parameters</span>
+            <span>{{ 'admin.params.loading' | i18n }}</span>
           </div>
         } @else if (state(); as paramsState) {
           <div class="admin-params-accordion">
             @for (section of paramsState.sections; track section.key) {
               <section class="admin-params-section" [class.is-open]="openSectionKey() === section.key">
                 <div class="admin-params-section-head">
-                  <button type="button" class="admin-params-section-toggle" (click)="toggleSection(section)">
+                  <button type="button" class="admin-params-section-toggle" (click)="toggleSection(section)" [attr.aria-label]="'admin.params.toggle.section' | i18n">
                     <span class="admin-params-section-title">
                       <mat-icon>{{ openSectionKey() === section.key ? 'expand_less' : 'expand_more' }}</mat-icon>
-                      <strong>{{ section.label }}</strong>
+                      <strong>{{ (section.labelKey || section.label) | i18n: section.label }}</strong>
                     </span>
                     <span class="admin-params-section-meta">
                       <span>v{{ section.version }}</span>
                       <span>{{ sectionDate(section.changedDate) }}</span>
                     </span>
                   </button>
-                  <button type="button" class="admin-params-icon-btn admin-params-section-action-btn" [disabled]="loading() || saving()" (click)="openEdit(section, $event)" aria-label="Edit section">
+                  <button type="button" class="admin-params-icon-btn admin-params-section-action-btn" [disabled]="loading() || saving()" (click)="openEdit(section, $event)" [attr.aria-label]="'admin.params.edit.section' | i18n">
                     <mat-icon>edit</mat-icon>
                   </button>
-                  <button type="button" class="admin-params-history-btn" (click)="openHistory(section, $event)" aria-label="Open history">
+                  <button type="button" class="admin-params-history-btn" (click)="openHistory(section, $event)" [attr.aria-label]="'admin.params.open.history' | i18n">
                     <mat-icon>history</mat-icon>
                   </button>
                 </div>
 
                 @if (openSectionKey() === section.key) {
                   <div class="admin-params-section-content">
-                    <p class="admin-params-summary">{{ section.summary }}</p>
+                    <p class="admin-params-summary">{{ (section.summaryKey || section.summary) | i18n: section.summary }}</p>
                     @for (group of fieldsByGroup(section.fields); track group.group) {
                       <div class="admin-params-field-group">
-                        <h3>{{ group.group }}</h3>
+                        <h3>{{ (group.groupKey || group.group) | i18n: group.group }}</h3>
                         <div class="admin-params-field-grid">
                           @for (field of group.fields; track field.key) {
                             <div class="admin-params-field-row">
                               <span>
-                                <strong>{{ field.label }}</strong>
+                                <strong>{{ (field.labelKey || field.label) | i18n: field.label }}</strong>
                                 @if (field.valueType !== 'text' && field.strategy) {
-                                  <small>{{ field.strategy }}</small>
+                                  <small>{{ (field.strategyKey || field.strategy) | i18n: field.strategy }}</small>
                                 }
                               </span>
-                              <b>{{ fieldValueLabel(field) }}</b>
+                              <b>{{ fieldValueLabel(field) | i18n }}</b>
                             </div>
                           }
                         </div>
@@ -85,7 +85,7 @@
         }
 
         @if (error()) {
-          <p class="admin-params-error">{{ error() }}</p>
+          <p class="admin-params-error">{{ error() | i18n }}</p>
         }
       </div>
     </div>
@@ -98,7 +98,7 @@
     <div class="app-popup-panel popup-panel-full-height admin-params-edit-panel" (click)="$event.stopPropagation()">
       <div class="popup-header">
         <div class="popup-title">
-          <h2>{{ draft.section.label }}</h2>
+          <h2>{{ (draft.section.labelKey || draft.section.label) | i18n: draft.section.label }}</h2>
           <p class="popup-subtitle">v{{ draft.section.version }}</p>
         </div>
         <div class="admin-params-header-actions">
@@ -118,11 +118,11 @@
                 ></circle>
               </svg>
             </span>
-            <button type="button" class="admin-params-icon-btn admin-params-save-btn" [disabled]="saving()" (click)="saveEdit()" aria-label="Save">
+            <button type="button" class="admin-params-icon-btn admin-params-save-btn" [disabled]="saving()" (click)="saveEdit()" [attr.aria-label]="'save' | i18n">
               <mat-icon>check</mat-icon>
             </button>
           </span>
-          <button type="button" class="admin-params-icon-btn" [disabled]="saving()" (click)="cancelEdit()" aria-label="Cancel">
+          <button type="button" class="admin-params-icon-btn" [disabled]="saving()" (click)="cancelEdit()" [attr.aria-label]="'cancel' | i18n">
             <mat-icon>close</mat-icon>
           </button>
         </div>
@@ -131,13 +131,13 @@
       <div class="popup-body admin-params-edit-body">
         @for (group of fieldsByGroup(draft.fields); track group.group) {
           <section class="admin-params-edit-group">
-            <h3>{{ group.group }}</h3>
+            <h3>{{ (group.groupKey || group.group) | i18n: group.group }}</h3>
             @for (field of group.fields; track field.key) {
               <label class="admin-params-edit-field">
                 <span>
-                  <strong>{{ field.label }}</strong>
+                  <strong>{{ (field.labelKey || field.label) | i18n: field.label }}</strong>
                   @if (field.valueType !== 'text' && field.strategy) {
-                    <small>{{ field.strategy }}</small>
+                    <small>{{ (field.strategyKey || field.strategy) | i18n: field.strategy }}</small>
                   }
                 </span>
                 @if (field.valueType === 'text') {
@@ -151,15 +151,15 @@
                           [attr.aria-expanded]="textFieldSelectOpen(field)"
                           (click)="toggleTextFieldSelect(field, $event)"
                         >
-                          <span>{{ textFieldOptionLabel(field) }}</span>
+                          <span>{{ textFieldOptionLabel(field) | i18n }}</span>
                           <mat-icon>expand_more</mat-icon>
                         </button>
                         @if (textFieldSelectOpen(field)) {
                           <span class="admin-params-select-backdrop" (click)="closeTextFieldSelect($event)"></span>
-                          <div class="admin-params-select-menu" role="listbox" [attr.aria-label]="field.label">
+                          <div class="admin-params-select-menu" role="listbox" [attr.aria-label]="(field.labelKey || field.label) | i18n: field.label">
                             <div class="admin-params-select-sheet-head">
-                              <strong>{{ field.label }}</strong>
-                              <button type="button" class="admin-params-select-sheet-close" (click)="closeTextFieldSelect($event)" aria-label="Close options">
+                              <strong>{{ (field.labelKey || field.label) | i18n: field.label }}</strong>
+                              <button type="button" class="admin-params-select-sheet-close" (click)="closeTextFieldSelect($event)" [attr.aria-label]="'admin.params.close.options' | i18n">
                                 <mat-icon>close</mat-icon>
                               </button>
                             </div>
@@ -172,7 +172,7 @@
                                 [attr.aria-selected]="textFieldOptionSelected(field, option)"
                                 (click)="selectTextFieldOption(field, option, $event)"
                               >
-                                <span>{{ option.label }}</span>
+                                <span>{{ (option.labelKey || option.label) | i18n: option.label }}</span>
                                 @if (textFieldOptionSelected(field, option)) {
                                   <mat-icon>check</mat-icon>
                                 }
@@ -206,10 +206,10 @@
     <div class="app-popup-panel admin-params-history-panel" (click)="$event.stopPropagation()">
       <div class="popup-header">
         <div class="popup-title">
-          <h2>{{ historyState.label }}</h2>
-          <p class="popup-subtitle">History</p>
+          <h2>{{ (historyState.labelKey || historyState.label) | i18n: historyState.label }}</h2>
+          <p class="popup-subtitle">{{ 'history' | i18n }}</p>
         </div>
-        <button type="button" class="popup-close" [disabled]="reverting()" (click)="closeHistory()" aria-label="Close">
+        <button type="button" class="popup-close" [disabled]="reverting()" (click)="closeHistory()" [attr.aria-label]="'close' | i18n">
           <mat-icon>close</mat-icon>
         </button>
       </div>
@@ -223,7 +223,7 @@
                   <strong>v{{ item.version }}</strong>
                   <small>{{ sectionDate(item.changedDate) }} · {{ item.changedBy }}</small>
                 </span>
-                <span class="admin-params-history-summary">{{ item.summary }}</span>
+                <span class="admin-params-history-summary">{{ (item.summaryKey || item.summary) | i18n: item.summary }}</span>
               </button>
               <div class="admin-params-history-actions">
                 <span class="admin-params-action-ring-shell admin-params-circle-ring-shell" [class.is-loading]="revertingVersion() === item.version">
@@ -247,13 +247,13 @@
                     class="admin-params-icon-btn admin-params-history-switch-btn"
                     [disabled]="item.active || reverting()"
                     (click)="revertVersion(item, $event)"
-                    aria-label="Switch to this version"
-                    title="Switch to this version"
+                    [attr.aria-label]="'admin.params.switch.version' | i18n"
+                    [attr.title]="'admin.params.switch.version' | i18n"
                   >
                     <mat-icon>published_with_changes</mat-icon>
                   </button>
                 </span>
-                <button type="button" class="admin-params-history-caret-btn" (click)="inspectVersion(item)" aria-label="Inspect version">
+                <button type="button" class="admin-params-history-caret-btn" (click)="inspectVersion(item)" [attr.aria-label]="'admin.params.inspect.version' | i18n">
                   <mat-icon>{{ inspectedVersion()?.version === item.version ? 'expand_less' : 'expand_more' }}</mat-icon>
                 </button>
               </div>
@@ -262,11 +262,11 @@
               <div class="admin-params-history-fields">
                 @for (group of fieldsByGroup(item.fields); track group.group) {
                   <div class="admin-params-history-group">
-                    <h3>{{ group.group }}</h3>
+                    <h3>{{ (group.groupKey || group.group) | i18n: group.group }}</h3>
                     @for (field of group.fields; track field.key) {
                       <p>
-                        <span>{{ field.label }}</span>
-                        <b>{{ fieldValueLabel(field) }}</b>
+                        <span>{{ (field.labelKey || field.label) | i18n: field.label }}</span>
+                        <b>{{ fieldValueLabel(field) | i18n }}</b>
                       </p>
                     }
                   </div>
