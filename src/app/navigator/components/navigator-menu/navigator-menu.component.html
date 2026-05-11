@@ -119,7 +119,7 @@
               <mat-icon>tune</mat-icon>
               <span class="menu-shortcut-label">{{ 'params' | i18n }}</span>
             </button>
-            <button #adminStatsButton class="menu-shortcut-btn menu-shortcut-stats" type="button" [disabled]="!isOnline()" [attr.aria-label]="'open.stats' | i18n" [title]="'stats' | i18n">
+            <button #adminStatsButton class="menu-shortcut-btn menu-shortcut-stats" type="button" [disabled]="!isOnline()" (click)="openAdminStatsShortcut($event)" [attr.aria-label]="'open.stats' | i18n" [title]="'stats' | i18n">
               <span class="navigator-action-ripple" matRipple [matRippleTrigger]="adminStatsButton" aria-hidden="true"></span>
               <mat-icon>query_stats</mat-icon>
               <span class="menu-shortcut-label">{{ 'stats' | i18n }}</span>

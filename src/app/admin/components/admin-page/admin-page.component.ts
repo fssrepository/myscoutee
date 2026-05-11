@@ -40,6 +40,7 @@ export class AdminPageComponent implements OnInit {
   private readonly helpEditorPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly ideaEditorPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly notificationsPopupComponentRef = signal<Type<unknown> | null>(null);
+  private readonly statsPopupComponentRef = signal<Type<unknown> | null>(null);
 
   protected selectorOpen = false;
   protected selectorLoading = false;
@@ -55,6 +56,7 @@ export class AdminPageComponent implements OnInit {
   protected readonly helpEditorPopupComponent = this.helpEditorPopupComponentRef.asReadonly();
   protected readonly ideaEditorPopupComponent = this.ideaEditorPopupComponentRef.asReadonly();
   protected readonly notificationsPopupComponent = this.notificationsPopupComponentRef.asReadonly();
+  protected readonly statsPopupComponent = this.statsPopupComponentRef.asReadonly();
 
   constructor() {
     effect(() => {
@@ -73,6 +75,9 @@ export class AdminPageComponent implements OnInit {
           break;
         case 'notifications':
           void this.ensureNotificationsPopupLoaded();
+          break;
+        case 'stats':
+          void this.ensureStatsPopupLoaded();
           break;
       }
     });
@@ -105,6 +110,9 @@ export class AdminPageComponent implements OnInit {
           break;
         case 'notifications':
           this.admin.openNotifications();
+          break;
+        case 'stats':
+          this.admin.openStats();
           break;
       }
     });
@@ -275,6 +283,14 @@ export class AdminPageComponent implements OnInit {
     }
     const module = await import('../notifications-popup/admin-notifications-popup.component');
     this.notificationsPopupComponentRef.set(module.AdminNotificationsPopupComponent);
+  }
+
+  private async ensureStatsPopupLoaded(): Promise<void> {
+    if (this.statsPopupComponentRef()) {
+      return;
+    }
+    const module = await import('../stats-popup/admin-stats-popup.component');
+    this.statsPopupComponentRef.set(module.AdminStatsPopupComponent);
   }
 
   private delay(durationMs: number): Promise<void> {

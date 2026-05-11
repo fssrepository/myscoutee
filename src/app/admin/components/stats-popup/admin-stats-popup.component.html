@@ -1,0 +1,267 @@
+@if (admin.activePopup() === 'stats') {
+  <section class="app-popup">
+    <div class="app-popup-backdrop" (click)="close()"></div>
+    <div class="app-popup-panel popup-panel-admin popup-panel-stats" (click)="$event.stopPropagation()">
+      <div class="popup-header">
+        <div class="popup-title">
+          <h2>{{ 'stats' | i18n }}</h2>
+          <p class="popup-subtitle">
+            {{ 'stats.snapshot.subtitle' | i18n }}
+            @if (stats(); as dashboard) {
+              <span> · {{ formatDate(dashboard.generatedAtIso) }}</span>
+            }
+          </p>
+        </div>
+        <div class="stats-header-actions">
+          <button type="button" class="stats-icon-btn" (click)="refresh()" [disabled]="loading()" [attr.aria-label]="'refresh.stats' | i18n">
+            <mat-icon>refresh</mat-icon>
+          </button>
+          <button type="button" class="popup-close" (click)="close()" aria-label="Close">
+            <mat-icon>close</mat-icon>
+          </button>
+        </div>
+      </div>
+
+      <div class="popup-body stats-body">
+        @if (loading() && stats()) {
+          <div class="stats-loading-overlay" aria-busy="true">
+            <div class="stats-loading-scrim"></div>
+            <div class="stats-loading-card">
+              <span class="stats-loading-ring" aria-hidden="true">
+                <svg viewBox="0 0 58 58" class="stats-loading-ring-svg">
+                  <circle class="stats-loading-ring-track" cx="29" cy="29" r="25"></circle>
+                  <circle
+                    class="stats-loading-ring-progress"
+                    cx="29"
+                    cy="29"
+                    r="25"
+                    pathLength="100"
+                    [attr.stroke-dasharray]="loadingRingPerimeter"
+                    [attr.stroke-dashoffset]="loadingRingDashOffset()"
+                  ></circle>
+                </svg>
+              </span>
+              <span>{{ 'loading.stats' | i18n }}</span>
+            </div>
+          </div>
+        }
+
+        @if (loading() && !stats()) {
+          <div class="stats-loading-state" aria-busy="true">
+            <span class="stats-loading-ring" aria-hidden="true">
+              <svg viewBox="0 0 58 58" class="stats-loading-ring-svg">
+                <circle class="stats-loading-ring-track" cx="29" cy="29" r="25"></circle>
+                <circle
+                  class="stats-loading-ring-progress"
+                  cx="29"
+                  cy="29"
+                  r="25"
+                  pathLength="100"
+                  [attr.stroke-dasharray]="loadingRingPerimeter"
+                  [attr.stroke-dashoffset]="loadingRingDashOffset()"
+                ></circle>
+              </svg>
+            </span>
+            <span>{{ 'loading.stats' | i18n }}</span>
+          </div>
+        } @else if (stats(); as dashboard) {
+          <section class="stats-hero">
+            <div class="stats-health-card">
+              <span class="stats-health-ring" [ngStyle]="healthRingStyle(dashboard.healthScore)">
+                <span>{{ dashboard.healthScore }}</span>
+              </span>
+              <div>
+                <h3>{{ dashboard.healthLabelKey | i18n }}</h3>
+                <p>{{ dashboard.healthSummaryKey | i18n }}</p>
+              </div>
+            </div>
+            <div class="stats-kpi-grid">
+              @for (metric of primaryKpis(); track metric.key) {
+                <article class="stats-kpi-card" [ngClass]="toneClass(metric)">
+                  <span class="stats-kpi-icon"><mat-icon>{{ metric.icon }}</mat-icon></span>
+                  <strong>{{ metric.valueLabel || metric.value }}</strong>
+                  <small>{{ metric.labelKey | i18n }}</small>
+                  <span class="stats-kpi-bar"><span [style.width.%]="metricPercent(metric)"></span></span>
+                </article>
+              }
+            </div>
+          </section>
+
+          <section class="stats-grid stats-grid-charts">
+            <article class="stats-panel stats-timeline-panel">
+              <header>
+                <h3>{{ 'stats.timeline.title' | i18n }}</h3>
+                <span>{{ 'stats.timeline.window' | i18n }}</span>
+              </header>
+              @if (selectedTimelinePoint(dashboard); as point) {
+                <div class="stats-timeline-readout">
+                  <strong>{{ point.label || point.dateKey }}</strong>
+                  <span><i class="is-blue"></i>{{ 'stats.timeline.active.users' | i18n }} {{ point.activeUsers }}</span>
+                  <span><i class="is-green"></i>{{ 'stats.timeline.registrations' | i18n }} {{ point.registrations }}</span>
+                  <span><i class="is-purple"></i>{{ 'stats.timeline.ratings' | i18n }} {{ point.ratings }}</span>
+                  <span><i class="is-gold"></i>{{ 'stats.timeline.activity' | i18n }} {{ point.events + point.assets }}</span>
+                  <span><i class="is-slate"></i>{{ 'stats.timeline.messages' | i18n }} {{ point.messages }}</span>
+                  <span><i class="is-red"></i>{{ 'stats.timeline.moderation' | i18n }} {{ point.moderation }}</span>
+                </div>
+              }
+              <div class="stats-timeline-chart">
+                <svg
+                  viewBox="0 0 300 108"
+                  role="img"
+                  [class.is-dragging]="timelineDragging()"
+                  [attr.aria-label]="'stats.timeline.title' | i18n"
+                  (pointerdown)="startTimelineDrag($event, dashboard.timeline)"
+                  (pointermove)="moveTimelineDrag($event, dashboard.timeline)"
+                  (pointerup)="endTimelineDrag($event)"
+                  (pointercancel)="endTimelineDrag($event)"
+                  (pointerleave)="endTimelineDrag($event)">
+                  <line x1="12" y1="94" x2="288" y2="94" class="stats-timeline-axis"></line>
+                  <line x1="12" y1="58" x2="288" y2="58" class="stats-timeline-gridline"></line>
+                  <line x1="12" y1="22" x2="288" y2="22" class="stats-timeline-gridline"></line>
+                  @for (metric of timelineMetrics; track metric.key) {
+                    <polyline
+                      class="stats-timeline-line"
+                      [ngClass]="toneClass({ tone: metric.tone })"
+                      [attr.points]="timelineChartPoints(dashboard.timeline, metric.key)">
+                    </polyline>
+                  }
+                  @if (selectedTimelinePoint(dashboard)) {
+                    <line
+                      class="stats-timeline-scrub-guide"
+                      [attr.x1]="selectedTimelineX(dashboard)"
+                      y1="12"
+                      [attr.x2]="selectedTimelineX(dashboard)"
+                      y2="96">
+                    </line>
+                    <circle
+                      class="stats-timeline-scrub-halo"
+                      [attr.cx]="selectedTimelineX(dashboard)"
+                      [attr.cy]="selectedTimelineY(dashboard)"
+                      r="10">
+                    </circle>
+                    <circle
+                      class="stats-timeline-scrub-knob"
+                      [attr.cx]="selectedTimelineX(dashboard)"
+                      [attr.cy]="selectedTimelineY(dashboard)"
+                      r="5">
+                    </circle>
+                  }
+                  @for (point of dashboard.timeline; track point.dateKey; let index = $index) {
+                    <rect
+                      class="stats-timeline-hit"
+                      [attr.x]="timelineX(index, dashboard.timeline.length) - 8"
+                      y="8"
+                      width="16"
+                      height="92"
+                      tabindex="0"
+                      (pointerenter)="selectTimelinePoint(point)"
+                      (focus)="selectTimelinePoint(point)">
+                    </rect>
+                  }
+                </svg>
+              </div>
+              <div class="stats-chart-legend">
+                @for (metric of timelineMetrics; track metric.key) {
+                  <span [ngClass]="toneClass({ tone: metric.tone })">
+                    <i></i>{{ metric.labelKey | i18n }}
+                  </span>
+                }
+              </div>
+            </article>
+
+            <article class="stats-panel stats-event-types-panel">
+              <header>
+                <h3>{{ 'stats.event.types' | i18n }}</h3>
+                <mat-icon>category</mat-icon>
+              </header>
+              <div class="stats-donut-card">
+                <div class="stats-donut">
+                  @for (item of dashboard.eventTypes; track item.key) {
+                    <span [ngClass]="toneClass(item)" [style.flex-grow]="item.value"></span>
+                  }
+                </div>
+                <div class="stats-breakdown-list stats-breakdown-compact">
+                  @for (item of dashboard.eventTypes; track item.key) {
+                    <div class="stats-breakdown-row" [ngClass]="toneClass(item)">
+                      <span><mat-icon>{{ item.icon || 'category' }}</mat-icon>{{ itemLabel(item) }}</span>
+                      <strong>{{ item.value }}</strong>
+                      <i [style.width.%]="itemPercent(item)"></i>
+                    </div>
+                  }
+                </div>
+              </div>
+            </article>
+          </section>
+
+          <section class="stats-grid">
+            <article class="stats-panel stats-panel-wide">
+              <header>
+                <h3>{{ 'stats.segment.overview' | i18n }}</h3>
+                <span>{{ dashboard.source }}</span>
+              </header>
+              <div class="stats-segments">
+                @for (segment of topSegments(); track segment.key) {
+                  <section class="stats-segment-row">
+                    <div class="stats-segment-title">
+                      <span class="stats-segment-icon"><mat-icon>{{ segment.icon }}</mat-icon></span>
+                      <strong>{{ segment.labelKey | i18n }}</strong>
+                      <small>{{ segment.total }}</small>
+                    </div>
+                    <span class="stats-segment-bar"><span [style.width.%]="segmentPercent(segment)"></span></span>
+                    <div class="stats-segment-items">
+                      @for (item of segment.items; track item.key) {
+                        <div class="stats-mini-row" [ngClass]="toneClass(item)">
+                          <span>{{ item.labelKey ? (item.labelKey | i18n) : itemLabel(item) }}</span>
+                          <strong>{{ item.value }}</strong>
+                        </div>
+                      }
+                    </div>
+                  </section>
+                }
+              </div>
+            </article>
+
+            <article class="stats-panel">
+              <header>
+                <h3>{{ 'stats.top.cities' | i18n }}</h3>
+                <mat-icon>location_on</mat-icon>
+              </header>
+              <div class="stats-breakdown-list">
+                @for (item of dashboard.topCities; track item.key) {
+                  <div class="stats-breakdown-row" [ngClass]="toneClass(item)">
+                    <span><mat-icon>{{ item.icon || 'location_on' }}</mat-icon>{{ itemLabel(item) }}</span>
+                    <strong>{{ item.value }}</strong>
+                    <i [style.width.%]="itemPercent(item)"></i>
+                  </div>
+                }
+              </div>
+            </article>
+
+            <article class="stats-panel">
+              <header>
+                <h3>{{ 'stats.top.topics' | i18n }}</h3>
+                <mat-icon>local_offer</mat-icon>
+              </header>
+              <div class="stats-breakdown-list">
+                @for (item of dashboard.topTopics; track item.key) {
+                  <div class="stats-breakdown-row" [ngClass]="toneClass(item)">
+                    <span><mat-icon>{{ item.icon || 'local_offer' }}</mat-icon>{{ itemLabel(item) }}</span>
+                    <strong>{{ item.value }}</strong>
+                    <i [style.width.%]="itemPercent(item)"></i>
+                  </div>
+                }
+              </div>
+            </article>
+          </section>
+        }
+
+        @if (error()) {
+          <div class="stats-error">
+            <mat-icon>warning</mat-icon>
+            <span>{{ error() }}</span>
+          </div>
+        }
+      </div>
+    </div>
+  </section>
+}

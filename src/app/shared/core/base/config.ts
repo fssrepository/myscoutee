@@ -63,6 +63,10 @@ export const ROUTE_CONFIG: RouteConfig = {
       demoDelayMs: 1500
     },
     {
+      routePrefix: '/admin/stats',
+      demoDelayMs: 1500
+    },
+    {
       routePrefix: '/game-cards/query',
       demoDelayMs: 1500
     },

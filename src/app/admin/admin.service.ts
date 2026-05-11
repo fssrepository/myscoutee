@@ -40,6 +40,7 @@ export type AdminPopupKind =
   | 'help-editor'
   | 'idea-editor'
   | 'notifications'
+  | 'stats'
   | 'item-preview';
 
 export interface AdminUserDto {
@@ -122,6 +123,67 @@ export interface AdminDashboardDto {
   feedback: AdminFeedbackDto[];
 }
 
+export interface AdminStatsMetricDto {
+  key: string;
+  labelKey: string;
+  value: number;
+  valueLabel?: string;
+  captionKey?: string;
+  caption?: string;
+  icon: string;
+  tone: 'blue' | 'green' | 'gold' | 'red' | 'purple' | 'slate';
+  percent?: number | null;
+}
+
+export interface AdminStatsBreakdownItemDto {
+  key: string;
+  labelKey: string;
+  label?: string;
+  value: number;
+  total?: number | null;
+  icon?: string;
+  tone?: AdminStatsMetricDto['tone'];
+}
+
+export interface AdminStatsSegmentDto {
+  key: string;
+  labelKey: string;
+  icon: string;
+  total: number;
+  healthPercent: number;
+  summaryKey: string;
+  summary?: string;
+  items: AdminStatsBreakdownItemDto[];
+}
+
+export interface AdminStatsTimelinePointDto {
+  dateKey: string;
+  label: string;
+  registrations: number;
+  activeUsers: number;
+  ratings: number;
+  events: number;
+  assets: number;
+  messages: number;
+  moderation: number;
+}
+
+export interface AdminStatsDashboardDto {
+  generatedAtIso: string;
+  source: 'demo' | 'http' | 'fallback';
+  healthScore: number;
+  healthLabelKey: string;
+  healthSummaryKey: string;
+  kpis: AdminStatsMetricDto[];
+  segments: AdminStatsSegmentDto[];
+  attention: AdminStatsBreakdownItemDto[];
+  topCities: AdminStatsBreakdownItemDto[];
+  topTopics: AdminStatsBreakdownItemDto[];
+  timeline: AdminStatsTimelinePointDto[];
+  eventTypes: AdminStatsBreakdownItemDto[];
+  activityMix: AdminStatsBreakdownItemDto[];
+}
+
 interface AdminModerationStore {
   seededAtIso: string;
   reports: AdminReportDto[];
@@ -154,6 +216,7 @@ export interface AdminBootstrapProgressState {
 const ADMIN_SESSION_STORAGE_KEY = 'myscoutee-admin-session';
 const ADMIN_MODERATION_STORE_KEY = 'adminModeration';
 const ADMIN_NOTIFICATION_STORE_KEY = 'adminNotificationRules';
+const ADMIN_STATS_STORE_KEY = 'adminStats';
 const ADMIN_NOTIFICATION_STORAGE_TIMEOUT_MS = 2500;
 const ADMIN_NOTIFICATION_HTTP_TIMEOUT_MS = 12000;
 
@@ -297,6 +360,10 @@ export class AdminService {
     this.activePopupRef.set('notifications');
   }
 
+  openStats(): void {
+    this.activePopupRef.set('stats');
+  }
+
   openReportDetail(user: AdminReportedUserDto, report: AdminReportDto): void {
     this.selectedReportedUserRef.set(user);
     this.selectedReportRef.set(report);
@@ -361,6 +428,42 @@ export class AdminService {
 
   closePopup(): void {
     this.activePopupRef.set(null);
+  }
+
+  async loadStatsDashboard(): Promise<AdminStatsDashboardDto> {
+    if (this.usesHttpAdminApi) {
+      try {
+        const state = await this.withNotificationHttpTimeout(this.http
+          .get<AdminStatsDashboardDto>(`${this.apiBaseUrl}/admin/stats`, {
+            params: { adminUserId: this.activeAdmin()?.id ?? '' }
+          })
+          .toPromise());
+        if (state) {
+          return this.normalizeStatsDashboard(state, 'http');
+        }
+      } catch {
+        // Fall back to the local snapshot if the stats read model is not available yet.
+      }
+    }
+
+    await this.withNotificationStorageFallback(this.memoryDb.whenReady(), undefined);
+    const existing = await this.withNotificationStorageFallback(
+      this.memoryDb.readIndexedDbTableEntry<AdminStatsDashboardDto>(ADMIN_STATS_STORE_KEY),
+      null
+    );
+    if (existing) {
+      const normalized = this.normalizeStatsDashboard(existing, 'demo');
+      if (this.isFreshStatsDemoSnapshot(normalized)) {
+        return normalized;
+      }
+    }
+
+    const snapshot = this.buildSeedDemoStatsSnapshot();
+    void this.withNotificationStorageFallback(
+      this.memoryDb.writeIndexedDbTableEntry(ADMIN_STATS_STORE_KEY, snapshot),
+      undefined
+    );
+    return snapshot;
   }
 
   async loadNotificationCenter(): Promise<AdminNotificationCenterState> {
@@ -1470,6 +1573,236 @@ export class AdminService {
 
   private adminDisplayName(name: string): string {
     return `${name ?? ''}`.trim().replace(/\s+Moderation$/i, '') || 'Admin';
+  }
+
+  private buildSeedDemoStatsSnapshot(): AdminStatsDashboardDto {
+    const nowIso = new Date().toISOString();
+    const segment = (
+      key: string,
+      labelKey: string,
+      icon: string,
+      total: number,
+      healthPercent: number,
+      items: AdminStatsBreakdownItemDto[]
+    ): AdminStatsSegmentDto => ({
+      key,
+      labelKey,
+      icon,
+      total,
+      healthPercent,
+      summaryKey: 'stats.segment.summary',
+      items
+    });
+    const item = (
+      key: string,
+      labelKey: string,
+      value: number,
+      total: number,
+      icon: string,
+      tone: AdminStatsMetricDto['tone']
+    ): AdminStatsBreakdownItemDto => ({ key, labelKey, value, total, icon, tone });
+    const timeline: AdminStatsTimelinePointDto[] = [
+      ['2026-04-28', 'Apr 28', 3, 24, 18, 4, 2, 38, 1],
+      ['2026-04-29', 'Apr 29', 5, 31, 22, 6, 3, 44, 2],
+      ['2026-04-30', 'Apr 30', 4, 29, 28, 5, 4, 47, 1],
+      ['2026-05-01', 'May 1', 8, 36, 32, 8, 4, 62, 3],
+      ['2026-05-02', 'May 2', 6, 42, 38, 7, 5, 71, 2],
+      ['2026-05-03', 'May 3', 4, 39, 35, 5, 3, 64, 1],
+      ['2026-05-04', 'May 4', 7, 46, 44, 9, 6, 83, 2],
+      ['2026-05-05', 'May 5', 9, 51, 49, 8, 5, 94, 4],
+      ['2026-05-06', 'May 6', 5, 47, 43, 6, 4, 86, 2],
+      ['2026-05-07', 'May 7', 6, 53, 56, 10, 7, 103, 3],
+      ['2026-05-08', 'May 8', 4, 49, 48, 7, 5, 91, 2],
+      ['2026-05-09', 'May 9', 7, 57, 61, 11, 6, 117, 4],
+      ['2026-05-10', 'May 10', 5, 54, 52, 8, 5, 99, 1],
+      ['2026-05-11', 'May 11', 6, 42, 36, 5, 3, 72, 2]
+    ].map(([dateKey, label, registrations, activeUsers, ratings, events, assets, messages, moderation]) => ({
+      dateKey: `${dateKey}`,
+      label: `${label}`,
+      registrations: Number(registrations),
+      activeUsers: Number(activeUsers),
+      ratings: Number(ratings),
+      events: Number(events),
+      assets: Number(assets),
+      messages: Number(messages),
+      moderation: Number(moderation)
+    }));
+
+    return this.normalizeStatsDashboard({
+      generatedAtIso: nowIso,
+      source: 'demo',
+      healthScore: 84,
+      healthLabelKey: 'stats.health.good',
+      healthSummaryKey: 'stats.health.summary',
+      kpis: [
+        { key: 'active-users', labelKey: 'stats.kpi.active.users', value: 42, valueLabel: '42', icon: 'person', tone: 'blue', percent: 33 },
+        { key: 'returning-users', labelKey: 'stats.kpi.returning.users', value: 31, valueLabel: '31', icon: 'repeat', tone: 'purple', percent: 24 },
+        { key: 'active-events', labelKey: 'stats.kpi.active.events', value: 18, valueLabel: '18', icon: 'event_available', tone: 'green', percent: 45 },
+        { key: 'active-assets', labelKey: 'stats.kpi.active.assets', value: 27, valueLabel: '27', icon: 'inventory_2', tone: 'gold', percent: 68 },
+        { key: 'moderation-pressure', labelKey: 'stats.kpi.moderation.pressure', value: 14, valueLabel: '14', icon: 'shield', tone: 'red', percent: 18 }
+      ],
+      segments: [
+        segment('community', 'stats.segment.community', 'person', 128, 88, [
+          item('profile.registered', 'stats.event.profile.registered', 29, 128, 'person_add', 'green'),
+          item('active-users-7d', 'stats.event.active.users.7d', 42, 128, 'person', 'blue'),
+          item('active-users-30d', 'stats.event.active.users.30d', 68, 128, 'calendar_month', 'green'),
+          item('returning-users', 'stats.event.returning.users', 31, 128, 'repeat', 'purple'),
+          item('profile-fill-average', 'stats.event.profile.fill.average', 74, 100, 'fact_check', 'gold'),
+          item('tried-users', 'stats.event.tried.users', 128, 128, 'group', 'slate')
+        ]),
+        segment('matching', 'stats.segment.matching', 'hub', 342, 83, [
+          item('rates.synced', 'stats.event.rates.synced', 342, 342, 'star', 'gold')
+        ]),
+        segment('activities', 'stats.segment.activities', 'event_available', 91, 76, [
+          item('active-events', 'stats.event.active.events', 18, 91, 'event_available', 'green'),
+          item('all-events', 'stats.event.all.events', 28, 91, 'event', 'blue'),
+          item('active-assets', 'stats.event.active.assets', 27, 91, 'inventory_2', 'gold'),
+          item('all-assets', 'stats.event.all.assets', 39, 91, 'category', 'purple'),
+          item('event.members.changed', 'stats.event.event.members.changed', 37, 91, 'groups', 'green'),
+          item('asset.requests.changed', 'stats.event.asset.requests.changed', 14, 91, 'handshake', 'gold')
+        ]),
+        segment('communication', 'stats.segment.communication', 'chat', 426, 81, [
+          item('chat.message.sent', 'stats.event.chat.message.sent', 417, 426, 'forum', 'blue'),
+          item('admin.user.warned', 'stats.event.admin.user.warned', 9, 426, 'warning', 'gold')
+        ]),
+        segment('moderation', 'stats.segment.moderation', 'shield', 14, 62, [
+          item('report.submitted', 'stats.event.report.submitted', 8, 14, 'report', 'red'),
+          item('feedback.submitted', 'stats.event.feedback.submitted', 4, 14, 'feedback', 'purple'),
+          item('admin.user.blocked', 'stats.event.admin.user.blocked', 2, 14, 'block', 'red')
+        ])
+      ],
+      attention: [],
+      topCities: [
+        { key: 'austin', labelKey: '', label: 'Austin', value: 34, total: 128, icon: 'location_on', tone: 'blue' },
+        { key: 'seattle', labelKey: '', label: 'Seattle', value: 29, total: 128, icon: 'location_on', tone: 'green' },
+        { key: 'denver', labelKey: '', label: 'Denver', value: 23, total: 128, icon: 'location_on', tone: 'purple' },
+        { key: 'miami', labelKey: '', label: 'Miami', value: 18, total: 128, icon: 'location_on', tone: 'gold' }
+      ],
+      topTopics: [
+        { key: 'outdoors', labelKey: '', label: 'Outdoors', value: 38, total: 112, icon: 'local_offer', tone: 'green' },
+        { key: 'music', labelKey: '', label: 'Music', value: 31, total: 112, icon: 'local_offer', tone: 'purple' },
+        { key: 'board-games', labelKey: '', label: 'Board games', value: 24, total: 112, icon: 'local_offer', tone: 'blue' },
+        { key: 'fitness', labelKey: '', label: 'Fitness', value: 19, total: 112, icon: 'local_offer', tone: 'gold' }
+      ],
+      timeline,
+      eventTypes: [
+        { key: 'simple', labelKey: '', label: 'Simple', value: 14, total: 47, icon: 'category', tone: 'blue' },
+        { key: 'organized', labelKey: '', label: 'Organized', value: 10, total: 47, icon: 'category', tone: 'green' },
+        { key: 'random', labelKey: '', label: 'Random', value: 8, total: 47, icon: 'casino', tone: 'purple' },
+        { key: 'recurring', labelKey: '', label: 'Recurring', value: 6, total: 47, icon: 'event_repeat', tone: 'gold' },
+        { key: 'multi-slot', labelKey: '', label: 'Multi-slot', value: 5, total: 47, icon: 'view_timeline', tone: 'green' },
+        { key: 'tournament', labelKey: '', label: 'Tournament', value: 4, total: 47, icon: 'emoji_events', tone: 'red' }
+      ],
+      activityMix: [
+        item('profiles', 'stats.domain.profiles', 128, 1001, 'person', 'blue'),
+        item('matching', 'stats.domain.matching', 342, 1001, 'hub', 'purple'),
+        item('events', 'stats.domain.events', 73, 1001, 'event', 'green'),
+        item('assets', 'stats.domain.assets', 18, 1001, 'inventory_2', 'gold'),
+        item('chats', 'stats.domain.chats', 426, 1001, 'chat', 'blue'),
+        item('moderation', 'stats.domain.moderation', 14, 1001, 'shield', 'red')
+      ]
+    }, 'demo');
+  }
+
+  private normalizeStatsDashboard(
+    dashboard: AdminStatsDashboardDto,
+    source: AdminStatsDashboardDto['source']
+  ): AdminStatsDashboardDto {
+    const normalizedSource = `${dashboard.source ?? source}`.trim() as AdminStatsDashboardDto['source'];
+    return {
+      generatedAtIso: `${dashboard.generatedAtIso ?? ''}`.trim() || new Date().toISOString(),
+      source: ['demo', 'http', 'fallback'].includes(normalizedSource) ? normalizedSource : source,
+      healthScore: this.clampInteger(dashboard.healthScore, 0, 100, 0),
+      healthLabelKey: `${dashboard.healthLabelKey ?? ''}`.trim() || 'stats.health.good',
+      healthSummaryKey: `${dashboard.healthSummaryKey ?? ''}`.trim() || 'stats.health.summary',
+      kpis: (dashboard.kpis ?? []).map(metric => this.normalizeStatsMetric(metric)),
+      segments: (dashboard.segments ?? []).map(segment => this.normalizeStatsSegment(segment)),
+      attention: (dashboard.attention ?? []).map(item => this.normalizeStatsBreakdownItem(item)),
+      topCities: (dashboard.topCities ?? []).map(item => this.normalizeStatsBreakdownItem(item)),
+      topTopics: (dashboard.topTopics ?? []).map(item => this.normalizeStatsBreakdownItem(item)),
+      timeline: (dashboard.timeline ?? []).map(point => this.normalizeStatsTimelinePoint(point)),
+      eventTypes: (dashboard.eventTypes ?? []).map(item => this.normalizeStatsBreakdownItem(item)),
+      activityMix: (dashboard.activityMix ?? []).map(item => this.normalizeStatsBreakdownItem(item))
+    };
+  }
+
+  private normalizeStatsMetric(metric: AdminStatsMetricDto): AdminStatsMetricDto {
+    const value = Math.max(0, Math.trunc(Number(metric.value) || 0));
+    return {
+      key: `${metric.key ?? ''}`.trim(),
+      labelKey: `${metric.labelKey ?? ''}`.trim(),
+      value,
+      valueLabel: `${metric.valueLabel ?? ''}`.trim() || this.compactNumber(value),
+      captionKey: `${metric.captionKey ?? ''}`.trim(),
+      caption: `${metric.caption ?? ''}`.trim(),
+      icon: `${metric.icon ?? ''}`.trim() || 'query_stats',
+      tone: this.normalizeStatsTone(metric.tone),
+      percent: this.clampInteger(metric.percent ?? 0, 0, 100, 0)
+    };
+  }
+
+  private normalizeStatsSegment(segment: AdminStatsSegmentDto): AdminStatsSegmentDto {
+    return {
+      key: `${segment.key ?? ''}`.trim(),
+      labelKey: `${segment.labelKey ?? ''}`.trim(),
+      icon: `${segment.icon ?? ''}`.trim() || 'dashboard',
+      total: Math.max(0, Math.trunc(Number(segment.total) || 0)),
+      healthPercent: this.clampInteger(segment.healthPercent, 0, 100, 0),
+      summaryKey: `${segment.summaryKey ?? ''}`.trim(),
+      summary: `${segment.summary ?? ''}`.trim(),
+      items: (segment.items ?? []).map(item => this.normalizeStatsBreakdownItem(item))
+    };
+  }
+
+  private normalizeStatsBreakdownItem(item: AdminStatsBreakdownItemDto): AdminStatsBreakdownItemDto {
+    return {
+      key: `${item.key ?? ''}`.trim(),
+      labelKey: `${item.labelKey ?? ''}`.trim(),
+      label: `${item.label ?? ''}`.trim(),
+      value: Math.max(0, Math.trunc(Number(item.value) || 0)),
+      total: Math.max(0, Math.trunc(Number(item.total) || 0)),
+      icon: `${item.icon ?? ''}`.trim(),
+      tone: item.tone ? this.normalizeStatsTone(item.tone) : undefined
+    };
+  }
+
+  private normalizeStatsTimelinePoint(point: AdminStatsTimelinePointDto): AdminStatsTimelinePointDto {
+    return {
+      dateKey: `${point.dateKey ?? ''}`.trim(),
+      label: `${point.label ?? ''}`.trim(),
+      registrations: Math.max(0, Math.trunc(Number(point.registrations) || 0)),
+      activeUsers: Math.max(0, Math.trunc(Number(point.activeUsers) || 0)),
+      ratings: Math.max(0, Math.trunc(Number(point.ratings) || 0)),
+      events: Math.max(0, Math.trunc(Number(point.events) || 0)),
+      assets: Math.max(0, Math.trunc(Number(point.assets) || 0)),
+      messages: Math.max(0, Math.trunc(Number(point.messages) || 0)),
+      moderation: Math.max(0, Math.trunc(Number(point.moderation) || 0))
+    };
+  }
+
+  private isFreshStatsDemoSnapshot(snapshot: AdminStatsDashboardDto): boolean {
+    return snapshot.timeline.length > 0
+      && snapshot.eventTypes.length > 0
+      && snapshot.segments.some(segment => segment.key === 'community')
+      && snapshot.segments.some(segment => segment.items.some(item => item.key === 'all-events'))
+      && snapshot.segments.some(segment => segment.items.some(item => item.key === 'profile-fill-average'));
+  }
+
+  private normalizeStatsTone(value: string | null | undefined): AdminStatsMetricDto['tone'] {
+    const normalized = `${value ?? ''}`.trim();
+    return ['blue', 'green', 'gold', 'red', 'purple', 'slate'].includes(normalized)
+      ? normalized as AdminStatsMetricDto['tone']
+      : 'slate';
+  }
+
+  private compactNumber(value: number): string {
+    if (value >= 1_000_000) {
+      return `${(value / 1_000_000).toFixed(1)}M`;
+    }
+    if (value >= 1_000) {
+      return `${(value / 1_000).toFixed(1)}k`;
+    }
+    return String(value);
   }
 
   private buildDefaultNotificationCenter(): AdminNotificationCenterState {
