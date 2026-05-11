@@ -333,6 +333,12 @@ export class AssetInfoCardBuilder {
   }
 
   private static ownedAssetMenuActions(card: AppTypes.AssetCard): readonly InfoCardMenuAction[] {
+    const configuredActions = (card.menuActions ?? [])
+      .map(action => `${action ?? ''}`.trim())
+      .filter(action => action.length > 0);
+    if (configuredActions.length > 0) {
+      return configuredActions;
+    }
     const actions: InfoCardMenuAction[] = [];
     if (this.assetStatusCode(card) === 'UR') {
       actions.push('takeOver');

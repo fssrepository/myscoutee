@@ -41,9 +41,14 @@ export class DemoAssetsService extends DemoRouteDelayService {
     await this.assetsRepository.deleteOwnedAsset(userId, assetId);
   }
 
-  async takeOverOwnedAsset(userId: string, assetId: string): Promise<void> {
+  async takeOverOwnedAsset(userId: string, assetId: string): Promise<AppTypes.AssetCard | null> {
     await this.waitForRouteDelay(DemoAssetsService.ASSETS_ROUTE);
-    await this.assetsRepository.takeOverOwnedAsset(userId, assetId);
+    return this.assetsRepository.takeOverOwnedAsset(userId, assetId);
+  }
+
+  async makeAssetManager(userId: string, assetId: string, targetUserId: string): Promise<AppTypes.AssetCard | null> {
+    await this.waitForRouteDelay(DemoAssetsService.ASSETS_ROUTE);
+    return this.assetsRepository.makeAssetManager(userId, assetId, targetUserId);
   }
 
   async refreshAssetSourcePreview(

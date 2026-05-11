@@ -246,6 +246,34 @@ export class OwnedAssetsPopupFacadeService {
     await this.awaitAssetMutationCompletion(persistPromise);
   }
 
+  async promoteAssetRequestToManager(assetId: string, requestId: string): Promise<void> {
+    const normalizedAssetId = assetId.trim();
+    const normalizedRequestId = requestId.trim();
+    if (!normalizedAssetId || !normalizedRequestId) {
+      return;
+    }
+    const existing = this.assetCardsRef.find(card => card.id === normalizedAssetId) ?? null;
+    const request = existing?.requests.find(item => item.id === normalizedRequestId) ?? null;
+    const targetUserId = `${request?.userId ?? ''}`.trim();
+    const ownerUserId = this.resolveOwnerUserId();
+    if (!existing || !request || !targetUserId || !ownerUserId) {
+      return;
+    }
+    const savedCard = await this.assetsService.makeAssetManager(ownerUserId, normalizedAssetId, targetUserId);
+    if (!savedCard) {
+      return;
+    }
+    this.markAssetMutation();
+    this.applyAssetCards(this.assetCardsRef.map(card => card.id === savedCard.id ? savedCard : card), {
+      persist: false,
+      reloadList: false
+    });
+    for (const hooks of this.runtimeHooks) {
+      hooks.onAssetsChanged?.();
+    }
+    this.touchUiState();
+  }
+
   assetTypeIcon(type: AppTypes.AssetFilterType): string {
     return AssetDefaultsBuilder.assetTypeIcon(type);
   }
@@ -521,7 +549,8 @@ export class OwnedAssetsPopupFacadeService {
           visibility: resolvedVisibility,
           ownerUserId: existing?.ownerUserId,
           ownerName: existing?.ownerName ?? ownerName,
-          requests: existing?.requests.map(request => ({ ...request })) ?? []
+          requests: existing?.requests.map(request => ({ ...request })) ?? [],
+          menuActions: [...(existing?.menuActions ?? [])]
         };
         this.markAssetMutation();
         this.applyAssetCards(this.assetCardsRef.map(card =>
@@ -550,7 +579,8 @@ export class OwnedAssetsPopupFacadeService {
           visibility: resolvedVisibility,
           ownerUserId,
           ownerName,
-          requests: []
+          requests: [],
+          menuActions: ['share', 'edit', 'delete']
         };
         this.markAssetMutation();
         this.applyAssetCards([nextCard, ...this.assetCardsRef], { persist: false, reloadList: false });
@@ -710,11 +740,15 @@ export class OwnedAssetsPopupFacadeService {
       return;
     }
     const nextStatus = this.restoredAssetStatus(current);
-    await this.assetsService.takeOverOwnedAsset(ownerUserId, normalizedCardId);
+    const savedCard = await this.assetsService.takeOverOwnedAsset(ownerUserId, normalizedCardId);
     this.markAssetMutation();
     this.applyAssetCards(this.assetCardsRef.map(card =>
       card.id === normalizedCardId
-        ? { ...card, status: nextStatus }
+        ? {
+            ...card,
+            ...(savedCard ?? {}),
+            status: savedCard?.status ?? nextStatus
+          }
         : card
     ), {
       persist: false,
@@ -773,7 +807,8 @@ export class OwnedAssetsPopupFacadeService {
       topics: [...(card.topics ?? [])],
       policies: (card.policies ?? []).map(item => ({ ...item })),
       pricing: card.pricing ? PricingBuilder.clonePricingConfig(card.pricing) : undefined,
-      requests: card.requests.map(request => this.cloneAssetRequest(request))
+      requests: card.requests.map(request => this.cloneAssetRequest(request)),
+      menuActions: [...(card.menuActions ?? [])]
     })));
     if (this.areAssetCardListsEqual(this.assetCardsRef, nextCards)) {
       return;
@@ -887,7 +922,8 @@ export class OwnedAssetsPopupFacadeService {
       topics: [...(card.topics ?? [])],
       policies: (card.policies ?? []).map(item => ({ ...item })),
       pricing: card.pricing ? PricingBuilder.clonePricingConfig(card.pricing) : undefined,
-      requests: card.requests.map(request => this.cloneAssetRequest(request))
+      requests: card.requests.map(request => this.cloneAssetRequest(request)),
+      menuActions: [...(card.menuActions ?? [])]
     }));
     if (this.persistTimerId !== null) {
       clearTimeout(this.persistTimerId);
@@ -1007,7 +1043,8 @@ export class OwnedAssetsPopupFacadeService {
           request.booking?.totalAmount ?? '',
           request.booking?.timeframe ?? ''
         ].join(':'))
-        .join('|')
+        .join('|'),
+      (card.menuActions ?? []).join('|')
     ].join('||');
   }
 

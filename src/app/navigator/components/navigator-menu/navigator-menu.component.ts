@@ -382,6 +382,15 @@ export class NavigatorMenuComponent {
     this.navigatorService.closeMenu();
   }
 
+  protected openAdminParamsShortcut(event?: Event): void {
+    event?.stopPropagation();
+    if (!this.isOnline()) {
+      return;
+    }
+    this.popupCtx.openAdminNavigatorRequest('params');
+    this.navigatorService.closeMenu();
+  }
+
   protected openAdminStatsShortcut(event?: Event): void {
     event?.stopPropagation();
     if (!this.isOnline()) {

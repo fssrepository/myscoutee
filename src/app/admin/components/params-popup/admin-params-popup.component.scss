@@ -1,0 +1,491 @@
+@use '../../../shared/ui/styles' as ui;
+
+:host {
+  display: contents;
+}
+
+@include ui.popup-shell();
+@include ui.interactive-motion();
+@include ui.form-controls();
+
+.admin-params-panel {
+  width: min(880px, calc(100vw - 1.2rem));
+  height: calc(100vh - 1.2rem);
+}
+
+.admin-params-edit-panel,
+.admin-params-history-panel {
+  width: min(720px, calc(100vw - 1.2rem));
+  max-height: calc(100vh - 1.2rem);
+}
+
+.admin-params-confirm-panel {
+  width: min(420px, calc(100vw - 1.2rem));
+  padding: 1rem;
+}
+
+.admin-params-body,
+.admin-params-edit-body,
+.admin-params-history-body {
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.admin-params-body {
+  position: relative;
+  height: 100%;
+  padding: 0.65rem;
+  background: #f7fafc;
+}
+
+.admin-params-header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42rem;
+}
+
+.admin-params-icon-btn,
+.admin-params-history-btn {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  border: 1px solid rgba(32, 48, 72, 0.14);
+  border-radius: 50%;
+  background: #fff;
+  color: #243858;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.admin-params-icon-btn:disabled,
+.admin-params-history-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.admin-params-icon-btn .mat-icon,
+.admin-params-history-btn .mat-icon {
+  width: 18px;
+  height: 18px;
+  font-size: 18px;
+  line-height: 18px;
+}
+
+.admin-params-save-btn {
+  color: #fff;
+  background: #246b4b;
+  border-color: rgba(36, 107, 75, 0.5);
+}
+
+.admin-params-accordion {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.admin-params-section {
+  border: 1px solid rgba(28, 44, 68, 0.12);
+  border-radius: 8px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.admin-params-section-head {
+  min-height: 58px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: stretch;
+  border-bottom: 1px solid transparent;
+}
+
+.admin-params-section.is-open .admin-params-section-head {
+  border-bottom-color: rgba(28, 44, 68, 0.1);
+}
+
+.admin-params-section-toggle {
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: #213652;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0 0.7rem;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.admin-params-section-title,
+.admin-params-section-meta {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42rem;
+}
+
+.admin-params-section-title strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.94rem;
+  font-weight: 900;
+}
+
+.admin-params-section-title .mat-icon {
+  width: 20px;
+  height: 20px;
+  font-size: 20px;
+  line-height: 20px;
+  color: #56708d;
+}
+
+.admin-params-section-meta {
+  justify-self: end;
+  color: rgba(25, 42, 65, 0.62);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.admin-params-history-btn {
+  align-self: center;
+  margin-right: 0.56rem;
+}
+
+.admin-params-section-content {
+  padding: 0.7rem;
+}
+
+.admin-params-summary {
+  margin: 0 0 0.7rem;
+  color: rgba(25, 42, 65, 0.68);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.admin-params-field-group,
+.admin-params-edit-group {
+  display: grid;
+  gap: 0.42rem;
+}
+
+.admin-params-field-group + .admin-params-field-group,
+.admin-params-edit-group + .admin-params-edit-group {
+  margin-top: 0.8rem;
+}
+
+.admin-params-field-group h3,
+.admin-params-edit-group h3,
+.admin-params-history-fields h3 {
+  margin: 0;
+  color: #203553;
+  font-size: 0.74rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.admin-params-field-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.42rem;
+}
+
+.admin-params-field-row,
+.admin-params-edit-field,
+.admin-params-history-fields p {
+  min-width: 0;
+  min-height: 42px;
+  border: 1px solid rgba(29, 47, 72, 0.1);
+  border-radius: 8px;
+  background: #fbfdff;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.48rem 0.56rem;
+  box-sizing: border-box;
+}
+
+.admin-params-field-row strong,
+.admin-params-edit-field strong,
+.admin-params-history-fields span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #213652;
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.admin-params-field-row small,
+.admin-params-edit-field small {
+  display: block;
+  margin-top: 0.1rem;
+  color: rgba(28, 46, 72, 0.54);
+  font-size: 0.66rem;
+  font-weight: 800;
+}
+
+.admin-params-field-row b,
+.admin-params-history-fields b {
+  color: #246b4b;
+  font-size: 0.8rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.admin-params-edit-body {
+  padding: 0.76rem;
+}
+
+.admin-params-edit-field {
+  grid-template-columns: minmax(0, 1fr) minmax(96px, 140px) auto;
+}
+
+.admin-params-edit-field input {
+  min-width: 0;
+  height: 34px;
+  border: 1px solid rgba(29, 47, 72, 0.16);
+  border-radius: 8px;
+  background: #fff;
+  color: #213652;
+  padding: 0 0.52rem;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 800;
+  box-sizing: border-box;
+}
+
+.admin-params-edit-field em {
+  min-width: 18px;
+  color: rgba(28, 46, 72, 0.58);
+  font-style: normal;
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.admin-params-history-body {
+  padding: 0.7rem;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.admin-params-history-item {
+  border: 1px solid rgba(28, 44, 68, 0.12);
+  border-radius: 8px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.admin-params-history-item.is-active {
+  border-color: rgba(36, 107, 75, 0.36);
+}
+
+.admin-params-history-main {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  display: grid;
+  grid-template-columns: minmax(110px, auto) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.68rem;
+  color: #213652;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+
+.admin-params-history-main strong,
+.admin-params-history-main small {
+  display: block;
+}
+
+.admin-params-history-main small {
+  color: rgba(25, 42, 65, 0.58);
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
+.admin-params-history-main > span:nth-child(2) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: rgba(25, 42, 65, 0.72);
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.admin-params-history-fields {
+  padding: 0 0.68rem 0.68rem;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.admin-params-history-fields p {
+  margin: 0;
+  min-height: 34px;
+}
+
+.admin-params-revert-btn,
+.admin-params-confirm-btn,
+.admin-params-link-btn {
+  min-height: 36px;
+  border-radius: 8px;
+  border: 1px solid rgba(36, 107, 75, 0.28);
+  background: #eef8f2;
+  color: #246b4b;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.34rem;
+  padding: 0 0.72rem;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.admin-params-revert-btn {
+  justify-self: end;
+}
+
+.admin-params-revert-btn:disabled,
+.admin-params-confirm-btn:disabled,
+.admin-params-link-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.admin-params-confirm-panel h2,
+.admin-params-confirm-panel p {
+  margin: 0;
+}
+
+.admin-params-confirm-panel h2 {
+  color: #213652;
+  font-size: 1rem;
+  font-weight: 900;
+}
+
+.admin-params-confirm-panel p {
+  margin-top: 0.42rem;
+  color: rgba(25, 42, 65, 0.68);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.admin-params-confirm-actions {
+  margin-top: 0.8rem;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.admin-params-link-btn {
+  border-color: rgba(31, 48, 72, 0.12);
+  background: #fff;
+  color: #31445f;
+}
+
+.admin-params-confirm-btn {
+  position: relative;
+  min-width: 92px;
+  background: #246b4b;
+  color: #fff;
+}
+
+.admin-params-action-ring {
+  position: absolute;
+  inset: -3px;
+  pointer-events: none;
+}
+
+.admin-params-action-ring svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.admin-params-action-ring-track,
+.admin-params-action-ring-progress {
+  fill: none;
+  stroke-width: 3;
+}
+
+.admin-params-action-ring-track {
+  stroke: rgba(36, 107, 75, 0.18);
+}
+
+.admin-params-action-ring-progress {
+  stroke: #f1b33f;
+  stroke-linecap: round;
+  stroke-dasharray: 113;
+  stroke-dashoffset: 113;
+  animation: admin-params-ring 1.1s ease-in-out infinite;
+}
+
+.admin-params-loading {
+  height: 100%;
+  min-height: 280px;
+  display: grid;
+  place-items: center;
+}
+
+.admin-params-spinner {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 3px solid rgba(36, 107, 75, 0.16);
+  border-top-color: #246b4b;
+  animation: admin-params-spin 0.8s linear infinite;
+}
+
+.admin-params-error {
+  position: sticky;
+  bottom: 0.5rem;
+  margin: 0.5rem 0 0;
+  border: 1px solid rgba(202, 64, 79, 0.24);
+  border-radius: 8px;
+  background: #fff3f4;
+  color: #9a3140;
+  padding: 0.55rem 0.65rem;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+@keyframes admin-params-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes admin-params-ring {
+  0% {
+    stroke-dashoffset: 113;
+  }
+  60%,
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+@media (max-width: 680px) {
+  .admin-params-field-grid,
+  .admin-params-section-toggle,
+  .admin-params-history-main,
+  .admin-params-edit-field {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-params-section-meta {
+    justify-self: start;
+  }
+
+  .admin-params-edit-field input {
+    width: 100%;
+  }
+}

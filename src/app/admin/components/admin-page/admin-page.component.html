@@ -69,6 +69,9 @@
     @if (notificationsPopupComponent(); as notificationsComponent) {
       <ng-container *ngComponentOutlet="notificationsComponent"></ng-container>
     }
+    @if (paramsPopupComponent(); as paramsComponent) {
+      <ng-container *ngComponentOutlet="paramsComponent"></ng-container>
+    }
     @if (statsPopupComponent(); as statsComponent) {
       <ng-container *ngComponentOutlet="statsComponent"></ng-container>
     }

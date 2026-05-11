@@ -231,7 +231,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
     if (this.isBasketMode()) {
       return;
     }
-    if (event.actionId === 'shareAsset') {
+    if (event.actionId === 'shareAsset' || event.actionId === 'share') {
       this.openOwnedAssetShareDialog(card);
       return;
     }
@@ -252,7 +252,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
       });
       return;
     }
-    if (event.actionId === 'editAsset') {
+    if (event.actionId === 'editAsset' || event.actionId === 'edit') {
       this.ownedAssets.runAssetItemEditAction(card);
     }
   }
@@ -434,7 +434,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
 
   protected toggleSupplyRequestActionMenu(request: AppTypes.AssetMemberRequest, event: Event): void {
     event.stopPropagation();
-    if (request.status !== 'pending' || this.isAssignedSupplyRequest(request)) {
+    if (!this.hasSupplyRequestActions(request)) {
       return;
     }
     if (this.supplyRequestActionMenu?.id === request.id) {
@@ -457,6 +457,15 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
 
   protected isSupplyRequestBusy(request: AppTypes.AssetMemberRequest, action: AppTypes.AssetRequestAction): boolean {
     return this.supplyRequestBusyKey === `${request.id}:${action}`;
+  }
+
+  protected hasSupplyRequestActions(request: AppTypes.AssetMemberRequest): boolean {
+    return (request.status === 'pending' && !this.isAssignedSupplyRequest(request))
+      || this.canPromoteSupplyRequestToManager(request);
+  }
+
+  protected canPromoteSupplyRequestToManager(request: AppTypes.AssetMemberRequest): boolean {
+    return (request.menuActions ?? []).includes('makeManager');
   }
 
   protected async approveSupplyRequest(request: AppTypes.AssetMemberRequest, event: Event): Promise<void> {
@@ -484,6 +493,21 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
     this.supplyRequestBusyKey = `${request.id}:remove`;
     try {
       await this.ownedAssets.applyAssetRequestAction(asset.id, request.id, 'remove');
+    } finally {
+      this.supplyRequestBusyKey = '';
+    }
+  }
+
+  protected async promoteSupplyRequestToManager(request: AppTypes.AssetMemberRequest, event: Event): Promise<void> {
+    event.stopPropagation();
+    const asset = this.selectedSupplyAsset();
+    if (!asset || !this.canPromoteSupplyRequestToManager(request)) {
+      return;
+    }
+    this.supplyRequestActionMenu = null;
+    this.supplyRequestBusyKey = `${request.id}:makeManager`;
+    try {
+      await this.ownedAssets.promoteAssetRequestToManager(asset.id, request.id);
     } finally {
       this.supplyRequestBusyKey = '';
     }

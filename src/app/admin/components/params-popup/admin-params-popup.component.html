@@ -1,0 +1,210 @@
+@if (admin.activePopup() === 'params') {
+  <section class="app-popup">
+    <div class="app-popup-backdrop" (click)="close()"></div>
+    <div class="app-popup-panel admin-params-panel" (click)="$event.stopPropagation()">
+      <div class="popup-header">
+        <div class="popup-title">
+          <h2>Params</h2>
+          <p class="popup-subtitle">{{ selectedSection()?.label ?? 'Platform' }} · v{{ selectedSection()?.version ?? 1 }}</p>
+        </div>
+        <div class="admin-params-header-actions">
+          <button type="button" class="admin-params-icon-btn" [disabled]="!selectedSection() || loading()" (click)="openEdit()" aria-label="Edit section">
+            <mat-icon>edit</mat-icon>
+          </button>
+          <button type="button" class="popup-close" (click)="close()" aria-label="Close">
+            <mat-icon>close</mat-icon>
+          </button>
+        </div>
+      </div>
+
+      <div class="popup-body admin-params-body">
+        @if (loading()) {
+          <div class="admin-params-loading">
+            <span class="admin-params-spinner" aria-hidden="true"></span>
+          </div>
+        } @else if (state(); as paramsState) {
+          <div class="admin-params-accordion">
+            @for (section of paramsState.sections; track section.key) {
+              <section class="admin-params-section" [class.is-open]="openSectionKey() === section.key">
+                <div class="admin-params-section-head">
+                  <button type="button" class="admin-params-section-toggle" (click)="toggleSection(section)">
+                    <span class="admin-params-section-title">
+                      <mat-icon>{{ openSectionKey() === section.key ? 'expand_less' : 'expand_more' }}</mat-icon>
+                      <strong>{{ section.label }}</strong>
+                    </span>
+                    <span class="admin-params-section-meta">
+                      <span>v{{ section.version }}</span>
+                      <span>{{ sectionDate(section.changedDate) }}</span>
+                    </span>
+                  </button>
+                  <button type="button" class="admin-params-history-btn" (click)="openHistory(section, $event)" aria-label="Open history">
+                    <mat-icon>history</mat-icon>
+                  </button>
+                </div>
+
+                @if (openSectionKey() === section.key) {
+                  <div class="admin-params-section-content">
+                    <p class="admin-params-summary">{{ section.summary }}</p>
+                    @for (group of fieldsByGroup(section.fields); track group.group) {
+                      <div class="admin-params-field-group">
+                        <h3>{{ group.group }}</h3>
+                        <div class="admin-params-field-grid">
+                          @for (field of group.fields; track field.key) {
+                            <div class="admin-params-field-row">
+                              <span>
+                                <strong>{{ field.label }}</strong>
+                                @if (field.strategy) {
+                                  <small>{{ field.strategy }}</small>
+                                }
+                              </span>
+                              <b>{{ fieldValueLabel(field) }}</b>
+                            </div>
+                          }
+                        </div>
+                      </div>
+                    }
+                  </div>
+                }
+              </section>
+            }
+          </div>
+        }
+
+        @if (error()) {
+          <p class="admin-params-error">{{ error() }}</p>
+        }
+      </div>
+    </div>
+  </section>
+}
+
+@if (editDraft(); as draft) {
+  <section class="app-popup app-popup-stacked">
+    <div class="app-popup-backdrop" (click)="cancelEdit()"></div>
+    <div class="app-popup-panel admin-params-edit-panel" (click)="$event.stopPropagation()">
+      <div class="popup-header">
+        <div class="popup-title">
+          <h2>{{ draft.section.label }}</h2>
+          <p class="popup-subtitle">v{{ draft.section.version }}</p>
+        </div>
+        <div class="admin-params-header-actions">
+          <button type="button" class="admin-params-icon-btn" [disabled]="saving()" (click)="cancelEdit()" aria-label="Cancel">
+            <mat-icon>close</mat-icon>
+          </button>
+          <button type="button" class="admin-params-icon-btn admin-params-save-btn" [disabled]="saving()" (click)="saveEdit()" aria-label="Save">
+            @if (saving()) {
+              <span class="admin-params-action-ring" aria-hidden="true">
+                <svg viewBox="0 0 44 44">
+                  <circle class="admin-params-action-ring-track" cx="22" cy="22" r="18"></circle>
+                  <circle class="admin-params-action-ring-progress" cx="22" cy="22" r="18"></circle>
+                </svg>
+              </span>
+            }
+            <mat-icon>check</mat-icon>
+          </button>
+        </div>
+      </div>
+
+      <div class="popup-body admin-params-edit-body">
+        @for (group of fieldsByGroup(draft.fields); track group.group) {
+          <section class="admin-params-edit-group">
+            <h3>{{ group.group }}</h3>
+            @for (field of group.fields; track field.key) {
+              <label class="admin-params-edit-field">
+                <span>
+                  <strong>{{ field.label }}</strong>
+                  @if (field.strategy) {
+                    <small>{{ field.strategy }}</small>
+                  }
+                </span>
+                @if (field.valueType === 'text') {
+                  <input type="text" [(ngModel)]="field.textValue" />
+                } @else {
+                  <input type="number" [ngModel]="field.numberValue" (ngModelChange)="updateNumberField(field, $event)" />
+                }
+                @if (field.unit) {
+                  <em>{{ field.unit }}</em>
+                }
+              </label>
+            }
+          </section>
+        }
+      </div>
+    </div>
+  </section>
+}
+
+@if (history(); as historyState) {
+  <section class="app-popup app-popup-stacked">
+    <div class="app-popup-backdrop" (click)="closeHistory()"></div>
+    <div class="app-popup-panel admin-params-history-panel" (click)="$event.stopPropagation()">
+      <div class="popup-header">
+        <div class="popup-title">
+          <h2>{{ historyState.label }}</h2>
+          <p class="popup-subtitle">History</p>
+        </div>
+        <button type="button" class="popup-close" [disabled]="reverting()" (click)="closeHistory()" aria-label="Close">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+
+      <div class="popup-body admin-params-history-body">
+        @for (item of historyState.versions; track item.version) {
+          <article class="admin-params-history-item" [class.is-active]="item.active">
+            <button type="button" class="admin-params-history-main" (click)="inspectVersion(item)">
+              <span>
+                <strong>v{{ item.version }}</strong>
+                <small>{{ sectionDate(item.changedDate) }} · {{ item.changedBy }}</small>
+              </span>
+              <span>{{ item.summary }}</span>
+              <mat-icon>{{ inspectedVersion()?.version === item.version ? 'expand_less' : 'expand_more' }}</mat-icon>
+            </button>
+            @if (inspectedVersion()?.version === item.version) {
+              <div class="admin-params-history-fields">
+                @for (group of fieldsByGroup(item.fields); track group.group) {
+                  <div>
+                    <h3>{{ group.group }}</h3>
+                    @for (field of group.fields; track field.key) {
+                      <p>
+                        <span>{{ field.label }}</span>
+                        <b>{{ fieldValueLabel(field) }}</b>
+                      </p>
+                    }
+                  </div>
+                }
+                <button type="button" class="admin-params-revert-btn" [disabled]="item.active || reverting()" (click)="requestRevert(item, $event)">
+                  <mat-icon>settings_backup_restore</mat-icon>
+                  <span>Revert</span>
+                </button>
+              </div>
+            }
+          </article>
+        }
+      </div>
+    </div>
+  </section>
+}
+
+@if (revertCandidate(); as candidate) {
+  <section class="app-popup app-popup-stacked admin-params-confirm-popup">
+    <div class="app-popup-backdrop" (click)="cancelRevert()"></div>
+    <div class="app-popup-panel admin-params-confirm-panel" (click)="$event.stopPropagation()">
+      <h2>Revert to v{{ candidate.version }}?</h2>
+      <p>{{ candidate.summary }}</p>
+      <div class="admin-params-confirm-actions">
+        <button type="button" class="admin-params-link-btn" [disabled]="reverting()" (click)="cancelRevert()">Cancel</button>
+        <button type="button" class="admin-params-confirm-btn" [disabled]="reverting()" (click)="confirmRevert()">
+          @if (reverting()) {
+            <span class="admin-params-action-ring" aria-hidden="true">
+              <svg viewBox="0 0 92 44" preserveAspectRatio="none">
+                <circle class="admin-params-action-ring-track" cx="22" cy="22" r="18"></circle>
+                <circle class="admin-params-action-ring-progress" cx="22" cy="22" r="18"></circle>
+              </svg>
+            </span>
+          }
+          <span>Revert</span>
+        </button>
+      </div>
+    </div>
+  </section>
+}

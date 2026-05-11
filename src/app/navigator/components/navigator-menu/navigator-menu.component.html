@@ -114,7 +114,7 @@
               <mat-icon>pending_actions</mat-icon>
               <span class="menu-shortcut-label">{{ 'jobs' | i18n }}</span>
             </button>
-            <button #adminParamsButton class="menu-shortcut-btn menu-shortcut-params" type="button" [disabled]="!isOnline()" [attr.aria-label]="'open.parameters' | i18n" [title]="'parameters' | i18n">
+            <button #adminParamsButton class="menu-shortcut-btn menu-shortcut-params" type="button" [disabled]="!isOnline()" (click)="openAdminParamsShortcut($event)" [attr.aria-label]="'open.parameters' | i18n" [title]="'parameters' | i18n">
               <span class="navigator-action-ripple" matRipple [matRippleTrigger]="adminParamsButton" aria-hidden="true"></span>
               <mat-icon>tune</mat-icon>
               <span class="menu-shortcut-label">{{ 'params' | i18n }}</span>

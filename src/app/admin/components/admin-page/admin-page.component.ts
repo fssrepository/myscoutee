@@ -40,6 +40,7 @@ export class AdminPageComponent implements OnInit {
   private readonly helpEditorPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly ideaEditorPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly notificationsPopupComponentRef = signal<Type<unknown> | null>(null);
+  private readonly paramsPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly statsPopupComponentRef = signal<Type<unknown> | null>(null);
 
   protected selectorOpen = false;
@@ -56,6 +57,7 @@ export class AdminPageComponent implements OnInit {
   protected readonly helpEditorPopupComponent = this.helpEditorPopupComponentRef.asReadonly();
   protected readonly ideaEditorPopupComponent = this.ideaEditorPopupComponentRef.asReadonly();
   protected readonly notificationsPopupComponent = this.notificationsPopupComponentRef.asReadonly();
+  protected readonly paramsPopupComponent = this.paramsPopupComponentRef.asReadonly();
   protected readonly statsPopupComponent = this.statsPopupComponentRef.asReadonly();
 
   constructor() {
@@ -75,6 +77,9 @@ export class AdminPageComponent implements OnInit {
           break;
         case 'notifications':
           void this.ensureNotificationsPopupLoaded();
+          break;
+        case 'params':
+          void this.ensureParamsPopupLoaded();
           break;
         case 'stats':
           void this.ensureStatsPopupLoaded();
@@ -110,6 +115,9 @@ export class AdminPageComponent implements OnInit {
           break;
         case 'notifications':
           this.admin.openNotifications();
+          break;
+        case 'params':
+          this.admin.openParams();
           break;
         case 'stats':
           this.admin.openStats();
@@ -283,6 +291,14 @@ export class AdminPageComponent implements OnInit {
     }
     const module = await import('../notifications-popup/admin-notifications-popup.component');
     this.notificationsPopupComponentRef.set(module.AdminNotificationsPopupComponent);
+  }
+
+  private async ensureParamsPopupLoaded(): Promise<void> {
+    if (this.paramsPopupComponentRef()) {
+      return;
+    }
+    const module = await import('../params-popup/admin-params-popup.component');
+    this.paramsPopupComponentRef.set(module.AdminParamsPopupComponent);
   }
 
   private async ensureStatsPopupLoaded(): Promise<void> {

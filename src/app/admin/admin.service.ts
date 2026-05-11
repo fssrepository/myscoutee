@@ -40,6 +40,7 @@ export type AdminPopupKind =
   | 'help-editor'
   | 'idea-editor'
   | 'notifications'
+  | 'params'
   | 'stats'
   | 'item-preview';
 
@@ -227,10 +228,58 @@ export interface AdminStatsDashboardDto {
   revenue: AdminStatsRevenueDto;
 }
 
+export type AdminParamValueType = 'number' | 'text';
+
+export interface AdminParamFieldDto {
+  key: string;
+  label: string;
+  group: string;
+  valueType: AdminParamValueType;
+  numberValue?: number | null;
+  textValue?: string | null;
+  unit?: string | null;
+  strategy?: string | null;
+}
+
+export interface AdminParamsSectionDto {
+  key: string;
+  label: string;
+  version: number;
+  changedDate: string;
+  changedBy: string;
+  summary: string;
+  fields: AdminParamFieldDto[];
+}
+
+export interface AdminParamsStateDto {
+  sections: AdminParamsSectionDto[];
+  updatedDate: string;
+}
+
+export interface AdminParamsHistoryItemDto {
+  configId?: string | null;
+  version: number;
+  changedDate: string;
+  changedBy: string;
+  summary: string;
+  active: boolean;
+  fields: AdminParamFieldDto[];
+}
+
+export interface AdminParamsHistoryDto {
+  sectionKey: string;
+  label: string;
+  versions: AdminParamsHistoryItemDto[];
+}
+
 interface AdminModerationStore {
   seededAtIso: string;
   reports: AdminReportDto[];
   feedback: AdminFeedbackDto[];
+}
+
+interface AdminParamsDemoStore extends AdminParamsStateDto {
+  historyBySection: Record<string, AdminParamsHistoryItemDto[]>;
 }
 
 interface DemoAdminHelpTarget {
@@ -260,6 +309,7 @@ const ADMIN_SESSION_STORAGE_KEY = 'myscoutee-admin-session';
 const ADMIN_MODERATION_STORE_KEY = 'adminModeration';
 const ADMIN_NOTIFICATION_STORE_KEY = 'adminNotificationRules';
 const ADMIN_STATS_STORE_KEY = 'adminStats';
+const ADMIN_PARAMS_STORE_KEY = 'adminParams';
 const ADMIN_NOTIFICATION_STORAGE_TIMEOUT_MS = 2500;
 const ADMIN_NOTIFICATION_HTTP_TIMEOUT_MS = 12000;
 
@@ -403,6 +453,10 @@ export class AdminService {
     this.activePopupRef.set('notifications');
   }
 
+  openParams(): void {
+    this.activePopupRef.set('params');
+  }
+
   openStats(): void {
     this.activePopupRef.set('stats');
   }
@@ -507,6 +561,128 @@ export class AdminService {
       undefined
     );
     return snapshot;
+  }
+
+  async loadParamsState(): Promise<AdminParamsStateDto> {
+    if (this.usesHttpAdminApi) {
+      const state = await this.withNotificationHttpTimeout(this.http
+        .get<AdminParamsStateDto>(`${this.apiBaseUrl}/admin/params`, {
+          params: { adminUserId: this.activeAdmin()?.id ?? '' }
+        })
+        .toPromise());
+      return this.normalizeParamsState(state ?? this.buildDefaultParamsStore());
+    }
+    const store = await this.loadDemoParamsStore();
+    return this.normalizeParamsState(store);
+  }
+
+  async saveParamsSection(
+    sectionKey: string,
+    fields: readonly AdminParamFieldDto[],
+    summary: string
+  ): Promise<AdminParamsStateDto> {
+    const normalizedSectionKey = `${sectionKey ?? ''}`.trim();
+    const normalizedFields = fields.map(field => this.normalizeParamField(field));
+    if (this.usesHttpAdminApi) {
+      const state = await this.withNotificationHttpTimeout(this.http
+        .post<AdminParamsStateDto>(`${this.apiBaseUrl}/admin/params`, {
+          adminUserId: this.activeAdmin()?.id ?? '',
+          sectionKey: normalizedSectionKey,
+          fields: normalizedFields,
+          summary
+        })
+        .toPromise());
+      return this.normalizeParamsState(state ?? this.buildDefaultParamsStore());
+    }
+    const store = await this.loadDemoParamsStore();
+    const nowIso = new Date().toISOString();
+    const version = this.nextDemoParamsVersion(store);
+    const nextSections = store.sections.map(section => section.key === normalizedSectionKey
+      ? {
+          ...section,
+          version,
+          changedDate: nowIso,
+          changedBy: this.activeAdmin()?.id ?? 'demo-admin',
+          summary: summary.trim() || `Updated ${section.label} parameters.`,
+          fields: normalizedFields.map(field => ({ ...field }))
+        }
+      : section
+    );
+    const updatedSection = nextSections.find(section => section.key === normalizedSectionKey);
+    const nextStore = this.normalizeParamsStore({
+      sections: nextSections,
+      updatedDate: nowIso,
+      historyBySection: {
+        ...store.historyBySection,
+        [normalizedSectionKey]: updatedSection
+          ? [{
+              configId: `demo-params-v${version}`,
+              version,
+              changedDate: nowIso,
+              changedBy: this.activeAdmin()?.id ?? 'demo-admin',
+              summary: updatedSection.summary,
+              active: true,
+              fields: updatedSection.fields.map(field => ({ ...field }))
+            }, ...(store.historyBySection[normalizedSectionKey] ?? []).map(item => ({ ...item, active: false }))]
+          : store.historyBySection[normalizedSectionKey] ?? []
+      }
+    });
+    await this.withNotificationStorageFallback(
+      this.memoryDb.writeIndexedDbTableEntry(ADMIN_PARAMS_STORE_KEY, nextStore),
+      undefined
+    );
+    return this.normalizeParamsState(nextStore);
+  }
+
+  async loadParamsHistory(sectionKey: string): Promise<AdminParamsHistoryDto> {
+    const normalizedSectionKey = `${sectionKey ?? ''}`.trim();
+    if (this.usesHttpAdminApi) {
+      const history = await this.withNotificationHttpTimeout(this.http
+        .get<AdminParamsHistoryDto>(
+          `${this.apiBaseUrl}/admin/params/${encodeURIComponent(normalizedSectionKey)}/history`,
+          { params: { adminUserId: this.activeAdmin()?.id ?? '' } }
+        )
+        .toPromise());
+      return this.normalizeParamsHistory(history ?? {
+        sectionKey: normalizedSectionKey,
+        label: normalizedSectionKey,
+        versions: []
+      });
+    }
+    const store = await this.loadDemoParamsStore();
+    const section = store.sections.find(item => item.key === normalizedSectionKey);
+    return this.normalizeParamsHistory({
+      sectionKey: normalizedSectionKey,
+      label: section?.label ?? normalizedSectionKey,
+      versions: store.historyBySection[normalizedSectionKey] ?? []
+    });
+  }
+
+  async revertParamsSection(sectionKey: string, version: number): Promise<AdminParamsStateDto> {
+    const normalizedSectionKey = `${sectionKey ?? ''}`.trim();
+    const normalizedVersion = Math.max(1, Math.trunc(Number(version) || 0));
+    if (this.usesHttpAdminApi) {
+      const state = await this.withNotificationHttpTimeout(this.http
+        .post<AdminParamsStateDto>(
+          `${this.apiBaseUrl}/admin/params/${encodeURIComponent(normalizedSectionKey)}/revert`,
+          {
+            adminUserId: this.activeAdmin()?.id ?? '',
+            version: normalizedVersion
+          }
+        )
+        .toPromise());
+      return this.normalizeParamsState(state ?? this.buildDefaultParamsStore());
+    }
+    const history = await this.loadParamsHistory(normalizedSectionKey);
+    const selected = history.versions.find(item => item.version === normalizedVersion);
+    if (!selected) {
+      return this.loadParamsState();
+    }
+    return this.saveParamsSection(
+      normalizedSectionKey,
+      selected.fields,
+      `Reverted ${history.label} parameters to version ${normalizedVersion}.`
+    );
   }
 
   async loadNotificationCenter(): Promise<AdminNotificationCenterState> {
@@ -2021,6 +2197,258 @@ export class AdminService {
       return `${(value / 1_000).toFixed(1)}k`;
     }
     return String(value);
+  }
+
+  private async loadDemoParamsStore(): Promise<AdminParamsDemoStore> {
+    await this.withNotificationStorageFallback(this.memoryDb.whenReady(), undefined);
+    const existing = await this.withNotificationStorageFallback(
+      this.memoryDb.readIndexedDbTableEntry<AdminParamsDemoStore>(ADMIN_PARAMS_STORE_KEY),
+      null
+    );
+    if (existing?.sections?.length) {
+      return this.normalizeParamsStore(existing);
+    }
+    const seeded = this.buildDefaultParamsStore();
+    await this.withNotificationStorageFallback(
+      this.memoryDb.writeIndexedDbTableEntry(ADMIN_PARAMS_STORE_KEY, seeded),
+      undefined
+    );
+    return seeded;
+  }
+
+  private buildDefaultParamsStore(): AdminParamsDemoStore {
+    const changedDate = '2026-05-01T09:00:00.000Z';
+    const sections: AdminParamsSectionDto[] = [
+      this.paramSection('matching', 'Matching', 3, '2026-05-07T12:30:00.000Z', 'admin-demo-ava', 'Raised inside-network confidence after graph review.', [
+        this.numberParam('rating.singleMutual', 'Single mutual', 'Ratings', 10, 'x'),
+        this.numberParam('rating.singleOneSided', 'Single one-sided', 'Ratings', 2, 'x'),
+        this.numberParam('rating.pairOutsideNetwork', 'Pair outside network', 'Ratings', 2, 'x'),
+        this.numberParam('rating.pairInsideNetwork', 'Pair inside network', 'Ratings', 5, 'x'),
+        this.numberParam('evidence.mutualSingle', 'Mutual single', 'Evidence', 1, 'x'),
+        this.numberParam('evidence.singleOneSided', 'Single one-sided', 'Evidence', 0, 'x'),
+        this.numberParam('evidence.pairOutsideNetwork', 'Pair outside network', 'Evidence', 0.3, 'x'),
+        this.numberParam('evidence.pairInsideNetwork', 'Pair inside network', 'Evidence', 0.7, 'x'),
+        this.numberParam('evidence.met', 'Met in person', 'Evidence', 0.5, 'x'),
+        this.numberParam('ownerContext', 'Owner context', 'Network', 3, 'x')
+      ]),
+      this.paramSection('profile', 'Profile', 2, '2026-05-04T10:10:00.000Z', 'admin-demo-noel', 'Balanced profile, workplace, school, and trait inputs.', [
+        this.numberParam('profileRules.0', 'Languages', 'Profile fields', 2, 'x', 'intersection'),
+        this.numberParam('profileRules.1', 'Physique', 'Profile fields', 3, 'x', 'exact'),
+        this.numberParam('profileRules.2', 'Interest', 'Profile fields', 2, 'x', 'intersection'),
+        this.numberParam('profileRules.3', 'Values', 'Profile fields', 3, 'x', 'intersection'),
+        this.numberParam('profileRules.4', 'Workout', 'Profile fields', 2, 'x', 'exact'),
+        this.numberParam('profileRules.5', 'Workplace', 'Experience', 4, 'x', 'intersection'),
+        this.numberParam('profileRules.6', 'Profession', 'Experience', 3, 'x', 'intersection'),
+        this.numberParam('profileRules.7', 'School', 'Experience', 4, 'x', 'intersection'),
+        this.numberParam('impressionRules.0', 'Personality traits', 'Traits', 4, 'x', 'trait-vector'),
+        this.numberParam('absolute.user.completion', 'Completion', 'Absolute user', 13, 'pts'),
+        this.numberParam('absolute.user.impressionAverageRating', 'Average rating', 'Impressions', 29, 'pts')
+      ]),
+      this.paramSection('events', 'Events', 4, '2026-05-08T15:45:00.000Z', 'admin-demo-ava', 'Adjusted host confidence and open-capacity boost.', [
+        this.numberParam('absolute.event.contentTokens', 'Content tokens', 'Affinity', 89, 'pts'),
+        this.numberParam('absolute.event.participantAffinity', 'Participant affinity', 'Affinity', 1, 'x'),
+        this.numberParam('boost.event.rating', 'Rating', 'Boost', 29, 'pts'),
+        this.numberParam('boost.event.acceptedMembers', 'Accepted members', 'Boost', 19, 'pts'),
+        this.numberParam('boost.event.pendingMembers', 'Pending members', 'Boost', 11, 'pts'),
+        this.numberParam('boost.event.capacityAvailable', 'Capacity available', 'Boost', 7, 'pts'),
+        this.numberParam('boost.event.hostConfidence', 'Host confidence', 'Boost', 0.25, 'x')
+      ]),
+      this.paramSection('assets', 'Assets', 2, '2026-05-06T08:15:00.000Z', 'admin-demo-noel', 'Added owner confidence and request pressure to asset ranking.', [
+        this.numberParam('absolute.asset.contentTokens', 'Content tokens', 'Affinity', 83, 'pts'),
+        this.numberParam('absolute.asset.ownerAffinity', 'Owner affinity', 'Affinity', 1, 'x'),
+        this.numberParam('boost.asset.capacityAvailable', 'Capacity available', 'Boost', 7, 'pts'),
+        this.numberParam('boost.asset.quantity', 'Quantity', 'Boost', 11, 'pts'),
+        this.numberParam('boost.asset.requestCount', 'Request count', 'Boost', 13, 'pts'),
+        this.numberParam('boost.asset.freshness', 'Freshness', 'Boost', 3, 'pts'),
+        this.numberParam('boost.asset.ownerConfidence', 'Owner confidence', 'Boost', 0.25, 'x')
+      ]),
+      this.paramSection('discovery', 'Discovery', 1, changedDate, 'system', 'Initial outside-network and distance balance.', [
+        this.numberParam('distance.multiplier', 'Distance multiplier', 'Distance', 5, 'pts'),
+        this.numberParam('distance.maxMeters', 'Max distance', 'Distance', 50000, 'm'),
+        this.textParam('distance.strategy', 'Distance strategy', 'Distance', 'linear', 'linear')
+      ]),
+      this.paramSection('notifications', 'Notifications', 1, changedDate, 'system', 'Initial Firebase batching and retry defaults.', [
+        this.numberParam('notifications.firebaseWindowStartHour', 'Window start', 'Firebase', 8, 'h'),
+        this.numberParam('notifications.firebaseWindowEndHour', 'Window end', 'Firebase', 22, 'h'),
+        this.numberParam('notifications.maxWorkers', 'Max workers', 'Delivery', 4, ''),
+        this.numberParam('notifications.maxRetries', 'Max retries', 'Retry', 5, ''),
+        this.numberParam('notifications.initialBackoffSeconds', 'Initial backoff', 'Retry', 30, 's'),
+        this.numberParam('notifications.collapseWindowSeconds', 'Collapse window', 'Collapse', 300, 's'),
+        this.numberParam('notifications.multicastThreshold', 'Multicast threshold', 'Delivery', 3, ''),
+        this.numberParam('notifications.topicThreshold', 'Topic threshold', 'Delivery', 250, '')
+      ]),
+      this.paramSection('jobs', 'Jobs', 1, changedDate, 'system', 'Initial recompute worker scheduling defaults.', [
+        this.numberParam('jobs.userChangedDebounceSeconds', 'User debounce', 'Debounce', 300, 's'),
+        this.numberParam('jobs.eventChangedDebounceSeconds', 'Event debounce', 'Debounce', 180, 's'),
+        this.numberParam('jobs.eventMembersChangedDebounceSeconds', 'Members debounce', 'Debounce', 300, 's'),
+        this.numberParam('jobs.assetChangedDebounceSeconds', 'Asset debounce', 'Debounce', 180, 's'),
+        this.numberParam('jobs.assetRequestsChangedDebounceSeconds', 'Requests debounce', 'Debounce', 180, 's'),
+        this.numberParam('jobs.configChangedDebounceSeconds', 'Config debounce', 'Debounce', 900, 's'),
+        this.numberParam('jobs.workerPollDelayMs', 'Worker poll delay', 'Worker', 60000, 'ms'),
+        this.numberParam('jobs.batchSize', 'Batch size', 'Worker', 50, ''),
+        this.numberParam('jobs.leaseDurationSeconds', 'Lease duration', 'Worker', 600, 's')
+      ])
+    ];
+    const historyBySection = sections.reduce<Record<string, AdminParamsHistoryItemDto[]>>((acc, section) => {
+      acc[section.key] = [
+        {
+          configId: `demo-params-${section.key}-v${section.version}`,
+          version: section.version,
+          changedDate: section.changedDate,
+          changedBy: section.changedBy,
+          summary: section.summary,
+          active: true,
+          fields: section.fields.map(field => ({ ...field }))
+        },
+        {
+          configId: `demo-params-${section.key}-v1`,
+          version: 1,
+          changedDate,
+          changedBy: 'system',
+          summary: 'Initial parameter seed.',
+          active: section.version === 1,
+          fields: section.fields.map(field => ({ ...field }))
+        }
+      ].filter((item, index, values) => values.findIndex(candidate => candidate.version === item.version) === index);
+      return acc;
+    }, {});
+    return this.normalizeParamsStore({
+      sections,
+      updatedDate: '2026-05-08T15:45:00.000Z',
+      historyBySection
+    });
+  }
+
+  private paramSection(
+    key: string,
+    label: string,
+    version: number,
+    changedDate: string,
+    changedBy: string,
+    summary: string,
+    fields: AdminParamFieldDto[]
+  ): AdminParamsSectionDto {
+    return {
+      key,
+      label,
+      version,
+      changedDate,
+      changedBy,
+      summary,
+      fields: fields.map(field => this.normalizeParamField(field))
+    };
+  }
+
+  private numberParam(
+    key: string,
+    label: string,
+    group: string,
+    numberValue: number,
+    unit: string,
+    strategy = ''
+  ): AdminParamFieldDto {
+    return { key, label, group, valueType: 'number', numberValue, textValue: null, unit, strategy };
+  }
+
+  private textParam(
+    key: string,
+    label: string,
+    group: string,
+    textValue: string,
+    strategy = ''
+  ): AdminParamFieldDto {
+    return { key, label, group, valueType: 'text', numberValue: null, textValue, unit: null, strategy };
+  }
+
+  private normalizeParamsState(state: AdminParamsStateDto): AdminParamsStateDto {
+    return {
+      sections: (state.sections ?? []).map(section => this.normalizeParamsSection(section)),
+      updatedDate: `${state.updatedDate ?? ''}`.trim() || new Date().toISOString()
+    };
+  }
+
+  private normalizeParamsStore(store: AdminParamsDemoStore): AdminParamsDemoStore {
+    const state = this.normalizeParamsState(store);
+    const historyBySection: Record<string, AdminParamsHistoryItemDto[]> = {};
+    for (const section of state.sections) {
+      historyBySection[section.key] = (store.historyBySection?.[section.key] ?? [])
+        .map(item => this.normalizeParamsHistoryItem(item))
+        .sort((left, right) => right.version - left.version);
+      if (!historyBySection[section.key].length) {
+        historyBySection[section.key] = [{
+          configId: `demo-params-${section.key}-v${section.version}`,
+          version: section.version,
+          changedDate: section.changedDate,
+          changedBy: section.changedBy,
+          summary: section.summary,
+          active: true,
+          fields: section.fields.map(field => ({ ...field }))
+        }];
+      }
+    }
+    return {
+      ...state,
+      historyBySection
+    };
+  }
+
+  private normalizeParamsSection(section: AdminParamsSectionDto): AdminParamsSectionDto {
+    return {
+      key: `${section.key ?? ''}`.trim(),
+      label: `${section.label ?? ''}`.trim() || `${section.key ?? ''}`.trim(),
+      version: Math.max(1, Math.trunc(Number(section.version) || 1)),
+      changedDate: `${section.changedDate ?? ''}`.trim() || new Date().toISOString(),
+      changedBy: `${section.changedBy ?? ''}`.trim() || 'system',
+      summary: `${section.summary ?? ''}`.trim(),
+      fields: (section.fields ?? []).map(field => this.normalizeParamField(field))
+    };
+  }
+
+  private normalizeParamField(field: AdminParamFieldDto): AdminParamFieldDto {
+    const valueType: AdminParamValueType = field.valueType === 'text' ? 'text' : 'number';
+    const numberValue = valueType === 'number'
+      ? (Number.isFinite(Number(field.numberValue)) ? Number(field.numberValue) : 0)
+      : null;
+    return {
+      key: `${field.key ?? ''}`.trim(),
+      label: `${field.label ?? ''}`.trim() || `${field.key ?? ''}`.trim(),
+      group: `${field.group ?? ''}`.trim() || 'General',
+      valueType,
+      numberValue,
+      textValue: valueType === 'text' ? `${field.textValue ?? ''}`.trim() : null,
+      unit: `${field.unit ?? ''}`.trim(),
+      strategy: `${field.strategy ?? ''}`.trim()
+    };
+  }
+
+  private normalizeParamsHistory(history: AdminParamsHistoryDto): AdminParamsHistoryDto {
+    return {
+      sectionKey: `${history.sectionKey ?? ''}`.trim(),
+      label: `${history.label ?? ''}`.trim() || `${history.sectionKey ?? ''}`.trim(),
+      versions: (history.versions ?? [])
+        .map(item => this.normalizeParamsHistoryItem(item))
+        .sort((left, right) => right.version - left.version)
+    };
+  }
+
+  private normalizeParamsHistoryItem(item: AdminParamsHistoryItemDto): AdminParamsHistoryItemDto {
+    return {
+      configId: `${item.configId ?? ''}`.trim() || null,
+      version: Math.max(1, Math.trunc(Number(item.version) || 1)),
+      changedDate: `${item.changedDate ?? ''}`.trim() || new Date().toISOString(),
+      changedBy: `${item.changedBy ?? ''}`.trim() || 'system',
+      summary: `${item.summary ?? ''}`.trim(),
+      active: item.active === true,
+      fields: (item.fields ?? []).map(field => this.normalizeParamField(field))
+    };
+  }
+
+  private nextDemoParamsVersion(store: AdminParamsDemoStore): number {
+    return Math.max(
+      1,
+      ...store.sections.map(section => section.version),
+      ...Object.values(store.historyBySection ?? {}).flat().map(item => item.version)
+    ) + 1;
   }
 
   private buildDefaultNotificationCenter(): AdminNotificationCenterState {

@@ -1150,7 +1150,27 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
       ? [...asset.requests]
       : this.buildFallbackAssetRequests(ownerUserId, asset);
     const seedBaseDate = new Date('2026-02-24T12:00:00.000Z');
-    return requests
+    const owner = this.resolveDemoUser(ownerUserId, asset.ownerName?.trim() || 'Asset owner', '', asset.city);
+    const ownerEntry: AppTypes.ActivityMemberEntry = {
+      id: `${asset.id}:owner`,
+      userId: owner.id,
+      name: owner.name,
+      initials: owner.initials,
+      gender: owner.gender,
+      city: owner.city || asset.city,
+      statusText: 'Responsible manager for this asset.',
+      role: 'Manager',
+      status: 'accepted',
+      pendingSource: null,
+      requestKind: null,
+      invitedByActiveUser: false,
+      metAtIso: asset.ownerUserId === owner.id ? (asset as { updatedAtIso?: string }).updatedAtIso ?? seedBaseDate.toISOString() : seedBaseDate.toISOString(),
+      actionAtIso: asset.ownerUserId === owner.id ? (asset as { updatedAtIso?: string }).updatedAtIso ?? seedBaseDate.toISOString() : seedBaseDate.toISOString(),
+      metWhere: asset.title,
+      avatarUrl: AppUtils.firstImageUrl(owner.images),
+      profile: owner
+    };
+    const requestEntries = requests
       .map((request, index): AppTypes.ActivityMemberEntry => {
         const requestUserId = AppUtils.resolveAssetRequestUserId(request, this.demoActivityMemberUsers);
         const matchedUser = this.demoActivityMemberUsers.find(user => user.id === requestUserId)
@@ -1167,7 +1187,7 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
           gender: request.gender,
           city: matchedUser.city || asset.city,
           statusText: request.note?.trim() || (status === 'pending' ? 'Waiting for owner confirmation.' : 'Accepted for this asset.'),
-          role: matchedUser.id === ownerUserId ? 'Admin' : 'Member',
+          role: status === 'accepted' && index === 1 ? 'Manager' : 'Member',
           status,
           pendingSource: status === 'pending' ? 'admin' : null,
           requestKind: status === 'pending' ? 'invite' : null,
@@ -1180,6 +1200,7 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
         };
       })
       .sort((left, right) => AppUtils.toSortableDate(right.actionAtIso) - AppUtils.toSortableDate(left.actionAtIso));
+    return [ownerEntry, ...requestEntries];
   }
 
   private buildFallbackAssetRequests(ownerUserId: string, asset: AppTypes.AssetCard): AppTypes.AssetMemberRequest[] {
