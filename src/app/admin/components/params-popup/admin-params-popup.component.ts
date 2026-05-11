@@ -13,6 +13,8 @@ import {
   type AdminParamsStateDto
 } from '../../admin.service';
 
+type AdminParamOption = Readonly<{ value: string; label: string }>;
+
 @Component({
   selector: 'app-admin-params-popup',
   standalone: true,
@@ -21,7 +23,9 @@ import {
   styleUrl: './admin-params-popup.component.scss'
 })
 export class AdminParamsPopupComponent implements OnDestroy {
+  private static readonly ACTION_PENDING_WINDOW_MS = 1500;
   private static readonly LOAD_DEMO_DELAY_MS = 1500;
+  private static readonly LOAD_PROGRESS_WINDOW_MS = 3000;
   private static readonly SAVE_DEMO_DELAY_MS = 1500;
 
   protected readonly admin = inject(AdminService);
@@ -29,17 +33,23 @@ export class AdminParamsPopupComponent implements OnDestroy {
   protected readonly loading = signal(false);
   protected readonly saving = signal(false);
   protected readonly reverting = signal(false);
+  protected readonly revertingVersion = signal<number | null>(null);
+  protected readonly actionRingPerimeter = 100;
+  protected readonly loadingRingPerimeter = 100;
+  protected readonly loadingProgress = signal(0);
   protected readonly error = signal('');
   protected readonly state = signal<AdminParamsStateDto | null>(null);
   protected readonly openSectionKey = signal('');
   protected readonly editDraft = signal<{ section: AdminParamsSectionDto; fields: AdminParamFieldDto[] } | null>(null);
   protected readonly history = signal<AdminParamsHistoryDto | null>(null);
   protected readonly inspectedVersion = signal<AdminParamsHistoryItemDto | null>(null);
-  protected readonly revertCandidate = signal<AdminParamsHistoryItemDto | null>(null);
+  protected readonly openTextSelectKey = signal('');
   protected readonly selectedSection = computed(() => {
     const key = this.openSectionKey();
     return this.state()?.sections.find(section => section.key === key) ?? this.state()?.sections[0] ?? null;
   });
+  private loadingProgressTimer: ReturnType<typeof setInterval> | null = null;
+  private loadingProgressStartedAtMs = 0;
 
   constructor() {
     void this.load();
@@ -48,11 +58,13 @@ export class AdminParamsPopupComponent implements OnDestroy {
   ngOnDestroy(): void {
     this.editDraft.set(null);
     this.history.set(null);
-    this.revertCandidate.set(null);
+    this.openTextSelectKey.set('');
+    this.clearLoadingProgress();
   }
 
   protected async load(): Promise<void> {
     this.loading.set(true);
+    this.beginLoadingProgress();
     this.error.set('');
     try {
       const [state] = await Promise.all([
@@ -67,6 +79,7 @@ export class AdminParamsPopupComponent implements OnDestroy {
       this.error.set(this.messageFromError(error, 'Unable to load parameters.'));
     } finally {
       this.loading.set(false);
+      this.endLoadingProgress();
     }
   }
 
@@ -78,15 +91,17 @@ export class AdminParamsPopupComponent implements OnDestroy {
     this.openSectionKey.set(this.openSectionKey() === section.key ? '' : section.key);
   }
 
-  protected openEdit(): void {
-    const section = this.selectedSection();
-    if (!section || this.saving()) {
+  protected openEdit(section?: AdminParamsSectionDto, event?: Event): void {
+    event?.stopPropagation();
+    const selected = section ?? this.selectedSection();
+    if (!selected || this.loading() || this.saving()) {
       return;
     }
     this.editDraft.set({
-      section,
-      fields: section.fields.map(field => ({ ...field }))
+      section: selected,
+      fields: selected.fields.map(field => ({ ...field }))
     });
+    this.openTextSelectKey.set('');
   }
 
   protected cancelEdit(): void {
@@ -94,6 +109,7 @@ export class AdminParamsPopupComponent implements OnDestroy {
       return;
     }
     this.editDraft.set(null);
+    this.openTextSelectKey.set('');
   }
 
   protected async saveEdit(): Promise<void> {
@@ -115,6 +131,7 @@ export class AdminParamsPopupComponent implements OnDestroy {
       this.state.set(state);
       this.openSectionKey.set(draft.section.key);
       this.editDraft.set(null);
+      this.openTextSelectKey.set('');
     } catch (error) {
       this.error.set(this.messageFromError(error, 'Unable to save parameters.'));
     } finally {
@@ -126,12 +143,8 @@ export class AdminParamsPopupComponent implements OnDestroy {
     event?.stopPropagation();
     this.error.set('');
     this.inspectedVersion.set(null);
-    this.revertCandidate.set(null);
     try {
-      const [history] = await Promise.all([
-        this.admin.loadParamsHistory(section.key),
-        this.routeDelay.waitForRouteDelay('/admin/params/history', undefined, undefined, 900)
-      ]);
+      const history = await this.admin.loadParamsHistory(section.key);
       this.history.set(history);
     } catch (error) {
       this.error.set(this.messageFromError(error, 'Unable to load parameter history.'));
@@ -144,49 +157,33 @@ export class AdminParamsPopupComponent implements OnDestroy {
     }
     this.history.set(null);
     this.inspectedVersion.set(null);
-    this.revertCandidate.set(null);
   }
 
-  protected inspectVersion(item: AdminParamsHistoryItemDto): void {
+  protected inspectVersion(item: AdminParamsHistoryItemDto, event?: Event): void {
+    event?.stopPropagation();
     this.inspectedVersion.set(this.inspectedVersion()?.version === item.version ? null : item);
   }
 
-  protected requestRevert(item: AdminParamsHistoryItemDto, event?: Event): void {
+  protected async revertVersion(item: AdminParamsHistoryItemDto, event?: Event): Promise<void> {
     event?.stopPropagation();
-    if (this.reverting()) {
-      return;
-    }
-    this.revertCandidate.set(item);
-  }
-
-  protected cancelRevert(): void {
-    if (this.reverting()) {
-      return;
-    }
-    this.revertCandidate.set(null);
-  }
-
-  protected async confirmRevert(): Promise<void> {
-    const candidate = this.revertCandidate();
     const history = this.history();
-    if (!candidate || !history || this.reverting()) {
+    if (!history || item.active || this.reverting()) {
       return;
     }
     this.reverting.set(true);
+    this.revertingVersion.set(item.version);
     this.error.set('');
     try {
-      const [state] = await Promise.all([
-        this.admin.revertParamsSection(history.sectionKey, candidate.version),
-        this.routeDelay.waitForRouteDelay('/admin/params/revert', undefined, undefined, AdminParamsPopupComponent.SAVE_DEMO_DELAY_MS)
-      ]);
+      const state = await this.withMinimumActionTime(this.admin.revertParamsSection(history.sectionKey, item.version));
       this.state.set(state);
       this.openSectionKey.set(history.sectionKey);
-      this.history.set(await this.admin.loadParamsHistory(history.sectionKey));
-      this.revertCandidate.set(null);
-      this.inspectedVersion.set(null);
+      const refreshedHistory = await this.admin.loadParamsHistory(history.sectionKey);
+      this.history.set(refreshedHistory);
+      this.inspectedVersion.set(refreshedHistory.versions.find(version => version.active) ?? null);
     } catch (error) {
       this.error.set(this.messageFromError(error, 'Unable to revert parameters.'));
     } finally {
+      this.revertingVersion.set(null);
       this.reverting.set(false);
     }
   }
@@ -222,8 +219,111 @@ export class AdminParamsPopupComponent implements OnDestroy {
     return [formatted, `${field.unit ?? ''}`.trim()].filter(Boolean).join(' ');
   }
 
+  protected textFieldOptions(field: AdminParamFieldDto): readonly AdminParamOption[] {
+    switch (`${field.key ?? ''}`.trim()) {
+      case 'distance.strategy':
+        return [
+          { value: 'linear', label: 'Linear' },
+          { value: 'exponential', label: 'Exponential' },
+          { value: 'bucketed', label: 'Bucketed' }
+        ];
+      default:
+        return [];
+    }
+  }
+
+  protected textFieldOptionLabel(field: AdminParamFieldDto): string {
+    const value = `${field.textValue ?? ''}`.trim();
+    return this.textFieldOptions(field).find(option => option.value === value)?.label ?? value;
+  }
+
+  protected textFieldSelectOpen(field: AdminParamFieldDto): boolean {
+    return this.openTextSelectKey() === field.key;
+  }
+
+  protected toggleTextFieldSelect(field: AdminParamFieldDto, event?: Event): void {
+    event?.stopPropagation();
+    if (this.saving() || !this.textFieldOptions(field).length) {
+      return;
+    }
+    this.openTextSelectKey.set(this.textFieldSelectOpen(field) ? '' : field.key);
+  }
+
+  protected closeTextFieldSelect(event?: Event): void {
+    event?.stopPropagation();
+    this.openTextSelectKey.set('');
+  }
+
+  protected selectTextFieldOption(field: AdminParamFieldDto, option: AdminParamOption, event?: Event): void {
+    event?.stopPropagation();
+    if (this.saving()) {
+      return;
+    }
+    this.updateTextField(field, option.value);
+    this.openTextSelectKey.set('');
+  }
+
+  protected textFieldOptionSelected(field: AdminParamFieldDto, option: AdminParamOption): boolean {
+    return `${field.textValue ?? ''}`.trim() === option.value;
+  }
+
+  protected updateTextField(field: AdminParamFieldDto, value: string): void {
+    field.textValue = `${value ?? ''}`.trim();
+  }
+
   protected updateNumberField(field: AdminParamFieldDto, value: string): void {
     field.numberValue = Number.isFinite(Number(value)) ? Number(value) : 0;
+  }
+
+  protected loadingRingDashOffset(): number {
+    return this.loadingRingPerimeter * (1 - Math.min(1, Math.max(0, this.loadingProgress())));
+  }
+
+  private beginLoadingProgress(): void {
+    this.clearLoadingProgress();
+    this.loadingProgressStartedAtMs = this.nowMs();
+    this.loadingProgressTimer = setInterval(() => this.updateLoadingProgress(), 100);
+    this.updateLoadingProgress();
+  }
+
+  private updateLoadingProgress(): void {
+    if (!this.loadingProgressStartedAtMs) {
+      this.loadingProgress.set(0);
+      return;
+    }
+    const elapsedMs = Math.max(0, this.nowMs() - this.loadingProgressStartedAtMs);
+    this.loadingProgress.set(Math.min(0.96, elapsedMs / AdminParamsPopupComponent.LOAD_PROGRESS_WINDOW_MS));
+  }
+
+  private endLoadingProgress(): void {
+    this.clearLoadingProgressTimer();
+    this.loadingProgress.set(1);
+  }
+
+  private clearLoadingProgress(): void {
+    this.clearLoadingProgressTimer();
+    this.loadingProgressStartedAtMs = 0;
+    this.loadingProgress.set(0);
+  }
+
+  private clearLoadingProgressTimer(): void {
+    if (!this.loadingProgressTimer) {
+      return;
+    }
+    clearInterval(this.loadingProgressTimer);
+    this.loadingProgressTimer = null;
+  }
+
+  private nowMs(): number {
+    return typeof performance !== 'undefined' ? performance.now() : Date.now();
+  }
+
+  private async withMinimumActionTime<T>(action: Promise<T>): Promise<T> {
+    const [result] = await Promise.all([
+      action,
+      this.routeDelay.waitForDelay(AdminParamsPopupComponent.ACTION_PENDING_WINDOW_MS)
+    ]);
+    return result;
   }
 
   private messageFromError(error: unknown, fallback: string): string {

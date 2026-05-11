@@ -8,9 +8,6 @@
           <p class="popup-subtitle">{{ selectedSection()?.label ?? 'Platform' }} · v{{ selectedSection()?.version ?? 1 }}</p>
         </div>
         <div class="admin-params-header-actions">
-          <button type="button" class="admin-params-icon-btn" [disabled]="!selectedSection() || loading()" (click)="openEdit()" aria-label="Edit section">
-            <mat-icon>edit</mat-icon>
-          </button>
           <button type="button" class="popup-close" (click)="close()" aria-label="Close">
             <mat-icon>close</mat-icon>
           </button>
@@ -19,8 +16,22 @@
 
       <div class="popup-body admin-params-body">
         @if (loading()) {
-          <div class="admin-params-loading">
-            <span class="admin-params-spinner" aria-hidden="true"></span>
+          <div class="admin-params-loading-state" aria-busy="true">
+            <span class="admin-params-loading-ring" aria-hidden="true">
+              <svg viewBox="0 0 58 58" class="admin-params-loading-ring-svg">
+                <circle class="admin-params-loading-ring-track" cx="29" cy="29" r="25"></circle>
+                <circle
+                  class="admin-params-loading-ring-progress"
+                  cx="29"
+                  cy="29"
+                  r="25"
+                  pathLength="100"
+                  [attr.stroke-dasharray]="loadingRingPerimeter"
+                  [attr.stroke-dashoffset]="loadingRingDashOffset()"
+                ></circle>
+              </svg>
+            </span>
+            <span>Loading parameters</span>
           </div>
         } @else if (state(); as paramsState) {
           <div class="admin-params-accordion">
@@ -36,6 +47,9 @@
                       <span>v{{ section.version }}</span>
                       <span>{{ sectionDate(section.changedDate) }}</span>
                     </span>
+                  </button>
+                  <button type="button" class="admin-params-icon-btn admin-params-section-action-btn" [disabled]="loading() || saving()" (click)="openEdit(section, $event)" aria-label="Edit section">
+                    <mat-icon>edit</mat-icon>
                   </button>
                   <button type="button" class="admin-params-history-btn" (click)="openHistory(section, $event)" aria-label="Open history">
                     <mat-icon>history</mat-icon>
@@ -53,7 +67,7 @@
                             <div class="admin-params-field-row">
                               <span>
                                 <strong>{{ field.label }}</strong>
-                                @if (field.strategy) {
+                                @if (field.valueType !== 'text' && field.strategy) {
                                   <small>{{ field.strategy }}</small>
                                 }
                               </span>
@@ -81,26 +95,35 @@
 @if (editDraft(); as draft) {
   <section class="app-popup app-popup-stacked">
     <div class="app-popup-backdrop" (click)="cancelEdit()"></div>
-    <div class="app-popup-panel admin-params-edit-panel" (click)="$event.stopPropagation()">
+    <div class="app-popup-panel popup-panel-full-height admin-params-edit-panel" (click)="$event.stopPropagation()">
       <div class="popup-header">
         <div class="popup-title">
           <h2>{{ draft.section.label }}</h2>
           <p class="popup-subtitle">v{{ draft.section.version }}</p>
         </div>
         <div class="admin-params-header-actions">
+          <span class="admin-params-action-ring-shell admin-params-circle-ring-shell" [class.is-loading]="saving()">
+            <span class="admin-params-circle-ring" aria-hidden="true">
+              <svg viewBox="0 0 34 34" preserveAspectRatio="none" class="admin-params-circle-ring-svg">
+                <circle class="admin-params-circle-ring-track" cx="17" cy="17" r="15"></circle>
+                <circle
+                  class="admin-params-circle-ring-progress"
+                  [class.is-loading]="saving()"
+                  cx="17"
+                  cy="17"
+                  r="15"
+                  pathLength="100"
+                  [attr.stroke-dasharray]="actionRingPerimeter"
+                  [attr.stroke-dashoffset]="saving() ? 0 : actionRingPerimeter"
+                ></circle>
+              </svg>
+            </span>
+            <button type="button" class="admin-params-icon-btn admin-params-save-btn" [disabled]="saving()" (click)="saveEdit()" aria-label="Save">
+              <mat-icon>check</mat-icon>
+            </button>
+          </span>
           <button type="button" class="admin-params-icon-btn" [disabled]="saving()" (click)="cancelEdit()" aria-label="Cancel">
             <mat-icon>close</mat-icon>
-          </button>
-          <button type="button" class="admin-params-icon-btn admin-params-save-btn" [disabled]="saving()" (click)="saveEdit()" aria-label="Save">
-            @if (saving()) {
-              <span class="admin-params-action-ring" aria-hidden="true">
-                <svg viewBox="0 0 44 44">
-                  <circle class="admin-params-action-ring-track" cx="22" cy="22" r="18"></circle>
-                  <circle class="admin-params-action-ring-progress" cx="22" cy="22" r="18"></circle>
-                </svg>
-              </span>
-            }
-            <mat-icon>check</mat-icon>
           </button>
         </div>
       </div>
@@ -113,12 +136,55 @@
               <label class="admin-params-edit-field">
                 <span>
                   <strong>{{ field.label }}</strong>
-                  @if (field.strategy) {
+                  @if (field.valueType !== 'text' && field.strategy) {
                     <small>{{ field.strategy }}</small>
                   }
                 </span>
                 @if (field.valueType === 'text') {
-                  <input type="text" [(ngModel)]="field.textValue" />
+                  @if (textFieldOptions(field); as options) {
+                    @if (options.length) {
+                      <div class="admin-params-select-wrap" [class.is-open]="textFieldSelectOpen(field)">
+                        <button
+                          type="button"
+                          class="admin-params-select-btn"
+                          [disabled]="saving()"
+                          [attr.aria-expanded]="textFieldSelectOpen(field)"
+                          (click)="toggleTextFieldSelect(field, $event)"
+                        >
+                          <span>{{ textFieldOptionLabel(field) }}</span>
+                          <mat-icon>expand_more</mat-icon>
+                        </button>
+                        @if (textFieldSelectOpen(field)) {
+                          <span class="admin-params-select-backdrop" (click)="closeTextFieldSelect($event)"></span>
+                          <div class="admin-params-select-menu" role="listbox" [attr.aria-label]="field.label">
+                            <div class="admin-params-select-sheet-head">
+                              <strong>{{ field.label }}</strong>
+                              <button type="button" class="admin-params-select-sheet-close" (click)="closeTextFieldSelect($event)" aria-label="Close options">
+                                <mat-icon>close</mat-icon>
+                              </button>
+                            </div>
+                            @for (option of options; track option.value) {
+                              <button
+                                type="button"
+                                class="admin-params-select-option"
+                                role="option"
+                                [class.is-selected]="textFieldOptionSelected(field, option)"
+                                [attr.aria-selected]="textFieldOptionSelected(field, option)"
+                                (click)="selectTextFieldOption(field, option, $event)"
+                              >
+                                <span>{{ option.label }}</span>
+                                @if (textFieldOptionSelected(field, option)) {
+                                  <mat-icon>check</mat-icon>
+                                }
+                              </button>
+                            }
+                          </div>
+                        }
+                      </div>
+                    } @else {
+                      <input type="text" [(ngModel)]="field.textValue" />
+                    }
+                  }
                 } @else {
                   <input type="number" [ngModel]="field.numberValue" (ngModelChange)="updateNumberField(field, $event)" />
                 }
@@ -151,18 +217,51 @@
       <div class="popup-body admin-params-history-body">
         @for (item of historyState.versions; track item.version) {
           <article class="admin-params-history-item" [class.is-active]="item.active">
-            <button type="button" class="admin-params-history-main" (click)="inspectVersion(item)">
-              <span>
-                <strong>v{{ item.version }}</strong>
-                <small>{{ sectionDate(item.changedDate) }} · {{ item.changedBy }}</small>
-              </span>
-              <span>{{ item.summary }}</span>
-              <mat-icon>{{ inspectedVersion()?.version === item.version ? 'expand_less' : 'expand_more' }}</mat-icon>
-            </button>
+            <div class="admin-params-history-main">
+              <button type="button" class="admin-params-history-toggle" (click)="inspectVersion(item)">
+                <span class="admin-params-history-version">
+                  <strong>v{{ item.version }}</strong>
+                  <small>{{ sectionDate(item.changedDate) }} · {{ item.changedBy }}</small>
+                </span>
+                <span class="admin-params-history-summary">{{ item.summary }}</span>
+              </button>
+              <div class="admin-params-history-actions">
+                <span class="admin-params-action-ring-shell admin-params-circle-ring-shell" [class.is-loading]="revertingVersion() === item.version">
+                  <span class="admin-params-circle-ring" aria-hidden="true">
+                    <svg viewBox="0 0 34 34" preserveAspectRatio="none" class="admin-params-circle-ring-svg">
+                      <circle class="admin-params-circle-ring-track" cx="17" cy="17" r="15"></circle>
+                      <circle
+                        class="admin-params-circle-ring-progress"
+                        [class.is-loading]="revertingVersion() === item.version"
+                        cx="17"
+                        cy="17"
+                        r="15"
+                        pathLength="100"
+                        [attr.stroke-dasharray]="actionRingPerimeter"
+                        [attr.stroke-dashoffset]="revertingVersion() === item.version ? 0 : actionRingPerimeter"
+                      ></circle>
+                    </svg>
+                  </span>
+                  <button
+                    type="button"
+                    class="admin-params-icon-btn admin-params-history-switch-btn"
+                    [disabled]="item.active || reverting()"
+                    (click)="revertVersion(item, $event)"
+                    aria-label="Switch to this version"
+                    title="Switch to this version"
+                  >
+                    <mat-icon>published_with_changes</mat-icon>
+                  </button>
+                </span>
+                <button type="button" class="admin-params-history-caret-btn" (click)="inspectVersion(item)" aria-label="Inspect version">
+                  <mat-icon>{{ inspectedVersion()?.version === item.version ? 'expand_less' : 'expand_more' }}</mat-icon>
+                </button>
+              </div>
+            </div>
             @if (inspectedVersion()?.version === item.version) {
               <div class="admin-params-history-fields">
                 @for (group of fieldsByGroup(item.fields); track group.group) {
-                  <div>
+                  <div class="admin-params-history-group">
                     <h3>{{ group.group }}</h3>
                     @for (field of group.fields; track field.key) {
                       <p>
@@ -172,38 +271,10 @@
                     }
                   </div>
                 }
-                <button type="button" class="admin-params-revert-btn" [disabled]="item.active || reverting()" (click)="requestRevert(item, $event)">
-                  <mat-icon>settings_backup_restore</mat-icon>
-                  <span>Revert</span>
-                </button>
               </div>
             }
           </article>
         }
-      </div>
-    </div>
-  </section>
-}
-
-@if (revertCandidate(); as candidate) {
-  <section class="app-popup app-popup-stacked admin-params-confirm-popup">
-    <div class="app-popup-backdrop" (click)="cancelRevert()"></div>
-    <div class="app-popup-panel admin-params-confirm-panel" (click)="$event.stopPropagation()">
-      <h2>Revert to v{{ candidate.version }}?</h2>
-      <p>{{ candidate.summary }}</p>
-      <div class="admin-params-confirm-actions">
-        <button type="button" class="admin-params-link-btn" [disabled]="reverting()" (click)="cancelRevert()">Cancel</button>
-        <button type="button" class="admin-params-confirm-btn" [disabled]="reverting()" (click)="confirmRevert()">
-          @if (reverting()) {
-            <span class="admin-params-action-ring" aria-hidden="true">
-              <svg viewBox="0 0 92 44" preserveAspectRatio="none">
-                <circle class="admin-params-action-ring-track" cx="22" cy="22" r="18"></circle>
-                <circle class="admin-params-action-ring-progress" cx="22" cy="22" r="18"></circle>
-              </svg>
-            </span>
-          }
-          <span>Revert</span>
-        </button>
       </div>
     </div>
   </section>
