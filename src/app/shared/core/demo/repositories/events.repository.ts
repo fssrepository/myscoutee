@@ -238,6 +238,88 @@ export class DemoEventsRepository {
     }
   }
 
+  private resolveStageActionTarget(action: string, reason?: string | null): {
+    action: string;
+    nextStatus: AppTypes.TournamentStageStatus;
+    reason: string;
+  } | null {
+    const normalizedAction = `${action ?? ''}`.trim();
+    const normalizedReason = `${reason ?? ''}`.trim();
+    switch (normalizedAction) {
+      case 'start-tournament':
+        return { action: normalizedAction, nextStatus: 'A', reason: normalizedReason || 'tournament-started' };
+      case 'close-stage':
+        return { action: normalizedAction, nextStatus: 'SR', reason: normalizedReason || 'stage-closed' };
+      case 'finalize-stage':
+        return { action: normalizedAction, nextStatus: 'F', reason: normalizedReason || 'stage-finalized' };
+      case 'reopen-scores':
+        return { action: normalizedAction, nextStatus: 'SR', reason: normalizedReason || 'scores-reopened' };
+      case 'suspend-tournament':
+        return { action: normalizedAction, nextStatus: 'S', reason: normalizedReason || 'manual-suspension' };
+      case 'resume-tournament':
+        return { action: normalizedAction, nextStatus: 'SR', reason: normalizedReason || 'manual-resume' };
+      default:
+        return null;
+    }
+  }
+
+  private canApplyStageAction(action: string, stages: readonly AppTypes.SubEventFormItem[], stageIndex: number): boolean {
+    const stage = stages[stageIndex];
+    const status = this.normalizeStageStatus(stage?.stageStatus);
+    switch (action) {
+      case 'start-tournament':
+        return stageIndex === 0 && status === 'RS';
+      case 'close-stage':
+        return status === 'A';
+      case 'finalize-stage':
+        return status === 'SR';
+      case 'reopen-scores':
+        return status === 'F' && this.canReopenScores(stages, stageIndex);
+      case 'suspend-tournament':
+        return status !== 'RS' && status !== 'S' && status !== 'F';
+      case 'resume-tournament':
+        return status === 'S';
+      default:
+        return false;
+    }
+  }
+
+  private canReopenScores(stages: readonly AppTypes.SubEventFormItem[], stageIndex: number): boolean {
+    const nextStage = stages[stageIndex + 1];
+    if (!nextStage) {
+      return true;
+    }
+    if (this.normalizeStageStatus(nextStage.stageStatus) !== 'A') {
+      return false;
+    }
+    const nextStartMs = Date.parse(`${nextStage.startAt ?? ''}`);
+    return !Number.isFinite(nextStartMs) || nextStartMs > Date.now();
+  }
+
+  private resolveStageIndex(
+    stages: readonly AppTypes.SubEventFormItem[],
+    subEventId: string | null | undefined,
+    fallbackIndex: number | null | undefined
+  ): number {
+    const normalizedSubEventId = `${subEventId ?? ''}`.trim();
+    if (normalizedSubEventId) {
+      const index = stages.findIndex(stage => `${stage?.id ?? ''}`.trim() === normalizedSubEventId);
+      if (index >= 0) {
+        return index;
+      }
+    }
+    const index = Math.trunc(Number(fallbackIndex));
+    return Number.isFinite(index) && index >= 0 && index < stages.length ? index : -1;
+  }
+
+  private normalizeStageStatus(status: string | null | undefined): AppTypes.TournamentStageStatus {
+    const normalized = `${status ?? ''}`.trim().toUpperCase();
+    if (normalized === 'RS' || normalized === 'SR' || normalized === 'F' || normalized === 'S') {
+      return normalized;
+    }
+    return 'A';
+  }
+
   private isAcceptedEventRecord(record: DemoEventRecord, userId: string): boolean {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId || record.type !== 'events' || record.isAdmin === true) {
@@ -505,6 +587,73 @@ export class DemoEventsRepository {
           }
         : state;
     });
+  }
+
+  applyStageAction(request: {
+    userId: string;
+    sourceId: string;
+    subEventId?: string | null;
+    subEventIndex?: number | null;
+    action: string;
+    reason?: string | null;
+  }): DemoEventRecord | null {
+    this.init();
+    const normalizedUserId = request.userId.trim();
+    const normalizedSourceId = request.sourceId.trim();
+    const actionTarget = this.resolveStageActionTarget(request.action, request.reason);
+    if (!normalizedUserId || !normalizedSourceId || !actionTarget) {
+      return null;
+    }
+    this.memoryDb.write(state => {
+      const table = state[EVENTS_TABLE_NAME];
+      const preferred = this.computePreferredEventRecords(table)
+        .find(record => record.id === normalizedSourceId && !record.isInvitation);
+      const preferredSubEvents = this.cloneSubEvents(preferred?.subEvents) ?? [];
+      const preferredIndex = this.resolveStageIndex(preferredSubEvents, request.subEventId, request.subEventIndex);
+      if (!preferred || preferredIndex < 0 || !this.canApplyStageAction(actionTarget.action, preferredSubEvents, preferredIndex)) {
+        return state;
+      }
+
+      const nowIso = new Date().toISOString();
+      const targetStageId = `${preferredSubEvents[preferredIndex]?.id ?? ''}`.trim();
+      const nextById = { ...table.byId };
+      let changed = false;
+      for (const id of table.ids) {
+        const current = table.byId[id];
+        if (!current || current.id !== normalizedSourceId || current.isInvitation) {
+          continue;
+        }
+        const subEvents = this.cloneSubEvents(current.subEvents) ?? [];
+        const stageIndex = this.resolveStageIndex(subEvents, targetStageId, preferredIndex);
+        if (stageIndex < 0 || !subEvents[stageIndex]) {
+          continue;
+        }
+        subEvents[stageIndex] = {
+          ...subEvents[stageIndex],
+          stageStatus: actionTarget.nextStatus,
+          stageStatusReason: actionTarget.reason,
+          stageStatusUpdatedAt: nowIso,
+          stageFinalizedAt: actionTarget.nextStatus === 'F' ? nowIso : null,
+          stageFinalizedByUserId: actionTarget.nextStatus === 'F' ? normalizedUserId : null
+        };
+        nextById[id] = {
+          ...current,
+          autoInviter: actionTarget.action === 'start-tournament' ? false : current.autoInviter,
+          subEvents
+        };
+        changed = true;
+      }
+      return changed
+        ? {
+            ...state,
+            [EVENTS_TABLE_NAME]: {
+              ...table,
+              byId: nextById
+            }
+          }
+        : state;
+    });
+    return this.peekKnownItemById(normalizedUserId, normalizedSourceId);
   }
 
   requestJoin(

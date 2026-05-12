@@ -129,6 +129,12 @@
                       <div class="subevents-stage-head-main">
                         <span class="subevents-stage-step">{{ stage.title | uppercase }}</span>
                         <strong>{{ stage.subtitle }}</strong>
+                        @if (stage.status !== 'A') {
+                          <span class="subevents-stage-status" [attr.data-status-tone]="stage.statusTone">
+                            <mat-icon>{{ stage.statusIcon }}</mat-icon>
+                            <span>{{ stage.statusLabel }}</span>
+                          </span>
+                        }
                         <p class="subevents-stage-location">{{ stage.location }}</p>
                         <p class="subevents-stage-description">{{ stage.description || 'No description' }}</p>
                       </div>
@@ -159,6 +165,43 @@
                             >
                             <div class="item-action-menu-title">{{ stage.title }}</div>
                             @if (!readOnly) {
+                              @if (canStartTournament(stage)) {
+                                <button type="button" class="item-action-menu-btn" (click)="runStageMenuAction('start-tournament', stage, $event)">
+                                  <mat-icon>play_circle</mat-icon>
+                                  <span>Start Tournament</span>
+                                </button>
+                              }
+                              @if (canCloseStage(stage)) {
+                                <button type="button" class="item-action-menu-btn" (click)="runStageMenuAction('close-stage', stage, $event)">
+                                  <mat-icon>rate_review</mat-icon>
+                                  <span>Close Stage</span>
+                                </button>
+                              }
+                              @if (canFinalizeStage(stage)) {
+                                <button type="button" class="item-action-menu-btn" (click)="runStageMenuAction('finalize-stage', stage, $event)">
+                                  <mat-icon>verified</mat-icon>
+                                  <span>Finalize Stage</span>
+                                </button>
+                              }
+                              @if (canReopenScores(stage)) {
+                                <button type="button" class="item-action-menu-btn" (click)="runStageMenuAction('reopen-scores', stage, $event)">
+                                  <mat-icon>edit_note</mat-icon>
+                                  <span>Reopen Scores</span>
+                                </button>
+                              }
+                              @if (canSuspendStage(stage)) {
+                                <button type="button" class="item-action-menu-btn" (click)="runStageMenuAction('suspend-tournament', stage, $event)">
+                                  <mat-icon>pause_circle</mat-icon>
+                                  <span>Suspend Tournament</span>
+                                </button>
+                              }
+                              @if (canResumeStage(stage)) {
+                                <button type="button" class="item-action-menu-btn" (click)="runStageMenuAction('resume-tournament', stage, $event)">
+                                  <mat-icon>play_circle</mat-icon>
+                                  <span>Resume Tournament</span>
+                                </button>
+                              }
+                              <div class="item-action-menu-divider"></div>
                               <button type="button" class="item-action-menu-btn" (click)="runStageMenuAction('add-group', stage, $event)">
                                 <mat-icon>group_add</mat-icon>
                                 <span>Add Group</span>
@@ -492,15 +535,61 @@
       [groups]="leaderboardPopupGroups"
       (close)="closeLeaderboardPopup($event)"
     ></app-event-subevent-leaderboard-popup>
-    @if (pendingDeleteTarget) {
+    @if (pendingSensitiveAction) {
       <section class="experience-delete-confirm">
         <div class="experience-delete-confirm-backdrop" (click)="cancelDeleteTarget($event)"></div>
         <div class="experience-delete-confirm-panel" (click)="$event.stopPropagation()">
-          <h4>{{ deleteTargetTitle() }}</h4>
-          <p>{{ deleteTargetDescription() }}</p>
+          <h4>{{ pendingSensitiveAction.title }}</h4>
+          <p>{{ pendingSensitiveAction.description }}</p>
+          @if (sensitiveActionErrorMessage) {
+            <p class="subevents-sensitive-action-error">{{ sensitiveActionErrorMessage }}</p>
+          }
           <div class="popup-actions">
-            <button type="button" class="link-btn neutral-btn" (click)="cancelDeleteTarget($event)">Cancel</button>
-            <button type="button" class="link-btn experience-delete-btn" (click)="confirmDeleteTarget($event)">Delete</button>
+            <button type="button" class="link-btn neutral-btn" [disabled]="sensitiveActionPending" (click)="cancelDeleteTarget($event)">Cancel</button>
+            <span
+              class="subevents-sensitive-action-btn-shell"
+              [class.is-loading]="sensitiveActionPending"
+              [class.is-error]="!sensitiveActionPending && !!sensitiveActionErrorMessage"
+              >
+              @if (sensitiveActionPending || sensitiveActionErrorMessage) {
+                <span class="subevents-sensitive-action-btn-ring" aria-hidden="true">
+                  <svg viewBox="0 0 104 48" preserveAspectRatio="none" class="subevents-sensitive-action-btn-ring-svg">
+                    <defs>
+                      <linearGradient id="subevents-sensitive-action-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stop-color="rgb(235, 147, 33)"></stop>
+                        <stop offset="100%" stop-color="rgb(247, 190, 52)"></stop>
+                      </linearGradient>
+                      <linearGradient id="subevents-sensitive-action-gradient-error" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stop-color="rgb(213, 54, 68)"></stop>
+                        <stop offset="100%" stop-color="rgb(196, 29, 42)"></stop>
+                      </linearGradient>
+                    </defs>
+                    <path
+                      class="subevents-sensitive-action-btn-ring-track"
+                      d="M52 2 H88 A14 14 0 0 1 102 16 V32 A14 14 0 0 1 88 46 H16 A14 14 0 0 1 2 32 V16 A14 14 0 0 1 16 2 H52"
+                    ></path>
+                    <path
+                      class="subevents-sensitive-action-btn-ring-progress"
+                      [class.is-loading]="sensitiveActionPending"
+                      [class.is-error]="!sensitiveActionPending && !!sensitiveActionErrorMessage"
+                      d="M52 2 H88 A14 14 0 0 1 102 16 V32 A14 14 0 0 1 88 46 H16 A14 14 0 0 1 2 32 V16 A14 14 0 0 1 16 2 H52"
+                      pathLength="100"
+                      [attr.stroke-dasharray]="sensitiveActionRingPerimeter()"
+                      [attr.stroke-dashoffset]="sensitiveActionPending ? sensitiveActionRingPerimeter() : 0"
+                    ></path>
+                  </svg>
+                </span>
+              }
+              <button
+                type="button"
+                class="link-btn experience-delete-btn"
+                [class.subevents-sensitive-action-neutral]="!pendingSensitiveAction.destructive"
+                [disabled]="sensitiveActionPending"
+                (click)="confirmSensitiveAction($event)"
+                >
+                {{ sensitiveActionPending ? pendingSensitiveAction.busyLabel : pendingSensitiveAction.confirmLabel }}
+              </button>
+            </span>
           </div>
         </div>
       </section>

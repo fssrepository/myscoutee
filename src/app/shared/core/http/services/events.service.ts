@@ -291,6 +291,30 @@ export class HttpEventsService {
     await this.postVoid('/activities/events/take-over', { userId: userId.trim(), type, sourceId: sourceId.trim() });
   }
 
+  async applyStageAction(request: {
+    userId: string;
+    sourceId: string;
+    subEventId?: string | null;
+    subEventIndex?: number | null;
+    action: string;
+    reason?: string | null;
+  }): Promise<DemoEventRecord | null> {
+    const rawSubEventIndex = Number(request.subEventIndex);
+    const response = await this.http
+      .post<DemoEventRecord | null>(`${this.apiBaseUrl}/activities/events/stage-action`, {
+        userId: request.userId.trim(),
+        sourceId: request.sourceId.trim(),
+        subEventId: request.subEventId?.trim() || null,
+        subEventIndex: Number.isFinite(rawSubEventIndex)
+          ? Math.max(0, Math.trunc(rawSubEventIndex))
+          : null,
+        action: request.action.trim(),
+        reason: request.reason?.trim() || null
+      })
+      .toPromise();
+    return response ? this.cloneRecords([response])[0] ?? null : null;
+  }
+
   async requestJoin(
     userId: string,
     sourceId: string,

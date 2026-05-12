@@ -417,7 +417,8 @@
 }
 
 .activity-members-popup-shell .subevent-member-image-card.member-card-tone-awaiting-approval::before,
-.activity-members-popup-shell .subevent-member-image-card.member-card-tone-invite-pending::before {
+.activity-members-popup-shell .subevent-member-image-card.member-card-tone-invite-pending::before,
+.activity-members-popup-shell .subevent-member-image-card.member-card-tone-disqualified::before {
   content: '';
   position: absolute;
   inset: 0;
@@ -431,6 +432,10 @@
 
 .activity-members-popup-shell .subevent-member-image-card.member-card-tone-invite-pending::before {
   background: linear-gradient(160deg, rgba(180, 108, 36, 0.2) 0%, rgba(96, 51, 18, 0.3) 100%);
+}
+
+.activity-members-popup-shell .subevent-member-image-card.member-card-tone-disqualified::before {
+  background: linear-gradient(160deg, rgba(112, 48, 62, 0.36) 0%, rgba(24, 26, 34, 0.48) 100%);
 }
 
 .activity-members-popup-shell .subevent-member-image-card.member-card-tone-awaiting-approval::before {
@@ -643,6 +648,11 @@
   border-color: rgba(184, 72, 92, 0.78);
 }
 
+.activity-members-popup-shell .member-card-tone-disqualified {
+  border-color: rgba(105, 65, 82, 0.84);
+  filter: saturate(0.72);
+}
+
 .activity-members-popup-shell .member-status-admin {
   background: linear-gradient(180deg, #e8f0ff 0%, #d9e7ff 100%);
   color: #2b5d9d;
@@ -666,6 +676,11 @@
 .activity-members-popup-shell .member-status-awaiting-approval {
   background: linear-gradient(180deg, #fff0f3 0%, #ffdce3 100%);
   color: #a93046;
+}
+
+.activity-members-popup-shell .member-status-disqualified {
+  background: linear-gradient(180deg, #f4edf1 0%, #e3d4dc 100%);
+  color: #6c3348;
 }
 
 @keyframes item-action-menu-slide-down {

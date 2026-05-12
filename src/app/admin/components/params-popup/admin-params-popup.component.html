@@ -147,7 +147,7 @@
                         <button
                           type="button"
                           class="admin-params-select-btn"
-                          [disabled]="saving()"
+                          [disabled]="saving() || field.readOnly === true"
                           [attr.aria-expanded]="textFieldSelectOpen(field)"
                           (click)="toggleTextFieldSelect(field, $event)"
                         >
@@ -182,11 +182,11 @@
                         }
                       </div>
                     } @else {
-                      <input type="text" [(ngModel)]="field.textValue" />
+                      <input type="text" [(ngModel)]="field.textValue" [disabled]="field.readOnly === true" />
                     }
                   }
                 } @else {
-                  <input type="number" [ngModel]="field.numberValue" (ngModelChange)="updateNumberField(field, $event)" />
+                  <input type="number" [ngModel]="field.numberValue" (ngModelChange)="updateNumberField(field, $event)" [disabled]="field.readOnly === true" />
                 }
                 @if (field.unit) {
                   <em>{{ field.unit }}</em>

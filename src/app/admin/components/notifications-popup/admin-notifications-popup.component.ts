@@ -68,16 +68,16 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
   protected readonly processDefinitions: ProcessDefinition[] = [
     {
       key: 'event-random-groups',
-      label: 'Random event',
+      label: 'Matched rooms',
       icon: 'casino',
-      summary: 'Creates balanced random groups for published events that already have accepted members.',
-      detail: 'The process scans published events, reads accepted member snapshots, builds the rate graph once, and writes generated group assignments for eligible sub-events.'
+      summary: 'Creates balanced rooms for published events that already have accepted members.',
+      detail: 'The process scans published events, reads accepted member snapshots, builds the rate graph once, and writes matched room assignments for eligible sub-events.'
     }
   ];
 
   protected readonly scheduledActionOptions: ScheduledActionOption[] = [
     { key: '', label: 'None', description: 'No app action is executed; the process only keeps its schedule and runtime status.' },
-    { key: 'event.scheduler.random-groups', label: 'Random event groups', description: 'Builds balanced generated groups for eligible published random events.' },
+    { key: 'event.scheduler.random-groups', label: 'Matched room assignment', description: 'Builds balanced generated rooms for eligible published events.' },
     { key: 'user.profile.inactivate-after-inactivity', label: 'Inactivate inactive profile', description: 'Marks a user profile inactive when the inactivity task becomes due.' },
     { key: 'event.stage.reminder', label: 'Event stage reminder', description: 'Marks stage reminders due for published event stage schedules.' }
   ];

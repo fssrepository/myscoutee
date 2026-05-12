@@ -288,6 +288,20 @@ export class DemoEventsService extends DemoRouteDelayService {
     this.eventsRepository.takeOverItem(userId, type, sourceId);
   }
 
+  async applyStageAction(request: {
+    userId: string;
+    sourceId: string;
+    subEventId?: string | null;
+    subEventIndex?: number | null;
+    action: string;
+    reason?: string | null;
+  }): Promise<DemoEventRecord | null> {
+    await this.waitForDelay(1500);
+    const record = this.eventsRepository.applyStageAction(request);
+    await this.memoryDb.flushToIndexedDb();
+    return record;
+  }
+
   async requestJoin(
     userId: string,
     sourceId: string,

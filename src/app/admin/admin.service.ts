@@ -249,6 +249,7 @@ export interface AdminParamFieldDto {
   options?: AdminParamOptionDto[] | null;
   strategy?: string | null;
   strategyKey?: string | null;
+  readOnly?: boolean | null;
 }
 
 export interface AdminParamsSectionDto {
@@ -1961,7 +1962,7 @@ export class AdminService {
       eventTypes: [
         { key: 'simple', labelKey: '', label: 'Simple', value: 14, total: 47, icon: 'category', tone: 'blue' },
         { key: 'organized', labelKey: '', label: 'Organized', value: 10, total: 47, icon: 'category', tone: 'green' },
-        { key: 'random', labelKey: '', label: 'Random', value: 8, total: 47, icon: 'casino', tone: 'purple' },
+        { key: 'matched-rooms', labelKey: '', label: 'Matched rooms', value: 8, total: 47, icon: 'hub', tone: 'purple' },
         { key: 'recurring', labelKey: '', label: 'Recurring', value: 6, total: 47, icon: 'event_repeat', tone: 'gold' },
         { key: 'multi-slot', labelKey: '', label: 'Multi-slot', value: 5, total: 47, icon: 'view_timeline', tone: 'green' },
         { key: 'tournament', labelKey: '', label: 'Tournament', value: 4, total: 47, icon: 'emoji_events', tone: 'red' }
@@ -2306,7 +2307,14 @@ export class AdminService {
         this.numberParam('jobs.configChangedDebounceSeconds', 'Config debounce', 'Debounce', 900, 's'),
         this.numberParam('jobs.workerPollDelayMs', 'Worker poll delay', 'Worker', 60000, 'ms'),
         this.numberParam('jobs.batchSize', 'Batch size', 'Worker', 50, ''),
-        this.numberParam('jobs.leaseDurationSeconds', 'Lease duration', 'Worker', 600, 's')
+        this.numberParam('jobs.leaseDurationSeconds', 'Lease duration', 'Worker', 600, 's'),
+        this.numberParam('jobs.process.eventSchedulerPollDelayMs', 'Event scheduler poll', 'Processes', 1800000, 'ms', '', true),
+        this.numberParam('jobs.process.autoInviterCadenceMs', 'Auto-inviter cadence', 'Processes', 7200000, 'ms', '', true),
+        this.numberParam('jobs.process.notificationOutboxPollDelayMs', 'Notification outbox poll', 'Processes', 60000, 'ms', '', true),
+        this.numberParam('jobs.process.accountPurgeWindowDays', 'Account purge window', 'Processes', 30, 'd', '', true),
+        this.textParam('jobs.policy.autoInviterScope', 'Auto-inviter scope', 'Policy', 'Main event before tournament start', '', true),
+        this.textParam('jobs.policy.tournamentStart', 'Tournament start', 'Policy', 'Manual admin start from first stage', '', true),
+        this.textParam('jobs.policy.stageProgression', 'Stage progression', 'Policy', 'Admin finalizes scores before next stage', '', true)
       ])
     ];
     const historyBySection = sections.reduce<Record<string, AdminParamsHistoryItemDto[]>>((acc, section) => {
@@ -2369,7 +2377,8 @@ export class AdminService {
     group: string,
     numberValue: number,
     unit: string,
-    strategy = ''
+    strategy = '',
+    readOnly = false
   ): AdminParamFieldDto {
     return {
       key,
@@ -2383,7 +2392,8 @@ export class AdminService {
       unit,
       options: [],
       strategy,
-      strategyKey: this.paramStrategyLabelKey(strategy)
+      strategyKey: this.paramStrategyLabelKey(strategy),
+      readOnly
     };
   }
 
@@ -2392,7 +2402,8 @@ export class AdminService {
     label: string,
     group: string,
     textValue: string,
-    strategy = ''
+    strategy = '',
+    readOnly = false
   ): AdminParamFieldDto {
     return {
       key,
@@ -2406,7 +2417,8 @@ export class AdminService {
       unit: null,
       options: this.paramOptionsFor(key),
       strategy,
-      strategyKey: this.paramStrategyLabelKey(strategy)
+      strategyKey: this.paramStrategyLabelKey(strategy),
+      readOnly
     };
   }
 
@@ -2473,7 +2485,8 @@ export class AdminService {
       unit: `${field.unit ?? ''}`.trim(),
       options: (field.options ?? []).map(option => this.normalizeParamOption(option)),
       strategy: `${field.strategy ?? ''}`.trim(),
-      strategyKey: `${field.strategyKey ?? ''}`.trim() || this.paramStrategyLabelKey(field.strategy)
+      strategyKey: `${field.strategyKey ?? ''}`.trim() || this.paramStrategyLabelKey(field.strategy),
+      readOnly: field.readOnly === true
     };
   }
 
@@ -2575,9 +2588,9 @@ export class AdminService {
       rules: [
         this.defaultNotificationRule({
           ruleKey: 'event-random-groups',
-          label: 'Random event',
+          label: 'Matched rooms',
           category: 'Scheduled',
-          description: 'Assigns accepted event members into generated random groups.',
+          description: 'Assigns accepted event members into generated rooms using affinity and prior-meeting signals.',
           actionKey: 'event.scheduler.random-groups',
           triggerKind: 'scheduled_process',
           enabled: false,

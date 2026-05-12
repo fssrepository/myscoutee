@@ -197,6 +197,7 @@ export interface SubEventCard {
 }
 export type SubEventsDisplayMode = 'Casual' | 'Tournament';
 export type TournamentLeaderboardType = 'Score' | 'Fifa';
+export type TournamentStageStatus = 'A' | 'RS' | 'SR' | 'F' | 'S';
 export type EventEditorMode = 'edit' | 'create';
 export type EventEditorTarget = 'events' | 'hosting';
 export type EventVisibility = 'Public' | 'Friends only' | 'Invitation only';
@@ -280,6 +281,11 @@ export interface SubEventFormItem {
   suppliesCapacityMax?: number;
   slotStartOffsetMinutes?: number;
   slotDurationMinutes?: number;
+  stageStatus?: TournamentStageStatus | string;
+  stageStatusReason?: string | null;
+  stageStatusUpdatedAt?: string | null;
+  stageFinalizedAt?: string | null;
+  stageFinalizedByUserId?: string | null;
 }
 
 export interface SubEventGroupItem {

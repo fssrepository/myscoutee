@@ -525,6 +525,60 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
     this.cacheMembers(normalizedOwner, members, summary.capacityTotal);
   }
 
+  override async applyMemberAction(
+    owner: ActivityMemberOwnerRef,
+    actorUserId: string,
+    targetUserId: string,
+    action: 'disqualify' | 'reinstate',
+    reason?: string | null
+  ): Promise<AppTypes.ActivityMemberEntry[]> {
+    if (!this.isInitialized) {
+      this.init();
+    }
+    const normalizedOwner = this.normalizeOwnerRef(owner);
+    const normalizedTargetUserId = targetUserId.trim();
+    if (!normalizedOwner || !normalizedTargetUserId) {
+      return normalizedOwner ? this.peekMembersByOwner(normalizedOwner) : [];
+    }
+    const previousMembers = this.readMembersByOwner(normalizedOwner);
+    const nowIso = AppUtils.toIsoDateTime(new Date());
+    const nextMembers = previousMembers.map(member => {
+      if (member.userId !== normalizedTargetUserId) {
+        return member;
+      }
+      if (action === 'disqualify' && member.status === 'accepted') {
+        return {
+          ...member,
+          status: 'disqualified' as const,
+          pendingSource: null,
+          requestKind: null,
+          invitedByUserId: null,
+          invitedByActiveUser: false,
+          actionAtIso: nowIso
+        };
+      }
+      if (action === 'reinstate' && member.status === 'disqualified') {
+        return {
+          ...member,
+          status: 'accepted' as const,
+          pendingSource: null,
+          requestKind: null,
+          invitedByUserId: null,
+          invitedByActiveUser: false,
+          actionAtIso: nowIso
+        };
+      }
+      return member;
+    });
+    const changed = nextMembers.some((member, index) => member.status !== previousMembers[index]?.status);
+    if (!changed) {
+      return this.cloneEntries(previousMembers);
+    }
+    const summary = this.writeOwnerMembers(normalizedOwner, nextMembers, undefined, true);
+    this.cacheMembers(normalizedOwner, nextMembers, summary.capacityTotal);
+    return this.cloneEntries(nextMembers);
+  }
+
   private ensureLightweightSyncReady(): void {
     this.demoEventsRepository.init();
     const state = this.memoryDb.read();

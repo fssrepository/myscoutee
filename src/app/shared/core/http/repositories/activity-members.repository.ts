@@ -97,6 +97,36 @@ export class HttpActivityMembersRepository {
     });
   }
 
+  async applyMemberAction(
+    owner: ActivityMemberOwnerRef,
+    actorUserId: string,
+    targetUserId: string,
+    action: 'disqualify' | 'reinstate',
+    reason?: string | null
+  ): Promise<AppTypes.ActivityMemberEntry[]> {
+    const normalizedOwner = this.normalizeOwnerRef(owner);
+    const normalizedTargetUserId = targetUserId.trim();
+    if (!normalizedOwner || !normalizedTargetUserId) {
+      return normalizedOwner ? this.peekMembersByOwner(normalizedOwner) : [];
+    }
+    try {
+      const response = await this.http
+        .post<AppTypes.ActivityMemberEntry[] | null>(`${this.apiBaseUrl}/activities/events/members/action`, {
+          owner: normalizedOwner,
+          actorUserId: actorUserId.trim(),
+          targetUserId: normalizedTargetUserId,
+          action,
+          reason: reason?.trim() || null
+        })
+        .toPromise();
+      const members = this.cloneEntries(Array.isArray(response) ? response : []);
+      this.cacheMembers(normalizedOwner, members, this.cachedSummariesByOwnerKey[this.ownerKey(normalizedOwner)]?.capacityTotal ?? null);
+      return this.cloneEntries(members);
+    } catch {
+      return this.peekMembersByOwner(normalizedOwner);
+    }
+  }
+
   protected ownerKey(owner: ActivityMemberOwnerRef): string {
     return `${owner.ownerType}:${owner.ownerId}`;
   }

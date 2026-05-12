@@ -1,6 +1,6 @@
 import type { UserDto } from '../interfaces/user.interface';
 
-export type ActivityMemberStatus = 'pending' | 'accepted';
+export type ActivityMemberStatus = 'pending' | 'accepted' | 'disqualified';
 export type ActivityPendingSource = 'admin' | 'member' | null;
 export type ActivityInviteSort = 'recent' | 'relevant';
 export type ActivityMemberRequestKind = 'invite' | 'join' | 'waitlist' | 'waitlist-invite' | null;

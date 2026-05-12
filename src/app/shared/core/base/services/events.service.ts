@@ -149,6 +149,17 @@ export class EventsService extends BaseRouteModeService {
     return this.eventsService.takeOverItem(userId, type, sourceId);
   }
 
+  applyStageAction(request: {
+    userId: string;
+    sourceId: string;
+    subEventId?: string | null;
+    subEventIndex?: number | null;
+    action: string;
+    reason?: string | null;
+  }): Promise<DemoEventRecord | null> {
+    return this.eventsService.applyStageAction(request);
+  }
+
   requestJoin(
     userId: string,
     sourceId: string,
