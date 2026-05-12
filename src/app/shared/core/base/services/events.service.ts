@@ -10,7 +10,8 @@ import type {
   EventFeedbackReceivedEventDto,
   EventFeedbackNoteRequestDto,
   EventFeedbackStateDto,
-  EventFeedbackSubmitRequestDto
+  EventFeedbackSubmitRequestDto,
+  SubEventLeaderboardState
 } from '../../../core/base/models';
 import { DemoEventsService } from '../../demo';
 import { HttpEventsService } from '../../http';
@@ -158,6 +159,10 @@ export class EventsService extends BaseRouteModeService {
     reason?: string | null;
   }): Promise<DemoEventRecord | null> {
     return this.eventsService.applyStageAction(request);
+  }
+
+  querySubEventLeaderboard(eventId: string, subEventId: string): Promise<SubEventLeaderboardState | null> {
+    return this.eventsService.querySubEventLeaderboard(eventId, subEventId);
   }
 
   requestJoin(

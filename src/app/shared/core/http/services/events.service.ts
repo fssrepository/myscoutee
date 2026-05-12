@@ -12,7 +12,8 @@ import type {
   EventFeedbackReceivedEventDto,
   EventFeedbackNoteRequestDto,
   EventFeedbackStateDto,
-  EventFeedbackSubmitRequestDto
+  EventFeedbackSubmitRequestDto,
+  SubEventLeaderboardState
 } from '../../../core/base/models';
 import type {
   DemoEventActivitiesQuery,
@@ -315,6 +316,22 @@ export class HttpEventsService {
     return response ? this.cloneRecords([response])[0] ?? null : null;
   }
 
+  async querySubEventLeaderboard(eventId: string, subEventId: string): Promise<SubEventLeaderboardState | null> {
+    const normalizedEventId = eventId.trim();
+    const normalizedSubEventId = subEventId.trim();
+    if (!normalizedEventId || !normalizedSubEventId) {
+      return null;
+    }
+    const response = await this.http
+      .get<SubEventLeaderboardState | null>(`${this.apiBaseUrl}/activities/events/leaderboard`, {
+        params: new HttpParams()
+          .set('eventId', normalizedEventId)
+          .set('subEventId', normalizedSubEventId)
+      })
+      .toPromise();
+    return this.normalizeLeaderboardState(response, normalizedEventId, normalizedSubEventId);
+  }
+
   async requestJoin(
     userId: string,
     sourceId: string,
@@ -477,6 +494,79 @@ export class HttpEventsService {
     } catch {
       // Keep UI optimistic until concrete backend endpoints land.
     }
+  }
+
+  private normalizeLeaderboardState(
+    state: SubEventLeaderboardState | null | undefined,
+    fallbackEventId: string,
+    fallbackSubEventId: string
+  ): SubEventLeaderboardState | null {
+    if (!state) {
+      return null;
+    }
+    const eventId = `${state.eventId ?? fallbackEventId}`.trim() || fallbackEventId;
+    const subEventId = `${state.subEventId ?? fallbackSubEventId}`.trim() || fallbackSubEventId;
+    return {
+      eventId,
+      subEventId,
+      title: `${state.title ?? ''}`.trim(),
+      leaderboardType: state.leaderboardType === 'Fifa' ? 'Fifa' : 'Score',
+      groups: (state.groups ?? []).map((group, index) => {
+        const groupId = `${group.groupId ?? `group-${index + 1}`}`.trim() || `group-${index + 1}`;
+        return {
+          groupId,
+          title: `${group.title ?? `Group ${index + 1}`}`.trim() || `Group ${index + 1}`,
+          memberCount: Math.max(0, Math.trunc(Number(group.memberCount) || 0)),
+          advancePerGroup: Math.max(0, Math.trunc(Number(group.advancePerGroup) || 0)),
+          advancingMemberIds: (group.advancingMemberIds ?? []).map(value => `${value ?? ''}`.trim()).filter(Boolean),
+          members: (group.members ?? []).map(member => {
+            const rawMember = member as { id?: string; name?: string; memberId?: string; memberName?: string };
+            return {
+              id: `${rawMember.id ?? rawMember.memberId ?? ''}`.trim(),
+              name: `${rawMember.name ?? rawMember.memberName ?? 'Member'}`.trim() || 'Member'
+            };
+          }).filter(member => member.id),
+          scoreEntries: (group.scoreEntries ?? []).map(entry => ({
+            id: `${entry.id ?? ''}`.trim(),
+            stageId: subEventId,
+            groupId,
+            memberId: `${entry.memberId ?? ''}`.trim(),
+            value: Math.trunc(Number(entry.value) || 0),
+            note: `${entry.note ?? ''}`.trim(),
+            createdAtMs: Math.max(0, Math.trunc(Number(entry.createdAtMs) || 0))
+          })).filter(entry => entry.id && entry.memberId),
+          fifaMatches: (group.fifaMatches ?? []).map(match => ({
+            id: `${match.id ?? ''}`.trim(),
+            stageId: subEventId,
+            groupId,
+            homeMemberId: `${match.homeMemberId ?? ''}`.trim(),
+            awayMemberId: `${match.awayMemberId ?? ''}`.trim(),
+            homeScore: Math.max(0, Math.trunc(Number(match.homeScore) || 0)),
+            awayScore: Math.max(0, Math.trunc(Number(match.awayScore) || 0)),
+            note: `${match.note ?? ''}`.trim(),
+            createdAtMs: Math.max(0, Math.trunc(Number(match.createdAtMs) || 0))
+          })).filter(match => match.id && match.homeMemberId && match.awayMemberId),
+          scoreRows: (group.scoreRows ?? []).map(row => ({
+            memberId: `${row.memberId ?? ''}`.trim(),
+            memberName: `${row.memberName ?? 'Member'}`.trim() || 'Member',
+            total: Math.trunc(Number(row.total) || 0),
+            updates: Math.max(0, Math.trunc(Number(row.updates) || 0))
+          })).filter(row => row.memberId),
+          fifaRows: (group.fifaRows ?? []).map(row => ({
+            memberId: `${row.memberId ?? ''}`.trim(),
+            memberName: `${row.memberName ?? 'Member'}`.trim() || 'Member',
+            points: Math.trunc(Number(row.points) || 0),
+            played: Math.max(0, Math.trunc(Number(row.played) || 0)),
+            wins: Math.max(0, Math.trunc(Number(row.wins) || 0)),
+            draws: Math.max(0, Math.trunc(Number(row.draws) || 0)),
+            losses: Math.max(0, Math.trunc(Number(row.losses) || 0)),
+            goalsFor: Math.trunc(Number(row.goalsFor) || 0),
+            goalsAgainst: Math.trunc(Number(row.goalsAgainst) || 0),
+            goalDiff: Math.trunc(Number(row.goalDiff) || 0)
+          })).filter(row => row.memberId)
+        };
+      })
+    };
   }
 
   private cloneRecords(records: DemoEventRecord[] | null | undefined): DemoEventRecord[] {

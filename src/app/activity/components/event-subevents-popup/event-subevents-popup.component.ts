@@ -7,7 +7,15 @@ import { of } from 'rxjs';
 import { PricingBuilder } from '../../../shared/core/base/builders';
 import { resolveCurrentDemoDelayMs } from '../../../shared/core/base/services/route-delay.service';
 import { EventSubeventGroupFormPopupComponent } from '../event-subevent-group-form-popup/event-subevent-group-form-popup.component';
-import { EventSubeventLeaderboardGroup, EventSubeventLeaderboardPopupComponent } from '../event-subevent-leaderboard-popup/event-subevent-leaderboard-popup.component';
+import {
+  EventSubeventLeaderboardFifaMatch,
+  EventSubeventLeaderboardFifaRow,
+  EventSubeventLeaderboardGroup,
+  EventSubeventLeaderboardMember,
+  EventSubeventLeaderboardPopupComponent,
+  EventSubeventLeaderboardScoreEntry,
+  EventSubeventLeaderboardScoreRow
+} from '../event-subevent-leaderboard-popup/event-subevent-leaderboard-popup.component';
 import { EventSubeventStageFormPopupComponent, type EventSubeventStageFormPopupView } from '../event-subevent-stage-form-popup/event-subevent-stage-form-popup.component';
 import { AppUtils } from '../../../shared/app-utils';
 import { OwnedAssetsPopupFacadeService } from '../../../asset/owned-assets-popup-facade.service';
@@ -278,6 +286,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
   protected showLeaderboardPopup = false;
   protected leaderboardPopupStageKey: string | null = null;
   protected leaderboardPopupStageTitle = '';
+  protected leaderboardPopupResultsMode = false;
 
   protected pendingDeleteTarget: DeleteTargetState | null = null;
   protected pendingSensitiveAction: SensitiveActionTargetState | null = null;
@@ -1460,6 +1469,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
     this.leaderboardPopupStageTitle = '';
     this.leaderboardPopupGroups = [];
     this.leaderboardPopupMode = 'Score';
+    this.leaderboardPopupResultsMode = false;
   }
 
   protected requestDeleteStage(stage: EventSubeventsStageCard, event: Event): void {
@@ -1673,6 +1683,9 @@ export class EventSubeventsPopupComponent implements OnChanges {
   }
 
   protected leaderboardPopupTitle(): string {
+    if (this.leaderboardPopupResultsMode) {
+      return 'Tournament Results';
+    }
     if (!this.leaderboardPopupStageTitle.trim()) {
       return 'Leaderboard';
     }
@@ -1713,6 +1726,141 @@ export class EventSubeventsPopupComponent implements OnChanges {
     const stage = this.leaderboardStageCard();
     this.leaderboardPopupGroups = this.buildLeaderboardGroups(stage);
     this.leaderboardPopupMode = this.resolveLeaderboardMode(stage);
+  }
+
+  private async loadLeaderboardState(stage: EventSubeventsStageCard): Promise<void> {
+    const ownerId = `${this.ownerId ?? ''}`.trim();
+    const source = this.workingSubEvents[stage.sourceIndex];
+    const subEventId = `${source?.id ?? ''}`.trim();
+    if (!ownerId || !subEventId) {
+      return;
+    }
+    try {
+      const state = await this.eventsService.querySubEventLeaderboard(ownerId, subEventId);
+      if (!state || this.leaderboardPopupStageKey !== stage.key || !this.showLeaderboardPopup) {
+        return;
+      }
+      const mappedGroups = this.mapLeaderboardStateGroups(state);
+      if (mappedGroups.length > 0) {
+        this.leaderboardPopupGroups = mappedGroups;
+      }
+      this.leaderboardPopupMode = state.leaderboardType === 'Fifa' ? 'Fifa' : 'Score';
+    } catch {
+      // Keep the locally synthesized preview if the leaderboard endpoint is not available.
+    }
+  }
+
+  private mapLeaderboardStateGroups(state: AppTypes.SubEventLeaderboardState): EventSubeventLeaderboardGroup[] {
+    return (state.groups ?? []).map((group, index) => {
+      const key = `${group.groupId ?? `group-${index + 1}`}`.trim() || `group-${index + 1}`;
+      return {
+        key,
+        title: `${group.title ?? `Group ${index + 1}`}`.trim() || `Group ${index + 1}`,
+        pending: 0,
+        advancePerGroup: Math.max(0, Math.trunc(Number(group.advancePerGroup) || 0)),
+        memberCount: Math.max(0, Math.trunc(Number(group.memberCount) || 0)),
+        advancingMemberIds: (group.advancingMemberIds ?? []).map(value => `${value ?? ''}`.trim()).filter(Boolean),
+        members: this.mapLeaderboardMembers(group.members),
+        scoreEntries: this.mapLeaderboardScoreEntries(group.scoreEntries, key),
+        fifaMatches: this.mapLeaderboardFifaMatches(group.fifaMatches, key),
+        scoreRows: this.mapLeaderboardScoreRows(group.scoreRows),
+        fifaRows: this.mapLeaderboardFifaRows(group.fifaRows)
+      };
+    });
+  }
+
+  private mapLeaderboardMembers(members: readonly AppTypes.SubEventLeaderboardMember[] | null | undefined): EventSubeventLeaderboardMember[] {
+    return (members ?? [])
+      .map(member => ({
+        id: `${member.id ?? ''}`.trim(),
+        name: `${member.name ?? 'Member'}`.trim() || 'Member'
+      }))
+      .filter(member => member.id);
+  }
+
+  private mapLeaderboardScoreEntries(
+    entries: readonly AppTypes.SubEventLeaderboardScoreEntry[] | null | undefined,
+    groupId: string
+  ): EventSubeventLeaderboardScoreEntry[] {
+    return (entries ?? [])
+      .map(entry => ({
+        id: `${entry.id ?? ''}`.trim(),
+        memberId: `${entry.memberId ?? ''}`.trim(),
+        value: Math.trunc(Number(entry.value) || 0),
+        note: `${entry.note ?? ''}`.trim(),
+        createdAtMs: Math.max(0, Math.trunc(Number(entry.createdAtMs) || 0)),
+        stageId: `${entry.stageId ?? ''}`.trim(),
+        groupId
+      }))
+      .filter(entry => entry.id && entry.memberId);
+  }
+
+  private mapLeaderboardFifaMatches(
+    matches: readonly AppTypes.SubEventLeaderboardFifaMatch[] | null | undefined,
+    groupId: string
+  ): EventSubeventLeaderboardFifaMatch[] {
+    return (matches ?? [])
+      .map(match => ({
+        id: `${match.id ?? ''}`.trim(),
+        homeMemberId: `${match.homeMemberId ?? ''}`.trim(),
+        awayMemberId: `${match.awayMemberId ?? ''}`.trim(),
+        homeScore: Math.max(0, Math.trunc(Number(match.homeScore) || 0)),
+        awayScore: Math.max(0, Math.trunc(Number(match.awayScore) || 0)),
+        note: `${match.note ?? ''}`.trim(),
+        createdAtMs: Math.max(0, Math.trunc(Number(match.createdAtMs) || 0)),
+        stageId: `${match.stageId ?? ''}`.trim(),
+        groupId
+      }))
+      .filter(match => match.id && match.homeMemberId && match.awayMemberId);
+  }
+
+  private mapLeaderboardScoreRows(rows: readonly AppTypes.SubEventLeaderboardScoreStandingRow[] | null | undefined): EventSubeventLeaderboardScoreRow[] {
+    return (rows ?? [])
+      .map(row => ({
+        memberId: `${row.memberId ?? ''}`.trim(),
+        memberName: `${row.memberName ?? 'Member'}`.trim() || 'Member',
+        total: Math.trunc(Number(row.total) || 0),
+        updates: Math.max(0, Math.trunc(Number(row.updates) || 0))
+      }))
+      .filter(row => row.memberId);
+  }
+
+  private mapLeaderboardFifaRows(rows: readonly AppTypes.SubEventLeaderboardFifaStandingRow[] | null | undefined): EventSubeventLeaderboardFifaRow[] {
+    return (rows ?? [])
+      .map(row => ({
+        memberId: `${row.memberId ?? ''}`.trim(),
+        memberName: `${row.memberName ?? 'Member'}`.trim() || 'Member',
+        points: Math.trunc(Number(row.points) || 0),
+        played: Math.max(0, Math.trunc(Number(row.played) || 0)),
+        wins: Math.max(0, Math.trunc(Number(row.wins) || 0)),
+        draws: Math.max(0, Math.trunc(Number(row.draws) || 0)),
+        losses: Math.max(0, Math.trunc(Number(row.losses) || 0)),
+        goalsFor: Math.trunc(Number(row.goalsFor) || 0),
+        goalsAgainst: Math.trunc(Number(row.goalsAgainst) || 0),
+        goalDiff: Math.trunc(Number(row.goalDiff) || 0)
+      }))
+      .filter(row => row.memberId);
+  }
+
+  protected finalTournamentResultsStage(): EventSubeventsStageCard | null {
+    if (this.displayMode !== 'Tournament' || this.stageCards.length === 0) {
+      return null;
+    }
+    const finalStage = this.stageCards[this.stageCards.length - 1] ?? null;
+    return finalStage?.status === 'F' ? finalStage : null;
+  }
+
+  protected canOpenTournamentResults(): boolean {
+    return this.finalTournamentResultsStage() !== null;
+  }
+
+  protected openTournamentResults(event: Event): void {
+    event.stopPropagation();
+    const finalStage = this.finalTournamentResultsStage();
+    if (!finalStage) {
+      return;
+    }
+    this.openLeaderboardPopup(finalStage, event, true);
   }
 
   protected trackByStageRowKey(_: number, row: EventSubeventsStageRow): string {
@@ -2112,7 +2260,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
     this.showGroupForm = true;
   }
 
-  private openLeaderboardPopup(stage: EventSubeventsStageCard, event: Event): void {
+  private openLeaderboardPopup(stage: EventSubeventsStageCard, event: Event, resultsMode = false): void {
     event.stopPropagation();
     this.showSubEventForm = false;
     this.showSubEventOptionalPicker = false;
@@ -2123,8 +2271,10 @@ export class EventSubeventsPopupComponent implements OnChanges {
     this.groupForm = this.createEmptyGroupForm();
     this.leaderboardPopupStageKey = stage.key;
     this.leaderboardPopupStageTitle = stage.subtitle;
+    this.leaderboardPopupResultsMode = resultsMode;
     this.syncLeaderboardPopupState();
     this.showLeaderboardPopup = true;
+    void this.loadLeaderboardState(stage);
   }
 
   private ensureStageGroups(
@@ -3485,6 +3635,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
     this.leaderboardPopupStageTitle = '';
     this.leaderboardPopupGroups = [];
     this.leaderboardPopupMode = 'Score';
+    this.leaderboardPopupResultsMode = false;
     this.pendingDeleteTarget = null;
   }
 

@@ -266,6 +266,18 @@
   transform: translateX(0.5px);
 }
 
+.subevents-results-btn {
+  background: linear-gradient(180deg, #edf8ee 0%, #d9f0df 100%);
+  border-color: rgba(43, 133, 76, 0.38);
+  color: #1d7342;
+}
+
+.subevents-results-btn:hover {
+  border-color: rgba(39, 126, 72, 0.56);
+  background: linear-gradient(180deg, #f5fff6 0%, #e3f7e8 100%);
+  box-shadow: 0 6px 12px rgba(31, 119, 66, 0.18);
+}
+
 .subevents-add-btn.is-disabled {
   opacity: 0.58;
   cursor: not-allowed;

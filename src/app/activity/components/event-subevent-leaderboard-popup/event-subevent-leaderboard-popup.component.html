@@ -17,7 +17,32 @@
       </div>
       <section class="experience-form-panel subevent-form-panel subevent-leaderboard-panel">
         @if (resolvedGroups.length > 0) {
-          <div class="subevent-leaderboard-groups">
+          @if (resultsMode) {
+            <div class="subevent-leaderboard-results">
+              @for (group of resolvedGroups; track trackByGroup($index, group)) {
+                <article class="subevent-leaderboard-result-card">
+                  <header class="subevent-leaderboard-result-head">
+                    <span>{{ group.title }}</span>
+                    <small>Top {{ group.advancePerGroup || 1 }}</small>
+                  </header>
+                  @if (resultRows(group).length > 0) {
+                    <div class="subevent-leaderboard-result-rows">
+                      @for (row of resultRows(group); track row.memberId; let rowIndex = $index) {
+                        <div class="subevent-leaderboard-result-row">
+                          <span class="subevent-leaderboard-result-rank">{{ rowIndex + 1 }}</span>
+                          <strong>{{ row.memberName }}</strong>
+                          <span>{{ row.metricLabel }}</span>
+                        </div>
+                      }
+                    </div>
+                  } @else {
+                    <p class="subevent-leaderboard-history-empty">Results are being prepared.</p>
+                  }
+                </article>
+              }
+            </div>
+          } @else {
+            <div class="subevent-leaderboard-groups">
             @for (group of resolvedGroups; track trackByGroup($index, group)) {
               <article class="subevent-leaderboard-group">
                 <div
@@ -199,7 +224,8 @@
                 }
               </article>
             }
-          </div>
+            </div>
+          }
         } @else {
           <div class="editor-list-card event-subevents-empty-state">
             <h4>Stage not available</h4>

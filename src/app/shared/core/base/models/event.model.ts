@@ -393,6 +393,27 @@ export interface SubEventLeaderboardFifaStandingRow {
   isPlaceholder?: boolean;
 }
 
+export interface SubEventLeaderboardGroupState {
+  groupId: string;
+  title: string;
+  memberCount: number;
+  advancePerGroup: number;
+  advancingMemberIds: string[];
+  members: SubEventLeaderboardMember[];
+  scoreEntries: SubEventLeaderboardScoreEntry[];
+  fifaMatches: SubEventLeaderboardFifaMatch[];
+  scoreRows: SubEventLeaderboardScoreStandingRow[];
+  fifaRows: SubEventLeaderboardFifaStandingRow[];
+}
+
+export interface SubEventLeaderboardState {
+  eventId: string;
+  subEventId: string;
+  title: string;
+  leaderboardType: 'Score' | 'Fifa' | string;
+  groups: SubEventLeaderboardGroupState[];
+}
+
 export interface EventCapacityRange {
   min: number | null;
   max: number | null;

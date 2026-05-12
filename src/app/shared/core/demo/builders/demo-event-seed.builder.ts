@@ -164,6 +164,7 @@ export class DemoEventSeedBuilder {
     const slotMs = Math.max(60 * 60 * 1000, Math.floor(totalMs / stageCount));
     const items: AppTypes.SubEventFormItem[] = [];
     const startReviewScenario = (seed % 6) === 0;
+    const finishedScenario = source.id === 'h1' || (seed % 7) === 0;
 
     for (let index = 0; index < stageCount; index += 1) {
       const groupCount = Math.max(1, 4 >> index);
@@ -184,7 +185,9 @@ export class DemoEventSeedBuilder {
       const stageStartMs = startMs + (index * slotMs);
       const stageEndMs = index === stageCount - 1 ? endMs : Math.min(endMs, stageStartMs + slotMs);
       const accepted = Math.min(totals.max, Math.max(0, Math.floor(totals.min * 0.7)));
-      const stageStatus = startReviewScenario
+      const stageStatus = finishedScenario
+        ? 'F'
+        : startReviewScenario
         ? (index === 0 ? 'RS' : 'A')
         : (index === 0 ? 'F' : index === 1 ? 'SR' : 'A');
       const stageStatusUpdatedAt = AppUtils.toIsoDateTimeLocal(new Date(Math.max(stageStartMs, stageEndMs - (10 * 60 * 1000))));

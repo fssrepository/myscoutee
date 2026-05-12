@@ -656,6 +656,80 @@ export class DemoEventsRepository {
     return this.peekKnownItemById(normalizedUserId, normalizedSourceId);
   }
 
+  querySubEventLeaderboard(eventId: string, subEventId: string): AppTypes.SubEventLeaderboardState | null {
+    this.init();
+    const normalizedEventId = eventId.trim();
+    const normalizedSubEventId = subEventId.trim();
+    if (!normalizedEventId || !normalizedSubEventId) {
+      return null;
+    }
+    const table = this.memoryDb.read()[EVENTS_TABLE_NAME];
+    const record = this.computePreferredEventRecords(table)
+      .find(item => item.id === normalizedEventId && !item.isInvitation);
+    const subEvents = this.cloneSubEvents(record?.subEvents) ?? [];
+    const stage = subEvents.find(item => `${item.id ?? ''}`.trim() === normalizedSubEventId) ?? null;
+    if (!record || !stage) {
+      return null;
+    }
+    const leaderboardType = stage.tournamentLeaderboardType === 'Fifa' ? 'Fifa' : 'Score';
+    const groups = (stage.groups?.length ? stage.groups : this.demoGeneratedGroups(stage)).map((group, groupIndex) => {
+      const groupId = `${group.id ?? `${normalizedSubEventId}-group-${groupIndex + 1}`}`.trim();
+      const memberCount = Math.max(2, Math.trunc(Number(group.capacityMax ?? stage.tournamentGroupCapacityMax ?? stage.capacityMax) || 4));
+      const advancePerGroup = Math.max(1, Math.trunc(Number(stage.tournamentAdvancePerGroup) || 1));
+      const members = Array.from({ length: memberCount }, (_, memberIndex) => ({
+        id: `${groupId}-member-${memberIndex + 1}`,
+        name: `Member ${memberIndex + 1}`
+      }));
+      const scoreRows = members
+        .map((member, memberIndex) => ({
+          memberId: member.id,
+          memberName: member.name,
+          total: Math.max(0, 48 - groupIndex * 4 - memberIndex * 5),
+          updates: 2 + ((groupIndex + memberIndex) % 3)
+        }))
+        .sort((left, right) => right.total - left.total || left.memberName.localeCompare(right.memberName));
+      const fifaRows = members
+        .map((member, memberIndex) => {
+          const points = Math.max(0, 12 - groupIndex - memberIndex * 2);
+          const goalsFor = Math.max(0, 9 - memberIndex);
+          const goalsAgainst = Math.max(0, 3 + memberIndex);
+          return {
+            memberId: member.id,
+            memberName: member.name,
+            points,
+            played: 3,
+            wins: Math.max(0, Math.min(3, Math.floor(points / 3))),
+            draws: points % 3 === 1 ? 1 : 0,
+            losses: Math.max(0, 3 - Math.floor(points / 3) - (points % 3 === 1 ? 1 : 0)),
+            goalsFor,
+            goalsAgainst,
+            goalDiff: goalsFor - goalsAgainst
+          };
+        })
+        .sort((left, right) => right.points - left.points || right.goalDiff - left.goalDiff || left.memberName.localeCompare(right.memberName));
+      const advancingSource = leaderboardType === 'Fifa' ? fifaRows : scoreRows;
+      return {
+        groupId,
+        title: `${group.name ?? `Group ${groupIndex + 1}`}`.trim() || `Group ${groupIndex + 1}`,
+        memberCount,
+        advancePerGroup,
+        advancingMemberIds: advancingSource.slice(0, advancePerGroup).map(row => row.memberId),
+        members,
+        scoreEntries: [],
+        fifaMatches: [],
+        scoreRows: leaderboardType === 'Score' ? scoreRows : [],
+        fifaRows: leaderboardType === 'Fifa' ? fifaRows : []
+      };
+    });
+    return {
+      eventId: normalizedEventId,
+      subEventId: normalizedSubEventId,
+      title: `${stage.name ?? 'Stage results'}`.trim(),
+      leaderboardType,
+      groups
+    };
+  }
+
   requestJoin(
     userId: string,
     sourceId: string,
@@ -1679,6 +1753,22 @@ export class DemoEventsRepository {
         ? item.groups.map((group: AppTypes.SubEventGroupItem) => ({ ...group }))
         : []
     }));
+  }
+
+  private demoGeneratedGroups(stage: AppTypes.SubEventFormItem): AppTypes.SubEventGroupItem[] {
+    const groupCount = Math.max(1, Math.trunc(Number(stage.tournamentGroupCount) || 1));
+    const min = Math.max(1, Math.trunc(Number(stage.tournamentGroupCapacityMin ?? stage.capacityMin) || 2));
+    const max = Math.max(min, Math.trunc(Number(stage.tournamentGroupCapacityMax ?? stage.capacityMax) || min));
+    return Array.from({ length: groupCount }, (_, index) => {
+      const letter = String.fromCharCode(65 + (index % 26));
+      return {
+        id: `${stage.id ?? 'stage'}-group-${index + 1}`,
+        name: `Group ${letter}`,
+        capacityMin: min,
+        capacityMax: max,
+        source: 'generated'
+      };
+    });
   }
 
   private materializeSubEventsForSlotOccurrence(

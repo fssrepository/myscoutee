@@ -390,6 +390,90 @@
   opacity: 0.86;
 }
 
+.subevent-leaderboard-results {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 0.46rem;
+}
+
+.subevent-leaderboard-result-card {
+  border: 1px solid rgba(52, 128, 84, 0.22);
+  border-radius: 12px;
+  background: linear-gradient(180deg, #f7fbff 0%, #eef8f2 100%);
+  padding: 0.48rem;
+  display: grid;
+  gap: 0.42rem;
+  min-width: 0;
+}
+
+.subevent-leaderboard-result-head,
+.subevent-leaderboard-result-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.36rem;
+}
+
+.subevent-leaderboard-result-head span {
+  min-width: 0;
+  color: #1f3c62;
+  font-size: 0.8rem;
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.subevent-leaderboard-result-head small {
+  color: rgba(31, 57, 90, 0.7);
+  font-size: 0.64rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.subevent-leaderboard-result-rows {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.subevent-leaderboard-result-row {
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  border: 1px solid rgba(66, 94, 130, 0.18);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.78);
+  padding: 0.34rem 0.42rem;
+}
+
+.subevent-leaderboard-result-rank {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #e7f6ed;
+  color: #17663f;
+  font-size: 0.68rem;
+  font-weight: 900;
+}
+
+.subevent-leaderboard-result-row strong {
+  min-width: 0;
+  color: #1f3c62;
+  font-size: 0.76rem;
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.subevent-leaderboard-result-row span:last-child {
+  color: #17663f;
+  font-size: 0.68rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
 .subevent-leaderboard-end-column {
   padding: 0;
 }
@@ -674,6 +758,21 @@
   .subevent-leaderboard-table td {
     font-size: 0.66rem;
     padding: 0.18rem 0.12rem;
+  }
+
+  .subevent-leaderboard-results {
+    grid-template-columns: 1fr;
+    gap: 0.4rem;
+  }
+
+  .subevent-leaderboard-result-row {
+    grid-template-columns: 24px minmax(0, 1fr);
+    gap: 0.22rem 0.34rem;
+  }
+
+  .subevent-leaderboard-result-row span:last-child {
+    grid-column: 2;
+    justify-self: start;
   }
 
   .subevent-leaderboard-history-item {

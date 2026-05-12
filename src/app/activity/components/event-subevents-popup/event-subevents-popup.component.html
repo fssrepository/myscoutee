@@ -13,6 +13,16 @@
           }
         </div>
         <div class="subevents-actions">
+          @if (canOpenTournamentResults()) {
+            <button
+              type="button"
+              class="subevents-add-btn subevents-results-btn"
+              (click)="openTournamentResults($event)"
+              aria-label="Open tournament results"
+              >
+              <mat-icon>emoji_events</mat-icon>
+            </button>
+          }
           <button
             type="button"
             class="subevents-add-btn"
@@ -529,10 +539,11 @@
     <app-event-subevent-leaderboard-popup
       [open]="showLeaderboardPopup"
       [title]="leaderboardPopupTitle()"
-      [subtitle]="'Stage standings and results'"
-      [readOnly]="readOnly"
+      [subtitle]="leaderboardPopupResultsMode ? leaderboardPopupStageTitle : 'Stage standings and results'"
+      [readOnly]="readOnly || leaderboardPopupResultsMode"
       [mode]="leaderboardPopupMode"
       [groups]="leaderboardPopupGroups"
+      [resultsMode]="leaderboardPopupResultsMode"
       (close)="closeLeaderboardPopup($event)"
     ></app-event-subevent-leaderboard-popup>
     @if (pendingSensitiveAction) {
