@@ -7,11 +7,13 @@ import type {
   AdminNotificationCenterState,
   AdminNotificationRule,
   AdminNotificationRuleLiveEvent,
+  AdminNotificationRuleParameter,
+  AdminNotificationRuleParameterOption,
   AdminNotificationRunHistoryEntry,
-  AdminNotificationScheduleSlot
+  AdminNotificationScheduleSlot,
+  AdminNotificationIntervalUnit
 } from '../../../shared/core';
 import { I18nPipe } from '../../../shared/i18n';
-import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { AdminService } from '../../admin.service';
 
 const PROCESS_LIST_FILTER = {
@@ -69,6 +71,10 @@ const PROCESS_ROW_ACTION = {
 } as const;
 type ProcessRowAction = typeof PROCESS_ROW_ACTION[keyof typeof PROCESS_ROW_ACTION];
 
+const OBSOLETE_NOTIFICATION_RULE_PARAMETER_KEYS = new Set([
+  'jobs.process.randomGroups.historyPenalty'
+]);
+
 const SCHEDULE_FREQUENCY = {
   daily: 'daily',
   weekly: 'weekly',
@@ -77,6 +83,37 @@ const SCHEDULE_FREQUENCY = {
   yearly: 'yearly',
   oneTime: 'one-time'
 } as const;
+
+const INTERVAL_UNIT = {
+  seconds: 'seconds',
+  minutes: 'minutes',
+  hours: 'hours',
+  days: 'days',
+  weeks: 'weeks',
+  months: 'months',
+  years: 'years'
+} as const;
+type IntervalUnit = AdminNotificationIntervalUnit;
+
+const INTERVAL_UNIT_SECONDS: Record<IntervalUnit, number> = {
+  [INTERVAL_UNIT.seconds]: 1,
+  [INTERVAL_UNIT.minutes]: 60,
+  [INTERVAL_UNIT.hours]: 3600,
+  [INTERVAL_UNIT.days]: 86400,
+  [INTERVAL_UNIT.weeks]: 604800,
+  [INTERVAL_UNIT.months]: 2592000,
+  [INTERVAL_UNIT.years]: 31536000
+};
+
+const INTERVAL_UNIT_OPTIONS: Array<{ value: IntervalUnit; labelKey: string }> = [
+  { value: INTERVAL_UNIT.seconds, labelKey: 'admin.jobs.interval.seconds' },
+  { value: INTERVAL_UNIT.minutes, labelKey: 'admin.jobs.interval.minutes' },
+  { value: INTERVAL_UNIT.hours, labelKey: 'admin.jobs.interval.hours' },
+  { value: INTERVAL_UNIT.days, labelKey: 'admin.jobs.interval.days' },
+  { value: INTERVAL_UNIT.weeks, labelKey: 'admin.jobs.interval.weeks' },
+  { value: INTERVAL_UNIT.months, labelKey: 'admin.jobs.interval.months' },
+  { value: INTERVAL_UNIT.years, labelKey: 'admin.jobs.interval.years' }
+];
 
 const JOB_I18N = {
   filter: {
@@ -97,6 +134,25 @@ const JOB_I18N = {
     ready: 'admin.jobs.progress.ready',
     suspendedByAdmin: 'admin.jobs.progress.suspended.by.admin',
     manualRunStarted: 'admin.jobs.progress.manual.run.started'
+  },
+  interval: {
+    title: 'admin.jobs.interval',
+    description: 'admin.jobs.interval.description',
+    every: 'admin.jobs.interval.every',
+    second: 'admin.jobs.interval.second',
+    seconds: 'admin.jobs.interval.seconds',
+    minute: 'admin.jobs.interval.minute',
+    hour: 'admin.jobs.interval.hour',
+    hours: 'admin.jobs.interval.hours',
+    day: 'admin.jobs.interval.day',
+    days: 'admin.jobs.interval.days',
+    minutes: 'admin.jobs.interval.minutes',
+    week: 'admin.jobs.interval.week',
+    weeks: 'admin.jobs.interval.weeks',
+    month: 'admin.jobs.interval.month',
+    months: 'admin.jobs.interval.months',
+    year: 'admin.jobs.interval.year',
+    years: 'admin.jobs.interval.years'
   },
   error: {
     load: 'admin.jobs.error.load',
@@ -168,6 +224,16 @@ const PROCESS_ICON = {
   filterFallback: 'list'
 } as const;
 
+const PROCESS_RULE_ICONS: Record<string, string> = {
+  'event-random-groups': 'hub',
+  'event-auto-inviter': 'person_add',
+  'event-tournament-review': 'emoji_events',
+  'notification-outbox': 'notifications_active',
+  'affinity-recompute': 'sync_alt',
+  'scheduled-messages': 'schedule_send',
+  'account-purge': 'delete_sweep'
+};
+
 const PROCESS_FILTER_STATUSES: Record<ProcessListFilter, ReadonlySet<ProcessStatusKind>> = {
   [PROCESS_LIST_FILTER.all]: new Set(),
   [PROCESS_LIST_FILTER.active]: new Set([PROCESS_STATUS_KIND.failed, PROCESS_STATUS_KIND.missed]),
@@ -238,9 +304,7 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
   protected readonly popupKey = ADMIN_POPUP_KEY;
   protected readonly jobI18n = JOB_I18N;
   protected readonly processRowAction = PROCESS_ROW_ACTION;
-  protected readonly scheduleFrequency = SCHEDULE_FREQUENCY;
-  protected readonly weeklyScheduleFrequencies = WEEKLY_SCHEDULE_FREQUENCIES;
-  protected readonly dateInputScheduleFrequencies = DATE_INPUT_SCHEDULE_FREQUENCIES;
+  protected readonly intervalUnitOptions = INTERVAL_UNIT_OPTIONS;
   protected readonly defaultRunWindow = DEFAULT_RUN_WINDOW;
 
   protected readonly loading = signal(false);
@@ -255,18 +319,20 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
   protected readonly selectedRuleKey = signal('');
   protected readonly detailOpen = signal(false);
   protected readonly scheduleEditorOpen = signal(false);
+  protected readonly parameterDraft = signal<{ ruleKey: string; fields: AdminNotificationRuleParameter[] } | null>(null);
+  protected readonly timingDirtyKeys = signal<ReadonlySet<string>>(new Set());
+  protected readonly parameterDirtyKeys = signal<ReadonlySet<string>>(new Set());
   protected readonly processFilter = signal<ProcessListFilter>(PROCESS_LIST_FILTER.all);
   protected readonly processFilterMenuOpen = signal(false);
   private loadedForOpen = false;
   private unsubscribeRuntimeUpdates: (() => void) | null = null;
   private loadingProgressTimer: ReturnType<typeof setInterval> | null = null;
   private loadingProgressStartedAtMs = 0;
+  private readonly timingBaselineSignatures = new Map<string, string>();
+  private readonly parameterBaselineSignatures = new Map<string, string>();
 
   protected readonly processFilterOptions = PROCESS_FILTER_OPTIONS;
   protected readonly processStatusLabelKeys = PROCESS_STATUS_LABEL_KEYS;
-
-  protected readonly scheduleFrequencyOptions = APP_STATIC_DATA.scheduleFrequencyOptions;
-  protected readonly weekDays = APP_STATIC_DATA.calendarWeekdayOptions;
 
   constructor() {
     effect(() => {
@@ -276,6 +342,8 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
         this.detailOpen.set(false);
         this.scheduleEditorOpen.set(false);
         this.processFilterMenuOpen.set(false);
+        this.timingDirtyKeys.set(new Set());
+        this.parameterDirtyKeys.set(new Set());
         this.stopRuntimeUpdates();
         return;
       }
@@ -309,7 +377,12 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
       if (silent) {
         this.mergeRuntimeState(state);
       } else {
-        this.state.set(this.ensureProcessRules(state));
+        const normalizedState = this.ensureProcessRules(state);
+        this.state.set(normalizedState);
+        this.captureTimingBaselines(normalizedState.rules);
+        this.captureParameterBaselines(normalizedState.rules);
+        this.timingDirtyKeys.set(new Set());
+        this.parameterDirtyKeys.set(new Set());
       }
       if (!this.processRules().some(rule => rule.ruleKey === this.selectedRuleKey())) {
         this.selectedRuleKey.set(this.processRules()[0]?.ruleKey ?? '');
@@ -335,7 +408,12 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
     this.error.set('');
     try {
       const savedState = await this.admin.saveNotificationCenter(rulesToSave);
-      this.state.set(this.ensureProcessRules(savedState));
+      const normalizedState = this.ensureProcessRules(savedState);
+      this.state.set(normalizedState);
+      this.captureTimingBaselines(normalizedState.rules);
+      this.captureParameterBaselines(normalizedState.rules);
+      this.timingDirtyKeys.set(new Set());
+      this.parameterDirtyKeys.set(new Set());
       return true;
     } catch {
       this.error.set(JOB_I18N.error.save);
@@ -484,11 +562,13 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
   protected closeDetail(): void {
     this.detailOpen.set(false);
     this.scheduleEditorOpen.set(false);
+    this.parameterDraft.set(null);
   }
 
   protected selectRule(ruleKey: string): void {
     this.selectedRuleKey.set(ruleKey);
     this.scheduleEditorOpen.set(false);
+    this.parameterDraft.set(null);
   }
 
   protected selectedRule(): AdminNotificationRule | null {
@@ -554,13 +634,7 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
     if (!rule.enabled || this.isRuntimeStatus(rule.runState.currentStatus, PROCESS_RUNTIME_STATUS.suspended)) {
       return PROCESS_ICON.suspended;
     }
-    if (rule.manualRunEnabled) {
-      return PROCESS_ICON.manual;
-    }
-    if (this.canManageProcess(rule)) {
-      return PROCESS_ICON.manageable;
-    }
-    return PROCESS_ICON.default;
+    return PROCESS_RULE_ICONS[rule.ruleKey] ?? (rule.manualRunEnabled ? PROCESS_ICON.manual : PROCESS_ICON.default);
   }
 
   protected processTitle(rule: AdminNotificationRule): string {
@@ -573,6 +647,41 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
 
   protected canManageProcess(rule: AdminNotificationRule): boolean {
     return rule.adminManageable === true;
+  }
+
+  protected isTimingDirty(rule: AdminNotificationRule): boolean {
+    return this.timingDirtyKeys().has(rule.ruleKey);
+  }
+
+  protected isParameterDirty(rule: AdminNotificationRule): boolean {
+    return this.parameterDirtyKeys().has(rule.ruleKey);
+  }
+
+  private refreshTimingDirty(rule: AdminNotificationRule): void {
+    const baseline = this.timingBaselineSignatures.get(rule.ruleKey);
+    const current = this.timingSignature(rule);
+    const next = new Set(this.timingDirtyKeys());
+    if (baseline && baseline !== current) {
+      next.add(rule.ruleKey);
+    } else {
+      next.delete(rule.ruleKey);
+    }
+    this.timingDirtyKeys.set(next);
+  }
+
+  private refreshParameterDirty(ruleKey: string, signature: string): void {
+    const baseline = this.parameterBaselineSignatures.get(ruleKey);
+    const next = new Set(this.parameterDirtyKeys());
+    if (baseline && baseline !== signature) {
+      next.add(ruleKey);
+    } else {
+      next.delete(ruleKey);
+    }
+    this.parameterDirtyKeys.set(next);
+  }
+
+  protected hasJobParameters(rule: AdminNotificationRule): boolean {
+    return (rule.parameters ?? []).some(field => `${field.key ?? ''}`.trim());
   }
 
   protected statusKind(rule: AdminNotificationRule): ProcessStatusKind {
@@ -588,6 +697,20 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
       return PROCESS_STATUS_KIND.suspended;
     }
     return PROCESS_STATUS_KIND.ready;
+  }
+
+  protected rowStatusLabel(rule: AdminNotificationRule): string {
+    if (this.isProcessRunning(rule)) {
+      return JOB_I18N.status.running;
+    }
+    if (!rule.enabled || this.isRuntimeStatus(rule.runState.currentStatus, PROCESS_RUNTIME_STATUS.suspended)) {
+      return JOB_I18N.status.suspended;
+    }
+    const lastStatus = `${rule.runState.lastRunStatus || ''}`.trim().toLowerCase();
+    if (!lastStatus) {
+      return JOB_I18N.lastRun.notRunYet;
+    }
+    return PROCESS_STATUS_LABEL_KEYS[PROCESS_STATUS_KIND_BY_RUNTIME_STATUS[lastStatus] ?? PROCESS_STATUS_KIND.ready];
   }
 
   protected statusClass(rule: AdminNotificationRule): string {
@@ -612,22 +735,203 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
   }
 
   protected runWindows(rule: AdminNotificationRule): AdminNotificationScheduleSlot[] {
-    if (!rule.scheduleSlots || rule.scheduleSlots.length === 0) {
-      rule.scheduleSlots = [this.newRunWindow()];
+    return rule.scheduleSlots ?? [];
+  }
+
+  protected hasEditableRunWindows(rule: AdminNotificationRule): boolean {
+    return this.canManageProcess(rule) && this.runWindows(rule).length > 0;
+  }
+
+  protected hasEditableTiming(rule: AdminNotificationRule): boolean {
+    return this.canManageProcess(rule);
+  }
+
+  protected intervalMinutes(rule: AdminNotificationRule): number {
+    return Math.max(1, Math.ceil(this.intervalSeconds(rule) / 60));
+  }
+
+  protected intervalSeconds(rule: AdminNotificationRule): number {
+    const amount = this.intervalAmount(rule);
+    const unit = this.intervalUnit(rule);
+    const unitSeconds = INTERVAL_UNIT_SECONDS[unit] || INTERVAL_UNIT_SECONDS.minutes;
+    return Math.max(1, amount * unitSeconds);
+  }
+
+  protected startTime(rule: AdminNotificationRule): string {
+    return this.normalizeTime(this.runWindows(rule)[0]?.time || rule.timing?.time || DEFAULT_RUN_WINDOW.time);
+  }
+
+  protected intervalAmount(rule: AdminNotificationRule): number {
+    const explicitAmount = Math.trunc(Number(rule.timing?.intervalAmount) || 0);
+    if (explicitAmount > 0 && this.isIntervalUnit(rule.timing?.intervalUnit)) {
+      return explicitAmount;
     }
-    return rule.scheduleSlots;
+    const slotAmount = this.runWindowIntervalAmount(rule);
+    if (slotAmount > 0) {
+      return slotAmount;
+    }
+    const explicitSeconds = Math.trunc(Number(rule.timing?.intervalSeconds) || 0);
+    if (explicitSeconds > 0) {
+      const unit = this.fixedIntervalUnitForSeconds(explicitSeconds);
+      return Math.max(1, Math.trunc(explicitSeconds / INTERVAL_UNIT_SECONDS[unit]));
+    }
+    const minutes = Math.max(1, Math.trunc(Number(rule.timing?.intervalMinutes) || 1));
+    const unit = this.fixedIntervalUnitForSeconds(minutes * INTERVAL_UNIT_SECONDS.minutes);
+    return Math.max(1, Math.trunc((minutes * INTERVAL_UNIT_SECONDS.minutes) / INTERVAL_UNIT_SECONDS[unit]));
+  }
+
+  protected intervalUnit(rule: AdminNotificationRule): IntervalUnit {
+    if (this.isIntervalUnit(rule.timing?.intervalUnit)) {
+      return rule.timing.intervalUnit;
+    }
+    const slotUnit = this.runWindowIntervalUnit(rule);
+    if (slotUnit) {
+      return slotUnit;
+    }
+    const explicitSeconds = Math.trunc(Number(rule.timing?.intervalSeconds) || 0);
+    if (explicitSeconds > 0) {
+      return this.fixedIntervalUnitForSeconds(explicitSeconds);
+    }
+    return this.fixedIntervalUnitForSeconds(Math.max(1, Math.trunc(Number(rule.timing?.intervalMinutes) || 1)) * INTERVAL_UNIT_SECONDS.minutes);
+  }
+
+  protected intervalParts(rule: AdminNotificationRule): Array<{ value: number; unitKey: string }> {
+    const value = this.intervalAmount(rule);
+    return [{ value, unitKey: this.intervalUnitLabelKey(this.intervalUnit(rule), value) }];
+  }
+
+  protected intervalCron(rule: AdminNotificationRule): string {
+    return this.intervalExpression(rule);
+  }
+
+  private isIntervalUnit(value: unknown): value is IntervalUnit {
+    return Object.values(INTERVAL_UNIT).includes(value as IntervalUnit);
+  }
+
+  private runWindowIntervalAmount(rule: AdminNotificationRule): number {
+    const first = this.runWindows(rule)[0];
+    if (!first) {
+      return 0;
+    }
+    if (first.frequency === SCHEDULE_FREQUENCY.biWeekly) {
+      return 2;
+    }
+    return 1;
+  }
+
+  private runWindowIntervalUnit(rule: AdminNotificationRule): IntervalUnit | null {
+    const first = this.runWindows(rule)[0];
+    if (!first) {
+      return null;
+    }
+    if (first.frequency === SCHEDULE_FREQUENCY.weekly || first.frequency === SCHEDULE_FREQUENCY.biWeekly) {
+      return INTERVAL_UNIT.weeks;
+    }
+    if (first.frequency === SCHEDULE_FREQUENCY.monthly) {
+      return INTERVAL_UNIT.months;
+    }
+    if (first.frequency === SCHEDULE_FREQUENCY.yearly) {
+      return INTERVAL_UNIT.years;
+    }
+    return INTERVAL_UNIT.days;
+  }
+
+  private fixedIntervalUnitForSeconds(seconds: number): IntervalUnit {
+    const value = Math.max(1, Math.trunc(Number(seconds) || 1));
+    if (value % INTERVAL_UNIT_SECONDS.years === 0) {
+      return INTERVAL_UNIT.years;
+    }
+    if (value % INTERVAL_UNIT_SECONDS.months === 0) {
+      return INTERVAL_UNIT.months;
+    }
+    if (value % INTERVAL_UNIT_SECONDS.weeks === 0) {
+      return INTERVAL_UNIT.weeks;
+    }
+    if (value % INTERVAL_UNIT_SECONDS.days === 0) {
+      return INTERVAL_UNIT.days;
+    }
+    if (value % INTERVAL_UNIT_SECONDS.hours === 0) {
+      return INTERVAL_UNIT.hours;
+    }
+    if (value % INTERVAL_UNIT_SECONDS.minutes === 0) {
+      return INTERVAL_UNIT.minutes;
+    }
+    return INTERVAL_UNIT.seconds;
+  }
+
+  private intervalUnitLabelKey(unit: IntervalUnit, amount: number): string {
+    const plural = Math.max(1, Math.trunc(Number(amount) || 1)) !== 1;
+    switch (unit) {
+      case INTERVAL_UNIT.seconds:
+        return plural ? JOB_I18N.interval.seconds : JOB_I18N.interval.second;
+      case INTERVAL_UNIT.minutes:
+        return plural ? JOB_I18N.interval.minutes : JOB_I18N.interval.minute;
+      case INTERVAL_UNIT.hours:
+        return plural ? JOB_I18N.interval.hours : JOB_I18N.interval.hour;
+      case INTERVAL_UNIT.days:
+        return plural ? JOB_I18N.interval.days : JOB_I18N.interval.day;
+      case INTERVAL_UNIT.weeks:
+        return plural ? JOB_I18N.interval.weeks : JOB_I18N.interval.week;
+      case INTERVAL_UNIT.months:
+        return plural ? JOB_I18N.interval.months : JOB_I18N.interval.month;
+      case INTERVAL_UNIT.years:
+        return plural ? JOB_I18N.interval.years : JOB_I18N.interval.year;
+      default:
+        return JOB_I18N.interval.minutes;
+    }
   }
 
   protected openScheduleEditor(): void {
     const rule = this.selectedRule();
-    if (!rule || !this.canManageProcess(rule)) {
+    if (!rule || !this.hasEditableTiming(rule)) {
       return;
     }
+    this.parameterDraft.set(null);
     this.scheduleEditorOpen.set(true);
   }
 
   protected closeScheduleEditor(): void {
     this.scheduleEditorOpen.set(false);
+  }
+
+  protected openParameterEditor(rule: AdminNotificationRule): void {
+    if (!this.canManageProcess(rule) || !this.hasJobParameters(rule) || this.saving()) {
+      return;
+    }
+    this.selectedRuleKey.set(rule.ruleKey);
+    this.processFilterMenuOpen.set(false);
+    this.scheduleEditorOpen.set(false);
+    this.parameterDraft.set({
+      ruleKey: rule.ruleKey,
+      fields: (rule.parameters ?? []).map(field => ({ ...field, options: [...(field.options ?? [])] }))
+    });
+  }
+
+  protected closeParameterEditor(): void {
+    if (this.saving()) {
+      return;
+    }
+    this.parameterDraft.set(null);
+  }
+
+  protected async saveParameterEditor(): Promise<void> {
+    const draft = this.parameterDraft();
+    if (!draft || this.saving()) {
+      return;
+    }
+    const nextFields = draft.fields.map(field => ({ ...field, options: [...(field.options ?? [])] }));
+    const nextSignature = this.parameterSignatureFromFields(nextFields);
+    const currentRule = this.processRules().find(rule => rule.ruleKey === draft.ruleKey);
+    if (!currentRule || nextSignature !== this.parameterSignature(currentRule)) {
+      this.patchRule(draft.ruleKey, rule => ({
+        ...rule,
+        parameters: nextFields,
+        updatedDate: new Date().toISOString(),
+        updatedUser: this.admin.activeAdmin()?.id ?? rule.updatedUser
+      }));
+    }
+    this.refreshParameterDirty(draft.ruleKey, nextSignature);
+    this.parameterDraft.set(null);
   }
 
   protected async saveScheduleEditor(): Promise<void> {
@@ -636,32 +940,41 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
       return;
     }
     this.syncPrimaryTiming(rule);
-    const saved = await this.save();
-    if (saved) {
-      this.closeScheduleEditor();
-    }
+    this.refreshTimingDirty(rule);
+    this.closeScheduleEditor();
   }
 
-  protected addRunWindow(rule: AdminNotificationRule): void {
-    rule.scheduleSlots = [...this.runWindows(rule), this.newRunWindow()];
+  protected updateStartTime(rule: AdminNotificationRule, value: string): void {
+    rule.timing.time = this.normalizeTime(value);
     this.syncPrimaryTiming(rule);
+    this.refreshTimingDirty(rule);
   }
 
-  protected removeRunWindow(rule: AdminNotificationRule, index: number): void {
-    const next = this.runWindows(rule).filter((_, currentIndex) => currentIndex !== index);
-    rule.scheduleSlots = next.length > 0 ? next : [this.newRunWindow()];
-    this.syncPrimaryTiming(rule);
+  protected updateIntervalAmount(rule: AdminNotificationRule, value: string | number): void {
+    const amount = Math.max(1, Math.trunc(Number(value) || 1));
+    this.updateIntervalRule(rule, amount, this.intervalUnit(rule));
   }
 
-  protected updateRunWindow(rule: AdminNotificationRule, slot: AdminNotificationScheduleSlot): void {
-    slot.time = this.normalizeTime(slot.time);
-    slot.dayOfWeek = Math.max(1, Math.min(7, Math.trunc(Number(slot.dayOfWeek) || 1)));
-    slot.cronExpression = this.cronForSlot(slot);
-    this.syncPrimaryTiming(rule);
+  protected updateIntervalUnit(rule: AdminNotificationRule, value: IntervalUnit): void {
+    const unit = this.isIntervalUnit(value) ? value : INTERVAL_UNIT.minutes;
+    this.updateIntervalRule(rule, this.intervalAmount(rule), unit);
   }
 
-  protected updateRunWindowAction(slot: AdminNotificationScheduleSlot, value: string): void {
-    slot.actionKey = `${value || ''}`.trim();
+  private updateIntervalRule(rule: AdminNotificationRule, amount: number, unit: IntervalUnit): void {
+    const intervalAmount = Math.max(1, Math.trunc(Number(amount) || 1));
+    const intervalUnit = this.isIntervalUnit(unit) ? unit : INTERVAL_UNIT.minutes;
+    const intervalSeconds = intervalAmount * INTERVAL_UNIT_SECONDS[intervalUnit];
+    const minutes = Math.max(1, Math.ceil(intervalSeconds / 60));
+    rule.timing.mode = DEFAULT_PRIMARY_TIMING.mode;
+    rule.timing.intervalMinutes = minutes;
+    rule.timing.intervalSeconds = intervalSeconds;
+    rule.timing.intervalAmount = intervalAmount;
+    rule.timing.intervalUnit = intervalUnit;
+    rule.timing.time = this.normalizeTime(rule.timing.time);
+    rule.timing.timezone = rule.timing.timezone || DEFAULT_RUN_WINDOW.timezone;
+    rule.timing.cronExpression = this.intervalExpression(rule);
+    rule.scheduleSlots = [];
+    this.refreshTimingDirty(rule);
   }
 
   protected activeRunWindows(rule: AdminNotificationRule): AdminNotificationScheduleSlot[] {
@@ -690,6 +1003,37 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
       return `0 ${minute} ${hour} ${day} ${month} ?`;
     }
     return `0 ${minute} ${hour} * * ?`;
+  }
+
+  private cronForInterval(intervalMinutes: number): string {
+    return `0 0/${Math.max(1, Math.trunc(Number(intervalMinutes) || 60))} * * * ?`;
+  }
+
+  private cronForIntervalSeconds(intervalSeconds: number): string {
+    const seconds = Math.max(1, Math.trunc(Number(intervalSeconds) || 60));
+    if (seconds < INTERVAL_UNIT_SECONDS.minutes) {
+      return `0/${seconds} * * * * ?`;
+    }
+    return this.cronForInterval(Math.ceil(seconds / INTERVAL_UNIT_SECONDS.minutes));
+  }
+
+  private intervalExpression(rule: AdminNotificationRule): string {
+    const amount = this.intervalAmount(rule);
+    const unit = this.intervalUnit(rule);
+    const [hour, minute] = this.startTime(rule).split(':').map(value => Math.max(0, Math.trunc(Number(value) || 0)));
+    if (unit === INTERVAL_UNIT.seconds) {
+      return `0/${amount} * * * * ?`;
+    }
+    if (unit === INTERVAL_UNIT.minutes) {
+      return `0 0/${amount} * * * ?`;
+    }
+    if (unit === INTERVAL_UNIT.hours) {
+      return `0 ${minute} 0/${amount} * * ?`;
+    }
+    if (unit === INTERVAL_UNIT.days) {
+      return `0 ${minute} ${hour} 1/${amount} * ?`;
+    }
+    return `@every ${amount} ${unit} @ ${this.startTime(rule)}`;
   }
 
   protected history(rule: AdminNotificationRule): AdminNotificationRunHistoryEntry[] {
@@ -724,29 +1068,47 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
     return normalized ? `${normalized}.description` : JOB_I18N.action.noneDescription;
   }
 
-  protected actionOptions(rule: AdminNotificationRule): string[] {
-    const options = new Set<string>(['']);
-    const add = (value: string | null | undefined): void => {
-      const normalized = `${value || ''}`.trim();
-      if (normalized) {
-        options.add(normalized);
+  protected parameterFieldsByGroup(fields: readonly AdminNotificationRuleParameter[]): {
+    group: string;
+    groupKey: string;
+    fields: AdminNotificationRuleParameter[];
+  }[] {
+    const groups = new Map<string, AdminNotificationRuleParameter[]>();
+    const groupKeys = new Map<string, string>();
+    for (const field of fields) {
+      const group = `${field.group ?? ''}`.trim() || 'General';
+      if (!groupKeys.has(group)) {
+        groupKeys.set(group, `${field.groupKey ?? ''}`.trim());
       }
-    };
-    add(rule.actionKey);
-    for (const slot of rule.scheduleSlots ?? []) {
-      add(slot.actionKey);
+      groups.set(group, [...(groups.get(group) ?? []), field]);
     }
-    for (const processRule of this.processRules()) {
-      add(processRule.actionKey);
-      for (const slot of processRule.scheduleSlots ?? []) {
-        add(slot.actionKey);
-      }
-    }
-    return [...options];
+    return [...groups.entries()].map(([group, groupFields]) => ({
+      group,
+      groupKey: groupKeys.get(group) ?? '',
+      fields: groupFields
+    }));
   }
 
-  protected updateActionKey(rule: AdminNotificationRule, value: string): void {
-    rule.actionKey = `${value || ''}`.trim();
+  protected parameterValueLabel(field: AdminNotificationRuleParameter): string {
+    if (field.valueType === 'text') {
+      const value = `${field.textValue ?? ''}`.trim();
+      return (field.options ?? []).find(option => option.value === value)?.label ?? value;
+    }
+    const value = Number(field.numberValue);
+    const formatted = Number.isInteger(value) ? `${value}` : value.toFixed(2).replace(/\.?0+$/, '');
+    return [formatted, `${field.unit ?? ''}`.trim()].filter(Boolean).join(' ');
+  }
+
+  protected parameterOptions(field: AdminNotificationRuleParameter): readonly AdminNotificationRuleParameterOption[] {
+    return field.options ?? [];
+  }
+
+  protected updateParameterNumber(field: AdminNotificationRuleParameter, value: string): void {
+    field.numberValue = Number.isFinite(Number(value)) ? Number(value) : 0;
+  }
+
+  protected updateParameterText(field: AdminNotificationRuleParameter, value: string): void {
+    field.textValue = `${value ?? ''}`.trim();
   }
 
   protected loadingRingDashOffset(): number {
@@ -831,6 +1193,48 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
     };
   }
 
+  private captureTimingBaselines(rules: readonly AdminNotificationRule[]): void {
+    this.timingBaselineSignatures.clear();
+    for (const rule of rules) {
+      this.timingBaselineSignatures.set(rule.ruleKey, this.timingSignature(rule));
+    }
+  }
+
+  private timingSignature(rule: AdminNotificationRule): string {
+    return [
+      this.startTime(rule),
+      this.intervalAmount(rule),
+      this.intervalUnit(rule)
+    ].join('|');
+  }
+
+  private captureParameterBaselines(rules: readonly AdminNotificationRule[]): void {
+    this.parameterBaselineSignatures.clear();
+    for (const rule of rules) {
+      this.parameterBaselineSignatures.set(rule.ruleKey, this.parameterSignature(rule));
+    }
+  }
+
+  private parameterSignature(rule: AdminNotificationRule): string {
+    return this.parameterSignatureFromFields(rule.parameters ?? []);
+  }
+
+  private parameterSignatureFromFields(fields: readonly AdminNotificationRuleParameter[]): string {
+    return fields
+      .filter(field => `${field.key ?? ''}`.trim())
+      .filter(field => !OBSOLETE_NOTIFICATION_RULE_PARAMETER_KEYS.has(`${field.key ?? ''}`.trim()))
+      .map(field => {
+        const key = `${field.key ?? ''}`.trim();
+        const valueType = field.valueType === 'text' ? 'text' : 'number';
+        const value = valueType === 'text'
+          ? `${field.textValue ?? ''}`.trim()
+          : `${Number.isFinite(Number(field.numberValue)) ? Number(field.numberValue) : 0}`;
+        return `${key}:${valueType}:${value}`;
+      })
+      .sort()
+      .join('|');
+  }
+
   private processRulesFrom(rules: readonly AdminNotificationRule[]): AdminNotificationRule[] {
     return this.sortProcessRules(rules.filter(rule => this.isScheduledProcess(rule)));
   }
@@ -897,7 +1301,10 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
       .filter(slot => slot.enabled !== false)
       .map(slot => this.slotSortValue(slot))
       .filter(value => Number.isFinite(value));
-    return values.length > 0 ? Math.min(...values) : Number.MAX_SAFE_INTEGER;
+    if (values.length > 0) {
+      return Math.min(...values);
+    }
+    return Date.now() + this.intervalSeconds(rule) * 1000;
   }
 
   private slotSortValue(slot: AdminNotificationScheduleSlot): number {
@@ -1017,29 +1424,20 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
       && PROCESS_FINISHED_RUNTIME_STATUSES.has(lastStatus);
   }
 
-  private newRunWindow(): AdminNotificationScheduleSlot {
-    const slot: AdminNotificationScheduleSlot = {
-      id: `run-window-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-      frequency: DEFAULT_RUN_WINDOW.frequency,
-      date: this.todayIsoDate(),
-      dayOfWeek: DEFAULT_RUN_WINDOW.dayOfWeek,
-      time: DEFAULT_RUN_WINDOW.time,
-      timezone: DEFAULT_RUN_WINDOW.timezone,
-      cronExpression: '',
-      actionKey: DEFAULT_RUN_WINDOW.actionKey,
-      enabled: DEFAULT_RUN_WINDOW.enabled
-    };
-    slot.cronExpression = this.cronForSlot(slot);
-    return slot;
-  }
-
   private syncPrimaryTiming(rule: AdminNotificationRule): void {
-    const first = this.runWindows(rule)[0];
+    const intervalAmount = this.intervalAmount(rule);
+    const intervalUnit = this.intervalUnit(rule);
+    const intervalSeconds = intervalAmount * INTERVAL_UNIT_SECONDS[intervalUnit];
+    const intervalMinutes = Math.max(1, Math.ceil(intervalSeconds / 60));
     rule.timing.mode = DEFAULT_PRIMARY_TIMING.mode;
-    rule.timing.time = this.normalizeTime(first.time);
-    rule.timing.timezone = first.timezone || DEFAULT_RUN_WINDOW.timezone;
-    rule.timing.cronExpression = first.cronExpression || this.cronForSlot(first);
-    rule.timing.intervalMinutes = DEFAULT_PRIMARY_TIMING.intervalMinutes;
+    rule.timing.time = this.startTime(rule);
+    rule.timing.timezone = rule.timing.timezone || DEFAULT_RUN_WINDOW.timezone;
+    rule.timing.cronExpression = this.intervalExpression(rule);
+    rule.timing.intervalMinutes = intervalMinutes;
+    rule.timing.intervalSeconds = intervalSeconds;
+    rule.timing.intervalAmount = intervalAmount;
+    rule.timing.intervalUnit = intervalUnit;
+    rule.scheduleSlots = [];
   }
 
   private isLastRunProblem(rule: AdminNotificationRule): boolean {

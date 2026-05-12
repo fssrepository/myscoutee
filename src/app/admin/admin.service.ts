@@ -14,9 +14,13 @@ import {
   type AdminNotificationCenterState,
   type AdminNotificationRuleLiveEvent,
   type AdminNotificationRule,
+  type AdminNotificationRuleParameter,
+  type AdminNotificationRuleParameterOption,
+  type AdminNotificationRuleParameterValueType,
   type AdminNotificationRunResult,
   type AdminNotificationScheduleSlot,
   type AdminNotificationTemplateOption,
+  type AdminNotificationIntervalUnit,
   type AdminNotificationTimingMode,
   type AdminNotificationTriggerKind,
   type UserDto
@@ -44,6 +48,10 @@ export type AdminPopupKind =
   | 'params'
   | 'stats'
   | 'item-preview';
+
+const OBSOLETE_NOTIFICATION_RULE_PARAMETER_KEYS = new Set([
+  'jobs.process.randomGroups.historyPenalty'
+]);
 
 export interface AdminUserDto {
   id: string;
@@ -335,6 +343,24 @@ const ADMIN_NOTIFICATION_LOAD_DEMO_DELAY_MS = 1500;
 const ADMIN_NOTIFICATION_SAVE_DEMO_DELAY_MS = 1500;
 const ADMIN_NOTIFICATION_RUN_DEMO_DELAY_MS = 1500;
 const ADMIN_NOTIFICATION_HTTP_PROGRESS_WINDOW_MS = 3000;
+const ADMIN_NOTIFICATION_INTERVAL_UNIT = {
+  seconds: 'seconds',
+  minutes: 'minutes',
+  hours: 'hours',
+  days: 'days',
+  weeks: 'weeks',
+  months: 'months',
+  years: 'years'
+} as const satisfies Record<string, AdminNotificationIntervalUnit>;
+const ADMIN_NOTIFICATION_INTERVAL_SECONDS: Record<AdminNotificationIntervalUnit, number> = {
+  seconds: 1,
+  minutes: 60,
+  hours: 3600,
+  days: 86400,
+  weeks: 604800,
+  months: 2592000,
+  years: 31536000
+};
 
 @Injectable({
   providedIn: 'root'
@@ -2462,6 +2488,88 @@ export class AdminService {
     };
   }
 
+  private notificationRuleParameters(ruleKey: string): AdminNotificationRuleParameter[] {
+    switch (`${ruleKey ?? ''}`.trim()) {
+      case 'event-random-groups':
+        return [
+          this.jobNumberParam('jobs.process.randomGroups.minRoomSize', 'Min room size', 'Matched rooms', 2, ''),
+          this.jobNumberParam('jobs.process.randomGroups.maxRoomSize', 'Max room size', 'Matched rooms', 4, '')
+        ];
+      case 'event-auto-inviter':
+        return [
+          this.jobNumberParam('jobs.process.autoInviter.batchSize', 'Invite batch size', 'Auto inviter', 4, ''),
+          this.jobNumberParam('jobs.process.autoInviter.responseWindowHours', 'Response window', 'Auto inviter', 2, 'h'),
+          this.jobNumberParam('jobs.process.autoInviter.candidateLookahead', 'Candidate lookahead', 'Auto inviter', 24, 'h')
+        ];
+      case 'event-tournament-review':
+        return [
+          this.jobNumberParam('jobs.process.tournament.adminReminderHours', 'Admin reminder', 'Tournament', 2, 'h'),
+          this.jobNumberParam('jobs.process.tournament.scoreReviewHours', 'Score review window', 'Tournament', 2, 'h')
+        ];
+      default:
+        return [];
+    }
+  }
+
+  private jobNumberParam(
+    key: string,
+    label: string,
+    group: string,
+    numberValue: number,
+    unit: string,
+    strategy = '',
+    readOnly = false
+  ): AdminNotificationRuleParameter {
+    return {
+      key,
+      label,
+      labelKey: this.paramFieldLabelKey(key),
+      group,
+      groupKey: this.paramGroupLabelKey(group),
+      valueType: 'number',
+      numberValue,
+      textValue: null,
+      unit,
+      options: [],
+      strategy,
+      strategyKey: this.paramStrategyLabelKey(strategy),
+      readOnly
+    };
+  }
+
+  private normalizeNotificationRuleParameter(field: AdminNotificationRuleParameter): AdminNotificationRuleParameter {
+    const valueType: AdminNotificationRuleParameterValueType = field.valueType === 'text' ? 'text' : 'number';
+    const numberValue = valueType === 'number'
+      ? (Number.isFinite(Number(field.numberValue)) ? Number(field.numberValue) : 0)
+      : null;
+    return {
+      key: `${field.key ?? ''}`.trim(),
+      label: `${field.label ?? ''}`.trim() || `${field.key ?? ''}`.trim(),
+      labelKey: `${field.labelKey ?? ''}`.trim() || this.paramFieldLabelKey(field.key),
+      group: `${field.group ?? ''}`.trim() || 'General',
+      groupKey: `${field.groupKey ?? ''}`.trim() || this.paramGroupLabelKey(field.group),
+      valueType,
+      numberValue,
+      textValue: valueType === 'text' ? `${field.textValue ?? ''}`.trim() : null,
+      unit: `${field.unit ?? ''}`.trim(),
+      options: (field.options ?? []).map(option => this.normalizeNotificationRuleParameterOption(option)),
+      strategy: `${field.strategy ?? ''}`.trim(),
+      strategyKey: `${field.strategyKey ?? ''}`.trim() || this.paramStrategyLabelKey(field.strategy),
+      readOnly: field.readOnly === true
+    };
+  }
+
+  private normalizeNotificationRuleParameterOption(
+    option: AdminNotificationRuleParameterOption
+  ): AdminNotificationRuleParameterOption {
+    const value = `${option.value ?? ''}`.trim();
+    return {
+      value,
+      label: `${option.label ?? ''}`.trim() || value,
+      labelKey: `${option.labelKey ?? ''}`.trim() || this.paramStrategyLabelKey(value)
+    };
+  }
+
   private normalizeParamsState(state: AdminParamsStateDto): AdminParamsStateDto {
     return {
       sections: (state.sections ?? []).map(section => this.normalizeParamsSection(section)),
@@ -2640,7 +2748,9 @@ export class AdminService {
           pushEnabled: false,
           emailEnabled: false,
           timingMode: 'interval',
-          intervalMinutes: 15
+          intervalMinutes: 1440,
+          startTime: '09:00',
+          parameters: this.notificationRuleParameters('event-random-groups')
         }),
         this.defaultNotificationRule({
           ruleKey: 'event-auto-inviter',
@@ -2656,7 +2766,9 @@ export class AdminService {
           pushEnabled: false,
           emailEnabled: false,
           timingMode: 'interval',
-          intervalMinutes: 120
+          intervalMinutes: 120,
+          startTime: '00:00',
+          parameters: this.notificationRuleParameters('event-auto-inviter')
         }),
         this.defaultNotificationRule({
           ruleKey: 'event-tournament-review',
@@ -2672,7 +2784,9 @@ export class AdminService {
           pushEnabled: false,
           emailEnabled: false,
           timingMode: 'interval',
-          intervalMinutes: 30
+          intervalMinutes: 30,
+          startTime: '00:00',
+          parameters: this.notificationRuleParameters('event-tournament-review')
         }),
         this.defaultNotificationRule({
           ruleKey: 'notification-outbox',
@@ -2688,7 +2802,8 @@ export class AdminService {
           pushEnabled: false,
           emailEnabled: false,
           timingMode: 'interval',
-          intervalMinutes: 1
+          intervalMinutes: 1,
+          startTime: '00:00'
         }),
         this.defaultNotificationRule({
           ruleKey: 'affinity-recompute',
@@ -2704,7 +2819,8 @@ export class AdminService {
           pushEnabled: false,
           emailEnabled: false,
           timingMode: 'interval',
-          intervalMinutes: 1
+          intervalMinutes: 1,
+          startTime: '00:00'
         }),
         this.defaultNotificationRule({
           ruleKey: 'scheduled-messages',
@@ -2720,7 +2836,8 @@ export class AdminService {
           pushEnabled: false,
           emailEnabled: false,
           timingMode: 'interval',
-          intervalMinutes: 30
+          intervalMinutes: 30,
+          startTime: '00:00'
         }),
         this.defaultNotificationRule({
           ruleKey: 'account-purge',
@@ -2736,7 +2853,8 @@ export class AdminService {
           pushEnabled: false,
           emailEnabled: false,
           timingMode: 'interval',
-          intervalMinutes: 1440
+          intervalMinutes: 1440,
+          startTime: '02:00'
         })
       ],
       emailTemplates: this.defaultNotificationTemplateOptions(),
@@ -2759,11 +2877,16 @@ export class AdminService {
     emailEnabled: boolean;
     timingMode: AdminNotificationTimingMode;
     intervalMinutes?: number;
+    startTime?: string;
     month?: number;
     dayOfMonth?: number;
     emailSubject?: string;
     emailBody?: string;
+    parameters?: AdminNotificationRuleParameter[];
+    scheduleSlots?: AdminNotificationScheduleSlot[];
   }): AdminNotificationRule {
+    const interval = this.normalizeNotificationInterval(null, null, null, options.intervalMinutes ?? 60);
+    const startTime = this.normalizeNotificationTime(options.startTime);
     return {
       ruleKey: options.ruleKey,
       label: options.label,
@@ -2784,14 +2907,18 @@ export class AdminService {
       timing: {
         mode: options.timingMode,
         delayMinutes: 0,
-        intervalMinutes: options.intervalMinutes ?? 60,
+        intervalMinutes: interval.minutes,
+        intervalSeconds: interval.seconds,
+        intervalAmount: interval.amount,
+        intervalUnit: interval.unit,
         month: options.month ?? 1,
         dayOfMonth: options.dayOfMonth ?? 1,
-        time: '09:00',
+        time: startTime,
         timezone: 'UTC',
-        cronExpression: this.intervalCron(options.intervalMinutes ?? 60)
+        cronExpression: this.intervalExpression(interval.amount, interval.unit, startTime)
       },
-      scheduleSlots: this.defaultScheduleSlots(options.timingMode),
+      scheduleSlots: options.scheduleSlots ?? this.defaultScheduleSlots(options.timingMode),
+      parameters: (options.parameters ?? []).map(field => this.normalizeNotificationRuleParameter(field)),
       message: {
         pushTitle: options.emailSubject ?? '',
         pushBody: options.emailBody ?? '',
@@ -2893,7 +3020,8 @@ export class AdminService {
       priority: existingRule.priority || defaultRule.priority,
       channels: existingRule.channels ?? defaultRule.channels,
       timing: existingRule.timing ?? defaultRule.timing,
-      scheduleSlots: existingRule.scheduleSlots?.length ? existingRule.scheduleSlots : defaultRule.scheduleSlots,
+      scheduleSlots: this.mergeDefaultNotificationRuleScheduleSlots(defaultRule, existingRule),
+      parameters: this.mergeNotificationRuleParameters(defaultRule.parameters, existingRule.parameters),
       message: existingRule.message ?? defaultRule.message,
       runState: existingRule.runState ?? defaultRule.runState,
       runHistory: existingRule.runHistory ?? defaultRule.runHistory,
@@ -2906,6 +3034,13 @@ export class AdminService {
   private normalizeNotificationRule(rule: AdminNotificationRule): AdminNotificationRule {
     const triggerKind = this.normalizeNotificationTriggerKind(rule.triggerKind);
     const timingMode = this.normalizeNotificationTimingMode(rule.timing?.mode, triggerKind);
+    const interval = this.normalizeNotificationInterval(
+      rule.timing?.intervalAmount,
+      rule.timing?.intervalUnit,
+      rule.timing?.intervalSeconds,
+      rule.timing?.intervalMinutes
+    );
+    const time = this.normalizeNotificationTime(rule.timing?.time);
     return {
       id: `${rule.id ?? ''}`.trim() || null,
       ruleKey: `${rule.ruleKey ?? ''}`.trim(),
@@ -2927,15 +3062,21 @@ export class AdminService {
       timing: {
         mode: timingMode,
         delayMinutes: Math.max(0, Math.trunc(Number(rule.timing?.delayMinutes) || 0)),
-        intervalMinutes: Math.max(1, Math.trunc(Number(rule.timing?.intervalMinutes) || 60)),
+        intervalMinutes: interval.minutes,
+        intervalSeconds: interval.seconds,
+        intervalAmount: interval.amount,
+        intervalUnit: interval.unit,
         month: this.clampInteger(rule.timing?.month, 1, 12, 1),
         dayOfMonth: this.clampInteger(rule.timing?.dayOfMonth, 1, 31, 1),
-        time: this.normalizeNotificationTime(rule.timing?.time),
+        time,
         timezone: `${rule.timing?.timezone ?? ''}`.trim() || 'UTC',
         cronExpression: `${rule.timing?.cronExpression ?? ''}`.trim()
-          || this.intervalCron(Math.max(1, Math.trunc(Number(rule.timing?.intervalMinutes) || 60)))
+          || this.intervalExpression(interval.amount, interval.unit, time)
       },
       scheduleSlots: this.normalizeScheduleSlots(rule.scheduleSlots, timingMode),
+      parameters: (rule.parameters ?? [])
+        .map(field => this.normalizeNotificationRuleParameter(field))
+        .filter(field => field.key),
       message: {
         pushTitle: `${rule.message?.pushTitle ?? ''}`.trim(),
         pushBody: `${rule.message?.pushBody ?? ''}`.trim(),
@@ -2985,6 +3126,63 @@ export class AdminService {
       detail: `${result?.detail ?? ''}`.trim(),
       ranAtIso: `${result?.ranAtIso ?? ''}`.trim() || new Date().toISOString()
     };
+  }
+
+  private mergeDefaultNotificationRuleScheduleSlots(
+    defaultRule: AdminNotificationRule,
+    existingRule: AdminNotificationRule
+  ): AdminNotificationRule['scheduleSlots'] {
+    const existingSlots = existingRule.scheduleSlots ?? [];
+    const defaultSlots = defaultRule.scheduleSlots ?? [];
+    if (!defaultSlots.length) {
+      return [];
+    }
+    if (defaultSlots.length && existingSlots.length && existingSlots.every(slot => this.isGeneratedDefaultRunWindow(slot))) {
+      return defaultSlots;
+    }
+    return existingSlots.length ? existingSlots : defaultSlots;
+  }
+
+  private isGeneratedDefaultRunWindow(slot: AdminNotificationScheduleSlot): boolean {
+    return `${slot.id ?? ''}`.trim() === 'run-window-default'
+      && slot.frequency === 'daily'
+      && `${slot.time ?? ''}`.trim() === '09:00'
+      && `${slot.date ?? ''}`.trim() === ''
+      && Math.trunc(Number(slot.dayOfWeek) || 1) === 1;
+  }
+
+  private mergeNotificationRuleParameters(
+    defaultParameters: readonly AdminNotificationRuleParameter[] | undefined,
+    existingParameters: readonly AdminNotificationRuleParameter[] | undefined
+  ): AdminNotificationRuleParameter[] {
+    if (!(defaultParameters ?? []).length) {
+      return [];
+    }
+    const existingByKey = new Map(
+      (existingParameters ?? [])
+        .map(field => this.normalizeNotificationRuleParameter(field))
+        .filter(field => field.key)
+        .filter(field => !OBSOLETE_NOTIFICATION_RULE_PARAMETER_KEYS.has(field.key))
+        .map(field => [field.key, field] as const)
+    );
+    const defaultKeys = new Set<string>();
+    const merged = (defaultParameters ?? [])
+      .map(defaultField => {
+        const normalizedDefault = this.normalizeNotificationRuleParameter(defaultField);
+        defaultKeys.add(normalizedDefault.key);
+        const existing = existingByKey.get(normalizedDefault.key);
+        if (!existing) {
+          return normalizedDefault;
+        }
+        return this.normalizeNotificationRuleParameter({
+          ...normalizedDefault,
+          numberValue: existing.valueType === 'number' ? existing.numberValue : normalizedDefault.numberValue,
+          textValue: existing.valueType === 'text' ? existing.textValue : normalizedDefault.textValue
+        });
+      })
+      .filter(field => field.key);
+    const custom = [...existingByKey.values()].filter(field => !defaultKeys.has(field.key));
+    return [...merged, ...custom];
   }
 
   private normalizeAdminManageable(rule: AdminNotificationRule): boolean {
@@ -3101,20 +3299,7 @@ export class AdminService {
   }
 
   private defaultScheduleSlots(timingMode: AdminNotificationTimingMode): NonNullable<AdminNotificationRule['scheduleSlots']> {
-    if (timingMode !== 'interval') {
-      return [];
-    }
-    return [{
-      id: 'run-window-default',
-      frequency: 'daily',
-      date: '',
-      dayOfWeek: 1,
-      time: '09:00',
-      timezone: 'UTC',
-      cronExpression: '0 0 9 * * ?',
-      actionKey: '',
-      enabled: true
-    }];
+    return [];
   }
 
   private scheduleSlotCron(input: { frequency: string; date: string; dayOfWeek: number; time: string }): string {
@@ -3171,8 +3356,82 @@ export class AdminService {
     }
   }
 
-  private intervalCron(intervalMinutes: number): string {
-    return `0 0/${Math.max(1, Math.trunc(Number(intervalMinutes) || 60))} * * * ?`;
+  private normalizeNotificationInterval(
+    amountValue: number | null | undefined,
+    unitValue: string | null | undefined,
+    secondsValue: number | null | undefined,
+    minutesValue: number | null | undefined
+  ): { amount: number; unit: AdminNotificationIntervalUnit; seconds: number; minutes: number } {
+    const explicitAmount = Math.trunc(Number(amountValue) || 0);
+    const explicitUnit = this.normalizeNotificationIntervalUnit(unitValue);
+    if (explicitAmount > 0 && explicitUnit) {
+      const seconds = explicitAmount * ADMIN_NOTIFICATION_INTERVAL_SECONDS[explicitUnit];
+      return {
+        amount: explicitAmount,
+        unit: explicitUnit,
+        seconds,
+        minutes: Math.max(1, Math.ceil(seconds / 60))
+      };
+    }
+    const seconds = Math.max(
+      1,
+      Math.trunc(Number(secondsValue) || Math.max(1, Math.trunc(Number(minutesValue) || 60)) * 60)
+    );
+    const unit = this.fixedNotificationIntervalUnit(seconds);
+    return {
+      amount: Math.max(1, Math.trunc(seconds / ADMIN_NOTIFICATION_INTERVAL_SECONDS[unit])),
+      unit,
+      seconds,
+      minutes: Math.max(1, Math.ceil(seconds / 60))
+    };
+  }
+
+  private normalizeNotificationIntervalUnit(value: string | null | undefined): AdminNotificationIntervalUnit | null {
+    const normalized = `${value ?? ''}`.trim();
+    return Object.values(ADMIN_NOTIFICATION_INTERVAL_UNIT).includes(normalized as AdminNotificationIntervalUnit)
+      ? normalized as AdminNotificationIntervalUnit
+      : null;
+  }
+
+  private fixedNotificationIntervalUnit(seconds: number): AdminNotificationIntervalUnit {
+    const value = Math.max(1, Math.trunc(Number(seconds) || 1));
+    if (value % ADMIN_NOTIFICATION_INTERVAL_SECONDS.years === 0) {
+      return ADMIN_NOTIFICATION_INTERVAL_UNIT.years;
+    }
+    if (value % ADMIN_NOTIFICATION_INTERVAL_SECONDS.months === 0) {
+      return ADMIN_NOTIFICATION_INTERVAL_UNIT.months;
+    }
+    if (value % ADMIN_NOTIFICATION_INTERVAL_SECONDS.weeks === 0) {
+      return ADMIN_NOTIFICATION_INTERVAL_UNIT.weeks;
+    }
+    if (value % ADMIN_NOTIFICATION_INTERVAL_SECONDS.days === 0) {
+      return ADMIN_NOTIFICATION_INTERVAL_UNIT.days;
+    }
+    if (value % ADMIN_NOTIFICATION_INTERVAL_SECONDS.hours === 0) {
+      return ADMIN_NOTIFICATION_INTERVAL_UNIT.hours;
+    }
+    if (value % ADMIN_NOTIFICATION_INTERVAL_SECONDS.minutes === 0) {
+      return ADMIN_NOTIFICATION_INTERVAL_UNIT.minutes;
+    }
+    return ADMIN_NOTIFICATION_INTERVAL_UNIT.seconds;
+  }
+
+  private intervalExpression(amountValue: number, unit: AdminNotificationIntervalUnit, time: string): string {
+    const amount = Math.max(1, Math.trunc(Number(amountValue) || 1));
+    const [hour, minute] = this.normalizeNotificationTime(time).split(':').map(value => Math.max(0, Math.trunc(Number(value) || 0)));
+    if (unit === ADMIN_NOTIFICATION_INTERVAL_UNIT.seconds) {
+      return `0/${amount} * * * * ?`;
+    }
+    if (unit === ADMIN_NOTIFICATION_INTERVAL_UNIT.minutes) {
+      return `0 0/${amount} * * * ?`;
+    }
+    if (unit === ADMIN_NOTIFICATION_INTERVAL_UNIT.hours) {
+      return `0 ${minute} 0/${amount} * * ?`;
+    }
+    if (unit === ADMIN_NOTIFICATION_INTERVAL_UNIT.days) {
+      return `0 ${minute} ${hour} 1/${amount} * ?`;
+    }
+    return `@every ${amount} ${unit} @ ${this.normalizeNotificationTime(time)}`;
   }
 
   private clampInteger(value: number | undefined, min: number, max: number, fallback: number): number {
