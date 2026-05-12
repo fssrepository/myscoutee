@@ -29,6 +29,7 @@ import { CHATS_TABLE_NAME, type DemoChatRecord } from '../shared/core/demo/model
 import { SHARE_TOKENS_TABLE_NAME } from '../shared/core/demo/models/share-tokens.model';
 import { ActivitiesPopupStateService } from '../activity/services/activities-popup-state.service';
 import { FirebaseAuthService } from '../shared/core/base/services/firebase-auth.service';
+import { RouteDelayService } from '../shared/core/base/services/route-delay.service';
 
 export type AdminPopupKind =
   | 'reports'
@@ -327,6 +328,13 @@ const ADMIN_STATS_STORE_KEY = 'adminStats';
 const ADMIN_PARAMS_STORE_KEY = 'adminParams';
 const ADMIN_NOTIFICATION_STORAGE_TIMEOUT_MS = 2500;
 const ADMIN_NOTIFICATION_HTTP_TIMEOUT_MS = 12000;
+const ADMIN_NOTIFICATION_LOAD_ROUTE = '/admin/notifications';
+const ADMIN_NOTIFICATION_SAVE_ROUTE = '/admin/notifications/save';
+const ADMIN_NOTIFICATION_RUN_ROUTE = '/admin/notifications/run';
+const ADMIN_NOTIFICATION_LOAD_DEMO_DELAY_MS = 1500;
+const ADMIN_NOTIFICATION_SAVE_DEMO_DELAY_MS = 1500;
+const ADMIN_NOTIFICATION_RUN_DEMO_DELAY_MS = 1500;
+const ADMIN_NOTIFICATION_HTTP_PROGRESS_WINDOW_MS = 3000;
 
 @Injectable({
   providedIn: 'root'
@@ -339,6 +347,7 @@ export class AdminService {
   private readonly location = inject(Location);
   private readonly sessionService = inject(SessionService);
   private readonly firebaseAuthService = inject(FirebaseAuthService);
+  private readonly routeDelay = inject(RouteDelayService);
   private readonly memoryDb = inject(AppMemoryDb);
   private readonly demoUsersRepository = inject(DemoUsersRepository);
   private readonly demoChatsRepository = inject(DemoChatsRepository);
@@ -384,6 +393,10 @@ export class AdminService {
 
   get usesHttpAdminApi(): boolean {
     return environment.activitiesDataSource === 'http' || this.isFirebaseAdminMode;
+  }
+
+  notificationCenterLoadProgressWindowMs(): number {
+    return ADMIN_NOTIFICATION_HTTP_PROGRESS_WINDOW_MS;
   }
 
   async restoreAdminSession(): Promise<boolean> {
@@ -703,7 +716,7 @@ export class AdminService {
     );
   }
 
-  async loadNotificationCenter(): Promise<AdminNotificationCenterState> {
+  async loadNotificationCenter(options?: { skipDemoDelay?: boolean }): Promise<AdminNotificationCenterState> {
     if (this.usesHttpAdminApi) {
       const state = await this.withNotificationHttpTimeout(this.http
         .get<AdminNotificationCenterState>(`${this.apiBaseUrl}/admin/notifications`, {
@@ -718,17 +731,21 @@ export class AdminService {
       null
     );
     if (existing?.rules?.length) {
+      await this.waitForAdminNotificationDemoDelay(ADMIN_NOTIFICATION_LOAD_ROUTE, ADMIN_NOTIFICATION_LOAD_DEMO_DELAY_MS, options);
       return this.normalizeNotificationCenter(existing);
     }
-    const seeded = this.buildDefaultNotificationCenter();
-    void this.withNotificationStorageFallback(
-      this.memoryDb.writeIndexedDbTableEntry(ADMIN_NOTIFICATION_STORE_KEY, seeded),
-      undefined
-    );
-    return seeded;
+    await this.waitForAdminNotificationDemoDelay(ADMIN_NOTIFICATION_LOAD_ROUTE, ADMIN_NOTIFICATION_LOAD_DEMO_DELAY_MS, options);
+    return this.normalizeNotificationCenter({
+      rules: [],
+      emailTemplates: this.defaultNotificationTemplateOptions(),
+      updatedDate: new Date().toISOString()
+    });
   }
 
-  async saveNotificationCenter(rules: readonly AdminNotificationRule[]): Promise<AdminNotificationCenterState> {
+  async saveNotificationCenter(
+    rules: readonly AdminNotificationRule[],
+    options?: { skipDemoDelay?: boolean }
+  ): Promise<AdminNotificationCenterState> {
     const normalizedRules = rules.map(rule => this.normalizeNotificationRule(rule));
     if (this.usesHttpAdminApi) {
       const state = await this.withNotificationHttpTimeout(this.http
@@ -743,7 +760,7 @@ export class AdminService {
         updatedDate: new Date().toISOString()
       });
     }
-    const existing = await this.loadNotificationCenter();
+    const existing = await this.loadNotificationCenter({ skipDemoDelay: true });
     const next = this.normalizeNotificationCenter({
       rules: normalizedRules,
       emailTemplates: existing.emailTemplates,
@@ -753,6 +770,7 @@ export class AdminService {
       this.memoryDb.writeIndexedDbTableEntry(ADMIN_NOTIFICATION_STORE_KEY, next),
       undefined
     );
+    await this.waitForAdminNotificationDemoDelay(ADMIN_NOTIFICATION_SAVE_ROUTE, ADMIN_NOTIFICATION_SAVE_DEMO_DELAY_MS, options);
     return next;
   }
 
@@ -764,7 +782,7 @@ export class AdminService {
         label: '',
         affectedCount: 0,
         status: 'skipped',
-        detail: 'Missing rule key.',
+        detail: 'admin.jobs.error.missing.rule.key',
         ranAtIso: new Date().toISOString()
       };
     }
@@ -777,7 +795,7 @@ export class AdminService {
         .toPromise());
       return this.normalizeNotificationRunResult(result, normalizedRuleKey);
     }
-    const state = await this.loadNotificationCenter();
+    const state = await this.loadNotificationCenter({ skipDemoDelay: true });
     const nowIso = new Date().toISOString();
     const nextRules = state.rules.map(rule => {
       if (rule.ruleKey !== normalizedRuleKey) {
@@ -787,7 +805,7 @@ export class AdminService {
         ? this.demoScheduledRunCount(rule.ruleKey)
         : 0;
       const status = rule.manualRunEnabled ? 'completed' : 'skipped';
-      const detail = rule.manualRunEnabled ? 'Demo run recorded.' : 'This rule is action driven.';
+      const detail = rule.manualRunEnabled ? 'admin.jobs.demo.run.recorded' : 'admin.jobs.demo.action.driven';
       const startedAtIso = new Date(Date.now() - 1150).toISOString();
       return {
         ...rule,
@@ -819,7 +837,8 @@ export class AdminService {
         updatedUser: this.activeAdmin()?.id ?? 'demo-admin'
       };
     });
-    const saved = await this.saveNotificationCenter(nextRules);
+    const saved = await this.saveNotificationCenter(nextRules, { skipDemoDelay: true });
+    await this.waitForAdminNotificationDemoDelay(ADMIN_NOTIFICATION_RUN_ROUTE, ADMIN_NOTIFICATION_RUN_DEMO_DELAY_MS);
     const updated = saved.rules.find(rule => rule.ruleKey === normalizedRuleKey);
     return {
       ruleKey: normalizedRuleKey,
@@ -1043,6 +1062,7 @@ export class AdminService {
     this.demoUsersRepository.init();
     await this.ensureDemoAdminProfiles();
     this.demoChatsRepository.init();
+    await this.ensureDemoNotificationCenterSeed();
     onProgress?.({ percent: 48, label: 'Creating moderation records', stage: 'records' });
     const store = await this.ensureDemoModerationStore();
     await this.ensureDemoAdminServiceSeed(admin);
@@ -1062,6 +1082,26 @@ export class AdminService {
     const seeded = this.buildSeedDemoModerationStore();
     await this.memoryDb.writeIndexedDbTableEntry(ADMIN_MODERATION_STORE_KEY, seeded);
     return seeded;
+  }
+
+  private async ensureDemoNotificationCenterSeed(): Promise<void> {
+    const existing = await this.memoryDb.readIndexedDbTableEntry<AdminNotificationCenterState>(ADMIN_NOTIFICATION_STORE_KEY);
+    const seeded = this.withDefaultNotificationRules(existing ?? this.buildDefaultNotificationCenter());
+    if (!this.shouldRewriteDemoNotificationSeed(existing, seeded)) {
+      return;
+    }
+    await this.memoryDb.writeIndexedDbTableEntry(ADMIN_NOTIFICATION_STORE_KEY, seeded);
+  }
+
+  private shouldRewriteDemoNotificationSeed(
+    existing: AdminNotificationCenterState | null | undefined,
+    seeded: AdminNotificationCenterState
+  ): boolean {
+    if (!existing?.rules?.length) {
+      return true;
+    }
+    const existingKeys = new Set((existing.rules ?? []).map(rule => `${rule.ruleKey ?? ''}`.trim()));
+    return seeded.rules.some(rule => !existingKeys.has(rule.ruleKey));
   }
 
   private buildSeedDemoModerationStore(): AdminModerationStore {
@@ -2588,9 +2628,9 @@ export class AdminService {
       rules: [
         this.defaultNotificationRule({
           ruleKey: 'event-random-groups',
-          label: 'Matched rooms',
-          category: 'Scheduled',
-          description: 'Assigns accepted event members into generated rooms using affinity and prior-meeting signals.',
+          label: 'admin.jobs.rule.event.random.groups',
+          category: 'admin.jobs.category.scheduled',
+          description: 'admin.jobs.rule.event.random.groups.description',
           actionKey: 'event.scheduler.random-groups',
           triggerKind: 'scheduled_process',
           enabled: false,
@@ -2601,6 +2641,102 @@ export class AdminService {
           emailEnabled: false,
           timingMode: 'interval',
           intervalMinutes: 15
+        }),
+        this.defaultNotificationRule({
+          ruleKey: 'event-auto-inviter',
+          label: 'admin.jobs.rule.event.auto.inviter',
+          category: 'admin.jobs.category.scheduled',
+          description: 'admin.jobs.rule.event.auto.inviter.description',
+          actionKey: 'event.scheduler.auto-inviter',
+          triggerKind: 'scheduled_process',
+          enabled: true,
+          manualRunEnabled: false,
+          adminManageable: true,
+          priority: 210,
+          pushEnabled: false,
+          emailEnabled: false,
+          timingMode: 'interval',
+          intervalMinutes: 120
+        }),
+        this.defaultNotificationRule({
+          ruleKey: 'event-tournament-review',
+          label: 'admin.jobs.rule.event.tournament.review',
+          category: 'admin.jobs.category.scheduled',
+          description: 'admin.jobs.rule.event.tournament.review.description',
+          actionKey: 'event.scheduler.tournament-review',
+          triggerKind: 'scheduled_process',
+          enabled: true,
+          manualRunEnabled: false,
+          adminManageable: true,
+          priority: 220,
+          pushEnabled: false,
+          emailEnabled: false,
+          timingMode: 'interval',
+          intervalMinutes: 30
+        }),
+        this.defaultNotificationRule({
+          ruleKey: 'notification-outbox',
+          label: 'admin.jobs.rule.notification.outbox',
+          category: 'admin.jobs.category.scheduled',
+          description: 'admin.jobs.rule.notification.outbox.description',
+          actionKey: 'notifications.outbox.worker',
+          triggerKind: 'scheduled_process',
+          enabled: true,
+          manualRunEnabled: false,
+          adminManageable: true,
+          priority: 230,
+          pushEnabled: false,
+          emailEnabled: false,
+          timingMode: 'interval',
+          intervalMinutes: 1
+        }),
+        this.defaultNotificationRule({
+          ruleKey: 'affinity-recompute',
+          label: 'admin.jobs.rule.affinity.recompute',
+          category: 'admin.jobs.category.scheduled',
+          description: 'admin.jobs.rule.affinity.recompute.description',
+          actionKey: 'affinity.recompute.worker',
+          triggerKind: 'scheduled_process',
+          enabled: true,
+          manualRunEnabled: false,
+          adminManageable: true,
+          priority: 240,
+          pushEnabled: false,
+          emailEnabled: false,
+          timingMode: 'interval',
+          intervalMinutes: 1
+        }),
+        this.defaultNotificationRule({
+          ruleKey: 'scheduled-messages',
+          label: 'admin.jobs.rule.scheduled.messages',
+          category: 'admin.jobs.category.scheduled',
+          description: 'admin.jobs.rule.scheduled.messages.description',
+          actionKey: 'scheduled.messages.worker',
+          triggerKind: 'scheduled_process',
+          enabled: true,
+          manualRunEnabled: false,
+          adminManageable: true,
+          priority: 250,
+          pushEnabled: false,
+          emailEnabled: false,
+          timingMode: 'interval',
+          intervalMinutes: 30
+        }),
+        this.defaultNotificationRule({
+          ruleKey: 'account-purge',
+          label: 'admin.jobs.rule.account.purge',
+          category: 'admin.jobs.category.scheduled',
+          description: 'admin.jobs.rule.account.purge.description',
+          actionKey: 'users.deleted-account-purge',
+          triggerKind: 'scheduled_process',
+          enabled: true,
+          manualRunEnabled: false,
+          adminManageable: true,
+          priority: 260,
+          pushEnabled: false,
+          emailEnabled: false,
+          timingMode: 'interval',
+          intervalMinutes: 1440
         })
       ],
       emailTemplates: this.defaultNotificationTemplateOptions(),
@@ -2721,6 +2857,52 @@ export class AdminService {
     };
   }
 
+  private withDefaultNotificationRules(state: AdminNotificationCenterState): AdminNotificationCenterState {
+    const normalized = this.normalizeNotificationCenter(state);
+    const defaults = this.buildDefaultNotificationCenter();
+    const existingByKey = new Map((state.rules ?? []).map(rule => [`${rule.ruleKey ?? ''}`.trim(), rule] as const));
+    const defaultKeys = new Set(defaults.rules.map(rule => rule.ruleKey));
+    const mergedRules = [
+      ...defaults.rules.map(defaultRule => this.mergeDefaultNotificationRule(defaultRule, existingByKey.get(defaultRule.ruleKey))),
+      ...normalized.rules.filter(rule => !defaultKeys.has(rule.ruleKey))
+    ];
+    return this.normalizeNotificationCenter({
+      ...normalized,
+      rules: mergedRules,
+      emailTemplates: normalized.emailTemplates.length > 0 ? normalized.emailTemplates : defaults.emailTemplates,
+      updatedDate: normalized.updatedDate || defaults.updatedDate
+    });
+  }
+
+  private mergeDefaultNotificationRule(
+    defaultRule: AdminNotificationRule,
+    existingRule: AdminNotificationRule | undefined
+  ): AdminNotificationRule {
+    if (!existingRule) {
+      return defaultRule;
+    }
+    return {
+      ...defaultRule,
+      ...existingRule,
+      label: existingRule.label || defaultRule.label,
+      category: existingRule.category || defaultRule.category,
+      description: existingRule.description || defaultRule.description,
+      actionKey: existingRule.actionKey || defaultRule.actionKey,
+      triggerKind: existingRule.triggerKind || defaultRule.triggerKind,
+      manualRunEnabled: existingRule.manualRunEnabled === true,
+      priority: existingRule.priority || defaultRule.priority,
+      channels: existingRule.channels ?? defaultRule.channels,
+      timing: existingRule.timing ?? defaultRule.timing,
+      scheduleSlots: existingRule.scheduleSlots?.length ? existingRule.scheduleSlots : defaultRule.scheduleSlots,
+      message: existingRule.message ?? defaultRule.message,
+      runState: existingRule.runState ?? defaultRule.runState,
+      runHistory: existingRule.runHistory ?? defaultRule.runHistory,
+      adminManageable: (existingRule as AdminNotificationRule & { adminManageable?: unknown }).adminManageable === undefined
+        ? defaultRule.adminManageable
+        : existingRule.adminManageable === true
+    };
+  }
+
   private normalizeNotificationRule(rule: AdminNotificationRule): AdminNotificationRule {
     const triggerKind = this.normalizeNotificationTriggerKind(rule.triggerKind);
     const timingMode = this.normalizeNotificationTimingMode(rule.timing?.mode, triggerKind);
@@ -2810,7 +2992,7 @@ export class AdminService {
     if (raw !== undefined && raw !== null) {
       return raw === true;
     }
-    return `${rule.ruleKey ?? ''}`.trim() === 'event-random-groups';
+    return false;
   }
 
   private async buildNotificationSocketUrl(): Promise<string | null> {
@@ -2972,6 +3154,18 @@ export class AdminService {
     switch (ruleKey) {
       case 'event-random-groups':
         return 1;
+      case 'event-auto-inviter':
+        return 3;
+      case 'event-tournament-review':
+        return 2;
+      case 'notification-outbox':
+        return 12;
+      case 'affinity-recompute':
+        return 8;
+      case 'scheduled-messages':
+        return 4;
+      case 'account-purge':
+        return 1;
       default:
         return 0;
     }
@@ -3069,6 +3263,17 @@ export class AdminService {
       );
       task.then(value => finish(() => resolve(value))).catch(error => finish(() => reject(error)));
     });
+  }
+
+  private async waitForAdminNotificationDemoDelay(
+    route: string,
+    fallbackDelayMs: number,
+    options?: { skipDemoDelay?: boolean }
+  ): Promise<void> {
+    if (this.usesHttpAdminApi || options?.skipDemoDelay === true) {
+      return;
+    }
+    await this.routeDelay.waitForRouteDelay(route, undefined, undefined, fallbackDelayMs);
   }
 
   private waitForBeat(): Promise<void> {

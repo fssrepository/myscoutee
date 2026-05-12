@@ -3,6 +3,7 @@ import type {
   ActivitiesPrimaryFilter,
   ActivitiesSecondaryFilter,
   ActivitiesView,
+  AdminNotificationScheduleFrequency,
   AssetFilterType,
   AssetCategory,
   AssetType,
@@ -718,6 +719,23 @@ const HOME_USER_FACET_BY_ID: Record<string, {
   };
 const ACTIVITY_RATING_SCALE = Array.from({ length: 10 }, (_, index) => index + 1);
 const CALENDAR_WEEKDAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const CALENDAR_WEEKDAY_OPTIONS = [
+  { value: 1, labelKey: 'weekday.monday' },
+  { value: 2, labelKey: 'weekday.tuesday' },
+  { value: 3, labelKey: 'weekday.wednesday' },
+  { value: 4, labelKey: 'weekday.thursday' },
+  { value: 5, labelKey: 'weekday.friday' },
+  { value: 6, labelKey: 'weekday.saturday' },
+  { value: 7, labelKey: 'weekday.sunday' }
+];
+const SCHEDULE_FREQUENCY_OPTIONS: Array<{ value: AdminNotificationScheduleFrequency; labelKey: string }> = [
+  { value: 'daily', labelKey: 'schedule.frequency.daily' },
+  { value: 'weekly', labelKey: 'schedule.frequency.weekly' },
+  { value: 'bi-weekly', labelKey: 'schedule.frequency.bi.weekly' },
+  { value: 'monthly', labelKey: 'schedule.frequency.monthly' },
+  { value: 'yearly', labelKey: 'schedule.frequency.yearly' },
+  { value: 'one-time', labelKey: 'schedule.frequency.one.time' }
+];
 const EVENT_VISIBILITY_OPTIONS: EventVisibility[] = ['Public', 'Friends only', 'Invitation only'];
 const EVENT_BLIND_MODE_OPTIONS: EventBlindMode[] = ['Open Event', 'Blind Event'];
 const SUB_EVENT_RESOURCE_FILTER_OPTIONS: SubEventResourceFilter[] = ['Members', 'Car', 'Accommodation', 'Supplies'];
@@ -1158,6 +1176,8 @@ export const APP_STATIC_DATA = {
   assetCategoryOptionsByType: ASSET_CATEGORY_OPTIONS_BY_TYPE,
   activityRatingScale: ACTIVITY_RATING_SCALE,
   calendarWeekdayLabels: CALENDAR_WEEKDAY_LABELS,
+  calendarWeekdayOptions: CALENDAR_WEEKDAY_OPTIONS,
+  scheduleFrequencyOptions: SCHEDULE_FREQUENCY_OPTIONS,
   eventVisibilityOptions: EVENT_VISIBILITY_OPTIONS,
   eventBlindModeOptions: EVENT_BLIND_MODE_OPTIONS,
   subEventResourceFilterOptions: SUB_EVENT_RESOURCE_FILTER_OPTIONS,

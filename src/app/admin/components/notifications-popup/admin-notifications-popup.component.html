@@ -1,12 +1,42 @@
-@if (admin.activePopup() === 'notifications') {
+@if (admin.activePopup() === popupKey) {
   <section class="app-popup">
     <div class="app-popup-backdrop" (click)="close()"></div>
     <div class="app-popup-panel popup-panel-admin popup-panel-notifications" (click)="$event.stopPropagation()">
+      <ng-template #frequencyText let-frequency>
+        @for (option of scheduleFrequencyOptions; track option.value) {
+          @if (option.value === frequency) {
+            <span>{{ option.labelKey | i18n }}</span>
+          }
+        }
+      </ng-template>
+      <ng-template #weekdayText let-dayOfWeek>
+        @for (day of weekDays; track day.value) {
+          @if (day.value === dayOfWeek) {
+            <span>{{ day.labelKey | i18n }}</span>
+          }
+        }
+      </ng-template>
+      <ng-template #runWindowText let-slot>
+        @if (slot.frequency !== scheduleFrequency.oneTime) {
+          <ng-container [ngTemplateOutlet]="frequencyText" [ngTemplateOutletContext]="{ $implicit: slot.frequency }"></ng-container>
+        }
+        @if (weeklyScheduleFrequencies.has(slot.frequency)) {
+          <span> </span>
+          <ng-container [ngTemplateOutlet]="weekdayText" [ngTemplateOutletContext]="{ $implicit: slot.dayOfWeek }"></ng-container>
+        } @else if (slot.frequency === scheduleFrequency.monthly) {
+          <span> {{ jobI18n.runWindow.onDay | i18n }} {{ dayOfMonth(slot.date) }}</span>
+        } @else if (slot.frequency === scheduleFrequency.yearly) {
+          <span> {{ monthDayLabel(slot.date) }}</span>
+        } @else if (slot.frequency === scheduleFrequency.oneTime) {
+          <span>{{ slot.date || (jobI18n.runWindow.oneTimeDate | i18n) }}</span>
+        }
+        <span> {{ jobI18n.runWindow.at | i18n }} {{ slot.time || defaultRunWindow.time }}</span>
+      </ng-template>
       <div class="popup-header">
         <div class="popup-title">
           <h2>{{ 'jobs' | i18n }}</h2>
           <p class="popup-subtitle">
-            {{ processRules().length }} {{ 'configurable.jobs' | i18n }}
+            {{ processRules().length }} {{ 'admin.jobs.background.processes' | i18n }}
           </p>
         </div>
         <div class="notification-header-actions">
@@ -18,10 +48,10 @@
                 [class.is-open]="processFilterMenuOpen()"
                 (click)="toggleProcessFilterMenu($event)"
                 [attr.aria-expanded]="processFilterMenuOpen()"
-                aria-label="Filter scheduled processes"
+                [attr.aria-label]="'admin.jobs.filter.aria' | i18n"
               >
                 <mat-icon>{{ processFilterIcon() }}</mat-icon>
-                <span>{{ processFilterLabel() }}</span>
+                <span>{{ processFilterLabel() | i18n }}</span>
                 <strong>{{ processFilterCount() }}</strong>
                 <mat-icon class="process-filter-caret">expand_more</mat-icon>
               </button>
@@ -37,7 +67,7 @@
                       [attr.aria-checked]="processFilter() === option.key"
                     >
                       <mat-icon>{{ option.icon }}</mat-icon>
-                      <span>{{ option.label }}</span>
+                      <span>{{ option.labelKey | i18n }}</span>
                       <strong>{{ processFilterCount(option.key) }}</strong>
                     </button>
                   }
@@ -45,7 +75,7 @@
               }
             </div>
           }
-          <button type="button" class="popup-close" (click)="close()" aria-label="Close">
+          <button type="button" class="popup-close" (click)="close()" [attr.aria-label]="'close' | i18n">
             <mat-icon>close</mat-icon>
           </button>
         </div>
@@ -68,64 +98,72 @@
                 ></circle>
               </svg>
             </span>
-            <span>Loading scheduled processes</span>
+            <span>{{ 'admin.jobs.loading' | i18n }}</span>
           </div>
         } @else {
           @if (error()) {
             <div class="notifications-error">
               <mat-icon>warning</mat-icon>
-              <span>{{ error() }}</span>
+              <span>{{ error() | i18n }}</span>
             </div>
           }
 
           <section class="process-list-card">
             <div class="process-list-table">
               <div class="process-list-row process-list-head">
-                <span>Process</span>
-                <span>Status</span>
-                <span>Last run</span>
-                <span>Affected</span>
-                <span>Duration</span>
-                <span>Run windows</span>
-                <span>Actions</span>
+                <span>{{ 'admin.jobs.table.process' | i18n }}</span>
+                <span>{{ 'admin.jobs.table.status' | i18n }}</span>
+                <span>{{ 'admin.jobs.table.last.run' | i18n }}</span>
+                <span>{{ 'admin.jobs.table.affected' | i18n }}</span>
+                <span>{{ 'admin.jobs.table.duration' | i18n }}</span>
+                <span>{{ 'admin.jobs.table.run.windows' | i18n }}</span>
+                <span>{{ 'admin.jobs.table.actions' | i18n }}</span>
               </div>
               @for (rule of filteredProcessRules(); track rule.ruleKey) {
-                @if (processDefinition(rule); as rowDefinition) {
                   <div class="process-list-row" [ngClass]="statusClass(rule)">
                     <span class="process-list-name">
                       <span class="process-list-icon" [ngClass]="statusClass(rule)">
-                        <mat-icon>{{ rowDefinition.icon }}</mat-icon>
+                        <mat-icon>{{ processIcon(rule) }}</mat-icon>
                       </span>
                       <span>
-                        <strong>{{ rule.label || rowDefinition.label }}</strong>
-                        <small>{{ actionLabel(rule.actionKey) }}</small>
+                        <strong>{{ processTitle(rule) | i18n }}</strong>
+                        <small>{{ actionLabel(rule.actionKey) | i18n }}</small>
                       </span>
                     </span>
                     <span>
-                      <span class="process-status-pill" [ngClass]="statusClass(rule)">{{ statusLabel(rule) }}</span>
+                      <span class="process-status-pill" [ngClass]="statusClass(rule)">{{ processStatusLabelKeys[statusKind(rule)] | i18n }}</span>
                     </span>
-                    <span>{{ shortDate(rule.runState.lastRunAtIso) }}</span>
+                    <span>{{ shortDate(rule.runState.lastRunAtIso) | i18n }}</span>
                     <span>{{ rule.runState.lastRunCount || 0 }}</span>
                     <span>{{ durationLabel(rule.runState.durationMillis) }}</span>
-                    <span class="process-list-windows">{{ runWindowSummary(rule) }}</span>
+                    <span class="process-list-windows">
+                      @for (slot of activeRunWindows(rule); track slot.id; let last = $last) {
+                        <ng-container [ngTemplateOutlet]="runWindowText" [ngTemplateOutletContext]="{ $implicit: slot }"></ng-container>
+                        @if (!last) {
+                          <span> · </span>
+                        }
+                      } @empty {
+                        <span>{{ jobI18n.runWindow.none | i18n }}</span>
+                      }
+                    </span>
                     <span class="process-list-actions">
                       <span class="process-list-action-buttons">
-                        <button type="button" class="process-icon-btn" (click)="openDetail(rule)" aria-label="View scheduled process">
+                        <button type="button" class="process-icon-btn" (click)="openDetail(rule)" [attr.aria-label]="'admin.jobs.view.process' | i18n">
                           <mat-icon>visibility</mat-icon>
                         </button>
-                        <span class="process-icon-ring-shell" [class.is-loading]="isRowActionPending(rule, 'suspend')">
+                        <span class="process-icon-ring-shell" [class.is-loading]="isRowActionPending(rule, processRowAction.suspend)">
                           <span class="process-icon-ring" aria-hidden="true">
                             <svg viewBox="0 0 30 30" preserveAspectRatio="none">
                               <circle class="process-icon-ring-track" cx="15" cy="15" r="13"></circle>
                               <circle
                                 class="process-icon-ring-progress"
-                                [class.is-loading]="isRowActionPending(rule, 'suspend')"
+                                [class.is-loading]="isRowActionPending(rule, processRowAction.suspend)"
                                 cx="15"
                                 cy="15"
                                 r="13"
                                 pathLength="100"
                                 [attr.stroke-dasharray]="actionRingPerimeter"
-                                [attr.stroke-dashoffset]="isRowActionPending(rule, 'suspend') ? 0 : actionRingPerimeter"
+                                [attr.stroke-dashoffset]="isRowActionPending(rule, processRowAction.suspend) ? 0 : actionRingPerimeter"
                               ></circle>
                             </svg>
                           </span>
@@ -133,26 +171,26 @@
                             type="button"
                             class="process-icon-btn"
                             [class.is-suspended]="!rule.enabled"
-                            [disabled]="saving() || !!rowActionKey()"
+                            [disabled]="!canManageProcess(rule) || saving() || !!rowActionKey()"
                             (click)="toggleSuspended(rule)"
-                            [attr.aria-label]="rule.enabled ? 'Suspend scheduled process' : 'Unsuspend scheduled process'"
+                            [attr.aria-label]="(rule.enabled ? 'admin.jobs.suspend.process' : 'admin.jobs.unsuspend.process') | i18n"
                           >
                             <mat-icon>{{ rule.enabled ? 'pause' : 'lock_open' }}</mat-icon>
                           </button>
                         </span>
-                        <span class="process-icon-ring-shell" [class.is-loading]="isRowActionPending(rule, 'run')">
+                        <span class="process-icon-ring-shell" [class.is-loading]="isRowActionPending(rule, processRowAction.run)">
                           <span class="process-icon-ring" aria-hidden="true">
                             <svg viewBox="0 0 30 30" preserveAspectRatio="none">
                               <circle class="process-icon-ring-track" cx="15" cy="15" r="13"></circle>
                               <circle
                                 class="process-icon-ring-progress"
-                                [class.is-loading]="isRowActionPending(rule, 'run')"
+                                [class.is-loading]="isRowActionPending(rule, processRowAction.run)"
                                 cx="15"
                                 cy="15"
                                 r="13"
                                 pathLength="100"
                                 [attr.stroke-dasharray]="actionRingPerimeter"
-                                [attr.stroke-dashoffset]="isRowActionPending(rule, 'run') ? 0 : actionRingPerimeter"
+                                [attr.stroke-dashoffset]="isRowActionPending(rule, processRowAction.run) ? 0 : actionRingPerimeter"
                               ></circle>
                             </svg>
                           </span>
@@ -162,7 +200,7 @@
                             [class.is-running]="isProcessRunning(rule)"
                             [disabled]="!rule.manualRunEnabled || !rule.enabled || isProcessRunning(rule) || !!runningRuleKey() || !!rowActionKey()"
                             (click)="run(rule)"
-                            aria-label="Run scheduled process"
+                            [attr.aria-label]="'admin.jobs.run.process' | i18n"
                           >
                             <mat-icon>{{ isProcessRunning(rule) ? 'sync' : 'play_arrow' }}</mat-icon>
                           </button>
@@ -170,26 +208,24 @@
                       </span>
                     </span>
                     @if (isProcessRunning(rule)) {
-                      <span class="process-list-live-progress" [attr.aria-label]="'Runtime progress ' + progressValue(rule) + '%'">
+                      <span class="process-list-live-progress" [attr.aria-label]="('admin.jobs.runtime.progress' | i18n) + ' ' + progressValue(rule) + '%'">
                         <span [style.width.%]="progressValue(rule)"></span>
                       </span>
                     }
                   </div>
-                }
               } @empty {
-                <div class="process-list-empty">No scheduled processes in this filter.</div>
+                <div class="process-list-empty">{{ 'admin.jobs.empty.filter' | i18n }}</div>
               }
             </div>
           </section>
 
           @if (detailOpen() && selectedRule(); as rule) {
-            @if (selectedProcessDefinition(); as tab) {
               <div class="process-detail-backdrop" (click)="closeDetail()"></div>
               <section class="process-console process-detail-popup" [ngClass]="statusClass(rule)">
                 <div class="process-detail-header">
                   <div class="popup-title">
-                    <h2>{{ rule.label || tab.label }}</h2>
-                    <p class="popup-subtitle">Scheduled event process · {{ statusLabel(rule) }}</p>
+                    <h2>{{ processTitle(rule) | i18n }}</h2>
+                    <p class="popup-subtitle">{{ 'admin.jobs.scheduled.process' | i18n }} · {{ processStatusLabelKeys[statusKind(rule)] | i18n }}</p>
                   </div>
                   <div class="notification-header-actions">
                     <span class="notification-action-ring-shell notification-circle-ring-shell" [class.is-loading]="saving()">
@@ -211,15 +247,15 @@
                       <button
                         type="button"
                         class="notification-icon-btn notification-confirm-btn"
-                        [disabled]="loading() || saving() || !state()"
+                        [disabled]="loading() || saving() || !state() || !canManageProcess(rule)"
                         (click)="saveAndCloseDetail()"
-                        aria-label="Save scheduled process"
-                        title="Save"
+                        [attr.aria-label]="'admin.jobs.save.process' | i18n"
+                        [title]="'save' | i18n"
                       >
                         <mat-icon>check</mat-icon>
                       </button>
                     </span>
-                    <button type="button" class="popup-close" (click)="closeDetail()" aria-label="Close scheduled process detail">
+                    <button type="button" class="popup-close" (click)="closeDetail()" [attr.aria-label]="'admin.jobs.close.detail' | i18n">
                       <mat-icon>close</mat-icon>
                     </button>
                   </div>
@@ -227,22 +263,22 @@
                 <div class="process-hero">
                   <div class="process-hero-main">
                     <span class="notification-detail-kicker">
-                      <mat-icon>{{ tab.icon }}</mat-icon>
-                      <span>Scheduled event process</span>
+                      <mat-icon>{{ processIcon(rule) }}</mat-icon>
+                      <span>{{ 'admin.jobs.scheduled.process' | i18n }}</span>
                     </span>
-                    <h3>{{ tab.label }}</h3>
-                    <p>{{ tab.summary }}</p>
+                    <h3>{{ processTitle(rule) | i18n }}</h3>
+                    <p>{{ processDescription(rule) | i18n }}</p>
                   </div>
                   <div class="process-actions">
                     <button
                       type="button"
                       class="process-soft-btn"
                       [class.is-suspended]="!rule.enabled"
-                      [disabled]="saving() || !!rowActionKey()"
+                      [disabled]="!canManageProcess(rule) || saving() || !!rowActionKey()"
                       (click)="toggleSuspended(rule)"
                     >
                       <mat-icon>{{ rule.enabled ? 'pause' : 'lock_open' }}</mat-icon>
-                      <span>{{ rule.enabled ? 'Suspend' : 'Unsuspend' }}</span>
+                      <span>{{ (rule.enabled ? 'admin.jobs.suspend' : 'admin.jobs.unsuspend') | i18n }}</span>
                     </button>
                     <button
                       type="button"
@@ -251,7 +287,7 @@
                       (click)="run(rule)"
                     >
                       <mat-icon>{{ isProcessRunning(rule) ? 'sync' : 'play_arrow' }}</mat-icon>
-                      <span>{{ isProcessRunning(rule) ? 'Running' : 'Run' }}</span>
+                      <span>{{ (isProcessRunning(rule) ? processStatusLabelKeys[statusKind(rule)] : jobI18n.action.run) | i18n }}</span>
                     </button>
                   </div>
                 </div>
@@ -259,11 +295,11 @@
                 <div class="process-grid">
                   <section class="process-card process-card-wide">
                     <div class="process-card-head">
-                      <h3>What It Does</h3>
+                      <h3>{{ 'admin.jobs.what.it.does' | i18n }}</h3>
                     </div>
-                    <p>{{ tab.detail }}</p>
+                    <p>{{ processDescription(rule) | i18n }}</p>
                     <div class="process-progress">
-                      <span>{{ rule.runState.progressDetail || statusLabel(rule) }}</span>
+                      <span>{{ (rule.runState.progressDetail || processStatusLabelKeys[statusKind(rule)]) | i18n }}</span>
                       <span>{{ progressValue(rule) }}%</span>
                     </div>
                     <div class="process-progress-bar" aria-hidden="true">
@@ -273,29 +309,31 @@
 
                   <section class="process-card">
                     <div class="process-card-head">
-                      <h3>Run Windows</h3>
-                      <button type="button" class="process-frequency" (click)="openScheduleEditor()">
+                      <h3>{{ 'admin.jobs.run.windows' | i18n }}</h3>
+                      <button type="button" class="process-frequency" [disabled]="!canManageProcess(rule)" (click)="openScheduleEditor()">
                         <mat-icon>schedule</mat-icon>
-                        <span>Edit</span>
+                        <span>{{ 'edit' | i18n }}</span>
                       </button>
                     </div>
                     <div class="process-cron">
                       @for (slot of runWindows(rule); track slot.id) {
-                        <code>{{ runWindowLabel(slot) }}</code>
+                        <code>
+                          <ng-container [ngTemplateOutlet]="runWindowText" [ngTemplateOutletContext]="{ $implicit: slot }"></ng-container>
+                        </code>
                       }
                     </div>
                   </section>
 
                   <section class="process-card">
                     <div class="process-card-head">
-                      <h3>Last Run</h3>
+                      <h3>{{ 'admin.jobs.last.run' | i18n }}</h3>
                     </div>
                     <div class="process-last-run">
-                      <strong>{{ shortDate(rule.runState.lastRunAtIso) }}</strong>
-                      <span>{{ rule.runState.lastRunDetail || 'Not run yet' }}</span>
+                      <strong>{{ shortDate(rule.runState.lastRunAtIso) | i18n }}</strong>
+                      <span>{{ (rule.runState.lastRunDetail || jobI18n.lastRun.notRunYet) | i18n }}</span>
                     </div>
                     <div class="process-last-run-stats">
-                      <span>{{ affectedLabel(rule.runState.lastRunCount || 0) }}</span>
+                      <span>{{ rule.runState.lastRunCount || 0 }} {{ jobI18n.lastRun.affected | i18n }}</span>
                       <span>{{ durationLabel(rule.runState.durationMillis) }}</span>
                     </div>
                   </section>
@@ -303,31 +341,30 @@
 
                 <section class="process-card process-history-card">
                   <div class="process-card-head">
-                    <h3>Runner History</h3>
+                    <h3>{{ 'admin.jobs.runner.history' | i18n }}</h3>
                   </div>
                   <div class="process-history-table">
                     <div class="process-history-row process-history-head">
-                      <span>When</span>
-                      <span>Duration</span>
-                      <span>Affected</span>
-                      <span>Status</span>
-                      <span>Detail</span>
+                      <span>{{ 'admin.jobs.history.when' | i18n }}</span>
+                      <span>{{ 'admin.jobs.table.duration' | i18n }}</span>
+                      <span>{{ 'admin.jobs.table.affected' | i18n }}</span>
+                      <span>{{ 'admin.jobs.table.status' | i18n }}</span>
+                      <span>{{ 'admin.jobs.history.detail' | i18n }}</span>
                     </div>
                     @for (entry of history(rule); track entry.id) {
                       <div class="process-history-row">
-                        <span>{{ shortDate(entry.finishedAtIso || entry.startedAtIso) }}</span>
+                        <span>{{ shortDate(entry.finishedAtIso || entry.startedAtIso) | i18n }}</span>
                         <span>{{ durationLabel(entry.durationMillis) }}</span>
                         <span>{{ entry.processedCount }}</span>
-                        <span>{{ entry.status }}</span>
-                        <span>{{ entry.detail }}</span>
+                        <span>{{ entry.status | i18n }}</span>
+                        <span>{{ entry.detail | i18n }}</span>
                       </div>
                     } @empty {
-                      <div class="process-history-empty">No runs recorded yet.</div>
+                      <div class="process-history-empty">{{ 'admin.jobs.no.runs' | i18n }}</div>
                     }
                   </div>
                 </section>
               </section>
-            }
           }
         }
       </div>
@@ -337,10 +374,10 @@
         <section class="run-window-popup" (click)="$event.stopPropagation()">
           <div class="run-window-popup-head">
             <div>
-              <h3>Run Windows</h3>
-              <p>Configure when this scheduled process should run.</p>
+              <h3>{{ 'admin.jobs.run.windows' | i18n }}</h3>
+              <p>{{ 'admin.jobs.run.windows.description' | i18n }}</p>
             </div>
-            <button type="button" class="run-window-close" (click)="closeScheduleEditor()" aria-label="Close run window editor">
+            <button type="button" class="run-window-close" (click)="closeScheduleEditor()" [attr.aria-label]="'admin.jobs.close.run.window.editor' | i18n">
               <mat-icon>close</mat-icon>
             </button>
           </div>
@@ -348,64 +385,67 @@
             @for (slot of runWindows(scheduleRule); track slot.id; let index = $index) {
               <article class="run-window-row">
                 <div class="run-window-row-head">
-                  <strong>Run window {{ index + 1 }}</strong>
+                  <strong>{{ 'admin.jobs.run.window' | i18n }} {{ index + 1 }}</strong>
                   <div class="run-window-row-tools">
                     <code>{{ slot.cronExpression || cronForSlot(slot) }}</code>
-                    <button type="button" class="run-window-remove" (click)="removeRunWindow(scheduleRule, index)" aria-label="Remove run window">
+                    <button type="button" class="run-window-remove" (click)="removeRunWindow(scheduleRule, index)" [attr.aria-label]="'admin.jobs.remove.run.window' | i18n">
                       <mat-icon>delete_outline</mat-icon>
                     </button>
                   </div>
                 </div>
                 <div class="run-window-grid">
                   <label>
-                    <span>Frequency</span>
+                    <span>{{ 'admin.jobs.frequency' | i18n }}</span>
                     <select [(ngModel)]="slot.frequency" (ngModelChange)="updateRunWindow(scheduleRule, slot)">
                       @for (option of scheduleFrequencyOptions; track option.value) {
-                        <option [value]="option.value">{{ option.label }}</option>
+                        <option [value]="option.value">{{ option.labelKey | i18n }}</option>
                       }
                     </select>
                   </label>
-                  @if (slot.frequency === 'one-time' || slot.frequency === 'monthly' || slot.frequency === 'yearly') {
+                  @if (dateInputScheduleFrequencies.has(slot.frequency)) {
                     <label>
-                      <span>Date</span>
+                      <span>{{ 'admin.jobs.date' | i18n }}</span>
                       <input type="date" [(ngModel)]="slot.date" (ngModelChange)="updateRunWindow(scheduleRule, slot)" />
                     </label>
                   }
-                  @if (slot.frequency === 'weekly' || slot.frequency === 'bi-weekly') {
+                  @if (weeklyScheduleFrequencies.has(slot.frequency)) {
                     <label>
-                      <span>Day</span>
+                      <span>{{ 'admin.jobs.day' | i18n }}</span>
                       <select [(ngModel)]="slot.dayOfWeek" (ngModelChange)="updateRunWindow(scheduleRule, slot)">
                         @for (day of weekDays; track day.value) {
-                          <option [value]="day.value">{{ day.label }}</option>
+                          <option [value]="day.value">{{ day.labelKey | i18n }}</option>
                         }
                       </select>
                     </label>
                   }
                   <label>
-                    <span>Time</span>
+                    <span>{{ 'admin.jobs.time' | i18n }}</span>
                     <input type="time" [(ngModel)]="slot.time" (ngModelChange)="updateRunWindow(scheduleRule, slot)" />
                   </label>
                   <label class="run-window-action-field">
-                    <span>Action</span>
+                    <span>{{ 'admin.jobs.action' | i18n }}</span>
                     <select [ngModel]="slot.actionKey || scheduleRule.actionKey" (ngModelChange)="updateRunWindowAction(slot, $event)">
-                      @for (option of scheduledActionOptions; track option.key) {
-                        <option [value]="option.key">{{ option.label }}</option>
+                      @for (option of actionOptions(scheduleRule); track option) {
+                        <option [value]="option">{{ actionLabel(option) | i18n }}</option>
                       }
                     </select>
                   </label>
                 </div>
-                <p class="run-window-readable">{{ runWindowLabel(slot) }} · {{ actionDescription(slot.actionKey || scheduleRule.actionKey) }}</p>
+                <p class="run-window-readable">
+                  <ng-container [ngTemplateOutlet]="runWindowText" [ngTemplateOutletContext]="{ $implicit: slot }"></ng-container>
+                  <span> · {{ actionDescription(slot.actionKey || scheduleRule.actionKey) | i18n }}</span>
+                </p>
               </article>
             }
           </div>
           <div class="run-window-actions">
             <button type="button" class="process-soft-btn" (click)="addRunWindow(scheduleRule)">
               <mat-icon>add</mat-icon>
-              <span>Add run window</span>
+              <span>{{ 'admin.jobs.add.run.window' | i18n }}</span>
             </button>
             <button type="button" class="notification-primary-btn" (click)="saveScheduleEditor()">
               <mat-icon>check</mat-icon>
-              <span>Done</span>
+              <span>{{ 'done' | i18n }}</span>
             </button>
           </div>
         </section>
