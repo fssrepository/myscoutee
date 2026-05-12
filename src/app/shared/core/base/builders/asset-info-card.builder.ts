@@ -339,12 +339,7 @@ export class AssetInfoCardBuilder {
     if (configuredActions.length > 0) {
       return configuredActions;
     }
-    const actions: InfoCardMenuAction[] = [];
-    if (this.assetStatusCode(card) === 'UR') {
-      actions.push('takeOver');
-    }
-    actions.push('shareAsset', 'editAsset', 'delete');
-    return actions;
+    return ['shareAsset', 'editAsset', 'delete'];
   }
 
   private static ownedAssetMediaEnd(card: AppTypes.AssetCard): NonNullable<InfoCardData['mediaEnd']> | null {
