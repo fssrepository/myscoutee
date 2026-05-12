@@ -91,6 +91,8 @@ interface HttpChatMessageAttachmentDto {
   entityId?: string | null;
   assetType?: AppTypes.AssetType | null;
   ownerUserId?: string | null;
+  status?: AppTypes.ChatMessageAttachment['status'];
+  unavailableReason?: string | null;
   subtitle?: string | null;
   description?: string | null;
   url?: string | null;
@@ -678,6 +680,8 @@ export class HttpChatsService {
       entityId: typeof attachment.entityId === 'string' ? attachment.entityId.trim() : null,
       assetType: this.normalizeAssetType(attachment.assetType),
       ownerUserId: typeof attachment.ownerUserId === 'string' ? attachment.ownerUserId.trim() : null,
+      status: this.normalizeAttachmentStatus(attachment.status),
+      unavailableReason: typeof attachment.unavailableReason === 'string' ? attachment.unavailableReason.trim() : null,
       subtitle: typeof attachment.subtitle === 'string' ? attachment.subtitle.trim() : null,
       description: typeof attachment.description === 'string' ? attachment.description.trim() : null,
       url: this.normalizeHttpMediaUrl(attachment.url),
@@ -695,6 +699,8 @@ export class HttpChatsService {
       entityId: attachment.entityId ?? null,
       assetType: attachment.assetType ?? null,
       ownerUserId: attachment.ownerUserId ?? null,
+      status: attachment.status ?? null,
+      unavailableReason: attachment.unavailableReason ?? null,
       subtitle: attachment.subtitle ?? null,
       description: attachment.description ?? null,
       url: attachment.url ?? null,
@@ -706,6 +712,14 @@ export class HttpChatsService {
 
   private normalizeAssetType(value: unknown): AppTypes.AssetType | null {
     return value === 'Car' || value === 'Accommodation' || value === 'Supplies' ? value : null;
+  }
+
+  private normalizeAttachmentStatus(value: unknown): AppTypes.ChatMessageAttachment['status'] {
+    const normalized = `${value ?? ''}`.trim().toLowerCase();
+    if (normalized === 'available' || normalized === 'unavailable') {
+      return normalized;
+    }
+    return null;
   }
 
   private updateCachedChatSummaryAfterMessage(
