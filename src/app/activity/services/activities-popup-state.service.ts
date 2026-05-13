@@ -18,6 +18,7 @@ interface ActivitiesUiState {
   eventScope: AppTypes.ActivitiesEventScope;
   secondaryFilter: AppTypes.ActivitiesSecondaryFilter;
   chatContextFilter: AppTypes.ActivitiesChatContextFilter;
+  supportCaseFilter: AppTypes.SupportCaseFilter;
   hostingPublicationFilter: AppTypes.HostingPublicationFilter;
   rateFilter: AppTypes.RateFilterKey;
   rateSocialBadgeEnabled: boolean;
@@ -39,6 +40,7 @@ const DEFAULT_ACTIVITIES_UI_STATE: ActivitiesUiState = {
   eventScope: 'active-events',
   secondaryFilter: 'recent',
   chatContextFilter: 'all',
+  supportCaseFilter: 'all',
   hostingPublicationFilter: 'all',
   rateFilter: 'individual-given',
   rateSocialBadgeEnabled: false,
@@ -71,6 +73,7 @@ export class ActivitiesPopupStateService {
   readonly activitiesEventScope = computed(() => this._uiState().eventScope);
   readonly activitiesSecondaryFilter = computed(() => this._uiState().secondaryFilter);
   readonly activitiesChatContextFilter = computed(() => this._uiState().chatContextFilter);
+  readonly activitiesSupportCaseFilter = computed(() => this._uiState().supportCaseFilter);
   readonly activitiesHostingPublicationFilter = computed(() => this._uiState().hostingPublicationFilter);
   readonly activitiesRateFilter = computed(() => this._uiState().rateFilter);
   readonly activitiesRateSocialBadgeEnabled = computed(() => this.resolveRateSocialBadgeEnabled(this._uiState()));
@@ -115,6 +118,7 @@ export class ActivitiesPopupStateService {
       secondaryFilter: 'recent',
       hostingPublicationFilter: resolvedScope === 'drafts' ? 'drafts' : 'all',
       chatContextFilter: adminServiceOnly ? 'service' : 'all',
+      supportCaseFilter: 'all',
       showViewPicker: false,
       showSecondaryPicker: false,
       view: normalizedPrimaryFilter === 'rates' ? 'distance' : 'day',
@@ -142,7 +146,7 @@ export class ActivitiesPopupStateService {
   }
 
   closeActivities(): void {
-    this.patchUiState({ open: false, adminServiceOnly: false });
+    this.patchUiState({ open: false, adminServiceOnly: false, supportCaseFilter: 'all' });
     this._eventChatSession.set(null);
   }
 
@@ -155,6 +159,7 @@ export class ActivitiesPopupStateService {
       this.patchUiState({
         primaryFilter: 'chats',
         chatContextFilter: 'service',
+        supportCaseFilter: 'all',
         showViewPicker: false,
         showSecondaryPicker: false
       });
@@ -169,6 +174,7 @@ export class ActivitiesPopupStateService {
       showViewPicker: false,
       showSecondaryPicker: false,
       chatContextFilter: 'all',
+      supportCaseFilter: 'all',
       ratesFullscreenMode: normalizedFilter !== 'rates' ? false : state.ratesFullscreenMode,
       rateFilter: normalizedFilter === 'rates' ? 'individual-given' : state.rateFilter,
       rateSocialBadgeEnabled: normalizedFilter === 'rates' ? this.resolveRateSocialBadgeEnabled(state) : false,
@@ -199,6 +205,16 @@ export class ActivitiesPopupStateService {
 
   setActivitiesChatContextFilter(filter: AppTypes.ActivitiesChatContextFilter): void {
     this.patchUiState({ chatContextFilter: this._uiState().adminServiceOnly ? 'service' : filter });
+  }
+
+  setActivitiesSupportCaseFilter(filter: AppTypes.SupportCaseFilter): void {
+    const normalized = filter === 'pending' || filter === 'picked' || filter === 'solved' || filter === 'blocked'
+      ? filter
+      : 'all';
+    this.patchUiState({
+      supportCaseFilter: normalized,
+      chatContextFilter: this._uiState().adminServiceOnly ? 'service' : this._uiState().chatContextFilter
+    });
   }
 
   setActivitiesHostingPublicationFilter(filter: AppTypes.HostingPublicationFilter): void {

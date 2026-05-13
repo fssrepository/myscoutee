@@ -241,6 +241,72 @@
                 </div>
               }
             }
+            <!-- Admin support case filter -->
+            @if (activitiesPrimaryFilter === 'chats' && isAdminServiceChatMode()) {
+              @if (!isMobileView) {
+                <div
+                  class="profile-status-select-wrap selector-like experience-filter-select popup-compact-select activities-compact-select activities-support-case-filter-select"
+                  [ngClass]="supportCaseFilterClass(activitiesSupportCaseFilter)"
+                  >
+                  <mat-select
+                    [(ngModel)]="activitiesSupportCaseFilter"
+                    (ngModelChange)="selectActivitiesSupportCaseFilter($event)"
+                    panelWidth="220px"
+                    disableOptionCentering
+                    panelClass="selector-options-panel profile-bottom-sheet-panel activities-support-case-options-panel"
+                    >
+                    <mat-select-trigger>
+                      <span class="status-option-content">
+                        <mat-icon [class]="supportCaseFilterClass(activitiesSupportCaseFilter)">{{ supportCaseFilterIcon() }}</mat-icon>
+                        <span>{{ supportCaseFilterLabel() }}</span>
+                      </span>
+                    </mat-select-trigger>
+                    @for (option of activitiesSupportCaseFilters; track option.key) {
+                      <mat-option
+                        [value]="option.key"
+                        class="status-option"
+                        [ngClass]="supportCaseFilterClass(option.key)"
+                        >
+                        <span class="status-option-content">
+                          <mat-icon [class]="supportCaseFilterClass(option.key)">{{ option.icon }}</mat-icon>
+                          <span>{{ option.label }}</span>
+                        </span>
+                      </mat-option>
+                    }
+                  </mat-select>
+                </div>
+              } @else {
+                <div class="popup-mobile-filter-picker activities-mobile-support-case-filter-picker">
+                  <button
+                    type="button"
+                    class="profile-status-select-wrap selector-like experience-filter-select popup-compact-select activities-compact-select activities-support-case-filter-select"
+                    [ngClass]="supportCaseFilterClass(activitiesSupportCaseFilter)"
+                    (click)="openMobileActivitiesSupportCaseFilterSelector($event)"
+                    >
+                    <span class="status-option-content">
+                      <mat-icon [class]="supportCaseFilterClass(activitiesSupportCaseFilter)">{{ supportCaseFilterIcon() }}</mat-icon>
+                      <span>{{ supportCaseFilterLabel() }}</span>
+                    </span>
+                    <mat-icon>expand_more</mat-icon>
+                  </button>
+                  @if (showActivitiesSupportCasePicker) {
+                    <div class="popup-filter-panel popup-mobile-filter-panel activities-view-picker-panel activities-mobile-filter-panel">
+                      @for (option of activitiesSupportCaseFilters; track option.key) {
+                        <button
+                          type="button"
+                          class="popup-filter-option activities-view-option"
+                          [ngClass]="[supportCaseFilterClass(option.key), option.key === activitiesSupportCaseFilter ? 'active' : '']"
+                          (click)="selectActivitiesSupportCaseFilter(option.key)"
+                          >
+                          <mat-icon [class]="supportCaseFilterClass(option.key)">{{ option.icon }}</mat-icon>
+                          <span>{{ option.label }}</span>
+                        </button>
+                      }
+                    </div>
+                  }
+                </div>
+              }
+            }
             <!-- Chat context filter (chats tab only) -->
             @if (activitiesPrimaryFilter === 'chats' && !isAdminServiceChatMode()) {
               @if (!isMobileView) {
@@ -609,7 +675,9 @@
               [row]="row"
               [groupLabel]="groupLabel"
               [context]="activitiesChatTemplateContext"
+              [adminServiceMode]="isAdminServiceChatMode()"
               (rowClick)="onActivityRowClick(row, $event)"
+              (supportCaseAction)="onSupportCaseAction(row, $event)"
             ></app-activities-chat-template>
           </ng-template>
           <ng-template #activitiesRateSmartListItemTemplate let-row let-groupLabel="groupLabel">

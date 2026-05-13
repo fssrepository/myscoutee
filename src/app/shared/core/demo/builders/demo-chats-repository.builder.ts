@@ -8,7 +8,116 @@ import { DemoEventSeedBuilder } from './demo-event-seed.builder';
 import { DemoUserSeedBuilder } from './demo-user-seed.builder';
 
 const SEED_CHAT_ITEMS_BY_USER: Record<string, ChatMenuItem[]> = {
+  'admin-demo-ava': [
+    {
+      id: 'c-support-admin-u1',
+      avatar: 'FA',
+      title: 'MyScoutee Support · Farkas Anna',
+      lastMessage: 'Please check this shared asset screen.',
+      lastSenderId: 'u1',
+      memberIds: ['u1', 'admin-demo-ava', 'admin-demo-noel'],
+      unread: 1,
+      channelType: 'serviceEvent',
+      supportCaseStatus: 'pending',
+      supportCaseAssigneeUserId: null,
+      supportCaseAssigneeName: null,
+      supportCaseAssigneeInitials: null,
+      supportCaseUpdatedAtIso: '2026-05-13T01:18:00.000Z'
+    },
+    {
+      id: 'c-support-admin-u2',
+      avatar: 'KB',
+      title: 'MyScoutee Support · Kiss Balázs',
+      lastMessage: 'I am looking into the blocked-event report.',
+      lastSenderId: 'admin-demo-noel',
+      memberIds: ['u2', 'admin-demo-ava', 'admin-demo-noel'],
+      unread: 0,
+      channelType: 'serviceEvent',
+      supportCaseStatus: 'picked',
+      supportCaseAssigneeUserId: 'admin-demo-noel',
+      supportCaseAssigneeName: 'Noel',
+      supportCaseAssigneeInitials: 'NO',
+      supportCaseUpdatedAtIso: '2026-05-13T01:32:00.000Z'
+    },
+    {
+      id: 'c-support-admin-u3',
+      avatar: 'NE',
+      title: 'MyScoutee Support · Nagy Eszter',
+      lastMessage: 'Case closed after moderation review.',
+      lastSenderId: 'admin-demo-ava',
+      memberIds: ['u3', 'admin-demo-ava', 'admin-demo-noel'],
+      unread: 0,
+      channelType: 'serviceEvent',
+      supportCaseStatus: 'solved',
+      supportCaseAssigneeUserId: 'admin-demo-ava',
+      supportCaseAssigneeName: 'Ava',
+      supportCaseAssigneeInitials: 'AV',
+      supportCaseUpdatedAtIso: '2026-05-13T01:40:00.000Z'
+    }
+  ],
+  'admin-demo-noel': [
+    {
+      id: 'c-support-admin-u1',
+      avatar: 'FA',
+      title: 'MyScoutee Support · Farkas Anna',
+      lastMessage: 'Please check this shared asset screen.',
+      lastSenderId: 'u1',
+      memberIds: ['u1', 'admin-demo-ava', 'admin-demo-noel'],
+      unread: 1,
+      channelType: 'serviceEvent',
+      supportCaseStatus: 'pending',
+      supportCaseAssigneeUserId: null,
+      supportCaseAssigneeName: null,
+      supportCaseAssigneeInitials: null,
+      supportCaseUpdatedAtIso: '2026-05-13T01:18:00.000Z'
+    },
+    {
+      id: 'c-support-admin-u2',
+      avatar: 'KB',
+      title: 'MyScoutee Support · Kiss Balázs',
+      lastMessage: 'I am looking into the blocked-event report.',
+      lastSenderId: 'admin-demo-noel',
+      memberIds: ['u2', 'admin-demo-ava', 'admin-demo-noel'],
+      unread: 0,
+      channelType: 'serviceEvent',
+      supportCaseStatus: 'picked',
+      supportCaseAssigneeUserId: 'admin-demo-noel',
+      supportCaseAssigneeName: 'Noel',
+      supportCaseAssigneeInitials: 'NO',
+      supportCaseUpdatedAtIso: '2026-05-13T01:32:00.000Z'
+    },
+    {
+      id: 'c-support-admin-u3',
+      avatar: 'NE',
+      title: 'MyScoutee Support · Nagy Eszter',
+      lastMessage: 'Case closed after moderation review.',
+      lastSenderId: 'admin-demo-ava',
+      memberIds: ['u3', 'admin-demo-ava', 'admin-demo-noel'],
+      unread: 0,
+      channelType: 'serviceEvent',
+      supportCaseStatus: 'solved',
+      supportCaseAssigneeUserId: 'admin-demo-ava',
+      supportCaseAssigneeName: 'Ava',
+      supportCaseAssigneeInitials: 'AV',
+      supportCaseUpdatedAtIso: '2026-05-13T01:40:00.000Z'
+    }
+  ],
   u1: [
+    {
+      id: 'c-support-admin-u1',
+      avatar: 'MS',
+      title: 'MyScoutee Support',
+      lastMessage: 'Please check this shared asset screen.',
+      lastSenderId: 'u1',
+      memberIds: ['u1', 'admin-demo-ava', 'admin-demo-noel'],
+      unread: 0,
+      channelType: 'serviceEvent',
+      supportCaseStatus: 'pending',
+      supportCaseAssigneeUserId: null,
+      supportCaseAssigneeName: null,
+      supportCaseAssigneeInitials: null,
+      supportCaseUpdatedAtIso: '2026-05-13T01:18:00.000Z'
+    },
     {
       id: 'c1',
       avatar: 'MS',

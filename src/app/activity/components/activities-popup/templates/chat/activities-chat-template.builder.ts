@@ -11,6 +11,11 @@ export interface ActivitiesChatTemplateData {
   avatarInitials: string;
   avatarClass: string;
   toneClass: string;
+  showSupportControls: boolean;
+  supportCaseStatus: AppTypes.SupportCaseStatus | null;
+  supportCaseLabel: string;
+  supportCaseBadgeClass: string;
+  supportCaseAssigneeLabel: string;
 }
 
 interface BuildActivitiesChatTemplateDataOptions {
@@ -19,6 +24,7 @@ interface BuildActivitiesChatTemplateDataOptions {
   lastSenderGender: 'woman' | 'man';
   memberCount: number;
   channelType: AppTypes.ChatChannelType;
+  adminServiceMode?: boolean;
 }
 
 export function buildActivitiesChatTemplateData(
@@ -37,24 +43,32 @@ export function buildActivitiesChatTemplateData(
     groupLabel: options.groupLabel ?? null,
     avatarInitials: avatar ? avatar.slice(0, 2).toUpperCase() : options.activeUserInitials,
     avatarClass: `user-color-${options.lastSenderGender}`,
-    toneClass: activitiesChatToneClass(options.channelType, chat)
+    toneClass: activitiesChatToneClass(options.channelType, chat, options.adminServiceMode === true),
+    showSupportControls: options.adminServiceMode === true && Boolean(chat.supportCaseStatus),
+    supportCaseStatus: supportCaseStatus(chat.supportCaseStatus),
+    supportCaseLabel: supportCaseLabel(chat.supportCaseStatus),
+    supportCaseBadgeClass: supportCaseBadgeClass(chat.supportCaseStatus),
+    supportCaseAssigneeLabel: supportCaseAssigneeLabel(chat)
   };
 }
 
-function activitiesChatToneClass(channelType: AppTypes.ChatChannelType, chat: ChatMenuItem): string {
+function activitiesChatToneClass(channelType: AppTypes.ChatChannelType, chat: ChatMenuItem, adminServiceMode: boolean): string {
+  const supportTone = adminServiceMode && chat.supportCaseStatus
+    ? ` activities-card-support-case-${supportCaseBadgeClass(chat.supportCaseStatus).replace('support-case-', '')}`
+    : '';
   if (channelType === 'mainEvent') {
-    return 'activities-card-chat-main-event';
+    return `activities-card-chat-main-event${supportTone}`;
   }
   if (channelType === 'optionalSubEvent') {
-    return 'activities-card-chat-optional-sub-event';
+    return `activities-card-chat-optional-sub-event${supportTone}`;
   }
   if (channelType === 'groupSubEvent') {
-    return 'activities-card-chat-group-sub-event';
+    return `activities-card-chat-group-sub-event${supportTone}`;
   }
   if (channelType === 'serviceEvent') {
-    return serviceChatToneClass(chat);
+    return `${serviceChatToneClass(chat)}${supportTone}`;
   }
-  return '';
+  return supportTone.trim();
 }
 
 function serviceChatToneClass(chat: ChatMenuItem): string {
@@ -69,4 +83,42 @@ function serviceChatToneClass(chat: ChatMenuItem): string {
     return 'activities-card-chat-service-asset';
   }
   return 'activities-card-chat-service-event';
+}
+
+function supportCaseStatus(status: ChatMenuItem['supportCaseStatus']): AppTypes.SupportCaseStatus | null {
+  if (status === 'pending' || status === 'picked' || status === 'solved' || status === 'blocked') {
+    return status;
+  }
+  return null;
+}
+
+function supportCaseLabel(status: ChatMenuItem['supportCaseStatus']): string {
+  if (status === 'picked') {
+    return 'Picked';
+  }
+  if (status === 'solved') {
+    return 'Solved';
+  }
+  if (status === 'blocked') {
+    return 'Blocked';
+  }
+  return 'Pending';
+}
+
+function supportCaseBadgeClass(status: ChatMenuItem['supportCaseStatus']): string {
+  if (status === 'picked') {
+    return 'support-case-picked';
+  }
+  if (status === 'solved') {
+    return 'support-case-solved';
+  }
+  if (status === 'blocked') {
+    return 'support-case-blocked';
+  }
+  return 'support-case-pending';
+}
+
+function supportCaseAssigneeLabel(chat: ChatMenuItem): string {
+  const assignee = `${chat.supportCaseAssigneeName ?? ''}`.trim();
+  return assignee ? `by ${assignee}` : '';
 }

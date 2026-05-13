@@ -185,6 +185,31 @@
   background: linear-gradient(180deg, #edf9f4 0%, #e1f3ea 100%);
   border-color: rgba(37, 127, 95, 0.32);
 }
+.activities-mobile-filter-panel .activities-view-option.support-case-filter-all,
+.activities-support-case-filter-select.support-case-filter-all {
+  background: linear-gradient(180deg, #f4f7fb 0%, #edf3f8 100%);
+  border-color: rgba(76, 104, 140, 0.28);
+}
+.activities-mobile-filter-panel .activities-view-option.support-case-filter-pending,
+.activities-support-case-filter-select.support-case-filter-pending {
+  background: linear-gradient(180deg, #fff5ef 0%, #ffe9df 100%);
+  border-color: rgba(209, 102, 67, 0.34);
+}
+.activities-mobile-filter-panel .activities-view-option.support-case-filter-picked,
+.activities-support-case-filter-select.support-case-filter-picked {
+  background: linear-gradient(180deg, #eff6ff 0%, #e3effb 100%);
+  border-color: rgba(73, 128, 190, 0.32);
+}
+.activities-mobile-filter-panel .activities-view-option.support-case-filter-solved,
+.activities-support-case-filter-select.support-case-filter-solved {
+  background: linear-gradient(180deg, #eefbf3 0%, #e0f4e8 100%);
+  border-color: rgba(65, 155, 105, 0.32);
+}
+.activities-mobile-filter-panel .activities-view-option.support-case-filter-blocked,
+.activities-support-case-filter-select.support-case-filter-blocked {
+  background: linear-gradient(180deg, #fff1f3 0%, #ffe4e8 100%);
+  border-color: rgba(176, 73, 85, 0.32);
+}
 .activities-mobile-rate-filter-panel .activities-view-option.rate-filter-item-individual-given {
   background: linear-gradient(180deg, #fff1f3 0%, #ffe6ea 100%);
   border-color: rgba(169, 72, 90, 0.32);

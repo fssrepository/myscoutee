@@ -110,3 +110,6 @@ export interface ChatPopupDayGroup {
 
 export type ChatChannelType = 'general' | 'mainEvent' | 'optionalSubEvent' | 'groupSubEvent' | 'serviceEvent';
 export type ActivitiesChatContextFilter = 'all' | 'event' | 'subEvent' | 'group' | 'service';
+export type SupportCaseStatus = 'pending' | 'picked' | 'solved' | 'blocked';
+export type SupportCaseFilter = 'all' | SupportCaseStatus;
+export type SupportCaseAction = 'pick' | 'unpick' | 'solve' | 'block' | 'reopen';

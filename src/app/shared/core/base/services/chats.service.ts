@@ -119,6 +119,13 @@ export class ChatsService extends BaseRouteModeService {
     return this.httpChatsService.markChatRead(chat, messageIds);
   }
 
+  async updateSupportCase(chat: ChatMenuItem, action: AppTypes.SupportCaseAction): Promise<DemoChatRecord | null> {
+    if (this.isDemoModeEnabled(ChatsService.CHAT_ROUTE)) {
+      return this.demoChatsService.updateSupportCase(chat, action);
+    }
+    return this.httpChatsService.updateSupportCase(chat, action);
+  }
+
   async resolveEventServiceChat(input: {
     activeUserId: string;
     eventId: string;
@@ -268,7 +275,9 @@ export class ChatsService extends BaseRouteModeService {
   ): Promise<PageResult<AppTypes.ActivityListRow>> {
     const users = options.users ?? this.demoUsersRepository.queryAllUsers();
     if (this.isDemoModeEnabled(ChatsService.CHAT_ROUTE)) {
-      const items = options.chatItems && options.chatItems.length > 0
+      const items = request.adminServiceOnly === true
+        ? await this.demoChatsService.querySupportCaseItemsForAdmin(userId, request.supportCaseFilter ?? 'all')
+        : options.chatItems && options.chatItems.length > 0
         ? options.chatItems
         : await this.demoChatsService.queryChatItemsByUser(userId);
       const page = this.buildLocalActivitiesChatPage(userId, request, users, items);
@@ -312,9 +321,10 @@ export class ChatsService extends BaseRouteModeService {
     items: readonly ChatMenuItem[]
   ): { items: DemoChatRecord[]; total: number; nextCursor?: string | null } {
     const filteredItems = items.filter(item =>
-      request.chatContextFilter === 'all'
+      (request.chatContextFilter === 'all'
         ? true
-        : activityChatContextFilterKey(item) === request.chatContextFilter
+        : activityChatContextFilterKey(item) === request.chatContextFilter)
+      && this.matchesSupportCaseFilter(item, request.supportCaseFilter)
     );
     const sorted = this.sortActivitiesChatItems(filteredItems, request, users, userId);
     const startIndex = request.page * request.pageSize;
@@ -334,6 +344,16 @@ export class ChatsService extends BaseRouteModeService {
       return chatItems;
     }
     return this.peekChatItemsByUser(userId);
+  }
+
+  private matchesSupportCaseFilter(item: ChatMenuItem, filter: AppTypes.SupportCaseFilter | undefined): boolean {
+    const normalizedFilter = filter === 'pending' || filter === 'picked' || filter === 'solved' || filter === 'blocked'
+      ? filter
+      : 'all';
+    if (normalizedFilter === 'all') {
+      return true;
+    }
+    return item.supportCaseStatus === normalizedFilter;
   }
 
   private sortActivitiesChatItems(

@@ -27,6 +27,11 @@ interface HttpChatSummaryDto {
   groupId?: string;
   distanceKm?: number;
   distanceMetersExact?: number;
+  supportCaseStatus?: AppTypes.SupportCaseStatus | string | null;
+  supportCaseAssigneeUserId?: string | null;
+  supportCaseAssigneeName?: string | null;
+  supportCaseAssigneeInitials?: string | null;
+  supportCaseUpdatedAtIso?: string | null;
 }
 
 interface HttpChatSenderAvatarDto {
@@ -239,6 +244,12 @@ export class HttpChatsService {
     if (request.rangeEnd) {
       params = params.set('rangeEndIso', request.rangeEnd);
     }
+    if (request.adminServiceOnly === true) {
+      params = params.set('adminServiceOnly', 'true');
+    }
+    if (request.supportCaseFilter && request.supportCaseFilter !== 'all') {
+      params = params.set('supportCaseFilter', request.supportCaseFilter);
+    }
 
     try {
       const response = await this.http.get<{
@@ -373,6 +384,26 @@ export class HttpChatsService {
     socket.send(JSON.stringify(payload));
   }
 
+  async updateSupportCase(chat: ChatMenuItem, action: AppTypes.SupportCaseAction): Promise<DemoChatRecord | null> {
+    const normalizedChatId = `${chat.id ?? ''}`.trim();
+    const userId = this.activeUserId();
+    if (!normalizedChatId || !userId) {
+      return null;
+    }
+    try {
+      const response = await this.http
+        .post<HttpChatSummaryDto | null>(
+          `${this.apiBaseUrl}/activities/chats/${encodeURIComponent(normalizedChatId)}/support-case`,
+          { userId, action },
+          { params: this.withUserId(new HttpParams(), userId) }
+        )
+        .toPromise();
+      return response ? this.mapChatRecord(response, userId) : null;
+    } catch {
+      return null;
+    }
+  }
+
   async updateChatMessage(
     chat: ChatMenuItem,
     messageId: string,
@@ -486,6 +517,11 @@ export class HttpChatsService {
       groupId: item.groupId,
       distanceKm,
       distanceMetersExact,
+      supportCaseStatus: this.normalizeSupportCaseStatus(item.supportCaseStatus),
+      supportCaseAssigneeUserId: this.normalizeHttpText(item.supportCaseAssigneeUserId) || null,
+      supportCaseAssigneeName: this.normalizeHttpText(item.supportCaseAssigneeName) || null,
+      supportCaseAssigneeInitials: this.normalizeHttpText(item.supportCaseAssigneeInitials) || null,
+      supportCaseUpdatedAtIso: this.normalizeHttpText(item.supportCaseUpdatedAtIso) || null,
       ownerUserId
     } satisfies DemoChatRecord;
   }
@@ -629,6 +665,13 @@ export class HttpChatsService {
     return normalized === 'woman' || normalized.startsWith('w') || normalized.startsWith('f')
       ? 'woman'
       : 'man';
+  }
+
+  private normalizeSupportCaseStatus(value: unknown): AppTypes.SupportCaseStatus | null {
+    const normalized = this.normalizeHttpText(value).toLowerCase();
+    return normalized === 'pending' || normalized === 'picked' || normalized === 'solved' || normalized === 'blocked'
+      ? normalized
+      : null;
   }
 
   private resolveHttpChatAvatarImageUrl(
