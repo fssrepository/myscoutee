@@ -8,6 +8,7 @@ import {
   AppPopupContext,
   HelpCenterService,
   SessionService,
+  UsersService,
   USER_BY_ID_LOAD_CONTEXT_KEY,
   type ShareTokenRecord,
   type DemoUserListItemDto,
@@ -381,6 +382,7 @@ export class AdminService {
   private readonly appCtx = inject(AppContext);
   private readonly popupCtx = inject(AppPopupContext);
   private readonly helpCenter = inject(HelpCenterService);
+  private readonly usersService = inject(UsersService);
   private readonly location = inject(Location);
   private readonly sessionService = inject(SessionService);
   private readonly firebaseAuthService = inject(FirebaseAuthService);
@@ -476,6 +478,9 @@ export class AdminService {
         : await this.loadDemoDashboard(adminUserId, onProgress);
       this.dashboardRef.set(dashboard);
       this.activateAdminProfile(dashboard);
+      if (this.usesHttpAdminApi) {
+        await this.refreshAdminMenuCountersFromUserRecord(dashboard.activeAdmin.id);
+      }
       void this.helpCenter.preloadAll();
       this.persistAdminSession(dashboard.activeAdmin.id);
       return dashboard;
@@ -1122,6 +1127,7 @@ export class AdminService {
     this.demoChatsRepository.init();
     await this.ensureDemoNotificationCenterSeed();
     await this.ensureDemoMonitoringSeed();
+    await this.ensureDemoAdminMenuCounterSeed();
     onProgress?.({ percent: 48, label: 'Creating moderation records', stage: 'records' });
     const store = await this.ensureDemoModerationStore();
     await this.ensureDemoAdminServiceSeed(admin);
@@ -1158,6 +1164,73 @@ export class AdminService {
       return;
     }
     await this.memoryDb.writeIndexedDbTableEntry(ADMIN_MONITORING_STORE_KEY, this.buildDefaultMonitoringState());
+  }
+
+  private async ensureDemoAdminMenuCounterSeed(): Promise<void> {
+    const [notificationCenter, monitoringState] = await Promise.all([
+      this.memoryDb.readIndexedDbTableEntry<AdminNotificationCenterState>(ADMIN_NOTIFICATION_STORE_KEY),
+      this.memoryDb.readIndexedDbTableEntry<AdminMonitoringStateDto>(ADMIN_MONITORING_STORE_KEY)
+    ]);
+    const adminJobs = this.countFailedNotificationRules(notificationCenter);
+    const adminMetrics = this.countAlertMonitoringMetrics(monitoringState);
+    let changed = false;
+    for (const admin of this.adminUsers()) {
+      const user = this.demoUsersRepository.queryUserById(admin.id);
+      if (!user) {
+        continue;
+      }
+      const nextActivities = {
+        game: Math.max(0, Math.trunc(Number(user.activities?.game) || 0)),
+        chat: Math.max(0, Math.trunc(Number(user.activities?.chat) || 0)),
+        invitations: Math.max(0, Math.trunc(Number(user.activities?.invitations) || 0)),
+        events: Math.max(0, Math.trunc(Number(user.activities?.events) || 0)),
+        hosting: Math.max(0, Math.trunc(Number(user.activities?.hosting) || 0)),
+        tickets: Math.max(0, Math.trunc(Number(user.activities?.tickets) || 0)),
+        feedback: Math.max(0, Math.trunc(Number(user.activities?.feedback) || 0)),
+        adminJobs,
+        adminMetrics
+      };
+      if (
+        nextActivities.adminJobs === Math.max(0, Math.trunc(Number(user.activities?.adminJobs) || 0))
+        && nextActivities.adminMetrics === Math.max(0, Math.trunc(Number(user.activities?.adminMetrics) || 0))
+      ) {
+        continue;
+      }
+      this.demoUsersRepository.upsertUser({
+        ...user,
+        activities: nextActivities
+      });
+      changed = true;
+    }
+    if (changed) {
+      await this.memoryDb.flushToIndexedDb();
+    }
+  }
+
+  private countFailedNotificationRules(state: AdminNotificationCenterState | null | undefined): number {
+    return (state?.rules ?? []).filter(rule => {
+      const current = `${rule.runState?.currentStatus ?? ''}`.trim().toLowerCase();
+      const last = `${rule.runState?.lastRunStatus ?? ''}`.trim().toLowerCase();
+      return this.isFailureStatus(current) || this.isFailureStatus(last);
+    }).length;
+  }
+
+  private countAlertMonitoringMetrics(state: AdminMonitoringStateDto | null | undefined): number {
+    return (state?.categories ?? [])
+      .flatMap(category => category.nodes ?? [])
+      .flatMap(node => node.metrics ?? [])
+      .filter(metric => metric.status === 'alert' || this.isFailureStatus(metric.key) || this.isFailureStatus(metric.labelKey))
+      .reduce((total, metric) => total + Math.max(0, Math.trunc(Number(metric.value) || 0)), 0);
+  }
+
+  private isFailureStatus(value: string): boolean {
+    const normalized = `${value ?? ''}`.trim().toLowerCase();
+    return normalized.includes('failed')
+      || normalized.includes('error')
+      || normalized.includes('missed')
+      || normalized.includes('timeout')
+      || normalized.includes('hiany')
+      || normalized.includes('hiba');
   }
 
   private shouldRewriteDemoNotificationSeed(
@@ -1389,7 +1462,9 @@ export class AdminService {
         events: 0,
         hosting: 0,
         tickets: 0,
-        feedback: 0
+        feedback: 0,
+        adminJobs: 0,
+        adminMetrics: 0
       }
     };
   }
@@ -1822,8 +1897,37 @@ export class AdminService {
       hosting: 0,
       invitations: 0,
       tickets: 0,
-      feedback: dashboard.feedback.length
+      feedback: dashboard.feedback.length,
+      adminJobs: user.activities.adminJobs ?? 0,
+      adminMetrics: user.activities.adminMetrics ?? 0
     });
+  }
+
+  private async refreshAdminMenuCountersFromUserRecord(adminUserId: string): Promise<void> {
+    const normalizedAdminUserId = `${adminUserId ?? ''}`.trim();
+    if (!normalizedAdminUserId) {
+      return;
+    }
+    try {
+      const snapshot = await this.usersService.pollUserRealtimeSnapshot(normalizedAdminUserId, null);
+      const adminJobs = Math.max(0, Math.trunc(Number(snapshot?.counters?.adminJobs) || 0));
+      const adminMetrics = Math.max(0, Math.trunc(Number(snapshot?.counters?.adminMetrics) || 0));
+      this.appCtx.patchUserCounterOverrides(normalizedAdminUserId, { adminJobs, adminMetrics });
+      const currentUser = this.appCtx.getUserProfile(normalizedAdminUserId);
+      if (!currentUser) {
+        return;
+      }
+      this.appCtx.setUserProfile({
+        ...currentUser,
+        activities: {
+          ...currentUser.activities,
+          adminJobs,
+          adminMetrics
+        }
+      });
+    } catch {
+      // The periodic user counter poll keeps the admin menu in sync if the first read is unavailable.
+    }
   }
 
   private buildAdminProfile(admin: AdminUserDto, dashboard: AdminDashboardDto): UserDto {
@@ -1862,7 +1966,9 @@ export class AdminService {
         events: dashboard.reportedUsers.length,
         hosting: 0,
         tickets: 0,
-        feedback: dashboard.feedback.length
+        feedback: dashboard.feedback.length,
+        adminJobs: Math.max(0, Math.trunc(Number(existingAdminProfile?.activities?.adminJobs) || 0)),
+        adminMetrics: Math.max(0, Math.trunc(Number(existingAdminProfile?.activities?.adminMetrics) || 0))
       }
     };
   }
@@ -2370,14 +2476,14 @@ export class AdminService {
             this.monitoringMetric('deleted', 'admin.monitoring.metric.deleted', 7, 'slate', 'watch')
           ]),
           node('users.status', 'admin.monitoring.node.status.propagation', 'rule', 'worker', 'gold', [
-            this.monitoringMetric('suppression-events', 'admin.monitoring.metric.suppression.events', 5, 'gold', 'watch')
+            this.monitoringMetric('status-propagation-signals', 'admin.monitoring.metric.status.propagation.signals', 12, 'gold', 'watch')
           ]),
           node('users.purge', 'admin.monitoring.node.account.purge', 'delete_sweep', 'storage', 'slate', [
             this.monitoringMetric('purge-signals', 'admin.monitoring.metric.purge.signals', 2, 'slate', 'ok')
           ])
         ], [
           edge('users.ui', 'users.model', 'admin.monitoring.edge.write.path', 'blue', 84),
-          edge('users.model', 'users.status', 'admin.monitoring.edge.status.propagation', 'gold', 5),
+          edge('users.model', 'users.status', 'admin.monitoring.edge.status.propagation', 'gold', 12),
           edge('users.status', 'users.purge', 'admin.monitoring.edge.gdpr.window', 'slate', 2)
         ]),
         category('events', 'admin.monitoring.category.events', 'admin.monitoring.category.events.summary', 'event_available', 'green', 'watch', 91, [
@@ -2606,6 +2712,7 @@ export class AdminService {
       || lookupKey.includes('borrower-updates')
       || lookupKey.includes('deleted')
       || lookupKey.includes('suppression')
+      || lookupKey.includes('status-propagation')
       || lookupKey.includes('purge-signals')
     ) {
       return 'watch';

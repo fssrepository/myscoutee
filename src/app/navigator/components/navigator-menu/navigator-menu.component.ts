@@ -93,18 +93,20 @@ export class NavigatorMenuComponent {
       events: activityOverrides.events ?? activeUser.activities?.events ?? 0,
       hosting: activityOverrides.hosting ?? activeUser.activities?.hosting ?? 0,
       tickets: activityOverrides.tickets ?? 0,
-      feedback: activityOverrides.feedback ?? 0
+      feedback: activityOverrides.feedback ?? 0,
+      adminJobs: activityOverrides.adminJobs ?? activeUser.activities?.adminJobs ?? 0,
+      adminMetrics: activityOverrides.adminMetrics ?? activeUser.activities?.adminMetrics ?? 0
     };
     const impressionChangeFlags = this.appCtx.getUserImpressionChangeFlags(activeUser.id);
-    return {
-      ...activeUser,
-      completion: this.resolveCompletionPercent(activeUser),
-      impressions: this.appCtx.getUserImpressions(activeUser.id) ?? activeUser.impressions,
-      activities: mergedActivities,
-      featuredImagePreview: this.resolveUserImageUrl(activeUser),
-      impressionChangeFlags,
-      memberImpressionTitle: resolveMemberImpressionTitle(activeUser.traitLabel ?? ''),
-      totalBadgeCount: (
+    const totalBadgeCount = this.isAdminProfile(activeUser)
+      ? (
+        mergedActivities.game +
+        mergedActivities.feedback +
+        mergedActivities.chat +
+        mergedActivities.adminJobs +
+        mergedActivities.adminMetrics
+      )
+      : (
         (impressionChangeFlags.host ? 1 : 0) +
         (impressionChangeFlags.member ? 1 : 0) +
         mergedActivities.game +
@@ -114,7 +116,16 @@ export class NavigatorMenuComponent {
         mergedActivities.hosting +
         mergedActivities.tickets +
         mergedActivities.feedback
-      )
+      );
+    return {
+      ...activeUser,
+      completion: this.resolveCompletionPercent(activeUser),
+      impressions: this.appCtx.getUserImpressions(activeUser.id) ?? activeUser.impressions,
+      activities: mergedActivities,
+      featuredImagePreview: this.resolveUserImageUrl(activeUser),
+      impressionChangeFlags,
+      memberImpressionTitle: resolveMemberImpressionTitle(activeUser.traitLabel ?? ''),
+      totalBadgeCount
     };
   });
   protected readonly menuUiState = this.navigatorService.menuUiState;
@@ -317,6 +328,13 @@ export class NavigatorMenuComponent {
 
   protected isAdminMode(): boolean {
     return (this.router.url || '').split('?')[0].startsWith('/admin');
+  }
+
+  private isAdminProfile(user: UserDto): boolean {
+    return user.hostTier === 'Admin'
+      || user.statusText === 'Admin workspace'
+      || user.id === 'admin'
+      || user.id.startsWith('admin-');
   }
 
   protected openAdminReportsShortcut(event?: Event): void {

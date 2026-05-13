@@ -168,8 +168,8 @@ export class NavigatorService {
         return;
       }
       if (this.isAdminWorkspaceRoute() || this.isAdminProfileActive(activeUserId)) {
-        this.stopUserRealtimeLongPoll();
         this.impressionsPopupOpenRef.set(false);
+        this.activateUserRealtimeLongPoll(activeUserId);
         return;
       }
 
@@ -801,7 +801,9 @@ export class NavigatorService {
       events: this.normalizeRealtimeCounterValue(overrides.events ?? user?.activities?.events),
       hosting: this.normalizeRealtimeCounterValue(overrides.hosting ?? user?.activities?.hosting),
       tickets: this.normalizeRealtimeCounterValue(overrides.tickets),
-      feedback: this.normalizeRealtimeCounterValue(overrides.feedback)
+      feedback: this.normalizeRealtimeCounterValue(overrides.feedback),
+      adminJobs: this.normalizeRealtimeCounterValue(overrides.adminJobs ?? user?.activities?.adminJobs),
+      adminMetrics: this.normalizeRealtimeCounterValue(overrides.adminMetrics ?? user?.activities?.adminMetrics)
     };
   }
 
@@ -860,7 +862,11 @@ export class NavigatorService {
           ...(counterPatch.chat !== undefined ? { chat: counterPatch.chat } : {}),
           ...(counterPatch.invitations !== undefined ? { invitations: counterPatch.invitations } : {}),
           ...(counterPatch.events !== undefined ? { events: counterPatch.events } : {}),
-          ...(counterPatch.hosting !== undefined ? { hosting: counterPatch.hosting } : {})
+          ...(counterPatch.hosting !== undefined ? { hosting: counterPatch.hosting } : {}),
+          ...(counterPatch.tickets !== undefined ? { tickets: counterPatch.tickets } : {}),
+          ...(counterPatch.feedback !== undefined ? { feedback: counterPatch.feedback } : {}),
+          ...(counterPatch.adminJobs !== undefined ? { adminJobs: counterPatch.adminJobs } : {}),
+          ...(counterPatch.adminMetrics !== undefined ? { adminMetrics: counterPatch.adminMetrics } : {})
         },
         impressions: nextImpressions
           ? {
@@ -914,7 +920,17 @@ export class NavigatorService {
     }
     const base = this.resolveUserRealtimeBaseCounters(normalizedUserId);
     const next: Partial<Record<ActivityCounterKey, number>> = {};
-    const keys: ActivityCounterKey[] = ['game', 'chat', 'invitations', 'events', 'hosting', 'tickets', 'feedback'];
+    const keys: ActivityCounterKey[] = [
+      'game',
+      'chat',
+      'invitations',
+      'events',
+      'hosting',
+      'tickets',
+      'feedback',
+      'adminJobs',
+      'adminMetrics'
+    ];
     for (const key of keys) {
       if (pendingPatch[key] === undefined) {
         continue;
@@ -934,7 +950,9 @@ export class NavigatorService {
         events: 0,
         hosting: 0,
         tickets: 0,
-        feedback: 0
+        feedback: 0,
+        adminJobs: 0,
+        adminMetrics: 0
       };
     }
     const existing = this.userRealtimeBaseCountersByUserId[normalizedUserId];
@@ -946,7 +964,9 @@ export class NavigatorService {
         events: this.normalizeRealtimeCounterValue(existing.events),
         hosting: this.normalizeRealtimeCounterValue(existing.hosting),
         tickets: this.normalizeRealtimeCounterValue(existing.tickets),
-        feedback: this.normalizeRealtimeCounterValue(existing.feedback)
+        feedback: this.normalizeRealtimeCounterValue(existing.feedback),
+        adminJobs: this.normalizeRealtimeCounterValue(existing.adminJobs),
+        adminMetrics: this.normalizeRealtimeCounterValue(existing.adminMetrics)
       };
     }
     this.captureUserRealtimeBaseCounters(normalizedUserId);
@@ -977,6 +997,8 @@ export class NavigatorService {
     const hosting = normalize(counters?.hosting);
     const tickets = normalize(counters?.tickets);
     const feedback = normalize(counters?.feedback);
+    const adminJobs = normalize(counters?.adminJobs);
+    const adminMetrics = normalize(counters?.adminMetrics);
     if (game !== undefined) {
       patch.game = game;
     }
@@ -997,6 +1019,12 @@ export class NavigatorService {
     }
     if (feedback !== undefined) {
       patch.feedback = feedback;
+    }
+    if (adminJobs !== undefined) {
+      patch.adminJobs = adminJobs;
+    }
+    if (adminMetrics !== undefined) {
+      patch.adminMetrics = adminMetrics;
     }
     return patch;
   }

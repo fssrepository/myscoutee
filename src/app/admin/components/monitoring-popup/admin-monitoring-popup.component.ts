@@ -22,8 +22,7 @@ const MONITORING_FILTER = {
   watch: 'watch',
   domains: 'domains',
   delivery: 'delivery',
-  workers: 'workers',
-  data: 'data'
+  workers: 'workers'
 } as const;
 type MonitoringFilter = typeof MONITORING_FILTER[keyof typeof MONITORING_FILTER];
 
@@ -32,17 +31,15 @@ const MONITORING_FILTER_OPTIONS: Array<{ key: MonitoringFilter; labelKey: string
   { key: MONITORING_FILTER.watch, labelKey: 'admin.monitoring.filter.watch', icon: 'error_outline' },
   { key: MONITORING_FILTER.domains, labelKey: 'admin.monitoring.filter.domains', icon: 'dashboard' },
   { key: MONITORING_FILTER.delivery, labelKey: 'admin.monitoring.filter.delivery', icon: 'outbox' },
-  { key: MONITORING_FILTER.workers, labelKey: 'admin.monitoring.filter.workers', icon: 'precision_manufacturing' },
-  { key: MONITORING_FILTER.data, labelKey: 'admin.monitoring.filter.data', icon: 'storage' }
+  { key: MONITORING_FILTER.workers, labelKey: 'admin.monitoring.filter.workers', icon: 'precision_manufacturing' }
 ];
 
 const MONITORING_FILTER_CATEGORIES: Record<MonitoringFilter, ReadonlySet<string>> = {
   [MONITORING_FILTER.all]: new Set(),
   [MONITORING_FILTER.watch]: new Set(),
   [MONITORING_FILTER.domains]: new Set(['users', 'events', 'members', 'assets', 'chat']),
-  [MONITORING_FILTER.delivery]: new Set(['notifications', 'members', 'chat']),
-  [MONITORING_FILTER.workers]: new Set(['matching', 'jobs', 'events', 'assets']),
-  [MONITORING_FILTER.data]: new Set(['users', 'assets', 'chat', 'jobs'])
+  [MONITORING_FILTER.delivery]: new Set(['notifications']),
+  [MONITORING_FILTER.workers]: new Set(['matching', 'jobs'])
 };
 
 @Component({

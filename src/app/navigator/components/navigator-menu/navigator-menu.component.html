@@ -113,6 +113,9 @@
               <span class="navigator-action-ripple" matRipple [matRippleTrigger]="adminJobsButton" aria-hidden="true"></span>
               <mat-icon>pending_actions</mat-icon>
               <span class="menu-shortcut-label">{{ 'jobs' | i18n }}</span>
+              @if (user.activities.adminJobs > 0) {
+                <span class="card-badge menu-shortcut-badge">{{ user.activities.adminJobs | counterBadge }}</span>
+              }
             </button>
             <button #adminParamsButton class="menu-shortcut-btn menu-shortcut-params" type="button" [disabled]="!isOnline()" (click)="openAdminParamsShortcut($event)" [attr.aria-label]="'open.parameters' | i18n" [title]="'parameters' | i18n">
               <span class="navigator-action-ripple" matRipple [matRippleTrigger]="adminParamsButton" aria-hidden="true"></span>
@@ -147,6 +150,9 @@
               <span class="navigator-action-ripple" matRipple [matRippleTrigger]="adminMonitoringButton" aria-hidden="true"></span>
               <mat-icon>monitoring</mat-icon>
               <span class="menu-shortcut-label">{{ 'metrics' | i18n }}</span>
+              @if (user.activities.adminMetrics > 0) {
+                <span class="card-badge menu-shortcut-badge">{{ user.activities.adminMetrics | counterBadge }}</span>
+              }
             </button>
           </div>
         </div>

@@ -634,6 +634,8 @@ export class UsersService extends BaseRouteModeService {
         hosting: normalizeCounter(counters.hosting),
         tickets: normalizeCounter(counters.tickets),
         feedback: normalizeCounter(counters.feedback),
+        adminJobs: normalizeCounter(counters.adminJobs),
+        adminMetrics: normalizeCounter(counters.adminMetrics),
         impressionsHostChanged: counters.impressionsHostChanged === true,
         impressionsMemberChanged: counters.impressionsMemberChanged === true
       },
@@ -697,7 +699,9 @@ export class UsersService extends BaseRouteModeService {
         events: 0,
         hosting: 0,
         tickets: 0,
-        feedback: 0
+        feedback: 0,
+        adminJobs: 0,
+        adminMetrics: 0
       }
     });
   }
@@ -743,7 +747,9 @@ export class UsersService extends BaseRouteModeService {
         events: Math.max(0, Math.trunc(Number(user.activities?.events) || 0)),
         hosting: Math.max(0, Math.trunc(Number(user.activities?.hosting) || 0)),
         tickets: Math.max(0, Math.trunc(Number(user.activities?.tickets) || 0)),
-        feedback: Math.max(0, Math.trunc(Number(user.activities?.feedback) || 0))
+        feedback: Math.max(0, Math.trunc(Number(user.activities?.feedback) || 0)),
+        adminJobs: Math.max(0, Math.trunc(Number(user.activities?.adminJobs) || 0)),
+        adminMetrics: Math.max(0, Math.trunc(Number(user.activities?.adminMetrics) || 0))
       }
     };
   }
