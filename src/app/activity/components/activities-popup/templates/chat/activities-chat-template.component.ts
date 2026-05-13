@@ -12,6 +12,7 @@ import type {
 import type * as AppTypes from '../../../../../shared/core/base/models';
 import type { DemoEventRecord } from '../../../../../shared/core/demo/models/events.model';
 import { CounterBadgePipe } from '../../../../../shared/ui';
+import { I18nPipe } from '../../../../../shared/i18n';
 import {
   ActivityResourceBuilder,
   toActivityEventRow
@@ -31,7 +32,7 @@ export interface ActivitiesChatTemplateContext {
 @Component({
   selector: 'app-activities-chat-template',
   standalone: true,
-  imports: [CommonModule, MatIconModule, CounterBadgePipe],
+  imports: [CommonModule, MatIconModule, CounterBadgePipe, I18nPipe],
   templateUrl: './activities-chat-template.component.html',
   styleUrl: './activities-chat-template.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -47,6 +48,8 @@ export class ActivitiesChatTemplateComponent implements OnChanges {
 
   protected data: ActivitiesChatTemplateData | null = null;
   protected supportMenuOpen = false;
+  protected supportControlActive = false;
+  private supportMenuPointerToggleAt = 0;
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['row'] || changes['groupLabel'] || changes['context'] || changes['adminServiceMode']) {
@@ -84,35 +87,64 @@ export class ActivitiesChatTemplateComponent implements OnChanges {
     this.rowClick.emit(event);
   }
 
-  protected toggleSupportMenu(event: Event): void {
+  protected onSupportMenuButtonPointerDown(event: Event): void {
+    event.preventDefault();
     event.stopPropagation();
+    this.supportMenuOpen = !this.supportMenuOpen;
+    this.supportControlActive = true;
+    this.supportMenuPointerToggleAt = Date.now();
+  }
+
+  protected onSupportMenuButtonClick(event: MouseEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    if (event.detail > 0 && Date.now() - this.supportMenuPointerToggleAt < 700) {
+      return;
+    }
     this.supportMenuOpen = !this.supportMenuOpen;
   }
 
+  protected onSupportControlPointerDown(event: Event): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.supportControlActive = true;
+  }
+
+  protected onSupportControlPointerEnd(event: Event): void {
+    event.stopPropagation();
+    this.supportControlActive = false;
+  }
+
+  protected onSupportMenuItemPointerDown(event: Event): void {
+    event.stopPropagation();
+  }
+
   protected runSupportCaseAction(action: AppTypes.SupportCaseAction, event: Event): void {
+    event.preventDefault();
     event.stopPropagation();
     this.supportMenuOpen = false;
+    this.supportControlActive = false;
     this.supportCaseAction.emit(action);
   }
 
-  protected supportCaseActions(): Array<{ action: AppTypes.SupportCaseAction; label: string; icon: string; tone: string }> {
+  protected supportCaseActions(): Array<{ action: AppTypes.SupportCaseAction; labelKey: string; icon: string; tone: string }> {
     const status = this.data?.supportCaseStatus ?? 'pending';
     if (status === 'solved' || status === 'blocked') {
       return [
-        { action: 'reopen', label: 'Reopen', icon: 'restart_alt', tone: 'neutral' }
+        { action: 'reopen', labelKey: 'activities.support.case.action.reopen', icon: 'restart_alt', tone: 'neutral' }
       ];
     }
     if (status === 'picked') {
       return [
-        { action: 'unpick', label: 'Unpick', icon: 'person_remove', tone: 'neutral' },
-        { action: 'solve', label: 'Resolve', icon: 'check_circle', tone: 'accent' },
-        { action: 'block', label: 'Block', icon: 'block', tone: 'danger' }
+        { action: 'unpick', labelKey: 'activities.support.case.action.unpick', icon: 'person_remove', tone: 'neutral' },
+        { action: 'solve', labelKey: 'activities.support.case.action.solve', icon: 'check_circle', tone: 'accent' },
+        { action: 'block', labelKey: 'activities.support.case.action.block', icon: 'block', tone: 'danger' }
       ];
     }
     return [
-      { action: 'pick', label: 'Pick', icon: 'person_add', tone: 'accent' },
-      { action: 'solve', label: 'Resolve', icon: 'check_circle', tone: 'accent' },
-      { action: 'block', label: 'Block', icon: 'block', tone: 'danger' }
+      { action: 'pick', labelKey: 'activities.support.case.action.pick', icon: 'person_add', tone: 'accent' },
+      { action: 'solve', labelKey: 'activities.support.case.action.solve', icon: 'check_circle', tone: 'accent' },
+      { action: 'block', labelKey: 'activities.support.case.action.block', icon: 'block', tone: 'danger' }
     ];
   }
 }

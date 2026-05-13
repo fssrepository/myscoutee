@@ -25,6 +25,10 @@
   isolation: isolate;
 }
 
+.activities-card-support-menu-open {
+  z-index: 70;
+}
+
 .activities-card-btn {
   appearance: none;
   -webkit-appearance: none;
@@ -188,6 +192,7 @@
   align-content: center;
   justify-items: end;
   gap: 0.2rem;
+  z-index: 2;
 }
 
 .activities-support-case-badge {
@@ -270,7 +275,7 @@
   position: absolute;
   top: calc(100% + 0.28rem);
   right: 0;
-  z-index: 8;
+  z-index: 90;
   min-width: 138px;
   border-radius: 10px;
   border: 1px solid rgba(93, 118, 152, 0.22);
@@ -399,6 +404,32 @@
 
 .activities-card-btn:not(:disabled):not([aria-disabled='true']):active::after {
   animation: activities-chat-press-wave 0.42s ease-out;
+}
+
+.activities-card-btn.activities-card-support-menu-open,
+.activities-card-btn.activities-card-support-control-active,
+.activities-card-btn:has(.activities-support-case-menu-btn:active),
+.activities-card-btn:has(.activities-support-case-menu-item:active) {
+  box-shadow: none;
+  filter: none;
+  transform: none;
+}
+
+.activities-card-btn.activities-card-support-menu-open:active,
+.activities-card-btn.activities-card-support-control-active:active,
+.activities-card-btn:has(.activities-support-case-menu-btn:active):active,
+.activities-card-btn:has(.activities-support-case-menu-item:active):active {
+  box-shadow: none;
+  filter: none;
+  transform: none;
+}
+
+.activities-card-btn.activities-card-support-menu-open:active::after,
+.activities-card-btn.activities-card-support-control-active:active::after,
+.activities-card-btn:has(.activities-support-case-menu-btn:active):active::after,
+.activities-card-btn:has(.activities-support-case-menu-item:active):active::after {
+  animation: none;
+  opacity: 0;
 }
 
 @media (max-width: 640px) {

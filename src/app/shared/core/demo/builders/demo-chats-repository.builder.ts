@@ -7,6 +7,8 @@ import type { DemoEventRecord } from '../models/events.model';
 import { DemoEventSeedBuilder } from './demo-event-seed.builder';
 import { DemoUserSeedBuilder } from './demo-user-seed.builder';
 
+type ChatSeedUser = Pick<UserDto, 'id' | 'name' | 'initials' | 'gender' | 'images'>;
+
 const SEED_CHAT_ITEMS_BY_USER: Record<string, ChatMenuItem[]> = {
   'admin-demo-ava': [
     {
@@ -177,6 +179,10 @@ export class DemoChatsRepositoryBuilder {
     DemoUserSeedBuilder.buildExpandedDemoUsers(DemoChatsRepositoryBuilder.DEFAULT_USER_COUNT)
       .map(user => [user.id, user] as const)
   );
+  private static readonly ADMIN_USERS_BY_ID = new Map<string, ChatSeedUser>([
+    ['admin-demo-ava', { id: 'admin-demo-ava', name: 'Ava', initials: 'AV', gender: 'woman', images: ['https://randomuser.me/api/portraits/women/65.jpg'] }],
+    ['admin-demo-noel', { id: 'admin-demo-noel', name: 'Noel', initials: 'NO', gender: 'man', images: ['https://randomuser.me/api/portraits/men/32.jpg'] }]
+  ]);
 
   static buildSeedRecordCollection(): DemoChatRecordCollection {
     return this.buildRecordCollection(
@@ -524,17 +530,18 @@ export class DemoChatsRepositoryBuilder {
     const at = (minutesBefore: number): Date => new Date(anchor.getTime() - (minutesBefore * 60 * 1000));
     const mk = (
       id: string,
-      author: UserDto,
+      author: ChatSeedUser,
       text: string,
       sentAt: Date,
-      readBy: readonly UserDto[]
+      readBy: readonly ChatSeedUser[]
     ): ChatPopupMessage => ({
       id,
       sender: author.name,
       senderAvatar: {
         id: author.id,
         initials: author.initials,
-        gender: author.gender
+        gender: author.gender,
+        imageUrl: this.seedAvatarImageUrl(author)
       },
       text,
       time: sentAt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
@@ -543,7 +550,8 @@ export class DemoChatsRepositoryBuilder {
       readBy: readBy.map(user => ({
         id: user.id,
         initials: user.initials,
-        gender: user.gender
+        gender: user.gender,
+        imageUrl: this.seedAvatarImageUrl(user)
       }))
     });
 
@@ -552,6 +560,10 @@ export class DemoChatsRepositoryBuilder {
     const memberC = members[2] ?? me;
     const chatTopic = item.title.trim() || 'Event';
     const lastLine = item.lastMessage.trim() || `Update shared in ${chatTopic}.`;
+
+    if (this.isSupportCaseChat(item)) {
+      return this.buildSupportCaseMessages(item, me, members, sender, anchor, mk);
+    }
 
     const seed = AppUtils.hashText(`${ownerUserId}:${item.id}:${chatTopic}`);
     const olderPool = [
@@ -589,25 +601,145 @@ export class DemoChatsRepositoryBuilder {
       .sort((first, second) => AppUtils.toSortableDate(first.sentAtIso) - AppUtils.toSortableDate(second.sentAtIso));
   }
 
-  private static resolveUser(userId: string): UserDto | null {
-    return this.USERS_BY_ID.get(userId.trim()) ?? null;
+  private static buildSupportCaseMessages(
+    item: ChatMenuItem,
+    me: ChatSeedUser,
+    members: readonly ChatSeedUser[],
+    sender: ChatSeedUser,
+    anchor: Date,
+    mk: (
+      id: string,
+      author: ChatSeedUser,
+      text: string,
+      sentAt: Date,
+      readBy: readonly ChatSeedUser[]
+    ) => ChatPopupMessage
+  ): ChatPopupMessage[] {
+    const at = (minutesBefore: number): Date => new Date(anchor.getTime() - (minutesBefore * 60 * 1000));
+    const requester = members.find(user => !this.isAdminSeedUser(user.id)) ?? sender;
+    const assignedAdmin = this.resolveUser(item.supportCaseAssigneeUserId ?? '')
+      ?? members.find(user => this.isAdminSeedUser(user.id) && user.id !== requester.id)
+      ?? me;
+    const reviewer = members.find(user => this.isAdminSeedUser(user.id) && user.id !== assignedAdmin.id)
+      ?? assignedAdmin;
+    const readByAdmins = this.uniqueSeedUsers([assignedAdmin, reviewer]);
+    const readByRequesterAndReviewer = this.uniqueSeedUsers([requester, reviewer]);
+    const lastLine = item.lastMessage.trim() || 'Please check this support case.';
+
+    const messages: ChatPopupMessage[] = [
+      mk(
+        `${item.id}-support-1`,
+        requester,
+        this.supportCaseOpeningLine(item),
+        at(160),
+        readByAdmins
+      ),
+      mk(
+        `${item.id}-support-2`,
+        assignedAdmin,
+        'Thanks, I can see the case. I am checking the related records now.',
+        at(124),
+        readByRequesterAndReviewer
+      )
+    ];
+
+    if (item.supportCaseStatus === 'picked') {
+      messages.push(
+        mk(
+          `${item.id}-support-3`,
+          assignedAdmin,
+          'I picked this up so the rest of the admin team can see it is being handled.',
+          at(82),
+          readByRequesterAndReviewer
+        ),
+        mk(`${item.id}-support-4`, assignedAdmin, lastLine, at(42), readByRequesterAndReviewer)
+      );
+    } else if (item.supportCaseStatus === 'solved') {
+      messages.push(
+        mk(
+          `${item.id}-support-3`,
+          requester,
+          'That explains it, thanks for checking.',
+          at(76),
+          readByAdmins
+        ),
+        mk(`${item.id}-support-4`, assignedAdmin, lastLine, at(34), readByRequesterAndReviewer)
+      );
+    } else if (item.supportCaseStatus === 'blocked') {
+      messages.push(
+        mk(
+          `${item.id}-support-3`,
+          assignedAdmin,
+          'This case is blocked while moderation checks the account and linked content.',
+          at(48),
+          readByRequesterAndReviewer
+        )
+      );
+    } else {
+      messages.push(
+        mk(`${item.id}-support-3`, requester, lastLine, at(44), readByAdmins)
+      );
+    }
+
+    return messages.sort((first, second) => AppUtils.toSortableDate(first.sentAtIso) - AppUtils.toSortableDate(second.sentAtIso));
   }
 
-  private static resolveMembers(item: ChatMenuItem, fallback: UserDto): UserDto[] {
+  private static supportCaseOpeningLine(item: ChatMenuItem): string {
+    if (item.id === 'c-support-admin-u1') {
+      return 'Hi, I shared an asset screen and something looks wrong with the visible action.';
+    }
+    if (item.id === 'c-support-admin-u2') {
+      return 'Can you review why my event is blocked? I think the status changed after the report.';
+    }
+    if (item.id === 'c-support-admin-u3') {
+      return 'Thanks for looking at the moderation review. I just want to know whether anything else is needed.';
+    }
+    return 'Hi, I need help with this support case.';
+  }
+
+  private static isSupportCaseChat(item: ChatMenuItem): boolean {
+    return `${item.id ?? ''}`.trim().startsWith('c-support-admin-') || Boolean(item.supportCaseStatus);
+  }
+
+  private static uniqueSeedUsers(users: readonly ChatSeedUser[]): ChatSeedUser[] {
+    const unique: ChatSeedUser[] = [];
+    for (const user of users) {
+      if (!user.id || unique.some(item => item.id === user.id)) {
+        continue;
+      }
+      unique.push(user);
+    }
+    return unique;
+  }
+
+  private static isAdminSeedUser(userId: string): boolean {
+    return this.ADMIN_USERS_BY_ID.has(userId.trim());
+  }
+
+  private static resolveUser(userId: string): ChatSeedUser | null {
+    const normalized = userId.trim();
+    return this.USERS_BY_ID.get(normalized) ?? this.ADMIN_USERS_BY_ID.get(normalized) ?? null;
+  }
+
+  private static resolveMembers(item: ChatMenuItem, fallback: ChatSeedUser): ChatSeedUser[] {
     const resolved = (item.memberIds ?? [])
       .map(id => this.resolveUser(id))
-      .filter((entry): entry is UserDto => Boolean(entry));
+      .filter((entry): entry is ChatSeedUser => Boolean(entry));
     if (resolved.length > 0) {
       return resolved;
     }
     return [fallback, ...[...this.USERS_BY_ID.values()].filter(user => user.id !== fallback.id).slice(0, 2)];
   }
 
-  private static resolveSender(item: ChatMenuItem, members: readonly UserDto[], fallback: UserDto): UserDto {
+  private static resolveSender(item: ChatMenuItem, members: readonly ChatSeedUser[], fallback: ChatSeedUser): ChatSeedUser {
     const explicit = item.lastSenderId ? this.resolveUser(item.lastSenderId) : null;
     if (explicit) {
       return explicit;
     }
     return members[0] ?? fallback;
+  }
+
+  private static seedAvatarImageUrl(user: ChatSeedUser): string | null {
+    return user.images?.map(image => `${image ?? ''}`.trim()).find(Boolean) ?? null;
   }
 }

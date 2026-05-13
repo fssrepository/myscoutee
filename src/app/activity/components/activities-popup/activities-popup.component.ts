@@ -100,6 +100,7 @@ import type {
   DemoEventRecord,
   DemoRepositoryEventItemType
 } from '../../../shared/core/demo/models/events.model';
+import { I18nPipe, I18nService } from '../../../shared/i18n';
 
 // ---------------------------------------------------------------------------
 
@@ -128,7 +129,8 @@ interface ActivitiesEventScopeOption {
     EventChatPopupComponent,
     EventCheckoutPopupComponent,
     EventExplorePopupComponent,
-    CounterBadgePipe
+    CounterBadgePipe,
+    I18nPipe
   ],
   templateUrl: './activities-popup.component.html',
   styleUrl: './activities-popup.component.scss',
@@ -160,6 +162,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected readonly eventCheckoutDialogService = inject(EventCheckoutDialogService);
   protected readonly navigatorService = inject(NavigatorService);
   private readonly eventCheckoutDraftService = inject(EventCheckoutDraftService);
+  private readonly i18nService = inject(I18nService);
   readonly activitiesRates = new ActivitiesRatesController({
     getUsers: () => this.users,
     getActiveUserGender: () => this.activeUser.gender,
@@ -297,12 +300,12 @@ export class ActivitiesPopupComponent implements OnDestroy {
     = [...APP_STATIC_DATA.activitiesSecondaryFilters];
   protected readonly activitiesChatContextFilters: Array<{ key: AppTypes.ActivitiesChatContextFilter; label: string; icon: string }>
     = [...APP_STATIC_DATA.activitiesChatContextFilters];
-  protected readonly activitiesSupportCaseFilters: Array<{ key: AppTypes.SupportCaseFilter; label: string; icon: string }> = [
-    { key: 'all', label: 'All', icon: 'list' },
-    { key: 'pending', label: 'Pending', icon: 'pending_actions' },
-    { key: 'picked', label: 'Picked', icon: 'assignment_ind' },
-    { key: 'solved', label: 'Solved', icon: 'check_circle' },
-    { key: 'blocked', label: 'Blocked', icon: 'block' }
+  protected readonly activitiesSupportCaseFilters: Array<{ key: AppTypes.SupportCaseFilter; labelKey: string; icon: string }> = [
+    { key: 'all', labelKey: 'activities.support.case.filter.all', icon: 'list' },
+    { key: 'pending', labelKey: 'activities.support.case.filter.pending', icon: 'pending_actions' },
+    { key: 'picked', labelKey: 'activities.support.case.filter.picked', icon: 'assignment_ind' },
+    { key: 'solved', labelKey: 'activities.support.case.filter.solved', icon: 'check_circle' },
+    { key: 'blocked', labelKey: 'activities.support.case.filter.blocked', icon: 'block' }
   ];
   protected readonly rateFilters: Array<{ key: AppTypes.RateFilterKey; label: string }>
     = [...APP_STATIC_DATA.rateFilters];
@@ -902,20 +905,29 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return this.activitiesContext.activitiesAdminServiceOnly();
   }
 
-  protected supportCaseFilterLabel(filter: AppTypes.SupportCaseFilter = this.activitiesSupportCaseFilter): string {
-    return this.activitiesSupportCaseFilters.find(option => option.key === filter)?.label ?? 'All';
+  protected supportCaseFilterLabelKey(filter: AppTypes.SupportCaseFilter = this.activitiesSupportCaseFilter): string {
+    return this.activitiesSupportCaseFilters.find(option => option.key === filter)?.labelKey ?? 'activities.support.case.filter.all';
   }
 
   protected supportCaseFilterIcon(filter: AppTypes.SupportCaseFilter = this.activitiesSupportCaseFilter): string {
     return this.activitiesSupportCaseFilters.find(option => option.key === filter)?.icon ?? 'list';
   }
 
+  protected supportCaseFilterCount(filter: AppTypes.SupportCaseFilter = this.activitiesSupportCaseFilter): number {
+    const normalized = this.normalizeSupportCaseFilter(filter);
+    const supportCases = this.chatItems.filter(chat => Boolean(chat.supportCaseStatus));
+    if (normalized === 'all') {
+      return supportCases.length;
+    }
+    return supportCases.filter(chat => this.normalizeSupportCaseFilter(chat.supportCaseStatus ?? null) === normalized).length;
+  }
+
   protected supportCaseFilterClass(filter: AppTypes.SupportCaseFilter = this.activitiesSupportCaseFilter): string {
     return `support-case-filter-${filter === 'all' ? 'all' : filter}`;
   }
 
-  protected openMobileActivitiesSupportCaseFilterSelector(event: Event): void {
-    if (!this.isMobileView || !this.isAdminServiceChatMode()) {
+  protected toggleActivitiesSupportCaseFilterMenu(event: Event): void {
+    if (!this.isAdminServiceChatMode()) {
       return;
     }
     event.stopPropagation();
@@ -968,13 +980,13 @@ export class ActivitiesPopupComponent implements OnDestroy {
     }
     const config = this.supportCaseActionDialogConfig(action);
     this.confirmationDialogService.open({
-      title: config.title,
-      message: config.message,
-      cancelLabel: 'Cancel',
-      confirmLabel: config.confirmLabel,
-      busyConfirmLabel: config.busyConfirmLabel,
+      title: this.i18n(config.titleKey),
+      message: this.i18n(config.messageKey),
+      cancelLabel: this.i18n('cancel'),
+      confirmLabel: this.i18n(config.confirmLabelKey),
+      busyConfirmLabel: this.i18n(config.busyConfirmLabelKey),
       confirmTone: config.tone,
-      failureMessage: 'Unable to update this support case.',
+      failureMessage: this.i18n('activities.support.case.error.update'),
       onConfirm: async () => {
         const updated = await this.chatsService.updateSupportCase(chat, action);
         if (!updated) {
@@ -986,55 +998,59 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   private supportCaseActionDialogConfig(action: AppTypes.SupportCaseAction): {
-    title: string;
-    message: string;
-    confirmLabel: string;
-    busyConfirmLabel: string;
+    titleKey: string;
+    messageKey: string;
+    confirmLabelKey: string;
+    busyConfirmLabelKey: string;
     tone: 'accent' | 'danger' | 'neutral';
   } {
     if (action === 'pick') {
       return {
-        title: 'Pick support case',
-        message: 'This case will be marked as picked by you on the shared admin board.',
-        confirmLabel: 'Pick',
-        busyConfirmLabel: 'Picking...',
+        titleKey: 'activities.support.case.confirm.pick.title',
+        messageKey: 'activities.support.case.confirm.pick.message',
+        confirmLabelKey: 'activities.support.case.action.pick',
+        busyConfirmLabelKey: 'activities.support.case.action.pick.busy',
         tone: 'accent'
       };
     }
     if (action === 'unpick') {
       return {
-        title: 'Unpick support case',
-        message: 'This case will go back to the pending bucket for other admins.',
-        confirmLabel: 'Unpick',
-        busyConfirmLabel: 'Unpicking...',
+        titleKey: 'activities.support.case.confirm.unpick.title',
+        messageKey: 'activities.support.case.confirm.unpick.message',
+        confirmLabelKey: 'activities.support.case.action.unpick',
+        busyConfirmLabelKey: 'activities.support.case.action.unpick.busy',
         tone: 'neutral'
       };
     }
     if (action === 'solve') {
       return {
-        title: 'Resolve support case',
-        message: 'This case will move to solved on the shared admin board.',
-        confirmLabel: 'Resolve',
-        busyConfirmLabel: 'Resolving...',
+        titleKey: 'activities.support.case.confirm.solve.title',
+        messageKey: 'activities.support.case.confirm.solve.message',
+        confirmLabelKey: 'activities.support.case.action.solve',
+        busyConfirmLabelKey: 'activities.support.case.action.solve.busy',
         tone: 'accent'
       };
     }
     if (action === 'block') {
       return {
-        title: 'Block support case',
-        message: 'This case will move to the blocked bucket on the shared admin board.',
-        confirmLabel: 'Block',
-        busyConfirmLabel: 'Blocking...',
+        titleKey: 'activities.support.case.confirm.block.title',
+        messageKey: 'activities.support.case.confirm.block.message',
+        confirmLabelKey: 'activities.support.case.action.block',
+        busyConfirmLabelKey: 'activities.support.case.action.block.busy',
         tone: 'danger'
       };
     }
     return {
-      title: 'Reopen support case',
-      message: 'This case will return to pending for admin review.',
-      confirmLabel: 'Reopen',
-      busyConfirmLabel: 'Reopening...',
+      titleKey: 'activities.support.case.confirm.reopen.title',
+      messageKey: 'activities.support.case.confirm.reopen.message',
+      confirmLabelKey: 'activities.support.case.action.reopen',
+      busyConfirmLabelKey: 'activities.support.case.action.reopen.busy',
       tone: 'accent'
     };
+  }
+
+  private i18n(key: string): string {
+    return this.i18nService.translate(key);
   }
 
   private applySupportCaseUpdate(chat: ChatMenuItem): void {
@@ -1050,16 +1066,46 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
     const smartList = this.activitiesSmartList;
     if (smartList && this.activitiesPrimaryFilter === 'chats' && !this.isCalendarLayoutView()) {
-      const currentRows = [...smartList.itemsSnapshot()];
-      const nextRows = currentRows.filter(row => !(row.type === 'chats' && row.id === nextChat.id));
       if (this.doesChatMatchActiveContextFilter(nextChat)) {
-        nextRows.push(this.buildActivityChatRow(nextChat));
+        this.patchVisibleChatRow(nextChat);
+      } else {
+        this.removeVisibleChatRow(nextChat.id);
       }
-      this.replaceVisibleActivityItems(nextRows, nextRows.length - currentRows.length);
     }
 
     this.refreshSectionBadges();
     this.cdr.markForCheck();
+  }
+
+  private patchVisibleChatRow(chat: ChatMenuItem): void {
+    const smartList = this.activitiesSmartList;
+    if (!smartList) {
+      return;
+    }
+    const nextRow = this.buildActivityChatRow(chat);
+    const patched = smartList.patchVisibleItem(
+      row => row.type === 'chats' && row.id === chat.id,
+      () => nextRow
+    );
+    if (!patched) {
+      return;
+    }
+    this.visibleActivityRows = this.visibleActivityRows.map(row =>
+      row.type === 'chats' && row.id === chat.id ? nextRow : row
+    );
+  }
+
+  private removeVisibleChatRow(chatId: string): void {
+    const smartList = this.activitiesSmartList;
+    if (!smartList) {
+      return;
+    }
+    const currentRows = [...smartList.itemsSnapshot()];
+    const nextRows = currentRows.filter(row => !(row.type === 'chats' && row.id === chatId));
+    if (nextRows.length === currentRows.length) {
+      return;
+    }
+    this.replaceVisibleActivityItems(nextRows, -1);
   }
 
   private buildActivityChatRow(chat: ChatMenuItem): AppTypes.ActivityListRow {

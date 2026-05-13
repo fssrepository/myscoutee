@@ -13,9 +13,9 @@ export interface ActivitiesChatTemplateData {
   toneClass: string;
   showSupportControls: boolean;
   supportCaseStatus: AppTypes.SupportCaseStatus | null;
-  supportCaseLabel: string;
+  supportCaseLabelKey: string;
   supportCaseBadgeClass: string;
-  supportCaseAssigneeLabel: string;
+  supportCaseAssigneeName: string;
 }
 
 interface BuildActivitiesChatTemplateDataOptions {
@@ -46,9 +46,9 @@ export function buildActivitiesChatTemplateData(
     toneClass: activitiesChatToneClass(options.channelType, chat, options.adminServiceMode === true),
     showSupportControls: options.adminServiceMode === true && Boolean(chat.supportCaseStatus),
     supportCaseStatus: supportCaseStatus(chat.supportCaseStatus),
-    supportCaseLabel: supportCaseLabel(chat.supportCaseStatus),
+    supportCaseLabelKey: supportCaseLabelKey(chat.supportCaseStatus),
     supportCaseBadgeClass: supportCaseBadgeClass(chat.supportCaseStatus),
-    supportCaseAssigneeLabel: supportCaseAssigneeLabel(chat)
+    supportCaseAssigneeName: supportCaseAssigneeName(chat)
   };
 }
 
@@ -92,17 +92,17 @@ function supportCaseStatus(status: ChatMenuItem['supportCaseStatus']): AppTypes.
   return null;
 }
 
-function supportCaseLabel(status: ChatMenuItem['supportCaseStatus']): string {
+function supportCaseLabelKey(status: ChatMenuItem['supportCaseStatus']): string {
   if (status === 'picked') {
-    return 'Picked';
+    return 'activities.support.case.status.picked';
   }
   if (status === 'solved') {
-    return 'Solved';
+    return 'activities.support.case.status.solved';
   }
   if (status === 'blocked') {
-    return 'Blocked';
+    return 'activities.support.case.status.blocked';
   }
-  return 'Pending';
+  return 'activities.support.case.status.pending';
 }
 
 function supportCaseBadgeClass(status: ChatMenuItem['supportCaseStatus']): string {
@@ -118,7 +118,6 @@ function supportCaseBadgeClass(status: ChatMenuItem['supportCaseStatus']): strin
   return 'support-case-pending';
 }
 
-function supportCaseAssigneeLabel(chat: ChatMenuItem): string {
-  const assignee = `${chat.supportCaseAssigneeName ?? ''}`.trim();
-  return assignee ? `by ${assignee}` : '';
+function supportCaseAssigneeName(chat: ChatMenuItem): string {
+  return `${chat.supportCaseAssigneeName ?? ''}`.trim();
 }

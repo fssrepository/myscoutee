@@ -25,7 +25,9 @@ export class DemoChatsRepository {
         const record = state[CHATS_TABLE_NAME].byId[id];
         return !record
           || !AppUtils.hasText(record.dateIso ?? '')
-          || !Array.isArray(record.messages);
+          || !Array.isArray(record.messages)
+          || (this.isSupportCaseRecord(record) && record.messages.length === 0)
+          || this.supportCaseRecordNeedsAvatarRefresh(record);
       });
       if (!needsMigration) {
         this.initialized = true;
@@ -299,6 +301,17 @@ export class DemoChatsRepository {
 
   private isSupportCaseRecord(record: ChatMenuItem): boolean {
     return `${record.id ?? ''}`.trim().startsWith('c-support-admin-') || Boolean(record.supportCaseStatus);
+  }
+
+  private supportCaseRecordNeedsAvatarRefresh(record: DemoChatRecord): boolean {
+    if (!this.isSupportCaseRecord(record) || !Array.isArray(record.messages) || record.messages.length === 0) {
+      return false;
+    }
+    return record.messages.some(message => {
+      const senderId = `${message.senderAvatar?.id ?? ''}`.trim();
+      const imageUrl = `${message.senderAvatar?.imageUrl ?? ''}`.trim();
+      return senderId.length > 0 && senderId !== 'deleted' && imageUrl.length === 0;
+    });
   }
 
   private normalizeSupportCaseFilter(filter: AppTypes.SupportCaseFilter): AppTypes.SupportCaseFilter {

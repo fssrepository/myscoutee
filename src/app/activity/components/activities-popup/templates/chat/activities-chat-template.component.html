@@ -3,6 +3,8 @@
   tabindex="0"
   class="activities-card activities-card-btn activities-row-item activities-card-chat activities-row-item-clickable motion-static"
   [ngClass]="data?.toneClass"
+  [class.activities-card-support-menu-open]="supportMenuOpen"
+  [class.activities-card-support-control-active]="supportControlActive"
   [attr.data-group-label]="data?.groupLabel"
   (click)="onRowClick($event)"
   (keydown)="onRowKeydown($event)"
@@ -16,19 +18,29 @@
     <p class="activities-card-detail">{{ data?.detail }}</p>
   </div>
   @if (data?.showSupportControls) {
-    <div class="activities-support-case" (click)="$event.stopPropagation()">
+    <div
+      class="activities-support-case"
+      (click)="$event.stopPropagation()"
+      (pointerdown)="onSupportControlPointerDown($event)"
+      (pointerup)="onSupportControlPointerEnd($event)"
+      (pointercancel)="onSupportControlPointerEnd($event)"
+      (mouseleave)="onSupportControlPointerEnd($event)"
+      >
       <span class="activities-support-case-badge" [ngClass]="data?.supportCaseBadgeClass">
-        {{ data?.supportCaseLabel }}
+        {{ data?.supportCaseLabelKey | i18n }}
       </span>
-      @if (data?.supportCaseAssigneeLabel) {
-        <span class="activities-support-case-assignee">{{ data?.supportCaseAssigneeLabel }}</span>
+      @if (data?.supportCaseAssigneeName) {
+        <span class="activities-support-case-assignee">
+          {{ 'activities.support.case.assignee.by' | i18n }} {{ data?.supportCaseAssigneeName }}
+        </span>
       }
       <button
         type="button"
         class="activities-support-case-menu-btn"
         [class.is-open]="supportMenuOpen"
-        (click)="toggleSupportMenu($event)"
-        aria-label="Support case actions"
+        (pointerdown)="onSupportMenuButtonPointerDown($event)"
+        (click)="onSupportMenuButtonClick($event)"
+        [attr.aria-label]="'activities.support.case.actions' | i18n"
         >
         <mat-icon>more_horiz</mat-icon>
       </button>
@@ -39,10 +51,11 @@
               type="button"
               class="activities-support-case-menu-item"
               [ngClass]="'support-case-menu-' + item.tone"
+              (pointerdown)="onSupportMenuItemPointerDown($event)"
               (click)="runSupportCaseAction(item.action, $event)"
               >
               <mat-icon>{{ item.icon }}</mat-icon>
-              <span>{{ item.label }}</span>
+              <span>{{ item.labelKey | i18n }}</span>
             </button>
           }
         </div>
