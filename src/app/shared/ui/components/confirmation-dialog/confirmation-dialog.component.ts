@@ -7,6 +7,7 @@ export interface ConfirmationDialogLocalConfig {
   visible?: boolean;
   title?: string;
   message?: string;
+  warningMessage?: string;
   cancelLabel?: string | null;
   confirmLabel?: string;
   busyConfirmLabel?: string;
@@ -23,6 +24,7 @@ export interface ConfirmationDialogLocalConfig {
 type RenderedConfirmationDialogState = {
   title: string;
   message: string;
+  warningMessage: string;
   cancelLabel: string | null;
   confirmLabel: string;
   busyConfirmLabel: string;
@@ -69,6 +71,7 @@ export class ConfirmationDialogComponent {
       return {
         title: dialog.title?.trim() || 'Confirmation',
         message: dialog.message?.trim() ?? '',
+        warningMessage: dialog.warningMessage?.trim() ?? '',
         cancelLabel: dialog.cancelLabel === undefined ? 'Cancel' : dialog.cancelLabel,
         confirmLabel,
         busyConfirmLabel: dialog.busyConfirmLabel?.trim() || confirmLabel,
@@ -128,6 +131,7 @@ export class ConfirmationDialogComponent {
     return {
       title: state.title,
       message: state.message,
+      warningMessage: state.warningMessage,
       cancelLabel: state.cancelLabel,
       confirmLabel: state.confirmLabel,
       busyConfirmLabel: state.busyConfirmLabel,

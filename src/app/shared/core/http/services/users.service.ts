@@ -360,7 +360,9 @@ export class HttpUsersService implements UserService {
         events: Math.max(0, Math.trunc(Number(user.activities?.events) || 0)),
         hosting: Math.max(0, Math.trunc(Number(user.activities?.hosting) || 0)),
         tickets: Math.max(0, Math.trunc(Number(user.activities?.tickets) || 0)),
-        feedback: Math.max(0, Math.trunc(Number(user.activities?.feedback) || 0))
+        feedback: Math.max(0, Math.trunc(Number(user.activities?.feedback) || 0)),
+        adminJobs: Math.max(0, Math.trunc(Number(user.activities?.adminJobs) || 0)),
+        adminMetrics: Math.max(0, Math.trunc(Number(user.activities?.adminMetrics) || 0))
       }
     };
   }
@@ -424,7 +426,9 @@ export class HttpUsersService implements UserService {
       events: this.normalizeInitialCounterValue(overrides?.events, user.activities?.events),
       hosting: this.normalizeInitialCounterValue(overrides?.hosting, user.activities?.hosting),
       tickets: this.normalizeInitialCounterValue(overrides?.tickets, user.activities?.tickets),
-      feedback: this.normalizeInitialCounterValue(overrides?.feedback, user.activities?.feedback)
+      feedback: this.normalizeInitialCounterValue(overrides?.feedback, user.activities?.feedback),
+      adminJobs: this.normalizeInitialCounterValue(overrides?.adminJobs, user.activities?.adminJobs),
+      adminMetrics: this.normalizeInitialCounterValue(overrides?.adminMetrics, user.activities?.adminMetrics)
     };
   }
 
@@ -456,7 +460,9 @@ export class HttpUsersService implements UserService {
         events: user.activities.events,
         hosting: user.activities.hosting,
         tickets: Math.max(0, Math.trunc(Number(user.activities.tickets) || 0)),
-        feedback: Math.max(0, Math.trunc(Number(user.activities.feedback) || 0))
+        feedback: Math.max(0, Math.trunc(Number(user.activities.feedback) || 0)),
+        adminJobs: Math.max(0, Math.trunc(Number(user.activities.adminJobs) || 0)),
+        adminMetrics: Math.max(0, Math.trunc(Number(user.activities.adminMetrics) || 0))
       }),
       impressions: this.cloneImpressions(user.impressions),
       cursor,
@@ -479,6 +485,8 @@ export class HttpUsersService implements UserService {
     const hosting = normalize(counters.hosting);
     const tickets = normalize(counters.tickets);
     const feedback = normalize(counters.feedback);
+    const adminJobs = normalize(counters.adminJobs);
+    const adminMetrics = normalize(counters.adminMetrics);
     if (game !== undefined) {
       normalized.game = game;
     }
@@ -499,6 +507,12 @@ export class HttpUsersService implements UserService {
     }
     if (feedback !== undefined) {
       normalized.feedback = feedback;
+    }
+    if (adminJobs !== undefined) {
+      normalized.adminJobs = adminJobs;
+    }
+    if (adminMetrics !== undefined) {
+      normalized.adminMetrics = adminMetrics;
     }
     normalized.impressionsHostChanged = counters.impressionsHostChanged === true;
     normalized.impressionsMemberChanged = counters.impressionsMemberChanged === true;

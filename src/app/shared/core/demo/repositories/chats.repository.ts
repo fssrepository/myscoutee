@@ -25,7 +25,9 @@ export class DemoChatsRepository {
         const record = state[CHATS_TABLE_NAME].byId[id];
         return !record
           || !AppUtils.hasText(record.dateIso ?? '')
-          || !Array.isArray(record.messages);
+          || !Array.isArray(record.messages)
+          || (this.isSupportCaseRecord(record) && record.messages.length === 0)
+          || this.supportCaseRecordNeedsAvatarRefresh(record);
       });
       if (!needsMigration) {
         this.initialized = true;
@@ -43,6 +45,37 @@ export class DemoChatsRepository {
   queryChatItemsByUser(userId: string): DemoChatRecord[] {
     this.init();
     return this.queryUserRecords(userId);
+  }
+
+  querySupportCaseItemsForAdmin(userId: string, filter: AppTypes.SupportCaseFilter = 'all'): DemoChatRecord[] {
+    this.init();
+    const normalizedUserId = userId.trim();
+    if (!this.isDemoAdminUser(normalizedUserId)) {
+      return [];
+    }
+    const normalizedFilter = this.normalizeSupportCaseFilter(filter);
+    const table = this.memoryDb.read()[CHATS_TABLE_NAME];
+    const byChatId = new Map<string, DemoChatRecord>();
+    for (const id of table.ids) {
+      const record = table.byId[id];
+      if (!record || !this.isSupportCaseRecord(record)) {
+        continue;
+      }
+      const chatId = `${record.id ?? ''}`.trim();
+      if (!chatId) {
+        continue;
+      }
+      const current = byChatId.get(chatId);
+      if (!current || record.ownerUserId === normalizedUserId) {
+        byChatId.set(chatId, record);
+      }
+    }
+    return [...byChatId.values()]
+      .filter(record => normalizedFilter === 'all' || record.supportCaseStatus === normalizedFilter)
+      .map(record => DemoChatsRepositoryBuilder.cloneRecord({
+        ...record,
+        ownerUserId: normalizedUserId
+      }, { includeMessages: false }));
   }
 
   seedContextualRecordsForUser(userId: string, eventRecords: readonly import('../models/events.model').DemoEventRecord[]): boolean {
@@ -198,6 +231,57 @@ export class DemoChatsRepository {
     return updatedMessage ? DemoChatsRepositoryBuilder.cloneMessages([updatedMessage])[0] ?? null : null;
   }
 
+  updateSupportCase(chat: ChatMenuItem, action: AppTypes.SupportCaseAction): DemoChatRecord | null {
+    this.init();
+    const sourceId = `${chat.id ?? ''}`.trim();
+    if (!sourceId) {
+      return null;
+    }
+    const actor = this.resolveDemoAdminActor(
+      typeof (chat as { ownerUserId?: unknown }).ownerUserId === 'string'
+        ? `${(chat as { ownerUserId?: string }).ownerUserId ?? ''}`.trim()
+        : ''
+    );
+    const state = this.nextSupportCaseState(action, actor);
+    if (!state) {
+      return null;
+    }
+    let updated: DemoChatRecord | null = null;
+    this.memoryDb.write(currentState => {
+      const currentTable = currentState[CHATS_TABLE_NAME];
+      const nextById = { ...currentTable.byId };
+      let changed = false;
+      for (const id of currentTable.ids) {
+        const record = currentTable.byId[id];
+        if (!record || record.id !== sourceId || !this.isSupportCaseRecord(record)) {
+          continue;
+        }
+        const nextRecord: DemoChatRecord = {
+          ...record,
+          supportCaseStatus: state.status,
+          supportCaseAssigneeUserId: state.assigneeUserId,
+          supportCaseAssigneeName: state.assigneeName,
+          supportCaseAssigneeInitials: state.assigneeInitials,
+          supportCaseUpdatedAtIso: state.updatedAtIso
+        };
+        nextById[id] = nextRecord;
+        updated = record.ownerUserId === actor.id ? nextRecord : (updated ?? nextRecord);
+        changed = true;
+      }
+      if (!changed) {
+        return currentState;
+      }
+      return {
+        ...currentState,
+        [CHATS_TABLE_NAME]: {
+          ...currentTable,
+          byId: nextById
+        }
+      };
+    });
+    return updated ? DemoChatsRepositoryBuilder.cloneRecord(updated, { includeMessages: false }) : null;
+  }
+
   private queryUserRecords(userId: string): DemoChatRecord[] {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId || this.isSetupRequiredDemoProfile(normalizedUserId)) {
@@ -209,6 +293,78 @@ export class DemoChatsRepository {
       .filter((record): record is DemoChatRecord => Boolean(record))
       .filter(record => record.ownerUserId === normalizedUserId)
       .map(record => DemoChatsRepositoryBuilder.cloneRecord(record, { includeMessages: false }));
+  }
+
+  private isDemoAdminUser(userId: string): boolean {
+    return userId === 'admin-demo-ava' || userId === 'admin-demo-noel';
+  }
+
+  private isSupportCaseRecord(record: ChatMenuItem): boolean {
+    return `${record.id ?? ''}`.trim().startsWith('c-support-admin-') || Boolean(record.supportCaseStatus);
+  }
+
+  private supportCaseRecordNeedsAvatarRefresh(record: DemoChatRecord): boolean {
+    if (!this.isSupportCaseRecord(record) || !Array.isArray(record.messages) || record.messages.length === 0) {
+      return false;
+    }
+    return record.messages.some(message => {
+      const senderId = `${message.senderAvatar?.id ?? ''}`.trim();
+      const imageUrl = `${message.senderAvatar?.imageUrl ?? ''}`.trim();
+      return senderId.length > 0 && senderId !== 'deleted' && imageUrl.length === 0;
+    });
+  }
+
+  private normalizeSupportCaseFilter(filter: AppTypes.SupportCaseFilter): AppTypes.SupportCaseFilter {
+    return filter === 'pending' || filter === 'picked' || filter === 'solved' || filter === 'blocked'
+      ? filter
+      : 'all';
+  }
+
+  private resolveDemoAdminActor(ownerUserId: string): { id: string; name: string; initials: string } {
+    if (ownerUserId === 'admin-demo-noel') {
+      return {
+        id: 'admin-demo-noel',
+        name: 'Noel',
+        initials: 'NO'
+      };
+    }
+    return {
+      id: 'admin-demo-ava',
+      name: 'Ava',
+      initials: 'AV'
+    };
+  }
+
+  private nextSupportCaseState(
+    action: AppTypes.SupportCaseAction,
+    actor: { id: string; name: string; initials: string }
+  ): {
+    status: AppTypes.SupportCaseStatus;
+    assigneeUserId: string | null;
+    assigneeName: string | null;
+    assigneeInitials: string | null;
+    updatedAtIso: string;
+  } | null {
+    const updatedAtIso = new Date().toISOString();
+    if (action === 'unpick' || action === 'reopen') {
+      return {
+        status: 'pending',
+        assigneeUserId: null,
+        assigneeName: null,
+        assigneeInitials: null,
+        updatedAtIso
+      };
+    }
+    if (action === 'pick' || action === 'solve' || action === 'block') {
+      return {
+        status: action === 'solve' ? 'solved' : action === 'block' ? 'blocked' : 'picked',
+        assigneeUserId: actor.id,
+        assigneeName: actor.name,
+        assigneeInitials: actor.initials,
+        updatedAtIso
+      };
+    }
+    return null;
   }
 
   private isSetupRequiredDemoProfile(userId: string): boolean {

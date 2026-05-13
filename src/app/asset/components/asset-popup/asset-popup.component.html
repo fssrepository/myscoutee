@@ -352,7 +352,7 @@
                                 type="button"
                                 class="experience-action-btn experience-action-menu-trigger"
                                 [class.is-open]="isSupplyRequestActionMenuOpen(request)"
-                                [disabled]="isSupplyRequestBusy(request, 'accept') || isSupplyRequestBusy(request, 'remove')"
+                                [disabled]="isSupplyRequestBusy(request, 'accept') || isSupplyRequestBusy(request, 'remove') || isSupplyRequestBusy(request, 'makeManager')"
                                 (click)="toggleSupplyRequestActionMenu(request, $event)"
                                 aria-label="Open quantity request actions"
                                 >
@@ -376,6 +376,17 @@
                                   <mat-icon>check_circle</mat-icon>
                                   <span>{{ isSupplyRequestBusy(request, 'accept') ? 'Accepting...' : 'Accept' }}</span>
                                 </button>
+                                @if (canPromoteSupplyRequestToManager(request)) {
+                                  <button
+                                    type="button"
+                                    class="item-action-menu-btn"
+                                    [disabled]="isSupplyRequestBusy(request, 'makeManager')"
+                                    (click)="promoteSupplyRequestToManager(request, $event)"
+                                    >
+                                    <mat-icon>manage_accounts</mat-icon>
+                                    <span>{{ isSupplyRequestBusy(request, 'makeManager') ? 'Promoting...' : 'Promote to manager' }}</span>
+                                  </button>
+                                }
                                 <button
                                   type="button"
                                   class="item-action-menu-btn item-action-menu-btn-destructive"
@@ -425,6 +436,41 @@
                               {{ supplyRequestInventoryBadgeLabel(request) }}
                             </span>
                             <span class="asset-supply-request-status">{{ supplyRequestStatusLabel(request) }}</span>
+                            @if (hasSupplyRequestActions(request)) {
+                              <div class="asset-supply-request-menu-anchor">
+                                <button
+                                  type="button"
+                                  class="experience-action-btn experience-action-menu-trigger"
+                                  [class.is-open]="isSupplyRequestActionMenuOpen(request)"
+                                  [disabled]="isSupplyRequestBusy(request, 'makeManager')"
+                                  (click)="toggleSupplyRequestActionMenu(request, $event)"
+                                  aria-label="Open asset member actions"
+                                  >
+                                  <mat-icon>{{ isSupplyRequestActionMenuOpen(request) ? 'close' : 'more_vert' }}</mat-icon>
+                                </button>
+                                <div
+                                  class="item-action-menu"
+                                  [class.is-open]="isSupplyRequestActionMenuOpen(request)"
+                                  [class.item-action-menu-mobile]="isMobileAssetFilterSheetViewport()"
+                                  [class.item-action-menu-desktop]="!isMobileAssetFilterSheetViewport()"
+                                  [class.is-open-up]="isSupplyRequestActionMenuOpenUp(request)"
+                                  (click)="$event.stopPropagation()"
+                                  >
+                                  <div class="item-action-menu-title">{{ request.name }}</div>
+                                  @if (canPromoteSupplyRequestToManager(request)) {
+                                    <button
+                                      type="button"
+                                      class="item-action-menu-btn"
+                                      [disabled]="isSupplyRequestBusy(request, 'makeManager')"
+                                      (click)="promoteSupplyRequestToManager(request, $event)"
+                                      >
+                                      <mat-icon>manage_accounts</mat-icon>
+                                      <span>{{ isSupplyRequestBusy(request, 'makeManager') ? 'Promoting...' : 'Promote to manager' }}</span>
+                                    </button>
+                                  }
+                                </div>
+                              </div>
+                            }
                           </div>
                         </article>
                       }
@@ -463,6 +509,41 @@
                               {{ supplyRequestInventoryBadgeLabel(request) }}
                             </span>
                             <span class="asset-supply-request-status">{{ supplyRequestStatusLabel(request) }}</span>
+                            @if (hasSupplyRequestActions(request)) {
+                              <div class="asset-supply-request-menu-anchor">
+                                <button
+                                  type="button"
+                                  class="experience-action-btn experience-action-menu-trigger"
+                                  [class.is-open]="isSupplyRequestActionMenuOpen(request)"
+                                  [disabled]="isSupplyRequestBusy(request, 'makeManager')"
+                                  (click)="toggleSupplyRequestActionMenu(request, $event)"
+                                  aria-label="Open assigned member actions"
+                                  >
+                                  <mat-icon>{{ isSupplyRequestActionMenuOpen(request) ? 'close' : 'more_vert' }}</mat-icon>
+                                </button>
+                                <div
+                                  class="item-action-menu"
+                                  [class.is-open]="isSupplyRequestActionMenuOpen(request)"
+                                  [class.item-action-menu-mobile]="isMobileAssetFilterSheetViewport()"
+                                  [class.item-action-menu-desktop]="!isMobileAssetFilterSheetViewport()"
+                                  [class.is-open-up]="isSupplyRequestActionMenuOpenUp(request)"
+                                  (click)="$event.stopPropagation()"
+                                  >
+                                  <div class="item-action-menu-title">{{ request.name }}</div>
+                                  @if (canPromoteSupplyRequestToManager(request)) {
+                                    <button
+                                      type="button"
+                                      class="item-action-menu-btn"
+                                      [disabled]="isSupplyRequestBusy(request, 'makeManager')"
+                                      (click)="promoteSupplyRequestToManager(request, $event)"
+                                      >
+                                      <mat-icon>manage_accounts</mat-icon>
+                                      <span>{{ isSupplyRequestBusy(request, 'makeManager') ? 'Promoting...' : 'Promote to manager' }}</span>
+                                    </button>
+                                  }
+                                </div>
+                              </div>
+                            }
                           </div>
                         </article>
                       }

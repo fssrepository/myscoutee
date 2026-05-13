@@ -100,6 +100,7 @@ import type {
   DemoEventRecord,
   DemoRepositoryEventItemType
 } from '../../../shared/core/demo/models/events.model';
+import { I18nPipe, I18nService } from '../../../shared/i18n';
 
 // ---------------------------------------------------------------------------
 
@@ -128,7 +129,8 @@ interface ActivitiesEventScopeOption {
     EventChatPopupComponent,
     EventCheckoutPopupComponent,
     EventExplorePopupComponent,
-    CounterBadgePipe
+    CounterBadgePipe,
+    I18nPipe
   ],
   templateUrl: './activities-popup.component.html',
   styleUrl: './activities-popup.component.scss',
@@ -160,6 +162,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected readonly eventCheckoutDialogService = inject(EventCheckoutDialogService);
   protected readonly navigatorService = inject(NavigatorService);
   private readonly eventCheckoutDraftService = inject(EventCheckoutDraftService);
+  private readonly i18nService = inject(I18nService);
   readonly activitiesRates = new ActivitiesRatesController({
     getUsers: () => this.users,
     getActiveUserGender: () => this.activeUser.gender,
@@ -263,6 +266,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected readonly leavingActivityRowIds = new Set<string>();
   protected readonly activityRowExitAnimationMs = 180;
   private lastAppliedActivityMembersUpdatedMs = 0;
+  private adminSupportBoardPollTimer: ReturnType<typeof setInterval> | null = null;
 
   protected get assetCards(): AppTypes.AssetCard[] {
     return this.ownedAssets.assetCards;
@@ -296,6 +300,13 @@ export class ActivitiesPopupComponent implements OnDestroy {
     = [...APP_STATIC_DATA.activitiesSecondaryFilters];
   protected readonly activitiesChatContextFilters: Array<{ key: AppTypes.ActivitiesChatContextFilter; label: string; icon: string }>
     = [...APP_STATIC_DATA.activitiesChatContextFilters];
+  protected readonly activitiesSupportCaseFilters: Array<{ key: AppTypes.SupportCaseFilter; labelKey: string; icon: string }> = [
+    { key: 'all', labelKey: 'activities.support.case.filter.all', icon: 'list' },
+    { key: 'pending', labelKey: 'activities.support.case.filter.pending', icon: 'pending_actions' },
+    { key: 'picked', labelKey: 'activities.support.case.filter.picked', icon: 'assignment_ind' },
+    { key: 'solved', labelKey: 'activities.support.case.filter.solved', icon: 'check_circle' },
+    { key: 'blocked', labelKey: 'activities.support.case.filter.blocked', icon: 'block' }
+  ];
   protected readonly rateFilters: Array<{ key: AppTypes.RateFilterKey; label: string }>
     = [...APP_STATIC_DATA.rateFilters];
   protected readonly rateFilterEntries: AppTypes.RateFilterEntry[]
@@ -316,6 +327,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected activitiesPrimaryFilter: AppTypes.ActivitiesPrimaryFilter        = 'chats';
   protected activitiesEventScope: AppTypes.ActivitiesEventScope               = 'active-events';
   protected activitiesChatContextFilter: AppTypes.ActivitiesChatContextFilter = 'all';
+  protected activitiesSupportCaseFilter: AppTypes.SupportCaseFilter           = 'all';
   protected activitiesSecondaryFilter: AppTypes.ActivitiesSecondaryFilter    = 'recent';
   protected hostingPublicationFilter: AppTypes.HostingPublicationFilter       = 'all';
   protected activitiesRateFilter: AppTypes.RateFilterKey                     = 'individual-given';
@@ -325,6 +337,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected showActivitiesPrimaryPicker = false;
   protected showActivitiesEventScopePicker = false;
   protected showActivitiesChatContextPicker = false;
+  protected showActivitiesSupportCasePicker = false;
   protected showActivitiesRatePicker      = false;
   protected showActivitiesQuickActionsMenu = false;
   protected activitiesSmartListQuery: Partial<ListQuery<ActivitiesSmartListFilters>> = {};
@@ -560,6 +573,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       this.activitiesPrimaryFilter       = svc.activitiesPrimaryFilter() as AppTypes.ActivitiesPrimaryFilter;
       this.activitiesEventScope         = svc.activitiesEventScope() as AppTypes.ActivitiesEventScope;
       this.activitiesChatContextFilter   = svc.activitiesChatContextFilter() as AppTypes.ActivitiesChatContextFilter;
+      this.activitiesSupportCaseFilter   = svc.activitiesSupportCaseFilter() as AppTypes.SupportCaseFilter;
       this.activitiesSecondaryFilter     = svc.activitiesSecondaryFilter() as AppTypes.ActivitiesSecondaryFilter;
       this.hostingPublicationFilter      = svc.activitiesHostingPublicationFilter() as AppTypes.HostingPublicationFilter;
       this.activitiesRateFilter          = svc.activitiesRateFilter() as AppTypes.RateFilterKey;
@@ -595,6 +609,12 @@ export class ActivitiesPopupComponent implements OnDestroy {
         return;
       }
       this.syncChatItemFromOpenSession(session.item);
+    });
+
+    effect(() => {
+      this.configureAdminSupportBoardPolling(
+        this.activitiesContext.activitiesOpen() && this.activitiesContext.activitiesAdminServiceOnly()
+      );
     });
 
     effect(() => {
@@ -710,6 +730,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     this.showActivitiesPrimaryPicker = false;
     this.showActivitiesEventScopePicker = false;
     this.showActivitiesChatContextPicker = false;
+    this.showActivitiesSupportCasePicker = false;
     this.showActivitiesRatePicker = false;
     this.showActivitiesQuickActionsMenu = false;
   }
@@ -717,6 +738,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   ngOnDestroy(): void {
     this.activitiesRates.clearEditorState();
     this.activitiesSmartList?.clearHostedLoading();
+    this.configureAdminSupportBoardPolling(false);
   }
 
   private createFallbackActiveUser(): DemoUser {
@@ -809,6 +831,28 @@ export class ActivitiesPopupComponent implements OnDestroy {
     }
   }
 
+  private configureAdminSupportBoardPolling(enabled: boolean): void {
+    if (!enabled) {
+      if (this.adminSupportBoardPollTimer) {
+        clearInterval(this.adminSupportBoardPollTimer);
+        this.adminSupportBoardPollTimer = null;
+      }
+      return;
+    }
+    if (this.adminSupportBoardPollTimer) {
+      return;
+    }
+    this.adminSupportBoardPollTimer = setInterval(() => {
+      if (!this.activitiesContext.activitiesOpen() || !this.isAdminServiceChatMode()) {
+        return;
+      }
+      if (this.confirmationDialogService.dialog() || this.activitiesContext.eventChatSession()) {
+        return;
+      }
+      this.activitiesSmartList?.reload();
+    }, 30000);
+  }
+
   private syncChatItemFromOpenSession(chat: ChatMenuItem): void {
     const currentIndex = this.chatItems.findIndex(item => item.id === chat.id);
     if (currentIndex < 0) {
@@ -851,13 +895,217 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   private doesChatMatchActiveContextFilter(chat: ChatMenuItem): boolean {
     if (this.activitiesChatContextFilter === 'all') {
-      return true;
+      return this.doesChatMatchActiveSupportCaseFilter(chat);
     }
-    return this.activitiesChats.activityChatContextFilterKey(chat) === this.activitiesChatContextFilter;
+    return this.activitiesChats.activityChatContextFilterKey(chat) === this.activitiesChatContextFilter
+      && this.doesChatMatchActiveSupportCaseFilter(chat);
   }
 
   protected isAdminServiceChatMode(): boolean {
     return this.activitiesContext.activitiesAdminServiceOnly();
+  }
+
+  protected supportCaseFilterLabelKey(filter: AppTypes.SupportCaseFilter = this.activitiesSupportCaseFilter): string {
+    return this.activitiesSupportCaseFilters.find(option => option.key === filter)?.labelKey ?? 'activities.support.case.filter.all';
+  }
+
+  protected supportCaseFilterIcon(filter: AppTypes.SupportCaseFilter = this.activitiesSupportCaseFilter): string {
+    return this.activitiesSupportCaseFilters.find(option => option.key === filter)?.icon ?? 'list';
+  }
+
+  protected supportCaseFilterCount(filter: AppTypes.SupportCaseFilter = this.activitiesSupportCaseFilter): number {
+    const normalized = this.normalizeSupportCaseFilter(filter);
+    const supportCases = this.chatItems.filter(chat => Boolean(chat.supportCaseStatus));
+    if (normalized === 'all') {
+      return supportCases.length;
+    }
+    return supportCases.filter(chat => this.normalizeSupportCaseFilter(chat.supportCaseStatus ?? null) === normalized).length;
+  }
+
+  protected supportCaseFilterClass(filter: AppTypes.SupportCaseFilter = this.activitiesSupportCaseFilter): string {
+    return `support-case-filter-${filter === 'all' ? 'all' : filter}`;
+  }
+
+  protected toggleActivitiesSupportCaseFilterMenu(event: Event): void {
+    if (!this.isAdminServiceChatMode()) {
+      return;
+    }
+    event.stopPropagation();
+    this.showActivitiesPrimaryPicker = false;
+    this.showActivitiesEventScopePicker = false;
+    this.showActivitiesChatContextPicker = false;
+    this.showActivitiesRatePicker = false;
+    this.showActivitiesViewPicker = false;
+    this.showActivitiesSecondaryPicker = false;
+    this.showActivitiesQuickActionsMenu = false;
+    this.showActivitiesSupportCasePicker = !this.showActivitiesSupportCasePicker;
+  }
+
+  protected selectActivitiesSupportCaseFilter(filter: AppTypes.SupportCaseFilter): void {
+    if (!this.isAdminServiceChatMode()) {
+      return;
+    }
+    this.activitiesContext.setActivitiesSupportCaseFilter(filter);
+    this.showActivitiesSupportCasePicker = false;
+    this.showActivitiesPrimaryPicker = false;
+    this.showActivitiesEventScopePicker = false;
+    this.showActivitiesChatContextPicker = false;
+    this.showActivitiesRatePicker = false;
+    this.showActivitiesQuickActionsMenu = false;
+    this.resetActivitiesScroll();
+    this.cdr.markForCheck();
+  }
+
+  private normalizeSupportCaseFilter(filter: AppTypes.SupportCaseFilter | AppTypes.SupportCaseStatus | null | undefined): AppTypes.SupportCaseFilter {
+    return filter === 'pending' || filter === 'picked' || filter === 'solved' || filter === 'blocked'
+      ? filter
+      : 'all';
+  }
+
+  private doesChatMatchActiveSupportCaseFilter(chat: ChatMenuItem): boolean {
+    if (!this.isAdminServiceChatMode()) {
+      return true;
+    }
+    const normalized = this.normalizeSupportCaseFilter(this.activitiesSupportCaseFilter);
+    return normalized === 'all' || this.normalizeSupportCaseFilter(chat.supportCaseStatus ?? null) === normalized;
+  }
+
+  protected onSupportCaseAction(row: AppTypes.ActivityListRow, action: AppTypes.SupportCaseAction): void {
+    if (!this.isAdminServiceChatMode()) {
+      return;
+    }
+    const chat = row.source as ChatMenuItem;
+    if (!chat?.supportCaseStatus) {
+      return;
+    }
+    const config = this.supportCaseActionDialogConfig(action);
+    this.confirmationDialogService.open({
+      title: this.i18n(config.titleKey),
+      message: this.i18n(config.messageKey),
+      cancelLabel: this.i18n('cancel'),
+      confirmLabel: this.i18n(config.confirmLabelKey),
+      busyConfirmLabel: this.i18n(config.busyConfirmLabelKey),
+      confirmTone: config.tone,
+      failureMessage: this.i18n('activities.support.case.error.update'),
+      onConfirm: async () => {
+        const updated = await this.chatsService.updateSupportCase(chat, action);
+        if (!updated) {
+          throw new Error('The support case could not be updated.');
+        }
+        this.applySupportCaseUpdate(updated);
+      }
+    });
+  }
+
+  private supportCaseActionDialogConfig(action: AppTypes.SupportCaseAction): {
+    titleKey: string;
+    messageKey: string;
+    confirmLabelKey: string;
+    busyConfirmLabelKey: string;
+    tone: 'accent' | 'danger' | 'neutral';
+  } {
+    if (action === 'pick') {
+      return {
+        titleKey: 'activities.support.case.confirm.pick.title',
+        messageKey: 'activities.support.case.confirm.pick.message',
+        confirmLabelKey: 'activities.support.case.action.pick',
+        busyConfirmLabelKey: 'activities.support.case.action.pick.busy',
+        tone: 'accent'
+      };
+    }
+    if (action === 'unpick') {
+      return {
+        titleKey: 'activities.support.case.confirm.unpick.title',
+        messageKey: 'activities.support.case.confirm.unpick.message',
+        confirmLabelKey: 'activities.support.case.action.unpick',
+        busyConfirmLabelKey: 'activities.support.case.action.unpick.busy',
+        tone: 'neutral'
+      };
+    }
+    if (action === 'solve') {
+      return {
+        titleKey: 'activities.support.case.confirm.solve.title',
+        messageKey: 'activities.support.case.confirm.solve.message',
+        confirmLabelKey: 'activities.support.case.action.solve',
+        busyConfirmLabelKey: 'activities.support.case.action.solve.busy',
+        tone: 'accent'
+      };
+    }
+    if (action === 'block') {
+      return {
+        titleKey: 'activities.support.case.confirm.block.title',
+        messageKey: 'activities.support.case.confirm.block.message',
+        confirmLabelKey: 'activities.support.case.action.block',
+        busyConfirmLabelKey: 'activities.support.case.action.block.busy',
+        tone: 'danger'
+      };
+    }
+    return {
+      titleKey: 'activities.support.case.confirm.reopen.title',
+      messageKey: 'activities.support.case.confirm.reopen.message',
+      confirmLabelKey: 'activities.support.case.action.reopen',
+      busyConfirmLabelKey: 'activities.support.case.action.reopen.busy',
+      tone: 'accent'
+    };
+  }
+
+  private i18n(key: string): string {
+    return this.i18nService.translate(key);
+  }
+
+  private applySupportCaseUpdate(chat: ChatMenuItem): void {
+    const nextChat = this.cloneChatMenuItem(chat);
+    const currentIndex = this.chatItems.findIndex(item => item.id === nextChat.id);
+    if (currentIndex >= 0) {
+      const nextItems = [...this.chatItems];
+      nextItems[currentIndex] = nextChat;
+      this.chatItems = this.sortChatMenuItems(nextItems);
+    } else {
+      this.chatItems = this.sortChatMenuItems([...this.chatItems, nextChat]);
+    }
+
+    const smartList = this.activitiesSmartList;
+    if (smartList && this.activitiesPrimaryFilter === 'chats' && !this.isCalendarLayoutView()) {
+      if (this.doesChatMatchActiveContextFilter(nextChat)) {
+        this.patchVisibleChatRow(nextChat);
+      } else {
+        this.removeVisibleChatRow(nextChat.id);
+      }
+    }
+
+    this.refreshSectionBadges();
+    this.cdr.markForCheck();
+  }
+
+  private patchVisibleChatRow(chat: ChatMenuItem): void {
+    const smartList = this.activitiesSmartList;
+    if (!smartList) {
+      return;
+    }
+    const nextRow = this.buildActivityChatRow(chat);
+    const patched = smartList.patchVisibleItem(
+      row => row.type === 'chats' && row.id === chat.id,
+      () => nextRow
+    );
+    if (!patched) {
+      return;
+    }
+    this.visibleActivityRows = this.visibleActivityRows.map(row =>
+      row.type === 'chats' && row.id === chat.id ? nextRow : row
+    );
+  }
+
+  private removeVisibleChatRow(chatId: string): void {
+    const smartList = this.activitiesSmartList;
+    if (!smartList) {
+      return;
+    }
+    const currentRows = [...smartList.itemsSnapshot()];
+    const nextRows = currentRows.filter(row => !(row.type === 'chats' && row.id === chatId));
+    if (nextRows.length === currentRows.length) {
+      return;
+    }
+    this.replaceVisibleActivityItems(nextRows, -1);
   }
 
   private buildActivityChatRow(chat: ChatMenuItem): AppTypes.ActivityListRow {
@@ -926,6 +1174,11 @@ export class ActivitiesPopupComponent implements OnDestroy {
       || left.eventId !== right.eventId
       || left.subEventId !== right.subEventId
       || left.groupId !== right.groupId
+      || left.supportCaseStatus !== right.supportCaseStatus
+      || left.supportCaseAssigneeUserId !== right.supportCaseAssigneeUserId
+      || left.supportCaseAssigneeName !== right.supportCaseAssigneeName
+      || left.supportCaseAssigneeInitials !== right.supportCaseAssigneeInitials
+      || left.supportCaseUpdatedAtIso !== right.supportCaseUpdatedAtIso
       || leftMemberIds.length !== rightMemberIds.length
     ) {
       return false;
@@ -2008,6 +2261,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       || this.showActivitiesPrimaryPicker
       || this.showActivitiesEventScopePicker
       || this.showActivitiesChatContextPicker
+      || this.showActivitiesSupportCasePicker
       || this.showActivitiesRatePicker
       || this.showActivitiesQuickActionsMenu
     ) {
@@ -2016,6 +2270,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       this.showActivitiesPrimaryPicker = false;
       this.showActivitiesEventScopePicker = false;
       this.showActivitiesChatContextPicker = false;
+      this.showActivitiesSupportCasePicker = false;
       this.showActivitiesRatePicker = false;
       this.showActivitiesQuickActionsMenu = false;
       this.cdr.markForCheck();
@@ -2462,6 +2717,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       eventScopeFilter: this.activitiesEventScope,
       secondaryFilter: this.activitiesSecondaryFilter,
       chatContextFilter: this.activitiesChatContextFilter,
+      supportCaseFilter: this.activitiesSupportCaseFilter,
       hostingPublicationFilter: this.hostingPublicationFilter,
       rateFilter: this.activitiesRateFilter,
       rateSocialBadgeEnabled: this.activitiesRateSocialBadgeEnabled,
@@ -2473,6 +2729,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       && currentFilters['eventScopeFilter'] === nextFilters['eventScopeFilter']
       && currentFilters['secondaryFilter'] === nextFilters['secondaryFilter']
       && currentFilters['chatContextFilter'] === nextFilters['chatContextFilter']
+      && currentFilters['supportCaseFilter'] === nextFilters['supportCaseFilter']
       && currentFilters['hostingPublicationFilter'] === nextFilters['hostingPublicationFilter']
       && currentFilters['rateFilter'] === nextFilters['rateFilter']
       && currentFilters['rateSocialBadgeEnabled'] === nextFilters['rateSocialBadgeEnabled']

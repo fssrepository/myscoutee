@@ -22,6 +22,7 @@ import {
   resolveTraitToneClass
 } from '../../navigator-presenters';
 import { CounterBadgePipe } from '../../../shared/ui';
+import { I18nPipe } from '../../../shared/i18n';
 import { NavigatorService } from '../../navigator.service';
 import { NavigatorSettingsMenuComponent } from '../navigator-settings-menu/navigator-settings-menu.component';
 import { NavigatorContactsService } from '../../navigator-contacts.service';
@@ -39,7 +40,7 @@ interface NavigatorMenuUser extends Omit<UserDto, 'activities'> {
 @Component({
   selector: 'app-navigator-menu',
   standalone: true,
-  imports: [CommonModule, MatIconModule, MatRippleModule, NavigatorSettingsMenuComponent, CounterBadgePipe],
+  imports: [CommonModule, MatIconModule, MatRippleModule, NavigatorSettingsMenuComponent, CounterBadgePipe, I18nPipe],
   templateUrl: './navigator-menu.component.html',
   styleUrl: './navigator-menu.component.scss'
 })
@@ -92,18 +93,20 @@ export class NavigatorMenuComponent {
       events: activityOverrides.events ?? activeUser.activities?.events ?? 0,
       hosting: activityOverrides.hosting ?? activeUser.activities?.hosting ?? 0,
       tickets: activityOverrides.tickets ?? 0,
-      feedback: activityOverrides.feedback ?? 0
+      feedback: activityOverrides.feedback ?? 0,
+      adminJobs: activityOverrides.adminJobs ?? activeUser.activities?.adminJobs ?? 0,
+      adminMetrics: activityOverrides.adminMetrics ?? activeUser.activities?.adminMetrics ?? 0
     };
     const impressionChangeFlags = this.appCtx.getUserImpressionChangeFlags(activeUser.id);
-    return {
-      ...activeUser,
-      completion: this.resolveCompletionPercent(activeUser),
-      impressions: this.appCtx.getUserImpressions(activeUser.id) ?? activeUser.impressions,
-      activities: mergedActivities,
-      featuredImagePreview: this.resolveUserImageUrl(activeUser),
-      impressionChangeFlags,
-      memberImpressionTitle: resolveMemberImpressionTitle(activeUser.traitLabel ?? ''),
-      totalBadgeCount: (
+    const totalBadgeCount = this.isAdminProfile(activeUser)
+      ? (
+        mergedActivities.game +
+        mergedActivities.feedback +
+        mergedActivities.chat +
+        mergedActivities.adminJobs +
+        mergedActivities.adminMetrics
+      )
+      : (
         (impressionChangeFlags.host ? 1 : 0) +
         (impressionChangeFlags.member ? 1 : 0) +
         mergedActivities.game +
@@ -113,7 +116,16 @@ export class NavigatorMenuComponent {
         mergedActivities.hosting +
         mergedActivities.tickets +
         mergedActivities.feedback
-      )
+      );
+    return {
+      ...activeUser,
+      completion: this.resolveCompletionPercent(activeUser),
+      impressions: this.appCtx.getUserImpressions(activeUser.id) ?? activeUser.impressions,
+      activities: mergedActivities,
+      featuredImagePreview: this.resolveUserImageUrl(activeUser),
+      impressionChangeFlags,
+      memberImpressionTitle: resolveMemberImpressionTitle(activeUser.traitLabel ?? ''),
+      totalBadgeCount
     };
   });
   protected readonly menuUiState = this.navigatorService.menuUiState;
@@ -318,6 +330,13 @@ export class NavigatorMenuComponent {
     return (this.router.url || '').split('?')[0].startsWith('/admin');
   }
 
+  private isAdminProfile(user: UserDto): boolean {
+    return user.hostTier === 'Admin'
+      || user.statusText === 'Admin workspace'
+      || user.id === 'admin'
+      || user.id.startsWith('admin-');
+  }
+
   protected openAdminReportsShortcut(event?: Event): void {
     event?.stopPropagation();
     if (!this.isOnline()) {
@@ -378,6 +397,33 @@ export class NavigatorMenuComponent {
       return;
     }
     this.popupCtx.openAdminNavigatorRequest('notifications');
+    this.navigatorService.closeMenu();
+  }
+
+  protected openAdminParamsShortcut(event?: Event): void {
+    event?.stopPropagation();
+    if (!this.isOnline()) {
+      return;
+    }
+    this.popupCtx.openAdminNavigatorRequest('params');
+    this.navigatorService.closeMenu();
+  }
+
+  protected openAdminStatsShortcut(event?: Event): void {
+    event?.stopPropagation();
+    if (!this.isOnline()) {
+      return;
+    }
+    this.popupCtx.openAdminNavigatorRequest('stats');
+    this.navigatorService.closeMenu();
+  }
+
+  protected openAdminMonitoringShortcut(event?: Event): void {
+    event?.stopPropagation();
+    if (!this.isOnline()) {
+      return;
+    }
+    this.popupCtx.openAdminNavigatorRequest('monitoring');
     this.navigatorService.closeMenu();
   }
 

@@ -106,6 +106,27 @@ export class ActivityMembersService extends BaseRouteModeService {
     await this.replaceMembersByOwner(owner, members, capacityTotal);
   }
 
+  async applyMemberAction(
+    owner: ActivityMemberOwnerRef,
+    targetUserId: string,
+    action: 'disqualify' | 'reinstate',
+    reason?: string | null
+  ): Promise<AppTypes.ActivityMemberEntry[]> {
+    const normalizedOwner = this.ownerRef(owner.ownerType, owner.ownerId.trim());
+    if (!normalizedOwner.ownerId.trim()) {
+      return [];
+    }
+    const members = this.presentMembers(await this.activityMembersService.applyMemberAction(
+      normalizedOwner,
+      this.appCtx.activeUserId().trim(),
+      targetUserId,
+      action,
+      reason
+    ));
+    this.emitActivityMembersSyncForOwner(normalizedOwner);
+    return members;
+  }
+
   private emitActivityMembersSyncForOwner(owner: ActivityMemberOwnerRef): void {
     const summary = this.activityMembersService.peekSummaryByOwner(owner);
     if (!summary) {

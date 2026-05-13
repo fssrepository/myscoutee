@@ -163,6 +163,8 @@ export class DemoEventSeedBuilder {
     const totalMs = Math.max(3 * 60 * 60 * 1000, endMs - startMs);
     const slotMs = Math.max(60 * 60 * 1000, Math.floor(totalMs / stageCount));
     const items: AppTypes.SubEventFormItem[] = [];
+    const startReviewScenario = (seed % 6) === 0;
+    const finishedScenario = source.id === 'h1' || (seed % 7) === 0;
 
     for (let index = 0; index < stageCount; index += 1) {
       const groupCount = Math.max(1, 4 >> index);
@@ -183,6 +185,12 @@ export class DemoEventSeedBuilder {
       const stageStartMs = startMs + (index * slotMs);
       const stageEndMs = index === stageCount - 1 ? endMs : Math.min(endMs, stageStartMs + slotMs);
       const accepted = Math.min(totals.max, Math.max(0, Math.floor(totals.min * 0.7)));
+      const stageStatus = finishedScenario
+        ? 'F'
+        : startReviewScenario
+        ? (index === 0 ? 'RS' : 'A')
+        : (index === 0 ? 'F' : index === 1 ? 'SR' : 'A');
+      const stageStatusUpdatedAt = AppUtils.toIsoDateTimeLocal(new Date(Math.max(stageStartMs, stageEndMs - (10 * 60 * 1000))));
       items.push({
         id: `seed-${source.id}-tournament-${index + 1}`,
         name: `${stageNames[index]}`,
@@ -203,7 +211,18 @@ export class DemoEventSeedBuilder {
         membersPending: Math.max(0, totals.max - accepted),
         carsPending: (seed + index) % 2,
         accommodationPending: (seed + index + 1) % 2,
-        suppliesPending: (seed + index + 2) % 3
+        suppliesPending: (seed + index + 2) % 3,
+        stageStatus,
+        stageStatusReason: stageStatus === 'RS'
+          ? 'awaiting-tournament-start'
+          : stageStatus === 'F'
+            ? 'stage-finalized'
+            : stageStatus === 'SR'
+              ? 'stage-ended'
+              : null,
+        stageStatusUpdatedAt,
+        stageFinalizedAt: stageStatus === 'F' ? stageStatusUpdatedAt : null,
+        stageFinalizedByUserId: stageStatus === 'F' ? activeUserId : null
       });
     }
     return this.sortSubEventsByStartAsc(items);

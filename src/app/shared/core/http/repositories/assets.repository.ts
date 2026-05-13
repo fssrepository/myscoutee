@@ -103,7 +103,8 @@ export class HttpAssetsRepository {
       topics: [...(normalizedAsset.topics ?? [])],
       policies: (normalizedAsset.policies ?? []).map(item => ({ ...item })),
       pricing: normalizedAsset.pricing ? PricingBuilder.clonePricingConfig(normalizedAsset.pricing) : undefined,
-      requests: normalizedAsset.requests.map(request => this.cloneRequest(request))
+      requests: normalizedAsset.requests.map(request => this.cloneRequest(request)),
+      menuActions: [...(normalizedAsset.menuActions ?? [])]
     };
   }
 
@@ -150,11 +151,11 @@ export class HttpAssetsRepository {
     }
   }
 
-  async takeOverOwnedAsset(userId: string, assetId: string): Promise<void> {
+  async takeOverOwnedAsset(userId: string, assetId: string): Promise<AppTypes.AssetCard | null> {
     const normalizedUserId = userId.trim();
     const normalizedAssetId = assetId.trim();
     if (!normalizedUserId || !normalizedAssetId) {
-      return;
+      return null;
     }
     const next = this.peekOwnedAssetsByUser(normalizedUserId).map(card =>
       card.id === normalizedAssetId
@@ -166,14 +167,46 @@ export class HttpAssetsRepository {
     );
     this.cachedAssetsByUserId[normalizedUserId] = next;
     try {
-      await this.http
-        .post(`${this.apiBaseUrl}/assets/take-over`, {
+      const response = await this.http
+        .post<AppTypes.AssetCard | null>(`${this.apiBaseUrl}/assets/take-over`, {
           userId: normalizedUserId,
           assetId: normalizedAssetId
         })
         .toPromise();
+      const normalized = this.normalizeCard(response);
+      if (normalized) {
+        this.cachedAssetsByUserId[normalizedUserId] = this.upsertCard(this.peekOwnedAssetsByUser(normalizedUserId), normalized);
+        return this.cloneCards([normalized])[0] ?? null;
+      }
     } catch {
       // Keep optimistic state while concrete endpoint wiring lands.
+    }
+    return this.peekOwnedAssetsByUser(normalizedUserId).find(card => card.id === normalizedAssetId) ?? null;
+  }
+
+  async makeAssetManager(userId: string, assetId: string, targetUserId: string): Promise<AppTypes.AssetCard | null> {
+    const normalizedUserId = userId.trim();
+    const normalizedAssetId = assetId.trim();
+    const normalizedTargetUserId = targetUserId.trim();
+    if (!normalizedUserId || !normalizedAssetId || !normalizedTargetUserId) {
+      return null;
+    }
+    try {
+      const response = await this.http
+        .post<AppTypes.AssetCard | null>(`${this.apiBaseUrl}/assets/make-manager`, {
+          userId: normalizedUserId,
+          assetId: normalizedAssetId,
+          targetUserId: normalizedTargetUserId
+        })
+        .toPromise();
+      const normalized = this.normalizeCard(response);
+      if (!normalized) {
+        return null;
+      }
+      this.cachedAssetsByUserId[normalizedUserId] = this.upsertCard(this.peekOwnedAssetsByUser(normalizedUserId), normalized);
+      return this.cloneCards([normalized])[0] ?? null;
+    } catch {
+      return null;
     }
   }
 
@@ -228,7 +261,8 @@ export class HttpAssetsRepository {
       topics: [...(card.topics ?? [])],
       policies: (card.policies ?? []).map(item => ({ ...item })),
       pricing: card.pricing ? PricingBuilder.clonePricingConfig(card.pricing) : undefined,
-      requests: card.requests.map(request => this.cloneRequest(request))
+      requests: card.requests.map(request => this.cloneRequest(request)),
+      menuActions: [...(card.menuActions ?? [])]
     }));
   }
 
@@ -288,6 +322,9 @@ export class HttpAssetsRepository {
       status: this.normalizeAssetStatus(card?.status),
       ownerUserId: `${card?.ownerUserId ?? ''}`.trim() || undefined,
       ownerName: `${card?.ownerName ?? ''}`.trim() || undefined,
+      menuActions: Array.isArray(card?.menuActions)
+        ? card.menuActions.map(action => `${action ?? ''}`.trim()).filter(action => action.length > 0)
+        : [],
       requests: Array.isArray(card?.requests)
         ? card.requests
           .map(request => ({
@@ -300,6 +337,9 @@ export class HttpAssetsRepository {
             note: `${request?.note ?? ''}`.trim(),
             requestKind: (request?.requestKind === 'manual' ? 'manual' : 'borrow') as AppTypes.AssetRequestKind,
             requestedAtIso: `${request?.requestedAtIso ?? ''}`.trim() || undefined,
+            menuActions: Array.isArray(request?.menuActions)
+              ? request.menuActions.map(action => `${action ?? ''}`.trim()).filter(action => action.length > 0)
+              : [],
             booking: request?.booking
               ? {
                   eventId: `${request.booking.eventId ?? ''}`.trim() || undefined,
@@ -370,7 +410,8 @@ export class HttpAssetsRepository {
         topics: [...(nextCard.topics ?? [])],
         policies: (nextCard.policies ?? []).map(item => ({ ...item })),
         pricing: nextCard.pricing ? PricingBuilder.clonePricingConfig(nextCard.pricing) : undefined,
-        requests: nextCard.requests.map(request => this.cloneRequest(request))
+        requests: nextCard.requests.map(request => this.cloneRequest(request)),
+        menuActions: [...(nextCard.menuActions ?? [])]
       };
       return next;
     }
@@ -381,7 +422,8 @@ export class HttpAssetsRepository {
         topics: [...(nextCard.topics ?? [])],
         policies: (nextCard.policies ?? []).map(item => ({ ...item })),
         pricing: nextCard.pricing ? PricingBuilder.clonePricingConfig(nextCard.pricing) : undefined,
-        requests: nextCard.requests.map(request => this.cloneRequest(request))
+        requests: nextCard.requests.map(request => this.cloneRequest(request)),
+        menuActions: [...(nextCard.menuActions ?? [])]
       },
       ...next
     ];
@@ -390,6 +432,7 @@ export class HttpAssetsRepository {
   protected cloneRequest(request: AppTypes.AssetMemberRequest): AppTypes.AssetMemberRequest {
     return {
       ...request,
+      menuActions: [...(request.menuActions ?? [])],
       booking: request.booking
         ? {
             ...request.booking,

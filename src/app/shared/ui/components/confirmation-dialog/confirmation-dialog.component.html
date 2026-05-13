@@ -6,6 +6,9 @@
       @if (state.message) {
         <p>{{ state.message }}</p>
       }
+      @if (state.warningMessage) {
+        <p class="confirmation-dialog-warning">{{ state.warningMessage }}</p>
+      }
       @if (state.errorMessage) {
         <p class="confirmation-dialog-error">{{ state.errorMessage }}</p>
       }

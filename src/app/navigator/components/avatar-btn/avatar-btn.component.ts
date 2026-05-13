@@ -286,7 +286,9 @@ export class AvatarBtnComponent implements OnDestroy {
       return (
         this.resolveActivityBadge(user, 'game') +
         this.resolveActivityBadge(user, 'chat') +
-        this.resolveActivityBadge(user, 'feedback')
+        this.resolveActivityBadge(user, 'feedback') +
+        this.resolveActivityBadge(user, 'adminJobs') +
+        this.resolveActivityBadge(user, 'adminMetrics')
       );
     }
     const impressionFlags = this.appCtx.getUserImpressionChangeFlags(user.id);

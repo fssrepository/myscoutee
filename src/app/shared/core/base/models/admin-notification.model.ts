@@ -8,10 +8,15 @@ export interface AdminNotificationChannels {
   supportChatEnabled: boolean;
 }
 
+export type AdminNotificationIntervalUnit = 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months' | 'years';
+
 export interface AdminNotificationTiming {
   mode: AdminNotificationTimingMode;
   delayMinutes: number;
   intervalMinutes: number;
+  intervalSeconds?: number | null;
+  intervalAmount?: number | null;
+  intervalUnit?: AdminNotificationIntervalUnit | null;
   month: number;
   dayOfMonth: number;
   time: string;
@@ -31,6 +36,30 @@ export interface AdminNotificationScheduleSlot {
   cronExpression: string;
   actionKey: string;
   enabled: boolean;
+}
+
+export type AdminNotificationRuleParameterValueType = 'number' | 'text';
+
+export interface AdminNotificationRuleParameterOption {
+  value: string;
+  label: string;
+  labelKey?: string | null;
+}
+
+export interface AdminNotificationRuleParameter {
+  key: string;
+  label: string;
+  labelKey?: string | null;
+  group: string;
+  groupKey?: string | null;
+  valueType: AdminNotificationRuleParameterValueType;
+  numberValue?: number | null;
+  textValue?: string | null;
+  unit?: string | null;
+  options?: AdminNotificationRuleParameterOption[] | null;
+  strategy?: string | null;
+  strategyKey?: string | null;
+  readOnly?: boolean | null;
 }
 
 export interface AdminNotificationMessage {
@@ -83,6 +112,7 @@ export interface AdminNotificationRule {
   channels: AdminNotificationChannels;
   timing: AdminNotificationTiming;
   scheduleSlots?: AdminNotificationScheduleSlot[];
+  parameters?: AdminNotificationRuleParameter[];
   message: AdminNotificationMessage;
   runState: AdminNotificationRunState;
   runHistory: AdminNotificationRunHistoryEntry[];

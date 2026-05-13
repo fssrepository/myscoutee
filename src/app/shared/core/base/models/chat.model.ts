@@ -1,9 +1,11 @@
 import type { AssetType } from './asset.model';
 
+export type ChatUserGender = 'woman' | 'man' | 'deleted';
+
 export interface ChatReadAvatar {
   id: string;
   initials: string;
-  gender: 'woman' | 'man';
+  gender: ChatUserGender;
   imageUrl?: string | null;
 }
 
@@ -54,7 +56,7 @@ export interface ChatMessageReaction {
   userId: string;
   userName: string;
   userInitials: string;
-  userGender: 'woman' | 'man';
+  userGender: ChatUserGender;
   reactedAtIso: string;
 }
 
@@ -67,6 +69,8 @@ export interface ChatMessageAttachment {
   entityId?: string | null;
   assetType?: AssetType | null;
   ownerUserId?: string | null;
+  status?: 'available' | 'unavailable' | null;
+  unavailableReason?: string | null;
   subtitle?: string | null;
   description?: string | null;
   url?: string | null;
@@ -79,14 +83,14 @@ export interface ChatTypingIndicator {
   userId: string;
   userName: string;
   userInitials: string;
-  userGender: 'woman' | 'man';
+  userGender: ChatUserGender;
   typing: boolean;
 }
 
 export interface ChatReadReceipt {
   userId: string;
   userInitials: string;
-  userGender: 'woman' | 'man';
+  userGender: ChatUserGender;
   messageIds: string[];
   readAtIso: string;
 }
@@ -106,3 +110,6 @@ export interface ChatPopupDayGroup {
 
 export type ChatChannelType = 'general' | 'mainEvent' | 'optionalSubEvent' | 'groupSubEvent' | 'serviceEvent';
 export type ActivitiesChatContextFilter = 'all' | 'event' | 'subEvent' | 'group' | 'service';
+export type SupportCaseStatus = 'pending' | 'picked' | 'solved' | 'blocked';
+export type SupportCaseFilter = 'all' | SupportCaseStatus;
+export type SupportCaseAction = 'pick' | 'unpick' | 'solve' | 'block' | 'reopen';

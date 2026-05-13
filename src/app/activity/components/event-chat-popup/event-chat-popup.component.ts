@@ -54,8 +54,9 @@ interface ChatPollOptionState {
   text: string;
   votes: Array<{
     userId: string;
+    name?: string;
     initials: string;
-    gender: 'woman' | 'man';
+    gender: AppTypes.ChatUserGender;
   }>;
 }
 
@@ -958,8 +959,33 @@ export class EventChatPopupComponent implements OnDestroy {
     }
   }
 
+  protected isAttachmentUnavailable(attachment: AppTypes.ChatMessageAttachment): boolean {
+    return `${attachment.status ?? ''}`.trim().toLowerCase() === 'unavailable';
+  }
+
+  protected unavailableAttachmentLabel(attachment: AppTypes.ChatMessageAttachment): string {
+    const reason = `${attachment.unavailableReason ?? ''}`.trim().toLowerCase();
+    const typeLabel = this.chatAttachmentTypeLabel(attachment).toLowerCase();
+    switch (reason) {
+      case 'trashed':
+        return `${this.capitalize(typeLabel)} deleted`;
+      case 'blocked':
+      case 'deleted':
+      case 'inactive':
+        return `${this.capitalize(typeLabel)} unavailable`;
+      default:
+        return `${this.capitalize(typeLabel)} unavailable`;
+    }
+  }
+
   protected openChatAttachment(attachment: AppTypes.ChatMessageAttachment, event?: Event): void {
     event?.stopPropagation();
+    if (this.isAttachmentUnavailable(attachment)) {
+      this.confirmationDialogService.openInfo(this.unavailableAttachmentLabel(attachment), {
+        title: attachment.title || this.chatAttachmentTypeLabel(attachment)
+      });
+      return;
+    }
     if (this.isInternalHelpUrl(`${attachment.url ?? ''}`)) {
       this.openExternalAttachmentUrl(attachment);
       return;
@@ -1927,7 +1953,8 @@ export class EventChatPopupComponent implements OnDestroy {
       return null;
     }
     return (message.attachments ?? []).find(attachment =>
-      attachment.type === 'event' || attachment.type === 'asset' || attachment.type === 'link'
+      (attachment.type === 'event' || attachment.type === 'asset' || attachment.type === 'link')
+        && !this.isAttachmentUnavailable(attachment)
     ) ?? null;
   }
 
@@ -2007,15 +2034,16 @@ export class EventChatPopupComponent implements OnDestroy {
                 votes: Array.isArray(value.votes)
                   ? value.votes
                       .map((vote: unknown): ChatPollOptionState['votes'][number] | null => {
-                        const voteValue = vote as { userId?: unknown; initials?: unknown; gender?: unknown };
+                        const voteValue = vote as { userId?: unknown; name?: unknown; initials?: unknown; gender?: unknown };
                         const userId = `${voteValue.userId ?? ''}`.trim();
                         if (!userId) {
                           return null;
                         }
                         return {
                           userId,
+                          name: `${voteValue.name ?? ''}`.trim() || undefined,
                           initials: `${voteValue.initials ?? 'ME'}`.trim() || 'ME',
-                          gender: voteValue.gender === 'woman' ? 'woman' as const : 'man' as const
+                          gender: this.normalizeChatUserGender(voteValue.gender)
                         };
                       })
                       .filter((vote: ChatPollOptionState['votes'][number] | null): vote is ChatPollOptionState['votes'][number] => vote !== null)
@@ -2048,11 +2076,20 @@ export class EventChatPopupComponent implements OnDestroy {
         text: option.text,
         votes: option.votes.map(vote => ({
           userId: vote.userId,
+          name: vote.name,
           initials: vote.initials,
           gender: vote.gender
         }))
       }))
     });
+  }
+
+  private normalizeChatUserGender(value: unknown): AppTypes.ChatUserGender {
+    const normalized = `${value ?? ''}`.trim().toLowerCase();
+    if (normalized === 'deleted' || normalized === 'du') {
+      return 'deleted';
+    }
+    return normalized === 'woman' || normalized.startsWith('w') || normalized.startsWith('f') ? 'woman' : 'man';
   }
 
   protected pollOwnVoteOptionId(attachment: AppTypes.ChatMessageAttachment): string {
@@ -3462,6 +3499,11 @@ export class EventChatPopupComponent implements OnDestroy {
       title: [typeLabel, title].filter(Boolean).join(' · ') || typeLabel,
       meta: subtitle
     };
+  }
+
+  private capitalize(value: string): string {
+    const normalized = `${value ?? ''}`.trim();
+    return normalized ? normalized.charAt(0).toUpperCase() + normalized.slice(1) : '';
   }
 
   private observeChatComposeBox(): void {

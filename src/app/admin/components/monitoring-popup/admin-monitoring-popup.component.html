@@ -1,0 +1,139 @@
+@if (admin.activePopup() === popupKey) {
+  <section class="app-popup">
+    <div class="app-popup-backdrop" (click)="close()"></div>
+    <div class="app-popup-panel popup-panel-admin popup-panel-monitoring" (click)="$event.stopPropagation()">
+      <div class="popup-header">
+        <div class="popup-title">
+          <h2>{{ 'monitoring' | i18n }}</h2>
+          <p class="popup-subtitle">
+            {{ 'metrics' | i18n }} · {{ 'admin.monitoring.subtitle' | i18n }}
+          </p>
+        </div>
+        <div class="monitoring-header-actions">
+          @if (!loading()) {
+            <div class="monitoring-filter-wrap">
+              <button
+                type="button"
+                class="monitoring-filter-btn"
+                [class.is-open]="filterMenuOpen()"
+                (click)="toggleFilterMenu($event)"
+                [attr.aria-expanded]="filterMenuOpen()"
+                [attr.aria-label]="'admin.monitoring.filter.aria' | i18n"
+              >
+                <mat-icon>{{ filterIcon() }}</mat-icon>
+                <span>{{ filterLabelKey() | i18n }}</span>
+                <strong>{{ filterCount() }}</strong>
+                <mat-icon class="monitoring-filter-caret">expand_more</mat-icon>
+              </button>
+              @if (filterMenuOpen()) {
+                <div class="monitoring-filter-menu" role="menu" (click)="$event.stopPropagation()">
+                  @for (option of filterOptions; track option.key) {
+                    <button
+                      type="button"
+                      class="monitoring-filter-option"
+                      [class.is-active]="filter() === option.key"
+                      (click)="selectFilter(option.key, $event)"
+                      role="menuitemradio"
+                      [attr.aria-checked]="filter() === option.key"
+                    >
+                      <mat-icon>{{ option.icon }}</mat-icon>
+                      <span>{{ option.labelKey | i18n }}</span>
+                      <strong>{{ filterCount(option.key) }}</strong>
+                    </button>
+                  }
+                </div>
+              }
+            </div>
+          }
+          <button type="button" class="popup-close" (click)="close()" [attr.aria-label]="'close' | i18n">
+            <mat-icon>close</mat-icon>
+          </button>
+        </div>
+      </div>
+
+      <div class="popup-body monitoring-body">
+        @if (loading()) {
+          <div class="monitoring-state monitoring-loading-state" aria-busy="true">
+            <span class="monitoring-loading-ring" aria-hidden="true">
+              <svg viewBox="0 0 58 58" class="monitoring-loading-ring-svg">
+                <circle class="monitoring-loading-ring-track" cx="29" cy="29" r="25"></circle>
+                <circle
+                  class="monitoring-loading-ring-progress"
+                  cx="29"
+                  cy="29"
+                  r="25"
+                  pathLength="100"
+                  [attr.stroke-dasharray]="loadingRingPerimeter"
+                  [attr.stroke-dashoffset]="loadingRingDashOffset()"
+                ></circle>
+              </svg>
+            </span>
+            <span>{{ 'admin.monitoring.loading' | i18n }}</span>
+          </div>
+        } @else {
+          @if (error()) {
+            <div class="monitoring-error">
+              <mat-icon>warning</mat-icon>
+              <span>{{ error() | i18n }}</span>
+            </div>
+          }
+
+          <section class="monitoring-grid">
+            @for (category of filteredCategories(); track category.key) {
+              <article class="monitoring-card" [ngClass]="['tone-' + category.tone, healthClass(category.health)]">
+                <header class="monitoring-card-head">
+                  <span class="monitoring-card-icon">
+                    <mat-icon>{{ category.icon }}</mat-icon>
+                  </span>
+                  <span class="monitoring-card-title">
+                    <strong>{{ category.labelKey | i18n }}</strong>
+                    <small>{{ category.summaryKey | i18n }}</small>
+                  </span>
+                  <span
+                    class="monitoring-health-pill"
+                    [ngClass]="healthClass(category.health)"
+                    [ngStyle]="categoryHealthStyle(category)"
+                  >
+                    {{ healthLabelKey(category.health) | i18n }}
+                  </span>
+                </header>
+
+                <div class="monitoring-flow" [style.--flow-count]="category.nodes.length">
+                  @for (node of category.nodes; track node.id; let index = $index; let last = $last) {
+                    <div class="monitoring-node" [ngClass]="['node-' + node.kind, 'tone-' + node.tone]">
+                      <span class="monitoring-node-icon">
+                        <mat-icon>{{ node.icon }}</mat-icon>
+                      </span>
+                      <strong>{{ node.labelKey | i18n }}</strong>
+                      <div class="monitoring-node-badges">
+                        @for (metric of node.metrics; track metric.key) {
+                          <span
+                            class="monitoring-badge"
+                            [ngClass]="['tone-' + metric.tone, healthClass(metric.status)]"
+                            [ngStyle]="metricChipStyle(metric)"
+                          >
+                            <span>{{ metric.labelKey | i18n }}</span>
+                            <strong>{{ metric.valueLabel }}</strong>
+                          </span>
+                        }
+                      </div>
+                    </div>
+                    @if (!last && edgeAfter(category, index); as edge) {
+                      <div class="monitoring-edge" [ngClass]="'tone-' + edge.tone">
+                        <span>{{ edge.labelKey | i18n }}</span>
+                        <strong>{{ edge.volume }}</strong>
+                        <mat-icon>arrow_forward</mat-icon>
+                      </div>
+                    }
+                  }
+                </div>
+              </article>
+            } @empty {
+              <div class="monitoring-empty">{{ 'admin.monitoring.empty.filter' | i18n }}</div>
+            }
+          </section>
+        }
+      </div>
+    </div>
+  </section>
+}

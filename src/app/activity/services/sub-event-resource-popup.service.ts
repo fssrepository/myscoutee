@@ -4129,7 +4129,8 @@ export class SubEventResourcePopupService {
     const existingByName = new Map(asset.requests.map(request => [request.name.toLowerCase(), request] as const));
     const now = Date.now();
     const booking = this.currentAssetRequestBooking(1);
-    const memberRequests: AppTypes.AssetMemberRequest[] = members.map((entry, index) => {
+    const syncableMembers = members.filter(entry => entry.status === 'accepted' || entry.status === 'pending');
+    const memberRequests: AppTypes.AssetMemberRequest[] = syncableMembers.map((entry, index) => {
       const existing =
         existingById.get(entry.id)
         ?? existingByUserId.get(entry.userId)
@@ -4141,13 +4142,14 @@ export class SubEventResourcePopupService {
         : (entry.pendingSource === 'admin'
           ? 'Waiting for event admin approval.'
           : 'Waiting for owner approval.');
+      const requestStatus: AppTypes.AssetRequestStatus = entry.status === 'pending' ? 'pending' : 'accepted';
       return {
         id: requestId,
         userId: entry.userId,
         name: entry.name,
         initials: entry.initials,
         gender: entry.gender,
-        status: entry.status,
+        status: requestStatus,
         note,
         requestKind: existing?.requestKind ?? (isOwnedAsset ? 'borrow' : 'manual'),
         requestedAtIso: existing?.requestedAtIso ?? new Date().toISOString(),

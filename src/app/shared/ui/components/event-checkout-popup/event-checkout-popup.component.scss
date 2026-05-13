@@ -356,6 +356,18 @@
   font-size: 0.84rem;
 }
 
+.event-checkout-payment-disabled-warning {
+  margin: 0.85rem 0 0;
+  border: 1px solid rgba(196, 81, 95, 0.28);
+  border-radius: 16px;
+  background: rgba(255, 244, 246, 0.96);
+  color: #a93245;
+  padding: 0.72rem 0.82rem;
+  font-size: 0.86rem;
+  font-weight: 800;
+  line-height: 1.34;
+}
+
 .event-checkout-payment-provider {
   display: inline-flex;
   align-items: center;

@@ -12,14 +12,20 @@ export interface EventSubeventLeaderboardGroup {
   pending: number;
   advancePerGroup: number;
   memberCount: number;
+  advancingMemberIds?: readonly string[];
+  members?: readonly EventSubeventLeaderboardMember[];
+  scoreEntries?: readonly EventSubeventLeaderboardScoreEntry[];
+  fifaMatches?: readonly EventSubeventLeaderboardFifaMatch[];
+  scoreRows?: readonly EventSubeventLeaderboardScoreRow[];
+  fifaRows?: readonly EventSubeventLeaderboardFifaRow[];
 }
 
-interface EventSubeventLeaderboardMember {
+export interface EventSubeventLeaderboardMember {
   id: string;
   name: string;
 }
 
-interface EventSubeventLeaderboardScoreEntry {
+export interface EventSubeventLeaderboardScoreEntry {
   id: string;
   memberId: string;
   value: number;
@@ -27,7 +33,7 @@ interface EventSubeventLeaderboardScoreEntry {
   createdAtMs: number;
 }
 
-interface EventSubeventLeaderboardFifaMatch {
+export interface EventSubeventLeaderboardFifaMatch {
   id: string;
   homeMemberId: string;
   awayMemberId: string;
@@ -48,7 +54,7 @@ interface EventSubeventLeaderboardFormModel {
   awayScore: number | null;
 }
 
-interface EventSubeventLeaderboardScoreRow {
+export interface EventSubeventLeaderboardScoreRow {
   memberId: string;
   memberName: string;
   total: number;
@@ -56,7 +62,7 @@ interface EventSubeventLeaderboardScoreRow {
   isPlaceholder?: boolean;
 }
 
-interface EventSubeventLeaderboardFifaRow {
+export interface EventSubeventLeaderboardFifaRow {
   memberId: string;
   memberName: string;
   points: number;
@@ -84,6 +90,7 @@ export class EventSubeventLeaderboardPopupComponent implements OnChanges {
   @Input() readOnly = false;
   @Input() mode: EventSubeventLeaderboardMode = 'Score';
   @Input() groups: readonly EventSubeventLeaderboardGroup[] = [];
+  @Input() resultsMode = false;
 
   @Output() readonly close = new EventEmitter<Event>();
 
@@ -316,6 +323,16 @@ export class EventSubeventLeaderboardPopupComponent implements OnChanges {
   }
 
   protected scoreRows(group: EventSubeventLeaderboardGroup): EventSubeventLeaderboardScoreRow[] {
+    if (group.scoreRows?.length) {
+      return [...group.scoreRows]
+        .map(row => ({ ...row }))
+        .sort((a, b) => {
+          if (a.total !== b.total) {
+            return b.total - a.total;
+          }
+          return a.memberName.localeCompare(b.memberName);
+        });
+    }
     const members = this.membersForGroup(group);
     const filledMemberCount = this.assignedMemberCount(group, members.length);
     const lookup = new Map<string, EventSubeventLeaderboardScoreRow>();
@@ -367,6 +384,22 @@ export class EventSubeventLeaderboardPopupComponent implements OnChanges {
   }
 
   protected fifaRows(group: EventSubeventLeaderboardGroup): EventSubeventLeaderboardFifaRow[] {
+    if (group.fifaRows?.length) {
+      return [...group.fifaRows]
+        .map(row => ({ ...row }))
+        .sort((a, b) => {
+          if (a.points !== b.points) {
+            return b.points - a.points;
+          }
+          if (a.goalDiff !== b.goalDiff) {
+            return b.goalDiff - a.goalDiff;
+          }
+          if (a.goalsFor !== b.goalsFor) {
+            return b.goalsFor - a.goalsFor;
+          }
+          return a.memberName.localeCompare(b.memberName);
+        });
+    }
     const members = this.membersForGroup(group);
     const filledMemberCount = this.assignedMemberCount(group, members.length);
     const lookup = new Map<string, EventSubeventLeaderboardFifaRow>();
@@ -461,7 +494,43 @@ export class EventSubeventLeaderboardPopupComponent implements OnChanges {
   }
 
   protected isAdvanceRow(group: EventSubeventLeaderboardGroup, rowIndex: number): boolean {
+    const row = this.mode === 'Fifa' ? this.fifaRows(group)[rowIndex] : this.scoreRows(group)[rowIndex];
+    const advancingIds = (group.advancingMemberIds ?? []).map(value => `${value ?? ''}`.trim()).filter(Boolean);
+    if (row && advancingIds.length > 0) {
+      return advancingIds.includes(row.memberId);
+    }
     return rowIndex < this.toNonNegativeInt(group.advancePerGroup);
+  }
+
+  protected resultRows(group: EventSubeventLeaderboardGroup): Array<{
+    memberId: string;
+    memberName: string;
+    metricLabel: string;
+  }> {
+    const rows = this.mode === 'Fifa'
+      ? this.fifaRows(group)
+          .filter(row => !row.isPlaceholder)
+          .map(row => ({
+            memberId: row.memberId,
+            memberName: row.memberName,
+            metricLabel: `${row.points} pts · ${row.wins}-${row.draws}-${row.losses}`
+          }))
+      : this.scoreRows(group)
+          .filter(row => !row.isPlaceholder)
+          .map(row => ({
+            memberId: row.memberId,
+            memberName: row.memberName,
+            metricLabel: `${row.total} pts`
+          }));
+    const advancingIds = (group.advancingMemberIds ?? []).map(value => `${value ?? ''}`.trim()).filter(Boolean);
+    const winnerCount = Math.max(1, this.toNonNegativeInt(group.advancePerGroup));
+    if (advancingIds.length > 0) {
+      const advancingRows = rows.filter(row => advancingIds.includes(row.memberId));
+      if (advancingRows.length > 0) {
+        return advancingRows;
+      }
+    }
+    return rows.slice(0, winnerCount);
   }
 
   protected memberName(group: EventSubeventLeaderboardGroup, memberId: string): string {
@@ -570,6 +639,13 @@ export class EventSubeventLeaderboardPopupComponent implements OnChanges {
   }
 
   private ensureMembersForGroup(group: EventSubeventLeaderboardGroup): void {
+    if (group.members?.length) {
+      this.membersByGroupKey[group.key] = group.members.map(member => ({
+        id: member.id,
+        name: member.name
+      }));
+      return;
+    }
     const targetCount = this.groupMemberCount(group);
     const existing = this.membersByGroupKey[group.key] ?? [];
     if (existing.length === targetCount) {
@@ -608,11 +684,18 @@ export class EventSubeventLeaderboardPopupComponent implements OnChanges {
   }
 
   private scoreEntriesForGroup(group: EventSubeventLeaderboardGroup): EventSubeventLeaderboardScoreEntry[] {
-    return this.scoreEntriesByGroupKey[group.key] ?? [];
+    return [
+      ...(group.scoreEntries ?? []),
+      ...(this.scoreEntriesByGroupKey[group.key] ?? [])
+    ].map(entry => ({ ...entry }));
   }
 
   private fifaMatchesForGroup(group: EventSubeventLeaderboardGroup): EventSubeventLeaderboardFifaMatch[] {
-    return [...(this.fifaMatchesByGroupKey[group.key] ?? [])]
+    return [
+      ...(group.fifaMatches ?? []),
+      ...(this.fifaMatchesByGroupKey[group.key] ?? [])
+    ]
+      .map(match => ({ ...match }))
       .sort((a, b) => b.createdAtMs - a.createdAtMs);
   }
 

@@ -377,7 +377,9 @@ export class DemoUsersService extends DemoRouteDelayService implements UserServi
         events: counters.events ?? user.activities.events,
         hosting: counters.hosting ?? user.activities.hosting,
         tickets: counters.tickets ?? user.activities.tickets,
-        feedback: counters.feedback ?? user.activities.feedback
+        feedback: counters.feedback ?? user.activities.feedback,
+        adminJobs: counters.adminJobs ?? user.activities.adminJobs,
+        adminMetrics: counters.adminMetrics ?? user.activities.adminMetrics
       }
     };
   }

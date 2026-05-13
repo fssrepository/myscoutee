@@ -204,6 +204,7 @@ export const INFO_CARD_AVAILABLE_ACTIONS: Readonly<Record<string, InfoCardMenuAc
   restore: { label: 'restore', icon: 'restore_from_trash' },
   restoreFeedback: { label: 'restore.feedback', icon: 'restore' },
   route: { label: 'route', icon: 'route' },
+  share: { label: 'share', icon: 'ios_share' },
   shareAsset: { label: 'share.asset', icon: 'ios_share' },
   shareEvent: { label: 'share.event', icon: 'ios_share' },
   startFeedback: { label: 'start.feedback', icon: 'play_arrow' },

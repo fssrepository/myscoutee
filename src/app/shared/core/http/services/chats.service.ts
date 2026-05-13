@@ -27,6 +27,11 @@ interface HttpChatSummaryDto {
   groupId?: string;
   distanceKm?: number;
   distanceMetersExact?: number;
+  supportCaseStatus?: AppTypes.SupportCaseStatus | string | null;
+  supportCaseAssigneeUserId?: string | null;
+  supportCaseAssigneeName?: string | null;
+  supportCaseAssigneeInitials?: string | null;
+  supportCaseUpdatedAtIso?: string | null;
 }
 
 interface HttpChatSenderAvatarDto {
@@ -55,7 +60,7 @@ interface HttpChatMessageDto {
   readBy?: Array<{
     id: string;
     initials: string;
-    gender: 'woman' | 'man';
+    gender: AppTypes.ChatUserGender;
     imageUrl?: string | null;
   }>;
   deletedAtIso?: string | null;
@@ -80,7 +85,7 @@ interface HttpChatMessageReactionDto {
   userId: string;
   userName: string;
   userInitials: string;
-  userGender: 'woman' | 'man';
+  userGender: AppTypes.ChatUserGender;
   reactedAtIso: string;
 }
 
@@ -91,6 +96,8 @@ interface HttpChatMessageAttachmentDto {
   entityId?: string | null;
   assetType?: AppTypes.AssetType | null;
   ownerUserId?: string | null;
+  status?: AppTypes.ChatMessageAttachment['status'];
+  unavailableReason?: string | null;
   subtitle?: string | null;
   description?: string | null;
   url?: string | null;
@@ -116,14 +123,14 @@ interface HttpChatTypingDto {
   userId: string;
   userName: string;
   userInitials: string;
-  userGender: 'woman' | 'man';
+  userGender: AppTypes.ChatUserGender;
   typing: boolean;
 }
 
 interface HttpChatReadReceiptDto {
   userId: string;
   userInitials: string;
-  userGender: 'woman' | 'man';
+  userGender: AppTypes.ChatUserGender;
   messageIds: string[];
   readAtIso: string;
 }
@@ -236,6 +243,12 @@ export class HttpChatsService {
     }
     if (request.rangeEnd) {
       params = params.set('rangeEndIso', request.rangeEnd);
+    }
+    if (request.adminServiceOnly === true) {
+      params = params.set('adminServiceOnly', 'true');
+    }
+    if (request.supportCaseFilter && request.supportCaseFilter !== 'all') {
+      params = params.set('supportCaseFilter', request.supportCaseFilter);
     }
 
     try {
@@ -371,6 +384,26 @@ export class HttpChatsService {
     socket.send(JSON.stringify(payload));
   }
 
+  async updateSupportCase(chat: ChatMenuItem, action: AppTypes.SupportCaseAction): Promise<DemoChatRecord | null> {
+    const normalizedChatId = `${chat.id ?? ''}`.trim();
+    const userId = this.activeUserId();
+    if (!normalizedChatId || !userId) {
+      return null;
+    }
+    try {
+      const response = await this.http
+        .post<HttpChatSummaryDto | null>(
+          `${this.apiBaseUrl}/activities/chats/${encodeURIComponent(normalizedChatId)}/support-case`,
+          { userId, action },
+          { params: this.withUserId(new HttpParams(), userId) }
+        )
+        .toPromise();
+      return response ? this.mapChatRecord(response, userId) : null;
+    } catch {
+      return null;
+    }
+  }
+
   async updateChatMessage(
     chat: ChatMenuItem,
     messageId: string,
@@ -484,6 +517,11 @@ export class HttpChatsService {
       groupId: item.groupId,
       distanceKm,
       distanceMetersExact,
+      supportCaseStatus: this.normalizeSupportCaseStatus(item.supportCaseStatus),
+      supportCaseAssigneeUserId: this.normalizeHttpText(item.supportCaseAssigneeUserId) || null,
+      supportCaseAssigneeName: this.normalizeHttpText(item.supportCaseAssigneeName) || null,
+      supportCaseAssigneeInitials: this.normalizeHttpText(item.supportCaseAssigneeInitials) || null,
+      supportCaseUpdatedAtIso: this.normalizeHttpText(item.supportCaseUpdatedAtIso) || null,
       ownerUserId
     } satisfies DemoChatRecord;
   }
@@ -619,11 +657,21 @@ export class HttpChatsService {
     return `${value ?? ''}`.trim();
   }
 
-  private normalizeHttpGender(value: unknown): 'woman' | 'man' {
+  private normalizeHttpGender(value: unknown): AppTypes.ChatUserGender {
     const normalized = this.normalizeHttpText(value).toLowerCase();
+    if (normalized === 'deleted' || normalized === 'du') {
+      return 'deleted';
+    }
     return normalized === 'woman' || normalized.startsWith('w') || normalized.startsWith('f')
       ? 'woman'
       : 'man';
+  }
+
+  private normalizeSupportCaseStatus(value: unknown): AppTypes.SupportCaseStatus | null {
+    const normalized = this.normalizeHttpText(value).toLowerCase();
+    return normalized === 'pending' || normalized === 'picked' || normalized === 'solved' || normalized === 'blocked'
+      ? normalized
+      : null;
   }
 
   private resolveHttpChatAvatarImageUrl(
@@ -675,6 +723,8 @@ export class HttpChatsService {
       entityId: typeof attachment.entityId === 'string' ? attachment.entityId.trim() : null,
       assetType: this.normalizeAssetType(attachment.assetType),
       ownerUserId: typeof attachment.ownerUserId === 'string' ? attachment.ownerUserId.trim() : null,
+      status: this.normalizeAttachmentStatus(attachment.status),
+      unavailableReason: typeof attachment.unavailableReason === 'string' ? attachment.unavailableReason.trim() : null,
       subtitle: typeof attachment.subtitle === 'string' ? attachment.subtitle.trim() : null,
       description: typeof attachment.description === 'string' ? attachment.description.trim() : null,
       url: this.normalizeHttpMediaUrl(attachment.url),
@@ -692,6 +742,8 @@ export class HttpChatsService {
       entityId: attachment.entityId ?? null,
       assetType: attachment.assetType ?? null,
       ownerUserId: attachment.ownerUserId ?? null,
+      status: attachment.status ?? null,
+      unavailableReason: attachment.unavailableReason ?? null,
       subtitle: attachment.subtitle ?? null,
       description: attachment.description ?? null,
       url: attachment.url ?? null,
@@ -703,6 +755,14 @@ export class HttpChatsService {
 
   private normalizeAssetType(value: unknown): AppTypes.AssetType | null {
     return value === 'Car' || value === 'Accommodation' || value === 'Supplies' ? value : null;
+  }
+
+  private normalizeAttachmentStatus(value: unknown): AppTypes.ChatMessageAttachment['status'] {
+    const normalized = `${value ?? ''}`.trim().toLowerCase();
+    if (normalized === 'available' || normalized === 'unavailable') {
+      return normalized;
+    }
+    return null;
   }
 
   private updateCachedChatSummaryAfterMessage(
@@ -865,7 +925,7 @@ export class HttpChatsService {
           userId: `${payload.typing.userId ?? ''}`.trim(),
           userName: `${payload.typing.userName ?? ''}`.trim(),
           userInitials: `${payload.typing.userInitials ?? ''}`.trim(),
-          userGender: payload.typing.userGender === 'woman' ? 'woman' : 'man',
+          userGender: this.normalizeHttpGender(payload.typing.userGender),
           typing: payload.typing.typing === true
         }
       };
@@ -877,7 +937,7 @@ export class HttpChatsService {
         read: {
           userId: `${payload.read.userId ?? ''}`.trim(),
           userInitials: `${payload.read.userInitials ?? ''}`.trim(),
-          userGender: payload.read.userGender === 'woman' ? 'woman' : 'man',
+          userGender: this.normalizeHttpGender(payload.read.userGender),
           messageIds: (payload.read.messageIds ?? []).map((messageId: unknown) => `${messageId ?? ''}`.trim()).filter(Boolean),
           readAtIso: `${payload.read.readAtIso ?? ''}`.trim()
         }
