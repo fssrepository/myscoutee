@@ -75,6 +75,9 @@
     @if (statsPopupComponent(); as statsComponent) {
       <ng-container *ngComponentOutlet="statsComponent"></ng-container>
     }
+    @if (monitoringPopupComponent(); as monitoringComponent) {
+      <ng-container *ngComponentOutlet="monitoringComponent"></ng-container>
+    }
     <app-confirmation-dialog></app-confirmation-dialog>
   </section>
 } @else {

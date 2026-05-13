@@ -707,12 +707,24 @@
   gap: 0.32rem;
 }
 
+.admin-menu-shortcuts-monitoring {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.32rem;
+}
+
+.admin-menu-shortcuts-monitoring .menu-shortcut-monitoring {
+  border-color: rgba(47, 100, 166, 0.26);
+  background: linear-gradient(180deg, #edf6ff 0%, #dcecff 100%);
+  color: #255b96;
+}
+
 .admin-menu-shortcuts .menu-shortcut-btn {
   height: var(--navigator-shortcut-tile-height);
   gap: 0.18rem;
 }
 
-.admin-menu-shortcuts-configuration .menu-shortcut-btn {
+.admin-menu-shortcuts-configuration .menu-shortcut-btn,
+.admin-menu-shortcuts-monitoring .menu-shortcut-btn {
   min-width: 0;
   padding-inline: 0.18rem;
 }
@@ -1512,7 +1524,8 @@
   }
 
   .admin-moderation-header .section-tag,
-  .admin-configuration-header .section-tag {
+  .admin-configuration-header .section-tag,
+  .admin-monitoring-header .section-tag {
     min-height: 24px;
     padding: 0.12rem 0.62rem;
     font-size: 0.58rem;

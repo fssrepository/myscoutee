@@ -135,6 +135,20 @@
               <span class="menu-shortcut-label">Article</span>
             </button>
           </div>
+          <div class="social-proof-section-head section-social activities-header admin-monitoring-header">
+            <span class="section-tag">
+              <mat-icon>monitoring</mat-icon>
+              <span>{{ 'monitoring' | i18n }}</span>
+            </span>
+            <span class="section-line"></span>
+          </div>
+          <div class="menu-shortcuts admin-menu-shortcuts admin-menu-shortcuts-monitoring">
+            <button #adminMonitoringButton class="menu-shortcut-btn menu-shortcut-monitoring" type="button" [disabled]="!isOnline()" (click)="openAdminMonitoringShortcut($event)" [attr.aria-label]="'open.monitoring.metrics' | i18n" [title]="'metrics' | i18n">
+              <span class="navigator-action-ripple" matRipple [matRippleTrigger]="adminMonitoringButton" aria-hidden="true"></span>
+              <mat-icon>monitoring</mat-icon>
+              <span class="menu-shortcut-label">{{ 'metrics' | i18n }}</span>
+            </button>
+          </div>
         </div>
       } @else {
       <div
