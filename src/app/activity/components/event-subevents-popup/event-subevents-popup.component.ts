@@ -7,7 +7,15 @@ import { of } from 'rxjs';
 import { PricingBuilder } from '../../../shared/core/base/builders';
 import { resolveCurrentDemoDelayMs } from '../../../shared/core/base/services/route-delay.service';
 import { EventSubeventGroupFormPopupComponent } from '../event-subevent-group-form-popup/event-subevent-group-form-popup.component';
-import { EventSubeventLeaderboardGroup, EventSubeventLeaderboardPopupComponent } from '../event-subevent-leaderboard-popup/event-subevent-leaderboard-popup.component';
+import {
+  EventSubeventLeaderboardFifaMatch,
+  EventSubeventLeaderboardFifaRow,
+  EventSubeventLeaderboardGroup,
+  EventSubeventLeaderboardMember,
+  EventSubeventLeaderboardPopupComponent,
+  EventSubeventLeaderboardScoreEntry,
+  EventSubeventLeaderboardScoreRow
+} from '../event-subevent-leaderboard-popup/event-subevent-leaderboard-popup.component';
 import { EventSubeventStageFormPopupComponent, type EventSubeventStageFormPopupView } from '../event-subevent-stage-form-popup/event-subevent-stage-form-popup.component';
 import { AppUtils } from '../../../shared/app-utils';
 import { OwnedAssetsPopupFacadeService } from '../../../asset/owned-assets-popup-facade.service';
@@ -24,10 +32,11 @@ import {
 } from '../../../shared/ui';
 
 type SubEventsDisplayMode = 'Casual' | 'Tournament';
-type StageMenuAction = 'add-group' | 'leaderboard' | 'edit-stage' | 'delete-stage';
+type StageMenuAction = 'add-group' | 'leaderboard' | 'edit-stage' | 'delete-stage' | 'start-tournament' | 'close-stage' | 'finalize-stage' | 'reopen-scores' | 'suspend-tournament' | 'resume-tournament';
 type GroupMenuAction = 'edit-group' | 'delete-group';
 type StageInsertPlacement = 'before' | 'after';
 type TournamentLeaderboardType = 'Score' | 'Fifa';
+type TournamentStageStatus = 'A' | 'RS' | 'SR' | 'F' | 'S';
 
 export interface EventSubeventsGroupItem {
   id?: string;
@@ -72,6 +81,11 @@ export interface EventSubeventsItem {
   suppliesCapacityMax?: number;
   slotStartOffsetMinutes?: number;
   slotDurationMinutes?: number;
+  stageStatus?: TournamentStageStatus | string;
+  stageStatusReason?: string | null;
+  stageStatusUpdatedAt?: string | null;
+  stageFinalizedAt?: string | null;
+  stageFinalizedByUserId?: string | null;
 }
 
 interface EventSubeventsStageRow {
@@ -115,6 +129,10 @@ interface EventSubeventsStageCard {
   location: string;
   rangeLabel: string;
   groupsLabel: string;
+  status: TournamentStageStatus;
+  statusLabel: string;
+  statusIcon: string;
+  statusTone: 'active' | 'start' | 'review' | 'finalized' | 'suspended';
   accentHue: number;
   accentColor: string;
   startMs: number;
@@ -173,6 +191,21 @@ interface DeleteTargetState {
   stageSourceIndex: number;
   groupId: string | null;
   label: string;
+}
+
+interface SensitiveActionTargetState {
+  kind: 'delete' | 'stage-status';
+  stageSourceIndex: number;
+  groupId: string | null;
+  label: string;
+  title: string;
+  description: string;
+  confirmLabel: string;
+  busyLabel: string;
+  action?: StageMenuAction;
+  nextStatus?: TournamentStageStatus;
+  reason?: string;
+  destructive?: boolean;
 }
 
 interface EventSubeventsAssetMetrics {
@@ -253,8 +286,12 @@ export class EventSubeventsPopupComponent implements OnChanges {
   protected showLeaderboardPopup = false;
   protected leaderboardPopupStageKey: string | null = null;
   protected leaderboardPopupStageTitle = '';
+  protected leaderboardPopupResultsMode = false;
 
   protected pendingDeleteTarget: DeleteTargetState | null = null;
+  protected pendingSensitiveAction: SensitiveActionTargetState | null = null;
+  protected sensitiveActionPending = false;
+  protected sensitiveActionErrorMessage = '';
   protected leaderboardPopupGroups: readonly EventSubeventLeaderboardGroup[] = [];
   protected leaderboardPopupMode: TournamentLeaderboardType = 'Score';
 
@@ -763,6 +800,24 @@ export class EventSubeventsPopupComponent implements OnChanges {
     }
 
     switch (action) {
+      case 'start-tournament':
+        this.requestStageStatusAction(action, stage, 'A', 'tournament-started', 'Start Tournament', `Start ${stage.subtitle}? This locks admission and assigns first-stage rooms.`, 'Start', 'Starting...');
+        return;
+      case 'close-stage':
+        this.requestStageStatusAction(action, stage, 'SR', 'stage-closed', 'Close Stage', `Close ${stage.subtitle} and move it under score review?`, 'Close Stage', 'Closing...');
+        return;
+      case 'finalize-stage':
+        this.requestStageStatusAction(action, stage, 'F', 'stage-finalized', 'Finalize Stage', `Finalize ${stage.subtitle}?`, 'Finalize', 'Finalizing...');
+        return;
+      case 'reopen-scores':
+        this.requestStageStatusAction(action, stage, 'SR', 'scores-reopened', 'Reopen Scores', `Reopen scores for ${stage.subtitle}?`, 'Reopen', 'Reopening...');
+        return;
+      case 'suspend-tournament':
+        this.requestStageStatusAction(action, stage, 'S', 'manual-suspension', 'Suspend Tournament', `Suspend the tournament at ${stage.subtitle}?`, 'Suspend', 'Suspending...');
+        return;
+      case 'resume-tournament':
+        this.requestStageStatusAction(action, stage, 'SR', 'manual-resume', 'Resume Tournament', `Resume ${stage.subtitle} into score review?`, 'Resume', 'Resuming...');
+        return;
       case 'add-group':
         this.openCreateGroupForm(stage, event);
         return;
@@ -778,6 +833,89 @@ export class EventSubeventsPopupComponent implements OnChanges {
       default:
         return;
     }
+  }
+
+  private requestStageStatusAction(
+    action: StageMenuAction,
+    stage: EventSubeventsStageCard,
+    nextStatus: TournamentStageStatus,
+    reason: string,
+    title: string,
+    description: string,
+    confirmLabel: string,
+    busyLabel: string
+  ): void {
+    this.pendingSensitiveAction = {
+      kind: 'stage-status',
+      stageSourceIndex: stage.sourceIndex,
+      groupId: null,
+      label: stage.subtitle,
+      title,
+      description,
+      confirmLabel,
+      busyLabel,
+      action,
+      nextStatus,
+      reason,
+      destructive: nextStatus === 'S'
+    };
+    this.sensitiveActionPending = false;
+    this.sensitiveActionErrorMessage = '';
+  }
+
+  protected canCloseStage(stage: EventSubeventsStageCard): boolean {
+    return stage.status === 'A';
+  }
+
+  protected canStartTournament(stage: EventSubeventsStageCard): boolean {
+    return stage.stageNumber === 1 && stage.status === 'RS';
+  }
+
+  protected canFinalizeStage(stage: EventSubeventsStageCard): boolean {
+    return stage.status === 'SR';
+  }
+
+  protected canReopenScores(stage: EventSubeventsStageCard): boolean {
+    if (stage.status !== 'F') {
+      return false;
+    }
+    const currentIndex = this.stageCards.findIndex(item => item.key === stage.key);
+    const nextStage = currentIndex >= 0 ? this.stageCards[currentIndex + 1] ?? null : null;
+    if (!nextStage) {
+      return true;
+    }
+    const now = Date.now();
+    return nextStage.status === 'A' && (!Number.isFinite(nextStage.startMs) || nextStage.startMs > now);
+  }
+
+  protected canSuspendStage(stage: EventSubeventsStageCard): boolean {
+    return stage.status !== 'RS' && stage.status !== 'S' && stage.status !== 'F';
+  }
+
+  protected canResumeStage(stage: EventSubeventsStageCard): boolean {
+    return stage.status === 'S';
+  }
+
+  private updateStageStatusAtIndex(stageSourceIndex: number, status: TournamentStageStatus, reason: string): void {
+    const source = this.workingSubEvents[stageSourceIndex];
+    if (!source) {
+      return;
+    }
+    const nowIso = new Date().toISOString();
+    this.workingSubEvents = this.workingSubEvents.map((item, index) => {
+      if (index !== stageSourceIndex) {
+        return item;
+      }
+      return {
+        ...item,
+        stageStatus: status,
+        stageStatusReason: reason,
+        stageStatusUpdatedAt: nowIso,
+        stageFinalizedAt: status === 'F' ? nowIso : null,
+        stageFinalizedByUserId: status === 'F' ? (this.appCtx.activeUserId() || null) : null
+      };
+    });
+    this.emitWorkingSubEvents();
   }
 
   protected openStageLeaderboard(stage: EventSubeventsStageCard, event: Event): void {
@@ -1140,6 +1278,12 @@ export class EventSubeventsPopupComponent implements OnChanges {
     const baseGroupsSource = (this.subEventForm.groups?.length ?? 0) > 0
       ? this.subEventForm.groups
       : ((existingItem?.groups?.length ?? 0) > 0 ? existingItem?.groups : []);
+    const sourceWithoutCurrent = this.sortSubEventsByStartAsc(
+      existingId
+        ? this.workingSubEvents.filter(item => item.id !== existingId)
+        : this.workingSubEvents
+    );
+    const isFirstTournamentStage = forceMandatoryTournament && sourceWithoutCurrent.length === 0;
 
     let baseItem: EventSubeventsItem = {
       id: existingId ?? this.nextId('subevent'),
@@ -1184,7 +1328,12 @@ export class EventSubeventsPopupComponent implements OnChanges {
         : Math.max(0, normalizedCapacityMax - Math.min(2, normalizedCapacityMin)),
       carsPending: existingItem ? this.toPendingCount(existingItem.carsPending ?? 0) : 1,
       accommodationPending: existingItem ? this.toPendingCount(existingItem.accommodationPending ?? 0) : 2,
-      suppliesPending: existingItem ? this.toPendingCount(existingItem.suppliesPending ?? 0) : 3
+      suppliesPending: existingItem ? this.toPendingCount(existingItem.suppliesPending ?? 0) : 3,
+      stageStatus: existingItem?.stageStatus ?? (isFirstTournamentStage ? 'RS' : 'A'),
+      stageStatusReason: existingItem?.stageStatusReason ?? (isFirstTournamentStage ? 'awaiting-tournament-start' : null),
+      stageStatusUpdatedAt: existingItem?.stageStatusUpdatedAt ?? (isFirstTournamentStage ? new Date().toISOString() : null),
+      stageFinalizedAt: existingItem?.stageFinalizedAt ?? null,
+      stageFinalizedByUserId: existingItem?.stageFinalizedByUserId ?? null
     };
     if (forceMandatoryTournament) {
       const reconciledGroups = this.reconcileTournamentGroupsForStage(baseItem, this.cloneGroups(baseItem.groups));
@@ -1201,11 +1350,6 @@ export class EventSubeventsPopupComponent implements OnChanges {
       };
     }
 
-    const sourceWithoutCurrent = this.sortSubEventsByStartAsc(
-      existingId
-        ? this.workingSubEvents.filter(item => item.id !== existingId)
-        : this.workingSubEvents
-    );
     const insertIndex = this.subEventInsertIndex(sourceWithoutCurrent);
     const insertedItems = [
       ...sourceWithoutCurrent.slice(0, insertIndex),
@@ -1325,6 +1469,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
     this.leaderboardPopupStageTitle = '';
     this.leaderboardPopupGroups = [];
     this.leaderboardPopupMode = 'Score';
+    this.leaderboardPopupResultsMode = false;
   }
 
   protected requestDeleteStage(stage: EventSubeventsStageCard, event: Event): void {
@@ -1338,6 +1483,19 @@ export class EventSubeventsPopupComponent implements OnChanges {
       groupId: null,
       label: stage.subtitle
     };
+    this.pendingSensitiveAction = {
+      kind: 'delete',
+      stageSourceIndex: stage.sourceIndex,
+      groupId: null,
+      label: stage.subtitle,
+      title: 'Delete Stage',
+      description: `Delete ${stage.subtitle}?`,
+      confirmLabel: 'Delete',
+      busyLabel: 'Deleting...',
+      destructive: true
+    };
+    this.sensitiveActionPending = false;
+    this.sensitiveActionErrorMessage = '';
   }
 
   protected requestDeleteGroup(row: EventSubeventsStageRow, event: Event): void {
@@ -1351,36 +1509,108 @@ export class EventSubeventsPopupComponent implements OnChanges {
       groupId: row.groupId,
       label: row.groupName
     };
+    this.pendingSensitiveAction = {
+      kind: 'delete',
+      stageSourceIndex: row.stageSourceIndex,
+      groupId: row.groupId,
+      label: row.groupName,
+      title: 'Delete Group',
+      description: `Delete ${row.groupName}?`,
+      confirmLabel: 'Delete',
+      busyLabel: 'Deleting...',
+      destructive: true
+    };
+    this.sensitiveActionPending = false;
+    this.sensitiveActionErrorMessage = '';
   }
 
   protected cancelDeleteTarget(event?: Event): void {
     event?.stopPropagation();
+    if (this.sensitiveActionPending) {
+      return;
+    }
     this.pendingDeleteTarget = null;
+    this.pendingSensitiveAction = null;
+    this.sensitiveActionPending = false;
+    this.sensitiveActionErrorMessage = '';
+  }
+
+  protected async confirmSensitiveAction(event: Event): Promise<void> {
+    event.stopPropagation();
+    const target = this.pendingSensitiveAction;
+    if (!target || this.sensitiveActionPending) {
+      return;
+    }
+    this.sensitiveActionPending = true;
+    this.sensitiveActionErrorMessage = '';
+
+    try {
+      if (target.kind === 'stage-status') {
+        if (!target.nextStatus || !target.reason) {
+          throw new Error('Missing stage action target.');
+        }
+        await this.applyStageStatusAction(target);
+      } else {
+        await this.waitForSensitiveActionDelay();
+        this.applyDeleteTarget(target);
+      }
+      this.pendingDeleteTarget = null;
+      this.pendingSensitiveAction = null;
+    } catch (error) {
+      this.sensitiveActionErrorMessage = error instanceof Error && error.message ? error.message : 'Action failed.';
+    } finally {
+      this.sensitiveActionPending = false;
+    }
+  }
+
+  private async applyStageStatusAction(target: SensitiveActionTargetState): Promise<void> {
+    if (!target.nextStatus || !target.reason) {
+      throw new Error('Missing stage action target.');
+    }
+    const ownerId = `${this.ownerId ?? ''}`.trim();
+    const activeUserId = this.activeUserId();
+    const stage = this.workingSubEvents[target.stageSourceIndex] ?? null;
+    const action = `${target.action ?? ''}`.trim();
+    if (ownerId && activeUserId && action) {
+      const record = await this.eventsService.applyStageAction({
+        userId: activeUserId,
+        sourceId: ownerId,
+        subEventId: `${stage?.id ?? ''}`.trim() || null,
+        subEventIndex: target.stageSourceIndex,
+        action,
+        reason: target.reason
+      });
+      const nextSubEvents = this.cloneSubEvents(record?.subEvents ?? []);
+      if (nextSubEvents.length > 0) {
+        this.workingSubEvents = nextSubEvents.map(item => ({
+          ...item,
+          id: item.id ?? this.nextId('subevent')
+        }));
+        this.emitWorkingSubEvents();
+        return;
+      }
+    } else {
+      await this.waitForSensitiveActionDelay();
+    }
+    this.updateStageStatusAtIndex(target.stageSourceIndex, target.nextStatus, target.reason);
   }
 
   protected confirmDeleteTarget(event: Event): void {
-    event.stopPropagation();
-    const target = this.pendingDeleteTarget;
-    if (!target) {
-      return;
-    }
+    void this.confirmSensitiveAction(event);
+  }
 
-    if (target.kind === 'stage' || target.kind === 'subevent') {
+  private applyDeleteTarget(target: SensitiveActionTargetState): void {
+    const deleteTarget = this.pendingDeleteTarget;
+    const kind = deleteTarget?.kind ?? (target.groupId ? 'group' : 'stage');
+    if (kind === 'stage' || kind === 'subevent') {
       this.workingSubEvents = this.workingSubEvents.filter((_, index) => index !== target.stageSourceIndex);
-      this.pendingDeleteTarget = null;
       this.emitWorkingSubEvents();
       this.alignPageToCurrentStage();
       return;
     }
 
     const stage = this.workingSubEvents[target.stageSourceIndex];
-    if (!stage) {
-      this.pendingDeleteTarget = null;
-      return;
-    }
-
-    if (!target.groupId) {
-      this.pendingDeleteTarget = null;
+    if (!stage || !target.groupId) {
       return;
     }
 
@@ -1389,8 +1619,15 @@ export class EventSubeventsPopupComponent implements OnChanges {
       ...stage,
       ...this.stageWithReconciledGroups(stage, groups)
     };
-    this.pendingDeleteTarget = null;
     this.emitWorkingSubEvents();
+  }
+
+  private waitForSensitiveActionDelay(): Promise<void> {
+    const delayMs = resolveCurrentDemoDelayMs(1500);
+    if (delayMs <= 0) {
+      return Promise.resolve();
+    }
+    return new Promise(resolve => window.setTimeout(resolve, delayMs));
   }
 
   protected deleteTargetTitle(): string {
@@ -1418,6 +1655,10 @@ export class EventSubeventsPopupComponent implements OnChanges {
     return `Delete ${target.label}?`;
   }
 
+  protected sensitiveActionRingPerimeter(): number {
+    return 100;
+  }
+
   protected trackByStageKey(_: number, stage: EventSubeventsStageCard): string {
     return stage.key;
   }
@@ -1442,6 +1683,9 @@ export class EventSubeventsPopupComponent implements OnChanges {
   }
 
   protected leaderboardPopupTitle(): string {
+    if (this.leaderboardPopupResultsMode) {
+      return 'Tournament Results';
+    }
     if (!this.leaderboardPopupStageTitle.trim()) {
       return 'Leaderboard';
     }
@@ -1482,6 +1726,141 @@ export class EventSubeventsPopupComponent implements OnChanges {
     const stage = this.leaderboardStageCard();
     this.leaderboardPopupGroups = this.buildLeaderboardGroups(stage);
     this.leaderboardPopupMode = this.resolveLeaderboardMode(stage);
+  }
+
+  private async loadLeaderboardState(stage: EventSubeventsStageCard): Promise<void> {
+    const ownerId = `${this.ownerId ?? ''}`.trim();
+    const source = this.workingSubEvents[stage.sourceIndex];
+    const subEventId = `${source?.id ?? ''}`.trim();
+    if (!ownerId || !subEventId) {
+      return;
+    }
+    try {
+      const state = await this.eventsService.querySubEventLeaderboard(ownerId, subEventId);
+      if (!state || this.leaderboardPopupStageKey !== stage.key || !this.showLeaderboardPopup) {
+        return;
+      }
+      const mappedGroups = this.mapLeaderboardStateGroups(state);
+      if (mappedGroups.length > 0) {
+        this.leaderboardPopupGroups = mappedGroups;
+      }
+      this.leaderboardPopupMode = state.leaderboardType === 'Fifa' ? 'Fifa' : 'Score';
+    } catch {
+      // Keep the locally synthesized preview if the leaderboard endpoint is not available.
+    }
+  }
+
+  private mapLeaderboardStateGroups(state: AppTypes.SubEventLeaderboardState): EventSubeventLeaderboardGroup[] {
+    return (state.groups ?? []).map((group, index) => {
+      const key = `${group.groupId ?? `group-${index + 1}`}`.trim() || `group-${index + 1}`;
+      return {
+        key,
+        title: `${group.title ?? `Group ${index + 1}`}`.trim() || `Group ${index + 1}`,
+        pending: 0,
+        advancePerGroup: Math.max(0, Math.trunc(Number(group.advancePerGroup) || 0)),
+        memberCount: Math.max(0, Math.trunc(Number(group.memberCount) || 0)),
+        advancingMemberIds: (group.advancingMemberIds ?? []).map(value => `${value ?? ''}`.trim()).filter(Boolean),
+        members: this.mapLeaderboardMembers(group.members),
+        scoreEntries: this.mapLeaderboardScoreEntries(group.scoreEntries, key),
+        fifaMatches: this.mapLeaderboardFifaMatches(group.fifaMatches, key),
+        scoreRows: this.mapLeaderboardScoreRows(group.scoreRows),
+        fifaRows: this.mapLeaderboardFifaRows(group.fifaRows)
+      };
+    });
+  }
+
+  private mapLeaderboardMembers(members: readonly AppTypes.SubEventLeaderboardMember[] | null | undefined): EventSubeventLeaderboardMember[] {
+    return (members ?? [])
+      .map(member => ({
+        id: `${member.id ?? ''}`.trim(),
+        name: `${member.name ?? 'Member'}`.trim() || 'Member'
+      }))
+      .filter(member => member.id);
+  }
+
+  private mapLeaderboardScoreEntries(
+    entries: readonly AppTypes.SubEventLeaderboardScoreEntry[] | null | undefined,
+    groupId: string
+  ): EventSubeventLeaderboardScoreEntry[] {
+    return (entries ?? [])
+      .map(entry => ({
+        id: `${entry.id ?? ''}`.trim(),
+        memberId: `${entry.memberId ?? ''}`.trim(),
+        value: Math.trunc(Number(entry.value) || 0),
+        note: `${entry.note ?? ''}`.trim(),
+        createdAtMs: Math.max(0, Math.trunc(Number(entry.createdAtMs) || 0)),
+        stageId: `${entry.stageId ?? ''}`.trim(),
+        groupId
+      }))
+      .filter(entry => entry.id && entry.memberId);
+  }
+
+  private mapLeaderboardFifaMatches(
+    matches: readonly AppTypes.SubEventLeaderboardFifaMatch[] | null | undefined,
+    groupId: string
+  ): EventSubeventLeaderboardFifaMatch[] {
+    return (matches ?? [])
+      .map(match => ({
+        id: `${match.id ?? ''}`.trim(),
+        homeMemberId: `${match.homeMemberId ?? ''}`.trim(),
+        awayMemberId: `${match.awayMemberId ?? ''}`.trim(),
+        homeScore: Math.max(0, Math.trunc(Number(match.homeScore) || 0)),
+        awayScore: Math.max(0, Math.trunc(Number(match.awayScore) || 0)),
+        note: `${match.note ?? ''}`.trim(),
+        createdAtMs: Math.max(0, Math.trunc(Number(match.createdAtMs) || 0)),
+        stageId: `${match.stageId ?? ''}`.trim(),
+        groupId
+      }))
+      .filter(match => match.id && match.homeMemberId && match.awayMemberId);
+  }
+
+  private mapLeaderboardScoreRows(rows: readonly AppTypes.SubEventLeaderboardScoreStandingRow[] | null | undefined): EventSubeventLeaderboardScoreRow[] {
+    return (rows ?? [])
+      .map(row => ({
+        memberId: `${row.memberId ?? ''}`.trim(),
+        memberName: `${row.memberName ?? 'Member'}`.trim() || 'Member',
+        total: Math.trunc(Number(row.total) || 0),
+        updates: Math.max(0, Math.trunc(Number(row.updates) || 0))
+      }))
+      .filter(row => row.memberId);
+  }
+
+  private mapLeaderboardFifaRows(rows: readonly AppTypes.SubEventLeaderboardFifaStandingRow[] | null | undefined): EventSubeventLeaderboardFifaRow[] {
+    return (rows ?? [])
+      .map(row => ({
+        memberId: `${row.memberId ?? ''}`.trim(),
+        memberName: `${row.memberName ?? 'Member'}`.trim() || 'Member',
+        points: Math.trunc(Number(row.points) || 0),
+        played: Math.max(0, Math.trunc(Number(row.played) || 0)),
+        wins: Math.max(0, Math.trunc(Number(row.wins) || 0)),
+        draws: Math.max(0, Math.trunc(Number(row.draws) || 0)),
+        losses: Math.max(0, Math.trunc(Number(row.losses) || 0)),
+        goalsFor: Math.trunc(Number(row.goalsFor) || 0),
+        goalsAgainst: Math.trunc(Number(row.goalsAgainst) || 0),
+        goalDiff: Math.trunc(Number(row.goalDiff) || 0)
+      }))
+      .filter(row => row.memberId);
+  }
+
+  protected finalTournamentResultsStage(): EventSubeventsStageCard | null {
+    if (this.displayMode !== 'Tournament' || this.stageCards.length === 0) {
+      return null;
+    }
+    const finalStage = this.stageCards[this.stageCards.length - 1] ?? null;
+    return finalStage?.status === 'F' ? finalStage : null;
+  }
+
+  protected canOpenTournamentResults(): boolean {
+    return this.finalTournamentResultsStage() !== null;
+  }
+
+  protected openTournamentResults(event: Event): void {
+    event.stopPropagation();
+    const finalStage = this.finalTournamentResultsStage();
+    if (!finalStage) {
+      return;
+    }
+    this.openLeaderboardPopup(finalStage, event, true);
   }
 
   protected trackByStageRowKey(_: number, row: EventSubeventsStageRow): string {
@@ -1565,6 +1944,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
       const rows = this.stageRowsForItem(item, entry.sourceIndex, entry.stageId);
       const startMs = this.parseDateValue(item.startAt)?.getTime() ?? Number.NaN;
       const endMs = this.parseDateValue(item.endAt)?.getTime() ?? Number.NaN;
+      const status = this.resolveStageStatus(item);
 
       return {
         key: `${entry.stageId}-${entry.sourceIndex}`,
@@ -1577,6 +1957,10 @@ export class EventSubeventsPopupComponent implements OnChanges {
         location: location || 'Location pending',
         rangeLabel: this.subEventRangeLabel(item),
         groupsLabel: rows.length === 1 ? '1 group' : `${rows.length} groups`,
+        status,
+        statusLabel: this.stageStatusLabel(status),
+        statusIcon: this.stageStatusIcon(status),
+        statusTone: this.stageStatusTone(status),
         accentHue: this.stageAccentHue(stageNumber, totalStages),
         accentColor: this.stageAccentColorByNumber(stageNumber, totalStages),
         startMs,
@@ -1612,6 +1996,71 @@ export class EventSubeventsPopupComponent implements OnChanges {
 
   private syncVisibleStageCards(): void {
     this.visibleStageCards = this.stagePages[this.stagePageIndex] ?? [];
+  }
+
+  private resolveStageStatus(item: EventSubeventsItem | null | undefined): TournamentStageStatus {
+    const status = `${item?.stageStatus ?? ''}`.trim().toUpperCase();
+    if (status === 'RS') {
+      return 'RS';
+    }
+    if (status === 'SR') {
+      return 'SR';
+    }
+    if (status === 'F') {
+      return 'F';
+    }
+    if (status === 'S') {
+      return 'S';
+    }
+    return 'A';
+  }
+
+  private stageStatusLabel(status: TournamentStageStatus): string {
+    switch (status) {
+      case 'RS':
+        return 'Review to start';
+      case 'SR':
+        return 'Under review';
+      case 'F':
+        return 'Finalized';
+      case 'S':
+        return 'Suspended';
+      case 'A':
+      default:
+        return 'Active';
+    }
+  }
+
+  private stageStatusIcon(status: TournamentStageStatus): string {
+    switch (status) {
+      case 'RS':
+        return 'pending_actions';
+      case 'SR':
+        return 'rate_review';
+      case 'F':
+        return 'verified';
+      case 'S':
+        return 'pause_circle';
+      case 'A':
+      default:
+        return 'play_circle';
+    }
+  }
+
+  private stageStatusTone(status: TournamentStageStatus): 'active' | 'start' | 'review' | 'finalized' | 'suspended' {
+    switch (status) {
+      case 'RS':
+        return 'start';
+      case 'SR':
+        return 'review';
+      case 'F':
+        return 'finalized';
+      case 'S':
+        return 'suspended';
+      case 'A':
+      default:
+        return 'active';
+    }
   }
 
   private stageRowsForItem(item: EventSubeventsPreparedItem, stageSourceIndex: number, stageId: string): EventSubeventsStageRow[] {
@@ -1811,7 +2260,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
     this.showGroupForm = true;
   }
 
-  private openLeaderboardPopup(stage: EventSubeventsStageCard, event: Event): void {
+  private openLeaderboardPopup(stage: EventSubeventsStageCard, event: Event, resultsMode = false): void {
     event.stopPropagation();
     this.showSubEventForm = false;
     this.showSubEventOptionalPicker = false;
@@ -1822,8 +2271,10 @@ export class EventSubeventsPopupComponent implements OnChanges {
     this.groupForm = this.createEmptyGroupForm();
     this.leaderboardPopupStageKey = stage.key;
     this.leaderboardPopupStageTitle = stage.subtitle;
+    this.leaderboardPopupResultsMode = resultsMode;
     this.syncLeaderboardPopupState();
     this.showLeaderboardPopup = true;
+    void this.loadLeaderboardState(stage);
   }
 
   private ensureStageGroups(
@@ -3184,6 +3635,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
     this.leaderboardPopupStageTitle = '';
     this.leaderboardPopupGroups = [];
     this.leaderboardPopupMode = 'Score';
+    this.leaderboardPopupResultsMode = false;
     this.pendingDeleteTarget = null;
   }
 

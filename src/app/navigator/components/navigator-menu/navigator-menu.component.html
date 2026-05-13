@@ -109,10 +109,23 @@
             <span class="section-line"></span>
           </div>
           <div class="menu-shortcuts admin-menu-shortcuts admin-menu-shortcuts-configuration">
-            <button #adminNotificationsButton class="menu-shortcut-btn menu-shortcut-notifications" type="button" [disabled]="!isOnline()" (click)="openAdminNotificationsShortcut($event)" aria-label="Open notification rules" title="Notifications">
-              <span class="navigator-action-ripple" matRipple [matRippleTrigger]="adminNotificationsButton" aria-hidden="true"></span>
-              <mat-icon>notifications</mat-icon>
-              <span class="menu-shortcut-label">Notification</span>
+            <button #adminJobsButton class="menu-shortcut-btn menu-shortcut-jobs" type="button" [disabled]="!isOnline()" (click)="openAdminNotificationsShortcut($event)" [attr.aria-label]="'open.jobs' | i18n" [title]="'jobs' | i18n">
+              <span class="navigator-action-ripple" matRipple [matRippleTrigger]="adminJobsButton" aria-hidden="true"></span>
+              <mat-icon>pending_actions</mat-icon>
+              <span class="menu-shortcut-label">{{ 'jobs' | i18n }}</span>
+              @if (user.activities.adminJobs > 0) {
+                <span class="card-badge menu-shortcut-badge">{{ user.activities.adminJobs | counterBadge }}</span>
+              }
+            </button>
+            <button #adminParamsButton class="menu-shortcut-btn menu-shortcut-params" type="button" [disabled]="!isOnline()" (click)="openAdminParamsShortcut($event)" [attr.aria-label]="'open.parameters' | i18n" [title]="'parameters' | i18n">
+              <span class="navigator-action-ripple" matRipple [matRippleTrigger]="adminParamsButton" aria-hidden="true"></span>
+              <mat-icon>tune</mat-icon>
+              <span class="menu-shortcut-label">{{ 'params' | i18n }}</span>
+            </button>
+            <button #adminStatsButton class="menu-shortcut-btn menu-shortcut-stats" type="button" [disabled]="!isOnline()" (click)="openAdminStatsShortcut($event)" [attr.aria-label]="'open.stats' | i18n" [title]="'stats' | i18n">
+              <span class="navigator-action-ripple" matRipple [matRippleTrigger]="adminStatsButton" aria-hidden="true"></span>
+              <mat-icon>query_stats</mat-icon>
+              <span class="menu-shortcut-label">{{ 'stats' | i18n }}</span>
             </button>
             <button #adminHelpEditorButton class="menu-shortcut-btn menu-shortcut-help-editor" type="button" [disabled]="!isOnline()" (click)="openAdminHelpEditorShortcut($event)" aria-label="Open content editor" title="Content Editor">
               <span class="navigator-action-ripple" matRipple [matRippleTrigger]="adminHelpEditorButton" aria-hidden="true"></span>
@@ -123,6 +136,23 @@
               <span class="navigator-action-ripple" matRipple [matRippleTrigger]="adminIdeaEditorButton" aria-hidden="true"></span>
               <mat-icon>tips_and_updates</mat-icon>
               <span class="menu-shortcut-label">Article</span>
+            </button>
+          </div>
+          <div class="social-proof-section-head section-social activities-header admin-monitoring-header">
+            <span class="section-tag">
+              <mat-icon>monitoring</mat-icon>
+              <span>{{ 'monitoring' | i18n }}</span>
+            </span>
+            <span class="section-line"></span>
+          </div>
+          <div class="menu-shortcuts admin-menu-shortcuts admin-menu-shortcuts-monitoring">
+            <button #adminMonitoringButton class="menu-shortcut-btn menu-shortcut-monitoring" type="button" [disabled]="!isOnline()" (click)="openAdminMonitoringShortcut($event)" [attr.aria-label]="'open.monitoring.metrics' | i18n" [title]="'metrics' | i18n">
+              <span class="navigator-action-ripple" matRipple [matRippleTrigger]="adminMonitoringButton" aria-hidden="true"></span>
+              <mat-icon>monitoring</mat-icon>
+              <span class="menu-shortcut-label">{{ 'metrics' | i18n }}</span>
+              @if (user.activities.adminMetrics > 0) {
+                <span class="card-badge menu-shortcut-badge">{{ user.activities.adminMetrics | counterBadge }}</span>
+              }
             </button>
           </div>
         </div>

@@ -12,7 +12,9 @@ export class DemoUserMenuCountersBuilder {
       events: this.normalizeCounterValue(user.activities?.events),
       hosting: this.normalizeCounterValue(user.activities?.hosting),
       tickets: this.normalizeCounterValue(counts.tickets),
-      feedback: this.normalizeCounterValue(counts.feedback)
+      feedback: this.normalizeCounterValue(counts.feedback),
+      adminJobs: this.normalizeCounterValue(user.activities?.adminJobs),
+      adminMetrics: this.normalizeCounterValue(user.activities?.adminMetrics)
     };
   }
 

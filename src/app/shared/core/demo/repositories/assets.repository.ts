@@ -13,6 +13,11 @@ import {
   type DemoAssetRecord,
   type DemoAssetsRecordCollection
 } from '../models/assets.model';
+import {
+  ACTIVITY_MEMBERS_TABLE_NAME,
+  type DemoActivityMemberRecord,
+  type DemoActivityMembersRecordCollection
+} from '../models/activity-members.model';
 
 @Injectable({
   providedIn: 'root'
@@ -76,7 +81,11 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
   }
 
   override async queryOwnedAssetsByUser(userId: string): Promise<AppTypes.AssetCard[]> {
-    return this.peekOwnedAssetsByUser(userId);
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return [];
+    }
+    return this.readOwnerAndManagedAssets(normalizedUserId);
   }
 
   override async queryVisibleAssets(query: AppTypes.AssetExploreQuery): Promise<AppTypes.AssetCard[]> {
@@ -136,7 +145,8 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
         topics: [...(normalizedAsset.topics ?? [])],
         policies: (normalizedAsset.policies ?? []).map(item => ({ ...item })),
         pricing: normalizedAsset.pricing ? PricingBuilder.clonePricingConfig(normalizedAsset.pricing) : undefined,
-        requests: normalizedAsset.requests.map(request => this.cloneRequest(request))
+        requests: normalizedAsset.requests.map(request => this.cloneRequest(request)),
+        menuActions: [...(normalizedAsset.menuActions ?? [])]
       };
   }
 
@@ -194,7 +204,8 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
       topics: [...(asset.topics ?? [])],
       policies: (asset.policies ?? []).map(item => ({ ...item })),
       pricing: asset.pricing ? PricingBuilder.clonePricingConfig(asset.pricing) : undefined,
-      requests: asset.requests.map(request => this.cloneRequest(request))
+      requests: asset.requests.map(request => this.cloneRequest(request)),
+      menuActions: [...(asset.menuActions ?? [])]
     }));
   }
 
@@ -217,29 +228,74 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
     });
   }
 
-  override async takeOverOwnedAsset(userId: string, assetId: string): Promise<void> {
+  override async takeOverOwnedAsset(userId: string, assetId: string): Promise<AppTypes.AssetCard | null> {
     const normalizedUserId = userId.trim();
     const normalizedAssetId = assetId.trim();
     if (!normalizedUserId || !normalizedAssetId) {
-      return;
+      return null;
     }
+    let saved: DemoAssetRecord | null = null;
     this.memoryDb.write(state => {
       const table = this.normalizeCollection(state[ASSETS_TABLE_NAME]);
       const current = table.byId[normalizedAssetId];
-      if (!current || current.ownerUserId !== normalizedUserId || this.normalizeAssetStatus(current.status) !== 'UR') {
+      if (!current || this.normalizeAssetStatus(current.status) !== 'UR' || !this.canTakeOverAsset(current, normalizedUserId)) {
         return state;
       }
+      const actor = this.querySeedUsers().find(user => user.id === normalizedUserId) ?? null;
+      saved = this.withResolvedAssetRelevance({
+        ...current,
+        ownerUserId: normalizedUserId,
+        ownerName: actor?.name ?? current.ownerName,
+        status: this.restoredAssetStatus(current),
+        statusBeforeSuppression: null,
+        updatedMs: Date.now(),
+        updatedAtIso: new Date().toISOString()
+      });
       return {
         ...state,
-        [ASSETS_TABLE_NAME]: this.upsertRecordCollection(table, {
-          ...current,
-          status: this.restoredAssetStatus(current),
-          statusBeforeSuppression: null,
-          updatedMs: Date.now(),
-          updatedAtIso: new Date().toISOString()
-        })
+        [ASSETS_TABLE_NAME]: this.upsertRecordCollection(table, saved)
       };
     });
+    return saved ? this.toAssetCard(saved, normalizedUserId) : null;
+  }
+
+  override async makeAssetManager(
+    userId: string,
+    assetId: string,
+    targetUserId: string
+  ): Promise<AppTypes.AssetCard | null> {
+    const normalizedUserId = userId.trim();
+    const normalizedAssetId = assetId.trim();
+    const normalizedTargetUserId = targetUserId.trim();
+    if (!normalizedUserId || !normalizedAssetId || !normalizedTargetUserId) {
+      return null;
+    }
+
+    let saved: DemoAssetRecord | null = null;
+    this.memoryDb.write(state => {
+      const table = this.normalizeCollection(state[ASSETS_TABLE_NAME]);
+      const current = table.byId[normalizedAssetId];
+      if (!current
+        || current.ownerUserId === normalizedTargetUserId
+        || !this.canManageAssetMembers(current, normalizedUserId)
+        || !this.isActiveDemoUser(normalizedTargetUserId)
+        || this.isAcceptedAssetManager(normalizedAssetId, normalizedTargetUserId)) {
+        return state;
+      }
+      const now = new Date();
+      const nextRequests = this.promotedAssetRequests(current, normalizedTargetUserId);
+      saved = this.withResolvedAssetRelevance({
+        ...current,
+        requests: nextRequests,
+        updatedMs: now.getTime(),
+        updatedAtIso: now.toISOString()
+      });
+      return {
+        ...this.upsertDemoAssetManagerRecord(state, saved, normalizedUserId, normalizedTargetUserId, now),
+        [ASSETS_TABLE_NAME]: this.upsertRecordCollection(table, saved)
+      };
+    });
+    return saved ? this.toAssetCard(saved, normalizedUserId) : null;
   }
 
   private buildSeededOwnerRecords(ownerUserId: string): DemoAssetRecord[] {
@@ -530,13 +586,289 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
       .filter(user => !DemoUserSeedBuilder.isEmptyOnboardingProfileUserId(user.id));
   }
 
+  private acceptedManagedAssetIds(userId: string): string[] {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return [];
+    }
+    return this.activityMemberRecords()
+      .filter(record => record.ownerType === 'asset')
+      .filter(record => record.userId === normalizedUserId)
+      .filter(record => record.status === 'accepted')
+      .filter(record => this.isAssetManagerRole(record.role))
+      .map(record => record.ownerId)
+      .filter((assetId, index, ids) => assetId.length > 0 && ids.indexOf(assetId) === index);
+  }
+
+  private assetMemberRecords(assetId: string): DemoActivityMemberRecord[] {
+    const normalizedAssetId = assetId.trim();
+    if (!normalizedAssetId) {
+      return [];
+    }
+    const table = this.activityMembersCollection();
+    return (table.idsByOwnerKey[`asset:${normalizedAssetId}`] ?? [])
+      .map(id => table.byId[id])
+      .filter((record): record is DemoActivityMemberRecord => Boolean(record));
+  }
+
+  private activityMemberRecords(): DemoActivityMemberRecord[] {
+    const table = this.activityMembersCollection();
+    return table.ids
+      .map(id => table.byId[id])
+      .filter((record): record is DemoActivityMemberRecord => Boolean(record));
+  }
+
+  private activityMembersCollection(): DemoActivityMembersRecordCollection {
+    return this.normalizeActivityMembersCollection(this.memoryDb.read()[ACTIVITY_MEMBERS_TABLE_NAME]);
+  }
+
+  private normalizeActivityMembersCollection(value: unknown): DemoActivityMembersRecordCollection {
+    const raw = value as Partial<DemoActivityMembersRecordCollection> | null | undefined;
+    return {
+      byId: raw?.byId && typeof raw.byId === 'object'
+        ? { ...(raw.byId as Record<string, DemoActivityMemberRecord>) }
+        : {},
+      ids: Array.isArray(raw?.ids) ? raw.ids.map(id => String(id)) : [],
+      idsByOwnerKey: this.cloneActivityOwnerKeyIndex(raw?.idsByOwnerKey)
+    };
+  }
+
+  private cloneActivityOwnerKeyIndex(index: Record<string, readonly string[] | string[] | undefined> | undefined): Record<string, string[]> {
+    const next: Record<string, string[]> = {};
+    for (const [ownerKey, ids] of Object.entries(index ?? {})) {
+      if (!ownerKey.trim() || !Array.isArray(ids)) {
+        continue;
+      }
+      next[ownerKey] = ids.map(id => String(id)).filter(id => id.length > 0);
+    }
+    return next;
+  }
+
+  private promotedAssetRequests(record: DemoAssetRecord, targetUserId: string): AppTypes.AssetMemberRequest[] {
+    const normalizedTargetUserId = targetUserId.trim();
+    const targetUser = this.resolveAssetRoleDemoUser(normalizedTargetUserId, record);
+    let promotedExistingRequest = false;
+    const next = record.requests.map(request => {
+      const cloned = this.cloneRequest(request);
+      if (`${cloned.userId ?? ''}`.trim() !== normalizedTargetUserId) {
+        return cloned;
+      }
+      promotedExistingRequest = true;
+      return {
+        ...cloned,
+        status: 'accepted' as AppTypes.AssetRequestStatus,
+        note: 'Promoted to asset manager.',
+        menuActions: []
+      };
+    });
+    if (!promotedExistingRequest) {
+      next.push({
+        id: `${record.id}:manager:${normalizedTargetUserId}`,
+        userId: normalizedTargetUserId,
+        name: targetUser.name,
+        initials: targetUser.initials,
+        gender: targetUser.gender,
+        status: 'accepted',
+        note: 'Promoted to asset manager.',
+        requestKind: 'manual',
+        requestedAtIso: new Date().toISOString(),
+        booking: null,
+        menuActions: []
+      });
+    }
+    return next;
+  }
+
+  private upsertDemoAssetManagerRecord(
+    state: ReturnType<AppMemoryDb['read']>,
+    asset: DemoAssetRecord,
+    actorUserId: string,
+    targetUserId: string,
+    now: Date
+  ): ReturnType<AppMemoryDb['read']> {
+    const ownerKey = `asset:${asset.id}`;
+    const table = this.normalizeActivityMembersCollection(state[ACTIVITY_MEMBERS_TABLE_NAME]);
+    const existing = (table.idsByOwnerKey[ownerKey] ?? [])
+      .map(id => table.byId[id])
+      .find(record => record?.userId === targetUserId) ?? null;
+    const targetUser = this.resolveAssetRoleDemoUser(targetUserId, asset);
+    const recordId = existing?.id ?? `${asset.id}:manager:${targetUserId}`;
+    const nowIso = now.toISOString();
+    const record: DemoActivityMemberRecord = {
+      ...(existing ?? {}),
+      id: recordId,
+      userId: targetUser.id,
+      name: targetUser.name,
+      initials: targetUser.initials,
+      gender: targetUser.gender,
+      city: targetUser.city || asset.city,
+      statusText: 'Can help manage this asset.',
+      role: 'Manager',
+      status: 'accepted',
+      pendingSource: null,
+      requestKind: null,
+      invitedByUserId: null,
+      invitedByActiveUser: false,
+      metAtIso: existing?.metAtIso ?? nowIso,
+      actionAtIso: nowIso,
+      metWhere: asset.title,
+      avatarUrl: AppUtils.firstImageUrl(targetUser.images),
+      profile: targetUser,
+      ownerType: 'asset',
+      ownerId: asset.id,
+      ownerKey,
+      createdMs: Number.isFinite(Number(existing?.createdMs)) ? Number(existing?.createdMs) : now.getTime(),
+      updatedMs: now.getTime(),
+      createdAtIso: existing?.createdAtIso ?? nowIso,
+      updatedAtIso: nowIso,
+      updatedUser: actorUserId
+    } as DemoActivityMemberRecord;
+    const nextIds = table.ids.includes(recordId) ? [...table.ids] : [recordId, ...table.ids];
+    const nextIdsByOwnerKey = this.cloneActivityOwnerKeyIndex(table.idsByOwnerKey);
+    const bucket = nextIdsByOwnerKey[ownerKey] ?? [];
+    nextIdsByOwnerKey[ownerKey] = bucket.includes(recordId) ? [...bucket] : [recordId, ...bucket];
+    return {
+      ...state,
+      [ACTIVITY_MEMBERS_TABLE_NAME]: {
+        byId: {
+          ...table.byId,
+          [recordId]: record
+        },
+        ids: nextIds,
+        idsByOwnerKey: nextIdsByOwnerKey
+      }
+    };
+  }
+
+  private resolveAssetRoleDemoUser(userId: string, asset: DemoAssetRecord): DemoUser {
+    const normalizedUserId = userId.trim();
+    const users = this.querySeedUsers();
+    const match = users.find(user => user.id === normalizedUserId);
+    if (match) {
+      return match;
+    }
+    const template = users[AppUtils.hashText(`${asset.id}:${normalizedUserId}`) % Math.max(1, users.length)];
+    return {
+      ...(template ?? users[0]),
+      id: normalizedUserId,
+      name: normalizedUserId || 'Asset member',
+      initials: AppUtils.initialsFromText(normalizedUserId || 'Asset member'),
+      city: asset.city,
+      gender: template?.gender ?? 'man'
+    };
+  }
+
+  private resolveMenuActions(record: DemoAssetRecord, viewerUserId: string): string[] {
+    const normalizedViewerUserId = viewerUserId.trim();
+    if (!normalizedViewerUserId) {
+      return [];
+    }
+    const isOwner = record.ownerUserId === normalizedViewerUserId;
+    const isManager = isOwner || this.isAcceptedAssetManager(record.id, normalizedViewerUserId);
+    if (!isManager) {
+      return ['share'];
+    }
+    const actions: string[] = [];
+    const status = this.normalizeAssetStatus(record.status);
+    if (status === 'UR' && this.isActiveDemoUser(normalizedViewerUserId)) {
+      actions.push('takeOver');
+    }
+    actions.push('share');
+    if (isOwner && !this.isSuppressedAssetStatus(status)) {
+      actions.push('edit');
+      actions.push('delete');
+    }
+    return actions;
+  }
+
+  private canTakeOverAsset(record: DemoAssetRecord, userId: string): boolean {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId || !this.isActiveDemoUser(normalizedUserId)) {
+      return false;
+    }
+    return record.ownerUserId === normalizedUserId || this.isAcceptedAssetManager(record.id, normalizedUserId);
+  }
+
+  private canManageAssetMembers(record: DemoAssetRecord, userId: string): boolean {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId || !this.isActiveDemoUser(normalizedUserId) || this.normalizeAssetStatus(record.status) === 'T') {
+      return false;
+    }
+    return record.ownerUserId === normalizedUserId || this.isAcceptedAssetManager(record.id, normalizedUserId);
+  }
+
+  private resolveRequestMenuActions(
+    record: DemoAssetRecord,
+    request: AppTypes.AssetMemberRequest,
+    viewerUserId: string
+  ): string[] {
+    const normalizedViewerUserId = viewerUserId.trim();
+    const targetUserId = `${request.userId ?? ''}`.trim();
+    if (!normalizedViewerUserId
+      || !targetUserId
+      || request.status !== 'accepted'
+      || targetUserId === record.ownerUserId
+      || !this.canManageAssetMembers(record, normalizedViewerUserId)
+      || !this.isActiveDemoUser(targetUserId)
+      || this.isAcceptedAssetManager(record.id, targetUserId)) {
+      return [];
+    }
+    return ['makeManager'];
+  }
+
+  private isAcceptedAssetManager(assetId: string, userId: string): boolean {
+    const normalizedUserId = userId.trim();
+    return this.assetMemberRecords(assetId)
+      .some(record => record.userId === normalizedUserId
+        && record.status === 'accepted'
+        && this.isAssetManagerRole(record.role));
+  }
+
+  private isAssetManagerRole(role: string | null | undefined): boolean {
+    return role === 'Manager' || role === 'Admin';
+  }
+
+  private isSuppressedAssetStatus(status: string | null | undefined): boolean {
+    const normalized = this.normalizeAssetStatus(status);
+    return normalized === 'UR' || normalized === 'B' || normalized === 'D' || normalized === 'I' || normalized === 'T';
+  }
+
+  private isActiveDemoUser(userId: string): boolean {
+    const user = this.querySeedUsers().find(item => item.id === userId.trim()) as (DemoUser & { status?: string; profileStatus?: string }) | undefined;
+    const status = `${user?.status ?? ''}`.trim();
+    const profileStatus = `${user?.profileStatus ?? ''}`.trim();
+    return status !== 'B'
+      && status !== 'D'
+      && status !== 'I'
+      && profileStatus !== 'blocked'
+      && profileStatus !== 'deleted'
+      && profileStatus !== 'inactive';
+  }
+
   private readOwnerAssets(ownerUserId: string): AppTypes.AssetCard[] {
     const table = this.normalizeCollection(this.memoryDb.read()[ASSETS_TABLE_NAME]);
     return (table.idsByOwnerUserId[ownerUserId] ?? [])
       .map(id => table.byId[id])
       .filter((record): record is DemoAssetRecord => Boolean(record))
       .sort((left, right) => right.updatedMs - left.updatedMs)
-      .map(record => this.toAssetCard(record));
+      .map(record => this.toAssetCard(record, ownerUserId));
+  }
+
+  private readOwnerAndManagedAssets(userId: string): AppTypes.AssetCard[] {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return [];
+    }
+    const table = this.normalizeCollection(this.memoryDb.read()[ASSETS_TABLE_NAME]);
+    const assetIds = new Set(table.idsByOwnerUserId[normalizedUserId] ?? []);
+    for (const managedAssetId of this.acceptedManagedAssetIds(normalizedUserId)) {
+      assetIds.add(managedAssetId);
+    }
+    return [...assetIds]
+      .map(id => table.byId[id])
+      .filter((record): record is DemoAssetRecord => Boolean(record))
+      .sort((left, right) => right.updatedMs - left.updatedMs)
+      .map(record => this.toAssetCard(record, normalizedUserId));
   }
 
   private readVisibleAssets(activeUserId: string): AppTypes.AssetCard[] {
@@ -551,7 +883,7 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
       .filter(record => record.visibility === 'Public'
         || (record.visibility === 'Friends only' && DemoUserSeedBuilder.isFriendOfActiveUser(record.ownerUserId, activeUserId)))
       .sort((left, right) => this.compareVisibleAssetRecords(left, right, viewerAffinity))
-      .map(record => this.toAssetCard(record));
+      .map(record => this.toAssetCard(record, activeUserId));
   }
 
   private compareVisibleAssetRecords(
@@ -585,7 +917,7 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
     return Number.isFinite(stored) ? Math.max(0, stored) : this.resolveAssetBoost(record);
   }
 
-  private toAssetCard(record: DemoAssetRecord): AppTypes.AssetCard {
+  private toAssetCard(record: DemoAssetRecord, viewerUserId = ''): AppTypes.AssetCard {
     return {
       id: record.id,
       type: record.type,
@@ -607,9 +939,14 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
       policies: (record.policies ?? []).map(item => ({ ...item })),
       pricing: record.pricing ? PricingBuilder.clonePricingConfig(record.pricing) : undefined,
       visibility: record.visibility,
+      status: this.normalizeAssetStatus(record.status),
       ownerUserId: record.ownerUserId,
       ownerName: record.ownerName,
-      requests: record.requests.map(request => this.cloneRequest(request))
+      requests: record.requests.map(request => ({
+        ...this.cloneRequest(request),
+        menuActions: this.resolveRequestMenuActions(record, request, viewerUserId)
+      })),
+      menuActions: this.resolveMenuActions(record, viewerUserId)
     };
   }
 
@@ -622,7 +959,8 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
       topics: [...(record.topics ?? [])],
       policies: (record.policies ?? []).map(item => ({ ...item })),
       pricing: record.pricing ? PricingBuilder.clonePricingConfig(record.pricing) : undefined,
-      requests: record.requests.map(request => this.cloneRequest(request))
+      requests: record.requests.map(request => this.cloneRequest(request)),
+      menuActions: [...(record.menuActions ?? [])]
     };
   }
 
@@ -990,11 +1328,19 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
       [record.id]: {
         ...record,
         routes: [...(record.routes ?? [])],
-        requests: record.requests.map(request => this.cloneRequest(request))
+        topics: [...(record.topics ?? [])],
+        policies: (record.policies ?? []).map(item => ({ ...item })),
+        pricing: record.pricing ? PricingBuilder.clonePricingConfig(record.pricing) : undefined,
+        requests: record.requests.map(request => this.cloneRequest(request)),
+        menuActions: [...(record.menuActions ?? [])]
       }
     };
     const nextIds = table.ids.includes(record.id) ? [...table.ids] : [record.id, ...table.ids];
     const nextIdsByOwnerUserId = { ...table.idsByOwnerUserId };
+    const previousOwnerUserId = table.byId[record.id]?.ownerUserId?.trim() ?? '';
+    if (previousOwnerUserId && previousOwnerUserId !== record.ownerUserId) {
+      nextIdsByOwnerUserId[previousOwnerUserId] = (nextIdsByOwnerUserId[previousOwnerUserId] ?? []).filter(id => id !== record.id);
+    }
     const ownerBucket = nextIdsByOwnerUserId[record.ownerUserId] ?? [];
     nextIdsByOwnerUserId[record.ownerUserId] = ownerBucket.includes(record.id)
       ? [...ownerBucket]

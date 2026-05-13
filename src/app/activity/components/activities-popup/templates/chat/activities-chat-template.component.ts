@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
+import { MatIconModule } from '@angular/material/icon';
 
 import { AppUtils } from '../../../../../shared/app-utils';
 import type { ChatMenuItem } from '../../../../../shared/core/base/interfaces/activity-feed.interface';
@@ -11,6 +12,7 @@ import type {
 import type * as AppTypes from '../../../../../shared/core/base/models';
 import type { DemoEventRecord } from '../../../../../shared/core/demo/models/events.model';
 import { CounterBadgePipe } from '../../../../../shared/ui';
+import { I18nPipe } from '../../../../../shared/i18n';
 import {
   ActivityResourceBuilder,
   toActivityEventRow
@@ -30,7 +32,7 @@ export interface ActivitiesChatTemplateContext {
 @Component({
   selector: 'app-activities-chat-template',
   standalone: true,
-  imports: [CommonModule, CounterBadgePipe],
+  imports: [CommonModule, MatIconModule, CounterBadgePipe, I18nPipe],
   templateUrl: './activities-chat-template.component.html',
   styleUrl: './activities-chat-template.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -39,13 +41,19 @@ export class ActivitiesChatTemplateComponent implements OnChanges {
   @Input() row: AppTypes.ActivityListRow | null = null;
   @Input() groupLabel: string | null = null;
   @Input() context: ActivitiesChatTemplateContext | null = null;
+  @Input() adminServiceMode = false;
 
-  @Output() readonly rowClick = new EventEmitter<MouseEvent>();
+  @Output() readonly rowClick = new EventEmitter<Event>();
+  @Output() readonly supportCaseAction = new EventEmitter<AppTypes.SupportCaseAction>();
 
   protected data: ActivitiesChatTemplateData | null = null;
+  protected supportMenuOpen = false;
+  protected supportControlActive = false;
+  private supportMenuPointerToggleAt = 0;
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes['row'] || changes['groupLabel'] || changes['context']) {
+    if (changes['row'] || changes['groupLabel'] || changes['context'] || changes['adminServiceMode']) {
+      this.supportMenuOpen = false;
       this.data = this.buildTemplateData();
     }
   }
@@ -62,12 +70,82 @@ export class ActivitiesChatTemplateComponent implements OnChanges {
       activeUserInitials: context.getActiveUserInitials(),
       lastSenderGender: context.getChatLastSender(chat).gender,
       memberCount: context.getChatMemberCount(chat),
-      channelType: context.getChatChannelType(chat)
+      channelType: context.getChatChannelType(chat),
+      adminServiceMode: this.adminServiceMode
     });
   }
 
-  protected onRowClick(event: MouseEvent): void {
+  protected onRowClick(event: Event): void {
     this.rowClick.emit(event);
+  }
+
+  protected onRowKeydown(event: KeyboardEvent): void {
+    if (event.key !== 'Enter' && event.key !== ' ') {
+      return;
+    }
+    event.preventDefault();
+    this.rowClick.emit(event);
+  }
+
+  protected onSupportMenuButtonPointerDown(event: Event): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.supportMenuOpen = !this.supportMenuOpen;
+    this.supportControlActive = true;
+    this.supportMenuPointerToggleAt = Date.now();
+  }
+
+  protected onSupportMenuButtonClick(event: MouseEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    if (event.detail > 0 && Date.now() - this.supportMenuPointerToggleAt < 700) {
+      return;
+    }
+    this.supportMenuOpen = !this.supportMenuOpen;
+  }
+
+  protected onSupportControlPointerDown(event: Event): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.supportControlActive = true;
+  }
+
+  protected onSupportControlPointerEnd(event: Event): void {
+    event.stopPropagation();
+    this.supportControlActive = false;
+  }
+
+  protected onSupportMenuItemPointerDown(event: Event): void {
+    event.stopPropagation();
+  }
+
+  protected runSupportCaseAction(action: AppTypes.SupportCaseAction, event: Event): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.supportMenuOpen = false;
+    this.supportControlActive = false;
+    this.supportCaseAction.emit(action);
+  }
+
+  protected supportCaseActions(): Array<{ action: AppTypes.SupportCaseAction; labelKey: string; icon: string; tone: string }> {
+    const status = this.data?.supportCaseStatus ?? 'pending';
+    if (status === 'solved' || status === 'blocked') {
+      return [
+        { action: 'reopen', labelKey: 'activities.support.case.action.reopen', icon: 'restart_alt', tone: 'neutral' }
+      ];
+    }
+    if (status === 'picked') {
+      return [
+        { action: 'unpick', labelKey: 'activities.support.case.action.unpick', icon: 'person_remove', tone: 'neutral' },
+        { action: 'solve', labelKey: 'activities.support.case.action.solve', icon: 'check_circle', tone: 'accent' },
+        { action: 'block', labelKey: 'activities.support.case.action.block', icon: 'block', tone: 'danger' }
+      ];
+    }
+    return [
+      { action: 'pick', labelKey: 'activities.support.case.action.pick', icon: 'person_add', tone: 'accent' },
+      { action: 'solve', labelKey: 'activities.support.case.action.solve', icon: 'check_circle', tone: 'accent' },
+      { action: 'block', labelKey: 'activities.support.case.action.block', icon: 'block', tone: 'danger' }
+    ];
   }
 }
 

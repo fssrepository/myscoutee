@@ -147,6 +147,11 @@ export class EventEditorBuilder {
         tournamentAdvancePerGroup: Number.isFinite(Number(rawItem['tournamentAdvancePerGroup']))
           ? Math.max(0, Math.trunc(Number(rawItem['tournamentAdvancePerGroup'])))
           : undefined,
+        stageStatus: `${rawItem['stageStatus'] ?? ''}`.trim() || undefined,
+        stageStatusReason: `${rawItem['stageStatusReason'] ?? ''}`.trim() || undefined,
+        stageStatusUpdatedAt: `${rawItem['stageStatusUpdatedAt'] ?? ''}`.trim() || undefined,
+        stageFinalizedAt: `${rawItem['stageFinalizedAt'] ?? ''}`.trim() || undefined,
+        stageFinalizedByUserId: `${rawItem['stageFinalizedByUserId'] ?? ''}`.trim() || undefined,
         groups: (item.groups ?? []).map((group, groupIndex) => {
           const groupCapacityMin = Number.isFinite(Number(group.capacityMin))
             ? Math.max(0, Math.trunc(Number(group.capacityMin)))

@@ -758,6 +758,10 @@
   background: linear-gradient(145deg, #3572a4, #194364);
 }
 
+.user-color-deleted {
+  background: linear-gradient(145deg, #a7adb7, #687180);
+}
+
 .chat-message-content {
   min-width: 0;
 }
@@ -1217,6 +1221,28 @@
 
 .chat-card-attachment-link .chat-card-attachment-kicker {
   color: #245b9f;
+}
+
+.chat-card-attachment-unavailable {
+  border-color: rgba(98, 111, 130, 0.22);
+  background: rgba(244, 247, 250, 0.78);
+  box-shadow: none;
+  filter: grayscale(0.35);
+}
+
+.chat-card-attachment-unavailable .chat-card-attachment-media img {
+  opacity: 0.52;
+}
+
+.chat-card-attachment-unavailable .chat-card-attachment-kicker,
+.chat-card-attachment-unavailable strong,
+.chat-card-attachment-unavailable small,
+.chat-card-attachment-unavailable .chat-card-attachment-description {
+  color: rgba(72, 84, 101, 0.72);
+}
+
+.chat-card-attachment-status {
+  color: rgba(73, 85, 103, 0.82);
 }
 
 .chat-message:last-child {

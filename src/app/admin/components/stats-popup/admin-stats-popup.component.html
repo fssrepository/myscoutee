@@ -1,0 +1,672 @@
+@if (admin.activePopup() === 'stats') {
+  <section class="app-popup">
+    <div class="app-popup-backdrop" (click)="close()"></div>
+    <div class="app-popup-panel popup-panel-admin popup-panel-stats" (click)="$event.stopPropagation()">
+      <div class="popup-header">
+        <div class="popup-title">
+          <h2>{{ 'stats' | i18n }}</h2>
+          <p class="popup-subtitle">
+            {{ 'stats.snapshot.subtitle' | i18n }}
+            @if (stats(); as dashboard) {
+              <span> · {{ formatDate(dashboard.generatedAtIso) }}</span>
+            }
+          </p>
+        </div>
+        <div class="stats-header-actions">
+          <button type="button" class="stats-icon-btn" (click)="refresh()" [disabled]="loading()" [attr.aria-label]="'refresh.stats' | i18n">
+            <mat-icon>refresh</mat-icon>
+          </button>
+          <button type="button" class="popup-close" (click)="close()" aria-label="Close">
+            <mat-icon>close</mat-icon>
+          </button>
+        </div>
+      </div>
+
+      <div class="popup-body stats-body">
+        @if (loading() && stats()) {
+          <div class="stats-loading-overlay" aria-busy="true">
+            <div class="stats-loading-scrim"></div>
+            <div class="stats-loading-card">
+              <span class="stats-loading-ring" aria-hidden="true">
+                <svg viewBox="0 0 58 58" class="stats-loading-ring-svg">
+                  <circle class="stats-loading-ring-track" cx="29" cy="29" r="25"></circle>
+                  <circle
+                    class="stats-loading-ring-progress"
+                    cx="29"
+                    cy="29"
+                    r="25"
+                    pathLength="100"
+                    [attr.stroke-dasharray]="loadingRingPerimeter"
+                    [attr.stroke-dashoffset]="loadingRingDashOffset()"
+                  ></circle>
+                </svg>
+              </span>
+              <span>{{ 'loading.stats' | i18n }}</span>
+            </div>
+          </div>
+        }
+
+        @if (loading() && !stats()) {
+          <div class="stats-loading-state" aria-busy="true">
+            <span class="stats-loading-ring" aria-hidden="true">
+              <svg viewBox="0 0 58 58" class="stats-loading-ring-svg">
+                <circle class="stats-loading-ring-track" cx="29" cy="29" r="25"></circle>
+                <circle
+                  class="stats-loading-ring-progress"
+                  cx="29"
+                  cy="29"
+                  r="25"
+                  pathLength="100"
+                  [attr.stroke-dasharray]="loadingRingPerimeter"
+                  [attr.stroke-dashoffset]="loadingRingDashOffset()"
+                ></circle>
+              </svg>
+            </span>
+            <span>{{ 'loading.stats' | i18n }}</span>
+          </div>
+        } @else if (stats(); as dashboard) {
+          <section class="stats-hero">
+            <div class="stats-health-card">
+              <span class="stats-health-ring" [ngStyle]="healthRingStyle(dashboard.healthScore)">
+                <span>{{ dashboard.healthScore }}</span>
+              </span>
+              <div>
+                <h3>{{ dashboard.healthLabelKey | i18n }}</h3>
+                <p>{{ dashboard.healthSummaryKey | i18n }}</p>
+              </div>
+            </div>
+            <div class="stats-kpi-grid">
+              @for (metric of primaryKpis(); track metric.key) {
+                <article class="stats-kpi-card" [ngClass]="toneClass(metric)">
+                  <span class="stats-kpi-icon"><mat-icon>{{ metric.icon }}</mat-icon></span>
+                  <strong>{{ metric.valueLabel || metric.value }}</strong>
+                  <small>{{ metric.labelKey | i18n }}</small>
+                  <span class="stats-kpi-bar"><span [style.width.%]="metricPercent(metric)"></span></span>
+                </article>
+              }
+            </div>
+          </section>
+
+          @if (graph(); as socialGraph) {
+            <section class="stats-panel stats-graph-panel">
+              <header>
+                <div>
+                  <h3>{{ 'stats.graph.title' | i18n }}</h3>
+                  <p>{{ 'stats.graph.subtitle' | i18n }}</p>
+                </div>
+                <div class="stats-graph-header-actions">
+                  <button
+                    type="button"
+                    class="stats-graph-help-btn"
+                    (click)="openGraphHelp()"
+                    [attr.aria-label]="'stats.graph.help.open' | i18n">
+                    <mat-icon>help_outline</mat-icon>
+                  </button>
+                </div>
+              </header>
+
+              <div class="stats-graph-layout">
+                <div class="stats-graph-map">
+                  <svg viewBox="0 0 100 100" role="img" [attr.aria-label]="'stats.graph.title' | i18n">
+                    @for (bridge of graphBridgeUsers(); track bridge.key; let index = $index) {
+                      <line
+                        class="stats-graph-link"
+                        [attr.x1]="graphBridgeX(index, graphBridgeUsers().length)"
+                        [attr.y1]="graphBridgeY(index, graphBridgeUsers().length)"
+                        [attr.x2]="graphCommunityX(graphBridgeCommunityIndex(index, graphCommunities().length, 0), graphCommunities().length)"
+                        [attr.y2]="graphCommunityY(graphBridgeCommunityIndex(index, graphCommunities().length, 0), graphCommunities().length)">
+                      </line>
+                      <line
+                        class="stats-graph-link"
+                        [attr.x1]="graphBridgeX(index, graphBridgeUsers().length)"
+                        [attr.y1]="graphBridgeY(index, graphBridgeUsers().length)"
+                        [attr.x2]="graphCommunityX(graphBridgeCommunityIndex(index, graphCommunities().length, 1), graphCommunities().length)"
+                        [attr.y2]="graphCommunityY(graphBridgeCommunityIndex(index, graphCommunities().length, 1), graphCommunities().length)">
+                      </line>
+                    }
+                    @for (community of graphCommunities(); track community.key; let index = $index) {
+                      <g
+                        class="stats-graph-community"
+                        [ngClass]="toneClass(community)"
+                        tabindex="0"
+                        role="button"
+                        (click)="selectGraphFocus(itemLabel(community), community.value)"
+                        (focus)="selectGraphFocus(itemLabel(community), community.value)">
+                        <circle
+                          [attr.cx]="graphCommunityX(index, graphCommunities().length)"
+                          [attr.cy]="graphCommunityY(index, graphCommunities().length)"
+                          [attr.r]="graphCommunityRadius(community)">
+                        </circle>
+                        <text
+                          class="stats-graph-community-count"
+                          [attr.x]="graphCommunityX(index, graphCommunities().length)"
+                          [attr.y]="graphCommunityY(index, graphCommunities().length) - 1">
+                          {{ compactGraphValue(community.value) }}
+                        </text>
+                        <text
+                          class="stats-graph-community-caption"
+                          [attr.x]="graphCommunityX(index, graphCommunities().length)"
+                          [attr.y]="graphCommunityY(index, graphCommunities().length) + 5.4">
+                          {{ 'stats.graph.map.people.short' | i18n }}
+                        </text>
+                      </g>
+                    }
+                    @for (bridge of graphBridgeUsers(); track bridge.key; let index = $index) {
+                      <g
+                        class="stats-graph-node"
+                        [ngClass]="toneClass(bridge)"
+                        tabindex="0"
+                        role="button"
+                        (click)="selectGraphFocus(itemLabel(bridge), bridge.value)"
+                        (focus)="selectGraphFocus(itemLabel(bridge), bridge.value)">
+                      <circle
+                          [attr.cx]="graphBridgeX(index, graphBridgeUsers().length)"
+                          [attr.cy]="graphBridgeY(index, graphBridgeUsers().length)"
+                          [attr.r]="graphBridgeRadius(bridge)">
+                      </circle>
+                      <text
+                          class="stats-graph-node-count"
+                          [attr.x]="graphBridgeX(index, graphBridgeUsers().length)"
+                          [attr.y]="graphBridgeY(index, graphBridgeUsers().length)">
+                        {{ compactGraphValue(bridge.value) }}
+                      </text>
+                      </g>
+                    }
+                  </svg>
+                  <div class="stats-graph-map-legend">
+                    <span><i class="is-community"></i>{{ 'stats.graph.map.community.legend' | i18n }}</span>
+                    <span><i class="is-bridge"></i>{{ 'stats.graph.map.bridge.legend' | i18n }}</span>
+                    <span><i class="is-link"></i>{{ 'stats.graph.map.link.legend' | i18n }}</span>
+                  </div>
+                </div>
+
+                <div class="stats-graph-copy">
+                  <strong>{{ 'stats.graph.suggests' | i18n }}</strong>
+                  <p>{{ socialGraph.insightKey | i18n }}</p>
+                  <div class="stats-graph-actions">
+                    <strong>{{ 'stats.graph.actions.title' | i18n }}</strong>
+                    @for (action of graphAdminActions(socialGraph); track action.key) {
+                      <span [ngClass]="toneClass(action)">
+                        <mat-icon>{{ action.icon }}</mat-icon>
+                        {{ action.labelKey | i18n }}
+                      </span>
+                    }
+                  </div>
+                  @if (selectedGraphFocus(); as focus) {
+                    <div class="stats-graph-focus">
+                      <span>{{ focus.labelKey ? (focus.labelKey | i18n) : focus.label }}</span>
+                      <strong>{{ focus.value }}</strong>
+                    </div>
+                  }
+                  <div class="stats-graph-metrics">
+                    @for (metric of socialGraph.metrics; track metric.key) {
+                      <span [ngClass]="toneClass(metric)">
+                        <mat-icon>{{ metric.icon }}</mat-icon>
+                        <b>{{ metric.valueLabel || metric.value }}</b>
+                        {{ metric.labelKey | i18n }}
+                      </span>
+                    }
+                  </div>
+                </div>
+              </div>
+
+              <div class="stats-graph-signals">
+                @for (signal of socialGraph.signals; track signal.key) {
+                  <div class="stats-graph-signal" [ngClass]="toneClass(signal)">
+                    <span>{{ signal.labelKey | i18n }}</span>
+                    <strong>{{ signal.value }}%</strong>
+                    <i [style.width.%]="itemPercent(signal)"></i>
+                  </div>
+                }
+              </div>
+
+              <div class="stats-graph-bottom">
+                <div class="stats-graph-rank">
+                  <h4>{{ 'stats.graph.bridges' | i18n }}</h4>
+                  @for (bridge of socialGraph.bridgeUsers; track bridge.key) {
+                    <div class="stats-breakdown-row" [ngClass]="toneClass(bridge)">
+                      <span><mat-icon>{{ bridge.icon || 'conversion_path' }}</mat-icon>{{ itemLabel(bridge) }}</span>
+                      <strong>{{ bridge.value }}</strong>
+                      <i [style.width.%]="itemPercent(bridge)"></i>
+                    </div>
+                  }
+                </div>
+
+                <div class="stats-graph-rank">
+                  <h4>{{ 'stats.graph.communities' | i18n }}</h4>
+                  @for (community of socialGraph.communities; track community.key) {
+                    <div class="stats-breakdown-row" [ngClass]="toneClass(community)">
+                      <span><mat-icon>{{ community.icon || 'bubble_chart' }}</mat-icon>{{ itemLabel(community) }}</span>
+                      <strong>{{ community.value }}</strong>
+                      <i [style.width.%]="itemPercent(community)"></i>
+                    </div>
+                  }
+                </div>
+
+                <div class="stats-graph-timeline">
+                  <h4>{{ 'stats.graph.timeline.title' | i18n }}</h4>
+                  @if (selectedGraphTimelinePoint(socialGraph); as point) {
+                    <div class="stats-timeline-readout">
+                      <strong>{{ point.label || point.dateKey }}</strong>
+                      <span><i class="is-blue"></i>{{ 'stats.graph.timeline.active.edges' | i18n }} {{ point.activeEdges }}</span>
+                      <span><i class="is-green"></i>{{ 'stats.graph.timeline.new.edges' | i18n }} {{ point.newEdges }}</span>
+                      <span><i class="is-gold"></i>{{ 'stats.graph.timeline.recurring.edges' | i18n }} {{ point.recurringEdges }}</span>
+                      <span><i class="is-purple"></i>{{ 'stats.graph.timeline.weak.ties' | i18n }} {{ point.weakTies }}</span>
+                      <span><i class="is-slate"></i>{{ 'stats.graph.timeline.network.quality' | i18n }} {{ point.networkQuality }}%</span>
+                      <span><i class="is-red"></i>{{ 'stats.graph.timeline.cluster.quality' | i18n }} {{ point.clusterQuality }}%</span>
+                    </div>
+                  }
+                  <div class="stats-timeline-chart stats-graph-timeline-chart">
+                    <svg
+                      viewBox="0 0 300 108"
+                      role="img"
+                      [class.is-dragging]="graphTimelineDragging()"
+                      [attr.aria-label]="'stats.graph.timeline.title' | i18n"
+                      (pointerdown)="startGraphTimelineDrag($event, socialGraph.timeline)"
+                      (pointermove)="moveGraphTimelineDrag($event, socialGraph.timeline)"
+                      (pointerup)="endGraphTimelineDrag($event)"
+                      (pointercancel)="endGraphTimelineDrag($event)"
+                      (pointerleave)="endGraphTimelineDrag($event)">
+                      <line x1="12" y1="94" x2="288" y2="94" class="stats-timeline-axis"></line>
+                      <line x1="12" y1="58" x2="288" y2="58" class="stats-timeline-gridline"></line>
+                      <line x1="12" y1="22" x2="288" y2="22" class="stats-timeline-gridline"></line>
+                      @for (metric of graphTimelineMetrics; track metric.key) {
+                        <polyline
+                          class="stats-timeline-line"
+                          [ngClass]="toneClass({ tone: metric.tone })"
+                          [attr.points]="graphTimelineChartPoints(socialGraph.timeline, metric.key)">
+                        </polyline>
+                      }
+                      @if (selectedGraphTimelinePoint(socialGraph)) {
+                        <line
+                          class="stats-timeline-scrub-guide"
+                          [attr.x1]="selectedGraphTimelineX(socialGraph)"
+                          y1="12"
+                          [attr.x2]="selectedGraphTimelineX(socialGraph)"
+                          y2="96">
+                        </line>
+                        <circle
+                          class="stats-timeline-scrub-halo"
+                          [attr.cx]="selectedGraphTimelineX(socialGraph)"
+                          [attr.cy]="selectedGraphTimelineY(socialGraph)"
+                          r="10">
+                        </circle>
+                        <circle
+                          class="stats-timeline-scrub-knob"
+                          [attr.cx]="selectedGraphTimelineX(socialGraph)"
+                          [attr.cy]="selectedGraphTimelineY(socialGraph)"
+                          r="5">
+                        </circle>
+                      }
+                      @for (point of socialGraph.timeline; track point.dateKey; let index = $index) {
+                        <rect
+                          class="stats-timeline-hit"
+                          [attr.x]="timelineX(index, socialGraph.timeline.length) - 8"
+                          y="8"
+                          width="16"
+                          height="92"
+                          tabindex="0"
+                          (pointerenter)="selectGraphTimelinePoint(point)"
+                          (focus)="selectGraphTimelinePoint(point)">
+                        </rect>
+                      }
+                    </svg>
+                  </div>
+                </div>
+              </div>
+            </section>
+          }
+
+          @if (revenue(); as revenueModel) {
+            <section class="stats-panel stats-revenue-panel">
+              <header>
+                <div>
+                  <h3>{{ 'stats.revenue.title' | i18n }}</h3>
+                  <p>{{ 'stats.revenue.subtitle' | i18n }}</p>
+                </div>
+                <span>{{ 'stats.revenue.window' | i18n }}</span>
+              </header>
+
+              <div class="stats-revenue-layout">
+                <div class="stats-revenue-metrics">
+                  @for (metric of revenueModel.metrics; track metric.key) {
+                    <article class="stats-kpi-card stats-revenue-metric" [ngClass]="toneClass(metric)">
+                      <span class="stats-kpi-icon"><mat-icon>{{ metric.icon }}</mat-icon></span>
+                      <strong>{{ metric.valueLabel || metric.value }}</strong>
+                      <small>{{ metric.labelKey | i18n }}</small>
+                      <span class="stats-kpi-bar"><span [style.width.%]="metricPercent(metric)"></span></span>
+                    </article>
+                  }
+                </div>
+
+                <div class="stats-revenue-chart-wrap">
+                  @if (selectedRevenueTimelinePoint(revenueModel); as point) {
+                    <div class="stats-timeline-readout">
+                      <strong>{{ point.label || point.dateKey }}</strong>
+                      <span><i class="is-green"></i>{{ 'stats.revenue.timeline.projected.events' | i18n }} {{ moneyFromCents(point.projectedEventCents) }}</span>
+                      <span><i class="is-blue"></i>{{ 'stats.revenue.timeline.projected.assets' | i18n }} {{ moneyFromCents(point.projectedAssetCents) }}</span>
+                      <span><i class="is-gold"></i>{{ 'stats.revenue.timeline.actual.paid' | i18n }} {{ moneyFromCents(point.actualPaymentCents) }}</span>
+                      <span><i class="is-purple"></i>{{ 'stats.revenue.timeline.paying.users' | i18n }} {{ point.payingUsers }}</span>
+                    </div>
+                  }
+                  <div class="stats-timeline-chart stats-revenue-timeline-chart">
+                    <svg
+                      viewBox="0 0 300 108"
+                      role="img"
+                      [class.is-dragging]="revenueTimelineDragging()"
+                      [attr.aria-label]="'stats.revenue.timeline.title' | i18n"
+                      (pointerdown)="startRevenueTimelineDrag($event, revenueModel.timeline)"
+                      (pointermove)="moveRevenueTimelineDrag($event, revenueModel.timeline)"
+                      (pointerup)="endRevenueTimelineDrag($event)"
+                      (pointercancel)="endRevenueTimelineDrag($event)"
+                      (pointerleave)="endRevenueTimelineDrag($event)">
+                      <line x1="12" y1="94" x2="288" y2="94" class="stats-timeline-axis"></line>
+                      <line x1="12" y1="58" x2="288" y2="58" class="stats-timeline-gridline"></line>
+                      <line x1="12" y1="22" x2="288" y2="22" class="stats-timeline-gridline"></line>
+                      @for (metric of revenueTimelineMetrics; track metric.key) {
+                        <polyline
+                          class="stats-timeline-line"
+                          [ngClass]="toneClass({ tone: metric.tone })"
+                          [attr.points]="revenueTimelineChartPoints(revenueModel.timeline, metric.key)">
+                        </polyline>
+                      }
+                      @if (selectedRevenueTimelinePoint(revenueModel)) {
+                        <line
+                          class="stats-timeline-scrub-guide"
+                          [attr.x1]="selectedRevenueTimelineX(revenueModel)"
+                          y1="12"
+                          [attr.x2]="selectedRevenueTimelineX(revenueModel)"
+                          y2="96">
+                        </line>
+                        <circle
+                          class="stats-timeline-scrub-halo"
+                          [attr.cx]="selectedRevenueTimelineX(revenueModel)"
+                          [attr.cy]="selectedRevenueTimelineY(revenueModel)"
+                          r="10">
+                        </circle>
+                        <circle
+                          class="stats-timeline-scrub-knob"
+                          [attr.cx]="selectedRevenueTimelineX(revenueModel)"
+                          [attr.cy]="selectedRevenueTimelineY(revenueModel)"
+                          r="5">
+                        </circle>
+                      }
+                      @for (point of revenueModel.timeline; track point.dateKey; let index = $index) {
+                        <rect
+                          class="stats-timeline-hit"
+                          [attr.x]="timelineX(index, revenueModel.timeline.length) - 8"
+                          y="8"
+                          width="16"
+                          height="92"
+                          tabindex="0"
+                          (pointerenter)="selectRevenueTimelinePoint(point)"
+                          (focus)="selectRevenueTimelinePoint(point)">
+                        </rect>
+                      }
+                    </svg>
+                  </div>
+                </div>
+
+                <div class="stats-revenue-assets">
+                  <h4>{{ 'stats.revenue.asset.categories' | i18n }}</h4>
+                  <div class="stats-donut">
+                    @for (item of revenueModel.assetCategories; track item.key) {
+                      <span [ngClass]="toneClass(item)" [style.flex-grow]="item.value"></span>
+                    }
+                  </div>
+                  <div class="stats-breakdown-list stats-breakdown-compact">
+                    @for (item of revenueModel.assetCategories; track item.key) {
+                      <div class="stats-breakdown-row" [ngClass]="toneClass(item)">
+                        <span><mat-icon>{{ item.icon || 'category' }}</mat-icon>{{ item.labelKey ? (item.labelKey | i18n) : itemLabel(item) }}</span>
+                        <strong>{{ moneyFromCents(item.value) }}</strong>
+                        <i [style.width.%]="itemPercent(item)"></i>
+                      </div>
+                    }
+                  </div>
+                </div>
+              </div>
+            </section>
+          }
+
+          <section class="stats-grid stats-grid-charts">
+            <article class="stats-panel stats-timeline-panel">
+              <header>
+                <h3>{{ 'stats.timeline.title' | i18n }}</h3>
+                <span>{{ 'stats.timeline.window' | i18n }}</span>
+              </header>
+              @if (selectedTimelinePoint(dashboard); as point) {
+                <div class="stats-timeline-readout">
+                  <strong>{{ point.label || point.dateKey }}</strong>
+                  <span><i class="is-blue"></i>{{ 'stats.timeline.active.users' | i18n }} {{ point.activeUsers }}</span>
+                  <span><i class="is-green"></i>{{ 'stats.timeline.registrations' | i18n }} {{ point.registrations }}</span>
+                  <span><i class="is-purple"></i>{{ 'stats.timeline.ratings' | i18n }} {{ point.ratings }}</span>
+                  <span><i class="is-gold"></i>{{ 'stats.timeline.activity' | i18n }} {{ point.events + point.assets }}</span>
+                  <span><i class="is-slate"></i>{{ 'stats.timeline.messages' | i18n }} {{ point.messages }}</span>
+                  <span><i class="is-red"></i>{{ 'stats.timeline.moderation' | i18n }} {{ point.moderation }}</span>
+                </div>
+              }
+              <div class="stats-timeline-chart">
+                <svg
+                  viewBox="0 0 300 108"
+                  role="img"
+                  [class.is-dragging]="timelineDragging()"
+                  [attr.aria-label]="'stats.timeline.title' | i18n"
+                  (pointerdown)="startTimelineDrag($event, dashboard.timeline)"
+                  (pointermove)="moveTimelineDrag($event, dashboard.timeline)"
+                  (pointerup)="endTimelineDrag($event)"
+                  (pointercancel)="endTimelineDrag($event)"
+                  (pointerleave)="endTimelineDrag($event)">
+                  <line x1="12" y1="94" x2="288" y2="94" class="stats-timeline-axis"></line>
+                  <line x1="12" y1="58" x2="288" y2="58" class="stats-timeline-gridline"></line>
+                  <line x1="12" y1="22" x2="288" y2="22" class="stats-timeline-gridline"></line>
+                  @for (metric of timelineMetrics; track metric.key) {
+                    <polyline
+                      class="stats-timeline-line"
+                      [ngClass]="toneClass({ tone: metric.tone })"
+                      [attr.points]="timelineChartPoints(dashboard.timeline, metric.key)">
+                    </polyline>
+                  }
+                  @if (selectedTimelinePoint(dashboard)) {
+                    <line
+                      class="stats-timeline-scrub-guide"
+                      [attr.x1]="selectedTimelineX(dashboard)"
+                      y1="12"
+                      [attr.x2]="selectedTimelineX(dashboard)"
+                      y2="96">
+                    </line>
+                    <circle
+                      class="stats-timeline-scrub-halo"
+                      [attr.cx]="selectedTimelineX(dashboard)"
+                      [attr.cy]="selectedTimelineY(dashboard)"
+                      r="10">
+                    </circle>
+                    <circle
+                      class="stats-timeline-scrub-knob"
+                      [attr.cx]="selectedTimelineX(dashboard)"
+                      [attr.cy]="selectedTimelineY(dashboard)"
+                      r="5">
+                    </circle>
+                  }
+                  @for (point of dashboard.timeline; track point.dateKey; let index = $index) {
+                    <rect
+                      class="stats-timeline-hit"
+                      [attr.x]="timelineX(index, dashboard.timeline.length) - 8"
+                      y="8"
+                      width="16"
+                      height="92"
+                      tabindex="0"
+                      (pointerenter)="selectTimelinePoint(point)"
+                      (focus)="selectTimelinePoint(point)">
+                    </rect>
+                  }
+                </svg>
+              </div>
+              <div class="stats-chart-legend">
+                @for (metric of timelineMetrics; track metric.key) {
+                  <span [ngClass]="toneClass({ tone: metric.tone })">
+                    <i></i>{{ metric.labelKey | i18n }}
+                  </span>
+                }
+              </div>
+            </article>
+
+            <article class="stats-panel stats-event-types-panel">
+              <header>
+                <h3>{{ 'stats.event.types' | i18n }}</h3>
+                <mat-icon>category</mat-icon>
+              </header>
+              <div class="stats-donut-card">
+                <div class="stats-donut">
+                  @for (item of dashboard.eventTypes; track item.key) {
+                    <span [ngClass]="toneClass(item)" [style.flex-grow]="item.value"></span>
+                  }
+                </div>
+                <div class="stats-breakdown-list stats-breakdown-compact">
+                  @for (item of dashboard.eventTypes; track item.key) {
+                    <div class="stats-breakdown-row" [ngClass]="toneClass(item)">
+                      <span><mat-icon>{{ item.icon || 'category' }}</mat-icon>{{ itemLabel(item) }}</span>
+                      <strong>{{ item.value }}</strong>
+                      <i [style.width.%]="itemPercent(item)"></i>
+                    </div>
+                  }
+                </div>
+              </div>
+            </article>
+          </section>
+
+          <section class="stats-grid">
+            <article class="stats-panel stats-panel-wide">
+              <header>
+                <h3>{{ 'stats.segment.overview' | i18n }}</h3>
+              </header>
+              <div class="stats-segments">
+                @for (segment of topSegments(); track segment.key) {
+                  <section class="stats-segment-row">
+                    <div class="stats-segment-title">
+                      <span class="stats-segment-icon"><mat-icon>{{ segment.icon }}</mat-icon></span>
+                      <strong>{{ segment.labelKey | i18n }}</strong>
+                      <small>{{ segment.total }}</small>
+                    </div>
+                    <span class="stats-segment-bar"><span [style.width.%]="segmentPercent(segment)"></span></span>
+                    <div class="stats-segment-items">
+                      @for (item of segment.items; track item.key) {
+                        <div class="stats-mini-row" [ngClass]="toneClass(item)">
+                          <span>{{ item.labelKey ? (item.labelKey | i18n) : itemLabel(item) }}</span>
+                          <strong>{{ item.value }}</strong>
+                        </div>
+                      }
+                    </div>
+                  </section>
+                }
+              </div>
+            </article>
+
+            <article class="stats-panel">
+              <header>
+                <h3>{{ 'stats.top.cities' | i18n }}</h3>
+                <mat-icon>location_on</mat-icon>
+              </header>
+              <div class="stats-breakdown-list">
+                @for (item of dashboard.topCities; track item.key) {
+                  <div class="stats-breakdown-row" [ngClass]="toneClass(item)">
+                    <span><mat-icon>{{ item.icon || 'location_on' }}</mat-icon>{{ itemLabel(item) }}</span>
+                    <strong>{{ item.value }}</strong>
+                    <i [style.width.%]="itemPercent(item)"></i>
+                  </div>
+                }
+              </div>
+            </article>
+
+            <article class="stats-panel">
+              <header>
+                <h3>{{ 'stats.top.topics' | i18n }}</h3>
+                <mat-icon>local_offer</mat-icon>
+              </header>
+              <div class="stats-breakdown-list">
+                @for (item of dashboard.topTopics; track item.key) {
+                  <div class="stats-breakdown-row" [ngClass]="toneClass(item)">
+                    <span><mat-icon>{{ item.icon || 'local_offer' }}</mat-icon>{{ itemLabel(item) }}</span>
+                    <strong>{{ item.value }}</strong>
+                    <i [style.width.%]="itemPercent(item)"></i>
+                  </div>
+                }
+              </div>
+            </article>
+          </section>
+        }
+
+        @if (error()) {
+          <div class="stats-error">
+            <mat-icon>warning</mat-icon>
+            <span>{{ error() }}</span>
+          </div>
+        }
+      </div>
+
+      @if (graphHelpOpen()) {
+        <div class="stats-graph-help-overlay" role="dialog" aria-modal="true" [attr.aria-label]="'stats.graph.help.title' | i18n">
+          <button type="button" class="stats-graph-help-backdrop" (click)="closeGraphHelp()" [attr.aria-label]="'close' | i18n"></button>
+          <section class="stats-graph-help-dialog" (click)="$event.stopPropagation()">
+            <header>
+              <div>
+                <h3>{{ 'stats.graph.help.title' | i18n }}</h3>
+                <p>{{ 'stats.graph.help.intro' | i18n }}</p>
+              </div>
+              <button type="button" class="stats-graph-help-close" (click)="closeGraphHelp()" [attr.aria-label]="'close' | i18n">
+                <mat-icon>close</mat-icon>
+              </button>
+            </header>
+
+            <div class="stats-graph-help-grid">
+              <article>
+                <mat-icon>monitoring</mat-icon>
+                <strong>{{ 'stats.graph.help.health.title' | i18n }}</strong>
+                <p>{{ 'stats.graph.help.health.body' | i18n }}</p>
+              </article>
+              <article>
+                <mat-icon>hub</mat-icon>
+                <strong>{{ 'stats.graph.help.edges.title' | i18n }}</strong>
+                <p>{{ 'stats.graph.help.edges.body' | i18n }}</p>
+              </article>
+              <article>
+                <mat-icon>conversion_path</mat-icon>
+                <strong>{{ 'stats.graph.help.bridges.title' | i18n }}</strong>
+                <p>{{ 'stats.graph.help.bridges.body' | i18n }}</p>
+              </article>
+              <article>
+                <mat-icon>share</mat-icon>
+                <strong>{{ 'stats.graph.help.reach.title' | i18n }}</strong>
+                <p>{{ 'stats.graph.help.reach.body' | i18n }}</p>
+              </article>
+              <article>
+                <mat-icon>travel_explore</mat-icon>
+                <strong>{{ 'stats.graph.help.weak.title' | i18n }}</strong>
+                <p>{{ 'stats.graph.help.weak.body' | i18n }}</p>
+              </article>
+              <article>
+                <mat-icon>bubble_chart</mat-icon>
+                <strong>{{ 'stats.graph.help.clustering.title' | i18n }}</strong>
+                <p>{{ 'stats.graph.help.clustering.body' | i18n }}</p>
+              </article>
+              <article>
+                <mat-icon>repeat</mat-icon>
+                <strong>{{ 'stats.graph.help.recurring.title' | i18n }}</strong>
+                <p>{{ 'stats.graph.help.recurring.body' | i18n }}</p>
+              </article>
+              <article>
+                <mat-icon>timeline</mat-icon>
+                <strong>{{ 'stats.graph.help.evolution.title' | i18n }}</strong>
+                <p>{{ 'stats.graph.help.evolution.body' | i18n }}</p>
+              </article>
+            </div>
+
+            <div class="stats-graph-help-actions">
+              <strong>{{ 'stats.graph.help.actions.title' | i18n }}</strong>
+              <p>{{ 'stats.graph.help.actions.body' | i18n }}</p>
+            </div>
+          </section>
+        </div>
+      }
+    </div>
+  </section>
+}

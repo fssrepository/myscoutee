@@ -3,7 +3,16 @@ import type { UserGameFilterPreferencesDto } from '../interfaces/game.interface'
 import type { UserDto, UserImpressionsDto, UserImpressionsSectionDto } from '../interfaces/user.interface';
 
 export type LoadStatus = 'idle' | 'loading' | 'success' | 'error' | 'timeout';
-export type ActivityCounterKey = 'game' | 'chat' | 'invitations' | 'events' | 'hosting' | 'tickets' | 'feedback';
+export type ActivityCounterKey =
+  | 'game'
+  | 'chat'
+  | 'invitations'
+  | 'events'
+  | 'hosting'
+  | 'tickets'
+  | 'feedback'
+  | 'adminJobs'
+  | 'adminMetrics';
 export type ConnectivityState = 'online' | 'offline';
 
 export interface ActivityCounters {
@@ -14,6 +23,8 @@ export interface ActivityCounters {
   hosting: number;
   tickets: number;
   feedback: number;
+  adminJobs: number;
+  adminMetrics: number;
 }
 
 export interface LoadState {
@@ -53,7 +64,9 @@ const ACTIVITY_COUNTER_KEYS: ActivityCounterKey[] = [
   'events',
   'hosting',
   'tickets',
-  'feedback'
+  'feedback',
+  'adminJobs',
+  'adminMetrics'
 ];
 
 function detectInitialConnectivityState(): ConnectivityState {
@@ -645,7 +658,9 @@ export class AppContext {
         events: user.activities?.events ?? 0,
         hosting: user.activities?.hosting ?? 0,
         tickets: user.activities?.tickets ?? 0,
-        feedback: user.activities?.feedback ?? 0
+        feedback: user.activities?.feedback ?? 0,
+        adminJobs: user.activities?.adminJobs ?? 0,
+        adminMetrics: user.activities?.adminMetrics ?? 0
       },
       impressions: user.impressions ? this.cloneImpressions(user.impressions) : undefined
     };

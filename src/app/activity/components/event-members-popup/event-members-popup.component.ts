@@ -304,6 +304,8 @@ export class EventMembersPopupComponent {
   protected canShowActionMenu(entry: AppTypes.ActivityMemberEntry): boolean {
     return this.canApproveMember(entry)
       || this.canDeleteMember(entry)
+      || this.canDisqualifyMember(entry)
+      || this.canReinstateMember(entry)
       || this.canReportMember(entry);
   }
 
@@ -367,6 +369,44 @@ export class EventMembersPopupComponent {
       confirmTone: 'danger',
       failureMessage: this.memberRemovalFailureMessage(entry),
       onConfirm: () => this.confirmRemoveMember(entry)
+    });
+  }
+
+  protected requestDisqualifyMember(entry: AppTypes.ActivityMemberEntry, event: Event): void {
+    event.stopPropagation();
+    if (!this.canDisqualifyMember(entry)) {
+      return;
+    }
+    this.inlineItemActionMenu = null;
+    this.cdr.markForCheck();
+    this.confirmationDialogService.open({
+      title: 'Disqualify member?',
+      message: `Disqualify ${entry.name} from this ${this.ownerScopeLabel()}?`,
+      cancelLabel: 'Cancel',
+      confirmLabel: 'Disqualify',
+      busyConfirmLabel: 'Disqualifying...',
+      confirmTone: 'danger',
+      failureMessage: 'Unable to disqualify member.',
+      onConfirm: () => this.confirmMemberAction(entry, 'disqualify')
+    });
+  }
+
+  protected requestReinstateMember(entry: AppTypes.ActivityMemberEntry, event: Event): void {
+    event.stopPropagation();
+    if (!this.canReinstateMember(entry)) {
+      return;
+    }
+    this.inlineItemActionMenu = null;
+    this.cdr.markForCheck();
+    this.confirmationDialogService.open({
+      title: 'Reinstate member?',
+      message: `Reinstate ${entry.name} to this ${this.ownerScopeLabel()}?`,
+      cancelLabel: 'Cancel',
+      confirmLabel: 'Reinstate',
+      busyConfirmLabel: 'Reinstating...',
+      confirmTone: 'accent',
+      failureMessage: 'Unable to reinstate member.',
+      onConfirm: () => this.confirmMemberAction(entry, 'reinstate')
     });
   }
 
@@ -434,6 +474,20 @@ export class EventMembersPopupComponent {
     await Promise.all([pendingWindowPromise, deletePromise]);
   }
 
+  private async confirmMemberAction(
+    entry: AppTypes.ActivityMemberEntry,
+    action: 'disqualify' | 'reinstate'
+  ): Promise<void> {
+    const owner = this.ownerRef && this.ownerRef.ownerId === this.ownerId ? this.ownerRef : null;
+    if (!owner) {
+      return;
+    }
+    const previousMembers = this.currentOwnerMembers();
+    const pendingWindowPromise = this.minimumDeletePendingWindow();
+    const actionPromise = this.runMemberActionAfterUiYield(owner, entry.userId, action, previousMembers);
+    await Promise.all([pendingWindowPromise, actionPromise]);
+  }
+
   private memberRemovalTitle(entry: AppTypes.ActivityMemberEntry): string {
     if (entry.requestKind === 'join') {
       return 'Reject request?';
@@ -479,6 +533,9 @@ export class EventMembersPopupComponent {
   }
 
   protected memberCardToneClass(entry: AppTypes.ActivityMemberEntry): string {
+    if (entry.status === 'disqualified') {
+      return 'member-card-tone-disqualified';
+    }
     if (entry.status === 'accepted') {
       if (entry.role === 'Admin') {
         return 'member-card-tone-admin';
@@ -495,6 +552,9 @@ export class EventMembersPopupComponent {
   }
 
   protected memberCardStatusClass(entry: AppTypes.ActivityMemberEntry): string {
+    if (entry.status === 'disqualified') {
+      return 'member-status-disqualified';
+    }
     if (entry.status === 'accepted') {
       if (entry.role === 'Admin') {
         return 'member-status-admin';
@@ -511,6 +571,9 @@ export class EventMembersPopupComponent {
   }
 
   protected memberCardStatusIcon(entry: AppTypes.ActivityMemberEntry): string {
+    if (entry.status === 'disqualified') {
+      return 'gavel';
+    }
     if (entry.status === 'accepted') {
       if (entry.role === 'Admin') {
         return 'admin_panel_settings';
@@ -527,6 +590,9 @@ export class EventMembersPopupComponent {
   }
 
   protected memberCardStatusLabel(entry: AppTypes.ActivityMemberEntry): string {
+    if (entry.status === 'disqualified') {
+      return 'Disqualified';
+    }
     if (entry.status === 'accepted') {
       return this.roleLabel(entry);
     }
@@ -548,6 +614,9 @@ export class EventMembersPopupComponent {
   }
 
   protected pendingStatusLabel(entry: AppTypes.ActivityMemberEntry): string {
+    if (entry.status === 'disqualified') {
+      return 'Disqualified';
+    }
     if (entry.status === 'accepted') {
       return 'Approved';
     }
@@ -881,12 +950,31 @@ export class EventMembersPopupComponent {
     if (this.viewOnlyMode) {
       return false;
     }
+    if (entry.status === 'disqualified') {
+      return false;
+    }
     if (this.canManageMembers) {
       return true;
     }
     return entry.status === 'pending'
       && entry.requestKind === 'invite'
       && entry.invitedByActiveUser === true;
+  }
+
+  protected canDisqualifyMember(entry: AppTypes.ActivityMemberEntry): boolean {
+    if (this.viewOnlyMode || this.ownerRef?.ownerType !== 'event' || !this.canManageMembers) {
+      return false;
+    }
+    return entry.status === 'accepted'
+      && !this.isCurrentUser(entry)
+      && !this.isProtectedManagerMember(entry);
+  }
+
+  protected canReinstateMember(entry: AppTypes.ActivityMemberEntry): boolean {
+    if (this.viewOnlyMode || this.ownerRef?.ownerType !== 'event' || !this.canManageMembers) {
+      return false;
+    }
+    return entry.status === 'disqualified';
   }
 
   protected canReportMember(entry: AppTypes.ActivityMemberEntry): boolean {
@@ -1037,6 +1125,45 @@ export class EventMembersPopupComponent {
   ): Promise<void> {
     await this.waitForAnimationKickoff();
     await this.commitMembers(nextMembers, previousMembers);
+  }
+
+  private async runMemberActionAfterUiYield(
+    owner: ActivityMemberOwnerRef,
+    targetUserId: string,
+    action: 'disqualify' | 'reinstate',
+    previousMembers: readonly AppTypes.ActivityMemberEntry[]
+  ): Promise<void> {
+    await this.waitForAnimationKickoff();
+    if (!this.ownerId) {
+      return;
+    }
+    this.suppressedOwnerSyncId = this.ownerId;
+    let normalizedMembers: AppTypes.ActivityMemberEntry[];
+    try {
+      normalizedMembers = this.sortMembersByActionTimeDesc(await this.activityMembersService.applyMemberAction(owner, targetUserId, action));
+    } catch (error) {
+      if (this.suppressedOwnerSyncId === this.ownerId) {
+        this.suppressedOwnerSyncId = null;
+      }
+      throw error;
+    }
+    this.membersCacheByOwnerId.set(this.ownerId, normalizedMembers);
+    this.syncCanManageMembers(normalizedMembers);
+    this.applySummaryFromMembers(normalizedMembers);
+    this.inlineItemActionMenu = null;
+    this.syncVisibleMembers(previousMembers, normalizedMembers);
+    if (this.membersChangeHandler) {
+      this.membersChangeHandler(normalizedMembers);
+    }
+    this.cdr.markForCheck();
+  }
+
+  private isCurrentUser(entry: AppTypes.ActivityMemberEntry): boolean {
+    return entry.userId === this.activeUserId();
+  }
+
+  private isProtectedManagerMember(entry: AppTypes.ActivityMemberEntry): boolean {
+    return entry.role === 'Admin' || entry.role === 'Manager';
   }
 
   private async waitForAnimationKickoff(): Promise<void> {

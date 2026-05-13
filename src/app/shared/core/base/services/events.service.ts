@@ -10,7 +10,8 @@ import type {
   EventFeedbackReceivedEventDto,
   EventFeedbackNoteRequestDto,
   EventFeedbackStateDto,
-  EventFeedbackSubmitRequestDto
+  EventFeedbackSubmitRequestDto,
+  SubEventLeaderboardState
 } from '../../../core/base/models';
 import { DemoEventsService } from '../../demo';
 import { HttpEventsService } from '../../http';
@@ -147,6 +148,21 @@ export class EventsService extends BaseRouteModeService {
 
   takeOverItem(userId: string, type: DemoRepositoryEventItemType, sourceId: string): Promise<void> {
     return this.eventsService.takeOverItem(userId, type, sourceId);
+  }
+
+  applyStageAction(request: {
+    userId: string;
+    sourceId: string;
+    subEventId?: string | null;
+    subEventIndex?: number | null;
+    action: string;
+    reason?: string | null;
+  }): Promise<DemoEventRecord | null> {
+    return this.eventsService.applyStageAction(request);
+  }
+
+  querySubEventLeaderboard(eventId: string, subEventId: string): Promise<SubEventLeaderboardState | null> {
+    return this.eventsService.querySubEventLeaderboard(eventId, subEventId);
   }
 
   requestJoin(

@@ -13,6 +13,43 @@
           }
         </div>
         <div class="popup-filter-picker activities-view-picker">
+          @if (activitiesPrimaryFilter === 'chats' && isAdminServiceChatMode()) {
+            <div class="activities-support-header-filter-wrap">
+              <button
+                type="button"
+                class="activities-support-header-filter-btn"
+                [class.is-open]="showActivitiesSupportCasePicker"
+                [ngClass]="supportCaseFilterClass(activitiesSupportCaseFilter)"
+                (click)="toggleActivitiesSupportCaseFilterMenu($event)"
+                [attr.aria-expanded]="showActivitiesSupportCasePicker"
+                [attr.aria-label]="'activities.support.case.filter.aria' | i18n"
+                >
+                <mat-icon>{{ supportCaseFilterIcon() }}</mat-icon>
+                <span>{{ supportCaseFilterLabelKey() | i18n }}</span>
+                <strong>{{ supportCaseFilterCount() | counterBadge }}</strong>
+                <mat-icon class="activities-support-header-filter-caret">expand_more</mat-icon>
+              </button>
+              @if (showActivitiesSupportCasePicker) {
+                <div class="activities-support-header-filter-menu" role="menu" (click)="$event.stopPropagation()">
+                  @for (option of activitiesSupportCaseFilters; track option.key) {
+                    <button
+                      type="button"
+                      class="activities-support-header-filter-option"
+                      [class.is-active]="option.key === activitiesSupportCaseFilter"
+                      [ngClass]="supportCaseFilterClass(option.key)"
+                      (click)="selectActivitiesSupportCaseFilter(option.key)"
+                      role="menuitemradio"
+                      [attr.aria-checked]="option.key === activitiesSupportCaseFilter"
+                      >
+                      <mat-icon>{{ option.icon }}</mat-icon>
+                      <span>{{ option.labelKey | i18n }}</span>
+                      <strong>{{ supportCaseFilterCount(option.key) | counterBadge }}</strong>
+                    </button>
+                  }
+                </div>
+              }
+            </div>
+          }
           @if (!isCalendarLayoutView() && activitiesPrimaryFilter !== 'chats') {
             <div class="popup-filter-picker-secondary activities-secondary-picker">
               <button
@@ -73,7 +110,7 @@
       <div class="popup-body popup-body-activities">
         <div class="activities-popup" [class.activities-popup-rates-fullscreen]="activitiesSmartListPresentation() === 'fullscreen'" [class.activities-popup-blocked-user]="isBlockedUser" (click)="onActivitiesPopupSurfaceClick($event)">
           <!-- ───── Toolbar ───── -->
-          <div class="experience-toolbar assets-toolbar popup-filter-bar">
+          <div class="experience-toolbar assets-toolbar popup-filter-bar" [class.activities-admin-service-toolbar]="isAdminServiceChatMode()">
             <!-- Primary filter — desktop mat-select / mobile button -->
             @if (!isAdminServiceChatMode() && !isMobileView) {
               <div
@@ -609,7 +646,9 @@
               [row]="row"
               [groupLabel]="groupLabel"
               [context]="activitiesChatTemplateContext"
+              [adminServiceMode]="isAdminServiceChatMode()"
               (rowClick)="onActivityRowClick(row, $event)"
+              (supportCaseAction)="onSupportCaseAction(row, $event)"
             ></app-activities-chat-template>
           </ng-template>
           <ng-template #activitiesRateSmartListItemTemplate let-row let-groupLabel="groupLabel">

@@ -36,6 +36,8 @@ export interface UserMenuCountersDto {
   hosting?: number;
   tickets?: number;
   feedback?: number;
+  adminJobs?: number;
+  adminMetrics?: number;
 }
 
 export interface UserRealtimeCountersDto extends UserMenuCountersDto {
@@ -108,6 +110,8 @@ export interface UserDto {
     hosting: number;
     tickets?: number;
     feedback?: number;
+    adminJobs?: number;
+    adminMetrics?: number;
   };
 }
 

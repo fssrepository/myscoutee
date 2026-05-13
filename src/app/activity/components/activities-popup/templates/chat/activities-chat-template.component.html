@@ -1,9 +1,13 @@
-<button
-  type="button"
+<article
+  role="button"
+  tabindex="0"
   class="activities-card activities-card-btn activities-row-item activities-card-chat activities-row-item-clickable motion-static"
   [ngClass]="data?.toneClass"
+  [class.activities-card-support-menu-open]="supportMenuOpen"
+  [class.activities-card-support-control-active]="supportControlActive"
   [attr.data-group-label]="data?.groupLabel"
   (click)="onRowClick($event)"
+  (keydown)="onRowKeydown($event)"
   >
   <span class="activities-card-avatar" [ngClass]="data?.avatarClass">
     {{ data?.avatarInitials }}
@@ -13,10 +17,56 @@
     <p class="activities-card-subtitle">{{ data?.subtitle }}</p>
     <p class="activities-card-detail">{{ data?.detail }}</p>
   </div>
-  <span class="activities-chat-members-badge">
-    <span>{{ data?.memberCount ?? 0 }} members</span>
-    @if ((data?.unread ?? 0) > 0) {
-      <span class="card-badge asset-request-badge activities-chat-unread-badge">{{ (data?.unread ?? 0) | counterBadge }}</span>
-    }
-  </span>
-</button>
+  @if (data?.showSupportControls) {
+    <div
+      class="activities-support-case"
+      (click)="$event.stopPropagation()"
+      (pointerdown)="onSupportControlPointerDown($event)"
+      (pointerup)="onSupportControlPointerEnd($event)"
+      (pointercancel)="onSupportControlPointerEnd($event)"
+      (mouseleave)="onSupportControlPointerEnd($event)"
+      >
+      <span class="activities-support-case-badge" [ngClass]="data?.supportCaseBadgeClass">
+        {{ data?.supportCaseLabelKey | i18n }}
+      </span>
+      @if (data?.supportCaseAssigneeName) {
+        <span class="activities-support-case-assignee">
+          {{ 'activities.support.case.assignee.by' | i18n }} {{ data?.supportCaseAssigneeName }}
+        </span>
+      }
+      <button
+        type="button"
+        class="activities-support-case-menu-btn"
+        [class.is-open]="supportMenuOpen"
+        (pointerdown)="onSupportMenuButtonPointerDown($event)"
+        (click)="onSupportMenuButtonClick($event)"
+        [attr.aria-label]="'activities.support.case.actions' | i18n"
+        >
+        <mat-icon>more_horiz</mat-icon>
+      </button>
+      @if (supportMenuOpen) {
+        <div class="activities-support-case-menu">
+          @for (item of supportCaseActions(); track item.action) {
+            <button
+              type="button"
+              class="activities-support-case-menu-item"
+              [ngClass]="'support-case-menu-' + item.tone"
+              (pointerdown)="onSupportMenuItemPointerDown($event)"
+              (click)="runSupportCaseAction(item.action, $event)"
+              >
+              <mat-icon>{{ item.icon }}</mat-icon>
+              <span>{{ item.labelKey | i18n }}</span>
+            </button>
+          }
+        </div>
+      }
+    </div>
+  } @else {
+    <span class="activities-chat-members-badge">
+      <span>{{ data?.memberCount ?? 0 }} members</span>
+      @if ((data?.unread ?? 0) > 0) {
+        <span class="card-badge asset-request-badge activities-chat-unread-badge">{{ (data?.unread ?? 0) | counterBadge }}</span>
+      }
+    </span>
+  }
+</article>

@@ -5,6 +5,7 @@ export type ConfirmationDialogTone = 'accent' | 'danger' | 'neutral';
 export interface ConfirmationDialogConfig {
   title: string;
   message?: string | null;
+  warningMessage?: string | null;
   cancelLabel?: string | null;
   confirmLabel?: string;
   busyConfirmLabel?: string;
@@ -21,6 +22,7 @@ export interface ConfirmationDialogState {
   id: number;
   title: string;
   message: string;
+  warningMessage: string;
   cancelLabel: string | null;
   confirmLabel: string;
   busyConfirmLabel: string;
@@ -49,6 +51,7 @@ export class ConfirmationDialogService {
       id: ++this.nextId,
       title: config.title.trim() || 'Confirmation',
       message: config.message?.trim() ?? '',
+      warningMessage: config.warningMessage?.trim() ?? '',
       cancelLabel: config.cancelLabel === undefined ? 'Cancel' : config.cancelLabel,
       confirmLabel: config.confirmLabel?.trim() || 'OK',
       busyConfirmLabel: config.busyConfirmLabel?.trim() || 'Working...',

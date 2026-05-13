@@ -673,6 +673,31 @@ export class I18nService {
       return composite;
     }
 
+    const paramsUpdatedMatch = normalizedSource.match(/^Updated\s+(.+?)\s+parameters\.$/i);
+    if (paramsUpdatedMatch) {
+      const translated = messages['admin.params.summary.updated'];
+      if (translated) {
+        return this.interpolate(translated, {
+          section: this.resolveCoreTranslation(paramsUpdatedMatch[1] ?? '', messages, sourceKeyByText)
+            ?? paramsUpdatedMatch[1]
+            ?? ''
+        });
+      }
+    }
+
+    const paramsRevertedMatch = normalizedSource.match(/^Reverted\s+(.+?)\s+parameters\s+to\s+version\s+(\d+)\.$/i);
+    if (paramsRevertedMatch) {
+      const translated = messages['admin.params.summary.reverted'];
+      if (translated) {
+        return this.interpolate(translated, {
+          section: this.resolveCoreTranslation(paramsRevertedMatch[1] ?? '', messages, sourceKeyByText)
+            ?? paramsRevertedMatch[1]
+            ?? '',
+          version: paramsRevertedMatch[2] ?? ''
+        });
+      }
+    }
+
     const dateTranslation = this.translateEnglishDateSource(normalizedSource);
     if (dateTranslation) {
       return dateTranslation;

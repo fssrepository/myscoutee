@@ -16,6 +16,8 @@ export function toActivitiesPageRequest(query: ListQuery<ActivitiesFeedFilters>)
     hostingPublicationFilter: normalizeHostingPublicationFilter(filters?.hostingPublicationFilter),
     rateFilter: normalizeRateFilter(filters?.rateFilter),
     rateSocialBadgeEnabled: filters?.rateSocialBadgeEnabled === true,
+    adminServiceOnly: filters?.adminServiceOnly === true,
+    supportCaseFilter: normalizeSupportCaseFilter(filters?.supportCaseFilter),
     view,
     page: Math.max(0, Math.trunc(query.page)),
     pageSize: Math.max(1, Math.trunc(query.pageSize)),
@@ -59,6 +61,10 @@ function normalizeActivitiesSecondaryFilter(
 
 function normalizeActivitiesChatContextFilter(value: unknown): AppTypes.ActivitiesChatContextFilter {
   return value === 'event' || value === 'subEvent' || value === 'group' || value === 'service' ? value : 'all';
+}
+
+function normalizeSupportCaseFilter(value: unknown): AppTypes.SupportCaseFilter {
+  return value === 'pending' || value === 'picked' || value === 'solved' || value === 'blocked' ? value : 'all';
 }
 
 function normalizeHostingPublicationFilter(value: unknown): AppTypes.HostingPublicationFilter {

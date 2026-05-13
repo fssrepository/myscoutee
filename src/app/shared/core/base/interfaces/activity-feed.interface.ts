@@ -1,4 +1,5 @@
 import type { LocationCoordinates } from './location.interface';
+import type { SupportCaseStatus } from '../models/chat.model';
 import type {
   EventRecordKind,
   EventPolicyItem,
@@ -25,6 +26,11 @@ export interface ChatMenuItem {
   eventId?: string;
   subEventId?: string;
   groupId?: string;
+  supportCaseStatus?: SupportCaseStatus | null;
+  supportCaseAssigneeUserId?: string | null;
+  supportCaseAssigneeName?: string | null;
+  supportCaseAssigneeInitials?: string | null;
+  supportCaseUpdatedAtIso?: string | null;
 }
 
 export interface InvitationMenuItem {

@@ -333,12 +333,13 @@ export class AssetInfoCardBuilder {
   }
 
   private static ownedAssetMenuActions(card: AppTypes.AssetCard): readonly InfoCardMenuAction[] {
-    const actions: InfoCardMenuAction[] = [];
-    if (this.assetStatusCode(card) === 'UR') {
-      actions.push('takeOver');
+    const configuredActions = (card.menuActions ?? [])
+      .map(action => `${action ?? ''}`.trim())
+      .filter(action => action.length > 0);
+    if (configuredActions.length > 0) {
+      return configuredActions;
     }
-    actions.push('shareAsset', 'editAsset', 'delete');
-    return actions;
+    return ['shareAsset', 'editAsset', 'delete'];
   }
 
   private static ownedAssetMediaEnd(card: AppTypes.AssetCard): NonNullable<InfoCardData['mediaEnd']> | null {

@@ -2,7 +2,7 @@ import type { LocationCoordinates } from '../interfaces/location.interface';
 import type { ChatMenuItem } from '../interfaces/activity-feed.interface';
 import type { AssetCard, AssetType } from './asset.model';
 import type { ActivityMemberEntry } from './activity-member.model';
-import type { ActivitiesChatContextFilter, ChatChannelType } from './chat.model';
+import type { ActivitiesChatContextFilter, ChatChannelType, SupportCaseFilter } from './chat.model';
 import type { ActivitiesEventScope, ActivitiesPrimaryFilter, ActivitiesSecondaryFilter, ActivitiesView, ActivityListRow, HostingPublicationFilter, RateFilterKey } from './activities-ui.model';
 import type {
   EventCheckoutAssetSelection,
@@ -31,6 +31,7 @@ export interface ActivitiesFeedFilters {
   rateFilter?: RateFilterKey;
   rateSocialBadgeEnabled?: boolean;
   adminServiceOnly?: boolean;
+  supportCaseFilter?: SupportCaseFilter;
 }
 
 export interface EventExploreFeedFilters {
@@ -209,6 +210,8 @@ export interface ActivitiesPageRequest {
   anchorDate?: string;
   rangeStart?: string;
   rangeEnd?: string;
+  adminServiceOnly?: boolean;
+  supportCaseFilter?: SupportCaseFilter;
 }
 
 export interface ActivitiesPageResult {

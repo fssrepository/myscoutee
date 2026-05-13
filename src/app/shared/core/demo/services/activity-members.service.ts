@@ -43,4 +43,15 @@ export class DemoActivityMembersService extends DemoRouteDelayService {
     await this.activityMembersRepository.replaceMembersByOwner(owner, members, capacityTotal);
   }
 
+  async applyMemberAction(
+    owner: ActivityMemberOwnerRef,
+    actorUserId: string,
+    targetUserId: string,
+    action: 'disqualify' | 'reinstate',
+    reason?: string | null
+  ): Promise<AppTypes.ActivityMemberEntry[]> {
+    await this.waitForRouteDelay(DemoActivityMembersService.MEMBERS_ROUTE);
+    return this.activityMembersRepository.applyMemberAction(owner, actorUserId, targetUserId, action, reason);
+  }
+
 }

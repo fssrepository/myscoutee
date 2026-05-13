@@ -6,7 +6,7 @@ import type { PricingConfig } from './pricing.model';
 export type AssetType = 'Car' | 'Accommodation' | 'Supplies';
 export type AssetFilterType = AssetType | 'Ticket';
 export type SubEventResourceFilter = 'Members' | AssetType;
-export type AssetRequestAction = 'accept' | 'remove';
+export type AssetRequestAction = 'accept' | 'remove' | 'makeManager';
 export type AssetRequestStatus = 'pending' | 'accepted';
 export type AssetTicketOrder = 'upcoming' | 'past';
 export type AssetRequestKind = 'manual' | 'borrow';
@@ -42,6 +42,7 @@ export interface AssetMemberRequest {
   requestKind?: AssetRequestKind;
   requestedAtIso?: string;
   booking?: AssetHireRequestBooking | null;
+  menuActions?: string[];
 }
 
 export interface AssetCard {
@@ -65,6 +66,7 @@ export interface AssetCard {
   ownerUserId?: string;
   ownerName?: string;
   requests: AssetMemberRequest[];
+  menuActions?: string[];
 }
 
 export interface AssetExploreQuery {

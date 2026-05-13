@@ -11,7 +11,8 @@ import type {
   EventFeedbackReceivedEventDto,
   EventFeedbackNoteRequestDto,
   EventFeedbackStateDto,
-  EventFeedbackSubmitRequestDto
+  EventFeedbackSubmitRequestDto,
+  SubEventLeaderboardState
 } from '../../../core/base/models';
 import { DemoRouteDelayService } from './demo-route-delay.service';
 import { DemoEventsRepository } from '../repositories/events.repository';
@@ -286,6 +287,25 @@ export class DemoEventsService extends DemoRouteDelayService {
   async takeOverItem(userId: string, type: DemoRepositoryEventItemType, sourceId: string): Promise<void> {
     await this.waitForRouteDelay(DemoEventsService.EVENTS_ROUTE);
     this.eventsRepository.takeOverItem(userId, type, sourceId);
+  }
+
+  async applyStageAction(request: {
+    userId: string;
+    sourceId: string;
+    subEventId?: string | null;
+    subEventIndex?: number | null;
+    action: string;
+    reason?: string | null;
+  }): Promise<DemoEventRecord | null> {
+    await this.waitForDelay(1500);
+    const record = this.eventsRepository.applyStageAction(request);
+    await this.memoryDb.flushToIndexedDb();
+    return record;
+  }
+
+  async querySubEventLeaderboard(eventId: string, subEventId: string): Promise<SubEventLeaderboardState | null> {
+    await this.waitForRouteDelay(DemoEventsService.EVENTS_ROUTE);
+    return this.eventsRepository.querySubEventLeaderboard(eventId, subEventId);
   }
 
   async requestJoin(

@@ -224,6 +224,11 @@
                 {{ environment.paymentIntegrationEnabled ? (environment.paymentProvider | titlecase) : 'Dummy pay' }}
               </span>
             </div>
+            @if (paymentDisabled()) {
+              <p class="event-checkout-payment-disabled-warning">
+                Payment is disabled for now. You can review this step, but card fields are locked and no external charge will be made.
+              </p>
+            }
             <div class="event-checkout-payment-summary">
               <article>
                 <span>Amount due</span>

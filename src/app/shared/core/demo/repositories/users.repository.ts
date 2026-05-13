@@ -339,7 +339,17 @@ export class DemoUsersRepository {
     if (DemoUserSeedBuilder.isEmptyOnboardingProfile(user)) {
       return {
         ...user,
-        activities: { game: 0, chat: 0, invitations: 0, events: 0, hosting: 0, tickets: 0, feedback: 0 }
+        activities: {
+          game: 0,
+          chat: 0,
+          invitations: 0,
+          events: 0,
+          hosting: 0,
+          tickets: 0,
+          feedback: 0,
+          adminJobs: user.activities?.adminJobs ?? 0,
+          adminMetrics: user.activities?.adminMetrics ?? 0
+        }
       };
     }
     return DemoUsersRepositoryBuilder.applySeededActivityCounts(user, {

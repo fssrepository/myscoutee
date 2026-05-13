@@ -20,6 +20,14 @@ export class DemoChatsService extends DemoRouteDelayService {
     return this.chatsRepository.queryChatItemsByUser(userId);
   }
 
+  async querySupportCaseItemsForAdmin(
+    userId: string,
+    filter: AppTypes.SupportCaseFilter = 'all'
+  ): Promise<DemoChatRecord[]> {
+    await this.waitForRouteDelay(DemoChatsService.CHAT_ROUTE);
+    return this.chatsRepository.querySupportCaseItemsForAdmin(userId, filter);
+  }
+
   peekChatItemsByUser(userId: string): DemoChatRecord[] {
     return this.chatsRepository.queryChatItemsByUser(userId);
   }
@@ -94,5 +102,10 @@ export class DemoChatsService extends DemoRouteDelayService {
 
   async markChatRead(_chat: ChatMenuItem, _messageIds: readonly string[]): Promise<void> {
     return;
+  }
+
+  async updateSupportCase(chat: ChatMenuItem, action: AppTypes.SupportCaseAction): Promise<DemoChatRecord | null> {
+    await this.waitForRouteDelay(DemoChatsService.CHAT_ROUTE);
+    return this.chatsRepository.updateSupportCase(chat, action);
   }
 }

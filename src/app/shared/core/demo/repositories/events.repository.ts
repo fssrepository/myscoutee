@@ -238,6 +238,88 @@ export class DemoEventsRepository {
     }
   }
 
+  private resolveStageActionTarget(action: string, reason?: string | null): {
+    action: string;
+    nextStatus: AppTypes.TournamentStageStatus;
+    reason: string;
+  } | null {
+    const normalizedAction = `${action ?? ''}`.trim();
+    const normalizedReason = `${reason ?? ''}`.trim();
+    switch (normalizedAction) {
+      case 'start-tournament':
+        return { action: normalizedAction, nextStatus: 'A', reason: normalizedReason || 'tournament-started' };
+      case 'close-stage':
+        return { action: normalizedAction, nextStatus: 'SR', reason: normalizedReason || 'stage-closed' };
+      case 'finalize-stage':
+        return { action: normalizedAction, nextStatus: 'F', reason: normalizedReason || 'stage-finalized' };
+      case 'reopen-scores':
+        return { action: normalizedAction, nextStatus: 'SR', reason: normalizedReason || 'scores-reopened' };
+      case 'suspend-tournament':
+        return { action: normalizedAction, nextStatus: 'S', reason: normalizedReason || 'manual-suspension' };
+      case 'resume-tournament':
+        return { action: normalizedAction, nextStatus: 'SR', reason: normalizedReason || 'manual-resume' };
+      default:
+        return null;
+    }
+  }
+
+  private canApplyStageAction(action: string, stages: readonly AppTypes.SubEventFormItem[], stageIndex: number): boolean {
+    const stage = stages[stageIndex];
+    const status = this.normalizeStageStatus(stage?.stageStatus);
+    switch (action) {
+      case 'start-tournament':
+        return stageIndex === 0 && status === 'RS';
+      case 'close-stage':
+        return status === 'A';
+      case 'finalize-stage':
+        return status === 'SR';
+      case 'reopen-scores':
+        return status === 'F' && this.canReopenScores(stages, stageIndex);
+      case 'suspend-tournament':
+        return status !== 'RS' && status !== 'S' && status !== 'F';
+      case 'resume-tournament':
+        return status === 'S';
+      default:
+        return false;
+    }
+  }
+
+  private canReopenScores(stages: readonly AppTypes.SubEventFormItem[], stageIndex: number): boolean {
+    const nextStage = stages[stageIndex + 1];
+    if (!nextStage) {
+      return true;
+    }
+    if (this.normalizeStageStatus(nextStage.stageStatus) !== 'A') {
+      return false;
+    }
+    const nextStartMs = Date.parse(`${nextStage.startAt ?? ''}`);
+    return !Number.isFinite(nextStartMs) || nextStartMs > Date.now();
+  }
+
+  private resolveStageIndex(
+    stages: readonly AppTypes.SubEventFormItem[],
+    subEventId: string | null | undefined,
+    fallbackIndex: number | null | undefined
+  ): number {
+    const normalizedSubEventId = `${subEventId ?? ''}`.trim();
+    if (normalizedSubEventId) {
+      const index = stages.findIndex(stage => `${stage?.id ?? ''}`.trim() === normalizedSubEventId);
+      if (index >= 0) {
+        return index;
+      }
+    }
+    const index = Math.trunc(Number(fallbackIndex));
+    return Number.isFinite(index) && index >= 0 && index < stages.length ? index : -1;
+  }
+
+  private normalizeStageStatus(status: string | null | undefined): AppTypes.TournamentStageStatus {
+    const normalized = `${status ?? ''}`.trim().toUpperCase();
+    if (normalized === 'RS' || normalized === 'SR' || normalized === 'F' || normalized === 'S') {
+      return normalized;
+    }
+    return 'A';
+  }
+
   private isAcceptedEventRecord(record: DemoEventRecord, userId: string): boolean {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId || record.type !== 'events' || record.isAdmin === true) {
@@ -505,6 +587,147 @@ export class DemoEventsRepository {
           }
         : state;
     });
+  }
+
+  applyStageAction(request: {
+    userId: string;
+    sourceId: string;
+    subEventId?: string | null;
+    subEventIndex?: number | null;
+    action: string;
+    reason?: string | null;
+  }): DemoEventRecord | null {
+    this.init();
+    const normalizedUserId = request.userId.trim();
+    const normalizedSourceId = request.sourceId.trim();
+    const actionTarget = this.resolveStageActionTarget(request.action, request.reason);
+    if (!normalizedUserId || !normalizedSourceId || !actionTarget) {
+      return null;
+    }
+    this.memoryDb.write(state => {
+      const table = state[EVENTS_TABLE_NAME];
+      const preferred = this.computePreferredEventRecords(table)
+        .find(record => record.id === normalizedSourceId && !record.isInvitation);
+      const preferredSubEvents = this.cloneSubEvents(preferred?.subEvents) ?? [];
+      const preferredIndex = this.resolveStageIndex(preferredSubEvents, request.subEventId, request.subEventIndex);
+      if (!preferred || preferredIndex < 0 || !this.canApplyStageAction(actionTarget.action, preferredSubEvents, preferredIndex)) {
+        return state;
+      }
+
+      const nowIso = new Date().toISOString();
+      const targetStageId = `${preferredSubEvents[preferredIndex]?.id ?? ''}`.trim();
+      const nextById = { ...table.byId };
+      let changed = false;
+      for (const id of table.ids) {
+        const current = table.byId[id];
+        if (!current || current.id !== normalizedSourceId || current.isInvitation) {
+          continue;
+        }
+        const subEvents = this.cloneSubEvents(current.subEvents) ?? [];
+        const stageIndex = this.resolveStageIndex(subEvents, targetStageId, preferredIndex);
+        if (stageIndex < 0 || !subEvents[stageIndex]) {
+          continue;
+        }
+        subEvents[stageIndex] = {
+          ...subEvents[stageIndex],
+          stageStatus: actionTarget.nextStatus,
+          stageStatusReason: actionTarget.reason,
+          stageStatusUpdatedAt: nowIso,
+          stageFinalizedAt: actionTarget.nextStatus === 'F' ? nowIso : null,
+          stageFinalizedByUserId: actionTarget.nextStatus === 'F' ? normalizedUserId : null
+        };
+        nextById[id] = {
+          ...current,
+          autoInviter: actionTarget.action === 'start-tournament' ? false : current.autoInviter,
+          subEvents
+        };
+        changed = true;
+      }
+      return changed
+        ? {
+            ...state,
+            [EVENTS_TABLE_NAME]: {
+              ...table,
+              byId: nextById
+            }
+          }
+        : state;
+    });
+    return this.peekKnownItemById(normalizedUserId, normalizedSourceId);
+  }
+
+  querySubEventLeaderboard(eventId: string, subEventId: string): AppTypes.SubEventLeaderboardState | null {
+    this.init();
+    const normalizedEventId = eventId.trim();
+    const normalizedSubEventId = subEventId.trim();
+    if (!normalizedEventId || !normalizedSubEventId) {
+      return null;
+    }
+    const table = this.memoryDb.read()[EVENTS_TABLE_NAME];
+    const record = this.computePreferredEventRecords(table)
+      .find(item => item.id === normalizedEventId && !item.isInvitation);
+    const subEvents = this.cloneSubEvents(record?.subEvents) ?? [];
+    const stage = subEvents.find(item => `${item.id ?? ''}`.trim() === normalizedSubEventId) ?? null;
+    if (!record || !stage) {
+      return null;
+    }
+    const leaderboardType = stage.tournamentLeaderboardType === 'Fifa' ? 'Fifa' : 'Score';
+    const groups = (stage.groups?.length ? stage.groups : this.demoGeneratedGroups(stage)).map((group, groupIndex) => {
+      const groupId = `${group.id ?? `${normalizedSubEventId}-group-${groupIndex + 1}`}`.trim();
+      const memberCount = Math.max(2, Math.trunc(Number(group.capacityMax ?? stage.tournamentGroupCapacityMax ?? stage.capacityMax) || 4));
+      const advancePerGroup = Math.max(1, Math.trunc(Number(stage.tournamentAdvancePerGroup) || 1));
+      const members = Array.from({ length: memberCount }, (_, memberIndex) => ({
+        id: `${groupId}-member-${memberIndex + 1}`,
+        name: `Member ${memberIndex + 1}`
+      }));
+      const scoreRows = members
+        .map((member, memberIndex) => ({
+          memberId: member.id,
+          memberName: member.name,
+          total: Math.max(0, 48 - groupIndex * 4 - memberIndex * 5),
+          updates: 2 + ((groupIndex + memberIndex) % 3)
+        }))
+        .sort((left, right) => right.total - left.total || left.memberName.localeCompare(right.memberName));
+      const fifaRows = members
+        .map((member, memberIndex) => {
+          const points = Math.max(0, 12 - groupIndex - memberIndex * 2);
+          const goalsFor = Math.max(0, 9 - memberIndex);
+          const goalsAgainst = Math.max(0, 3 + memberIndex);
+          return {
+            memberId: member.id,
+            memberName: member.name,
+            points,
+            played: 3,
+            wins: Math.max(0, Math.min(3, Math.floor(points / 3))),
+            draws: points % 3 === 1 ? 1 : 0,
+            losses: Math.max(0, 3 - Math.floor(points / 3) - (points % 3 === 1 ? 1 : 0)),
+            goalsFor,
+            goalsAgainst,
+            goalDiff: goalsFor - goalsAgainst
+          };
+        })
+        .sort((left, right) => right.points - left.points || right.goalDiff - left.goalDiff || left.memberName.localeCompare(right.memberName));
+      const advancingSource = leaderboardType === 'Fifa' ? fifaRows : scoreRows;
+      return {
+        groupId,
+        title: `${group.name ?? `Group ${groupIndex + 1}`}`.trim() || `Group ${groupIndex + 1}`,
+        memberCount,
+        advancePerGroup,
+        advancingMemberIds: advancingSource.slice(0, advancePerGroup).map(row => row.memberId),
+        members,
+        scoreEntries: [],
+        fifaMatches: [],
+        scoreRows: leaderboardType === 'Score' ? scoreRows : [],
+        fifaRows: leaderboardType === 'Fifa' ? fifaRows : []
+      };
+    });
+    return {
+      eventId: normalizedEventId,
+      subEventId: normalizedSubEventId,
+      title: `${stage.name ?? 'Stage results'}`.trim(),
+      leaderboardType,
+      groups
+    };
   }
 
   requestJoin(
@@ -1530,6 +1753,22 @@ export class DemoEventsRepository {
         ? item.groups.map((group: AppTypes.SubEventGroupItem) => ({ ...group }))
         : []
     }));
+  }
+
+  private demoGeneratedGroups(stage: AppTypes.SubEventFormItem): AppTypes.SubEventGroupItem[] {
+    const groupCount = Math.max(1, Math.trunc(Number(stage.tournamentGroupCount) || 1));
+    const min = Math.max(1, Math.trunc(Number(stage.tournamentGroupCapacityMin ?? stage.capacityMin) || 2));
+    const max = Math.max(min, Math.trunc(Number(stage.tournamentGroupCapacityMax ?? stage.capacityMax) || min));
+    return Array.from({ length: groupCount }, (_, index) => {
+      const letter = String.fromCharCode(65 + (index % 26));
+      return {
+        id: `${stage.id ?? 'stage'}-group-${index + 1}`,
+        name: `Group ${letter}`,
+        capacityMin: min,
+        capacityMax: max,
+        source: 'generated'
+      };
+    });
   }
 
   private materializeSubEventsForSlotOccurrence(

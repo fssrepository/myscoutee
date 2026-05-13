@@ -40,6 +40,9 @@ export class AdminPageComponent implements OnInit {
   private readonly helpEditorPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly ideaEditorPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly notificationsPopupComponentRef = signal<Type<unknown> | null>(null);
+  private readonly paramsPopupComponentRef = signal<Type<unknown> | null>(null);
+  private readonly statsPopupComponentRef = signal<Type<unknown> | null>(null);
+  private readonly monitoringPopupComponentRef = signal<Type<unknown> | null>(null);
 
   protected selectorOpen = false;
   protected selectorLoading = false;
@@ -55,6 +58,9 @@ export class AdminPageComponent implements OnInit {
   protected readonly helpEditorPopupComponent = this.helpEditorPopupComponentRef.asReadonly();
   protected readonly ideaEditorPopupComponent = this.ideaEditorPopupComponentRef.asReadonly();
   protected readonly notificationsPopupComponent = this.notificationsPopupComponentRef.asReadonly();
+  protected readonly paramsPopupComponent = this.paramsPopupComponentRef.asReadonly();
+  protected readonly statsPopupComponent = this.statsPopupComponentRef.asReadonly();
+  protected readonly monitoringPopupComponent = this.monitoringPopupComponentRef.asReadonly();
 
   constructor() {
     effect(() => {
@@ -73,6 +79,15 @@ export class AdminPageComponent implements OnInit {
           break;
         case 'notifications':
           void this.ensureNotificationsPopupLoaded();
+          break;
+        case 'params':
+          void this.ensureParamsPopupLoaded();
+          break;
+        case 'stats':
+          void this.ensureStatsPopupLoaded();
+          break;
+        case 'monitoring':
+          void this.ensureMonitoringPopupLoaded();
           break;
       }
     });
@@ -105,6 +120,15 @@ export class AdminPageComponent implements OnInit {
           break;
         case 'notifications':
           this.admin.openNotifications();
+          break;
+        case 'params':
+          this.admin.openParams();
+          break;
+        case 'stats':
+          this.admin.openStats();
+          break;
+        case 'monitoring':
+          this.admin.openMonitoring();
           break;
       }
     });
@@ -275,6 +299,30 @@ export class AdminPageComponent implements OnInit {
     }
     const module = await import('../notifications-popup/admin-notifications-popup.component');
     this.notificationsPopupComponentRef.set(module.AdminNotificationsPopupComponent);
+  }
+
+  private async ensureParamsPopupLoaded(): Promise<void> {
+    if (this.paramsPopupComponentRef()) {
+      return;
+    }
+    const module = await import('../params-popup/admin-params-popup.component');
+    this.paramsPopupComponentRef.set(module.AdminParamsPopupComponent);
+  }
+
+  private async ensureStatsPopupLoaded(): Promise<void> {
+    if (this.statsPopupComponentRef()) {
+      return;
+    }
+    const module = await import('../stats-popup/admin-stats-popup.component');
+    this.statsPopupComponentRef.set(module.AdminStatsPopupComponent);
+  }
+
+  private async ensureMonitoringPopupLoaded(): Promise<void> {
+    if (this.monitoringPopupComponentRef()) {
+      return;
+    }
+    const module = await import('../monitoring-popup/admin-monitoring-popup.component');
+    this.monitoringPopupComponentRef.set(module.AdminMonitoringPopupComponent);
   }
 
   private delay(durationMs: number): Promise<void> {

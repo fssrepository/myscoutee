@@ -525,6 +525,60 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
     this.cacheMembers(normalizedOwner, members, summary.capacityTotal);
   }
 
+  override async applyMemberAction(
+    owner: ActivityMemberOwnerRef,
+    actorUserId: string,
+    targetUserId: string,
+    action: 'disqualify' | 'reinstate',
+    reason?: string | null
+  ): Promise<AppTypes.ActivityMemberEntry[]> {
+    if (!this.isInitialized) {
+      this.init();
+    }
+    const normalizedOwner = this.normalizeOwnerRef(owner);
+    const normalizedTargetUserId = targetUserId.trim();
+    if (!normalizedOwner || !normalizedTargetUserId) {
+      return normalizedOwner ? this.peekMembersByOwner(normalizedOwner) : [];
+    }
+    const previousMembers = this.readMembersByOwner(normalizedOwner);
+    const nowIso = AppUtils.toIsoDateTime(new Date());
+    const nextMembers = previousMembers.map(member => {
+      if (member.userId !== normalizedTargetUserId) {
+        return member;
+      }
+      if (action === 'disqualify' && member.status === 'accepted') {
+        return {
+          ...member,
+          status: 'disqualified' as const,
+          pendingSource: null,
+          requestKind: null,
+          invitedByUserId: null,
+          invitedByActiveUser: false,
+          actionAtIso: nowIso
+        };
+      }
+      if (action === 'reinstate' && member.status === 'disqualified') {
+        return {
+          ...member,
+          status: 'accepted' as const,
+          pendingSource: null,
+          requestKind: null,
+          invitedByUserId: null,
+          invitedByActiveUser: false,
+          actionAtIso: nowIso
+        };
+      }
+      return member;
+    });
+    const changed = nextMembers.some((member, index) => member.status !== previousMembers[index]?.status);
+    if (!changed) {
+      return this.cloneEntries(previousMembers);
+    }
+    const summary = this.writeOwnerMembers(normalizedOwner, nextMembers, undefined, true);
+    this.cacheMembers(normalizedOwner, nextMembers, summary.capacityTotal);
+    return this.cloneEntries(nextMembers);
+  }
+
   private ensureLightweightSyncReady(): void {
     this.demoEventsRepository.init();
     const state = this.memoryDb.read();
@@ -1150,7 +1204,27 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
       ? [...asset.requests]
       : this.buildFallbackAssetRequests(ownerUserId, asset);
     const seedBaseDate = new Date('2026-02-24T12:00:00.000Z');
-    return requests
+    const owner = this.resolveDemoUser(ownerUserId, asset.ownerName?.trim() || 'Asset owner', '', asset.city);
+    const ownerEntry: AppTypes.ActivityMemberEntry = {
+      id: `${asset.id}:owner`,
+      userId: owner.id,
+      name: owner.name,
+      initials: owner.initials,
+      gender: owner.gender,
+      city: owner.city || asset.city,
+      statusText: 'Responsible manager for this asset.',
+      role: 'Manager',
+      status: 'accepted',
+      pendingSource: null,
+      requestKind: null,
+      invitedByActiveUser: false,
+      metAtIso: asset.ownerUserId === owner.id ? (asset as { updatedAtIso?: string }).updatedAtIso ?? seedBaseDate.toISOString() : seedBaseDate.toISOString(),
+      actionAtIso: asset.ownerUserId === owner.id ? (asset as { updatedAtIso?: string }).updatedAtIso ?? seedBaseDate.toISOString() : seedBaseDate.toISOString(),
+      metWhere: asset.title,
+      avatarUrl: AppUtils.firstImageUrl(owner.images),
+      profile: owner
+    };
+    const requestEntries = requests
       .map((request, index): AppTypes.ActivityMemberEntry => {
         const requestUserId = AppUtils.resolveAssetRequestUserId(request, this.demoActivityMemberUsers);
         const matchedUser = this.demoActivityMemberUsers.find(user => user.id === requestUserId)
@@ -1167,7 +1241,7 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
           gender: request.gender,
           city: matchedUser.city || asset.city,
           statusText: request.note?.trim() || (status === 'pending' ? 'Waiting for owner confirmation.' : 'Accepted for this asset.'),
-          role: matchedUser.id === ownerUserId ? 'Admin' : 'Member',
+          role: status === 'accepted' && index === 1 ? 'Manager' : 'Member',
           status,
           pendingSource: status === 'pending' ? 'admin' : null,
           requestKind: status === 'pending' ? 'invite' : null,
@@ -1180,6 +1254,7 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
         };
       })
       .sort((left, right) => AppUtils.toSortableDate(right.actionAtIso) - AppUtils.toSortableDate(left.actionAtIso));
+    return [ownerEntry, ...requestEntries];
   }
 
   private buildFallbackAssetRequests(ownerUserId: string, asset: AppTypes.AssetCard): AppTypes.AssetMemberRequest[] {
