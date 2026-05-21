@@ -49,7 +49,7 @@ import { EventCheckoutDialogService } from '../../../shared/ui/services/event-ch
 import { NavigatorService } from '../../../navigator';
 import type { DemoEventRecord } from '../../../shared/core/demo/models/events.model';
 import { resolveCurrentRouteDelayMs } from '../../../shared/core/base/services/route-delay.service';
-import type { ChatMenuItem } from '../../../shared/core/base/interfaces/activity-feed.interface';
+import type { ChatRecord } from '../../../shared/core/base/models/chat.model';
 
 type CheckoutDraftEntry = {
   draft: EventCheckoutDraft;
@@ -855,7 +855,7 @@ export class EventExplorePopupComponent {
     });
   }
 
-  private buildEventExploreServiceChat(record: DemoEventRecord): (ChatMenuItem & { ownerUserId?: string }) | null {
+  private buildEventExploreServiceChat(record: DemoEventRecord): (ChatRecord & { ownerUserId?: string }) | null {
     const activeUserId = this.activeUserId.trim();
     if (!activeUserId) {
       return null;

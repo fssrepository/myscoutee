@@ -9,13 +9,7 @@ export class AssetTicketConverter {
     row: AppTypes.ActivityListRow,
     holder: TicketPerson | null = null
   ): AppTypes.TicketScanPayload {
-    const source = row.source as {
-      createdDate?: string;
-      createdAtIso?: string;
-      updatedDate?: string;
-    } | null;
-    const issuedAtIso = `${source?.createdDate ?? source?.createdAtIso ?? source?.updatedDate ?? row.dateIso}`.trim()
-      || row.dateIso;
+    const issuedAtIso = `${row.startAt ?? row.dateIso}`.trim() || row.dateIso;
     const userId = holder?.id?.trim() || '';
     const userName = holder?.name?.trim() || 'Ticket Holder';
     const holderAge = Math.max(0, Math.trunc(Number(holder?.age) || 0));

@@ -6,7 +6,7 @@ import { DemoUserSeedBuilder } from './demo-user-seed.builder';
 import type * as AppTypes from '../../../core/base/models';
 import { AppUtils } from '../../../app-utils';
 import type { DemoUser } from '../../base/interfaces/user.interface';
-import type { EventMenuItem, HostingMenuItem, InvitationMenuItem } from '../../base/interfaces/activity-feed.interface';
+import type { DemoEventSeedItem, DemoHostingSeedItem, DemoInvitationSeedItem } from '../models/event-seed-item.model';
 import type { LocationCoordinates } from '../../base/interfaces';
 import type {
   DemoEventRecord,
@@ -158,7 +158,7 @@ function buildCheckoutDemoSubEvents(options: {
   ];
 }
 
-const SEED_INVITATIONS_BY_USER: Record<string, InvitationMenuItem[]> = {
+const SEED_INVITATIONS_BY_USER: Record<string, DemoInvitationSeedItem[]> = {
   u1: [
     {
       id: 'i1',
@@ -228,7 +228,7 @@ const SEED_INVITATIONS_BY_USER: Record<string, InvitationMenuItem[]> = {
   }]
 };
 
-const SEED_EVENTS_BY_USER: Record<string, EventMenuItem[]> = {
+const SEED_EVENTS_BY_USER: Record<string, DemoEventSeedItem[]> = {
   u1: [
     {
       id: 'e1',
@@ -575,7 +575,7 @@ const SEED_EVENTS_BY_USER: Record<string, EventMenuItem[]> = {
   ]
 };
 
-const SEED_HOSTING_BY_USER: Record<string, HostingMenuItem[]> = {
+const SEED_HOSTING_BY_USER: Record<string, DemoHostingSeedItem[]> = {
   u1: [
     {
       id: 'h1',
@@ -669,7 +669,7 @@ interface DemoEventSeedOverrides {
 export class DemoEventsRepositoryBuilder {
   private static readonly SEED_SCHEDULE_REFERENCE_DATE = new Date(2026, 2, 1, 0, 0, 0, 0);
 
-  static buildSeedInvitationItemsByUser(): Record<string, InvitationMenuItem[]> {
+  static buildSeedInvitationItemsByUser(): Record<string, DemoInvitationSeedItem[]> {
     return Object.fromEntries(
       Object.entries(SEED_INVITATIONS_BY_USER).map(([userId, items]) => [userId, items.map(item => ({
         ...item,
@@ -680,7 +680,7 @@ export class DemoEventsRepositoryBuilder {
     );
   }
 
-  static buildSeedEventItemsByUser(): Record<string, EventMenuItem[]> {
+  static buildSeedEventItemsByUser(): Record<string, DemoEventSeedItem[]> {
     const seeded = Object.fromEntries(
       Object.entries(SEED_EVENTS_BY_USER).map(([userId, items]) => [
         userId,
@@ -695,14 +695,14 @@ export class DemoEventsRepositoryBuilder {
           pendingMemberUserIds: item.pendingMemberUserIds ? [...item.pendingMemberUserIds] : item.pendingMemberUserIds
         }))
       ])
-    ) as Record<string, EventMenuItem[]>;
+    ) as Record<string, DemoEventSeedItem[]>;
 
     this.rebalanceSeedExploreItems(seeded);
     return seeded;
   }
 
 
-  private static rebalanceSeedExploreItems(seedItemsByUser: Record<string, EventMenuItem[]>): void {
+  private static rebalanceSeedExploreItems(seedItemsByUser: Record<string, DemoEventSeedItem[]>): void {
     for (const [ownerUserId, eventIds] of Object.entries(SEED_EXPLORE_REBALANCE_BY_OWNER_USER)) {
       const ownerItems = seedItemsByUser[ownerUserId];
       if (!ownerItems || ownerItems.length === 0) {
@@ -733,7 +733,7 @@ export class DemoEventsRepositoryBuilder {
     }
   }
 
-  static buildSeedHostingItemsByUser(): Record<string, HostingMenuItem[]> {
+  static buildSeedHostingItemsByUser(): Record<string, DemoHostingSeedItem[]> {
     return Object.fromEntries(
       Object.entries(SEED_HOSTING_BY_USER).map(([userId, items]) => [
         userId,
@@ -754,9 +754,9 @@ export class DemoEventsRepositoryBuilder {
   }
 
   static buildRecordCollection(options: {
-    invitationsByUser: Record<string, readonly InvitationMenuItem[]>;
-    eventsByUser: Record<string, readonly EventMenuItem[]>;
-    hostingByUser: Record<string, readonly HostingMenuItem[]>;
+    invitationsByUser: Record<string, readonly DemoInvitationSeedItem[]>;
+    eventsByUser: Record<string, readonly DemoEventSeedItem[]>;
+    hostingByUser: Record<string, readonly DemoHostingSeedItem[]>;
     publishedById?: Record<string, boolean>;
   }): DemoEventRecordCollection {
     const byId: Record<string, DemoEventRecord> = {};
@@ -1022,9 +1022,9 @@ export class DemoEventsRepositoryBuilder {
       slotTemplates: (record.slotTemplates ?? []).map(item => ({ ...item })),
       nextSlot: record.nextSlot ? { ...record.nextSlot } : null,
       upcomingSlots: (record.upcomingSlots ?? []).map(item => ({ ...item })),
-      acceptedMemberUserIds: [...record.acceptedMemberUserIds],
-      pendingMemberUserIds: [...record.pendingMemberUserIds],
-      topics: [...record.topics],
+      acceptedMemberUserIds: [...(record.acceptedMemberUserIds ?? [])],
+      pendingMemberUserIds: [...(record.pendingMemberUserIds ?? [])],
+      topics: [...(record.topics ?? [])],
       subEvents: this.cloneSubEvents(record.subEvents)
     };
   }
@@ -1038,9 +1038,9 @@ export class DemoEventsRepositoryBuilder {
   }
 
   private static buildCreatorUserIdByEventId(options: {
-    invitationsByUser: Record<string, readonly InvitationMenuItem[]>;
-    eventsByUser: Record<string, readonly EventMenuItem[]>;
-    hostingByUser: Record<string, readonly HostingMenuItem[]>;
+    invitationsByUser: Record<string, readonly DemoInvitationSeedItem[]>;
+    eventsByUser: Record<string, readonly DemoEventSeedItem[]>;
+    hostingByUser: Record<string, readonly DemoHostingSeedItem[]>;
   }): Map<string, string> {
     const map = new Map<string, string>();
     for (const [userId, items] of Object.entries(options.hostingByUser)) {
@@ -1064,7 +1064,7 @@ export class DemoEventsRepositoryBuilder {
   }
 
   private static resolveInvitationCreatorUserId(
-    item: InvitationMenuItem,
+    item: DemoInvitationSeedItem,
     inviteeUserId: string,
     creatorUserIdByEventId: Map<string, string>
   ): string {
@@ -1593,23 +1593,21 @@ export class DemoEventsRepositoryBuilder {
     const row: AppTypes.ActivityListRow = {
       id: record.id,
       type: record.type === 'hosting' ? 'hosting' : 'events',
+      status: record.type === 'hosting' ? 'H' : 'A',
       title: record.title,
       subtitle: record.subtitle,
       detail: startAtIso,
       dateIso: startAtIso,
-      distanceKm,
+      distanceMetersExact: Math.max(0, Math.round((Number(distanceKm) || 0) * 1000)),
       unread: record.activity,
       metricScore: record.activity,
       isAdmin: record.type === 'hosting' ? true : record.isAdmin,
-      source: {
-        id: record.id,
-        avatar: creator.initials,
-        title: record.title,
-        shortDescription: record.subtitle,
-        timeframe: startAtIso,
-        activity: record.activity,
-        isAdmin: record.type === 'hosting' ? true : record.isAdmin
-      } as AppTypes.ActivityListRow['source']
+      ownerId: creator.id,
+      ownerUserId: creator.id,
+      avatarInitials: creator.initials,
+      startAt: startAtIso,
+      endAt: startAtIso,
+      boost: record.activity
     };
     const rowKey = `${row.type}:${row.id}`;
     const members = ActivityMembersBuilder.generateActivityMembersForRow(
@@ -1660,7 +1658,7 @@ export class DemoEventsRepositoryBuilder {
       timeframe: record.timeframe ?? startAtIso,
       activity: record.activity,
       ...(record.type === 'events' ? { isAdmin: record.isAdmin } : {})
-    } as EventMenuItem | HostingMenuItem;
+    } as DemoEventSeedItem | DemoHostingSeedItem;
 
     return DemoEventSeedBuilder.buildSeededSubEventsForEvent(source, {
       isHosting: record.type === 'hosting',
@@ -1695,7 +1693,7 @@ export class DemoEventsRepositoryBuilder {
     return 50 + (seed % 51);
   }
 
-  private static extractSeedOverrides(item: EventMenuItem | HostingMenuItem | InvitationMenuItem): DemoEventSeedOverrides | undefined {
+  private static extractSeedOverrides(item: DemoEventSeedItem | DemoHostingSeedItem | DemoInvitationSeedItem): DemoEventSeedOverrides | undefined {
     const overrides: DemoEventSeedOverrides = {
       startAt: item.startAt,
       endAt: item.endAt,

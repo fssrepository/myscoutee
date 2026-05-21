@@ -1,6 +1,6 @@
 import { AppUtils } from '../../../app-utils';
 import type * as AppTypes from '../../base/models';
-import type { EventMenuItem, HostingMenuItem } from '../../base/interfaces/activity-feed.interface';
+import type { DemoEventSeedItem, DemoHostingSeedItem } from '../models/event-seed-item.model';
 import type { DemoUser } from '../../base/interfaces/user.interface';
 import { DemoUserSeedBuilder } from './demo-user-seed.builder';
 
@@ -65,7 +65,7 @@ export class DemoEventSeedBuilder {
   }
 
   static buildSeededSubEventsForEvent(
-    source: EventMenuItem | HostingMenuItem,
+    source: DemoEventSeedItem | DemoHostingSeedItem,
     options: {
       isHosting: boolean;
       activityDateTimeRangeById: Record<string, AppTypes.ActivityDateTimeRange>;
@@ -109,7 +109,7 @@ export class DemoEventSeedBuilder {
   }
 
   private static buildSeededCasualSubEvents(
-    source: EventMenuItem | HostingMenuItem,
+    source: DemoEventSeedItem | DemoHostingSeedItem,
     startMs: number,
     endMs: number,
     seed: number,
@@ -151,7 +151,7 @@ export class DemoEventSeedBuilder {
   }
 
   private static buildSeededTournamentSubEvents(
-    source: EventMenuItem | HostingMenuItem,
+    source: DemoEventSeedItem | DemoHostingSeedItem,
     startMs: number,
     endMs: number,
     seed: number,

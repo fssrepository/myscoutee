@@ -5,11 +5,12 @@ import type {
   ActivityMembersSummary
 } from '../../../core/base/models';
 import { ActivityMembersBuilder } from '../../base/builders/activity-members.builder';
+import { toActivityEventRow } from '../../base/converters/activities-event.converter';
 import { APP_STATIC_DATA } from '../../../app-static-data';
 import type * as AppTypes from '../../../core/base/models';
 import { AppUtils } from '../../../app-utils';
 import type { DemoUser } from '../../base/interfaces/user.interface';
-import type { EventMenuItem, HostingMenuItem } from '../../base/interfaces/activity-feed.interface';
+import type { DemoEventSeedItem, DemoHostingSeedItem } from '../models/event-seed-item.model';
 import { HttpActivityMembersRepository } from '../../http/repositories/activity-members.repository';
 import type { UserGameMode, UserGameSocialCard } from '../../base/interfaces/game.interface';
 import type { DemoEventRecord, DemoEventRecordCollection } from '../models/events.model';
@@ -1403,7 +1404,7 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
         id: record.id,
         title: record.title,
         shortDescription: record.subtitle
-      } as EventMenuItem | HostingMenuItem;
+      } as DemoEventSeedItem | DemoHostingSeedItem;
       const capacityMax = Math.max(
         this.normalizeMemberCount(record.capacityMax) ?? 0,
         this.normalizeMemberCount(record.capacityTotal) ?? 0,
@@ -1453,7 +1454,6 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
     dateIso: string
   ): AppTypes.ActivityListRow {
     const baseRow = this.buildActivityRowFromEventRecord(record);
-    const baseSource = (baseRow.source ?? {}) as unknown as Record<string, unknown>;
     return {
       ...baseRow,
       id: ownerId,
@@ -1461,14 +1461,7 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
       subtitle,
       detail,
       dateIso,
-      source: {
-        ...baseSource,
-        id: ownerId,
-        title,
-        shortDescription: subtitle,
-        timeframe: detail,
-        startAt: dateIso
-      } as AppTypes.ActivityListRow['source']
+      startAt: dateIso
     };
   }
 
@@ -1785,78 +1778,11 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
   }
 
   private buildActivityRowFromEventRecord(record: DemoEventRecord): AppTypes.ActivityListRow {
-    return {
-      id: record.id,
-      type: record.type === 'hosting' ? 'hosting' : 'events',
-      title: record.title,
-      subtitle: record.subtitle,
-      detail: record.timeframe,
-      dateIso: record.startAtIso,
-      distanceKm: record.distanceKm,
-      unread: record.activity,
-      metricScore: record.boost,
-      isAdmin: true,
-      source: {
-        id: record.id,
-        avatar: record.creatorInitials,
-        title: record.title,
-        shortDescription: record.subtitle,
-        timeframe: record.timeframe,
-        activity: record.activity,
-        isAdmin: true,
-        creatorUserId: record.creatorUserId,
-        startAt: record.startAtIso,
-        endAt: record.endAtIso,
-        distanceKm: record.distanceKm,
-        visibility: record.visibility,
-        blindMode: record.blindMode,
-        imageUrl: record.imageUrl,
-        sourceLink: record.sourceLink,
-        location: record.location,
-        capacityMin: record.capacityMin,
-        capacityMax: record.capacityMax,
-        topics: [...record.topics],
-        rating: record.rating,
-        boost: record.boost,
-        published: record.published
-      } as AppTypes.ActivityListRow['source']
-    };
+    return toActivityEventRow({ ...record, isAdmin: true });
   }
 
   private buildActivityRowFromInvitationRecord(record: DemoEventRecord): AppTypes.ActivityListRow {
-    return {
-      id: record.id,
-      type: 'invitations',
-      title: record.title,
-      subtitle: record.inviter?.trim() || record.creatorName,
-      detail: record.timeframe,
-      dateIso: record.startAtIso,
-      distanceKm: record.distanceKm,
-      unread: Math.max(0, Math.trunc(Number(record.unread) || 0)),
-      metricScore: Math.max(0, Number(record.boost) || 0),
-      isAdmin: false,
-      source: {
-        id: record.id,
-        avatar: record.avatar,
-        inviter: record.inviter?.trim() || record.creatorName,
-        description: record.title,
-        when: record.timeframe,
-        unread: Math.max(0, Math.trunc(Number(record.unread) || 0)),
-        acceptedMembers: record.acceptedMembers,
-        pendingMembers: record.pendingMembers,
-        capacityTotal: record.capacityTotal,
-        acceptedMemberUserIds: [...record.acceptedMemberUserIds],
-        pendingMemberUserIds: [...record.pendingMemberUserIds],
-        startAt: record.startAtIso,
-        endAt: record.endAtIso,
-        distanceKm: record.distanceKm,
-        imageUrl: record.imageUrl,
-        sourceLink: record.sourceLink,
-        location: record.location,
-        locationCoordinates: record.locationCoordinates,
-        policies: (record.policies ?? []).map(item => ({ ...item }))
-      } as AppTypes.ActivityListRow['source']
-    };
+    return toActivityEventRow({ ...record, isInvitation: true, type: 'invitations', isAdmin: false });
   }
 
   private resolveEventCapacityTotal(eventId: string, acceptedMembers: number): number {

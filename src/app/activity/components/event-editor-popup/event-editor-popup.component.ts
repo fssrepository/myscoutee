@@ -285,7 +285,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.showEventVisibilityPicker = false;
     this.showTopicPicker = false;
     this.showMobileFrequencyPicker = false;
-    const source = this.eventEditorService.sourceEvent();
     const eventId = this.currentEventIdentity() || 'draft-event';
     const canManageMembers = !this.eventEditorService.readOnly();
     const row: AppTypes.ActivityListRow = {
@@ -295,17 +294,17 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       subtitle: this.eventForm.description.trim() || 'Draft event',
       detail: this.eventForm.startAt || 'Draft',
       dateIso: this.eventForm.startAt || new Date().toISOString(),
-      distanceKm: 0,
+      distanceMetersExact: 0,
       unread: 0,
       metricScore: 0,
       isAdmin: canManageMembers,
-      source: source ?? {
-        id: eventId,
-        avatar: '',
-        title: this.eventForm.title.trim() || 'New Event',
-        shortDescription: this.eventForm.description.trim() || 'Draft event',
-        timeframe: this.eventForm.startAt || 'Draft'
-      }
+      startAt: this.eventForm.startAt || new Date().toISOString(),
+      endAt: this.eventForm.endAt || this.eventForm.startAt || new Date().toISOString(),
+      acceptedMembers: 0,
+      pendingMembers: 0,
+      capacityTotal: Math.max(0, Number(this.eventForm.capacityMax ?? this.eventForm.capacityMin ?? 0) || 0),
+      capacityMin: this.eventForm.capacityMin,
+      capacityMax: this.eventForm.capacityMax
     };
     this.popupCtx.requestActivitiesNavigation({ type: 'eventEditorMembers', row });
   }

@@ -163,7 +163,7 @@
               >
               @for (page of featuredIdeaPages(); track $index) {
                 <div class="entry-ideas-carousel-page">
-                  @for (card of page; track card.rowId) {
+                  @for (card of page; track card.id) {
                     <app-info-card
                       class="entry-idea-info-card"
                       [attr.data-entry-idea-post-id]="ideaCardDetail(card)?.id"

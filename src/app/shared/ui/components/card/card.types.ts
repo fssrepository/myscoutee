@@ -223,8 +223,15 @@ export interface InfoCardFooterChip {
 }
 
 export interface DisplayData<TDetailRecord = unknown> {
-  rowId: string;
+  id: string;
+  status?: string | null;
+  dateIso?: string | null;
+  distanceMetersExact?: number | null;
+  badgeCount?: number | null;
+  sortScore?: number | null;
+  menuActions?: readonly InfoCardMenuAction[];
   ownerId?: string | null;
+  ownerUserId?: string | null;
   detailRecord?: TDetailRecord | null;
 }
 
@@ -253,13 +260,71 @@ export interface InfoCardData<TDetailRecord = unknown> extends DisplayData<TDeta
   state?: CardRenderState;
 }
 
+export type ImageCardMode = 'individual' | 'pair' | string;
+export type ImageCardDirection = 'given' | 'received' | 'mutual' | 'met' | string;
+export type ImageCardGender = 'woman' | 'man';
+export type ImageCardSocialContext = 'separated-friends' | 'friends-in-common';
+
+export interface ImageCardPerson {
+  id: string;
+  name: string;
+  age: number;
+  city: string;
+  gender: ImageCardGender;
+  profile?: unknown | null;
+}
+
+export interface ImageCardData<TDetailRecord = unknown> extends DisplayData<TDetailRecord> {
+  title: string;
+  subtitle?: string | null;
+  detail?: string | null;
+  mode?: ImageCardMode | null;
+  direction?: ImageCardDirection | null;
+  displayedDirection?: ImageCardDirection | null;
+  eventName?: string | null;
+  happenedOnLabel?: string | null;
+  primaryUser?: ImageCardPerson | null;
+  pairUsers?: readonly ImageCardPerson[];
+  availableUsers?: readonly ImageCardPerson[];
+  singleImageUrls?: readonly string[];
+  pairSlots?: readonly PairCardSlot[];
+  stackClasses?: readonly string[];
+  badge?: CardBadgeConfig | null;
+  contextBadge?: CardContextBadgeConfig | null;
+  presentation?: CardPresentation;
+  state?: CardRenderState;
+  fullscreenSplitEnabled?: boolean;
+  userId?: string | null;
+  secondaryUserId?: string | null;
+  socialContext?: ImageCardSocialContext | null;
+  bridgeUserId?: string | null;
+  bridgeCount?: number | null;
+  scoreGiven?: number | null;
+  scoreReceived?: number | null;
+}
+
+export interface SingleRowData<TDetailRecord = unknown> extends DisplayData<TDetailRecord> {
+  title: string;
+  subtitle?: string | null;
+  detail?: string | null;
+  avatarInitials?: string | null;
+  avatarToneClass?: string | null;
+  avatarUrl?: string | null;
+  icon?: string | null;
+  toneClass?: string | null;
+  sideLabel?: string | null;
+  metaRows?: readonly string[];
+  unread?: number | null;
+  memberCount?: number | null;
+}
+
 export interface InfoCardClickEvent {
-  rowId: string;
+  id: string;
   card: InfoCardData;
 }
 
 export interface InfoCardMenuActionEvent {
-  rowId: string;
+  id: string;
   actionId: string;
   action: InfoCardResolvedMenuAction;
   card: InfoCardData;
@@ -275,7 +340,7 @@ export interface InfoCardMenuTriggerRect {
 }
 
 export interface InfoCardMenuRequestEvent {
-  rowId: string;
+  id: string;
   card: InfoCardData;
   actions: readonly InfoCardMenuAction[];
   triggerRect: InfoCardMenuTriggerRect | null;

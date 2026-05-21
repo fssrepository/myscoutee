@@ -36,7 +36,7 @@ import type {
   EventSupplyContributionsPopupHost
 } from '../components/event-supply-contributions-popup/event-supply-contributions-popup.component';
 import type { ListQuery, PageResult } from '../../shared/ui';
-import type { ChatMenuItem } from '../../shared/core/base/interfaces/activity-feed.interface';
+import type { ChatRecord } from '../../shared/core/base/models/chat.model';
 
 interface ResourcePopupContext {
   origin: 'chat' | 'eventEditor';
@@ -3053,7 +3053,7 @@ export class SubEventResourcePopupService {
     memberIds: string[];
     lastSenderId: string;
     avatarSource: string;
-  }): ChatMenuItem & { ownerUserId?: string } {
+  }): ChatRecord & { ownerUserId?: string } {
     const activeUserId = this.activeUser().id.trim();
     return {
       id: input.id,
@@ -3072,7 +3072,7 @@ export class SubEventResourcePopupService {
     };
   }
 
-  private buildServiceChatContext(chat: ChatMenuItem): AppTypes.EventChatContext {
+  private buildServiceChatContext(chat: ChatRecord): AppTypes.EventChatContext {
     return {
       channelType: 'serviceEvent',
       hasSubEventMenu: false,

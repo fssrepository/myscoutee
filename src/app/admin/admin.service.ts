@@ -36,7 +36,7 @@ import {
   type UserDto
 } from '../shared/core';
 import { AppMemoryDb } from '../shared/core/base/db';
-import type { ChatMenuItem } from '../shared/core/base/interfaces/activity-feed.interface';
+import type { ChatRecord } from '../shared/core/base/models/chat.model';
 import type { ChatPopupMessage } from '../shared/core/base/models/chat.model';
 import { DemoChatsRepository, DemoUsersRepository } from '../shared/core/demo';
 import { CHATS_TABLE_NAME, type DemoChatRecord } from '../shared/core/demo/models/chats.model';
@@ -1504,7 +1504,7 @@ export class AdminService {
       return;
     }
     const now = new Date();
-    const chat: ChatMenuItem & { ownerUserId?: string } = {
+    const chat: ChatRecord & { ownerUserId?: string } = {
       id: `c-admin-service-help-${helpUser.id}`,
       avatar: helpUser.initials,
       title: `MyScoutee Support · ${helpUser.name}`,
@@ -1818,7 +1818,7 @@ export class AdminService {
     this.selectedReportedUserRef.set(this.resolveDashboardReportedUser(userId) ?? selected);
   }
 
-  private buildAdminSupportChat(user: AdminReportedUserDto): ChatMenuItem & { ownerUserId?: string } {
+  private buildAdminSupportChat(user: AdminReportedUserDto): ChatRecord & { ownerUserId?: string } {
     const admin = this.activeAdmin() ?? this.resolveDemoAdmin();
     return {
       id: `c-support-admin-${user.userId}`,

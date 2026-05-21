@@ -17,10 +17,8 @@ import { MatSelectModule } from '@angular/material/select';
 import { from } from 'rxjs';
 
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
-import type {
-  ChatMenuItem,
-  RateMenuItem
-} from '../../../shared/core/base/interfaces/activity-feed.interface';
+import type { ChatRecord } from '../../../shared/core/base/models/chat.model';
+import type { RateRecord } from '../../../shared/core/base/models/rate.model';
 import type { DemoUser } from '../../../shared/core/base/interfaces/user.interface';
 import { AppUtils } from '../../../shared/app-utils';
 import type { ActivitiesEventDisplaySync } from '../../../shared/core';
@@ -63,8 +61,7 @@ import {
 import { ActivitiesPopupToolbarController } from './activities-popup-toolbar.controller';
 import {
   ActivitiesChatTemplateComponent,
-  ActivitiesChatsController,
-  type ActivitiesChatTemplateContext
+  ActivitiesChatsController
 } from './templates/chat/activities-chat-template.component';
 import {
   ActivitiesEventTemplateComponent,
@@ -92,9 +89,6 @@ import {
   type ActivityMembersSyncState
 } from '../../../shared/core';
 import { resolveCurrentRouteDelayMs } from '../../../shared/core/base/services/route-delay.service';
-import {
-  toActivityEventRow
-} from '../../../shared/core/base/converters/activities-event.converter';
 import { DemoUserMenuCountersBuilder } from '../../../shared/core/demo/builders';
 import type {
   DemoEventRecord,
@@ -215,12 +209,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
   readonly activitiesEvents = new ActivitiesEventsController(this as never);
   readonly activitiesChats = new ActivitiesChatsController(this as never);
   protected readonly activitiesRateTemplateContext: ActivitiesRateTemplateContext = this.activitiesRates.templateContext;
-  protected readonly activitiesChatTemplateContext: ActivitiesChatTemplateContext = {
-    getActiveUserInitials: () => this.activeUser.initials,
-    getChatLastSender: (chat) => this.activitiesChats.getChatLastSender(chat),
-    getChatMemberCount: (chat) => this.activitiesChats.getChatMemberCount(chat),
-    getChatChannelType: (chat) => this.activitiesChats.chatChannelType(chat)
-  };
   // ── Self-contained data state (no host inputs) ───────────────────────────
   protected isMobileView = false;
   protected get users(): DemoUser[] {
@@ -230,11 +218,11 @@ export class ActivitiesPopupComponent implements OnDestroy {
     ?? this.users[0]
     ?? this.createFallbackActiveUser();
 
-  protected chatItems: ChatMenuItem[] = [];
+  protected chatItems: ChatRecord[] = [];
   protected eventItems: DemoEventRecord[] = [];
   protected hostingItems: DemoEventRecord[] = [];
   protected invitationItems: DemoEventRecord[] = [];
-  protected rateItems: RateMenuItem[] = [];
+  protected rateItems: RateRecord[] = [];
 
   protected chatBadge = this.activeUser.activities.chat;
   protected eventsBadge = this.activeUser.activities.events;
@@ -447,8 +435,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected readonly activityRateBlinkUntilByRowId: Record<string, number>                          = {};
   protected readonly activityRateBlinkTimeoutByRowId: Record<string, ReturnType<typeof setTimeout> | null> = {};
   protected readonly activityRateDraftById: Record<string, number>                                  = {};
-  protected readonly activityRateDirectionOverrideById: Partial<Record<string, RateMenuItem['direction']>> = {};
-  protected readonly pendingActivityRateDirectionOverrideById: Partial<Record<string, RateMenuItem['direction']>> = {};
+  protected readonly activityRateDirectionOverrideById: Partial<Record<string, RateRecord['direction']>> = {};
+  protected readonly pendingActivityRateDirectionOverrideById: Partial<Record<string, RateRecord['direction']>> = {};
 
   protected lastRateIndicatorPulseRowId: string | null = null;
 
@@ -466,28 +454,41 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected selectedActivityMembersRowId: string | null = null;
   protected readonly trashedActivityRowsByKey: Record<string, AppTypes.ActivityListRow> = {};
 
-  protected getChatLastSender(item: ChatMenuItem): DemoUser {
+  protected getChatLastSender(item: ChatRecord): DemoUser {
     return this.activitiesChats.getChatLastSender(item);
   }
 
-  protected getChatMemberCount(item: ChatMenuItem): number {
+  protected getChatMemberCount(item: ChatRecord): number {
     return this.activitiesChats.getChatMemberCount(item);
   }
 
-  protected chatChannelType(item: ChatMenuItem): AppTypes.ChatChannelType {
+  protected chatChannelType(item: ChatRecord): AppTypes.ChatChannelType {
     return this.activitiesChats.chatChannelType(item);
   }
 
-  protected chatItemsForActivities(): ChatMenuItem[] {
+  protected chatItemsForActivities(): ChatRecord[] {
     return this.activitiesChats.chatItemsForActivities();
   }
 
-  protected activityChatContextFilterKey(item: ChatMenuItem): AppTypes.ActivitiesChatContextFilter | null {
+  protected activityChatContextFilterKey(item: ChatRecord): AppTypes.ActivitiesChatContextFilter | null {
     return this.activitiesChats.activityChatContextFilterKey(item);
   }
 
-  protected openActivityChat(chat: ChatMenuItem): void {
+  protected openActivityChat(chat: ChatRecord): void {
     this.activitiesChats.openActivityChat(chat);
+  }
+
+  protected openActivityChatForRow(row: AppTypes.ActivityListRow): void {
+    const chat = this.chatRecordForRow(row);
+    if (chat) {
+      this.openActivityChat(chat);
+      return;
+    }
+    void this.resolveChatRecordForRow(row).then(resolvedChat => {
+      if (resolvedChat) {
+        this.openActivityChat(resolvedChat);
+      }
+    });
   }
 
   protected onActivityRowClick(row: AppTypes.ActivityListRow, event?: Event): void {
@@ -536,7 +537,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   protected onActivityEventActionMenuSelected(event: ActivitiesEventActionMenuSelectedEvent): void {
     this.onActivityEventInfoCardMenuAction(event.row, {
-      rowId: event.card.rowId,
+      id: event.card.id,
       actionId: event.action.id,
       action: event.action,
       card: event.card
@@ -810,14 +811,14 @@ export class ActivitiesPopupComponent implements OnDestroy {
             ...activeSessionChat,
             memberIds: [...(activeSessionChat.memberIds ?? [])]
           };
-          nextItems = this.sortChatMenuItems(nextItems);
+          nextItems = this.sortChatRecords(nextItems);
         } else {
           const activeSessionRecord = {
-            ...this.cloneChatMenuItem(activeSessionChat),
+            ...this.cloneChatRecord(activeSessionChat),
             ownerUserId: userId,
             messages: undefined
           };
-          nextItems = this.sortChatMenuItems([
+          nextItems = this.sortChatRecords([
             ...nextItems,
             activeSessionRecord
           ]);
@@ -853,30 +854,30 @@ export class ActivitiesPopupComponent implements OnDestroy {
     }, 30000);
   }
 
-  private syncChatItemFromOpenSession(chat: ChatMenuItem): void {
+  private syncChatItemFromOpenSession(chat: ChatRecord): void {
     const currentIndex = this.chatItems.findIndex(item => item.id === chat.id);
     if (currentIndex < 0) {
-      const nextChat = this.cloneChatMenuItem(chat);
-      this.chatItems = this.sortChatMenuItems([...this.chatItems, nextChat]);
+      const nextChat = this.cloneChatRecord(chat);
+      this.chatItems = this.sortChatRecords([...this.chatItems, nextChat]);
       this.refreshSectionBadges();
       this.syncVisibleChatRow(nextChat);
       this.cdr.markForCheck();
       return;
     }
-    const nextChat = this.cloneChatMenuItem(chat);
+    const nextChat = this.cloneChatRecord(chat);
     const currentChat = this.chatItems[currentIndex];
-    if (this.areChatMenuItemsEqual(currentChat, nextChat)) {
+    if (this.areChatRecordsEqual(currentChat, nextChat)) {
       return;
     }
     const nextItems = [...this.chatItems];
     nextItems[currentIndex] = nextChat;
-    this.chatItems = this.sortChatMenuItems(nextItems);
+    this.chatItems = this.sortChatRecords(nextItems);
     this.refreshSectionBadges();
     this.syncVisibleChatRow(nextChat);
     this.cdr.markForCheck();
   }
 
-  private syncVisibleChatRow(chat: ChatMenuItem): void {
+  private syncVisibleChatRow(chat: ChatRecord): void {
     const smartList = this.activitiesSmartList;
     if (!smartList || this.activitiesPrimaryFilter !== 'chats' || this.isCalendarLayoutView()) {
       return;
@@ -893,7 +894,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     this.replaceVisibleActivityItems(nextItems);
   }
 
-  private doesChatMatchActiveContextFilter(chat: ChatMenuItem): boolean {
+  private doesChatMatchActiveContextFilter(chat: ChatRecord): boolean {
     if (this.activitiesChatContextFilter === 'all') {
       return this.doesChatMatchActiveSupportCaseFilter(chat);
     }
@@ -962,7 +963,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       : 'all';
   }
 
-  private doesChatMatchActiveSupportCaseFilter(chat: ChatMenuItem): boolean {
+  private doesChatMatchActiveSupportCaseFilter(chat: ChatRecord): boolean {
     if (!this.isAdminServiceChatMode()) {
       return true;
     }
@@ -974,7 +975,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     if (!this.isAdminServiceChatMode()) {
       return;
     }
-    const chat = row.source as ChatMenuItem;
+    const chat = this.chatRecordForRow(row);
     if (!chat?.supportCaseStatus) {
       return;
     }
@@ -1053,15 +1054,15 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return this.i18nService.translate(key);
   }
 
-  private applySupportCaseUpdate(chat: ChatMenuItem): void {
-    const nextChat = this.cloneChatMenuItem(chat);
+  private applySupportCaseUpdate(chat: ChatRecord): void {
+    const nextChat = this.cloneChatRecord(chat);
     const currentIndex = this.chatItems.findIndex(item => item.id === nextChat.id);
     if (currentIndex >= 0) {
       const nextItems = [...this.chatItems];
       nextItems[currentIndex] = nextChat;
-      this.chatItems = this.sortChatMenuItems(nextItems);
+      this.chatItems = this.sortChatRecords(nextItems);
     } else {
-      this.chatItems = this.sortChatMenuItems([...this.chatItems, nextChat]);
+      this.chatItems = this.sortChatRecords([...this.chatItems, nextChat]);
     }
 
     const smartList = this.activitiesSmartList;
@@ -1077,7 +1078,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     this.cdr.markForCheck();
   }
 
-  private patchVisibleChatRow(chat: ChatMenuItem): void {
+  private patchVisibleChatRow(chat: ChatRecord): void {
     const smartList = this.activitiesSmartList;
     if (!smartList) {
       return;
@@ -1108,14 +1109,14 @@ export class ActivitiesPopupComponent implements OnDestroy {
     this.replaceVisibleActivityItems(nextRows, -1);
   }
 
-  private buildActivityChatRow(chat: ChatMenuItem): AppTypes.ActivityListRow {
+  private buildActivityChatRow(chat: ChatRecord): AppTypes.ActivityListRow {
     return toActivityChatRow(chat, {
       users: this.users,
       activeUserId: this.activeUser.id
     });
   }
 
-  private sortChatMenuItems<T extends ChatMenuItem>(items: readonly T[]): T[] {
+  private sortChatRecords<T extends ChatRecord>(items: readonly T[]): T[] {
     const secondaryFilter = this.effectiveActivitiesSecondaryFilter();
     return [...items].sort((left, right) => {
       if (secondaryFilter === 'relevant') {
@@ -1141,23 +1142,52 @@ export class ActivitiesPopupComponent implements OnDestroy {
     });
   }
 
-  private chatMenuMetricScore(chat: ChatMenuItem): number {
+  private chatMenuMetricScore(chat: ChatRecord): number {
     const unread = Math.max(0, Math.trunc(Number(chat.unread) || 0));
     return unread * 10 + this.activitiesChats.getChatMemberCount(chat);
   }
 
   private chatRowMetricScore(row: AppTypes.ActivityListRow): number {
-    return this.chatMenuMetricScore(row.source as ChatMenuItem);
+    return Number.isFinite(row.metricScore)
+      ? Math.max(0, Number(row.metricScore))
+      : Math.max(0, Math.trunc(Number(row.unread) || 0)) * 10
+        + Math.max(0, Math.trunc(Number(row.memberCount) || 0));
   }
 
-  private cloneChatMenuItem<T extends ChatMenuItem>(chat: T): T {
+  private cloneChatRecord<T extends ChatRecord>(chat: T): T {
     return {
       ...chat,
       memberIds: [...(chat.memberIds ?? [])]
     } as T;
   }
 
-  private areChatMenuItemsEqual(left: ChatMenuItem, right: ChatMenuItem): boolean {
+  protected chatRecordForRow(row: AppTypes.ActivityListRow): ChatRecord | null {
+    const existing = this.chatItems.find(item => item.id === row.id);
+    return existing ? this.cloneChatRecord(existing) : null;
+  }
+
+  private async resolveChatRecordForRow(row: AppTypes.ActivityListRow): Promise<ChatRecord | null> {
+    if (row.type !== 'chats') {
+      return null;
+    }
+    const cached = this.chatRecordForRow(row);
+    if (cached) {
+      return cached;
+    }
+    const userId = this.activeUser?.id?.trim();
+    if (!userId) {
+      return null;
+    }
+    const items = await this.chatsService.queryChatItemsByUser(userId);
+    const nextItems = items.map(item => ({ ...item, memberIds: [...(item.memberIds ?? [])] }));
+    this.chatItems = this.sortChatRecords(nextItems);
+    this.refreshSectionBadges();
+    this.cdr.markForCheck();
+    const resolved = this.chatItems.find(item => item.id === row.id);
+    return resolved ? this.cloneChatRecord(resolved) : null;
+  }
+
+  private areChatRecordsEqual(left: ChatRecord, right: ChatRecord): boolean {
     const leftMemberIds = left.memberIds ?? [];
     const rightMemberIds = right.memberIds ?? [];
     if (
@@ -1244,7 +1274,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
         this.hostingDistanceById[record.id] = record.distanceKm;
       }
       if (record.isTrashed) {
-        const row = toActivityEventRow(record, { activeUserId: this.activeUser.id });
+        const row = this.activitiesService.buildEventDisplayRow(record, { activeUserId: this.activeUser.id });
         this.trashedActivityRowsByKey[this.activityRowIdentity(row)] = row;
       }
       if (record.imageUrl?.trim()) {
@@ -1426,12 +1456,11 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   private activityRowDistanceOrderValue(row: AppTypes.ActivityListRow): number {
-    return row.distanceMetersExact
-      ?? Math.max(0, Math.round((Number(row.distanceKm) || 0) * 1000));
+    return row.distanceMetersExact ?? 0;
   }
 
   private activityRowBoostOrderValue(row: AppTypes.ActivityListRow): number {
-    const sourceBoost = Number((row.source as { boost?: unknown }).boost);
+    const sourceBoost = Number(row.boost);
     if (Number.isFinite(sourceBoost)) {
       return Math.max(0, sourceBoost);
     }
@@ -1439,7 +1468,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   private activityRowTimestampOrderValue(row: AppTypes.ActivityListRow): number {
-    return AppUtils.toSortableDate((row.source as { startAt?: string }).startAt ?? row.dateIso);
+    return AppUtils.toSortableDate(row.startAt ?? row.dateIso);
   }
 
   private activityRowDayOrderValue(row: AppTypes.ActivityListRow): number {
@@ -1867,14 +1896,14 @@ export class ActivitiesPopupComponent implements OnDestroy {
     const record = this.activityEventRecordForRow(row);
     return record
       ? {
-          ...row,
-          infoCard: toActivityEventRow(record, { activeUserId: this.activeUser.id }).infoCard
+          ...this.activitiesService.buildEventDisplayRow(record, { activeUserId: this.activeUser.id }),
+          metricScore: row.metricScore
         }
       : row;
   }
 
   protected refreshActivityEventInfoCard(row: AppTypes.ActivityListRow): void {
-    row.infoCard = this.withActivityEventInfoCard(row).infoCard;
+    Object.assign(row, this.withActivityEventInfoCard(row));
   }
 
   private activityEventRecordForRow(row: AppTypes.ActivityListRow): DemoEventRecord | null {
@@ -1932,11 +1961,11 @@ export class ActivitiesPopupComponent implements OnDestroy {
         return parts[1];
       }
     }
-    const sourceCapacityMax = Number((row.source as { capacityMax?: unknown }).capacityMax);
+    const sourceCapacityMax = Number(row.capacityMax);
     if (Number.isFinite(sourceCapacityMax) && sourceCapacityMax >= 0) {
       return Math.max(fallbackBase, Math.trunc(sourceCapacityMax));
     }
-    const sourceCapacityTotal = Number((row.source as { capacityTotal?: unknown }).capacityTotal);
+    const sourceCapacityTotal = Number(row.capacityTotal);
     if (Number.isFinite(sourceCapacityTotal) && sourceCapacityTotal >= 0) {
       return Math.max(fallbackBase, Math.trunc(sourceCapacityTotal));
     }
@@ -1986,7 +2015,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       ?? this.hostingItems.find(item => item.id === row.id)
       ?? this.invitationItems.find(item => item.id === row.id)
       ?? null;
-    return matchingRecord ? toActivityEventRow(matchingRecord, { activeUserId: this.activeUser.id }) : row;
+    return matchingRecord ? this.activitiesService.buildEventDisplayRow(matchingRecord, { activeUserId: this.activeUser.id }) : row;
   }
 
   private buildActivityMembersFromKnownUserIds(
@@ -2065,13 +2094,13 @@ export class ActivitiesPopupComponent implements OnDestroy {
       const record = this.activityEventRecordForRow(row);
       return record
         ? {
-            ...row,
-            infoCard: toActivityEventRow({
+            ...this.activitiesService.buildEventDisplayRow({
               ...record,
               acceptedMembers,
               pendingMembers,
               capacityTotal
-            }, { activeUserId: this.activeUser.id }).infoCard
+            }, { activeUserId: this.activeUser.id }),
+            metricScore: row.metricScore
           }
         : row;
     };
@@ -2097,14 +2126,14 @@ export class ActivitiesPopupComponent implements OnDestroy {
     if (!record) {
       return;
     }
-    row.infoCard = toActivityEventRow({
+    Object.assign(row, this.activitiesService.buildEventDisplayRow({
       ...record,
       acceptedMembers: summary.acceptedMembers,
       pendingMembers: summary.pendingMembers,
       capacityTotal: summary.capacityTotal,
       acceptedMemberUserIds: [...summary.acceptedMemberUserIds],
       pendingMemberUserIds: [...summary.pendingMemberUserIds]
-    }, { activeUserId: this.activeUser.id }).infoCard;
+    }, { activeUserId: this.activeUser.id }));
   }
 
   private async loadActivityMembersForRow(
@@ -2149,21 +2178,21 @@ export class ActivitiesPopupComponent implements OnDestroy {
     const eventRecords = [
       ...this.eventItems.map(item => ({
         id: item.id,
-        row: toActivityEventRow(item, { activeUserId: this.activeUser.id }),
+        row: this.activitiesService.buildEventDisplayRow(item, { activeUserId: this.activeUser.id }),
         acceptedMembers: item.acceptedMembers ?? 0,
         capacityTotal: item.capacityTotal ?? 0,
         pendingMembers: item.pendingMembers ?? 0
       })),
       ...this.hostingItems.map(item => ({
         id: item.id,
-        row: toActivityEventRow(item, { activeUserId: this.activeUser.id }),
+        row: this.activitiesService.buildEventDisplayRow(item, { activeUserId: this.activeUser.id }),
         acceptedMembers: item.acceptedMembers ?? 0,
         capacityTotal: item.capacityTotal ?? 0,
         pendingMembers: item.pendingMembers ?? 0
       })),
       ...this.invitationItems.map(item => ({
         id: item.id,
-        row: toActivityEventRow(item, { activeUserId: this.activeUser.id }),
+        row: this.activitiesService.buildEventDisplayRow(item, { activeUserId: this.activeUser.id }),
         acceptedMembers: item.acceptedMembers ?? 0,
         capacityTotal: item.capacityTotal ?? 0,
         pendingMembers: item.pendingMembers ?? 0
@@ -2554,8 +2583,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     if (this.isActivitiesEventDisplaySync(sync) && sync.displayRow.type === rowType) {
       return {
         ...sync.displayRow,
-        metricScore: existingRow?.metricScore ?? sync.displayRow.metricScore,
-        infoCard: sync.displayRow.infoCard ? { ...sync.displayRow.infoCard } : sync.displayRow.infoCard
+        metricScore: existingRow?.metricScore ?? sync.displayRow.metricScore
       };
     }
     const record = this.activityDisplayRecordForSync(
@@ -2565,7 +2593,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
         : this.eventItems.find(item => item.id === sync.id),
       rowType === 'hosting' ? 'hosting' : 'events'
     );
-    const row = toActivityEventRow(record, { activeUserId: this.activeUser.id });
+    const row = this.activitiesService.buildEventDisplayRow(record, { activeUserId: this.activeUser.id });
     return {
       ...row,
       metricScore: existingRow?.metricScore ?? row.metricScore
@@ -2656,8 +2684,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
     this.activityCapacityById[sync.id] = `${acceptedMembers} / ${capacityTotal}`;
     this.activityPendingMembersById[sync.id] = pendingMembers;
 
-    const eventRow = toActivityEventRow(eventSource, { activeUserId: this.activeUser.id });
-    const hostingRow = toActivityEventRow(hostingSource, { activeUserId: this.activeUser.id });
+    const eventRow = this.activitiesService.buildEventDisplayRow(eventSource, { activeUserId: this.activeUser.id });
+    const hostingRow = this.activitiesService.buildEventDisplayRow(hostingSource, { activeUserId: this.activeUser.id });
 
     const acceptedMemberUserIds = this.uniqueUserIds([
       ...(eventSource.acceptedMemberUserIds ?? []),

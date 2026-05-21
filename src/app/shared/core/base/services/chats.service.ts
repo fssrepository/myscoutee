@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import type * as AppTypes from '../../../core/base/models';
 import { AppUtils } from '../../../app-utils';
 import type { ActivitiesPageRequest } from '../../../core/base/models';
-import type { ChatMenuItem } from '../interfaces/activity-feed.interface';
+import type { ChatRecord } from '../models/chat.model';
 import type { DemoUser } from '../interfaces/user.interface';
 import type { PageResult } from '../../../ui';
 import { activityChatContextFilterKey, buildActivityChatRows } from '../converters';
@@ -47,14 +47,14 @@ export class ChatsService extends BaseRouteModeService {
     return this.httpChatsService.peekChatItemsByUser(userId);
   }
 
-  async loadChatMessages(chat: ChatMenuItem): Promise<AppTypes.ChatPopupMessage[]> {
+  async loadChatMessages(chat: ChatRecord): Promise<AppTypes.ChatPopupMessage[]> {
     if (this.isDemoModeEnabled(ChatsService.CHAT_ROUTE)) {
       return this.demoChatsService.loadChatMessages(chat);
     }
     return this.httpChatsService.loadChatMessages(chat);
   }
 
-  async sendChatMessage(chat: ChatMenuItem, text: string, clientId?: string): Promise<AppTypes.ChatPopupMessage | null> {
+  async sendChatMessage(chat: ChatRecord, text: string, clientId?: string): Promise<AppTypes.ChatPopupMessage | null> {
     if (this.isDemoModeEnabled(ChatsService.CHAT_ROUTE)) {
       return this.demoChatsService.sendChatMessage(chat, text, clientId);
     }
@@ -62,7 +62,7 @@ export class ChatsService extends BaseRouteModeService {
   }
 
   async sendChatMessageWithAttachments(
-    chat: ChatMenuItem,
+    chat: ChatRecord,
     text: string,
     attachments: readonly AppTypes.ChatMessageAttachment[],
     clientId?: string,
@@ -75,7 +75,7 @@ export class ChatsService extends BaseRouteModeService {
   }
 
   async updateChatMessage(
-    chat: ChatMenuItem,
+    chat: ChatRecord,
     messageId: string,
     mutation: AppTypes.ChatMessageMutation
   ): Promise<AppTypes.ChatPopupMessage | null> {
@@ -86,7 +86,7 @@ export class ChatsService extends BaseRouteModeService {
   }
 
   async watchChatMessages(
-    chat: ChatMenuItem,
+    chat: ChatRecord,
     onMessage: (message: AppTypes.ChatPopupMessage) => void
   ): Promise<() => void> {
     if (this.isDemoModeEnabled(ChatsService.CHAT_ROUTE)) {
@@ -96,7 +96,7 @@ export class ChatsService extends BaseRouteModeService {
   }
 
   async watchChatEvents(
-    chat: ChatMenuItem,
+    chat: ChatRecord,
     onEvent: (event: AppTypes.ChatLiveEvent) => void
   ): Promise<() => void> {
     if (this.isDemoModeEnabled(ChatsService.CHAT_ROUTE)) {
@@ -105,21 +105,21 @@ export class ChatsService extends BaseRouteModeService {
     return this.httpChatsService.watchChatEvents(chat, onEvent);
   }
 
-  async sendChatTyping(chat: ChatMenuItem, typing: boolean): Promise<void> {
+  async sendChatTyping(chat: ChatRecord, typing: boolean): Promise<void> {
     if (this.isDemoModeEnabled(ChatsService.CHAT_ROUTE)) {
       return this.demoChatsService.sendChatTyping(chat, typing);
     }
     return this.httpChatsService.sendChatTyping(chat, typing);
   }
 
-  async markChatRead(chat: ChatMenuItem, messageIds: readonly string[]): Promise<void> {
+  async markChatRead(chat: ChatRecord, messageIds: readonly string[]): Promise<void> {
     if (this.isDemoModeEnabled(ChatsService.CHAT_ROUTE)) {
       return this.demoChatsService.markChatRead(chat, messageIds);
     }
     return this.httpChatsService.markChatRead(chat, messageIds);
   }
 
-  async updateSupportCase(chat: ChatMenuItem, action: AppTypes.SupportCaseAction): Promise<DemoChatRecord | null> {
+  async updateSupportCase(chat: ChatRecord, action: AppTypes.SupportCaseAction): Promise<DemoChatRecord | null> {
     if (this.isDemoModeEnabled(ChatsService.CHAT_ROUTE)) {
       return this.demoChatsService.updateSupportCase(chat, action);
     }
@@ -137,7 +137,7 @@ export class ChatsService extends BaseRouteModeService {
     pendingMemberUserIds?: readonly string[] | null;
     hosting?: boolean;
     notification: boolean;
-  }): Promise<(ChatMenuItem & { ownerUserId?: string }) | null> {
+  }): Promise<(ChatRecord & { ownerUserId?: string }) | null> {
     const activeUserId = input.activeUserId.trim();
     const eventId = input.eventId.trim();
     const ownerId = input.ownerId.trim();
@@ -176,13 +176,13 @@ export class ChatsService extends BaseRouteModeService {
   }
 
   private resolveExistingEventServiceChat(
-    chats: readonly ChatMenuItem[],
+    chats: readonly ChatRecord[],
     input: {
       activeUserId: string;
       eventId: string;
       notification: boolean;
     }
-  ): (ChatMenuItem & { ownerUserId?: string }) | null {
+  ): (ChatRecord & { ownerUserId?: string }) | null {
     const expectedId = `c-service-event-${input.eventId}-${input.activeUserId}`;
     const expectedServiceContext = input.notification ? 'notification' : 'event';
     const match = chats.find(chat => chat.id === expectedId)
@@ -210,7 +210,7 @@ export class ChatsService extends BaseRouteModeService {
     pendingMemberUserIds?: readonly string[] | null;
     hosting: boolean;
     notification: boolean;
-  }): ChatMenuItem & { ownerUserId?: string } {
+  }): ChatRecord & { ownerUserId?: string } {
     const acceptedMemberUserIds = Array.isArray(input.acceptedMemberUserIds)
       ? input.acceptedMemberUserIds
       : [];
@@ -246,7 +246,7 @@ export class ChatsService extends BaseRouteModeService {
     };
   }
 
-  async resolveRepositoryEventServiceChat(chat: ChatMenuItem): Promise<(ChatMenuItem & { ownerUserId?: string }) | null> {
+  async resolveRepositoryEventServiceChat(chat: ChatRecord): Promise<(ChatRecord & { ownerUserId?: string }) | null> {
     if (chat.channelType !== 'serviceEvent') {
       return null;
     }
@@ -269,7 +269,7 @@ export class ChatsService extends BaseRouteModeService {
     userId: string,
     request: ActivitiesPageRequest,
     options: {
-      chatItems?: readonly ChatMenuItem[];
+      chatItems?: readonly ChatRecord[];
       users?: readonly DemoUser[];
     } = {}
   ): Promise<PageResult<AppTypes.ActivityListRow>> {
@@ -318,7 +318,7 @@ export class ChatsService extends BaseRouteModeService {
     userId: string,
     request: ActivitiesPageRequest,
     users: readonly DemoUser[],
-    items: readonly ChatMenuItem[]
+    items: readonly ChatRecord[]
   ): { items: DemoChatRecord[]; total: number; nextCursor?: string | null } {
     const filteredItems = items.filter(item =>
       (request.chatContextFilter === 'all'
@@ -338,15 +338,15 @@ export class ChatsService extends BaseRouteModeService {
 
   private resolveCachedChatItems(
     userId: string,
-    chatItems?: readonly ChatMenuItem[]
-  ): readonly ChatMenuItem[] {
+    chatItems?: readonly ChatRecord[]
+  ): readonly ChatRecord[] {
     if (chatItems && chatItems.length > 0) {
       return chatItems;
     }
     return this.peekChatItemsByUser(userId);
   }
 
-  private matchesSupportCaseFilter(item: ChatMenuItem, filter: AppTypes.SupportCaseFilter | undefined): boolean {
+  private matchesSupportCaseFilter(item: ChatRecord, filter: AppTypes.SupportCaseFilter | undefined): boolean {
     const normalizedFilter = filter === 'pending' || filter === 'picked' || filter === 'solved' || filter === 'blocked'
       ? filter
       : 'all';
@@ -357,11 +357,11 @@ export class ChatsService extends BaseRouteModeService {
   }
 
   private sortActivitiesChatItems(
-    items: readonly ChatMenuItem[],
+    items: readonly ChatRecord[],
     request: ActivitiesPageRequest,
     users: readonly DemoUser[],
     activeUserId: string
-  ): ChatMenuItem[] {
+  ): ChatRecord[] {
     const sorted = [...items];
     const userById = this.buildUserById(users);
     const hasFallbackUser = userById.has(activeUserId) || users.length > 0;
@@ -382,7 +382,7 @@ export class ChatsService extends BaseRouteModeService {
   }
 
   private chatMetricScore(
-    item: Pick<ChatMenuItem, 'unread' | 'memberIds'>,
+    item: Pick<ChatRecord, 'unread' | 'memberIds'>,
     userById: ReadonlyMap<string, DemoUser>,
     hasFallbackUser: boolean
   ): number {
@@ -391,7 +391,7 @@ export class ChatsService extends BaseRouteModeService {
   }
 
   private chatMemberCount(
-    item: Pick<ChatMenuItem, 'memberIds'>,
+    item: Pick<ChatRecord, 'memberIds'>,
     userById: ReadonlyMap<string, DemoUser>,
     hasFallbackUser: boolean
   ): number {
@@ -423,7 +423,7 @@ export class ChatsService extends BaseRouteModeService {
     return [...new Set(userIds.map(userId => userId.trim()).filter(Boolean))];
   }
 
-  private resolveChatOwnerUserId(chat: ChatMenuItem, eventId: string): string {
+  private resolveChatOwnerUserId(chat: ChatRecord, eventId: string): string {
     const ownerUserId = `${(chat as { ownerUserId?: string | null }).ownerUserId ?? ''}`.trim();
     if (ownerUserId) {
       return ownerUserId;
@@ -441,7 +441,7 @@ export class ChatsService extends BaseRouteModeService {
     return userById;
   }
 
-  private toDemoChatRecord(item: ChatMenuItem, ownerUserId: string): DemoChatRecord {
+  private toDemoChatRecord(item: ChatRecord, ownerUserId: string): DemoChatRecord {
     return {
       ...item,
       ownerUserId

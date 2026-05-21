@@ -9,7 +9,7 @@ import type {
   EventChatSession
 } from '../../shared/core/base/models';
 import type { ActivitiesEventDisplaySync } from '../../shared/core/base/services/activities.service';
-import type { ChatMenuItem } from '../../shared/core/base/interfaces/activity-feed.interface';
+import type { ChatRecord } from '../../shared/core/base/models/chat.model';
 
 interface ActivitiesUiState {
   open: boolean;
@@ -332,9 +332,9 @@ export class ActivitiesPopupStateService {
     this._activitiesEventSync.set(null);
   }
 
-  openEventChat(item: ChatMenuItem, context: EventChatContext | null = null): void {
+  openEventChat(item: ChatRecord, context: EventChatContext | null = null): void {
     this._eventChatSession.set({
-      item: this.cloneChatMenuItem(item),
+      item: this.cloneChatRecord(item),
       openedAtIso: new Date().toISOString(),
       context
     });
@@ -357,34 +357,34 @@ export class ActivitiesPopupStateService {
       : null;
     this._eventChatSession.set({
       ...session,
-      item: this.cloneChatMenuItem(session.item),
+      item: this.cloneChatRecord(session.item),
       context: clonedContext && contextUpdater
         ? contextUpdater(clonedContext)
         : clonedContext
     });
   }
 
-  patchEventChatSessionItem(itemUpdater: (item: ChatMenuItem) => ChatMenuItem): void {
+  patchEventChatSessionItem(itemUpdater: (item: ChatRecord) => ChatRecord): void {
     const session = this._eventChatSession();
     if (!session) {
       return;
     }
     this._eventChatSession.set({
       ...session,
-      item: this.cloneChatMenuItem(itemUpdater(this.cloneChatMenuItem(session.item)))
+      item: this.cloneChatRecord(itemUpdater(this.cloneChatRecord(session.item)))
     });
   }
 
-  async loadEventChatMessages(chat: ChatMenuItem): Promise<AppTypes.ChatPopupMessage[]> {
+  async loadEventChatMessages(chat: ChatRecord): Promise<AppTypes.ChatPopupMessage[]> {
     return this.chatsService.loadChatMessages(chat);
   }
 
-  async sendEventChatMessage(chat: ChatMenuItem, text: string, clientId?: string): Promise<AppTypes.ChatPopupMessage | null> {
+  async sendEventChatMessage(chat: ChatRecord, text: string, clientId?: string): Promise<AppTypes.ChatPopupMessage | null> {
     return this.chatsService.sendChatMessage(chat, text, clientId);
   }
 
   async sendEventChatMessageWithAttachments(
-    chat: ChatMenuItem,
+    chat: ChatRecord,
     text: string,
     attachments: readonly AppTypes.ChatMessageAttachment[],
     clientId?: string,
@@ -394,7 +394,7 @@ export class ActivitiesPopupStateService {
   }
 
   async updateEventChatMessage(
-    chat: ChatMenuItem,
+    chat: ChatRecord,
     messageId: string,
     mutation: AppTypes.ChatMessageMutation
   ): Promise<AppTypes.ChatPopupMessage | null> {
@@ -402,24 +402,24 @@ export class ActivitiesPopupStateService {
   }
 
   async watchEventChatMessages(
-    chat: ChatMenuItem,
+    chat: ChatRecord,
     onMessage: (message: AppTypes.ChatPopupMessage) => void
   ): Promise<() => void> {
     return this.chatsService.watchChatMessages(chat, onMessage);
   }
 
   async watchEventChatEvents(
-    chat: ChatMenuItem,
+    chat: ChatRecord,
     onEvent: (event: AppTypes.ChatLiveEvent) => void
   ): Promise<() => void> {
     return this.chatsService.watchChatEvents(chat, onEvent);
   }
 
-  async sendEventChatTyping(chat: ChatMenuItem, typing: boolean): Promise<void> {
+  async sendEventChatTyping(chat: ChatRecord, typing: boolean): Promise<void> {
     return this.chatsService.sendChatTyping(chat, typing);
   }
 
-  async markEventChatRead(chat: ChatMenuItem, messageIds: readonly string[]): Promise<void> {
+  async markEventChatRead(chat: ChatRecord, messageIds: readonly string[]): Promise<void> {
     return this.chatsService.markChatRead(chat, messageIds);
   }
 
@@ -461,7 +461,7 @@ export class ActivitiesPopupStateService {
     return 'active-events';
   }
 
-  private cloneChatMenuItem(item: ChatMenuItem): ChatMenuItem {
+  private cloneChatRecord(item: ChatRecord): ChatRecord {
     return {
       ...item,
       memberIds: [...(item.memberIds ?? [])]

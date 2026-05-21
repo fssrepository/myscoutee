@@ -1,4 +1,4 @@
-import type { RateMenuItem } from './activity-feed.interface';
+import type { RateRecord } from '../models/rate.model';
 import type { UserDto } from './user.interface';
 
 export interface UserGameCardsStackSnapshot {
@@ -110,7 +110,7 @@ export interface ActivityRateRecordQueryResult {
 }
 
 export interface ActivityRatePageResult {
-  items: RateMenuItem[];
+  items: RateRecord[];
   total: number;
   nextCursor?: string | null;
   users?: UserDto[];

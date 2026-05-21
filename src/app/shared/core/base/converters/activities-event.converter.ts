@@ -17,9 +17,15 @@ export function toActivityEventRow(
   options: ActivityEventInfoCardOptions = {}
 ): AppTypes.ActivityListRow {
   const rowType = resolveActivityEventRowType(record);
+  const displayItem = ActivityEventInfoCardBuilder.build(record, {
+    ...options,
+    rowType
+  });
   return {
+    ...displayItem,
     id: record.id,
     type: rowType,
+    status: record.status,
     title: record.title,
     subtitle: rowType === 'invitations'
       ? record.creatorName
@@ -28,15 +34,25 @@ export function toActivityEventRow(
         : record.subtitle,
     detail: record.timeframe,
     dateIso: record.startAtIso,
-    distanceKm: record.distanceKm,
     distanceMetersExact: Math.max(0, Math.round((Number(record.distanceKm) || 0) * 1000)),
     unread: Math.max(0, Math.trunc(Number(record.activity) || 0)),
     metricScore: Math.max(0, Number(record.boost) || 0),
     isAdmin: record.isAdmin,
-    infoCard: ActivityEventInfoCardBuilder.build(record, {
-      ...options,
-      rowType
-    })
+    ownerId: record.creatorUserId,
+    ownerUserId: record.creatorUserId,
+    avatarInitials: record.creatorInitials,
+    startAt: record.startAtIso,
+    endAt: record.endAtIso,
+    boost: record.boost,
+    imageUrl: record.imageUrl,
+    visibility: record.visibility,
+    creatorInitials: record.creatorInitials,
+    acceptedMembers: record.acceptedMembers,
+    pendingMembers: record.pendingMembers,
+    capacityTotal: record.capacityTotal,
+    capacityMin: record.capacityMin,
+    capacityMax: record.capacityMax,
+    isTrashed: record.isTrashed
   };
 }
 

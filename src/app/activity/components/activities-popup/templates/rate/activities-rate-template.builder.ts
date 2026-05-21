@@ -1,4 +1,3 @@
-import type { RateMenuItem } from '../../../../../shared/core/base/interfaces/activity-feed.interface';
 import type * as AppTypes from '../../../../../shared/core/base/models';
 import {
   buildPairRateCardData,
@@ -9,13 +8,15 @@ import {
   type RateCardPerson,
   type SingleCardData
 } from '../../../../../shared/ui';
+import type { ImageCardData, ImageCardDirection, ImageCardMode } from '../../../../../shared/ui';
+import type { RateRecord } from '../../../../../shared/core/base/models/rate.model';
 
 interface BuildActivitiesRateCardOptions {
   groupLabel?: string | null;
   presentation?: SingleCardData['presentation'] | PairCardData['presentation'];
   state?: SingleCardData['state'] | PairCardData['state'];
   badge: CardBadgeConfig;
-  displayedDirection: RateMenuItem['direction'];
+  displayedDirection: RateRecord['direction'];
   availableUsers: readonly RateCardPerson[];
   resolveUserById: (userId: string) => RateCardPerson | null;
   activeUserGender: 'woman' | 'man';
@@ -23,8 +24,7 @@ interface BuildActivitiesRateCardOptions {
 }
 
 export function isActivitiesPairRateRow(row: AppTypes.ActivityListRow): boolean {
-  const rate = row.source as RateMenuItem;
-  return rate.mode === 'pair';
+  return row.type === 'rates' && row.mode === 'pair';
 }
 
 export function buildActivitiesSingleRateCard(
@@ -52,37 +52,47 @@ function buildActivitiesRateCardInput(
   row: AppTypes.ActivityListRow,
   options: BuildActivitiesRateCardOptions
 ) {
-  const item = row.source as RateMenuItem;
+  const item = row.type === 'rates' ? row : null;
   const presentation = options.presentation ?? 'list';
-  const rateDisplay = row.rateDisplay;
   const resolvedPrimaryUser = resolveActivitiesRatePrimaryUser(row, options.resolveUserById);
-  const displayPrimaryUser = toActivitiesRateCardPerson(rateDisplay?.primaryUser);
+  const displayPrimaryUser = toActivitiesRateCardPerson(item?.primaryUser);
+  const mode = normalizeRateCardMode(item?.mode);
+  const direction = normalizeRateCardDirection(options.displayedDirection ?? item?.displayedDirection ?? item?.direction);
 
   return {
     rowId: row.id,
     groupLabel: options.groupLabel ?? null,
     title: row.title,
-    distanceKm: row.distanceKm,
-    mode: item.mode,
-    direction: options.displayedDirection,
-    eventName: item.eventName,
-    happenedOnLabel: rateDisplay?.happenedOnLabel ?? 'Unknown',
+    distanceKm: distanceKmFromMeters(row.distanceMetersExact),
+    mode,
+    direction,
+    eventName: item?.eventName ?? '',
+    happenedOnLabel: item?.happenedOnLabel ?? 'Unknown',
     primaryUser: mergeActivitiesRateCardPerson(displayPrimaryUser, resolvedPrimaryUser),
     pairUsers: buildActivitiesRateCardPairUsers(row, options.resolveUserById),
     availableUsers: options.availableUsers,
-    singleImageUrls: resolveActivitiesRateImageUrls(rateDisplay?.imageUrls),
+    singleImageUrls: resolveActivitiesRateImageUrls(item?.singleImageUrls),
     pairSlots: buildActivitiesRateCardPairSlots(row, options.resolveUserById),
     fallbackGender: options.activeUserGender,
-    stackClasses: buildActivitiesRateCardStackClasses(item.mode, options.displayedDirection),
+    stackClasses: item?.stackClasses?.length
+      ? [...item.stackClasses]
+      : buildActivitiesRateCardStackClasses(mode, direction),
     presentation,
     state: options.state ?? 'default',
     fullscreenSplitEnabled: presentation === 'fullscreen' ? options.fullscreenSplitEnabled : false
   };
 }
 
+function distanceKmFromMeters(distanceMeters: number | null | undefined): number {
+  const meters = Number.isFinite(distanceMeters)
+    ? Math.max(0, Math.trunc(Number(distanceMeters)))
+    : 0;
+  return Math.round((meters / 1000) * 10) / 10;
+}
+
 function buildActivitiesRateCardStackClasses(
-  mode: RateMenuItem['mode'],
-  displayedDirection: RateMenuItem['direction']
+  mode: RateRecord['mode'],
+  displayedDirection: RateRecord['direction']
 ): string[] {
   return [
     mode === 'pair' ? 'activities-rate-profile-stack-pair' : 'activities-rate-profile-stack-single',
@@ -94,11 +104,12 @@ function buildActivitiesRateCardPairSlots(
   row: AppTypes.ActivityListRow,
   resolveUserById: (userId: string) => RateCardPerson | null
 ): PairCardData['slots'] | undefined {
-  if (!row.rateDisplay?.pairSlots?.length) {
+  const item = row.type === 'rates' ? row : null;
+  if (!item?.pairSlots?.length) {
     return undefined;
   }
 
-  const hasUsableImage = row.rateDisplay.pairSlots.some(slot =>
+  const hasUsableImage = item.pairSlots.some(slot =>
     slot.slides.some(slide => `${slide.imageUrl ?? ''}`.trim().length > 0)
   );
   if (!hasUsableImage) {
@@ -107,7 +118,7 @@ function buildActivitiesRateCardPairSlots(
 
   const pairUsers = buildActivitiesRateCardPairUsers(row, resolveUserById);
   const pairUserByGender = new Map(pairUsers.map(user => [user.gender, user]));
-  return row.rateDisplay.pairSlots.map((slot, index) => {
+  return item.pairSlots.map((slot, index) => {
     const profileUser = (slot.tone ? pairUserByGender.get(slot.tone) : null) ?? pairUsers[index] ?? null;
     return {
       key: slot.key,
@@ -133,8 +144,14 @@ function buildActivitiesRateCardPairUsers(
     return [];
   }
 
-  const item = row.source as RateMenuItem;
-  return [item.userId, item.secondaryUserId]
+  const item = row.type === 'rates' ? row : null;
+  const imageCardPairUsers = item?.pairUsers ?? [];
+  if (imageCardPairUsers.length > 0) {
+    return imageCardPairUsers
+      .map(user => mergeActivitiesRateCardPerson(toActivitiesRateCardPerson(user), resolveUserById(user.id)))
+      .filter((user): user is RateCardPerson => Boolean(user));
+  }
+  return [item?.userId, item?.secondaryUserId]
     .filter((userId): userId is string => typeof userId === 'string' && userId.length > 0)
     .map(userId => resolveUserById(userId))
     .filter((user): user is RateCardPerson => Boolean(user));
@@ -148,8 +165,8 @@ function resolveActivitiesRatePrimaryUser(
     return null;
   }
 
-  const item = row.source as RateMenuItem;
-  return resolveUserById(item.userId);
+  const item = row.type === 'rates' ? row : null;
+  return resolveUserById(`${item?.userId ?? ''}`.trim());
 }
 
 function buildActivitiesRateContextBadge(
@@ -160,8 +177,8 @@ function buildActivitiesRateContextBadge(
     return null;
   }
 
-  const item = row.source as RateMenuItem;
-  if (item.mode !== 'individual' || item.socialContext !== 'friends-in-common') {
+  const item = row;
+  if (item?.mode !== 'individual' || item.socialContext !== 'friends-in-common') {
     return null;
   }
 
@@ -208,7 +225,7 @@ function resolveActivitiesRateImageUrls(imageUrls: readonly string[] | null | un
 }
 
 function toActivitiesRateCardPerson(
-  user: AppTypes.ActivityRateDisplayUser | null | undefined
+  user: ImageCardData['primaryUser'] | null | undefined
 ): RateCardPerson | null {
   if (!user) {
     return null;
@@ -222,6 +239,14 @@ function toActivitiesRateCardPerson(
     gender: user.gender,
     profile: 'profile' in user ? user.profile : null
   };
+}
+
+function normalizeRateCardMode(value: ImageCardMode | null | undefined): RateRecord['mode'] {
+  return value === 'pair' ? 'pair' : 'individual';
+}
+
+function normalizeRateCardDirection(value: ImageCardDirection | null | undefined): RateRecord['direction'] {
+  return value === 'received' || value === 'mutual' || value === 'met' ? value : 'given';
 }
 
 function mergeActivitiesRateCardPerson(

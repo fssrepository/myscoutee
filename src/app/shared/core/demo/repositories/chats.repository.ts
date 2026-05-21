@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import type * as AppTypes from '../../../core/base/models';
 import { AppUtils } from '../../../app-utils';
 import { AppMemoryDb } from '../../base/db';
-import type { ChatMenuItem } from '../../base/interfaces/activity-feed.interface';
+import type { ChatRecord } from '../../base/models/chat.model';
 import { DemoChatsRepositoryBuilder, DemoUserSeedBuilder } from '../builders';
 import { CHATS_TABLE_NAME, type DemoChatRecord } from '../models/chats.model';
 import { USERS_TABLE_NAME } from '../models/users.model';
@@ -120,7 +120,7 @@ export class DemoChatsRepository {
     return true;
   }
 
-  queryChatMessages(chat: ChatMenuItem): AppTypes.ChatPopupMessage[] {
+  queryChatMessages(chat: ChatRecord): AppTypes.ChatPopupMessage[] {
     this.init();
     const record = this.resolveChatRecord(chat, { createServiceChat: false });
     return record ? DemoChatsRepositoryBuilder.cloneMessages(record.messages ?? []).map(message => ({
@@ -129,7 +129,7 @@ export class DemoChatsRepository {
     })) : [];
   }
 
-  appendChatMessage(chat: ChatMenuItem, message: AppTypes.ChatPopupMessage): AppTypes.ChatPopupMessage | null {
+  appendChatMessage(chat: ChatRecord, message: AppTypes.ChatPopupMessage): AppTypes.ChatPopupMessage | null {
     this.init();
     const record = this.resolveChatRecord(chat);
     if (!record) {
@@ -170,7 +170,7 @@ export class DemoChatsRepository {
   }
 
   updateChatMessage(
-    chat: ChatMenuItem,
+    chat: ChatRecord,
     messageId: string,
     mutation: AppTypes.ChatMessageMutation
   ): AppTypes.ChatPopupMessage | null {
@@ -231,7 +231,7 @@ export class DemoChatsRepository {
     return updatedMessage ? DemoChatsRepositoryBuilder.cloneMessages([updatedMessage])[0] ?? null : null;
   }
 
-  updateSupportCase(chat: ChatMenuItem, action: AppTypes.SupportCaseAction): DemoChatRecord | null {
+  updateSupportCase(chat: ChatRecord, action: AppTypes.SupportCaseAction): DemoChatRecord | null {
     this.init();
     const sourceId = `${chat.id ?? ''}`.trim();
     if (!sourceId) {
@@ -299,7 +299,7 @@ export class DemoChatsRepository {
     return userId === 'admin-demo-ava' || userId === 'admin-demo-noel';
   }
 
-  private isSupportCaseRecord(record: ChatMenuItem): boolean {
+  private isSupportCaseRecord(record: ChatRecord): boolean {
     return `${record.id ?? ''}`.trim().startsWith('c-support-admin-') || Boolean(record.supportCaseStatus);
   }
 
@@ -379,7 +379,7 @@ export class DemoChatsRepository {
   }
 
   private resolveChatRecord(
-    chat: ChatMenuItem,
+    chat: ChatRecord,
     options: { createServiceChat?: boolean } = {}
   ): DemoChatRecord | null {
     const sourceId = `${chat.id ?? ''}`.trim();
@@ -410,7 +410,7 @@ export class DemoChatsRepository {
     return null;
   }
 
-  private createServiceChatRecord(ownerUserId: string, chat: ChatMenuItem): DemoChatRecord | null {
+  private createServiceChatRecord(ownerUserId: string, chat: ChatRecord): DemoChatRecord | null {
     const normalizedOwnerUserId = ownerUserId.trim();
     const sourceId = `${chat.id ?? ''}`.trim();
     if (!normalizedOwnerUserId || !sourceId) {
@@ -447,7 +447,7 @@ export class DemoChatsRepository {
     return record;
   }
 
-  private buildInitialServiceMessages(chat: ChatMenuItem): AppTypes.ChatPopupMessage[] {
+  private buildInitialServiceMessages(chat: ChatRecord): AppTypes.ChatPopupMessage[] {
     const sourceId = `${chat.id ?? ''}`.trim();
     if (!sourceId.startsWith('c-support-blocked-')) {
       return [];

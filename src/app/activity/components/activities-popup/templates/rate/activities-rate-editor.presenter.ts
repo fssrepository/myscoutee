@@ -1,4 +1,3 @@
-import type { RateMenuItem } from '../../../../../shared/core/base/interfaces/activity-feed.interface';
 import type * as AppTypes from '../../../../../shared/core/base/models';
 import type { RatingStarBarConfig } from '../../../../../shared/ui';
 
@@ -43,8 +42,7 @@ export class ActivitiesRateEditorPresenter {
     if (!row || row.type !== 'rates') {
       return this.deps.getActivitiesRateFilter().startsWith('individual') ? 'Single' : 'Pair';
     }
-    const item = row.source as RateMenuItem;
-    return item.mode === 'pair' ? 'Pair' : 'Single';
+    return row.mode === 'pair' ? 'Pair' : 'Single';
   }
 
   private selectedTitle(): string {

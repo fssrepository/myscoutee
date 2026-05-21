@@ -7,7 +7,7 @@ import type {
   ActivitiesPageRequest,
   EventExploreFeedFilters
 } from '../../../core/base/models';
-import type { ChatMenuItem } from '../interfaces/activity-feed.interface';
+import type { ChatRecord } from '../models/chat.model';
 import type { UserDto } from '../interfaces/user.interface';
 import type { ListQuery, PageResult } from '../../../ui';
 import {
@@ -44,7 +44,7 @@ export class ActivitiesService extends BaseRouteModeService {
 
   async loadActivities(
     query: ListQuery<ActivitiesFeedFilters>,
-    options: { chatItems?: readonly ChatMenuItem[]; signal?: AbortSignal } = {}
+    options: { chatItems?: readonly ChatRecord[]; signal?: AbortSignal } = {}
   ): Promise<PageResult<AppTypes.ActivityListRow>> {
     const request = toActivitiesPageRequest(query);
     if (request.primaryFilter === 'rates') {
@@ -69,6 +69,14 @@ export class ActivitiesService extends BaseRouteModeService {
       total: result.total,
       nextCursor: result.nextCursor
     };
+  }
+
+  buildEventDisplayRow(
+    record: DemoEventRecord,
+    options: { activeUserId?: string | null } = {}
+  ): AppTypes.ActivityListRow {
+    const activeUserId = `${options.activeUserId ?? this.resolveActiveUserId()}`.trim();
+    return toActivityEventRow(record, { activeUserId });
   }
 
   async saveActivitiesEventSync(
@@ -143,7 +151,7 @@ export class ActivitiesService extends BaseRouteModeService {
 
   private async loadChats(
     request: ActivitiesPageRequest,
-    options: { chatItems?: readonly ChatMenuItem[] }
+    options: { chatItems?: readonly ChatRecord[] }
   ): Promise<PageResult<AppTypes.ActivityListRow>> {
     return this.chatsService.queryActivitiesChatPage(this.resolveActiveUserId(), request, {
       chatItems: options.chatItems,
@@ -311,9 +319,8 @@ export class ActivitiesService extends BaseRouteModeService {
       }
       return { start: point, end: new Date(point.getTime() + 60 * 1000) };
     }
-    const source = row.source as { startAt?: string; endAt?: string };
-    const start = new Date(source.startAt ?? row.dateIso);
-    const end = new Date(source.endAt ?? new Date(start.getTime() + (2 * 60 * 60 * 1000)).toISOString());
+    const start = new Date(row.startAt ?? row.dateIso);
+    const end = new Date(row.endAt ?? new Date(start.getTime() + (2 * 60 * 60 * 1000)).toISOString());
     if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
       return null;
     }

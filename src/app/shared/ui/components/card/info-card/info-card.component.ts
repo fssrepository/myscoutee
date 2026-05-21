@@ -103,7 +103,7 @@ export class InfoCardComponent implements OnDestroy {
     }
     event?.stopPropagation();
     this.cardClick.emit({
-      rowId: this.card.rowId,
+      id: this.card.id,
       card: this.card
     });
   }
@@ -114,7 +114,7 @@ export class InfoCardComponent implements OnDestroy {
     }
     event.stopPropagation();
     this.mediaStartClick.emit({
-      rowId: this.card.rowId,
+      id: this.card.id,
       card: this.card
     });
   }
@@ -125,7 +125,7 @@ export class InfoCardComponent implements OnDestroy {
     }
     event.stopPropagation();
     this.mediaEndClick.emit({
-      rowId: this.card.rowId,
+      id: this.card.id,
       card: this.card
     });
   }
@@ -151,7 +151,7 @@ export class InfoCardComponent implements OnDestroy {
         this.cdr.markForCheck();
       }
       this.menuRequest.emit({
-        rowId: this.card.rowId,
+        id: this.card.id,
         card: this.card,
         actions: this.card.menuActions,
         triggerRect: this.resolveMenuTriggerRect(trigger),
@@ -202,7 +202,7 @@ export class InfoCardComponent implements OnDestroy {
     event.preventDefault();
     event.stopPropagation();
     this.menuAction.emit({
-      rowId: this.card.rowId,
+      id: this.card.id,
       actionId: resolvedAction.id,
       action: resolvedAction,
       card: this.card
@@ -307,7 +307,7 @@ export class InfoCardComponent implements OnDestroy {
 
   protected rootClassList(): string[] {
     const classes = ['ui-info-card'];
-    if ((this.card?.rowId ?? '').startsWith('asset:')) {
+    if ((this.card?.id ?? '').startsWith('asset:')) {
       classes.push('ui-info-card--owned-asset');
     }
     if (this.card?.surfaceTone && this.card.surfaceTone !== 'default') {

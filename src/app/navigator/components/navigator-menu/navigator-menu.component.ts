@@ -27,7 +27,7 @@ import { NavigatorService } from '../../navigator.service';
 import { NavigatorSettingsMenuComponent } from '../navigator-settings-menu/navigator-settings-menu.component';
 import { NavigatorContactsService } from '../../navigator-contacts.service';
 import { ActivitiesPopupStateService } from '../../../activity/services/activities-popup-state.service';
-import type { ChatMenuItem } from '../../../shared/core/base/interfaces/activity-feed.interface';
+import type { ChatRecord } from '../../../shared/core/base/models/chat.model';
 
 interface NavigatorMenuUser extends Omit<UserDto, 'activities'> {
   activities: ActivityCounters;
@@ -448,7 +448,7 @@ export class NavigatorMenuComponent {
     }
     const activeUserId = user.id.trim();
     const adminUserId = 'myscoutee-admin';
-    const chat: ChatMenuItem & { ownerUserId?: string } = {
+    const chat: ChatRecord & { ownerUserId?: string } = {
       id: `c-support-blocked-${activeUserId}`,
       avatar: 'MS',
       title: 'MyScoutee Support',

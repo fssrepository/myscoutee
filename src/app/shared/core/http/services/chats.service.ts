@@ -4,7 +4,7 @@ import { Injectable, inject } from '@angular/core';
 import { environment } from '../../../../../environments/environment';
 import type * as AppTypes from '../../../core/base/models';
 import { AppUtils } from '../../../app-utils';
-import type { ChatMenuItem } from '../../base/interfaces/activity-feed.interface';
+import type { ChatRecord } from '../../base/models/chat.model';
 import type { ActivitiesPageRequest } from '../../base/models';
 import { AppContext } from '../../base/context';
 import { FirebaseAuthService } from '../../base/services/firebase-auth.service';
@@ -284,7 +284,7 @@ export class HttpChatsService {
     return records.map(record => this.cloneChatRecord(record));
   }
 
-  async loadChatMessages(chat: ChatMenuItem): Promise<AppTypes.ChatPopupMessage[]> {
+  async loadChatMessages(chat: ChatRecord): Promise<AppTypes.ChatPopupMessage[]> {
     try {
       const response = await this.http
         .get<HttpChatMessageDto[]>(`${this.apiBaseUrl}/activities/chats/${encodeURIComponent(chat.id)}/messages`, {
@@ -302,12 +302,12 @@ export class HttpChatsService {
     }
   }
 
-  async sendChatMessage(chat: ChatMenuItem, text: string, clientId?: string): Promise<AppTypes.ChatPopupMessage | null> {
+  async sendChatMessage(chat: ChatRecord, text: string, clientId?: string): Promise<AppTypes.ChatPopupMessage | null> {
     return this.sendChatMessageWithAttachments(chat, text, [], clientId);
   }
 
   async sendChatMessageWithAttachments(
-    chat: ChatMenuItem,
+    chat: ChatRecord,
     text: string,
     attachments: readonly AppTypes.ChatMessageAttachment[] = [],
     clientId?: string,
@@ -352,7 +352,7 @@ export class HttpChatsService {
     }
   }
 
-  async sendChatTyping(chat: ChatMenuItem, typing: boolean): Promise<void> {
+  async sendChatTyping(chat: ChatRecord, typing: boolean): Promise<void> {
     const socket = await this.ensureSocket(chat);
     if (!socket || socket.readyState !== WebSocket.OPEN) {
       return;
@@ -365,7 +365,7 @@ export class HttpChatsService {
     socket.send(JSON.stringify(payload));
   }
 
-  async markChatRead(chat: ChatMenuItem, messageIds: readonly string[]): Promise<void> {
+  async markChatRead(chat: ChatRecord, messageIds: readonly string[]): Promise<void> {
     const normalizedIds = messageIds
       .map(messageId => `${messageId ?? ''}`.trim())
       .filter(messageId => messageId.length > 0);
@@ -384,7 +384,7 @@ export class HttpChatsService {
     socket.send(JSON.stringify(payload));
   }
 
-  async updateSupportCase(chat: ChatMenuItem, action: AppTypes.SupportCaseAction): Promise<DemoChatRecord | null> {
+  async updateSupportCase(chat: ChatRecord, action: AppTypes.SupportCaseAction): Promise<DemoChatRecord | null> {
     const normalizedChatId = `${chat.id ?? ''}`.trim();
     const userId = this.activeUserId();
     if (!normalizedChatId || !userId) {
@@ -405,7 +405,7 @@ export class HttpChatsService {
   }
 
   async updateChatMessage(
-    chat: ChatMenuItem,
+    chat: ChatRecord,
     messageId: string,
     mutation: AppTypes.ChatMessageMutation
   ): Promise<AppTypes.ChatPopupMessage | null> {
@@ -459,7 +459,7 @@ export class HttpChatsService {
   }
 
   async watchChatEvents(
-    chat: ChatMenuItem,
+    chat: ChatRecord,
     onEvent: (event: AppTypes.ChatLiveEvent) => void
   ): Promise<() => void> {
     const normalizedChatId = `${chat.id ?? ''}`.trim();
@@ -482,7 +482,7 @@ export class HttpChatsService {
   }
 
   async watchChatMessages(
-    chat: ChatMenuItem,
+    chat: ChatRecord,
     onMessage: (message: AppTypes.ChatPopupMessage) => void
   ): Promise<() => void> {
     return this.watchChatEvents(chat, event => {
@@ -766,7 +766,7 @@ export class HttpChatsService {
   }
 
   private updateCachedChatSummaryAfterMessage(
-    chat: ChatMenuItem,
+    chat: ChatRecord,
     message: AppTypes.ChatPopupMessage
   ): void {
     const ownerUserId = this.activeUserId();
@@ -790,7 +790,7 @@ export class HttpChatsService {
   }
 
   private buildCachedChatRecordFromMessage(
-    chat: ChatMenuItem,
+    chat: ChatRecord,
     ownerUserId: string,
     message: AppTypes.ChatPopupMessage,
     existingRecord: DemoChatRecord | null
@@ -821,7 +821,7 @@ export class HttpChatsService {
     } satisfies DemoChatRecord;
   }
 
-  private resolveCachedChatMessages(chat: ChatMenuItem): AppTypes.ChatPopupMessage[] {
+  private resolveCachedChatMessages(chat: ChatRecord): AppTypes.ChatPopupMessage[] {
     const ownerUserId = this.activeUserId();
     const normalizedChatId = `${chat.id ?? ''}`.trim();
     if (!ownerUserId || !normalizedChatId) {
@@ -972,7 +972,7 @@ export class HttpChatsService {
       || Object.prototype.hasOwnProperty.call(payload, 'sentAtIso');
   }
 
-  private async ensureSocket(chat: ChatMenuItem): Promise<WebSocket | null> {
+  private async ensureSocket(chat: ChatRecord): Promise<WebSocket | null> {
     const normalizedChatId = `${chat.id ?? ''}`.trim();
     if (!normalizedChatId || typeof WebSocket === 'undefined' || typeof window === 'undefined') {
       return null;

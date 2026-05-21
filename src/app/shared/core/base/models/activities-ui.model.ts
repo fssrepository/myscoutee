@@ -1,4 +1,5 @@
-import type { InfoCardData } from '../../../ui';
+import type { ImageCardData, InfoCardData, SingleRowData } from '../../../ui';
+import type { EventVisibility } from './event.model';
 
 export type ActivitiesPrimaryFilter = 'chats' | 'invitations' | 'events' | 'hosting' | 'rates';
 export type ActivitiesEventScope = 'all' | 'active-events' | 'pending' | 'invitations' | 'my-events' | 'drafts' | 'trash';
@@ -19,51 +20,53 @@ export type RateFilterEntry =
   | { kind: 'group'; label: string }
   | { kind: 'item'; key: RateFilterKey; label: string };
 
-export interface ActivityRateDisplayUser {
-  id: string;
-  name: string;
-  age: number;
-  city: string;
-  gender: 'woman' | 'man';
-}
-
-export interface ActivityRateDisplaySlide {
-  imageUrl: string;
-  primaryLine?: string;
-  secondaryLine?: string;
-  placeholderLabel?: string;
-}
-
-export interface ActivityRateDisplaySlot {
-  key: 'woman' | 'man';
-  label: string;
-  tone?: 'woman' | 'man';
-  slides: ActivityRateDisplaySlide[];
-}
-
-export interface ActivityRateDisplay {
-  primaryUser: ActivityRateDisplayUser | null;
-  imageUrls: string[];
-  happenedOnLabel: string;
-  pairSlots: ActivityRateDisplaySlot[];
-}
-
-export interface ActivityListRow {
+export interface ActivityListItemBase<TDetailRecord = unknown> {
   id: string;
   type: ActivitiesPrimaryFilter;
   title: string;
-  subtitle: string;
-  detail: string;
+  subtitle?: string | null;
+  detail?: string | null;
   dateIso: string;
-  distanceKm: number;
   distanceMetersExact?: number;
   unread: number;
   metricScore: number;
   isAdmin?: boolean;
-  rateDisplay?: ActivityRateDisplay | null;
-  infoCard?: InfoCardData | null;
-  source?: unknown;
+  detailRecord?: TDetailRecord | null;
+  startAt?: string | null;
+  endAt?: string | null;
+  boost?: number | null;
+  imageUrl?: string | null;
+  visibility?: EventVisibility | null;
+  avatarInitials?: string | null;
+  creatorInitials?: string | null;
+  acceptedMembers?: number | null;
+  pendingMembers?: number | null;
+  capacityTotal?: number | null;
+  capacityMin?: number | null;
+  capacityMax?: number | null;
+  isTrashed?: boolean;
+  memberCount?: number | null;
 }
+
+export type ActivityInfoCardRow<TDetailRecord = unknown> =
+  InfoCardData<TDetailRecord>
+  & ActivityListItemBase<TDetailRecord>
+  & { type: 'events' | 'hosting' | 'invitations'; subtitle: string; detail: string };
+
+export type ActivityImageCardRow<TDetailRecord = unknown> =
+  ImageCardData<TDetailRecord>
+  & ActivityListItemBase<TDetailRecord>
+  & { type: 'rates'; subtitle: string; detail: string };
+
+export type ActivitySingleRow<TDetailRecord = unknown> =
+  SingleRowData<TDetailRecord>
+  & ActivityListItemBase<TDetailRecord>
+  & { type: 'chats'; subtitle: string; detail: string };
+
+export type ActivityListRow<TDetailRecord = unknown> =
+  | ActivityInfoCardRow<TDetailRecord>
+  | ActivityImageCardRow<TDetailRecord>
+  | ActivitySingleRow<TDetailRecord>;
 
 export interface ActivityGroup {
   label: string;
@@ -115,23 +118,4 @@ export interface CalendarTimedBadge {
   row: ActivityListRow;
   topPct: number;
   heightPct: number;
-}
-
-export interface EventExploreCard {
-  id: string;
-  title: string;
-  subtitle: string;
-  timeframe: string;
-  imageUrl: string;
-  distanceKm: number;
-  boost: number;
-  rating: number;
-  startSort: number;
-  isPast: boolean;
-  sourceType: 'event' | 'hosting';
-}
-
-export interface EventExploreGroup {
-  label: string;
-  cards: EventExploreCard[];
 }

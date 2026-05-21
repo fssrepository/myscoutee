@@ -229,7 +229,8 @@ export class EventsService extends BaseRouteModeService {
       ? [item.timeframe]
       : [item.timeframe, this.eventFeedbackItemStatusLine(item)];
     return {
-      rowId: item.eventId,
+      id: item.eventId,
+      status: item.isRemoved ? 'removed' : item.isFeedbacked ? 'feedbacked' : 'pending',
       title: item.title,
       imageUrl: item.imageUrl,
       metaRows: [item.subtitle],
@@ -254,7 +255,7 @@ export class EventsService extends BaseRouteModeService {
   eventFeedbackCarouselInfoCard(card: EventFeedbackCard): InfoCardData {
     const detailRows = [card.identityTitle].filter((row): row is string => !!row?.trim());
     return {
-      rowId: card.id,
+      id: card.id,
       title: card.heading,
       imageUrl: card.imageUrl,
       metaRows: [card.subheading],
@@ -371,7 +372,7 @@ export class EventsService extends BaseRouteModeService {
     noteCount: number;
   }, showAction: boolean): InfoCardData {
     return {
-      rowId: item.eventId,
+      id: item.eventId,
       title: item.title,
       imageUrl: item.imageUrl,
       metaRows: [item.subtitle],

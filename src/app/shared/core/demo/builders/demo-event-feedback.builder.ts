@@ -1,5 +1,5 @@
 import { AppUtils } from '../../../app-utils';
-import type { EventMenuItem } from '../../base/interfaces/activity-feed.interface';
+import type { DemoEventSeedItem } from '../models/event-seed-item.model';
 import type { DemoUser } from '../../base/interfaces/user.interface';
 import type {
   EventFeedbackCard,
@@ -11,7 +11,7 @@ import type {
 
 export class DemoEventFeedbackBuilder {
   static buildEventFeedbackCards(options: {
-    eventItems: EventMenuItem[];
+    eventItems: DemoEventSeedItem[];
     users: DemoUser[];
     activeUser: DemoUser;
     eventDatesById: Record<string, string>;
@@ -95,7 +95,7 @@ export class DemoEventFeedbackBuilder {
   }
 
   static buildSeededSubmittedState(options: {
-    eventItem: EventMenuItem;
+    eventItem: DemoEventSeedItem;
     users: DemoUser[];
     activeUser: DemoUser;
     eventDatesById: Record<string, string>;
@@ -157,7 +157,7 @@ export class DemoEventFeedbackBuilder {
 
 
   static buildSeededPersistedStates(options: {
-    eventItems: EventMenuItem[];
+    eventItems: DemoEventSeedItem[];
     users: DemoUser[];
     activeUser: DemoUser;
     eventDatesById: Record<string, string>;
@@ -337,7 +337,7 @@ export class DemoEventFeedbackBuilder {
     return `${day} · ${time}`;
   }
 
-  private static feedbackHostUserForEvent(item: EventMenuItem, users: DemoUser[], activeUser: DemoUser): DemoUser {
+  private static feedbackHostUserForEvent(item: DemoEventSeedItem, users: DemoUser[], activeUser: DemoUser): DemoUser {
     const creatorUserId = item.creatorUserId?.trim() ?? '';
     if (creatorUserId) {
       const creator = users.find(user => user.id === creatorUserId);
@@ -354,7 +354,7 @@ export class DemoEventFeedbackBuilder {
   }
 
   private static feedbackAttendeesForEvent(
-    item: EventMenuItem,
+    item: DemoEventSeedItem,
     hostId: string,
     users: DemoUser[],
     activeUserId: string

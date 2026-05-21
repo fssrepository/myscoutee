@@ -13,7 +13,7 @@ import {
   type SmartListItemTemplateContext,
   type SmartListLoadPage
 } from '../../../shared/ui';
-import type { ChatMenuItem } from '../../../shared/core/base/interfaces/activity-feed.interface';
+import type { ChatRecord } from '../../../shared/core/base/models/chat.model';
 import type { DemoUser } from '../../../shared/core/base/interfaces/user.interface';
 import { toActivityChatRow } from '../../../shared/core/base/converters/activities-chat.converter';
 import type { ActivityListRow } from '../../../shared/core/base/models';
@@ -171,7 +171,7 @@ export class AdminFeedbackPopupComponent {
   }
 
   private buildFeedbackActivityRow(feedback: AdminFeedbackDto): ActivityListRow {
-    const source: ChatMenuItem = {
+    const source: ChatRecord = {
       id: feedback.id,
       avatar: this.feedbackInitial(feedback),
       title: feedback.userName,

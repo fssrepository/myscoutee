@@ -4,7 +4,7 @@ import { Observable } from 'rxjs';
 
 import { environment } from '../../../../../environments/environment';
 import type { ActivitiesPageRequest } from '../../../core/base/models';
-import type { RateMenuItem } from '../../base/interfaces/activity-feed.interface';
+import type { RateRecord } from '../../base/models/rate.model';
 import type { ActivityRatePageResult } from '../../base/interfaces/game.interface';
 import type { UserDto } from '../../base/interfaces/user.interface';
 import { HttpUsersRatingsRepository } from '../repositories/users-ratings.repository';
@@ -22,18 +22,18 @@ export class HttpRatesService {
 
   recordActivityRate(
     ownerUserId: string,
-    item: RateMenuItem,
+    item: RateRecord,
     rating: number,
-    direction?: RateMenuItem['direction'] | null
+    direction?: RateRecord['direction'] | null
   ): void {
     this.usersRatingsRepository.enqueueActivityRateOutbox(ownerUserId, item, rating, direction);
   }
 
-  peekRateItemsByUser(userId: string): RateMenuItem[] {
+  peekRateItemsByUser(userId: string): RateRecord[] {
     return this.usersRatingsRepository.peekRateItemsByUserId(userId);
   }
 
-  async queryRateItemsByUser(userId: string): Promise<RateMenuItem[]> {
+  async queryRateItemsByUser(userId: string): Promise<RateRecord[]> {
     return this.usersRatingsRepository.queryRateItemsByUserId(userId);
   }
 
@@ -51,7 +51,7 @@ export class HttpRatesService {
     this.throwIfAborted(signal);
     await this.queryRateItemsByUser(userId);
     this.throwIfAborted(signal);
-    const [mode, direction] = request.rateFilter.split('-') as ['individual' | 'pair', RateMenuItem['direction']];
+    const [mode, direction] = request.rateFilter.split('-') as ['individual' | 'pair', RateRecord['direction']];
     let params = new HttpParams()
       .set('userId', userId)
       .set('mode', mode === 'pair' ? 'pair' : 'single')
@@ -74,7 +74,7 @@ export class HttpRatesService {
 
     const response = await this.requestWithAbort(
       this.http.get<{
-        items?: RateMenuItem[] | null;
+        items?: RateRecord[] | null;
         total?: number | null;
         nextCursor?: string | null;
         users?: UserDto[] | null;

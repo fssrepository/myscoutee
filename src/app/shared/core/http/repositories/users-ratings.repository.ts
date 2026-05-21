@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 
 import { environment } from '../../../../../environments/environment';
 import { DemoUserRatesBuilder } from '../../demo/builders';
-import type { RateMenuItem } from '../../base/interfaces/activity-feed.interface';
+import type { RateRecord } from '../../base/models/rate.model';
 import type { UserGameMode, UserRateOutboxRecord, UserRateRecord, UserRatesSyncResult } from '../../base/interfaces/game.interface';
 import {
   USER_RATES_OUTBOX_TABLE_NAME
@@ -20,7 +20,7 @@ export class HttpUsersRatingsRepository {
   protected readonly memoryDb = inject(AppMemoryDb);
   private readonly http = inject(HttpClient);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
-  private readonly cachedRatesByUserId: Record<string, RateMenuItem[]> = {};
+  private readonly cachedRatesByUserId: Record<string, RateRecord[]> = {};
 
   queryPendingUserRatesOutbox(limit = 50): UserRateOutboxRecord[] {
     const maxItems = Math.max(1, Math.trunc(Number(limit) || 50));
@@ -61,7 +61,7 @@ export class HttpUsersRatingsRepository {
       if (!payload || outboxRecord.status !== 'pending') {
         continue;
       }
-      const item = this.toRateMenuItem(payload);
+      const item = this.toRateRecord(payload);
       if (!this.shouldExcludePendingItemFromHome(item)) {
         continue;
       }
@@ -103,7 +103,7 @@ export class HttpUsersRatingsRepository {
       ) {
         continue;
       }
-      const item = this.toRateMenuItem(payload);
+      const item = this.toRateRecord(payload);
       if (!this.shouldExcludePendingItemFromHome(item) || item.mode !== 'pair') {
         continue;
       }
@@ -117,7 +117,7 @@ export class HttpUsersRatingsRepository {
     return [...pairKeys];
   }
 
-  peekRateItemsByUserId(userId: string): RateMenuItem[] {
+  peekRateItemsByUserId(userId: string): RateRecord[] {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return [];
@@ -127,14 +127,14 @@ export class HttpUsersRatingsRepository {
     );
   }
 
-  async queryRateItemsByUserId(userId: string): Promise<RateMenuItem[]> {
+  async queryRateItemsByUserId(userId: string): Promise<RateRecord[]> {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return [];
     }
     try {
       const response = await this.http
-        .get<RateMenuItem[] | null>(`${this.apiBaseUrl}${HttpUsersRatingsRepository.USER_RATES_ROUTE}`, {
+        .get<RateRecord[] | null>(`${this.apiBaseUrl}${HttpUsersRatingsRepository.USER_RATES_ROUTE}`, {
           params: new HttpParams().set('userId', normalizedUserId)
         })
         .toPromise();
@@ -297,9 +297,9 @@ export class HttpUsersRatingsRepository {
 
   enqueueActivityRateOutbox(
     ownerUserId: string,
-    item: RateMenuItem,
+    item: RateRecord,
     rating: number,
-    direction?: RateMenuItem['direction'] | null
+    direction?: RateRecord['direction'] | null
   ): void {
     const nextRecord = this.buildNormalizedActivityRateRecord(ownerUserId, item, rating, direction);
     if (!nextRecord) {
@@ -415,9 +415,9 @@ export class HttpUsersRatingsRepository {
 
   protected buildNormalizedActivityRateRecord(
     ownerUserId: string,
-    item: RateMenuItem,
+    item: RateRecord,
     rating: number,
-    direction?: RateMenuItem['direction'] | null
+    direction?: RateRecord['direction'] | null
   ): UserRateRecord | null {
     const normalizedOwnerUserId = ownerUserId.trim();
     const normalizedUserId = item.userId.trim();
@@ -519,12 +519,12 @@ export class HttpUsersRatingsRepository {
     void this.memoryDb.flushToIndexedDb();
   }
 
-  private mergePendingOutboxRateItems(userId: string, items: readonly RateMenuItem[]): RateMenuItem[] {
+  private mergePendingOutboxRateItems(userId: string, items: readonly RateRecord[]): RateRecord[] {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return [];
     }
-    const itemsById = new Map<string, RateMenuItem>();
+    const itemsById = new Map<string, RateRecord>();
     for (const item of items) {
       const normalizedId = item.id.trim();
       if (!normalizedId) {
@@ -535,7 +535,7 @@ export class HttpUsersRatingsRepository {
     const outboxTable = this.memoryDb.read()[USER_RATES_OUTBOX_TABLE_NAME];
     for (const id of outboxTable.ids) {
       const record = outboxTable.byId[id];
-      const item = record?.payload ? this.toRateMenuItem(record.payload) : null;
+      const item = record?.payload ? this.toRateRecord(record.payload) : null;
       if (!item?.id?.trim()) {
         continue;
       }
@@ -545,11 +545,11 @@ export class HttpUsersRatingsRepository {
       .sort((left, right) => right.happenedAt.localeCompare(left.happenedAt) || left.id.localeCompare(right.id));
   }
 
-  private toRateMenuItem(record: UserRateRecord): RateMenuItem | null {
-    return DemoUserRatesBuilder.toRateMenuItem(record);
+  private toRateRecord(record: UserRateRecord): RateRecord | null {
+    return DemoUserRatesBuilder.toRateRecord(record);
   }
 
-  private normalizeRateDirection(direction: RateMenuItem['direction'] | string | null | undefined): RateMenuItem['direction'] | null {
+  private normalizeRateDirection(direction: RateRecord['direction'] | string | null | undefined): RateRecord['direction'] | null {
     if (direction === 'given' || direction === 'received' || direction === 'mutual' || direction === 'met') {
       return direction;
     }
@@ -643,7 +643,7 @@ export class HttpUsersRatingsRepository {
       .filter(id => id.length > 0))];
   }
 
-  private shouldExcludePendingItemFromHome(item: RateMenuItem | null): item is RateMenuItem {
+  private shouldExcludePendingItemFromHome(item: RateRecord | null): item is RateRecord {
     if (!item) {
       return false;
     }
@@ -696,7 +696,7 @@ export class HttpUsersRatingsRepository {
     }
   }
 
-  private cloneRateItems(items: readonly RateMenuItem[]): RateMenuItem[] {
+  private cloneRateItems(items: readonly RateRecord[]): RateRecord[] {
     return items.map(item => ({ ...item }));
   }
 }

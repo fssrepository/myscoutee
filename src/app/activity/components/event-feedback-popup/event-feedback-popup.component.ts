@@ -7,7 +7,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { from } from 'rxjs';
 
 import { AppContext, EventsService, GameService, UsersService, type UserDto } from '../../../shared/core';
-import type { EventMenuItem } from '../../../shared/core/base/interfaces/activity-feed.interface';
+import type { DemoEventSeedItem } from '../../../shared/core/demo/models/event-seed-item.model';
 import {
   CounterBadgePipe,
   InfoCardComponent,
@@ -300,16 +300,16 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
     });
   }
 
-  public get eventItems(): EventMenuItem[] {
+  public get eventItems(): DemoEventSeedItem[] {
     return this.uniqueEventRecords()
       .filter(record => record.type === 'events' && !record.isTrashed && !record.isInvitation && !record.isAdmin)
-      .map(record => this.toEventMenuItem(record));
+      .map(record => this.toDemoEventSeedItem(record));
   }
 
-  public get ownedEventItems(): EventMenuItem[] {
+  public get ownedEventItems(): DemoEventSeedItem[] {
     return this.uniqueEventRecords()
       .filter(record => !record.isTrashed && !record.isInvitation && !!record.isAdmin)
-      .map(record => this.toEventMenuItem(record));
+      .map(record => this.toDemoEventSeedItem(record));
   }
 
   private get fallbackUsers(): UserDto[] {
@@ -931,7 +931,7 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
     }
   }
 
-  private toEventMenuItem(record: DemoEventRecord): EventMenuItem {
+  private toDemoEventSeedItem(record: DemoEventRecord): DemoEventSeedItem {
     return {
       id: record.id,
       avatar: record.avatar,

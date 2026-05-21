@@ -1,11 +1,11 @@
 import { AppUtils } from '../../../app-utils';
-import type { ChatMenuItem } from '../../base/interfaces/activity-feed.interface';
+import type { ChatRecord } from '../../base/models/chat.model';
 import type { UserGameFilterPreferencesDto } from '../../base/interfaces/game.interface';
 import type { DemoUserListItemDto, UserDto } from '../../base/interfaces/user.interface';
 import { DemoUserMenuCountersBuilder } from './demo-user-menu-counters.builder';
 
 interface DemoUsersRepositoryActivitySources {
-  chatItems?: readonly ChatMenuItem[];
+  chatItems?: readonly ChatRecord[];
   invitationItems?: ReadonlyArray<{ unread: number }>;
   eventItems?: ReadonlyArray<{ activity: number }>;
   hostingItems?: ReadonlyArray<{ activity: number }>;

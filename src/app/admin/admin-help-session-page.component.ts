@@ -5,6 +5,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { environment } from '../../environments/environment';
 import {
   AppPopupContext,
+  ActivitiesService,
   AssetDefaultsBuilder,
   EventsService,
   SessionService,
@@ -14,7 +15,6 @@ import {
   type ShareTokenResolvedItem
 } from '../shared/core';
 import type { AssetCard } from '../shared/core/base/models';
-import { toActivityEventRow } from '../shared/core/base/converters/activities-event.converter';
 import {
   type DemoBootstrapProgressStage,
   type DemoBootstrapProgressState
@@ -63,6 +63,7 @@ export class AdminHelpSessionPageComponent implements OnInit {
   private readonly sessionService = inject(SessionService);
   private readonly shareTokens = inject(ShareTokensService);
   private readonly usersService = inject(UsersService);
+  private readonly activitiesService = inject(ActivitiesService);
   private readonly eventsService = inject(EventsService);
   private readonly popupCtx = inject(AppPopupContext);
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
@@ -386,7 +387,7 @@ export class AdminHelpSessionPageComponent implements OnInit {
       if (eventRecord) {
         this.popupCtx.requestActivitiesNavigation({
           type: 'eventEditor',
-          row: toActivityEventRow(eventRecord),
+          row: this.activitiesService.buildEventDisplayRow(eventRecord, { activeUserId: userId }),
           readOnly: true
         });
       } else {

@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 
 import { AppUtils } from '../../../app-utils';
 import { DemoUserRatesBuilder, DemoUserSeedBuilder } from '../builders';
-import type { RateMenuItem } from '../../base/interfaces/activity-feed.interface';
+import type { RateRecord } from '../../base/models/rate.model';
 import type { UserDto } from '../../base/interfaces/user.interface';
 import type {
   ActivityRateRecordQuery,
@@ -165,7 +165,7 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
       if (record.ownerUserId?.trim() !== normalizedRaterId) {
         continue;
       }
-      const item = DemoUserRatesBuilder.toRateMenuItem(record);
+      const item = DemoUserRatesBuilder.toRateRecord(record);
       if (!item || (item.direction !== 'met' && item.scoreGiven <= 0)) {
         continue;
       }
@@ -190,7 +190,7 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
       if (payload.ownerUserId?.trim() !== normalizedRaterId) {
         continue;
       }
-      const item = DemoUserRatesBuilder.toRateMenuItem(payload);
+      const item = DemoUserRatesBuilder.toRateRecord(payload);
       if (!item || (item.direction !== 'met' && item.scoreGiven <= 0)) {
         continue;
       }
@@ -227,7 +227,7 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
       if (record.ownerUserId?.trim() !== normalizedOwnerUserId) {
         continue;
       }
-      const item = DemoUserRatesBuilder.toRateMenuItem(record);
+      const item = DemoUserRatesBuilder.toRateRecord(record);
       if (!item || item.mode !== 'pair' || (item.direction !== 'met' && item.scoreGiven <= 0)) {
         continue;
       }
@@ -250,22 +250,22 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
       .join(':');
   }
 
-  queryActivityRateItemsByUserId(userId: string): RateMenuItem[] {
+  queryActivityRateItemsByUserId(userId: string): RateRecord[] {
     this.init();
     return this.buildRateItemsByUserId(userId);
   }
 
-  override peekRateItemsByUserId(userId: string): RateMenuItem[] {
+  override peekRateItemsByUserId(userId: string): RateRecord[] {
     this.init();
     return this.buildRateItemsByUserId(userId);
   }
 
-  override async queryRateItemsByUserId(userId: string): Promise<RateMenuItem[]> {
+  override async queryRateItemsByUserId(userId: string): Promise<RateRecord[]> {
     this.init();
     return this.buildRateItemsByUserId(userId);
   }
 
-  async queryActivityRateItemsPage(query: ActivityRateRecordQuery): Promise<{ items: RateMenuItem[]; total: number; nextCursor?: string | null }> {
+  async queryActivityRateItemsPage(query: ActivityRateRecordQuery): Promise<{ items: RateRecord[]; total: number; nextCursor?: string | null }> {
     this.init();
     const normalizedOwnerUserId = query.ownerUserId.trim();
     if (!normalizedOwnerUserId) {
@@ -300,7 +300,7 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
     };
   }
 
-  private buildRateItemsByUserId(userId: string): RateMenuItem[] {
+  private buildRateItemsByUserId(userId: string): RateRecord[] {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return [];
@@ -334,14 +334,14 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
       .sort((left, right) => AppUtils.toSortableDate(right.happenedAt) - AppUtils.toSortableDate(left.happenedAt));
   }
 
-  private referencesEmptyOnboardingProfile(item: RateMenuItem): boolean {
+  private referencesEmptyOnboardingProfile(item: RateRecord): boolean {
     return DemoUserSeedBuilder.isEmptyOnboardingProfileUserId(item.userId)
       || DemoUserSeedBuilder.isEmptyOnboardingProfileUserId(item.secondaryUserId ?? '')
       || DemoUserSeedBuilder.isEmptyOnboardingProfileUserId(item.bridgeUserId ?? '');
   }
 
   private activityRateItemUsersAreVisible(
-    item: RateMenuItem,
+    item: RateRecord,
     ownerUserId: string,
     usersById: ReadonlyMap<string, UserDto>
   ): boolean {
@@ -368,7 +368,7 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
       .map(user => [user.id, user] as const));
   }
 
-  private buildDynamicRateItemsForUser(record: UserRateRecord, normalizedUserId: string): RateMenuItem[] {
+  private buildDynamicRateItemsForUser(record: UserRateRecord, normalizedUserId: string): RateRecord[] {
     if (record.mode === 'pair') {
       return this.buildDynamicPairRateItemsForUser(record, normalizedUserId);
     }
@@ -376,7 +376,7 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
     return this.buildDynamicSingleRateItemsForUser(record, normalizedUserId);
   }
 
-  private buildDynamicSingleRateItemsForUser(record: UserRateRecord, normalizedUserId: string): RateMenuItem[] {
+  private buildDynamicSingleRateItemsForUser(record: UserRateRecord, normalizedUserId: string): RateRecord[] {
     const ownerUserId = record.ownerUserId?.trim() ?? '';
     if (!ownerUserId) {
       return [];
@@ -423,7 +423,7 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
       return [];
     }
 
-    const participantDirection: RateMenuItem['direction'] = record.displayDirection === 'met' ? 'met' : 'received';
+    const participantDirection: RateRecord['direction'] = record.displayDirection === 'met' ? 'met' : 'received';
     if (participantDirection === 'met' && (
       !this.didUsersMeetFromIndexedDb(normalizedUserId, ownerUserId)
       || !this.isFinishedMetActivity(happenedAt)
@@ -451,14 +451,14 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
     }];
   }
 
-  private buildDynamicPairRateItemsForUser(record: UserRateRecord, normalizedUserId: string): RateMenuItem[] {
+  private buildDynamicPairRateItemsForUser(record: UserRateRecord, normalizedUserId: string): RateRecord[] {
     const ownerUserId = record.ownerUserId?.trim() ?? '';
     const pairUserIds = this.resolvePairUserIdsFromRecord(record);
     if (!ownerUserId || pairUserIds === null) {
       return [];
     }
 
-    const items: RateMenuItem[] = [];
+    const items: RateRecord[] = [];
     const pairSocialContext = this.resolveStoredPairSocialContext(record)
       ?? this.resolveDynamicPairSocialContext(ownerUserId, pairUserIds[0], pairUserIds[1]);
 
@@ -500,8 +500,8 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
     normalizedUserId: string,
     ownerUserId: string,
     pairUserIds: [string, string],
-    socialContext: RateMenuItem['socialContext'] | null
-  ): RateMenuItem | null {
+    socialContext: RateRecord['socialContext'] | null
+  ): RateRecord | null {
     const [firstUserId, secondUserId] = pairUserIds;
     if (
       firstUserId !== normalizedUserId
@@ -558,7 +558,7 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
     record: UserRateRecord,
     scoreGiven: number,
     scoreReceived: number
-  ): RateMenuItem['direction'] | null {
+  ): RateRecord['direction'] | null {
     if (record.displayDirection === 'met') {
       return 'met';
     }
@@ -587,7 +587,7 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
     ownerUserId: string,
     firstUserId: string,
     secondUserId: string
-  ): RateMenuItem['socialContext'] | null {
+  ): RateRecord['socialContext'] | null {
     const normalizedOwnerUserId = ownerUserId.trim();
     const normalizedFirstUserId = firstUserId.trim();
     const normalizedSecondUserId = secondUserId.trim();
@@ -611,11 +611,11 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
     return null;
   }
 
-  private resolveStoredPairSocialContext(record: UserRateRecord): RateMenuItem['socialContext'] | null {
+  private resolveStoredPairSocialContext(record: UserRateRecord): RateRecord['socialContext'] | null {
     return record.socialContext === 'separated-friends' ? 'separated-friends' : null;
   }
 
-  private resolveStoredSingleSocialContext(record: UserRateRecord): RateMenuItem['socialContext'] | null {
+  private resolveStoredSingleSocialContext(record: UserRateRecord): RateRecord['socialContext'] | null {
     return record.socialContext === 'friends-in-common' ? 'friends-in-common' : null;
   }
 
@@ -657,7 +657,7 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
     return false;
   }
 
-  private matchesDynamicRateRange(item: RateMenuItem, query: ActivityRateRecordQuery): boolean {
+  private matchesDynamicRateRange(item: RateRecord, query: ActivityRateRecordQuery): boolean {
     const happenedAtMs = AppUtils.toSortableDate(item.happenedAt ?? '');
     const rangeStartMs = query.rangeStartIso ? AppUtils.toSortableDate(query.rangeStartIso) : null;
     const rangeEndMs = query.rangeEndIso ? AppUtils.toSortableDate(query.rangeEndIso) : null;
@@ -675,7 +675,7 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
     return happenedAtMs <= 0 || happenedAtMs <= Date.now();
   }
 
-  private matchesDynamicSocialFilter(item: RateMenuItem, socialBadgeEnabled: boolean): boolean {
+  private matchesDynamicSocialFilter(item: RateRecord, socialBadgeEnabled: boolean): boolean {
     if (item.mode === 'individual') {
       const friendsInCommon = item.socialContext === 'friends-in-common';
       return socialBadgeEnabled ? friendsInCommon : !friendsInCommon;
@@ -687,7 +687,7 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
     return true;
   }
 
-  private compareDynamicRateItems(left: RateMenuItem, right: RateMenuItem, query: ActivityRateRecordQuery): number {
+  private compareDynamicRateItems(left: RateRecord, right: RateRecord, query: ActivityRateRecordQuery): number {
     if (query.sort === 'distance') {
       const distanceDelta = this.dynamicDistanceValue(left) - this.dynamicDistanceValue(right);
       if (distanceDelta !== 0) {
@@ -725,14 +725,14 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
     return 0;
   }
 
-  private dynamicDistanceValue(item: RateMenuItem): number {
+  private dynamicDistanceValue(item: RateRecord): number {
     if (Number.isFinite(item.distanceMetersExact)) {
       return Math.max(0, Math.trunc(Number(item.distanceMetersExact)));
     }
     return 0;
   }
 
-  private dynamicRelevanceScore(item: RateMenuItem): number {
+  private dynamicRelevanceScore(item: RateRecord): number {
     const scoreGiven = Number.isFinite(item.scoreGiven)
       ? Math.max(0, Math.round(Number(item.scoreGiven)))
       : 0;
@@ -906,7 +906,7 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
     if (!ownerUserId) {
       return null;
     }
-    const item = DemoUserRatesBuilder.toRateMenuItem(record);
+    const item = DemoUserRatesBuilder.toRateRecord(record);
     if (!item) {
       return null;
     }

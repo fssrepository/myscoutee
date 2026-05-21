@@ -81,7 +81,9 @@ export class IdeaPostsService extends BaseRouteModeService {
 
   private entryIdeaInfoCard(post: IdeaPost): InfoCardData<IdeaArticleDetail> {
     return {
-      rowId: `entry-idea:${post.id}`,
+      id: `entry-idea:${post.id}`,
+      status: post.published ? 'published' : 'draft',
+      dateIso: post.submittedAtIso,
       title: post.title,
       imageUrl: this.ideaImageUrl(post) || null,
       placeholderLabel: 'No image',
@@ -129,7 +131,9 @@ export class IdeaPostsService extends BaseRouteModeService {
           'delete'
         ];
     return {
-      rowId: `idea:${post.id}`,
+      id: `idea:${post.id}`,
+      status: post.trashed ? 'trashed' : post.published ? 'published' : 'draft',
+      dateIso: post.submittedAtIso,
       title: post.title,
       imageUrl: this.ideaImageUrl(post) || null,
       placeholderLabel: 'No image',

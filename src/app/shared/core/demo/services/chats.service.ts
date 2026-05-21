@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 
 import type * as AppTypes from '../../../core/base/models';
 import { AppUtils } from '../../../app-utils';
-import type { ChatMenuItem } from '../../base/interfaces/activity-feed.interface';
+import type { ChatRecord } from '../../base/models/chat.model';
 import { DemoRouteDelayService } from './demo-route-delay.service';
 import { DemoChatsRepository } from '../repositories/chats.repository';
 import type { DemoChatRecord } from '../models/chats.model';
@@ -32,17 +32,17 @@ export class DemoChatsService extends DemoRouteDelayService {
     return this.chatsRepository.queryChatItemsByUser(userId);
   }
 
-  async loadChatMessages(chat: ChatMenuItem): Promise<AppTypes.ChatPopupMessage[]> {
+  async loadChatMessages(chat: ChatRecord): Promise<AppTypes.ChatPopupMessage[]> {
     await this.waitForRouteDelay(DemoChatsService.CHAT_ROUTE);
     return this.chatsRepository.queryChatMessages(chat);
   }
 
-  async sendChatMessage(chat: ChatMenuItem, text: string, clientId?: string): Promise<AppTypes.ChatPopupMessage | null> {
+  async sendChatMessage(chat: ChatRecord, text: string, clientId?: string): Promise<AppTypes.ChatPopupMessage | null> {
     return this.sendChatMessageWithAttachments(chat, text, [], clientId);
   }
 
   async sendChatMessageWithAttachments(
-    chat: ChatMenuItem,
+    chat: ChatRecord,
     text: string,
     attachments: readonly AppTypes.ChatMessageAttachment[] = [],
     clientId?: string,
@@ -74,7 +74,7 @@ export class DemoChatsService extends DemoRouteDelayService {
   }
 
   async updateChatMessage(
-    chat: ChatMenuItem,
+    chat: ChatRecord,
     messageId: string,
     mutation: AppTypes.ChatMessageMutation
   ): Promise<AppTypes.ChatPopupMessage | null> {
@@ -83,28 +83,28 @@ export class DemoChatsService extends DemoRouteDelayService {
   }
 
   async watchChatMessages(
-    _chat: ChatMenuItem,
+    _chat: ChatRecord,
     _onMessage: (message: AppTypes.ChatPopupMessage) => void
   ): Promise<() => void> {
     return () => {};
   }
 
   async watchChatEvents(
-    _chat: ChatMenuItem,
+    _chat: ChatRecord,
     _onEvent: (event: AppTypes.ChatLiveEvent) => void
   ): Promise<() => void> {
     return () => {};
   }
 
-  async sendChatTyping(_chat: ChatMenuItem, _typing: boolean): Promise<void> {
+  async sendChatTyping(_chat: ChatRecord, _typing: boolean): Promise<void> {
     return;
   }
 
-  async markChatRead(_chat: ChatMenuItem, _messageIds: readonly string[]): Promise<void> {
+  async markChatRead(_chat: ChatRecord, _messageIds: readonly string[]): Promise<void> {
     return;
   }
 
-  async updateSupportCase(chat: ChatMenuItem, action: AppTypes.SupportCaseAction): Promise<DemoChatRecord | null> {
+  async updateSupportCase(chat: ChatRecord, action: AppTypes.SupportCaseAction): Promise<DemoChatRecord | null> {
     await this.waitForRouteDelay(DemoChatsService.CHAT_ROUTE);
     return this.chatsRepository.updateSupportCase(chat, action);
   }

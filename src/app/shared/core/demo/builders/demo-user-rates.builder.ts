@@ -1,5 +1,5 @@
 import { AppUtils } from '../../../app-utils';
-import type { RateMenuItem } from '../../base/interfaces/activity-feed.interface';
+import type { RateRecord } from '../../base/models/rate.model';
 import type { UserRateRecord } from '../../base/interfaces/game.interface';
 
 type RateUserRef = {
@@ -20,7 +20,7 @@ export class DemoUserRatesBuilder {
     users: readonly TUser[],
     activeUserId: string,
     options: GeneratedRateItemsOptions = {}
-  ): RateMenuItem[] {
+  ): RateRecord[] {
     const otherUsers = users
       .filter(user => user.id !== activeUserId)
       .sort((a, b) => a.id.localeCompare(b.id));
@@ -34,7 +34,7 @@ export class DemoUserRatesBuilder {
         || left.id.localeCompare(right.id)
       );
     const extraUsers = extraTargetUsers.length > 0 ? extraTargetUsers : seededUsers;
-    const filterLanes: Array<{ mode: 'individual' | 'pair'; direction: RateMenuItem['direction'] }> = [
+    const filterLanes: Array<{ mode: 'individual' | 'pair'; direction: RateRecord['direction'] }> = [
       { mode: 'individual', direction: 'given' },
       { mode: 'individual', direction: 'received' },
       { mode: 'individual', direction: 'mutual' },
@@ -42,7 +42,7 @@ export class DemoUserRatesBuilder {
       { mode: 'pair', direction: 'given' },
       { mode: 'pair', direction: 'received' }
     ];
-    const generated: RateMenuItem[] = [];
+    const generated: RateRecord[] = [];
     seededUsers.forEach((user, userIndex) => {
       const laneIndex = userIndex % filterLanes.length;
       const lane = filterLanes[laneIndex];
@@ -88,7 +88,7 @@ export class DemoUserRatesBuilder {
       );
     }
     const socialTargetUsers = extraUsers.length > 0 ? extraUsers : seededUsers;
-    const socialLanes: Array<{ direction: Extract<RateMenuItem['direction'], 'given' | 'met'>; variantIndex: number }> = [
+    const socialLanes: Array<{ direction: Extract<RateRecord['direction'], 'given' | 'met'>; variantIndex: number }> = [
       { direction: 'given', variantIndex: 701 },
       { direction: 'met', variantIndex: 702 }
     ];
@@ -129,7 +129,7 @@ export class DemoUserRatesBuilder {
     );
   }
 
-  static toActivityRateRecord(ownerUserId: string, item: RateMenuItem): UserRateRecord {
+  static toActivityRateRecord(ownerUserId: string, item: RateRecord): UserRateRecord {
     const normalizedOwnerUserId = ownerUserId.trim();
     const normalizedCounterpartyUserId = item.userId.trim();
     const normalizedSecondaryUserId = item.secondaryUserId?.trim() ?? '';
@@ -178,7 +178,7 @@ export class DemoUserRatesBuilder {
     };
   }
 
-  static toRateMenuItem(record: UserRateRecord): RateMenuItem | null {
+  static toRateRecord(record: UserRateRecord): RateRecord | null {
     const direction = record.displayDirection;
     const ownerUserId = record.ownerUserId?.trim() ?? '';
     if (!direction || !ownerUserId) {
@@ -268,15 +268,15 @@ export class DemoUserRatesBuilder {
     activeUserId: string,
     targetUserId: string,
     mode: 'individual' | 'pair',
-    direction: RateMenuItem['direction'],
+    direction: RateRecord['direction'],
     laneIndex: number,
     userIndex: number,
     variantIndex = 0,
     secondaryUserId?: string,
-    socialContextOverride?: RateMenuItem['socialContext'],
+    socialContextOverride?: RateRecord['socialContext'],
     bridgeUserId?: string,
     bridgeCount?: number
-  ): RateMenuItem {
+  ): RateRecord {
     const seed = AppUtils.hashText(
       `rate-grid:${activeUserId}:${targetUserId}:${secondaryUserId ?? ''}:${mode}:${direction}:${variantIndex}`
     );
@@ -301,7 +301,7 @@ export class DemoUserRatesBuilder {
     const variantSuffix = variantIndex > 0 ? `-v${variantIndex}` : '';
     const distanceMetersExact = ((2 + ((seed + laneIndex + userIndex) % 33)) * 1000)
       + Math.abs(seed % 1000);
-    const socialContext: RateMenuItem['socialContext'] | undefined =
+    const socialContext: RateRecord['socialContext'] | undefined =
       socialContextOverride
       ?? (mode === 'individual' && direction !== 'met' && seed % 4 === 0
         ? 'friends-in-common'
@@ -375,7 +375,7 @@ export class DemoUserRatesBuilder {
 
   private static resolvePairSocialContext(
     record: UserRateRecord
-  ): RateMenuItem['socialContext'] {
+  ): RateRecord['socialContext'] {
     return record.socialContext;
   }
 

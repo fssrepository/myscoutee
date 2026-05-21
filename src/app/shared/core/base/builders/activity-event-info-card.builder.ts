@@ -26,7 +26,9 @@ export class ActivityEventInfoCardBuilder {
     const title = record.title;
 
     return {
-      rowId: `${rowType}:${record.id}`,
+      id: `${rowType}:${record.id}`,
+      dateIso: record.startAtIso,
+      distanceMetersExact: Math.max(0, Math.round((Number(record.distanceKm) || 0) * 1000)),
       status,
       ownerId: record.creatorUserId,
       groupLabel: options.groupLabel ?? null,

@@ -22,7 +22,7 @@ export class ActivityResourceBuilder {
     options: ActivitySubEventResourceInfoCardOptions
   ): InfoCardData {
     return {
-      rowId: card.id,
+      id: card.id,
       groupLabel: options.groupLabel ?? null,
       title: card.title,
       imageUrl: card.imageUrl,

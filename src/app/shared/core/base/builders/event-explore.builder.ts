@@ -23,7 +23,11 @@ export class EventExploreBuilder {
     const visibility = record.visibility;
 
     return {
-      rowId: record.id,
+      id: record.id,
+      status: record.status,
+      dateIso: record.startAtIso,
+      distanceMetersExact: Math.max(0, Math.round((Number(record.distanceKm) || 0) * 1000)),
+      ownerId: record.creatorUserId,
       groupLabel: options.groupLabel ?? null,
       title: record.title,
       imageUrl: record.imageUrl,
@@ -74,7 +78,7 @@ export class EventExploreBuilder {
           tone: record.blindMode === 'Open Event' ? 'positive' : 'negative'
         }
       },
-      menuActions: this.infoCardMenuActions(record),
+      menuActions: this.menuActionsForRecord(record),
       clickable: false,
       state: options.state ?? 'default'
     };
@@ -103,7 +107,7 @@ export class EventExploreBuilder {
     };
   }
 
-  private static infoCardMenuActions(record: DemoEventRecord): readonly InfoCardMenuAction[] {
+  private static menuActionsForRecord(record: DemoEventRecord): readonly InfoCardMenuAction[] {
     const full = this.isFull(record);
     const actions: InfoCardMenuAction[] = [
       'view'

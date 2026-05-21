@@ -338,49 +338,51 @@ export class EventEditorConverter {
     readOnly: boolean,
     target: AppTypes.EventEditorTarget
   ): Record<string, unknown> {
-    const rowSource = row.source as unknown as Partial<Record<string, unknown>> | null;
-    const title = this.normalizeEventEditorTextValue(rowSource?.['title']) || row.title;
-    const description = this.normalizeEventEditorTextValue(rowSource?.['shortDescription'] ?? rowSource?.['description']) || row.subtitle;
+    const title = row.title;
+    const description = row.subtitle;
 
     return {
       id: row.id,
-      avatar: this.normalizeEventEditorTextValue(rowSource?.['avatar']),
+      avatar: row.avatarInitials ?? row.creatorInitials ?? '',
       title,
       description,
       shortDescription: description,
-      timeframe: this.normalizeEventEditorTextValue(rowSource?.['timeframe']) || row.detail,
+      timeframe: row.detail,
       activity: Math.max(0, Math.trunc(Number(row.unread) || 0)),
       isAdmin: row.isAdmin === true,
-      imageUrl: this.normalizeEventEditorTextValue(rowSource?.['imageUrl']),
-      visibility: target === 'hosting' ? 'Invitation only' : 'Public',
+      imageUrl: `${row.imageUrl ?? ''}`,
+      visibility: row.visibility ?? (target === 'hosting' ? 'Invitation only' : 'Public'),
       frequency: 'One-time',
-      location: this.normalizeEventEditorTextValue(rowSource?.['location']),
-      capacityMin: this.toEventEditorCapacityInputValue(rowSource?.['capacityMin']),
-      capacityMax: this.toEventEditorCapacityInputValue(rowSource?.['capacityMax']),
+      location: '',
+      capacityMin: this.toEventEditorCapacityInputValue(row.capacityMin),
+      capacityMax: this.toEventEditorCapacityInputValue(row.capacityMax),
       blindMode: 'Open Event',
       autoInviter: false,
-      ticketing: Boolean(rowSource?.['ticketing']),
-      pricing: this.normalizeEventEditorPricing(rowSource?.['pricing'], { context: 'event' }),
-      policies: this.normalizeEventEditorPolicies(rowSource?.['policies']),
-      slotsEnabled: Boolean(rowSource?.['slotsEnabled']),
-      slotTemplates: this.normalizeEventEditorSlotTemplates(rowSource?.['slotTemplates']),
-      topics: Array.isArray(rowSource?.['topics']) ? rowSource['topics'] : [],
+      ticketing: false,
+      pricing: this.normalizeEventEditorPricing(null, { context: 'event' }),
+      policies: this.normalizeEventEditorPolicies(undefined),
+      slotsEnabled: false,
+      slotTemplates: [],
+      topics: [],
       subEvents: [],
       subEventsDisplayMode: 'Casual',
-      startAt: this.normalizeEventEditorTextValue(rowSource?.['startAt']) || row.dateIso,
-      endAt: this.normalizeEventEditorTextValue(rowSource?.['endAt']) || row.dateIso,
+      startAt: row.startAt ?? row.dateIso,
+      endAt: row.endAt ?? row.dateIso,
       published: true,
       pendingMembersCount: this.toEventEditorCapacityInputValue(
-        rowSource?.['pendingMembersCount']
-        ?? rowSource?.['pendingCount']
-        ?? rowSource?.['pendingMembers']
-        ?? rowSource?.['pending']
-        ?? rowSource?.['pendingInvites']
+        row.pendingMembers
       ) ?? 0,
-      distanceKm: row.distanceKm,
-      sourceLink: this.normalizeEventEditorTextValue(rowSource?.['sourceLink']),
+      distanceKm: this.distanceKmFromMeters(row.distanceMetersExact),
+      sourceLink: '',
       readOnly
     };
+  }
+
+  private static distanceKmFromMeters(distanceMeters: number | null | undefined): number {
+    const meters = Number.isFinite(distanceMeters)
+      ? Math.max(0, Math.trunc(Number(distanceMeters)))
+      : 0;
+    return Math.round((meters / 1000) * 10) / 10;
   }
 
   static toEventEditorFormState(sourceEvent: Record<string, unknown>): AppTypes.EventEditorFormState {

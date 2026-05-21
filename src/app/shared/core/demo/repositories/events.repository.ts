@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 
 import { AppUtils } from '../../../app-utils';
-import type { EventMenuItem } from '../../../core/base/interfaces/activity-feed.interface';
+import type { DemoEventSeedItem } from '../models/event-seed-item.model';
 import { AppMemoryDb } from '../../base/db';
 import { EVENT_FEEDBACK_TABLE_NAME } from '../models/event-feedback.model';
 import { DemoEventSeedBuilder, DemoEventsRepositoryBuilder, DemoUserMenuCountersBuilder, DemoUserSeedBuilder } from '../builders';
@@ -16,6 +16,7 @@ import {
   type DemoEventScopeFilter,
   type DemoRepositoryEventItemType
 } from '../models/events.model';
+import { ACTIVITY_MEMBERS_TABLE_NAME } from '../models/activity-members.model';
 import type * as AppTypes from '../../../core/base/models';
 import type { ActivitiesEventSyncPayload } from '../../../core/base/models';
 import { EventEditorBuilder } from '../../../core/base/builders';
@@ -1029,7 +1030,7 @@ export class DemoEventsRepository {
     const preferredRecords = this.computePreferredEventRecords(table);
     const preferredRecordByEventId = new Map(preferredRecords.map(record => [record.id, record]));
     const directRecords = table.ids
-      .map(id => table.byId[id])
+      .map(id => this.normalizePersistedEventRecord(table.byId[id]))
       .filter((record): record is DemoEventRecord => Boolean(record))
       .filter(record => record.userId === normalizedUserId)
       .filter(record => this.shouldIncludeUserDirectRecord(record, normalizedUserId, preferredRecordByEventId.get(record.id)))
@@ -1074,15 +1075,17 @@ export class DemoEventsRepository {
   }
 
   private hasTrackedUserParticipation(
-    record: Pick<DemoEventRecord, 'acceptedMemberUserIds' | 'pendingMemberUserIds'>,
+    record: Pick<DemoEventRecord, 'id' | 'acceptedMemberUserIds' | 'pendingMemberUserIds'>,
     userId: string
   ): boolean {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId || this.isSetupRequiredDemoProfile(normalizedUserId)) {
       return false;
     }
-    return record.acceptedMemberUserIds.includes(normalizedUserId)
-      || record.pendingMemberUserIds.includes(normalizedUserId);
+    return this.eventMemberUserIdsByStatus(record.id, 'accepted').includes(normalizedUserId)
+      || this.eventMemberUserIdsByStatus(record.id, 'pending').includes(normalizedUserId)
+      || this.normalizeUserIds(record.acceptedMemberUserIds).includes(normalizedUserId)
+      || this.normalizeUserIds(record.pendingMemberUserIds).includes(normalizedUserId);
   }
 
   private isSetupRequiredDemoProfile(userId: string): boolean {
@@ -1100,7 +1103,7 @@ export class DemoEventsRepository {
     const preferredRecordByEventId = new Map<string, DemoEventRecord>();
 
     for (const id of table.ids) {
-      const record = table.byId[id];
+      const record = this.normalizePersistedEventRecord(table.byId[id]);
       if (!record || record.isInvitation) {
         continue;
       }
@@ -1438,7 +1441,7 @@ export class DemoEventsRepository {
   private exploreHasFriendGoing(record: DemoEventRecord, activeUserId: string): boolean {
     return [
       record.creatorUserId,
-      ...record.acceptedMemberUserIds
+      ...this.eventMemberUserIdsByStatus(record.id, 'accepted', this.normalizeUserIds(record.acceptedMemberUserIds))
     ].some(userId =>
       userId !== activeUserId && DemoUserSeedBuilder.isFriendOfActiveUser(userId, activeUserId)
     );
@@ -1486,7 +1489,9 @@ export class DemoEventsRepository {
     if (record.creatorUserId === activeUserId) {
       return false;
     }
-    if (record.acceptedMemberUserIds.includes(activeUserId) || record.pendingMemberUserIds.includes(activeUserId)) {
+    const acceptedMemberUserIds = this.eventMemberUserIdsByStatus(record.id, 'accepted', this.normalizeUserIds(record.acceptedMemberUserIds));
+    const pendingMemberUserIds = this.eventMemberUserIdsByStatus(record.id, 'pending', this.normalizeUserIds(record.pendingMemberUserIds));
+    if (acceptedMemberUserIds.includes(activeUserId) || pendingMemberUserIds.includes(activeUserId)) {
       return false;
     }
     if (record.visibility === 'Invitation only') {
@@ -1726,7 +1731,47 @@ export class DemoEventsRepository {
     return Math.max(0, Math.trunc(Number(value)));
   }
 
-  private normalizeUserIds(userIds: readonly string[] | undefined): string[] {
+  private normalizePersistedEventRecord(record: DemoEventRecord | null | undefined): DemoEventRecord | null {
+    if (!record) {
+      return null;
+    }
+    const acceptedMemberUserIds = this.normalizeUserIds(record.acceptedMemberUserIds);
+    const pendingMemberUserIds = this.normalizeUserIds(record.pendingMemberUserIds)
+      .filter(userId => !acceptedMemberUserIds.includes(userId));
+    return {
+      ...record,
+      acceptedMembers: this.normalizeCount(record.acceptedMembers) ?? acceptedMemberUserIds.length,
+      pendingMembers: this.normalizeCount(record.pendingMembers) ?? pendingMemberUserIds.length,
+      acceptedMemberUserIds,
+      pendingMemberUserIds,
+      policies: EventEditorBuilder.cloneEventEditorPolicies(record.policies ?? []),
+      slotTemplates: EventEditorBuilder.cloneEventEditorSlotTemplates(record.slotTemplates ?? []),
+      upcomingSlots: (record.upcomingSlots ?? []).map(item => ({ ...item })),
+      topics: this.normalizeTopics(record.topics ?? []),
+      subEvents: this.cloneSubEvents(record.subEvents)
+    };
+  }
+
+  private eventMemberUserIdsByStatus(
+    eventId: string,
+    status: AppTypes.ActivityMemberStatus,
+    fallbackUserIds: readonly string[] = []
+  ): string[] {
+    const normalizedEventId = eventId.trim();
+    if (!normalizedEventId) {
+      return this.normalizeUserIds(fallbackUserIds);
+    }
+    const table = this.memoryDb.read()[ACTIVITY_MEMBERS_TABLE_NAME];
+    const ownerKey = `event:${normalizedEventId}`;
+    const userIds = (table?.idsByOwnerKey?.[ownerKey] ?? [])
+      .map(id => table?.byId?.[id])
+      .filter(record => record?.status === status)
+      .map(record => `${record?.userId ?? ''}`.trim())
+      .filter(Boolean);
+    return userIds.length > 0 ? this.normalizeUserIds(userIds) : this.normalizeUserIds(fallbackUserIds);
+  }
+
+  private normalizeUserIds(userIds: readonly string[] | null | undefined): string[] {
     if (!Array.isArray(userIds)) {
       return [];
     }
@@ -1834,11 +1879,11 @@ export class DemoEventsRepository {
     });
   }
 
-  private buildEventsByUserWithSyntheticSeed(): Record<string, readonly EventMenuItem[]> {
+  private buildEventsByUserWithSyntheticSeed(): Record<string, readonly DemoEventSeedItem[]> {
     const users = DemoUserSeedBuilder.buildExpandedDemoUsers(50)
       .filter(user => !DemoUserSeedBuilder.isEmptyOnboardingProfileUserId(user.id));
     const userById = new Map(users.map(user => [user.id, user]));
-    const seeded: Record<string, readonly EventMenuItem[]> = {};
+    const seeded: Record<string, readonly DemoEventSeedItem[]> = {};
     const seedEventsByUser = DemoEventsRepositoryBuilder.buildSeedEventItemsByUser();
     const featuredFriendsOnlyByUser = this.buildFeaturedFriendsOnlyEvents(userById);
     const userIds = Array.from(new Set([
@@ -1864,7 +1909,7 @@ export class DemoEventsRepository {
       }
 
       const user = userById.get(userId);
-      const synthetic: EventMenuItem[] = [];
+      const synthetic: DemoEventSeedItem[] = [];
       const needed = DemoEventsRepository.MIN_DEMO_EVENT_ITEMS_PER_USER - baseItems.length;
       const creatorCandidates = users.filter(candidate => candidate.id !== userId);
 
@@ -1957,7 +2002,7 @@ export class DemoEventsRepository {
   private buildSyntheticCheckoutVariation(
     sourceId: string,
     index: number
-  ): Partial<EventMenuItem> | null {
+  ): Partial<DemoEventSeedItem> | null {
     if (index === 0) {
       const slotTemplates: AppTypes.EventSlotTemplate[] = [
         {
@@ -2194,7 +2239,7 @@ export class DemoEventsRepository {
 
   private buildFeaturedFriendsOnlyEvents(
     userById: Map<string, { initials: string; city: string }>
-  ): Record<string, EventMenuItem[]> {
+  ): Record<string, DemoEventSeedItem[]> {
     const buildItem = (
       userId: string,
       id: string,
@@ -2203,7 +2248,7 @@ export class DemoEventsRepository {
       startAt: string,
       endAt: string,
       topics: string[]
-    ): EventMenuItem => {
+    ): DemoEventSeedItem => {
       const user = userById.get(userId);
       const start = new Date(startAt);
       const end = new Date(endAt);

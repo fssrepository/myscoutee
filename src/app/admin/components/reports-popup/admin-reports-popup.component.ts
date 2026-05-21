@@ -14,7 +14,7 @@ import {
   type SmartListItemTemplateContext,
   type SmartListLoadPage
 } from '../../../shared/ui';
-import type { ChatMenuItem } from '../../../shared/core/base/interfaces/activity-feed.interface';
+import type { ChatRecord } from '../../../shared/core/base/models/chat.model';
 import type { DemoUser } from '../../../shared/core/base/interfaces/user.interface';
 import { toActivityChatRow } from '../../../shared/core/base/converters/activities-chat.converter';
 import type { ActivityListRow } from '../../../shared/core/base/models';
@@ -518,7 +518,7 @@ export class AdminReportsPopupComponent {
   }
 
   private buildBlockedUserActivityRow(user: AdminReportedUserDto): ActivityListRow {
-    const source: ChatMenuItem = {
+    const source: ChatRecord = {
       id: user.userId,
       avatar: user.initials,
       title: user.name,
@@ -546,7 +546,7 @@ export class AdminReportsPopupComponent {
   }
 
   private buildReportActivityRow(user: AdminReportedUserDto, report: AdminReportDto): ActivityListRow {
-    const source: ChatMenuItem = {
+    const source: ChatRecord = {
       id: report.id,
       avatar: this.reporterInitial(report),
       title: this.reportTitle(user, report),

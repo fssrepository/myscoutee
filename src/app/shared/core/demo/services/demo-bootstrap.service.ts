@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 
 import { APP_STATIC_DATA } from '../../../app-static-data';
-import type { EventMenuItem } from '../../base/interfaces/activity-feed.interface';
+import type { DemoEventSeedItem } from '../models/event-seed-item.model';
 import type { UserDto } from '../../base/interfaces/user.interface';
 import { AppMemoryDb } from '../../base/db';
 import type { EventFeedbackPersistedState } from '../../base/models';
@@ -213,7 +213,7 @@ export class DemoBootstrapService {
         continue;
       }
       const seededRecords = DemoEventFeedbackBuilder.buildSeededPersistedStates({
-        eventItems: eventRecords.map(record => this.toEventMenuItem(record)),
+        eventItems: eventRecords.map(record => this.toDemoEventSeedItem(record)),
         users,
         activeUser,
         eventDatesById: Object.fromEntries(eventRecords.map(record => [record.id, record.startAtIso])),
@@ -301,7 +301,7 @@ export class DemoBootstrapService {
         continue;
       }
 
-      const feedbackItem = this.toFeedbackViewerEventMenuItem(record, viewerUserIds);
+      const feedbackItem = this.toFeedbackViewerDemoEventSeedItem(record, viewerUserIds);
       for (const viewerUserId of viewerUserIds) {
         if (visibleEntryCount >= DemoBootstrapService.ORGANIZER_FEEDBACK_SHOWCASE_TARGET_COUNT) {
           break;
@@ -391,14 +391,14 @@ export class DemoBootstrapService {
     return selected;
   }
 
-  private toFeedbackViewerEventMenuItem(record: DemoEventRecord, viewerUserIds: readonly string[] = []): EventMenuItem {
+  private toFeedbackViewerDemoEventSeedItem(record: DemoEventRecord, viewerUserIds: readonly string[] = []): DemoEventSeedItem {
     const acceptedMemberUserIds = [...new Set([
       ...record.acceptedMemberUserIds,
       ...viewerUserIds
     ].map(userId => `${userId}`.trim()).filter(Boolean))];
     const pendingMemberUserIds = record.pendingMemberUserIds.filter(userId => !acceptedMemberUserIds.includes(userId));
     return {
-      ...this.toEventMenuItem(record),
+      ...this.toDemoEventSeedItem(record),
       activity: 0,
       isAdmin: false,
       acceptedMembers: Math.max(record.acceptedMembers, acceptedMemberUserIds.length),
@@ -417,7 +417,7 @@ export class DemoBootstrapService {
     return Math.abs(hash);
   }
 
-  private toEventMenuItem(record: DemoEventRecord): EventMenuItem {
+  private toDemoEventSeedItem(record: DemoEventRecord): DemoEventSeedItem {
     return {
       id: record.id,
       avatar: record.creatorInitials,

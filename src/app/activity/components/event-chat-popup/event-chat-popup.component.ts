@@ -21,10 +21,9 @@ import { resolveCurrentRouteDelayMs } from '../../../shared/core/base/services/r
 import { ActivitiesPopupStateService } from '../../services/activities-popup-state.service';
 import { EventEditorPopupStateService } from '../../services/event-editor-popup-state.service';
 import type { EventChatResourceContext } from '../../../shared/core/base/models';
-import { AppContext, AppPopupContext, ChatsService, EventsService, ShareTokensService } from '../../../shared/core';
+import { ActivitiesService, AppContext, AppPopupContext, ChatsService, EventsService, ShareTokensService } from '../../../shared/core';
 import { AppMemoryDb } from '../../../shared/core/base';
-import { toActivityEventRow } from '../../../shared/core/base/converters/activities-event.converter';
-import type { ChatMenuItem, EventMenuItem } from '../../../shared/core/base/interfaces/activity-feed.interface';
+import type { ChatRecord } from '../../../shared/core/base/models/chat.model';
 import {
   CounterBadgePipe,
   SmartListComponent,
@@ -86,6 +85,7 @@ export class EventChatPopupComponent implements OnDestroy {
   private readonly appCtx = inject(AppContext);
   private readonly popupCtx = inject(AppPopupContext);
   private readonly chatsService = inject(ChatsService);
+  private readonly activitiesService = inject(ActivitiesService);
   private readonly eventsService = inject(EventsService);
   private readonly shareTokensService = inject(ShareTokensService);
   private readonly confirmationDialogService = inject(ConfirmationDialogService);
@@ -1715,7 +1715,6 @@ export class EventChatPopupComponent implements OnDestroy {
   private buildCurrentEventAttachment(): AppTypes.ChatMessageAttachment | null {
     const session = this.session();
     const row = this.preparedChatContext?.eventRow ?? this.chatEventRow();
-    const source = row?.source as EventMenuItem | undefined;
     const eventId = `${row?.id ?? session?.item.eventId ?? ''}`.trim();
     const title = `${row?.title ?? session?.item.title ?? ''}`.trim();
     if (!eventId || !title) {
@@ -1726,10 +1725,10 @@ export class EventChatPopupComponent implements OnDestroy {
       type: 'event',
       entityId: eventId,
       title,
-      subtitle: `${source?.timeframe ?? row?.detail ?? ''}`.trim() || null,
-      description: `${source?.shortDescription ?? row?.subtitle ?? ''}`.trim() || null,
-      url: `${source?.sourceLink ?? ''}`.trim() || null,
-      previewUrl: `${source?.imageUrl ?? ''}`.trim() || null
+      subtitle: `${row?.detail ?? ''}`.trim() || null,
+      description: `${row?.subtitle ?? ''}`.trim() || null,
+      url: null,
+      previewUrl: `${row?.imageUrl ?? ''}`.trim() || null
     };
   }
 
@@ -1943,7 +1942,7 @@ export class EventChatPopupComponent implements OnDestroy {
     }
     this.popupCtx.requestActivitiesNavigation({
       type: 'eventEditor',
-      row: toActivityEventRow(eventRecord),
+      row: this.activitiesService.buildEventDisplayRow(eventRecord, { activeUserId: this.activeUserId() }),
       readOnly: true
     });
   }
@@ -1959,7 +1958,7 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   private async resolvePersistableImageAttachment(
-    chat: ChatMenuItem,
+    chat: ChatRecord,
     attachment: AppTypes.ChatMessageAttachment,
     file: File
   ): Promise<AppTypes.ChatMessageAttachment> {
@@ -2203,10 +2202,10 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   private applyResolvedInitialChatItem(
-    chat: ChatMenuItem,
-    resolvedChat: ChatMenuItem | null,
+    chat: ChatRecord,
+    resolvedChat: ChatRecord | null,
     sessionKey: string
-  ): ChatMenuItem {
+  ): ChatRecord {
     if (!resolvedChat || this.loadedSessionKey !== sessionKey || resolvedChat.id !== chat.id) {
       return chat;
     }
@@ -2252,7 +2251,7 @@ export class EventChatPopupComponent implements OnDestroy {
     };
   }
 
-  private async startLiveChatUpdates(chat: ChatMenuItem, sessionKey: string): Promise<void> {
+  private async startLiveChatUpdates(chat: ChatRecord, sessionKey: string): Promise<void> {
     if (this.loadedSessionKey !== sessionKey || this.liveChatUnsubscribe) {
       return;
     }
@@ -2462,7 +2461,7 @@ export class EventChatPopupComponent implements OnDestroy {
       .join(',');
   }
 
-  private handleLiveChatEvent(chat: ChatMenuItem, event: AppTypes.ChatLiveEvent): void {
+  private handleLiveChatEvent(chat: ChatRecord, event: AppTypes.ChatLiveEvent): void {
     if (event.type === 'reconnected') {
       this.clearRemoteTypingIndicators();
       void this.resyncChatThreadFromServer(chat);
@@ -2720,7 +2719,7 @@ export class EventChatPopupComponent implements OnDestroy {
       });
   }
 
-  private async resyncChatThreadFromServer(chat: ChatMenuItem): Promise<void> {
+  private async resyncChatThreadFromServer(chat: ChatRecord): Promise<void> {
     const sessionKey = this.loadedSessionKey;
     if (!sessionKey) {
       return;
@@ -2908,7 +2907,7 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   private markLoadedChatThreadAsRead(
-    chat: ChatMenuItem,
+    chat: ChatRecord,
     messages: readonly AppTypes.ChatPopupMessage[]
   ): void {
     const activeUserId = this.activeUserId();
@@ -3306,26 +3305,20 @@ export class EventChatPopupComponent implements OnDestroy {
       return null;
     }
     const eventId = session.item.eventId;
-    const source: EventMenuItem = {
-      id: eventId,
-      avatar: AppUtils.initialsFromText(session.item.title),
-      title: session.item.title,
-      shortDescription: session.item.lastMessage || 'Chat-linked event',
-      timeframe: 'From chat',
-      activity: Math.max(0, session.item.unread),
-      isAdmin: false
-    };
+    const title = session.item.title;
+    const subtitle = session.item.lastMessage || 'Chat-linked event';
+    const activity = Math.max(0, session.item.unread);
     return {
       id: eventId,
       type: 'events',
-      title: source.title,
-      subtitle: source.shortDescription,
-      detail: source.timeframe,
+      title,
+      subtitle,
+      detail: 'From chat',
       dateIso: new Date().toISOString(),
-      distanceKm: 0,
-      unread: source.activity,
-      metricScore: source.activity,
-      source
+      distanceMetersExact: 0,
+      unread: activity,
+      metricScore: activity,
+      avatarInitials: AppUtils.initialsFromText(title)
     };
   }
 

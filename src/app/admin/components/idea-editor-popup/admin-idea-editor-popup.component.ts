@@ -139,7 +139,7 @@ export class AdminIdeaEditorPopupComponent implements OnDestroy {
     showFirstGroupMarker: true,
     showGroupMarker: ({ groupIndex, scrollable }) => groupIndex > 0 || scrollable,
     groupBy: card => this.ideaCardDayGroupLabel(card),
-    trackBy: (_index, card) => card.rowId,
+    trackBy: (_index, card) => card.id,
     listLayout: 'card-grid',
     desktopColumns: 3,
     snapMode: 'mandatory',

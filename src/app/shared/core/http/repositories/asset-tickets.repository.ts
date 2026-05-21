@@ -113,8 +113,7 @@ export class HttpAssetTicketsRepository {
   }
 
   private resolveTicketEndTimestamp(row: AppTypes.ActivityListRow): number {
-    const source = row.source as { endAt?: string | null | undefined };
-    const endAtMs = this.toSortableDate(source.endAt ?? '');
+    const endAtMs = this.toSortableDate(row.endAt ?? '');
     if (endAtMs > 0) {
       return endAtMs;
     }
