@@ -37,6 +37,11 @@ export class DemoChatsService extends DemoRouteDelayService {
     return this.chatsRepository.queryChatMessages(chat);
   }
 
+  async queryChatMembers(chatId: string): Promise<AppTypes.ActivityMemberEntry[]> {
+    await this.waitForRouteDelay(DemoChatsService.CHAT_ROUTE);
+    return this.chatsRepository.queryChatMembers(chatId);
+  }
+
   async sendChatMessage(chat: ChatRecord, text: string, clientId?: string): Promise<AppTypes.ChatPopupMessage | null> {
     return this.sendChatMessageWithAttachments(chat, text, [], clientId);
   }

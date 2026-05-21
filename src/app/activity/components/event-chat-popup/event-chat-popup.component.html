@@ -16,9 +16,41 @@
       <div class="popup-header popup-header-chat popup-header-with-chat-progress" (click)="closeContextMenu()">
         <div class="popup-title popup-title-chat">
           <div class="popup-chat-title-block">
-            <h2>{{ chatSession.item.title }}</h2>
+            <h2>{{ chatHeaderTitle(chatSession) }}</h2>
           </div>
         </div>
+        @if (chatHeaderMembersControl(); as membersControl) {
+          <button
+            type="button"
+            class="chat-members-stack chat-members-stack-large chat-header-members event-editor-members-trigger event-editor-members-trigger-members popup-chat-context-btn popup-chat-header-members-btn"
+            (click)="openChatHeaderControl(membersControl, $event)"
+            aria-label="Open chat members"
+            >
+            <span class="event-editor-members-invite popup-chat-header-members-content">
+              @if (membersControl.visual?.kind === 'thumbStack') {
+                <span class="popup-chat-header-thumb-stack" aria-hidden="true">
+                  @for (thumb of chatHeaderThumbs(membersControl); track thumb.id) {
+                    <span class="popup-chat-header-thumb">
+                      @if (thumb.imageUrl) {
+                        <img [src]="thumb.imageUrl" [alt]="thumb.label || thumb.initials" loading="lazy" decoding="async" />
+                      } @else {
+                        <span>{{ thumb.initials }}</span>
+                      }
+                    </span>
+                  }
+                </span>
+              } @else {
+                <mat-icon>{{ chatHeaderControlIcon(membersControl) }}</mat-icon>
+              }
+              <span>{{ chatHeaderControlLabel(membersControl) }}</span>
+            </span>
+            @if (chatHeaderControlBadgeValue(membersControl) > 0) {
+              <span class="card-badge event-editor-members-pending-badge popup-chat-context-total-badge">
+                {{ chatHeaderControlBadgeValue(membersControl) | counterBadge }}
+              </span>
+            }
+          </button>
+        }
         <button type="button" class="popup-chat-pin-btn" [class.has-pins]="pinnedMessages().length > 0" (click)="openPinnedMessagesDialog($event)" aria-label="Open pinned messages">
           <mat-icon>push_pin</mat-icon>
         </button>

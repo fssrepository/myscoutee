@@ -158,3 +158,40 @@ export interface SubEventAssetBadgeContext {
   subEventId: string;
   assetType: AssetType;
 }
+
+export interface PopupHeaderThumb {
+  id: string;
+  label?: string | null;
+  initials: string;
+  imageUrl?: string | null;
+}
+
+export type PopupHeaderControlVisual =
+  | { kind: 'icon'; icon: string }
+  | { kind: 'thumbStack'; thumbs: PopupHeaderThumb[]; maxVisible?: number };
+
+export interface PopupHeaderControlBadge {
+  value: number;
+  tone?: 'neutral' | 'warning' | 'danger';
+}
+
+export interface PopupHeaderLookup {
+  type: string;
+  id: string;
+}
+
+export interface PopupHeaderControl {
+  id: string;
+  label: string;
+  summary?: string | null;
+  visual?: PopupHeaderControlVisual | null;
+  badge?: PopupHeaderControlBadge | null;
+  lookup?: PopupHeaderLookup | null;
+}
+
+export interface PopupHeaderContext {
+  revision?: string | number;
+  title?: string | null;
+  subtitle?: string | null;
+  controls?: PopupHeaderControl[];
+}

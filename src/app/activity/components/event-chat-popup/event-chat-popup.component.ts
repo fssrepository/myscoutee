@@ -327,6 +327,54 @@ export class EventChatPopupComponent implements OnDestroy {
     this.activitiesContext.closeEventChat();
   }
 
+  protected chatHeaderTitle(chatSession: AppTypes.EventChatSession): string {
+    return `${chatSession.headerContext?.title ?? chatSession.item.title ?? ''}`.trim() || 'Chat';
+  }
+
+  protected chatHeaderMembersControl(): AppTypes.PopupHeaderControl | null {
+    const controls = this.session()?.headerContext?.controls ?? [];
+    return controls.find(control => control.id === 'members') ?? null;
+  }
+
+  protected chatHeaderControlIcon(control: AppTypes.PopupHeaderControl): string {
+    return control.visual?.kind === 'icon' ? control.visual.icon : 'groups';
+  }
+
+  protected chatHeaderControlLabel(control: AppTypes.PopupHeaderControl): string {
+    return `${control.summary ?? control.label ?? ''}`.trim() || 'Members';
+  }
+
+  protected chatHeaderThumbs(control: AppTypes.PopupHeaderControl): AppTypes.PopupHeaderThumb[] {
+    if (control.visual?.kind !== 'thumbStack') {
+      return [];
+    }
+    const maxVisible = Math.max(1, Math.trunc(Number(control.visual.maxVisible) || 4));
+    return control.visual.thumbs.slice(0, maxVisible).map(thumb => ({ ...thumb }));
+  }
+
+  protected chatHeaderControlBadgeValue(control: AppTypes.PopupHeaderControl): number {
+    return Math.max(0, Math.trunc(Number(control.badge?.value) || 0));
+  }
+
+  protected openChatHeaderControl(control: AppTypes.PopupHeaderControl, event?: Event): void {
+    event?.stopPropagation();
+    if (control.id !== 'members') {
+      return;
+    }
+    const lookup = control.lookup;
+    const ownerId = `${lookup?.id ?? ''}`.trim();
+    if (!ownerId) {
+      return;
+    }
+    this.popupCtx.requestActivitiesNavigation({
+      type: 'members',
+      ownerId,
+      subtitle: this.session()?.headerContext?.title ?? this.session()?.item.title ?? 'Chat',
+      viewOnly: true,
+      lookup: lookup ? { ...lookup } : undefined
+    });
+  }
+
   protected isBlockedSupportChat(): boolean {
     return this.session()?.item.id.startsWith('c-support-blocked-') === true;
   }
@@ -2213,6 +2261,9 @@ export class EventChatPopupComponent implements OnDestroy {
       current.id === chat.id
         ? resolvedChat
         : current
+    );
+    this.activitiesContext.applyEventChatHeaderContext(
+      this.chatsService.buildChatPopupHeaderContext(resolvedChat, { includeThumbs: true })
     );
     return resolvedChat;
   }

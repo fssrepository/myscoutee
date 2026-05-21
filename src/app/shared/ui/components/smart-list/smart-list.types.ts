@@ -37,10 +37,11 @@ export interface ListQuery<TFilters extends SmartListFilters = SmartListFilters>
   rangeEnd?: string;
 }
 
-export interface PageResult<T> {
+export interface PageResult<T, TContext = unknown> {
   items: T[];
   total: number;
   nextCursor?: string | null;
+  context?: TContext;
 }
 
 export interface SmartListLoadContext {

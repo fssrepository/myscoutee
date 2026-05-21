@@ -1,4 +1,5 @@
 import type { LocationCoordinates } from '../interfaces/location.interface';
+import type { PopupHeaderContext, PopupHeaderLookup } from './popup.model';
 import type { ChatRecord } from '../models/chat.model';
 import type { AssetCard, AssetType } from './asset.model';
 import type { ActivityMemberEntry } from './activity-member.model';
@@ -85,6 +86,7 @@ export type ActivitiesNavigationRequest =
       pendingMembers?: number;
       capacityTotal?: number;
       members?: readonly ActivityMemberEntry[];
+      lookup?: PopupHeaderLookup;
       onMembersChanged?: (members: readonly ActivityMemberEntry[]) => void;
     }
   | { type: 'eventEditorMembers'; row: ActivityListRow }
@@ -190,6 +192,7 @@ export interface EventChatSession {
   item: ChatRecord;
   openedAtIso: string;
   context: EventChatContext | null;
+  headerContext: PopupHeaderContext | null;
 }
 
 export interface ActivitiesPageRequest {

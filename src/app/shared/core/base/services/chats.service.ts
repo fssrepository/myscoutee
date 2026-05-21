@@ -13,6 +13,7 @@ import { HttpChatsService } from '../../http';
 import { BaseRouteModeService } from './base-route-mode.service';
 import { DemoUsersRepository } from '../../demo';
 import { ActivityMembersService } from './activity-members.service';
+import { UsersService } from './users.service';
 
 @Injectable({
   providedIn: 'root'
@@ -24,6 +25,7 @@ export class ChatsService extends BaseRouteModeService {
   private readonly httpChatsService = inject(HttpChatsService);
   private readonly demoUsersRepository = inject(DemoUsersRepository);
   private readonly activityMembersService = inject(ActivityMembersService);
+  private readonly usersService = inject(UsersService);
 
   async queryChatItemsByUser(userId: string): Promise<DemoChatRecord[]> {
     if (this.isDemoModeEnabled(ChatsService.CHAT_ROUTE)) {
@@ -52,6 +54,60 @@ export class ChatsService extends BaseRouteModeService {
       return this.demoChatsService.loadChatMessages(chat);
     }
     return this.httpChatsService.loadChatMessages(chat);
+  }
+
+  async loadChatMessagesResult(
+    chat: ChatRecord
+  ): Promise<PageResult<AppTypes.ChatPopupMessage, AppTypes.PopupHeaderContext>> {
+    const items = await this.loadChatMessages(chat);
+    return {
+      items,
+      total: items.length,
+      context: this.buildChatPopupHeaderContext(chat, { includeThumbs: true })
+    };
+  }
+
+  buildChatPopupHeaderContext(
+    chat: ChatRecord,
+    options: { includeThumbs?: boolean } = {}
+  ): AppTypes.PopupHeaderContext {
+    const chatId = `${chat.id ?? ''}`.trim();
+    const title = `${chat.title ?? ''}`.trim() || 'Chat';
+    const memberIds = this.resolveChatMemberIds(chat);
+    const controls: AppTypes.PopupHeaderControl[] = [];
+    if (chatId && memberIds.length > 0) {
+      const thumbs = options.includeThumbs === true
+        ? this.buildChatHeaderThumbs(memberIds, 4)
+        : [];
+      controls.push({
+        id: 'members',
+        label: 'Members',
+        summary: this.memberCountLabel(memberIds.length),
+        visual: thumbs.length > 0
+          ? { kind: 'thumbStack', thumbs, maxVisible: 4 }
+          : { kind: 'icon', icon: 'groups' },
+        lookup: {
+          type: 'chat',
+          id: chatId
+        }
+      });
+    }
+    return {
+      revision: this.chatHeaderRevision(chatId, title, memberIds),
+      title,
+      controls
+    };
+  }
+
+  async queryChatMemberEntries(chatId: string): Promise<AppTypes.ActivityMemberEntry[]> {
+    const normalizedChatId = `${chatId ?? ''}`.trim();
+    if (!normalizedChatId) {
+      return [];
+    }
+    if (this.isDemoModeEnabled(ChatsService.CHAT_ROUTE)) {
+      return this.demoChatsService.queryChatMembers(normalizedChatId);
+    }
+    return this.httpChatsService.queryChatMembers(normalizedChatId);
   }
 
   async sendChatMessage(chat: ChatRecord, text: string, clientId?: string): Promise<AppTypes.ChatPopupMessage | null> {
@@ -421,6 +477,34 @@ export class ChatsService extends BaseRouteModeService {
 
   private uniqueUserIds(userIds: readonly string[]): string[] {
     return [...new Set(userIds.map(userId => userId.trim()).filter(Boolean))];
+  }
+
+  private resolveChatMemberIds(chat: Pick<ChatRecord, 'memberIds'>): string[] {
+    return this.uniqueUserIds(chat.memberIds ?? []);
+  }
+
+  private buildChatHeaderThumbs(memberIds: readonly string[], maxVisible: number): AppTypes.PopupHeaderThumb[] {
+    return memberIds.slice(0, Math.max(0, Math.trunc(maxVisible))).flatMap(memberId => {
+      const user = this.usersService.peekCachedUserById(memberId);
+      if (!user) {
+        return [];
+      }
+      const label = user.name.trim() || memberId;
+      return [{
+        id: memberId,
+        label,
+        initials: user.initials.trim() || AppUtils.initialsFromText(label),
+        imageUrl: AppUtils.firstImageUrl(user.images)
+      }];
+    });
+  }
+
+  private memberCountLabel(count: number): string {
+    return count === 1 ? '1 member' : `${count} members`;
+  }
+
+  private chatHeaderRevision(chatId: string, title: string, memberIds: readonly string[]): string {
+    return ['chat-header', chatId, title, ...memberIds].join(':');
   }
 
   private resolveChatOwnerUserId(chat: ChatRecord, eventId: string): string {

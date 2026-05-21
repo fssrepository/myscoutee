@@ -47,6 +47,26 @@ export class DemoChatsRepository {
     return this.queryUserRecords(userId);
   }
 
+  queryChatMembers(chatId: string): AppTypes.ActivityMemberEntry[] {
+    this.init();
+    const normalizedChatId = `${chatId ?? ''}`.trim();
+    if (!normalizedChatId) {
+      return [];
+    }
+    const table = this.memoryDb.read()[CHATS_TABLE_NAME];
+    const recordId = table.ids.find(id => table.byId[id]?.id === normalizedChatId) ?? '';
+    const record = recordId ? table.byId[recordId] : null;
+    if (!record) {
+      return [];
+    }
+    const userIds = [...new Set(
+      (record.memberIds ?? [])
+        .map(userId => `${userId ?? ''}`.trim())
+        .filter(userId => userId.length > 0)
+    )];
+    return userIds.map((userId, index) => this.toChatMemberEntry(normalizedChatId, userId, index));
+  }
+
   querySupportCaseItemsForAdmin(userId: string, filter: AppTypes.SupportCaseFilter = 'all'): DemoChatRecord[] {
     this.init();
     const normalizedUserId = userId.trim();
@@ -376,6 +396,32 @@ export class DemoChatsRepository {
     return user
       ? DemoUserSeedBuilder.isEmptyOnboardingProfile(user)
       : DemoUserSeedBuilder.isEmptyOnboardingProfileUserId(normalizedUserId);
+  }
+
+  private toChatMemberEntry(chatId: string, userId: string, index: number): AppTypes.ActivityMemberEntry {
+    const user = this.memoryDb.read()[USERS_TABLE_NAME].byId[userId] ?? null;
+    const label = user?.name?.trim() || userId;
+    const when = AppUtils.addDays(new Date(), -Math.max(0, index));
+    return {
+      id: `chat:${chatId}:${userId}`,
+      userId,
+      name: label,
+      initials: user?.initials?.trim() || AppUtils.initialsFromText(label),
+      gender: user?.gender ?? 'man',
+      city: user?.city ?? '',
+      statusText: user?.statusText?.trim() || 'Chat member',
+      role: 'Member',
+      status: 'accepted',
+      pendingSource: null,
+      requestKind: null,
+      invitedByActiveUser: false,
+      invitedByUserId: null,
+      metAtIso: AppUtils.toIsoDateTime(when),
+      actionAtIso: AppUtils.toIsoDateTime(when),
+      metWhere: 'Chat',
+      avatarUrl: AppUtils.firstImageUrl(user?.images),
+      profile: user ? { ...user, images: [...(user.images ?? [])] } : null
+    };
   }
 
   private resolveChatRecord(

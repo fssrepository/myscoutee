@@ -135,6 +135,28 @@ interface HttpChatReadReceiptDto {
   readAtIso: string;
 }
 
+interface HttpChatMemberDto {
+  userId?: string | null;
+  id?: string | null;
+  name?: string | null;
+  initials?: string | null;
+  imageUrl?: string | null;
+  avatarUrl?: string | null;
+  gender?: string | null;
+  city?: string | null;
+  statusText?: string | null;
+  role?: string | null;
+  status?: string | null;
+  pendingSource?: string | null;
+  requestKind?: string | null;
+  invitedByActiveUser?: boolean | null;
+  invitedByUserId?: string | null;
+  metAtIso?: string | null;
+  actionAtIso?: string | null;
+  metWhere?: string | null;
+  profile?: AppTypes.ActivityMemberEntry['profile'];
+}
+
 interface HttpChatSocketEventDto {
   type: 'message' | 'typing' | 'read' | 'error';
   chatId: string;
@@ -299,6 +321,26 @@ export class HttpChatsService {
         .sort((first, second) => AppUtils.toSortableDate(first.sentAtIso) - AppUtils.toSortableDate(second.sentAtIso));
     } catch {
       return this.resolveCachedChatMessages(chat);
+    }
+  }
+
+  async queryChatMembers(chatId: string): Promise<AppTypes.ActivityMemberEntry[]> {
+    const normalizedChatId = `${chatId ?? ''}`.trim();
+    if (!normalizedChatId) {
+      return [];
+    }
+    try {
+      const response = await this.http
+        .get<HttpChatMemberDto[] | null>(
+          `${this.apiBaseUrl}/activities/chats/${encodeURIComponent(normalizedChatId)}/members`,
+          { params: this.activeUserParams() }
+        )
+        .toPromise();
+      return Array.isArray(response)
+        ? response.map((member, index) => this.mapChatMember(member, normalizedChatId, index))
+        : [];
+    } catch {
+      return [];
     }
   }
 
@@ -712,6 +754,51 @@ export class HttpChatsService {
       id,
       sender: `${replyTo.sender ?? ''}`.trim(),
       text: `${replyTo.text ?? ''}`.trim()
+    };
+  }
+
+  private mapChatMember(
+    member: HttpChatMemberDto,
+    chatId: string,
+    index: number
+  ): AppTypes.ActivityMemberEntry {
+    const userId = this.normalizeHttpText(member.userId) || this.normalizeHttpText(member.id) || `chat-member-${index + 1}`;
+    const name = this.normalizeHttpText(member.name) || userId;
+    const initials = this.normalizeHttpText(member.initials) || AppUtils.initialsFromText(name);
+    const gender = member.gender === 'woman' || member.gender === 'man' ? member.gender : 'man';
+    const status = member.status === 'pending' || member.status === 'disqualified' ? member.status : 'accepted';
+    const pendingSource = member.pendingSource === 'admin' || member.pendingSource === 'member' ? member.pendingSource : null;
+    const requestKind = member.requestKind === 'invite'
+      || member.requestKind === 'join'
+      || member.requestKind === 'waitlist'
+      || member.requestKind === 'waitlist-invite'
+      ? member.requestKind
+      : null;
+    const avatarUrl = this.normalizeHttpText(member.avatarUrl)
+      || this.normalizeHttpText(member.imageUrl)
+      || '';
+    const nowIso = this.normalizeHttpText(member.actionAtIso)
+      || this.normalizeHttpText(member.metAtIso)
+      || new Date().toISOString();
+    return {
+      id: this.normalizeHttpText(member.id) || `chat:${chatId}:${userId}`,
+      userId,
+      name,
+      initials,
+      gender,
+      city: this.normalizeHttpText(member.city),
+      statusText: this.normalizeHttpText(member.statusText) || 'Chat member',
+      role: member.role === 'Admin' || member.role === 'Manager' ? member.role : 'Member',
+      status,
+      pendingSource,
+      requestKind,
+      invitedByActiveUser: member.invitedByActiveUser === true,
+      invitedByUserId: this.normalizeHttpText(member.invitedByUserId) || null,
+      metAtIso: this.normalizeHttpText(member.metAtIso) || nowIso,
+      actionAtIso: nowIso,
+      metWhere: this.normalizeHttpText(member.metWhere) || 'Chat',
+      avatarUrl,
+      profile: member.profile ?? null
     };
   }
 

@@ -19,7 +19,7 @@ import type * as AppTypes from '../../../shared/core/base/models';
 import { AppUtils } from '../../../shared/app-utils';
 import type { ActivityMemberOwnerRef, ActivityMemberOwnerType } from '../../../shared/core/base/models';
 import type { ActivityMembersSyncState } from '../../../shared/core';
-import { ActivityMembersService, AppContext, AppPopupContext, EventsService, UsersService } from '../../../shared/core';
+import { ActivityMembersService, AppContext, AppPopupContext, ChatsService, EventsService, UsersService } from '../../../shared/core';
 import type { DemoEventRecord } from '../../../shared/core/demo/models/events.model';
 import {
   CounterBadgePipe,
@@ -71,6 +71,7 @@ export class EventMembersPopupComponent {
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly confirmationDialogService = inject(ConfirmationDialogService);
   private readonly activityMembersService = inject(ActivityMembersService);
+  private readonly chatsService = inject(ChatsService);
   private readonly eventsService = inject(EventsService);
   private readonly appCtx = inject(AppContext);
   private readonly popupCtx = inject(AppPopupContext);
@@ -92,6 +93,7 @@ export class EventMembersPopupComponent {
   protected acceptedCount = 0;
   protected capacityTotal = 0;
   protected canShowInviteButton = false;
+  private lookupRef: AppTypes.PopupHeaderLookup | null = null;
 
   private ownerRecord: DemoEventRecord | null = null;
   private ownerRef: ActivityMemberOwnerRef | null = null;
@@ -171,6 +173,7 @@ export class EventMembersPopupComponent {
           pendingMembers: request.pendingMembers,
           capacityTotal: request.capacityTotal,
           initialMembers: request.members,
+          lookup: request.lookup,
           onMembersChanged: request.onMembersChanged
         });
         return;
@@ -265,6 +268,7 @@ export class EventMembersPopupComponent {
     this.isOpen = false;
     this.ownerId = '';
     this.ownerRef = null;
+    this.lookupRef = null;
     this.ownerRecord = null;
     this.inlineItemActionMenu = null;
     this.pendingOnly = false;
@@ -695,6 +699,7 @@ export class EventMembersPopupComponent {
       canManage?: boolean;
       viewOnly?: boolean;
       ownerType?: ActivityMemberOwnerType;
+      lookup?: AppTypes.PopupHeaderLookup;
       acceptedMembers?: number;
       pendingMembers?: number;
       capacityTotal?: number;
@@ -707,15 +712,19 @@ export class EventMembersPopupComponent {
       return;
     }
     const ownerType = options?.ownerType ?? 'event';
+    const lookup = options?.lookup ?? null;
     const initialMembers = ownerType !== 'event' && Array.isArray(options?.initialMembers)
       ? this.sortMembersByActionTimeDesc(options.initialMembers)
       : null;
     this.isOpen = true;
     this.ownerId = normalizedOwnerId;
-    this.ownerRef = {
-      ownerType,
-      ownerId: normalizedOwnerId
-    };
+    this.lookupRef = lookup ? { ...lookup } : null;
+    this.ownerRef = lookup?.type === 'chat'
+      ? null
+      : {
+          ownerType,
+          ownerId: normalizedOwnerId
+        };
     this.ownerRecord = null;
     this.title = 'Members';
     this.subtitle = options?.subtitle?.trim() || 'Event';
@@ -726,7 +735,7 @@ export class EventMembersPopupComponent {
     this.resetSummaryState();
     this.requestedCanManageMembers = options?.canManage === true;
     this.viewOnlyMode = options?.viewOnly === true;
-    this.canManageMembers = !this.viewOnlyMode && this.requestedCanManageMembers;
+    this.canManageMembers = !this.viewOnlyMode && lookup?.type !== 'chat' && this.requestedCanManageMembers;
     this.canShowInviteButton = this.canManageMembers;
     this.isLocalMembersSource = initialMembers !== null;
     if (initialMembers) {
@@ -766,7 +775,7 @@ export class EventMembersPopupComponent {
       }
 
       this.syncMembersSmartListQuery();
-      if (options?.ownerType !== 'asset') {
+      if (this.lookupRef?.type !== 'chat' && options?.ownerType !== 'asset') {
         void this.resolveOwnerPresentation(normalizedOwnerId, options);
       }
       this.cdr.markForCheck();
@@ -835,7 +844,9 @@ export class EventMembersPopupComponent {
       const owner = this.ownerRef && this.ownerRef.ownerId === ownerId
         ? this.ownerRef
         : null;
-      const loadedMembers = owner
+      const loadedMembers = this.lookupRef?.type === 'chat' && this.lookupRef.id === ownerId
+        ? await this.chatsService.queryChatMemberEntries(ownerId)
+        : owner
         ? await this.activityMembersService.queryMembersByOwner(owner)
         : await this.activityMembersService.queryMembersByOwnerId(ownerId);
       members = this.sortMembersByActionTimeDesc(loadedMembers);
@@ -861,6 +872,9 @@ export class EventMembersPopupComponent {
     previousMembers: readonly AppTypes.ActivityMemberEntry[] = this.currentOwnerMembers()
   ): Promise<void> {
     if (!this.ownerId) {
+      return;
+    }
+    if (this.lookupRef?.type === 'chat') {
       return;
     }
     const normalizedMembers = this.sortMembersByActionTimeDesc(members);
@@ -962,7 +976,7 @@ export class EventMembersPopupComponent {
   }
 
   protected canDisqualifyMember(entry: AppTypes.ActivityMemberEntry): boolean {
-    if (this.viewOnlyMode || this.ownerRef?.ownerType !== 'event' || !this.canManageMembers) {
+    if (this.lookupRef?.type === 'chat' || this.viewOnlyMode || this.ownerRef?.ownerType !== 'event' || !this.canManageMembers) {
       return false;
     }
     return entry.status === 'accepted'
@@ -971,13 +985,16 @@ export class EventMembersPopupComponent {
   }
 
   protected canReinstateMember(entry: AppTypes.ActivityMemberEntry): boolean {
-    if (this.viewOnlyMode || this.ownerRef?.ownerType !== 'event' || !this.canManageMembers) {
+    if (this.lookupRef?.type === 'chat' || this.viewOnlyMode || this.ownerRef?.ownerType !== 'event' || !this.canManageMembers) {
       return false;
     }
     return entry.status === 'disqualified';
   }
 
   protected canReportMember(entry: AppTypes.ActivityMemberEntry): boolean {
+    if (this.lookupRef?.type === 'chat') {
+      return false;
+    }
     const activeUserId = this.activeUserId();
     if (!activeUserId || entry.userId === activeUserId || entry.status !== 'accepted') {
       return false;
@@ -1033,6 +1050,9 @@ export class EventMembersPopupComponent {
 
   private applyActivityMembersSync(sync: ActivityMembersSyncState): void {
     if (this.isLocalMembersSource) {
+      return;
+    }
+    if (this.lookupRef?.type === 'chat') {
       return;
     }
     if (sync.id === this.suppressedOwnerSyncId) {
@@ -1226,6 +1246,9 @@ export class EventMembersPopupComponent {
   }
 
   private ownerScopeLabel(): string {
+    if (this.lookupRef?.type === 'chat') {
+      return 'chat';
+    }
     if (this.ownerRef?.ownerType === 'asset') {
       return 'asset';
     }

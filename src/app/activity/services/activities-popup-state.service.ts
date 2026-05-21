@@ -88,6 +88,7 @@ export class ActivitiesPopupStateService {
   readonly activitiesAdminServiceOnly = computed(() => this._uiState().adminServiceOnly);
   readonly activitiesEventSync = this._activitiesEventSync.asReadonly();
   readonly eventChatSession = this._eventChatSession.asReadonly();
+  readonly eventChatHeaderContext = computed(() => this._eventChatSession()?.headerContext ?? null);
 
   readonly activitiesOpenBoolean = computed(() => this._uiState().open);
   readonly eventChatOpen = computed(() => this._eventChatSession() !== null);
@@ -333,10 +334,12 @@ export class ActivitiesPopupStateService {
   }
 
   openEventChat(item: ChatRecord, context: EventChatContext | null = null): void {
+    const chatItem = this.cloneChatRecord(item);
     this._eventChatSession.set({
-      item: this.cloneChatRecord(item),
+      item: chatItem,
       openedAtIso: new Date().toISOString(),
-      context
+      context,
+      headerContext: this.chatsService.buildChatPopupHeaderContext(chatItem)
     });
   }
 
@@ -360,7 +363,8 @@ export class ActivitiesPopupStateService {
       item: this.cloneChatRecord(session.item),
       context: clonedContext && contextUpdater
         ? contextUpdater(clonedContext)
-        : clonedContext
+        : clonedContext,
+      headerContext: this.clonePopupHeaderContext(session.headerContext)
     });
   }
 
@@ -371,12 +375,31 @@ export class ActivitiesPopupStateService {
     }
     this._eventChatSession.set({
       ...session,
-      item: this.cloneChatRecord(itemUpdater(this.cloneChatRecord(session.item)))
+      item: this.cloneChatRecord(itemUpdater(this.cloneChatRecord(session.item))),
+      headerContext: this.clonePopupHeaderContext(session.headerContext)
     });
   }
 
   async loadEventChatMessages(chat: ChatRecord): Promise<AppTypes.ChatPopupMessage[]> {
-    return this.chatsService.loadChatMessages(chat);
+    const result = await this.chatsService.loadChatMessagesResult(chat);
+    this.applyEventChatHeaderContext(result.context);
+    return result.items;
+  }
+
+  applyEventChatHeaderContext(context: AppTypes.PopupHeaderContext | null | undefined): void {
+    const session = this._eventChatSession();
+    if (!session || !context) {
+      return;
+    }
+    const nextContext = this.clonePopupHeaderContext(context);
+    if (this.popupHeaderContextSignature(session.headerContext) === this.popupHeaderContextSignature(nextContext)) {
+      return;
+    }
+    this._eventChatSession.set({
+      ...session,
+      item: this.cloneChatRecord(session.item),
+      headerContext: nextContext
+    });
   }
 
   async sendEventChatMessage(chat: ChatRecord, text: string, clientId?: string): Promise<AppTypes.ChatPopupMessage | null> {
@@ -428,6 +451,34 @@ export class ActivitiesPopupStateService {
       ...state,
       ...patch
     }));
+  }
+
+  private clonePopupHeaderContext(context: AppTypes.PopupHeaderContext | null | undefined): AppTypes.PopupHeaderContext | null {
+    return context
+      ? {
+          ...context,
+          controls: (context.controls ?? []).map(control => ({
+            ...control,
+            visual: control.visual?.kind === 'thumbStack'
+              ? {
+                  ...control.visual,
+                  thumbs: control.visual.thumbs.map(thumb => ({ ...thumb }))
+                }
+              : control.visual
+                ? { ...control.visual }
+                : control.visual,
+            badge: control.badge ? { ...control.badge } : control.badge,
+            lookup: control.lookup ? { ...control.lookup } : control.lookup
+          }))
+        }
+      : null;
+  }
+
+  private popupHeaderContextSignature(context: AppTypes.PopupHeaderContext | null | undefined): string {
+    if (!context) {
+      return '';
+    }
+    return JSON.stringify(context);
   }
 
   private resolveRateSocialBadgeEnabled(state: Pick<ActivitiesUiState,
