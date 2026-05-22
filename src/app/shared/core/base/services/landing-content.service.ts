@@ -108,7 +108,16 @@ export class LandingContentService extends BaseRouteModeService {
         auditTrail: state.privacy.auditTrail.map(entry => ({ ...entry })),
         availableLanguages: state.privacy.availableLanguages.map(language => ({ ...language }))
       },
-      ideas: state.ideas.map(post => ({ ...post, imageUrls: [...post.imageUrls] }))
+      ideas: state.ideas.map(post => ({ ...post, imageUrls: [...post.imageUrls] })),
+      loginAvailability: state.loginAvailability
+        ? {
+            eligible: state.loginAvailability.eligible !== false,
+            partitionKey: state.loginAvailability.partitionKey ?? null,
+            message: state.loginAvailability.message ?? null,
+            securityGateEnabled: state.loginAvailability.securityGateEnabled === true,
+            locationRequired: state.loginAvailability.locationRequired === true
+          }
+        : null
     };
   }
 }

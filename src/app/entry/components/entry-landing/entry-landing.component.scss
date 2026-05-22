@@ -59,6 +59,7 @@
   position: relative;
   overflow: hidden;
   min-height: 38px;
+  max-width: min(56vw, 220px);
   padding: 0 0.86rem;
   gap: 0.34rem;
   border-radius: 999px;
@@ -79,6 +80,35 @@
 .entry-auth-btn span {
   position: relative;
   z-index: 1;
+}
+
+.entry-auth-btn span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  text-align: center;
+}
+
+.entry-auth-btn:disabled,
+.entry-cta:disabled {
+  cursor: not-allowed;
+  opacity: 0.74;
+}
+
+.entry-auth-btn-unavailable {
+  min-height: 42px;
+  border-color: rgba(100, 116, 139, 0.22);
+  background: #e2e8f0;
+  box-shadow: none;
+  color: #475569;
+}
+
+.entry-auth-btn-unavailable span {
+  line-height: 1.08;
+}
+
+.entry-auth-btn-location {
+  background: linear-gradient(135deg, #2f6fed 0%, #13a8a8 100%);
+  box-shadow: 0 8px 18px rgba(47, 111, 237, 0.24);
 }
 
 .entry-auth-btn .mat-icon {
@@ -219,6 +249,18 @@
   background: #ffffff;
   color: #703bf2;
   box-shadow: 0 10px 20px rgba(42, 14, 92, 0.22);
+}
+
+.entry-cta-unavailable {
+  background: #e2e8f0;
+  color: #475569;
+  box-shadow: none;
+}
+
+.entry-cta-location {
+  background: #eaf3ff;
+  color: #1f66e2;
+  box-shadow: 0 8px 16px rgba(31, 102, 226, 0.18);
 }
 
 .entry-cta-ghost {

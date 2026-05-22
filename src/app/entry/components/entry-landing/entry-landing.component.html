@@ -9,6 +9,9 @@
         type="button"
         class="entry-auth-btn"
         [class.entry-auth-btn-avatar]="entryAuthButtonShowsAvatar"
+        [class.entry-auth-btn-unavailable]="authUnavailable"
+        [class.entry-auth-btn-location]="authLocationRequired"
+        [disabled]="authUnavailable"
         matRipple
         [matRippleColor]="'rgba(255, 255, 255, 0.24)'"
         (click)="requestHeaderAuth()"
@@ -36,12 +39,15 @@
             <button
               type="button"
               class="entry-cta entry-cta-primary"
+              [class.entry-cta-unavailable]="authUnavailable"
+              [class.entry-cta-location]="authLocationRequired"
+              [disabled]="authUnavailable"
               matRipple
               [matRippleColor]="'rgba(112, 59, 242, 0.14)'"
               (click)="requestDemo()"
               >
-              <mat-icon>rocket_launch</mat-icon>
-              <span>Start exploring</span>
+              <mat-icon>{{ authUnavailable ? 'block' : authLocationRequired ? 'location_on' : 'rocket_launch' }}</mat-icon>
+              <span>{{ authUnavailable ? authUnavailableLabel : authLocationRequired ? authLocationRequiredLabel : 'Start exploring' }}</span>
             </button>
             <a class="entry-cta entry-cta-ghost" href="#articles" (click)="scrollEntryTo('articles', $event)">
               <mat-icon>timeline</mat-icon>

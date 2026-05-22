@@ -57,6 +57,10 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
   @Input() articlesLoading = false;
   @Input() articlesLoadingProgress = 0;
   @Input() ideaCards: InfoCardData[] = [];
+  @Input() authUnavailable = false;
+  @Input() authUnavailableLabel = 'Unavailable in your country';
+  @Input() authLocationRequired = false;
+  @Input() authLocationRequiredLabel = 'Allow location';
 
   @Output() readonly demoRequested = new EventEmitter<void>();
   @Output() readonly firebaseAuthRequested = new EventEmitter<void>();
@@ -194,10 +198,19 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
   }
 
   protected get entryAuthButtonShowsAvatar(): boolean {
-    return this.isFirebaseAuthMode && !!this.firebaseAuthProfile;
+    return !this.authUnavailable
+      && !this.authLocationRequired
+      && this.isFirebaseAuthMode
+      && !!this.firebaseAuthProfile;
   }
 
   protected get entryAuthButtonIcon(): string {
+    if (this.authUnavailable) {
+      return 'block';
+    }
+    if (this.authLocationRequired) {
+      return 'location_on';
+    }
     if (this.authMode === 'selector') {
       return 'group';
     }
@@ -205,6 +218,12 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
   }
 
   protected get entryAuthButtonLabel(): string {
+    if (this.authUnavailable) {
+      return this.authUnavailableLabel;
+    }
+    if (this.authLocationRequired) {
+      return this.authLocationRequiredLabel;
+    }
     if (this.entryAuthButtonShowsAvatar) {
       return this.firebaseAuthProfile?.name ?? 'Continue';
     }
@@ -320,10 +339,16 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
   }
 
   protected requestDemo(): void {
+    if (this.authUnavailable) {
+      return;
+    }
     this.demoRequested.emit();
   }
 
   protected requestHeaderAuth(): void {
+    if (this.authUnavailable) {
+      return;
+    }
     if (this.isFirebaseAuthMode) {
       this.firebaseAuthRequested.emit();
       return;

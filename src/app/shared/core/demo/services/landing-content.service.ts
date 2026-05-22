@@ -16,6 +16,6 @@ export class DemoLandingContentService {
       this.helpCenter.loadState('privacy'),
       this.ideaPosts.loadPublishedPosts()
     ]);
-    return { privacy, ideas };
+    return { privacy, ideas, loginAvailability: null };
   }
 }

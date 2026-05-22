@@ -1,6 +1,14 @@
 import { ChangeDetectorRef, Component, EventEmitter, HostListener, Injector, Input, NgZone, OnDestroy, Output, inject } from '@angular/core';
 
-import { AppContext, HelpCenterService, LandingContentService, USERS_LOAD_CONTEXT_KEY, UsersService, type DemoUserListItemDto } from '../../../shared/core';
+import {
+  AppContext,
+  HelpCenterService,
+  LandingContentService,
+  USERS_LOAD_CONTEXT_KEY,
+  UsersService,
+  type DemoUserListItemDto,
+  type UserLocationEligibilityResponseDto
+} from '../../../shared/core';
 import type { DemoBootstrapProgressStage } from '../../../shared/core/demo';
 import type * as AppTypes from '../../../shared/core/base/models';
 import type { LocationCoordinates } from '../../../shared/core/base/interfaces/location.interface';
@@ -64,6 +72,10 @@ export class EntryShellComponent implements OnDestroy {
   protected landingArticlesLoading = true;
   protected landingArticlesLoadingProgress = 0;
   protected landingIdeaCards: InfoCardData[] = [];
+  protected entryAuthUnavailable = false;
+  protected entryAuthUnavailableLabel = 'Unavailable in your country';
+  protected entryAuthLocationRequired = false;
+  protected entryAuthLocationRequiredLabel = 'Allow location';
   protected showUserSelector = false;
   protected demoSelectorUsers: DemoUserListItemDto[] = [];
   protected demoSelectorLoading = false;
@@ -78,6 +90,7 @@ export class EntryShellComponent implements OnDestroy {
   private landingContentRequestToken = 0;
   private landingArticlesLoadingStartedAtMs = 0;
   private landingArticlesLoadingInterval: ReturnType<typeof setInterval> | null = null;
+  private landingLoginAvailability: UserLocationEligibilityResponseDto | null = null;
 
   constructor() {
     this.initializeEntryFlow();
@@ -112,7 +125,17 @@ export class EntryShellComponent implements OnDestroy {
     return !this.entryPrivacyLoading && this.loadEntryConsentState() !== null;
   }
 
-  protected openEntryDemo(): void {
+  protected async openEntryDemo(): Promise<void> {
+    if (this.isLoginBlockedByLandingBundle()) {
+      this.openBundledLoginUnavailableInfo();
+      return;
+    }
+    if (this.isLoginLocationRequiredByLandingBundle()) {
+      const allowed = await this.ensureHttpLoginAccessAllowed();
+      if (!allowed) {
+        return;
+      }
+    }
     if (!this.ensureEntryConsent()) {
       return;
     }
@@ -120,6 +143,16 @@ export class EntryShellComponent implements OnDestroy {
   }
 
   protected async openEntryFirebaseAuth(): Promise<void> {
+    if (this.isLoginBlockedByLandingBundle()) {
+      this.openBundledLoginUnavailableInfo();
+      return;
+    }
+    if (this.isLoginLocationRequiredByLandingBundle()) {
+      const allowed = await this.ensureHttpLoginAccessAllowed();
+      if (!allowed) {
+        return;
+      }
+    }
     if (!this.ensureEntryConsent()) {
       return;
     }
@@ -248,6 +281,7 @@ export class EntryShellComponent implements OnDestroy {
     this.entryPrivacyLoading = true;
     this.landingArticlesLoading = true;
     this.landingArticlesLoadingProgress = 0;
+    this.syncLandingLoginAvailability(null);
     this.showUserSelector = false;
     this.demoSelectorLoading = false;
     this.demoSelectorLoadingProgress = 0;
@@ -291,14 +325,27 @@ export class EntryShellComponent implements OnDestroy {
   private async ensureHttpLoginAccessAllowed(): Promise<boolean> {
     this.loginEligibilityBusy = true;
     try {
-      const gateState = await this.usersService.checkLocationEligibility();
-      if (gateState.securityGateEnabled !== true) {
+      const gateState = this.landingLoginAvailability;
+      if (gateState && gateState.securityGateEnabled !== true) {
         return true;
       }
+      if (gateState?.eligible === true && gateState.locationRequired !== true) {
+        return true;
+      }
+      if (gateState && gateState.locationRequired !== true) {
+        this.confirmationDialogService.openInfo(
+          this.loginUnavailableMessage(gateState),
+          {
+            title: 'Login Unavailable',
+            confirmLabel: 'OK'
+          }
+        );
+        return false;
+      }
 
-        const coordinates = await this.requestCurrentLocation();
-        if (!coordinates) {
-          this.confirmationDialogService.openInfo(
+      const coordinates = await this.requestCurrentLocation();
+      if (!coordinates) {
+        this.confirmationDialogService.openInfo(
           'We need your location before login so we can apply the region-based security check.',
           {
             title: 'Location Required For Login',
@@ -309,6 +356,7 @@ export class EntryShellComponent implements OnDestroy {
       }
 
       const result = await this.usersService.checkLocationEligibility(coordinates);
+      this.syncLandingLoginAvailability(result);
       if (result.eligible) {
         return true;
       }
@@ -618,6 +666,7 @@ export class EntryShellComponent implements OnDestroy {
     this.entryContentLoadPromise = (async () => {
       const displayState = await this.landingContent.loadDisplayState();
       this.landingIdeaCards = displayState.ideaCards;
+      this.syncLandingLoginAvailability(displayState.state.loginAvailability);
     })().finally(() => {
       this.ngZone.run(() => {
         if (requestToken !== this.landingContentRequestToken) {
@@ -689,6 +738,49 @@ export class EntryShellComponent implements OnDestroy {
     }
     clearInterval(this.landingArticlesLoadingInterval);
     this.landingArticlesLoadingInterval = null;
+  }
+
+  private syncLandingLoginAvailability(availability: UserLocationEligibilityResponseDto | null | undefined): void {
+    this.landingLoginAvailability = availability
+      ? {
+          eligible: availability.eligible !== false,
+          partitionKey: availability.partitionKey ?? null,
+          message: availability.message ?? null,
+          securityGateEnabled: availability.securityGateEnabled === true,
+          locationRequired: availability.locationRequired === true
+        }
+      : null;
+    this.entryAuthUnavailable = this.isLoginBlockedByLandingBundle();
+    this.entryAuthUnavailableLabel = 'Unavailable in your country';
+    this.entryAuthLocationRequired = this.isLoginLocationRequiredByLandingBundle();
+    this.entryAuthLocationRequiredLabel = 'Allow location';
+  }
+
+  private isLoginBlockedByLandingBundle(): boolean {
+    return this.landingLoginAvailability !== null
+      && this.landingLoginAvailability.securityGateEnabled === true
+      && this.landingLoginAvailability.eligible === false
+      && this.landingLoginAvailability.locationRequired !== true;
+  }
+
+  private isLoginLocationRequiredByLandingBundle(): boolean {
+    return this.landingLoginAvailability === null
+      || (
+        this.landingLoginAvailability.securityGateEnabled === true
+        && this.landingLoginAvailability.locationRequired === true
+      );
+  }
+
+  private openBundledLoginUnavailableInfo(): void {
+    this.confirmationDialogService.openInfo(this.loginUnavailableMessage(this.landingLoginAvailability), {
+      title: 'Login Unavailable',
+      confirmLabel: 'OK'
+    });
+  }
+
+  private loginUnavailableMessage(availability: UserLocationEligibilityResponseDto | null): string {
+    return availability?.message?.trim()
+      || 'Login is currently unavailable from your country or region for security reasons. Please come back later.';
   }
 
 }

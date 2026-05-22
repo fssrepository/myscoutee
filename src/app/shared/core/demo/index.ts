@@ -2,6 +2,7 @@ export { ASSETS_TABLE_NAME, type DemoAssetRecord, type DemoAssetsMemorySchema } 
 export { ACTIVITY_MEMBERS_TABLE_NAME, type DemoActivityMemberRecord, type DemoActivityMembersMemorySchema } from './models/activity-members.model';
 export { ACTIVITY_RESOURCES_TABLE_NAME, type DemoActivitySubEventResourceRecord, type DemoActivityResourcesMemorySchema } from './models/activity-resources.model';
 export { CHATS_TABLE_NAME, type DemoChatRecord, type DemoChatsMemorySchema } from './models/chats.model';
+export { type DemoCountryPartition, type DemoCountryPartitionBounds } from './models/country-partitions.model';
 export { EVENTS_TABLE_NAME, type DemoEventRecord, type DemoEventsMemorySchema } from './models/events.model';
 export { HELP_CENTER_TABLE_NAME, type DemoHelpCenterMemorySchema } from './models/help-center.model';
 export { IDEA_POSTS_TABLE_NAME, type DemoIdeaPostsMemorySchema } from './models/idea-posts.model';
@@ -13,6 +14,7 @@ export { DemoActivityInviteCandidatesRepository } from './repositories/activity-
 export { DemoActivityMembersRepository } from './repositories/activity-members.repository';
 export { DemoActivityResourcesRepository } from './repositories/activity-resources.repository';
 export { DemoChatsRepository } from './repositories/chats.repository';
+export { DemoCountryPartitionsRepository } from './repositories/country-partitions.repository';
 export { DemoEventsRepository } from './repositories/events.repository';
 export { DemoShareTokensRepository } from './repositories/share-tokens.repository';
 export { DemoProfileExperiencesRepository } from './repositories/profile-experiences.repository';
