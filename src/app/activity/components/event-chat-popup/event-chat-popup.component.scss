@@ -2725,13 +2725,17 @@
   }
 
   .popup-header-chat {
+    flex: 0 0 auto;
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-columns: minmax(0, 1fr) minmax(0, auto) 36px 34px;
+    grid-template-rows: 36px 36px;
     grid-template-areas:
-      "title pin close"
-      "members context context";
+      "title title pin close"
+      "members context context context";
     align-items: center;
     gap: 0.38rem 0.42rem;
+    box-sizing: border-box;
+    min-height: 6rem;
     padding: 0.52rem 0.56rem;
   }
 
@@ -2742,10 +2746,12 @@
 
   .popup-chat-pin-btn {
     grid-area: pin;
+    justify-self: end;
   }
 
   .popup-header-chat .popup-close {
     grid-area: close;
+    justify-self: end;
   }
 
   .popup-chat-header-members-btn {

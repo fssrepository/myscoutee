@@ -82,6 +82,7 @@ import {
   AppPopupContext,
   ChatsService,
   EventsService,
+  ExplanationGuideService,
   RatesService,
   ShareTokensService,
   toActivityChatRow,
@@ -157,6 +158,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected readonly navigatorService = inject(NavigatorService);
   private readonly eventCheckoutDraftService = inject(EventCheckoutDraftService);
   private readonly i18nService = inject(I18nService);
+  private readonly explanationGuide = inject(ExplanationGuideService);
   readonly activitiesRates = new ActivitiesRatesController({
     getUsers: () => this.users,
     getActiveUserGender: () => this.activeUser.gender,
@@ -255,6 +257,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected readonly activityRowExitAnimationMs = 180;
   private lastAppliedActivityMembersUpdatedMs = 0;
   private adminSupportBoardPollTimer: ReturnType<typeof setInterval> | null = null;
+  private unregisterActivitiesRatesExplanationContext: (() => void) | null = null;
 
   protected get assetCards(): AppTypes.AssetCard[] {
     return this.ownedAssets.assetCards;
@@ -605,6 +608,18 @@ export class ActivitiesPopupComponent implements OnDestroy {
     });
 
     effect(() => {
+      const shouldRegisterRatesExplanation = this.activitiesContext.activitiesOpen()
+        && this.activitiesContext.activitiesPrimaryFilter() === 'rates';
+      if (shouldRegisterRatesExplanation) {
+        if (!this.unregisterActivitiesRatesExplanationContext) {
+          this.unregisterActivitiesRatesExplanationContext = this.explanationGuide.registerContext('activities.rates');
+        }
+        return;
+      }
+      this.clearActivitiesRatesExplanationContext();
+    });
+
+    effect(() => {
       const session = this.activitiesContext.eventChatSession();
       if (!session) {
         return;
@@ -740,6 +755,12 @@ export class ActivitiesPopupComponent implements OnDestroy {
     this.activitiesRates.clearEditorState();
     this.activitiesSmartList?.clearHostedLoading();
     this.configureAdminSupportBoardPolling(false);
+    this.clearActivitiesRatesExplanationContext();
+  }
+
+  private clearActivitiesRatesExplanationContext(): void {
+    this.unregisterActivitiesRatesExplanationContext?.();
+    this.unregisterActivitiesRatesExplanationContext = null;
   }
 
   private createFallbackActiveUser(): DemoUser {

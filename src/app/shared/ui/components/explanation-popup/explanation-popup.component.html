@@ -93,6 +93,63 @@
                         </span>
                       </span>
                     }
+                    @case ('activity-tabs') {
+                      <span class="explanation-popup__visual-activity-tabs">
+                        <span class="explanation-popup__activity-chip explanation-popup__activity-chip--ratings">
+                          <mat-icon>star</mat-icon>
+                          <span>{{ activityText(revision.lang, 'ratings') }}</span>
+                          <strong>9+</strong>
+                        </span>
+                        <span class="explanation-popup__activity-chip">
+                          <mat-icon>forum</mat-icon>
+                          <span>{{ activityText(revision.lang, 'chats') }}</span>
+                        </span>
+                        <span class="explanation-popup__activity-chip">
+                          <mat-icon>event</mat-icon>
+                          <span>{{ activityText(revision.lang, 'events') }}</span>
+                        </span>
+                      </span>
+                    }
+                    @case ('activity-rate-filter') {
+                      <span class="explanation-popup__visual-activity-filter">
+                        <span class="explanation-popup__activity-filter-trigger">
+                          <mat-icon>north_east</mat-icon>
+                          <span>{{ activityText(revision.lang, 'given') }}</span>
+                          <strong>2</strong>
+                        </span>
+                        <span class="explanation-popup__activity-filter-menu">
+                          <span>{{ activityText(revision.lang, 'given') }}</span>
+                          <span>{{ activityText(revision.lang, 'received') }}</span>
+                          <span>{{ activityText(revision.lang, 'mutual') }}</span>
+                        </span>
+                      </span>
+                    }
+                    @case ('activity-distance-sort') {
+                      <span class="explanation-popup__visual-activity-sort">
+                        <span class="explanation-popup__activity-sort-actions">
+                          <span><mat-icon>schedule</mat-icon>{{ activityText(revision.lang, 'latest') }}</span>
+                          <span><mat-icon>view_agenda</mat-icon>{{ activityText(revision.lang, 'distance') }}</span>
+                        </span>
+                        <span class="explanation-popup__activity-distance-marker">10 km</span>
+                      </span>
+                    }
+                    @case ('activity-card-actions') {
+                      <span class="explanation-popup__visual-activity-card">
+                        <span class="explanation-popup__activity-card-photo"></span>
+                        <span class="explanation-popup__activity-card-score"><mat-icon>star</mat-icon>4</span>
+                        <span class="explanation-popup__activity-card-copy">
+                          <strong>Noel Safety</strong>
+                          <small>6.8 km</small>
+                        </span>
+                        <span class="explanation-popup__activity-card-eye"><mat-icon>visibility</mat-icon></span>
+                      </span>
+                    }
+                    @case ('activity-panel-actions') {
+                      <span class="explanation-popup__visual-activity-panel-actions">
+                        <span><mat-icon>fullscreen</mat-icon>{{ activityText(revision.lang, 'fullscreen') }}</span>
+                        <span><mat-icon>close</mat-icon>{{ activityText(revision.lang, 'close') }}</span>
+                      </span>
+                    }
                     @default {
                       <span class="explanation-popup__visual-generic">
                         <mat-icon>{{ section.icon || 'tips_and_updates' }}</mat-icon>

@@ -41,6 +41,38 @@ export class ExplanationPopupComponent {
       : this.homeFilterModeOptionsEn;
   }
 
+  protected activityText(lang: string | null | undefined, key: string): string {
+    const hu = lang === 'hu';
+    const labels: Record<string, string> = hu
+      ? {
+          ratings: 'értékelések',
+          chats: 'chatek',
+          events: 'események',
+          given: 'preferenciák · adott',
+          received: 'kapott',
+          mutual: 'kölcsönös',
+          latest: 'Legutóbbi',
+          distance: 'Távolság',
+          profile: 'Profil',
+          fullscreen: 'Teljes képernyő',
+          close: 'Bezárás'
+        }
+      : {
+          ratings: 'ratings',
+          chats: 'chats',
+          events: 'events',
+          given: 'preferences · given',
+          received: 'received',
+          mutual: 'mutual',
+          latest: 'Latest',
+          distance: 'Distance',
+          profile: 'Profile',
+          fullscreen: 'Fullscreen',
+          close: 'Close'
+        };
+    return labels[key] ?? key;
+  }
+
   protected close(event?: Event): void {
     event?.stopPropagation();
     this.guide.dismiss();

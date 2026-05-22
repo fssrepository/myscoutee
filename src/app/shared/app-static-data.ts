@@ -1213,6 +1213,82 @@ const EXPLANATION_HOME_SECTIONS_HU: HelpCenterSection[] = [
   }
 ];
 
+const EXPLANATION_ACTIVITY_RATES_SECTIONS: HelpCenterSection[] = [
+  {
+    id: 'activity-tabs',
+    icon: 'star',
+    title: 'Activity tabs',
+    blurb: 'Use the first button to switch between ratings, chats, and events.',
+    contentHtml: '<p>The badge shows how many items are available in that area. Open the menu when you want to move from rating people to chats or event work.</p>'
+  },
+  {
+    id: 'activity-rate-filter',
+    icon: 'north_east',
+    title: 'Rating filter',
+    blurb: 'The second button narrows which rating cards are shown.',
+    contentHtml: '<p>Choose given, received, mutual, met, or pair-based ratings. The number on the badge is the count for the selected rating filter.</p>'
+  },
+  {
+    id: 'activity-distance-sort',
+    icon: 'route',
+    title: 'Sort and distance',
+    blurb: 'Latest and Distance change the list order.',
+    contentHtml: '<p>Latest keeps recent rating activity first. Distance groups cards by how far away the profile or pair is, so the distance marker can become the main scanning cue.</p>'
+  },
+  {
+    id: 'activity-card-actions',
+    icon: 'visibility',
+    title: 'Cards and actions',
+    blurb: 'Each card combines the person, your score, and profile access.',
+    contentHtml: '<p>The star badge shows the current rating value. Select the rating badge/card to edit the score, and use the eye button to open profile details.</p>'
+  },
+  {
+    id: 'activity-panel-actions',
+    icon: 'fullscreen',
+    title: 'Panel actions',
+    blurb: 'The top-right controls change the panel mode or close it.',
+    contentHtml: '<p>Fullscreen expands rating into a focused flow. The close button exits the Activities panel and returns you to the previous screen.</p>'
+  }
+];
+
+const EXPLANATION_ACTIVITY_RATES_SECTIONS_HU: HelpCenterSection[] = [
+  {
+    id: 'activity-tabs',
+    icon: 'star',
+    title: 'Tevékenység fülek',
+    blurb: 'Az első gombbal válthatsz értékelések, chatek és események között.',
+    contentHtml: '<p>A jelvény azt mutatja, hány elem érhető el az adott területen. Nyisd meg a menüt, ha az értékelésekről chatekre vagy eseményfeladatokra váltanál.</p>'
+  },
+  {
+    id: 'activity-rate-filter',
+    icon: 'north_east',
+    title: 'Értékelési szűrő',
+    blurb: 'A második gomb szűkíti, mely értékeléskártyák jelenjenek meg.',
+    contentHtml: '<p>Választhatsz adott, kapott, kölcsönös, találkozott vagy páros értékeléseket. A jelvény száma a kiválasztott értékelési szűrő találatszáma.</p>'
+  },
+  {
+    id: 'activity-distance-sort',
+    icon: 'route',
+    title: 'Rendezés és távolság',
+    blurb: 'A Legutóbbi és Távolság gombok a lista sorrendjét váltják.',
+    contentHtml: '<p>A Legutóbbi a friss értékelési aktivitást tartja elöl. A Távolság a profil vagy pár távolsága szerint csoportosít, ezért a távolságjelző lesz a fő tájékozódási pont.</p>'
+  },
+  {
+    id: 'activity-card-actions',
+    icon: 'visibility',
+    title: 'Kártyák és műveletek',
+    blurb: 'Minden kártyán együtt látszik a személy, a pontszámod és a profilnyitás.',
+    contentHtml: '<p>A csillagos jelvény az aktuális értékelési értéket mutatja. A pontszám/kártya kiválasztásával módosíthatod az értékelést, a szem gombbal pedig megnyithatod a profilt.</p>'
+  },
+  {
+    id: 'activity-panel-actions',
+    icon: 'fullscreen',
+    title: 'Panelműveletek',
+    blurb: 'A jobb felső gombok módot váltanak vagy bezárják a panelt.',
+    contentHtml: '<p>A teljes képernyős mód fókuszált értékelési folyamatra vált. A bezárás gomb kilép a Tevékenységek panelből, és visszavisz az előző képernyőre.</p>'
+  }
+];
+
 const DEFAULT_EXPLANATION_HOME_REVISION: HelpCenterRevision = {
   id: 'explanation-home-default-v1',
   documentKind: 'explanation',
@@ -1241,6 +1317,25 @@ const DEFAULT_EXPLANATION_HOME_REVISION_HU: HelpCenterRevision = {
   summary: 'Így működik a kezdőlap',
   description: 'Rövid alkalmazáson belüli útmutató a kiválasztott képernyőhöz.',
   sections: EXPLANATION_HOME_SECTIONS_HU
+};
+
+const DEFAULT_EXPLANATION_ACTIVITY_RATES_REVISION: HelpCenterRevision = {
+  ...DEFAULT_EXPLANATION_HOME_REVISION,
+  id: 'explanation-activity-rates-default-v1',
+  contextKey: 'activities.rates',
+  title: 'Activity ratings explanation',
+  summary: 'How the activity ratings panel works',
+  sections: EXPLANATION_ACTIVITY_RATES_SECTIONS
+};
+
+const DEFAULT_EXPLANATION_ACTIVITY_RATES_REVISION_HU: HelpCenterRevision = {
+  ...DEFAULT_EXPLANATION_ACTIVITY_RATES_REVISION,
+  id: 'explanation-activity-rates-default-hu-v1',
+  lang: 'hu',
+  languageLabel: 'Magyar',
+  title: 'Tevékenységek magyarázat',
+  summary: 'Így működik az értékelési panel',
+  sections: EXPLANATION_ACTIVITY_RATES_SECTIONS_HU
 };
 
 export const APP_STATIC_DATA = {
@@ -1324,5 +1419,15 @@ export const APP_STATIC_DATA = {
   defaultExplanationHomeRevisionsByLang: {
     en: DEFAULT_EXPLANATION_HOME_REVISION,
     hu: DEFAULT_EXPLANATION_HOME_REVISION_HU
+  },
+  defaultExplanationRevisionsByContext: {
+    'home.game': {
+      en: DEFAULT_EXPLANATION_HOME_REVISION,
+      hu: DEFAULT_EXPLANATION_HOME_REVISION_HU
+    },
+    'activities.rates': {
+      en: DEFAULT_EXPLANATION_ACTIVITY_RATES_REVISION,
+      hu: DEFAULT_EXPLANATION_ACTIVITY_RATES_REVISION_HU
+    }
   }
 };

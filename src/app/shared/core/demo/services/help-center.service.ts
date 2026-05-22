@@ -40,7 +40,7 @@ export class DemoHelpCenterService {
     const context = this.normalizeContextKey(documentKind, contextKey, false);
     let changed = false;
     for (const option of this.availableLanguages()) {
-      const seeded = this.ensureSeeded(documentKind, option.lang);
+      const seeded = this.ensureSeeded(documentKind, option.lang, context);
       const descriptionsUpdated = this.ensureRevisionDescriptions(documentKind, option.lang);
       const filterCountCopyUpdated = this.ensureExplanationFilterCountCopy(documentKind, option.lang);
       changed = seeded || descriptionsUpdated || filterCountCopyUpdated || changed;
@@ -328,14 +328,15 @@ export class DemoHelpCenterService {
     return this.stateFromTable(this.table(), documentKind, language, contextKey);
   }
 
-  private ensureSeeded(kind: HelpCenterDocumentKind, lang = 'en'): boolean {
+  private ensureSeeded(kind: HelpCenterDocumentKind, lang = 'en', contextKey?: string | null): boolean {
     const table = this.table();
     const language = this.normalizeLang(lang);
-    if (this.revisionsForKind(table, kind, language).length > 0) {
+    const context = this.normalizeContextKey(kind, contextKey, false);
+    if (this.revisionsForKind(table, kind, language, context).length > 0) {
       return false;
     }
-    const revision = this.cloneRevision(this.defaultRevision(kind, language), kind);
-    const contextKey = this.revisionContextKey(revision);
+    const revision = this.cloneRevision(this.defaultRevision(kind, language, context), kind);
+    const revisionContextKey = this.revisionContextKey(revision);
     const audit = this.auditEntry({
       action: 'seed',
       actorUserId: 'system',
@@ -353,7 +354,7 @@ export class DemoHelpCenterService {
           activeRevisionId: kind === 'help' && language === 'en' ? revision.id : current.activeRevisionId,
           activeRevisionIdsByKind: {
             ...(current.activeRevisionIdsByKind ?? {}),
-            [this.activeRevisionKey(kind, language, contextKey)]: revision.id
+            [this.activeRevisionKey(kind, language, revisionContextKey)]: revision.id
           },
           revisionsById: {
             ...this.normalizedRevisionsById(current),
@@ -688,14 +689,25 @@ export class DemoHelpCenterService {
     };
   }
 
-  private defaultRevision(kind: HelpCenterDocumentKind, lang = 'en'): HelpCenterRevision {
+  private defaultRevision(kind: HelpCenterDocumentKind, lang = 'en', contextKey?: string | null): HelpCenterRevision {
     const language = this.normalizeLang(lang);
-    const revisionsByLang = kind === 'privacy'
-      ? APP_STATIC_DATA.defaultPrivacyCenterRevisionsByLang
-      : kind === 'explanation'
-        ? APP_STATIC_DATA.defaultExplanationHomeRevisionsByLang
-        : APP_STATIC_DATA.defaultHelpCenterRevisionsByLang;
+    const revisionsByLang = this.defaultRevisionsByLang(kind, contextKey);
     return this.cloneRevision(language === 'hu' ? revisionsByLang.hu : revisionsByLang.en, kind);
+  }
+
+  private defaultRevisionsByLang(
+    kind: HelpCenterDocumentKind,
+    contextKey?: string | null
+  ): { en: HelpCenterRevision; hu: HelpCenterRevision } {
+    if (kind === 'privacy') {
+      return APP_STATIC_DATA.defaultPrivacyCenterRevisionsByLang;
+    }
+    if (kind === 'explanation') {
+      const context = this.normalizeContextKey(kind, contextKey, false) ?? 'home.game';
+      return APP_STATIC_DATA.defaultExplanationRevisionsByContext[context as keyof typeof APP_STATIC_DATA.defaultExplanationRevisionsByContext]
+        ?? APP_STATIC_DATA.defaultExplanationHomeRevisionsByLang;
+    }
+    return APP_STATIC_DATA.defaultHelpCenterRevisionsByLang;
   }
 
   private defaultTitle(kind: HelpCenterDocumentKind, version: number, lang = 'en'): string {
