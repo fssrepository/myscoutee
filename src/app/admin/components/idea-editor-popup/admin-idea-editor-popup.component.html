@@ -61,7 +61,7 @@
               type="button"
               class="idea-editor-language-menu-btn"
               [class.is-open]="languageMenuOpen"
-              [disabled]="loading || saving || uploading"
+              [disabled]="loading || saving"
               [attr.aria-expanded]="languageMenuOpen"
               (click)="toggleLanguageMenu($event)"
               >
@@ -213,7 +213,7 @@
             <button
               type="button"
               class="idea-editor-icon-btn idea-editor-preview-btn"
-              [disabled]="saving || uploading"
+              [disabled]="saving"
               (click)="openDraftPreview($event)"
               aria-label="Preview article"
               title="Preview"
@@ -245,7 +245,7 @@
               <button
                 type="submit"
                 class="idea-editor-icon-btn idea-editor-confirm-btn"
-                [disabled]="saving || uploading"
+                [disabled]="saving"
                 aria-label="Save article"
                 title="Save"
                 >
@@ -255,7 +255,7 @@
             <button
               type="button"
               class="idea-editor-icon-btn"
-              [disabled]="saving || uploading"
+              [disabled]="saving"
               (click)="closeEditor($event)"
               aria-label="Close editor"
               title="Close"
@@ -269,7 +269,7 @@
                 type="button"
                 class="idea-editor-language-menu-btn"
                 [class.is-open]="formLanguageMenuOpen"
-                [disabled]="saving || uploading"
+                [disabled]="saving"
                 [attr.aria-expanded]="formLanguageMenuOpen"
                 (click)="toggleFormLanguageMenu($event)"
                 >
@@ -336,119 +336,12 @@
             </label>
           </div>
 
-          <section class="idea-editor-image-panel">
-            @let imageSlots = draftImageSlots();
-            @let imagePages = imageSlotPages();
-            <div class="idea-editor-image-carousel" role="region" aria-label="Article image slots" aria-roledescription="carousel">
-              @if (imagePages.length > 1 && imageSlotCarouselIndex > 0) {
-                <button
-                  type="button"
-                  class="idea-editor-image-carousel-arrow idea-editor-image-carousel-arrow-prev"
-                  [disabled]="saving || uploading"
-                  (click)="showPreviousImageSlotPage($event)"
-                  aria-label="Previous image slot"
-                  title="Previous"
-                  >
-                  <mat-icon>chevron_left</mat-icon>
-                </button>
-              }
-              <div
-                #imageSlotCarouselViewport
-                class="idea-editor-image-carousel-window"
-                (scroll)="onImageSlotCarouselScroll()"
-                >
-                <div class="idea-editor-image-slot-strip" [style.transform]="imageSlotCarouselTransform()">
-                  @for (page of imagePages; track $index) {
-                    <div class="idea-editor-image-carousel-page">
-                      @for (slotIndex of page; track slotIndex) {
-                        @let imageUrl = imageSlots[slotIndex];
-                        <article
-                          class="idea-editor-image-slot"
-                          [class.is-primary]="slotIndex === 0"
-                          [class.is-filled]="imageUrl"
-                          [class.is-uploading]="isImageSlotUploading(slotIndex)"
-                          [style.backgroundImage]="imageUrl ? 'url(' + imageUrl + ')' : 'none'"
-                          >
-                          <span class="idea-editor-image-slot-index">{{ slotIndex + 1 }}</span>
-                          @if (isImageSlotUploading(slotIndex)) {
-                            <span class="idea-editor-image-slot-upload-ring" aria-label="Uploading image">
-                              <svg viewBox="0 0 44 44" class="idea-editor-image-slot-upload-ring-svg" aria-hidden="true">
-                                <circle class="idea-editor-image-slot-upload-ring-track" cx="22" cy="22" r="17"></circle>
-                                <circle class="idea-editor-image-slot-upload-ring-progress" cx="22" cy="22" r="17"></circle>
-                              </svg>
-                            </span>
-                          } @else if (imageUrl) {
-                            <button
-                              type="button"
-                              class="idea-editor-image-slot-action idea-editor-image-slot-copy"
-                              (click)="copyImageLink(imageUrl, $event)"
-                              aria-label="Copy image link"
-                              title="Copy link"
-                              >
-                              <mat-icon>content_copy</mat-icon>
-                            </button>
-                            <button
-                              type="button"
-                              class="idea-editor-image-slot-action idea-editor-image-slot-remove"
-                              (click)="removeDraftImageSlot(slotIndex, $event)"
-                              aria-label="Remove image"
-                              title="Remove"
-                              >
-                              <mat-icon>close</mat-icon>
-                            </button>
-                          } @else {
-                            <span class="idea-editor-image-slot-add">+</span>
-                          }
-                          <input
-                            #imageSlotInput
-                            class="idea-editor-image-slot-input"
-                            type="file"
-                            accept="image/*"
-                            [disabled]="uploading || saving"
-                            (change)="uploadDraftImage($event, slotIndex)"
-                          />
-                          <button
-                            type="button"
-                            class="idea-editor-image-slot-hit"
-                            [disabled]="uploading || saving || isImageSlotUploading(slotIndex)"
-                            (click)="openDraftImageSlot(imageSlotInput, $event)"
-                            [attr.aria-label]="imageUrl ? 'Replace image slot ' + (slotIndex + 1) : 'Upload image slot ' + (slotIndex + 1)"
-                            [title]="imageUrl ? 'Replace image' : 'Upload image'"
-                          ></button>
-                        </article>
-                      }
-                    </div>
-                  }
-                </div>
-              </div>
-              @if (imagePages.length > 1 && imageSlotCarouselIndex < imagePages.length - 1) {
-                <button
-                  type="button"
-                  class="idea-editor-image-carousel-arrow idea-editor-image-carousel-arrow-next"
-                  [disabled]="saving || uploading"
-                  (click)="showNextImageSlotPage($event)"
-                  aria-label="Next image slot"
-                  title="Next"
-                  >
-                  <mat-icon>chevron_right</mat-icon>
-                </button>
-              }
-              @if (imagePages.length > 1) {
-                <div class="idea-editor-image-carousel-dots" aria-label="Image slot pages">
-                  @for (page of imagePages; track $index; let pageIndex = $index) {
-                    <button
-                      type="button"
-                      class="idea-editor-image-carousel-dot"
-                      [class.is-active]="imageSlotCarouselIndex === pageIndex"
-                      [attr.aria-current]="imageSlotCarouselIndex === pageIndex ? 'true' : null"
-                      [attr.aria-label]="'Show image slot page ' + (pageIndex + 1)"
-                      (click)="showImageSlotPage(pageIndex, $event)"
-                      ></button>
-                  }
-                </div>
-              }
-            </div>
-          </section>
+          <app-editable-image-carousel
+            [(imageUrls)]="editDraft.imageUrls"
+            [slotCount]="ideaImageSlotCount"
+            [disabled]="saving"
+            ariaLabel="Article image slots"
+          ></app-editable-image-carousel>
 
           <section class="idea-editor-html-panel">
             <div class="idea-editor-html-head">

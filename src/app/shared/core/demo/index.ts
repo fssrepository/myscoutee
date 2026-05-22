@@ -39,6 +39,7 @@ export { DemoGameService } from './services/game.service';
 export { DemoHelpCenterService } from './services/help-center.service';
 export { DemoIdeaPostsService } from './services/idea-posts.service';
 export { DemoLandingContentService } from './services/landing-content.service';
+export { DemoMediaService } from './services/media.service';
 export { DemoUserExperiencesService } from './services/user-experiences.service';
 export { DemoRatesService } from './services/rates.service';
 export { DemoUsersService } from './services/users.service';

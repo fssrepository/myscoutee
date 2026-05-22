@@ -1164,7 +1164,14 @@ const EXPLANATION_HOME_SECTIONS: HelpCenterSection[] = [
     icon: 'visibility',
     title: 'Profile and photos',
     blurb: 'Cards can contain more photos and a profile detail view.',
-    contentHtml: '<p>Tap the photo area to browse more images. Use the eye icon to open profile details.</p>'
+    contentHtml: '<p>Tap the left or right image columns to browse photos. Use the eye icon to open profile details.</p>'
+  },
+  {
+    id: 'filters',
+    icon: 'filter_alt',
+    title: 'Filters and modes',
+    blurb: 'Use the top bar to narrow who appears.',
+    contentHtml: '<p>The filter button opens profile filters. The number shows how many filter groups are active.</p><p><strong>Preferences</strong>: normal preference-based cards. <strong>Friends in Common</strong>: people connected through someone or an event. <strong>Inside Network</strong>: pairs from your existing network. <strong>Outside Network</strong>: pairs outside it.</p>'
   },
   {
     id: 'history',
@@ -1188,7 +1195,14 @@ const EXPLANATION_HOME_SECTIONS_HU: HelpCenterSection[] = [
     icon: 'visibility',
     title: 'Profil és képek',
     blurb: 'A kártya több képet és részletes profilt is rejthet.',
-    contentHtml: '<p>Tapints a képre a további fotókhoz, az eye ikon pedig megnyitja a profil részleteit.</p>'
+    contentHtml: '<p>Tapints a kép bal vagy jobb oszlopára a fotók lapozásához. A szem ikon megnyitja a profil részleteit.</p>'
+  },
+  {
+    id: 'filters',
+    icon: 'filter_alt',
+    title: 'Szűrők és módok',
+    blurb: 'A felső sávval szűkítheted, kik jelenjenek meg.',
+    contentHtml: '<p>A tölcsér ikon nyitja a profilszűrőket. A szám azt mutatja, hány szűrőcsoport aktív.</p><p><strong>Preferenciák</strong>: normál, saját beállításaid szerinti kártyák. <strong>Közös ismerősök</strong>: valakin vagy eseményen keresztül kapcsolódó profilok. <strong>Hálózaton belül</strong>: párok a meglévő kapcsolati körből. <strong>Hálózaton kívül</strong>: párok azon kívül.</p>'
   },
   {
     id: 'history',

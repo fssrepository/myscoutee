@@ -615,7 +615,7 @@ export class HomeComponent implements OnDestroy {
   protected get gameRatingBarConfig(): RatingStarBarConfig {
     return {
       scale: this.ratingScale,
-      label: 'Affinity (1-10)',
+      label: 'Affinity',
       actionLabel: 'Go',
       presentation: 'fullscreen',
       blinkOnSelect: false,

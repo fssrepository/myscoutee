@@ -1,0 +1,528 @@
+:host {
+  display: block;
+  min-width: 0;
+  box-sizing: border-box;
+  border: 1px solid rgba(23, 33, 54, 0.12);
+  border-radius: 12px;
+  background: #fff;
+  padding: 0.6rem;
+}
+
+:host(.editable-image-carousel-host--compact) {
+  height: 148px;
+  min-height: 148px;
+  background: rgba(255, 255, 255, 0.72);
+  padding: 0.48rem;
+}
+
+.editable-image-carousel {
+  --editable-image-slot-gap: 0.5rem;
+  --editable-image-slots-per-page: 4;
+  --editable-image-carousel-footer-half: 0.67rem;
+  --editable-image-carousel-arrow-half: 17px;
+  position: relative;
+  min-width: 0;
+  padding: 0 0.74rem 1.34rem;
+  box-sizing: border-box;
+}
+
+.editable-image-carousel__window {
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  border-radius: 12px;
+  isolation: isolate;
+  padding: 0.16rem 0;
+  margin: -0.16rem 0;
+  clip-path: inset(-0.16rem 0 round 12px);
+}
+
+.editable-image-carousel__strip {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  transform: translate3d(0, 0, 0);
+  transition: transform 0.32s cubic-bezier(0.22, 0.61, 0.36, 1);
+  will-change: transform;
+}
+
+.editable-image-carousel__page {
+  flex: 0 0 100%;
+  max-width: 100%;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(var(--editable-image-slots-per-page), minmax(0, 1fr));
+  gap: var(--editable-image-slot-gap);
+  padding: 0 0.16rem;
+  box-sizing: border-box;
+}
+
+.editable-image-carousel__arrow {
+  position: absolute;
+  top: calc(50% - var(--editable-image-carousel-footer-half) - var(--editable-image-carousel-arrow-half));
+  z-index: 5;
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(47, 86, 139, 0.14);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.84);
+  color: #2f5f98;
+  backdrop-filter: blur(12px) saturate(1.12);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  cursor: pointer;
+  box-shadow: 0 10px 24px rgba(20, 40, 68, 0.16);
+}
+
+.editable-image-carousel__arrow:disabled {
+  opacity: 0.58;
+  cursor: default;
+}
+
+.editable-image-carousel__arrow--prev {
+  left: -0.46rem;
+}
+
+.editable-image-carousel__arrow--next {
+  right: -0.46rem;
+}
+
+.editable-image-carousel__arrow .mat-icon {
+  width: 20px;
+  height: 20px;
+  font-size: 20px;
+  line-height: 20px;
+}
+
+.editable-image-carousel__dots {
+  position: absolute;
+  left: 50%;
+  bottom: 0.12rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.38rem;
+  transform: translateX(-50%);
+}
+
+.editable-image-carousel__dot {
+  width: 9px;
+  height: 9px;
+  border: 1px solid rgba(56, 89, 140, 0.22);
+  border-radius: 999px;
+  padding: 0;
+  background: #d8e2f2;
+  cursor: pointer;
+  transition:
+    width 0.18s ease,
+    background-color 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.editable-image-carousel__dot.is-active {
+  width: 26px;
+  border-color: transparent;
+  background: linear-gradient(90deg, #4f74e8 0%, #8a58ec 50%, #f1569a 100%);
+  box-shadow: 0 6px 12px rgba(80, 70, 210, 0.22);
+}
+
+.editable-image-carousel__slot {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+  border: 1px solid rgba(47, 86, 139, 0.14);
+  border-radius: 10px;
+  background: #fbfdff;
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  aspect-ratio: 16 / 9;
+  min-height: 128px;
+  box-shadow: 0 8px 18px rgba(24, 45, 73, 0.06);
+}
+
+.editable-image-carousel__slot.is-primary {
+  border-color: rgba(204, 130, 27, 0.9);
+  box-shadow:
+    inset 0 0 0 1px rgba(226, 158, 41, 0.46),
+    0 8px 18px rgba(154, 104, 27, 0.12);
+}
+
+.editable-image-carousel__slot.is-filled {
+  background-color: #f8fbff;
+  background-position: center top;
+  background-size: contain;
+}
+
+.editable-image-carousel__slot.is-uploading {
+  cursor: progress;
+}
+
+.editable-image-carousel__slot:not(.is-filled) {
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.72), rgba(228, 238, 247, 0.88)),
+    repeating-linear-gradient(45deg, rgba(47, 86, 139, 0.08) 0 9px, transparent 9px 18px);
+}
+
+.editable-image-carousel__slot-hit {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.editable-image-carousel__slot-hit:disabled {
+  cursor: default;
+}
+
+.editable-image-carousel__slot.is-uploading .editable-image-carousel__slot-hit {
+  pointer-events: none;
+}
+
+.editable-image-carousel__slot-index,
+.editable-image-carousel__slot-add,
+.editable-image-carousel__slot-action,
+.editable-image-carousel__upload-ring {
+  position: absolute;
+  z-index: 2;
+}
+
+.editable-image-carousel__slot-index {
+  display: grid;
+  place-items: center;
+  bottom: 0.28rem;
+  left: 0.32rem;
+  width: 1.08rem;
+  height: 1.08rem;
+  box-sizing: border-box;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  background: rgba(10, 29, 55, 0.82);
+  color: #fff;
+  padding: 0;
+  font-size: 0.62rem;
+  font-weight: 900;
+  line-height: 1;
+  text-shadow: 0 1px 2px rgba(4, 15, 31, 0.7);
+  box-shadow: 0 4px 12px rgba(7, 20, 38, 0.2);
+  backdrop-filter: blur(6px);
+}
+
+.editable-image-carousel__slot-add {
+  top: 50%;
+  left: 50%;
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(47, 86, 139, 0.22);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.86);
+  color: rgba(37, 62, 96, 0.7);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  font-size: 1.28rem;
+  font-weight: 800;
+  line-height: 1;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  box-shadow: 0 8px 16px rgba(24, 45, 73, 0.08);
+}
+
+.editable-image-carousel__slot-action {
+  position: absolute;
+  top: 0.24rem;
+  width: 22px;
+  height: 22px;
+  border: 1px solid rgba(42, 67, 101, 0.22);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.94);
+  color: #2c5d9e;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  cursor: pointer;
+  box-shadow: 0 8px 18px rgba(14, 30, 52, 0.16);
+}
+
+.editable-image-carousel__slot-action--copy {
+  left: 0.24rem;
+}
+
+.editable-image-carousel__slot-action--remove {
+  right: 0.24rem;
+  color: #9e3d4d;
+}
+
+.editable-image-carousel__slot-action .mat-icon {
+  width: 13px;
+  height: 13px;
+  font-size: 13px;
+  line-height: 13px;
+}
+
+.editable-image-carousel__upload-ring {
+  z-index: 4;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(244, 248, 253, 0.62);
+  backdrop-filter: blur(1px);
+}
+
+.editable-image-carousel__upload-ring-svg {
+  width: 46px;
+  height: 46px;
+  filter: drop-shadow(0 8px 18px rgba(31, 61, 96, 0.18));
+  animation: editable-image-upload-ring-spin 1.05s linear infinite;
+}
+
+.editable-image-carousel__upload-ring-track,
+.editable-image-carousel__upload-ring-progress {
+  fill: none;
+  stroke-width: 4;
+}
+
+.editable-image-carousel__upload-ring-track {
+  stroke: rgba(47, 86, 139, 0.16);
+}
+
+.editable-image-carousel__upload-ring-progress {
+  stroke: #2f75c2;
+  stroke-linecap: round;
+  stroke-dasharray: 70 38;
+}
+
+.editable-image-carousel__slot-input {
+  display: none;
+}
+
+@keyframes editable-image-upload-ring-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+:host(.editable-image-carousel-host--compact) .editable-image-carousel {
+  --editable-image-slot-gap: 0.48rem;
+  --editable-image-carousel-footer-half: 0.6rem;
+  --editable-image-carousel-arrow-half: 16px;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+}
+
+:host(.editable-image-carousel-host--compact) .editable-image-carousel__window {
+  border-radius: 10px;
+  padding: 0;
+  margin: 0;
+  clip-path: none;
+}
+
+:host(.editable-image-carousel-host--compact) .editable-image-carousel__strip {
+  transition-duration: 0.22s;
+}
+
+:host(.editable-image-carousel-host--compact) .editable-image-carousel__page {
+  padding: 0 0.14rem;
+}
+
+:host(.editable-image-carousel-host--compact) .editable-image-carousel__slot {
+  height: 112px;
+  min-height: 0;
+  aspect-ratio: auto;
+  background-size: cover;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+:host(.editable-image-carousel-host--compact) .editable-image-carousel__slot:not(.is-filled) {
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.72), rgba(228, 238, 247, 0.88)),
+    radial-gradient(circle at 50% 44%, rgba(97, 131, 171, 0.12), transparent 34%);
+}
+
+:host(.editable-image-carousel-host--compact) .editable-image-carousel__slot-index {
+  left: 0.24rem;
+  bottom: 0.24rem;
+  min-width: 18px;
+  width: auto;
+  height: 18px;
+  padding: 0 0.24rem;
+  font-size: 0.6rem;
+}
+
+:host(.editable-image-carousel-host--compact) .editable-image-carousel__slot-action {
+  top: 0.22rem;
+  width: 26px;
+  height: 26px;
+}
+
+:host(.editable-image-carousel-host--compact) .editable-image-carousel__slot-action--copy {
+  left: 0.22rem;
+}
+
+:host(.editable-image-carousel-host--compact) .editable-image-carousel__slot-action--remove {
+  right: 0.22rem;
+}
+
+:host(.editable-image-carousel-host--compact) .editable-image-carousel__upload-ring {
+  background: rgba(255, 255, 255, 0.6);
+}
+
+:host(.editable-image-carousel-host--compact) .editable-image-carousel__upload-ring-svg {
+  width: 44px;
+  height: 44px;
+}
+
+:host(.editable-image-carousel-host--compact) .editable-image-carousel__upload-ring-progress {
+  stroke-dasharray: 34 74;
+}
+
+:host(.editable-image-carousel-host--compact) .editable-image-carousel__arrow {
+  width: 32px;
+  height: 32px;
+  background: #fff;
+  top: calc(50% - var(--editable-image-carousel-footer-half) - var(--editable-image-carousel-arrow-half));
+}
+
+:host(.editable-image-carousel-host--compact) .editable-image-carousel__arrow--prev {
+  left: -0.42rem;
+}
+
+:host(.editable-image-carousel-host--compact) .editable-image-carousel__arrow--next {
+  right: -0.42rem;
+}
+
+:host(.editable-image-carousel-host--compact) .editable-image-carousel__dots {
+  bottom: -0.18rem;
+  gap: 0.18rem;
+}
+
+:host(.editable-image-carousel-host--compact) .editable-image-carousel__dot {
+  width: 8px;
+  height: 8px;
+}
+
+:host(.editable-image-carousel-host--compact) .editable-image-carousel__dot.is-active {
+  width: 24px;
+}
+
+@media (max-width: 980px) {
+  .editable-image-carousel {
+    --editable-image-slots-per-page: 3;
+  }
+}
+
+@media (max-width: 720px) {
+  .editable-image-carousel {
+    --editable-image-slots-per-page: 1;
+    height: 240px;
+    min-height: 240px;
+    padding: 0 0.22rem 1.82rem;
+    overflow: visible;
+  }
+
+  .editable-image-carousel__window {
+    height: 208px;
+    min-height: 208px;
+    padding: 0;
+    margin: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    touch-action: pan-x pan-y;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+    clip-path: inset(0 round 12px);
+  }
+
+  .editable-image-carousel__window::-webkit-scrollbar {
+    display: none;
+  }
+
+  .editable-image-carousel__strip,
+  .editable-image-carousel__page {
+    height: 100%;
+  }
+
+  .editable-image-carousel__strip {
+    transition: none;
+    transform: none;
+  }
+
+  .editable-image-carousel__page {
+    align-items: center;
+    padding: 0 1px;
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+    contain: layout paint style;
+  }
+
+  .editable-image-carousel__slot-hit {
+    touch-action: pan-x pan-y;
+  }
+
+  .editable-image-carousel__arrow {
+    top: 104px;
+    background: rgba(255, 255, 255, 0.86);
+    transform: translateY(-50%);
+  }
+
+  .editable-image-carousel__arrow--prev {
+    left: -0.72rem;
+  }
+
+  .editable-image-carousel__arrow--next {
+    right: -0.72rem;
+  }
+
+  .editable-image-carousel__slot {
+    height: 200px;
+    min-height: 0;
+    aspect-ratio: auto;
+  }
+
+  :host(.editable-image-carousel-host--compact) .editable-image-carousel {
+    height: 100%;
+    min-height: 0;
+    padding: 0;
+  }
+
+  :host(.editable-image-carousel-host--compact) {
+    height: 200px;
+    min-height: 200px;
+    padding: 0.42rem;
+  }
+
+  :host(.editable-image-carousel-host--compact) .editable-image-carousel__window {
+    height: 168px;
+    min-height: 168px;
+  }
+
+  :host(.editable-image-carousel-host--compact) .editable-image-carousel__slot {
+    height: 160px;
+  }
+
+  :host(.editable-image-carousel-host--compact) .editable-image-carousel__arrow {
+    top: 78px;
+  }
+
+  :host(.editable-image-carousel-host--compact) .editable-image-carousel__arrow--prev {
+    left: -0.68rem;
+  }
+
+  :host(.editable-image-carousel-host--compact) .editable-image-carousel__arrow--next {
+    right: -0.68rem;
+  }
+}

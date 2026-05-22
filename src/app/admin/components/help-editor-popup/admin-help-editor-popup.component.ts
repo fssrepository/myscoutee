@@ -15,6 +15,7 @@ import type {
   HelpCenterState
 } from '../../../shared/core/base/models';
 import { RouteDelayService } from '../../../shared/core/base/services/route-delay.service';
+import { EditableImageCarouselComponent } from '../../../shared/ui/components/editable-image-carousel';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
 import { AdminService } from '../../admin.service';
 
@@ -29,6 +30,7 @@ interface HelpIconOption {
 
 interface HelpEditorSectionDraft {
   localId: string;
+  id: string;
   icon: string;
   title: string;
   blurb: string;
@@ -56,14 +58,15 @@ interface HelpEditorRevisionRow {
 @Component({
   selector: 'app-admin-help-editor-popup',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatIconModule],
+  imports: [CommonModule, FormsModule, MatIconModule, EditableImageCarouselComponent],
   templateUrl: './admin-help-editor-popup.component.html',
   styleUrl: './admin-help-editor-popup.component.scss'
 })
 export class AdminHelpEditorPopupComponent implements OnDestroy {
   private static readonly ACTION_PENDING_WINDOW_MS = 1500;
   private static readonly LOAD_DEMO_DELAY_MS = 1500;
-  private static readonly LOAD_PROGRESS_WINDOW_MS = 3000;
+  private static readonly LOAD_PROGRESS_WINDOW_MS = 1500;
+  private static readonly EXPLANATION_IMAGE_SLOT_COUNT = 8;
   private static readonly VOID_HTML_TAGS = new Set([
     'area',
     'base',
@@ -102,15 +105,17 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
   protected iconPickerSectionId = '';
   protected documentMenuOpen = false;
   protected languageMenuOpen = false;
+  protected contextPickerOpen = false;
   protected colorPickerOpen = false;
   protected iconPickerSearch = '';
   protected iconPickerGroup: HelpIconOption['group'] = 'Common';
   protected explanationMenuOpen = false;
   protected selectedExplanationContextKey = 'home.game';
+  protected readonly explanationImageSlotCount = AdminHelpEditorPopupComponent.EXPLANATION_IMAGE_SLOT_COUNT;
   private stateLoadedForPopup = false;
-  protected readonly actionRingPerimeter = 100;
   protected readonly loadingRingPerimeter = 100;
   protected readonly loadingProgress = signal(0);
+  protected readonly actionRingPerimeter = 100;
   protected readonly defaultHelpDescription = APP_STATIC_DATA.defaultHelpCenterDescription;
   protected readonly defaultPrivacyDescription = APP_STATIC_DATA.defaultPrivacyCenterDescription;
   protected readonly headerColorOptions: Array<{ id: HelpCenterHeaderColor; label: string }> = [
@@ -199,8 +204,9 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
   protected visibleIconOptions: HelpIconOption[] = [];
   protected iconPickerActiveLabel = 'Common icons';
   protected iconPickerActiveCount = 0;
-  private loadingProgressTimer: ReturnType<typeof setInterval> | null = null;
+  private loadingProgressTimer: ReturnType<typeof setTimeout> | null = null;
   private loadingProgressStartedAtMs = 0;
+  private loadingCompletionTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor() {
     effect(() => {
@@ -208,9 +214,12 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
         this.stateLoadedForPopup = false;
         this.editing = false;
         this.draft = null;
+        this.clearLoadingCompletionTimer();
         this.clearLoadingProgress();
+        this.loading.set(false);
         this.closeDocumentMenu();
         this.closeLanguageMenu();
+        this.closeContextPicker();
         this.closeIconPicker();
         this.closeColorPicker();
         return;
@@ -223,18 +232,20 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.clearLoadingCompletionTimer();
     this.clearLoadingProgress();
   }
 
   @HostListener('window:keydown.escape', ['$event'])
   protected onEscape(event: Event): void {
-    if (!this.iconPickerSectionId && !this.documentMenuOpen && !this.languageMenuOpen && !this.colorPickerOpen) {
+    if (!this.iconPickerSectionId && !this.documentMenuOpen && !this.languageMenuOpen && !this.contextPickerOpen && !this.colorPickerOpen) {
       return;
     }
     event.preventDefault();
     event.stopPropagation();
     this.closeDocumentMenu();
     this.closeLanguageMenu();
+    this.closeContextPicker();
     this.closeIconPicker();
     this.closeColorPicker();
   }
@@ -243,9 +254,11 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
     if (this.loading()) {
       return;
     }
+    this.clearLoadingCompletionTimer();
+    this.clearLoadingProgress();
     this.loading.set(true);
-    this.error = '';
     this.beginLoadingProgress();
+    this.error = '';
     try {
       await Promise.all([
         this.helpCenter.loadAdminState(this.actorUserId(), this.documentKind, this.selectedContentLang, this.selectedExplanationContextKey),
@@ -260,8 +273,8 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
     } catch {
       this.error = this.loadErrorLabel();
     } finally {
-      this.loading.set(false);
       this.endLoadingProgress();
+      this.completeLoadingAfterCheck();
     }
   }
 
@@ -269,6 +282,7 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
     event?.stopPropagation();
     this.closeDocumentMenu();
     this.closeLanguageMenu();
+    this.closeContextPicker();
     this.explanationMenuOpen = false;
     if (this.documentKind === kind || this.loading() || this.isAnyActionPending()) {
       return;
@@ -304,8 +318,12 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
   }
 
   protected explanationSurfaceLabel(contextKey: string | null | undefined): string {
+    return this.explanationSurface(contextKey)?.label ?? 'Home cards';
+  }
+
+  protected explanationSurface(contextKey: string | null | undefined): ExplainableSurface | null {
     const normalized = this.normalizeExplanationContextKey(contextKey);
-    return this.explainableSurfaces().find(surface => surface.key === normalized)?.label ?? 'Home cards';
+    return this.explainableSurfaces().find(surface => surface.key === normalized) ?? null;
   }
 
   protected explanationMenuItemLabel(surface: ExplainableSurface): string {
@@ -340,6 +358,32 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
     }
   }
 
+  protected openContextPicker(event?: Event): void {
+    event?.stopPropagation();
+    if (this.loading() || this.saving || this.isAnyActionPending()) {
+      return;
+    }
+    this.closeDocumentMenu();
+    this.closeLanguageMenu();
+    this.closeIconPicker();
+    this.closeColorPicker();
+    this.contextPickerOpen = true;
+  }
+
+  protected closeContextPicker(event?: Event): void {
+    event?.stopPropagation();
+    this.contextPickerOpen = false;
+  }
+
+  protected selectContextFromPicker(surface: ExplainableSurface, event?: Event): void {
+    event?.stopPropagation();
+    if (this.saving || !surface.enabled) {
+      return;
+    }
+    this.selectDraftContext(surface.key);
+    this.closeContextPicker();
+  }
+
   protected selectedContentLanguageLabel(): string {
     return this.contentLanguages().find(language => language.lang === this.selectedContentLang)?.label ?? 'English';
   }
@@ -356,6 +400,7 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
     }
     this.closeDocumentMenu();
     this.closeIconPicker();
+    this.closeContextPicker();
     this.closeColorPicker();
     this.languageMenuOpen = !this.languageMenuOpen;
   }
@@ -385,16 +430,13 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
     }
   }
 
-  protected loadingRingDashOffset(): number {
-    return this.loadingRingPerimeter * (1 - Math.min(1, Math.max(0, this.loadingProgress())));
-  }
-
   protected close(): void {
     this.editing = false;
     this.draft = null;
     this.draftAccordionOpen = true;
     this.closeDocumentMenu();
     this.closeLanguageMenu();
+    this.closeContextPicker();
     this.closeIconPicker();
     this.closeColorPicker();
     this.admin.closePopup();
@@ -406,9 +448,11 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
       return;
     }
     this.closeLanguageMenu();
+    this.closeContextPicker();
     this.documentMenuOpen = !this.documentMenuOpen;
     this.explanationMenuOpen = false;
     this.closeIconPicker();
+    this.closeContextPicker();
     this.closeColorPicker();
   }
 
@@ -569,6 +613,7 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
     this.error = '';
     this.closeIconPicker();
     this.closeColorPicker();
+    this.closeContextPicker();
   }
 
   protected toggleDraftRevision(event?: Event): void {
@@ -583,6 +628,7 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
     }
     const next: HelpEditorSectionDraft = {
       localId: this.newLocalId(),
+      id: '',
       icon: this.defaultSectionIcon(),
       title: this.defaultContentSectionTitle(),
       blurb: '',
@@ -611,7 +657,8 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
 
   protected toggleDraftSection(section: HelpEditorSectionDraft, event?: Event): void {
     event?.stopPropagation();
-    this.openDraftSectionId = this.openDraftSectionId === section.localId ? '' : section.localId;
+    const nextOpenSectionId = this.openDraftSectionId === section.localId ? '' : section.localId;
+    this.openDraftSectionId = nextOpenSectionId;
   }
 
   protected toggleDraftSectionMode(section: HelpEditorSectionDraft, event?: Event): void {
@@ -625,9 +672,10 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
 
   protected formatPastedSectionHtml(section: HelpEditorSectionDraft, event: ClipboardEvent): void {
     event.stopPropagation();
-    const pasted = event.clipboardData?.getData('text/html')
-      || event.clipboardData?.getData('text/plain')
-      || '';
+    const pasted = this.htmlFromClipboardPayload(
+      event.clipboardData?.getData('text/html') ?? '',
+      event.clipboardData?.getData('text/plain') ?? ''
+    );
     if (!pasted.trim()) {
       return;
     }
@@ -655,6 +703,8 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
     this.iconPickerSectionId = section.localId;
     this.iconPickerGroup = matchingOption?.group ?? 'Common';
     this.iconPickerSearch = '';
+    this.closeContextPicker();
+    this.closeColorPicker();
     this.refreshIconPickerOptions();
   }
 
@@ -748,6 +798,7 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
       this.draft = null;
       this.draftAccordionOpen = true;
       this.closeIconPicker();
+      this.closeContextPicker();
       this.selectNewestRevision(this.revisions(), this.activeRevision());
     } catch {
       this.error = this.saveErrorLabel();
@@ -788,7 +839,7 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
         this.saving = true;
         this.error = '';
         try {
-          await this.helpCenter.deleteRevision(revision.id, this.actorUserId(), this.documentKind);
+          await this.withMinimumActionTime(this.helpCenter.deleteRevision(revision.id, this.actorUserId(), this.documentKind));
           this.selectInitialRevision(this.revisions(), this.activeRevision());
         } catch {
           this.error = this.deleteErrorLabel();
@@ -824,6 +875,10 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
 
   protected isAnyActionPending(): boolean {
     return this.saving || Boolean(this.activatingRevisionId);
+  }
+
+  protected loadingRingDashOffset(): number {
+    return this.loadingRingPerimeter * (1 - this.loadingProgress());
   }
 
   protected fullDate(value: string): string {
@@ -988,6 +1043,7 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
     event?.stopPropagation();
     this.colorPickerOpen = true;
     this.closeIconPicker();
+    this.closeContextPicker();
   }
 
   protected closeColorPicker(event?: Event): void {
@@ -1041,6 +1097,7 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
     this.openDraftSectionId = draft.sections[0]?.localId ?? '';
     this.closeIconPicker();
     this.closeColorPicker();
+    this.closeContextPicker();
     this.editing = true;
   }
 
@@ -1058,6 +1115,7 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
       headerColor: this.normalizeHeaderColor(revision.headerColor),
       sections: revision.sections.map(section => ({
         localId: this.newLocalId(),
+        id: section.id?.trim() ?? '',
         icon: section.icon || this.defaultSectionIcon(),
         title: section.title?.trim() || this.defaultUntitledContentSectionTitle(),
         blurb: section.blurb,
@@ -1079,6 +1137,7 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
       sections: [
         {
           localId: this.newLocalId(),
+          id: '',
           icon: this.defaultSectionIcon(),
           title: '',
           blurb: '',
@@ -1095,7 +1154,7 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
     return drafts
       .map((draft, index) => {
         const title = draft.title.trim() || this.defaultNumberedContentSectionTitle(index + 1);
-        const baseId = this.slugify(title) || `section-${index + 1}`;
+        const baseId = this.slugify(draft.id) || this.slugify(title) || `section-${index + 1}`;
         let id = baseId;
         let duplicateIndex = 2;
         while (seenIds.has(id)) {
@@ -1226,6 +1285,29 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
     ].join('\n');
   }
 
+  private htmlFromClipboardPayload(html: string, text: string): string {
+    const normalizedHtml = `${html ?? ''}`.trim();
+    if (normalizedHtml) {
+      return normalizedHtml;
+    }
+    const normalizedText = `${text ?? ''}`.trim();
+    if (this.isEmbeddableImageUrl(normalizedText)) {
+      return `<img src="${this.escapeHtmlAttribute(normalizedText)}" alt="">`;
+    }
+    return text;
+  }
+
+  private isEmbeddableImageUrl(value: string): boolean {
+    const normalized = `${value ?? ''}`.trim();
+    return /^data:image\//i.test(normalized)
+      || /^blob:https?:\/\//i.test(normalized)
+      || /^blob:/i.test(normalized)
+      || /^indexeddb:/i.test(normalized)
+      || /^\/(?:api\/)?media\/public\?[^\s<>"']+$/i.test(normalized)
+      || /^https?:\/\/[^\s<>"']+\/(?:api\/)?media\/public\?[^\s<>"']+$/i.test(normalized)
+      || /^https?:\/\/[^\s<>"']+\.(?:png|jpe?g|gif|webp|avif|svg)(?:\?[^\s<>"']*)?$/i.test(normalized);
+  }
+
   private normalizeHeaderColor(value: string | null | undefined): HelpCenterHeaderColor {
     switch (`${value ?? ''}`.trim()) {
       case 'blue':
@@ -1337,20 +1419,26 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
     }
   }
 
+  private completeLoadingAfterCheck(): void {
+    this.clearLoadingCompletionTimer();
+    this.loadingCompletionTimer = setTimeout(() => {
+      this.loadingCompletionTimer = null;
+      this.loading.set(false);
+    }, 0);
+  }
+
   private beginLoadingProgress(): void {
-    this.clearLoadingProgress();
     this.loadingProgressStartedAtMs = this.nowMs();
-    this.loadingProgressTimer = setInterval(() => this.updateLoadingProgress(), 100);
+    this.loadingProgress.set(0);
     this.updateLoadingProgress();
   }
 
   private updateLoadingProgress(): void {
-    if (!this.loadingProgressStartedAtMs) {
-      this.loadingProgress.set(0);
-      return;
-    }
-    const elapsedMs = Math.max(0, this.nowMs() - this.loadingProgressStartedAtMs);
-    this.loadingProgress.set(Math.min(0.96, elapsedMs / AdminHelpEditorPopupComponent.LOAD_PROGRESS_WINDOW_MS));
+    const elapsed = this.nowMs() - this.loadingProgressStartedAtMs;
+    const progress = Math.min(0.92, elapsed / AdminHelpEditorPopupComponent.LOAD_PROGRESS_WINDOW_MS);
+    this.loadingProgress.set(progress);
+    this.clearLoadingProgressTimer();
+    this.loadingProgressTimer = setTimeout(() => this.updateLoadingProgress(), 80);
   }
 
   private endLoadingProgress(): void {
@@ -1368,19 +1456,27 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
     if (!this.loadingProgressTimer) {
       return;
     }
-    clearInterval(this.loadingProgressTimer);
+    clearTimeout(this.loadingProgressTimer);
     this.loadingProgressTimer = null;
   }
 
-  private nowMs(): number {
-    return typeof performance !== 'undefined' ? performance.now() : Date.now();
+  private clearLoadingCompletionTimer(): void {
+    if (!this.loadingCompletionTimer) {
+      return;
+    }
+    clearTimeout(this.loadingCompletionTimer);
+    this.loadingCompletionTimer = null;
   }
 
   private async withMinimumActionTime<T>(action: Promise<T>): Promise<T> {
     const [result] = await Promise.all([
       action,
-      new Promise(resolve => setTimeout(resolve, AdminHelpEditorPopupComponent.ACTION_PENDING_WINDOW_MS))
+      this.routeDelay.waitForDelay(AdminHelpEditorPopupComponent.ACTION_PENDING_WINDOW_MS)
     ]);
     return result;
+  }
+
+  private nowMs(): number {
+    return typeof performance !== 'undefined' && typeof performance.now === 'function' ? performance.now() : Date.now();
   }
 }

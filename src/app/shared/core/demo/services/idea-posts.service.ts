@@ -179,17 +179,6 @@ export class DemoIdeaPostsService {
     return this.clonePost(restored);
   }
 
-  async uploadImage(ownerId: string, entityId: string, file: File): Promise<{ uploaded: boolean; imageUrl: string | null }> {
-    const imageUrl = this.createDemoObjectUrl(file) ?? await this.readImageDataUrl(file);
-    if (imageUrl && !imageUrl.startsWith('data:')) {
-      await this.persistDemoImageObject(ownerId, entityId, file, imageUrl);
-    }
-    return {
-      uploaded: Boolean(imageUrl),
-      imageUrl
-    };
-  }
-
   private ensureSeeded(): boolean {
     const table = this.table();
     const defaultPosts = this.defaultPosts();
@@ -616,47 +605,6 @@ export class DemoIdeaPostsService {
   private sortValue(post: Pick<IdeaPost, 'submittedAtIso' | 'updatedAtIso' | 'createdAtIso'>): number {
     const parsed = Date.parse(post.submittedAtIso || post.updatedAtIso || post.createdAtIso || '');
     return Number.isFinite(parsed) ? parsed : 0;
-  }
-
-  private readImageDataUrl(file: File): Promise<string | null> {
-    if (!file || !file.type.toLowerCase().startsWith('image/')) {
-      return Promise.resolve(null);
-    }
-    return new Promise(resolve => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : null);
-      reader.onerror = () => resolve(null);
-      reader.readAsDataURL(file);
-    });
-  }
-
-  private createDemoObjectUrl(file: File): string | null {
-    if (!file || !file.type.toLowerCase().startsWith('image/') || typeof URL === 'undefined' || !URL.createObjectURL) {
-      return null;
-    }
-    try {
-      return URL.createObjectURL(file);
-    } catch {
-      return null;
-    }
-  }
-
-  private async persistDemoImageObject(ownerId: string, entityId: string, file: File, imageUrl: string): Promise<void> {
-    try {
-      await this.memoryDb.writeIndexedDbTableEntry(`ideaImage:${this.newId('media')}`, {
-        scope: 'idea',
-        ownerId: ownerId.trim() || 'admin',
-        entityId: entityId.trim() || 'draft-idea',
-        fileName: file.name,
-        contentType: file.type,
-        size: file.size,
-        imageUrl,
-        blob: file,
-        createdAtIso: new Date().toISOString()
-      });
-    } catch {
-      // The object URL is still usable in the current demo session.
-    }
   }
 
   private newId(prefix: string): string {

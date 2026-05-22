@@ -67,10 +67,6 @@ export class IdeaPostsService extends BaseRouteModeService {
     return { ...post, imageUrls: [...post.imageUrls] };
   }
 
-  async uploadImage(ownerId: string, entityId: string, file: File): Promise<{ uploaded: boolean; imageUrl: string | null }> {
-    return this.ideaService().uploadImage(ownerId, entityId, file);
-  }
-
   publishedIdeaInfoCards(): InfoCardData<IdeaArticleDetail>[] {
     return this.postsRef().map(post => this.entryIdeaInfoCard(post));
   }

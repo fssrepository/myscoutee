@@ -2,61 +2,110 @@
   <section class="explanation-popup" role="dialog" aria-modal="true" [attr.aria-label]="revision.title">
     <div class="explanation-popup__backdrop" (click)="close($event)"></div>
     <article class="explanation-popup__panel" (click)="$event.stopPropagation()">
-      <button type="button" class="explanation-popup__close" (click)="close($event)" aria-label="Close explanation">
-        <mat-icon>close</mat-icon>
-      </button>
-
       <header class="explanation-popup__header">
-        <div class="explanation-popup__visual" aria-hidden="true">
-          <span class="explanation-popup__mini-card is-front">
-            <span></span>
-            <span></span>
-            <span></span>
-          </span>
-          <span class="explanation-popup__mini-card is-back">
-            <span></span>
-            <span></span>
-          </span>
-          <span class="explanation-popup__spark">
-            <mat-icon>tips_and_updates</mat-icon>
-          </span>
-        </div>
         <div class="explanation-popup__headline">
-          <span class="explanation-popup__eyebrow">{{ 'quick.guide' | i18n }}</span>
-          <h2 data-i18n-ignore>{{ revision.title }}</h2>
-          @if (revision.summary) {
-            <p data-i18n-ignore>{{ revision.summary }}</p>
-          }
+          <div class="explanation-popup__title-row">
+            <h2 data-i18n-ignore>{{ revision.title }}</h2>
+            <button type="button" class="explanation-popup__primary explanation-popup__header-action" (click)="close($event)">
+              <span>{{ 'got.it' | i18n }}</span>
+              <mat-icon>check</mat-icon>
+            </button>
+          </div>
         </div>
       </header>
 
-      @if (revision.description) {
-        <p class="explanation-popup__description" data-i18n-ignore>{{ revision.description }}</p>
-      }
+      <div class="explanation-popup__body">
+        <div class="explanation-popup__grid">
+          @for (section of revision.sections; track section.id) {
+            <section class="explanation-popup__item">
+              <div class="explanation-popup__item-copy">
+                <h3 data-i18n-ignore>{{ section.title }}</h3>
+                @if (section.blurb) {
+                  <p data-i18n-ignore>{{ section.blurb }}</p>
+                }
+                <div class="explanation-popup__html" data-i18n-ignore [innerHTML]="section.contentHtml"></div>
+                <div class="explanation-popup__item-visual" aria-hidden="true">
+                  @switch (section.id) {
+                    @case ('affinity') {
+                      <span class="explanation-popup__visual-slider">
+                        <mat-icon>tune</mat-icon>
+                        <span class="explanation-popup__rail">
+                          <span></span>
+                        </span>
+                        <span class="explanation-popup__value-dot">7</span>
+                      </span>
+                      <span class="explanation-popup__visual-go">
+                        <span>{{ 'go' | i18n }}</span>
+                        <mat-icon>arrow_forward</mat-icon>
+                      </span>
+                    }
+                    @case ('profile') {
+                      <span class="explanation-popup__visual-photo">
+                        <span class="explanation-popup__photo-surface">
+                          <span class="explanation-popup__photo-indicators">
+                            <span></span>
+                            <span class="is-active"></span>
+                            <span></span>
+                            <span></span>
+                          </span>
+                          <span class="explanation-popup__photo-columns">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                          </span>
+                        </span>
+                        <mat-icon class="explanation-popup__photo-tap">touch_app</mat-icon>
+                        <mat-icon class="explanation-popup__photo-eye">visibility</mat-icon>
+                      </span>
+                    }
+                    @case ('history') {
+                      <span class="explanation-popup__visual-history">
+                        <span class="explanation-popup__history-button">
+                          <mat-icon>history</mat-icon>
+                          <span class="explanation-popup__history-badge">3</span>
+                        </span>
+                        <span class="explanation-popup__history-connector"></span>
+                        <span class="explanation-popup__history-edit-button">
+                          <mat-icon>star</mat-icon>
+                        </span>
+                      </span>
+                    }
+                    @case ('filters') {
+                      <span class="explanation-popup__visual-filters">
+                        <span class="explanation-popup__filter-toolbar">
+                          <span class="explanation-popup__mode-pill explanation-popup__mode-pill--single">
+                            <mat-icon>person</mat-icon>
+                            <span>{{ homeFilterModeOptions(revision.lang)[0].label }}</span>
+                            <mat-icon>expand_more</mat-icon>
+                          </span>
+                          <span class="explanation-popup__filter-pill">
+                            <mat-icon>filter_alt</mat-icon>
+                            <span>5</span>
+                          </span>
+                        </span>
+                        <span class="explanation-popup__mode-menu">
+                          @for (option of homeFilterModeOptions(revision.lang); track option.key) {
+                            <span class="explanation-popup__mode-option explanation-popup__mode-option--{{ option.key }}">
+                              <mat-icon>{{ option.icon }}</mat-icon>
+                              <span>{{ option.label }}</span>
+                            </span>
+                          }
+                        </span>
+                      </span>
+                    }
+                    @default {
+                      <span class="explanation-popup__visual-generic">
+                        <mat-icon>{{ section.icon || 'tips_and_updates' }}</mat-icon>
+                      </span>
+                    }
+                  }
+                </div>
+              </div>
+            </section>
+          }
+        </div>
 
-      <div class="explanation-popup__grid">
-        @for (section of revision.sections; track section.id) {
-          <section class="explanation-popup__item">
-            <span class="explanation-popup__item-icon">
-              <mat-icon>{{ section.icon || 'tips_and_updates' }}</mat-icon>
-            </span>
-            <div>
-              <h3 data-i18n-ignore>{{ section.title }}</h3>
-              @if (section.blurb) {
-                <p data-i18n-ignore>{{ section.blurb }}</p>
-              }
-              <div class="explanation-popup__html" data-i18n-ignore [innerHTML]="section.contentHtml"></div>
-            </div>
-          </section>
-        }
       </div>
-
-      <footer class="explanation-popup__footer">
-        <button type="button" class="explanation-popup__primary" (click)="close($event)">
-          <span>{{ 'got.it' | i18n }}</span>
-          <mat-icon>check</mat-icon>
-        </button>
-      </footer>
     </article>
   </section>
 }

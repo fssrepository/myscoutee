@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectorRef, Component, ElementRef, HostListener, OnDestroy, ViewChild, effect, inject, signal } from '@angular/core';
+import { ChangeDetectorRef, Component, HostListener, OnDestroy, ViewChild, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { Observable, from } from 'rxjs';
@@ -12,6 +12,7 @@ import {
   type InfoCardData,
   type InfoCardMenuActionEvent
 } from '../../../shared/ui/components/card';
+import { EditableImageCarouselComponent } from '../../../shared/ui/components/editable-image-carousel';
 import {
   SmartListComponent,
   type ListQuery,
@@ -33,7 +34,6 @@ interface IdeaPostDraft {
   title: string;
   excerpt: string;
   contentHtml: string;
-  imageUrl: string;
   imageUrls: string[];
   featured: boolean;
   published: boolean;
@@ -56,7 +56,7 @@ interface IdeaPostLangCache {
 @Component({
   selector: 'app-admin-idea-editor-popup',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatIconModule, SmartListComponent, InfoCardComponent],
+  imports: [CommonModule, FormsModule, MatIconModule, SmartListComponent, InfoCardComponent, EditableImageCarouselComponent],
   templateUrl: './admin-idea-editor-popup.component.html',
   styleUrl: './admin-idea-editor-popup.component.scss'
 })
@@ -64,9 +64,6 @@ export class AdminIdeaEditorPopupComponent implements OnDestroy {
   private static readonly LOAD_PROGRESS_WINDOW_MS = 3000;
   @ViewChild('ideaSmartList')
   private ideaSmartList?: SmartListComponent<IdeaInfoCard, IdeaSmartListFilters>;
-
-  @ViewChild('imageSlotCarouselViewport')
-  private imageSlotCarouselViewportRef?: ElementRef<HTMLDivElement>;
 
   protected readonly admin = inject(AdminService);
   private readonly ideaPosts = inject(IdeaPostsService);
@@ -76,17 +73,13 @@ export class AdminIdeaEditorPopupComponent implements OnDestroy {
 
   protected loading = false;
   protected saving = false;
-  protected uploading = false;
   protected error = '';
-  protected copiedImageUrl = '';
   protected editing = false;
   protected draft: IdeaPostDraft | null = null;
   protected viewerPostId = '';
   protected viewerPost: IdeaPost | null = null;
   protected articlePanelLoading = false;
   protected articlePanelLoadingMode: IdeaPanelLoadingMode | null = null;
-  protected imageSlotCarouselIndex = 0;
-  protected uploadingImageSlotIndex: number | null = null;
   protected filterMenuOpen = false;
   protected languageMenuOpen = false;
   protected formLanguageMenuOpen = false;
@@ -97,7 +90,6 @@ export class AdminIdeaEditorPopupComponent implements OnDestroy {
   protected readonly actionRingPerimeter = 100;
   protected readonly loadingRingPerimeter = 100;
   protected readonly ideaImageSlotCount = 8;
-  protected readonly ideaImageSlotIndexes = Array.from({ length: this.ideaImageSlotCount }, (_value, index) => index);
   protected readonly loadingProgress = signal(0);
   private stateLoadedForPopup = false;
   private adminPostsLoadPromise: Promise<void> | null = null;
@@ -112,8 +104,6 @@ export class AdminIdeaEditorPopupComponent implements OnDestroy {
   private adminIdeaCardList: IdeaInfoCard[] = [];
   private adminIdeaCardIndex = new Map<string, IdeaInfoCard>();
   private readonly featuredPendingIds = new Set<string>();
-  private imageSlotCarouselScrollLockTargetIndex: number | null = null;
-  private imageSlotCarouselScrollLockTimer: ReturnType<typeof setTimeout> | null = null;
 
   protected readonly filterOptions: Array<{ id: IdeaPostFilter; label: string; icon: string }> = [
     { id: 'all', label: 'All', icon: 'view_day' },
@@ -229,18 +219,13 @@ export class AdminIdeaEditorPopupComponent implements OnDestroy {
         this.languageMenuOpen = false;
         this.formLanguageMenuOpen = false;
         this.error = '';
-        this.copiedImageUrl = '';
-        this.imageSlotCarouselIndex = 0;
-        this.uploadingImageSlotIndex = null;
         this.clearAdminIndexes();
-        this.clearImageSlotCarouselScrollLock();
         return;
       }
     });
   }
 
   ngOnDestroy(): void {
-    this.clearImageSlotCarouselScrollLock();
     this.clearLoadingProgress();
   }
 
@@ -270,12 +255,6 @@ export class AdminIdeaEditorPopupComponent implements OnDestroy {
     this.close();
   }
 
-  @HostListener('window:resize')
-  protected onResize(): void {
-    this.imageSlotCarouselIndex = this.clampImageSlotPageIndex(this.imageSlotCarouselIndex);
-    this.scheduleImageSlotCarouselViewportSync('auto');
-  }
-
   protected posts(): IdeaPost[] {
     return this.adminPostList;
   }
@@ -301,7 +280,6 @@ export class AdminIdeaEditorPopupComponent implements OnDestroy {
     this.viewerPostId = '';
     this.viewerPost = null;
     this.cancelArticlePanelLoad();
-    this.uploadingImageSlotIndex = null;
     this.admin.closePopup();
   }
 
@@ -324,7 +302,6 @@ export class AdminIdeaEditorPopupComponent implements OnDestroy {
       title: '',
       excerpt: '',
       contentHtml: this.defaultDraftHtml(targetLang),
-      imageUrl: '',
       imageUrls: [],
       featured: false,
       published: false,
@@ -383,7 +360,6 @@ export class AdminIdeaEditorPopupComponent implements OnDestroy {
     }
     this.editing = false;
     this.draft = null;
-    this.copiedImageUrl = '';
   }
 
   protected async openDraftPreview(event?: Event): Promise<void> {
@@ -395,7 +371,7 @@ export class AdminIdeaEditorPopupComponent implements OnDestroy {
     const activeDraftLang = this.draftContentLang;
     const submittedAtIso = this.fromDateTimeLocal(activeDraft.submittedAtLocal);
     const contentHtml = activeDraft.contentHtml.trim() || '<p></p>';
-    const imageUrls = this.uniqueImageUrls([activeDraft.imageUrl, ...activeDraft.imageUrls]);
+    const imageUrls = this.draftImageUrls(activeDraft);
     const generation = this.beginArticlePanelLoad('viewer');
     await this.waitForArticlePanelLoad();
     if (!this.isCurrentArticlePanelLoad(generation, 'viewer')) {
@@ -410,7 +386,7 @@ export class AdminIdeaEditorPopupComponent implements OnDestroy {
       title: activeDraft.title.trim() || 'Untitled article',
       excerpt: activeDraft.excerpt.trim() || this.excerptFromHtml(contentHtml),
       contentHtml,
-      imageUrl: activeDraft.imageUrl.trim() || imageUrls[0] || '',
+      imageUrl: imageUrls[0] || '',
       imageUrls,
       featured: false,
       published: false,
@@ -430,7 +406,7 @@ export class AdminIdeaEditorPopupComponent implements OnDestroy {
     event?.preventDefault();
     event?.stopPropagation();
     const activeDraft = this.draft;
-    if (!activeDraft || this.saving || this.uploading) {
+    if (!activeDraft || this.saving) {
       return null;
     }
     const previousId = activeDraft.id;
@@ -888,7 +864,7 @@ export class AdminIdeaEditorPopupComponent implements OnDestroy {
   protected selectListContentLanguage(lang: string, event?: Event): void {
     event?.stopPropagation();
     const normalized = this.normalizeContentLang(lang);
-    if (normalized === this.selectedContentLang || this.loading || this.saving || this.uploading) {
+    if (normalized === this.selectedContentLang || this.loading || this.saving) {
       this.languageMenuOpen = false;
       return;
     }
@@ -910,7 +886,7 @@ export class AdminIdeaEditorPopupComponent implements OnDestroy {
   protected async selectDraftContentLanguage(lang: string, event?: Event): Promise<void> {
     event?.stopPropagation();
     const normalized = this.normalizeContentLang(lang);
-    if (!this.draft || normalized === this.draftContentLang || this.saving || this.uploading) {
+    if (!this.draft || normalized === this.draftContentLang || this.saving) {
       this.formLanguageMenuOpen = false;
       return;
     }
@@ -985,151 +961,6 @@ export class AdminIdeaEditorPopupComponent implements OnDestroy {
     return this.ideaFilter === 'all' ? `${total} article${total === 1 ? '' : 's'}` : `${visible} of ${total}`;
   }
 
-  protected async uploadDraftImage(event: Event, slotIndex = 0): Promise<void> {
-    const input = event.target instanceof HTMLInputElement ? event.target : null;
-    const file = input?.files?.[0] ?? null;
-    const normalizedSlotIndex = this.clampImageSlotIndex(slotIndex);
-    if (!file || !this.draft || this.uploading) {
-      return;
-    }
-    this.uploading = true;
-    this.uploadingImageSlotIndex = normalizedSlotIndex;
-    this.imageSlotCarouselIndex = this.imageSlotPageForSlot(normalizedSlotIndex);
-    this.scheduleImageSlotCarouselViewportSync('auto');
-    this.error = '';
-    this.refreshView();
-    try {
-      const result = await this.ideaPosts.uploadImage(this.actorUserId(), this.draft.id || 'draft-idea', file);
-      if (!result.uploaded || !result.imageUrl) {
-        this.error = 'Image upload did not return a link.';
-        return;
-      }
-      const slots = this.draftImageSlots();
-      slots[normalizedSlotIndex] = result.imageUrl;
-      this.applyDraftImageSlots(slots);
-      await this.copyImageLink(result.imageUrl);
-    } catch {
-      this.error = 'Unable to upload image.';
-    } finally {
-      this.uploading = false;
-      this.uploadingImageSlotIndex = null;
-      if (input) {
-        input.value = '';
-      }
-      this.refreshView();
-    }
-  }
-
-  protected openDraftImageSlot(input: HTMLInputElement, event?: Event): void {
-    event?.stopPropagation();
-    if (this.uploading || this.saving) {
-      return;
-    }
-    input.click();
-  }
-
-  protected removeDraftImage(imageUrl: string, event?: Event): void {
-    event?.stopPropagation();
-    if (!this.draft) {
-      return;
-    }
-    const normalized = imageUrl.trim();
-    this.draft.imageUrls = this.draft.imageUrls.filter(url => url !== normalized);
-    if (this.draft.imageUrl.trim() === normalized) {
-      this.draft.imageUrl = this.draft.imageUrls[0] ?? '';
-    }
-  }
-
-  protected removeDraftImageSlot(slotIndex: number, event?: Event): void {
-    event?.stopPropagation();
-    if (!this.draft) {
-      return;
-    }
-    const slots = this.draftImageSlots();
-    slots[this.clampImageSlotIndex(slotIndex)] = null;
-    this.applyDraftImageSlots(slots);
-  }
-
-  protected setPrimaryImage(imageUrl: string, event?: Event): void {
-    event?.stopPropagation();
-    if (!this.draft) {
-      return;
-    }
-    this.draft.imageUrl = imageUrl.trim();
-    this.draft.imageUrls = this.uniqueImageUrls([this.draft.imageUrl, ...this.draft.imageUrls]);
-  }
-
-  protected imageSlotCarouselTransform(): string | null {
-    return this.isImageSlotCarouselNativeSnap()
-      ? null
-      : `translateX(-${this.imageSlotCarouselIndex * 100}%)`;
-  }
-
-  protected showPreviousImageSlotPage(event?: Event): void {
-    event?.stopPropagation();
-    this.showImageSlotPage(this.imageSlotCarouselIndex - 1, event);
-  }
-
-  protected showNextImageSlotPage(event?: Event): void {
-    event?.stopPropagation();
-    this.showImageSlotPage(this.imageSlotCarouselIndex + 1, event);
-  }
-
-  protected showImageSlotPage(index: number, event?: Event): void {
-    event?.stopPropagation();
-    this.imageSlotCarouselIndex = this.clampImageSlotPageIndex(index);
-    this.scheduleImageSlotCarouselViewportSync('smooth');
-  }
-
-  protected onImageSlotCarouselScroll(): void {
-    if (!this.isImageSlotCarouselNativeSnap()) {
-      return;
-    }
-    const viewport = this.imageSlotCarouselViewportRef?.nativeElement;
-    if (!viewport) {
-      return;
-    }
-    if (this.imageSlotCarouselScrollLockTargetIndex !== null) {
-      this.scheduleImageSlotCarouselScrollLockRelease();
-      return;
-    }
-    const nextPageIndex = this.currentImageSlotCarouselPageIndex(viewport);
-    if (nextPageIndex === this.imageSlotCarouselIndex) {
-      return;
-    }
-    this.imageSlotCarouselIndex = nextPageIndex;
-    this.refreshView();
-  }
-
-  protected isImageSlotUploading(slotIndex: number): boolean {
-    return this.uploadingImageSlotIndex === slotIndex;
-  }
-
-  protected imageSlotPages(): number[][] {
-    const slotsPerPage = this.imageSlotsPerCarouselPage();
-    const pages: number[][] = [];
-    for (let index = 0; index < this.ideaImageSlotIndexes.length; index += slotsPerPage) {
-      pages.push(this.ideaImageSlotIndexes.slice(index, index + slotsPerPage));
-    }
-    return pages;
-  }
-
-  protected async copyImageLink(imageUrl: string, event?: Event): Promise<void> {
-    event?.stopPropagation();
-    const link = this.copyableImageLink(imageUrl);
-    try {
-      if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(link);
-      } else {
-        this.copyWithFallback(link);
-      }
-      this.copiedImageUrl = imageUrl;
-    } catch {
-      this.copyWithFallback(link);
-      this.copiedImageUrl = imageUrl;
-    }
-  }
-
   protected formatPastedHtml(event: ClipboardEvent): void {
     if (!this.draft) {
       return;
@@ -1147,20 +978,6 @@ export class AdminIdeaEditorPopupComponent implements OnDestroy {
     const start = textarea?.selectionStart ?? current.length;
     const end = textarea?.selectionEnd ?? start;
     this.draft.contentHtml = this.formatHtmlFragment(`${current.slice(0, start)}${pasted}${current.slice(end)}`);
-  }
-
-  protected copyableImageLink(imageUrl: string): string {
-    const normalized = imageUrl.trim();
-    if (!normalized || normalized.startsWith('data:')) {
-      return normalized;
-    }
-    if (/^https?:\/\//i.test(normalized)) {
-      return normalized;
-    }
-    if (typeof window === 'undefined') {
-      return normalized;
-    }
-    return new URL(normalized, window.location.origin).toString();
   }
 
   protected articlePreviewHtml(post: Pick<IdeaPost, 'contentHtml'> | null): string {
@@ -1187,19 +1004,6 @@ export class AdminIdeaEditorPopupComponent implements OnDestroy {
       month: 'short',
       day: 'numeric'
     }).format(new Date(parsed));
-  }
-
-  protected draftImageUrl(): string {
-    return `${this.draft?.imageUrl ?? this.draft?.imageUrls?.[0] ?? ''}`.trim();
-  }
-
-  protected draftImageSlots(): Array<string | null> {
-    if (!this.draft) {
-      return Array.from({ length: this.ideaImageSlotCount }, () => null);
-    }
-    const urls = this.uniqueImageUrls([this.draft.imageUrl, ...this.draft.imageUrls])
-      .slice(0, this.ideaImageSlotCount);
-    return Array.from({ length: this.ideaImageSlotCount }, (_value, index) => urls[index] ?? null);
   }
 
   protected ideaImageUrl(post: Pick<IdeaPost, 'imageUrl' | 'imageUrls'> | null): string {
@@ -1289,13 +1093,8 @@ export class AdminIdeaEditorPopupComponent implements OnDestroy {
 
   private beginEditing(draft: IdeaPostDraft): void {
     this.draft = draft;
-    this.applyDraftImageSlots(this.draftImageSlots());
     this.editing = true;
-    this.copiedImageUrl = '';
     this.formLanguageMenuOpen = false;
-    this.imageSlotCarouselIndex = 0;
-    this.uploadingImageSlotIndex = null;
-    this.scheduleImageSlotCarouselViewportSync('auto');
   }
 
   private draftFromPost(post: IdeaPost): IdeaPostDraft {
@@ -1305,8 +1104,7 @@ export class AdminIdeaEditorPopupComponent implements OnDestroy {
       title: post.title,
       excerpt: post.excerpt,
       contentHtml: this.formatHtmlFragment(post.contentHtml),
-      imageUrl: post.imageUrl,
-      imageUrls: [...post.imageUrls],
+      imageUrls: this.uniqueImageUrls([post.imageUrl, ...post.imageUrls]).slice(0, this.ideaImageSlotCount),
       featured: false,
       published: false,
       submittedAtLocal: this.toDateTimeLocal(post.submittedAtIso || post.updatedAtIso || post.createdAtIso),
@@ -1321,7 +1119,6 @@ export class AdminIdeaEditorPopupComponent implements OnDestroy {
       title: '',
       excerpt: '',
       contentHtml: this.defaultDraftHtml(this.draftContentLang),
-      imageUrl: source.imageUrl,
       imageUrls: [...source.imageUrls],
       featured: false,
       published: false,
@@ -1336,160 +1133,8 @@ export class AdminIdeaEditorPopupComponent implements OnDestroy {
       : '<p>Describe why this MyScoutee article matters.</p>';
   }
 
-  private applyDraftImageSlots(slots: readonly (string | null)[]): void {
-    if (!this.draft) {
-      return;
-    }
-    const urls = this.uniqueImageUrls(slots.map(slot => slot ?? '').slice(0, this.ideaImageSlotCount));
-    this.draft.imageUrls = urls;
-    this.draft.imageUrl = urls[0] ?? '';
-  }
-
-  private clampImageSlotIndex(slotIndex: number): number {
-    const parsed = Math.trunc(Number(slotIndex));
-    if (!Number.isFinite(parsed)) {
-      return 0;
-    }
-    return Math.max(0, Math.min(this.ideaImageSlotCount - 1, parsed));
-  }
-
-  private imageSlotsPerCarouselPage(): number {
-    const viewportWidth = this.readViewportWidth();
-    if (viewportWidth <= 720) {
-      return 1;
-    }
-    if (viewportWidth <= 980) {
-      return 3;
-    }
-    return 4;
-  }
-
-  private imageSlotPageForSlot(slotIndex: number): number {
-    return this.clampImageSlotPageIndex(Math.floor(this.clampImageSlotIndex(slotIndex) / this.imageSlotsPerCarouselPage()));
-  }
-
-  private clampImageSlotPageIndex(pageIndex: number): number {
-    const parsed = Math.trunc(Number(pageIndex));
-    const maxPageIndex = Math.max(0, Math.ceil(this.ideaImageSlotCount / this.imageSlotsPerCarouselPage()) - 1);
-    if (!Number.isFinite(parsed)) {
-      return 0;
-    }
-    return Math.max(0, Math.min(maxPageIndex, parsed));
-  }
-
-  private isImageSlotCarouselNativeSnap(): boolean {
-    return this.readViewportWidth() <= 720;
-  }
-
-  private readViewportWidth(): number {
-    return typeof window === 'undefined' ? 1180 : window.innerWidth;
-  }
-
-  private scheduleImageSlotCarouselViewportSync(behavior: ScrollBehavior): void {
-    if (!this.isImageSlotCarouselNativeSnap()) {
-      this.clearImageSlotCarouselScrollLock();
-      this.resetImageSlotCarouselViewportScroll();
-      return;
-    }
-    const targetPageIndex = this.imageSlotCarouselIndex;
-    if (behavior === 'smooth') {
-      this.imageSlotCarouselScrollLockTargetIndex = targetPageIndex;
-      this.scheduleImageSlotCarouselScrollLockRelease();
-    } else {
-      this.clearImageSlotCarouselScrollLock();
-    }
-
-    const sync = () => {
-      const viewport = this.imageSlotCarouselViewportRef?.nativeElement;
-      if (!viewport) {
-        return;
-      }
-      const targetLeft = this.imageSlotCarouselPageOffsetLeft(viewport, targetPageIndex);
-      if (targetLeft < 0) {
-        return;
-      }
-      const previousScrollBehavior = viewport.style.scrollBehavior;
-      viewport.style.scrollBehavior = behavior;
-      viewport.scrollLeft = targetLeft;
-      const restore = () => {
-        viewport.style.scrollBehavior = previousScrollBehavior;
-      };
-      if (typeof globalThis.requestAnimationFrame === 'function') {
-        globalThis.requestAnimationFrame(() => restore());
-      } else {
-        setTimeout(restore, 0);
-      }
-    };
-
-    if (typeof globalThis.requestAnimationFrame === 'function') {
-      globalThis.requestAnimationFrame(() => globalThis.requestAnimationFrame(sync));
-      return;
-    }
-    setTimeout(sync, 0);
-  }
-
-  private scheduleImageSlotCarouselScrollLockRelease(): void {
-    if (this.imageSlotCarouselScrollLockTimer) {
-      clearTimeout(this.imageSlotCarouselScrollLockTimer);
-    }
-    this.imageSlotCarouselScrollLockTimer = setTimeout(() => {
-      this.imageSlotCarouselScrollLockTimer = null;
-      const viewport = this.imageSlotCarouselViewportRef?.nativeElement;
-      const finalPageIndex = viewport
-        ? this.currentImageSlotCarouselPageIndex(viewport)
-        : this.imageSlotCarouselScrollLockTargetIndex;
-      this.imageSlotCarouselScrollLockTargetIndex = null;
-      if (finalPageIndex === null || finalPageIndex === this.imageSlotCarouselIndex) {
-        return;
-      }
-      this.imageSlotCarouselIndex = finalPageIndex;
-      this.refreshView();
-    }, 96);
-  }
-
-  private clearImageSlotCarouselScrollLock(): void {
-    if (this.imageSlotCarouselScrollLockTimer) {
-      clearTimeout(this.imageSlotCarouselScrollLockTimer);
-      this.imageSlotCarouselScrollLockTimer = null;
-    }
-    this.imageSlotCarouselScrollLockTargetIndex = null;
-  }
-
-  private currentImageSlotCarouselPageIndex(viewport: HTMLDivElement): number {
-    const pages = Array.from(viewport.querySelectorAll<HTMLElement>('.idea-editor-image-carousel-page'));
-    if (pages.length === 0) {
-      return 0;
-    }
-    const currentLeft = viewport.scrollLeft;
-    let closestIndex = 0;
-    let closestDistance = Number.POSITIVE_INFINITY;
-    pages.forEach((page, index) => {
-      const distance = Math.abs(page.offsetLeft - currentLeft);
-      if (distance < closestDistance) {
-        closestDistance = distance;
-        closestIndex = index;
-      }
-    });
-    return Math.max(0, Math.min(Math.max(0, pages.length - 1), closestIndex));
-  }
-
-  private imageSlotCarouselPageOffsetLeft(viewport: HTMLDivElement, pageIndex: number): number {
-    const pages = Array.from(viewport.querySelectorAll<HTMLElement>('.idea-editor-image-carousel-page'));
-    if (pages.length === 0) {
-      return -1;
-    }
-    const targetIndex = Math.max(0, Math.min(pages.length - 1, pageIndex));
-    return Math.max(0, pages[targetIndex]?.offsetLeft ?? 0);
-  }
-
-  private resetImageSlotCarouselViewportScroll(): void {
-    const viewport = this.imageSlotCarouselViewportRef?.nativeElement;
-    if (viewport && viewport.scrollLeft !== 0) {
-      viewport.scrollLeft = 0;
-    }
-  }
-
   private requestFromDraft(draft: IdeaPostDraft): IdeaPostSaveRequest {
+    const imageUrls = this.draftImageUrls(draft);
     return {
       actorUserId: this.actorUserId(),
       id: draft.id,
@@ -1498,12 +1143,16 @@ export class AdminIdeaEditorPopupComponent implements OnDestroy {
       title: draft.title,
       excerpt: draft.excerpt,
       contentHtml: draft.contentHtml,
-      imageUrl: draft.imageUrl,
-      imageUrls: draft.imageUrls,
+      imageUrl: imageUrls[0] ?? '',
+      imageUrls,
       featured: false,
       published: false,
       submittedAtIso: this.fromDateTimeLocal(draft.submittedAtLocal)
     };
+  }
+
+  private draftImageUrls(draft: Pick<IdeaPostDraft, 'imageUrls'>): string[] {
+    return this.uniqueImageUrls(draft.imageUrls).slice(0, this.ideaImageSlotCount);
   }
 
   private normalizeContentLang(lang: string | null | undefined): string {
@@ -1721,8 +1370,8 @@ export class AdminIdeaEditorPopupComponent implements OnDestroy {
     const normalized = `${value ?? ''}`.trim();
     return /^data:image\//i.test(normalized)
       || /^blob:https?:\/\//i.test(normalized)
-      || /^\/media\/public\?[^\s<>"']+$/i.test(normalized)
-      || /^https?:\/\/[^\s<>"']+\/media\/public\?[^\s<>"']+$/i.test(normalized)
+      || /^\/(?:api\/)?media\/public\?[^\s<>"']+$/i.test(normalized)
+      || /^https?:\/\/[^\s<>"']+\/(?:api\/)?media\/public\?[^\s<>"']+$/i.test(normalized)
       || /^https?:\/\/[^\s<>"']+\.(?:png|jpe?g|gif|webp|avif|svg)(?:\?[^\s<>"']*)?$/i.test(normalized);
   }
 
@@ -1754,21 +1403,6 @@ export class AdminIdeaEditorPopupComponent implements OnDestroy {
   private fromDateTimeLocal(value: string): string {
     const parsed = Date.parse(value);
     return Number.isFinite(parsed) ? new Date(parsed).toISOString() : new Date().toISOString();
-  }
-
-  private copyWithFallback(value: string): void {
-    if (typeof document === 'undefined') {
-      return;
-    }
-    const textarea = document.createElement('textarea');
-    textarea.value = value;
-    textarea.setAttribute('readonly', 'true');
-    textarea.style.position = 'fixed';
-    textarea.style.opacity = '0';
-    document.body.appendChild(textarea);
-    textarea.select();
-    document.execCommand('copy');
-    textarea.remove();
   }
 
   private refreshView(): void {

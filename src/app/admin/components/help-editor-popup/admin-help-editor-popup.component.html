@@ -160,20 +160,17 @@
       <div class="popup-body help-editor-body">
         @if (loading()) {
           <div class="help-editor-state-card help-editor-loading-state" aria-busy="true">
-            <span class="help-editor-loading-ring" aria-hidden="true">
-              <svg viewBox="0 0 58 58" class="help-editor-loading-ring-svg">
-                <circle class="help-editor-loading-ring-track" cx="29" cy="29" r="25"></circle>
-                <circle
-                  class="help-editor-loading-ring-progress"
-                  cx="29"
-                  cy="29"
-                  r="25"
-                  pathLength="100"
-                  [attr.stroke-dasharray]="loadingRingPerimeter"
-                  [attr.stroke-dashoffset]="loadingRingDashOffset()"
-                ></circle>
-              </svg>
-            </span>
+            <svg class="help-editor-loading-ring" viewBox="0 0 44 44" aria-hidden="true">
+              <circle class="help-editor-loading-ring-track" cx="22" cy="22" r="18"></circle>
+              <circle
+                class="help-editor-loading-ring-value"
+                cx="22"
+                cy="22"
+                r="18"
+                [attr.stroke-dasharray]="loadingRingPerimeter"
+                [attr.stroke-dashoffset]="loadingRingDashOffset()"
+              ></circle>
+            </svg>
             <span>{{ loadingRevisionsLabel() }}</span>
           </div>
         } @else {
@@ -286,16 +283,23 @@
                                 @if (documentKind === 'explanation') {
                                   <label class="help-editor-inline-field help-editor-context-field">
                                     <span>{{ uiText('Canonical screen') }}</span>
-                                    <select
-                                      name="helpExplanationContext"
-                                      [ngModel]="editDraft.contextKey"
-                                      (ngModelChange)="selectDraftContext($event)"
-                                      required
+                                    <button
+                                      type="button"
+                                      class="help-editor-context-select-wrap"
+                                      [disabled]="saving"
+                                      [attr.aria-expanded]="contextPickerOpen"
+                                      aria-haspopup="dialog"
+                                      data-motion="none"
+                                      (click)="openContextPicker($event)"
                                       >
-                                      @for (surface of explainableSurfaces(); track surface.key) {
-                                        <option [value]="surface.key">{{ surface.label }}</option>
+                                      @if (explanationSurface(editDraft.contextKey); as currentSurface) {
+                                        <span class="help-editor-context-trigger">
+                                          <mat-icon>{{ currentSurface.icon }}</mat-icon>
+                                          <span data-i18n-ignore>{{ currentSurface.label }}</span>
+                                        </span>
                                       }
-                                    </select>
+                                      <mat-icon class="help-editor-context-select-caret">expand_more</mat-icon>
+                                    </button>
                                   </label>
                                 }
                                 <div class="help-editor-description-line">
@@ -403,6 +407,14 @@
                                   </div>
                                   @if (openDraftSectionId === section.localId) {
                                     <div class="help-editor-preview-section-body help-editor-section-edit">
+                                      @if (documentKind === 'explanation') {
+                                        <app-editable-image-carousel
+                                          [slotCount]="explanationImageSlotCount"
+                                          [disabled]="saving"
+                                          [compact]="true"
+                                          ariaLabel="Explanation image slots"
+                                        ></app-editable-image-carousel>
+                                      }
                                       @if (section.mode === 'html') {
                                         <textarea
                                           class="help-editor-html-textarea"
@@ -646,6 +658,46 @@
                 >
                 <span class="help-editor-color-swatch" aria-hidden="true"></span>
                 <span>{{ option.label }}</span>
+              </button>
+            }
+          </div>
+        </div>
+      </section>
+    }
+    @if (contextPickerOpen && draft; as editDraft) {
+      <section class="mobile-profile-selector-sheet-wrap help-editor-context-sheet-wrap" role="dialog" aria-modal="true" aria-label="Choose canonical screen" (click)="$event.stopPropagation()">
+        <div class="mobile-profile-selector-backdrop" (click)="closeContextPicker($event)"></div>
+        <div class="mobile-profile-selector-sheet help-editor-context-sheet" (click)="$event.stopPropagation()">
+          <div class="mobile-profile-selector-handle" aria-hidden="true"></div>
+          <div class="mobile-profile-selector-title help-editor-context-sheet-title">
+            <mat-icon>tips_and_updates</mat-icon>
+            <span>{{ uiText('Canonical screen') }}</span>
+            <button
+              type="button"
+              class="mobile-profile-selector-close-btn popup-surface-close-btn"
+              data-motion="none"
+              (click)="closeContextPicker($event)"
+              aria-label="Close canonical screen picker"
+              >
+              <mat-icon>close</mat-icon>
+            </button>
+          </div>
+          <div class="mobile-profile-selector-options help-editor-context-options">
+            @for (surface of explainableSurfaces(); track surface.key) {
+              <button
+                type="button"
+                class="mobile-profile-selector-option help-editor-context-option"
+                [class.active]="editDraft.contextKey === surface.key"
+                data-motion="none"
+                (click)="selectContextFromPicker(surface, $event)"
+                >
+                <span class="mobile-profile-selector-option-main">
+                  <mat-icon>{{ surface.icon }}</mat-icon>
+                  <span data-i18n-ignore>{{ surface.label }}</span>
+                </span>
+                @if (editDraft.contextKey === surface.key) {
+                  <mat-icon>check</mat-icon>
+                }
               </button>
             }
           </div>
