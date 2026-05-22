@@ -800,8 +800,12 @@ export class NavigatorService {
       invitations: this.normalizeRealtimeCounterValue(overrides.invitations ?? user?.activities?.invitations),
       events: this.normalizeRealtimeCounterValue(overrides.events ?? user?.activities?.events),
       hosting: this.normalizeRealtimeCounterValue(overrides.hosting ?? user?.activities?.hosting),
-      tickets: this.normalizeRealtimeCounterValue(overrides.tickets),
-      feedback: this.normalizeRealtimeCounterValue(overrides.feedback),
+      cars: this.normalizeRealtimeCounterValue(overrides.cars ?? user?.activities?.cars),
+      accommodation: this.normalizeRealtimeCounterValue(overrides.accommodation ?? user?.activities?.accommodation),
+      supplies: this.normalizeRealtimeCounterValue(overrides.supplies ?? user?.activities?.supplies),
+      tickets: this.normalizeRealtimeCounterValue(overrides.tickets ?? user?.activities?.tickets),
+      contacts: this.normalizeRealtimeCounterValue(overrides.contacts ?? user?.activities?.contacts),
+      feedback: this.normalizeRealtimeCounterValue(overrides.feedback ?? user?.activities?.feedback),
       adminJobs: this.normalizeRealtimeCounterValue(overrides.adminJobs ?? user?.activities?.adminJobs),
       adminMetrics: this.normalizeRealtimeCounterValue(overrides.adminMetrics ?? user?.activities?.adminMetrics)
     };
@@ -863,7 +867,11 @@ export class NavigatorService {
           ...(counterPatch.invitations !== undefined ? { invitations: counterPatch.invitations } : {}),
           ...(counterPatch.events !== undefined ? { events: counterPatch.events } : {}),
           ...(counterPatch.hosting !== undefined ? { hosting: counterPatch.hosting } : {}),
+          ...(counterPatch.cars !== undefined ? { cars: counterPatch.cars } : {}),
+          ...(counterPatch.accommodation !== undefined ? { accommodation: counterPatch.accommodation } : {}),
+          ...(counterPatch.supplies !== undefined ? { supplies: counterPatch.supplies } : {}),
           ...(counterPatch.tickets !== undefined ? { tickets: counterPatch.tickets } : {}),
+          ...(counterPatch.contacts !== undefined ? { contacts: counterPatch.contacts } : {}),
           ...(counterPatch.feedback !== undefined ? { feedback: counterPatch.feedback } : {}),
           ...(counterPatch.adminJobs !== undefined ? { adminJobs: counterPatch.adminJobs } : {}),
           ...(counterPatch.adminMetrics !== undefined ? { adminMetrics: counterPatch.adminMetrics } : {})
@@ -926,7 +934,11 @@ export class NavigatorService {
       'invitations',
       'events',
       'hosting',
+      'cars',
+      'accommodation',
+      'supplies',
       'tickets',
+      'contacts',
       'feedback',
       'adminJobs',
       'adminMetrics'
@@ -949,7 +961,11 @@ export class NavigatorService {
         invitations: 0,
         events: 0,
         hosting: 0,
+        cars: 0,
+        accommodation: 0,
+        supplies: 0,
         tickets: 0,
+        contacts: 0,
         feedback: 0,
         adminJobs: 0,
         adminMetrics: 0
@@ -963,7 +979,11 @@ export class NavigatorService {
         invitations: this.normalizeRealtimeCounterValue(existing.invitations),
         events: this.normalizeRealtimeCounterValue(existing.events),
         hosting: this.normalizeRealtimeCounterValue(existing.hosting),
+        cars: this.normalizeRealtimeCounterValue(existing.cars),
+        accommodation: this.normalizeRealtimeCounterValue(existing.accommodation),
+        supplies: this.normalizeRealtimeCounterValue(existing.supplies),
         tickets: this.normalizeRealtimeCounterValue(existing.tickets),
+        contacts: this.normalizeRealtimeCounterValue(existing.contacts),
         feedback: this.normalizeRealtimeCounterValue(existing.feedback),
         adminJobs: this.normalizeRealtimeCounterValue(existing.adminJobs),
         adminMetrics: this.normalizeRealtimeCounterValue(existing.adminMetrics)
@@ -995,7 +1015,11 @@ export class NavigatorService {
     const invitations = normalize(counters?.invitations);
     const events = normalize(counters?.events);
     const hosting = normalize(counters?.hosting);
+    const cars = normalize(counters?.cars);
+    const accommodation = normalize(counters?.accommodation);
+    const supplies = normalize(counters?.supplies);
     const tickets = normalize(counters?.tickets);
+    const contacts = normalize(counters?.contacts);
     const feedback = normalize(counters?.feedback);
     const adminJobs = normalize(counters?.adminJobs);
     const adminMetrics = normalize(counters?.adminMetrics);
@@ -1014,8 +1038,20 @@ export class NavigatorService {
     if (hosting !== undefined) {
       patch.hosting = hosting;
     }
+    if (cars !== undefined) {
+      patch.cars = cars;
+    }
+    if (accommodation !== undefined) {
+      patch.accommodation = accommodation;
+    }
+    if (supplies !== undefined) {
+      patch.supplies = supplies;
+    }
     if (tickets !== undefined) {
       patch.tickets = tickets;
+    }
+    if (contacts !== undefined) {
+      patch.contacts = contacts;
     }
     if (feedback !== undefined) {
       patch.feedback = feedback;

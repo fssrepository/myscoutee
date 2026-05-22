@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 
 import { AppUtils } from '../../../app-utils';
 import { AssetCardBuilder, AssetDefaultsBuilder, PricingBuilder } from '../../../core/base/builders';
-import { DemoAssetBuilder, DemoUserSeedBuilder } from '../builders';
+import { DemoAssetBuilder, DemoSeedScheduleBuilder, DemoUserSeedBuilder } from '../builders';
 import type * as AppTypes from '../../../core/base/models';
 import type { DemoUser } from '../../base/interfaces/user.interface';
 import { HttpAssetsRepository } from '../../http/repositories/assets.repository';
@@ -307,7 +307,7 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
     const ownerIndex = Math.max(0, allUsers.findIndex(user => user.id === ownerUserId));
     const otherUsers = allUsers.filter(user => user.id !== ownerUserId);
     const baseCards = DemoAssetBuilder.buildSampleAssetCards(allUsers as DemoUser[]);
-    const createdAt = new Date('2026-02-01T12:00:00.000Z');
+    const createdAt = DemoSeedScheduleBuilder.shiftDate(new Date('2026-02-01T12:00:00.000Z'));
     return baseCards.map((card, index) => {
       const createdMs = createdAt.getTime() + (index * 60_000);
       const createdAtIso = new Date(createdMs).toISOString();
@@ -550,6 +550,8 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
     ];
     const slot = slots[index % slots.length];
     const slotKey = `${this.seededRequestSlug(card.title)}:${index + 1}`;
+    const startAtIso = DemoSeedScheduleBuilder.rebaseDateTime(slot.startAtIso) ?? slot.startAtIso;
+    const endAtIso = DemoSeedScheduleBuilder.rebaseDateTime(slot.endAtIso) ?? slot.endAtIso;
     return {
       eventId: `${this.seededRequestSlug(slot.eventTitle)}-event`,
       eventTitle: slot.eventTitle,
@@ -557,9 +559,9 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
       subEventTitle: slot.subEventTitle,
       slotKey,
       slotLabel: slot.subEventTitle,
-      timeframe: this.formatSeededRequestTimeframe(slot.startAtIso, slot.endAtIso),
-      startAtIso: slot.startAtIso,
-      endAtIso: slot.endAtIso,
+      timeframe: this.formatSeededRequestTimeframe(startAtIso, endAtIso),
+      startAtIso,
+      endAtIso,
       quantity: 1
     };
   }
@@ -1140,8 +1142,8 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
           id: `time-window-${ownerIndex}-${cardIndex}-1`,
           trigger: 'specific_date',
           offsetValue: null,
-          specificDateStart: '2026-03-04',
-          specificDateEnd: '2026-03-05',
+          specificDateStart: DemoSeedScheduleBuilder.rebaseDateOnly('2026-03-04') ?? '2026-03-04',
+          specificDateEnd: DemoSeedScheduleBuilder.rebaseDateOnly('2026-03-05') ?? '2026-03-05',
           action: {
             kind: card.type === 'Accommodation' ? 'increase_percent' : 'decrease_percent',
             value: card.type === 'Accommodation' ? 15 : 10

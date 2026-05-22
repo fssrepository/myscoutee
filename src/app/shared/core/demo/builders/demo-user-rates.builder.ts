@@ -1,6 +1,7 @@
 import { AppUtils } from '../../../app-utils';
 import type { RateRecord } from '../../base/models/rate.model';
 import type { UserRateRecord } from '../../base/interfaces/game.interface';
+import { DemoSeedScheduleBuilder } from './demo-seed-schedule.builder';
 
 type RateUserRef = {
   id: string;
@@ -280,7 +281,7 @@ export class DemoUserRatesBuilder {
     const seed = AppUtils.hashText(
       `rate-grid:${activeUserId}:${targetUserId}:${secondaryUserId ?? ''}:${mode}:${direction}:${variantIndex}`
     );
-    const happenedAtDate = new Date('2026-03-01T20:00:00');
+    const happenedAtDate = DemoSeedScheduleBuilder.shiftDate(new Date('2026-03-01T20:00:00'));
     happenedAtDate.setDate(happenedAtDate.getDate() - ((laneIndex * 17) + userIndex + 1 + (variantIndex * 2)));
     const happenedAt = AppUtils.toIsoDateTime(happenedAtDate);
     let scoreGiven = 0;

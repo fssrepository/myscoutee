@@ -4,7 +4,7 @@ import type * as AppTypes from '../../../core/base/models';
 import { AppUtils } from '../../../app-utils';
 import { AppMemoryDb } from '../../base/db';
 import type { ChatRecord } from '../../base/models/chat.model';
-import { DemoChatsRepositoryBuilder, DemoUserSeedBuilder } from '../builders';
+import { DemoChatsRepositoryBuilder, DemoSeedScheduleBuilder, DemoUserSeedBuilder } from '../builders';
 import { CHATS_TABLE_NAME, type DemoChatRecord } from '../models/chats.model';
 import { USERS_TABLE_NAME } from '../models/users.model';
 
@@ -401,7 +401,7 @@ export class DemoChatsRepository {
   private toChatMemberEntry(chatId: string, userId: string, index: number): AppTypes.ActivityMemberEntry {
     const user = this.memoryDb.read()[USERS_TABLE_NAME].byId[userId] ?? null;
     const label = user?.name?.trim() || userId;
-    const when = AppUtils.addDays(new Date(), -Math.max(0, index));
+    const when = AppUtils.addDays(DemoSeedScheduleBuilder.anchorDate(), -Math.max(0, index));
     return {
       id: `chat:${chatId}:${userId}`,
       userId,

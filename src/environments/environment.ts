@@ -3,6 +3,7 @@ export const environment = {
   loginEnabled: false,
   activitiesDataSource: 'demo' as 'demo' | 'http',
   demoBootstrapEnabled: true,
+  demoSeedScheduleAnchorDateIso: null as string | null,
   apiBaseUrl: '/api',
   serviceWorkerEnabled: false,
   firebaseMessagingEnabled: true,

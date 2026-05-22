@@ -1028,8 +1028,6 @@ export class EventExplorePopupComponent {
           pendingMembers: Number.isFinite(Number(sync.pendingMembers))
             ? Math.max(0, Math.trunc(Number(sync.pendingMembers)))
             : existing.pendingMembers,
-          acceptedMemberUserIds: [...existing.acceptedMemberUserIds],
-          pendingMemberUserIds: [...existing.pendingMemberUserIds],
           capacityMin: sync.capacityMin ?? existing.capacityMin,
           capacityMax: sync.capacityMax ?? existing.capacityMax,
           capacityTotal: Math.max(
@@ -1088,15 +1086,16 @@ export class EventExplorePopupComponent {
   private buildMemberEntries(record: DemoEventRecord): AppTypes.ActivityMemberEntry[] {
     const row = EventExploreBuilder.buildActivityRow(record);
     const rowKey = `${row.type}:${row.id}`;
+    const summary = this.activityMembersService.peekSummaryByOwner(this.eventMembersOwner(record));
     const acceptedUserIds = this.ensureMemberUserIds(
-      record.acceptedMemberUserIds,
+      summary?.acceptedMemberUserIds ?? [],
       record.acceptedMembers,
       record,
       new Set<string>(),
       true
     );
     const pendingUserIds = this.ensureMemberUserIds(
-      record.pendingMemberUserIds,
+      summary?.pendingMemberUserIds ?? [],
       record.pendingMembers,
       record,
       new Set(acceptedUserIds),
@@ -1140,9 +1139,6 @@ export class EventExplorePopupComponent {
 
   private hasTrackedMembership(record: DemoEventRecord, userId: string): boolean {
     if (userId === this.activeUserId.trim() && this.locallyTrackedMembershipSourceIds.has(record.id)) {
-      return true;
-    }
-    if (record.acceptedMemberUserIds.includes(userId) || record.pendingMemberUserIds.includes(userId)) {
       return true;
     }
     if (this.hasPendingCheckoutDraft(record.id, userId)) {
@@ -1214,13 +1210,6 @@ export class EventExplorePopupComponent {
       return 'accepted';
     }
     if (existingEntry?.status === 'pending') {
-      return 'pending';
-    }
-    const knownRecord = record ?? this.eventsService.peekKnownItemById(activeUserId, ownerId);
-    if (knownRecord?.acceptedMemberUserIds.includes(activeUserId)) {
-      return 'accepted';
-    }
-    if (knownRecord?.pendingMemberUserIds.includes(activeUserId)) {
       return 'pending';
     }
     return 'none';

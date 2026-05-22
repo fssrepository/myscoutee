@@ -14,6 +14,11 @@ import type { DemoMemorySchema } from '../models/memory.model';
 import { DemoChatsRepository } from './chats.repository';
 import { DemoEventsRepository } from './events.repository';
 import { DemoUsersRatingsRepository } from './users-ratings.repository';
+import {
+  ASSETS_TABLE_NAME,
+  type DemoAssetRecord,
+  type DemoAssetsRecordCollection
+} from '../models/assets.model';
 
 @Injectable({
   providedIn: 'root'
@@ -21,6 +26,7 @@ import { DemoUsersRatingsRepository } from './users-ratings.repository';
 export class DemoUsersRepository {
   private static readonly DEFAULT_DEMO_USERS_COUNT = 50;
   private static readonly MIN_DEMO_EVENT_ITEMS_PER_USER = 30;
+  private static readonly INITIAL_EVENT_FEEDBACK_UNLOCK_DELAY_MS = 2 * 60 * 60 * 1000;
   private readonly chatsRepository = inject(DemoChatsRepository);
   private readonly memoryDb = inject(AppMemoryDb);
   private readonly eventsRepository = inject(DemoEventsRepository);
@@ -37,7 +43,7 @@ export class DemoUsersRepository {
     const state = this.memoryDb.read();
     const usersTable = state[USERS_TABLE_NAME];
     const sourceUsers = users ?? DemoUserSeedBuilder.buildExpandedDemoUsers(DemoUsersRepository.DEFAULT_DEMO_USERS_COUNT);
-    const seededUsers = sourceUsers.map(user => this.applySeededActivityCounts(DemoUsersRepositoryBuilder.cloneUser(user)));
+    const seededUsers = sourceUsers.map(user => DemoUsersRepositoryBuilder.cloneUser(user));
     if (usersTable.ids.length > 0) {
       const migration = this.mergeSeededUsers(usersTable, seededUsers);
       if (migration.changed) {
@@ -61,6 +67,35 @@ export class DemoUsersRepository {
     this.initialized = true;
 
     return this.queryUsersFromTable(USERS_TABLE_NAME);
+  }
+
+  stampSeededActivityCountsForUser(userId: string): boolean {
+    this.init();
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return false;
+    }
+    const table = this.memoryDb.read()[USERS_TABLE_NAME];
+    const user = table.byId[normalizedUserId];
+    if (!user) {
+      return false;
+    }
+    const stampedUser = this.applySeededActivityCounts(DemoUsersRepositoryBuilder.cloneUser(user));
+    if (this.sameActivityCounts(user, stampedUser)) {
+      return false;
+    }
+
+    this.memoryDb.write(currentState => ({
+      ...currentState,
+      [USERS_TABLE_NAME]: {
+        byId: {
+          ...currentState[USERS_TABLE_NAME].byId,
+          [normalizedUserId]: stampedUser
+        },
+        ids: [...currentState[USERS_TABLE_NAME].ids]
+      }
+    }));
+    return true;
   }
 
   private mergeSeededUsers(
@@ -345,7 +380,11 @@ export class DemoUsersRepository {
           invitations: 0,
           events: 0,
           hosting: 0,
+          cars: 0,
+          accommodation: 0,
+          supplies: 0,
           tickets: 0,
+          contacts: 0,
           feedback: 0,
           adminJobs: user.activities?.adminJobs ?? 0,
           adminMetrics: user.activities?.adminMetrics ?? 0
@@ -354,10 +393,105 @@ export class DemoUsersRepository {
     }
     return DemoUsersRepositoryBuilder.applySeededActivityCounts(user, {
       chatItems: this.chatsRepository.queryChatItemsByUser(user.id),
-      invitationItems: this.eventsRepository.queryInvitationItemsByUser(user.id),
-      eventItems: this.eventsRepository.queryEventItemsByUser(user.id),
-      hostingItems: this.eventsRepository.queryHostingItemsByUser(user.id),
+      invitationItems: this.eventsRepository.queryInvitationItemsByUser(user.id)
+        .filter(item => !item.isTrashed),
+      eventsCount: this.eventsRepository.countUpcomingActiveEventItemsByUser(user.id),
+      hostingItems: this.eventsRepository.queryHostingItemsByUser(user.id)
+        .filter(item => !item.isTrashed)
+        .filter(item => item.isAdmin === true),
+      rateItems: this.usersRatingsRepository.queryActivityRateItemsByUserId(user.id),
+      ...this.countOwnedAssetsByType(user.id),
+      ticketsCount: this.eventsRepository.countTicketItemsByUser(user.id),
+      contactsCount: user.activities?.contacts ?? 0,
+      feedbackCount: this.eventsRepository.countPendingEventFeedbackByUser(
+        user.id,
+        DemoUsersRepository.INITIAL_EVENT_FEEDBACK_UNLOCK_DELAY_MS
+      ),
       minDemoEventItemsPerUser: DemoUsersRepository.MIN_DEMO_EVENT_ITEMS_PER_USER
     });
+  }
+
+  private countOwnedAssetsByType(userId: string): {
+    carsCount: number;
+    accommodationCount: number;
+    suppliesCount: number;
+  } {
+    const normalizedUserId = userId.trim();
+    const table = this.normalizeAssetsCollection(this.memoryDb.read()[ASSETS_TABLE_NAME]);
+    const counts = {
+      carsCount: 0,
+      accommodationCount: 0,
+      suppliesCount: 0
+    };
+    if (!normalizedUserId) {
+      return counts;
+    }
+    for (const id of table.idsByOwnerUserId[normalizedUserId] ?? []) {
+      const record = table.byId[id];
+      if (!record) {
+        continue;
+      }
+      if (record.type === 'Car') {
+        counts.carsCount += 1;
+      } else if (record.type === 'Accommodation') {
+        counts.accommodationCount += 1;
+      } else if (record.type === 'Supplies') {
+        counts.suppliesCount += 1;
+      }
+    }
+    return counts;
+  }
+
+  private normalizeAssetsCollection(value: unknown): DemoAssetsRecordCollection {
+    const source = value as Partial<DemoAssetsRecordCollection> | null | undefined;
+    const byId = source?.byId && typeof source.byId === 'object'
+      ? { ...(source.byId as Record<string, DemoAssetRecord>) }
+      : {};
+    const ids = Array.isArray(source?.ids)
+      ? source.ids.map(id => String(id))
+      : [];
+    const idsByOwnerUserId: Record<string, string[]> = {};
+    if (source?.idsByOwnerUserId && typeof source.idsByOwnerUserId === 'object') {
+      for (const [ownerUserId, ownerIds] of Object.entries(source.idsByOwnerUserId)) {
+        const normalizedOwnerUserId = ownerUserId.trim();
+        if (!normalizedOwnerUserId || !Array.isArray(ownerIds)) {
+          continue;
+        }
+        idsByOwnerUserId[normalizedOwnerUserId] = ownerIds
+          .map(id => String(id))
+          .filter(id => Boolean(byId[id]));
+      }
+    }
+    for (const id of ids) {
+      const record = byId[id];
+      const ownerUserId = `${record?.ownerUserId ?? ''}`.trim();
+      if (!ownerUserId) {
+        continue;
+      }
+      const bucket = idsByOwnerUserId[ownerUserId] ?? [];
+      if (!bucket.includes(id)) {
+        bucket.push(id);
+      }
+      idsByOwnerUserId[ownerUserId] = bucket;
+    }
+    return {
+      byId,
+      ids,
+      idsByOwnerUserId
+    };
+  }
+
+  private sameActivityCounts(left: UserDto, right: UserDto): boolean {
+    return left.activities.game === right.activities.game
+      && left.activities.chat === right.activities.chat
+      && left.activities.invitations === right.activities.invitations
+      && left.activities.events === right.activities.events
+      && left.activities.hosting === right.activities.hosting
+      && (left.activities.cars ?? 0) === (right.activities.cars ?? 0)
+      && (left.activities.accommodation ?? 0) === (right.activities.accommodation ?? 0)
+      && (left.activities.supplies ?? 0) === (right.activities.supplies ?? 0)
+      && (left.activities.tickets ?? 0) === (right.activities.tickets ?? 0)
+      && (left.activities.contacts ?? 0) === (right.activities.contacts ?? 0)
+      && (left.activities.feedback ?? 0) === (right.activities.feedback ?? 0);
   }
 }

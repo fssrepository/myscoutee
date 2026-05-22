@@ -169,9 +169,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
           ...this.currentRecord,
           acceptedMembers: this.currentMemberSummary.acceptedMembers,
           pendingMembers: this.currentMemberSummary.pendingMembers,
-          capacityTotal: this.currentMemberSummary.capacityTotal,
-          acceptedMemberUserIds: [...this.currentMemberSummary.acceptedMemberUserIds],
-          pendingMemberUserIds: [...this.currentMemberSummary.pendingMemberUserIds]
+          capacityTotal: this.currentMemberSummary.capacityTotal
         };
       }
     });
@@ -1952,9 +1950,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
         ...this.currentRecord,
         acceptedMembers: summary.acceptedMembers,
         pendingMembers: summary.pendingMembers,
-        capacityTotal: summary.capacityTotal,
-        acceptedMemberUserIds: [...summary.acceptedMemberUserIds],
-        pendingMemberUserIds: [...summary.pendingMemberUserIds]
+        capacityTotal: summary.capacityTotal
       };
     }
   }
@@ -1979,8 +1975,8 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       acceptedMembers,
       pendingMembers,
       capacityTotal,
-      acceptedMemberUserIds: [...(summary?.acceptedMemberUserIds ?? this.currentRecord?.acceptedMemberUserIds ?? [])],
-      pendingMemberUserIds: [...(summary?.pendingMemberUserIds ?? this.currentRecord?.pendingMemberUserIds ?? [])]
+      acceptedMemberUserIds: [...(summary?.acceptedMemberUserIds ?? [])],
+      pendingMemberUserIds: [...(summary?.pendingMemberUserIds ?? [])]
     };
   }
 

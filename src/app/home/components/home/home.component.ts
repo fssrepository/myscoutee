@@ -2736,7 +2736,15 @@ export class HomeComponent implements OnDestroy {
         chat: user.activities?.chat ?? 0,
         invitations: user.activities?.invitations ?? 0,
         events: user.activities?.events ?? 0,
-        hosting: user.activities?.hosting ?? 0
+        hosting: user.activities?.hosting ?? 0,
+        cars: user.activities?.cars ?? 0,
+        accommodation: user.activities?.accommodation ?? 0,
+        supplies: user.activities?.supplies ?? 0,
+        tickets: user.activities?.tickets ?? 0,
+        contacts: user.activities?.contacts ?? 0,
+        feedback: user.activities?.feedback ?? 0,
+        adminJobs: user.activities?.adminJobs ?? 0,
+        adminMetrics: user.activities?.adminMetrics ?? 0
       }
     };
   }
@@ -2770,7 +2778,15 @@ export class HomeComponent implements OnDestroy {
         chat: 0,
         invitations: 0,
         events: 0,
-        hosting: 0
+        hosting: 0,
+        cars: 0,
+        accommodation: 0,
+        supplies: 0,
+        tickets: 0,
+        contacts: 0,
+        feedback: 0,
+        adminJobs: 0,
+        adminMetrics: 0
       }
     };
   }
@@ -2801,7 +2817,15 @@ export class HomeComponent implements OnDestroy {
         chat: contextUser.activities?.chat ?? localUser.activities.chat,
         invitations: contextUser.activities?.invitations ?? localUser.activities.invitations,
         events: contextUser.activities?.events ?? localUser.activities.events,
-        hosting: contextUser.activities?.hosting ?? localUser.activities.hosting
+        hosting: contextUser.activities?.hosting ?? localUser.activities.hosting,
+        cars: contextUser.activities?.cars ?? localUser.activities.cars ?? 0,
+        accommodation: contextUser.activities?.accommodation ?? localUser.activities.accommodation ?? 0,
+        supplies: contextUser.activities?.supplies ?? localUser.activities.supplies ?? 0,
+        tickets: contextUser.activities?.tickets ?? localUser.activities.tickets ?? 0,
+        contacts: contextUser.activities?.contacts ?? localUser.activities.contacts ?? 0,
+        feedback: contextUser.activities?.feedback ?? localUser.activities.feedback ?? 0,
+        adminJobs: contextUser.activities?.adminJobs ?? localUser.activities.adminJobs ?? 0,
+        adminMetrics: contextUser.activities?.adminMetrics ?? localUser.activities.adminMetrics ?? 0
       }
     };
   }

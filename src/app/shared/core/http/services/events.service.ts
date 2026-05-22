@@ -575,8 +575,6 @@ export class HttpEventsService {
     }
     return records.map(record => ({
       ...record,
-      acceptedMemberUserIds: [...(record.acceptedMemberUserIds ?? [])],
-      pendingMemberUserIds: [...(record.pendingMemberUserIds ?? [])],
       topics: [...(record.topics ?? [])],
       pricing: record.pricing ? PricingBuilder.clonePricingConfig(record.pricing) : undefined,
       policies: (record.policies ?? []).map(item => ({ ...item })),

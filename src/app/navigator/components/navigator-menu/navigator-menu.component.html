@@ -382,16 +382,25 @@
             <span class="navigator-action-ripple" matRipple [matRippleTrigger]="assetCarButton" aria-hidden="true"></span>
             <mat-icon>directions_car</mat-icon>
             <span class="asset-shortcut-label">Car</span>
+            @if (user.activities.cars > 0) {
+              <span class="card-badge menu-shortcut-badge">{{ user.activities.cars | counterBadge }}</span>
+            }
           </button>
           <button #assetAccommodationButton class="asset-shortcut-btn asset-shortcut-accommodation" type="button" [disabled]="isPrimaryMenuDisabled(user)" (click)="openAssetAccommodationPopup($event)" aria-label="Property">
             <span class="navigator-action-ripple" matRipple [matRippleTrigger]="assetAccommodationButton" aria-hidden="true"></span>
             <mat-icon>apartment</mat-icon>
             <span class="asset-shortcut-label">Property</span>
+            @if (user.activities.accommodation > 0) {
+              <span class="card-badge menu-shortcut-badge">{{ user.activities.accommodation | counterBadge }}</span>
+            }
           </button>
           <button #assetSuppliesButton class="asset-shortcut-btn asset-shortcut-supplies" type="button" [disabled]="isPrimaryMenuDisabled(user)" (click)="openAssetSuppliesPopup($event)" aria-label="Supplies">
             <span class="navigator-action-ripple" matRipple [matRippleTrigger]="assetSuppliesButton" aria-hidden="true"></span>
             <mat-icon>inventory_2</mat-icon>
             <span class="asset-shortcut-label">Supplies</span>
+            @if (user.activities.supplies > 0) {
+              <span class="card-badge menu-shortcut-badge">{{ user.activities.supplies | counterBadge }}</span>
+            }
           </button>
           <button #assetTicketButton class="asset-shortcut-btn asset-shortcut-ticket" type="button" [disabled]="isPrimaryMenuDisabled(user)" (click)="openAssetTicketsPopup($event)" aria-label="Ticket">
             <span class="navigator-action-ripple" matRipple [matRippleTrigger]="assetTicketButton" aria-hidden="true"></span>
@@ -405,6 +414,9 @@
             <span class="navigator-action-ripple" matRipple [matRippleTrigger]="contactsButton" aria-hidden="true"></span>
             <mat-icon>contacts</mat-icon>
             <span class="asset-shortcut-label">Contacts</span>
+            @if (user.activities.contacts > 0) {
+              <span class="card-badge menu-shortcut-badge">{{ user.activities.contacts | counterBadge }}</span>
+            }
           </button>
         </div>
       </div>

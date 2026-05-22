@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { APP_STATIC_DATA } from '../../../app-static-data';
 import { AppMemoryDb } from '../../base/db';
 import type { IdeaPost, IdeaPostSaveRequest } from '../../base/models';
+import { DemoSeedScheduleBuilder } from '../builders';
 import { IDEA_POSTS_TABLE_NAME, type DemoIdeaPostsTable } from '../models/idea-posts.model';
 import { RouteDelayService } from '../../base/services/route-delay.service';
 
@@ -285,7 +286,7 @@ export class DemoIdeaPostsService {
           </ul>
         `,
         featured: true,
-        submittedAtIso: '2026-04-29T10:00:00.000Z',
+        submittedAtIso: this.rebaseSeedDateTime('2026-04-29T10:00:00.000Z'),
         nowIso
       }),
       this.defaultPost({
@@ -302,7 +303,7 @@ export class DemoIdeaPostsService {
           </figure>
         `,
         featured: true,
-        submittedAtIso: '2026-04-24T12:30:00.000Z',
+        submittedAtIso: this.rebaseSeedDateTime('2026-04-24T12:30:00.000Z'),
         nowIso
       }),
       this.defaultPost({
@@ -320,7 +321,7 @@ export class DemoIdeaPostsService {
           </ul>
         `,
         featured: true,
-        submittedAtIso: '2026-04-20T09:15:00.000Z',
+        submittedAtIso: this.rebaseSeedDateTime('2026-04-20T09:15:00.000Z'),
         nowIso
       }),
       this.defaultPost({
@@ -333,7 +334,7 @@ export class DemoIdeaPostsService {
           <p>MyScoutee can connect profile signals, event participation, feedback, and scoped chats so users do not have to guess from one empty message thread.</p>
         `,
         featured: true,
-        submittedAtIso: '2026-04-16T16:45:00.000Z',
+        submittedAtIso: this.rebaseSeedDateTime('2026-04-16T16:45:00.000Z'),
         nowIso
       }),
       this.defaultPost({
@@ -351,7 +352,7 @@ export class DemoIdeaPostsService {
           </ul>
         `,
         featured: false,
-        submittedAtIso: '2026-04-11T13:20:00.000Z',
+        submittedAtIso: this.rebaseSeedDateTime('2026-04-11T13:20:00.000Z'),
         nowIso
       })
     ];
@@ -363,7 +364,7 @@ export class DemoIdeaPostsService {
         excerpt: 'A MyScoutee szándékkal, kontextussal és valódi tervekkel indul a végtelen igen/nem kör helyett.',
         contentHtml: '<p><strong>A legtöbb társkereső gyors reakciókra optimalizál. A MyScoutee olyan döntésekre épül, amelyekből valódi tervek lehetnek.</strong></p><p>A tagok nem csak igent vagy nemet jeleznek, hanem prioritást is, így az érdeklődés árnyaltabb és a következő lépés tisztább.</p><ul><li>A prioritási pontszám erősebb szándékot mutat.</li><li>A kontextus segít megérteni, miért van értelme egy találatnak.</li><li>Az események természetes következő lépést adnak.</li></ul>',
         featured: true,
-        submittedAtIso: '2026-04-29T10:00:00.000Z',
+        submittedAtIso: this.rebaseSeedDateTime('2026-04-29T10:00:00.000Z'),
         nowIso
       }),
       this.defaultPost({
@@ -373,7 +374,7 @@ export class DemoIdeaPostsService {
         excerpt: 'A csoportok, szervezők és eseménykontextus természetesebbé és kevésbé nyomasztóvá teszik a bemutatkozást.',
         contentHtml: '<p>A MyScoutee akkor hasznos, amikor valaki úgy szeretne emberekkel találkozni, hogy ne minden beszélgetés interjúnak érződjön.</p><p>Egy szervezett program már az első üzenet előtt közös kontextust ad.</p>',
         featured: true,
-        submittedAtIso: '2026-04-24T12:30:00.000Z',
+        submittedAtIso: this.rebaseSeedDateTime('2026-04-24T12:30:00.000Z'),
         nowIso
       }),
       this.defaultPost({
@@ -383,7 +384,7 @@ export class DemoIdeaPostsService {
         excerpt: 'A szervezők még meghívás vagy jóváhagyás előtt leírhatják a tervet, létszámot, erőforrásokat és hangulatot.',
         contentHtml: '<p>A szervező létrehozhat egy kisebb tervet, opcionális részekre bonthatja, és a logisztikát elejétől láthatóvá teheti.</p><ul><li>Jó brunchhoz, sétához, játékhoz, sporthoz vagy laza találkozóhoz.</li><li>Hasznos, ha a szervező konkrét hangulatot és csoportméretet szeretne.</li></ul>',
         featured: true,
-        submittedAtIso: '2026-04-20T09:15:00.000Z',
+        submittedAtIso: this.rebaseSeedDateTime('2026-04-20T09:15:00.000Z'),
         nowIso
       }),
       this.defaultPost({
@@ -393,7 +394,7 @@ export class DemoIdeaPostsService {
         excerpt: 'Profilok, eseménytörténet, visszajelzés és célzott csevegések segítik megérteni, kivel találkozol.',
         contentHtml: '<p>A bizalom könnyebb, ha a termék láthatóan tartja a kontextust. Egy ember nem csak fotó: az is számít, hogyan csatlakozik, szervez és kommunikál.</p>',
         featured: true,
-        submittedAtIso: '2026-04-16T16:45:00.000Z',
+        submittedAtIso: this.rebaseSeedDateTime('2026-04-16T16:45:00.000Z'),
         nowIso
       }),
       this.defaultPost({
@@ -403,11 +404,15 @@ export class DemoIdeaPostsService {
         excerpt: 'A regisztrációból lesz párosítás, eseményfelfedezés, szervezés, chat és visszajelzés.',
         contentHtml: '<p>A látogatók a landing oldalon megértik az ötletet, de az érték akkor indul, amikor regisztrálnak és profilt építenek.</p><ul><li>Emberek felfedezése prioritások és aktivitások alapján.</li><li>Tervekhez csatlakozás vagy szervezés tisztább elvárásokkal.</li></ul>',
         featured: false,
-        submittedAtIso: '2026-04-11T13:20:00.000Z',
+        submittedAtIso: this.rebaseSeedDateTime('2026-04-11T13:20:00.000Z'),
         nowIso
       })
     ];
     return [...enPosts, ...huPosts];
+  }
+
+  private rebaseSeedDateTime(value: string): string {
+    return DemoSeedScheduleBuilder.rebaseDateTime(value) ?? value;
   }
 
   private defaultPost(options: {

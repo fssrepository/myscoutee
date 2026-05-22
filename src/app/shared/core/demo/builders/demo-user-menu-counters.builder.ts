@@ -1,9 +1,17 @@
 import type { UserDto, UserMenuCountersDto } from '../../base/interfaces/user.interface';
+import { DemoSeedScheduleBuilder } from './demo-seed-schedule.builder';
 
 export class DemoUserMenuCountersBuilder {
   static buildInitialMenuCounterOverrides(
     user: UserDto,
-    counts: { tickets: number; feedback: number }
+    counts: {
+      cars: number;
+      accommodation: number;
+      supplies: number;
+      tickets: number;
+      contacts: number;
+      feedback: number;
+    }
   ): UserMenuCountersDto {
     return {
       game: this.normalizeCounterValue(user.activities?.game),
@@ -11,7 +19,11 @@ export class DemoUserMenuCountersBuilder {
       invitations: this.normalizeCounterValue(user.activities?.invitations),
       events: this.normalizeCounterValue(user.activities?.events),
       hosting: this.normalizeCounterValue(user.activities?.hosting),
+      cars: this.normalizeCounterValue(counts.cars),
+      accommodation: this.normalizeCounterValue(counts.accommodation),
+      supplies: this.normalizeCounterValue(counts.supplies),
       tickets: this.normalizeCounterValue(counts.tickets),
+      contacts: this.normalizeCounterValue(counts.contacts),
       feedback: this.normalizeCounterValue(counts.feedback),
       adminJobs: this.normalizeCounterValue(user.activities?.adminJobs),
       adminMetrics: this.normalizeCounterValue(user.activities?.adminMetrics)
@@ -55,7 +67,9 @@ export class DemoUserMenuCountersBuilder {
       if ((sequence % 4) === 0) {
         continue;
       }
-      const startMs = new Date(2026, 2, 1 + (index * 2), 10 + (index % 6), (index % 2) * 30, 0, 0).getTime();
+      const startMs = DemoSeedScheduleBuilder
+        .shiftDate(new Date(2026, 2, 1 + (index * 2), 10 + (index % 6), (index % 2) * 30, 0, 0))
+        .getTime();
       if (normalizedNowMs >= startMs + normalizedUnlockDelayMs) {
         total += 1;
       }

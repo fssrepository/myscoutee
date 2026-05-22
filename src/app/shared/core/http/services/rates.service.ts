@@ -164,7 +164,11 @@ export class HttpRatesService {
         invitations: user.activities?.invitations ?? 0,
         events: user.activities?.events ?? 0,
         hosting: user.activities?.hosting ?? 0,
+        cars: user.activities?.cars ?? 0,
+        accommodation: user.activities?.accommodation ?? 0,
+        supplies: user.activities?.supplies ?? 0,
         tickets: user.activities?.tickets ?? 0,
+        contacts: user.activities?.contacts ?? 0,
         feedback: user.activities?.feedback ?? 0
       }
     };

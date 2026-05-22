@@ -474,6 +474,8 @@ export class AppMemoryDb {
     const byId: DemoMemorySchema[typeof EVENTS_TABLE_NAME]['byId'] = {};
     for (const [id, record] of Object.entries(table?.byId ?? {})) {
       const next = { ...(record as unknown as Record<string, unknown>) };
+      delete next['acceptedMemberUserIds'];
+      delete next['pendingMemberUserIds'];
       byId[id] = next as unknown as DemoMemorySchema[typeof EVENTS_TABLE_NAME]['byId'][string];
     }
     return {

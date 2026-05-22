@@ -5,6 +5,7 @@ import type { UserDto } from '../../base/interfaces/user.interface';
 import type { DemoChatRecord, DemoChatRecordCollection } from '../models/chats.model';
 import type { DemoEventRecord } from '../models/events.model';
 import { DemoEventSeedBuilder } from './demo-event-seed.builder';
+import { DemoSeedScheduleBuilder } from './demo-seed-schedule.builder';
 import { DemoUserSeedBuilder } from './demo-user-seed.builder';
 
 type ChatSeedUser = Pick<UserDto, 'id' | 'name' | 'initials' | 'gender' | 'images'>;
@@ -252,6 +253,7 @@ export class DemoChatsRepositoryBuilder {
         const dateIso = this.buildDateIso(ownerUserId, item);
         byId[recordKey] = {
           ...item,
+          supportCaseUpdatedAtIso: this.rebaseOptionalDateIso(item.supportCaseUpdatedAtIso),
           memberIds: [...item.memberIds],
           ownerUserId,
           dateIso,
@@ -311,8 +313,9 @@ export class DemoChatsRepositoryBuilder {
     const memberIds = this.uniqueUserIds([
       ownerUserId,
       organizerUserId,
-      ...(record.type === 'hosting' ? (record.acceptedMemberUserIds ?? []) : []),
-      ...(record.type === 'hosting' ? (record.pendingMemberUserIds ?? []) : [])
+      ...(record.type === 'hosting'
+        ? this.seedEventMemberIds(ownerUserId, record, Math.max(record.acceptedMembers + record.pendingMembers, 1))
+        : [])
     ]);
     return {
       ...this.createContextChatItem({
@@ -433,7 +436,7 @@ export class DemoChatsRepositoryBuilder {
   }
 
   private static seedEventMemberIds(ownerUserId: string, record: DemoEventRecord, targetCount: number): string[] {
-    const explicit = this.uniqueUserIds([ownerUserId, ...(record.acceptedMemberUserIds ?? [])]);
+    const explicit = this.uniqueUserIds([ownerUserId]);
     if (explicit.length >= Math.max(1, targetCount)) {
       return explicit.slice(0, Math.max(1, targetCount));
     }
@@ -513,7 +516,7 @@ export class DemoChatsRepositoryBuilder {
 
   private static buildDateIso(ownerUserId: string, item: ChatRecord): string {
     const seed = AppUtils.hashText(`chat-date:${ownerUserId}:${item.id}:${item.title}`);
-    const value = new Date('2026-02-21T09:00:00');
+    const value = DemoSeedScheduleBuilder.shiftDate(new Date(this.FALLBACK_TIME));
     value.setDate(value.getDate() + (seed % 9));
     value.setHours(8 + (seed % 11), (seed % 4) * 15, 0, 0);
     return AppUtils.toIsoDateTime(value);
@@ -526,7 +529,7 @@ export class DemoChatsRepositoryBuilder {
     }
     const members = this.resolveMembers(item, me);
     const sender = this.resolveSender(item, members, me);
-    const anchor = new Date(anchorIso || this.FALLBACK_TIME);
+    const anchor = new Date(anchorIso || this.rebaseDateIso(this.FALLBACK_TIME));
     const at = (minutesBefore: number): Date => new Date(anchor.getTime() - (minutesBefore * 60 * 1000));
     const mk = (
       id: string,
@@ -599,6 +602,18 @@ export class DemoChatsRepositoryBuilder {
 
     return [...olderMessages, ...recentMessages]
       .sort((first, second) => AppUtils.toSortableDate(first.sentAtIso) - AppUtils.toSortableDate(second.sentAtIso));
+  }
+
+  private static rebaseOptionalDateIso(value: string | null | undefined): string | undefined {
+    const normalizedValue = `${value ?? ''}`.trim();
+    if (!normalizedValue) {
+      return undefined;
+    }
+    return this.rebaseDateIso(normalizedValue);
+  }
+
+  private static rebaseDateIso(value: string): string {
+    return DemoSeedScheduleBuilder.rebaseDateTime(value) ?? value;
   }
 
   private static buildSupportCaseMessages(

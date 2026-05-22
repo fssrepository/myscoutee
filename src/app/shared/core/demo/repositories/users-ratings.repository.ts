@@ -26,11 +26,12 @@ import {
 })
 export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
   private static readonly DEFAULT_DEMO_USERS_COUNT = 50;
-  private static readonly MIN_ACTIVITY_RATE_CONNECTIONS = 12;
-  private static readonly DEMO_ACTIVITY_RATE_SEED_COVERAGE_RATIO = 0.5;
-  private static readonly FEATURED_DEMO_ACTIVITY_RATE_OWNER_COUNT = 4;
-  private static readonly FEATURED_DEMO_ACTIVITY_RATE_EXTRA_SINGLE_GIVEN_COUNT = 15;
-  private static readonly DEFAULT_DEMO_ACTIVITY_RATE_EXTRA_SINGLE_GIVEN_COUNT = 5;
+  private static readonly MIN_ACTIVITY_RATE_CONNECTIONS = 8;
+  private static readonly DEMO_ACTIVITY_RATE_SEED_COVERAGE_RATIO = 0.25;
+  private static readonly FEATURED_DEMO_ACTIVITY_RATE_OWNER_COUNT = 3;
+  private static readonly FEATURED_DEMO_ACTIVITY_RATE_EXTRA_SINGLE_GIVEN_COUNT = 4;
+  private static readonly DEFAULT_DEMO_ACTIVITY_RATE_EXTRA_SINGLE_GIVEN_COUNT = 1;
+  private static readonly MAX_DEMO_ACTIVITY_RATE_BOOTSTRAP_RECORDS = 1000;
   private initialized = false;
 
   init(): void {
@@ -40,20 +41,39 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
     const users = this.querySeedUsers();
     const visibleSeedUsers = users.filter(user => DemoUserSeedBuilder.isActivityRateVisibleProfile(user));
     const ownerIdsToSeed = this.collectOwnerIdsNeedingActivityRateSeed(visibleSeedUsers);
+    const currentRatesCount = this.memoryDb.read()[USER_RATES_TABLE_NAME].ids.length;
+    const remainingBootstrapSlots = Math.max(
+      0,
+      DemoUsersRatingsRepository.MAX_DEMO_ACTIVITY_RATE_BOOTSTRAP_RECORDS - currentRatesCount
+    );
     if (ownerIdsToSeed.length === 0) {
       this.initialized = true;
       return;
     }
-    const records = ownerIdsToSeed.flatMap((ownerUserId, ownerIndex) =>
-      DemoUserRatesBuilder.buildGeneratedRateItemsForUser(visibleSeedUsers, ownerUserId, {
+    if (remainingBootstrapSlots <= 0) {
+      this.initialized = true;
+      return;
+    }
+    const records: UserRateRecord[] = [];
+    for (let ownerIndex = 0; ownerIndex < ownerIdsToSeed.length; ownerIndex += 1) {
+      const ownerUserId = ownerIdsToSeed[ownerIndex];
+      if (!ownerUserId) {
+        continue;
+      }
+      const ownerRecords = DemoUserRatesBuilder.buildGeneratedRateItemsForUser(visibleSeedUsers, ownerUserId, {
         extraSingleGivenCount: ownerIndex < DemoUsersRatingsRepository.FEATURED_DEMO_ACTIVITY_RATE_OWNER_COUNT
           ? DemoUsersRatingsRepository.FEATURED_DEMO_ACTIVITY_RATE_EXTRA_SINGLE_GIVEN_COUNT
           : DemoUsersRatingsRepository.DEFAULT_DEMO_ACTIVITY_RATE_EXTRA_SINGLE_GIVEN_COUNT,
         userCoverageRatio: DemoUsersRatingsRepository.DEMO_ACTIVITY_RATE_SEED_COVERAGE_RATIO
       })
-        .map(item => DemoUserRatesBuilder.toActivityRateRecord(ownerUserId, item))
-    );
+        .map(item => DemoUserRatesBuilder.toActivityRateRecord(ownerUserId, item));
+      if (records.length + ownerRecords.length > remainingBootstrapSlots) {
+        break;
+      }
+      records.push(...ownerRecords);
+    }
     if (records.length === 0) {
+      this.initialized = true;
       return;
     }
     this.memoryDb.write(state => {
@@ -146,7 +166,6 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
   }
 
   queryRatedGameCardUserIds(raterUserId: string, mode: UserGameMode = 'single'): string[] {
-    this.init();
     const normalizedRaterId = raterUserId.trim();
     if (!normalizedRaterId || DemoUserSeedBuilder.isEmptyOnboardingProfileUserId(normalizedRaterId)) {
       return [];
@@ -212,7 +231,6 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
   }
 
   override queryRatedGameCardPairKeys(ownerUserId: string): string[] {
-    this.init();
     const normalizedOwnerUserId = ownerUserId.trim();
     if (!normalizedOwnerUserId || DemoUserSeedBuilder.isEmptyOnboardingProfileUserId(normalizedOwnerUserId)) {
       return [];
@@ -251,22 +269,18 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
   }
 
   queryActivityRateItemsByUserId(userId: string): RateRecord[] {
-    this.init();
     return this.buildRateItemsByUserId(userId);
   }
 
   override peekRateItemsByUserId(userId: string): RateRecord[] {
-    this.init();
     return this.buildRateItemsByUserId(userId);
   }
 
   override async queryRateItemsByUserId(userId: string): Promise<RateRecord[]> {
-    this.init();
     return this.buildRateItemsByUserId(userId);
   }
 
   async queryActivityRateItemsPage(query: ActivityRateRecordQuery): Promise<{ items: RateRecord[]; total: number; nextCursor?: string | null }> {
-    this.init();
     const normalizedOwnerUserId = query.ownerUserId.trim();
     if (!normalizedOwnerUserId) {
       return {
@@ -787,7 +801,6 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
   }
 
   queryUserRatesByUserId(userId: string): UserRateRecord[] {
-    this.init();
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return [];
@@ -806,7 +819,6 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
   }
 
   upsertGameCardRatings(records: readonly UserRateRecord[]): string[] {
-    this.init();
     const normalizedRecords = records
       .map(record => this.normalizeIncomingRateRecord(record))
       .filter((record): record is UserRateRecord => Boolean(record));

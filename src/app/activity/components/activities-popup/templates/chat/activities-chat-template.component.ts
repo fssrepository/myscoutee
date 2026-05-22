@@ -410,8 +410,6 @@ export class ActivitiesChatsController {
       upcomingSlots: value.upcomingSlots ? value.upcomingSlots.map(item => ({ ...item })) : undefined,
       acceptedMembers: value.acceptedMembers ?? 0,
       pendingMembers: value.pendingMembers ?? 0,
-      acceptedMemberUserIds: [...(value.acceptedMemberUserIds ?? [])],
-      pendingMemberUserIds: [...(value.pendingMemberUserIds ?? [])],
       pendingReason: value.pendingReason ?? null,
       topics: [...(value.topics ?? [])],
       subEvents: value.subEvents

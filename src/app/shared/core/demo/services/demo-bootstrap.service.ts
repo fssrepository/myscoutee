@@ -144,7 +144,8 @@ export class DemoBootstrapService {
     const filterPreferencesChanged = this.usersRepository.seedDefaultUserFilterPreferencesForUser(normalizedUserId);
 
     if (this.readyUserIds.has(normalizedUserId)) {
-      if (filterPreferencesChanged) {
+      const activityCountersChanged = this.usersRepository.stampSeededActivityCountsForUser(normalizedUserId);
+      if (filterPreferencesChanged || activityCountersChanged) {
         onProgress?.(demoBootstrapProgressStep('sessionIndexedDb'));
         await this.memoryDb.flushToIndexedDb();
         await this.waitForUiYield();
@@ -162,7 +163,8 @@ export class DemoBootstrapService {
       normalizedUserId,
       this.eventsRepository.queryItemsByUser(normalizedUserId)
     );
-    if (contextualChatsChanged || filterPreferencesChanged) {
+    const activityCountersChanged = this.usersRepository.stampSeededActivityCountsForUser(normalizedUserId);
+    if (contextualChatsChanged || filterPreferencesChanged || activityCountersChanged) {
       onProgress?.(demoBootstrapProgressStep('sessionIndexedDb'));
       await this.memoryDb.flushToIndexedDb();
       await this.waitForUiYield();
@@ -363,9 +365,13 @@ export class DemoBootstrapService {
     hostUserId: string,
     usersById: ReadonlyMap<string, UserDto>
   ): string[] {
+    const summary = this.activityMembersRepository.peekSummaryByOwner({
+      ownerType: 'event',
+      ownerId: record.id
+    });
     const memberUserIds = [...new Set([
-      ...record.acceptedMemberUserIds,
-      ...record.pendingMemberUserIds
+      ...(summary?.acceptedMemberUserIds ?? []),
+      ...(summary?.pendingMemberUserIds ?? [])
     ].map(userId => `${userId}`.trim()).filter(Boolean))]
       .filter(userId => userId !== hostUserId && usersById.has(userId));
     if (memberUserIds.length > 0) {
@@ -392,11 +398,16 @@ export class DemoBootstrapService {
   }
 
   private toFeedbackViewerDemoEventSeedItem(record: DemoEventRecord, viewerUserIds: readonly string[] = []): DemoEventSeedItem {
+    const summary = this.activityMembersRepository.peekSummaryByOwner({
+      ownerType: 'event',
+      ownerId: record.id
+    });
     const acceptedMemberUserIds = [...new Set([
-      ...record.acceptedMemberUserIds,
+      ...(summary?.acceptedMemberUserIds ?? []),
       ...viewerUserIds
     ].map(userId => `${userId}`.trim()).filter(Boolean))];
-    const pendingMemberUserIds = record.pendingMemberUserIds.filter(userId => !acceptedMemberUserIds.includes(userId));
+    const pendingMemberUserIds = (summary?.pendingMemberUserIds ?? [])
+      .filter(userId => !acceptedMemberUserIds.includes(userId));
     return {
       ...this.toDemoEventSeedItem(record),
       activity: 0,
@@ -433,8 +444,6 @@ export class DemoBootstrapService {
       acceptedMembers: record.acceptedMembers,
       pendingMembers: record.pendingMembers,
       capacityTotal: record.capacityTotal,
-      acceptedMemberUserIds: [...record.acceptedMemberUserIds],
-      pendingMemberUserIds: [...record.pendingMemberUserIds],
       visibility: record.visibility,
       blindMode: record.blindMode,
       imageUrl: record.imageUrl,

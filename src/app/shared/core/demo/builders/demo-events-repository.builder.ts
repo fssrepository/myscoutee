@@ -1,7 +1,7 @@
 import { APP_STATIC_DATA } from '../../../app-static-data';
-import { ActivityMembersBuilder } from '../../base/builders/activity-members.builder';
 import { PricingBuilder } from '../../base/builders/pricing.builder';
 import { DemoEventSeedBuilder } from './demo-event-seed.builder';
+import { DemoSeedScheduleBuilder } from './demo-seed-schedule.builder';
 import { DemoUserSeedBuilder } from './demo-user-seed.builder';
 import type * as AppTypes from '../../../core/base/models';
 import { AppUtils } from '../../../app-utils';
@@ -659,6 +659,7 @@ interface DemoEventSeedOverrides {
   policies?: AppTypes.EventPolicyItem[];
   slotsEnabled?: boolean;
   slotTemplates?: AppTypes.EventSlotTemplate[];
+  generated?: boolean;
   subEvents?: AppTypes.SubEventFormItem[];
   subEventsDisplayMode?: AppTypes.SubEventsDisplayMode;
   rating?: number;
@@ -667,8 +668,6 @@ interface DemoEventSeedOverrides {
 }
 
 export class DemoEventsRepositoryBuilder {
-  private static readonly SEED_SCHEDULE_REFERENCE_DATE = new Date(2026, 2, 1, 0, 0, 0, 0);
-
   static buildSeedInvitationItemsByUser(): Record<string, DemoInvitationSeedItem[]> {
     return Object.fromEntries(
       Object.entries(SEED_INVITATIONS_BY_USER).map(([userId, items]) => [userId, items.map(item => ({
@@ -743,7 +742,9 @@ export class DemoEventsRepositoryBuilder {
           policies: item.policies ? item.policies.map(policy => ({ ...policy })) : item.policies,
           slotTemplates: item.slotTemplates ? item.slotTemplates.map(slot => ({ ...slot })) : item.slotTemplates,
           subEvents: this.cloneSubEvents(item.subEvents) ?? item.subEvents,
-          topics: item.topics ? [...item.topics] : item.topics
+          topics: item.topics ? [...item.topics] : item.topics,
+          acceptedMemberUserIds: item.acceptedMemberUserIds ? [...item.acceptedMemberUserIds] : item.acceptedMemberUserIds,
+          pendingMemberUserIds: item.pendingMemberUserIds ? [...item.pendingMemberUserIds] : item.pendingMemberUserIds
         }))
       ])
     );
@@ -890,112 +891,8 @@ export class DemoEventsRepositoryBuilder {
   private static rebalanceVisibleActiveEventParticipation(
     collection: DemoEventRecordCollection
   ): DemoEventRecordCollection {
-    const nextById = { ...collection.byId };
-    const canonicalRecordByEventId = new Map<string, DemoEventRecord>();
-    const recordKeysByEventId = new Map<string, string[]>();
-    const guaranteedVisibleActiveCountByUser = new Map<string, number>();
-
-    for (const recordKey of collection.ids) {
-      const record = collection.byId[recordKey];
-      if (!record || record.isInvitation) {
-        continue;
-      }
-      const eventId = record.id.trim();
-      if (!eventId) {
-        continue;
-      }
-      const ownerKeys = recordKeysByEventId.get(eventId) ?? [];
-      ownerKeys.push(recordKey);
-      recordKeysByEventId.set(eventId, ownerKeys);
-      const currentPreferred = canonicalRecordByEventId.get(eventId);
-      if (!currentPreferred || this.shouldPreferParticipationCanonicalRecord(record, currentPreferred)) {
-        canonicalRecordByEventId.set(eventId, record);
-      }
-      const ownerUserId = record.userId.trim();
-      if (
-        record.type === 'events'
-        && record.isAdmin !== true
-        && record.isTrashed !== true
-        && record.published !== false
-        && ownerUserId.length > 0
-        && record.creatorUserId.trim() === ownerUserId
-      ) {
-        guaranteedVisibleActiveCountByUser.set(ownerUserId, (guaranteedVisibleActiveCountByUser.get(ownerUserId) ?? 0) + 1);
-      }
-    }
-
-    const remainingGuestSlotsByUser = new Map<string, number>();
-    const canonicalRecords = [...canonicalRecordByEventId.values()].sort((left, right) => {
-      const delta = AppUtils.toSortableDate(left.startAtIso) - AppUtils.toSortableDate(right.startAtIso);
-      if (delta !== 0) {
-        return delta;
-      }
-      return left.id.localeCompare(right.id);
-    });
-
-    for (const record of canonicalRecords) {
-      const eventId = record.id.trim();
-      if (!eventId) {
-        continue;
-      }
-      const creatorUserId = record.creatorUserId.trim();
-      const acceptedMemberUserIds = this.normalizeUserIds(record.acceptedMemberUserIds);
-      const pendingMemberUserIds = this.normalizeUserIds(record.pendingMemberUserIds)
-        .filter(userId => !acceptedMemberUserIds.includes(userId));
-      const nextAcceptedMemberUserIds: string[] = [];
-      const nextPendingMemberUserIds: string[] = [];
-      const seen = new Set<string>();
-
-      const tryKeepUser = (userId: string): boolean => {
-        const normalizedUserId = userId.trim();
-        if (!normalizedUserId || seen.has(normalizedUserId)) {
-          return false;
-        }
-        seen.add(normalizedUserId);
-        if (normalizedUserId === creatorUserId) {
-          return true;
-        }
-        const guaranteedVisibleActiveCount = guaranteedVisibleActiveCountByUser.get(normalizedUserId) ?? 0;
-        const remainingGuestSlots = remainingGuestSlotsByUser.get(normalizedUserId)
-          ?? Math.max(0, MAX_VISIBLE_ACTIVE_EVENTS_PER_USER - guaranteedVisibleActiveCount);
-        if (remainingGuestSlots <= 0) {
-          return false;
-        }
-        remainingGuestSlotsByUser.set(normalizedUserId, remainingGuestSlots - 1);
-        return true;
-      };
-
-      for (const userId of acceptedMemberUserIds) {
-        if (tryKeepUser(userId)) {
-          nextAcceptedMemberUserIds.push(userId);
-        }
-      }
-      for (const userId of pendingMemberUserIds) {
-        if (tryKeepUser(userId)) {
-          nextPendingMemberUserIds.push(userId);
-        }
-      }
-
-      const acceptedMembers = nextAcceptedMemberUserIds.length;
-      const pendingMembers = nextPendingMemberUserIds.length;
-      for (const recordKey of recordKeysByEventId.get(eventId) ?? []) {
-        const currentRecord = nextById[recordKey];
-        if (!currentRecord || currentRecord.isInvitation) {
-          continue;
-        }
-        nextById[recordKey] = {
-          ...currentRecord,
-          acceptedMembers,
-          pendingMembers,
-          acceptedMemberUserIds: [...nextAcceptedMemberUserIds],
-          pendingMemberUserIds: [...nextPendingMemberUserIds],
-          capacityTotal: Math.max(acceptedMembers, currentRecord.capacityTotal)
-        };
-      }
-    }
-
     return {
-      byId: nextById,
+      byId: { ...collection.byId },
       ids: [...collection.ids]
     };
   }
@@ -1022,8 +919,6 @@ export class DemoEventsRepositoryBuilder {
       slotTemplates: (record.slotTemplates ?? []).map(item => ({ ...item })),
       nextSlot: record.nextSlot ? { ...record.nextSlot } : null,
       upcomingSlots: (record.upcomingSlots ?? []).map(item => ({ ...item })),
-      acceptedMemberUserIds: [...(record.acceptedMemberUserIds ?? [])],
-      pendingMemberUserIds: [...(record.pendingMemberUserIds ?? [])],
       topics: [...(record.topics ?? [])],
       subEvents: this.cloneSubEvents(record.subEvents)
     };
@@ -1191,8 +1086,13 @@ export class DemoEventsRepositoryBuilder {
   > {
     const creator = this.resolveCreatorUser(record.creatorUserId, record.title);
     const frequency = record.seed?.frequency?.trim() || this.parseFrequencyFromTimeframe(record.timeframe ?? '');
-    const startAtIso = this.rebaseSeedDateTime(record.seed?.startAt) || this.resolveStartAtIso(record);
-    const endAtIso = this.rebaseSeedDateTime(record.seed?.endAt) || this.resolveEndAtIso(record, startAtIso);
+    const isGeneratedSeed = record.seed?.generated === true;
+    const startAtIso = isGeneratedSeed
+      ? (this.normalizeGeneratedSeedDateTime(record.seed?.startAt) || this.resolveStartAtIso(record))
+      : (this.rebaseSeedDateTime(record.seed?.startAt) || this.resolveStartAtIso(record));
+    const endAtIso = isGeneratedSeed
+      ? (this.normalizeGeneratedSeedDateTime(record.seed?.endAt) || this.resolveEndAtIso(record, startAtIso))
+      : (this.rebaseSeedDateTime(record.seed?.endAt) || this.resolveEndAtIso(record, startAtIso));
     const distanceKm = Number.isFinite(record.seed?.distanceKm)
       ? Math.max(0, Number(record.seed?.distanceKm))
       : this.resolveDistanceKm(record);
@@ -1202,7 +1102,7 @@ export class DemoEventsRepositoryBuilder {
     const seededMembers = this.buildSeededMemberIds(record, startAtIso, distanceKm, creator);
     const acceptedMemberUserIds = this.normalizeUserIds(record.seed?.acceptedMemberUserIds);
     const pendingMemberUserIds = this.normalizeUserIds(record.seed?.pendingMemberUserIds);
-    const members = this.normalizeDirectEventMembers(record, creator.id, {
+    const rawMembers = this.normalizeDirectEventMembers(record, creator.id, {
       acceptedMemberUserIds: acceptedMemberUserIds.length > 0
         ? acceptedMemberUserIds
         : seededMembers.acceptedMemberUserIds,
@@ -1210,13 +1110,25 @@ export class DemoEventsRepositoryBuilder {
         ? pendingMemberUserIds
         : seededMembers.pendingMemberUserIds
     });
+    const compactMemberCounts = this.resolveCompactSeedMemberCounts(record, rawMembers);
+    const compactAcceptedMemberUserIds = rawMembers.acceptedMemberUserIds
+      .slice(0, compactMemberCounts.acceptedMembers);
+    const members = {
+      acceptedMemberUserIds: compactAcceptedMemberUserIds,
+      pendingMemberUserIds: rawMembers.pendingMemberUserIds
+        .filter(userId => !compactAcceptedMemberUserIds.includes(userId))
+        .slice(0, compactMemberCounts.pendingMembers)
+    };
     const acceptedMembers = members.acceptedMemberUserIds.length;
     const pendingMembers = members.pendingMemberUserIds.length;
     const capacityMin = this.normalizeCount(record.seed?.capacityMin) ?? this.normalizeCount(capacityRange.min);
     const capacityMax = this.normalizeCount(record.seed?.capacityMax) ?? this.normalizeCount(capacityRange.max);
+    const compactCapacityTotal = this.normalizeCount(record.seed?.capacityTotal) == null
+      ? this.resolveCompactSeedCapacityTotal(record, acceptedMembers, pendingMembers)
+      : null;
     const capacityTotal = Math.max(
       acceptedMembers,
-      this.normalizeCount(record.seed?.capacityTotal) ?? capacityMax ?? acceptedMembers
+      this.normalizeCount(record.seed?.capacityTotal) ?? compactCapacityTotal ?? capacityMax ?? acceptedMembers
     );
     const slotTemplates = this.cloneRebasedSlotTemplates(record.seed?.slotTemplates) ?? [];
     const topics = this.normalizeTopics(record.seed?.topics).length > 0
@@ -1263,14 +1175,12 @@ export class DemoEventsRepositoryBuilder {
       slotTemplates,
       parentEventId: null,
       slotTemplateId: null,
-      generated: false,
+      generated: isGeneratedSeed,
       eventType: 'main',
       nextSlot: null,
       upcomingSlots: [],
       acceptedMembers,
       pendingMembers,
-      acceptedMemberUserIds: members.acceptedMemberUserIds,
-      pendingMemberUserIds: members.pendingMemberUserIds,
       topics,
       subEvents,
       subEventsDisplayMode: record.seed?.subEventsDisplayMode ?? DemoEventSeedBuilder.inferredSubEventsDisplayMode(subEvents),
@@ -1407,7 +1317,7 @@ export class DemoEventsRepositoryBuilder {
   ): string {
     const startAt = new Date(startAtIso);
     if (Number.isNaN(startAt.getTime())) {
-      return AppUtils.toIsoDateTimeLocal(new Date());
+      return AppUtils.toIsoDateTimeLocal(DemoSeedScheduleBuilder.anchorDate());
     }
     const seed = AppUtils.hashText(`event-duration:${this.recordSeedKey(record)}`);
     const durationMinutes = 90 + ((seed % 5) * 30);
@@ -1454,6 +1364,48 @@ export class DemoEventsRepositoryBuilder {
     return { min, max };
   }
 
+  private static resolveCompactSeedMemberCounts(
+    record: Pick<DemoEventRecord, 'id' | 'type' | 'userId' | 'title' | 'activity' | 'isInvitation' | 'isAdmin'>,
+    members: { acceptedMemberUserIds: string[]; pendingMemberUserIds: string[] }
+  ): { acceptedMembers: number; pendingMembers: number } {
+    const acceptedMax = Math.max(0, members.acceptedMemberUserIds.length);
+    const pendingMax = Math.max(0, members.pendingMemberUserIds.length);
+    if (acceptedMax === 0 && pendingMax === 0) {
+      return {
+        acceptedMembers: 0,
+        pendingMembers: 0
+      };
+    }
+
+    const seed = AppUtils.hashText(`compact-member-count:${this.recordSeedKey(record)}:${record.activity}`);
+    const acceptedTarget = record.isInvitation
+      ? Math.min(acceptedMax, 1 + (seed % 2))
+      : Math.min(acceptedMax, 1 + ((seed % 5) === 0 ? 1 : 0));
+    const pendingTarget = record.isInvitation
+      ? Math.min(pendingMax, 1)
+      : ((seed % 9) === 0 ? Math.min(pendingMax, 1) : 0);
+
+    return {
+      acceptedMembers: acceptedTarget,
+      pendingMembers: pendingTarget
+    };
+  }
+
+  private static resolveCompactSeedCapacityTotal(
+    record: Pick<DemoEventRecord, 'id' | 'type' | 'userId' | 'title' | 'activity' | 'isInvitation'>,
+    acceptedMembers: number,
+    pendingMembers: number
+  ): number {
+    const seed = AppUtils.hashText(`compact-capacity:${this.recordSeedKey(record)}:${record.activity}`);
+    const memberFloor = Math.max(acceptedMembers, acceptedMembers + Math.min(pendingMembers, 1), record.isInvitation ? 2 : 1);
+    if (!record.isInvitation && acceptedMembers > 0 && (seed % 6) === 0) {
+      return acceptedMembers;
+    }
+    if (record.isInvitation) {
+      return Math.max(memberFloor, 2 + (seed % 3));
+    }
+    return Math.max(memberFloor, acceptedMembers + 1 + ((seed >> 3) % 4));
+  }
 
   private static normalizeDirectEventMembers(
     record: Pick<DemoEventRecord, 'type' | 'userId' | 'isAdmin' | 'isInvitation'>,
@@ -1590,39 +1542,25 @@ export class DemoEventsRepositoryBuilder {
         pendingMemberUserIds
       };
     }
-    const row: AppTypes.ActivityListRow = {
-      id: record.id,
-      type: record.type === 'hosting' ? 'hosting' : 'events',
-      status: record.type === 'hosting' ? 'H' : 'A',
-      title: record.title,
-      subtitle: record.subtitle,
-      detail: startAtIso,
-      dateIso: startAtIso,
-      distanceMetersExact: Math.max(0, Math.round((Number(distanceKm) || 0) * 1000)),
-      unread: record.activity,
-      metricScore: record.activity,
-      isAdmin: record.type === 'hosting' ? true : record.isAdmin,
-      ownerId: creator.id,
-      ownerUserId: creator.id,
-      avatarInitials: creator.initials,
-      startAt: startAtIso,
-      endAt: startAtIso,
-      boost: record.activity
-    };
-    const rowKey = `${row.type}:${row.id}`;
-    const members = ActivityMembersBuilder.generateActivityMembersForRow(
-      row,
-      rowKey,
+    const seed = AppUtils.hashText(`event-members:${this.recordSeedKey(record)}:${startAtIso}:${Math.round(distanceKm)}`);
+    const acceptedTarget = 1 + ((seed % 5) === 0 ? 1 : 0);
+    const pendingTarget = (seed % 9) === 0 ? 1 : 0;
+    const activeUserId = record.type === 'events'
+      ? record.userId || creator.id
+      : creator.id || record.userId;
+    const members = DemoEventSeedBuilder.seededEventMemberIds(
+      record.id,
+      Math.max(acceptedTarget + pendingTarget, 1),
       DEMO_EVENT_MEMBER_USERS,
-      creator
+      activeUserId
     );
+    const acceptedMemberUserIds = this.normalizeUserIds(members)
+      .slice(0, acceptedTarget);
     return {
-      acceptedMemberUserIds: members
-        .filter(member => member.status === 'accepted')
-        .map(member => member.userId),
-      pendingMemberUserIds: members
-        .filter(member => member.status === 'pending')
-        .map(member => member.userId)
+      acceptedMemberUserIds,
+      pendingMemberUserIds: this.normalizeUserIds(members)
+        .filter(userId => !acceptedMemberUserIds.includes(userId))
+        .slice(0, pendingTarget)
     };
   }
 
@@ -1769,11 +1707,15 @@ export class DemoEventsRepositoryBuilder {
   }
 
   static rebaseSeedDateTime(value: string | Date | null | undefined): string | undefined {
+    return DemoSeedScheduleBuilder.rebaseDateTime(value);
+  }
+
+  private static normalizeGeneratedSeedDateTime(value: string | Date | null | undefined): string | undefined {
     const parsed = this.parseSeedDateTime(value);
     if (!parsed) {
       return undefined;
     }
-    return AppUtils.toIsoDateTimeLocal(this.shiftSeedDate(parsed));
+    return AppUtils.toIsoDateTimeLocal(parsed);
   }
 
   private static buildSeededTimeframeLabel(options: {
@@ -1933,19 +1875,6 @@ export class DemoEventsRepositoryBuilder {
     const parsed = new Date(value);
     return Number.isNaN(parsed.getTime()) ? null : parsed;
   }
-
-  private static shiftSeedDate(value: Date): Date {
-    return new Date(value.getTime() + this.resolveSeedScheduleShiftMs());
-  }
-
-  private static resolveSeedScheduleShiftMs(): number {
-    const today = new Date();
-    const rollingAnchor = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0, 0);
-    const dayMs = 24 * 60 * 60 * 1000;
-    const diffDays = Math.round((rollingAnchor.getTime() - this.SEED_SCHEDULE_REFERENCE_DATE.getTime()) / dayMs);
-    return Math.round(diffDays / 7) * 7 * dayMs;
-  }
-
   private static formatSeedMonthDay(value: Date): string {
     return value.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   }

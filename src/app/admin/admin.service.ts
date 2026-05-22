@@ -1446,7 +1446,11 @@ export class AdminService {
         invitations: 0,
         events: 0,
         hosting: 0,
+        cars: 0,
+        accommodation: 0,
+        supplies: 0,
         tickets: 0,
+        contacts: 0,
         feedback: 0,
         adminJobs: 0,
         adminMetrics: 0
@@ -1950,7 +1954,11 @@ export class AdminService {
         invitations: 0,
         events: dashboard.reportedUsers.length,
         hosting: 0,
+        cars: 0,
+        accommodation: 0,
+        supplies: 0,
         tickets: 0,
+        contacts: 0,
         feedback: dashboard.feedback.length,
         adminJobs: Math.max(0, Math.trunc(Number(existingAdminProfile?.activities?.adminJobs) || 0)),
         adminMetrics: Math.max(0, Math.trunc(Number(existingAdminProfile?.activities?.adminMetrics) || 0))

@@ -234,8 +234,6 @@ export class ActivitiesService extends BaseRouteModeService {
   private cloneExploreRecord(record: DemoEventRecord): DemoEventRecord {
     return {
       ...record,
-      acceptedMemberUserIds: [...record.acceptedMemberUserIds],
-      pendingMemberUserIds: [...record.pendingMemberUserIds],
       topics: [...record.topics]
     };
   }

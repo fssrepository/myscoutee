@@ -92,8 +92,12 @@ export class NavigatorMenuComponent {
       invitations: activityOverrides.invitations ?? activeUser.activities?.invitations ?? 0,
       events: activityOverrides.events ?? activeUser.activities?.events ?? 0,
       hosting: activityOverrides.hosting ?? activeUser.activities?.hosting ?? 0,
-      tickets: activityOverrides.tickets ?? 0,
-      feedback: activityOverrides.feedback ?? 0,
+      cars: activityOverrides.cars ?? activeUser.activities?.cars ?? 0,
+      accommodation: activityOverrides.accommodation ?? activeUser.activities?.accommodation ?? 0,
+      supplies: activityOverrides.supplies ?? activeUser.activities?.supplies ?? 0,
+      tickets: activityOverrides.tickets ?? activeUser.activities?.tickets ?? 0,
+      contacts: activityOverrides.contacts ?? activeUser.activities?.contacts ?? this.navigatorContactsService.contactCount(),
+      feedback: activityOverrides.feedback ?? activeUser.activities?.feedback ?? 0,
       adminJobs: activityOverrides.adminJobs ?? activeUser.activities?.adminJobs ?? 0,
       adminMetrics: activityOverrides.adminMetrics ?? activeUser.activities?.adminMetrics ?? 0
     };
@@ -114,7 +118,11 @@ export class NavigatorMenuComponent {
         mergedActivities.invitations +
         mergedActivities.events +
         mergedActivities.hosting +
+        mergedActivities.cars +
+        mergedActivities.accommodation +
+        mergedActivities.supplies +
         mergedActivities.tickets +
+        mergedActivities.contacts +
         mergedActivities.feedback
       );
     return {

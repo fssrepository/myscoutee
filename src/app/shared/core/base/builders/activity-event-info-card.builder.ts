@@ -156,10 +156,10 @@ export class ActivityEventInfoCardBuilder {
       return false;
     }
     const userId = activeUserId.trim();
-    if (!userId || record.acceptedMemberUserIds.includes(userId)) {
+    if (!userId) {
       return false;
     }
-    return record.pendingMemberUserIds.includes(userId);
+    return record.pendingReason === 'approval' || record.pendingReason === 'waitlist';
   }
 
   private static pendingStatusLabelKey(): string {

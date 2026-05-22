@@ -8,7 +8,15 @@ interface DemoUsersRepositoryActivitySources {
   chatItems?: readonly ChatRecord[];
   invitationItems?: ReadonlyArray<{ unread: number }>;
   eventItems?: ReadonlyArray<{ activity: number }>;
+  eventsCount?: number;
   hostingItems?: ReadonlyArray<{ activity: number }>;
+  rateItems?: readonly unknown[];
+  carsCount?: number;
+  accommodationCount?: number;
+  suppliesCount?: number;
+  ticketsCount?: number;
+  contactsCount?: number;
+  feedbackCount?: number;
   minDemoEventItemsPerUser: number;
 }
 
@@ -123,29 +131,37 @@ export class DemoUsersRepositoryBuilder {
           ? DemoUserMenuCountersBuilder.resolveSectionBadge(sources.chatItems.map(item => item.unread), sources.chatItems.length)
           : user.activities.chat,
         invitations: sources.invitationItems
-          ? DemoUserMenuCountersBuilder.resolveSectionBadge(
-            sources.invitationItems.map(item => item.unread),
-            sources.invitationItems.length
-          )
+          ? sources.invitationItems.length
           : user.activities.invitations,
-        events: sources.eventItems
-          ? (
-            DemoUserMenuCountersBuilder.resolveSectionBadge(
-              sources.eventItems.map(item => item.activity),
-              sources.eventItems.length
-            ) +
-            DemoUserMenuCountersBuilder.syntheticEventActivityTotal(
-              sources.eventItems.length,
-              sources.minDemoEventItemsPerUser
-            )
-          )
+        events: Number.isFinite(sources.eventsCount)
+          ? Math.max(0, Math.trunc(Number(sources.eventsCount)))
+          : sources.eventItems
+            ? sources.eventItems.length
           : user.activities.events,
         hosting: sources.hostingItems
-          ? DemoUserMenuCountersBuilder.resolveSectionBadge(
-            sources.hostingItems.map(item => item.activity),
-            sources.hostingItems.length
-          )
-          : user.activities.hosting
+          ? sources.hostingItems.length
+          : user.activities.hosting,
+        game: sources.rateItems
+          ? sources.rateItems.length
+          : user.activities.game,
+        cars: Number.isFinite(sources.carsCount)
+          ? Math.max(0, Math.trunc(Number(sources.carsCount)))
+          : user.activities.cars,
+        accommodation: Number.isFinite(sources.accommodationCount)
+          ? Math.max(0, Math.trunc(Number(sources.accommodationCount)))
+          : user.activities.accommodation,
+        supplies: Number.isFinite(sources.suppliesCount)
+          ? Math.max(0, Math.trunc(Number(sources.suppliesCount)))
+          : user.activities.supplies,
+        tickets: Number.isFinite(sources.ticketsCount)
+          ? Math.max(0, Math.trunc(Number(sources.ticketsCount)))
+          : user.activities.tickets,
+        contacts: Number.isFinite(sources.contactsCount)
+          ? Math.max(0, Math.trunc(Number(sources.contactsCount)))
+          : user.activities.contacts,
+        feedback: Number.isFinite(sources.feedbackCount)
+          ? Math.max(0, Math.trunc(Number(sources.feedbackCount)))
+          : user.activities.feedback
       }
     };
   }
