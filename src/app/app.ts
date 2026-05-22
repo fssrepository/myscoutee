@@ -41,6 +41,7 @@ export class App implements OnDestroy {
   private readonly navigatorBindings: NavigatorBindings = {};
   private readonly routerEventsSubscription: Subscription;
   private routeWarmupHideTimer: ReturnType<typeof setTimeout> | null = null;
+  private initialLandingWarmupPending = false;
   protected showNavigator = false;
   protected routeWarmupVisible = false;
   protected readonly installPromptVisible = this.pwaService.installPromptVisible;
@@ -54,11 +55,12 @@ export class App implements OnDestroy {
     this.firebaseMessagingService.initialize();
     this.navigatorService.registerBindings(this.navigatorBindings);
     this.syncNavigatorVisibility(initialRouteUrl);
-    this.routeWarmupVisible = this.shouldShowLandingWarmup(initialRouteUrl);
+    this.initialLandingWarmupPending = this.shouldShowLandingWarmup(initialRouteUrl);
+    this.routeWarmupVisible = this.initialLandingWarmupPending;
     this.routerEventsSubscription = this.router.events.subscribe(event => {
       if (event instanceof NavigationStart) {
         this.syncNavigatorVisibility(event.url);
-        if (this.shouldShowLandingWarmup(event.url)) {
+        if (this.initialLandingWarmupPending && this.shouldShowLandingWarmup(event.url)) {
           this.showRouteWarmup();
         } else {
           this.hideRouteWarmup(0);
@@ -68,12 +70,12 @@ export class App implements OnDestroy {
 
       if (event instanceof NavigationEnd) {
         this.syncNavigatorVisibility(event.urlAfterRedirects);
-        this.hideRouteWarmup();
+        this.completeInitialLandingWarmup();
         return;
       }
 
       if (event instanceof NavigationCancel || event instanceof NavigationError) {
-        this.hideRouteWarmup(0);
+        this.completeInitialLandingWarmup(0);
       }
     });
   }
@@ -94,7 +96,7 @@ export class App implements OnDestroy {
   }
 
   protected onRouteActivated(): void {
-    this.hideRouteWarmup();
+    this.completeInitialLandingWarmup();
   }
 
   private shouldShowLandingWarmup(url: string): boolean {
@@ -105,6 +107,11 @@ export class App implements OnDestroy {
   private showRouteWarmup(): void {
     this.clearRouteWarmupHideTimer();
     this.routeWarmupVisible = true;
+  }
+
+  private completeInitialLandingWarmup(delayMs = 120): void {
+    this.initialLandingWarmupPending = false;
+    this.hideRouteWarmup(delayMs);
   }
 
   private hideRouteWarmup(delayMs = 120): void {
