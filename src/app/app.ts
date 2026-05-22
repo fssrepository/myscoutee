@@ -1,10 +1,16 @@
-
 import { Component, OnDestroy, inject } from '@angular/core';
-import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
+import {
+  NavigationCancel,
+  NavigationEnd,
+  NavigationError,
+  NavigationStart,
+  Router,
+  RouterOutlet
+} from '@angular/router';
 import { DateAdapter, MAT_DATE_FORMATS } from '@angular/material/core';
 import { NavigatorBindings, NavigatorComponent, NavigatorService } from './navigator';
 import { AppCalendarDateAdapter, AppCalendarDateFormats } from './shared/app-calendar-date-adapter';
-import { Subscription, filter } from 'rxjs';
+import { Subscription } from 'rxjs';
 import { AppInstallPromptComponent } from './shared/ui/components/app-install-prompt/app-install-prompt.component';
 import { AppLocationService } from './shared/core/base/services/app-location.service';
 import { FirebaseMessagingService } from './shared/core/base/services/firebase-messaging.service';
@@ -34,25 +40,46 @@ export class App implements OnDestroy {
   protected readonly navigatorService = inject(NavigatorService);
   private readonly navigatorBindings: NavigatorBindings = {};
   private readonly routerEventsSubscription: Subscription;
+  private routeWarmupHideTimer: ReturnType<typeof setTimeout> | null = null;
   protected showNavigator = false;
+  protected routeWarmupVisible = false;
   protected readonly installPromptVisible = this.pwaService.installPromptVisible;
   protected readonly installPromptBusy = this.pwaService.installBusy;
 
   constructor() {
+    const initialRouteUrl = this.resolveInitialRouteUrl();
     this.i18nService.initialize();
     void this.pwaService.initialize();
     this.appLocationService.initialize();
     this.firebaseMessagingService.initialize();
     this.navigatorService.registerBindings(this.navigatorBindings);
-    this.syncNavigatorVisibility(this.router.url);
-    this.routerEventsSubscription = this.router.events
-      .pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
-      .subscribe(event => {
+    this.syncNavigatorVisibility(initialRouteUrl);
+    this.routeWarmupVisible = this.shouldShowLandingWarmup(initialRouteUrl);
+    this.routerEventsSubscription = this.router.events.subscribe(event => {
+      if (event instanceof NavigationStart) {
+        this.syncNavigatorVisibility(event.url);
+        if (this.shouldShowLandingWarmup(event.url)) {
+          this.showRouteWarmup();
+        } else {
+          this.hideRouteWarmup(0);
+        }
+        return;
+      }
+
+      if (event instanceof NavigationEnd) {
         this.syncNavigatorVisibility(event.urlAfterRedirects);
-      });
+        this.hideRouteWarmup();
+        return;
+      }
+
+      if (event instanceof NavigationCancel || event instanceof NavigationError) {
+        this.hideRouteWarmup(0);
+      }
+    });
   }
 
   ngOnDestroy(): void {
+    this.clearRouteWarmupHideTimer();
     this.routerEventsSubscription.unsubscribe();
     this.navigatorService.clearBindings(this.navigatorBindings);
   }
@@ -64,6 +91,62 @@ export class App implements OnDestroy {
   private shouldShowNavigator(url: string): boolean {
     const normalizedPath = (url || '/').split('?')[0].trim() || '/';
     return normalizedPath !== '/' && !normalizedPath.startsWith('/entry') && !normalizedPath.startsWith('/admin');
+  }
+
+  protected onRouteActivated(): void {
+    this.hideRouteWarmup();
+  }
+
+  private shouldShowLandingWarmup(url: string): boolean {
+    const normalizedPath = (url || '/').split('?')[0].split('#')[0].trim() || '/';
+    return normalizedPath === '/' || normalizedPath.startsWith('/entry');
+  }
+
+  private showRouteWarmup(): void {
+    this.clearRouteWarmupHideTimer();
+    this.routeWarmupVisible = true;
+  }
+
+  private hideRouteWarmup(delayMs = 120): void {
+    this.clearRouteWarmupHideTimer();
+    if (delayMs <= 0) {
+      this.routeWarmupVisible = false;
+      return;
+    }
+    this.routeWarmupHideTimer = setTimeout(() => {
+      this.routeWarmupVisible = false;
+      this.routeWarmupHideTimer = null;
+    }, delayMs);
+  }
+
+  private clearRouteWarmupHideTimer(): void {
+    if (!this.routeWarmupHideTimer) {
+      return;
+    }
+    clearTimeout(this.routeWarmupHideTimer);
+    this.routeWarmupHideTimer = null;
+  }
+
+  private resolveInitialRouteUrl(): string {
+    if (typeof window === 'undefined') {
+      return this.router.url || '/';
+    }
+    const routePath = this.stripBasePath(window.location.pathname || '/');
+    return `${routePath}${window.location.search}${window.location.hash}` || '/';
+  }
+
+  private stripBasePath(pathname: string): string {
+    const normalizedPathname = pathname.startsWith('/') ? pathname : `/${pathname}`;
+    const baseHref = document.querySelector('base')?.getAttribute('href') ?? '/';
+    try {
+      const basePath = new URL(baseHref, window.location.origin).pathname;
+      if (basePath !== '/' && normalizedPathname.startsWith(basePath)) {
+        return `/${normalizedPathname.slice(basePath.length)}`.replace('//', '/') || '/';
+      }
+    } catch {
+      return normalizedPathname;
+    }
+    return normalizedPathname;
   }
 
   protected async onInstallRequested(): Promise<void> {
