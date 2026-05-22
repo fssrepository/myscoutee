@@ -180,6 +180,17 @@ export interface PopupHeaderLookup {
   id: string;
 }
 
+export interface PopupHeaderControlGroup {
+  id: string;
+  label?: string | null;
+  controls: PopupHeaderControl[];
+}
+
+export interface PopupHeaderControlMenu {
+  title?: string | null;
+  groups: PopupHeaderControlGroup[];
+}
+
 export interface PopupHeaderControl {
   id: string;
   label: string;
@@ -187,6 +198,7 @@ export interface PopupHeaderControl {
   visual?: PopupHeaderControlVisual | null;
   badge?: PopupHeaderControlBadge | null;
   lookup?: PopupHeaderLookup | null;
+  menu?: PopupHeaderControlMenu | null;
 }
 
 export interface PopupHeaderContext {

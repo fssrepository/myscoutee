@@ -338,6 +338,23 @@ export class EventMembersPopupComponent {
     return this.inlineItemActionMenu?.id === entry.id && this.inlineItemActionMenu.openUp;
   }
 
+  protected selectedActionMenuMember(): AppTypes.ActivityMemberEntry | null {
+    const selectedId = `${this.inlineItemActionMenu?.id ?? ''}`.trim();
+    if (!selectedId) {
+      return null;
+    }
+    return this.selectedMembersVisible.find(entry => entry.id === selectedId) ?? null;
+  }
+
+  protected closeMemberActionMenu(event?: Event): void {
+    event?.stopPropagation();
+    if (!this.inlineItemActionMenu) {
+      return;
+    }
+    this.inlineItemActionMenu = null;
+    this.cdr.markForCheck();
+  }
+
   protected approveMember(entry: AppTypes.ActivityMemberEntry, event: Event): void {
     event.stopPropagation();
     if (!this.canApproveMember(entry)) {

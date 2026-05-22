@@ -554,22 +554,7 @@ export class AdminService {
     this.selectedReportedUserRef.set(user);
     this.activePopupRef.set(null);
     const chat = this.buildAdminSupportChat(user);
-    this.activitiesContext.openEventChat(chat, {
-      channelType: 'serviceEvent',
-      hasSubEventMenu: false,
-      actionIcon: 'shield',
-      actionLabel: 'Support',
-      actionToneClass: 'popup-chat-context-btn-tone-main-event',
-      actionBadgeCount: this.supportChatUnread(user),
-      menuTitle: chat.title,
-      eventRow: null,
-      subEventRow: null,
-      subEvent: null,
-      group: null,
-      assetAssignmentIds: { Car: [], Accommodation: [], Supplies: [] },
-      assetCardsByType: { Car: [], Accommodation: [], Supplies: [] },
-      resources: []
-    });
+    this.activitiesContext.openEventChat(chat);
   }
 
   hasSupportChat(user: AdminReportedUserDto): boolean {

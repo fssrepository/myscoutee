@@ -2157,7 +2157,7 @@ export class SubEventResourcePopupService {
       avatarSource: sourceCard?.ownerName || sourceCard?.title || card.title
     });
     this.inlineItemActionMenuRef.set(null);
-    this.activitiesContext.openEventChat(chat, this.buildServiceChatContext(chat));
+    this.activitiesContext.openEventChat(chat);
   }
 
   private canReportAssetExploreOwner(card: AppTypes.AssetCard): boolean {
@@ -3041,7 +3041,7 @@ export class SubEventResourcePopupService {
       lastSenderId: ownerUserId || activeUserId,
       avatarSource: card.ownerName || card.title
     });
-    this.activitiesContext.openEventChat(chat, this.buildServiceChatContext(chat));
+    this.activitiesContext.openEventChat(chat);
   }
 
   private buildServiceChatItem(input: {
@@ -3069,33 +3069,6 @@ export class SubEventResourcePopupService {
       eventId: input.eventId,
       subEventId: input.subEventId,
       ownerUserId: activeUserId
-    };
-  }
-
-  private buildServiceChatContext(chat: ChatRecord): AppTypes.EventChatContext {
-    return {
-      channelType: 'serviceEvent',
-      hasSubEventMenu: false,
-      actionIcon: 'support_agent',
-      actionLabel: 'View Event',
-      actionToneClass: 'popup-chat-context-btn-tone-main-event',
-      actionBadgeCount: 0,
-      menuTitle: chat.title,
-      eventRow: null,
-      subEventRow: null,
-      subEvent: null,
-      group: null,
-      assetAssignmentIds: {
-        Car: [],
-        Accommodation: [],
-        Supplies: []
-      },
-      assetCardsByType: {
-        Car: [],
-        Accommodation: [],
-        Supplies: []
-      },
-      resources: []
     };
   }
 
@@ -4079,35 +4052,6 @@ export class SubEventResourcePopupService {
         subEvent: nextSubEvent
       });
     }
-    this.refreshEventChatSessionResourceContext(nextSubEvent);
-  }
-
-  private refreshEventChatSessionResourceContext(subEvent: AppTypes.SubEventFormItem): void {
-    const context = this.popupContextRef();
-    if (!context || context.origin !== 'chat') {
-      return;
-    }
-    this.activitiesContext.touchEventChatSession(sessionContext => {
-      if (sessionContext.subEvent?.id !== subEvent.id) {
-        return sessionContext;
-      }
-      return {
-        ...sessionContext,
-        subEvent: this.cloneSubEvent(subEvent),
-        assetAssignmentIds: {
-          ...sessionContext.assetAssignmentIds,
-          Car: [...this.resolveSubEventAssignedAssetIds(subEvent.id, 'Car')],
-          Accommodation: [...this.resolveSubEventAssignedAssetIds(subEvent.id, 'Accommodation')],
-          Supplies: [...this.resolveSubEventAssignedAssetIds(subEvent.id, 'Supplies')]
-        },
-        assetCardsByType: {
-          Car: this.ownedAssets.assetCards.filter(card => card.type === 'Car').map(card => this.cloneAsset(card)),
-          Accommodation: this.ownedAssets.assetCards.filter(card => card.type === 'Accommodation').map(card => this.cloneAsset(card)),
-          Supplies: this.ownedAssets.assetCards.filter(card => card.type === 'Supplies').map(card => this.cloneAsset(card))
-        },
-        resources: sessionContext.resources.map(resource => ({ ...resource }))
-      };
-    });
   }
 
   private syncAssetRequestsFromMembers(

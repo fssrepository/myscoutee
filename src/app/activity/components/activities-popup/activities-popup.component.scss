@@ -2577,6 +2577,17 @@ button.activities-rate-score-badge-between:not(.is-disabled):active .activities-
     min-width: 0;
   }
 
+  .activities-explore-btn {
+    width: 30px;
+    padding: 0;
+    justify-content: center;
+    gap: 0;
+  }
+
+  .activities-explore-btn span {
+    display: none;
+  }
+
   .experience-item-head {
     grid-template-columns: auto minmax(0, 1fr) auto;
     grid-template-areas: "icon meta actions";

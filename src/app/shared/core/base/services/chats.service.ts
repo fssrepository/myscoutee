@@ -76,16 +76,19 @@ export class ChatsService extends BaseRouteModeService {
     const memberIds = this.resolveChatMemberIds(chat);
     const controls: AppTypes.PopupHeaderControl[] = [];
     if (chatId && memberIds.length > 0) {
+      const maxVisibleThumbs = 4;
       const thumbs = options.includeThumbs === true
-        ? this.buildChatHeaderThumbs(memberIds, 4)
+        ? this.buildChatHeaderThumbs(memberIds, maxVisibleThumbs)
         : [];
+      const hiddenThumbCount = thumbs.length > 0 ? Math.max(0, memberIds.length - thumbs.length) : 0;
       controls.push({
         id: 'members',
         label: 'Members',
         summary: this.memberCountLabel(memberIds.length),
         visual: thumbs.length > 0
-          ? { kind: 'thumbStack', thumbs, maxVisible: 4 }
+          ? { kind: 'thumbStack', thumbs, maxVisible: maxVisibleThumbs }
           : { kind: 'icon', icon: 'groups' },
+        badge: hiddenThumbCount > 0 ? { value: hiddenThumbCount, tone: 'danger' } : null,
         lookup: {
           type: 'chat',
           id: chatId

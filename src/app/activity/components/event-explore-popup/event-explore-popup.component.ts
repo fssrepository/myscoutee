@@ -829,30 +829,7 @@ export class EventExplorePopupComponent {
     if (!chat) {
       return;
     }
-    this.activitiesContext.openEventChat(chat, {
-      channelType: 'serviceEvent',
-      hasSubEventMenu: false,
-      actionIcon: 'support_agent',
-      actionLabel: 'View Event',
-      actionToneClass: 'popup-chat-context-btn-tone-main-event',
-      actionBadgeCount: 0,
-      menuTitle: chat.title,
-      eventRow: EventExploreBuilder.buildActivityRow(record),
-      subEventRow: null,
-      subEvent: null,
-      group: null,
-      assetAssignmentIds: {
-        Car: [],
-        Accommodation: [],
-        Supplies: []
-      },
-      assetCardsByType: {
-        Car: [],
-        Accommodation: [],
-        Supplies: []
-      },
-      resources: []
-    });
+    this.activitiesContext.openEventChat(chat);
   }
 
   private buildEventExploreServiceChat(record: DemoEventRecord): (ChatRecord & { ownerUserId?: string }) | null {

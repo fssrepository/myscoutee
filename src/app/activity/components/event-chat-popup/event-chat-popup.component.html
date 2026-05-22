@@ -24,7 +24,7 @@
             type="button"
             class="chat-members-stack chat-members-stack-large chat-header-members event-editor-members-trigger event-editor-members-trigger-members popup-chat-context-btn popup-chat-header-members-btn"
             (click)="openChatHeaderControl(membersControl, $event)"
-            aria-label="Open chat members"
+            [attr.aria-label]="chatHeaderControlLabel(membersControl)"
             >
             <span class="event-editor-members-invite popup-chat-header-members-content">
               @if (membersControl.visual?.kind === 'thumbStack') {
@@ -41,12 +41,12 @@
                 </span>
               } @else {
                 <mat-icon>{{ chatHeaderControlIcon(membersControl) }}</mat-icon>
+                <span class="popup-chat-header-members-label">{{ chatHeaderControlLabel(membersControl) }}</span>
               }
-              <span>{{ chatHeaderControlLabel(membersControl) }}</span>
             </span>
             @if (chatHeaderControlBadgeValue(membersControl) > 0) {
               <span class="card-badge event-editor-members-pending-badge popup-chat-context-total-badge">
-                {{ chatHeaderControlBadgeValue(membersControl) | counterBadge }}
+                +{{ chatHeaderControlBadgeValue(membersControl) | counterBadge:99 }}
               </span>
             }
           </button>
@@ -106,52 +106,37 @@
               (click)="$event.stopPropagation()"
               >
               <div class="item-action-menu-title">{{ selectedChatContextMenuTitle() }}</div>
-              <button type="button" class="item-action-menu-btn" (click)="openSelectedChatPrimaryContext($event)">
-                <mat-icon>{{ selectedChatHeaderActionIcon() }}</mat-icon>
-                <span>{{ selectedChatHeaderActionLabel() }}</span>
-              </button>
-              <div class="item-action-menu-divider"></div>
-              @if (preparedChatMembersResource; as membersResource) {
-                <button
-                  type="button"
-                  class="item-action-menu-btn subevent-resource-menu-item"
-                  [ngClass]="[membersResource.typeClass, membersResource.stateClass]"
-                  (click)="openSelectedChatSubEventResource(membersResource.type, $event)"
-                  >
-                  <span class="subevent-resource-menu-item-icon"><mat-icon>{{ membersResource.icon }}</mat-icon></span>
-                  <span class="subevent-resource-menu-item-main">
-                    <span class="subevent-resource-menu-item-title">{{ membersResource.title }}</span>
-                    <span class="subevent-resource-menu-item-value">{{ membersResource.summary }}</span>
-                  </span>
-                  @if (membersResource.pending > 0) {
-                    <span class="rate-filter-count-badge subevent-resource-menu-item-counter">
-                      {{ membersResource.pending | counterBadge }}
-                    </span>
-                  }
-                </button>
-              }
-              @if (preparedChatMembersResource) {
-                <div class="item-action-menu-divider"></div>
-              }
-              <div class="item-action-menu-section-label">Assets</div>
-              @for (resource of preparedChatAssetResources; track resource) {
-                <button
-                  type="button"
-                  class="item-action-menu-btn subevent-resource-menu-item"
-                  [ngClass]="[resource.typeClass, resource.stateClass]"
-                  (click)="openSelectedChatSubEventResource(resource.type, $event)"
-                  >
-                  <span class="subevent-resource-menu-item-icon"><mat-icon>{{ resource.icon }}</mat-icon></span>
-                  <span class="subevent-resource-menu-item-main">
-                    <span class="subevent-resource-menu-item-title">{{ resource.title }}</span>
-                    <span class="subevent-resource-menu-item-value">{{ resource.summary }}</span>
-                  </span>
-                  @if (resource.pending > 0) {
-                    <span class="rate-filter-count-badge subevent-resource-menu-item-counter">
-                      {{ resource.pending | counterBadge }}
-                    </span>
-                  }
-                </button>
+              @for (group of selectedChatContextMenuGroups(); track group.id) {
+                @if ($index > 0) {
+                  <div class="item-action-menu-divider"></div>
+                }
+                @if (group.label) {
+                  <div class="item-action-menu-section-label">{{ group.label }}</div>
+                }
+                @for (control of group.controls; track control.id) {
+                  <button
+                    type="button"
+                    class="item-action-menu-btn"
+                    [ngClass]="selectedChatMenuControlClasses(control)"
+                    (click)="openSelectedChatMenuControl(control, $event)"
+                    >
+                    @if (control.summary) {
+                      <span class="subevent-resource-menu-item-icon"><mat-icon>{{ selectedChatMenuControlIcon(control) }}</mat-icon></span>
+                      <span class="subevent-resource-menu-item-main">
+                        <span class="subevent-resource-menu-item-title">{{ control.label }}</span>
+                        <span class="subevent-resource-menu-item-value">{{ control.summary }}</span>
+                      </span>
+                    } @else {
+                      <mat-icon>{{ selectedChatMenuControlIcon(control) }}</mat-icon>
+                      <span>{{ control.label }}</span>
+                    }
+                    @if (selectedChatMenuControlBadgeCount(control) > 0) {
+                      <span class="rate-filter-count-badge subevent-resource-menu-item-counter">
+                        {{ selectedChatMenuControlBadgeCount(control) | counterBadge }}
+                      </span>
+                    }
+                  </button>
+                }
               }
             </div>
           </div>

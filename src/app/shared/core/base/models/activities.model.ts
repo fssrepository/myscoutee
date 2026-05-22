@@ -1,5 +1,5 @@
 import type { LocationCoordinates } from '../interfaces/location.interface';
-import type { PopupHeaderContext, PopupHeaderLookup } from './popup.model';
+import type { PopupHeaderLookup } from './popup.model';
 import type { ChatRecord } from '../models/chat.model';
 import type { AssetCard, AssetType } from './asset.model';
 import type { ActivityMemberEntry } from './activity-member.model';
@@ -93,39 +93,6 @@ export type ActivitiesNavigationRequest =
   | { type: 'eventEditorCreate'; target: EventEditorTarget }
   | { type: 'eventEditor'; row: ActivityListRow; readOnly: boolean };
 
-export type EventChatContextTone =
-  | 'popup-chat-context-btn-tone-main-event'
-  | 'popup-chat-context-btn-tone-optional'
-  | 'popup-chat-context-btn-tone-group';
-
-export interface EventChatResourceContext {
-  type: 'Members' | 'Car' | 'Accommodation' | 'Supplies';
-  icon: string;
-  title: string;
-  typeClass: string;
-  summary: string;
-  pending: number;
-  stateClass: string;
-  visible: boolean;
-}
-
-export interface EventChatContext {
-  channelType: ChatChannelType;
-  hasSubEventMenu: boolean;
-  actionIcon: string;
-  actionLabel: string;
-  actionToneClass: EventChatContextTone;
-  actionBadgeCount: number;
-  menuTitle: string;
-  eventRow: ActivityListRow | null;
-  subEventRow: ActivityListRow | null;
-  subEvent: SubEventFormItem | null;
-  group: { id: string; label: string } | null;
-  assetAssignmentIds: SubEventAssetAssignmentIds;
-  assetCardsByType: SubEventAssetCardsByType;
-  resources: EventChatResourceContext[];
-}
-
 export interface ActivitiesEventSyncPayload {
   id: string;
   target: EventEditorTarget;
@@ -191,8 +158,6 @@ export type { EventCheckoutSession };
 export interface EventChatSession {
   item: ChatRecord;
   openedAtIso: string;
-  context: EventChatContext | null;
-  headerContext: PopupHeaderContext | null;
 }
 
 export interface ActivitiesPageRequest {

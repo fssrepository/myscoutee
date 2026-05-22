@@ -5,7 +5,6 @@ import type * as AppTypes from '../../shared/core/base/models';
 import { ChatsService, EventsService } from '../../shared/core';
 import type {
   ActivitiesEventSyncPayload,
-  EventChatContext,
   EventChatSession
 } from '../../shared/core/base/models';
 import type { ActivitiesEventDisplaySync } from '../../shared/core/base/services/activities.service';
@@ -88,7 +87,6 @@ export class ActivitiesPopupStateService {
   readonly activitiesAdminServiceOnly = computed(() => this._uiState().adminServiceOnly);
   readonly activitiesEventSync = this._activitiesEventSync.asReadonly();
   readonly eventChatSession = this._eventChatSession.asReadonly();
-  readonly eventChatHeaderContext = computed(() => this._eventChatSession()?.headerContext ?? null);
 
   readonly activitiesOpenBoolean = computed(() => this._uiState().open);
   readonly eventChatOpen = computed(() => this._eventChatSession() !== null);
@@ -333,39 +331,16 @@ export class ActivitiesPopupStateService {
     this._activitiesEventSync.set(null);
   }
 
-  openEventChat(item: ChatRecord, context: EventChatContext | null = null): void {
+  openEventChat(item: ChatRecord): void {
     const chatItem = this.cloneChatRecord(item);
     this._eventChatSession.set({
       item: chatItem,
-      openedAtIso: new Date().toISOString(),
-      context,
-      headerContext: this.chatsService.buildChatPopupHeaderContext(chatItem)
+      openedAtIso: new Date().toISOString()
     });
   }
 
   closeEventChat(): void {
     this._eventChatSession.set(null);
-  }
-
-  touchEventChatSession(contextUpdater?: (context: EventChatContext) => EventChatContext): void {
-    const session = this._eventChatSession();
-    if (!session) {
-      return;
-    }
-    const clonedContext = session.context
-      ? {
-          ...session.context,
-          resources: session.context.resources.map(resource => ({ ...resource }))
-        }
-      : null;
-    this._eventChatSession.set({
-      ...session,
-      item: this.cloneChatRecord(session.item),
-      context: clonedContext && contextUpdater
-        ? contextUpdater(clonedContext)
-        : clonedContext,
-      headerContext: this.clonePopupHeaderContext(session.headerContext)
-    });
   }
 
   patchEventChatSessionItem(itemUpdater: (item: ChatRecord) => ChatRecord): void {
@@ -375,31 +350,12 @@ export class ActivitiesPopupStateService {
     }
     this._eventChatSession.set({
       ...session,
-      item: this.cloneChatRecord(itemUpdater(this.cloneChatRecord(session.item))),
-      headerContext: this.clonePopupHeaderContext(session.headerContext)
+      item: this.cloneChatRecord(itemUpdater(this.cloneChatRecord(session.item)))
     });
   }
 
   async loadEventChatMessages(chat: ChatRecord): Promise<AppTypes.ChatPopupMessage[]> {
-    const result = await this.chatsService.loadChatMessagesResult(chat);
-    this.applyEventChatHeaderContext(result.context);
-    return result.items;
-  }
-
-  applyEventChatHeaderContext(context: AppTypes.PopupHeaderContext | null | undefined): void {
-    const session = this._eventChatSession();
-    if (!session || !context) {
-      return;
-    }
-    const nextContext = this.clonePopupHeaderContext(context);
-    if (this.popupHeaderContextSignature(session.headerContext) === this.popupHeaderContextSignature(nextContext)) {
-      return;
-    }
-    this._eventChatSession.set({
-      ...session,
-      item: this.cloneChatRecord(session.item),
-      headerContext: nextContext
-    });
+    return this.chatsService.loadChatMessages(chat);
   }
 
   async sendEventChatMessage(chat: ChatRecord, text: string, clientId?: string): Promise<AppTypes.ChatPopupMessage | null> {
@@ -451,34 +407,6 @@ export class ActivitiesPopupStateService {
       ...state,
       ...patch
     }));
-  }
-
-  private clonePopupHeaderContext(context: AppTypes.PopupHeaderContext | null | undefined): AppTypes.PopupHeaderContext | null {
-    return context
-      ? {
-          ...context,
-          controls: (context.controls ?? []).map(control => ({
-            ...control,
-            visual: control.visual?.kind === 'thumbStack'
-              ? {
-                  ...control.visual,
-                  thumbs: control.visual.thumbs.map(thumb => ({ ...thumb }))
-                }
-              : control.visual
-                ? { ...control.visual }
-                : control.visual,
-            badge: control.badge ? { ...control.badge } : control.badge,
-            lookup: control.lookup ? { ...control.lookup } : control.lookup
-          }))
-        }
-      : null;
-  }
-
-  private popupHeaderContextSignature(context: AppTypes.PopupHeaderContext | null | undefined): string {
-    if (!context) {
-      return '';
-    }
-    return JSON.stringify(context);
   }
 
   private resolveRateSocialBadgeEnabled(state: Pick<ActivitiesUiState,

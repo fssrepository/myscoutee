@@ -462,22 +462,7 @@ export class NavigatorMenuComponent {
       ownerUserId: activeUserId
     };
     this.activitiesContext.openActivities('chats');
-    this.activitiesContext.openEventChat(chat, {
-      channelType: 'serviceEvent',
-      hasSubEventMenu: false,
-      actionIcon: 'shield',
-      actionLabel: 'Support',
-      actionToneClass: 'popup-chat-context-btn-tone-main-event',
-      actionBadgeCount: 0,
-      menuTitle: chat.title,
-      eventRow: null,
-      subEventRow: null,
-      subEvent: null,
-      group: null,
-      assetAssignmentIds: { Car: [], Accommodation: [], Supplies: [] },
-      assetCardsByType: { Car: [], Accommodation: [], Supplies: [] },
-      resources: []
-    });
+    this.activitiesContext.openEventChat(chat);
   }
 
   private resolveCompletionPercent(user: UserDto | null): number {
