@@ -6,6 +6,7 @@
 }
 
 @include ui.popup-shell();
+@include ui.form-controls();
 
 .asset-popup {
   --asset-popup-z-index: 12000;
@@ -342,6 +343,102 @@
 
 .asset-popup .ticket-order-picker {
   position: relative;
+}
+
+.asset-popup .asset-supply-request-filter-picker {
+  position: relative;
+  z-index: 61;
+}
+
+.asset-popup .asset-supply-request-filter-menu {
+  right: 0;
+  min-width: max(168px, 100%);
+}
+
+.asset-popup .asset-supply-request-filter-btn,
+.asset-popup .asset-supply-request-filter-menu .activities-view-option {
+  transition:
+    background-color 0.16s ease,
+    border-color 0.16s ease,
+    box-shadow 0.16s ease,
+    color 0.16s ease,
+    filter 0.16s ease;
+}
+
+.asset-popup .asset-supply-request-filter-menu .activities-view-option {
+  width: 100%;
+  justify-content: flex-start;
+  border: 1px solid transparent;
+}
+
+.asset-popup .asset-supply-request-filter-btn strong,
+.asset-popup .asset-supply-request-filter-menu .activities-view-option strong {
+  min-width: 22px;
+  height: 22px;
+  padding: 0 0.36rem;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.asset-popup .asset-supply-request-filter-menu .activities-view-option span {
+  flex: 1 1 auto;
+  min-width: 0;
+  text-align: left;
+}
+
+.asset-popup .asset-supply-request-filter-tone--all {
+  border-color: rgba(55, 80, 113, 0.22);
+  background: linear-gradient(180deg, #f6f8fc 0%, #edf2f8 100%);
+  color: #2d4a70;
+}
+
+.asset-popup .asset-supply-request-filter-tone--all strong {
+  background: #dfe8f3;
+  color: #29486e;
+}
+
+.asset-popup .asset-supply-request-filter-tone--active-items {
+  border-color: rgba(54, 126, 79, 0.28);
+  background: linear-gradient(180deg, #edf9f1 0%, #dff0e5 100%);
+  color: #2e7448;
+}
+
+.asset-popup .asset-supply-request-filter-tone--active-items strong {
+  background: #cde9d7;
+  color: #25643d;
+}
+
+.asset-popup .asset-supply-request-filter-tone--pending-requests {
+  border-color: rgba(181, 123, 32, 0.3);
+  background: linear-gradient(180deg, #fff7e4 0%, #ffedc4 100%);
+  color: #94621b;
+}
+
+.asset-popup .asset-supply-request-filter-tone--pending-requests strong {
+  background: #f6dfab;
+  color: #805316;
+}
+
+.asset-popup .asset-supply-request-filter-tone--borrowed-items {
+  border-color: rgba(48, 100, 169, 0.3);
+  background: linear-gradient(180deg, #edf5ff 0%, #dceaff 100%);
+  color: #2b5f9c;
+}
+
+.asset-popup .asset-supply-request-filter-tone--borrowed-items strong {
+  background: #cddfff;
+  color: #24558d;
+}
+
+.asset-popup .asset-supply-request-filter-menu .activities-view-option.active {
+  box-shadow:
+    inset 0 0 0 1px currentColor,
+    0 5px 12px rgba(31, 65, 107, 0.08);
+  filter: saturate(1.03);
 }
 
 .asset-popup .popup-actions {
@@ -816,6 +913,11 @@
   border-color: rgba(190, 138, 53, 0.26);
 }
 
+.asset-popup .asset-supply-request-row--accepted {
+  background: linear-gradient(180deg, #f3f8ff 0%, #e8f1ff 100%);
+  border-color: rgba(52, 103, 173, 0.22);
+}
+
 .asset-popup .asset-supply-request-row--assigned {
   background: linear-gradient(180deg, #f5fbf7 0%, #e9f5ec 100%);
   border-color: rgba(55, 125, 82, 0.22);
@@ -912,6 +1014,24 @@
   font-size: 0.74rem;
   font-weight: 800;
   white-space: nowrap;
+}
+
+.asset-popup .asset-supply-request-status--pending {
+  border-color: rgba(181, 123, 32, 0.28);
+  background: linear-gradient(180deg, #fff7e4 0%, #ffedc4 100%);
+  color: #94621b;
+}
+
+.asset-popup .asset-supply-request-status--borrowed {
+  border-color: rgba(48, 100, 169, 0.28);
+  background: linear-gradient(180deg, #edf5ff 0%, #dceaff 100%);
+  color: #2b5f9c;
+}
+
+.asset-popup .asset-supply-request-status--assigned {
+  border-color: rgba(54, 126, 79, 0.26);
+  background: linear-gradient(180deg, #edf9f1 0%, #dff0e5 100%);
+  color: #2e7448;
 }
 
 .asset-popup .asset-supply-request-menu-anchor {
@@ -1257,11 +1377,16 @@
 .assets-filter-options-panel .mat-mdc-option.status-option .status-option-content,
 .asset-type-options-panel .mat-mdc-option.status-option .status-option-content {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   width: 100%;
   min-width: 0;
   column-gap: 0.34rem;
+}
+
+.assets-filter-options-panel .mat-mdc-option.status-option .rate-filter-count-badge {
+  margin-left: 0;
+  justify-self: end;
 }
 
 .mat-mdc-option.status-option.asset-filter-car,

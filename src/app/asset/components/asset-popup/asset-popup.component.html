@@ -144,9 +144,10 @@
               <div class="experience-toolbar assets-toolbar">
                 @if (!isMobileAssetFilterSheetViewport()) {
                   <div
-                    class="profile-status-select-wrap selector-like experience-filter-select assets-compact-select"
+                    class="profile-status-select-wrap selector-like experience-filter-select assets-compact-select assets-primary-filter-select"
                     [ngClass]="ownedAssets.assetTypeClass(ownedAssets.assetFilter)"
                     [class.asset-filter-open]="assetFilterOpen()"
+                    [class.popup-filter-no-badge]="ownedAssets.assetFilterCount(ownedAssets.assetFilter) === 0"
                     >
                     <mat-select
                       [ngModel]="ownedAssets.assetFilter"
@@ -167,17 +168,26 @@
                           <span class="status-option-content">
                             <mat-icon [class]="ownedAssets.assetTypeClass(option)">{{ ownedAssets.assetTypeIcon(option) }}</mat-icon>
                             <span>{{ ownedAssets.assetTypeLabel(option) }}</span>
+                            @if (ownedAssets.assetFilterCount(option) > 0) {
+                              <span class="rate-filter-count-badge">{{ ownedAssets.assetFilterCount(option) | counterBadge }}</span>
+                            }
                           </span>
                         </mat-option>
                       }
                     </mat-select>
+                    @if (ownedAssets.assetFilterCount(ownedAssets.assetFilter) > 0) {
+                      <span class="rate-filter-count-badge rate-filter-trigger-badge">
+                        {{ ownedAssets.assetFilterCount(ownedAssets.assetFilter) | counterBadge }}
+                      </span>
+                    }
                   </div>
                 } @else {
                   <div class="popup-mobile-filter-picker assets-mobile-filter-picker">
                     <button
                       type="button"
-                      class="profile-status-select-wrap selector-like experience-filter-select assets-compact-select"
+                      class="profile-status-select-wrap selector-like experience-filter-select assets-compact-select assets-primary-filter-select"
                       [ngClass]="ownedAssets.assetTypeClass(ownedAssets.assetFilter)"
+                      [class.popup-filter-no-badge]="ownedAssets.assetFilterCount(ownedAssets.assetFilter) === 0"
                       (click)="openMobileAssetFilterSelector($event)"
                       aria-label="Open asset filter"
                       >
@@ -186,6 +196,11 @@
                         <span>{{ ownedAssets.assetTypeLabel(ownedAssets.assetFilter) }}</span>
                       </span>
                       <mat-icon>expand_more</mat-icon>
+                      @if (ownedAssets.assetFilterCount(ownedAssets.assetFilter) > 0) {
+                        <span class="rate-filter-count-badge rate-filter-trigger-badge">
+                          {{ ownedAssets.assetFilterCount(ownedAssets.assetFilter) | counterBadge }}
+                        </span>
+                      }
                     </button>
                     @if (showMobileAssetFilterPicker) {
                       <div class="popup-filter-panel popup-mobile-filter-panel activities-view-picker-panel assets-mobile-filter-panel">
@@ -198,6 +213,9 @@
                             >
                             <mat-icon [class]="ownedAssets.assetTypeClass(option)">{{ ownedAssets.assetTypeIcon(option) }}</mat-icon>
                             <span>{{ ownedAssets.assetTypeLabel(option) }}</span>
+                            @if (ownedAssets.assetFilterCount(option) > 0) {
+                              <span class="rate-filter-count-badge">{{ ownedAssets.assetFilterCount(option) | counterBadge }}</span>
+                            }
                           </button>
                         }
                       </div>
@@ -306,7 +324,7 @@
               <div class="popup-title popup-title-members">
                 <div class="popup-chat-title-block">
                   <h2>{{ supplyAsset.title }}</h2>
-                  <p>{{ assetRequestListSubtitle() }}</p>
+                  <p>{{ assetRequestListSubtitle() | i18n }}</p>
                 </div>
               </div>
               <div class="popup-filter-picker asset-supply-request-filter-picker">
@@ -314,11 +332,12 @@
                   type="button"
                   class="popup-view-fab asset-supply-request-filter-btn"
                   [class.is-open]="showSupplyRequestFilterMenu"
+                  [ngClass]="'asset-supply-request-filter-tone--' + supplyRequestFilter"
                   (click)="toggleSupplyRequestFilterMenu($event)"
-                  [attr.aria-label]="'Open request filter: ' + supplyRequestFilterLabel()"
+                  [attr.aria-label]="('asset.requests.filter.open' | i18n) + ': ' + (supplyRequestFilterLabel() | i18n)"
                   >
                   <mat-icon>{{ supplyRequestFilterIcon() }}</mat-icon>
-                  <span>{{ supplyRequestFilterLabel() }}</span>
+                  <span>{{ supplyRequestFilterLabel() | i18n }}</span>
                   <strong>{{ supplyRequestFilterCount() }}</strong>
                 </button>
                 @if (showSupplyRequestFilterMenu) {
@@ -328,17 +347,18 @@
                         type="button"
                         class="popup-filter-option activities-view-option"
                         [class.active]="option.key === supplyRequestFilter"
+                        [ngClass]="'asset-supply-request-filter-tone--' + option.key"
                         (click)="selectSupplyRequestFilter(option.key, $event)"
                         >
                         <mat-icon>{{ option.icon }}</mat-icon>
-                        <span>{{ option.label }}</span>
+                        <span>{{ option.labelKey | i18n }}</span>
                         <strong>{{ supplyRequestFilterCount(option.key) }}</strong>
                       </button>
                     }
                   </div>
                 }
               </div>
-              <button mat-icon-button class="popup-close" (click)="closeSupplyRequestList($event)" aria-label="Close asset requests">
+              <button mat-icon-button class="popup-close" (click)="closeSupplyRequestList($event)" [attr.aria-label]="'asset.requests.close' | i18n">
                 <mat-icon>close</mat-icon>
               </button>
             </div>
@@ -351,6 +371,7 @@
                       <article
                         class="asset-supply-request-row"
                         [class.asset-supply-request-row--pending]="row.status === 'pending'"
+                        [class.asset-supply-request-row--accepted]="row.status === 'accepted'"
                         [class.asset-supply-request-row--assigned]="row.status === 'assigned'"
                         >
                         <div class="asset-supply-request-avatar">{{ row.avatarInitials }}</div>
@@ -376,7 +397,14 @@
                             {{ row.sideLabel }}
                           </span>
                           @if (supplyRequestFilter === 'all') {
-                            <span class="asset-supply-request-status">{{ row.status === 'assigned' ? 'Assigned' : row.status === 'accepted' ? 'Borrowed' : 'Pending' }}</span>
+                            <span
+                              class="asset-supply-request-status"
+                              [class.asset-supply-request-status--pending]="row.status === 'pending'"
+                              [class.asset-supply-request-status--borrowed]="row.status === 'accepted'"
+                              [class.asset-supply-request-status--assigned]="row.status === 'assigned'"
+                              >
+                              {{ supplyRequestRowStatusLabel(row) | i18n }}
+                            </span>
                           }
                           @if (hasSupplyRequestRowActions(row)) {
                             <div class="asset-supply-request-menu-anchor">
@@ -386,7 +414,7 @@
                                 [class.is-open]="isSupplyRequestRowActionMenuOpen(row)"
                                 [disabled]="isSupplyRequestRowBusy(row, 'accept') || isSupplyRequestRowBusy(row, 'remove') || isSupplyRequestRowBusy(row, 'makeManager')"
                                 (click)="toggleSupplyRequestRowActionMenu(row, $event)"
-                                aria-label="Open request actions"
+                                [attr.aria-label]="'asset.requests.actions.open' | i18n"
                                 >
                                 <mat-icon>{{ isSupplyRequestRowActionMenuOpen(row) ? 'close' : 'more_vert' }}</mat-icon>
                               </button>
@@ -407,7 +435,7 @@
                                     (click)="approveSupplyRequestRow(row, $event)"
                                     >
                                     <mat-icon>check_circle</mat-icon>
-                                    <span>{{ isSupplyRequestRowBusy(row, 'accept') ? 'Accepting...' : 'Accept' }}</span>
+                                    <span>{{ (isSupplyRequestRowBusy(row, 'accept') ? 'accepting' : 'accept') | i18n }}</span>
                                   </button>
                                 }
                                 @if (canPromoteSupplyRequestRowToManager(row)) {
@@ -418,7 +446,7 @@
                                     (click)="promoteSupplyRequestRowToManager(row, $event)"
                                     >
                                     <mat-icon>manage_accounts</mat-icon>
-                                    <span>{{ isSupplyRequestRowBusy(row, 'makeManager') ? 'Promoting...' : 'Promote to manager' }}</span>
+                                    <span>{{ (isSupplyRequestRowBusy(row, 'makeManager') ? 'asset.requests.promoting' : 'asset.requests.promote.to.manager') | i18n }}</span>
                                   </button>
                                 }
                                 @if ((row.menuActions ?? []).includes('remove')) {
@@ -429,7 +457,7 @@
                                     (click)="rejectSupplyRequestRow(row, $event)"
                                     >
                                     <mat-icon>delete</mat-icon>
-                                    <span>{{ isSupplyRequestRowBusy(row, 'remove') ? 'Rejecting...' : 'Reject' }}</span>
+                                    <span>{{ (isSupplyRequestRowBusy(row, 'remove') ? 'asset.requests.rejecting' : 'reject') | i18n }}</span>
                                   </button>
                                 }
                               </div>
@@ -442,7 +470,7 @@
                 } @else {
                   <section class="asset-supply-requests-empty">
                     <mat-icon>inventory_2</mat-icon>
-                    <span>{{ supplyRequestEmptyLabel() }}</span>
+                    <span>{{ supplyRequestEmptyLabel() | i18n }}</span>
                   </section>
                 }
               </div>

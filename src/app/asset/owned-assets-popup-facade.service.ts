@@ -7,7 +7,7 @@ import { PricingBuilder } from '../shared/core/base/builders';
 import type * as AppTypes from '../shared/core/base/models';
 import { resolveCurrentDemoDelayMs } from '../shared/core/base/services/route-delay.service';
 import { AssetPopupStateService } from './asset-popup-state.service';
-import { AppContext, AssetCardBuilder, AssetDefaultsBuilder, AssetsService } from '../shared/core';
+import { AppContext, AssetCardBuilder, AssetDefaultsBuilder, AssetsService, type ActivityCounterKey } from '../shared/core';
 import { HttpMediaService } from '../shared/core/http';
 
 export interface OwnedAssetsRuntimeHooks {
@@ -284,6 +284,19 @@ export class OwnedAssetsPopupFacadeService {
 
   assetTypeLabel(type: AppTypes.AssetFilterType): string {
     return AssetDefaultsBuilder.assetTypeLabel(type);
+  }
+
+  assetFilterCount(type: AppTypes.AssetFilterType): number {
+    const key = this.assetFilterCounterKey(type);
+    if (!key) {
+      return 0;
+    }
+    const activeUser = this.appCtx.activeUserProfile();
+    const userId = activeUser?.id?.trim() || this.appCtx.getActiveUserId().trim();
+    if (!userId) {
+      return 0;
+    }
+    return this.appCtx.resolveUserCounter(userId, key, Number(activeUser?.activities?.[key]) || 0);
   }
 
   eventVisibilityClass(option: AppTypes.EventVisibility): string {
@@ -740,16 +753,43 @@ export class OwnedAssetsPopupFacadeService {
       return;
     }
     const nextStatus = this.restoredAssetStatus(current);
-    const savedCard = await this.assetsService.takeOverOwnedAsset(ownerUserId, normalizedCardId);
+    const ownerName = this.appCtx.activeUserProfile()?.name?.trim() || current.ownerName;
+    const nextCard: AppTypes.AssetCard = {
+      ...current,
+      ownerUserId,
+      ownerName,
+      status: nextStatus,
+      menuActions: this.restoredTakeOverMenuActions(current, null)
+    };
     this.markAssetMutation();
     this.applyAssetCards(this.assetCardsRef.map(card =>
       card.id === normalizedCardId
-        ? {
-            ...card,
-            ...(savedCard ?? {}),
-            status: savedCard?.status ?? nextStatus
-          }
+        ? nextCard
         : card
+    ), {
+      persist: false,
+      reloadList: false
+    });
+    for (const hooks of this.runtimeHooks) {
+      hooks.onAssetsChanged?.();
+    }
+    this.touchUiState();
+
+    const savedCard = await this.assetsService.takeOverOwnedAsset(ownerUserId, normalizedCardId);
+    if (this.resolveOwnerUserId() !== ownerUserId || !savedCard) {
+      return;
+    }
+    const resolvedStatus = this.normalizeAssetStatus(savedCard.status);
+    const reconciledCard: AppTypes.AssetCard = {
+      ...nextCard,
+      ...savedCard,
+      ownerUserId: savedCard.ownerUserId ?? ownerUserId,
+      ownerName: savedCard.ownerName ?? ownerName,
+      status: resolvedStatus === 'UR' ? nextStatus : resolvedStatus,
+      menuActions: this.restoredTakeOverMenuActions(nextCard, savedCard)
+    };
+    this.applyAssetCards(this.assetCardsRef.map(card =>
+      card.id === normalizedCardId ? reconciledCard : card
     ), {
       persist: false,
       reloadList: false
@@ -838,6 +878,40 @@ export class OwnedAssetsPopupFacadeService {
 
   private restoredAssetStatus(card: AppTypes.AssetCard): string {
     return 'A';
+  }
+
+  private restoredTakeOverMenuActions(
+    current: AppTypes.AssetCard,
+    savedCard: AppTypes.AssetCard | null | undefined
+  ): string[] {
+    const savedStatus = this.normalizeAssetStatus(savedCard?.status);
+    const savedActions = (savedCard?.menuActions ?? [])
+      .map(action => `${action ?? ''}`.trim())
+      .filter(action => action.length > 0 && action !== 'takeOver');
+    if (savedStatus !== 'UR' && savedActions.length > 0) {
+      return savedActions;
+    }
+    const currentActions = current.menuActions ?? [];
+    const shareAction = currentActions.includes('shareAsset') ? 'shareAsset' : 'share';
+    const editAction = currentActions.includes('editAsset') ? 'editAsset' : 'edit';
+    return [shareAction, editAction, 'delete'];
+  }
+
+  private assetFilterCounterKey(
+    type: AppTypes.AssetFilterType
+  ): Extract<ActivityCounterKey, 'cars' | 'accommodation' | 'supplies' | 'tickets'> | null {
+    switch (type) {
+      case 'Car':
+        return 'cars';
+      case 'Accommodation':
+        return 'accommodation';
+      case 'Supplies':
+        return 'supplies';
+      case 'Ticket':
+        return 'tickets';
+      default:
+        return null;
+    }
   }
 
   private normalizeAssetStatus(status: string | null | undefined): string {
@@ -1016,6 +1090,9 @@ export class OwnedAssetsPopupFacadeService {
       card.imageUrl,
       card.sourceLink,
       card.visibility ?? '',
+      card.status ?? '',
+      card.ownerUserId ?? '',
+      card.ownerName ?? '',
       (card.routes ?? []).join('|'),
       (card.topics ?? []).join('|'),
       JSON.stringify((card.policies ?? []).map(item => ({
