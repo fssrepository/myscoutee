@@ -15,6 +15,17 @@ import type {
 import { RouteDelayService } from '../../base/services/route-delay.service';
 import { HELP_CENTER_TABLE_NAME, type DemoHelpCenterTable } from '../models/help-center.model';
 
+const LEGACY_EXPLANATION_FILTER_COUNT_COPY_BY_LANG: Record<string, { from: string; to: string }> = {
+  en: {
+    from: 'The number shows how many filter groups are active.',
+    to: 'The number shows how many results match the selected filter condition.'
+  },
+  hu: {
+    from: 'A szám azt mutatja, hány szűrőcsoport aktív.',
+    to: 'A szám azt mutatja, hogy az adott szűrőfeltétel mellett hány találat van.'
+  }
+};
+
 @Injectable({
   providedIn: 'root'
 })
@@ -29,9 +40,10 @@ export class DemoHelpCenterService {
     const context = this.normalizeContextKey(documentKind, contextKey, false);
     let changed = false;
     for (const option of this.availableLanguages()) {
-      changed = this.ensureSeeded(documentKind, option.lang)
-        || this.ensureRevisionDescriptions(documentKind, option.lang)
-        || changed;
+      const seeded = this.ensureSeeded(documentKind, option.lang);
+      const descriptionsUpdated = this.ensureRevisionDescriptions(documentKind, option.lang);
+      const filterCountCopyUpdated = this.ensureExplanationFilterCountCopy(documentKind, option.lang);
+      changed = seeded || descriptionsUpdated || filterCountCopyUpdated || changed;
     }
     if (changed) {
       await this.memoryDb.flushToIndexedDb();
@@ -383,6 +395,52 @@ export class DemoHelpCenterService {
             description: this.defaultDescription(kind, language)
           };
         }
+      }
+      return {
+        ...state,
+        [HELP_CENTER_TABLE_NAME]: {
+          ...current,
+          revisionsById
+        }
+      };
+    });
+    return true;
+  }
+
+  private ensureExplanationFilterCountCopy(kind: HelpCenterDocumentKind, lang = 'en'): boolean {
+    if (kind !== 'explanation') {
+      return false;
+    }
+    const language = this.normalizeLang(lang);
+    const copy = LEGACY_EXPLANATION_FILTER_COUNT_COPY_BY_LANG[language];
+    if (!copy) {
+      return false;
+    }
+    const table = this.table();
+    const revisionIds = table.revisionIds.filter(id => {
+      const revision = table.revisionsById[id] as HelpCenterRevision | undefined;
+      return Boolean(revision)
+        && this.revisionKind(revision) === 'explanation'
+        && this.revisionLang(revision) === language
+        && revision?.sections?.some(section => section.id === 'filters' && section.contentHtml.includes(copy.from));
+    });
+    if (revisionIds.length === 0) {
+      return false;
+    }
+    this.memoryDb.write(state => {
+      const current = state[HELP_CENTER_TABLE_NAME];
+      const revisionsById = this.normalizedRevisionsById(current);
+      for (const id of revisionIds) {
+        const revision = revisionsById[id];
+        if (!revision) {
+          continue;
+        }
+        revisionsById[id] = {
+          ...revision,
+          sections: revision.sections.map(section => section.id === 'filters'
+            ? { ...section, contentHtml: section.contentHtml.replace(copy.from, copy.to) }
+            : section)
+        };
       }
       return {
         ...state,

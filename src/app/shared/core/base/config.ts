@@ -47,6 +47,10 @@ export const ROUTE_CONFIG: RouteConfig = {
       demoDelayMs: 1500
     },
     {
+      routePrefix: '/admin/explanation',
+      demoDelayMs: 1500
+    },
+    {
       routePrefix: '/admin/ideas',
       demoDelayMs: 1500
     },

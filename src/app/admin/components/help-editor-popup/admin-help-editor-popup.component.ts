@@ -65,7 +65,7 @@ interface HelpEditorRevisionRow {
 export class AdminHelpEditorPopupComponent implements OnDestroy {
   private static readonly ACTION_PENDING_WINDOW_MS = 1500;
   private static readonly LOAD_DEMO_DELAY_MS = 1500;
-  private static readonly LOAD_PROGRESS_WINDOW_MS = 1500;
+  private static readonly LOAD_PROGRESS_WINDOW_MS = 3000;
   private static readonly EXPLANATION_IMAGE_SLOT_COUNT = 8;
   private static readonly VOID_HTML_TAGS = new Set([
     'area',
