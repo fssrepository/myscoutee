@@ -29,6 +29,7 @@ export {
   HelpCenterService,
   HELP_CENTER_LOAD_CONTEXT_KEY
 } from './base/services/help-center.service';
+export { ExplanationGuideService } from './base/services/explanation-guide.service';
 export { IdeaPostsService } from './base/services/idea-posts.service';
 export { LandingContentService } from './base/services/landing-content.service';
 export { EventsService } from './base/services/events.service';

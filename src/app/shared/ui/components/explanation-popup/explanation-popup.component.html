@@ -1,0 +1,62 @@
+@if (activeRevision(); as revision) {
+  <section class="explanation-popup" role="dialog" aria-modal="true" [attr.aria-label]="revision.title">
+    <div class="explanation-popup__backdrop" (click)="close($event)"></div>
+    <article class="explanation-popup__panel" (click)="$event.stopPropagation()">
+      <button type="button" class="explanation-popup__close" (click)="close($event)" aria-label="Close explanation">
+        <mat-icon>close</mat-icon>
+      </button>
+
+      <header class="explanation-popup__header">
+        <div class="explanation-popup__visual" aria-hidden="true">
+          <span class="explanation-popup__mini-card is-front">
+            <span></span>
+            <span></span>
+            <span></span>
+          </span>
+          <span class="explanation-popup__mini-card is-back">
+            <span></span>
+            <span></span>
+          </span>
+          <span class="explanation-popup__spark">
+            <mat-icon>tips_and_updates</mat-icon>
+          </span>
+        </div>
+        <div class="explanation-popup__headline">
+          <span class="explanation-popup__eyebrow">{{ 'quick.guide' | i18n }}</span>
+          <h2 data-i18n-ignore>{{ revision.title }}</h2>
+          @if (revision.summary) {
+            <p data-i18n-ignore>{{ revision.summary }}</p>
+          }
+        </div>
+      </header>
+
+      @if (revision.description) {
+        <p class="explanation-popup__description" data-i18n-ignore>{{ revision.description }}</p>
+      }
+
+      <div class="explanation-popup__grid">
+        @for (section of revision.sections; track section.id) {
+          <section class="explanation-popup__item">
+            <span class="explanation-popup__item-icon">
+              <mat-icon>{{ section.icon || 'tips_and_updates' }}</mat-icon>
+            </span>
+            <div>
+              <h3 data-i18n-ignore>{{ section.title }}</h3>
+              @if (section.blurb) {
+                <p data-i18n-ignore>{{ section.blurb }}</p>
+              }
+              <div class="explanation-popup__html" data-i18n-ignore [innerHTML]="section.contentHtml"></div>
+            </div>
+          </section>
+        }
+      </div>
+
+      <footer class="explanation-popup__footer">
+        <button type="button" class="explanation-popup__primary" (click)="close($event)">
+          <span>{{ 'got.it' | i18n }}</span>
+          <mat-icon>check</mat-icon>
+        </button>
+      </footer>
+    </article>
+  </section>
+}

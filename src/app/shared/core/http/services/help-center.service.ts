@@ -22,12 +22,17 @@ export class HttpHelpCenterService {
   private readonly http = inject(HttpClient);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
 
-  async loadState(kind: HelpCenterDocumentKind = 'help', lang?: string | null): Promise<HelpCenterState> {
+  async loadState(kind: HelpCenterDocumentKind = 'help', lang?: string | null, contextKey?: string | null): Promise<HelpCenterState> {
     const documentKind = this.normalizeKind(kind);
     const requestLang = this.requestLang(lang);
+    const params: Record<string, string> = { lang: requestLang };
+    const context = this.normalizeContextKey(documentKind, contextKey);
+    if (context) {
+      params['contextKey'] = context;
+    }
     const response = await this.http
       .get<Partial<HelpCenterState> | null>(`${this.apiBaseUrl}/${documentKind}/active`, {
-        params: { lang: requestLang }
+        params
       })
       .toPromise();
     return this.normalizeState(response, documentKind);
@@ -143,13 +148,14 @@ export class HttpHelpCenterService {
     return {
       id,
       documentKind: kind,
+      contextKey: this.normalizeContextKey(kind, value?.contextKey),
       lang: this.normalizeLang(value?.lang),
       languageLabel: this.languageLabel(value?.lang, value?.languageLabel),
       version,
-      title: `${value?.title ?? `${kind === 'privacy' ? 'Privacy' : 'Help'} revision v${version}`}`.trim(),
+      title: `${value?.title ?? `${this.documentLabel(kind)} revision v${version}`}`.trim(),
       summary: `${value?.summary ?? ''}`.trim(),
       description: `${value?.description ?? ''}`.trim()
-        || (kind === 'privacy' ? APP_STATIC_DATA.defaultPrivacyCenterDescription : APP_STATIC_DATA.defaultHelpCenterDescription),
+        || this.defaultDescription(kind),
       headerColor: this.normalizeHeaderColor(value?.headerColor),
       sections: Array.isArray(value?.sections)
         ? value.sections.map(section => this.normalizeSection(section)).filter((section): section is HelpCenterSection => Boolean(section))
@@ -225,7 +231,45 @@ export class HttpHelpCenterService {
   }
 
   private normalizeKind(kind: string | null | undefined): HelpCenterDocumentKind {
-    return kind === 'privacy' ? 'privacy' : 'help';
+    if (kind === 'privacy' || kind === 'explanation') {
+      return kind;
+    }
+    return 'help';
+  }
+
+  private normalizeContextKey(kind: HelpCenterDocumentKind, contextKey: string | null | undefined): string | null {
+    if (kind !== 'explanation') {
+      return null;
+    }
+    const normalized = `${contextKey ?? ''}`.trim();
+    if (!normalized) {
+      return null;
+    }
+    return APP_STATIC_DATA.explainableSurfaces.some(surface => surface.enabled && surface.key === normalized)
+      ? normalized
+      : null;
+  }
+
+  private documentLabel(kind: HelpCenterDocumentKind): string {
+    switch (kind) {
+      case 'privacy':
+        return 'Privacy';
+      case 'explanation':
+        return 'Explanation';
+      default:
+        return 'Help';
+    }
+  }
+
+  private defaultDescription(kind: HelpCenterDocumentKind): string {
+    switch (kind) {
+      case 'privacy':
+        return APP_STATIC_DATA.defaultPrivacyCenterDescription;
+      case 'explanation':
+        return APP_STATIC_DATA.defaultExplanationHomeRevision.description;
+      default:
+        return APP_STATIC_DATA.defaultHelpCenterDescription;
+    }
   }
 
   private normalizeLang(lang: string | null | undefined): string {

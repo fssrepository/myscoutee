@@ -21,16 +21,21 @@ export class HelpCenterService extends BaseRouteModeService {
   private readonly httpHelpCenterService = inject(HttpHelpCenterService);
   private readonly helpStateRef = signal<HelpCenterState | null>(null);
   private readonly privacyStateRef = signal<HelpCenterState | null>(null);
+  private readonly explanationStateRef = signal<HelpCenterState | null>(null);
   private preloadPromises: Partial<Record<HelpCenterDocumentKind, Promise<HelpCenterState>>> = {};
 
   readonly state = this.helpStateRef.asReadonly();
   readonly privacyState = this.privacyStateRef.asReadonly();
+  readonly explanationState = this.explanationStateRef.asReadonly();
   readonly activeRevision = computed(() => this.helpStateRef()?.activeRevision ?? null);
   readonly activePrivacyRevision = computed(() => this.privacyStateRef()?.activeRevision ?? null);
+  readonly activeExplanationRevision = computed(() => this.explanationStateRef()?.activeRevision ?? null);
   readonly hasActiveRevision = computed(() => Boolean(this.activeRevision()));
   readonly hasActivePrivacyRevision = computed(() => Boolean(this.activePrivacyRevision()));
+  readonly hasActiveExplanationRevision = computed(() => Boolean(this.activeExplanationRevision()));
   readonly activeVersionLabel = computed(() => this.versionLabel(this.activeRevision()?.version));
   readonly activePrivacyVersionLabel = computed(() => this.versionLabel(this.activePrivacyRevision()?.version));
+  readonly activeExplanationVersionLabel = computed(() => this.versionLabel(this.activeExplanationRevision()?.version));
 
   async preload(kind: HelpCenterDocumentKind = 'help'): Promise<HelpCenterState> {
     const documentKind = this.normalizeKind(kind);
@@ -53,8 +58,12 @@ export class HelpCenterService extends BaseRouteModeService {
     this.setState(this.normalizeKind(kind), state);
   }
 
-  async refresh(kind: HelpCenterDocumentKind = 'help'): Promise<HelpCenterState> {
-    return this.loadState(this.normalizeKind(kind));
+  async refresh(kind: HelpCenterDocumentKind = 'help', contextKey?: string | null): Promise<HelpCenterState> {
+    return this.loadState(this.normalizeKind(kind), undefined, contextKey);
+  }
+
+  async loadExplanationState(contextKey: string, lang?: string | null): Promise<HelpCenterState> {
+    return this.loadState('explanation', lang, contextKey);
   }
 
   async loadPrivacyConsent(
@@ -70,12 +79,12 @@ export class HelpCenterService extends BaseRouteModeService {
     return this.clonePrivacyConsent(await this.helpService('privacy').savePrivacyConsent(request));
   }
 
-  async loadAdminState(adminUserId: string, kind: HelpCenterDocumentKind = 'help', lang = 'en'): Promise<HelpCenterState> {
+  async loadAdminState(adminUserId: string, kind: HelpCenterDocumentKind = 'help', lang = 'en', contextKey?: string | null): Promise<HelpCenterState> {
     const documentKind = this.normalizeKind(kind);
     const service = this.helpService(documentKind);
     const state = service instanceof HttpHelpCenterService
       ? await service.loadAdminState(adminUserId, documentKind, lang)
-      : await service.loadState(documentKind, lang);
+      : await service.loadState(documentKind, lang, contextKey);
     this.setState(documentKind, state);
     return this.cloneState(state);
   }
@@ -101,8 +110,8 @@ export class HelpCenterService extends BaseRouteModeService {
     return this.cloneState(state);
   }
 
-  private async loadState(kind: HelpCenterDocumentKind, lang?: string | null): Promise<HelpCenterState> {
-    const state = await this.helpService(kind).loadState(kind, lang);
+  private async loadState(kind: HelpCenterDocumentKind, lang?: string | null, contextKey?: string | null): Promise<HelpCenterState> {
+    const state = await this.helpService(kind).loadState(kind, lang, contextKey);
     this.setState(kind, state);
     return this.cloneState(state);
   }
@@ -117,11 +126,18 @@ export class HelpCenterService extends BaseRouteModeService {
       this.privacyStateRef.set(cloned);
       return;
     }
+    if (kind === 'explanation') {
+      this.explanationStateRef.set(cloned);
+      return;
+    }
     this.helpStateRef.set(cloned);
   }
 
   private normalizeKind(kind: string | null | undefined): HelpCenterDocumentKind {
-    return kind === 'privacy' ? 'privacy' : 'help';
+    if (kind === 'privacy' || kind === 'explanation') {
+      return kind;
+    }
+    return 'help';
   }
 
   private versionLabel(version: number | null | undefined): string {

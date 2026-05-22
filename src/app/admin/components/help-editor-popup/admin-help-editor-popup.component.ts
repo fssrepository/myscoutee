@@ -7,6 +7,7 @@ import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { HelpCenterService } from '../../../shared/core';
 import { I18nService } from '../../../shared/i18n/i18n.service';
 import type {
+  ExplainableSurface,
   HelpCenterDocumentKind,
   HelpCenterHeaderColor,
   HelpCenterRevision,
@@ -38,6 +39,7 @@ interface HelpEditorSectionDraft {
 
 interface HelpEditorRevisionDraft {
   baseRevisionId: string | null;
+  contextKey: string | null;
   title: string;
   summary: string;
   description: string;
@@ -103,6 +105,8 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
   protected colorPickerOpen = false;
   protected iconPickerSearch = '';
   protected iconPickerGroup: HelpIconOption['group'] = 'Common';
+  protected explanationMenuOpen = false;
+  protected selectedExplanationContextKey = 'home.game';
   private stateLoadedForPopup = false;
   protected readonly actionRingPerimeter = 100;
   protected readonly loadingRingPerimeter = 100;
@@ -243,8 +247,8 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
     this.error = '';
     this.beginLoadingProgress();
     try {
-      const [state] = await Promise.all([
-        this.helpCenter.loadAdminState(this.actorUserId(), this.documentKind, this.selectedContentLang),
+      await Promise.all([
+        this.helpCenter.loadAdminState(this.actorUserId(), this.documentKind, this.selectedContentLang, this.selectedExplanationContextKey),
         this.routeDelay.waitForRouteDelay(
           this.adminContentRoute(),
           undefined,
@@ -252,7 +256,7 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
           AdminHelpEditorPopupComponent.LOAD_DEMO_DELAY_MS
         )
       ]);
-      this.selectInitialRevision(state.revisions, state.activeRevision);
+      this.selectInitialRevision(this.revisions(), this.activeRevision());
     } catch {
       this.error = this.loadErrorLabel();
     } finally {
@@ -261,10 +265,11 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
     }
   }
 
-  protected selectDocumentKind(kind: HelpCenterDocumentKind, event?: Event): void {
+  protected async selectDocumentKind(kind: HelpCenterDocumentKind, event?: Event): Promise<void> {
     event?.stopPropagation();
     this.closeDocumentMenu();
     this.closeLanguageMenu();
+    this.explanationMenuOpen = false;
     if (this.documentKind === kind || this.loading() || this.isAnyActionPending()) {
       return;
     }
@@ -279,13 +284,60 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
     this.error = '';
     this.closeIconPicker();
     this.closeColorPicker();
-    void this.load();
+    await this.load();
   }
 
   protected contentLanguages(): Array<{ lang: string; label: string }> {
     return this.currentState()?.availableLanguages?.length
       ? this.currentState()!.availableLanguages
       : APP_STATIC_DATA.contentLanguages;
+  }
+
+  protected explainableSurfaces(): ExplainableSurface[] {
+    return [...APP_STATIC_DATA.explainableSurfaces]
+      .filter(surface => surface.enabled)
+      .sort((left, right) => left.order - right.order);
+  }
+
+  protected selectedExplanationSurface(): ExplainableSurface | null {
+    return this.explainableSurfaces().find(surface => surface.key === this.selectedExplanationContextKey) ?? null;
+  }
+
+  protected explanationSurfaceLabel(contextKey: string | null | undefined): string {
+    const normalized = this.normalizeExplanationContextKey(contextKey);
+    return this.explainableSurfaces().find(surface => surface.key === normalized)?.label ?? 'Home cards';
+  }
+
+  protected explanationMenuItemLabel(surface: ExplainableSurface): string {
+    const draft = this.documentKind === 'explanation'
+      && this.editing
+      && this.draft?.contextKey === surface.key
+      ? this.draft
+      : null;
+    if (draft?.title?.trim()) {
+      return draft.title.trim();
+    }
+    const active = this.currentState()?.revisions
+      ?.filter(revision => this.normalizeExplanationContextKey(revision.contextKey) === surface.key)
+      ?.filter(revision => revision.active)
+      ?.sort((left, right) => right.version - left.version)[0] ?? null;
+    return active?.title?.trim() || surface.label;
+  }
+
+  protected explanationMenuItemMeta(surface: ExplainableSurface): string {
+    const active = this.currentState()?.revisions
+      ?.filter(revision => this.normalizeExplanationContextKey(revision.contextKey) === surface.key)
+      ?.filter(revision => revision.active)
+      ?.sort((left, right) => right.version - left.version)[0] ?? null;
+    return active ? `v${active.version}` : 'No popup';
+  }
+
+  protected selectDraftContext(contextKey: string): void {
+    const normalized = this.normalizeExplanationContextKey(contextKey);
+    this.selectedExplanationContextKey = normalized;
+    if (this.draft) {
+      this.draft.contextKey = normalized;
+    }
   }
 
   protected selectedContentLanguageLabel(): string {
@@ -355,6 +407,7 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
     }
     this.closeLanguageMenu();
     this.documentMenuOpen = !this.documentMenuOpen;
+    this.explanationMenuOpen = false;
     this.closeIconPicker();
     this.closeColorPicker();
   }
@@ -362,6 +415,53 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
   protected closeDocumentMenu(event?: Event): void {
     event?.stopPropagation();
     this.documentMenuOpen = false;
+    this.explanationMenuOpen = false;
+  }
+
+  protected openExplanationMenu(event?: Event): void {
+    event?.stopPropagation();
+    if (this.loading() || this.isAnyActionPending()) {
+      return;
+    }
+    this.explanationMenuOpen = true;
+  }
+
+  protected closeExplanationMenu(event?: Event): void {
+    event?.stopPropagation();
+    this.explanationMenuOpen = false;
+  }
+
+  protected async selectExplanationSurface(surface: ExplainableSurface, event?: Event): Promise<void> {
+    event?.stopPropagation();
+    if (this.loading() || this.isAnyActionPending() || !surface.enabled) {
+      return;
+    }
+    const wasExplanation = this.documentKind === 'explanation';
+    this.selectedExplanationContextKey = surface.key;
+    this.explanationMenuOpen = false;
+    await this.selectDocumentKind('explanation', event);
+    if (wasExplanation && this.documentKind === 'explanation') {
+      await this.load();
+    }
+  }
+
+  protected async createExplanationItem(event?: Event): Promise<void> {
+    event?.stopPropagation();
+    if (this.loading() || this.isAnyActionPending()) {
+      return;
+    }
+    const targetSurface = this.firstAvailableExplanationSurface();
+    if (targetSurface) {
+      this.selectedExplanationContextKey = targetSurface.key;
+    }
+    this.explanationMenuOpen = false;
+    if (this.documentKind !== 'explanation') {
+      await this.selectDocumentKind('explanation', event);
+    } else {
+      this.closeDocumentMenu();
+      await this.load();
+    }
+    this.beginEditingDraft(this.emptyDraft());
   }
 
   protected closeLanguageMenu(event?: Event): void {
@@ -370,13 +470,21 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
   }
 
   protected currentState(): HelpCenterState | null {
-    return this.documentKind === 'privacy'
-      ? this.helpCenter.privacyState()
-      : this.helpCenter.state();
+    if (this.documentKind === 'privacy') {
+      return this.helpCenter.privacyState();
+    }
+    if (this.documentKind === 'explanation') {
+      return this.helpCenter.explanationState();
+    }
+    return this.helpCenter.state();
   }
 
   protected revisions(): HelpCenterRevision[] {
-    return this.currentState()?.revisions ?? [];
+    const revisions = this.currentState()?.revisions ?? [];
+    if (this.documentKind !== 'explanation') {
+      return revisions;
+    }
+    return revisions.filter(revision => this.normalizeExplanationContextKey(revision.contextKey) === this.selectedExplanationContextKey);
   }
 
   protected revisionRows(): HelpEditorRevisionRow[] {
@@ -402,7 +510,14 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
   }
 
   protected activeRevision(): HelpCenterRevision | null {
-    return this.currentState()?.activeRevision ?? null;
+    const active = this.currentState()?.activeRevision ?? null;
+    if (this.documentKind !== 'explanation') {
+      return active;
+    }
+    if (active && this.normalizeExplanationContextKey(active.contextKey) === this.selectedExplanationContextKey) {
+      return active;
+    }
+    return this.revisions().find(revision => revision.active) ?? null;
   }
 
   protected selectedRevision(): HelpCenterRevision | null {
@@ -617,6 +732,7 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
     const request = {
       actorUserId: this.actorUserId(),
       baseRevisionId: this.draft.baseRevisionId,
+      contextKey: this.documentKind === 'explanation' ? this.draft.contextKey : null,
       lang: this.selectedContentLang,
       title: this.draft.title,
       summary: this.draft.summary,
@@ -627,12 +743,12 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
     this.saving = true;
     this.error = '';
     try {
-      const state = await this.withMinimumActionTime(this.helpCenter.saveRevision(request, this.documentKind));
+      await this.withMinimumActionTime(this.helpCenter.saveRevision(request, this.documentKind));
       this.editing = false;
       this.draft = null;
       this.draftAccordionOpen = true;
       this.closeIconPicker();
-      this.selectNewestRevision(state.revisions, state.activeRevision);
+      this.selectNewestRevision(this.revisions(), this.activeRevision());
     } catch {
       this.error = this.saveErrorLabel();
     } finally {
@@ -648,8 +764,8 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
     this.activatingRevisionId = revision.id;
     this.error = '';
     try {
-      const state = await this.withMinimumActionTime(this.helpCenter.activateRevision(revision.id, this.actorUserId(), this.documentKind));
-      this.selectInitialRevision(state.revisions, state.activeRevision);
+      await this.withMinimumActionTime(this.helpCenter.activateRevision(revision.id, this.actorUserId(), this.documentKind));
+      this.selectInitialRevision(this.revisions(), this.activeRevision());
     } catch {
       this.error = this.activateErrorLabel();
     } finally {
@@ -672,8 +788,8 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
         this.saving = true;
         this.error = '';
         try {
-          const state = await this.helpCenter.deleteRevision(revision.id, this.actorUserId(), this.documentKind);
-          this.selectInitialRevision(state.revisions, state.activeRevision);
+          await this.helpCenter.deleteRevision(revision.id, this.actorUserId(), this.documentKind);
+          this.selectInitialRevision(this.revisions(), this.activeRevision());
         } catch {
           this.error = this.deleteErrorLabel();
         } finally {
@@ -732,19 +848,33 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
   }
 
   protected documentLabel(): string {
-    return this.documentKind === 'privacy' ? 'Privacy' : 'Help';
+    switch (this.documentKind) {
+      case 'privacy':
+        return 'Privacy';
+      case 'explanation':
+        return 'Explanation';
+      default:
+        return 'Help';
+    }
   }
 
   protected documentIcon(kind: HelpCenterDocumentKind): string {
-    return kind === 'privacy' ? 'policy' : 'help_outline';
+    switch (kind) {
+      case 'privacy':
+        return 'policy';
+      case 'explanation':
+        return 'tips_and_updates';
+      default:
+        return 'help_outline';
+    }
   }
 
   protected documentLabelLower(): string {
-    return this.documentKind === 'privacy' ? 'privacy' : 'help';
+    return this.documentLabel().toLowerCase();
   }
 
   protected editorTitle(): string {
-    return this.uiText(this.documentKind === 'privacy' ? 'Privacy editor' : 'Help editor');
+    return this.uiText(`${this.documentLabel()} editor`);
   }
 
   protected uiDocumentLabel(): string {
@@ -829,13 +959,25 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
   }
 
   protected defaultDescription(): string {
-    return this.documentKind === 'privacy'
-      ? this.defaultPrivacyDescription
-      : this.defaultHelpDescription;
+    switch (this.documentKind) {
+      case 'privacy':
+        return this.defaultPrivacyDescription;
+      case 'explanation':
+        return APP_STATIC_DATA.defaultExplanationHomeRevision.description;
+      default:
+        return this.defaultHelpDescription;
+    }
   }
 
   protected defaultSectionIcon(): string {
-    return this.documentKind === 'privacy' ? 'policy' : 'help_outline';
+    switch (this.documentKind) {
+      case 'privacy':
+        return 'policy';
+      case 'explanation':
+        return 'tips_and_updates';
+      default:
+        return 'help_outline';
+    }
   }
 
   protected headerColorClass(color: string | null | undefined): string {
@@ -903,8 +1045,13 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
   }
 
   private draftFromRevision(revision: HelpCenterRevision): HelpEditorRevisionDraft {
+    const contextKey = this.normalizeExplanationContextKey(revision.contextKey);
+    if (this.documentKind === 'explanation') {
+      this.selectedExplanationContextKey = contextKey;
+    }
     return {
       baseRevisionId: revision.id,
+      contextKey: this.documentKind === 'explanation' ? contextKey : null,
       title: revision.title,
       summary: revision.summary,
       description: revision.description?.trim() || this.defaultDescription(),
@@ -924,10 +1071,11 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
   private emptyDraft(): HelpEditorRevisionDraft {
     return {
       baseRevisionId: null,
+      contextKey: this.documentKind === 'explanation' ? this.selectedExplanationContextKey : null,
       title: this.defaultContentRevisionTitle(),
       summary: '',
       description: '',
-      headerColor: 'amber',
+      headerColor: this.documentKind === 'explanation' ? 'violet' : 'amber',
       sections: [
         {
           localId: this.newLocalId(),
@@ -979,6 +1127,9 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
   }
 
   private defaultContentRevisionTitle(): string {
+    if (this.documentKind === 'explanation') {
+      return this.nextGeneratedExplanationTitle();
+    }
     if (this.selectedContentLanguageIsHungarian()) {
       return this.documentKind === 'privacy' ? 'Új adatvédelmi verzió' : 'Új súgóverzió';
     }
@@ -986,6 +1137,9 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
   }
 
   private defaultContentSectionTitle(): string {
+    if (this.documentKind === 'explanation') {
+      return this.selectedContentLanguageIsHungarian() ? 'Új magyarázat szakasz' : 'New explanation section';
+    }
     if (this.selectedContentLanguageIsHungarian()) {
       return this.documentKind === 'privacy' ? 'Új adatvédelmi szakasz' : 'Új súgó szakasz';
     }
@@ -993,6 +1147,9 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
   }
 
   private defaultUntitledContentSectionTitle(): string {
+    if (this.documentKind === 'explanation') {
+      return this.selectedContentLanguageIsHungarian() ? 'Névtelen magyarázat szakasz' : 'Untitled explanation section';
+    }
     if (this.selectedContentLanguageIsHungarian()) {
       return this.documentKind === 'privacy' ? 'Névtelen adatvédelmi szakasz' : 'Névtelen súgó szakasz';
     }
@@ -1000,6 +1157,9 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
   }
 
   private defaultNumberedContentSectionTitle(index: number): string {
+    if (this.documentKind === 'explanation') {
+      return this.selectedContentLanguageIsHungarian() ? `Magyarázat szakasz ${index}` : `Explanation section ${index}`;
+    }
     if (this.selectedContentLanguageIsHungarian()) {
       return this.documentKind === 'privacy' ? `Adatvédelmi szakasz ${index}` : `Súgó szakasz ${index}`;
     }
@@ -1007,6 +1167,11 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
   }
 
   private defaultContentSectionHtml(): string {
+    if (this.documentKind === 'explanation') {
+      return this.selectedContentLanguageIsHungarian()
+        ? '<p>Írd le, mit érdemes tudni erről a képernyőről.</p>'
+        : '<p>Describe what the user should know on this screen.</p>';
+    }
     if (this.selectedContentLanguageIsHungarian()) {
       return this.documentKind === 'privacy'
         ? '<p>Írd le ezt az adatvédelmi szakaszt.</p>'
@@ -1017,6 +1182,34 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
 
   private selectedContentLanguageIsHungarian(): boolean {
     return this.normalizeContentLang(this.selectedContentLang) === 'hu';
+  }
+
+  private nextGeneratedExplanationTitle(): string {
+    const existingNumbers = this.currentState()?.revisions
+      ?.map(revision => revision.title?.trim() ?? '')
+      ?.map(title => /^New item (\d+)$/i.exec(title)?.[1] ?? null)
+      ?.filter((value): value is string => Boolean(value))
+      ?.map(value => Number(value))
+      ?.filter(value => Number.isFinite(value) && value > 0) ?? [];
+    const nextIndex = existingNumbers.reduce((max, value) => Math.max(max, value), 0) + 1;
+    return `New item ${nextIndex}`;
+  }
+
+  private firstAvailableExplanationSurface(): ExplainableSurface | null {
+    const surfaces = this.explainableSurfaces();
+    const used = new Set(
+      this.currentState()?.revisions
+        ?.map(revision => this.normalizeExplanationContextKey(revision.contextKey))
+        ?.filter(Boolean) ?? []
+    );
+    return surfaces.find(surface => !used.has(surface.key)) ?? surfaces[0] ?? null;
+  }
+
+  private normalizeExplanationContextKey(contextKey: string | null | undefined): string {
+    const normalized = `${contextKey ?? ''}`.trim();
+    return this.explainableSurfaces().find(surface => surface.key === normalized)?.key
+      ?? this.explainableSurfaces()[0]?.key
+      ?? 'home.game';
   }
 
   private sectionContentHtml(section: HelpCenterSection): string {
@@ -1134,7 +1327,14 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
   }
 
   private adminContentRoute(): string {
-    return this.documentKind === 'privacy' ? '/admin/privacy' : '/admin/help';
+    switch (this.documentKind) {
+      case 'privacy':
+        return '/admin/privacy';
+      case 'explanation':
+        return `/admin/explanation/${this.selectedExplanationContextKey}`;
+      default:
+        return '/admin/help';
+    }
   }
 
   private beginLoadingProgress(): void {

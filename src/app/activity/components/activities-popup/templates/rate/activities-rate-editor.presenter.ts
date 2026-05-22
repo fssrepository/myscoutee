@@ -26,6 +26,7 @@ export class ActivitiesRateEditorPresenter {
       scale: this.deps.getRatingScale(),
       readonly: this.isSelectedReadOnly(),
       label: this.selectedBarLabel(),
+      actionLabel: 'Save',
       dock: {
         enabled: !this.deps.isFullscreenModeActive(),
         state: this.deps.isEditorClosing()
@@ -53,7 +54,7 @@ export class ActivitiesRateEditorPresenter {
     if (this.deps.isFullscreenModeActive()) {
       return null;
     }
-    return `Rate · ${this.selectedModeLabel()} · ${this.selectedTitle()}`;
+    return `Affinity · ${this.selectedModeLabel()} · ${this.selectedTitle()}`;
   }
 
   private isSelectedReadOnly(): boolean {

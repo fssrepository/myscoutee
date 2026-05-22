@@ -209,7 +209,7 @@
   z-index: 133;
   top: calc(100% + 0.42rem);
   right: 0;
-  min-width: 148px;
+  min-width: 188px;
   padding: 0.36rem;
   border: 1px solid rgba(31, 61, 99, 0.16);
   border-radius: 10px;
@@ -259,6 +259,80 @@
   height: 17px;
   font-size: 17px;
   line-height: 17px;
+}
+
+.help-editor-document-menu-branch,
+.help-editor-document-menu-surface {
+  justify-content: flex-start;
+}
+
+.help-editor-document-menu-arrow {
+  margin-left: auto;
+}
+
+.help-editor-document-menu-subhead {
+  min-height: 36px;
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) 30px;
+  align-items: center;
+  gap: 0.32rem;
+  padding: 0 0.18rem 0.22rem;
+  color: #25476e;
+  font-size: 0.76rem;
+  font-weight: 950;
+}
+
+.help-editor-document-menu-subhead span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.help-editor-document-menu .help-editor-document-menu-round-btn {
+  min-height: 30px;
+  width: 30px;
+  height: 30px;
+  border: 1px solid rgba(47, 86, 139, 0.18);
+  border-radius: 50%;
+  padding: 0;
+  justify-content: center;
+}
+
+.help-editor-document-menu .help-editor-document-menu-round-btn.is-primary {
+  border-color: rgba(40, 117, 78, 0.28);
+  background: #eefbf4;
+  color: #1f7649;
+}
+
+.help-editor-document-menu-surface {
+  min-height: 48px;
+  align-items: flex-start;
+}
+
+.help-editor-document-menu-surface > span {
+  min-width: 0;
+  display: grid;
+  gap: 0.1rem;
+}
+
+.help-editor-document-menu-surface strong,
+.help-editor-document-menu-surface small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.help-editor-document-menu-surface strong {
+  font-size: 0.78rem;
+  font-weight: 950;
+}
+
+.help-editor-document-menu-surface small {
+  color: rgba(42, 66, 96, 0.68);
+  font-size: 0.67rem;
+  font-weight: 800;
 }
 
 .help-editor-icon-btn,
@@ -694,6 +768,7 @@
 
 .help-editor-inline-field input,
 .help-editor-inline-field textarea,
+.help-editor-inline-field select,
 .help-editor-field input,
 .help-editor-draft-title-input,
 .help-editor-draft-summary-input,
@@ -714,6 +789,14 @@
   padding: 0 0.58rem;
   color: #7c5618;
   font-size: 0.9rem;
+  font-weight: 900;
+}
+
+.help-editor-inline-field select {
+  min-height: 38px;
+  padding: 0 0.58rem;
+  color: #25476e;
+  font-size: 0.82rem;
   font-weight: 900;
 }
 
@@ -938,6 +1021,7 @@
 .help-editor-section-title-input:focus,
 .help-editor-inline-field input:focus,
 .help-editor-inline-field textarea:focus,
+.help-editor-inline-field select:focus,
 .help-editor-field input:focus,
 .help-editor-draft-title-input:focus,
 .help-editor-html-textarea:focus,

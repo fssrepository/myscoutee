@@ -162,6 +162,19 @@
         [ngClass]="profileStatusClass(user.profileStatus)"
         >
         <button
+          #explanationButton
+          type="button"
+          class="user-menu-explanation-btn"
+          [class.is-enabled]="explanationGuideEnabled()"
+          [attr.aria-pressed]="explanationGuideEnabled()"
+          [attr.aria-label]="explanationGuideEnabled() ? 'Turn explanations off' : 'Turn explanations on'"
+          [title]="explanationGuideEnabled() ? 'Explanations on' : 'Explanations off'"
+          (click)="onToggleExplanationGuide($event)"
+          >
+          <span class="navigator-action-ripple" matRipple [matRippleTrigger]="explanationButton" aria-hidden="true"></span>
+          <mat-icon>tips_and_updates</mat-icon>
+        </button>
+        <button
           #shareButton
           type="button"
           class="user-menu-share-btn"

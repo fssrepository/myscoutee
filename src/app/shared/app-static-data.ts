@@ -15,6 +15,7 @@ import type {
   EventExploreOrder,
   EventVisibility,
   ExperienceEntry,
+  ExplainableSurface,
   HelpCenterRevision,
   HelpCenterSection,
   InterestOptionGroup,
@@ -163,6 +164,15 @@ const LANGUAGE_SUGGESTIONS = [
 const CONTENT_LANGUAGES = [
   { lang: 'en', label: 'English' },
   { lang: 'hu', label: 'Magyar' }
+];
+const EXPLAINABLE_SURFACES: ExplainableSurface[] = [
+  { key: 'home.game', label: 'Home cards', icon: 'style', owner: 'route', order: 10, enabled: true },
+  { key: 'activities.rates', label: 'Activity ratings', icon: 'star', owner: 'popup', order: 20, enabled: true },
+  { key: 'profile.editor', label: 'Profile editor', icon: 'manage_accounts', owner: 'popup', order: 30, enabled: true },
+  { key: 'profile.view', label: 'Profile details', icon: 'visibility', owner: 'popup', order: 40, enabled: true },
+  { key: 'assets', label: 'Assets', icon: 'inventory_2', owner: 'popup', order: 50, enabled: true },
+  { key: 'events', label: 'Events', icon: 'event_note', owner: 'popup', order: 60, enabled: true },
+  { key: 'event.feedback', label: 'Event feedback', icon: 'rate_review', owner: 'popup', order: 70, enabled: true }
 ];
 const PROFILE_STATUS_OPTIONS: Array<{ value: ProfileStatus; icon: string }> = [
   { value: 'public', icon: 'public' },
@@ -1141,6 +1151,84 @@ const DEFAULT_PRIVACY_CENTER_REVISION_HU: HelpCenterRevision = {
   sections: PRIVACY_CENTER_SECTIONS_HU
 };
 
+const EXPLANATION_HOME_SECTIONS: HelpCenterSection[] = [
+  {
+    id: 'affinity',
+    icon: 'tune',
+    title: 'Affinity slider',
+    blurb: 'Choose how strong the card feels for you.',
+    contentHtml: '<p>Tap or drag the Affinity slider from 1 to 10. The Go button appears only after you pick a value.</p>'
+  },
+  {
+    id: 'profile',
+    icon: 'visibility',
+    title: 'Profile and photos',
+    blurb: 'Cards can contain more photos and a profile detail view.',
+    contentHtml: '<p>Tap the photo area to browse more images. Use the eye icon to open profile details.</p>'
+  },
+  {
+    id: 'history',
+    icon: 'history',
+    title: 'History and edits',
+    blurb: 'Your previous ratings stay available.',
+    contentHtml: '<p>Open history from the header or menu. In Activity ratings, use the star icon to edit a value you already gave.</p>'
+  }
+];
+
+const EXPLANATION_HOME_SECTIONS_HU: HelpCenterSection[] = [
+  {
+    id: 'affinity',
+    icon: 'tune',
+    title: 'Szimpátia sáv',
+    blurb: 'Állítsd be, mennyire szimpatikus a kártya.',
+    contentHtml: '<p>Tapints vagy húzd a Szimpátia sávot 1 és 10 között. A Mehet gomb csak akkor jelenik meg, amikor már választottál értéket.</p>'
+  },
+  {
+    id: 'profile',
+    icon: 'visibility',
+    title: 'Profil és képek',
+    blurb: 'A kártya több képet és részletes profilt is rejthet.',
+    contentHtml: '<p>Tapints a képre a további fotókhoz, az eye ikon pedig megnyitja a profil részleteit.</p>'
+  },
+  {
+    id: 'history',
+    icon: 'history',
+    title: 'Előzmények',
+    blurb: 'A korábbi értékelések később is elérhetők.',
+    contentHtml: '<p>Az előzményeket a history gombbal vagy a menüből nyithatod meg. Az Activity értékeléseknél a csillag ikonon keresztül módosíthatod a saját értékedet.</p>'
+  }
+];
+
+const DEFAULT_EXPLANATION_HOME_REVISION: HelpCenterRevision = {
+  id: 'explanation-home-default-v1',
+  documentKind: 'explanation',
+  contextKey: 'home.game',
+  lang: 'en',
+  languageLabel: 'English',
+  version: 1,
+  title: 'Home explanation',
+  summary: 'How the home screen works',
+  description: 'Short in-app guidance for the selected screen.',
+  headerColor: 'violet',
+  sections: EXPLANATION_HOME_SECTIONS,
+  active: true,
+  createdAtIso: '2026-05-22T00:00:00.000Z',
+  createdByUserId: 'system',
+  updatedAtIso: '2026-05-22T00:00:00.000Z',
+  updatedByUserId: 'system'
+};
+
+const DEFAULT_EXPLANATION_HOME_REVISION_HU: HelpCenterRevision = {
+  ...DEFAULT_EXPLANATION_HOME_REVISION,
+  id: 'explanation-home-default-hu-v1',
+  lang: 'hu',
+  languageLabel: 'Magyar',
+  title: 'Kezdőlap magyarázat',
+  summary: 'Így működik a kezdőlap',
+  description: 'Rövid alkalmazáson belüli útmutató a kiválasztott képernyőhöz.',
+  sections: EXPLANATION_HOME_SECTIONS_HU
+};
+
 export const APP_STATIC_DATA = {
   vibeCategories: VIBE_CATEGORIES,
   hostedEventTypes: HOSTED_EVENT_TYPES,
@@ -1162,6 +1250,7 @@ export const APP_STATIC_DATA = {
   homeUserFacetById: HOME_USER_FACET_BY_ID,
   profileStatusOptions: PROFILE_STATUS_OPTIONS,
   contentLanguages: CONTENT_LANGUAGES,
+  explainableSurfaces: EXPLAINABLE_SURFACES,
   profileDetailValueOptions: PROFILE_DETAIL_VALUE_OPTIONS,
   profileDetailGroupTemplates: PROFILE_DETAIL_GROUP_TEMPLATES,
   beliefsValuesOptionGroups: BELIEFS_VALUES_OPTION_GROUPS,
@@ -1216,5 +1305,10 @@ export const APP_STATIC_DATA = {
   defaultPrivacyCenterRevisionsByLang: {
     en: DEFAULT_PRIVACY_CENTER_REVISION,
     hu: DEFAULT_PRIVACY_CENTER_REVISION_HU
+  },
+  defaultExplanationHomeRevision: DEFAULT_EXPLANATION_HOME_REVISION,
+  defaultExplanationHomeRevisionsByLang: {
+    en: DEFAULT_EXPLANATION_HOME_REVISION,
+    hu: DEFAULT_EXPLANATION_HOME_REVISION_HU
   }
 };

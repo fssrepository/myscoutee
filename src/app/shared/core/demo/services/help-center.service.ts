@@ -22,10 +22,11 @@ export class DemoHelpCenterService {
   private readonly memoryDb = inject(AppMemoryDb);
   private readonly routeDelay = inject(RouteDelayService);
 
-  async loadState(kind: HelpCenterDocumentKind = 'help', lang?: string | null): Promise<HelpCenterState> {
+  async loadState(kind: HelpCenterDocumentKind = 'help', lang?: string | null, contextKey?: string | null): Promise<HelpCenterState> {
     await this.memoryDb.whenReady();
     const documentKind = this.normalizeKind(kind);
     const language = this.requestContentLang(lang);
+    const context = this.normalizeContextKey(documentKind, contextKey, false);
     let changed = false;
     for (const option of this.availableLanguages()) {
       changed = this.ensureSeeded(documentKind, option.lang)
@@ -35,7 +36,7 @@ export class DemoHelpCenterService {
     if (changed) {
       await this.memoryDb.flushToIndexedDb();
     }
-    return this.stateFromTable(this.table(), documentKind, language);
+    return this.stateFromTable(this.table(), documentKind, language, context);
   }
 
   async loadPrivacyConsent(
@@ -111,14 +112,16 @@ export class DemoHelpCenterService {
     await this.memoryDb.whenReady();
     const documentKind = this.normalizeKind(kind);
     const language = this.normalizeLang(request?.lang);
+    const contextKey = this.normalizeContextKey(documentKind, request?.contextKey, true);
     const table = this.table();
     const nowIso = new Date().toISOString();
     const actorUserId = this.normalizeActor(request.actorUserId);
-    const version = this.nextVersion(table, documentKind, language);
+    const version = this.nextVersion(table, documentKind, language, contextKey);
     const revisionId = this.newId(`${documentKind}-rev`);
     const revision: HelpCenterRevision = {
       id: revisionId,
       documentKind,
+      contextKey,
       lang: language,
       languageLabel: this.languageLabel(language),
       version,
@@ -168,7 +171,7 @@ export class DemoHelpCenterService {
       this.memoryDb.flushToIndexedDb(),
       this.routeDelay.waitForRouteDelay(`/admin/${documentKind}/revisions`, undefined, undefined, 1500)
     ]);
-    return this.stateFromTable(this.table(), documentKind, language);
+    return this.stateFromTable(this.table(), documentKind, language, contextKey);
   }
 
   async activateRevision(revisionId: string, actorUserId: string, kind: HelpCenterDocumentKind = 'help'): Promise<HelpCenterState> {
@@ -181,6 +184,7 @@ export class DemoHelpCenterService {
     if (!revision || this.revisionKind(revision) !== documentKind) {
       throw new Error(`${this.documentLabel(documentKind)} revision not found.`);
     }
+    const contextKey = this.revisionContextKey(revision);
     const audit = this.auditEntry({
       action: 'activate',
       actorUserId: this.normalizeActor(actorUserId),
@@ -196,7 +200,17 @@ export class DemoHelpCenterService {
             const item = current.revisionsById[id];
             const itemKind = this.revisionKind(item);
             const itemLang = this.revisionLang(item);
-            return [id, { ...item, documentKind: itemKind, lang: itemLang, languageLabel: this.languageLabel(itemLang), active: itemKind === documentKind && itemLang === language ? id === normalizedRevisionId : item.active }];
+            const itemContext = this.revisionContextKey(item);
+            return [id, {
+              ...item,
+              documentKind: itemKind,
+              contextKey: itemContext,
+              lang: itemLang,
+              languageLabel: this.languageLabel(itemLang),
+              active: itemKind === documentKind && itemLang === language && itemContext === contextKey
+                ? id === normalizedRevisionId
+                : item.active
+            }];
           })
       ) as Record<string, HelpCenterRevision>;
       return {
@@ -206,7 +220,7 @@ export class DemoHelpCenterService {
           activeRevisionId: documentKind === 'help' && language === 'en' ? normalizedRevisionId : current.activeRevisionId,
           activeRevisionIdsByKind: {
             ...(current.activeRevisionIdsByKind ?? {}),
-            [this.activeRevisionKey(documentKind, language)]: normalizedRevisionId
+            [this.activeRevisionKey(documentKind, language, contextKey)]: normalizedRevisionId
           },
           revisionsById,
           auditById: {
@@ -221,7 +235,7 @@ export class DemoHelpCenterService {
       this.memoryDb.flushToIndexedDb(),
       this.routeDelay.waitForRouteDelay(`/admin/${documentKind}/revisions/activate`, undefined, undefined, 1500)
     ]);
-    return this.stateFromTable(this.table(), documentKind, language);
+    return this.stateFromTable(this.table(), documentKind, language, contextKey);
   }
 
   async deleteRevision(revisionId: string, actorUserId: string, kind: HelpCenterDocumentKind = 'help'): Promise<HelpCenterState> {
@@ -231,6 +245,7 @@ export class DemoHelpCenterService {
     const table = this.table();
     const revision = table.revisionsById[normalizedRevisionId];
     const language = this.normalizeLang(revision?.lang);
+    const contextKey = this.revisionContextKey(revision);
     if (!revision || this.revisionKind(revision) !== documentKind) {
       return this.stateFromTable(table, documentKind);
     }
@@ -238,9 +253,9 @@ export class DemoHelpCenterService {
     const remainingRevisions = remainingIds
       .map(id => table.revisionsById[id])
       .filter((item): item is HelpCenterRevision => Boolean(item))
-      .filter(item => this.revisionKind(item) === documentKind && this.revisionLang(item) === language)
+      .filter(item => this.revisionKind(item) === documentKind && this.revisionLang(item) === language && this.revisionContextKey(item) === contextKey)
       .sort((left, right) => right.version - left.version);
-    const currentActiveRevisionId = this.activeRevisionId(table, documentKind, language);
+    const currentActiveRevisionId = this.activeRevisionId(table, documentKind, language, contextKey);
     const nextActiveRevisionId = currentActiveRevisionId === normalizedRevisionId
       ? (remainingRevisions[0]?.id ?? null)
       : currentActiveRevisionId;
@@ -261,7 +276,17 @@ export class DemoHelpCenterService {
             const item = revisionsById[id];
             const itemKind = this.revisionKind(item);
             const itemLang = this.revisionLang(item);
-            return [id, { ...item, documentKind: itemKind, lang: itemLang, languageLabel: this.languageLabel(itemLang), active: itemKind === documentKind && itemLang === language ? id === nextActiveRevisionId : item.active }];
+            const itemContext = this.revisionContextKey(item);
+            return [id, {
+              ...item,
+              documentKind: itemKind,
+              contextKey: itemContext,
+              lang: itemLang,
+              languageLabel: this.languageLabel(itemLang),
+              active: itemKind === documentKind && itemLang === language && itemContext === contextKey
+                ? id === nextActiveRevisionId
+                : item.active
+            }];
           })
       ) as Record<string, HelpCenterRevision>;
       return {
@@ -272,7 +297,7 @@ export class DemoHelpCenterService {
           activeRevisionId: documentKind === 'help' && language === 'en' ? nextActiveRevisionId : current.activeRevisionId,
           activeRevisionIdsByKind: {
             ...(current.activeRevisionIdsByKind ?? {}),
-            [this.activeRevisionKey(documentKind, language)]: nextActiveRevisionId
+            [this.activeRevisionKey(documentKind, language, contextKey)]: nextActiveRevisionId
           },
           revisionsById: normalizedRevisionsById,
           revisionIds: remainingIds,
@@ -288,7 +313,7 @@ export class DemoHelpCenterService {
       this.memoryDb.flushToIndexedDb(),
       this.routeDelay.waitForRouteDelay(`/admin/${documentKind}/revisions/delete`, undefined, undefined, 1500)
     ]);
-    return this.stateFromTable(this.table(), documentKind, language);
+    return this.stateFromTable(this.table(), documentKind, language, contextKey);
   }
 
   private ensureSeeded(kind: HelpCenterDocumentKind, lang = 'en'): boolean {
@@ -298,6 +323,7 @@ export class DemoHelpCenterService {
       return false;
     }
     const revision = this.cloneRevision(this.defaultRevision(kind, language), kind);
+    const contextKey = this.revisionContextKey(revision);
     const audit = this.auditEntry({
       action: 'seed',
       actorUserId: 'system',
@@ -315,7 +341,7 @@ export class DemoHelpCenterService {
           activeRevisionId: kind === 'help' && language === 'en' ? revision.id : current.activeRevisionId,
           activeRevisionIdsByKind: {
             ...(current.activeRevisionIdsByKind ?? {}),
-            [this.activeRevisionKey(kind, language)]: revision.id
+            [this.activeRevisionKey(kind, language, contextKey)]: revision.id
           },
           revisionsById: {
             ...this.normalizedRevisionsById(current),
@@ -416,12 +442,21 @@ export class DemoHelpCenterService {
     };
   }
 
-  private stateFromTable(table: DemoHelpCenterTable, kind: HelpCenterDocumentKind, lang = 'en'): HelpCenterState {
+  private stateFromTable(table: DemoHelpCenterTable, kind: HelpCenterDocumentKind, lang = 'en', contextKey?: string | null): HelpCenterState {
     const language = this.normalizeLang(lang);
-    const revisions = this.revisionsForKind(table, kind, language)
+    const context = this.normalizeContextKey(kind, contextKey, false);
+    if (kind === 'explanation' && !context) {
+      return {
+        activeRevision: null,
+        revisions: [],
+        auditTrail: [],
+        availableLanguages: this.availableLanguages()
+      };
+    }
+    const revisions = this.revisionsForKind(table, kind, language, context)
       .map(revision => this.cloneRevision(revision, kind))
       .sort((left, right) => right.version - left.version);
-    const activeRevisionId = this.activeRevisionId(table, kind, language);
+    const activeRevisionId = this.activeRevisionId(table, kind, language, context);
     const activeRevision = activeRevisionId
       ? revisions.find(revision => revision.id === activeRevisionId) ?? null
       : null;
@@ -442,16 +477,20 @@ export class DemoHelpCenterService {
     };
   }
 
-  private nextVersion(table: DemoHelpCenterTable, kind: HelpCenterDocumentKind, lang = 'en'): number {
-    const currentMax = this.revisionsForKind(table, kind, this.normalizeLang(lang))
+  private nextVersion(table: DemoHelpCenterTable, kind: HelpCenterDocumentKind, lang = 'en', contextKey?: string | null): number {
+    const currentMax = this.revisionsForKind(table, kind, this.normalizeLang(lang), this.normalizeContextKey(kind, contextKey, false))
       .map(revision => revision.version ?? 0)
       .reduce((max, version) => Math.max(max, Math.trunc(Number(version) || 0)), 0);
     return currentMax + 1;
   }
 
-  private activeRevisionId(table: DemoHelpCenterTable, kind: HelpCenterDocumentKind, lang = 'en'): string | null {
+  private activeRevisionId(table: DemoHelpCenterTable, kind: HelpCenterDocumentKind, lang = 'en', contextKey?: string | null): string | null {
     const language = this.normalizeLang(lang);
-    const activeKey = this.activeRevisionKey(kind, language);
+    const context = this.normalizeContextKey(kind, contextKey, false);
+    if (kind === 'explanation' && !context) {
+      return null;
+    }
+    const activeKey = this.activeRevisionKey(kind, language, context);
     if (table.activeRevisionIdsByKind && activeKey in table.activeRevisionIdsByKind) {
       return table.activeRevisionIdsByKind[activeKey] ?? null;
     }
@@ -461,15 +500,17 @@ export class DemoHelpCenterService {
     if (kind === 'help' && language === 'en') {
       return table.activeRevisionId ?? null;
     }
-    return this.revisionsForKind(table, kind, language).find(revision => revision.active)?.id ?? null;
+    return this.revisionsForKind(table, kind, language, context).find(revision => revision.active)?.id ?? null;
   }
 
-  private revisionsForKind(table: DemoHelpCenterTable, kind: HelpCenterDocumentKind, lang = 'en'): HelpCenterRevision[] {
+  private revisionsForKind(table: DemoHelpCenterTable, kind: HelpCenterDocumentKind, lang = 'en', contextKey?: string | null): HelpCenterRevision[] {
     const language = this.normalizeLang(lang);
+    const context = this.normalizeContextKey(kind, contextKey, false);
     return table.revisionIds
       .map(id => table.revisionsById[id])
       .filter((revision): revision is HelpCenterRevision => Boolean(revision))
-      .filter(revision => this.revisionKind(revision) === kind && this.revisionLang(revision) === language);
+      .filter(revision => this.revisionKind(revision) === kind && this.revisionLang(revision) === language)
+      .filter(revision => kind !== 'explanation' || !context || this.revisionContextKey(revision) === context);
   }
 
   private normalizedRevisionsById(table: DemoHelpCenterTable): Record<string, HelpCenterRevision> {
@@ -479,7 +520,13 @@ export class DemoHelpCenterService {
         .map(id => {
           const revision = table.revisionsById[id];
           const lang = this.revisionLang(revision);
-          return [id, { ...revision, documentKind: this.revisionKind(revision), lang, languageLabel: this.languageLabel(lang) }];
+          return [id, {
+            ...revision,
+            documentKind: this.revisionKind(revision),
+            contextKey: this.revisionContextKey(revision),
+            lang,
+            languageLabel: this.languageLabel(lang)
+          }];
         })
     ) as Record<string, HelpCenterRevision>;
   }
@@ -532,7 +579,7 @@ export class DemoHelpCenterService {
     }
     return {
       id,
-      icon: this.nonEmptyText(section?.icon, kind === 'privacy' ? 'policy' : 'help_outline'),
+      icon: this.nonEmptyText(section?.icon, this.defaultSectionIcon(kind)),
       title,
       blurb: this.nonEmptyText(section?.blurb, ''),
       contentHtml,
@@ -574,6 +621,7 @@ export class DemoHelpCenterService {
     return {
       ...revision,
       documentKind: kind,
+      contextKey: this.revisionContextKey(revision),
       lang,
       languageLabel: this.languageLabel(lang),
       description: this.nonEmptyText(revision.description, this.defaultDescription(kind, lang)),
@@ -586,32 +634,50 @@ export class DemoHelpCenterService {
     const language = this.normalizeLang(lang);
     const revisionsByLang = kind === 'privacy'
       ? APP_STATIC_DATA.defaultPrivacyCenterRevisionsByLang
-      : APP_STATIC_DATA.defaultHelpCenterRevisionsByLang;
+      : kind === 'explanation'
+        ? APP_STATIC_DATA.defaultExplanationHomeRevisionsByLang
+        : APP_STATIC_DATA.defaultHelpCenterRevisionsByLang;
     return this.cloneRevision(language === 'hu' ? revisionsByLang.hu : revisionsByLang.en, kind);
   }
 
   private defaultTitle(kind: HelpCenterDocumentKind, version: number, lang = 'en'): string {
     if (this.normalizeLang(lang) === 'hu') {
-      return kind === 'privacy' ? `Adatvédelmi verzió v${version}` : `Súgó verzió v${version}`;
+      return kind === 'privacy'
+        ? `Adatvédelmi verzió v${version}`
+        : kind === 'explanation'
+          ? `Magyarázat verzió v${version}`
+          : `Súgó verzió v${version}`;
     }
-    return kind === 'privacy' ? `Privacy revision v${version}` : `Help revision v${version}`;
+    return `${this.documentLabel(kind)} revision v${version}`;
   }
 
   private defaultSummary(kind: HelpCenterDocumentKind, lang = 'en'): string {
     if (this.normalizeLang(lang) === 'hu') {
-      return kind === 'privacy' ? 'Adatvédelem elsőként' : 'Mit tehetsz a MyScoutee-ban';
+      return kind === 'privacy'
+        ? 'Adatvédelem elsőként'
+        : kind === 'explanation'
+          ? 'Rövid képernyőmagyarázat'
+          : 'Mit tehetsz a MyScoutee-ban';
     }
-    return kind === 'privacy' ? 'Privacy first' : 'What you can do in MyScoutee';
+    return kind === 'privacy'
+      ? 'Privacy first'
+      : kind === 'explanation'
+        ? 'Short screen guidance'
+        : 'What you can do in MyScoutee';
   }
 
   private defaultDescription(kind: HelpCenterDocumentKind, lang = 'en'): string {
     if (this.normalizeLang(lang) === 'hu') {
       return kind === 'privacy'
         ? 'Folytatás előtt nézd át és fogadd el, hogyan használja a MyScoutee az adataidat.'
-        : 'A MyScoutee segít az eseményeket elejétől végéig megtervezni: meghívások, szakaszok és csoportok, erőforrások, valamint kontextushoz kötött csevegések.';
+        : kind === 'explanation'
+          ? APP_STATIC_DATA.defaultExplanationHomeRevisionsByLang.hu.description
+          : 'A MyScoutee segít az eseményeket elejétől végéig megtervezni: meghívások, szakaszok és csoportok, erőforrások, valamint kontextushoz kötött csevegések.';
     }
     return kind === 'privacy'
       ? APP_STATIC_DATA.defaultPrivacyCenterDescription
+      : kind === 'explanation'
+        ? APP_STATIC_DATA.defaultExplanationHomeRevision.description
       : APP_STATIC_DATA.defaultHelpCenterDescription;
   }
 
@@ -629,7 +695,25 @@ export class DemoHelpCenterService {
   }
 
   private documentLabel(kind: HelpCenterDocumentKind): string {
-    return kind === 'privacy' ? 'Privacy' : 'Help';
+    switch (kind) {
+      case 'privacy':
+        return 'Privacy';
+      case 'explanation':
+        return 'Explanation';
+      default:
+        return 'Help';
+    }
+  }
+
+  private defaultSectionIcon(kind: HelpCenterDocumentKind): string {
+    switch (kind) {
+      case 'privacy':
+        return 'policy';
+      case 'explanation':
+        return 'tips_and_updates';
+      default:
+        return 'help_outline';
+    }
   }
 
   private revisionKind(revision: HelpCenterRevision | null | undefined): HelpCenterDocumentKind {
@@ -645,7 +729,29 @@ export class DemoHelpCenterService {
   }
 
   private normalizeKind(kind: string | null | undefined): HelpCenterDocumentKind {
-    return kind === 'privacy' ? 'privacy' : 'help';
+    if (kind === 'privacy' || kind === 'explanation') {
+      return kind;
+    }
+    return 'help';
+  }
+
+  private normalizeContextKey(kind: HelpCenterDocumentKind, contextKey: string | null | undefined, required: boolean): string | null {
+    if (kind !== 'explanation') {
+      return null;
+    }
+    const normalized = `${contextKey ?? ''}`.trim();
+    const match = APP_STATIC_DATA.explainableSurfaces.find(surface => surface.enabled && surface.key === normalized);
+    if (match) {
+      return match.key;
+    }
+    if (required) {
+      throw new Error('A canonical explanation surface is required.');
+    }
+    return null;
+  }
+
+  private revisionContextKey(revision: HelpCenterRevision | null | undefined): string | null {
+    return this.normalizeContextKey(this.revisionKind(revision), revision?.contextKey, false);
   }
 
   private normalizeLang(lang: string | null | undefined): string {
@@ -704,8 +810,9 @@ export class DemoHelpCenterService {
     }));
   }
 
-  private activeRevisionKey(kind: HelpCenterDocumentKind, lang: string): string {
-    return `${kind}:${this.normalizeLang(lang)}`;
+  private activeRevisionKey(kind: HelpCenterDocumentKind, lang: string, contextKey?: string | null): string {
+    const context = this.normalizeContextKey(kind, contextKey, false);
+    return context ? `${kind}:${this.normalizeLang(lang)}:${context}` : `${kind}:${this.normalizeLang(lang)}`;
   }
 
   private normalizeActor(actorUserId: string): string {

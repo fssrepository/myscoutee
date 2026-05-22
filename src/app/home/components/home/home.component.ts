@@ -27,6 +27,7 @@ import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { resolveCurrentRouteDelayMs } from '../../../shared/core/base/services/route-delay.service';
 import {
   AppContext,
+  ExplanationGuideService,
   GameService,
   USER_BY_ID_LOAD_CONTEXT_KEY,
   UsersService,
@@ -214,6 +215,7 @@ export class HomeComponent implements OnDestroy {
   private homeSmartListQueryKey = '';
   private syntheticPairRoundsCacheKey = '';
   private syntheticPairRoundsCache: PairModeRoundState[] = [];
+  private unregisterExplanationContext: (() => void) | null = null;
   private inFlightServiceCardStackReloadKey: string | null = null;
   private queuedServiceCardStackReloadKey: string | null = null;
   private initialServiceCardStackLoadPromise: Promise<void> | null = null;
@@ -276,10 +278,12 @@ export class HomeComponent implements OnDestroy {
     private readonly activitiesContext: ActivitiesPopupStateService,
     private readonly navigatorService: NavigatorService,
     private readonly appCtx: AppContext,
+    private readonly explanationGuide: ExplanationGuideService,
     private readonly gameService: GameService,
     private readonly usersService: UsersService
   ) {
     this.users = this.gameService.getGameCardsUsersSnapshot() as DemoUser[];
+    this.unregisterExplanationContext = this.explanationGuide.registerContext('home.game');
     this.activeUserId = this.getActiveUserId();
     const initialFilter = createInitialGameFilter(this.activeUser);
     this.gameFilter = cloneGameFilter(initialFilter);
@@ -357,6 +361,8 @@ export class HomeComponent implements OnDestroy {
       this.gameCardLeaveTimer = null;
     }
     this.cancelGameStackPaginationLoad();
+    this.unregisterExplanationContext?.();
+    this.unregisterExplanationContext = null;
   }
 
   protected get activeUser(): DemoUser {
@@ -609,6 +615,8 @@ export class HomeComponent implements OnDestroy {
   protected get gameRatingBarConfig(): RatingStarBarConfig {
     return {
       scale: this.ratingScale,
+      label: 'Affinity (1-10)',
+      actionLabel: 'Go',
       presentation: 'fullscreen',
       blinkOnSelect: false,
       animation: this.isRatingBarBlinking ? 'blink' : 'default'

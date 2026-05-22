@@ -62,7 +62,7 @@ export interface HelpCenterSection {
   points?: string[];
 }
 
-export type HelpCenterDocumentKind = 'help' | 'privacy';
+export type HelpCenterDocumentKind = 'help' | 'privacy' | 'explanation';
 export type HelpCenterHeaderColor = 'amber' | 'blue' | 'green' | 'rose' | 'violet' | 'slate';
 
 export type HelpCenterAuditAction = 'seed' | 'create' | 'update' | 'activate' | 'delete';
@@ -72,9 +72,19 @@ export interface ContentLanguage {
   label: string;
 }
 
+export interface ExplainableSurface {
+  key: string;
+  label: string;
+  icon: string;
+  owner: 'route' | 'popup' | 'navigator';
+  order: number;
+  enabled: boolean;
+}
+
 export interface HelpCenterRevision {
   id: string;
   documentKind?: HelpCenterDocumentKind;
+  contextKey?: string | null;
   lang: string;
   languageLabel: string;
   version: number;
@@ -134,6 +144,7 @@ export interface PrivacyConsentSaveRequest {
 export interface HelpCenterRevisionSaveRequest {
   actorUserId: string;
   baseRevisionId?: string | null;
+  contextKey?: string | null;
   lang?: string | null;
   title: string;
   summary: string;

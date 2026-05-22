@@ -810,54 +810,54 @@ export class I18nService {
       return this.translateCount(messages, 'sections.count', sectionsMatch[1] ?? '0');
     }
 
-    const activeMatch = normalizedSource.match(/^Active (help|privacy) v(\d+)$/i);
+    const activeMatch = normalizedSource.match(/^Active (help|privacy|explanation) v(\d+)$/i);
     if (activeMatch) {
       return this.interpolateDocumentMessage(messages, `active.${this.documentKey(activeMatch[1])}.version`, {
         version: activeMatch[2] ?? '0'
       });
     }
 
-    const noActiveMatch = normalizedSource.match(/^No active (help|privacy) revision$/i);
+    const noActiveMatch = normalizedSource.match(/^No active (help|privacy|explanation) revision$/i);
     if (noActiveMatch) {
       return this.documentMessage(messages, `no.active.${this.documentKey(noActiveMatch[1])}.revision`);
     }
 
-    const loadingMatch = normalizedSource.match(/^Loading (help|privacy) revisions$/i);
+    const loadingMatch = normalizedSource.match(/^Loading (help|privacy|explanation) revisions$/i);
     if (loadingMatch) {
       return this.documentMessage(messages, `loading.${this.documentKey(loadingMatch[1])}.revisions`);
     }
 
-    const noRevisionsMatch = normalizedSource.match(/^No (help|privacy) revisions$/i);
+    const noRevisionsMatch = normalizedSource.match(/^No (help|privacy|explanation) revisions$/i);
     if (noRevisionsMatch) {
       return this.documentMessage(messages, `no.${this.documentKey(noRevisionsMatch[1])}.revisions`);
     }
 
-    const enablePopupMatch = normalizedSource.match(/^Create a revision to enable the (help|privacy) popup\.$/i);
+    const enablePopupMatch = normalizedSource.match(/^Create a revision to enable the (help|privacy|explanation) popup\.$/i);
     if (enablePopupMatch) {
       return this.documentMessage(messages, `create.revision.to.enable.${this.documentKey(enablePopupMatch[1])}.popup`);
     }
 
-    const revisionsLabelMatch = normalizedSource.match(/^(Help|Privacy) revisions$/i);
+    const revisionsLabelMatch = normalizedSource.match(/^(Help|Privacy|Explanation) revisions$/i);
     if (revisionsLabelMatch) {
       return this.documentMessage(messages, `${this.documentKey(revisionsLabelMatch[1])}.revisions`);
     }
 
-    const popupHeaderMatch = normalizedSource.match(/^(Help|Privacy) popup header$/i);
+    const popupHeaderMatch = normalizedSource.match(/^(Help|Privacy|Explanation) popup header$/i);
     if (popupHeaderMatch) {
       return this.documentMessage(messages, `${this.documentKey(popupHeaderMatch[1])}.popup.header`);
     }
 
-    const descriptionMatch = normalizedSource.match(/^(Help|Privacy) description$/i);
+    const descriptionMatch = normalizedSource.match(/^(Help|Privacy|Explanation) description$/i);
     if (descriptionMatch) {
       return this.documentMessage(messages, `${this.documentKey(descriptionMatch[1])}.description`);
     }
 
-    const sectionTitleMatch = normalizedSource.match(/^(Help|Privacy) section title$/i);
+    const sectionTitleMatch = normalizedSource.match(/^(Help|Privacy|Explanation) section title$/i);
     if (sectionTitleMatch) {
       return this.documentMessage(messages, `${this.documentKey(sectionTitleMatch[1])}.section.title`);
     }
 
-    const sectionActionMatch = normalizedSource.match(/^(Add|Remove|Toggle) (help|privacy) section$/i);
+    const sectionActionMatch = normalizedSource.match(/^(Add|Remove|Toggle) (help|privacy|explanation) section$/i);
     if (sectionActionMatch) {
       return this.documentMessage(
         messages,
@@ -865,7 +865,7 @@ export class I18nService {
       );
     }
 
-    const unableMatch = normalizedSource.match(/^Unable to (load|save|activate|delete) (help|privacy) revision(s)?\.$/i);
+    const unableMatch = normalizedSource.match(/^Unable to (load|save|activate|delete) (help|privacy|explanation) revision(s)?\.$/i);
     if (unableMatch) {
       return this.documentMessage(
         messages,
@@ -876,8 +876,12 @@ export class I18nService {
     return null;
   }
 
-  private documentKey(value: string | undefined): 'help' | 'privacy' {
-    return `${value ?? ''}`.trim().toLocaleLowerCase('en-US') === 'privacy' ? 'privacy' : 'help';
+  private documentKey(value: string | undefined): 'help' | 'privacy' | 'explanation' {
+    const normalized = `${value ?? ''}`.trim().toLocaleLowerCase('en-US');
+    if (normalized === 'privacy' || normalized === 'explanation') {
+      return normalized;
+    }
+    return 'help';
   }
 
   private documentMessage(messages: Record<string, string>, key: string): string | null {

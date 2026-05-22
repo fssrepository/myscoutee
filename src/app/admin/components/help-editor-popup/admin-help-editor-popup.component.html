@@ -31,30 +31,73 @@
             </button>
             @if (documentMenuOpen) {
               <div class="help-editor-document-menu" role="menu" (click)="$event.stopPropagation()">
-                <button
-                  type="button"
-                  role="menuitemradio"
-                  [class.is-active]="documentKind === 'help'"
-                  [attr.aria-checked]="documentKind === 'help'"
-                  [disabled]="loading() || isAnyActionPending()"
-                  data-motion="none"
-                  (click)="selectDocumentKind('help', $event)"
-                  >
-                  <mat-icon>help_outline</mat-icon>
-                  <span>{{ uiText('Help') }}</span>
-                </button>
-                <button
-                  type="button"
-                  role="menuitemradio"
-                  [class.is-active]="documentKind === 'privacy'"
-                  [attr.aria-checked]="documentKind === 'privacy'"
-                  [disabled]="loading() || isAnyActionPending()"
-                  data-motion="none"
-                  (click)="selectDocumentKind('privacy', $event)"
-                  >
-                  <mat-icon>policy</mat-icon>
-                  <span>{{ uiText('Privacy') }}</span>
-                </button>
+                @if (!explanationMenuOpen) {
+                  <button
+                    type="button"
+                    role="menuitemradio"
+                    [class.is-active]="documentKind === 'help'"
+                    [attr.aria-checked]="documentKind === 'help'"
+                    [disabled]="loading() || isAnyActionPending()"
+                    data-motion="none"
+                    (click)="selectDocumentKind('help', $event)"
+                    >
+                    <mat-icon>help_outline</mat-icon>
+                    <span>{{ uiText('Help') }}</span>
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitemradio"
+                    [class.is-active]="documentKind === 'privacy'"
+                    [attr.aria-checked]="documentKind === 'privacy'"
+                    [disabled]="loading() || isAnyActionPending()"
+                    data-motion="none"
+                    (click)="selectDocumentKind('privacy', $event)"
+                    >
+                    <mat-icon>policy</mat-icon>
+                    <span>{{ uiText('Privacy') }}</span>
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    class="help-editor-document-menu-branch"
+                    [class.is-active]="documentKind === 'explanation'"
+                    [disabled]="loading() || isAnyActionPending()"
+                    data-motion="none"
+                    (click)="openExplanationMenu($event)"
+                    >
+                    <mat-icon>tips_and_updates</mat-icon>
+                    <span>{{ uiText('Explanations') }}</span>
+                    <mat-icon class="help-editor-document-menu-arrow">chevron_right</mat-icon>
+                  </button>
+                } @else {
+                  <div class="help-editor-document-menu-subhead">
+                    <button type="button" class="help-editor-document-menu-round-btn" data-motion="none" (click)="closeExplanationMenu($event)" aria-label="Back to content menu">
+                      <mat-icon>arrow_back</mat-icon>
+                    </button>
+                    <span>{{ uiText('Explanations') }}</span>
+                    <button type="button" class="help-editor-document-menu-round-btn is-primary" data-motion="none" (click)="createExplanationItem($event)" aria-label="Create explanation popup">
+                      <mat-icon>add</mat-icon>
+                    </button>
+                  </div>
+                  @for (surface of explainableSurfaces(); track surface.key) {
+                    <button
+                      type="button"
+                      role="menuitemradio"
+                      class="help-editor-document-menu-surface"
+                      [class.is-active]="documentKind === 'explanation' && selectedExplanationContextKey === surface.key"
+                      [attr.aria-checked]="documentKind === 'explanation' && selectedExplanationContextKey === surface.key"
+                      [disabled]="loading() || isAnyActionPending()"
+                      data-motion="none"
+                      (click)="selectExplanationSurface(surface, $event)"
+                      >
+                      <mat-icon>{{ surface.icon }}</mat-icon>
+                      <span>
+                        <strong data-i18n-ignore>{{ explanationMenuItemLabel(surface) }}</strong>
+                        <small>{{ surface.label }} · {{ explanationMenuItemMeta(surface) }}</small>
+                      </span>
+                    </button>
+                  }
+                }
               </div>
             }
           </div>
@@ -240,6 +283,21 @@
                                     <mat-icon>palette</mat-icon>
                                   </button>
                                 </div>
+                                @if (documentKind === 'explanation') {
+                                  <label class="help-editor-inline-field help-editor-context-field">
+                                    <span>{{ uiText('Canonical screen') }}</span>
+                                    <select
+                                      name="helpExplanationContext"
+                                      [ngModel]="editDraft.contextKey"
+                                      (ngModelChange)="selectDraftContext($event)"
+                                      required
+                                      >
+                                      @for (surface of explainableSurfaces(); track surface.key) {
+                                        <option [value]="surface.key">{{ surface.label }}</option>
+                                      }
+                                    </select>
+                                  </label>
+                                }
                                 <div class="help-editor-description-line">
                                   <label class="help-editor-inline-field help-editor-inline-field-compact">
                                     <span>Description</span>

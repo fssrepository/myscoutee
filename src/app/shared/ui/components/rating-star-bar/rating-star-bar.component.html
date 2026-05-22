@@ -8,22 +8,41 @@
   @if (resolvedLabel) {
     <div class="rating-star-bar__head">
       <span class="rating-star-bar__label">{{ resolvedLabel }}</span>
+      <span class="rating-star-bar__value" aria-live="polite">{{ displayValue }}</span>
     </div>
   }
 
-  <div class="rating-star-bar__stars">
-    @for (score of resolvedScale; track score) {
+  <div class="rating-star-bar__slider-shell">
+    <div class="rating-star-bar__track" aria-hidden="true">
+      <span class="rating-star-bar__track-fill" [style.width.%]="valuePercent"></span>
+    </div>
+    <input
+      type="range"
+      class="rating-star-bar__slider"
+      [min]="minimumScore"
+      [max]="maximumScore"
+      step="1"
+      [value]="displayValue"
+      [disabled]="resolvedReadonly"
+      (input)="onSliderInput($event)"
+      (click)="$event.stopPropagation()"
+      [attr.aria-label]="resolvedLabel || 'Affinity rating'"
+    />
+  </div>
+
+  <div class="rating-star-bar__foot">
+    <span>{{ minimumScore }}</span>
+    @if (shouldShowCommitButton) {
       <button
         type="button"
-        class="rating-star-bar__star"
-        [class.is-filled]="isFilled(score)"
-        [class.is-disabled]="resolvedReadonly"
-        [disabled]="resolvedReadonly"
-        (click)="selectScore(score, $event)"
-        [attr.aria-label]="'Set rating ' + score"
+        class="rating-star-bar__commit"
+        (click)="commitScore($event)"
+        [attr.aria-label]="resolvedActionLabel"
         >
-        ★
+        <span>{{ resolvedActionLabel }}</span>
+        <mat-icon>arrow_forward</mat-icon>
       </button>
     }
+    <span>{{ maximumScore }}</span>
   </div>
 </div>
