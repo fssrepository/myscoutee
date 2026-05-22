@@ -93,20 +93,29 @@
                         </span>
                       </span>
                     }
-                    @case ('activity-tabs') {
-                      <span class="explanation-popup__visual-activity-tabs">
-                        <span class="explanation-popup__activity-chip explanation-popup__activity-chip--ratings">
+                    @case ('activity-primary-menu') {
+                      <span class="explanation-popup__visual-activity-primary">
+                        <span class="explanation-popup__activity-menu-trigger">
                           <mat-icon>star</mat-icon>
                           <span>{{ activityText(revision.lang, 'ratings') }}</span>
                           <strong>9+</strong>
+                          <mat-icon>expand_more</mat-icon>
                         </span>
-                        <span class="explanation-popup__activity-chip">
-                          <mat-icon>forum</mat-icon>
-                          <span>{{ activityText(revision.lang, 'chats') }}</span>
-                        </span>
-                        <span class="explanation-popup__activity-chip">
-                          <mat-icon>event</mat-icon>
-                          <span>{{ activityText(revision.lang, 'events') }}</span>
+                        <span class="explanation-popup__activity-menu-options">
+                          <span class="explanation-popup__activity-menu-option explanation-popup__activity-menu-option--ratings">
+                            <mat-icon>star</mat-icon>
+                            <span>{{ activityText(revision.lang, 'ratings') }}</span>
+                            <strong>9+</strong>
+                          </span>
+                          <span class="explanation-popup__activity-menu-option">
+                            <mat-icon>forum</mat-icon>
+                            <span>{{ activityText(revision.lang, 'chats') }}</span>
+                            <strong>2</strong>
+                          </span>
+                          <span class="explanation-popup__activity-menu-option">
+                            <mat-icon>event</mat-icon>
+                            <span>{{ activityText(revision.lang, 'events') }}</span>
+                          </span>
                         </span>
                       </span>
                     }
@@ -114,29 +123,61 @@
                       <span class="explanation-popup__visual-activity-filter">
                         <span class="explanation-popup__activity-filter-trigger">
                           <mat-icon>north_east</mat-icon>
-                          <span>{{ activityText(revision.lang, 'given') }}</span>
+                          <span>{{ activityText(revision.lang, 'preferences') }} · {{ activityText(revision.lang, 'given') }}</span>
                           <strong>2</strong>
+                          <mat-icon>expand_more</mat-icon>
                         </span>
                         <span class="explanation-popup__activity-filter-menu">
+                          <span class="explanation-popup__activity-filter-group">
+                            <em>{{ activityText(revision.lang, 'preferences') }}</em>
+                            <small>{{ activityText(revision.lang, 'socialOff') }}</small>
+                          </span>
+                          <span>{{ activityText(revision.lang, 'given') }} <strong>2</strong></span>
+                          <span>{{ activityText(revision.lang, 'received') }} <strong>1</strong></span>
+                          <span>{{ activityText(revision.lang, 'mutual') }}</span>
+                          <span>{{ activityText(revision.lang, 'met') }}</span>
+                          <span class="explanation-popup__activity-filter-group">
+                            <em>{{ activityText(revision.lang, 'suggestions') }}</em>
+                            <small>{{ activityText(revision.lang, 'socialOn') }}</small>
+                          </span>
                           <span>{{ activityText(revision.lang, 'given') }}</span>
                           <span>{{ activityText(revision.lang, 'received') }}</span>
-                          <span>{{ activityText(revision.lang, 'mutual') }}</span>
                         </span>
                       </span>
                     }
-                    @case ('activity-distance-sort') {
-                      <span class="explanation-popup__visual-activity-sort">
-                        <span class="explanation-popup__activity-sort-actions">
+                    @case ('activity-header-controls') {
+                      <span class="explanation-popup__visual-activity-header">
+                        <span class="explanation-popup__activity-header-actions">
                           <span><mat-icon>schedule</mat-icon>{{ activityText(revision.lang, 'latest') }}</span>
                           <span><mat-icon>view_agenda</mat-icon>{{ activityText(revision.lang, 'distance') }}</span>
+                          <span class="explanation-popup__activity-header-close"><mat-icon>close</mat-icon></span>
+                        </span>
+                        <span class="explanation-popup__activity-order-menu">
+                          <span>{{ activityText(revision.lang, 'latest') }}</span>
+                          <span>{{ activityText(revision.lang, 'relevant') }}</span>
+                          <span>{{ activityText(revision.lang, 'past') }}</span>
+                        </span>
+                        <span class="explanation-popup__activity-view-menu">
+                          <span>{{ activityText(revision.lang, 'month') }}</span>
+                          <span>{{ activityText(revision.lang, 'week') }}</span>
+                          <span>{{ activityText(revision.lang, 'day') }}</span>
+                          <span>{{ activityText(revision.lang, 'distance') }}</span>
                         </span>
                         <span class="explanation-popup__activity-distance-marker">10 km</span>
                       </span>
                     }
-                    @case ('activity-card-actions') {
-                      <span class="explanation-popup__visual-activity-card">
+                    @case ('activity-card-media') {
+                      <span class="explanation-popup__visual-activity-card explanation-popup__visual-activity-card--media">
                         <span class="explanation-popup__activity-card-photo"></span>
-                        <span class="explanation-popup__activity-card-score"><mat-icon>star</mat-icon>4</span>
+                        <span class="explanation-popup__activity-card-bars">
+                          <span></span>
+                          <span class="is-active"></span>
+                          <span></span>
+                        </span>
+                        <span class="explanation-popup__activity-card-context">
+                          <span>AL</span>
+                          <em>+2</em>
+                        </span>
                         <span class="explanation-popup__activity-card-copy">
                           <strong>Noel Safety</strong>
                           <small>6.8 km</small>
@@ -144,10 +185,32 @@
                         <span class="explanation-popup__activity-card-eye"><mat-icon>visibility</mat-icon></span>
                       </span>
                     }
-                    @case ('activity-panel-actions') {
-                      <span class="explanation-popup__visual-activity-panel-actions">
-                        <span><mat-icon>fullscreen</mat-icon>{{ activityText(revision.lang, 'fullscreen') }}</span>
-                        <span><mat-icon>close</mat-icon>{{ activityText(revision.lang, 'close') }}</span>
+                    @case ('activity-score-badge') {
+                      <span class="explanation-popup__visual-activity-score">
+                        <span class="explanation-popup__activity-score-card">
+                          <span class="explanation-popup__activity-card-score"><mat-icon>star</mat-icon>4</span>
+                          <span class="explanation-popup__activity-score-copy">
+                            <strong>{{ activityText(revision.lang, 'score') }}</strong>
+                            <small>{{ activityText(revision.lang, 'rate') }}</small>
+                          </span>
+                        </span>
+                        <span class="explanation-popup__activity-score-dock">
+                          <span>1</span><span>2</span><span>3</span><span class="is-active">4</span><span>5</span>
+                        </span>
+                      </span>
+                    }
+                    @case ('activity-fullscreen') {
+                      <span class="explanation-popup__visual-activity-fullscreen">
+                        <span class="explanation-popup__activity-fullscreen-toolbar">
+                          <span class="explanation-popup__activity-fullscreen-button"><mat-icon>fullscreen</mat-icon></span>
+                          <span class="explanation-popup__activity-fullscreen-button is-exit"><mat-icon>fullscreen_exit</mat-icon></span>
+                        </span>
+                        <span class="explanation-popup__activity-fullscreen-flow">
+                          <span class="explanation-popup__activity-fullscreen-card"></span>
+                          <span class="explanation-popup__activity-fullscreen-stars">
+                            <mat-icon>star</mat-icon><mat-icon>star</mat-icon><mat-icon>star</mat-icon>
+                          </span>
+                        </span>
                       </span>
                     }
                     @default {

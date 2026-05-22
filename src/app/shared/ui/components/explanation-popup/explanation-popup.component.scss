@@ -109,7 +109,7 @@
 
 .explanation-popup__grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 0.58rem;
 }
 
@@ -141,11 +141,12 @@
 .explanation-popup__visual-eye,
 .explanation-popup__visual-history,
 .explanation-popup__visual-filters,
-.explanation-popup__visual-activity-tabs,
+.explanation-popup__visual-activity-primary,
 .explanation-popup__visual-activity-filter,
-.explanation-popup__visual-activity-sort,
+.explanation-popup__visual-activity-header,
 .explanation-popup__visual-activity-card,
-.explanation-popup__visual-activity-panel-actions,
+.explanation-popup__visual-activity-score,
+.explanation-popup__visual-activity-fullscreen,
 .explanation-popup__visual-generic {
   min-width: 0;
   min-height: 40px;
@@ -321,23 +322,28 @@
   color: #4d3d8b;
 }
 
-.explanation-popup__visual-activity-tabs,
+.explanation-popup__visual-activity-primary,
 .explanation-popup__visual-activity-filter,
-.explanation-popup__visual-activity-sort,
-.explanation-popup__visual-activity-panel-actions {
+.explanation-popup__visual-activity-header,
+.explanation-popup__visual-activity-score,
+.explanation-popup__visual-activity-fullscreen {
   flex: 1 1 100%;
   align-items: stretch;
   justify-content: flex-start;
   flex-direction: column;
   gap: 0.36rem;
   padding: 0.46rem;
+  background: linear-gradient(180deg, #f9fcff 0%, #f2f7ff 100%);
 }
 
-.explanation-popup__activity-chip,
+.explanation-popup__activity-menu-trigger,
+.explanation-popup__activity-menu-option,
 .explanation-popup__activity-filter-trigger,
-.explanation-popup__activity-filter-menu span,
-.explanation-popup__activity-sort-actions span,
-.explanation-popup__visual-activity-panel-actions span {
+.explanation-popup__activity-filter-menu > span:not(.explanation-popup__activity-filter-group),
+.explanation-popup__activity-header-actions span,
+.explanation-popup__activity-order-menu span,
+.explanation-popup__activity-view-menu span,
+.explanation-popup__activity-score-dock span {
   min-width: 0;
   min-height: 30px;
   border: 1px solid rgba(47, 103, 180, 0.24);
@@ -353,23 +359,32 @@
   line-height: 1;
 }
 
-.explanation-popup__activity-chip span,
+.explanation-popup__activity-menu-trigger span,
+.explanation-popup__activity-menu-option span,
 .explanation-popup__activity-filter-trigger span,
-.explanation-popup__activity-filter-menu span,
-.explanation-popup__activity-sort-actions span,
-.explanation-popup__visual-activity-panel-actions span {
+.explanation-popup__activity-filter-menu > span:not(.explanation-popup__activity-filter-group),
+.explanation-popup__activity-header-actions span,
+.explanation-popup__activity-order-menu span,
+.explanation-popup__activity-view-menu span {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.explanation-popup__activity-chip--ratings {
+.explanation-popup__activity-menu-trigger,
+.explanation-popup__activity-menu-option--ratings {
   background: linear-gradient(180deg, #fff7df 0%, #fdeabf 100%);
   border-color: rgba(207, 153, 45, 0.34);
   color: #7d5510;
 }
 
-.explanation-popup__activity-chip strong,
+.explanation-popup__activity-menu-options {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.explanation-popup__activity-menu-trigger strong,
+.explanation-popup__activity-menu-option strong,
 .explanation-popup__activity-filter-trigger strong {
   margin-left: auto;
   min-width: 20px;
@@ -384,6 +399,10 @@
   box-shadow: 0 0 0 2px #fff;
 }
 
+.explanation-popup__activity-menu-option strong {
+  background: #2f78c4;
+}
+
 .explanation-popup__activity-filter-trigger {
   background: linear-gradient(180deg, #fff2f6 0%, #fde2eb 100%);
   border-color: rgba(190, 82, 111, 0.32);
@@ -396,26 +415,103 @@
 
 .explanation-popup__activity-filter-menu {
   display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.26rem;
+}
+
+.explanation-popup__activity-filter-menu > span:not(.explanation-popup__activity-filter-group) {
+  min-height: 28px;
+  border-radius: 8px;
+  justify-content: space-between;
+  padding: 0 0.3rem;
+}
+
+.explanation-popup__activity-filter-menu > span strong {
+  min-width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: #cf4662;
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.6rem;
+}
+
+.explanation-popup__activity-filter-group {
+  grid-column: 1 / -1;
+  min-width: 0;
+  min-height: 28px;
+  border: 1px solid rgba(92, 111, 139, 0.2);
+  border-radius: 8px;
+  background: #fff;
+  color: #253e63;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.34rem;
+  padding: 0 0.42rem;
+  font-size: 0.68rem;
+  font-weight: 950;
+}
+
+.explanation-popup__activity-filter-group em,
+.explanation-popup__activity-filter-group small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.explanation-popup__activity-filter-group em {
+  font-style: normal;
+}
+
+.explanation-popup__activity-filter-group small {
+  color: #7d5b18;
+}
+
+.explanation-popup__activity-header-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 34px;
+  gap: 0.32rem;
+}
+
+.explanation-popup__activity-header-actions span {
+  justify-content: center;
+  background: #f5f8ff;
+}
+
+.explanation-popup__activity-header-actions .explanation-popup__activity-header-close {
+  padding: 0;
+}
+
+.explanation-popup__activity-order-menu {
+  display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.26rem;
 }
 
-.explanation-popup__activity-filter-menu span {
-  min-height: 28px;
+.explanation-popup__activity-order-menu span {
+  min-height: 27px;
   border-radius: 8px;
   justify-content: center;
-  padding: 0 0.3rem;
+  padding: 0 0.24rem;
+  font-size: 0.66rem;
 }
 
-.explanation-popup__activity-sort-actions {
+.explanation-popup__activity-view-menu {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.32rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.26rem;
 }
 
-.explanation-popup__activity-sort-actions span {
+.explanation-popup__activity-view-menu span {
+  min-height: 27px;
+  border-radius: 8px;
   justify-content: center;
-  background: #f5f8ff;
+  padding: 0 0.24rem;
+  font-size: 0.66rem;
 }
 
 .explanation-popup__activity-distance-marker {
@@ -434,7 +530,7 @@
 .explanation-popup__visual-activity-card {
   position: relative;
   flex: 1 1 100%;
-  min-height: 96px;
+  min-height: 104px;
   overflow: hidden;
   justify-content: flex-start;
   padding: 0.5rem;
@@ -453,7 +549,9 @@
 
 .explanation-popup__activity-card-score,
 .explanation-popup__activity-card-eye,
-.explanation-popup__activity-card-copy {
+.explanation-popup__activity-card-copy,
+.explanation-popup__activity-card-bars,
+.explanation-popup__activity-card-context {
   position: relative;
   z-index: 1;
 }
@@ -471,6 +569,60 @@
   padding: 0 0.5rem;
   font-size: 0.72rem;
   font-weight: 950;
+}
+
+.explanation-popup__activity-card-bars {
+  position: absolute;
+  left: 0.5rem;
+  right: 0.5rem;
+  top: 0.42rem;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.16rem;
+}
+
+.explanation-popup__activity-card-bars span {
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.explanation-popup__activity-card-bars span.is-active {
+  background: #fff;
+}
+
+.explanation-popup__activity-card-context {
+  position: absolute;
+  left: 0.48rem;
+  top: 1.04rem;
+  width: 28px;
+  height: 28px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: #dff1ff;
+  color: #1e5c93;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.62rem;
+  font-weight: 950;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.22);
+}
+
+.explanation-popup__activity-card-context em {
+  position: absolute;
+  right: -0.44rem;
+  bottom: -0.18rem;
+  min-width: 17px;
+  height: 17px;
+  border-radius: 999px;
+  background: #2f78c4;
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.54rem;
+  font-style: normal;
 }
 
 .explanation-popup__activity-card-copy {
@@ -500,13 +652,121 @@
   justify-content: center;
 }
 
-.explanation-popup__visual-activity-panel-actions {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+.explanation-popup__visual-activity-score {
+  gap: 0.4rem;
 }
 
-.explanation-popup__visual-activity-panel-actions span {
+.explanation-popup__activity-score-card {
+  position: relative;
+  min-height: 72px;
+  border: 1px solid rgba(18, 53, 93, 0.3);
+  border-radius: 10px;
+  background:
+    linear-gradient(180deg, rgba(11, 29, 51, 0.16) 0%, rgba(11, 29, 51, 0.72) 100%),
+    linear-gradient(135deg, #a8bdc9 0%, #546a82 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 0.46rem;
+}
+
+.explanation-popup__activity-score-card .explanation-popup__activity-card-score {
+  align-self: flex-end;
+}
+
+.explanation-popup__activity-score-copy {
+  position: relative;
+  z-index: 1;
+  align-self: flex-end;
+  color: #fff;
+  display: grid;
+  gap: 0.08rem;
+  font-weight: 950;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.32);
+}
+
+.explanation-popup__activity-score-copy small {
+  font-size: 0.66rem;
+}
+
+.explanation-popup__activity-score-dock {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.25rem;
+}
+
+.explanation-popup__activity-score-dock span {
   justify-content: center;
+  border-radius: 8px;
+  background: #fff8df;
+  color: #9a6913;
+}
+
+.explanation-popup__activity-score-dock span::before {
+  content: '★';
+  margin-right: 0.12rem;
+}
+
+.explanation-popup__activity-score-dock span.is-active {
+  background: #f2a12d;
+  color: #fff;
+}
+
+.explanation-popup__visual-activity-fullscreen {
+  background: linear-gradient(180deg, #fffaf0 0%, #f8f4ec 100%);
+}
+
+.explanation-popup__activity-fullscreen-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.38rem;
+}
+
+.explanation-popup__activity-fullscreen-button {
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(220, 155, 48, 0.58);
+  border-radius: 50%;
+  background: #fff7df;
+  color: #b87813;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 5px 12px rgba(168, 108, 20, 0.14);
+}
+
+.explanation-popup__activity-fullscreen-button.is-exit {
+  background: #fff;
+  color: #284f82;
+  border-color: rgba(47, 103, 180, 0.22);
+}
+
+.explanation-popup__activity-fullscreen-flow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 0.4rem;
+}
+
+.explanation-popup__activity-fullscreen-card {
+  min-height: 74px;
+  border-radius: 10px;
+  background:
+    linear-gradient(180deg, rgba(14, 31, 52, 0.1) 0%, rgba(14, 31, 52, 0.76) 100%),
+    linear-gradient(135deg, #c4d1d8 0%, #7e8fa4 100%);
+  box-shadow: inset 0 0 0 1px rgba(23, 49, 82, 0.18);
+}
+
+.explanation-popup__activity-fullscreen-stars {
+  min-height: 34px;
+  border: 1px solid rgba(223, 166, 42, 0.42);
+  border-radius: 999px;
+  background: #fff8df;
+  color: #d98a17;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.1rem;
+  padding: 0 0.4rem;
 }
 
 .explanation-popup__visual-photo {
@@ -812,11 +1072,12 @@
   .explanation-popup__visual-eye,
   .explanation-popup__visual-history,
   .explanation-popup__visual-filters,
-  .explanation-popup__visual-activity-tabs,
+  .explanation-popup__visual-activity-primary,
   .explanation-popup__visual-activity-filter,
-  .explanation-popup__visual-activity-sort,
+  .explanation-popup__visual-activity-header,
   .explanation-popup__visual-activity-card,
-  .explanation-popup__visual-activity-panel-actions,
+  .explanation-popup__visual-activity-score,
+  .explanation-popup__visual-activity-fullscreen,
   .explanation-popup__visual-generic {
     min-height: 36px;
     border-radius: 10px;
@@ -837,10 +1098,11 @@
     padding: 0.38rem;
   }
 
-  .explanation-popup__visual-activity-tabs,
+  .explanation-popup__visual-activity-primary,
   .explanation-popup__visual-activity-filter,
-  .explanation-popup__visual-activity-sort,
-  .explanation-popup__visual-activity-panel-actions {
+  .explanation-popup__visual-activity-header,
+  .explanation-popup__visual-activity-score,
+  .explanation-popup__visual-activity-fullscreen {
     padding: 0.38rem;
   }
 

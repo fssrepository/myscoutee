@@ -25,6 +25,12 @@ const LEGACY_EXPLANATION_FILTER_COUNT_COPY_BY_LANG: Record<string, { from: strin
     to: 'A szám azt mutatja, hogy az adott szűrőfeltétel mellett hány találat van.'
   }
 };
+const LEGACY_ACTIVITY_RATES_EXPLANATION_SECTION_IDS = new Set([
+  'activity-tabs',
+  'activity-distance-sort',
+  'activity-card-actions',
+  'activity-panel-actions'
+]);
 
 @Injectable({
   providedIn: 'root'
@@ -43,7 +49,8 @@ export class DemoHelpCenterService {
       const seeded = this.ensureSeeded(documentKind, option.lang, context);
       const descriptionsUpdated = this.ensureRevisionDescriptions(documentKind, option.lang);
       const filterCountCopyUpdated = this.ensureExplanationFilterCountCopy(documentKind, option.lang);
-      changed = seeded || descriptionsUpdated || filterCountCopyUpdated || changed;
+      const activityRatesCopyUpdated = this.ensureActivityRatesExplanationCopy(documentKind, option.lang);
+      changed = seeded || descriptionsUpdated || filterCountCopyUpdated || activityRatesCopyUpdated || changed;
     }
     if (changed) {
       await this.memoryDb.flushToIndexedDb();
@@ -452,6 +459,62 @@ export class DemoHelpCenterService {
       };
     });
     return true;
+  }
+
+  private ensureActivityRatesExplanationCopy(kind: HelpCenterDocumentKind, lang = 'en'): boolean {
+    if (kind !== 'explanation') {
+      return false;
+    }
+    const language = this.normalizeLang(lang);
+    const table = this.table();
+    const revisionIds = table.revisionIds.filter(id => {
+      const revision = table.revisionsById[id] as HelpCenterRevision | undefined;
+      return Boolean(revision)
+        && this.revisionKind(revision) === 'explanation'
+        && this.revisionLang(revision) === language
+        && this.revisionContextKey(revision) === 'activities.rates'
+        && this.isLegacyActivityRatesExplanation(revision);
+    });
+    if (revisionIds.length === 0) {
+      return false;
+    }
+    const replacement = this.defaultRevision('explanation', language, 'activities.rates');
+    this.memoryDb.write(state => {
+      const current = state[HELP_CENTER_TABLE_NAME];
+      const revisionsById = this.normalizedRevisionsById(current);
+      for (const id of revisionIds) {
+        const revision = revisionsById[id];
+        if (!revision) {
+          continue;
+        }
+        revisionsById[id] = {
+          ...revision,
+          title: replacement.title,
+          summary: replacement.summary,
+          sections: replacement.sections.map(section => ({ ...section })),
+          updatedAtIso: new Date().toISOString(),
+          updatedByUserId: revision.updatedByUserId || 'system'
+        };
+      }
+      return {
+        ...state,
+        [HELP_CENTER_TABLE_NAME]: {
+          ...current,
+          revisionsById
+        }
+      };
+    });
+    return true;
+  }
+
+  private isLegacyActivityRatesExplanation(revision: HelpCenterRevision | undefined): boolean {
+    return Boolean(revision?.sections?.some(section =>
+      LEGACY_ACTIVITY_RATES_EXPLANATION_SECTION_IDS.has(section.id)
+      || section.title === 'Panel actions'
+      || section.title === 'Panelműveletek'
+      || `${section.contentHtml ?? ''}`.includes('The top-right controls change the panel mode or close it.')
+      || `${section.contentHtml ?? ''}`.includes('A jobb felső gombok módot váltanak vagy bezárják a panelt.')
+    ));
   }
 
   private table(): DemoHelpCenterTable {

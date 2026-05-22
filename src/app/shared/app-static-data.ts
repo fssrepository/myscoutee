@@ -1215,77 +1215,91 @@ const EXPLANATION_HOME_SECTIONS_HU: HelpCenterSection[] = [
 
 const EXPLANATION_ACTIVITY_RATES_SECTIONS: HelpCenterSection[] = [
   {
-    id: 'activity-tabs',
+    id: 'activity-primary-menu',
     icon: 'star',
-    title: 'Activity tabs',
-    blurb: 'Use the first button to switch between ratings, chats, and events.',
-    contentHtml: '<p>The badge shows how many items are available in that area. Open the menu when you want to move from rating people to chats or event work.</p>'
+    title: 'Activity menu',
+    blurb: 'The first toolbar menu switches the whole Activities panel.',
+    contentHtml: '<p>Open it to move between <strong>Ratings</strong>, <strong>Chats</strong>, and <strong>Events</strong>. The badge on Ratings or Chats is that area&rsquo;s activity count, not the count from the rating-type filter.</p><p>When you leave Ratings, pending score direction changes are committed and fullscreen rating is closed.</p>'
   },
   {
     id: 'activity-rate-filter',
     icon: 'north_east',
-    title: 'Rating filter',
-    blurb: 'The second button narrows which rating cards are shown.',
-    contentHtml: '<p>Choose given, received, mutual, met, or pair-based ratings. The number on the badge is the count for the selected rating filter.</p>'
+    title: 'Rating type menu',
+    blurb: 'The second toolbar menu decides which rating cards appear.',
+    contentHtml: '<p><strong>Preferences</strong> contains individual Given, Received, Mutual, and Met ratings. <strong>Suggestions</strong> contains pair Given and Received ratings.</p><p>The badge on this button and on each option is the number of cards matching that exact rating filter. The Social toggle changes whether social-context cards are included for that group.</p>'
   },
   {
-    id: 'activity-distance-sort',
+    id: 'activity-header-controls',
     icon: 'route',
-    title: 'Sort and distance',
-    blurb: 'Latest and Distance change the list order.',
-    contentHtml: '<p>Latest keeps recent rating activity first. Distance groups cards by how far away the profile or pair is, so the distance marker can become the main scanning cue.</p>'
+    title: 'Header controls',
+    blurb: 'The top-right buttons are separate menus and actions.',
+    contentHtml: '<p><strong>Recent</strong> opens the secondary order menu: recent, relevant, or past ratings. <strong>Distance</strong> opens the view menu: month, week, day, or distance.</p><p>When Distance view is selected, markers such as <strong>10 km</strong> are group labels for the current list. The X closes the Activities panel.</p>'
   },
   {
-    id: 'activity-card-actions',
+    id: 'activity-card-media',
     icon: 'visibility',
-    title: 'Cards and actions',
-    blurb: 'Each card combines the person, your score, and profile access.',
-    contentHtml: '<p>The star badge shows the current rating value. Select the rating badge/card to edit the score, and use the eye button to open profile details.</p>'
+    title: 'Photos and profile',
+    blurb: 'The card itself has image navigation and profile access.',
+    contentHtml: '<p>The small image bars show that the card has multiple photos. Click a bar or the image area to switch photos.</p><p>The eye button opens that person&rsquo;s profile. If a small avatar/counter badge appears on a card, it points to the connecting profile or shared social context.</p>'
   },
   {
-    id: 'activity-panel-actions',
+    id: 'activity-score-badge',
+    icon: 'star',
+    title: 'Star rating badge',
+    blurb: 'The star badge is the rating control, not a generic card score.',
+    contentHtml: '<p>The badge shows your current rating value, or <strong>Rate</strong> when you have not rated yet. Click it to open the rating editor; click the same selected badge again to close it.</p><p>Use the 1-10 star dock to save a value. Pair Received cards can be read-only: their badge is disabled and may show the received pair average instead of your editable score.</p>'
+  },
+  {
+    id: 'activity-fullscreen',
     icon: 'fullscreen',
-    title: 'Panel actions',
-    blurb: 'The top-right controls change the panel mode or close it.',
-    contentHtml: '<p>Fullscreen expands rating into a focused flow. The close button exits the Activities panel and returns you to the previous screen.</p>'
+    title: 'Fullscreen rating',
+    blurb: 'The orange fullscreen icon changes the rating workflow.',
+    contentHtml: '<p>In distance-based Ratings, the fullscreen button opens a focused card-by-card rating flow. The same button becomes fullscreen-exit and returns you to the normal list.</p><p>In editable fullscreen views, the bottom stars rate the current card. In read-only pair-received mode, fullscreen uses navigation instead of editing.</p>'
   }
 ];
 
 const EXPLANATION_ACTIVITY_RATES_SECTIONS_HU: HelpCenterSection[] = [
   {
-    id: 'activity-tabs',
+    id: 'activity-primary-menu',
     icon: 'star',
-    title: 'Tevékenység fülek',
-    blurb: 'Az első gombbal válthatsz értékelések, chatek és események között.',
-    contentHtml: '<p>A jelvény azt mutatja, hány elem érhető el az adott területen. Nyisd meg a menüt, ha az értékelésekről chatekre vagy eseményfeladatokra váltanál.</p>'
+    title: 'Tevékenység menü',
+    blurb: 'Az első eszköztári menü az egész Tevékenységek panelt váltja.',
+    contentHtml: '<p>Itt válthatsz az <strong>Értékelések</strong>, <strong>Chatek</strong> és <strong>Események</strong> között. Az Értékelések vagy Chatek jelvénye az adott terület aktivitásszáma, nem az értékelési szűrő találatszáma.</p><p>Ha kilépsz az Értékelések nézetből, a függő értékelési irányváltások mentődnek, és a teljes képernyős értékelés bezár.</p>'
   },
   {
     id: 'activity-rate-filter',
     icon: 'north_east',
-    title: 'Értékelési szűrő',
-    blurb: 'A második gomb szűkíti, mely értékeléskártyák jelenjenek meg.',
-    contentHtml: '<p>Választhatsz adott, kapott, kölcsönös, találkozott vagy páros értékeléseket. A jelvény száma a kiválasztott értékelési szűrő találatszáma.</p>'
+    title: 'Értékeléstípus menü',
+    blurb: 'A második eszköztári menü dönti el, mely értékeléskártyák látszanak.',
+    contentHtml: '<p>A <strong>Preferenciák</strong> alatt az egyéni Adott, Kapott, Kölcsönös és Találkozott értékelések vannak. A <strong>Javaslatok</strong> alatt a páros Adott és Kapott értékelések vannak.</p><p>A gombon és az egyes opciókon látható jelvény az adott értékelési szűrő pontos találatszáma. A Social kapcsoló azt állítja, hogy az adott csoportban bekerüljenek-e a közösségi kontextusú kártyák.</p>'
   },
   {
-    id: 'activity-distance-sort',
+    id: 'activity-header-controls',
     icon: 'route',
-    title: 'Rendezés és távolság',
-    blurb: 'A Legutóbbi és Távolság gombok a lista sorrendjét váltják.',
-    contentHtml: '<p>A Legutóbbi a friss értékelési aktivitást tartja elöl. A Távolság a profil vagy pár távolsága szerint csoportosít, ezért a távolságjelző lesz a fő tájékozódási pont.</p>'
+    title: 'Fejléc gombok',
+    blurb: 'A jobb felső gombok külön menük és műveletek.',
+    contentHtml: '<p>A <strong>Legutóbbi</strong> a másodlagos rendezési menüt nyitja: friss, releváns vagy korábbi értékelések. A <strong>Távolság</strong> a nézetmenüt nyitja: hónap, hét, nap vagy távolság.</p><p>Távolság nézetben a <strong>10 km</strong> jellegű sávok csoportcímkék az aktuális listához. Az X bezárja a Tevékenységek panelt.</p>'
   },
   {
-    id: 'activity-card-actions',
+    id: 'activity-card-media',
     icon: 'visibility',
-    title: 'Kártyák és műveletek',
-    blurb: 'Minden kártyán együtt látszik a személy, a pontszámod és a profilnyitás.',
-    contentHtml: '<p>A csillagos jelvény az aktuális értékelési értéket mutatja. A pontszám/kártya kiválasztásával módosíthatod az értékelést, a szem gombbal pedig megnyithatod a profilt.</p>'
+    title: 'Fotók és profil',
+    blurb: 'A kártyán képváltás és profilnyitás is van.',
+    contentHtml: '<p>A felső kis képsávok jelzik, hogy több fotó van a kártyán. Kattints egy sávra vagy a kép megfelelő részére a fotóváltáshoz.</p><p>A szem gomb megnyitja az adott profilt. Ha kis avatar/számláló jelvény jelenik meg a kártyán, az a kapcsolódó profilra vagy közösségi kontextusra mutat.</p>'
   },
   {
-    id: 'activity-panel-actions',
+    id: 'activity-score-badge',
+    icon: 'star',
+    title: 'Csillagos értékelő jelvény',
+    blurb: 'A csillagos jelvény az értékelés vezérlője, nem általános kártyapont.',
+    contentHtml: '<p>A jelvény a saját aktuális értékedet mutatja, vagy <strong>Értékelés</strong> feliratot, ha még nincs érték. Kattintásra megnyitja az értékelő szerkesztőt; ugyanarra a kijelölt jelvényre kattintva bezárja.</p><p>Az 1-10-es alsó csillagsávval mentheted az értéket. A Páros Kapott kártyák lehetnek csak olvashatók: ilyenkor a jelvény tiltott, és a kapott páros átlagot mutathatja a saját szerkeszthető érték helyett.</p>'
+  },
+  {
+    id: 'activity-fullscreen',
     icon: 'fullscreen',
-    title: 'Panelműveletek',
-    blurb: 'A jobb felső gombok módot váltanak vagy bezárják a panelt.',
-    contentHtml: '<p>A teljes képernyős mód fókuszált értékelési folyamatra vált. A bezárás gomb kilép a Tevékenységek panelből, és visszavisz az előző képernyőre.</p>'
+    title: 'Teljes képernyős értékelés',
+    blurb: 'A narancs teljes képernyő ikon az értékelési folyamatot váltja.',
+    contentHtml: '<p>Távolság alapú Értékelések nézetben a teljes képernyő gomb fókuszált, kártyánkénti értékelésre vált. Ugyanez a gomb kilépés ikonra vált, és visszavisz a normál listához.</p><p>Szerkeszthető teljes képernyős nézetben az alsó csillagok az aktuális kártyát értékelik. Csak olvasható Páros Kapott módban a teljes képernyő navigálásra szolgál, nem szerkesztésre.</p>'
   }
 ];
 
