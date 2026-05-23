@@ -2445,11 +2445,7 @@ export class EventChatPopupComponent implements OnDestroy {
     this.rebuildVisibleReadReceipts();
     this.syncEventChatSummaryFromMessage(normalizedMessage);
 
-    this.refreshVisibleChatThreadSurface();
-
-    if (shouldStickToEnd) {
-      this.scheduleChatThreadScrollToEnd();
-    }
+    this.addMessageToVisibleThreadBottom(normalizedMessage.id, shouldStickToEnd);
 
     this.cdr.markForCheck();
   }
@@ -2786,11 +2782,7 @@ export class EventChatPopupComponent implements OnDestroy {
     this.rebuildVisibleReadReceipts();
     this.syncEventChatSummaryFromMessage(nextMessage);
 
-    this.refreshVisibleChatThreadSurface();
-
-    if (stickToEnd) {
-      this.scheduleChatThreadScrollToEnd();
-    }
+    this.addMessageToVisibleThreadBottom(nextMessage.id, stickToEnd);
 
     this.cdr.markForCheck();
     if (hasQueuedReaction) {
@@ -2960,26 +2952,76 @@ export class EventChatPopupComponent implements OnDestroy {
 
   private refreshVisibleChatThreadSurface(): void {
     const previousTotal = this.visibleChatThreadTotal;
-    this.visibleChatThreadTotal = this.allMessages.length;
+    const nextTotal = this.allMessages.length;
+    this.visibleChatThreadTotal = nextTotal;
     const smartList = this.chatThreadSmartList;
-    const visibleCount = smartList?.itemsSnapshot().length ?? 0;
     if (!smartList) {
       this.chatThreadRevision++;
       this.syncChatThreadQuery();
       return;
     }
-    const addedCount = Math.max(0, this.allMessages.length - previousTotal);
-    const nextVisibleCount = visibleCount > 0
-      ? Math.min(this.allMessages.length, visibleCount + addedCount)
-      : Math.min(this.allMessages.length, this.chatInitialLoadMessageCount);
-    if (nextVisibleCount === 0) {
+
+    const latestMessageById = new Map(this.allMessages.map(message => [message.id, message] as const));
+    const currentVisibleItems = smartList.itemsSnapshot()
+      .map(message => latestMessageById.get(message.id) ?? message)
+      .filter(message => latestMessageById.has(message.id));
+    if (currentVisibleItems.length === 0) {
+      const nextVisibleCount = Math.min(nextTotal, this.chatInitialLoadMessageCount);
+      if (nextVisibleCount === 0) {
+        smartList.replaceVisibleItems([], { total: 0 });
+        return;
+      }
+      smartList.replaceVisibleItems(
+        this.allMessages.slice(0, nextVisibleCount),
+        { total: nextTotal }
+      );
+      return;
+    }
+
+    const addedCount = Math.max(0, nextTotal - previousTotal);
+    const visibleMessageIds = new Set(currentVisibleItems.map(message => message.id));
+    const addedBottomItems = addedCount > 0
+      ? this.allMessages.filter(message => !visibleMessageIds.has(message.id)).slice(0, addedCount)
+      : [];
+    const nextVisibleItems = addedBottomItems.length > 0
+      ? [...addedBottomItems, ...currentVisibleItems]
+      : currentVisibleItems;
+    if (nextVisibleItems.length === 0) {
       smartList.replaceVisibleItems([], { total: 0 });
       return;
     }
     smartList.replaceVisibleItems(
-      this.allMessages.slice(0, Math.min(this.allMessages.length, nextVisibleCount)),
-      { total: this.allMessages.length }
+      nextVisibleItems,
+      { total: nextTotal }
     );
+  }
+
+  private addMessageToVisibleThreadBottom(messageId: string, stickToEnd: boolean): void {
+    const normalizedMessageId = `${messageId ?? ''}`.trim();
+    const smartList = this.chatThreadSmartList;
+    if (!smartList) {
+      this.chatThreadRevision++;
+      this.syncChatThreadQuery();
+      return;
+    }
+
+    const latestMessageById = new Map(this.allMessages.map(message => [message.id, message] as const));
+    const currentVisibleItems = smartList.itemsSnapshot()
+      .map(message => latestMessageById.get(message.id) ?? message)
+      .filter(message => latestMessageById.has(message.id));
+    const bottomMessage = normalizedMessageId ? latestMessageById.get(normalizedMessageId) : null;
+    const nextVisibleItems = bottomMessage && !currentVisibleItems.some(message => message.id === bottomMessage.id)
+      ? [bottomMessage, ...currentVisibleItems]
+      : currentVisibleItems;
+
+    smartList.replaceVisibleItems(nextVisibleItems, {
+      total: this.allMessages.length
+    });
+    this.visibleChatThreadTotal = this.allMessages.length;
+
+    if (stickToEnd) {
+      this.scheduleChatThreadScrollToEnd();
+    }
   }
 
   private flagFreshMessage(messageId: string): void {
