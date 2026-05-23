@@ -6,6 +6,7 @@
     <button
       type="button"
       class="editable-image-carousel__arrow editable-image-carousel__arrow--prev"
+      data-motion="none"
       [disabled]="disabled || uploadingSlotIndex !== null"
       (click)="showPreviousPage($event)"
       aria-label="Previous image slot"
@@ -91,6 +92,7 @@
     <button
       type="button"
       class="editable-image-carousel__arrow editable-image-carousel__arrow--next"
+      data-motion="none"
       [disabled]="disabled || uploadingSlotIndex !== null"
       (click)="showNextPage($event)"
       aria-label="Next image slot"

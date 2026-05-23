@@ -292,6 +292,10 @@ export class HttpEventsService {
     await this.postVoid('/activities/events/take-over', { userId: userId.trim(), type, sourceId: sourceId.trim() });
   }
 
+  waitForEventMutationDelay(): Promise<void> {
+    return Promise.resolve();
+  }
+
   async applyStageAction(request: {
     userId: string;
     sourceId: string;

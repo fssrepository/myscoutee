@@ -30,6 +30,7 @@ import {
   type PageResult,
   type SmartListConfig
 } from '../../../shared/ui';
+import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
 
 type SubEventsDisplayMode = 'Casual' | 'Tournament';
 type StageMenuAction = 'add-group' | 'leaderboard' | 'edit-stage' | 'delete-stage' | 'start-tournament' | 'close-stage' | 'finalize-stage' | 'reopen-scores' | 'suspend-tournament' | 'resume-tournament';
@@ -241,6 +242,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
   private readonly activityResourcesService = inject(ActivityResourcesService);
   private readonly appCtx = inject(AppContext);
   private readonly ownedAssets = inject(OwnedAssetsPopupFacadeService);
+  private readonly confirmationDialogService = inject(ConfirmationDialogService);
 
   @Input() open = false;
   @Input() readOnly = false;
@@ -845,7 +847,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
     confirmLabel: string,
     busyLabel: string
   ): void {
-    this.pendingSensitiveAction = {
+    this.openSensitiveActionDialog({
       kind: 'stage-status',
       stageSourceIndex: stage.sourceIndex,
       groupId: null,
@@ -858,9 +860,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
       nextStatus,
       reason,
       destructive: nextStatus === 'S'
-    };
-    this.sensitiveActionPending = false;
-    this.sensitiveActionErrorMessage = '';
+    });
   }
 
   protected canCloseStage(stage: EventSubeventsStageCard): boolean {
@@ -1477,13 +1477,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
     if (this.readOnly) {
       return;
     }
-    this.pendingDeleteTarget = {
-      kind: 'stage',
-      stageSourceIndex: stage.sourceIndex,
-      groupId: null,
-      label: stage.subtitle
-    };
-    this.pendingSensitiveAction = {
+    this.openSensitiveActionDialog({
       kind: 'delete',
       stageSourceIndex: stage.sourceIndex,
       groupId: null,
@@ -1493,9 +1487,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
       confirmLabel: 'Delete',
       busyLabel: 'Deleting...',
       destructive: true
-    };
-    this.sensitiveActionPending = false;
-    this.sensitiveActionErrorMessage = '';
+    });
   }
 
   protected requestDeleteGroup(row: EventSubeventsStageRow, event: Event): void {
@@ -1503,13 +1495,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
     if (this.readOnly) {
       return;
     }
-    this.pendingDeleteTarget = {
-      kind: 'group',
-      stageSourceIndex: row.stageSourceIndex,
-      groupId: row.groupId,
-      label: row.groupName
-    };
-    this.pendingSensitiveAction = {
+    this.openSensitiveActionDialog({
       kind: 'delete',
       stageSourceIndex: row.stageSourceIndex,
       groupId: row.groupId,
@@ -1519,9 +1505,37 @@ export class EventSubeventsPopupComponent implements OnChanges {
       confirmLabel: 'Delete',
       busyLabel: 'Deleting...',
       destructive: true
-    };
+    });
+  }
+
+  private openSensitiveActionDialog(target: SensitiveActionTargetState): void {
+    this.pendingDeleteTarget = target.kind === 'delete'
+      ? {
+          kind: target.groupId ? 'group' : 'stage',
+          stageSourceIndex: target.stageSourceIndex,
+          groupId: target.groupId,
+          label: target.label
+        }
+      : null;
+    this.pendingSensitiveAction = null;
     this.sensitiveActionPending = false;
     this.sensitiveActionErrorMessage = '';
+    this.confirmationDialogService.open({
+      title: target.title,
+      message: target.description,
+      cancelLabel: 'Cancel',
+      confirmLabel: target.confirmLabel,
+      busyConfirmLabel: target.busyLabel,
+      confirmTone: target.destructive ? 'danger' : 'accent',
+      failureMessage: 'Action failed.',
+      onConfirm: async () => {
+        await this.runSensitiveAction(target);
+        this.pendingDeleteTarget = null;
+      },
+      onCancel: () => {
+        this.pendingDeleteTarget = null;
+      }
+    });
   }
 
   protected cancelDeleteTarget(event?: Event): void {
@@ -1545,15 +1559,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
     this.sensitiveActionErrorMessage = '';
 
     try {
-      if (target.kind === 'stage-status') {
-        if (!target.nextStatus || !target.reason) {
-          throw new Error('Missing stage action target.');
-        }
-        await this.applyStageStatusAction(target);
-      } else {
-        await this.waitForSensitiveActionDelay();
-        this.applyDeleteTarget(target);
-      }
+      await this.runSensitiveAction(target);
       this.pendingDeleteTarget = null;
       this.pendingSensitiveAction = null;
     } catch (error) {
@@ -1599,6 +1605,19 @@ export class EventSubeventsPopupComponent implements OnChanges {
     void this.confirmSensitiveAction(event);
   }
 
+  private async runSensitiveAction(target: SensitiveActionTargetState): Promise<void> {
+    if (target.kind === 'stage-status') {
+      if (!target.nextStatus || !target.reason) {
+        throw new Error('Missing stage action target.');
+      }
+      await this.applyStageStatusAction(target);
+      return;
+    }
+
+    await this.eventsService.waitForEventMutationDelay();
+    this.applyDeleteTarget(target);
+  }
+
   private applyDeleteTarget(target: SensitiveActionTargetState): void {
     const deleteTarget = this.pendingDeleteTarget;
     const kind = deleteTarget?.kind ?? (target.groupId ? 'group' : 'stage');
@@ -1623,11 +1642,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
   }
 
   private waitForSensitiveActionDelay(): Promise<void> {
-    const delayMs = resolveCurrentDemoDelayMs(1500);
-    if (delayMs <= 0) {
-      return Promise.resolve();
-    }
-    return new Promise(resolve => window.setTimeout(resolve, delayMs));
+    return this.eventsService.waitForEventMutationDelay();
   }
 
   protected deleteTargetTitle(): string {

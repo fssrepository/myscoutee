@@ -289,6 +289,10 @@ export class DemoEventsService extends DemoRouteDelayService {
     this.eventsRepository.takeOverItem(userId, type, sourceId);
   }
 
+  waitForEventMutationDelay(): Promise<void> {
+    return this.waitForRouteDelay(DemoEventsService.EVENTS_ROUTE);
+  }
+
   async applyStageAction(request: {
     userId: string;
     sourceId: string;
@@ -297,7 +301,7 @@ export class DemoEventsService extends DemoRouteDelayService {
     action: string;
     reason?: string | null;
   }): Promise<DemoEventRecord | null> {
-    await this.waitForDelay(1500);
+    await this.waitForEventMutationDelay();
     const record = this.eventsRepository.applyStageAction(request);
     await this.memoryDb.flushToIndexedDb();
     return record;

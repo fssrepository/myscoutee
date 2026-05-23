@@ -1169,7 +1169,7 @@ export class HttpChatsService {
     if (this.sessionService.currentSession()?.kind === 'demo') {
       baseUrl.searchParams.set('sessionKind', 'demo');
     }
-    if (this.firebaseAuthService.enabled) {
+    if (this.firebaseAuthService.enabled && this.sessionService.currentSession()?.kind !== 'demo') {
       const token = await this.firebaseAuthService.getIdToken();
       if (!token) {
         return null;

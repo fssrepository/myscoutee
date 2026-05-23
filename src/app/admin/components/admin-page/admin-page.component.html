@@ -88,13 +88,13 @@
           <img class="admin-brand-mark" src="assets/logo/heart.webp" alt="MyScoutee logo" />
           <span class="admin-brand-text">yScoutee</span>
         </a>
-          <button
-            type="button"
-            class="admin-login-btn"
-            matRipple
-            [matRippleColor]="'rgba(255, 255, 255, 0.2)'"
-            (click)="requestAdminLogin()"
-          >
+        <button
+          type="button"
+          class="admin-login-btn"
+          matRipple
+          [matRippleColor]="'rgba(255, 255, 255, 0.2)'"
+          (click)="requestAdminLogin()"
+        >
           <mat-icon>{{ admin.isFirebaseAdminMode ? 'login' : 'group' }}</mat-icon>
           <span>Admin login</span>
         </button>

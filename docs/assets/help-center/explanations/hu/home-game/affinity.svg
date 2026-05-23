@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f2fbf8"/>
+      <stop offset="1" stop-color="#fff8ed"/>
+    </linearGradient>
+  </defs>
+  <rect width="960" height="540" rx="30" fill="url(#bg)"/>
+  <rect x="6" y="6" width="948" height="528" rx="26" fill="#ffffff" opacity="0.82" stroke="#cfe2d9" stroke-width="3"/>
+  <g transform="matrix(1.16 0 0 1.16 -70 -78)">
+    <rect x="126" y="150" width="708" height="82" rx="41" fill="#f7fbff" stroke="#c9d9ed" stroke-width="3"/>
+  <rect x="174" y="184" width="500" height="20" rx="10" fill="#2f9ae5"/>
+  <rect x="174" y="184" width="500" height="20" rx="10" fill="url(#sliderGrad)"/>
+  <defs><linearGradient id="sliderGrad" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#2897e5"/><stop offset=".34" stop-color="#45c3bd"/><stop offset=".58" stop-color="#efe05b"/><stop offset=".78" stop-color="#f3973d"/><stop offset="1" stop-color="#ef4361"/></linearGradient></defs>
+  <circle cx="588" cy="194" r="31" fill="#fff" stroke="#f3973d" stroke-width="9"/>
+  <circle cx="734" cy="194" r="32" fill="#f3973d"/><text x="734" y="205" text-anchor="middle" font-family="Arial" font-size="30" font-weight="900" fill="#fff">7</text>
+  <rect x="174" y="264" width="612" height="58" rx="18" fill="#6846d8"/>
+  <text x="480" y="302" text-anchor="middle" font-family="Arial" font-size="26" font-weight="900" fill="#fff">Mehet -&gt;</text>
+  <rect x="174" y="374" width="560" height="13" rx="7" fill="#dbe8f5"/><rect x="174" y="408" width="403" height="13" rx="7" fill="#dbe8f5"/><rect x="174" y="442" width="482" height="13" rx="7" fill="#dbe8f5"/>
+  </g>
+</svg>

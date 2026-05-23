@@ -150,6 +150,10 @@ export class EventsService extends BaseRouteModeService {
     return this.eventsService.takeOverItem(userId, type, sourceId);
   }
 
+  waitForEventMutationDelay(): Promise<void> {
+    return this.eventsService.waitForEventMutationDelay();
+  }
+
   applyStageAction(request: {
     userId: string;
     sourceId: string;

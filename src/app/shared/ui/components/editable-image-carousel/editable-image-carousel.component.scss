@@ -1,5 +1,8 @@
 :host {
   display: block;
+  justify-self: stretch;
+  width: 100%;
+  max-width: 100%;
   min-width: 0;
   box-sizing: border-box;
   border: 1px solid rgba(23, 33, 54, 0.12);
@@ -79,6 +82,11 @@
 .editable-image-carousel__arrow:disabled {
   opacity: 0.58;
   cursor: default;
+}
+
+.editable-image-carousel__arrow:not(:disabled):active {
+  transform: scale(0.96);
+  filter: brightness(0.97);
 }
 
 .editable-image-carousel__arrow--prev {
@@ -479,6 +487,12 @@
     transform: translateY(-50%);
   }
 
+  .editable-image-carousel__arrow:not(:disabled):active {
+    animation: none;
+    transform: translateY(-50%) scale(0.96);
+    filter: brightness(0.97);
+  }
+
   .editable-image-carousel__arrow--prev {
     left: -0.72rem;
   }
@@ -516,6 +530,10 @@
 
   :host(.editable-image-carousel-host--compact) .editable-image-carousel__arrow {
     top: 78px;
+  }
+
+  :host(.editable-image-carousel-host--compact) .editable-image-carousel__arrow:not(:disabled):active {
+    transform: translateY(-50%) scale(0.96);
   }
 
   :host(.editable-image-carousel-host--compact) .editable-image-carousel__arrow--prev {

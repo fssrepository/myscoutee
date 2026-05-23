@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fff3eb"/>
+      <stop offset="1" stop-color="#f8fbff"/>
+    </linearGradient>
+  </defs>
+  <rect width="960" height="540" rx="30" fill="url(#bg)"/>
+  <rect x="6" y="6" width="948" height="528" rx="26" fill="#ffffff" opacity="0.82" stroke="#f0c5ab" stroke-width="3"/>
+  <g transform="matrix(1.16 0 0 1.16 -70 -78)">
+    <rect x="160" y="120" width="520" height="340" rx="22" fill="#fff" stroke="#c7dbed" stroke-width="3"/>
+  <rect x="184" y="144" width="472" height="160" rx="16" fill="#c7d5bf"/><circle cx="226" cy="182" r="25" fill="#245c9c"/><text x="226" y="190" text-anchor="middle" font-family="Arial" font-size="18" font-weight="900" fill="#fff">MG</text><rect x="548" y="164" width="90" height="42" rx="21" fill="#33445c" stroke="#33445c" stroke-width="3"/>
+  <text x="593" y="194" text-anchor="middle" font-family="Arial, sans-serif" font-size="27" font-weight="900" fill="#fff">1 / 5</text>
+  <text x="220" y="350" font-family="Arial" font-size="25" font-weight="900" fill="#1d3354">Phoenix Sunday Walk</text><text x="220" y="382" font-family="Arial" font-size="21" font-weight="850" fill="#52677f">Aug 29, 1:15 PM</text><text x="220" y="414" font-family="Arial" font-size="21" font-weight="850" fill="#52677f">Phoenix · 6.8 km</text>
+  </g>
+</svg>
