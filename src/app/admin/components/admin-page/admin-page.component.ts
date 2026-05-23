@@ -149,7 +149,7 @@ export class AdminPageComponent implements OnInit {
     this.restoreAvatarGateActive.set(false);
     this.restoringWorkspace.set(false);
     if (!restored) {
-      await this.router.navigateByUrl('/admin', { replaceUrl: true });
+      await this.router.navigateByUrl(this.admin.accessDenied() ? '/game' : '/admin', { replaceUrl: true });
     }
   }
 
@@ -166,6 +166,10 @@ export class AdminPageComponent implements OnInit {
     const dashboard = await this.admin.bootstrapAdmin();
     if (dashboard) {
       await this.router.navigateByUrl('/admin/workspace', { replaceUrl: true });
+      return;
+    }
+    if (this.admin.accessDenied()) {
+      await this.router.navigateByUrl('/game', { replaceUrl: true });
     }
   }
 
@@ -228,6 +232,14 @@ export class AdminPageComponent implements OnInit {
   @HostListener('window:adminLogoutRequested')
   protected onAdminLogoutRequested(): void {
     this.admin.clearAdminSession();
+  }
+
+  @HostListener('window:adminAccessDenied')
+  protected onAdminAccessDenied(): void {
+    this.admin.handleAdminAccessDenied();
+    if (this.router.url.split('?')[0].startsWith('/admin')) {
+      void this.router.navigateByUrl('/game', { replaceUrl: true });
+    }
   }
 
   private applyProgress(state: AdminBootstrapProgressState): void {

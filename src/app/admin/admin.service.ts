@@ -1,4 +1,4 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Location } from '@angular/common';
 import { Injectable, computed, inject, signal } from '@angular/core';
 
@@ -396,6 +396,7 @@ export class AdminService {
   private readonly dashboardRef = signal<AdminDashboardDto | null>(null);
   private readonly busyRef = signal(false);
   private readonly errorRef = signal('');
+  private readonly accessDeniedRef = signal(false);
   private readonly activePopupRef = signal<AdminPopupKind | null>(null);
   private readonly selectedReportedUserRef = signal<AdminReportedUserDto | null>(null);
   private readonly selectedReportRef = signal<AdminReportDto | null>(null);
@@ -404,6 +405,7 @@ export class AdminService {
   readonly dashboard = this.dashboardRef.asReadonly();
   readonly busy = this.busyRef.asReadonly();
   readonly error = this.errorRef.asReadonly();
+  readonly accessDenied = this.accessDeniedRef.asReadonly();
   readonly activePopup = this.activePopupRef.asReadonly();
   readonly selectedReportedUser = this.selectedReportedUserRef.asReadonly();
   readonly selectedReport = this.selectedReportRef.asReadonly();
@@ -448,8 +450,7 @@ export class AdminService {
       if (this.usesHttpAdminApi && !this.isFirebaseAdminMode) {
         this.sessionService.startDemoSession(adminId);
       }
-      await this.bootstrapAdmin(adminId);
-      return true;
+      return Boolean(await this.bootstrapAdmin(adminId));
     } catch {
       this.clearAdminSession();
       return false;
@@ -473,6 +474,7 @@ export class AdminService {
     }
     this.busyRef.set(true);
     this.errorRef.set('');
+    this.accessDeniedRef.set(false);
     try {
       const dashboard = this.usesHttpAdminApi
         ? await this.loadHttpDashboard(adminUserId)
@@ -486,6 +488,10 @@ export class AdminService {
       this.persistAdminSession(dashboard.activeAdmin.id);
       return dashboard;
     } catch (error) {
+      if (this.isAdminAccessDenied(error)) {
+        this.handleAdminAccessDenied();
+        return null;
+      }
       this.errorRef.set(this.errorMessage(error));
       return null;
     } finally {
@@ -1082,9 +1088,28 @@ export class AdminService {
     this.activePopupRef.set(null);
     this.selectedReportedUserRef.set(null);
     this.selectedReportRef.set(null);
+    this.accessDeniedRef.set(false);
     this.appCtx.setActiveUserId('');
     if (typeof localStorage !== 'undefined') {
       localStorage.removeItem(ADMIN_SESSION_STORAGE_KEY);
+    }
+  }
+
+  handleAdminAccessDenied(): void {
+    this.dashboardRef.set(null);
+    this.activePopupRef.set(null);
+    this.selectedReportedUserRef.set(null);
+    this.selectedReportRef.set(null);
+    this.accessDeniedRef.set(true);
+    this.errorRef.set('This account does not have admin access.');
+    if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem(ADMIN_SESSION_STORAGE_KEY);
+    }
+    const session = this.sessionService.currentSession();
+    if (session?.kind === 'firebase') {
+      this.appCtx.setActiveUserId(session.profile.id.trim());
+    } else {
+      this.appCtx.setActiveUserId('');
     }
   }
 
@@ -3961,10 +3986,20 @@ export class AdminService {
   }
 
   private errorMessage(error: unknown): string {
+    if (this.isAdminAccessDenied(error)) {
+      return 'This account does not have admin access.';
+    }
+    if (error instanceof HttpErrorResponse && typeof error.error?.message === 'string' && error.error.message.trim()) {
+      return error.error.message.trim();
+    }
     if (error instanceof Error && error.message.trim()) {
       return error.message;
     }
     return 'Admin workspace is unavailable.';
+  }
+
+  private isAdminAccessDenied(error: unknown): boolean {
+    return error instanceof HttpErrorResponse && (error.status === 401 || error.status === 403);
   }
 
   private withNotificationStorageFallback<T>(task: Promise<T>, fallback: T): Promise<T> {

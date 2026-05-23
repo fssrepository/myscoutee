@@ -39,7 +39,7 @@ export interface EventCheckoutSession {
   id: string;
   provider: string;
   mode: 'dummy' | 'gateway';
-  status: 'approved' | 'requires_action';
+  status: 'pending' | 'approved' | 'requires_action';
   amount: number;
   currency: string;
   paymentUrl?: string | null;

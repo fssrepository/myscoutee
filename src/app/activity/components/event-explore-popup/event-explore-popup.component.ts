@@ -1372,9 +1372,20 @@ export class EventExplorePopupComponent {
         bookingConfirmed: isAcceptedBooking,
         pendingReason
       });
-      await Promise.all([exitPromise, delayPromise, requestJoinPromise]);
+      const [joinedRecord] = await Promise.all([requestJoinPromise, exitPromise, delayPromise]);
+      if (!joinedRecord) {
+        throw new Error(this.eventExploreJoinFailureMessage(record));
+      }
+      const authoritativeMembers = this.sortMembersByActionTimeDesc(
+        await this.activityMembersService.queryMembersByOwner(this.eventMembersOwner(joinedRecord))
+      );
+      const displayMembers = authoritativeMembers.length > 0 ? authoritativeMembers : nextMembers;
+      this.activitiesContext.emitActivitiesEventSync(
+        this.buildActivitiesEventSyncPayload(joinedRecord, displayMembers, selection?.paymentSessionId ?? null)
+      );
       if (this.selectedMembersRecord?.id === record.id) {
-        this.selectedMembers = nextMembers;
+        this.selectedMembersRecord = joinedRecord;
+        this.selectedMembers = displayMembers;
       }
       this.cdr.markForCheck();
     } catch (error) {
@@ -1578,9 +1589,6 @@ export class EventExplorePopupComponent {
     selection?: AppTypes.EventCheckoutSelection | null
   ): boolean {
     if (this.isEventExploreSelectionFull(record, selection)) {
-      return false;
-    }
-    if (Boolean(selection?.paymentSessionId?.trim())) {
       return false;
     }
     if (record.ticketing !== true) {

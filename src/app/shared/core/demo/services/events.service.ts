@@ -322,12 +322,11 @@ export class DemoEventsService extends DemoRouteDelayService {
     } = {}
   ): Promise<DemoEventRecord | null> {
     await this.waitForRouteDelay(DemoEventsService.EVENTS_ROUTE);
-    const hasPendingCheckout = Boolean(options.paymentSessionId?.trim());
     const record = this.eventsRepository.requestJoin(
       userId,
       sourceId,
       options.slotSourceId ?? null,
-      options.bookingConfirmed === true && !hasPendingCheckout && options.pendingReason !== 'waitlist',
+      options.bookingConfirmed === true && options.pendingReason !== 'approval' && options.pendingReason !== 'waitlist',
       options.pendingReason === 'waitlist'
     );
     await this.memoryDb.flushToIndexedDb();
@@ -338,6 +337,22 @@ export class DemoEventsService extends DemoRouteDelayService {
     await this.waitForRouteDelay(DemoEventsService.EVENTS_CHECKOUT_ROUTE);
     return {
       id: `checkout-${Date.now()}`,
+      provider: 'dummy',
+      mode: 'dummy',
+      status: 'approved',
+      amount: Math.max(0, Number(request.totalAmount) || 0),
+      currency: request.currency?.trim() || 'USD',
+      paymentUrl: null
+    };
+  }
+
+  async payCheckoutSession(
+    request: EventCheckoutRequest,
+    paymentSessionId: string
+  ): Promise<EventCheckoutSession | null> {
+    await this.waitForRouteDelay(DemoEventsService.EVENTS_CHECKOUT_ROUTE);
+    return {
+      id: paymentSessionId.trim() || `checkout-${Date.now()}`,
       provider: 'dummy',
       mode: 'dummy',
       status: 'approved',

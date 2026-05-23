@@ -185,6 +185,10 @@ export class EventsService extends BaseRouteModeService {
     return this.eventsService.createCheckoutSession(request);
   }
 
+  payCheckoutSession(request: EventCheckoutRequest, paymentSessionId: string): Promise<EventCheckoutSession | null> {
+    return this.eventsService.payCheckoutSession(request, paymentSessionId);
+  }
+
   queryEventFeedbackStates(userId: string): Promise<EventFeedbackStateDto[]> {
     return this.eventsService.queryEventFeedbackStates(userId);
   }
