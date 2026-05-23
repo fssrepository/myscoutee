@@ -703,13 +703,30 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
   }
 
   protected previewSectionLayoutClass(section: { id?: string | null; contentHtml?: string | null; panelSpan?: string | null; panelLayout?: string | null }): string | null {
-    const span = this.sectionPanelSpan(section);
-    return span ? `help-editor-html-preview--${span}` : null;
+    const span = this.sectionPanelSpan(section) ?? 'span-1';
+    return `help-editor-html-preview--${span}`;
   }
 
   protected previewPanelSpanClass(section: { id?: string | null; contentHtml?: string | null; panelSpan?: string | null; panelLayout?: string | null }): string | null {
-    const span = this.sectionPanelSpan(section);
-    return span ? `help-editor-preview-section--${span}` : null;
+    const span = this.sectionPanelSpan(section) ?? 'span-1';
+    return `help-editor-preview-section--${span}`;
+  }
+
+  protected previewSectionContentHtml(section: {
+    title?: string | null;
+    contentHtml?: string | null;
+    imageUrls?: readonly string[] | null;
+  }): string {
+    const contentHtml = `${section.contentHtml ?? ''}`.trim();
+    if (/<img[\s>]/i.test(contentHtml)) {
+      return contentHtml;
+    }
+    const imageUrl = `${section.imageUrls?.[0] ?? ''}`.trim();
+    if (!imageUrl) {
+      return contentHtml;
+    }
+    const seededFigure = `<figure class="explanation-seeded-visual"><img src="${this.escapeHtmlAttribute(imageUrl)}" alt="${this.escapeHtmlAttribute(section.title ?? '')}" data-i18n-svg="true"></figure>`;
+    return `${contentHtml}${contentHtml ? '' : ''}${seededFigure}`;
   }
 
   protected setDraftSectionPanelSpan(

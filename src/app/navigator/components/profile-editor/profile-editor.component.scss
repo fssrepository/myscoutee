@@ -857,6 +857,10 @@
   min-height: 36px;
   height: 36px;
   margin-top: 0;
+  justify-content: flex-start;
+  gap: 0.34rem;
+  padding-left: 0.56rem;
+  padding-right: 0.48rem;
   padding-top: 0;
   padding-bottom: 0;
   box-sizing: border-box;
@@ -1975,8 +1979,9 @@
     min-height: 36px;
     margin-top: 0;
     justify-self: stretch;
-    padding-left: 0.34rem;
-    padding-right: 0.34rem;
+    justify-content: flex-start;
+    padding-left: 0.56rem;
+    padding-right: 0.48rem;
   }
 
   .basics-moved-grid .physique-field .profile-status-select-wrap {

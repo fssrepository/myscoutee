@@ -171,6 +171,7 @@ const EXPLAINABLE_SURFACES: ExplainableSurface[] = [
   { key: 'chats', label: 'Chats', icon: 'forum', owner: 'popup', order: 25, enabled: true },
   { key: 'profile.editor', label: 'Profile editor', icon: 'manage_accounts', owner: 'popup', order: 30, enabled: true },
   { key: 'profile.view', label: 'Profile details', icon: 'visibility', owner: 'popup', order: 40, enabled: true },
+  { key: 'contacts', label: 'Contacts', icon: 'contacts', owner: 'popup', order: 45, enabled: true },
   { key: 'assets', label: 'Assets', icon: 'inventory_2', owner: 'popup', order: 50, enabled: false },
   { key: 'assets.car', label: 'Assets · Car', icon: 'directions_car', owner: 'popup', order: 51, enabled: true },
   { key: 'assets.accommodation', label: 'Assets · Accommodation', icon: 'apartment', owner: 'popup', order: 52, enabled: true },
@@ -1447,6 +1448,54 @@ const EXPLANATION_CHATS_SECTIONS_HU: HelpCenterSection[] = [
   }
 ];
 
+const EXPLANATION_CONTACTS_SECTIONS: HelpCenterSection[] = [
+  {
+    id: 'contacts-list',
+    icon: 'contacts',
+    title: 'Your contact list',
+    blurb: 'This is your private quick-reach list.',
+    contentHtml: '<p>Use the search field to filter saved contacts by name. <strong>Create contact</strong> lets you pick a member and add that person to your own list.</p><p>An empty list only means you have not saved anyone here yet. It does not remove people from events, chats, ratings, or profiles.</p>'
+  },
+  {
+    id: 'contacts-card',
+    icon: 'badge',
+    title: 'Reading a contact card',
+    blurb: 'Each row shows who the person is and the shortcuts you saved.',
+    contentHtml: '<p>The avatar and name identify the person. The eye button opens the profile. The three-dot button opens the card actions: saved contact methods, Edit, and Delete.</p><p>The chips below the city are one-tap ways to reach that person, such as phone, email, WhatsApp, Telegram, Facebook, Instagram, LinkedIn, or a website, depending on what you saved.</p>'
+  },
+  {
+    id: 'contacts-private-methods',
+    icon: 'alternate_email',
+    title: 'Private contact methods',
+    blurb: 'Friends or trusted contacts can have richer reach details.',
+    contentHtml: '<p>Public profile fields stay separate from this list. When you know someone well, for example after becoming friends, you can keep more private ways to reach them here: email, phone, social handle, website, or another useful link.</p><p>Use <strong>Edit</strong> to add, change, or remove methods. These are your quick shortcuts for that saved contact; deleting the contact only removes it from this list.</p>'
+  }
+];
+
+const EXPLANATION_CONTACTS_SECTIONS_HU: HelpCenterSection[] = [
+  {
+    id: 'contacts-list',
+    icon: 'contacts',
+    title: 'Kapcsolatlista',
+    blurb: 'Ez a saját, gyorsan elérhető kapcsolatlistád.',
+    contentHtml: '<p>A keresővel név alapján szűrheted a mentett kapcsolatokat. A <strong>Kapcsolat létrehozása</strong> gombbal kiválasztasz egy tagot, és hozzáadod a saját listádhoz.</p><p>Az üres lista csak azt jelenti, hogy ide még nem mentettél senkit. Ettől az eseményekben, chatekben, értékelésekben és profilokon semmi nem tűnik el.</p>'
+  },
+  {
+    id: 'contacts-card',
+    icon: 'badge',
+    title: 'Egy kapcsolatkártya',
+    blurb: 'A sor megmutatja, ki az ember, és milyen gyors eléréseket mentettél hozzá.',
+    contentHtml: '<p>Az avatar és a név azonosítja az embert. A szem gomb megnyitja a profilt. A hárompontos gomb nyitja a kártyaműveleteket: mentett elérési módok, szerkesztés és törlés.</p><p>A város alatti chipek egyérintéses elérések, például telefon, email, WhatsApp, Telegram, Facebook, Instagram, LinkedIn vagy weboldal, attól függően, mit mentettél.</p>'
+  },
+  {
+    id: 'contacts-private-methods',
+    icon: 'alternate_email',
+    title: 'Privátabb elérési módok',
+    blurb: 'Barátokhoz vagy megbízható kapcsolatokhoz több praktikus adatot is menthetsz.',
+    contentHtml: '<p>A nyilvános profilmezők ettől külön maradnak. Ha valakit jobban ismersz, például barátok vagytok, itt tarthatsz privátabb elérési módokat: emailt, telefonszámot, közösségi profilt, weboldalt vagy más hasznos linket.</p><p>A <strong>Szerkesztés</strong> alatt adhatsz hozzá, módosíthatsz vagy törölhetsz módszereket. Ezek a saját gyorsgombjaid ehhez a mentett kapcsolathoz; a kapcsolat törlése csak ebből a listából veszi ki.</p>'
+  }
+];
+
 const EXPLANATION_ASSETS_SECTIONS: HelpCenterSection[] = [
   {
     id: 'assets-entry',
@@ -1593,14 +1642,14 @@ const EXPLANATION_ASSETS_TICKETS_SECTIONS: HelpCenterSection[] = [
     icon: 'qr_code_2',
     title: 'Your tickets',
     blurb: 'Tickets are event entry records, not editable owned assets.',
-    contentHtml: '<p>The <strong>Ticket</strong> tab is separate from Car, Accommodation, and Supplies. It lists ticketed events and entry codes connected to you.</p><p>Use <strong>Upcoming</strong> and <strong>Past</strong> to change the list. The <strong>Scan Ticket</strong> button opens the scanner for QR check-in.</p>'
+    contentHtml: '<p>The <strong>Ticket</strong> tab is separate from Car, Accommodation, and Supplies. It lists ticketed events and entry codes connected to you.</p><p>Use <strong>Upcoming</strong> and <strong>Past</strong> to change the list. The <strong>Scan Ticket</strong> button opens scanner mode for reading another person&rsquo;s QR code at check-in.</p>'
   },
   {
     id: 'assets-ticket-card',
     icon: 'confirmation_number',
     title: 'Reading a ticket card',
     blurb: 'A ticket card points back to an event.',
-    contentHtml: '<p>The card shows the event image, title, date, role, and ticket context. The QR badge opens the code for that ticket.</p><p>You do not edit this like a car or supply. Its data comes from the event, booking, member role, and ticketing/check-in setup.</p>'
+    contentHtml: '<p>The card shows the event image, title, date, role, and ticket context. Tap the QR badge in the top-right corner to open your own code for that ticket.</p><p>You do not edit this like a car or supply. Its data comes from the event, booking, member role, and ticketing/check-in setup.</p>'
   },
   {
     id: 'assets-ticket-scanner',
@@ -1671,14 +1720,14 @@ const EXPLANATION_ASSETS_TICKETS_SECTIONS_HU: HelpCenterSection[] = [
     icon: 'qr_code_2',
     title: 'Saját jegyek',
     blurb: 'A jegy belépési rekord, nem szerkeszthető saját tárgyi eszköz.',
-    contentHtml: '<p>A <strong>Jegy</strong> tab külön van az Autó, Ingatlan és Kellékek típusoktól. Jegyes eseményeket és hozzád kapcsolódó belépőkódokat listáz.</p><p>A <strong>Közelgő</strong> és <strong>Korábbi</strong> a listát váltja. A <strong>Scan Ticket</strong> gomb megnyitja a QR beléptető szkennert.</p>'
+    contentHtml: '<p>A <strong>Jegy</strong> tab külön van az Autó, Ingatlan és Kellékek típusoktól. Jegyes eseményeket és hozzád kapcsolódó belépőkódokat listáz.</p><p>A <strong>Közelgő</strong> és <strong>Korábbi</strong> a listát váltja. A <strong>Scan Ticket</strong> gomb szkenner módot nyit, amikor más ember QR kódját kell beolvasni beléptetésnél.</p>'
   },
   {
     id: 'assets-ticket-card',
     icon: 'confirmation_number',
     title: 'Egy jegykártya',
     blurb: 'A jegykártya egy eseményre mutat vissza.',
-    contentHtml: '<p>A kártya eseményképet, címet, dátumot, szerepet és jegykörnyezetet mutat. A QR jelvény az adott jegykódot nyitja meg.</p><p>Ezt nem úgy szerkeszted, mint egy autót vagy kelléket. Az adatai az eseményből, foglalásból, tagszerepből és ticketing/check-in beállításból jönnek.</p>'
+    contentHtml: '<p>A kártya eseményképet, címet, dátumot, szerepet és jegykörnyezetet mutat. A jobb felső QR jelvényre koppintva a saját jegykódod nyílik meg.</p><p>Ezt nem úgy szerkeszted, mint egy autót vagy kelléket. Az adatai az eseményből, foglalásból, tagszerepből és ticketing/check-in beállításból jönnek.</p>'
   },
   {
     id: 'assets-ticket-scanner',
@@ -1780,21 +1829,36 @@ const EXPLANATION_EVENT_EDITOR_SECTIONS_HU: HelpCenterSection[] = [
 ];
 
 const EXPLANATION_IMAGE_SLOT_LIMIT = 8;
+const SEEDED_EXPLANATION_IMAGE_REF_PREFIX = 'help-seeded-image:';
+const SEEDED_EXPLANATION_IMAGE_ASSET_ROOT = '/assets/help-center/explanations';
 const EXPLANATION_SECTION_SPANS: Record<string, HelpCenterSection['panelSpan']> = {
   'affinity-network': 'span-2',
+  'activity-event-entry': 'span-2',
+  'activity-event-actions': 'span-2',
+  'activity-event-hosting': 'span-2',
   'activity-chat-message-window': 'span-2',
+  'contacts-list': 'span-2',
+  'contacts-card': 'span-2',
+  'contacts-private-methods': 'span-2',
+  'assets-entry': 'span-2',
+  'assets-card': 'span-2',
   'assets-editor': 'span-2',
   'assets-requests': 'span-2',
+  'assets-scope': 'span-2',
   'event-editor-main': 'span-2',
   'event-editor-subevents': 'span-2'
 };
 
-function withSeededExplanationImages(_contextKey: string, sections: HelpCenterSection[], _lang: string): HelpCenterSection[] {
-  return sections.map(section => ({
-    ...section,
-    panelSpan: section.panelSpan ?? EXPLANATION_SECTION_SPANS[section.id],
-    imageUrls: uniqueHelpImageUrls(section.imageUrls ?? [])
-  }));
+function withSeededExplanationImages(contextKey: string, sections: HelpCenterSection[], lang: string): HelpCenterSection[] {
+  return sections.map(section => {
+    const seededImageUrl = seededExplanationImageRef(contextKey, lang, section.id);
+    return {
+      ...section,
+      panelSpan: section.panelSpan ?? EXPLANATION_SECTION_SPANS[section.id],
+      contentHtml: withSeededExplanationImageHtml(section.contentHtml, seededImageUrl, section.title),
+      imageUrls: uniqueHelpImageUrls([seededImageUrl, ...(section.imageUrls ?? [])])
+    };
+  });
 }
 
 function uniqueHelpImageUrls(imageUrls: readonly string[]): string[] {
@@ -1812,6 +1876,40 @@ function uniqueHelpImageUrls(imageUrls: readonly string[]): string[] {
     }
   }
   return result;
+}
+
+function seededExplanationImageRef(contextKey: string, lang: string, sectionId: string): string {
+  return `${SEEDED_EXPLANATION_IMAGE_REF_PREFIX}${contentLangForSeed(lang)}/${seededExplanationPathSegment(contextKey)}/${seededExplanationPathSegment(sectionId)}`;
+}
+
+function withSeededExplanationImageHtml(contentHtml: string | null | undefined, imageUrl: string, title: string | null | undefined): string {
+  const html = `${contentHtml ?? ''}`.trim();
+  const nextFigure = `<figure class="explanation-seeded-visual"><img src="${imageUrl}" alt="${escapeHtmlAttribute(title ?? '')}" data-i18n-svg="true"></figure>`;
+  const withoutExistingSeededFigure = html.replace(/<figure\b[^>]*\bexplanation-seeded-visual\b[^>]*>[\s\S]*?<\/figure>/gi, '').trim();
+  if (/<img[\s>]/i.test(withoutExistingSeededFigure)) {
+    return withoutExistingSeededFigure;
+  }
+  return `${withoutExistingSeededFigure}${withoutExistingSeededFigure ? '' : ''}${nextFigure}`;
+}
+
+function seededExplanationPathSegment(value: string | null | undefined): string {
+  return `${value ?? ''}`
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '') || 'default';
+}
+
+function contentLangForSeed(lang: string | null | undefined): string {
+  return `${lang ?? ''}`.trim().toLowerCase().split('-')[0] === 'hu' ? 'hu' : 'en';
+}
+
+function escapeHtmlAttribute(value: string): string {
+  return `${value ?? ''}`
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
 }
 
 const DEFAULT_EXPLANATION_HOME_REVISION: HelpCenterRevision = {
@@ -2015,6 +2113,25 @@ const DEFAULT_EXPLANATION_CHATS_REVISION_HU: HelpCenterRevision = {
   sections: withSeededExplanationImages('chats', EXPLANATION_CHATS_SECTIONS_HU, 'hu')
 };
 
+const DEFAULT_EXPLANATION_CONTACTS_REVISION: HelpCenterRevision = {
+  ...DEFAULT_EXPLANATION_HOME_REVISION,
+  id: 'explanation-contacts-default-v1',
+  contextKey: 'contacts',
+  title: 'Contacts explanation',
+  summary: 'Saved contacts, cards, private reach methods, and editing',
+  sections: withSeededExplanationImages('contacts', EXPLANATION_CONTACTS_SECTIONS, 'en')
+};
+
+const DEFAULT_EXPLANATION_CONTACTS_REVISION_HU: HelpCenterRevision = {
+  ...DEFAULT_EXPLANATION_CONTACTS_REVISION,
+  id: 'explanation-contacts-default-hu-v1',
+  lang: 'hu',
+  languageLabel: 'Magyar',
+  title: 'Kapcsolatok magyarázat',
+  summary: 'Mentett kapcsolatok, kártyák, privátabb elérések és szerkesztés',
+  sections: withSeededExplanationImages('contacts', EXPLANATION_CONTACTS_SECTIONS_HU, 'hu')
+};
+
 export const APP_STATIC_DATA = {
   vibeCategories: VIBE_CATEGORIES,
   hostedEventTypes: HOSTED_EVENT_TYPES,
@@ -2110,6 +2227,10 @@ export const APP_STATIC_DATA = {
       en: DEFAULT_EXPLANATION_CHATS_REVISION,
       hu: DEFAULT_EXPLANATION_CHATS_REVISION_HU
     },
+    contacts: {
+      en: DEFAULT_EXPLANATION_CONTACTS_REVISION,
+      hu: DEFAULT_EXPLANATION_CONTACTS_REVISION_HU
+    },
     assets: {
       en: DEFAULT_EXPLANATION_ASSETS_REVISION,
       hu: DEFAULT_EXPLANATION_ASSETS_REVISION_HU
@@ -2138,5 +2259,7 @@ export const APP_STATIC_DATA = {
       en: DEFAULT_EXPLANATION_EVENT_EDITOR_REVISION,
       hu: DEFAULT_EXPLANATION_EVENT_EDITOR_REVISION_HU
     }
-  }
+  },
+  seededExplanationImageRefPrefix: SEEDED_EXPLANATION_IMAGE_REF_PREFIX,
+  seededExplanationImageAssetRoot: SEEDED_EXPLANATION_IMAGE_ASSET_ROOT
 };

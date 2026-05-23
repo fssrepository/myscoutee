@@ -26,7 +26,7 @@
                 @if (section.blurb) {
                   <p data-i18n-ignore>{{ section.blurb }}</p>
                 }
-                <div class="explanation-popup__html" appLazyBgImage [appLazyHtmlImages]="true" data-i18n-ignore [innerHTML]="section.contentHtml"></div>
+                <div class="explanation-popup__html" appLazyBgImage [appLazyHtmlImages]="true" data-i18n-ignore [innerHTML]="sectionContentHtml(section)"></div>
                 @if (shouldShowGeneratedVisual(section)) {
                   <div class="explanation-popup__item-visual" aria-hidden="true">
                     @switch (section.id) {

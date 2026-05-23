@@ -1,4 +1,6 @@
-import { AfterViewInit, Directive, ElementRef, Input, OnChanges, OnDestroy, Renderer2, SimpleChanges } from '@angular/core';
+import { AfterViewInit, Directive, ElementRef, Input, OnChanges, OnDestroy, Renderer2, SimpleChanges, effect, inject } from '@angular/core';
+
+import { I18nService } from '../../i18n';
 
 @Directive({
   selector: '[appLazyBgImage]',
@@ -10,6 +12,8 @@ export class LazyBgImageDirective implements AfterViewInit, OnChanges, OnDestroy
   @Input() appLazyImageFallback: string | null = null;
 
   private static readonly PRELOAD_ROOT_MARGIN = '1200px 0px';
+  private static readonly SEEDED_IMAGE_REF_PREFIX = 'help-seeded-image:';
+  private static readonly SEEDED_IMAGE_ASSET_ROOT = '/assets/help-center/explanations';
   private static readonly DEFAULT_IMAGE_FALLBACK_URL = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 540">
   <rect width="960" height="540" rx="36" fill="#edf4fd"/>
@@ -22,7 +26,11 @@ export class LazyBgImageDirective implements AfterViewInit, OnChanges, OnDestroy
 `)}`;
   private static readonly loadedUrls = new Set<string>();
   private static readonly loadingPromises = new Map<string, Promise<boolean>>();
+  private static readonly localizedSvgUrls = new Map<string, string>();
+  private static readonly localizedSvgPromises = new Map<string, Promise<string | null>>();
+  private static readonly nonSvgUrls = new Set<string>();
 
+  private readonly i18n = inject(I18nService);
   private readonly loadingClass = 'lazy-bg-loading';
   private readonly loadedClass = 'lazy-bg-loaded';
   private readonly errorClass = 'lazy-bg-error';
@@ -32,6 +40,17 @@ export class LazyBgImageDirective implements AfterViewInit, OnChanges, OnDestroy
   private isViewReady = false;
   private currentUrl: string | null = null;
   private appliedUrl: string | null = null;
+  private readonly i18nRevisionEffect = effect(() => {
+    this.i18n.revision();
+    if (!this.isViewReady) {
+      return;
+    }
+    this.refreshHtmlImages();
+    if (this.shouldManageBackground() && this.currentUrl) {
+      this.hasLoaded = false;
+      this.setupObserver();
+    }
+  });
   private readonly htmlImageLoadHandler = (event: Event) => {
     const image = event.target instanceof HTMLImageElement ? event.target : null;
     if (!image) {
@@ -77,6 +96,7 @@ export class LazyBgImageDirective implements AfterViewInit, OnChanges, OnDestroy
   }
 
   ngOnDestroy(): void {
+    this.i18nRevisionEffect.destroy();
     this.disconnectObserver();
     this.disconnectHtmlImageObserver();
     this.detachHtmlImageHandlers();
@@ -103,24 +123,25 @@ export class LazyBgImageDirective implements AfterViewInit, OnChanges, OnDestroy
       return;
     }
 
-    if (LazyBgImageDirective.loadedUrls.has(url)) {
-      this.applyBackground(url);
+    const renderedUrl = this.renderedImageUrl(url);
+    if (LazyBgImageDirective.loadedUrls.has(renderedUrl)) {
+      this.applyBackground(renderedUrl);
       return;
     }
 
-    if (this.hasLoaded && this.appliedUrl === url) {
+    if (this.hasLoaded && this.appliedUrl === renderedUrl) {
       this.renderer.removeClass(this.elementRef.nativeElement, this.loadingClass);
       this.renderer.addClass(this.elementRef.nativeElement, this.loadedClass);
       return;
     }
 
     if (typeof IntersectionObserver === 'undefined') {
-      this.preloadUrl(url).then(loaded => {
+      this.loadRenderableUrl(url).then(loadedUrl => {
         if (this.currentUrl !== url) {
           return;
         }
-        if (loaded) {
-          this.applyBackground(url);
+        if (loadedUrl) {
+          this.applyBackground(loadedUrl);
           return;
         }
         this.applyBackgroundFallback();
@@ -133,12 +154,12 @@ export class LazyBgImageDirective implements AfterViewInit, OnChanges, OnDestroy
         if (!entries.some(entry => entry.isIntersecting)) {
           return;
         }
-        this.preloadUrl(url).then(loaded => {
+        this.loadRenderableUrl(url).then(loadedUrl => {
           if (this.currentUrl !== url) {
             return;
           }
-          if (loaded) {
-            this.applyBackground(url);
+          if (loadedUrl) {
+            this.applyBackground(loadedUrl);
             return;
           }
           this.applyBackgroundFallback();
@@ -244,6 +265,11 @@ export class LazyBgImageDirective implements AfterViewInit, OnChanges, OnDestroy
         this.applyHtmlImageFallback(image);
         continue;
       }
+      if (this.localizeHtmlSvgImage(image, src)) {
+        image.classList.add('lazy-image-loading');
+        image.classList.remove('lazy-image-loaded');
+        continue;
+      }
       if (image.dataset['lazyImageManagedSrc'] !== src) {
         image.dataset['lazyImageManagedSrc'] = src;
         if (src !== this.imageFallbackUrl()) {
@@ -279,6 +305,38 @@ export class LazyBgImageDirective implements AfterViewInit, OnChanges, OnDestroy
     image.src = fallbackUrl;
   }
 
+  private localizeHtmlSvgImage(image: HTMLImageElement, src: string): boolean {
+    const originalSrc = image.dataset['lazyImageSvgOriginalSrc'] || src;
+    if (this.isGeneratedSvgObjectUrl(src)) {
+      const revision = `${this.i18n.revision()}`;
+      if (image.dataset['lazyImageSvgRevision'] === revision) {
+        return false;
+      }
+    }
+    if (!this.shouldTrySvgLocalization(image, originalSrc)) {
+      return false;
+    }
+    const revision = `${this.i18n.revision()}`;
+    if (image.dataset['lazyImageSvgOriginalSrc'] === originalSrc
+      && image.dataset['lazyImageSvgRevision'] === revision
+      && this.isGeneratedSvgObjectUrl(src)) {
+      return false;
+    }
+    image.dataset['lazyImageSvgOriginalSrc'] = originalSrc;
+    image.dataset['lazyImageSvgRevision'] = revision;
+    this.prepareRenderableImageUrl(originalSrc, this.forceSvgLocalization(image)).then(localizedUrl => {
+      if (!localizedUrl || image.dataset['lazyImageSvgOriginalSrc'] !== originalSrc) {
+        return;
+      }
+      if (localizedUrl === image.getAttribute('src')) {
+        return;
+      }
+      image.dataset['lazyImageManagedSrc'] = localizedUrl;
+      image.src = localizedUrl;
+    });
+    return true;
+  }
+
   private detachHtmlImageHandlers(): void {
     for (const image of this.htmlImages()) {
       image.removeEventListener('load', this.htmlImageLoadHandler);
@@ -298,6 +356,174 @@ export class LazyBgImageDirective implements AfterViewInit, OnChanges, OnDestroy
   private normalizeUrl(url: string | null | undefined): string | null {
     const trimmed = url?.trim();
     return trimmed ? trimmed : null;
+  }
+
+  private async loadRenderableUrl(url: string): Promise<string | null> {
+    const renderedUrl = await this.prepareRenderableImageUrl(url);
+    const finalUrl = renderedUrl ?? this.resolveImageSourceUrl(url);
+    return await this.preloadUrl(finalUrl) ? finalUrl : null;
+  }
+
+  private renderedImageUrl(sourceUrl: string): string {
+    const resolvedUrl = this.resolveImageSourceUrl(sourceUrl);
+    return LazyBgImageDirective.localizedSvgUrls.get(this.localizedSvgCacheKey(resolvedUrl)) ?? resolvedUrl;
+  }
+
+  private async prepareRenderableImageUrl(url: string, forceSvg = false): Promise<string | null> {
+    const normalizedUrl = this.normalizeUrl(this.resolveImageSourceUrl(url));
+    if (!normalizedUrl || (!forceSvg && !this.maybeSvgUrl(normalizedUrl))) {
+      return normalizedUrl;
+    }
+    if (!forceSvg && LazyBgImageDirective.nonSvgUrls.has(normalizedUrl)) {
+      return normalizedUrl;
+    }
+    const cacheKey = this.localizedSvgCacheKey(normalizedUrl);
+    const cached = LazyBgImageDirective.localizedSvgUrls.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+    const existingPromise = LazyBgImageDirective.localizedSvgPromises.get(cacheKey);
+    if (existingPromise) {
+      return await existingPromise;
+    }
+    const promise = this.buildLocalizedSvgObjectUrl(normalizedUrl, forceSvg);
+    LazyBgImageDirective.localizedSvgPromises.set(cacheKey, promise);
+    const localizedUrl = await promise;
+    LazyBgImageDirective.localizedSvgPromises.delete(cacheKey);
+    if (localizedUrl) {
+      LazyBgImageDirective.localizedSvgUrls.set(cacheKey, localizedUrl);
+      return localizedUrl;
+    }
+    if (!forceSvg) {
+      LazyBgImageDirective.nonSvgUrls.add(normalizedUrl);
+    }
+    return normalizedUrl;
+  }
+
+  private async buildLocalizedSvgObjectUrl(url: string, forceSvg: boolean): Promise<string | null> {
+    if (typeof fetch === 'undefined' || typeof Blob === 'undefined' || typeof URL === 'undefined' || !URL.createObjectURL) {
+      return null;
+    }
+    try {
+      const response = await fetch(url);
+      if (!response.ok && response.status !== 0) {
+        return null;
+      }
+      const contentType = response.headers.get('content-type')?.toLowerCase() ?? '';
+      const svgText = await response.text();
+      if (!forceSvg && !contentType.includes('image/svg+xml') && !this.looksLikeSvg(svgText)) {
+        return null;
+      }
+      const localizedSvg = this.localizeSvg(svgText);
+      if (!localizedSvg) {
+        return null;
+      }
+      return URL.createObjectURL(new Blob([localizedSvg], { type: 'image/svg+xml' }));
+    } catch {
+      return null;
+    }
+  }
+
+  private localizeSvg(svgText: string): string | null {
+    if (!this.looksLikeSvg(svgText) || typeof DOMParser === 'undefined' || typeof XMLSerializer === 'undefined') {
+      return null;
+    }
+    try {
+      const document = new DOMParser().parseFromString(svgText, 'image/svg+xml');
+      const svg = document.documentElement;
+      if (!svg || svg.tagName.toLowerCase() !== 'svg') {
+        return null;
+      }
+      this.sanitizeSvg(svg);
+      let changed = false;
+      svg.querySelectorAll<SVGElement>('[data-i18n-key]').forEach(element => {
+        const key = element.getAttribute('data-i18n-key')?.trim() ?? '';
+        if (!key) {
+          return;
+        }
+        const fallback = element.textContent?.trim() ?? '';
+        const translated = this.i18n.translate(key, fallback);
+        if (translated && translated !== element.textContent) {
+          element.textContent = translated;
+          changed = true;
+        }
+      });
+      svg.querySelectorAll<SVGElement>('[data-i18n-title-key]').forEach(element => {
+        const key = element.getAttribute('data-i18n-title-key')?.trim() ?? '';
+        if (!key) {
+          return;
+        }
+        const translated = this.i18n.translate(key, element.getAttribute('title') ?? '');
+        if (translated) {
+          element.setAttribute('title', translated);
+          changed = true;
+        }
+      });
+      return changed ? new XMLSerializer().serializeToString(document) : svgText;
+    } catch {
+      return null;
+    }
+  }
+
+  private sanitizeSvg(svg: Element): void {
+    svg.querySelectorAll('script, foreignObject').forEach(element => element.remove());
+    svg.querySelectorAll('*').forEach(element => {
+      for (const attribute of Array.from(element.attributes)) {
+        const name = attribute.name.toLowerCase();
+        const value = attribute.value.trim().toLowerCase();
+        if (name.startsWith('on') || ((name === 'href' || name.endsWith(':href')) && value.startsWith('javascript:'))) {
+          element.removeAttribute(attribute.name);
+        }
+      }
+    });
+  }
+
+  private shouldTrySvgLocalization(image: HTMLImageElement, url: string): boolean {
+    return this.forceSvgLocalization(image) || this.maybeSvgUrl(url) || this.isGeneratedSvgObjectUrl(url);
+  }
+
+  private forceSvgLocalization(image: HTMLImageElement): boolean {
+    return image.dataset['i18nSvg'] === 'true' || image.getAttribute('data-i18n-svg') === 'true';
+  }
+
+  private maybeSvgUrl(url: string): boolean {
+    const normalized = this.resolveImageSourceUrl(url).trim().toLowerCase();
+    return normalized.startsWith('data:image/svg+xml')
+      || normalized.includes('image/svg+xml')
+      || /\.svg(?:[?#]|$)/i.test(normalized)
+      || normalized.startsWith('blob:');
+  }
+
+  private isGeneratedSvgObjectUrl(url: string): boolean {
+    return url.startsWith('blob:') && Array.from(LazyBgImageDirective.localizedSvgUrls.values()).includes(url);
+  }
+
+  private looksLikeSvg(text: string): boolean {
+    return /^\s*(?:<\?xml[^>]*>\s*)?<svg[\s>]/i.test(text);
+  }
+
+  private localizedSvgCacheKey(url: string): string {
+    return `${this.i18n.revision()}::${url}`;
+  }
+
+  private resolveImageSourceUrl(url: string): string {
+    const rawUrl = this.normalizeUrl(url) ?? '';
+    const normalized = rawUrl.startsWith('unsafe:') ? rawUrl.slice('unsafe:'.length) : rawUrl;
+    if (!normalized.startsWith(LazyBgImageDirective.SEEDED_IMAGE_REF_PREFIX)) {
+      return normalized;
+    }
+    const ref = normalized.slice(LazyBgImageDirective.SEEDED_IMAGE_REF_PREFIX.length);
+    const parts = ref.split('/').map(part => this.seededImagePathSegment(part)).filter(Boolean);
+    if (parts.length < 3) {
+      return normalized;
+    }
+    const [lang, context, section] = parts;
+    return `${LazyBgImageDirective.SEEDED_IMAGE_ASSET_ROOT}/${lang}/${context}/${section}.svg`;
+  }
+
+  private seededImagePathSegment(value: string | null | undefined): string {
+    const normalized = `${value ?? ''}`.trim().toLowerCase();
+    return /^[a-z0-9-]+$/.test(normalized) ? normalized : '';
   }
 
   private htmlImagesEnabled(): boolean {

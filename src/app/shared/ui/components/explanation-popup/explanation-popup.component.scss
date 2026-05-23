@@ -3520,20 +3520,19 @@
 }
 
 :host ::ng-deep .explanation-popup__html :where(figure) {
-  margin: 0.48rem 0 0;
-}
-
-:host ::ng-deep .explanation-popup__html :where(.explanation-seeded-visual) {
-  display: none;
+  margin: 0.58rem 0 0;
+  display: flex;
+  justify-content: center;
 }
 
 :host ::ng-deep .explanation-popup__html :where(img) {
   display: block;
-  width: auto;
+  width: 100%;
+  height: auto;
   max-width: 100%;
-  max-height: 148px;
+  max-height: 280px;
   object-fit: contain;
-  margin: 0.48rem auto 0;
+  margin: 0.58rem auto 0;
   border: 1px solid rgba(40, 80, 128, 0.14);
   border-radius: 10px;
   background: #f5f8fc;
@@ -3543,7 +3542,14 @@
 :host ::ng-deep .explanation-popup__item--span-2 .explanation-popup__html :where(img),
 :host ::ng-deep .explanation-popup__item--span-3 .explanation-popup__html :where(img) {
   width: 100%;
-  max-height: 220px;
+}
+
+:host ::ng-deep .explanation-popup__item--span-2 .explanation-popup__html :where(img) {
+  max-height: 300px;
+}
+
+:host ::ng-deep .explanation-popup__item--span-3 .explanation-popup__html :where(img) {
+  max-height: 340px;
 }
 
 @media (max-width: 720px) {

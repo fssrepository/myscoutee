@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#eefbf7"/>
+      <stop offset="1" stop-color="#f8fbff"/>
+    </linearGradient>
+  </defs>
+  <rect width="960" height="540" rx="30" fill="url(#bg)"/>
+  <rect x="6" y="6" width="948" height="528" rx="26" fill="#ffffff" opacity="0.82" stroke="#b8ddcf" stroke-width="3"/>
+  <g transform="matrix(1.16 0 0 1.16 -70 -78)">
+    <rect x="94" y="112" width="772" height="356" rx="24" fill="#f8fcff" stroke="#c7dbed" stroke-width="3"/>
+  <circle cx="146" cy="172" r="38" fill="#4f7fe8"/><text x="146" y="184" text-anchor="middle" font-family="Arial" font-size="24" font-weight="900" fill="#fff">NE</text>
+  <text x="204" y="162" font-family="Arial" font-size="29" font-weight="900" fill="#1d3354">Edit Contact</text>
+  <text x="204" y="196" font-family="Arial" font-size="22" font-weight="850" fill="#52677f">Reach methods</text>
+  <rect x="554" y="144" width="260" height="46" rx="23" fill="#eaf4ff" stroke="#a8c8ef" stroke-width="3"/>
+  <text x="684" y="176" text-anchor="middle" font-family="Arial, sans-serif" font-size="27" font-weight="900" fill="#1f4778">Add method</text>
+  <rect x="134" y="250" width="692" height="56" rx="16" fill="#fff" stroke="#d6e2f0" stroke-width="3"/>
+  <rect x="152" y="262" width="142" height="32" rx="16" fill="#e8f8ef" stroke="#c7d9ef" stroke-width="2"/>
+  <text x="223" y="284" text-anchor="middle" font-family="Arial" font-size="18" font-weight="900" fill="#1f4778">Email</text>
+  <text x="328" y="286" font-family="Arial" font-size="21" font-weight="850" fill="#1d3354">eszter@example.com</text>
+  <circle cx="782" cy="278" r="18" fill="#fdecef" stroke="#eaa7ad" stroke-width="2"/><text x="782" y="286" text-anchor="middle" font-family="Arial" font-size="24" font-weight="900" fill="#9b2f38">×</text>
+  <rect x="134" y="328" width="692" height="56" rx="16" fill="#fff" stroke="#d6e2f0" stroke-width="3"/>
+  <rect x="152" y="340" width="142" height="32" rx="16" fill="#edf6ff" stroke="#c7d9ef" stroke-width="2"/>
+  <text x="223" y="362" text-anchor="middle" font-family="Arial" font-size="18" font-weight="900" fill="#1f4778">Phone</text>
+  <text x="328" y="364" font-family="Arial" font-size="21" font-weight="850" fill="#1d3354">+36 20 555 0123</text>
+  <circle cx="782" cy="356" r="18" fill="#fdecef" stroke="#eaa7ad" stroke-width="2"/><text x="782" y="364" text-anchor="middle" font-family="Arial" font-size="24" font-weight="900" fill="#9b2f38">×</text>
+  <rect x="610" y="414" width="160" height="46" rx="23" fill="#e8f8ef" stroke="#9ad5b0" stroke-width="3"/>
+  <text x="690" y="446" text-anchor="middle" font-family="Arial, sans-serif" font-size="27" font-weight="900" fill="#17633b">Save</text>
+  </g>
+</svg>

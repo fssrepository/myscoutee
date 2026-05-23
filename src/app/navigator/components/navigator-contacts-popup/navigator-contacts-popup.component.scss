@@ -8,6 +8,14 @@
   --navigator-contacts-form-z-index: 12420;
 }
 
+::ng-deep .cdk-overlay-container:has(.navigator-contact-method-panel) {
+  z-index: 12490;
+}
+
+::ng-deep .cdk-overlay-pane:has(.navigator-contact-method-panel) {
+  z-index: 12491;
+}
+
 .navigator-contacts-popup-shell {
   z-index: var(--navigator-contacts-shell-z-index);
 }

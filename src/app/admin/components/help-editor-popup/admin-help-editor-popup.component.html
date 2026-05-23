@@ -459,7 +459,7 @@
                                             appLazyBgImage
                                             [appLazyHtmlImages]="true"
                                             data-i18n-ignore
-                                            [innerHTML]="section.contentHtml"
+                                            [innerHTML]="previewSectionContentHtml(section)"
                                           ></div>
                                         </div>
                                       }
@@ -575,17 +575,23 @@
                                 </button>
                                 @if (openPreviewSectionId === section.id) {
                                   <div class="help-editor-preview-section-body">
-                                    @if (section.blurb) {
-                                      <p class="help-editor-preview-lead" data-i18n-ignore>{{ section.blurb }}</p>
-                                    }
                                     <div
-                                      class="help-editor-html-preview"
-                                      [ngClass]="previewSectionLayoutClass(section)"
-                                      appLazyBgImage
-                                      [appLazyHtmlImages]="true"
-                                      data-i18n-ignore
-                                      [innerHTML]="section.contentHtml"
-                                    ></div>
+                                      class="help-editor-preview-card"
+                                      [ngClass]="previewPanelSpanClass(section)"
+                                      >
+                                      <h3 class="help-editor-popup-preview-title" data-i18n-ignore>{{ section.title || defaultUntitledContentSectionTitle() }}</h3>
+                                      @if (section.blurb) {
+                                        <p class="help-editor-popup-preview-blurb" data-i18n-ignore>{{ section.blurb }}</p>
+                                      }
+                                      <div
+                                        class="help-editor-html-preview"
+                                        [ngClass]="previewSectionLayoutClass(section)"
+                                        appLazyBgImage
+                                        [appLazyHtmlImages]="true"
+                                        data-i18n-ignore
+                                        [innerHTML]="previewSectionContentHtml(section)"
+                                      ></div>
+                                    </div>
                                   </div>
                                 }
                               </article>

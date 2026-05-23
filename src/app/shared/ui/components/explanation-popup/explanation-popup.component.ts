@@ -54,7 +54,20 @@ export class ExplanationPopupComponent {
   }
 
   protected shouldShowGeneratedVisual(section: HelpCenterSection): boolean {
-    return !/<img[\s>]/i.test(this.withoutSeededVisuals(section.contentHtml ?? ''));
+    return !/<img[\s>]/i.test(this.sectionContentHtml(section));
+  }
+
+  protected sectionContentHtml(section: HelpCenterSection): string {
+    const contentHtml = `${section.contentHtml ?? ''}`.trim();
+    if (/<img[\s>]/i.test(contentHtml)) {
+      return contentHtml;
+    }
+    const imageUrl = this.primarySectionImageUrl(section);
+    if (!imageUrl) {
+      return contentHtml;
+    }
+    const seededFigure = `<figure class="explanation-seeded-visual"><img src="${this.escapeHtmlAttribute(imageUrl)}" alt="${this.escapeHtmlAttribute(section.title ?? '')}" data-i18n-svg="true"></figure>`;
+    return `${contentHtml}${contentHtml ? '' : ''}${seededFigure}`;
   }
 
   protected sectionLayoutClass(section: HelpCenterSection): string | null {
@@ -98,8 +111,16 @@ export class ExplanationPopupComponent {
     return null;
   }
 
-  private withoutSeededVisuals(contentHtml: string): string {
-    return `${contentHtml ?? ''}`.replace(/<figure\b[^>]*\bexplanation-seeded-visual\b[^>]*>[\s\S]*?<\/figure>/gi, '');
+  private primarySectionImageUrl(section: HelpCenterSection): string {
+    return `${section.imageUrls?.[0] ?? ''}`.trim();
+  }
+
+  private escapeHtmlAttribute(value: string): string {
+    return `${value ?? ''}`
+      .replace(/&/g, '&amp;')
+      .replace(/"/g, '&quot;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
   }
 
   protected activityText(lang: string | null | undefined, key: string): string {
