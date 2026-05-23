@@ -13,7 +13,7 @@ export class LazyBgImageDirective implements AfterViewInit, OnChanges, OnDestroy
 
   private static readonly PRELOAD_ROOT_MARGIN = '1200px 0px';
   private static readonly SEEDED_IMAGE_REF_PREFIX = 'help-seeded-image:';
-  private static readonly SEEDED_IMAGE_ASSET_ROOT = '/assets/help-center/explanations';
+  private static readonly SEEDED_IMAGE_ASSET_ROOT = 'assets/help-center/explanations';
   private static readonly HTML_IMAGE_PLACEHOLDER_URL = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==';
   private static readonly HTML_IMAGE_PLACEHOLDER_LAZY_SRC_MARKER = '#lazy-src=';
   private static readonly DEFAULT_IMAGE_FALLBACK_URL = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`

@@ -5,6 +5,7 @@ export const environment = {
   demoBootstrapEnabled: false,
   demoSeedScheduleAnchorDateIso: null as string | null,
   apiBaseUrl: '/api',
+  remoteI18nEnabled: true,
   serviceWorkerEnabled: true,
   firebaseMessagingEnabled: true,
   assetSourceRefreshEnabled: true,

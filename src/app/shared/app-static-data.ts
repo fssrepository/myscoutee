@@ -1830,7 +1830,7 @@ const EXPLANATION_EVENT_EDITOR_SECTIONS_HU: HelpCenterSection[] = [
 
 const EXPLANATION_IMAGE_SLOT_LIMIT = 8;
 const SEEDED_EXPLANATION_IMAGE_REF_PREFIX = 'help-seeded-image:';
-const SEEDED_EXPLANATION_IMAGE_ASSET_ROOT = '/assets/help-center/explanations';
+const SEEDED_EXPLANATION_IMAGE_ASSET_ROOT = 'assets/help-center/explanations';
 const LAZY_IMAGE_PLACEHOLDER_URL = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==';
 const EXPLANATION_SECTION_SPANS: Record<string, HelpCenterSection['panelSpan']> = {
   'affinity-network': 'span-2',
