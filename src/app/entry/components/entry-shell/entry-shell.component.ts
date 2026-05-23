@@ -553,7 +553,7 @@ export class EntryShellComponent implements OnDestroy {
     this.demoSelectorLoadingLabel = 'Preparing demo data';
     this.demoSelectorLoadingStage = 'selector';
     this.demoSelectorErrorMessage = '';
-    this.changeDetectorRef.detectChanges();
+    this.changeDetectorRef.markForCheck();
   }
 
   private async requestCurrentLocation(): Promise<LocationCoordinates | null> {
@@ -603,7 +603,7 @@ export class EntryShellComponent implements OnDestroy {
   private commitDemoSelectorState(update: () => void): void {
     this.ngZone.run(() => {
       update();
-      this.changeDetectorRef.detectChanges();
+      this.changeDetectorRef.markForCheck();
     });
   }
 
@@ -683,7 +683,7 @@ export class EntryShellComponent implements OnDestroy {
             this.syncLandingLoginAvailability(displayState.state.loginAvailability, 'bundle');
           }
           this.finishEntryPrivacyLoad(requestToken);
-          this.changeDetectorRef.detectChanges();
+          this.changeDetectorRef.markForCheck();
         });
       } catch {
         this.ngZone.run(() => {
@@ -696,7 +696,7 @@ export class EntryShellComponent implements OnDestroy {
           return;
         }
         this.endLandingArticlesLoadingWindow();
-        this.changeDetectorRef.detectChanges();
+        this.changeDetectorRef.markForCheck();
       });
       this.entryContentLoadPromise = null;
     });
@@ -711,7 +711,7 @@ export class EntryShellComponent implements OnDestroy {
     if (!this.entryConsentViewOnly) {
       this.showEntryConsentPopup = this.loadEntryConsentState() === null;
     }
-    this.changeDetectorRef.detectChanges();
+    this.changeDetectorRef.markForCheck();
     this.entryConsentStateChanged.emit(this.hasEntryConsent);
   }
 
@@ -742,13 +742,13 @@ export class EntryShellComponent implements OnDestroy {
   private endLandingArticlesLoadingWindow(): void {
     this.clearLandingArticlesLoadingWindow();
     this.landingArticlesLoadingProgress = 1;
-    this.changeDetectorRef.detectChanges();
+    this.changeDetectorRef.markForCheck();
     setTimeout(() => {
       this.ngZone.run(() => {
         this.landingArticlesLoading = false;
         this.landingArticlesLoadingProgress = 0;
         this.landingArticlesLoadingStartedAtMs = 0;
-        this.changeDetectorRef.detectChanges();
+        this.changeDetectorRef.markForCheck();
       });
     }, 100);
   }
@@ -855,7 +855,7 @@ export class EntryShellComponent implements OnDestroy {
 
       this.ngZone.run(() => {
         this.syncLandingLoginAvailability(result, 'coordinates');
-        this.changeDetectorRef.detectChanges();
+        this.changeDetectorRef.markForCheck();
       });
     } catch {
       // Keep the explicit "Allow location" action available if the silent refresh cannot complete.

@@ -2474,16 +2474,19 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   protected applyActivitiesEventSync(sync: ActivitiesEventSyncMessage): void {
+    const shouldKeepMemberEventRecord = sync.target !== 'hosting' || sync.published !== false;
     let eventUpdated = false;
     let hostingUpdated = false;
 
-    this.eventItems = this.eventItems.map(item => {
-      if (item.id !== sync.id) {
-        return item;
-      }
-      eventUpdated = true;
-      return this.activityDisplayRecordForSync(sync, item, 'events');
-    });
+    this.eventItems = this.eventItems
+      .map(item => {
+        if (item.id !== sync.id) {
+          return item;
+        }
+        eventUpdated = true;
+        return this.activityDisplayRecordForSync(sync, item, 'events');
+      })
+      .filter(item => shouldKeepMemberEventRecord || item.id !== sync.id);
 
     this.hostingItems = this.hostingItems.map(item => {
       if (item.id !== sync.id) {
@@ -2493,7 +2496,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       return this.activityDisplayRecordForSync(sync, item, 'hosting');
     });
 
-    if (!eventUpdated) {
+    if (shouldKeepMemberEventRecord && !eventUpdated) {
       this.eventItems = [this.activityDisplayRecordForSync(sync, undefined, 'events'), ...this.eventItems];
     }
 
