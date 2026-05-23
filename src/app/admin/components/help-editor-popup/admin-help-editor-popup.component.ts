@@ -11,6 +11,7 @@ import type {
   HelpCenterDocumentKind,
   HelpCenterHeaderColor,
   HelpCenterRevision,
+  HelpCenterSectionPanelSpan,
   HelpCenterSection,
   HelpCenterState
 } from '../../../shared/core/base/models';
@@ -29,6 +30,13 @@ interface HelpIconOption {
   keywords: string[];
 }
 
+interface HelpPanelSpanOption {
+  value: HelpCenterSectionPanelSpan;
+  icon: string;
+  label: string;
+  title: string;
+}
+
 interface HelpEditorSectionDraft {
   localId: string;
   id: string;
@@ -37,6 +45,7 @@ interface HelpEditorSectionDraft {
   blurb: string;
   contentHtml: string;
   imageUrls: string[];
+  panelSpan: HelpCenterSectionPanelSpan;
   optional: boolean;
   mode: EditorTab;
 }
@@ -69,6 +78,14 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
   private static readonly LOAD_DEMO_DELAY_MS = 1500;
   private static readonly LOAD_PROGRESS_WINDOW_MS = 3000;
   private static readonly EXPLANATION_IMAGE_SLOT_COUNT = 8;
+  private static readonly FALLBACK_SPAN_2_SECTION_IDS = new Set([
+    'affinity-network',
+    'activity-chat-message-window',
+    'assets-editor',
+    'assets-requests',
+    'event-editor-main',
+    'event-editor-subevents'
+  ]);
   private static readonly VOID_HTML_TAGS = new Set([
     'area',
     'base',
@@ -118,6 +135,11 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
   protected readonly loadingRingPerimeter = 100;
   protected readonly loadingProgress = signal(0);
   protected readonly actionRingPerimeter = 100;
+  protected readonly panelSpanOptions: readonly HelpPanelSpanOption[] = [
+    { value: 'span-1', icon: 'looks_one', label: 'span-1', title: 'One grid column' },
+    { value: 'span-2', icon: 'looks_two', label: 'span-2', title: 'Two grid columns' },
+    { value: 'span-3', icon: 'view_stream', label: 'span-3', title: 'Full row' }
+  ];
   protected readonly defaultHelpDescription = APP_STATIC_DATA.defaultHelpCenterDescription;
   protected readonly defaultPrivacyDescription = APP_STATIC_DATA.defaultPrivacyCenterDescription;
   protected readonly headerColorOptions: Array<{ id: HelpCenterHeaderColor; label: string }> = [
@@ -262,8 +284,20 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
     this.beginLoadingProgress();
     this.error = '';
     try {
+      const adminUserId = this.actorUserId();
+      const stateLoads: Array<Promise<HelpCenterState>> = [
+        this.helpCenter.loadAdminState(
+          adminUserId,
+          this.documentKind,
+          this.selectedContentLang,
+          this.documentKind === 'explanation' ? null : this.selectedExplanationContextKey
+        )
+      ];
+      if (this.documentKind !== 'explanation') {
+        stateLoads.push(this.helpCenter.loadAdminState(adminUserId, 'explanation', this.selectedContentLang, null));
+      }
       await Promise.all([
-        this.helpCenter.loadAdminState(this.actorUserId(), this.documentKind, this.selectedContentLang, this.selectedExplanationContextKey),
+        ...stateLoads,
         this.routeDelay.waitForRouteDelay(
           this.adminContentRoute(),
           undefined,
@@ -337,19 +371,13 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
     if (draft?.title?.trim()) {
       return draft.title.trim();
     }
-    const active = this.currentState()?.revisions
-      ?.filter(revision => this.normalizeExplanationContextKey(revision.contextKey) === surface.key)
-      ?.filter(revision => revision.active)
-      ?.sort((left, right) => right.version - left.version)[0] ?? null;
-    return active?.title?.trim() || surface.label;
+    const revision = this.explanationRevisionForSurface(surface);
+    return revision?.title?.trim() || surface.label;
   }
 
   protected explanationMenuItemMeta(surface: ExplainableSurface): string {
-    const active = this.currentState()?.revisions
-      ?.filter(revision => this.normalizeExplanationContextKey(revision.contextKey) === surface.key)
-      ?.filter(revision => revision.active)
-      ?.sort((left, right) => right.version - left.version)[0] ?? null;
-    return active ? `v${active.version}` : 'No popup';
+    const revision = this.explanationRevisionForSurface(surface);
+    return revision ? `v${revision.version}` : 'No popup';
   }
 
   protected selectDraftContext(contextKey: string): void {
@@ -636,6 +664,7 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
       blurb: '',
       contentHtml: this.defaultContentSectionHtml(),
       imageUrls: [],
+      panelSpan: 'span-1',
       optional: false,
       mode: 'html'
     };
@@ -671,6 +700,25 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
       this.closeIconPicker();
     }
     section.mode = section.mode === 'html' ? 'preview' : 'html';
+  }
+
+  protected previewSectionLayoutClass(section: { id?: string | null; contentHtml?: string | null; panelSpan?: string | null; panelLayout?: string | null }): string | null {
+    const span = this.sectionPanelSpan(section);
+    return span ? `help-editor-html-preview--${span}` : null;
+  }
+
+  protected previewPanelSpanClass(section: { id?: string | null; contentHtml?: string | null; panelSpan?: string | null; panelLayout?: string | null }): string | null {
+    const span = this.sectionPanelSpan(section);
+    return span ? `help-editor-preview-section--${span}` : null;
+  }
+
+  protected setDraftSectionPanelSpan(
+    section: HelpEditorSectionDraft,
+    panelSpan: HelpCenterSectionPanelSpan,
+    event?: Event
+  ): void {
+    event?.stopPropagation();
+    section.panelSpan = panelSpan;
   }
 
   protected formatPastedSectionHtml(section: HelpEditorSectionDraft, event: ClipboardEvent): void {
@@ -1126,8 +1174,9 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
         icon: section.icon || this.defaultSectionIcon(),
         title: section.title?.trim() || this.defaultUntitledContentSectionTitle(),
         blurb: section.blurb,
-        contentHtml: this.formatHtmlFragment(this.sectionContentHtml(section)),
+        contentHtml: this.formatHtmlFragment(this.withoutSectionLayoutMarkers(this.sectionContentHtml(section))),
         imageUrls: this.normalizeSectionImageUrls(section.imageUrls),
+        panelSpan: this.sectionPanelSpan(section) ?? 'span-1',
         optional: section.optional === true,
         mode: 'html'
       }))
@@ -1151,6 +1200,7 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
           blurb: '',
           contentHtml: '',
           imageUrls: [],
+          panelSpan: 'span-1',
           optional: false,
           mode: 'html'
         }
@@ -1175,8 +1225,9 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
           icon: draft.icon.trim() || this.defaultSectionIcon(),
           title,
           blurb: draft.blurb.trim(),
-          contentHtml: draft.contentHtml.trim(),
+          contentHtml: this.withoutSectionLayoutMarkers(draft.contentHtml).trim(),
           imageUrls: this.normalizeSectionImageUrls(draft.imageUrls),
+          panelSpan: this.normalizeSectionPanelSpan(draft.panelSpan) ?? 'span-1',
           optional: this.documentKind === 'privacy' && draft.optional === true
         };
       })
@@ -1215,7 +1266,7 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
     return `New ${this.documentLabelLower()} section`;
   }
 
-  private defaultUntitledContentSectionTitle(): string {
+  protected defaultUntitledContentSectionTitle(): string {
     if (this.documentKind === 'explanation') {
       return this.selectedContentLanguageIsHungarian() ? 'Névtelen magyarázat szakasz' : 'Untitled explanation section';
     }
@@ -1274,11 +1325,56 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
     return surfaces.find(surface => !used.has(surface.key)) ?? surfaces[0] ?? null;
   }
 
+  private explanationRevisionForSurface(surface: ExplainableSurface): HelpCenterRevision | null {
+    return this.helpCenter.explanationState()?.revisions
+      ?.filter(revision => this.normalizeExplanationContextKey(revision.contextKey) === surface.key)
+      ?.sort((left, right) => {
+        if (left.active !== right.active) {
+          return left.active ? -1 : 1;
+        }
+        return right.version - left.version;
+      })[0] ?? null;
+  }
+
   private normalizeExplanationContextKey(contextKey: string | null | undefined): string {
     const normalized = `${contextKey ?? ''}`.trim();
     return this.explainableSurfaces().find(surface => surface.key === normalized)?.key
       ?? this.explainableSurfaces()[0]?.key
       ?? 'home.game';
+  }
+
+  private sectionPanelSpan(section: { id?: string | null; contentHtml?: string | null; panelSpan?: string | null; panelLayout?: string | null }): HelpCenterSectionPanelSpan | null {
+    return this.normalizeSectionPanelSpan(section.panelSpan)
+      ?? this.normalizeSectionPanelSpan(section.panelLayout)
+      ?? this.sectionLayoutMarker(section.contentHtml ?? '')
+      ?? (AdminHelpEditorPopupComponent.FALLBACK_SPAN_2_SECTION_IDS.has(`${section.id ?? ''}`) ? 'span-2' : null);
+  }
+
+  private sectionLayoutMarker(contentHtml: string): HelpCenterSectionPanelSpan | null {
+    const marker = /<!--\s*(?:panel|layout|section|width)\s*:\s*([a-z0-9_-]+)\s*-->/i.exec(contentHtml)?.[1]
+      ?? /\b(?:data-panel|data-layout|data-section|data-width|data-panel-width)\s*=\s*["']\s*([a-z0-9_-]+)\s*["']/i.exec(contentHtml)?.[1]
+      ?? /\b(?:help|explanation|section|panel)-(?:panel|section|layout)--([a-z0-9_-]+)\b/i.exec(contentHtml)?.[1];
+    return this.normalizeSectionPanelSpan(marker);
+  }
+
+  private normalizeSectionPanelSpan(value: string | null | undefined): HelpCenterSectionPanelSpan | null {
+    const normalized = `${value ?? ''}`.trim().toLowerCase();
+    if (normalized === 'span-1' || normalized === 'compact' || normalized === 'single' || normalized === 'one' || normalized === '1') {
+      return 'span-1';
+    }
+    if (normalized === 'span-2' || normalized === 'wide' || normalized === 'double' || normalized === 'two' || normalized === '2') {
+      return 'span-2';
+    }
+    if (normalized === 'span-3' || normalized === 'full' || normalized === 'row' || normalized === 'all' || normalized === '3') {
+      return 'span-3';
+    }
+    return null;
+  }
+
+  private withoutSectionLayoutMarkers(contentHtml: string): string {
+    return `${contentHtml ?? ''}`
+      .replace(/<!--\s*(?:panel|layout|section|width)\s*:\s*[a-z0-9_-]+\s*-->\s*/gi, '')
+      .trim();
   }
 
   private sectionContentHtml(section: HelpCenterSection): string {

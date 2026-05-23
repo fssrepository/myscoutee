@@ -970,15 +970,7 @@ export class DemoHelpCenterService {
   private stateFromTable(table: DemoHelpCenterTable, kind: HelpCenterDocumentKind, lang = 'en', contextKey?: string | null): HelpCenterState {
     const language = this.normalizeLang(lang);
     const context = this.normalizeContextKey(kind, contextKey, false);
-    if (kind === 'explanation' && !context) {
-      return {
-        activeRevision: null,
-        revisions: [],
-        auditTrail: [],
-        availableLanguages: this.availableLanguages()
-      };
-    }
-    const revisions = this.revisionsForKind(table, kind, language, context)
+    const revisions = this.revisionsForState(table, kind, language, context)
       .map(revision => this.cloneRevision(revision, kind))
       .sort((left, right) => right.version - left.version);
     const activeRevisionId = this.activeRevisionId(table, kind, language, context);
@@ -1000,6 +992,14 @@ export class DemoHelpCenterService {
       auditTrail: auditTrail.filter(entry => this.normalizeLang(entry.lang) === language),
       availableLanguages: this.availableLanguages()
     };
+  }
+
+  private revisionsForState(table: DemoHelpCenterTable, kind: HelpCenterDocumentKind, lang = 'en', contextKey?: string | null): HelpCenterRevision[] {
+    const language = this.normalizeLang(lang);
+    if (kind === 'explanation' && this.normalizeContextKey(kind, contextKey, false)) {
+      return this.revisionsForKind(table, kind, language, null);
+    }
+    return this.revisionsForKind(table, kind, language, contextKey);
   }
 
   private nextVersion(table: DemoHelpCenterTable, kind: HelpCenterDocumentKind, lang = 'en', contextKey?: string | null): number {
@@ -1109,8 +1109,23 @@ export class DemoHelpCenterService {
       blurb: this.nonEmptyText(section?.blurb, ''),
       contentHtml,
       imageUrls: this.normalizeImageUrls(section?.imageUrls),
+      panelSpan: this.normalizePanelSpan(section?.panelSpan),
       optional: kind === 'privacy' && section?.optional === true
     };
+  }
+
+  private normalizePanelSpan(value: string | null | undefined): HelpCenterSection['panelSpan'] {
+    const normalized = `${value ?? ''}`.trim().toLowerCase();
+    if (normalized === 'span-1' || normalized === 'compact' || normalized === 'single' || normalized === 'one' || normalized === '1') {
+      return 'span-1';
+    }
+    if (normalized === 'span-2' || normalized === 'wide' || normalized === 'double' || normalized === 'two' || normalized === '2') {
+      return 'span-2';
+    }
+    if (normalized === 'span-3' || normalized === 'full' || normalized === 'row' || normalized === 'all' || normalized === '3') {
+      return 'span-3';
+    }
+    return undefined;
   }
 
   private normalizeImageUrls(imageUrls: readonly string[] | null | undefined, limit = 8): string[] {

@@ -355,6 +355,23 @@
                                       required
                                       [attr.aria-label]="sectionTitleAriaLabel()"
                                     />
+                                    @if (documentKind === 'explanation') {
+                                      <div class="help-editor-panel-span-toggle" role="group" aria-label="Panel grid span">
+                                        @for (option of panelSpanOptions; track option.value) {
+                                          <button
+                                            type="button"
+                                            class="help-editor-panel-span-btn"
+                                            [class.is-active]="section.panelSpan === option.value"
+                                            [attr.aria-pressed]="section.panelSpan === option.value"
+                                            [title]="option.title"
+                                            (click)="setDraftSectionPanelSpan(section, option.value, $event)"
+                                            >
+                                            <mat-icon>{{ option.icon }}</mat-icon>
+                                            <span>{{ option.label }}</span>
+                                          </button>
+                                        }
+                                      </div>
+                                    }
                                     @if (documentKind === 'privacy') {
                                       <label
                                         class="help-editor-privacy-optional-toggle"
@@ -428,8 +445,22 @@
                                           (paste)="formatPastedSectionHtml(section, $event)"
                                         ></textarea>
                                       } @else {
-                                        <div class="help-editor-preview-card">
-                                          <div class="help-editor-html-preview" appLazyBgImage [appLazyHtmlImages]="true" data-i18n-ignore [innerHTML]="section.contentHtml"></div>
+                                        <div
+                                          class="help-editor-preview-card"
+                                          [ngClass]="previewPanelSpanClass(section)"
+                                          >
+                                          <h3 class="help-editor-popup-preview-title" data-i18n-ignore>{{ section.title || defaultUntitledContentSectionTitle() }}</h3>
+                                          @if (section.blurb) {
+                                            <p class="help-editor-popup-preview-blurb" data-i18n-ignore>{{ section.blurb }}</p>
+                                          }
+                                          <div
+                                            class="help-editor-html-preview"
+                                            [ngClass]="previewSectionLayoutClass(section)"
+                                            appLazyBgImage
+                                            [appLazyHtmlImages]="true"
+                                            data-i18n-ignore
+                                            [innerHTML]="section.contentHtml"
+                                          ></div>
                                         </div>
                                       }
                                     </div>
@@ -547,7 +578,14 @@
                                     @if (section.blurb) {
                                       <p class="help-editor-preview-lead" data-i18n-ignore>{{ section.blurb }}</p>
                                     }
-                                    <div class="help-editor-html-preview" appLazyBgImage [appLazyHtmlImages]="true" data-i18n-ignore [innerHTML]="section.contentHtml"></div>
+                                    <div
+                                      class="help-editor-html-preview"
+                                      [ngClass]="previewSectionLayoutClass(section)"
+                                      appLazyBgImage
+                                      [appLazyHtmlImages]="true"
+                                      data-i18n-ignore
+                                      [innerHTML]="section.contentHtml"
+                                    ></div>
                                   </div>
                                 }
                               </article>

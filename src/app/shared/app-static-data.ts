@@ -1780,29 +1780,21 @@ const EXPLANATION_EVENT_EDITOR_SECTIONS_HU: HelpCenterSection[] = [
 ];
 
 const EXPLANATION_IMAGE_SLOT_LIMIT = 8;
-const EXPLANATION_SECTION_LAYOUTS: Record<string, 'wide' | 'full'> = {
-  'affinity-network': 'wide',
-  'activity-chat-message-window': 'wide',
-  'assets-editor': 'wide',
-  'assets-requests': 'wide',
-  'event-editor-main': 'wide',
-  'event-editor-subevents': 'wide'
+const EXPLANATION_SECTION_SPANS: Record<string, HelpCenterSection['panelSpan']> = {
+  'affinity-network': 'span-2',
+  'activity-chat-message-window': 'span-2',
+  'assets-editor': 'span-2',
+  'assets-requests': 'span-2',
+  'event-editor-main': 'span-2',
+  'event-editor-subevents': 'span-2'
 };
 
 function withSeededExplanationImages(_contextKey: string, sections: HelpCenterSection[], _lang: string): HelpCenterSection[] {
   return sections.map(section => ({
     ...section,
-    contentHtml: withExplanationSectionLayout(section.contentHtml, EXPLANATION_SECTION_LAYOUTS[section.id]),
+    panelSpan: section.panelSpan ?? EXPLANATION_SECTION_SPANS[section.id],
     imageUrls: uniqueHelpImageUrls(section.imageUrls ?? [])
   }));
-}
-
-function withExplanationSectionLayout(contentHtml: string | null | undefined, layout: 'wide' | 'full' | undefined): string {
-  const html = `${contentHtml ?? ''}`.trim();
-  if (!layout || /<!--\s*(?:panel|layout|section|width)\s*:/i.test(html)) {
-    return html;
-  }
-  return `<!-- panel:${layout} -->\n${html}`;
 }
 
 function uniqueHelpImageUrls(imageUrls: readonly string[]): string[] {

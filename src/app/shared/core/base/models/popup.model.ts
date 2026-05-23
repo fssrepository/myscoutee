@@ -58,10 +58,13 @@ export interface HelpCenterSection {
   blurb: string;
   contentHtml: string;
   imageUrls?: string[];
+  panelSpan?: HelpCenterSectionPanelSpan;
   optional?: boolean;
   details?: string[];
   points?: string[];
 }
+
+export type HelpCenterSectionPanelSpan = 'span-1' | 'span-2' | 'span-3';
 
 export type HelpCenterDocumentKind = 'help' | 'privacy' | 'explanation';
 export type HelpCenterHeaderColor = 'amber' | 'blue' | 'green' | 'rose' | 'violet' | 'slate';

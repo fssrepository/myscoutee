@@ -191,8 +191,23 @@ export class HttpHelpCenterService {
       blurb: `${value?.blurb ?? ''}`.trim(),
       contentHtml,
       imageUrls: this.normalizeImageUrls(value?.imageUrls),
+      panelSpan: this.normalizePanelSpan(value?.panelSpan),
       optional: value?.optional === true
     };
+  }
+
+  private normalizePanelSpan(value: string | null | undefined): HelpCenterSection['panelSpan'] {
+    const normalized = `${value ?? ''}`.trim().toLowerCase();
+    if (normalized === 'span-1' || normalized === 'compact' || normalized === 'single' || normalized === 'one' || normalized === '1') {
+      return 'span-1';
+    }
+    if (normalized === 'span-2' || normalized === 'wide' || normalized === 'double' || normalized === 'two' || normalized === '2') {
+      return 'span-2';
+    }
+    if (normalized === 'span-3' || normalized === 'full' || normalized === 'row' || normalized === 'all' || normalized === '3') {
+      return 'span-3';
+    }
+    return undefined;
   }
 
   private normalizeImageUrls(imageUrls: readonly string[] | null | undefined, limit = 8): string[] {

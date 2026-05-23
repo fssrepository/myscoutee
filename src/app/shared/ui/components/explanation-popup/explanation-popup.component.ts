@@ -13,7 +13,7 @@ type HomeFilterModeOption = Readonly<{
   icon: string;
 }>;
 
-type ExplanationSectionLayout = 'compact' | 'wide' | 'full';
+type ExplanationSectionLayout = 'span-1' | 'span-2' | 'span-3';
 
 @Component({
   selector: 'app-explanation-popup',
@@ -54,7 +54,7 @@ export class ExplanationPopupComponent {
   }
 
   protected shouldShowGeneratedVisual(section: HelpCenterSection): boolean {
-    return !/<img[\s>]/i.test(`${section.contentHtml ?? ''}`);
+    return !/<img[\s>]/i.test(this.withoutSeededVisuals(section.contentHtml ?? ''));
   }
 
   protected sectionLayoutClass(section: HelpCenterSection): string | null {
@@ -63,11 +63,15 @@ export class ExplanationPopupComponent {
   }
 
   private sectionLayout(section: HelpCenterSection): ExplanationSectionLayout | null {
+    const panelSpan = this.normalizeSectionLayout(section.panelSpan);
+    if (panelSpan) {
+      return panelSpan;
+    }
     const marker = this.sectionLayoutMarker(section.contentHtml ?? '');
     if (marker) {
       return marker;
     }
-    return this.fallbackWideSectionIds.has(section.id) ? 'wide' : null;
+    return this.fallbackWideSectionIds.has(section.id) ? 'span-2' : null;
   }
 
   private sectionLayoutMarker(contentHtml: string): ExplanationSectionLayout | null {
@@ -82,16 +86,20 @@ export class ExplanationPopupComponent {
     if (!normalized) {
       return null;
     }
-    if (normalized === 'compact' || normalized === 'single' || normalized === 'one' || normalized === '1') {
-      return 'compact';
+    if (normalized === 'span-1' || normalized === 'compact' || normalized === 'single' || normalized === 'one' || normalized === '1') {
+      return 'span-1';
     }
-    if (normalized === 'wide' || normalized === 'double' || normalized === 'two' || normalized === '2') {
-      return 'wide';
+    if (normalized === 'span-2' || normalized === 'wide' || normalized === 'double' || normalized === 'two' || normalized === '2') {
+      return 'span-2';
     }
-    if (normalized === 'full' || normalized === 'row' || normalized === 'all' || normalized === '3') {
-      return 'full';
+    if (normalized === 'span-3' || normalized === 'full' || normalized === 'row' || normalized === 'all' || normalized === '3') {
+      return 'span-3';
     }
     return null;
+  }
+
+  private withoutSeededVisuals(contentHtml: string): string {
+    return `${contentHtml ?? ''}`.replace(/<figure\b[^>]*\bexplanation-seeded-visual\b[^>]*>[\s\S]*?<\/figure>/gi, '');
   }
 
   protected activityText(lang: string | null | undefined, key: string): string {
