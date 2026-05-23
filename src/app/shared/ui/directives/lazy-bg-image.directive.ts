@@ -58,8 +58,7 @@ export class LazyBgImageDirective implements AfterViewInit, OnChanges, OnDestroy
     if (!image) {
       return;
     }
-    image.classList.remove('lazy-image-loading');
-    image.classList.add('lazy-image-loaded');
+    this.setHtmlImageLoadingState(image, false);
   };
   private readonly htmlImageErrorHandler = (event: Event) => {
     const image = event.target instanceof HTMLImageElement ? event.target : null;
@@ -270,8 +269,7 @@ export class LazyBgImageDirective implements AfterViewInit, OnChanges, OnDestroy
       }
       image.dataset['lazyImageSourceUrl'] = sourceUrl;
       if (this.localizeHtmlSvgImage(image, sourceUrl)) {
-        image.classList.add('lazy-image-loading');
-        image.classList.remove('lazy-image-loaded');
+        this.setHtmlImageLoadingState(image, true);
         continue;
       }
       const renderedSourceUrl = this.renderedImageUrl(sourceUrl);
@@ -282,35 +280,66 @@ export class LazyBgImageDirective implements AfterViewInit, OnChanges, OnDestroy
         image.dataset['lazyImageManagedSrc'] = renderedSourceUrl;
         if (renderedSourceUrl !== this.imageFallbackUrl()) {
           delete image.dataset['lazyImageFallbackActive'];
-          image.classList.remove('lazy-image-fallback-active');
+          this.setHtmlImageFallbackState(image, false);
         }
       }
       if (image.complete) {
         if (image.naturalWidth > 0 || image.dataset['lazyImageFallbackActive'] === 'true') {
-          image.classList.remove('lazy-image-loading');
-          image.classList.add('lazy-image-loaded');
+          this.setHtmlImageLoadingState(image, false);
         } else {
           this.applyHtmlImageFallback(image);
         }
       } else {
-        image.classList.add('lazy-image-loading');
-        image.classList.remove('lazy-image-loaded');
+        this.setHtmlImageLoadingState(image, true);
       }
     }
   }
 
   private applyHtmlImageFallback(image: HTMLImageElement): void {
     if (image.dataset['lazyImageFallbackActive'] === 'true') {
+      this.setHtmlImageLoadingState(image, false);
+      this.setHtmlImageFallbackState(image, true);
       return;
     }
     const fallbackUrl = this.imageFallbackUrl();
     image.dataset['lazyImageFallbackActive'] = 'true';
     image.dataset['lazyImageOriginalSrc'] = this.htmlImageSourceUrl(image);
     image.dataset['lazyImageManagedSrc'] = fallbackUrl;
-    image.classList.remove('lazy-image-loading');
-    image.classList.add('lazy-image-loaded', 'lazy-image-fallback-active');
+    this.setHtmlImageLoadingState(image, false);
+    this.setHtmlImageFallbackState(image, true);
     image.alt = image.alt?.trim() || 'No image';
     image.src = fallbackUrl;
+  }
+
+  private setHtmlImageLoadingState(image: HTMLImageElement, loading: boolean): void {
+    image.classList.toggle('lazy-image-loading', loading);
+    image.classList.toggle('lazy-image-loaded', !loading);
+
+    const frame = this.htmlImageFrame(image);
+    frame?.classList.toggle('lazy-image-frame-loading', loading);
+    frame?.classList.toggle('lazy-image-frame-loaded', !loading);
+  }
+
+  private setHtmlImageFallbackState(image: HTMLImageElement, active: boolean): void {
+    image.classList.toggle('lazy-image-fallback-active', active);
+    this.htmlImageFrame(image)?.classList.toggle('lazy-image-frame-fallback-active', active);
+  }
+
+  private clearHtmlImageState(image: HTMLImageElement): void {
+    image.classList.remove('lazy-image-loading', 'lazy-image-loaded', 'lazy-image-fallback-active');
+    this.htmlImageFrame(image)?.classList.remove(
+      'lazy-image-frame-loading',
+      'lazy-image-frame-loaded',
+      'lazy-image-frame-fallback-active'
+    );
+  }
+
+  private htmlImageFrame(image: HTMLImageElement): HTMLElement | null {
+    const figure = image.closest('figure');
+    if (figure instanceof HTMLElement && this.elementRef.nativeElement.contains(figure)) {
+      return figure;
+    }
+    return image.parentElement;
   }
 
   private htmlImageSourceUrl(image: HTMLImageElement): string {
@@ -389,6 +418,7 @@ export class LazyBgImageDirective implements AfterViewInit, OnChanges, OnDestroy
       image.removeEventListener('load', this.htmlImageLoadHandler);
       image.removeEventListener('error', this.htmlImageErrorHandler);
       delete image.dataset['lazyImageWired'];
+      this.clearHtmlImageState(image);
     }
   }
 
