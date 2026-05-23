@@ -488,10 +488,24 @@ export class ActivitiesPopupComponent implements OnDestroy {
       this.openActivityChat(chat);
       return;
     }
-    void this.resolveChatRecordForRow(row).then(resolvedChat => {
-      if (resolvedChat) {
-        this.openActivityChat(resolvedChat);
+    const provisionalChat = this.chatRecordPreviewForRow(row);
+    if (!provisionalChat) {
+      return;
+    }
+    this.openActivityChat(provisionalChat);
+    void this.resolveChatRecordForRow(row, { skipCache: true }).then(resolvedChat => {
+      if (!resolvedChat) {
+        return;
       }
+      const activeSession = this.activitiesContext.eventChatSession();
+      if (activeSession?.item.id !== resolvedChat.id) {
+        return;
+      }
+      this.activitiesContext.patchEventChatSessionItem(current =>
+        current.id === resolvedChat.id
+          ? resolvedChat
+          : current
+      );
     });
   }
 
@@ -1202,13 +1216,62 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return existing ? this.cloneChatRecord(existing) : null;
   }
 
-  private async resolveChatRecordForRow(row: AppTypes.ActivityListRow): Promise<ChatRecord | null> {
+  private chatRecordPreviewForRow(row: AppTypes.ActivityListRow): ChatRecord | null {
     if (row.type !== 'chats') {
       return null;
     }
-    const cached = this.chatRecordForRow(row);
-    if (cached) {
-      return cached;
+    const status = `${(row as { status?: unknown }).status ?? ''}`.trim();
+    const channelType = this.chatChannelTypeFromRowStatus(status);
+    const supportCaseStatus = this.supportCaseStatusFromRowStatus(status);
+    const activeUserId = `${this.activeUser?.id ?? ''}`.trim();
+    const title = `${row.subtitle ?? row.title ?? ''}`.trim() || 'Chat';
+    return {
+      id: row.id,
+      avatar: `${row.avatarInitials ?? ''}`.trim() || AppUtils.initialsFromText(title),
+      title,
+      lastMessage: `${row.detail ?? ''}`.trim(),
+      lastSenderId: activeUserId,
+      memberIds: activeUserId ? [activeUserId] : [],
+      unread: Math.max(0, Math.trunc(Number(row.unread) || 0)),
+      dateIso: row.dateIso,
+      distanceMetersExact: row.distanceMetersExact,
+      channelType,
+      supportCaseStatus,
+      supportCaseAssigneeName: row.sideLabel ?? null
+    };
+  }
+
+  private chatChannelTypeFromRowStatus(status: string): AppTypes.ChatChannelType | undefined {
+    return status === 'general'
+      || status === 'mainEvent'
+      || status === 'optionalSubEvent'
+      || status === 'groupSubEvent'
+      || status === 'serviceEvent'
+      ? status
+      : undefined;
+  }
+
+  private supportCaseStatusFromRowStatus(status: string): AppTypes.SupportCaseStatus | null {
+    return status === 'pending'
+      || status === 'picked'
+      || status === 'solved'
+      || status === 'blocked'
+      ? status
+      : null;
+  }
+
+  private async resolveChatRecordForRow(
+    row: AppTypes.ActivityListRow,
+    options: { skipCache?: boolean } = {}
+  ): Promise<ChatRecord | null> {
+    if (row.type !== 'chats') {
+      return null;
+    }
+    if (options.skipCache !== true) {
+      const cached = this.chatRecordForRow(row);
+      if (cached) {
+        return cached;
+      }
     }
     const userId = this.activeUser?.id?.trim();
     if (!userId) {

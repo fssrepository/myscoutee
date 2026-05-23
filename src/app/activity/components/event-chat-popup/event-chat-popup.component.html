@@ -51,10 +51,12 @@
             }
           </button>
         }
-        <button type="button" class="popup-chat-pin-btn" [class.has-pins]="pinnedMessages().length > 0" (click)="openPinnedMessagesDialog($event)" aria-label="Open pinned messages">
-          <mat-icon>push_pin</mat-icon>
-        </button>
-        @if (!isServiceChat() && !isBlockedSupportChat() && !selectedChatHasSubEventMenu()) {
+        @if (chatHeaderControlsHydrated) {
+          <button type="button" class="popup-chat-pin-btn" [class.has-pins]="pinnedMessages().length > 0" (click)="openPinnedMessagesDialog($event)" aria-label="Open pinned messages">
+            <mat-icon>push_pin</mat-icon>
+          </button>
+        }
+        @if (chatHeaderControlsHydrated && !isServiceChat() && !isBlockedSupportChat() && !selectedChatHasSubEventMenu()) {
           <button
             type="button"
             class="chat-members-stack chat-members-stack-large chat-header-members event-editor-members-trigger event-editor-members-trigger-members popup-chat-context-btn"
@@ -74,7 +76,7 @@
             }
           </button>
         }
-        @if (!isServiceChat() && !isBlockedSupportChat() && selectedChatHasSubEventMenu()) {
+        @if (chatHeaderControlsHydrated && !isServiceChat() && !isBlockedSupportChat() && selectedChatHasSubEventMenu()) {
           <div class="popup-chat-context-menu-wrap">
             <button
               type="button"

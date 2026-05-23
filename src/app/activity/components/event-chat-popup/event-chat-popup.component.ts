@@ -124,6 +124,7 @@ export class EventChatPopupComponent implements OnDestroy {
   protected contextMenuOpenUp = false;
   protected chatComposeDetachedSpace = 108;
   protected chatHeaderContext: AppTypes.PopupHeaderContext | null = null;
+  protected chatHeaderControlsHydrated = false;
   private selectedChatNavigationState: SelectedChatNavigationState | null = null;
   private resolvedChatEventRecord: DemoEventRecord | null = null;
   private resolvedChatEventRecordKey = '';
@@ -283,14 +284,15 @@ export class EventChatPopupComponent implements OnDestroy {
     effect(() => {
       const session = this.session();
       const sessionKey = session ? `${session.item.id}:${session.openedAtIso}` : null;
-      this.syncSelectedChatHeader(session?.item ?? null);
       if (session && this.loadedSessionKey === sessionKey) {
+        this.syncSelectedChatHeader(session.item, { hydrateControls: this.chatHeaderControlsHydrated });
         this.cdr.markForCheck();
         return;
       }
       this.teardownLiveChatUpdates();
       this.loadedSessionKey = sessionKey;
       this.initialChatLoadedSessionKey = null;
+      this.chatHeaderControlsHydrated = false;
       this.draftMessage = '';
       this.closeTransientMessageUi();
       this.replyTarget = null;
@@ -316,10 +318,10 @@ export class EventChatPopupComponent implements OnDestroy {
         this.cdr.markForCheck();
         return;
       }
+      this.syncSelectedChatHeader(session.item, { hydrateControls: false });
       this.chatInitialLoadPending = true;
       // Warm event-editor service path while chat is active to reduce first-action flicker.
       this.eventEditorService.isOpen();
-      void this.refreshSelectedChatHeader(session.item, sessionKey);
       this.cdr.markForCheck();
     });
   }
@@ -345,6 +347,7 @@ export class EventChatPopupComponent implements OnDestroy {
     this.visibleChatThreadTotal = 0;
     this.loadedSessionKey = null;
     this.chatThreadQuery = {};
+    this.chatHeaderControlsHydrated = false;
     this.closeTransientMessageUi();
     if (this.isBlockedSupportChat()) {
       this.activitiesContext.closeActivities();
@@ -2280,8 +2283,8 @@ export class EventChatPopupComponent implements OnDestroy {
       const resolvedChatPromise = this.chatsService
         .resolveRepositoryEventServiceChat(initialChat)
         .catch(() => null);
-      const messagesPromise = this.activitiesContext.loadEventChatMessages(initialChat);
-      const [resolvedChat, nextMessages] = await Promise.all([resolvedChatPromise, messagesPromise]);
+      const messagesPromise = this.chatsService.loadChatMessagesResult(initialChat);
+      const [resolvedChat, messagesPage] = await Promise.all([resolvedChatPromise, messagesPromise]);
       if (this.loadedSessionKey !== sessionKey) {
         return this.chatThreadPageResult(query);
       }
@@ -2289,7 +2292,13 @@ export class EventChatPopupComponent implements OnDestroy {
       if (this.loadedSessionKey !== sessionKey) {
         return this.chatThreadPageResult(query);
       }
-      this.allMessages = this.normalizeChatMessages(nextMessages)
+      this.chatHeaderControlsHydrated = true;
+      this.syncSelectedChatHeader(chat, {
+        hydrateControls: true,
+        baseContext: messagesPage.context ?? null
+      });
+      void this.refreshSelectedChatHeader(chat, sessionKey);
+      this.allMessages = this.normalizeChatMessages(messagesPage.items)
         .sort((first, second) => AppUtils.toSortableDate(second.sentAtIso) - AppUtils.toSortableDate(first.sentAtIso));
       this.rebuildVisibleReadReceipts();
       this.syncEventChatSummaryFromLatestMessage();
@@ -2301,6 +2310,9 @@ export class EventChatPopupComponent implements OnDestroy {
       if (this.loadedSessionKey !== sessionKey) {
         return this.chatThreadPageResult(query);
       }
+      this.chatHeaderControlsHydrated = true;
+      this.syncSelectedChatHeader(session.item, { hydrateControls: true });
+      void this.refreshSelectedChatHeader(session.item, sessionKey);
       this.allMessages = [];
       this.rebuildVisibleReadReceipts();
       this.initialChatLoadedSessionKey = sessionKey;
@@ -2327,8 +2339,10 @@ export class EventChatPopupComponent implements OnDestroy {
         ? resolvedChat
         : current
     );
-    this.syncSelectedChatHeader(resolvedChat);
-    void this.refreshSelectedChatHeader(resolvedChat, sessionKey);
+    if (this.chatHeaderControlsHydrated) {
+      this.syncSelectedChatHeader(resolvedChat, { hydrateControls: true });
+      void this.refreshSelectedChatHeader(resolvedChat, sessionKey);
+    }
     return resolvedChat;
   }
 
@@ -3444,7 +3458,13 @@ export class EventChatPopupComponent implements OnDestroy {
     return day.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
   }
 
-  private syncSelectedChatHeader(chat: ChatRecord | null): void {
+  private syncSelectedChatHeader(
+    chat: ChatRecord | null,
+    options: {
+      hydrateControls?: boolean;
+      baseContext?: AppTypes.PopupHeaderContext | null;
+    } = {}
+  ): void {
     if (!chat) {
       this.chatHeaderContext = null;
       this.selectedChatNavigationState = null;
@@ -3454,8 +3474,30 @@ export class EventChatPopupComponent implements OnDestroy {
       this.resolvedChatResourceStateKey = '';
       return;
     }
+    if (options.hydrateControls === false) {
+      this.selectedChatNavigationState = null;
+      this.resolvedChatEventRecord = null;
+      this.resolvedChatEventRecordKey = '';
+      this.resolvedChatResourceState = null;
+      this.resolvedChatResourceStateKey = '';
+      this.chatHeaderContext = this.buildTitleOnlyChatHeaderContext(chat);
+      return;
+    }
     this.selectedChatNavigationState = this.buildSelectedChatNavigationState(chat);
-    this.chatHeaderContext = this.buildSelectedChatHeaderContext(chat, this.selectedChatNavigationState);
+    this.chatHeaderContext = this.buildSelectedChatHeaderContext(
+      chat,
+      this.selectedChatNavigationState,
+      options.baseContext ?? null
+    );
+  }
+
+  private buildTitleOnlyChatHeaderContext(chat: ChatRecord): AppTypes.PopupHeaderContext {
+    const title = `${chat.title ?? ''}`.trim() || 'Chat';
+    return {
+      revision: `title:${chat.id}:${title}`,
+      title,
+      controls: []
+    };
   }
 
   private async refreshSelectedChatHeader(chat: ChatRecord, sessionKey: string | null): Promise<void> {
@@ -3495,9 +3537,12 @@ export class EventChatPopupComponent implements OnDestroy {
 
   private buildSelectedChatHeaderContext(
     chat: ChatRecord,
-    state: SelectedChatNavigationState | null
+    state: SelectedChatNavigationState | null,
+    loadedContext: AppTypes.PopupHeaderContext | null = null
   ): AppTypes.PopupHeaderContext {
-    const baseContext = this.chatsService.buildChatPopupHeaderContext(chat, { includeThumbs: true });
+    const baseContext = loadedContext
+      ? this.clonePopupHeaderContext(loadedContext)
+      : this.chatsService.buildChatPopupHeaderContext(chat, { includeThumbs: true });
     const controls = [...(baseContext.controls ?? []).map(control => ({ ...control }))];
     if (!this.isBlockedSupportChat() && chat.channelType !== 'serviceEvent') {
       controls.push(this.buildSelectedChatContextControl(chat, state));
@@ -3505,6 +3550,39 @@ export class EventChatPopupComponent implements OnDestroy {
     return {
       ...baseContext,
       controls
+    };
+  }
+
+  private clonePopupHeaderContext(context: AppTypes.PopupHeaderContext): AppTypes.PopupHeaderContext {
+    return {
+      ...context,
+      controls: (context.controls ?? []).map(control => ({
+        ...control,
+        badge: control.badge ? { ...control.badge } : null,
+        lookup: control.lookup ? { ...control.lookup } : null,
+        visual: control.visual?.kind === 'thumbStack'
+          ? {
+              ...control.visual,
+              thumbs: control.visual.thumbs.map(thumb => ({ ...thumb }))
+            }
+          : control.visual
+            ? { ...control.visual }
+            : null,
+        menu: control.menu
+          ? {
+              ...control.menu,
+              groups: control.menu.groups.map(group => ({
+                ...group,
+                controls: group.controls.map(menuControl => ({
+                  ...menuControl,
+                  badge: menuControl.badge ? { ...menuControl.badge } : null,
+                  lookup: menuControl.lookup ? { ...menuControl.lookup } : null,
+                  visual: menuControl.visual ? { ...menuControl.visual } : null
+                }))
+              }))
+            }
+          : null
+      }))
     };
   }
 
