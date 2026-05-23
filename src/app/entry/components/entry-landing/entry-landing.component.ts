@@ -18,6 +18,7 @@ import {
   type SmartListItemRenderState,
   type SmartListLoadPage
 } from '../../../shared/ui/components/smart-list';
+import { LazyBgImageDirective } from '../../../shared/ui/directives';
 import { I18nPipe } from '../../../shared/i18n';
 
 type IdeaInfoCard = InfoCardData<AppTypes.IdeaArticleDetail>;
@@ -35,6 +36,7 @@ interface HowStepSlide {
   imports: [
     InfoCardComponent,
     SmartListComponent,
+    LazyBgImageDirective,
     MatRippleModule,
     MatIconModule,
     I18nPipe

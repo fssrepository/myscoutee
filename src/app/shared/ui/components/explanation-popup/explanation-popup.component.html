@@ -17,15 +17,19 @@
       <div class="explanation-popup__body">
         <div class="explanation-popup__grid">
           @for (section of revision.sections; track section.id) {
-            <section class="explanation-popup__item">
+            <section
+              class="explanation-popup__item"
+              [ngClass]="sectionLayoutClass(section)"
+              >
               <div class="explanation-popup__item-copy">
                 <h3 data-i18n-ignore>{{ section.title }}</h3>
                 @if (section.blurb) {
                   <p data-i18n-ignore>{{ section.blurb }}</p>
                 }
-                <div class="explanation-popup__html" data-i18n-ignore [innerHTML]="section.contentHtml"></div>
-                <div class="explanation-popup__item-visual" aria-hidden="true">
-                  @switch (section.id) {
+                <div class="explanation-popup__html" appLazyBgImage [appLazyHtmlImages]="true" data-i18n-ignore [innerHTML]="section.contentHtml"></div>
+                @if (shouldShowGeneratedVisual(section)) {
+                  <div class="explanation-popup__item-visual" aria-hidden="true">
+                    @switch (section.id) {
                     @case ('affinity') {
                       <span class="explanation-popup__visual-slider">
                         <mat-icon>tune</mat-icon>
@@ -37,6 +41,75 @@
                       <span class="explanation-popup__visual-go">
                         <span>{{ 'go' | i18n }}</span>
                         <mat-icon>arrow_forward</mat-icon>
+                      </span>
+                    }
+                    @case ('affinity-network') {
+                      <span class="explanation-popup__visual-affinity-network">
+                        <span class="explanation-popup__network-head">
+                          <span>{{ affinityText(revision.lang, 'mutual') }}</span>
+                          <strong>{{ affinityText(revision.lang, 'group') }}</strong>
+                        </span>
+                        <svg viewBox="0 0 360 190" focusable="false" aria-hidden="true">
+                          <line class="explanation-popup__network-edge explanation-popup__network-edge--strong" x1="48" y1="95" x2="132" y2="48"></line>
+                          <line class="explanation-popup__network-edge explanation-popup__network-edge--medium" x1="48" y1="95" x2="128" y2="146"></line>
+                          <line class="explanation-popup__network-edge explanation-popup__network-edge--light" x1="48" y1="95" x2="212" y2="42"></line>
+                          <line class="explanation-popup__network-edge explanation-popup__network-edge--strong" x1="132" y1="48" x2="212" y2="42"></line>
+                          <line class="explanation-popup__network-edge explanation-popup__network-edge--medium" x1="132" y1="48" x2="218" y2="148"></line>
+                          <line class="explanation-popup__network-edge explanation-popup__network-edge--medium" x1="128" y1="146" x2="218" y2="148"></line>
+                          <line class="explanation-popup__network-edge explanation-popup__network-edge--light" x1="128" y1="146" x2="212" y2="42"></line>
+                          <line class="explanation-popup__network-edge explanation-popup__network-edge--medium" x1="132" y1="48" x2="128" y2="146"></line>
+                          <line class="explanation-popup__network-edge explanation-popup__network-edge--strong" x1="212" y1="42" x2="312" y2="94"></line>
+                          <line class="explanation-popup__network-edge explanation-popup__network-edge--medium" x1="218" y1="148" x2="312" y2="94"></line>
+                          <line class="explanation-popup__network-edge explanation-popup__network-edge--light" x1="270" y1="142" x2="312" y2="94"></line>
+                          <line class="explanation-popup__network-edge explanation-popup__network-edge--medium" x1="218" y1="148" x2="270" y2="142"></line>
+                          <line class="explanation-popup__network-edge explanation-popup__network-edge--light" x1="212" y1="42" x2="270" y2="142"></line>
+                          <text class="explanation-popup__network-edge-label" x="86" y="55">92</text>
+                          <text class="explanation-popup__network-edge-label" x="82" y="136">74</text>
+                          <text class="explanation-popup__network-edge-label" x="99" y="78">38</text>
+                          <text class="explanation-popup__network-edge-label" x="172" y="34">89</text>
+                          <text class="explanation-popup__network-edge-label" x="160" y="102">68</text>
+                          <text class="explanation-popup__network-edge-label" x="174" y="166">71</text>
+                          <text class="explanation-popup__network-edge-label" x="176" y="78">46</text>
+                          <text class="explanation-popup__network-edge-label" x="126" y="100">63</text>
+                          <text class="explanation-popup__network-edge-label" x="260" y="58">94</text>
+                          <text class="explanation-popup__network-edge-label" x="266" y="136">76</text>
+                          <text class="explanation-popup__network-edge-label" x="295" y="132">42</text>
+                          <text class="explanation-popup__network-edge-label" x="244" y="164">66</text>
+                          <text class="explanation-popup__network-edge-label" x="246" y="86">44</text>
+                          <g class="explanation-popup__network-node explanation-popup__network-node--you" transform="translate(48 95)">
+                            <circle r="23"></circle>
+                            <text y="4">{{ affinityText(revision.lang, 'you') }}</text>
+                          </g>
+                          <g class="explanation-popup__network-node" transform="translate(132 48)">
+                            <circle r="20"></circle>
+                            <text y="4">A</text>
+                          </g>
+                          <g class="explanation-popup__network-node" transform="translate(128 146)">
+                            <circle r="20"></circle>
+                            <text y="4">B</text>
+                          </g>
+                          <g class="explanation-popup__network-node" transform="translate(212 42)">
+                            <circle r="20"></circle>
+                            <text y="4">C</text>
+                          </g>
+                          <g class="explanation-popup__network-node" transform="translate(218 148)">
+                            <circle r="20"></circle>
+                            <text y="4">D</text>
+                          </g>
+                          <g class="explanation-popup__network-node" transform="translate(270 142)">
+                            <circle r="18"></circle>
+                            <text y="4">E</text>
+                          </g>
+                          <g class="explanation-popup__network-node explanation-popup__network-node--match" transform="translate(312 94)">
+                            <circle r="23"></circle>
+                            <text y="4">{{ affinityText(revision.lang, 'match') }}</text>
+                          </g>
+                        </svg>
+                        <span class="explanation-popup__network-legend">
+                          <span><i class="is-strong"></i>{{ affinityText(revision.lang, 'strong') }}</span>
+                          <span><i class="is-medium"></i>{{ affinityText(revision.lang, 'medium') }}</span>
+                          <span><i class="is-light"></i>{{ affinityText(revision.lang, 'light') }}</span>
+                        </span>
                       </span>
                     }
                     @case ('profile') {
@@ -53,9 +126,9 @@
                             <span></span>
                             <span></span>
                           </span>
+                          <mat-icon class="explanation-popup__photo-tap">touch_app</mat-icon>
+                          <mat-icon class="explanation-popup__photo-eye">visibility</mat-icon>
                         </span>
-                        <mat-icon class="explanation-popup__photo-tap">touch_app</mat-icon>
-                        <mat-icon class="explanation-popup__photo-eye">visibility</mat-icon>
                       </span>
                     }
                     @case ('history') {
@@ -67,6 +140,7 @@
                         <span class="explanation-popup__history-connector"></span>
                         <span class="explanation-popup__history-edit-button">
                           <mat-icon>star</mat-icon>
+                          <span>{{ activityText(revision.lang, 'ratings') }}</span>
                         </span>
                       </span>
                     }
@@ -194,8 +268,13 @@
                             <small>{{ activityText(revision.lang, 'rate') }}</small>
                           </span>
                         </span>
-                        <span class="explanation-popup__activity-score-dock">
-                          <span>1</span><span>2</span><span>3</span><span class="is-active">4</span><span>5</span>
+                        <span class="explanation-popup__activity-score-slider">
+                          <span>1</span>
+                          <span class="explanation-popup__activity-score-rail">
+                            <span></span>
+                            <strong>6</strong>
+                          </span>
+                          <span>10</span>
                         </span>
                       </span>
                     }
@@ -206,10 +285,577 @@
                           <span class="explanation-popup__activity-fullscreen-button is-exit"><mat-icon>fullscreen_exit</mat-icon></span>
                         </span>
                         <span class="explanation-popup__activity-fullscreen-flow">
-                          <span class="explanation-popup__activity-fullscreen-card"></span>
-                          <span class="explanation-popup__activity-fullscreen-stars">
-                            <mat-icon>star</mat-icon><mat-icon>star</mat-icon><mat-icon>star</mat-icon>
+                          <span class="explanation-popup__activity-fullscreen-card">
+                            <span class="explanation-popup__activity-fullscreen-bars">
+                              <span></span>
+                              <span class="is-active"></span>
+                              <span></span>
+                            </span>
                           </span>
+                          <span class="explanation-popup__activity-score-slider explanation-popup__activity-fullscreen-rating">
+                            <span>1</span>
+                            <span class="explanation-popup__activity-score-rail">
+                              <span></span>
+                              <strong>6</strong>
+                            </span>
+                            <span>10</span>
+                          </span>
+                        </span>
+                      </span>
+                    }
+                    @case ('activity-chat-list') {
+                      <span class="explanation-popup__visual-chat-list">
+                        <span class="explanation-popup__chat-toolbar-row">
+                          <span class="explanation-popup__chat-pill is-primary">
+                            <mat-icon>forum</mat-icon>
+                            <span>{{ activityText(revision.lang, 'chats') }}</span>
+                            <strong>9+</strong>
+                            <mat-icon>expand_more</mat-icon>
+                          </span>
+                          <span class="explanation-popup__chat-pill is-context">
+                            <mat-icon>forum</mat-icon>
+                            <span>{{ activityText(revision.lang, 'allChats') }}</span>
+                            <strong>5</strong>
+                            <mat-icon>expand_more</mat-icon>
+                          </span>
+                        </span>
+                        <span class="explanation-popup__chat-filter-grid">
+                          <span><mat-icon>event</mat-icon>{{ activityText(revision.lang, 'eventChat') }}</span>
+                          <span><mat-icon>event_available</mat-icon>{{ activityText(revision.lang, 'subEventChat') }}</span>
+                          <span><mat-icon>groups</mat-icon>{{ activityText(revision.lang, 'groupChat') }}</span>
+                          <span><mat-icon>support_agent</mat-icon>{{ activityText(revision.lang, 'serviceChat') }}</span>
+                        </span>
+                        <span class="explanation-popup__chat-date-bar">2026. Jun. 2.</span>
+                      </span>
+                    }
+                    @case ('activity-chat-card') {
+                      <span class="explanation-popup__visual-chat-card">
+                        <span class="explanation-popup__chat-avatar">NH</span>
+                        <span class="explanation-popup__chat-row-copy">
+                          <strong>{{ activityText(revision.lang, 'chatTitle') }}</strong>
+                          <small>{{ activityText(revision.lang, 'chatChannel') }}</small>
+                          <em>{{ activityText(revision.lang, 'chatLast') }}</em>
+                        </span>
+                        <span class="explanation-popup__chat-members-pill">
+                          {{ activityText(revision.lang, 'chatMembers') }}
+                          <strong>1</strong>
+                        </span>
+                      </span>
+                    }
+                    @case ('activity-chat-message-window') {
+                      <span class="explanation-popup__visual-chat-window">
+                        <span class="explanation-popup__chat-window-header">
+                          <strong>{{ activityText(revision.lang, 'mainEvent') }}</strong>
+                          <span class="is-members"><mat-icon>groups</mat-icon>{{ activityText(revision.lang, 'chatMembers') }}</span>
+                          <span class="is-context"><mat-icon>event</mat-icon>{{ activityText(revision.lang, 'mainEvent') }}</span>
+                          <span class="is-pin"><mat-icon>push_pin</mat-icon></span>
+                        </span>
+                        <span class="explanation-popup__chat-thread-mini">
+                          <span class="explanation-popup__chat-mini-message is-other">
+                            <span class="explanation-popup__chat-mini-bubble">
+                              <span class="explanation-popup__chat-mini-avatar">EH</span>
+                              <span class="explanation-popup__chat-mini-content">
+                                <span class="explanation-popup__chat-mini-meta">
+                                  <strong>Elijah Brooks</strong>
+                                  <small>10:14</small>
+                                </span>
+                                <span class="explanation-popup__chat-mini-line">{{ activityText(revision.lang, 'chatLast') }}</span>
+                              </span>
+                            </span>
+                          </span>
+                          <span class="explanation-popup__chat-mini-message is-other">
+                            <span class="explanation-popup__chat-mini-bubble">
+                              <span class="explanation-popup__chat-mini-avatar">SL</span>
+                              <span class="explanation-popup__chat-mini-content">
+                                <span class="explanation-popup__chat-mini-meta">
+                                  <strong>Sophia Lane</strong>
+                                  <small>10:18</small>
+                                </span>
+                                <span class="explanation-popup__chat-card-attachment-mini">
+                                  <span class="explanation-popup__chat-card-media-mini"></span>
+                                  <span class="explanation-popup__chat-card-copy-mini">
+                                    <small><mat-icon>event</mat-icon>{{ activityText(revision.lang, 'sharedEvent') }}</small>
+                                    <strong>Phoenix Sunday Walk</strong>
+                                    <em>Aug 29 · 1 / 5</em>
+                                  </span>
+                                </span>
+                              </span>
+                            </span>
+                          </span>
+                          <span class="explanation-popup__chat-mini-message is-other">
+                            <span class="explanation-popup__chat-mini-bubble">
+                              <span class="explanation-popup__chat-mini-avatar">MH</span>
+                              <span class="explanation-popup__chat-mini-content">
+                                <span class="explanation-popup__chat-mini-meta">
+                                  <strong>Maya Hill</strong>
+                                  <small>10:20</small>
+                                </span>
+                                <span class="explanation-popup__chat-poll-mini">
+                                  <strong>{{ activityText(revision.lang, 'sharedPoll') }} · Ride time?</strong>
+                                  <span><span>10:00</span><em></em></span>
+                                  <span><span>10:30</span><em></em></span>
+                                  <button type="button">Vote</button>
+                                </span>
+                              </span>
+                            </span>
+                          </span>
+                          <span class="explanation-popup__chat-mini-message is-mine is-selected">
+                            <span class="explanation-popup__chat-message-tools-mini">
+                              <span><mat-icon>reply</mat-icon></span>
+                              <span><mat-icon>mood</mat-icon></span>
+                              <span><mat-icon>more_vert</mat-icon></span>
+                            </span>
+                            <span class="explanation-popup__chat-mini-bubble">
+                              <span class="explanation-popup__chat-mini-content">
+                                <span class="explanation-popup__chat-mini-meta">
+                                  <strong>You</strong>
+                                  <small>10:24</small>
+                                </span>
+                                <span class="explanation-popup__chat-mini-line">Yes, see you there.</span>
+                              </span>
+                              <span class="explanation-popup__chat-reaction-mini">👍 2</span>
+                            </span>
+                            <span class="explanation-popup__chat-message-menu-mini">
+                              <span>{{ activityText(revision.lang, 'viewMessage') }}</span>
+                              <span>{{ activityText(revision.lang, 'reply') }}</span>
+                              <span>{{ activityText(revision.lang, 'editMessage') }}</span>
+                              <span>{{ activityText(revision.lang, 'unsend') }}</span>
+                              <span>{{ activityText(revision.lang, 'pin') }}</span>
+                              <span>{{ activityText(revision.lang, 'report') }}</span>
+                            </span>
+                          </span>
+                        </span>
+                        <span class="explanation-popup__chat-compose">
+                          <mat-icon>add</mat-icon>
+                          <span>{{ activityText(revision.lang, 'writeMessage') }}</span>
+                          <mat-icon>send</mat-icon>
+                        </span>
+                      </span>
+                    }
+                    @case ('activity-chat-channels') {
+                      <span class="explanation-popup__visual-chat-channels">
+                        <span><mat-icon>event</mat-icon>{{ activityText(revision.lang, 'mainEvent') }}</span>
+                        <span><mat-icon>event_available</mat-icon>{{ activityText(revision.lang, 'subEvent') }}</span>
+                        <span><mat-icon>groups</mat-icon>{{ activityText(revision.lang, 'groupChannel') }}</span>
+                        <span><mat-icon>support_agent</mat-icon>{{ activityText(revision.lang, 'organizer') }}</span>
+                      </span>
+                    }
+                    @case ('activity-chat-tools') {
+                      <span class="explanation-popup__visual-chat-tools">
+                        <span class="explanation-popup__chat-plus-button"><mat-icon>add</mat-icon></span>
+                        <span class="explanation-popup__chat-composer-menu-mini">
+                          <span class="is-image"><mat-icon>image</mat-icon>{{ activityText(revision.lang, 'image') }}</span>
+                          <span class="is-voice"><mat-icon>mic</mat-icon>{{ activityText(revision.lang, 'voice') }}</span>
+                          <span class="is-poll"><mat-icon>poll</mat-icon>{{ activityText(revision.lang, 'poll') }}</span>
+                          <span class="is-event"><mat-icon>event</mat-icon>{{ activityText(revision.lang, 'eventShare') }}</span>
+                          <span class="is-asset"><mat-icon>inventory_2</mat-icon>{{ activityText(revision.lang, 'asset') }}</span>
+                        </span>
+                      </span>
+                    }
+                    @case ('assets-entry') {
+                      <span class="explanation-popup__visual-assets-entry">
+                        <span class="explanation-popup__assets-head-mini">
+                          <strong>{{ assetText(revision.lang, 'assets') }}</strong>
+                          <span><mat-icon>close</mat-icon></span>
+                        </span>
+                        <span class="explanation-popup__assets-filter-mini">
+                          <span class="is-car"><mat-icon>directions_car</mat-icon>{{ assetText(revision.lang, 'car') }}<strong>4</strong></span>
+                          <span class="is-home"><mat-icon>apartment</mat-icon>{{ assetText(revision.lang, 'accommodation') }}<strong>2</strong></span>
+                          <span class="is-supplies"><mat-icon>inventory_2</mat-icon>{{ assetText(revision.lang, 'supplies') }}<strong>8</strong></span>
+                          <span class="is-ticket"><mat-icon>qr_code_2</mat-icon>{{ assetText(revision.lang, 'ticket') }}</span>
+                        </span>
+                        <span class="explanation-popup__asset-add-mini"><mat-icon>add</mat-icon></span>
+                      </span>
+                    }
+                    @case ('assets-card') {
+                      <span class="explanation-popup__visual-assets-card">
+                        <span class="explanation-popup__asset-card-mini">
+                          <span class="explanation-popup__asset-card-photo-mini"></span>
+                          <span class="explanation-popup__asset-card-status-mini">{{ assetText(revision.lang, 'accepted') }} <strong>1</strong></span>
+                          <span class="explanation-popup__asset-card-body-mini">
+                            <span class="explanation-popup__asset-leading-mini"><mat-icon>directions_car</mat-icon></span>
+                            <span class="explanation-popup__asset-card-copy-mini">
+                              <strong>City-to-Lake SUV</strong>
+                              <small>{{ assetText(revision.lang, 'car') }} · Volkswagen Golf · Austin</small>
+                              <em>Airport run before midnight, fuel split evenly.</em>
+                            </span>
+                            <span class="explanation-popup__asset-card-menu-mini"><mat-icon>more_vert</mat-icon></span>
+                          </span>
+                        </span>
+                        <span class="explanation-popup__asset-actions-menu-mini">
+                          <span><mat-icon>ios_share</mat-icon>{{ assetText(revision.lang, 'share') }}</span>
+                          <span><mat-icon>edit</mat-icon>{{ assetText(revision.lang, 'edit') }}</span>
+                          <span><mat-icon>delete</mat-icon>{{ assetText(revision.lang, 'delete') }}</span>
+                        </span>
+                      </span>
+                    }
+                    @case ('assets-editor') {
+                      <span class="explanation-popup__visual-assets-editor">
+                        <span class="explanation-popup__asset-editor-head-mini">
+                          <strong>{{ assetText(revision.lang, 'add') }} {{ assetText(revision.lang, 'car') }}</strong>
+                          <span class="is-public"><mat-icon>public</mat-icon>{{ assetText(revision.lang, 'public') }}</span>
+                          <span class="is-save"><mat-icon>done</mat-icon></span>
+                          <span><mat-icon>close</mat-icon></span>
+                        </span>
+                        <span class="explanation-popup__asset-editor-grid-mini">
+                          <span class="is-photo"><mat-icon>add</mat-icon></span>
+                          <span><small>{{ assetText(revision.lang, 'sourceLink') }}</small><strong>https://...</strong></span>
+                          <span><small>{{ assetText(revision.lang, 'type') }}</small><strong><mat-icon>directions_car</mat-icon>{{ assetText(revision.lang, 'car') }}</strong></span>
+                          <span><small>{{ assetText(revision.lang, 'title') }} *</small><strong>City-to-Lake SUV</strong></span>
+                          <span><small>{{ assetText(revision.lang, 'category') }}</small><strong>Ride</strong></span>
+                          <span><small>{{ assetText(revision.lang, 'capacity') }} *</small><strong>4</strong></span>
+                          <span><small>{{ assetText(revision.lang, 'quantity') }} *</small><strong>1</strong></span>
+                          <span class="is-wide"><small>{{ assetText(revision.lang, 'details') }}</small><strong>Flexible pickup, compact luggage.</strong></span>
+                        </span>
+                        <span class="explanation-popup__asset-editor-panels-mini">
+                          <span><mat-icon>paid</mat-icon>{{ assetText(revision.lang, 'price') }}<em>OFF</em></span>
+                          <span><mat-icon>gavel</mat-icon>{{ assetText(revision.lang, 'policies') }}</span>
+                          <span><mat-icon>location_on</mat-icon>{{ assetText(revision.lang, 'location') }}<strong>{{ assetText(revision.lang, 'map') }}</strong></span>
+                        </span>
+                      </span>
+                    }
+                    @case ('assets-requests') {
+                      <span class="explanation-popup__visual-assets-requests">
+                        <span class="explanation-popup__asset-request-head-mini">
+                          <strong>{{ assetText(revision.lang, 'requests') }}</strong>
+                          <span><mat-icon>view_list</mat-icon>{{ assetText(revision.lang, 'all') }} <strong>3</strong></span>
+                        </span>
+                        <span class="explanation-popup__asset-request-filter-mini">
+                          <span><mat-icon>inventory_2</mat-icon>{{ assetText(revision.lang, 'activeItems') }}</span>
+                          <span><mat-icon>pending_actions</mat-icon>{{ assetText(revision.lang, 'pendingRequests') }}</span>
+                          <span><mat-icon>assignment_returned</mat-icon>{{ assetText(revision.lang, 'borrowedItems') }}</span>
+                        </span>
+                        <span class="explanation-popup__asset-request-row-mini is-pending">
+                          <span class="explanation-popup__asset-request-avatar-mini">MH</span>
+                          <span><strong>Maya Hill</strong><small>Phoenix Sunday Walk · Stage 1</small><em>May 23, 00:04 - 01:04</em></span>
+                          <span class="explanation-popup__asset-request-side-mini"><strong>1 / 2 left</strong><small>{{ assetText(revision.lang, 'pending') }}</small></span>
+                          <span class="explanation-popup__asset-request-menu-mini">
+                            <span><mat-icon>check_circle</mat-icon>{{ assetText(revision.lang, 'accept') }}</span>
+                            <span><mat-icon>manage_accounts</mat-icon>{{ assetText(revision.lang, 'makeManager') }}</span>
+                            <span><mat-icon>delete</mat-icon>{{ assetText(revision.lang, 'reject') }}</span>
+                          </span>
+                        </span>
+                      </span>
+                    }
+                    @case ('assets-scope') {
+                      <span class="explanation-popup__visual-assets-scope">
+                        <span class="explanation-popup__asset-scope-card-mini is-own">
+                          <mat-icon>inventory_2</mat-icon>
+                          <strong>{{ assetText(revision.lang, 'own') }}</strong>
+                          <small>{{ assetText(revision.lang, 'share') }} · {{ assetText(revision.lang, 'edit') }} · {{ assetText(revision.lang, 'delete') }}</small>
+                        </span>
+                        <mat-icon class="explanation-popup__asset-scope-arrow-mini">east</mat-icon>
+                        <span class="explanation-popup__asset-scope-card-mini is-event">
+                          <mat-icon>account_tree</mat-icon>
+                          <strong>{{ assetText(revision.lang, 'eventResource') }}</strong>
+                          <small>{{ assetText(revision.lang, 'takeover') }} · {{ assetText(revision.lang, 'deletedOwner') }}</small>
+                        </span>
+                      </span>
+                    }
+                    @case ('assets-tickets') {
+                      <span class="explanation-popup__visual-assets-tickets">
+                        <span class="explanation-popup__ticket-order-mini">
+                          <span><mat-icon>schedule</mat-icon>{{ assetText(revision.lang, 'upcoming') }}</span>
+                          <span><mat-icon>history</mat-icon>{{ assetText(revision.lang, 'past') }}</span>
+                          <strong><mat-icon>qr_code_scanner</mat-icon>{{ assetText(revision.lang, 'scan') }}</strong>
+                        </span>
+                        <span class="explanation-popup__ticket-card-mini">
+                          <span class="explanation-popup__ticket-card-photo-mini"></span>
+                          <span><strong>Phoenix Sunday Walk</strong><small>Aug 29 · 1:15 PM</small><em>{{ assetText(revision.lang, 'ticket') }} · {{ assetText(revision.lang, 'qr') }}</em></span>
+                          <span class="explanation-popup__ticket-qr-mini"><mat-icon>qr_code_2</mat-icon></span>
+                        </span>
+                      </span>
+                    }
+                    @case ('event-editor-main') {
+                      <span class="explanation-popup__visual-event-editor-main">
+                        <span class="explanation-popup__editor-shell-mini">
+                          <span class="explanation-popup__editor-head-mini">
+                            <strong>{{ activityText(revision.lang, 'createEvent') }}</strong>
+                          <span class="explanation-popup__editor-head-actions">
+                            <span><mat-icon>groups</mat-icon>{{ activityText(revision.lang, 'members') }}</span>
+                              <span><mat-icon>public</mat-icon>{{ activityText(revision.lang, 'publicEvent') }}</span>
+                              <span class="is-save"><mat-icon>done</mat-icon></span>
+                              <span><mat-icon>close</mat-icon></span>
+                            </span>
+                          </span>
+                          <span class="explanation-popup__editor-dropzone-mini">
+                            <mat-icon>add</mat-icon>
+                          </span>
+                          <span class="explanation-popup__editor-field-grid">
+                            <span><small>{{ activityText(revision.lang, 'eventName') }} *</small><strong>Phoenix Sunday Walk</strong></span>
+                            <span><small>{{ activityText(revision.lang, 'capacity') }} *</small><strong>1 - 5</strong></span>
+                          </span>
+                          <span class="explanation-popup__editor-intel-grid-mini">
+                            <span class="is-open"><mat-icon>visibility</mat-icon>{{ activityText(revision.lang, 'openEvent') }}</span>
+                            <span class="is-topics"><mat-icon>sell</mat-icon>{{ activityText(revision.lang, 'topics') }}</span>
+                            <span class="is-auto"><mat-icon>person_off</mat-icon>{{ activityText(revision.lang, 'autoInviter') }}</span>
+                            <span class="is-ticket"><mat-icon>qr_code_2</mat-icon>{{ activityText(revision.lang, 'ticketing') }}</span>
+                          </span>
+                          <span class="explanation-popup__editor-description-mini">
+                            <small>{{ activityText(revision.lang, 'description') }} *</small>
+                            <span></span>
+                          </span>
+                        </span>
+                      </span>
+                    }
+                    @case ('event-editor-switches') {
+                      <span class="explanation-popup__visual-event-editor-switches">
+                        <span class="explanation-popup__editor-visibility-menu-mini">
+                          <span><mat-icon>public</mat-icon>{{ activityText(revision.lang, 'publicEvent') }}</span>
+                          <span><mat-icon>groups</mat-icon>{{ activityText(revision.lang, 'friendsOnly') }}</span>
+                          <span><mat-icon>mail_lock</mat-icon>{{ activityText(revision.lang, 'invitationOnly') }}</span>
+                        </span>
+                        <span class="explanation-popup__editor-intel-card is-open">
+                          <mat-icon>visibility</mat-icon>
+                          <strong>{{ activityText(revision.lang, 'openEvent') }}</strong>
+                          <small>{{ activityText(revision.lang, 'profile') }}</small>
+                        </span>
+                        <span class="explanation-popup__editor-intel-card is-blind">
+                          <mat-icon>visibility_off</mat-icon>
+                          <strong>{{ activityText(revision.lang, 'blindEvent') }}</strong>
+                          <small>{{ activityText(revision.lang, 'visibility') }}</small>
+                        </span>
+                        <span class="explanation-popup__editor-intel-card is-topics">
+                          <mat-icon>sell</mat-icon>
+                          <strong>{{ activityText(revision.lang, 'topics') }}</strong>
+                          <small>Outdoor · Walk</small>
+                        </span>
+                        <span class="explanation-popup__editor-intel-card is-auto">
+                          <mat-icon>person_off</mat-icon>
+                          <strong>{{ activityText(revision.lang, 'autoInviter') }}</strong>
+                          <small>{{ activityText(revision.lang, 'priority') }}</small>
+                        </span>
+                        <span class="explanation-popup__editor-intel-card is-ticket">
+                          <mat-icon>qr_code_2</mat-icon>
+                          <strong>{{ activityText(revision.lang, 'ticketing') }}</strong>
+                          <small>QR</small>
+                        </span>
+                      </span>
+                    }
+                    @case ('event-editor-schedule') {
+                      <span class="explanation-popup__visual-event-editor-schedule">
+                        <span class="explanation-popup__editor-schedule-panel-mini">
+                          <span class="explanation-popup__editor-section-title"><mat-icon>event</mat-icon>{{ activityText(revision.lang, 'datePanel') }} <em>{{ activityText(revision.lang, 'oneTime') }}</em></span>
+                          <span class="explanation-popup__editor-date-row-mini">
+                            <span>2026/05/23</span>
+                            <span>00:04</span>
+                            <span>2026/05/23</span>
+                            <span>01:04</span>
+                          </span>
+                          <span class="explanation-popup__editor-slot-row-mini">
+                            <mat-icon>view_timeline</mat-icon>
+                            <span>{{ activityText(revision.lang, 'slotSetup') }}</span>
+                          </span>
+                        </span>
+                        <span class="explanation-popup__editor-stack-card-mini"><mat-icon>paid</mat-icon><strong>{{ activityText(revision.lang, 'pricing') }}</strong><em>OFF</em></span>
+                        <span class="explanation-popup__editor-stack-card-mini is-policy"><mat-icon>policy</mat-icon><strong>{{ activityText(revision.lang, 'policies') }}</strong><span>{{ activityText(revision.lang, 'approve') }}</span></span>
+                        <span class="explanation-popup__editor-location-mini"><mat-icon>place</mat-icon>{{ activityText(revision.lang, 'location') }}<strong>{{ activityText(revision.lang, 'map') }}</strong></span>
+                        <span class="explanation-popup__editor-subevent-row-mini"><mat-icon>account_tree</mat-icon>{{ activityText(revision.lang, 'subEvents') }}<mat-icon>chevron_right</mat-icon></span>
+                      </span>
+                    }
+                    @case ('event-editor-subevents') {
+                      <span class="explanation-popup__visual-event-editor-subevents">
+                        <span class="explanation-popup__subevents-head-mini">
+                          <mat-icon>arrow_back</mat-icon>
+                          <strong>{{ activityText(revision.lang, 'subEvents') }}</strong>
+                          <span><mat-icon>add</mat-icon></span>
+                          <span class="is-mode"><mat-icon>groups</mat-icon>{{ activityText(revision.lang, 'casual') }}</span>
+                        </span>
+                        <span class="explanation-popup__subevents-layout-mini">
+                          <span class="explanation-popup__subevents-casual-mini">
+                            <span class="explanation-popup__subevents-mode-row-mini">
+                              <span class="is-mandatory">{{ activityText(revision.lang, 'mandatory') }}</span>
+                              <span class="is-optional">{{ activityText(revision.lang, 'optional') }}</span>
+                            </span>
+                            <span class="explanation-popup__subevent-card-mini">
+                              <strong>Sub Event 1</strong>
+                              <small>00:04 - 01:04</small>
+                              <span class="explanation-popup__subevent-menu-mini">
+                                <span><mat-icon>edit</mat-icon>{{ activityText(revision.lang, 'editEvent') }}</span>
+                                <span><mat-icon>groups</mat-icon>{{ activityText(revision.lang, 'members') }}</span>
+                                <span><mat-icon>directions_car</mat-icon>{{ activityText(revision.lang, 'car') }}</span>
+                                <span><mat-icon>apartment</mat-icon>{{ activityText(revision.lang, 'accommodation') }}</span>
+                                <span><mat-icon>inventory_2</mat-icon>{{ activityText(revision.lang, 'supplies') }}</span>
+                              </span>
+                            </span>
+                          </span>
+                          <span class="explanation-popup__subevents-tournament-mini">
+                            <span class="explanation-popup__tournament-title-mini"><mat-icon>emoji_events</mat-icon>{{ activityText(revision.lang, 'tournament') }}</span>
+                            <span class="explanation-popup__stage-card-mini">
+                              <strong>{{ activityText(revision.lang, 'stage') }} 1 <em>RS</em></strong>
+                              <small>{{ activityText(revision.lang, 'leaderboard') }}</small>
+                              <span class="explanation-popup__group-row-mini"><mat-icon>groups</mat-icon>{{ activityText(revision.lang, 'group') }} A <em>4 / 7</em></span>
+                              <span class="explanation-popup__group-row-mini"><mat-icon>groups</mat-icon>{{ activityText(revision.lang, 'group') }} B <em>4 / 7</em></span>
+                            </span>
+                          </span>
+                        </span>
+                      </span>
+                    }
+                    @case ('event-editor-members') {
+                      <span class="explanation-popup__visual-event-editor-members">
+                        <span class="explanation-popup__members-toolbar-mini">
+                          <span><mat-icon>person_add</mat-icon>{{ activityText(revision.lang, 'invite') }}</span>
+                          <span><mat-icon>pending_actions</mat-icon>{{ activityText(revision.lang, 'pendingOnly') }} <strong>2</strong></span>
+                          <span>1 / 5</span>
+                        </span>
+                        <span class="explanation-popup__member-image-grid-mini">
+                          <span class="explanation-popup__member-image-tile-mini is-admin">
+                            <span class="explanation-popup__member-status-pill-mini"><mat-icon>admin_panel_settings</mat-icon>{{ activityText(revision.lang, 'admin') }}</span>
+                            <span class="explanation-popup__member-eye-mini"><mat-icon>visibility</mat-icon></span>
+                            <span class="explanation-popup__member-image-meta-mini">
+                              <strong>Noah Hart, 29</strong>
+                              <small>{{ activityText(revision.lang, 'admin') }} · Phoenix</small>
+                            </span>
+                          </span>
+                          <span class="explanation-popup__member-image-tile-mini is-manager">
+                            <span class="explanation-popup__member-status-pill-mini"><mat-icon>badge</mat-icon>{{ activityText(revision.lang, 'manager') }}</span>
+                            <span class="explanation-popup__member-menu-dot-mini"><mat-icon>more_vert</mat-icon></span>
+                            <span class="explanation-popup__member-image-meta-mini">
+                              <strong>Maya Stone, 29</strong>
+                              <small>{{ activityText(revision.lang, 'manager') }} · {{ activityText(revision.lang, 'accepted') }}</small>
+                            </span>
+                          </span>
+                        </span>
+                        <span class="explanation-popup__member-card-mini is-pending">
+                          <span class="explanation-popup__member-avatar-mini">GB</span>
+                          <span><strong>Grace Bell</strong><small>{{ activityText(revision.lang, 'member') }} · {{ activityText(revision.lang, 'pending') }}</small></span>
+                          <span class="explanation-popup__member-menu-mini">
+                            <span><mat-icon>check_circle</mat-icon>{{ activityText(revision.lang, 'approve') }}</span>
+                            <span><mat-icon>delete</mat-icon>{{ activityText(revision.lang, 'reject') }}</span>
+                            <span><mat-icon>gavel</mat-icon>{{ activityText(revision.lang, 'disqualify') }}</span>
+                            <span><mat-icon>flag</mat-icon>{{ activityText(revision.lang, 'report') }}</span>
+                          </span>
+                        </span>
+                      </span>
+                    }
+                    @case ('event-editor-assets') {
+                      <span class="explanation-popup__visual-event-editor-assets">
+                        <span class="explanation-popup__resource-filter-mini">
+                          <span><mat-icon>groups</mat-icon>{{ activityText(revision.lang, 'members') }}</span>
+                          <span><mat-icon>directions_car</mat-icon>{{ activityText(revision.lang, 'car') }}</span>
+                          <span><mat-icon>apartment</mat-icon>{{ activityText(revision.lang, 'accommodation') }}</span>
+                          <span><mat-icon>inventory_2</mat-icon>{{ activityText(revision.lang, 'supplies') }}</span>
+                        </span>
+                        <span class="explanation-popup__resource-action-mini">
+                          <span><mat-icon>add</mat-icon></span>
+                          <span class="explanation-popup__resource-menu-mini">
+                            <span><mat-icon>assignment_ind</mat-icon>{{ activityText(revision.lang, 'assign') }}</span>
+                            <span><mat-icon>explore</mat-icon>{{ activityText(revision.lang, 'explore') }}</span>
+                          </span>
+                        </span>
+                        <span class="explanation-popup__resource-card-mini">
+                          <strong>Ride seats</strong>
+                          <small>{{ activityText(revision.lang, 'car') }} · {{ activityText(revision.lang, 'capacityRange') }} 2-4</small>
+                          <em>2 {{ activityText(revision.lang, 'accepted') }} · 1 {{ activityText(revision.lang, 'pending') }}</em>
+                        </span>
+                        <span class="explanation-popup__resource-detail-mini">
+                          <mat-icon>inventory_2</mat-icon>
+                          <span>
+                            <strong>Camping supplies</strong>
+                            <small>Phoenix · 6 items</small>
+                          </span>
+                        </span>
+                      </span>
+                    }
+                    @case ('activity-event-entry') {
+                      <span class="explanation-popup__visual-event-entry">
+                        <span class="explanation-popup__event-toolbar-row">
+                          <span class="explanation-popup__event-pill is-primary">
+                            <mat-icon>event</mat-icon>
+                            <span>{{ activityText(revision.lang, 'events') }}</span>
+                            <mat-icon>expand_more</mat-icon>
+                          </span>
+                          <span class="explanation-popup__event-pill is-scope">
+                            <mat-icon>widgets</mat-icon>
+                            <span>{{ activityText(revision.lang, 'allEvents') }}</span>
+                            <strong>1</strong>
+                            <mat-icon>expand_more</mat-icon>
+                          </span>
+                        </span>
+                        <span class="explanation-popup__event-toolbar-row">
+                          <span class="explanation-popup__event-pill"><mat-icon>schedule</mat-icon>{{ activityText(revision.lang, 'upcoming') }}</span>
+                          <span class="explanation-popup__event-pill"><mat-icon>today</mat-icon>{{ activityText(revision.lang, 'day') }}</span>
+                          <span class="explanation-popup__event-action is-explore"><mat-icon>explore</mat-icon>{{ activityText(revision.lang, 'explore') }}</span>
+                        </span>
+                        <span class="explanation-popup__event-scope-grid">
+                          <span>{{ activityText(revision.lang, 'activeEvents') }}</span>
+                          <span>{{ activityText(revision.lang, 'pending') }}</span>
+                          <span>{{ activityText(revision.lang, 'invitations') }}</span>
+                          <span>{{ activityText(revision.lang, 'myEvents') }}</span>
+                          <span>{{ activityText(revision.lang, 'drafts') }}</span>
+                          <span>{{ activityText(revision.lang, 'trash') }}</span>
+                        </span>
+                      </span>
+                    }
+                    @case ('activity-event-card') {
+                      <span class="explanation-popup__visual-event-card">
+                        <span class="explanation-popup__event-card-media">
+                          <span class="explanation-popup__event-avatar">MG</span>
+                          <span class="explanation-popup__event-capacity">1 / 5<strong>1</strong></span>
+                        </span>
+                        <span class="explanation-popup__event-card-body">
+                          <span class="explanation-popup__event-leading"><mat-icon>event_available</mat-icon></span>
+                          <span class="explanation-popup__event-card-copy">
+                            <strong>{{ activityText(revision.lang, 'eventTitle') }}</strong>
+                            <small>{{ activityText(revision.lang, 'eventDate') }}</small>
+                            <small>{{ activityText(revision.lang, 'eventPlace') }}</small>
+                          </span>
+                          <span class="explanation-popup__event-menu-dot"><mat-icon>more_vert</mat-icon></span>
+                        </span>
+                        <span class="explanation-popup__event-status-chip">{{ activityText(revision.lang, 'waitingApproval') }}</span>
+                      </span>
+                    }
+                    @case ('activity-event-actions') {
+                      <span class="explanation-popup__visual-event-actions">
+                        <span class="explanation-popup__event-member-button">
+                          <mat-icon>groups</mat-icon>
+                          <span>1 / 5</span>
+                          <strong>1</strong>
+                        </span>
+                        <span class="explanation-popup__event-actions-menu">
+                          <span><mat-icon>visibility</mat-icon>{{ activityText(revision.lang, 'viewEvent') }}</span>
+                          <span><mat-icon>edit</mat-icon>{{ activityText(revision.lang, 'editEvent') }}</span>
+                          <span><mat-icon>campaign</mat-icon>{{ activityText(revision.lang, 'publish') }}</span>
+                          <span><mat-icon>done</mat-icon>{{ activityText(revision.lang, 'accept') }}</span>
+                          <span><mat-icon>support_agent</mat-icon>{{ activityText(revision.lang, 'contact') }}</span>
+                          <span><mat-icon>ios_share</mat-icon>{{ activityText(revision.lang, 'share') }}</span>
+                        </span>
+                      </span>
+                    }
+                    @case ('activity-event-join') {
+                      <span class="explanation-popup__visual-event-flow">
+                        <span class="explanation-popup__event-flow-card">
+                          <mat-icon>mail</mat-icon>
+                          <strong>{{ activityText(revision.lang, 'invitations') }}</strong>
+                        </span>
+                        <mat-icon class="explanation-popup__event-flow-arrow">chevron_right</mat-icon>
+                        <span class="explanation-popup__event-flow-card">
+                          <mat-icon>qr_code_scanner</mat-icon>
+                          <strong>{{ activityText(revision.lang, 'checkout') }}</strong>
+                        </span>
+                        <mat-icon class="explanation-popup__event-flow-arrow">chevron_right</mat-icon>
+                        <span class="explanation-popup__event-flow-card">
+                          <mat-icon>rate_review</mat-icon>
+                          <strong>{{ activityText(revision.lang, 'feedback') }}</strong>
+                        </span>
+                      </span>
+                    }
+                    @case ('activity-event-hosting') {
+                      <span class="explanation-popup__visual-event-hosting">
+                        <span class="explanation-popup__event-create-button">
+                          <mat-icon>add_circle</mat-icon>
+                          <span>{{ activityText(revision.lang, 'createEvent') }}</span>
+                        </span>
+                        <span class="explanation-popup__event-hosting-grid">
+                          <span><mat-icon>event</mat-icon>{{ activityText(revision.lang, 'normalEvent') }}</span>
+                          <span><mat-icon>emoji_events</mat-icon>{{ activityText(revision.lang, 'tournament') }}</span>
+                          <span><mat-icon>inventory_2</mat-icon>{{ activityText(revision.lang, 'resources') }}</span>
+                          <span><mat-icon>qr_code_2</mat-icon>{{ activityText(revision.lang, 'checkout') }}</span>
+                        </span>
+                        <span class="explanation-popup__event-priority-line">
+                          <mat-icon>group_add</mat-icon>
+                          <span>{{ activityText(revision.lang, 'autoInviter') }}</span>
+                          <strong>{{ activityText(revision.lang, 'priority') }}</strong>
                         </span>
                       </span>
                     }
@@ -218,8 +864,9 @@
                         <mat-icon>{{ section.icon || 'tips_and_updates' }}</mat-icon>
                       </span>
                     }
-                  }
-                </div>
+                    }
+                  </div>
+                }
               </div>
             </section>
           }

@@ -1,6 +1,5 @@
 import { Injectable, inject } from '@angular/core';
 
-import { DemoAssetBuilder } from '../shared/core/demo/builders';
 import type * as AppTypes from '../shared/core/base/models';
 import {
   AppContext,
@@ -41,11 +40,7 @@ export class AssetFacadeService {
     card: AppTypes.AssetCard,
     options: { groupLabel?: string | null; selectMode?: boolean; selected?: boolean; selectDisabled?: boolean } = {}
   ): InfoCardData {
-    return AssetInfoCardBuilder.buildOwnedAssetInfoCard(card, {
-      ...options,
-      fallbackImageUrl: DemoAssetBuilder.defaultAssetImage(card.type, card.id || card.title || card.type.toLowerCase()),
-      fallbackSubtitle: DemoAssetBuilder.defaultAssetSubtitle(card.type)
-    });
+    return AssetInfoCardBuilder.buildOwnedAssetInfoCard(card, options);
   }
 
   ownedAssetEmptyLabel(type: AppTypes.AssetType): string {

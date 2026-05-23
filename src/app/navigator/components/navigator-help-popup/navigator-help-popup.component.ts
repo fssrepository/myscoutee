@@ -4,11 +4,12 @@ import { MatIconModule } from '@angular/material/icon';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { HelpCenterService } from '../../../shared/core';
 import type { HelpCenterSection } from '../../../shared/core/base/models';
+import { LazyBgImageDirective } from '../../../shared/ui/directives';
 
 @Component({
   selector: 'app-navigator-help-popup',
   standalone: true,
-  imports: [MatIconModule],
+  imports: [MatIconModule, LazyBgImageDirective],
   templateUrl: './navigator-help-popup.component.html',
   styleUrl: './navigator-help-popup.component.scss'
 })

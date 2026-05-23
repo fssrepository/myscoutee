@@ -23,7 +23,8 @@ import {
   ActivityMembersService,
   AppContext,
   AppPopupContext,
-  EventEditorDataService
+  EventEditorDataService,
+  ExplanationGuideService
 } from '../../../shared/core';
 import { HttpMediaService } from '../../../shared/core/http';
 import type { DemoEventRecord } from '../../../shared/core/demo/models/events.model';
@@ -64,6 +65,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   private readonly appCtx = inject(AppContext);
   private readonly popupCtx = inject(AppPopupContext);
   private readonly httpMediaService = inject(HttpMediaService);
+  private readonly explanationGuide = inject(ExplanationGuideService);
   protected readonly interestOptionGroups = APP_STATIC_DATA.interestOptionGroups;
 
   @ViewChild('eventImageInput') eventImageInput!: ElementRef<HTMLInputElement>;
@@ -84,6 +86,8 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   private draftAutosaveTimer: ReturnType<typeof setInterval> | null = null;
   private lastDraftAutosaveSignature = '';
   private isDraftAutosavePending = false;
+  private eventEditorExplanationContextKey: string | null = null;
+  private unregisterEventEditorExplanationContext: (() => void) | null = null;
   protected isLoadingEventData = false;
 
   constructor() {
@@ -103,6 +107,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     effect(() => {
       const sourceEvent: any = this.eventEditorService.sourceEvent();
       const isOpen = this.eventEditorService.isOpen();
+      this.setEventEditorExplanationContext(isOpen ? 'event.editor' : null);
 
       if (!isOpen) {
         this.showSlotsPopup = false;
@@ -204,6 +209,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.openSubscription?.unsubscribe();
     this.closeSubscription?.unsubscribe();
     this.stopDraftAutosaveLoop();
+    this.clearEventEditorExplanationContext();
   }
 
   eventForm: AppTypes.EventEditorDraftForm = {
@@ -263,6 +269,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.showTopicPicker = false;
     this.showMobileFrequencyPicker = false;
     this.isSavePending = false;
+    this.clearEventEditorExplanationContext();
     this.eventEditorService.close();
   }
 
@@ -1527,6 +1534,24 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.currentMemberSummary = null;
     this.lastHandledActivityMembersSyncMs = 0;
     this.pendingEventImageFile = null;
+  }
+
+  private setEventEditorExplanationContext(contextKey: string | null): void {
+    if (this.eventEditorExplanationContextKey === contextKey) {
+      return;
+    }
+    this.clearEventEditorExplanationContext();
+    if (!contextKey) {
+      return;
+    }
+    this.eventEditorExplanationContextKey = contextKey;
+    this.unregisterEventEditorExplanationContext = this.explanationGuide.registerContext(contextKey);
+  }
+
+  private clearEventEditorExplanationContext(): void {
+    this.unregisterEventEditorExplanationContext?.();
+    this.unregisterEventEditorExplanationContext = null;
+    this.eventEditorExplanationContextKey = null;
   }
 
   private activeUserId(): string {

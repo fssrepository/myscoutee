@@ -72,11 +72,20 @@ export class HttpHelpCenterService {
     return consent;
   }
 
-  async loadAdminState(adminUserId: string, kind: HelpCenterDocumentKind = 'help', lang = 'en'): Promise<HelpCenterState> {
+  async loadAdminState(
+    adminUserId: string,
+    kind: HelpCenterDocumentKind = 'help',
+    lang = 'en',
+    contextKey?: string | null
+  ): Promise<HelpCenterState> {
     const documentKind = this.normalizeKind(kind);
     const params: Record<string, string> = { lang: this.normalizeLang(lang) };
     if (adminUserId.trim()) {
       params['adminUserId'] = adminUserId.trim();
+    }
+    const context = this.normalizeContextKey(documentKind, contextKey);
+    if (context) {
+      params['contextKey'] = context;
     }
     const response = await this.http
       .get<Partial<HelpCenterState> | null>(`${this.apiBaseUrl}/admin/${documentKind}`, {
@@ -181,8 +190,26 @@ export class HttpHelpCenterService {
       title,
       blurb: `${value?.blurb ?? ''}`.trim(),
       contentHtml,
+      imageUrls: this.normalizeImageUrls(value?.imageUrls),
       optional: value?.optional === true
     };
+  }
+
+  private normalizeImageUrls(imageUrls: readonly string[] | null | undefined, limit = 8): string[] {
+    const result: string[] = [];
+    const seen = new Set<string>();
+    for (const imageUrl of imageUrls ?? []) {
+      const normalized = `${imageUrl ?? ''}`.trim();
+      if (!normalized || seen.has(normalized)) {
+        continue;
+      }
+      seen.add(normalized);
+      result.push(normalized);
+      if (result.length >= limit) {
+        break;
+      }
+    }
+    return result;
   }
 
   private normalizeAudit(value: Partial<HelpCenterAuditEntry> | null | undefined, kind: HelpCenterDocumentKind): HelpCenterAuditEntry | null {

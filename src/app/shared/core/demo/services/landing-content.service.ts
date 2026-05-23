@@ -12,6 +12,7 @@ export class DemoLandingContentService {
   private readonly ideaPosts = inject(DemoIdeaPostsService);
 
   async loadContent(): Promise<LandingContentState> {
+    await this.helpCenter.ensureEntryPrivacySeeded();
     const [privacy, ideas] = await Promise.all([
       this.helpCenter.loadState('privacy'),
       this.ideaPosts.loadPublishedPosts()

@@ -83,7 +83,7 @@ export class HelpCenterService extends BaseRouteModeService {
     const documentKind = this.normalizeKind(kind);
     const service = this.helpService(documentKind);
     const state = service instanceof HttpHelpCenterService
-      ? await service.loadAdminState(adminUserId, documentKind, lang)
+      ? await service.loadAdminState(adminUserId, documentKind, lang, contextKey)
       : await service.loadState(documentKind, lang, contextKey);
     this.setState(documentKind, state);
     return this.cloneState(state);
@@ -149,12 +149,18 @@ export class HelpCenterService extends BaseRouteModeService {
       activeRevision: state.activeRevision
         ? {
             ...state.activeRevision,
-            sections: state.activeRevision.sections.map(section => ({ ...section }))
+            sections: state.activeRevision.sections.map(section => ({
+              ...section,
+              imageUrls: [...(section.imageUrls ?? [])]
+            }))
           }
         : null,
       revisions: state.revisions.map(revision => ({
         ...revision,
-        sections: revision.sections.map(section => ({ ...section }))
+        sections: revision.sections.map(section => ({
+          ...section,
+          imageUrls: [...(section.imageUrls ?? [])]
+        }))
       })),
       auditTrail: state.auditTrail.map(entry => ({ ...entry })),
       availableLanguages: state.availableLanguages.map(language => ({ ...language }))

@@ -750,6 +750,10 @@
   background-repeat: no-repeat;
 }
 
+.entry-ideas-article-image.lazy-bg-error {
+  display: none;
+}
+
 .entry-ideas-carousel-window {
   width: 100%;
   overflow: hidden;
@@ -894,14 +898,6 @@
   color: #9b6714 !important;
 }
 
-.entry-ideas-article-image-empty {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(145deg, #eef4fb, #dfe8f5);
-  color: rgba(46, 70, 103, 0.58);
-}
-
 .entry-ideas-article-date {
   display: inline-flex;
   align-items: center;
@@ -1039,13 +1035,6 @@
   flex: 1 1 auto;
   min-height: 0;
   display: flex;
-}
-
-.entry-ideas-article-image-empty .mat-icon {
-  width: 28px;
-  height: 28px;
-  font-size: 28px;
-  line-height: 28px;
 }
 
 .entry-idea-article-popup-panel {

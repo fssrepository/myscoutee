@@ -30,7 +30,7 @@
               [class.is-primary]="slotIndex === primarySlotIndex"
               [class.is-filled]="imageUrl"
               [class.is-uploading]="isUploading(slotIndex)"
-              [style.backgroundImage]="imageUrl ? 'url(' + imageUrl + ')' : 'none'"
+              [appLazyBgImage]="imageUrl || null"
             >
               <span class="editable-image-carousel__slot-index">{{ slotIndex + 1 }}</span>
 

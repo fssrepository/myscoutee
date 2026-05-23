@@ -16,11 +16,12 @@ import {
 import { MatIconModule } from '@angular/material/icon';
 
 import { MediaService } from '../../../core';
+import { LazyBgImageDirective } from '../../directives';
 
 @Component({
   selector: 'app-editable-image-carousel',
   standalone: true,
-  imports: [CommonModule, MatIconModule],
+  imports: [CommonModule, MatIconModule, LazyBgImageDirective],
   templateUrl: './editable-image-carousel.component.html',
   styleUrl: './editable-image-carousel.component.scss'
 })
@@ -193,7 +194,7 @@ export class EditableImageCarouselComponent implements OnChanges {
   }
 
   private async copyToClipboard(imageUrl: string): Promise<void> {
-    const link = this.copyableImageLink(imageUrl);
+    const link = await this.copyableImageLink(imageUrl);
     if (!link) {
       return;
     }
@@ -208,9 +209,15 @@ export class EditableImageCarouselComponent implements OnChanges {
     this.copyWithFallback(link);
   }
 
-  private copyableImageLink(imageUrl: string): string {
+  private async copyableImageLink(imageUrl: string): Promise<string> {
     const normalized = `${imageUrl ?? ''}`.trim();
-    if (!normalized || normalized.startsWith('data:') || normalized.startsWith('blob:') || normalized.startsWith('indexeddb:')) {
+    if (!normalized) {
+      return normalized;
+    }
+    if (normalized.startsWith('data:image/')) {
+      return this.objectUrlFromDataImage(normalized) ?? normalized;
+    }
+    if (normalized.startsWith('blob:') || normalized.startsWith('indexeddb:')) {
       return normalized;
     }
     if (/^https?:\/\//i.test(normalized)) {
@@ -220,6 +227,28 @@ export class EditableImageCarouselComponent implements OnChanges {
       return normalized;
     }
     return new URL(normalized, window.location.origin).toString();
+  }
+
+  private objectUrlFromDataImage(imageUrl: string): string | null {
+    if (typeof URL === 'undefined' || !URL.createObjectURL) {
+      return null;
+    }
+    try {
+      const parts = imageUrl.split(',', 2);
+      if (parts.length !== 2) {
+        return null;
+      }
+      const metadata = parts[0] ?? '';
+      const payload = parts[1] ?? '';
+      const contentType = /^data:([^;,]+)/i.exec(metadata)?.[1] ?? 'image/png';
+      const binary = metadata.includes(';base64')
+        ? atob(payload)
+        : decodeURIComponent(payload);
+      const bytes = Uint8Array.from(binary, char => char.charCodeAt(0));
+      return URL.createObjectURL(new Blob([bytes], { type: contentType }));
+    } catch {
+      return null;
+    }
   }
 
   private copyWithFallback(value: string): void {

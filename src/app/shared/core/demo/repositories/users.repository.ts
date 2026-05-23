@@ -428,7 +428,7 @@ export class DemoUsersRepository {
     }
     for (const id of table.idsByOwnerUserId[normalizedUserId] ?? []) {
       const record = table.byId[id];
-      if (!record) {
+      if (!record || this.isSuppressedAssetStatus(record.status)) {
         continue;
       }
       if (record.type === 'Car') {
@@ -440,6 +440,33 @@ export class DemoUsersRepository {
       }
     }
     return counts;
+  }
+
+  private isSuppressedAssetStatus(status: string | null | undefined): boolean {
+    const normalized = this.normalizeAssetStatus(status);
+    return normalized === 'UR' || normalized === 'B' || normalized === 'D' || normalized === 'I' || normalized === 'T';
+  }
+
+  private normalizeAssetStatus(status: string | null | undefined): string {
+    const normalized = `${status ?? ''}`.trim();
+    switch (normalized) {
+      case 'active':
+        return 'A';
+      case 'under-review':
+      case 'under review':
+        return 'UR';
+      case 'blocked':
+        return 'B';
+      case 'deleted':
+        return 'D';
+      case 'inactive':
+        return 'I';
+      case 'trashed':
+      case 'trash':
+        return 'T';
+      default:
+        return normalized || 'A';
+    }
   }
 
   private normalizeAssetsCollection(value: unknown): DemoAssetsRecordCollection {

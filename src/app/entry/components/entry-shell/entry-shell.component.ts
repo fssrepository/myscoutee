@@ -91,6 +91,14 @@ export class EntryShellComponent implements OnDestroy {
   private landingArticlesLoadingStartedAtMs = 0;
   private landingArticlesLoadingInterval: ReturnType<typeof setInterval> | null = null;
   private landingLoginAvailability: UserLocationEligibilityResponseDto | null = null;
+  private grantedLocationEligibilityPromise: Promise<void> | null = null;
+  private grantedLocationEligibilityRequestToken = 0;
+  private geolocationPermissionStatus: PermissionStatus | null = null;
+  private readonly geolocationPermissionChangeHandler = (): void => {
+    this.ngZone.run(() => {
+      this.resolveGrantedLocationAccessIfNeeded();
+    });
+  };
 
   constructor() {
     this.initializeEntryFlow();
@@ -98,6 +106,8 @@ export class EntryShellComponent implements OnDestroy {
 
   ngOnDestroy(): void {
     this.landingContentRequestToken += 1;
+    this.grantedLocationEligibilityRequestToken += 1;
+    this.unbindGeolocationPermissionStatus();
     this.clearLandingArticlesLoadingWindow();
   }
 
@@ -664,25 +674,47 @@ export class EntryShellComponent implements OnDestroy {
     this.entryPrivacyLoading = true;
     this.startLandingArticlesLoadingWindow();
     this.entryContentLoadPromise = (async () => {
-      const displayState = await this.landingContent.loadDisplayState();
-      this.landingIdeaCards = displayState.ideaCards;
-      this.syncLandingLoginAvailability(displayState.state.loginAvailability);
+      try {
+        const displayState = await this.landingContent.loadDisplayState();
+        this.ngZone.run(() => {
+          if (requestToken !== this.landingContentRequestToken) {
+            return;
+          }
+          this.landingIdeaCards = displayState.ideaCards;
+          if (displayState.state.loginAvailability || this.landingLoginAvailability === null) {
+            this.syncLandingLoginAvailability(displayState.state.loginAvailability);
+          }
+          this.finishEntryPrivacyLoad(requestToken);
+          this.changeDetectorRef.detectChanges();
+        });
+      } catch {
+        this.ngZone.run(() => {
+          this.finishEntryPrivacyLoad(requestToken);
+        });
+      }
     })().finally(() => {
       this.ngZone.run(() => {
         if (requestToken !== this.landingContentRequestToken) {
           return;
         }
-        this.entryPrivacyLoading = false;
         this.endLandingArticlesLoadingWindow();
-        if (!this.entryConsentViewOnly) {
-          this.showEntryConsentPopup = this.loadEntryConsentState() === null;
-        }
         this.changeDetectorRef.detectChanges();
-        this.entryConsentStateChanged.emit(this.hasEntryConsent);
       });
       this.entryContentLoadPromise = null;
     });
     return this.entryContentLoadPromise;
+  }
+
+  private finishEntryPrivacyLoad(requestToken: number): void {
+    if (requestToken !== this.landingContentRequestToken) {
+      return;
+    }
+    this.entryPrivacyLoading = false;
+    if (!this.entryConsentViewOnly) {
+      this.showEntryConsentPopup = this.loadEntryConsentState() === null;
+    }
+    this.changeDetectorRef.detectChanges();
+    this.entryConsentStateChanged.emit(this.hasEntryConsent);
   }
 
   private entryConsentVersion(): string {
@@ -754,6 +786,7 @@ export class EntryShellComponent implements OnDestroy {
     this.entryAuthUnavailableLabel = 'Unavailable in your country';
     this.entryAuthLocationRequired = this.isLoginLocationRequiredByLandingBundle();
     this.entryAuthLocationRequiredLabel = 'Allow location';
+    this.resolveGrantedLocationAccessIfNeeded();
   }
 
   private isLoginBlockedByLandingBundle(): boolean {
@@ -781,6 +814,79 @@ export class EntryShellComponent implements OnDestroy {
   private loginUnavailableMessage(availability: UserLocationEligibilityResponseDto | null): string {
     return availability?.message?.trim()
       || 'Login is currently unavailable from your country or region for security reasons. Please come back later.';
+  }
+
+  private resolveGrantedLocationAccessIfNeeded(): void {
+    if (!this.entryAuthLocationRequired || this.grantedLocationEligibilityPromise) {
+      return;
+    }
+
+    const requestToken = ++this.grantedLocationEligibilityRequestToken;
+    this.grantedLocationEligibilityPromise = this.resolveGrantedLocationAccess(requestToken)
+      .finally(() => {
+        if (requestToken === this.grantedLocationEligibilityRequestToken) {
+          this.grantedLocationEligibilityPromise = null;
+        }
+      });
+  }
+
+  private async resolveGrantedLocationAccess(requestToken: number): Promise<void> {
+    try {
+      const permissionState = await this.queryGeolocationPermissionState();
+      if (requestToken !== this.grantedLocationEligibilityRequestToken || permissionState !== 'granted') {
+        return;
+      }
+
+      const coordinates = await this.requestCurrentLocation();
+      if (requestToken !== this.grantedLocationEligibilityRequestToken || !coordinates) {
+        return;
+      }
+
+      const result = await this.usersService.checkLocationEligibility(coordinates);
+      if (requestToken !== this.grantedLocationEligibilityRequestToken) {
+        return;
+      }
+
+      this.ngZone.run(() => {
+        this.syncLandingLoginAvailability(result);
+        this.changeDetectorRef.detectChanges();
+      });
+    } catch {
+      // Keep the explicit "Allow location" action available if the silent refresh cannot complete.
+    }
+  }
+
+  private async queryGeolocationPermissionState(): Promise<PermissionState | null> {
+    if (typeof navigator === 'undefined' || !navigator.permissions?.query) {
+      return null;
+    }
+
+    try {
+      const status = await navigator.permissions.query({ name: 'geolocation' as PermissionName });
+      this.bindGeolocationPermissionStatus(status);
+      return status.state;
+    } catch {
+      return null;
+    }
+  }
+
+  private bindGeolocationPermissionStatus(status: PermissionStatus): void {
+    if (this.geolocationPermissionStatus === status) {
+      return;
+    }
+
+    this.unbindGeolocationPermissionStatus();
+    this.geolocationPermissionStatus = status;
+    status.addEventListener('change', this.geolocationPermissionChangeHandler);
+  }
+
+  private unbindGeolocationPermissionStatus(): void {
+    if (!this.geolocationPermissionStatus) {
+      return;
+    }
+
+    this.geolocationPermissionStatus.removeEventListener('change', this.geolocationPermissionChangeHandler);
+    this.geolocationPermissionStatus = null;
   }
 
 }

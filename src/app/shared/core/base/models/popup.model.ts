@@ -57,6 +57,7 @@ export interface HelpCenterSection {
   title: string;
   blurb: string;
   contentHtml: string;
+  imageUrls?: string[];
   optional?: boolean;
   details?: string[];
   points?: string[];

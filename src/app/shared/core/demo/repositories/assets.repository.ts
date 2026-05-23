@@ -85,7 +85,7 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
     if (!normalizedUserId) {
       return [];
     }
-    return this.readOwnerAndManagedAssets(normalizedUserId);
+    return this.readOwnerAssets(normalizedUserId);
   }
 
   override async queryVisibleAssets(query: AppTypes.AssetExploreQuery): Promise<AppTypes.AssetCard[]> {
@@ -588,20 +588,6 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
       .filter(user => !DemoUserSeedBuilder.isEmptyOnboardingProfileUserId(user.id));
   }
 
-  private acceptedManagedAssetIds(userId: string): string[] {
-    const normalizedUserId = userId.trim();
-    if (!normalizedUserId) {
-      return [];
-    }
-    return this.activityMemberRecords()
-      .filter(record => record.ownerType === 'asset')
-      .filter(record => record.userId === normalizedUserId)
-      .filter(record => record.status === 'accepted')
-      .filter(record => this.isAssetManagerRole(record.role))
-      .map(record => record.ownerId)
-      .filter((assetId, index, ids) => assetId.length > 0 && ids.indexOf(assetId) === index);
-  }
-
   private assetMemberRecords(assetId: string): DemoActivityMemberRecord[] {
     const normalizedAssetId = assetId.trim();
     if (!normalizedAssetId) {
@@ -852,25 +838,9 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
     return (table.idsByOwnerUserId[ownerUserId] ?? [])
       .map(id => table.byId[id])
       .filter((record): record is DemoAssetRecord => Boolean(record))
+      .filter(record => !this.isSuppressedAssetStatus(record.status))
       .sort((left, right) => right.updatedMs - left.updatedMs)
       .map(record => this.toAssetCard(record, ownerUserId));
-  }
-
-  private readOwnerAndManagedAssets(userId: string): AppTypes.AssetCard[] {
-    const normalizedUserId = userId.trim();
-    if (!normalizedUserId) {
-      return [];
-    }
-    const table = this.normalizeCollection(this.memoryDb.read()[ASSETS_TABLE_NAME]);
-    const assetIds = new Set(table.idsByOwnerUserId[normalizedUserId] ?? []);
-    for (const managedAssetId of this.acceptedManagedAssetIds(normalizedUserId)) {
-      assetIds.add(managedAssetId);
-    }
-    return [...assetIds]
-      .map(id => table.byId[id])
-      .filter((record): record is DemoAssetRecord => Boolean(record))
-      .sort((left, right) => right.updatedMs - left.updatedMs)
-      .map(record => this.toAssetCard(record, normalizedUserId));
   }
 
   private readVisibleAssets(activeUserId: string): AppTypes.AssetCard[] {

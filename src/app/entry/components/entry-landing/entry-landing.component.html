@@ -326,11 +326,7 @@
       </header>
       <div class="entry-ideas-article-body">
         @if (ideaImageUrl(post); as imageUrl) {
-          <div class="entry-ideas-article-image" [style.backgroundImage]="'url(' + imageUrl + ')'"></div>
-        } @else {
-          <div class="entry-ideas-article-image entry-ideas-article-image-empty">
-            <mat-icon>image_not_supported</mat-icon>
-          </div>
+          <div class="entry-ideas-article-image" [appLazyBgImage]="imageUrl"></div>
         }
         <div class="entry-ideas-article-html" [innerHTML]="post.contentHtml"></div>
       </div>

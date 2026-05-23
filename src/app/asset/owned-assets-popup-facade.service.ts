@@ -1,13 +1,12 @@
 import { Injectable, effect, inject, signal } from '@angular/core';
 import { environment } from '../../environments/environment';
 
-import { DemoAssetBuilder } from '../shared/core/demo/builders';
 import { APP_STATIC_DATA } from '../shared/app-static-data';
 import { PricingBuilder } from '../shared/core/base/builders';
 import type * as AppTypes from '../shared/core/base/models';
 import { resolveCurrentDemoDelayMs } from '../shared/core/base/services/route-delay.service';
 import { AssetPopupStateService } from './asset-popup-state.service';
-import { AppContext, AssetCardBuilder, AssetDefaultsBuilder, AssetsService, type ActivityCounterKey } from '../shared/core';
+import { AppContext, AssetCardBuilder, AssetDefaultsBuilder, AssetsService, ExplanationGuideService, type ActivityCounterKey } from '../shared/core';
 import { HttpMediaService } from '../shared/core/http';
 
 export interface OwnedAssetsRuntimeHooks {
@@ -26,6 +25,7 @@ export class OwnedAssetsPopupFacadeService {
   private readonly assetPopupState = inject(AssetPopupStateService);
   private readonly assetsService = inject(AssetsService);
   private readonly appCtx = inject(AppContext);
+  private readonly explanationGuide = inject(ExplanationGuideService);
   private readonly httpMediaService = inject(HttpMediaService);
   private readonly assetListRevisionRef = signal(0);
   private readonly assetListReloadRevisionRef = signal(0);
@@ -59,6 +59,8 @@ export class OwnedAssetsPopupFacadeService {
   private assetMutationVersion = 0;
   private pendingAssetDeleteLabelValue = '';
   private pendingAssetDeleteErrorValue = '';
+  private assetsExplanationContextKey: string | null = null;
+  private unregisterAssetsExplanationContext: (() => void) | null = null;
 
   readonly assetListRevision = this.assetListRevisionRef.asReadonly();
   readonly assetListReloadRevision = this.assetListReloadRevisionRef.asReadonly();
@@ -335,6 +337,7 @@ export class OwnedAssetsPopupFacadeService {
     if (filter === 'Ticket') {
       this.assetPopupState.prepareTicketPopupOpen();
     }
+    this.setAssetsExplanationContext(this.assetExplanationContextForFilter(filter));
     this.assetPopupState.setPrimaryVisible(true);
     this.touchUiState();
   }
@@ -349,6 +352,7 @@ export class OwnedAssetsPopupFacadeService {
     this.pendingAssetDeleteErrorValue = '';
     this.itemActionMenu = null;
     this.assetPopupState.resetTicketState();
+    this.clearAssetsExplanationContext();
     this.assetPopupState.setPrimaryVisible(false);
     this.touchUiState();
   }
@@ -359,6 +363,7 @@ export class OwnedAssetsPopupFacadeService {
     if (filter === 'Ticket') {
       this.assetPopupState.prepareTicketPopupOpen();
     }
+    this.setAssetsExplanationContext(this.assetExplanationContextForFilter(filter));
     this.assetPopupState.setPrimaryVisible(true);
     this.touchUiState();
   }
@@ -369,9 +374,7 @@ export class OwnedAssetsPopupFacadeService {
     this.isAssetFormSavePending = false;
     this.pendingAssetImageFile = null;
     if (card) {
-      const imageUrl = AssetCardBuilder.normalizeAssetImageLink(card.type, card.imageUrl, {
-        fallbackImageUrl: DemoAssetBuilder.defaultAssetImage(card.type, card.id || card.title)
-      });
+      const imageUrl = AssetCardBuilder.normalizeAssetImageLink(card.type, card.imageUrl);
       const sourceLink = AssetCardBuilder.normalizeAssetSourceLink(card.sourceLink, imageUrl);
       this.editingAssetId = card.id;
       this.assetFormVisibility = card.visibility === 'Friends only'
@@ -517,23 +520,18 @@ export class OwnedAssetsPopupFacadeService {
       if (environment.activitiesDataSource === 'http' && this.pendingAssetImageFile && !resolvedImageUrl) {
         throw new Error('Unable to upload asset image.');
       }
-      const imageUrl = AssetCardBuilder.normalizeAssetImageLink(this.assetForm.type, resolvedImageUrl || this.assetForm.imageUrl, {
-        fallbackImageUrl: DemoAssetBuilder.defaultAssetImage(
-          this.assetForm.type,
-          title || this.assetForm.subtitle || city || this.assetForm.type.toLowerCase()
-        )
-      });
+      const imageUrl = AssetCardBuilder.normalizeAssetImageLink(this.assetForm.type, resolvedImageUrl || this.assetForm.imageUrl);
       const sourceLink = AssetCardBuilder.normalizeAssetSourceLink(this.assetForm.sourceLink, imageUrl);
       const category = AssetDefaultsBuilder.normalizeCategory(this.assetForm.type, this.assetForm.category);
       const payload: Omit<AppTypes.AssetCard, 'id' | 'requests'> = {
         type: this.assetForm.type,
         title,
-        subtitle: this.assetForm.subtitle.trim() || DemoAssetBuilder.defaultAssetSubtitle(this.assetForm.type),
+        subtitle: this.assetForm.subtitle.trim(),
         category,
         city: resolvedCity,
         capacityTotal: Math.max(1, Number(this.assetForm.capacityTotal) || (this.assetForm.type === 'Supplies' ? 6 : 4)),
         quantity: AssetCardBuilder.normalizeQuantity(this.assetForm.type, this.assetForm.quantity, this.assetForm.capacityTotal),
-        details: this.assetForm.details.trim() || DemoAssetBuilder.defaultAssetDetails(this.assetForm.type),
+        details: this.assetForm.details.trim(),
         imageUrl,
         sourceLink,
         routes,
@@ -832,9 +830,7 @@ export class OwnedAssetsPopupFacadeService {
   }
 
   private normalizeAssetMediaLinks(cards: readonly AppTypes.AssetCard[]): AppTypes.AssetCard[] {
-    return AssetCardBuilder.normalizeAssetMediaCards(cards, {
-      fallbackImageUrl: card => DemoAssetBuilder.defaultAssetImage(card.type, card.id || card.title || card.type.toLowerCase())
-    });
+    return AssetCardBuilder.normalizeAssetMediaCards(cards);
   }
 
   public applyAssetCards(
@@ -934,6 +930,35 @@ export class OwnedAssetsPopupFacadeService {
       default:
         return normalized || 'A';
     }
+  }
+
+  private assetExplanationContextForFilter(filter: AppTypes.AssetFilterType): string {
+    switch (filter) {
+      case 'Accommodation':
+        return 'assets.accommodation';
+      case 'Supplies':
+        return 'assets.supplies';
+      case 'Ticket':
+        return 'assets.tickets';
+      case 'Car':
+      default:
+        return 'assets.car';
+    }
+  }
+
+  private setAssetsExplanationContext(contextKey: string): void {
+    if (this.assetsExplanationContextKey === contextKey) {
+      return;
+    }
+    this.clearAssetsExplanationContext();
+    this.assetsExplanationContextKey = contextKey;
+    this.unregisterAssetsExplanationContext = this.explanationGuide.registerContext(contextKey);
+  }
+
+  private clearAssetsExplanationContext(): void {
+    this.unregisterAssetsExplanationContext?.();
+    this.unregisterAssetsExplanationContext = null;
+    this.assetsExplanationContextKey = null;
   }
 
   private async awaitAssetMutationCompletion(persistPromise: Promise<void>): Promise<void> {

@@ -410,9 +410,11 @@
                                       @if (documentKind === 'explanation') {
                                         <app-editable-image-carousel
                                           [slotCount]="explanationImageSlotCount"
+                                          [imageUrls]="section.imageUrls"
                                           [disabled]="saving"
                                           [compact]="true"
                                           ariaLabel="Explanation image slots"
+                                          (imageUrlsChange)="setDraftSectionImageUrls(section, $event)"
                                         ></app-editable-image-carousel>
                                       }
                                       @if (section.mode === 'html') {
@@ -427,7 +429,7 @@
                                         ></textarea>
                                       } @else {
                                         <div class="help-editor-preview-card">
-                                          <div class="help-editor-html-preview" data-i18n-ignore [innerHTML]="section.contentHtml"></div>
+                                          <div class="help-editor-html-preview" appLazyBgImage [appLazyHtmlImages]="true" data-i18n-ignore [innerHTML]="section.contentHtml"></div>
                                         </div>
                                       }
                                     </div>
@@ -545,7 +547,7 @@
                                     @if (section.blurb) {
                                       <p class="help-editor-preview-lead" data-i18n-ignore>{{ section.blurb }}</p>
                                     }
-                                    <div class="help-editor-html-preview" data-i18n-ignore [innerHTML]="section.contentHtml"></div>
+                                    <div class="help-editor-html-preview" appLazyBgImage [appLazyHtmlImages]="true" data-i18n-ignore [innerHTML]="section.contentHtml"></div>
                                   </div>
                                 }
                               </article>

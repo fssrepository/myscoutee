@@ -31,7 +31,17 @@
       <div class="entry-consent-content">
         @if (loading) {
           <section class="entry-consent-loading">
-            <span class="entry-consent-spinner" aria-hidden="true"></span>
+            <svg class="entry-consent-loading-ring" viewBox="0 0 44 44" aria-hidden="true">
+              <circle class="entry-consent-loading-ring-track" cx="22" cy="22" r="18"></circle>
+              <circle
+                class="entry-consent-loading-ring-value"
+                cx="22"
+                cy="22"
+                r="18"
+                [attr.stroke-dasharray]="loadingRingPerimeter"
+                [attr.stroke-dashoffset]="loadingRingDashOffset()"
+              ></circle>
+            </svg>
             <span>{{ uiText('Loading privacy content') }}</span>
           </section>
         } @else if (activeRevision()) {
@@ -93,7 +103,7 @@
                     @if (section.blurb) {
                       <p class="entry-consent-lead" data-i18n-ignore>{{ section.blurb }}</p>
                     }
-                    <div class="entry-consent-html" data-i18n-ignore [innerHTML]="section.contentHtml"></div>
+                    <div class="entry-consent-html" appLazyBgImage [appLazyHtmlImages]="true" data-i18n-ignore [innerHTML]="section.contentHtml"></div>
                   </div>
                 }
               </article>

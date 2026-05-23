@@ -16,6 +16,7 @@ import type {
 } from '../../../shared/core/base/models';
 import { RouteDelayService } from '../../../shared/core/base/services/route-delay.service';
 import { EditableImageCarouselComponent } from '../../../shared/ui/components/editable-image-carousel';
+import { LazyBgImageDirective } from '../../../shared/ui/directives';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
 import { AdminService } from '../../admin.service';
 
@@ -35,6 +36,7 @@ interface HelpEditorSectionDraft {
   title: string;
   blurb: string;
   contentHtml: string;
+  imageUrls: string[];
   optional: boolean;
   mode: EditorTab;
 }
@@ -58,7 +60,7 @@ interface HelpEditorRevisionRow {
 @Component({
   selector: 'app-admin-help-editor-popup',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatIconModule, EditableImageCarouselComponent],
+  imports: [CommonModule, FormsModule, MatIconModule, EditableImageCarouselComponent, LazyBgImageDirective],
   templateUrl: './admin-help-editor-popup.component.html',
   styleUrl: './admin-help-editor-popup.component.scss'
 })
@@ -633,6 +635,7 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
       title: this.defaultContentSectionTitle(),
       blurb: '',
       contentHtml: this.defaultContentSectionHtml(),
+      imageUrls: [],
       optional: false,
       mode: 'html'
     };
@@ -691,6 +694,10 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
         textarea.selectionStart = textarea.selectionEnd = section.contentHtml.length;
       }
     });
+  }
+
+  protected setDraftSectionImageUrls(section: HelpEditorSectionDraft, imageUrls: readonly string[] | null | undefined): void {
+    section.imageUrls = this.normalizeSectionImageUrls(imageUrls);
   }
 
   protected openIconPicker(section: HelpEditorSectionDraft, event?: Event): void {
@@ -1120,6 +1127,7 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
         title: section.title?.trim() || this.defaultUntitledContentSectionTitle(),
         blurb: section.blurb,
         contentHtml: this.formatHtmlFragment(this.sectionContentHtml(section)),
+        imageUrls: this.normalizeSectionImageUrls(section.imageUrls),
         optional: section.optional === true,
         mode: 'html'
       }))
@@ -1142,6 +1150,7 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
           title: '',
           blurb: '',
           contentHtml: '',
+          imageUrls: [],
           optional: false,
           mode: 'html'
         }
@@ -1167,6 +1176,7 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
           title,
           blurb: draft.blurb.trim(),
           contentHtml: draft.contentHtml.trim(),
+          imageUrls: this.normalizeSectionImageUrls(draft.imageUrls),
           optional: this.documentKind === 'privacy' && draft.optional === true
         };
       })
@@ -1283,6 +1293,23 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
       ...details.map(detail => `<p>${this.escapeHtml(detail)}</p>`),
       points.length ? `<ul>${points.map(point => `<li>${this.escapeHtml(point)}</li>`).join('')}</ul>` : ''
     ].join('\n');
+  }
+
+  private normalizeSectionImageUrls(imageUrls: readonly string[] | null | undefined): string[] {
+    const result: string[] = [];
+    const seen = new Set<string>();
+    for (const imageUrl of imageUrls ?? []) {
+      const normalized = `${imageUrl ?? ''}`.trim();
+      if (!normalized || seen.has(normalized)) {
+        continue;
+      }
+      seen.add(normalized);
+      result.push(normalized);
+      if (result.length >= this.explanationImageSlotCount) {
+        break;
+      }
+    }
+    return result;
   }
 
   private htmlFromClipboardPayload(html: string, text: string): string {

@@ -38,7 +38,7 @@ import {
 import { AppMemoryDb } from '../shared/core/base/db';
 import type { ChatRecord } from '../shared/core/base/models/chat.model';
 import type { ChatPopupMessage } from '../shared/core/base/models/chat.model';
-import { DemoChatsRepository, DemoUsersRepository } from '../shared/core/demo';
+import { DemoChatsRepository, DemoHelpCenterService, DemoUsersRepository } from '../shared/core/demo';
 import { CHATS_TABLE_NAME, type DemoChatRecord } from '../shared/core/demo/models/chats.model';
 import { SHARE_TOKENS_TABLE_NAME } from '../shared/core/demo/models/share-tokens.model';
 import { ActivitiesPopupStateService } from '../activity/services/activities-popup-state.service';
@@ -390,6 +390,7 @@ export class AdminService {
   private readonly memoryDb = inject(AppMemoryDb);
   private readonly demoUsersRepository = inject(DemoUsersRepository);
   private readonly demoChatsRepository = inject(DemoChatsRepository);
+  private readonly demoHelpCenterService = inject(DemoHelpCenterService);
   private readonly activitiesContext = inject(ActivitiesPopupStateService);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
   private readonly dashboardRef = signal<AdminDashboardDto | null>(null);
@@ -1107,6 +1108,7 @@ export class AdminService {
     const admin = this.resolveDemoAdmin(adminUserId);
     onProgress?.({ percent: 18, label: 'Preparing admin data', stage: 'indexedDb' });
     await this.memoryDb.whenReady();
+    await this.demoHelpCenterService.init();
     this.demoUsersRepository.init();
     await this.ensureDemoAdminProfiles();
     this.demoChatsRepository.init();

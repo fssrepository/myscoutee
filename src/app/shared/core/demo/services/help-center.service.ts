@@ -39,23 +39,55 @@ export class DemoHelpCenterService {
   private readonly memoryDb = inject(AppMemoryDb);
   private readonly routeDelay = inject(RouteDelayService);
 
+  async init(): Promise<boolean> {
+    await this.memoryDb.whenReady();
+    const changed = this.ensureStaticDefaultsSeeded();
+    if (changed) {
+      await this.memoryDb.flushToIndexedDb();
+    }
+    return changed;
+  }
+
   async loadState(kind: HelpCenterDocumentKind = 'help', lang?: string | null, contextKey?: string | null): Promise<HelpCenterState> {
     await this.memoryDb.whenReady();
     const documentKind = this.normalizeKind(kind);
     const language = this.requestContentLang(lang);
     const context = this.normalizeContextKey(documentKind, contextKey, false);
-    let changed = false;
-    for (const option of this.availableLanguages()) {
-      const seeded = this.ensureSeeded(documentKind, option.lang, context);
-      const descriptionsUpdated = this.ensureRevisionDescriptions(documentKind, option.lang);
-      const filterCountCopyUpdated = this.ensureExplanationFilterCountCopy(documentKind, option.lang);
-      const activityRatesCopyUpdated = this.ensureActivityRatesExplanationCopy(documentKind, option.lang);
-      changed = seeded || descriptionsUpdated || filterCountCopyUpdated || activityRatesCopyUpdated || changed;
-    }
+    return this.stateFromTable(this.table(), documentKind, language, context);
+  }
+
+  async ensureEntryPrivacySeeded(lang?: string | null): Promise<boolean> {
+    await this.memoryDb.whenReady();
+    const language = this.requestContentLang(lang);
+    const changed = this.ensureSeeded('privacy', language);
     if (changed) {
       await this.memoryDb.flushToIndexedDb();
     }
-    return this.stateFromTable(this.table(), documentKind, language, context);
+    return changed;
+  }
+
+  private ensureStaticDefaultsSeeded(): boolean {
+    let changed = false;
+    for (const option of this.availableLanguages()) {
+      const language = option.lang;
+      const helpSeeded = this.ensureSeeded('help', language);
+      const privacySeeded = this.ensureSeeded('privacy', language);
+      const explanationsSeeded = this.explanationBootstrapContextKeys()
+        .map(contextKey => this.ensureSeeded('explanation', language, contextKey))
+        .some(Boolean);
+      changed = helpSeeded
+        || privacySeeded
+        || explanationsSeeded
+        || changed;
+    }
+    return changed;
+  }
+
+  private explanationBootstrapContextKeys(): string[] {
+    return APP_STATIC_DATA.explainableSurfaces
+      .filter(surface => surface.enabled)
+      .map(surface => this.normalizeContextKey('explanation', surface.key, false))
+      .filter((contextKey): contextKey is string => Boolean(contextKey));
   }
 
   async loadPrivacyConsent(
@@ -507,13 +539,384 @@ export class DemoHelpCenterService {
     return true;
   }
 
+  private ensureChatsExplanationCopy(kind: HelpCenterDocumentKind, lang = 'en'): boolean {
+    if (kind !== 'explanation') {
+      return false;
+    }
+    const language = this.normalizeLang(lang);
+    const table = this.table();
+    const revisionIds = table.revisionIds.filter(id => {
+      const revision = table.revisionsById[id] as HelpCenterRevision | undefined;
+      return Boolean(revision)
+        && this.revisionKind(revision) === 'explanation'
+        && this.revisionLang(revision) === language
+        && this.revisionContextKey(revision) === 'chats'
+        && this.isLegacyChatsExplanation(revision);
+    });
+    if (revisionIds.length === 0) {
+      return false;
+    }
+    const replacement = this.defaultRevision('explanation', language, 'chats');
+    this.memoryDb.write(state => {
+      const current = state[HELP_CENTER_TABLE_NAME];
+      const revisionsById = this.normalizedRevisionsById(current);
+      for (const id of revisionIds) {
+        const revision = revisionsById[id];
+        if (!revision) {
+          continue;
+        }
+        revisionsById[id] = {
+          ...revision,
+          title: replacement.title,
+          summary: replacement.summary,
+          sections: replacement.sections.map(section => ({ ...section })),
+          updatedAtIso: new Date().toISOString(),
+          updatedByUserId: revision.updatedByUserId || 'system'
+        };
+      }
+      return {
+        ...state,
+        [HELP_CENTER_TABLE_NAME]: {
+          ...current,
+          revisionsById
+        }
+      };
+    });
+    return true;
+  }
+
+  private ensureEventsExplanationCopy(kind: HelpCenterDocumentKind, lang = 'en'): boolean {
+    if (kind !== 'explanation') {
+      return false;
+    }
+    const language = this.normalizeLang(lang);
+    const table = this.table();
+    const revisionIds = table.revisionIds.filter(id => {
+      const revision = table.revisionsById[id] as HelpCenterRevision | undefined;
+      return Boolean(revision)
+        && this.revisionKind(revision) === 'explanation'
+        && this.revisionLang(revision) === language
+        && this.revisionContextKey(revision) === 'events'
+        && this.isLegacyEventsExplanation(revision);
+    });
+    if (revisionIds.length === 0) {
+      return false;
+    }
+    const replacement = this.defaultRevision('explanation', language, 'events');
+    this.memoryDb.write(state => {
+      const current = state[HELP_CENTER_TABLE_NAME];
+      const revisionsById = this.normalizedRevisionsById(current);
+      for (const id of revisionIds) {
+        const revision = revisionsById[id];
+        if (!revision) {
+          continue;
+        }
+        revisionsById[id] = {
+          ...revision,
+          title: replacement.title,
+          summary: replacement.summary,
+          sections: replacement.sections.map(section => ({ ...section })),
+          updatedAtIso: new Date().toISOString(),
+          updatedByUserId: revision.updatedByUserId || 'system'
+        };
+      }
+      return {
+        ...state,
+        [HELP_CENTER_TABLE_NAME]: {
+          ...current,
+          revisionsById
+        }
+      };
+    });
+    return true;
+  }
+
+  private ensureAssetsExplanationCopy(kind: HelpCenterDocumentKind, lang = 'en'): boolean {
+    if (kind !== 'explanation') {
+      return false;
+    }
+    const language = this.normalizeLang(lang);
+    const table = this.table();
+    const revisionIds = table.revisionIds.filter(id => {
+      const revision = table.revisionsById[id] as HelpCenterRevision | undefined;
+      return Boolean(revision)
+        && this.revisionKind(revision) === 'explanation'
+        && this.revisionLang(revision) === language
+        && this.revisionContextKey(revision) === 'assets'
+        && this.isLegacyAssetsExplanation(revision);
+    });
+    if (revisionIds.length === 0) {
+      return false;
+    }
+    const replacement = this.defaultRevision('explanation', language, 'assets');
+    this.memoryDb.write(state => {
+      const current = state[HELP_CENTER_TABLE_NAME];
+      const revisionsById = this.normalizedRevisionsById(current);
+      for (const id of revisionIds) {
+        const revision = revisionsById[id];
+        if (!revision) {
+          continue;
+        }
+        revisionsById[id] = {
+          ...revision,
+          title: replacement.title,
+          summary: replacement.summary,
+          sections: replacement.sections.map(section => ({ ...section })),
+          updatedAtIso: new Date().toISOString(),
+          updatedByUserId: revision.updatedByUserId || 'system'
+        };
+      }
+      return {
+        ...state,
+        [HELP_CENTER_TABLE_NAME]: {
+          ...current,
+          revisionsById
+        }
+      };
+    });
+    return true;
+  }
+
+  private ensureEventEditorExplanationCopy(kind: HelpCenterDocumentKind, lang = 'en'): boolean {
+    if (kind !== 'explanation') {
+      return false;
+    }
+    const language = this.normalizeLang(lang);
+    const table = this.table();
+    const revisionIds = table.revisionIds.filter(id => {
+      const revision = table.revisionsById[id] as HelpCenterRevision | undefined;
+      return Boolean(revision)
+        && this.revisionKind(revision) === 'explanation'
+        && this.revisionLang(revision) === language
+        && this.revisionContextKey(revision) === 'event.editor'
+        && this.isLegacyEventEditorExplanation(revision);
+    });
+    if (revisionIds.length === 0) {
+      return false;
+    }
+    const replacement = this.defaultRevision('explanation', language, 'event.editor');
+    this.memoryDb.write(state => {
+      const current = state[HELP_CENTER_TABLE_NAME];
+      const revisionsById = this.normalizedRevisionsById(current);
+      for (const id of revisionIds) {
+        const revision = revisionsById[id];
+        if (!revision) {
+          continue;
+        }
+        revisionsById[id] = {
+          ...revision,
+          title: replacement.title,
+          summary: replacement.summary,
+          sections: replacement.sections.map(section => ({ ...section })),
+          updatedAtIso: new Date().toISOString(),
+          updatedByUserId: revision.updatedByUserId || 'system'
+        };
+      }
+      return {
+        ...state,
+        [HELP_CENTER_TABLE_NAME]: {
+          ...current,
+          revisionsById
+        }
+      };
+    });
+    return true;
+  }
+
+  private ensureHomeAffinityNetworkExplanation(kind: HelpCenterDocumentKind, lang = 'en'): boolean {
+    if (kind !== 'explanation') {
+      return false;
+    }
+    const language = this.normalizeLang(lang);
+    const replacement = this.defaultRevision('explanation', language, 'home.game')
+      .sections.find(section => section.id === 'affinity-network');
+    if (!replacement) {
+      return false;
+    }
+    const table = this.table();
+    const revisionIds = table.revisionIds.filter(id => {
+      const revision = table.revisionsById[id] as HelpCenterRevision | undefined;
+      return Boolean(revision)
+        && this.revisionKind(revision) === 'explanation'
+        && this.revisionLang(revision) === language
+        && this.revisionContextKey(revision) === 'home.game'
+        && (
+          !revision?.sections?.some(section => section.id === 'affinity-network')
+          || revision?.sections?.some(section => this.isLegacyHomeAffinityNetworkSection(section))
+        );
+    });
+    if (revisionIds.length === 0) {
+      return false;
+    }
+    this.memoryDb.write(state => {
+      const current = state[HELP_CENTER_TABLE_NAME];
+      const revisionsById = this.normalizedRevisionsById(current);
+      for (const id of revisionIds) {
+        const revision = revisionsById[id];
+        if (!revision) {
+          continue;
+        }
+        const sections = [...(revision.sections ?? [])];
+        const affinityIndex = sections.findIndex(section => section.id === 'affinity');
+        const networkIndex = sections.findIndex(section => section.id === 'affinity-network');
+        if (networkIndex >= 0) {
+          sections.splice(networkIndex, 1, { ...sections[networkIndex], ...replacement });
+        } else {
+          sections.splice(affinityIndex >= 0 ? affinityIndex + 1 : sections.length, 0, { ...replacement });
+        }
+        revisionsById[id] = {
+          ...revision,
+          sections,
+          updatedAtIso: new Date().toISOString(),
+          updatedByUserId: revision.updatedByUserId || 'system'
+        };
+      }
+      return {
+        ...state,
+        [HELP_CENTER_TABLE_NAME]: {
+          ...current,
+          revisionsById
+        }
+      };
+    });
+    return true;
+  }
+
+  private isLegacyHomeAffinityNetworkSection(section: HelpCenterSection | null | undefined): boolean {
+    if (section?.id !== 'affinity-network') {
+      return false;
+    }
+    const title = `${section.title ?? ''}`;
+    const blurb = `${section.blurb ?? ''}`;
+    const contentHtml = `${section.contentHtml ?? ''}`;
+    return title === 'Affinity and group matching'
+      || blurb === 'Your score is compared with the crowd, not read alone.'
+      || blurb === 'Az értéked a tömeghez képest értelmeződik.'
+      || contentHtml.includes('social graph')
+      || contentHtml.includes('kapcsolati gráf')
+      || contentHtml.includes('affinity edges')
+      || contentHtml.includes('szimpátia-edge');
+  }
+
+  private isLegacyAssetsExplanation(revision: HelpCenterRevision | undefined): boolean {
+    if (!revision) {
+      return false;
+    }
+    const sections = revision.sections ?? [];
+    if (!sections.some(section => section.id === 'assets-entry')) {
+      return true;
+    }
+    return revision.title === 'Home explanation'
+      || revision.title === 'Kezdőlap magyarázat'
+      || sections.some(section =>
+        section.id === 'affinity'
+        || section.id === 'filters'
+        || section.id === 'history'
+        || section.title === 'Your assets and tickets'
+        || section.title === 'Saját eszközök és jegyek');
+  }
+
   private isLegacyActivityRatesExplanation(revision: HelpCenterRevision | undefined): boolean {
     return Boolean(revision?.sections?.some(section =>
       LEGACY_ACTIVITY_RATES_EXPLANATION_SECTION_IDS.has(section.id)
       || section.title === 'Panel actions'
       || section.title === 'Panelműveletek'
+      || section.title === 'Activity menu'
+      || section.title === 'Tevékenység menü'
+      || section.title === 'Rating list'
+      || section.title === 'Értékelési lista'
+      || section.title === 'Star rating badge'
+      || section.title === 'Csillagos értékelő jelvény'
+      || section.title === 'Scoring a card'
+      || section.title === 'Kártya pontozása'
       || `${section.contentHtml ?? ''}`.includes('The top-right controls change the panel mode or close it.')
       || `${section.contentHtml ?? ''}`.includes('A jobb felső gombok módot váltanak vagy bezárják a panelt.')
+      || `${section.contentHtml ?? ''}`.includes('The first toolbar menu switches the whole Activities panel.')
+      || `${section.contentHtml ?? ''}`.includes('Az első eszköztári menü az egész Tevékenységek panelt váltja.')
+      || `${section.contentHtml ?? ''}`.includes('The star badge is the rating control, not a generic card score.')
+      || `${section.contentHtml ?? ''}`.includes('A csillagos jelvény az értékelés vezérlője, nem általános kártyapont.')
+      || `${section.contentHtml ?? ''}`.includes('Use the filter menu to switch between Given, Received, Mutual, Met, and Suggestions.')
+      || `${section.contentHtml ?? ''}`.includes('A szűrőmenüvel válthatsz: adott, kapott, kölcsönös, találkozott és javaslatok.')
+      || `${section.contentHtml ?? ''}`.includes('The fullscreen button opens a focused rating flow.')
+      || `${section.contentHtml ?? ''}`.includes('A teljes képernyő ikon fókuszált értékelési folyamatot nyit.')
+    ));
+  }
+
+  private isLegacyEventsExplanation(revision: HelpCenterRevision | undefined): boolean {
+    if (!revision || this.revisionContextKey(revision) !== 'events') {
+      return false;
+    }
+    if (revision.title === 'Home explanation' || revision.title === 'Kezdőlap magyarázat') {
+      return true;
+    }
+    return Boolean(revision.sections?.some(section =>
+      section.id === 'affinity'
+      || section.id === 'profile'
+      || section.id === 'filters'
+      || section.id === 'history'
+      || `${section.contentHtml ?? ''}`.includes('Tap or drag the Affinity slider')
+      || `${section.contentHtml ?? ''}`.includes('Tapints vagy húzd a Szimpátia sávot')
+      || `${section.contentHtml ?? ''}`.includes('Cards can contain more photos and a profile detail view')
+      || `${section.contentHtml ?? ''}`.includes('A kártya több képet és részletes profilt is rejthet')
+      || `${section.contentHtml ?? ''}`.includes('This is the event hub inside Activities.')
+      || `${section.contentHtml ?? ''}`.includes('Ez az eseményközpont a Tevékenységekben.')
+      || `${section.contentHtml ?? ''}`.includes('Embedded screens like checkout')
+      || `${section.contentHtml ?? ''}`.includes('A beágyazott képernyők, például fizetés')
+      || `${section.contentHtml ?? ''}`.includes('Create or auto-fill an event')
+      || `${section.contentHtml ?? ''}`.includes('Létrehozás vagy automatikus feltöltés')
+    ));
+  }
+
+  private isLegacyEventEditorExplanation(revision: HelpCenterRevision | undefined): boolean {
+    if (!revision || this.revisionContextKey(revision) !== 'event.editor') {
+      return false;
+    }
+    if (revision.title === 'Event editor explanation' || revision.title === 'Eseményszerkesztő magyarázat') {
+      return true;
+    }
+    return Boolean(revision.sections?.some(section =>
+      `${section.contentHtml ?? ''}`.includes('This is where the event card and the basic rules are made.')
+      || `${section.contentHtml ?? ''}`.includes('Itt készül az eseménykártya')
+      || `${section.contentHtml ?? ''}`.includes('These cards decide how people find, join, and understand the event.')
+      || `${section.contentHtml ?? ''}`.includes('Ezek döntik el, hogyan találják meg')
+      || `${section.contentHtml ?? ''}`.includes('Blind Event</strong> hides the crowd before the event')
+      || `${section.contentHtml ?? ''}`.includes('A <strong>Blind Event</strong> elrejti')
+      || `${section.contentHtml ?? ''}`.includes('Roles are simple:')
+      || `${section.contentHtml ?? ''}`.includes('A szerepek egyszerűek')
+      || `${section.contentHtml ?? ''}`.includes('Assets are the practical things')
+      || `${section.contentHtml ?? ''}`.includes('Az eszköz itt gyakorlati')
+      || `${section.contentHtml ?? ''}`.includes('Manager/Admin people are protected from normal disqualify/remove actions')
+      || `${section.contentHtml ?? ''}`.includes('Az Admin/Manager védett')
+      || `${section.contentHtml ?? ''}`.includes('helper-organizer role under Admin')
+      || `${section.contentHtml ?? ''}`.includes('segítő-szervező szerep az Admin alatt')
+    ));
+  }
+
+  private isLegacyChatsExplanation(revision: HelpCenterRevision | undefined): boolean {
+    if (!revision || this.revisionContextKey(revision) !== 'chats') {
+      return false;
+    }
+    if (revision.title === 'Home explanation' || revision.title === 'Kezdőlap magyarázat') {
+      return true;
+    }
+    return Boolean(revision.sections?.some(section =>
+      section.id === 'affinity'
+      || section.id === 'profile'
+      || section.id === 'filters'
+      || section.id === 'history'
+      || `${section.contentHtml ?? ''}`.includes('Tap or drag the Affinity slider')
+      || `${section.contentHtml ?? ''}`.includes('Tapints vagy húzd a Szimpátia sávot')
+      || `${section.contentHtml ?? ''}`.includes('Cards can contain more photos and a profile detail view')
+      || `${section.contentHtml ?? ''}`.includes('A kártya több képet és részletes profilt is rejthet')
+      || `${section.contentHtml ?? ''}`.includes('The message window shows the channel title, message history')
+      || `${section.contentHtml ?? ''}`.includes('The message window shows the channel title, history, shared items')
+      || `${section.contentHtml ?? ''}`.includes('Az üzenetablakban látod a csatorna címét, az üzeneteket')
+      || `${section.contentHtml ?? ''}`.includes('Az üzenetablakban látod a csatorna címét, az előzményeket')
+      || `${section.contentHtml ?? ''}`.includes('You can write text, reply to a message, react with emoji')
+      || `${section.contentHtml ?? ''}`.includes('Írhatsz szöveget, válaszolhatsz üzenetre')
+      || `${section.contentHtml ?? ''}`.includes('Tap a message to select it. The small buttons')
+      || `${section.contentHtml ?? ''}`.includes('Koppints egy üzenetre a kijelöléshez')
+      || `${section.contentHtml ?? ''}`.includes('Kitűzés')
     ));
   }
 
@@ -705,8 +1108,26 @@ export class DemoHelpCenterService {
       title,
       blurb: this.nonEmptyText(section?.blurb, ''),
       contentHtml,
+      imageUrls: this.normalizeImageUrls(section?.imageUrls),
       optional: kind === 'privacy' && section?.optional === true
     };
+  }
+
+  private normalizeImageUrls(imageUrls: readonly string[] | null | undefined, limit = 8): string[] {
+    const result: string[] = [];
+    const seen = new Set<string>();
+    for (const imageUrl of imageUrls ?? []) {
+      const normalized = `${imageUrl ?? ''}`.trim();
+      if (!normalized || seen.has(normalized)) {
+        continue;
+      }
+      seen.add(normalized);
+      result.push(normalized);
+      if (result.length >= limit) {
+        break;
+      }
+    }
+    return result;
   }
 
   private htmlFromLegacySection(section: HelpCenterSection | null | undefined): string {

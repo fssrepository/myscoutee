@@ -257,7 +257,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected readonly activityRowExitAnimationMs = 180;
   private lastAppliedActivityMembersUpdatedMs = 0;
   private adminSupportBoardPollTimer: ReturnType<typeof setInterval> | null = null;
-  private unregisterActivitiesRatesExplanationContext: (() => void) | null = null;
+  private unregisterActivitiesExplanationContext: (() => void) | null = null;
+  private activitiesExplanationContextKey: string | null = null;
 
   protected get assetCards(): AppTypes.AssetCard[] {
     return this.ownedAssets.assetCards;
@@ -608,15 +609,16 @@ export class ActivitiesPopupComponent implements OnDestroy {
     });
 
     effect(() => {
-      const shouldRegisterRatesExplanation = this.activitiesContext.activitiesOpen()
-        && this.activitiesContext.activitiesPrimaryFilter() === 'rates';
-      if (shouldRegisterRatesExplanation) {
-        if (!this.unregisterActivitiesRatesExplanationContext) {
-          this.unregisterActivitiesRatesExplanationContext = this.explanationGuide.registerContext('activities.rates');
-        }
-        return;
-      }
-      this.clearActivitiesRatesExplanationContext();
+      const isOpen = this.activitiesContext.activitiesOpen();
+      const primaryFilter = this.activitiesContext.activitiesPrimaryFilter();
+      const contextKey = isOpen && primaryFilter === 'rates'
+        ? 'activities.rates'
+        : isOpen && primaryFilter === 'chats'
+          ? 'chats'
+          : isOpen && primaryFilter === 'events'
+            ? 'events'
+            : null;
+      this.setActivitiesExplanationContext(contextKey);
     });
 
     effect(() => {
@@ -755,12 +757,25 @@ export class ActivitiesPopupComponent implements OnDestroy {
     this.activitiesRates.clearEditorState();
     this.activitiesSmartList?.clearHostedLoading();
     this.configureAdminSupportBoardPolling(false);
-    this.clearActivitiesRatesExplanationContext();
+    this.clearActivitiesExplanationContext();
   }
 
-  private clearActivitiesRatesExplanationContext(): void {
-    this.unregisterActivitiesRatesExplanationContext?.();
-    this.unregisterActivitiesRatesExplanationContext = null;
+  private setActivitiesExplanationContext(contextKey: string | null): void {
+    if (this.activitiesExplanationContextKey === contextKey) {
+      return;
+    }
+    this.clearActivitiesExplanationContext();
+    if (!contextKey) {
+      return;
+    }
+    this.activitiesExplanationContextKey = contextKey;
+    this.unregisterActivitiesExplanationContext = this.explanationGuide.registerContext(contextKey);
+  }
+
+  private clearActivitiesExplanationContext(): void {
+    this.unregisterActivitiesExplanationContext?.();
+    this.unregisterActivitiesExplanationContext = null;
+    this.activitiesExplanationContextKey = null;
   }
 
   private createFallbackActiveUser(): DemoUser {

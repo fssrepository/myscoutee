@@ -64,7 +64,7 @@
                 @if (section.blurb) {
                   <p class="support-help-detail-lead" data-i18n-ignore>{{ section.blurb }}</p>
                 }
-                <div class="support-help-html" data-i18n-ignore [innerHTML]="section.contentHtml"></div>
+                <div class="support-help-html" appLazyBgImage [appLazyHtmlImages]="true" data-i18n-ignore [innerHTML]="section.contentHtml"></div>
               }
             </div>
           </div>
