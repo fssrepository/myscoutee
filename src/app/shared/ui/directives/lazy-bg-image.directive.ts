@@ -14,6 +14,8 @@ export class LazyBgImageDirective implements AfterViewInit, OnChanges, OnDestroy
   private static readonly PRELOAD_ROOT_MARGIN = '1200px 0px';
   private static readonly SEEDED_IMAGE_REF_PREFIX = 'help-seeded-image:';
   private static readonly SEEDED_IMAGE_ASSET_ROOT = '/assets/help-center/explanations';
+  private static readonly HTML_IMAGE_PLACEHOLDER_URL = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==';
+  private static readonly HTML_IMAGE_PLACEHOLDER_LAZY_SRC_MARKER = '#lazy-src=';
   private static readonly DEFAULT_IMAGE_FALLBACK_URL = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 540">
   <rect width="960" height="540" rx="36" fill="#edf4fd"/>
@@ -238,7 +240,7 @@ export class LazyBgImageDirective implements AfterViewInit, OnChanges, OnDestroy
       childList: true,
       subtree: true,
       attributes: true,
-      attributeFilter: ['src']
+      attributeFilter: ['src', 'data-lazy-src']
     });
   }
 
@@ -260,19 +262,25 @@ export class LazyBgImageDirective implements AfterViewInit, OnChanges, OnDestroy
       if (!image.hasAttribute('decoding')) {
         image.decoding = 'async';
       }
-      const src = image.getAttribute('src')?.trim() ?? '';
-      if (!src) {
+      const sourceUrl = this.htmlImageSourceUrl(image);
+      const currentSrc = image.getAttribute('src')?.trim() ?? '';
+      if (!sourceUrl) {
         this.applyHtmlImageFallback(image);
         continue;
       }
-      if (this.localizeHtmlSvgImage(image, src)) {
+      image.dataset['lazyImageSourceUrl'] = sourceUrl;
+      if (this.localizeHtmlSvgImage(image, sourceUrl)) {
         image.classList.add('lazy-image-loading');
         image.classList.remove('lazy-image-loaded');
         continue;
       }
-      if (image.dataset['lazyImageManagedSrc'] !== src) {
-        image.dataset['lazyImageManagedSrc'] = src;
-        if (src !== this.imageFallbackUrl()) {
+      const renderedSourceUrl = this.renderedImageUrl(sourceUrl);
+      if (renderedSourceUrl && renderedSourceUrl !== currentSrc) {
+        image.src = renderedSourceUrl;
+      }
+      if (image.dataset['lazyImageManagedSrc'] !== renderedSourceUrl) {
+        image.dataset['lazyImageManagedSrc'] = renderedSourceUrl;
+        if (renderedSourceUrl !== this.imageFallbackUrl()) {
           delete image.dataset['lazyImageFallbackActive'];
           image.classList.remove('lazy-image-fallback-active');
         }
@@ -297,7 +305,7 @@ export class LazyBgImageDirective implements AfterViewInit, OnChanges, OnDestroy
     }
     const fallbackUrl = this.imageFallbackUrl();
     image.dataset['lazyImageFallbackActive'] = 'true';
-    image.dataset['lazyImageOriginalSrc'] = image.getAttribute('src')?.trim() ?? '';
+    image.dataset['lazyImageOriginalSrc'] = this.htmlImageSourceUrl(image);
     image.dataset['lazyImageManagedSrc'] = fallbackUrl;
     image.classList.remove('lazy-image-loading');
     image.classList.add('lazy-image-loaded', 'lazy-image-fallback-active');
@@ -305,8 +313,47 @@ export class LazyBgImageDirective implements AfterViewInit, OnChanges, OnDestroy
     image.src = fallbackUrl;
   }
 
+  private htmlImageSourceUrl(image: HTMLImageElement): string {
+    const lazySrc = image.getAttribute('data-lazy-src')?.trim() ?? '';
+    if (lazySrc) {
+      return lazySrc;
+    }
+    const src = image.getAttribute('src')?.trim() ?? '';
+    const placeholderLazySrc = this.placeholderLazyImageSourceUrl(src);
+    if (placeholderLazySrc) {
+      return placeholderLazySrc;
+    }
+    if (src === LazyBgImageDirective.HTML_IMAGE_PLACEHOLDER_URL) {
+      return '';
+    }
+    const managedSourceUrl = image.dataset['lazyImageSourceUrl']?.trim() ?? '';
+    if (managedSourceUrl && (!src || src === image.dataset['lazyImageManagedSrc'] || this.isGeneratedSvgObjectUrl(src))) {
+      return managedSourceUrl;
+    }
+    return src;
+  }
+
+  private placeholderLazyImageSourceUrl(src: string): string {
+    if (!src.startsWith(LazyBgImageDirective.HTML_IMAGE_PLACEHOLDER_URL)) {
+      return '';
+    }
+    const markerIndex = src.indexOf(LazyBgImageDirective.HTML_IMAGE_PLACEHOLDER_LAZY_SRC_MARKER);
+    if (markerIndex < 0) {
+      return '';
+    }
+    const encodedValue = src.slice(markerIndex + LazyBgImageDirective.HTML_IMAGE_PLACEHOLDER_LAZY_SRC_MARKER.length);
+    try {
+      return decodeURIComponent(encodedValue).trim();
+    } catch {
+      return '';
+    }
+  }
+
   private localizeHtmlSvgImage(image: HTMLImageElement, src: string): boolean {
-    const originalSrc = image.dataset['lazyImageSvgOriginalSrc'] || src;
+    const currentSrc = image.getAttribute('src')?.trim() ?? '';
+    const originalSrc = this.isGeneratedSvgObjectUrl(src)
+      ? image.dataset['lazyImageSvgOriginalSrc'] || src
+      : src;
     if (this.isGeneratedSvgObjectUrl(src)) {
       const revision = `${this.i18n.revision()}`;
       if (image.dataset['lazyImageSvgRevision'] === revision) {
@@ -319,7 +366,7 @@ export class LazyBgImageDirective implements AfterViewInit, OnChanges, OnDestroy
     const revision = `${this.i18n.revision()}`;
     if (image.dataset['lazyImageSvgOriginalSrc'] === originalSrc
       && image.dataset['lazyImageSvgRevision'] === revision
-      && this.isGeneratedSvgObjectUrl(src)) {
+      && this.isGeneratedSvgObjectUrl(currentSrc)) {
       return false;
     }
     image.dataset['lazyImageSvgOriginalSrc'] = originalSrc;

@@ -78,6 +78,7 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
   private static readonly LOAD_DEMO_DELAY_MS = 1500;
   private static readonly LOAD_PROGRESS_WINDOW_MS = 3000;
   private static readonly EXPLANATION_IMAGE_SLOT_COUNT = 8;
+  private static readonly LAZY_IMAGE_PLACEHOLDER_URL = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==';
   private static readonly FALLBACK_SPAN_2_SECTION_IDS = new Set([
     'affinity-network',
     'activity-chat-message-window',
@@ -725,7 +726,7 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
     if (!imageUrl) {
       return contentHtml;
     }
-    const seededFigure = `<figure class="explanation-seeded-visual"><img src="${this.escapeHtmlAttribute(imageUrl)}" alt="${this.escapeHtmlAttribute(section.title ?? '')}" data-i18n-svg="true"></figure>`;
+    const seededFigure = `<figure class="explanation-seeded-visual"><img src="${this.escapeHtmlAttribute(this.lazyImagePlaceholderSrc(imageUrl))}" alt="${this.escapeHtmlAttribute(section.title ?? '')}"></figure>`;
     return `${contentHtml}${contentHtml ? '' : ''}${seededFigure}`;
   }
 
@@ -1534,6 +1535,10 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
     return Array.from(element.attributes)
       .map(attribute => ` ${attribute.name}="${this.escapeHtmlAttribute(attribute.value)}"`)
       .join('');
+  }
+
+  private lazyImagePlaceholderSrc(imageUrl: string): string {
+    return `${AdminHelpEditorPopupComponent.LAZY_IMAGE_PLACEHOLDER_URL}#lazy-src=${encodeURIComponent(imageUrl)}`;
   }
 
   private escapeHtmlAttribute(value: string): string {

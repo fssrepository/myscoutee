@@ -1831,11 +1831,9 @@ const EXPLANATION_EVENT_EDITOR_SECTIONS_HU: HelpCenterSection[] = [
 const EXPLANATION_IMAGE_SLOT_LIMIT = 8;
 const SEEDED_EXPLANATION_IMAGE_REF_PREFIX = 'help-seeded-image:';
 const SEEDED_EXPLANATION_IMAGE_ASSET_ROOT = '/assets/help-center/explanations';
+const LAZY_IMAGE_PLACEHOLDER_URL = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==';
 const EXPLANATION_SECTION_SPANS: Record<string, HelpCenterSection['panelSpan']> = {
   'affinity-network': 'span-2',
-  'activity-event-entry': 'span-2',
-  'activity-event-actions': 'span-2',
-  'activity-event-hosting': 'span-2',
   'activity-chat-message-window': 'span-2',
   'contacts-list': 'span-2',
   'contacts-card': 'span-2',
@@ -1844,17 +1842,18 @@ const EXPLANATION_SECTION_SPANS: Record<string, HelpCenterSection['panelSpan']> 
   'assets-card': 'span-2',
   'assets-editor': 'span-2',
   'assets-requests': 'span-2',
-  'assets-scope': 'span-2',
-  'event-editor-main': 'span-2',
-  'event-editor-subevents': 'span-2'
+  'assets-scope': 'span-2'
 };
+const SPAN_1_EXPLANATION_CONTEXTS = new Set(['events', 'event.editor']);
 
 function withSeededExplanationImages(contextKey: string, sections: HelpCenterSection[], lang: string): HelpCenterSection[] {
   return sections.map(section => {
     const seededImageUrl = seededExplanationImageRef(contextKey, lang, section.id);
     return {
       ...section,
-      panelSpan: section.panelSpan ?? EXPLANATION_SECTION_SPANS[section.id],
+      panelSpan: SPAN_1_EXPLANATION_CONTEXTS.has(contextKey)
+        ? 'span-1'
+        : section.panelSpan ?? EXPLANATION_SECTION_SPANS[section.id],
       contentHtml: withSeededExplanationImageHtml(section.contentHtml, seededImageUrl, section.title),
       imageUrls: uniqueHelpImageUrls([seededImageUrl, ...(section.imageUrls ?? [])])
     };
@@ -1884,12 +1883,16 @@ function seededExplanationImageRef(contextKey: string, lang: string, sectionId: 
 
 function withSeededExplanationImageHtml(contentHtml: string | null | undefined, imageUrl: string, title: string | null | undefined): string {
   const html = `${contentHtml ?? ''}`.trim();
-  const nextFigure = `<figure class="explanation-seeded-visual"><img src="${imageUrl}" alt="${escapeHtmlAttribute(title ?? '')}" data-i18n-svg="true"></figure>`;
+  const nextFigure = `<figure class="explanation-seeded-visual"><img src="${escapeHtmlAttribute(lazyImagePlaceholderSrc(imageUrl))}" alt="${escapeHtmlAttribute(title ?? '')}"></figure>`;
   const withoutExistingSeededFigure = html.replace(/<figure\b[^>]*\bexplanation-seeded-visual\b[^>]*>[\s\S]*?<\/figure>/gi, '').trim();
   if (/<img[\s>]/i.test(withoutExistingSeededFigure)) {
     return withoutExistingSeededFigure;
   }
   return `${withoutExistingSeededFigure}${withoutExistingSeededFigure ? '' : ''}${nextFigure}`;
+}
+
+function lazyImagePlaceholderSrc(imageUrl: string): string {
+  return `${LAZY_IMAGE_PLACEHOLDER_URL}#lazy-src=${encodeURIComponent(imageUrl)}`;
 }
 
 function seededExplanationPathSegment(value: string | null | undefined): string {

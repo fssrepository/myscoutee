@@ -91,6 +91,7 @@ export class EntryShellComponent implements OnDestroy {
   private landingArticlesLoadingStartedAtMs = 0;
   private landingArticlesLoadingInterval: ReturnType<typeof setInterval> | null = null;
   private landingLoginAvailability: UserLocationEligibilityResponseDto | null = null;
+  private locationEligibilityResolvedFromCoordinates = false;
   private grantedLocationEligibilityPromise: Promise<void> | null = null;
   private grantedLocationEligibilityRequestToken = 0;
   private geolocationPermissionStatus: PermissionStatus | null = null;
@@ -291,7 +292,7 @@ export class EntryShellComponent implements OnDestroy {
     this.entryPrivacyLoading = true;
     this.landingArticlesLoading = true;
     this.landingArticlesLoadingProgress = 0;
-    this.syncLandingLoginAvailability(null);
+    this.syncLandingLoginAvailability(null, 'reset');
     this.showUserSelector = false;
     this.demoSelectorLoading = false;
     this.demoSelectorLoadingProgress = 0;
@@ -366,7 +367,7 @@ export class EntryShellComponent implements OnDestroy {
       }
 
       const result = await this.usersService.checkLocationEligibility(coordinates);
-      this.syncLandingLoginAvailability(result);
+      this.syncLandingLoginAvailability(result, 'coordinates');
       if (result.eligible) {
         return true;
       }
@@ -681,8 +682,9 @@ export class EntryShellComponent implements OnDestroy {
             return;
           }
           this.landingIdeaCards = displayState.ideaCards;
-          if (displayState.state.loginAvailability || this.landingLoginAvailability === null) {
-            this.syncLandingLoginAvailability(displayState.state.loginAvailability);
+          if (!this.locationEligibilityResolvedFromCoordinates
+            && (displayState.state.loginAvailability || this.landingLoginAvailability === null)) {
+            this.syncLandingLoginAvailability(displayState.state.loginAvailability, 'bundle');
           }
           this.finishEntryPrivacyLoad(requestToken);
           this.changeDetectorRef.detectChanges();
@@ -772,7 +774,15 @@ export class EntryShellComponent implements OnDestroy {
     this.landingArticlesLoadingInterval = null;
   }
 
-  private syncLandingLoginAvailability(availability: UserLocationEligibilityResponseDto | null | undefined): void {
+  private syncLandingLoginAvailability(
+    availability: UserLocationEligibilityResponseDto | null | undefined,
+    source: 'bundle' | 'coordinates' | 'reset' = 'bundle'
+  ): void {
+    if (source === 'coordinates') {
+      this.locationEligibilityResolvedFromCoordinates = true;
+    } else if (source === 'reset') {
+      this.locationEligibilityResolvedFromCoordinates = false;
+    }
     this.landingLoginAvailability = availability
       ? {
           eligible: availability.eligible !== false,
@@ -785,7 +795,7 @@ export class EntryShellComponent implements OnDestroy {
     this.entryAuthUnavailable = this.isLoginBlockedByLandingBundle();
     this.entryAuthUnavailableLabel = 'Unavailable in your country';
     this.entryAuthLocationRequired = this.isLoginLocationRequiredByLandingBundle();
-    this.entryAuthLocationRequiredLabel = 'Allow location';
+    this.entryAuthLocationRequiredLabel = this.grantedLocationEligibilityPromise ? 'Checking location' : 'Allow location';
     this.resolveGrantedLocationAccessIfNeeded();
   }
 
@@ -848,7 +858,7 @@ export class EntryShellComponent implements OnDestroy {
       }
 
       this.ngZone.run(() => {
-        this.syncLandingLoginAvailability(result);
+        this.syncLandingLoginAvailability(result, 'coordinates');
         this.changeDetectorRef.detectChanges();
       });
     } catch {

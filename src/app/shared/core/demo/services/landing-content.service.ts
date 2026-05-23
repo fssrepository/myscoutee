@@ -1,5 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 
+import type { UserLocationEligibilityResponseDto } from '../../base/interfaces';
 import type { LandingContentState } from '../../base/models';
 import { DemoHelpCenterService } from './help-center.service';
 import { DemoIdeaPostsService } from './idea-posts.service';
@@ -8,6 +9,14 @@ import { DemoIdeaPostsService } from './idea-posts.service';
   providedIn: 'root'
 })
 export class DemoLandingContentService {
+  private static readonly DEMO_LOGIN_AVAILABILITY: UserLocationEligibilityResponseDto = {
+    eligible: true,
+    partitionKey: null,
+    message: null,
+    securityGateEnabled: false,
+    locationRequired: false
+  };
+
   private readonly helpCenter = inject(DemoHelpCenterService);
   private readonly ideaPosts = inject(DemoIdeaPostsService);
 
@@ -17,6 +26,6 @@ export class DemoLandingContentService {
       this.helpCenter.loadState('privacy'),
       this.ideaPosts.loadPublishedPosts()
     ]);
-    return { privacy, ideas, loginAvailability: null };
+    return { privacy, ideas, loginAvailability: DemoLandingContentService.DEMO_LOGIN_AVAILABILITY };
   }
 }

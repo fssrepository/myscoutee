@@ -26,6 +26,7 @@ type ExplanationSectionLayout = 'span-1' | 'span-2' | 'span-3';
 export class ExplanationPopupComponent {
   protected readonly guide = inject(ExplanationGuideService);
   protected readonly activeRevision = this.guide.visibleRevision;
+  private readonly lazyImagePlaceholderUrl = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==';
   private readonly fallbackWideSectionIds = new Set<string>([
     'affinity-network',
     'activity-chat-message-window',
@@ -66,7 +67,7 @@ export class ExplanationPopupComponent {
     if (!imageUrl) {
       return contentHtml;
     }
-    const seededFigure = `<figure class="explanation-seeded-visual"><img src="${this.escapeHtmlAttribute(imageUrl)}" alt="${this.escapeHtmlAttribute(section.title ?? '')}" data-i18n-svg="true"></figure>`;
+    const seededFigure = `<figure class="explanation-seeded-visual"><img src="${this.escapeHtmlAttribute(this.lazyImagePlaceholderSrc(imageUrl))}" alt="${this.escapeHtmlAttribute(section.title ?? '')}"></figure>`;
     return `${contentHtml}${contentHtml ? '' : ''}${seededFigure}`;
   }
 
@@ -113,6 +114,10 @@ export class ExplanationPopupComponent {
 
   private primarySectionImageUrl(section: HelpCenterSection): string {
     return `${section.imageUrls?.[0] ?? ''}`.trim();
+  }
+
+  private lazyImagePlaceholderSrc(imageUrl: string): string {
+    return `${this.lazyImagePlaceholderUrl}#lazy-src=${encodeURIComponent(imageUrl)}`;
   }
 
   private escapeHtmlAttribute(value: string): string {

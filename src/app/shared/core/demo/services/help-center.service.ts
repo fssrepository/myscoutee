@@ -31,6 +31,8 @@ const LEGACY_ACTIVITY_RATES_EXPLANATION_SECTION_IDS = new Set([
   'activity-card-actions',
   'activity-panel-actions'
 ]);
+const SEEDED_HELP_IMAGE_REF_PREFIX = 'help-seeded-image:';
+const LAZY_HELP_IMAGE_PLACEHOLDER_URL = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==';
 
 @Injectable({
   providedIn: 'root'
@@ -80,7 +82,9 @@ export class DemoHelpCenterService {
         || explanationsSeeded
         || changed;
     }
-    return changed;
+    const lazyImageMigrationChanged = this.ensureSeededImageRefsLazyLoaded();
+    const explanationPanelSpanChanged = this.ensureScopedExplanationPanelSpan();
+    return changed || lazyImageMigrationChanged || explanationPanelSpanChanged;
   }
 
   private explanationBootstrapContextKeys(): string[] {
@@ -405,6 +409,82 @@ export class DemoHelpCenterService {
             [audit.id]: audit
           },
           auditIds: [...current.auditIds, audit.id]
+        }
+      };
+    });
+    return true;
+  }
+
+  private ensureSeededImageRefsLazyLoaded(): boolean {
+    const table = this.table();
+    const revisionIds = table.revisionIds.filter(id => {
+      const revision = table.revisionsById[id] as HelpCenterRevision | undefined;
+      return Boolean(revision?.sections?.some(section => this.hasLegacySeededImageSrc(section.contentHtml)));
+    });
+    if (revisionIds.length === 0) {
+      return false;
+    }
+    this.memoryDb.write(state => {
+      const current = state[HELP_CENTER_TABLE_NAME];
+      const revisionsById = this.normalizedRevisionsById(current);
+      for (const id of revisionIds) {
+        const revision = revisionsById[id];
+        if (!revision) {
+          continue;
+        }
+        revisionsById[id] = {
+          ...revision,
+          sections: revision.sections.map(section => ({
+            ...section,
+            contentHtml: this.normalizeSeededImageRefsInHtml(section.contentHtml)
+          }))
+        };
+      }
+      return {
+        ...state,
+        [HELP_CENTER_TABLE_NAME]: {
+          ...current,
+          revisionsById
+        }
+      };
+    });
+    return true;
+  }
+
+  private ensureScopedExplanationPanelSpan(): boolean {
+    const table = this.table();
+    const span1Contexts = new Set(['events', 'event.editor']);
+    const revisionIds = table.revisionIds.filter(id => {
+      const revision = table.revisionsById[id] as HelpCenterRevision | undefined;
+      return Boolean(revision)
+        && this.revisionKind(revision) === 'explanation'
+        && span1Contexts.has(this.revisionContextKey(revision) ?? '')
+        && revision?.sections?.some(section => section.panelSpan !== 'span-1');
+    });
+    if (revisionIds.length === 0) {
+      return false;
+    }
+    this.memoryDb.write(state => {
+      const current = state[HELP_CENTER_TABLE_NAME];
+      const revisionsById = this.normalizedRevisionsById(current);
+      for (const id of revisionIds) {
+        const revision = revisionsById[id];
+        if (!revision) {
+          continue;
+        }
+        revisionsById[id] = {
+          ...revision,
+          sections: revision.sections.map(section => ({
+            ...section,
+            panelSpan: 'span-1'
+          }))
+        };
+      }
+      return {
+        ...state,
+        [HELP_CENTER_TABLE_NAME]: {
+          ...current,
+          revisionsById
         }
       };
     });
@@ -1158,11 +1238,69 @@ export class DemoHelpCenterService {
   }
 
   private normalizeHtml(value: string): string {
-    return `${value ?? ''}`
+    return this.normalizeSeededImageRefsInHtml(`${value ?? ''}`)
       .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
       .replace(/\son[a-z]+\s*=\s*(['"]).*?\1/gi, '')
       .replace(/\s(?:href|src)\s*=\s*(['"])\s*javascript:[\s\S]*?\1/gi, '')
       .trim();
+  }
+
+  private hasLegacySeededImageSrc(value: string | null | undefined): boolean {
+    const html = `${value ?? ''}`;
+    return /<img\b[^>]*\bsrc\s*=\s*(["'])\s*help-seeded-image:/i.test(html)
+      || /<img\b[^>]*\bdata-lazy-src\s*=\s*(["'])\s*help-seeded-image:/i.test(html)
+      || /<img\b[^>]*\bsrc\s*=\s*(["'])[^"']*#lazy-src=/i.test(html);
+  }
+
+  private normalizeSeededImageRefsInHtml(value: string | null | undefined): string {
+    return `${value ?? ''}`.replace(/<img\b[^>]*>/gi, tag => this.normalizeSeededImageTag(tag));
+  }
+
+  private normalizeSeededImageTag(tag: string): string {
+    const srcMatch = /\ssrc\s*=\s*(["'])(.*?)\1/i.exec(tag);
+    const dataLazyMatch = /\sdata-lazy-src\s*=\s*(["'])(.*?)\1/i.exec(tag);
+    const lazySource = dataLazyMatch && this.isSeededHelpImageRef(dataLazyMatch[2])
+      ? dataLazyMatch[2].trim()
+      : srcMatch && this.isSeededHelpImageRef(srcMatch[2])
+        ? srcMatch[2].trim()
+        : this.seededHelpImageRefFromPlaceholder(srcMatch?.[2]);
+    if (!lazySource) {
+      return tag;
+    }
+    const nextSourceAttrs = ` src="${this.escapeHtml(this.lazyImagePlaceholderSrc(lazySource))}"`;
+    const withoutLazySource = tag
+      .replace(/\sdata-lazy-src\s*=\s*(["']).*?\1/gi, '')
+      .replace(/\sdata-i18n-svg\s*=\s*(["']).*?\1/gi, '');
+    if (!srcMatch) {
+      return withoutLazySource.replace(/<img\b/i, `<img${nextSourceAttrs}`);
+    }
+    return withoutLazySource.replace(/\ssrc\s*=\s*(["']).*?\1/i, nextSourceAttrs);
+  }
+
+  private isSeededHelpImageRef(value: string | null | undefined): boolean {
+    return `${value ?? ''}`.trim().startsWith(SEEDED_HELP_IMAGE_REF_PREFIX);
+  }
+
+  private lazyImagePlaceholderSrc(imageUrl: string): string {
+    return `${LAZY_HELP_IMAGE_PLACEHOLDER_URL}#lazy-src=${encodeURIComponent(imageUrl)}`;
+  }
+
+  private seededHelpImageRefFromPlaceholder(value: string | null | undefined): string {
+    const src = `${value ?? ''}`.trim();
+    if (!src.startsWith(LAZY_HELP_IMAGE_PLACEHOLDER_URL)) {
+      return '';
+    }
+    const marker = '#lazy-src=';
+    const markerIndex = src.indexOf(marker);
+    if (markerIndex < 0) {
+      return '';
+    }
+    try {
+      const decoded = decodeURIComponent(src.slice(markerIndex + marker.length)).trim();
+      return this.isSeededHelpImageRef(decoded) ? decoded : '';
+    } catch {
+      return '';
+    }
   }
 
   private escapeHtml(value: string): string {
