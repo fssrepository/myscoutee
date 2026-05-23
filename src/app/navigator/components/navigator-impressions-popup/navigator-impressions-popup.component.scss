@@ -224,8 +224,8 @@
   left: 50%;
   z-index: 1;
   display: inline-flex;
-  width: fit-content;
-  max-width: calc(100% - 2px);
+  width: min(21rem, calc(100% - 1rem));
+  max-width: none;
   align-items: stretch;
   overflow: hidden;
   border: 1px solid rgba(106, 118, 142, 0.24);
@@ -240,7 +240,8 @@
 .navigator-impressions-popup .popup-impressions-badge-segment {
   display: flex;
   min-height: 40px;
-  flex: 0 0 auto;
+  min-width: 0;
+  flex: 1 1 0;
   flex-direction: column;
   align-items: center;
   justify-content: center;
@@ -261,7 +262,9 @@
   line-height: 1.08;
   letter-spacing: 0.03em;
   text-transform: uppercase;
-  white-space: nowrap;
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .navigator-impressions-popup .popup-impressions-badge-value {
