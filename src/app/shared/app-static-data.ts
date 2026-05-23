@@ -1883,7 +1883,7 @@ function seededExplanationImageRef(contextKey: string, lang: string, sectionId: 
 
 function withSeededExplanationImageHtml(contentHtml: string | null | undefined, imageUrl: string, title: string | null | undefined): string {
   const html = `${contentHtml ?? ''}`.trim();
-  const nextFigure = `<figure class="explanation-seeded-visual"><img src="${escapeHtmlAttribute(lazyImagePlaceholderSrc(imageUrl))}" alt="${escapeHtmlAttribute(title ?? '')}"></figure>`;
+  const nextFigure = `<figure class="explanation-seeded-visual lazy-image-frame-loading"><img class="lazy-image-loading" src="${escapeHtmlAttribute(lazyImagePlaceholderSrc(imageUrl))}" alt="${escapeHtmlAttribute(title ?? '')}"></figure>`;
   const withoutExistingSeededFigure = html.replace(/<figure\b[^>]*\bexplanation-seeded-visual\b[^>]*>[\s\S]*?<\/figure>/gi, '').trim();
   if (/<img[\s>]/i.test(withoutExistingSeededFigure)) {
     return withoutExistingSeededFigure;

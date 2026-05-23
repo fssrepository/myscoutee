@@ -726,7 +726,7 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
     if (!imageUrl) {
       return contentHtml;
     }
-    const seededFigure = `<figure class="explanation-seeded-visual"><img src="${this.escapeHtmlAttribute(this.lazyImagePlaceholderSrc(imageUrl))}" alt="${this.escapeHtmlAttribute(section.title ?? '')}"></figure>`;
+    const seededFigure = `<figure class="explanation-seeded-visual lazy-image-frame-loading"><img class="lazy-image-loading" src="${this.escapeHtmlAttribute(this.lazyImagePlaceholderSrc(imageUrl))}" alt="${this.escapeHtmlAttribute(section.title ?? '')}"></figure>`;
     return `${contentHtml}${contentHtml ? '' : ''}${seededFigure}`;
   }
 
