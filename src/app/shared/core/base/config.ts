@@ -35,6 +35,10 @@ export const ROUTE_CONFIG: RouteConfig = {
       demoDelayMs: 1500
     },
     {
+      routePrefix: '/explanation',
+      demoDelayMs: 1500
+    },
+    {
       routePrefix: '/landing/content',
       demoDelayMs: 1500
     },

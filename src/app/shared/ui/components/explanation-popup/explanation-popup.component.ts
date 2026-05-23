@@ -25,7 +25,11 @@ type ExplanationSectionLayout = 'span-1' | 'span-2' | 'span-3';
 })
 export class ExplanationPopupComponent {
   protected readonly guide = inject(ExplanationGuideService);
+  protected readonly popupOpen = this.guide.popupOpen;
+  protected readonly loading = this.guide.loading;
+  protected readonly loadingProgress = this.guide.loadingProgress;
   protected readonly activeRevision = this.guide.visibleRevision;
+  protected readonly loadingRingPerimeter = 100;
   private readonly lazyImagePlaceholderUrl = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==';
   private readonly fallbackWideSectionIds = new Set<string>([
     'affinity-network',
@@ -52,6 +56,11 @@ export class ExplanationPopupComponent {
     return lang === 'hu'
       ? this.homeFilterModeOptionsHu
       : this.homeFilterModeOptionsEn;
+  }
+
+  protected loadingRingDashOffset(): number {
+    const progress = Math.min(1, Math.max(0, Number(this.loadingProgress()) || 0));
+    return this.loadingRingPerimeter * (1 - progress);
   }
 
   protected shouldShowGeneratedVisual(section: HelpCenterSection): boolean {

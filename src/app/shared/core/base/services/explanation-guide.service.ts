@@ -8,17 +8,27 @@ import { HelpCenterService } from './help-center.service';
 })
 export class ExplanationGuideService {
   private static readonly STORAGE_KEY = 'myscoutee.explanation-guide.enabled.v1';
+  private static readonly LOAD_PROGRESS_WINDOW_MS = 3000;
   private readonly helpCenter = inject(HelpCenterService);
   private readonly enabledRef = signal(this.readEnabledState());
   private readonly currentContextRef = signal<string | null>(null);
+  private readonly popupOpenRef = signal(false);
+  private readonly loadingRef = signal(false);
+  private readonly loadingProgressRef = signal(0);
   private readonly visibleRevisionRef = signal<HelpCenterRevision | null>(null);
   private readonly dismissedContexts = new Set<string>();
   private readonly contextStack: string[] = [];
   private loadSerial = 0;
+  private loadingProgressStartedAtMs = 0;
+  private loadingProgressTimer: ReturnType<typeof setTimeout> | null = null;
 
   readonly enabled = this.enabledRef.asReadonly();
   readonly currentContextKey = this.currentContextRef.asReadonly();
+  readonly popupOpen = this.popupOpenRef.asReadonly();
+  readonly loading = this.loadingRef.asReadonly();
+  readonly loadingProgress = this.loadingProgressRef.asReadonly();
   readonly visibleRevision = this.visibleRevisionRef.asReadonly();
+  readonly hasVisiblePopup = computed(() => this.popupOpenRef());
   readonly hasVisibleRevision = computed(() => Boolean(this.visibleRevisionRef()));
 
   registerContext(contextKey: string): () => void {
@@ -43,13 +53,13 @@ export class ExplanationGuideService {
     this.enabledRef.set(enabled);
     this.writeEnabledState(enabled);
     if (!enabled) {
-      this.visibleRevisionRef.set(null);
+      this.closePopup();
       return;
     }
     this.dismissedContexts.clear();
     const contextKey = this.currentContextRef();
     if (contextKey) {
-      void this.loadForContext(contextKey);
+      this.refreshVisibleForCurrent();
     }
   }
 
@@ -62,7 +72,7 @@ export class ExplanationGuideService {
     if (contextKey) {
       this.dismissedContexts.add(contextKey);
     }
-    this.visibleRevisionRef.set(null);
+    this.closePopup();
   }
 
   replayCurrent(): void {
@@ -77,25 +87,84 @@ export class ExplanationGuideService {
   private refreshVisibleForCurrent(): void {
     const contextKey = this.currentContextRef();
     if (!this.enabledRef() || !contextKey || this.dismissedContexts.has(contextKey)) {
-      this.visibleRevisionRef.set(null);
+      this.closePopup();
       return;
     }
+    this.popupOpenRef.set(true);
+    this.visibleRevisionRef.set(null);
     void this.loadForContext(contextKey);
   }
 
   private async loadForContext(contextKey: string): Promise<void> {
     const serial = ++this.loadSerial;
+    this.beginLoadingProgress();
     try {
       const state = await this.helpCenter.loadExplanationState(contextKey);
       if (serial !== this.loadSerial || !this.enabledRef() || this.currentContextRef() !== contextKey || this.dismissedContexts.has(contextKey)) {
         return;
       }
-      this.visibleRevisionRef.set(state.activeRevision ?? null);
+      const revision = state.activeRevision ?? null;
+      if (!revision) {
+        this.closePopup();
+        return;
+      }
+      this.visibleRevisionRef.set(revision);
+      this.endLoadingProgress();
     } catch {
       if (serial === this.loadSerial) {
-        this.visibleRevisionRef.set(null);
+        this.closePopup();
       }
     }
+  }
+
+  private beginLoadingProgress(): void {
+    this.clearLoadingProgressTimer();
+    this.loadingRef.set(true);
+    this.loadingProgressStartedAtMs = this.nowMs();
+    this.loadingProgressRef.set(0.02);
+    this.updateLoadingProgress();
+  }
+
+  private updateLoadingProgress(): void {
+    if (!this.loadingRef()) {
+      return;
+    }
+    const elapsedMs = Math.max(0, this.nowMs() - this.loadingProgressStartedAtMs);
+    const nextProgress = Math.min(1, elapsedMs / ExplanationGuideService.LOAD_PROGRESS_WINDOW_MS);
+    this.loadingProgressRef.set(Math.max(this.loadingProgressRef(), nextProgress));
+    if (nextProgress >= 1) {
+      return;
+    }
+    this.loadingProgressTimer = setTimeout(() => this.updateLoadingProgress(), 80);
+  }
+
+  private endLoadingProgress(): void {
+    this.clearLoadingProgressTimer();
+    this.loadingRef.set(false);
+    this.loadingProgressRef.set(1);
+  }
+
+  private closePopup(): void {
+    this.clearLoadingProgressTimer();
+    this.loadingRef.set(false);
+    this.loadingProgressStartedAtMs = 0;
+    this.loadingProgressRef.set(0);
+    this.visibleRevisionRef.set(null);
+    this.popupOpenRef.set(false);
+  }
+
+  private clearLoadingProgressTimer(): void {
+    if (!this.loadingProgressTimer) {
+      return;
+    }
+    clearTimeout(this.loadingProgressTimer);
+    this.loadingProgressTimer = null;
+  }
+
+  private nowMs(): number {
+    return typeof performance !== 'undefined' && typeof performance.now === 'function'
+      ? performance.now()
+      : Date.now();
   }
 
   private normalizeContextKey(contextKey: string | null | undefined): string {

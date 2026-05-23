@@ -288,8 +288,8 @@ export class EntryShellComponent implements OnDestroy {
 
   private initializeEntryFlow(): void {
     this.entryConsentViewOnly = false;
-    this.showEntryConsentPopup = false;
-    this.entryPrivacyLoading = true;
+    this.entryPrivacyLoading = this.helpCenter.privacyState() === null;
+    this.showEntryConsentPopup = this.entryPrivacyLoading || this.loadEntryConsentState() === null;
     this.landingArticlesLoading = true;
     this.landingArticlesLoadingProgress = 0;
     this.syncLandingLoginAvailability(null, 'reset');
@@ -316,20 +316,16 @@ export class EntryShellComponent implements OnDestroy {
     if (this.hasEntryConsent) {
       return true;
     }
+    this.entryConsentViewOnly = false;
+    this.showEntryConsentPopup = true;
     if (this.helpCenter.privacyState() === null) {
       this.entryPrivacyLoading = true;
       void this.loadEntryContent();
-      this.entryConsentViewOnly = false;
-      this.showEntryConsentPopup = false;
       return false;
     }
     if (this.entryPrivacyLoading) {
-      this.entryConsentViewOnly = false;
-      this.showEntryConsentPopup = false;
       return false;
     }
-    this.entryConsentViewOnly = false;
-    this.showEntryConsentPopup = this.loadEntryConsentState() === null;
     return false;
   }
 

@@ -190,7 +190,7 @@ export class NavigatorComponent {
     });
 
     effect(() => {
-      const isVisible = this.explanationGuide.hasVisibleRevision();
+      const isVisible = this.explanationGuide.hasVisiblePopup();
       if (isVisible && !this.explanationPopupComponentRef()) {
         void this.ensureExplanationPopupLoaded();
       }

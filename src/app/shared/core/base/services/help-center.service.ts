@@ -10,6 +10,7 @@ import type {
   PrivacyConsentSaveRequest
 } from '../models';
 import { BaseRouteModeService } from './base-route-mode.service';
+import { RouteDelayService } from './route-delay.service';
 
 export const HELP_CENTER_LOAD_CONTEXT_KEY = 'help-center-load';
 
@@ -19,6 +20,7 @@ export const HELP_CENTER_LOAD_CONTEXT_KEY = 'help-center-load';
 export class HelpCenterService extends BaseRouteModeService {
   private readonly demoHelpCenterService = inject(DemoHelpCenterService);
   private readonly httpHelpCenterService = inject(HttpHelpCenterService);
+  private readonly routeDelay = inject(RouteDelayService);
   private readonly helpStateRef = signal<HelpCenterState | null>(null);
   private readonly privacyStateRef = signal<HelpCenterState | null>(null);
   private readonly explanationStateRef = signal<HelpCenterState | null>(null);
@@ -111,7 +113,10 @@ export class HelpCenterService extends BaseRouteModeService {
   }
 
   private async loadState(kind: HelpCenterDocumentKind, lang?: string | null, contextKey?: string | null): Promise<HelpCenterState> {
-    const state = await this.helpService(kind).loadState(kind, lang, contextKey);
+    const [state] = await Promise.all([
+      this.helpService(kind).loadState(kind, lang, contextKey),
+      this.routeDelay.waitForRouteDelay(`/${kind}/active`, undefined, undefined, 1500)
+    ]);
     this.setState(kind, state);
     return this.cloneState(state);
   }

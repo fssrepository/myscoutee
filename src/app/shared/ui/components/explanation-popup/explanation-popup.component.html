@@ -1,5 +1,6 @@
-@if (activeRevision(); as revision) {
-  <section class="explanation-popup" role="dialog" aria-modal="true" [attr.aria-label]="revision.title">
+@if (popupOpen()) {
+  @if (activeRevision(); as revision) {
+    <section class="explanation-popup" role="dialog" aria-modal="true" [attr.aria-label]="revision.title">
     <div class="explanation-popup__backdrop" (click)="close($event)"></div>
     <article class="explanation-popup__panel" (click)="$event.stopPropagation()">
       <header class="explanation-popup__header">
@@ -874,5 +875,36 @@
 
       </div>
     </article>
-  </section>
+    </section>
+  } @else {
+    <section class="explanation-popup" role="dialog" aria-modal="true" [attr.aria-label]="'loading.explanation' | i18n: 'Loading explanation'">
+      <div class="explanation-popup__backdrop" (click)="close($event)"></div>
+      <article class="explanation-popup__panel explanation-popup__panel--loading" (click)="$event.stopPropagation()">
+        <header class="explanation-popup__header">
+          <div class="explanation-popup__headline">
+            <div class="explanation-popup__title-row">
+              <h2>{{ 'loading.explanation' | i18n: 'Loading explanation' }}</h2>
+              <button type="button" class="explanation-popup__primary explanation-popup__header-action explanation-popup__icon-action" (click)="close($event)" [attr.aria-label]="'close.explanation' | i18n: 'Close explanation'">
+                <mat-icon>close</mat-icon>
+              </button>
+            </div>
+          </div>
+        </header>
+        <div class="explanation-popup__loading-body">
+          <svg class="explanation-popup__loading-ring" viewBox="0 0 44 44" aria-hidden="true">
+            <circle class="explanation-popup__loading-ring-track" cx="22" cy="22" r="18"></circle>
+            <circle
+              class="explanation-popup__loading-ring-value"
+              cx="22"
+              cy="22"
+              r="18"
+              [attr.stroke-dasharray]="loadingRingPerimeter"
+              [attr.stroke-dashoffset]="loadingRingDashOffset()"
+            ></circle>
+          </svg>
+          <span>{{ 'loading.explanation.content' | i18n: 'Loading explanation content' }}</span>
+        </div>
+      </article>
+    </section>
+  }
 }
