@@ -1872,6 +1872,18 @@
     max-width: 128px;
   }
 
+  .popup-panel-help-editor .help-editor-document-menu {
+    position: fixed;
+    left: 0.4rem;
+    right: 0.4rem;
+    top: auto;
+    bottom: 0.4rem;
+    max-height: min(72vh, 520px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    border-radius: 14px;
+  }
+
   .popup-panel-help-editor .help-editor-header-actions > .help-editor-icon-btn {
     width: 36px;
     height: 36px;

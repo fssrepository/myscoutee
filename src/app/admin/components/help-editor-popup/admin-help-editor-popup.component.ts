@@ -359,7 +359,10 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
   }
 
   protected explanationSurface(contextKey: string | null | undefined): ExplainableSurface | null {
-    const normalized = this.normalizeExplanationContextKey(contextKey);
+    const normalized = `${contextKey ?? ''}`.trim();
+    if (!normalized) {
+      return null;
+    }
     return this.explainableSurfaces().find(surface => surface.key === normalized) ?? null;
   }
 
@@ -525,10 +528,10 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
     if (this.loading() || this.isAnyActionPending()) {
       return;
     }
-    const targetSurface = this.firstAvailableExplanationSurface();
-    if (targetSurface) {
-      this.selectedExplanationContextKey = targetSurface.key;
-    }
+    this.selectedExplanationContextKey = '';
+    this.selectedRevisionId = '';
+    this.openRevisionId = '';
+    this.openPreviewSectionId = '';
     this.explanationMenuOpen = false;
     if (this.documentKind !== 'explanation') {
       await this.selectDocumentKind('explanation', event);
@@ -536,7 +539,7 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
       this.closeDocumentMenu();
       await this.load();
     }
-    this.beginEditingDraft(this.emptyDraft());
+    this.beginEditingDraft(this.emptyDraft(null));
   }
 
   protected closeLanguageMenu(event?: Event): void {
@@ -850,6 +853,12 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
     event?.preventDefault();
     event?.stopPropagation();
     if (!this.draft || this.saving) {
+      return;
+    }
+    if (this.documentKind === 'explanation' && !this.draft.contextKey) {
+      this.error = this.selectedContentLanguageIsHungarian()
+        ? 'Válassz képernyőt mentés előtt.'
+        : 'Choose a canonical screen before saving.';
       return;
     }
     const request = {
@@ -1201,10 +1210,13 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
     };
   }
 
-  private emptyDraft(): HelpEditorRevisionDraft {
+  private emptyDraft(contextKeyOverride?: string | null): HelpEditorRevisionDraft {
+    const contextKey = this.documentKind === 'explanation'
+      ? (contextKeyOverride === undefined ? this.selectedExplanationContextKey : contextKeyOverride)
+      : null;
     return {
       baseRevisionId: null,
-      contextKey: this.documentKind === 'explanation' ? this.selectedExplanationContextKey : null,
+      contextKey,
       title: this.defaultContentRevisionTitle(),
       summary: '',
       description: '',
@@ -1331,16 +1343,6 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
       ?.filter(value => Number.isFinite(value) && value > 0) ?? [];
     const nextIndex = existingNumbers.reduce((max, value) => Math.max(max, value), 0) + 1;
     return `New item ${nextIndex}`;
-  }
-
-  private firstAvailableExplanationSurface(): ExplainableSurface | null {
-    const surfaces = this.explainableSurfaces();
-    const used = new Set(
-      this.currentState()?.revisions
-        ?.map(revision => this.normalizeExplanationContextKey(revision.contextKey))
-        ?.filter(Boolean) ?? []
-    );
-    return surfaces.find(surface => !used.has(surface.key)) ?? surfaces[0] ?? null;
   }
 
   private explanationRevisionForSurface(surface: ExplainableSurface): HelpCenterRevision | null {
@@ -1558,7 +1560,9 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
       case 'privacy':
         return '/admin/privacy';
       case 'explanation':
-        return `/admin/explanation/${this.selectedExplanationContextKey}`;
+        return this.selectedExplanationContextKey
+          ? `/admin/explanation/${this.selectedExplanationContextKey}`
+          : '/admin/explanation/new';
       default:
         return '/admin/help';
     }

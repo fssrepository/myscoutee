@@ -297,6 +297,11 @@
                                           <mat-icon>{{ currentSurface.icon }}</mat-icon>
                                           <span data-i18n-ignore>{{ currentSurface.label }}</span>
                                         </span>
+                                      } @else {
+                                        <span class="help-editor-context-trigger">
+                                          <mat-icon>add</mat-icon>
+                                          <span data-i18n-ignore>Choose screen</span>
+                                        </span>
                                       }
                                       <mat-icon class="help-editor-context-select-caret">expand_more</mat-icon>
                                     </button>

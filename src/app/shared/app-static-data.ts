@@ -172,7 +172,7 @@ const EXPLAINABLE_SURFACES: ExplainableSurface[] = [
   { key: 'profile.editor', label: 'Profile editor', icon: 'manage_accounts', owner: 'popup', order: 30, enabled: true },
   { key: 'profile.view', label: 'Profile details', icon: 'visibility', owner: 'popup', order: 40, enabled: true },
   { key: 'contacts', label: 'Contacts', icon: 'contacts', owner: 'popup', order: 45, enabled: true },
-  { key: 'assets', label: 'Assets', icon: 'inventory_2', owner: 'popup', order: 50, enabled: false },
+  { key: 'assets', label: 'Assets', icon: 'inventory_2', owner: 'popup', order: 50, enabled: true },
   { key: 'assets.car', label: 'Assets · Car', icon: 'directions_car', owner: 'popup', order: 51, enabled: true },
   { key: 'assets.accommodation', label: 'Assets · Accommodation', icon: 'apartment', owner: 'popup', order: 52, enabled: true },
   { key: 'assets.supplies', label: 'Assets · Supplies', icon: 'inventory_2', owner: 'popup', order: 53, enabled: true },
