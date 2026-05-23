@@ -540,6 +540,14 @@ export class DemoEventsRepository {
     });
   }
 
+  unpublishItem(userId: string, type: DemoRepositoryEventItemType, sourceId: string): void {
+    this.init();
+    this.updateItemState(userId, type, sourceId, {
+      status: 'DR',
+      published: false
+    });
+  }
+
   restoreItem(userId: string, type: DemoRepositoryEventItemType, sourceId: string): void {
     this.init();
     this.updateItemState(userId, type, sourceId, {

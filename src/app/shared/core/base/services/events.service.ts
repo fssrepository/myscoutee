@@ -142,6 +142,10 @@ export class EventsService extends BaseRouteModeService {
     return this.eventsService.publishItem(userId, type, sourceId);
   }
 
+  unpublishItem(userId: string, type: DemoRepositoryEventItemType, sourceId: string): Promise<void> {
+    return this.eventsService.unpublishItem(userId, type, sourceId);
+  }
+
   restoreItem(userId: string, type: DemoRepositoryEventItemType, sourceId: string): Promise<void> {
     return this.eventsService.restoreItem(userId, type, sourceId);
   }

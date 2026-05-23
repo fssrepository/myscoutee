@@ -45,6 +45,7 @@ export interface ActivityListItemBase<TDetailRecord = unknown> {
   capacityMin?: number | null;
   capacityMax?: number | null;
   isTrashed?: boolean;
+  published?: boolean;
   memberCount?: number | null;
 }
 

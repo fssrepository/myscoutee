@@ -75,6 +75,7 @@ type ActivityInfoCardActionId =
   | 'deleteEvent'
   | 'editEvent'
   | 'leaveEvent'
+  | 'manageEvent'
   | 'notifyParticipants'
   | 'publish'
   | 'rejectInvitation'
@@ -82,6 +83,7 @@ type ActivityInfoCardActionId =
   | 'restore'
   | 'shareEvent'
   | 'takeOver'
+  | 'unpublish'
   | 'view'
   | 'viewInvitation';
 type ActivitiesEventsHost = any;
@@ -114,6 +116,7 @@ export class ActivitiesEventsController {
   private get eventsService() { return this.host.eventsService; }
   private get hostingItems() { return this.host.hostingItems as ActivityEventRecordLike[]; }
   private set hostingItems(value: ActivityEventRecordLike[]) { this.host.hostingItems = value; }
+  private get hostingPublicationFilter() { return this.host.hostingPublicationFilter as AppTypes.HostingPublicationFilter; }
   private get inlineItemActionMenu() { return this.host.inlineItemActionMenu; }
   private set inlineItemActionMenu(value: any) { this.host.inlineItemActionMenu = value; }
   private get invitationItems() { return this.host.invitationItems as ActivityEventRecordLike[]; }
@@ -213,10 +216,14 @@ export class ActivitiesEventsController {
       case 'publish':
         this.runActivityItemPublishAction(row);
         break;
+      case 'unpublish':
+        this.runActivityItemUnpublishAction(row);
+        break;
       case 'takeOver':
         this.runActivityItemTakeOverAction(row);
         break;
       case 'editEvent':
+      case 'manageEvent':
       case 'viewInvitation':
         this.runActivityItemPrimaryAction(row);
         break;
@@ -536,6 +543,21 @@ export class ActivitiesEventsController {
     });
   }
 
+  public runActivityItemUnpublishAction(row: AppTypes.ActivityListRow, event?: Event): void {
+    event?.stopPropagation();
+    this.inlineItemActionMenu = null;
+    this.confirmationDialogService.open({
+      title: 'Unpublish event?',
+      message: row.title,
+      cancelLabel: 'Cancel',
+      confirmLabel: 'Unpublish',
+      busyConfirmLabel: 'Unpublishing...',
+      confirmTone: 'neutral',
+      failureMessage: 'Unable to unpublish event.',
+      onConfirm: () => this.confirmActivityUnpublish(row)
+    });
+  }
+
   public runActivityItemTakeOverAction(row: AppTypes.ActivityListRow, event?: Event): void {
     event?.stopPropagation();
     this.inlineItemActionMenu = null;
@@ -587,30 +609,77 @@ export class ActivitiesEventsController {
   private async confirmActivityPublish(row: AppTypes.ActivityListRow): Promise<void> {
     await this.eventsService.publishItem(this.activeUser.id, row.type as any, row.id);
     this.publishedHostingIds = new Set([...this.publishedHostingIds, row.id]);
+    this.setActivityPublicationState(row.id, true);
 
-    this.hostingItems = this.hostingItems.map(item =>
-      item.id === row.id ? { ...item, published: true } : item
-    );
-
-    if (this.activitiesEventScope === 'drafts') {
+    if (this.shouldRemovePublishedRowFromCurrentScope()) {
       this.removeVisibleActivityRow(row);
     } else {
-      const smartList = this.activitiesSmartList;
-      if (smartList) {
-        const currentItems = [...smartList.itemsSnapshot()];
-        const rowIndex = currentItems.findIndex(item => item.id === row.id);
-        if (rowIndex >= 0) {
-          const updatedRow = { ...currentItems[rowIndex], status: 'H' };
-          this.refreshActivityEventInfoCard(updatedRow);
-          const nextItems = [...currentItems];
-          nextItems[rowIndex] = updatedRow;
-          this.replaceVisibleActivityItems(nextItems, 0);
-        }
-      }
+      this.patchVisibleActivityEventRow(row, {
+        status: row.type === 'hosting' ? 'H' : 'A',
+        published: true
+      });
     }
 
     this.refreshSectionBadges();
     this.cdr.markForCheck();
+  }
+
+  private async confirmActivityUnpublish(row: AppTypes.ActivityListRow): Promise<void> {
+    await this.eventsService.unpublishItem(this.activeUser.id, row.type as any, row.id);
+    const nextPublishedIds = new Set(this.publishedHostingIds);
+    nextPublishedIds.delete(row.id);
+    this.publishedHostingIds = nextPublishedIds;
+    this.setActivityPublicationState(row.id, false);
+    this.patchVisibleActivityEventRow(row, {
+      status: 'DR',
+      published: false
+    });
+    this.refreshSectionBadges();
+    this.cdr.markForCheck();
+  }
+
+  private setActivityPublicationState(id: string, published: boolean): void {
+    const hostingStatus = published ? 'H' : 'DR';
+    const eventStatus = published ? 'A' : 'DR';
+    this.hostingItems = this.hostingItems.map(item =>
+      item.id === id
+        ? { ...item, status: hostingStatus, published }
+        : item
+    );
+    this.eventItems = this.eventItems.map(item =>
+      item.id === id
+        ? { ...item, status: eventStatus, published }
+        : item
+    );
+  }
+
+  private shouldRemovePublishedRowFromCurrentScope(): boolean {
+    return this.activitiesEventScope === 'drafts'
+      || (this.activitiesEventScope === 'my-events' && this.hostingPublicationFilter === 'drafts');
+  }
+
+  private patchVisibleActivityEventRow(
+    row: AppTypes.ActivityListRow,
+    patch: Partial<AppTypes.ActivityListRow>
+  ): void {
+    const smartList = this.activitiesSmartList;
+    if (!smartList) {
+      return;
+    }
+    const rowKey = this.activityRowIdentity(row);
+    const currentItems = [...smartList.itemsSnapshot()];
+    const rowIndex = currentItems.findIndex(item => this.activityRowIdentity(item) === rowKey);
+    if (rowIndex < 0) {
+      return;
+    }
+    const updatedRow = {
+      ...currentItems[rowIndex],
+      ...patch
+    };
+    this.refreshActivityEventInfoCard(updatedRow);
+    const nextItems = [...currentItems];
+    nextItems[rowIndex] = updatedRow;
+    this.replaceVisibleActivityItems(nextItems, 0);
   }
 
   private activitySecondaryConfirmTitle(row: AppTypes.ActivityListRow): string {

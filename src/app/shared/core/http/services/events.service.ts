@@ -284,6 +284,10 @@ export class HttpEventsService {
     await this.postVoid('/activities/events/publish', { userId: userId.trim(), type, sourceId: sourceId.trim() });
   }
 
+  async unpublishItem(userId: string, type: DemoRepositoryEventItemType, sourceId: string): Promise<void> {
+    await this.postVoid('/activities/events/unpublish', { userId: userId.trim(), type, sourceId: sourceId.trim() });
+  }
+
   async restoreItem(userId: string, type: DemoRepositoryEventItemType, sourceId: string): Promise<void> {
     await this.postVoid('/activities/events/restore', { userId: userId.trim(), type, sourceId: sourceId.trim() });
   }

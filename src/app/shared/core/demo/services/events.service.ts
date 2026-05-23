@@ -279,6 +279,11 @@ export class DemoEventsService extends DemoRouteDelayService {
     this.eventsRepository.publishItem(userId, type, sourceId);
   }
 
+  async unpublishItem(userId: string, type: DemoRepositoryEventItemType, sourceId: string): Promise<void> {
+    await this.waitForRouteDelay(DemoEventsService.EVENTS_ROUTE);
+    this.eventsRepository.unpublishItem(userId, type, sourceId);
+  }
+
   async restoreItem(userId: string, type: DemoRepositoryEventItemType, sourceId: string): Promise<void> {
     await this.waitForRouteDelay(DemoEventsService.EVENTS_ROUTE);
     this.eventsRepository.restoreItem(userId, type, sourceId);

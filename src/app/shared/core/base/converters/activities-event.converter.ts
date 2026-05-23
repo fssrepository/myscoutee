@@ -52,7 +52,8 @@ export function toActivityEventRow(
     capacityTotal: record.capacityTotal,
     capacityMin: record.capacityMin,
     capacityMax: record.capacityMax,
-    isTrashed: record.isTrashed
+    isTrashed: record.isTrashed,
+    published: record.published
   };
 }
 

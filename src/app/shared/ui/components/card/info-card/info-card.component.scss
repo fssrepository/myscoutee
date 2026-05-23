@@ -96,6 +96,12 @@ button.asset-occupancy-badge:active::after,
   box-shadow: 0 8px 18px rgba(74, 88, 118, 0.08);
 }
 
+.ui-info-card--tone-published {
+  border-color: rgba(50, 132, 90, 0.36);
+  background: linear-gradient(180deg, #f4fbf7 0%, #e5f4ec 100%);
+  box-shadow: 0 8px 18px rgba(39, 111, 75, 0.12);
+}
+
 .ui-info-card--tone-pending {
   border-color: rgba(202, 145, 52, 0.34);
   background: linear-gradient(180deg, #fffaf0 0%, #fff2d9 100%);
@@ -300,6 +306,14 @@ button.asset-occupancy-badge:active::after,
 .ui-info-card--tone-draft .ui-info-card__title,
 .ui-info-card--tone-draft .ui-info-card__meta-row {
   color: #52617d;
+}
+
+.ui-info-card--tone-published .ui-info-card__title {
+  color: #245d42;
+}
+
+.ui-info-card--tone-published .ui-info-card__meta-row {
+  color: rgba(32, 82, 59, 0.76);
 }
 
 .ui-info-card__overlay-action {

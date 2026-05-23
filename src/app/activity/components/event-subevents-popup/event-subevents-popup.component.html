@@ -26,8 +26,8 @@
           <button
             type="button"
             class="subevents-add-btn"
-            [class.is-disabled]="readOnly"
-            [disabled]="readOnly"
+            [class.is-disabled]="subEventStructureReadOnly()"
+            [disabled]="subEventStructureReadOnly()"
             (click)="openCreateSubEventForm($event)"
             aria-label="Add sub event"
             >
@@ -39,8 +39,8 @@
               class="popup-view-fab subevents-mode-trigger"
               [class.subevents-mode-tournament]="displayMode === 'Tournament'"
               [class.subevents-mode-casual]="displayMode === 'Casual'"
-              [disabled]="readOnly"
-              [class.is-disabled]="readOnly"
+              [disabled]="subEventStructureReadOnly()"
+              [class.is-disabled]="subEventStructureReadOnly()"
               (click)="toggleDisplayModePicker($event)"
               aria-label="Change sub events mode"
               >
@@ -211,7 +211,11 @@
                                   <span>Resume Tournament</span>
                                 </button>
                               }
-                              <div class="item-action-menu-divider"></div>
+                              @if (!subEventStructureReadOnly()) {
+                                <div class="item-action-menu-divider"></div>
+                              }
+                            }
+                            @if (!subEventStructureReadOnly()) {
                               <button type="button" class="item-action-menu-btn" (click)="runStageMenuAction('add-group', stage, $event)">
                                 <mat-icon>group_add</mat-icon>
                                 <span>Add Group</span>
@@ -227,13 +231,13 @@
                                 <span>Show on Map</span>
                               </button>
                             }
-                            @if (!readOnly) {
+                            @if (!subEventStructureReadOnly()) {
                               <button type="button" class="item-action-menu-btn" (click)="runStageMenuAction('edit-stage', stage, $event)">
                                 <mat-icon>edit</mat-icon>
                                 <span>Edit Stage Event</span>
                               </button>
                             }
-                            @if (!readOnly) {
+                            @if (!subEventStructureReadOnly()) {
                               <button type="button" class="item-action-menu-btn item-action-menu-btn-destructive" (click)="runStageMenuAction('delete-stage', stage, $event)">
                                 <mat-icon>delete</mat-icon>
                                 <span>Delete Stage</span>
@@ -269,13 +273,13 @@
                                 (click)="$event.stopPropagation()"
                                 >
                                 <div class="item-action-menu-title">{{ row.groupName }}</div>
-                                @if (!readOnly) {
+                                @if (!subEventStructureReadOnly()) {
                                   <button type="button" class="item-action-menu-btn" (click)="runGroupMenuAction('edit-group', row, $event)">
                                     <mat-icon>edit</mat-icon>
                                     <span>Edit</span>
                                   </button>
                                 }
-                                @if (!readOnly) {
+                                @if (!subEventStructureReadOnly()) {
                                   <button type="button" class="item-action-menu-btn item-action-menu-btn-destructive" (click)="runGroupMenuAction('delete-group', row, $event)">
                                     <mat-icon>delete</mat-icon>
                                     <span>Delete</span>
@@ -402,13 +406,13 @@
                       (click)="$event.stopPropagation()"
                       >
                       <div class="item-action-menu-title">{{ casualCardTitle(subEvent, index) }}</div>
-                      @if (!readOnly) {
+                      @if (!subEventStructureReadOnly()) {
                         <button type="button" class="item-action-menu-btn" (click)="runCasualMenuAction('edit', subEvent, index, $event)">
                           <mat-icon>edit</mat-icon>
                           <span>Edit</span>
                         </button>
                       }
-                      @if (!readOnly) {
+                      @if (!subEventStructureReadOnly()) {
                         <button type="button" class="item-action-menu-btn item-action-menu-btn-destructive" (click)="runCasualMenuAction('delete', subEvent, index, $event)">
                           <mat-icon>delete</mat-icon>
                           <span>Delete</span>

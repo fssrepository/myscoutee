@@ -6,6 +6,7 @@ export type InfoCardSurfaceTone =
   | 'draft'
   | 'full'
   | 'pending'
+  | 'published'
   | 'series'
   | 'waitlist'
   | 'review'
@@ -193,6 +194,7 @@ export const INFO_CARD_AVAILABLE_ACTIONS: Readonly<Record<string, InfoCardMenuAc
   joinWaitlist: { label: 'join.waiting.list', icon: 'hourglass_empty', tone: 'accent' },
   leaveEvent: { label: 'leave.event', icon: 'exit_to_app', tone: 'warning' },
   leaveResource: { label: 'leave.resource', icon: 'logout' },
+  manageEvent: { label: 'manage.event', icon: 'settings' },
   notifyParticipants: { label: 'notify.participants', icon: 'support_agent' },
   publish: { label: 'publish', icon: 'campaign', tone: 'accent' },
   rejectInvitation: { label: 'reject.invitation', icon: 'block', tone: 'destructive' },

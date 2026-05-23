@@ -1390,9 +1390,12 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   private resolveVisibleEventRowTypeFromSync(sync: ActivitiesEventSyncPayload): AppTypes.ActivityListRow['type'] | null {
-    // If we've locally published it, trust that over a lagging sync payload
     const isPublishedLocally = this.publishedHostingIds.has(sync.id);
-    const isPublished = sync.published !== false || isPublishedLocally;
+    const existingPublished = this.hostingItems.find(item => item.id === sync.id)?.published
+      ?? this.eventItems.find(item => item.id === sync.id)?.published;
+    const isPublished = sync.published === false
+      ? false
+      : sync.published === true || isPublishedLocally || existingPublished !== false;
     const isPending = this.isPendingEventSync(sync);
     const isAccepted = this.isAcceptedEventSync(sync);
 
@@ -1957,6 +1960,17 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   private activityEventRecordForRow(row: AppTypes.ActivityListRow): DemoEventRecord | null {
+    if (row.type === 'hosting') {
+      return this.hostingItems.find(item => item.id === row.id)
+        ?? this.eventItems.find(item => item.id === row.id)
+        ?? this.eventsService.peekKnownItemById(this.activeUser.id, row.id);
+    }
+    if (row.type === 'invitations') {
+      return this.invitationItems.find(item => item.id === row.id)
+        ?? this.eventItems.find(item => item.id === row.id)
+        ?? this.hostingItems.find(item => item.id === row.id)
+        ?? this.eventsService.peekKnownItemById(this.activeUser.id, row.id);
+    }
     return this.eventItems.find(item => item.id === row.id)
       ?? this.hostingItems.find(item => item.id === row.id)
       ?? this.invitationItems.find(item => item.id === row.id)
@@ -2435,9 +2449,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     if (sync.isAdmin || sync.target === 'hosting') {
       const nextPublishedIds = new Set(this.publishedHostingIds);
       if (sync.published === false) {
-        if (!this.publishedHostingIds.has(sync.id)) {
-          nextPublishedIds.delete(sync.id);
-        }
+        nextPublishedIds.delete(sync.id);
       } else {
         nextPublishedIds.add(sync.id);
       }
@@ -2519,17 +2531,25 @@ export class ActivitiesPopupComponent implements OnDestroy {
     const capacityTotal = Number.isFinite(Number(sync.capacityTotal))
       ? Math.max(acceptedMembers, Math.trunc(Number(sync.capacityTotal)))
       : Math.max(acceptedMembers, this.chatCountValue(existing?.capacityTotal ?? existing?.capacityMax));
-    const published = this.publishedHostingIds.has(sync.id) ? true : (sync.published ?? existing?.published ?? type !== 'hosting');
+    const published = sync.published === false
+      ? false
+      : (this.publishedHostingIds.has(sync.id) ? true : (sync.published ?? existing?.published ?? type !== 'hosting'));
     const fallbackStatus: DemoEventRecord['status'] = type === 'hosting'
       ? (published ? 'H' : 'DR')
       : type === 'invitations'
         ? 'INV'
         : 'A';
+    const existingStatus = `${existing?.status ?? ''}`.trim();
+    const status = !published && type !== 'invitations'
+      ? 'DR'
+      : existingStatus && existingStatus !== 'DR'
+        ? existing?.status
+        : fallbackStatus;
     return {
       id: sync.id,
       userId: existing?.userId ?? this.activeUser.id,
       type,
-      status: existing?.status ?? fallbackStatus,
+      status,
       statusBeforeSuppression: existing?.statusBeforeSuppression ?? null,
       avatar: existing?.avatar ?? sync.creatorInitials ?? AppUtils.initialsFromText(sync.title),
       title: sync.title,

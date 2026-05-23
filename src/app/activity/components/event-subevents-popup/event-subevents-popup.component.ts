@@ -246,6 +246,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
 
   @Input() open = false;
   @Input() readOnly = false;
+  @Input() structureReadOnly = false;
   @Input() parentTitle = '';
   @Input() ownerId: string | null = null;
   @Input() subEvents: readonly EventSubeventsItem[] = [];
@@ -408,9 +409,13 @@ export class EventSubeventsPopupComponent implements OnChanges {
     this.close.emit();
   }
 
+  protected subEventStructureReadOnly(): boolean {
+    return this.readOnly || this.structureReadOnly;
+  }
+
   protected openCreateSubEventForm(event: Event): void {
     event.stopPropagation();
-    if (this.readOnly) {
+    if (this.subEventStructureReadOnly()) {
       return;
     }
     this.showLeaderboardPopup = false;
@@ -466,7 +471,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
 
   protected toggleDisplayModePicker(event: Event): void {
     event.stopPropagation();
-    if (this.readOnly) {
+    if (this.subEventStructureReadOnly()) {
       return;
     }
     this.showDisplayModePicker = !this.showDisplayModePicker;
@@ -474,7 +479,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
 
   protected selectDisplayMode(mode: SubEventsDisplayMode, event: Event): void {
     event.stopPropagation();
-    if (this.readOnly) {
+    if (this.subEventStructureReadOnly()) {
       return;
     }
     this.showDisplayModePicker = false;
@@ -765,7 +770,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
   protected runCasualMenuAction(action: 'edit' | 'delete', item: EventSubeventsItem, index: number, event: Event): void {
     event.stopPropagation();
     this.openCasualMenuKey = null;
-    if (this.readOnly) {
+    if (this.subEventStructureReadOnly()) {
       return;
     }
 
@@ -798,6 +803,9 @@ export class EventSubeventsPopupComponent implements OnChanges {
     event.stopPropagation();
     this.openStageMenuKey = null;
     if (this.readOnly && action !== 'leaderboard') {
+      return;
+    }
+    if (this.structureReadOnly && (action === 'add-group' || action === 'edit-stage' || action === 'delete-stage')) {
       return;
     }
 
@@ -947,7 +955,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
   protected runGroupMenuAction(action: GroupMenuAction, row: EventSubeventsStageRow, event: Event): void {
     event.stopPropagation();
     this.openGroupMenuKey = null;
-    if (this.readOnly) {
+    if (this.subEventStructureReadOnly()) {
       return;
     }
 
@@ -1135,6 +1143,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
       this.parentTitle,
       title,
       this.readOnly ? '1' : '0',
+      this.structureReadOnly ? '1' : '0',
       canSave ? '1' : '0',
       invalidName ? '1' : '0',
       invalidDescription ? '1' : '0',
@@ -1171,7 +1180,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
       open: this.showSubEventForm,
       parentTitle: this.parentTitle,
       title,
-      readOnly: this.readOnly,
+      readOnly: this.subEventStructureReadOnly(),
       canSave,
       invalidName,
       invalidDescription,
@@ -1241,7 +1250,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
   }
 
   protected canSaveSubEventForm(): boolean {
-    if (this.readOnly) {
+    if (this.subEventStructureReadOnly()) {
       return false;
     }
     return Boolean(
@@ -1375,7 +1384,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
   }
 
   protected canSaveGroupForm(): boolean {
-    if (this.readOnly) {
+    if (this.subEventStructureReadOnly()) {
       return false;
     }
     return Boolean(this.groupForm.name.trim());
@@ -1474,7 +1483,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
 
   protected requestDeleteStage(stage: EventSubeventsStageCard, event: Event): void {
     event.stopPropagation();
-    if (this.readOnly) {
+    if (this.subEventStructureReadOnly()) {
       return;
     }
     this.openSensitiveActionDialog({
@@ -1492,7 +1501,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
 
   protected requestDeleteGroup(row: EventSubeventsStageRow, event: Event): void {
     event.stopPropagation();
-    if (this.readOnly) {
+    if (this.subEventStructureReadOnly()) {
       return;
     }
     this.openSensitiveActionDialog({
@@ -2155,7 +2164,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
   }
 
   private openEditSubEventFormAtIndex(sourceIndex: number): void {
-    if (this.readOnly) {
+    if (this.subEventStructureReadOnly()) {
       return;
     }
     this.openStageMenuKey = null;
@@ -2215,7 +2224,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
 
   private openCreateGroupForm(stage: EventSubeventsStageCard, event: Event): void {
     event.stopPropagation();
-    if (this.readOnly) {
+    if (this.subEventStructureReadOnly()) {
       return;
     }
     this.showLeaderboardPopup = false;
@@ -2247,7 +2256,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
 
   private openEditGroupForm(row: EventSubeventsStageRow, event: Event): void {
     event.stopPropagation();
-    if (this.readOnly) {
+    if (this.subEventStructureReadOnly()) {
       return;
     }
     this.showLeaderboardPopup = false;

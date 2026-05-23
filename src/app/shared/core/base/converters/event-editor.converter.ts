@@ -368,7 +368,7 @@ export class EventEditorConverter {
       subEventsDisplayMode: 'Casual',
       startAt: row.startAt ?? row.dateIso,
       endAt: row.endAt ?? row.dateIso,
-      published: true,
+      published: target === 'hosting' ? (row.published ?? true) : true,
       pendingMembersCount: this.toEventEditorCapacityInputValue(
         row.pendingMembers
       ) ?? 0,
