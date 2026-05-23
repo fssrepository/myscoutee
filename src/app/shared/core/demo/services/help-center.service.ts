@@ -181,8 +181,8 @@ export class DemoHelpCenterService {
       languageLabel: this.languageLabel(language),
       version,
       title: this.nonEmptyText(request.title, this.defaultTitle(documentKind, version, language)),
-      summary: this.nonEmptyText(request.summary, this.defaultSummary(documentKind, language)),
-      description: this.nonEmptyText(request.description, this.defaultDescription(documentKind, language)),
+      summary: this.nonEmptyText(request.summary, ''),
+      description: this.nonEmptyText(request.description, ''),
       headerColor: this.normalizeHeaderColor(request.headerColor),
       sections: this.normalizeSections(request.sections, documentKind),
       active: false,
@@ -1341,8 +1341,13 @@ export class DemoHelpCenterService {
     }
     if (kind === 'explanation') {
       const context = this.normalizeContextKey(kind, contextKey, false) ?? 'home.game';
-      return APP_STATIC_DATA.defaultExplanationRevisionsByContext[context as keyof typeof APP_STATIC_DATA.defaultExplanationRevisionsByContext]
-        ?? APP_STATIC_DATA.defaultExplanationHomeRevisionsByLang;
+      const revisionsByLang = APP_STATIC_DATA.defaultExplanationRevisionsByContext[
+        context as keyof typeof APP_STATIC_DATA.defaultExplanationRevisionsByContext
+      ];
+      if (!revisionsByLang) {
+        throw new Error(`No default explanation revision exists for ${context}.`);
+      }
+      return revisionsByLang;
     }
     return APP_STATIC_DATA.defaultHelpCenterRevisionsByLang;
   }
@@ -1384,7 +1389,7 @@ export class DemoHelpCenterService {
     return kind === 'privacy'
       ? APP_STATIC_DATA.defaultPrivacyCenterDescription
       : kind === 'explanation'
-        ? APP_STATIC_DATA.defaultExplanationHomeRevision.description
+        ? ''
       : APP_STATIC_DATA.defaultHelpCenterDescription;
   }
 
