@@ -1,5 +1,8 @@
 
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, HostBinding, Input, OnDestroy, Output, inject } from '@angular/core';
+import { MatIconModule } from '@angular/material/icon';
+
+import { I18nPipe } from '../../../i18n';
 
 export type RatingStarBarPresentation = 'list' | 'fullscreen';
 export type RatingStarBarAnimation = 'default' | 'blink' | 'none';
@@ -14,6 +17,7 @@ export interface RatingStarBarConfig {
   scale?: readonly number[];
   readonly?: boolean;
   label?: string | null;
+  actionLabel?: string | null;
   presentation?: RatingStarBarPresentation;
   animation?: RatingStarBarAnimation;
   blinkOnSelect?: boolean;
@@ -23,7 +27,7 @@ export interface RatingStarBarConfig {
 @Component({
   selector: 'app-rating-star-bar',
   standalone: true,
-  imports: [],
+  imports: [MatIconModule, I18nPipe],
   templateUrl: './rating-star-bar.component.html',
   styleUrl: './rating-star-bar.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -32,6 +36,8 @@ export class RatingStarBarComponent implements OnDestroy {
   private readonly cdr = inject(ChangeDetectorRef);
   private blinkTimer: ReturnType<typeof setTimeout> | null = null;
   private transientBlink = false;
+  private stagedValue = 0;
+  private dirty = false;
 
   @HostBinding('class.rating-star-bar-host')
   protected readonly hostClass = true;
@@ -75,7 +81,11 @@ export class RatingStarBarComponent implements OnDestroy {
   }
 
   protected get resolvedLabel(): string | null {
-    return this.config?.label ?? null;
+    return this.config?.label ?? 'Affinity';
+  }
+
+  protected get resolvedActionLabel(): string {
+    return this.config?.actionLabel?.trim() || 'Go';
   }
 
   protected get resolvedPresentation(): RatingStarBarPresentation {
@@ -97,19 +107,77 @@ export class RatingStarBarComponent implements OnDestroy {
     return this.dockEnabled ? (this.config?.dock?.state ?? 'hidden') : 'hidden';
   }
 
-  protected selectScore(score: number, event: Event): void {
+  protected get minimumScore(): number {
+    return this.resolvedScale.length > 0 ? Math.min(...this.resolvedScale) : 1;
+  }
+
+  protected get maximumScore(): number {
+    return this.resolvedScale.length > 0 ? Math.max(...this.resolvedScale) : 10;
+  }
+
+  protected get displayValue(): number {
+    if (this.dirty) {
+      return this.stagedValue;
+    }
+    const normalizedValue = this.normalizeScore(this.value);
+    return normalizedValue > 0 ? normalizedValue : this.defaultScore();
+  }
+
+  protected get valuePercent(): number {
+    const range = Math.max(1, this.maximumScore - this.minimumScore);
+    return ((this.displayValue - this.minimumScore) / range) * 100;
+  }
+
+  protected get sliderAccentColor(): string {
+    const hue = Math.round(210 - (this.valuePercent / 100) * 230);
+    return `hsl(${hue} 82% 48%)`;
+  }
+
+  protected get sliderAccentShadow(): string {
+    const hue = Math.round(210 - (this.valuePercent / 100) * 230);
+    return `hsla(${hue}, 82%, 42%, 0.28)`;
+  }
+
+  protected get sliderAccentTextColor(): string {
+    return this.valuePercent >= 38 && this.valuePercent <= 82 ? '#172033' : '#ffffff';
+  }
+
+  protected get sliderAccentTextShadow(): string {
+    return this.sliderAccentTextColor === '#ffffff'
+      ? '0 1px 1px rgba(0, 0, 0, 0.34)'
+      : '0 1px 1px rgba(255, 255, 255, 0.42)';
+  }
+
+  protected get shouldShowCommitButton(): boolean {
+    return this.dirty && !this.resolvedReadonly;
+  }
+
+  protected onSliderInput(event: Event): void {
     event.stopPropagation();
     if (this.resolvedReadonly) {
       return;
     }
+    const input = event.target instanceof HTMLInputElement ? inputValue(event.target) : this.defaultScore();
+    this.stagedValue = this.normalizeScore(input) || this.defaultScore();
+    this.dirty = true;
+    this.cdr.markForCheck();
+  }
+
+  protected commitScore(event: Event): void {
+    event.stopPropagation();
+    if (this.resolvedReadonly || !this.dirty) {
+      return;
+    }
+    const score = this.normalizeScore(this.stagedValue) || this.defaultScore();
     if (this.config?.blinkOnSelect !== false) {
       this.triggerTransientBlink();
     }
+    this.dirty = false;
     this.scoreSelect.emit(score);
   }
 
   protected isFilled(score: number): boolean {
-    return score <= this.value;
+    return score <= this.displayValue;
   }
 
   ngOnDestroy(): void {
@@ -145,4 +213,23 @@ export class RatingStarBarComponent implements OnDestroy {
     }
     setTimeout(() => startBlink(), 0);
   }
+
+  private normalizeScore(value: number | string | null | undefined): number {
+    const numeric = Math.round(Number(value) || 0);
+    if (!Number.isFinite(numeric)) {
+      return 0;
+    }
+    const scale = this.resolvedScale.length > 0 ? this.resolvedScale : Array.from({ length: 10 }, (_, index) => index + 1);
+    return scale.includes(numeric)
+      ? numeric
+      : Math.min(this.maximumScore, Math.max(this.minimumScore, numeric));
+  }
+
+  private defaultScore(): number {
+    return Math.round((this.minimumScore + this.maximumScore) / 2);
+  }
+}
+
+function inputValue(input: HTMLInputElement): number {
+  return Number(input.value);
 }

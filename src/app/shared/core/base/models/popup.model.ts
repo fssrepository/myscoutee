@@ -57,12 +57,16 @@ export interface HelpCenterSection {
   title: string;
   blurb: string;
   contentHtml: string;
+  imageUrls?: string[];
+  panelSpan?: HelpCenterSectionPanelSpan;
   optional?: boolean;
   details?: string[];
   points?: string[];
 }
 
-export type HelpCenterDocumentKind = 'help' | 'privacy';
+export type HelpCenterSectionPanelSpan = 'span-1' | 'span-2' | 'span-3';
+
+export type HelpCenterDocumentKind = 'help' | 'privacy' | 'explanation';
 export type HelpCenterHeaderColor = 'amber' | 'blue' | 'green' | 'rose' | 'violet' | 'slate';
 
 export type HelpCenterAuditAction = 'seed' | 'create' | 'update' | 'activate' | 'delete';
@@ -72,9 +76,19 @@ export interface ContentLanguage {
   label: string;
 }
 
+export interface ExplainableSurface {
+  key: string;
+  label: string;
+  icon: string;
+  owner: 'route' | 'popup' | 'navigator';
+  order: number;
+  enabled: boolean;
+}
+
 export interface HelpCenterRevision {
   id: string;
   documentKind?: HelpCenterDocumentKind;
+  contextKey?: string | null;
   lang: string;
   languageLabel: string;
   version: number;
@@ -134,6 +148,7 @@ export interface PrivacyConsentSaveRequest {
 export interface HelpCenterRevisionSaveRequest {
   actorUserId: string;
   baseRevisionId?: string | null;
+  contextKey?: string | null;
   lang?: string | null;
   title: string;
   summary: string;
@@ -157,4 +172,53 @@ export interface BrowserBarcodeDetectorConstructor {
 export interface SubEventAssetBadgeContext {
   subEventId: string;
   assetType: AssetType;
+}
+
+export interface PopupHeaderThumb {
+  id: string;
+  label?: string | null;
+  initials: string;
+  imageUrl?: string | null;
+}
+
+export type PopupHeaderControlVisual =
+  | { kind: 'icon'; icon: string }
+  | { kind: 'thumbStack'; thumbs: PopupHeaderThumb[]; maxVisible?: number };
+
+export interface PopupHeaderControlBadge {
+  value: number;
+  tone?: 'neutral' | 'warning' | 'danger';
+}
+
+export interface PopupHeaderLookup {
+  type: string;
+  id: string;
+}
+
+export interface PopupHeaderControlGroup {
+  id: string;
+  label?: string | null;
+  controls: PopupHeaderControl[];
+}
+
+export interface PopupHeaderControlMenu {
+  title?: string | null;
+  groups: PopupHeaderControlGroup[];
+}
+
+export interface PopupHeaderControl {
+  id: string;
+  label: string;
+  summary?: string | null;
+  visual?: PopupHeaderControlVisual | null;
+  badge?: PopupHeaderControlBadge | null;
+  lookup?: PopupHeaderLookup | null;
+  menu?: PopupHeaderControlMenu | null;
+}
+
+export interface PopupHeaderContext {
+  revision?: string | number;
+  title?: string | null;
+  subtitle?: string | null;
+  controls?: PopupHeaderControl[];
 }

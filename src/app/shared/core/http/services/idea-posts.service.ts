@@ -3,14 +3,12 @@ import { Injectable, inject } from '@angular/core';
 
 import { environment } from '../../../../../environments/environment';
 import type { IdeaPost, IdeaPostSaveRequest } from '../../base/models';
-import { HttpMediaService } from './media.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class HttpIdeaPostsService {
   private readonly http = inject(HttpClient);
-  private readonly media = inject(HttpMediaService);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
 
   async loadPublishedPosts(lang?: string | null): Promise<IdeaPost[]> {
@@ -70,10 +68,6 @@ export class HttpIdeaPostsService {
       throw new Error('Idea post could not be restored.');
     }
     return post;
-  }
-
-  async uploadImage(ownerId: string, entityId: string, file: File): Promise<{ uploaded: boolean; imageUrl: string | null }> {
-    return this.media.uploadImage('idea', ownerId, entityId, file);
   }
 
   normalizePosts(value: Array<Partial<IdeaPost>> | null | undefined): IdeaPost[] {

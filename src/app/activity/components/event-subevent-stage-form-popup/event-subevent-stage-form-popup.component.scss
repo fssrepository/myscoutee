@@ -669,11 +669,55 @@
 }
 
 .subevent-optional-picker-panel {
+  position: absolute;
   left: auto;
   right: 0;
   top: calc(100% + 0.32rem);
-  min-width: 176px;
-  z-index: 8;
+  z-index: 24;
+  min-width: 178px;
+  display: grid;
+  gap: 0.16rem;
+  padding: 0.24rem;
+  border: 1px solid rgba(39, 62, 94, 0.22);
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 12px 28px rgba(17, 29, 48, 0.24);
+}
+
+.subevent-optional-picker-panel .activities-view-option {
+  appearance: none;
+  width: 100%;
+  min-height: 34px;
+  border: 0;
+  border-radius: 8px;
+  padding: 0.36rem 0.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.38rem;
+  background: #fff;
+  color: #1e3658;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 800;
+  line-height: 1.1;
+  text-align: left;
+  cursor: pointer;
+}
+
+.subevent-optional-picker-panel .activities-view-option .mat-icon {
+  width: 16px;
+  height: 16px;
+  font-size: 16px;
+  line-height: 16px;
+  flex: 0 0 auto;
+}
+
+.subevent-optional-picker-panel .activities-view-option span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .subevent-optional-picker-panel .activities-view-option.subevent-mode-mandatory {

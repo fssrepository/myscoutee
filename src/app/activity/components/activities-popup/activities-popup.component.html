@@ -645,7 +645,7 @@
             <app-activities-chat-template
               [row]="row"
               [groupLabel]="groupLabel"
-              [context]="activitiesChatTemplateContext"
+              [activeUserInitials]="activeUser.initials"
               [adminServiceMode]="isAdminServiceChatMode()"
               (rowClick)="onActivityRowClick(row, $event)"
               (supportCaseAction)="onSupportCaseAction(row, $event)"

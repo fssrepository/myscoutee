@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 
 import { AppUtils } from '../../../app-utils';
 import type { ActivitiesPageRequest } from '../../../core/base/models';
-import type { RateMenuItem } from '../interfaces/activity-feed.interface';
+import type { RateRecord } from '../models/rate.model';
 import type { ActivityRatePageResult } from '../interfaces/game.interface';
 import { DemoRatesService } from '../../demo';
 import { HttpRatesService } from '../../http';
@@ -23,20 +23,20 @@ export class RatesService extends BaseRouteModeService {
 
   recordActivityRate(
     ownerUserId: string,
-    item: RateMenuItem,
+    item: RateRecord,
     rating: number,
-    direction?: RateMenuItem['direction'] | null
+    direction?: RateRecord['direction'] | null
   ): void {
     this.ratesService.recordActivityRate(ownerUserId, item, rating, direction);
     this.gameService.resetUserGameCardsStack(ownerUserId);
     this.gameService.kickUserRatesOutboxSync();
   }
 
-  peekRateItemsByUser(userId: string): RateMenuItem[] {
+  peekRateItemsByUser(userId: string): RateRecord[] {
     return this.ratesService.peekRateItemsByUser(userId);
   }
 
-  async queryRateItemsByUser(userId: string): Promise<RateMenuItem[]> {
+  async queryRateItemsByUser(userId: string): Promise<RateRecord[]> {
     return this.ratesService.queryRateItemsByUser(userId);
   }
 
@@ -64,9 +64,9 @@ export class RatesService extends BaseRouteModeService {
 
   private buildLocalActivitiesRatePage(
     request: ActivitiesPageRequest,
-    items: readonly RateMenuItem[]
+    items: readonly RateRecord[]
   ): ActivityRatePageResult {
-    const [mode, direction] = request.rateFilter.split('-') as ['individual' | 'pair', RateMenuItem['direction']];
+    const [mode, direction] = request.rateFilter.split('-') as ['individual' | 'pair', RateRecord['direction']];
     const filtered = items
       .filter(item => item.mode === mode && item.direction === direction)
       .filter(item => this.matchesRateSocialFilter(item, request.rateSocialBadgeEnabled === true))
@@ -90,7 +90,7 @@ export class RatesService extends BaseRouteModeService {
     };
   }
 
-  private matchesRateRange(item: RateMenuItem, request: ActivitiesPageRequest): boolean {
+  private matchesRateRange(item: RateRecord, request: ActivitiesPageRequest): boolean {
     const happenedAtMs = AppUtils.toSortableDate(item.happenedAt ?? '');
     const rangeStartMs = request.rangeStart ? AppUtils.toSortableDate(request.rangeStart) : null;
     const rangeEndMs = request.rangeEnd ? AppUtils.toSortableDate(request.rangeEnd) : null;
@@ -103,7 +103,7 @@ export class RatesService extends BaseRouteModeService {
     return true;
   }
 
-  private matchesRateSocialFilter(item: RateMenuItem, socialBadgeEnabled: boolean): boolean {
+  private matchesRateSocialFilter(item: RateRecord, socialBadgeEnabled: boolean): boolean {
     if (item.mode === 'individual') {
       const friendsInCommon = item.socialContext === 'friends-in-common';
       return socialBadgeEnabled ? friendsInCommon : !friendsInCommon;
@@ -115,7 +115,7 @@ export class RatesService extends BaseRouteModeService {
     return true;
   }
 
-  private compareRateItems(left: RateMenuItem, right: RateMenuItem, request: ActivitiesPageRequest): number {
+  private compareRateItems(left: RateRecord, right: RateRecord, request: ActivitiesPageRequest): number {
     if (request.sort === 'distance') {
       const distanceDelta = this.rateDistanceValue(left) - this.rateDistanceValue(right);
       if (distanceDelta !== 0) {
@@ -146,14 +146,14 @@ export class RatesService extends BaseRouteModeService {
       : right.id.localeCompare(left.id);
   }
 
-  private rateDistanceValue(item: RateMenuItem): number {
+  private rateDistanceValue(item: RateRecord): number {
     if (Number.isFinite(item.distanceMetersExact)) {
       return Math.max(0, Math.trunc(Number(item.distanceMetersExact)));
     }
     return 0;
   }
 
-  private rateRelevanceScore(item: RateMenuItem): number {
+  private rateRelevanceScore(item: RateRecord): number {
     const scoreGiven = Number.isFinite(item.scoreGiven)
       ? Math.max(0, Math.round(Number(item.scoreGiven)))
       : 0;

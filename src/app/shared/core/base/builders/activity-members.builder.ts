@@ -23,11 +23,11 @@ export class ActivityMembersBuilder {
         return parts[1];
       }
     }
-    const sourceCapacityMax = Number((row.source as { capacityMax?: unknown }).capacityMax);
+    const sourceCapacityMax = Number(row.capacityMax);
     if (Number.isFinite(sourceCapacityMax) && sourceCapacityMax >= 0) {
       return Math.max(fallbackBase, Math.trunc(sourceCapacityMax));
     }
-    const sourceCapacityTotal = Number((row.source as { capacityTotal?: unknown }).capacityTotal);
+    const sourceCapacityTotal = Number(row.capacityTotal);
     if (Number.isFinite(sourceCapacityTotal) && sourceCapacityTotal >= 0) {
       return Math.max(fallbackBase, Math.trunc(sourceCapacityTotal));
     }
@@ -56,29 +56,10 @@ export class ActivityMembersBuilder {
     }
     const source = options.capacityByRowId[row.id];
     const pendingMembers = Math.max(0, Math.trunc(Number(options.pendingMembersByRowId[row.id]) || 0));
-    const sourceRecord = row.source as {
-      acceptedMembers?: unknown;
-      pendingMembers?: unknown;
-      capacityTotal?: unknown;
-      capacityMax?: unknown;
-      acceptedMemberUserIds?: readonly unknown[];
-      pendingMemberUserIds?: readonly unknown[];
-    };
-    const acceptedMemberUserIds = Array.isArray(sourceRecord.acceptedMemberUserIds)
-      ? [...new Set(sourceRecord.acceptedMemberUserIds
-        .map(userId => `${userId ?? ''}`.trim())
-        .filter(userId => userId.length > 0))]
-      : [];
-    const pendingMemberUserIds = Array.isArray(sourceRecord.pendingMemberUserIds)
-      ? [...new Set(sourceRecord.pendingMemberUserIds
-        .map(userId => `${userId ?? ''}`.trim())
-        .filter(userId => userId.length > 0)
-        .filter(userId => !acceptedMemberUserIds.includes(userId)))]
-      : [];
-    const acceptedFromSource = Number(sourceRecord.acceptedMembers);
-    const pendingFromSource = Number(sourceRecord.pendingMembers);
-    const capacityFromSource = Number(sourceRecord.capacityTotal);
-    const capacityMaxFromSource = Number(sourceRecord.capacityMax);
+    const acceptedFromSource = Number(row.acceptedMembers);
+    const pendingFromSource = Number(row.pendingMembers);
+    const capacityFromSource = Number(row.capacityTotal);
+    const capacityMaxFromSource = Number(row.capacityMax);
     if (source) {
       const parts = source.split('/').map(part => Number.parseInt(part.trim(), 10));
       const acceptedMembers = parts.length >= 1 && Number.isFinite(parts[0]) ? Math.max(0, parts[0]) : null;
@@ -90,23 +71,23 @@ export class ActivityMembersBuilder {
           acceptedMembers,
           pendingMembers: Number.isFinite(pendingFromSource) ? Math.max(0, Math.trunc(pendingFromSource)) : pendingMembers,
           capacityTotal,
-          acceptedMemberUserIds: [...acceptedMemberUserIds],
-          pendingMemberUserIds: [...pendingMemberUserIds]
+          acceptedMemberUserIds: [],
+          pendingMemberUserIds: []
         };
       }
     }
     if (
       Number.isFinite(acceptedFromSource)
-      || acceptedMemberUserIds.length > 0
-      || pendingMemberUserIds.length > 0
-      && (Number.isFinite(capacityFromSource) || Number.isFinite(capacityMaxFromSource))
+      || Number.isFinite(pendingFromSource)
+      || Number.isFinite(capacityFromSource)
+      || Number.isFinite(capacityMaxFromSource)
     ) {
       const acceptedMembers = Number.isFinite(acceptedFromSource)
         ? Math.max(0, Math.trunc(acceptedFromSource))
-        : acceptedMemberUserIds.length;
+        : 0;
       const resolvedPendingMembers = Number.isFinite(pendingFromSource)
         ? Math.max(0, Math.trunc(pendingFromSource))
-        : (pendingMemberUserIds.length > 0 ? pendingMemberUserIds.length : pendingMembers);
+        : pendingMembers;
       return {
         ownerType: 'event',
         ownerId: row.id,
@@ -116,10 +97,12 @@ export class ActivityMembersBuilder {
           acceptedMembers,
           Number.isFinite(capacityFromSource)
             ? Math.max(0, Math.trunc(capacityFromSource))
-            : Math.max(0, Math.trunc(capacityMaxFromSource))
+            : Number.isFinite(capacityMaxFromSource)
+              ? Math.max(0, Math.trunc(capacityMaxFromSource))
+              : acceptedMembers
         ),
-        acceptedMemberUserIds: [...acceptedMemberUserIds],
-        pendingMemberUserIds: [...pendingMemberUserIds]
+        acceptedMemberUserIds: [],
+        pendingMemberUserIds: []
       };
     }
     return null;

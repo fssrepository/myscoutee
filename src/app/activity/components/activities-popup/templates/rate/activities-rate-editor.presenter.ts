@@ -1,4 +1,3 @@
-import type { RateMenuItem } from '../../../../../shared/core/base/interfaces/activity-feed.interface';
 import type * as AppTypes from '../../../../../shared/core/base/models';
 import type { RatingStarBarConfig } from '../../../../../shared/ui';
 
@@ -27,6 +26,7 @@ export class ActivitiesRateEditorPresenter {
       scale: this.deps.getRatingScale(),
       readonly: this.isSelectedReadOnly(),
       label: this.selectedBarLabel(),
+      actionLabel: 'Save',
       dock: {
         enabled: !this.deps.isFullscreenModeActive(),
         state: this.deps.isEditorClosing()
@@ -43,8 +43,7 @@ export class ActivitiesRateEditorPresenter {
     if (!row || row.type !== 'rates') {
       return this.deps.getActivitiesRateFilter().startsWith('individual') ? 'Single' : 'Pair';
     }
-    const item = row.source as RateMenuItem;
-    return item.mode === 'pair' ? 'Pair' : 'Single';
+    return row.mode === 'pair' ? 'Pair' : 'Single';
   }
 
   private selectedTitle(): string {
@@ -55,7 +54,7 @@ export class ActivitiesRateEditorPresenter {
     if (this.deps.isFullscreenModeActive()) {
       return null;
     }
-    return `Rate · ${this.selectedModeLabel()} · ${this.selectedTitle()}`;
+    return `Affinity · ${this.selectedModeLabel()} · ${this.selectedTitle()}`;
   }
 
   private isSelectedReadOnly(): boolean {

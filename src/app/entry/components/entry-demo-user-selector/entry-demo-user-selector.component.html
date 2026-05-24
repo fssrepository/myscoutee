@@ -94,6 +94,7 @@
                 <button
                   type="button"
                   class="demo-user-item"
+                  [attr.data-user-id]="user.id"
                   [ngClass]="userStatusClass(user)"
                   [class.demo-user-item-selected]="selectedUserId.trim() === user.id.trim()"
                   [disabled]="submitting"

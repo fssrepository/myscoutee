@@ -1,5 +1,6 @@
 import { AppUtils } from '../../../app-utils';
 import { APP_STATIC_DATA } from '../../../app-static-data';
+import { DemoSeedScheduleBuilder } from './demo-seed-schedule.builder';
 import type {
   UserDto,
   UserImpressionsDto,
@@ -37,7 +38,11 @@ export class DemoUserImpressionsBuilder {
         invitations: 0,
         events: 0,
         hosting: 0,
+        cars: 0,
+        accommodation: 0,
+        supplies: 0,
         tickets: 0,
+        contacts: 0,
         feedback: 0,
         impressionsHostChanged: false,
         impressionsMemberChanged: false
@@ -67,7 +72,11 @@ export class DemoUserImpressionsBuilder {
       invitations: invitationsPending,
       events: eventsPending,
       hosting: hostingPending,
+      cars: 0,
+      accommodation: 0,
+      supplies: 0,
       tickets: Math.max(0, Math.trunc((eventsPending + hostingPending) / 2)),
+      contacts: 0,
       feedback: feedbackPending,
       impressionsHostChanged: AppUtils.hashText(`${user.id}:${cursor}:imp-host`) % 3 === 0,
       impressionsMemberChanged: AppUtils.hashText(`${user.id}:${cursor}:imp-member`) % 3 === 0
@@ -399,7 +408,9 @@ export class DemoUserImpressionsBuilder {
       label: entry.trait.label,
       percent: percents[index],
       evidenceCount: this.seededMetric(user, 90 + index + (scope === 'host' ? 0 : 13), 2, 12),
-      lastRatedAtIso: new Date(Date.UTC(2026, 2, this.seededMetric(user, 120 + index + (scope === 'host' ? 0 : 13), 1, 24), 12, 0, 0)).toISOString()
+      lastRatedAtIso: DemoSeedScheduleBuilder
+        .shiftDate(new Date(Date.UTC(2026, 2, this.seededMetric(user, 120 + index + (scope === 'host' ? 0 : 13), 1, 24), 12, 0, 0)))
+        .toISOString()
     }));
   }
 

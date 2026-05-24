@@ -112,7 +112,11 @@ export class AppLocationService {
         invitations: 0,
         events: 0,
         hosting: 0,
+        cars: 0,
+        accommodation: 0,
+        supplies: 0,
         tickets: 0,
+        contacts: 0,
         feedback: 0
       }
     };

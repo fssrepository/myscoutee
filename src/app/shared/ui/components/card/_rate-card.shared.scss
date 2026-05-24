@@ -338,10 +338,13 @@ button.shared-card-context-avatar-badge {
 }
 
 .shared-card-profile-view-btn .mat-icon {
-  width: 1.12rem;
-  height: 1.12rem;
-  font-size: 1.12rem;
-  line-height: 1;
+  width: 1.34rem;
+  height: 1.34rem;
+  font-size: 1.34rem;
+  line-height: 1.34rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .activities-rate-pair-inline-card .shared-card-profile-view-btn {

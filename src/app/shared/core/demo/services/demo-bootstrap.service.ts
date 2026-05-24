@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 
 import { APP_STATIC_DATA } from '../../../app-static-data';
-import type { EventMenuItem } from '../../base/interfaces/activity-feed.interface';
+import type { DemoEventSeedItem } from '../models/event-seed-item.model';
 import type { UserDto } from '../../base/interfaces/user.interface';
 import { AppMemoryDb } from '../../base/db';
 import type { EventFeedbackPersistedState } from '../../base/models';
@@ -11,6 +11,7 @@ import { DemoActivityResourcesRepository } from '../repositories/activity-resour
 import { DemoAssetsRepository } from '../repositories/assets.repository';
 import { DemoChatsRepository } from '../repositories/chats.repository';
 import { DemoEventsRepository } from '../repositories/events.repository';
+import { DemoHelpCenterService } from './help-center.service';
 import { DemoProfileExperiencesRepository } from '../repositories/profile-experiences.repository';
 import { EVENT_FEEDBACK_TABLE_NAME } from '../models/event-feedback.model';
 import type { DemoEventRecord } from '../models/events.model';
@@ -19,6 +20,7 @@ import { DemoUsersRepository } from '../repositories/users.repository';
 
 export type DemoBootstrapProgressStage =
   | 'selector'
+  | 'helpCenter'
   | 'chats'
   | 'events'
   | 'users'
@@ -48,6 +50,7 @@ export interface DemoBootstrapProgressStep {
 
 export const DEMO_BOOTSTRAP_PROGRESS_STEPS: readonly DemoBootstrapProgressStep[] = [
   { stage: 'selector', percent: 0, label: 'Preparing demo selector' },
+  { stage: 'helpCenter', percent: 5, label: 'Preparing help content' },
   { stage: 'chats', percent: 9, label: 'Loading chats' },
   { stage: 'events', percent: 22, label: 'Loading events' },
   { stage: 'users', percent: 34, label: 'Preparing demo users' },
@@ -92,6 +95,7 @@ export class DemoBootstrapService {
   private readonly assetsRepository = inject(DemoAssetsRepository);
   private readonly activityResourcesRepository = inject(DemoActivityResourcesRepository);
   private readonly profileExperiencesRepository = inject(DemoProfileExperiencesRepository);
+  private readonly helpCenterService = inject(DemoHelpCenterService);
 
   private bootstrapPromise: Promise<void> | null = null;
   private ready = false;
@@ -144,7 +148,8 @@ export class DemoBootstrapService {
     const filterPreferencesChanged = this.usersRepository.seedDefaultUserFilterPreferencesForUser(normalizedUserId);
 
     if (this.readyUserIds.has(normalizedUserId)) {
-      if (filterPreferencesChanged) {
+      const activityCountersChanged = this.usersRepository.stampSeededActivityCountsForUser(normalizedUserId);
+      if (filterPreferencesChanged || activityCountersChanged) {
         onProgress?.(demoBootstrapProgressStep('sessionIndexedDb'));
         await this.memoryDb.flushToIndexedDb();
         await this.waitForUiYield();
@@ -162,7 +167,8 @@ export class DemoBootstrapService {
       normalizedUserId,
       this.eventsRepository.queryItemsByUser(normalizedUserId)
     );
-    if (contextualChatsChanged || filterPreferencesChanged) {
+    const activityCountersChanged = this.usersRepository.stampSeededActivityCountsForUser(normalizedUserId);
+    if (contextualChatsChanged || filterPreferencesChanged || activityCountersChanged) {
       onProgress?.(demoBootstrapProgressStep('sessionIndexedDb'));
       await this.memoryDb.flushToIndexedDb();
       await this.waitForUiYield();
@@ -180,6 +186,9 @@ export class DemoBootstrapService {
 
     await this.memoryDb.whenReady();
     await this.runBootstrapStep('selector');
+    await this.runBootstrapStep('helpCenter', async () => {
+      await this.helpCenterService.init();
+    });
     await this.runBootstrapStep('chats', () => this.chatsRepository.init());
     await this.runBootstrapStep('events', () => this.eventsRepository.init());
     await this.runBootstrapStep('users', () => { this.usersRepository.init(); });
@@ -213,7 +222,7 @@ export class DemoBootstrapService {
         continue;
       }
       const seededRecords = DemoEventFeedbackBuilder.buildSeededPersistedStates({
-        eventItems: eventRecords.map(record => this.toEventMenuItem(record)),
+        eventItems: eventRecords.map(record => this.toDemoEventSeedItem(record)),
         users,
         activeUser,
         eventDatesById: Object.fromEntries(eventRecords.map(record => [record.id, record.startAtIso])),
@@ -301,7 +310,7 @@ export class DemoBootstrapService {
         continue;
       }
 
-      const feedbackItem = this.toFeedbackViewerEventMenuItem(record, viewerUserIds);
+      const feedbackItem = this.toFeedbackViewerDemoEventSeedItem(record, viewerUserIds);
       for (const viewerUserId of viewerUserIds) {
         if (visibleEntryCount >= DemoBootstrapService.ORGANIZER_FEEDBACK_SHOWCASE_TARGET_COUNT) {
           break;
@@ -363,9 +372,13 @@ export class DemoBootstrapService {
     hostUserId: string,
     usersById: ReadonlyMap<string, UserDto>
   ): string[] {
+    const summary = this.activityMembersRepository.peekSummaryByOwner({
+      ownerType: 'event',
+      ownerId: record.id
+    });
     const memberUserIds = [...new Set([
-      ...record.acceptedMemberUserIds,
-      ...record.pendingMemberUserIds
+      ...(summary?.acceptedMemberUserIds ?? []),
+      ...(summary?.pendingMemberUserIds ?? [])
     ].map(userId => `${userId}`.trim()).filter(Boolean))]
       .filter(userId => userId !== hostUserId && usersById.has(userId));
     if (memberUserIds.length > 0) {
@@ -391,14 +404,19 @@ export class DemoBootstrapService {
     return selected;
   }
 
-  private toFeedbackViewerEventMenuItem(record: DemoEventRecord, viewerUserIds: readonly string[] = []): EventMenuItem {
+  private toFeedbackViewerDemoEventSeedItem(record: DemoEventRecord, viewerUserIds: readonly string[] = []): DemoEventSeedItem {
+    const summary = this.activityMembersRepository.peekSummaryByOwner({
+      ownerType: 'event',
+      ownerId: record.id
+    });
     const acceptedMemberUserIds = [...new Set([
-      ...record.acceptedMemberUserIds,
+      ...(summary?.acceptedMemberUserIds ?? []),
       ...viewerUserIds
     ].map(userId => `${userId}`.trim()).filter(Boolean))];
-    const pendingMemberUserIds = record.pendingMemberUserIds.filter(userId => !acceptedMemberUserIds.includes(userId));
+    const pendingMemberUserIds = (summary?.pendingMemberUserIds ?? [])
+      .filter(userId => !acceptedMemberUserIds.includes(userId));
     return {
-      ...this.toEventMenuItem(record),
+      ...this.toDemoEventSeedItem(record),
       activity: 0,
       isAdmin: false,
       acceptedMembers: Math.max(record.acceptedMembers, acceptedMemberUserIds.length),
@@ -417,7 +435,7 @@ export class DemoBootstrapService {
     return Math.abs(hash);
   }
 
-  private toEventMenuItem(record: DemoEventRecord): EventMenuItem {
+  private toDemoEventSeedItem(record: DemoEventRecord): DemoEventSeedItem {
     return {
       id: record.id,
       avatar: record.creatorInitials,
@@ -433,8 +451,6 @@ export class DemoBootstrapService {
       acceptedMembers: record.acceptedMembers,
       pendingMembers: record.pendingMembers,
       capacityTotal: record.capacityTotal,
-      acceptedMemberUserIds: [...record.acceptedMemberUserIds],
-      pendingMemberUserIds: [...record.pendingMemberUserIds],
       visibility: record.visibility,
       blindMode: record.blindMode,
       imageUrl: record.imageUrl,

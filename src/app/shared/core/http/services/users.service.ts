@@ -359,7 +359,11 @@ export class HttpUsersService implements UserService {
         invitations: Math.max(0, Math.trunc(Number(user.activities?.invitations) || 0)),
         events: Math.max(0, Math.trunc(Number(user.activities?.events) || 0)),
         hosting: Math.max(0, Math.trunc(Number(user.activities?.hosting) || 0)),
+        cars: Math.max(0, Math.trunc(Number(user.activities?.cars) || 0)),
+        accommodation: Math.max(0, Math.trunc(Number(user.activities?.accommodation) || 0)),
+        supplies: Math.max(0, Math.trunc(Number(user.activities?.supplies) || 0)),
         tickets: Math.max(0, Math.trunc(Number(user.activities?.tickets) || 0)),
+        contacts: Math.max(0, Math.trunc(Number(user.activities?.contacts) || 0)),
         feedback: Math.max(0, Math.trunc(Number(user.activities?.feedback) || 0)),
         adminJobs: Math.max(0, Math.trunc(Number(user.activities?.adminJobs) || 0)),
         adminMetrics: Math.max(0, Math.trunc(Number(user.activities?.adminMetrics) || 0))
@@ -425,7 +429,11 @@ export class HttpUsersService implements UserService {
       invitations: this.normalizeInitialCounterValue(overrides?.invitations, user.activities?.invitations),
       events: this.normalizeInitialCounterValue(overrides?.events, user.activities?.events),
       hosting: this.normalizeInitialCounterValue(overrides?.hosting, user.activities?.hosting),
+      cars: this.normalizeInitialCounterValue(overrides?.cars, user.activities?.cars),
+      accommodation: this.normalizeInitialCounterValue(overrides?.accommodation, user.activities?.accommodation),
+      supplies: this.normalizeInitialCounterValue(overrides?.supplies, user.activities?.supplies),
       tickets: this.normalizeInitialCounterValue(overrides?.tickets, user.activities?.tickets),
+      contacts: this.normalizeInitialCounterValue(overrides?.contacts, user.activities?.contacts),
       feedback: this.normalizeInitialCounterValue(overrides?.feedback, user.activities?.feedback),
       adminJobs: this.normalizeInitialCounterValue(overrides?.adminJobs, user.activities?.adminJobs),
       adminMetrics: this.normalizeInitialCounterValue(overrides?.adminMetrics, user.activities?.adminMetrics)
@@ -459,7 +467,11 @@ export class HttpUsersService implements UserService {
         invitations: user.activities.invitations,
         events: user.activities.events,
         hosting: user.activities.hosting,
+        cars: Math.max(0, Math.trunc(Number(user.activities.cars) || 0)),
+        accommodation: Math.max(0, Math.trunc(Number(user.activities.accommodation) || 0)),
+        supplies: Math.max(0, Math.trunc(Number(user.activities.supplies) || 0)),
         tickets: Math.max(0, Math.trunc(Number(user.activities.tickets) || 0)),
+        contacts: Math.max(0, Math.trunc(Number(user.activities.contacts) || 0)),
         feedback: Math.max(0, Math.trunc(Number(user.activities.feedback) || 0)),
         adminJobs: Math.max(0, Math.trunc(Number(user.activities.adminJobs) || 0)),
         adminMetrics: Math.max(0, Math.trunc(Number(user.activities.adminMetrics) || 0))
@@ -483,7 +495,11 @@ export class HttpUsersService implements UserService {
     const invitations = normalize(counters.invitations);
     const events = normalize(counters.events);
     const hosting = normalize(counters.hosting);
+    const cars = normalize(counters.cars);
+    const accommodation = normalize(counters.accommodation);
+    const supplies = normalize(counters.supplies);
     const tickets = normalize(counters.tickets);
+    const contacts = normalize(counters.contacts);
     const feedback = normalize(counters.feedback);
     const adminJobs = normalize(counters.adminJobs);
     const adminMetrics = normalize(counters.adminMetrics);
@@ -502,8 +518,20 @@ export class HttpUsersService implements UserService {
     if (hosting !== undefined) {
       normalized.hosting = hosting;
     }
+    if (cars !== undefined) {
+      normalized.cars = cars;
+    }
+    if (accommodation !== undefined) {
+      normalized.accommodation = accommodation;
+    }
+    if (supplies !== undefined) {
+      normalized.supplies = supplies;
+    }
     if (tickets !== undefined) {
       normalized.tickets = tickets;
+    }
+    if (contacts !== undefined) {
+      normalized.contacts = contacts;
     }
     if (feedback !== undefined) {
       normalized.feedback = feedback;

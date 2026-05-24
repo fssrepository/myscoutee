@@ -14,7 +14,9 @@ export class AssetInfoCardBuilder {
     options: { groupLabel?: string | null } = {}
   ): InfoCardData {
     return {
-      rowId: `${row.type}:${row.id}`,
+      id: `${row.type}:${row.id}`,
+      dateIso: row.dateIso,
+      distanceMetersExact: row.distanceMetersExact,
       groupLabel: options.groupLabel ?? null,
       title: row.title,
       imageUrl: this.ticketImageUrl(row),
@@ -56,7 +58,9 @@ export class AssetInfoCardBuilder {
     const selectMode = options.selectMode === true;
     const selected = options.selected === true;
     return {
-      rowId: `asset:${card.id}`,
+      id: `asset:${card.id}`,
+      status: `${card.status ?? ''}`.trim() || null,
+      ownerUserId: card.ownerUserId ?? null,
       groupLabel: options.groupLabel ?? null,
       title: card.title,
       imageUrl: AssetCardBuilder.normalizeAssetImageLink(card.type, card.imageUrl, {
@@ -98,7 +102,9 @@ export class AssetInfoCardBuilder {
     const visibility = this.assetExploreVisibility(card);
     const canBorrow = options.canBorrow === true;
     return {
-      rowId: `asset-explore:${card.id}`,
+      id: `asset-explore:${card.id}`,
+      status: `${card.status ?? ''}`.trim() || null,
+      ownerUserId: card.ownerUserId ?? null,
       groupLabel: options.groupLabel ?? null,
       title: card.title,
       imageUrl: card.imageUrl,
@@ -170,16 +176,16 @@ export class AssetInfoCardBuilder {
   }
 
   private static ticketImageUrl(row: AppTypes.ActivityListRow): string {
-    const source = row.source as { imageUrl?: string } | null;
-    return `${source?.imageUrl ?? ''}`.trim() || 'https://picsum.photos/seed/event-default/1200/700';
+    return `${row.imageUrl ?? ''}`.trim() || 'https://picsum.photos/seed/event-default/1200/700';
   }
 
   private static ticketMetaLine(row: AppTypes.ActivityListRow): string {
-    return `${row.type === 'hosting' ? 'Hosting' : 'Event'} · ${AssetTicketConverter.buildTicketDateLabel(row)} · ${this.ticketDistanceLabel(row.distanceKm)}`;
+    return `${row.type === 'hosting' ? 'Hosting' : 'Event'} · ${AssetTicketConverter.buildTicketDateLabel(row)} · ${this.ticketDistanceLabel(row.distanceMetersExact)}`;
   }
 
-  private static ticketDistanceLabel(distanceKm: number): string {
-    const rounded = Math.round((Number(distanceKm) || 0) * 10) / 10;
+  private static ticketDistanceLabel(distanceMeters: number | null | undefined): string {
+    const meters = Number.isFinite(distanceMeters) ? Math.max(0, Math.trunc(Number(distanceMeters))) : 0;
+    const rounded = Math.round((meters / 1000) * 10) / 10;
     return Number.isInteger(rounded) ? `${rounded} km` : `${rounded.toFixed(1)} km`;
   }
 
@@ -208,8 +214,7 @@ export class AssetInfoCardBuilder {
   }
 
   private static ticketVisibility(row: AppTypes.ActivityListRow): AppTypes.EventVisibility {
-    const source = row.source as { visibility?: AppTypes.EventVisibility } | null;
-    const visibility = source?.visibility;
+    const visibility = row.visibility;
     if (visibility === 'Friends only' || visibility === 'Invitation only') {
       return visibility;
     }
@@ -224,8 +229,7 @@ export class AssetInfoCardBuilder {
   }
 
   private static ticketSourceAvatarLabel(row: AppTypes.ActivityListRow): string {
-    const source = row.source as { avatar?: string; creatorInitials?: string } | null;
-    const explicit = `${source?.avatar ?? source?.creatorInitials ?? ''}`.trim();
+    const explicit = `${row.avatarInitials ?? row.creatorInitials ?? ''}`.trim();
     if (explicit) {
       return explicit.slice(0, 2).toUpperCase();
     }

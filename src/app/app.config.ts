@@ -3,6 +3,7 @@ import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/
 import { provideRouter } from '@angular/router';
 
 import { routes } from './app.routes';
+import { adminAccessInterceptor } from './shared/core/http/admin-access.interceptor';
 import { firebaseAuthInterceptor } from './shared/core/http/firebase-auth.interceptor';
 import { sessionModeInterceptor } from './shared/core/http/session-mode.interceptor';
 
@@ -10,6 +11,6 @@ export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     provideRouter(routes),
-    provideHttpClient(withInterceptors([sessionModeInterceptor, firebaseAuthInterceptor]))
+    provideHttpClient(withInterceptors([sessionModeInterceptor, firebaseAuthInterceptor, adminAccessInterceptor]))
   ]
 };

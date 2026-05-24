@@ -2833,6 +2833,17 @@
     align-items: stretch;
   }
 
+  .asset-explore-shell .asset-explore-order-trigger {
+    width: 34px;
+    padding: 0;
+    justify-content: center;
+    gap: 0;
+  }
+
+  .asset-explore-shell .asset-explore-order-trigger span {
+    display: none;
+  }
+
   .event-resource-popup-shell .app-popup-panel.popup-panel-asset-members,
   .event-resource-popup-shell.app-popup-stacked.app-popup-stacked-over-subevents .app-popup-panel.popup-panel-asset-members {
     width: 100vw !important;

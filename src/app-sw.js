@@ -13,6 +13,7 @@ const PRECACHE_URLS = [
   './assets/icon/android-chrome-192x192.png',
   './assets/icon/android-chrome-512x512.png',
   './assets/logo/heart.png',
+  './assets/logo/heart.webp',
   './assets/logo/cards_no_edges.png',
   './assets/i18n/en.json',
   './assets/i18n/hu.json'

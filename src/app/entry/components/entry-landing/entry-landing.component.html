@@ -9,6 +9,9 @@
         type="button"
         class="entry-auth-btn"
         [class.entry-auth-btn-avatar]="entryAuthButtonShowsAvatar"
+        [class.entry-auth-btn-unavailable]="authUnavailable"
+        [class.entry-auth-btn-location]="authLocationRequired"
+        [disabled]="authUnavailable"
         matRipple
         [matRippleColor]="'rgba(255, 255, 255, 0.24)'"
         (click)="requestHeaderAuth()"
@@ -36,12 +39,15 @@
             <button
               type="button"
               class="entry-cta entry-cta-primary"
+              [class.entry-cta-unavailable]="authUnavailable"
+              [class.entry-cta-location]="authLocationRequired"
+              [disabled]="authUnavailable"
               matRipple
               [matRippleColor]="'rgba(112, 59, 242, 0.14)'"
               (click)="requestDemo()"
               >
-              <mat-icon>rocket_launch</mat-icon>
-              <span>Start exploring</span>
+              <mat-icon>{{ authUnavailable ? 'block' : authLocationRequired ? 'location_on' : 'rocket_launch' }}</mat-icon>
+              <span>{{ authUnavailable ? authUnavailableLabel : authLocationRequired ? authLocationRequiredLabel : 'Start exploring' }}</span>
             </button>
             <a class="entry-cta entry-cta-ghost" href="#articles" (click)="scrollEntryTo('articles', $event)">
               <mat-icon>timeline</mat-icon>
@@ -163,7 +169,7 @@
               >
               @for (page of featuredIdeaPages(); track $index) {
                 <div class="entry-ideas-carousel-page">
-                  @for (card of page; track card.rowId) {
+                  @for (card of page; track card.id) {
                     <app-info-card
                       class="entry-idea-info-card"
                       [attr.data-entry-idea-post-id]="ideaCardDetail(card)?.id"
@@ -320,11 +326,7 @@
       </header>
       <div class="entry-ideas-article-body">
         @if (ideaImageUrl(post); as imageUrl) {
-          <div class="entry-ideas-article-image" [style.backgroundImage]="'url(' + imageUrl + ')'"></div>
-        } @else {
-          <div class="entry-ideas-article-image entry-ideas-article-image-empty">
-            <mat-icon>image_not_supported</mat-icon>
-          </div>
+          <div class="entry-ideas-article-image" [appLazyBgImage]="imageUrl"></div>
         }
         <div class="entry-ideas-article-html" [innerHTML]="post.contentHtml"></div>
       </div>

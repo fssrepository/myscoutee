@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fff3eb"/>
+      <stop offset="1" stop-color="#f8fbff"/>
+    </linearGradient>
+  </defs>
+  <rect width="960" height="540" rx="30" fill="url(#bg)"/>
+  <rect x="6" y="6" width="948" height="528" rx="26" fill="#ffffff" opacity="0.82" stroke="#f0c5ab" stroke-width="3"/>
+  <g transform="matrix(1.16 0 0 1.16 -70 -78)">
+    <rect x="120" y="150" width="210" height="52" rx="26" fill="#e8f8ef" stroke="#9ad5b0" stroke-width="3"/>
+  <text x="225" y="185" text-anchor="middle" font-family="Arial, sans-serif" font-size="27" font-weight="900" fill="#17633b">Nyílt</text>
+  <rect x="348" y="150" width="210" height="52" rx="26" fill="#f0eafa" stroke="#cebaf1" stroke-width="3"/>
+  <text x="453" y="185" text-anchor="middle" font-family="Arial, sans-serif" font-size="27" font-weight="900" fill="#5c45a0">Topics</text>
+  <rect x="576" y="150" width="240" height="52" rx="26" fill="#eaf4ff" stroke="#bed2eb" stroke-width="3"/>
+  <text x="696" y="185" text-anchor="middle" font-family="Arial, sans-serif" font-size="27" font-weight="900" fill="#1f4778">Auto meghívó</text>
+  <rect x="160" y="250" width="620" height="56" rx="13" fill="#e8f8ef" stroke="#c7d9ef" stroke-width="3"/><text x="184" y="287" font-family="Arial" font-size="29" font-weight="900" fill="#1f4778">Open Event</text><rect x="160" y="314" width="620" height="56" rx="13" fill="#fde9df" stroke="#c7d9ef" stroke-width="3"/><text x="184" y="351" font-family="Arial" font-size="29" font-weight="900" fill="#1f4778">Blind Event</text><rect x="160" y="378" width="620" height="56" rx="13" fill="#eaf4ff" stroke="#c7d9ef" stroke-width="3"/><text x="184" y="415" font-family="Arial" font-size="29" font-weight="900" fill="#1f4778">Ticketing QR</text><rect x="160" y="442" width="620" height="56" rx="13" fill="#fff4e8" stroke="#c7d9ef" stroke-width="3"/><text x="184" y="479" font-family="Arial" font-size="29" font-weight="900" fill="#1f4778">Prioritási lista</text>
+  </g>
+</svg>

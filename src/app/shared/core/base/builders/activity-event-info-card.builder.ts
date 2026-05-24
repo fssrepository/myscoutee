@@ -26,12 +26,14 @@ export class ActivityEventInfoCardBuilder {
     const title = record.title;
 
     return {
-      rowId: `${rowType}:${record.id}`,
+      id: `${rowType}:${record.id}`,
+      dateIso: record.startAtIso,
+      distanceMetersExact: Math.max(0, Math.round((Number(record.distanceKm) || 0) * 1000)),
       status,
       ownerId: record.creatorUserId,
       groupLabel: options.groupLabel ?? null,
       title,
-      surfaceTone: this.surfaceTone(status),
+      surfaceTone: this.surfaceTone(status, record, rowType),
       imageUrl: record.imageUrl?.trim() || null,
       placeholderLabel: record.imageUrl?.trim() ? null : title,
       metaRows: [
@@ -154,10 +156,10 @@ export class ActivityEventInfoCardBuilder {
       return false;
     }
     const userId = activeUserId.trim();
-    if (!userId || record.acceptedMemberUserIds.includes(userId)) {
+    if (!userId) {
       return false;
     }
-    return record.pendingMemberUserIds.includes(userId);
+    return record.pendingReason === 'approval' || record.pendingReason === 'waitlist';
   }
 
   private static pendingStatusLabelKey(): string {
@@ -178,7 +180,11 @@ export class ActivityEventInfoCardBuilder {
     return Math.max(0, Math.trunc(Number(record.pendingMembers) || 0));
   }
 
-  private static surfaceTone(status: string): InfoCardData['surfaceTone'] {
+  private static surfaceTone(
+    status: string,
+    record: DemoEventRecord,
+    rowType: AppTypes.ActivityListRow['type']
+  ): InfoCardData['surfaceTone'] {
     switch (status) {
       case 'UR':
         return 'review';
@@ -192,6 +198,9 @@ export class ActivityEventInfoCardBuilder {
       case 'DR':
         return 'draft';
       default:
+        if (rowType === 'hosting' && !this.isDraft(record, rowType)) {
+          return 'published';
+        }
         return 'default';
     }
   }
@@ -269,7 +278,7 @@ export class ActivityEventInfoCardBuilder {
       actions.push('publish');
     }
     if (this.shouldPrimaryAction(record, rowType)) {
-      actions.push(rowType === 'invitations' ? 'viewInvitation' : 'editEvent');
+      actions.push(this.primaryActionId(record, rowType));
     }
     if (this.shouldView(record, rowType)) {
       actions.push('view');
@@ -277,6 +286,9 @@ export class ActivityEventInfoCardBuilder {
     if (rowType === 'hosting' || rowType === 'events' || rowType === 'invitations') {
       actions.push(this.serviceChatActionId(rowType, record.isAdmin));
       actions.push('shareEvent');
+    }
+    if (this.shouldUnpublish(record, rowType)) {
+      actions.push('unpublish');
     }
     if (this.shouldReport(record, activeUserId)) {
       actions.push('reportOrganizer');
@@ -300,6 +312,13 @@ export class ActivityEventInfoCardBuilder {
     return 'contactOrganizer';
   }
 
+  private static primaryActionId(record: DemoEventRecord, rowType: AppTypes.ActivityListRow['type']): InfoCardMenuAction {
+    if (rowType === 'invitations') {
+      return 'viewInvitation';
+    }
+    return this.isDraft(record, rowType) ? 'editEvent' : 'manageEvent';
+  }
+
   private static shouldTakeOver(record: DemoEventRecord, rowType: AppTypes.ActivityListRow['type']): boolean {
     return this.statusCode(record.status) === 'UR'
       && record.isAdmin === true
@@ -312,6 +331,14 @@ export class ActivityEventInfoCardBuilder {
       && rowType === 'hosting'
       && record.isAdmin === true
       && this.isDraft(record, rowType);
+  }
+
+  private static shouldUnpublish(record: DemoEventRecord, rowType: AppTypes.ActivityListRow['type']): boolean {
+    return !this.isTrashed(record)
+      && !this.isPendingReview(record)
+      && rowType === 'hosting'
+      && record.isAdmin === true
+      && !this.isDraft(record, rowType);
   }
 
   private static shouldPrimaryAction(record: DemoEventRecord, rowType: AppTypes.ActivityListRow['type']): boolean {

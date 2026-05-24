@@ -25,26 +25,25 @@ import {
   DemoUserMenuCountersBuilder
 } from '../builders';
 import { DemoActivityMembersRepository } from '../repositories/activity-members.repository';
-import { DemoChatsRepository } from '../repositories/chats.repository';
-import { DemoEventsRepository } from '../repositories/events.repository';
+import { DemoCountryPartitionsRepository } from '../repositories/country-partitions.repository';
 
 @Injectable({
   providedIn: 'root'
 })
 export class DemoUsersService extends DemoRouteDelayService implements UserService {
+  private static readonly INELIGIBLE_REGION_MESSAGE = 'Unavailable in your country';
+  private static readonly DEMO_COUNTRY_CODE_STORAGE_KEY = 'myscoutee.demo.countryCode';
   private static readonly DEMO_USERS_ROUTE = '/auth/demo-users';
   private static readonly USER_BY_ID_ROUTE = '/auth/me';
   private static readonly USER_FEEDBACK_ROUTE = '/auth/me/feedback';
   private static readonly USER_REPORT_USER_ROUTE = '/auth/me/report-user';
   private static readonly USER_REALTIME_LONG_POLL_ROUTE = '/auth/me/realtime/long-poll';
   private static readonly USER_REALTIME_LONG_POLL_SIMULATION_STEP_MS = 30000;
-  private static readonly INITIAL_EVENT_FEEDBACK_UNLOCK_DELAY_MS = 2 * 60 * 60 * 1000;
   private static readonly MAX_PROFILE_IMAGE_SLOTS = 8;
   private static readonly FILTER_PREFERENCES_SAVE_DELAY_MS = 1500;
   private static readonly DELETED_ACCOUNT_PURGE_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
-  private readonly chatsRepository = inject(DemoChatsRepository);
-  private readonly eventsRepository = inject(DemoEventsRepository);
   private readonly activityMembersRepository = inject(DemoActivityMembersRepository);
+  private readonly countryPartitionsRepository = inject(DemoCountryPartitionsRepository);
   private readonly memoryDb = inject(AppMemoryDb);
   private readonly usersRepository = inject(DemoUsersRepository);
   private readonly realtimeCursorByUserId: Record<string, number> = {};
@@ -57,14 +56,57 @@ export class DemoUsersService extends DemoRouteDelayService implements UserServi
     };
   }
 
-  async checkLocationEligibility(_coordinates?: LocationCoordinates | null): Promise<UserLocationEligibilityResponseDto> {
+  async checkLocationEligibility(coordinates?: LocationCoordinates | null): Promise<UserLocationEligibilityResponseDto> {
+    const overrideCountryCode = this.readDemoCountryCodeOverride();
+    if (!coordinates && !overrideCountryCode) {
+      return {
+        eligible: true,
+        partitionKey: null,
+        message: null,
+        securityGateEnabled: false,
+        locationRequired: false
+      };
+    }
+
+    const partitionKey = coordinates
+      ? this.countryPartitionsRepository.resolvePartitionKeyByCoordinates(coordinates)
+      : this.countryPartitionsRepository.resolvePartitionKeyByCountryCode(overrideCountryCode);
+    if (partitionKey) {
+      return {
+        eligible: true,
+        partitionKey,
+        message: null,
+        securityGateEnabled: true,
+        locationRequired: false
+      };
+    }
+
     return {
-      eligible: true,
+      eligible: false,
       partitionKey: null,
-      message: null,
-      securityGateEnabled: false,
+      message: DemoUsersService.INELIGIBLE_REGION_MESSAGE,
+      securityGateEnabled: true,
       locationRequired: false
     };
+  }
+
+  private readDemoCountryCodeOverride(): string {
+    if (typeof localStorage === 'undefined') {
+      return '';
+    }
+    try {
+      return this.normalizeCountryCode(localStorage.getItem(DemoUsersService.DEMO_COUNTRY_CODE_STORAGE_KEY));
+    } catch {
+      return '';
+    }
+  }
+
+  private normalizeCountryCode(countryCode: string | null | undefined): string {
+    return `${countryCode ?? ''}`
+      .trim()
+      .toUpperCase()
+      .replace(/[^A-Z]/g, '')
+      .slice(0, 2);
   }
 
   async queryUserById(userId?: string): Promise<UserByIdQueryResponse> {
@@ -88,7 +130,7 @@ export class DemoUsersService extends DemoRouteDelayService implements UserServi
     }
     const counterOverrides = loadedUser ? this.buildInitialMenuCounterOverrides(loadedUser) : null;
     const user = loadedUser
-      ? DemoUserImpressionsBuilder.withResolvedImpressions(this.withSyncedActivityCounts(loadedUser, counterOverrides))
+      ? DemoUserImpressionsBuilder.withResolvedImpressions(this.withSeededActivityCounts(loadedUser, counterOverrides))
       : null;
     const allUsers = this.usersRepository.queryGameStackUsers(normalizedUserId);
     const filterCount = allUsers.length;
@@ -329,38 +371,17 @@ export class DemoUsersService extends DemoRouteDelayService implements UserServi
   }
 
   private buildInitialMenuCounterOverrides(user: UserDto) {
-    const chatItems = this.chatsRepository.queryChatItemsByUser(user.id);
-    const invitationItems = this.eventsRepository.queryInvitationItemsByUser(user.id)
-      .filter(item => !item.isTrashed);
-    const eventItems = this.eventsRepository.queryEventItemsByUser(user.id)
-      .filter(item => !item.isTrashed)
-      .filter(item => item.isAdmin !== true || item.published !== false);
-    const hostingItems = this.eventsRepository.queryHostingItemsByUser(user.id)
-      .filter(item => !item.isTrashed)
-      .filter(item => item.isAdmin === true);
-    const syncedUser: UserDto = {
-      ...user,
-      activities: {
-        ...user.activities,
-        chat: DemoUserMenuCountersBuilder.resolveSectionBadge(
-          chatItems.map(item => item.unread),
-          chatItems.length
-        ),
-        invitations: invitationItems.length,
-        events: eventItems.length,
-        hosting: hostingItems.length
-      }
-    };
-    return DemoUserMenuCountersBuilder.buildInitialMenuCounterOverrides(syncedUser, {
-      tickets: this.eventsRepository.countTicketItemsByUser(user.id),
-      feedback: this.eventsRepository.countPendingEventFeedbackByUser(
-        user.id,
-        DemoUsersService.INITIAL_EVENT_FEEDBACK_UNLOCK_DELAY_MS
-      )
+    return DemoUserMenuCountersBuilder.buildInitialMenuCounterOverrides(user, {
+      cars: user.activities.cars ?? 0,
+      accommodation: user.activities.accommodation ?? 0,
+      supplies: user.activities.supplies ?? 0,
+      tickets: user.activities.tickets ?? 0,
+      contacts: user.activities.contacts ?? 0,
+      feedback: user.activities.feedback ?? 0
     });
   }
 
-  private withSyncedActivityCounts(
+  private withSeededActivityCounts(
     user: UserDto,
     counters: ReturnType<DemoUsersService['buildInitialMenuCounterOverrides']> | null
   ): UserDto {
@@ -376,7 +397,11 @@ export class DemoUsersService extends DemoRouteDelayService implements UserServi
         invitations: counters.invitations ?? user.activities.invitations,
         events: counters.events ?? user.activities.events,
         hosting: counters.hosting ?? user.activities.hosting,
+        cars: counters.cars ?? user.activities.cars,
+        accommodation: counters.accommodation ?? user.activities.accommodation,
+        supplies: counters.supplies ?? user.activities.supplies,
         tickets: counters.tickets ?? user.activities.tickets,
+        contacts: counters.contacts ?? user.activities.contacts,
         feedback: counters.feedback ?? user.activities.feedback,
         adminJobs: counters.adminJobs ?? user.activities.adminJobs,
         adminMetrics: counters.adminMetrics ?? user.activities.adminMetrics

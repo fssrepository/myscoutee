@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fff5e8"/>
+      <stop offset="1" stop-color="#f7fbff"/>
+    </linearGradient>
+  </defs>
+  <rect width="960" height="540" rx="30" fill="url(#bg)"/>
+  <rect x="6" y="6" width="948" height="528" rx="26" fill="#ffffff" opacity="0.82" stroke="#ecd0a5" stroke-width="3"/>
+  <g transform="matrix(1.16 0 0 1.16 -70 -78)">
+    <rect x="140" y="142" width="680" height="300" rx="22" fill="#f8fcff" stroke="#c7dbed" stroke-width="3"/>
+  <rect x="170" y="172" width="120" height="42" rx="21" fill="#edf6ff" stroke="#bed2eb" stroke-width="3"/>
+  <text x="230" y="202" text-anchor="middle" font-family="Arial, sans-serif" font-size="27" font-weight="900" fill="#1f4778">Összes</text><rect x="306" y="172" width="140" height="42" rx="21" fill="#fff2f6" stroke="#eba9bd" stroke-width="3"/>
+  <text x="376" y="202" text-anchor="middle" font-family="Arial, sans-serif" font-size="27" font-weight="900" fill="#9a3b54">Függő 2</text><rect x="462" y="172" width="150" height="42" rx="21" fill="#fff4e8" stroke="#bed2eb" stroke-width="3"/>
+  <text x="537" y="202" text-anchor="middle" font-family="Arial, sans-serif" font-size="27" font-weight="900" fill="#1f4778">Kiadva</text>
+  <rect x="170" y="248" width="560" height="62" rx="16" fill="#fff" stroke="#d6e2f0" stroke-width="3"/><circle cx="206" cy="279" r="23" fill="#4f7fe8"/><text x="246" y="288" font-family="Arial" font-size="22" font-weight="900" fill="#1d3354">Grace Bell</text><rect x="555" y="259" width="140" height="40" rx="20" fill="#e8f8ef" stroke="#9ad5b0" stroke-width="3"/>
+  <text x="625" y="288" text-anchor="middle" font-family="Arial, sans-serif" font-size="27" font-weight="900" fill="#17633b">Jóváhagyás</text><rect x="170" y="330" width="560" height="62" rx="16" fill="#fff" stroke="#d6e2f0" stroke-width="3"/><circle cx="206" cy="361" r="23" fill="#4f7fe8"/><text x="246" y="370" font-family="Arial" font-size="22" font-weight="900" fill="#1d3354">Maya Stone</text><rect x="555" y="341" width="140" height="40" rx="20" fill="#e8f8ef" stroke="#9ad5b0" stroke-width="3"/>
+  <text x="625" y="370" text-anchor="middle" font-family="Arial, sans-serif" font-size="27" font-weight="900" fill="#17633b">Manager</text>
+  </g>
+</svg>

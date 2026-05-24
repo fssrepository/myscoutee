@@ -1,19 +1,50 @@
 import { AppUtils } from '../../../app-utils';
 import type * as AppTypes from '../../../core/base/models';
-import type { EventMenuItem, HostingMenuItem, InvitationMenuItem } from '../interfaces/activity-feed.interface';
+
+type ActivityEventSourceLike = {
+  id: string;
+  avatar?: string;
+  title?: string;
+  subtitle?: string;
+  shortDescription?: string;
+  description?: string;
+  inviter?: string | null;
+  creatorName?: string | null;
+  creatorUserId?: string | null;
+  isAdmin?: boolean;
+  timeframe?: string;
+  when?: string;
+  activity?: number;
+  unread?: number;
+  startAt?: string;
+  endAt?: string;
+  distanceKm?: number;
+  acceptedMembers?: number;
+  pendingMembers?: number;
+  capacityTotal?: number;
+  capacityMin?: number | null;
+  capacityMax?: number | null;
+  imageUrl?: string;
+  sourceLink?: string;
+  location?: string;
+  locationCoordinates?: unknown;
+  policies?: readonly AppTypes.EventPolicyItem[];
+};
 
 export class ActivityEventBuilder {
-  static buildInvitationPreviewEventSource(invitation: InvitationMenuItem): EventMenuItem {
+  static buildInvitationPreviewEventSource(invitation: ActivityEventSourceLike): ActivityEventSourceLike {
+    const inviter = `${invitation.inviter ?? invitation.creatorName ?? invitation.title ?? ''}`.trim();
+    const description = `${invitation.description ?? invitation.title ?? ''}`.trim();
     return {
       id: `inv-preview-${invitation.id}`,
-      avatar: AppUtils.initialsFromText(invitation.inviter),
-      title: invitation.description,
-      shortDescription: `Invited by ${invitation.inviter}`,
-      timeframe: invitation.when,
-      activity: Math.max(0, invitation.unread),
+      avatar: AppUtils.initialsFromText(inviter),
+      title: description,
+      shortDescription: `Invited by ${inviter}`,
+      timeframe: invitation.when ?? invitation.timeframe ?? '',
+      activity: Math.max(0, Number(invitation.unread) || 0),
       isAdmin: false,
       creatorUserId: invitation.creatorUserId,
-      creatorName: invitation.creatorName ?? invitation.inviter,
+      creatorName: invitation.creatorName ?? inviter,
       startAt: invitation.startAt,
       endAt: invitation.endAt,
       distanceKm: invitation.distanceKm,
@@ -22,8 +53,6 @@ export class ActivityEventBuilder {
       capacityTotal: invitation.capacityTotal,
       capacityMin: invitation.capacityMin ?? null,
       capacityMax: invitation.capacityMax ?? null,
-      acceptedMemberUserIds: [...(invitation.acceptedMemberUserIds ?? [])],
-      pendingMemberUserIds: [...(invitation.pendingMemberUserIds ?? [])],
       imageUrl: invitation.imageUrl,
       sourceLink: invitation.sourceLink,
       location: invitation.location,
@@ -35,42 +64,40 @@ export class ActivityEventBuilder {
   static resolveEditorSource(
     row: AppTypes.ActivityListRow,
     options: {
-      eventItems: readonly EventMenuItem[];
-      hostingItems: readonly HostingMenuItem[];
-      invitationItems?: readonly InvitationMenuItem[];
+      eventItems: readonly ActivityEventSourceLike[];
+      hostingItems: readonly ActivityEventSourceLike[];
+      invitationItems?: readonly ActivityEventSourceLike[];
     }
-  ): EventMenuItem | HostingMenuItem | null {
+  ): ActivityEventSourceLike | null {
     if (row.type === 'invitations') {
-      const invitationSource = row.source as InvitationMenuItem;
-      const invitation = options.invitationItems?.find(item => item.id === invitationSource.id) ?? invitationSource;
+      const invitation = options.invitationItems?.find(item => item.id === row.id) ?? null;
+      if (!invitation) {
+        return null;
+      }
       return this.resolveRelatedEventFromInvitation(invitation, options) ?? this.buildInvitationPreviewEventSource(invitation);
     }
     if (row.type !== 'events' && row.type !== 'hosting') {
       return null;
     }
-    const rowSource = row.source as EventMenuItem | HostingMenuItem;
-    const rowSourceId = typeof rowSource?.id === 'string' ? rowSource.id.trim() : '';
-    let source = rowSourceId
-      ? (options.eventItems.find(item => item.id === rowSourceId)
-        ?? options.hostingItems.find(item => item.id === rowSourceId)
-        ?? null)
-      : null;
-    if (!source && typeof rowSource?.title === 'string' && rowSource.title.trim()) {
-      const titleKey = AppUtils.normalizeText(rowSource.title);
-      source = options.eventItems.find(item => AppUtils.normalizeText(item.title) === titleKey)
-        ?? options.hostingItems.find(item => AppUtils.normalizeText(item.title) === titleKey)
+    let source = options.eventItems.find(item => item.id === row.id)
+      ?? options.hostingItems.find(item => item.id === row.id)
+      ?? null;
+    if (!source && row.title.trim()) {
+      const titleKey = AppUtils.normalizeText(row.title);
+      source = options.eventItems.find(item => AppUtils.normalizeText(item.title ?? '') === titleKey)
+        ?? options.hostingItems.find(item => AppUtils.normalizeText(item.title ?? '') === titleKey)
         ?? null;
     }
-    return source ?? rowSource;
+    return source;
   }
 
   private static resolveRelatedEventFromInvitation(
-    invitation: InvitationMenuItem,
+    invitation: ActivityEventSourceLike,
     options: {
-      eventItems: readonly EventMenuItem[];
-      hostingItems: readonly HostingMenuItem[];
+      eventItems: readonly ActivityEventSourceLike[];
+      hostingItems: readonly ActivityEventSourceLike[];
     }
-  ): EventMenuItem | HostingMenuItem | null {
+  ): ActivityEventSourceLike | null {
     const invitationId = invitation.id.trim();
     if (invitationId) {
       const relatedById = options.eventItems.find(item => item.id === invitationId)
@@ -79,12 +106,12 @@ export class ActivityEventBuilder {
         return relatedById;
       }
     }
-    const invitationTitle = AppUtils.normalizeText(invitation.description);
-    const relatedEvent = options.eventItems.find(item => AppUtils.normalizeText(item.title) === invitationTitle);
+    const invitationTitle = AppUtils.normalizeText(`${invitation.description ?? invitation.title ?? ''}`);
+    const relatedEvent = options.eventItems.find(item => AppUtils.normalizeText(item.title ?? '') === invitationTitle);
     if (relatedEvent) {
       return relatedEvent;
     }
-    const relatedHosting = options.hostingItems.find(item => AppUtils.normalizeText(item.title) === invitationTitle);
+    const relatedHosting = options.hostingItems.find(item => AppUtils.normalizeText(item.title ?? '') === invitationTitle);
     if (relatedHosting) {
       return relatedHosting;
     }

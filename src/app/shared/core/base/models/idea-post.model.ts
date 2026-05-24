@@ -1,4 +1,5 @@
 import type { HelpCenterState } from './popup.model';
+import type { UserLocationEligibilityResponseDto } from '../interfaces/user.interface';
 
 export interface IdeaPost {
   id: string;
@@ -51,4 +52,5 @@ export interface IdeaArticleDetail {
 export interface LandingContentState {
   privacy: HelpCenterState;
   ideas: IdeaPost[];
+  loginAvailability: UserLocationEligibilityResponseDto | null;
 }

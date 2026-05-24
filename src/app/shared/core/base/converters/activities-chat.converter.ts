@@ -1,6 +1,6 @@
 import { AppUtils } from '../../../app-utils';
 import type * as AppTypes from '../../../core/base/models';
-import type { ChatMenuItem } from '../interfaces/activity-feed.interface';
+import type { ChatRecord } from '../models/chat.model';
 import type { DemoUser } from '../interfaces/user.interface';
 
 interface BuildActivityChatRowsOptions {
@@ -14,7 +14,7 @@ interface ResolvedBuildActivityChatRowsOptions extends BuildActivityChatRowsOpti
 }
 
 export function buildActivityChatRows(
-  items: readonly ChatMenuItem[],
+  items: readonly ChatRecord[],
   options: BuildActivityChatRowsOptions
 ): AppTypes.ActivityListRow[] {
   const resolvedOptions = resolveBuildActivityChatRowsOptions(options);
@@ -22,40 +22,44 @@ export function buildActivityChatRows(
 }
 
 export function toActivityChatRow(
-  item: ChatMenuItem,
+  item: ChatRecord,
   options: BuildActivityChatRowsOptions
 ): AppTypes.ActivityListRow {
   return toActivityChatRowWithResolvedOptions(item, resolveBuildActivityChatRowsOptions(options));
 }
 
 function toActivityChatRowWithResolvedOptions(
-  item: ChatMenuItem,
+  item: ChatRecord,
   options: ResolvedBuildActivityChatRowsOptions
 ): AppTypes.ActivityListRow {
   const lastSender = resolveChatLastSender(item, options);
   const unread = Math.max(0, Math.trunc(Number(item.unread) || 0));
-  const distanceKm = Number.isFinite(Number(item.distanceKm)) ? Math.max(0, Number(item.distanceKm)) : 0;
   const distanceMetersExact = Number.isFinite(Number(item.distanceMetersExact))
     ? Math.max(0, Math.trunc(Number(item.distanceMetersExact)))
-    : Number.isFinite(Number(item.distanceKm))
-      ? Math.max(0, Math.round(Number(item.distanceKm) * 1000))
-      : undefined;
+    : undefined;
+  const memberCount = resolveChatMemberCount(item, options);
   return {
     id: item.id,
     type: 'chats',
+    status: item.supportCaseStatus ?? normalizeActivityChatChannelType(item),
     title: lastSender?.name ?? item.title,
     subtitle: item.title,
     detail: item.lastMessage?.trim() || '',
     dateIso: item.dateIso ?? '2026-02-21T09:00:00',
-    distanceKm,
     distanceMetersExact,
     unread,
-    metricScore: unread * 10 + resolveChatMemberCount(item, options),
-    source: normalizeChatRecord(item)
+    badgeCount: unread,
+    metricScore: unread * 10 + memberCount,
+    sortScore: unread * 10 + memberCount,
+    avatarInitials: item.avatar,
+    avatarToneClass: lastSender ? `user-color-${lastSender.gender}` : null,
+    memberCount,
+    toneClass: activityChatToneClass(item),
+    sideLabel: item.supportCaseAssigneeName ?? null
   };
 }
 
-export function normalizeActivityChatChannelType(item: Pick<ChatMenuItem, 'channelType'>): AppTypes.ChatChannelType {
+export function normalizeActivityChatChannelType(item: Pick<ChatRecord, 'channelType'>): AppTypes.ChatChannelType {
   if (
     item.channelType === 'mainEvent'
     || item.channelType === 'optionalSubEvent'
@@ -68,7 +72,7 @@ export function normalizeActivityChatChannelType(item: Pick<ChatMenuItem, 'chann
 }
 
 export function activityChatContextFilterKey(
-  item: Pick<ChatMenuItem, 'channelType'>
+  item: Pick<ChatRecord, 'channelType'>
 ): AppTypes.ActivitiesChatContextFilter | null {
   const channelType = normalizeActivityChatChannelType(item);
   if (channelType === 'mainEvent') {
@@ -86,16 +90,8 @@ export function activityChatContextFilterKey(
   return null;
 }
 
-function normalizeChatRecord(item: ChatMenuItem): ChatMenuItem {
-  return {
-    ...item,
-    memberIds: [...(item.memberIds ?? [])],
-    channelType: normalizeActivityChatChannelType(item)
-  };
-}
-
 function resolveChatLastSender(
-  item: ChatMenuItem,
+  item: ChatRecord,
   options: ResolvedBuildActivityChatRowsOptions
 ): DemoUser | null {
   const lastSender = options.userById.get(item.lastSenderId) ?? null;
@@ -107,7 +103,7 @@ function resolveChatLastSender(
 }
 
 function resolveChatMemberCount(
-  item: ChatMenuItem,
+  item: ChatRecord,
   options: ResolvedBuildActivityChatRowsOptions
 ): number {
   const explicitMemberCount = new Set(
@@ -122,7 +118,7 @@ function resolveChatMemberCount(
 }
 
 function resolveChatMembers(
-  item: ChatMenuItem,
+  item: ChatRecord,
   options: ResolvedBuildActivityChatRowsOptions
 ): DemoUser[] {
   const members = (item.memberIds ?? [])
@@ -132,6 +128,37 @@ function resolveChatMembers(
     return uniqueUsersById(members);
   }
   return options.fallbackUser ? [options.fallbackUser] : [];
+}
+
+function activityChatToneClass(item: ChatRecord): string {
+  const channelType = normalizeActivityChatChannelType(item);
+  if (channelType === 'mainEvent') {
+    return 'activities-card-chat-main-event';
+  }
+  if (channelType === 'optionalSubEvent') {
+    return 'activities-card-chat-optional-sub-event';
+  }
+  if (channelType === 'groupSubEvent') {
+    return 'activities-card-chat-group-sub-event';
+  }
+  if (channelType === 'serviceEvent') {
+    return serviceChatToneClass(item);
+  }
+  return '';
+}
+
+function serviceChatToneClass(item: ChatRecord): string {
+  if (
+    item.serviceContext === 'notification'
+    || item.title.startsWith('Notify Participants')
+    || item.lastMessage.toLowerCase().includes('notification channel')
+  ) {
+    return 'activities-card-chat-service-notification';
+  }
+  if (item.serviceContext === 'asset' || item.id.startsWith('c-service-asset-') || item.title.startsWith('Asset Service')) {
+    return 'activities-card-chat-service-asset';
+  }
+  return 'activities-card-chat-service-event';
 }
 
 function resolveBuildActivityChatRowsOptions(

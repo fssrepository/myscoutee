@@ -6,6 +6,7 @@ import { Router } from '@angular/router';
 import {
   AppContext,
   AppPopupContext,
+  ExplanationGuideService,
   USER_PROFILE_SAVE_CONTEXT_KEY,
   type ActivityCounters,
   type UserDto,
@@ -27,7 +28,7 @@ import { NavigatorService } from '../../navigator.service';
 import { NavigatorSettingsMenuComponent } from '../navigator-settings-menu/navigator-settings-menu.component';
 import { NavigatorContactsService } from '../../navigator-contacts.service';
 import { ActivitiesPopupStateService } from '../../../activity/services/activities-popup-state.service';
-import type { ChatMenuItem } from '../../../shared/core/base/interfaces/activity-feed.interface';
+import type { ChatRecord } from '../../../shared/core/base/models/chat.model';
 
 interface NavigatorMenuUser extends Omit<UserDto, 'activities'> {
   activities: ActivityCounters;
@@ -49,6 +50,7 @@ export class NavigatorMenuComponent {
   private static readonly PROFILE_SAVE_RING_CIRCUMFERENCE = 2 * Math.PI * NavigatorMenuComponent.PROFILE_SAVE_RING_RADIUS;
   private readonly appCtx = inject(AppContext);
   private readonly popupCtx = inject(AppPopupContext);
+  private readonly explanationGuide = inject(ExplanationGuideService);
   private readonly router = inject(Router);
   private readonly navigatorService = inject(NavigatorService);
   private readonly navigatorContactsService = inject(NavigatorContactsService);
@@ -56,6 +58,7 @@ export class NavigatorMenuComponent {
   private readonly profileSaveLoadState = this.appCtx.selectLoadingState(USER_PROFILE_SAVE_CONTEXT_KEY);
   private readonly userLogoutLoadState = this.appCtx.selectLoadingState(USER_LOGOUT_CONTEXT_KEY);
   protected readonly activeUser = this.appCtx.activeUserProfile;
+  protected readonly explanationGuideEnabled = this.explanationGuide.enabled;
   protected readonly isOnline = this.appCtx.isOnline;
   protected readonly profileSaveRingCircumference = NavigatorMenuComponent.PROFILE_SAVE_RING_CIRCUMFERENCE;
   protected readonly isProfileSaving = computed(() => this.profileSaveLoadState().status === 'loading');
@@ -92,8 +95,12 @@ export class NavigatorMenuComponent {
       invitations: activityOverrides.invitations ?? activeUser.activities?.invitations ?? 0,
       events: activityOverrides.events ?? activeUser.activities?.events ?? 0,
       hosting: activityOverrides.hosting ?? activeUser.activities?.hosting ?? 0,
-      tickets: activityOverrides.tickets ?? 0,
-      feedback: activityOverrides.feedback ?? 0,
+      cars: activityOverrides.cars ?? activeUser.activities?.cars ?? 0,
+      accommodation: activityOverrides.accommodation ?? activeUser.activities?.accommodation ?? 0,
+      supplies: activityOverrides.supplies ?? activeUser.activities?.supplies ?? 0,
+      tickets: activityOverrides.tickets ?? activeUser.activities?.tickets ?? 0,
+      contacts: activityOverrides.contacts ?? activeUser.activities?.contacts ?? this.navigatorContactsService.contactCount(),
+      feedback: activityOverrides.feedback ?? activeUser.activities?.feedback ?? 0,
       adminJobs: activityOverrides.adminJobs ?? activeUser.activities?.adminJobs ?? 0,
       adminMetrics: activityOverrides.adminMetrics ?? activeUser.activities?.adminMetrics ?? 0
     };
@@ -114,7 +121,11 @@ export class NavigatorMenuComponent {
         mergedActivities.invitations +
         mergedActivities.events +
         mergedActivities.hosting +
+        mergedActivities.cars +
+        mergedActivities.accommodation +
+        mergedActivities.supplies +
         mergedActivities.tickets +
+        mergedActivities.contacts +
         mergedActivities.feedback
       );
     return {
@@ -171,6 +182,11 @@ export class NavigatorMenuComponent {
       const shareUrl = `mailto:?subject=${encodeURIComponent(title)}&body=${encodeURIComponent(text + '\n\n' + url)}`;
       window.location.href = shareUrl;
     }
+  }
+
+  protected onToggleExplanationGuide(event: MouseEvent): void {
+    event.stopPropagation();
+    this.explanationGuide.toggleEnabled();
   }
 
   protected profileStatusClass(status: string): string {
@@ -448,7 +464,7 @@ export class NavigatorMenuComponent {
     }
     const activeUserId = user.id.trim();
     const adminUserId = 'myscoutee-admin';
-    const chat: ChatMenuItem & { ownerUserId?: string } = {
+    const chat: ChatRecord & { ownerUserId?: string } = {
       id: `c-support-blocked-${activeUserId}`,
       avatar: 'MS',
       title: 'MyScoutee Support',
@@ -462,22 +478,7 @@ export class NavigatorMenuComponent {
       ownerUserId: activeUserId
     };
     this.activitiesContext.openActivities('chats');
-    this.activitiesContext.openEventChat(chat, {
-      channelType: 'serviceEvent',
-      hasSubEventMenu: false,
-      actionIcon: 'shield',
-      actionLabel: 'Support',
-      actionToneClass: 'popup-chat-context-btn-tone-main-event',
-      actionBadgeCount: 0,
-      menuTitle: chat.title,
-      eventRow: null,
-      subEventRow: null,
-      subEvent: null,
-      group: null,
-      assetAssignmentIds: { Car: [], Accommodation: [], Supplies: [] },
-      assetCardsByType: { Car: [], Accommodation: [], Supplies: [] },
-      resources: []
-    });
+    this.activitiesContext.openEventChat(chat);
   }
 
   private resolveCompletionPercent(user: UserDto | null): number {

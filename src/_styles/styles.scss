@@ -70,6 +70,52 @@ select,
   border-radius: 6px;
 }
 
+@keyframes lazy-image-panel-spinner {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+:where(.lazy-image-frame-loading) {
+  position: relative;
+  isolation: isolate;
+}
+
+:where(.lazy-image-frame-loading)::before,
+:where(.lazy-image-frame-loading)::after {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+}
+
+:where(.lazy-image-frame-loading)::before {
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+  background: rgba(246, 250, 255, 0.58);
+}
+
+:where(.lazy-image-frame-loading)::after {
+  top: 50%;
+  left: 50%;
+  z-index: 2;
+  width: 34px;
+  height: 34px;
+  margin: -17px 0 0 -17px;
+  border: 3px solid rgba(61, 105, 178, 0.18);
+  border-top-color: #2d65b3;
+  border-radius: 50%;
+  animation: lazy-image-panel-spinner 0.78s linear infinite;
+}
+
+:where(.lazy-image-frame-loading > img.lazy-image-loading) {
+  opacity: 0.34;
+}
+
+:where(.lazy-image-frame-loaded > img, .lazy-image-frame-fallback-active > img) {
+  opacity: 1;
+}
+
 /* Ensure links and buttons do not show the native tap highlight on mobile */
 a,
 button,

@@ -5,11 +5,12 @@ import type {
   ActivityMembersSummary
 } from '../../../core/base/models';
 import { ActivityMembersBuilder } from '../../base/builders/activity-members.builder';
+import { toActivityEventRow } from '../../base/converters/activities-event.converter';
 import { APP_STATIC_DATA } from '../../../app-static-data';
 import type * as AppTypes from '../../../core/base/models';
 import { AppUtils } from '../../../app-utils';
 import type { DemoUser } from '../../base/interfaces/user.interface';
-import type { EventMenuItem, HostingMenuItem } from '../../base/interfaces/activity-feed.interface';
+import type { DemoEventSeedItem, DemoHostingSeedItem } from '../models/event-seed-item.model';
 import { HttpActivityMembersRepository } from '../../http/repositories/activity-members.repository';
 import type { UserGameMode, UserGameSocialCard } from '../../base/interfaces/game.interface';
 import type { DemoEventRecord, DemoEventRecordCollection } from '../models/events.model';
@@ -19,7 +20,7 @@ import {
   type DemoActivityMemberRecord,
   type DemoActivityMembersRecordCollection
 } from '../models/activity-members.model';
-import { DemoEventSeedBuilder, DemoUserSeedBuilder } from '../builders';
+import { DemoEventsRepositoryBuilder, DemoEventSeedBuilder, DemoSeedScheduleBuilder, DemoUserSeedBuilder } from '../builders';
 import { DemoAssetsRepository } from './assets.repository';
 import { DemoEventsRepository } from './events.repository';
 import { DemoUsersRepository } from './users.repository';
@@ -30,20 +31,31 @@ export interface DemoAcceptedEventMemberGroup {
   userIds: string[];
 }
 
+interface ExplicitSeedMemberUserIds {
+  accepted: string[];
+  pending: string[];
+}
+
 @Injectable({
   providedIn: 'root'
 })
 export class DemoActivityMembersRepository extends HttpActivityMembersRepository {
+  private static readonly MAX_BOOTSTRAP_RECORDS = 1000;
+  private static readonly MAX_SEEDED_ASSETS_PER_USER = 2;
+  private static readonly MAX_SEEDED_ASSET_REQUESTS_PER_OWNER = 1;
+  private static readonly MAX_SEEDED_SUB_EVENT_PARENT_EVENTS = 14;
+  private static readonly MAX_SEEDED_SUB_EVENTS_PER_EVENT = 2;
+  private static readonly MAX_SEEDED_GROUPS_PER_SUB_EVENT = 2;
   private readonly demoAssetsRepository = inject(DemoAssetsRepository);
   private readonly demoEventsRepository = inject(DemoEventsRepository);
   private readonly demoUsersRepository = inject(DemoUsersRepository);
   private lastInitToken = '';
-  private isInitialized = false;
   private readonly ownerCapacityByKey = new Map<string, number>();
   private demoActivityMemberUsersSnapshot: DemoUser[] | null = null;
   private preferredEventRecordsSnapshot: DemoEventRecord[] | null = null;
   private invitationPreviewRecordsSnapshot: DemoEventRecord[] | null = null;
   private eventCapacitySnapshotByEventId: Map<string, { acceptedMembers: number | null; capacityTotal: number | null }> | null = null;
+  private explicitSeedMemberUserIdsByEventId: Map<string, ExplicitSeedMemberUserIds> | null = null;
   private readonly seededSubEventsSnapshotByEventId = new Map<string, AppTypes.SubEventFormItem[]>();
   private gameSocialCardsCacheToken = '';
   private acceptedMemberGraphCacheToken = '';
@@ -108,6 +120,9 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
           if (existingOwnerKeys.has(ownerKey)) {
             continue;
           }
+          if ((nextIds ?? currentTable.ids).length + ownerRecords.length > DemoActivityMembersRepository.MAX_BOOTSTRAP_RECORDS) {
+            return;
+          }
           if (!changed) {
             nextById = { ...currentTable.byId };
             nextIds = [...currentTable.ids];
@@ -154,7 +169,6 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
       const finalTable = this.normalizeCollection(this.memoryDb.read()[ACTIVITY_MEMBERS_TABLE_NAME]);
       this.refreshGameSocialCardsCache(finalTable);
       this.lastInitToken = `${eventsTable.ids.length}:${finalTable.ids.length}:${Object.keys(finalTable.idsByOwnerKey).length}:${normalizedOwnerUserIds.join('|')}`;
-      this.isInitialized = true;
     } finally {
       this.demoActivityMemberUsersSnapshot = null;
       this.preferredEventRecordsSnapshot = null;
@@ -181,9 +195,6 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
     const normalizedUserId = activeUserId.trim();
     if (!normalizedUserId) {
       return [];
-    }
-    if (!this.isInitialized) {
-      this.init();
     }
     this.ensureGameSocialCardsCache();
     return (this.gameSocialCardsByUserId.get(normalizedUserId)?.[mode] ?? [])
@@ -425,9 +436,6 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
     neighborsByUserId: Map<string, Set<string>>;
     edgeEventNameByKey: Map<string, string>;
   } {
-    if (!this.isInitialized) {
-      this.init();
-    }
     const table = this.normalizeCollection(this.memoryDb.read()[ACTIVITY_MEMBERS_TABLE_NAME]);
     const token = this.gameSocialCardsCacheTokenForTable(table);
     if (this.acceptedMemberGraphCache && this.acceptedMemberGraphCacheToken === token) {
@@ -514,9 +522,6 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
     members: readonly AppTypes.ActivityMemberEntry[],
     capacityTotal?: number | null
   ): Promise<void> {
-    if (!this.isInitialized) {
-      this.init();
-    }
     const normalizedOwner = this.normalizeOwnerRef(owner);
     if (!normalizedOwner) {
       return;
@@ -532,9 +537,6 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
     action: 'disqualify' | 'reinstate',
     reason?: string | null
   ): Promise<AppTypes.ActivityMemberEntry[]> {
-    if (!this.isInitialized) {
-      this.init();
-    }
     const normalizedOwner = this.normalizeOwnerRef(owner);
     const normalizedTargetUserId = targetUserId.trim();
     if (!normalizedOwner || !normalizedTargetUserId) {
@@ -577,23 +579,6 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
     const summary = this.writeOwnerMembers(normalizedOwner, nextMembers, undefined, true);
     this.cacheMembers(normalizedOwner, nextMembers, summary.capacityTotal);
     return this.cloneEntries(nextMembers);
-  }
-
-  private ensureLightweightSyncReady(): void {
-    this.demoEventsRepository.init();
-    const state = this.memoryDb.read();
-    const table = state[ACTIVITY_MEMBERS_TABLE_NAME] as DemoActivityMembersRecordCollection | undefined;
-    if (table && typeof table === 'object' && table.byId && Array.isArray(table.ids) && table.idsByOwnerKey) {
-      return;
-    }
-    this.memoryDb.write(currentState => ({
-      ...currentState,
-      [ACTIVITY_MEMBERS_TABLE_NAME]: {
-        byId: {},
-        ids: [],
-        idsByOwnerKey: {}
-      }
-    }));
   }
 
   private readMembersByOwner(owner: ActivityMemberOwnerRef): AppTypes.ActivityMemberEntry[] {
@@ -777,13 +762,7 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
           ...current,
           acceptedMembers: summary.acceptedMembers,
           pendingMembers: summary.pendingMembers,
-          capacityTotal: Math.max(summary.acceptedMembers, summary.capacityTotal),
-          acceptedMemberUserIds: syncUserIds
-            ? [...summary.acceptedMemberUserIds]
-            : [...current.acceptedMemberUserIds],
-          pendingMemberUserIds: syncUserIds
-            ? [...summary.pendingMemberUserIds]
-            : [...current.pendingMemberUserIds]
+          capacityTotal: Math.max(summary.acceptedMembers, summary.capacityTotal)
         };
         changed = true;
       }
@@ -856,7 +835,7 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
 
   private buildSeededHomeSocialBridgeEntry(userId: string, ownerId: string, metWhere: string): AppTypes.ActivityMemberEntry {
     const user = this.resolveDemoUser(userId);
-    const metAtIso = '2026-03-22T18:00:00.000Z';
+    const metAtIso = DemoSeedScheduleBuilder.rebaseDateTime('2026-03-22T18:00:00.000Z') ?? '2026-03-22T18:00:00.000Z';
     return {
       id: `home-fic-seed:${ownerId}:${user.id}`.toLowerCase().replace(/[^a-z0-9:-]+/g, '-'),
       userId: user.id,
@@ -974,27 +953,11 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
     record: DemoEventRecord,
     currentMembers: readonly AppTypes.ActivityMemberEntry[]
   ): boolean {
-    const expectedAcceptedUserIds = this.normalizeMemberUserIds(record.acceptedMemberUserIds);
-    const expectedPendingUserIds = this.normalizeMemberUserIds(record.pendingMemberUserIds);
-    const actualAcceptedUserIds = currentMembers
-      .filter(member => member.status === 'accepted')
-      .map(member => member.userId);
-    const actualPendingUserIds = currentMembers
-      .filter(member => member.status === 'pending')
-      .map(member => member.userId);
-    if (actualAcceptedUserIds.length !== expectedAcceptedUserIds.length || actualPendingUserIds.length !== expectedPendingUserIds.length) {
-      return true;
-    }
-    if (actualAcceptedUserIds.some(userId => !expectedAcceptedUserIds.includes(userId))) {
-      return true;
-    }
-    if (actualPendingUserIds.some(userId => !expectedPendingUserIds.includes(userId))) {
-      return true;
-    }
-    if (expectedAcceptedUserIds.some(userId => !actualAcceptedUserIds.includes(userId))) {
-      return true;
-    }
-    return expectedPendingUserIds.some(userId => !actualPendingUserIds.includes(userId));
+    const expectedAcceptedCount = Math.max(0, this.normalizeMemberCount(record.acceptedMembers) ?? 0);
+    const expectedPendingCount = Math.max(0, this.normalizeMemberCount(record.pendingMembers) ?? 0);
+    const actualAcceptedCount = currentMembers.filter(member => member.status === 'accepted').length;
+    const actualPendingCount = currentMembers.filter(member => member.status === 'pending').length;
+    return actualAcceptedCount !== expectedAcceptedCount || actualPendingCount !== expectedPendingCount;
   }
 
   private preferredEventRecords(): DemoEventRecord[] {
@@ -1089,7 +1052,10 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
     existingOwnerKeys: ReadonlySet<string> = new Set()
   ): DemoActivityMemberRecord[] {
     const nextRecords: DemoActivityMemberRecord[] = [];
-    for (const asset of this.demoAssetsRepository.peekOwnedAssetsByUser(userId)) {
+    for (const asset of this.demoAssetsRepository.peekOwnedAssetsByUser(userId).slice(
+      0,
+      DemoActivityMembersRepository.MAX_SEEDED_ASSETS_PER_USER
+    )) {
       const owner: ActivityMemberOwnerRef = {
         ownerType: 'asset',
         ownerId: asset.id
@@ -1110,9 +1076,32 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
   ): DemoActivityMemberRecord[] {
     const nextRecords: DemoActivityMemberRecord[] = [];
     const seenOwnerKeys = new Set<string>(existingOwnerKeys);
+    const appendMembersForOwner = (
+      owner: ActivityMemberOwnerRef,
+      members: readonly AppTypes.ActivityMemberEntry[]
+    ): void => {
+      if (members.length === 0) {
+        return;
+      }
+      for (const member of members) {
+        nextRecords.push(this.toRecord(owner, member));
+      }
+    };
 
+    let parentEventCount = 0;
     for (const record of this.preferredEventRecords()) {
-      for (const subEvent of this.seededSubEventsForEvent(record)) {
+      if (parentEventCount >= DemoActivityMembersRepository.MAX_SEEDED_SUB_EVENT_PARENT_EVENTS) {
+        break;
+      }
+      const seededSubEvents = this.seededSubEventsForEvent(record).slice(
+        0,
+        DemoActivityMembersRepository.MAX_SEEDED_SUB_EVENTS_PER_EVENT
+      );
+      if (seededSubEvents.length === 0) {
+        continue;
+      }
+      parentEventCount += 1;
+      for (const subEvent of seededSubEvents) {
         const subEventOwner: ActivityMemberOwnerRef = {
           ownerType: 'subEvent',
           ownerId: subEvent.id
@@ -1120,13 +1109,14 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
         const subEventOwnerKey = this.ownerKey(subEventOwner);
         if (!seenOwnerKeys.has(subEventOwnerKey)) {
           const seededSubEvent = this.buildSeededSubEventOwnerSeed(record, subEvent);
-          for (const member of seededSubEvent.members) {
-            nextRecords.push(this.toRecord(subEventOwner, member));
-          }
+          appendMembersForOwner(subEventOwner, seededSubEvent.members);
           seenOwnerKeys.add(subEventOwnerKey);
         }
 
-        for (const group of subEvent.groups ?? []) {
+        for (const group of (subEvent.groups ?? []).slice(
+          0,
+          DemoActivityMembersRepository.MAX_SEEDED_GROUPS_PER_SUB_EVENT
+        )) {
           const groupOwner: ActivityMemberOwnerRef = {
             ownerType: 'group',
             ownerId: group.id
@@ -1136,9 +1126,7 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
             continue;
           }
           const seededGroup = this.buildSeededGroupOwnerSeed(record, subEvent, group);
-          for (const member of seededGroup.members) {
-            nextRecords.push(this.toRecord(groupOwner, member));
-          }
+          appendMembersForOwner(groupOwner, seededGroup.members);
           seenOwnerKeys.add(groupOwnerKey);
         }
       }
@@ -1203,7 +1191,7 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
     const requests = asset.requests.length > 0
       ? [...asset.requests]
       : this.buildFallbackAssetRequests(ownerUserId, asset);
-    const seedBaseDate = new Date('2026-02-24T12:00:00.000Z');
+    const seedBaseDate = DemoSeedScheduleBuilder.shiftDate(new Date('2026-02-24T12:00:00.000Z'));
     const owner = this.resolveDemoUser(ownerUserId, asset.ownerName?.trim() || 'Asset owner', '', asset.city);
     const ownerEntry: AppTypes.ActivityMemberEntry = {
       id: `${asset.id}:owner`,
@@ -1225,6 +1213,7 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
       profile: owner
     };
     const requestEntries = requests
+      .slice(0, DemoActivityMembersRepository.MAX_SEEDED_ASSET_REQUESTS_PER_OWNER)
       .map((request, index): AppTypes.ActivityMemberEntry => {
         const requestUserId = AppUtils.resolveAssetRequestUserId(request, this.demoActivityMemberUsers);
         const matchedUser = this.demoActivityMemberUsers.find(user => user.id === requestUserId)
@@ -1403,7 +1392,7 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
         id: record.id,
         title: record.title,
         shortDescription: record.subtitle
-      } as EventMenuItem | HostingMenuItem;
+      } as DemoEventSeedItem | DemoHostingSeedItem;
       const capacityMax = Math.max(
         this.normalizeMemberCount(record.capacityMax) ?? 0,
         this.normalizeMemberCount(record.capacityTotal) ?? 0,
@@ -1453,7 +1442,6 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
     dateIso: string
   ): AppTypes.ActivityListRow {
     const baseRow = this.buildActivityRowFromEventRecord(record);
-    const baseSource = (baseRow.source ?? {}) as unknown as Record<string, unknown>;
     return {
       ...baseRow,
       id: ownerId,
@@ -1461,14 +1449,7 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
       subtitle,
       detail,
       dateIso,
-      source: {
-        ...baseSource,
-        id: ownerId,
-        title,
-        shortDescription: subtitle,
-        timeframe: detail,
-        startAt: dateIso
-      } as AppTypes.ActivityListRow['source']
+      startAt: dateIso
     };
   }
 
@@ -1524,6 +1505,154 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
     return next.acceptedMembers >= current.acceptedMembers;
   }
 
+  private seedMemberUserIdsForEventRecord(record: DemoEventRecord): {
+    acceptedMemberUserIds: string[];
+    pendingMemberUserIds: string[];
+  } {
+    const acceptedTarget = Math.max(0, this.normalizeMemberCount(record.acceptedMembers) ?? 0);
+    const pendingTarget = Math.max(0, this.normalizeMemberCount(record.pendingMembers) ?? 0);
+    const ownerUserId = record.userId.trim();
+    const explicit = this.explicitSeedMemberUserIdsForEventId(record.id);
+    const seedActiveUserId = record.isInvitation
+      ? record.creatorUserId || ownerUserId
+      : ownerUserId || record.creatorUserId;
+    const seededMemberUserIds = DemoEventSeedBuilder.seededEventMemberIds(
+      record.id,
+      Math.max(acceptedTarget + pendingTarget, acceptedTarget, 1),
+      this.demoActivityMemberUsers,
+      seedActiveUserId
+    );
+    const usedUserIds = new Set<string>();
+    const explicitAcceptedUserIds = explicit ? this.normalizeMemberUserIds(explicit.accepted) : [];
+    const explicitPendingUserIds = explicit
+      ? this.normalizeMemberUserIds(explicit.pending).filter(userId => !explicitAcceptedUserIds.includes(userId))
+      : [];
+
+    const acceptedSource = explicit
+      ? [
+          ...(!record.isInvitation
+            && record.type === 'events'
+            && ownerUserId
+            && !explicitPendingUserIds.includes(ownerUserId)
+            && !explicitAcceptedUserIds.includes(ownerUserId)
+              ? [ownerUserId]
+              : []),
+          ...explicitAcceptedUserIds
+        ]
+      : this.normalizeMemberUserIds(seededMemberUserIds)
+          .filter(userId => !record.isInvitation || userId !== ownerUserId);
+
+    const acceptedMemberUserIds = this.collectTargetMemberUserIds(
+      acceptedSource,
+      seededMemberUserIds,
+      acceptedTarget,
+      usedUserIds
+    );
+
+    const pendingSource = explicit
+      ? [
+          ...(record.isInvitation && ownerUserId && !explicitPendingUserIds.includes(ownerUserId)
+            ? [ownerUserId]
+            : []),
+          ...explicitPendingUserIds
+        ]
+      : [
+          ...(record.isInvitation && ownerUserId ? [ownerUserId] : []),
+          ...seededMemberUserIds
+        ];
+
+    const pendingMemberUserIds = this.collectTargetMemberUserIds(
+      pendingSource,
+      seededMemberUserIds,
+      pendingTarget,
+      usedUserIds
+    );
+
+    return {
+      acceptedMemberUserIds,
+      pendingMemberUserIds
+    };
+  }
+
+  private collectTargetMemberUserIds(
+    sourceUserIds: readonly string[],
+    fallbackUserIds: readonly string[],
+    target: number,
+    usedUserIds: Set<string>
+  ): string[] {
+    const next: string[] = [];
+    for (const userId of this.normalizeMemberUserIds([...sourceUserIds, ...fallbackUserIds])) {
+      if (next.length >= target) {
+        break;
+      }
+      if (usedUserIds.has(userId)) {
+        continue;
+      }
+      next.push(userId);
+      usedUserIds.add(userId);
+    }
+    return next;
+  }
+
+  private explicitSeedMemberUserIdsForEventId(eventId: string): ExplicitSeedMemberUserIds | null {
+    const normalizedEventId = eventId.trim();
+    if (!normalizedEventId) {
+      return null;
+    }
+    return this.explicitSeedMemberUserIdsByEventIdMap().get(normalizedEventId) ?? null;
+  }
+
+  private explicitSeedMemberUserIdsByEventIdMap(): Map<string, ExplicitSeedMemberUserIds> {
+    if (this.explicitSeedMemberUserIdsByEventId) {
+      return this.explicitSeedMemberUserIdsByEventId;
+    }
+
+    const next = new Map<string, ExplicitSeedMemberUserIds>();
+    const absorb = (item: {
+      id?: string;
+      acceptedMemberUserIds?: readonly string[];
+      pendingMemberUserIds?: readonly string[];
+    }): void => {
+      const eventId = `${item.id ?? ''}`.trim();
+      if (!eventId) {
+        return;
+      }
+      const accepted = this.normalizeMemberUserIds(item.acceptedMemberUserIds);
+      const pending = this.normalizeMemberUserIds(item.pendingMemberUserIds)
+        .filter(userId => !accepted.includes(userId));
+      if (accepted.length === 0 && pending.length === 0) {
+        return;
+      }
+      const current = next.get(eventId) ?? { accepted: [], pending: [] };
+      const mergedAccepted = this.normalizeMemberUserIds([...current.accepted, ...accepted]);
+      const mergedPending = this.normalizeMemberUserIds([...current.pending, ...pending])
+        .filter(userId => !mergedAccepted.includes(userId));
+      next.set(eventId, {
+        accepted: mergedAccepted,
+        pending: mergedPending
+      });
+    };
+
+    for (const items of Object.values(DemoEventsRepositoryBuilder.buildSeedInvitationItemsByUser())) {
+      for (const item of items) {
+        absorb(item);
+      }
+    }
+    for (const items of Object.values(DemoEventsRepositoryBuilder.buildSeedEventItemsByUser())) {
+      for (const item of items) {
+        absorb(item);
+      }
+    }
+    for (const items of Object.values(DemoEventsRepositoryBuilder.buildSeedHostingItemsByUser())) {
+      for (const item of items) {
+        absorb(item);
+      }
+    }
+
+    this.explicitSeedMemberUserIdsByEventId = next;
+    return next;
+  }
+
   private buildSeededRecordsForEvent(record: DemoEventRecord): DemoActivityMemberRecord[] {
     const owner: ActivityMemberOwnerRef = {
       ownerType: 'event',
@@ -1538,9 +1667,10 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
     );
     const row = this.buildActivityRowFromEventRecord(record);
     const entryContext = this.buildEntryContext(row, creator);
-    const acceptedMemberUserIds = this.normalizeMemberUserIds(record.acceptedMemberUserIds);
-    const pendingMemberUserIds = this.normalizeMemberUserIds(record.pendingMemberUserIds)
-      .filter(userId => !acceptedMemberUserIds.includes(userId));
+    const {
+      acceptedMemberUserIds,
+      pendingMemberUserIds
+    } = this.seedMemberUserIdsForEventRecord(record);
     const entries = this.buildEntriesFromUserIds(
       owner,
       entryContext,
@@ -1570,9 +1700,10 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
     );
     const row = this.buildActivityRowFromInvitationRecord(record);
     const entryContext = this.buildEntryContext(row, creator);
-    const acceptedMemberUserIds = this.normalizeMemberUserIds(record.acceptedMemberUserIds);
-    const pendingMemberUserIds = this.normalizeMemberUserIds(record.pendingMemberUserIds)
-      .filter(userId => !acceptedMemberUserIds.includes(userId));
+    const {
+      acceptedMemberUserIds,
+      pendingMemberUserIds
+    } = this.seedMemberUserIdsForEventRecord(record);
     const entries = this.buildEntriesFromUserIds(
       owner,
       entryContext,
@@ -1785,78 +1916,11 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
   }
 
   private buildActivityRowFromEventRecord(record: DemoEventRecord): AppTypes.ActivityListRow {
-    return {
-      id: record.id,
-      type: record.type === 'hosting' ? 'hosting' : 'events',
-      title: record.title,
-      subtitle: record.subtitle,
-      detail: record.timeframe,
-      dateIso: record.startAtIso,
-      distanceKm: record.distanceKm,
-      unread: record.activity,
-      metricScore: record.boost,
-      isAdmin: true,
-      source: {
-        id: record.id,
-        avatar: record.creatorInitials,
-        title: record.title,
-        shortDescription: record.subtitle,
-        timeframe: record.timeframe,
-        activity: record.activity,
-        isAdmin: true,
-        creatorUserId: record.creatorUserId,
-        startAt: record.startAtIso,
-        endAt: record.endAtIso,
-        distanceKm: record.distanceKm,
-        visibility: record.visibility,
-        blindMode: record.blindMode,
-        imageUrl: record.imageUrl,
-        sourceLink: record.sourceLink,
-        location: record.location,
-        capacityMin: record.capacityMin,
-        capacityMax: record.capacityMax,
-        topics: [...record.topics],
-        rating: record.rating,
-        boost: record.boost,
-        published: record.published
-      } as AppTypes.ActivityListRow['source']
-    };
+    return toActivityEventRow({ ...record, isAdmin: true });
   }
 
   private buildActivityRowFromInvitationRecord(record: DemoEventRecord): AppTypes.ActivityListRow {
-    return {
-      id: record.id,
-      type: 'invitations',
-      title: record.title,
-      subtitle: record.inviter?.trim() || record.creatorName,
-      detail: record.timeframe,
-      dateIso: record.startAtIso,
-      distanceKm: record.distanceKm,
-      unread: Math.max(0, Math.trunc(Number(record.unread) || 0)),
-      metricScore: Math.max(0, Number(record.boost) || 0),
-      isAdmin: false,
-      source: {
-        id: record.id,
-        avatar: record.avatar,
-        inviter: record.inviter?.trim() || record.creatorName,
-        description: record.title,
-        when: record.timeframe,
-        unread: Math.max(0, Math.trunc(Number(record.unread) || 0)),
-        acceptedMembers: record.acceptedMembers,
-        pendingMembers: record.pendingMembers,
-        capacityTotal: record.capacityTotal,
-        acceptedMemberUserIds: [...record.acceptedMemberUserIds],
-        pendingMemberUserIds: [...record.pendingMemberUserIds],
-        startAt: record.startAtIso,
-        endAt: record.endAtIso,
-        distanceKm: record.distanceKm,
-        imageUrl: record.imageUrl,
-        sourceLink: record.sourceLink,
-        location: record.location,
-        locationCoordinates: record.locationCoordinates,
-        policies: (record.policies ?? []).map(item => ({ ...item }))
-      } as AppTypes.ActivityListRow['source']
-    };
+    return toActivityEventRow({ ...record, isInvitation: true, type: 'invitations', isAdmin: false });
   }
 
   private resolveEventCapacityTotal(eventId: string, acceptedMembers: number): number {

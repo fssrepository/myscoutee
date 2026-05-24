@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#eefbf3"/>
+      <stop offset="1" stop-color="#f8fbff"/>
+    </linearGradient>
+  </defs>
+  <rect width="960" height="540" rx="30" fill="url(#bg)"/>
+  <rect x="6" y="6" width="948" height="528" rx="26" fill="#ffffff" opacity="0.82" stroke="#b9dcc7" stroke-width="3"/>
+  <g transform="matrix(1.16 0 0 1.16 -70 -78)">
+    <rect x="128" y="184" width="704" height="166" rx="22" fill="#eaf8ef" stroke="#9ad5b0" stroke-width="3"/>
+  <circle cx="196" cy="267" r="38" fill="#4f7fe8"/><text x="196" y="278" text-anchor="middle" font-family="Arial" font-size="24" font-weight="900" fill="#fff">NH</text>
+  <text x="260" y="242" font-family="Arial" font-size="28" font-weight="900" fill="#1d3354">Noah Hart</text>
+  <text x="260" y="276" font-family="Arial" font-size="22" font-weight="800" fill="#4f6585">Phoenix Sunday Walk · Main Event</text>
+  <text x="260" y="310" font-family="Arial" font-size="21" font-weight="800" fill="#61728f">Meeting spot ok?</text>
+  <rect x="650" y="236" width="130" height="54" rx="27" fill="#33445c" stroke="#33445c" stroke-width="3"/>
+  <text x="715" y="272" text-anchor="middle" font-family="Arial, sans-serif" font-size="27" font-weight="900" fill="#fff">4 members</text>
+  <circle cx="780" cy="226" r="21" fill="#d94a4a"/><text x="780" y="234" text-anchor="middle" font-family="Arial" font-size="18" font-weight="900" fill="#fff">1</text>
+  </g>
+</svg>

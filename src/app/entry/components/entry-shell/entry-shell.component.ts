@@ -1,11 +1,20 @@
 import { ChangeDetectorRef, Component, EventEmitter, HostListener, Injector, Input, NgZone, OnDestroy, Output, inject } from '@angular/core';
 
-import { AppContext, HelpCenterService, LandingContentService, USERS_LOAD_CONTEXT_KEY, UsersService, type DemoUserListItemDto } from '../../../shared/core';
+import {
+  AppContext,
+  HelpCenterService,
+  LandingContentService,
+  USERS_LOAD_CONTEXT_KEY,
+  UsersService,
+  type DemoUserListItemDto,
+  type UserLocationEligibilityResponseDto
+} from '../../../shared/core';
 import type { DemoBootstrapProgressStage } from '../../../shared/core/demo';
 import type * as AppTypes from '../../../shared/core/base/models';
 import type { LocationCoordinates } from '../../../shared/core/base/interfaces/location.interface';
 import { ConfirmationDialogComponent } from '../../../shared/ui/components/confirmation-dialog/confirmation-dialog.component';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
+import { I18nService } from '../../../shared/i18n';
 import type { InfoCardData } from '../../../shared/ui';
 import { EntryConsentPopupComponent } from '../entry-consent-popup/entry-consent-popup.component';
 import { EntryDemoUserSelectorComponent } from '../entry-demo-user-selector/entry-demo-user-selector.component';
@@ -44,6 +53,7 @@ export class EntryShellComponent implements OnDestroy {
   private readonly helpCenter = inject(HelpCenterService);
   private readonly landingContent = inject(LandingContentService);
   private readonly confirmationDialogService = inject(ConfirmationDialogService);
+  private readonly i18n = inject(I18nService);
   private usersServiceRef: UsersService | null = null;
   private loginEligibilityBusy = false;
   private entryContentLoadPromise: Promise<void> | null = null;
@@ -64,6 +74,10 @@ export class EntryShellComponent implements OnDestroy {
   protected landingArticlesLoading = true;
   protected landingArticlesLoadingProgress = 0;
   protected landingIdeaCards: InfoCardData[] = [];
+  protected entryAuthUnavailable = false;
+  protected entryAuthUnavailableLabel = 'Unavailable in your country';
+  protected entryAuthLocationRequired = false;
+  protected entryAuthLocationRequiredLabel = 'Allow location';
   protected showUserSelector = false;
   protected demoSelectorUsers: DemoUserListItemDto[] = [];
   protected demoSelectorLoading = false;
@@ -78,6 +92,16 @@ export class EntryShellComponent implements OnDestroy {
   private landingContentRequestToken = 0;
   private landingArticlesLoadingStartedAtMs = 0;
   private landingArticlesLoadingInterval: ReturnType<typeof setInterval> | null = null;
+  private landingLoginAvailability: UserLocationEligibilityResponseDto | null = null;
+  private locationEligibilityResolvedFromCoordinates = false;
+  private grantedLocationEligibilityPromise: Promise<void> | null = null;
+  private grantedLocationEligibilityRequestToken = 0;
+  private geolocationPermissionStatus: PermissionStatus | null = null;
+  private readonly geolocationPermissionChangeHandler = (): void => {
+    this.ngZone.run(() => {
+      this.resolveGrantedLocationAccessIfNeeded();
+    });
+  };
 
   constructor() {
     this.initializeEntryFlow();
@@ -85,6 +109,8 @@ export class EntryShellComponent implements OnDestroy {
 
   ngOnDestroy(): void {
     this.landingContentRequestToken += 1;
+    this.grantedLocationEligibilityRequestToken += 1;
+    this.unbindGeolocationPermissionStatus();
     this.clearLandingArticlesLoadingWindow();
   }
 
@@ -112,7 +138,17 @@ export class EntryShellComponent implements OnDestroy {
     return !this.entryPrivacyLoading && this.loadEntryConsentState() !== null;
   }
 
-  protected openEntryDemo(): void {
+  protected async openEntryDemo(): Promise<void> {
+    if (this.isLoginBlockedByLandingBundle()) {
+      this.openBundledLoginUnavailableInfo();
+      return;
+    }
+    if (this.isLoginLocationRequiredByLandingBundle()) {
+      const allowed = await this.ensureHttpLoginAccessAllowed();
+      if (!allowed) {
+        return;
+      }
+    }
     if (!this.ensureEntryConsent()) {
       return;
     }
@@ -120,6 +156,16 @@ export class EntryShellComponent implements OnDestroy {
   }
 
   protected async openEntryFirebaseAuth(): Promise<void> {
+    if (this.isLoginBlockedByLandingBundle()) {
+      this.openBundledLoginUnavailableInfo();
+      return;
+    }
+    if (this.isLoginLocationRequiredByLandingBundle()) {
+      const allowed = await this.ensureHttpLoginAccessAllowed();
+      if (!allowed) {
+        return;
+      }
+    }
     if (!this.ensureEntryConsent()) {
       return;
     }
@@ -244,10 +290,11 @@ export class EntryShellComponent implements OnDestroy {
 
   private initializeEntryFlow(): void {
     this.entryConsentViewOnly = false;
-    this.showEntryConsentPopup = false;
-    this.entryPrivacyLoading = true;
+    this.entryPrivacyLoading = this.helpCenter.privacyState() === null;
+    this.showEntryConsentPopup = this.entryPrivacyLoading || this.loadEntryConsentState() === null;
     this.landingArticlesLoading = true;
     this.landingArticlesLoadingProgress = 0;
+    this.syncLandingLoginAvailability(null, 'reset');
     this.showUserSelector = false;
     this.demoSelectorLoading = false;
     this.demoSelectorLoadingProgress = 0;
@@ -271,56 +318,41 @@ export class EntryShellComponent implements OnDestroy {
     if (this.hasEntryConsent) {
       return true;
     }
+    this.entryConsentViewOnly = false;
+    this.showEntryConsentPopup = true;
     if (this.helpCenter.privacyState() === null) {
       this.entryPrivacyLoading = true;
       void this.loadEntryContent();
-      this.entryConsentViewOnly = false;
-      this.showEntryConsentPopup = false;
       return false;
     }
     if (this.entryPrivacyLoading) {
-      this.entryConsentViewOnly = false;
-      this.showEntryConsentPopup = false;
       return false;
     }
-    this.entryConsentViewOnly = false;
-    this.showEntryConsentPopup = this.loadEntryConsentState() === null;
     return false;
   }
 
   private async ensureHttpLoginAccessAllowed(): Promise<boolean> {
     this.loginEligibilityBusy = true;
     try {
-      const gateState = await this.usersService.checkLocationEligibility();
-      if (gateState.securityGateEnabled !== true) {
+      const gateState = this.landingLoginAvailability;
+      if (gateState && gateState.securityGateEnabled !== true) {
         return true;
       }
-
-        const coordinates = await this.requestCurrentLocation();
-        if (!coordinates) {
-          this.confirmationDialogService.openInfo(
-          'We need your location before login so we can apply the region-based security check.',
+      if (gateState?.eligible === true && gateState.locationRequired !== true) {
+        return true;
+      }
+      if (gateState && gateState.locationRequired !== true) {
+        this.confirmationDialogService.openInfo(
+          this.loginUnavailableMessage(gateState),
           {
-            title: 'Location Required For Login',
+            title: 'Login Unavailable',
             confirmLabel: 'OK'
           }
         );
         return false;
       }
 
-      const result = await this.usersService.checkLocationEligibility(coordinates);
-      if (result.eligible) {
-        return true;
-      }
-
-      this.confirmationDialogService.openInfo(
-        result.message?.trim() || 'Login is currently unavailable from your country or region for security reasons. Please come back later.',
-        {
-          title: 'Login Unavailable',
-          confirmLabel: 'OK'
-        }
-      );
-      return false;
+      return await this.requestLocationAccessFromDialog();
     } catch {
       this.confirmationDialogService.openInfo(
         'We could not complete the region-based check right now. Please try again later.',
@@ -498,7 +530,7 @@ export class EntryShellComponent implements OnDestroy {
     this.demoSelectorLoadingLabel = 'Preparing demo data';
     this.demoSelectorLoadingStage = 'selector';
     this.demoSelectorErrorMessage = '';
-    this.changeDetectorRef.detectChanges();
+    this.changeDetectorRef.markForCheck();
   }
 
   private async requestCurrentLocation(): Promise<LocationCoordinates | null> {
@@ -527,6 +559,59 @@ export class EntryShellComponent implements OnDestroy {
     });
   }
 
+  private requestLocationAccessFromDialog(): Promise<boolean> {
+    return new Promise<boolean>(resolve => {
+      let settled = false;
+      const settle = (allowed: boolean): void => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        setTimeout(() => resolve(allowed), 0);
+      };
+
+      this.confirmationDialogService.open({
+        title: this.uiText('Location Required For Login'),
+        message: this.uiText('We need your location before login so we can apply the region-based security check.'),
+        cancelLabel: this.uiText('Not now'),
+        confirmLabel: this.uiText('Allow location'),
+        busyConfirmLabel: this.uiText('Checking location...'),
+        failureMessage: this.uiText('Location permission was not granted. Use the browser prompt or site settings, then try again.'),
+        allowBackdropClose: true,
+        allowEscapeClose: true,
+        onCancel: () => settle(false),
+        onConfirm: async () => {
+          const coordinates = await this.requestCurrentLocation();
+          if (!coordinates) {
+            throw new Error(this.uiText('Location permission was not granted. Use the browser prompt or site settings, then try again.'));
+          }
+
+          const result = await this.usersService.checkLocationEligibility(coordinates);
+          this.syncLandingLoginAvailability(result, 'coordinates');
+          if (result.eligible) {
+            settle(true);
+            return;
+          }
+
+          settle(false);
+          setTimeout(() => {
+            this.confirmationDialogService.openInfo(
+              this.uiText(result.message?.trim() || 'Login is currently unavailable from your country or region for security reasons. Please come back later.'),
+              {
+                title: this.uiText('Login Unavailable'),
+                confirmLabel: this.uiText('OK')
+              }
+            );
+          }, 0);
+        }
+      });
+    });
+  }
+
+  private uiText(value: string): string {
+    return this.i18n.translate(value);
+  }
+
   private waitForPopupPaint(): Promise<void> {
     return new Promise(resolve => {
       if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
@@ -548,7 +633,7 @@ export class EntryShellComponent implements OnDestroy {
   private commitDemoSelectorState(update: () => void): void {
     this.ngZone.run(() => {
       update();
-      this.changeDetectorRef.detectChanges();
+      this.changeDetectorRef.markForCheck();
     });
   }
 
@@ -616,24 +701,48 @@ export class EntryShellComponent implements OnDestroy {
     this.entryPrivacyLoading = true;
     this.startLandingArticlesLoadingWindow();
     this.entryContentLoadPromise = (async () => {
-      const displayState = await this.landingContent.loadDisplayState();
-      this.landingIdeaCards = displayState.ideaCards;
+      try {
+        const displayState = await this.landingContent.loadDisplayState();
+        this.ngZone.run(() => {
+          if (requestToken !== this.landingContentRequestToken) {
+            return;
+          }
+          this.landingIdeaCards = displayState.ideaCards;
+          if (!this.locationEligibilityResolvedFromCoordinates
+            && (displayState.state.loginAvailability || this.landingLoginAvailability === null)) {
+            this.syncLandingLoginAvailability(displayState.state.loginAvailability, 'bundle');
+          }
+          this.finishEntryPrivacyLoad(requestToken);
+          this.changeDetectorRef.markForCheck();
+        });
+      } catch {
+        this.ngZone.run(() => {
+          this.finishEntryPrivacyLoad(requestToken);
+        });
+      }
     })().finally(() => {
       this.ngZone.run(() => {
         if (requestToken !== this.landingContentRequestToken) {
           return;
         }
-        this.entryPrivacyLoading = false;
         this.endLandingArticlesLoadingWindow();
-        if (!this.entryConsentViewOnly) {
-          this.showEntryConsentPopup = this.loadEntryConsentState() === null;
-        }
-        this.changeDetectorRef.detectChanges();
-        this.entryConsentStateChanged.emit(this.hasEntryConsent);
+        this.changeDetectorRef.markForCheck();
       });
       this.entryContentLoadPromise = null;
     });
     return this.entryContentLoadPromise;
+  }
+
+  private finishEntryPrivacyLoad(requestToken: number): void {
+    if (requestToken !== this.landingContentRequestToken) {
+      return;
+    }
+    this.entryPrivacyLoading = false;
+    if (!this.entryConsentViewOnly) {
+      this.showEntryConsentPopup = this.loadEntryConsentState() === null;
+    }
+    this.changeDetectorRef.markForCheck();
+    this.entryConsentStateChanged.emit(this.hasEntryConsent);
   }
 
   private entryConsentVersion(): string {
@@ -663,13 +772,13 @@ export class EntryShellComponent implements OnDestroy {
   private endLandingArticlesLoadingWindow(): void {
     this.clearLandingArticlesLoadingWindow();
     this.landingArticlesLoadingProgress = 1;
-    this.changeDetectorRef.detectChanges();
+    this.changeDetectorRef.markForCheck();
     setTimeout(() => {
       this.ngZone.run(() => {
         this.landingArticlesLoading = false;
         this.landingArticlesLoadingProgress = 0;
         this.landingArticlesLoadingStartedAtMs = 0;
-        this.changeDetectorRef.detectChanges();
+        this.changeDetectorRef.markForCheck();
       });
     }, 100);
   }
@@ -689,6 +798,146 @@ export class EntryShellComponent implements OnDestroy {
     }
     clearInterval(this.landingArticlesLoadingInterval);
     this.landingArticlesLoadingInterval = null;
+  }
+
+  private syncLandingLoginAvailability(
+    availability: UserLocationEligibilityResponseDto | null | undefined,
+    source: 'bundle' | 'coordinates' | 'reset' = 'bundle'
+  ): void {
+    if (source === 'coordinates') {
+      this.locationEligibilityResolvedFromCoordinates = true;
+    } else if (source === 'reset') {
+      this.locationEligibilityResolvedFromCoordinates = false;
+    }
+    this.landingLoginAvailability = availability
+      ? {
+          eligible: availability.eligible !== false,
+          partitionKey: availability.partitionKey ?? null,
+          message: availability.message ?? null,
+          securityGateEnabled: availability.securityGateEnabled === true,
+          locationRequired: availability.locationRequired === true
+        }
+      : null;
+    this.entryAuthUnavailable = this.isLoginBlockedByLandingBundle();
+    this.entryAuthUnavailableLabel = 'Unavailable in your country';
+    this.entryAuthLocationRequired = this.isLoginLocationRequiredByLandingBundle();
+    this.deferEntryAuthLocationRequiredLabel(this.grantedLocationEligibilityPromise ? 'Checking location' : 'Allow location');
+    this.resolveGrantedLocationAccessIfNeeded();
+  }
+
+  private isLoginBlockedByLandingBundle(): boolean {
+    return this.landingLoginAvailability !== null
+      && this.landingLoginAvailability.securityGateEnabled === true
+      && this.landingLoginAvailability.eligible === false
+      && this.landingLoginAvailability.locationRequired !== true;
+  }
+
+  private isLoginLocationRequiredByLandingBundle(): boolean {
+    return this.landingLoginAvailability === null
+      || (
+        this.landingLoginAvailability.securityGateEnabled === true
+        && this.landingLoginAvailability.locationRequired === true
+      );
+  }
+
+  private openBundledLoginUnavailableInfo(): void {
+    this.confirmationDialogService.openInfo(this.loginUnavailableMessage(this.landingLoginAvailability), {
+      title: 'Login Unavailable',
+      confirmLabel: 'OK'
+    });
+  }
+
+  private loginUnavailableMessage(availability: UserLocationEligibilityResponseDto | null): string {
+    return availability?.message?.trim()
+      || 'Login is currently unavailable from your country or region for security reasons. Please come back later.';
+  }
+
+  private resolveGrantedLocationAccessIfNeeded(): void {
+    if (!this.entryAuthLocationRequired || this.grantedLocationEligibilityPromise) {
+      return;
+    }
+
+    const requestToken = ++this.grantedLocationEligibilityRequestToken;
+    this.grantedLocationEligibilityPromise = this.resolveGrantedLocationAccess(requestToken)
+      .finally(() => {
+        if (requestToken === this.grantedLocationEligibilityRequestToken) {
+          this.grantedLocationEligibilityPromise = null;
+          this.deferEntryAuthLocationRequiredLabel('Allow location');
+        }
+      });
+    this.deferEntryAuthLocationRequiredLabel('Checking location');
+  }
+
+  private deferEntryAuthLocationRequiredLabel(label: string): void {
+    const nextLabel = label.trim() || 'Allow location';
+    if (this.entryAuthLocationRequiredLabel === nextLabel) {
+      return;
+    }
+    setTimeout(() => {
+      this.ngZone.run(() => {
+        this.entryAuthLocationRequiredLabel = nextLabel;
+        this.changeDetectorRef.markForCheck();
+      });
+    }, 0);
+  }
+
+  private async resolveGrantedLocationAccess(requestToken: number): Promise<void> {
+    try {
+      const permissionState = await this.queryGeolocationPermissionState();
+      if (requestToken !== this.grantedLocationEligibilityRequestToken || permissionState !== 'granted') {
+        return;
+      }
+
+      const coordinates = await this.requestCurrentLocation();
+      if (requestToken !== this.grantedLocationEligibilityRequestToken || !coordinates) {
+        return;
+      }
+
+      const result = await this.usersService.checkLocationEligibility(coordinates);
+      if (requestToken !== this.grantedLocationEligibilityRequestToken) {
+        return;
+      }
+
+      this.ngZone.run(() => {
+        this.syncLandingLoginAvailability(result, 'coordinates');
+        this.changeDetectorRef.markForCheck();
+      });
+    } catch {
+      // Keep the explicit "Allow location" action available if the silent refresh cannot complete.
+    }
+  }
+
+  private async queryGeolocationPermissionState(): Promise<PermissionState | null> {
+    if (typeof navigator === 'undefined' || !navigator.permissions?.query) {
+      return null;
+    }
+
+    try {
+      const status = await navigator.permissions.query({ name: 'geolocation' as PermissionName });
+      this.bindGeolocationPermissionStatus(status);
+      return status.state;
+    } catch {
+      return null;
+    }
+  }
+
+  private bindGeolocationPermissionStatus(status: PermissionStatus): void {
+    if (this.geolocationPermissionStatus === status) {
+      return;
+    }
+
+    this.unbindGeolocationPermissionStatus();
+    this.geolocationPermissionStatus = status;
+    status.addEventListener('change', this.geolocationPermissionChangeHandler);
+  }
+
+  private unbindGeolocationPermissionStatus(): void {
+    if (!this.geolocationPermissionStatus) {
+      return;
+    }
+
+    this.geolocationPermissionStatus.removeEventListener('change', this.geolocationPermissionChangeHandler);
+    this.geolocationPermissionStatus = null;
   }
 
 }

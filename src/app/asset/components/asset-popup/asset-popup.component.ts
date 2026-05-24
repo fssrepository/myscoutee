@@ -18,16 +18,19 @@ import { AssetTicketCodePopupComponent } from '../asset-ticket-code-popup/asset-
 import { AssetTicketScannerPopupComponent } from '../asset-ticket-scanner-popup/asset-ticket-scanner-popup.component';
 import {
   BasketComponent,
+  CounterBadgePipe,
   InfoCardComponent,
   SmartListComponent,
   type BasketChip,
   type InfoCardMenuActionEvent,
   type ListQuery,
+  type SingleRowData,
   type SmartListConfig,
   type SmartListStateChange,
   ConfirmationDialogComponent
 } from '../../../shared/ui';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
+import { I18nPipe, I18nService } from '../../../shared/i18n';
 
 interface AssetTicketListFilters {
   userId?: string;
@@ -38,6 +41,12 @@ interface OwnedAssetListFilters {
   userId?: string;
   type?: AppTypes.AssetType;
   refreshToken?: number;
+}
+
+type AssetSupplyRequestFilter = 'all' | 'active-items' | 'pending-requests' | 'borrowed-items';
+
+interface AssetSupplyRequestRow extends SingleRowData {
+  status: AppTypes.AssetRequestStatus | 'assigned';
 }
 
 @Component({
@@ -53,6 +62,8 @@ interface OwnedAssetListFilters {
     InfoCardComponent,
     SmartListComponent,
     ConfirmationDialogComponent,
+    CounterBadgePipe,
+    I18nPipe,
     AssetFormPopupComponent,
     AssetTicketCodePopupComponent,
     AssetTicketScannerPopupComponent
@@ -66,6 +77,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
   private readonly assetTicketsService = inject(AssetTicketsService);
   private readonly shareTokensService = inject(ShareTokensService);
   private readonly confirmationDialogService = inject(ConfirmationDialogService);
+  private readonly i18n = inject(I18nService);
   protected readonly assetPopup = inject(AssetPopupStateService);
   protected readonly ownedAssets = inject(OwnedAssetsPopupFacadeService);
   protected readonly assetFilterOpen = signal(false);
@@ -77,6 +89,8 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
   private assetListVisibleCount = 0;
   protected showSupplyRequestList = false;
   protected selectedSupplyAssetId: string | null = null;
+  protected supplyRequestFilter: AssetSupplyRequestFilter = 'all';
+  protected showSupplyRequestFilterMenu = false;
   protected supplyRequestActionMenu: { id: string; openUp: boolean } | null = null;
   protected supplyRequestBusyKey = '';
   protected readonly retryTicketScanner = (event?: Event): void => this.assetPopup.retryTicketScanner(event);
@@ -90,6 +104,12 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
   protected readonly onOwnedAssetImageFileSelected = (file: File): void => this.ownedAssets.applyAssetImageFile(file);
   protected readonly cancelOwnedAssetDelete = (): void => this.ownedAssets.cancelAssetDelete();
   protected readonly confirmOwnedAssetDelete = (): void => { void this.ownedAssets.confirmAssetDelete(); };
+  protected readonly supplyRequestFilters: Array<{ key: AssetSupplyRequestFilter; labelKey: string; icon: string }> = [
+    { key: 'all', labelKey: 'all', icon: 'view_list' },
+    { key: 'active-items', labelKey: 'asset.requests.filter.active.items', icon: 'inventory_2' },
+    { key: 'pending-requests', labelKey: 'asset.requests.filter.pending.requests', icon: 'pending_actions' },
+    { key: 'borrowed-items', labelKey: 'asset.requests.filter.borrowed.items', icon: 'assignment_returned' }
+  ];
   protected assetSmartListQuery: Partial<ListQuery<OwnedAssetListFilters>> = {};
   protected ticketSmartListQuery: Partial<ListQuery<AssetTicketListFilters>> = {};
   private assetSmartListQueryKey = '';
@@ -292,6 +312,8 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
     }
     this.selectedSupplyAssetId = card.id;
     this.showSupplyRequestList = true;
+    this.supplyRequestFilter = 'all';
+    this.showSupplyRequestFilterMenu = false;
     this.supplyRequestActionMenu = null;
     this.supplyRequestBusyKey = '';
   }
@@ -300,6 +322,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
     event?.stopPropagation();
     this.showSupplyRequestList = false;
     this.selectedSupplyAssetId = null;
+    this.showSupplyRequestFilterMenu = false;
     this.supplyRequestActionMenu = null;
     this.supplyRequestBusyKey = '';
   }
@@ -313,11 +336,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
   }
 
   protected assetRequestListSubtitle(): string {
-    return 'Requests and assignments with time-based availability';
-  }
-
-  protected selectedSupplySummaryPending(): number {
-    return this.supplyPendingRequests().reduce((sum, request) => sum + this.supplyRequestQuantity(request), 0);
+    return 'asset.requests.subtitle';
   }
 
   protected selectedSupplyTotalQuantity(): number {
@@ -325,19 +344,93 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
     return asset ? AssetCardBuilder.quantityValue(asset) : 0;
   }
 
-  protected supplyPendingRequests(): AppTypes.AssetMemberRequest[] {
-    return (this.selectedSupplyAsset()?.requests ?? [])
-      .filter(request => request.status === 'pending' && !this.isAssignedSupplyRequest(request));
+  protected toggleSupplyRequestFilterMenu(event: Event): void {
+    event.stopPropagation();
+    this.showSupplyRequestFilterMenu = !this.showSupplyRequestFilterMenu;
+    this.supplyRequestActionMenu = null;
   }
 
-  protected supplyBorrowedRequests(): AppTypes.AssetMemberRequest[] {
-    return (this.selectedSupplyAsset()?.requests ?? [])
-      .filter(request => request.status === 'accepted' && !this.isAssignedSupplyRequest(request));
+  protected selectSupplyRequestFilter(filter: AssetSupplyRequestFilter, event?: Event): void {
+    event?.stopPropagation();
+    this.supplyRequestFilter = filter;
+    this.showSupplyRequestFilterMenu = false;
+    this.supplyRequestActionMenu = null;
   }
 
-  protected supplyAssignedRequests(): AppTypes.AssetMemberRequest[] {
-    return (this.selectedSupplyAsset()?.requests ?? [])
-      .filter(request => this.isAssignedSupplyRequest(request));
+  protected supplyRequestFilterLabel(): string {
+    return this.supplyRequestFilters.find(option => option.key === this.supplyRequestFilter)?.labelKey ?? 'all';
+  }
+
+  protected supplyRequestFilterIcon(): string {
+    return this.supplyRequestFilters.find(option => option.key === this.supplyRequestFilter)?.icon ?? 'view_list';
+  }
+
+  protected supplyRequestFilterCount(filter = this.supplyRequestFilter): number {
+    return this.supplyRequestsForFilter(filter).length;
+  }
+
+  protected supplyRequestRows(): AssetSupplyRequestRow[] {
+    return this.supplyRequestsForFilter(this.supplyRequestFilter).map(request => this.toSupplyRequestRow(request));
+  }
+
+  protected supplyRequestRowInventoryState(row: AssetSupplyRequestRow): 'available' | 'empty' | 'over' | 'unset' {
+    const request = this.supplyRequestForRow(row);
+    return request ? this.supplyRequestInventoryState(request) : 'unset';
+  }
+
+  protected supplyRequestRowInventoryLabel(row: AssetSupplyRequestRow): string {
+    const request = this.supplyRequestForRow(row);
+    return request ? this.supplyRequestInventoryLabel(request) : '';
+  }
+
+  protected isSupplyRequestRowActionMenuOpen(row: AssetSupplyRequestRow): boolean {
+    return this.supplyRequestActionMenu?.id === row.id;
+  }
+
+  protected isSupplyRequestRowActionMenuOpenUp(row: AssetSupplyRequestRow): boolean {
+    return this.supplyRequestActionMenu?.id === row.id && this.supplyRequestActionMenu.openUp;
+  }
+
+  protected isSupplyRequestRowBusy(row: AssetSupplyRequestRow, action: AppTypes.AssetRequestAction): boolean {
+    return this.supplyRequestBusyKey === `${row.id}:${action}`;
+  }
+
+  protected hasSupplyRequestRowActions(row: AssetSupplyRequestRow): boolean {
+    const request = this.supplyRequestForRow(row);
+    return request ? this.hasSupplyRequestActions(request) : false;
+  }
+
+  protected canPromoteSupplyRequestRowToManager(row: AssetSupplyRequestRow): boolean {
+    const request = this.supplyRequestForRow(row);
+    return request ? this.canPromoteSupplyRequestToManager(request) : false;
+  }
+
+  protected toggleSupplyRequestRowActionMenu(row: AssetSupplyRequestRow, event: Event): void {
+    const request = this.supplyRequestForRow(row);
+    if (request) {
+      this.toggleSupplyRequestActionMenu(request, event);
+    }
+  }
+
+  protected async approveSupplyRequestRow(row: AssetSupplyRequestRow, event: Event): Promise<void> {
+    const request = this.supplyRequestForRow(row);
+    if (request) {
+      await this.approveSupplyRequest(request, event);
+    }
+  }
+
+  protected async rejectSupplyRequestRow(row: AssetSupplyRequestRow, event: Event): Promise<void> {
+    const request = this.supplyRequestForRow(row);
+    if (request) {
+      await this.rejectSupplyRequest(request, event);
+    }
+  }
+
+  protected async promoteSupplyRequestRowToManager(row: AssetSupplyRequestRow, event: Event): Promise<void> {
+    const request = this.supplyRequestForRow(row);
+    if (request) {
+      await this.promoteSupplyRequestToManager(request, event);
+    }
   }
 
   protected supplyRequestQuantity(request: AppTypes.AssetMemberRequest): number {
@@ -348,12 +441,18 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
   protected supplyRequestReservationLabel(request: AppTypes.AssetMemberRequest): string {
     const quantityLabel = this.supplyRequestQuantityLabel(request);
     if (this.isAssignedSupplyRequest(request)) {
-      return `Assigned ${quantityLabel}`;
+      return this.translateTemplate('asset.requests.reservation.assigned', 'Assigned {quantity}', {
+        quantity: quantityLabel
+      });
     }
     if (request.status === 'accepted') {
-      return `Borrowed ${quantityLabel}`;
+      return this.translateTemplate('asset.requests.reservation.borrowed', 'Borrowed {quantity}', {
+        quantity: quantityLabel
+      });
     }
-    return `Borrow request for ${quantityLabel}`;
+    return this.translateTemplate('asset.requests.reservation.borrow.request', 'Borrow request for {quantity}', {
+      quantity: quantityLabel
+    });
   }
 
   protected supplyRequestEventLabel(request: AppTypes.AssetMemberRequest): string {
@@ -388,26 +487,42 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
     const quantityLabel = this.supplyRequestQuantityLabel(request);
     const total = this.selectedSupplyTotalQuantity();
     if (total <= 0) {
-      return `${quantityLabel} requested. No quantity configured.`;
+      return this.translateTemplate('asset.requests.inventory.no.quantity', '{quantity} requested. No quantity configured.', {
+        quantity: quantityLabel
+      });
     }
     const remaining = this.selectedSupplyRemainingQuantityForRequest(request);
     if (remaining < 0) {
-      return `${quantityLabel} requested. ${Math.abs(remaining)} over the limit for this time.`;
+      return this.translateTemplate('asset.requests.inventory.over', '{quantity} requested. {count} over the limit for this time.', {
+        quantity: quantityLabel,
+        count: `${Math.abs(remaining)}`
+      });
     }
-    return `${quantityLabel} requested. ${Math.max(0, remaining)} left for this time.`;
+    return this.translateTemplate('asset.requests.inventory.left', '{quantity} requested. {count} left for this time.', {
+      quantity: quantityLabel,
+      count: `${Math.max(0, remaining)}`
+    });
   }
 
   protected supplyRequestInventoryBadgeLabel(request: AppTypes.AssetMemberRequest): string {
     const quantityLabel = this.supplyRequestQuantityLabel(request);
     const total = this.selectedSupplyTotalQuantity();
     if (total <= 0) {
-      return `${quantityLabel} / no qty`;
+      return this.translateTemplate('asset.requests.inventory.badge.no.quantity', '{quantity} / no qty', {
+        quantity: quantityLabel
+      });
     }
     const remaining = this.selectedSupplyRemainingQuantityForRequest(request);
     if (remaining < 0) {
-      return `${quantityLabel} / ${Math.abs(remaining)} over`;
+      return this.translateTemplate('asset.requests.inventory.badge.over', '{quantity} / {count} over', {
+        quantity: quantityLabel,
+        count: `${Math.abs(remaining)}`
+      });
     }
-    return `${quantityLabel} / ${Math.max(0, remaining)} left`;
+    return this.translateTemplate('asset.requests.inventory.badge.left', '{quantity} / {count} left', {
+      quantity: quantityLabel,
+      count: `${Math.max(0, remaining)}`
+    });
   }
 
   protected supplyRequestInventoryState(request: AppTypes.AssetMemberRequest): 'available' | 'empty' | 'over' | 'unset' {
@@ -427,9 +542,16 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
 
   protected supplyRequestStatusLabel(request: AppTypes.AssetMemberRequest): string {
     if (this.isAssignedSupplyRequest(request)) {
-      return 'Assigned';
+      return 'asset.requests.status.assigned';
     }
-    return request.status === 'accepted' ? 'Borrowed' : 'Pending';
+    return request.status === 'accepted' ? 'asset.requests.status.borrowed' : 'asset.requests.status.pending';
+  }
+
+  protected supplyRequestRowStatusLabel(row: AssetSupplyRequestRow): string {
+    if (row.status === 'assigned') {
+      return 'asset.requests.status.assigned';
+    }
+    return row.status === 'accepted' ? 'asset.requests.status.borrowed' : 'asset.requests.status.pending';
   }
 
   protected toggleSupplyRequestActionMenu(request: AppTypes.AssetMemberRequest, event: Event): void {
@@ -515,13 +637,82 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
 
   protected supplyRequestEmptyLabel(): string {
     if (this.selectedSupplyTotalQuantity() <= 0) {
-      return 'No quantity entered yet.';
+      return 'asset.requests.empty.no.quantity';
     }
-    return 'No borrow or assignment activity yet.';
+    return 'asset.requests.empty.no.activity';
   }
 
   private isAssignedSupplyRequest(request: AppTypes.AssetMemberRequest): boolean {
     return request.requestKind === 'manual';
+  }
+
+  private supplyRequestsForFilter(filter: AssetSupplyRequestFilter): AppTypes.AssetMemberRequest[] {
+    const requests = [...(this.selectedSupplyAsset()?.requests ?? [])];
+    const ordered = requests.sort((left, right) => {
+      const leftOrder = this.supplyRequestBucketOrder(left);
+      const rightOrder = this.supplyRequestBucketOrder(right);
+      return leftOrder - rightOrder
+        || this.toSupplyRequestSortTime(right) - this.toSupplyRequestSortTime(left)
+        || left.id.localeCompare(right.id);
+    });
+    if (filter === 'pending-requests') {
+      return ordered.filter(request => request.status === 'pending' && !this.isAssignedSupplyRequest(request));
+    }
+    if (filter === 'borrowed-items') {
+      return ordered.filter(request => request.status === 'accepted' && !this.isAssignedSupplyRequest(request));
+    }
+    if (filter === 'active-items') {
+      return ordered.filter(request => request.status === 'accepted' || this.isAssignedSupplyRequest(request));
+    }
+    return ordered;
+  }
+
+  private toSupplyRequestRow(request: AppTypes.AssetMemberRequest): AssetSupplyRequestRow {
+    const eventLabel = this.supplyRequestEventLabel(request);
+    const scheduleLabel = this.supplyRequestScheduleLabel(request);
+    const note = this.supplyRequestDisplayNote(request);
+    return {
+      id: request.id,
+      status: this.isAssignedSupplyRequest(request) ? 'assigned' : request.status,
+      title: request.name,
+      subtitle: eventLabel,
+      detail: note || scheduleLabel,
+      dateIso: request.requestedAtIso ?? request.booking?.startAtIso ?? '',
+      avatarInitials: request.initials,
+      sideLabel: this.supplyRequestInventoryBadgeLabel(request),
+      metaRows: [scheduleLabel].filter(Boolean),
+      menuActions: this.supplyRequestMenuActions(request)
+    };
+  }
+
+  private supplyRequestMenuActions(request: AppTypes.AssetMemberRequest): readonly string[] {
+    if (request.status === 'pending' && !this.isAssignedSupplyRequest(request)) {
+      return this.canPromoteSupplyRequestToManager(request)
+        ? ['accept', 'makeManager', 'remove']
+        : ['accept', 'remove'];
+    }
+    return this.canPromoteSupplyRequestToManager(request) ? ['makeManager'] : [];
+  }
+
+  private supplyRequestForRow(row: AssetSupplyRequestRow): AppTypes.AssetMemberRequest | null {
+    return (this.selectedSupplyAsset()?.requests ?? []).find(request => request.id === row.id) ?? null;
+  }
+
+  private supplyRequestBucketOrder(request: AppTypes.AssetMemberRequest): number {
+    if (request.status === 'pending' && !this.isAssignedSupplyRequest(request)) {
+      return 0;
+    }
+    if (request.status === 'accepted' && !this.isAssignedSupplyRequest(request)) {
+      return 1;
+    }
+    return 2;
+  }
+
+  private toSupplyRequestSortTime(request: AppTypes.AssetMemberRequest): number {
+    const parsed = this.parseIsoDate(request.requestedAtIso)
+      ?? this.parseIsoDate(request.booking?.startAtIso)
+      ?? this.parseIsoDate(request.booking?.endAtIso);
+    return parsed ? parsed.getTime() : 0;
   }
 
   private selectedSupplyRemainingQuantityForRequest(request: AppTypes.AssetMemberRequest): number {
@@ -575,7 +766,17 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
 
   private supplyRequestQuantityLabel(request: AppTypes.AssetMemberRequest): string {
     const quantity = this.supplyRequestQuantity(request);
-    return quantity === 1 ? '1 item' : `${quantity} items`;
+    return this.translateTemplate(
+      quantity === 1 ? 'asset.requests.quantity.one' : 'asset.requests.quantity.many',
+      quantity === 1 ? '{count} item' : '{count} items',
+      { count: `${quantity}` }
+    );
+  }
+
+  private translateTemplate(key: string, fallback: string, values: Record<string, string>): string {
+    this.i18n.revision();
+    const template = this.i18n.translate(key, fallback);
+    return template.replace(/\{([a-zA-Z0-9_.-]+)\}/g, (match, valueKey: string) => values[valueKey] ?? match);
   }
 
   private isSystemSupplyRequestNote(note: string): boolean {
@@ -851,12 +1052,26 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
       card.subtitle,
       card.city,
       card.capacityTotal,
+      card.quantity,
       card.details,
       card.imageUrl,
       card.sourceLink,
+      card.visibility ?? '',
+      card.status ?? '',
+      card.ownerUserId ?? '',
+      card.ownerName ?? '',
+      (card.menuActions ?? []).join(','),
       JSON.stringify(card.pricing ?? null),
       ...(card.routes ?? []),
-      String(card.requests.length)
+      card.requests.map(request => [
+        request.id,
+        request.status,
+        request.note,
+        request.requestKind ?? '',
+        request.booking?.quantity ?? '',
+        request.booking?.inventoryApplied ?? '',
+        (request.menuActions ?? []).join(',')
+      ].join('/')).join(',')
     ].join(':')).join('|')}`;
 
     if (contextKey !== this.lastAssetListContextKey) {

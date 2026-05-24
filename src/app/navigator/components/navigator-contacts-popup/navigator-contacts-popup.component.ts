@@ -1,4 +1,4 @@
-import { Component, HostListener, ViewChild, computed, effect, inject, signal, untracked } from '@angular/core';
+import { Component, HostListener, OnDestroy, ViewChild, computed, effect, inject, signal, untracked } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -25,7 +25,7 @@ import {
   type NavigatorContactMethodItem,
   type NavigatorContactMethodType
 } from '../../navigator-contacts.service';
-import { UsersService } from '../../../shared/core';
+import { ExplanationGuideService, UsersService } from '../../../shared/core';
 import { NavigatorService } from '../../navigator.service';
 
 @Component({
@@ -42,10 +42,11 @@ import { NavigatorService } from '../../navigator.service';
   templateUrl: './navigator-contacts-popup.component.html',
   styleUrl: './navigator-contacts-popup.component.scss'
 })
-export class NavigatorContactsPopupComponent {
+export class NavigatorContactsPopupComponent implements OnDestroy {
   private readonly confirmationDialogService = inject(ConfirmationDialogService);
   private readonly navigatorService = inject(NavigatorService);
   private readonly usersService = inject(UsersService);
+  private readonly explanationGuide = inject(ExplanationGuideService);
   protected readonly contactsService = inject(NavigatorContactsService);
   protected readonly contactMethodOptions = NAVIGATOR_CONTACT_METHOD_OPTIONS;
   protected readonly isMobileViewport = signal(this.detectMobileViewport());
@@ -65,8 +66,14 @@ export class NavigatorContactsPopupComponent {
   private lastKnownTotal = 0;
   private readonly hasInitialLoadCompleted = signal(false);
   private readonly isDeletionsPending = signal(false);
+  private contactsExplanationContextKey: string | null = null;
+  private unregisterContactsExplanationContext: (() => void) | null = null;
 
   constructor() {
+    effect(() => {
+      this.setContactsExplanationContext(this.contactsService.isOpen() ? 'contacts' : null);
+    });
+
     effect(() => {
       const revision = this.contactsService.revision();
       const lastOptimistic = this.contactsService.lastOptimisticRevision();
@@ -87,6 +94,10 @@ export class NavigatorContactsPopupComponent {
         this.manualRefreshRevision.set(revision);
       });
     });
+  }
+
+  ngOnDestroy(): void {
+    this.clearContactsExplanationContext();
   }
 
   @ViewChild('contactsSmartList')
@@ -175,6 +186,24 @@ export class NavigatorContactsPopupComponent {
     this.editingContact.set(null);
     this.formErrorMessage.set('');
     this.contactsService.closePopup();
+  }
+
+  private setContactsExplanationContext(contextKey: string | null): void {
+    if (this.contactsExplanationContextKey === contextKey) {
+      return;
+    }
+    this.clearContactsExplanationContext();
+    if (!contextKey) {
+      return;
+    }
+    this.contactsExplanationContextKey = contextKey;
+    this.unregisterContactsExplanationContext = this.explanationGuide.registerContext(contextKey);
+  }
+
+  private clearContactsExplanationContext(): void {
+    this.unregisterContactsExplanationContext?.();
+    this.unregisterContactsExplanationContext = null;
+    this.contactsExplanationContextKey = null;
   }
 
   protected async openCreateContactPicker(event?: Event): Promise<void> {

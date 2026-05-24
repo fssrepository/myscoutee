@@ -49,7 +49,7 @@ import { EventCheckoutDialogService } from '../../../shared/ui/services/event-ch
 import { NavigatorService } from '../../../navigator';
 import type { DemoEventRecord } from '../../../shared/core/demo/models/events.model';
 import { resolveCurrentRouteDelayMs } from '../../../shared/core/base/services/route-delay.service';
-import type { ChatMenuItem } from '../../../shared/core/base/interfaces/activity-feed.interface';
+import type { ChatRecord } from '../../../shared/core/base/models/chat.model';
 
 type CheckoutDraftEntry = {
   draft: EventCheckoutDraft;
@@ -829,33 +829,10 @@ export class EventExplorePopupComponent {
     if (!chat) {
       return;
     }
-    this.activitiesContext.openEventChat(chat, {
-      channelType: 'serviceEvent',
-      hasSubEventMenu: false,
-      actionIcon: 'support_agent',
-      actionLabel: 'View Event',
-      actionToneClass: 'popup-chat-context-btn-tone-main-event',
-      actionBadgeCount: 0,
-      menuTitle: chat.title,
-      eventRow: EventExploreBuilder.buildActivityRow(record),
-      subEventRow: null,
-      subEvent: null,
-      group: null,
-      assetAssignmentIds: {
-        Car: [],
-        Accommodation: [],
-        Supplies: []
-      },
-      assetCardsByType: {
-        Car: [],
-        Accommodation: [],
-        Supplies: []
-      },
-      resources: []
-    });
+    this.activitiesContext.openEventChat(chat);
   }
 
-  private buildEventExploreServiceChat(record: DemoEventRecord): (ChatMenuItem & { ownerUserId?: string }) | null {
+  private buildEventExploreServiceChat(record: DemoEventRecord): (ChatRecord & { ownerUserId?: string }) | null {
     const activeUserId = this.activeUserId.trim();
     if (!activeUserId) {
       return null;
@@ -1051,8 +1028,6 @@ export class EventExplorePopupComponent {
           pendingMembers: Number.isFinite(Number(sync.pendingMembers))
             ? Math.max(0, Math.trunc(Number(sync.pendingMembers)))
             : existing.pendingMembers,
-          acceptedMemberUserIds: [...existing.acceptedMemberUserIds],
-          pendingMemberUserIds: [...existing.pendingMemberUserIds],
           capacityMin: sync.capacityMin ?? existing.capacityMin,
           capacityMax: sync.capacityMax ?? existing.capacityMax,
           capacityTotal: Math.max(
@@ -1111,15 +1086,16 @@ export class EventExplorePopupComponent {
   private buildMemberEntries(record: DemoEventRecord): AppTypes.ActivityMemberEntry[] {
     const row = EventExploreBuilder.buildActivityRow(record);
     const rowKey = `${row.type}:${row.id}`;
+    const summary = this.activityMembersService.peekSummaryByOwner(this.eventMembersOwner(record));
     const acceptedUserIds = this.ensureMemberUserIds(
-      record.acceptedMemberUserIds,
+      summary?.acceptedMemberUserIds ?? [],
       record.acceptedMembers,
       record,
       new Set<string>(),
       true
     );
     const pendingUserIds = this.ensureMemberUserIds(
-      record.pendingMemberUserIds,
+      summary?.pendingMemberUserIds ?? [],
       record.pendingMembers,
       record,
       new Set(acceptedUserIds),
@@ -1163,9 +1139,6 @@ export class EventExplorePopupComponent {
 
   private hasTrackedMembership(record: DemoEventRecord, userId: string): boolean {
     if (userId === this.activeUserId.trim() && this.locallyTrackedMembershipSourceIds.has(record.id)) {
-      return true;
-    }
-    if (record.acceptedMemberUserIds.includes(userId) || record.pendingMemberUserIds.includes(userId)) {
       return true;
     }
     if (this.hasPendingCheckoutDraft(record.id, userId)) {
@@ -1237,13 +1210,6 @@ export class EventExplorePopupComponent {
       return 'accepted';
     }
     if (existingEntry?.status === 'pending') {
-      return 'pending';
-    }
-    const knownRecord = record ?? this.eventsService.peekKnownItemById(activeUserId, ownerId);
-    if (knownRecord?.acceptedMemberUserIds.includes(activeUserId)) {
-      return 'accepted';
-    }
-    if (knownRecord?.pendingMemberUserIds.includes(activeUserId)) {
       return 'pending';
     }
     return 'none';
@@ -1406,9 +1372,20 @@ export class EventExplorePopupComponent {
         bookingConfirmed: isAcceptedBooking,
         pendingReason
       });
-      await Promise.all([exitPromise, delayPromise, requestJoinPromise]);
+      const [joinedRecord] = await Promise.all([requestJoinPromise, exitPromise, delayPromise]);
+      if (!joinedRecord) {
+        throw new Error(this.eventExploreJoinFailureMessage(record));
+      }
+      const authoritativeMembers = this.sortMembersByActionTimeDesc(
+        await this.activityMembersService.queryMembersByOwner(this.eventMembersOwner(joinedRecord))
+      );
+      const displayMembers = authoritativeMembers.length > 0 ? authoritativeMembers : nextMembers;
+      this.activitiesContext.emitActivitiesEventSync(
+        this.buildActivitiesEventSyncPayload(joinedRecord, displayMembers, selection?.paymentSessionId ?? null)
+      );
       if (this.selectedMembersRecord?.id === record.id) {
-        this.selectedMembers = nextMembers;
+        this.selectedMembersRecord = joinedRecord;
+        this.selectedMembers = displayMembers;
       }
       this.cdr.markForCheck();
     } catch (error) {
@@ -1612,9 +1589,6 @@ export class EventExplorePopupComponent {
     selection?: AppTypes.EventCheckoutSelection | null
   ): boolean {
     if (this.isEventExploreSelectionFull(record, selection)) {
-      return false;
-    }
-    if (Boolean(selection?.paymentSessionId?.trim())) {
       return false;
     }
     if (record.ticketing !== true) {

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f1f6ff"/>
+      <stop offset="1" stop-color="#fff8ec"/>
+    </linearGradient>
+  </defs>
+  <rect width="960" height="540" rx="30" fill="url(#bg)"/>
+  <rect x="6" y="6" width="948" height="528" rx="26" fill="#ffffff" opacity="0.82" stroke="#c8d9ef" stroke-width="3"/>
+  <g transform="matrix(1.16 0 0 1.16 -70 -78)">
+    <rect x="170" y="150" width="620" height="210" rx="22" fill="#20344f"/><rect x="614" y="178" width="138" height="58" rx="29" fill="#ffe7a6" stroke="#d3a33d" stroke-width="3"/><polygon points="658.0,189.0 662.9,200.3 675.1,201.4 665.9,209.6 668.6,221.6 658.0,215.3 647.4,221.6 650.1,209.6 640.9,201.4 653.1,200.3" fill="#a56a19"/><text x="694" y="216" text-anchor="middle" font-family="Arial" font-size="30" font-weight="900" fill="#a56a19">4</text>
+  <text x="612" y="292" font-family="Arial" font-size="31" font-weight="900" fill="#fff">Score</text><text x="612" y="326" font-family="Arial" font-size="24" font-weight="900" fill="#fff">Rate</text>
+  <rect x="170" y="395" width="620" height="18" rx="9" fill="#dfe8f2"/><rect x="170" y="395" width="410" height="18" rx="9" fill="#f3973d"/><circle cx="580" cy="404" r="28" fill="#8eea10" stroke="#fff" stroke-width="5"/>
+  </g>
+</svg>

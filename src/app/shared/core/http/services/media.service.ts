@@ -21,7 +21,7 @@ export class HttpMediaService {
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
 
   async uploadImage(
-    scope: 'event' | 'asset' | 'chat' | 'idea',
+    scope: string,
     ownerId: string,
     entityId: string,
     file: File
@@ -131,6 +131,6 @@ export class HttpMediaService {
     if (url.startsWith('media/')) {
       return `${baseUrl}/${url}`;
     }
-    return url;
+    return `${baseUrl}/media/public?key=${encodeURIComponent(url)}`;
   }
 }

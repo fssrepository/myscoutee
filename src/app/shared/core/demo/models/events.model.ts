@@ -81,8 +81,6 @@ export interface DemoEventRecord {
   upcomingSlots?: AppTypes.EventSlotOccurrence[];
   acceptedMembers: number;
   pendingMembers: number;
-  acceptedMemberUserIds: string[];
-  pendingMemberUserIds: string[];
   pendingReason?: 'approval' | 'waitlist' | null;
   topics: string[];
   subEvents?: AppTypes.SubEventFormItem[];

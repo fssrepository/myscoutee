@@ -3,6 +3,7 @@ export * from './popup.model';
 export * from './activity-member.model';
 export * from './activity-resource.model';
 export * from './chat.model';
+export * from './rate.model';
 export * from './profile.model';
 export * from './event.model';
 export * from './pricing.model';

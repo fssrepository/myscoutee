@@ -191,7 +191,7 @@ export class AppUtils {
     if (activitiesView === 'distance') {
       const distanceMeters = Number.isFinite(row.distanceMetersExact)
         ? Math.max(0, Math.trunc(Number(row.distanceMetersExact)))
-        : Math.max(0, Math.round((Number(row.distanceKm) || 0) * 1000));
+        : 0;
       const bucket = Math.max(5, Math.ceil(distanceMeters / 5000) * 5);
       return `${bucket} km`;
     }

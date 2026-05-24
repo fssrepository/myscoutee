@@ -4,7 +4,7 @@ import { Injectable, inject } from '@angular/core';
 import { environment } from '../../../../../environments/environment';
 import type * as AppTypes from '../../../core/base/models';
 import { AppUtils } from '../../../app-utils';
-import type { ChatMenuItem } from '../../base/interfaces/activity-feed.interface';
+import type { ChatRecord } from '../../base/models/chat.model';
 import type { ActivitiesPageRequest } from '../../base/models';
 import { AppContext } from '../../base/context';
 import { FirebaseAuthService } from '../../base/services/firebase-auth.service';
@@ -135,8 +135,30 @@ interface HttpChatReadReceiptDto {
   readAtIso: string;
 }
 
+interface HttpChatMemberDto {
+  userId?: string | null;
+  id?: string | null;
+  name?: string | null;
+  initials?: string | null;
+  imageUrl?: string | null;
+  avatarUrl?: string | null;
+  gender?: string | null;
+  city?: string | null;
+  statusText?: string | null;
+  role?: string | null;
+  status?: string | null;
+  pendingSource?: string | null;
+  requestKind?: string | null;
+  invitedByActiveUser?: boolean | null;
+  invitedByUserId?: string | null;
+  metAtIso?: string | null;
+  actionAtIso?: string | null;
+  metWhere?: string | null;
+  profile?: AppTypes.ActivityMemberEntry['profile'];
+}
+
 interface HttpChatSocketEventDto {
-  type: 'message' | 'typing' | 'read' | 'error';
+  type: 'message' | 'ack' | 'typing' | 'read' | 'error';
   chatId: string;
   message?: HttpChatMessageDto | null;
   typing?: HttpChatTypingDto | null;
@@ -284,7 +306,7 @@ export class HttpChatsService {
     return records.map(record => this.cloneChatRecord(record));
   }
 
-  async loadChatMessages(chat: ChatMenuItem): Promise<AppTypes.ChatPopupMessage[]> {
+  async loadChatMessages(chat: ChatRecord): Promise<AppTypes.ChatPopupMessage[]> {
     try {
       const response = await this.http
         .get<HttpChatMessageDto[]>(`${this.apiBaseUrl}/activities/chats/${encodeURIComponent(chat.id)}/messages`, {
@@ -302,12 +324,32 @@ export class HttpChatsService {
     }
   }
 
-  async sendChatMessage(chat: ChatMenuItem, text: string, clientId?: string): Promise<AppTypes.ChatPopupMessage | null> {
+  async queryChatMembers(chatId: string): Promise<AppTypes.ActivityMemberEntry[]> {
+    const normalizedChatId = `${chatId ?? ''}`.trim();
+    if (!normalizedChatId) {
+      return [];
+    }
+    try {
+      const response = await this.http
+        .get<HttpChatMemberDto[] | null>(
+          `${this.apiBaseUrl}/activities/chats/${encodeURIComponent(normalizedChatId)}/members`,
+          { params: this.activeUserParams() }
+        )
+        .toPromise();
+      return Array.isArray(response)
+        ? response.map((member, index) => this.mapChatMember(member, normalizedChatId, index))
+        : [];
+    } catch {
+      return [];
+    }
+  }
+
+  async sendChatMessage(chat: ChatRecord, text: string, clientId?: string): Promise<AppTypes.ChatPopupMessage | null> {
     return this.sendChatMessageWithAttachments(chat, text, [], clientId);
   }
 
   async sendChatMessageWithAttachments(
-    chat: ChatMenuItem,
+    chat: ChatRecord,
     text: string,
     attachments: readonly AppTypes.ChatMessageAttachment[] = [],
     clientId?: string,
@@ -352,7 +394,7 @@ export class HttpChatsService {
     }
   }
 
-  async sendChatTyping(chat: ChatMenuItem, typing: boolean): Promise<void> {
+  async sendChatTyping(chat: ChatRecord, typing: boolean): Promise<void> {
     const socket = await this.ensureSocket(chat);
     if (!socket || socket.readyState !== WebSocket.OPEN) {
       return;
@@ -365,7 +407,7 @@ export class HttpChatsService {
     socket.send(JSON.stringify(payload));
   }
 
-  async markChatRead(chat: ChatMenuItem, messageIds: readonly string[]): Promise<void> {
+  async markChatRead(chat: ChatRecord, messageIds: readonly string[]): Promise<void> {
     const normalizedIds = messageIds
       .map(messageId => `${messageId ?? ''}`.trim())
       .filter(messageId => messageId.length > 0);
@@ -384,7 +426,7 @@ export class HttpChatsService {
     socket.send(JSON.stringify(payload));
   }
 
-  async updateSupportCase(chat: ChatMenuItem, action: AppTypes.SupportCaseAction): Promise<DemoChatRecord | null> {
+  async updateSupportCase(chat: ChatRecord, action: AppTypes.SupportCaseAction): Promise<DemoChatRecord | null> {
     const normalizedChatId = `${chat.id ?? ''}`.trim();
     const userId = this.activeUserId();
     if (!normalizedChatId || !userId) {
@@ -405,7 +447,7 @@ export class HttpChatsService {
   }
 
   async updateChatMessage(
-    chat: ChatMenuItem,
+    chat: ChatRecord,
     messageId: string,
     mutation: AppTypes.ChatMessageMutation
   ): Promise<AppTypes.ChatPopupMessage | null> {
@@ -459,7 +501,7 @@ export class HttpChatsService {
   }
 
   async watchChatEvents(
-    chat: ChatMenuItem,
+    chat: ChatRecord,
     onEvent: (event: AppTypes.ChatLiveEvent) => void
   ): Promise<() => void> {
     const normalizedChatId = `${chat.id ?? ''}`.trim();
@@ -482,7 +524,7 @@ export class HttpChatsService {
   }
 
   async watchChatMessages(
-    chat: ChatMenuItem,
+    chat: ChatRecord,
     onMessage: (message: AppTypes.ChatPopupMessage) => void
   ): Promise<() => void> {
     return this.watchChatEvents(chat, event => {
@@ -715,6 +757,51 @@ export class HttpChatsService {
     };
   }
 
+  private mapChatMember(
+    member: HttpChatMemberDto,
+    chatId: string,
+    index: number
+  ): AppTypes.ActivityMemberEntry {
+    const userId = this.normalizeHttpText(member.userId) || this.normalizeHttpText(member.id) || `chat-member-${index + 1}`;
+    const name = this.normalizeHttpText(member.name) || userId;
+    const initials = this.normalizeHttpText(member.initials) || AppUtils.initialsFromText(name);
+    const gender = member.gender === 'woman' || member.gender === 'man' ? member.gender : 'man';
+    const status = member.status === 'pending' || member.status === 'disqualified' ? member.status : 'accepted';
+    const pendingSource = member.pendingSource === 'admin' || member.pendingSource === 'member' ? member.pendingSource : null;
+    const requestKind = member.requestKind === 'invite'
+      || member.requestKind === 'join'
+      || member.requestKind === 'waitlist'
+      || member.requestKind === 'waitlist-invite'
+      ? member.requestKind
+      : null;
+    const avatarUrl = this.normalizeHttpText(member.avatarUrl)
+      || this.normalizeHttpText(member.imageUrl)
+      || '';
+    const nowIso = this.normalizeHttpText(member.actionAtIso)
+      || this.normalizeHttpText(member.metAtIso)
+      || new Date().toISOString();
+    return {
+      id: this.normalizeHttpText(member.id) || `chat:${chatId}:${userId}`,
+      userId,
+      name,
+      initials,
+      gender,
+      city: this.normalizeHttpText(member.city),
+      statusText: this.normalizeHttpText(member.statusText) || 'Chat member',
+      role: member.role === 'Admin' || member.role === 'Manager' ? member.role : 'Member',
+      status,
+      pendingSource,
+      requestKind,
+      invitedByActiveUser: member.invitedByActiveUser === true,
+      invitedByUserId: this.normalizeHttpText(member.invitedByUserId) || null,
+      metAtIso: this.normalizeHttpText(member.metAtIso) || nowIso,
+      actionAtIso: nowIso,
+      metWhere: this.normalizeHttpText(member.metWhere) || 'Chat',
+      avatarUrl,
+      profile: member.profile ?? null
+    };
+  }
+
   private mapChatAttachment(attachment: HttpChatMessageAttachmentDto): AppTypes.ChatMessageAttachment {
     return {
       id: `${attachment.id ?? ''}`.trim(),
@@ -766,7 +853,7 @@ export class HttpChatsService {
   }
 
   private updateCachedChatSummaryAfterMessage(
-    chat: ChatMenuItem,
+    chat: ChatRecord,
     message: AppTypes.ChatPopupMessage
   ): void {
     const ownerUserId = this.activeUserId();
@@ -790,7 +877,7 @@ export class HttpChatsService {
   }
 
   private buildCachedChatRecordFromMessage(
-    chat: ChatMenuItem,
+    chat: ChatRecord,
     ownerUserId: string,
     message: AppTypes.ChatPopupMessage,
     existingRecord: DemoChatRecord | null
@@ -821,7 +908,7 @@ export class HttpChatsService {
     } satisfies DemoChatRecord;
   }
 
-  private resolveCachedChatMessages(chat: ChatMenuItem): AppTypes.ChatPopupMessage[] {
+  private resolveCachedChatMessages(chat: ChatRecord): AppTypes.ChatPopupMessage[] {
     const ownerUserId = this.activeUserId();
     const normalizedChatId = `${chat.id ?? ''}`.trim();
     if (!ownerUserId || !normalizedChatId) {
@@ -917,6 +1004,15 @@ export class HttpChatsService {
 
     const type = payload.type ?? 'message';
     const chatId = `${payload.chatId ?? fallbackChatId}`.trim() || fallbackChatId;
+    if (type === 'ack') {
+      return {
+        type: 'ack',
+        chatId,
+        message: payload.message ? this.mapChatMessage(payload.message, chatId) : undefined,
+        messageId: `${payload.messageId ?? payload.message?.id ?? ''}`.trim() || undefined,
+        clientId: `${payload.clientId ?? payload.message?.clientId ?? ''}`.trim() || undefined
+      };
+    }
     if (type === 'typing' && payload.typing) {
       return {
         type: 'typing',
@@ -972,7 +1068,7 @@ export class HttpChatsService {
       || Object.prototype.hasOwnProperty.call(payload, 'sentAtIso');
   }
 
-  private async ensureSocket(chat: ChatMenuItem): Promise<WebSocket | null> {
+  private async ensureSocket(chat: ChatRecord): Promise<WebSocket | null> {
     const normalizedChatId = `${chat.id ?? ''}`.trim();
     if (!normalizedChatId || typeof WebSocket === 'undefined' || typeof window === 'undefined') {
       return null;
@@ -1082,7 +1178,7 @@ export class HttpChatsService {
     if (this.sessionService.currentSession()?.kind === 'demo') {
       baseUrl.searchParams.set('sessionKind', 'demo');
     }
-    if (this.firebaseAuthService.enabled) {
+    if (this.firebaseAuthService.enabled && this.sessionService.currentSession()?.kind !== 'demo') {
       const token = await this.firebaseAuthService.getIdToken();
       if (!token) {
         return null;
@@ -1133,6 +1229,16 @@ export class HttpChatsService {
       this.resolvePendingSocketAck(normalizedClientId, event.message);
       this.resolvePendingSocketUpdate(normalizedMessageId, event.message);
       this.updateCachedChatSummaryFromSocketEvent(event.chatId, event.message);
+    }
+    if (event.type === 'ack') {
+      const normalizedClientId = `${event.clientId ?? event.message?.clientId ?? ''}`.trim();
+      const normalizedMessageId = `${event.messageId ?? event.message?.id ?? ''}`.trim();
+      this.clearPendingSocketMessage(normalizedClientId);
+      this.resolvePendingSocketAck(normalizedClientId, event.message ?? null);
+      this.resolvePendingSocketUpdate(normalizedMessageId, event.message ?? null);
+      if (event.message) {
+        this.updateCachedChatSummaryFromSocketEvent(event.chatId, event.message);
+      }
     }
     if (event.type === 'error') {
       const normalizedClientId = `${event.clientId ?? ''}`.trim();

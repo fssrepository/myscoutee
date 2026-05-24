@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 
 import { environment } from '../../../../../environments/environment';
 import type { HelpCenterState, LandingContentState } from '../../base/models';
+import type { UserLocationEligibilityResponseDto } from '../../base/interfaces/user.interface';
 import { HttpHelpCenterService } from './help-center.service';
 import { HttpIdeaPostsService } from './idea-posts.service';
 
@@ -19,6 +20,7 @@ export class HttpLandingContentService {
     type LandingContentResponse = {
       privacy?: Partial<HelpCenterState> | null;
       ideas?: unknown;
+      loginAvailability?: Partial<UserLocationEligibilityResponseDto> | null;
     };
     const lang = this.browserLanguage();
     const response = await this.http
@@ -28,7 +30,24 @@ export class HttpLandingContentService {
       .toPromise();
     return {
       privacy: this.helpCenter.normalizeExternalState(response?.privacy, 'privacy'),
-      ideas: this.ideaPosts.normalizePosts(Array.isArray(response?.ideas) ? response?.ideas : [])
+      ideas: this.ideaPosts.normalizePosts(Array.isArray(response?.ideas) ? response?.ideas : []),
+      loginAvailability: this.normalizeLoginAvailability(response?.loginAvailability)
+    };
+  }
+
+  private normalizeLoginAvailability(
+    response: Partial<UserLocationEligibilityResponseDto> | null | undefined
+  ): UserLocationEligibilityResponseDto | null {
+    if (!response) {
+      return null;
+    }
+    const eligible = response?.eligible !== false;
+    return {
+      eligible,
+      partitionKey: typeof response?.partitionKey === 'string' ? response.partitionKey : null,
+      message: typeof response?.message === 'string' ? response.message : null,
+      securityGateEnabled: response?.securityGateEnabled === true,
+      locationRequired: response?.locationRequired === true
     };
   }
 

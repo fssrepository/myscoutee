@@ -29,8 +29,10 @@ export {
   HelpCenterService,
   HELP_CENTER_LOAD_CONTEXT_KEY
 } from './base/services/help-center.service';
+export { ExplanationGuideService } from './base/services/explanation-guide.service';
 export { IdeaPostsService } from './base/services/idea-posts.service';
 export { LandingContentService } from './base/services/landing-content.service';
+export { MediaService } from './base/services/media.service';
 export { EventsService } from './base/services/events.service';
 export { RouteDelayService } from './base/services/route-delay.service';
 export { EventEditorDataService } from './base/services/event-editor-data.service';

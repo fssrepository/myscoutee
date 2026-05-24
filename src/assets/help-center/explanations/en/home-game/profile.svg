@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f2fbf8"/>
+      <stop offset="1" stop-color="#fff8ed"/>
+    </linearGradient>
+  </defs>
+  <rect width="960" height="540" rx="30" fill="url(#bg)"/>
+  <rect x="6" y="6" width="948" height="528" rx="26" fill="#ffffff" opacity="0.82" stroke="#cfe2d9" stroke-width="3"/>
+  <g transform="matrix(1.16 0 0 1.16 -70 -78)">
+    <rect x="198" y="144" width="564" height="300" rx="24" fill="#20344f"/>
+  <rect x="198" y="144" width="564" height="300" rx="24" fill="url(#profileGrad)"/>
+  <defs><linearGradient id="profileGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#87a7bd"/><stop offset=".55" stop-color="#d9cfaa"/><stop offset="1" stop-color="#172945"/></linearGradient></defs>
+  <rect x="228" y="168" width="150" height="8" rx="4" fill="#fff" opacity=".9"/><rect x="386" y="168" width="150" height="8" rx="4" fill="#fff" opacity=".7"/><rect x="544" y="168" width="150" height="8" rx="4" fill="#fff" opacity=".55"/>
+  <circle cx="250" cy="360" r="30" fill="#f4fbff" stroke="#bcd8ef" stroke-width="3"/><path d="M 243.95 351.75 L 250 345.7 L 256.05 351.75" fill="none" stroke="#6846d8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <line x1="250" y1="346.8" x2="250" y2="357.8" stroke="#6846d8" stroke-width="2.2" stroke-linecap="round"/>
+  <path d="M 243.95 368.25 L 250 374.3 L 256.05 368.25" fill="none" stroke="#6846d8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <line x1="250" y1="373.2" x2="250" y2="362.2" stroke="#6846d8" stroke-width="2.2" stroke-linecap="round"/>
+  <circle cx="320" cy="360" r="30" fill="#e9f8ff" stroke="#bcd8ef" stroke-width="3"/><path d="M 304.6 360 C 311.75 351.2, 328.25 351.2, 335.4 360 C 328.25 368.8, 311.75 368.8, 304.6 360 Z" fill="none" stroke="#245c9c" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="320" cy="360" r="4.4" fill="#245c9c"/>
+  <text x="232" y="414" font-family="Arial" font-size="26" font-weight="900" fill="#fff">Noel Safety</text><text x="232" y="442" font-family="Arial" font-size="20" font-weight="800" fill="#e6eef8">6.8 km</text>
+  </g>
+</svg>
