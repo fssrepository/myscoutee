@@ -2197,7 +2197,7 @@ export class ProfileEditorComponent {
       this.revokeObjectUrl(previousImage);
       this.imageSlots[slotIndex] = verifiedImageUrl;
       this.selectedImageIndex = this.resolveSelectedImageIndexAfterUpload(slotIndex);
-      this.syncActiveUserImageSlotsState(true);
+      this.syncActiveUserImageSlotsState(false);
       if (this.usersService.demoModeEnabled && this.profileUser) {
         await this.usersService.saveUserProfile(this.cloneUser(this.profileUser));
       }

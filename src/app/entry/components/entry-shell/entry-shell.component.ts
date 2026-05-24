@@ -821,7 +821,7 @@ export class EntryShellComponent implements OnDestroy {
     this.entryAuthUnavailable = this.isLoginBlockedByLandingBundle();
     this.entryAuthUnavailableLabel = 'Unavailable in your country';
     this.entryAuthLocationRequired = this.isLoginLocationRequiredByLandingBundle();
-    this.entryAuthLocationRequiredLabel = this.grantedLocationEligibilityPromise ? 'Checking location' : 'Allow location';
+    this.deferEntryAuthLocationRequiredLabel(this.grantedLocationEligibilityPromise ? 'Checking location' : 'Allow location');
     this.resolveGrantedLocationAccessIfNeeded();
   }
 
@@ -862,8 +862,23 @@ export class EntryShellComponent implements OnDestroy {
       .finally(() => {
         if (requestToken === this.grantedLocationEligibilityRequestToken) {
           this.grantedLocationEligibilityPromise = null;
+          this.deferEntryAuthLocationRequiredLabel('Allow location');
         }
       });
+    this.deferEntryAuthLocationRequiredLabel('Checking location');
+  }
+
+  private deferEntryAuthLocationRequiredLabel(label: string): void {
+    const nextLabel = label.trim() || 'Allow location';
+    if (this.entryAuthLocationRequiredLabel === nextLabel) {
+      return;
+    }
+    setTimeout(() => {
+      this.ngZone.run(() => {
+        this.entryAuthLocationRequiredLabel = nextLabel;
+        this.changeDetectorRef.markForCheck();
+      });
+    }, 0);
   }
 
   private async resolveGrantedLocationAccess(requestToken: number): Promise<void> {

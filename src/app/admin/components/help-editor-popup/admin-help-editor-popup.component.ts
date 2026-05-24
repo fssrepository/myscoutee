@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, HostListener, OnDestroy, effect, inject, signal } from '@angular/core';
+import { ChangeDetectorRef, Component, HostListener, OnDestroy, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 
@@ -108,6 +108,7 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
   private readonly routeDelay = inject(RouteDelayService);
   private readonly confirmationDialog = inject(ConfirmationDialogService);
   private readonly i18n = inject(I18nService);
+  private readonly changeDetectorRef = inject(ChangeDetectorRef);
 
   protected documentKind: HelpCenterDocumentKind = 'help';
   protected selectedContentLang = 'en';
@@ -886,6 +887,7 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
       this.error = this.saveErrorLabel();
     } finally {
       this.saving = false;
+      this.changeDetectorRef.detectChanges();
     }
   }
 
@@ -903,6 +905,7 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
       this.error = this.activateErrorLabel();
     } finally {
       this.activatingRevisionId = '';
+      this.changeDetectorRef.detectChanges();
     }
   }
 
@@ -927,6 +930,7 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
           this.error = this.deleteErrorLabel();
         } finally {
           this.saving = false;
+          this.changeDetectorRef.detectChanges();
         }
       }
     });
@@ -1573,6 +1577,7 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
     this.loadingCompletionTimer = setTimeout(() => {
       this.loadingCompletionTimer = null;
       this.loading.set(false);
+      this.changeDetectorRef.detectChanges();
     }, 0);
   }
 

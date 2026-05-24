@@ -96,7 +96,7 @@ export class App implements OnDestroy {
   }
 
   protected onRouteActivated(): void {
-    this.completeInitialLandingWarmup();
+    setTimeout(() => this.completeInitialLandingWarmup(), 0);
   }
 
   private shouldShowLandingWarmup(url: string): boolean {
