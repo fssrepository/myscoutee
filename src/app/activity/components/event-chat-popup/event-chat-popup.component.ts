@@ -2605,6 +2605,12 @@ export class EventChatPopupComponent implements OnDestroy {
       this.markPendingMessageTimedOut(`${event.messageId ?? event.clientId ?? ''}`.trim());
       return;
     }
+    if (event.type === 'ack') {
+      if (event.message) {
+        this.mergeIncomingChatMessage(event.message);
+      }
+      return;
+    }
 
     this.mergeIncomingChatMessage(event.message);
     if (!event.message.mine) {

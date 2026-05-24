@@ -97,6 +97,7 @@ export interface ChatReadReceipt {
 
 export type ChatLiveEvent =
   | { type: 'message'; chatId: string; message: ChatPopupMessage }
+  | { type: 'ack'; chatId: string; message?: ChatPopupMessage; messageId?: string; clientId?: string }
   | { type: 'typing'; chatId: string; typing: ChatTypingIndicator }
   | { type: 'read'; chatId: string; read: ChatReadReceipt }
   | { type: 'error'; chatId: string; messageId?: string; clientId?: string; error?: string }

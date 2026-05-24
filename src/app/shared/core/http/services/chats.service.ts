@@ -158,7 +158,7 @@ interface HttpChatMemberDto {
 }
 
 interface HttpChatSocketEventDto {
-  type: 'message' | 'typing' | 'read' | 'error';
+  type: 'message' | 'ack' | 'typing' | 'read' | 'error';
   chatId: string;
   message?: HttpChatMessageDto | null;
   typing?: HttpChatTypingDto | null;
@@ -1004,6 +1004,15 @@ export class HttpChatsService {
 
     const type = payload.type ?? 'message';
     const chatId = `${payload.chatId ?? fallbackChatId}`.trim() || fallbackChatId;
+    if (type === 'ack') {
+      return {
+        type: 'ack',
+        chatId,
+        message: payload.message ? this.mapChatMessage(payload.message, chatId) : undefined,
+        messageId: `${payload.messageId ?? payload.message?.id ?? ''}`.trim() || undefined,
+        clientId: `${payload.clientId ?? payload.message?.clientId ?? ''}`.trim() || undefined
+      };
+    }
     if (type === 'typing' && payload.typing) {
       return {
         type: 'typing',
@@ -1220,6 +1229,16 @@ export class HttpChatsService {
       this.resolvePendingSocketAck(normalizedClientId, event.message);
       this.resolvePendingSocketUpdate(normalizedMessageId, event.message);
       this.updateCachedChatSummaryFromSocketEvent(event.chatId, event.message);
+    }
+    if (event.type === 'ack') {
+      const normalizedClientId = `${event.clientId ?? event.message?.clientId ?? ''}`.trim();
+      const normalizedMessageId = `${event.messageId ?? event.message?.id ?? ''}`.trim();
+      this.clearPendingSocketMessage(normalizedClientId);
+      this.resolvePendingSocketAck(normalizedClientId, event.message ?? null);
+      this.resolvePendingSocketUpdate(normalizedMessageId, event.message ?? null);
+      if (event.message) {
+        this.updateCachedChatSummaryFromSocketEvent(event.chatId, event.message);
+      }
     }
     if (event.type === 'error') {
       const normalizedClientId = `${event.clientId ?? ''}`.trim();
