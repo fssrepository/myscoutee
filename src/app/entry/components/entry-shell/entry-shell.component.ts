@@ -14,6 +14,7 @@ import type * as AppTypes from '../../../shared/core/base/models';
 import type { LocationCoordinates } from '../../../shared/core/base/interfaces/location.interface';
 import { ConfirmationDialogComponent } from '../../../shared/ui/components/confirmation-dialog/confirmation-dialog.component';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
+import { I18nService } from '../../../shared/i18n';
 import type { InfoCardData } from '../../../shared/ui';
 import { EntryConsentPopupComponent } from '../entry-consent-popup/entry-consent-popup.component';
 import { EntryDemoUserSelectorComponent } from '../entry-demo-user-selector/entry-demo-user-selector.component';
@@ -52,6 +53,7 @@ export class EntryShellComponent implements OnDestroy {
   private readonly helpCenter = inject(HelpCenterService);
   private readonly landingContent = inject(LandingContentService);
   private readonly confirmationDialogService = inject(ConfirmationDialogService);
+  private readonly i18n = inject(I18nService);
   private usersServiceRef: UsersService | null = null;
   private loginEligibilityBusy = false;
   private entryContentLoadPromise: Promise<void> | null = null;
@@ -350,32 +352,7 @@ export class EntryShellComponent implements OnDestroy {
         return false;
       }
 
-      const coordinates = await this.requestCurrentLocation();
-      if (!coordinates) {
-        this.confirmationDialogService.openInfo(
-          'We need your location before login so we can apply the region-based security check.',
-          {
-            title: 'Location Required For Login',
-            confirmLabel: 'OK'
-          }
-        );
-        return false;
-      }
-
-      const result = await this.usersService.checkLocationEligibility(coordinates);
-      this.syncLandingLoginAvailability(result, 'coordinates');
-      if (result.eligible) {
-        return true;
-      }
-
-      this.confirmationDialogService.openInfo(
-        result.message?.trim() || 'Login is currently unavailable from your country or region for security reasons. Please come back later.',
-        {
-          title: 'Login Unavailable',
-          confirmLabel: 'OK'
-        }
-      );
-      return false;
+      return await this.requestLocationAccessFromDialog();
     } catch {
       this.confirmationDialogService.openInfo(
         'We could not complete the region-based check right now. Please try again later.',
@@ -580,6 +557,59 @@ export class EntryShellComponent implements OnDestroy {
         }
       );
     });
+  }
+
+  private requestLocationAccessFromDialog(): Promise<boolean> {
+    return new Promise<boolean>(resolve => {
+      let settled = false;
+      const settle = (allowed: boolean): void => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        setTimeout(() => resolve(allowed), 0);
+      };
+
+      this.confirmationDialogService.open({
+        title: this.uiText('Location Required For Login'),
+        message: this.uiText('We need your location before login so we can apply the region-based security check.'),
+        cancelLabel: this.uiText('Not now'),
+        confirmLabel: this.uiText('Allow location'),
+        busyConfirmLabel: this.uiText('Checking location...'),
+        failureMessage: this.uiText('Location permission was not granted. Use the browser prompt or site settings, then try again.'),
+        allowBackdropClose: true,
+        allowEscapeClose: true,
+        onCancel: () => settle(false),
+        onConfirm: async () => {
+          const coordinates = await this.requestCurrentLocation();
+          if (!coordinates) {
+            throw new Error(this.uiText('Location permission was not granted. Use the browser prompt or site settings, then try again.'));
+          }
+
+          const result = await this.usersService.checkLocationEligibility(coordinates);
+          this.syncLandingLoginAvailability(result, 'coordinates');
+          if (result.eligible) {
+            settle(true);
+            return;
+          }
+
+          settle(false);
+          setTimeout(() => {
+            this.confirmationDialogService.openInfo(
+              this.uiText(result.message?.trim() || 'Login is currently unavailable from your country or region for security reasons. Please come back later.'),
+              {
+                title: this.uiText('Login Unavailable'),
+                confirmLabel: this.uiText('OK')
+              }
+            );
+          }, 0);
+        }
+      });
+    });
+  }
+
+  private uiText(value: string): string {
+    return this.i18n.translate(value);
   }
 
   private waitForPopupPaint(): Promise<void> {
