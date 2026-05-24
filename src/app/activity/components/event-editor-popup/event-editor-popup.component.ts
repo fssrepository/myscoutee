@@ -109,6 +109,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     effect(() => {
       const sourceEvent: any = this.eventEditorService.sourceEvent();
       const isOpen = this.eventEditorService.isOpen();
+      const mode = this.eventEditorService.mode();
       this.setEventEditorExplanationContext(isOpen ? 'event.editor' : null);
 
       if (!isOpen) {
@@ -125,6 +126,10 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
       if (sourceEvent) {
         this.populateFormFromSourceEvent(sourceEvent);
+        return;
+      }
+
+      if (mode === 'create' && this.draftEventId && this.eventForm.id === this.draftEventId && this.eventForm.startAt) {
         return;
       }
 
