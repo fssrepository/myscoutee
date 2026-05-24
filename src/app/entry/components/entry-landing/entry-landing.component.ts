@@ -18,6 +18,7 @@ import {
   type SmartListItemRenderState,
   type SmartListLoadPage
 } from '../../../shared/ui/components/smart-list';
+import { LazyBgImageDirective } from '../../../shared/ui/directives';
 import { I18nPipe } from '../../../shared/i18n';
 
 type IdeaInfoCard = InfoCardData<AppTypes.IdeaArticleDetail>;
@@ -35,6 +36,7 @@ interface HowStepSlide {
   imports: [
     InfoCardComponent,
     SmartListComponent,
+    LazyBgImageDirective,
     MatRippleModule,
     MatIconModule,
     I18nPipe
@@ -57,6 +59,10 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
   @Input() articlesLoading = false;
   @Input() articlesLoadingProgress = 0;
   @Input() ideaCards: InfoCardData[] = [];
+  @Input() authUnavailable = false;
+  @Input() authUnavailableLabel = 'Unavailable in your country';
+  @Input() authLocationRequired = false;
+  @Input() authLocationRequiredLabel = 'Allow location';
 
   @Output() readonly demoRequested = new EventEmitter<void>();
   @Output() readonly firebaseAuthRequested = new EventEmitter<void>();
@@ -112,7 +118,7 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
     showFirstGroupMarker: true,
     showGroupMarker: ({ groupIndex, scrollable }) => groupIndex > 0 || scrollable,
     groupBy: card => this.ideaDayGroupLabel(this.ideaCardDetail(card)),
-    trackBy: (_index, card) => card.rowId,
+    trackBy: (_index, card) => card.id,
     listLayout: 'card-grid',
     desktopColumns: 3,
     snapMode: 'mandatory',
@@ -194,10 +200,19 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
   }
 
   protected get entryAuthButtonShowsAvatar(): boolean {
-    return this.isFirebaseAuthMode && !!this.firebaseAuthProfile;
+    return !this.authUnavailable
+      && !this.authLocationRequired
+      && this.isFirebaseAuthMode
+      && !!this.firebaseAuthProfile;
   }
 
   protected get entryAuthButtonIcon(): string {
+    if (this.authUnavailable) {
+      return 'block';
+    }
+    if (this.authLocationRequired) {
+      return 'location_on';
+    }
     if (this.authMode === 'selector') {
       return 'group';
     }
@@ -205,6 +220,12 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
   }
 
   protected get entryAuthButtonLabel(): string {
+    if (this.authUnavailable) {
+      return this.authUnavailableLabel;
+    }
+    if (this.authLocationRequired) {
+      return this.authLocationRequiredLabel;
+    }
     if (this.entryAuthButtonShowsAvatar) {
       return this.firebaseAuthProfile?.name ?? 'Continue';
     }
@@ -320,10 +341,16 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
   }
 
   protected requestDemo(): void {
+    if (this.authUnavailable) {
+      return;
+    }
     this.demoRequested.emit();
   }
 
   protected requestHeaderAuth(): void {
+    if (this.authUnavailable) {
+      return;
+    }
     if (this.isFirebaseAuthMode) {
       this.firebaseAuthRequested.emit();
       return;

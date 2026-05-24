@@ -13,9 +13,10 @@ import {
 } from '../models/activity-resources.model';
 import { ASSETS_TABLE_NAME, type DemoAssetsRecordCollection } from '../models/assets.model';
 import { EVENTS_TABLE_NAME, type DemoEventRecord } from '../models/events.model';
+import { ACTIVITY_MEMBERS_TABLE_NAME } from '../models/activity-members.model';
 import { DemoEventsRepository } from './events.repository';
 import { DemoUsersRepository } from './users.repository';
-import { DemoUserSeedBuilder } from '../builders';
+import { DemoSeedScheduleBuilder, DemoUserSeedBuilder } from '../builders';
 
 @Injectable({
   providedIn: 'root'
@@ -244,7 +245,7 @@ export class DemoActivityResourcesRepository extends HttpActivityResourcesReposi
     const sourceRecords = this.collectSourceRecordsForUser(normalizedUserId);
     const seenRecordIds = new Set<string>();
     const nextRecords: DemoActivitySubEventResourceRecord[] = [];
-    let createdMs = Date.now();
+    let createdMs = DemoSeedScheduleBuilder.anchorDate().getTime();
 
     for (const record of sourceRecords) {
       if (!this.shouldSeedResourcesForParticipant(record, normalizedUserId)) {
@@ -343,8 +344,11 @@ export class DemoActivityResourcesRepository extends HttpActivityResourcesReposi
 
   private resolveSeededResourceContributorUserIds(record: DemoEventRecord): string[] {
     const creatorUserId = `${record.creatorUserId ?? ''}`.trim();
-    const acceptedMemberUserIds = (record.acceptedMemberUserIds ?? [])
-      .map(userId => `${userId}`.trim())
+    const membersTable = this.memoryDb.read()[ACTIVITY_MEMBERS_TABLE_NAME];
+    const acceptedMemberUserIds = (membersTable.idsByOwnerKey[`event:${record.id}`] ?? [])
+      .map(id => membersTable.byId[id])
+      .filter(member => member?.status === 'accepted')
+      .map(member => `${member?.userId ?? ''}`.trim())
       .filter(userId => userId.length > 0);
     const candidateUserIds = Array.from(new Set([
       creatorUserId,
@@ -530,8 +534,8 @@ export class DemoActivityResourcesRepository extends HttpActivityResourcesReposi
               nextById[assetId] = {
                 ...card,
                 requests: nextRequests,
-                updatedMs: Date.now(),
-                updatedAtIso: new Date().toISOString()
+                updatedMs: record.updatedMs,
+                updatedAtIso: record.updatedAtIso
               };
               changed = true;
             }
@@ -572,8 +576,8 @@ export class DemoActivityResourcesRepository extends HttpActivityResourcesReposi
             nextById[assetId] = {
               ...card,
               requests: nextRequests,
-              updatedMs: Date.now(),
-              updatedAtIso: new Date().toISOString()
+              updatedMs: record.updatedMs,
+              updatedAtIso: record.updatedAtIso
             };
             changed = true;
           }

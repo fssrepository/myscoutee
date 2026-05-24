@@ -1,6 +1,7 @@
 import { AppUtils } from '../../../app-utils';
 import type { DemoUser } from '../../base/interfaces/user.interface';
 import type { LocationCoordinates } from '../../base/interfaces';
+import { DemoSeedScheduleBuilder } from './demo-seed-schedule.builder';
 
 
 function buildDemoPortraitStack(
@@ -418,7 +419,7 @@ export class DemoUserSeedBuilder {
     if (index === totalCount - 1) {
       return {
         profileStatus: 'deleted',
-        deletedAtIso: new Date().toISOString(),
+        deletedAtIso: DemoSeedScheduleBuilder.anchorDate().toISOString(),
         statusText: 'Deleted',
         activities: { game: 0, chat: 0, invitations: 0, events: 0, hosting: 0 }
       };

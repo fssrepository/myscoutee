@@ -88,7 +88,7 @@ export class ActivitiesEventActionMenuComponent {
   protected isMobileView = false;
 
   open(row: AppTypes.ActivityListRow, event: InfoCardMenuRequestEvent, isMobileView: boolean): void {
-    if (this.menu?.card.rowId === event.card.rowId) {
+    if (this.menu?.card.id === event.card.id) {
       this.close();
       return;
     }

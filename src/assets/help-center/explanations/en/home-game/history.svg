@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f2fbf8"/>
+      <stop offset="1" stop-color="#fff8ed"/>
+    </linearGradient>
+  </defs>
+  <rect width="960" height="540" rx="30" fill="url(#bg)"/>
+  <rect x="6" y="6" width="948" height="528" rx="26" fill="#ffffff" opacity="0.82" stroke="#cfe2d9" stroke-width="3"/>
+  <g transform="matrix(1.16 0 0 1.16 -70 -78)">
+    <circle cx="148" cy="250" r="66" fill="#fff7df" stroke="#efbd5d" stroke-width="4"/><path d="M 170 234 A 30 30 0 1 0 170 266" fill="none" stroke="#b77912" stroke-width="7" stroke-linecap="round"/>
+  <path d="M 166 222 L 182 232 L 164 241 Z" fill="#b77912"/>
+  <line x1="148" y1="250" x2="148" y2="232" stroke="#b77912" stroke-width="6" stroke-linecap="round"/>
+  <line x1="148" y1="250" x2="165" y2="259" stroke="#b77912" stroke-width="6" stroke-linecap="round"/>
+  <circle cx="196" cy="196" r="25" fill="#dc4d57"/><text x="196" y="205" text-anchor="middle" font-family="Arial" font-size="21" font-weight="900" fill="#fff">3</text>
+  <line x1="220" y1="250" x2="602" y2="250" stroke="#e8d4a5" stroke-width="6"/>
+  <rect x="602" y="188" width="280" height="124" rx="22" fill="#fff2d5" stroke="#efbd5d" stroke-width="4"/><polygon points="742.0,202.0 749.8,220.2 769.6,222.0 754.7,235.1 759.0,254.5 742.0,244.3 725.0,254.5 729.3,235.1 714.4,222.0 734.2,220.2" fill="#a56a19"/><text x="742" y="286" text-anchor="middle" font-family="Arial" font-size="28" font-weight="900" fill="#8a5a14">Ratings</text>
+  </g>
+</svg>

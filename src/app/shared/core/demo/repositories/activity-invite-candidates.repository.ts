@@ -4,7 +4,7 @@ import { ActivityMembersBuilder } from '../../base/builders/activity-members.bui
 import type * as AppTypes from '../../../core/base/models';
 import { AppUtils } from '../../../app-utils';
 import type { DemoUser } from '../../base/interfaces/user.interface';
-import type { RateMenuItem } from '../../base/interfaces/activity-feed.interface';
+import type { RateRecord } from '../../base/models/rate.model';
 import type {
   ActivityInviteCandidatesQuery,
   ActivityInviteCandidatesRepository
@@ -123,36 +123,26 @@ export class DemoActivityInviteCandidatesRepository implements ActivityInviteCan
 
   private buildOwnerRow(query: ActivityInviteCandidatesQuery): AppTypes.ActivityListRow {
     const type = query.owner.sourceType;
-    const baseSource = {
-      id: query.owner.ownerId,
-      avatar: query.owner.title,
-      title: query.owner.title,
-      shortDescription: query.owner.subtitle,
-      timeframe: query.owner.detail,
-      activity: 0
-    };
     return {
       id: query.owner.ownerId,
       type,
+      status: type === 'hosting' ? 'H' : 'A',
       title: query.owner.title,
       subtitle: query.owner.subtitle,
       detail: query.owner.detail,
       dateIso: query.owner.dateIso,
-      distanceKm: query.owner.distanceKm,
+      distanceMetersExact: Math.max(0, Math.round((Number(query.owner.distanceKm) || 0) * 1000)),
       unread: 0,
       metricScore: 0,
-      isAdmin: query.owner.isAdmin,
-      source: type === 'hosting'
-        ? baseSource
-        : { ...baseSource, isAdmin: query.owner.isAdmin }
+      isAdmin: query.owner.isAdmin
     } as AppTypes.ActivityListRow;
   }
 
   private async queryMetRateItems(
     activeUserId: string,
     sort: AppTypes.ActivityInviteSort
-  ): Promise<RateMenuItem[]> {
-    const itemsById = new Map<string, RateMenuItem>();
+  ): Promise<RateRecord[]> {
+    const itemsById = new Map<string, RateRecord>();
     for (const socialBadgeEnabled of [false, true]) {
       const page = await this.usersRatingsRepository.queryActivityRateItemsPage({
         ownerUserId: activeUserId,
@@ -170,7 +160,7 @@ export class DemoActivityInviteCandidatesRepository implements ActivityInviteCan
     return [...itemsById.values()];
   }
 
-  private normalizeRateItemAffinity(item: RateMenuItem): number {
+  private normalizeRateItemAffinity(item: RateRecord): number {
     const scoreGiven = Number.isFinite(Number(item.scoreGiven)) ? Math.max(0, Number(item.scoreGiven)) : 0;
     const scoreReceived = Number.isFinite(Number(item.scoreReceived)) ? Math.max(0, Number(item.scoreReceived)) : 0;
     const score = scoreGiven > 0 && scoreReceived > 0

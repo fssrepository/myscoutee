@@ -29,8 +29,8 @@
         <div class="event-visibility-picker" (click)="$event.stopPropagation()">
           <button type="button" class="popup-view-fab event-visibility-trigger"
             [ngClass]="eventVisibilityClass(eventForm.visibility)"
-            [class.event-editor-readonly-control]="eventEditorService.readOnly()"
-            [disabled]="eventEditorService.readOnly()" (click)="toggleEventVisibilityPicker($event)"
+            [class.event-editor-readonly-control]="eventStructureReadOnly()"
+            [disabled]="eventStructureReadOnly()" (click)="toggleEventVisibilityPicker($event)"
             aria-label="Open visibility selector">
             <mat-icon [ngClass]="eventVisibilityClass(eventForm.visibility)">{{ getVisibilityIcon(eventForm.visibility)
               }}</mat-icon>
@@ -110,10 +110,10 @@
               <span>Capacity <span class="required-star">*</span></span>
               <div class="subevent-capacity-range">
                 <input type="number" min="0" step="1" required [ngModel]="eventForm.capacityMin"
-                  (ngModelChange)="onEventCapacityMinChange($event)" [disabled]="eventEditorService.readOnly()"
+                  (ngModelChange)="onEventCapacityMinChange($event)" [disabled]="eventCapacityMinReadOnly()"
                   [class.field-required-invalid]="eventEditorFieldInvalid('capacityMin')" placeholder="Min" />
                 <span class="subevent-capacity-separator">-</span>
-                <input type="number" min="0" step="1" required [ngModel]="eventForm.capacityMax"
+                <input type="number" [min]="eventCapacityMaxMinimum()" step="1" required [ngModel]="eventForm.capacityMax"
                   (ngModelChange)="onEventCapacityMaxChange($event)" (blur)="onEventCapacityMaxBlur()"
                   [disabled]="eventEditorService.readOnly()"
                   [class.field-required-invalid]="eventEditorFieldInvalid('capacityMax')" placeholder="Max" />
@@ -122,7 +122,7 @@
             <div class="event-intel-row">
               <label class="event-blind-mode-field">
                 <button type="button" class="event-blind-mode-card" [ngClass]="eventBlindModeClass(eventForm.blindMode)"
-                  [disabled]="eventEditorService.readOnly()" (click)="toggleEventBlindMode($event)">
+                  [disabled]="eventStructureReadOnly()" (click)="toggleEventBlindMode($event)">
                   <span class="event-blind-mode-title">
                     <mat-icon [ngClass]="eventBlindModeClass(eventForm.blindMode)">{{
                       eventBlindModeIcon(eventForm.blindMode) }}</mat-icon>
@@ -170,7 +170,7 @@
               </label>
               <label class="event-ticketing-field">
                 <button type="button" class="event-ticketing-card" [ngClass]="eventTicketingClass(eventForm.ticketing)"
-                  [disabled]="eventEditorService.readOnly()" (click)="toggleEventTicketing($event)">
+                  [disabled]="eventStructureReadOnly()" (click)="toggleEventTicketing($event)">
                   <span class="event-ticketing-title">
                     <mat-icon [ngClass]="eventTicketingClass(eventForm.ticketing)">{{
                       eventTicketingIcon(eventForm.ticketing) }}</mat-icon>
@@ -199,7 +199,7 @@
                         class="profile-status-select-wrap selector-like experience-filter-select event-frequency-select"
                         [ngClass]="eventFrequencyClass(eventForm.frequency)">
                         <mat-select [ngModel]="eventForm.frequency" (ngModelChange)="onEventFrequencyChange($event)"
-                          [disabled]="eventEditorService.readOnly()" [panelWidth]="null" disableOptionCentering
+                          [disabled]="eventStructureReadOnly()" [panelWidth]="null" disableOptionCentering
                           panelClass="selector-options-panel profile-bottom-sheet-panel event-frequency-options-panel">
                           <mat-select-trigger>
                             <span class="status-option-content">
@@ -224,7 +224,7 @@
                         <button type="button"
                           class="profile-status-select-wrap selector-like experience-filter-select event-frequency-select event-frequency-mobile-trigger"
                           [ngClass]="eventFrequencyClass(eventForm.frequency)"
-                          [disabled]="eventEditorService.readOnly()" (click)="openMobileFrequencySelector($event)"
+                          [disabled]="eventStructureReadOnly()" (click)="openMobileFrequencySelector($event)"
                           aria-label="Open event frequency">
                           <span class="status-option-content">
                             <mat-icon [ngClass]="eventFrequencyClass(eventForm.frequency)">{{
@@ -258,7 +258,7 @@
                     <mat-form-field appearance="outline" class="event-date-field event-date-field-start"
                       subscriptSizing="dynamic">
                       <input matInput [matDatepicker]="eventStartPicker" [ngModel]="eventStartDateValue"
-                        (ngModelChange)="onEventStartDateChange($event)" [disabled]="eventEditorService.readOnly()" />
+                        (ngModelChange)="onEventStartDateChange($event)" [disabled]="eventStructureReadOnly()" />
                       <mat-datepicker-toggle matSuffix [for]="eventStartPicker"></mat-datepicker-toggle>
                       <mat-datepicker #eventStartPicker></mat-datepicker>
                     </mat-form-field>
@@ -266,7 +266,7 @@
                       subscriptSizing="dynamic">
                       <input matInput [matTimepicker]="eventStartTimePicker" [matTimepickerOpenOnClick]="true"
                         [ngModel]="eventStartTimeValue" (ngModelChange)="onEventStartTimeChange($event)"
-                        [disabled]="eventEditorService.readOnly()" />
+                        [disabled]="eventStructureReadOnly()" />
                       <mat-timepicker-toggle matSuffix [for]="eventStartTimePicker"></mat-timepicker-toggle>
                       <mat-timepicker #eventStartTimePicker></mat-timepicker>
                     </mat-form-field>
@@ -279,7 +279,7 @@
                       subscriptSizing="dynamic">
                       <input matInput [matDatepicker]="eventEndPicker" [ngModel]="eventEndDateValue"
                         (ngModelChange)="onEventEndDateChange($event)" [min]="eventEndDateMin()"
-                        [disabled]="eventEditorService.readOnly()" />
+                        [disabled]="eventStructureReadOnly()" />
                       <mat-datepicker-toggle matSuffix [for]="eventEndPicker"></mat-datepicker-toggle>
                       <mat-datepicker #eventEndPicker></mat-datepicker>
                     </mat-form-field>
@@ -287,7 +287,7 @@
                       subscriptSizing="dynamic">
                       <input matInput [matTimepicker]="eventEndTimePicker" [matTimepickerOpenOnClick]="true"
                         [ngModel]="eventEndTimeValue" (ngModelChange)="onEventEndTimeChange($event)"
-                        [disabled]="eventEditorService.readOnly()" />
+                        [disabled]="eventStructureReadOnly()" />
                       <mat-timepicker-toggle matSuffix [for]="eventEndTimePicker"></mat-timepicker-toggle>
                       <mat-timepicker #eventEndTimePicker></mat-timepicker>
                     </mat-form-field>
@@ -309,7 +309,7 @@
                 </div>
                 <div class="event-slots-panel-body">
                   <button type="button" class="event-slots-open-btn event-slots-open-btn-inline"
-                    [disabled]="eventEditorService.readOnly()" (click)="openSlotsPopup($event)">
+                    [disabled]="eventStructureReadOnly()" (click)="openSlotsPopup($event)">
                     <mat-icon>tune</mat-icon>
                     <span>Open Slot Setup</span>
                   </button>
@@ -354,8 +354,8 @@
             </section>
             <app-pricing-editor class="experience-description-field event-pricing-field" [(pricing)]="eventForm.pricing"
               [context]="'event'" [presentation]="'popup-summary'" [slotCatalog]="pricingSlotCatalog()"
-              [readOnly]="eventEditorService.readOnly()"
-              [subtitle]="eventEditorService.readOnly()
+              [readOnly]="eventStructureReadOnly()"
+              [subtitle]="eventStructureReadOnly()
                 ? ''
                 : (eventForm.ticketing ? 'Configure paid entry for the main event and optional slot overrides.' : 'Keep it free for now or prepare ticketing rules in advance.')"></app-pricing-editor>
             @if (!eventEditorService.readOnly() || eventForm.policies.length > 0) {
@@ -366,7 +366,7 @@
                     <mat-icon>policy</mat-icon>
                     <span>Event Policies</span>
                   </span>
-                  @if (!eventEditorService.readOnly()) {
+                  @if (!eventPoliciesReadOnly()) {
                     <p class="event-policies-panel-subtitle">Add the rules attendees need to read and approve before joining.</p>
                   }
                 </div>
@@ -375,7 +375,7 @@
                 <button type="button" class="event-slots-open-btn event-slots-open-btn-inline"
                   (click)="openPoliciesPopup($event)">
                   <mat-icon>gavel</mat-icon>
-                  <span>{{ eventEditorService.readOnly() ? 'View Policies' : 'Open Policy Setup' }}</span>
+                  <span>{{ eventPoliciesReadOnly() ? 'View Policies' : 'Open Policy Setup' }}</span>
                 </button>
                 <div class="event-slots-summary">
                   <section class="event-slots-summary-block">
@@ -392,7 +392,7 @@
                     </div>
                     } @else {
                     <p class="event-slots-summary-note">
-                      {{ eventEditorService.readOnly()
+                      {{ eventPoliciesReadOnly()
                         ? 'No policies are configured for this event.'
                         : 'No policies yet. Add policies if attendees must review terms before joining or booking.' }}
                     </p>
@@ -597,7 +597,7 @@
           need to read and approve.</span>
       </div>
       <div class="event-policies-popup-head-controls">
-        @if (!eventEditorService.readOnly()) {
+        @if (!eventPoliciesReadOnly()) {
         <button type="button" class="popup-header-add-btn event-slots-add-btn"
           (click)="openPolicyEditor(undefined, $event)" aria-label="Add policy">
           <mat-icon>add</mat-icon>
@@ -613,14 +613,14 @@
     <div class="event-slots-popup-body event-policies-popup-body">
       <div class="event-policies-list event-policies-list-compact">
         @for (policy of workingPolicies; track policy.id; let i = $index) {
-        <article class="event-policy-list-card" [class.is-readonly]="eventEditorService.readOnly()"
+        <article class="event-policy-list-card" [class.is-readonly]="eventPoliciesReadOnly()"
           (click)="openPolicyEditor(i, $event)">
           <div class="event-policy-list-card-head">
             <div class="event-policy-list-card-copy">
               <strong>{{ policy.title || ('Policy ' + (i + 1)) }}</strong>
               <span>{{ policyCardMetaLabel(policy) }}</span>
             </div>
-            @if (!eventEditorService.readOnly()) {
+            @if (!eventPoliciesReadOnly()) {
             <button type="button" class="event-slot-remove-btn" (click)="removePolicyDraft(i, $event)"
               aria-label="Remove policy">
               <mat-icon>delete</mat-icon>
@@ -648,7 +648,7 @@
           before joining.</span>
       </div>
       <div class="event-policies-popup-head-controls">
-        @if (!eventEditorService.readOnly()) {
+        @if (!eventPoliciesReadOnly()) {
         <button type="button" class="popup-header-add-btn subevent-leaderboard-save-btn event-policy-header-save-btn"
           [class.form-save-invalid]="!canSavePolicyDraft()" [disabled]="!canSavePolicyDraft()"
           (click)="savePolicyDraft()" aria-label="Save policy">
@@ -666,16 +666,16 @@
       <article class="event-policy-card">
         <label class="event-policy-field">
           <span>Title</span>
-          <input type="text" [(ngModel)]="workingPolicyDraft.title" [readonly]="eventEditorService.readOnly()"
+          <input type="text" [(ngModel)]="workingPolicyDraft.title" [readonly]="eventPoliciesReadOnly()"
             placeholder="Policy title" />
         </label>
         <label class="event-policy-field">
           <span>Description</span>
-          <textarea rows="6" [(ngModel)]="workingPolicyDraft.description" [readonly]="eventEditorService.readOnly()"
+          <textarea rows="6" [(ngModel)]="workingPolicyDraft.description" [readonly]="eventPoliciesReadOnly()"
             placeholder="Explain the policy clearly."></textarea>
         </label>
         <label class="event-policy-check">
-          <input type="checkbox" [(ngModel)]="workingPolicyDraft.required" [disabled]="eventEditorService.readOnly()" />
+          <input type="checkbox" [(ngModel)]="workingPolicyDraft.required" [disabled]="eventPoliciesReadOnly()" />
           <span>Attendees must approve this policy</span>
         </label>
       </article>
@@ -684,6 +684,7 @@
   }
   }
   <app-event-subevents-popup [open]="showSubEventsPopup" [readOnly]="eventEditorService.readOnly()"
+    [structureReadOnly]="isPublishedManageMode()"
     [parentTitle]="eventForm.title" [ownerId]="editingEventId" [subEvents]="eventForm.subEvents"
     [displayMode]="subEventsDisplayMode" [slotsEnabled]="eventFrequencyUsesSlots()"
     [slotTemplates]="eventForm.slotTemplates" [parentStartAt]="eventForm.startAt" [parentEndAt]="eventForm.endAt"

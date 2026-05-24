@@ -1,7 +1,8 @@
 import { AppUtils } from '../../../app-utils';
 import type * as AppTypes from '../../base/models';
-import type { EventMenuItem, HostingMenuItem } from '../../base/interfaces/activity-feed.interface';
+import type { DemoEventSeedItem, DemoHostingSeedItem } from '../models/event-seed-item.model';
 import type { DemoUser } from '../../base/interfaces/user.interface';
+import { DemoSeedScheduleBuilder } from './demo-seed-schedule.builder';
 import { DemoUserSeedBuilder } from './demo-user-seed.builder';
 
 export class DemoEventSeedBuilder {
@@ -65,7 +66,7 @@ export class DemoEventSeedBuilder {
   }
 
   static buildSeededSubEventsForEvent(
-    source: EventMenuItem | HostingMenuItem,
+    source: DemoEventSeedItem | DemoHostingSeedItem,
     options: {
       isHosting: boolean;
       activityDateTimeRangeById: Record<string, AppTypes.ActivityDateTimeRange>;
@@ -86,7 +87,7 @@ export class DemoEventSeedBuilder {
       dateSource?.endIso
       ?? new Date(start.getTime() + (4 * 60 * 60 * 1000)).toISOString().slice(0, 19)
     );
-    const startMs = Number.isNaN(start.getTime()) ? Date.now() : start.getTime();
+    const startMs = Number.isNaN(start.getTime()) ? DemoSeedScheduleBuilder.anchorDate().getTime() : start.getTime();
     const endMs = Number.isNaN(end.getTime()) || end.getTime() <= startMs
       ? (startMs + (4 * 60 * 60 * 1000))
       : end.getTime();
@@ -109,7 +110,7 @@ export class DemoEventSeedBuilder {
   }
 
   private static buildSeededCasualSubEvents(
-    source: EventMenuItem | HostingMenuItem,
+    source: DemoEventSeedItem | DemoHostingSeedItem,
     startMs: number,
     endMs: number,
     seed: number,
@@ -151,7 +152,7 @@ export class DemoEventSeedBuilder {
   }
 
   private static buildSeededTournamentSubEvents(
-    source: EventMenuItem | HostingMenuItem,
+    source: DemoEventSeedItem | DemoHostingSeedItem,
     startMs: number,
     endMs: number,
     seed: number,

@@ -12,6 +12,98 @@
   <link rel="icon" type="image/x-icon" href="assets/icon/favicon.ico">
   <link rel="apple-touch-icon" href="assets/icon/apple-touch-icon.png">
   <link rel="manifest" href="manifest.webmanifest">
+  <style>
+    html,
+    body {
+      min-height: 100%;
+      background: #f5f6fb;
+    }
+
+    app-root {
+      display: block;
+      min-height: 100vh;
+    }
+
+    .app-warmup-fallback {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      min-height: 100vh;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      box-sizing: border-box;
+      padding: 1.25rem;
+      background:
+        linear-gradient(145deg, rgba(255, 255, 255, 0.94) 0%, rgba(245, 247, 253, 0.96) 46%, rgba(239, 244, 255, 0.98) 100%);
+      color: #1f3a63;
+      font-family: 'Nunito Sans', 'Segoe UI', Roboto, Arial, sans-serif;
+      text-align: center;
+    }
+
+    .app-bootstrapped .app-warmup-fallback {
+      display: none;
+    }
+
+    .app-warmup-fallback-mark {
+      position: relative;
+      width: 76px;
+      height: 76px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      background: #ffffff;
+      box-shadow: 0 18px 34px rgba(36, 65, 110, 0.16);
+    }
+
+    .app-warmup-fallback-mark img {
+      position: relative;
+      z-index: 1;
+      width: 46px;
+      height: 46px;
+      display: block;
+      object-fit: contain;
+    }
+
+    .app-warmup-fallback-ring {
+      position: absolute;
+      inset: -5px;
+      border-radius: inherit;
+      background:
+        conic-gradient(from 40deg, #4f7cff 0deg, #7b5cff 120deg, #ff4d8d 230deg, rgba(79, 124, 255, 0.08) 310deg, #4f7cff 360deg);
+      animation: app-warmup-spin 0.95s linear infinite;
+    }
+
+    .app-warmup-fallback-ring::after {
+      content: '';
+      position: absolute;
+      inset: 6px;
+      border-radius: inherit;
+      background: #ffffff;
+    }
+
+    .app-warmup-fallback-label {
+      font-size: 1rem;
+      font-weight: 900;
+      letter-spacing: 0;
+    }
+
+    @keyframes app-warmup-spin {
+      to {
+        transform: rotate(1turn);
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .app-warmup-fallback-ring {
+        animation-duration: 1.8s;
+      }
+    }
+  </style>
   <script>
     // Restore route after 404 redirect from GitHub Pages
     (function(){
@@ -24,6 +116,14 @@
   </script>
 </head>
 <body>
-  <app-root></app-root>
+  <app-root>
+    <section class="app-warmup-fallback" role="status" aria-live="polite" aria-label="Loading MyScoutee">
+      <span class="app-warmup-fallback-mark">
+        <span class="app-warmup-fallback-ring" aria-hidden="true"></span>
+        <img src="assets/logo/heart.webp" alt="">
+      </span>
+      <span class="app-warmup-fallback-label">MyScoutee</span>
+    </section>
+  </app-root>
 </body>
 </html>

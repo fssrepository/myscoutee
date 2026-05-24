@@ -6,11 +6,11 @@ import { DemoEventFeedbackBuilder } from '../../shared/core/demo/builders';
 import { AppMemoryDb, EventsService } from '../../shared/core/base';
 import { EVENT_FEEDBACK_TABLE_NAME } from '../../shared/core/demo/models/event-feedback.model';
 import type { UserDto } from '../../shared/core';
-import type { EventMenuItem } from '../../shared/core/base/interfaces/activity-feed.interface';
+import type { DemoEventSeedItem } from '../../shared/core/demo/models/event-seed-item.model';
 
 export interface EventFeedbackPopupSource {
-  eventItems: EventMenuItem[];
-  ownedEventItems: EventMenuItem[];
+  eventItems: DemoEventSeedItem[];
+  ownedEventItems: DemoEventSeedItem[];
   users: UserDto[];
   activeUser: UserDto;
   eventDatesById: Record<string, string>;

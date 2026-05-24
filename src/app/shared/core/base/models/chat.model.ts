@@ -97,6 +97,7 @@ export interface ChatReadReceipt {
 
 export type ChatLiveEvent =
   | { type: 'message'; chatId: string; message: ChatPopupMessage }
+  | { type: 'ack'; chatId: string; message?: ChatPopupMessage; messageId?: string; clientId?: string }
   | { type: 'typing'; chatId: string; typing: ChatTypingIndicator }
   | { type: 'read'; chatId: string; read: ChatReadReceipt }
   | { type: 'error'; chatId: string; messageId?: string; clientId?: string; error?: string }
@@ -113,3 +114,26 @@ export type ActivitiesChatContextFilter = 'all' | 'event' | 'subEvent' | 'group'
 export type SupportCaseStatus = 'pending' | 'picked' | 'solved' | 'blocked';
 export type SupportCaseFilter = 'all' | SupportCaseStatus;
 export type SupportCaseAction = 'pick' | 'unpick' | 'solve' | 'block' | 'reopen';
+
+export interface ChatRecord {
+  id: string;
+  avatar: string;
+  title: string;
+  lastMessage: string;
+  lastSenderId: string;
+  memberIds: string[];
+  unread: number;
+  dateIso?: string;
+  distanceKm?: number;
+  distanceMetersExact?: number;
+  channelType?: ChatChannelType;
+  serviceContext?: 'event' | 'asset' | 'notification';
+  eventId?: string;
+  subEventId?: string;
+  groupId?: string;
+  supportCaseStatus?: SupportCaseStatus | null;
+  supportCaseAssigneeUserId?: string | null;
+  supportCaseAssigneeName?: string | null;
+  supportCaseAssigneeInitials?: string | null;
+  supportCaseUpdatedAtIso?: string | null;
+}

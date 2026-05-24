@@ -1,7 +1,8 @@
 import { AppUtils } from '../../../app-utils';
 import type * as AppTypes from '../../../core/base/models';
-import type { RateMenuItem } from '../interfaces/activity-feed.interface';
+import type { RateRecord } from '../models/rate.model';
 import type { DemoUser } from '../interfaces/user.interface';
+import type { ImageCardData, ImageCardPerson, PairCardSlot } from '../../../ui';
 import { formatActivityMonthDayLabel } from '../formatters';
 
 interface BuildActivityRateRowsOptions {
@@ -10,12 +11,12 @@ interface BuildActivityRateRowsOptions {
   filter: AppTypes.RateFilterKey;
   secondaryFilter: AppTypes.ActivitiesSecondaryFilter;
   view: AppTypes.ActivitiesView;
-  directionOverrides?: Partial<Record<string, RateMenuItem['direction']>>;
+  directionOverrides?: Partial<Record<string, RateRecord['direction']>>;
   preserveOrder?: boolean;
 }
 
 export function buildActivityRateRows(
-  items: readonly RateMenuItem[],
+  items: readonly RateRecord[],
   options: BuildActivityRateRowsOptions
 ): AppTypes.ActivityListRow[] {
   const rows = items
@@ -44,45 +45,72 @@ export function buildActivityRateRows(
 }
 
 function toActivityRateRow(
-  item: RateMenuItem,
+  item: RateRecord,
   options: BuildActivityRateRowsOptions
 ): AppTypes.ActivityListRow {
   const direction = displayedRateDirection(item, options.directionOverrides);
   const primaryUser = resolvePrimaryRateUser(item, options.users, options.activeUserId);
   const ownScore = rateOwnScore(item);
   const distanceMetersExact = exactDistanceMeters(item);
+  const displayItem = buildActivityRateImageCard(item, primaryUser, options, direction, distanceMetersExact);
 
   return {
+    ...displayItem,
     id: item.id,
     type: 'rates',
-    title: primaryUser?.name ?? item.userId,
-    subtitle: '',
-    detail: '',
-    dateIso: item.happenedAt ?? '',
-    distanceKm: distanceKmFromMeters(distanceMetersExact),
+    status: direction,
+    title: displayItem.title,
+    subtitle: displayItem.subtitle ?? '',
+    detail: displayItem.detail ?? '',
+    dateIso: displayItem.dateIso ?? item.happenedAt ?? '',
     distanceMetersExact,
     unread: 0,
     metricScore: direction === 'mutual' ? ownScore + Math.max(item.scoreReceived, 0) : ownScore,
-    rateDisplay: buildActivityRateDisplay(item, primaryUser, options),
-    source: item
+    sortScore: direction === 'mutual' ? ownScore + Math.max(item.scoreReceived, 0) : ownScore
   };
 }
 
-function buildActivityRateDisplay(
-  item: RateMenuItem,
+function buildActivityRateImageCard(
+  item: RateRecord,
   primaryUser: DemoUser | null,
-  options: BuildActivityRateRowsOptions
-): AppTypes.ActivityRateDisplay {
+  options: BuildActivityRateRowsOptions,
+  displayedDirection: RateRecord['direction'],
+  distanceMetersExact: number
+): ImageCardData {
   return {
-    primaryUser: primaryUser ? toActivityRateDisplayUser(primaryUser) : null,
-    imageUrls: buildSingleRateImageUrls(item, primaryUser, options.activeUserId),
+    id: item.id,
+    status: displayedDirection,
+    dateIso: item.happenedAt ?? '',
+    distanceMetersExact,
+    sortScore: displayedDirection === 'mutual'
+      ? rateOwnScore(item) + Math.max(item.scoreReceived, 0)
+      : rateOwnScore(item),
+    title: primaryUser?.name ?? item.userId,
+    mode: item.mode,
+    direction: item.direction,
+    displayedDirection,
+    eventName: item.eventName,
     happenedOnLabel: formatActivityMonthDayLabel(item.happenedAt),
-    pairSlots: buildPairRateDisplaySlots(item, options)
+    primaryUser: primaryUser ? toImageCardPerson(primaryUser) : null,
+    pairUsers: buildImageCardPairUsers(item, options.users),
+    singleImageUrls: buildSingleRateImageUrls(item, primaryUser, options.activeUserId),
+    pairSlots: buildPairRateDisplaySlots(item, options),
+    stackClasses: [
+      item.mode === 'pair' ? 'activities-rate-profile-stack-pair' : 'activities-rate-profile-stack-single',
+      `activities-rate-profile-stack-${displayedDirection}`
+    ],
+    userId: item.userId,
+    secondaryUserId: item.secondaryUserId ?? null,
+    socialContext: item.socialContext ?? null,
+    bridgeUserId: item.bridgeUserId ?? null,
+    bridgeCount: Number.isFinite(item.bridgeCount) ? Math.max(0, Math.trunc(Number(item.bridgeCount))) : null,
+    scoreGiven: Number.isFinite(item.scoreGiven) ? item.scoreGiven : null,
+    scoreReceived: Number.isFinite(item.scoreReceived) ? item.scoreReceived : null
   };
 }
 
 function buildSingleRateImageUrls(
-  item: RateMenuItem,
+  item: RateRecord,
   user: DemoUser | null,
   activeUserId: string
 ): string[] {
@@ -93,9 +121,9 @@ function buildSingleRateImageUrls(
 }
 
 function buildPairRateDisplaySlots(
-  item: RateMenuItem,
+  item: RateRecord,
   options: BuildActivityRateRowsOptions
-): AppTypes.ActivityRateDisplaySlot[] {
+): PairCardSlot[] {
   return ([0, 1] as const).map(index => {
     const slot = index === 0 ? 'woman' : 'man';
     const label = resolvePairSlotLabel(item, index);
@@ -117,10 +145,10 @@ function buildPairRateDisplaySlots(
 }
 
 function buildPairSlotSlides(
-  item: RateMenuItem,
+  item: RateRecord,
   slot: 'woman' | 'man',
   user: DemoUser
-): AppTypes.ActivityRateDisplaySlide[] {
+): PairCardSlot['slides'] {
   const seededCount = 2 + (AppUtils.hashText(`pair-rate-photo-count:${item.id}:${slot}:${user.id}`) % 2);
   return buildDisplayImageUrls(user.images, seededCount).map(imageUrl => ({
     imageUrl,
@@ -131,7 +159,7 @@ function buildPairSlotSlides(
 }
 
 function resolvePrimaryRateUser(
-  item: RateMenuItem,
+  item: RateRecord,
   users: readonly DemoUser[],
   activeUserId: string
 ): DemoUser | null {
@@ -151,7 +179,7 @@ function resolvePairSlotUserById(
   return users.find(user => user.id === normalizedUserId) ?? null;
 }
 
-function resolvePairSlotLabel(item: RateMenuItem, index: 0 | 1): string {
+function resolvePairSlotLabel(item: RateRecord, index: 0 | 1): string {
   if (item.socialContext === 'friends-in-common') {
     return index === 0 ? 'Person' : 'Common friend';
   }
@@ -161,14 +189,26 @@ function resolvePairSlotLabel(item: RateMenuItem, index: 0 | 1): string {
   return index === 0 ? 'Person A' : 'Person B';
 }
 
-function toActivityRateDisplayUser(user: DemoUser): AppTypes.ActivityRateDisplayUser {
+function toImageCardPerson(user: DemoUser): ImageCardPerson {
   return {
     id: user.id,
     name: user.name,
     age: user.age,
     city: user.city,
-    gender: user.gender
+    gender: user.gender,
+    profile: user
   };
+}
+
+function buildImageCardPairUsers(
+  item: RateRecord,
+  users: readonly DemoUser[]
+): ImageCardPerson[] {
+  return [item.userId, item.secondaryUserId]
+    .filter((userId): userId is string => typeof userId === 'string' && userId.trim().length > 0)
+    .map(userId => resolvePairSlotUserById(userId, users))
+    .filter((user): user is DemoUser => Boolean(user))
+    .map(user => toImageCardPerson(user));
 }
 
 function buildDisplayImageUrls(images: readonly string[] | undefined, count: number): string[] {
@@ -183,22 +223,22 @@ function buildDisplayImageUrls(images: readonly string[] | undefined, count: num
 }
 
 function matchesRateFilter(
-  item: RateMenuItem,
+  item: RateRecord,
   filter: AppTypes.RateFilterKey,
-  directionOverrides?: Partial<Record<string, RateMenuItem['direction']>>
+  directionOverrides?: Partial<Record<string, RateRecord['direction']>>
 ): boolean {
-  const [modeKey, directionKey] = filter.split('-') as ['individual' | 'pair', RateMenuItem['direction']];
+  const [modeKey, directionKey] = filter.split('-') as ['individual' | 'pair', RateRecord['direction']];
   return item.mode === modeKey && displayedRateDirection(item, directionOverrides) === directionKey;
 }
 
 function displayedRateDirection(
-  item: RateMenuItem,
-  directionOverrides?: Partial<Record<string, RateMenuItem['direction']>>
-): RateMenuItem['direction'] {
+  item: RateRecord,
+  directionOverrides?: Partial<Record<string, RateRecord['direction']>>
+): RateRecord['direction'] {
   return directionOverrides?.[item.id] ?? item.direction;
 }
 
-function rateOwnScore(item: RateMenuItem): number {
+function rateOwnScore(item: RateRecord): number {
   if (Number.isFinite(item.scoreGiven) && item.scoreGiven > 0) {
     return normalizeRateScore(item.scoreGiven);
   }
@@ -209,7 +249,7 @@ function normalizeRateScore(value: number): number {
   return Math.min(10, Math.max(1, Math.round(value)));
 }
 
-function exactDistanceMeters(item: RateMenuItem): number {
+function exactDistanceMeters(item: RateRecord): number {
   if (Number.isFinite(item.distanceMetersExact)) {
     return Math.max(0, Math.trunc(Number(item.distanceMetersExact)));
   }

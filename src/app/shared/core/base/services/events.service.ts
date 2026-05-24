@@ -142,12 +142,20 @@ export class EventsService extends BaseRouteModeService {
     return this.eventsService.publishItem(userId, type, sourceId);
   }
 
+  unpublishItem(userId: string, type: DemoRepositoryEventItemType, sourceId: string): Promise<void> {
+    return this.eventsService.unpublishItem(userId, type, sourceId);
+  }
+
   restoreItem(userId: string, type: DemoRepositoryEventItemType, sourceId: string): Promise<void> {
     return this.eventsService.restoreItem(userId, type, sourceId);
   }
 
   takeOverItem(userId: string, type: DemoRepositoryEventItemType, sourceId: string): Promise<void> {
     return this.eventsService.takeOverItem(userId, type, sourceId);
+  }
+
+  waitForEventMutationDelay(): Promise<void> {
+    return this.eventsService.waitForEventMutationDelay();
   }
 
   applyStageAction(request: {
@@ -183,6 +191,10 @@ export class EventsService extends BaseRouteModeService {
 
   createCheckoutSession(request: EventCheckoutRequest): Promise<EventCheckoutSession | null> {
     return this.eventsService.createCheckoutSession(request);
+  }
+
+  payCheckoutSession(request: EventCheckoutRequest, paymentSessionId: string): Promise<EventCheckoutSession | null> {
+    return this.eventsService.payCheckoutSession(request, paymentSessionId);
   }
 
   queryEventFeedbackStates(userId: string): Promise<EventFeedbackStateDto[]> {
@@ -229,7 +241,8 @@ export class EventsService extends BaseRouteModeService {
       ? [item.timeframe]
       : [item.timeframe, this.eventFeedbackItemStatusLine(item)];
     return {
-      rowId: item.eventId,
+      id: item.eventId,
+      status: item.isRemoved ? 'removed' : item.isFeedbacked ? 'feedbacked' : 'pending',
       title: item.title,
       imageUrl: item.imageUrl,
       metaRows: [item.subtitle],
@@ -254,7 +267,7 @@ export class EventsService extends BaseRouteModeService {
   eventFeedbackCarouselInfoCard(card: EventFeedbackCard): InfoCardData {
     const detailRows = [card.identityTitle].filter((row): row is string => !!row?.trim());
     return {
-      rowId: card.id,
+      id: card.id,
       title: card.heading,
       imageUrl: card.imageUrl,
       metaRows: [card.subheading],
@@ -371,7 +384,7 @@ export class EventsService extends BaseRouteModeService {
     noteCount: number;
   }, showAction: boolean): InfoCardData {
     return {
-      rowId: item.eventId,
+      id: item.eventId,
       title: item.title,
       imageUrl: item.imageUrl,
       metaRows: [item.subtitle],

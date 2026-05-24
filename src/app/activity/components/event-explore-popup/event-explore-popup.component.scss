@@ -528,14 +528,21 @@
 }
 
 @media (max-width: 760px) {
-  .event-explore-order-trigger {
-    padding: 0 0.5rem;
+  .event-explore-header-controls {
+    gap: 0.3rem;
   }
 
-  .event-explore-order-trigger span {
-    max-width: 6.6rem;
-    overflow: hidden;
-    text-overflow: ellipsis;
+  .event-explore-order-trigger,
+  .event-explore-view-trigger {
+    width: 34px;
+    padding: 0;
+    justify-content: center;
+    gap: 0;
+  }
+
+  .event-explore-order-trigger span,
+  .event-explore-view-trigger span {
+    display: none;
   }
 }
 

@@ -1,5 +1,6 @@
 import type { LocationCoordinates } from '../interfaces/location.interface';
-import type { ChatMenuItem } from '../interfaces/activity-feed.interface';
+import type { PopupHeaderLookup } from './popup.model';
+import type { ChatRecord } from '../models/chat.model';
 import type { AssetCard, AssetType } from './asset.model';
 import type { ActivityMemberEntry } from './activity-member.model';
 import type { ActivitiesChatContextFilter, ChatChannelType, SupportCaseFilter } from './chat.model';
@@ -65,7 +66,7 @@ export type ActivitiesNavigationRequest =
   | {
       type: 'chatResource';
       ownerId?: string;
-      item: ChatMenuItem;
+      item: ChatRecord;
       resourceType: 'Members' | 'Car' | 'Accommodation' | 'Supplies';
       subEvent: SubEventFormItem;
       group?: { id: string; groupLabel: string } | null;
@@ -85,44 +86,12 @@ export type ActivitiesNavigationRequest =
       pendingMembers?: number;
       capacityTotal?: number;
       members?: readonly ActivityMemberEntry[];
+      lookup?: PopupHeaderLookup;
       onMembersChanged?: (members: readonly ActivityMemberEntry[]) => void;
     }
   | { type: 'eventEditorMembers'; row: ActivityListRow }
   | { type: 'eventEditorCreate'; target: EventEditorTarget }
   | { type: 'eventEditor'; row: ActivityListRow; readOnly: boolean };
-
-export type EventChatContextTone =
-  | 'popup-chat-context-btn-tone-main-event'
-  | 'popup-chat-context-btn-tone-optional'
-  | 'popup-chat-context-btn-tone-group';
-
-export interface EventChatResourceContext {
-  type: 'Members' | 'Car' | 'Accommodation' | 'Supplies';
-  icon: string;
-  title: string;
-  typeClass: string;
-  summary: string;
-  pending: number;
-  stateClass: string;
-  visible: boolean;
-}
-
-export interface EventChatContext {
-  channelType: ChatChannelType;
-  hasSubEventMenu: boolean;
-  actionIcon: string;
-  actionLabel: string;
-  actionToneClass: EventChatContextTone;
-  actionBadgeCount: number;
-  menuTitle: string;
-  eventRow: ActivityListRow | null;
-  subEventRow: ActivityListRow | null;
-  subEvent: SubEventFormItem | null;
-  group: { id: string; label: string } | null;
-  assetAssignmentIds: SubEventAssetAssignmentIds;
-  assetCardsByType: SubEventAssetCardsByType;
-  resources: EventChatResourceContext[];
-}
 
 export interface ActivitiesEventSyncPayload {
   id: string;
@@ -187,9 +156,8 @@ export interface EventCheckoutRequest {
 export type { EventCheckoutSession };
 
 export interface EventChatSession {
-  item: ChatMenuItem;
+  item: ChatRecord;
   openedAtIso: string;
-  context: EventChatContext | null;
 }
 
 export interface ActivitiesPageRequest {

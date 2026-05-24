@@ -1,15 +1,16 @@
 import { AppUtils } from '../../../app-utils';
 import type { ChatPopupMessage } from '../../base/models/chat.model';
-import type { ChatMenuItem } from '../../base/interfaces/activity-feed.interface';
+import type { ChatRecord } from '../../base/models/chat.model';
 import type { UserDto } from '../../base/interfaces/user.interface';
 import type { DemoChatRecord, DemoChatRecordCollection } from '../models/chats.model';
 import type { DemoEventRecord } from '../models/events.model';
 import { DemoEventSeedBuilder } from './demo-event-seed.builder';
+import { DemoSeedScheduleBuilder } from './demo-seed-schedule.builder';
 import { DemoUserSeedBuilder } from './demo-user-seed.builder';
 
 type ChatSeedUser = Pick<UserDto, 'id' | 'name' | 'initials' | 'gender' | 'images'>;
 
-const SEED_CHAT_ITEMS_BY_USER: Record<string, ChatMenuItem[]> = {
+const SEED_CHAT_ITEMS_BY_USER: Record<string, ChatRecord[]> = {
   'admin-demo-ava': [
     {
       id: 'c-support-admin-u1',
@@ -210,7 +211,7 @@ export class DemoChatsRepositoryBuilder {
   static buildContextualChatItemsForUser(
     ownerUserId: string,
     eventRecords: readonly DemoEventRecord[]
-  ): ChatMenuItem[] {
+  ): ChatRecord[] {
     const normalizedOwnerUserId = ownerUserId.trim();
     if (!normalizedOwnerUserId) {
       return [];
@@ -220,7 +221,7 @@ export class DemoChatsRepositoryBuilder {
     if (records.length === 0) {
       return [];
     }
-    const items: ChatMenuItem[] = [];
+    const items: ChatRecord[] = [];
     for (const record of records) {
       items.push(this.buildServiceContextChat(normalizedOwnerUserId, record));
       items.push(this.buildMainContextChat(normalizedOwnerUserId, record));
@@ -243,7 +244,7 @@ export class DemoChatsRepositoryBuilder {
     return items;
   }
 
-  static buildRecordCollection(itemsByUser: Record<string, readonly ChatMenuItem[]>): DemoChatRecordCollection {
+  static buildRecordCollection(itemsByUser: Record<string, readonly ChatRecord[]>): DemoChatRecordCollection {
     const byId: Record<string, DemoChatRecord> = {};
     const ids: string[] = [];
     for (const [ownerUserId, items] of Object.entries(itemsByUser)) {
@@ -252,6 +253,7 @@ export class DemoChatsRepositoryBuilder {
         const dateIso = this.buildDateIso(ownerUserId, item);
         byId[recordKey] = {
           ...item,
+          supportCaseUpdatedAtIso: this.rebaseOptionalDateIso(item.supportCaseUpdatedAtIso),
           memberIds: [...item.memberIds],
           ownerUserId,
           dateIso,
@@ -288,7 +290,7 @@ export class DemoChatsRepositoryBuilder {
     return `${ownerUserId}:${sourceId}`;
   }
 
-  private static buildMainContextChat(ownerUserId: string, record: DemoEventRecord): ChatMenuItem {
+  private static buildMainContextChat(ownerUserId: string, record: DemoEventRecord): ChatRecord {
     const eventTitle = record.title.trim() || 'Event';
     const memberIds = this.seedEventMemberIds(ownerUserId, record, Math.max(4, record.acceptedMembers || 0));
     return this.createContextChatItem({
@@ -305,14 +307,15 @@ export class DemoChatsRepositoryBuilder {
     }, ownerUserId);
   }
 
-  private static buildServiceContextChat(ownerUserId: string, record: DemoEventRecord): ChatMenuItem {
+  private static buildServiceContextChat(ownerUserId: string, record: DemoEventRecord): ChatRecord {
     const eventTitle = record.title.trim() || 'Event';
     const organizerUserId = `${record.creatorUserId ?? ''}`.trim();
     const memberIds = this.uniqueUserIds([
       ownerUserId,
       organizerUserId,
-      ...(record.type === 'hosting' ? (record.acceptedMemberUserIds ?? []) : []),
-      ...(record.type === 'hosting' ? (record.pendingMemberUserIds ?? []) : [])
+      ...(record.type === 'hosting'
+        ? this.seedEventMemberIds(ownerUserId, record, Math.max(record.acceptedMembers + record.pendingMembers, 1))
+        : [])
     ]);
     return {
       ...this.createContextChatItem({
@@ -338,7 +341,7 @@ export class DemoChatsRepositoryBuilder {
     record: DemoEventRecord,
     subEvent: NonNullable<DemoEventRecord['subEvents']>[number],
     stageLabel: string
-  ): ChatMenuItem | null {
+  ): ChatRecord | null {
     const acceptedTarget = this.countValue(subEvent.membersAccepted);
     if (acceptedTarget <= 0) {
       return null;
@@ -372,7 +375,7 @@ export class DemoChatsRepositoryBuilder {
     record: DemoEventRecord,
     subEvent: NonNullable<DemoEventRecord['subEvents']>[number],
     stageLabel: string
-  ): ChatMenuItem | null {
+  ): ChatRecord | null {
     const groups = [...(subEvent.groups ?? [])];
     if (groups.length === 0) {
       return null;
@@ -412,7 +415,7 @@ export class DemoChatsRepositoryBuilder {
     memberIds: string[];
     dateIso: string;
     unread: number;
-  }, ownerUserId: string): ChatMenuItem {
+  }, ownerUserId: string): ChatRecord {
     const memberIds = this.uniqueUserIds(input.memberIds);
     const senderCandidates = memberIds.filter(id => id !== ownerUserId);
     const lastSenderId = senderCandidates[0] ?? memberIds[0] ?? ownerUserId;
@@ -433,7 +436,7 @@ export class DemoChatsRepositoryBuilder {
   }
 
   private static seedEventMemberIds(ownerUserId: string, record: DemoEventRecord, targetCount: number): string[] {
-    const explicit = this.uniqueUserIds([ownerUserId, ...(record.acceptedMemberUserIds ?? [])]);
+    const explicit = this.uniqueUserIds([ownerUserId]);
     if (explicit.length >= Math.max(1, targetCount)) {
       return explicit.slice(0, Math.max(1, targetCount));
     }
@@ -511,22 +514,22 @@ export class DemoChatsRepositoryBuilder {
     return [...items].sort((left, right) => AppUtils.toSortableDate(left.startAt) - AppUtils.toSortableDate(right.startAt));
   }
 
-  private static buildDateIso(ownerUserId: string, item: ChatMenuItem): string {
+  private static buildDateIso(ownerUserId: string, item: ChatRecord): string {
     const seed = AppUtils.hashText(`chat-date:${ownerUserId}:${item.id}:${item.title}`);
-    const value = new Date('2026-02-21T09:00:00');
+    const value = DemoSeedScheduleBuilder.shiftDate(new Date(this.FALLBACK_TIME));
     value.setDate(value.getDate() + (seed % 9));
     value.setHours(8 + (seed % 11), (seed % 4) * 15, 0, 0);
     return AppUtils.toIsoDateTime(value);
   }
 
-  private static buildMessages(ownerUserId: string, item: ChatMenuItem, anchorIso: string): ChatPopupMessage[] {
+  private static buildMessages(ownerUserId: string, item: ChatRecord, anchorIso: string): ChatPopupMessage[] {
     const me = this.resolveUser(ownerUserId);
     if (!me) {
       return [];
     }
     const members = this.resolveMembers(item, me);
     const sender = this.resolveSender(item, members, me);
-    const anchor = new Date(anchorIso || this.FALLBACK_TIME);
+    const anchor = new Date(anchorIso || this.rebaseDateIso(this.FALLBACK_TIME));
     const at = (minutesBefore: number): Date => new Date(anchor.getTime() - (minutesBefore * 60 * 1000));
     const mk = (
       id: string,
@@ -601,8 +604,20 @@ export class DemoChatsRepositoryBuilder {
       .sort((first, second) => AppUtils.toSortableDate(first.sentAtIso) - AppUtils.toSortableDate(second.sentAtIso));
   }
 
+  private static rebaseOptionalDateIso(value: string | null | undefined): string | undefined {
+    const normalizedValue = `${value ?? ''}`.trim();
+    if (!normalizedValue) {
+      return undefined;
+    }
+    return this.rebaseDateIso(normalizedValue);
+  }
+
+  private static rebaseDateIso(value: string): string {
+    return DemoSeedScheduleBuilder.rebaseDateTime(value) ?? value;
+  }
+
   private static buildSupportCaseMessages(
-    item: ChatMenuItem,
+    item: ChatRecord,
     me: ChatSeedUser,
     members: readonly ChatSeedUser[],
     sender: ChatSeedUser,
@@ -684,7 +699,7 @@ export class DemoChatsRepositoryBuilder {
     return messages.sort((first, second) => AppUtils.toSortableDate(first.sentAtIso) - AppUtils.toSortableDate(second.sentAtIso));
   }
 
-  private static supportCaseOpeningLine(item: ChatMenuItem): string {
+  private static supportCaseOpeningLine(item: ChatRecord): string {
     if (item.id === 'c-support-admin-u1') {
       return 'Hi, I shared an asset screen and something looks wrong with the visible action.';
     }
@@ -697,7 +712,7 @@ export class DemoChatsRepositoryBuilder {
     return 'Hi, I need help with this support case.';
   }
 
-  private static isSupportCaseChat(item: ChatMenuItem): boolean {
+  private static isSupportCaseChat(item: ChatRecord): boolean {
     return `${item.id ?? ''}`.trim().startsWith('c-support-admin-') || Boolean(item.supportCaseStatus);
   }
 
@@ -721,7 +736,7 @@ export class DemoChatsRepositoryBuilder {
     return this.USERS_BY_ID.get(normalized) ?? this.ADMIN_USERS_BY_ID.get(normalized) ?? null;
   }
 
-  private static resolveMembers(item: ChatMenuItem, fallback: ChatSeedUser): ChatSeedUser[] {
+  private static resolveMembers(item: ChatRecord, fallback: ChatSeedUser): ChatSeedUser[] {
     const resolved = (item.memberIds ?? [])
       .map(id => this.resolveUser(id))
       .filter((entry): entry is ChatSeedUser => Boolean(entry));
@@ -731,7 +746,7 @@ export class DemoChatsRepositoryBuilder {
     return [fallback, ...[...this.USERS_BY_ID.values()].filter(user => user.id !== fallback.id).slice(0, 2)];
   }
 
-  private static resolveSender(item: ChatMenuItem, members: readonly ChatSeedUser[], fallback: ChatSeedUser): ChatSeedUser {
+  private static resolveSender(item: ChatRecord, members: readonly ChatSeedUser[], fallback: ChatSeedUser): ChatSeedUser {
     const explicit = item.lastSenderId ? this.resolveUser(item.lastSenderId) : null;
     if (explicit) {
       return explicit;

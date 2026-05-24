@@ -21,7 +21,7 @@
 }
 
 .smart-list__surface--fullscreen-with-rating-bar {
-  --smart-list-fullscreen-bottom-offset: calc(3.4rem + env(safe-area-inset-bottom));
+  --smart-list-fullscreen-bottom-offset: calc(5.25rem + env(safe-area-inset-bottom));
 }
 
 @media (max-width: 760px) {

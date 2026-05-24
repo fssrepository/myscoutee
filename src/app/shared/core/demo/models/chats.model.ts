@@ -1,9 +1,9 @@
 import type { ChatPopupMessage } from '../../base/models/chat.model';
-import type { ChatMenuItem } from '../../base/interfaces/activity-feed.interface';
+import type { ChatRecord } from '../../base/models/chat.model';
 
 export const CHATS_TABLE_NAME = 'chats' as const;
 
-export interface DemoChatRecord extends ChatMenuItem {
+export interface DemoChatRecord extends ChatRecord {
   ownerUserId: string;
   messages?: ChatPopupMessage[];
 }

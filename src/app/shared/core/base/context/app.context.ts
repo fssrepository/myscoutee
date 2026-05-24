@@ -9,7 +9,11 @@ export type ActivityCounterKey =
   | 'invitations'
   | 'events'
   | 'hosting'
+  | 'cars'
+  | 'accommodation'
+  | 'supplies'
   | 'tickets'
+  | 'contacts'
   | 'feedback'
   | 'adminJobs'
   | 'adminMetrics';
@@ -21,7 +25,11 @@ export interface ActivityCounters {
   invitations: number;
   events: number;
   hosting: number;
+  cars: number;
+  accommodation: number;
+  supplies: number;
   tickets: number;
+  contacts: number;
   feedback: number;
   adminJobs: number;
   adminMetrics: number;
@@ -63,7 +71,11 @@ const ACTIVITY_COUNTER_KEYS: ActivityCounterKey[] = [
   'invitations',
   'events',
   'hosting',
+  'cars',
+  'accommodation',
+  'supplies',
   'tickets',
+  'contacts',
   'feedback',
   'adminJobs',
   'adminMetrics'
@@ -657,7 +669,11 @@ export class AppContext {
         invitations: user.activities?.invitations ?? 0,
         events: user.activities?.events ?? 0,
         hosting: user.activities?.hosting ?? 0,
+        cars: user.activities?.cars ?? 0,
+        accommodation: user.activities?.accommodation ?? 0,
+        supplies: user.activities?.supplies ?? 0,
         tickets: user.activities?.tickets ?? 0,
+        contacts: user.activities?.contacts ?? 0,
         feedback: user.activities?.feedback ?? 0,
         adminJobs: user.activities?.adminJobs ?? 0,
         adminMetrics: user.activities?.adminMetrics ?? 0

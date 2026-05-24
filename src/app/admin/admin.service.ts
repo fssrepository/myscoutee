@@ -1,4 +1,4 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Location } from '@angular/common';
 import { Injectable, computed, inject, signal } from '@angular/core';
 
@@ -36,9 +36,9 @@ import {
   type UserDto
 } from '../shared/core';
 import { AppMemoryDb } from '../shared/core/base/db';
-import type { ChatMenuItem } from '../shared/core/base/interfaces/activity-feed.interface';
+import type { ChatRecord } from '../shared/core/base/models/chat.model';
 import type { ChatPopupMessage } from '../shared/core/base/models/chat.model';
-import { DemoChatsRepository, DemoUsersRepository } from '../shared/core/demo';
+import { DemoChatsRepository, DemoHelpCenterService, DemoUsersRepository } from '../shared/core/demo';
 import { CHATS_TABLE_NAME, type DemoChatRecord } from '../shared/core/demo/models/chats.model';
 import { SHARE_TOKENS_TABLE_NAME } from '../shared/core/demo/models/share-tokens.model';
 import { ActivitiesPopupStateService } from '../activity/services/activities-popup-state.service';
@@ -390,11 +390,13 @@ export class AdminService {
   private readonly memoryDb = inject(AppMemoryDb);
   private readonly demoUsersRepository = inject(DemoUsersRepository);
   private readonly demoChatsRepository = inject(DemoChatsRepository);
+  private readonly demoHelpCenterService = inject(DemoHelpCenterService);
   private readonly activitiesContext = inject(ActivitiesPopupStateService);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
   private readonly dashboardRef = signal<AdminDashboardDto | null>(null);
   private readonly busyRef = signal(false);
   private readonly errorRef = signal('');
+  private readonly accessDeniedRef = signal(false);
   private readonly activePopupRef = signal<AdminPopupKind | null>(null);
   private readonly selectedReportedUserRef = signal<AdminReportedUserDto | null>(null);
   private readonly selectedReportRef = signal<AdminReportDto | null>(null);
@@ -403,6 +405,7 @@ export class AdminService {
   readonly dashboard = this.dashboardRef.asReadonly();
   readonly busy = this.busyRef.asReadonly();
   readonly error = this.errorRef.asReadonly();
+  readonly accessDenied = this.accessDeniedRef.asReadonly();
   readonly activePopup = this.activePopupRef.asReadonly();
   readonly selectedReportedUser = this.selectedReportedUserRef.asReadonly();
   readonly selectedReport = this.selectedReportRef.asReadonly();
@@ -447,8 +450,7 @@ export class AdminService {
       if (this.usesHttpAdminApi && !this.isFirebaseAdminMode) {
         this.sessionService.startDemoSession(adminId);
       }
-      await this.bootstrapAdmin(adminId);
-      return true;
+      return Boolean(await this.bootstrapAdmin(adminId));
     } catch {
       this.clearAdminSession();
       return false;
@@ -472,6 +474,7 @@ export class AdminService {
     }
     this.busyRef.set(true);
     this.errorRef.set('');
+    this.accessDeniedRef.set(false);
     try {
       const dashboard = this.usesHttpAdminApi
         ? await this.loadHttpDashboard(adminUserId)
@@ -485,6 +488,10 @@ export class AdminService {
       this.persistAdminSession(dashboard.activeAdmin.id);
       return dashboard;
     } catch (error) {
+      if (this.isAdminAccessDenied(error)) {
+        this.handleAdminAccessDenied();
+        return null;
+      }
       this.errorRef.set(this.errorMessage(error));
       return null;
     } finally {
@@ -554,22 +561,7 @@ export class AdminService {
     this.selectedReportedUserRef.set(user);
     this.activePopupRef.set(null);
     const chat = this.buildAdminSupportChat(user);
-    this.activitiesContext.openEventChat(chat, {
-      channelType: 'serviceEvent',
-      hasSubEventMenu: false,
-      actionIcon: 'shield',
-      actionLabel: 'Support',
-      actionToneClass: 'popup-chat-context-btn-tone-main-event',
-      actionBadgeCount: this.supportChatUnread(user),
-      menuTitle: chat.title,
-      eventRow: null,
-      subEventRow: null,
-      subEvent: null,
-      group: null,
-      assetAssignmentIds: { Car: [], Accommodation: [], Supplies: [] },
-      assetCardsByType: { Car: [], Accommodation: [], Supplies: [] },
-      resources: []
-    });
+    this.activitiesContext.openEventChat(chat);
   }
 
   hasSupportChat(user: AdminReportedUserDto): boolean {
@@ -1096,9 +1088,28 @@ export class AdminService {
     this.activePopupRef.set(null);
     this.selectedReportedUserRef.set(null);
     this.selectedReportRef.set(null);
+    this.accessDeniedRef.set(false);
     this.appCtx.setActiveUserId('');
     if (typeof localStorage !== 'undefined') {
       localStorage.removeItem(ADMIN_SESSION_STORAGE_KEY);
+    }
+  }
+
+  handleAdminAccessDenied(): void {
+    this.dashboardRef.set(null);
+    this.activePopupRef.set(null);
+    this.selectedReportedUserRef.set(null);
+    this.selectedReportRef.set(null);
+    this.accessDeniedRef.set(true);
+    this.errorRef.set('This account does not have admin access.');
+    if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem(ADMIN_SESSION_STORAGE_KEY);
+    }
+    const session = this.sessionService.currentSession();
+    if (session?.kind === 'firebase') {
+      this.appCtx.setActiveUserId(session.profile.id.trim());
+    } else {
+      this.appCtx.setActiveUserId('');
     }
   }
 
@@ -1122,6 +1133,7 @@ export class AdminService {
     const admin = this.resolveDemoAdmin(adminUserId);
     onProgress?.({ percent: 18, label: 'Preparing admin data', stage: 'indexedDb' });
     await this.memoryDb.whenReady();
+    await this.demoHelpCenterService.init();
     this.demoUsersRepository.init();
     await this.ensureDemoAdminProfiles();
     this.demoChatsRepository.init();
@@ -1461,7 +1473,11 @@ export class AdminService {
         invitations: 0,
         events: 0,
         hosting: 0,
+        cars: 0,
+        accommodation: 0,
+        supplies: 0,
         tickets: 0,
+        contacts: 0,
         feedback: 0,
         adminJobs: 0,
         adminMetrics: 0
@@ -1504,7 +1520,7 @@ export class AdminService {
       return;
     }
     const now = new Date();
-    const chat: ChatMenuItem & { ownerUserId?: string } = {
+    const chat: ChatRecord & { ownerUserId?: string } = {
       id: `c-admin-service-help-${helpUser.id}`,
       avatar: helpUser.initials,
       title: `MyScoutee Support · ${helpUser.name}`,
@@ -1818,7 +1834,7 @@ export class AdminService {
     this.selectedReportedUserRef.set(this.resolveDashboardReportedUser(userId) ?? selected);
   }
 
-  private buildAdminSupportChat(user: AdminReportedUserDto): ChatMenuItem & { ownerUserId?: string } {
+  private buildAdminSupportChat(user: AdminReportedUserDto): ChatRecord & { ownerUserId?: string } {
     const admin = this.activeAdmin() ?? this.resolveDemoAdmin();
     return {
       id: `c-support-admin-${user.userId}`,
@@ -1965,7 +1981,11 @@ export class AdminService {
         invitations: 0,
         events: dashboard.reportedUsers.length,
         hosting: 0,
+        cars: 0,
+        accommodation: 0,
+        supplies: 0,
         tickets: 0,
+        contacts: 0,
         feedback: dashboard.feedback.length,
         adminJobs: Math.max(0, Math.trunc(Number(existingAdminProfile?.activities?.adminJobs) || 0)),
         adminMetrics: Math.max(0, Math.trunc(Number(existingAdminProfile?.activities?.adminMetrics) || 0))
@@ -3966,10 +3986,20 @@ export class AdminService {
   }
 
   private errorMessage(error: unknown): string {
+    if (this.isAdminAccessDenied(error)) {
+      return 'This account does not have admin access.';
+    }
+    if (error instanceof HttpErrorResponse && typeof error.error?.message === 'string' && error.error.message.trim()) {
+      return error.error.message.trim();
+    }
     if (error instanceof Error && error.message.trim()) {
       return error.message;
     }
     return 'Admin workspace is unavailable.';
+  }
+
+  private isAdminAccessDenied(error: unknown): boolean {
+    return error instanceof HttpErrorResponse && (error.status === 401 || error.status === 403);
   }
 
   private withNotificationStorageFallback<T>(task: Promise<T>, fallback: T): Promise<T> {

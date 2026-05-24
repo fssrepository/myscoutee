@@ -4,6 +4,7 @@ export { DemoEventFeedbackBuilder } from './demo-event-feedback.builder';
 export { DemoEventsRepositoryBuilder } from './demo-events-repository.builder';
 export { DemoEventSeedBuilder } from './demo-event-seed.builder';
 export { DemoProfileExperienceSeedBuilder } from './demo-profile-experience-seed.builder';
+export { DemoSeedScheduleBuilder } from './demo-seed-schedule.builder';
 export { DemoUserFilterPreferencesBuilder } from './demo-user-filter-preferences.builder';
 export { DemoUserImpressionsBuilder } from './demo-user-impressions.builder';
 export { DemoUserMenuCountersBuilder } from './demo-user-menu-counters.builder';

@@ -48,6 +48,7 @@
 
 :where(
   .user-menu-share-btn,
+  .user-menu-explanation-btn,
   .user-menu-settings-btn,
   .user-menu-close-btn,
   .header-open-cue,
@@ -83,6 +84,7 @@
 }
 
 .user-menu-share-btn,
+.user-menu-explanation-btn,
 .user-menu-settings-btn,
 .user-menu-close-btn,
 .header-open-cue {
@@ -93,6 +95,8 @@
   --navigator-menu-ripple-color: rgba(164, 60, 69, 0.16);
 }
 
+.user-menu-share-btn .mat-icon,
+.user-menu-explanation-btn .mat-icon,
 .user-menu-settings-btn .mat-icon,
 .user-menu-close-btn .mat-icon,
 .header-open-cue .mat-icon,
@@ -112,6 +116,7 @@
 
 :where(
   .user-menu-share-btn,
+  .user-menu-explanation-btn,
   .user-menu-settings-btn,
   .user-menu-close-btn,
   .header-open-cue,
@@ -128,6 +133,7 @@
 @media (hover: hover) and (pointer: fine) {
   :where(
     .user-menu-share-btn,
+    .user-menu-explanation-btn,
     .user-menu-settings-btn,
     .user-menu-close-btn,
     .header-open-cue,
@@ -143,6 +149,7 @@
 
   :where(
     .user-menu-share-btn,
+    .user-menu-explanation-btn,
     .user-menu-settings-btn,
     .user-menu-close-btn,
     .header-open-cue,
@@ -168,6 +175,7 @@
 @media (hover: none), (pointer: coarse) {
   :where(
     .user-menu-share-btn,
+    .user-menu-explanation-btn,
     .user-menu-settings-btn,
     .user-menu-close-btn,
     .header-open-cue,
@@ -384,7 +392,7 @@
 
 .user-menu-header {
   position: relative;
-  padding: 0.9rem 7.18rem 0.8rem 0.95rem;
+  padding: 0.9rem 9.28rem 0.8rem 0.95rem;
   border-bottom: 1px solid rgba(23, 33, 54, 0.12);
   background: linear-gradient(180deg, rgba(227, 238, 255, 0.9), rgba(248, 250, 255, 0.96));
 }
@@ -415,6 +423,7 @@
 }
 
 .user-menu-share-btn,
+.user-menu-explanation-btn,
 .user-menu-settings-btn,
 .user-menu-close-btn {
   position: absolute;
@@ -432,6 +441,10 @@
   transition: transform 0.16s ease, background-color 0.16s ease, color 0.16s ease;
 }
 
+.user-menu-explanation-btn {
+  right: 6.82rem;
+}
+
 .user-menu-share-btn {
   right: 4.74rem;
 }
@@ -445,6 +458,7 @@
 }
 
 .user-menu-share-btn .mat-icon,
+.user-menu-explanation-btn .mat-icon,
 .user-menu-settings-btn .mat-icon,
 .user-menu-close-btn .mat-icon {
   width: 18px;
@@ -457,6 +471,13 @@
   background: rgba(255, 255, 255, 0.94);
   color: rgba(22, 56, 98, 0.96);
   transform: translateY(-1px) scale(1.03);
+}
+
+.user-menu-explanation-btn.is-enabled {
+  border: 1px solid rgba(31, 63, 105, 0.18);
+  background: rgba(28, 43, 68, 0.9);
+  color: #fff;
+  box-shadow: 0 5px 14px rgba(12, 24, 40, 0.16);
 }
 
 .user-header-main {

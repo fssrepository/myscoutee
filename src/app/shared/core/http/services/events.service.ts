@@ -284,12 +284,20 @@ export class HttpEventsService {
     await this.postVoid('/activities/events/publish', { userId: userId.trim(), type, sourceId: sourceId.trim() });
   }
 
+  async unpublishItem(userId: string, type: DemoRepositoryEventItemType, sourceId: string): Promise<void> {
+    await this.postVoid('/activities/events/unpublish', { userId: userId.trim(), type, sourceId: sourceId.trim() });
+  }
+
   async restoreItem(userId: string, type: DemoRepositoryEventItemType, sourceId: string): Promise<void> {
     await this.postVoid('/activities/events/restore', { userId: userId.trim(), type, sourceId: sourceId.trim() });
   }
 
   async takeOverItem(userId: string, type: DemoRepositoryEventItemType, sourceId: string): Promise<void> {
     await this.postVoid('/activities/events/take-over', { userId: userId.trim(), type, sourceId: sourceId.trim() });
+  }
+
+  waitForEventMutationDelay(): Promise<void> {
+    return Promise.resolve();
   }
 
   async applyStageAction(request: {
@@ -350,37 +358,56 @@ export class HttpEventsService {
     if (!normalizedUserId || !normalizedSourceId) {
       return null;
     }
-    try {
-      const response = await this.http
-        .post<DemoEventRecord | null>(`${this.apiBaseUrl}/activities/events/join`, {
-          userId: normalizedUserId,
-          type: 'events',
-          sourceId: normalizedSourceId,
-          slotSourceId: options.slotSourceId?.trim() || null,
-          optionalSubEventIds: [...(options.optionalSubEventIds ?? [])],
-          assetSelections: [...(options.assetSelections ?? [])],
-          acceptedPolicyIds: [...(options.acceptedPolicyIds ?? [])],
-          paymentSessionId: options.paymentSessionId?.trim() || null,
-          bookingConfirmed: options.bookingConfirmed === true,
-          pendingReason: options.pendingReason === 'waitlist'
-            ? 'waitlist'
-            : (options.pendingReason === 'approval' ? 'approval' : null)
-        })
-        .toPromise();
-      return response ? this.cloneRecords([response])[0] ?? null : null;
-    } catch {
-      return null;
-    }
+    const response = await this.http
+      .post<DemoEventRecord | null>(`${this.apiBaseUrl}/activities/events/join`, {
+        userId: normalizedUserId,
+        type: 'events',
+        sourceId: normalizedSourceId,
+        slotSourceId: options.slotSourceId?.trim() || null,
+        optionalSubEventIds: [...(options.optionalSubEventIds ?? [])],
+        assetSelections: [...(options.assetSelections ?? [])],
+        acceptedPolicyIds: [...(options.acceptedPolicyIds ?? [])],
+        paymentSessionId: options.paymentSessionId?.trim() || null,
+        bookingConfirmed: options.bookingConfirmed === true,
+        pendingReason: options.pendingReason === 'waitlist'
+          ? 'waitlist'
+          : (options.pendingReason === 'approval' ? 'approval' : null)
+      })
+      .toPromise();
+    return response ? this.cloneRecords([response])[0] ?? null : null;
   }
 
   async createCheckoutSession(request: EventCheckoutRequest): Promise<EventCheckoutSession | null> {
-    try {
-      return await this.http
-        .post<EventCheckoutSession | null>(`${this.apiBaseUrl}/activities/events/checkout`, request)
-        .toPromise() ?? null;
-    } catch {
-      return null;
+    return await this.http
+      .post<EventCheckoutSession | null>(
+        `${this.apiBaseUrl}/activities/events/checkout`,
+        request,
+        { params: this.paymentProviderParams() }
+      )
+      .toPromise() ?? null;
+  }
+
+  async payCheckoutSession(
+    request: EventCheckoutRequest,
+    paymentSessionId: string
+  ): Promise<EventCheckoutSession | null> {
+    const normalizedPaymentSessionId = paymentSessionId.trim();
+    if (!normalizedPaymentSessionId) {
+      return this.createCheckoutSession(request);
     }
+    return await this.http
+      .post<EventCheckoutSession | null>(
+        `${this.apiBaseUrl}/activities/events/pay`,
+        request,
+        {
+          params: this.paymentProviderParams().set('paymentSessionId', normalizedPaymentSessionId)
+        }
+      )
+      .toPromise() ?? null;
+  }
+
+  private paymentProviderParams(): HttpParams {
+    return new HttpParams().set('provider', environment.paymentProvider || 'stripe');
   }
 
   async queryEventFeedbackStates(userId: string): Promise<EventFeedbackStateDto[]> {
@@ -575,8 +602,6 @@ export class HttpEventsService {
     }
     return records.map(record => ({
       ...record,
-      acceptedMemberUserIds: [...(record.acceptedMemberUserIds ?? [])],
-      pendingMemberUserIds: [...(record.pendingMemberUserIds ?? [])],
       topics: [...(record.topics ?? [])],
       pricing: record.pricing ? PricingBuilder.clonePricingConfig(record.pricing) : undefined,
       policies: (record.policies ?? []).map(item => ({ ...item })),

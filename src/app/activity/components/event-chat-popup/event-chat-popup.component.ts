@@ -20,11 +20,10 @@ import { AppUtils } from '../../../shared/app-utils';
 import { resolveCurrentRouteDelayMs } from '../../../shared/core/base/services/route-delay.service';
 import { ActivitiesPopupStateService } from '../../services/activities-popup-state.service';
 import { EventEditorPopupStateService } from '../../services/event-editor-popup-state.service';
-import type { EventChatResourceContext } from '../../../shared/core/base/models';
-import { AppContext, AppPopupContext, ChatsService, EventsService, ShareTokensService } from '../../../shared/core';
+import { ActivitiesService, ActivityResourceBuilder, ActivityResourcesService, AppContext, AppPopupContext, ChatsService, EventsService, ShareTokensService } from '../../../shared/core';
 import { AppMemoryDb } from '../../../shared/core/base';
-import { toActivityEventRow } from '../../../shared/core/base/converters/activities-event.converter';
-import type { ChatMenuItem, EventMenuItem } from '../../../shared/core/base/interfaces/activity-feed.interface';
+import type { ChatRecord } from '../../../shared/core/base/models/chat.model';
+import type { DemoEventRecord } from '../../../shared/core/demo/models/events.model';
 import {
   CounterBadgePipe,
   SmartListComponent,
@@ -71,6 +70,27 @@ interface ChatTextSegment {
   url?: string;
 }
 
+type SelectedChatActionTone =
+  | 'popup-chat-context-btn-tone-main-event'
+  | 'popup-chat-context-btn-tone-optional'
+  | 'popup-chat-context-btn-tone-group';
+
+type SelectedChatResourceType = 'Members' | AppTypes.AssetType;
+
+interface SelectedChatGroupState {
+  id: string;
+  label: string;
+}
+
+interface SelectedChatNavigationState {
+  channelType: AppTypes.ChatChannelType;
+  eventRow: AppTypes.ActivityListRow | null;
+  subEvent: AppTypes.SubEventFormItem | null;
+  group: SelectedChatGroupState | null;
+  assetAssignmentIds: AppTypes.SubEventAssetAssignmentIds;
+  assetCardsByType: AppTypes.SubEventAssetCardsByType;
+}
+
 @Component({
   selector: 'app-event-chat-popup',
   standalone: true,
@@ -86,6 +106,8 @@ export class EventChatPopupComponent implements OnDestroy {
   private readonly appCtx = inject(AppContext);
   private readonly popupCtx = inject(AppPopupContext);
   private readonly chatsService = inject(ChatsService);
+  private readonly activitiesService = inject(ActivitiesService);
+  private readonly activityResourcesService = inject(ActivityResourcesService);
   private readonly eventsService = inject(EventsService);
   private readonly shareTokensService = inject(ShareTokensService);
   private readonly confirmationDialogService = inject(ConfirmationDialogService);
@@ -101,9 +123,13 @@ export class EventChatPopupComponent implements OnDestroy {
   protected showContextMenu = false;
   protected contextMenuOpenUp = false;
   protected chatComposeDetachedSpace = 108;
-  protected preparedChatContext: AppTypes.EventChatContext | null = null;
-  protected preparedChatMembersResource: EventChatResourceContext | null = null;
-  protected preparedChatAssetResources: EventChatResourceContext[] = [];
+  protected chatHeaderContext: AppTypes.PopupHeaderContext | null = null;
+  protected chatHeaderControlsHydrated = false;
+  private selectedChatNavigationState: SelectedChatNavigationState | null = null;
+  private resolvedChatEventRecord: DemoEventRecord | null = null;
+  private resolvedChatEventRecordKey = '';
+  private resolvedChatResourceState: AppTypes.ActivitySubEventResourceState | null = null;
+  private resolvedChatResourceStateKey = '';
   protected typingIndicators: AppTypes.ChatTypingIndicator[] = [];
   protected composerMenuOpen = false;
   protected voiceComposerOpen = false;
@@ -258,14 +284,15 @@ export class EventChatPopupComponent implements OnDestroy {
     effect(() => {
       const session = this.session();
       const sessionKey = session ? `${session.item.id}:${session.openedAtIso}` : null;
-      this.syncPreparedChatContext(session?.context ?? null);
       if (session && this.loadedSessionKey === sessionKey) {
+        this.syncSelectedChatHeader(session.item, { hydrateControls: this.chatHeaderControlsHydrated });
         this.cdr.markForCheck();
         return;
       }
       this.teardownLiveChatUpdates();
       this.loadedSessionKey = sessionKey;
       this.initialChatLoadedSessionKey = null;
+      this.chatHeaderControlsHydrated = false;
       this.draftMessage = '';
       this.closeTransientMessageUi();
       this.replyTarget = null;
@@ -287,10 +314,11 @@ export class EventChatPopupComponent implements OnDestroy {
         this.loadedSessionKey = null;
         this.chatThreadQuery = {};
         this.chatInitialLoadPending = false;
-        this.syncPreparedChatContext(null);
+        this.syncSelectedChatHeader(null);
         this.cdr.markForCheck();
         return;
       }
+      this.syncSelectedChatHeader(session.item, { hydrateControls: false });
       this.chatInitialLoadPending = true;
       // Warm event-editor service path while chat is active to reduce first-action flicker.
       this.eventEditorService.isOpen();
@@ -319,12 +347,66 @@ export class EventChatPopupComponent implements OnDestroy {
     this.visibleChatThreadTotal = 0;
     this.loadedSessionKey = null;
     this.chatThreadQuery = {};
+    this.chatHeaderControlsHydrated = false;
     this.closeTransientMessageUi();
     if (this.isBlockedSupportChat()) {
       this.activitiesContext.closeActivities();
       return;
     }
     this.activitiesContext.closeEventChat();
+  }
+
+  protected chatHeaderTitle(chatSession: AppTypes.EventChatSession): string {
+    return `${this.chatHeaderContext?.title ?? chatSession.item.title ?? ''}`.trim() || 'Chat';
+  }
+
+  protected chatHeaderMembersControl(): AppTypes.PopupHeaderControl | null {
+    const controls = this.chatHeaderContext?.controls ?? [];
+    return controls.find(control => control.id === 'members') ?? null;
+  }
+
+  protected selectedChatContextControl(): AppTypes.PopupHeaderControl | null {
+    const controls = this.chatHeaderContext?.controls ?? [];
+    return controls.find(control => control.id === 'chat-context') ?? null;
+  }
+
+  protected chatHeaderControlIcon(control: AppTypes.PopupHeaderControl): string {
+    return control.visual?.kind === 'icon' ? control.visual.icon : 'groups';
+  }
+
+  protected chatHeaderControlLabel(control: AppTypes.PopupHeaderControl): string {
+    return `${control.summary ?? control.label ?? ''}`.trim() || 'Members';
+  }
+
+  protected chatHeaderThumbs(control: AppTypes.PopupHeaderControl): AppTypes.PopupHeaderThumb[] {
+    if (control.visual?.kind !== 'thumbStack') {
+      return [];
+    }
+    const maxVisible = Math.max(1, Math.trunc(Number(control.visual.maxVisible) || 4));
+    return control.visual.thumbs.slice(0, maxVisible).map(thumb => ({ ...thumb }));
+  }
+
+  protected chatHeaderControlBadgeValue(control: AppTypes.PopupHeaderControl): number {
+    return Math.max(0, Math.trunc(Number(control.badge?.value) || 0));
+  }
+
+  protected openChatHeaderControl(control: AppTypes.PopupHeaderControl, event?: Event): void {
+    event?.stopPropagation();
+    if (control.id !== 'members') {
+      return;
+    }
+    const lookup = control.lookup;
+    const ownerId = `${lookup?.id ?? ''}`.trim();
+    if (!ownerId) {
+      return;
+    }
+    this.popupCtx.requestActivitiesNavigation({
+      type: 'members',
+      ownerId,
+      subtitle: this.chatHeaderContext?.title ?? this.session()?.item.title ?? 'Chat',
+      viewOnly: true,
+      lookup: lookup ? { ...lookup } : undefined
+    });
   }
 
   protected isBlockedSupportChat(): boolean {
@@ -336,44 +418,44 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   protected selectedChatHasSubEventMenu(): boolean {
-    return this.preparedChatContext?.hasSubEventMenu === true;
+    const menu = this.selectedChatContextControl()?.menu;
+    return Array.isArray(menu?.groups) && menu.groups.some(group => group.controls.length > 0);
   }
 
   protected selectedChatHeaderActionIcon(): string {
     if (this.isServiceChat()) {
       return 'support_agent';
     }
-    return this.preparedChatContext?.actionIcon ?? 'event';
+    return this.chatHeaderControlIcon(this.selectedChatContextControl() ?? {
+      id: 'fallback-event',
+      label: 'View Event',
+      visual: { kind: 'icon', icon: 'event' }
+    });
   }
 
   protected selectedChatHeaderActionLabel(): string {
     if (this.isServiceChat()) {
       return 'Service';
     }
-    return this.preparedChatContext?.actionLabel ?? 'View Event';
+    return this.selectedChatContextControl()?.label ?? 'View Event';
   }
 
   protected selectedChatHeaderActionToneClass(): string {
     if (this.isServiceChat()) {
       return 'popup-chat-context-btn-tone-service';
     }
-    return this.preparedChatContext?.actionToneClass ?? 'popup-chat-context-btn-tone-main-event';
+    return this.selectedChatActionToneClass();
   }
 
   protected selectedChatHeaderActionBadgeCount(): number {
-    return Math.max(0, Math.trunc(Number(this.preparedChatContext?.actionBadgeCount) || 0));
+    return this.chatHeaderControlBadgeValue(this.selectedChatContextControl() ?? {
+      id: 'fallback-event',
+      label: 'View Event'
+    });
   }
 
   protected selectedChatContextMenuTitle(): string {
-    return this.preparedChatContext?.menuTitle ?? this.session()?.item.title ?? 'Chat';
-  }
-
-  protected selectedChatMembersResource(): EventChatResourceContext | null {
-    return this.preparedChatMembersResource;
-  }
-
-  protected selectedChatAssetResources(): EventChatResourceContext[] {
-    return this.preparedChatAssetResources;
+    return this.selectedChatContextControl()?.menu?.title ?? this.session()?.item.title ?? 'Chat';
   }
 
   protected isMobileView(): boolean {
@@ -386,7 +468,7 @@ export class EventChatPopupComponent implements OnDestroy {
   protected openSelectedChatEvent(event?: Event): void {
     event?.stopPropagation();
     this.showContextMenu = false;
-    const row = this.preparedChatContext?.eventRow ?? this.chatEventRow();
+    const row = this.selectedChatNavigationState?.eventRow ?? this.chatEventRow();
     if (!row) {
       return;
     }
@@ -402,7 +484,7 @@ export class EventChatPopupComponent implements OnDestroy {
       event?.stopPropagation();
       return;
     }
-    const channelType = this.preparedChatContext?.channelType;
+    const channelType = this.selectedChatNavigationState?.channelType;
     if (channelType === 'groupSubEvent') {
       this.openSelectedChatGroup(event);
       return;
@@ -433,28 +515,62 @@ export class EventChatPopupComponent implements OnDestroy {
   ): void {
     event?.stopPropagation();
     const session = this.session();
-    const context = session?.context;
-    if (!session || !context?.subEvent) {
+    const state = this.selectedChatNavigationState;
+    if (!session || !state?.subEvent) {
       return;
     }
     this.showContextMenu = false;
     this.popupCtx.requestActivitiesNavigation({
       type: 'chatResource',
-      ownerId: context.eventRow?.id ?? session.item.eventId,
+      ownerId: state.eventRow?.id ?? session.item.eventId,
       item: session.item,
       resourceType: type,
-      subEvent: context.subEvent,
-      assetAssignmentIds: context.assetAssignmentIds,
-      assetCardsByType: context.assetCardsByType,
+      subEvent: state.subEvent,
+      assetAssignmentIds: state.assetAssignmentIds,
+      assetCardsByType: state.assetCardsByType,
       openExplore,
       assetViewId,
-      group: context.group
+      group: state.group
         ? {
-            id: context.group.id,
-            groupLabel: context.group.label
+            id: state.group.id,
+            groupLabel: state.group.label
           }
         : null
       });
+  }
+
+  protected selectedChatContextMenuGroups(): AppTypes.PopupHeaderControlGroup[] {
+    return this.selectedChatContextControl()?.menu?.groups
+      ?.map(group => ({
+        ...group,
+        controls: group.controls.map(control => ({ ...control }))
+      }))
+      ?? [];
+  }
+
+  protected selectedChatMenuControlIcon(control: AppTypes.PopupHeaderControl): string {
+    return this.chatHeaderControlIcon(control);
+  }
+
+  protected selectedChatMenuControlBadgeCount(control: AppTypes.PopupHeaderControl): number {
+    return this.chatHeaderControlBadgeValue(control);
+  }
+
+  protected selectedChatMenuControlClasses(control: AppTypes.PopupHeaderControl): string[] {
+    const resourceType = this.popupControlResourceType(control);
+    return resourceType
+      ? ['subevent-resource-menu-item', this.resourceTypeClass(resourceType)]
+      : [];
+  }
+
+  protected openSelectedChatMenuControl(control: AppTypes.PopupHeaderControl, event?: Event): void {
+    event?.stopPropagation();
+    const resourceType = this.popupControlResourceType(control);
+    if (resourceType) {
+      this.openSelectedChatSubEventResource(resourceType, event);
+      return;
+    }
+    this.openSelectedChatPrimaryContext(event);
   }
 
   protected isSelectedChatContextMenuOpen(): boolean {
@@ -922,10 +1038,10 @@ export class EventChatPopupComponent implements OnDestroy {
   protected shareFirstAvailableAsset(event?: Event): void {
     event?.stopPropagation();
     this.composerMenuOpen = false;
-    const resourceType = this.preparedChatAssetResources[0]?.type;
+    const resourceType = this.firstAvailableAssetType();
     this.popupCtx.requestActivitiesNavigation({
       type: 'assetExplore',
-      assetType: resourceType && resourceType !== 'Members' ? resourceType : 'Car'
+      assetType: resourceType ?? 'Car'
     });
   }
 
@@ -992,7 +1108,7 @@ export class EventChatPopupComponent implements OnDestroy {
     }
     if (attachment.type === 'event') {
       const attachmentEventId = `${attachment.entityId ?? ''}`.trim();
-      const contextEventId = `${this.preparedChatContext?.eventRow?.id ?? this.session()?.item.eventId ?? ''}`.trim();
+      const contextEventId = `${this.selectedChatNavigationState?.eventRow?.id ?? this.session()?.item.eventId ?? ''}`.trim();
       if (!attachmentEventId || attachmentEventId === contextEventId) {
         this.openSelectedChatEvent();
         return;
@@ -1714,8 +1830,7 @@ export class EventChatPopupComponent implements OnDestroy {
 
   private buildCurrentEventAttachment(): AppTypes.ChatMessageAttachment | null {
     const session = this.session();
-    const row = this.preparedChatContext?.eventRow ?? this.chatEventRow();
-    const source = row?.source as EventMenuItem | undefined;
+    const row = this.selectedChatNavigationState?.eventRow ?? this.chatEventRow();
     const eventId = `${row?.id ?? session?.item.eventId ?? ''}`.trim();
     const title = `${row?.title ?? session?.item.title ?? ''}`.trim();
     if (!eventId || !title) {
@@ -1726,10 +1841,10 @@ export class EventChatPopupComponent implements OnDestroy {
       type: 'event',
       entityId: eventId,
       title,
-      subtitle: `${source?.timeframe ?? row?.detail ?? ''}`.trim() || null,
-      description: `${source?.shortDescription ?? row?.subtitle ?? ''}`.trim() || null,
-      url: `${source?.sourceLink ?? ''}`.trim() || null,
-      previewUrl: `${source?.imageUrl ?? ''}`.trim() || null
+      subtitle: `${row?.detail ?? ''}`.trim() || null,
+      description: `${row?.subtitle ?? ''}`.trim() || null,
+      url: null,
+      previewUrl: `${row?.imageUrl ?? ''}`.trim() || null
     };
   }
 
@@ -1778,13 +1893,13 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   private buildFirstAssetAttachment(): AppTypes.ChatMessageAttachment | null {
-    const context = this.preparedChatContext;
-    if (!context) {
+    const state = this.selectedChatNavigationState;
+    if (!state) {
       return null;
     }
     const assetTypes: Array<'Car' | 'Accommodation' | 'Supplies'> = ['Car', 'Accommodation', 'Supplies'];
     for (const type of assetTypes) {
-      const card = context.assetCardsByType[type]?.[0];
+      const card = state.assetCardsByType[type]?.[0];
       if (!card) {
         continue;
       }
@@ -1808,12 +1923,12 @@ export class EventChatPopupComponent implements OnDestroy {
     attachment: AppTypes.ChatMessageAttachment
   ): 'Car' | 'Accommodation' | 'Supplies' | null {
     const assetId = `${attachment.entityId ?? ''}`.trim();
-    const context = this.preparedChatContext;
-    if (!assetId || !context?.subEvent) {
+    const state = this.selectedChatNavigationState;
+    if (!assetId || !state?.subEvent) {
       return null;
     }
     const assetTypes: Array<'Car' | 'Accommodation' | 'Supplies'> = ['Car', 'Accommodation', 'Supplies'];
-    return assetTypes.find(type => context.assetCardsByType[type]?.some(card => {
+    return assetTypes.find(type => state.assetCardsByType[type]?.some(card => {
       const sourceAssetId = 'sourceAssetId' in card
         ? `${card.sourceAssetId ?? ''}`.trim()
         : '';
@@ -1943,7 +2058,7 @@ export class EventChatPopupComponent implements OnDestroy {
     }
     this.popupCtx.requestActivitiesNavigation({
       type: 'eventEditor',
-      row: toActivityEventRow(eventRecord),
+      row: this.activitiesService.buildEventDisplayRow(eventRecord, { activeUserId: this.activeUserId() }),
       readOnly: true
     });
   }
@@ -1959,7 +2074,7 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   private async resolvePersistableImageAttachment(
-    chat: ChatMenuItem,
+    chat: ChatRecord,
     attachment: AppTypes.ChatMessageAttachment,
     file: File
   ): Promise<AppTypes.ChatMessageAttachment> {
@@ -2168,8 +2283,8 @@ export class EventChatPopupComponent implements OnDestroy {
       const resolvedChatPromise = this.chatsService
         .resolveRepositoryEventServiceChat(initialChat)
         .catch(() => null);
-      const messagesPromise = this.activitiesContext.loadEventChatMessages(initialChat);
-      const [resolvedChat, nextMessages] = await Promise.all([resolvedChatPromise, messagesPromise]);
+      const messagesPromise = this.chatsService.loadChatMessagesResult(initialChat);
+      const [resolvedChat, messagesPage] = await Promise.all([resolvedChatPromise, messagesPromise]);
       if (this.loadedSessionKey !== sessionKey) {
         return this.chatThreadPageResult(query);
       }
@@ -2177,7 +2292,13 @@ export class EventChatPopupComponent implements OnDestroy {
       if (this.loadedSessionKey !== sessionKey) {
         return this.chatThreadPageResult(query);
       }
-      this.allMessages = this.normalizeChatMessages(nextMessages)
+      this.chatHeaderControlsHydrated = true;
+      this.syncSelectedChatHeader(chat, {
+        hydrateControls: true,
+        baseContext: messagesPage.context ?? null
+      });
+      void this.refreshSelectedChatHeader(chat, sessionKey);
+      this.allMessages = this.normalizeChatMessages(messagesPage.items)
         .sort((first, second) => AppUtils.toSortableDate(second.sentAtIso) - AppUtils.toSortableDate(first.sentAtIso));
       this.rebuildVisibleReadReceipts();
       this.syncEventChatSummaryFromLatestMessage();
@@ -2189,6 +2310,9 @@ export class EventChatPopupComponent implements OnDestroy {
       if (this.loadedSessionKey !== sessionKey) {
         return this.chatThreadPageResult(query);
       }
+      this.chatHeaderControlsHydrated = true;
+      this.syncSelectedChatHeader(session.item, { hydrateControls: true });
+      void this.refreshSelectedChatHeader(session.item, sessionKey);
       this.allMessages = [];
       this.rebuildVisibleReadReceipts();
       this.initialChatLoadedSessionKey = sessionKey;
@@ -2203,10 +2327,10 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   private applyResolvedInitialChatItem(
-    chat: ChatMenuItem,
-    resolvedChat: ChatMenuItem | null,
+    chat: ChatRecord,
+    resolvedChat: ChatRecord | null,
     sessionKey: string
-  ): ChatMenuItem {
+  ): ChatRecord {
     if (!resolvedChat || this.loadedSessionKey !== sessionKey || resolvedChat.id !== chat.id) {
       return chat;
     }
@@ -2215,6 +2339,10 @@ export class EventChatPopupComponent implements OnDestroy {
         ? resolvedChat
         : current
     );
+    if (this.chatHeaderControlsHydrated) {
+      this.syncSelectedChatHeader(resolvedChat, { hydrateControls: true });
+      void this.refreshSelectedChatHeader(resolvedChat, sessionKey);
+    }
     return resolvedChat;
   }
 
@@ -2235,7 +2363,8 @@ export class EventChatPopupComponent implements OnDestroy {
 
     return {
       items: this.allMessages.slice(start, end),
-      total
+      total,
+      context: this.chatHeaderContext ?? undefined
     };
   }
 
@@ -2252,7 +2381,7 @@ export class EventChatPopupComponent implements OnDestroy {
     };
   }
 
-  private async startLiveChatUpdates(chat: ChatMenuItem, sessionKey: string): Promise<void> {
+  private async startLiveChatUpdates(chat: ChatRecord, sessionKey: string): Promise<void> {
     if (this.loadedSessionKey !== sessionKey || this.liveChatUnsubscribe) {
       return;
     }
@@ -2330,11 +2459,7 @@ export class EventChatPopupComponent implements OnDestroy {
     this.rebuildVisibleReadReceipts();
     this.syncEventChatSummaryFromMessage(normalizedMessage);
 
-    this.refreshVisibleChatThreadSurface();
-
-    if (shouldStickToEnd) {
-      this.scheduleChatThreadScrollToEnd();
-    }
+    this.addMessageToVisibleThreadBottom(normalizedMessage.id, shouldStickToEnd);
 
     this.cdr.markForCheck();
   }
@@ -2462,7 +2587,7 @@ export class EventChatPopupComponent implements OnDestroy {
       .join(',');
   }
 
-  private handleLiveChatEvent(chat: ChatMenuItem, event: AppTypes.ChatLiveEvent): void {
+  private handleLiveChatEvent(chat: ChatRecord, event: AppTypes.ChatLiveEvent): void {
     if (event.type === 'reconnected') {
       this.clearRemoteTypingIndicators();
       void this.resyncChatThreadFromServer(chat);
@@ -2478,6 +2603,12 @@ export class EventChatPopupComponent implements OnDestroy {
     }
     if (event.type === 'error') {
       this.markPendingMessageTimedOut(`${event.messageId ?? event.clientId ?? ''}`.trim());
+      return;
+    }
+    if (event.type === 'ack') {
+      if (event.message) {
+        this.mergeIncomingChatMessage(event.message);
+      }
       return;
     }
 
@@ -2671,11 +2802,7 @@ export class EventChatPopupComponent implements OnDestroy {
     this.rebuildVisibleReadReceipts();
     this.syncEventChatSummaryFromMessage(nextMessage);
 
-    this.refreshVisibleChatThreadSurface();
-
-    if (stickToEnd) {
-      this.scheduleChatThreadScrollToEnd();
-    }
+    this.addMessageToVisibleThreadBottom(nextMessage.id, stickToEnd);
 
     this.cdr.markForCheck();
     if (hasQueuedReaction) {
@@ -2720,7 +2847,7 @@ export class EventChatPopupComponent implements OnDestroy {
       });
   }
 
-  private async resyncChatThreadFromServer(chat: ChatMenuItem): Promise<void> {
+  private async resyncChatThreadFromServer(chat: ChatRecord): Promise<void> {
     const sessionKey = this.loadedSessionKey;
     if (!sessionKey) {
       return;
@@ -2845,26 +2972,76 @@ export class EventChatPopupComponent implements OnDestroy {
 
   private refreshVisibleChatThreadSurface(): void {
     const previousTotal = this.visibleChatThreadTotal;
-    this.visibleChatThreadTotal = this.allMessages.length;
+    const nextTotal = this.allMessages.length;
+    this.visibleChatThreadTotal = nextTotal;
     const smartList = this.chatThreadSmartList;
-    const visibleCount = smartList?.itemsSnapshot().length ?? 0;
     if (!smartList) {
       this.chatThreadRevision++;
       this.syncChatThreadQuery();
       return;
     }
-    const addedCount = Math.max(0, this.allMessages.length - previousTotal);
-    const nextVisibleCount = visibleCount > 0
-      ? Math.min(this.allMessages.length, visibleCount + addedCount)
-      : Math.min(this.allMessages.length, this.chatInitialLoadMessageCount);
-    if (nextVisibleCount === 0) {
+
+    const latestMessageById = new Map(this.allMessages.map(message => [message.id, message] as const));
+    const currentVisibleItems = smartList.itemsSnapshot()
+      .map(message => latestMessageById.get(message.id) ?? message)
+      .filter(message => latestMessageById.has(message.id));
+    if (currentVisibleItems.length === 0) {
+      const nextVisibleCount = Math.min(nextTotal, this.chatInitialLoadMessageCount);
+      if (nextVisibleCount === 0) {
+        smartList.replaceVisibleItems([], { total: 0 });
+        return;
+      }
+      smartList.replaceVisibleItems(
+        this.allMessages.slice(0, nextVisibleCount),
+        { total: nextTotal }
+      );
+      return;
+    }
+
+    const addedCount = Math.max(0, nextTotal - previousTotal);
+    const visibleMessageIds = new Set(currentVisibleItems.map(message => message.id));
+    const addedBottomItems = addedCount > 0
+      ? this.allMessages.filter(message => !visibleMessageIds.has(message.id)).slice(0, addedCount)
+      : [];
+    const nextVisibleItems = addedBottomItems.length > 0
+      ? [...addedBottomItems, ...currentVisibleItems]
+      : currentVisibleItems;
+    if (nextVisibleItems.length === 0) {
       smartList.replaceVisibleItems([], { total: 0 });
       return;
     }
     smartList.replaceVisibleItems(
-      this.allMessages.slice(0, Math.min(this.allMessages.length, nextVisibleCount)),
-      { total: this.allMessages.length }
+      nextVisibleItems,
+      { total: nextTotal }
     );
+  }
+
+  private addMessageToVisibleThreadBottom(messageId: string, stickToEnd: boolean): void {
+    const normalizedMessageId = `${messageId ?? ''}`.trim();
+    const smartList = this.chatThreadSmartList;
+    if (!smartList) {
+      this.chatThreadRevision++;
+      this.syncChatThreadQuery();
+      return;
+    }
+
+    const latestMessageById = new Map(this.allMessages.map(message => [message.id, message] as const));
+    const currentVisibleItems = smartList.itemsSnapshot()
+      .map(message => latestMessageById.get(message.id) ?? message)
+      .filter(message => latestMessageById.has(message.id));
+    const bottomMessage = normalizedMessageId ? latestMessageById.get(normalizedMessageId) : null;
+    const nextVisibleItems = bottomMessage && !currentVisibleItems.some(message => message.id === bottomMessage.id)
+      ? [bottomMessage, ...currentVisibleItems]
+      : currentVisibleItems;
+
+    smartList.replaceVisibleItems(nextVisibleItems, {
+      total: this.allMessages.length
+    });
+    this.visibleChatThreadTotal = this.allMessages.length;
+
+    if (stickToEnd) {
+      this.scheduleChatThreadScrollToEnd();
+    }
   }
 
   private flagFreshMessage(messageId: string): void {
@@ -2908,7 +3085,7 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   private markLoadedChatThreadAsRead(
-    chat: ChatMenuItem,
+    chat: ChatRecord,
     messages: readonly AppTypes.ChatPopupMessage[]
   ): void {
     const activeUserId = this.activeUserId();
@@ -3287,45 +3464,526 @@ export class EventChatPopupComponent implements OnDestroy {
     return day.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
   }
 
-  private syncPreparedChatContext(context: AppTypes.EventChatContext | null): void {
-    this.preparedChatContext = context
+  private syncSelectedChatHeader(
+    chat: ChatRecord | null,
+    options: {
+      hydrateControls?: boolean;
+      baseContext?: AppTypes.PopupHeaderContext | null;
+    } = {}
+  ): void {
+    if (!chat) {
+      this.chatHeaderContext = null;
+      this.selectedChatNavigationState = null;
+      this.resolvedChatEventRecord = null;
+      this.resolvedChatEventRecordKey = '';
+      this.resolvedChatResourceState = null;
+      this.resolvedChatResourceStateKey = '';
+      return;
+    }
+    if (options.hydrateControls === false) {
+      this.selectedChatNavigationState = null;
+      this.resolvedChatEventRecord = null;
+      this.resolvedChatEventRecordKey = '';
+      this.resolvedChatResourceState = null;
+      this.resolvedChatResourceStateKey = '';
+      this.chatHeaderContext = this.buildTitleOnlyChatHeaderContext(chat);
+      return;
+    }
+    this.selectedChatNavigationState = this.buildSelectedChatNavigationState(chat);
+    this.chatHeaderContext = this.buildSelectedChatHeaderContext(
+      chat,
+      this.selectedChatNavigationState,
+      options.baseContext ?? null
+    );
+  }
+
+  private buildTitleOnlyChatHeaderContext(chat: ChatRecord): AppTypes.PopupHeaderContext {
+    const title = `${chat.title ?? ''}`.trim() || 'Chat';
+    return {
+      revision: `title:${chat.id}:${title}`,
+      title,
+      controls: []
+    };
+  }
+
+  private async refreshSelectedChatHeader(chat: ChatRecord, sessionKey: string | null): Promise<void> {
+    if (!sessionKey || this.loadedSessionKey !== sessionKey) {
+      return;
+    }
+    const eventId = `${chat.eventId ?? ''}`.trim();
+    if (eventId && this.resolvedChatEventRecordKey !== eventId) {
+      const record = await this.eventsService.queryKnownItemById(this.activeUserId(), eventId).catch(() => null);
+      if (this.loadedSessionKey !== sessionKey) {
+        return;
+      }
+      this.resolvedChatEventRecord = record;
+      this.resolvedChatEventRecordKey = eventId;
+      this.syncSelectedChatHeader(chat);
+      this.cdr.markForCheck();
+    }
+
+    const state = this.selectedChatNavigationState;
+    const ownerId = `${state?.eventRow?.id ?? chat.eventId ?? ''}`.trim();
+    const subEventId = `${state?.subEvent?.id ?? ''}`.trim();
+    const resourceKey = ownerId && subEventId ? `${ownerId}:${subEventId}` : '';
+    if (!resourceKey || this.resolvedChatResourceStateKey === resourceKey) {
+      return;
+    }
+    const resourceState = await this.activityResourcesService
+      .querySubEventResourceState(ownerId, subEventId)
+      .catch(() => null);
+    if (this.loadedSessionKey !== sessionKey) {
+      return;
+    }
+    this.resolvedChatResourceState = ActivityResourceBuilder.cloneState(resourceState);
+    this.resolvedChatResourceStateKey = resourceKey;
+    this.syncSelectedChatHeader(chat);
+    this.cdr.markForCheck();
+  }
+
+  private buildSelectedChatHeaderContext(
+    chat: ChatRecord,
+    state: SelectedChatNavigationState | null,
+    loadedContext: AppTypes.PopupHeaderContext | null = null
+  ): AppTypes.PopupHeaderContext {
+    const baseContext = loadedContext
+      ? this.clonePopupHeaderContext(loadedContext)
+      : this.chatsService.buildChatPopupHeaderContext(chat, { includeThumbs: true });
+    const controls = [...(baseContext.controls ?? []).map(control => ({ ...control }))];
+    if (!this.isBlockedSupportChat() && chat.channelType !== 'serviceEvent') {
+      controls.push(this.buildSelectedChatContextControl(chat, state));
+    }
+    return {
+      ...baseContext,
+      controls
+    };
+  }
+
+  private clonePopupHeaderContext(context: AppTypes.PopupHeaderContext): AppTypes.PopupHeaderContext {
+    return {
+      ...context,
+      controls: (context.controls ?? []).map(control => ({
+        ...control,
+        badge: control.badge ? { ...control.badge } : null,
+        lookup: control.lookup ? { ...control.lookup } : null,
+        visual: control.visual?.kind === 'thumbStack'
+          ? {
+              ...control.visual,
+              thumbs: control.visual.thumbs.map(thumb => ({ ...thumb }))
+            }
+          : control.visual
+            ? { ...control.visual }
+            : null,
+        menu: control.menu
+          ? {
+              ...control.menu,
+              groups: control.menu.groups.map(group => ({
+                ...group,
+                controls: group.controls.map(menuControl => ({
+                  ...menuControl,
+                  badge: menuControl.badge ? { ...menuControl.badge } : null,
+                  lookup: menuControl.lookup ? { ...menuControl.lookup } : null,
+                  visual: menuControl.visual ? { ...menuControl.visual } : null
+                }))
+              }))
+            }
+          : null
+      }))
+    };
+  }
+
+  private buildSelectedChatContextControl(
+    chat: ChatRecord,
+    state: SelectedChatNavigationState | null
+  ): AppTypes.PopupHeaderControl {
+    const primaryControl = this.buildSelectedChatPrimaryControl(chat, state);
+    const menu = state ? this.buildSelectedChatControlMenu(state, primaryControl) : null;
+    return {
+      ...primaryControl,
+      id: 'chat-context',
+      menu
+    };
+  }
+
+  private buildSelectedChatPrimaryControl(
+    chat: ChatRecord,
+    state: SelectedChatNavigationState | null
+  ): AppTypes.PopupHeaderControl {
+    const channelType = state?.channelType ?? this.chatChannelType(chat);
+    const label = channelType === 'groupSubEvent'
+      ? (state?.group?.label ?? state?.subEvent?.name ?? 'Group')
+      : channelType === 'optionalSubEvent'
+        ? (state?.subEvent?.name ?? 'Sub-event')
+        : 'View Event';
+    const icon = channelType === 'groupSubEvent'
+      ? 'groups'
+      : channelType === 'optionalSubEvent'
+        ? 'event_available'
+        : 'event';
+    const badgeValue = this.selectedChatActionBadgeCount(chat, state);
+    return {
+      id: 'chat-primary',
+      label,
+      visual: { kind: 'icon', icon },
+      badge: badgeValue > 0 ? { value: badgeValue, tone: 'danger' } : null,
+      lookup: {
+        type: 'chatPrimary',
+        id: `${state?.eventRow?.id ?? chat.eventId ?? chat.id}`.trim()
+      }
+    };
+  }
+
+  private buildSelectedChatControlMenu(
+    state: SelectedChatNavigationState,
+    primaryControl: AppTypes.PopupHeaderControl
+  ): AppTypes.PopupHeaderControlMenu | null {
+    if (!state.subEvent || (state.channelType !== 'optionalSubEvent' && state.channelType !== 'groupSubEvent')) {
+      return null;
+    }
+    const assetControls = (['Car', 'Accommodation', 'Supplies'] as const)
+      .map(type => this.buildResourceControl(state.subEvent as AppTypes.SubEventFormItem, state, type));
+    return {
+      title: state.group?.label ?? state.subEvent.name,
+      groups: [
+        {
+          id: 'primary',
+          controls: [{ ...primaryControl }]
+        },
+        {
+          id: 'members',
+          controls: [this.buildResourceControl(state.subEvent, state, 'Members')]
+        },
+        {
+          id: 'assets',
+          label: 'Assets',
+          controls: assetControls
+        }
+      ]
+    };
+  }
+
+  private buildResourceControl(
+    subEvent: AppTypes.SubEventFormItem,
+    state: SelectedChatNavigationState,
+    type: SelectedChatResourceType
+  ): AppTypes.PopupHeaderControl {
+    const pending = this.resourcePendingCount(subEvent, state, type);
+    return {
+      id: `chat-resource-${type.toLowerCase()}`,
+      label: this.resourceTypeLabel(type),
+      summary: this.resourceSummary(subEvent, state, type),
+      visual: { kind: 'icon', icon: this.resourceTypeIcon(type) },
+      badge: pending > 0 ? { value: pending, tone: 'danger' } : null,
+      lookup: {
+        type: 'chatResource',
+        id: type
+      }
+    };
+  }
+
+  private buildSelectedChatNavigationState(chat: ChatRecord): SelectedChatNavigationState | null {
+    const eventId = `${chat.eventId ?? ''}`.trim();
+    const eventRecord = this.resolveSelectedChatEventRecord(chat);
+    const eventRow = eventRecord
+      ? this.activitiesService.buildEventDisplayRow(eventRecord, { activeUserId: this.activeUserId() })
+      : this.chatEventFallbackRow(chat);
+    const rawSubEvent = this.resolveSelectedChatSubEvent(chat, eventRecord);
+    const resourceState = rawSubEvent && eventId
+      ? this.resolveSelectedChatResourceState(eventId, rawSubEvent.id)
+      : null;
+    const assetCardsByType = ActivityResourceBuilder.cloneFallbackAssetCardsByType(
+      resourceState?.fallbackAssetCardsByType
+    );
+    const assetCards = this.flattenAssetCards(assetCardsByType);
+    const subEvent = rawSubEvent
+      ? this.syncSubEventResourceCounts(this.cloneSubEvent(rawSubEvent), resourceState, assetCards)
+      : null;
+    return {
+      channelType: this.chatChannelType(chat),
+      eventRow,
+      subEvent,
+      group: this.resolveSelectedChatGroup(chat, subEvent),
+      assetAssignmentIds: ActivityResourceBuilder.cloneAssetAssignmentIds(resourceState?.assetAssignmentIds),
+      assetCardsByType
+    };
+  }
+
+  private chatChannelType(chat: ChatRecord): AppTypes.ChatChannelType {
+    const channelType = `${chat.channelType ?? ''}`.trim();
+    if (
+      channelType === 'general'
+      || channelType === 'mainEvent'
+      || channelType === 'optionalSubEvent'
+      || channelType === 'groupSubEvent'
+      || channelType === 'serviceEvent'
+    ) {
+      return channelType;
+    }
+    if (chat.serviceContext === 'event' || chat.serviceContext === 'asset' || chat.serviceContext === 'notification') {
+      return 'serviceEvent';
+    }
+    if (`${chat.groupId ?? ''}`.trim()) {
+      return 'groupSubEvent';
+    }
+    if (`${chat.subEventId ?? ''}`.trim()) {
+      return 'optionalSubEvent';
+    }
+    return `${chat.eventId ?? ''}`.trim() ? 'mainEvent' : 'general';
+  }
+
+  private resolveSelectedChatEventRecord(chat: ChatRecord): DemoEventRecord | null {
+    const eventId = `${chat.eventId ?? ''}`.trim();
+    if (!eventId) {
+      return null;
+    }
+    if (this.resolvedChatEventRecordKey === eventId) {
+      return this.resolvedChatEventRecord;
+    }
+    return this.eventsService.peekKnownItemById(this.activeUserId(), eventId);
+  }
+
+  private resolveSelectedChatSubEvent(
+    chat: ChatRecord,
+    eventRecord: DemoEventRecord | null
+  ): AppTypes.SubEventFormItem | null {
+    const subEventId = `${chat.subEventId ?? ''}`.trim();
+    if (!subEventId) {
+      return null;
+    }
+    return eventRecord?.subEvents?.find(subEvent => subEvent.id === subEventId) ?? null;
+  }
+
+  private resolveSelectedChatGroup(
+    chat: ChatRecord,
+    subEvent: AppTypes.SubEventFormItem | null
+  ): SelectedChatGroupState | null {
+    const groupId = `${chat.groupId ?? ''}`.trim();
+    if (!groupId || !subEvent?.groups?.length) {
+      return null;
+    }
+    const group = subEvent.groups.find(item => item.id === groupId);
+    return group
       ? {
-          ...context,
-          group: context.group ? { ...context.group } : null,
-          resources: context.resources.map(resource => ({ ...resource }))
+          id: group.id,
+          label: group.name
         }
       : null;
-    const resources = this.preparedChatContext?.resources.filter(resource => resource.visible) ?? [];
-    this.preparedChatMembersResource = resources.find(resource => resource.type === 'Members') ?? null;
-    this.preparedChatAssetResources = resources.filter(resource => resource.type !== 'Members');
+  }
+
+  private resolveSelectedChatResourceState(
+    ownerId: string,
+    subEventId: string
+  ): AppTypes.ActivitySubEventResourceState | null {
+    const resourceKey = `${ownerId}:${subEventId}`;
+    if (this.resolvedChatResourceStateKey === resourceKey) {
+      return ActivityResourceBuilder.cloneState(this.resolvedChatResourceState);
+    }
+    return ActivityResourceBuilder.cloneState(
+      this.activityResourcesService.peekSubEventResourceState(ownerId, subEventId)
+    );
+  }
+
+  private syncSubEventResourceCounts(
+    subEvent: AppTypes.SubEventFormItem,
+    state: AppTypes.ActivitySubEventResourceState | null,
+    assetCards: readonly AppTypes.AssetCard[]
+  ): AppTypes.SubEventFormItem {
+    for (const type of ['Car', 'Accommodation', 'Supplies'] as const) {
+      const accepted = ActivityResourceBuilder.resourceAcceptedCount(subEvent, type, state, assetCards);
+      const pending = ActivityResourceBuilder.resourcePendingCount(subEvent, type, state, assetCards);
+      const bounds = ActivityResourceBuilder.resourceCapacityBounds(subEvent, type, state, assetCards, accepted, pending);
+      if (type === 'Car') {
+        subEvent.carsAccepted = accepted;
+        subEvent.carsPending = pending;
+        subEvent.carsCapacityMin = bounds.capacityMin;
+        subEvent.carsCapacityMax = bounds.capacityMax;
+      } else if (type === 'Accommodation') {
+        subEvent.accommodationAccepted = accepted;
+        subEvent.accommodationPending = pending;
+        subEvent.accommodationCapacityMin = bounds.capacityMin;
+        subEvent.accommodationCapacityMax = bounds.capacityMax;
+      } else {
+        subEvent.suppliesAccepted = accepted;
+        subEvent.suppliesPending = pending;
+        subEvent.suppliesCapacityMin = bounds.capacityMin;
+        subEvent.suppliesCapacityMax = bounds.capacityMax;
+      }
+    }
+    return subEvent;
+  }
+
+  private cloneSubEvent(subEvent: AppTypes.SubEventFormItem): AppTypes.SubEventFormItem {
+    return {
+      ...subEvent,
+      groups: subEvent.groups?.map(group => ({ ...group })) ?? []
+    };
+  }
+
+  private flattenAssetCards(assetCardsByType: AppTypes.SubEventAssetCardsByType): AppTypes.AssetCard[] {
+    return (['Car', 'Accommodation', 'Supplies'] as const)
+      .flatMap(type => assetCardsByType[type] ?? []);
+  }
+
+  private selectedChatActionToneClass(): SelectedChatActionTone {
+    const channelType = this.selectedChatNavigationState?.channelType;
+    if (channelType === 'groupSubEvent') {
+      return 'popup-chat-context-btn-tone-group';
+    }
+    if (channelType === 'optionalSubEvent') {
+      return 'popup-chat-context-btn-tone-optional';
+    }
+    return 'popup-chat-context-btn-tone-main-event';
+  }
+
+  private selectedChatActionBadgeCount(
+    chat: ChatRecord,
+    state: SelectedChatNavigationState | null
+  ): number {
+    if (state?.subEvent && (state.channelType === 'optionalSubEvent' || state.channelType === 'groupSubEvent')) {
+      return this.subEventPendingTotal(state.subEvent);
+    }
+    const eventPending = Math.max(0, Math.trunc(Number(state?.eventRow?.pendingMembers) || 0));
+    const eventRecord = this.resolveSelectedChatEventRecord(chat);
+    const subEventPending = eventRecord?.subEvents?.reduce((sum, subEvent) => {
+      const cloned = this.cloneSubEvent(subEvent);
+      const resourceState = this.resolveSelectedChatResourceState(eventRecord.id, cloned.id);
+      const cards = this.flattenAssetCards(ActivityResourceBuilder.cloneFallbackAssetCardsByType(
+        resourceState?.fallbackAssetCardsByType
+      ));
+      return sum + this.subEventPendingTotal(this.syncSubEventResourceCounts(cloned, resourceState, cards));
+    }, 0) ?? 0;
+    return eventPending + subEventPending;
+  }
+
+  private subEventPendingTotal(subEvent: AppTypes.SubEventFormItem): number {
+    return this.chatCountValue(subEvent.membersPending)
+      + this.chatCountValue(subEvent.carsPending)
+      + this.chatCountValue(subEvent.accommodationPending)
+      + this.chatCountValue(subEvent.suppliesPending);
+  }
+
+  private chatCountValue(value: unknown): number {
+    return Math.max(0, Math.trunc(Number(value) || 0));
+  }
+
+  private resourceSummary(
+    subEvent: AppTypes.SubEventFormItem,
+    state: SelectedChatNavigationState,
+    type: SelectedChatResourceType
+  ): string {
+    if (type === 'Members') {
+      const accepted = this.chatCountValue(subEvent.membersAccepted);
+      const min = this.chatCountValue(subEvent.capacityMin);
+      const max = Math.max(min, this.chatCountValue(subEvent.capacityMax), accepted);
+      return `${accepted} / ${min} - ${max}`;
+    }
+    const accepted = this.resourceAcceptedCount(subEvent, state, type);
+    const pending = this.resourcePendingCount(subEvent, state, type);
+    const bounds = ActivityResourceBuilder.resourceCapacityBounds(
+      subEvent,
+      type,
+      this.resolveSelectedChatResourceState(`${state.eventRow?.id ?? ''}`, subEvent.id),
+      this.flattenAssetCards(state.assetCardsByType),
+      accepted,
+      pending
+    );
+    return `${accepted} / ${bounds.capacityMin} - ${bounds.capacityMax}`;
+  }
+
+  private resourceAcceptedCount(
+    subEvent: AppTypes.SubEventFormItem,
+    state: SelectedChatNavigationState,
+    type: AppTypes.AssetType
+  ): number {
+    return ActivityResourceBuilder.resourceAcceptedCount(
+      subEvent,
+      type,
+      this.resolveSelectedChatResourceState(`${state.eventRow?.id ?? ''}`, subEvent.id),
+      this.flattenAssetCards(state.assetCardsByType)
+    );
+  }
+
+  private resourcePendingCount(
+    subEvent: AppTypes.SubEventFormItem,
+    state: SelectedChatNavigationState,
+    type: SelectedChatResourceType
+  ): number {
+    if (type === 'Members') {
+      return this.chatCountValue(subEvent.membersPending);
+    }
+    return ActivityResourceBuilder.resourcePendingCount(
+      subEvent,
+      type,
+      this.resolveSelectedChatResourceState(`${state.eventRow?.id ?? ''}`, subEvent.id),
+      this.flattenAssetCards(state.assetCardsByType)
+    );
+  }
+
+  private popupControlResourceType(control: AppTypes.PopupHeaderControl): SelectedChatResourceType | null {
+    if (control.lookup?.type !== 'chatResource') {
+      return null;
+    }
+    const id = `${control.lookup.id ?? ''}`.trim();
+    return id === 'Members' || id === 'Car' || id === 'Accommodation' || id === 'Supplies'
+      ? id
+      : null;
+  }
+
+  private resourceTypeClass(type: SelectedChatResourceType): string {
+    return `event-subevent-badge-${type.toLowerCase()}`;
+  }
+
+  private resourceTypeIcon(type: SelectedChatResourceType): string {
+    if (type === 'Members') {
+      return 'groups';
+    }
+    if (type === 'Car') {
+      return 'directions_car';
+    }
+    if (type === 'Accommodation') {
+      return 'apartment';
+    }
+    return 'inventory_2';
+  }
+
+  private resourceTypeLabel(type: SelectedChatResourceType): string {
+    return type === 'Accommodation' ? 'Property' : type;
+  }
+
+  private firstAvailableAssetType(): AppTypes.AssetType | null {
+    const state = this.selectedChatNavigationState;
+    if (!state) {
+      return null;
+    }
+    return (['Car', 'Accommodation', 'Supplies'] as const)
+      .find(type => (state.assetCardsByType[type]?.length ?? 0) > 0)
+      ?? null;
   }
 
   private chatEventRow(): AppTypes.ActivityListRow | null {
     const session = this.session();
-    if (!session?.item.eventId) {
+    return session ? this.chatEventFallbackRow(session.item) : null;
+  }
+
+  private chatEventFallbackRow(chat: ChatRecord): AppTypes.ActivityListRow | null {
+    if (!chat.eventId) {
       return null;
     }
-    const eventId = session.item.eventId;
-    const source: EventMenuItem = {
-      id: eventId,
-      avatar: AppUtils.initialsFromText(session.item.title),
-      title: session.item.title,
-      shortDescription: session.item.lastMessage || 'Chat-linked event',
-      timeframe: 'From chat',
-      activity: Math.max(0, session.item.unread),
-      isAdmin: false
-    };
+    const eventId = chat.eventId;
+    const title = chat.title;
+    const subtitle = chat.lastMessage || 'Chat-linked event';
+    const activity = Math.max(0, Math.trunc(Number(chat.unread) || 0));
     return {
       id: eventId,
       type: 'events',
-      title: source.title,
-      subtitle: source.shortDescription,
-      detail: source.timeframe,
+      title,
+      subtitle,
+      detail: 'From chat',
       dateIso: new Date().toISOString(),
-      distanceKm: 0,
-      unread: source.activity,
-      metricScore: source.activity,
-      source
+      distanceMetersExact: 0,
+      unread: activity,
+      metricScore: activity,
+      avatarInitials: AppUtils.initialsFromText(title)
     };
   }
 

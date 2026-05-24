@@ -15,6 +15,7 @@ import type {
   EventExploreOrder,
   EventVisibility,
   ExperienceEntry,
+  ExplainableSurface,
   HelpCenterRevision,
   HelpCenterSection,
   InterestOptionGroup,
@@ -163,6 +164,22 @@ const LANGUAGE_SUGGESTIONS = [
 const CONTENT_LANGUAGES = [
   { lang: 'en', label: 'English' },
   { lang: 'hu', label: 'Magyar' }
+];
+const EXPLAINABLE_SURFACES: ExplainableSurface[] = [
+  { key: 'home.game', label: 'Home cards', icon: 'style', owner: 'route', order: 10, enabled: true },
+  { key: 'activities.rates', label: 'Activity ratings', icon: 'star', owner: 'popup', order: 20, enabled: true },
+  { key: 'chats', label: 'Chats', icon: 'forum', owner: 'popup', order: 25, enabled: true },
+  { key: 'profile.editor', label: 'Profile editor', icon: 'manage_accounts', owner: 'popup', order: 30, enabled: true },
+  { key: 'profile.view', label: 'Profile details', icon: 'visibility', owner: 'popup', order: 40, enabled: true },
+  { key: 'contacts', label: 'Contacts', icon: 'contacts', owner: 'popup', order: 45, enabled: true },
+  { key: 'assets', label: 'Assets', icon: 'inventory_2', owner: 'popup', order: 50, enabled: true },
+  { key: 'assets.car', label: 'Assets · Car', icon: 'directions_car', owner: 'popup', order: 51, enabled: true },
+  { key: 'assets.accommodation', label: 'Assets · Accommodation', icon: 'apartment', owner: 'popup', order: 52, enabled: true },
+  { key: 'assets.supplies', label: 'Assets · Supplies', icon: 'inventory_2', owner: 'popup', order: 53, enabled: true },
+  { key: 'assets.tickets', label: 'Assets · Tickets', icon: 'qr_code_2', owner: 'popup', order: 54, enabled: true },
+  { key: 'events', label: 'Events', icon: 'event_note', owner: 'popup', order: 60, enabled: true },
+  { key: 'event.editor', label: 'Event editor', icon: 'edit_calendar', owner: 'popup', order: 65, enabled: true },
+  { key: 'event.feedback', label: 'Event feedback', icon: 'rate_review', owner: 'popup', order: 70, enabled: true }
 ];
 const PROFILE_STATUS_OPTIONS: Array<{ value: ProfileStatus; icon: string }> = [
   { value: 'public', icon: 'public' },
@@ -1141,6 +1158,983 @@ const DEFAULT_PRIVACY_CENTER_REVISION_HU: HelpCenterRevision = {
   sections: PRIVACY_CENTER_SECTIONS_HU
 };
 
+const EXPLANATION_HOME_SECTIONS: HelpCenterSection[] = [
+  {
+    id: 'affinity',
+    icon: 'tune',
+    title: 'Affinity slider',
+    blurb: 'Choose how strong the card feels for you.',
+    contentHtml: '<p>Tap or drag the Affinity slider from 1 to 10. The Go button appears only after you pick a value.</p>'
+  },
+  {
+    id: 'affinity-network',
+    icon: 'hub',
+    title: 'Affinity and group chats',
+    blurb: 'Your answer helps find a small group where conversation is easier to start.',
+    contentHtml: '<p>When you choose 1-10, you are saying how much you would like to talk with this person. That number is not used alone: it matters more when interest is mutual, recent, and stronger than the usual background noise.</p><p>If several people seem likely to enjoy meeting each other, MyScoutee can place them into a random group chat of 6-12 people. It is still a fresh group, but it is nudged toward people who already have enough shared interest to make the first message feel less awkward.</p>'
+  },
+  {
+    id: 'profile',
+    icon: 'visibility',
+    title: 'Profile and photos',
+    blurb: 'Cards can contain more photos and a profile detail view.',
+    contentHtml: '<p>Tap the left or right image columns to browse photos. Use the eye icon to open profile details.</p>'
+  },
+  {
+    id: 'filters',
+    icon: 'filter_alt',
+    title: 'Filters and modes',
+    blurb: 'Use the top bar to narrow who appears.',
+    contentHtml: '<p>The filter button opens profile filters. The number shows how many results match the selected filter condition.</p><p><strong>Preferences</strong>: normal preference-based cards. <strong>Friends in Common</strong>: people connected through someone or an event. <strong>Inside Network</strong>: pairs from your existing network. <strong>Outside Network</strong>: pairs outside it.</p>'
+  },
+  {
+    id: 'history',
+    icon: 'history',
+    title: 'History and edits',
+    blurb: 'Your previous ratings stay available.',
+    contentHtml: '<p>Open history from the header or menu. In Activity ratings, use the star icon to edit a value you already gave.</p>'
+  }
+];
+
+const EXPLANATION_HOME_SECTIONS_HU: HelpCenterSection[] = [
+  {
+    id: 'affinity',
+    icon: 'tune',
+    title: 'Szimpátia sáv',
+    blurb: 'Állítsd be, mennyire szimpatikus a kártya.',
+    contentHtml: '<p>Tapints vagy húzd a Szimpátia sávot 1 és 10 között. A Mehet gomb csak akkor jelenik meg, amikor már választottál értéket.</p>'
+  },
+  {
+    id: 'affinity-network',
+    icon: 'hub',
+    title: 'Szimpátia és csoportchat',
+    blurb: 'A válaszod segít olyan kis csoportot találni, ahol könnyebb elkezdeni beszélgetni.',
+    contentHtml: '<p>Amikor 1 és 10 között választasz, azt jelzed, mennyire szívesen beszélgetnél ezzel az emberrel. Nem csak ez az egy szám dönt: többet ér, ha a szimpátia kölcsönös, friss, és a szokásos háttérzajhoz képest is erős.</p><p>Ha több embernél látszik, hogy jó eséllyel szívesen ismerkednének egymással, a MyScoutee kioszthat egy 6-12 fős véletlenszerű csoportos chatet. A csoport továbbra is új és laza, csak olyan irányba van terelve, ahol az első üzenet kevésbé kínos.</p>'
+  },
+  {
+    id: 'profile',
+    icon: 'visibility',
+    title: 'Profil és képek',
+    blurb: 'A kártya több képet és részletes profilt is rejthet.',
+    contentHtml: '<p>Tapints a kép bal vagy jobb oszlopára a fotók lapozásához. A szem ikon megnyitja a profil részleteit.</p>'
+  },
+  {
+    id: 'filters',
+    icon: 'filter_alt',
+    title: 'Szűrők és módok',
+    blurb: 'A felső sávval szűkítheted, kik jelenjenek meg.',
+    contentHtml: '<p>A tölcsér ikon nyitja a profilszűrőket. A szám azt mutatja, hogy az adott szűrőfeltétel mellett hány találat van.</p><p><strong>Preferenciák</strong>: normál, saját beállításaid szerinti kártyák. <strong>Közös ismerősök</strong>: valakin vagy eseményen keresztül kapcsolódó profilok. <strong>Hálózaton belül</strong>: párok a meglévő kapcsolati körből. <strong>Hálózaton kívül</strong>: párok azon kívül.</p>'
+  },
+  {
+    id: 'history',
+    icon: 'history',
+    title: 'Előzmények',
+    blurb: 'A korábbi értékelések később is elérhetők.',
+    contentHtml: '<p>Az előzményeket a history gombbal vagy a menüből nyithatod meg. Az Activity értékeléseknél a csillag ikonon keresztül módosíthatod a saját értékedet.</p>'
+  }
+];
+
+const EXPLANATION_ACTIVITY_RATES_SECTIONS: HelpCenterSection[] = [
+  {
+    id: 'activity-rate-filter',
+    icon: 'north_east',
+    title: 'What you are looking at',
+    blurb: 'Pick which kind of rating cards should be shown.',
+    contentHtml: '<p>Open the first menu to choose cards you rated, cards where someone rated you, mutual ratings, people you met, or suggestions.</p><p>The red number tells you how many cards are in that choice. The Social switch simply decides whether cards suggested through shared people or events are included.</p>'
+  },
+  {
+    id: 'activity-header-controls',
+    icon: 'route',
+    title: 'Order and view',
+    blurb: 'These buttons only change how the list is shown.',
+    contentHtml: '<p><strong>Recent</strong>, <strong>Relevant</strong>, and <strong>Past</strong> decide what comes first. They do not change anyone&rsquo;s score.</p><p><strong>Month</strong>, <strong>Week</strong>, <strong>Day</strong>, and <strong>Distance</strong> decide how the same cards are grouped. A label like <strong>10 km</strong> is just a group title.</p>'
+  },
+  {
+    id: 'activity-score-badge',
+    icon: 'star',
+    title: 'Rating one card',
+    blurb: 'Tap a card, then use the 1-10 bar to change your rating.',
+    contentHtml: '<p>The star badge shows your current rating for that card. After you select a card, the bar at the bottom changes only that selected card.</p><p>If a card is read-only, you may still see a received score, but the bottom bar will not change it.</p>'
+  },
+  {
+    id: 'activity-fullscreen',
+    icon: 'fullscreen',
+    title: 'Rating one by one',
+    blurb: 'Use fullscreen when you want to focus on a single card.',
+    contentHtml: '<p>The fullscreen button opens a larger card. The small bars at the top of the image show when there are more photos.</p><p>The rating bar sits below the image and changes only the card you can see. When you exit fullscreen, you return to the same filtered list.</p>'
+  }
+];
+
+const EXPLANATION_ACTIVITY_RATES_SECTIONS_HU: HelpCenterSection[] = [
+  {
+    id: 'activity-rate-filter',
+    icon: 'north_east',
+    title: 'Mit nézel?',
+    blurb: 'Itt választod ki, milyen értékeléskártyák látszanak.',
+    contentHtml: '<p>Nyisd le az első menüt, és válassz: akiket te értékeltél, akik téged értékeltek, kölcsönös értékelések, akikkel találkoztál, vagy javaslatok.</p><p>A piros szám azt mutatja, hány kártya van abban a választásban. A Social kapcsoló csak azt dönti el, hogy bekerüljenek-e a közös emberek vagy események alapján ajánlott kártyák.</p>'
+  },
+  {
+    id: 'activity-header-controls',
+    icon: 'route',
+    title: 'Sorrend és nézet',
+    blurb: 'Ezek a gombok csak azt változtatják, hogyan látod a listát.',
+    contentHtml: '<p>A <strong>Legutóbbi</strong>, <strong>Releváns</strong> és <strong>Korábbi</strong> azt dönti el, mi kerüljön előre. Ettől senkinek nem változik a pontja.</p><p>A <strong>Hónap</strong>, <strong>Hét</strong>, <strong>Nap</strong> és <strong>Távolság</strong> azt dönti el, milyen csoportokban látod ugyanazokat a kártyákat. A <strong>10 km</strong> felirat csak egy csoportcím.</p>'
+  },
+  {
+    id: 'activity-score-badge',
+    icon: 'star',
+    title: 'Egy kártya pontozása',
+    blurb: 'Koppints egy kártyára, majd az 1-10-es sávval módosítsd az értékelést.',
+    contentHtml: '<p>A csillagos jelvény azt mutatja, most mennyire értékelted azt a kártyát. Ha kijelölsz egy kártyát, az alsó sáv csak azt az egy kártyát módosítja.</p><p>Ha egy kártya csak olvasható, láthatod rajta a kapott pontot, de az alsó sáv nem fogja átírni.</p>'
+  },
+  {
+    id: 'activity-fullscreen',
+    icon: 'fullscreen',
+    title: 'Egyesével pontozás',
+    blurb: 'A teljes képernyő akkor jó, ha csak egy kártyára szeretnél figyelni.',
+    contentHtml: '<p>A teljes képernyő ikon nagyobb kártyát nyit. A kép tetején lévő kis sávok mutatják, ha több fotó van.</p><p>A pontozósáv közvetlenül a kép alatt van, és csak az éppen látható kártyát módosítja. Kilépés után ugyanabba a szűrt listába térsz vissza.</p>'
+  }
+];
+
+const EXPLANATION_EVENTS_SECTIONS: HelpCenterSection[] = [
+  {
+    id: 'activity-event-entry',
+    icon: 'event',
+    title: 'Event lists',
+    blurb: 'Pick which pile of events you want to see.',
+    contentHtml: '<p>Open <strong>Events</strong> when you want invitations, events you joined, events you host, drafts, or old/deleted items. The red bubbles are counts, so you know where something waits for you.</p><p><strong>Upcoming</strong>/<strong>Past</strong> and <strong>Month</strong>/<strong>Week</strong>/<strong>Day</strong>/<strong>Distance</strong> only change how the same cards are sorted. <strong>Explore</strong> finds public events. The plus button starts a new one.</p>'
+  },
+  {
+    id: 'activity-event-card',
+    icon: 'event_note',
+    title: 'Reading a card',
+    blurb: 'The card gives the basic story: picture, title, time, place, and seats.',
+    contentHtml: '<p>The image is the event preview. The small avatar is the host or inviter. The title tells you the event name, the date line tells you when it happens, and the place line tells you where it is and how far away it is.</p><p>A badge like <strong>1 / 5</strong> means 1 accepted person out of 5 seats. A small red number on that badge means there are pending people, invitations, or requests to check.</p>'
+  },
+  {
+    id: 'activity-event-actions',
+    icon: 'more_vert',
+    title: 'What you can tap',
+    blurb: 'The seats badge opens people. The three dots open actions.',
+    contentHtml: '<p>Tap the <strong>1 / 5</strong> seats badge to see who is in, who is waiting, and who needs approval. If you host the event, this is where you can manage people.</p><p>Tap the three-dot menu for your available actions: view, edit, publish a draft, accept or reject an invite, contact the organizer, notify participants, share, report, leave, delete, or restore.</p>'
+  },
+  {
+    id: 'activity-event-join',
+    icon: 'person_add',
+    title: 'Joining an event',
+    blurb: 'Some events are instant. Some ask for approval, tickets, or choices first.',
+    contentHtml: '<p>If you were invited, the card can let you accept or reject the invite. If the event has approval, a waitlist, tickets, rules, or optional parts, the app asks for those details before your spot is final.</p><p>After the event, you may also see feedback screens. Those deeper screens can have their own explanation because checkout, members, resources, and feedback have more buttons.</p>'
+  },
+  {
+    id: 'activity-event-hosting',
+    icon: 'emoji_events',
+    title: 'Making events',
+    blurb: 'You can make a small meetup or a bigger tournament-style event.',
+    contentHtml: '<p><strong>Create Event</strong> starts a normal event. From there you can keep it simple, or build a bigger setup with stages, groups, optional parts, resources, tickets, prices, and seat limits.</p><p>If you host, you can also use auto invite. It can pull from the priority/relevance list, so better matched people can be suggested or invited first instead of adding everyone by hand.</p>'
+  }
+];
+
+const EXPLANATION_EVENTS_SECTIONS_HU: HelpCenterSection[] = [
+  {
+    id: 'activity-event-entry',
+    icon: 'event',
+    title: 'Eseménylisták',
+    blurb: 'Itt választod ki, melyik eseménykupacot nézed.',
+    contentHtml: '<p>Az <strong>Események</strong> nézetben látod a meghívásokat, csatlakozott eseményeket, saját eseményeket, piszkozatokat és régi/törölt elemeket. A piros buborékok darabszámok, így látod, hol vár rád valami.</p><p>A <strong>Közelgő</strong>/<strong>Korábbi</strong> és a <strong>Hónap</strong>/<strong>Hét</strong>/<strong>Nap</strong>/<strong>Távolság</strong> csak ugyanazokat a kártyákat rendezi át. A <strong>Felfedezés</strong> nyilvános eseményeket keres. A plusz gomb új eseményt indít.</p>'
+  },
+  {
+    id: 'activity-event-card',
+    icon: 'event_note',
+    title: 'Egy kártya olvasása',
+    blurb: 'A kártya röviden megmutatja: kép, cím, idő, hely és férőhely.',
+    contentHtml: '<p>A kép az esemény előnézete. A kis avatar a szervezőt vagy meghívót jelzi. A cím az esemény neve, a dátumsor az időpont, a helyszín sor pedig a helyet és távolságot mutatja.</p><p>Az <strong>1 / 5</strong> jelvény azt jelenti, hogy 1 ember bent van az 5 helyből. A kis piros szám függő embereket, meghívásokat vagy kéréseket jelez.</p>'
+  },
+  {
+    id: 'activity-event-actions',
+    icon: 'more_vert',
+    title: 'Mire lehet koppintani',
+    blurb: 'A férőhely jelvény embereket nyit. A három pont műveleteket nyit.',
+    contentHtml: '<p>Az <strong>1 / 5</strong> jelvényre koppintva látod, kik vannak bent, kik várnak, és kit kell jóváhagyni. Ha te vagy a szervező, itt tudod kezelni az embereket.</p><p>A hárompontos menüben a szereped szerinti műveletek jelennek meg: megtekintés, szerkesztés, piszkozat publikálása, meghívás elfogadása vagy elutasítása, szervező megkeresése, résztvevők értesítése, megosztás, jelentés, kilépés, törlés vagy visszaállítás.</p>'
+  },
+  {
+    id: 'activity-event-join',
+    icon: 'person_add',
+    title: 'Csatlakozás eseményhez',
+    blurb: 'Van azonnali csatlakozás, és van ahol jóváhagyás, jegy vagy választás kell.',
+    contentHtml: '<p>Ha meghívtak, a kártyáról elfogadhatod vagy elutasíthatod a meghívást. Ha az esemény jóváhagyást, várólistát, jegyet, szabályokat vagy opcionális részeket használ, az app előbb bekéri ezeket.</p><p>Esemény után visszajelző képernyők is jöhetnek. A mélyebb képernyők, például fizetés, tagok, erőforrások és visszajelzés, saját részletesebb magyarázatot is kaphatnak.</p>'
+  },
+  {
+    id: 'activity-event-hosting',
+    icon: 'emoji_events',
+    title: 'Esemény készítése',
+    blurb: 'Lehet egyszerű találkozó, vagy nagyobb bajnokság jellegű esemény.',
+    contentHtml: '<p>Az <strong>Új esemény</strong> normál eseményt indít. Maradhat egyszerű, vagy építhetsz belőle nagyobb rendszert szakaszokkal, csoportokkal, opcionális részekkel, erőforrásokkal, jegyekkel, árakkal és férőhelylimitekkel.</p><p>Szervezőként automatikus meghívást is használhatsz. Ez a prioritási/relevancia listából dolgozhat, így a jobban illő emberek kerülhetnek előre, nem kell mindenkit kézzel felvenni.</p>'
+  }
+];
+
+const EXPLANATION_CHATS_SECTIONS: HelpCenterSection[] = [
+  {
+    id: 'activity-chat-list',
+    icon: 'forum',
+    title: 'Chat lists',
+    blurb: 'Pick which conversations you want to see.',
+    contentHtml: '<p>Open <strong>Chats</strong> to see conversations connected to your events and groups. The second menu filters the list: All, Event, Sub event, Group, or Service.</p><p>Red bubbles mean unread or waiting items. Date bars group the conversations so you can quickly see what is new today and what is older.</p>'
+  },
+  {
+    id: 'activity-chat-card',
+    icon: 'chat_bubble',
+    title: 'Reading a chat row',
+    blurb: 'A row tells you who spoke, which channel it is, and how many people are inside.',
+    contentHtml: '<p>The round avatar is the last sender or channel person. The bold name is who last wrote, and the line under it shows the channel name, for example <strong>Main Event</strong>, <strong>Group Channel</strong>, or <strong>Contact Organizer</strong>.</p><p>The dark pill like <strong>4 members</strong> shows how many people are in that chat. A small red number on it is unread messages or pending chat-related work.</p>'
+  },
+  {
+    id: 'activity-chat-channels',
+    icon: 'account_tree',
+    title: 'Channel types',
+    blurb: 'Different chats are for different jobs.',
+    contentHtml: '<p><strong>Main event</strong> is the broad event chat. <strong>Sub event</strong> is for one stage or optional part. <strong>Group</strong> is for a smaller team inside the event. <strong>Service</strong> or <strong>Organizer</strong> is for questions, support, notifications, or admin handling.</p><p>This keeps planning tidy: you can ask a ticket question in organizer chat, arrange a stage in sub-event chat, and talk with only your group in group chat.</p>'
+  },
+  {
+    id: 'activity-chat-message-window',
+    icon: 'mark_chat_unread',
+    title: 'Opening messages',
+    blurb: 'Tap a row to open the conversation and the typing box.',
+    contentHtml: '<p>The top bar shows the channel name. The member button opens people in the chat, the context button opens the related event or group area, and the pin icon opens messages marked as important.</p><p>Messages are bubbles: other people are on the left, your messages are on the right. A bubble can hold text, an image, a voice clip, a poll, a shared event, or a shared asset card.</p><p>Tap a message to select it. Floating buttons appear for reply, reaction, and more actions. The menu can show View, Reply, Edit, Unsend, Mark important/remove important, or Report depending on the message and your role.</p>'
+  },
+  {
+    id: 'activity-chat-tools',
+    icon: 'add_circle',
+    title: 'Useful chat tools',
+    blurb: 'Chats are for coordination, not only hello messages.',
+    contentHtml: '<p>The plus button beside Write message opens the same tools you use in the real chat: upload image, send voice clip, create poll, share event, and share asset.</p><p>Polls and shared event or asset cards appear inside the message stream, so people can vote or open the shared item later. Use it for practical planning: meeting spot, who brings what, rides, tickets, approvals, or last-minute changes.</p>'
+  }
+];
+
+const EXPLANATION_CHATS_SECTIONS_HU: HelpCenterSection[] = [
+  {
+    id: 'activity-chat-list',
+    icon: 'forum',
+    title: 'Chatlisták',
+    blurb: 'Itt választod ki, melyik beszélgetéseket látod.',
+    contentHtml: '<p>A <strong>Chatek</strong> nézetben az eseményekhez és csoportokhoz tartozó beszélgetéseket látod. A második menü szűr: Összes, Esemény, Alesemény, Csoport vagy Szerviz.</p><p>A piros buborék olvasatlant vagy várakozó tennivalót jelent. A dátumsávok csoportosítják a beszélgetéseket, így látod, mi friss és mi régebbi.</p>'
+  },
+  {
+    id: 'activity-chat-card',
+    icon: 'chat_bubble',
+    title: 'Egy chat sor olvasása',
+    blurb: 'A sor megmutatja, ki írt, melyik csatorna ez, és hányan vannak benne.',
+    contentHtml: '<p>A kerek avatar az utolsó írót vagy a csatorna emberét jelzi. A vastag név mutatja, ki írt utoljára, az alatta lévő sor pedig a csatornát, például <strong>Main Event</strong>, <strong>Group Channel</strong> vagy <strong>Contact Organizer</strong>.</p><p>A sötét jelvény, például <strong>4 tag</strong>, azt mutatja, hányan vannak a chatben. A kis piros szám olvasatlan üzenetet vagy chathez tartozó tennivalót jelez.</p>'
+  },
+  {
+    id: 'activity-chat-channels',
+    icon: 'account_tree',
+    title: 'Csatornatípusok',
+    blurb: 'Más chat más feladatra való.',
+    contentHtml: '<p>A <strong>Main event</strong> a fő esemény chatje. A <strong>Sub event</strong> egy szakaszhoz vagy opcionális részhez tartozik. A <strong>Group</strong> kisebb csapatnak szól. A <strong>Service</strong> vagy <strong>Organizer</strong> kérdéshez, támogatáshoz, értesítéshez vagy admin kezeléshez való.</p><p>Így nem keveredik minden: jegykérdést írhatsz a szervezőnek, szakaszról beszélhetsz az alesemény chatben, és csak a saját csoportoddal egyeztethetsz a group chatben.</p>'
+  },
+  {
+    id: 'activity-chat-message-window',
+    icon: 'mark_chat_unread',
+    title: 'Üzenetek megnyitása',
+    blurb: 'Koppints egy sorra: megnyílik a beszélgetés és az írómező.',
+    contentHtml: '<p>Felül a csatorna neve látszik. Mellette a tagok gomb, a kapcsolódó esemény vagy csoport gomb és a gombostű ikon van. A gombostű a fontosnak jelölt üzenetek listáját nyitja, hogy később gyorsan visszatalálj.</p><p>Az üzenetek buborékokban vannak: bal oldalon mások, jobb oldalon a saját üzeneted. Egy buborékban lehet szöveg, kép, hang, szavazás, megosztott esemény vagy eszközkártya.</p><p>Koppints egy üzenetre a kijelöléshez. A lebegő gombokkal válaszolhatsz, reagálhatsz, vagy megnyithatod a menüt. A menüben szereptől és üzenettípustól függően Megnyitás, Válasz, Szerkesztés, Visszavonás, Fontosnak jelölés vagy Jelentés jelenhet meg.</p>'
+  },
+  {
+    id: 'activity-chat-tools',
+    icon: 'add_circle',
+    title: 'Hasznos chat eszközök',
+    blurb: 'A chat nem csak köszönésre van, hanem szervezésre is.',
+    contentHtml: '<p>Az Üzenet írása mező melletti plusz gomb ugyanazokat az eszközöket nyitja, mint a valódi chatben: kép feltöltése, hangüzenet, szavazás, esemény megosztása és eszköz megosztása.</p><p>A szavazás és a megosztott esemény vagy eszköz kártya magában a beszélgetésben jelenik meg, így később is lehet rá szavazni vagy megnyitni. Használd gyakorlati dolgokra: találkozási pont, ki mit hoz, fuvar, jegyek, jóváhagyás vagy utolsó pillanatos változás.</p>'
+  }
+];
+
+const EXPLANATION_CONTACTS_SECTIONS: HelpCenterSection[] = [
+  {
+    id: 'contacts-list',
+    icon: 'contacts',
+    title: 'Your contact list',
+    blurb: 'This is your private quick-reach list.',
+    contentHtml: '<p>Use the search field to filter saved contacts by name. <strong>Create contact</strong> lets you pick a member and add that person to your own list.</p><p>An empty list only means you have not saved anyone here yet. It does not remove people from events, chats, ratings, or profiles.</p>'
+  },
+  {
+    id: 'contacts-card',
+    icon: 'badge',
+    title: 'Reading a contact card',
+    blurb: 'Each row shows who the person is and the shortcuts you saved.',
+    contentHtml: '<p>The avatar and name identify the person. The eye button opens the profile. The three-dot button opens the card actions: saved contact methods, Edit, and Delete.</p><p>The chips below the city are one-tap ways to reach that person, such as phone, email, WhatsApp, Telegram, Facebook, Instagram, LinkedIn, or a website, depending on what you saved.</p>'
+  },
+  {
+    id: 'contacts-private-methods',
+    icon: 'alternate_email',
+    title: 'Private contact methods',
+    blurb: 'Friends or trusted contacts can have richer reach details.',
+    contentHtml: '<p>Public profile fields stay separate from this list. When you know someone well, for example after becoming friends, you can keep more private ways to reach them here: email, phone, social handle, website, or another useful link.</p><p>Use <strong>Edit</strong> to add, change, or remove methods. These are your quick shortcuts for that saved contact; deleting the contact only removes it from this list.</p>'
+  }
+];
+
+const EXPLANATION_CONTACTS_SECTIONS_HU: HelpCenterSection[] = [
+  {
+    id: 'contacts-list',
+    icon: 'contacts',
+    title: 'Kapcsolatlista',
+    blurb: 'Ez a saját, gyorsan elérhető kapcsolatlistád.',
+    contentHtml: '<p>A keresővel név alapján szűrheted a mentett kapcsolatokat. A <strong>Kapcsolat létrehozása</strong> gombbal kiválasztasz egy tagot, és hozzáadod a saját listádhoz.</p><p>Az üres lista csak azt jelenti, hogy ide még nem mentettél senkit. Ettől az eseményekben, chatekben, értékelésekben és profilokon semmi nem tűnik el.</p>'
+  },
+  {
+    id: 'contacts-card',
+    icon: 'badge',
+    title: 'Egy kapcsolatkártya',
+    blurb: 'A sor megmutatja, ki az ember, és milyen gyors eléréseket mentettél hozzá.',
+    contentHtml: '<p>Az avatar és a név azonosítja az embert. A szem gomb megnyitja a profilt. A hárompontos gomb nyitja a kártyaműveleteket: mentett elérési módok, szerkesztés és törlés.</p><p>A város alatti chipek egyérintéses elérések, például telefon, email, WhatsApp, Telegram, Facebook, Instagram, LinkedIn vagy weboldal, attól függően, mit mentettél.</p>'
+  },
+  {
+    id: 'contacts-private-methods',
+    icon: 'alternate_email',
+    title: 'Privátabb elérési módok',
+    blurb: 'Barátokhoz vagy megbízható kapcsolatokhoz több praktikus adatot is menthetsz.',
+    contentHtml: '<p>A nyilvános profilmezők ettől külön maradnak. Ha valakit jobban ismersz, például barátok vagytok, itt tarthatsz privátabb elérési módokat: emailt, telefonszámot, közösségi profilt, weboldalt vagy más hasznos linket.</p><p>A <strong>Szerkesztés</strong> alatt adhatsz hozzá, módosíthatsz vagy törölhetsz módszereket. Ezek a saját gyorsgombjaid ehhez a mentett kapcsolathoz; a kapcsolat törlése csak ebből a listából veszi ki.</p>'
+  }
+];
+
+const EXPLANATION_ASSETS_SECTIONS: HelpCenterSection[] = [
+  {
+    id: 'assets-entry',
+    icon: 'inventory_2',
+    title: 'Your assets',
+    blurb: 'This popup starts from your own things, not from one event.',
+    contentHtml: '<p>The type menu switches between <strong>Car</strong>, <strong>Accommodation</strong>, <strong>Supplies</strong>, and <strong>Ticket</strong>. The red number is the count for that type.</p><p><strong>Car</strong>, <strong>Accommodation</strong>, and <strong>Supplies</strong> are editable assets you own. The plus button creates a new one. <strong>Ticket</strong> is different: it is for event entry codes and scanning, not for editing a physical asset.</p>'
+  },
+  {
+    id: 'assets-card',
+    icon: 'view_agenda',
+    title: 'One asset card',
+    blurb: 'This is the short version of one thing you own.',
+    contentHtml: '<p>The picture is the asset photo; if there is no image, the card shows the built-in no-image placeholder. The small icon shows the asset type. The title is the name, the line under it shows type/category/city, and the text is your practical note.</p><p>The right badge is the useful number: seats, beds, quantity, or pending requests. The three-dot menu is for owner actions such as <strong>Share</strong>, <strong>Edit</strong>, and <strong>Delete</strong>. Accommodation can also show a location/map button.</p>'
+  },
+  {
+    id: 'assets-editor',
+    icon: 'edit',
+    title: 'Common asset editor',
+    blurb: 'Cars, accommodation, and supplies share this basic editor.',
+    contentHtml: '<p>For every real asset you set the image/source link, type, title, category, capacity, quantity, details, visibility, optional pricing, and lending policies.</p><p><strong>Public</strong> can be found broadly in Asset Explorer. <strong>Friends only</strong> limits discovery to your friend/network context. <strong>Invitation only</strong> keeps it out of normal discovery, so it is used by direct sharing or assignment.</p>'
+  },
+  {
+    id: 'assets-requests',
+    icon: 'assignment',
+    title: 'Requests and helpers',
+    blurb: 'Open the badge when somebody wants to use what you own.',
+    contentHtml: '<p>The requests popup can show all rows, active items, pending requests, and borrowed items. A row shows who asked, the related event or use context, the time window, and how much capacity is left.</p><p>You can approve or reject pending requests. For accepted people you may promote someone to <strong>Manager</strong> for that asset. Manager is only a helper role for that asset; it is not the same as app admin.</p>'
+  },
+  {
+    id: 'assets-scope',
+    icon: 'travel_explore',
+    title: 'Where an asset can be used',
+    blurb: 'Visibility controls discovery; event screens assign the asset.',
+    contentHtml: '<p>Your own asset can appear in <strong>Asset Explorer</strong> when its visibility allows it. That is where other people can discover it and request it.</p><p>The same asset can also be assigned to an event or sub-event from the event resource screen. That assignment screen can have extra event-only states, but those are not the normal own-assets list.</p>'
+  }
+];
+
+const EXPLANATION_ASSETS_SECTIONS_HU: HelpCenterSection[] = [
+  {
+    id: 'assets-entry',
+    icon: 'inventory_2',
+    title: 'Saját eszközeid',
+    blurb: 'Ez a popup a saját dolgaidból indul ki, nem egy konkrét eseményből.',
+    contentHtml: '<p>A típusmenü vált: <strong>Autó</strong>, <strong>Ingatlan</strong>, <strong>Kellékek</strong> és <strong>Jegy</strong>. A piros szám az adott típus darabszáma.</p><p>Az <strong>Autó</strong>, <strong>Ingatlan</strong> és <strong>Kellékek</strong> szerkeszthető saját eszközök. A plusz gomb újat hoz létre. A <strong>Jegy</strong> más: belépőkódokra és szkennelésre való, nem tárgyi eszköz szerkesztésére.</p>'
+  },
+  {
+    id: 'assets-card',
+    icon: 'view_agenda',
+    title: 'Egy eszközkártya',
+    blurb: 'Ez egy saját eszköz rövid, olvasható változata.',
+    contentHtml: '<p>A kép az eszköz fotója; ha nincs kép, a kártya a beépített nincs-kép jelzést mutatja. A kis ikon a típust jelzi. A cím az eszköz neve, alatta típus/kategória/város, a szöveg pedig praktikus megjegyzés.</p><p>A jobb oldali jelvény a hasznos szám: férőhely, ágy, mennyiség vagy függő kérés. A hárompontos menüben tulajdonosi műveletek vannak: <strong>Megosztás</strong>, <strong>Szerkesztés</strong>, <strong>Törlés</strong>. Ingatlannál helyszín/térkép gomb is megjelenhet.</p>'
+  },
+  {
+    id: 'assets-editor',
+    icon: 'edit',
+    title: 'Közös eszközszerkesztő',
+    blurb: 'Az autó, ingatlan és kellék ugyanarra az alap szerkesztőre épül.',
+    contentHtml: '<p>Minden valódi eszköznél képet/forráslinket, típust, címet, kategóriát, kapacitást, mennyiséget, leírást, láthatóságot, opcionális árat és kölcsönzési szabályokat adhatsz meg.</p><p>A <strong>Public</strong> szélesen megjelenhet az Eszköz Felfedezésben. A <strong>Friends only</strong> az ismerősi/hálózati körre szűkít. Az <strong>Invitation only</strong> nem normál felfedezésre való, hanem közvetlen megosztásra vagy hozzárendelésre.</p>'
+  },
+  {
+    id: 'assets-requests',
+    icon: 'assignment',
+    title: 'Kérések és segítők',
+    blurb: 'A jelvényt nyisd meg, ha valaki használni szeretné, ami a tied.',
+    contentHtml: '<p>A kérések popupban válthatsz: összes sor, aktív elemek, függő kérések és kölcsönadott elemek. Egy sor megmutatja, ki kérte, milyen eseményhez vagy használati helyzethez kapcsolódik, milyen időablakra, és mennyi kapacitás marad.</p><p>Függő kérésnél jóváhagyhatsz vagy elutasíthatsz. Elfogadott emberből lehet <strong>Manager</strong> az adott eszközhöz. A Manager csak az adott eszköz segítő szerepe; nem ugyanaz, mint az app admin.</p>'
+  },
+  {
+    id: 'assets-scope',
+    icon: 'travel_explore',
+    title: 'Hol használható egy eszköz',
+    blurb: 'A láthatóság a felfedezést szabályozza; az eseményképernyők hozzárendelnek.',
+    contentHtml: '<p>A saját eszközöd megjelenhet az <strong>Eszköz Felfedezésben</strong>, ha a láthatósága engedi. Ott mások megtalálhatják és kérhetik.</p><p>Ugyanezt az eszközt eseményhez vagy aleseményhez is hozzá lehet rendelni az esemény erőforrás képernyőjén. Ott lehetnek extra, csak eseményhez tartozó állapotok, de ezek nem a normál saját eszközlista jelentései.</p>'
+  }
+];
+
+function assetExplanationSections(
+  baseSections: HelpCenterSection[],
+  overrides: Record<string, Partial<HelpCenterSection>>
+): HelpCenterSection[] {
+  return baseSections.map(section => ({
+    ...section,
+    ...(overrides[section.id] ?? {})
+  }));
+}
+
+const EXPLANATION_ASSETS_CAR_SECTIONS: HelpCenterSection[] = assetExplanationSections(EXPLANATION_ASSETS_SECTIONS, {
+  'assets-entry': {
+    icon: 'directions_car',
+    title: 'Your cars',
+    blurb: 'Cars use the common editor, with travel details added.',
+    contentHtml: '<p>The <strong>Car</strong> tab lists vehicles you own or manage as your own assets. Use plus to add a car, then describe seats, route, city, pickup notes, rules, price, and visibility.</p><p>A public or friends-only car can be discovered in Asset Explorer and requested. The same car can also be assigned to an event or sub-event from that event&rsquo;s resource screen.</p>'
+  },
+  'assets-card': {
+    icon: 'directions_car',
+    title: 'Reading a car card',
+    contentHtml: '<p>The photo shows the car. The icon confirms it is a car, the title is the car name, and the second line can show model, transmission, category, route, or city.</p><p>The right badge is seats or pending requests. The three-dot menu is where the owner shares, edits, or deletes the car.</p>'
+  },
+  'assets-editor': {
+    title: 'Car-specific fields',
+    contentHtml: '<p>Beyond the common fields, a car is mainly about <strong>seats</strong> and <strong>route</strong>. Use details for pickup window, luggage limits, fuel sharing, route stops, driver notes, and whether people can request it outside your own events.</p>'
+  }
+});
+
+const EXPLANATION_ASSETS_ACCOMMODATION_SECTIONS: HelpCenterSection[] = assetExplanationSections(EXPLANATION_ASSETS_SECTIONS, {
+  'assets-entry': {
+    icon: 'apartment',
+    title: 'Your accommodation',
+    blurb: 'Accommodation uses the common editor, with location as the important extra.',
+    contentHtml: '<p>The <strong>Accommodation</strong> tab lists places, rooms, beds, or stays you own or manage as your own assets. Add a place, then describe location, sleeping capacity, rules, price, and visibility.</p><p>A public or friends-only stay can be discovered in Asset Explorer and requested. It can also be assigned to an event or sub-event from that event&rsquo;s resource screen.</p>'
+  },
+  'assets-card': {
+    icon: 'apartment',
+    title: 'Reading an accommodation card',
+    contentHtml: '<p>The photo shows the place. The icon confirms it is accommodation, the title is the place name, and the second line can show type, city, or category.</p><p>The right badge is the useful number: beds/rooms/capacity or pending requests. The location icon can open the map when the place has a location.</p>'
+  },
+  'assets-editor': {
+    title: 'Accommodation-specific fields',
+    contentHtml: '<p>Beyond the common fields, accommodation needs a <strong>location</strong>. The map/location button uses that place. Use details for check-in, sleeping setup, shared rooms, quiet hours, pets, parking, and what a guest must know before requesting it.</p>'
+  }
+});
+
+const EXPLANATION_ASSETS_SUPPLIES_SECTIONS: HelpCenterSection[] = assetExplanationSections(EXPLANATION_ASSETS_SECTIONS, {
+  'assets-entry': {
+    icon: 'inventory_2',
+    title: 'Your supplies',
+    blurb: 'Supplies use the common editor, with quantity as the important extra.',
+    contentHtml: '<p>The <strong>Supplies</strong> tab lists gear, tools, kits, food packs, camping items, and other practical things you own. Add a supply item, then describe quantity, condition, rules, price, and visibility.</p><p>A public or friends-only supply can be discovered in Asset Explorer and requested. It can also be assigned to an event or sub-event from that event&rsquo;s resource screen.</p>'
+  },
+  'assets-card': {
+    icon: 'inventory_2',
+    title: 'Reading a supply card',
+    contentHtml: '<p>The photo shows the item. The icon confirms it is a supply asset, the title is the item name, and the second line can show type, category, or city.</p><p>The right badge is usually quantity or pending requests. The three-dot menu is where the owner normally shares, edits, or deletes the item.</p>'
+  },
+  'assets-editor': {
+    title: 'Supply-specific fields',
+    contentHtml: '<p>Beyond the common fields, supplies are mainly about <strong>quantity</strong>. Use details for condition, pickup/return rules, what is included, missing parts, deposit, and whether several people can borrow parts of the quantity.</p>'
+  }
+});
+
+const EXPLANATION_ASSETS_TICKETS_SECTIONS: HelpCenterSection[] = [
+  {
+    id: 'assets-tickets',
+    icon: 'qr_code_2',
+    title: 'Your tickets',
+    blurb: 'Tickets are event entry records, not editable owned assets.',
+    contentHtml: '<p>The <strong>Ticket</strong> tab is separate from Car, Accommodation, and Supplies. It lists ticketed events and entry codes connected to you.</p><p>Use <strong>Upcoming</strong> and <strong>Past</strong> to change the list. The <strong>Scan Ticket</strong> button opens scanner mode for reading another person&rsquo;s QR code at check-in.</p>'
+  },
+  {
+    id: 'assets-ticket-card',
+    icon: 'confirmation_number',
+    title: 'Reading a ticket card',
+    blurb: 'A ticket card points back to an event.',
+    contentHtml: '<p>The card shows the event image, title, date, role, and ticket context. Tap the QR badge in the top-right corner to open your own code for that ticket.</p><p>You do not edit this like a car or supply. Its data comes from the event, booking, member role, and ticketing/check-in setup.</p>'
+  },
+  {
+    id: 'assets-ticket-scanner',
+    icon: 'qr_code_scanner',
+    title: 'Ticket scanner',
+    blurb: 'Use it when you need to read somebody else&rsquo;s QR code.',
+    contentHtml: '<p>The scanner opens a camera/check-in screen. After reading a QR code it shows the ticket holder, event, role, and time, so you can confirm whether the ticket belongs here.</p><p>This is a check-in tool. It does not create or edit tickets.</p>'
+  }
+];
+
+const EXPLANATION_ASSETS_CAR_SECTIONS_HU: HelpCenterSection[] = assetExplanationSections(EXPLANATION_ASSETS_SECTIONS_HU, {
+  'assets-entry': {
+    icon: 'directions_car',
+    title: 'Saját autóid',
+    blurb: 'Az autó a közös eszközszerkesztőt használja, utazási adatokkal kiegészítve.',
+    contentHtml: '<p>Az <strong>Autó</strong> tab azokat a járműveket listázza, amelyeket saját eszközként birtokolsz vagy kezelsz. A plusz gombbal adhatsz hozzá autót, majd megadhatod a férőhelyet, útvonalat, várost, indulási megjegyzést, szabályokat, árat és láthatóságot.</p><p>A nyilvános vagy ismerősöknek látható autó megjelenhet az Eszköz Felfedezésben, és kérhető. Ugyanez az autó eseményhez vagy aleseményhez is hozzárendelhető az esemény erőforrás képernyőjén.</p>'
+  },
+  'assets-card': {
+    icon: 'directions_car',
+    title: 'Egy autókártya',
+    contentHtml: '<p>A kép az autót mutatja. Az ikon jelzi, hogy autóról van szó, a cím az autó neve, alatta modell, váltó, kategória, útvonal vagy város jelenhet meg.</p><p>A jobb oldali jelvény férőhelyet vagy függő kérést mutat. A hárompontos menüben a tulajdonos megoszt, szerkeszt vagy töröl.</p>'
+  },
+  'assets-editor': {
+    title: 'Autóra jellemző mezők',
+    contentHtml: '<p>A közös mezőkön túl az autó főleg <strong>férőhelyről</strong> és <strong>útvonalról</strong> szól. Írd a részletekhez az indulási ablakot, csomaglimitet, üzemanyag-megosztást, megállókat, sofőr megjegyzést, és hogy kérhető-e a saját eseményeiden kívül is.</p>'
+  }
+});
+
+const EXPLANATION_ASSETS_ACCOMMODATION_SECTIONS_HU: HelpCenterSection[] = assetExplanationSections(EXPLANATION_ASSETS_SECTIONS_HU, {
+  'assets-entry': {
+    icon: 'apartment',
+    title: 'Saját ingatlanok',
+    blurb: 'Az ingatlan a közös eszközszerkesztőt használja, helyszínnel kiegészítve.',
+    contentHtml: '<p>Az <strong>Ingatlan</strong> tab szállást, szobát, ágyat vagy helyet listáz, amit saját eszközként birtokolsz vagy kezelsz. Adj hozzá helyet, majd írd le a lokációt, alvó kapacitást, szabályokat, árat és láthatóságot.</p><p>A nyilvános vagy ismerősöknek látható szállás megjelenhet az Eszköz Felfedezésben, és kérhető. Eseményhez vagy aleseményhez is hozzárendelhető az esemény erőforrás képernyőjén.</p>'
+  },
+  'assets-card': {
+    icon: 'apartment',
+    title: 'Egy ingatlankártya',
+    contentHtml: '<p>A kép a helyet mutatja. Az ikon jelzi, hogy ingatlan/szállás, a cím a hely neve, alatta típus, város vagy kategória jelenhet meg.</p><p>A jobb oldali jelvény ágyat, szobát, kapacitást vagy függő kérést mutathat. A hely ikon térképet nyithat, ha van helyszín.</p>'
+  },
+  'assets-editor': {
+    title: 'Ingatlanra jellemző mezők',
+    contentHtml: '<p>A közös mezőkön túl az ingatlannál a <strong>helyszín</strong> fontos. A térkép/helyszín gomb ezt használja. Írd a részletekhez a bejutást, alvási rendet, közös szobát, csendidőt, kisállatot, parkolást és amit kérés előtt tudni kell.</p>'
+  }
+});
+
+const EXPLANATION_ASSETS_SUPPLIES_SECTIONS_HU: HelpCenterSection[] = assetExplanationSections(EXPLANATION_ASSETS_SECTIONS_HU, {
+  'assets-entry': {
+    icon: 'inventory_2',
+    title: 'Saját kellékek',
+    blurb: 'A kellék a közös eszközszerkesztőt használja, mennyiséggel kiegészítve.',
+    contentHtml: '<p>A <strong>Kellékek</strong> tab felszerelést, szerszámot, csomagot, ételt, kempingcuccot és más praktikus tárgyat listáz, amit te birtokolsz. Adj hozzá kelléket, majd írd le a mennyiséget, állapotot, szabályokat, árat és láthatóságot.</p><p>A nyilvános vagy ismerősöknek látható kellék megjelenhet az Eszköz Felfedezésben, és kérhető. Eseményhez vagy aleseményhez is hozzárendelhető az esemény erőforrás képernyőjén.</p>'
+  },
+  'assets-card': {
+    icon: 'inventory_2',
+    title: 'Egy kellékkártya',
+    contentHtml: '<p>A kép a tárgyat mutatja. Az ikon jelzi, hogy kellék, a cím az eszköz neve, alatta típus, kategória vagy város jelenhet meg.</p><p>A jobb oldali jelvény általában mennyiséget vagy függő kérést mutat. A hárompontos menüben a tulajdonos jellemzően megoszt, szerkeszt vagy töröl.</p>'
+  },
+  'assets-editor': {
+    title: 'Kellékre jellemző mezők',
+    contentHtml: '<p>A közös mezőkön túl a kellék főleg <strong>mennyiségről</strong> szól. Írd a részletekhez az állapotot, átvétel/visszahozás módját, mit tartalmaz, mi hiányzik, van-e kaució, és osztható-e a mennyiség több ember között.</p>'
+  }
+});
+
+const EXPLANATION_ASSETS_TICKETS_SECTIONS_HU: HelpCenterSection[] = [
+  {
+    id: 'assets-tickets',
+    icon: 'qr_code_2',
+    title: 'Saját jegyek',
+    blurb: 'A jegy belépési rekord, nem szerkeszthető saját tárgyi eszköz.',
+    contentHtml: '<p>A <strong>Jegy</strong> tab külön van az Autó, Ingatlan és Kellékek típusoktól. Jegyes eseményeket és hozzád kapcsolódó belépőkódokat listáz.</p><p>A <strong>Közelgő</strong> és <strong>Korábbi</strong> a listát váltja. A <strong>Scan Ticket</strong> gomb szkenner módot nyit, amikor más ember QR kódját kell beolvasni beléptetésnél.</p>'
+  },
+  {
+    id: 'assets-ticket-card',
+    icon: 'confirmation_number',
+    title: 'Egy jegykártya',
+    blurb: 'A jegykártya egy eseményre mutat vissza.',
+    contentHtml: '<p>A kártya eseményképet, címet, dátumot, szerepet és jegykörnyezetet mutat. A jobb felső QR jelvényre koppintva a saját jegykódod nyílik meg.</p><p>Ezt nem úgy szerkeszted, mint egy autót vagy kelléket. Az adatai az eseményből, foglalásból, tagszerepből és ticketing/check-in beállításból jönnek.</p>'
+  },
+  {
+    id: 'assets-ticket-scanner',
+    icon: 'qr_code_scanner',
+    title: 'Jegyszkenner',
+    blurb: 'Akkor használod, amikor más QR kódját kell beolvasni.',
+    contentHtml: '<p>A scanner kamerás/check-in képernyőt nyit. QR olvasás után megmutatja a jegy tulajdonosát, az eseményt, szerepet és időpontot, így ellenőrizhető, hogy ide tartozik-e.</p><p>Ez beléptető eszköz. Nem hoz létre és nem szerkeszt jegyet.</p>'
+  }
+];
+
+const EXPLANATION_EVENT_EDITOR_SECTIONS: HelpCenterSection[] = [
+  {
+    id: 'event-editor-main',
+    icon: 'edit_calendar',
+    title: 'Main event form',
+    blurb: 'Fill the card first: picture, name, seats, text, date, and place.',
+    contentHtml: '<p>The big image box is the event photo. <strong>Name</strong>, <strong>Capacity</strong>, and <strong>Description</strong> are required; a red outline just means something is still missing.</p><p>The top <strong>Members</strong> button opens the people list. <strong>Public</strong>, <strong>Friends only</strong>, or <strong>Invitation only</strong> decides who can find the event. The red check saves; X closes.</p>'
+  },
+  {
+    id: 'event-editor-switches',
+    icon: 'tune',
+    title: 'Finding, joining, preview',
+    blurb: 'Visibility and Blind/Open are different things.',
+    contentHtml: '<p><strong>Public</strong>, <strong>Friends only</strong>, and <strong>Invitation only</strong> decide who can discover or join. <strong>Open Event</strong> and <strong>Blind Event</strong> only decide whether normal attendees can preview each other before the event.</p><p><strong>Blind Event</strong> is not a secret event. It hides the attendee preview, while Admin and Manager can still manage members. <strong>Topics</strong> help matching, <strong>Auto Inviter</strong> can fill open seats from the priority plan, and <strong>Ticketing</strong> adds ticket/QR check-in.</p>'
+  },
+  {
+    id: 'event-editor-schedule',
+    icon: 'event_time',
+    title: 'Time, price, rules',
+    blurb: 'This part answers: when, price, rules, and place.',
+    contentHtml: '<p><strong>Date</strong> can be one-time or repeating. If the event repeats, <strong>Slot Setup</strong> controls the normal time windows and any date-specific changes.</p><p><strong>Pricing</strong> can stay off or add a charge. <strong>Event Policies</strong> are rules people must accept before joining or booking. The location row and map button set where the event happens.</p>'
+  },
+  {
+    id: 'event-editor-subevents',
+    icon: 'account_tree',
+    title: 'Parts and tournaments',
+    blurb: 'Sub Events are smaller pieces under the main event.',
+    contentHtml: '<p>Use <strong>Sub Events</strong> for stages, rounds, side plans, group blocks, or optional sessions. <strong>Mandatory</strong> means included in the main event. <strong>Optional</strong> means people can choose it separately, often with its own seats or price.</p><p><strong>Casual</strong> is a simple list. <strong>Tournament</strong> adds stages, groups, scores, status changes, and a leaderboard. The editor keeps sub-event times inside the main event; for repeating events, the same sub-event timing is repeated inside each slot.</p>'
+  },
+  {
+    id: 'event-editor-members',
+    icon: 'groups',
+    title: 'Members and roles',
+    blurb: 'This popup is where organizers handle people.',
+    contentHtml: '<p><strong>Admin</strong> is the main organizer. <strong>Manager</strong> is a helper under Admin: managers can help with members and resources, and can also appear because someone manages an assigned car, accommodation, or supply. <strong>Member</strong> is a normal attendee.</p><p><strong>Invite</strong> adds people. <strong>Pending only</strong> shows waiting requests/invites. The status chip shows Admin, Manager, Member, pending, invite, or disqualified. The eye opens a profile; the three-dot menu can approve, reject/delete, remove, disqualify, reinstate, or report depending on your role and the member state.</p>'
+  },
+  {
+    id: 'event-editor-assets',
+    icon: 'inventory_2',
+    title: 'Resources',
+    blurb: 'Resources are the people and things assigned to one part.',
+    contentHtml: '<p>From a sub-event or group menu you can open <strong>Members</strong>, <strong>Car</strong>, <strong>Accommodation</strong>, or <strong>Supplies</strong>. <strong>Assign</strong> attaches something you already control. <strong>Explore</strong> searches available assets and can start a request/booking flow.</p><p>Counts show accepted and pending assignments. Capacity tells you whether that part has enough people, car seats, beds/rooms, or supplies. If a resource has its own manager, that person can become a Manager for the event context.</p>'
+  }
+];
+
+const EXPLANATION_EVENT_EDITOR_SECTIONS_HU: HelpCenterSection[] = [
+  {
+    id: 'event-editor-main',
+    icon: 'edit_calendar',
+    title: 'Fő esemény űrlap',
+    blurb: 'Először ezt töltsd ki: kép, név, létszám, szöveg, dátum és hely.',
+    contentHtml: '<p>A nagy képes mező lesz az esemény fotója. A <strong>Name</strong>, <strong>Capacity</strong> és <strong>Description</strong> kötelező; a piros keret csak azt jelzi, hogy ott még hiányzik valami.</p><p>Felül a <strong>Members</strong> gomb nyitja az embereket. A <strong>Public</strong>, <strong>Friends only</strong> vagy <strong>Invitation only</strong> azt dönti el, ki találhatja meg az eseményt. A piros pipa ment, az X bezár.</p>'
+  },
+  {
+    id: 'event-editor-switches',
+    icon: 'tune',
+    title: 'Ki találja meg, ki kit lát?',
+    blurb: 'A láthatóság és a Blind/Open két külön beállítás.',
+    contentHtml: '<p>A <strong>Public</strong>, <strong>Friends only</strong> és <strong>Invitation only</strong> azt dönti el, ki találhatja meg vagy kérheti az eseményt. Az <strong>Open Event</strong> és <strong>Blind Event</strong> csak azt dönti el, hogy a sima résztvevők előre láthatják-e egymást.</p><p>A <strong>Blind Event</strong> tehát nem titkos esemény. Csak a résztvevői előnézetet rejti el; az Admin és Manager továbbra is kezeli az embereket. A <strong>Topics</strong> segít a keresésben/illesztésben, az <strong>Auto Inviter</strong> a prioritási tervből tud szabad helyekre meghívni, a <strong>Ticketing</strong> pedig jegy/QR beléptetést kapcsol.</p>'
+  },
+  {
+    id: 'event-editor-schedule',
+    icon: 'event_time',
+    title: 'Idő, ár, szabályok',
+    blurb: 'Itt állítod: mikor van, van-e ár, milyen szabály van, és hol lesz.',
+    contentHtml: '<p>A <strong>Date</strong> lehet egyszeri vagy ismétlődő. Ismétlődő eseménynél a <strong>Slot Setup</strong> állítja a normál időablakokat és a külön dátumos kivételeket.</p><p>A <strong>Pricing</strong> maradhat OFF, vagy adhatsz árat. Az <strong>Event Policies</strong> olyan szabály, amit csatlakozás/foglalás előtt el kell fogadni. A helyszín sor és a térkép gomb állítja be a helyet.</p>'
+  },
+  {
+    id: 'event-editor-subevents',
+    icon: 'account_tree',
+    title: 'Részek és bajnokság',
+    blurb: 'A Sub Events kisebb részekre bontja a fő eseményt.',
+    contentHtml: '<p>A <strong>Sub Events</strong> jó szakaszra, körre, mellékprogramra, csoportblokkra vagy opcionális részre. A <strong>Mandatory</strong> a fő esemény része. Az <strong>Optional</strong> külön választható, gyakran saját létszámmal vagy árral.</p><p>A <strong>Casual</strong> sima lista. A <strong>Tournament</strong> szakaszokat, csoportokat, pontokat, státuszváltásokat és ranglistát ad. A szerkesztő az időket a fő eseményen belül tartja; ismétlődő eseménynél ugyanaz az alesemény-idő minden slotban újra megjelenik.</p>'
+  },
+  {
+    id: 'event-editor-members',
+    icon: 'groups',
+    title: 'Tagok és szerepek',
+    blurb: 'Ez az a popup, ahol a szervező embereket kezel.',
+    contentHtml: '<p>Az <strong>Admin</strong> a fő szervező. A <strong>Manager</strong> Admin alatti segítő: kezelhet tagokat és erőforrásokat, és akkor is megjelenhet, ha valaki egy hozzárendelt autó, szállás vagy kellék felelőse. A <strong>Member</strong> sima résztvevő.</p><p>A <strong>Invite</strong> meghív. A <strong>Pending only</strong> csak a várakozó kéréseket/meghívásokat mutatja. A jelvény mutatja: Admin, Manager, Member, függő kérés, kiküldött meghívó vagy kizárt. A szem profilra visz; a hárompontos menü szereptől és állapottól függően jóváhagyást, elutasítást/törlést, eltávolítást, kizárást, visszaállítást vagy jelentést ad.</p>'
+  },
+  {
+    id: 'event-editor-assets',
+    icon: 'inventory_2',
+    title: 'Erőforrások',
+    blurb: 'Erőforrás az ember vagy dolog, amit egy részhez hozzárendelsz.',
+    contentHtml: '<p>Egy alesemény vagy csoport menüjéből nyitható: <strong>Members</strong>, <strong>Car</strong>, <strong>Accommodation</strong> és <strong>Supplies</strong>. Az <strong>Assign</strong> olyat tesz hozzá, amit már kezelsz. Az <strong>Explore</strong> elérhető eszközt keres, és kérés/foglalás folyamatot indíthat.</p><p>A számok az elfogadott és függő hozzárendeléseket mutatják. A kapacitásból látod, elég ember, ülés, szálláshely vagy kellék van-e ahhoz a részhez. Ha egy erőforrásnak saját felelőse van, ő Managerként is megjelenhet az esemény környezetében.</p>'
+  }
+];
+
+const EXPLANATION_IMAGE_SLOT_LIMIT = 8;
+const SEEDED_EXPLANATION_IMAGE_REF_PREFIX = 'help-seeded-image:';
+const SEEDED_EXPLANATION_IMAGE_ASSET_ROOT = 'assets/help-center/explanations';
+const LAZY_IMAGE_PLACEHOLDER_URL = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==';
+const EXPLANATION_SECTION_SPANS: Record<string, HelpCenterSection['panelSpan']> = {
+  'affinity-network': 'span-2',
+  'activity-chat-message-window': 'span-2',
+  'contacts-list': 'span-2',
+  'contacts-card': 'span-2',
+  'contacts-private-methods': 'span-2',
+  'assets-entry': 'span-2',
+  'assets-card': 'span-2',
+  'assets-editor': 'span-2',
+  'assets-requests': 'span-2',
+  'assets-scope': 'span-2'
+};
+const SPAN_1_EXPLANATION_CONTEXTS = new Set(['events', 'event.editor']);
+
+function withSeededExplanationImages(contextKey: string, sections: HelpCenterSection[], lang: string): HelpCenterSection[] {
+  return sections.map(section => {
+    const seededImageUrl = seededExplanationImageRef(contextKey, lang, section.id);
+    return {
+      ...section,
+      panelSpan: SPAN_1_EXPLANATION_CONTEXTS.has(contextKey)
+        ? 'span-1'
+        : section.panelSpan ?? EXPLANATION_SECTION_SPANS[section.id],
+      contentHtml: withSeededExplanationImageHtml(section.contentHtml, seededImageUrl, section.title),
+      imageUrls: uniqueHelpImageUrls([seededImageUrl, ...(section.imageUrls ?? [])])
+    };
+  });
+}
+
+function uniqueHelpImageUrls(imageUrls: readonly string[]): string[] {
+  const result: string[] = [];
+  const seen = new Set<string>();
+  for (const imageUrl of imageUrls) {
+    const normalized = `${imageUrl ?? ''}`.trim();
+    if (!normalized || seen.has(normalized)) {
+      continue;
+    }
+    seen.add(normalized);
+    result.push(normalized);
+    if (result.length >= EXPLANATION_IMAGE_SLOT_LIMIT) {
+      break;
+    }
+  }
+  return result;
+}
+
+function seededExplanationImageRef(contextKey: string, lang: string, sectionId: string): string {
+  return `${SEEDED_EXPLANATION_IMAGE_REF_PREFIX}${contentLangForSeed(lang)}/${seededExplanationPathSegment(contextKey)}/${seededExplanationPathSegment(sectionId)}`;
+}
+
+function withSeededExplanationImageHtml(contentHtml: string | null | undefined, imageUrl: string, title: string | null | undefined): string {
+  const html = `${contentHtml ?? ''}`.trim();
+  const nextFigure = `<figure class="explanation-seeded-visual lazy-image-frame-loading"><img class="lazy-image-loading" src="${escapeHtmlAttribute(lazyImagePlaceholderSrc(imageUrl))}" alt="${escapeHtmlAttribute(title ?? '')}"></figure>`;
+  const withoutExistingSeededFigure = html.replace(/<figure\b[^>]*\bexplanation-seeded-visual\b[^>]*>[\s\S]*?<\/figure>/gi, '').trim();
+  if (/<img[\s>]/i.test(withoutExistingSeededFigure)) {
+    return withoutExistingSeededFigure;
+  }
+  return `${withoutExistingSeededFigure}${withoutExistingSeededFigure ? '' : ''}${nextFigure}`;
+}
+
+function lazyImagePlaceholderSrc(imageUrl: string): string {
+  return `${LAZY_IMAGE_PLACEHOLDER_URL}#lazy-src=${encodeURIComponent(imageUrl)}`;
+}
+
+function seededExplanationPathSegment(value: string | null | undefined): string {
+  return `${value ?? ''}`
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '') || 'default';
+}
+
+function contentLangForSeed(lang: string | null | undefined): string {
+  return `${lang ?? ''}`.trim().toLowerCase().split('-')[0] === 'hu' ? 'hu' : 'en';
+}
+
+function escapeHtmlAttribute(value: string): string {
+  return `${value ?? ''}`
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+const DEFAULT_EXPLANATION_HOME_REVISION: HelpCenterRevision = {
+  id: 'explanation-home-default-v1',
+  documentKind: 'explanation',
+  contextKey: 'home.game',
+  lang: 'en',
+  languageLabel: 'English',
+  version: 1,
+  title: 'Home explanation',
+  summary: 'How the home screen works',
+  description: 'Short in-app guidance for the selected screen.',
+  headerColor: 'violet',
+  sections: withSeededExplanationImages('home.game', EXPLANATION_HOME_SECTIONS, 'en'),
+  active: true,
+  createdAtIso: '2026-05-22T00:00:00.000Z',
+  createdByUserId: 'system',
+  updatedAtIso: '2026-05-22T00:00:00.000Z',
+  updatedByUserId: 'system'
+};
+
+const DEFAULT_EXPLANATION_HOME_REVISION_HU: HelpCenterRevision = {
+  ...DEFAULT_EXPLANATION_HOME_REVISION,
+  id: 'explanation-home-default-hu-v1',
+  lang: 'hu',
+  languageLabel: 'Magyar',
+  title: 'Kezdőlap magyarázat',
+  summary: 'Így működik a kezdőlap',
+  description: 'Rövid alkalmazáson belüli útmutató a kiválasztott képernyőhöz.',
+  sections: withSeededExplanationImages('home.game', EXPLANATION_HOME_SECTIONS_HU, 'hu')
+};
+
+const DEFAULT_EXPLANATION_ACTIVITY_RATES_REVISION: HelpCenterRevision = {
+  ...DEFAULT_EXPLANATION_HOME_REVISION,
+  id: 'explanation-activity-rates-default-v1',
+  contextKey: 'activities.rates',
+  title: 'Activity ratings explanation',
+  summary: 'Filters, order, and scoring for rating cards',
+  sections: withSeededExplanationImages('activities.rates', EXPLANATION_ACTIVITY_RATES_SECTIONS, 'en')
+};
+
+const DEFAULT_EXPLANATION_ACTIVITY_RATES_REVISION_HU: HelpCenterRevision = {
+  ...DEFAULT_EXPLANATION_ACTIVITY_RATES_REVISION,
+  id: 'explanation-activity-rates-default-hu-v1',
+  lang: 'hu',
+  languageLabel: 'Magyar',
+  title: 'Értékelések magyarázat',
+  summary: 'Szűrés, sorrend és pontozás az értékeléskártyákon',
+  sections: withSeededExplanationImages('activities.rates', EXPLANATION_ACTIVITY_RATES_SECTIONS_HU, 'hu')
+};
+
+const DEFAULT_EXPLANATION_EVENTS_REVISION: HelpCenterRevision = {
+  ...DEFAULT_EXPLANATION_HOME_REVISION,
+  id: 'explanation-events-default-v1',
+  contextKey: 'events',
+  title: 'Events explanation',
+  summary: 'Event lists, cards, joining, and hosting',
+  sections: withSeededExplanationImages('events', EXPLANATION_EVENTS_SECTIONS, 'en')
+};
+
+const DEFAULT_EXPLANATION_EVENTS_REVISION_HU: HelpCenterRevision = {
+  ...DEFAULT_EXPLANATION_EVENTS_REVISION,
+  id: 'explanation-events-default-hu-v1',
+  lang: 'hu',
+  languageLabel: 'Magyar',
+  title: 'Események magyarázat',
+  summary: 'Eseménylisták, kártyák, csatlakozás és szervezés',
+  sections: withSeededExplanationImages('events', EXPLANATION_EVENTS_SECTIONS_HU, 'hu')
+};
+
+const DEFAULT_EXPLANATION_ASSETS_REVISION: HelpCenterRevision = {
+  ...DEFAULT_EXPLANATION_HOME_REVISION,
+  id: 'explanation-assets-default-v1',
+  contextKey: 'assets',
+  title: 'Assets explanation',
+  summary: 'Own assets, requests, event resources, and tickets',
+  sections: withSeededExplanationImages('assets', EXPLANATION_ASSETS_SECTIONS, 'en')
+};
+
+const DEFAULT_EXPLANATION_ASSETS_REVISION_HU: HelpCenterRevision = {
+  ...DEFAULT_EXPLANATION_ASSETS_REVISION,
+  id: 'explanation-assets-default-hu-v1',
+  lang: 'hu',
+  languageLabel: 'Magyar',
+  title: 'Eszközök magyarázat',
+  summary: 'Saját eszközök, kérések, esemény-erőforrások és jegyek',
+  sections: withSeededExplanationImages('assets', EXPLANATION_ASSETS_SECTIONS_HU, 'hu')
+};
+
+const DEFAULT_EXPLANATION_ASSETS_CAR_REVISION: HelpCenterRevision = {
+  ...DEFAULT_EXPLANATION_ASSETS_REVISION,
+  id: 'explanation-assets-car-default-v1',
+  contextKey: 'assets.car',
+  title: 'Car assets explanation',
+  summary: 'Own cars, car cards, car editor, and car requests',
+  sections: withSeededExplanationImages('assets.car', EXPLANATION_ASSETS_CAR_SECTIONS, 'en')
+};
+
+const DEFAULT_EXPLANATION_ASSETS_CAR_REVISION_HU: HelpCenterRevision = {
+  ...DEFAULT_EXPLANATION_ASSETS_CAR_REVISION,
+  id: 'explanation-assets-car-default-hu-v1',
+  lang: 'hu',
+  languageLabel: 'Magyar',
+  title: 'Autó eszközök magyarázat',
+  summary: 'Saját autók, autókártyák, szerkesztés és kérések',
+  sections: withSeededExplanationImages('assets.car', EXPLANATION_ASSETS_CAR_SECTIONS_HU, 'hu')
+};
+
+const DEFAULT_EXPLANATION_ASSETS_ACCOMMODATION_REVISION: HelpCenterRevision = {
+  ...DEFAULT_EXPLANATION_ASSETS_REVISION,
+  id: 'explanation-assets-accommodation-default-v1',
+  contextKey: 'assets.accommodation',
+  title: 'Accommodation assets explanation',
+  summary: 'Own accommodation, location, editor, and requests',
+  sections: withSeededExplanationImages('assets.accommodation', EXPLANATION_ASSETS_ACCOMMODATION_SECTIONS, 'en')
+};
+
+const DEFAULT_EXPLANATION_ASSETS_ACCOMMODATION_REVISION_HU: HelpCenterRevision = {
+  ...DEFAULT_EXPLANATION_ASSETS_ACCOMMODATION_REVISION,
+  id: 'explanation-assets-accommodation-default-hu-v1',
+  lang: 'hu',
+  languageLabel: 'Magyar',
+  title: 'Ingatlan eszközök magyarázat',
+  summary: 'Saját ingatlanok, helyszín, szerkesztés és kérések',
+  sections: withSeededExplanationImages('assets.accommodation', EXPLANATION_ASSETS_ACCOMMODATION_SECTIONS_HU, 'hu')
+};
+
+const DEFAULT_EXPLANATION_ASSETS_SUPPLIES_REVISION: HelpCenterRevision = {
+  ...DEFAULT_EXPLANATION_ASSETS_REVISION,
+  id: 'explanation-assets-supplies-default-v1',
+  contextKey: 'assets.supplies',
+  title: 'Supply assets explanation',
+  summary: 'Own supplies, quantities, editor, and requests',
+  sections: withSeededExplanationImages('assets.supplies', EXPLANATION_ASSETS_SUPPLIES_SECTIONS, 'en')
+};
+
+const DEFAULT_EXPLANATION_ASSETS_SUPPLIES_REVISION_HU: HelpCenterRevision = {
+  ...DEFAULT_EXPLANATION_ASSETS_SUPPLIES_REVISION,
+  id: 'explanation-assets-supplies-default-hu-v1',
+  lang: 'hu',
+  languageLabel: 'Magyar',
+  title: 'Kellék eszközök magyarázat',
+  summary: 'Saját kellékek, mennyiségek, szerkesztés és kérések',
+  sections: withSeededExplanationImages('assets.supplies', EXPLANATION_ASSETS_SUPPLIES_SECTIONS_HU, 'hu')
+};
+
+const DEFAULT_EXPLANATION_ASSETS_TICKETS_REVISION: HelpCenterRevision = {
+  ...DEFAULT_EXPLANATION_ASSETS_REVISION,
+  id: 'explanation-assets-tickets-default-v1',
+  contextKey: 'assets.tickets',
+  title: 'Ticket assets explanation',
+  summary: 'Event tickets, QR codes, ordering, and scanning',
+  sections: withSeededExplanationImages('assets.tickets', EXPLANATION_ASSETS_TICKETS_SECTIONS, 'en')
+};
+
+const DEFAULT_EXPLANATION_ASSETS_TICKETS_REVISION_HU: HelpCenterRevision = {
+  ...DEFAULT_EXPLANATION_ASSETS_TICKETS_REVISION,
+  id: 'explanation-assets-tickets-default-hu-v1',
+  lang: 'hu',
+  languageLabel: 'Magyar',
+  title: 'Jegyek magyarázat',
+  summary: 'Eseményjegyek, QR kódok, sorrend és szkennelés',
+  sections: withSeededExplanationImages('assets.tickets', EXPLANATION_ASSETS_TICKETS_SECTIONS_HU, 'hu')
+};
+
+const DEFAULT_EXPLANATION_EVENT_EDITOR_REVISION: HelpCenterRevision = {
+  ...DEFAULT_EXPLANATION_HOME_REVISION,
+  id: 'explanation-event-editor-default-v1',
+  contextKey: 'event.editor',
+  title: 'Event editor guide',
+  summary: 'Main event settings, roles, parts, resources, and tournament flow',
+  sections: withSeededExplanationImages('event.editor', EXPLANATION_EVENT_EDITOR_SECTIONS, 'en')
+};
+
+const DEFAULT_EXPLANATION_EVENT_EDITOR_REVISION_HU: HelpCenterRevision = {
+  ...DEFAULT_EXPLANATION_EVENT_EDITOR_REVISION,
+  id: 'explanation-event-editor-default-hu-v1',
+  lang: 'hu',
+  languageLabel: 'Magyar',
+  title: 'Eseményszerkesztő segítség',
+  summary: 'Fő beállítások, szerepek, részek, erőforrások és bajnokság',
+  sections: withSeededExplanationImages('event.editor', EXPLANATION_EVENT_EDITOR_SECTIONS_HU, 'hu')
+};
+
+const DEFAULT_EXPLANATION_CHATS_REVISION: HelpCenterRevision = {
+  ...DEFAULT_EXPLANATION_HOME_REVISION,
+  id: 'explanation-chats-default-v1',
+  contextKey: 'chats',
+  title: 'Chats explanation',
+  summary: 'Chat lists, channel types, and the message window',
+  sections: withSeededExplanationImages('chats', EXPLANATION_CHATS_SECTIONS, 'en')
+};
+
+const DEFAULT_EXPLANATION_CHATS_REVISION_HU: HelpCenterRevision = {
+  ...DEFAULT_EXPLANATION_CHATS_REVISION,
+  id: 'explanation-chats-default-hu-v1',
+  lang: 'hu',
+  languageLabel: 'Magyar',
+  title: 'Chatek magyarázat',
+  summary: 'Chatlisták, csatornatípusok és az üzenetablak',
+  sections: withSeededExplanationImages('chats', EXPLANATION_CHATS_SECTIONS_HU, 'hu')
+};
+
+const DEFAULT_EXPLANATION_CONTACTS_REVISION: HelpCenterRevision = {
+  ...DEFAULT_EXPLANATION_HOME_REVISION,
+  id: 'explanation-contacts-default-v1',
+  contextKey: 'contacts',
+  title: 'Contacts explanation',
+  summary: 'Saved contacts, cards, private reach methods, and editing',
+  sections: withSeededExplanationImages('contacts', EXPLANATION_CONTACTS_SECTIONS, 'en')
+};
+
+const DEFAULT_EXPLANATION_CONTACTS_REVISION_HU: HelpCenterRevision = {
+  ...DEFAULT_EXPLANATION_CONTACTS_REVISION,
+  id: 'explanation-contacts-default-hu-v1',
+  lang: 'hu',
+  languageLabel: 'Magyar',
+  title: 'Kapcsolatok magyarázat',
+  summary: 'Mentett kapcsolatok, kártyák, privátabb elérések és szerkesztés',
+  sections: withSeededExplanationImages('contacts', EXPLANATION_CONTACTS_SECTIONS_HU, 'hu')
+};
+
 export const APP_STATIC_DATA = {
   vibeCategories: VIBE_CATEGORIES,
   hostedEventTypes: HOSTED_EVENT_TYPES,
@@ -1162,6 +2156,7 @@ export const APP_STATIC_DATA = {
   homeUserFacetById: HOME_USER_FACET_BY_ID,
   profileStatusOptions: PROFILE_STATUS_OPTIONS,
   contentLanguages: CONTENT_LANGUAGES,
+  explainableSurfaces: EXPLAINABLE_SURFACES,
   profileDetailValueOptions: PROFILE_DETAIL_VALUE_OPTIONS,
   profileDetailGroupTemplates: PROFILE_DETAIL_GROUP_TEMPLATES,
   beliefsValuesOptionGroups: BELIEFS_VALUES_OPTION_GROUPS,
@@ -1216,5 +2211,58 @@ export const APP_STATIC_DATA = {
   defaultPrivacyCenterRevisionsByLang: {
     en: DEFAULT_PRIVACY_CENTER_REVISION,
     hu: DEFAULT_PRIVACY_CENTER_REVISION_HU
-  }
+  },
+  defaultExplanationHomeRevision: DEFAULT_EXPLANATION_HOME_REVISION,
+  defaultExplanationHomeRevisionsByLang: {
+    en: DEFAULT_EXPLANATION_HOME_REVISION,
+    hu: DEFAULT_EXPLANATION_HOME_REVISION_HU
+  },
+  defaultExplanationRevisionsByContext: {
+    'home.game': {
+      en: DEFAULT_EXPLANATION_HOME_REVISION,
+      hu: DEFAULT_EXPLANATION_HOME_REVISION_HU
+    },
+    'activities.rates': {
+      en: DEFAULT_EXPLANATION_ACTIVITY_RATES_REVISION,
+      hu: DEFAULT_EXPLANATION_ACTIVITY_RATES_REVISION_HU
+    },
+    chats: {
+      en: DEFAULT_EXPLANATION_CHATS_REVISION,
+      hu: DEFAULT_EXPLANATION_CHATS_REVISION_HU
+    },
+    contacts: {
+      en: DEFAULT_EXPLANATION_CONTACTS_REVISION,
+      hu: DEFAULT_EXPLANATION_CONTACTS_REVISION_HU
+    },
+    assets: {
+      en: DEFAULT_EXPLANATION_ASSETS_REVISION,
+      hu: DEFAULT_EXPLANATION_ASSETS_REVISION_HU
+    },
+    'assets.car': {
+      en: DEFAULT_EXPLANATION_ASSETS_CAR_REVISION,
+      hu: DEFAULT_EXPLANATION_ASSETS_CAR_REVISION_HU
+    },
+    'assets.accommodation': {
+      en: DEFAULT_EXPLANATION_ASSETS_ACCOMMODATION_REVISION,
+      hu: DEFAULT_EXPLANATION_ASSETS_ACCOMMODATION_REVISION_HU
+    },
+    'assets.supplies': {
+      en: DEFAULT_EXPLANATION_ASSETS_SUPPLIES_REVISION,
+      hu: DEFAULT_EXPLANATION_ASSETS_SUPPLIES_REVISION_HU
+    },
+    'assets.tickets': {
+      en: DEFAULT_EXPLANATION_ASSETS_TICKETS_REVISION,
+      hu: DEFAULT_EXPLANATION_ASSETS_TICKETS_REVISION_HU
+    },
+    events: {
+      en: DEFAULT_EXPLANATION_EVENTS_REVISION,
+      hu: DEFAULT_EXPLANATION_EVENTS_REVISION_HU
+    },
+    'event.editor': {
+      en: DEFAULT_EXPLANATION_EVENT_EDITOR_REVISION,
+      hu: DEFAULT_EXPLANATION_EVENT_EDITOR_REVISION_HU
+    }
+  },
+  seededExplanationImageRefPrefix: SEEDED_EXPLANATION_IMAGE_REF_PREFIX,
+  seededExplanationImageAssetRoot: SEEDED_EXPLANATION_IMAGE_ASSET_ROOT
 };

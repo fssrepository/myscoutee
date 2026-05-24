@@ -300,7 +300,11 @@ export class AvatarBtnComponent implements OnDestroy {
       this.resolveActivityBadge(user, 'invitations') +
       this.resolveActivityBadge(user, 'events') +
       this.resolveActivityBadge(user, 'hosting') +
+      this.resolveActivityBadge(user, 'cars') +
+      this.resolveActivityBadge(user, 'accommodation') +
+      this.resolveActivityBadge(user, 'supplies') +
       this.resolveActivityBadge(user, 'tickets') +
+      this.resolveActivityBadge(user, 'contacts') +
       this.resolveActivityBadge(user, 'feedback')
     );
   }
@@ -309,9 +313,6 @@ export class AvatarBtnComponent implements OnDestroy {
     const override = this.appCtx.getUserCounterOverride(user.id, key);
     if (override !== null) {
       return override;
-    }
-    if (key === 'tickets' || key === 'feedback') {
-      return 0;
     }
     return user.activities?.[key] ?? 0;
   }

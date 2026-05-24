@@ -3,31 +3,17 @@ import { ChangeDetectionStrategy, Component, EventEmitter, Input, OnChanges, Out
 import { MatIconModule } from '@angular/material/icon';
 
 import { AppUtils } from '../../../../../shared/app-utils';
-import type { ChatMenuItem } from '../../../../../shared/core/base/interfaces/activity-feed.interface';
+import type { ChatRecord } from '../../../../../shared/core/base/models/chat.model';
 import type { DemoUser } from '../../../../../shared/core/base/interfaces/user.interface';
-import type {
-  EventChatContext,
-  EventChatResourceContext
-} from '../../../../../shared/core/base/models';
 import type * as AppTypes from '../../../../../shared/core/base/models';
 import type { DemoEventRecord } from '../../../../../shared/core/demo/models/events.model';
 import { CounterBadgePipe } from '../../../../../shared/ui';
 import { I18nPipe } from '../../../../../shared/i18n';
-import {
-  ActivityResourceBuilder,
-  toActivityEventRow
-} from '../../../../../shared/core';
+import { ActivityResourceBuilder } from '../../../../../shared/core';
 import {
   buildActivitiesChatTemplateData,
   type ActivitiesChatTemplateData
 } from './activities-chat-template.builder';
-
-export interface ActivitiesChatTemplateContext {
-  getActiveUserInitials: () => string;
-  getChatLastSender: (chat: ChatMenuItem) => DemoUser;
-  getChatMemberCount: (chat: ChatMenuItem) => number;
-  getChatChannelType: (chat: ChatMenuItem) => AppTypes.ChatChannelType;
-}
 
 @Component({
   selector: 'app-activities-chat-template',
@@ -40,7 +26,7 @@ export interface ActivitiesChatTemplateContext {
 export class ActivitiesChatTemplateComponent implements OnChanges {
   @Input() row: AppTypes.ActivityListRow | null = null;
   @Input() groupLabel: string | null = null;
-  @Input() context: ActivitiesChatTemplateContext | null = null;
+  @Input() activeUserInitials = '';
   @Input() adminServiceMode = false;
 
   @Output() readonly rowClick = new EventEmitter<Event>();
@@ -52,7 +38,7 @@ export class ActivitiesChatTemplateComponent implements OnChanges {
   private supportMenuPointerToggleAt = 0;
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes['row'] || changes['groupLabel'] || changes['context'] || changes['adminServiceMode']) {
+    if (changes['row'] || changes['groupLabel'] || changes['activeUserInitials'] || changes['adminServiceMode']) {
       this.supportMenuOpen = false;
       this.data = this.buildTemplateData();
     }
@@ -60,17 +46,12 @@ export class ActivitiesChatTemplateComponent implements OnChanges {
 
   private buildTemplateData(): ActivitiesChatTemplateData | null {
     const row = this.row;
-    const context = this.context;
-    if (!row || !context) {
+    if (!row || row.type !== 'chats') {
       return null;
     }
-    const chat = row.source as ChatMenuItem;
     return buildActivitiesChatTemplateData(row, {
       groupLabel: this.groupLabel,
-      activeUserInitials: context.getActiveUserInitials(),
-      lastSenderGender: context.getChatLastSender(chat).gender,
-      memberCount: context.getChatMemberCount(chat),
-      channelType: context.getChatChannelType(chat),
+      activeUserInitials: this.activeUserInitials,
       adminServiceMode: this.adminServiceMode
     });
   }
@@ -156,20 +137,21 @@ export class ActivitiesChatsController {
 
   private cachedActiveUserRef: DemoUser | null = null;
   private cachedUsersRef: readonly DemoUser[] | null = null;
-  private cachedChatItemsRef: readonly ChatMenuItem[] | null = null;
+  private cachedChatItemsRef: readonly ChatRecord[] | null = null;
   private readonly userByIdCache = new Map<string, DemoUser>();
-  private readonly chatItemByIdCache = new Map<string, ChatMenuItem>();
+  private readonly chatItemByIdCache = new Map<string, ChatRecord>();
   private readonly chatMembersByIdCache = new Map<string, DemoUser[]>();
   private readonly chatLastSenderByIdCache = new Map<string, DemoUser>();
   private cachedOtherUsers: DemoUser[] = [];
 
   private get activeUser() { return this.host.activeUser as DemoUser; }
   private get activitiesContext() { return this.host.activitiesContext; }
+  private get activitiesService() { return this.host.activitiesService; }
   private get activityResourcesService() { return this.host.activityResourcesService; }
   private get appCtx() { return this.host.appCtx; }
   private get assetCards() { return this.host.assetCards as AppTypes.AssetCard[]; }
   private get cdr() { return this.host.cdr; }
-  private get chatItems() { return this.host.chatItems as ChatMenuItem[]; }
+  private get chatItems() { return this.host.chatItems as ChatRecord[]; }
   private get eventDatesById() { return this.host.eventDatesById as Record<string, string>; }
   private get eventDistanceById() { return this.host.eventDistanceById as Record<string, number>; }
   private get eventEditorService() { return this.host.eventEditorService; }
@@ -183,9 +165,7 @@ export class ActivitiesChatsController {
   private activityPendingMemberCount(row: AppTypes.ActivityListRow): number { return this.host.activityPendingMemberCount(row); }
   private chatCountValue(value: unknown): number { return this.host.chatCountValue(value); }
   private defaultEventStartIso(): string { return this.host.defaultEventStartIso(); }
-  private runAfterActivitiesRender(task: () => void): void { this.host.runAfterActivitiesRender(task); }
-
-  public chatChannelType(item: ChatMenuItem): AppTypes.ChatChannelType {
+  public chatChannelType(item: ChatRecord): AppTypes.ChatChannelType {
     if (
       item.channelType === 'mainEvent'
       || item.channelType === 'optionalSubEvent'
@@ -197,7 +177,7 @@ export class ActivitiesChatsController {
     return 'general';
   }
 
-  public chatItemsForActivities(): ChatMenuItem[] {
+  public chatItemsForActivities(): ChatRecord[] {
     return this.chatItems.map(item => ({
       ...item,
       memberIds: [...(item.memberIds ?? [])],
@@ -206,7 +186,7 @@ export class ActivitiesChatsController {
     }));
   }
 
-  private contextualChatUnreadCount(item: ChatMenuItem): number {
+  private contextualChatUnreadCount(item: ChatRecord): number {
     const channelType = this.chatChannelType(item);
     if (channelType === 'optionalSubEvent' || channelType === 'groupSubEvent') {
       const ownerId = this.normalizeLocationValue(item.eventId).trim();
@@ -281,12 +261,12 @@ export class ActivitiesChatsController {
     subEvent.suppliesCapacityMax = bounds.capacityMax;
   }
 
-  private mainEventContextPendingCount(item: ChatMenuItem): number {
+  private mainEventContextPendingCount(item: ChatRecord): number {
     const source = this.resolveChatEventSource(item);
     if (!source) {
       return 0;
     }
-    const row = this.buildChatSourceActivityRow(source);
+    const row = this.buildChatEventActivityRow(source);
     const eventPending = this.activityPendingMemberCount(row);
     const eventId = this.normalizeLocationValue(item.eventId).trim() || source.id;
     const subEventsPending = this.chatEventSubEvents(eventId)
@@ -294,7 +274,7 @@ export class ActivitiesChatsController {
     return eventPending + subEventsPending;
   }
 
-  private resolveChatEventSource(item: ChatMenuItem): DemoEventRecord | null {
+  private resolveChatEventSource(item: ChatRecord): DemoEventRecord | null {
     const eventId = this.normalizeLocationValue(item.eventId).trim();
     if (!eventId) {
       return this.resolveChatFocusEventSource();
@@ -304,11 +284,11 @@ export class ActivitiesChatsController {
       ?? this.resolveEventEditorSource();
   }
 
-  private buildChatSourceActivityRow(source: DemoEventRecord): AppTypes.ActivityListRow {
-    return toActivityEventRow({
-      ...source,
-      startAtIso: this.eventDatesById[source.id] ?? this.hostingDatesById[source.id] ?? source.startAtIso ?? this.defaultEventStartIso(),
-      distanceKm: this.eventDistanceById[source.id] ?? this.hostingDistanceById[source.id] ?? source.distanceKm ?? 0
+  private buildChatEventActivityRow(record: DemoEventRecord): AppTypes.ActivityListRow {
+    return this.activitiesService.buildEventDisplayRow({
+      ...record,
+      startAtIso: this.eventDatesById[record.id] ?? this.hostingDatesById[record.id] ?? record.startAtIso ?? this.defaultEventStartIso(),
+      distanceKm: this.eventDistanceById[record.id] ?? this.hostingDistanceById[record.id] ?? record.distanceKm ?? 0
     }, {
       activeUserId: this.activeUser.id
     });
@@ -430,8 +410,6 @@ export class ActivitiesChatsController {
       upcomingSlots: value.upcomingSlots ? value.upcomingSlots.map(item => ({ ...item })) : undefined,
       acceptedMembers: value.acceptedMembers ?? 0,
       pendingMembers: value.pendingMembers ?? 0,
-      acceptedMemberUserIds: [...(value.acceptedMemberUserIds ?? [])],
-      pendingMemberUserIds: [...(value.pendingMemberUserIds ?? [])],
       pendingReason: value.pendingReason ?? null,
       topics: [...(value.topics ?? [])],
       subEvents: value.subEvents
@@ -455,7 +433,7 @@ export class ActivitiesChatsController {
     return this.sortSubEventsByStartAsc(this.cloneSubEvents(this.eventSubEventsById[normalizedEventId] ?? []));
   }
 
-  private chatSubEventForItem(item: ChatMenuItem): AppTypes.SubEventFormItem | null {
+  private chatSubEventForItem(item: ChatRecord): AppTypes.SubEventFormItem | null {
     const eventId = this.normalizeLocationValue(item.eventId).trim();
     const subEventId = this.normalizeLocationValue(item.subEventId).trim();
     if (!eventId || !subEventId) {
@@ -576,7 +554,7 @@ export class ActivitiesChatsController {
     }
   }
 
-  private getChatItemById(chatId: string): ChatMenuItem | undefined {
+  private getChatItemById(chatId: string): ChatRecord | undefined {
     this.syncChatLookupCache();
     return this.chatItemByIdCache.get(chatId);
   }
@@ -639,7 +617,7 @@ export class ActivitiesChatsController {
     return picked;
   }
 
-  private explicitChatMemberCount(item: ChatMenuItem | null | undefined): number {
+  private explicitChatMemberCount(item: ChatRecord | null | undefined): number {
     const uniqueIds = new Set(
       (item?.memberIds ?? [])
         .map(memberId => `${memberId ?? ''}`.trim())
@@ -648,7 +626,7 @@ export class ActivitiesChatsController {
     return uniqueIds.size;
   }
 
-  public getChatLastSender(item: ChatMenuItem): DemoUser {
+  public getChatLastSender(item: ChatRecord): DemoUser {
     this.syncChatLookupCache();
     const cachedLastSender = this.chatLastSenderByIdCache.get(item.id);
     if (cachedLastSender) {
@@ -659,7 +637,7 @@ export class ActivitiesChatsController {
     return nextLastSender;
   }
 
-  public getChatMemberCount(item: ChatMenuItem): number {
+  public getChatMemberCount(item: ChatRecord): number {
     const explicitCount = this.explicitChatMemberCount(item);
     if (explicitCount > 0) {
       return explicitCount;
@@ -667,252 +645,11 @@ export class ActivitiesChatsController {
     return this.getChatMembersById(item.id).length;
   }
 
-  private subEventDisplayName(subEvent: AppTypes.SubEventFormItem | null | undefined): string {
-    return subEvent?.name?.trim() ?? '';
+  public openActivityChat(chat: ChatRecord): void {
+    this.activitiesContext.openEventChat(chat);
   }
 
-  public openActivityChat(chat: ChatMenuItem): void {
-    const initialContext = this.buildInitialEventChatContext(chat);
-    this.activitiesContext.openEventChat(chat, initialContext);
-    const openedSession = this.activitiesContext.eventChatSession();
-    const openedAtIso = openedSession?.openedAtIso ?? '';
-    this.runAfterActivitiesRender(() => {
-      const activeSession = this.activitiesContext.eventChatSession();
-      if (!activeSession || activeSession.item.id !== chat.id || activeSession.openedAtIso !== openedAtIso) {
-        return;
-      }
-      this.activitiesContext.touchEventChatSession(() => this.buildEventChatContext(chat));
-      this.cdr.markForCheck();
-    });
-  }
-
-  private buildInitialEventChatContext(chat: ChatMenuItem): EventChatContext {
-    const channelType = this.chatChannelType(chat);
-    const hasSubEventMenu = channelType === 'optionalSubEvent' || channelType === 'groupSubEvent';
-    return {
-      channelType,
-      hasSubEventMenu,
-      actionIcon: this.eventChatActionIcon(channelType),
-      actionLabel: this.eventChatActionLabel(channelType),
-      actionToneClass: this.eventChatActionTone(channelType),
-      actionBadgeCount: Math.max(0, Math.trunc(Number(chat.unread) || 0)),
-      menuTitle: chat.title,
-      eventRow: null,
-      subEventRow: null,
-      subEvent: null,
-      group: null,
-      assetAssignmentIds: {
-        Car: [],
-        Accommodation: [],
-        Supplies: []
-      },
-      assetCardsByType: {
-        Car: [],
-        Accommodation: [],
-        Supplies: []
-      },
-      resources: []
-    };
-  }
-
-  private buildEventChatContext(chat: ChatMenuItem): EventChatContext {
-    const channelType = this.chatChannelType(chat);
-    const subEvent = this.chatSubEventForItem(chat);
-    const group = this.eventChatGroup(chat, subEvent);
-    const source = this.resolveChatEventSource(chat);
-    const eventRow = source ? this.buildChatSourceActivityRow(source) : null;
-    const ownerId = eventRow?.id ?? this.normalizeLocationValue(chat.eventId).trim();
-    const hasSubEventMenu = channelType === 'optionalSubEvent' || channelType === 'groupSubEvent';
-    return {
-      channelType,
-      hasSubEventMenu,
-      actionIcon: this.eventChatActionIcon(channelType),
-      actionLabel: this.eventChatActionLabel(channelType),
-      actionToneClass: this.eventChatActionTone(channelType),
-      actionBadgeCount: this.contextualChatUnreadCount(chat),
-      menuTitle: this.eventChatMenuTitle(chat, subEvent, group),
-      eventRow,
-      subEventRow: eventRow,
-      subEvent,
-      group,
-      assetAssignmentIds: subEvent ? this.eventChatResourceAssignmentIds(ownerId, subEvent) : {},
-      assetCardsByType: this.eventChatResourceCardsByType(),
-      resources: this.eventChatResources(channelType, ownerId, subEvent)
-    };
-  }
-
-  private eventChatActionIcon(channelType: AppTypes.ChatChannelType): string {
-    if (channelType === 'serviceEvent') {
-      return 'support_agent';
-    }
-    if (channelType === 'groupSubEvent') {
-      return 'groups';
-    }
-    if (channelType === 'optionalSubEvent') {
-      return 'event_available';
-    }
-    return 'event';
-  }
-
-  private eventChatActionLabel(channelType: AppTypes.ChatChannelType): string {
-    if (channelType === 'serviceEvent') {
-      return 'View Event';
-    }
-    if (channelType === 'groupSubEvent') {
-      return 'View Group';
-    }
-    if (channelType === 'optionalSubEvent') {
-      return 'View Sub Event';
-    }
-    return 'View Event';
-  }
-
-  private eventChatActionTone(channelType: AppTypes.ChatChannelType): EventChatContext['actionToneClass'] {
-    if (channelType === 'serviceEvent') {
-      return 'popup-chat-context-btn-tone-main-event';
-    }
-    if (channelType === 'optionalSubEvent') {
-      return 'popup-chat-context-btn-tone-optional';
-    }
-    if (channelType === 'groupSubEvent') {
-      return 'popup-chat-context-btn-tone-group';
-    }
-    return 'popup-chat-context-btn-tone-main-event';
-  }
-
-  private eventChatGroup(
-    chat: ChatMenuItem,
-    subEvent: AppTypes.SubEventFormItem | null
-  ): EventChatContext['group'] {
-    if (!subEvent || !chat.groupId) {
-      return null;
-    }
-    const group = this.subEventGroupsForStage(subEvent).find(item => item.id === chat.groupId) ?? null;
-    if (!group) {
-      return null;
-    }
-    return {
-      id: group.id,
-      label: group.name
-    };
-  }
-
-  private eventChatMenuTitle(
-    chat: ChatMenuItem,
-    subEvent: AppTypes.SubEventFormItem | null,
-    group: EventChatContext['group']
-  ): string {
-    if (!subEvent) {
-      return chat.title;
-    }
-    const subEventLabel = this.subEventDisplayName(subEvent) || subEvent.name || chat.title;
-    if (group) {
-      return `${subEventLabel} · ${group.label}`;
-    }
-    return subEventLabel;
-  }
-
-  private eventChatResources(
-    channelType: AppTypes.ChatChannelType,
-    ownerId: string,
-    subEvent: AppTypes.SubEventFormItem | null
-  ): EventChatResourceContext[] {
-    if (!subEvent) {
-      return [];
-    }
-    const includeMembers = channelType === 'optionalSubEvent' || channelType === 'groupSubEvent';
-    return [
-      {
-        type: 'Members',
-        icon: 'groups',
-        title: 'Members',
-        typeClass: 'event-subevent-badge-members',
-        summary: this.subEventCapacityLabelForChat(subEvent),
-        pending: Math.max(0, Math.trunc(Number(subEvent.membersPending) || 0)),
-        stateClass: this.subEventCapacityStateClassForChat(subEvent),
-        visible: includeMembers
-      },
-      this.buildEventChatAssetResource(ownerId, subEvent, 'Car', 'directions_car', 'Car', 'event-subevent-badge-car'),
-      this.buildEventChatAssetResource(ownerId, subEvent, 'Accommodation', 'hotel', 'Property', 'event-subevent-badge-accommodation'),
-      this.buildEventChatAssetResource(ownerId, subEvent, 'Supplies', 'inventory_2', 'Supplies', 'event-subevent-badge-supplies')
-    ];
-  }
-
-  private buildEventChatAssetResource(
-    ownerId: string,
-    subEvent: AppTypes.SubEventFormItem,
-    type: AppTypes.AssetType,
-    icon: string,
-    title: string,
-    typeClass: string
-  ): EventChatResourceContext {
-    this.syncSubEventAssetBadgeCounts(ownerId, subEvent, type);
-    let accepted = 0;
-    let pending = 0;
-    let capacityMin = 0;
-    let capacityMax = 0;
-
-    if (type === 'Car') {
-      accepted = this.chatCountValue(subEvent.carsAccepted);
-      pending = this.chatCountValue(subEvent.carsPending);
-      capacityMin = this.chatCountValue(subEvent.carsCapacityMin);
-      capacityMax = Math.max(capacityMin, this.chatCountValue(subEvent.carsCapacityMax));
-    } else if (type === 'Accommodation') {
-      accepted = this.chatCountValue(subEvent.accommodationAccepted);
-      pending = this.chatCountValue(subEvent.accommodationPending);
-      capacityMin = this.chatCountValue(subEvent.accommodationCapacityMin);
-      capacityMax = Math.max(capacityMin, this.chatCountValue(subEvent.accommodationCapacityMax));
-    } else {
-      accepted = this.chatCountValue(subEvent.suppliesAccepted);
-      pending = this.chatCountValue(subEvent.suppliesPending);
-      capacityMin = this.chatCountValue(subEvent.suppliesCapacityMin);
-      capacityMax = Math.max(capacityMin, this.chatCountValue(subEvent.suppliesCapacityMax));
-    }
-
-    return {
-      type: type === 'Accommodation' ? 'Accommodation' : type,
-      icon,
-      title,
-      typeClass,
-      summary: `${accepted} / ${capacityMin} - ${capacityMax}`,
-      pending,
-      stateClass: accepted >= capacityMin && accepted <= capacityMax
-        ? 'subevent-capacity-in-range'
-        : 'subevent-capacity-out-of-range',
-      visible: true
-    };
-  }
-
-  private eventChatResourceAssignmentIds(
-    ownerId: string,
-    subEvent: AppTypes.SubEventFormItem
-  ): Record<AppTypes.AssetType, string[]> {
-    return {
-      Car: [...this.resolveSubEventAssignedAssetIds(ownerId, subEvent.id, 'Car')],
-      Accommodation: [...this.resolveSubEventAssignedAssetIds(ownerId, subEvent.id, 'Accommodation')],
-      Supplies: [...this.resolveSubEventAssignedAssetIds(ownerId, subEvent.id, 'Supplies')]
-    };
-  }
-
-  private eventChatResourceCardsByType(): Record<AppTypes.AssetType, AppTypes.AssetCard[]> {
-    return {
-      Car: this.assetCards.filter(card => card.type === 'Car').map(card => ({ ...card, requests: [...card.requests] })),
-      Accommodation: this.assetCards.filter(card => card.type === 'Accommodation').map(card => ({ ...card, requests: [...card.requests] })),
-      Supplies: this.assetCards.filter(card => card.type === 'Supplies').map(card => ({ ...card, requests: [...card.requests] }))
-    };
-  }
-
-  private subEventCapacityLabelForChat(item: AppTypes.SubEventFormItem): string {
-    return `${item.membersAccepted} / ${item.capacityMin} - ${item.capacityMax}`;
-  }
-
-  private subEventCapacityStateClassForChat(item: AppTypes.SubEventFormItem): string {
-    return item.membersAccepted >= item.capacityMin && item.membersAccepted <= item.capacityMax
-      ? 'subevent-capacity-in-range'
-      : 'subevent-capacity-out-of-range';
-  }
-
-  public activityChatContextFilterKey(item: ChatMenuItem): AppTypes.ActivitiesChatContextFilter | null {
+  public activityChatContextFilterKey(item: ChatRecord): AppTypes.ActivitiesChatContextFilter | null {
     const channelType = this.chatChannelType(item);
     if (channelType === 'mainEvent') {
       return 'event';

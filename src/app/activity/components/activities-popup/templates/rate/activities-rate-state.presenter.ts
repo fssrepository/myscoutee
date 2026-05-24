@@ -1,11 +1,11 @@
-import type { RateMenuItem } from '../../../../../shared/core/base/interfaces/activity-feed.interface';
+import type { RateRecord } from '../../../../../shared/core/base/models/rate.model';
 import type * as AppTypes from '../../../../../shared/core/base/models';
 
 export function matchesActivitiesRateFilter(
-  item: RateMenuItem,
+  item: RateRecord,
   filter: AppTypes.RateFilterKey,
   socialBadgeEnabled: boolean,
-  displayedDirection: (candidate: RateMenuItem) => RateMenuItem['direction']
+  displayedDirection: (candidate: RateRecord) => RateRecord['direction']
 ): boolean {
   const [modeKey, directionKey] = filter.split('-') as ['individual' | 'pair', 'given' | 'received' | 'mutual' | 'met'];
   if (item.mode !== modeKey || displayedDirection(item) !== directionKey) {
@@ -22,16 +22,16 @@ export function matchesActivitiesRateFilter(
 }
 
 export function displayedActivitiesRateDirection(
-  item: RateMenuItem,
-  overrides: Partial<Record<string, RateMenuItem['direction']>>
-): RateMenuItem['direction'] {
+  item: RateRecord,
+  overrides: Partial<Record<string, RateRecord['direction']>>
+): RateRecord['direction'] {
   return overrides[item.id] ?? item.direction;
 }
 
 export function pendingActivitiesRateDirectionAfterRating(
-  item: RateMenuItem,
-  displayedDirection: (candidate: RateMenuItem) => RateMenuItem['direction']
-): RateMenuItem['direction'] | null {
+  item: RateRecord,
+  displayedDirection: (candidate: RateRecord) => RateRecord['direction']
+): RateRecord['direction'] | null {
   const direction = displayedDirection(item);
   if (item.mode === 'individual') {
     if (direction === 'given') {
@@ -50,18 +50,18 @@ export function pendingActivitiesRateDirectionAfterRating(
 
 export function parseActivitiesRateFilterKey(
   filter: AppTypes.RateFilterKey
-): { mode: 'individual' | 'pair'; direction: RateMenuItem['direction'] } {
-  const [mode, direction] = filter.split('-') as ['individual' | 'pair', RateMenuItem['direction']];
+): { mode: 'individual' | 'pair'; direction: RateRecord['direction'] } {
+  const [mode, direction] = filter.split('-') as ['individual' | 'pair', RateRecord['direction']];
   return { mode, direction };
 }
 
 export function collectPendingActivitiesRateDirectionOverrides(
   targetFilter: AppTypes.RateFilterKey | undefined,
-  pendingOverrides: Partial<Record<string, RateMenuItem['direction']>>,
-  rateItems: readonly RateMenuItem[]
-): Array<[string, RateMenuItem['direction']]> {
+  pendingOverrides: Partial<Record<string, RateRecord['direction']>>,
+  rateItems: readonly RateRecord[]
+): Array<[string, RateRecord['direction']]> {
   const target = targetFilter ? parseActivitiesRateFilterKey(targetFilter) : null;
-  const nextEntries: Array<[string, RateMenuItem['direction']]> = [];
+  const nextEntries: Array<[string, RateRecord['direction']]> = [];
   for (const [itemId, pendingDirection] of Object.entries(pendingOverrides)) {
     if (!pendingDirection) {
       continue;
@@ -94,7 +94,7 @@ export function normalizeActivitiesRateScore(value: number): number {
   return Math.min(10, Math.max(1, Math.round(value)));
 }
 
-export function activitiesRateOwnScore(item: RateMenuItem): number {
+export function activitiesRateOwnScore(item: RateRecord): number {
   if (Number.isFinite(item.scoreGiven) && item.scoreGiven > 0) {
     return normalizeActivitiesRateScore(item.scoreGiven);
   }
@@ -102,9 +102,9 @@ export function activitiesRateOwnScore(item: RateMenuItem): number {
 }
 
 export function activitiesRateHasOwnRating(
-  item: RateMenuItem,
+  item: RateRecord,
   draftedValue: number | undefined,
-  displayedDirection: (candidate: RateMenuItem) => RateMenuItem['direction']
+  displayedDirection: (candidate: RateRecord) => RateRecord['direction']
 ): boolean {
   if (Number.isFinite(draftedValue) && (draftedValue as number) > 0) {
     return true;
@@ -116,9 +116,9 @@ export function activitiesRateHasOwnRating(
 }
 
 export function activitiesPairReceivedAverageScore(
-  item: RateMenuItem,
-  rateItems: readonly RateMenuItem[],
-  displayedDirection: (candidate: RateMenuItem) => RateMenuItem['direction']
+  item: RateRecord,
+  rateItems: readonly RateRecord[],
+  displayedDirection: (candidate: RateRecord) => RateRecord['direction']
 ): number {
   const matching = rateItems.filter(candidate =>
     candidate.mode === 'pair'
@@ -134,27 +134,22 @@ export function activitiesPairReceivedAverageScore(
   return normalizeActivitiesRateScore(total / matching.length);
 }
 
-export function isActivitiesPairReceivedRateRow(
-  row: AppTypes.ActivityListRow,
-  displayedDirection: (candidate: RateMenuItem) => RateMenuItem['direction']
+export function isActivitiesPairReceivedRateItem(
+  item: RateRecord,
+  displayedDirection: (candidate: RateRecord) => RateRecord['direction']
 ): boolean {
-  if (row.type !== 'rates') {
-    return false;
-  }
-  const rate = row.source as RateMenuItem;
-  return rate.mode === 'pair' && displayedDirection(rate) === 'received';
+  return item.mode === 'pair' && displayedDirection(item) === 'received';
 }
 
 export function activitiesRateOwnRatingValue(
-  row: AppTypes.ActivityListRow,
+  item: RateRecord | null,
   draftedValuesById: Record<string, number>,
-  displayedDirection: (candidate: RateMenuItem) => RateMenuItem['direction'],
-  rateItems: readonly RateMenuItem[]
+  displayedDirection: (candidate: RateRecord) => RateRecord['direction'],
+  rateItems: readonly RateRecord[]
 ): number {
-  if (row.type !== 'rates') {
+  if (!item) {
     return 0;
   }
-  const item = row.source as RateMenuItem;
   const drafted = draftedValuesById[item.id];
   if (Number.isFinite(drafted)) {
     return normalizeActivitiesRateScore(Number(drafted));
@@ -168,7 +163,7 @@ export function activitiesRateOwnRatingValue(
   return activitiesRateOwnScore(item);
 }
 
-function sameActivitiesRatePairUsers(left: RateMenuItem, right: RateMenuItem): boolean {
+function sameActivitiesRatePairUsers(left: RateRecord, right: RateRecord): boolean {
   const leftIds = [left.userId, left.secondaryUserId ?? ''].filter(id => id.trim().length > 0).sort();
   const rightIds = [right.userId, right.secondaryUserId ?? ''].filter(id => id.trim().length > 0).sort();
   return leftIds.length === rightIds.length && leftIds.every((id, index) => id === rightIds[index]);

@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 
 import type { ActivitiesPageRequest } from '../../../core/base/models';
-import type { RateMenuItem } from '../../base/interfaces/activity-feed.interface';
+import type { RateRecord } from '../../base/models/rate.model';
 import type { ActivityRatePageResult, ActivityRateRecordQuery } from '../../base/interfaces/game.interface';
 import { DemoRouteDelayService } from './demo-route-delay.service';
 import { DemoUsersRepository } from '../repositories/users.repository';
@@ -17,18 +17,18 @@ export class DemoRatesService extends DemoRouteDelayService {
 
   recordActivityRate(
     ownerUserId: string,
-    item: RateMenuItem,
+    item: RateRecord,
     rating: number,
-    direction?: RateMenuItem['direction'] | null
+    direction?: RateRecord['direction'] | null
   ): void {
     this.usersRatingsRepository.enqueueActivityRateOutbox(ownerUserId, item, rating, direction);
   }
 
-  peekRateItemsByUser(userId: string): RateMenuItem[] {
+  peekRateItemsByUser(userId: string): RateRecord[] {
     return this.usersRatingsRepository.peekRateItemsByUserId(userId);
   }
 
-  async queryRateItemsByUser(userId: string): Promise<RateMenuItem[]> {
+  async queryRateItemsByUser(userId: string): Promise<RateRecord[]> {
     await this.waitForRouteDelay(DemoRatesService.RATES_ROUTE);
     return this.usersRatingsRepository.queryRateItemsByUserId(userId);
   }

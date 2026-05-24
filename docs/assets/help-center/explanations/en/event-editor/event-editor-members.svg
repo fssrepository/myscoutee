@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fff3eb"/>
+      <stop offset="1" stop-color="#f8fbff"/>
+    </linearGradient>
+  </defs>
+  <rect width="960" height="540" rx="30" fill="url(#bg)"/>
+  <rect x="6" y="6" width="948" height="528" rx="26" fill="#ffffff" opacity="0.82" stroke="#f0c5ab" stroke-width="3"/>
+  <g transform="matrix(1.16 0 0 1.16 -70 -78)">
+    <rect x="126" y="142" width="708" height="300" rx="22" fill="#f8fcff" stroke="#c7dbed" stroke-width="3"/>
+  <rect x="160" y="172" width="150" height="42" rx="21" fill="#edf6ff" stroke="#bed2eb" stroke-width="3"/>
+  <text x="235" y="202" text-anchor="middle" font-family="Arial, sans-serif" font-size="27" font-weight="900" fill="#1f4778">Invite</text><rect x="328" y="172" width="150" height="42" rx="21" fill="#edf6ff" stroke="#bed2eb" stroke-width="3"/>
+  <text x="403" y="202" text-anchor="middle" font-family="Arial, sans-serif" font-size="27" font-weight="900" fill="#1f4778">Pending 2</text><rect x="496" y="172" width="100" height="42" rx="21" fill="#edf6ff" stroke="#bed2eb" stroke-width="3"/>
+  <text x="546" y="202" text-anchor="middle" font-family="Arial, sans-serif" font-size="27" font-weight="900" fill="#1f4778">1 / 5</text>
+  <rect x="160" y="250" width="560" height="62" rx="16" fill="#fff" stroke="#d6e2f0" stroke-width="3"/><circle cx="196" cy="281" r="23" fill="#4f7fe8"/><text x="196" y="289" text-anchor="middle" font-family="Arial" font-size="18" font-weight="900" fill="#fff">NH</text><text x="236" y="280" font-family="Arial" font-size="22" font-weight="900" fill="#1d3354">Noah Hart</text><text x="236" y="304" font-family="Arial" font-size="18" font-weight="850" fill="#61728f">Admin</text><rect x="160" y="334" width="560" height="62" rx="16" fill="#fff" stroke="#d6e2f0" stroke-width="3"/><circle cx="196" cy="365" r="23" fill="#4f7fe8"/><text x="196" y="373" text-anchor="middle" font-family="Arial" font-size="18" font-weight="900" fill="#fff">GB</text><text x="236" y="364" font-family="Arial" font-size="22" font-weight="900" fill="#1d3354">Grace Bell</text><text x="236" y="388" font-family="Arial" font-size="18" font-weight="850" fill="#61728f">Pending</text>
+  </g>
+</svg>

@@ -1,4 +1,5 @@
 import { CommonModule } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import { Component, HostListener, effect, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -627,6 +628,15 @@ export class EventCheckoutPopupComponent {
           }
           paymentSessionId = session.id;
         }
+        const paymentSession = await this.eventsService.payCheckoutSession(
+          this.buildCheckoutRequest(),
+          paymentSessionId
+        );
+        if (!paymentSession?.id) {
+          throw new Error('Unable to start payment.');
+        }
+        paymentSessionId = paymentSession.id;
+        this.checkoutSessionId = paymentSessionId;
       }
       await Promise.resolve(dialog.onSubmit(this.buildSelection(paymentSessionId)));
       await this.ensureMinimumBusyDuration(startedAt);
@@ -634,6 +644,9 @@ export class EventCheckoutPopupComponent {
       this.dialogService.close();
     } catch (error) {
       await this.ensureMinimumBusyDuration(startedAt);
+      if (await this.recoverStalePaymentSession(error)) {
+        return;
+      }
       this.errorMessage = this.resolveErrorMessage(error, dialog.failureMessage);
     } finally {
       this.busy = false;
@@ -948,10 +961,42 @@ export class EventCheckoutPopupComponent {
     if (typeof error === 'string' && error.trim().length > 0) {
       return error.trim();
     }
+    if (this.isPaymentSessionConflict(error)) {
+      return 'Checkout details changed. A fresh payment session is needed.';
+    }
+    if (error instanceof HttpErrorResponse && typeof error.error?.message === 'string' && error.error.message.trim()) {
+      return error.error.message.trim();
+    }
     if (error instanceof Error && error.message.trim().length > 0) {
       return error.message.trim();
     }
     return fallback;
+  }
+
+  private async recoverStalePaymentSession(error: unknown): Promise<boolean> {
+    if (!this.isPaymentSessionConflict(error) || this.totalAmount() <= 0) {
+      return false;
+    }
+    this.clearCheckoutDraft();
+    try {
+      const session = await this.eventsService.createCheckoutSession(this.buildCheckoutRequest());
+      if (!session?.id) {
+        this.errorMessage = 'Checkout details changed. Start checkout again.';
+        return true;
+      }
+      this.checkoutSessionId = session.id;
+      this.paymentStep = true;
+      this.persistCheckoutDraft();
+      this.errorMessage = 'Checkout details changed. A fresh payment session is ready.';
+      return true;
+    } catch (recoveryError) {
+      this.errorMessage = this.resolveErrorMessage(recoveryError, 'Checkout details changed. Start checkout again.');
+      return true;
+    }
+  }
+
+  private isPaymentSessionConflict(error: unknown): boolean {
+    return error instanceof HttpErrorResponse && error.status === 409;
   }
 
   private availableSlotDateKeys(): string[] {

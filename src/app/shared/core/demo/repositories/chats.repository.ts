@@ -3,8 +3,8 @@ import { Injectable, inject } from '@angular/core';
 import type * as AppTypes from '../../../core/base/models';
 import { AppUtils } from '../../../app-utils';
 import { AppMemoryDb } from '../../base/db';
-import type { ChatMenuItem } from '../../base/interfaces/activity-feed.interface';
-import { DemoChatsRepositoryBuilder, DemoUserSeedBuilder } from '../builders';
+import type { ChatRecord } from '../../base/models/chat.model';
+import { DemoChatsRepositoryBuilder, DemoSeedScheduleBuilder, DemoUserSeedBuilder } from '../builders';
 import { CHATS_TABLE_NAME, type DemoChatRecord } from '../models/chats.model';
 import { USERS_TABLE_NAME } from '../models/users.model';
 
@@ -45,6 +45,26 @@ export class DemoChatsRepository {
   queryChatItemsByUser(userId: string): DemoChatRecord[] {
     this.init();
     return this.queryUserRecords(userId);
+  }
+
+  queryChatMembers(chatId: string): AppTypes.ActivityMemberEntry[] {
+    this.init();
+    const normalizedChatId = `${chatId ?? ''}`.trim();
+    if (!normalizedChatId) {
+      return [];
+    }
+    const table = this.memoryDb.read()[CHATS_TABLE_NAME];
+    const recordId = table.ids.find(id => table.byId[id]?.id === normalizedChatId) ?? '';
+    const record = recordId ? table.byId[recordId] : null;
+    if (!record) {
+      return [];
+    }
+    const userIds = [...new Set(
+      (record.memberIds ?? [])
+        .map(userId => `${userId ?? ''}`.trim())
+        .filter(userId => userId.length > 0)
+    )];
+    return userIds.map((userId, index) => this.toChatMemberEntry(normalizedChatId, userId, index));
   }
 
   querySupportCaseItemsForAdmin(userId: string, filter: AppTypes.SupportCaseFilter = 'all'): DemoChatRecord[] {
@@ -120,7 +140,7 @@ export class DemoChatsRepository {
     return true;
   }
 
-  queryChatMessages(chat: ChatMenuItem): AppTypes.ChatPopupMessage[] {
+  queryChatMessages(chat: ChatRecord): AppTypes.ChatPopupMessage[] {
     this.init();
     const record = this.resolveChatRecord(chat, { createServiceChat: false });
     return record ? DemoChatsRepositoryBuilder.cloneMessages(record.messages ?? []).map(message => ({
@@ -129,7 +149,7 @@ export class DemoChatsRepository {
     })) : [];
   }
 
-  appendChatMessage(chat: ChatMenuItem, message: AppTypes.ChatPopupMessage): AppTypes.ChatPopupMessage | null {
+  appendChatMessage(chat: ChatRecord, message: AppTypes.ChatPopupMessage): AppTypes.ChatPopupMessage | null {
     this.init();
     const record = this.resolveChatRecord(chat);
     if (!record) {
@@ -170,7 +190,7 @@ export class DemoChatsRepository {
   }
 
   updateChatMessage(
-    chat: ChatMenuItem,
+    chat: ChatRecord,
     messageId: string,
     mutation: AppTypes.ChatMessageMutation
   ): AppTypes.ChatPopupMessage | null {
@@ -231,7 +251,7 @@ export class DemoChatsRepository {
     return updatedMessage ? DemoChatsRepositoryBuilder.cloneMessages([updatedMessage])[0] ?? null : null;
   }
 
-  updateSupportCase(chat: ChatMenuItem, action: AppTypes.SupportCaseAction): DemoChatRecord | null {
+  updateSupportCase(chat: ChatRecord, action: AppTypes.SupportCaseAction): DemoChatRecord | null {
     this.init();
     const sourceId = `${chat.id ?? ''}`.trim();
     if (!sourceId) {
@@ -299,7 +319,7 @@ export class DemoChatsRepository {
     return userId === 'admin-demo-ava' || userId === 'admin-demo-noel';
   }
 
-  private isSupportCaseRecord(record: ChatMenuItem): boolean {
+  private isSupportCaseRecord(record: ChatRecord): boolean {
     return `${record.id ?? ''}`.trim().startsWith('c-support-admin-') || Boolean(record.supportCaseStatus);
   }
 
@@ -378,8 +398,34 @@ export class DemoChatsRepository {
       : DemoUserSeedBuilder.isEmptyOnboardingProfileUserId(normalizedUserId);
   }
 
+  private toChatMemberEntry(chatId: string, userId: string, index: number): AppTypes.ActivityMemberEntry {
+    const user = this.memoryDb.read()[USERS_TABLE_NAME].byId[userId] ?? null;
+    const label = user?.name?.trim() || userId;
+    const when = AppUtils.addDays(DemoSeedScheduleBuilder.anchorDate(), -Math.max(0, index));
+    return {
+      id: `chat:${chatId}:${userId}`,
+      userId,
+      name: label,
+      initials: user?.initials?.trim() || AppUtils.initialsFromText(label),
+      gender: user?.gender ?? 'man',
+      city: user?.city ?? '',
+      statusText: user?.statusText?.trim() || 'Chat member',
+      role: 'Member',
+      status: 'accepted',
+      pendingSource: null,
+      requestKind: null,
+      invitedByActiveUser: false,
+      invitedByUserId: null,
+      metAtIso: AppUtils.toIsoDateTime(when),
+      actionAtIso: AppUtils.toIsoDateTime(when),
+      metWhere: 'Chat',
+      avatarUrl: AppUtils.firstImageUrl(user?.images),
+      profile: user ? { ...user, images: [...(user.images ?? [])] } : null
+    };
+  }
+
   private resolveChatRecord(
-    chat: ChatMenuItem,
+    chat: ChatRecord,
     options: { createServiceChat?: boolean } = {}
   ): DemoChatRecord | null {
     const sourceId = `${chat.id ?? ''}`.trim();
@@ -410,7 +456,7 @@ export class DemoChatsRepository {
     return null;
   }
 
-  private createServiceChatRecord(ownerUserId: string, chat: ChatMenuItem): DemoChatRecord | null {
+  private createServiceChatRecord(ownerUserId: string, chat: ChatRecord): DemoChatRecord | null {
     const normalizedOwnerUserId = ownerUserId.trim();
     const sourceId = `${chat.id ?? ''}`.trim();
     if (!normalizedOwnerUserId || !sourceId) {
@@ -447,7 +493,7 @@ export class DemoChatsRepository {
     return record;
   }
 
-  private buildInitialServiceMessages(chat: ChatMenuItem): AppTypes.ChatPopupMessage[] {
+  private buildInitialServiceMessages(chat: ChatRecord): AppTypes.ChatPopupMessage[] {
     const sourceId = `${chat.id ?? ''}`.trim();
     if (!sourceId.startsWith('c-support-blocked-')) {
       return [];

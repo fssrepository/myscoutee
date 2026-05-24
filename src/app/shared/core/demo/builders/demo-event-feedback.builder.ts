@@ -1,5 +1,6 @@
 import { AppUtils } from '../../../app-utils';
-import type { EventMenuItem } from '../../base/interfaces/activity-feed.interface';
+import { DemoSeedScheduleBuilder } from './demo-seed-schedule.builder';
+import type { DemoEventSeedItem } from '../models/event-seed-item.model';
 import type { DemoUser } from '../../base/interfaces/user.interface';
 import type {
   EventFeedbackCard,
@@ -11,7 +12,7 @@ import type {
 
 export class DemoEventFeedbackBuilder {
   static buildEventFeedbackCards(options: {
-    eventItems: EventMenuItem[];
+    eventItems: DemoEventSeedItem[];
     users: DemoUser[];
     activeUser: DemoUser;
     eventDatesById: Record<string, string>;
@@ -95,7 +96,7 @@ export class DemoEventFeedbackBuilder {
   }
 
   static buildSeededSubmittedState(options: {
-    eventItem: EventMenuItem;
+    eventItem: DemoEventSeedItem;
     users: DemoUser[];
     activeUser: DemoUser;
     eventDatesById: Record<string, string>;
@@ -157,7 +158,7 @@ export class DemoEventFeedbackBuilder {
 
 
   static buildSeededPersistedStates(options: {
-    eventItems: EventMenuItem[];
+    eventItems: DemoEventSeedItem[];
     users: DemoUser[];
     activeUser: DemoUser;
     eventDatesById: Record<string, string>;
@@ -282,7 +283,7 @@ export class DemoEventFeedbackBuilder {
   ): string {
     const startMs = this.eventStartAtMs(eventId, eventDatesById);
     const baseMs = startMs === null
-      ? Date.UTC(2026, 2, 20, 18, 0, 0, 0)
+      ? DemoSeedScheduleBuilder.shiftDate(new Date(Date.UTC(2026, 2, 20, 18, 0, 0, 0))).getTime()
       : startMs + eventFeedbackUnlockDelayMs;
     const offsetMinutes = 45 + (seed % 180);
     return new Date(baseMs + (offsetMinutes * 60 * 1000)).toISOString();
@@ -337,7 +338,7 @@ export class DemoEventFeedbackBuilder {
     return `${day} · ${time}`;
   }
 
-  private static feedbackHostUserForEvent(item: EventMenuItem, users: DemoUser[], activeUser: DemoUser): DemoUser {
+  private static feedbackHostUserForEvent(item: DemoEventSeedItem, users: DemoUser[], activeUser: DemoUser): DemoUser {
     const creatorUserId = item.creatorUserId?.trim() ?? '';
     if (creatorUserId) {
       const creator = users.find(user => user.id === creatorUserId);
@@ -354,7 +355,7 @@ export class DemoEventFeedbackBuilder {
   }
 
   private static feedbackAttendeesForEvent(
-    item: EventMenuItem,
+    item: DemoEventSeedItem,
     hostId: string,
     users: DemoUser[],
     activeUserId: string

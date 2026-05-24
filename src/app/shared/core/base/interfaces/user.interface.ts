@@ -34,7 +34,11 @@ export interface UserMenuCountersDto {
   invitations?: number;
   events?: number;
   hosting?: number;
+  cars?: number;
+  accommodation?: number;
+  supplies?: number;
   tickets?: number;
+  contacts?: number;
   feedback?: number;
   adminJobs?: number;
   adminMetrics?: number;
@@ -108,7 +112,11 @@ export interface UserDto {
     invitations: number;
     events: number;
     hosting: number;
+    cars?: number;
+    accommodation?: number;
+    supplies?: number;
     tickets?: number;
+    contacts?: number;
     feedback?: number;
     adminJobs?: number;
     adminMetrics?: number;

@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 
 import { AppUtils } from '../../../app-utils';
 import { DemoUserRatesBuilder, DemoUserSeedBuilder } from '../builders';
-import type { RateMenuItem } from '../../base/interfaces/activity-feed.interface';
+import type { RateRecord } from '../../base/models/rate.model';
 import type { UserDto } from '../../base/interfaces/user.interface';
 import type {
   ActivityRateRecordQuery,
@@ -26,11 +26,12 @@ import {
 })
 export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
   private static readonly DEFAULT_DEMO_USERS_COUNT = 50;
-  private static readonly MIN_ACTIVITY_RATE_CONNECTIONS = 12;
-  private static readonly DEMO_ACTIVITY_RATE_SEED_COVERAGE_RATIO = 0.5;
-  private static readonly FEATURED_DEMO_ACTIVITY_RATE_OWNER_COUNT = 4;
-  private static readonly FEATURED_DEMO_ACTIVITY_RATE_EXTRA_SINGLE_GIVEN_COUNT = 15;
-  private static readonly DEFAULT_DEMO_ACTIVITY_RATE_EXTRA_SINGLE_GIVEN_COUNT = 5;
+  private static readonly MIN_ACTIVITY_RATE_CONNECTIONS = 8;
+  private static readonly DEMO_ACTIVITY_RATE_SEED_COVERAGE_RATIO = 0.25;
+  private static readonly FEATURED_DEMO_ACTIVITY_RATE_OWNER_COUNT = 3;
+  private static readonly FEATURED_DEMO_ACTIVITY_RATE_EXTRA_SINGLE_GIVEN_COUNT = 4;
+  private static readonly DEFAULT_DEMO_ACTIVITY_RATE_EXTRA_SINGLE_GIVEN_COUNT = 1;
+  private static readonly MAX_DEMO_ACTIVITY_RATE_BOOTSTRAP_RECORDS = 1000;
   private initialized = false;
 
   init(): void {
@@ -40,20 +41,39 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
     const users = this.querySeedUsers();
     const visibleSeedUsers = users.filter(user => DemoUserSeedBuilder.isActivityRateVisibleProfile(user));
     const ownerIdsToSeed = this.collectOwnerIdsNeedingActivityRateSeed(visibleSeedUsers);
+    const currentRatesCount = this.memoryDb.read()[USER_RATES_TABLE_NAME].ids.length;
+    const remainingBootstrapSlots = Math.max(
+      0,
+      DemoUsersRatingsRepository.MAX_DEMO_ACTIVITY_RATE_BOOTSTRAP_RECORDS - currentRatesCount
+    );
     if (ownerIdsToSeed.length === 0) {
       this.initialized = true;
       return;
     }
-    const records = ownerIdsToSeed.flatMap((ownerUserId, ownerIndex) =>
-      DemoUserRatesBuilder.buildGeneratedRateItemsForUser(visibleSeedUsers, ownerUserId, {
+    if (remainingBootstrapSlots <= 0) {
+      this.initialized = true;
+      return;
+    }
+    const records: UserRateRecord[] = [];
+    for (let ownerIndex = 0; ownerIndex < ownerIdsToSeed.length; ownerIndex += 1) {
+      const ownerUserId = ownerIdsToSeed[ownerIndex];
+      if (!ownerUserId) {
+        continue;
+      }
+      const ownerRecords = DemoUserRatesBuilder.buildGeneratedRateItemsForUser(visibleSeedUsers, ownerUserId, {
         extraSingleGivenCount: ownerIndex < DemoUsersRatingsRepository.FEATURED_DEMO_ACTIVITY_RATE_OWNER_COUNT
           ? DemoUsersRatingsRepository.FEATURED_DEMO_ACTIVITY_RATE_EXTRA_SINGLE_GIVEN_COUNT
           : DemoUsersRatingsRepository.DEFAULT_DEMO_ACTIVITY_RATE_EXTRA_SINGLE_GIVEN_COUNT,
         userCoverageRatio: DemoUsersRatingsRepository.DEMO_ACTIVITY_RATE_SEED_COVERAGE_RATIO
       })
-        .map(item => DemoUserRatesBuilder.toActivityRateRecord(ownerUserId, item))
-    );
+        .map(item => DemoUserRatesBuilder.toActivityRateRecord(ownerUserId, item));
+      if (records.length + ownerRecords.length > remainingBootstrapSlots) {
+        break;
+      }
+      records.push(...ownerRecords);
+    }
     if (records.length === 0) {
+      this.initialized = true;
       return;
     }
     this.memoryDb.write(state => {
@@ -146,7 +166,6 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
   }
 
   queryRatedGameCardUserIds(raterUserId: string, mode: UserGameMode = 'single'): string[] {
-    this.init();
     const normalizedRaterId = raterUserId.trim();
     if (!normalizedRaterId || DemoUserSeedBuilder.isEmptyOnboardingProfileUserId(normalizedRaterId)) {
       return [];
@@ -165,7 +184,7 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
       if (record.ownerUserId?.trim() !== normalizedRaterId) {
         continue;
       }
-      const item = DemoUserRatesBuilder.toRateMenuItem(record);
+      const item = DemoUserRatesBuilder.toRateRecord(record);
       if (!item || (item.direction !== 'met' && item.scoreGiven <= 0)) {
         continue;
       }
@@ -190,7 +209,7 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
       if (payload.ownerUserId?.trim() !== normalizedRaterId) {
         continue;
       }
-      const item = DemoUserRatesBuilder.toRateMenuItem(payload);
+      const item = DemoUserRatesBuilder.toRateRecord(payload);
       if (!item || (item.direction !== 'met' && item.scoreGiven <= 0)) {
         continue;
       }
@@ -212,7 +231,6 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
   }
 
   override queryRatedGameCardPairKeys(ownerUserId: string): string[] {
-    this.init();
     const normalizedOwnerUserId = ownerUserId.trim();
     if (!normalizedOwnerUserId || DemoUserSeedBuilder.isEmptyOnboardingProfileUserId(normalizedOwnerUserId)) {
       return [];
@@ -227,7 +245,7 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
       if (record.ownerUserId?.trim() !== normalizedOwnerUserId) {
         continue;
       }
-      const item = DemoUserRatesBuilder.toRateMenuItem(record);
+      const item = DemoUserRatesBuilder.toRateRecord(record);
       if (!item || item.mode !== 'pair' || (item.direction !== 'met' && item.scoreGiven <= 0)) {
         continue;
       }
@@ -250,23 +268,19 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
       .join(':');
   }
 
-  queryActivityRateItemsByUserId(userId: string): RateMenuItem[] {
-    this.init();
+  queryActivityRateItemsByUserId(userId: string): RateRecord[] {
     return this.buildRateItemsByUserId(userId);
   }
 
-  override peekRateItemsByUserId(userId: string): RateMenuItem[] {
-    this.init();
+  override peekRateItemsByUserId(userId: string): RateRecord[] {
     return this.buildRateItemsByUserId(userId);
   }
 
-  override async queryRateItemsByUserId(userId: string): Promise<RateMenuItem[]> {
-    this.init();
+  override async queryRateItemsByUserId(userId: string): Promise<RateRecord[]> {
     return this.buildRateItemsByUserId(userId);
   }
 
-  async queryActivityRateItemsPage(query: ActivityRateRecordQuery): Promise<{ items: RateMenuItem[]; total: number; nextCursor?: string | null }> {
-    this.init();
+  async queryActivityRateItemsPage(query: ActivityRateRecordQuery): Promise<{ items: RateRecord[]; total: number; nextCursor?: string | null }> {
     const normalizedOwnerUserId = query.ownerUserId.trim();
     if (!normalizedOwnerUserId) {
       return {
@@ -300,7 +314,7 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
     };
   }
 
-  private buildRateItemsByUserId(userId: string): RateMenuItem[] {
+  private buildRateItemsByUserId(userId: string): RateRecord[] {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return [];
@@ -334,14 +348,14 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
       .sort((left, right) => AppUtils.toSortableDate(right.happenedAt) - AppUtils.toSortableDate(left.happenedAt));
   }
 
-  private referencesEmptyOnboardingProfile(item: RateMenuItem): boolean {
+  private referencesEmptyOnboardingProfile(item: RateRecord): boolean {
     return DemoUserSeedBuilder.isEmptyOnboardingProfileUserId(item.userId)
       || DemoUserSeedBuilder.isEmptyOnboardingProfileUserId(item.secondaryUserId ?? '')
       || DemoUserSeedBuilder.isEmptyOnboardingProfileUserId(item.bridgeUserId ?? '');
   }
 
   private activityRateItemUsersAreVisible(
-    item: RateMenuItem,
+    item: RateRecord,
     ownerUserId: string,
     usersById: ReadonlyMap<string, UserDto>
   ): boolean {
@@ -368,7 +382,7 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
       .map(user => [user.id, user] as const));
   }
 
-  private buildDynamicRateItemsForUser(record: UserRateRecord, normalizedUserId: string): RateMenuItem[] {
+  private buildDynamicRateItemsForUser(record: UserRateRecord, normalizedUserId: string): RateRecord[] {
     if (record.mode === 'pair') {
       return this.buildDynamicPairRateItemsForUser(record, normalizedUserId);
     }
@@ -376,7 +390,7 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
     return this.buildDynamicSingleRateItemsForUser(record, normalizedUserId);
   }
 
-  private buildDynamicSingleRateItemsForUser(record: UserRateRecord, normalizedUserId: string): RateMenuItem[] {
+  private buildDynamicSingleRateItemsForUser(record: UserRateRecord, normalizedUserId: string): RateRecord[] {
     const ownerUserId = record.ownerUserId?.trim() ?? '';
     if (!ownerUserId) {
       return [];
@@ -423,7 +437,7 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
       return [];
     }
 
-    const participantDirection: RateMenuItem['direction'] = record.displayDirection === 'met' ? 'met' : 'received';
+    const participantDirection: RateRecord['direction'] = record.displayDirection === 'met' ? 'met' : 'received';
     if (participantDirection === 'met' && (
       !this.didUsersMeetFromIndexedDb(normalizedUserId, ownerUserId)
       || !this.isFinishedMetActivity(happenedAt)
@@ -451,14 +465,14 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
     }];
   }
 
-  private buildDynamicPairRateItemsForUser(record: UserRateRecord, normalizedUserId: string): RateMenuItem[] {
+  private buildDynamicPairRateItemsForUser(record: UserRateRecord, normalizedUserId: string): RateRecord[] {
     const ownerUserId = record.ownerUserId?.trim() ?? '';
     const pairUserIds = this.resolvePairUserIdsFromRecord(record);
     if (!ownerUserId || pairUserIds === null) {
       return [];
     }
 
-    const items: RateMenuItem[] = [];
+    const items: RateRecord[] = [];
     const pairSocialContext = this.resolveStoredPairSocialContext(record)
       ?? this.resolveDynamicPairSocialContext(ownerUserId, pairUserIds[0], pairUserIds[1]);
 
@@ -500,8 +514,8 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
     normalizedUserId: string,
     ownerUserId: string,
     pairUserIds: [string, string],
-    socialContext: RateMenuItem['socialContext'] | null
-  ): RateMenuItem | null {
+    socialContext: RateRecord['socialContext'] | null
+  ): RateRecord | null {
     const [firstUserId, secondUserId] = pairUserIds;
     if (
       firstUserId !== normalizedUserId
@@ -558,7 +572,7 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
     record: UserRateRecord,
     scoreGiven: number,
     scoreReceived: number
-  ): RateMenuItem['direction'] | null {
+  ): RateRecord['direction'] | null {
     if (record.displayDirection === 'met') {
       return 'met';
     }
@@ -587,7 +601,7 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
     ownerUserId: string,
     firstUserId: string,
     secondUserId: string
-  ): RateMenuItem['socialContext'] | null {
+  ): RateRecord['socialContext'] | null {
     const normalizedOwnerUserId = ownerUserId.trim();
     const normalizedFirstUserId = firstUserId.trim();
     const normalizedSecondUserId = secondUserId.trim();
@@ -611,11 +625,11 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
     return null;
   }
 
-  private resolveStoredPairSocialContext(record: UserRateRecord): RateMenuItem['socialContext'] | null {
+  private resolveStoredPairSocialContext(record: UserRateRecord): RateRecord['socialContext'] | null {
     return record.socialContext === 'separated-friends' ? 'separated-friends' : null;
   }
 
-  private resolveStoredSingleSocialContext(record: UserRateRecord): RateMenuItem['socialContext'] | null {
+  private resolveStoredSingleSocialContext(record: UserRateRecord): RateRecord['socialContext'] | null {
     return record.socialContext === 'friends-in-common' ? 'friends-in-common' : null;
   }
 
@@ -657,7 +671,7 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
     return false;
   }
 
-  private matchesDynamicRateRange(item: RateMenuItem, query: ActivityRateRecordQuery): boolean {
+  private matchesDynamicRateRange(item: RateRecord, query: ActivityRateRecordQuery): boolean {
     const happenedAtMs = AppUtils.toSortableDate(item.happenedAt ?? '');
     const rangeStartMs = query.rangeStartIso ? AppUtils.toSortableDate(query.rangeStartIso) : null;
     const rangeEndMs = query.rangeEndIso ? AppUtils.toSortableDate(query.rangeEndIso) : null;
@@ -675,7 +689,7 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
     return happenedAtMs <= 0 || happenedAtMs <= Date.now();
   }
 
-  private matchesDynamicSocialFilter(item: RateMenuItem, socialBadgeEnabled: boolean): boolean {
+  private matchesDynamicSocialFilter(item: RateRecord, socialBadgeEnabled: boolean): boolean {
     if (item.mode === 'individual') {
       const friendsInCommon = item.socialContext === 'friends-in-common';
       return socialBadgeEnabled ? friendsInCommon : !friendsInCommon;
@@ -687,7 +701,7 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
     return true;
   }
 
-  private compareDynamicRateItems(left: RateMenuItem, right: RateMenuItem, query: ActivityRateRecordQuery): number {
+  private compareDynamicRateItems(left: RateRecord, right: RateRecord, query: ActivityRateRecordQuery): number {
     if (query.sort === 'distance') {
       const distanceDelta = this.dynamicDistanceValue(left) - this.dynamicDistanceValue(right);
       if (distanceDelta !== 0) {
@@ -725,14 +739,14 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
     return 0;
   }
 
-  private dynamicDistanceValue(item: RateMenuItem): number {
+  private dynamicDistanceValue(item: RateRecord): number {
     if (Number.isFinite(item.distanceMetersExact)) {
       return Math.max(0, Math.trunc(Number(item.distanceMetersExact)));
     }
     return 0;
   }
 
-  private dynamicRelevanceScore(item: RateMenuItem): number {
+  private dynamicRelevanceScore(item: RateRecord): number {
     const scoreGiven = Number.isFinite(item.scoreGiven)
       ? Math.max(0, Math.round(Number(item.scoreGiven)))
       : 0;
@@ -787,7 +801,6 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
   }
 
   queryUserRatesByUserId(userId: string): UserRateRecord[] {
-    this.init();
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return [];
@@ -806,7 +819,6 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
   }
 
   upsertGameCardRatings(records: readonly UserRateRecord[]): string[] {
-    this.init();
     const normalizedRecords = records
       .map(record => this.normalizeIncomingRateRecord(record))
       .filter((record): record is UserRateRecord => Boolean(record));
@@ -906,7 +918,7 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
     if (!ownerUserId) {
       return null;
     }
-    const item = DemoUserRatesBuilder.toRateMenuItem(record);
+    const item = DemoUserRatesBuilder.toRateRecord(record);
     if (!item) {
       return null;
     }
