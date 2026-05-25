@@ -381,8 +381,7 @@ export class HttpEventsService {
     return await this.http
       .post<EventCheckoutSession | null>(
         `${this.apiBaseUrl}/activities/events/checkout`,
-        request,
-        { params: this.paymentProviderParams() }
+        request
       )
       .toPromise() ?? null;
   }
@@ -400,14 +399,12 @@ export class HttpEventsService {
         `${this.apiBaseUrl}/activities/events/pay`,
         request,
         {
-          params: this.paymentProviderParams().set('paymentSessionId', normalizedPaymentSessionId)
+          params: {
+            paymentSessionId: normalizedPaymentSessionId
+          }
         }
       )
       .toPromise() ?? null;
-  }
-
-  private paymentProviderParams(): HttpParams {
-    return new HttpParams().set('provider', environment.paymentProvider || 'stripe');
   }
 
   async queryEventFeedbackStates(userId: string): Promise<EventFeedbackStateDto[]> {

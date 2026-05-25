@@ -6,6 +6,5 @@ export const environment = {
   serviceWorkerEnabled: false,
   firebaseLoginEnabled: false,
   firebaseMessagingEnabled: true,
-  paymentIntegrationEnabled: false,
-  paymentProvider: 'dummy' as 'dummy' | 'stripe' | 'barion'
+  paymentIntegrationEnabled: false
 };
