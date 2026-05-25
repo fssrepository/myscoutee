@@ -187,7 +187,7 @@ export class DemoBootstrapService {
     await this.memoryDb.whenReady();
     await this.runBootstrapStep('selector');
     await this.runBootstrapStep('helpCenter', async () => {
-      await this.helpCenterService.init();
+      await this.initOptionalHelpCenter();
     });
     await this.runBootstrapStep('chats', () => this.chatsRepository.init());
     await this.runBootstrapStep('events', () => this.eventsRepository.init());
@@ -202,6 +202,14 @@ export class DemoBootstrapService {
 
     this.ready = true;
     this.emitProgress(demoBootstrapProgressStep('ready'));
+  }
+
+  private async initOptionalHelpCenter(): Promise<void> {
+    try {
+      await this.helpCenterService.init();
+    } catch {
+      // Help, privacy, and explanation content should never block demo user bootstrap.
+    }
   }
 
 

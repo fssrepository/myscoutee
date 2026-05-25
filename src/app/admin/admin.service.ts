@@ -1133,7 +1133,7 @@ export class AdminService {
     const admin = this.resolveDemoAdmin(adminUserId);
     onProgress?.({ percent: 18, label: 'Preparing admin data', stage: 'indexedDb' });
     await this.memoryDb.whenReady();
-    await this.demoHelpCenterService.init();
+    await this.initOptionalDemoHelpCenter();
     this.demoUsersRepository.init();
     await this.ensureDemoAdminProfiles();
     this.demoChatsRepository.init();
@@ -1149,6 +1149,14 @@ export class AdminService {
     await this.waitForBeat();
     onProgress?.({ percent: 100, label: 'Admin workspace ready', stage: 'ready' });
     return dashboard;
+  }
+
+  private async initOptionalDemoHelpCenter(): Promise<void> {
+    try {
+      await this.demoHelpCenterService.init();
+    } catch {
+      // Help, privacy, and explanation content should never block admin demo bootstrap.
+    }
   }
 
   private async ensureDemoModerationStore(): Promise<AdminModerationStore> {

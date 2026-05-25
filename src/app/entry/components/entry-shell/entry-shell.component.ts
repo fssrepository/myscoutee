@@ -45,6 +45,7 @@ export class EntryShellComponent implements OnDestroy {
   private static readonly ENTRY_CONSENT_AUDIT_KEY = 'entry-gdpr-consent-audit';
   private static readonly ENTRY_CONSENT_AUDIT_MAX = 30;
   private static readonly LANDING_ARTICLES_LOADING_WINDOW_MS = 3000;
+  private static readonly ENTRY_PRIVACY_LOADING_WINDOW_MS = 3000;
 
   private readonly injector = inject(Injector);
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
@@ -71,6 +72,7 @@ export class EntryShellComponent implements OnDestroy {
   protected showEntryConsentPopup = false;
   protected entryConsentViewOnly = false;
   protected entryPrivacyLoading = true;
+  protected entryPrivacyLoadingProgress = 0;
   protected landingArticlesLoading = true;
   protected landingArticlesLoadingProgress = 0;
   protected landingIdeaCards: InfoCardData[] = [];
@@ -90,6 +92,8 @@ export class EntryShellComponent implements OnDestroy {
   protected showFirebaseAuthPopup = false;
   private demoSelectorRequestToken = 0;
   private landingContentRequestToken = 0;
+  private entryPrivacyLoadingStartedAtMs = 0;
+  private entryPrivacyLoadingTimer: ReturnType<typeof setTimeout> | null = null;
   private landingArticlesLoadingStartedAtMs = 0;
   private landingArticlesLoadingInterval: ReturnType<typeof setInterval> | null = null;
   private landingLoginAvailability: UserLocationEligibilityResponseDto | null = null;
@@ -111,6 +115,7 @@ export class EntryShellComponent implements OnDestroy {
     this.landingContentRequestToken += 1;
     this.grantedLocationEligibilityRequestToken += 1;
     this.unbindGeolocationPermissionStatus();
+    this.clearEntryPrivacyLoadingWindow();
     this.clearLandingArticlesLoadingWindow();
   }
 
@@ -291,6 +296,7 @@ export class EntryShellComponent implements OnDestroy {
   private initializeEntryFlow(): void {
     this.entryConsentViewOnly = false;
     this.entryPrivacyLoading = this.helpCenter.privacyState() === null;
+    this.entryPrivacyLoadingProgress = 0;
     this.showEntryConsentPopup = this.entryPrivacyLoading || this.loadEntryConsentState() === null;
     this.landingArticlesLoading = true;
     this.landingArticlesLoadingProgress = 0;
@@ -698,7 +704,7 @@ export class EntryShellComponent implements OnDestroy {
       return this.entryContentLoadPromise;
     }
     const requestToken = ++this.landingContentRequestToken;
-    this.entryPrivacyLoading = true;
+    this.startEntryPrivacyLoadingWindow();
     this.startLandingArticlesLoadingWindow();
     this.entryContentLoadPromise = (async () => {
       try {
@@ -737,7 +743,7 @@ export class EntryShellComponent implements OnDestroy {
     if (requestToken !== this.landingContentRequestToken) {
       return;
     }
-    this.entryPrivacyLoading = false;
+    this.endEntryPrivacyLoadingWindow();
     if (!this.entryConsentViewOnly) {
       this.showEntryConsentPopup = this.loadEntryConsentState() === null;
     }
@@ -751,6 +757,46 @@ export class EntryShellComponent implements OnDestroy {
       return '';
     }
     return `privacy:${revision.id}:v${revision.version}`;
+  }
+
+  private startEntryPrivacyLoadingWindow(): void {
+    this.clearEntryPrivacyLoadingWindow();
+    this.entryPrivacyLoading = true;
+    this.entryPrivacyLoadingProgress = 0.02;
+    this.entryPrivacyLoadingStartedAtMs = performance.now();
+    this.updateEntryPrivacyLoadingWindow();
+  }
+
+  private updateEntryPrivacyLoadingWindow(): void {
+    if (!this.entryPrivacyLoading) {
+      return;
+    }
+    const elapsed = Math.max(0, performance.now() - this.entryPrivacyLoadingStartedAtMs);
+    const nextProgress = Math.min(1, elapsed / EntryShellComponent.ENTRY_PRIVACY_LOADING_WINDOW_MS);
+    this.entryPrivacyLoadingProgress = Math.max(this.entryPrivacyLoadingProgress, nextProgress);
+    if (nextProgress >= 1) {
+      return;
+    }
+    this.entryPrivacyLoadingTimer = setTimeout(() => {
+      this.ngZone.run(() => {
+        this.updateEntryPrivacyLoadingWindow();
+        this.changeDetectorRef.markForCheck();
+      });
+    }, 80);
+  }
+
+  private endEntryPrivacyLoadingWindow(): void {
+    this.clearEntryPrivacyLoadingWindow();
+    this.entryPrivacyLoading = false;
+    this.entryPrivacyLoadingProgress = 1;
+  }
+
+  private clearEntryPrivacyLoadingWindow(): void {
+    if (!this.entryPrivacyLoadingTimer) {
+      return;
+    }
+    clearTimeout(this.entryPrivacyLoadingTimer);
+    this.entryPrivacyLoadingTimer = null;
   }
 
   private startLandingArticlesLoadingWindow(): void {
