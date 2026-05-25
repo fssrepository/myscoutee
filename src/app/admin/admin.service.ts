@@ -57,6 +57,7 @@ export type AdminPopupKind =
   | 'notifications'
   | 'params'
   | 'stats'
+  | 'affinity-graph'
   | 'monitoring'
   | 'item-preview';
 
@@ -536,6 +537,10 @@ export class AdminService {
 
   openStats(): void {
     this.activePopupRef.set('stats');
+  }
+
+  openAffinityGraph(): void {
+    this.activePopupRef.set('affinity-graph');
   }
 
   openMonitoring(): void {

@@ -434,6 +434,15 @@ export class NavigatorMenuComponent {
     this.navigatorService.closeMenu();
   }
 
+  protected openAdminAffinityGraphShortcut(event?: Event): void {
+    event?.stopPropagation();
+    if (!this.isOnline()) {
+      return;
+    }
+    this.popupCtx.openAdminNavigatorRequest('affinity-graph');
+    this.navigatorService.closeMenu();
+  }
+
   protected openAdminMonitoringShortcut(event?: Event): void {
     event?.stopPropagation();
     if (!this.isOnline()) {

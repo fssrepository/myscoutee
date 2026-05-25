@@ -146,6 +146,11 @@
             <span class="section-line"></span>
           </div>
           <div class="menu-shortcuts admin-menu-shortcuts admin-menu-shortcuts-monitoring">
+            <button #adminGraphButton class="menu-shortcut-btn menu-shortcut-graph" type="button" [disabled]="!isOnline()" (click)="openAdminAffinityGraphShortcut($event)" aria-label="Open affinity graph" title="Graph view">
+              <span class="navigator-action-ripple" matRipple [matRippleTrigger]="adminGraphButton" aria-hidden="true"></span>
+              <mat-icon>hub</mat-icon>
+              <span class="menu-shortcut-label">Graph</span>
+            </button>
             <button #adminMonitoringButton class="menu-shortcut-btn menu-shortcut-monitoring" type="button" [disabled]="!isOnline()" (click)="openAdminMonitoringShortcut($event)" [attr.aria-label]="'open.monitoring.metrics' | i18n" [title]="'metrics' | i18n">
               <span class="navigator-action-ripple" matRipple [matRippleTrigger]="adminMonitoringButton" aria-hidden="true"></span>
               <mat-icon>monitoring</mat-icon>

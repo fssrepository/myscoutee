@@ -1,5 +1,5 @@
-import { CommonModule } from '@angular/common';
-import { Component, HostListener, OnInit, Type, effect, inject, signal } from '@angular/core';
+import { CommonModule, DOCUMENT } from '@angular/common';
+import { Component, HostListener, OnDestroy, OnInit, Type, effect, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { MatRippleModule } from '@angular/material/core';
@@ -26,11 +26,12 @@ import { AdminService, type AdminBootstrapProgressState } from '../../admin.serv
   templateUrl: './admin-page.component.html',
   styleUrl: './admin-page.component.scss'
 })
-export class AdminPageComponent implements OnInit {
+export class AdminPageComponent implements OnInit, OnDestroy {
   private static readonly DEMO_RESTORE_MIN_DELAY_MS = 1500;
 
   protected readonly admin = inject(AdminService);
   protected readonly sessionService = inject(SessionService);
+  private readonly document = inject(DOCUMENT);
   private readonly router = inject(Router);
   private readonly navigatorService = inject(NavigatorService);
   private readonly popupCtx = inject(AppPopupContext);
@@ -42,6 +43,7 @@ export class AdminPageComponent implements OnInit {
   private readonly notificationsPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly paramsPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly statsPopupComponentRef = signal<Type<unknown> | null>(null);
+  private readonly affinityGraphPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly monitoringPopupComponentRef = signal<Type<unknown> | null>(null);
 
   protected selectorOpen = false;
@@ -60,9 +62,13 @@ export class AdminPageComponent implements OnInit {
   protected readonly notificationsPopupComponent = this.notificationsPopupComponentRef.asReadonly();
   protected readonly paramsPopupComponent = this.paramsPopupComponentRef.asReadonly();
   protected readonly statsPopupComponent = this.statsPopupComponentRef.asReadonly();
+  protected readonly affinityGraphPopupComponent = this.affinityGraphPopupComponentRef.asReadonly();
   protected readonly monitoringPopupComponent = this.monitoringPopupComponentRef.asReadonly();
 
   constructor() {
+    this.document.documentElement.classList.add('admin-document-no-scroll');
+    this.document.body.classList.add('admin-document-no-scroll');
+
     effect(() => {
       switch (this.admin.activePopup()) {
         case 'reports':
@@ -85,6 +91,9 @@ export class AdminPageComponent implements OnInit {
           break;
         case 'stats':
           void this.ensureStatsPopupLoaded();
+          break;
+        case 'affinity-graph':
+          void this.ensureAffinityGraphPopupLoaded();
           break;
         case 'monitoring':
           void this.ensureMonitoringPopupLoaded();
@@ -127,6 +136,9 @@ export class AdminPageComponent implements OnInit {
         case 'stats':
           this.admin.openStats();
           break;
+        case 'affinity-graph':
+          this.admin.openAffinityGraph();
+          break;
         case 'monitoring':
           this.admin.openMonitoring();
           break;
@@ -151,6 +163,11 @@ export class AdminPageComponent implements OnInit {
     if (!restored) {
       await this.router.navigateByUrl(this.admin.accessDenied() ? '/game' : '/admin', { replaceUrl: true });
     }
+  }
+
+  ngOnDestroy(): void {
+    this.document.documentElement.classList.remove('admin-document-no-scroll');
+    this.document.body.classList.remove('admin-document-no-scroll');
   }
 
   protected async requestAdminLogin(): Promise<void> {
@@ -327,6 +344,14 @@ export class AdminPageComponent implements OnInit {
     }
     const module = await import('../stats-popup/admin-stats-popup.component');
     this.statsPopupComponentRef.set(module.AdminStatsPopupComponent);
+  }
+
+  private async ensureAffinityGraphPopupLoaded(): Promise<void> {
+    if (this.affinityGraphPopupComponentRef()) {
+      return;
+    }
+    const module = await import('../affinity-graph-popup/admin-affinity-graph-popup.component');
+    this.affinityGraphPopupComponentRef.set(module.AdminAffinityGraphPopupComponent);
   }
 
   private async ensureMonitoringPopupLoaded(): Promise<void> {

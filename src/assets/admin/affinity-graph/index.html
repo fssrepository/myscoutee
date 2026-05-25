@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>MyScoutee Affinity Graph</title>
+    <link rel="stylesheet" href="./styles.css">
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "./vendor/three.module.js"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <main class="graph-app">
+      <canvas id="graph-canvas" aria-label="3D affinity graph"></canvas>
+
+      <div class="side-panel-stack">
+        <section class="control-panel" aria-label="Graph controls">
+          <header class="control-header">
+            <h1>Affinity graph</h1>
+            <button id="reset-view" class="reset-button" type="button" title="Reset view" aria-label="Reset view">
+              Reset
+            </button>
+          </header>
+          <dl class="metrics">
+            <div>
+              <dt>Members</dt>
+              <dd id="member-count">0</dd>
+            </div>
+            <div>
+              <dt>Links</dt>
+              <dd id="link-count">0</dd>
+            </div>
+            <div>
+              <dt>Components</dt>
+              <dd id="component-count">0</dd>
+            </div>
+            <div>
+              <dt>Isolated</dt>
+              <dd id="isolated-count">0</dd>
+            </div>
+          </dl>
+          <div class="range-field">
+            <label for="min-weight">
+              <span>Link range</span>
+              <output id="weight-range-value" for="min-weight max-weight">0.20 - 1.00</output>
+            </label>
+            <div class="range-slider">
+              <div class="range-slider__track"></div>
+              <div class="range-slider__fill"></div>
+              <input id="min-weight" type="range" min="0" max="1" value="0.20" step="0.01" aria-label="Minimum link strength">
+              <input id="max-weight" type="range" min="0" max="1" value="1.00" step="0.01" aria-label="Maximum link strength">
+            </div>
+          </div>
+          <div class="depth-field">
+            <label for="link-depth">
+              <span>Link depth</span>
+              <output id="link-depth-value" for="link-depth">Direct</output>
+            </label>
+            <input id="link-depth" type="range" min="1" max="3" value="1" step="1" aria-label="Selected member link depth">
+          </div>
+          <aside id="member-panel" class="member-panel" aria-live="polite"></aside>
+        </section>
+
+        <aside class="help-panel" aria-label="Graph legend">
+          <div class="help-legend">
+            <div class="help-legend-row">
+              <span><i class="help-dot help-dot--woman"></i>Women</span>
+              <span><i class="help-dot help-dot--man"></i>Men</span>
+            </div>
+          </div>
+          <dl class="help-actions">
+            <div class="help-action-card help-action-card--mouse">
+              <dt>
+                <span class="desktop-mouse" aria-hidden="true">
+                  <i></i>
+                </span>
+                <span>Mouse</span>
+              </dt>
+              <dd><strong>Left</strong> pan</dd>
+              <dd><strong>Right</strong> rotate</dd>
+              <dd><strong>Wheel</strong> zoom</dd>
+            </div>
+            <div class="help-action-card help-action-card--arrows">
+              <dt>
+                <span class="arrow-pad" aria-hidden="true"><i>↑</i><i>←</i><i>↓</i><i>→</i></span>
+                <span>Arrow pad</span>
+              </dt>
+              <dd>Step pan</dd>
+            </div>
+          </dl>
+        </aside>
+      </div>
+    </main>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

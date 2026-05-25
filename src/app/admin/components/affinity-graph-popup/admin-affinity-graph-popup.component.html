@@ -1,0 +1,17 @@
+@if (admin.activePopup() === popupKey) {
+  <section class="app-popup affinity-graph-popup">
+      <div class="app-popup-backdrop" (click)="close()"></div>
+      <div class="app-popup-panel popup-panel-admin popup-panel-affinity-graph" (click)="$event.stopPropagation()">
+        @if (graphUrl(); as sourceUrl) {
+          <iframe
+            class="affinity-graph-frame"
+            [src]="sourceUrl"
+            title="Affinity graph view"
+          ></iframe>
+        }
+        <button type="button" class="popup-close affinity-graph-close" (click)="close()" aria-label="Close">
+          <mat-icon>close</mat-icon>
+        </button>
+    </div>
+  </section>
+}

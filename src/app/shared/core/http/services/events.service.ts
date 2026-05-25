@@ -37,6 +37,7 @@ interface HttpEventsFilterRequest {
   anchorDate?: string;
   rangeStart?: string;
   rangeEnd?: string;
+  slim?: boolean;
 }
 
 @Injectable({
@@ -120,7 +121,8 @@ export class HttpEventsService {
             cursor: query.cursor ?? null,
             anchorDate: query.anchorDate,
             rangeStart: query.rangeStart,
-            rangeEnd: query.rangeEnd
+            rangeEnd: query.rangeEnd,
+            slim: true
           } satisfies HttpEventsFilterRequest
         ),
         signal
@@ -597,20 +599,71 @@ export class HttpEventsService {
     if (!Array.isArray(records)) {
       return [];
     }
-    return records.map(record => ({
-      ...record,
-      topics: [...(record.topics ?? [])],
-      pricing: record.pricing ? PricingBuilder.clonePricingConfig(record.pricing) : undefined,
-      policies: (record.policies ?? []).map(item => ({ ...item })),
-      slotTemplates: (record.slotTemplates ?? []).map(item => ({ ...item })),
-      nextSlot: record.nextSlot ? { ...record.nextSlot } : null,
-      upcomingSlots: (record.upcomingSlots ?? []).map(item => ({ ...item })),
-      subEvents: (record.subEvents ?? []).map(item => ({
-        ...item,
-        groups: Array.isArray(item.groups) ? item.groups.map(group => ({ ...group })) : [],
-        pricing: item.pricing ? PricingBuilder.clonePricingConfig(item.pricing) : undefined
-      }))
-    }));
+    return records.map(record => {
+      const normalizedRecord = {
+        id: `${record.id ?? ''}`.trim(),
+        userId: `${record.userId ?? ''}`.trim(),
+        type: record.type ?? 'events',
+        status: record.status,
+        avatar: `${record.avatar ?? ''}`.trim(),
+        title: `${record.title ?? ''}`.trim(),
+        subtitle: `${record.subtitle ?? ''}`.trim(),
+        timeframe: `${record.timeframe ?? ''}`.trim(),
+        inviter: record.inviter ?? null,
+        unread: Math.max(0, Math.trunc(Number(record.unread) || 0)),
+        activity: Math.max(0, Math.trunc(Number(record.activity) || 0)),
+        isAdmin: record.isAdmin === true,
+        isInvitation: record.isInvitation === true,
+        isHosting: record.isHosting === true,
+        isTrashed: record.isTrashed === true,
+        published: record.published !== false,
+        trashedAtIso: record.trashedAtIso ?? null,
+        creatorUserId: `${record.creatorUserId ?? ''}`.trim(),
+        creatorName: `${record.creatorName ?? ''}`.trim(),
+        creatorInitials: `${record.creatorInitials ?? ''}`.trim(),
+        creatorGender: record.creatorGender === 'woman' ? 'woman' : 'man',
+        creatorCity: `${record.creatorCity ?? ''}`.trim(),
+        visibility: record.visibility ?? 'Public',
+        blindMode: record.blindMode ?? 'Open Event',
+        startAtIso: `${record.startAtIso ?? ''}`.trim(),
+        endAtIso: `${record.endAtIso ?? ''}`.trim(),
+        distanceKm: Math.max(0, Number(record.distanceKm) || 0),
+        imageUrl: `${record.imageUrl ?? ''}`.trim(),
+        sourceLink: `${record.sourceLink ?? ''}`.trim(),
+        location: `${record.location ?? ''}`.trim(),
+        locationCoordinates: record.locationCoordinates ?? null,
+        capacityMin: record.capacityMin ?? null,
+        capacityMax: record.capacityMax ?? null,
+        capacityTotal: Math.max(0, Math.trunc(Number(record.capacityTotal) || 0)),
+        autoInviter: record.autoInviter === true,
+        frequency: record.frequency ?? '',
+        ticketing: record.ticketing === true,
+        pricing: record.pricing ? PricingBuilder.clonePricingConfig(record.pricing) : undefined,
+        policies: (record.policies ?? []).map(item => ({ ...item })),
+        slotsEnabled: record.slotsEnabled === true,
+        slotTemplates: (record.slotTemplates ?? []).map(item => ({ ...item })),
+        parentEventId: record.parentEventId ?? null,
+        slotTemplateId: record.slotTemplateId ?? null,
+        generated: record.generated === true,
+        eventType: record.eventType ?? 'main',
+        nextSlot: record.nextSlot ? { ...record.nextSlot } : null,
+        upcomingSlots: (record.upcomingSlots ?? []).map(item => ({ ...item })),
+        acceptedMembers: Math.max(0, Math.trunc(Number(record.acceptedMembers) || 0)),
+        pendingMembers: Math.max(0, Math.trunc(Number(record.pendingMembers) || 0)),
+        pendingReason: record.pendingReason ?? null,
+        topics: [...(record.topics ?? [])],
+        subEvents: (record.subEvents ?? []).map(item => ({
+          ...item,
+          groups: Array.isArray(item.groups) ? item.groups.map(group => ({ ...group })) : [],
+          pricing: item.pricing ? PricingBuilder.clonePricingConfig(item.pricing) : undefined
+        })),
+        subEventsDisplayMode: record.subEventsDisplayMode ?? 'Casual',
+        rating: Math.max(0, Number(record.rating) || 0),
+        boost: Math.max(0, Number(record.boost) || 0),
+        affinity: Math.max(0, Number(record.affinity) || 0)
+      } satisfies DemoEventRecord;
+      return normalizedRecord;
+    });
   }
 
   private cloneEventFeedbackAnswersByCardId(
