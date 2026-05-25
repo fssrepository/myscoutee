@@ -77,7 +77,36 @@
               "fileReplacements": [
                 {
                   "replace": "src/environments/environment.ts",
-                  "with": "src/environments/environment.production-demo.ts"
+                  "with": "src/environments/environment.demo-github.ts"
+                }
+              ],
+              "budgets": [
+                {
+                  "type": "initial",
+                  "maximumWarning": "500kB",
+                  "maximumError": "3MB"
+                },
+                {
+                  "type": "anyComponentStyle",
+                  "maximumWarning": "20kB",
+                  "maximumError": "400kB"
+                }
+              ],
+              "outputHashing": "all",
+              "optimization": {
+                "styles": {
+                  "inlineCritical": true
+                },
+                "fonts": {
+                  "inline": true
+                }
+              }
+            },
+            "demo-github": {
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.demo-github.ts"
                 }
               ],
               "budgets": [
@@ -103,10 +132,43 @@
               }
             },
             "development": {
+              "outputPath": {
+                "base": "dev",
+                "browser": ""
+              },
+              "optimization": false,
+              "extractLicenses": false,
+              "sourceMap": true
+            },
+            "demo-npm": {
+              "outputPath": {
+                "base": "dev",
+                "browser": ""
+              },
+              "optimization": false,
+              "extractLicenses": false,
+              "sourceMap": true
+            },
+            "demo-http": {
               "fileReplacements": [
                 {
                   "replace": "src/environments/environment.ts",
-                  "with": "src/environments/environment.development.ts"
+                  "with": "src/environments/environment.demo-http.ts"
+                }
+              ],
+              "outputPath": {
+                "base": "dev",
+                "browser": ""
+              },
+              "optimization": false,
+              "extractLicenses": false,
+              "sourceMap": true
+            },
+            "playground": {
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.playground.ts"
                 }
               ],
               "outputPath": {
@@ -132,6 +194,18 @@
             },
             "development": {
               "buildTarget": "myscoutee:build:development"
+            },
+            "demo-npm": {
+              "buildTarget": "myscoutee:build:demo-npm"
+            },
+            "demo-http": {
+              "buildTarget": "myscoutee:build:demo-http"
+            },
+            "playground": {
+              "buildTarget": "myscoutee:build:playground"
+            },
+            "demo-github": {
+              "buildTarget": "myscoutee:build:demo-github"
             },
             "production-serve": {
               "buildTarget": "myscoutee:build:production"

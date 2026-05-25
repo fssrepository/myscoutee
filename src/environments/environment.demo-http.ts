@@ -1,8 +1,8 @@
 export const environment = {
   production: false,
   loginEnabled: false,
-  activitiesDataSource: 'demo' as 'demo' | 'http',
-  demoBootstrapEnabled: true,
+  activitiesDataSource: 'http' as 'demo' | 'http',
+  demoBootstrapEnabled: false,
   demoSeedScheduleAnchorDateIso: null as string | null,
   apiBaseUrl: '/api',
   remoteI18nEnabled: true,
