@@ -43,9 +43,7 @@ export class OwnedAssetsPopupFacadeService {
   isAssetDeletePending = false;
   assetForm: Omit<AppTypes.AssetCard, 'id' | 'requests'> = AssetCardBuilder.buildEmptyAssetForm('Car');
   assetFormVisibility: AppTypes.EventVisibility = 'Public';
-  readonly assetSourceRefreshEnabled =
-    environment.activitiesDataSource === 'http'
-    && environment.assetSourceRefreshEnabled !== false;
+  readonly assetSourcePreviewAvailable = environment.activitiesDataSource === 'http';
 
   private assetCardsRef: AppTypes.AssetCard[] = [];
   private activePopupFilter: AppTypes.AssetFilterType | null = null;
@@ -56,6 +54,7 @@ export class OwnedAssetsPopupFacadeService {
   private pendingPersistOwnerUserId = '';
   private persistTimerId: ReturnType<typeof setTimeout> | null = null;
   private pendingAssetImageFile: File | null = null;
+  private pendingAssetSourceImageUrl = '';
   private assetMutationVersion = 0;
   private pendingAssetDeleteLabelValue = '';
   private pendingAssetDeleteErrorValue = '';
@@ -373,6 +372,7 @@ export class OwnedAssetsPopupFacadeService {
     this.showAssetForm = true;
     this.isAssetFormSavePending = false;
     this.pendingAssetImageFile = null;
+    this.pendingAssetSourceImageUrl = '';
     if (card) {
       const imageUrl = AssetCardBuilder.normalizeAssetImageLink(card.type, card.imageUrl);
       const sourceLink = AssetCardBuilder.normalizeAssetSourceLink(card.sourceLink, imageUrl);
@@ -412,6 +412,8 @@ export class OwnedAssetsPopupFacadeService {
     this.showAssetForm = false;
     this.editingAssetId = null;
     this.isAssetFormSavePending = false;
+    this.pendingAssetImageFile = null;
+    this.pendingAssetSourceImageUrl = '';
     for (const hooks of this.runtimeHooks) {
       hooks.onAssetFormClosed?.();
     }
@@ -448,39 +450,25 @@ export class OwnedAssetsPopupFacadeService {
   }
 
   async refreshAssetFromSourceLink(): Promise<void> {
-    if (!this.assetSourceRefreshEnabled) {
-      return;
-    }
-    const raw = this.assetForm.sourceLink.trim();
-    if (!raw) {
-      return;
-    }
-    let parsed: URL | null = null;
-    try {
-      parsed = new URL(raw);
-    } catch {
-      try {
-        parsed = new URL(`https://${raw}`);
-        this.assetForm.sourceLink = parsed.toString();
-      } catch {
-        return;
-      }
-    }
-    if (!parsed || AssetCardBuilder.isGoogleMapsLikeLink(parsed.toString())) {
+    const sourceUrl = this.normalizedAssetSourcePreviewUrl(true);
+    if (!sourceUrl) {
       return;
     }
     const ownerUserId = this.resolveOwnerUserId();
-    const preview = await this.assetsService.refreshAssetSourcePreview(ownerUserId, this.assetForm.type, parsed.toString());
+    const preview = await this.assetsService.refreshAssetSourcePreview(ownerUserId, this.assetForm.type, sourceUrl);
     if (!preview || preview.enabled === false) {
       return;
     }
-    this.assetForm.sourceLink = preview.normalizedUrl.trim() || parsed.toString();
-    if (preview.imageUrl.trim()) {
+    this.assetForm.sourceLink = preview.normalizedUrl.trim() || sourceUrl;
+    this.pendingAssetSourceImageUrl = '';
+    const previewImageUrl = preview.imageUrl.trim();
+    if (previewImageUrl) {
       if (environment.activitiesDataSource === 'http' && this.assetForm.imageUrl.startsWith('blob:')) {
         this.revokeObjectUrl(this.assetForm.imageUrl);
       }
-      this.assetForm.imageUrl = preview.imageUrl.trim();
+      this.assetForm.imageUrl = previewImageUrl;
       this.pendingAssetImageFile = null;
+      this.pendingAssetSourceImageUrl = previewImageUrl;
     }
     if (preview.title.trim()) {
       this.assetForm.title = preview.title.trim();
@@ -493,9 +481,14 @@ export class OwnedAssetsPopupFacadeService {
     }
   }
 
+  canRefreshAssetFromSourceLink(): boolean {
+    return Boolean(this.normalizedAssetSourcePreviewUrl(false));
+  }
+
   applyAssetImageFile(file: File): void {
     this.revokeObjectUrl(this.assetForm.imageUrl);
     this.pendingAssetImageFile = environment.activitiesDataSource === 'http' ? file : null;
+    this.pendingAssetSourceImageUrl = '';
     this.assetForm.imageUrl = URL.createObjectURL(file);
   }
 
@@ -517,7 +510,9 @@ export class OwnedAssetsPopupFacadeService {
       const ownerName = this.appCtx.activeUserProfile()?.name?.trim() || undefined;
       const assetId = this.editingAssetId || `asset-${Date.now()}`;
       const resolvedImageUrl = await this.resolvePersistedAssetImageUrl(ownerUserId, assetId);
-      if (environment.activitiesDataSource === 'http' && this.pendingAssetImageFile && !resolvedImageUrl) {
+      if (environment.activitiesDataSource === 'http'
+          && (this.pendingAssetImageFile || this.hasPendingAssetSourceImage())
+          && !resolvedImageUrl) {
         throw new Error('Unable to upload asset image.');
       }
       const imageUrl = AssetCardBuilder.normalizeAssetImageLink(this.assetForm.type, resolvedImageUrl || this.assetForm.imageUrl);
@@ -620,17 +615,64 @@ export class OwnedAssetsPopupFacadeService {
   }
 
   private async resolvePersistedAssetImageUrl(ownerUserId: string, assetId: string): Promise<string | null> {
-    if (environment.activitiesDataSource !== 'http' || !this.pendingAssetImageFile) {
+    if (environment.activitiesDataSource !== 'http') {
       return this.assetForm.imageUrl.trim() || null;
     }
-    const uploadResult = await this.httpMediaService.uploadImage('asset', ownerUserId, assetId, this.pendingAssetImageFile);
-    if (!uploadResult.uploaded || !uploadResult.imageUrl) {
+    if (this.pendingAssetImageFile) {
+      const uploadResult = await this.httpMediaService.uploadImage('asset', ownerUserId, assetId, this.pendingAssetImageFile);
+      if (!uploadResult.uploaded || !uploadResult.imageUrl) {
+        return null;
+      }
+      this.revokeObjectUrl(this.assetForm.imageUrl);
+      this.pendingAssetImageFile = null;
+      this.pendingAssetSourceImageUrl = '';
+      this.assetForm.imageUrl = uploadResult.imageUrl;
+      return uploadResult.imageUrl;
+    }
+    const pendingSourceImageUrl = this.pendingAssetSourceImageUrl.trim();
+    if (pendingSourceImageUrl && pendingSourceImageUrl === this.assetForm.imageUrl.trim()) {
+      const importResult = await this.httpMediaService.importImage('asset', ownerUserId, assetId, pendingSourceImageUrl);
+      if (importResult.uploaded && importResult.imageUrl) {
+        this.pendingAssetSourceImageUrl = '';
+        this.assetForm.imageUrl = importResult.imageUrl;
+        return importResult.imageUrl;
+      }
       return null;
     }
-    this.revokeObjectUrl(this.assetForm.imageUrl);
-    this.pendingAssetImageFile = null;
-    this.assetForm.imageUrl = uploadResult.imageUrl;
-    return uploadResult.imageUrl;
+    return this.assetForm.imageUrl.trim() || null;
+  }
+
+  private hasPendingAssetSourceImage(): boolean {
+    const pendingSourceImageUrl = this.pendingAssetSourceImageUrl.trim();
+    return Boolean(pendingSourceImageUrl && pendingSourceImageUrl === this.assetForm.imageUrl.trim());
+  }
+
+  private normalizedAssetSourcePreviewUrl(updateForm: boolean): string {
+    if (!this.assetSourcePreviewAvailable) {
+      return '';
+    }
+    const raw = this.assetForm.sourceLink.trim();
+    if (!raw) {
+      return '';
+    }
+    const candidate = /^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(raw) ? raw : `https://${raw}`;
+    let parsed: URL;
+    try {
+      parsed = new URL(candidate);
+    } catch {
+      return '';
+    }
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      return '';
+    }
+    if (!parsed.hostname.trim()) {
+      return '';
+    }
+    const normalizedUrl = parsed.toString();
+    if (updateForm && normalizedUrl !== raw) {
+      this.assetForm.sourceLink = normalizedUrl;
+    }
+    return normalizedUrl;
   }
 
   canOpenAssetMap(card: AppTypes.AssetCard): boolean {

@@ -430,7 +430,7 @@ export class AdminService {
   ]).asReadonly();
 
   get isFirebaseAdminMode(): boolean {
-    return environment.loginEnabled === true;
+    return environment.firebaseLoginEnabled === true;
   }
 
   get usesHttpAdminApi(): boolean {

@@ -164,28 +164,28 @@ export class UsersService extends BaseRouteModeService {
     onProgress?: (state: DemoBootstrapProgressState) => void
   ): Promise<DemoUserListItemDto[]> {
     const normalizedTimeoutMs = this.resolveRequestTimeoutMs(requestTimeoutMs);
-    const demoModeEnabled = this.isDemoModeEnabled('/auth/demo-users');
-    const effectiveTimeoutMs = demoModeEnabled
+    const useLocalBootstrap = this.isDemoModeEnabled('/auth/demo-users');
+    const effectiveTimeoutMs = useLocalBootstrap
       ? normalizedTimeoutMs
       : Math.max(normalizedTimeoutMs, UsersService.DEMO_USERS_HTTP_TIMEOUT_MS);
 
     this.setLoadStatus(USERS_LOAD_CONTEXT_KEY, 'loading');
 
     try {
-      if (demoModeEnabled && environment.demoBootstrapEnabled) {
+      if (useLocalBootstrap) {
         await this.demoBootstrapService.ensureReady(onProgress);
       }
       const { value: response } = await this.loadWithRecovery(
         () => this.withRequestTimeout(
-          (demoModeEnabled ? this.demoUsersService : this.httpUsersService).queryAvailableDemoUsers(),
+          (useLocalBootstrap ? this.demoUsersService : this.httpUsersService).queryAvailableDemoUsers(),
           effectiveTimeoutMs
         ),
         () => ({
-          users: demoModeEnabled ? this.demoUsersRepository.queryAvailableDemoUsers() : []
+          users: useLocalBootstrap ? this.demoUsersRepository.queryAvailableDemoUsers() : []
         }),
         {
           shouldRecover: next =>
-            demoModeEnabled && (!Array.isArray(next.users) || next.users.length === 0),
+            useLocalBootstrap && (!Array.isArray(next.users) || next.users.length === 0),
           hasRecoveryValue: next => Array.isArray(next.users) && next.users.length > 0
         }
       );
@@ -207,7 +207,7 @@ export class UsersService extends BaseRouteModeService {
     userId: string,
     onProgress?: (state: DemoBootstrapProgressState) => void
   ): Promise<void> {
-    if (!this.isDemoModeEnabled('/auth/me') || !environment.demoBootstrapEnabled) {
+    if (!this.isDemoModeEnabled('/auth/me')) {
       onProgress?.({
         percent: 100,
         label: 'Demo session ready',

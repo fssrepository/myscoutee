@@ -144,16 +144,6 @@ export class EntryShellComponent implements OnDestroy {
   }
 
   protected async openEntryDemo(): Promise<void> {
-    if (this.isLoginBlockedByLandingBundle()) {
-      this.openBundledLoginUnavailableInfo();
-      return;
-    }
-    if (this.isLoginLocationRequiredByLandingBundle()) {
-      const allowed = await this.ensureHttpLoginAccessAllowed();
-      if (!allowed) {
-        return;
-      }
-    }
     if (!this.ensureEntryConsent()) {
       return;
     }
@@ -297,7 +287,7 @@ export class EntryShellComponent implements OnDestroy {
     this.entryConsentViewOnly = false;
     this.entryPrivacyLoading = this.helpCenter.privacyState() === null;
     this.entryPrivacyLoadingProgress = 0;
-    this.showEntryConsentPopup = this.entryPrivacyLoading || this.loadEntryConsentState() === null;
+    this.showEntryConsentPopup = !this.entryPrivacyLoading && this.shouldPromptEntryConsent();
     this.landingArticlesLoading = true;
     this.landingArticlesLoadingProgress = 0;
     this.syncLandingLoginAvailability(null, 'reset');
@@ -699,6 +689,10 @@ export class EntryShellComponent implements OnDestroy {
     }
   }
 
+  private shouldPromptEntryConsent(): boolean {
+    return this.entryConsentVersion().length > 0 && this.loadEntryConsentState() === null;
+  }
+
   private async loadEntryContent(): Promise<void> {
     if (this.entryContentLoadPromise) {
       return this.entryContentLoadPromise;
@@ -745,7 +739,7 @@ export class EntryShellComponent implements OnDestroy {
     }
     this.endEntryPrivacyLoadingWindow();
     if (!this.entryConsentViewOnly) {
-      this.showEntryConsentPopup = this.loadEntryConsentState() === null;
+      this.showEntryConsentPopup = this.shouldPromptEntryConsent();
     }
     this.changeDetectorRef.markForCheck();
     this.entryConsentStateChanged.emit(this.hasEntryConsent);

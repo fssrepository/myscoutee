@@ -6,12 +6,10 @@ export class DemoSeedScheduleBuilder {
   private static readonly REFERENCE_DATE = new Date(2026, 1, 18, 0, 0, 0, 0);
 
   static anchorDate(): Date {
-    const configuredAnchor = this.parseConfiguredAnchorDate(environment.demoSeedScheduleAnchorDateIso);
-    if (configuredAnchor) {
-      return configuredAnchor;
-    }
     const now = new Date(Date.now());
-    return new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+    const offsetDays = Math.trunc(Number(environment.bootstrapOffsetInDays) || 0);
+    return new Date(today.getTime() + (offsetDays * this.DAY_MS));
   }
 
   static rebaseDateTime(value: string | Date | null | undefined): string | undefined {
@@ -59,19 +57,4 @@ export class DemoSeedScheduleBuilder {
     return Number.isNaN(parsed.getTime()) ? null : parsed;
   }
 
-  private static parseConfiguredAnchorDate(value: string | null | undefined): Date | null {
-    const rawValue = `${value ?? ''}`.trim();
-    if (!rawValue) {
-      return null;
-    }
-    const dateOnlyMatch = rawValue.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-    if (dateOnlyMatch) {
-      const year = Number(dateOnlyMatch[1]);
-      const monthIndex = Number(dateOnlyMatch[2]) - 1;
-      const day = Number(dateOnlyMatch[3]);
-      const parsed = new Date(year, monthIndex, day, 0, 0, 0, 0);
-      return Number.isNaN(parsed.getTime()) ? null : parsed;
-    }
-    return this.parseDateTime(rawValue);
-  }
 }

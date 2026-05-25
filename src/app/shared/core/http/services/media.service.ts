@@ -68,6 +68,55 @@ export class HttpMediaService {
     }
   }
 
+  async importImage(
+    scope: string,
+    ownerId: string,
+    entityId: string,
+    imageUrl: string
+  ): Promise<HttpMediaUploadResult> {
+    const normalizedOwnerId = ownerId.trim();
+    const normalizedEntityId = entityId.trim();
+    const normalizedImageUrl = imageUrl.trim();
+    if (!normalizedOwnerId || !normalizedEntityId || !normalizedImageUrl) {
+      return {
+        uploaded: false,
+        imageUrl: null
+      };
+    }
+    try {
+      type UploadResponse = {
+        uploaded?: boolean | null;
+        imageUrl?: string | null;
+        url?: string | null;
+      };
+      const response = await this.http
+        .post<UploadResponse | null>(`${this.apiBaseUrl}/media/images/import`, {
+          scope,
+          ownerId: normalizedOwnerId,
+          entityId: normalizedEntityId,
+          imageUrl: normalizedImageUrl
+        })
+        .toPromise();
+      const storedImageUrl = this.normalizeReturnedMediaUrl(
+        (typeof response?.imageUrl === 'string' && response.imageUrl.trim().length > 0
+          ? response.imageUrl.trim()
+          : null)
+        ?? (typeof response?.url === 'string' && response.url.trim().length > 0
+          ? response.url.trim()
+          : null)
+      );
+      return {
+        uploaded: response?.uploaded === true && storedImageUrl !== null,
+        imageUrl: storedImageUrl
+      };
+    } catch {
+      return {
+        uploaded: false,
+        imageUrl: null
+      };
+    }
+  }
+
   async uploadAudio(
     scope: 'chat',
     ownerId: string,

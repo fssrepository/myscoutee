@@ -1,14 +1,11 @@
 export const environment = {
   production: false,
-  loginEnabled: false,
   activitiesDataSource: 'http' as 'demo' | 'http',
-  demoBootstrapEnabled: false,
-  demoSeedScheduleAnchorDateIso: null as string | null,
+  bootstrapOffsetInDays: 0,
   apiBaseUrl: '/api',
-  remoteI18nEnabled: true,
   serviceWorkerEnabled: false,
+  firebaseLoginEnabled: false,
   firebaseMessagingEnabled: true,
-  assetSourceRefreshEnabled: true,
   paymentIntegrationEnabled: false,
   paymentProvider: 'dummy' as 'dummy' | 'stripe' | 'barion'
 };
