@@ -563,7 +563,7 @@ export class OwnedAssetsPopupFacadeService {
           card.id === editingAssetId
             ? nextCard
             : card
-        ), { persist: false, reloadList: false });
+        ), { persist: false, reloadList: true });
         for (const hooks of this.runtimeHooks) {
           hooks.onAssetsChanged?.();
         }
@@ -572,7 +572,7 @@ export class OwnedAssetsPopupFacadeService {
               if (this.activeOwnerUserId === ownerUserId) {
                 this.applyAssetCards(this.assetCardsRef.map(card => card.id === savedCard.id ? savedCard : card), {
                   persist: false,
-                  reloadList: false
+                  reloadList: true
                 });
               }
             })
@@ -589,7 +589,7 @@ export class OwnedAssetsPopupFacadeService {
           menuActions: ['share', 'edit', 'delete']
         };
         this.markAssetMutation();
-        this.applyAssetCards([nextCard, ...this.assetCardsRef], { persist: false, reloadList: false });
+        this.applyAssetCards([nextCard, ...this.assetCardsRef], { persist: false, reloadList: true });
         for (const hooks of this.runtimeHooks) {
           hooks.onAssetCreated?.(nextCard);
           hooks.onAssetsChanged?.();
@@ -599,7 +599,7 @@ export class OwnedAssetsPopupFacadeService {
               if (this.activeOwnerUserId === ownerUserId) {
                 this.applyAssetCards(this.assetCardsRef.map(card => card.id === savedCard.id ? savedCard : card), {
                   persist: false,
-                  reloadList: false
+                  reloadList: true
                 });
               }
             })

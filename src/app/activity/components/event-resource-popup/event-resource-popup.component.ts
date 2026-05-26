@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, DoCheck, HostListener, Input, TemplateRef, ViewChild, inject } from '@angular/core';
+import { Component, DoCheck, HostListener, Input, ViewChild, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DragDropModule } from '@angular/cdk/drag-drop';
 import { MatButtonModule } from '@angular/material/button';
@@ -21,7 +21,6 @@ import {
   type InfoCardMenuActionEvent,
   type ListQuery,
   type SmartListConfig,
-  type SmartListItemTemplateContext,
   type SmartListLoadPage,
   type SmartListStateChange
 } from '../../../shared/ui';
@@ -367,24 +366,6 @@ export class EventResourcePopupComponent implements DoCheck {
 
   @ViewChild('assetExploreSmartList')
   private assetExploreSmartList?: SmartListComponent<AppTypes.AssetCard, ResourceSmartListFilters>;
-
-  protected resourceItemTemplateRef?: TemplateRef<SmartListItemTemplateContext<AppTypes.SubEventResourceCard, ResourceSmartListFilters>>;
-
-  @ViewChild('resourceItemTemplate', { read: TemplateRef })
-  private set resourceItemTemplate(
-    value: TemplateRef<SmartListItemTemplateContext<AppTypes.SubEventResourceCard, ResourceSmartListFilters>> | undefined
-  ) {
-    this.resourceItemTemplateRef = value;
-  }
-
-  protected assetExploreItemTemplateRef?: TemplateRef<SmartListItemTemplateContext<AppTypes.AssetCard, ResourceSmartListFilters>>;
-
-  @ViewChild('assetExploreItemTemplate', { read: TemplateRef })
-  private set assetExploreItemTemplate(
-    value: TemplateRef<SmartListItemTemplateContext<AppTypes.AssetCard, ResourceSmartListFilters>> | undefined
-  ) {
-    this.assetExploreItemTemplateRef = value;
-  }
 
   protected readonly resourceSmartListLoadPage: SmartListLoadPage<AppTypes.SubEventResourceCard, ResourceSmartListFilters> = (
     query
