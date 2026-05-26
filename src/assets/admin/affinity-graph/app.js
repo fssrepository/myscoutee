@@ -2,8 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls } from './vendor/OrbitControls.js';
 import { DEMO_AFFINITY_GRAPH } from './data.js';
 
-const GRAPH_STORE_KEY = new URLSearchParams(window.location.search).get('store') || 'adminAffinityGraph';
-const GRAPH_DATA = normalizeGraphData(await readGraphSnapshotFromIndexedDb(GRAPH_STORE_KEY) ?? DEMO_AFFINITY_GRAPH);
+const GRAPH_DATA = normalizeGraphData(await loadInitialGraphData());
 const GRAPH_MEMBER_LABEL = GRAPH_DATA.source === 'http' ? 'Mongo members' : 'demo members';
 const GRAPH_LAZY_ENABLED = GRAPH_DATA.source === 'http' || (window.parent && window.parent !== window);
 const GRAPH_LAYOUT_VERSION = GRAPH_DATA.layoutVersion || null;
@@ -149,6 +148,7 @@ const clickTargets = [];
 const forestClickTargets = [];
 let selectedNode = null;
 let activeComponentId = null;
+let pendingComponentGraphId = null;
 let fullGraphExpanded = false;
 let selectionReturnMode = null;
 let hoverNode = null;
@@ -874,6 +874,7 @@ function selectForest(componentId) {
     return;
   }
   activeComponentId = componentId;
+  pendingComponentGraphId = componentId;
   selectedNode = null;
   selectionReturnMode = null;
   fullGraphExpanded = false;
@@ -882,8 +883,22 @@ function selectForest(componentId) {
   restoreHomeNodePositions();
   rebuildEdges();
   renderMemberPanel(null);
-  startVisibleRefit({ fitCamera: true });
-  scheduleLazyComponentLoad(componentId, 60, { refresh: true });
+  if (GRAPH_LAZY_ENABLED) {
+    scheduleLazyComponentLoad(componentId, 60, { refresh: true, reveal: true });
+  } else {
+    revealComponentGraph(componentId, new Set(visibleNodeIds));
+  }
+  publishPreviewState();
+}
+
+function revealComponentGraph(componentId, previousVisibleNodeIds = new Set()) {
+  if (activeComponentId !== componentId || selectedNode) {
+    return;
+  }
+  pendingComponentGraphId = null;
+  rebuildEdges();
+  renderMemberPanel(null);
+  startVisibleRefit({ fitCamera: true, previousVisibleNodeIds });
   scheduleLazyTileLoad(80, { refresh: true });
   publishPreviewState();
 }
@@ -897,6 +912,7 @@ function clearSelection() {
   selectedNode = null;
   const returnMode = selectionReturnMode;
   selectionReturnMode = null;
+  pendingComponentGraphId = null;
 
   if (returnMode === 'forest' && activeComponentId !== null) {
     fullGraphExpanded = false;
@@ -912,6 +928,7 @@ function clearSelection() {
   }
 
   activeComponentId = null;
+  pendingComponentGraphId = null;
   fullGraphExpanded = true;
   layoutCenterAnchor = null;
   resetSemanticZoomLevel();
@@ -927,6 +944,7 @@ function showFullGraph() {
   stopSelectionVisualAnimation();
   selectedNode = null;
   activeComponentId = null;
+  pendingComponentGraphId = null;
   selectionReturnMode = null;
   fullGraphExpanded = true;
   layoutCenterAnchor = null;
@@ -955,6 +973,7 @@ function clearForest() {
   stopSelectionVisualAnimation();
   selectedNode = null;
   activeComponentId = null;
+  pendingComponentGraphId = null;
   selectionReturnMode = null;
   fullGraphExpanded = false;
   layoutCenterAnchor = null;
@@ -969,11 +988,15 @@ function clearForest() {
 
 function applyNodeState() {
   const showForestOverview = isForestOverview();
+  const graphRevealPending = isComponentGraphRevealPending();
   const visibleNodes = nodes.filter(node => visibleNodeIds.has(node.id));
   const maxVisibleWeight = Math.max(1, ...visibleNodes.map(node => node.visibleWeightSum ?? 0));
   const maxVisibleDegree = Math.max(1, ...visibleNodes.map(node => node.visibleDegree ?? 0));
   updateInteractionMode(showForestOverview);
   forestGroup.visible = showForestOverview;
+  edgeGroup.visible = !graphRevealPending;
+  selectedLinkGroup.visible = !graphRevealPending;
+  nodeGroup.visible = !graphRevealPending;
   syncForestBadgeVisibility();
 
   for (const node of nodes) {
@@ -987,12 +1010,12 @@ function applyNodeState() {
     const baseScale = selectedNode || activeComponentId !== null
       ? 0.82 + visualScore * 0.58
       : 1;
-    node.badge.visible = !showForestOverview && isVisible;
+    node.badge.visible = !showForestOverview && !graphRevealPending && isVisible;
     node.badge.material.opacity = isSelected ? 1 : clamp((0.62 + visualScore * 0.36) * depthFade, 0.56, 0.98);
     node.badge.scale.setScalar(node.badgeScale * (isSelected ? 1.46 : baseScale * depthFade));
     node.badge.renderOrder = isSelected ? 36 : 18 + Math.round(visualScore * 10) - nodeDepth;
   }
-  if (selectedNode) {
+  if (selectedNode && !graphRevealPending) {
     selectionSprite.visible = true;
     selectionSprite.position.copy(selectedNode.position);
     selectionSprite.scale.setScalar(selectedNode.badgeScale * 1.42);
@@ -1662,6 +1685,12 @@ function updateControlVisibility() {
 
 function isForestOverview() {
   return !selectedNode && activeComponentId === null && !fullGraphExpanded;
+}
+
+function isComponentGraphRevealPending() {
+  return pendingComponentGraphId !== null
+    && activeComponentId === pendingComponentGraphId
+    && !selectedNode;
 }
 
 function pickNode(event) {
@@ -2434,7 +2463,9 @@ async function loadLazyComponent(componentId, options = {}) {
     const previousVisibleNodeIds = new Set(visibleNodeIds);
     const changed = mergeGraphPayload(result);
     if (activeComponentId === componentId && !selectedNode) {
-      if (changed && visibleSceneSignature() !== beforeSignature) {
+      if (options.reveal && pendingComponentGraphId === componentId) {
+        revealComponentGraph(componentId, previousVisibleNodeIds);
+      } else if (changed && visibleSceneSignature() !== beforeSignature) {
         renderMemberPanel(null);
         startVisibleRefit({ fitCamera: true, previousVisibleNodeIds });
       }
@@ -3922,41 +3953,11 @@ function seededVector(text) {
   );
 }
 
-async function readGraphSnapshotFromIndexedDb(storeKey) {
-  if (typeof indexedDB === 'undefined') {
-    return null;
+async function loadInitialGraphData() {
+  if (window.parent && window.parent !== window) {
+    return await requestGraphData('initialGraph');
   }
-  const db = await openGraphIndexedDb();
-  if (!db) {
-    return null;
-  }
-  try {
-    return await new Promise(resolve => {
-      const tx = db.transaction('tables', 'readonly');
-      const request = tx.objectStore('tables').get(storeKey);
-      request.onsuccess = () => resolve(request.result ?? null);
-      request.onerror = () => resolve(null);
-      tx.onerror = () => resolve(null);
-      tx.onabort = () => resolve(null);
-    });
-  } finally {
-    db.close();
-  }
-}
-
-function openGraphIndexedDb() {
-  return new Promise(resolve => {
-    const request = indexedDB.open('myscoutee-memory-db', 5);
-    request.onupgradeneeded = () => {
-      const db = request.result;
-      if (!db.objectStoreNames.contains('tables')) {
-        db.createObjectStore('tables');
-      }
-    };
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => resolve(null);
-    request.onblocked = () => resolve(null);
-  });
+  return DEMO_AFFINITY_GRAPH;
 }
 
 function normalizeGraphData(data) {

@@ -4,7 +4,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 
 import { AdminService } from '../../admin.service';
-import { ADMIN_AFFINITY_GRAPH_STORE_KEY, AdminAffinityGraphService } from '../../services/admin-affinity-graph.service';
+import { AdminAffinityGraphService } from '../../services/admin-affinity-graph.service';
 import { LazyBgImageDirective } from '../../../shared/ui/directives';
 import { HeaderProgressBarComponent, type HeaderProgressBarConfig } from '../../../shared/ui/components';
 
@@ -93,28 +93,17 @@ export class AdminAffinityGraphPopupComponent implements OnDestroy {
     if (this.admin.activePopup() !== this.popupKey) {
       return;
     }
-    const requestId = this.graphOpenRequestId + 1;
-    this.graphOpenRequestId = requestId;
+    this.graphOpenRequestId += 1;
     this.clearGraphStaticShellHideTimer();
     this.graphFrameLoaded.set(false);
     this.graphStaticShellVisible.set(true);
     this.graphUrl.set(null);
-    void this.affinityGraph.prepareGraphSnapshot(this.admin.activeAdmin()?.id).then(() => {
-      if (requestId !== this.graphOpenRequestId || this.admin.activePopup() !== this.popupKey) {
-        return;
-      }
-      const params = new URLSearchParams({
-        store: ADMIN_AFFINITY_GRAPH_STORE_KEY,
-        v: Date.now().toString()
-      });
-      this.graphUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(
-        `assets/admin/affinity-graph/index.html?${params.toString()}`
-      ));
-    }).catch(() => {
-      if (requestId === this.graphOpenRequestId) {
-        this.graphUrl.set(null);
-      }
+    const params = new URLSearchParams({
+      v: Date.now().toString()
     });
+    this.graphUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(
+      `assets/admin/affinity-graph/index.html?${params.toString()}`
+    ));
   }
 
   private handleGraphMessage(event: MessageEvent): void {
@@ -164,6 +153,8 @@ export class AdminAffinityGraphPopupComponent implements OnDestroy {
   private resolveGraphRequest(method: string, params: Record<string, unknown>): Promise<unknown> {
     const adminUserId = this.admin.activeAdmin()?.id;
     switch (method) {
+      case 'initialGraph':
+        return this.affinityGraph.loadInitialGraph(adminUserId);
       case 'meta':
         return this.affinityGraph.loadMeta(adminUserId, this.rangeParams(params));
       case 'forests':

@@ -10,21 +10,15 @@ import type {
 import { AppMemoryDb } from '../../base/db';
 import { DemoUserSeedBuilder } from '../builders';
 import { USER_RATES_TABLE_NAME, USERS_TABLE_NAME } from '../models/users.model';
-import { DemoUsersRatingsRepository } from './users-ratings.repository';
-import { DemoUsersRepository } from './users.repository';
 
 @Injectable({
   providedIn: 'root'
 })
 export class DemoAdminAffinityGraphRepository {
   private readonly memoryDb = inject(AppMemoryDb);
-  private readonly demoUsersRepository = inject(DemoUsersRepository);
-  private readonly demoUsersRatingsRepository = inject(DemoUsersRatingsRepository);
 
   async buildGraphSnapshot(): Promise<AdminAffinityGraphDto> {
     await this.memoryDb.whenReady();
-    this.demoUsersRepository.init();
-    this.demoUsersRatingsRepository.init();
 
     const state = this.memoryDb.read();
     const usersTable = state[USERS_TABLE_NAME];

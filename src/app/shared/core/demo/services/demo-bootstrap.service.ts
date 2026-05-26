@@ -15,6 +15,8 @@ import { DemoHelpCenterService } from './help-center.service';
 import { DemoProfileExperiencesRepository } from '../repositories/profile-experiences.repository';
 import { EVENT_FEEDBACK_TABLE_NAME } from '../models/event-feedback.model';
 import type { DemoEventRecord } from '../models/events.model';
+import { ADMIN_AFFINITY_GRAPH_STORE_KEY } from '../../base/interfaces/admin-affinity-graph.interface';
+import { DemoAdminAffinityGraphRepository } from '../repositories/admin-affinity-graph.repository';
 import { DemoUsersRatingsRepository } from '../repositories/users-ratings.repository';
 import { DemoUsersRepository } from '../repositories/users.repository';
 
@@ -26,6 +28,7 @@ export type DemoBootstrapProgressStage =
   | 'users'
   | 'feedback'
   | 'ratings'
+  | 'affinityGraph'
   | 'assets'
   | 'activityMembers'
   | 'activityResources'
@@ -56,8 +59,9 @@ export const DEMO_BOOTSTRAP_PROGRESS_STEPS: readonly DemoBootstrapProgressStep[]
   { stage: 'users', percent: 34, label: 'Preparing demo users' },
   { stage: 'feedback', percent: 44, label: 'Preparing event feedback' },
   { stage: 'ratings', percent: 52, label: 'Loading ratings' },
-  { stage: 'assets', percent: 68, label: 'Preparing owned assets' },
-  { stage: 'activityMembers', percent: 80, label: 'Preparing activity members' },
+  { stage: 'affinityGraph', percent: 62, label: 'Preparing affinity graph' },
+  { stage: 'assets', percent: 70, label: 'Preparing owned assets' },
+  { stage: 'activityMembers', percent: 82, label: 'Preparing activity members' },
   { stage: 'activityResources', percent: 94, label: 'Preparing activity resources' },
   { stage: 'indexedDb', percent: 98, label: 'Syncing demo IndexedDB' },
   { stage: 'ready', percent: 100, label: 'Demo data ready' }
@@ -93,6 +97,7 @@ export class DemoBootstrapService {
   private readonly usersRepository = inject(DemoUsersRepository);
   private readonly activityMembersRepository = inject(DemoActivityMembersRepository);
   private readonly assetsRepository = inject(DemoAssetsRepository);
+  private readonly affinityGraphRepository = inject(DemoAdminAffinityGraphRepository);
   private readonly activityResourcesRepository = inject(DemoActivityResourcesRepository);
   private readonly profileExperiencesRepository = inject(DemoProfileExperiencesRepository);
   private readonly helpCenterService = inject(DemoHelpCenterService);
@@ -195,6 +200,7 @@ export class DemoBootstrapService {
     this.profileExperiencesRepository.init();
     await this.runBootstrapStep('feedback', () => this.seedEventFeedbackStates());
     await this.runBootstrapStep('ratings', () => this.usersRatingsRepository.init());
+    await this.runBootstrapStep('affinityGraph', () => this.bootstrapAffinityGraph());
     await this.runBootstrapStep('assets', () => this.assetsRepository.init());
     await this.runBootstrapStep('activityMembers', () => this.activityMembersRepository.init());
     await this.runBootstrapStep('activityResources', () => this.activityResourcesRepository.init());
@@ -202,6 +208,11 @@ export class DemoBootstrapService {
 
     this.ready = true;
     this.emitProgress(demoBootstrapProgressStep('ready'));
+  }
+
+  private async bootstrapAffinityGraph(): Promise<void> {
+    const snapshot = await this.affinityGraphRepository.buildGraphSnapshot();
+    await this.memoryDb.writeIndexedDbTableEntry(ADMIN_AFFINITY_GRAPH_STORE_KEY, snapshot);
   }
 
   private async initOptionalHelpCenter(): Promise<void> {

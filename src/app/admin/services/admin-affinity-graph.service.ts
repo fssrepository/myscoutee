@@ -13,7 +13,6 @@ import {
   type AdminAffinityGraphNodeDto,
   type AdminAffinityGraphTileDto
 } from '../../shared/core/base/interfaces/admin-affinity-graph.interface';
-import { DemoAdminAffinityGraphRepository } from '../../shared/core/demo';
 import {
   HttpAdminAffinityGraphRepository,
   type AdminAffinityGraphRangeParams,
@@ -33,7 +32,6 @@ const AFFINITY_GRAPH_FOREST_BASE_BUDGET = 16;
 })
 export class AdminAffinityGraphService {
   private readonly memoryDb = inject(AppMemoryDb);
-  private readonly demoRepository = inject(DemoAdminAffinityGraphRepository);
   private readonly httpRepository = inject(HttpAdminAffinityGraphRepository);
   private readonly routeDelay = inject(RouteDelayService);
   private readonly loadingActiveRef = signal(false);
@@ -50,21 +48,15 @@ export class AdminAffinityGraphService {
     overdue: this.loadingOverdueRef()
   }));
 
-  async prepareGraphSnapshot(adminUserId?: string | null): Promise<AdminAffinityGraphDto> {
+  async loadInitialGraph(adminUserId?: string | null): Promise<AdminAffinityGraphDto> {
     return this.withLoadingProgress(async () => {
-      const [snapshot] = await Promise.all([
-        this.usesHttpAdminApi
-          ? this.loadHttpBootstrapSnapshot(adminUserId)
-          : this.demoRepository.buildGraphSnapshot(),
-        this.routeDelay.waitForRouteDelay(
-          ADMIN_AFFINITY_GRAPH_ROUTE,
-          undefined,
-          undefined,
-          AFFINITY_GRAPH_LOAD_DEMO_DELAY_MS
-        )
-      ]);
+      const snapshot = this.usesHttpAdminApi
+        ? await this.loadHttpInitialGraph(adminUserId)
+        : await this.withDemoGraphRouteDelay(this.readDemoGraphSnapshot());
       const normalized = this.normalizeSnapshot(snapshot, this.usesHttpAdminApi ? 'http' : 'demo');
-      await this.memoryDb.writeIndexedDbTableEntry(ADMIN_AFFINITY_GRAPH_STORE_KEY, normalized);
+      if (this.usesHttpAdminApi) {
+        await this.memoryDb.writeIndexedDbTableEntry(ADMIN_AFFINITY_GRAPH_STORE_KEY, normalized);
+      }
       return normalized;
     });
   }
@@ -81,15 +73,7 @@ export class AdminAffinityGraphService {
       return this.withLoadingProgress(() => this.httpRepository.loadForests(adminUserId, range));
     }
     return this.withLoadingProgress(async () => {
-      const [snapshot] = await Promise.all([
-        this.demoSnapshot(range),
-        this.routeDelay.waitForRouteDelay(
-          ADMIN_AFFINITY_GRAPH_ROUTE,
-          undefined,
-          undefined,
-          AFFINITY_GRAPH_LOAD_DEMO_DELAY_MS
-        )
-      ]);
+      const snapshot = await this.withDemoGraphRouteDelay(this.demoSnapshot(range));
       const components = this.components(snapshot.nodes, snapshot.edges);
       const forests = components.map((component, index) => this.forestFromComponent(component, index));
       const page = this.forestPage(forests, range);
@@ -112,15 +96,7 @@ export class AdminAffinityGraphService {
       return this.withLoadingProgress(() => this.httpRepository.loadTile(adminUserId, tile));
     }
     return this.withLoadingProgress(async () => {
-      const [snapshot] = await Promise.all([
-        this.demoSnapshot(tile),
-        this.routeDelay.waitForRouteDelay(
-          ADMIN_AFFINITY_GRAPH_ROUTE,
-          undefined,
-          undefined,
-          AFFINITY_GRAPH_LOAD_DEMO_DELAY_MS
-        )
-      ]);
+      const snapshot = await this.withDemoGraphRouteDelay(this.demoSnapshot(tile));
       return {
         generatedAtIso: snapshot.generatedAtIso,
         source: snapshot.source,
@@ -147,15 +123,7 @@ export class AdminAffinityGraphService {
       return this.withLoadingProgress(() => this.httpRepository.loadNeighborhood(userId, depth, adminUserId, range));
     }
     return this.withLoadingProgress(async () => {
-      const [snapshot] = await Promise.all([
-        this.demoSnapshot(range),
-        this.routeDelay.waitForRouteDelay(
-          ADMIN_AFFINITY_GRAPH_ROUTE,
-          undefined,
-          undefined,
-          AFFINITY_GRAPH_LOAD_DEMO_DELAY_MS
-        )
-      ]);
+      const snapshot = await this.withDemoGraphRouteDelay(this.demoSnapshot(range));
       const normalizedUserId = `${userId ?? ''}`.trim();
       const selectedIds = this.neighborhoodIds(snapshot.edges, normalizedUserId, Math.max(1, Math.min(3, Math.trunc(Number(depth ?? 1)))));
       if (snapshot.nodes.some(node => node.id === normalizedUserId)) {
@@ -197,7 +165,7 @@ export class AdminAffinityGraphService {
     }
   }
 
-  private async loadHttpBootstrapSnapshot(adminUserId?: string | null): Promise<AdminAffinityGraphDto> {
+  private async loadHttpInitialGraph(adminUserId?: string | null): Promise<AdminAffinityGraphDto> {
     try {
       const [meta, forests, firstTile] = await Promise.all([
         this.httpRepository.loadMeta(adminUserId),
@@ -233,11 +201,36 @@ export class AdminAffinityGraphService {
   }
 
   private async demoSnapshot(range?: AdminAffinityGraphRangeParams | null): Promise<AdminAffinityGraphDto> {
-    const snapshot = this.normalizeSnapshot(await this.demoRepository.buildGraphSnapshot(), 'demo');
+    const snapshot = await this.readDemoGraphSnapshot();
     return {
       ...snapshot,
       edges: this.filterEdges(snapshot.edges, range)
     };
+  }
+
+  private async readDemoGraphSnapshot(): Promise<AdminAffinityGraphDto> {
+    await this.memoryDb.whenReady();
+    const snapshot = await this.memoryDb.readIndexedDbTableEntry<AdminAffinityGraphDto>(ADMIN_AFFINITY_GRAPH_STORE_KEY);
+    if (!snapshot) {
+      throw new Error('Demo affinity graph snapshot is not bootstrapped.');
+    }
+    return this.normalizeSnapshot(snapshot, 'demo');
+  }
+
+  private async withDemoGraphRouteDelay<T>(work: Promise<T>): Promise<T> {
+    const delay = this.routeDelay.waitForRouteDelay(
+      ADMIN_AFFINITY_GRAPH_ROUTE,
+      undefined,
+      undefined,
+      AFFINITY_GRAPH_LOAD_DEMO_DELAY_MS
+    );
+    try {
+      const [result] = await Promise.all([work, delay]);
+      return result;
+    } catch (error) {
+      await delay.catch(() => undefined);
+      throw error;
+    }
   }
 
   private metaFromSnapshot(snapshot: AdminAffinityGraphDto): AdminAffinityGraphMetaDto {

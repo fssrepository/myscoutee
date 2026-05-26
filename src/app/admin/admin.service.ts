@@ -38,7 +38,14 @@ import {
 import { AppMemoryDb } from '../shared/core/base/db';
 import type { ChatRecord } from '../shared/core/base/models/chat.model';
 import type { ChatPopupMessage } from '../shared/core/base/models/chat.model';
-import { DemoChatsRepository, DemoHelpCenterService, DemoUsersRepository } from '../shared/core/demo';
+import {
+  DemoAdminAffinityGraphRepository,
+  DemoChatsRepository,
+  DemoHelpCenterService,
+  DemoUsersRatingsRepository,
+  DemoUsersRepository
+} from '../shared/core/demo';
+import { ADMIN_AFFINITY_GRAPH_STORE_KEY } from '../shared/core/base/interfaces/admin-affinity-graph.interface';
 import { CHATS_TABLE_NAME, type DemoChatRecord } from '../shared/core/demo/models/chats.model';
 import { SHARE_TOKENS_TABLE_NAME } from '../shared/core/demo/models/share-tokens.model';
 import { ActivitiesPopupStateService } from '../activity/services/activities-popup-state.service';
@@ -333,7 +340,7 @@ interface DemoAdminHelpTarget {
   targetUrl: string;
 }
 
-type AdminBootstrapProgressStage = 'selector' | 'indexedDb' | 'records' | 'profile' | 'ready';
+type AdminBootstrapProgressStage = 'selector' | 'indexedDb' | 'records' | 'affinityGraph' | 'profile' | 'ready';
 
 export interface AdminBootstrapProgressState {
   percent: number;
@@ -390,6 +397,8 @@ export class AdminService {
   private readonly routeDelay = inject(RouteDelayService);
   private readonly memoryDb = inject(AppMemoryDb);
   private readonly demoUsersRepository = inject(DemoUsersRepository);
+  private readonly demoUsersRatingsRepository = inject(DemoUsersRatingsRepository);
+  private readonly demoAffinityGraphRepository = inject(DemoAdminAffinityGraphRepository);
   private readonly demoChatsRepository = inject(DemoChatsRepository);
   private readonly demoHelpCenterService = inject(DemoHelpCenterService);
   private readonly activitiesContext = inject(ActivitiesPopupStateService);
@@ -1140,7 +1149,10 @@ export class AdminService {
     await this.memoryDb.whenReady();
     await this.initOptionalDemoHelpCenter();
     this.demoUsersRepository.init();
+    this.demoUsersRatingsRepository.init();
     await this.ensureDemoAdminProfiles();
+    onProgress?.({ percent: 36, label: 'Preparing affinity graph', stage: 'affinityGraph' });
+    await this.ensureDemoAffinityGraphSeed();
     this.demoChatsRepository.init();
     await this.ensureDemoNotificationCenterSeed();
     await this.ensureDemoMonitoringSeed();
@@ -1162,6 +1174,11 @@ export class AdminService {
     } catch {
       // Help, privacy, and explanation content should never block admin demo bootstrap.
     }
+  }
+
+  private async ensureDemoAffinityGraphSeed(): Promise<void> {
+    const snapshot = await this.demoAffinityGraphRepository.buildGraphSnapshot();
+    await this.memoryDb.writeIndexedDbTableEntry(ADMIN_AFFINITY_GRAPH_STORE_KEY, snapshot);
   }
 
   private async ensureDemoModerationStore(): Promise<AdminModerationStore> {

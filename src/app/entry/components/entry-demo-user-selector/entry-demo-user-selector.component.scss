@@ -273,6 +273,13 @@
   --demo-user-progress-track-stripe-soft: rgba(255, 166, 110, 0.06);
 }
 
+.demo-user-progress[data-stage='affinityGraph'] {
+  --demo-user-progress-fill: linear-gradient(90deg, #ff8d5e 0%, #6e8fff 100%);
+  --demo-user-progress-glow: rgba(110, 143, 255, 0.24);
+  --demo-user-progress-track-stripe-strong: rgba(110, 143, 255, 0.14);
+  --demo-user-progress-track-stripe-soft: rgba(110, 143, 255, 0.05);
+}
+
 .demo-user-progress[data-stage='activityMembers'] {
   --demo-user-progress-fill: linear-gradient(90deg, #6e8fff 0%, #8b67f0 100%);
   --demo-user-progress-glow: rgba(126, 113, 244, 0.28);
@@ -317,6 +324,10 @@
 
 .demo-user-progress-segment[data-stage='ratings'] {
   background: rgba(255, 169, 95, 0.24);
+}
+
+.demo-user-progress-segment[data-stage='affinityGraph'] {
+  background: rgba(110, 143, 255, 0.2);
 }
 
 .demo-user-progress-segment[data-stage='activityMembers'] {

@@ -269,6 +269,8 @@ export class AdminPageComponent implements OnInit, OnDestroy {
     switch (stage) {
       case 'indexedDb':
         return 'indexedDb';
+      case 'affinityGraph':
+        return 'affinityGraph';
       case 'profile':
         return 'session';
       case 'ready':
