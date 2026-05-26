@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540" role="img" aria-label="MyScoutee affinity graph illustration">
+  <defs>
+    <linearGradient id="article-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#eff7ff"/>
+      <stop offset="0.48" stop-color="#f7fbf5"/>
+      <stop offset="1" stop-color="#fff4e4"/>
+    </linearGradient>
+    <radialGradient id="node-glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="0.62" stop-color="#ffffff" stop-opacity="0.72"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="soft-shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="14" stdDeviation="18" flood-color="#39546f" flood-opacity="0.16"/>
+    </filter>
+  </defs>
+  <rect width="960" height="540" rx="34" fill="url(#article-bg)"/>
+  <g opacity="0.24">
+    <path d="M92 110h776M92 190h776M92 270h776M92 350h776M92 430h776" stroke="#9fb8cf" stroke-width="2"/>
+    <path d="M150 70v400M260 70v400M370 70v400M480 70v400M590 70v400M700 70v400M810 70v400" stroke="#9fb8cf" stroke-width="2"/>
+  </g>
+  <g filter="url(#soft-shadow)">
+    <path d="M151 365C238 244 311 211 421 256S570 387 665 292s121-138 184-112" fill="none" stroke="#f39b36" stroke-width="22" stroke-linecap="round" opacity="0.22"/>
+    <path d="M126 302c86-72 171-99 254-82s158 88 239 83 143-73 215-65" fill="none" stroke="#3bb6a6" stroke-width="16" stroke-linecap="round" opacity="0.24"/>
+    <path d="M176 203c74 46 117 117 222 129s164-45 254-35 132 79 208 85" fill="none" stroke="#6076d8" stroke-width="14" stroke-linecap="round" opacity="0.20"/>
+  </g>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M166 352 282 209 405 287 522 190 657 305 802 176" stroke="#f49a35" stroke-width="10"/>
+    <path d="M166 352 405 287 657 305" stroke="#3aa99b" stroke-width="8"/>
+    <path d="M282 209 522 190 802 176" stroke="#5b75d6" stroke-width="7"/>
+    <path d="M282 209 657 305 802 176" stroke="#8ba0b8" stroke-width="5" opacity="0.72"/>
+  </g>
+  <g>
+    <circle cx="166" cy="352" r="56" fill="url(#node-glow)"/>
+    <circle cx="282" cy="209" r="58" fill="url(#node-glow)"/>
+    <circle cx="405" cy="287" r="54" fill="url(#node-glow)"/>
+    <circle cx="522" cy="190" r="60" fill="url(#node-glow)"/>
+    <circle cx="657" cy="305" r="58" fill="url(#node-glow)"/>
+    <circle cx="802" cy="176" r="60" fill="url(#node-glow)"/>
+  </g>
+  <g filter="url(#soft-shadow)">
+    <circle cx="166" cy="352" r="33" fill="#ffffff" stroke="#8db1cf" stroke-width="5"/>
+    <circle cx="282" cy="209" r="39" fill="#fff0d7" stroke="#efa94a" stroke-width="6"/>
+    <circle cx="405" cy="287" r="34" fill="#ffffff" stroke="#8db1cf" stroke-width="5"/>
+    <circle cx="522" cy="190" r="42" fill="#eaf7f1" stroke="#3bb6a6" stroke-width="6"/>
+    <circle cx="657" cy="305" r="38" fill="#ffffff" stroke="#8db1cf" stroke-width="5"/>
+    <circle cx="802" cy="176" r="43" fill="#eef2ff" stroke="#6076d8" stroke-width="6"/>
+  </g>
+  <g opacity="0.82">
+    <circle cx="740" cy="392" r="19" fill="#f49a35"/>
+    <circle cx="786" cy="410" r="13" fill="#3bb6a6"/>
+    <circle cx="826" cy="382" r="16" fill="#6076d8"/>
+    <path d="M740 392 786 410 826 382" fill="none" stroke="#ffffff" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/>
+  </g>
+</svg>
