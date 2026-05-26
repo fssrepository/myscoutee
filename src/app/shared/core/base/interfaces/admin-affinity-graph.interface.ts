@@ -39,6 +39,7 @@ export interface AdminAffinityGraphDto {
   layoutVersion?: string | null;
   nodes: AdminAffinityGraphNodeDto[];
   edges: AdminAffinityGraphEdgeDto[];
+  forests?: AdminAffinityGraphForestDto[] | null;
 }
 
 export interface AdminAffinityGraphMetaDto {

@@ -120,11 +120,17 @@ h1 {
 
 .control-header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
   padding-bottom: 9px;
-  border-bottom: 1px solid var(--line);
+}
+
+.graph-app--booting .metrics,
+.graph-app--booting .range-field,
+.graph-app--booting .depth-field,
+.graph-app--booting .member-panel {
+  display: none;
 }
 
 .range-field {
@@ -284,6 +290,15 @@ h1 {
   align-items: center;
 }
 
+.member-heading--profile {
+  grid-template-columns: 68px minmax(0, 1fr);
+  gap: 13px;
+}
+
+.member-copy {
+  min-width: 0;
+}
+
 .avatar {
   width: 44px;
   height: 44px;
@@ -295,6 +310,50 @@ h1 {
   border: 2px solid #ffffff;
   box-shadow: 0 8px 22px rgba(0, 0, 0, 0.14);
   font-weight: 900;
+}
+
+.member-heading--profile .avatar {
+  width: 68px;
+  height: 68px;
+  border-width: 3px;
+  font-size: 1.12rem;
+}
+
+.avatar--photo {
+  position: relative;
+  overflow: hidden;
+  padding: 3px;
+}
+
+.member-heading--profile .avatar--photo {
+  padding: 4px;
+}
+
+.avatar-fallback {
+  position: relative;
+  z-index: 0;
+}
+
+.avatar--photo img {
+  position: absolute;
+  inset: 3px;
+  width: calc(100% - 6px);
+  height: calc(100% - 6px);
+  border-radius: 50%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 160ms ease;
+  z-index: 1;
+}
+
+.member-heading--profile .avatar--photo img {
+  inset: 4px;
+  width: calc(100% - 8px);
+  height: calc(100% - 8px);
+}
+
+.avatar--photo img.is-loaded {
+  opacity: 1;
 }
 
 .member-panel h2 {
@@ -317,6 +376,10 @@ h1 {
   color: #29313a;
   font-size: 0.84rem;
   line-height: 1.45;
+}
+
+.member-heading--profile .member-headline {
+  margin: 7px 0 0;
 }
 
 .detail-grid {

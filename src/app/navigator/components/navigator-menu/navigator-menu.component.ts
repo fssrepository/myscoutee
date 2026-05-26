@@ -253,7 +253,6 @@ export class NavigatorMenuComponent {
     }
     if (this.isAdminMode()) {
       this.popupCtx.openAdminNavigatorRequest('profile');
-      this.navigatorService.closeMenu();
       return;
     }
     this.navigatorService.openProfileEditor();
@@ -359,7 +358,6 @@ export class NavigatorMenuComponent {
       return;
     }
     this.popupCtx.openAdminNavigatorRequest('reports');
-    this.navigatorService.closeMenu();
   }
 
   protected openAdminFeedbackShortcut(event?: Event): void {
@@ -368,7 +366,6 @@ export class NavigatorMenuComponent {
       return;
     }
     this.popupCtx.openAdminNavigatorRequest('feedback');
-    this.navigatorService.closeMenu();
   }
 
   protected openAdminChatShortcut(event?: Event): void {
@@ -377,7 +374,6 @@ export class NavigatorMenuComponent {
       return;
     }
     this.popupCtx.openAdminNavigatorRequest('chat');
-    this.navigatorService.closeMenu();
   }
 
   protected openAdminProfileShortcut(event?: Event): void {
@@ -386,7 +382,6 @@ export class NavigatorMenuComponent {
       return;
     }
     this.popupCtx.openAdminNavigatorRequest('profile');
-    this.navigatorService.closeMenu();
   }
 
   protected openAdminHelpEditorShortcut(event?: Event): void {
@@ -395,7 +390,6 @@ export class NavigatorMenuComponent {
       return;
     }
     this.popupCtx.openAdminNavigatorRequest('help-editor');
-    this.navigatorService.closeMenu();
   }
 
   protected openAdminIdeaEditorShortcut(event?: Event): void {
@@ -404,7 +398,6 @@ export class NavigatorMenuComponent {
       return;
     }
     this.popupCtx.openAdminNavigatorRequest('idea-editor');
-    this.navigatorService.closeMenu();
   }
 
   protected openAdminNotificationsShortcut(event?: Event): void {
@@ -413,7 +406,6 @@ export class NavigatorMenuComponent {
       return;
     }
     this.popupCtx.openAdminNavigatorRequest('notifications');
-    this.navigatorService.closeMenu();
   }
 
   protected openAdminParamsShortcut(event?: Event): void {
@@ -422,7 +414,6 @@ export class NavigatorMenuComponent {
       return;
     }
     this.popupCtx.openAdminNavigatorRequest('params');
-    this.navigatorService.closeMenu();
   }
 
   protected openAdminStatsShortcut(event?: Event): void {
@@ -431,7 +422,6 @@ export class NavigatorMenuComponent {
       return;
     }
     this.popupCtx.openAdminNavigatorRequest('stats');
-    this.navigatorService.closeMenu();
   }
 
   protected openAdminAffinityGraphShortcut(event?: Event): void {
@@ -440,7 +430,6 @@ export class NavigatorMenuComponent {
       return;
     }
     this.popupCtx.openAdminNavigatorRequest('affinity-graph');
-    this.navigatorService.closeMenu();
   }
 
   protected openAdminMonitoringShortcut(event?: Event): void {
@@ -449,7 +438,6 @@ export class NavigatorMenuComponent {
       return;
     }
     this.popupCtx.openAdminNavigatorRequest('monitoring');
-    this.navigatorService.closeMenu();
   }
 
   private resolveUserImageUrl(user: UserDto | null): string | null {

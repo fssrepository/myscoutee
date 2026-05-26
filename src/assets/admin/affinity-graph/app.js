@@ -9,7 +9,9 @@ const GRAPH_LAZY_ENABLED = GRAPH_DATA.source === 'http';
 const GRAPH_LAYOUT_VERSION = GRAPH_DATA.layoutVersion || null;
 const COMPONENT_CORE_NODE_BUDGET = 20;
 const COMPONENT_CORE_EDGE_BUDGET = 56;
+const REFIT_ANIMATION_MS = 620;
 
+const graphApp = document.querySelector('.graph-app');
 const canvas = document.querySelector('#graph-canvas');
 const controlPanel = document.querySelector('.control-panel');
 const memberCountEl = document.querySelector('#member-count');
@@ -65,6 +67,7 @@ for (const edge of edges) {
 const components = buildComponents(nodes, edges);
 const componentById = new Map(components.map(component => [String(component.id), component]));
 enrichComponents(components, edges);
+applyForestMetadata(components, GRAPH_DATA.forests);
 let serverPositionCenter = new THREE.Vector3();
 placeNodes(nodes, edges, components);
 
@@ -152,6 +155,9 @@ const loadedComponentKeys = new Set();
 const pendingComponentKeys = new Set();
 const loadedNeighborhoodKeys = new Set();
 const viewportPanOffset = { x: 0, y: 0 };
+let lastPublishedZoomProgress = -1;
+let lastPublishedZoomMode = '';
+let zoomReferenceFitDistance = 48;
 
 const selectionSprite = new THREE.Sprite(new THREE.SpriteMaterial({
   map: createRingTexture(),
@@ -171,18 +177,22 @@ rebuildEdges();
 refitVisibleNodes({ immediate: true });
 fitCamera(false);
 renderMemberPanel(null);
-animate();
-scheduleLazyTileLoad(320);
-
 memberCountEl.textContent = String(nodes.length);
 linkCountEl.textContent = String(edges.length);
 componentCountEl.textContent = String(components.length);
 isolatedCountEl.textContent = String(isolatedNodes.length);
+graphApp?.classList.remove('graph-app--booting');
+publishGraphState(true);
+animate();
+scheduleLazyTileLoad(320);
 
 minWeightInput.addEventListener('input', () => handleWeightRangeInput('min'));
 maxWeightInput.addEventListener('input', () => handleWeightRangeInput('max'));
 linkDepthInput.addEventListener('input', handleLinkDepthInput);
-controls.addEventListener('change', () => scheduleLazyTileLoad(260));
+controls.addEventListener('change', () => {
+  scheduleLazyTileLoad(260);
+  publishGraphState();
+});
 
 resetViewButton.addEventListener('click', () => {
   clearForest();
@@ -270,7 +280,7 @@ function createNodeBadge(node) {
   updateNodeBadgeSizing(node);
 
   const badge = new THREE.Sprite(new THREE.SpriteMaterial({
-    map: createInitialsTexture(node, baseColor),
+    map: createNodeTexture(node, baseColor),
     transparent: true,
     fog: false,
     depthTest: false,
@@ -433,7 +443,7 @@ function visibleGraphForComponent(componentId, thresholdEdges) {
 
 function strongestComponentCore(component, componentEdges) {
   if (!componentEdges.length) {
-    const representative = forestRepresentativeForComponent(component) ?? component.nodes[0];
+    const representative = memberRepresentativeForComponent(component);
     return {
       edges: [],
       nodeIds: new Set(representative ? [representative.id] : [])
@@ -659,7 +669,7 @@ function selectNode(nodeId, options = {}) {
   rebuildEdges();
   startSelectionVisualAnimation(startScale);
   renderMemberPanel(selectedNode);
-  scheduleNodeRefit(70);
+  startVisibleRefit({ fitCamera: true });
   scheduleLazyNeighborhoodLoad(80);
   publishPreviewState();
 }
@@ -846,6 +856,37 @@ function publishPreviewState() {
   };
 }
 
+function publishGraphState(force = false) {
+  if (!window.parent || window.parent === window) {
+    return;
+  }
+
+  const zoomMode = isForestOverview()
+    ? 'forest'
+    : selectedNode
+      ? 'member'
+      : activeComponentId !== null
+        ? 'forest-graph'
+        : 'graph';
+  const zoomProgress = currentZoomProgress();
+  if (
+    !force
+    && zoomMode === lastPublishedZoomMode
+    && Math.abs(zoomProgress - lastPublishedZoomProgress) < 0.002
+  ) {
+    return;
+  }
+
+  lastPublishedZoomMode = zoomMode;
+  lastPublishedZoomProgress = zoomProgress;
+  window.parent.postMessage({
+    source: 'admin-affinity-graph',
+    type: 'state',
+    zoomMode,
+    zoomProgress
+  }, window.location.origin);
+}
+
 function componentForId(componentId) {
   return componentById.get(String(componentId)) ?? null;
 }
@@ -889,6 +930,7 @@ function renderMemberPanel(node) {
   const strongest = topNeighbors[0]?.edge.weight ?? 0;
   const visibleConnections = filteredNeighbors.length;
   const avatarColor = colorForNode(node, componentForId(node.componentId)).getStyle();
+  const avatarMarkup = memberAvatarHtml(node, avatarColor);
   const neighborItems = topNeighbors.length
     ? topNeighbors.map(({ edge, other }) => `
       <li>
@@ -902,14 +944,14 @@ function renderMemberPanel(node) {
 
   memberPanel.innerHTML = `
     <p class="member-kicker">${node.degree === 0 ? 'Isolated member' : 'Selected member'}</p>
-    <div class="member-heading">
-      <div class="avatar" style="background:${avatarColor}">${escapeHtml(node.initials || '?')}</div>
-      <div>
+    <div class="member-heading member-heading--profile">
+      ${avatarMarkup}
+      <div class="member-copy">
         <h2>${escapeHtml(node.name)}</h2>
         <p class="member-subtitle">${escapeHtml([node.city, node.age ? `${node.age}` : null, node.traitLabel].filter(Boolean).join(' · '))}</p>
+        <p class="member-headline">${escapeHtml(node.headline || node.statusText || 'Demo profile')}</p>
       </div>
     </div>
-    <p class="member-headline">${escapeHtml(node.headline || node.statusText || 'Demo profile')}</p>
     <dl class="detail-grid">
       <div>
         <dt>Total links</dt>
@@ -926,6 +968,50 @@ function renderMemberPanel(node) {
     </dl>
     <ul class="neighbor-list">${neighborItems}</ul>
   `;
+  hydrateLazyMemberImages(memberPanel);
+}
+
+function memberAvatarHtml(node, avatarColor) {
+  const imageUrl = avatarImageUrlForNode(node);
+  const initials = escapeHtml(node.initials || '?');
+  if (!imageUrl) {
+    return `<div class="avatar" style="background:${avatarColor}">${initials}</div>`;
+  }
+
+  return `
+    <div class="avatar avatar--photo" style="background:${avatarColor}; border-color:${avatarColor}" aria-label="${escapeHtml(node.name || 'Member')}">
+      <span class="avatar-fallback">${initials}</span>
+      <img data-lazy-src="${escapeHtml(imageUrl)}" alt="" loading="lazy" decoding="async">
+    </div>
+  `;
+}
+
+function hydrateLazyMemberImages(root) {
+  for (const image of root.querySelectorAll('img[data-lazy-src]')) {
+    const imageUrl = image.dataset.lazySrc?.trim();
+    if (!imageUrl) {
+      continue;
+    }
+
+    const revealImage = () => {
+      if (!image.isConnected || image.dataset.lazySrc !== imageUrl) {
+        return;
+      }
+      image.addEventListener('load', () => image.classList.add('is-loaded'), { once: true });
+      image.addEventListener('error', () => image.classList.remove('is-loaded'), { once: true });
+      if (image.getAttribute('src') !== imageUrl) {
+        image.src = imageUrl;
+      }
+      if (image.complete && image.naturalWidth > 0) {
+        image.classList.add('is-loaded');
+      }
+    };
+
+    if (window.parent && window.parent !== window) {
+      void requestGraphData('lazyImage', { imageUrl }).catch(() => null);
+    }
+    revealImage();
+  }
 }
 
 function renderForestPanel(component) {
@@ -933,37 +1019,14 @@ function renderForestPanel(component) {
     return;
   }
 
-  const representative = forestRepresentativeForComponent(component);
-  const forestColor = colorForComponent(component).getStyle();
   const memberCount = component.memberCountEstimate ?? component.nodes.length;
   const edgeCount = component.edgeCountEstimate ?? component.edges.length;
-  const coreMembers = component.nodes.filter(member => visibleNodeIds.has(member.id));
-  const topMembers = (coreMembers.length ? coreMembers : component.nodes)
-    .sort((a, b) =>
-      (b.visibleWeightSum ?? 0) - (a.visibleWeightSum ?? 0)
-      || (b.visibleDegree ?? 0) - (a.visibleDegree ?? 0)
-      || b.degree - a.degree
-      || b.weightedDegree - a.weightedDegree
-      || a.name.localeCompare(b.name)
-    )
-    .slice(0, 5);
-  const memberItems = topMembers.map(member => `
-    <li>
-      <strong>${escapeHtml(member.name)}</strong>
-      <span>${member.visibleDegree || member.degree}</span>
-    </li>
-  `).join('');
+  const visibleMembers = visibleNodeIds.size;
+  const collapsedMembers = Math.max(0, memberCount - visibleMembers);
 
   memberPanel.innerHTML = `
     <p class="member-kicker">${memberCount === 1 ? 'Isolated forest' : 'Expanded forest'}</p>
-    <div class="member-heading">
-      <div class="avatar" style="background:${forestColor}">${escapeHtml(representative.initials || '?')}</div>
-      <div>
-        <h2>${escapeHtml(representative.name)}</h2>
-        <p class="member-subtitle">${memberCount} members · ${edgeCount} links</p>
-      </div>
-    </div>
-    <p class="member-headline">${escapeHtml(representative.headline || representative.statusText || 'Most connected member')}</p>
+    <p class="empty-state">${visibleMembers} important members visible · ${collapsedMembers} collapsed · ${edgeCount} links in forest.</p>
     <dl class="detail-grid">
       <div>
         <dt>Members</dt>
@@ -974,11 +1037,10 @@ function renderForestPanel(component) {
         <dd>${visibleNodeIds.size}</dd>
       </div>
       <div>
-        <dt>Core links</dt>
+        <dt>Links</dt>
         <dd>${visibleEdgeCount}</dd>
       </div>
     </dl>
-    <ul class="neighbor-list">${memberItems}</ul>
   `;
 }
 
@@ -986,7 +1048,7 @@ function handleWeightRangeInput(changedHandle) {
   normalizeWeightRange(changedHandle);
   rebuildEdges();
   renderMemberPanel(selectedNode);
-  scheduleNodeRefit(130);
+  startVisibleRefit({ fitCamera: true });
   if (activeComponentId !== null && !selectedNode) {
     scheduleLazyComponentLoad(activeComponentId, 120, { refresh: true });
   } else {
@@ -999,7 +1061,7 @@ function handleLinkDepthInput() {
   updateLinkDepthUi();
   rebuildEdges();
   renderMemberPanel(selectedNode);
-  scheduleNodeRefit(120);
+  startVisibleRefit({ fitCamera: true });
   scheduleLazyNeighborhoodLoad(120);
 }
 
@@ -1196,6 +1258,44 @@ function projectedSpriteRadius(sprite, position, rect, minimum = 12) {
   );
 }
 
+function currentZoomProgress() {
+  const fitDistance = Math.max(48, zoomReferenceFitDistance);
+  const nearDistance = Math.max(controls.minDistance, fitDistance * 0.18);
+  const distance = camera.position.distanceTo(controls.target);
+  return clamp((fitDistance - distance) / Math.max(1, fitDistance - nearDistance), 0, 1);
+}
+
+function currentViewRadius() {
+  if (isForestOverview()) {
+    return forestOverviewRadius();
+  }
+
+  const points = nodes
+    .filter(node => visibleNodeIds.has(node.id))
+    .map(node => node.targetPosition ?? node.position);
+  return radiusForPoints(points.length ? points : nodes.map(node => node.position));
+}
+
+function forestOverviewRadius() {
+  const forestComponents = sortedForestComponents();
+  const center = forestComponents[0]?.forestPosition?.clone() ?? new THREE.Vector3();
+  return forestComponents.reduce((maxRadius, component) => {
+    const position = component.forestPosition ?? center;
+    const badgeRadius = (component.forestScale ?? 5) * 0.55;
+    return Math.max(maxRadius, position.distanceTo(center) + badgeRadius);
+  }, 8);
+}
+
+function radiusForPoints(points) {
+  if (!points.length) {
+    return 8;
+  }
+  const sphere = new THREE.Box3()
+    .setFromPoints(points)
+    .getBoundingSphere(new THREE.Sphere());
+  return Math.max(8, sphere.radius);
+}
+
 function resize() {
   const width = window.innerWidth;
   const height = window.innerHeight;
@@ -1219,45 +1319,45 @@ function fitCameraToVisible(animateTarget) {
   fitCameraToPoints(points.length ? points : nodes.map(node => node.position), animateTarget);
 }
 
-function fitCameraToVisibleTargets(animateTarget) {
+function fitCameraToVisibleTargets(animateTarget, durationMs) {
   const points = nodes
     .filter(node => visibleNodeIds.has(node.id))
     .map(node => node.targetPosition ?? node.position);
-  fitCameraToPoints(points.length ? points : nodes.map(node => node.position), animateTarget);
+  fitCameraToPoints(points.length ? points : nodes.map(node => node.position), animateTarget, durationMs);
 }
 
 function fitCameraToForestOverview(animateTarget) {
   const forestComponents = sortedForestComponents();
   const center = forestComponents[0]?.forestPosition?.clone() ?? new THREE.Vector3();
-  const radius = forestComponents.reduce((maxRadius, component) => {
-    const position = component.forestPosition ?? center;
-    const badgeRadius = (component.forestScale ?? 5) * 0.55;
-    return Math.max(maxRadius, position.distanceTo(center) + badgeRadius);
-  }, 8);
-  fitCameraToCenterRadius(center, radius, animateTarget);
+  fitCameraToCenterRadius(center, forestOverviewRadius(), animateTarget);
 }
 
-function fitCameraToPoints(points, animateTarget) {
+function fitCameraToPoints(points, animateTarget, durationMs) {
   const box = new THREE.Box3().setFromPoints(points);
   const center = box.getCenter(new THREE.Vector3());
   const sphere = box.getBoundingSphere(new THREE.Sphere());
-  fitCameraToCenterRadius(center, sphere.radius, animateTarget);
+  fitCameraToCenterRadius(center, sphere.radius, animateTarget, durationMs);
 }
 
-function fitCameraToCenterRadius(center, radius, animateTarget) {
+function fitCameraToCenterRadius(center, radius, animateTarget, durationMs) {
   const viewport = graphViewportMetrics();
   const safeWidthRatio = clamp(viewport.safeWidth / Math.max(1, viewport.fullWidth), 0.58, 1);
   const distance = Math.max(48, (radius * 1.68) / safeWidthRatio);
   const target = center.clone();
   const targetPosition = target.clone().add(new THREE.Vector3(distance * 0.24, distance * 0.34, distance));
+  const fittedOrbitDistance = targetPosition.distanceTo(target);
+  zoomReferenceFitDistance = fittedOrbitDistance;
+  const cappedMaxDistance = Math.max(controls.minDistance + 1, fittedOrbitDistance);
   viewportPanOffset.x = 0;
   viewportPanOffset.y = 0;
   applyViewportOffset(viewport);
   if (animateTarget) {
-    startCameraAnimation(targetPosition, target);
+    controls.maxDistance = Math.max(cappedMaxDistance, camera.position.distanceTo(controls.target));
+    startCameraAnimation(targetPosition, target, cappedMaxDistance, durationMs);
     return;
   }
   cameraAnimation = null;
+  controls.maxDistance = cappedMaxDistance;
   camera.position.copy(targetPosition);
   controls.target.copy(target);
   controls.update();
@@ -1334,7 +1434,7 @@ function scheduleLazyTileLoad(delayMs = 180, options = {}) {
 }
 
 function scheduleLazyComponentLoad(componentId, delayMs = 120, options = {}) {
-  if (!GRAPH_LAZY_ENABLED || !componentId) {
+  if (!GRAPH_LAZY_ENABLED || componentId === null || componentId === undefined || String(componentId).trim() === '') {
     return;
   }
   setTimeout(() => {
@@ -1502,10 +1602,14 @@ function mergeGraphPayload(payload) {
   for (const edge of nextGraph.edges) {
     changed = mergeGraphEdge(edge) || changed;
   }
+  if (nextGraph.forests.length) {
+    changed = mergeGraphForests(nextGraph.forests) || changed;
+  }
   if (!changed) {
     return;
   }
   enrichComponents(components, edges);
+  applyForestMetadata(components, GRAPH_DATA.forests);
   rebuildEdges();
   applyNodeState();
   memberCountEl.textContent = String(nodes.length);
@@ -1513,6 +1617,23 @@ function mergeGraphPayload(payload) {
   componentCountEl.textContent = String(components.length);
   isolatedCountEl.textContent = String(nodes.filter(node => node.degree === 0).length);
   publishPreviewState();
+}
+
+function mergeGraphForests(nextForests) {
+  const forestsById = new Map((GRAPH_DATA.forests ?? []).map(forest => [String(forest.componentId), forest]));
+  let changed = false;
+  for (const forest of nextForests) {
+    const key = String(forest.componentId);
+    const previous = forestsById.get(key);
+    const previousSignature = previous ? JSON.stringify(previous) : '';
+    const nextSignature = JSON.stringify(forest);
+    if (previousSignature !== nextSignature) {
+      forestsById.set(key, forest);
+      changed = true;
+    }
+  }
+  GRAPH_DATA.forests = [...forestsById.values()];
+  return changed;
 }
 
 function mergeGraphNode(node) {
@@ -1642,17 +1763,19 @@ function animate() {
   updateCameraAnimation();
   updateSelectionVisualAnimation();
   controls.update();
+  publishGraphState();
   renderer.render(scene, camera);
 }
 
-function startCameraAnimation(targetPosition, targetLookAt) {
+function startCameraAnimation(targetPosition, targetLookAt, maxDistanceAfterAnimation = null, durationMs = 720) {
   cameraAnimation = {
     startedAt: performance.now(),
-    durationMs: 720,
+    durationMs,
     fromPosition: camera.position.clone(),
     toPosition: targetPosition.clone(),
     fromTarget: controls.target.clone(),
-    toTarget: targetLookAt.clone()
+    toTarget: targetLookAt.clone(),
+    maxDistanceAfterAnimation
   };
 }
 
@@ -1666,6 +1789,9 @@ function updateCameraAnimation() {
   camera.position.copy(cameraAnimation.fromPosition).lerp(cameraAnimation.toPosition, eased);
   controls.target.copy(cameraAnimation.fromTarget).lerp(cameraAnimation.toTarget, eased);
   if (progress >= 1) {
+    if (Number.isFinite(cameraAnimation.maxDistanceAfterAnimation)) {
+      controls.maxDistance = Math.max(controls.minDistance + 1, cameraAnimation.maxDistanceAfterAnimation);
+    }
     cameraAnimation = null;
   }
 }
@@ -1775,13 +1901,24 @@ function updateSelectionVisualAnimation() {
   }
 }
 
-function scheduleNodeRefit(delayMs = 100) {
+function startVisibleRefit(options = {}) {
+  if (nodeRefitTimer) {
+    clearTimeout(nodeRefitTimer);
+    nodeRefitTimer = null;
+  }
+  refitVisibleNodes({ immediate: false });
+  if (options.fitCamera) {
+    fitCameraToVisibleTargets(true, options.durationMs ?? REFIT_ANIMATION_MS);
+  }
+}
+
+function scheduleNodeRefit(delayMs = 100, options = {}) {
   if (nodeRefitTimer) {
     clearTimeout(nodeRefitTimer);
   }
   nodeRefitTimer = setTimeout(() => {
     nodeRefitTimer = null;
-    refitVisibleNodes({ immediate: false });
+    startVisibleRefit(options);
   }, delayMs);
 }
 
@@ -1800,7 +1937,7 @@ function refitVisibleNodes({ immediate = false } = {}) {
   }
   nodeLayoutAnimation = {
     startedAt: performance.now(),
-    durationMs: 620,
+    durationMs: REFIT_ANIMATION_MS,
     from: new Map(nodes.map(node => [node.id, node.position.clone()]))
   };
 }
@@ -2279,10 +2416,19 @@ function buildComponents(allNodes, allEdges) {
   return [...groups.values()]
     .sort((a, b) => b.length - a.length)
     .map((componentNodes, index) => {
+      const seededComponentIds = new Map();
       for (const node of componentNodes) {
-        node.componentId = index;
+        if (node.componentId !== null && node.componentId !== undefined && String(node.componentId).trim()) {
+          const componentId = String(node.componentId);
+          seededComponentIds.set(componentId, (seededComponentIds.get(componentId) ?? 0) + 1);
+        }
       }
-      return { id: index, nodes: componentNodes };
+      const componentId = [...seededComponentIds.entries()]
+        .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0]?.[0] ?? index;
+      for (const node of componentNodes) {
+        node.componentId = componentId;
+      }
+      return { id: componentId, nodes: componentNodes };
     });
 }
 
@@ -2298,24 +2444,55 @@ function enrichComponents(allComponents, allEdges) {
     const representative = [...component.nodes]
       .sort((a, b) => b.degree - a.degree || b.weightedDegree - a.weightedDegree || a.name.localeCompare(b.name))[0];
     component.representative = representative;
-    component.forestRepresentative = [...component.nodes]
-      .filter(node => Number(node.forestMemberCount ?? 0) > 0 || Number(node.forestEdgeCount ?? 0) > 0)
-      .sort((a, b) =>
-        Number(b.forestMemberCount ?? 0) - Number(a.forestMemberCount ?? 0)
-        || Number(b.forestEdgeCount ?? 0) - Number(a.forestEdgeCount ?? 0)
-        || b.degree - a.degree
-        || b.weightedDegree - a.weightedDegree
-        || a.name.localeCompare(b.name)
-      )[0] ?? representative;
-    component.memberCountEstimate = Math.max(
-      component.nodes.length,
-      ...component.nodes.map(node => Number(node.forestMemberCount ?? 0))
-    );
-    component.edgeCountEstimate = Math.max(
-      component.edges.length,
-      ...component.nodes.map(node => Number(node.forestEdgeCount ?? 0))
-    );
+    component.forestRepresentative = representative;
+    component.memberCountEstimate = component.nodes.length;
+    component.edgeCountEstimate = component.edges.length;
   }
+}
+
+function applyForestMetadata(allComponents, allForests = []) {
+  for (const forest of allForests) {
+    let component = componentForId(forest.componentId);
+    if (!component) {
+      component = {
+        id: forest.componentId,
+        nodes: [],
+        edges: [],
+        representative: null,
+        forestRepresentative: null
+      };
+      allComponents.push(component);
+      componentById.set(String(component.id), component);
+    }
+    component.forest = forest;
+    component.forestRepresentative = representativeFromForest(forest);
+    component.memberCountEstimate = Math.max(component.nodes.length, Number(forest.memberCount ?? 0));
+    component.edgeCountEstimate = Math.max(component.edges?.length ?? 0, Number(forest.edgeCount ?? 0));
+  }
+}
+
+function representativeFromForest(forest) {
+  const name = String(forest?.representativeName ?? forest?.representativeUserId ?? forest?.componentId ?? '').trim();
+  return {
+    id: `forest:${forest.componentId}`,
+    representativeUserId: String(forest?.representativeUserId ?? '').trim(),
+    isForestSummary: true,
+    name: name || String(forest.componentId),
+    initials: String(forest?.representativeInitials ?? '').trim().slice(0, 3).toUpperCase() || 'F',
+    gender: String(forest?.gender ?? '').trim().toLowerCase(),
+    headline: Number(forest?.memberCount ?? 0) === 1 ? 'Isolated forest' : 'Most connected member',
+    statusText: '',
+    image: '',
+    degree: Math.max(0, Math.trunc(Number(forest?.edgeCount ?? 0))),
+    weightedDegree: Math.max(0, Number(forest?.weightedDegree ?? 0)),
+    visibleDegree: 0,
+    visibleWeightSum: 0,
+    visibleStrongest: 0,
+    collapseBadgeCount: 0,
+    componentId: forest.componentId,
+    forestMemberCount: Math.max(0, Math.trunc(Number(forest?.memberCount ?? 0))),
+    forestEdgeCount: Math.max(0, Math.trunc(Number(forest?.edgeCount ?? 0)))
+  };
 }
 
 function sortedForestComponents() {
@@ -2327,6 +2504,10 @@ function sortedForestComponents() {
 
 function forestRepresentativeForComponent(component) {
   return component?.forestRepresentative ?? component?.representative ?? component?.nodes?.[0] ?? null;
+}
+
+function memberRepresentativeForComponent(component) {
+  return component?.representative ?? component?.nodes?.[0] ?? null;
 }
 
 function colorForWeight(weight) {
@@ -2398,9 +2579,9 @@ function refreshNodeBadge(node) {
     return;
   }
   const previousTexture = node.badge.material.map;
-  node.badge.material.map = createInitialsTexture(node, colorForNode(node, componentForId(node.componentId)));
+  node.badge.material.map = createNodeTexture(node, colorForNode(node, componentForId(node.componentId)));
   node.badge.material.needsUpdate = true;
-  previousTexture?.dispose?.();
+  disposeTexture(previousTexture);
 }
 
 function nodeDataSignature(node) {
@@ -2433,24 +2614,45 @@ function nodeVisualSignature(node) {
   ].join('|');
 }
 
-function createInitialsTexture(node, fillColor) {
+function createNodeTexture(node, ringColor) {
   const canvasEl = document.createElement('canvas');
   canvasEl.width = 256;
   canvasEl.height = 256;
   const ctx = canvasEl.getContext('2d');
+  const texture = new THREE.CanvasTexture(canvasEl);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  drawNodeTexture(ctx, node, ringColor);
+  texture.needsUpdate = true;
+  return texture;
+}
+
+function drawNodeTexture(ctx, node, ringColor) {
   ctx.clearRect(0, 0, 256, 256);
+  const ringStyle = ringColor.getStyle();
+
+  const fillColor = ringColor.clone().lerp(new THREE.Color(0x111317), 0.78);
   ctx.beginPath();
-  ctx.arc(128, 128, 112, 0, Math.PI * 2);
+  ctx.arc(128, 128, 96, 0, Math.PI * 2);
   ctx.fillStyle = fillColor.getStyle();
   ctx.fill();
-  ctx.lineWidth = node.degree === 0 ? 14 : 10;
-  ctx.strokeStyle = node.degree === 0 ? '#fff3b5' : '#ffffff';
-  ctx.stroke();
-  ctx.fillStyle = '#111317';
-  ctx.font = '900 70px system-ui, sans-serif';
+  ctx.fillStyle = '#f4f7fb';
+  ctx.font = '900 64px system-ui, sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText((node.initials || '?').slice(0, 3), 128, 132);
+
+  ctx.beginPath();
+  ctx.arc(128, 128, 112, 0, Math.PI * 2);
+  ctx.lineWidth = node.degree === 0 ? 16 : 13;
+  ctx.strokeStyle = ringStyle;
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.arc(128, 128, 97, 0, Math.PI * 2);
+  ctx.lineWidth = 4;
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)';
+  ctx.stroke();
+
   const count = nodeBadgeCount(node);
   if (count > 0) {
     const label = count > 99 ? '99+' : String(count);
@@ -2459,15 +2661,24 @@ function createInitialsTexture(node, fillColor) {
     ctx.fillStyle = '#111317';
     ctx.fill();
     ctx.lineWidth = 6;
-    ctx.strokeStyle = '#ffffff';
+    ctx.strokeStyle = ringStyle;
     ctx.stroke();
     ctx.fillStyle = '#ffffff';
     ctx.font = label.length > 2 ? '850 24px system-ui, sans-serif' : '900 29px system-ui, sans-serif';
     ctx.fillText(label, 198, 60);
   }
-  const texture = new THREE.CanvasTexture(canvasEl);
-  texture.colorSpace = THREE.SRGBColorSpace;
-  return texture;
+}
+
+function avatarImageUrlForNode(node) {
+  return String(node?.image || node?.images?.[0] || '').trim();
+}
+
+function disposeTexture(texture) {
+  if (!texture) {
+    return;
+  }
+  texture.userData.disposed = true;
+  texture.dispose?.();
 }
 
 function nodeBadgeCount(node) {
@@ -2475,7 +2686,7 @@ function nodeBadgeCount(node) {
 }
 
 function createForestTexture(component, fillColor) {
-  const representative = forestRepresentativeForComponent(component);
+  const representative = forestRepresentativeForComponent(component) ?? { initials: '?' };
   const memberCount = component.memberCountEstimate ?? component.nodes.length;
   const glowColor = fillColor.clone().lerp(new THREE.Color(0xffffff), 0.2).getStyle();
   const canvasEl = document.createElement('canvas');
@@ -2628,11 +2839,15 @@ function normalizeGraphData(data) {
   const normalizedEdges = (Array.isArray(data?.edges) ? data.edges : [])
     .map(normalizeGraphEdge)
     .filter(edge => edge && nodeIds.has(edge.source) && nodeIds.has(edge.target) && edge.source !== edge.target);
+  const normalizedForests = (Array.isArray(data?.forests) ? data.forests : [])
+    .map(normalizeGraphForest)
+    .filter(Boolean);
   return {
     source: data?.source === 'http' ? 'http' : 'demo',
     layoutVersion: String(data?.layoutVersion ?? '').trim(),
     nodes: normalizedNodes,
-    edges: normalizedEdges
+    edges: normalizedEdges,
+    forests: normalizedForests
   };
 }
 
@@ -2698,6 +2913,47 @@ function normalizeGraphEdge(edge) {
     weight,
     affinityScore: Number.isFinite(Number(edge?.affinityScore)) ? Number(edge.affinityScore) : weight
   };
+}
+
+function normalizeGraphForest(forest) {
+  const componentId = String(forest?.componentId ?? '').trim();
+  if (!componentId) {
+    return null;
+  }
+  const representativeUserId = String(forest?.representativeUserId ?? '').trim();
+  const representativeName = String(forest?.representativeName ?? '').trim() || representativeUserId || componentId;
+  const memberCount = Number.isFinite(Number(forest?.memberCount))
+    ? Math.max(0, Math.trunc(Number(forest.memberCount)))
+    : 0;
+  const edgeCount = Number.isFinite(Number(forest?.edgeCount))
+    ? Math.max(0, Math.trunc(Number(forest.edgeCount)))
+    : 0;
+  return {
+    componentId,
+    representativeUserId,
+    representativeName,
+    representativeInitials: String(forest?.representativeInitials ?? '').trim().slice(0, 3).toUpperCase()
+      || initialsForName(representativeName)
+      || 'F',
+    gender: String(forest?.gender ?? '').trim().toLowerCase(),
+    memberCount,
+    edgeCount,
+    weightedDegree: Number.isFinite(Number(forest?.weightedDegree)) ? Math.max(0, Number(forest.weightedDegree)) : 0,
+    x: finiteOrNull(forest?.x) ?? 0,
+    y: finiteOrNull(forest?.y) ?? 0,
+    z: finiteOrNull(forest?.z) ?? 0,
+    radius: Number.isFinite(Number(forest?.radius)) ? Math.max(0, Number(forest.radius)) : Math.max(3, Math.sqrt(memberCount) * 5.5)
+  };
+}
+
+function initialsForName(name) {
+  return String(name ?? '')
+    .trim()
+    .split(/\s+/)
+    .map(part => part[0] ?? '')
+    .join('')
+    .slice(0, 3)
+    .toUpperCase();
 }
 
 function clamp(value, min, max) {

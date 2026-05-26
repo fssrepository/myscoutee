@@ -14,7 +14,7 @@
     </script>
   </head>
   <body>
-    <main class="graph-app">
+    <main class="graph-app graph-app--booting">
       <canvas id="graph-canvas" aria-label="3D affinity graph"></canvas>
 
       <div class="side-panel-stack">
@@ -43,7 +43,7 @@
               <dd id="isolated-count">0</dd>
             </div>
           </dl>
-          <div class="range-field">
+          <div class="range-field" hidden>
             <label for="min-weight">
               <span>Link range</span>
               <output id="weight-range-value" for="min-weight max-weight">0.20 - 1.00</output>
@@ -55,7 +55,7 @@
               <input id="max-weight" type="range" min="0" max="1" value="1.00" step="0.01" aria-label="Maximum link strength">
             </div>
           </div>
-          <div class="depth-field">
+          <div class="depth-field" hidden>
             <label for="link-depth">
               <span>Link depth</span>
               <output id="link-depth-value" for="link-depth">Direct</output>
@@ -80,16 +80,16 @@
                 </span>
                 <span>Mouse</span>
               </dt>
-              <dd><strong>Left</strong> pan</dd>
-              <dd><strong>Right</strong> rotate</dd>
-              <dd><strong>Wheel</strong> zoom</dd>
+              <dd><strong>Pan</strong> left</dd>
+              <dd><strong>Rotate</strong> right</dd>
+              <dd><strong>Zoom</strong> wheel</dd>
             </div>
             <div class="help-action-card help-action-card--arrows">
               <dt>
                 <span class="arrow-pad" aria-hidden="true"><i>↑</i><i>←</i><i>↓</i><i>→</i></span>
                 <span>Arrow pad</span>
               </dt>
-              <dd>Step pan</dd>
+              <dd><strong>Pan</strong> step</dd>
             </div>
           </dl>
         </aside>

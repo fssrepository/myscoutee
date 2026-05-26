@@ -1,15 +1,17 @@
 import { CommonModule, DOCUMENT } from '@angular/common';
-import { Component, OnDestroy, effect, inject, signal } from '@angular/core';
+import { Component, OnDestroy, computed, effect, inject, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 
 import { AdminService } from '../../admin.service';
 import { ADMIN_AFFINITY_GRAPH_STORE_KEY, AdminAffinityGraphService } from '../../services/admin-affinity-graph.service';
+import { LazyBgImageDirective } from '../../../shared/ui/directives';
+import { HeaderProgressBarComponent, type HeaderProgressBarConfig } from '../../../shared/ui/components';
 
 @Component({
   selector: 'app-admin-affinity-graph-popup',
   standalone: true,
-  imports: [CommonModule, MatIconModule],
+  imports: [CommonModule, MatIconModule, HeaderProgressBarComponent],
   templateUrl: './admin-affinity-graph-popup.component.html',
   styleUrl: './admin-affinity-graph-popup.component.scss'
 })
@@ -23,6 +25,29 @@ export class AdminAffinityGraphPopupComponent implements OnDestroy {
   private readonly originalBodyOverflow = this.document.body.style.overflow;
   private readonly originalHtmlOverflow = this.document.documentElement.style.overflow;
   private readonly graphMessageHandler = (event: MessageEvent) => this.handleGraphMessage(event);
+  private readonly graphZoomProgress = signal(0);
+  protected readonly graphFrameLoaded = signal(false);
+  private readonly graphStaticShellVisible = signal(false);
+  protected readonly graphStaticChromeVisible = computed(() =>
+    this.admin.activePopup() === this.popupKey && this.graphStaticShellVisible()
+  );
+  protected readonly graphProgressVisible = computed(() => this.admin.activePopup() === this.popupKey);
+  protected readonly graphProgressConfig = computed<HeaderProgressBarConfig>(() => {
+    const loadingState = this.affinityGraph.loadingState();
+    if (!loadingState.active) {
+      return {
+        position: this.graphZoomProgress(),
+        state: 'scrolling',
+        placement: 'inline'
+      };
+    }
+    return {
+      position: loadingState.progress,
+      state: loadingState.overdue ? 'loading-overdue' : 'loading',
+      placement: 'inline'
+    };
+  });
+  private graphStaticShellHideTimer: ReturnType<typeof setTimeout> | null = null;
   private graphOpenRequestId = 0;
 
   constructor() {
@@ -35,12 +60,17 @@ export class AdminAffinityGraphPopupComponent implements OnDestroy {
         queueMicrotask(() => this.prepareGraphFrame());
       } else {
         this.graphOpenRequestId += 1;
+        this.graphZoomProgress.set(0);
+        this.graphFrameLoaded.set(false);
+        this.graphStaticShellVisible.set(false);
+        this.clearGraphStaticShellHideTimer();
         queueMicrotask(() => this.graphUrl.set(null));
       }
     });
   }
 
   ngOnDestroy(): void {
+    this.clearGraphStaticShellHideTimer();
     this.document.defaultView?.removeEventListener('message', this.graphMessageHandler);
     this.document.body.style.overflow = this.originalBodyOverflow;
     this.document.documentElement.style.overflow = this.originalHtmlOverflow;
@@ -50,12 +80,24 @@ export class AdminAffinityGraphPopupComponent implements OnDestroy {
     this.admin.closePopup();
   }
 
+  protected onGraphFrameLoad(): void {
+    this.graphFrameLoaded.set(true);
+    this.clearGraphStaticShellHideTimer();
+    this.graphStaticShellHideTimer = setTimeout(() => {
+      this.graphStaticShellVisible.set(false);
+      this.graphStaticShellHideTimer = null;
+    }, 220);
+  }
+
   private prepareGraphFrame(): void {
     if (this.admin.activePopup() !== this.popupKey) {
       return;
     }
     const requestId = this.graphOpenRequestId + 1;
     this.graphOpenRequestId = requestId;
+    this.clearGraphStaticShellHideTimer();
+    this.graphFrameLoaded.set(false);
+    this.graphStaticShellVisible.set(true);
     this.graphUrl.set(null);
     void this.affinityGraph.prepareGraphSnapshot(this.admin.activeAdmin()?.id).then(() => {
       if (requestId !== this.graphOpenRequestId || this.admin.activePopup() !== this.popupKey) {
@@ -80,8 +122,22 @@ export class AdminAffinityGraphPopupComponent implements OnDestroy {
     if (!win || event.origin !== win.location.origin || this.admin.activePopup() !== this.popupKey) {
       return;
     }
-    const data = event.data as { source?: string; type?: string; requestId?: string; method?: string; params?: Record<string, unknown> } | null;
-    if (data?.source !== 'admin-affinity-graph' || data.type !== 'request' || !data.requestId || !data.method) {
+    const data = event.data as {
+      source?: string;
+      type?: string;
+      requestId?: string;
+      method?: string;
+      params?: Record<string, unknown>;
+      zoomProgress?: unknown;
+    } | null;
+    if (data?.source !== 'admin-affinity-graph') {
+      return;
+    }
+    if (data.type === 'state') {
+      this.graphZoomProgress.set(this.clampUnit(data.zoomProgress));
+      return;
+    }
+    if (data.type !== 'request' || !data.requestId || !data.method) {
       return;
     }
     const target = event.source as WindowProxy | null;
@@ -128,9 +184,19 @@ export class AdminAffinityGraphPopupComponent implements OnDestroy {
           adminUserId,
           this.rangeParams(params)
         );
+      case 'lazyImage':
+        return this.loadLazyImage(params);
       default:
         return Promise.reject(new Error(`Unsupported affinity graph request: ${method}`));
     }
+  }
+
+  private async loadLazyImage(params: Record<string, unknown>): Promise<{ imageUrl: string; loaded: boolean }> {
+    const imageUrl = this.optionalString(params['imageUrl']) ?? '';
+    return {
+      imageUrl,
+      loaded: await LazyBgImageDirective.preloadImageUrl(imageUrl)
+    };
   }
 
   private rangeParams(params: Record<string, unknown>): { minWeight?: number; maxWeight?: number } {
@@ -148,5 +214,21 @@ export class AdminAffinityGraphPopupComponent implements OnDestroy {
   private optionalNumber(value: unknown): number | undefined {
     const numberValue = Number(value);
     return Number.isFinite(numberValue) ? numberValue : undefined;
+  }
+
+  private clampUnit(value: unknown): number {
+    const numberValue = Number(value);
+    if (!Number.isFinite(numberValue)) {
+      return 0;
+    }
+    return Math.max(0, Math.min(1, numberValue));
+  }
+
+  private clearGraphStaticShellHideTimer(): void {
+    if (!this.graphStaticShellHideTimer) {
+      return;
+    }
+    clearTimeout(this.graphStaticShellHideTimer);
+    this.graphStaticShellHideTimer = null;
   }
 }

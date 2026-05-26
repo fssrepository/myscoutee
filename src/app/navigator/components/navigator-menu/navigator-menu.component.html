@@ -122,11 +122,6 @@
               <mat-icon>tune</mat-icon>
               <span class="menu-shortcut-label">{{ 'params' | i18n }}</span>
             </button>
-            <button #adminStatsButton class="menu-shortcut-btn menu-shortcut-stats" type="button" [disabled]="!isOnline()" (click)="openAdminStatsShortcut($event)" [attr.aria-label]="'open.stats' | i18n" [title]="'stats' | i18n">
-              <span class="navigator-action-ripple" matRipple [matRippleTrigger]="adminStatsButton" aria-hidden="true"></span>
-              <mat-icon>query_stats</mat-icon>
-              <span class="menu-shortcut-label">{{ 'stats' | i18n }}</span>
-            </button>
             <button #adminHelpEditorButton class="menu-shortcut-btn menu-shortcut-help-editor" type="button" [disabled]="!isOnline()" (click)="openAdminHelpEditorShortcut($event)" aria-label="Open content editor" title="Content Editor">
               <span class="navigator-action-ripple" matRipple [matRippleTrigger]="adminHelpEditorButton" aria-hidden="true"></span>
               <mat-icon>edit_note</mat-icon>
@@ -146,10 +141,10 @@
             <span class="section-line"></span>
           </div>
           <div class="menu-shortcuts admin-menu-shortcuts admin-menu-shortcuts-monitoring">
-            <button #adminGraphButton class="menu-shortcut-btn menu-shortcut-graph" type="button" [disabled]="!isOnline()" (click)="openAdminAffinityGraphShortcut($event)" aria-label="Open affinity graph" title="Graph view">
-              <span class="navigator-action-ripple" matRipple [matRippleTrigger]="adminGraphButton" aria-hidden="true"></span>
-              <mat-icon>hub</mat-icon>
-              <span class="menu-shortcut-label">Graph</span>
+            <button #adminStatsButton class="menu-shortcut-btn menu-shortcut-stats" type="button" [disabled]="!isOnline()" (click)="openAdminStatsShortcut($event)" [attr.aria-label]="'open.stats' | i18n" [title]="'stats' | i18n">
+              <span class="navigator-action-ripple" matRipple [matRippleTrigger]="adminStatsButton" aria-hidden="true"></span>
+              <mat-icon>query_stats</mat-icon>
+              <span class="menu-shortcut-label">{{ 'stats' | i18n }}</span>
             </button>
             <button #adminMonitoringButton class="menu-shortcut-btn menu-shortcut-monitoring" type="button" [disabled]="!isOnline()" (click)="openAdminMonitoringShortcut($event)" [attr.aria-label]="'open.monitoring.metrics' | i18n" [title]="'metrics' | i18n">
               <span class="navigator-action-ripple" matRipple [matRippleTrigger]="adminMonitoringButton" aria-hidden="true"></span>
@@ -158,6 +153,11 @@
               @if (user.activities.adminMetrics > 0) {
                 <span class="card-badge menu-shortcut-badge">{{ user.activities.adminMetrics | counterBadge }}</span>
               }
+            </button>
+            <button #adminGraphButton class="menu-shortcut-btn menu-shortcut-graph" type="button" [disabled]="!isOnline()" (click)="openAdminAffinityGraphShortcut($event)" aria-label="Open affinity graph" title="Graph view">
+              <span class="navigator-action-ripple" matRipple [matRippleTrigger]="adminGraphButton" aria-hidden="true"></span>
+              <mat-icon>hub</mat-icon>
+              <span class="menu-shortcut-label">Graph</span>
             </button>
           </div>
         </div>

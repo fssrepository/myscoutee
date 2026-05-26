@@ -79,6 +79,10 @@ export const ROUTE_CONFIG: RouteConfig = {
       demoDelayMs: 1500
     },
     {
+      routePrefix: '/admin/affinity-graph',
+      demoDelayMs: 1500
+    },
+    {
       routePrefix: '/admin/monitoring',
       demoDelayMs: 1500
     },

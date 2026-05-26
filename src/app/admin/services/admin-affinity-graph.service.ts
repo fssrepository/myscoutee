@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, computed, inject, signal } from '@angular/core';
 
 import { environment } from '../../../environments/environment';
 import { AppMemoryDb } from '../../shared/core/base/db';
@@ -19,8 +19,13 @@ import {
   type AdminAffinityGraphRangeParams,
   type AdminAffinityGraphTileParams
 } from '../../shared/core/http';
+import { RouteDelayService } from '../../shared/core/base/services/route-delay.service';
 
 export { ADMIN_AFFINITY_GRAPH_STORE_KEY } from '../../shared/core/base/interfaces/admin-affinity-graph.interface';
+
+const ADMIN_AFFINITY_GRAPH_ROUTE = '/admin/affinity-graph';
+const AFFINITY_GRAPH_LOAD_DEMO_DELAY_MS = 1500;
+const AFFINITY_GRAPH_LOAD_PROGRESS_WINDOW_MS = 3000;
 
 @Injectable({
   providedIn: 'root'
@@ -29,26 +34,50 @@ export class AdminAffinityGraphService {
   private readonly memoryDb = inject(AppMemoryDb);
   private readonly demoRepository = inject(DemoAdminAffinityGraphRepository);
   private readonly httpRepository = inject(HttpAdminAffinityGraphRepository);
+  private readonly routeDelay = inject(RouteDelayService);
+  private readonly loadingActiveRef = signal(false);
+  private readonly loadingProgressRef = signal(0);
+  private readonly loadingOverdueRef = signal(false);
+  private loadingCounter = 0;
+  private loadingStartedAtMs = 0;
+  private loadingProgressTimer: ReturnType<typeof setInterval> | null = null;
+  private loadingCompleteTimer: ReturnType<typeof setTimeout> | null = null;
+
+  readonly loadingState = computed(() => ({
+    active: this.loadingActiveRef() || this.loadingProgressRef() > 0,
+    progress: this.loadingProgressRef(),
+    overdue: this.loadingOverdueRef()
+  }));
 
   async prepareGraphSnapshot(adminUserId?: string | null): Promise<AdminAffinityGraphDto> {
-    const snapshot = this.usesHttpAdminApi
-      ? await this.loadHttpBootstrapSnapshot(adminUserId)
-      : await this.demoRepository.buildGraphSnapshot();
-    const normalized = this.normalizeSnapshot(snapshot, this.usesHttpAdminApi ? 'http' : 'demo');
-    await this.memoryDb.writeIndexedDbTableEntry(ADMIN_AFFINITY_GRAPH_STORE_KEY, normalized);
-    return normalized;
+    return this.withLoadingProgress(async () => {
+      const [snapshot] = await Promise.all([
+        this.usesHttpAdminApi
+          ? this.loadHttpBootstrapSnapshot(adminUserId)
+          : this.demoRepository.buildGraphSnapshot(),
+        this.routeDelay.waitForRouteDelay(
+          ADMIN_AFFINITY_GRAPH_ROUTE,
+          undefined,
+          undefined,
+          AFFINITY_GRAPH_LOAD_DEMO_DELAY_MS
+        )
+      ]);
+      const normalized = this.normalizeSnapshot(snapshot, this.usesHttpAdminApi ? 'http' : 'demo');
+      await this.memoryDb.writeIndexedDbTableEntry(ADMIN_AFFINITY_GRAPH_STORE_KEY, normalized);
+      return normalized;
+    });
   }
 
   async loadMeta(adminUserId?: string | null, range?: AdminAffinityGraphRangeParams): Promise<AdminAffinityGraphMetaDto> {
     if (this.usesHttpAdminApi) {
-      return this.httpRepository.loadMeta(adminUserId, range);
+      return this.withLoadingProgress(() => this.httpRepository.loadMeta(adminUserId, range));
     }
     return this.metaFromSnapshot(await this.demoSnapshot(range));
   }
 
   async loadForests(adminUserId?: string | null, range?: AdminAffinityGraphRangeParams): Promise<AdminAffinityGraphForestsDto> {
     if (this.usesHttpAdminApi) {
-      return this.httpRepository.loadForests(adminUserId, range);
+      return this.withLoadingProgress(() => this.httpRepository.loadForests(adminUserId, range));
     }
     const snapshot = await this.demoSnapshot(range);
     const components = this.components(snapshot.nodes, snapshot.edges);
@@ -62,7 +91,7 @@ export class AdminAffinityGraphService {
 
   async loadTile(adminUserId?: string | null, tile?: AdminAffinityGraphTileParams): Promise<AdminAffinityGraphTileDto> {
     if (this.usesHttpAdminApi) {
-      return this.httpRepository.loadTile(adminUserId, tile);
+      return this.withLoadingProgress(() => this.httpRepository.loadTile(adminUserId, tile));
     }
     const snapshot = await this.demoSnapshot(tile);
     return {
@@ -87,7 +116,7 @@ export class AdminAffinityGraphService {
     range?: AdminAffinityGraphRangeParams
   ): Promise<AdminAffinityGraphNeighborhoodDto> {
     if (this.usesHttpAdminApi) {
-      return this.httpRepository.loadNeighborhood(userId, depth, adminUserId, range);
+      return this.withLoadingProgress(() => this.httpRepository.loadNeighborhood(userId, depth, adminUserId, range));
     }
     const snapshot = await this.demoSnapshot(range);
     const normalizedUserId = `${userId ?? ''}`.trim();
@@ -108,7 +137,7 @@ export class AdminAffinityGraphService {
 
   async rebuildLayout(adminUserId?: string | null): Promise<AdminAffinityGraphMetaDto> {
     if (this.usesHttpAdminApi) {
-      return this.httpRepository.rebuildLayout(adminUserId);
+      return this.withLoadingProgress(() => this.httpRepository.rebuildLayout(adminUserId));
     }
     return this.metaFromSnapshot(await this.demoSnapshot());
   }
@@ -141,33 +170,13 @@ export class AdminAffinityGraphService {
       for (const node of firstTile.nodes ?? []) {
         nodesById.set(node.id, node);
       }
-      for (const forest of forests.forests ?? []) {
-        if (nodesById.has(forest.representativeUserId)) {
-          const node = nodesById.get(forest.representativeUserId);
-          if (node) {
-            nodesById.set(forest.representativeUserId, {
-              ...node,
-              componentId: forest.componentId,
-              x: node.x ?? forest.x,
-              y: node.y ?? forest.y,
-              z: node.z ?? forest.z,
-              degree: node.degree ?? forest.edgeCount,
-              weightedDegree: node.weightedDegree ?? forest.weightedDegree,
-              centrality: node.centrality ?? 1,
-              forestMemberCount: forest.memberCount,
-              forestEdgeCount: forest.edgeCount
-            });
-          }
-          continue;
-        }
-        nodesById.set(forest.representativeUserId, this.nodeFromForest(forest));
-      }
       return this.normalizeSnapshot({
         generatedAtIso: meta.generatedAtIso ?? forests.generatedAtIso ?? firstTile.generatedAtIso,
         source: 'http',
         layoutVersion: meta.layoutVersion ?? forests.layoutVersion ?? firstTile.layoutVersion,
         nodes: [...nodesById.values()],
-        edges: firstTile.edges ?? []
+        edges: firstTile.edges ?? [],
+        forests: forests.forests ?? []
       }, 'http');
     } catch (error) {
       const cached = await this.memoryDb.readIndexedDbTableEntry<AdminAffinityGraphDto>(ADMIN_AFFINITY_GRAPH_STORE_KEY);
@@ -176,32 +185,6 @@ export class AdminAffinityGraphService {
       }
       throw error;
     }
-  }
-
-  private nodeFromForest(forest: AdminAffinityGraphForestDto): AdminAffinityGraphNodeDto {
-    return {
-      id: forest.representativeUserId,
-      name: forest.representativeName || forest.representativeUserId,
-      initials: forest.representativeInitials || 'F',
-      gender: forest.gender ?? null,
-      city: null,
-      age: null,
-      headline: forest.memberCount === 1 ? 'Isolated member' : `${forest.memberCount} member forest`,
-      traitLabel: null,
-      statusText: null,
-      profileStatus: null,
-      image: null,
-      images: [],
-      componentId: forest.componentId,
-      x: forest.x,
-      y: forest.y,
-      z: forest.z,
-      degree: forest.edgeCount,
-      weightedDegree: forest.weightedDegree,
-      centrality: 1,
-      forestMemberCount: forest.memberCount,
-      forestEdgeCount: forest.edgeCount
-    };
   }
 
   private async demoSnapshot(range?: AdminAffinityGraphRangeParams | null): Promise<AdminAffinityGraphDto> {
@@ -348,12 +331,16 @@ export class AdminAffinityGraphService {
       .filter((edge): edge is AdminAffinityGraphEdgeDto =>
         Boolean(edge && nodeIds.has(edge.source) && nodeIds.has(edge.target) && edge.source !== edge.target)
       );
+    const normalizedForests = (Array.isArray(snapshot?.forests) ? snapshot.forests : [])
+      .map(forest => this.normalizeForest(forest))
+      .filter((forest): forest is AdminAffinityGraphForestDto => Boolean(forest));
     return {
       generatedAtIso: snapshot?.generatedAtIso ?? new Date().toISOString(),
       source: snapshot?.source ?? fallbackSource,
       layoutVersion: snapshot?.layoutVersion ?? `${fallbackSource}-${snapshot?.generatedAtIso ?? Date.now()}`,
       nodes: normalizedNodes,
-      edges: normalizedEdges
+      edges: normalizedEdges,
+      forests: normalizedForests
     };
   }
 
@@ -410,12 +397,115 @@ export class AdminAffinityGraphService {
     };
   }
 
+  private normalizeForest(forest: AdminAffinityGraphForestDto | null | undefined): AdminAffinityGraphForestDto | null {
+    const componentId = `${forest?.componentId ?? ''}`.trim();
+    if (!componentId) {
+      return null;
+    }
+    const representativeUserId = `${forest?.representativeUserId ?? ''}`.trim();
+    const representativeName = `${forest?.representativeName ?? ''}`.trim() || representativeUserId || componentId;
+    const memberCount = Number.isFinite(Number(forest?.memberCount)) ? Math.max(0, Math.trunc(Number(forest?.memberCount))) : 0;
+    const edgeCount = Number.isFinite(Number(forest?.edgeCount)) ? Math.max(0, Math.trunc(Number(forest?.edgeCount))) : 0;
+    return {
+      componentId,
+      representativeUserId,
+      representativeName,
+      representativeInitials: `${forest?.representativeInitials ?? ''}`.trim().slice(0, 3).toUpperCase()
+        || representativeName.split(/\s+/).map(part => part[0]).join('').slice(0, 3).toUpperCase()
+        || 'F',
+      gender: forest?.gender ?? null,
+      memberCount,
+      edgeCount,
+      weightedDegree: Number.isFinite(Number(forest?.weightedDegree)) ? Number(forest?.weightedDegree) : 0,
+      x: Number.isFinite(Number(forest?.x)) ? Number(forest?.x) : 0,
+      y: Number.isFinite(Number(forest?.y)) ? Number(forest?.y) : 0,
+      z: Number.isFinite(Number(forest?.z)) ? Number(forest?.z) : 0,
+      radius: Number.isFinite(Number(forest?.radius)) ? Math.max(0, Number(forest?.radius)) : Math.max(3, Math.sqrt(memberCount) * 5.5)
+    };
+  }
+
   private clamp(value: number, min: number, max: number): number {
     return Math.min(max, Math.max(min, Number.isFinite(value) ? value : min));
   }
 
   private round(value: number): number {
     return Math.round(value * 1000) / 1000;
+  }
+
+  private async withLoadingProgress<T>(work: () => Promise<T>): Promise<T> {
+    this.beginLoadingProgress();
+    try {
+      return await work();
+    } finally {
+      this.endLoadingProgress();
+    }
+  }
+
+  private beginLoadingProgress(): void {
+    this.loadingCounter += 1;
+    if (this.loadingCounter > 1) {
+      return;
+    }
+    if (this.loadingCompleteTimer) {
+      clearTimeout(this.loadingCompleteTimer);
+      this.loadingCompleteTimer = null;
+    }
+    this.loadingActiveRef.set(true);
+    this.loadingProgressRef.set(0.02);
+    this.loadingOverdueRef.set(false);
+    this.loadingStartedAtMs = this.nowMs();
+    this.updateLoadingProgress();
+    this.loadingProgressTimer = setInterval(() => this.updateLoadingProgress(), 80);
+  }
+
+  private updateLoadingProgress(): void {
+    if (!this.loadingStartedAtMs) {
+      this.loadingProgressRef.set(0);
+      this.loadingOverdueRef.set(false);
+      return;
+    }
+    const elapsedMs = Math.max(0, this.nowMs() - this.loadingStartedAtMs);
+    const nextProgress = Math.min(1, elapsedMs / AFFINITY_GRAPH_LOAD_PROGRESS_WINDOW_MS);
+    this.loadingProgressRef.set(Math.max(this.loadingProgressRef(), nextProgress));
+    this.loadingOverdueRef.set(elapsedMs >= AFFINITY_GRAPH_LOAD_PROGRESS_WINDOW_MS && this.loadingCounter > 0);
+  }
+
+  private endLoadingProgress(): void {
+    if (this.loadingCounter === 0) {
+      return;
+    }
+    this.loadingCounter = Math.max(0, this.loadingCounter - 1);
+    if (this.loadingCounter !== 0) {
+      return;
+    }
+    this.clearLoadingProgressTimer();
+    this.loadingActiveRef.set(false);
+    this.loadingProgressRef.set(1);
+    this.loadingOverdueRef.set(false);
+    if (this.loadingCompleteTimer) {
+      clearTimeout(this.loadingCompleteTimer);
+    }
+    this.loadingCompleteTimer = setTimeout(() => {
+      if (this.loadingCounter !== 0) {
+        return;
+      }
+      this.loadingStartedAtMs = 0;
+      this.loadingProgressRef.set(0);
+      this.loadingOverdueRef.set(false);
+      this.loadingCompleteTimer = null;
+    }, 120);
+  }
+
+  private clearLoadingProgressTimer(): void {
+    if (!this.loadingProgressTimer) {
+      return;
+    }
+    clearInterval(this.loadingProgressTimer);
+    this.loadingProgressTimer = null;
+  }
+
+  private nowMs(): number {
+    return typeof performance !== 'undefined' ? performance.now() : Date.now();
   }
 }
 
