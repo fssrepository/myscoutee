@@ -10,6 +10,8 @@ const GRAPH_LAYOUT_VERSION = GRAPH_DATA.layoutVersion || null;
 const COMPONENT_CORE_NODE_BUDGET = 20;
 const COMPONENT_CORE_EDGE_BUDGET = 56;
 const REFIT_ANIMATION_MS = 620;
+const SEMANTIC_RENDER_NODE_LIMIT = 1200;
+const SEMANTIC_RENDER_EDGE_LIMIT = 5000;
 
 const graphApp = document.querySelector('.graph-app');
 const canvas = document.querySelector('#graph-canvas');
@@ -96,8 +98,13 @@ controls.enableDamping = true;
 controls.dampingFactor = 0.075;
 controls.minDistance = 24;
 controls.maxDistance = 2200;
+controls.zoomToCursor = true;
 controls.enablePan = false;
 controls.screenSpacePanning = true;
+controls.touches = {
+  ONE: null,
+  TWO: THREE.TOUCH.DOLLY_ROTATE
+};
 controls.mouseButtons = {
   LEFT: null,
   MIDDLE: THREE.MOUSE.DOLLY,
@@ -139,6 +146,9 @@ let hoverForest = null;
 let edgeMesh = null;
 let selectedLinkLines = null;
 let pointerDown = null;
+const activeTouchPointers = new Map();
+let touchPinchDistance = null;
+let touchGestureWasMultiTouch = false;
 let visibleEdgeCount = 0;
 let visibleEdges = [];
 let visibleNodeIds = new Set(nodes.map(node => node.id));
@@ -158,6 +168,11 @@ const viewportPanOffset = { x: 0, y: 0 };
 let lastPublishedZoomProgress = -1;
 let lastPublishedZoomMode = '';
 let zoomReferenceFitDistance = 48;
+let semanticZoomLevel = 0;
+let semanticZoomInputUntil = 0;
+let collapseBadgeMin = 1;
+let collapseBadgeMax = 1;
+const badgeCountAnimations = new Set();
 
 const selectionSprite = new THREE.Sprite(new THREE.SpriteMaterial({
   map: createRingTexture(),
@@ -191,6 +206,7 @@ maxWeightInput.addEventListener('input', () => handleWeightRangeInput('max'));
 linkDepthInput.addEventListener('input', handleLinkDepthInput);
 controls.addEventListener('change', () => {
   scheduleLazyTileLoad(260);
+  refreshSemanticZoomFromCamera();
   publishGraphState();
 });
 
@@ -200,10 +216,31 @@ resetViewButton.addEventListener('click', () => {
 window.addEventListener('resize', resize);
 window.addEventListener('keydown', handleKeyPan);
 canvas.addEventListener('contextmenu', event => event.preventDefault());
+canvas.addEventListener('wheel', () => {
+  semanticZoomInputUntil = performance.now() + 520;
+}, { passive: true, capture: true });
+
+canvas.addEventListener('pointermove', event => {
+  if (event.pointerType !== 'touch' || activeTouchPointers.size < 2) {
+    return;
+  }
+  activeTouchPointers.set(event.pointerId, touchPointFromEvent(event));
+  updateTouchZoomInput();
+}, { passive: true, capture: true });
 
 canvas.addEventListener('pointerdown', event => {
   if (event.button !== 0) {
     return;
+  }
+  if (event.pointerType === 'touch') {
+    activeTouchPointers.set(event.pointerId, touchPointFromEvent(event));
+    if (activeTouchPointers.size >= 2) {
+      touchGestureWasMultiTouch = true;
+      touchPinchDistance = activeTouchDistance();
+      semanticZoomInputUntil = performance.now() + 620;
+      pointerDown = null;
+      return;
+    }
   }
   pointerDown = {
     x: event.clientX,
@@ -213,10 +250,22 @@ canvas.addEventListener('pointerdown', event => {
     pointerId: event.pointerId,
     dragged: false
   };
-  canvas.setPointerCapture?.(event.pointerId);
+  if (event.pointerType !== 'touch') {
+    canvas.setPointerCapture?.(event.pointerId);
+  }
 });
 
 canvas.addEventListener('pointermove', event => {
+  if (event.pointerType === 'touch') {
+    activeTouchPointers.set(event.pointerId, touchPointFromEvent(event));
+    if (activeTouchPointers.size >= 2) {
+      touchGestureWasMultiTouch = true;
+      updateTouchZoomInput();
+      pointerDown = null;
+      return;
+    }
+  }
+
   if (pointerDown && (event.buttons & 1)) {
     const moved = Math.hypot(event.clientX - pointerDown.x, event.clientY - pointerDown.y);
     const deltaX = event.clientX - pointerDown.lastX;
@@ -242,6 +291,20 @@ canvas.addEventListener('pointermove', event => {
 });
 
 canvas.addEventListener('pointerup', event => {
+  if (event.pointerType === 'touch') {
+    activeTouchPointers.delete(event.pointerId);
+    if (activeTouchPointers.size < 2) {
+      touchPinchDistance = null;
+    }
+    if (touchGestureWasMultiTouch) {
+      pointerDown = null;
+      if (activeTouchPointers.size === 0) {
+        touchGestureWasMultiTouch = false;
+      }
+      return;
+    }
+  }
+
   if (!pointerDown) {
     return;
   }
@@ -267,6 +330,45 @@ canvas.addEventListener('pointerup', event => {
     clearSelection();
   }
 });
+
+canvas.addEventListener('pointercancel', event => {
+  if (event.pointerType === 'touch') {
+    activeTouchPointers.delete(event.pointerId);
+    if (activeTouchPointers.size < 2) {
+      touchPinchDistance = null;
+    }
+    if (activeTouchPointers.size === 0) {
+      touchGestureWasMultiTouch = false;
+      pointerDown = null;
+    }
+  }
+});
+
+function touchPointFromEvent(event) {
+  return {
+    x: event.clientX,
+    y: event.clientY
+  };
+}
+
+function activeTouchDistance() {
+  const touches = [...activeTouchPointers.values()];
+  if (touches.length < 2) {
+    return null;
+  }
+  return Math.hypot(touches[0].x - touches[1].x, touches[0].y - touches[1].y);
+}
+
+function updateTouchZoomInput() {
+  const nextDistance = activeTouchDistance();
+  if (!Number.isFinite(nextDistance)) {
+    return;
+  }
+  if (touchPinchDistance === null || Math.abs(nextDistance - touchPinchDistance) > 2) {
+    semanticZoomInputUntil = performance.now() + 620;
+  }
+  touchPinchDistance = nextDistance;
+}
 
 function createNodes() {
   for (const node of nodes) {
@@ -413,10 +515,18 @@ function visibleGraphForCurrentView(thresholdEdges) {
 }
 
 function visibleGraphForFullGraph(thresholdEdges) {
+  const nodeBudget = semanticNodeBudget(nodes.length);
+  const coreGraph = strongestComponentCore(
+    { nodes, representative: nodes[0] ?? null },
+    thresholdEdges,
+    nodeBudget,
+    semanticEdgeBudget(nodeBudget)
+  );
+  const nodeIds = coreGraph.nodeIds;
   return {
-    edges: thresholdEdges,
-    nodeIds: new Set(nodes.map(node => node.id)),
-    nodeDepths: new Map(nodes.map(node => [node.id, 0]))
+    edges: coreGraph.edges,
+    nodeIds,
+    nodeDepths: new Map([...nodeIds].map(nodeId => [nodeId, 0]))
   };
 }
 
@@ -432,7 +542,8 @@ function visibleGraphForComponent(componentId, thresholdEdges) {
 
   const componentNodeIds = new Set(component.nodes.map(node => node.id));
   const componentEdges = thresholdEdges.filter(edge => componentNodeIds.has(edge.source) && componentNodeIds.has(edge.target));
-  const coreGraph = strongestComponentCore(component, componentEdges);
+  const nodeBudget = semanticNodeBudget(Math.max(component.nodes.length, component.memberCountEstimate ?? 0));
+  const coreGraph = strongestComponentCore(component, componentEdges, nodeBudget, semanticEdgeBudget(nodeBudget));
   const nodeIds = coreGraph.nodeIds;
   return {
     edges: coreGraph.edges,
@@ -441,7 +552,9 @@ function visibleGraphForComponent(componentId, thresholdEdges) {
   };
 }
 
-function strongestComponentCore(component, componentEdges) {
+function strongestComponentCore(component, componentEdges, nodeBudget = COMPONENT_CORE_NODE_BUDGET, edgeBudget = COMPONENT_CORE_EDGE_BUDGET) {
+  const visibleNodeBudget = Math.max(1, Math.trunc(nodeBudget));
+  const visibleEdgeBudget = Math.max(0, Math.trunc(edgeBudget));
   if (!componentEdges.length) {
     const representative = memberRepresentativeForComponent(component);
     return {
@@ -475,7 +588,7 @@ function strongestComponentCore(component, componentEdges) {
   const seedEdges = new Map();
 
   for (const seed of rankedNodes) {
-    if (selectedIds.size >= COMPONENT_CORE_NODE_BUDGET) {
+    if (selectedIds.size >= visibleNodeBudget) {
       break;
     }
     if (!remaining.has(seed.id)) {
@@ -491,7 +604,7 @@ function strongestComponentCore(component, componentEdges) {
       .sort((a, b) => b.weight - a.weight || graphEdgeKey(a.source, a.target).localeCompare(graphEdgeKey(b.source, b.target)));
 
     for (const edge of partnerEdges) {
-      if (selectedIds.size >= COMPONENT_CORE_NODE_BUDGET || partnerCount >= partnerLimit) {
+      if (selectedIds.size >= visibleNodeBudget || partnerCount >= partnerLimit) {
         break;
       }
       const partnerId = edge.source === seed.id ? edge.target : edge.source;
@@ -504,7 +617,7 @@ function strongestComponentCore(component, componentEdges) {
 
   if (selectedIds.size < Math.min(6, rankedNodes.length)) {
     for (const node of rankedNodes) {
-      if (selectedIds.size >= Math.min(COMPONENT_CORE_NODE_BUDGET, rankedNodes.length)) {
+      if (selectedIds.size >= Math.min(visibleNodeBudget, rankedNodes.length)) {
         break;
       }
       selectedIds.add(node.id);
@@ -515,17 +628,34 @@ function strongestComponentCore(component, componentEdges) {
   componentEdges
     .filter(edge => selectedIds.has(edge.source) && selectedIds.has(edge.target))
     .sort((a, b) => b.weight - a.weight || graphEdgeKey(a.source, a.target).localeCompare(graphEdgeKey(b.source, b.target)))
-    .slice(0, COMPONENT_CORE_EDGE_BUDGET)
+    .slice(0, visibleEdgeBudget)
     .forEach(edge => selectedEdgeByKey.set(graphEdgeKey(edge.source, edge.target), edge));
 
   return {
-    edges: [...selectedEdgeByKey.values()].slice(0, COMPONENT_CORE_EDGE_BUDGET),
+    edges: [...selectedEdgeByKey.values()].slice(0, visibleEdgeBudget),
     nodeIds: selectedIds
   };
 }
 
 function visibleGraphForSelectedDepth(thresholdEdges) {
   const maxDepth = currentLinkDepth();
+  const allNodeDepths = selectedNodeDepthMap(thresholdEdges, maxDepth);
+  const nodeBudget = semanticNodeBudget(allNodeDepths.size);
+  const nodeIds = new Set(rankedSelectedNodeIds(thresholdEdges, allNodeDepths, nodeBudget));
+  const nodeDepths = new Map([...allNodeDepths].filter(([nodeId]) => nodeIds.has(nodeId)));
+  const visibleThresholdEdges = thresholdEdges.filter(edge => nodeIds.has(edge.source) && nodeIds.has(edge.target));
+  const graphEdges = maxDepth === 1
+    ? visibleThresholdEdges.filter(edge => edge.source === selectedNode.id || edge.target === selectedNode.id)
+    : strongestLayerEdges(visibleThresholdEdges, nodeDepths);
+
+  return {
+    edges: graphEdges.slice(0, semanticEdgeBudget(nodeBudget)),
+    nodeIds,
+    nodeDepths
+  };
+}
+
+function selectedNodeDepthMap(thresholdEdges, maxDepth = currentLinkDepth()) {
   const nodeDepths = new Map([[selectedNode.id, 0]]);
   let frontier = new Set([selectedNode.id]);
 
@@ -550,16 +680,41 @@ function visibleGraphForSelectedDepth(thresholdEdges) {
     }
   }
 
-  const nodeIds = new Set(nodeDepths.keys());
-  const graphEdges = maxDepth === 1
-    ? thresholdEdges.filter(edge => edge.source === selectedNode.id || edge.target === selectedNode.id)
-    : strongestLayerEdges(thresholdEdges, nodeDepths);
+  return nodeDepths;
+}
 
-  return {
-    edges: graphEdges,
-    nodeIds,
-    nodeDepths
-  };
+function rankedSelectedNodeIds(thresholdEdges, nodeDepths, nodeBudget) {
+  const maxNodeCount = Math.max(1, Math.trunc(nodeBudget));
+  if (nodeDepths.size <= maxNodeCount) {
+    return [...nodeDepths.keys()];
+  }
+
+  const strengthByNode = new Map();
+  const weightByNode = new Map();
+  for (const edge of thresholdEdges) {
+    if (!nodeDepths.has(edge.source) || !nodeDepths.has(edge.target)) {
+      continue;
+    }
+    strengthByNode.set(edge.source, Math.max(strengthByNode.get(edge.source) ?? 0, edge.weight));
+    strengthByNode.set(edge.target, Math.max(strengthByNode.get(edge.target) ?? 0, edge.weight));
+    weightByNode.set(edge.source, (weightByNode.get(edge.source) ?? 0) + edge.weight);
+    weightByNode.set(edge.target, (weightByNode.get(edge.target) ?? 0) + edge.weight);
+  }
+
+  const selectedId = selectedNode.id;
+  const ranked = [...nodeDepths.keys()]
+    .filter(nodeId => nodeId !== selectedId)
+    .sort((a, b) =>
+      (nodeDepths.get(a) ?? 0) - (nodeDepths.get(b) ?? 0)
+      || (strengthByNode.get(b) ?? 0) - (strengthByNode.get(a) ?? 0)
+      || (weightByNode.get(b) ?? 0) - (weightByNode.get(a) ?? 0)
+      || (nodeById.get(b)?.weightedDegree ?? 0) - (nodeById.get(a)?.weightedDegree ?? 0)
+      || (nodeById.get(b)?.degree ?? 0) - (nodeById.get(a)?.degree ?? 0)
+      || (nodeById.get(a)?.name ?? '').localeCompare(nodeById.get(b)?.name ?? '')
+      || a.localeCompare(b)
+    );
+
+  return [selectedId, ...ranked.slice(0, maxNodeCount - 1)];
 }
 
 function strongestLayerEdges(thresholdEdges, nodeDepths) {
@@ -660,6 +815,7 @@ function selectNode(nodeId, options = {}) {
   selectionReturnMode = fullGraphExpanded ? 'graph' : activeComponentId !== null ? 'forest' : 'graph';
   selectedNode = node;
   fullGraphExpanded = false;
+  resetSemanticZoomLevel();
   if (selectedNode) {
     activeComponentId = selectedNode.componentId;
   }
@@ -682,11 +838,11 @@ function selectForest(componentId) {
   selectedNode = null;
   selectionReturnMode = null;
   fullGraphExpanded = false;
+  resetSemanticZoomLevel();
   restoreHomeNodePositions();
   rebuildEdges();
   renderMemberPanel(null);
-  refitVisibleNodes({ immediate: false });
-  fitCameraToVisibleTargets(true);
+  startVisibleRefit({ fitCamera: true });
   scheduleLazyComponentLoad(componentId, 60, { refresh: true });
   scheduleLazyTileLoad(80, { refresh: true });
   publishPreviewState();
@@ -704,11 +860,11 @@ function clearSelection() {
 
   if (returnMode === 'forest' && activeComponentId !== null) {
     fullGraphExpanded = false;
+    resetSemanticZoomLevel();
     rebuildEdges();
     startDeselectionVisualAnimation(previousNode, startScale, startRingScale, startRingOpacity);
     renderMemberPanel(null);
-    refitVisibleNodes({ immediate: false });
-    fitCameraToVisibleTargets(true);
+    startVisibleRefit({ fitCamera: true });
     scheduleLazyTileLoad(120, { refresh: true });
     publishPreviewState();
     return;
@@ -716,11 +872,11 @@ function clearSelection() {
 
   activeComponentId = null;
   fullGraphExpanded = true;
+  resetSemanticZoomLevel();
   rebuildEdges();
   startDeselectionVisualAnimation(previousNode, startScale, startRingScale, startRingOpacity);
   renderMemberPanel(null);
-  refitVisibleNodes({ immediate: false });
-  fitCameraToVisibleTargets(true);
+  startVisibleRefit({ fitCamera: true });
   scheduleLazyTileLoad(120, { refresh: true });
   publishPreviewState();
 }
@@ -731,10 +887,10 @@ function showFullGraph() {
   activeComponentId = null;
   selectionReturnMode = null;
   fullGraphExpanded = true;
+  resetSemanticZoomLevel();
   rebuildEdges();
   renderMemberPanel(null);
-  refitVisibleNodes({ immediate: false });
-  fitCameraToVisibleTargets(true);
+  startVisibleRefit({ fitCamera: true });
   scheduleLazyTileLoad(120, { refresh: true });
   publishPreviewState();
 }
@@ -758,6 +914,7 @@ function clearForest() {
   activeComponentId = null;
   selectionReturnMode = null;
   fullGraphExpanded = false;
+  resetSemanticZoomLevel();
   rebuildEdges();
   renderMemberPanel(null);
   refitVisibleNodes({ immediate: false });
@@ -908,7 +1065,8 @@ function renderMemberPanel(node) {
       return;
     }
     if (fullGraphExpanded) {
-      memberPanel.innerHTML = `<p class="empty-state">${nodes.length} members visible · ${visibleEdgeCount} links in range · ${components.length} forests.</p>`;
+      const collapsedMembers = Math.max(0, nodes.length - visibleNodeIds.size);
+      memberPanel.innerHTML = `<p class="empty-state">${visibleNodeIds.size} important members visible · ${collapsedMembers} collapsed · ${visibleEdgeCount} links in range.</p>`;
       return;
     }
     if (isForestOverview()) {
@@ -926,9 +1084,10 @@ function renderMemberPanel(node) {
     .map(({ edge, other }) => ({ edge, other }))
     .sort((a, b) => b.edge.weight - a.edge.weight);
   const filteredNeighbors = sortedNeighbors.filter(item => isEdgeInWeightRange(item.edge, weightRange));
-  const topNeighbors = filteredNeighbors.slice(0, 5);
+  const visibleNeighbors = filteredNeighbors.filter(item => visibleNodeIds.has(item.other.id));
+  const topNeighbors = visibleNeighbors.slice(0, 5);
   const strongest = topNeighbors[0]?.edge.weight ?? 0;
-  const visibleConnections = filteredNeighbors.length;
+  const visibleConnections = visibleNeighbors.length;
   const avatarColor = colorForNode(node, componentForId(node.componentId)).getStyle();
   const avatarMarkup = memberAvatarHtml(node, avatarColor);
   const neighborItems = topNeighbors.length
@@ -1132,22 +1291,199 @@ function currentLinkDepth() {
   return Math.round(clamp(Number(linkDepthInput.value) || 1, 1, 3));
 }
 
+function resetSemanticZoomLevel() {
+  semanticZoomLevel = 0;
+  semanticZoomInputUntil = 0;
+}
+
 function updateCollapseBadgeCounts(thresholdEdges) {
-  const thresholdDegree = new Map(nodes.map(node => [node.id, 0]));
-  for (const edge of thresholdEdges) {
-    thresholdDegree.set(edge.source, (thresholdDegree.get(edge.source) ?? 0) + 1);
-    thresholdDegree.set(edge.target, (thresholdDegree.get(edge.target) ?? 0) + 1);
-  }
+  const collapsedCounts = collapsedMemberCounts(thresholdEdges);
+  const visibleCounts = [...visibleNodeIds]
+    .map(nodeId => Math.trunc(collapsedCounts.get(nodeId) ?? 0))
+    .filter(count => count > 0);
+  const nextMin = visibleCounts.length ? Math.min(...visibleCounts) : 1;
+  const nextMax = visibleCounts.length ? Math.max(...visibleCounts) : 1;
+  const previousMin = collapseBadgeMin;
+  const previousMax = collapseBadgeMax;
+  const colorScaleChanged = nextMin !== collapseBadgeMin || nextMax !== collapseBadgeMax;
+  collapseBadgeMin = nextMin;
+  collapseBadgeMax = nextMax;
 
   for (const node of nodes) {
-    const hiddenLinks = Math.max(0, (thresholdDegree.get(node.id) ?? 0) - (node.visibleDegree ?? 0));
-    const hiddenForestMembers = isForestOverview() ? 0 : Math.max(0, Number(node.forestMemberCount ?? 0) - 1);
-    const nextCount = Math.trunc(Math.max(hiddenLinks, hiddenForestMembers));
+    const nextCount = Math.trunc(collapsedCounts.get(node.id) ?? 0);
     if (node.collapseBadgeCount === nextCount) {
+      if (colorScaleChanged && nextCount > 0) {
+        animateNodeBadgeCount(node, nextCount, nextCount, {
+          fromMin: previousMin,
+          fromMax: previousMax,
+          toMin: nextMin,
+          toMax: nextMax
+        });
+      }
       continue;
     }
+    const previousDisplayCount = currentBadgeDisplayCount(node);
     node.collapseBadgeCount = nextCount;
+    animateNodeBadgeCount(node, previousDisplayCount, nextCount, {
+      fromMin: previousMin,
+      fromMax: previousMax,
+      toMin: nextMin,
+      toMax: nextMax
+    });
+  }
+}
+
+function animateNodeBadgeCount(node, fromCount, toCount, range = {}) {
+  badgeCountAnimations.delete(node);
+  const fromVisibleCount = fromCount > 0 ? fromCount : toCount;
+  const toVisibleCount = toCount > 0 ? toCount : fromVisibleCount;
+  const fromStyle = colorForCounterBadgeCount(
+    fromVisibleCount,
+    range.fromMin ?? collapseBadgeMin,
+    range.fromMax ?? collapseBadgeMax
+  );
+  const toStyle = colorForCounterBadgeCount(
+    toVisibleCount,
+    range.toMin ?? collapseBadgeMin,
+    range.toMax ?? collapseBadgeMax
+  );
+  node.badgeCountAnimation = {
+    from: Number(fromCount) || 0,
+    to: Number(toCount) || 0,
+    fromBadgeColor: fromStyle.color.getHex(),
+    toBadgeColor: toStyle.color.getHex(),
+    fromTextColor: fromStyle.textColor,
+    toTextColor: toStyle.textColor,
+    startedAt: performance.now(),
+    durationMs: 360
+  };
+  badgeCountAnimations.add(node);
+}
+
+function updateBadgeCountAnimations() {
+  if (!badgeCountAnimations.size) {
+    return;
+  }
+
+  const now = performance.now();
+  for (const node of [...badgeCountAnimations]) {
+    const animation = node.badgeCountAnimation;
+    if (!animation) {
+      badgeCountAnimations.delete(node);
+      continue;
+    }
+
+    const progress = clamp((now - animation.startedAt) / animation.durationMs, 0, 1);
+    const eased = easeOutCubic(progress);
+    animation.progress = progress;
+    animation.eased = eased;
     refreshNodeBadge(node);
+
+    if (progress >= 1) {
+      node.badgeCountAnimation = null;
+      badgeCountAnimations.delete(node);
+      refreshNodeBadge(node);
+    }
+  }
+}
+
+function currentBadgeDisplayCount(node) {
+  const animation = node.badgeCountAnimation;
+  if (!animation) {
+    return Number(node.collapseBadgeCount ?? 0);
+  }
+  return (animation.progress ?? 0) < 0.5
+    ? Number(animation.from ?? 0)
+    : Number(animation.to ?? 0);
+}
+
+function collapsedMemberCounts(thresholdEdges) {
+  const counts = new Map(nodes.map(node => [node.id, 0]));
+  if (isForestOverview() || !visibleNodeIds.size) {
+    return counts;
+  }
+
+  const hiddenNodeIds = hiddenNodeIdsForCurrentView(thresholdEdges);
+  if (selectedNode && currentLinkDepth() === 1) {
+    counts.set(selectedNode.id, hiddenNodeIds.size);
+    return counts;
+  }
+
+  const bestVisibleByHidden = new Map();
+  const visibleScore = new Map([...visibleNodeIds].map(nodeId => [nodeId, overviewNodeScore(nodeById.get(nodeId))]));
+  const assignHiddenNode = (hiddenNodeId, visibleNodeId, weight = 0) => {
+    if (!hiddenNodeIds.has(hiddenNodeId) || !visibleNodeIds.has(visibleNodeId)) {
+      return;
+    }
+    const previous = bestVisibleByHidden.get(hiddenNodeId);
+    const score = visibleScore.get(visibleNodeId) ?? 0;
+    if (
+      !previous
+      || weight > previous.weight
+      || (weight === previous.weight && score > previous.score)
+      || (weight === previous.weight && score === previous.score && String(visibleNodeId).localeCompare(String(previous.visibleNodeId)) < 0)
+    ) {
+      bestVisibleByHidden.set(hiddenNodeId, {
+        visibleNodeId,
+        weight,
+        score
+      });
+    }
+  };
+
+  for (const edge of thresholdEdges) {
+    assignHiddenNode(edge.source, edge.target, edge.weight);
+    assignHiddenNode(edge.target, edge.source, edge.weight);
+  }
+
+  for (const hiddenNodeId of hiddenNodeIds) {
+    if (!bestVisibleByHidden.has(hiddenNodeId)) {
+      assignHiddenNodeToComponentCore(hiddenNodeId, bestVisibleByHidden);
+    }
+  }
+
+  for (const assignment of bestVisibleByHidden.values()) {
+    counts.set(assignment.visibleNodeId, (counts.get(assignment.visibleNodeId) ?? 0) + 1);
+  }
+  return counts;
+}
+
+function hiddenNodeIdsForCurrentView(thresholdEdges) {
+  let candidateIds = new Set();
+  if (selectedNode) {
+    candidateIds = new Set(selectedNodeDepthMap(thresholdEdges).keys());
+  } else if (activeComponentId !== null) {
+    const component = componentForId(activeComponentId);
+    candidateIds = new Set(component?.nodes?.map(node => node.id) ?? []);
+  } else if (fullGraphExpanded) {
+    candidateIds = new Set(nodes.map(node => node.id));
+  }
+
+  for (const visibleNodeId of visibleNodeIds) {
+    candidateIds.delete(visibleNodeId);
+  }
+  return candidateIds;
+}
+
+function assignHiddenNodeToComponentCore(hiddenNodeId, bestVisibleByHidden) {
+  const hiddenNode = nodeById.get(hiddenNodeId);
+  const component = componentForId(hiddenNode?.componentId);
+  const visibleComponentNodes = (component?.nodes ?? [])
+    .filter(node => visibleNodeIds.has(node.id))
+    .sort((a, b) =>
+      overviewNodeScore(b) - overviewNodeScore(a)
+      || b.weightedDegree - a.weightedDegree
+      || b.degree - a.degree
+      || a.name.localeCompare(b.name)
+      || a.id.localeCompare(b.id)
+    );
+  const visibleNode = visibleComponentNodes[0];
+  if (visibleNode) {
+    bestVisibleByHidden.set(hiddenNodeId, {
+      visibleNodeId: visibleNode.id,
+      weight: 0,
+      score: overviewNodeScore(visibleNode)
+    });
   }
 }
 
@@ -1265,6 +1601,251 @@ function currentZoomProgress() {
   return clamp((fitDistance - distance) / Math.max(1, fitDistance - nearDistance), 0, 1);
 }
 
+function refreshSemanticZoomFromCamera() {
+  if (performance.now() > semanticZoomInputUntil || isForestOverview()) {
+    return;
+  }
+
+  const population = semanticPopulationForCurrentView();
+  const nextLevel = semanticLevelForProgress(currentZoomProgress(), population);
+  if (nextLevel === semanticZoomLevel) {
+    return;
+  }
+
+  const previewGraph = visibleGraphForSemanticLevel(nextLevel);
+  const previewVisibleEdges = visibleEdgeSignature(previewGraph.edges);
+  const hasSemanticChange = !sameSet(visibleNodeIds, previewGraph.nodeIds)
+    || visibleEdgeSignature(visibleEdges) !== previewVisibleEdges;
+  if (!hasSemanticChange) {
+    semanticZoomLevel = nextLevel;
+    return;
+  }
+
+  const previousVisibleNodeIds = new Set(visibleNodeIds);
+  semanticZoomLevel = nextLevel;
+  rebuildEdges();
+  renderMemberPanel(selectedNode);
+  settleSemanticZoomLayout(previousVisibleNodeIds);
+  if (selectedNode) {
+    scheduleLazyNeighborhoodLoad(120);
+  } else {
+    scheduleLazyTileLoad(120);
+  }
+}
+
+function visibleGraphForSemanticLevel(level) {
+  const previousLevel = semanticZoomLevel;
+  semanticZoomLevel = level;
+  try {
+    const thresholdEdges = edges.filter(edge => isEdgeInWeightRange(edge));
+    return visibleGraphForCurrentView(thresholdEdges);
+  } finally {
+    semanticZoomLevel = previousLevel;
+  }
+}
+
+function settleSemanticZoomLayout(previousVisibleNodeIds) {
+  const addedNodes = nodes.filter(node => visibleNodeIds.has(node.id) && !previousVisibleNodeIds.has(node.id));
+  const fromPositions = new Map(nodes.map(node => [node.id, node.position.clone()]));
+
+  for (const node of nodes) {
+    if (!visibleNodeIds.has(node.id) || previousVisibleNodeIds.has(node.id)) {
+      node.targetPosition = node.position.clone();
+    }
+  }
+
+  if (!addedNodes.length) {
+    nodeLayoutAnimation = null;
+    syncGraphObjects();
+    clampViewportPanOffset();
+    return;
+  }
+
+  const localTargets = semanticLocalTargetsForAddedNodes(addedNodes, previousVisibleNodeIds);
+  for (const node of addedNodes) {
+    const target = localTargets.get(node.id) ?? node.position.clone();
+    const anchor = semanticAnchorForNode(node, previousVisibleNodeIds).position;
+    const entry = semanticEntryPosition(anchor, target, node.id);
+    node.position.copy(entry);
+    node.targetPosition.copy(target);
+    fromPositions.set(node.id, entry.clone());
+  }
+
+  nodeLayoutAnimation = {
+    startedAt: performance.now(),
+    durationMs: Math.min(440, REFIT_ANIMATION_MS),
+    from: fromPositions
+  };
+  syncGraphObjects();
+  clampViewportPanOffset();
+}
+
+function semanticLocalTargetsForAddedNodes(addedNodes, previousVisibleNodeIds) {
+  const basis = viewBasis();
+  const anchorGroups = new Map();
+  const targetByNode = new Map();
+
+  for (const node of addedNodes) {
+    const anchor = semanticAnchorForNode(node, previousVisibleNodeIds);
+    if (!anchorGroups.has(anchor.key)) {
+      anchorGroups.set(anchor.key, {
+        anchor,
+        nodes: []
+      });
+    }
+    anchorGroups.get(anchor.key).nodes.push(node);
+  }
+
+  for (const group of anchorGroups.values()) {
+    group.nodes
+      .sort((a, b) =>
+        (b.visibleStrongest ?? 0) - (a.visibleStrongest ?? 0)
+        || (b.weightedDegree ?? 0) - (a.weightedDegree ?? 0)
+        || (a.name ?? '').localeCompare(b.name ?? '')
+        || a.id.localeCompare(b.id)
+      )
+      .forEach((node, index) => {
+        const count = group.nodes.length;
+        const angle = seededAngle(`${group.anchor.key}:${node.id}`) + (index / Math.max(1, count)) * Math.PI * 2;
+        const anchorNode = group.anchor.node;
+        const anchorScale = anchorNode?.badge?.scale?.x ?? anchorNode?.badgeScale ?? 2.8;
+        const nodeScale = node.badge?.scale?.x ?? node.badgeScale ?? 2.8;
+        const shellRadius = Math.max(5.5, anchorScale * 0.62 + nodeScale * 1.05 + Math.sqrt(count) * 0.92);
+        const depthOffset = ((index % 3) - 1) * Math.min(2.2, shellRadius * 0.18);
+        const target = group.anchor.position.clone()
+          .addScaledVector(basis.right, Math.cos(angle) * shellRadius)
+          .addScaledVector(basis.up, Math.sin(angle) * shellRadius)
+          .addScaledVector(basis.forward, depthOffset);
+        targetByNode.set(node.id, target);
+      });
+  }
+
+  return targetByNode;
+}
+
+function semanticAnchorForNode(node, previousVisibleNodeIds) {
+  let best = null;
+  for (const edge of visibleEdges) {
+    if (edge.source !== node.id && edge.target !== node.id) {
+      continue;
+    }
+    const otherId = edge.source === node.id ? edge.target : edge.source;
+    if (!previousVisibleNodeIds.has(otherId)) {
+      continue;
+    }
+    if (!best || edge.weight > best.weight) {
+      const other = nodeById.get(otherId);
+      if (other) {
+        best = {
+          key: other.id,
+          node: other,
+          position: other.position.clone(),
+          weight: edge.weight
+        };
+      }
+    }
+  }
+
+  if (best) {
+    return best;
+  }
+
+  if (selectedNode && selectedNode !== node) {
+    return {
+      key: selectedNode.id,
+      node: selectedNode,
+      position: selectedNode.position.clone(),
+      weight: 0
+    };
+  }
+
+  const fallbackNode = [...previousVisibleNodeIds]
+    .map(nodeId => nodeById.get(nodeId))
+    .filter(Boolean)
+    .sort((a, b) => a.position.distanceToSquared(node.position) - b.position.distanceToSquared(node.position))[0];
+  if (fallbackNode) {
+    return {
+      key: fallbackNode.id,
+      node: fallbackNode,
+      position: fallbackNode.position.clone(),
+      weight: 0
+    };
+  }
+
+  return {
+    key: 'view-center',
+    node: null,
+    position: controls.target.clone(),
+    weight: 0
+  };
+}
+
+function semanticEntryPosition(anchor, target, seed) {
+  const direction = target.clone().sub(anchor);
+  if (direction.lengthSq() < 0.0001) {
+    direction.copy(seededVector(seed));
+  }
+  const distance = direction.length();
+  return anchor.clone().add(direction.normalize().multiplyScalar(Math.min(distance, 2.8)));
+}
+
+function visibleEdgeSignature(renderEdges) {
+  return renderEdges
+    .map(edge => graphEdgeKey(edge.source, edge.target))
+    .sort()
+    .join('|');
+}
+
+function sameSet(left, right) {
+  if (left.size !== right.size) {
+    return false;
+  }
+  for (const item of left) {
+    if (!right.has(item)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function semanticPopulationForCurrentView() {
+  if (selectedNode) {
+    const weightRange = currentWeightRange();
+    const thresholdEdges = edges.filter(edge => isEdgeInWeightRange(edge, weightRange));
+    return selectedNodeDepthMap(thresholdEdges).size;
+  }
+  if (activeComponentId !== null) {
+    const component = componentForId(activeComponentId);
+    return Math.max(component?.nodes?.length ?? 0, component?.memberCountEstimate ?? 0, 1);
+  }
+  if (fullGraphExpanded) {
+    return nodes.length;
+  }
+  return components.length;
+}
+
+function semanticMaxZoomLevel(totalCount) {
+  const total = Math.max(1, Number(totalCount) || 1);
+  return Math.max(0, Math.ceil(Math.log2(total / COMPONENT_CORE_NODE_BUDGET)));
+}
+
+function semanticLevelForProgress(progress, totalCount) {
+  const maxLevel = semanticMaxZoomLevel(totalCount);
+  return Math.round(clamp(progress, 0, 1) * maxLevel);
+}
+
+function semanticNodeBudget(totalCount) {
+  const total = Math.max(1, Math.trunc(Number(totalCount) || 1));
+  const maxLevel = semanticMaxZoomLevel(total);
+  const level = Math.trunc(clamp(semanticZoomLevel, 0, maxLevel));
+  const budget = COMPONENT_CORE_NODE_BUDGET * (2 ** level);
+  return Math.min(total, SEMANTIC_RENDER_NODE_LIMIT, Math.max(1, Math.round(budget)));
+}
+
+function semanticEdgeBudget(nodeBudget) {
+  return Math.min(SEMANTIC_RENDER_EDGE_LIMIT, Math.max(COMPONENT_CORE_EDGE_BUDGET, Math.round(nodeBudget * 3.2)));
+}
+
 function currentViewRadius() {
   if (isForestOverview()) {
     return forestOverviewRadius();
@@ -1301,6 +1882,8 @@ function resize() {
   const height = window.innerHeight;
   renderer.setSize(width, height, false);
   camera.aspect = width / Math.max(1, height);
+  camera.updateProjectionMatrix();
+  clampViewportPanOffset();
   applyViewportOffset();
 }
 
@@ -1404,20 +1987,104 @@ function graphViewportMetrics() {
 function panViewportByScreenDelta(deltaX, deltaY) {
   cameraAnimation = null;
   const viewport = graphViewportMetrics();
+  const panLimit = viewportPanLimit(viewport);
   viewportPanOffset.x = clamp(
     viewportPanOffset.x - deltaX,
-    -viewport.fullWidth * 0.42,
-    viewport.fullWidth * 0.42
+    -panLimit.x,
+    panLimit.x
   );
   viewportPanOffset.y = clamp(
     viewportPanOffset.y - deltaY,
-    -viewport.fullHeight * 0.34,
-    viewport.fullHeight * 0.34
+    -panLimit.y,
+    panLimit.y
   );
   applyViewportOffset(viewport);
   controls.update();
   publishPreviewState();
   scheduleLazyTileLoad(220);
+}
+
+function clampViewportPanOffset(viewport = graphViewportMetrics()) {
+  const panLimit = viewportPanLimit(viewport);
+  const nextX = clamp(viewportPanOffset.x, -panLimit.x, panLimit.x);
+  const nextY = clamp(viewportPanOffset.y, -panLimit.y, panLimit.y);
+  const changed = Math.abs(nextX - viewportPanOffset.x) > 0.5 || Math.abs(nextY - viewportPanOffset.y) > 0.5;
+  viewportPanOffset.x = nextX;
+  viewportPanOffset.y = nextY;
+  if (changed) {
+    applyViewportOffset(viewport);
+  }
+  return changed;
+}
+
+function viewportPanLimit(viewport) {
+  const footprint = visibleGraphScreenFootprint(viewport);
+  const horizontalOverflow = Math.max(0, (footprint.width - viewport.safeWidth) / 2);
+  const verticalOverflow = Math.max(0, (footprint.height - viewport.fullHeight) / 2);
+  const smallGraphSlack = isForestOverview() ? 0.12 : 0.18;
+  const margin = Math.max(34, footprint.maxRadius * 0.62);
+
+  return {
+    x: horizontalOverflow + Math.min(viewport.safeWidth * smallGraphSlack, Math.max(36, footprint.maxRadius * 1.15)),
+    y: verticalOverflow + Math.min(viewport.fullHeight * smallGraphSlack, Math.max(34, margin))
+  };
+}
+
+function visibleGraphScreenFootprint(viewport = graphViewportMetrics()) {
+  const rect = canvas.getBoundingClientRect();
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minY = Infinity;
+  let maxY = -Infinity;
+  let maxRadius = 0;
+  let count = 0;
+
+  const addSpriteBounds = (sprite, position, minimum = 12) => {
+    if (!sprite?.visible || !position) {
+      return;
+    }
+    const projected = position.clone().project(camera);
+    if (projected.z < -1 || projected.z > 1) {
+      return;
+    }
+
+    const x = ((projected.x + 1) / 2) * rect.width;
+    const y = ((1 - projected.y) / 2) * rect.height;
+    const radius = projectedSpriteRadius(sprite, position, rect, minimum);
+    minX = Math.min(minX, x - radius);
+    maxX = Math.max(maxX, x + radius);
+    minY = Math.min(minY, y - radius);
+    maxY = Math.max(maxY, y + radius);
+    maxRadius = Math.max(maxRadius, radius);
+    count += 1;
+  };
+
+  if (isForestOverview()) {
+    for (const component of components) {
+      addSpriteBounds(component.forestBadge, component.forestPosition, 18);
+    }
+  } else {
+    for (const node of nodes) {
+      if (!visibleNodeIds.has(node.id)) {
+        continue;
+      }
+      addSpriteBounds(node.badge, node.position, 12);
+    }
+  }
+
+  if (!count) {
+    return {
+      width: viewport.safeWidth,
+      height: viewport.fullHeight,
+      maxRadius: 24
+    };
+  }
+
+  return {
+    width: Math.max(1, maxX - minX),
+    height: Math.max(1, maxY - minY),
+    maxRadius
+  };
 }
 
 function scheduleLazyTileLoad(delayMs = 180, options = {}) {
@@ -1467,8 +2134,7 @@ async function loadLazyComponent(componentId, options = {}) {
     if (activeComponentId === componentId && !selectedNode) {
       rebuildEdges();
       renderMemberPanel(null);
-      scheduleNodeRefit(60);
-      fitCameraToVisibleTargets(true);
+      startVisibleRefit({ fitCamera: true });
     }
   } catch {
     loadedComponentKeys.delete(cacheKey);
@@ -1531,7 +2197,7 @@ async function loadLazyNeighborhood() {
     mergeGraphPayload(result);
     rebuildEdges();
     renderMemberPanel(selectedNode);
-    scheduleNodeRefit(80);
+    startVisibleRefit();
   } catch {
     loadedNeighborhoodKeys.delete(key);
   }
@@ -1762,6 +2428,7 @@ function animate() {
   updateNodeLayoutAnimation();
   updateCameraAnimation();
   updateSelectionVisualAnimation();
+  updateBadgeCountAnimations();
   controls.update();
   publishGraphState();
   renderer.render(scene, camera);
@@ -1908,6 +2575,7 @@ function startVisibleRefit(options = {}) {
   }
   refitVisibleNodes({ immediate: false });
   if (options.fitCamera) {
+    semanticZoomInputUntil = 0;
     fitCameraToVisibleTargets(true, options.durationMs ?? REFIT_ANIMATION_MS);
   }
 }
@@ -2655,18 +3323,96 @@ function drawNodeTexture(ctx, node, ringColor) {
 
   const count = nodeBadgeCount(node);
   if (count > 0) {
-    const label = count > 99 ? '99+' : String(count);
-    ctx.beginPath();
-    ctx.arc(198, 58, 34, 0, Math.PI * 2);
-    ctx.fillStyle = '#111317';
-    ctx.fill();
-    ctx.lineWidth = 6;
-    ctx.strokeStyle = ringStyle;
-    ctx.stroke();
-    ctx.fillStyle = '#ffffff';
-    ctx.font = label.length > 2 ? '850 24px system-ui, sans-serif' : '900 29px system-ui, sans-serif';
-    ctx.fillText(label, 198, 60);
+    drawCounterBadge(ctx, node, count);
   }
+}
+
+function drawCounterBadge(ctx, node, count, range = null) {
+  const animation = node?.badgeCountAnimation;
+  const progress = clamp(Number(animation?.progress ?? 1), 0, 1);
+  const entering = animation && animation.from <= 0 && animation.to > 0;
+  const leaving = animation && animation.to <= 0;
+  const changing = animation && animation.from > 0 && animation.to > 0 && animation.from !== animation.to;
+  const pop = animation ? Math.sin(progress * Math.PI) : 0;
+  const scale = entering
+    ? 0.72 + easeOutCubic(progress) * 0.28 + pop * 0.12
+    : leaving
+      ? 1 - easeOutCubic(progress) * 0.24
+      : 1 + pop * 0.12;
+  const radius = 34 * scale;
+  const badgeStyle = counterBadgeStyleForAnimation(animation, count, range, progress);
+
+  ctx.save();
+  ctx.translate(198, 58);
+  ctx.beginPath();
+  ctx.arc(0, 0, radius, 0, Math.PI * 2);
+  ctx.fillStyle = badgeStyle.color.getStyle();
+  ctx.globalAlpha = leaving ? 1 - easeOutCubic(progress) : 1;
+  ctx.fill();
+  ctx.globalAlpha = 1;
+  ctx.lineWidth = 6;
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.86)';
+  ctx.stroke();
+  ctx.clip();
+
+  if (changing) {
+    const eased = easeOutCubic(progress);
+    const direction = animation.to > animation.from ? -1 : 1;
+    drawCounterBadgeLabel(ctx, animation.from, badgeStyle.fromTextColor, direction * eased * 22, 1 - eased);
+    drawCounterBadgeLabel(ctx, animation.to, badgeStyle.toTextColor, direction * (eased - 1) * 22, eased);
+  } else {
+    drawCounterBadgeLabel(ctx, count, badgeStyle.textColor, 0, leaving ? 1 - easeOutCubic(progress) : 1);
+  }
+
+  ctx.restore();
+}
+
+function counterBadgeStyleForAnimation(animation, count, range, progress) {
+  if (animation?.fromBadgeColor === undefined || animation?.toBadgeColor === undefined) {
+    return range
+      ? colorForCounterBadgeCount(count, range.min, range.max)
+      : colorForCollapseBadgeCount(count);
+  }
+
+  const eased = easeOutCubic(progress);
+  const fromColor = new THREE.Color(animation.fromBadgeColor);
+  const toColor = new THREE.Color(animation.toBadgeColor);
+  const textColor = eased < 0.5 ? animation.fromTextColor : animation.toTextColor;
+  return {
+    color: fromColor.lerp(toColor, eased),
+    textColor,
+    fromTextColor: animation.fromTextColor,
+    toTextColor: animation.toTextColor
+  };
+}
+
+function drawCounterBadgeLabel(ctx, count, textColor, yOffset, alpha) {
+  const label = count > 99 ? '99+' : String(count);
+  ctx.save();
+  ctx.globalAlpha = clamp(alpha, 0, 1);
+  ctx.fillStyle = textColor;
+  ctx.font = label.length > 2 ? '850 24px system-ui, sans-serif' : '900 29px system-ui, sans-serif';
+  ctx.fillText(label, 0, 2 + yOffset);
+  ctx.restore();
+}
+
+function colorForCollapseBadgeCount(count) {
+  return colorForCounterBadgeCount(count, collapseBadgeMin, collapseBadgeMax);
+}
+
+function colorForCounterBadgeCount(count, minCount, maxCount) {
+  const min = Math.max(1, minCount);
+  const max = Math.max(min, maxCount);
+  const t = max === min
+    ? clamp(count / Math.max(8, max), 0, 1)
+    : clamp((count - min) / Math.max(1, max - min), 0, 1);
+  const color = new THREE.Color(0xb9e6ff)
+    .lerp(new THREE.Color(0xefb655), clamp(t * 1.25, 0, 1))
+    .lerp(new THREE.Color(0xff2744), Math.max(0, (t - 0.52) / 0.48));
+  return {
+    color,
+    textColor: t > 0.56 ? '#ffffff' : '#111317'
+  };
 }
 
 function avatarImageUrlForNode(node) {
@@ -2682,7 +3428,7 @@ function disposeTexture(texture) {
 }
 
 function nodeBadgeCount(node) {
-  return Math.max(0, Math.trunc(Number(node?.collapseBadgeCount ?? 0)));
+  return Math.max(0, Math.trunc(currentBadgeDisplayCount(node)));
 }
 
 function createForestTexture(component, fillColor) {
@@ -2716,12 +3462,23 @@ function createForestTexture(component, fillColor) {
   ctx.font = '900 62px system-ui, sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText((representative.initials || '?').slice(0, 3), 128, 108);
-  ctx.font = '850 34px system-ui, sans-serif';
-  ctx.fillText(String(memberCount), 128, 168);
+  ctx.fillText((representative.initials || '?').slice(0, 3), 128, 132);
+  if (memberCount > 0) {
+    drawCounterBadge(ctx, null, memberCount, forestCounterRange());
+  }
   const texture = new THREE.CanvasTexture(canvasEl);
   texture.colorSpace = THREE.SRGBColorSpace;
   return texture;
+}
+
+function forestCounterRange() {
+  const counts = components
+    .map(component => Math.max(1, Math.trunc(Number(component.memberCountEstimate ?? component.nodes?.length ?? 1))))
+    .filter(Number.isFinite);
+  return {
+    min: counts.length ? Math.min(...counts) : 1,
+    max: counts.length ? Math.max(...counts) : 1
+  };
 }
 
 function createRingTexture() {
@@ -2770,6 +3527,10 @@ function shellSortValue(text) {
     hash = Math.imul(hash, 16777619);
   }
   return hash >>> 0;
+}
+
+function seededAngle(text) {
+  return (shellSortValue(text) / 0xffffffff) * Math.PI * 2;
 }
 
 function seededVector(text) {
