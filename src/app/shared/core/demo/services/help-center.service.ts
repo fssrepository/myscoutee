@@ -55,6 +55,12 @@ export class DemoHelpCenterService {
     const documentKind = this.normalizeKind(kind);
     const language = this.requestContentLang(lang);
     const context = this.normalizeContextKey(documentKind, contextKey, false);
+    const changed = documentKind !== 'explanation' || context
+      ? this.ensureSeeded(documentKind, language, context)
+      : false;
+    if (changed) {
+      await this.memoryDb.flushToIndexedDb();
+    }
     return this.stateFromTable(this.table(), documentKind, language, context);
   }
 
@@ -375,8 +381,9 @@ export class DemoHelpCenterService {
     const table = this.table();
     const language = this.normalizeLang(lang);
     const context = this.normalizeContextKey(kind, contextKey, false);
-    if (this.revisionsForKind(table, kind, language, context).length > 0) {
-      return false;
+    const existingRevisions = this.revisionsForKind(table, kind, language, context);
+    if (existingRevisions.length > 0) {
+      return this.ensureActiveRevision(table, kind, language, context, existingRevisions);
     }
     const revision = this.cloneRevision(this.defaultRevision(kind, language, context), kind);
     const revisionContextKey = this.revisionContextKey(revision);
@@ -413,6 +420,63 @@ export class DemoHelpCenterService {
       };
     });
     return true;
+  }
+
+  private ensureActiveRevision(
+    table: DemoHelpCenterTable,
+    kind: HelpCenterDocumentKind,
+    lang: string,
+    contextKey: string | null,
+    revisions: readonly HelpCenterRevision[]
+  ): boolean {
+    const activeRevisionId = this.activeRevisionId(table, kind, lang, contextKey);
+    if (activeRevisionId && revisions.some(revision => revision.id === activeRevisionId)) {
+      return false;
+    }
+    const revision = this.latestRevision(revisions);
+    if (!revision) {
+      return false;
+    }
+    const normalizedRevision = {
+      ...this.cloneRevision(revision, kind),
+      active: true
+    };
+    this.memoryDb.write(state => {
+      const current = state[HELP_CENTER_TABLE_NAME];
+      return {
+        ...state,
+        [HELP_CENTER_TABLE_NAME]: {
+          ...current,
+          activeRevisionId: kind === 'help' && this.normalizeLang(lang) === 'en'
+            ? normalizedRevision.id
+            : current.activeRevisionId,
+          activeRevisionIdsByKind: {
+            ...(current.activeRevisionIdsByKind ?? {}),
+            [this.activeRevisionKey(kind, lang, contextKey)]: normalizedRevision.id
+          },
+          revisionsById: {
+            ...this.normalizedRevisionsById(current),
+            [normalizedRevision.id]: normalizedRevision
+          },
+          revisionIds: current.revisionIds.includes(normalizedRevision.id)
+            ? current.revisionIds
+            : [...current.revisionIds, normalizedRevision.id]
+        }
+      };
+    });
+    return true;
+  }
+
+  private latestRevision(revisions: readonly HelpCenterRevision[]): HelpCenterRevision | null {
+    return [...revisions].sort((left, right) => {
+      const versionOrder = (right.version ?? 0) - (left.version ?? 0);
+      if (versionOrder !== 0) {
+        return versionOrder;
+      }
+      const rightUpdated = right.updatedAtIso ?? right.createdAtIso ?? '';
+      const leftUpdated = left.updatedAtIso ?? left.createdAtIso ?? '';
+      return rightUpdated.localeCompare(leftUpdated);
+    })[0] ?? null;
   }
 
   private ensureSeededImageRefsLazyLoaded(): boolean {
