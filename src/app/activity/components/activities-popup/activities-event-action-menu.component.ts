@@ -16,6 +16,7 @@ import type {
   InfoCardData,
   InfoCardMenuAction,
   InfoCardMenuActionConfig,
+  InfoCardMenuTriggerRect,
   InfoCardResolvedMenuAction,
   InfoCardMenuRequestEvent
 } from '../../../shared/ui';
@@ -34,6 +35,8 @@ interface ActivitiesEventActionMenuState {
   openUp: boolean;
   desktopLeft: number | null;
   desktopTop: number | null;
+  desktopBottom: number | null;
+  desktopMaxHeight: number | null;
   closeTrigger: () => void;
 }
 
@@ -50,7 +53,8 @@ interface ActivitiesEventActionMenuState {
         [class.is-open-up]="!isMobileView && actionMenu.openUp"
         [style.left.px]="!isMobileView ? actionMenu.desktopLeft : null"
         [style.top.px]="!isMobileView ? actionMenu.desktopTop : null"
-        [style.bottom]="!isMobileView ? 'auto' : null"
+        [style.bottom.px]="!isMobileView ? actionMenu.desktopBottom : null"
+        [style.max-height.px]="!isMobileView ? actionMenu.desktopMaxHeight : null"
         (click)="$event.stopPropagation()"
       >
         @if (actionMenu.title) {
@@ -80,6 +84,7 @@ interface ActivitiesEventActionMenuState {
 })
 export class ActivitiesEventActionMenuComponent {
   private readonly cdr = inject(ChangeDetectorRef);
+  private repositionTimers: number[] = [];
   protected readonly availableActions = INFO_CARD_AVAILABLE_ACTIONS;
 
   @Output() readonly actionSelect = new EventEmitter<ActivitiesEventActionMenuSelectedEvent>();
@@ -100,18 +105,22 @@ export class ActivitiesEventActionMenuComponent {
       card: event.card,
       title: this.resolveTitle(event.card),
       actions: event.actions,
-      openUp: event.openUp,
+      openUp: desktopPosition.openUp,
       desktopLeft: desktopPosition.left,
       desktopTop: desktopPosition.top,
+      desktopBottom: desktopPosition.bottom,
+      desktopMaxHeight: desktopPosition.maxHeight,
       closeTrigger: event.closeTrigger
     };
     this.cdr.markForCheck();
+    this.scheduleDesktopReposition();
   }
 
   close(): void {
     if (!this.menu) {
       return;
     }
+    this.clearRepositionTimers();
     const menu = this.menu;
     this.menu = null;
     menu.closeTrigger();
@@ -153,22 +162,140 @@ export class ActivitiesEventActionMenuComponent {
   private resolveDesktopPosition(event: InfoCardMenuRequestEvent, isMobileView: boolean): {
     left: number | null;
     top: number | null;
+    bottom: number | null;
+    maxHeight: number | null;
+    openUp: boolean;
   } {
-    if (isMobileView || !event.triggerRect || typeof window === 'undefined') {
-      return { left: null, top: null };
+    return this.resolveDesktopPositionForRect(
+      event.triggerRect,
+      event.actions,
+      event.card.menuTitle === null,
+      isMobileView
+    );
+  }
+
+  private resolveDesktopPositionForRect(
+    triggerRect: InfoCardMenuTriggerRect | null,
+    actions: readonly InfoCardMenuAction[],
+    withoutTitle: boolean,
+    isMobileView: boolean
+  ): {
+    left: number | null;
+    top: number | null;
+    bottom: number | null;
+    maxHeight: number | null;
+    openUp: boolean;
+  } {
+    if (isMobileView || !triggerRect || typeof window === 'undefined') {
+      return { left: null, top: null, bottom: null, maxHeight: null, openUp: false };
     }
     const menuWidth = 220;
-    const estimatedMenuHeight = Math.min(320, 24 + event.actions.length * 38 + (event.card.menuTitle === null ? 0 : 42));
+    const estimatedMenuHeight = Math.min(320, 24 + actions.length * 38 + (withoutTitle ? 0 : 42));
     const margin = 8;
     const viewportWidth = window.innerWidth || document.documentElement.clientWidth;
     const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+    const spaceAbove = Math.max(0, triggerRect.top - margin);
+    const spaceBelow = Math.max(0, viewportHeight - triggerRect.bottom - margin);
+    const openUp = spaceBelow < estimatedMenuHeight && spaceAbove > spaceBelow;
     const left = Math.min(
-      Math.max(margin, event.triggerRect.right - menuWidth),
+      Math.max(margin, triggerRect.right - menuWidth),
       Math.max(margin, viewportWidth - menuWidth - margin)
     );
-    const top = event.openUp
-      ? Math.max(margin, event.triggerRect.top - estimatedMenuHeight - margin)
-      : Math.min(event.triggerRect.bottom + margin, Math.max(margin, viewportHeight - estimatedMenuHeight - margin));
-    return { left, top };
+    if (openUp) {
+      return {
+        left,
+        top: null,
+        bottom: Math.max(margin, viewportHeight - triggerRect.top + margin),
+        maxHeight: Math.max(120, spaceAbove - margin),
+        openUp
+      };
+    }
+    return {
+      left,
+      top: triggerRect.bottom + margin,
+      bottom: null,
+      maxHeight: Math.max(120, spaceBelow - margin),
+      openUp
+    };
+  }
+
+  private scheduleDesktopReposition(): void {
+    this.clearRepositionTimers();
+    if (this.isMobileView || typeof window === 'undefined') {
+      return;
+    }
+    for (const delayMs of [0, 80, 220]) {
+      this.repositionTimers.push(window.setTimeout(() => this.repositionDesktopMenuFromLiveTrigger(), delayMs));
+    }
+  }
+
+  private clearRepositionTimers(): void {
+    if (typeof window === 'undefined') {
+      this.repositionTimers = [];
+      return;
+    }
+    for (const timer of this.repositionTimers) {
+      window.clearTimeout(timer);
+    }
+    this.repositionTimers = [];
+  }
+
+  private repositionDesktopMenuFromLiveTrigger(): void {
+    const menu = this.menu;
+    if (!menu || this.isMobileView || typeof window === 'undefined') {
+      return;
+    }
+    const trigger = this.resolveLiveMenuTrigger();
+    if (!trigger) {
+      return;
+    }
+    const rect = trigger.getBoundingClientRect();
+    const position = this.resolveDesktopPositionForRect(
+      {
+        left: rect.left,
+        top: rect.top,
+        right: rect.right,
+        bottom: rect.bottom,
+        width: rect.width,
+        height: rect.height
+      },
+      menu.actions,
+      menu.card.menuTitle === null,
+      false
+    );
+    this.menu = {
+      ...menu,
+      openUp: position.openUp,
+      desktopLeft: position.left,
+      desktopTop: position.top,
+      desktopBottom: position.bottom,
+      desktopMaxHeight: position.maxHeight
+    };
+    this.cdr.markForCheck();
+  }
+
+  private resolveLiveMenuTrigger(): HTMLElement | null {
+    const root = document.querySelector('.popup-panel-activities') ?? document;
+    const selectors = [
+      '.ui-info-card--menu-open .ui-info-card__menu-trigger',
+      '.ui-info-card__menu-trigger.is-open',
+      '.experience-action-menu-trigger.is-open'
+    ];
+    for (const selector of selectors) {
+      const trigger = Array.from(root.querySelectorAll<HTMLElement>(selector))
+        .filter(element => {
+          const rect = element.getBoundingClientRect();
+          const style = window.getComputedStyle(element);
+          return rect.width > 0
+            && rect.height > 0
+            && style.visibility !== 'hidden'
+            && style.display !== 'none';
+        })
+        .at(-1) ?? null;
+      if (trigger) {
+        return trigger;
+      }
+    }
+    return null;
   }
 }
