@@ -3,26 +3,31 @@
     <header class="entry-shell-header">
       <a class="entry-brand" aria-label="MyScoutee landing top">
         <img class="entry-brand-mark" src="assets/logo/heart.webp" alt="MyScoutee logo" />
-        <span class="entry-brand-text">yScoutee</span>
+        <span class="entry-brand-copy">
+          <span class="entry-brand-text">yScoutee</span>
+          <span class="entry-preview-badge" data-i18n-ignore translate="no" aria-label="Preview build">PREVIEW</span>
+        </span>
       </a>
-      <button
-        type="button"
-        class="entry-auth-btn"
-        [class.entry-auth-btn-avatar]="entryAuthButtonShowsAvatar"
-        [class.entry-auth-btn-unavailable]="authUnavailable"
-        [class.entry-auth-btn-location]="authLocationRequired"
-        [disabled]="authUnavailable"
-        matRipple
-        [matRippleColor]="'rgba(255, 255, 255, 0.24)'"
-        (click)="requestHeaderAuth()"
-        >
-        @if (entryAuthButtonShowsAvatar) {
-          <span class="entry-auth-avatar">{{ firebaseAuthProfile?.initials }}</span>
-        } @else {
-          <mat-icon>{{ entryAuthButtonIcon }}</mat-icon>
-          <span>{{ entryAuthButtonLabel }}</span>
-        }
-      </button>
+      <div class="entry-header-actions">
+        <button
+          type="button"
+          class="entry-auth-btn"
+          [class.entry-auth-btn-avatar]="entryAuthButtonShowsAvatar"
+          [class.entry-auth-btn-unavailable]="authUnavailable"
+          [class.entry-auth-btn-location]="authLocationRequired"
+          [disabled]="authUnavailable"
+          matRipple
+          [matRippleColor]="'rgba(255, 255, 255, 0.24)'"
+          (click)="requestHeaderAuth()"
+          >
+          @if (entryAuthButtonShowsAvatar) {
+            <span class="entry-auth-avatar">{{ firebaseAuthProfile?.initials }}</span>
+          } @else {
+            <mat-icon>{{ entryAuthButtonIcon }}</mat-icon>
+            <span>{{ entryAuthButtonLabel }}</span>
+          }
+        </button>
+      </div>
     </header>
 
     <section class="entry-hero" id="top">
@@ -267,6 +272,7 @@
       </div>
     </footer>
   </div>
+  <span class="entry-version-label">{{ appVersionLabel }}</span>
 </section>
 
 @if (ideasPopupOpen) {

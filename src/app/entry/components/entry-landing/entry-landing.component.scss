@@ -22,15 +22,70 @@
 
 .entry-shell-header {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
   gap: 0.8rem;
   padding: 0.25rem 0.2rem 0.8rem;
 }
 
+.entry-header-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.52rem;
+  min-width: 0;
+  margin-left: auto;
+}
+
+.entry-preview-badge {
+  position: absolute;
+  top: -1.02rem;
+  right: -0.24rem;
+  z-index: 2;
+  min-height: 18px;
+  border: 1px solid rgba(201, 144, 39, 0.34);
+  border-radius: 999px;
+  padding: 0 0.4rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, #fff8dc 0%, #ffe49b 100%);
+  color: #855d11;
+  box-shadow: 0 5px 12px rgba(143, 93, 15, 0.1);
+  font-size: 0.54rem;
+  font-weight: 900;
+  line-height: 1;
+  text-transform: uppercase;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.entry-version-label {
+  position: fixed;
+  right: max(0.72rem, env(safe-area-inset-right));
+  bottom: max(0.72rem, env(safe-area-inset-bottom));
+  z-index: 40;
+  min-height: 26px;
+  border: 1px solid rgba(31, 54, 88, 0.12);
+  border-radius: 999px;
+  padding: 0 0.62rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.84);
+  color: rgba(31, 54, 88, 0.68);
+  box-shadow: 0 8px 18px rgba(21, 42, 79, 0.1);
+  backdrop-filter: blur(10px);
+  font-size: 0.72rem;
+  font-weight: 900;
+  pointer-events: none;
+}
+
 .entry-brand {
   display: inline-flex;
   align-items: flex-end;
+  min-width: 0;
   text-decoration: none;
   color: #1f2d3d;
   font-weight: 700;
@@ -38,6 +93,12 @@
   background-repeat: no-repeat;
   background-size: 100% 3px;
   background-position: 0 100%;
+}
+
+.entry-brand-copy {
+  position: relative;
+  min-width: 0;
+  display: inline-block;
 }
 
 .entry-brand-mark {
@@ -1582,8 +1643,29 @@
     padding: 0.25rem 0.1rem 0.8rem;
   }
 
+  .entry-header-actions {
+    gap: 0.38rem;
+  }
+
   .entry-brand-text {
     font-size: 1.6rem;
+  }
+
+  .entry-preview-badge {
+    top: -0.9rem;
+    right: -0.18rem;
+    min-height: 16px;
+    padding: 0 0.34rem;
+    font-size: 0.48rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .entry-version-label {
+    right: max(0.5rem, env(safe-area-inset-right));
+    bottom: max(0.5rem, env(safe-area-inset-bottom));
+    min-height: 24px;
+    font-size: 0.68rem;
   }
 
   .entry-hero {
