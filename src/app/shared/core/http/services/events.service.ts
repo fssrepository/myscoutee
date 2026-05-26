@@ -46,6 +46,7 @@ interface HttpEventsFilterRequest {
 export class HttpEventsService {
   private readonly http = inject(HttpClient);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
+  private readonly slimApiEnabled = environment.slimApiEnabled === true;
 
   async queryItemsByUser(userId: string): Promise<DemoEventRecord[]> {
     return this.getRecords('/activities/events', userId);
@@ -122,7 +123,7 @@ export class HttpEventsService {
             anchorDate: query.anchorDate,
             rangeStart: query.rangeStart,
             rangeEnd: query.rangeEnd,
-            slim: true
+            ...(this.slimApiEnabled ? { slim: true } : {})
           } satisfies HttpEventsFilterRequest
         ),
         signal

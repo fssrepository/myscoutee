@@ -6,5 +6,6 @@ export const environment = {
   serviceWorkerEnabled: false,
   firebaseLoginEnabled: false,
   firebaseMessagingEnabled: true,
+  slimApiEnabled: true,
   paymentIntegrationEnabled: false
 };
