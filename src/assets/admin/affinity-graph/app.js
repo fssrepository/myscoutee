@@ -5,13 +5,15 @@ import { DEMO_AFFINITY_GRAPH } from './data.js';
 const GRAPH_STORE_KEY = new URLSearchParams(window.location.search).get('store') || 'adminAffinityGraph';
 const GRAPH_DATA = normalizeGraphData(await readGraphSnapshotFromIndexedDb(GRAPH_STORE_KEY) ?? DEMO_AFFINITY_GRAPH);
 const GRAPH_MEMBER_LABEL = GRAPH_DATA.source === 'http' ? 'Mongo members' : 'demo members';
-const GRAPH_LAZY_ENABLED = GRAPH_DATA.source === 'http';
+const GRAPH_LAZY_ENABLED = GRAPH_DATA.source === 'http' || (window.parent && window.parent !== window);
 const GRAPH_LAYOUT_VERSION = GRAPH_DATA.layoutVersion || null;
 const COMPONENT_CORE_NODE_BUDGET = 20;
 const COMPONENT_CORE_EDGE_BUDGET = 56;
 const REFIT_ANIMATION_MS = 620;
 const SEMANTIC_RENDER_NODE_LIMIT = 1200;
 const SEMANTIC_RENDER_EDGE_LIMIT = 5000;
+const FOREST_OVERVIEW_BASE_BUDGET = 16;
+const FOREST_OVERVIEW_LOAD_BUFFER = 4;
 
 const graphApp = document.querySelector('.graph-app');
 const canvas = document.querySelector('#graph-canvas');
@@ -74,6 +76,13 @@ let serverPositionCenter = new THREE.Vector3();
 placeNodes(nodes, edges, components);
 
 const isolatedNodes = nodes.filter(node => node.degree === 0);
+let graphTotals = {
+  members: Math.max(nodes.length, positiveInteger(GRAPH_DATA.memberCount, nodes.length)),
+  links: Math.max(edges.length, positiveInteger(GRAPH_DATA.linkCount, edges.length)),
+  components: Math.max(components.length, positiveInteger(GRAPH_DATA.componentCount ?? GRAPH_DATA.forestCount, components.length)),
+  isolated: Math.max(isolatedNodes.length, positiveInteger(GRAPH_DATA.isolatedCount, isolatedNodes.length)),
+  maxZoom: positiveInteger(GRAPH_DATA.maxZoom, null)
+};
 for (const node of nodes) {
   node.homePosition = node.position.clone();
   node.targetPosition = node.position.clone();
@@ -96,7 +105,8 @@ const camera = new THREE.PerspectiveCamera(48, 1, 0.1, 5000);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.075;
-controls.minDistance = 24;
+const DEFAULT_MIN_DISTANCE = 24;
+controls.minDistance = DEFAULT_MIN_DISTANCE;
 controls.maxDistance = 2200;
 controls.zoomToCursor = true;
 controls.enablePan = false;
@@ -157,6 +167,7 @@ let nodeRefitTimer = null;
 let nodeLayoutAnimation = null;
 let cameraAnimation = null;
 let selectionVisualAnimation = null;
+let layoutCenterAnchor = null;
 let lazyTileTimer = null;
 let lazyTileRequestSerial = 0;
 const loadedTileKeys = new Set(GRAPH_LAZY_ENABLED ? ['0:0:0:*'] : []);
@@ -164,15 +175,26 @@ const pendingTileKeys = new Set();
 const loadedComponentKeys = new Set();
 const pendingComponentKeys = new Set();
 const loadedNeighborhoodKeys = new Set();
+const loadedForestKeys = new Set();
+const pendingForestKeys = new Set();
 const viewportPanOffset = { x: 0, y: 0 };
 let lastPublishedZoomProgress = -1;
 let lastPublishedZoomMode = '';
 let zoomReferenceFitDistance = 48;
 let semanticZoomLevel = 0;
 let semanticZoomInputUntil = 0;
+let visibleForestComponentIds = new Set();
+let lazyForestTimer = null;
+let lazyForestRequestSerial = 0;
 let collapseBadgeMin = 1;
 let collapseBadgeMax = 1;
 const badgeCountAnimations = new Set();
+const loadedMemberImageUrls = new Set();
+const pendingMemberImageUrls = new Set();
+let memberPanelRenderSignature = '';
+if (GRAPH_LAZY_ENABLED) {
+  loadedForestKeys.add(`0:${forestLoadLimitForLevel(0)}`);
+}
 
 const selectionSprite = new THREE.Sprite(new THREE.SpriteMaterial({
   map: createRingTexture(),
@@ -187,19 +209,18 @@ nodeGroup.add(selectionSprite);
 
 createNodes();
 createForests();
+updateVisibleForestComponents();
 resize();
 rebuildEdges();
 refitVisibleNodes({ immediate: true });
 fitCamera(false);
 renderMemberPanel(null);
-memberCountEl.textContent = String(nodes.length);
-linkCountEl.textContent = String(edges.length);
-componentCountEl.textContent = String(components.length);
-isolatedCountEl.textContent = String(isolatedNodes.length);
+updateStatBadges();
 graphApp?.classList.remove('graph-app--booting');
 publishGraphState(true);
 animate();
 scheduleLazyTileLoad(320);
+scheduleLazyForestLoad(360);
 
 minWeightInput.addEventListener('input', () => handleWeightRangeInput('min'));
 maxWeightInput.addEventListener('input', () => handleWeightRangeInput('max'));
@@ -398,29 +419,44 @@ function createNodeBadge(node) {
 }
 
 function createForests() {
+  updateForestBadges({ refreshTextures: true });
+}
+
+function updateForestBadges(options = {}) {
   const forestPositions = forestOverviewPositions();
   for (const component of components) {
     const center = forestPositions.get(component.id) ?? new THREE.Vector3();
     component.forestPosition = center.clone();
 
-    const badge = new THREE.Sprite(new THREE.SpriteMaterial({
-      map: createForestTexture(component, colorForComponent(component)),
-      transparent: true,
-      fog: false,
-      depthTest: false,
-      depthWrite: false
-    }));
     const memberCount = component.memberCountEstimate ?? component.nodes.length;
     const scale = memberCount === 1 ? 5.2 : 8.5 + Math.sqrt(memberCount) * 1.35;
     component.forestScale = scale;
-    badge.position.copy(center);
-    badge.scale.setScalar(scale);
-    badge.renderOrder = 24;
-    badge.userData.componentId = component.id;
-    component.forestBadge = badge;
-    forestClickTargets.push(badge);
-    forestGroup.add(badge);
+
+    if (!component.forestBadge) {
+      const badge = new THREE.Sprite(new THREE.SpriteMaterial({
+        map: createForestTexture(component, colorForComponent(component)),
+        transparent: true,
+        fog: false,
+        depthTest: false,
+        depthWrite: false
+      }));
+      badge.renderOrder = 24;
+      badge.userData.componentId = component.id;
+      component.forestBadge = badge;
+      forestClickTargets.push(badge);
+      forestGroup.add(badge);
+    } else if (options.refreshTextures) {
+      const previousTexture = component.forestBadge.material.map;
+      component.forestBadge.material.map = createForestTexture(component, colorForComponent(component));
+      component.forestBadge.material.needsUpdate = true;
+      component.forestBadge.userData.componentId = component.id;
+      disposeTexture(previousTexture);
+    }
+
+    component.forestBadge.position.copy(center);
+    component.forestBadge.scale.setScalar(scale);
   }
+  syncForestBadgeVisibility();
 }
 
 function forestOverviewPositions() {
@@ -811,6 +847,7 @@ function rebuildSelectedEdges() {
 
 function selectNode(nodeId, options = {}) {
   const node = nodeById.get(nodeId) ?? null;
+  const previousVisibleNodeIds = new Set(visibleNodeIds);
   const startScale = node?.badge?.scale.x ?? node?.badgeScale ?? 1;
   selectionReturnMode = fullGraphExpanded ? 'graph' : activeComponentId !== null ? 'forest' : 'graph';
   selectedNode = node;
@@ -818,6 +855,7 @@ function selectNode(nodeId, options = {}) {
   resetSemanticZoomLevel();
   if (selectedNode) {
     activeComponentId = selectedNode.componentId;
+    layoutCenterAnchor = selectedNode.position.clone();
   }
   if (selectedNode && options.focus) {
     controls.target.copy(selectedNode.position);
@@ -825,19 +863,21 @@ function selectNode(nodeId, options = {}) {
   rebuildEdges();
   startSelectionVisualAnimation(startScale);
   renderMemberPanel(selectedNode);
-  startVisibleRefit({ fitCamera: true });
+  startVisibleRefit({ fitCamera: true, previousVisibleNodeIds });
   scheduleLazyNeighborhoodLoad(80);
   publishPreviewState();
 }
 
 function selectForest(componentId) {
-  if (!componentForId(componentId)) {
+  const component = componentForId(componentId);
+  if (!component) {
     return;
   }
   activeComponentId = componentId;
   selectedNode = null;
   selectionReturnMode = null;
   fullGraphExpanded = false;
+  layoutCenterAnchor = componentLayoutCenter(component);
   resetSemanticZoomLevel();
   restoreHomeNodePositions();
   rebuildEdges();
@@ -860,6 +900,7 @@ function clearSelection() {
 
   if (returnMode === 'forest' && activeComponentId !== null) {
     fullGraphExpanded = false;
+    layoutCenterAnchor = componentLayoutCenter(componentForId(activeComponentId));
     resetSemanticZoomLevel();
     rebuildEdges();
     startDeselectionVisualAnimation(previousNode, startScale, startRingScale, startRingOpacity);
@@ -872,6 +913,7 @@ function clearSelection() {
 
   activeComponentId = null;
   fullGraphExpanded = true;
+  layoutCenterAnchor = null;
   resetSemanticZoomLevel();
   rebuildEdges();
   startDeselectionVisualAnimation(previousNode, startScale, startRingScale, startRingOpacity);
@@ -887,6 +929,7 @@ function showFullGraph() {
   activeComponentId = null;
   selectionReturnMode = null;
   fullGraphExpanded = true;
+  layoutCenterAnchor = null;
   resetSemanticZoomLevel();
   rebuildEdges();
   renderMemberPanel(null);
@@ -914,11 +957,13 @@ function clearForest() {
   activeComponentId = null;
   selectionReturnMode = null;
   fullGraphExpanded = false;
+  layoutCenterAnchor = null;
   resetSemanticZoomLevel();
   rebuildEdges();
   renderMemberPanel(null);
   refitVisibleNodes({ immediate: false });
   fitCamera(true);
+  scheduleLazyForestLoad(120, { refresh: true });
   publishPreviewState();
 }
 
@@ -929,11 +974,7 @@ function applyNodeState() {
   const maxVisibleDegree = Math.max(1, ...visibleNodes.map(node => node.visibleDegree ?? 0));
   updateInteractionMode(showForestOverview);
   forestGroup.visible = showForestOverview;
-  for (const component of components) {
-    if (component.forestBadge) {
-      component.forestBadge.visible = showForestOverview;
-    }
-  }
+  syncForestBadgeVisibility();
 
   for (const node of nodes) {
     const isVisible = visibleNodeIds.has(node.id);
@@ -965,6 +1006,23 @@ function updateInteractionMode(showForestOverview = isForestOverview()) {
   controls.mouseButtons.RIGHT = showForestOverview ? null : THREE.MOUSE.ROTATE;
 }
 
+function updateGraphTotals(data = {}) {
+  graphTotals = {
+    members: Math.max(graphTotals.members, positiveInteger(data.memberCount, nodes.length)),
+    links: Math.max(graphTotals.links, positiveInteger(data.linkCount, edges.length)),
+    components: Math.max(graphTotals.components, positiveInteger(data.componentCount ?? data.forestCount, components.length)),
+    isolated: Math.max(graphTotals.isolated, positiveInteger(data.isolatedCount, nodes.filter(node => node.degree === 0).length)),
+    maxZoom: positiveInteger(data.maxZoom, graphTotals.maxZoom)
+  };
+}
+
+function updateStatBadges() {
+  memberCountEl.textContent = String(Math.max(graphTotals.members, nodes.length));
+  linkCountEl.textContent = String(Math.max(graphTotals.links, edges.length));
+  componentCountEl.textContent = String(Math.max(graphTotals.components, components.length));
+  isolatedCountEl.textContent = String(Math.max(graphTotals.isolated, nodes.filter(node => node.degree === 0).length));
+}
+
 function publishPreviewState() {
   window.affinityGraphPreview = {
     members: nodes.length,
@@ -983,7 +1041,7 @@ function publishPreviewState() {
     weightRange: currentWeightRange(),
     linkDepth: currentLinkDepth(),
     visibleNodeDepths: Object.fromEntries(visibleNodeDepths),
-    visibleForests: isForestOverview() ? components.length : 0,
+    visibleForests: isForestOverview() ? visibleForestComponentIds.size : 0,
     nodeIds: nodes.map(node => node.id),
     rendererReady: true,
     cameraAnimating: Boolean(cameraAnimation),
@@ -1048,6 +1106,19 @@ function componentForId(componentId) {
   return componentById.get(String(componentId)) ?? null;
 }
 
+function setMemberPanelHtml(signature, html, options = {}) {
+  const nextSignature = String(signature);
+  if (memberPanelRenderSignature === nextSignature) {
+    return false;
+  }
+  memberPanelRenderSignature = nextSignature;
+  memberPanel.innerHTML = html;
+  if (options.hydrateImages) {
+    hydrateLazyMemberImages(memberPanel);
+  }
+  return true;
+}
+
 function screenPositionForWorldPosition(position) {
   const rect = canvas.getBoundingClientRect();
   const projected = position.clone().project(camera);
@@ -1066,16 +1137,29 @@ function renderMemberPanel(node) {
     }
     if (fullGraphExpanded) {
       const collapsedMembers = Math.max(0, nodes.length - visibleNodeIds.size);
-      memberPanel.innerHTML = `<p class="empty-state">${visibleNodeIds.size} important members visible · ${collapsedMembers} collapsed · ${visibleEdgeCount} links in range.</p>`;
+      setMemberPanelHtml(
+        `full:${visibleNodeIds.size}:${collapsedMembers}:${visibleEdgeCount}`,
+        `<p class="empty-state">${visibleNodeIds.size} important members visible · ${collapsedMembers} collapsed · ${visibleEdgeCount} links in range.</p>`
+      );
       return;
     }
     if (isForestOverview()) {
-      const memberTotal = Math.max(nodes.length, components.reduce((total, component) => total + (component.memberCountEstimate ?? component.nodes.length), 0));
-      memberPanel.innerHTML = `<p class="empty-state">${components.length} clusters · ${memberTotal} ${GRAPH_MEMBER_LABEL} · ${isolatedNodes.length} isolated.</p>`;
+      const visibleForests = visibleForestComponentIds.size || visibleForestComponents().length;
+      const totalForests = forestTotalCount();
+      const forestLabel = visibleForests >= totalForests
+        ? `${totalForests} clusters`
+        : `${visibleForests} of ${totalForests} clusters`;
+      setMemberPanelHtml(
+        `overview:${visibleForests}:${totalForests}:${graphTotals.members}:${graphTotals.isolated}`,
+        `<p class="empty-state">${forestLabel} · ${graphTotals.members} ${GRAPH_MEMBER_LABEL} · ${graphTotals.isolated} isolated.</p>`
+      );
       return;
     }
     const hiddenCount = Math.max(0, Math.max(nodes.length, components.reduce((total, component) => total + (component.memberCountEstimate ?? component.nodes.length), 0)) - visibleNodeIds.size);
-    memberPanel.innerHTML = `<p class="empty-state">${visibleNodeIds.size} important members visible · ${hiddenCount} collapsed · ${isolatedNodes.length} isolated.</p>`;
+    setMemberPanelHtml(
+      `empty:${visibleNodeIds.size}:${hiddenCount}:${isolatedNodes.length}`,
+      `<p class="empty-state">${visibleNodeIds.size} important members visible · ${hiddenCount} collapsed · ${isolatedNodes.length} isolated.</p>`
+    );
     return;
   }
 
@@ -1089,6 +1173,7 @@ function renderMemberPanel(node) {
   const strongest = topNeighbors[0]?.edge.weight ?? 0;
   const visibleConnections = visibleNeighbors.length;
   const avatarColor = colorForNode(node, componentForId(node.componentId)).getStyle();
+  const avatarImageUrl = avatarImageUrlForNode(node);
   const avatarMarkup = memberAvatarHtml(node, avatarColor);
   const neighborItems = topNeighbors.length
     ? topNeighbors.map(({ edge, other }) => `
@@ -1101,7 +1186,29 @@ function renderMemberPanel(node) {
       ? '<li><strong>Disconnected in affinity seed</strong><span>0%</span></li>'
       : '<li><strong>No links in range</strong><span>0%</span></li>';
 
-  memberPanel.innerHTML = `
+  const panelSignature = JSON.stringify({
+    type: 'member',
+    id: node.id,
+    name: node.name,
+    city: node.city,
+    age: node.age,
+    traitLabel: node.traitLabel,
+    headline: node.headline,
+    statusText: node.statusText,
+    degree: node.degree,
+    visibleConnections,
+    strongest: Math.round(strongest * 1000),
+    minWeight: Math.round(weightRange.min * 1000),
+    maxWeight: Math.round(weightRange.max * 1000),
+    avatarImageUrl,
+    neighbors: topNeighbors.map(({ edge, other }) => [
+      other.id,
+      other.name,
+      Math.round(edge.weight * 1000)
+    ])
+  });
+
+  setMemberPanelHtml(panelSignature, `
     <p class="member-kicker">${node.degree === 0 ? 'Isolated member' : 'Selected member'}</p>
     <div class="member-heading member-heading--profile">
       ${avatarMarkup}
@@ -1126,8 +1233,7 @@ function renderMemberPanel(node) {
       </div>
     </dl>
     <ul class="neighbor-list">${neighborItems}</ul>
-  `;
-  hydrateLazyMemberImages(memberPanel);
+  `, { hydrateImages: true });
 }
 
 function memberAvatarHtml(node, avatarColor) {
@@ -1137,10 +1243,15 @@ function memberAvatarHtml(node, avatarColor) {
     return `<div class="avatar" style="background:${avatarColor}">${initials}</div>`;
   }
 
+  const imageLoaded = loadedMemberImageUrls.has(imageUrl);
+  const imageStateAttrs = imageLoaded
+    ? ` src="${escapeHtml(imageUrl)}" class="is-loaded"`
+    : '';
+
   return `
     <div class="avatar avatar--photo" style="background:${avatarColor}; border-color:${avatarColor}" aria-label="${escapeHtml(node.name || 'Member')}">
       <span class="avatar-fallback">${initials}</span>
-      <img data-lazy-src="${escapeHtml(imageUrl)}" alt="" loading="lazy" decoding="async">
+      <img data-lazy-src="${escapeHtml(imageUrl)}"${imageStateAttrs} alt="" loading="lazy" decoding="async">
     </div>
   `;
 }
@@ -1152,22 +1263,45 @@ function hydrateLazyMemberImages(root) {
       continue;
     }
 
+    if (loadedMemberImageUrls.has(imageUrl)) {
+      if (image.getAttribute('src') !== imageUrl) {
+        image.src = imageUrl;
+      }
+      image.classList.add('is-loaded');
+      continue;
+    }
+
     const revealImage = () => {
       if (!image.isConnected || image.dataset.lazySrc !== imageUrl) {
         return;
       }
-      image.addEventListener('load', () => image.classList.add('is-loaded'), { once: true });
-      image.addEventListener('error', () => image.classList.remove('is-loaded'), { once: true });
+      image.addEventListener('load', () => {
+        loadedMemberImageUrls.add(imageUrl);
+        image.classList.add('is-loaded');
+      }, { once: true });
+      image.addEventListener('error', () => {
+        loadedMemberImageUrls.delete(imageUrl);
+        image.classList.remove('is-loaded');
+      }, { once: true });
       if (image.getAttribute('src') !== imageUrl) {
         image.src = imageUrl;
       }
       if (image.complete && image.naturalWidth > 0) {
+        loadedMemberImageUrls.add(imageUrl);
         image.classList.add('is-loaded');
       }
     };
 
-    if (window.parent && window.parent !== window) {
-      void requestGraphData('lazyImage', { imageUrl }).catch(() => null);
+    if (window.parent && window.parent !== window && !pendingMemberImageUrls.has(imageUrl)) {
+      pendingMemberImageUrls.add(imageUrl);
+      void requestGraphData('lazyImage', { imageUrl })
+        .then(result => {
+          if (result?.loaded) {
+            loadedMemberImageUrls.add(imageUrl);
+          }
+        })
+        .catch(() => null)
+        .finally(() => pendingMemberImageUrls.delete(imageUrl));
     }
     revealImage();
   }
@@ -1183,7 +1317,17 @@ function renderForestPanel(component) {
   const visibleMembers = visibleNodeIds.size;
   const collapsedMembers = Math.max(0, memberCount - visibleMembers);
 
-  memberPanel.innerHTML = `
+  const panelSignature = JSON.stringify({
+    type: 'forest',
+    id: component.id,
+    memberCount,
+    edgeCount,
+    visibleMembers,
+    collapsedMembers,
+    visibleEdgeCount
+  });
+
+  setMemberPanelHtml(panelSignature, `
     <p class="member-kicker">${memberCount === 1 ? 'Isolated forest' : 'Expanded forest'}</p>
     <p class="empty-state">${visibleMembers} important members visible · ${collapsedMembers} collapsed · ${edgeCount} links in forest.</p>
     <dl class="detail-grid">
@@ -1200,14 +1344,15 @@ function renderForestPanel(component) {
         <dd>${visibleEdgeCount}</dd>
       </div>
     </dl>
-  `;
+  `);
 }
 
 function handleWeightRangeInput(changedHandle) {
   normalizeWeightRange(changedHandle);
+  const previousVisibleNodeIds = new Set(visibleNodeIds);
   rebuildEdges();
   renderMemberPanel(selectedNode);
-  startVisibleRefit({ fitCamera: true });
+  startVisibleRefit({ fitCamera: true, previousVisibleNodeIds });
   if (activeComponentId !== null && !selectedNode) {
     scheduleLazyComponentLoad(activeComponentId, 120, { refresh: true });
   } else {
@@ -1218,9 +1363,10 @@ function handleWeightRangeInput(changedHandle) {
 
 function handleLinkDepthInput() {
   updateLinkDepthUi();
+  const previousVisibleNodeIds = new Set(visibleNodeIds);
   rebuildEdges();
   renderMemberPanel(selectedNode);
-  startVisibleRefit({ fitCamera: true });
+  startVisibleRefit({ fitCamera: true, previousVisibleNodeIds });
   scheduleLazyNeighborhoodLoad(120);
 }
 
@@ -1294,6 +1440,9 @@ function currentLinkDepth() {
 function resetSemanticZoomLevel() {
   semanticZoomLevel = 0;
   semanticZoomInputUntil = 0;
+  if (isForestOverview()) {
+    updateVisibleForestComponents(0);
+  }
 }
 
 function updateCollapseBadgeCounts(thresholdEdges) {
@@ -1602,7 +1751,12 @@ function currentZoomProgress() {
 }
 
 function refreshSemanticZoomFromCamera() {
-  if (performance.now() > semanticZoomInputUntil || isForestOverview()) {
+  if (performance.now() > semanticZoomInputUntil) {
+    return;
+  }
+
+  if (isForestOverview()) {
+    refreshForestSemanticZoomFromCamera();
     return;
   }
 
@@ -1631,6 +1785,25 @@ function refreshSemanticZoomFromCamera() {
   } else {
     scheduleLazyTileLoad(120);
   }
+}
+
+function refreshForestSemanticZoomFromCamera() {
+  const nextLevel = forestSemanticLevelForProgress(currentZoomProgress());
+  if (nextLevel === semanticZoomLevel) {
+    return;
+  }
+
+  const nextIds = forestIdsForSemanticLevel(nextLevel);
+  const hasSemanticChange = !sameSet(visibleForestComponentIds, nextIds);
+  semanticZoomLevel = nextLevel;
+  if (hasSemanticChange) {
+    visibleForestComponentIds = nextIds;
+    syncForestBadgeVisibility();
+    renderMemberPanel(null);
+    clampViewportPanOffset();
+    publishPreviewState();
+  }
+  scheduleLazyForestLoad(80);
 }
 
 function visibleGraphForSemanticLevel(level) {
@@ -1824,6 +1997,63 @@ function semanticPopulationForCurrentView() {
   return components.length;
 }
 
+function forestTotalCount() {
+  return Math.max(components.length, positiveInteger(graphTotals.components, components.length));
+}
+
+function forestSemanticMaxZoomLevel(totalCount = forestTotalCount()) {
+  const total = Math.max(1, Number(totalCount) || 1);
+  return Math.max(0, Math.ceil(Math.log2(total / FOREST_OVERVIEW_BASE_BUDGET)));
+}
+
+function forestSemanticLevelForProgress(progress, totalCount = forestTotalCount()) {
+  const maxLevel = forestSemanticMaxZoomLevel(totalCount);
+  return Math.round(clamp(progress, 0, 1) * maxLevel);
+}
+
+function forestSemanticBudget(level = semanticZoomLevel) {
+  const loadedTotal = components.length;
+  const total = forestTotalCount();
+  const maxLevel = forestSemanticMaxZoomLevel(total);
+  const clampedLevel = Math.trunc(clamp(level, 0, maxLevel));
+  const requestedBudget = FOREST_OVERVIEW_BASE_BUDGET * (2 ** clampedLevel);
+  return Math.min(loadedTotal, total, Math.max(1, Math.round(requestedBudget)));
+}
+
+function forestLoadLimitForLevel(level = semanticZoomLevel) {
+  const total = forestTotalCount();
+  const maxLevel = forestSemanticMaxZoomLevel(total);
+  const clampedLevel = Math.trunc(clamp(level, 0, maxLevel));
+  return Math.min(total, Math.max(1, Math.round(FOREST_OVERVIEW_BASE_BUDGET * (2 ** clampedLevel) + FOREST_OVERVIEW_LOAD_BUFFER)));
+}
+
+function forestIdsForSemanticLevel(level = semanticZoomLevel) {
+  return new Set(sortedForestComponents()
+    .slice(0, forestSemanticBudget(level))
+    .map(component => String(component.id)));
+}
+
+function updateVisibleForestComponents(level = semanticZoomLevel) {
+  visibleForestComponentIds = forestIdsForSemanticLevel(level);
+  syncForestBadgeVisibility();
+}
+
+function visibleForestComponents(level = semanticZoomLevel) {
+  const visibleIds = visibleForestComponentIds.size
+    ? visibleForestComponentIds
+    : forestIdsForSemanticLevel(level);
+  return sortedForestComponents().filter(component => visibleIds.has(String(component.id)));
+}
+
+function syncForestBadgeVisibility() {
+  const showForestOverview = isForestOverview();
+  for (const component of components) {
+    if (component.forestBadge) {
+      component.forestBadge.visible = showForestOverview && visibleForestComponentIds.has(String(component.id));
+    }
+  }
+}
+
 function semanticMaxZoomLevel(totalCount) {
   const total = Math.max(1, Number(totalCount) || 1);
   return Math.max(0, Math.ceil(Math.log2(total / COMPONENT_CORE_NODE_BUDGET)));
@@ -1858,7 +2088,7 @@ function currentViewRadius() {
 }
 
 function forestOverviewRadius() {
-  const forestComponents = sortedForestComponents();
+  const forestComponents = visibleForestComponents();
   const center = forestComponents[0]?.forestPosition?.clone() ?? new THREE.Vector3();
   return forestComponents.reduce((maxRadius, component) => {
     const position = component.forestPosition ?? center;
@@ -1910,9 +2140,12 @@ function fitCameraToVisibleTargets(animateTarget, durationMs) {
 }
 
 function fitCameraToForestOverview(animateTarget) {
-  const forestComponents = sortedForestComponents();
+  updateVisibleForestComponents();
+  const forestComponents = visibleForestComponents();
   const center = forestComponents[0]?.forestPosition?.clone() ?? new THREE.Vector3();
-  fitCameraToCenterRadius(center, forestOverviewRadius(), animateTarget);
+  fitCameraToCenterRadius(center, forestOverviewRadius(), animateTarget, undefined, {
+    lockZoomIfFitted: shouldLockForestOverviewZoom()
+  });
 }
 
 function fitCameraToPoints(points, animateTarget, durationMs) {
@@ -1922,14 +2155,19 @@ function fitCameraToPoints(points, animateTarget, durationMs) {
   fitCameraToCenterRadius(center, sphere.radius, animateTarget, durationMs);
 }
 
-function fitCameraToCenterRadius(center, radius, animateTarget, durationMs) {
+function fitCameraToCenterRadius(center, radius, animateTarget, durationMs, options = {}) {
   const viewport = graphViewportMetrics();
   const safeWidthRatio = clamp(viewport.safeWidth / Math.max(1, viewport.fullWidth), 0.58, 1);
   const distance = Math.max(48, (radius * 1.68) / safeWidthRatio);
   const target = center.clone();
-  const targetPosition = target.clone().add(new THREE.Vector3(distance * 0.24, distance * 0.34, distance));
-  const fittedOrbitDistance = targetPosition.distanceTo(target);
+  const defaultDirection = new THREE.Vector3(0.24, 0.34, 1);
+  const fittedOrbitDistance = distance * defaultDirection.length();
+  const targetPosition = target.clone().addScaledVector(cameraFitDirection(defaultDirection), fittedOrbitDistance);
   zoomReferenceFitDistance = fittedOrbitDistance;
+  const nextMinDistance = options.lockZoomIfFitted
+    ? fittedOrbitDistance
+    : DEFAULT_MIN_DISTANCE;
+  controls.minDistance = Math.min(nextMinDistance, fittedOrbitDistance);
   const cappedMaxDistance = Math.max(controls.minDistance + 1, fittedOrbitDistance);
   viewportPanOffset.x = 0;
   viewportPanOffset.y = 0;
@@ -1944,6 +2182,18 @@ function fitCameraToCenterRadius(center, radius, animateTarget, durationMs) {
   camera.position.copy(targetPosition);
   controls.target.copy(target);
   controls.update();
+}
+
+function cameraFitDirection(defaultDirection) {
+  const currentDirection = camera.position.clone().sub(controls.target);
+  if (currentDirection.lengthSq() > 0.0001) {
+    return currentDirection.normalize();
+  }
+  return defaultDirection.clone().normalize();
+}
+
+function shouldLockForestOverviewZoom() {
+  return forestSemanticMaxZoomLevel() <= 0;
 }
 
 function applyViewportOffset(viewport = graphViewportMetrics()) {
@@ -2100,6 +2350,56 @@ function scheduleLazyTileLoad(delayMs = 180, options = {}) {
   }, delayMs);
 }
 
+function scheduleLazyForestLoad(delayMs = 140, options = {}) {
+  if (!GRAPH_LAZY_ENABLED || !isForestOverview()) {
+    return;
+  }
+  if (lazyForestTimer) {
+    clearTimeout(lazyForestTimer);
+  }
+  lazyForestTimer = setTimeout(() => {
+    lazyForestTimer = null;
+    void loadLazyForests(options);
+  }, delayMs);
+}
+
+async function loadLazyForests(options = {}) {
+  if (!GRAPH_LAZY_ENABLED || !isForestOverview()) {
+    return;
+  }
+  const level = Math.trunc(clamp(semanticZoomLevel, 0, forestSemanticMaxZoomLevel()));
+  const limit = forestLoadLimitForLevel(level);
+  const cacheKey = `${level}:${limit}`;
+  if (!options.refresh && (loadedForestKeys.has(cacheKey) || pendingForestKeys.has(cacheKey))) {
+    return;
+  }
+  pendingForestKeys.add(cacheKey);
+  const serial = ++lazyForestRequestSerial;
+  try {
+    const result = await requestGraphData('forests', {
+      layoutVersion: GRAPH_LAYOUT_VERSION,
+      forestLevel: level,
+      limit,
+      offset: 0
+    });
+    if (serial < lazyForestRequestSerial - 4) {
+      return;
+    }
+    loadedForestKeys.add(cacheKey);
+    mergeGraphPayload(result);
+    if (isForestOverview()) {
+      updateVisibleForestComponents(level);
+      renderMemberPanel(null);
+      clampViewportPanOffset();
+      publishPreviewState();
+    }
+  } catch {
+    loadedForestKeys.delete(cacheKey);
+  } finally {
+    pendingForestKeys.delete(cacheKey);
+  }
+}
+
 function scheduleLazyComponentLoad(componentId, delayMs = 120, options = {}) {
   if (!GRAPH_LAZY_ENABLED || componentId === null || componentId === undefined || String(componentId).trim() === '') {
     return;
@@ -2130,11 +2430,14 @@ async function loadLazyComponent(componentId, options = {}) {
       componentId
     });
     loadedComponentKeys.add(cacheKey);
-    mergeGraphPayload(result);
+    const beforeSignature = visibleSceneSignature();
+    const previousVisibleNodeIds = new Set(visibleNodeIds);
+    const changed = mergeGraphPayload(result);
     if (activeComponentId === componentId && !selectedNode) {
-      rebuildEdges();
-      renderMemberPanel(null);
-      startVisibleRefit({ fitCamera: true });
+      if (changed && visibleSceneSignature() !== beforeSignature) {
+        renderMemberPanel(null);
+        startVisibleRefit({ fitCamera: true, previousVisibleNodeIds });
+      }
     }
   } catch {
     loadedComponentKeys.delete(cacheKey);
@@ -2160,7 +2463,12 @@ async function loadLazyTile(options = {}) {
       return;
     }
     loadedTileKeys.add(cacheKey);
-    mergeGraphPayload(result);
+    const beforeSignature = visibleSceneSignature();
+    const previousVisibleNodeIds = new Set(visibleNodeIds);
+    const changed = mergeGraphPayload(result);
+    if (changed && visibleSceneSignature() !== beforeSignature) {
+      startVisibleRefit({ previousVisibleNodeIds });
+    }
   } catch {
     // Keep the current graph steady if the tile bridge is unavailable.
   } finally {
@@ -2181,23 +2489,30 @@ async function loadLazyNeighborhood() {
   if (!GRAPH_LAZY_ENABLED || !selectedNode) {
     return;
   }
+  const requestedNodeId = selectedNode.id;
+  const requestedDepth = currentLinkDepth();
   const weightRange = currentWeightRange();
-  const key = `${selectedNode.id}:${currentLinkDepth()}:${weightRange.min.toFixed(2)}:${weightRange.max.toFixed(2)}`;
+  const key = `${requestedNodeId}:${requestedDepth}:${weightRange.min.toFixed(2)}:${weightRange.max.toFixed(2)}`;
   if (loadedNeighborhoodKeys.has(key)) {
     return;
   }
   loadedNeighborhoodKeys.add(key);
   try {
     const result = await requestGraphData('neighborhood', {
-      userId: selectedNode.id,
-      depth: currentLinkDepth(),
+      userId: requestedNodeId,
+      depth: requestedDepth,
       minWeight: weightRange.min,
       maxWeight: weightRange.max
     });
-    mergeGraphPayload(result);
-    rebuildEdges();
-    renderMemberPanel(selectedNode);
-    startVisibleRefit();
+    if (selectedNode?.id !== requestedNodeId || currentLinkDepth() !== requestedDepth) {
+      return;
+    }
+    const beforeSignature = visibleSceneSignature();
+    const previousVisibleNodeIds = new Set(visibleNodeIds);
+    const changed = mergeGraphPayload(result);
+    if (changed && visibleSceneSignature() !== beforeSignature) {
+      startVisibleRefit({ previousVisibleNodeIds });
+    }
   } catch {
     loadedNeighborhoodKeys.delete(key);
   }
@@ -2261,7 +2576,9 @@ async function requestGraphData(method, params = {}) {
 
 function mergeGraphPayload(payload) {
   const nextGraph = normalizeGraphData(payload);
+  updateGraphTotals(nextGraph);
   let changed = false;
+  let forestMetadataChanged = false;
   for (const node of nextGraph.nodes) {
     changed = mergeGraphNode(node) || changed;
   }
@@ -2269,20 +2586,27 @@ function mergeGraphPayload(payload) {
     changed = mergeGraphEdge(edge) || changed;
   }
   if (nextGraph.forests.length) {
-    changed = mergeGraphForests(nextGraph.forests) || changed;
+    forestMetadataChanged = mergeGraphForests(nextGraph.forests);
+    changed = forestMetadataChanged || changed;
   }
   if (!changed) {
-    return;
+    return false;
   }
   enrichComponents(components, edges);
   applyForestMetadata(components, GRAPH_DATA.forests);
+  updateForestBadges({ refreshTextures: forestMetadataChanged });
   rebuildEdges();
   applyNodeState();
-  memberCountEl.textContent = String(nodes.length);
-  linkCountEl.textContent = String(edges.length);
-  componentCountEl.textContent = String(components.length);
-  isolatedCountEl.textContent = String(nodes.filter(node => node.degree === 0).length);
+  updateStatBadges();
   publishPreviewState();
+  return true;
+}
+
+function visibleSceneSignature() {
+  return [
+    [...visibleNodeIds].sort().join(','),
+    visibleEdgeSignature(visibleEdges)
+  ].join('|');
 }
 
 function mergeGraphForests(nextForests) {
@@ -2573,7 +2897,10 @@ function startVisibleRefit(options = {}) {
     clearTimeout(nodeRefitTimer);
     nodeRefitTimer = null;
   }
-  refitVisibleNodes({ immediate: false });
+  refitVisibleNodes({
+    immediate: false,
+    previousVisibleNodeIds: options.previousVisibleNodeIds
+  });
   if (options.fitCamera) {
     semanticZoomInputUntil = 0;
     fitCameraToVisibleTargets(true, options.durationMs ?? REFIT_ANIMATION_MS);
@@ -2590,10 +2917,18 @@ function scheduleNodeRefit(delayMs = 100, options = {}) {
   }, delayMs);
 }
 
-function refitVisibleNodes({ immediate = false } = {}) {
+function refitVisibleNodes({ immediate = false, previousVisibleNodeIds = null } = {}) {
   const targets = layoutTargetsForCurrentView();
+  let changed = false;
   for (const node of nodes) {
-    node.targetPosition = targets.get(node.id) ?? node.homePosition;
+    const nextTarget = targets.get(node.id) ?? node.homePosition;
+    if (!node.targetPosition || node.targetPosition.distanceToSquared(nextTarget) > 0.0001) {
+      changed = true;
+    }
+    node.targetPosition = nextTarget;
+  }
+  if (!immediate && previousVisibleNodeIds instanceof Set) {
+    changed = seedNewVisibleNodeEntries(previousVisibleNodeIds, targets) || changed;
   }
   if (immediate) {
     nodeLayoutAnimation = null;
@@ -2601,13 +2936,38 @@ function refitVisibleNodes({ immediate = false } = {}) {
       node.position.copy(node.targetPosition);
     }
     syncGraphObjects();
-    return;
+    return true;
+  }
+  if (!changed && !nodeLayoutAnimation) {
+    syncGraphObjects();
+    return false;
   }
   nodeLayoutAnimation = {
     startedAt: performance.now(),
     durationMs: REFIT_ANIMATION_MS,
     from: new Map(nodes.map(node => [node.id, node.position.clone()]))
   };
+  return true;
+}
+
+function seedNewVisibleNodeEntries(previousVisibleNodeIds, targets) {
+  let seeded = false;
+  for (const node of nodes) {
+    if (!visibleNodeIds.has(node.id) || previousVisibleNodeIds.has(node.id) || !targets.has(node.id)) {
+      continue;
+    }
+    const target = node.targetPosition ?? targets.get(node.id);
+    const anchor = semanticAnchorForNode(node, previousVisibleNodeIds).position;
+    const entry = semanticEntryPosition(anchor, target, node.id);
+    if (node.position.distanceToSquared(entry) > 0.0001) {
+      node.position.copy(entry);
+      seeded = true;
+    }
+  }
+  if (seeded) {
+    syncGraphObjects();
+  }
+  return seeded;
 }
 
 function updateNodeLayoutAnimation() {
@@ -2788,7 +3148,21 @@ function shellSortedItems(items) {
 }
 
 function safeLayoutCenterForCamera() {
-  return controls.target.clone();
+  return layoutCenterAnchor?.clone?.() ?? controls.target.clone();
+}
+
+function componentLayoutCenter(component) {
+  const componentNodes = component?.nodes ?? [];
+  const visibleComponentNodes = componentNodes.filter(node => visibleNodeIds.has(node.id));
+  const sourceNodes = visibleComponentNodes.length ? visibleComponentNodes : componentNodes;
+  if (!sourceNodes.length) {
+    return controls.target.clone();
+  }
+  const center = new THREE.Vector3();
+  for (const node of sourceNodes) {
+    center.add(node.position);
+  }
+  return center.multiplyScalar(1 / sourceNodes.length);
 }
 
 function activeComponentLayoutTargets() {
@@ -3606,6 +3980,14 @@ function normalizeGraphData(data) {
   return {
     source: data?.source === 'http' ? 'http' : 'demo',
     layoutVersion: String(data?.layoutVersion ?? '').trim(),
+    memberCount: positiveInteger(data?.memberCount, normalizedNodes.length),
+    linkCount: positiveInteger(data?.linkCount, normalizedEdges.length),
+    componentCount: positiveInteger(data?.componentCount ?? data?.forestCount, normalizedForests.length),
+    isolatedCount: positiveInteger(data?.isolatedCount, 0),
+    forestCount: positiveInteger(data?.forestCount ?? data?.componentCount, normalizedForests.length),
+    forestLevel: positiveInteger(data?.forestLevel, 0),
+    maxForestLevel: positiveInteger(data?.maxForestLevel, 0),
+    maxZoom: positiveInteger(data?.maxZoom, 0),
     nodes: normalizedNodes,
     edges: normalizedEdges,
     forests: normalizedForests
@@ -3719,6 +4101,14 @@ function initialsForName(name) {
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
+}
+
+function positiveInteger(value, fallback = 0) {
+  const number = Number(value);
+  if (!Number.isFinite(number) || number < 0) {
+    return fallback;
+  }
+  return Math.trunc(number);
 }
 
 function easeOutCubic(value) {

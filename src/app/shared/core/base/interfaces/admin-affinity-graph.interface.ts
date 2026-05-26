@@ -37,6 +37,14 @@ export interface AdminAffinityGraphDto {
   generatedAtIso: string;
   source: 'demo' | 'http' | string;
   layoutVersion?: string | null;
+  memberCount?: number | null;
+  linkCount?: number | null;
+  componentCount?: number | null;
+  isolatedCount?: number | null;
+  forestCount?: number | null;
+  forestLevel?: number | null;
+  maxForestLevel?: number | null;
+  maxZoom?: number | null;
   nodes: AdminAffinityGraphNodeDto[];
   edges: AdminAffinityGraphEdgeDto[];
   forests?: AdminAffinityGraphForestDto[] | null;
@@ -81,6 +89,11 @@ export interface AdminAffinityGraphForestsDto {
   generatedAtIso: string;
   source: 'demo' | 'http' | string;
   layoutVersion?: string | null;
+  forestCount?: number | null;
+  forestLevel?: number | null;
+  maxForestLevel?: number | null;
+  limit?: number | null;
+  offset?: number | null;
   forests: AdminAffinityGraphForestDto[];
 }
 

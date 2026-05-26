@@ -26,6 +26,7 @@ export { ADMIN_AFFINITY_GRAPH_STORE_KEY } from '../../shared/core/base/interface
 const ADMIN_AFFINITY_GRAPH_ROUTE = '/admin/affinity-graph';
 const AFFINITY_GRAPH_LOAD_DEMO_DELAY_MS = 1500;
 const AFFINITY_GRAPH_LOAD_PROGRESS_WINDOW_MS = 3000;
+const AFFINITY_GRAPH_FOREST_BASE_BUDGET = 16;
 
 @Injectable({
   providedIn: 'root'
@@ -79,34 +80,61 @@ export class AdminAffinityGraphService {
     if (this.usesHttpAdminApi) {
       return this.withLoadingProgress(() => this.httpRepository.loadForests(adminUserId, range));
     }
-    const snapshot = await this.demoSnapshot(range);
-    const components = this.components(snapshot.nodes, snapshot.edges);
-    return {
-      generatedAtIso: snapshot.generatedAtIso,
-      source: snapshot.source,
-      layoutVersion: snapshot.layoutVersion,
-      forests: components.map((component, index) => this.forestFromComponent(component, index))
-    };
+    return this.withLoadingProgress(async () => {
+      const [snapshot] = await Promise.all([
+        this.demoSnapshot(range),
+        this.routeDelay.waitForRouteDelay(
+          ADMIN_AFFINITY_GRAPH_ROUTE,
+          undefined,
+          undefined,
+          AFFINITY_GRAPH_LOAD_DEMO_DELAY_MS
+        )
+      ]);
+      const components = this.components(snapshot.nodes, snapshot.edges);
+      const forests = components.map((component, index) => this.forestFromComponent(component, index));
+      const page = this.forestPage(forests, range);
+      return {
+        generatedAtIso: snapshot.generatedAtIso,
+        source: snapshot.source,
+        layoutVersion: snapshot.layoutVersion,
+        forestCount: forests.length,
+        forestLevel: page.forestLevel,
+        maxForestLevel: page.maxForestLevel,
+        limit: page.limit,
+        offset: page.offset,
+        forests: page.forests
+      };
+    });
   }
 
   async loadTile(adminUserId?: string | null, tile?: AdminAffinityGraphTileParams): Promise<AdminAffinityGraphTileDto> {
     if (this.usesHttpAdminApi) {
       return this.withLoadingProgress(() => this.httpRepository.loadTile(adminUserId, tile));
     }
-    const snapshot = await this.demoSnapshot(tile);
-    return {
-      generatedAtIso: snapshot.generatedAtIso,
-      source: snapshot.source,
-      layoutVersion: snapshot.layoutVersion,
-      z: Math.max(0, Math.trunc(Number(tile?.z ?? 0))),
-      x: Math.max(0, Math.trunc(Number(tile?.x ?? 0))),
-      y: Math.max(0, Math.trunc(Number(tile?.y ?? 0))),
-      nodeCount: snapshot.nodes.length,
-      edgeCount: snapshot.edges.length,
-      truncated: false,
-      nodes: snapshot.nodes,
-      edges: snapshot.edges
-    };
+    return this.withLoadingProgress(async () => {
+      const [snapshot] = await Promise.all([
+        this.demoSnapshot(tile),
+        this.routeDelay.waitForRouteDelay(
+          ADMIN_AFFINITY_GRAPH_ROUTE,
+          undefined,
+          undefined,
+          AFFINITY_GRAPH_LOAD_DEMO_DELAY_MS
+        )
+      ]);
+      return {
+        generatedAtIso: snapshot.generatedAtIso,
+        source: snapshot.source,
+        layoutVersion: snapshot.layoutVersion,
+        z: Math.max(0, Math.trunc(Number(tile?.z ?? 0))),
+        x: Math.max(0, Math.trunc(Number(tile?.x ?? 0))),
+        y: Math.max(0, Math.trunc(Number(tile?.y ?? 0))),
+        nodeCount: snapshot.nodes.length,
+        edgeCount: snapshot.edges.length,
+        truncated: false,
+        nodes: snapshot.nodes,
+        edges: snapshot.edges
+      };
+    });
   }
 
   async loadNeighborhood(
@@ -118,21 +146,31 @@ export class AdminAffinityGraphService {
     if (this.usesHttpAdminApi) {
       return this.withLoadingProgress(() => this.httpRepository.loadNeighborhood(userId, depth, adminUserId, range));
     }
-    const snapshot = await this.demoSnapshot(range);
-    const normalizedUserId = `${userId ?? ''}`.trim();
-    const selectedIds = this.neighborhoodIds(snapshot.edges, normalizedUserId, Math.max(1, Math.min(3, Math.trunc(Number(depth ?? 1)))));
-    if (snapshot.nodes.some(node => node.id === normalizedUserId)) {
-      selectedIds.add(normalizedUserId);
-    }
-    return {
-      generatedAtIso: snapshot.generatedAtIso,
-      source: snapshot.source,
-      layoutVersion: snapshot.layoutVersion,
-      centerUserId: normalizedUserId,
-      depth: Math.max(1, Math.min(3, Math.trunc(Number(depth ?? 1)))),
-      nodes: snapshot.nodes.filter(node => selectedIds.has(node.id)),
-      edges: snapshot.edges.filter(edge => selectedIds.has(edge.source) && selectedIds.has(edge.target))
-    };
+    return this.withLoadingProgress(async () => {
+      const [snapshot] = await Promise.all([
+        this.demoSnapshot(range),
+        this.routeDelay.waitForRouteDelay(
+          ADMIN_AFFINITY_GRAPH_ROUTE,
+          undefined,
+          undefined,
+          AFFINITY_GRAPH_LOAD_DEMO_DELAY_MS
+        )
+      ]);
+      const normalizedUserId = `${userId ?? ''}`.trim();
+      const selectedIds = this.neighborhoodIds(snapshot.edges, normalizedUserId, Math.max(1, Math.min(3, Math.trunc(Number(depth ?? 1)))));
+      if (snapshot.nodes.some(node => node.id === normalizedUserId)) {
+        selectedIds.add(normalizedUserId);
+      }
+      return {
+        generatedAtIso: snapshot.generatedAtIso,
+        source: snapshot.source,
+        layoutVersion: snapshot.layoutVersion,
+        centerUserId: normalizedUserId,
+        depth: Math.max(1, Math.min(3, Math.trunc(Number(depth ?? 1)))),
+        nodes: snapshot.nodes.filter(node => selectedIds.has(node.id)),
+        edges: snapshot.edges.filter(edge => selectedIds.has(edge.source) && selectedIds.has(edge.target))
+      };
+    });
   }
 
   async rebuildLayout(adminUserId?: string | null): Promise<AdminAffinityGraphMetaDto> {
@@ -163,7 +201,7 @@ export class AdminAffinityGraphService {
     try {
       const [meta, forests, firstTile] = await Promise.all([
         this.httpRepository.loadMeta(adminUserId),
-        this.httpRepository.loadForests(adminUserId),
+        this.httpRepository.loadForests(adminUserId, { forestLevel: 0, limit: AFFINITY_GRAPH_FOREST_BASE_BUDGET + 4, offset: 0 }),
         this.httpRepository.loadTile(adminUserId, { z: 0, x: 0, y: 0, minWeight: 0, maxWeight: 1 })
       ]);
       const nodesById = new Map<string, AdminAffinityGraphNodeDto>();
@@ -174,6 +212,13 @@ export class AdminAffinityGraphService {
         generatedAtIso: meta.generatedAtIso ?? forests.generatedAtIso ?? firstTile.generatedAtIso,
         source: 'http',
         layoutVersion: meta.layoutVersion ?? forests.layoutVersion ?? firstTile.layoutVersion,
+        memberCount: meta.memberCount,
+        linkCount: meta.linkCount,
+        componentCount: meta.componentCount,
+        isolatedCount: meta.isolatedCount,
+        forestCount: forests.forestCount ?? meta.componentCount,
+        maxForestLevel: forests.maxForestLevel,
+        maxZoom: meta.maxZoom,
         nodes: [...nodesById.values()],
         edges: firstTile.edges ?? [],
         forests: forests.forests ?? []
@@ -270,6 +315,36 @@ export class AdminAffinityGraphService {
     };
   }
 
+  private forestPage(
+    forests: AdminAffinityGraphForestDto[],
+    params?: AdminAffinityGraphRangeParams | null
+  ): {
+    forests: AdminAffinityGraphForestDto[];
+    forestLevel: number;
+    maxForestLevel: number;
+    limit: number;
+    offset: number;
+  } {
+    const total = forests.length;
+    const maxForestLevel = this.maxForestLevel(total);
+    const forestLevel = Math.max(0, Math.min(maxForestLevel, Math.trunc(Number(params?.forestLevel ?? 0))));
+    const levelLimit = Math.min(total, Math.max(1, AFFINITY_GRAPH_FOREST_BASE_BUDGET * (2 ** forestLevel)));
+    const limit = Math.max(1, Math.min(total || 1, Math.trunc(Number(params?.limit ?? levelLimit))));
+    const offset = Math.max(0, Math.min(total, Math.trunc(Number(params?.offset ?? 0))));
+    return {
+      forests: forests.slice(offset, offset + limit),
+      forestLevel,
+      maxForestLevel,
+      limit,
+      offset
+    };
+  }
+
+  private maxForestLevel(totalCount: number): number {
+    const total = Math.max(1, Math.trunc(Number(totalCount) || 1));
+    return Math.max(0, Math.ceil(Math.log2(total / AFFINITY_GRAPH_FOREST_BASE_BUDGET)));
+  }
+
   private neighborhoodIds(edges: AdminAffinityGraphEdgeDto[], userId: string, depth: number): Set<string> {
     const adjacency = new Map<string, AdminAffinityGraphEdgeDto[]>();
     edges.forEach(edge => {
@@ -338,6 +413,14 @@ export class AdminAffinityGraphService {
       generatedAtIso: snapshot?.generatedAtIso ?? new Date().toISOString(),
       source: snapshot?.source ?? fallbackSource,
       layoutVersion: snapshot?.layoutVersion ?? `${fallbackSource}-${snapshot?.generatedAtIso ?? Date.now()}`,
+      memberCount: this.positiveInteger(snapshot?.memberCount, normalizedNodes.length),
+      linkCount: this.positiveInteger(snapshot?.linkCount, normalizedEdges.length),
+      componentCount: this.positiveInteger(snapshot?.componentCount ?? snapshot?.forestCount, normalizedForests.length),
+      isolatedCount: this.positiveInteger(snapshot?.isolatedCount, 0),
+      forestCount: this.positiveInteger(snapshot?.forestCount ?? snapshot?.componentCount, normalizedForests.length),
+      forestLevel: this.positiveInteger(snapshot?.forestLevel, 0),
+      maxForestLevel: this.positiveInteger(snapshot?.maxForestLevel, 0),
+      maxZoom: this.positiveInteger(snapshot?.maxZoom, 0),
       nodes: normalizedNodes,
       edges: normalizedEdges,
       forests: normalizedForests
@@ -426,6 +509,14 @@ export class AdminAffinityGraphService {
 
   private clamp(value: number, min: number, max: number): number {
     return Math.min(max, Math.max(min, Number.isFinite(value) ? value : min));
+  }
+
+  private positiveInteger(value: unknown, fallback: number): number {
+    const numberValue = Number(value);
+    if (!Number.isFinite(numberValue) || numberValue < 0) {
+      return fallback;
+    }
+    return Math.trunc(numberValue);
   }
 
   private round(value: number): number {

@@ -167,7 +167,7 @@ export class AdminAffinityGraphPopupComponent implements OnDestroy {
       case 'meta':
         return this.affinityGraph.loadMeta(adminUserId, this.rangeParams(params));
       case 'forests':
-        return this.affinityGraph.loadForests(adminUserId, this.rangeParams(params));
+        return this.affinityGraph.loadForests(adminUserId, this.forestParams(params));
       case 'tile':
         return this.affinityGraph.loadTile(adminUserId, {
           ...this.rangeParams(params),
@@ -203,6 +203,21 @@ export class AdminAffinityGraphPopupComponent implements OnDestroy {
     return {
       minWeight: this.optionalNumber(params['minWeight']),
       maxWeight: this.optionalNumber(params['maxWeight'])
+    };
+  }
+
+  private forestParams(params: Record<string, unknown>): {
+    minWeight?: number;
+    maxWeight?: number;
+    forestLevel?: number;
+    limit?: number;
+    offset?: number;
+  } {
+    return {
+      ...this.rangeParams(params),
+      forestLevel: this.optionalNumber(params['forestLevel']),
+      limit: this.optionalNumber(params['limit']),
+      offset: this.optionalNumber(params['offset'])
     };
   }
 

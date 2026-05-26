@@ -13,6 +13,9 @@ import type {
 export interface AdminAffinityGraphRangeParams {
   minWeight?: number | null;
   maxWeight?: number | null;
+  forestLevel?: number | null;
+  limit?: number | null;
+  offset?: number | null;
 }
 
 export interface AdminAffinityGraphTileParams extends AdminAffinityGraphRangeParams {
