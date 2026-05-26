@@ -47,6 +47,8 @@
 
 .activities-event-action-menu.item-action-menu-desktop.is-open-up {
   bottom: auto;
+  transform: translateY(calc(-100% - 8px));
+  animation: none;
 }
 
 .item-action-menu-title {

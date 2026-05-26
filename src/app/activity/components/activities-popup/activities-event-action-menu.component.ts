@@ -55,6 +55,8 @@ interface ActivitiesEventActionMenuState {
         [style.top.px]="!isMobileView ? actionMenu.desktopTop : null"
         [style.bottom.px]="!isMobileView ? actionMenu.desktopBottom : null"
         [style.max-height.px]="!isMobileView ? actionMenu.desktopMaxHeight : null"
+        [style.transform]="!isMobileView && actionMenu.openUp ? 'translateY(calc(-100% - 8px))' : null"
+        [style.animation]="!isMobileView && actionMenu.openUp ? 'none' : null"
         (click)="$event.stopPropagation()"
       >
         @if (actionMenu.title) {
@@ -178,7 +180,8 @@ export class ActivitiesEventActionMenuComponent {
     triggerRect: InfoCardMenuTriggerRect | null,
     actions: readonly InfoCardMenuAction[],
     withoutTitle: boolean,
-    isMobileView: boolean
+    isMobileView: boolean,
+    measuredMenuHeight: number | null = null
   ): {
     left: number | null;
     top: number | null;
@@ -190,7 +193,9 @@ export class ActivitiesEventActionMenuComponent {
       return { left: null, top: null, bottom: null, maxHeight: null, openUp: false };
     }
     const menuWidth = 220;
-    const estimatedMenuHeight = Math.min(320, 24 + actions.length * 38 + (withoutTitle ? 0 : 42));
+    const estimatedMenuHeight = Number.isFinite(measuredMenuHeight as number) && (measuredMenuHeight as number) > 0
+      ? measuredMenuHeight as number
+      : Math.min(320, 24 + actions.length * 38 + (withoutTitle ? 0 : 42));
     const margin = 8;
     const viewportWidth = window.innerWidth || document.documentElement.clientWidth;
     const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
@@ -204,8 +209,8 @@ export class ActivitiesEventActionMenuComponent {
     if (openUp) {
       return {
         left,
-        top: null,
-        bottom: Math.max(margin, viewportHeight - triggerRect.top + margin),
+        top: triggerRect.top,
+        bottom: null,
         maxHeight: Math.max(120, spaceAbove - margin),
         openUp
       };
@@ -224,7 +229,7 @@ export class ActivitiesEventActionMenuComponent {
     if (this.isMobileView || typeof window === 'undefined') {
       return;
     }
-    for (const delayMs of [0, 80, 220]) {
+    for (const delayMs of [0, 80, 180, 240, 320]) {
       this.repositionTimers.push(window.setTimeout(() => this.repositionDesktopMenuFromLiveTrigger(), delayMs));
     }
   }
@@ -249,6 +254,10 @@ export class ActivitiesEventActionMenuComponent {
     if (!trigger) {
       return;
     }
+    const menuElement = document.querySelector<HTMLElement>('.activities-event-action-menu.item-action-menu.is-open');
+    const measuredMenuHeight = menuElement
+      ? Math.max(menuElement.getBoundingClientRect().height, menuElement.scrollHeight)
+      : null;
     const rect = trigger.getBoundingClientRect();
     const position = this.resolveDesktopPositionForRect(
       {
@@ -261,7 +270,8 @@ export class ActivitiesEventActionMenuComponent {
       },
       menu.actions,
       menu.card.menuTitle === null,
-      false
+      false,
+      measuredMenuHeight
     );
     this.menu = {
       ...menu,
