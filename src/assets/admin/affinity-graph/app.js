@@ -1372,10 +1372,9 @@ function renderForestPanel(component) {
 
 function handleWeightRangeInput(changedHandle) {
   normalizeWeightRange(changedHandle);
-  const previousVisibleNodeIds = new Set(visibleNodeIds);
   rebuildEdges();
   renderMemberPanel(selectedNode);
-  startVisibleRefit({ fitCamera: true, previousVisibleNodeIds });
+  refitVisibleNodes({ immediate: true });
   if (activeComponentId !== null && !selectedNode) {
     scheduleLazyComponentLoad(activeComponentId, 120, { refresh: true });
   } else {
@@ -2266,17 +2265,8 @@ function graphViewportMetrics() {
 function panViewportByScreenDelta(deltaX, deltaY) {
   cameraAnimation = null;
   const viewport = graphViewportMetrics();
-  const panLimit = viewportPanLimit(viewport);
-  viewportPanOffset.x = clamp(
-    viewportPanOffset.x - deltaX,
-    -panLimit.x,
-    panLimit.x
-  );
-  viewportPanOffset.y = clamp(
-    viewportPanOffset.y - deltaY,
-    -panLimit.y,
-    panLimit.y
-  );
+  viewportPanOffset.x -= deltaX;
+  viewportPanOffset.y -= deltaY;
   applyViewportOffset(viewport);
   controls.update();
   publishPreviewState();
@@ -2284,86 +2274,8 @@ function panViewportByScreenDelta(deltaX, deltaY) {
 }
 
 function clampViewportPanOffset(viewport = graphViewportMetrics()) {
-  const panLimit = viewportPanLimit(viewport);
-  const nextX = clamp(viewportPanOffset.x, -panLimit.x, panLimit.x);
-  const nextY = clamp(viewportPanOffset.y, -panLimit.y, panLimit.y);
-  const changed = Math.abs(nextX - viewportPanOffset.x) > 0.5 || Math.abs(nextY - viewportPanOffset.y) > 0.5;
-  viewportPanOffset.x = nextX;
-  viewportPanOffset.y = nextY;
-  if (changed) {
-    applyViewportOffset(viewport);
-  }
-  return changed;
-}
-
-function viewportPanLimit(viewport) {
-  const footprint = visibleGraphScreenFootprint(viewport);
-  const horizontalOverflow = Math.max(0, (footprint.width - viewport.safeWidth) / 2);
-  const verticalOverflow = Math.max(0, (footprint.height - viewport.fullHeight) / 2);
-  const smallGraphSlack = isForestOverview() ? 0.12 : 0.18;
-  const margin = Math.max(34, footprint.maxRadius * 0.62);
-
-  return {
-    x: horizontalOverflow + Math.min(viewport.safeWidth * smallGraphSlack, Math.max(36, footprint.maxRadius * 1.15)),
-    y: verticalOverflow + Math.min(viewport.fullHeight * smallGraphSlack, Math.max(34, margin))
-  };
-}
-
-function visibleGraphScreenFootprint(viewport = graphViewportMetrics()) {
-  const rect = canvas.getBoundingClientRect();
-  let minX = Infinity;
-  let maxX = -Infinity;
-  let minY = Infinity;
-  let maxY = -Infinity;
-  let maxRadius = 0;
-  let count = 0;
-
-  const addSpriteBounds = (sprite, position, minimum = 12) => {
-    if (!sprite?.visible || !position) {
-      return;
-    }
-    const projected = position.clone().project(camera);
-    if (projected.z < -1 || projected.z > 1) {
-      return;
-    }
-
-    const x = ((projected.x + 1) / 2) * rect.width;
-    const y = ((1 - projected.y) / 2) * rect.height;
-    const radius = projectedSpriteRadius(sprite, position, rect, minimum);
-    minX = Math.min(minX, x - radius);
-    maxX = Math.max(maxX, x + radius);
-    minY = Math.min(minY, y - radius);
-    maxY = Math.max(maxY, y + radius);
-    maxRadius = Math.max(maxRadius, radius);
-    count += 1;
-  };
-
-  if (isForestOverview()) {
-    for (const component of components) {
-      addSpriteBounds(component.forestBadge, component.forestPosition, 18);
-    }
-  } else {
-    for (const node of nodes) {
-      if (!visibleNodeIds.has(node.id)) {
-        continue;
-      }
-      addSpriteBounds(node.badge, node.position, 12);
-    }
-  }
-
-  if (!count) {
-    return {
-      width: viewport.safeWidth,
-      height: viewport.fullHeight,
-      maxRadius: 24
-    };
-  }
-
-  return {
-    width: Math.max(1, maxX - minX),
-    height: Math.max(1, maxY - minY),
-    maxRadius
-  };
+  applyViewportOffset(viewport);
+  return false;
 }
 
 function scheduleLazyTileLoad(delayMs = 180, options = {}) {
