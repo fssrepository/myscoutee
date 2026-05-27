@@ -33,7 +33,7 @@ export class FirebaseAuthService {
   private firebaseAppPromise: Promise<FirebaseApp | null> | null = null;
 
   get enabled(): boolean {
-    return environment.loginEnabled;
+    return environment.firebaseLoginEnabled;
   }
 
   loadStoredProfile(): AppTypes.FirebaseAuthProfile | null {

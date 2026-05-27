@@ -383,7 +383,6 @@ export class HttpChatsService {
         attachments: attachments.map(attachment => this.toHttpChatAttachment(attachment)),
         replyTo: this.toHttpChatReply(replyTo)
       };
-      this.logSocketDebug('send', payload);
       socket.send(JSON.stringify(payload));
       return this.waitForSocketMessageAck(outboundClientId);
     } catch {
@@ -403,7 +402,6 @@ export class HttpChatsService {
       type: 'typing',
       typing
     };
-    this.logSocketDebug('send', payload);
     socket.send(JSON.stringify(payload));
   }
 
@@ -422,7 +420,6 @@ export class HttpChatsService {
       type: 'read',
       messageIds: normalizedIds
     };
-    this.logSocketDebug('send', payload);
     socket.send(JSON.stringify(payload));
   }
 
@@ -487,7 +484,6 @@ export class HttpChatsService {
         return null;
       }
       const pendingUpdate = this.waitForSocketMessageUpdate(normalizedMessageId);
-      this.logSocketDebug('send', payload);
       socket.send(JSON.stringify(payload));
       const updatedMessage = await pendingUpdate;
       if (updatedMessage) {
@@ -1119,7 +1115,6 @@ export class HttpChatsService {
         this.clearSocketReconnectTimer();
         this.socketReconnectAttempt = 0;
         this.shouldEmitReconnectEvent = false;
-        this.logSocketDebug('open', { chatId });
         finalize(socket);
         if (emitReconnect) {
           this.emitSocketEvent({
@@ -1131,10 +1126,8 @@ export class HttpChatsService {
       socket.onmessage = event => {
         try {
           const raw = `${event.data ?? ''}`;
-          this.logSocketDebug('recv:raw', raw);
           const parsed = JSON.parse(raw) as HttpChatMessageDto | HttpChatSocketEventDto;
           const liveEvent = this.mapSocketEvent(parsed, chatId);
-          this.logSocketDebug('recv:mapped', liveEvent);
           if (!liveEvent) {
             return;
           }
@@ -1144,7 +1137,6 @@ export class HttpChatsService {
         }
       };
       socket.onerror = () => {
-        this.logSocketDebug('error', { chatId });
         if (this.intentionalSocketClosures.delete(socket)) {
           finalize(null);
           return;
@@ -1153,7 +1145,6 @@ export class HttpChatsService {
         finalize(null);
       };
       socket.onclose = () => {
-        this.logSocketDebug('close', { chatId, code: socket.readyState });
         if (this.intentionalSocketClosures.delete(socket)) {
           finalize(null);
           return;
@@ -1457,29 +1448,4 @@ export class HttpChatsService {
     pending.resolve(message);
   }
 
-  private logSocketDebug(label: string, payload: unknown): void {
-    if (typeof console === 'undefined') {
-      return;
-    }
-    console.log('[chat-http-ws]', label, this.sanitizeSocketLogPayload(payload));
-  }
-
-  private sanitizeSocketLogPayload(payload: unknown): unknown {
-    if (typeof payload === 'string') {
-      return payload.length > 1000 ? `${payload.slice(0, 1000)}...` : payload;
-    }
-    if (!payload || typeof payload !== 'object') {
-      return payload;
-    }
-    if (Array.isArray(payload)) {
-      return payload.map(item => this.sanitizeSocketLogPayload(item));
-    }
-    const source = payload as Record<string, unknown>;
-    return Object.fromEntries(Object.entries(source).map(([key, value]) => {
-      if ((key === 'url' || key === 'previewUrl') && typeof value === 'string' && value.length > 160) {
-        return [key, `${value.slice(0, 160)}...`];
-      }
-      return [key, this.sanitizeSocketLogPayload(value)];
-    }));
-  }
 }

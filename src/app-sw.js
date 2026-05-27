@@ -15,6 +15,7 @@ const PRECACHE_URLS = [
   './assets/logo/heart.png',
   './assets/logo/heart.webp',
   './assets/logo/cards_no_edges.png',
+  './assets/idea/article-fallback.svg',
   './assets/i18n/en.json',
   './assets/i18n/hu.json'
 ];

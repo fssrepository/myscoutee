@@ -1,6 +1,6 @@
 const CACHE_PREFIX = 'myscoutee-runtime';
-const CACHE_VERSION = "build-71b7d626cc41-20260523202902";
-const BUILD_ID = "71b7d626cc41-20260523202902";
+const CACHE_VERSION = "build-8bcbeb54c10c-20260527071710";
+const BUILD_ID = "8bcbeb54c10c-20260527071710";
 const APP_CACHE = `${CACHE_PREFIX}-app-${CACHE_VERSION}`;
 const API_CACHE = `${CACHE_PREFIX}-api-${CACHE_VERSION}`;
 const MEDIA_CACHE = `${CACHE_PREFIX}-media-${CACHE_VERSION}`;
@@ -16,6 +16,7 @@ const PRECACHE_URLS = [
   './assets/logo/heart.png',
   './assets/logo/heart.webp',
   './assets/logo/cards_no_edges.png',
+  './assets/idea/article-fallback.svg',
   './assets/i18n/en.json',
   './assets/i18n/hu.json'
 ];

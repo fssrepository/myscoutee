@@ -10,6 +10,8 @@ import { BaseRouteModeService } from './base-route-mode.service';
   providedIn: 'root'
 })
 export class IdeaPostsService extends BaseRouteModeService {
+  private static readonly ARTICLE_FALLBACK_IMAGE_URL = 'assets/idea/article-fallback.svg';
+
   private readonly demoIdeaPostsService = inject(DemoIdeaPostsService);
   private readonly httpIdeaPostsService = inject(HttpIdeaPostsService);
   private readonly postsRef = signal<IdeaPost[]>([]);
@@ -194,7 +196,7 @@ export class IdeaPostsService extends BaseRouteModeService {
       id: post.id,
       title: post.title,
       excerpt: post.excerpt,
-      contentHtml: post.contentHtml,
+      contentHtml: this.articleContentHtml(post),
       imageUrl: this.ideaImageUrl(post),
       dateLabel: this.ideaDateLabel(post, fallbackDateLabel),
       sortAtIso: post.submittedAtIso || post.updatedAtIso || post.createdAtIso || '',
@@ -213,7 +215,27 @@ export class IdeaPostsService extends BaseRouteModeService {
   }
 
   private ideaImageUrl(post: Pick<IdeaPost, 'imageUrl' | 'imageUrls'> | null): string {
-    return `${post?.imageUrl ?? post?.imageUrls?.[0] ?? ''}`.trim();
+    const imageUrl = `${post?.imageUrl ?? post?.imageUrls?.[0] ?? ''}`.trim();
+    if (!imageUrl || this.isGenericArticleImage(imageUrl)) {
+      return IdeaPostsService.ARTICLE_FALLBACK_IMAGE_URL;
+    }
+    return imageUrl;
+  }
+
+  private articleContentHtml(post: Pick<IdeaPost, 'contentHtml'>): string {
+    return `${post.contentHtml ?? ''}`
+      .replaceAll('src="assets/logo/heart.webp"', `src="${IdeaPostsService.ARTICLE_FALLBACK_IMAGE_URL}"`)
+      .replaceAll('src="/assets/logo/heart.webp"', `src="${IdeaPostsService.ARTICLE_FALLBACK_IMAGE_URL}"`)
+      .replaceAll("src='assets/logo/heart.webp'", `src='${IdeaPostsService.ARTICLE_FALLBACK_IMAGE_URL}'`)
+      .replaceAll("src='/assets/logo/heart.webp'", `src='${IdeaPostsService.ARTICLE_FALLBACK_IMAGE_URL}'`);
+  }
+
+  private isGenericArticleImage(imageUrl: string): boolean {
+    const normalized = imageUrl
+      .split(/[?#]/, 1)[0]
+      .replace(/^\/+/, '')
+      .toLowerCase();
+    return normalized === 'assets/logo/heart.webp' || normalized === 'assets/logo/heart.png';
   }
 
   private ideaDateLabel(

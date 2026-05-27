@@ -739,6 +739,12 @@
   color: #146a78;
 }
 
+.admin-menu-shortcuts-monitoring .menu-shortcut-graph {
+  border-color: rgba(91, 103, 191, 0.34);
+  background: linear-gradient(180deg, #f0f3ff 0%, #e1e7ff 100%);
+  color: #405098;
+}
+
 .admin-menu-shortcuts .menu-shortcut-btn {
   height: var(--navigator-shortcut-tile-height);
   gap: 0.18rem;

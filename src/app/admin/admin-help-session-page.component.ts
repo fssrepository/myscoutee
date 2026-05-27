@@ -105,7 +105,7 @@ export class AdminHelpSessionPageComponent implements OnInit {
       this.fail('This support link is missing its token.');
       return;
     }
-    const demoUsersPromise = environment.activitiesDataSource !== 'http' || !environment.loginEnabled
+    const demoUsersPromise = environment.activitiesDataSource !== 'http' || !environment.firebaseLoginEnabled
       ? this.prepareDemoSelectorUsers()
       : Promise.resolve<DemoUserListItemDto[]>([]);
     const resolved = await this.resolveAdminHelpToken(token);
@@ -115,7 +115,7 @@ export class AdminHelpSessionPageComponent implements OnInit {
     }
     const userId = resolved.ownerUserId.trim();
     const targetUrl = this.safeTargetUrl(resolved.url || resolved.entityId || '/game');
-    if (environment.activitiesDataSource !== 'http' || !environment.loginEnabled) {
+    if (environment.activitiesDataSource !== 'http' || !environment.firebaseLoginEnabled) {
       this.selectorSelectedUserId = userId;
       const users = await demoUsersPromise;
       const selectedUser = users.find(user => user.id.trim() === userId) ?? null;
@@ -150,7 +150,7 @@ export class AdminHelpSessionPageComponent implements OnInit {
   }
 
   private async resolveAdminHelpToken(token: string): Promise<ShareTokenResolvedItem | null> {
-    if (!environment.loginEnabled) {
+    if (!environment.firebaseLoginEnabled) {
       const demoResolved = this.resolveDemoAdminHelpToken(token);
       if (demoResolved) {
         return demoResolved;
@@ -167,7 +167,7 @@ export class AdminHelpSessionPageComponent implements OnInit {
     } catch {
       // Fall through to the demo-token fallback below.
     }
-    if (!environment.loginEnabled) {
+    if (!environment.firebaseLoginEnabled) {
       return this.resolveDemoAdminHelpToken(token);
     }
     return null;

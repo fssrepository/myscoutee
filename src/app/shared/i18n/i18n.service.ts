@@ -175,7 +175,7 @@ export class I18nService {
   }
 
   private async refreshFromServer(candidates: readonly string[]): Promise<void> {
-    if (environment.remoteI18nEnabled === false) {
+    if (environment.activitiesDataSource !== 'http') {
       return;
     }
     if (candidates.length === 0) {

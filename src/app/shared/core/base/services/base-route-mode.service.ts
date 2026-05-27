@@ -16,7 +16,7 @@ export abstract class BaseRouteModeService {
     const routeConfig = resolveRouteConfig(route);
     return environment.activitiesDataSource !== 'http'
       && !routeConfig.http
-      && (this.sessionService.currentSession()?.kind === 'demo' || !environment.loginEnabled);
+      && (this.sessionService.currentSession()?.kind === 'demo' || !environment.firebaseLoginEnabled);
   }
 
   protected resolveRouteService<TDemo, THttp>(route: string, demoService: TDemo, httpService: THttp): TDemo | THttp {

@@ -1496,6 +1496,164 @@ const EXPLANATION_CONTACTS_SECTIONS_HU: HelpCenterSection[] = [
   }
 ];
 
+const EXPLANATION_PROFILE_EDITOR_SECTIONS: HelpCenterSection[] = [
+  {
+    id: 'profile-editor-basics',
+    icon: 'manage_accounts',
+    title: 'Profile basics',
+    blurb: 'This is where your public profile is maintained.',
+    contentHtml: '<p>Edit the fields that describe who you are, what you are open to, and how others should understand your profile card. Keep the short fields scannable; the detail fields can carry the nuance.</p>'
+  },
+  {
+    id: 'profile-editor-media',
+    icon: 'add_photo_alternate',
+    title: 'Photos and media',
+    blurb: 'Profile images are edited separately from text.',
+    contentHtml: '<p>Use the photo area to add, reorder, replace, or remove images. The same saved image state is what the home cards and profile view use after reload.</p>'
+  },
+  {
+    id: 'profile-editor-details',
+    icon: 'tune',
+    title: 'Details, chips, and privacy',
+    blurb: 'Structured fields make matching and filtering predictable.',
+    contentHtml: '<p>Chips such as interests, languages, values, habits, and profile details are stored as structured choices. Privacy controls decide which details are visible broadly, only to trusted contexts, or only to hosts.</p>'
+  },
+  {
+    id: 'profile-editor-save',
+    icon: 'save',
+    title: 'Save and verify',
+    blurb: 'Saved profile data should survive reopening the editor.',
+    contentHtml: '<p>After saving, reopen the editor or profile view to confirm that the same photos, chips, dropdowns, and text fields come back from the selected data source.</p>'
+  }
+];
+
+const EXPLANATION_PROFILE_EDITOR_SECTIONS_HU: HelpCenterSection[] = [
+  {
+    id: 'profile-editor-basics',
+    icon: 'manage_accounts',
+    title: 'Profil alapok',
+    blurb: 'Itt tarthatod karban a nyilvános profilodat.',
+    contentHtml: '<p>Szerkeszd azokat a mezőket, amelyek megmutatják, ki vagy, mire vagy nyitott, és hogyan lássák mások a profilkártyádat. A rövid mezők legyenek gyorsan olvashatók; a részletes mezők hordozzák az árnyalatokat.</p>'
+  },
+  {
+    id: 'profile-editor-media',
+    icon: 'add_photo_alternate',
+    title: 'Fotók és média',
+    blurb: 'A profilképek külön kezelődnek a szöveges mezőktől.',
+    contentHtml: '<p>A fotó résznél adhatsz hozzá, rendezhetsz át, cserélhetsz vagy törölhetsz képeket. Mentés után ugyanezt a képállapotot használja a kezdőkártya és a profilnézet is.</p>'
+  },
+  {
+    id: 'profile-editor-details',
+    icon: 'tune',
+    title: 'Részletek, chipek és adatvédelem',
+    blurb: 'A strukturált mezők kiszámíthatóbbá teszik a szűrést és ajánlást.',
+    contentHtml: '<p>Az érdeklődések, nyelvek, értékek, szokások és profilrészletek strukturált választásokként mentődnek. Az adatvédelmi beállítások döntik el, mi látható szélesen, csak megbízhatóbb környezetben vagy csak szervezőknek.</p>'
+  },
+  {
+    id: 'profile-editor-save',
+    icon: 'save',
+    title: 'Mentés és ellenőrzés',
+    blurb: 'A mentett profiladatnak újranyitás után is meg kell maradnia.',
+    contentHtml: '<p>Mentés után nyisd újra a szerkesztőt vagy a profilnézetet, és ellenőrizd, hogy ugyanazok a fotók, chipek, legördülők és szövegmezők jönnek vissza a kiválasztott adatforrásból.</p>'
+  }
+];
+
+const EXPLANATION_PROFILE_VIEW_SECTIONS: HelpCenterSection[] = [
+  {
+    id: 'profile-view-overview',
+    icon: 'visibility',
+    title: 'Profile view',
+    blurb: 'This screen is the read-only version of a profile.',
+    contentHtml: '<p>The profile view shows the saved photos, headline fields, details, and visible context that another user can inspect from cards, chats, contacts, or event member lists.</p>'
+  },
+  {
+    id: 'profile-view-photos',
+    icon: 'photo_library',
+    title: 'Photos and sections',
+    blurb: 'Use the media and detail blocks to understand the person quickly.',
+    contentHtml: '<p>Images, chips, experiences, and profile sections are grouped so they can be scanned without entering edit mode. Empty or private fields should simply stay hidden.</p>'
+  },
+  {
+    id: 'profile-view-actions',
+    icon: 'more_horiz',
+    title: 'Actions from a profile',
+    blurb: 'Available actions depend on context and permissions.',
+    contentHtml: '<p>Depending on where the profile was opened, actions can lead back to rating, contact, chat, report, event member handling, or admin moderation. The profile content itself should stay consistent across those entry points.</p>'
+  }
+];
+
+const EXPLANATION_PROFILE_VIEW_SECTIONS_HU: HelpCenterSection[] = [
+  {
+    id: 'profile-view-overview',
+    icon: 'visibility',
+    title: 'Profilnézet',
+    blurb: 'Ez a profil csak olvasható változata.',
+    contentHtml: '<p>A profilnézet a mentett fotókat, fő mezőket, részleteket és látható kontextust mutatja, amit más felhasználó kártyáról, chatből, kapcsolatból vagy eseménytag-listából megnyithat.</p>'
+  },
+  {
+    id: 'profile-view-photos',
+    icon: 'photo_library',
+    title: 'Fotók és szekciók',
+    blurb: 'A média és részletblokkok gyors megértésre valók.',
+    contentHtml: '<p>A képek, chipek, tapasztalatok és profilszekciók úgy vannak csoportosítva, hogy szerkesztő mód nélkül is átnézhetők legyenek. Az üres vagy privát mezők maradjanak egyszerűen rejtve.</p>'
+  },
+  {
+    id: 'profile-view-actions',
+    icon: 'more_horiz',
+    title: 'Profilműveletek',
+    blurb: 'Az elérhető műveletek a kontextustól és jogosultságtól függnek.',
+    contentHtml: '<p>Attól függően, honnan nyílt a profil, a műveletek értékeléshez, kapcsolathoz, chathez, jelentéshez, eseménytag-kezeléshez vagy admin moderációhoz vezethetnek. Maga a profiltartalom ezek között is maradjon konzisztens.</p>'
+  }
+];
+
+const EXPLANATION_EVENT_FEEDBACK_SECTIONS: HelpCenterSection[] = [
+  {
+    id: 'event-feedback-entry',
+    icon: 'rate_review',
+    title: 'Event feedback',
+    blurb: 'Feedback appears after an event or from activity history.',
+    contentHtml: '<p>Use feedback to record how the event worked, how collaboration felt, and whether you would join similar events again. It is connected to real event participation, not a generic profile rating.</p>'
+  },
+  {
+    id: 'event-feedback-categories',
+    icon: 'checklist',
+    title: 'Questions and categories',
+    blurb: 'Different roles can see different feedback questions.',
+    contentHtml: '<p>Hosts, attendees, and collaborators may answer different sections. Some answers improve future matching and event planning, while moderation-sensitive answers should remain scoped to the right workflow.</p>'
+  },
+  {
+    id: 'event-feedback-save',
+    icon: 'task_alt',
+    title: 'Save once, reopen safely',
+    blurb: 'Submitted feedback should not vanish or duplicate.',
+    contentHtml: '<p>After saving, the event should move to the right feedback state in lists. Reopening should show the saved state or the next required action without creating duplicate feedback records.</p>'
+  }
+];
+
+const EXPLANATION_EVENT_FEEDBACK_SECTIONS_HU: HelpCenterSection[] = [
+  {
+    id: 'event-feedback-entry',
+    icon: 'rate_review',
+    title: 'Esemény-visszajelzés',
+    blurb: 'Visszajelzés esemény után vagy aktivitás-előzményből jelenhet meg.',
+    contentHtml: '<p>A visszajelzés arra való, hogy rögzítsd, hogyan működött az esemény, milyen volt az együttműködés, és csatlakoznál-e hasonló eseményhez újra. Valódi részvételhez kapcsolódik, nem általános profilértékelés.</p>'
+  },
+  {
+    id: 'event-feedback-categories',
+    icon: 'checklist',
+    title: 'Kérdések és kategóriák',
+    blurb: 'Különböző szerepek más visszajelzési kérdéseket láthatnak.',
+    contentHtml: '<p>Szervezők, résztvevők és együttműködők más szekciókat kaphatnak. Egyes válaszok a későbbi ajánlást és eseménytervezést javítják, a moderáció-érzékeny válaszok pedig maradjanak a megfelelő folyamathoz kötve.</p>'
+  },
+  {
+    id: 'event-feedback-save',
+    icon: 'task_alt',
+    title: 'Egyszeri mentés, biztonságos újranyitás',
+    blurb: 'A beküldött visszajelzés ne tűnjön el és ne duplikálódjon.',
+    contentHtml: '<p>Mentés után az eseménynek a megfelelő visszajelzési állapotba kell kerülnie a listákban. Újranyitáskor a mentett állapot vagy a következő szükséges művelet jelenjen meg, duplikált rekord nélkül.</p>'
+  }
+];
+
 const EXPLANATION_ASSETS_SECTIONS: HelpCenterSection[] = [
   {
     id: 'assets-entry',
@@ -2135,6 +2293,63 @@ const DEFAULT_EXPLANATION_CONTACTS_REVISION_HU: HelpCenterRevision = {
   sections: withSeededExplanationImages('contacts', EXPLANATION_CONTACTS_SECTIONS_HU, 'hu')
 };
 
+const DEFAULT_EXPLANATION_PROFILE_EDITOR_REVISION: HelpCenterRevision = {
+  ...DEFAULT_EXPLANATION_HOME_REVISION,
+  id: 'explanation-profile-editor-default-v1',
+  contextKey: 'profile.editor',
+  title: 'Profile editor explanation',
+  summary: 'Profile fields, photos, chips, privacy, and save checks',
+  sections: withSeededExplanationImages('profile.editor', EXPLANATION_PROFILE_EDITOR_SECTIONS, 'en')
+};
+
+const DEFAULT_EXPLANATION_PROFILE_EDITOR_REVISION_HU: HelpCenterRevision = {
+  ...DEFAULT_EXPLANATION_PROFILE_EDITOR_REVISION,
+  id: 'explanation-profile-editor-default-hu-v1',
+  lang: 'hu',
+  languageLabel: 'Magyar',
+  title: 'Profilszerkesztő magyarázat',
+  summary: 'Profilmezők, fotók, chipek, adatvédelem és mentés ellenőrzése',
+  sections: withSeededExplanationImages('profile.editor', EXPLANATION_PROFILE_EDITOR_SECTIONS_HU, 'hu')
+};
+
+const DEFAULT_EXPLANATION_PROFILE_VIEW_REVISION: HelpCenterRevision = {
+  ...DEFAULT_EXPLANATION_HOME_REVISION,
+  id: 'explanation-profile-view-default-v1',
+  contextKey: 'profile.view',
+  title: 'Profile view explanation',
+  summary: 'Profile details, visible sections, and context actions',
+  sections: withSeededExplanationImages('profile.view', EXPLANATION_PROFILE_VIEW_SECTIONS, 'en')
+};
+
+const DEFAULT_EXPLANATION_PROFILE_VIEW_REVISION_HU: HelpCenterRevision = {
+  ...DEFAULT_EXPLANATION_PROFILE_VIEW_REVISION,
+  id: 'explanation-profile-view-default-hu-v1',
+  lang: 'hu',
+  languageLabel: 'Magyar',
+  title: 'Profilnézet magyarázat',
+  summary: 'Profilrészletek, látható szekciók és kontextusműveletek',
+  sections: withSeededExplanationImages('profile.view', EXPLANATION_PROFILE_VIEW_SECTIONS_HU, 'hu')
+};
+
+const DEFAULT_EXPLANATION_EVENT_FEEDBACK_REVISION: HelpCenterRevision = {
+  ...DEFAULT_EXPLANATION_HOME_REVISION,
+  id: 'explanation-event-feedback-default-v1',
+  contextKey: 'event.feedback',
+  title: 'Event feedback explanation',
+  summary: 'Feedback questions, event context, and saved state',
+  sections: withSeededExplanationImages('event.feedback', EXPLANATION_EVENT_FEEDBACK_SECTIONS, 'en')
+};
+
+const DEFAULT_EXPLANATION_EVENT_FEEDBACK_REVISION_HU: HelpCenterRevision = {
+  ...DEFAULT_EXPLANATION_EVENT_FEEDBACK_REVISION,
+  id: 'explanation-event-feedback-default-hu-v1',
+  lang: 'hu',
+  languageLabel: 'Magyar',
+  title: 'Esemény-visszajelzés magyarázat',
+  summary: 'Visszajelzési kérdések, eseménykontextus és mentett állapot',
+  sections: withSeededExplanationImages('event.feedback', EXPLANATION_EVENT_FEEDBACK_SECTIONS_HU, 'hu')
+};
+
 export const APP_STATIC_DATA = {
   vibeCategories: VIBE_CATEGORIES,
   hostedEventTypes: HOSTED_EVENT_TYPES,
@@ -2230,6 +2445,14 @@ export const APP_STATIC_DATA = {
       en: DEFAULT_EXPLANATION_CHATS_REVISION,
       hu: DEFAULT_EXPLANATION_CHATS_REVISION_HU
     },
+    'profile.editor': {
+      en: DEFAULT_EXPLANATION_PROFILE_EDITOR_REVISION,
+      hu: DEFAULT_EXPLANATION_PROFILE_EDITOR_REVISION_HU
+    },
+    'profile.view': {
+      en: DEFAULT_EXPLANATION_PROFILE_VIEW_REVISION,
+      hu: DEFAULT_EXPLANATION_PROFILE_VIEW_REVISION_HU
+    },
     contacts: {
       en: DEFAULT_EXPLANATION_CONTACTS_REVISION,
       hu: DEFAULT_EXPLANATION_CONTACTS_REVISION_HU
@@ -2261,6 +2484,10 @@ export const APP_STATIC_DATA = {
     'event.editor': {
       en: DEFAULT_EXPLANATION_EVENT_EDITOR_REVISION,
       hu: DEFAULT_EXPLANATION_EVENT_EDITOR_REVISION_HU
+    },
+    'event.feedback': {
+      en: DEFAULT_EXPLANATION_EVENT_FEEDBACK_REVISION,
+      hu: DEFAULT_EXPLANATION_EVENT_FEEDBACK_REVISION_HU
     }
   },
   seededExplanationImageRefPrefix: SEEDED_EXPLANATION_IMAGE_REF_PREFIX,

@@ -1,4 +1,9 @@
 export { HttpAssetsRepository } from './repositories/assets.repository';
+export {
+  HttpAdminAffinityGraphRepository,
+  type AdminAffinityGraphRangeParams,
+  type AdminAffinityGraphTileParams
+} from './repositories/admin-affinity-graph.repository';
 export { HttpAssetTicketsRepository } from './repositories/asset-tickets.repository';
 export { HttpActivityInviteCandidatesRepository } from './repositories/activity-invite-candidates.repository';
 export { HttpActivityMembersRepository } from './repositories/activity-members.repository';

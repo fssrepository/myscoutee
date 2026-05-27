@@ -73,6 +73,51 @@ export class LazyBgImageDirective implements AfterViewInit, OnChanges, OnDestroy
     private readonly renderer: Renderer2
   ) {}
 
+  static preloadImageUrl(url: string | null | undefined, options: { crossOrigin?: string | null } = {}): Promise<boolean> {
+    const normalizedUrl = `${url ?? ''}`.trim();
+    if (!normalizedUrl) {
+      return Promise.resolve(false);
+    }
+    const cacheKey = options.crossOrigin === undefined
+      ? normalizedUrl
+      : `${options.crossOrigin ?? ''}:${normalizedUrl}`;
+    if (LazyBgImageDirective.loadedUrls.has(cacheKey)) {
+      return Promise.resolve(true);
+    }
+
+    const existingPromise = LazyBgImageDirective.loadingPromises.get(cacheKey);
+    if (existingPromise) {
+      return existingPromise;
+    }
+
+    const loadingPromise = new Promise<boolean>(resolve => {
+      const img = new Image();
+      if (options.crossOrigin !== undefined) {
+        img.crossOrigin = options.crossOrigin ?? '';
+      }
+      img.onload = () => {
+        const decodePromise = typeof img.decode === 'function'
+          ? img.decode().catch(() => undefined)
+          : Promise.resolve();
+        decodePromise.then(() => {
+          LazyBgImageDirective.loadedUrls.add(cacheKey);
+          LazyBgImageDirective.loadingPromises.delete(cacheKey);
+          resolve(true);
+        });
+      };
+      img.onerror = () => {
+        LazyBgImageDirective.loadingPromises.delete(cacheKey);
+        resolve(false);
+      };
+      img.decoding = 'async';
+      img.loading = 'eager';
+      img.src = normalizedUrl;
+    });
+
+    LazyBgImageDirective.loadingPromises.set(cacheKey, loadingPromise);
+    return loadingPromise;
+  }
+
   ngAfterViewInit(): void {
     this.isViewReady = true;
     this.currentUrl = this.normalizeUrl(this.appLazyBgImage);
@@ -623,37 +668,6 @@ export class LazyBgImageDirective implements AfterViewInit, OnChanges, OnDestroy
   }
 
   private preloadUrl(url: string): Promise<boolean> {
-    if (LazyBgImageDirective.loadedUrls.has(url)) {
-      return Promise.resolve(true);
-    }
-
-    const existingPromise = LazyBgImageDirective.loadingPromises.get(url);
-    if (existingPromise) {
-      return existingPromise;
-    }
-
-    const loadingPromise = new Promise<boolean>(resolve => {
-      const img = new Image();
-      img.onload = () => {
-        const decodePromise = typeof img.decode === 'function'
-          ? img.decode().catch(() => undefined)
-          : Promise.resolve();
-        decodePromise.then(() => {
-          LazyBgImageDirective.loadedUrls.add(url);
-          LazyBgImageDirective.loadingPromises.delete(url);
-          resolve(true);
-        });
-      };
-      img.onerror = () => {
-        LazyBgImageDirective.loadingPromises.delete(url);
-        resolve(false);
-      };
-      img.decoding = 'async';
-      img.loading = 'eager';
-      img.src = url;
-    });
-
-    LazyBgImageDirective.loadingPromises.set(url, loadingPromise);
-    return loadingPromise;
+    return LazyBgImageDirective.preloadImageUrl(url);
   }
 }

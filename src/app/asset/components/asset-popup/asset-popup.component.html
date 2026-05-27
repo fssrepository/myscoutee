@@ -271,7 +271,7 @@
                 [canSave]="ownedAssets.canSubmitAssetForm()"
                 [isSavePending]="ownedAssets.isAssetFormSavePending"
                 [saveRingPerimeter]="ownedAssets.assetFormSaveRingPerimeter()"
-                [sourceRefreshEnabled]="ownedAssets.assetSourceRefreshEnabled"
+                [sourceRefreshEnabled]="ownedAssets.canRefreshAssetFromSourceLink()"
                 [assetFormVisibility]="ownedAssets.assetFormVisibility"
                 [assetTypeOptions]="ownedAssets.assetTypeOptions"
                 [assetVisibilityOptions]="ownedAssets.assetVisibilityOptions"

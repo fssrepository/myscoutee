@@ -21,7 +21,7 @@ function isApiRequest(url: string): boolean {
 }
 
 export const firebaseAuthInterceptor: HttpInterceptorFn = (req, next) => {
-  if (!environment.loginEnabled || req.headers.has('Authorization') || !isApiRequest(req.url)) {
+  if (!environment.firebaseLoginEnabled || req.headers.has('Authorization') || !isApiRequest(req.url)) {
     return next(req);
   }
 
