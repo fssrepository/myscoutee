@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, DoCheck, HostListener, OnDestroy, ViewChild, inject, signal } from '@angular/core';
+import { ChangeDetectorRef, Component, DoCheck, HostListener, OnDestroy, ViewChild, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -78,6 +78,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
   private readonly shareTokensService = inject(ShareTokensService);
   private readonly confirmationDialogService = inject(ConfirmationDialogService);
   private readonly i18n = inject(I18nService);
+  private readonly cdr = inject(ChangeDetectorRef);
   protected readonly assetPopup = inject(AssetPopupStateService);
   protected readonly ownedAssets = inject(OwnedAssetsPopupFacadeService);
   protected readonly assetFilterOpen = signal(false);
@@ -175,6 +176,12 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
 
   constructor() {
     this.syncSmartListQueries();
+    effect(() => {
+      this.ownedAssets.assetListRevision();
+      this.ownedAssets.assetListReloadRevision();
+      this.syncSmartListQueries();
+      this.cdr.markForCheck();
+    });
   }
 
   ngDoCheck(): void {

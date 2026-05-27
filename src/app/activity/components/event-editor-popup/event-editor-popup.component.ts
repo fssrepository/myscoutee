@@ -459,7 +459,9 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   protected closePoliciesPopup(): void {
-    this.syncEventPoliciesFromWorkingPolicies();
+    if (this.showPoliciesPopup || this.showPolicyEditorPopup) {
+      this.syncEventPoliciesFromWorkingPolicies();
+    }
     this.showPoliciesPopup = false;
     this.showPolicyEditorPopup = false;
     this.workingPolicies = [];
@@ -1447,7 +1449,9 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.normalizeEventDateRange();
     this.normalizeEventSlotTemplates();
     this.syncFirstSubEventLocationFromMainEvent();
-    this.syncEventPoliciesFromWorkingPolicies();
+    if (this.showPoliciesPopup || this.showPolicyEditorPopup) {
+      this.syncEventPoliciesFromWorkingPolicies();
+    }
     const normalizedCapacity = EventEditorBuilder.normalizedEventEditorCapacityRange(this.eventForm);
     this.eventForm.capacityMin = normalizedCapacity.min;
     this.eventForm.capacityMax = normalizedCapacity.max;

@@ -9,6 +9,7 @@ export { IDEA_POSTS_TABLE_NAME, type DemoIdeaPostsMemorySchema } from './models/
 export { PROFILE_EXPERIENCES_TABLE_NAME, type DemoProfileExperiencesMemorySchema } from './models/profile-experiences.model';
 export { USERS_TABLE_NAME, type DemoUsersMemorySchema } from './models/users.model';
 export { DemoAssetsRepository } from './repositories/assets.repository';
+export { DemoAdminAffinityGraphRepository } from './repositories/admin-affinity-graph.repository';
 export { DemoAssetTicketsRepository } from './repositories/asset-tickets.repository';
 export { DemoActivityInviteCandidatesRepository } from './repositories/activity-invite-candidates.repository';
 export { DemoActivityMembersRepository } from './repositories/activity-members.repository';

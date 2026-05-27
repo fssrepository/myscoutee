@@ -23,6 +23,12 @@ import { I18nPipe } from '../../../shared/i18n';
 
 type IdeaInfoCard = InfoCardData<AppTypes.IdeaArticleDetail>;
 
+interface AppVersionPayload {
+  readonly version?: unknown;
+  readonly buildId?: unknown;
+  readonly gitSha?: unknown;
+}
+
 interface HowStepSlide {
   readonly index: string;
   readonly title: string;
@@ -101,6 +107,7 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
   protected ideasPopupOpen = false;
   protected ideaArticlePopupOpen = false;
   protected selectedIdeaId = '';
+  protected appVersionLabel = 'v1.0.0';
 
   protected readonly entryIdeaSmartListConfig: SmartListConfig<IdeaInfoCard> = {
     pageSize: 10,
@@ -167,6 +174,7 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.syncIdeaCarouselPageSize();
     this.startHowCarouselAutoplay();
+    void this.loadAppVersionLabel();
   }
 
   ngOnDestroy(): void {
@@ -258,6 +266,36 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
 
   protected showHowSlide(index: number): void {
     this.setHowSlideIndex(index, true);
+  }
+
+  private async loadAppVersionLabel(): Promise<void> {
+    if (typeof fetch !== 'function' || typeof document === 'undefined') {
+      return;
+    }
+    try {
+      const response = await fetch(new URL('app-version.json', document.baseURI).toString(), {
+        cache: 'no-store'
+      });
+      if (!response.ok) {
+        return;
+      }
+      const payload = await response.json() as AppVersionPayload;
+      const version = this.normalizeAppVersion(payload.version)
+        || this.normalizeAppVersion(payload.buildId)
+        || this.normalizeAppVersion(payload.gitSha);
+      if (version) {
+        this.appVersionLabel = version.startsWith('v') ? version : `v${version}`;
+        this.cdr.markForCheck();
+      }
+    } catch {
+      // The local dev server may not have a stamped version file yet.
+    }
+  }
+
+  private normalizeAppVersion(value: unknown): string {
+    return typeof value === 'string'
+      ? value.trim().replace(/[^a-zA-Z0-9._+-]/g, '').slice(0, 48)
+      : '';
   }
 
   protected beginHowCarouselSwipe(event: PointerEvent): void {

@@ -27,7 +27,7 @@ export class SessionService {
     const current = this.sessionRef();
     return current?.kind === 'firebase' ? current.profile : null;
   });
-  readonly authMode: AppTypes.AuthMode = environment.loginEnabled ? 'firebase' : 'selector';
+  readonly authMode: AppTypes.AuthMode = environment.firebaseLoginEnabled ? 'firebase' : 'selector';
 
   constructor() {
     this.syncActiveUserIdWithSession(this.sessionRef());

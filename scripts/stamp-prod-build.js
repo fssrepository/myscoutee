@@ -11,6 +11,7 @@ const serviceWorkerPath = path.join(outputDir, 'app-sw.js');
 const versionPath = path.join(outputDir, 'app-version.json');
 
 const explicitBuildId = (process.env.MYSCOUTEE_UI_BUILD_ID || process.env.BUILD_ID || '').trim();
+const appVersion = sanitizeVersion((process.env.MYSCOUTEE_VERSION || packageVersion() || '1.0.0').trim());
 const gitSha = runOptional('git', ['rev-parse', '--short=12', 'HEAD']);
 const builtAt = new Date().toISOString();
 const timestamp = builtAt.replace(/[-:.TZ]/g, '').slice(0, 14);
@@ -67,6 +68,7 @@ function writeVersionFile() {
   fs.writeFileSync(
     versionPath,
     `${JSON.stringify({
+      version: appVersion,
       buildId,
       builtAt,
       gitSha: gitSha || null
@@ -82,6 +84,24 @@ function sanitizeBuildId(value) {
     .replace(/^-|-$/g, '')
     .slice(0, 96);
   return sanitized || `local-${timestamp}`;
+}
+
+function sanitizeVersion(value) {
+  const sanitized = value
+    .replace(/[^a-zA-Z0-9._+-]/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 48);
+  return sanitized || '1.0.0';
+}
+
+function packageVersion() {
+  try {
+    const pkg = JSON.parse(fs.readFileSync(path.join(frontendRoot, 'package.json'), 'utf8'));
+    return typeof pkg.version === 'string' && pkg.version !== '0.0.0' ? pkg.version : '';
+  } catch {
+    return '';
+  }
 }
 
 function assertFile(filePath, description) {

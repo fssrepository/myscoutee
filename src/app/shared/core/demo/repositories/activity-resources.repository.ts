@@ -29,10 +29,8 @@ export class DemoActivityResourcesRepository extends HttpActivityResourcesReposi
   private lastInitToken = '';
 
   init(ownerUserIds?: readonly string[]): void {
-    console.log(Date.now() + "start - activity resources");
     if (!ownerUserIds) {
       this.usersRepository.init();
-      console.log(Date.now() + "users init - activity members");
     }
 
     const normalizedUserIds = Array.from(new Set(
@@ -45,9 +43,7 @@ export class DemoActivityResourcesRepository extends HttpActivityResourcesReposi
       return;
     }
 
-    console.log(Date.now() + "events init - activity members");
     this.eventsRepository.init();
-    console.log(Date.now() + "assets init - activity members");
     this.assetsRepository.init(normalizedUserIds);
 
     const eventsTable = this.memoryDb.read()[EVENTS_TABLE_NAME];
@@ -96,15 +92,11 @@ export class DemoActivityResourcesRepository extends HttpActivityResourcesReposi
     const assetsTable = this.normalizeAssetsCollection(this.memoryDb.read()[ASSETS_TABLE_NAME]);
     const nextAssetsTable = this.syncManualRequestsInAssetsTable(assetsTable, nextRecords);
 
-    console.log(Date.now() + "end - activity members");
-
     this.memoryDb.write(state => ({
       ...state,
       [ACTIVITY_RESOURCES_TABLE_NAME]: nextTable,
       [ASSETS_TABLE_NAME]: nextAssetsTable
     }));
-
-    console.log(Date.now() + "finish - activity members");
 
     this.lastInitToken = `${eventsTable.ids.length}:${nextTable.ids.length}:${Object.keys(nextTable.idsByOwnerKey).length}:${normalizedUserIds.join('|')}`;
   }

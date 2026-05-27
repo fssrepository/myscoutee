@@ -3716,7 +3716,7 @@ export class SubEventResourcePopupService {
         }
         const resolvedState = ActivityResourceBuilder.normalizeState(savedState, nextState) ?? nextState;
         this.applyPersistedPopupState(resolvedState);
-        this.syncPopupSubEventMetrics(false);
+        this.syncPopupSubEventMetrics({ persistAssetRequests: true });
         this.pendingAssignSaveRef.set(null);
         this.closeAssignPopup(false);
       })
@@ -4020,11 +4020,13 @@ export class SubEventResourcePopupService {
     };
   }
 
-  private syncPopupSubEventMetrics(persist = false): void {
+  private syncPopupSubEventMetrics(options: boolean | { persistResourceState?: boolean; persistAssetRequests?: boolean } = false): void {
     const context = this.popupContextRef();
     if (!context) {
       return;
     }
+    const persistResourceState = typeof options === 'boolean' ? options : options.persistResourceState === true;
+    const persistAssetRequests = typeof options === 'boolean' ? options : options.persistAssetRequests === true;
     const nextSubEvent = this.cloneSubEvent(context.subEvent);
     const cars = this.subEventAssetCapacityMetrics(nextSubEvent, 'Car');
     const accommodation = this.subEventAssetCapacityMetrics(nextSubEvent, 'Accommodation');
@@ -4045,8 +4047,8 @@ export class SubEventResourcePopupService {
       ...context,
       subEvent: nextSubEvent
     });
-    this.syncSubEventManualAssetRequests(nextSubEvent, persist);
-    if (persist) {
+    this.syncSubEventManualAssetRequests(nextSubEvent, persistAssetRequests);
+    if (persistResourceState) {
       this.persistPopupResourceState({
         ...context,
         subEvent: nextSubEvent
@@ -4279,7 +4281,9 @@ export class SubEventResourcePopupService {
       if (!assignedSupplyIds.has(card.id)) {
         return null;
       }
-      const quantity = this.subEventSupplyProvidedCount(card.id, subEvent.id);
+      const settings = this.getSubEventAssignedAssetSettings(subEvent.id, 'Supplies')[card.id];
+      const quantity = this.subEventSupplyProvidedCount(card.id, subEvent.id)
+        || Math.max(0, Math.trunc(Number(settings?.capacityMax ?? card.capacityTotal) || 0));
       if (quantity <= 0) {
         return null;
       }

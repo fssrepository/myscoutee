@@ -221,7 +221,7 @@
                 <p>{{ environment.paymentIntegrationEnabled ? 'Gateway handoff is ready.' : 'Custom dummy pay screen for checkout review.' }}</p>
               </div>
               <span class="event-checkout-payment-provider">
-                {{ environment.paymentIntegrationEnabled ? (environment.paymentProvider | titlecase) : 'Dummy pay' }}
+                {{ environment.paymentIntegrationEnabled ? 'Gateway' : 'Dummy pay' }}
               </span>
             </div>
             @if (paymentDisabled()) {
@@ -241,7 +241,7 @@
             </div>
             <p class="event-checkout-payment-note">
               {{ environment.paymentIntegrationEnabled
-                ? 'The checkout session will go through the configured provider after confirmation.'
+                ? 'The checkout session will go through the configured payment gateway after confirmation.'
                 : 'This keeps the payment step visible while integration is disabled. The fields stay locked, but the basket, policies, and total are all reviewed here.' }}
             </p>
             <div class="event-checkout-payment-grid">

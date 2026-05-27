@@ -8,6 +8,7 @@ import { HelpCenterService } from './help-center.service';
 })
 export class ExplanationGuideService {
   private static readonly STORAGE_KEY = 'myscoutee.explanation-guide.enabled.v1';
+  private static readonly DISMISSED_CONTEXTS_STORAGE_KEY = 'myscoutee.explanation-guide.dismissed-contexts.v1';
   private static readonly LOAD_PROGRESS_WINDOW_MS = 3000;
   private readonly helpCenter = inject(HelpCenterService);
   private readonly enabledRef = signal(this.readEnabledState());
@@ -16,7 +17,7 @@ export class ExplanationGuideService {
   private readonly loadingRef = signal(false);
   private readonly loadingProgressRef = signal(0);
   private readonly visibleRevisionRef = signal<HelpCenterRevision | null>(null);
-  private readonly dismissedContexts = new Set<string>();
+  private readonly dismissedContexts = new Set<string>(this.readDismissedContexts());
   private readonly contextStack: string[] = [];
   private loadSerial = 0;
   private loadingProgressStartedAtMs = 0;
@@ -56,7 +57,6 @@ export class ExplanationGuideService {
       this.closePopup();
       return;
     }
-    this.dismissedContexts.clear();
     const contextKey = this.currentContextRef();
     if (contextKey) {
       this.refreshVisibleForCurrent();
@@ -70,7 +70,7 @@ export class ExplanationGuideService {
   dismiss(): void {
     const contextKey = this.currentContextRef();
     if (contextKey) {
-      this.dismissedContexts.add(contextKey);
+      this.rememberDismissedContext(contextKey);
     }
     this.closePopup();
   }
@@ -81,12 +81,13 @@ export class ExplanationGuideService {
       return;
     }
     this.dismissedContexts.delete(contextKey);
+    this.writeDismissedContexts();
     this.setEnabled(true);
   }
 
   private refreshVisibleForCurrent(): void {
     const contextKey = this.currentContextRef();
-    if (!this.enabledRef() || !contextKey || this.dismissedContexts.has(contextKey)) {
+    if (!this.enabledRef() || !contextKey || this.isDismissedContext(contextKey)) {
       this.closePopup();
       return;
     }
@@ -100,7 +101,7 @@ export class ExplanationGuideService {
     this.beginLoadingProgress();
     try {
       const state = await this.helpCenter.loadExplanationState(contextKey);
-      if (serial !== this.loadSerial || !this.enabledRef() || this.currentContextRef() !== contextKey || this.dismissedContexts.has(contextKey)) {
+      if (serial !== this.loadSerial || !this.enabledRef() || this.currentContextRef() !== contextKey || this.isDismissedContext(contextKey)) {
         return;
       }
       const revision = state.activeRevision ?? null;
@@ -171,18 +172,71 @@ export class ExplanationGuideService {
     return `${contextKey ?? ''}`.trim();
   }
 
+  private isDismissedContext(contextKey: string): boolean {
+    return this.dismissedContexts.has(this.normalizeContextKey(contextKey));
+  }
+
+  private rememberDismissedContext(contextKey: string): void {
+    const normalized = this.normalizeContextKey(contextKey);
+    if (!normalized) {
+      return;
+    }
+    this.dismissedContexts.add(normalized);
+    this.writeDismissedContexts();
+  }
+
   private readEnabledState(): boolean {
     if (typeof localStorage === 'undefined') {
       return true;
     }
-    const stored = localStorage.getItem(ExplanationGuideService.STORAGE_KEY);
-    return stored === null ? true : stored !== 'false';
+    try {
+      const stored = localStorage.getItem(ExplanationGuideService.STORAGE_KEY);
+      return stored === null ? true : stored !== 'false';
+    } catch {
+      return true;
+    }
   }
 
   private writeEnabledState(enabled: boolean): void {
     if (typeof localStorage === 'undefined') {
       return;
     }
-    localStorage.setItem(ExplanationGuideService.STORAGE_KEY, enabled ? 'true' : 'false');
+    try {
+      localStorage.setItem(ExplanationGuideService.STORAGE_KEY, enabled ? 'true' : 'false');
+    } catch {
+      // Ignore unavailable storage; the guide still works for the current session.
+    }
+  }
+
+  private readDismissedContexts(): string[] {
+    if (typeof localStorage === 'undefined') {
+      return [];
+    }
+    try {
+      const stored = localStorage.getItem(ExplanationGuideService.DISMISSED_CONTEXTS_STORAGE_KEY);
+      const parsed: unknown = stored ? JSON.parse(stored) : [];
+      if (!Array.isArray(parsed)) {
+        return [];
+      }
+      return parsed
+        .map(value => this.normalizeContextKey(`${value ?? ''}`))
+        .filter(Boolean);
+    } catch {
+      return [];
+    }
+  }
+
+  private writeDismissedContexts(): void {
+    if (typeof localStorage === 'undefined') {
+      return;
+    }
+    try {
+      localStorage.setItem(
+        ExplanationGuideService.DISMISSED_CONTEXTS_STORAGE_KEY,
+        JSON.stringify([...this.dismissedContexts].sort())
+      );
+    } catch {
+      // Ignore unavailable storage; the in-memory dismissal still prevents repeats.
+    }
   }
 }
