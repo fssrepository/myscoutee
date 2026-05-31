@@ -21,7 +21,8 @@ import {
   type SmartListLoadPage
 } from '../../../shared/ui/components/smart-list';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
-import { AdminService } from '../../admin.service';
+import { AdminShellService } from '../../services/admin-shell.service';
+import { AdminWorkspaceService } from '../../services/admin-workspace.service';
 
 type IdeaEditorMode = 'html' | 'preview';
 type IdeaPostFilter = 'all' | 'featured' | 'published' | 'drafts' | 'trashed';
@@ -65,7 +66,8 @@ export class AdminIdeaEditorPopupComponent implements OnDestroy {
   @ViewChild('ideaSmartList')
   private ideaSmartList?: SmartListComponent<IdeaInfoCard, IdeaSmartListFilters>;
 
-  protected readonly admin = inject(AdminService);
+  protected readonly admin = inject(AdminShellService);
+  private readonly workspace = inject(AdminWorkspaceService);
   private readonly ideaPosts = inject(IdeaPostsService);
   private readonly routeDelay = inject(RouteDelayService);
   private readonly confirmationDialog = inject(ConfirmationDialogService);
@@ -1011,7 +1013,7 @@ export class AdminIdeaEditorPopupComponent implements OnDestroy {
   }
 
   protected actorUserId(): string {
-    return this.admin.activeAdmin()?.id?.trim() || 'admin';
+    return this.workspace.activeAdmin()?.id?.trim() || 'admin';
   }
 
   private beginArticlePanelLoad(mode: IdeaPanelLoadingMode): number {

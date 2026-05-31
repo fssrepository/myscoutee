@@ -18,8 +18,9 @@ import type { DemoUser } from '../../../shared/core/base/interfaces/user.interfa
 import { toActivityChatRow } from '../../../shared/core/base/converters/activities-chat.converter';
 import type { ActivityListRow } from '../../../shared/core/base/models';
 import { resolveCurrentRouteDelayMs } from '../../../shared/core/base/services/route-delay.service';
-import { AdminService } from '../../admin.service';
 import type { AdminFeedbackDto } from '../../models/admin-moderation.model';
+import { AdminShellService } from '../../services/admin-shell.service';
+import { AdminWorkspaceService } from '../../services/admin-workspace.service';
 
 interface AdminFeedbackListFilters {
   revision?: number;
@@ -39,7 +40,8 @@ interface AdminFeedbackListItem {
   styleUrl: '../admin-popups.scss'
 })
 export class AdminFeedbackPopupComponent {
-  protected readonly admin = inject(AdminService);
+  protected readonly admin = inject(AdminShellService);
+  private readonly workspace = inject(AdminWorkspaceService);
   private readonly feedbackCategories = new Set(APP_STATIC_DATA.feedbackCategories);
   protected feedbackDetail: AdminFeedbackDto | null = null;
 
@@ -154,7 +156,7 @@ export class AdminFeedbackPopupComponent {
   }
 
   private loadFeedbackPage(query: ListQuery<AdminFeedbackListFilters>): PageResult<AdminFeedbackListItem> {
-    const rows = [...(this.admin.dashboard()?.feedback ?? [])].sort((first, second) =>
+    const rows = [...(this.workspace.dashboard()?.feedback ?? [])].sort((first, second) =>
       Date.parse(second.createdDate) - Date.parse(first.createdDate)
     ).map(feedback => ({
       id: feedback.id,

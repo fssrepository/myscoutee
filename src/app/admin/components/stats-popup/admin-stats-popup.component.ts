@@ -15,7 +15,8 @@ import {
   type AdminStatsSegmentDto,
   type AdminStatsTimelinePointDto
 } from '../../models/admin-stats.model';
-import { AdminService } from '../../admin.service';
+import { AdminShellService } from '../../services/admin-shell.service';
+import { AdminStatsService } from '../../services/admin-stats.service';
 
 type AdminStatsTimelineMetric = 'activeUsers' | 'registrations' | 'ratings' | 'activity' | 'messages' | 'moderation';
 type AdminStatsGraphTimelineMetric = 'activeEdges' | 'newEdges' | 'recurringEdges' | 'weakTies' | 'networkQuality' | 'clusterQuality';
@@ -34,7 +35,8 @@ export class AdminStatsPopupComponent implements OnDestroy {
   private static readonly LOAD_DEMO_DELAY_MS = 1500;
   private static readonly LOAD_PROGRESS_WINDOW_MS = 3000;
 
-  protected readonly admin = inject(AdminService);
+  protected readonly admin = inject(AdminShellService);
+  private readonly statsService = inject(AdminStatsService);
   private readonly routeDelay = inject(RouteDelayService);
   protected readonly loading = signal(false);
   protected readonly error = signal('');
@@ -619,7 +621,7 @@ export class AdminStatsPopupComponent implements OnDestroy {
     this.error.set('');
     try {
       const [dashboard] = await Promise.all([
-        this.admin.loadStatsDashboard(),
+        this.statsService.loadStatsDashboard(),
         this.routeDelay.waitForRouteDelay('/admin/stats', undefined, undefined, AdminStatsPopupComponent.LOAD_DEMO_DELAY_MS)
       ]);
       this.stats.set(dashboard);

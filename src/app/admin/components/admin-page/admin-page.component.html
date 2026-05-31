@@ -14,7 +14,7 @@
         <p class="admin-entry-lead">Review reported users, support chats, and application feedback with the same app tools.</p>
       </section>
     </div>
-    @if (admin.restoreAdminPreview(); as preview) {
+    @if (workspace.restoreAdminPreview(); as preview) {
       <button type="button" class="admin-restore-avatar-button" aria-label="Restoring admin workspace" aria-busy="true" disabled>
         @if (restoreAvatarGateActive()) {
           <span class="admin-restore-button-ring" aria-hidden="true">
@@ -36,7 +36,7 @@
       </button>
     }
   </section>
-} @else if (admin.dashboard(); as dashboard) {
+} @else if (workspace.dashboard(); as dashboard) {
   <section class="admin-workspace">
     <div class="admin-home-panel">
       <header class="admin-home-header">
@@ -98,7 +98,7 @@
           [matRippleColor]="'rgba(255, 255, 255, 0.2)'"
           (click)="requestAdminLogin()"
         >
-          <mat-icon>{{ admin.isFirebaseAdminMode ? 'login' : 'group' }}</mat-icon>
+          <mat-icon>{{ workspace.isFirebaseAdminMode ? 'login' : 'group' }}</mat-icon>
           <span>Admin login</span>
         </button>
       </header>
@@ -106,8 +106,8 @@
         <p class="admin-eyebrow">MyScoutee admin</p>
         <h1>Moderation workspace</h1>
         <p class="admin-entry-lead">Review reported users, support chats, and application feedback with the same app tools.</p>
-        @if (admin.error()) {
-          <p class="admin-entry-error">{{ admin.error() }}</p>
+        @if (workspace.error()) {
+          <p class="admin-entry-error">{{ workspace.error() }}</p>
         }
       </section>
     </div>
@@ -123,7 +123,7 @@
     [loadingStage]="selectorLoadingStage"
     [errorMessage]="selectorErrorMessage"
     [submitting]="selectorSubmitting"
-    [users]="admin.adminUsers()"
+    [users]="workspace.adminUsers()"
     (closeRequested)="closeSelector()"
     (retryRequested)="retrySelector()"
     (userSelected)="onSelectAdminUser($event)"

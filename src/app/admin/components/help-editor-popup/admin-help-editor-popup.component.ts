@@ -19,7 +19,8 @@ import { RouteDelayService } from '../../../shared/core/base/services/route-dela
 import { EditableImageCarouselComponent } from '../../../shared/ui/components/editable-image-carousel';
 import { LazyBgImageDirective } from '../../../shared/ui/directives';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
-import { AdminService } from '../../admin.service';
+import { AdminShellService } from '../../services/admin-shell.service';
+import { AdminWorkspaceService } from '../../services/admin-workspace.service';
 
 type EditorTab = 'html' | 'preview';
 
@@ -103,7 +104,8 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
     'track',
     'wbr'
   ]);
-  protected readonly admin = inject(AdminService);
+  protected readonly admin = inject(AdminShellService);
+  private readonly workspace = inject(AdminWorkspaceService);
   private readonly helpCenter = inject(HelpCenterService);
   private readonly routeDelay = inject(RouteDelayService);
   private readonly confirmationDialog = inject(ConfirmationDialogService);
@@ -985,7 +987,7 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
   }
 
   protected actorUserId(): string {
-    return this.admin.activeAdmin()?.id?.trim() || 'admin';
+    return this.workspace.activeAdmin()?.id?.trim() || 'admin';
   }
 
   protected documentLabel(): string {

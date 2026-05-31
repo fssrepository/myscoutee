@@ -3,8 +3,9 @@ import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 
-import { AdminService } from '../../admin.service';
 import type { AdminChatMessageDto } from '../../models/admin-moderation.model';
+import { AdminModerationService } from '../../services/admin-moderation.service';
+import { AdminShellService } from '../../services/admin-shell.service';
 
 @Component({
   selector: 'app-admin-chat-review-popup',
@@ -14,7 +15,8 @@ import type { AdminChatMessageDto } from '../../models/admin-moderation.model';
   styleUrl: '../admin-popups.scss'
 })
 export class AdminChatReviewPopupComponent {
-  protected readonly admin = inject(AdminService);
+  protected readonly admin = inject(AdminShellService);
+  private readonly moderation = inject(AdminModerationService);
   protected warnMessage = 'Please update the reported behavior before your account is blocked.';
   protected sending = false;
   protected sendState: 'idle' | 'sending' | 'success' | 'error' = 'idle';
@@ -34,7 +36,7 @@ export class AdminChatReviewPopupComponent {
     this.sendState = 'sending';
     this.sendStatus = '';
     try {
-      await this.admin.warnUser(user.userId, message);
+      await this.moderation.warnUser(user.userId, message);
       this.sendState = 'success';
       this.sendStatus = 'Warning message was sent to the user.';
       this.warnMessage = '';

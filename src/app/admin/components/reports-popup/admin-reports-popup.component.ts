@@ -20,8 +20,10 @@ import { toActivityChatRow } from '../../../shared/core/base/converters/activiti
 import type { ActivityListRow } from '../../../shared/core/base/models';
 import { resolveCurrentRouteDelayMs } from '../../../shared/core/base/services/route-delay.service';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
-import { AdminService } from '../../admin.service';
 import type { AdminReportedUserDto, AdminReportDto } from '../../models/admin-moderation.model';
+import { AdminModerationService } from '../../services/admin-moderation.service';
+import { AdminShellService } from '../../services/admin-shell.service';
+import { AdminWorkspaceService } from '../../services/admin-workspace.service';
 import { AdminChatReviewPopupComponent } from '../chat-review-popup/admin-chat-review-popup.component';
 import { AdminItemPreviewPopupComponent } from '../item-preview-popup/admin-item-preview-popup.component';
 
@@ -54,7 +56,9 @@ interface AdminBlockedUserListFilters {
   styleUrl: '../admin-popups.scss'
 })
 export class AdminReportsPopupComponent {
-  protected readonly admin = inject(AdminService);
+  protected readonly admin = inject(AdminShellService);
+  private readonly workspace = inject(AdminWorkspaceService);
+  private readonly moderation = inject(AdminModerationService);
   private readonly confirmationDialog = inject(ConfirmationDialogService);
   private readonly location = inject(Location);
   protected reportDetail: AdminReportListItem | null = null;
@@ -197,7 +201,7 @@ export class AdminReportsPopupComponent {
       confirmLabel: 'Block',
       busyConfirmLabel: 'Blocking...',
       confirmTone: 'danger',
-      onConfirm: () => this.admin.blockUser(
+      onConfirm: () => this.moderation.blockUser(
         user.userId,
         'Your account has been blocked after moderation review. You can reply here to contact MyScoutee support and ask for a review.'
       )
@@ -214,7 +218,7 @@ export class AdminReportsPopupComponent {
   }
 
   protected blockedUsers(): AdminReportedUserDto[] {
-    return this.admin.dashboard()?.blockedUsers ?? [];
+    return this.workspace.dashboard()?.blockedUsers ?? [];
   }
 
   protected blockedUsersCount(): number {
@@ -241,7 +245,7 @@ export class AdminReportsPopupComponent {
     this.blockedUserMenuId = '';
     this.closeBlockedUsers();
     this.closeReportDetails();
-    this.admin.openBlockedUserChat(user);
+    this.moderation.openBlockedUserChat(user);
   }
 
   protected unblockUser(user: AdminReportedUserDto, event?: Event): void {
@@ -253,20 +257,20 @@ export class AdminReportsPopupComponent {
       confirmLabel: 'Unblock',
       busyConfirmLabel: 'Unblocking...',
       confirmTone: 'accent',
-      onConfirm: () => this.admin.unblockUser(user.userId)
+      onConfirm: () => this.moderation.unblockUser(user.userId)
     });
   }
 
   protected isUserBlocked(user: AdminReportedUserDto): boolean {
-    return this.admin.isUserBlocked(user);
+    return this.moderation.isUserBlocked(user);
   }
 
   protected hasSupportChat(user: AdminReportedUserDto): boolean {
-    return this.admin.hasSupportChat(user);
+    return this.moderation.hasSupportChat(user);
   }
 
   protected supportChatUnread(user: AdminReportedUserDto): number {
-    return this.admin.supportChatUnread(user);
+    return this.moderation.supportChatUnread(user);
   }
 
   protected isSelectedUser(user: AdminReportedUserDto): boolean {
@@ -278,7 +282,7 @@ export class AdminReportsPopupComponent {
   }
 
   protected reportRows(): AdminReportListItem[] {
-    return (this.admin.dashboard()?.reportedUsers ?? []).flatMap(user =>
+    return (this.workspace.dashboard()?.reportedUsers ?? []).flatMap(user =>
       user.reports.map(report => this.buildReportListItem(user, report))
     ).sort((first, second) =>
       Date.parse(second.report.createdDate) - Date.parse(first.report.createdDate)

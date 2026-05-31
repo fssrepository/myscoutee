@@ -2,22 +2,19 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Location } from '@angular/common';
 import { Injectable, computed, inject, signal } from '@angular/core';
 
-import { environment } from '../../environments/environment';
+import { environment } from '../../../environments/environment';
 import {
   AppContext,
-  AppPopupContext,
   HelpCenterService,
   SessionService,
   UsersService,
   USER_BY_ID_LOAD_CONTEXT_KEY,
   type DemoUserListItemDto,
   type AdminNotificationCenterState,
-  type AdminNotificationRuleLiveEvent,
   type AdminNotificationRule,
   type AdminNotificationRuleParameter,
   type AdminNotificationRuleParameterOption,
   type AdminNotificationRuleParameterValueType,
-  type AdminNotificationRunResult,
   type AdminNotificationScheduleSlot,
   type AdminNotificationIntervalUnit,
   type AdminNotificationTimingMode,
@@ -32,9 +29,9 @@ import {
   type AdminMonitoringStateDto,
   type AdminMonitoringTone,
   type UserDto
-} from '../shared/core';
-import type { ChatRecord } from '../shared/core/base/models/chat.model';
-import type { ChatPopupMessage } from '../shared/core/base/models/chat.model';
+} from '../../shared/core';
+import type { ChatRecord } from '../../shared/core/base/models/chat.model';
+import type { ChatPopupMessage } from '../../shared/core/base/models/chat.model';
 import {
   DemoAdminAffinityGraphRepository,
   DemoChatsRepository,
@@ -42,48 +39,40 @@ import {
   DemoIdeaPostsService,
   DemoShareTokensRepository,
   DemoUsersRatingsRepository,
-  DemoUsersRepository,
-  type DemoChatRecord
-} from '../shared/core/demo';
-import { ActivitiesPopupStateService } from '../activity/services/activities-popup-state.service';
-import { FirebaseAuthService } from '../shared/core/base/services/firebase-auth.service';
-import { RouteDelayService } from '../shared/core/base/services/route-delay.service';
-import { AdminModerationRepository } from './repositories/admin-moderation.repository';
-import { AdminMonitoringRepository } from './repositories/admin-monitoring.repository';
-import { AdminNotificationsRepository } from './repositories/admin-notifications.repository';
-import { AdminParamsRepository } from './repositories/admin-params.repository';
-import { AdminStatsRepository } from './repositories/admin-stats.repository';
-import { AdminHelpSeedBuilder } from './builders/admin-help-seed.builder';
-import { AdminModerationSeedBuilder } from './builders/admin-moderation-seed.builder';
-import { AdminMonitoringSeedBuilder } from './builders/admin-monitoring-seed.builder';
-import { AdminNotificationsSeedBuilder } from './builders/admin-notifications-seed.builder';
-import { AdminParamsSeedBuilder } from './builders/admin-params-seed.builder';
-import { AdminProfileSeedBuilder } from './builders/admin-profile-seed.builder';
-import { AdminStatsSeedBuilder } from './builders/admin-stats-seed.builder';
-import type { AdminDashboardDto } from './models/admin-dashboard.model';
-import type { DemoAdminHelpTarget } from './models/admin-help.model';
+  DemoUsersRepository
+} from '../../shared/core/demo';
+import { AdminModerationRepository } from '../repositories/admin-moderation.repository';
+import { AdminMonitoringRepository } from '../repositories/admin-monitoring.repository';
+import { AdminNotificationsRepository } from '../repositories/admin-notifications.repository';
+import { AdminParamsRepository } from '../repositories/admin-params.repository';
+import { AdminStatsRepository } from '../repositories/admin-stats.repository';
+import { AdminHelpSeedBuilder } from '../builders/admin-help-seed.builder';
+import { AdminModerationSeedBuilder } from '../builders/admin-moderation-seed.builder';
+import { AdminMonitoringSeedBuilder } from '../builders/admin-monitoring-seed.builder';
+import { AdminNotificationsSeedBuilder } from '../builders/admin-notifications-seed.builder';
+import { AdminParamsSeedBuilder } from '../builders/admin-params-seed.builder';
+import { AdminProfileSeedBuilder } from '../builders/admin-profile-seed.builder';
+import { AdminStatsSeedBuilder } from '../builders/admin-stats-seed.builder';
+import type { AdminDashboardDto } from '../models/admin-dashboard.model';
+import type { DemoAdminHelpTarget } from '../models/admin-help.model';
 import type {
   AdminChatMessageDto,
   AdminFeedbackDto,
   AdminModerationStore,
   AdminReportDto,
   AdminReportedUserDto
-} from './models/admin-moderation.model';
+} from '../models/admin-moderation.model';
 import type {
   AdminParamFieldDto,
   AdminParamOptionDto,
   AdminParamValueType,
   AdminParamsDemoStore,
-  AdminParamsHistoryDto,
   AdminParamsHistoryItemDto,
   AdminParamsSectionDto,
   AdminParamsStateDto
-} from './models/admin-params.model';
-import type { AdminUserDto } from './models/admin-profile.model';
-import type {
-  AdminBootstrapProgressState,
-  AdminPopupKind
-} from './models/admin-shell.model';
+} from '../models/admin-params.model';
+import type { AdminUserDto } from '../models/admin-profile.model';
+import type { AdminBootstrapProgressState } from '../models/admin-shell.model';
 import type {
   AdminStatsBreakdownItemDto,
   AdminStatsDashboardDto,
@@ -94,22 +83,14 @@ import type {
   AdminStatsRevenueTimelinePointDto,
   AdminStatsSegmentDto,
   AdminStatsTimelinePointDto
-} from './models/admin-stats.model';
+} from '../models/admin-stats.model';
+import { AdminShellService } from './admin-shell.service';
 
 const OBSOLETE_NOTIFICATION_RULE_PARAMETER_KEYS = new Set([
   'jobs.process.randomGroups.historyPenalty'
 ]);
 
 const ADMIN_SESSION_STORAGE_KEY = 'myscoutee-admin-session';
-const ADMIN_NOTIFICATION_STORAGE_TIMEOUT_MS = 2500;
-const ADMIN_NOTIFICATION_HTTP_TIMEOUT_MS = 12000;
-const ADMIN_NOTIFICATION_LOAD_ROUTE = '/admin/notifications';
-const ADMIN_NOTIFICATION_SAVE_ROUTE = '/admin/notifications/save';
-const ADMIN_NOTIFICATION_RUN_ROUTE = '/admin/notifications/run';
-const ADMIN_NOTIFICATION_LOAD_DEMO_DELAY_MS = 1500;
-const ADMIN_NOTIFICATION_SAVE_DEMO_DELAY_MS = 1500;
-const ADMIN_NOTIFICATION_RUN_DEMO_DELAY_MS = 1500;
-const ADMIN_NOTIFICATION_HTTP_PROGRESS_WINDOW_MS = 3000;
 const ADMIN_NOTIFICATION_INTERVAL_UNIT = {
   seconds: 'seconds',
   minutes: 'minutes',
@@ -132,16 +113,14 @@ const ADMIN_NOTIFICATION_INTERVAL_SECONDS: Record<AdminNotificationIntervalUnit,
 @Injectable({
   providedIn: 'root'
 })
-export class AdminService {
+export class AdminWorkspaceService {
   private readonly http = inject(HttpClient);
   private readonly appCtx = inject(AppContext);
-  private readonly popupCtx = inject(AppPopupContext);
   private readonly helpCenter = inject(HelpCenterService);
   private readonly usersService = inject(UsersService);
   private readonly location = inject(Location);
   private readonly sessionService = inject(SessionService);
-  private readonly firebaseAuthService = inject(FirebaseAuthService);
-  private readonly routeDelay = inject(RouteDelayService);
+  private readonly shell = inject(AdminShellService);
   private readonly demoUsersRepository = inject(DemoUsersRepository);
   private readonly demoUsersRatingsRepository = inject(DemoUsersRatingsRepository);
   private readonly demoAffinityGraphRepository = inject(DemoAdminAffinityGraphRepository);
@@ -154,24 +133,16 @@ export class AdminService {
   private readonly adminNotificationsRepository = inject(AdminNotificationsRepository);
   private readonly adminParamsRepository = inject(AdminParamsRepository);
   private readonly adminStatsRepository = inject(AdminStatsRepository);
-  private readonly activitiesContext = inject(ActivitiesPopupStateService);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
   private readonly dashboardRef = signal<AdminDashboardDto | null>(null);
   private readonly busyRef = signal(false);
   private readonly errorRef = signal('');
   private readonly accessDeniedRef = signal(false);
-  private readonly activePopupRef = signal<AdminPopupKind | null>(null);
-  private readonly selectedReportedUserRef = signal<AdminReportedUserDto | null>(null);
-  private readonly selectedReportRef = signal<AdminReportDto | null>(null);
-  private readonly warnedUserIdsRef = signal<Set<string>>(new Set());
 
   readonly dashboard = this.dashboardRef.asReadonly();
   readonly busy = this.busyRef.asReadonly();
   readonly error = this.errorRef.asReadonly();
   readonly accessDenied = this.accessDeniedRef.asReadonly();
-  readonly activePopup = this.activePopupRef.asReadonly();
-  readonly selectedReportedUser = this.selectedReportedUserRef.asReadonly();
-  readonly selectedReport = this.selectedReportRef.asReadonly();
   readonly activeAdmin = computed(() => this.dashboardRef()?.activeAdmin ?? null);
   readonly adminUsers = signal<DemoUserListItemDto[]>([
     {
@@ -200,8 +171,28 @@ export class AdminService {
     return environment.activitiesDataSource === 'http' || this.isFirebaseAdminMode;
   }
 
-  notificationCenterLoadProgressWindowMs(): number {
-    return ADMIN_NOTIFICATION_HTTP_PROGRESS_WINDOW_MS;
+  applyDashboard(dashboard: AdminDashboardDto): void {
+    const normalized = this.normalizeDashboard(dashboard);
+    this.dashboardRef.set(normalized);
+    this.activateAdminProfile(normalized);
+  }
+
+  async refreshDemoDashboard(): Promise<AdminDashboardDto> {
+    const dashboard = await this.loadDemoDashboard(this.activeAdmin()?.id);
+    this.applyDashboard(dashboard);
+    return dashboard;
+  }
+
+  updateActiveAdmin(nextAdmin: AdminUserDto): void {
+    const dashboard = this.dashboardRef();
+    if (!dashboard) {
+      return;
+    }
+    this.dashboardRef.set({
+      ...dashboard,
+      activeAdmin: nextAdmin
+    });
+    this.persistAdminSession(nextAdmin.id);
   }
 
   async restoreAdminSession(): Promise<boolean> {
@@ -262,565 +253,9 @@ export class AdminService {
     }
   }
 
-  openReports(user?: AdminReportedUserDto | null): void {
-    const resolvedUser = user ?? this.dashboardRef()?.reportedUsers[0] ?? null;
-    this.selectedReportedUserRef.set(resolvedUser);
-    this.selectedReportRef.set(resolvedUser?.reports[0] ?? null);
-    this.activePopupRef.set('reports');
-  }
-
-  openFeedback(): void {
-    this.activePopupRef.set('feedback');
-  }
-
-  openChat(): void {
-    this.popupCtx.openNavigatorActivitiesRequest('chats', undefined, { adminServiceOnly: true });
-  }
-
-  openProfile(): void {
-    this.activePopupRef.set('profile');
-  }
-
-  openHelpEditor(): void {
-    this.activePopupRef.set('help-editor');
-  }
-
-  openIdeaEditor(): void {
-    this.activePopupRef.set('idea-editor');
-  }
-
-  openNotifications(): void {
-    this.activePopupRef.set('notifications');
-  }
-
-  openParams(): void {
-    this.activePopupRef.set('params');
-  }
-
-  openStats(): void {
-    this.activePopupRef.set('stats');
-  }
-
-  openAffinityGraph(): void {
-    this.activePopupRef.set('affinity-graph');
-  }
-
-  openMonitoring(): void {
-    this.activePopupRef.set('monitoring');
-  }
-
-  openReportDetail(user: AdminReportedUserDto, report: AdminReportDto): void {
-    this.selectedReportedUserRef.set(user);
-    this.selectedReportRef.set(report);
-  }
-
-  openChatReview(report: AdminReportDto): void {
-    this.selectedReportRef.set(report);
-    this.activePopupRef.set('chat-review');
-  }
-
-  openWarnChat(user: AdminReportedUserDto): void {
-    this.selectedReportedUserRef.set(user);
-    this.activePopupRef.set('warn-chat');
-  }
-
-  openBlockedUserChat(user: AdminReportedUserDto): void {
-    this.selectedReportedUserRef.set(user);
-    this.activePopupRef.set(null);
-    const chat = this.buildAdminSupportChat(user);
-    this.activitiesContext.openEventChat(chat);
-  }
-
-  hasSupportChat(user: AdminReportedUserDto): boolean {
-    const userId = `${user.userId ?? ''}`.trim();
-    const resolved = this.resolveDashboardReportedUser(userId) ?? user;
-    return Boolean(resolved.hasSupportChat)
-      || this.demoSupportChatExists(userId)
-      || this.warnedUserIdsRef().has(userId);
-  }
-
-  supportChatUnread(user: AdminReportedUserDto): number {
-    const userId = `${user.userId ?? ''}`.trim();
-    const resolved = this.resolveDashboardReportedUser(userId) ?? user;
-    const explicit = Math.max(0, Math.trunc(Number(resolved.supportChatUnread) || 0));
-    return this.usesHttpAdminApi ? explicit : explicit || this.demoSupportChatUnread(userId);
-  }
-
-  isUserBlocked(user: AdminReportedUserDto | null | undefined): boolean {
-    const resolved = user?.userId ? this.resolveDashboardReportedUser(user.userId) : null;
-    return `${resolved?.profileStatus ?? user?.profileStatus ?? ''}`.trim() === 'blocked';
-  }
-
-  openItemPreview(report: AdminReportDto): void {
-    this.selectedReportRef.set(report);
-    this.activePopupRef.set('item-preview');
-  }
-
-  closePopup(): void {
-    this.activePopupRef.set(null);
-  }
-
-  async loadStatsDashboard(): Promise<AdminStatsDashboardDto> {
-    if (this.usesHttpAdminApi) {
-      try {
-        const state = await this.withNotificationHttpTimeout(this.http
-          .get<AdminStatsDashboardDto>(`${this.apiBaseUrl}/admin/stats`, {
-            params: { adminUserId: this.activeAdmin()?.id ?? '' }
-          })
-          .toPromise());
-        if (state) {
-          return this.normalizeStatsDashboard(state, 'http');
-        }
-      } catch {
-        // Fall back to the local snapshot if the stats read model is not available yet.
-      }
-    }
-
-    return this.readDemoStatsSnapshot();
-  }
-
-  async loadMonitoringState(): Promise<AdminMonitoringStateDto> {
-    if (this.usesHttpAdminApi) {
-      const state = await this.withNotificationHttpTimeout(this.http
-        .get<AdminMonitoringStateDto>(`${this.apiBaseUrl}/admin/monitoring`, {
-          params: { adminUserId: this.activeAdmin()?.id ?? '' }
-        })
-        .toPromise());
-      return this.normalizeMonitoringState(state ?? this.buildDefaultMonitoringState(), 'http');
-    }
-    return this.readDemoMonitoringState();
-  }
-
-  async loadParamsState(): Promise<AdminParamsStateDto> {
-    if (this.usesHttpAdminApi) {
-      const state = await this.withNotificationHttpTimeout(this.http
-        .get<AdminParamsStateDto>(`${this.apiBaseUrl}/admin/params`, {
-          params: { adminUserId: this.activeAdmin()?.id ?? '' }
-        })
-        .toPromise());
-      return this.normalizeParamsState(state ?? this.buildDefaultParamsStore());
-    }
-    const store = await this.readDemoParamsStore();
-    return this.normalizeParamsState(store);
-  }
-
-  async saveParamsSection(
-    sectionKey: string,
-    fields: readonly AdminParamFieldDto[],
-    summary: string
-  ): Promise<AdminParamsStateDto> {
-    const normalizedSectionKey = `${sectionKey ?? ''}`.trim();
-    const normalizedFields = fields.map(field => this.normalizeParamField(field));
-    if (this.usesHttpAdminApi) {
-      const state = await this.withNotificationHttpTimeout(this.http
-        .post<AdminParamsStateDto>(`${this.apiBaseUrl}/admin/params`, {
-          adminUserId: this.activeAdmin()?.id ?? '',
-          sectionKey: normalizedSectionKey,
-          fields: normalizedFields,
-          summary
-        })
-        .toPromise());
-      return this.normalizeParamsState(state ?? this.buildDefaultParamsStore());
-    }
-    const store = await this.readDemoParamsStore();
-    const nowIso = new Date().toISOString();
-    const version = this.nextDemoParamsVersion(store);
-    const nextSections = store.sections.map(section => section.key === normalizedSectionKey
-      ? {
-          ...section,
-          version,
-          changedDate: nowIso,
-          changedBy: this.activeAdmin()?.id ?? 'demo-admin',
-          summary: summary.trim() || `Updated ${section.label} parameters.`,
-          summaryKey: this.paramSummaryKey(summary.trim() || `Updated ${section.label} parameters.`, section.key),
-          fields: normalizedFields.map(field => ({ ...field }))
-        }
-      : section
-    );
-    const updatedSection = nextSections.find(section => section.key === normalizedSectionKey);
-    const nextStore = this.normalizeParamsStore({
-      sections: nextSections,
-      updatedDate: nowIso,
-      historyBySection: {
-        ...store.historyBySection,
-        [normalizedSectionKey]: updatedSection
-          ? [{
-              configId: `demo-params-v${version}`,
-              version,
-              changedDate: nowIso,
-              changedBy: this.activeAdmin()?.id ?? 'demo-admin',
-              summary: updatedSection.summary,
-              summaryKey: updatedSection.summaryKey,
-              active: true,
-              fields: updatedSection.fields.map(field => ({ ...field }))
-            }, ...(store.historyBySection[normalizedSectionKey] ?? []).map(item => ({ ...item, active: false }))]
-          : store.historyBySection[normalizedSectionKey] ?? []
-      }
-    });
-    await this.withNotificationStorageFallback(
-      this.adminParamsRepository.writeStore(nextStore),
-      undefined
-    );
-    return this.normalizeParamsState(nextStore);
-  }
-
-  async loadParamsHistory(sectionKey: string): Promise<AdminParamsHistoryDto> {
-    const normalizedSectionKey = `${sectionKey ?? ''}`.trim();
-    if (this.usesHttpAdminApi) {
-      const history = await this.withNotificationHttpTimeout(this.http
-        .get<AdminParamsHistoryDto>(
-          `${this.apiBaseUrl}/admin/params/${encodeURIComponent(normalizedSectionKey)}/history`,
-          { params: { adminUserId: this.activeAdmin()?.id ?? '' } }
-        )
-        .toPromise());
-      return this.normalizeParamsHistory(history ?? {
-        sectionKey: normalizedSectionKey,
-        label: normalizedSectionKey,
-        versions: []
-      });
-    }
-    const store = await this.readDemoParamsStore();
-    const section = store.sections.find(item => item.key === normalizedSectionKey);
-    return this.normalizeParamsHistory({
-      sectionKey: normalizedSectionKey,
-      label: section?.label ?? normalizedSectionKey,
-      labelKey: section?.labelKey ?? this.paramSectionLabelKey(normalizedSectionKey),
-      versions: store.historyBySection[normalizedSectionKey] ?? []
-    });
-  }
-
-  async revertParamsSection(sectionKey: string, version: number): Promise<AdminParamsStateDto> {
-    const normalizedSectionKey = `${sectionKey ?? ''}`.trim();
-    const normalizedVersion = Math.max(1, Math.trunc(Number(version) || 0));
-    if (this.usesHttpAdminApi) {
-      const state = await this.withNotificationHttpTimeout(this.http
-        .post<AdminParamsStateDto>(
-          `${this.apiBaseUrl}/admin/params/${encodeURIComponent(normalizedSectionKey)}/revert`,
-          {
-            adminUserId: this.activeAdmin()?.id ?? '',
-            version: normalizedVersion
-          }
-        )
-        .toPromise());
-      return this.normalizeParamsState(state ?? this.buildDefaultParamsStore());
-    }
-    const history = await this.loadParamsHistory(normalizedSectionKey);
-    const selected = history.versions.find(item => item.version === normalizedVersion);
-    if (!selected) {
-      return this.loadParamsState();
-    }
-    return this.saveParamsSection(
-      normalizedSectionKey,
-      selected.fields,
-      `Reverted ${history.label} parameters to version ${normalizedVersion}.`
-    );
-  }
-
-  async loadNotificationCenter(options?: { skipDemoDelay?: boolean }): Promise<AdminNotificationCenterState> {
-    if (this.usesHttpAdminApi) {
-      const state = await this.withNotificationHttpTimeout(this.http
-        .get<AdminNotificationCenterState>(`${this.apiBaseUrl}/admin/notifications`, {
-          params: { adminUserId: this.activeAdmin()?.id ?? '' }
-        })
-        .toPromise());
-      return this.normalizeNotificationCenter(state ?? this.buildDefaultNotificationCenter());
-    }
-    const existing = await this.readDemoNotificationCenter();
-    await this.waitForAdminNotificationDemoDelay(ADMIN_NOTIFICATION_LOAD_ROUTE, ADMIN_NOTIFICATION_LOAD_DEMO_DELAY_MS, options);
-    return this.normalizeNotificationCenter(existing);
-  }
-
-  async saveNotificationCenter(
-    rules: readonly AdminNotificationRule[],
-    options?: { skipDemoDelay?: boolean }
-  ): Promise<AdminNotificationCenterState> {
-    const normalizedRules = rules.map(rule => this.normalizeNotificationRule(rule));
-    if (this.usesHttpAdminApi) {
-      const state = await this.withNotificationHttpTimeout(this.http
-        .post<AdminNotificationCenterState>(`${this.apiBaseUrl}/admin/notifications`, {
-          adminUserId: this.activeAdmin()?.id ?? '',
-          rules: normalizedRules
-        })
-        .toPromise());
-      return this.normalizeNotificationCenter(state ?? {
-        rules: normalizedRules,
-        emailTemplates: [],
-        updatedDate: new Date().toISOString()
-      });
-    }
-    const existing = await this.loadNotificationCenter({ skipDemoDelay: true });
-    const next = this.normalizeNotificationCenter({
-      rules: normalizedRules,
-      emailTemplates: existing.emailTemplates,
-      updatedDate: new Date().toISOString()
-    });
-    await this.withNotificationStorageFallback(
-      this.adminNotificationsRepository.writeStore(next),
-      undefined
-    );
-    await this.waitForAdminNotificationDemoDelay(ADMIN_NOTIFICATION_SAVE_ROUTE, ADMIN_NOTIFICATION_SAVE_DEMO_DELAY_MS, options);
-    return next;
-  }
-
-  async runNotificationRule(ruleKey: string): Promise<AdminNotificationRunResult> {
-    const normalizedRuleKey = `${ruleKey ?? ''}`.trim();
-    if (!normalizedRuleKey) {
-      return {
-        ruleKey: '',
-        label: '',
-        affectedCount: 0,
-        status: 'skipped',
-        detail: 'admin.jobs.error.missing.rule.key',
-        ranAtIso: new Date().toISOString()
-      };
-    }
-    if (this.usesHttpAdminApi) {
-      const result = await this.withNotificationHttpTimeout(this.http
-        .post<AdminNotificationRunResult>(
-          `${this.apiBaseUrl}/admin/notifications/${encodeURIComponent(normalizedRuleKey)}/run`,
-          { adminUserId: this.activeAdmin()?.id ?? '' }
-        )
-        .toPromise());
-      return this.normalizeNotificationRunResult(result, normalizedRuleKey);
-    }
-    const state = await this.loadNotificationCenter({ skipDemoDelay: true });
-    const nowIso = new Date().toISOString();
-    const nextRules = state.rules.map(rule => {
-      if (rule.ruleKey !== normalizedRuleKey) {
-        return rule;
-      }
-      const count = rule.triggerKind === 'scheduled_process'
-        ? this.demoScheduledRunCount(rule.ruleKey)
-        : 0;
-      const status = rule.manualRunEnabled ? 'completed' : 'skipped';
-      const detail = rule.manualRunEnabled ? 'admin.jobs.demo.run.recorded' : 'admin.jobs.demo.action.driven';
-      const startedAtIso = new Date(Date.now() - 1150).toISOString();
-      return {
-        ...rule,
-        runState: {
-          currentStatus: status,
-          progressPercent: 100,
-          progressDetail: detail,
-          startedAtIso,
-          finishedAtIso: nowIso,
-          durationMillis: 1150,
-          lastRunAtIso: nowIso,
-          lastRunStatus: status,
-          lastRunDetail: detail,
-          lastRunCount: count,
-          lastRunUser: this.activeAdmin()?.id ?? 'demo-admin'
-        },
-        runHistory: [{
-          id: `run-${Date.now()}`,
-          trigger: 'manual',
-          runnerUser: this.activeAdmin()?.id ?? 'demo-admin',
-          startedAtIso,
-          finishedAtIso: nowIso,
-          durationMillis: 1150,
-          processedCount: count,
-          status,
-          detail
-        }, ...(rule.runHistory ?? [])].slice(0, 12),
-        updatedDate: nowIso,
-        updatedUser: this.activeAdmin()?.id ?? 'demo-admin'
-      };
-    });
-    const saved = await this.saveNotificationCenter(nextRules, { skipDemoDelay: true });
-    await this.waitForAdminNotificationDemoDelay(ADMIN_NOTIFICATION_RUN_ROUTE, ADMIN_NOTIFICATION_RUN_DEMO_DELAY_MS);
-    const updated = saved.rules.find(rule => rule.ruleKey === normalizedRuleKey);
-    return {
-      ruleKey: normalizedRuleKey,
-      label: updated?.label ?? normalizedRuleKey,
-      affectedCount: updated?.runState.lastRunCount ?? 0,
-      status: updated?.runState.lastRunStatus ?? 'skipped',
-      detail: updated?.runState.lastRunDetail ?? 'Rule was not found.',
-      ranAtIso: updated?.runState.lastRunAtIso ?? nowIso
-    };
-  }
-
-  async loadNotificationRuleRuntime(ruleKey: string): Promise<AdminNotificationRule | null> {
-    const normalizedRuleKey = `${ruleKey ?? ''}`.trim();
-    if (!normalizedRuleKey || !this.usesHttpAdminApi) {
-      return null;
-    }
-    const rule = await this.withNotificationHttpTimeout(this.http
-      .get<AdminNotificationRule | null>(
-        `${this.apiBaseUrl}/admin/notifications/${encodeURIComponent(normalizedRuleKey)}/runtime`,
-        { params: { adminUserId: this.activeAdmin()?.id ?? '' } }
-      )
-      .toPromise());
-    return rule ? this.normalizeNotificationRule(rule) : null;
-  }
-
-  subscribeNotificationRuleUpdates(onEvent: (event: AdminNotificationRuleLiveEvent) => void): () => void {
-    if (!this.usesHttpAdminApi || typeof WebSocket === 'undefined' || typeof window === 'undefined') {
-      return () => {};
-    }
-    let closed = false;
-    let socket: WebSocket | null = null;
-    void this.buildNotificationSocketUrl().then(socketUrl => {
-      if (!socketUrl || closed) {
-        return;
-      }
-      socket = new WebSocket(socketUrl);
-      socket.onmessage = message => {
-        try {
-          const event = JSON.parse(`${message.data ?? ''}`) as AdminNotificationRuleLiveEvent;
-          if (event?.type === 'rule-runtime' && `${event.ruleKey ?? ''}`.trim()) {
-            onEvent(this.normalizeNotificationRuleLiveEvent(event));
-          }
-        } catch {
-          // Ignore malformed admin notification socket events.
-        }
-      };
-      socket.onerror = () => {
-        socket?.close();
-      };
-    });
-    return () => {
-      closed = true;
-      if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) {
-        socket.close();
-      }
-    };
-  }
-
-  async warnUser(userId: string, message: string): Promise<void> {
-    const normalizedUserId = userId.trim();
-    if (!normalizedUserId) {
-      return;
-    }
-    if (this.usesHttpAdminApi) {
-      const dashboard = await this.http.post<AdminDashboardDto>(
-        `${this.apiBaseUrl}/admin/users/${encodeURIComponent(normalizedUserId)}/warn`,
-        {
-          adminUserId: this.activeAdmin()?.id ?? '',
-          message
-        }
-      ).toPromise();
-      if (dashboard) {
-        this.dashboardRef.set(this.normalizeDashboard(dashboard));
-        this.markUserWarned(normalizedUserId);
-        this.activateAdminProfile(this.dashboardRef() as AdminDashboardDto);
-      }
-      return;
-    }
-    await this.appendDemoSupportMessage(normalizedUserId, message);
-    this.markUserWarned(normalizedUserId);
-    this.dashboardRef.set(await this.loadDemoDashboard(this.activeAdmin()?.id));
-    this.activateAdminProfile(this.dashboardRef() as AdminDashboardDto);
-  }
-
-  async blockUser(userId: string, message: string): Promise<void> {
-    const normalizedUserId = userId.trim();
-    if (!normalizedUserId) {
-      return;
-    }
-    if (this.usesHttpAdminApi) {
-      const dashboard = await this.http.post<AdminDashboardDto>(
-        `${this.apiBaseUrl}/admin/users/${encodeURIComponent(normalizedUserId)}/block`,
-        {
-          adminUserId: this.activeAdmin()?.id ?? '',
-          message
-        }
-      ).toPromise();
-      if (dashboard) {
-        this.dashboardRef.set(this.normalizeDashboard(dashboard));
-        this.markUserWarned(normalizedUserId);
-        this.refreshSelectedReportedUser(normalizedUserId);
-        this.activateAdminProfile(this.dashboardRef() as AdminDashboardDto);
-      }
-      return;
-    }
-    const user = this.demoUsersRepository.queryUserById(normalizedUserId);
-    if (user) {
-      this.demoUsersRepository.upsertUser({
-        ...user,
-        previousProfileStatus: user.profileStatus,
-        profileStatus: 'blocked'
-      });
-    }
-    await this.appendDemoSupportMessage(normalizedUserId, message);
-    this.markUserWarned(normalizedUserId);
-    await this.demoUsersRepository.flushToIndexedDb();
-    this.dashboardRef.set(await this.loadDemoDashboard(this.activeAdmin()?.id));
-    this.refreshSelectedReportedUser(normalizedUserId);
-    this.activateAdminProfile(this.dashboardRef() as AdminDashboardDto);
-  }
-
-  async unblockUser(userId: string): Promise<void> {
-    const normalizedUserId = userId.trim();
-    if (!normalizedUserId) {
-      return;
-    }
-    if (this.usesHttpAdminApi) {
-      const dashboard = await this.http.post<AdminDashboardDto>(
-        `${this.apiBaseUrl}/admin/users/${encodeURIComponent(normalizedUserId)}/unblock`,
-        {
-          adminUserId: this.activeAdmin()?.id ?? '',
-          message: ''
-        }
-      ).toPromise();
-      if (dashboard) {
-        this.dashboardRef.set(this.normalizeDashboard(dashboard));
-        this.refreshSelectedReportedUser(normalizedUserId);
-        this.activateAdminProfile(this.dashboardRef() as AdminDashboardDto);
-      }
-      return;
-    }
-    const user = this.demoUsersRepository.queryUserById(normalizedUserId);
-    if (user) {
-      this.demoUsersRepository.upsertUser({
-        ...user,
-        previousProfileStatus: undefined,
-        profileStatus: user.previousProfileStatus && user.previousProfileStatus !== 'blocked'
-          ? user.previousProfileStatus
-          : 'public'
-      });
-      await this.demoUsersRepository.flushToIndexedDb();
-    }
-    this.dashboardRef.set(await this.loadDemoDashboard(this.activeAdmin()?.id));
-    this.refreshSelectedReportedUser(normalizedUserId);
-    this.activateAdminProfile(this.dashboardRef() as AdminDashboardDto);
-  }
-
-  updateAdminProfile(patch: Pick<UserDto, 'name' | 'headline' | 'about'>): void {
-    const admin = this.activeAdmin();
-    const current = this.appCtx.activeUserProfile();
-    if (!admin || !current) {
-      return;
-    }
-    const nextUser: UserDto = {
-      ...current,
-      name: patch.name.trim() || current.name,
-      initials: this.initialsFromName(patch.name.trim() || current.name, current.initials),
-      headline: patch.headline.trim(),
-      about: patch.about.trim()
-    };
-    this.appCtx.setUserProfile(nextUser);
-    const nextAdmin: AdminUserDto = {
-      ...admin,
-      name: nextUser.name,
-      initials: this.initialsFromName(nextUser.name, admin.initials),
-      headline: nextUser.headline,
-      about: nextUser.about,
-      images: [...(nextUser.images ?? [])]
-    };
-    const dashboard = this.dashboardRef();
-    if (dashboard) {
-      this.dashboardRef.set({
-        ...dashboard,
-        activeAdmin: nextAdmin
-      });
-      this.persistAdminSession(nextAdmin.id);
-    }
-  }
-
   clearAdminSession(): void {
     this.dashboardRef.set(null);
-    this.activePopupRef.set(null);
-    this.selectedReportedUserRef.set(null);
-    this.selectedReportRef.set(null);
+    this.shell.clear();
     this.accessDeniedRef.set(false);
     this.appCtx.setActiveUserId('');
     if (typeof localStorage !== 'undefined') {
@@ -830,9 +265,7 @@ export class AdminService {
 
   handleAdminAccessDenied(): void {
     this.dashboardRef.set(null);
-    this.activePopupRef.set(null);
-    this.selectedReportedUserRef.set(null);
-    this.selectedReportRef.set(null);
+    this.shell.clear();
     this.accessDeniedRef.set(true);
     this.errorRef.set('This account does not have admin access.');
     if (typeof localStorage !== 'undefined') {
@@ -881,7 +314,7 @@ export class AdminService {
     await this.ensureDemoAdminMenuCounterSeed();
     onProgress?.({ percent: 48, label: 'Creating moderation records', stage: 'records' });
     const store = await this.ensureDemoModerationStore();
-    await this.ensureDemoAdminServiceSeed(admin);
+    await this.ensureDemoAdminSupportSeed(admin);
     onProgress?.({ percent: 74, label: 'Resolving reported users', stage: 'records' });
     const dashboard = this.buildDemoDashboard(admin, store);
     onProgress?.({ percent: 92, label: 'Opening admin workspace', stage: 'profile' });
@@ -1169,7 +602,7 @@ export class AdminService {
     };
   }
 
-  private async ensureDemoAdminServiceSeed(admin: AdminUserDto): Promise<void> {
+  private async ensureDemoAdminSupportSeed(admin: AdminUserDto): Promise<void> {
     const helpUser = this.demoUsersRepository.queryUserById('u1');
     if (!helpUser) {
       return;
@@ -1268,90 +701,6 @@ export class AdminService {
     }));
   }
 
-  private async appendDemoSupportMessage(userId: string, text: string): Promise<void> {
-    const admin = this.activeAdmin() ?? this.resolveDemoAdmin();
-    const reportedUser = this.resolveDashboardReportedUser(userId);
-    const now = new Date();
-    const nowIso = now.toISOString();
-    const chatId = `c-support-admin-${userId}`;
-    const messageId = `m-admin-${Date.now()}`;
-    const adminAvatar = {
-      id: admin.id,
-      initials: admin.initials,
-      gender: 'woman' as const
-    };
-    const userChat: DemoChatRecord = {
-      id: chatId,
-      avatar: admin.initials,
-      title: 'MyScoutee Support',
-      lastMessage: text,
-      lastSenderId: admin.id,
-      memberIds: [userId, admin.id],
-      unread: 1,
-      dateIso: nowIso,
-      channelType: 'serviceEvent',
-      serviceContext: 'notification',
-      ownerUserId: userId,
-      messages: []
-    };
-    const userMessage: ChatPopupMessage = {
-      id: messageId,
-      sender: admin.name,
-      senderAvatar: adminAvatar,
-      text,
-      time: now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
-      sentAtIso: nowIso,
-      mine: false,
-      readBy: []
-    };
-    const adminChat: DemoChatRecord = {
-      id: chatId,
-      avatar: reportedUser?.initials || 'U',
-      title: `MyScoutee Support · ${reportedUser?.name || 'Reported user'}`,
-      lastMessage: text,
-      lastSenderId: admin.id,
-      memberIds: [userId, admin.id],
-      unread: 0,
-      dateIso: nowIso,
-      channelType: 'serviceEvent',
-      serviceContext: 'notification',
-      ownerUserId: admin.id,
-      messages: []
-    };
-    const adminMessage: ChatPopupMessage = {
-      ...userMessage,
-      mine: true,
-      readBy: []
-    };
-    this.demoChatsRepository.upsertSupportChatMessage(userChat, userMessage, true);
-    this.demoChatsRepository.upsertSupportChatMessage(adminChat, adminMessage, false);
-    await this.demoChatsRepository.flushToIndexedDb();
-  }
-
-  private resolveDashboardReportedUser(userId: string): AdminReportedUserDto | null {
-    const dashboard = this.dashboardRef();
-    if (!dashboard) {
-      return null;
-    }
-    const normalizedUserId = userId.trim();
-    return [
-      ...(dashboard.reportedUsers ?? []),
-      ...(dashboard.blockedUsers ?? [])
-    ].find(user => user.userId === normalizedUserId) ?? null;
-  }
-
-  private markUserWarned(userId: string): void {
-    const normalizedUserId = `${userId ?? ''}`.trim();
-    if (!normalizedUserId) {
-      return;
-    }
-    this.warnedUserIdsRef.update(current => {
-      const next = new Set(current);
-      next.add(normalizedUserId);
-      return next;
-    });
-  }
-
   private demoSupportChatExists(userId: string): boolean {
     const normalizedUserId = `${userId ?? ''}`.trim();
     const adminId = this.activeAdmin()?.id ?? this.readStoredAdminId() ?? '';
@@ -1371,33 +720,6 @@ export class AdminService {
     const chat = this.demoChatsRepository.queryChatItemsByUser(adminId)
       .find(item => item.id === `c-support-admin-${normalizedUserId}`);
     return Math.max(0, Math.trunc(Number(chat?.unread) || 0));
-  }
-
-  private refreshSelectedReportedUser(userId: string): void {
-    const selected = this.selectedReportedUserRef();
-    if (!selected || selected.userId !== userId) {
-      return;
-    }
-    this.selectedReportedUserRef.set(this.resolveDashboardReportedUser(userId) ?? selected);
-  }
-
-  private buildAdminSupportChat(user: AdminReportedUserDto): ChatRecord & { ownerUserId?: string } {
-    const admin = this.activeAdmin() ?? this.resolveDemoAdmin();
-    return {
-      id: `c-support-admin-${user.userId}`,
-      avatar: user.initials || 'U',
-      title: `MyScoutee Support · ${user.name}`,
-      lastMessage: user.profileStatus === 'blocked'
-        ? 'Your account has been blocked after moderation review.'
-        : 'MyScoutee support conversation.',
-      lastSenderId: admin.id,
-      memberIds: [user.userId, admin.id],
-      unread: this.supportChatUnread(user),
-      dateIso: user.lastReportedAtIso || new Date().toISOString(),
-      channelType: 'serviceEvent',
-      serviceContext: 'notification',
-      ownerUserId: admin.id
-    };
   }
 
   private normalizeStore(store: AdminModerationStore): AdminModerationStore {
@@ -1892,58 +1214,6 @@ export class AdminService {
       : 'ok';
   }
 
-  private async readDemoStatsSnapshot(): Promise<AdminStatsDashboardDto> {
-    await this.withNotificationStorageFallback(this.adminStatsRepository.whenReady(), undefined);
-    const existing = await this.withNotificationStorageFallback(
-      this.adminStatsRepository.readStore<AdminStatsDashboardDto>(),
-      null
-    );
-    if (!existing) {
-      throw new Error('Demo stats snapshot is not bootstrapped.');
-    }
-    const normalized = this.normalizeStatsDashboard(existing, 'demo');
-    if (!this.isFreshStatsDemoSnapshot(normalized)) {
-      throw new Error('Demo stats snapshot is stale.');
-    }
-    return normalized;
-  }
-
-  private async readDemoMonitoringState(): Promise<AdminMonitoringStateDto> {
-    await this.withNotificationStorageFallback(this.adminMonitoringRepository.whenReady(), undefined);
-    const existing = await this.withNotificationStorageFallback(
-      this.adminMonitoringRepository.readStore<AdminMonitoringStateDto>(),
-      null
-    );
-    if (!existing?.categories?.length) {
-      throw new Error('Demo monitoring state is not bootstrapped.');
-    }
-    return this.normalizeMonitoringState(existing, 'demo');
-  }
-
-  private async readDemoNotificationCenter(): Promise<AdminNotificationCenterState> {
-    await this.withNotificationStorageFallback(this.adminNotificationsRepository.whenReady(), undefined);
-    const existing = await this.withNotificationStorageFallback(
-      this.adminNotificationsRepository.readStore<AdminNotificationCenterState>(),
-      null
-    );
-    if (!existing?.rules?.length) {
-      throw new Error('Demo notification center is not bootstrapped.');
-    }
-    return this.normalizeNotificationCenter(existing);
-  }
-
-  private async readDemoParamsStore(): Promise<AdminParamsDemoStore> {
-    await this.withNotificationStorageFallback(this.adminParamsRepository.whenReady(), undefined);
-    const existing = await this.withNotificationStorageFallback(
-      this.adminParamsRepository.readStore<AdminParamsDemoStore>(),
-      null
-    );
-    if (!existing?.sections?.length) {
-      throw new Error('Demo params store is not bootstrapped.');
-    }
-    return this.normalizeParamsStore(existing);
-  }
-
   private buildDefaultParamsStore(): AdminParamsDemoStore {
     return this.normalizeParamsStore(AdminParamsSeedBuilder.buildDefaultParamsStore());
   }
@@ -2068,17 +1338,6 @@ export class AdminService {
     };
   }
 
-  private normalizeParamsHistory(history: AdminParamsHistoryDto): AdminParamsHistoryDto {
-    return {
-      sectionKey: `${history.sectionKey ?? ''}`.trim(),
-      label: `${history.label ?? ''}`.trim() || `${history.sectionKey ?? ''}`.trim(),
-      labelKey: `${history.labelKey ?? ''}`.trim() || this.paramSectionLabelKey(history.sectionKey),
-      versions: (history.versions ?? [])
-        .map(item => this.normalizeParamsHistoryItem(item))
-        .sort((left, right) => right.version - left.version)
-    };
-  }
-
   private normalizeParamsHistoryItem(item: AdminParamsHistoryItemDto): AdminParamsHistoryItemDto {
     return {
       configId: `${item.configId ?? ''}`.trim() || null,
@@ -2110,17 +1369,6 @@ export class AdminService {
   private paramStrategyLabelKey(strategy: string | null | undefined): string {
     const normalized = `${strategy ?? ''}`.trim();
     return normalized ? `admin.params.strategy.${normalized}` : '';
-  }
-
-  private paramOptionsFor(fieldKey: string | null | undefined): AdminParamOptionDto[] {
-    if (`${fieldKey ?? ''}`.trim() !== 'distance.strategy') {
-      return [];
-    }
-    return ['linear', 'exponential', 'bucketed'].map(value => ({
-      value,
-      label: value.charAt(0).toUpperCase() + value.slice(1),
-      labelKey: this.paramStrategyLabelKey(value)
-    }));
   }
 
   private paramSummaryKey(summary: string | null | undefined, sectionKey: string | null | undefined): string {
@@ -2301,20 +1549,6 @@ export class AdminService {
     };
   }
 
-  private normalizeNotificationRunResult(
-    result: AdminNotificationRunResult | null | undefined,
-    fallbackRuleKey: string
-  ): AdminNotificationRunResult {
-    return {
-      ruleKey: `${result?.ruleKey ?? fallbackRuleKey}`.trim(),
-      label: `${result?.label ?? fallbackRuleKey}`.trim(),
-      affectedCount: Math.max(0, Math.trunc(Number(result?.affectedCount) || 0)),
-      status: `${result?.status ?? 'completed'}`.trim(),
-      detail: `${result?.detail ?? ''}`.trim(),
-      ranAtIso: `${result?.ranAtIso ?? ''}`.trim() || new Date().toISOString()
-    };
-  }
-
   private mergeDefaultNotificationRuleScheduleSlots(
     defaultRule: AdminNotificationRule,
     existingRule: AdminNotificationRule
@@ -2378,60 +1612,6 @@ export class AdminService {
       return raw === true;
     }
     return false;
-  }
-
-  private async buildNotificationSocketUrl(): Promise<string | null> {
-    if (typeof window === 'undefined') {
-      return null;
-    }
-    const baseUrl = new URL(`${this.apiBaseUrl.replace(/\/+$/, '')}/admin/notifications/ws`, window.location.origin);
-    baseUrl.protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const adminUserId = this.activeAdmin()?.id ?? '';
-    if (adminUserId) {
-      baseUrl.searchParams.set('adminUserId', adminUserId);
-      baseUrl.searchParams.set('userId', adminUserId);
-    }
-    if (this.firebaseAuthService.enabled) {
-      const token = await this.firebaseAuthService.getIdToken();
-      if (!token) {
-        return null;
-      }
-      baseUrl.searchParams.set('token', token);
-    }
-    return baseUrl.toString();
-  }
-
-  private normalizeNotificationRuleLiveEvent(event: AdminNotificationRuleLiveEvent): AdminNotificationRuleLiveEvent {
-    return {
-      type: 'rule-runtime',
-      ruleKey: `${event.ruleKey ?? ''}`.trim(),
-      runState: {
-        currentStatus: `${event.runState?.currentStatus ?? ''}`.trim(),
-        progressPercent: this.clampInteger(event.runState?.progressPercent, 0, 100, 0),
-        progressDetail: `${event.runState?.progressDetail ?? ''}`.trim(),
-        startedAtIso: `${event.runState?.startedAtIso ?? ''}`.trim(),
-        finishedAtIso: `${event.runState?.finishedAtIso ?? ''}`.trim(),
-        durationMillis: Math.max(0, Math.trunc(Number(event.runState?.durationMillis) || 0)),
-        lastRunAtIso: `${event.runState?.lastRunAtIso ?? ''}`.trim(),
-        lastRunStatus: `${event.runState?.lastRunStatus ?? ''}`.trim(),
-        lastRunDetail: `${event.runState?.lastRunDetail ?? ''}`.trim(),
-        lastRunCount: Math.max(0, Math.trunc(Number(event.runState?.lastRunCount) || 0)),
-        lastRunUser: `${event.runState?.lastRunUser ?? ''}`.trim()
-      },
-      runHistory: (event.runHistory ?? []).map((entry, index) => ({
-        id: `${entry?.id ?? ''}`.trim() || `run-${index}`,
-        trigger: `${entry?.trigger ?? ''}`.trim() || 'scheduled',
-        runnerUser: `${entry?.runnerUser ?? ''}`.trim(),
-        startedAtIso: `${entry?.startedAtIso ?? ''}`.trim(),
-        finishedAtIso: `${entry?.finishedAtIso ?? ''}`.trim(),
-        durationMillis: Math.max(0, Math.trunc(Number(entry?.durationMillis) || 0)),
-        processedCount: Math.max(0, Math.trunc(Number(entry?.processedCount) || 0)),
-        status: `${entry?.status ?? ''}`.trim() || 'completed',
-        detail: `${entry?.detail ?? ''}`.trim()
-      })),
-      updatedDate: `${event.updatedDate ?? ''}`.trim(),
-      updatedUser: `${event.updatedUser ?? ''}`.trim()
-    };
   }
 
   private normalizeNotificationTriggerKind(value: string | undefined): AdminNotificationTriggerKind {
@@ -2520,27 +1700,6 @@ export class AdminService {
       month: match ? this.clampInteger(Number(match[2]), 1, 12, 1) : 1,
       day: match ? this.clampInteger(Number(match[3]), 1, 31, 1) : 1
     };
-  }
-
-  private demoScheduledRunCount(ruleKey: string): number {
-    switch (ruleKey) {
-      case 'event-random-groups':
-        return 1;
-      case 'event-auto-inviter':
-        return 3;
-      case 'event-tournament-review':
-        return 2;
-      case 'notification-outbox':
-        return 12;
-      case 'affinity-recompute':
-        return 8;
-      case 'scheduled-messages':
-        return 4;
-      case 'account-purge':
-        return 1;
-      default:
-        return 0;
-    }
   }
 
   private normalizeNotificationInterval(
@@ -2676,60 +1835,6 @@ export class AdminService {
 
   private isAdminAccessDenied(error: unknown): boolean {
     return error instanceof HttpErrorResponse && (error.status === 401 || error.status === 403);
-  }
-
-  private withNotificationStorageFallback<T>(task: Promise<T>, fallback: T): Promise<T> {
-    return new Promise<T>(resolve => {
-      let finished = false;
-      let timeoutId: ReturnType<typeof setTimeout> | null = null;
-      const finish = (value: T) => {
-        if (finished) {
-          return;
-        }
-        finished = true;
-        if (timeoutId !== null) {
-          clearTimeout(timeoutId);
-          timeoutId = null;
-        }
-        resolve(value);
-      };
-      timeoutId = setTimeout(() => finish(fallback), ADMIN_NOTIFICATION_STORAGE_TIMEOUT_MS);
-      task.then(finish).catch(() => finish(fallback));
-    });
-  }
-
-  private withNotificationHttpTimeout<T>(task: Promise<T>): Promise<T> {
-    return new Promise<T>((resolve, reject) => {
-      let finished = false;
-      let timeoutId: ReturnType<typeof setTimeout> | null = null;
-      const finish = (callback: () => void) => {
-        if (finished) {
-          return;
-        }
-        finished = true;
-        if (timeoutId !== null) {
-          clearTimeout(timeoutId);
-          timeoutId = null;
-        }
-        callback();
-      };
-      timeoutId = setTimeout(
-        () => finish(() => reject(new Error('Notification rules request timed out.'))),
-        ADMIN_NOTIFICATION_HTTP_TIMEOUT_MS
-      );
-      task.then(value => finish(() => resolve(value))).catch(error => finish(() => reject(error)));
-    });
-  }
-
-  private async waitForAdminNotificationDemoDelay(
-    route: string,
-    fallbackDelayMs: number,
-    options?: { skipDemoDelay?: boolean }
-  ): Promise<void> {
-    if (this.usesHttpAdminApi || options?.skipDemoDelay === true) {
-      return;
-    }
-    await this.routeDelay.waitForRouteDelay(route, undefined, undefined, fallbackDelayMs);
   }
 
   private waitForBeat(): Promise<void> {

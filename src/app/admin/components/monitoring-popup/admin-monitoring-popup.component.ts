@@ -10,7 +10,8 @@ import type {
 } from '../../../shared/core';
 import { RouteDelayService } from '../../../shared/core/base/services/route-delay.service';
 import { I18nPipe } from '../../../shared/i18n';
-import { AdminService } from '../../admin.service';
+import { AdminMonitoringService } from '../../services/admin-monitoring.service';
+import { AdminShellService } from '../../services/admin-shell.service';
 
 const MONITORING_POPUP_KEY = 'monitoring';
 const MONITORING_LOAD_ROUTE = '/admin/monitoring';
@@ -50,13 +51,14 @@ const MONITORING_FILTER_CATEGORIES: Record<MonitoringFilter, ReadonlySet<string>
   styleUrl: './admin-monitoring-popup.component.scss'
 })
 export class AdminMonitoringPopupComponent implements OnInit, OnDestroy {
-  protected readonly admin = inject(AdminService);
+  protected readonly admin = inject(AdminShellService);
+  private readonly monitoringService = inject(AdminMonitoringService);
   private readonly routeDelay = inject(RouteDelayService);
   protected readonly popupKey = MONITORING_POPUP_KEY;
   protected readonly filterOptions = MONITORING_FILTER_OPTIONS;
   protected readonly loading = signal(false);
   protected readonly error = signal('');
-  protected readonly state = signal<Awaited<ReturnType<AdminService['loadMonitoringState']>> | null>(null);
+  protected readonly state = signal<Awaited<ReturnType<AdminMonitoringService['loadMonitoringState']>> | null>(null);
   protected readonly filter = signal<MonitoringFilter>(MONITORING_FILTER.all);
   protected readonly filterMenuOpen = signal(false);
   protected readonly loadingRingPerimeter = 100;
@@ -150,7 +152,7 @@ export class AdminMonitoringPopupComponent implements OnInit, OnDestroy {
     this.error.set('');
     try {
       const [state] = await Promise.all([
-        this.admin.loadMonitoringState(),
+        this.monitoringService.loadMonitoringState(),
         this.routeDelay.waitForRouteDelay(
           MONITORING_LOAD_ROUTE,
           undefined,

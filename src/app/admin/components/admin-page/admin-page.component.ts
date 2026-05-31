@@ -10,7 +10,8 @@ import { SessionService, AppPopupContext } from '../../../shared/core';
 import type { DemoBootstrapProgressStage } from '../../../shared/core/demo';
 import { ConfirmationDialogComponent } from '../../../shared/ui/components/confirmation-dialog/confirmation-dialog.component';
 import { NavigatorService } from '../../../navigator/navigator.service';
-import { AdminService } from '../../admin.service';
+import { AdminShellService } from '../../services/admin-shell.service';
+import { AdminWorkspaceService } from '../../services/admin-workspace.service';
 import type { AdminBootstrapProgressState } from '../../models/admin-shell.model';
 
 @Component({
@@ -30,7 +31,8 @@ import type { AdminBootstrapProgressState } from '../../models/admin-shell.model
 export class AdminPageComponent implements OnInit, OnDestroy {
   private static readonly DEMO_RESTORE_MIN_DELAY_MS = 1500;
 
-  protected readonly admin = inject(AdminService);
+  protected readonly workspace = inject(AdminWorkspaceService);
+  protected readonly shell = inject(AdminShellService);
   protected readonly sessionService = inject(SessionService);
   private readonly document = inject(DOCUMENT);
   private readonly router = inject(Router);
@@ -71,7 +73,7 @@ export class AdminPageComponent implements OnInit, OnDestroy {
     this.document.body.classList.add('admin-document-no-scroll');
 
     effect(() => {
-      switch (this.admin.activePopup()) {
+      switch (this.shell.activePopup()) {
         case 'reports':
           void this.ensureReportsPopupLoaded();
           break;
@@ -111,48 +113,48 @@ export class AdminPageComponent implements OnInit, OnDestroy {
       this.popupCtx.clearAdminNavigatorRequest();
       switch (request.popup) {
         case 'reports':
-          this.admin.openReports();
+          this.shell.openReports(this.workspace.dashboard()?.reportedUsers[0] ?? null);
           break;
         case 'feedback':
-          this.admin.openFeedback();
+          this.shell.openFeedback();
           break;
         case 'chat':
-          this.admin.openChat();
+          this.shell.openChat();
           break;
         case 'profile':
           this.navigatorService.openProfileEditor();
           break;
         case 'help-editor':
-          this.admin.openHelpEditor();
+          this.shell.openHelpEditor();
           break;
         case 'idea-editor':
-          this.admin.openIdeaEditor();
+          this.shell.openIdeaEditor();
           break;
         case 'notifications':
-          this.admin.openNotifications();
+          this.shell.openNotifications();
           break;
         case 'params':
-          this.admin.openParams();
+          this.shell.openParams();
           break;
         case 'stats':
-          this.admin.openStats();
+          this.shell.openStats();
           break;
         case 'affinity-graph':
-          this.admin.openAffinityGraph();
+          this.shell.openAffinityGraph();
           break;
         case 'monitoring':
-          this.admin.openMonitoring();
+          this.shell.openMonitoring();
           break;
       }
     });
   }
 
   async ngOnInit(): Promise<void> {
-    if (this.admin.isFirebaseAdminMode && !this.admin.dashboard()) {
+    if (this.workspace.isFirebaseAdminMode && !this.workspace.dashboard()) {
       const session = await this.sessionService.ensureSession();
       if (session?.kind === 'firebase') {
         this.restoringWorkspace.set(true);
-        const dashboard = await this.admin.bootstrapAdmin();
+        const dashboard = await this.workspace.bootstrapAdmin();
         this.restoringWorkspace.set(false);
         if (dashboard) {
           await this.router.navigateByUrl('/admin/workspace', { replaceUrl: true });
@@ -160,13 +162,13 @@ export class AdminPageComponent implements OnInit, OnDestroy {
         }
       }
     }
-    if (!this.isWorkspaceRoute() || this.admin.dashboard()) {
+    if (!this.isWorkspaceRoute() || this.workspace.dashboard()) {
       this.restoringWorkspace.set(false);
       return;
     }
     this.restoringWorkspace.set(true);
     this.restoreAvatarGateActive.set(false);
-    const restored = await this.admin.restoreAdminSession();
+    const restored = await this.workspace.restoreAdminSession();
     if (restored && this.shouldUseDemoAvatarGate()) {
       this.restoreAvatarGateActive.set(true);
       await this.delay(AdminPageComponent.DEMO_RESTORE_MIN_DELAY_MS);
@@ -185,7 +187,7 @@ export class AdminPageComponent implements OnInit, OnDestroy {
 
   protected async requestAdminLogin(): Promise<void> {
     this.selectorErrorMessage = '';
-    if (!this.admin.isFirebaseAdminMode) {
+    if (!this.workspace.isFirebaseAdminMode) {
       this.openSelector();
       return;
     }
@@ -193,12 +195,12 @@ export class AdminPageComponent implements OnInit, OnDestroy {
     if (!session) {
       return;
     }
-    const dashboard = await this.admin.bootstrapAdmin();
+    const dashboard = await this.workspace.bootstrapAdmin();
     if (dashboard) {
       await this.router.navigateByUrl('/admin/workspace', { replaceUrl: true });
       return;
     }
-    if (this.admin.accessDenied()) {
+    if (this.workspace.accessDenied()) {
       await this.router.navigateByUrl('/admin', { replaceUrl: true });
     }
   }
@@ -232,10 +234,10 @@ export class AdminPageComponent implements OnInit, OnDestroy {
     this.selectorLoadingProgress = 0;
     this.selectorLoadingStage = 'selector';
     this.selectorLoadingLabel = 'Preparing admin bootstrap';
-    if (this.admin.usesHttpAdminApi && !this.admin.isFirebaseAdminMode) {
+    if (this.workspace.usesHttpAdminApi && !this.workspace.isFirebaseAdminMode) {
       this.sessionService.startDemoSession(adminUserId);
     }
-    const dashboard = await this.admin.bootstrapAdmin(adminUserId, state => this.applyProgress(state));
+    const dashboard = await this.workspace.bootstrapAdmin(adminUserId, state => this.applyProgress(state));
     if (dashboard) {
       this.selectorOpen = false;
       this.selectorLoading = false;
@@ -252,7 +254,7 @@ export class AdminPageComponent implements OnInit, OnDestroy {
     }
     this.selectorLoading = false;
     this.selectorSubmitting = false;
-    this.selectorErrorMessage = this.admin.error() || 'Unable to open admin workspace.';
+    this.selectorErrorMessage = this.workspace.error() || 'Unable to open admin workspace.';
   }
 
   protected retrySelector(): void {
@@ -261,12 +263,12 @@ export class AdminPageComponent implements OnInit, OnDestroy {
 
   @HostListener('window:adminLogoutRequested')
   protected onAdminLogoutRequested(): void {
-    this.admin.clearAdminSession();
+    this.workspace.clearAdminSession();
   }
 
   @HostListener('window:adminAccessDenied')
   protected onAdminAccessDenied(): void {
-    this.admin.handleAdminAccessDenied();
+    this.workspace.handleAdminAccessDenied();
     if (this.router.url.split('?')[0].startsWith('/admin')) {
       void this.router.navigateByUrl('/admin', { replaceUrl: true });
     }
@@ -302,7 +304,7 @@ export class AdminPageComponent implements OnInit, OnDestroy {
   }
 
   private shouldUseDemoAvatarGate(): boolean {
-    return !this.admin.usesHttpAdminApi;
+    return !this.workspace.usesHttpAdminApi;
   }
 
   private async ensureReportsPopupLoaded(): Promise<void> {
