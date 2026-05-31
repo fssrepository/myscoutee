@@ -69,6 +69,8 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
   @Input() authUnavailableLabel = 'Unavailable in your country';
   @Input() authLocationRequired = false;
   @Input() authLocationRequiredLabel = 'Allow location';
+  @Input() networkUnavailable = false;
+  @Input() networkUnavailableLabel = 'No network';
 
   @Output() readonly demoRequested = new EventEmitter<void>();
   @Output() readonly firebaseAuthRequested = new EventEmitter<void>();
@@ -213,13 +215,17 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
   }
 
   protected get entryAuthButtonShowsAvatar(): boolean {
-    return !this.authUnavailable
+    return !this.networkUnavailable
+      && !this.authUnavailable
       && !this.authLocationRequired
       && this.isFirebaseAuthMode
       && !!this.firebaseAuthProfile;
   }
 
   protected get entryAuthButtonIcon(): string {
+    if (this.networkUnavailable) {
+      return 'wifi_off';
+    }
     if (this.authUnavailable) {
       return 'block';
     }
@@ -233,6 +239,9 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
   }
 
   protected get entryAuthButtonLabel(): string {
+    if (this.networkUnavailable) {
+      return this.networkUnavailableLabel;
+    }
     if (this.authUnavailable) {
       return this.authUnavailableLabel;
     }
@@ -243,6 +252,14 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
       return this.firebaseAuthProfile?.name ?? 'Continue';
     }
     return 'Login';
+  }
+
+  protected get entryPrimaryCtaIcon(): string {
+    return this.networkUnavailable ? 'wifi_off' : 'rocket_launch';
+  }
+
+  protected get entryPrimaryCtaLabel(): string {
+    return this.networkUnavailable ? this.networkUnavailableLabel : 'Start exploring';
   }
 
   protected get isFirstHowSlide(): boolean {
@@ -384,14 +401,14 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
   }
 
   protected requestDemo(): void {
-    if (this.authUnavailable) {
+    if (this.networkUnavailable || this.authUnavailable) {
       return;
     }
     this.demoRequested.emit();
   }
 
   protected requestHeaderAuth(): void {
-    if (this.authUnavailable) {
+    if (this.networkUnavailable || this.authUnavailable) {
       return;
     }
     if (this.isFirebaseAuthMode) {
@@ -403,6 +420,9 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
 
   protected requestConsent(event?: Event): void {
     event?.preventDefault();
+    if (this.networkUnavailable) {
+      return;
+    }
     this.consentRequested.emit();
   }
 

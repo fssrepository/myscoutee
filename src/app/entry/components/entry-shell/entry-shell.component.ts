@@ -80,6 +80,8 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
   protected entryAuthUnavailableLabel = 'Unavailable in your country';
   protected entryAuthLocationRequired = false;
   protected entryAuthLocationRequiredLabel = 'Allow location';
+  protected entryNetworkUnavailable = false;
+  protected entryNetworkUnavailableLabel = 'No network';
   protected showUserSelector = false;
   protected demoSelectorUsers: DemoUserListItemDto[] = [];
   protected demoSelectorLoading = false;
@@ -150,6 +152,9 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
   }
 
   protected async openEntryDemo(): Promise<void> {
+    if (this.entryNetworkUnavailable) {
+      return;
+    }
     if (!this.ensureEntryConsent()) {
       return;
     }
@@ -157,6 +162,9 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
   }
 
   protected async openEntryFirebaseAuth(): Promise<void> {
+    if (this.entryNetworkUnavailable) {
+      return;
+    }
     if (this.isLoginBlockedByLandingBundle()) {
       this.openBundledLoginUnavailableInfo();
       return;
@@ -246,6 +254,9 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
   }
 
   protected openEntryConsentPopup(viewOnly = false): void {
+    if (this.entryNetworkUnavailable) {
+      return;
+    }
     if (this.helpCenter.privacyState() === null) {
       this.entryPrivacyLoading = true;
       void this.loadEntryContent();
@@ -317,6 +328,9 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
   }
 
   private ensureEntryConsent(): boolean {
+    if (this.entryNetworkUnavailable) {
+      return false;
+    }
     if (this.hasEntryConsent) {
       return true;
     }
@@ -713,6 +727,7 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
           if (requestToken !== this.landingContentRequestToken) {
             return;
           }
+          this.entryNetworkUnavailable = false;
           this.landingIdeaCards = displayState.ideaCards;
           if (!this.locationEligibilityResolvedFromCoordinates
             && (displayState.state.loginAvailability || this.landingLoginAvailability === null)) {
@@ -723,6 +738,12 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
         });
       } catch {
         this.ngZone.run(() => {
+          if (requestToken !== this.landingContentRequestToken) {
+            return;
+          }
+          this.entryNetworkUnavailable = true;
+          this.landingIdeaCards = [];
+          this.syncLandingLoginAvailability(null, 'reset');
           this.finishEntryPrivacyLoad(requestToken);
         });
       }
@@ -744,7 +765,7 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
       return;
     }
     this.endEntryPrivacyLoadingWindow();
-    if (!this.entryConsentViewOnly) {
+    if (!this.entryNetworkUnavailable && !this.entryConsentViewOnly) {
       this.showEntryConsentPopup = this.shouldPromptEntryConsent();
     }
     this.changeDetectorRef.markForCheck();
@@ -869,9 +890,9 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
 
   private syncEntryAuthGateState(): void {
     const loginEnabled = this.authMode === 'firebase';
-    this.entryAuthUnavailable = loginEnabled && this.isLoginBlockedByLandingBundle();
+    this.entryAuthUnavailable = !this.entryNetworkUnavailable && loginEnabled && this.isLoginBlockedByLandingBundle();
     this.entryAuthUnavailableLabel = 'Unavailable in your country';
-    this.entryAuthLocationRequired = loginEnabled && this.isLoginLocationRequiredByLandingBundle();
+    this.entryAuthLocationRequired = !this.entryNetworkUnavailable && loginEnabled && this.isLoginLocationRequiredByLandingBundle();
     this.deferEntryAuthLocationRequiredLabel(this.grantedLocationEligibilityPromise ? 'Checking location' : 'Allow location');
     this.resolveGrantedLocationAccessIfNeeded();
     this.changeDetectorRef.markForCheck();
@@ -885,11 +906,12 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
   }
 
   private isLoginLocationRequiredByLandingBundle(): boolean {
-    return this.landingLoginAvailability === null
+    return !this.entryNetworkUnavailable
+      && (this.landingLoginAvailability === null
       || (
         this.landingLoginAvailability.securityGateEnabled === true
         && this.landingLoginAvailability.locationRequired === true
-      );
+      ));
   }
 
   private openBundledLoginUnavailableInfo(): void {

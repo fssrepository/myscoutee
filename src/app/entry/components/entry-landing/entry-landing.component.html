@@ -23,9 +23,10 @@
           type="button"
           class="entry-auth-btn"
           [class.entry-auth-btn-avatar]="entryAuthButtonShowsAvatar"
+          [class.entry-auth-btn-network]="networkUnavailable"
           [class.entry-auth-btn-unavailable]="authUnavailable"
           [class.entry-auth-btn-location]="authLocationRequired"
-          [disabled]="authUnavailable"
+          [disabled]="networkUnavailable || authUnavailable"
           matRipple
           [matRippleColor]="'rgba(255, 255, 255, 0.24)'"
           (click)="requestHeaderAuth()"
@@ -54,12 +55,14 @@
             <button
               type="button"
               class="entry-cta entry-cta-primary"
+              [class.entry-cta-network]="networkUnavailable"
+              [disabled]="networkUnavailable"
               matRipple
               [matRippleColor]="'rgba(112, 59, 242, 0.14)'"
               (click)="requestDemo()"
               >
-              <mat-icon>rocket_launch</mat-icon>
-              <span>Start exploring</span>
+              <mat-icon>{{ entryPrimaryCtaIcon }}</mat-icon>
+              <span>{{ entryPrimaryCtaLabel }}</span>
             </button>
             <a class="entry-cta entry-cta-ghost" href="#articles" (click)="scrollEntryTo('articles', $event)">
               <mat-icon>timeline</mat-icon>
@@ -253,7 +256,12 @@
 
         <section class="entry-footer-links">
           <h3>Explore</h3>
-          <a href="#" (click)="requestConsent($event)">Data privacy</a>
+          <a
+            href="#"
+            [class.entry-footer-link-disabled]="networkUnavailable"
+            [attr.aria-disabled]="networkUnavailable ? 'true' : null"
+            (click)="requestConsent($event)"
+            >Data privacy</a>
         </section>
 
         <section class="entry-footer-contact">
