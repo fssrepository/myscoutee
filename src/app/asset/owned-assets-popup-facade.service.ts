@@ -166,14 +166,6 @@ export class OwnedAssetsPopupFacadeService {
     return this.pendingAssetDeleteErrorValue;
   }
 
-  assetDeleteRingPerimeter(): number {
-    return 100;
-  }
-
-  assetFormSaveRingPerimeter(): number {
-    return 100;
-  }
-
   async applyAssetRequestAction(
     assetId: string,
     requestId: string,

@@ -140,25 +140,7 @@
             }
             @if (overlayProgressRing(mediaEnd)) {
               <span class="ui-info-card__overlay-action-ring" aria-hidden="true">
-                <svg viewBox="0 0 104 48" preserveAspectRatio="none" class="ui-info-card__overlay-action-ring-svg">
-                  <defs>
-                    <linearGradient id="ui-info-card-overlay-ring-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%" stop-color="rgb(235, 147, 33)"></stop>
-                      <stop offset="100%" stop-color="rgb(247, 190, 52)"></stop>
-                    </linearGradient>
-                  </defs>
-                  <path
-                    class="ui-info-card__overlay-action-ring-track"
-                    d="M52 2 H88 A14 14 0 0 1 102 16 V32 A14 14 0 0 1 88 46 H16 A14 14 0 0 1 2 32 V16 A14 14 0 0 1 16 2 H52"
-                  ></path>
-                  <path
-                    class="ui-info-card__overlay-action-ring-progress"
-                    d="M52 2 H88 A14 14 0 0 1 102 16 V32 A14 14 0 0 1 88 46 H16 A14 14 0 0 1 2 32 V16 A14 14 0 0 1 16 2 H52"
-                    pathLength="100"
-                    stroke-dasharray="100"
-                    stroke-dashoffset="100"
-                  ></path>
-                </svg>
+                <app-progress-indicator kind="action-ring" shape="button" state="loading" [durationMs]="1500"></app-progress-indicator>
               </span>
             }
           </button>

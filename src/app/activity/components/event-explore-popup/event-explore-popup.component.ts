@@ -33,6 +33,7 @@ import {
 import { ActivitiesPopupStateService } from '../../services/activities-popup-state.service';
 import {
   InfoCardComponent,
+  ProgressIndicatorComponent,
   type PageResult,
   SmartListComponent,
   TopicPickerPopupComponent,
@@ -63,6 +64,7 @@ type CheckoutDraftEntry = {
     CommonModule,
     MatIconModule,
     InfoCardComponent,
+    ProgressIndicatorComponent,
     SmartListComponent,
     TopicPickerPopupComponent
   ],
@@ -657,14 +659,6 @@ export class EventExplorePopupComponent {
 
   protected isCheckoutDraftClearing(sourceId: string): boolean {
     return this.checkoutDraftReleaseSourceIds.has(sourceId.trim());
-  }
-
-  protected checkoutDraftClearRingGradientId(sourceId: string): string {
-    const normalizedSourceId = sourceId.trim();
-    if (!normalizedSourceId) {
-      return 'event-explore-basket-clear-gradient';
-    }
-    return `event-explore-basket-clear-gradient-${normalizedSourceId.replace(/[^a-zA-Z0-9_-]/g, '-')}`;
   }
 
   protected toggleCheckoutDraftBasket(event?: Event): void {

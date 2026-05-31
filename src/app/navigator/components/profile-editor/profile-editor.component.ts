@@ -19,7 +19,7 @@ import type * as AppTypes from '../../../shared/core/base/models';
 import { AppUtils } from '../../../shared/app-utils';
 import { AppContext, ProfileOnboardingService, UserExperiencesService, UsersService, type UserDto } from '../../../shared/core';
 import { I18nPipe, I18nService } from '../../../shared/i18n';
-import { CounterBadgePipe } from '../../../shared/ui';
+import { CounterBadgePipe, ProgressIndicatorComponent } from '../../../shared/ui';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
 import { NavigatorService } from '../../navigator.service';
 import { AdminProfileService } from '../../../admin/services/admin-profile.service';
@@ -63,6 +63,7 @@ interface ExperienceImportDialogState {
     MatInputModule,
     MatNativeDateModule,
     MatSelectModule,
+    ProgressIndicatorComponent,
     I18nPipe,
     CounterBadgePipe
   ],

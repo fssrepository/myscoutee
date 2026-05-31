@@ -8,7 +8,7 @@ import { NavigatorComponent } from '../../../navigator';
 import { EntryDemoUserSelectorComponent } from '../../../entry/components/entry-demo-user-selector/entry-demo-user-selector.component';
 import { SessionService, AppPopupContext } from '../../../shared/core';
 import type { DemoBootstrapProgressStage } from '../../../shared/core/demo';
-import { ConfirmationDialogComponent } from '../../../shared/ui/components/confirmation-dialog/confirmation-dialog.component';
+import { ConfirmationDialogComponent, ProgressIndicatorComponent } from '../../../shared/ui/components';
 import { NavigatorService } from '../../../navigator/navigator.service';
 import { AdminShellService } from '../../services/admin-shell.service';
 import { AdminWorkspaceService } from '../../services/admin-workspace.service';
@@ -23,7 +23,8 @@ import type { AdminBootstrapProgressState } from '../../models/admin-shell.model
     MatRippleModule,
     NavigatorComponent,
     EntryDemoUserSelectorComponent,
-    ConfirmationDialogComponent
+    ConfirmationDialogComponent,
+    ProgressIndicatorComponent
   ],
   templateUrl: './admin-page.component.html',
   styleUrl: './admin-page.component.scss'

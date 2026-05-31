@@ -18,16 +18,7 @@
       <button type="button" class="admin-restore-avatar-button" aria-label="Restoring admin workspace" aria-busy="true" disabled>
         @if (restoreAvatarGateActive()) {
           <span class="admin-restore-button-ring" aria-hidden="true">
-            <svg viewBox="0 0 58 58" class="admin-restore-button-ring-svg">
-              <defs>
-                <linearGradient id="admin-restore-load-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stop-color="rgb(235, 147, 33)"></stop>
-                  <stop offset="100%" stop-color="rgb(247, 190, 52)"></stop>
-                </linearGradient>
-              </defs>
-              <circle class="admin-restore-button-ring-track" cx="29" cy="29" r="26"></circle>
-              <circle class="admin-restore-button-ring-progress" cx="29" cy="29" r="26"></circle>
-            </svg>
+            <app-progress-indicator kind="action-ring" shape="circle" state="loading"></app-progress-indicator>
           </span>
         }
         <span class="admin-restore-button-avatar is-placeholder">

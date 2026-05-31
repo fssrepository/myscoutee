@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, HostBinding, Input, inject } from '
 
 import { AppContext } from '../../../core';
 
-export type ProgressIndicatorKind = 'bar' | 'load-ring' | 'action-ring';
+export type ProgressIndicatorKind = 'bar' | 'load-ring' | 'action-ring' | 'spinner-ring';
 export type ProgressIndicatorPlacement = 'edge' | 'inline';
 export type ProgressIndicatorShape = 'circle' | 'button';
 export type ProgressIndicatorSize = 'sm' | 'md';
@@ -61,6 +61,11 @@ export class ProgressIndicatorComponent {
     return this.kind === 'action-ring';
   }
 
+  @HostBinding('class.app-progress-indicator-host--kind-spinner-ring')
+  protected get hostSpinnerRingKindClass(): boolean {
+    return this.kind === 'spinner-ring';
+  }
+
   @HostBinding('class.app-progress-indicator-host--placement-edge')
   protected get hostEdgePlacementClass(): boolean {
     return this.placement === 'edge';
@@ -114,6 +119,10 @@ export class ProgressIndicatorComponent {
 
   protected get isActionRingKind(): boolean {
     return this.kind === 'action-ring';
+  }
+
+  protected get isSpinnerRingKind(): boolean {
+    return this.kind === 'spinner-ring';
   }
 
   protected get isActionButtonShape(): boolean {

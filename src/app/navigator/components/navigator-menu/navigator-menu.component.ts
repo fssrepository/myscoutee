@@ -22,7 +22,7 @@ import {
   resolveTraitIcon,
   resolveTraitToneClass
 } from '../../navigator-presenters';
-import { CounterBadgePipe } from '../../../shared/ui';
+import { CounterBadgePipe, ProgressIndicatorComponent } from '../../../shared/ui';
 import { I18nPipe } from '../../../shared/i18n';
 import { NavigatorService } from '../../navigator.service';
 import { NavigatorSettingsMenuComponent } from '../navigator-settings-menu/navigator-settings-menu.component';
@@ -41,13 +41,11 @@ interface NavigatorMenuUser extends Omit<UserDto, 'activities'> {
 @Component({
   selector: 'app-navigator-menu',
   standalone: true,
-  imports: [CommonModule, MatIconModule, MatRippleModule, NavigatorSettingsMenuComponent, CounterBadgePipe, I18nPipe],
+  imports: [CommonModule, MatIconModule, MatRippleModule, NavigatorSettingsMenuComponent, ProgressIndicatorComponent, CounterBadgePipe, I18nPipe],
   templateUrl: './navigator-menu.component.html',
   styleUrl: './navigator-menu.component.scss'
 })
 export class NavigatorMenuComponent {
-  private static readonly PROFILE_SAVE_RING_RADIUS = 51;
-  private static readonly PROFILE_SAVE_RING_CIRCUMFERENCE = 2 * Math.PI * NavigatorMenuComponent.PROFILE_SAVE_RING_RADIUS;
   private readonly appCtx = inject(AppContext);
   private readonly popupCtx = inject(AppPopupContext);
   private readonly explanationGuide = inject(ExplanationGuideService);
@@ -60,7 +58,6 @@ export class NavigatorMenuComponent {
   protected readonly activeUser = this.appCtx.activeUserProfile;
   protected readonly explanationGuideEnabled = this.explanationGuide.enabled;
   protected readonly isOnline = this.appCtx.isOnline;
-  protected readonly profileSaveRingCircumference = NavigatorMenuComponent.PROFILE_SAVE_RING_CIRCUMFERENCE;
   protected readonly isProfileSaving = computed(() => this.profileSaveLoadState().status === 'loading');
   protected readonly isLoggingOut = computed(() => this.userLogoutLoadState().status === 'loading');
   protected readonly isAvatarRingLoading = computed(() => this.isProfileSaving() || this.isLoggingOut());

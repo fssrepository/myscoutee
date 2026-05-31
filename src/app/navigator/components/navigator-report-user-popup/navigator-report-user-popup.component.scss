@@ -181,41 +181,6 @@
   pointer-events: none;
 }
 
-.support-submit-btn-ring-svg {
-  width: 100%;
-  height: 100%;
-  display: block;
-  filter: drop-shadow(0 8px 20px rgba(13, 24, 44, 0.14));
-}
-
-.support-submit-btn-ring-track,
-.support-submit-btn-ring-progress {
-  fill: none;
-  stroke-width: 4;
-}
-
-.support-submit-btn-ring-track {
-  stroke: rgba(46, 114, 184, 0.12);
-}
-
-.support-submit-btn-ring-progress {
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.support-submit-btn-ring-progress.is-loading {
-  stroke: url(#navigator-report-submit-gradient);
-  animation: support-submit-ring-progress 3s linear forwards;
-}
-
-.support-submit-btn-ring-progress.is-error {
-  stroke: url(#navigator-report-submit-gradient-error);
-}
-
-.support-submit-btn-ring-progress.is-success {
-  stroke: url(#navigator-report-submit-gradient-success);
-}
-
 .support-submit-btn-shell.is-loading .support-submit-btn,
 .support-submit-btn-shell.is-error .support-submit-btn,
 .support-submit-btn-shell.is-success .support-submit-btn {
@@ -231,14 +196,4 @@
   box-shadow: none;
   opacity: 1;
   transform: none;
-}
-
-@keyframes support-submit-ring-progress {
-  from {
-    stroke-dashoffset: 100;
-  }
-
-  to {
-    stroke-dashoffset: 0;
-  }
 }

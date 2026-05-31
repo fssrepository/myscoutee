@@ -35,6 +35,19 @@
   z-index: 2;
 }
 
+:host(.app-progress-indicator-host--kind-spinner-ring) {
+  display: inline-flex;
+  width: 46px;
+  height: 46px;
+  align-items: center;
+  justify-content: center;
+}
+
+:host(.app-progress-indicator-host--kind-spinner-ring.app-progress-indicator-host--size-sm) {
+  width: 34px;
+  height: 34px;
+}
+
 .app-progress-indicator {
   display: block;
 }
@@ -141,6 +154,34 @@
   transition: stroke-dashoffset 120ms linear;
 }
 
+.app-progress-indicator--spinner-ring,
+.app-progress-indicator__spinner-ring-svg {
+  width: 100%;
+  height: 100%;
+}
+
+.app-progress-indicator__spinner-ring-svg {
+  display: block;
+  filter: drop-shadow(0 8px 18px rgba(31, 61, 96, 0.18));
+  animation: app-progress-indicator-spinner-ring-spin 1.05s linear infinite;
+}
+
+.app-progress-indicator__spinner-ring-track,
+.app-progress-indicator__spinner-ring-progress {
+  fill: none;
+  stroke-width: 4;
+}
+
+.app-progress-indicator__spinner-ring-track {
+  stroke: rgba(47, 86, 139, 0.16);
+}
+
+.app-progress-indicator__spinner-ring-progress {
+  stroke: #2f75c2;
+  stroke-linecap: round;
+  stroke-dasharray: 70 38;
+}
+
 .app-progress-indicator--action-ring,
 .app-progress-indicator__action-ring-svg {
   width: 100%;
@@ -193,5 +234,11 @@
 
   to {
     stroke-dashoffset: 0;
+  }
+}
+
+@keyframes app-progress-indicator-spinner-ring-spin {
+  to {
+    transform: rotate(360deg);
   }
 }

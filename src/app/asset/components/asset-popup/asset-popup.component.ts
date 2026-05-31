@@ -20,6 +20,7 @@ import {
   BasketComponent,
   CounterBadgePipe,
   InfoCardComponent,
+  ProgressIndicatorComponent,
   SmartListComponent,
   type BasketChip,
   type InfoCardMenuActionEvent,
@@ -60,6 +61,7 @@ interface AssetSupplyRequestRow extends SingleRowData {
     MatSelectModule,
     BasketComponent,
     InfoCardComponent,
+    ProgressIndicatorComponent,
     SmartListComponent,
     ConfirmationDialogComponent,
     CounterBadgePipe,
@@ -235,11 +237,6 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
   protected basketSaveErrorMessage(): string {
     const host = this.assetPopup.host();
     return host?.isSubEventAssetAssignPopup() ? host.subEventAssetAssignErrorMessage() : '';
-  }
-
-  protected basketSaveRingPerimeter(): number {
-    const host = this.assetPopup.host();
-    return host?.isSubEventAssetAssignPopup() ? host.subEventAssetAssignRingPerimeter() : 100;
   }
 
   protected ownedAssetInfoCard(

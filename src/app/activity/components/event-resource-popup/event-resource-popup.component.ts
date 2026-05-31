@@ -15,6 +15,7 @@ import { of } from 'rxjs';
 import {
   CounterBadgePipe,
   InfoCardComponent,
+  ProgressIndicatorComponent,
   SmartListComponent,
   type InfoCardData,
   type InfoCardMenuActionEvent,
@@ -211,7 +212,6 @@ export interface EventResourcePopupHost {
   confirmAssetExploreBorrow(event?: Event): void;
   resumeAssetExploreBorrowDraft(cardId: string, event?: Event): void;
   clearAssetExploreBorrowDraft(cardId: string, event?: Event): void;
-  assetExploreBorrowRingPerimeter(): number;
   trackByCard(index: number, card: AppTypes.SubEventResourceCard): string;
   canOpenMap(card: AppTypes.SubEventResourceCard): boolean;
   openMap(card: AppTypes.SubEventResourceCard, event?: Event): void;
@@ -235,7 +235,6 @@ export interface EventResourcePopupHost {
   toggleJoinPolicy(policyId: string): void;
   canSubmitJoin(): boolean;
   confirmJoin(event?: Event): void;
-  joinConfirmRingPerimeter(): number;
   canEditCapacity(card: AppTypes.SubEventResourceCard): boolean;
   openCapacityEditor(card: AppTypes.SubEventResourceCard, event: Event): void;
   canEditRoute(card: AppTypes.SubEventResourceCard): boolean;
@@ -261,14 +260,12 @@ export interface EventResourcePopupHost {
   removeRouteStop(index: number): void;
   canSubmitRouteEditor(): boolean;
   saveRouteEditor(event?: Event): void;
-  editorSaveRingPerimeter(): number;
   isCapacitySavePending(): boolean;
   capacitySaveErrorMessage(): string;
   isRouteSavePending(): boolean;
   routeSaveErrorMessage(): string;
   cancelDeleteCard(): void;
   deleteCardLabel(): string;
-  deleteCardConfirmRingPerimeter(): number;
   isDeleteCardPending(): boolean;
   deleteCardErrorMessage(): string;
   confirmDeleteCard(): void;
@@ -291,6 +288,7 @@ export interface EventResourcePopupHost {
     MatTimepickerModule,
     SmartListComponent,
     InfoCardComponent,
+    ProgressIndicatorComponent,
     CounterBadgePipe
   ],
   templateUrl: './event-resource-popup.component.html',

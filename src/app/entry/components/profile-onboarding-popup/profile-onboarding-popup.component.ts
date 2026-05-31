@@ -13,6 +13,7 @@ import { AppCalendarDateAdapter, AppCalendarDateFormats } from '../../../shared/
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { AppUtils } from '../../../shared/app-utils';
 import { I18nPipe } from '../../../shared/i18n';
+import { ProgressIndicatorComponent } from '../../../shared/ui';
 import {
   ProfileOnboardingService,
   UserExperiencesService,
@@ -50,6 +51,7 @@ type ExperienceFormDraft = Omit<ExperienceEntry, 'id'> & { current: boolean };
     MatInputModule,
     MatNativeDateModule,
     MatSelectModule,
+    ProgressIndicatorComponent,
     I18nPipe
   ],
   providers: [
@@ -111,8 +113,6 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
   protected readonly beliefsValuesOptionGroups = APP_STATIC_DATA.beliefsValuesOptionGroups;
   protected readonly interestOptionGroups = APP_STATIC_DATA.interestOptionGroups;
   protected readonly experienceTypeOptions = APP_STATIC_DATA.experienceTypeOptions;
-  protected readonly saveRingPerimeter = 100;
-
   protected draft: ProfileOnboardingDraft | null = null;
   protected assessment: ProfileOnboardingAssessment | null = null;
   protected birthdayDate: Date | null = null;

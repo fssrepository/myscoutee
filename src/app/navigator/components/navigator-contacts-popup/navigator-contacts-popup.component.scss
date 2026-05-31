@@ -870,35 +870,3 @@
   pointer-events: none;
   z-index: 10;
 }
-
-.navigator-contact-save-ring-svg {
-  width: 100%;
-  height: 100%;
-  display: block;
-  overflow: visible;
-}
-
-.navigator-contact-save-ring-track {
-  stroke: rgba(32, 58, 94, 0.08);
-  stroke-width: 8px;
-}
-
-.navigator-contact-save-ring-progress {
-  stroke: url(#contact-save-ring-gradient);
-  stroke-width: 8px;
-  stroke-linecap: round;
-  stroke-dashoffset: 100;
-}
-
-.subevent-leaderboard-save-btn.is-loading .navigator-contact-save-ring-progress {
-  animation: navigator-contact-save-ring-grow 3000ms linear forwards;
-}
-
-@keyframes navigator-contact-save-ring-grow {
-  from {
-    stroke-dashoffset: 100;
-  }
-  to {
-    stroke-dashoffset: 0;
-  }
-}

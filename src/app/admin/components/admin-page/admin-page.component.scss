@@ -180,32 +180,6 @@
   pointer-events: none;
 }
 
-.admin-restore-button-ring-svg {
-  width: 58px;
-  height: 58px;
-  display: block;
-  filter: drop-shadow(0 10px 26px rgba(13, 24, 44, 0.2));
-  transform: rotate(-90deg);
-}
-
-.admin-restore-button-ring-track,
-.admin-restore-button-ring-progress {
-  fill: none;
-  stroke-width: 4;
-}
-
-.admin-restore-button-ring-track {
-  stroke: rgba(46, 114, 184, 0.12);
-}
-
-.admin-restore-button-ring-progress {
-  stroke: url(#admin-restore-load-gradient);
-  stroke-linecap: round;
-  stroke-dasharray: 163.3628;
-  stroke-dashoffset: 163.3628;
-  animation: admin-restore-button-ring-progress 3s linear forwards;
-}
-
 .admin-restore-button-avatar {
   position: relative;
   z-index: 1;
@@ -240,15 +214,6 @@
   height: 22px;
   font-size: 22px;
   line-height: 22px;
-}
-
-@keyframes admin-restore-button-ring-progress {
-  from {
-    stroke-dashoffset: 163.3628;
-  }
-  to {
-    stroke-dashoffset: 0;
-  }
 }
 
 @media (max-width: 760px) {

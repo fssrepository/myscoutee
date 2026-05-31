@@ -3,12 +3,13 @@ import { Component, OnDestroy, computed, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { AppContext, USER_FEEDBACK_SUBMIT_CONTEXT_KEY, UsersService } from '../../../shared/core';
+import { ProgressIndicatorComponent } from '../../../shared/ui';
 import { NavigatorService } from '../../navigator.service';
 
 @Component({
   selector: 'app-navigator-feedback-popup',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, ProgressIndicatorComponent],
   templateUrl: './navigator-feedback-popup.component.html',
   styleUrl: './navigator-feedback-popup.component.scss'
 })
@@ -22,7 +23,6 @@ export class NavigatorFeedbackPopupComponent implements OnDestroy {
 
   protected readonly feedbackCategories = APP_STATIC_DATA.feedbackCategories;
   protected readonly feedbackDetailsMinLength = 8;
-  protected readonly submitRingPerimeter = 100;
   protected readonly isSubmitting = computed(() => this.submitLoadState().status === 'loading');
   protected readonly hasSubmitError = computed(() => {
     const status = this.submitLoadState().status;

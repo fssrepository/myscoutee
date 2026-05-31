@@ -29,7 +29,7 @@ import {
 } from '../../../shared/core';
 import { HttpMediaService } from '../../../shared/core/http';
 import type { DemoEventRecord } from '../../../shared/core/demo/models/events.model';
-import { CounterBadgePipe, PricingEditorComponent, TopicPickerPopupComponent } from '../../../shared/ui';
+import { CounterBadgePipe, PricingEditorComponent, ProgressIndicatorComponent, TopicPickerPopupComponent } from '../../../shared/ui';
 import { environment } from '../../../../environments/environment';
 import { EventSubeventsPopupComponent, EventSubeventsItem } from '../event-subevents-popup/event-subevents-popup.component';
 
@@ -51,6 +51,7 @@ import { EventSubeventsPopupComponent, EventSubeventsItem } from '../event-subev
     TopicPickerPopupComponent,
     EventSubeventsPopupComponent,
     PricingEditorComponent,
+    ProgressIndicatorComponent,
     CounterBadgePipe
   ],
   templateUrl: './event-editor-popup.component.html',
@@ -264,7 +265,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   showTopicPicker = false;
   showMobileFrequencyPicker = false;
   isSavePending = false;
-  readonly saveRingPerimeter = 100;
   workingPolicies: AppTypes.EventPolicyItem[] = [];
   workingPolicyDraft: AppTypes.EventPolicyItem = this.createEmptyPolicyDraft();
   editingPolicyDraftIndex: number | null = null;

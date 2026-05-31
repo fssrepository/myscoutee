@@ -1679,10 +1679,6 @@ export class EventSubeventsPopupComponent implements OnChanges {
     return `Delete ${target.label}?`;
   }
 
-  protected sensitiveActionRingPerimeter(): number {
-    return 100;
-  }
-
   protected trackByStageKey(_: number, stage: EventSubeventsStageCard): string {
     return stage.key;
   }

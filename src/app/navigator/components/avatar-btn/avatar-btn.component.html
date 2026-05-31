@@ -18,29 +18,12 @@
           >
           @if (showLoadRing()) {
             <span class="user-selector-load-ring" aria-hidden="true">
-              <svg viewBox="0 0 58 58" class="user-selector-load-ring-svg">
-                <defs>
-                  <linearGradient id="navigator-load-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stop-color="rgb(235, 147, 33)"></stop>
-                    <stop offset="100%" stop-color="rgb(247, 190, 52)"></stop>
-                  </linearGradient>
-                  <linearGradient id="navigator-load-gradient-overdue" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stop-color="rgb(213, 54, 68)"></stop>
-                    <stop offset="100%" stop-color="rgb(196, 29, 42)"></stop>
-                  </linearGradient>
-                </defs>
-                <circle class="user-selector-load-ring-track" cx="29" cy="29" r="26"></circle>
-                <circle
-                  class="user-selector-load-ring-progress"
-                  [class.is-loading]="isLoading() && !hasLoadError()"
-                  [class.is-overdue]="hasLoadError()"
-                  cx="29"
-                  cy="29"
-                  r="26"
-                  [attr.stroke-dasharray]="ringCircumference"
-                  [attr.stroke-dashoffset]="hasLoadError() ? 0 : ringDashOffset()"
-                ></circle>
-              </svg>
+              <app-progress-indicator
+                kind="action-ring"
+                shape="circle"
+                [state]="hasLoadError() ? 'error' : 'loading'"
+                [durationMs]="3000"
+              ></app-progress-indicator>
             </span>
           }
           <span

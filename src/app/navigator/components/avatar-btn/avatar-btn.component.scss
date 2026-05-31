@@ -88,36 +88,6 @@
   pointer-events: none;
 }
 
-.user-selector-load-ring-svg {
-  width: 58px;
-  height: 58px;
-  display: block;
-  filter: drop-shadow(0 10px 26px rgba(13, 24, 44, 0.2));
-  transform: rotate(-90deg);
-}
-
-.user-selector-load-ring-track,
-.user-selector-load-ring-progress {
-  fill: none;
-  stroke-width: 4;
-}
-
-.user-selector-load-ring-track {
-  stroke: rgba(46, 114, 184, 0.12);
-}
-
-.user-selector-load-ring-progress {
-  stroke-linecap: round;
-}
-
-.user-selector-load-ring-progress.is-loading {
-  stroke: url(#navigator-load-gradient);
-}
-
-.user-selector-load-ring-progress.is-overdue {
-  stroke: url(#navigator-load-gradient-overdue);
-}
-
 .user-initial {
   position: relative;
   z-index: 1;
@@ -183,16 +153,6 @@
 
 .user-color-man {
   background: linear-gradient(145deg, #3572a4, #194364);
-}
-
-@keyframes navigator-load-ring-progress {
-  from {
-    stroke-dashoffset: 163.36281798666926;
-  }
-
-  to {
-    stroke-dashoffset: 0;
-  }
 }
 
 @media (max-width: 760px) {
