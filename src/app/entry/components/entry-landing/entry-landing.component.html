@@ -1,13 +1,23 @@
 <section class="entry-shell">
   <div class="entry-shell-panel">
     <header class="entry-shell-header">
-      <a class="entry-brand" aria-label="MyScoutee landing top">
+      <div class="entry-brand" [attr.aria-label]="'landing.top' | i18n: 'MyScoutee landing top'">
         <img class="entry-brand-mark" src="assets/logo/heart.webp" alt="MyScoutee logo" />
         <span class="entry-brand-copy">
           <span class="entry-brand-text">yScoutee</span>
-          <span class="entry-preview-badge" data-i18n-ignore translate="no" aria-label="Preview build">PREVIEW</span>
+          <button
+            type="button"
+            class="entry-preview-badge"
+            matRipple
+            [matRippleColor]="'rgba(133, 93, 17, 0.14)'"
+            [attr.aria-label]="'landing.preview.open.guide' | i18n: 'Open preview guide'"
+            (click)="openPreviewGuide($event)"
+            >
+            <span>{{ 'landing.preview.badge' | i18n: 'Preview' }}</span>
+            <span class="entry-preview-badge-chevron" aria-hidden="true">&gt;</span>
+          </button>
         </span>
-      </a>
+      </div>
       <div class="entry-header-actions">
         <button
           type="button"
@@ -274,6 +284,40 @@
   </div>
   <span class="entry-version-label">{{ appVersionLabel }}</span>
 </section>
+
+@if (previewGuideOpen) {
+  <section class="entry-preview-guide-popup" role="dialog" aria-modal="true" [attr.aria-label]="'landing.preview.guide.title' | i18n: 'Preview version guide'">
+    <div class="entry-preview-guide-backdrop" (click)="closePreviewGuide()"></div>
+    <article class="entry-preview-guide-panel">
+      <header class="entry-preview-guide-header">
+        <span class="entry-preview-guide-pill">
+          <span>{{ 'landing.preview.badge' | i18n: 'Preview' }}</span>
+        </span>
+        <button type="button" class="entry-ideas-popup-close" (click)="closePreviewGuide()" [attr.aria-label]="'landing.preview.close.guide' | i18n: 'Close preview guide'">
+          <mat-icon>close</mat-icon>
+        </button>
+      </header>
+      <div class="entry-preview-guide-body">
+        <h2>{{ 'landing.preview.guide.title' | i18n: 'Preview version guide' }}</h2>
+        <p>{{ 'landing.preview.guide.intro' | i18n: 'MyScoutee is currently a test version. Use it with your own responsibility while features, data, and availability are still being improved.' }}</p>
+        <ol>
+          <li>{{ 'landing.preview.guide.step.1' | i18n: 'If something breaks, open Report Bugs and include what you expected, what happened, and the steps to repeat it.' }}</li>
+          <li>{{ 'landing.preview.guide.step.2' | i18n: 'Add your device, browser, and a screenshot when it helps. Do not include passwords, payment data, or private codes.' }}</li>
+          <li>{{ 'landing.preview.guide.step.3' | i18n: 'For account, safety, or privacy problems, use the in-app report and feedback tools after login so the team gets the right context.' }}</li>
+        </ol>
+        <a
+          class="entry-preview-guide-report-btn"
+          href="https://github.com/fssrepository/myscoutee/issues"
+          target="_blank"
+          rel="noopener noreferrer"
+          >
+          <mat-icon>bug_report</mat-icon>
+          <span>{{ 'landing.preview.guide.report.button' | i18n: 'Report Bugs' }}</span>
+        </a>
+      </div>
+    </article>
+  </section>
+}
 
 @if (ideasPopupOpen) {
   <section class="entry-ideas-popup" role="dialog" aria-modal="true" aria-label="MyScoutee articles">

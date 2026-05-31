@@ -172,9 +172,10 @@ export class NavigatorMenuComponent {
 
   protected onShareProfile(event: MouseEvent): void {
     event.stopPropagation();
-    const url = window.location.origin;
+    const baseHref = document.querySelector('base')?.getAttribute('href') ?? '/';
+    const url = new URL(baseHref, window.location.origin).toString();
     const title = 'MyScoutee';
-    const text = 'Please subscribe for the first priority based dating app, MyScoutee!';
+    const text = 'Connect with people through shared activities and experiences.';
 
     if (navigator.share) {
       void navigator.share({ title, text, url });

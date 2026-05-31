@@ -104,6 +104,7 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
   protected activeHowSlideIndex = 0;
   protected activeIdeaCarouselPage = 0;
   protected ideaCarouselCardsPerPage = 4;
+  protected previewGuideOpen = false;
   protected ideasPopupOpen = false;
   protected ideaArticlePopupOpen = false;
   protected selectedIdeaId = '';
@@ -186,12 +187,16 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
 
   @HostListener('window:keydown.escape', ['$event'])
   protected onEscape(event: Event): void {
-    if (!this.ideasPopupOpen && !this.ideaArticlePopupOpen) {
+    if (!this.previewGuideOpen && !this.ideasPopupOpen && !this.ideaArticlePopupOpen) {
       return;
     }
     event.preventDefault();
     if (this.ideaArticlePopupOpen) {
       this.closeIdeaArticlePopup();
+      return;
+    }
+    if (this.previewGuideOpen) {
+      this.closePreviewGuide();
       return;
     }
     this.closeIdeasPopup();
@@ -399,6 +404,18 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
   protected requestConsent(event?: Event): void {
     event?.preventDefault();
     this.consentRequested.emit();
+  }
+
+  protected openPreviewGuide(event?: Event): void {
+    event?.preventDefault();
+    event?.stopPropagation();
+    this.previewGuideOpen = true;
+    this.syncLandingPopupScrollLock();
+  }
+
+  protected closePreviewGuide(): void {
+    this.previewGuideOpen = false;
+    this.syncLandingPopupScrollLock();
   }
 
   protected featuredIdeaCards(): IdeaInfoCard[] {
@@ -935,7 +952,7 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
   }
 
   private syncLandingPopupScrollLock(): void {
-    const shouldLock = this.ideasPopupOpen || this.ideaArticlePopupOpen;
+    const shouldLock = this.previewGuideOpen || this.ideasPopupOpen || this.ideaArticlePopupOpen;
     if (shouldLock && !this.landingPopupScrollLocked) {
       this.previousBodyOverflow = this.documentRef.body.style.overflow;
       this.documentRef.body.style.overflow = 'hidden';

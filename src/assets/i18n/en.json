@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.05.22.en.1",
+  "version": "2026.05.31.en.1",
   "messages": {
     "about": "About",
     "accommodation": "Accommodation",
@@ -1054,6 +1054,15 @@
     "syncing.demo.indexeddb": "Syncing demo IndexedDB",
     "fresh.article": "Fresh article",
     "fresh.myscoutee.articles.will.show.here": "Fresh MyScoutee articles will show here.",
+    "landing.preview.badge": "Preview",
+    "landing.preview.open.guide": "Open preview guide",
+    "landing.preview.close.guide": "Close preview guide",
+    "landing.preview.guide.title": "Preview version guide",
+    "landing.preview.guide.intro": "MyScoutee is currently a test version. Use it with your own responsibility while features, data, and availability are still being improved.",
+    "landing.preview.guide.step.1": "If something breaks, open Report Bugs and include what you expected, what happened, and the steps to repeat it.",
+    "landing.preview.guide.step.2": "Add your device, browser, and a screenshot when it helps. Do not include passwords, payment data, or private codes.",
+    "landing.preview.guide.step.3": "For account, safety, or privacy problems, use the in-app report and feedback tools after login so the team gets the right context.",
+    "landing.preview.guide.report.button": "Report Bugs",
     "articles": "Articles",
     "close.articles": "Close articles",
     "footer.connect": "Let's connect",

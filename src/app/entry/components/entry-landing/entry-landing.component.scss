@@ -46,7 +46,8 @@
   min-height: 18px;
   border: 1px solid rgba(201, 144, 39, 0.34);
   border-radius: 999px;
-  padding: 0 0.4rem;
+  padding: 0 0.28rem 0 0.42rem;
+  gap: 0.12rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -58,7 +59,19 @@
   line-height: 1;
   text-transform: uppercase;
   white-space: nowrap;
-  pointer-events: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.entry-preview-badge:focus-visible {
+  outline: 2px solid rgba(133, 93, 17, 0.42);
+  outline-offset: 2px;
+}
+
+.entry-preview-badge-chevron {
+  color: rgba(133, 93, 17, 0.78);
+  font-size: 0.62rem;
+  line-height: 1;
 }
 
 .entry-version-label {
@@ -1001,6 +1014,7 @@
   color: #3b8352;
 }
 
+.entry-preview-guide-popup,
 .entry-ideas-popup,
 .entry-idea-article-popup {
   position: fixed;
@@ -1013,10 +1027,16 @@
   box-sizing: border-box;
 }
 
+.entry-preview-guide-popup {
+  z-index: 2425;
+  align-items: center;
+}
+
 .entry-idea-article-popup {
   z-index: 2450;
 }
 
+.entry-preview-guide-backdrop,
 .entry-ideas-popup-backdrop,
 .entry-idea-article-popup-backdrop {
   position: absolute;
@@ -1026,6 +1046,104 @@
 
 .entry-idea-article-popup-backdrop {
   background: #e9edf5;
+}
+
+.entry-preview-guide-panel {
+  position: relative;
+  z-index: 1;
+  width: min(520px, calc(100vw - 1.2rem));
+  max-height: calc(100vh - 1.2rem);
+  border: 1px solid rgba(31, 56, 94, 0.14);
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.24);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.entry-preview-guide-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.68rem 0.76rem;
+  border-bottom: 1px solid rgba(23, 33, 54, 0.12);
+  background: linear-gradient(180deg, #ffffff 0%, #fff9e6 100%);
+}
+
+.entry-preview-guide-pill {
+  min-height: 24px;
+  border: 1px solid rgba(201, 144, 39, 0.34);
+  border-radius: 999px;
+  padding: 0 0.58rem;
+  display: inline-flex;
+  align-items: center;
+  background: linear-gradient(180deg, #fff8dc 0%, #ffe49b 100%);
+  color: #855d11;
+  font-size: 0.68rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.entry-preview-guide-body {
+  min-height: 0;
+  overflow: auto;
+  padding: 0.9rem 0.92rem 1rem;
+  color: #203553;
+}
+
+.entry-preview-guide-body h2 {
+  margin: 0;
+  color: #173456;
+  font-size: clamp(1.24rem, 3.2vw, 1.68rem);
+  line-height: 1.12;
+  font-weight: 950;
+}
+
+.entry-preview-guide-body p {
+  margin: 0.58rem 0 0;
+  color: rgba(31, 54, 88, 0.78);
+  font-size: 0.92rem;
+  font-weight: 800;
+  line-height: 1.44;
+}
+
+.entry-preview-guide-body ol {
+  margin: 0.8rem 0 0;
+  padding-left: 1.18rem;
+  display: grid;
+  gap: 0.54rem;
+  color: rgba(30, 48, 75, 0.86);
+  font-size: 0.88rem;
+  font-weight: 750;
+  line-height: 1.42;
+}
+
+.entry-preview-guide-report-btn {
+  width: fit-content;
+  max-width: 100%;
+  min-height: 38px;
+  margin-top: 0.9rem;
+  border-radius: 999px;
+  border: 1px solid rgba(35, 121, 136, 0.28);
+  padding: 0.18rem 0.74rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.36rem;
+  background: linear-gradient(180deg, #e8fbf8 0%, #d4f2ed 100%);
+  color: #17636d;
+  text-decoration: none;
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.entry-preview-guide-report-btn .mat-icon {
+  width: 17px;
+  height: 17px;
+  font-size: 17px;
+  line-height: 17px;
 }
 
 .entry-ideas-popup-panel {
@@ -1654,9 +1772,16 @@
   .entry-preview-badge {
     top: -0.9rem;
     right: -0.18rem;
+    max-width: min(42vw, 92px);
     min-height: 16px;
-    padding: 0 0.34rem;
+    padding: 0 0.22rem 0 0.34rem;
     font-size: 0.48rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .entry-preview-badge span:first-child {
+    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
   }
@@ -1858,11 +1983,13 @@
     height: 132px;
   }
 
+  .entry-preview-guide-popup,
   .entry-ideas-popup,
   .entry-idea-article-popup {
     padding: 0;
   }
 
+  .entry-preview-guide-panel,
   .entry-ideas-popup-panel,
   .entry-idea-article-popup-panel {
     width: 100vw;
@@ -1871,6 +1998,15 @@
     border: 0;
     border-radius: 0;
     box-shadow: none;
+  }
+
+  .entry-preview-guide-panel {
+    height: auto;
+    max-height: 100vh;
+  }
+
+  .entry-preview-guide-body {
+    padding: 0.86rem 0.84rem 1rem;
   }
 
   .entry-ideas-popup-body {
