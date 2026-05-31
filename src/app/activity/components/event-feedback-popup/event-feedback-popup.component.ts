@@ -23,6 +23,7 @@ import type * as AppTypes from '../../../shared/core/base/models';
 import type { DemoEventRecord } from '../../../shared/core/demo/models/events.model';
 import { EventFeedbackPopupStateService, type EventFeedbackPopupSource } from '../../services/event-feedback-popup-state.service';
 import { resolveCurrentRouteDelayMs } from '../../../shared/core/base/services/route-delay.service';
+import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
 
 interface EventFeedbackListFilters {
   filter: AppTypes.EventFeedbackListFilter;
@@ -76,6 +77,7 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
   private readonly activityMembersService = inject(ActivityMembersService);
   private readonly gameService = inject(GameService);
   private readonly usersService = inject(UsersService);
+  private readonly confirmationDialogService = inject(ConfirmationDialogService);
   private readonly eventRecordsRef = signal<DemoEventRecord[]>([]);
   private lastLoadedUserId = '';
   private loadRequestVersion = 0;
@@ -186,6 +188,9 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
   @ViewChild('eventFeedbackViewport')
   private eventFeedbackViewportRef?: ElementRef<HTMLDivElement>;
 
+  @ViewChild('eventFeedbackSmartList')
+  private eventFeedbackSmartList?: SmartListComponent<AppTypes.EventFeedbackEventCard, EventFeedbackListFilters>;
+
   protected readonly eventFeedbackSmartListLoadPage: SmartListLoadPage<
     AppTypes.EventFeedbackEventCard,
     EventFeedbackListFilters
@@ -241,10 +246,6 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
       this.lastLoadedUserId = '';
       this.eventRecordsLoadUserId = '';
       this.eventRecordsLoadPromise = null;
-      const activeUserId = this.appCtx.activeUserId().trim();
-      if (activeUserId) {
-        void this.loadEventRecords(activeUserId);
-      }
     });
 
     effect(() => {
@@ -393,14 +394,63 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
       return;
     }
     if (event.actionId === 'removeFeedback') {
-      this.feedback.removeEventFeedbackItem(item);
+      this.openRemoveEventFeedbackDialog(item);
       return;
     }
     if (event.actionId === 'restoreFeedback') {
-      this.feedback.restoreRemovedEventFeedbackItem(item);
+      this.openRestoreEventFeedbackDialog(item);
       return;
     }
     this.feedback.openEventFeedbackNotePopup(item);
+  }
+
+  private openRemoveEventFeedbackDialog(item: AppTypes.EventFeedbackEventCard): void {
+    this.feedback.closeEventFeedbackCardMenu();
+    this.confirmationDialogService.open({
+      title: 'Remove feedback?',
+      message: `${item.title} will be moved to Removed without feedback.`,
+      warningMessage: 'You can restore it later from the Removed filter.',
+      confirmLabel: 'Remove',
+      busyConfirmLabel: 'Removing...',
+      confirmTone: 'danger',
+      failureMessage: 'Unable to remove this feedback item.',
+      onConfirm: async () => {
+        await this.feedback.removeEventFeedbackItem(item);
+        this.removeVisibleEventFeedbackItem(item.eventId);
+      }
+    });
+  }
+
+  private openRestoreEventFeedbackDialog(item: AppTypes.EventFeedbackEventCard): void {
+    this.feedback.closeEventFeedbackCardMenu();
+    this.confirmationDialogService.open({
+      title: 'Restore feedback?',
+      message: `${item.title} will move back to Pending.`,
+      confirmLabel: 'Restore',
+      busyConfirmLabel: 'Restoring...',
+      confirmTone: 'accent',
+      failureMessage: 'Unable to restore this feedback item.',
+      onConfirm: async () => {
+        await this.feedback.restoreRemovedEventFeedbackItem(item);
+        this.removeVisibleEventFeedbackItem(item.eventId);
+      }
+    });
+  }
+
+  private removeVisibleEventFeedbackItem(eventId: string): void {
+    const smartList = this.eventFeedbackSmartList;
+    const normalizedEventId = eventId.trim();
+    if (!smartList || !normalizedEventId) {
+      return;
+    }
+    const currentItems = [...smartList.itemsSnapshot()];
+    const nextItems = currentItems.filter(item => item.eventId !== normalizedEventId);
+    if (nextItems.length === currentItems.length) {
+      return;
+    }
+    smartList.replaceVisibleItems(nextItems, {
+      total: Math.max(nextItems.length, smartList.totalItemCount() - 1)
+    });
   }
 
   protected eventFeedbackCarouselInfoCard(card: AppTypes.EventFeedbackCard): InfoCardData {
@@ -625,7 +675,10 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
       return { items: [], total: 0 };
     }
 
-    await this.loadEventRecords(userId);
+    await Promise.all([
+      this.loadEventRecords(userId),
+      this.feedback.loadEventFeedbackListState(userId)
+    ]);
 
     const items = this.feedback.eventFeedbackVisibleItems();
     return {

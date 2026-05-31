@@ -17,6 +17,7 @@ export { DemoActivityResourcesRepository } from './repositories/activity-resourc
 export { DemoChatsRepository } from './repositories/chats.repository';
 export { DemoCountryPartitionsRepository } from './repositories/country-partitions.repository';
 export { DemoEventsRepository } from './repositories/events.repository';
+export { DemoEventFeedbackRepository } from './repositories/event-feedback.repository';
 export { DemoShareTokensRepository } from './repositories/share-tokens.repository';
 export { DemoProfileExperiencesRepository } from './repositories/profile-experiences.repository';
 export { DemoUsersRatingsRepository } from './repositories/users-ratings.repository';

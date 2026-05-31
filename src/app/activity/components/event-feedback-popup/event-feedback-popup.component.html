@@ -62,6 +62,7 @@
               <div class="support-submit-success">{{ feedback.eventFeedbackListSubmitMessage() }}</div>
             }
             <app-smart-list
+              #eventFeedbackSmartList
               class="event-feedback-list-surface"
               [config]="eventFeedbackSmartListConfig"
               [loadPage]="eventFeedbackSmartListLoadPage"
