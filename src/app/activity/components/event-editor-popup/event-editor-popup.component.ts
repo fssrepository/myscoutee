@@ -1388,22 +1388,16 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.editorTarget = target;
     this.editingEventId = row.id;
     this.currentMemberSummary = this.activityMembersService.peekSummaryByOwnerId(row.id);
-    void this.refreshCurrentMemberSummary(row.id);
 
     if (!activeUserId) {
       this.eventEditorService.open('edit', fallbackSource, readOnly);
-      return;
-    }
-
-    const cachedRecord = this.eventEditorDataService.peekKnownItemById(activeUserId, row.id);
-    if (cachedRecord) {
-      this.currentRecord = cachedRecord;
-      this.openRecord(cachedRecord, readOnly, target);
+      void this.refreshCurrentMemberSummary(row.id);
       return;
     }
 
     this.isLoadingEventData = true;
     this.eventEditorService.open('edit', fallbackSource, readOnly);
+    void this.refreshCurrentMemberSummary(row.id);
 
     let isTimeout = false;
     const timeoutPromise = new Promise(resolve => setTimeout(() => {
@@ -1413,7 +1407,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
     try {
       const record = await Promise.race([
-        this.eventEditorDataService.queryKnownItemById(activeUserId, row.id),
+        this.eventEditorDataService.loadFullItemById(activeUserId, row.id),
         timeoutPromise
       ]);
 

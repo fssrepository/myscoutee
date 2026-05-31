@@ -16,10 +16,11 @@ import type {
   SubEventLeaderboardState
 } from '../../../core/base/models';
 import type {
+  DemoEventActivitiesListQueryResult,
   DemoEventActivitiesQuery,
-  DemoEventActivitiesQueryResult,
   DemoEventExploreQuery,
   DemoEventExploreQueryResult,
+  DemoEventListItem,
   DemoEventRecord,
   DemoEventScopeFilter,
   DemoRepositoryEventItemType
@@ -37,7 +38,6 @@ interface HttpEventsFilterRequest {
   anchorDate?: string;
   rangeStart?: string;
   rangeEnd?: string;
-  slim?: boolean;
 }
 
 @Injectable({
@@ -46,7 +46,6 @@ interface HttpEventsFilterRequest {
 export class HttpEventsService {
   private readonly http = inject(HttpClient);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
-  private readonly slimApiEnabled = environment.slimApiEnabled === true;
 
   async queryItemsByUser(userId: string): Promise<DemoEventRecord[]> {
     return this.getRecords('/activities/events', userId);
@@ -72,33 +71,10 @@ export class HttpEventsService {
     return this.getRecords('/activities/events/trash', userId);
   }
 
-  async queryEventItemsByFilter(
-    userId: string,
-    filter: DemoEventScopeFilter,
-    hostingPublicationFilter: 'all' | 'drafts' = 'all'
-  ): Promise<DemoEventRecord[]> {
-    const normalizedUserId = userId.trim();
-    if (!normalizedUserId) {
-      return [];
-    }
-    try {
-      const response = await this.http
-        .post<DemoEventRecord[] | null>(`${this.apiBaseUrl}/activities/events/filter`, {
-          userId: normalizedUserId,
-          filter,
-          hostingPublicationFilter
-        } satisfies HttpEventsFilterRequest)
-        .toPromise();
-      return this.cloneRecords(response);
-    } catch {
-      return [];
-    }
-  }
-
-  async queryActivitiesEventPage(
+  async queryActivitiesEventListPage(
     query: DemoEventActivitiesQuery,
     signal?: AbortSignal
-  ): Promise<DemoEventActivitiesQueryResult> {
+  ): Promise<DemoEventActivitiesListQueryResult> {
     const normalizedUserId = query.userId.trim();
     if (!normalizedUserId) {
       return {
@@ -109,7 +85,7 @@ export class HttpEventsService {
     }
     try {
       const response = await this.requestWithAbort(
-        this.http.post<DemoEventRecord[] | DemoEventActivitiesQueryResult | null>(
+        this.http.post<DemoEventListItem[] | DemoEventActivitiesListQueryResult | null>(
           `${this.apiBaseUrl}/activities/events/filter`,
           {
             userId: normalizedUserId,
@@ -122,21 +98,20 @@ export class HttpEventsService {
             cursor: query.cursor ?? null,
             anchorDate: query.anchorDate,
             rangeStart: query.rangeStart,
-            rangeEnd: query.rangeEnd,
-            ...(this.slimApiEnabled ? { slim: true } : {})
+            rangeEnd: query.rangeEnd
           } satisfies HttpEventsFilterRequest
         ),
         signal
       );
       if (Array.isArray(response)) {
-        const records = this.cloneRecords(response);
+        const records = this.cloneListItems(response);
         return {
           records,
           total: records.length,
           nextCursor: null
         };
       }
-      const records = this.cloneRecords(response?.records);
+      const records = this.cloneListItems(response?.records);
       return {
         records,
         total: Number.isFinite(response?.total) ? Math.max(0, Math.trunc(Number(response?.total))) : records.length,
@@ -665,6 +640,52 @@ export class HttpEventsService {
       } satisfies DemoEventRecord;
       return normalizedRecord;
     });
+  }
+
+  private cloneListItems(records: DemoEventListItem[] | null | undefined): DemoEventListItem[] {
+    if (!Array.isArray(records)) {
+      return [];
+    }
+    return records.map(record => ({
+      id: `${record.id ?? ''}`.trim(),
+      userId: `${record.userId ?? ''}`.trim(),
+      type: record.type ?? 'events',
+      status: record.status,
+      avatar: `${record.avatar ?? ''}`.trim(),
+      title: `${record.title ?? ''}`.trim(),
+      subtitle: `${record.subtitle ?? ''}`.trim(),
+      timeframe: `${record.timeframe ?? ''}`.trim(),
+      inviter: record.inviter ?? null,
+      unread: Math.max(0, Math.trunc(Number(record.unread) || 0)),
+      activity: Math.max(0, Math.trunc(Number(record.activity) || 0)),
+      isAdmin: record.isAdmin === true,
+      isInvitation: record.isInvitation === true,
+      isHosting: record.isHosting === true,
+      isTrashed: record.isTrashed === true,
+      published: record.published !== false,
+      creatorUserId: `${record.creatorUserId ?? ''}`.trim(),
+      creatorName: `${record.creatorName ?? ''}`.trim(),
+      creatorInitials: `${record.creatorInitials ?? ''}`.trim(),
+      creatorCity: `${record.creatorCity ?? ''}`.trim(),
+      visibility: record.visibility ?? 'Public',
+      startAtIso: `${record.startAtIso ?? ''}`.trim(),
+      endAtIso: `${record.endAtIso ?? ''}`.trim(),
+      distanceKm: Math.max(0, Number(record.distanceKm) || 0),
+      imageUrl: `${record.imageUrl ?? ''}`.trim(),
+      location: `${record.location ?? ''}`.trim(),
+      capacityMin: record.capacityMin ?? null,
+      capacityMax: record.capacityMax ?? null,
+      capacityTotal: Math.max(0, Math.trunc(Number(record.capacityTotal) || 0)),
+      ticketing: record.ticketing === true,
+      eventType: record.eventType ?? 'main',
+      acceptedMembers: Math.max(0, Math.trunc(Number(record.acceptedMembers) || 0)),
+      pendingMembers: Math.max(0, Math.trunc(Number(record.pendingMembers) || 0)),
+      pendingReason: record.pendingReason ?? null,
+      topics: [...(record.topics ?? [])],
+      rating: Math.max(0, Number(record.rating) || 0),
+      boost: Math.max(0, Number(record.boost) || 0),
+      affinity: Math.max(0, Number(record.affinity) || 0)
+    }));
   }
 
   private cloneEventFeedbackAnswersByCardId(

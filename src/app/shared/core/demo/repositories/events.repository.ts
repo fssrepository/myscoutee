@@ -7,10 +7,11 @@ import { EVENT_FEEDBACK_TABLE_NAME } from '../models/event-feedback.model';
 import { DemoEventSeedBuilder, DemoEventsRepositoryBuilder, DemoSeedScheduleBuilder, DemoUserSeedBuilder } from '../builders';
 import {
   EVENTS_TABLE_NAME,
+  type DemoEventActivitiesListQueryResult,
   type DemoEventActivitiesQuery,
-  type DemoEventActivitiesQueryResult,
   type DemoEventExploreQuery,
   type DemoEventExploreQueryResult,
+  type DemoEventListItem,
   type DemoEventRecord,
   type DemoEventRecordCollection,
   type DemoEventScopeFilter,
@@ -135,7 +136,7 @@ export class DemoEventsRepository {
     return this.queryUserRecords(userId).filter(record => this.isTrashScopeStatus(record));
   }
 
-  queryEventItemsByFilter(
+  private queryEventRecordsByFilter(
     userId: string,
     filter: DemoEventScopeFilter,
     hostingPublicationFilter: 'all' | 'drafts' = 'all'
@@ -333,7 +334,7 @@ export class DemoEventsRepository {
     return this.eventMemberUserIdsByStatus(record.id, 'accepted').includes(normalizedUserId);
   }
 
-  queryActivitiesEventPage(query: DemoEventActivitiesQuery): DemoEventActivitiesQueryResult {
+  queryActivitiesEventListPage(query: DemoEventActivitiesQuery): DemoEventActivitiesListQueryResult {
     this.init();
     this.materializeSlotRecords();
     const normalizedUserId = query.userId.trim();
@@ -345,7 +346,7 @@ export class DemoEventsRepository {
       };
     }
 
-    const filteredRecords = this.queryEventItemsByFilter(
+    const filteredRecords = this.queryEventRecordsByFilter(
       normalizedUserId,
       query.filter,
       query.hostingPublicationFilter ?? 'all'
@@ -359,7 +360,7 @@ export class DemoEventsRepository {
 
     if (query.view === 'week' || query.view === 'month') {
       return {
-        records: normalizedRecords,
+        records: normalizedRecords.map(record => this.toEventListItem(record)),
         total,
         nextCursor: null
       };
@@ -376,9 +377,52 @@ export class DemoEventsRepository {
       : null;
 
     return {
-      records,
+      records: records.map(record => this.toEventListItem(record)),
       total,
       nextCursor
+    };
+  }
+
+  private toEventListItem(record: DemoEventRecord): DemoEventListItem {
+    return {
+      id: record.id,
+      userId: record.userId,
+      type: record.type,
+      status: record.status,
+      avatar: record.avatar,
+      title: record.title,
+      subtitle: record.subtitle,
+      timeframe: record.timeframe,
+      inviter: record.inviter,
+      unread: record.unread,
+      activity: record.activity,
+      isAdmin: record.isAdmin,
+      isInvitation: record.isInvitation,
+      isHosting: record.isHosting,
+      isTrashed: record.isTrashed,
+      published: record.published,
+      creatorUserId: record.creatorUserId,
+      creatorName: record.creatorName,
+      creatorInitials: record.creatorInitials,
+      creatorCity: record.creatorCity,
+      visibility: record.visibility,
+      startAtIso: record.startAtIso,
+      endAtIso: record.endAtIso,
+      distanceKm: record.distanceKm,
+      imageUrl: record.imageUrl,
+      location: record.location,
+      capacityMin: record.capacityMin,
+      capacityMax: record.capacityMax,
+      capacityTotal: record.capacityTotal,
+      ticketing: record.ticketing,
+      eventType: record.eventType,
+      acceptedMembers: record.acceptedMembers,
+      pendingMembers: record.pendingMembers,
+      pendingReason: record.pendingReason,
+      topics: [...record.topics],
+      rating: record.rating,
+      boost: record.boost,
+      affinity: record.affinity
     };
   }
 
@@ -858,7 +902,7 @@ export class DemoEventsRepository {
     if (!normalizedUserId) {
       return 0;
     }
-    return this.queryEventItemsByFilter(normalizedUserId, 'active-events')
+    return this.queryEventRecordsByFilter(normalizedUserId, 'active-events')
       .filter(record => this.matchesActivitiesSecondaryFilter(record, 'recent'))
       .length;
   }

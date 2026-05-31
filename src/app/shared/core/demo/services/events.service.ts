@@ -19,12 +19,11 @@ import { DemoEventsRepository } from '../repositories/events.repository';
 import { DemoUsersRepository } from '../repositories/users.repository';
 import { EVENT_FEEDBACK_TABLE_NAME } from '../models/event-feedback.model';
 import type {
+  DemoEventActivitiesListQueryResult,
   DemoEventActivitiesQuery,
-  DemoEventActivitiesQueryResult,
   DemoEventExploreQuery,
   DemoEventExploreQueryResult,
   DemoEventRecord,
-  DemoEventScopeFilter,
   DemoRepositoryEventItemType
 } from '../models/events.model';
 
@@ -68,21 +67,12 @@ export class DemoEventsService extends DemoRouteDelayService {
     return this.eventsRepository.queryTrashedItemsByUser(userId);
   }
 
-  async queryEventItemsByFilter(
-    userId: string,
-    filter: DemoEventScopeFilter,
-    hostingPublicationFilter: 'all' | 'drafts' = 'all'
-  ): Promise<DemoEventRecord[]> {
-    await this.waitForRouteDelay(DemoEventsService.EVENTS_ROUTE);
-    return this.eventsRepository.queryEventItemsByFilter(userId, filter, hostingPublicationFilter);
-  }
-
-  async queryActivitiesEventPage(
+  async queryActivitiesEventListPage(
     query: DemoEventActivitiesQuery,
     signal?: AbortSignal
-  ): Promise<DemoEventActivitiesQueryResult> {
+  ): Promise<DemoEventActivitiesListQueryResult> {
     await this.waitForRouteDelay(DemoEventsService.EVENTS_ROUTE, signal);
-    return this.eventsRepository.queryActivitiesEventPage(query);
+    return this.eventsRepository.queryActivitiesEventListPage(query);
   }
 
   async queryExploreItems(userId: string): Promise<DemoEventRecord[]> {

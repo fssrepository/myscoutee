@@ -40,6 +40,18 @@ export class DemoEventEditorDataService {
     return [...owned, ...explore].find(record => record.id === normalizedItemId) ?? null;
   }
 
+  async loadFullItemById(userId: string, itemId: string): Promise<DemoEventRecord | null> {
+    const normalizedItemId = itemId.trim();
+    if (!normalizedItemId) {
+      return null;
+    }
+    const [owned, explore] = await Promise.all([
+      this.eventsService.queryItemsByUser(userId),
+      this.eventsService.queryExploreItems(userId)
+    ]);
+    return [...owned, ...explore].find(record => record.id === normalizedItemId) ?? null;
+  }
+
   async querySummaryByOwnerId(ownerId: string): Promise<ActivityMembersSummary | null> {
     const normalizedOwnerId = ownerId.trim();
     if (!normalizedOwnerId) {

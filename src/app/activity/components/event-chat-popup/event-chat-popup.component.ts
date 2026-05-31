@@ -320,8 +320,6 @@ export class EventChatPopupComponent implements OnDestroy {
       }
       this.syncSelectedChatHeader(session.item, { hydrateControls: false });
       this.chatInitialLoadPending = true;
-      // Warm event-editor service path while chat is active to reduce first-action flicker.
-      this.eventEditorService.isOpen();
       this.cdr.markForCheck();
     });
   }

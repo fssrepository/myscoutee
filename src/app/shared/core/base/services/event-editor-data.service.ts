@@ -25,6 +25,12 @@ export class EventEditorDataService extends BaseRouteModeService {
       : this.httpEventEditorDataService.queryKnownItemById(userId, itemId);
   }
 
+  loadFullItemById(userId: string, itemId: string): Promise<DemoEventRecord | null> {
+    return this.isDemoModeEnabled('/activities/events')
+      ? this.demoEventEditorDataService.loadFullItemById(userId, itemId)
+      : this.httpEventEditorDataService.loadFullItemById(userId, itemId);
+  }
+
   querySummaryByOwnerId(ownerId: string): Promise<ActivityMembersSummary | null> {
     return this.isDemoModeEnabled('/activities/events/members')
       ? this.demoEventEditorDataService.querySummaryByOwnerId(ownerId)
