@@ -12,6 +12,7 @@ import { DemoAssetsRepository } from '../repositories/assets.repository';
 import { DemoChatsRepository } from '../repositories/chats.repository';
 import { DemoEventsRepository } from '../repositories/events.repository';
 import { DemoHelpCenterService } from './help-center.service';
+import { DemoIdeaPostsService } from './idea-posts.service';
 import { DemoProfileExperiencesRepository } from '../repositories/profile-experiences.repository';
 import { EVENT_FEEDBACK_TABLE_NAME } from '../models/event-feedback.model';
 import type { DemoEventRecord } from '../models/events.model';
@@ -23,6 +24,7 @@ import { DemoUsersRepository } from '../repositories/users.repository';
 export type DemoBootstrapProgressStage =
   | 'selector'
   | 'helpCenter'
+  | 'ideaPosts'
   | 'chats'
   | 'events'
   | 'users'
@@ -54,7 +56,8 @@ export interface DemoBootstrapProgressStep {
 export const DEMO_BOOTSTRAP_PROGRESS_STEPS: readonly DemoBootstrapProgressStep[] = [
   { stage: 'selector', percent: 0, label: 'Preparing demo selector' },
   { stage: 'helpCenter', percent: 5, label: 'Preparing help content' },
-  { stage: 'chats', percent: 9, label: 'Loading chats' },
+  { stage: 'ideaPosts', percent: 8, label: 'Preparing article content' },
+  { stage: 'chats', percent: 11, label: 'Loading chats' },
   { stage: 'events', percent: 22, label: 'Loading events' },
   { stage: 'users', percent: 34, label: 'Preparing demo users' },
   { stage: 'feedback', percent: 44, label: 'Preparing event feedback' },
@@ -101,6 +104,7 @@ export class DemoBootstrapService {
   private readonly activityResourcesRepository = inject(DemoActivityResourcesRepository);
   private readonly profileExperiencesRepository = inject(DemoProfileExperiencesRepository);
   private readonly helpCenterService = inject(DemoHelpCenterService);
+  private readonly ideaPostsService = inject(DemoIdeaPostsService);
 
   private bootstrapPromise: Promise<void> | null = null;
   private ready = false;
@@ -194,6 +198,7 @@ export class DemoBootstrapService {
     await this.runBootstrapStep('helpCenter', async () => {
       await this.initOptionalHelpCenter();
     });
+    await this.runBootstrapStep('ideaPosts', async () => { await this.ideaPostsService.init(); });
     await this.runBootstrapStep('chats', () => this.chatsRepository.init());
     await this.runBootstrapStep('events', () => this.eventsRepository.init());
     await this.runBootstrapStep('users', () => { this.usersRepository.init(); });

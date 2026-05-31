@@ -17,6 +17,15 @@ export class DemoIdeaPostsService {
   private readonly memoryDb = inject(AppMemoryDb);
   private readonly routeDelay = inject(RouteDelayService);
 
+  async init(): Promise<boolean> {
+    await this.memoryDb.whenReady();
+    const changed = this.ensureSeeded();
+    if (changed) {
+      await this.persistBestEffort();
+    }
+    return changed;
+  }
+
   async loadPublishedPosts(lang?: string | null): Promise<IdeaPost[]> {
     await this.memoryDb.whenReady();
     const changed = this.ensureSeeded();
@@ -30,10 +39,7 @@ export class DemoIdeaPostsService {
 
   async loadAdminPosts(_adminUserId = '', lang = 'en'): Promise<IdeaPost[]> {
     await this.memoryDb.whenReady();
-    const changed = this.ensureSeeded();
-    if (changed) {
-      await this.persistBestEffort();
-    }
+    this.assertSeeded();
     await this.routeDelay.waitForRouteDelay('/admin/ideas', undefined, undefined, DemoIdeaPostsService.ADMIN_IDEAS_DEMO_DELAY_MS);
     const language = this.normalizeLang(lang);
     return this.sortedPosts(this.table()).filter(post => post.lang === language);
@@ -184,7 +190,7 @@ export class DemoIdeaPostsService {
     const table = this.table();
     const defaultPosts = this.defaultPosts();
     const missingPosts = defaultPosts.filter(post => !table.byId[post.id]);
-    if (missingPosts.length === 0) {
+    if (missingPosts.length === 0 && table.seeded === true) {
       return false;
     }
     this.memoryDb.write(state => ({
@@ -199,6 +205,12 @@ export class DemoIdeaPostsService {
       }
     }));
     return true;
+  }
+
+  private assertSeeded(): void {
+    if (this.table().seeded !== true) {
+      throw new Error('Demo idea posts are not bootstrapped.');
+    }
   }
 
   private table(): DemoIdeaPostsTable {

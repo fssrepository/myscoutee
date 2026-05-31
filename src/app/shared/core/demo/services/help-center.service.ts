@@ -55,13 +55,9 @@ export class DemoHelpCenterService {
     const documentKind = this.normalizeKind(kind);
     const language = this.requestContentLang(lang);
     const context = this.normalizeContextKey(documentKind, contextKey, false);
-    const changed = documentKind !== 'explanation' || context
-      ? this.ensureSeeded(documentKind, language, context)
-      : false;
-    if (changed) {
-      await this.memoryDb.flushToIndexedDb();
-    }
-    return this.stateFromTable(this.table(), documentKind, language, context);
+    const table = this.table();
+    this.assertBootstrappedState(table, documentKind, language, context);
+    return this.stateFromTable(table, documentKind, language, context);
   }
 
   async ensureEntryPrivacySeeded(lang?: string | null): Promise<boolean> {
@@ -465,6 +461,23 @@ export class DemoHelpCenterService {
       };
     });
     return true;
+  }
+
+  private assertBootstrappedState(
+    table: DemoHelpCenterTable,
+    kind: HelpCenterDocumentKind,
+    lang: string,
+    contextKey: string | null
+  ): void {
+    if (kind === 'explanation' && !contextKey) {
+      return;
+    }
+    const revisions = this.revisionsForKind(table, kind, lang, contextKey);
+    const activeRevisionId = this.activeRevisionId(table, kind, lang, contextKey);
+    if (revisions.length > 0 && activeRevisionId && revisions.some(revision => revision.id === activeRevisionId)) {
+      return;
+    }
+    throw new Error(`Demo ${this.documentLabel(kind).toLowerCase()} content is not bootstrapped.`);
   }
 
   private latestRevision(revisions: readonly HelpCenterRevision[]): HelpCenterRevision | null {

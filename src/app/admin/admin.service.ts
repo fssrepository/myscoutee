@@ -42,6 +42,7 @@ import {
   DemoAdminAffinityGraphRepository,
   DemoChatsRepository,
   DemoHelpCenterService,
+  DemoIdeaPostsService,
   DemoUsersRatingsRepository,
   DemoUsersRepository
 } from '../shared/core/demo';
@@ -401,6 +402,7 @@ export class AdminService {
   private readonly demoAffinityGraphRepository = inject(DemoAdminAffinityGraphRepository);
   private readonly demoChatsRepository = inject(DemoChatsRepository);
   private readonly demoHelpCenterService = inject(DemoHelpCenterService);
+  private readonly demoIdeaPostsService = inject(DemoIdeaPostsService);
   private readonly activitiesContext = inject(ActivitiesPopupStateService);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
   private readonly dashboardRef = signal<AdminDashboardDto | null>(null);
@@ -1114,6 +1116,7 @@ export class AdminService {
     onProgress?.({ percent: 18, label: 'Preparing admin data', stage: 'indexedDb' });
     await this.memoryDb.whenReady();
     await this.initOptionalDemoHelpCenter();
+    await this.demoIdeaPostsService.init();
     this.demoUsersRepository.init();
     this.demoUsersRatingsRepository.init();
     await this.ensureDemoAdminProfiles();

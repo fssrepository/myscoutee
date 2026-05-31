@@ -20,8 +20,7 @@ import { AppUtils } from '../../../shared/app-utils';
 import { resolveCurrentRouteDelayMs } from '../../../shared/core/base/services/route-delay.service';
 import { ActivitiesPopupStateService } from '../../services/activities-popup-state.service';
 import { EventEditorPopupStateService } from '../../services/event-editor-popup-state.service';
-import { ActivitiesService, ActivityResourceBuilder, ActivityResourcesService, AppContext, AppPopupContext, ChatsService, EventsService, ShareTokensService } from '../../../shared/core';
-import { AppMemoryDb } from '../../../shared/core/base';
+import { ActivitiesService, ActivityResourceBuilder, ActivityResourcesService, AppContext, AppPopupContext, ChatsService, ChatVoiceClipsService, EventsService, ShareTokensService } from '../../../shared/core';
 import type { ChatRecord } from '../../../shared/core/base/models/chat.model';
 import type { DemoEventRecord } from '../../../shared/core/demo/models/events.model';
 import {
@@ -39,13 +38,6 @@ import { NavigatorService } from '../../../navigator';
 interface ChatThreadFilters {
   revision?: number;
   sessionKey?: string;
-}
-
-interface StoredVoiceClip {
-  dataUrl: string;
-  mimeType: string;
-  durationSeconds: number;
-  sizeBytes: number;
 }
 
 interface ChatPollOptionState {
@@ -110,11 +102,11 @@ export class EventChatPopupComponent implements OnDestroy {
   private readonly activityResourcesService = inject(ActivityResourcesService);
   private readonly eventsService = inject(EventsService);
   private readonly shareTokensService = inject(ShareTokensService);
+  private readonly chatVoiceClipsService = inject(ChatVoiceClipsService);
   private readonly confirmationDialogService = inject(ConfirmationDialogService);
   private readonly httpMediaService = inject(HttpMediaService);
   private readonly navigatorService = inject(NavigatorService);
   private readonly location = inject(Location);
-  private readonly memoryDb = inject(AppMemoryDb);
 
   protected readonly session = computed(() => this.activitiesContext.eventChatSession());
   protected chatInitialLoadPending = false;
@@ -835,24 +827,23 @@ export class EventChatPopupComponent implements OnDestroy {
 
   protected voiceAttachmentAudioSrc(attachment: AppTypes.ChatMessageAttachment): string {
     const url = `${attachment.url ?? attachment.previewUrl ?? ''}`.trim();
-    if (!url.startsWith('indexeddb:')) {
+    if (!this.chatVoiceClipsService.isVoiceClipUrl(url)) {
       return url;
     }
-    const key = url.slice('indexeddb:'.length);
-    const cached = this.voiceAttachmentSrcByKey[key];
+    const cached = this.voiceAttachmentSrcByKey[url];
     if (cached) {
       return cached;
     }
-    if (!this.loadingVoiceClipKeys.has(key)) {
-      this.loadingVoiceClipKeys.add(key);
-      void this.loadVoiceClipFromIndexedDb(key)
+    if (!this.loadingVoiceClipKeys.has(url)) {
+      this.loadingVoiceClipKeys.add(url);
+      void this.chatVoiceClipsService.loadVoiceClipByUrl(url)
         .then(clip => {
           if (clip?.dataUrl) {
-            this.voiceAttachmentSrcByKey[key] = clip.dataUrl;
+            this.voiceAttachmentSrcByKey[url] = clip.dataUrl;
           }
         })
         .finally(() => {
-          this.loadingVoiceClipKeys.delete(key);
+          this.loadingVoiceClipKeys.delete(url);
           this.cdr.markForCheck();
         });
     }
@@ -2099,14 +2090,14 @@ export class EventChatPopupComponent implements OnDestroy {
     const mimeType = this.voiceClipMimeType || 'audio/webm';
     if (this.activitiesContext.dataMode === 'demo') {
       try {
-        await this.saveVoiceClipToIndexedDb(voiceKey, {
+        const voiceUrl = await this.chatVoiceClipsService.saveVoiceClip(voiceKey, {
           dataUrl: this.voiceClipDataUrl,
           mimeType,
           durationSeconds: this.voiceRecorderSeconds,
           sizeBytes: this.voiceClipSizeBytes
         });
-        this.voiceAttachmentSrcByKey[voiceKey] = this.voiceClipDataUrl;
-        return `indexeddb:${voiceKey}`;
+        this.voiceAttachmentSrcByKey[voiceUrl] = this.voiceClipDataUrl;
+        return voiceUrl;
       } catch {
         this.voiceRecorderError = 'Voice clip could not be saved on this device.';
         return null;
@@ -3393,18 +3384,6 @@ export class EventChatPopupComponent implements OnDestroy {
       reader.onerror = () => reject(reader.error ?? new Error('Unable to read voice clip.'));
       reader.readAsDataURL(blob);
     });
-  }
-
-  private async saveVoiceClipToIndexedDb(key: string, clip: StoredVoiceClip): Promise<void> {
-    await this.memoryDb.writeIndexedDbTableEntry(this.voiceClipStorageKey(key), clip);
-  }
-
-  private async loadVoiceClipFromIndexedDb(key: string): Promise<StoredVoiceClip | null> {
-    return await this.memoryDb.readIndexedDbTableEntry<StoredVoiceClip>(this.voiceClipStorageKey(key));
-  }
-
-  private voiceClipStorageKey(key: string): string {
-    return `chatVoiceClip:${key}`;
   }
 
   protected formatVoiceDuration(seconds: number): string {

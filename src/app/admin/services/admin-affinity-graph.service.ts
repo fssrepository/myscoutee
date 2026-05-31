@@ -53,11 +53,7 @@ export class AdminAffinityGraphService {
       const snapshot = this.usesHttpAdminApi
         ? await this.loadHttpInitialGraph(adminUserId)
         : await this.withDemoGraphRouteDelay(this.readDemoGraphSnapshot());
-      const normalized = this.normalizeSnapshot(snapshot, this.usesHttpAdminApi ? 'http' : 'demo');
-      if (this.usesHttpAdminApi) {
-        await this.memoryDb.writeIndexedDbTableEntry(ADMIN_AFFINITY_GRAPH_STORE_KEY, normalized);
-      }
-      return normalized;
+      return this.normalizeSnapshot(snapshot, this.usesHttpAdminApi ? 'http' : 'demo');
     });
   }
 
@@ -152,52 +148,31 @@ export class AdminAffinityGraphService {
     return environment.activitiesDataSource === 'http' || environment.firebaseLoginEnabled === true;
   }
 
-  private async loadHttpSnapshot(adminUserId?: string | null): Promise<AdminAffinityGraphDto> {
-    try {
-      const snapshot = await this.httpRepository.loadFullGraph(adminUserId);
-      return this.normalizeSnapshot(snapshot, 'http');
-    } catch (error) {
-      const cached = await this.memoryDb.readIndexedDbTableEntry<AdminAffinityGraphDto>(ADMIN_AFFINITY_GRAPH_STORE_KEY);
-      if (cached?.source === 'http') {
-        return this.normalizeSnapshot(cached, 'http');
-      }
-      throw error;
-    }
-  }
-
   private async loadHttpInitialGraph(adminUserId?: string | null): Promise<AdminAffinityGraphDto> {
-    try {
-      const [meta, forests, firstTile] = await Promise.all([
-        this.httpRepository.loadMeta(adminUserId),
-        this.httpRepository.loadForests(adminUserId, { forestLevel: 0, limit: AFFINITY_GRAPH_FOREST_BASE_BUDGET + 4, offset: 0 }),
-        this.httpRepository.loadTile(adminUserId, { z: 0, x: 0, y: 0, minWeight: 0, maxWeight: 1 })
-      ]);
-      const nodesById = new Map<string, AdminAffinityGraphNodeDto>();
-      for (const node of firstTile.nodes ?? []) {
-        nodesById.set(node.id, node);
-      }
-      return this.normalizeSnapshot({
-        generatedAtIso: meta.generatedAtIso ?? forests.generatedAtIso ?? firstTile.generatedAtIso,
-        source: 'http',
-        layoutVersion: meta.layoutVersion ?? forests.layoutVersion ?? firstTile.layoutVersion,
-        memberCount: meta.memberCount,
-        linkCount: meta.linkCount,
-        componentCount: meta.componentCount,
-        isolatedCount: meta.isolatedCount,
-        forestCount: forests.forestCount ?? meta.componentCount,
-        maxForestLevel: forests.maxForestLevel,
-        maxZoom: meta.maxZoom,
-        nodes: [...nodesById.values()],
-        edges: firstTile.edges ?? [],
-        forests: forests.forests ?? []
-      }, 'http');
-    } catch (error) {
-      const cached = await this.memoryDb.readIndexedDbTableEntry<AdminAffinityGraphDto>(ADMIN_AFFINITY_GRAPH_STORE_KEY);
-      if (cached?.source === 'http') {
-        return this.normalizeSnapshot(cached, 'http');
-      }
-      throw error;
+    const [meta, forests, firstTile] = await Promise.all([
+      this.httpRepository.loadMeta(adminUserId),
+      this.httpRepository.loadForests(adminUserId, { forestLevel: 0, limit: AFFINITY_GRAPH_FOREST_BASE_BUDGET + 4, offset: 0 }),
+      this.httpRepository.loadTile(adminUserId, { z: 0, x: 0, y: 0, minWeight: 0, maxWeight: 1 })
+    ]);
+    const nodesById = new Map<string, AdminAffinityGraphNodeDto>();
+    for (const node of firstTile.nodes ?? []) {
+      nodesById.set(node.id, node);
     }
+    return this.normalizeSnapshot({
+      generatedAtIso: meta.generatedAtIso ?? forests.generatedAtIso ?? firstTile.generatedAtIso,
+      source: 'http',
+      layoutVersion: meta.layoutVersion ?? forests.layoutVersion ?? firstTile.layoutVersion,
+      memberCount: meta.memberCount,
+      linkCount: meta.linkCount,
+      componentCount: meta.componentCount,
+      isolatedCount: meta.isolatedCount,
+      forestCount: forests.forestCount ?? meta.componentCount,
+      maxForestLevel: forests.maxForestLevel,
+      maxZoom: meta.maxZoom,
+      nodes: [...nodesById.values()],
+      edges: firstTile.edges ?? [],
+      forests: forests.forests ?? []
+    }, 'http');
   }
 
   private async demoSnapshot(range?: AdminAffinityGraphRangeParams | null): Promise<AdminAffinityGraphDto> {

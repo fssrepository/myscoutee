@@ -43,6 +43,7 @@ export { ShareTokensService } from './base/services/share-tokens.service';
 export { AssetTicketsService } from './base/services/asset-tickets.service';
 export { ActivityInviteCandidatesService } from './base/services/activity-invite-candidates.service';
 export { ChatsService } from './base/services/chats.service';
+export { ChatVoiceClipsService } from './base/services/chat-voice-clips.service';
 export { RatesService } from './base/services/rates.service';
 export { UserExperiencesService } from './base/services/user-experiences.service';
 export {
