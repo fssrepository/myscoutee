@@ -280,7 +280,6 @@ export class NavigatorContactsService {
     if (!activeUserId) {
       return;
     }
-    await this.ensureKnownUsersWarm();
 
     this.popupCtx.openActivityInvitePopup({
       ownerId: activeUserId,

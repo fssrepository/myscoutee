@@ -11,6 +11,7 @@ import { RouteDelayService } from '../../base/services/route-delay.service';
   providedIn: 'root'
 })
 export class DemoIdeaPostsService {
+  private static readonly ADMIN_IDEAS_DEMO_DELAY_MS = 1500;
   private static readonly MAX_IMAGE_URLS = 24;
   private static readonly PERSIST_TIMEOUT_MS = 1500;
   private readonly memoryDb = inject(AppMemoryDb);
@@ -33,7 +34,7 @@ export class DemoIdeaPostsService {
     if (changed) {
       await this.persistBestEffort();
     }
-    await this.routeDelay.waitForRouteDelay('/admin/ideas', undefined, undefined, 900);
+    await this.routeDelay.waitForRouteDelay('/admin/ideas', undefined, undefined, DemoIdeaPostsService.ADMIN_IDEAS_DEMO_DELAY_MS);
     const language = this.normalizeLang(lang);
     return this.sortedPosts(this.table()).filter(post => post.lang === language);
   }
@@ -90,7 +91,7 @@ export class DemoIdeaPostsService {
     });
     await Promise.all([
       this.persistBestEffort(),
-      this.routeDelay.waitForRouteDelay('/admin/ideas', undefined, undefined, 900)
+      this.routeDelay.waitForRouteDelay('/admin/ideas', undefined, undefined, DemoIdeaPostsService.ADMIN_IDEAS_DEMO_DELAY_MS)
     ]);
     return this.clonePost(post);
   }
@@ -131,7 +132,7 @@ export class DemoIdeaPostsService {
     });
     await Promise.all([
       this.persistBestEffort(),
-      this.routeDelay.waitForRouteDelay('/admin/ideas', undefined, undefined, 900)
+      this.routeDelay.waitForRouteDelay('/admin/ideas', undefined, undefined, DemoIdeaPostsService.ADMIN_IDEAS_DEMO_DELAY_MS)
     ]);
     return this.sortedPosts(this.table());
   }
@@ -171,7 +172,7 @@ export class DemoIdeaPostsService {
     });
     await Promise.all([
       this.persistBestEffort(),
-      this.routeDelay.waitForRouteDelay('/admin/ideas', undefined, undefined, 900)
+      this.routeDelay.waitForRouteDelay('/admin/ideas', undefined, undefined, DemoIdeaPostsService.ADMIN_IDEAS_DEMO_DELAY_MS)
     ]);
     if (!restored) {
       throw new Error('Article could not be restored.');
