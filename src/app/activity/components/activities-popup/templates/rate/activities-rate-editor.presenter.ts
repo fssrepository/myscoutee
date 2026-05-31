@@ -26,7 +26,7 @@ export class ActivitiesRateEditorPresenter {
       scale: this.deps.getRatingScale(),
       readonly: this.isSelectedReadOnly(),
       label: this.selectedBarLabel(),
-      actionLabel: 'Save',
+      actionLabel: 'save',
       dock: {
         enabled: !this.deps.isFullscreenModeActive(),
         state: this.deps.isEditorClosing()

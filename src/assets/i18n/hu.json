@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.05.31.hu.1",
+  "version": "2026.05.31.hu.4",
     "messages": {
     "about": "Rólam",
     "accommodation": "Szállás",
@@ -15,6 +15,8 @@
     "active.privacy.version": "Aktív adatvédelem v{version}",
     "active.recently": "Nemrég aktív",
     "activities": "Tevékenységek",
+    "activity.rates.group.preferences": "Szimpátiák",
+    "activity.rates.group.suggestions": "Ajánlások",
     "activities.support.case.action.block": "Blokkolás",
     "activities.support.case.action.block.busy": "Blokkolás...",
     "activities.support.case.action.pick": "Felvétel",
@@ -743,7 +745,7 @@
     "contact.details": "Kapcsolattartási adatok",
     "who.to.contact.about.privacy.and.data.protection": "Kihez fordulhatsz adatvédelemmel és személyes adatokkal kapcsolatban.",
     "data.controller": "Adatkezelő:",
-    "myscoutee.demo.platform": "MyScoutee demóplatform",
+    "myscoutee.demo.platform": "MyScoutee",
     "support.email": "Támogatási e-mail:",
     "dpo.contact": "Adatvédelmi tisztviselő:",
     "legal.basis": "Jogalap",
@@ -1067,6 +1069,7 @@
     "close.articles": "Cikkek bezárása",
     "footer.connect": "Kapcsolódjunk",
     "footer.tagline": "Ahol a gyors találatok valódi kapcsolódásokká válnak.",
+    "install.prompt.description": "Telepítsd a MyScoutee-t, hogy gyorsan elérd a kezdőképernyőről.",
     "keep.tickets.cached.profile.details.and.chat.notifications.available.with.the.installed.app": "A jegyek, gyorsítótárazott profilrészletek és csevegési értesítések maradjanak elérhetők a telepített appban.",
     "later": "Később",
     "loading.stats": "Statisztika betöltése",

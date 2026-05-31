@@ -492,6 +492,7 @@ export class ActivitiesRatesController {
     );
     this.triggerRatingBarBlink();
     this.triggerBlinks(row.id);
+    this.closeEditorAfterScoreCommit();
   }
 
   clearEditorState(preserveScrollPosition = true): void {
@@ -737,6 +738,14 @@ export class ActivitiesRatesController {
 
   private isHoldingDockVisibility(): boolean {
     return Date.now() < this.dockVisibilityHoldUntilMs;
+  }
+
+  private closeEditorAfterScoreCommit(): void {
+    if (this.isFullscreenModeActive()) {
+      return;
+    }
+    this.suppressDockCloseUntilMs = 0;
+    this.clearEditorState(true);
   }
 
   private cancelEditorLiftAnimation(): void {

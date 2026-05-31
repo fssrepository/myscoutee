@@ -6,32 +6,46 @@
   position: fixed;
   left: 0;
   right: 0;
-  bottom: 1rem;
+  top: calc(env(safe-area-inset-top, 0px) + 0.55rem);
   z-index: 1800;
   display: flex;
   justify-content: center;
-  padding: 0 1rem;
+  padding: 0 0.5rem;
   pointer-events: none;
 }
 
 .app-install-prompt__panel {
-  width: min(680px, 100%);
+  width: min(560px, calc(100vw - 1rem));
+  min-height: 58px;
   display: grid;
-  gap: 1rem;
-  padding: 1rem 1.1rem;
-  border: 1px solid rgba(41, 78, 121, 0.18);
-  border-radius: 22px;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.68rem;
+  box-sizing: border-box;
+  padding: 0.48rem 0.54rem 0.48rem 0.62rem;
+  border: 1px solid rgba(41, 78, 121, 0.2);
+  border-radius: 14px;
   background:
-    radial-gradient(circle at top right, rgba(94, 163, 201, 0.18), transparent 34%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(244, 248, 255, 0.98));
-  box-shadow: 0 22px 44px rgba(18, 36, 62, 0.16);
+    linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(246, 250, 255, 0.98)),
+    #ffffff;
+  box-shadow: 0 12px 26px rgba(18, 36, 62, 0.16);
   pointer-events: auto;
-  backdrop-filter: blur(14px);
+  backdrop-filter: blur(12px);
+}
+
+.app-install-prompt__mark {
+  width: 40px;
+  height: 40px;
+  display: block;
+  object-fit: contain;
+  border-radius: 10px;
+  box-shadow: 0 4px 10px rgba(48, 78, 128, 0.14);
 }
 
 .app-install-prompt__copy {
   display: grid;
-  gap: 0.35rem;
+  min-width: 0;
+  gap: 0.12rem;
 }
 
 .app-install-prompt__copy h2,
@@ -39,47 +53,38 @@
   margin: 0;
 }
 
-.app-install-prompt__eyebrow {
-  color: #2d5f94;
-  font-size: 0.74rem;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-
 .app-install-prompt__copy h2 {
   color: #1f3859;
-  font-size: 1.05rem;
+  font-size: 0.86rem;
   font-weight: 800;
+  line-height: 1.16;
+  overflow-wrap: anywhere;
 }
 
 .app-install-prompt__copy p:last-child {
   color: rgba(24, 43, 69, 0.76);
-  font-size: 0.9rem;
-  line-height: 1.5;
+  font-size: 0.72rem;
+  line-height: 1.24;
+  overflow-wrap: anywhere;
 }
 
 .app-install-prompt__actions {
   display: flex;
-  justify-content: flex-end;
-  gap: 0.75rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.36rem;
 }
 
 .app-install-prompt__actions button {
   border: 0;
-  border-radius: 999px;
-  padding: 0.78rem 1.15rem;
+  border-radius: 10px;
+  min-height: 36px;
   font: inherit;
-  font-size: 0.9rem;
+  font-size: 0.78rem;
   font-weight: 800;
   cursor: pointer;
   transition: transform 0.16s ease, box-shadow 0.16s ease, filter 0.16s ease;
   -webkit-tap-highlight-color: transparent;
-}
-
-.app-install-prompt__actions button:not(:disabled):hover {
-  transform: translateY(-1px);
-  box-shadow: 0 10px 20px rgba(18, 36, 62, 0.14);
 }
 
 .app-install-prompt__actions button:not(:disabled):active {
@@ -92,32 +97,81 @@
 }
 
 .app-install-prompt__primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.34rem;
+  padding: 0 0.68rem;
   background: linear-gradient(135deg, #2d5f94, #3f7fb4);
   color: #fff;
 }
 
 .app-install-prompt__secondary {
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
   background: rgba(229, 237, 249, 0.95);
   color: #264468;
 }
 
-@media (max-width: 720px) {
+.app-install-prompt__actions mat-icon {
+  width: 18px;
+  height: 18px;
+  font-size: 18px;
+  line-height: 18px;
+}
+
+@media (hover: hover) {
+  .app-install-prompt__actions button:not(:disabled):hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 16px rgba(18, 36, 62, 0.14);
+  }
+}
+
+@media (max-width: 520px) {
   .app-install-prompt {
-    bottom: 0.7rem;
-    padding: 0 0.7rem;
+    top: calc(env(safe-area-inset-top, 0px) + 0.38rem);
+    padding: 0 0.35rem;
   }
 
   .app-install-prompt__panel {
-    gap: 0.85rem;
-    padding: 0.95rem 0.95rem 1rem;
-    border-radius: 18px;
+    width: calc(100vw - 0.7rem);
+    min-height: 54px;
+    grid-template-columns: 34px minmax(0, 1fr) auto;
+    gap: 0.48rem;
+    padding: 0.42rem 0.42rem 0.42rem 0.5rem;
+    border-radius: 12px;
   }
 
-  .app-install-prompt__actions {
-    flex-direction: column-reverse;
+  .app-install-prompt__mark {
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
   }
 
-  .app-install-prompt__actions button {
-    width: 100%;
+  .app-install-prompt__copy h2 {
+    font-size: 0.75rem;
+    line-height: 1.12;
+  }
+
+  .app-install-prompt__copy p:last-child {
+    font-size: 0.66rem;
+    line-height: 1.18;
+  }
+
+  .app-install-prompt__primary,
+  .app-install-prompt__secondary {
+    width: 34px;
+    min-width: 34px;
+    height: 34px;
+    min-height: 34px;
+    padding: 0;
+  }
+
+  .app-install-prompt__primary span {
+    display: none;
   }
 }

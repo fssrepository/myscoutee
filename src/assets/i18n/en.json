@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.05.31.en.1",
+  "version": "2026.05.31.en.4",
   "messages": {
     "about": "About",
     "accommodation": "Accommodation",
@@ -15,6 +15,8 @@
     "active.privacy.version": "Active privacy v{version}",
     "active.recently": "Active recently",
     "activities": "Activities",
+    "activity.rates.group.preferences": "Preferences",
+    "activity.rates.group.suggestions": "Suggestions",
     "activities.support.case.action.block": "Block",
     "activities.support.case.action.block.busy": "Blocking...",
     "activities.support.case.action.pick": "Pick",
@@ -743,7 +745,7 @@
     "contact.details": "Contact details",
     "who.to.contact.about.privacy.and.data.protection": "Who to contact about privacy and data protection.",
     "data.controller": "Data Controller:",
-    "myscoutee.demo.platform": "MyScoutee demo platform",
+    "myscoutee.demo.platform": "MyScoutee",
     "support.email": "Support Email:",
     "dpo.contact": "DPO Contact:",
     "legal.basis": "Legal basis",
@@ -1067,6 +1069,7 @@
     "close.articles": "Close articles",
     "footer.connect": "Let's connect",
     "footer.tagline": "Where fast matches turn into real connections.",
+    "install.prompt.description": "Install MyScoutee for quick access from your home screen.",
     "keep.tickets.cached.profile.details.and.chat.notifications.available.with.the.installed.app": "Keep tickets, cached profile details, and chat notifications available with the installed app.",
     "later": "Later",
     "loading.stats": "Loading stats",

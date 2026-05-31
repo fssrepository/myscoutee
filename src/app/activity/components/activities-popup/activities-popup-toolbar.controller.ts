@@ -152,7 +152,7 @@ export class ActivitiesPopupToolbarController {
       return this.activitiesChatsHeaderLabel();
     }
     if (this.activitiesPrimaryFilter === 'rates') {
-      const group = this.rateGroupLabelForKey(this.activitiesRateFilter);
+      const group = this.rateGroupLabelKeyForKey(this.activitiesRateFilter);
       const label = this.rateFilterLabelForKey(this.activitiesRateFilter);
       return `${group} · ${label}`;
     }
@@ -228,13 +228,24 @@ export class ActivitiesPopupToolbarController {
 
   activitiesRateFilterLabel(): string {
     const label = this.rateFilterLabelForKey(this.activitiesRateFilter);
-    if (!label) { return 'Preferences · Given'; }
-    const group = this.rateGroupLabelForKey(this.activitiesRateFilter);
+    if (!label) { return `${this.rateGroupLabelKeyForKey('individual-given')} · Given`; }
+    const group = this.rateGroupLabelKeyForKey(this.activitiesRateFilter);
     return `${group} · ${label}`;
   }
 
   rateFilterOptionLabel(key: AppTypes.RateFilterKey): string {
     return this.rateFilterLabelForKey(key);
+  }
+
+  rateGroupOptionLabelKey(label: string): string {
+    const normalized = label.trim().toLowerCase();
+    if (normalized === 'preferences') {
+      return 'activity.rates.group.preferences';
+    }
+    if (normalized === 'suggestions') {
+      return 'activity.rates.group.suggestions';
+    }
+    return label;
   }
 
   activitiesRateFilterIcon(key: AppTypes.RateFilterKey = this.activitiesRateFilter): string {
@@ -258,7 +269,7 @@ export class ActivitiesPopupToolbarController {
   }
 
   isRateGroupSeparator(label: string): boolean {
-    return label.trim().toLowerCase() === this.rateGroupLabelForKey('pair-given').toLowerCase();
+    return this.rateSocialGroupForLabel(label) === 'pair';
   }
 
   rateFilterCount(filter: AppTypes.RateFilterKey): number {
@@ -277,9 +288,13 @@ export class ActivitiesPopupToolbarController {
     if (!this.shouldShowRateSocialBadgeToggle()) {
       return false;
     }
-    const normalizedLabel = label.trim().toLowerCase();
-    return normalizedLabel === this.rateGroupLabelForKey('individual-given').toLowerCase()
-      || normalizedLabel === this.rateGroupLabelForKey('pair-given').toLowerCase();
+    const normalized = label.trim().toLowerCase();
+    return normalized === 'individual'
+      || normalized === 'pair'
+      || normalized === 'preferences'
+      || normalized === 'suggestions'
+      || normalized === this.rateGroupLabelKeyForKey('individual-given')
+      || normalized === this.rateGroupLabelKeyForKey('pair-given');
   }
 
   rateSocialBadgeButtonLabel(): string {
@@ -343,13 +358,19 @@ export class ActivitiesPopupToolbarController {
     return this.rateFilters.find((option: any) => option.key === key)?.label ?? 'Given';
   }
 
-  private rateGroupLabelForKey(key: AppTypes.RateFilterKey): string {
-    return key.startsWith('individual') ? 'Preferences' : 'Suggestions';
+  private rateGroupLabelKeyForKey(key: AppTypes.RateFilterKey): string {
+    return key.startsWith('individual')
+      ? 'activity.rates.group.preferences'
+      : 'activity.rates.group.suggestions';
   }
 
   private rateSocialGroupForLabel(labelOrGroup: string): 'individual' | 'pair' {
     const normalized = labelOrGroup.trim().toLowerCase();
-    if (normalized === 'pair' || normalized === this.rateGroupLabelForKey('pair-given').toLowerCase()) {
+    if (
+      normalized === 'pair'
+      || normalized === 'suggestions'
+      || normalized === this.rateGroupLabelKeyForKey('pair-given')
+    ) {
       return 'pair';
     }
     return 'individual';

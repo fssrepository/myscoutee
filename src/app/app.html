@@ -11,7 +11,7 @@
 }
 
 <app-install-prompt
-  [visible]="showNavigator && installPromptVisible()"
+  [visible]="installPromptVisible()"
   [busy]="installPromptBusy()"
   (installRequested)="onInstallRequested()"
   (dismissRequested)="onInstallDismissed()"

@@ -32,9 +32,9 @@ export const GDPR_CONTENT: GdprContent = {
   subtitle: 'How MyScoutee handles personal data for profile, events, and social activity (including GDPR rights).',
   updatedAt: '2026-02-01',
   contacts: [
-    { label: 'Data Controller', value: 'MyScoutee demo platform' },
-    { label: 'Support Email', value: 'privacy@myscoutee.app' },
-    { label: 'DPO Contact', value: 'dpo@myscoutee.app' }
+    { label: 'Data Controller', value: 'MyScoutee' },
+    { label: 'Support Email', value: 'myscoutee1@gmail.com' },
+    { label: 'DPO Contact', value: 'myscoutee1@gmail.com' }
   ],
   legalBases: [
     'Contract performance for account and event features.',
