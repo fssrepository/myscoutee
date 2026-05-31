@@ -1,7 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 
 import { APP_STATIC_DATA } from '../../../app-static-data';
-import { AppMemoryDb } from '../../base/db';
 import type {
   HelpCenterAuditEntry,
   HelpCenterDocumentKind,
@@ -13,7 +12,8 @@ import type {
   PrivacyConsentSaveRequest
 } from '../../base/models';
 import { RouteDelayService } from '../../base/services/route-delay.service';
-import { HELP_CENTER_TABLE_NAME, type DemoHelpCenterTable } from '../models/help-center.model';
+import type { DemoHelpCenterTable } from '../models/help-center.model';
+import { DemoHelpCenterRepository } from '../repositories/help-center.repository';
 
 const LEGACY_EXPLANATION_FILTER_COUNT_COPY_BY_LANG: Record<string, { from: string; to: string }> = {
   en: {
@@ -38,20 +38,20 @@ const LAZY_HELP_IMAGE_PLACEHOLDER_URL = 'data:image/gif;base64,R0lGODlhAQABAIAAA
   providedIn: 'root'
 })
 export class DemoHelpCenterService {
-  private readonly memoryDb = inject(AppMemoryDb);
+  private readonly helpCenterRepository = inject(DemoHelpCenterRepository);
   private readonly routeDelay = inject(RouteDelayService);
 
   async init(): Promise<boolean> {
-    await this.memoryDb.whenReady();
+    await this.helpCenterRepository.whenReady();
     const changed = this.ensureStaticDefaultsSeeded();
     if (changed) {
-      await this.memoryDb.flushToIndexedDb();
+      await this.helpCenterRepository.flushToIndexedDb();
     }
     return changed;
   }
 
   async loadState(kind: HelpCenterDocumentKind = 'help', lang?: string | null, contextKey?: string | null): Promise<HelpCenterState> {
-    await this.memoryDb.whenReady();
+    await this.helpCenterRepository.whenReady();
     const documentKind = this.normalizeKind(kind);
     const language = this.requestContentLang(lang);
     const context = this.normalizeContextKey(documentKind, contextKey, false);
@@ -61,11 +61,11 @@ export class DemoHelpCenterService {
   }
 
   async ensureEntryPrivacySeeded(lang?: string | null): Promise<boolean> {
-    await this.memoryDb.whenReady();
+    await this.helpCenterRepository.whenReady();
     const language = this.requestContentLang(lang);
     const changed = this.ensureSeeded('privacy', language);
     if (changed) {
-      await this.memoryDb.flushToIndexedDb();
+      await this.helpCenterRepository.flushToIndexedDb();
     }
     return changed;
   }
@@ -101,7 +101,7 @@ export class DemoHelpCenterService {
     revisionId: string,
     revisionVersion?: number
   ): Promise<PrivacyConsentRecord | null> {
-    await this.memoryDb.whenReady();
+    await this.helpCenterRepository.whenReady();
     const normalizedUserId = this.nonEmptyText(userId, '');
     const normalizedRevisionId = this.nonEmptyText(revisionId, '');
     if (!normalizedUserId || !normalizedRevisionId) {
@@ -117,7 +117,7 @@ export class DemoHelpCenterService {
   }
 
   async savePrivacyConsent(request: PrivacyConsentSaveRequest): Promise<PrivacyConsentRecord> {
-    await this.memoryDb.whenReady();
+    await this.helpCenterRepository.whenReady();
     const userId = this.nonEmptyText(request?.userId, '');
     const revisionId = this.nonEmptyText(request?.revisionId, '');
     if (!userId || !revisionId) {
@@ -143,30 +143,26 @@ export class DemoHelpCenterService {
       updatedAtIso: nowIso,
       source: this.normalizeConsentSource(request?.source)
     };
-    this.memoryDb.write(state => {
-      const currentTable = state[HELP_CENTER_TABLE_NAME];
+    this.helpCenterRepository.updateTable(currentTable => {
       const consentsById = {
         ...(currentTable.privacyConsentsById ?? {}),
         [id]: consent
       };
       return {
-        ...state,
-        [HELP_CENTER_TABLE_NAME]: {
-          ...currentTable,
-          privacyConsentsById: consentsById,
-          privacyConsentIds: [...new Set([...(currentTable.privacyConsentIds ?? []), id])]
-        }
+        ...currentTable,
+        privacyConsentsById: consentsById,
+        privacyConsentIds: [...new Set([...(currentTable.privacyConsentIds ?? []), id])]
       };
     });
     await Promise.all([
-      this.memoryDb.flushToIndexedDb(),
+      this.helpCenterRepository.flushToIndexedDb(),
       this.routeDelay.waitForRouteDelay('/privacy/consents', undefined, undefined, 1500)
     ]);
     return this.clonePrivacyConsent(consent);
   }
 
   async saveRevision(request: HelpCenterRevisionSaveRequest, kind: HelpCenterDocumentKind = 'help'): Promise<HelpCenterState> {
-    await this.memoryDb.whenReady();
+    await this.helpCenterRepository.whenReady();
     const documentKind = this.normalizeKind(kind);
     const language = this.normalizeLang(request?.lang);
     const contextKey = this.normalizeContextKey(documentKind, request?.contextKey, true);
@@ -202,37 +198,33 @@ export class DemoHelpCenterService {
         : `Created v${version}.`
     });
 
-    this.memoryDb.write(state => {
-      const current = state[HELP_CENTER_TABLE_NAME];
+    this.helpCenterRepository.updateTable(current => {
       return {
-        ...state,
-        [HELP_CENTER_TABLE_NAME]: {
-          ...current,
-          seeded: current.seeded || documentKind === 'help',
-          seededKinds: { ...(current.seededKinds ?? {}), [documentKind]: true },
-          activeRevisionIdsByKind: { ...(current.activeRevisionIdsByKind ?? {}) },
-          revisionsById: {
-            ...this.normalizedRevisionsById(current),
-            [revisionId]: revision
-          },
-          revisionIds: [...current.revisionIds.filter(id => id !== revisionId), revisionId],
-          auditById: {
-            ...current.auditById,
-            [audit.id]: audit
-          },
-          auditIds: [...current.auditIds, audit.id]
-        }
+        ...current,
+        seeded: current.seeded || documentKind === 'help',
+        seededKinds: { ...(current.seededKinds ?? {}), [documentKind]: true },
+        activeRevisionIdsByKind: { ...(current.activeRevisionIdsByKind ?? {}) },
+        revisionsById: {
+          ...this.normalizedRevisionsById(current),
+          [revisionId]: revision
+        },
+        revisionIds: [...current.revisionIds.filter(id => id !== revisionId), revisionId],
+        auditById: {
+          ...current.auditById,
+          [audit.id]: audit
+        },
+        auditIds: [...current.auditIds, audit.id]
       };
     });
     await Promise.all([
-      this.memoryDb.flushToIndexedDb(),
+      this.helpCenterRepository.flushToIndexedDb(),
       this.routeDelay.waitForRouteDelay(`/admin/${documentKind}/revisions`, undefined, undefined, 1500)
     ]);
     return this.stateFromTable(this.table(), documentKind, language, contextKey);
   }
 
   async activateRevision(revisionId: string, actorUserId: string, kind: HelpCenterDocumentKind = 'help'): Promise<HelpCenterState> {
-    await this.memoryDb.whenReady();
+    await this.helpCenterRepository.whenReady();
     const documentKind = this.normalizeKind(kind);
     const language = this.normalizeLang(this.table().revisionsById[revisionId.trim()]?.lang);
     const normalizedRevisionId = revisionId.trim();
@@ -248,8 +240,7 @@ export class DemoHelpCenterService {
       revision,
       message: `Activated v${revision.version}.`
     });
-    this.memoryDb.write(state => {
-      const current = state[HELP_CENTER_TABLE_NAME];
+    this.helpCenterRepository.updateTable(current => {
       const revisionsById = Object.fromEntries(
         current.revisionIds
           .filter(id => Boolean(current.revisionsById[id]))
@@ -271,32 +262,29 @@ export class DemoHelpCenterService {
           })
       ) as Record<string, HelpCenterRevision>;
       return {
-        ...state,
-        [HELP_CENTER_TABLE_NAME]: {
-          ...current,
-          activeRevisionId: documentKind === 'help' && language === 'en' ? normalizedRevisionId : current.activeRevisionId,
-          activeRevisionIdsByKind: {
-            ...(current.activeRevisionIdsByKind ?? {}),
-            [this.activeRevisionKey(documentKind, language, contextKey)]: normalizedRevisionId
-          },
-          revisionsById,
-          auditById: {
-            ...current.auditById,
-            [audit.id]: audit
-          },
-          auditIds: [...current.auditIds, audit.id]
-        }
+        ...current,
+        activeRevisionId: documentKind === 'help' && language === 'en' ? normalizedRevisionId : current.activeRevisionId,
+        activeRevisionIdsByKind: {
+          ...(current.activeRevisionIdsByKind ?? {}),
+          [this.activeRevisionKey(documentKind, language, contextKey)]: normalizedRevisionId
+        },
+        revisionsById,
+        auditById: {
+          ...current.auditById,
+          [audit.id]: audit
+        },
+        auditIds: [...current.auditIds, audit.id]
       };
     });
     await Promise.all([
-      this.memoryDb.flushToIndexedDb(),
+      this.helpCenterRepository.flushToIndexedDb(),
       this.routeDelay.waitForRouteDelay(`/admin/${documentKind}/revisions/activate`, undefined, undefined, 1500)
     ]);
     return this.stateFromTable(this.table(), documentKind, language, contextKey);
   }
 
   async deleteRevision(revisionId: string, actorUserId: string, kind: HelpCenterDocumentKind = 'help'): Promise<HelpCenterState> {
-    await this.memoryDb.whenReady();
+    await this.helpCenterRepository.whenReady();
     const documentKind = this.normalizeKind(kind);
     const normalizedRevisionId = revisionId.trim();
     const table = this.table();
@@ -323,8 +311,7 @@ export class DemoHelpCenterService {
       message: `Deleted v${revision.version}.`
     });
 
-    this.memoryDb.write(state => {
-      const current = state[HELP_CENTER_TABLE_NAME];
+    this.helpCenterRepository.updateTable(current => {
       const { [normalizedRevisionId]: _removed, ...revisionsById } = current.revisionsById;
       const normalizedRevisionsById = Object.fromEntries(
         remainingIds
@@ -347,27 +334,24 @@ export class DemoHelpCenterService {
           })
       ) as Record<string, HelpCenterRevision>;
       return {
-        ...state,
-        [HELP_CENTER_TABLE_NAME]: {
-          ...current,
-          seeded: true,
-          activeRevisionId: documentKind === 'help' && language === 'en' ? nextActiveRevisionId : current.activeRevisionId,
-          activeRevisionIdsByKind: {
-            ...(current.activeRevisionIdsByKind ?? {}),
-            [this.activeRevisionKey(documentKind, language, contextKey)]: nextActiveRevisionId
-          },
-          revisionsById: normalizedRevisionsById,
-          revisionIds: remainingIds,
-          auditById: {
-            ...current.auditById,
-            [audit.id]: audit
-          },
-          auditIds: [...current.auditIds, audit.id]
-        }
+        ...current,
+        seeded: true,
+        activeRevisionId: documentKind === 'help' && language === 'en' ? nextActiveRevisionId : current.activeRevisionId,
+        activeRevisionIdsByKind: {
+          ...(current.activeRevisionIdsByKind ?? {}),
+          [this.activeRevisionKey(documentKind, language, contextKey)]: nextActiveRevisionId
+        },
+        revisionsById: normalizedRevisionsById,
+        revisionIds: remainingIds,
+        auditById: {
+          ...current.auditById,
+          [audit.id]: audit
+        },
+        auditIds: [...current.auditIds, audit.id]
       };
     });
     await Promise.all([
-      this.memoryDb.flushToIndexedDb(),
+      this.helpCenterRepository.flushToIndexedDb(),
       this.routeDelay.waitForRouteDelay(`/admin/${documentKind}/revisions/delete`, undefined, undefined, 1500)
     ]);
     return this.stateFromTable(this.table(), documentKind, language, contextKey);
@@ -389,30 +373,26 @@ export class DemoHelpCenterService {
       revision,
       message: `Seeded default ${this.documentLabel(kind).toLowerCase()} revision v${revision.version}.`
     });
-    this.memoryDb.write(state => {
-      const current = state[HELP_CENTER_TABLE_NAME];
+    this.helpCenterRepository.updateTable(current => {
       return {
-        ...state,
-        [HELP_CENTER_TABLE_NAME]: {
-          ...current,
-          seeded: current.seeded || kind === 'help',
-          seededKinds: { ...(current.seededKinds ?? {}), [kind]: true },
-          activeRevisionId: kind === 'help' && language === 'en' ? revision.id : current.activeRevisionId,
-          activeRevisionIdsByKind: {
-            ...(current.activeRevisionIdsByKind ?? {}),
-            [this.activeRevisionKey(kind, language, revisionContextKey)]: revision.id
-          },
-          revisionsById: {
-            ...this.normalizedRevisionsById(current),
-            [revision.id]: revision
-          },
-          revisionIds: [...current.revisionIds.filter(id => id !== revision.id), revision.id],
-          auditById: {
-            ...current.auditById,
-            [audit.id]: audit
-          },
-          auditIds: [...current.auditIds, audit.id]
-        }
+        ...current,
+        seeded: current.seeded || kind === 'help',
+        seededKinds: { ...(current.seededKinds ?? {}), [kind]: true },
+        activeRevisionId: kind === 'help' && language === 'en' ? revision.id : current.activeRevisionId,
+        activeRevisionIdsByKind: {
+          ...(current.activeRevisionIdsByKind ?? {}),
+          [this.activeRevisionKey(kind, language, revisionContextKey)]: revision.id
+        },
+        revisionsById: {
+          ...this.normalizedRevisionsById(current),
+          [revision.id]: revision
+        },
+        revisionIds: [...current.revisionIds.filter(id => id !== revision.id), revision.id],
+        auditById: {
+          ...current.auditById,
+          [audit.id]: audit
+        },
+        auditIds: [...current.auditIds, audit.id]
       };
     });
     return true;
@@ -437,27 +417,23 @@ export class DemoHelpCenterService {
       ...this.cloneRevision(revision, kind),
       active: true
     };
-    this.memoryDb.write(state => {
-      const current = state[HELP_CENTER_TABLE_NAME];
+    this.helpCenterRepository.updateTable(current => {
       return {
-        ...state,
-        [HELP_CENTER_TABLE_NAME]: {
-          ...current,
-          activeRevisionId: kind === 'help' && this.normalizeLang(lang) === 'en'
-            ? normalizedRevision.id
-            : current.activeRevisionId,
-          activeRevisionIdsByKind: {
-            ...(current.activeRevisionIdsByKind ?? {}),
-            [this.activeRevisionKey(kind, lang, contextKey)]: normalizedRevision.id
-          },
-          revisionsById: {
-            ...this.normalizedRevisionsById(current),
-            [normalizedRevision.id]: normalizedRevision
-          },
-          revisionIds: current.revisionIds.includes(normalizedRevision.id)
-            ? current.revisionIds
-            : [...current.revisionIds, normalizedRevision.id]
-        }
+        ...current,
+        activeRevisionId: kind === 'help' && this.normalizeLang(lang) === 'en'
+          ? normalizedRevision.id
+          : current.activeRevisionId,
+        activeRevisionIdsByKind: {
+          ...(current.activeRevisionIdsByKind ?? {}),
+          [this.activeRevisionKey(kind, lang, contextKey)]: normalizedRevision.id
+        },
+        revisionsById: {
+          ...this.normalizedRevisionsById(current),
+          [normalizedRevision.id]: normalizedRevision
+        },
+        revisionIds: current.revisionIds.includes(normalizedRevision.id)
+          ? current.revisionIds
+          : [...current.revisionIds, normalizedRevision.id]
       };
     });
     return true;
@@ -501,8 +477,7 @@ export class DemoHelpCenterService {
     if (revisionIds.length === 0) {
       return false;
     }
-    this.memoryDb.write(state => {
-      const current = state[HELP_CENTER_TABLE_NAME];
+    this.helpCenterRepository.updateTable(current => {
       const revisionsById = this.normalizedRevisionsById(current);
       for (const id of revisionIds) {
         const revision = revisionsById[id];
@@ -518,11 +493,8 @@ export class DemoHelpCenterService {
         };
       }
       return {
-        ...state,
-        [HELP_CENTER_TABLE_NAME]: {
-          ...current,
-          revisionsById
-        }
+        ...current,
+        revisionsById
       };
     });
     return true;
@@ -541,8 +513,7 @@ export class DemoHelpCenterService {
     if (revisionIds.length === 0) {
       return false;
     }
-    this.memoryDb.write(state => {
-      const current = state[HELP_CENTER_TABLE_NAME];
+    this.helpCenterRepository.updateTable(current => {
       const revisionsById = this.normalizedRevisionsById(current);
       for (const id of revisionIds) {
         const revision = revisionsById[id];
@@ -558,11 +529,8 @@ export class DemoHelpCenterService {
         };
       }
       return {
-        ...state,
-        [HELP_CENTER_TABLE_NAME]: {
-          ...current,
-          revisionsById
-        }
+        ...current,
+        revisionsById
       };
     });
     return true;
@@ -581,8 +549,7 @@ export class DemoHelpCenterService {
     if (missingIds.length === 0) {
       return false;
     }
-    this.memoryDb.write(state => {
-      const current = state[HELP_CENTER_TABLE_NAME];
+    this.helpCenterRepository.updateTable(current => {
       const revisionsById = this.normalizedRevisionsById(current);
       for (const id of missingIds) {
         const revision = revisionsById[id];
@@ -594,11 +561,8 @@ export class DemoHelpCenterService {
         }
       }
       return {
-        ...state,
-        [HELP_CENTER_TABLE_NAME]: {
-          ...current,
-          revisionsById
-        }
+        ...current,
+        revisionsById
       };
     });
     return true;
@@ -624,8 +588,7 @@ export class DemoHelpCenterService {
     if (revisionIds.length === 0) {
       return false;
     }
-    this.memoryDb.write(state => {
-      const current = state[HELP_CENTER_TABLE_NAME];
+    this.helpCenterRepository.updateTable(current => {
       const revisionsById = this.normalizedRevisionsById(current);
       for (const id of revisionIds) {
         const revision = revisionsById[id];
@@ -640,11 +603,8 @@ export class DemoHelpCenterService {
         };
       }
       return {
-        ...state,
-        [HELP_CENTER_TABLE_NAME]: {
-          ...current,
-          revisionsById
-        }
+        ...current,
+        revisionsById
       };
     });
     return true;
@@ -668,8 +628,7 @@ export class DemoHelpCenterService {
       return false;
     }
     const replacement = this.defaultRevision('explanation', language, 'activities.rates');
-    this.memoryDb.write(state => {
-      const current = state[HELP_CENTER_TABLE_NAME];
+    this.helpCenterRepository.updateTable(current => {
       const revisionsById = this.normalizedRevisionsById(current);
       for (const id of revisionIds) {
         const revision = revisionsById[id];
@@ -686,11 +645,8 @@ export class DemoHelpCenterService {
         };
       }
       return {
-        ...state,
-        [HELP_CENTER_TABLE_NAME]: {
-          ...current,
-          revisionsById
-        }
+        ...current,
+        revisionsById
       };
     });
     return true;
@@ -714,8 +670,7 @@ export class DemoHelpCenterService {
       return false;
     }
     const replacement = this.defaultRevision('explanation', language, 'chats');
-    this.memoryDb.write(state => {
-      const current = state[HELP_CENTER_TABLE_NAME];
+    this.helpCenterRepository.updateTable(current => {
       const revisionsById = this.normalizedRevisionsById(current);
       for (const id of revisionIds) {
         const revision = revisionsById[id];
@@ -732,11 +687,8 @@ export class DemoHelpCenterService {
         };
       }
       return {
-        ...state,
-        [HELP_CENTER_TABLE_NAME]: {
-          ...current,
-          revisionsById
-        }
+        ...current,
+        revisionsById
       };
     });
     return true;
@@ -760,8 +712,7 @@ export class DemoHelpCenterService {
       return false;
     }
     const replacement = this.defaultRevision('explanation', language, 'events');
-    this.memoryDb.write(state => {
-      const current = state[HELP_CENTER_TABLE_NAME];
+    this.helpCenterRepository.updateTable(current => {
       const revisionsById = this.normalizedRevisionsById(current);
       for (const id of revisionIds) {
         const revision = revisionsById[id];
@@ -778,11 +729,8 @@ export class DemoHelpCenterService {
         };
       }
       return {
-        ...state,
-        [HELP_CENTER_TABLE_NAME]: {
-          ...current,
-          revisionsById
-        }
+        ...current,
+        revisionsById
       };
     });
     return true;
@@ -806,8 +754,7 @@ export class DemoHelpCenterService {
       return false;
     }
     const replacement = this.defaultRevision('explanation', language, 'assets');
-    this.memoryDb.write(state => {
-      const current = state[HELP_CENTER_TABLE_NAME];
+    this.helpCenterRepository.updateTable(current => {
       const revisionsById = this.normalizedRevisionsById(current);
       for (const id of revisionIds) {
         const revision = revisionsById[id];
@@ -824,11 +771,8 @@ export class DemoHelpCenterService {
         };
       }
       return {
-        ...state,
-        [HELP_CENTER_TABLE_NAME]: {
-          ...current,
-          revisionsById
-        }
+        ...current,
+        revisionsById
       };
     });
     return true;
@@ -852,8 +796,7 @@ export class DemoHelpCenterService {
       return false;
     }
     const replacement = this.defaultRevision('explanation', language, 'event.editor');
-    this.memoryDb.write(state => {
-      const current = state[HELP_CENTER_TABLE_NAME];
+    this.helpCenterRepository.updateTable(current => {
       const revisionsById = this.normalizedRevisionsById(current);
       for (const id of revisionIds) {
         const revision = revisionsById[id];
@@ -870,11 +813,8 @@ export class DemoHelpCenterService {
         };
       }
       return {
-        ...state,
-        [HELP_CENTER_TABLE_NAME]: {
-          ...current,
-          revisionsById
-        }
+        ...current,
+        revisionsById
       };
     });
     return true;
@@ -905,8 +845,7 @@ export class DemoHelpCenterService {
     if (revisionIds.length === 0) {
       return false;
     }
-    this.memoryDb.write(state => {
-      const current = state[HELP_CENTER_TABLE_NAME];
+    this.helpCenterRepository.updateTable(current => {
       const revisionsById = this.normalizedRevisionsById(current);
       for (const id of revisionIds) {
         const revision = revisionsById[id];
@@ -929,11 +868,8 @@ export class DemoHelpCenterService {
         };
       }
       return {
-        ...state,
-        [HELP_CENTER_TABLE_NAME]: {
-          ...current,
-          revisionsById
-        }
+        ...current,
+        revisionsById
       };
     });
     return true;
@@ -1078,7 +1014,7 @@ export class DemoHelpCenterService {
   }
 
   private table(): DemoHelpCenterTable {
-    return this.memoryDb.read()[HELP_CENTER_TABLE_NAME];
+    return this.helpCenterRepository.readTable();
   }
 
   private privacyConsentRecordId(userId: string, revisionId: string): string {

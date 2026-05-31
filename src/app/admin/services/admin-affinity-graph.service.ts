@@ -1,9 +1,7 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 
 import { environment } from '../../../environments/environment';
-import { AppMemoryDb } from '../../shared/core/base/db';
 import {
-  ADMIN_AFFINITY_GRAPH_STORE_KEY,
   type AdminAffinityGraphDto,
   type AdminAffinityGraphEdgeDto,
   type AdminAffinityGraphForestDto,
@@ -13,14 +11,13 @@ import {
   type AdminAffinityGraphNodeDto,
   type AdminAffinityGraphTileDto
 } from '../../shared/core/base/interfaces/admin-affinity-graph.interface';
+import { DemoAdminAffinityGraphRepository } from '../../shared/core/demo/repositories/admin-affinity-graph.repository';
 import {
   HttpAdminAffinityGraphRepository,
   type AdminAffinityGraphRangeParams,
   type AdminAffinityGraphTileParams
 } from '../../shared/core/http';
 import { RouteDelayService } from '../../shared/core/base/services/route-delay.service';
-
-export { ADMIN_AFFINITY_GRAPH_STORE_KEY } from '../../shared/core/base/interfaces/admin-affinity-graph.interface';
 
 const ADMIN_AFFINITY_GRAPH_ROUTE = '/admin/affinity-graph';
 const AFFINITY_GRAPH_LOAD_DEMO_DELAY_MS = 1500;
@@ -31,7 +28,7 @@ const AFFINITY_GRAPH_FOREST_BASE_BUDGET = 16;
   providedIn: 'root'
 })
 export class AdminAffinityGraphService {
-  private readonly memoryDb = inject(AppMemoryDb);
+  private readonly demoRepository = inject(DemoAdminAffinityGraphRepository);
   private readonly httpRepository = inject(HttpAdminAffinityGraphRepository);
   private readonly routeDelay = inject(RouteDelayService);
   private readonly loadingActiveRef = signal(false);
@@ -184,8 +181,7 @@ export class AdminAffinityGraphService {
   }
 
   private async readDemoGraphSnapshot(): Promise<AdminAffinityGraphDto> {
-    await this.memoryDb.whenReady();
-    const snapshot = await this.memoryDb.readIndexedDbTableEntry<AdminAffinityGraphDto>(ADMIN_AFFINITY_GRAPH_STORE_KEY);
+    const snapshot = await this.demoRepository.readGraphSnapshot();
     if (!snapshot) {
       throw new Error('Demo affinity graph snapshot is not bootstrapped.');
     }

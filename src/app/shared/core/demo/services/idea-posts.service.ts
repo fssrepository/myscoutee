@@ -1,10 +1,10 @@
 import { Injectable, inject } from '@angular/core';
 
 import { APP_STATIC_DATA } from '../../../app-static-data';
-import { AppMemoryDb } from '../../base/db';
 import type { IdeaPost, IdeaPostSaveRequest } from '../../base/models';
 import { DemoSeedScheduleBuilder } from '../builders';
-import { IDEA_POSTS_TABLE_NAME, type DemoIdeaPostsTable } from '../models/idea-posts.model';
+import type { DemoIdeaPostsTable } from '../models/idea-posts.model';
+import { DemoIdeaPostsRepository } from '../repositories/idea-posts.repository';
 import { RouteDelayService } from '../../base/services/route-delay.service';
 
 @Injectable({
@@ -14,11 +14,11 @@ export class DemoIdeaPostsService {
   private static readonly ADMIN_IDEAS_DEMO_DELAY_MS = 1500;
   private static readonly MAX_IMAGE_URLS = 24;
   private static readonly PERSIST_TIMEOUT_MS = 1500;
-  private readonly memoryDb = inject(AppMemoryDb);
+  private readonly ideaPostsRepository = inject(DemoIdeaPostsRepository);
   private readonly routeDelay = inject(RouteDelayService);
 
   async init(): Promise<boolean> {
-    await this.memoryDb.whenReady();
+    await this.ideaPostsRepository.whenReady();
     const changed = this.ensureSeeded();
     if (changed) {
       await this.persistBestEffort();
@@ -27,7 +27,7 @@ export class DemoIdeaPostsService {
   }
 
   async loadPublishedPosts(lang?: string | null): Promise<IdeaPost[]> {
-    await this.memoryDb.whenReady();
+    await this.ideaPostsRepository.whenReady();
     const changed = this.ensureSeeded();
     if (changed) {
       await this.persistBestEffort();
@@ -38,7 +38,7 @@ export class DemoIdeaPostsService {
   }
 
   async loadAdminPosts(_adminUserId = '', lang = 'en'): Promise<IdeaPost[]> {
-    await this.memoryDb.whenReady();
+    await this.ideaPostsRepository.whenReady();
     this.assertSeeded();
     await this.routeDelay.waitForRouteDelay('/admin/ideas', undefined, undefined, DemoIdeaPostsService.ADMIN_IDEAS_DEMO_DELAY_MS);
     const language = this.normalizeLang(lang);
@@ -46,7 +46,7 @@ export class DemoIdeaPostsService {
   }
 
   async savePost(request: IdeaPostSaveRequest): Promise<IdeaPost> {
-    await this.memoryDb.whenReady();
+    await this.ideaPostsRepository.whenReady();
     this.ensureSeeded();
     const nowIso = new Date().toISOString();
     const language = this.normalizeLang(request.lang);
@@ -80,21 +80,15 @@ export class DemoIdeaPostsService {
       updatedAtIso: nowIso,
       updatedByUserId: request.actorUserId.trim() || 'admin'
     };
-    this.memoryDb.write(state => {
-      const table = state[IDEA_POSTS_TABLE_NAME];
-      return {
-        ...state,
-        [IDEA_POSTS_TABLE_NAME]: {
-          ...table,
-          seeded: true,
-          byId: {
-            ...table.byId,
-            [id]: post
-          },
-          ids: [...new Set([...table.ids.filter(currentId => currentId !== id), id])]
-        }
-      };
-    });
+    this.ideaPostsRepository.updateTable(table => ({
+      ...table,
+      seeded: true,
+      byId: {
+        ...table.byId,
+        [id]: post
+      },
+      ids: [...new Set([...table.ids.filter(currentId => currentId !== id), id])]
+    }));
     await Promise.all([
       this.persistBestEffort(),
       this.routeDelay.waitForRouteDelay('/admin/ideas', undefined, undefined, DemoIdeaPostsService.ADMIN_IDEAS_DEMO_DELAY_MS)
@@ -103,35 +97,31 @@ export class DemoIdeaPostsService {
   }
 
   async deletePost(postId: string, actorUserId = ''): Promise<IdeaPost[]> {
-    await this.memoryDb.whenReady();
+    await this.ideaPostsRepository.whenReady();
     const normalizedPostId = postId.trim();
     if (!normalizedPostId) {
       return this.sortedPosts(this.table());
     }
     const nowIso = new Date().toISOString();
     const actor = actorUserId.trim() || 'admin';
-    this.memoryDb.write(state => {
-      const table = state[IDEA_POSTS_TABLE_NAME];
+    this.ideaPostsRepository.updateTable(table => {
       const post = table.byId[normalizedPostId];
       if (!post) {
-        return state;
+        return table;
       }
       return {
-        ...state,
-        [IDEA_POSTS_TABLE_NAME]: {
-          ...table,
-          byId: {
-            ...table.byId,
-            [normalizedPostId]: {
-              ...this.normalizePost(post),
-              featured: false,
-              published: false,
-              trashed: true,
-              trashedAtIso: nowIso,
-              trashedByUserId: actor,
-              updatedAtIso: nowIso,
-              updatedByUserId: actor
-            }
+        ...table,
+        byId: {
+          ...table.byId,
+          [normalizedPostId]: {
+            ...this.normalizePost(post),
+            featured: false,
+            published: false,
+            trashed: true,
+            trashedAtIso: nowIso,
+            trashedByUserId: actor,
+            updatedAtIso: nowIso,
+            updatedByUserId: actor
           }
         }
       };
@@ -144,16 +134,15 @@ export class DemoIdeaPostsService {
   }
 
   async restorePost(postId: string, actorUserId = ''): Promise<IdeaPost> {
-    await this.memoryDb.whenReady();
+    await this.ideaPostsRepository.whenReady();
     const normalizedPostId = postId.trim();
     const nowIso = new Date().toISOString();
     const actor = actorUserId.trim() || 'admin';
     let restored: IdeaPost | null = null;
-    this.memoryDb.write(state => {
-      const table = state[IDEA_POSTS_TABLE_NAME];
+    this.ideaPostsRepository.updateTable(table => {
       const post = table.byId[normalizedPostId];
       if (!normalizedPostId || !post) {
-        return state;
+        return table;
       }
       restored = {
         ...this.normalizePost(post),
@@ -166,13 +155,10 @@ export class DemoIdeaPostsService {
         updatedByUserId: actor
       };
       return {
-        ...state,
-        [IDEA_POSTS_TABLE_NAME]: {
-          ...table,
-          byId: {
-            ...table.byId,
-            [normalizedPostId]: restored
-          }
+        ...table,
+        byId: {
+          ...table.byId,
+          [normalizedPostId]: restored
         }
       };
     });
@@ -193,16 +179,13 @@ export class DemoIdeaPostsService {
     if (missingPosts.length === 0 && table.seeded === true) {
       return false;
     }
-    this.memoryDb.write(state => ({
-      ...state,
-      [IDEA_POSTS_TABLE_NAME]: {
-        seeded: true,
-        byId: {
-          ...state[IDEA_POSTS_TABLE_NAME].byId,
-          ...Object.fromEntries(missingPosts.map(post => [post.id, post]))
-        },
-        ids: [...new Set([...state[IDEA_POSTS_TABLE_NAME].ids, ...missingPosts.map(post => post.id)])]
-      }
+    this.ideaPostsRepository.updateTable(table => ({
+      seeded: true,
+      byId: {
+        ...table.byId,
+        ...Object.fromEntries(missingPosts.map(post => [post.id, post]))
+      },
+      ids: [...new Set([...table.ids, ...missingPosts.map(post => post.id)])]
     }));
     return true;
   }
@@ -214,13 +197,13 @@ export class DemoIdeaPostsService {
   }
 
   private table(): DemoIdeaPostsTable {
-    return this.memoryDb.read()[IDEA_POSTS_TABLE_NAME];
+    return this.ideaPostsRepository.readTable();
   }
 
   private async persistBestEffort(): Promise<void> {
     try {
       await Promise.race([
-        this.memoryDb.flushToIndexedDb(),
+        this.ideaPostsRepository.flushToIndexedDb(),
         new Promise<void>(resolve => globalThis.setTimeout(resolve, DemoIdeaPostsService.PERSIST_TIMEOUT_MS))
       ]);
     } catch {

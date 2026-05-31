@@ -46,7 +46,6 @@ import {
   DemoUsersRatingsRepository,
   DemoUsersRepository
 } from '../shared/core/demo';
-import { ADMIN_AFFINITY_GRAPH_STORE_KEY } from '../shared/core/base/interfaces/admin-affinity-graph.interface';
 import { CHATS_TABLE_NAME, type DemoChatRecord } from '../shared/core/demo/models/chats.model';
 import { SHARE_TOKENS_TABLE_NAME } from '../shared/core/demo/models/share-tokens.model';
 import { ActivitiesPopupStateService } from '../activity/services/activities-popup-state.service';
@@ -1148,8 +1147,7 @@ export class AdminService {
   }
 
   private async ensureDemoAffinityGraphSeed(): Promise<void> {
-    const snapshot = await this.demoAffinityGraphRepository.buildGraphSnapshot();
-    await this.memoryDb.writeIndexedDbTableEntry(ADMIN_AFFINITY_GRAPH_STORE_KEY, snapshot);
+    await this.demoAffinityGraphRepository.buildAndWriteGraphSnapshot();
   }
 
   private async ensureDemoModerationStore(): Promise<AdminModerationStore> {

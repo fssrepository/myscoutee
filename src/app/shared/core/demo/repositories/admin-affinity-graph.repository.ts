@@ -7,6 +7,7 @@ import type {
   AdminAffinityGraphEdgeDto,
   AdminAffinityGraphNodeDto
 } from '../../base/interfaces/admin-affinity-graph.interface';
+import { ADMIN_AFFINITY_GRAPH_STORE_KEY } from '../../base/interfaces/admin-affinity-graph.interface';
 import { AppMemoryDb } from '../../base/db';
 import { DemoUserSeedBuilder } from '../builders';
 import { USER_RATES_TABLE_NAME, USERS_TABLE_NAME } from '../models/users.model';
@@ -45,6 +46,21 @@ export class DemoAdminAffinityGraphRepository {
       nodes,
       edges: [...edgesByKey.values()]
     };
+  }
+
+  async readGraphSnapshot(): Promise<AdminAffinityGraphDto | null> {
+    await this.memoryDb.whenReady();
+    return this.memoryDb.readIndexedDbTableEntry<AdminAffinityGraphDto>(ADMIN_AFFINITY_GRAPH_STORE_KEY);
+  }
+
+  async writeGraphSnapshot(snapshot: AdminAffinityGraphDto): Promise<void> {
+    await this.memoryDb.writeIndexedDbTableEntry(ADMIN_AFFINITY_GRAPH_STORE_KEY, snapshot);
+  }
+
+  async buildAndWriteGraphSnapshot(): Promise<AdminAffinityGraphDto> {
+    const snapshot = await this.buildGraphSnapshot();
+    await this.writeGraphSnapshot(snapshot);
+    return snapshot;
   }
 
   private isGraphMember(user: UserDto | null | undefined): user is UserDto {

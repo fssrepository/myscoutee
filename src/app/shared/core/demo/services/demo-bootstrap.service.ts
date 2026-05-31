@@ -16,7 +16,6 @@ import { DemoIdeaPostsService } from './idea-posts.service';
 import { DemoProfileExperiencesRepository } from '../repositories/profile-experiences.repository';
 import { EVENT_FEEDBACK_TABLE_NAME } from '../models/event-feedback.model';
 import type { DemoEventRecord } from '../models/events.model';
-import { ADMIN_AFFINITY_GRAPH_STORE_KEY } from '../../base/interfaces/admin-affinity-graph.interface';
 import { DemoAdminAffinityGraphRepository } from '../repositories/admin-affinity-graph.repository';
 import { DemoUsersRatingsRepository } from '../repositories/users-ratings.repository';
 import { DemoUsersRepository } from '../repositories/users.repository';
@@ -216,8 +215,7 @@ export class DemoBootstrapService {
   }
 
   private async bootstrapAffinityGraph(): Promise<void> {
-    const snapshot = await this.affinityGraphRepository.buildGraphSnapshot();
-    await this.memoryDb.writeIndexedDbTableEntry(ADMIN_AFFINITY_GRAPH_STORE_KEY, snapshot);
+    await this.affinityGraphRepository.buildAndWriteGraphSnapshot();
   }
 
   private async initOptionalHelpCenter(): Promise<void> {
