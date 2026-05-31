@@ -72,13 +72,13 @@ export class SessionService {
     return session;
   }
 
-  async startFirebaseSession(): Promise<AppSession | null> {
+  async startFirebaseSession(request: AppTypes.FirebaseAuthRequest = { provider: 'google' }): Promise<AppSession | null> {
     if (this.firebaseBusyRef()) {
       return null;
     }
     this.firebaseBusyRef.set(true);
     try {
-      const profile = await this.firebaseAuthService.signInWithGoogle();
+      const profile = await this.firebaseAuthService.signIn(request);
       if (!profile) {
         return null;
       }
@@ -179,8 +179,7 @@ export class SessionService {
             id: parsed.profile.id,
             name: parsed.profile.name,
             email: parsed.profile.email,
-            initials: parsed.profile.initials,
-            imageUrl: `${parsed.profile.imageUrl ?? ''}`.trim() || undefined
+            initials: parsed.profile.initials
           }
         };
       }

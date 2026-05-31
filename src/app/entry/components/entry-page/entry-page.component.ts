@@ -2,7 +2,7 @@ import { Component, HostListener, OnDestroy, OnInit, inject } from '@angular/cor
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 
-import { ProfileOnboardingService, SessionService, UsersService, type AppSession, type UserDto } from '../../../shared/core';
+import { ProfileOnboardingService, SessionService, UsersService, type AppSession, type FirebaseAuthRequest, type UserDto } from '../../../shared/core';
 import { EntryShellComponent, type EntryDemoUserSelectionEvent } from '../entry-shell/entry-shell.component';
 import { ProfileOnboardingPopupComponent } from '../profile-onboarding-popup/profile-onboarding-popup.component';
 
@@ -17,7 +17,7 @@ import { ProfileOnboardingPopupComponent } from '../profile-onboarding-popup/pro
       [firebaseAuthIsBusy]="sessionService.firebaseBusy()"
       [isMobileView]="isMobileView"
       (demoUserSelected)="onDemoUserSelected($event)"
-      (firebaseAuthRequested)="onFirebaseAuthRequested()"
+      (firebaseAuthRequested)="onFirebaseAuthRequested($event)"
       (firebaseSessionContinueRequested)="onFirebaseSessionContinueRequested()"
       (entryConsentStateChanged)="onEntryConsentStateChanged($event)"
     ></app-entry-shell>
@@ -93,8 +93,8 @@ export class EntryPageComponent implements OnInit, OnDestroy {
     }
   }
 
-  protected async onFirebaseAuthRequested(): Promise<void> {
-    const session = await this.sessionService.startFirebaseSession();
+  protected async onFirebaseAuthRequested(request: FirebaseAuthRequest): Promise<void> {
+    const session = await this.sessionService.startFirebaseSession(request);
     if (!session) {
       return;
     }

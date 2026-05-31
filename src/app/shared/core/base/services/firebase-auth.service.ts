@@ -1,11 +1,14 @@
 import { Injectable } from '@angular/core';
 import { getApp, getApps, initializeApp, type FirebaseApp, type FirebaseOptions } from 'firebase/app';
 import {
+  FacebookAuthProvider,
   GoogleAuthProvider,
   browserLocalPersistence,
+  createUserWithEmailAndPassword,
   getAuth,
   onAuthStateChanged,
   setPersistence,
+  signInWithEmailAndPassword,
   signInWithPopup,
   signOut,
   type Auth,
@@ -53,8 +56,7 @@ export class FirebaseAuthService {
         id: parsed.id,
         name: parsed.name,
         email: parsed.email,
-        initials: parsed.initials,
-        imageUrl: `${parsed.imageUrl ?? ''}`.trim() || undefined
+        initials: parsed.initials
       };
     } catch {
       return null;
@@ -62,14 +64,16 @@ export class FirebaseAuthService {
   }
 
   async signInWithGoogle(): Promise<AppTypes.FirebaseAuthProfile | null> {
+    return this.signIn({ provider: 'google' });
+  }
+
+  async signIn(request: AppTypes.FirebaseAuthRequest): Promise<AppTypes.FirebaseAuthProfile | null> {
     const auth = await this.ensureFirebaseAuth();
     if (!auth) {
       return null;
     }
     try {
-      const provider = new GoogleAuthProvider();
-      provider.setCustomParameters({ prompt: 'select_account' });
-      const result = await signInWithPopup(auth, provider);
+      const result = await this.runAuthRequest(auth, request);
       return this.persistProfile(result.user);
     } catch {
       return null;
@@ -241,9 +245,27 @@ export class FirebaseAuthService {
       id: user.uid,
       name: fallbackName,
       email: user.email?.trim() || `${user.uid}@firebase.local`,
-      initials: this.initialsFromText(fallbackName),
-      imageUrl: user.photoURL?.trim() || undefined
+      initials: this.initialsFromText(fallbackName)
     };
+  }
+
+  private async runAuthRequest(auth: Auth, request: AppTypes.FirebaseAuthRequest): Promise<{ user: User }> {
+    if (request.provider === 'facebook') {
+      const provider = new FacebookAuthProvider();
+      provider.addScope('email');
+      provider.setCustomParameters({ display: 'popup' });
+      return signInWithPopup(auth, provider);
+    }
+    if (request.provider === 'email') {
+      const email = `${request.email ?? ''}`.trim();
+      const password = `${request.password ?? ''}`;
+      return request.emailMode === 'create'
+        ? createUserWithEmailAndPassword(auth, email, password)
+        : signInWithEmailAndPassword(auth, email, password);
+    }
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: 'select_account' });
+    return signInWithPopup(auth, provider);
   }
 
   private initialsFromText(value: string): string {

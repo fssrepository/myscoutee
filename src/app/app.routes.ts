@@ -14,6 +14,21 @@ export const routes: Routes = [
     loadComponent: loadEntryPage
   },
   {
+    path: 'privacy-policy',
+    loadComponent: () => import('./legal/components/legal-page/legal-page.component').then(m => m.LegalPageComponent),
+    data: { legalPage: 'privacy' }
+  },
+  {
+    path: 'data-deletion',
+    loadComponent: () => import('./legal/components/legal-page/legal-page.component').then(m => m.LegalPageComponent),
+    data: { legalPage: 'deletion' }
+  },
+  {
+    path: 'terms',
+    loadComponent: () => import('./legal/components/legal-page/legal-page.component').then(m => m.LegalPageComponent),
+    data: { legalPage: 'terms' }
+  },
+  {
     path: 'admin/help/:token',
     loadComponent: () => import('./admin/admin-help-session-page.component').then(m => m.AdminHelpSessionPageComponent)
   },

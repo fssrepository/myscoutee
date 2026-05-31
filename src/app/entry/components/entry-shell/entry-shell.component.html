@@ -44,7 +44,7 @@
   [busy]="firebaseAuthIsBusy"
   [isMobileView]="isMobileView"
   (closeRequested)="closeFirebaseAuthPopup()"
-  (continueRequested)="onContinueWithFirebaseAuth()"
+  (authRequested)="onRequestFirebaseAuth($event)"
 ></app-entry-firebase-auth-popup>
 
 <app-confirmation-dialog></app-confirmation-dialog>

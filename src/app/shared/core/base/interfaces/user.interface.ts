@@ -103,7 +103,7 @@ export interface UserDto {
   images?: string[];
   profileDetails?: ProfileDetailFormGroup[];
   impressions?: UserImpressionsDto;
-  profileStatus: 'public' | 'friends only' | 'host only' | 'inactive' | 'blocked' | 'deleted';
+  profileStatus: 'public' | 'friends only' | 'host only' | 'inactive' | 'blocked' | 'deleted' | 'onboarding';
   previousProfileStatus?: UserDto['profileStatus'] | null;
   deletedAtIso?: string | null;
   activities: {

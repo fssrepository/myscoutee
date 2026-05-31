@@ -65,7 +65,7 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
   @Input() isMobileView = false;
 
   @Output() readonly demoUserSelected = new EventEmitter<EntryDemoUserSelectionEvent>();
-  @Output() readonly firebaseAuthRequested = new EventEmitter<void>();
+  @Output() readonly firebaseAuthRequested = new EventEmitter<AppTypes.FirebaseAuthRequest>();
   @Output() readonly firebaseSessionContinueRequested = new EventEmitter<void>();
   @Output() readonly entryConsentStateChanged = new EventEmitter<boolean>();
 
@@ -230,12 +230,12 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
     void this.prepareSelectedDemoUser(normalizedUserId, requestToken);
   }
 
-  protected onContinueWithFirebaseAuth(): void {
+  protected onRequestFirebaseAuth(request: AppTypes.FirebaseAuthRequest): void {
     if (this.firebaseAuthIsBusy) {
       return;
     }
     this.showFirebaseAuthPopup = false;
-    this.firebaseAuthRequested.emit();
+    this.firebaseAuthRequested.emit(request);
   }
 
   protected retryDemoUserSelectorPopup(): void {

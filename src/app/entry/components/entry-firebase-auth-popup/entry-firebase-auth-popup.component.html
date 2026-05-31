@@ -15,18 +15,84 @@
           <span class="popup-close-glyph" aria-hidden="true">×</span>
         </button>
       </div>
-      <p>Continue with Firebase auth using Google. On mobile this still opens from the login sheet first.</p>
-      <button
-        type="button"
-        class="firebase-auth-main-btn"
-        [disabled]="busy"
-        matRipple
-        [matRippleColor]="'rgba(255, 255, 255, 0.22)'"
-        (click)="requestContinue()"
-        >
-        <mat-icon>login</mat-icon>
-        <span>{{ busy ? 'Connecting...' : 'Continue with Google' }}</span>
-      </button>
+      <div class="firebase-auth-provider-grid">
+        <button
+          type="button"
+          class="firebase-auth-provider-btn"
+          [disabled]="busy"
+          matRipple
+          [matRippleColor]="'rgba(39, 101, 211, 0.12)'"
+          (click)="requestProvider('google')"
+          >
+          <mat-icon>account_circle</mat-icon>
+          <span>{{ busy ? 'Connecting...' : 'Google' }}</span>
+        </button>
+        <button
+          type="button"
+          class="firebase-auth-provider-btn coming-soon"
+          disabled
+          aria-disabled="true"
+          title="Facebook login is coming soon"
+          >
+          <mat-icon>public</mat-icon>
+          <span>Facebook</span>
+          <span class="firebase-auth-provider-badge">Coming soon</span>
+        </button>
+      </div>
+      <div class="firebase-auth-divider"><span>Email</span></div>
+      <div class="firebase-auth-email-mode" role="group" aria-label="Email login mode">
+        <button
+          type="button"
+          [class.is-active]="emailMode === 'sign-in'"
+          [disabled]="busy"
+          (click)="selectEmailMode('sign-in')"
+          >
+          Sign in
+        </button>
+        <button
+          type="button"
+          [class.is-active]="emailMode === 'create'"
+          [disabled]="busy"
+          (click)="selectEmailMode('create')"
+          >
+          Create
+        </button>
+      </div>
+      <form class="firebase-auth-email-form" (submit)="$event.preventDefault(); requestEmail()">
+        <label>
+          <span>Email</span>
+          <input
+            type="email"
+            name="email"
+            autocomplete="email"
+            [disabled]="busy"
+            [(ngModel)]="email"
+            >
+        </label>
+        <label>
+          <span>Password</span>
+          <input
+            type="password"
+            name="password"
+            autocomplete="current-password"
+            [disabled]="busy"
+            [(ngModel)]="password"
+            >
+        </label>
+        @if (emailError) {
+          <p class="firebase-auth-error">{{ emailError }}</p>
+        }
+        <button
+          type="submit"
+          class="firebase-auth-main-btn"
+          [disabled]="busy"
+          matRipple
+          [matRippleColor]="'rgba(255, 255, 255, 0.22)'"
+          >
+          <mat-icon>mail</mat-icon>
+          <span>{{ emailSubmitLabel() }}</span>
+        </button>
+      </form>
     </div>
   </section>
 }
