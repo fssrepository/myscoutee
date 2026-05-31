@@ -10,7 +10,6 @@ import {
   SessionService,
   UsersService,
   USER_BY_ID_LOAD_CONTEXT_KEY,
-  type ShareTokenRecord,
   type DemoUserListItemDto,
   type AdminNotificationCenterState,
   type AdminNotificationRuleLiveEvent,
@@ -35,7 +34,6 @@ import {
   type AdminMonitoringTone,
   type UserDto
 } from '../shared/core';
-import { AppMemoryDb } from '../shared/core/base/db';
 import type { ChatRecord } from '../shared/core/base/models/chat.model';
 import type { ChatPopupMessage } from '../shared/core/base/models/chat.model';
 import {
@@ -43,14 +41,19 @@ import {
   DemoChatsRepository,
   DemoHelpCenterService,
   DemoIdeaPostsService,
+  DemoShareTokensRepository,
   DemoUsersRatingsRepository,
-  DemoUsersRepository
+  DemoUsersRepository,
+  type DemoChatRecord
 } from '../shared/core/demo';
-import { CHATS_TABLE_NAME, type DemoChatRecord } from '../shared/core/demo/models/chats.model';
-import { SHARE_TOKENS_TABLE_NAME } from '../shared/core/demo/models/share-tokens.model';
 import { ActivitiesPopupStateService } from '../activity/services/activities-popup-state.service';
 import { FirebaseAuthService } from '../shared/core/base/services/firebase-auth.service';
 import { RouteDelayService } from '../shared/core/base/services/route-delay.service';
+import { AdminModerationRepository } from './repositories/admin-moderation.repository';
+import { AdminMonitoringRepository } from './repositories/admin-monitoring.repository';
+import { AdminNotificationsRepository } from './repositories/admin-notifications.repository';
+import { AdminParamsRepository } from './repositories/admin-params.repository';
+import { AdminStatsRepository } from './repositories/admin-stats.repository';
 
 export type AdminPopupKind =
   | 'reports'
@@ -349,11 +352,6 @@ export interface AdminBootstrapProgressState {
 }
 
 const ADMIN_SESSION_STORAGE_KEY = 'myscoutee-admin-session';
-const ADMIN_MODERATION_STORE_KEY = 'adminModeration';
-const ADMIN_NOTIFICATION_STORE_KEY = 'adminNotificationRules';
-const ADMIN_STATS_STORE_KEY = 'adminStats';
-const ADMIN_PARAMS_STORE_KEY = 'adminParams';
-const ADMIN_MONITORING_STORE_KEY = 'adminMonitoring';
 const ADMIN_NOTIFICATION_STORAGE_TIMEOUT_MS = 2500;
 const ADMIN_NOTIFICATION_HTTP_TIMEOUT_MS = 12000;
 const ADMIN_NOTIFICATION_LOAD_ROUTE = '/admin/notifications';
@@ -395,13 +393,18 @@ export class AdminService {
   private readonly sessionService = inject(SessionService);
   private readonly firebaseAuthService = inject(FirebaseAuthService);
   private readonly routeDelay = inject(RouteDelayService);
-  private readonly memoryDb = inject(AppMemoryDb);
   private readonly demoUsersRepository = inject(DemoUsersRepository);
   private readonly demoUsersRatingsRepository = inject(DemoUsersRatingsRepository);
   private readonly demoAffinityGraphRepository = inject(DemoAdminAffinityGraphRepository);
   private readonly demoChatsRepository = inject(DemoChatsRepository);
+  private readonly demoShareTokensRepository = inject(DemoShareTokensRepository);
   private readonly demoHelpCenterService = inject(DemoHelpCenterService);
   private readonly demoIdeaPostsService = inject(DemoIdeaPostsService);
+  private readonly adminModerationRepository = inject(AdminModerationRepository);
+  private readonly adminMonitoringRepository = inject(AdminMonitoringRepository);
+  private readonly adminNotificationsRepository = inject(AdminNotificationsRepository);
+  private readonly adminParamsRepository = inject(AdminParamsRepository);
+  private readonly adminStatsRepository = inject(AdminStatsRepository);
   private readonly activitiesContext = inject(ActivitiesPopupStateService);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
   private readonly dashboardRef = signal<AdminDashboardDto | null>(null);
@@ -706,7 +709,7 @@ export class AdminService {
       }
     });
     await this.withNotificationStorageFallback(
-      this.memoryDb.writeIndexedDbTableEntry(ADMIN_PARAMS_STORE_KEY, nextStore),
+      this.adminParamsRepository.writeStore(nextStore),
       undefined
     );
     return this.normalizeParamsState(nextStore);
@@ -803,7 +806,7 @@ export class AdminService {
       updatedDate: new Date().toISOString()
     });
     await this.withNotificationStorageFallback(
-      this.memoryDb.writeIndexedDbTableEntry(ADMIN_NOTIFICATION_STORE_KEY, next),
+      this.adminNotificationsRepository.writeStore(next),
       undefined
     );
     await this.waitForAdminNotificationDemoDelay(ADMIN_NOTIFICATION_SAVE_ROUTE, ADMIN_NOTIFICATION_SAVE_DEMO_DELAY_MS, options);
@@ -990,7 +993,7 @@ export class AdminService {
     }
     await this.appendDemoSupportMessage(normalizedUserId, message);
     this.markUserWarned(normalizedUserId);
-    await this.memoryDb.flushToIndexedDb();
+    await this.demoUsersRepository.flushToIndexedDb();
     this.dashboardRef.set(await this.loadDemoDashboard(this.activeAdmin()?.id));
     this.refreshSelectedReportedUser(normalizedUserId);
     this.activateAdminProfile(this.dashboardRef() as AdminDashboardDto);
@@ -1025,7 +1028,7 @@ export class AdminService {
           ? user.previousProfileStatus
           : 'public'
       });
-      await this.memoryDb.flushToIndexedDb();
+      await this.demoUsersRepository.flushToIndexedDb();
     }
     this.dashboardRef.set(await this.loadDemoDashboard(this.activeAdmin()?.id));
     this.refreshSelectedReportedUser(normalizedUserId);
@@ -1113,7 +1116,7 @@ export class AdminService {
   ): Promise<AdminDashboardDto> {
     const admin = this.resolveDemoAdmin(adminUserId);
     onProgress?.({ percent: 18, label: 'Preparing admin data', stage: 'indexedDb' });
-    await this.memoryDb.whenReady();
+    await this.demoUsersRepository.whenReady();
     await this.initOptionalDemoHelpCenter();
     await this.demoIdeaPostsService.init();
     this.demoUsersRepository.init();
@@ -1151,53 +1154,53 @@ export class AdminService {
   }
 
   private async ensureDemoModerationStore(): Promise<AdminModerationStore> {
-    const existing = await this.memoryDb.readIndexedDbTableEntry<AdminModerationStore>(ADMIN_MODERATION_STORE_KEY);
+    const existing = await this.adminModerationRepository.readStore<AdminModerationStore>();
     if (existing?.reports?.length) {
       return this.normalizeStore(existing);
     }
     const seeded = this.buildSeedDemoModerationStore();
-    await this.memoryDb.writeIndexedDbTableEntry(ADMIN_MODERATION_STORE_KEY, seeded);
+    await this.adminModerationRepository.writeStore(seeded);
     return seeded;
   }
 
   private async ensureDemoNotificationCenterSeed(): Promise<void> {
-    const existing = await this.memoryDb.readIndexedDbTableEntry<AdminNotificationCenterState>(ADMIN_NOTIFICATION_STORE_KEY);
+    const existing = await this.adminNotificationsRepository.readStore<AdminNotificationCenterState>();
     const seeded = this.withDefaultNotificationRules(existing ?? this.buildDefaultNotificationCenter());
     if (!this.shouldRewriteDemoNotificationSeed(existing, seeded)) {
       return;
     }
-    await this.memoryDb.writeIndexedDbTableEntry(ADMIN_NOTIFICATION_STORE_KEY, seeded);
+    await this.adminNotificationsRepository.writeStore(seeded);
   }
 
   private async ensureDemoMonitoringSeed(): Promise<void> {
-    const existing = await this.memoryDb.readIndexedDbTableEntry<AdminMonitoringStateDto>(ADMIN_MONITORING_STORE_KEY);
+    const existing = await this.adminMonitoringRepository.readStore<AdminMonitoringStateDto>();
     if (existing?.categories?.length) {
       return;
     }
-    await this.memoryDb.writeIndexedDbTableEntry(ADMIN_MONITORING_STORE_KEY, this.buildDefaultMonitoringState());
+    await this.adminMonitoringRepository.writeStore(this.buildDefaultMonitoringState());
   }
 
   private async ensureDemoStatsSeed(): Promise<void> {
-    const existing = await this.memoryDb.readIndexedDbTableEntry<AdminStatsDashboardDto>(ADMIN_STATS_STORE_KEY);
+    const existing = await this.adminStatsRepository.readStore<AdminStatsDashboardDto>();
     const normalized = existing ? this.normalizeStatsDashboard(existing, 'demo') : null;
     if (normalized && this.isFreshStatsDemoSnapshot(normalized)) {
       return;
     }
-    await this.memoryDb.writeIndexedDbTableEntry(ADMIN_STATS_STORE_KEY, this.buildSeedDemoStatsSnapshot());
+    await this.adminStatsRepository.writeStore(this.buildSeedDemoStatsSnapshot());
   }
 
   private async ensureDemoParamsSeed(): Promise<void> {
-    const existing = await this.memoryDb.readIndexedDbTableEntry<AdminParamsDemoStore>(ADMIN_PARAMS_STORE_KEY);
+    const existing = await this.adminParamsRepository.readStore<AdminParamsDemoStore>();
     if (existing?.sections?.length) {
       return;
     }
-    await this.memoryDb.writeIndexedDbTableEntry(ADMIN_PARAMS_STORE_KEY, this.buildDefaultParamsStore());
+    await this.adminParamsRepository.writeStore(this.buildDefaultParamsStore());
   }
 
   private async ensureDemoAdminMenuCounterSeed(): Promise<void> {
     const [notificationCenter, monitoringState] = await Promise.all([
-      this.memoryDb.readIndexedDbTableEntry<AdminNotificationCenterState>(ADMIN_NOTIFICATION_STORE_KEY),
-      this.memoryDb.readIndexedDbTableEntry<AdminMonitoringStateDto>(ADMIN_MONITORING_STORE_KEY)
+      this.adminNotificationsRepository.readStore<AdminNotificationCenterState>(),
+      this.adminMonitoringRepository.readStore<AdminMonitoringStateDto>()
     ]);
     const adminJobs = this.countFailedNotificationRules(notificationCenter);
     const adminMetrics = this.countAlertMonitoringMetrics(monitoringState);
@@ -1231,7 +1234,7 @@ export class AdminService {
       changed = true;
     }
     if (changed) {
-      await this.memoryDb.flushToIndexedDb();
+      await this.demoUsersRepository.flushToIndexedDb();
     }
   }
 
@@ -1458,7 +1461,7 @@ export class AdminService {
       changed = true;
     }
     if (changed) {
-      await this.memoryDb.flushToIndexedDb();
+      await this.demoUsersRepository.flushToIndexedDb();
     }
   }
 
@@ -1556,7 +1559,12 @@ export class AdminService {
     );
     let changed = false;
     this.demoAdminHelpTargets().forEach((target, index) => {
-      const token = this.ensureDemoHelpToken(admin, helpUser, target);
+      const token = this.demoShareTokensRepository.ensureAdminHelpToken({
+        adminId: admin.id,
+        userId: helpUser.id,
+        targetKey: target.key,
+        targetUrl: target.targetUrl
+      });
       const helpUrl = this.location.prepareExternalUrl(`/admin/help/${encodeURIComponent(token)}`);
       const sentAt = new Date(now.getTime() + index * 1000);
       const sentAtIso = sentAt.toISOString();
@@ -1599,7 +1607,7 @@ export class AdminService {
     if (!changed) {
       return;
     }
-    await this.memoryDb.flushToIndexedDb();
+    await this.demoChatsRepository.flushToIndexedDb();
   }
 
   private demoAdminHelpTargets(): DemoAdminHelpTarget[] {
@@ -1644,40 +1652,6 @@ export class AdminService {
         targetUrl: '/game?supportTarget=asset&assetFilter=Supplies&assetId=asset-sup-2&assetTitle=Game%20Night%20Box&assetSubtitle=Board%20games%20%2B%20cards%20%2B%20speakers&assetCity=Austin&assetDetails=Board%20games%2C%20cards%2C%20and%20speakers%20ready%20for%20the%20venue.&assetPreview=https%3A%2F%2Fpicsum.photos%2Fseed%2Fsupplies-gear-asset-sup-2%2F1200%2F700'
       }
     ];
-  }
-
-  private ensureDemoHelpToken(admin: AdminUserDto, user: UserDto, target: DemoAdminHelpTarget): string {
-    const safeAdminId = admin.id.replace(/[^A-Za-z0-9-]/g, '-');
-    const targetSuffix = target.key === 'current' ? '' : `-${target.key}`;
-    const token = `myscoutee:token:admin-help-${safeAdminId}-${user.id}${targetSuffix}`;
-    const now = new Date();
-    const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-    const record: ShareTokenRecord = {
-      token,
-      kind: 'adminHelp',
-      entityId: target.targetUrl,
-      ownerUserId: user.id,
-      createdAtIso: now.toISOString(),
-      expiresAtIso: expiresAt.toISOString()
-    };
-    this.memoryDb.write(state => {
-      const table = state[SHARE_TOKENS_TABLE_NAME];
-      const existing = table.byToken[token];
-      if (existing && Date.parse(existing.expiresAtIso) > Date.now() && existing.entityId === target.targetUrl) {
-        return state;
-      }
-      return {
-        ...state,
-        [SHARE_TOKENS_TABLE_NAME]: {
-          byToken: {
-            ...table.byToken,
-            [token]: record
-          },
-          tokens: table.tokens.includes(token) ? [...table.tokens] : [...table.tokens, token]
-        }
-      };
-    });
-    return token;
   }
 
   private demoChatMessages(ownerUserId: string, chatId: string): AdminChatMessageDto[] {
@@ -1753,48 +1727,9 @@ export class AdminService {
       mine: true,
       readBy: []
     };
-    this.upsertDemoSupportChatMessage(userChat, userMessage, true);
-    this.upsertDemoSupportChatMessage(adminChat, adminMessage, false);
-    await this.memoryDb.flushToIndexedDb();
-  }
-
-  private upsertDemoSupportChatMessage(chat: DemoChatRecord, message: ChatPopupMessage, unreadForOwner: boolean): void {
-    this.memoryDb.write(currentState => {
-      const currentTable = currentState[CHATS_TABLE_NAME];
-      const recordKey = `${chat.ownerUserId}:${chat.id}`;
-      const existing = currentTable.byId[recordKey];
-      const existingMessages = existing?.messages ?? [];
-      const nextRecord: DemoChatRecord = {
-        ...(existing ?? chat),
-        ...chat,
-        unread: unreadForOwner ? Math.max(1, (existing?.unread ?? 0) + 1) : 0,
-        messages: [
-          ...existingMessages.map(item => ({
-            ...item,
-            senderAvatar: { ...item.senderAvatar },
-            readBy: item.readBy
-              .filter(reader => `${reader.id ?? ''}`.trim() !== `${item.senderAvatar.id ?? ''}`.trim())
-              .map(reader => ({ ...reader })),
-            attachments: item.attachments?.map(attachment => ({ ...attachment })),
-            replyTo: item.replyTo ? { ...item.replyTo } : item.replyTo,
-            reactions: item.reactions?.map(reaction => ({ ...reaction }))
-          })),
-          message
-        ]
-      };
-      return {
-        ...currentState,
-        [CHATS_TABLE_NAME]: {
-          byId: {
-            ...currentTable.byId,
-            [recordKey]: nextRecord
-          },
-          ids: currentTable.ids.includes(recordKey)
-            ? [...currentTable.ids]
-            : [...currentTable.ids, recordKey]
-        }
-      };
-    });
+    this.demoChatsRepository.upsertSupportChatMessage(userChat, userMessage, true);
+    this.demoChatsRepository.upsertSupportChatMessage(adminChat, adminMessage, false);
+    await this.demoChatsRepository.flushToIndexedDb();
   }
 
   private resolveDashboardReportedUser(userId: string): AdminReportedUserDto | null {
@@ -2820,9 +2755,9 @@ export class AdminService {
   }
 
   private async readDemoStatsSnapshot(): Promise<AdminStatsDashboardDto> {
-    await this.withNotificationStorageFallback(this.memoryDb.whenReady(), undefined);
+    await this.withNotificationStorageFallback(this.adminStatsRepository.whenReady(), undefined);
     const existing = await this.withNotificationStorageFallback(
-      this.memoryDb.readIndexedDbTableEntry<AdminStatsDashboardDto>(ADMIN_STATS_STORE_KEY),
+      this.adminStatsRepository.readStore<AdminStatsDashboardDto>(),
       null
     );
     if (!existing) {
@@ -2836,9 +2771,9 @@ export class AdminService {
   }
 
   private async readDemoMonitoringState(): Promise<AdminMonitoringStateDto> {
-    await this.withNotificationStorageFallback(this.memoryDb.whenReady(), undefined);
+    await this.withNotificationStorageFallback(this.adminMonitoringRepository.whenReady(), undefined);
     const existing = await this.withNotificationStorageFallback(
-      this.memoryDb.readIndexedDbTableEntry<AdminMonitoringStateDto>(ADMIN_MONITORING_STORE_KEY),
+      this.adminMonitoringRepository.readStore<AdminMonitoringStateDto>(),
       null
     );
     if (!existing?.categories?.length) {
@@ -2848,9 +2783,9 @@ export class AdminService {
   }
 
   private async readDemoNotificationCenter(): Promise<AdminNotificationCenterState> {
-    await this.withNotificationStorageFallback(this.memoryDb.whenReady(), undefined);
+    await this.withNotificationStorageFallback(this.adminNotificationsRepository.whenReady(), undefined);
     const existing = await this.withNotificationStorageFallback(
-      this.memoryDb.readIndexedDbTableEntry<AdminNotificationCenterState>(ADMIN_NOTIFICATION_STORE_KEY),
+      this.adminNotificationsRepository.readStore<AdminNotificationCenterState>(),
       null
     );
     if (!existing?.rules?.length) {
@@ -2860,9 +2795,9 @@ export class AdminService {
   }
 
   private async readDemoParamsStore(): Promise<AdminParamsDemoStore> {
-    await this.withNotificationStorageFallback(this.memoryDb.whenReady(), undefined);
+    await this.withNotificationStorageFallback(this.adminParamsRepository.whenReady(), undefined);
     const existing = await this.withNotificationStorageFallback(
-      this.memoryDb.readIndexedDbTableEntry<AdminParamsDemoStore>(ADMIN_PARAMS_STORE_KEY),
+      this.adminParamsRepository.readStore<AdminParamsDemoStore>(),
       null
     );
     if (!existing?.sections?.length) {

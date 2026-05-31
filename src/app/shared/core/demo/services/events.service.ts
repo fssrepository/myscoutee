@@ -1,6 +1,5 @@
 import { Injectable, inject } from '@angular/core';
 
-import { AppMemoryDb } from '../../../core/base';
 import type {
   ActivitiesEventSyncPayload,
   EventCheckoutAssetSelection,
@@ -33,7 +32,6 @@ export class DemoEventsService extends DemoRouteDelayService {
   private static readonly EVENTS_CHECKOUT_ROUTE = '/activities/events/checkout';
   private readonly eventsRepository = inject(DemoEventsRepository);
   private readonly eventFeedbackRepository = inject(DemoEventFeedbackRepository);
-  private readonly memoryDb = inject(AppMemoryDb);
 
   async queryItemsByUser(userId: string): Promise<DemoEventRecord[]> {
     await this.waitForRouteDelay(DemoEventsService.EVENTS_ROUTE);
@@ -103,31 +101,31 @@ export class DemoEventsService extends DemoRouteDelayService {
   async submitEventFeedback(request: EventFeedbackSubmitRequestDto): Promise<void> {
     await this.waitForRouteDelay(DemoEventsService.EVENTS_ROUTE);
     this.eventFeedbackRepository.submitEventFeedback(request);
-    await this.memoryDb.flushToIndexedDb();
+    await this.eventFeedbackRepository.flushToIndexedDb();
   }
 
   async saveEventFeedbackNote(request: EventFeedbackNoteRequestDto): Promise<void> {
     await this.waitForRouteDelay(DemoEventsService.EVENTS_ROUTE);
     this.eventFeedbackRepository.saveEventFeedbackNote(request);
-    await this.memoryDb.flushToIndexedDb();
+    await this.eventFeedbackRepository.flushToIndexedDb();
   }
 
   async removeEventFeedbackEvent(userId: string, eventId: string): Promise<void> {
     await this.waitForRouteDelay(DemoEventsService.EVENTS_ROUTE);
     this.eventFeedbackRepository.removeEventFeedbackEvent(userId, eventId);
-    await this.memoryDb.flushToIndexedDb();
+    await this.eventFeedbackRepository.flushToIndexedDb();
   }
 
   async restoreEventFeedbackEvent(userId: string, eventId: string): Promise<void> {
     await this.waitForRouteDelay(DemoEventsService.EVENTS_ROUTE);
     this.eventFeedbackRepository.restoreEventFeedbackEvent(userId, eventId);
-    await this.memoryDb.flushToIndexedDb();
+    await this.eventFeedbackRepository.flushToIndexedDb();
   }
 
   async syncEventSnapshot(payload: Omit<ActivitiesEventSyncPayload, 'syncKey'>): Promise<DemoEventRecord | null> {
     await this.waitForRouteDelay(DemoEventsService.EVENTS_ROUTE);
     const record = this.eventsRepository.syncEventSnapshot(payload);
-    await this.memoryDb.flushToIndexedDb();
+    await this.eventsRepository.flushToIndexedDb();
     return record;
   }
 
@@ -170,7 +168,7 @@ export class DemoEventsService extends DemoRouteDelayService {
   }): Promise<DemoEventRecord | null> {
     await this.waitForEventMutationDelay();
     const record = this.eventsRepository.applyStageAction(request);
-    await this.memoryDb.flushToIndexedDb();
+    await this.eventsRepository.flushToIndexedDb();
     return record;
   }
 
@@ -200,7 +198,7 @@ export class DemoEventsService extends DemoRouteDelayService {
       options.bookingConfirmed === true && options.pendingReason !== 'approval' && options.pendingReason !== 'waitlist',
       options.pendingReason === 'waitlist'
     );
-    await this.memoryDb.flushToIndexedDb();
+    await this.eventsRepository.flushToIndexedDb();
     return record;
   }
 

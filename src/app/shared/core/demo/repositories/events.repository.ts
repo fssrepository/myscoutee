@@ -80,6 +80,10 @@ export class DemoEventsRepository {
   private readonly memoryDb = inject(AppMemoryDb);
   private initialized = false;
 
+  async flushToIndexedDb(): Promise<void> {
+    await this.memoryDb.flushToIndexedDb();
+  }
+
   init(): void {
     if (this.initialized) {
       return;

@@ -1,6 +1,5 @@
 import { Injectable, inject } from '@angular/core';
 
-import { AppMemoryDb } from '../../base/db';
 import { DemoUsersRepository } from '../repositories/users.repository';
 import { DemoRouteDelayService } from './demo-route-delay.service';
 import type {
@@ -44,7 +43,6 @@ export class DemoUsersService extends DemoRouteDelayService implements UserServi
   private static readonly DELETED_ACCOUNT_PURGE_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
   private readonly activityMembersRepository = inject(DemoActivityMembersRepository);
   private readonly countryPartitionsRepository = inject(DemoCountryPartitionsRepository);
-  private readonly memoryDb = inject(AppMemoryDb);
   private readonly usersRepository = inject(DemoUsersRepository);
   private readonly realtimeCursorByUserId: Record<string, number> = {};
   private readonly realtimeLastAdvanceAtByUserId: Record<string, number> = {};
@@ -110,7 +108,7 @@ export class DemoUsersService extends DemoRouteDelayService implements UserServi
   }
 
   async queryUserById(userId?: string): Promise<UserByIdQueryResponse> {
-    await this.memoryDb.whenReady();
+    await this.usersRepository.whenReady();
     await this.waitForRouteDelay(DemoUsersService.USER_BY_ID_ROUTE);
     const normalizedUserId = typeof userId === 'string' ? userId.trim() : '';
     if (!normalizedUserId) {
@@ -122,7 +120,7 @@ export class DemoUsersService extends DemoRouteDelayService implements UserServi
     const loadedUser = this.usersRepository.queryUserById(normalizedUserId);
     if (loadedUser?.profileStatus === 'deleted' && this.isDeletedAccountPastPurgeWindow(loadedUser)) {
       this.usersRepository.purgeUser(normalizedUserId);
-      await this.memoryDb.flushToIndexedDb();
+      await this.usersRepository.flushToIndexedDb();
       return {
         user: null,
         filterPreferences: null
@@ -218,7 +216,7 @@ export class DemoUsersService extends DemoRouteDelayService implements UserServi
 
   async saveUserFilterPreferences(userId: string, preferences: UserGameFilterPreferencesDto): Promise<void> {
     this.usersRepository.upsertUserFilterPreferences(userId, preferences);
-    await this.memoryDb.flushToIndexedDb();
+    await this.usersRepository.flushToIndexedDb();
     await this.waitForDelay(DemoUsersService.FILTER_PREFERENCES_SAVE_DELAY_MS);
   }
 
@@ -227,7 +225,7 @@ export class DemoUsersService extends DemoRouteDelayService implements UserServi
       return null;
     }
     const savedUser = this.usersRepository.upsertUser(user);
-    await this.memoryDb.flushToIndexedDb();
+    await this.usersRepository.flushToIndexedDb();
     return savedUser;
   }
 

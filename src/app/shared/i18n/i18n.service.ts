@@ -4,6 +4,7 @@ import { Injectable, NgZone, computed, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
+import { I18nBundleRepository, type StoredI18nBundle } from './i18n-bundle.repository';
 
 interface I18nAssetBundle {
   lang?: string;
@@ -17,22 +18,11 @@ interface I18nRemoteBundleResponse {
   data?: Record<string, string> | null;
 }
 
-interface StoredI18nBundle {
-  lang: string;
-  version: string;
-  data: Record<string, string>;
-  storedAt: number;
-}
-
 @Injectable({
   providedIn: 'root'
 })
 export class I18nService {
   private static readonly DEFAULT_LANGUAGE = 'en';
-  private static readonly STORAGE_PREFIX = 'myscoutee.i18n.bundle.v1';
-  private static readonly INDEXED_DB_NAME = 'myscoutee-i18n-db';
-  private static readonly INDEXED_DB_VERSION = 1;
-  private static readonly INDEXED_DB_STORE = 'bundles';
   private static readonly LOCAL_SEED_ASSETS: Record<string, string> = {
     en: 'assets/i18n/en.json',
     hu: 'assets/i18n/hu.json'
@@ -73,6 +63,7 @@ export class I18nService {
   private readonly http = inject(HttpClient);
   private readonly document = inject(DOCUMENT);
   private readonly zone = inject(NgZone);
+  private readonly bundleRepository = inject(I18nBundleRepository);
   private readonly currentLanguageSignal = signal(I18nService.DEFAULT_LANGUAGE);
   private readonly messagesSignal = signal<Record<string, string>>({});
   private readonly sourceMessagesSignal = signal<Record<string, string>>({});
@@ -81,7 +72,6 @@ export class I18nService {
   private readonly textNodeSources = new WeakMap<Text, string>();
   private readonly attributeSources = new WeakMap<Element, Map<string, string>>();
   private domObserver: MutationObserver | null = null;
-  private indexedDbOpenPromise: Promise<IDBDatabase | null> | null = null;
   private initialized = false;
   private scanQueued = false;
   private translatingDom = false;
@@ -116,14 +106,14 @@ export class I18nService {
     await this.loadDefaultSourceBundle();
 
     const candidates = this.localizedBrowserCandidates();
-    const localStorageMirror = this.firstLocalStorageBundle(candidates);
+    const localStorageMirror = this.bundleRepository.firstLocalStorageBundle(candidates);
     if (localStorageMirror) {
       this.applyBundle(localStorageMirror.lang, localStorageMirror.version, localStorageMirror.data);
     }
 
-    const indexedDbStored = await this.firstIndexedDbBundle(candidates);
+    const indexedDbStored = await this.bundleRepository.firstIndexedDbBundle(candidates);
     if (indexedDbStored) {
-      this.writeLocalStorageBundle(indexedDbStored);
+      this.bundleRepository.writeLocalStorageBundle(indexedDbStored);
       this.applyBundle(indexedDbStored.lang, indexedDbStored.version, indexedDbStored.data);
     }
 
@@ -134,8 +124,8 @@ export class I18nService {
       activeStored?.version ?? null
     );
     if (seed) {
-      await this.writeIndexedDbBundle(seed);
-      this.writeLocalStorageBundle(seed);
+      await this.bundleRepository.writeIndexedDbBundle(seed);
+      this.bundleRepository.writeLocalStorageBundle(seed);
       this.applyBundle(seed.lang, seed.version, seed.data);
     }
 
@@ -144,14 +134,14 @@ export class I18nService {
 
   private async loadDefaultSourceBundle(): Promise<void> {
     const lang = I18nService.DEFAULT_LANGUAGE;
-    const localStorageMirror = this.readLocalStorageBundle(lang);
+    const localStorageMirror = this.bundleRepository.readLocalStorageBundle(lang);
     if (localStorageMirror && Object.keys(localStorageMirror.data).length > 0) {
       this.applySourceBundle(localStorageMirror.data);
     }
 
-    const indexedDbStored = await this.readIndexedDbBundle(lang);
+    const indexedDbStored = await this.bundleRepository.readIndexedDbBundle(lang);
     if (indexedDbStored && Object.keys(indexedDbStored.data).length > 0) {
-      this.writeLocalStorageBundle(indexedDbStored);
+      this.bundleRepository.writeLocalStorageBundle(indexedDbStored);
       this.applySourceBundle(indexedDbStored.data);
     }
 
@@ -169,8 +159,8 @@ export class I18nService {
       && this.compareVersions(seed.version, activeStored.version) <= 0) {
       return;
     }
-    await this.writeIndexedDbBundle(seed);
-    this.writeLocalStorageBundle(seed);
+    await this.bundleRepository.writeIndexedDbBundle(seed);
+    this.bundleRepository.writeLocalStorageBundle(seed);
     this.applySourceBundle(seed.data);
   }
 
@@ -183,7 +173,7 @@ export class I18nService {
     }
     const activeLang = this.currentLanguageSignal();
     const explicitLang = activeLang === I18nService.DEFAULT_LANGUAGE ? candidates[0] : activeLang;
-    const stored = await this.readStoredBundle(explicitLang);
+    const stored = await this.bundleRepository.readStoredBundle(explicitLang);
     let params = new HttpParams().set('lang', explicitLang);
     if (stored?.version) {
       params = params.set('version', stored.version);
@@ -208,8 +198,8 @@ export class I18nService {
       }
       if (data && Object.keys(data).length > 0) {
         const bundle = { lang, version: version || '0', data, storedAt: Date.now() };
-        await this.writeIndexedDbBundle(bundle);
-        this.writeLocalStorageBundle(bundle);
+        await this.bundleRepository.writeIndexedDbBundle(bundle);
+        this.bundleRepository.writeLocalStorageBundle(bundle);
         this.applyBundle(bundle.lang, bundle.version, bundle.data);
         return;
       }
@@ -219,26 +209,6 @@ export class I18nService {
     } catch {
       // The static English UI and any stored/local seed bundle remain available.
     }
-  }
-
-  private firstLocalStorageBundle(candidates: readonly string[]): StoredI18nBundle | null {
-    for (const lang of candidates) {
-      const stored = this.readLocalStorageBundle(lang);
-      if (stored && Object.keys(stored.data).length > 0) {
-        return stored;
-      }
-    }
-    return null;
-  }
-
-  private async firstIndexedDbBundle(candidates: readonly string[]): Promise<StoredI18nBundle | null> {
-    for (const lang of candidates) {
-      const stored = await this.readIndexedDbBundle(lang);
-      if (stored && Object.keys(stored.data).length > 0) {
-        return stored;
-      }
-    }
-    return null;
   }
 
   private async firstLocalSeedBundle(
@@ -363,128 +333,6 @@ export class I18nService {
   private acceptLanguageHeader(): string {
     const browserLanguages = this.browserLanguages();
     return browserLanguages.length > 0 ? browserLanguages.join(',') : I18nService.DEFAULT_LANGUAGE;
-  }
-
-  private async readStoredBundle(lang: string): Promise<StoredI18nBundle | null> {
-    return await this.readIndexedDbBundle(lang) ?? this.readLocalStorageBundle(lang);
-  }
-
-  private readLocalStorageBundle(lang: string): StoredI18nBundle | null {
-    if (!this.canUseLocalStorage()) {
-      return null;
-    }
-    try {
-      const raw = localStorage.getItem(this.storageKey(lang));
-      if (!raw) {
-        return null;
-      }
-      const parsed = JSON.parse(raw) as Partial<StoredI18nBundle> | null;
-      const normalizedLang = this.normalizeLanguage(parsed?.lang ?? lang);
-      const data = this.normalizeMessages(parsed?.data ?? null);
-      const version = `${parsed?.version ?? ''}`.trim();
-      if (!normalizedLang || !version || !data) {
-        return null;
-      }
-      return {
-        lang: normalizedLang,
-        version,
-        data,
-        storedAt: Number.isFinite(parsed?.storedAt) ? Number(parsed?.storedAt) : 0
-      };
-    } catch {
-      return null;
-    }
-  }
-
-  private writeLocalStorageBundle(bundle: StoredI18nBundle): void {
-    if (!this.canUseLocalStorage()) {
-      return;
-    }
-    try {
-      localStorage.setItem(this.storageKey(bundle.lang), JSON.stringify(bundle));
-    } catch {
-      // Private-mode/quota failures should never block rendering.
-    }
-  }
-
-  private async readIndexedDbBundle(lang: string): Promise<StoredI18nBundle | null> {
-    const db = await this.openIndexedDb();
-    if (!db) {
-      return null;
-    }
-    return await new Promise<StoredI18nBundle | null>(resolve => {
-      const tx = db.transaction(I18nService.INDEXED_DB_STORE, 'readonly');
-      const request = tx.objectStore(I18nService.INDEXED_DB_STORE).get(this.normalizeLanguage(lang));
-      request.onsuccess = () => {
-        resolve(this.normalizeStoredBundle(request.result, lang));
-      };
-      request.onerror = () => resolve(null);
-      tx.onerror = () => resolve(null);
-      tx.onabort = () => resolve(null);
-    });
-  }
-
-  private async writeIndexedDbBundle(bundle: StoredI18nBundle): Promise<void> {
-    const db = await this.openIndexedDb();
-    if (!db) {
-      return;
-    }
-    await new Promise<void>(resolve => {
-      const tx = db.transaction(I18nService.INDEXED_DB_STORE, 'readwrite');
-      tx.objectStore(I18nService.INDEXED_DB_STORE).put(bundle, bundle.lang);
-      tx.oncomplete = () => resolve();
-      tx.onerror = () => resolve();
-      tx.onabort = () => resolve();
-    });
-  }
-
-  private async openIndexedDb(): Promise<IDBDatabase | null> {
-    if (typeof indexedDB === 'undefined') {
-      return null;
-    }
-    if (!this.indexedDbOpenPromise) {
-      this.indexedDbOpenPromise = new Promise<IDBDatabase | null>(resolve => {
-        const request = indexedDB.open(I18nService.INDEXED_DB_NAME, I18nService.INDEXED_DB_VERSION);
-        request.onupgradeneeded = () => {
-          const db = request.result;
-          if (!db.objectStoreNames.contains(I18nService.INDEXED_DB_STORE)) {
-            db.createObjectStore(I18nService.INDEXED_DB_STORE);
-          }
-        };
-        request.onsuccess = () => resolve(request.result);
-        request.onerror = () => resolve(null);
-        request.onblocked = () => resolve(null);
-      });
-    }
-    return await this.indexedDbOpenPromise;
-  }
-
-  private normalizeStoredBundle(value: unknown, fallbackLang: string): StoredI18nBundle | null {
-    const parsed = value as Partial<StoredI18nBundle> | null;
-    const normalizedLang = this.normalizeLanguage(parsed?.lang ?? fallbackLang);
-    const data = this.normalizeMessages(parsed?.data ?? null);
-    const version = `${parsed?.version ?? ''}`.trim();
-    if (!normalizedLang || !version || !data) {
-      return null;
-    }
-    return {
-      lang: normalizedLang,
-      version,
-      data,
-      storedAt: Number.isFinite(parsed?.storedAt) ? Number(parsed?.storedAt) : 0
-    };
-  }
-
-  private storageKey(lang: string): string {
-    return `${I18nService.STORAGE_PREFIX}.${this.normalizeLanguage(lang) || I18nService.DEFAULT_LANGUAGE}`;
-  }
-
-  private canUseLocalStorage(): boolean {
-    try {
-      return typeof localStorage !== 'undefined';
-    } catch {
-      return false;
-    }
   }
 
   private normalizeLanguage(value: string): string {
