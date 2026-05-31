@@ -76,7 +76,6 @@ interface HelpEditorRevisionRow {
 })
 export class AdminHelpEditorPopupComponent implements OnDestroy {
   private static readonly ACTION_PENDING_WINDOW_MS = 1500;
-  private static readonly LOAD_DEMO_DELAY_MS = 1500;
   private static readonly LOAD_PROGRESS_WINDOW_MS = 3000;
   private static readonly EXPLANATION_IMAGE_SLOT_COUNT = 8;
   private static readonly LAZY_IMAGE_PLACEHOLDER_URL = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==';
@@ -300,15 +299,7 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
       if (this.documentKind !== 'explanation') {
         stateLoads.push(this.helpCenter.loadAdminState(adminUserId, 'explanation', this.selectedContentLang, null));
       }
-      await Promise.all([
-        ...stateLoads,
-        this.routeDelay.waitForRouteDelay(
-          this.adminContentRoute(),
-          undefined,
-          undefined,
-          AdminHelpEditorPopupComponent.LOAD_DEMO_DELAY_MS
-        )
-      ]);
+      await Promise.all(stateLoads);
       this.selectInitialRevision(this.revisions(), this.activeRevision());
     } catch {
       this.error = this.loadErrorLabel();
@@ -1559,19 +1550,6 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
 
   private normalizedHtmlText(value: string): string {
     return `${value ?? ''}`.replace(/\s+/g, ' ').trim();
-  }
-
-  private adminContentRoute(): string {
-    switch (this.documentKind) {
-      case 'privacy':
-        return '/admin/privacy';
-      case 'explanation':
-        return this.selectedExplanationContextKey
-          ? `/admin/explanation/${this.selectedExplanationContextKey}`
-          : '/admin/explanation/new';
-      default:
-        return '/admin/help';
-    }
   }
 
   private completeLoadingAfterCheck(): void {

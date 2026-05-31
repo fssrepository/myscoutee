@@ -3,6 +3,7 @@ import { Injectable, inject, signal } from '@angular/core';
 
 import { environment } from '../../../environments/environment';
 import { ActivitiesPopupStateService } from '../../activity/services/activities-popup-state.service';
+import { RouteDelayService } from '../../shared/core/base/services/route-delay.service';
 import type { ChatPopupMessage, ChatRecord } from '../../shared/core/base/models/chat.model';
 import {
   DemoChatsRepository,
@@ -15,6 +16,11 @@ import type { AdminUserDto } from '../models/admin-profile.model';
 import { AdminShellService } from './admin-shell.service';
 import { AdminWorkspaceService } from './admin-workspace.service';
 
+const ADMIN_MODERATION_WARN_ROUTE = '/admin/reports/warn';
+const ADMIN_MODERATION_BLOCK_ROUTE = '/admin/reports/block';
+const ADMIN_MODERATION_UNBLOCK_ROUTE = '/admin/reports/unblock';
+const ADMIN_MODERATION_ACTION_DEMO_DELAY_MS = 1500;
+
 @Injectable({
   providedIn: 'root'
 })
@@ -25,6 +31,7 @@ export class AdminModerationService {
   private readonly demoUsersRepository = inject(DemoUsersRepository);
   private readonly demoChatsRepository = inject(DemoChatsRepository);
   private readonly activitiesContext = inject(ActivitiesPopupStateService);
+  private readonly routeDelay = inject(RouteDelayService);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
   private readonly warnedUserIdsRef = signal<Set<string>>(new Set());
 
@@ -54,6 +61,13 @@ export class AdminModerationService {
   }
 
   async warnUser(userId: string, message: string): Promise<void> {
+    await this.withAdminModerationDemoDelay(
+      this.warnUserAction(userId, message),
+      ADMIN_MODERATION_WARN_ROUTE
+    );
+  }
+
+  private async warnUserAction(userId: string, message: string): Promise<void> {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return;
@@ -78,6 +92,13 @@ export class AdminModerationService {
   }
 
   async blockUser(userId: string, message: string): Promise<void> {
+    await this.withAdminModerationDemoDelay(
+      this.blockUserAction(userId, message),
+      ADMIN_MODERATION_BLOCK_ROUTE
+    );
+  }
+
+  private async blockUserAction(userId: string, message: string): Promise<void> {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return;
@@ -113,6 +134,13 @@ export class AdminModerationService {
   }
 
   async unblockUser(userId: string): Promise<void> {
+    await this.withAdminModerationDemoDelay(
+      this.unblockUserAction(userId),
+      ADMIN_MODERATION_UNBLOCK_ROUTE
+    );
+  }
+
+  private async unblockUserAction(userId: string): Promise<void> {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return;
@@ -144,6 +172,25 @@ export class AdminModerationService {
     }
     await this.workspace.refreshDemoDashboard();
     this.refreshSelectedReportedUser(normalizedUserId);
+  }
+
+  private async withAdminModerationDemoDelay<T>(work: Promise<T>, route: string): Promise<T> {
+    if (this.workspace.usesHttpAdminApi) {
+      return work;
+    }
+    const delay = this.routeDelay.waitForRouteDelay(
+      route,
+      undefined,
+      undefined,
+      ADMIN_MODERATION_ACTION_DEMO_DELAY_MS
+    );
+    try {
+      const [result] = await Promise.all([work, delay]);
+      return result;
+    } catch (error) {
+      await delay.catch(() => undefined);
+      throw error;
+    }
   }
 
   private async appendDemoSupportMessage(userId: string, text: string): Promise<void> {

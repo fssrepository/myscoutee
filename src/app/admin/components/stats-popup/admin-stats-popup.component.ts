@@ -2,7 +2,6 @@ import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
-import { RouteDelayService } from '../../../shared/core/base/services/route-delay.service';
 import { I18nPipe } from '../../../shared/i18n';
 import {
   type AdminStatsBreakdownItemDto,
@@ -32,12 +31,10 @@ type AdminStatsGraphAction = { key: string; labelKey: string; icon: string; tone
   styleUrl: './admin-stats-popup.component.scss'
 })
 export class AdminStatsPopupComponent implements OnDestroy {
-  private static readonly LOAD_DEMO_DELAY_MS = 1500;
   private static readonly LOAD_PROGRESS_WINDOW_MS = 3000;
 
   protected readonly admin = inject(AdminShellService);
   private readonly statsService = inject(AdminStatsService);
-  private readonly routeDelay = inject(RouteDelayService);
   protected readonly loading = signal(false);
   protected readonly error = signal('');
   protected readonly stats = signal<AdminStatsDashboardDto | null>(null);
@@ -620,10 +617,7 @@ export class AdminStatsPopupComponent implements OnDestroy {
     this.beginLoadingProgress();
     this.error.set('');
     try {
-      const [dashboard] = await Promise.all([
-        this.statsService.loadStatsDashboard(),
-        this.routeDelay.waitForRouteDelay('/admin/stats', undefined, undefined, AdminStatsPopupComponent.LOAD_DEMO_DELAY_MS)
-      ]);
+      const dashboard = await this.statsService.loadStatsDashboard();
       this.stats.set(dashboard);
       this.selectedTimeline.set(dashboard.timeline.at(-1) ?? null);
       this.selectedGraphTimeline.set(dashboard.graph.timeline.at(-1) ?? null);

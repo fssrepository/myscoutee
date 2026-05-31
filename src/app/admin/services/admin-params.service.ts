@@ -2,6 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 
 import { environment } from '../../../environments/environment';
+import { RouteDelayService } from '../../shared/core/base/services/route-delay.service';
 import { AdminParamsSeedBuilder } from '../builders/admin-params-seed.builder';
 import type {
   AdminParamFieldDto,
@@ -18,6 +19,18 @@ import { AdminWorkspaceService } from './admin-workspace.service';
 
 const ADMIN_PARAMS_STORAGE_TIMEOUT_MS = 2500;
 const ADMIN_PARAMS_HTTP_TIMEOUT_MS = 12000;
+const ADMIN_PARAMS_LOAD_ROUTE = '/admin/params';
+const ADMIN_PARAMS_SAVE_ROUTE = '/admin/params/save';
+const ADMIN_PARAMS_HISTORY_ROUTE = '/admin/params/history';
+const ADMIN_PARAMS_REVERT_ROUTE = '/admin/params/revert';
+const ADMIN_PARAMS_LOAD_DEMO_DELAY_MS = 1500;
+const ADMIN_PARAMS_SAVE_DEMO_DELAY_MS = 1500;
+const ADMIN_PARAMS_HISTORY_DEMO_DELAY_MS = 1500;
+const ADMIN_PARAMS_REVERT_DEMO_DELAY_MS = 1500;
+
+interface AdminParamsDelayOptions {
+  skipDemoDelay?: boolean;
+}
 
 @Injectable({
   providedIn: 'root'
@@ -26,9 +39,19 @@ export class AdminParamsService {
   private readonly http = inject(HttpClient);
   private readonly repository = inject(AdminParamsRepository);
   private readonly workspace = inject(AdminWorkspaceService);
+  private readonly routeDelay = inject(RouteDelayService);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
 
-  async loadParamsState(): Promise<AdminParamsStateDto> {
+  async loadParamsState(options?: AdminParamsDelayOptions): Promise<AdminParamsStateDto> {
+    return this.withAdminParamsDemoDelay(
+      this.loadParamsStateSnapshot(),
+      ADMIN_PARAMS_LOAD_ROUTE,
+      ADMIN_PARAMS_LOAD_DEMO_DELAY_MS,
+      options
+    );
+  }
+
+  private async loadParamsStateSnapshot(): Promise<AdminParamsStateDto> {
     if (this.workspace.usesHttpAdminApi) {
       const state = await this.withHttpTimeout(this.http
         .get<AdminParamsStateDto>(`${this.apiBaseUrl}/admin/params`, {
@@ -42,6 +65,20 @@ export class AdminParamsService {
   }
 
   async saveParamsSection(
+    sectionKey: string,
+    fields: readonly AdminParamFieldDto[],
+    summary: string,
+    options?: AdminParamsDelayOptions
+  ): Promise<AdminParamsStateDto> {
+    return this.withAdminParamsDemoDelay(
+      this.saveParamsSectionSnapshot(sectionKey, fields, summary),
+      ADMIN_PARAMS_SAVE_ROUTE,
+      ADMIN_PARAMS_SAVE_DEMO_DELAY_MS,
+      options
+    );
+  }
+
+  private async saveParamsSectionSnapshot(
     sectionKey: string,
     fields: readonly AdminParamFieldDto[],
     summary: string
@@ -101,7 +138,16 @@ export class AdminParamsService {
     return this.normalizeParamsState(nextStore);
   }
 
-  async loadParamsHistory(sectionKey: string): Promise<AdminParamsHistoryDto> {
+  async loadParamsHistory(sectionKey: string, options?: AdminParamsDelayOptions): Promise<AdminParamsHistoryDto> {
+    return this.withAdminParamsDemoDelay(
+      this.loadParamsHistorySnapshot(sectionKey),
+      ADMIN_PARAMS_HISTORY_ROUTE,
+      ADMIN_PARAMS_HISTORY_DEMO_DELAY_MS,
+      options
+    );
+  }
+
+  private async loadParamsHistorySnapshot(sectionKey: string): Promise<AdminParamsHistoryDto> {
     const normalizedSectionKey = `${sectionKey ?? ''}`.trim();
     if (this.workspace.usesHttpAdminApi) {
       const history = await this.withHttpTimeout(this.http
@@ -127,6 +173,14 @@ export class AdminParamsService {
   }
 
   async revertParamsSection(sectionKey: string, version: number): Promise<AdminParamsStateDto> {
+    return this.withAdminParamsDemoDelay(
+      this.revertParamsSectionSnapshot(sectionKey, version),
+      ADMIN_PARAMS_REVERT_ROUTE,
+      ADMIN_PARAMS_REVERT_DEMO_DELAY_MS
+    );
+  }
+
+  private async revertParamsSectionSnapshot(sectionKey: string, version: number): Promise<AdminParamsStateDto> {
     const normalizedSectionKey = `${sectionKey ?? ''}`.trim();
     const normalizedVersion = Math.max(1, Math.trunc(Number(version) || 0));
     if (this.workspace.usesHttpAdminApi) {
@@ -141,16 +195,36 @@ export class AdminParamsService {
         .toPromise());
       return this.normalizeParamsState(state ?? this.buildDefaultParamsStore());
     }
-    const history = await this.loadParamsHistory(normalizedSectionKey);
+    const history = await this.loadParamsHistory(normalizedSectionKey, { skipDemoDelay: true });
     const selected = history.versions.find(item => item.version === normalizedVersion);
     if (!selected) {
-      return this.loadParamsState();
+      return this.loadParamsState({ skipDemoDelay: true });
     }
     return this.saveParamsSection(
       normalizedSectionKey,
       selected.fields,
-      `Reverted ${history.label} parameters to version ${normalizedVersion}.`
+      `Reverted ${history.label} parameters to version ${normalizedVersion}.`,
+      { skipDemoDelay: true }
     );
+  }
+
+  private async withAdminParamsDemoDelay<T>(
+    work: Promise<T>,
+    route: string,
+    fallbackDelayMs: number,
+    options?: AdminParamsDelayOptions
+  ): Promise<T> {
+    if (this.workspace.usesHttpAdminApi || options?.skipDemoDelay === true) {
+      return work;
+    }
+    const delay = this.routeDelay.waitForRouteDelay(route, undefined, undefined, fallbackDelayMs);
+    try {
+      const [result] = await Promise.all([work, delay]);
+      return result;
+    } catch (error) {
+      await delay.catch(() => undefined);
+      throw error;
+    }
   }
 
   private async readDemoParamsStore(): Promise<AdminParamsDemoStore> {

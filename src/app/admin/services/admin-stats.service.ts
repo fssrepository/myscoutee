@@ -2,6 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 
 import { environment } from '../../../environments/environment';
+import { RouteDelayService } from '../../shared/core/base/services/route-delay.service';
 import { AdminStatsRepository } from '../repositories/admin-stats.repository';
 import type {
   AdminStatsBreakdownItemDto,
@@ -18,6 +19,8 @@ import { AdminWorkspaceService } from './admin-workspace.service';
 
 const ADMIN_STATS_STORAGE_TIMEOUT_MS = 2500;
 const ADMIN_STATS_HTTP_TIMEOUT_MS = 12000;
+const ADMIN_STATS_LOAD_ROUTE = '/admin/stats';
+const ADMIN_STATS_LOAD_DEMO_DELAY_MS = 1500;
 
 @Injectable({
   providedIn: 'root'
@@ -26,9 +29,14 @@ export class AdminStatsService {
   private readonly http = inject(HttpClient);
   private readonly workspace = inject(AdminWorkspaceService);
   private readonly repository = inject(AdminStatsRepository);
+  private readonly routeDelay = inject(RouteDelayService);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
 
   async loadStatsDashboard(): Promise<AdminStatsDashboardDto> {
+    return this.withAdminStatsDemoDelay(this.loadStatsDashboardSnapshot());
+  }
+
+  private async loadStatsDashboardSnapshot(): Promise<AdminStatsDashboardDto> {
     if (this.workspace.usesHttpAdminApi) {
       try {
         const state = await this.withHttpTimeout(this.http
@@ -45,6 +53,25 @@ export class AdminStatsService {
     }
 
     return this.readDemoStatsSnapshot();
+  }
+
+  private async withAdminStatsDemoDelay<T>(work: Promise<T>): Promise<T> {
+    if (this.workspace.usesHttpAdminApi) {
+      return work;
+    }
+    const delay = this.routeDelay.waitForRouteDelay(
+      ADMIN_STATS_LOAD_ROUTE,
+      undefined,
+      undefined,
+      ADMIN_STATS_LOAD_DEMO_DELAY_MS
+    );
+    try {
+      const [result] = await Promise.all([work, delay]);
+      return result;
+    } catch (error) {
+      await delay.catch(() => undefined);
+      throw error;
+    }
   }
 
   private async readDemoStatsSnapshot(): Promise<AdminStatsDashboardDto> {

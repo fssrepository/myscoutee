@@ -13,12 +13,15 @@ import type {
   AdminMonitoringStateDto,
   AdminMonitoringTone
 } from '../../shared/core';
+import { RouteDelayService } from '../../shared/core/base/services/route-delay.service';
 import { AdminMonitoringSeedBuilder } from '../builders/admin-monitoring-seed.builder';
 import { AdminMonitoringRepository } from '../repositories/admin-monitoring.repository';
 import { AdminWorkspaceService } from './admin-workspace.service';
 
 const ADMIN_MONITORING_STORAGE_TIMEOUT_MS = 2500;
 const ADMIN_MONITORING_HTTP_TIMEOUT_MS = 12000;
+const ADMIN_MONITORING_LOAD_ROUTE = '/admin/monitoring';
+const ADMIN_MONITORING_LOAD_DEMO_DELAY_MS = 1500;
 
 @Injectable({
   providedIn: 'root'
@@ -27,9 +30,14 @@ export class AdminMonitoringService {
   private readonly http = inject(HttpClient);
   private readonly workspace = inject(AdminWorkspaceService);
   private readonly repository = inject(AdminMonitoringRepository);
+  private readonly routeDelay = inject(RouteDelayService);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
 
   async loadMonitoringState(): Promise<AdminMonitoringStateDto> {
+    return this.withAdminMonitoringDemoDelay(this.loadMonitoringStateSnapshot());
+  }
+
+  private async loadMonitoringStateSnapshot(): Promise<AdminMonitoringStateDto> {
     if (this.workspace.usesHttpAdminApi) {
       const state = await this.withHttpTimeout(this.http
         .get<AdminMonitoringStateDto>(`${this.apiBaseUrl}/admin/monitoring`, {
@@ -39,6 +47,25 @@ export class AdminMonitoringService {
       return this.normalizeMonitoringState(state ?? this.buildDefaultMonitoringState(), 'http');
     }
     return this.readDemoMonitoringState();
+  }
+
+  private async withAdminMonitoringDemoDelay<T>(work: Promise<T>): Promise<T> {
+    if (this.workspace.usesHttpAdminApi) {
+      return work;
+    }
+    const delay = this.routeDelay.waitForRouteDelay(
+      ADMIN_MONITORING_LOAD_ROUTE,
+      undefined,
+      undefined,
+      ADMIN_MONITORING_LOAD_DEMO_DELAY_MS
+    );
+    try {
+      const [result] = await Promise.all([work, delay]);
+      return result;
+    } catch (error) {
+      await delay.catch(() => undefined);
+      throw error;
+    }
   }
 
   private async readDemoMonitoringState(): Promise<AdminMonitoringStateDto> {

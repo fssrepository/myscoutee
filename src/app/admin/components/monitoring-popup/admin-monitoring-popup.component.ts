@@ -8,14 +8,11 @@ import type {
   AdminMonitoringHealth,
   AdminMonitoringMetricDto
 } from '../../../shared/core';
-import { RouteDelayService } from '../../../shared/core/base/services/route-delay.service';
 import { I18nPipe } from '../../../shared/i18n';
 import { AdminMonitoringService } from '../../services/admin-monitoring.service';
 import { AdminShellService } from '../../services/admin-shell.service';
 
 const MONITORING_POPUP_KEY = 'monitoring';
-const MONITORING_LOAD_ROUTE = '/admin/monitoring';
-const MONITORING_LOAD_DEMO_DELAY_MS = 1500;
 const MONITORING_LOAD_PROGRESS_WINDOW_MS = 3000;
 
 const MONITORING_FILTER = {
@@ -53,7 +50,6 @@ const MONITORING_FILTER_CATEGORIES: Record<MonitoringFilter, ReadonlySet<string>
 export class AdminMonitoringPopupComponent implements OnInit, OnDestroy {
   protected readonly admin = inject(AdminShellService);
   private readonly monitoringService = inject(AdminMonitoringService);
-  private readonly routeDelay = inject(RouteDelayService);
   protected readonly popupKey = MONITORING_POPUP_KEY;
   protected readonly filterOptions = MONITORING_FILTER_OPTIONS;
   protected readonly loading = signal(false);
@@ -151,15 +147,7 @@ export class AdminMonitoringPopupComponent implements OnInit, OnDestroy {
     this.beginLoadingProgress();
     this.error.set('');
     try {
-      const [state] = await Promise.all([
-        this.monitoringService.loadMonitoringState(),
-        this.routeDelay.waitForRouteDelay(
-          MONITORING_LOAD_ROUTE,
-          undefined,
-          undefined,
-          MONITORING_LOAD_DEMO_DELAY_MS
-        )
-      ]);
+      const state = await this.monitoringService.loadMonitoringState();
       this.state.set(state);
     } catch {
       this.error.set('admin.monitoring.error.load');

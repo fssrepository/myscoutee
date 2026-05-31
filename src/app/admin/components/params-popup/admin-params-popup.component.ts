@@ -27,9 +27,7 @@ type AdminParamOption = Readonly<AdminParamOptionDto>;
 })
 export class AdminParamsPopupComponent implements OnDestroy {
   private static readonly ACTION_PENDING_WINDOW_MS = 1500;
-  private static readonly LOAD_DEMO_DELAY_MS = 1500;
   private static readonly LOAD_PROGRESS_WINDOW_MS = 3000;
-  private static readonly SAVE_DEMO_DELAY_MS = 1500;
 
   protected readonly admin = inject(AdminShellService);
   private readonly paramsService = inject(AdminParamsService);
@@ -75,10 +73,7 @@ export class AdminParamsPopupComponent implements OnDestroy {
     this.beginLoadingProgress();
     this.error.set('');
     try {
-      const [state] = await Promise.all([
-        this.paramsService.loadParamsState(),
-        this.routeDelay.waitForRouteDelay('/admin/params', undefined, undefined, AdminParamsPopupComponent.LOAD_DEMO_DELAY_MS)
-      ]);
+      const state = await this.paramsService.loadParamsState();
       this.state.set(state);
       if (!this.openSectionKey() && state.sections.length) {
         this.openSectionKey.set(state.sections[0].key);
@@ -128,14 +123,11 @@ export class AdminParamsPopupComponent implements OnDestroy {
     this.saving.set(true);
     this.error.set('');
     try {
-      const [state] = await Promise.all([
-        this.paramsService.saveParamsSection(
-          draft.section.key,
-          draft.fields,
-          `Updated ${draft.section.label} parameters.`
-        ),
-        this.routeDelay.waitForRouteDelay('/admin/params/save', undefined, undefined, AdminParamsPopupComponent.SAVE_DEMO_DELAY_MS)
-      ]);
+      const state = await this.paramsService.saveParamsSection(
+        draft.section.key,
+        draft.fields,
+        `Updated ${draft.section.label} parameters.`
+      );
       this.state.set(state);
       this.openSectionKey.set(draft.section.key);
       this.editDraft.set(null);
@@ -164,10 +156,7 @@ export class AdminParamsPopupComponent implements OnDestroy {
     this.historyLoading.set(true);
     this.beginLoadingProgress();
     try {
-      const [history] = await Promise.all([
-        this.paramsService.loadParamsHistory(section.key),
-        this.routeDelay.waitForRouteDelay('/admin/params/history', undefined, undefined, AdminParamsPopupComponent.LOAD_DEMO_DELAY_MS)
-      ]);
+      const history = await this.paramsService.loadParamsHistory(section.key);
       if (this.historyLoadGeneration !== loadGeneration) {
         return;
       }
@@ -218,10 +207,7 @@ export class AdminParamsPopupComponent implements OnDestroy {
       loadGeneration = ++this.historyLoadGeneration;
       this.historyLoading.set(true);
       this.beginLoadingProgress();
-      const [refreshedHistory] = await Promise.all([
-        this.paramsService.loadParamsHistory(history.sectionKey),
-        this.routeDelay.waitForRouteDelay('/admin/params/history', undefined, undefined, AdminParamsPopupComponent.LOAD_DEMO_DELAY_MS)
-      ]);
+      const refreshedHistory = await this.paramsService.loadParamsHistory(history.sectionKey);
       if (this.historyLoadGeneration !== loadGeneration) {
         return;
       }
