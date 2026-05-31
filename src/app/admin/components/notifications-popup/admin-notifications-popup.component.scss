@@ -43,42 +43,6 @@
   z-index: 1;
 }
 
-.notification-circle-ring {
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  pointer-events: none;
-}
-
-.notification-circle-ring-svg {
-  width: 100%;
-  height: 100%;
-  display: block;
-  filter: drop-shadow(0 4px 12px rgba(22, 94, 51, 0.12));
-}
-
-.notification-circle-ring-track,
-.notification-circle-ring-progress {
-  fill: none;
-  stroke-width: 3;
-}
-
-.notification-circle-ring-track {
-  stroke: rgba(133, 100, 42, 0.18);
-}
-
-.notification-circle-ring-progress {
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  transform: rotate(-90deg);
-  transform-origin: 50% 50%;
-  transition: stroke-dashoffset 3000ms linear;
-}
-
-.notification-circle-ring-progress.is-loading {
-  stroke: #eb9321;
-}
-
 .notification-icon-btn {
   width: 34px;
   height: 34px;
@@ -190,40 +154,6 @@
   align-content: center;
   gap: 0.42rem;
   text-align: center;
-}
-
-.notifications-loading-ring {
-  width: 58px;
-  height: 58px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.notifications-loading-ring-svg {
-  width: 58px;
-  height: 58px;
-  display: block;
-  filter: drop-shadow(0 8px 18px rgba(29, 81, 139, 0.16));
-}
-
-.notifications-loading-ring-track,
-.notifications-loading-ring-progress {
-  fill: none;
-  stroke-width: 5;
-}
-
-.notifications-loading-ring-track {
-  stroke: rgba(42, 81, 129, 0.16);
-}
-
-.notifications-loading-ring-progress {
-  stroke: #2f75bc;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  transform: rotate(-90deg);
-  transform-origin: 50% 50%;
-  transition: stroke-dashoffset 120ms linear;
 }
 
 .notifications-error {
@@ -560,41 +490,6 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-}
-
-.process-icon-ring {
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  pointer-events: none;
-}
-
-.process-icon-ring svg {
-  width: 100%;
-  height: 100%;
-  display: block;
-}
-
-.process-icon-ring-track,
-.process-icon-ring-progress {
-  fill: none;
-  stroke-width: 2.5;
-}
-
-.process-icon-ring-track {
-  stroke: rgba(133, 100, 42, 0.16);
-}
-
-.process-icon-ring-progress {
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  transform: rotate(-90deg);
-  transform-origin: 50% 50%;
-  transition: stroke-dashoffset 3000ms linear;
-}
-
-.process-icon-ring-progress.is-loading {
-  stroke: #eb9321;
 }
 
 .process-icon-ring-shell.is-loading .process-icon-btn,

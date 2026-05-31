@@ -1,0 +1,197 @@
+:host {
+  display: block;
+  min-width: 0;
+  pointer-events: none;
+}
+
+:host(.app-progress-indicator-host--kind-bar.app-progress-indicator-host--placement-edge) {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+}
+
+:host(.app-progress-indicator-host--kind-bar.app-progress-indicator-host--placement-inline) {
+  position: relative;
+  width: 100%;
+}
+
+:host(.app-progress-indicator-host--kind-load-ring) {
+  display: inline-flex;
+  width: 58px;
+  height: 58px;
+  align-items: center;
+  justify-content: center;
+}
+
+:host(.app-progress-indicator-host--kind-load-ring.app-progress-indicator-host--size-sm) {
+  width: 46px;
+  height: 46px;
+}
+
+:host(.app-progress-indicator-host--kind-action-ring) {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+}
+
+.app-progress-indicator {
+  display: block;
+}
+
+.app-progress-indicator--bar {
+  position: relative;
+  width: 100%;
+  height: 2px;
+  overflow: hidden;
+  background: rgba(46, 114, 184, 0.12);
+}
+
+:host(.app-progress-indicator-host--placement-inline) .app-progress-indicator--bar {
+  border-radius: 999px;
+}
+
+.app-progress-indicator__bar-fill,
+.app-progress-indicator__bar-loading {
+  position: absolute;
+  inset: 0;
+}
+
+.app-progress-indicator__bar-fill {
+  background: linear-gradient(90deg, rgba(67, 96, 205, 0.98) 0%, rgba(52, 88, 206, 0.98) 100%);
+  transform-origin: left center;
+  transform: scaleX(0);
+  transition: transform 120ms ease-out, opacity 100ms ease-out;
+}
+
+.app-progress-indicator__bar-loading {
+  background: linear-gradient(270deg, rgba(235, 147, 33, 0.98) 0%, rgba(247, 190, 52, 0.98) 100%);
+  opacity: 0;
+  transform-origin: right center;
+  transform: scaleX(0);
+  transition: transform 140ms linear, opacity 90ms ease-out;
+}
+
+.app-progress-indicator--bar.is-state-loading .app-progress-indicator__bar-fill,
+.app-progress-indicator--bar.is-state-loading-overdue .app-progress-indicator__bar-fill,
+.app-progress-indicator--bar.is-state-offline .app-progress-indicator__bar-fill {
+  opacity: 0;
+}
+
+.app-progress-indicator--bar.is-state-loading .app-progress-indicator__bar-loading,
+.app-progress-indicator--bar.is-state-loading-overdue .app-progress-indicator__bar-loading,
+.app-progress-indicator--bar.is-state-offline .app-progress-indicator__bar-loading {
+  opacity: 1;
+}
+
+.app-progress-indicator--bar.is-state-loading-overdue .app-progress-indicator__bar-loading {
+  transform: scaleX(1) !important;
+  background: linear-gradient(270deg, rgba(213, 54, 68, 0.98) 0%, rgba(196, 29, 42, 0.98) 100%);
+}
+
+.app-progress-indicator--bar.is-state-offline .app-progress-indicator__bar-loading {
+  transform: scaleX(1) !important;
+  background: linear-gradient(180deg, rgba(165, 173, 184, 0.92) 0%, rgba(145, 154, 167, 0.96) 100%);
+}
+
+:host(.app-progress-indicator-host--tone-chat) .app-progress-indicator--bar {
+  background: rgba(64, 110, 180, 0.12);
+}
+
+:host(.app-progress-indicator-host--tone-chat) .app-progress-indicator__bar-fill {
+  background: linear-gradient(90deg, rgba(70, 121, 201, 0.98) 0%, rgba(52, 94, 173, 0.98) 100%);
+}
+
+:host(.app-progress-indicator-host--tone-chat) .app-progress-indicator__bar-loading {
+  background: linear-gradient(270deg, rgba(243, 166, 54, 0.98) 0%, rgba(233, 133, 37, 0.98) 100%);
+}
+
+.app-progress-indicator--load-ring,
+.app-progress-indicator__load-ring-svg {
+  width: 100%;
+  height: 100%;
+}
+
+.app-progress-indicator__load-ring-svg {
+  display: block;
+  filter: drop-shadow(0 8px 18px rgba(29, 81, 139, 0.16));
+}
+
+.app-progress-indicator__load-ring-track,
+.app-progress-indicator__load-ring-progress {
+  fill: none;
+  stroke-width: 5;
+}
+
+:host(.app-progress-indicator-host--size-sm) .app-progress-indicator__load-ring-track,
+:host(.app-progress-indicator-host--size-sm) .app-progress-indicator__load-ring-progress {
+  stroke-width: 4;
+}
+
+.app-progress-indicator__load-ring-track {
+  stroke: rgba(42, 81, 129, 0.16);
+}
+
+.app-progress-indicator__load-ring-progress {
+  stroke: #2f75bc;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transform: rotate(-90deg);
+  transform-origin: 50% 50%;
+  transition: stroke-dashoffset 120ms linear;
+}
+
+.app-progress-indicator--action-ring,
+.app-progress-indicator__action-ring-svg {
+  width: 100%;
+  height: 100%;
+}
+
+.app-progress-indicator__action-ring-svg {
+  display: block;
+  overflow: visible;
+  filter: drop-shadow(0 4px 12px rgba(22, 94, 51, 0.12));
+}
+
+:host(.app-progress-indicator-host--shape-button) .app-progress-indicator__action-ring-svg {
+  filter: drop-shadow(0 8px 20px rgba(68, 18, 18, 0.16));
+}
+
+.app-progress-indicator__action-ring-track,
+.app-progress-indicator__action-ring-progress {
+  fill: none;
+  stroke-width: 3;
+}
+
+:host(.app-progress-indicator-host--shape-button) .app-progress-indicator__action-ring-track,
+:host(.app-progress-indicator-host--shape-button) .app-progress-indicator__action-ring-progress {
+  stroke-width: 4;
+}
+
+.app-progress-indicator__action-ring-track {
+  stroke: rgba(133, 100, 42, 0.18);
+}
+
+.app-progress-indicator__action-ring-progress {
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.app-progress-indicator__action-ring-progress--circle {
+  transform: rotate(-90deg);
+  transform-origin: 50% 50%;
+}
+
+.app-progress-indicator__action-ring-progress.is-loading {
+  animation: app-progress-indicator-action-progress var(--app-progress-duration) linear forwards;
+}
+
+@keyframes app-progress-indicator-action-progress {
+  from {
+    stroke-dashoffset: 100;
+  }
+
+  to {
+    stroke-dashoffset: 0;
+  }
+}

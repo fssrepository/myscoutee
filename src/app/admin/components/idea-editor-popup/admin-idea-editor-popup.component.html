@@ -128,20 +128,7 @@
       <div class="idea-editor-nested-backdrop" (click)="closeViewer($event)"></div>
       <article class="idea-editor-nested-panel idea-editor-viewer-panel idea-editor-panel-loading" aria-busy="true">
         <div class="idea-editor-panel-loading-card">
-          <span class="idea-editor-loading-ring" aria-hidden="true">
-            <svg viewBox="0 0 58 58" class="idea-editor-loading-ring-svg">
-              <circle class="idea-editor-loading-ring-track" cx="29" cy="29" r="25"></circle>
-              <circle
-                class="idea-editor-loading-ring-progress"
-                cx="29"
-                cy="29"
-                r="25"
-                pathLength="100"
-                [attr.stroke-dasharray]="loadingRingPerimeter"
-                [attr.stroke-dashoffset]="loadingRingDashOffset()"
-              ></circle>
-            </svg>
-          </span>
+          <app-progress-indicator kind="load-ring" [position]="loadingProgress()"></app-progress-indicator>
           <span>{{ articlePanelLoadingLabel() }}</span>
         </div>
       </article>
@@ -180,20 +167,7 @@
       <div class="idea-editor-nested-backdrop" (click)="closeEditor($event)"></div>
       <article class="idea-editor-nested-panel idea-editor-form-panel idea-editor-panel-loading" aria-busy="true">
         <div class="idea-editor-panel-loading-card">
-          <span class="idea-editor-loading-ring" aria-hidden="true">
-            <svg viewBox="0 0 58 58" class="idea-editor-loading-ring-svg">
-              <circle class="idea-editor-loading-ring-track" cx="29" cy="29" r="25"></circle>
-              <circle
-                class="idea-editor-loading-ring-progress"
-                cx="29"
-                cy="29"
-                r="25"
-                pathLength="100"
-                [attr.stroke-dasharray]="loadingRingPerimeter"
-                [attr.stroke-dashoffset]="loadingRingDashOffset()"
-              ></circle>
-            </svg>
-          </span>
+          <app-progress-indicator kind="load-ring" [position]="loadingProgress()"></app-progress-indicator>
           <span>{{ articlePanelLoadingLabel() }}</span>
         </div>
       </article>
@@ -221,27 +195,9 @@
               <mat-icon>visibility</mat-icon>
             </button>
             <span class="idea-editor-action-ring-shell idea-editor-circle-ring-shell" [class.is-loading]="saving">
-              <span class="idea-editor-circle-ring" aria-hidden="true">
-                <svg viewBox="0 0 34 34" preserveAspectRatio="none" class="idea-editor-circle-ring-svg">
-                  <defs>
-                    <linearGradient id="idea-editor-save-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%" stop-color="rgb(235, 147, 33)"></stop>
-                      <stop offset="100%" stop-color="rgb(247, 190, 52)"></stop>
-                    </linearGradient>
-                  </defs>
-                  <circle class="idea-editor-circle-ring-track" cx="17" cy="17" r="15"></circle>
-                  <circle
-                    class="idea-editor-circle-ring-progress"
-                    [class.is-loading]="saving"
-                    cx="17"
-                    cy="17"
-                    r="15"
-                    pathLength="100"
-                    [attr.stroke-dasharray]="actionRingPerimeter"
-                    [style.stroke-dashoffset]="saving ? 0 : actionRingPerimeter"
-                  ></circle>
-                </svg>
-              </span>
+              @if (saving) {
+                <app-progress-indicator kind="action-ring" shape="circle" state="loading"></app-progress-indicator>
+              }
               <button
                 type="submit"
                 class="idea-editor-icon-btn idea-editor-confirm-btn"
@@ -305,20 +261,7 @@
         @if (articlePanelLoading && articlePanelLoadingMode === 'editor') {
           <div class="idea-editor-form-loading-overlay" aria-busy="true">
             <div class="idea-editor-panel-loading-card">
-              <span class="idea-editor-loading-ring" aria-hidden="true">
-                <svg viewBox="0 0 58 58" class="idea-editor-loading-ring-svg">
-                  <circle class="idea-editor-loading-ring-track" cx="29" cy="29" r="25"></circle>
-                  <circle
-                    class="idea-editor-loading-ring-progress"
-                    cx="29"
-                    cy="29"
-                    r="25"
-                    pathLength="100"
-                    [attr.stroke-dasharray]="loadingRingPerimeter"
-                    [attr.stroke-dashoffset]="loadingRingDashOffset()"
-                  ></circle>
-                </svg>
-              </span>
+              <app-progress-indicator kind="load-ring" [position]="loadingProgress()"></app-progress-indicator>
               <span>{{ articlePanelLoadingLabel() }}</span>
             </div>
           </div>

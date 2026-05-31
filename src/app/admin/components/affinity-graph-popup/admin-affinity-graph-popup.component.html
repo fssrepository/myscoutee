@@ -48,7 +48,13 @@
       }
       @if (graphProgressVisible()) {
         <div class="affinity-graph-progress-shell">
-          <app-header-progress-bar [config]="graphProgressConfig()"></app-header-progress-bar>
+          @let progressConfig = graphProgressConfig();
+          <app-progress-indicator
+            kind="bar"
+            [placement]="progressConfig.placement ?? 'inline'"
+            [state]="progressConfig.state ?? 'scrolling'"
+            [position]="progressConfig.position ?? 0"
+          ></app-progress-indicator>
         </div>
       }
       <button type="button" class="popup-close affinity-graph-close" (click)="close()" aria-label="Close">

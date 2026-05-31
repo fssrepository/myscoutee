@@ -3,6 +3,7 @@ import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 
+import { ProgressIndicatorComponent } from '../../../shared/ui/components/progress-indicator';
 import type { AdminChatMessageDto } from '../../models/admin-moderation.model';
 import { AdminModerationService } from '../../services/admin-moderation.service';
 import { AdminShellService } from '../../services/admin-shell.service';
@@ -10,7 +11,7 @@ import { AdminShellService } from '../../services/admin-shell.service';
 @Component({
   selector: 'app-admin-chat-review-popup',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatIconModule],
+  imports: [CommonModule, FormsModule, MatIconModule, ProgressIndicatorComponent],
   templateUrl: './admin-chat-review-popup.component.html',
   styleUrl: '../admin-popups.scss'
 })
@@ -24,6 +25,10 @@ export class AdminChatReviewPopupComponent {
 
   protected isReportedMessage(message: AdminChatMessageDto): boolean {
     return message.id === this.admin.selectedReport()?.messageId;
+  }
+
+  protected warningSendRingState(): 'loading' | 'error' {
+    return this.sendState === 'sending' ? 'loading' : 'error';
   }
 
   protected async sendWarning(): Promise<void> {

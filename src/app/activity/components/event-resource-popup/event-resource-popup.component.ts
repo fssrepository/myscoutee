@@ -16,7 +16,6 @@ import {
   CounterBadgePipe,
   InfoCardComponent,
   SmartListComponent,
-  type HeaderProgressBarConfig,
   type InfoCardData,
   type InfoCardMenuActionEvent,
   type ListQuery,
@@ -1073,18 +1072,6 @@ export class EventResourcePopupComponent implements DoCheck {
   protected clearAssetExploreBorrowDraft(cardId: string, event?: Event): void {
     event?.stopPropagation();
     this.host.clearAssetExploreBorrowDraft(cardId, event);
-  }
-
-  protected assetExploreHeaderProgressBarConfig(): HeaderProgressBarConfig {
-    return {
-      position: this.assetExploreHeaderProgressLoading
-        ? this.assetExploreHeaderLoadingProgress
-        : this.assetExploreHeaderProgress,
-      state: this.assetExploreHeaderProgressLoading
-        ? (this.assetExploreHeaderLoadingOverdue ? 'loading-overdue' : 'loading')
-        : 'scrolling',
-      placement: 'edge'
-    };
   }
 
   protected assetExploreHeaderStickyLabel(): string {

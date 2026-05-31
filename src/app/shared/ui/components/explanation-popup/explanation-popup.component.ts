@@ -6,6 +6,7 @@ import { ExplanationGuideService } from '../../../core';
 import type { HelpCenterSection } from '../../../core/base/models';
 import { I18nPipe } from '../../../i18n';
 import { LazyBgImageDirective } from '../../directives';
+import { ProgressIndicatorComponent } from '../progress-indicator';
 
 type HomeFilterModeOption = Readonly<{
   key: string;
@@ -18,7 +19,7 @@ type ExplanationSectionLayout = 'span-1' | 'span-2' | 'span-3';
 @Component({
   selector: 'app-explanation-popup',
   standalone: true,
-  imports: [CommonModule, MatIconModule, LazyBgImageDirective, I18nPipe],
+  imports: [CommonModule, MatIconModule, LazyBgImageDirective, ProgressIndicatorComponent, I18nPipe],
   templateUrl: './explanation-popup.component.html',
   styleUrl: './explanation-popup.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -29,7 +30,6 @@ export class ExplanationPopupComponent {
   protected readonly loading = this.guide.loading;
   protected readonly loadingProgress = this.guide.loadingProgress;
   protected readonly activeRevision = this.guide.visibleRevision;
-  protected readonly loadingRingPerimeter = 100;
   private readonly lazyImagePlaceholderUrl = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==';
   private readonly fallbackWideSectionIds = new Set<string>([
     'affinity-network',
@@ -56,11 +56,6 @@ export class ExplanationPopupComponent {
     return lang === 'hu'
       ? this.homeFilterModeOptionsHu
       : this.homeFilterModeOptionsEn;
-  }
-
-  protected loadingRingDashOffset(): number {
-    const progress = Math.min(1, Math.max(0, Number(this.loadingProgress()) || 0));
-    return this.loadingRingPerimeter * (1 - progress);
   }
 
   protected shouldShowGeneratedVisual(section: HelpCenterSection): boolean {

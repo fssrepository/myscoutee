@@ -14,6 +14,7 @@ import type {
   AdminNotificationIntervalUnit
 } from '../../../shared/core';
 import { I18nPipe } from '../../../shared/i18n';
+import { ProgressIndicatorComponent } from '../../../shared/ui/components/progress-indicator';
 import { AdminNotificationsService } from '../../services/admin-notifications.service';
 import { AdminShellService } from '../../services/admin-shell.service';
 import { AdminWorkspaceService } from '../../services/admin-workspace.service';
@@ -297,7 +298,7 @@ const STATUS_CLASS_PREFIX = 'is-';
 @Component({
   selector: 'app-admin-notifications-popup',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatIconModule, I18nPipe],
+  imports: [CommonModule, FormsModule, MatIconModule, ProgressIndicatorComponent, I18nPipe],
   templateUrl: './admin-notifications-popup.component.html',
   styleUrl: './admin-notifications-popup.component.scss'
 })
@@ -313,8 +314,6 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
 
   protected readonly loading = signal(false);
   protected readonly saving = signal(false);
-  protected readonly actionRingPerimeter = 100;
-  protected readonly loadingRingPerimeter = 100;
   protected readonly loadingProgress = signal(0);
   protected readonly runningRuleKey = signal('');
   protected readonly rowActionKey = signal('');
@@ -1113,10 +1112,6 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
 
   protected updateParameterText(field: AdminNotificationRuleParameter, value: string): void {
     field.textValue = `${value ?? ''}`.trim();
-  }
-
-  protected loadingRingDashOffset(): number {
-    return this.loadingRingPerimeter * (1 - Math.min(1, Math.max(0, this.loadingProgress())));
   }
 
   private startRuntimeUpdates(): void {

@@ -17,20 +17,7 @@
       <div class="popup-body admin-params-body">
         @if (loading()) {
           <div class="admin-params-loading-state" aria-busy="true">
-            <span class="admin-params-loading-ring" aria-hidden="true">
-              <svg viewBox="0 0 58 58" class="admin-params-loading-ring-svg">
-                <circle class="admin-params-loading-ring-track" cx="29" cy="29" r="25"></circle>
-                <circle
-                  class="admin-params-loading-ring-progress"
-                  cx="29"
-                  cy="29"
-                  r="25"
-                  pathLength="100"
-                  [attr.stroke-dasharray]="loadingRingPerimeter"
-                  [attr.stroke-dashoffset]="loadingRingDashOffset()"
-                ></circle>
-              </svg>
-            </span>
+            <app-progress-indicator kind="load-ring" [position]="loadingProgress()"></app-progress-indicator>
             <span>{{ 'admin.params.loading' | i18n }}</span>
           </div>
         } @else if (state(); as paramsState) {
@@ -103,21 +90,9 @@
         </div>
         <div class="admin-params-header-actions">
           <span class="admin-params-action-ring-shell admin-params-circle-ring-shell" [class.is-loading]="saving()">
-            <span class="admin-params-circle-ring" aria-hidden="true">
-              <svg viewBox="0 0 34 34" preserveAspectRatio="none" class="admin-params-circle-ring-svg">
-                <circle class="admin-params-circle-ring-track" cx="17" cy="17" r="15"></circle>
-                <circle
-                  class="admin-params-circle-ring-progress"
-                  [class.is-loading]="saving()"
-                  cx="17"
-                  cy="17"
-                  r="15"
-                  pathLength="100"
-                  [attr.stroke-dasharray]="actionRingPerimeter"
-                  [attr.stroke-dashoffset]="saving() ? 0 : actionRingPerimeter"
-                ></circle>
-              </svg>
-            </span>
+            @if (saving()) {
+              <app-progress-indicator kind="action-ring" shape="circle" state="loading"></app-progress-indicator>
+            }
             <button type="button" class="admin-params-icon-btn admin-params-save-btn" [disabled]="saving()" (click)="saveEdit()" [attr.aria-label]="'save' | i18n">
               <mat-icon>check</mat-icon>
             </button>
@@ -217,20 +192,7 @@
       <div class="popup-body admin-params-history-body">
         @if (historyLoading()) {
           <div class="admin-params-loading-state admin-params-history-loading-state" aria-busy="true">
-            <span class="admin-params-loading-ring" aria-hidden="true">
-              <svg viewBox="0 0 58 58" class="admin-params-loading-ring-svg">
-                <circle class="admin-params-loading-ring-track" cx="29" cy="29" r="25"></circle>
-                <circle
-                  class="admin-params-loading-ring-progress"
-                  cx="29"
-                  cy="29"
-                  r="25"
-                  pathLength="100"
-                  [attr.stroke-dasharray]="loadingRingPerimeter"
-                  [attr.stroke-dashoffset]="loadingRingDashOffset()"
-                ></circle>
-              </svg>
-            </span>
+            <app-progress-indicator kind="load-ring" [position]="loadingProgress()"></app-progress-indicator>
             <span>{{ 'admin.params.history.loading' | i18n }}</span>
           </div>
         } @else {
@@ -246,21 +208,9 @@
                 </button>
                 <div class="admin-params-history-actions">
                   <span class="admin-params-action-ring-shell admin-params-circle-ring-shell" [class.is-loading]="revertingVersion() === item.version">
-                    <span class="admin-params-circle-ring" aria-hidden="true">
-                      <svg viewBox="0 0 34 34" preserveAspectRatio="none" class="admin-params-circle-ring-svg">
-                        <circle class="admin-params-circle-ring-track" cx="17" cy="17" r="15"></circle>
-                        <circle
-                          class="admin-params-circle-ring-progress"
-                          [class.is-loading]="revertingVersion() === item.version"
-                          cx="17"
-                          cy="17"
-                          r="15"
-                          pathLength="100"
-                          [attr.stroke-dasharray]="actionRingPerimeter"
-                          [attr.stroke-dashoffset]="revertingVersion() === item.version ? 0 : actionRingPerimeter"
-                        ></circle>
-                      </svg>
-                    </span>
+                    @if (revertingVersion() === item.version) {
+                      <app-progress-indicator kind="action-ring" shape="circle" state="loading"></app-progress-indicator>
+                    }
                     <button
                       type="button"
                       class="admin-params-icon-btn admin-params-history-switch-btn"

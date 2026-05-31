@@ -3,6 +3,7 @@ import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
 import { I18nPipe } from '../../../shared/i18n';
+import { ProgressIndicatorComponent } from '../../../shared/ui/components/progress-indicator';
 import {
   type AdminStatsBreakdownItemDto,
   type AdminStatsDashboardDto,
@@ -26,7 +27,7 @@ type AdminStatsGraphAction = { key: string; labelKey: string; icon: string; tone
 @Component({
   selector: 'app-admin-stats-popup',
   standalone: true,
-  imports: [CommonModule, MatIconModule, I18nPipe],
+  imports: [CommonModule, MatIconModule, ProgressIndicatorComponent, I18nPipe],
   templateUrl: './admin-stats-popup.component.html',
   styleUrl: './admin-stats-popup.component.scss'
 })
@@ -46,7 +47,6 @@ export class AdminStatsPopupComponent implements OnDestroy {
   protected readonly timelineDragging = signal(false);
   protected readonly graphTimelineDragging = signal(false);
   protected readonly revenueTimelineDragging = signal(false);
-  protected readonly loadingRingPerimeter = 100;
   protected readonly loadingProgress = signal(0);
   protected readonly topSegments = computed(() => this.stats()?.segments ?? []);
   protected readonly primaryKpis = computed(() => this.stats()?.kpis ?? []);
@@ -121,10 +121,6 @@ export class AdminStatsPopupComponent implements OnDestroy {
 
   protected segmentPercent(segment: AdminStatsSegmentDto): number {
     return this.clamp(Math.trunc(Number(segment.healthPercent) || 0), 0, 100);
-  }
-
-  protected loadingRingDashOffset(): number {
-    return this.loadingRingPerimeter * (1 - Math.min(1, Math.max(0, this.loadingProgress())));
   }
 
   protected selectTimelinePoint(point: AdminStatsTimelinePointDto): void {

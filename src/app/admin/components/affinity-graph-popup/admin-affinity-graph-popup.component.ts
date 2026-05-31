@@ -7,12 +7,12 @@ import { AdminAffinityGraphService } from '../../services/admin-affinity-graph.s
 import { AdminShellService } from '../../services/admin-shell.service';
 import { AdminWorkspaceService } from '../../services/admin-workspace.service';
 import { LazyBgImageDirective } from '../../../shared/ui/directives';
-import { HeaderProgressBarComponent, type HeaderProgressBarConfig } from '../../../shared/ui/components';
+import { ProgressIndicatorComponent, type ProgressIndicatorBarConfig } from '../../../shared/ui/components';
 
 @Component({
   selector: 'app-admin-affinity-graph-popup',
   standalone: true,
-  imports: [CommonModule, MatIconModule, HeaderProgressBarComponent],
+  imports: [CommonModule, MatIconModule, ProgressIndicatorComponent],
   templateUrl: './admin-affinity-graph-popup.component.html',
   styleUrl: './admin-affinity-graph-popup.component.scss'
 })
@@ -34,7 +34,7 @@ export class AdminAffinityGraphPopupComponent implements OnDestroy {
     this.admin.activePopup() === this.popupKey && this.graphStaticShellVisible()
   );
   protected readonly graphProgressVisible = computed(() => this.admin.activePopup() === this.popupKey);
-  protected readonly graphProgressConfig = computed<HeaderProgressBarConfig>(() => {
+  protected readonly graphProgressConfig = computed<ProgressIndicatorBarConfig>(() => {
     const loadingState = this.affinityGraph.loadingState();
     if (!loadingState.active) {
       return {

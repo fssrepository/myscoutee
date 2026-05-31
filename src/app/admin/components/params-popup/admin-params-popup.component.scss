@@ -581,43 +581,6 @@
   z-index: 1;
 }
 
-.admin-params-circle-ring {
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  pointer-events: none;
-}
-
-.admin-params-circle-ring-svg {
-  width: 100%;
-  height: 100%;
-  display: block;
-  overflow: visible;
-  filter: drop-shadow(0 4px 12px rgba(22, 94, 51, 0.12));
-}
-
-.admin-params-circle-ring-track,
-.admin-params-circle-ring-progress {
-  fill: none;
-  stroke-width: 3;
-}
-
-.admin-params-circle-ring-track {
-  stroke: rgba(133, 100, 42, 0.18);
-}
-
-.admin-params-circle-ring-progress {
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  transform: rotate(-90deg);
-  transform-origin: 50% 50%;
-  transition: stroke-dashoffset 3000ms linear;
-}
-
-.admin-params-circle-ring-progress.is-loading {
-  stroke: #eb9321;
-}
-
 .admin-params-circle-ring-shell.is-loading .admin-params-icon-btn,
 .admin-params-circle-ring-shell.is-loading .admin-params-icon-btn:hover,
 .admin-params-circle-ring-shell.is-loading .admin-params-icon-btn:disabled {
@@ -638,40 +601,6 @@
   text-align: center;
   color: rgba(34, 55, 84, 0.78);
   font-weight: 900;
-}
-
-.admin-params-loading-ring {
-  width: 58px;
-  height: 58px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.admin-params-loading-ring-svg {
-  width: 58px;
-  height: 58px;
-  display: block;
-  filter: drop-shadow(0 8px 18px rgba(29, 81, 139, 0.16));
-}
-
-.admin-params-loading-ring-track,
-.admin-params-loading-ring-progress {
-  fill: none;
-  stroke-width: 5;
-}
-
-.admin-params-loading-ring-track {
-  stroke: rgba(42, 81, 129, 0.16);
-}
-
-.admin-params-loading-ring-progress {
-  stroke: #2f75bc;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  transform: rotate(-90deg);
-  transform-origin: 50% 50%;
-  transition: stroke-dashoffset 120ms linear;
 }
 
 .admin-params-error {

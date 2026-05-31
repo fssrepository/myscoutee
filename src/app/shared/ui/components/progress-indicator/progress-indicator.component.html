@@ -1,0 +1,90 @@
+@if (isBarKind) {
+  <div
+    class="app-progress-indicator app-progress-indicator--bar"
+    [class.is-state-scrolling]="isScrollingState"
+    [class.is-state-loading]="isLoadingState"
+    [class.is-state-loading-overdue]="isLoadingOverdueState"
+    [class.is-state-offline]="isOfflineState"
+  >
+    <span class="app-progress-indicator__bar-fill" [style.transform]="progressTransform()"></span>
+    <span class="app-progress-indicator__bar-loading" [style.transform]="progressTransform()"></span>
+  </div>
+} @else if (isLoadRingKind) {
+  <span class="app-progress-indicator app-progress-indicator--load-ring">
+    <svg viewBox="0 0 58 58" class="app-progress-indicator__load-ring-svg">
+      <circle class="app-progress-indicator__load-ring-track" cx="29" cy="29" r="25"></circle>
+      <circle
+        class="app-progress-indicator__load-ring-progress"
+        cx="29"
+        cy="29"
+        r="25"
+        pathLength="100"
+        [attr.stroke-dasharray]="resolvedPerimeter"
+        [attr.stroke-dashoffset]="loadRingDashOffset()"
+      ></circle>
+    </svg>
+  </span>
+} @else if (isActionRingKind) {
+  <span class="app-progress-indicator app-progress-indicator--action-ring">
+    @if (isActionButtonShape) {
+      <svg viewBox="0 0 104 48" preserveAspectRatio="none" class="app-progress-indicator__action-ring-svg">
+        <defs>
+          <linearGradient [attr.id]="actionGradientId" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="rgb(235, 147, 33)"></stop>
+            <stop offset="100%" stop-color="rgb(247, 190, 52)"></stop>
+          </linearGradient>
+          <linearGradient [attr.id]="actionErrorGradientId" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="rgb(213, 54, 68)"></stop>
+            <stop offset="100%" stop-color="rgb(196, 29, 42)"></stop>
+          </linearGradient>
+          <linearGradient [attr.id]="actionAccentGradientId" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="rgb(91, 140, 247)"></stop>
+            <stop offset="100%" stop-color="rgb(47, 111, 214)"></stop>
+          </linearGradient>
+        </defs>
+        <path
+          class="app-progress-indicator__action-ring-track"
+          d="M52 2 H88 A14 14 0 0 1 102 16 V32 A14 14 0 0 1 88 46 H16 A14 14 0 0 1 2 32 V16 A14 14 0 0 1 16 2 H52"
+        ></path>
+        <path
+          class="app-progress-indicator__action-ring-progress"
+          [class.is-loading]="isLoadingState"
+          d="M52 2 H88 A14 14 0 0 1 102 16 V32 A14 14 0 0 1 88 46 H16 A14 14 0 0 1 2 32 V16 A14 14 0 0 1 16 2 H52"
+          pathLength="100"
+          [attr.stroke]="actionProgressStroke()"
+          [attr.stroke-dasharray]="resolvedPerimeter"
+          [attr.stroke-dashoffset]="actionRingDashOffset()"
+        ></path>
+      </svg>
+    } @else {
+      <svg viewBox="0 0 34 34" preserveAspectRatio="none" class="app-progress-indicator__action-ring-svg">
+        <defs>
+          <linearGradient [attr.id]="actionGradientId" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="rgb(235, 147, 33)"></stop>
+            <stop offset="100%" stop-color="rgb(247, 190, 52)"></stop>
+          </linearGradient>
+          <linearGradient [attr.id]="actionErrorGradientId" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="rgb(213, 54, 68)"></stop>
+            <stop offset="100%" stop-color="rgb(196, 29, 42)"></stop>
+          </linearGradient>
+          <linearGradient [attr.id]="actionAccentGradientId" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="rgb(91, 140, 247)"></stop>
+            <stop offset="100%" stop-color="rgb(47, 111, 214)"></stop>
+          </linearGradient>
+        </defs>
+        <circle class="app-progress-indicator__action-ring-track" cx="17" cy="17" r="15"></circle>
+        <circle
+          class="app-progress-indicator__action-ring-progress app-progress-indicator__action-ring-progress--circle"
+          [class.is-loading]="isLoadingState"
+          cx="17"
+          cy="17"
+          r="15"
+          pathLength="100"
+          [attr.stroke]="actionProgressStroke()"
+          [attr.stroke-dasharray]="resolvedPerimeter"
+          [attr.stroke-dashoffset]="actionRingDashOffset()"
+        ></circle>
+      </svg>
+    }
+  </span>
+}

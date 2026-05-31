@@ -9,6 +9,7 @@ import type {
   AdminMonitoringMetricDto
 } from '../../../shared/core';
 import { I18nPipe } from '../../../shared/i18n';
+import { ProgressIndicatorComponent } from '../../../shared/ui/components/progress-indicator';
 import { AdminMonitoringService } from '../../services/admin-monitoring.service';
 import { AdminShellService } from '../../services/admin-shell.service';
 
@@ -43,7 +44,7 @@ const MONITORING_FILTER_CATEGORIES: Record<MonitoringFilter, ReadonlySet<string>
 @Component({
   selector: 'app-admin-monitoring-popup',
   standalone: true,
-  imports: [CommonModule, MatIconModule, I18nPipe],
+  imports: [CommonModule, MatIconModule, ProgressIndicatorComponent, I18nPipe],
   templateUrl: './admin-monitoring-popup.component.html',
   styleUrl: './admin-monitoring-popup.component.scss'
 })
@@ -57,7 +58,6 @@ export class AdminMonitoringPopupComponent implements OnInit, OnDestroy {
   protected readonly state = signal<Awaited<ReturnType<AdminMonitoringService['loadMonitoringState']>> | null>(null);
   protected readonly filter = signal<MonitoringFilter>(MONITORING_FILTER.all);
   protected readonly filterMenuOpen = signal(false);
-  protected readonly loadingRingPerimeter = 100;
   protected readonly loadingProgress = signal(0);
   private loadingProgressTimer: ReturnType<typeof setInterval> | null = null;
   private loadingProgressStartedAtMs = 0;
@@ -136,10 +136,6 @@ export class AdminMonitoringPopupComponent implements OnInit, OnDestroy {
 
   protected edgeAfter(category: AdminMonitoringCategoryDto, index: number): AdminMonitoringEdgeDto | null {
     return category.edges[index] ?? null;
-  }
-
-  protected loadingRingDashOffset(): number {
-    return this.loadingRingPerimeter * (1 - Math.min(1, Math.max(0, this.loadingProgress())));
   }
 
   private async load(): Promise<void> {

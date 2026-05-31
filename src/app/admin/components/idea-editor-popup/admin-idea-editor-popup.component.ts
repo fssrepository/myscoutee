@@ -13,6 +13,7 @@ import {
   type InfoCardMenuActionEvent
 } from '../../../shared/ui/components/card';
 import { EditableImageCarouselComponent } from '../../../shared/ui/components/editable-image-carousel';
+import { ProgressIndicatorComponent } from '../../../shared/ui/components/progress-indicator';
 import {
   SmartListComponent,
   type ListQuery,
@@ -57,7 +58,7 @@ interface IdeaPostLangCache {
 @Component({
   selector: 'app-admin-idea-editor-popup',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatIconModule, SmartListComponent, InfoCardComponent, EditableImageCarouselComponent],
+  imports: [CommonModule, FormsModule, MatIconModule, SmartListComponent, InfoCardComponent, EditableImageCarouselComponent, ProgressIndicatorComponent],
   templateUrl: './admin-idea-editor-popup.component.html',
   styleUrl: './admin-idea-editor-popup.component.scss'
 })
@@ -89,8 +90,6 @@ export class AdminIdeaEditorPopupComponent implements OnDestroy {
   protected selectedContentLang = 'en';
   protected draftContentLang = 'en';
   protected ideaListFilters: IdeaSmartListFilters = { status: 'all', revision: 0 };
-  protected readonly actionRingPerimeter = 100;
-  protected readonly loadingRingPerimeter = 100;
   protected readonly ideaImageSlotCount = 8;
   protected readonly loadingProgress = signal(0);
   private stateLoadedForPopup = false;
@@ -939,10 +938,6 @@ export class AdminIdeaEditorPopupComponent implements OnDestroy {
     return this.articlePanelLoadingMode === 'viewer'
       ? 'Loading article'
       : 'Loading article editor';
-  }
-
-  protected loadingRingDashOffset(): number {
-    return this.loadingRingPerimeter * (1 - Math.min(1, Math.max(0, this.loadingProgress())));
   }
 
   protected filterLabel(): string {

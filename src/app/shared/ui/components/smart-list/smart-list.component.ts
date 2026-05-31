@@ -21,10 +21,10 @@ import { firstValueFrom } from 'rxjs';
 
 import { AppUtils } from '../../../app-utils';
 import {
-  HeaderProgressBarComponent,
-  type HeaderProgressBarConfig,
-  type HeaderProgressBarPlacement
-} from '../header-progress-bar';
+  ProgressIndicatorComponent,
+  type ProgressIndicatorBarConfig,
+  type ProgressIndicatorPlacement
+} from '../progress-indicator';
 import {
   RatingStarBarComponent,
   type RatingStarBarConfig
@@ -108,7 +108,7 @@ type SmartListCalendarWindow = {
   imports: [
     CommonModule,
     MatIconModule,
-    HeaderProgressBarComponent,
+    ProgressIndicatorComponent,
     RatingStarBarComponent
   ],
   templateUrl: './smart-list.component.html',
@@ -414,10 +414,10 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     this.reload();
   }
 
-  public headerProgressBarConfig(
-    overrides: Partial<HeaderProgressBarConfig> = {},
+  public progressIndicatorBarConfig(
+    overrides: Partial<ProgressIndicatorBarConfig> = {},
     mode: 'surface' | 'cursor' = 'surface'
-  ): HeaderProgressBarConfig {
+  ): ProgressIndicatorBarConfig {
     const cursor = this.buildCursorState();
     const loadingActive = this.isLoadingActive();
     const position = mode === 'cursor'
@@ -432,16 +432,16 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     };
   }
 
-  protected shouldRenderHostedHeaderProgressBar(): boolean {
+  protected shouldRenderHostedProgressIndicator(): boolean {
     if (this.config.headerProgress && this.config.headerProgress.enabled !== undefined) {
       return this.resolveConfigValue(this.config.headerProgress.enabled, false);
     }
     return this.resolvedLoadingDelayMs() > 0;
   }
 
-  protected hostedHeaderProgressBarConfig(): HeaderProgressBarConfig {
-    const placement = this.resolveConfigValue<HeaderProgressBarPlacement>(this.config.headerProgress?.placement, 'inline');
-    return this.headerProgressBarConfig({
+  protected hostedProgressIndicatorConfig(): ProgressIndicatorBarConfig {
+    const placement = this.resolveConfigValue<ProgressIndicatorPlacement>(this.config.headerProgress?.placement, 'inline');
+    return this.progressIndicatorBarConfig({
       tone: this.resolveConfigValue(this.config.headerProgress?.tone, 'default'),
       placement
     }, this.resolvedHeaderProgressMode());

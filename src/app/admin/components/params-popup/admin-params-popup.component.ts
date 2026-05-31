@@ -5,6 +5,7 @@ import { MatIconModule } from '@angular/material/icon';
 
 import { RouteDelayService } from '../../../shared/core/base/services/route-delay.service';
 import { I18nPipe } from '../../../shared/i18n';
+import { ProgressIndicatorComponent } from '../../../shared/ui/components/progress-indicator';
 import {
   type AdminParamFieldDto,
   type AdminParamOptionDto,
@@ -21,7 +22,7 @@ type AdminParamOption = Readonly<AdminParamOptionDto>;
 @Component({
   selector: 'app-admin-params-popup',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatIconModule, I18nPipe],
+  imports: [CommonModule, FormsModule, MatIconModule, ProgressIndicatorComponent, I18nPipe],
   templateUrl: './admin-params-popup.component.html',
   styleUrl: './admin-params-popup.component.scss'
 })
@@ -36,8 +37,6 @@ export class AdminParamsPopupComponent implements OnDestroy {
   protected readonly saving = signal(false);
   protected readonly reverting = signal(false);
   protected readonly revertingVersion = signal<number | null>(null);
-  protected readonly actionRingPerimeter = 100;
-  protected readonly loadingRingPerimeter = 100;
   protected readonly loadingProgress = signal(0);
   protected readonly error = signal('');
   protected readonly state = signal<AdminParamsStateDto | null>(null);
@@ -311,10 +310,6 @@ export class AdminParamsPopupComponent implements OnDestroy {
 
   protected updateNumberField(field: AdminParamFieldDto, value: string): void {
     field.numberValue = Number.isFinite(Number(value)) ? Number(value) : 0;
-  }
-
-  protected loadingRingDashOffset(): number {
-    return this.loadingRingPerimeter * (1 - Math.min(1, Math.max(0, this.loadingProgress())));
   }
 
   private beginLoadingProgress(): void {

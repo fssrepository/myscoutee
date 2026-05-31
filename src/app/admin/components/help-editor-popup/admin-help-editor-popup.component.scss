@@ -507,45 +507,6 @@
   z-index: 1;
 }
 
-.help-editor-circle-ring {
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  pointer-events: none;
-}
-
-.help-editor-circle-ring-svg {
-  width: 100%;
-  height: 100%;
-  display: block;
-  filter: drop-shadow(0 4px 12px rgba(22, 94, 51, 0.12));
-}
-
-.help-editor-circle-ring-track,
-.help-editor-circle-ring-progress {
-  fill: none;
-  stroke-width: 3;
-}
-
-.help-editor-circle-ring-track {
-  stroke: rgba(133, 100, 42, 0.18);
-}
-
-.help-editor-circle-ring-progress {
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  transition: stroke-dashoffset 3000ms linear;
-}
-
-.help-editor-circle-ring-progress {
-  transform: rotate(-90deg);
-  transform-origin: 50% 50%;
-}
-
-.help-editor-circle-ring-progress.is-loading {
-  stroke: #eb9321;
-}
-
 .help-editor-circle-ring-shell.is-loading .help-editor-icon-btn,
 .help-editor-circle-ring-shell.is-loading .help-editor-icon-btn:hover,
 .help-editor-circle-ring-shell.is-loading .help-editor-icon-btn:disabled {
@@ -1769,28 +1730,6 @@
   color: rgba(31, 58, 90, 0.82);
   font-size: 0.86rem;
   font-weight: 800;
-}
-
-.help-editor-loading-ring {
-  width: 46px;
-  height: 46px;
-  transform: rotate(-90deg);
-}
-
-.help-editor-loading-ring-track,
-.help-editor-loading-ring-value {
-  fill: none;
-  stroke-width: 4;
-}
-
-.help-editor-loading-ring-track {
-  stroke: rgba(58, 96, 143, 0.16);
-}
-
-.help-editor-loading-ring-value {
-  stroke: #3268a8;
-  stroke-linecap: round;
-  transition: stroke-dashoffset 0.08s linear;
 }
 
 .help-editor-empty-state h3 {

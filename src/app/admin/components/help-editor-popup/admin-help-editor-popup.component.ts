@@ -17,6 +17,7 @@ import type {
 } from '../../../shared/core/base/models';
 import { RouteDelayService } from '../../../shared/core/base/services/route-delay.service';
 import { EditableImageCarouselComponent } from '../../../shared/ui/components/editable-image-carousel';
+import { ProgressIndicatorComponent } from '../../../shared/ui/components/progress-indicator';
 import { LazyBgImageDirective } from '../../../shared/ui/directives';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
 import { AdminShellService } from '../../services/admin-shell.service';
@@ -70,7 +71,7 @@ interface HelpEditorRevisionRow {
 @Component({
   selector: 'app-admin-help-editor-popup',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatIconModule, EditableImageCarouselComponent, LazyBgImageDirective],
+  imports: [CommonModule, FormsModule, MatIconModule, EditableImageCarouselComponent, ProgressIndicatorComponent, LazyBgImageDirective],
   templateUrl: './admin-help-editor-popup.component.html',
   styleUrl: './admin-help-editor-popup.component.scss'
 })
@@ -135,9 +136,7 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
   protected selectedExplanationContextKey = 'home.game';
   protected readonly explanationImageSlotCount = AdminHelpEditorPopupComponent.EXPLANATION_IMAGE_SLOT_COUNT;
   private stateLoadedForPopup = false;
-  protected readonly loadingRingPerimeter = 100;
   protected readonly loadingProgress = signal(0);
-  protected readonly actionRingPerimeter = 100;
   protected readonly panelSpanOptions: readonly HelpPanelSpanOption[] = [
     { value: 'span-1', icon: 'looks_one', label: 'span-1', title: 'One grid column' },
     { value: 'span-2', icon: 'looks_two', label: 'span-2', title: 'Two grid columns' },
@@ -954,10 +953,6 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
 
   protected isAnyActionPending(): boolean {
     return this.saving || Boolean(this.activatingRevisionId);
-  }
-
-  protected loadingRingDashOffset(): number {
-    return this.loadingRingPerimeter * (1 - this.loadingProgress());
   }
 
   protected fullDate(value: string): string {
