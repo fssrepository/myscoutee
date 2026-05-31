@@ -228,7 +228,6 @@ export class NavigatorContactsService {
   private readonly revisionRef = signal(0);
   private readonly lastOptimisticRevisionRef = signal(0);
   private readonly contactCountRef = signal(0);
-  private warmedUserIds = new Set<string>();
   private loadedUserId = '';
 
   readonly isOpen = this.openRef.asReadonly();
@@ -245,7 +244,6 @@ export class NavigatorContactsService {
         return;
       }
       this.loadedUserId = activeUserId;
-      this.warmedUserIds = new Set<string>();
       this.migrateHttpAliasContacts(previousLoadedUserId, activeUserId);
       this.contactsRef.set(this.readContacts(activeUserId));
       this.contactCountRef.set(this.contactsRef().length);
@@ -294,7 +292,6 @@ export class NavigatorContactsService {
   async loadContactPage(
     query: ListQuery<NavigatorContactListFilters>
   ): Promise<PageResult<NavigatorContactListItem>> {
-    await this.ensureKnownUsersWarm();
     const search = AppUtils.normalizeText(query.filters?.search ?? '');
     const contacts = this.contacts()
       .filter(contact => !search || contact.searchText.includes(search))
@@ -394,7 +391,6 @@ export class NavigatorContactsService {
     if (!activeUserId || selectedCandidates.length === 0) {
       return;
     }
-    await this.usersService.warmCachedUsers(selectedCandidates.map(candidate => candidate.userId));
     const nextById = new Map(this.contactsRef().map(contact => [contact.id, contact]));
     const nowIso = new Date().toISOString();
     for (const candidate of selectedCandidates) {
@@ -743,20 +739,6 @@ export class NavigatorContactsService {
 
   private activeUserId(): string {
     return this.appCtx.activeUserId().trim();
-  }
-
-  private async ensureKnownUsersWarm(): Promise<void> {
-    const pendingUserIds = this.contactsRef()
-      .map(contact => contact.userId.trim())
-      .filter(Boolean)
-      .filter(userId => !this.warmedUserIds.has(userId));
-    if (pendingUserIds.length === 0) {
-      return;
-    }
-    await this.usersService.warmCachedUsers(pendingUserIds);
-    for (const userId of pendingUserIds) {
-      this.warmedUserIds.add(userId);
-    }
   }
 
   private randomId(prefix: string): string {

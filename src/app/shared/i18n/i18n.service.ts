@@ -106,26 +106,19 @@ export class I18nService {
     await this.loadDefaultSourceBundle();
 
     const candidates = this.localizedBrowserCandidates();
-    const localStorageMirror = this.bundleRepository.firstLocalStorageBundle(candidates);
-    if (localStorageMirror) {
-      this.applyBundle(localStorageMirror.lang, localStorageMirror.version, localStorageMirror.data);
+    const stored = await this.bundleRepository.firstStoredBundle(candidates);
+    if (stored) {
+      this.applyBundle(stored.lang, stored.version, stored.data);
     }
 
-    const indexedDbStored = await this.bundleRepository.firstIndexedDbBundle(candidates);
-    if (indexedDbStored) {
-      this.bundleRepository.writeLocalStorageBundle(indexedDbStored);
-      this.applyBundle(indexedDbStored.lang, indexedDbStored.version, indexedDbStored.data);
-    }
-
-    const activeStored = indexedDbStored ?? localStorageMirror;
+    const activeStored = stored;
     const seed = await this.firstLocalSeedBundle(
       candidates,
       activeStored?.lang ?? null,
       activeStored?.version ?? null
     );
     if (seed) {
-      await this.bundleRepository.writeIndexedDbBundle(seed);
-      this.bundleRepository.writeLocalStorageBundle(seed);
+      await this.bundleRepository.writeStoredBundle(seed);
       this.applyBundle(seed.lang, seed.version, seed.data);
     }
 
@@ -134,18 +127,12 @@ export class I18nService {
 
   private async loadDefaultSourceBundle(): Promise<void> {
     const lang = I18nService.DEFAULT_LANGUAGE;
-    const localStorageMirror = this.bundleRepository.readLocalStorageBundle(lang);
-    if (localStorageMirror && Object.keys(localStorageMirror.data).length > 0) {
-      this.applySourceBundle(localStorageMirror.data);
+    const stored = await this.bundleRepository.readStoredBundle(lang);
+    if (stored && Object.keys(stored.data).length > 0) {
+      this.applySourceBundle(stored.data);
     }
 
-    const indexedDbStored = await this.bundleRepository.readIndexedDbBundle(lang);
-    if (indexedDbStored && Object.keys(indexedDbStored.data).length > 0) {
-      this.bundleRepository.writeLocalStorageBundle(indexedDbStored);
-      this.applySourceBundle(indexedDbStored.data);
-    }
-
-    const activeStored = indexedDbStored ?? localStorageMirror;
+    const activeStored = stored;
     const assetUrl = I18nService.LOCAL_SEED_ASSETS[lang];
     if (!assetUrl) {
       return;
@@ -159,8 +146,7 @@ export class I18nService {
       && this.compareVersions(seed.version, activeStored.version) <= 0) {
       return;
     }
-    await this.bundleRepository.writeIndexedDbBundle(seed);
-    this.bundleRepository.writeLocalStorageBundle(seed);
+    await this.bundleRepository.writeStoredBundle(seed);
     this.applySourceBundle(seed.data);
   }
 
@@ -198,8 +184,7 @@ export class I18nService {
       }
       if (data && Object.keys(data).length > 0) {
         const bundle = { lang, version: version || '0', data, storedAt: Date.now() };
-        await this.bundleRepository.writeIndexedDbBundle(bundle);
-        this.bundleRepository.writeLocalStorageBundle(bundle);
+        await this.bundleRepository.writeStoredBundle(bundle);
         this.applyBundle(bundle.lang, bundle.version, bundle.data);
         return;
       }

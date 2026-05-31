@@ -2,7 +2,6 @@ import { Injectable, inject } from '@angular/core';
 
 import { APP_STATIC_DATA } from '../../../app-static-data';
 import type { IdeaPost, IdeaPostSaveRequest } from '../../base/models';
-import { DemoIdeaPostsSeedBuilder } from '../builders';
 import type { DemoIdeaPostsTable } from '../models/idea-posts.model';
 import { DemoIdeaPostsRepository } from '../repositories/idea-posts.repository';
 import { RouteDelayService } from '../../base/services/route-delay.service';
@@ -13,24 +12,23 @@ import { RouteDelayService } from '../../base/services/route-delay.service';
 export class DemoIdeaPostsService {
   private static readonly ADMIN_IDEAS_DEMO_DELAY_MS = 1500;
   private static readonly MAX_IMAGE_URLS = 24;
-  private static readonly PERSIST_TIMEOUT_MS = 1500;
   private readonly ideaPostsRepository = inject(DemoIdeaPostsRepository);
   private readonly routeDelay = inject(RouteDelayService);
 
   async init(): Promise<boolean> {
     await this.ideaPostsRepository.whenReady();
-    const changed = this.ensureSeeded();
+    const changed = this.ideaPostsRepository.seedDefaults();
     if (changed) {
-      await this.persistBestEffort();
+      await this.ideaPostsRepository.persistBestEffort();
     }
     return changed;
   }
 
   async loadPublishedPosts(lang?: string | null): Promise<IdeaPost[]> {
     await this.ideaPostsRepository.whenReady();
-    const changed = this.ensureSeeded();
+    const changed = this.ideaPostsRepository.seedDefaults();
     if (changed) {
-      await this.persistBestEffort();
+      await this.ideaPostsRepository.persistBestEffort();
     }
     const language = this.requestContentLang(lang);
     const posts = this.sortedPosts(this.table()).filter(post => post.published && !post.trashed && post.lang === language);
@@ -39,7 +37,7 @@ export class DemoIdeaPostsService {
 
   async loadAdminPosts(_adminUserId = '', lang = 'en'): Promise<IdeaPost[]> {
     await this.ideaPostsRepository.whenReady();
-    this.assertSeeded();
+    this.ideaPostsRepository.assertSeeded();
     await this.routeDelay.waitForRouteDelay('/admin/ideas', undefined, undefined, DemoIdeaPostsService.ADMIN_IDEAS_DEMO_DELAY_MS);
     const language = this.normalizeLang(lang);
     return this.sortedPosts(this.table()).filter(post => post.lang === language);
@@ -47,7 +45,7 @@ export class DemoIdeaPostsService {
 
   async savePost(request: IdeaPostSaveRequest): Promise<IdeaPost> {
     await this.ideaPostsRepository.whenReady();
-    this.ensureSeeded();
+    this.ideaPostsRepository.assertSeeded();
     const nowIso = new Date().toISOString();
     const language = this.normalizeLang(request.lang);
     const requestedContentKey = `${request.contentKey ?? ''}`.trim();
@@ -90,7 +88,7 @@ export class DemoIdeaPostsService {
       ids: [...new Set([...table.ids.filter(currentId => currentId !== id), id])]
     }));
     await Promise.all([
-      this.persistBestEffort(),
+      this.ideaPostsRepository.persistBestEffort(),
       this.routeDelay.waitForRouteDelay('/admin/ideas', undefined, undefined, DemoIdeaPostsService.ADMIN_IDEAS_DEMO_DELAY_MS)
     ]);
     return this.clonePost(post);
@@ -127,7 +125,7 @@ export class DemoIdeaPostsService {
       };
     });
     await Promise.all([
-      this.persistBestEffort(),
+      this.ideaPostsRepository.persistBestEffort(),
       this.routeDelay.waitForRouteDelay('/admin/ideas', undefined, undefined, DemoIdeaPostsService.ADMIN_IDEAS_DEMO_DELAY_MS)
     ]);
     return this.sortedPosts(this.table());
@@ -163,7 +161,7 @@ export class DemoIdeaPostsService {
       };
     });
     await Promise.all([
-      this.persistBestEffort(),
+      this.ideaPostsRepository.persistBestEffort(),
       this.routeDelay.waitForRouteDelay('/admin/ideas', undefined, undefined, DemoIdeaPostsService.ADMIN_IDEAS_DEMO_DELAY_MS)
     ]);
     if (!restored) {
@@ -172,43 +170,8 @@ export class DemoIdeaPostsService {
     return this.clonePost(restored);
   }
 
-  private ensureSeeded(): boolean {
-    const table = this.table();
-    const defaultPosts = this.defaultPosts();
-    const missingPosts = defaultPosts.filter(post => !table.byId[post.id]);
-    if (missingPosts.length === 0 && table.seeded === true) {
-      return false;
-    }
-    this.ideaPostsRepository.updateTable(table => ({
-      seeded: true,
-      byId: {
-        ...table.byId,
-        ...Object.fromEntries(missingPosts.map(post => [post.id, post]))
-      },
-      ids: [...new Set([...table.ids, ...missingPosts.map(post => post.id)])]
-    }));
-    return true;
-  }
-
-  private assertSeeded(): void {
-    if (this.table().seeded !== true) {
-      throw new Error('Demo idea posts are not bootstrapped.');
-    }
-  }
-
   private table(): DemoIdeaPostsTable {
     return this.ideaPostsRepository.readTable();
-  }
-
-  private async persistBestEffort(): Promise<void> {
-    try {
-      await Promise.race([
-        this.ideaPostsRepository.flushToIndexedDb(),
-        new Promise<void>(resolve => globalThis.setTimeout(resolve, DemoIdeaPostsService.PERSIST_TIMEOUT_MS))
-      ]);
-    } catch {
-      // Demo content still exists in memory even when browser storage is temporarily unavailable.
-    }
   }
 
   private sortedPosts(table: DemoIdeaPostsTable): IdeaPost[] {
@@ -250,10 +213,6 @@ export class DemoIdeaPostsService {
       ...post,
       imageUrls: [...post.imageUrls]
     };
-  }
-
-  private defaultPosts(): IdeaPost[] {
-    return DemoIdeaPostsSeedBuilder.buildDefaultPosts();
   }
 
   private normalizeHtml(value: string): string {

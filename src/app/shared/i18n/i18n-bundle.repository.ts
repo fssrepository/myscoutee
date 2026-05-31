@@ -18,19 +18,9 @@ export class I18nBundleRepository {
   private static readonly INDEXED_DB_STORE = 'bundles';
   private indexedDbOpenPromise: Promise<IDBDatabase | null> | null = null;
 
-  firstLocalStorageBundle(candidates: readonly string[]): StoredI18nBundle | null {
+  async firstStoredBundle(candidates: readonly string[]): Promise<StoredI18nBundle | null> {
     for (const lang of candidates) {
-      const stored = this.readLocalStorageBundle(lang);
-      if (stored && Object.keys(stored.data).length > 0) {
-        return stored;
-      }
-    }
-    return null;
-  }
-
-  async firstIndexedDbBundle(candidates: readonly string[]): Promise<StoredI18nBundle | null> {
-    for (const lang of candidates) {
-      const stored = await this.readIndexedDbBundle(lang);
+      const stored = await this.readStoredBundle(lang);
       if (stored && Object.keys(stored.data).length > 0) {
         return stored;
       }
@@ -39,10 +29,20 @@ export class I18nBundleRepository {
   }
 
   async readStoredBundle(lang: string): Promise<StoredI18nBundle | null> {
-    return await this.readIndexedDbBundle(lang) ?? this.readLocalStorageBundle(lang);
+    const stored = await this.readIndexedDbBundle(lang);
+    if (stored) {
+      this.writeLocalStorageBundle(stored);
+      return stored;
+    }
+    return this.readLocalStorageBundle(lang);
   }
 
-  readLocalStorageBundle(lang: string): StoredI18nBundle | null {
+  async writeStoredBundle(bundle: StoredI18nBundle): Promise<void> {
+    await this.writeIndexedDbBundle(bundle);
+    this.writeLocalStorageBundle(bundle);
+  }
+
+  private readLocalStorageBundle(lang: string): StoredI18nBundle | null {
     if (!this.canUseLocalStorage()) {
       return null;
     }
@@ -58,7 +58,7 @@ export class I18nBundleRepository {
     }
   }
 
-  writeLocalStorageBundle(bundle: StoredI18nBundle): void {
+  private writeLocalStorageBundle(bundle: StoredI18nBundle): void {
     if (!this.canUseLocalStorage()) {
       return;
     }
@@ -69,7 +69,7 @@ export class I18nBundleRepository {
     }
   }
 
-  async readIndexedDbBundle(lang: string): Promise<StoredI18nBundle | null> {
+  private async readIndexedDbBundle(lang: string): Promise<StoredI18nBundle | null> {
     const db = await this.openIndexedDb();
     if (!db) {
       return null;
@@ -86,7 +86,7 @@ export class I18nBundleRepository {
     });
   }
 
-  async writeIndexedDbBundle(bundle: StoredI18nBundle): Promise<void> {
+  private async writeIndexedDbBundle(bundle: StoredI18nBundle): Promise<void> {
     const db = await this.openIndexedDb();
     if (!db) {
       return;
