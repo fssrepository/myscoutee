@@ -1,4 +1,4 @@
-import { ChangeDetectorRef, Component, EventEmitter, HostListener, Injector, Input, NgZone, OnDestroy, Output, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, EventEmitter, HostListener, Injector, Input, NgZone, OnChanges, OnDestroy, Output, SimpleChanges, inject } from '@angular/core';
 
 import {
   AppContext,
@@ -40,7 +40,7 @@ export interface EntryDemoUserSelectionEvent {
   templateUrl: './entry-shell.component.html',
   styleUrl: './entry-shell.component.scss'
 })
-export class EntryShellComponent implements OnDestroy {
+export class EntryShellComponent implements OnChanges, OnDestroy {
   private static readonly ENTRY_CONSENT_KEY = 'entry-gdpr-consent';
   private static readonly ENTRY_CONSENT_AUDIT_KEY = 'entry-gdpr-consent-audit';
   private static readonly ENTRY_CONSENT_AUDIT_MAX = 30;
@@ -109,6 +109,12 @@ export class EntryShellComponent implements OnDestroy {
 
   constructor() {
     this.initializeEntryFlow();
+  }
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['authMode']) {
+      this.syncEntryAuthGateState();
+    }
   }
 
   ngOnDestroy(): void {
@@ -858,11 +864,17 @@ export class EntryShellComponent implements OnDestroy {
           locationRequired: availability.locationRequired === true
         }
       : null;
-    this.entryAuthUnavailable = this.isLoginBlockedByLandingBundle();
+    this.syncEntryAuthGateState();
+  }
+
+  private syncEntryAuthGateState(): void {
+    const loginEnabled = this.authMode === 'firebase';
+    this.entryAuthUnavailable = loginEnabled && this.isLoginBlockedByLandingBundle();
     this.entryAuthUnavailableLabel = 'Unavailable in your country';
-    this.entryAuthLocationRequired = this.isLoginLocationRequiredByLandingBundle();
+    this.entryAuthLocationRequired = loginEnabled && this.isLoginLocationRequiredByLandingBundle();
     this.deferEntryAuthLocationRequiredLabel(this.grantedLocationEligibilityPromise ? 'Checking location' : 'Allow location');
     this.resolveGrantedLocationAccessIfNeeded();
+    this.changeDetectorRef.markForCheck();
   }
 
   private isLoginBlockedByLandingBundle(): boolean {
