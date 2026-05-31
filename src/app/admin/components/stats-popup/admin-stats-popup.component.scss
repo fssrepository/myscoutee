@@ -203,10 +203,11 @@
 
 .stats-kpi-card {
   min-width: 0;
-  min-height: 158px;
+  min-height: 172px;
   padding: 0.72rem;
   display: grid;
-  align-content: space-between;
+  grid-template-rows: auto auto minmax(2.15rem, auto) minmax(2.2rem, auto) auto;
+  align-content: stretch;
   gap: 0.42rem;
 }
 
@@ -216,15 +217,19 @@
 }
 
 .stats-kpi-card small {
+  display: block;
+  min-width: 0;
   color: rgba(29, 55, 88, 0.74);
   font-weight: 900;
   line-height: 1.2;
+  overflow-wrap: anywhere;
 }
 
 .stats-kpi-caption {
   color: rgba(29, 55, 88, 0.58);
   font-size: 0.64rem;
   font-weight: 800;
+  white-space: normal;
 }
 
 .stats-kpi-icon,
