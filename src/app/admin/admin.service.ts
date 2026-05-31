@@ -623,24 +623,7 @@ export class AdminService {
       }
     }
 
-    await this.withNotificationStorageFallback(this.memoryDb.whenReady(), undefined);
-    const existing = await this.withNotificationStorageFallback(
-      this.memoryDb.readIndexedDbTableEntry<AdminStatsDashboardDto>(ADMIN_STATS_STORE_KEY),
-      null
-    );
-    if (existing) {
-      const normalized = this.normalizeStatsDashboard(existing, 'demo');
-      if (this.isFreshStatsDemoSnapshot(normalized)) {
-        return normalized;
-      }
-    }
-
-    const snapshot = this.buildSeedDemoStatsSnapshot();
-    void this.withNotificationStorageFallback(
-      this.memoryDb.writeIndexedDbTableEntry(ADMIN_STATS_STORE_KEY, snapshot),
-      undefined
-    );
-    return snapshot;
+    return this.readDemoStatsSnapshot();
   }
 
   async loadMonitoringState(): Promise<AdminMonitoringStateDto> {
@@ -652,12 +635,7 @@ export class AdminService {
         .toPromise());
       return this.normalizeMonitoringState(state ?? this.buildDefaultMonitoringState(), 'http');
     }
-    await this.withNotificationStorageFallback(this.memoryDb.whenReady(), undefined);
-    const existing = await this.withNotificationStorageFallback(
-      this.memoryDb.readIndexedDbTableEntry<AdminMonitoringStateDto>(ADMIN_MONITORING_STORE_KEY),
-      null
-    );
-    return this.normalizeMonitoringState(existing ?? this.buildDefaultMonitoringState(), 'demo');
+    return this.readDemoMonitoringState();
   }
 
   async loadParamsState(): Promise<AdminParamsStateDto> {
@@ -669,7 +647,7 @@ export class AdminService {
         .toPromise());
       return this.normalizeParamsState(state ?? this.buildDefaultParamsStore());
     }
-    const store = await this.loadDemoParamsStore();
+    const store = await this.readDemoParamsStore();
     return this.normalizeParamsState(store);
   }
 
@@ -691,7 +669,7 @@ export class AdminService {
         .toPromise());
       return this.normalizeParamsState(state ?? this.buildDefaultParamsStore());
     }
-    const store = await this.loadDemoParamsStore();
+    const store = await this.readDemoParamsStore();
     const nowIso = new Date().toISOString();
     const version = this.nextDemoParamsVersion(store);
     const nextSections = store.sections.map(section => section.key === normalizedSectionKey
@@ -748,7 +726,7 @@ export class AdminService {
         versions: []
       });
     }
-    const store = await this.loadDemoParamsStore();
+    const store = await this.readDemoParamsStore();
     const section = store.sections.find(item => item.key === normalizedSectionKey);
     return this.normalizeParamsHistory({
       sectionKey: normalizedSectionKey,
@@ -794,21 +772,9 @@ export class AdminService {
         .toPromise());
       return this.normalizeNotificationCenter(state ?? this.buildDefaultNotificationCenter());
     }
-    await this.withNotificationStorageFallback(this.memoryDb.whenReady(), undefined);
-    const existing = await this.withNotificationStorageFallback(
-      this.memoryDb.readIndexedDbTableEntry<AdminNotificationCenterState>(ADMIN_NOTIFICATION_STORE_KEY),
-      null
-    );
-    if (existing?.rules?.length) {
-      await this.waitForAdminNotificationDemoDelay(ADMIN_NOTIFICATION_LOAD_ROUTE, ADMIN_NOTIFICATION_LOAD_DEMO_DELAY_MS, options);
-      return this.normalizeNotificationCenter(existing);
-    }
+    const existing = await this.readDemoNotificationCenter();
     await this.waitForAdminNotificationDemoDelay(ADMIN_NOTIFICATION_LOAD_ROUTE, ADMIN_NOTIFICATION_LOAD_DEMO_DELAY_MS, options);
-    return this.normalizeNotificationCenter({
-      rules: [],
-      emailTemplates: this.defaultNotificationTemplateOptions(),
-      updatedDate: new Date().toISOString()
-    });
+    return this.normalizeNotificationCenter(existing);
   }
 
   async saveNotificationCenter(
@@ -1156,6 +1122,8 @@ export class AdminService {
     this.demoChatsRepository.init();
     await this.ensureDemoNotificationCenterSeed();
     await this.ensureDemoMonitoringSeed();
+    await this.ensureDemoStatsSeed();
+    await this.ensureDemoParamsSeed();
     await this.ensureDemoAdminMenuCounterSeed();
     onProgress?.({ percent: 48, label: 'Creating moderation records', stage: 'records' });
     const store = await this.ensureDemoModerationStore();
@@ -1206,6 +1174,23 @@ export class AdminService {
       return;
     }
     await this.memoryDb.writeIndexedDbTableEntry(ADMIN_MONITORING_STORE_KEY, this.buildDefaultMonitoringState());
+  }
+
+  private async ensureDemoStatsSeed(): Promise<void> {
+    const existing = await this.memoryDb.readIndexedDbTableEntry<AdminStatsDashboardDto>(ADMIN_STATS_STORE_KEY);
+    const normalized = existing ? this.normalizeStatsDashboard(existing, 'demo') : null;
+    if (normalized && this.isFreshStatsDemoSnapshot(normalized)) {
+      return;
+    }
+    await this.memoryDb.writeIndexedDbTableEntry(ADMIN_STATS_STORE_KEY, this.buildSeedDemoStatsSnapshot());
+  }
+
+  private async ensureDemoParamsSeed(): Promise<void> {
+    const existing = await this.memoryDb.readIndexedDbTableEntry<AdminParamsDemoStore>(ADMIN_PARAMS_STORE_KEY);
+    if (existing?.sections?.length) {
+      return;
+    }
+    await this.memoryDb.writeIndexedDbTableEntry(ADMIN_PARAMS_STORE_KEY, this.buildDefaultParamsStore());
   }
 
   private async ensureDemoAdminMenuCounterSeed(): Promise<void> {
@@ -2833,21 +2818,56 @@ export class AdminService {
       : 'ok';
   }
 
-  private async loadDemoParamsStore(): Promise<AdminParamsDemoStore> {
+  private async readDemoStatsSnapshot(): Promise<AdminStatsDashboardDto> {
+    await this.withNotificationStorageFallback(this.memoryDb.whenReady(), undefined);
+    const existing = await this.withNotificationStorageFallback(
+      this.memoryDb.readIndexedDbTableEntry<AdminStatsDashboardDto>(ADMIN_STATS_STORE_KEY),
+      null
+    );
+    if (!existing) {
+      throw new Error('Demo stats snapshot is not bootstrapped.');
+    }
+    const normalized = this.normalizeStatsDashboard(existing, 'demo');
+    if (!this.isFreshStatsDemoSnapshot(normalized)) {
+      throw new Error('Demo stats snapshot is stale.');
+    }
+    return normalized;
+  }
+
+  private async readDemoMonitoringState(): Promise<AdminMonitoringStateDto> {
+    await this.withNotificationStorageFallback(this.memoryDb.whenReady(), undefined);
+    const existing = await this.withNotificationStorageFallback(
+      this.memoryDb.readIndexedDbTableEntry<AdminMonitoringStateDto>(ADMIN_MONITORING_STORE_KEY),
+      null
+    );
+    if (!existing?.categories?.length) {
+      throw new Error('Demo monitoring state is not bootstrapped.');
+    }
+    return this.normalizeMonitoringState(existing, 'demo');
+  }
+
+  private async readDemoNotificationCenter(): Promise<AdminNotificationCenterState> {
+    await this.withNotificationStorageFallback(this.memoryDb.whenReady(), undefined);
+    const existing = await this.withNotificationStorageFallback(
+      this.memoryDb.readIndexedDbTableEntry<AdminNotificationCenterState>(ADMIN_NOTIFICATION_STORE_KEY),
+      null
+    );
+    if (!existing?.rules?.length) {
+      throw new Error('Demo notification center is not bootstrapped.');
+    }
+    return this.normalizeNotificationCenter(existing);
+  }
+
+  private async readDemoParamsStore(): Promise<AdminParamsDemoStore> {
     await this.withNotificationStorageFallback(this.memoryDb.whenReady(), undefined);
     const existing = await this.withNotificationStorageFallback(
       this.memoryDb.readIndexedDbTableEntry<AdminParamsDemoStore>(ADMIN_PARAMS_STORE_KEY),
       null
     );
-    if (existing?.sections?.length) {
-      return this.normalizeParamsStore(existing);
+    if (!existing?.sections?.length) {
+      throw new Error('Demo params store is not bootstrapped.');
     }
-    const seeded = this.buildDefaultParamsStore();
-    await this.withNotificationStorageFallback(
-      this.memoryDb.writeIndexedDbTableEntry(ADMIN_PARAMS_STORE_KEY, seeded),
-      undefined
-    );
-    return seeded;
+    return this.normalizeParamsStore(existing);
   }
 
   private buildDefaultParamsStore(): AdminParamsDemoStore {
