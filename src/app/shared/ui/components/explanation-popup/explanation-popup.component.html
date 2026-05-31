@@ -892,17 +892,7 @@
           </div>
         </header>
         <div class="explanation-popup__loading-body">
-          <svg class="explanation-popup__loading-ring" viewBox="0 0 44 44" aria-hidden="true">
-            <circle class="explanation-popup__loading-ring-track" cx="22" cy="22" r="18"></circle>
-            <circle
-              class="explanation-popup__loading-ring-value"
-              cx="22"
-              cy="22"
-              r="18"
-              [attr.stroke-dasharray]="loadingRingPerimeter"
-              [attr.stroke-dashoffset]="loadingRingDashOffset()"
-            ></circle>
-          </svg>
+          <app-progress-indicator kind="load-ring" size="sm" [position]="loadingProgress()"></app-progress-indicator>
           <span>{{ 'loading.explanation.content' | i18n: 'Loading explanation content' }}</span>
         </div>
       </article>

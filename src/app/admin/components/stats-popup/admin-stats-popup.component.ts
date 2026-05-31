@@ -2,10 +2,9 @@ import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
-import { RouteDelayService } from '../../../shared/core/base/services/route-delay.service';
 import { I18nPipe } from '../../../shared/i18n';
+import { ProgressIndicatorComponent } from '../../../shared/ui/components/progress-indicator';
 import {
-  AdminService,
   type AdminStatsBreakdownItemDto,
   type AdminStatsDashboardDto,
   type AdminStatsGraphDto,
@@ -15,7 +14,9 @@ import {
   type AdminStatsRevenueTimelinePointDto,
   type AdminStatsSegmentDto,
   type AdminStatsTimelinePointDto
-} from '../../admin.service';
+} from '../../models/admin-stats.model';
+import { AdminShellService } from '../../services/admin-shell.service';
+import { AdminStatsService } from '../../services/admin-stats.service';
 
 type AdminStatsTimelineMetric = 'activeUsers' | 'registrations' | 'ratings' | 'activity' | 'messages' | 'moderation';
 type AdminStatsGraphTimelineMetric = 'activeEdges' | 'newEdges' | 'recurringEdges' | 'weakTies' | 'networkQuality' | 'clusterQuality';
@@ -26,16 +27,15 @@ type AdminStatsGraphAction = { key: string; labelKey: string; icon: string; tone
 @Component({
   selector: 'app-admin-stats-popup',
   standalone: true,
-  imports: [CommonModule, MatIconModule, I18nPipe],
+  imports: [CommonModule, MatIconModule, ProgressIndicatorComponent, I18nPipe],
   templateUrl: './admin-stats-popup.component.html',
   styleUrl: './admin-stats-popup.component.scss'
 })
 export class AdminStatsPopupComponent implements OnDestroy {
-  private static readonly LOAD_DEMO_DELAY_MS = 1500;
   private static readonly LOAD_PROGRESS_WINDOW_MS = 3000;
 
-  protected readonly admin = inject(AdminService);
-  private readonly routeDelay = inject(RouteDelayService);
+  protected readonly admin = inject(AdminShellService);
+  private readonly statsService = inject(AdminStatsService);
   protected readonly loading = signal(false);
   protected readonly error = signal('');
   protected readonly stats = signal<AdminStatsDashboardDto | null>(null);
@@ -47,7 +47,6 @@ export class AdminStatsPopupComponent implements OnDestroy {
   protected readonly timelineDragging = signal(false);
   protected readonly graphTimelineDragging = signal(false);
   protected readonly revenueTimelineDragging = signal(false);
-  protected readonly loadingRingPerimeter = 100;
   protected readonly loadingProgress = signal(0);
   protected readonly topSegments = computed(() => this.stats()?.segments ?? []);
   protected readonly primaryKpis = computed(() => this.stats()?.kpis ?? []);
@@ -122,10 +121,6 @@ export class AdminStatsPopupComponent implements OnDestroy {
 
   protected segmentPercent(segment: AdminStatsSegmentDto): number {
     return this.clamp(Math.trunc(Number(segment.healthPercent) || 0), 0, 100);
-  }
-
-  protected loadingRingDashOffset(): number {
-    return this.loadingRingPerimeter * (1 - Math.min(1, Math.max(0, this.loadingProgress())));
   }
 
   protected selectTimelinePoint(point: AdminStatsTimelinePointDto): void {
@@ -618,10 +613,7 @@ export class AdminStatsPopupComponent implements OnDestroy {
     this.beginLoadingProgress();
     this.error.set('');
     try {
-      const [dashboard] = await Promise.all([
-        this.admin.loadStatsDashboard(),
-        this.routeDelay.waitForRouteDelay('/admin/stats', undefined, undefined, AdminStatsPopupComponent.LOAD_DEMO_DELAY_MS)
-      ]);
+      const dashboard = await this.statsService.loadStatsDashboard();
       this.stats.set(dashboard);
       this.selectedTimeline.set(dashboard.timeline.at(-1) ?? null);
       this.selectedGraphTimeline.set(dashboard.graph.timeline.at(-1) ?? null);

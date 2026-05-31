@@ -1047,7 +1047,7 @@ const PRIVACY_CENTER_SECTIONS_HU: HelpCenterSection[] = [
     icon: 'contact_mail',
     title: 'Kapcsolati adatok',
     blurb: 'Kihez fordulhatsz adatvédelemmel és adatkezeléssel kapcsolatban.',
-    contentHtml: '<ul><li><strong>Adatkezelő:</strong> MyScoutee demo platform</li><li><strong>Támogatási email:</strong> privacy@myscoutee.app</li><li><strong>DPO kapcsolat:</strong> dpo@myscoutee.app</li></ul>'
+    contentHtml: '<ul><li><strong>Adatkezelő:</strong> MyScoutee</li><li><strong>Támogatási email:</strong> myscoutee1@gmail.com</li><li><strong>DPO kapcsolat:</strong> myscoutee1@gmail.com</li></ul>'
   },
   {
     id: 'legal-basis',
@@ -1271,7 +1271,7 @@ const EXPLANATION_ACTIVITY_RATES_SECTIONS_HU: HelpCenterSection[] = [
     icon: 'north_east',
     title: 'Mit nézel?',
     blurb: 'Itt választod ki, milyen értékeléskártyák látszanak.',
-    contentHtml: '<p>Nyisd le az első menüt, és válassz: akiket te értékeltél, akik téged értékeltek, kölcsönös értékelések, akikkel találkoztál, vagy javaslatok.</p><p>A piros szám azt mutatja, hány kártya van abban a választásban. A Social kapcsoló csak azt dönti el, hogy bekerüljenek-e a közös emberek vagy események alapján ajánlott kártyák.</p>'
+    contentHtml: '<p>Nyisd le az első menüt, és válassz: akiket te értékeltél, akik téged értékeltek, kölcsönös értékelések, akikkel találkoztál, vagy ajánlások.</p><p>A piros szám azt mutatja, hány kártya van abban a választásban. A Social kapcsoló csak azt dönti el, hogy bekerüljenek-e a közös emberek vagy események alapján ajánlott kártyák.</p>'
   },
   {
     id: 'activity-header-controls',

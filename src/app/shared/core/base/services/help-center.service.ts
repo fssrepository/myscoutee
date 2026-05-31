@@ -13,6 +13,7 @@ import { BaseRouteModeService } from './base-route-mode.service';
 import { RouteDelayService } from './route-delay.service';
 
 export const HELP_CENTER_LOAD_CONTEXT_KEY = 'help-center-load';
+const ADMIN_HELP_CENTER_LOAD_DEMO_DELAY_MS = 1500;
 
 @Injectable({
   providedIn: 'root'
@@ -84,9 +85,14 @@ export class HelpCenterService extends BaseRouteModeService {
   async loadAdminState(adminUserId: string, kind: HelpCenterDocumentKind = 'help', lang = 'en', contextKey?: string | null): Promise<HelpCenterState> {
     const documentKind = this.normalizeKind(kind);
     const service = this.helpService(documentKind);
-    const state = service instanceof HttpHelpCenterService
-      ? await service.loadAdminState(adminUserId, documentKind, lang, contextKey)
-      : await service.loadState(documentKind, lang, contextKey);
+    const load = service instanceof HttpHelpCenterService
+      ? service.loadAdminState(adminUserId, documentKind, lang, contextKey)
+      : this.withAdminHelpCenterDemoDelay(
+          service.loadState(documentKind, lang, contextKey),
+          documentKind,
+          contextKey
+        );
+    const state = await load;
     this.setState(documentKind, state);
     return this.cloneState(state);
   }
@@ -123,6 +129,39 @@ export class HelpCenterService extends BaseRouteModeService {
 
   private helpService(kind: HelpCenterDocumentKind): DemoHelpCenterService | HttpHelpCenterService {
     return this.resolveRouteService(`/${kind}/active`, this.demoHelpCenterService, this.httpHelpCenterService);
+  }
+
+  private async withAdminHelpCenterDemoDelay<T>(
+    work: Promise<T>,
+    kind: HelpCenterDocumentKind,
+    contextKey?: string | null
+  ): Promise<T> {
+    const delay = this.routeDelay.waitForRouteDelay(
+      this.adminRoute(kind, contextKey),
+      undefined,
+      undefined,
+      ADMIN_HELP_CENTER_LOAD_DEMO_DELAY_MS
+    );
+    try {
+      const [result] = await Promise.all([work, delay]);
+      return result;
+    } catch (error) {
+      await delay.catch(() => undefined);
+      throw error;
+    }
+  }
+
+  private adminRoute(kind: HelpCenterDocumentKind, contextKey?: string | null): string {
+    if (kind === 'privacy') {
+      return '/admin/privacy';
+    }
+    if (kind === 'explanation') {
+      const normalizedContextKey = `${contextKey ?? ''}`.trim();
+      return normalizedContextKey
+        ? `/admin/explanation/${normalizedContextKey}`
+        : '/admin/explanation/new';
+    }
+    return '/admin/help';
   }
 
   private setState(kind: HelpCenterDocumentKind, state: HelpCenterState): void {

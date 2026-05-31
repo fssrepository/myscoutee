@@ -8,13 +8,12 @@ import type {
   AdminMonitoringHealth,
   AdminMonitoringMetricDto
 } from '../../../shared/core';
-import { RouteDelayService } from '../../../shared/core/base/services/route-delay.service';
 import { I18nPipe } from '../../../shared/i18n';
-import { AdminService } from '../../admin.service';
+import { ProgressIndicatorComponent } from '../../../shared/ui/components/progress-indicator';
+import { AdminMonitoringService } from '../../services/admin-monitoring.service';
+import { AdminShellService } from '../../services/admin-shell.service';
 
 const MONITORING_POPUP_KEY = 'monitoring';
-const MONITORING_LOAD_ROUTE = '/admin/monitoring';
-const MONITORING_LOAD_DEMO_DELAY_MS = 1500;
 const MONITORING_LOAD_PROGRESS_WINDOW_MS = 3000;
 
 const MONITORING_FILTER = {
@@ -45,21 +44,20 @@ const MONITORING_FILTER_CATEGORIES: Record<MonitoringFilter, ReadonlySet<string>
 @Component({
   selector: 'app-admin-monitoring-popup',
   standalone: true,
-  imports: [CommonModule, MatIconModule, I18nPipe],
+  imports: [CommonModule, MatIconModule, ProgressIndicatorComponent, I18nPipe],
   templateUrl: './admin-monitoring-popup.component.html',
   styleUrl: './admin-monitoring-popup.component.scss'
 })
 export class AdminMonitoringPopupComponent implements OnInit, OnDestroy {
-  protected readonly admin = inject(AdminService);
-  private readonly routeDelay = inject(RouteDelayService);
+  protected readonly admin = inject(AdminShellService);
+  private readonly monitoringService = inject(AdminMonitoringService);
   protected readonly popupKey = MONITORING_POPUP_KEY;
   protected readonly filterOptions = MONITORING_FILTER_OPTIONS;
   protected readonly loading = signal(false);
   protected readonly error = signal('');
-  protected readonly state = signal<Awaited<ReturnType<AdminService['loadMonitoringState']>> | null>(null);
+  protected readonly state = signal<Awaited<ReturnType<AdminMonitoringService['loadMonitoringState']>> | null>(null);
   protected readonly filter = signal<MonitoringFilter>(MONITORING_FILTER.all);
   protected readonly filterMenuOpen = signal(false);
-  protected readonly loadingRingPerimeter = 100;
   protected readonly loadingProgress = signal(0);
   private loadingProgressTimer: ReturnType<typeof setInterval> | null = null;
   private loadingProgressStartedAtMs = 0;
@@ -140,24 +138,12 @@ export class AdminMonitoringPopupComponent implements OnInit, OnDestroy {
     return category.edges[index] ?? null;
   }
 
-  protected loadingRingDashOffset(): number {
-    return this.loadingRingPerimeter * (1 - Math.min(1, Math.max(0, this.loadingProgress())));
-  }
-
   private async load(): Promise<void> {
     this.loading.set(true);
     this.beginLoadingProgress();
     this.error.set('');
     try {
-      const [state] = await Promise.all([
-        this.admin.loadMonitoringState(),
-        this.routeDelay.waitForRouteDelay(
-          MONITORING_LOAD_ROUTE,
-          undefined,
-          undefined,
-          MONITORING_LOAD_DEMO_DELAY_MS
-        )
-      ]);
+      const state = await this.monitoringService.loadMonitoringState();
       this.state.set(state);
     } catch {
       this.error.set('admin.monitoring.error.load');

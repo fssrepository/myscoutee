@@ -5,13 +5,14 @@ import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { AppContext, HelpCenterService } from '../../../shared/core';
 import type { HelpCenterRevision, HelpCenterSection } from '../../../shared/core/base/models';
 import { I18nService } from '../../../shared/i18n';
+import { ProgressIndicatorComponent } from '../../../shared/ui';
 import { LazyBgImageDirective } from '../../../shared/ui/directives';
 import { NavigatorService } from '../../navigator.service';
 
 @Component({
   selector: 'app-navigator-privacy-popup',
   standalone: true,
-  imports: [CommonModule, MatIconModule, LazyBgImageDirective],
+  imports: [CommonModule, MatIconModule, LazyBgImageDirective, ProgressIndicatorComponent],
   templateUrl: './navigator-privacy-popup.component.html',
   styleUrl: './navigator-privacy-popup.component.scss'
 })

@@ -228,34 +228,6 @@
   pointer-events: none;
 }
 
-.event-explore-basket-item__clear-ring-svg {
-  width: 100%;
-  height: 100%;
-  display: block;
-  transform-origin: 50% 50%;
-  will-change: transform;
-  filter: drop-shadow(0 8px 20px rgba(68, 18, 18, 0.16));
-}
-
-.event-explore-basket-item__clear-ring-track,
-.event-explore-basket-item__clear-ring-progress {
-  fill: none;
-  stroke-width: 4;
-}
-
-.event-explore-basket-item__clear-ring-track {
-  stroke: rgba(133, 100, 42, 0.18);
-}
-
-.event-explore-basket-item__clear-ring-progress {
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.event-explore-basket-item__clear-shell.is-loading .event-explore-basket-item__clear-ring-progress {
-  animation: event-explore-basket-clear-ring-progress 3s linear forwards;
-}
-
 .event-explore-basket-item__clear-shell.is-loading .event-explore-basket-item__btn--clear,
 .event-explore-basket-item__clear-shell.is-loading .event-explore-basket-item__btn--clear:hover,
 .event-explore-basket-item__clear-shell.is-loading .event-explore-basket-item__btn--clear:disabled {
@@ -267,16 +239,6 @@
   box-shadow: none;
   transform: none;
   filter: none;
-}
-
-@keyframes event-explore-basket-clear-ring-progress {
-  from {
-    stroke-dashoffset: 100;
-  }
-
-  to {
-    stroke-dashoffset: 0;
-  }
 }
 
 .event-explore-header-controls {

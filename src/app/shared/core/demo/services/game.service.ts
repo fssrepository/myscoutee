@@ -30,6 +30,10 @@ export class DemoGameService extends DemoRouteDelayService implements UserGameDa
   private readonly usersRatingsRepository = inject(DemoUsersRatingsRepository);
   private readonly userFacetById = APP_STATIC_DATA.homeUserFacetById;
 
+  async whenReady(): Promise<void> {
+    await this.usersRepository.whenReady();
+  }
+
   queryGameCardsUsersSnapshot(): UserDto[] {
     return this.usersRepository.queryAllUsers()
       .filter(user => user.id.trim().length > 0)

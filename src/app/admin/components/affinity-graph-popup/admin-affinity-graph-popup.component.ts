@@ -3,20 +3,22 @@ import { Component, OnDestroy, computed, effect, inject, signal } from '@angular
 import { MatIconModule } from '@angular/material/icon';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 
-import { AdminService } from '../../admin.service';
 import { AdminAffinityGraphService } from '../../services/admin-affinity-graph.service';
+import { AdminShellService } from '../../services/admin-shell.service';
+import { AdminWorkspaceService } from '../../services/admin-workspace.service';
 import { LazyBgImageDirective } from '../../../shared/ui/directives';
-import { HeaderProgressBarComponent, type HeaderProgressBarConfig } from '../../../shared/ui/components';
+import { ProgressIndicatorComponent, type ProgressIndicatorBarConfig } from '../../../shared/ui/components';
 
 @Component({
   selector: 'app-admin-affinity-graph-popup',
   standalone: true,
-  imports: [CommonModule, MatIconModule, HeaderProgressBarComponent],
+  imports: [CommonModule, MatIconModule, ProgressIndicatorComponent],
   templateUrl: './admin-affinity-graph-popup.component.html',
   styleUrl: './admin-affinity-graph-popup.component.scss'
 })
 export class AdminAffinityGraphPopupComponent implements OnDestroy {
-  protected readonly admin = inject(AdminService);
+  protected readonly admin = inject(AdminShellService);
+  private readonly workspace = inject(AdminWorkspaceService);
   protected readonly graphUrl = signal<SafeResourceUrl | null>(null);
   protected readonly popupKey = 'affinity-graph';
   private readonly document = inject(DOCUMENT);
@@ -32,7 +34,7 @@ export class AdminAffinityGraphPopupComponent implements OnDestroy {
     this.admin.activePopup() === this.popupKey && this.graphStaticShellVisible()
   );
   protected readonly graphProgressVisible = computed(() => this.admin.activePopup() === this.popupKey);
-  protected readonly graphProgressConfig = computed<HeaderProgressBarConfig>(() => {
+  protected readonly graphProgressConfig = computed<ProgressIndicatorBarConfig>(() => {
     const loadingState = this.affinityGraph.loadingState();
     if (!loadingState.active) {
       return {
@@ -151,7 +153,7 @@ export class AdminAffinityGraphPopupComponent implements OnDestroy {
   }
 
   private resolveGraphRequest(method: string, params: Record<string, unknown>): Promise<unknown> {
-    const adminUserId = this.admin.activeAdmin()?.id;
+    const adminUserId = this.workspace.activeAdmin()?.id;
     switch (method) {
       case 'initialGraph':
         return this.affinityGraph.loadInitialGraph(adminUserId);

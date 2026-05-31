@@ -66,7 +66,7 @@ export class ProfileOnboardingService {
   readonly currentProfileFormVersion = 2;
 
   assessUser(user: UserDto | null | undefined): ProfileOnboardingAssessment {
-    if (!user || this.isBlockedLifecycleUser(user)) {
+    if (!user || user.admin === true || this.isBlockedLifecycleUser(user)) {
       return {
         shouldPrompt: false,
         requiredMissingKeys: [],

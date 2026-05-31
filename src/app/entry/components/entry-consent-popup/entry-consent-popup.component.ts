@@ -7,12 +7,13 @@ import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { HelpCenterService } from '../../../shared/core';
 import type { HelpCenterRevision, HelpCenterSection } from '../../../shared/core/base/models';
 import { I18nService } from '../../../shared/i18n';
+import { ProgressIndicatorComponent } from '../../../shared/ui/components/progress-indicator';
 import { LazyBgImageDirective } from '../../../shared/ui/directives';
 
 @Component({
   selector: 'app-entry-consent-popup',
   standalone: true,
-  imports: [CommonModule, MatIconModule, MatRippleModule, LazyBgImageDirective],
+  imports: [CommonModule, MatIconModule, MatRippleModule, ProgressIndicatorComponent, LazyBgImageDirective],
   templateUrl: './entry-consent-popup.component.html',
   styleUrl: './entry-consent-popup.component.scss'
 })
@@ -36,7 +37,6 @@ export class EntryConsentPopupComponent {
   protected readonly versionLabel = this.helpCenter.activePrivacyVersionLabel;
   protected readonly sections = computed<HelpCenterSection[]>(() => this.activeRevision()?.sections ?? []);
   protected readonly defaultPrivacyDescription = APP_STATIC_DATA.defaultPrivacyCenterDescription;
-  protected readonly loadingRingPerimeter = 100;
   protected openAccordionSectionId = '';
   protected approvedSectionIds = new Set<string>();
   protected savingChoices = false;
@@ -143,11 +143,6 @@ export class EntryConsentPopupComponent {
 
   protected activeDescriptionLabel(): string {
     return this.activeRevision()?.description || this.uiText(this.defaultPrivacyDescription);
-  }
-
-  protected loadingRingDashOffset(): number {
-    const progress = Math.min(1, Math.max(0, Number(this.loadingProgress) || 0));
-    return this.loadingRingPerimeter * (1 - progress);
   }
 
   protected uiText(value: string): string {

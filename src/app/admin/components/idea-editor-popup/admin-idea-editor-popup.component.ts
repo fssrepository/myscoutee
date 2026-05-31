@@ -13,6 +13,7 @@ import {
   type InfoCardMenuActionEvent
 } from '../../../shared/ui/components/card';
 import { EditableImageCarouselComponent } from '../../../shared/ui/components/editable-image-carousel';
+import { ProgressIndicatorComponent } from '../../../shared/ui/components/progress-indicator';
 import {
   SmartListComponent,
   type ListQuery,
@@ -21,7 +22,8 @@ import {
   type SmartListLoadPage
 } from '../../../shared/ui/components/smart-list';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
-import { AdminService } from '../../admin.service';
+import { AdminShellService } from '../../services/admin-shell.service';
+import { AdminWorkspaceService } from '../../services/admin-workspace.service';
 
 type IdeaEditorMode = 'html' | 'preview';
 type IdeaPostFilter = 'all' | 'featured' | 'published' | 'drafts' | 'trashed';
@@ -56,7 +58,7 @@ interface IdeaPostLangCache {
 @Component({
   selector: 'app-admin-idea-editor-popup',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatIconModule, SmartListComponent, InfoCardComponent, EditableImageCarouselComponent],
+  imports: [CommonModule, FormsModule, MatIconModule, SmartListComponent, InfoCardComponent, EditableImageCarouselComponent, ProgressIndicatorComponent],
   templateUrl: './admin-idea-editor-popup.component.html',
   styleUrl: './admin-idea-editor-popup.component.scss'
 })
@@ -65,7 +67,8 @@ export class AdminIdeaEditorPopupComponent implements OnDestroy {
   @ViewChild('ideaSmartList')
   private ideaSmartList?: SmartListComponent<IdeaInfoCard, IdeaSmartListFilters>;
 
-  protected readonly admin = inject(AdminService);
+  protected readonly admin = inject(AdminShellService);
+  private readonly workspace = inject(AdminWorkspaceService);
   private readonly ideaPosts = inject(IdeaPostsService);
   private readonly routeDelay = inject(RouteDelayService);
   private readonly confirmationDialog = inject(ConfirmationDialogService);
@@ -87,8 +90,6 @@ export class AdminIdeaEditorPopupComponent implements OnDestroy {
   protected selectedContentLang = 'en';
   protected draftContentLang = 'en';
   protected ideaListFilters: IdeaSmartListFilters = { status: 'all', revision: 0 };
-  protected readonly actionRingPerimeter = 100;
-  protected readonly loadingRingPerimeter = 100;
   protected readonly ideaImageSlotCount = 8;
   protected readonly loadingProgress = signal(0);
   private stateLoadedForPopup = false;
@@ -939,10 +940,6 @@ export class AdminIdeaEditorPopupComponent implements OnDestroy {
       : 'Loading article editor';
   }
 
-  protected loadingRingDashOffset(): number {
-    return this.loadingRingPerimeter * (1 - Math.min(1, Math.max(0, this.loadingProgress())));
-  }
-
   protected filterLabel(): string {
     return this.filterOptions.find(option => option.id === this.ideaFilter)?.label ?? 'All';
   }
@@ -1011,7 +1008,7 @@ export class AdminIdeaEditorPopupComponent implements OnDestroy {
   }
 
   protected actorUserId(): string {
-    return this.admin.activeAdmin()?.id?.trim() || 'admin';
+    return this.workspace.activeAdmin()?.id?.trim() || 'admin';
   }
 
   private beginArticlePanelLoad(mode: IdeaPanelLoadingMode): number {

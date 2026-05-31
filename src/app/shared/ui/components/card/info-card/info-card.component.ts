@@ -15,6 +15,7 @@ import { MatIconModule } from '@angular/material/icon';
 
 import { LazyBgImageDirective } from '../../../directives/lazy-bg-image.directive';
 import { I18nPipe } from '../../../../i18n';
+import { ProgressIndicatorComponent } from '../../progress-indicator';
 import { CounterBadgePipe } from '../../../pipes/counter-badge.pipe';
 import type {
   InfoCardClickEvent,
@@ -38,7 +39,7 @@ import { INFO_CARD_AVAILABLE_ACTIONS } from '../card.types';
 @Component({
   selector: 'app-info-card',
   standalone: true,
-  imports: [CommonModule, MatIconModule, LazyBgImageDirective, CounterBadgePipe, I18nPipe],
+  imports: [CommonModule, MatIconModule, LazyBgImageDirective, ProgressIndicatorComponent, CounterBadgePipe, I18nPipe],
   templateUrl: './info-card.component.html',
   styleUrl: './info-card.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush

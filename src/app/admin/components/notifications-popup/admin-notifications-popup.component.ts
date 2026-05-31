@@ -14,7 +14,10 @@ import type {
   AdminNotificationIntervalUnit
 } from '../../../shared/core';
 import { I18nPipe } from '../../../shared/i18n';
-import { AdminService } from '../../admin.service';
+import { ProgressIndicatorComponent } from '../../../shared/ui/components/progress-indicator';
+import { AdminNotificationsService } from '../../services/admin-notifications.service';
+import { AdminShellService } from '../../services/admin-shell.service';
+import { AdminWorkspaceService } from '../../services/admin-workspace.service';
 
 const PROCESS_LIST_FILTER = {
   all: 'all',
@@ -295,12 +298,14 @@ const STATUS_CLASS_PREFIX = 'is-';
 @Component({
   selector: 'app-admin-notifications-popup',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatIconModule, I18nPipe],
+  imports: [CommonModule, FormsModule, MatIconModule, ProgressIndicatorComponent, I18nPipe],
   templateUrl: './admin-notifications-popup.component.html',
   styleUrl: './admin-notifications-popup.component.scss'
 })
 export class AdminNotificationsPopupComponent implements OnDestroy {
-  protected readonly admin = inject(AdminService);
+  protected readonly admin = inject(AdminShellService);
+  private readonly notificationsService = inject(AdminNotificationsService);
+  private readonly workspace = inject(AdminWorkspaceService);
   protected readonly popupKey = ADMIN_POPUP_KEY;
   protected readonly jobI18n = JOB_I18N;
   protected readonly processRowAction = PROCESS_ROW_ACTION;
@@ -309,8 +314,6 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
 
   protected readonly loading = signal(false);
   protected readonly saving = signal(false);
-  protected readonly actionRingPerimeter = 100;
-  protected readonly loadingRingPerimeter = 100;
   protected readonly loadingProgress = signal(0);
   protected readonly runningRuleKey = signal('');
   protected readonly rowActionKey = signal('');
@@ -373,7 +376,7 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
     }
     this.error.set('');
     try {
-      const state = await this.admin.loadNotificationCenter({ skipDemoDelay: silent });
+      const state = await this.notificationsService.loadNotificationCenter({ skipDemoDelay: silent });
       if (silent) {
         this.mergeRuntimeState(state);
       } else {
@@ -407,7 +410,7 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
     this.saving.set(true);
     this.error.set('');
     try {
-      const savedState = await this.admin.saveNotificationCenter(rulesToSave);
+      const savedState = await this.notificationsService.saveNotificationCenter(rulesToSave);
       const normalizedState = this.ensureProcessRules(savedState);
       this.state.set(normalizedState);
       this.captureTimingBaselines(normalizedState.rules);
@@ -453,7 +456,7 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
             progressDetail: nextToggleState.progressDetailKey
           },
           updatedDate: new Date().toISOString(),
-          updatedUser: this.admin.activeAdmin()?.id ?? current.updatedUser
+          updatedUser: this.workspace.activeAdmin()?.id ?? current.updatedUser
         }
         : current);
       const saved = await this.save(rulesToSave);
@@ -497,7 +500,7 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
       }
     }));
     try {
-      const result = await this.admin.runNotificationRule(rule.ruleKey);
+      const result = await this.notificationsService.runNotificationRule(rule.ruleKey);
       const finishedAtIso = result.ranAtIso || new Date().toISOString();
       this.patchRule(rule.ruleKey, current => {
         const isRunningResponse = this.isRuntimeStatus(result.status, PROCESS_RUNTIME_STATUS.running);
@@ -512,7 +515,7 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
         const entry: AdminNotificationRunHistoryEntry | null = isRunningResponse ? null : {
           id: `run-${Date.now()}`,
           trigger: PROCESS_RUN_TRIGGER.manual,
-          runnerUser: this.admin.activeAdmin()?.id ?? current.runState.lastRunUser,
+          runnerUser: this.workspace.activeAdmin()?.id ?? current.runState.lastRunUser,
           startedAtIso,
           finishedAtIso,
           durationMillis,
@@ -534,11 +537,11 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
             lastRunStatus: isRunningResponse ? current.runState.lastRunStatus : result.status,
             lastRunDetail: isRunningResponse ? current.runState.lastRunDetail : result.detail,
             lastRunCount: isRunningResponse ? current.runState.lastRunCount : result.affectedCount,
-            lastRunUser: this.admin.activeAdmin()?.id ?? current.runState.lastRunUser
+            lastRunUser: this.workspace.activeAdmin()?.id ?? current.runState.lastRunUser
           },
           runHistory: entry ? [entry, ...(current.runHistory ?? [])].slice(0, 12) : current.runHistory,
           updatedDate: finishedAtIso,
-          updatedUser: this.admin.activeAdmin()?.id ?? current.updatedUser
+          updatedUser: this.workspace.activeAdmin()?.id ?? current.updatedUser
         };
       });
     } catch {
@@ -927,7 +930,7 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
         ...rule,
         parameters: nextFields,
         updatedDate: new Date().toISOString(),
-        updatedUser: this.admin.activeAdmin()?.id ?? rule.updatedUser
+        updatedUser: this.workspace.activeAdmin()?.id ?? rule.updatedUser
       }));
     }
     this.refreshParameterDirty(draft.ruleKey, nextSignature);
@@ -1111,15 +1114,11 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
     field.textValue = `${value ?? ''}`.trim();
   }
 
-  protected loadingRingDashOffset(): number {
-    return this.loadingRingPerimeter * (1 - Math.min(1, Math.max(0, this.loadingProgress())));
-  }
-
   private startRuntimeUpdates(): void {
     if (this.unsubscribeRuntimeUpdates) {
       return;
     }
-    this.unsubscribeRuntimeUpdates = this.admin.subscribeNotificationRuleUpdates(event => this.applyRuntimeEvent(event));
+    this.unsubscribeRuntimeUpdates = this.notificationsService.subscribeNotificationRuleUpdates(event => this.applyRuntimeEvent(event));
   }
 
   private stopRuntimeUpdates(): void {
@@ -1157,7 +1156,7 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
       return;
     }
     const elapsedMs = Math.max(0, this.nowMs() - this.loadingProgressStartedAtMs);
-    this.loadingProgress.set(Math.min(0.96, elapsedMs / this.admin.notificationCenterLoadProgressWindowMs()));
+    this.loadingProgress.set(Math.min(0.96, elapsedMs / this.notificationsService.notificationCenterLoadProgressWindowMs()));
   }
 
   private endLoadingProgress(): void {

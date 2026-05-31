@@ -17,11 +17,12 @@ import { MatIconModule } from '@angular/material/icon';
 
 import { MediaService } from '../../../core';
 import { LazyBgImageDirective } from '../../directives';
+import { ProgressIndicatorComponent } from '../progress-indicator';
 
 @Component({
   selector: 'app-editable-image-carousel',
   standalone: true,
-  imports: [CommonModule, MatIconModule, LazyBgImageDirective],
+  imports: [CommonModule, MatIconModule, LazyBgImageDirective, ProgressIndicatorComponent],
   templateUrl: './editable-image-carousel.component.html',
   styleUrl: './editable-image-carousel.component.scss'
 })

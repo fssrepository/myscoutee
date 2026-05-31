@@ -60,7 +60,7 @@ export const adminAccessInterceptor: HttpInterceptorFn = (req, next) => {
           window.dispatchEvent(new CustomEvent('adminAccessDenied'));
         }
         if (router.url.split('?')[0].startsWith('/admin')) {
-          void router.navigateByUrl('/game', { replaceUrl: true });
+          void router.navigateByUrl('/admin', { replaceUrl: true });
         }
       }
       return throwError(() => error);

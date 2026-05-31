@@ -28,6 +28,10 @@ export class HttpEventEditorDataService {
     return [...owned, ...explore].find(record => record.id === normalizedItemId) ?? null;
   }
 
+  loadFullItemById(userId: string, itemId: string): Promise<DemoEventRecord | null> {
+    return this.queryKnownItemById(userId, itemId);
+  }
+
   async querySummaryByOwnerId(ownerId: string): Promise<ActivityMembersSummary | null> {
     const normalizedOwnerId = ownerId.trim();
     if (!normalizedOwnerId) {

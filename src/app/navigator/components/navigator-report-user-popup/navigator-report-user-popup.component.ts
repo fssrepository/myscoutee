@@ -3,12 +3,13 @@ import { Component, OnDestroy, computed, effect, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { AppContext, USER_REPORT_USER_SUBMIT_CONTEXT_KEY, UsersService } from '../../../shared/core';
+import { ProgressIndicatorComponent } from '../../../shared/ui';
 import { NavigatorService } from '../../navigator.service';
 
 @Component({
   selector: 'app-navigator-report-user-popup',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, ProgressIndicatorComponent],
   templateUrl: './navigator-report-user-popup.component.html',
   styleUrl: './navigator-report-user-popup.component.scss'
 })
@@ -24,7 +25,6 @@ export class NavigatorReportUserPopupComponent implements OnDestroy {
   protected readonly reportUserReasons = APP_STATIC_DATA.reportUserReasons;
   protected readonly reportUserHandleMinLength = 3;
   protected readonly reportUserDetailsMinLength = 12;
-  protected readonly submitRingPerimeter = 100;
   protected readonly reportUserContext = this.navigatorService.reportUserContext;
   protected readonly isContextualReport = computed(() => {
     const context = this.reportUserContext();

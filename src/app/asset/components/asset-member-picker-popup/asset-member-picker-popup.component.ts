@@ -20,6 +20,7 @@ import { resolveCurrentRouteDelayMs } from '../../../shared/core/base/services/r
 import {
   BasketComponent,
   LazyBgImageDirective,
+  ProgressIndicatorComponent,
   SmartListComponent,
   type BasketChip,
   type ListQuery,
@@ -54,7 +55,8 @@ interface ActivityInviteFilters {
     MatIconModule,
     BasketComponent,
     SmartListComponent,
-    LazyBgImageDirective
+    LazyBgImageDirective,
+    ProgressIndicatorComponent
 ],
   templateUrl: './asset-member-picker-popup.component.html',
   styleUrls: ['./asset-member-picker-popup.component.scss'],
@@ -81,7 +83,6 @@ export class AssetMemberPickerPopupComponent {
   protected selectedUserIds: string[] = [];
   protected inviteSmartListQuery: Partial<ListQuery<ActivityInviteFilters>> = {};
   protected confirmErrorMessage = '';
-  protected readonly confirmRingPerimeter = 100;
   protected isConfirmPending = false;
 
   private currentCandidates: AppTypes.ActivityMemberEntry[] = [];

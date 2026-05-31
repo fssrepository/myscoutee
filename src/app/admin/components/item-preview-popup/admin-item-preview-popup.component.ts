@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
-import { AdminService } from '../../admin.service';
+import { AdminShellService } from '../../services/admin-shell.service';
 
 @Component({
   selector: 'app-admin-item-preview-popup',
@@ -12,7 +12,7 @@ import { AdminService } from '../../admin.service';
   styleUrl: '../admin-popups.scss'
 })
 export class AdminItemPreviewPopupComponent {
-  protected readonly admin = inject(AdminService);
+  protected readonly admin = inject(AdminShellService);
 
   protected itemIcon(sourceType?: string | null): string {
     switch ((sourceType ?? '').trim()) {

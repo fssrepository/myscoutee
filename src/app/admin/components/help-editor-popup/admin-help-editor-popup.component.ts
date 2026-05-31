@@ -17,9 +17,11 @@ import type {
 } from '../../../shared/core/base/models';
 import { RouteDelayService } from '../../../shared/core/base/services/route-delay.service';
 import { EditableImageCarouselComponent } from '../../../shared/ui/components/editable-image-carousel';
+import { ProgressIndicatorComponent } from '../../../shared/ui/components/progress-indicator';
 import { LazyBgImageDirective } from '../../../shared/ui/directives';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
-import { AdminService } from '../../admin.service';
+import { AdminShellService } from '../../services/admin-shell.service';
+import { AdminWorkspaceService } from '../../services/admin-workspace.service';
 
 type EditorTab = 'html' | 'preview';
 
@@ -69,13 +71,12 @@ interface HelpEditorRevisionRow {
 @Component({
   selector: 'app-admin-help-editor-popup',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatIconModule, EditableImageCarouselComponent, LazyBgImageDirective],
+  imports: [CommonModule, FormsModule, MatIconModule, EditableImageCarouselComponent, ProgressIndicatorComponent, LazyBgImageDirective],
   templateUrl: './admin-help-editor-popup.component.html',
   styleUrl: './admin-help-editor-popup.component.scss'
 })
 export class AdminHelpEditorPopupComponent implements OnDestroy {
   private static readonly ACTION_PENDING_WINDOW_MS = 1500;
-  private static readonly LOAD_DEMO_DELAY_MS = 1500;
   private static readonly LOAD_PROGRESS_WINDOW_MS = 3000;
   private static readonly EXPLANATION_IMAGE_SLOT_COUNT = 8;
   private static readonly LAZY_IMAGE_PLACEHOLDER_URL = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==';
@@ -103,7 +104,8 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
     'track',
     'wbr'
   ]);
-  protected readonly admin = inject(AdminService);
+  protected readonly admin = inject(AdminShellService);
+  private readonly workspace = inject(AdminWorkspaceService);
   private readonly helpCenter = inject(HelpCenterService);
   private readonly routeDelay = inject(RouteDelayService);
   private readonly confirmationDialog = inject(ConfirmationDialogService);
@@ -134,9 +136,7 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
   protected selectedExplanationContextKey = 'home.game';
   protected readonly explanationImageSlotCount = AdminHelpEditorPopupComponent.EXPLANATION_IMAGE_SLOT_COUNT;
   private stateLoadedForPopup = false;
-  protected readonly loadingRingPerimeter = 100;
   protected readonly loadingProgress = signal(0);
-  protected readonly actionRingPerimeter = 100;
   protected readonly panelSpanOptions: readonly HelpPanelSpanOption[] = [
     { value: 'span-1', icon: 'looks_one', label: 'span-1', title: 'One grid column' },
     { value: 'span-2', icon: 'looks_two', label: 'span-2', title: 'Two grid columns' },
@@ -298,15 +298,7 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
       if (this.documentKind !== 'explanation') {
         stateLoads.push(this.helpCenter.loadAdminState(adminUserId, 'explanation', this.selectedContentLang, null));
       }
-      await Promise.all([
-        ...stateLoads,
-        this.routeDelay.waitForRouteDelay(
-          this.adminContentRoute(),
-          undefined,
-          undefined,
-          AdminHelpEditorPopupComponent.LOAD_DEMO_DELAY_MS
-        )
-      ]);
+      await Promise.all(stateLoads);
       this.selectInitialRevision(this.revisions(), this.activeRevision());
     } catch {
       this.error = this.loadErrorLabel();
@@ -963,10 +955,6 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
     return this.saving || Boolean(this.activatingRevisionId);
   }
 
-  protected loadingRingDashOffset(): number {
-    return this.loadingRingPerimeter * (1 - this.loadingProgress());
-  }
-
   protected fullDate(value: string): string {
     const parsed = Date.parse(value);
     if (!Number.isFinite(parsed)) {
@@ -985,7 +973,7 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
   }
 
   protected actorUserId(): string {
-    return this.admin.activeAdmin()?.id?.trim() || 'admin';
+    return this.workspace.activeAdmin()?.id?.trim() || 'admin';
   }
 
   protected documentLabel(): string {
@@ -1557,19 +1545,6 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
 
   private normalizedHtmlText(value: string): string {
     return `${value ?? ''}`.replace(/\s+/g, ' ').trim();
-  }
-
-  private adminContentRoute(): string {
-    switch (this.documentKind) {
-      case 'privacy':
-        return '/admin/privacy';
-      case 'explanation':
-        return this.selectedExplanationContextKey
-          ? `/admin/explanation/${this.selectedExplanationContextKey}`
-          : '/admin/explanation/new';
-      default:
-        return '/admin/help';
-    }
   }
 
   private completeLoadingAfterCheck(): void {

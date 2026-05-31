@@ -4,7 +4,8 @@ import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 
 import { AppContext } from '../../../shared/core';
-import { AdminService } from '../../admin.service';
+import { AdminProfileService } from '../../services/admin-profile.service';
+import { AdminShellService } from '../../services/admin-shell.service';
 
 @Component({
   selector: 'app-admin-profile-popup',
@@ -14,7 +15,8 @@ import { AdminService } from '../../admin.service';
   styleUrl: '../admin-popups.scss'
 })
 export class AdminProfilePopupComponent {
-  protected readonly admin = inject(AdminService);
+  protected readonly admin = inject(AdminShellService);
+  private readonly adminProfile = inject(AdminProfileService);
   private readonly appCtx = inject(AppContext);
   protected name = '';
   protected headline = '';
@@ -33,7 +35,7 @@ export class AdminProfilePopupComponent {
   }
 
   protected save(): void {
-    this.admin.updateAdminProfile({
+    this.adminProfile.updateAdminProfile({
       name: this.name,
       headline: this.headline,
       about: this.about

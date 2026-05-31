@@ -123,28 +123,6 @@
   text-align: center;
 }
 
-.explanation-popup__loading-ring {
-  width: 52px;
-  height: 52px;
-  transform: rotate(-90deg);
-}
-
-.explanation-popup__loading-ring-track,
-.explanation-popup__loading-ring-value {
-  fill: none;
-  stroke-width: 4;
-}
-
-.explanation-popup__loading-ring-track {
-  stroke: rgba(58, 96, 143, 0.16);
-}
-
-.explanation-popup__loading-ring-value {
-  stroke: #3268a8;
-  stroke-linecap: round;
-  transition: stroke-dashoffset 0.08s linear;
-}
-
 .explanation-popup__grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));

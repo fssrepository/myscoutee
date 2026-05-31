@@ -42,6 +42,10 @@ export class DemoChatsRepository {
     this.initialized = true;
   }
 
+  async flushToIndexedDb(): Promise<void> {
+    await this.memoryDb.flushToIndexedDb();
+  }
+
   queryChatItemsByUser(userId: string): DemoChatRecord[] {
     this.init();
     return this.queryUserRecords(userId);
@@ -187,6 +191,51 @@ export class DemoChatsRepository {
       };
     });
     return messageClone;
+  }
+
+  upsertSupportChatMessage(chat: DemoChatRecord, message: AppTypes.ChatPopupMessage, unreadForOwner: boolean): void {
+    this.init();
+    const sourceId = `${chat.id ?? ''}`.trim();
+    const ownerUserId = `${chat.ownerUserId ?? ''}`.trim();
+    if (!sourceId || !ownerUserId) {
+      return;
+    }
+    const recordKey = DemoChatsRepositoryBuilder.buildRecordKey(ownerUserId, sourceId);
+    const messageClone = DemoChatsRepositoryBuilder.cloneMessages([message])[0] ?? null;
+    if (!messageClone) {
+      return;
+    }
+    this.memoryDb.write(currentState => {
+      const currentTable = currentState[CHATS_TABLE_NAME];
+      const existing = currentTable.byId[recordKey];
+      const existingMessages = existing?.messages ?? [];
+      const nextRecord: DemoChatRecord = {
+        ...(existing ?? chat),
+        ...chat,
+        unread: unreadForOwner ? Math.max(1, (existing?.unread ?? 0) + 1) : 0,
+        messages: [
+          ...DemoChatsRepositoryBuilder.cloneMessages(existingMessages).map(item => ({
+            ...item,
+            readBy: item.readBy
+              .filter(reader => `${reader.id ?? ''}`.trim() !== `${item.senderAvatar.id ?? ''}`.trim())
+              .map(reader => ({ ...reader }))
+          })),
+          messageClone
+        ]
+      };
+      return {
+        ...currentState,
+        [CHATS_TABLE_NAME]: {
+          byId: {
+            ...currentTable.byId,
+            [recordKey]: nextRecord
+          },
+          ids: currentTable.ids.includes(recordKey)
+            ? [...currentTable.ids]
+            : [...currentTable.ids, recordKey]
+        }
+      };
+    });
   }
 
   updateChatMessage(

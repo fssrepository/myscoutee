@@ -560,10 +560,7 @@
                 }
                 @if (isSelectedImageUploading()) {
                   <span class="slot-upload-ring image-editor-main-upload-ring" aria-label="Uploading image">
-                    <svg viewBox="0 0 44 44" class="slot-upload-ring-svg image-editor-main-upload-ring-svg" aria-hidden="true">
-                      <circle class="slot-upload-ring-track" cx="22" cy="22" r="17"></circle>
-                      <circle class="slot-upload-ring-progress" cx="22" cy="22" r="17"></circle>
-                    </svg>
+                    <app-progress-indicator kind="spinner-ring"></app-progress-indicator>
                   </span>
                 }
               </div>
@@ -583,10 +580,7 @@
                     <span class="slot-index">{{ i + 1 }}</span>
                     @if (isImageSlotUploading(i)) {
                       <span class="slot-upload-ring" aria-label="Uploading image">
-                        <svg viewBox="0 0 44 44" class="slot-upload-ring-svg" aria-hidden="true">
-                          <circle class="slot-upload-ring-track" cx="22" cy="22" r="17"></circle>
-                          <circle class="slot-upload-ring-progress" cx="22" cy="22" r="17"></circle>
-                        </svg>
+                        <app-progress-indicator kind="spinner-ring" size="sm"></app-progress-indicator>
                       </span>
                     } @else if (!slot) {
                       <span class="slot-add">+</span>

@@ -8,6 +8,16 @@ export interface FirebaseAuthProfile {
   imageUrl?: string;
 }
 
+export type FirebaseAuthProvider = 'google' | 'facebook' | 'email';
+export type FirebaseEmailAuthMode = 'sign-in' | 'create';
+
+export interface FirebaseAuthRequest {
+  provider: FirebaseAuthProvider;
+  emailMode?: FirebaseEmailAuthMode;
+  email?: string;
+  password?: string;
+}
+
 export interface EntryConsentState {
   version: string;
   accepted: boolean;

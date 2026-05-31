@@ -15,7 +15,6 @@ import { DemoUsersRatingsRepository } from '../../demo/repositories/users-rating
 import { HttpGameService } from '../../http';
 import { HttpUsersRatingsRepository } from '../../http/repositories/users-ratings.repository';
 import type { UserDto } from '../interfaces/user.interface';
-import { AppMemoryDb } from '../db/app.db';
 import { BaseRouteModeService } from './base-route-mode.service';
 
 export const USER_GAME_CARDS_LOAD_CONTEXT_KEY = 'user-game-cards';
@@ -47,7 +46,6 @@ export class GameService extends BaseRouteModeService {
   private readonly httpGameService = inject(HttpGameService);
   private readonly httpUsersRatingsRepository = inject(HttpUsersRatingsRepository);
   private readonly appCtx = inject(AppContext);
-  private readonly memoryDb = inject(AppMemoryDb);
   private readonly userGameCardsStackStateByUserId: Record<string, UserGameCardsStackState> = {};
   private userRatesOutboxSyncInFlight = false;
   private userRatesOutboxSyncTimer: ReturnType<typeof setInterval> | null = null;
@@ -168,7 +166,9 @@ export class GameService extends BaseRouteModeService {
     request: UserGameCardsQueryRequest,
     requestTimeoutMs?: number
   ): Promise<UserGameCardsDto | null> {
-    await this.memoryDb.whenReady();
+    if (this.isDemoModeEnabled('/game-cards/query')) {
+      await this.demoGameService.whenReady();
+    }
     const normalizedTimeoutMs = this.resolveRequestTimeoutMs(requestTimeoutMs);
     const normalizedUserId = request.userId.trim();
 

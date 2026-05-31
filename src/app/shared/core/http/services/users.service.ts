@@ -76,7 +76,7 @@ export class HttpUsersService implements UserService {
       partitionKey: typeof response?.partitionKey === 'string' ? response.partitionKey : null,
       message: typeof response?.message === 'string' ? response.message : null,
       securityGateEnabled: response?.securityGateEnabled === true,
-      locationRequired: response?.locationRequired === true
+      locationRequired: false
     };
   }
 

@@ -6,7 +6,7 @@ import { MatSelectModule } from '@angular/material/select';
 
 import type * as AppTypes from '../../../shared/core/base/models';
 import { AssetCardBuilder, AssetDefaultsBuilder } from '../../../shared/core/base/builders';
-import { PricingEditorComponent } from '../../../shared/ui';
+import { PricingEditorComponent, ProgressIndicatorComponent } from '../../../shared/ui';
 
 @Component({
   selector: 'app-asset-form-popup',
@@ -16,7 +16,8 @@ import { PricingEditorComponent } from '../../../shared/ui';
     FormsModule,
     MatIconModule,
     MatSelectModule,
-    PricingEditorComponent
+    PricingEditorComponent,
+    ProgressIndicatorComponent
   ],
   templateUrl: './asset-form-popup.component.html',
   styleUrl: './asset-form-popup.component.scss'
@@ -27,7 +28,6 @@ export class AssetFormPopupComponent implements OnChanges, OnInit, OnDestroy {
   @Input({ required: true }) assetForm!: Omit<AppTypes.AssetCard, 'id' | 'requests'>;
   @Input() canSave = false;
   @Input() isSavePending = false;
-  @Input() saveRingPerimeter = 100;
   @Input() sourceRefreshEnabled = false;
   @Input() assetFormVisibility: AppTypes.EventVisibility = 'Invitation only';
   @Input() assetTypeOptions: readonly AppTypes.AssetType[] = [];

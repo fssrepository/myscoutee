@@ -7,6 +7,7 @@ import { delay, from } from 'rxjs';
 import type * as AppTypes from '../../../shared/core/base/models';
 import { resolveCurrentDemoDelayMs } from '../../../shared/core/base/services/route-delay.service';
 import {
+  ProgressIndicatorComponent,
   SmartListComponent,
   type ListQuery,
   type PageResult,
@@ -49,12 +50,10 @@ export interface EventSupplyContributionsPopupHost {
   canSubmitBringDialog(): boolean;
   onBringQuantityChange(value: number | string): void;
   confirmBringDialog(event?: Event): void;
-  bringConfirmRingPerimeter(): number;
   isBringPending(): boolean;
   bringErrorMessage(): string;
   cancelDelete(): void;
   pendingDeleteLabel(): string;
-  deleteConfirmRingPerimeter(): number;
   isDeletePending(): boolean;
   deleteErrorMessage(): string;
   confirmDelete(): void;
@@ -67,6 +66,7 @@ export interface EventSupplyContributionsPopupHost {
     FormsModule,
     MatButtonModule,
     MatIconModule,
+    ProgressIndicatorComponent,
     SmartListComponent
 ],
   templateUrl: './event-supply-contributions-popup.component.html',

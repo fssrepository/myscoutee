@@ -1,4 +1,4 @@
-import { ChangeDetectorRef, Component, EventEmitter, HostListener, Injector, Input, NgZone, OnDestroy, Output, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, EventEmitter, HostListener, Injector, Input, NgZone, OnChanges, OnDestroy, Output, SimpleChanges, inject } from '@angular/core';
 
 import {
   AppContext,
@@ -40,12 +40,16 @@ export interface EntryDemoUserSelectionEvent {
   templateUrl: './entry-shell.component.html',
   styleUrl: './entry-shell.component.scss'
 })
-export class EntryShellComponent implements OnDestroy {
+export class EntryShellComponent implements OnChanges, OnDestroy {
   private static readonly ENTRY_CONSENT_KEY = 'entry-gdpr-consent';
   private static readonly ENTRY_CONSENT_AUDIT_KEY = 'entry-gdpr-consent-audit';
   private static readonly ENTRY_CONSENT_AUDIT_MAX = 30;
   private static readonly LANDING_ARTICLES_LOADING_WINDOW_MS = 3000;
   private static readonly ENTRY_PRIVACY_LOADING_WINDOW_MS = 3000;
+  private static readonly LOCATION_ELIGIBILITY_CACHE_KEY = 'entry-login-location-eligibility-v1';
+  private static readonly LOCATION_ELIGIBILITY_CACHE_TTL_MS = 10 * 60 * 1000;
+  private static readonly LOCATION_REQUEST_TIMEOUT_MS = 4500;
+  private static readonly LOCATION_REQUEST_MAXIMUM_AGE_MS = 15 * 60 * 1000;
 
   private readonly injector = inject(Injector);
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
@@ -62,10 +66,11 @@ export class EntryShellComponent implements OnDestroy {
   @Input({ required: true }) authMode: AppTypes.AuthMode = 'selector';
   @Input() firebaseAuthProfile: AppTypes.FirebaseAuthProfile | null = null;
   @Input() firebaseAuthIsBusy = false;
+  @Input() firebaseAuthMessage = '';
   @Input() isMobileView = false;
 
   @Output() readonly demoUserSelected = new EventEmitter<EntryDemoUserSelectionEvent>();
-  @Output() readonly firebaseAuthRequested = new EventEmitter<void>();
+  @Output() readonly firebaseAuthRequested = new EventEmitter<AppTypes.FirebaseAuthRequest>();
   @Output() readonly firebaseSessionContinueRequested = new EventEmitter<void>();
   @Output() readonly entryConsentStateChanged = new EventEmitter<boolean>();
 
@@ -80,6 +85,8 @@ export class EntryShellComponent implements OnDestroy {
   protected entryAuthUnavailableLabel = 'Unavailable in your country';
   protected entryAuthLocationRequired = false;
   protected entryAuthLocationRequiredLabel = 'Allow location';
+  protected entryNetworkUnavailable = false;
+  protected entryNetworkUnavailableLabel = 'No network';
   protected showUserSelector = false;
   protected demoSelectorUsers: DemoUserListItemDto[] = [];
   protected demoSelectorLoading = false;
@@ -109,6 +116,15 @@ export class EntryShellComponent implements OnDestroy {
 
   constructor() {
     this.initializeEntryFlow();
+  }
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['authMode']) {
+      this.syncEntryAuthGateState();
+    }
+    if (changes['firebaseAuthProfile'] && this.firebaseAuthProfile) {
+      this.showFirebaseAuthPopup = false;
+    }
   }
 
   ngOnDestroy(): void {
@@ -144,6 +160,9 @@ export class EntryShellComponent implements OnDestroy {
   }
 
   protected async openEntryDemo(): Promise<void> {
+    if (this.entryNetworkUnavailable) {
+      return;
+    }
     if (!this.ensureEntryConsent()) {
       return;
     }
@@ -151,6 +170,9 @@ export class EntryShellComponent implements OnDestroy {
   }
 
   protected async openEntryFirebaseAuth(): Promise<void> {
+    if (this.entryNetworkUnavailable) {
+      return;
+    }
     if (this.isLoginBlockedByLandingBundle()) {
       this.openBundledLoginUnavailableInfo();
       return;
@@ -224,12 +246,11 @@ export class EntryShellComponent implements OnDestroy {
     void this.prepareSelectedDemoUser(normalizedUserId, requestToken);
   }
 
-  protected onContinueWithFirebaseAuth(): void {
+  protected onRequestFirebaseAuth(request: AppTypes.FirebaseAuthRequest): void {
     if (this.firebaseAuthIsBusy) {
       return;
     }
-    this.showFirebaseAuthPopup = false;
-    this.firebaseAuthRequested.emit();
+    this.firebaseAuthRequested.emit(request);
   }
 
   protected retryDemoUserSelectorPopup(): void {
@@ -240,6 +261,9 @@ export class EntryShellComponent implements OnDestroy {
   }
 
   protected openEntryConsentPopup(viewOnly = false): void {
+    if (this.entryNetworkUnavailable) {
+      return;
+    }
     if (this.helpCenter.privacyState() === null) {
       this.entryPrivacyLoading = true;
       void this.loadEntryContent();
@@ -300,6 +324,7 @@ export class EntryShellComponent implements OnDestroy {
     this.demoSelectorSubmitting = false;
     this.demoSelectorSelectedUserId = '';
     this.showFirebaseAuthPopup = false;
+    this.restoreCachedLocationEligibility();
     void this.loadEntryContent();
   }
 
@@ -311,6 +336,9 @@ export class EntryShellComponent implements OnDestroy {
   }
 
   private ensureEntryConsent(): boolean {
+    if (this.entryNetworkUnavailable) {
+      return false;
+    }
     if (this.hasEntryConsent) {
       return true;
     }
@@ -334,10 +362,10 @@ export class EntryShellComponent implements OnDestroy {
       if (gateState && gateState.securityGateEnabled !== true) {
         return true;
       }
-      if (gateState?.eligible === true && gateState.locationRequired !== true) {
+      if (this.locationEligibilityResolvedFromCoordinates && gateState?.eligible === true) {
         return true;
       }
-      if (gateState && gateState.locationRequired !== true) {
+      if (this.locationEligibilityResolvedFromCoordinates && gateState && gateState.eligible === false) {
         this.confirmationDialogService.openInfo(
           this.loginUnavailableMessage(gateState),
           {
@@ -547,9 +575,9 @@ export class EntryShellComponent implements OnDestroy {
         },
         () => resolve(null),
         {
-          enableHighAccuracy: true,
-          timeout: 15000,
-          maximumAge: 5 * 60 * 1000
+          enableHighAccuracy: false,
+          timeout: EntryShellComponent.LOCATION_REQUEST_TIMEOUT_MS,
+          maximumAge: EntryShellComponent.LOCATION_REQUEST_MAXIMUM_AGE_MS
         }
       );
     });
@@ -707,6 +735,7 @@ export class EntryShellComponent implements OnDestroy {
           if (requestToken !== this.landingContentRequestToken) {
             return;
           }
+          this.entryNetworkUnavailable = false;
           this.landingIdeaCards = displayState.ideaCards;
           if (!this.locationEligibilityResolvedFromCoordinates
             && (displayState.state.loginAvailability || this.landingLoginAvailability === null)) {
@@ -717,6 +746,12 @@ export class EntryShellComponent implements OnDestroy {
         });
       } catch {
         this.ngZone.run(() => {
+          if (requestToken !== this.landingContentRequestToken) {
+            return;
+          }
+          this.entryNetworkUnavailable = true;
+          this.landingIdeaCards = [];
+          this.syncLandingLoginAvailability(null, 'reset');
           this.finishEntryPrivacyLoad(requestToken);
         });
       }
@@ -738,7 +773,7 @@ export class EntryShellComponent implements OnDestroy {
       return;
     }
     this.endEntryPrivacyLoadingWindow();
-    if (!this.entryConsentViewOnly) {
+    if (!this.entryNetworkUnavailable && !this.entryConsentViewOnly) {
       this.showEntryConsentPopup = this.shouldPromptEntryConsent();
     }
     this.changeDetectorRef.markForCheck();
@@ -855,29 +890,36 @@ export class EntryShellComponent implements OnDestroy {
           partitionKey: availability.partitionKey ?? null,
           message: availability.message ?? null,
           securityGateEnabled: availability.securityGateEnabled === true,
-          locationRequired: availability.locationRequired === true
-        }
+          locationRequired: false
+      }
       : null;
-    this.entryAuthUnavailable = this.isLoginBlockedByLandingBundle();
+    if (source === 'coordinates' && this.landingLoginAvailability?.eligible === true) {
+      this.saveCachedLocationEligibility(this.landingLoginAvailability);
+    }
+    this.syncEntryAuthGateState();
+  }
+
+  private syncEntryAuthGateState(): void {
+    const loginEnabled = this.authMode === 'firebase';
+    this.entryAuthUnavailable = !this.entryNetworkUnavailable && loginEnabled && this.isLoginBlockedByLandingBundle();
     this.entryAuthUnavailableLabel = 'Unavailable in your country';
-    this.entryAuthLocationRequired = this.isLoginLocationRequiredByLandingBundle();
+    this.entryAuthLocationRequired = !this.entryNetworkUnavailable && loginEnabled && this.isLoginLocationRequiredByLandingBundle();
     this.deferEntryAuthLocationRequiredLabel(this.grantedLocationEligibilityPromise ? 'Checking location' : 'Allow location');
     this.resolveGrantedLocationAccessIfNeeded();
+    this.changeDetectorRef.markForCheck();
   }
 
   private isLoginBlockedByLandingBundle(): boolean {
     return this.landingLoginAvailability !== null
+      && this.locationEligibilityResolvedFromCoordinates
       && this.landingLoginAvailability.securityGateEnabled === true
-      && this.landingLoginAvailability.eligible === false
-      && this.landingLoginAvailability.locationRequired !== true;
+      && this.landingLoginAvailability.eligible === false;
   }
 
   private isLoginLocationRequiredByLandingBundle(): boolean {
-    return this.landingLoginAvailability === null
-      || (
-        this.landingLoginAvailability.securityGateEnabled === true
-        && this.landingLoginAvailability.locationRequired === true
-      );
+    return !this.entryNetworkUnavailable
+      && !this.locationEligibilityResolvedFromCoordinates
+      && this.landingLoginAvailability?.securityGateEnabled !== false;
   }
 
   private openBundledLoginUnavailableInfo(): void {
@@ -978,6 +1020,52 @@ export class EntryShellComponent implements OnDestroy {
 
     this.geolocationPermissionStatus.removeEventListener('change', this.geolocationPermissionChangeHandler);
     this.geolocationPermissionStatus = null;
+  }
+
+  private restoreCachedLocationEligibility(): void {
+    if (typeof sessionStorage === 'undefined') {
+      return;
+    }
+    try {
+      const raw = sessionStorage.getItem(EntryShellComponent.LOCATION_ELIGIBILITY_CACHE_KEY);
+      if (!raw) {
+        return;
+      }
+      const parsed = JSON.parse(raw) as {
+        savedAtMs?: number;
+        availability?: Partial<UserLocationEligibilityResponseDto> | null;
+      };
+      const savedAtMs = Math.trunc(Number(parsed.savedAtMs) || 0);
+      if (!savedAtMs || Date.now() - savedAtMs > EntryShellComponent.LOCATION_ELIGIBILITY_CACHE_TTL_MS) {
+        sessionStorage.removeItem(EntryShellComponent.LOCATION_ELIGIBILITY_CACHE_KEY);
+        return;
+      }
+      if (parsed.availability?.eligible === true) {
+        this.syncLandingLoginAvailability({
+          eligible: true,
+          partitionKey: parsed.availability.partitionKey ?? null,
+          message: parsed.availability.message ?? null,
+          securityGateEnabled: parsed.availability.securityGateEnabled === true,
+          locationRequired: false
+        }, 'coordinates');
+      }
+    } catch {
+      sessionStorage.removeItem(EntryShellComponent.LOCATION_ELIGIBILITY_CACHE_KEY);
+    }
+  }
+
+  private saveCachedLocationEligibility(availability: UserLocationEligibilityResponseDto): void {
+    if (typeof sessionStorage === 'undefined') {
+      return;
+    }
+    try {
+      sessionStorage.setItem(EntryShellComponent.LOCATION_ELIGIBILITY_CACHE_KEY, JSON.stringify({
+        savedAtMs: Date.now(),
+        availability
+      }));
+    } catch {
+      // Cache is only a speed-up for the landing gate.
+    }
   }
 
 }

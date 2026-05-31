@@ -309,39 +309,6 @@
   pointer-events: none;
 }
 
-.event-editor-save-btn-ring-svg {
-  width: 100%;
-  height: 100%;
-  display: block;
-  transform-origin: 50% 50%;
-  will-change: transform;
-  filter: drop-shadow(0 4px 12px rgba(22, 94, 51, 0.12));
-}
-
-.event-editor-save-btn-ring-track,
-.event-editor-save-btn-ring-progress {
-  fill: none;
-  stroke-width: 3;
-}
-
-.event-editor-save-btn-ring-track {
-  stroke: rgba(133, 100, 42, 0.18);
-}
-
-.event-editor-save-btn-ring-progress {
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  transform-origin: 50% 50%;
-  transform: rotate(-90deg);
-  transition: stroke-dashoffset 3s linear;
-}
-
-.event-editor-save-btn-ring-progress.is-loading {
-  stroke: url(#event-editor-save-gradient);
-}
-
-
-
 .event-editor-save-btn-shell.is-loading .event-editor-save-btn,
 .event-editor-save-btn-shell.is-loading .event-editor-save-btn:hover,
 .event-editor-save-btn-shell.is-loading .event-editor-save-btn:disabled {

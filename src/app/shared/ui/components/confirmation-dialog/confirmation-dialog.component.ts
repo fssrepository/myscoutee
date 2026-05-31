@@ -1,6 +1,7 @@
 
 import { Component, HostListener, Input, inject } from '@angular/core';
 
+import { ProgressIndicatorComponent } from '../progress-indicator';
 import { ConfirmationDialogService, type ConfirmationDialogState, type ConfirmationDialogTone } from '../../services/confirmation-dialog.service';
 
 export interface ConfirmationDialogLocalConfig {
@@ -39,7 +40,7 @@ type RenderedConfirmationDialogState = {
 @Component({
   selector: 'app-confirmation-dialog',
   standalone: true,
-  imports: [],
+  imports: [ProgressIndicatorComponent],
   templateUrl: './confirmation-dialog.component.html',
   styleUrl: './confirmation-dialog.component.scss'
 })
@@ -90,6 +91,10 @@ export class ConfirmationDialogComponent {
 
   protected confirmText(state: RenderedConfirmationDialogState): string {
     return state.busy ? state.busyConfirmLabel : state.confirmLabel;
+  }
+
+  protected confirmRingState(state: RenderedConfirmationDialogState): 'loading' | 'error' {
+    return state.busy ? 'loading' : 'error';
   }
 
   protected closeFromBackdrop(event: Event): void {

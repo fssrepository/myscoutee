@@ -499,40 +499,6 @@
   place-items: center;
 }
 
-.idea-editor-loading-ring {
-  width: 58px;
-  height: 58px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.idea-editor-loading-ring-svg {
-  width: 58px;
-  height: 58px;
-  display: block;
-  filter: drop-shadow(0 8px 18px rgba(29, 81, 139, 0.16));
-}
-
-.idea-editor-loading-ring-track,
-.idea-editor-loading-ring-progress {
-  fill: none;
-  stroke-width: 5;
-}
-
-.idea-editor-loading-ring-track {
-  stroke: rgba(42, 81, 129, 0.16);
-}
-
-.idea-editor-loading-ring-progress {
-  stroke: #2f76bd;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  transform: rotate(-90deg);
-  transform-origin: 50% 50%;
-  transition: stroke-dashoffset 120ms linear;
-}
-
 .idea-editor-viewer-head,
 .idea-editor-form-head {
   flex: 0 0 auto;
@@ -903,42 +869,6 @@
 .idea-editor-circle-ring-shell .idea-editor-icon-btn {
   position: relative;
   z-index: 1;
-}
-
-.idea-editor-circle-ring {
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  pointer-events: none;
-}
-
-.idea-editor-circle-ring-svg {
-  width: 100%;
-  height: 100%;
-  display: block;
-  filter: drop-shadow(0 4px 12px rgba(22, 94, 51, 0.12));
-}
-
-.idea-editor-circle-ring-track,
-.idea-editor-circle-ring-progress {
-  fill: none;
-  stroke-width: 3;
-}
-
-.idea-editor-circle-ring-track {
-  stroke: rgba(133, 100, 42, 0.18);
-}
-
-.idea-editor-circle-ring-progress {
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  transition: stroke-dashoffset 3000ms linear;
-  transform: rotate(-90deg);
-  transform-origin: 50% 50%;
-}
-
-.idea-editor-circle-ring-progress.is-loading {
-  stroke: url(#idea-editor-save-gradient);
 }
 
 .idea-editor-circle-ring-shell.is-loading .idea-editor-icon-btn,

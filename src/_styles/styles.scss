@@ -169,8 +169,18 @@ select {
 :where(
   .popup-close,
   .game-popup-close-btn,
+  .experience-form-close-btn,
   .event-slots-popup-close,
-  .mobile-profile-selector-close-btn
+  .mobile-profile-selector-close-btn,
+  .event-checkout-dialog__close,
+  .pricing-editor__wizard-close,
+  .profile-onboarding-close-btn,
+  .entry-ideas-popup-close,
+  .stats-graph-help-close,
+  .event-explore-basket-panel__close,
+  .asset-explore-basket-panel__close,
+  .app-install-prompt__secondary,
+  .user-menu-close-btn
 ) {
   --popup-close-wave-color: rgba(255, 255, 255, 0.34);
   --popup-close-fill-color: rgba(110, 124, 145, 0.18);
@@ -183,8 +193,18 @@ select {
 :where(
   .popup-close,
   .game-popup-close-btn,
+  .experience-form-close-btn,
   .event-slots-popup-close,
-  .mobile-profile-selector-close-btn
+  .mobile-profile-selector-close-btn,
+  .event-checkout-dialog__close,
+  .pricing-editor__wizard-close,
+  .profile-onboarding-close-btn,
+  .entry-ideas-popup-close,
+  .stats-graph-help-close,
+  .event-explore-basket-panel__close,
+  .asset-explore-basket-panel__close,
+  .app-install-prompt__secondary,
+  .user-menu-close-btn
 )::after {
   content: '';
   position: absolute;
@@ -204,8 +224,18 @@ select {
 :where(
   .popup-close,
   .game-popup-close-btn,
+  .experience-form-close-btn,
   .event-slots-popup-close,
-  .mobile-profile-selector-close-btn
+  .mobile-profile-selector-close-btn,
+  .event-checkout-dialog__close,
+  .pricing-editor__wizard-close,
+  .profile-onboarding-close-btn,
+  .entry-ideas-popup-close,
+  .stats-graph-help-close,
+  .event-explore-basket-panel__close,
+  .asset-explore-basket-panel__close,
+  .app-install-prompt__secondary,
+  .user-menu-close-btn
 ) > * {
   position: relative;
   z-index: 1;
@@ -347,14 +377,34 @@ select {
 
   :where(
     .popup-close,
-    .mobile-profile-selector-close-btn
+    .experience-form-close-btn,
+    .mobile-profile-selector-close-btn,
+    .event-checkout-dialog__close,
+    .pricing-editor__wizard-close,
+    .profile-onboarding-close-btn,
+    .entry-ideas-popup-close,
+    .stats-graph-help-close,
+    .event-explore-basket-panel__close,
+    .asset-explore-basket-panel__close,
+    .app-install-prompt__secondary,
+    .user-menu-close-btn
   ):not(:disabled):not([aria-disabled='true']):hover {
     background-color: var(--popup-close-fill-color);
   }
 
   :where(
     .popup-close,
-    .mobile-profile-selector-close-btn
+    .experience-form-close-btn,
+    .mobile-profile-selector-close-btn,
+    .event-checkout-dialog__close,
+    .pricing-editor__wizard-close,
+    .profile-onboarding-close-btn,
+    .entry-ideas-popup-close,
+    .stats-graph-help-close,
+    .event-explore-basket-panel__close,
+    .asset-explore-basket-panel__close,
+    .app-install-prompt__secondary,
+    .user-menu-close-btn
   ):not(:disabled):not([aria-disabled='true']):active {
     background-color: var(--popup-close-click-fill-color);
   }
@@ -362,8 +412,18 @@ select {
   :where(
     .popup-close,
     .game-popup-close-btn,
+    .experience-form-close-btn,
     .event-slots-popup-close,
-    .mobile-profile-selector-close-btn
+    .mobile-profile-selector-close-btn,
+    .event-checkout-dialog__close,
+    .pricing-editor__wizard-close,
+    .profile-onboarding-close-btn,
+    .entry-ideas-popup-close,
+    .stats-graph-help-close,
+    .event-explore-basket-panel__close,
+    .asset-explore-basket-panel__close,
+    .app-install-prompt__secondary,
+    .user-menu-close-btn
   ):not(:disabled):not([aria-disabled='true']):active::after {
     animation: popup-close-wave-feedback 0.42s ease-out;
   }
@@ -464,7 +524,17 @@ select {
 
   :where(
     .popup-close,
-    .mobile-profile-selector-close-btn
+    .experience-form-close-btn,
+    .mobile-profile-selector-close-btn,
+    .event-checkout-dialog__close,
+    .pricing-editor__wizard-close,
+    .profile-onboarding-close-btn,
+    .entry-ideas-popup-close,
+    .stats-graph-help-close,
+    .event-explore-basket-panel__close,
+    .asset-explore-basket-panel__close,
+    .app-install-prompt__secondary,
+    .user-menu-close-btn
   ):not(:disabled):not([aria-disabled='true']):active {
     background-color: var(--popup-close-click-fill-color);
   }
@@ -472,8 +542,18 @@ select {
   :where(
     .popup-close,
     .game-popup-close-btn,
+    .experience-form-close-btn,
     .event-slots-popup-close,
-    .mobile-profile-selector-close-btn
+    .mobile-profile-selector-close-btn,
+    .event-checkout-dialog__close,
+    .pricing-editor__wizard-close,
+    .profile-onboarding-close-btn,
+    .entry-ideas-popup-close,
+    .stats-graph-help-close,
+    .event-explore-basket-panel__close,
+    .asset-explore-basket-panel__close,
+    .app-install-prompt__secondary,
+    .user-menu-close-btn
   ):not(:disabled):not([aria-disabled='true']):active::after {
     animation: popup-close-wave-feedback 0.42s ease-out;
   }

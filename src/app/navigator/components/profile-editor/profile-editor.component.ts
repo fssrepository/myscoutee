@@ -19,10 +19,10 @@ import type * as AppTypes from '../../../shared/core/base/models';
 import { AppUtils } from '../../../shared/app-utils';
 import { AppContext, ProfileOnboardingService, UserExperiencesService, UsersService, type UserDto } from '../../../shared/core';
 import { I18nPipe, I18nService } from '../../../shared/i18n';
-import { CounterBadgePipe } from '../../../shared/ui';
+import { CounterBadgePipe, ProgressIndicatorComponent } from '../../../shared/ui';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
 import { NavigatorService } from '../../navigator.service';
-import { AdminService } from '../../../admin/admin.service';
+import { AdminProfileService } from '../../../admin/services/admin-profile.service';
 
 type ProfileEditorPanel = 'profile' | 'image' | 'values' | 'interest' | 'experience';
 
@@ -63,6 +63,7 @@ interface ExperienceImportDialogState {
     MatInputModule,
     MatNativeDateModule,
     MatSelectModule,
+    ProgressIndicatorComponent,
     I18nPipe,
     CounterBadgePipe
   ],
@@ -79,7 +80,7 @@ export class ProfileEditorComponent {
 
   private readonly confirmationDialogService = inject(ConfirmationDialogService);
   private readonly appCtx = inject(AppContext);
-  private readonly adminService = inject(AdminService);
+  private readonly adminProfileService = inject(AdminProfileService);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly i18n = inject(I18nService);
   private readonly navigatorService = inject(NavigatorService);
@@ -2294,7 +2295,7 @@ export class ProfileEditorComponent {
     user.completion = 100;
     user.profileFormVersion = this.profileOnboardingService.currentProfileFormVersion;
     this.pushProfileUserToContextAndLegacyMirror(user);
-    this.adminService.updateAdminProfile({
+    this.adminProfileService.updateAdminProfile({
       name: user.name,
       headline: user.headline,
       about: user.about

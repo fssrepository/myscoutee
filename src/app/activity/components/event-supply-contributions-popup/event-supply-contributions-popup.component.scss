@@ -295,39 +295,6 @@
   pointer-events: none;
 }
 
-.event-supply-contributions-popup-shell .subevent-supply-bring-save-btn-ring-svg {
-  width: 100%;
-  height: 100%;
-  display: block;
-  filter: drop-shadow(0 4px 12px rgba(22, 94, 51, 0.12));
-}
-
-.event-supply-contributions-popup-shell .subevent-supply-bring-save-btn-ring-track,
-.event-supply-contributions-popup-shell .subevent-supply-bring-save-btn-ring-progress {
-  fill: none;
-  stroke-width: 3;
-}
-
-.event-supply-contributions-popup-shell .subevent-supply-bring-save-btn-ring-track {
-  stroke: rgba(133, 100, 42, 0.18);
-}
-
-.event-supply-contributions-popup-shell .subevent-supply-bring-save-btn-ring-progress {
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  transform-origin: 50% 50%;
-  transform: rotate(-90deg);
-}
-
-.event-supply-contributions-popup-shell .subevent-supply-bring-save-btn-ring-progress.is-loading {
-  stroke: url(#subevent-supply-bring-save-gradient);
-  animation: subevent-supply-delete-ring-progress 3s linear forwards;
-}
-
-.event-supply-contributions-popup-shell .subevent-supply-bring-save-btn-ring-progress.is-error {
-  stroke: url(#subevent-supply-bring-save-gradient-error);
-}
-
 .event-supply-contributions-popup-shell .subevent-supply-bring-save-btn-shell.is-loading .subevent-supply-bring-save-btn,
 .event-supply-contributions-popup-shell .subevent-supply-bring-save-btn-shell.is-error .subevent-supply-bring-save-btn {
   box-shadow: none;
@@ -531,37 +498,6 @@
   pointer-events: none;
 }
 
-.event-supply-contributions-popup-shell .subevent-supply-delete-btn-ring-svg {
-  width: 100%;
-  height: 100%;
-  display: block;
-  filter: drop-shadow(0 8px 20px rgba(68, 18, 18, 0.16));
-}
-
-.event-supply-contributions-popup-shell .subevent-supply-delete-btn-ring-track,
-.event-supply-contributions-popup-shell .subevent-supply-delete-btn-ring-progress {
-  fill: none;
-  stroke-width: 4;
-}
-
-.event-supply-contributions-popup-shell .subevent-supply-delete-btn-ring-track {
-  stroke: rgba(133, 100, 42, 0.18);
-}
-
-.event-supply-contributions-popup-shell .subevent-supply-delete-btn-ring-progress {
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.event-supply-contributions-popup-shell .subevent-supply-delete-btn-ring-progress.is-loading {
-  stroke: url(#subevent-supply-delete-gradient);
-  animation: subevent-supply-delete-ring-progress 3s linear forwards;
-}
-
-.event-supply-contributions-popup-shell .subevent-supply-delete-btn-ring-progress.is-error {
-  stroke: url(#subevent-supply-delete-gradient-error);
-}
-
 .event-supply-contributions-popup-shell .subevent-supply-delete-btn-shell.is-loading .subevent-supply-delete-confirm-btn,
 .event-supply-contributions-popup-shell .subevent-supply-delete-btn-shell.is-error .subevent-supply-delete-confirm-btn {
   box-shadow: none;
@@ -594,16 +530,6 @@
   opacity: 1;
   transform: none;
   filter: none;
-}
-
-@keyframes subevent-supply-delete-ring-progress {
-  from {
-    stroke-dashoffset: 100;
-  }
-
-  to {
-    stroke-dashoffset: 0;
-  }
 }
 
 @media (hover: hover) and (pointer: fine) {
