@@ -36,10 +36,11 @@
               [class.active]="step.id === currentStep().id"
               [class.done]="stepDone(step.id)"
               [class.skipped]="stepSkipped(step.id)"
+              [class.required-missing]="stepRequiredMissing(step.id)"
               [disabled]="saving || uploadingImageSlotIndex !== null"
               (click)="setStep(step.id)"
               >
-              <mat-icon>{{ stepDone(step.id) ? 'done' : stepSkipped(step.id) ? 'remove' : step.optional ? 'radio_button_unchecked' : 'priority_high' }}</mat-icon>
+              <mat-icon>{{ stepIcon(step) }}</mat-icon>
               <span>{{ step.title | i18n }}</span>
             </button>
           }
@@ -48,23 +49,13 @@
         <main class="profile-onboarding-body">
           @if (currentStep().id === 'basics') {
             <section class="profile-onboarding-page">
-              <div class="profile-onboarding-required">
-                <mat-icon>lock</mat-icon>
-                <span>{{ 'These fields are required before the app opens.' | i18n }}</span>
-              </div>
-              @if (basicsErrorVisible()) {
-                <div class="profile-onboarding-error">
-                  <mat-icon>error</mat-icon>
-                  <span>{{ 'Missing' | i18n }}: {{ requiredMissingLabels().join(', ') | i18n }}</span>
-                </div>
-              }
               <div class="profile-onboarding-grid">
                 <label>
-                  <span>Name</span>
+                  <span class="profile-onboarding-required-label">Name</span>
                   <input type="text" [(ngModel)]="f.fullName" (ngModelChange)="persistDraft()" autocomplete="name" />
                 </label>
                 <label class="profile-onboarding-date-field">
-                  <span>Birthday</span>
+                  <span class="profile-onboarding-required-label">Birthday</span>
                   <div class="profile-onboarding-date-input-wrap">
                     <input
                       [matDatepicker]="birthdayPicker"
@@ -79,15 +70,15 @@
                   </div>
                 </label>
                 <label>
-                  <span>City</span>
+                  <span class="profile-onboarding-required-label">City</span>
                   <input type="text" [(ngModel)]="f.city" (ngModelChange)="persistDraft()" autocomplete="address-level2" />
                 </label>
                 <label>
-                  <span>Height (cm)</span>
+                  <span class="profile-onboarding-required-label">Height (cm)</span>
                   <input type="number" min="40" max="250" step="1" [(ngModel)]="f.heightCm" (ngModelChange)="persistDraft()" />
                 </label>
                 <label>
-                  <span>Physique</span>
+                  <span class="profile-onboarding-required-label">Physique</span>
                   <mat-select class="profile-onboarding-select" [(ngModel)]="f.physique" (ngModelChange)="persistDraft()">
                     @for (option of physiqueOptions; track option) {
                       <mat-option [value]="option">{{ option }}</mat-option>
@@ -95,7 +86,7 @@
                   </mat-select>
                 </label>
                 <div class="profile-onboarding-language-field profile-onboarding-field">
-                  <span>Languages</span>
+                  <span class="profile-onboarding-required-label">Languages</span>
                   <mat-select
                     #languageSelectRoot
                     class="profile-onboarding-select profile-onboarding-language-select"
@@ -409,10 +400,21 @@
             <section class="profile-onboarding-page">
               <div class="profile-onboarding-experience-head">
                 <span>{{ f.experienceEntries.length }} {{ 'entries' | i18n }}</span>
-                <button type="button" class="profile-onboarding-add-btn" (click)="openExperienceForm()">
+                <button type="button" class="profile-onboarding-add-btn" [disabled]="experienceEntriesLoading" (click)="openExperienceForm()">
                   <mat-icon>add</mat-icon>
                 </button>
               </div>
+              @if (experienceEntriesLoading) {
+                <div class="profile-onboarding-experience-loading" aria-live="polite">
+                  <span class="profile-onboarding-experience-loading-ring" aria-hidden="true">
+                    <svg viewBox="0 0 44 44" class="profile-onboarding-experience-loading-ring-svg">
+                      <circle class="profile-onboarding-experience-loading-ring-track" cx="22" cy="22" r="18"></circle>
+                      <circle class="profile-onboarding-experience-loading-ring-progress" cx="22" cy="22" r="18" pathLength="100"></circle>
+                    </svg>
+                  </span>
+                  <span>{{ 'Loading experience' | i18n }}</span>
+                </div>
+              }
               @if (experienceFormVisible) {
                 <div class="profile-onboarding-experience-form">
                   <mat-select class="profile-onboarding-select" [(ngModel)]="experienceForm.type">

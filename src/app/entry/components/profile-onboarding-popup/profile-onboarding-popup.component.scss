@@ -155,6 +155,12 @@
   color: #a76218;
 }
 
+.profile-onboarding-steps button.required-missing {
+  border-color: rgba(177, 44, 44, 0.42);
+  background: #ffe4e4;
+  color: #9f2b2b;
+}
+
 .profile-onboarding-steps .mat-icon {
   width: 16px;
   height: 16px;
@@ -222,6 +228,13 @@
   font-weight: 800;
 }
 
+.profile-onboarding-required-label::after {
+  content: '*';
+  margin-left: 0.22rem;
+  color: #c43131;
+  font-weight: 950;
+}
+
 .profile-onboarding-grid input,
 .profile-onboarding-about textarea,
 .profile-onboarding-experience-form input,
@@ -287,6 +300,12 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
+}
+
+.profile-onboarding-add-btn:disabled {
+  background: #d7e0ea;
+  color: #7890aa;
+  cursor: wait;
 }
 
 .profile-onboarding-language-select {
@@ -809,6 +828,51 @@
   color: #304865;
 }
 
+.profile-onboarding-experience-loading {
+  min-height: 170px;
+  border: 1px solid rgba(43, 71, 108, 0.14);
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #38506e;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 0.5rem;
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.profile-onboarding-experience-loading-ring {
+  width: 52px;
+  height: 52px;
+  display: inline-flex;
+}
+
+.profile-onboarding-experience-loading-ring-svg {
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 8px 18px rgba(31, 61, 96, 0.16));
+  transform: rotate(-90deg);
+}
+
+.profile-onboarding-experience-loading-ring-track,
+.profile-onboarding-experience-loading-ring-progress {
+  fill: none;
+  stroke-width: 4;
+}
+
+.profile-onboarding-experience-loading-ring-track {
+  stroke: rgba(47, 86, 139, 0.16);
+}
+
+.profile-onboarding-experience-loading-ring-progress {
+  stroke: #2f75c2;
+  stroke-linecap: round;
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  animation: profile-onboarding-experience-ring-progress 3s linear forwards;
+}
+
 .profile-onboarding-experience-form {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1152,6 +1216,12 @@
 @keyframes profile-onboarding-spin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+@keyframes profile-onboarding-experience-ring-progress {
+  to {
+    stroke-dashoffset: 0;
   }
 }
 

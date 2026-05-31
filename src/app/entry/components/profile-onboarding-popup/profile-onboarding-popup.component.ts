@@ -61,6 +61,7 @@ type ExperienceFormDraft = Omit<ExperienceEntry, 'id'> & { current: boolean };
 })
 export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
   private static readonly DEMO_SAVE_MIN_BUSY_MS = 1500;
+  private static readonly DEMO_EXPERIENCE_LOAD_MIN_BUSY_MS = 1500;
   private static readonly MAX_IMAGE_SLOTS = 8;
   private static readonly LANGUAGE_PANEL_GAP_PX = 8;
   private static readonly LANGUAGE_PANEL_MAX_HEIGHT_PX = 260;
@@ -81,6 +82,7 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly document = inject(DOCUMENT);
   private experienceLoadToken = 0;
+  private experienceEntriesLoadedForUserId = '';
   private documentScrollLocked = false;
   private previousBodyOverflow = '';
   private previousBodyOverscrollBehavior = '';
@@ -118,6 +120,7 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
   protected saveError = '';
   protected imageUploadError = '';
   protected attemptedContinue = false;
+  protected experienceEntriesLoading = false;
   protected experienceFormVisible = false;
   protected experienceForm: ExperienceFormDraft = this.createEmptyExperienceForm();
   protected experienceRangeStart: Date | null = null;
@@ -149,6 +152,7 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
       this.experienceRangeStart = null;
       this.experienceRangeEnd = null;
       this.experienceLoadToken += 1;
+      this.experienceEntriesLoadedForUserId = '';
       this.imageSlots = this.createEmptyImageSlots();
       this.selectedImageIndex = 0;
       this.pendingImageUploadIndex = null;
@@ -160,7 +164,6 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
     this.syncBirthdayDateFromDraft();
     this.syncImageSlotsFromDraft();
     this.scheduleLanguagePanelWidthSync();
-    this.loadExistingExperienceEntries(this.user.id);
     this.seedDraftAutosaveSignature();
     this.startDraftAutosaveLoop();
   }
@@ -615,6 +618,24 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
     return this.draft?.skippedStepIds.includes(stepId) ?? false;
   }
 
+  protected stepRequiredMissing(stepId: ProfileOnboardingStepId): boolean {
+    const step = this.steps.find(candidate => candidate.id === stepId);
+    return Boolean(step && !step.optional && this.requiredMissingLabels().length > 0);
+  }
+
+  protected stepIcon(step: OnboardingStep): string {
+    if (this.stepRequiredMissing(step.id)) {
+      return 'priority_high';
+    }
+    if (this.stepDone(step.id)) {
+      return 'done';
+    }
+    if (this.stepSkipped(step.id)) {
+      return 'remove';
+    }
+    return step.optional ? 'radio_button_unchecked' : 'priority_high';
+  }
+
   protected detailOptions(label: string): string[] {
     return this.profileDetailValueOptions[this.profileDetailKeyFromLabel(label)] ?? [];
   }
@@ -853,6 +874,9 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
     this.draft.currentStepId = stepId;
     this.attemptedContinue = false;
     this.persistDraft();
+    if (stepId === 'experience') {
+      this.loadExperienceEntriesForCurrentUserOnce();
+    }
   }
 
   private toggleLimitedOption(kind: 'values' | 'interests', option: string, allowed: string[]): void {
@@ -872,8 +896,10 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
       return;
     }
     const token = ++this.experienceLoadToken;
+    this.experienceEntriesLoading = true;
+    this.cdr.detectChanges();
     try {
-      const entries = await this.userExperiencesService.loadUserExperiences(normalizedUserId);
+      const entries = await this.loadExperienceEntriesWithBusyWindow(normalizedUserId);
       if (token !== this.experienceLoadToken || !this.draft || this.draft.userId !== normalizedUserId) {
         return;
       }
@@ -883,7 +909,40 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
       }
     } catch {
       // Experience is optional, so onboarding can continue without this enrichment.
+    } finally {
+      if (token === this.experienceLoadToken) {
+        this.experienceEntriesLoading = false;
+        this.cdr.detectChanges();
+      }
     }
+  }
+
+  private loadExperienceEntriesForCurrentUserOnce(): void {
+    const userId = this.user?.id?.trim() ?? '';
+    if (!userId || this.experienceEntriesLoadedForUserId === userId) {
+      return;
+    }
+    this.experienceEntriesLoadedForUserId = userId;
+    void this.loadExistingExperienceEntries(userId);
+  }
+
+  private async loadExperienceEntriesWithBusyWindow(userId: string): Promise<ExperienceEntry[]> {
+    const startedAtMs = Date.now();
+    try {
+      return await this.userExperiencesService.loadUserExperiences(userId);
+    } finally {
+      if (this.usersService.demoModeEnabled) {
+        await this.waitForMinimumDuration(startedAtMs, ProfileOnboardingPopupComponent.DEMO_EXPERIENCE_LOAD_MIN_BUSY_MS);
+      }
+    }
+  }
+
+  private async waitForMinimumDuration(startedAtMs: number, minimumDurationMs: number): Promise<void> {
+    const remainingMs = minimumDurationMs - (Date.now() - startedAtMs);
+    if (remainingMs <= 0) {
+      return;
+    }
+    await new Promise<void>(resolve => setTimeout(resolve, remainingMs));
   }
 
   private startDraftAutosaveLoop(): void {
