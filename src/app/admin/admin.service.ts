@@ -2169,6 +2169,9 @@ export class AdminService {
       healthLabelKey: 'stats.health.good',
       healthSummaryKey: 'stats.health.summary',
       kpis: [
+        { key: 'active-profiles', labelKey: 'stats.kpi.active.profiles', value: 112, valueLabel: '112', caption: 'Public 58 · Friends 38 · Host 16', icon: 'groups', tone: 'green', percent: 88 },
+        { key: 'onboarding-users', labelKey: 'stats.kpi.onboarding.users', value: 9, valueLabel: '9', icon: 'how_to_reg', tone: 'gold', percent: 7 },
+        { key: 'inactive-profiles', labelKey: 'stats.kpi.inactive.profiles', value: 7, valueLabel: '7', icon: 'visibility_off', tone: 'slate', percent: 5 },
         { key: 'active-users', labelKey: 'stats.kpi.active.users', value: 42, valueLabel: '42', icon: 'person', tone: 'blue', percent: 33 },
         { key: 'returning-users', labelKey: 'stats.kpi.returning.users', value: 31, valueLabel: '31', icon: 'repeat', tone: 'purple', percent: 24 },
         { key: 'departed-users', labelKey: 'stats.kpi.departed.users', value: 7, valueLabel: '7', icon: 'person_remove', tone: 'slate', percent: 5 },
@@ -2179,6 +2182,9 @@ export class AdminService {
       segments: [
         segment('community', 'stats.segment.community', 'person', 128, 88, [
           item('profile.registered', 'stats.event.profile.registered', 29, 128, 'person_add', 'green'),
+          item('profile.active', 'stats.event.profile.active', 112, 128, 'groups', 'green'),
+          item('profile.onboarding', 'stats.event.profile.onboarding', 9, 128, 'how_to_reg', 'gold'),
+          item('profile.inactive', 'stats.event.profile.inactive', 7, 128, 'visibility_off', 'slate'),
           item('active-users-7d', 'stats.event.active.users.7d', 42, 128, 'person', 'blue'),
           item('active-users-30d', 'stats.event.active.users.30d', 68, 128, 'calendar_month', 'green'),
           item('returning-users', 'stats.event.returning.users', 31, 128, 'repeat', 'purple'),

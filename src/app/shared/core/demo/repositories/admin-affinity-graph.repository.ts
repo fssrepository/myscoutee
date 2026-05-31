@@ -16,6 +16,7 @@ import { USER_RATES_TABLE_NAME, USERS_TABLE_NAME } from '../models/users.model';
 })
 export class DemoAdminAffinityGraphRepository {
   private readonly memoryDb = inject(AppMemoryDb);
+  private readonly activeGraphProfileStatuses = new Set(['public', 'friends only', 'host only']);
 
   async buildGraphSnapshot(): Promise<AdminAffinityGraphDto> {
     await this.memoryDb.whenReady();
@@ -51,7 +52,7 @@ export class DemoAdminAffinityGraphRepository {
     if (!id || id.startsWith('admin-demo-') || DemoUserSeedBuilder.isEmptyOnboardingProfileUserId(id)) {
       return false;
     }
-    return `${user?.profileStatus ?? ''}`.trim().toLowerCase() !== 'deleted';
+    return this.activeGraphProfileStatuses.has(`${user?.profileStatus ?? ''}`.trim().toLowerCase());
   }
 
   private toNodeDto(user: UserDto): AdminAffinityGraphNodeDto {

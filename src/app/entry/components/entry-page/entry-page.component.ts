@@ -194,6 +194,11 @@ export class EntryPageComponent implements OnInit, OnDestroy {
       await this.router.navigateByUrl(redirectUrl);
       return;
     }
+    if (user.admin === true) {
+      this.closeOnboardingGate();
+      await this.router.navigateByUrl('/admin');
+      return;
+    }
     if (adminRedirect) {
       this.closeOnboardingGate();
       await this.router.navigateByUrl(redirectUrl);

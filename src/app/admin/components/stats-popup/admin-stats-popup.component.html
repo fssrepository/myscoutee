@@ -81,6 +81,11 @@
                   <span class="stats-kpi-icon"><mat-icon>{{ metric.icon }}</mat-icon></span>
                   <strong>{{ metric.valueLabel || metric.value }}</strong>
                   <small>{{ metric.labelKey | i18n }}</small>
+                  @if (metric.captionKey || metric.caption) {
+                    <small class="stats-kpi-caption">
+                      {{ metric.captionKey ? (metric.captionKey | i18n) : metric.caption }}
+                    </small>
+                  }
                   <span class="stats-kpi-bar"><span [style.width.%]="metricPercent(metric)"></span></span>
                 </article>
               }

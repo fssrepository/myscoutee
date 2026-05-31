@@ -1,6 +1,9 @@
 :host {
   display: block;
   font-family: var(--entry-font-family, 'Nunito Sans', 'Segoe UI', sans-serif);
+  --interactive-hover-lift: 0px;
+  --interactive-hover-scale: 1;
+  --interactive-press-scale: 1;
 }
 
 .firebase-auth-overlay {
@@ -29,6 +32,11 @@
   display: flex;
   flex-direction: column;
   gap: 0.7rem;
+}
+
+.firebase-auth-panel,
+.firebase-auth-panel * {
+  box-sizing: border-box;
 }
 
 .firebase-auth-header {
@@ -217,6 +225,39 @@
   gap: 0.55rem;
 }
 
+.firebase-auth-email-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0;
+  border: 1px solid rgba(44, 74, 121, 0.18);
+  border-radius: 9px;
+  background: #edf3fb;
+  padding: 3px;
+}
+
+.firebase-auth-email-tabs button {
+  min-height: 34px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: rgba(49, 66, 93, 0.76);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.firebase-auth-email-tabs button.active {
+  background: #fff;
+  color: rgba(28, 52, 87, 0.98);
+  box-shadow: 0 8px 20px rgba(37, 72, 120, 0.12);
+}
+
+.firebase-auth-email-tabs button:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
 .firebase-auth-status {
   margin: 0;
   border-radius: 8px;
@@ -238,6 +279,7 @@
 }
 
 .firebase-auth-email-form input {
+  width: 100%;
   min-height: 38px;
   border-radius: 8px;
   border: 1px solid rgba(44, 74, 121, 0.22);
@@ -250,6 +292,150 @@
 .firebase-auth-email-form input:focus {
   outline: 2px solid rgba(61, 108, 186, 0.24);
   border-color: rgba(61, 108, 186, 0.44);
+}
+
+.firebase-auth-password-control {
+  position: relative;
+  display: block;
+  width: 100%;
+}
+
+.firebase-auth-password-control input {
+  width: 100%;
+  padding-right: 2.65rem;
+}
+
+.firebase-auth-password-toggle {
+  position: absolute;
+  right: 0.32rem;
+  top: 50%;
+  width: 32px;
+  height: 32px;
+  transform: translateY(-50%);
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: rgba(38, 61, 94, 0.72);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.firebase-auth-password-toggle:hover {
+  background: rgba(44, 74, 121, 0.08);
+  color: rgba(29, 52, 86, 0.96);
+  transform: translateY(-50%);
+}
+
+.firebase-auth-password-toggle:active,
+.firebase-auth-password-toggle:focus {
+  transform: translateY(-50%);
+}
+
+.firebase-auth-password-toggle:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.firebase-auth-password-toggle .mat-icon {
+  width: 18px;
+  height: 18px;
+  font-size: 18px;
+  line-height: 18px;
+}
+
+.firebase-password-strength {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.55rem;
+  margin-top: -0.28rem;
+  color: rgba(61, 75, 99, 0.62);
+  font-size: 0.68rem;
+  font-weight: 850;
+}
+
+.firebase-password-strength-lines {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.28rem;
+}
+
+.firebase-password-strength-lines span {
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(44, 74, 121, 0.16);
+}
+
+.firebase-password-strength-lines span.active {
+  background: #9aa7b8;
+}
+
+.firebase-password-strength.level-1 {
+  color: #a43b45;
+}
+
+.firebase-password-strength.level-1 .firebase-password-strength-lines span.active {
+  background: #d94d5a;
+}
+
+.firebase-password-strength.level-2 {
+  color: #9a641b;
+}
+
+.firebase-password-strength.level-2 .firebase-password-strength-lines span.active {
+  background: #e39b30;
+}
+
+.firebase-password-strength.level-3 {
+  color: #286f80;
+}
+
+.firebase-password-strength.level-3 .firebase-password-strength-lines span.active {
+  background: #42a9bd;
+}
+
+.firebase-password-strength.level-4 {
+  color: #22744d;
+}
+
+.firebase-password-strength.level-4 .firebase-password-strength-lines span.active {
+  background: #31a66a;
+}
+
+.firebase-password-rules {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.34rem;
+  margin: -0.1rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.firebase-password-rules li {
+  min-height: 24px;
+  border-radius: 999px;
+  background: rgba(44, 74, 121, 0.07);
+  color: rgba(49, 66, 93, 0.7);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.24rem;
+  padding: 0 0.48rem 0 0.34rem;
+  font-size: 0.68rem;
+  font-weight: 850;
+}
+
+.firebase-password-rules li.met {
+  background: rgba(49, 166, 106, 0.12);
+  color: #22744d;
+}
+
+.firebase-password-rules .mat-icon {
+  width: 14px;
+  height: 14px;
+  font-size: 14px;
+  line-height: 14px;
 }
 
 .firebase-auth-error {
@@ -281,11 +467,11 @@
   background: rgba(255, 255, 255, 0.96);
   border-color: rgba(33, 66, 113, 0.36);
   color: rgba(22, 47, 83, 0.98);
-  transform: translateY(-1px);
+  transform: none;
 }
 
 .popup-close:active {
-  transform: translateY(0);
+  transform: none;
 }
 
 .popup-close:focus-visible {

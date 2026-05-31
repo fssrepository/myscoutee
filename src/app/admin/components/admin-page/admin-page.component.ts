@@ -147,6 +147,18 @@ export class AdminPageComponent implements OnInit, OnDestroy {
   }
 
   async ngOnInit(): Promise<void> {
+    if (this.admin.isFirebaseAdminMode && !this.admin.dashboard()) {
+      const session = await this.sessionService.ensureSession();
+      if (session?.kind === 'firebase') {
+        this.restoringWorkspace.set(true);
+        const dashboard = await this.admin.bootstrapAdmin();
+        this.restoringWorkspace.set(false);
+        if (dashboard) {
+          await this.router.navigateByUrl('/admin/workspace', { replaceUrl: true });
+          return;
+        }
+      }
+    }
     if (!this.isWorkspaceRoute() || this.admin.dashboard()) {
       this.restoringWorkspace.set(false);
       return;

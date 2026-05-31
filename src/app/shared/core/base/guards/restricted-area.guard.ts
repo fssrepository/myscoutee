@@ -14,6 +14,9 @@ export const restrictedAreaGuard: CanActivateFn = async (_route, state) => {
   if (session) {
     if (session.kind === 'firebase') {
       const user = await usersService.loadUserById(undefined, 8000).catch(() => null);
+      if (user?.admin === true) {
+        return router.createUrlTree(['/admin']);
+      }
       if (onboardingService.shouldPrompt(user)) {
         return router.createUrlTree(['/entry'], {
           queryParams: {

@@ -274,7 +274,7 @@ export class FirebaseAuthService {
     if (request.provider === 'email') {
       const email = `${request.email ?? ''}`.trim();
       const password = `${request.password ?? ''}`;
-      const credential = await this.signInOrCreateEmailUser(auth, email, password);
+      const credential = await this.runEmailAuthRequest(auth, email, password, request.emailMode);
       if (!credential.user.emailVerified) {
         await sendEmailVerification(credential.user);
         await signOut(auth);
@@ -288,6 +288,21 @@ export class FirebaseAuthService {
     const provider = new GoogleAuthProvider();
     provider.setCustomParameters({ prompt: 'select_account' });
     return signInWithPopup(auth, provider);
+  }
+
+  private async runEmailAuthRequest(
+    auth: Auth,
+    email: string,
+    password: string,
+    mode?: AppTypes.FirebaseEmailAuthMode
+  ): Promise<{ user: User }> {
+    if (mode === 'sign-in') {
+      return signInWithEmailAndPassword(auth, email, password);
+    }
+    if (mode === 'create') {
+      return createUserWithEmailAndPassword(auth, email, password);
+    }
+    return this.signInOrCreateEmailUser(auth, email, password);
   }
 
   private async signInOrCreateEmailUser(auth: Auth, email: string, password: string): Promise<{ user: User }> {
