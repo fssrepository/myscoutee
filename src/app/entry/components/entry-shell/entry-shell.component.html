@@ -44,6 +44,7 @@
 <app-entry-firebase-auth-popup
   [open]="showFirebaseAuthPopup"
   [busy]="firebaseAuthIsBusy"
+  [statusMessage]="firebaseAuthMessage"
   [isMobileView]="isMobileView"
   (closeRequested)="closeFirebaseAuthPopup()"
   (authRequested)="onRequestFirebaseAuth($event)"

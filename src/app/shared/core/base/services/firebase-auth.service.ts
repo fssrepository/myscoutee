@@ -7,6 +7,7 @@ import {
   createUserWithEmailAndPassword,
   getAuth,
   onAuthStateChanged,
+  sendEmailVerification,
   setPersistence,
   signInWithEmailAndPassword,
   signInWithPopup,
@@ -17,6 +18,12 @@ import {
 
 import { environment } from '../../../../../environments/environment';
 import type * as AppTypes from '../../../core/base/models';
+
+export interface FirebaseAuthSignInResult {
+  profile: AppTypes.FirebaseAuthProfile | null;
+  emailVerificationSent?: boolean;
+  email?: string;
+}
 
 export type FirebaseConfigFile = Pick<
   FirebaseOptions,
@@ -64,19 +71,27 @@ export class FirebaseAuthService {
   }
 
   async signInWithGoogle(): Promise<AppTypes.FirebaseAuthProfile | null> {
-    return this.signIn({ provider: 'google' });
+    return (await this.signIn({ provider: 'google' })).profile;
   }
 
-  async signIn(request: AppTypes.FirebaseAuthRequest): Promise<AppTypes.FirebaseAuthProfile | null> {
+  async signIn(request: AppTypes.FirebaseAuthRequest): Promise<FirebaseAuthSignInResult> {
     const auth = await this.ensureFirebaseAuth();
     if (!auth) {
-      return null;
+      return { profile: null };
     }
     try {
       const result = await this.runAuthRequest(auth, request);
-      return this.persistProfile(result.user);
+      if (result.emailVerificationSent) {
+        this.clearStoredProfile();
+        return {
+          profile: null,
+          emailVerificationSent: true,
+          email: result.user.email?.trim() || request.email?.trim()
+        };
+      }
+      return { profile: this.persistProfile(result.user) };
     } catch {
-      return null;
+      return { profile: null };
     }
   }
 
@@ -249,7 +264,7 @@ export class FirebaseAuthService {
     };
   }
 
-  private async runAuthRequest(auth: Auth, request: AppTypes.FirebaseAuthRequest): Promise<{ user: User }> {
+  private async runAuthRequest(auth: Auth, request: AppTypes.FirebaseAuthRequest): Promise<{ user: User; emailVerificationSent?: boolean }> {
     if (request.provider === 'facebook') {
       const provider = new FacebookAuthProvider();
       provider.addScope('email');
@@ -259,13 +274,54 @@ export class FirebaseAuthService {
     if (request.provider === 'email') {
       const email = `${request.email ?? ''}`.trim();
       const password = `${request.password ?? ''}`;
-      return request.emailMode === 'create'
-        ? createUserWithEmailAndPassword(auth, email, password)
-        : signInWithEmailAndPassword(auth, email, password);
+      const credential = await this.signInOrCreateEmailUser(auth, email, password);
+      if (!credential.user.emailVerified) {
+        await sendEmailVerification(credential.user);
+        await signOut(auth);
+        return {
+          user: credential.user,
+          emailVerificationSent: true
+        };
+      }
+      return credential;
     }
     const provider = new GoogleAuthProvider();
     provider.setCustomParameters({ prompt: 'select_account' });
     return signInWithPopup(auth, provider);
+  }
+
+  private async signInOrCreateEmailUser(auth: Auth, email: string, password: string): Promise<{ user: User }> {
+    try {
+      return await signInWithEmailAndPassword(auth, email, password);
+    } catch (signInError) {
+      if (!this.shouldCreateEmailUserAfterSignInFailure(signInError)) {
+        throw signInError;
+      }
+      try {
+        return await createUserWithEmailAndPassword(auth, email, password);
+      } catch (createError) {
+        if (this.firebaseErrorCode(createError) === 'auth/email-already-in-use') {
+          throw signInError;
+        }
+        throw createError;
+      }
+    }
+  }
+
+  private shouldCreateEmailUserAfterSignInFailure(error: unknown): boolean {
+    return new Set([
+      'auth/user-not-found',
+      'auth/invalid-credential',
+      'auth/wrong-password'
+    ]).has(this.firebaseErrorCode(error));
+  }
+
+  private firebaseErrorCode(error: unknown): string {
+    if (typeof error !== 'object' || error === null || !('code' in error)) {
+      return '';
+    }
+    const code = (error as { code?: unknown }).code;
+    return typeof code === 'string' ? code.trim() : '';
   }
 
   private initialsFromText(value: string): string {

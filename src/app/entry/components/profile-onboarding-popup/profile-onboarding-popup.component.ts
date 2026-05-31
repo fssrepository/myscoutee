@@ -64,6 +64,7 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
   private static readonly MAX_IMAGE_SLOTS = 8;
   private static readonly LANGUAGE_PANEL_GAP_PX = 8;
   private static readonly LANGUAGE_PANEL_MAX_HEIGHT_PX = 260;
+  private static readonly DRAFT_AUTOSAVE_INTERVAL_MS = 30_000;
 
   @ViewChild('onboardingImageInput') private onboardingImageInput?: ElementRef<HTMLInputElement>;
   @ViewChild('languageSelectRoot', { read: ElementRef }) private languageSelectRoot?: ElementRef<HTMLElement>;
@@ -85,6 +86,9 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
   private previousBodyOverscrollBehavior = '';
   private previousDocumentOverflow = '';
   private previousDocumentOverscrollBehavior = '';
+  private draftAutosaveTimer: ReturnType<typeof setInterval> | null = null;
+  private lastDraftAutosaveSignature = '';
+  private isDraftAutosavePending = false;
 
   protected readonly steps: OnboardingStep[] = [
     { id: 'basics', title: 'Basics', optional: false },
@@ -131,6 +135,8 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
       return;
     }
     if (!this.open || !this.user) {
+      this.stopDraftAutosaveLoop();
+      this.resetDraftAutosaveTracking();
       this.clearLanguagePanelPosition();
       this.draft = null;
       this.assessment = null;
@@ -155,9 +161,12 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
     this.syncImageSlotsFromDraft();
     this.scheduleLanguagePanelWidthSync();
     this.loadExistingExperienceEntries(this.user.id);
+    this.seedDraftAutosaveSignature();
+    this.startDraftAutosaveLoop();
   }
 
   ngOnDestroy(): void {
+    this.stopDraftAutosaveLoop();
     this.clearLanguagePanelPosition();
     this.unlockDocumentScroll();
   }
@@ -618,6 +627,7 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
     if (!this.user || !this.draft || !this.canContinue()) {
       return;
     }
+    this.stopDraftAutosaveLoop();
     this.saving = true;
     this.saveError = '';
     this.persistDraft();
@@ -714,6 +724,17 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
       profileFormVersion: this.onboarding.currentProfileFormVersion,
       profileDetails: this.buildProfileDetails(user, draft),
       completion: this.completionPercent(draft)
+    };
+  }
+
+  private buildAutosaveUserPayload(user: UserDto, draft: ProfileOnboardingDraft): UserDto {
+    const payload = this.buildUserPayload(user, draft);
+    const currentFormVersion = Math.max(1, Math.trunc(Number(this.onboarding.currentProfileFormVersion) || 1));
+    const existingFormVersion = Math.max(0, Math.trunc(Number(user.profileFormVersion) || 0));
+    return {
+      ...payload,
+      profileStatus: user.profileStatus === 'onboarding' ? 'onboarding' : payload.profileStatus,
+      profileFormVersion: Math.min(existingFormVersion, currentFormVersion - 1)
     };
   }
 
@@ -863,6 +884,87 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
     } catch {
       // Experience is optional, so onboarding can continue without this enrichment.
     }
+  }
+
+  private startDraftAutosaveLoop(): void {
+    this.stopDraftAutosaveLoop();
+    this.draftAutosaveTimer = setInterval(() => {
+      void this.runDraftAutosaveIfNeeded();
+    }, ProfileOnboardingPopupComponent.DRAFT_AUTOSAVE_INTERVAL_MS);
+  }
+
+  private stopDraftAutosaveLoop(): void {
+    if (!this.draftAutosaveTimer) {
+      return;
+    }
+    clearInterval(this.draftAutosaveTimer);
+    this.draftAutosaveTimer = null;
+  }
+
+  private resetDraftAutosaveTracking(): void {
+    this.lastDraftAutosaveSignature = '';
+    this.isDraftAutosavePending = false;
+  }
+
+  private seedDraftAutosaveSignature(): void {
+    this.lastDraftAutosaveSignature = this.buildDraftAutosaveSignature();
+    this.isDraftAutosavePending = false;
+  }
+
+  private shouldAutosaveDraft(): boolean {
+    return this.open
+      && Boolean(this.user)
+      && Boolean(this.draft)
+      && !this.saving
+      && this.uploadingImageSlotIndex === null
+      && !this.isDraftAutosavePending;
+  }
+
+  private async runDraftAutosaveIfNeeded(): Promise<void> {
+    if (!this.user || !this.draft || !this.shouldAutosaveDraft()) {
+      return;
+    }
+    const nextSignature = this.buildDraftAutosaveSignature();
+    if (!nextSignature || nextSignature === this.lastDraftAutosaveSignature) {
+      return;
+    }
+    this.isDraftAutosavePending = true;
+    try {
+      const savedUser = await this.usersService.saveUserProfile(
+        this.buildAutosaveUserPayload(this.user, this.draft),
+        {
+          requestTimeoutMs: 8000,
+          minimumDurationMs: 0,
+          returnFallbackOnFailure: false
+        }
+      );
+      if (savedUser) {
+        this.user = savedUser;
+        this.lastDraftAutosaveSignature = this.buildDraftAutosaveSignature();
+      }
+    } finally {
+      this.isDraftAutosavePending = false;
+    }
+  }
+
+  private buildDraftAutosaveSignature(): string {
+    if (!this.user || !this.draft) {
+      return '';
+    }
+    return JSON.stringify({
+      userId: this.user.id,
+      currentStepId: this.draft.currentStepId,
+      completedStepIds: [...this.draft.completedStepIds],
+      skippedStepIds: [...this.draft.skippedStepIds],
+      form: {
+        ...this.draft.form,
+        languages: [...this.draft.form.languages],
+        images: [...this.draft.form.images],
+        values: [...this.draft.form.values],
+        interests: [...this.draft.form.interests],
+        experienceEntries: this.draft.form.experienceEntries.map(entry => ({ ...entry }))
+      }
+    });
   }
 
   private completionPercent(draft: ProfileOnboardingDraft): number {

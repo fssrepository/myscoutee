@@ -15,84 +15,95 @@
           <span class="popup-close-glyph" aria-hidden="true">×</span>
         </button>
       </div>
-      <div class="firebase-auth-provider-grid">
-        <button
-          type="button"
-          class="firebase-auth-provider-btn"
-          [disabled]="busy"
-          matRipple
-          [matRippleColor]="'rgba(39, 101, 211, 0.12)'"
-          (click)="requestProvider('google')"
-          >
-          <mat-icon>account_circle</mat-icon>
-          <span>{{ busy ? 'Connecting...' : 'Google' }}</span>
-        </button>
-        <button
-          type="button"
-          class="firebase-auth-provider-btn coming-soon"
-          disabled
-          aria-disabled="true"
-          title="Facebook login is coming soon"
-          >
-          <mat-icon>public</mat-icon>
-          <span>Facebook</span>
-          <span class="firebase-auth-provider-badge">Coming soon</span>
-        </button>
-      </div>
-      <div class="firebase-auth-divider"><span>Email</span></div>
-      <div class="firebase-auth-email-mode" role="group" aria-label="Email login mode">
-        <button
-          type="button"
-          [class.is-active]="emailMode === 'sign-in'"
-          [disabled]="busy"
-          (click)="selectEmailMode('sign-in')"
-          >
-          Sign in
-        </button>
-        <button
-          type="button"
-          [class.is-active]="emailMode === 'create'"
-          [disabled]="busy"
-          (click)="selectEmailMode('create')"
-          >
-          Create
-        </button>
-      </div>
-      <form class="firebase-auth-email-form" (submit)="$event.preventDefault(); requestEmail()">
-        <label>
-          <span>Email</span>
-          <input
-            type="email"
-            name="email"
-            autocomplete="email"
+      @if (authStep === 'providers') {
+        <div class="firebase-auth-provider-list">
+          <button
+            type="button"
+            class="firebase-auth-provider-btn google"
             [disabled]="busy"
-            [(ngModel)]="email"
+            matRipple
+            [matRippleColor]="'rgba(66, 133, 244, 0.12)'"
+            (click)="requestProvider('google')"
             >
-        </label>
-        <label>
-          <span>Password</span>
-          <input
-            type="password"
-            name="password"
-            autocomplete="current-password"
+            <span class="firebase-auth-brand-mark google-mark" aria-hidden="true">
+              <span class="google-mark-letter">G</span>
+            </span>
+            <span>{{ busy ? 'Connecting...' : 'Continue with Google' }}</span>
+          </button>
+          <button
+            type="button"
+            class="firebase-auth-provider-btn facebook coming-soon"
+            disabled
+            aria-disabled="true"
+            title="Facebook login is coming soon"
+            >
+            <span class="firebase-auth-brand-mark facebook-mark" aria-hidden="true">f</span>
+            <span>Continue with Facebook</span>
+            <span class="firebase-auth-provider-badge">Coming soon</span>
+          </button>
+          <button
+            type="button"
+            class="firebase-auth-provider-btn email"
             [disabled]="busy"
-            [(ngModel)]="password"
+            matRipple
+            [matRippleColor]="'rgba(54, 74, 104, 0.12)'"
+            (click)="openEmail()"
             >
-        </label>
-        @if (emailError) {
-          <p class="firebase-auth-error">{{ emailError }}</p>
-        }
+            <span class="firebase-auth-brand-mark email-mark" aria-hidden="true">
+              <mat-icon>mail</mat-icon>
+            </span>
+            <span>Continue with Email</span>
+          </button>
+        </div>
+      } @else {
         <button
-          type="submit"
-          class="firebase-auth-main-btn"
+          type="button"
+          class="firebase-auth-back-btn"
           [disabled]="busy"
-          matRipple
-          [matRippleColor]="'rgba(255, 255, 255, 0.22)'"
+          (click)="backToProviders()"
           >
-          <mat-icon>mail</mat-icon>
-          <span>{{ emailSubmitLabel() }}</span>
+          <mat-icon>arrow_back</mat-icon>
+          <span>All login options</span>
         </button>
-      </form>
+        <form class="firebase-auth-email-form" (submit)="$event.preventDefault(); requestEmail()">
+          @if (statusMessage) {
+            <p class="firebase-auth-status">{{ statusMessage }}</p>
+          }
+          <label>
+            <span>Email</span>
+            <input
+              type="email"
+              name="email"
+              autocomplete="email"
+              [disabled]="busy"
+              [(ngModel)]="email"
+              >
+          </label>
+          <label>
+            <span>Password</span>
+              <input
+              type="password"
+              name="password"
+              autocomplete="current-password"
+              [disabled]="busy"
+              [(ngModel)]="password"
+              >
+          </label>
+          @if (emailError) {
+            <p class="firebase-auth-error">{{ emailError }}</p>
+          }
+          <button
+            type="submit"
+            class="firebase-auth-main-btn"
+            [disabled]="busy"
+            matRipple
+            [matRippleColor]="'rgba(255, 255, 255, 0.22)'"
+            >
+            <mat-icon>mail</mat-icon>
+            <span>{{ emailSubmitLabel() }}</span>
+          </button>
+        </form>
+      }
     </div>
   </section>
 }

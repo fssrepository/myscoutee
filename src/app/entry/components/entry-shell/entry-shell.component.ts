@@ -46,6 +46,10 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
   private static readonly ENTRY_CONSENT_AUDIT_MAX = 30;
   private static readonly LANDING_ARTICLES_LOADING_WINDOW_MS = 3000;
   private static readonly ENTRY_PRIVACY_LOADING_WINDOW_MS = 3000;
+  private static readonly LOCATION_ELIGIBILITY_CACHE_KEY = 'entry-login-location-eligibility-v1';
+  private static readonly LOCATION_ELIGIBILITY_CACHE_TTL_MS = 10 * 60 * 1000;
+  private static readonly LOCATION_REQUEST_TIMEOUT_MS = 4500;
+  private static readonly LOCATION_REQUEST_MAXIMUM_AGE_MS = 15 * 60 * 1000;
 
   private readonly injector = inject(Injector);
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
@@ -62,6 +66,7 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
   @Input({ required: true }) authMode: AppTypes.AuthMode = 'selector';
   @Input() firebaseAuthProfile: AppTypes.FirebaseAuthProfile | null = null;
   @Input() firebaseAuthIsBusy = false;
+  @Input() firebaseAuthMessage = '';
   @Input() isMobileView = false;
 
   @Output() readonly demoUserSelected = new EventEmitter<EntryDemoUserSelectionEvent>();
@@ -116,6 +121,9 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['authMode']) {
       this.syncEntryAuthGateState();
+    }
+    if (changes['firebaseAuthProfile'] && this.firebaseAuthProfile) {
+      this.showFirebaseAuthPopup = false;
     }
   }
 
@@ -242,7 +250,6 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
     if (this.firebaseAuthIsBusy) {
       return;
     }
-    this.showFirebaseAuthPopup = false;
     this.firebaseAuthRequested.emit(request);
   }
 
@@ -317,6 +324,7 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
     this.demoSelectorSubmitting = false;
     this.demoSelectorSelectedUserId = '';
     this.showFirebaseAuthPopup = false;
+    this.restoreCachedLocationEligibility();
     void this.loadEntryContent();
   }
 
@@ -567,9 +575,9 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
         },
         () => resolve(null),
         {
-          enableHighAccuracy: true,
-          timeout: 15000,
-          maximumAge: 5 * 60 * 1000
+          enableHighAccuracy: false,
+          timeout: EntryShellComponent.LOCATION_REQUEST_TIMEOUT_MS,
+          maximumAge: EntryShellComponent.LOCATION_REQUEST_MAXIMUM_AGE_MS
         }
       );
     });
@@ -883,8 +891,11 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
           message: availability.message ?? null,
           securityGateEnabled: availability.securityGateEnabled === true,
           locationRequired: false
-        }
+      }
       : null;
+    if (source === 'coordinates' && this.landingLoginAvailability?.eligible === true) {
+      this.saveCachedLocationEligibility(this.landingLoginAvailability);
+    }
     this.syncEntryAuthGateState();
   }
 
@@ -1009,6 +1020,52 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
 
     this.geolocationPermissionStatus.removeEventListener('change', this.geolocationPermissionChangeHandler);
     this.geolocationPermissionStatus = null;
+  }
+
+  private restoreCachedLocationEligibility(): void {
+    if (typeof sessionStorage === 'undefined') {
+      return;
+    }
+    try {
+      const raw = sessionStorage.getItem(EntryShellComponent.LOCATION_ELIGIBILITY_CACHE_KEY);
+      if (!raw) {
+        return;
+      }
+      const parsed = JSON.parse(raw) as {
+        savedAtMs?: number;
+        availability?: Partial<UserLocationEligibilityResponseDto> | null;
+      };
+      const savedAtMs = Math.trunc(Number(parsed.savedAtMs) || 0);
+      if (!savedAtMs || Date.now() - savedAtMs > EntryShellComponent.LOCATION_ELIGIBILITY_CACHE_TTL_MS) {
+        sessionStorage.removeItem(EntryShellComponent.LOCATION_ELIGIBILITY_CACHE_KEY);
+        return;
+      }
+      if (parsed.availability?.eligible === true) {
+        this.syncLandingLoginAvailability({
+          eligible: true,
+          partitionKey: parsed.availability.partitionKey ?? null,
+          message: parsed.availability.message ?? null,
+          securityGateEnabled: parsed.availability.securityGateEnabled === true,
+          locationRequired: false
+        }, 'coordinates');
+      }
+    } catch {
+      sessionStorage.removeItem(EntryShellComponent.LOCATION_ELIGIBILITY_CACHE_KEY);
+    }
+  }
+
+  private saveCachedLocationEligibility(availability: UserLocationEligibilityResponseDto): void {
+    if (typeof sessionStorage === 'undefined') {
+      return;
+    }
+    try {
+      sessionStorage.setItem(EntryShellComponent.LOCATION_ELIGIBILITY_CACHE_KEY, JSON.stringify({
+        savedAtMs: Date.now(),
+        availability
+      }));
+    } catch {
+      // Cache is only a speed-up for the landing gate.
+    }
   }
 
 }

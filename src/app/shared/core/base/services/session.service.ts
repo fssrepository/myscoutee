@@ -20,9 +20,11 @@ export class SessionService {
   private readonly appCtx = inject(AppContext);
   private readonly sessionRef = signal<AppSession | null>(this.loadStoredSession());
   private readonly firebaseBusyRef = signal(false);
+  private readonly firebaseNoticeRef = signal('');
 
   readonly session = this.sessionRef.asReadonly();
   readonly firebaseBusy = this.firebaseBusyRef.asReadonly();
+  readonly firebaseNotice = this.firebaseNoticeRef.asReadonly();
   readonly firebaseProfile = computed(() => {
     const current = this.sessionRef();
     return current?.kind === 'firebase' ? current.profile : null;
@@ -77,15 +79,23 @@ export class SessionService {
       return null;
     }
     this.firebaseBusyRef.set(true);
+    this.firebaseNoticeRef.set('');
     try {
-      const profile = await this.firebaseAuthService.signIn(request);
-      if (!profile) {
+      const result = await this.firebaseAuthService.signIn(request);
+      if (result.emailVerificationSent) {
+        const email = result.email?.trim();
+        this.firebaseNoticeRef.set(email
+          ? `Verification email sent to ${email}. Confirm it, then continue here.`
+          : 'Verification email sent. Confirm it, then continue here.');
+        return null;
+      }
+      if (!result.profile) {
         return null;
       }
       localStorage.removeItem(SessionService.DEMO_ACTIVE_USER_KEY);
       const session: AppSession = {
         kind: 'firebase',
-        profile
+        profile: result.profile
       };
       this.persistSession(session);
       return session;
@@ -99,6 +109,7 @@ export class SessionService {
       return this.sessionRef();
     }
     this.firebaseBusyRef.set(true);
+    this.firebaseNoticeRef.set('');
     try {
       const profile = await this.firebaseAuthService.restoreSessionProfile();
       if (!profile) {
@@ -118,6 +129,7 @@ export class SessionService {
 
   async logout(): Promise<void> {
     const current = this.sessionRef();
+    this.firebaseNoticeRef.set('');
     this.clearStoredSession();
     localStorage.removeItem(SessionService.DEMO_ACTIVE_USER_KEY);
     if (current?.kind === 'firebase') {

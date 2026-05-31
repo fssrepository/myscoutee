@@ -20,11 +20,12 @@ export class EntryFirebaseAuthPopupComponent {
   @Input() open = false;
   @Input() busy = false;
   @Input() isMobileView = false;
+  @Input() statusMessage = '';
 
   @Output() readonly closeRequested = new EventEmitter<void>();
   @Output() readonly authRequested = new EventEmitter<AppTypes.FirebaseAuthRequest>();
 
-  protected emailMode: AppTypes.FirebaseEmailAuthMode = 'sign-in';
+  protected authStep: 'providers' | 'email' = 'providers';
   protected email = '';
   protected password = '';
   protected emailError = '';
@@ -38,11 +39,19 @@ export class EntryFirebaseAuthPopupComponent {
     this.authRequested.emit({ provider });
   }
 
-  protected selectEmailMode(mode: AppTypes.FirebaseEmailAuthMode): void {
+  protected openEmail(): void {
     if (this.busy) {
       return;
     }
-    this.emailMode = mode;
+    this.authStep = 'email';
+    this.emailError = '';
+  }
+
+  protected backToProviders(): void {
+    if (this.busy) {
+      return;
+    }
+    this.authStep = 'providers';
     this.emailError = '';
   }
 
@@ -58,7 +67,6 @@ export class EntryFirebaseAuthPopupComponent {
     this.emailError = '';
     this.authRequested.emit({
       provider: 'email',
-      emailMode: this.emailMode,
       email: normalizedEmail,
       password: this.password
     });
@@ -68,7 +76,7 @@ export class EntryFirebaseAuthPopupComponent {
     if (this.busy) {
       return 'Connecting...';
     }
-    return this.emailMode === 'create' ? 'Create account' : 'Sign in';
+    return 'Continue with email';
   }
 
   private isValidEmail(value: string): boolean {

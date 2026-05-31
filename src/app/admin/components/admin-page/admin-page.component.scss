@@ -132,11 +132,15 @@
 }
 
 .admin-entry-error {
+  width: fit-content;
+  max-width: min(100%, 58ch);
+  border: 1px solid rgba(255, 255, 255, 0.7);
   border-radius: 12px;
-  padding: 0.7rem 0.8rem;
-  background: rgba(255, 255, 255, 0.16);
-  color: #fff;
+  padding: 0.75rem 0.9rem;
+  background: rgba(255, 255, 255, 0.94);
+  color: #8f1732;
   font-weight: 800;
+  box-shadow: 0 14px 30px rgba(91, 45, 129, 0.22);
 }
 
 .admin-workspace {

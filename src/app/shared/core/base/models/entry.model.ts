@@ -9,11 +9,9 @@ export interface FirebaseAuthProfile {
 }
 
 export type FirebaseAuthProvider = 'google' | 'facebook' | 'email';
-export type FirebaseEmailAuthMode = 'sign-in' | 'create';
 
 export interface FirebaseAuthRequest {
   provider: FirebaseAuthProvider;
-  emailMode?: FirebaseEmailAuthMode;
   email?: string;
   password?: string;
 }

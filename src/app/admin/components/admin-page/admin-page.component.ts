@@ -161,7 +161,7 @@ export class AdminPageComponent implements OnInit, OnDestroy {
     this.restoreAvatarGateActive.set(false);
     this.restoringWorkspace.set(false);
     if (!restored) {
-      await this.router.navigateByUrl(this.admin.accessDenied() ? '/game' : '/admin', { replaceUrl: true });
+      await this.router.navigateByUrl('/admin', { replaceUrl: true });
     }
   }
 
@@ -186,7 +186,7 @@ export class AdminPageComponent implements OnInit, OnDestroy {
       return;
     }
     if (this.admin.accessDenied()) {
-      await this.router.navigateByUrl('/game', { replaceUrl: true });
+      await this.router.navigateByUrl('/admin', { replaceUrl: true });
     }
   }
 
@@ -255,7 +255,7 @@ export class AdminPageComponent implements OnInit, OnDestroy {
   protected onAdminAccessDenied(): void {
     this.admin.handleAdminAccessDenied();
     if (this.router.url.split('?')[0].startsWith('/admin')) {
-      void this.router.navigateByUrl('/game', { replaceUrl: true });
+      void this.router.navigateByUrl('/admin', { replaceUrl: true });
     }
   }
 

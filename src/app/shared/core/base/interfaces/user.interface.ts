@@ -106,6 +106,7 @@ export interface UserDto {
   profileStatus: 'public' | 'friends only' | 'host only' | 'inactive' | 'blocked' | 'deleted' | 'onboarding';
   previousProfileStatus?: UserDto['profileStatus'] | null;
   deletedAtIso?: string | null;
+  admin?: boolean;
   activities: {
     game: number;
     chat: number;
