@@ -442,28 +442,6 @@
   color: rgba(50, 92, 142, 0.48);
 }
 
-.entry-consent-loading-ring {
-  width: 46px;
-  height: 46px;
-  transform: rotate(-90deg);
-}
-
-.entry-consent-loading-ring-track,
-.entry-consent-loading-ring-value {
-  fill: none;
-  stroke-width: 4;
-}
-
-.entry-consent-loading-ring-track {
-  stroke: rgba(58, 96, 143, 0.16);
-}
-
-.entry-consent-loading-ring-value {
-  stroke: #3268a8;
-  stroke-linecap: round;
-  transition: stroke-dashoffset 0.08s linear;
-}
-
 .entry-consent-actions {
   padding: 0.78rem 0.95rem 0.9rem;
   border-top: 1px solid rgba(36, 63, 107, 0.14);

@@ -1,0 +1,27 @@
+<main class="legal-page">
+  <section class="legal-shell">
+    <header class="legal-header">
+      <a class="legal-brand" href="/">
+        <img src="assets/icon/android-chrome-192x192.png" alt="" width="40" height="40" />
+        <span>MyScoutee</span>
+      </a>
+      <p>{{ content().eyebrow }}</p>
+      <h1>{{ content().title }}</h1>
+      <span>Last updated: {{ content().updatedAt }}</span>
+      <p class="legal-summary">{{ content().summary }}</p>
+    </header>
+
+    <div class="legal-sections">
+      @for (section of content().sections; track section.title) {
+        <section class="legal-section">
+          <h2>{{ section.title }}</h2>
+          <ul>
+            @for (item of section.items; track item) {
+              <li>{{ item }}</li>
+            }
+          </ul>
+        </section>
+      }
+    </div>
+  </section>
+</main>

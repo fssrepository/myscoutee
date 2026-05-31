@@ -15,6 +15,10 @@ export class DemoShareTokensRepository {
   private readonly eventsRepository = inject(DemoEventsRepository);
   private readonly assetsRepository = inject(DemoAssetsRepository);
 
+  async flushToIndexedDb(): Promise<void> {
+    await this.memoryDb.flushToIndexedDb();
+  }
+
   createToken(request: AppTypes.ShareTokenCreateRequest): string {
     const kind = request.kind;
     const entityId = `${request.entityId ?? ''}`.trim();
@@ -45,6 +49,52 @@ export class DemoShareTokensRepository {
             [token]: record
           },
           tokens: [...activeTokens, token]
+        }
+      };
+    });
+    return token;
+  }
+
+  ensureAdminHelpToken(request: {
+    adminId: string;
+    userId: string;
+    targetKey: string;
+    targetUrl: string;
+  }): string {
+    const adminId = `${request.adminId ?? ''}`.trim();
+    const userId = `${request.userId ?? ''}`.trim();
+    const targetKey = `${request.targetKey ?? ''}`.trim();
+    const targetUrl = `${request.targetUrl ?? ''}`.trim();
+    if (!adminId || !userId || !targetKey || !targetUrl) {
+      return '';
+    }
+    const safeAdminId = adminId.replace(/[^A-Za-z0-9-]/g, '-');
+    const targetSuffix = targetKey === 'current' ? '' : `-${targetKey}`;
+    const token = `myscoutee:token:admin-help-${safeAdminId}-${userId}${targetSuffix}`;
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + DemoShareTokensRepository.TOKEN_TTL_MS);
+    const record: AppTypes.ShareTokenRecord = {
+      token,
+      kind: 'adminHelp',
+      entityId: targetUrl,
+      ownerUserId: userId,
+      createdAtIso: now.toISOString(),
+      expiresAtIso: expiresAt.toISOString()
+    };
+    this.memoryDb.write(state => {
+      const table = state[SHARE_TOKENS_TABLE_NAME];
+      const existing = table.byToken[token];
+      if (existing && !this.isExpired(existing) && existing.entityId === targetUrl) {
+        return state;
+      }
+      return {
+        ...state,
+        [SHARE_TOKENS_TABLE_NAME]: {
+          byToken: {
+            ...table.byToken,
+            [token]: record
+          },
+          tokens: table.tokens.includes(token) ? [...table.tokens] : [...table.tokens, token]
         }
       };
     });

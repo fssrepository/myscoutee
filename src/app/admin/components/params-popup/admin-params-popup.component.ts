@@ -5,45 +5,45 @@ import { MatIconModule } from '@angular/material/icon';
 
 import { RouteDelayService } from '../../../shared/core/base/services/route-delay.service';
 import { I18nPipe } from '../../../shared/i18n';
+import { ProgressIndicatorComponent } from '../../../shared/ui/components/progress-indicator';
 import {
-  AdminService,
   type AdminParamFieldDto,
   type AdminParamOptionDto,
   type AdminParamsHistoryDto,
   type AdminParamsHistoryItemDto,
   type AdminParamsSectionDto,
   type AdminParamsStateDto
-} from '../../admin.service';
+} from '../../models/admin-params.model';
+import { AdminParamsService } from '../../services/admin-params.service';
+import { AdminShellService } from '../../services/admin-shell.service';
 
 type AdminParamOption = Readonly<AdminParamOptionDto>;
 
 @Component({
   selector: 'app-admin-params-popup',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatIconModule, I18nPipe],
+  imports: [CommonModule, FormsModule, MatIconModule, ProgressIndicatorComponent, I18nPipe],
   templateUrl: './admin-params-popup.component.html',
   styleUrl: './admin-params-popup.component.scss'
 })
 export class AdminParamsPopupComponent implements OnDestroy {
   private static readonly ACTION_PENDING_WINDOW_MS = 1500;
-  private static readonly LOAD_DEMO_DELAY_MS = 1500;
   private static readonly LOAD_PROGRESS_WINDOW_MS = 3000;
-  private static readonly SAVE_DEMO_DELAY_MS = 1500;
 
-  protected readonly admin = inject(AdminService);
+  protected readonly admin = inject(AdminShellService);
+  private readonly paramsService = inject(AdminParamsService);
   private readonly routeDelay = inject(RouteDelayService);
   protected readonly loading = signal(false);
   protected readonly saving = signal(false);
   protected readonly reverting = signal(false);
   protected readonly revertingVersion = signal<number | null>(null);
-  protected readonly actionRingPerimeter = 100;
-  protected readonly loadingRingPerimeter = 100;
   protected readonly loadingProgress = signal(0);
   protected readonly error = signal('');
   protected readonly state = signal<AdminParamsStateDto | null>(null);
   protected readonly openSectionKey = signal('');
   protected readonly editDraft = signal<{ section: AdminParamsSectionDto; fields: AdminParamFieldDto[] } | null>(null);
   protected readonly history = signal<AdminParamsHistoryDto | null>(null);
+  protected readonly historyLoading = signal(false);
   protected readonly inspectedVersion = signal<AdminParamsHistoryItemDto | null>(null);
   protected readonly openTextSelectKey = signal('');
   protected readonly selectedSection = computed(() => {
@@ -52,14 +52,17 @@ export class AdminParamsPopupComponent implements OnDestroy {
   });
   private loadingProgressTimer: ReturnType<typeof setInterval> | null = null;
   private loadingProgressStartedAtMs = 0;
+  private historyLoadGeneration = 0;
 
   constructor() {
     void this.load();
   }
 
   ngOnDestroy(): void {
+    this.historyLoadGeneration += 1;
     this.editDraft.set(null);
     this.history.set(null);
+    this.historyLoading.set(false);
     this.openTextSelectKey.set('');
     this.clearLoadingProgress();
   }
@@ -69,10 +72,7 @@ export class AdminParamsPopupComponent implements OnDestroy {
     this.beginLoadingProgress();
     this.error.set('');
     try {
-      const [state] = await Promise.all([
-        this.admin.loadParamsState(),
-        this.routeDelay.waitForRouteDelay('/admin/params', undefined, undefined, AdminParamsPopupComponent.LOAD_DEMO_DELAY_MS)
-      ]);
+      const state = await this.paramsService.loadParamsState();
       this.state.set(state);
       if (!this.openSectionKey() && state.sections.length) {
         this.openSectionKey.set(state.sections[0].key);
@@ -122,14 +122,11 @@ export class AdminParamsPopupComponent implements OnDestroy {
     this.saving.set(true);
     this.error.set('');
     try {
-      const [state] = await Promise.all([
-        this.admin.saveParamsSection(
-          draft.section.key,
-          draft.fields,
-          `Updated ${draft.section.label} parameters.`
-        ),
-        this.routeDelay.waitForRouteDelay('/admin/params/save', undefined, undefined, AdminParamsPopupComponent.SAVE_DEMO_DELAY_MS)
-      ]);
+      const state = await this.paramsService.saveParamsSection(
+        draft.section.key,
+        draft.fields,
+        `Updated ${draft.section.label} parameters.`
+      );
       this.state.set(state);
       this.openSectionKey.set(draft.section.key);
       this.editDraft.set(null);
@@ -143,13 +140,36 @@ export class AdminParamsPopupComponent implements OnDestroy {
 
   protected async openHistory(section: AdminParamsSectionDto, event?: Event): Promise<void> {
     event?.stopPropagation();
+    if (this.loading() || this.saving()) {
+      return;
+    }
+    const loadGeneration = ++this.historyLoadGeneration;
     this.error.set('');
     this.inspectedVersion.set(null);
+    this.history.set({
+      sectionKey: section.key,
+      label: section.label,
+      labelKey: section.labelKey,
+      versions: []
+    });
+    this.historyLoading.set(true);
+    this.beginLoadingProgress();
     try {
-      const history = await this.admin.loadParamsHistory(section.key);
+      const history = await this.paramsService.loadParamsHistory(section.key);
+      if (this.historyLoadGeneration !== loadGeneration) {
+        return;
+      }
       this.history.set(history);
     } catch (error) {
-      this.error.set(this.messageFromError(error, 'Unable to load parameter history.'));
+      if (this.historyLoadGeneration === loadGeneration) {
+        this.history.set(null);
+        this.error.set(this.messageFromError(error, 'Unable to load parameter history.'));
+      }
+    } finally {
+      if (this.historyLoadGeneration === loadGeneration) {
+        this.historyLoading.set(false);
+        this.endLoadingProgress();
+      }
     }
   }
 
@@ -157,8 +177,11 @@ export class AdminParamsPopupComponent implements OnDestroy {
     if (this.reverting()) {
       return;
     }
+    this.historyLoadGeneration += 1;
     this.history.set(null);
+    this.historyLoading.set(false);
     this.inspectedVersion.set(null);
+    this.clearLoadingProgress();
   }
 
   protected inspectVersion(item: AdminParamsHistoryItemDto, event?: Event): void {
@@ -175,16 +198,29 @@ export class AdminParamsPopupComponent implements OnDestroy {
     this.reverting.set(true);
     this.revertingVersion.set(item.version);
     this.error.set('');
+    let loadGeneration = 0;
     try {
-      const state = await this.withMinimumActionTime(this.admin.revertParamsSection(history.sectionKey, item.version));
+      const state = await this.withMinimumActionTime(this.paramsService.revertParamsSection(history.sectionKey, item.version));
       this.state.set(state);
       this.openSectionKey.set(history.sectionKey);
-      const refreshedHistory = await this.admin.loadParamsHistory(history.sectionKey);
+      loadGeneration = ++this.historyLoadGeneration;
+      this.historyLoading.set(true);
+      this.beginLoadingProgress();
+      const refreshedHistory = await this.paramsService.loadParamsHistory(history.sectionKey);
+      if (this.historyLoadGeneration !== loadGeneration) {
+        return;
+      }
       this.history.set(refreshedHistory);
       this.inspectedVersion.set(refreshedHistory.versions.find(version => version.active) ?? null);
     } catch (error) {
-      this.error.set(this.messageFromError(error, 'Unable to revert parameters.'));
+      if (loadGeneration === 0 || this.historyLoadGeneration === loadGeneration) {
+        this.error.set(this.messageFromError(error, 'Unable to revert parameters.'));
+      }
     } finally {
+      if (loadGeneration > 0 && this.historyLoadGeneration === loadGeneration) {
+        this.historyLoading.set(false);
+        this.endLoadingProgress();
+      }
       this.revertingVersion.set(null);
       this.reverting.set(false);
     }
@@ -274,10 +310,6 @@ export class AdminParamsPopupComponent implements OnDestroy {
 
   protected updateNumberField(field: AdminParamFieldDto, value: string): void {
     field.numberValue = Number.isFinite(Number(value)) ? Number(value) : 0;
-  }
-
-  protected loadingRingDashOffset(): number {
-    return this.loadingRingPerimeter * (1 - Math.min(1, Math.max(0, this.loadingProgress())));
   }
 
   private beginLoadingProgress(): void {

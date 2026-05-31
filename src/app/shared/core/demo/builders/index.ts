@@ -3,6 +3,8 @@ export { DemoChatsRepositoryBuilder } from './demo-chats-repository.builder';
 export { DemoEventFeedbackBuilder } from './demo-event-feedback.builder';
 export { DemoEventsRepositoryBuilder } from './demo-events-repository.builder';
 export { DemoEventSeedBuilder } from './demo-event-seed.builder';
+export { DemoHelpCenterSeedBuilder } from './demo-help-center-seed.builder';
+export { DemoIdeaPostsSeedBuilder } from './demo-idea-posts-seed.builder';
 export { DemoProfileExperienceSeedBuilder } from './demo-profile-experience-seed.builder';
 export { DemoSeedScheduleBuilder } from './demo-seed-schedule.builder';
 export { DemoUserFilterPreferencesBuilder } from './demo-user-filter-preferences.builder';

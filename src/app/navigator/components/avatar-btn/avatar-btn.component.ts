@@ -12,7 +12,7 @@ import {
   type ActivityCounterKey,
   type UserDto
 } from '../../../shared/core';
-import { CounterBadgePipe } from '../../../shared/ui';
+import { CounterBadgePipe, ProgressIndicatorComponent } from '../../../shared/ui';
 import { NavigatorService } from '../../navigator.service';
 
 interface NavigatorAvatarState {
@@ -23,15 +23,12 @@ interface NavigatorAvatarState {
 @Component({
   selector: 'app-avatar-btn',
   standalone: true,
-  imports: [CommonModule, MatButtonModule, MatIconModule, CounterBadgePipe],
+  imports: [CommonModule, MatButtonModule, MatIconModule, ProgressIndicatorComponent, CounterBadgePipe],
   templateUrl: './avatar-btn.component.html',
   styleUrl: './avatar-btn.component.scss'
 })
 export class AvatarBtnComponent implements OnDestroy {
   private static readonly USER_MENU_LOAD_DURATION_MS = 3000;
-  private static readonly USER_MENU_LOAD_PROGRESS_INTERVAL_MS = 50;
-  private static readonly USER_MENU_RING_RADIUS = 26;
-  private static readonly USER_MENU_RING_CIRCUMFERENCE = 2 * Math.PI * AvatarBtnComponent.USER_MENU_RING_RADIUS;
 
   private readonly router = inject(Router);
   private readonly appCtx = inject(AppContext);
@@ -39,18 +36,11 @@ export class AvatarBtnComponent implements OnDestroy {
   private readonly navigatorService = inject(NavigatorService);
   private readonly currentUrlRef = signal(this.normalizeRouteUrl(this.router.url));
   private readonly userMenuLoadOverdueRef = signal(false);
-  private readonly userMenuLoadProgressRef = signal(0);
   private readonly activeUserLoadState = this.appCtx.selectLoadingState(USER_BY_ID_LOAD_CONTEXT_KEY);
   private readonly profileSaveLoadState = this.appCtx.selectLoadingState(USER_PROFILE_SAVE_CONTEXT_KEY);
   private readonly routerEventsSubscription: Subscription;
   private userMenuLoadOverdueTimer: ReturnType<typeof setTimeout> | null = null;
-  private userMenuLoadProgressTimer: ReturnType<typeof setInterval> | null = null;
-  private userMenuLoadStartedAtMs = 0;
 
-  protected readonly ringCircumference = AvatarBtnComponent.USER_MENU_RING_CIRCUMFERENCE;
-  protected readonly ringDashOffset = computed(() =>
-    AvatarBtnComponent.USER_MENU_RING_CIRCUMFERENCE * (1 - this.userMenuLoadProgressRef())
-  );
   protected readonly bindings = this.navigatorService.bindings;
   protected readonly activeUser = this.appCtx.activeUserProfile;
   protected readonly avatarState = computed<NavigatorAvatarState>(() => {
@@ -214,13 +204,8 @@ export class AvatarBtnComponent implements OnDestroy {
       return;
     }
     this.userMenuLoadOverdueRef.set(false);
-    this.userMenuLoadStartedAtMs = performance.now();
-    this.userMenuLoadProgressRef.set(0);
-    this.startUserMenuLoadProgressTimer();
     this.userMenuLoadOverdueTimer = setTimeout(() => {
       this.userMenuLoadOverdueTimer = null;
-      this.stopUserMenuLoadProgressTimer();
-      this.userMenuLoadProgressRef.set(1);
       this.userMenuLoadOverdueRef.set(true);
     }, AvatarBtnComponent.USER_MENU_LOAD_DURATION_MS);
   }
@@ -230,9 +215,6 @@ export class AvatarBtnComponent implements OnDestroy {
       clearTimeout(this.userMenuLoadOverdueTimer);
       this.userMenuLoadOverdueTimer = null;
     }
-    this.stopUserMenuLoadProgressTimer();
-    this.userMenuLoadStartedAtMs = 0;
-    this.userMenuLoadProgressRef.set(0);
     this.userMenuLoadOverdueRef.set(false);
   }
 
@@ -241,30 +223,7 @@ export class AvatarBtnComponent implements OnDestroy {
       clearTimeout(this.userMenuLoadOverdueTimer);
       this.userMenuLoadOverdueTimer = null;
     }
-    this.stopUserMenuLoadProgressTimer();
-    this.userMenuLoadStartedAtMs = 0;
-    this.userMenuLoadProgressRef.set(1);
     this.userMenuLoadOverdueRef.set(true);
-  }
-
-  private startUserMenuLoadProgressTimer(): void {
-    this.stopUserMenuLoadProgressTimer();
-    this.userMenuLoadProgressTimer = setInterval(() => {
-      const elapsedMs = Math.max(0, performance.now() - this.userMenuLoadStartedAtMs);
-      const progress = Math.min(1, elapsedMs / AvatarBtnComponent.USER_MENU_LOAD_DURATION_MS);
-      this.userMenuLoadProgressRef.set(progress);
-      if (progress >= 1) {
-        this.stopUserMenuLoadProgressTimer();
-      }
-    }, AvatarBtnComponent.USER_MENU_LOAD_PROGRESS_INTERVAL_MS);
-  }
-
-  private stopUserMenuLoadProgressTimer(): void {
-    if (!this.userMenuLoadProgressTimer) {
-      return;
-    }
-    clearInterval(this.userMenuLoadProgressTimer);
-    this.userMenuLoadProgressTimer = null;
   }
 
   private isInternalRoute(url: string): boolean {

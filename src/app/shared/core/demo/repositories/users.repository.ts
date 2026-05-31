@@ -36,6 +36,14 @@ export class DemoUsersRepository {
   readonly demoUsers = computed(() => this.queryAvailableDemoUsers());
   private initialized = false;
 
+  async whenReady(): Promise<void> {
+    await this.memoryDb.whenReady();
+  }
+
+  async flushToIndexedDb(): Promise<void> {
+    await this.memoryDb.flushToIndexedDb();
+  }
+
   init(users?: readonly UserDto[]): UserDto[] {
     if (this.initialized) {
       return this.queryUsersFromTable(USERS_TABLE_NAME);

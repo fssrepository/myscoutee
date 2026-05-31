@@ -31,17 +31,7 @@
       <div class="entry-consent-content">
         @if (loading) {
           <section class="entry-consent-loading">
-            <svg class="entry-consent-loading-ring" viewBox="0 0 44 44" aria-hidden="true">
-              <circle class="entry-consent-loading-ring-track" cx="22" cy="22" r="18"></circle>
-              <circle
-                class="entry-consent-loading-ring-value"
-                cx="22"
-                cy="22"
-                r="18"
-                [attr.stroke-dasharray]="loadingRingPerimeter"
-                [attr.stroke-dashoffset]="loadingRingDashOffset()"
-              ></circle>
-            </svg>
+            <app-progress-indicator kind="load-ring" size="sm" [position]="loadingProgress"></app-progress-indicator>
             <span>{{ uiText('Loading privacy content') }}</span>
           </section>
         } @else if (activeRevision()) {

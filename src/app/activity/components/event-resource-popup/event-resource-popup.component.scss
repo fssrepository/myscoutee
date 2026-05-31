@@ -1400,37 +1400,6 @@
   pointer-events: none;
 }
 
-.asset-explore-shell .asset-explore-borrow-confirm-ring-svg {
-  width: 100%;
-  height: 100%;
-  display: block;
-  filter: drop-shadow(0 8px 20px rgba(68, 18, 18, 0.16));
-}
-
-.asset-explore-shell .asset-explore-borrow-confirm-ring-track,
-.asset-explore-shell .asset-explore-borrow-confirm-ring-progress {
-  fill: none;
-  stroke-width: 4;
-}
-
-.asset-explore-shell .asset-explore-borrow-confirm-ring-track {
-  stroke: rgba(133, 100, 42, 0.18);
-}
-
-.asset-explore-shell .asset-explore-borrow-confirm-ring-progress {
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.asset-explore-shell .asset-explore-borrow-confirm-ring-progress.is-loading {
-  stroke: url(#asset-explore-borrow-gradient);
-  animation: asset-explore-borrow-ring-progress 3s linear forwards;
-}
-
-.asset-explore-shell .asset-explore-borrow-confirm-ring-progress.is-error {
-  stroke: url(#asset-explore-borrow-gradient-error);
-}
-
 .asset-explore-shell .asset-explore-borrow-actions__btn {
   min-height: 42px;
   padding: 0 1rem;
@@ -1496,16 +1465,6 @@
 
 .asset-explore-shell .asset-explore-borrow-actions__btn:not(:disabled):hover {
   transform: translateY(-1px);
-}
-
-@keyframes asset-explore-borrow-ring-progress {
-  from {
-    stroke-dashoffset: 100;
-  }
-
-  to {
-    stroke-dashoffset: 0;
-  }
 }
 
 :host ::ng-deep .asset-explore-borrow-panel .event-date-field,
@@ -1719,39 +1678,6 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
-}
-
-.event-resource-popup-shell .subevent-resource-save-btn-ring-svg {
-  width: 100%;
-  height: 100%;
-  display: block;
-  filter: drop-shadow(0 4px 12px rgba(22, 94, 51, 0.12));
-}
-
-.event-resource-popup-shell .subevent-resource-save-btn-ring-track,
-.event-resource-popup-shell .subevent-resource-save-btn-ring-progress {
-  fill: none;
-  stroke-width: 3;
-}
-
-.event-resource-popup-shell .subevent-resource-save-btn-ring-track {
-  stroke: rgba(133, 100, 42, 0.18);
-}
-
-.event-resource-popup-shell .subevent-resource-save-btn-ring-progress {
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  transform-origin: 50% 50%;
-  transform: rotate(-90deg);
-}
-
-.event-resource-popup-shell .subevent-resource-save-btn-ring-progress.is-loading {
-  stroke: url(#subevent-resource-save-gradient);
-  animation: subevent-resource-ring-progress 3s linear forwards;
-}
-
-.event-resource-popup-shell .subevent-resource-save-btn-ring-progress.is-error {
-  stroke: url(#subevent-resource-save-gradient-error);
 }
 
 .event-resource-popup-shell .subevent-resource-save-btn-shell.is-loading .subevent-resource-save-btn,
@@ -2054,37 +1980,6 @@
   pointer-events: none;
 }
 
-.event-resource-popup-shell .subevent-resource-delete-btn-ring-svg {
-  width: 100%;
-  height: 100%;
-  display: block;
-  filter: drop-shadow(0 8px 20px rgba(68, 18, 18, 0.16));
-}
-
-.event-resource-popup-shell .subevent-resource-delete-btn-ring-track,
-.event-resource-popup-shell .subevent-resource-delete-btn-ring-progress {
-  fill: none;
-  stroke-width: 4;
-}
-
-.event-resource-popup-shell .subevent-resource-delete-btn-ring-track {
-  stroke: rgba(133, 100, 42, 0.18);
-}
-
-.event-resource-popup-shell .subevent-resource-delete-btn-ring-progress {
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.event-resource-popup-shell .subevent-resource-delete-btn-ring-progress.is-loading {
-  stroke: url(#subevent-resource-delete-gradient);
-  animation: subevent-resource-ring-progress 3s linear forwards;
-}
-
-.event-resource-popup-shell .subevent-resource-delete-btn-ring-progress.is-error {
-  stroke: url(#subevent-resource-delete-gradient-error);
-}
-
 .event-resource-popup-shell .subevent-resource-delete-btn-shell.is-loading .subevent-resource-delete-confirm-btn,
 .event-resource-popup-shell .subevent-resource-delete-btn-shell.is-error .subevent-resource-delete-confirm-btn {
   box-shadow: none;
@@ -2117,16 +2012,6 @@
   opacity: 1;
   transform: none;
   filter: none;
-}
-
-@keyframes subevent-resource-ring-progress {
-  from {
-    stroke-dashoffset: 100;
-  }
-
-  to {
-    stroke-dashoffset: 0;
-  }
 }
 
 :host ::ng-deep .mat-mdc-select-panel.subevent-resource-options-panel {

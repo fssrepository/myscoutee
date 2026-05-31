@@ -10,7 +10,6 @@ export interface AssetPopupHost {
   canConfirmSubEventAssetAssignSelection(): boolean;
   isSubEventAssetAssignPending(): boolean;
   subEventAssetAssignErrorMessage(): string;
-  subEventAssetAssignRingPerimeter(): number;
   closeSubEventAssetAssignPopup(apply?: boolean): void;
   confirmSubEventAssetAssignSelection(event?: Event): void;
   subEventAssetAssignCandidates(): AppTypes.AssetCard[];

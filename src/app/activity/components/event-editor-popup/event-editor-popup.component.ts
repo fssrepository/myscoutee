@@ -24,11 +24,12 @@ import {
   AppContext,
   AppPopupContext,
   EventEditorDataService,
-  ExplanationGuideService
+  ExplanationGuideService,
+  RouteDelayService
 } from '../../../shared/core';
 import { HttpMediaService } from '../../../shared/core/http';
 import type { DemoEventRecord } from '../../../shared/core/demo/models/events.model';
-import { CounterBadgePipe, PricingEditorComponent, TopicPickerPopupComponent } from '../../../shared/ui';
+import { CounterBadgePipe, PricingEditorComponent, ProgressIndicatorComponent, TopicPickerPopupComponent } from '../../../shared/ui';
 import { environment } from '../../../../environments/environment';
 import { EventSubeventsPopupComponent, EventSubeventsItem } from '../event-subevents-popup/event-subevents-popup.component';
 
@@ -50,6 +51,7 @@ import { EventSubeventsPopupComponent, EventSubeventsItem } from '../event-subev
     TopicPickerPopupComponent,
     EventSubeventsPopupComponent,
     PricingEditorComponent,
+    ProgressIndicatorComponent,
     CounterBadgePipe
   ],
   templateUrl: './event-editor-popup.component.html',
@@ -57,6 +59,9 @@ import { EventSubeventsPopupComponent, EventSubeventsItem } from '../event-subev
 })
 export class EventEditorPopupComponent implements OnInit, OnDestroy {
   private static readonly DRAFT_AUTOSAVE_INTERVAL_MS = 5000;
+  private static readonly DETAIL_LOAD_ROUTE = '/activities/events';
+  private static readonly DETAIL_LOAD_DEMO_DELAY_MS = 1500;
+  private static readonly DETAIL_LOAD_TIMEOUT_MS = 3000;
   protected readonly eventEditorService = inject(EventEditorPopupStateService);
   private readonly activitiesContext = inject(ActivitiesPopupStateService);
   private readonly activitiesService = inject(ActivitiesService);
@@ -66,6 +71,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   private readonly popupCtx = inject(AppPopupContext);
   private readonly httpMediaService = inject(HttpMediaService);
   private readonly explanationGuide = inject(ExplanationGuideService);
+  private readonly routeDelay = inject(RouteDelayService);
   protected readonly interestOptionGroups = APP_STATIC_DATA.interestOptionGroups;
 
   @ViewChild('eventImageInput') eventImageInput!: ElementRef<HTMLInputElement>;
@@ -259,7 +265,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   showTopicPicker = false;
   showMobileFrequencyPicker = false;
   isSavePending = false;
-  readonly saveRingPerimeter = 100;
   workingPolicies: AppTypes.EventPolicyItem[] = [];
   workingPolicyDraft: AppTypes.EventPolicyItem = this.createEmptyPolicyDraft();
   editingPolicyDraftIndex: number | null = null;
@@ -1388,32 +1393,34 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.editorTarget = target;
     this.editingEventId = row.id;
     this.currentMemberSummary = this.activityMembersService.peekSummaryByOwnerId(row.id);
-    void this.refreshCurrentMemberSummary(row.id);
 
     if (!activeUserId) {
       this.eventEditorService.open('edit', fallbackSource, readOnly);
-      return;
-    }
-
-    const cachedRecord = this.eventEditorDataService.peekKnownItemById(activeUserId, row.id);
-    if (cachedRecord) {
-      this.currentRecord = cachedRecord;
-      this.openRecord(cachedRecord, readOnly, target);
+      void this.refreshCurrentMemberSummary(row.id);
       return;
     }
 
     this.isLoadingEventData = true;
     this.eventEditorService.open('edit', fallbackSource, readOnly);
+    void this.refreshCurrentMemberSummary(row.id);
 
     let isTimeout = false;
-    const timeoutPromise = new Promise(resolve => setTimeout(() => {
+    const timeoutPromise = new Promise<DemoEventRecord | null>(resolve => setTimeout(() => {
       isTimeout = true;
       resolve(null);
-    }, 3000));
+    }, EventEditorPopupComponent.DETAIL_LOAD_TIMEOUT_MS));
 
     try {
       const record = await Promise.race([
-        this.eventEditorDataService.queryKnownItemById(activeUserId, row.id),
+        Promise.all([
+          this.eventEditorDataService.loadFullItemById(activeUserId, row.id),
+          this.routeDelay.waitForRouteDelay(
+            EventEditorPopupComponent.DETAIL_LOAD_ROUTE,
+            undefined,
+            undefined,
+            EventEditorPopupComponent.DETAIL_LOAD_DEMO_DELAY_MS
+          )
+        ]).then(([loadedRecord]) => loadedRecord),
         timeoutPromise
       ]);
 
@@ -1422,7 +1429,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
         return;
       }
 
-      this.currentRecord = record as DemoEventRecord;
+      this.currentRecord = record;
       this.editorTarget = this.currentRecord.type === 'hosting' ? 'hosting' : target;
       this.editingEventId = this.currentRecord.id;
       this.openRecord(this.currentRecord, readOnly, this.editorTarget);

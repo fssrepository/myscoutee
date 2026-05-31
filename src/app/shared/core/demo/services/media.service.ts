@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 
-import { AppMemoryDb } from '../../base/db';
+import { DemoMediaRepository } from '../repositories/media.repository';
 
 export interface DemoMediaUploadResult {
   uploaded: boolean;
@@ -11,7 +11,7 @@ export interface DemoMediaUploadResult {
   providedIn: 'root'
 })
 export class DemoMediaService {
-  private readonly memoryDb = inject(AppMemoryDb);
+  private readonly mediaRepository = inject(DemoMediaRepository);
 
   async uploadImage(scope: string, ownerId: string, entityId: string, file: File): Promise<DemoMediaUploadResult> {
     const imageUrl = this.createDemoObjectUrl(file) ?? await this.readImageDataUrl(file);
@@ -49,7 +49,7 @@ export class DemoMediaService {
 
   private async persistDemoImageObject(scope: string, ownerId: string, entityId: string, file: File, imageUrl: string): Promise<void> {
     try {
-      await this.memoryDb.writeIndexedDbTableEntry(`mediaImage:${this.newId('media')}`, {
+      await this.mediaRepository.saveImage({
         scope: scope.trim() || 'content',
         ownerId: ownerId.trim() || 'admin',
         entityId: entityId.trim() || 'shared',
@@ -63,9 +63,5 @@ export class DemoMediaService {
     } catch {
       // The object URL remains usable in the current demo session.
     }
-  }
-
-  private newId(prefix: string): string {
-    return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
   }
 }

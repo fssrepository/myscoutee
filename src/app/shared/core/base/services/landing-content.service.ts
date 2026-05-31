@@ -115,7 +115,7 @@ export class LandingContentService extends BaseRouteModeService {
             partitionKey: state.loginAvailability.partitionKey ?? null,
             message: state.loginAvailability.message ?? null,
             securityGateEnabled: state.loginAvailability.securityGateEnabled === true,
-            locationRequired: state.loginAvailability.locationRequired === true
+            locationRequired: false
           }
         : null
     };

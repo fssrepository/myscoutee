@@ -37,10 +37,7 @@
 
               @if (isUploading(slotIndex)) {
                 <span class="editable-image-carousel__upload-ring" aria-label="Uploading image">
-                  <svg viewBox="0 0 44 44" class="editable-image-carousel__upload-ring-svg" aria-hidden="true">
-                    <circle class="editable-image-carousel__upload-ring-track" cx="22" cy="22" r="17"></circle>
-                    <circle class="editable-image-carousel__upload-ring-progress" cx="22" cy="22" r="17"></circle>
-                  </svg>
+                  <app-progress-indicator kind="spinner-ring" [size]="compact ? 'sm' : 'md'"></app-progress-indicator>
                 </span>
               } @else if (imageUrl) {
                 <button

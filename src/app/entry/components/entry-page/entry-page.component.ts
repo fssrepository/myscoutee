@@ -1,8 +1,8 @@
-import { Component, HostListener, OnDestroy, OnInit, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, HostListener, NgZone, OnDestroy, OnInit, inject } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 
-import { ProfileOnboardingService, SessionService, UsersService, type AppSession, type UserDto } from '../../../shared/core';
+import { ProfileOnboardingService, SessionService, UsersService, type AppSession, type FirebaseAuthRequest, type UserDto } from '../../../shared/core';
 import { EntryShellComponent, type EntryDemoUserSelectionEvent } from '../entry-shell/entry-shell.component';
 import { ProfileOnboardingPopupComponent } from '../profile-onboarding-popup/profile-onboarding-popup.component';
 
@@ -15,9 +15,10 @@ import { ProfileOnboardingPopupComponent } from '../profile-onboarding-popup/pro
       [authMode]="sessionService.authMode"
       [firebaseAuthProfile]="sessionService.firebaseProfile()"
       [firebaseAuthIsBusy]="sessionService.firebaseBusy()"
+      [firebaseAuthMessage]="sessionService.firebaseNotice()"
       [isMobileView]="isMobileView"
       (demoUserSelected)="onDemoUserSelected($event)"
-      (firebaseAuthRequested)="onFirebaseAuthRequested()"
+      (firebaseAuthRequested)="onFirebaseAuthRequested($event)"
       (firebaseSessionContinueRequested)="onFirebaseSessionContinueRequested()"
       (entryConsentStateChanged)="onEntryConsentStateChanged($event)"
     ></app-entry-shell>
@@ -35,6 +36,8 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly usersService = inject(UsersService);
   private readonly onboardingService = inject(ProfileOnboardingService);
+  private readonly ngZone = inject(NgZone);
+  private readonly changeDetectorRef = inject(ChangeDetectorRef);
   protected readonly sessionService = inject(SessionService);
   protected isMobileView = typeof window !== 'undefined' ? window.innerWidth <= 760 : false;
   protected onboardingOpen = false;
@@ -72,9 +75,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
     const selectedUser = this.usersService.peekCachedUserById(normalizedUserId);
     if (selectedUser && this.onboardingService.shouldPrompt(selectedUser)) {
       this.pendingDemoSessionUserId = normalizedUserId;
-      this.pendingRedirectAfterOnboarding = this.redirectUrl();
-      this.onboardingUser = selectedUser;
-      this.onboardingOpen = true;
+      this.openOnboardingGate(selectedUser, this.redirectUrl());
       selection.complete();
       return;
     }
@@ -93,8 +94,8 @@ export class EntryPageComponent implements OnInit, OnDestroy {
     }
   }
 
-  protected async onFirebaseAuthRequested(): Promise<void> {
-    const session = await this.sessionService.startFirebaseSession();
+  protected async onFirebaseAuthRequested(request: FirebaseAuthRequest): Promise<void> {
+    const session = await this.sessionService.startFirebaseSession(request);
     if (!session) {
       return;
     }
@@ -178,6 +179,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
 
   private async runPostSessionGate(session: AppSession, redirectUrl: string): Promise<void> {
     const gateToken = ++this.postSessionGateToken;
+    const adminRedirect = this.isAdminRedirect(redirectUrl);
     let user: UserDto | null = null;
     try {
       user = await this.usersService.loadUserById(session.kind === 'demo' ? session.userId : undefined, 8000);
@@ -188,15 +190,49 @@ export class EntryPageComponent implements OnInit, OnDestroy {
       return;
     }
     if (!user) {
+      this.closeOnboardingGate();
+      await this.router.navigateByUrl(redirectUrl);
+      return;
+    }
+    if (user.admin === true) {
+      this.closeOnboardingGate();
+      await this.router.navigateByUrl('/admin');
+      return;
+    }
+    if (adminRedirect) {
+      this.closeOnboardingGate();
       await this.router.navigateByUrl(redirectUrl);
       return;
     }
     if (!this.onboardingService.shouldPrompt(user)) {
+      this.closeOnboardingGate();
       await this.router.navigateByUrl(redirectUrl);
       return;
     }
-    this.pendingRedirectAfterOnboarding = redirectUrl;
-    this.onboardingUser = user;
-    this.onboardingOpen = true;
+    this.openOnboardingGate(user, redirectUrl);
+  }
+
+  private isAdminRedirect(redirectUrl: string): boolean {
+    const normalizedRedirect = `${redirectUrl ?? ''}`.trim();
+    return normalizedRedirect === '/admin' || normalizedRedirect.startsWith('/admin/');
+  }
+
+  private closeOnboardingGate(): void {
+    this.ngZone.run(() => {
+      this.onboardingOpen = false;
+      this.onboardingUser = null;
+      this.pendingRedirectAfterOnboarding = '';
+      this.pendingDemoSessionUserId = '';
+      this.changeDetectorRef.detectChanges();
+    });
+  }
+
+  private openOnboardingGate(user: UserDto, redirectUrl: string): void {
+    this.ngZone.run(() => {
+      this.pendingRedirectAfterOnboarding = redirectUrl;
+      this.onboardingUser = user;
+      this.onboardingOpen = true;
+      this.changeDetectorRef.detectChanges();
+    });
   }
 }

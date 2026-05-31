@@ -5,10 +5,10 @@
       <div class="popup-header popup-header-with-progress">
         <div class="popup-title">
           <h2>Activities</h2>
-          <p class="popup-subtitle">{{ activitiesToolbar.activitiesHeaderLineOne() }}</p>
+          <p class="popup-subtitle">{{ activitiesToolbar.activitiesHeaderLineOne() | i18n }}</p>
           @if (activitiesToolbar.activitiesHeaderLineTwo()) {
             <p class="popup-subtitle popup-subtitle-secondary">
-              {{ activitiesToolbar.activitiesHeaderLineTwo() }}
+              {{ activitiesToolbar.activitiesHeaderLineTwo() | i18n }}
             </p>
           }
         </div>
@@ -387,7 +387,7 @@
                     <mat-select-trigger>
                       <span class="status-option-content">
                         <mat-icon [class]="[activitiesToolbar.activitiesRateFilterClass(activitiesRateFilter), activitiesToolbar.rateFilterOptionClass(activitiesRateFilter)]">{{ activitiesToolbar.activitiesRateFilterIcon(activitiesRateFilter) }}</mat-icon>
-                        <span>{{ activitiesToolbar.activitiesRateFilterLabel() }}</span>
+                        <span>{{ activitiesToolbar.activitiesRateFilterLabel() | i18n }}</span>
                       </span>
                     </mat-select-trigger>
                     @for (option of rateFilterEntries; track option) {
@@ -398,7 +398,7 @@
                             [class.rate-filter-group-label-with-toggle]="activitiesToolbar.shouldShowRateSocialBadgeToggleForGroup(option.label)"
                             >
                             <span class="rate-filter-group-title-chip">
-                              <span class="rate-filter-group-title">{{ option.label }}</span>
+                              <span class="rate-filter-group-title">{{ activitiesToolbar.rateGroupOptionLabelKey(option.label) | i18n }}</span>
                             </span>
                             @if (activitiesToolbar.shouldShowRateSocialBadgeToggleForGroup(option.label)) {
                               <button
@@ -411,7 +411,7 @@
                                 (click)="$event.preventDefault(); $event.stopPropagation(); activitiesToolbar.toggleRateSocialBadgeForGroup(option.label)"
                                 >
                                 <mat-icon>{{ activitiesToolbar.rateSocialBadgeToggleIconForGroup(option.label) }}</mat-icon>
-                                <span>{{ activitiesToolbar.rateSocialBadgeButtonLabelForGroup(option.label) }}</span>
+                                <span>{{ activitiesToolbar.rateSocialBadgeButtonLabelForGroup(option.label) | i18n }}</span>
                               </button>
                             }
                           </span>
@@ -425,7 +425,7 @@
                           >
                           <span class="status-option-content">
                             <mat-icon [class]="[activitiesToolbar.activitiesRateFilterClass(option.key), activitiesToolbar.rateFilterOptionClass(option.key)]">{{ activitiesToolbar.activitiesRateFilterIcon(option.key) }}</mat-icon>
-                            <span>{{ activitiesToolbar.rateFilterOptionLabel(option.key) }}</span>
+                            <span>{{ activitiesToolbar.rateFilterOptionLabel(option.key) | i18n }}</span>
                             @if (activitiesToolbar.rateFilterCount(option.key) > 0) {
                               <span class="rate-filter-count-badge">{{ activitiesToolbar.rateFilterCount(option.key) | counterBadge }}</span>
                             }
@@ -450,7 +450,7 @@
                     >
                     <span class="status-option-content">
                       <mat-icon [class]="[activitiesToolbar.activitiesRateFilterClass(activitiesRateFilter), activitiesToolbar.rateFilterOptionClass(activitiesRateFilter)]">{{ activitiesToolbar.activitiesRateFilterIcon(activitiesRateFilter) }}</mat-icon>
-                      <span>{{ activitiesToolbar.activitiesRateFilterLabel() }}</span>
+                      <span>{{ activitiesToolbar.activitiesRateFilterLabel() | i18n }}</span>
                     </span>
                     <mat-icon>expand_more</mat-icon>
                     @if (activitiesToolbar.selectedRateFilterCount() > 0) {
@@ -461,7 +461,7 @@
                     <div class="popup-filter-panel popup-mobile-filter-panel activities-view-picker-panel activities-mobile-rate-filter-panel">
                       <div class="activities-mobile-sheet-title activities-mobile-rate-sheet-title">
                         <mat-icon>list</mat-icon>
-                        <span>Rate Type</span>
+                        <span>{{ 'rate.type' | i18n }}</span>
                       </div>
                       @for (option of rateFilterEntries; track option) {
                         @if (option.kind === 'group') {
@@ -475,7 +475,7 @@
                                 >
                                 <span class="mobile-profile-selector-option-main">
                                   <mat-icon>{{ activitiesToolbar.rateSocialBadgeGroupIconForGroup(option.label) }}</mat-icon>
-                                  <span>{{ option.label }}</span>
+                                  <span>{{ activitiesToolbar.rateGroupOptionLabelKey(option.label) | i18n }}</span>
                                 </span>
                               </span>
                               <button
@@ -488,7 +488,7 @@
                                 (click)="$event.preventDefault(); $event.stopPropagation(); activitiesToolbar.toggleRateSocialBadgeForGroup(option.label)"
                                 >
                                 <mat-icon>{{ activitiesToolbar.rateSocialBadgeToggleIconForGroup(option.label) }}</mat-icon>
-                                <span>{{ activitiesToolbar.rateSocialBadgeButtonLabelForGroup(option.label) }}</span>
+                                <span>{{ activitiesToolbar.rateSocialBadgeButtonLabelForGroup(option.label) | i18n }}</span>
                               </button>
                             </div>
                           } @else {
@@ -500,7 +500,7 @@
                               >
                               <span class="mobile-profile-selector-option-main">
                                 <mat-icon>{{ activitiesToolbar.isRateGroupSeparator(option.label) ? 'groups_2' : 'person' }}</mat-icon>
-                                <span>{{ option.label }}</span>
+                                <span>{{ activitiesToolbar.rateGroupOptionLabelKey(option.label) | i18n }}</span>
                               </span>
                             </span>
                           }
@@ -514,7 +514,7 @@
                             >
                             <span class="mobile-profile-selector-option-main">
                               <mat-icon [class]="[activitiesToolbar.activitiesRateFilterClass(option.key), activitiesToolbar.rateFilterOptionClass(option.key)]">{{ activitiesToolbar.activitiesRateFilterIcon(option.key) }}</mat-icon>
-                              <span>{{ activitiesToolbar.rateFilterOptionLabel(option.key) }}</span>
+                              <span>{{ activitiesToolbar.rateFilterOptionLabel(option.key) | i18n }}</span>
                             </span>
                             @if (activitiesToolbar.rateFilterCount(option.key) > 0) {
                               <span class="rate-filter-count-badge">{{ activitiesToolbar.rateFilterCount(option.key) | counterBadge }}</span>
@@ -630,6 +630,7 @@
             (itemSelect)="onActivitiesSmartListItemSelect($event)"
             (stateChange)="onActivitiesSmartListStateChange($event)"
             (wheel)="activitiesRates.closeEditorFromUserScroll($event)"
+            (touchmove)="activitiesRates.closeEditorFromUserScroll($event)"
           ></app-smart-list>
           <ng-template #activitiesEventSmartListItemTemplate let-row let-groupLabel="groupLabel">
             <app-activities-event-template

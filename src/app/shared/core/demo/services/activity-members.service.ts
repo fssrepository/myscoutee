@@ -5,7 +5,6 @@ import type {
   ActivityMembersSummary
 } from '../../../core/base/models';
 import type * as AppTypes from '../../../core/base/models';
-import { AppMemoryDb } from '../../../core/base';
 import { DemoRouteDelayService } from './demo-route-delay.service';
 import { DemoActivityMembersRepository } from '../repositories/activity-members.repository';
 
@@ -15,7 +14,6 @@ import { DemoActivityMembersRepository } from '../repositories/activity-members.
 export class DemoActivityMembersService extends DemoRouteDelayService {
   private static readonly MEMBERS_ROUTE = '/activities/events/members';
   private readonly activityMembersRepository = inject(DemoActivityMembersRepository);
-  private readonly memoryDb = inject(AppMemoryDb);
 
   peekMembersByOwner(owner: ActivityMemberOwnerRef): AppTypes.ActivityMemberEntry[] {
     return this.activityMembersRepository.peekMembersByOwner(owner);

@@ -221,11 +221,6 @@ export class SubEventResourcePopupService {
   private readonly assetExploreBorrowDraftsRef = signal<Record<string, AssetExploreBorrowDraftState>>({});
   private readonly assignContextRef = signal<{ subEventId: string; type: AppTypes.AssetType } | null>(null);
   private readonly selectedAssignAssetIdsRef = signal<string[]>([]);
-  private readonly resourceDeleteConfirmRingPerimeter = 100;
-  private readonly resourceEditorSaveRingPerimeter = 100;
-  private readonly deleteConfirmRingPerimeter = 100;
-  private readonly bringConfirmRingPerimeter = 100;
-  private readonly assignConfirmRingPerimeter = 100;
 
   private readonly assignedAssetIdsByKey: Record<string, string[]> = {};
   private readonly assignedAssetSettingsByKey: Record<string, Record<string, AppTypes.SubEventAssignedAssetSettings>> = {};
@@ -319,7 +314,6 @@ export class SubEventResourcePopupService {
     confirmAssetExploreBorrow: event => this.confirmAssetExploreBorrow(event),
     resumeAssetExploreBorrowDraft: (cardId, event) => this.resumeAssetExploreBorrowDraft(cardId, event),
     clearAssetExploreBorrowDraft: (cardId, event) => this.clearAssetExploreBorrowDraft(cardId, event),
-    assetExploreBorrowRingPerimeter: () => this.assignConfirmRingPerimeter,
     trackByCard: (_index, card) => card.id,
     canOpenMap: card => this.canOpenResourceMap(card),
     openMap: (card, event) => this.openResourceMap(card, event),
@@ -353,7 +347,6 @@ export class SubEventResourcePopupService {
     toggleJoinPolicy: policyId => this.toggleAssignedAssetJoinPolicy(policyId),
     canSubmitJoin: () => this.canSubmitAssignedAssetJoin(),
     confirmJoin: event => this.confirmAssignedAssetJoin(event),
-    joinConfirmRingPerimeter: () => this.assignConfirmRingPerimeter,
     canEditCapacity: card => this.canEditCapacity(card),
     openCapacityEditor: (card, event) => this.openCapacityEditor(card, event),
     canEditRoute: card => this.canEditRoute(card),
@@ -379,14 +372,12 @@ export class SubEventResourcePopupService {
     removeRouteStop: index => this.removeRouteStop(index),
     canSubmitRouteEditor: () => this.canSubmitRouteEditor(),
     saveRouteEditor: event => this.saveRouteEditor(event),
-    editorSaveRingPerimeter: () => this.resourceEditorSaveRingPerimeter,
     isCapacitySavePending: () => this.capacityEditorRef()?.busy === true,
     capacitySaveErrorMessage: () => this.capacityEditorRef()?.error?.trim() ?? '',
     isRouteSavePending: () => this.routeEditorRef()?.busy === true,
     routeSaveErrorMessage: () => this.routeEditorRef()?.error?.trim() ?? '',
     cancelDeleteCard: () => this.cancelDeleteResourceCard(),
     deleteCardLabel: () => this.resourceDeleteCardLabel(),
-    deleteCardConfirmRingPerimeter: () => this.resourceDeleteConfirmRingPerimeter,
     isDeleteCardPending: () => this.pendingResourceDeleteRef()?.busy === true,
     deleteCardErrorMessage: () => this.pendingResourceDeleteRef()?.error?.trim() ?? '',
     confirmDeleteCard: () => this.confirmDeleteResourceCard()
@@ -410,12 +401,10 @@ export class SubEventResourcePopupService {
     canSubmitBringDialog: () => this.canSubmitBringDialog(),
     onBringQuantityChange: value => this.onBringQuantityChange(value),
     confirmBringDialog: event => this.confirmBringDialog(event),
-    bringConfirmRingPerimeter: () => this.bringConfirmRingPerimeter,
     isBringPending: () => this.bringDialogRef()?.busy === true,
     bringErrorMessage: () => this.bringErrorMessage(),
     cancelDelete: () => this.cancelDeleteSupplyContribution(),
     pendingDeleteLabel: () => this.pendingDeleteLabel(),
-    deleteConfirmRingPerimeter: () => this.deleteConfirmRingPerimeter,
     isDeletePending: () => this.pendingSupplyDeleteRef()?.busy === true,
     deleteErrorMessage: () => this.pendingSupplyDeleteRef()?.error?.trim() ?? '',
     confirmDelete: () => this.confirmDeleteSupplyContribution()
@@ -431,7 +420,6 @@ export class SubEventResourcePopupService {
     canConfirmSubEventAssetAssignSelection: () => this.canConfirmAssignSelection(),
     isSubEventAssetAssignPending: () => this.pendingAssignSaveRef()?.busy === true,
     subEventAssetAssignErrorMessage: () => this.pendingAssignSaveRef()?.error?.trim() ?? '',
-    subEventAssetAssignRingPerimeter: () => this.assignConfirmRingPerimeter,
     closeSubEventAssetAssignPopup: apply => this.closeAssignPopup(apply),
     confirmSubEventAssetAssignSelection: event => this.confirmAssignPopup(event),
     subEventAssetAssignCandidates: () => this.assignCandidates(),

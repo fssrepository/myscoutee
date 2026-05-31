@@ -3,8 +3,7 @@ import type * as AppTypes from '../../shared/core/base/models';
 import { AppUtils } from '../../shared/app-utils';
 import { APP_STATIC_DATA } from '../../shared/app-static-data';
 import { DemoEventFeedbackBuilder } from '../../shared/core/demo/builders';
-import { AppMemoryDb, EventsService } from '../../shared/core/base';
-import { EVENT_FEEDBACK_TABLE_NAME } from '../../shared/core/demo/models/event-feedback.model';
+import { EventsService } from '../../shared/core/base';
 import type { UserDto } from '../../shared/core';
 import type { DemoEventSeedItem } from '../../shared/core/demo/models/event-seed-item.model';
 
@@ -62,28 +61,27 @@ interface OrganizerEventFeedbackMessageGroup {
   items: OrganizerEventFeedbackMessageItem[];
 }
 
+interface EventFeedbackStateOverride {
+  removed?: boolean;
+  removedAtIso?: string | null;
+  submittedAtIso?: string;
+  organizerNote?: string;
+  answersByCardId?: Record<string, AppTypes.SubmittedEventFeedbackAnswer>;
+}
+
 @Injectable({
   providedIn: 'root'
 })
 export class EventFeedbackPopupStateService {
-  private static readonly EVENT_FEEDBACK_POLL_INTERVAL_MS = 15000;
-  private static readonly DEMO_EVENT_FEEDBACK_POLL_INTERVAL_MS = 5000;
   private readonly eventFeedbackUnlockDelayMs = 2 * 60 * 60 * 1000;
   private readonly sourceRef = signal<EventFeedbackPopupSource | null>(null);
   private readonly eventsService = inject(EventsService);
-  private readonly memoryDb = inject(AppMemoryDb);
-  private eventFeedbackPollTimer: ReturnType<typeof setInterval> | null = null;
-  private eventFeedbackPollInFlight = false;
-  private eventFeedbackPollActiveIntervalMs = EventFeedbackPopupStateService.EVENT_FEEDBACK_POLL_INTERVAL_MS;
 
   public registerSource(source: EventFeedbackPopupSource | null): void {
     this.sourceRef.set(source);
-    this.configureEventFeedbackPolling();
     if (!source?.activeUser?.id?.trim()) {
-      this.receivedEventFeedbackByEventId.set({});
-      return;
+      this.clearEventFeedbackListState('');
     }
-    this.hydrateEventFeedbackState();
   }
 
   public readonly isPopupOpen = signal<boolean>(false);
@@ -114,6 +112,7 @@ export class EventFeedbackPopupStateService {
   private readonly removedEventFeedbackEventsByUser = signal<Record<string, Record<string, true>>>({});
   private readonly removedEventFeedbackEventDatesByUser = signal<Record<string, Record<string, string>>>({});
   private readonly organizerEventFeedbackNotesByUser = signal<Record<string, Record<string, string>>>({});
+  private readonly eventFeedbackStateOverridesByUser = signal<Record<string, Record<string, EventFeedbackStateOverride>>>({});
   private readonly receivedEventFeedbackByEventId = signal<Record<string, AppTypes.EventFeedbackReceivedEventDto>>({});
 
   public readonly eventFeedbackEventOverallOptions = APP_STATIC_DATA.eventFeedbackEventOverallOptions;
@@ -136,7 +135,7 @@ export class EventFeedbackPopupStateService {
     this.eventFeedbackSubmitMessage.set('');
     this.eventFeedbackTouchStartX = null;
     this.eventFeedbackTouchStartY = null;
-    this.hydrateEventFeedbackState();
+    this.clearEventFeedbackListState(this.sourceRef()?.activeUser?.id?.trim() ?? '');
     this.isPopupOpen.set(true);
   }
 
@@ -219,8 +218,6 @@ export class EventFeedbackPopupStateService {
     event?.stopPropagation();
     this.closeEventFeedbackCardMenu();
     this.showEventFeedbackFilterPicker.set(false);
-    this.restoreEventFeedbackEvent(item.eventId);
-    this.persistEventRemovedState(item.eventId, false);
     this.selectedEventFeedbackEventId.set(item.eventId);
     
     const cards = this.pendingEventFeedbackCardsForEvent(item.eventId).map(card => ({ ...card }));
@@ -241,22 +238,28 @@ export class EventFeedbackPopupStateService {
     this.isStackedPopupOpen.set(true);
   }
 
-  public removeEventFeedbackItem(item: AppTypes.EventFeedbackEventCard, event?: Event): void {
+  public async removeEventFeedbackItem(item: AppTypes.EventFeedbackEventCard, event?: Event): Promise<void> {
     event?.stopPropagation();
+    await this.persistEventRemovedState(item.eventId, true);
     this.markEventFeedbackEventRemoved(item.eventId);
-    this.persistEventRemovedState(item.eventId, true);
+    this.mergeEventFeedbackStateOverride(this.sourceRef()?.activeUser?.id ?? '', item.eventId, {
+      removed: true,
+      removedAtIso: AppUtils.toIsoDateTime(new Date())
+    });
     this.closeEventFeedbackCardMenu();
     this.eventFeedbackListSubmitMessage.set(`${item.title} moved to Removed without feedback.`);
-    this.eventFeedbackListFilter.set('removed');
   }
 
-  public restoreRemovedEventFeedbackItem(item: AppTypes.EventFeedbackEventCard, event?: Event): void {
+  public async restoreRemovedEventFeedbackItem(item: AppTypes.EventFeedbackEventCard, event?: Event): Promise<void> {
     event?.stopPropagation();
+    await this.persistEventRemovedState(item.eventId, false);
     this.restoreEventFeedbackEvent(item.eventId);
-    this.persistEventRemovedState(item.eventId, false);
+    this.mergeEventFeedbackStateOverride(this.sourceRef()?.activeUser?.id ?? '', item.eventId, {
+      removed: false,
+      removedAtIso: null
+    });
     this.closeEventFeedbackCardMenu();
     this.eventFeedbackListSubmitMessage.set(`${item.title} moved back to Pending.`);
-    this.eventFeedbackListFilter.set('pending');
   }
 
   public openEventFeedbackNotePopup(item: AppTypes.EventFeedbackEventCard, event?: Event): void {
@@ -297,11 +300,9 @@ export class EventFeedbackPopupStateService {
       nextByUser[eventId] = trimmedText;
       return { ...state, [user.id]: nextByUser };
     });
-    this.updatePersistedEventFeedbackState(user.id, eventId, current => ({
-      ...current,
-      removed: false,
+    this.mergeEventFeedbackStateOverride(user.id, eventId, {
       organizerNote: trimmedText
-    }));
+    });
     void this.eventsService.saveEventFeedbackNote({
       userId: user.id,
       eventId,
@@ -477,7 +478,7 @@ export class EventFeedbackPopupStateService {
     const eventTitle = this.sourceRef()?.eventTitleById(eventId) ?? '';
     const cardsToSubmit = [...this.eventFeedbackCards()];
     const submittedAtIso = AppUtils.toIsoDateTime(new Date());
-    const persistedAnswers: Record<string, AppTypes.SubmittedEventFeedbackAnswer> = {};
+    const submittedAnswersByCardId: Record<string, AppTypes.SubmittedEventFeedbackAnswer> = {};
     const requestAnswers: AppTypes.EventFeedbackAnswerSubmitDto[] = [];
     for (const feedbackCard of cardsToSubmit) {
       const impressionSummary = this.selectedImpressionTagsForCard(feedbackCard);
@@ -489,7 +490,7 @@ export class EventFeedbackPopupStateService {
         personalityTraitIds,
         submittedAtIso
       );
-      persistedAnswers[submittedAnswer.cardId] = submittedAnswer;
+      submittedAnswersByCardId[submittedAnswer.cardId] = submittedAnswer;
       requestAnswers.push({
         cardId: submittedAnswer.cardId,
         kind: submittedAnswer.kind,
@@ -504,15 +505,12 @@ export class EventFeedbackPopupStateService {
     }
     this.markEventFeedbackEventSubmitted(eventId);
     this.restoreEventFeedbackEvent(eventId);
-    this.updatePersistedEventFeedbackState(user.id, eventId, current => ({
-      ...current,
+    this.mergeEventFeedbackStateOverride(user.id, eventId, {
       removed: false,
+      removedAtIso: null,
       submittedAtIso,
-      answersByCardId: {
-        ...current.answersByCardId,
-        ...persistedAnswers
-      }
-    }));
+      answersByCardId: submittedAnswersByCardId
+    });
     void this.eventsService.submitEventFeedback({
       userId: user.id,
       eventId,
@@ -565,39 +563,38 @@ export class EventFeedbackPopupStateService {
     this.previousEventFeedbackSlide();
   }
 
-  private hydrateEventFeedbackState(): void {
-    const userId = this.sourceRef()?.activeUser?.id?.trim();
-    if (!userId) {
-      this.receivedEventFeedbackByEventId.set({});
+  public async loadEventFeedbackListState(userId: string): Promise<void> {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      this.clearEventFeedbackListState('');
       return;
     }
-    this.applyPersistedEventFeedbackSignals(userId);
-    void this.refreshEventFeedbackStateFromServer(userId);
-    void this.refreshReceivedEventFeedbackFromServer(userId);
+    const [states, receivedEvents] = await Promise.all([
+      this.eventsService.queryEventFeedbackStates(normalizedUserId),
+      this.eventsService.queryReceivedEventFeedback(normalizedUserId)
+    ]);
+    if ((this.sourceRef()?.activeUser?.id?.trim() ?? '') !== normalizedUserId) {
+      return;
+    }
+    this.applyEventFeedbackStateDtos(normalizedUserId, states);
+    this.applyReceivedEventFeedbackEvents(receivedEvents);
   }
 
-  private async refreshEventFeedbackStateFromServer(userId: string): Promise<void> {
+  private clearEventFeedbackListState(userId: string): void {
+    this.receivedEventFeedbackByEventId.set({});
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return;
     }
-    const states = await this.eventsService.queryEventFeedbackStates(normalizedUserId);
-    if ((this.sourceRef()?.activeUser?.id?.trim() ?? '') !== normalizedUserId) {
-      return;
-    }
-    this.mergeServerEventFeedbackStates(normalizedUserId, states);
+    this.submittedEventFeedbackByUser.update(state => ({ ...state, [normalizedUserId]: {} }));
+    this.submittedEventFeedbackAnswersByUser.update(state => ({ ...state, [normalizedUserId]: {} }));
+    this.submittedEventFeedbackEventsByUser.update(state => ({ ...state, [normalizedUserId]: {} }));
+    this.removedEventFeedbackEventsByUser.update(state => ({ ...state, [normalizedUserId]: {} }));
+    this.removedEventFeedbackEventDatesByUser.update(state => ({ ...state, [normalizedUserId]: {} }));
+    this.organizerEventFeedbackNotesByUser.update(state => ({ ...state, [normalizedUserId]: {} }));
   }
 
-  private async refreshReceivedEventFeedbackFromServer(userId: string): Promise<void> {
-    const normalizedUserId = userId.trim();
-    if (!normalizedUserId) {
-      this.receivedEventFeedbackByEventId.set({});
-      return;
-    }
-    const events = await this.eventsService.queryReceivedEventFeedback(normalizedUserId);
-    if ((this.sourceRef()?.activeUser?.id?.trim() ?? '') !== normalizedUserId) {
-      return;
-    }
+  private applyReceivedEventFeedbackEvents(events: AppTypes.EventFeedbackReceivedEventDto[]): void {
     const next: Record<string, AppTypes.EventFeedbackReceivedEventDto> = {};
     for (const item of events) {
       const eventId = item.eventId?.trim() ?? '';
@@ -623,44 +620,7 @@ export class EventFeedbackPopupStateService {
     this.receivedEventFeedbackByEventId.set(next);
   }
 
-  private mergeServerEventFeedbackStates(userId: string, states: AppTypes.EventFeedbackStateDto[]): void {
-    this.memoryDb.write(current => {
-      const table = current[EVENT_FEEDBACK_TABLE_NAME];
-      const nextById = { ...table.byId };
-      const nextIds = [...table.ids];
-      for (const state of states) {
-        const eventId = state.eventId?.trim() ?? '';
-        if (!eventId) {
-          continue;
-        }
-        const recordId = this.eventFeedbackStateRecordId(userId, eventId);
-        const existing = nextById[recordId] ?? this.createEmptyPersistedEventFeedbackState(userId, eventId);
-        nextById[recordId] = {
-          ...existing,
-          removed: Boolean(state.removed),
-          submittedAtIso: state.submittedAtIso?.trim() || null,
-          removedAtIso: state.removedAtIso?.trim() || existing.removedAtIso || null,
-          organizerNote: state.organizerNote?.trim() ?? existing.organizerNote,
-          answersByCardId: state.answersByCardId
-            ? this.clonePersistedAnswersByCardId(state.answersByCardId)
-            : this.clonePersistedAnswersByCardId(existing.answersByCardId)
-        };
-        if (!nextIds.includes(recordId)) {
-          nextIds.push(recordId);
-        }
-      }
-      return {
-        ...current,
-        [EVENT_FEEDBACK_TABLE_NAME]: {
-          byId: nextById,
-          ids: nextIds
-        }
-      };
-    });
-    this.applyPersistedEventFeedbackSignals(userId);
-  }
-
-  private applyPersistedEventFeedbackSignals(userId: string): void {
+  private applyEventFeedbackStateDtos(userId: string, states: AppTypes.EventFeedbackStateDto[]): void {
     const submittedCards: Record<string, true> = {};
     const submittedAnswers: Record<string, AppTypes.SubmittedEventFeedbackAnswer> = {};
     const submittedEvents: Record<string, string> = {};
@@ -668,24 +628,40 @@ export class EventFeedbackPopupStateService {
     const removedEventDates: Record<string, string> = {};
     const organizerNotes: Record<string, string> = {};
 
-    for (const record of this.readPersistedEventFeedbackStates(userId)) {
-      if (record.removed) {
-        removedEvents[record.eventId] = true;
-        if (record.removedAtIso?.trim()) {
-          removedEventDates[record.eventId] = record.removedAtIso.trim();
+    for (const state of states) {
+      const eventId = state.eventId?.trim() ?? '';
+      if (!eventId) {
+        continue;
+      }
+      if (state.removed) {
+        removedEvents[eventId] = true;
+        const removedAtIso = state.removedAtIso?.trim() ?? '';
+        if (removedAtIso) {
+          removedEventDates[eventId] = removedAtIso;
         }
       }
-      if (record.submittedAtIso) {
-        submittedEvents[record.eventId] = record.submittedAtIso;
+      const submittedAtIso = state.submittedAtIso?.trim() ?? '';
+      if (submittedAtIso) {
+        submittedEvents[eventId] = submittedAtIso;
       }
-      if (record.organizerNote.trim()) {
-        organizerNotes[record.eventId] = record.organizerNote.trim();
+      const organizerNote = state.organizerNote?.trim() ?? '';
+      if (organizerNote) {
+        organizerNotes[eventId] = organizerNote;
       }
-      for (const [cardId, answer] of Object.entries(record.answersByCardId ?? {})) {
+      for (const [cardId, answer] of Object.entries(this.clonePersistedAnswersByCardId(state.answersByCardId))) {
         submittedCards[cardId] = true;
         submittedAnswers[cardId] = this.cloneSubmittedEventFeedbackAnswer(answer);
       }
     }
+    this.applyEventFeedbackStateOverrides(
+      userId,
+      submittedCards,
+      submittedAnswers,
+      submittedEvents,
+      removedEvents,
+      removedEventDates,
+      organizerNotes
+    );
 
     this.submittedEventFeedbackByUser.update(state => ({ ...state, [userId]: submittedCards }));
     this.submittedEventFeedbackAnswersByUser.update(state => ({ ...state, [userId]: submittedAnswers }));
@@ -695,132 +671,89 @@ export class EventFeedbackPopupStateService {
     this.organizerEventFeedbackNotesByUser.update(state => ({ ...state, [userId]: organizerNotes }));
   }
 
-  private readPersistedEventFeedbackStates(userId: string): AppTypes.EventFeedbackPersistedState[] {
-    const normalizedUserId = userId.trim();
-    if (!normalizedUserId) {
-      return [];
+  private async persistEventRemovedState(eventId: string, removed: boolean): Promise<void> {
+    const userId = this.sourceRef()?.activeUser?.id?.trim();
+    const normalizedEventId = eventId.trim();
+    if (!userId || !normalizedEventId) {
+      return;
     }
-    const table = this.memoryDb.read()[EVENT_FEEDBACK_TABLE_NAME];
-    return table.ids
-      .map(id => table.byId[id])
-      .filter((record): record is AppTypes.EventFeedbackPersistedState => Boolean(record) && record.userId === normalizedUserId)
-      .map(record => ({
-        ...record,
-        removedAtIso: record.removedAtIso?.trim() || null,
-        answersByCardId: this.clonePersistedAnswersByCardId(record.answersByCardId)
-      }));
+    if (removed) {
+      await this.eventsService.removeEventFeedbackEvent(userId, normalizedEventId);
+      return;
+    }
+    await this.eventsService.restoreEventFeedbackEvent(userId, normalizedEventId);
   }
 
-  private updatePersistedEventFeedbackState(
+  private mergeEventFeedbackStateOverride(
     userId: string,
     eventId: string,
-    updater: (current: AppTypes.EventFeedbackPersistedState) => AppTypes.EventFeedbackPersistedState
+    override: EventFeedbackStateOverride
   ): void {
     const normalizedUserId = userId.trim();
     const normalizedEventId = eventId.trim();
     if (!normalizedUserId || !normalizedEventId) {
       return;
     }
-    this.memoryDb.write(current => {
-      const table = current[EVENT_FEEDBACK_TABLE_NAME];
-      const recordId = this.eventFeedbackStateRecordId(normalizedUserId, normalizedEventId);
-      const existing = table.byId[recordId] ?? this.createEmptyPersistedEventFeedbackState(normalizedUserId, normalizedEventId);
-      const nextRecord = updater({
-        ...existing,
-        answersByCardId: this.clonePersistedAnswersByCardId(existing.answersByCardId)
-      });
-      return {
-        ...current,
-        [EVENT_FEEDBACK_TABLE_NAME]: {
-          byId: {
-            ...table.byId,
-            [recordId]: nextRecord
-          },
-          ids: table.ids.includes(recordId) ? table.ids : [...table.ids, recordId]
-        }
-      };
+    this.eventFeedbackStateOverridesByUser.update(state => {
+      const byUser = { ...(state[normalizedUserId] ?? {}) };
+      const current = byUser[normalizedEventId] ?? {};
+      const next: EventFeedbackStateOverride = { ...current, ...override };
+      if (override.answersByCardId) {
+        next.answersByCardId = {
+          ...(current.answersByCardId ?? {}),
+          ...this.clonePersistedAnswersByCardId(override.answersByCardId)
+        };
+      } else if (current.answersByCardId) {
+        next.answersByCardId = current.answersByCardId;
+      }
+      byUser[normalizedEventId] = next;
+      return { ...state, [normalizedUserId]: byUser };
     });
-    this.applyPersistedEventFeedbackSignals(normalizedUserId);
   }
 
-  private persistEventRemovedState(eventId: string, removed: boolean): void {
-    const userId = this.sourceRef()?.activeUser?.id?.trim();
-    const normalizedEventId = eventId.trim();
-    if (!userId || !normalizedEventId) {
-      return;
-    }
-    this.updatePersistedEventFeedbackState(userId, normalizedEventId, current => ({
-      ...current,
-      removed,
-      removedAtIso: removed ? AppUtils.toIsoDateTime(new Date()) : null
-    }));
-    if (removed) {
-      void this.eventsService.removeEventFeedbackEvent(userId, normalizedEventId);
-      return;
-    }
-    void this.eventsService.restoreEventFeedbackEvent(userId, normalizedEventId);
-  }
-
-  private createEmptyPersistedEventFeedbackState(userId: string, eventId: string): AppTypes.EventFeedbackPersistedState {
-    return {
-      id: this.eventFeedbackStateRecordId(userId, eventId),
-      userId,
-      eventId,
-      removed: false,
-      submittedAtIso: null,
-      removedAtIso: null,
-      organizerNote: '',
-      answersByCardId: {}
-    };
-  }
-
-  private eventFeedbackStateRecordId(userId: string, eventId: string): string {
-    return `${userId.trim()}::${eventId.trim()}`;
-  }
-
-  private configureEventFeedbackPolling(): void {
-    const userId = this.sourceRef()?.activeUser?.id?.trim() ?? '';
-    if (!userId) {
-      this.stopEventFeedbackPolling();
-      return;
-    }
-    const intervalMs = this.eventsService.demoModeEnabled
-      ? EventFeedbackPopupStateService.DEMO_EVENT_FEEDBACK_POLL_INTERVAL_MS
-      : EventFeedbackPopupStateService.EVENT_FEEDBACK_POLL_INTERVAL_MS;
-    if (this.eventFeedbackPollTimer && this.eventFeedbackPollActiveIntervalMs === intervalMs) {
-      return;
-    }
-    this.stopEventFeedbackPolling();
-    this.eventFeedbackPollActiveIntervalMs = intervalMs;
-    this.eventFeedbackPollTimer = setInterval(() => {
-      void this.runEventFeedbackPollTick();
-    }, intervalMs);
-  }
-
-  private stopEventFeedbackPolling(): void {
-    if (this.eventFeedbackPollTimer) {
-      clearInterval(this.eventFeedbackPollTimer);
-      this.eventFeedbackPollTimer = null;
-    }
-    this.eventFeedbackPollInFlight = false;
-    this.eventFeedbackPollActiveIntervalMs = EventFeedbackPopupStateService.EVENT_FEEDBACK_POLL_INTERVAL_MS;
-  }
-
-  private async runEventFeedbackPollTick(): Promise<void> {
-    if (this.eventFeedbackPollInFlight) {
-      return;
-    }
-    const userId = this.sourceRef()?.activeUser?.id?.trim() ?? '';
-    if (!userId) {
-      this.stopEventFeedbackPolling();
-      return;
-    }
-    this.eventFeedbackPollInFlight = true;
-    try {
-      await this.refreshEventFeedbackStateFromServer(userId);
-      await this.refreshReceivedEventFeedbackFromServer(userId);
-    } finally {
-      this.eventFeedbackPollInFlight = false;
+  private applyEventFeedbackStateOverrides(
+    userId: string,
+    submittedCards: Record<string, true>,
+    submittedAnswers: Record<string, AppTypes.SubmittedEventFeedbackAnswer>,
+    submittedEvents: Record<string, string>,
+    removedEvents: Record<string, true>,
+    removedEventDates: Record<string, string>,
+    organizerNotes: Record<string, string>
+  ): void {
+    const overrides = this.eventFeedbackStateOverridesByUser()[userId] ?? {};
+    for (const [eventId, override] of Object.entries(overrides)) {
+      const normalizedEventId = eventId.trim();
+      if (!normalizedEventId) {
+        continue;
+      }
+      if (override.removed !== undefined) {
+        if (override.removed) {
+          removedEvents[normalizedEventId] = true;
+          const removedAtIso = override.removedAtIso?.trim() ?? '';
+          if (removedAtIso) {
+            removedEventDates[normalizedEventId] = removedAtIso;
+          }
+        } else {
+          delete removedEvents[normalizedEventId];
+          delete removedEventDates[normalizedEventId];
+        }
+      }
+      const submittedAtIso = override.submittedAtIso?.trim() ?? '';
+      if (submittedAtIso) {
+        submittedEvents[normalizedEventId] = submittedAtIso;
+      }
+      if (override.organizerNote !== undefined) {
+        const organizerNote = override.organizerNote.trim();
+        if (organizerNote) {
+          organizerNotes[normalizedEventId] = organizerNote;
+        } else {
+          delete organizerNotes[normalizedEventId];
+        }
+      }
+      for (const [cardId, answer] of Object.entries(this.clonePersistedAnswersByCardId(override.answersByCardId))) {
+        submittedCards[cardId] = true;
+        submittedAnswers[cardId] = this.cloneSubmittedEventFeedbackAnswer(answer);
+      }
     }
   }
 

@@ -1,7 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 
 import { APP_STATIC_DATA } from '../../../app-static-data';
-import { AppMemoryDb } from '../../base/db';
 import type {
   HelpCenterAuditEntry,
   HelpCenterDocumentKind,
@@ -13,24 +12,10 @@ import type {
   PrivacyConsentSaveRequest
 } from '../../base/models';
 import { RouteDelayService } from '../../base/services/route-delay.service';
-import { HELP_CENTER_TABLE_NAME, type DemoHelpCenterTable } from '../models/help-center.model';
+import { DemoHelpCenterSeedBuilder } from '../builders';
+import type { DemoHelpCenterTable } from '../models/help-center.model';
+import { DemoHelpCenterRepository } from '../repositories/help-center.repository';
 
-const LEGACY_EXPLANATION_FILTER_COUNT_COPY_BY_LANG: Record<string, { from: string; to: string }> = {
-  en: {
-    from: 'The number shows how many filter groups are active.',
-    to: 'The number shows how many results match the selected filter condition.'
-  },
-  hu: {
-    from: 'A szám azt mutatja, hány szűrőcsoport aktív.',
-    to: 'A szám azt mutatja, hogy az adott szűrőfeltétel mellett hány találat van.'
-  }
-};
-const LEGACY_ACTIVITY_RATES_EXPLANATION_SECTION_IDS = new Set([
-  'activity-tabs',
-  'activity-distance-sort',
-  'activity-card-actions',
-  'activity-panel-actions'
-]);
 const SEEDED_HELP_IMAGE_REF_PREFIX = 'help-seeded-image:';
 const LAZY_HELP_IMAGE_PLACEHOLDER_URL = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==';
 
@@ -38,38 +23,34 @@ const LAZY_HELP_IMAGE_PLACEHOLDER_URL = 'data:image/gif;base64,R0lGODlhAQABAIAAA
   providedIn: 'root'
 })
 export class DemoHelpCenterService {
-  private readonly memoryDb = inject(AppMemoryDb);
+  private readonly helpCenterRepository = inject(DemoHelpCenterRepository);
   private readonly routeDelay = inject(RouteDelayService);
 
   async init(): Promise<boolean> {
-    await this.memoryDb.whenReady();
+    await this.helpCenterRepository.whenReady();
     const changed = this.ensureStaticDefaultsSeeded();
     if (changed) {
-      await this.memoryDb.flushToIndexedDb();
+      await this.helpCenterRepository.flushToIndexedDb();
     }
     return changed;
   }
 
   async loadState(kind: HelpCenterDocumentKind = 'help', lang?: string | null, contextKey?: string | null): Promise<HelpCenterState> {
-    await this.memoryDb.whenReady();
+    await this.helpCenterRepository.whenReady();
     const documentKind = this.normalizeKind(kind);
     const language = this.requestContentLang(lang);
     const context = this.normalizeContextKey(documentKind, contextKey, false);
-    const changed = documentKind !== 'explanation' || context
-      ? this.ensureSeeded(documentKind, language, context)
-      : false;
-    if (changed) {
-      await this.memoryDb.flushToIndexedDb();
-    }
-    return this.stateFromTable(this.table(), documentKind, language, context);
+    const table = this.table();
+    this.assertBootstrappedState(table, documentKind, language, context);
+    return this.stateFromTable(table, documentKind, language, context);
   }
 
   async ensureEntryPrivacySeeded(lang?: string | null): Promise<boolean> {
-    await this.memoryDb.whenReady();
+    await this.helpCenterRepository.whenReady();
     const language = this.requestContentLang(lang);
     const changed = this.ensureSeeded('privacy', language);
     if (changed) {
-      await this.memoryDb.flushToIndexedDb();
+      await this.helpCenterRepository.flushToIndexedDb();
     }
     return changed;
   }
@@ -80,7 +61,7 @@ export class DemoHelpCenterService {
       const language = option.lang;
       const helpSeeded = this.ensureSeeded('help', language);
       const privacySeeded = this.ensureSeeded('privacy', language);
-      const explanationsSeeded = this.explanationBootstrapContextKeys()
+      const explanationsSeeded = DemoHelpCenterSeedBuilder.explanationBootstrapContextKeys()
         .map(contextKey => this.ensureSeeded('explanation', language, contextKey))
         .some(Boolean);
       changed = helpSeeded
@@ -88,16 +69,7 @@ export class DemoHelpCenterService {
         || explanationsSeeded
         || changed;
     }
-    const lazyImageMigrationChanged = this.ensureSeededImageRefsLazyLoaded();
-    const explanationPanelSpanChanged = this.ensureScopedExplanationPanelSpan();
-    return changed || lazyImageMigrationChanged || explanationPanelSpanChanged;
-  }
-
-  private explanationBootstrapContextKeys(): string[] {
-    return APP_STATIC_DATA.explainableSurfaces
-      .filter(surface => surface.enabled)
-      .map(surface => this.normalizeContextKey('explanation', surface.key, false))
-      .filter((contextKey): contextKey is string => Boolean(contextKey));
+    return changed;
   }
 
   async loadPrivacyConsent(
@@ -105,7 +77,7 @@ export class DemoHelpCenterService {
     revisionId: string,
     revisionVersion?: number
   ): Promise<PrivacyConsentRecord | null> {
-    await this.memoryDb.whenReady();
+    await this.helpCenterRepository.whenReady();
     const normalizedUserId = this.nonEmptyText(userId, '');
     const normalizedRevisionId = this.nonEmptyText(revisionId, '');
     if (!normalizedUserId || !normalizedRevisionId) {
@@ -121,7 +93,7 @@ export class DemoHelpCenterService {
   }
 
   async savePrivacyConsent(request: PrivacyConsentSaveRequest): Promise<PrivacyConsentRecord> {
-    await this.memoryDb.whenReady();
+    await this.helpCenterRepository.whenReady();
     const userId = this.nonEmptyText(request?.userId, '');
     const revisionId = this.nonEmptyText(request?.revisionId, '');
     if (!userId || !revisionId) {
@@ -147,30 +119,26 @@ export class DemoHelpCenterService {
       updatedAtIso: nowIso,
       source: this.normalizeConsentSource(request?.source)
     };
-    this.memoryDb.write(state => {
-      const currentTable = state[HELP_CENTER_TABLE_NAME];
+    this.helpCenterRepository.updateTable(currentTable => {
       const consentsById = {
         ...(currentTable.privacyConsentsById ?? {}),
         [id]: consent
       };
       return {
-        ...state,
-        [HELP_CENTER_TABLE_NAME]: {
-          ...currentTable,
-          privacyConsentsById: consentsById,
-          privacyConsentIds: [...new Set([...(currentTable.privacyConsentIds ?? []), id])]
-        }
+        ...currentTable,
+        privacyConsentsById: consentsById,
+        privacyConsentIds: [...new Set([...(currentTable.privacyConsentIds ?? []), id])]
       };
     });
     await Promise.all([
-      this.memoryDb.flushToIndexedDb(),
+      this.helpCenterRepository.flushToIndexedDb(),
       this.routeDelay.waitForRouteDelay('/privacy/consents', undefined, undefined, 1500)
     ]);
     return this.clonePrivacyConsent(consent);
   }
 
   async saveRevision(request: HelpCenterRevisionSaveRequest, kind: HelpCenterDocumentKind = 'help'): Promise<HelpCenterState> {
-    await this.memoryDb.whenReady();
+    await this.helpCenterRepository.whenReady();
     const documentKind = this.normalizeKind(kind);
     const language = this.normalizeLang(request?.lang);
     const contextKey = this.normalizeContextKey(documentKind, request?.contextKey, true);
@@ -206,37 +174,33 @@ export class DemoHelpCenterService {
         : `Created v${version}.`
     });
 
-    this.memoryDb.write(state => {
-      const current = state[HELP_CENTER_TABLE_NAME];
+    this.helpCenterRepository.updateTable(current => {
       return {
-        ...state,
-        [HELP_CENTER_TABLE_NAME]: {
-          ...current,
-          seeded: current.seeded || documentKind === 'help',
-          seededKinds: { ...(current.seededKinds ?? {}), [documentKind]: true },
-          activeRevisionIdsByKind: { ...(current.activeRevisionIdsByKind ?? {}) },
-          revisionsById: {
-            ...this.normalizedRevisionsById(current),
-            [revisionId]: revision
-          },
-          revisionIds: [...current.revisionIds.filter(id => id !== revisionId), revisionId],
-          auditById: {
-            ...current.auditById,
-            [audit.id]: audit
-          },
-          auditIds: [...current.auditIds, audit.id]
-        }
+        ...current,
+        seeded: current.seeded || documentKind === 'help',
+        seededKinds: { ...(current.seededKinds ?? {}), [documentKind]: true },
+        activeRevisionIdsByKind: { ...(current.activeRevisionIdsByKind ?? {}) },
+        revisionsById: {
+          ...this.normalizedRevisionsById(current),
+          [revisionId]: revision
+        },
+        revisionIds: [...current.revisionIds.filter(id => id !== revisionId), revisionId],
+        auditById: {
+          ...current.auditById,
+          [audit.id]: audit
+        },
+        auditIds: [...current.auditIds, audit.id]
       };
     });
     await Promise.all([
-      this.memoryDb.flushToIndexedDb(),
+      this.helpCenterRepository.flushToIndexedDb(),
       this.routeDelay.waitForRouteDelay(`/admin/${documentKind}/revisions`, undefined, undefined, 1500)
     ]);
     return this.stateFromTable(this.table(), documentKind, language, contextKey);
   }
 
   async activateRevision(revisionId: string, actorUserId: string, kind: HelpCenterDocumentKind = 'help'): Promise<HelpCenterState> {
-    await this.memoryDb.whenReady();
+    await this.helpCenterRepository.whenReady();
     const documentKind = this.normalizeKind(kind);
     const language = this.normalizeLang(this.table().revisionsById[revisionId.trim()]?.lang);
     const normalizedRevisionId = revisionId.trim();
@@ -252,8 +216,7 @@ export class DemoHelpCenterService {
       revision,
       message: `Activated v${revision.version}.`
     });
-    this.memoryDb.write(state => {
-      const current = state[HELP_CENTER_TABLE_NAME];
+    this.helpCenterRepository.updateTable(current => {
       const revisionsById = Object.fromEntries(
         current.revisionIds
           .filter(id => Boolean(current.revisionsById[id]))
@@ -275,32 +238,29 @@ export class DemoHelpCenterService {
           })
       ) as Record<string, HelpCenterRevision>;
       return {
-        ...state,
-        [HELP_CENTER_TABLE_NAME]: {
-          ...current,
-          activeRevisionId: documentKind === 'help' && language === 'en' ? normalizedRevisionId : current.activeRevisionId,
-          activeRevisionIdsByKind: {
-            ...(current.activeRevisionIdsByKind ?? {}),
-            [this.activeRevisionKey(documentKind, language, contextKey)]: normalizedRevisionId
-          },
-          revisionsById,
-          auditById: {
-            ...current.auditById,
-            [audit.id]: audit
-          },
-          auditIds: [...current.auditIds, audit.id]
-        }
+        ...current,
+        activeRevisionId: documentKind === 'help' && language === 'en' ? normalizedRevisionId : current.activeRevisionId,
+        activeRevisionIdsByKind: {
+          ...(current.activeRevisionIdsByKind ?? {}),
+          [this.activeRevisionKey(documentKind, language, contextKey)]: normalizedRevisionId
+        },
+        revisionsById,
+        auditById: {
+          ...current.auditById,
+          [audit.id]: audit
+        },
+        auditIds: [...current.auditIds, audit.id]
       };
     });
     await Promise.all([
-      this.memoryDb.flushToIndexedDb(),
+      this.helpCenterRepository.flushToIndexedDb(),
       this.routeDelay.waitForRouteDelay(`/admin/${documentKind}/revisions/activate`, undefined, undefined, 1500)
     ]);
     return this.stateFromTable(this.table(), documentKind, language, contextKey);
   }
 
   async deleteRevision(revisionId: string, actorUserId: string, kind: HelpCenterDocumentKind = 'help'): Promise<HelpCenterState> {
-    await this.memoryDb.whenReady();
+    await this.helpCenterRepository.whenReady();
     const documentKind = this.normalizeKind(kind);
     const normalizedRevisionId = revisionId.trim();
     const table = this.table();
@@ -327,8 +287,7 @@ export class DemoHelpCenterService {
       message: `Deleted v${revision.version}.`
     });
 
-    this.memoryDb.write(state => {
-      const current = state[HELP_CENTER_TABLE_NAME];
+    this.helpCenterRepository.updateTable(current => {
       const { [normalizedRevisionId]: _removed, ...revisionsById } = current.revisionsById;
       const normalizedRevisionsById = Object.fromEntries(
         remainingIds
@@ -351,27 +310,24 @@ export class DemoHelpCenterService {
           })
       ) as Record<string, HelpCenterRevision>;
       return {
-        ...state,
-        [HELP_CENTER_TABLE_NAME]: {
-          ...current,
-          seeded: true,
-          activeRevisionId: documentKind === 'help' && language === 'en' ? nextActiveRevisionId : current.activeRevisionId,
-          activeRevisionIdsByKind: {
-            ...(current.activeRevisionIdsByKind ?? {}),
-            [this.activeRevisionKey(documentKind, language, contextKey)]: nextActiveRevisionId
-          },
-          revisionsById: normalizedRevisionsById,
-          revisionIds: remainingIds,
-          auditById: {
-            ...current.auditById,
-            [audit.id]: audit
-          },
-          auditIds: [...current.auditIds, audit.id]
-        }
+        ...current,
+        seeded: true,
+        activeRevisionId: documentKind === 'help' && language === 'en' ? nextActiveRevisionId : current.activeRevisionId,
+        activeRevisionIdsByKind: {
+          ...(current.activeRevisionIdsByKind ?? {}),
+          [this.activeRevisionKey(documentKind, language, contextKey)]: nextActiveRevisionId
+        },
+        revisionsById: normalizedRevisionsById,
+        revisionIds: remainingIds,
+        auditById: {
+          ...current.auditById,
+          [audit.id]: audit
+        },
+        auditIds: [...current.auditIds, audit.id]
       };
     });
     await Promise.all([
-      this.memoryDb.flushToIndexedDb(),
+      this.helpCenterRepository.flushToIndexedDb(),
       this.routeDelay.waitForRouteDelay(`/admin/${documentKind}/revisions/delete`, undefined, undefined, 1500)
     ]);
     return this.stateFromTable(this.table(), documentKind, language, contextKey);
@@ -393,30 +349,26 @@ export class DemoHelpCenterService {
       revision,
       message: `Seeded default ${this.documentLabel(kind).toLowerCase()} revision v${revision.version}.`
     });
-    this.memoryDb.write(state => {
-      const current = state[HELP_CENTER_TABLE_NAME];
+    this.helpCenterRepository.updateTable(current => {
       return {
-        ...state,
-        [HELP_CENTER_TABLE_NAME]: {
-          ...current,
-          seeded: current.seeded || kind === 'help',
-          seededKinds: { ...(current.seededKinds ?? {}), [kind]: true },
-          activeRevisionId: kind === 'help' && language === 'en' ? revision.id : current.activeRevisionId,
-          activeRevisionIdsByKind: {
-            ...(current.activeRevisionIdsByKind ?? {}),
-            [this.activeRevisionKey(kind, language, revisionContextKey)]: revision.id
-          },
-          revisionsById: {
-            ...this.normalizedRevisionsById(current),
-            [revision.id]: revision
-          },
-          revisionIds: [...current.revisionIds.filter(id => id !== revision.id), revision.id],
-          auditById: {
-            ...current.auditById,
-            [audit.id]: audit
-          },
-          auditIds: [...current.auditIds, audit.id]
-        }
+        ...current,
+        seeded: current.seeded || kind === 'help',
+        seededKinds: { ...(current.seededKinds ?? {}), [kind]: true },
+        activeRevisionId: kind === 'help' && language === 'en' ? revision.id : current.activeRevisionId,
+        activeRevisionIdsByKind: {
+          ...(current.activeRevisionIdsByKind ?? {}),
+          [this.activeRevisionKey(kind, language, revisionContextKey)]: revision.id
+        },
+        revisionsById: {
+          ...this.normalizedRevisionsById(current),
+          [revision.id]: revision
+        },
+        revisionIds: [...current.revisionIds.filter(id => id !== revision.id), revision.id],
+        auditById: {
+          ...current.auditById,
+          [audit.id]: audit
+        },
+        auditIds: [...current.auditIds, audit.id]
       };
     });
     return true;
@@ -441,30 +393,43 @@ export class DemoHelpCenterService {
       ...this.cloneRevision(revision, kind),
       active: true
     };
-    this.memoryDb.write(state => {
-      const current = state[HELP_CENTER_TABLE_NAME];
+    this.helpCenterRepository.updateTable(current => {
       return {
-        ...state,
-        [HELP_CENTER_TABLE_NAME]: {
-          ...current,
-          activeRevisionId: kind === 'help' && this.normalizeLang(lang) === 'en'
-            ? normalizedRevision.id
-            : current.activeRevisionId,
-          activeRevisionIdsByKind: {
-            ...(current.activeRevisionIdsByKind ?? {}),
-            [this.activeRevisionKey(kind, lang, contextKey)]: normalizedRevision.id
-          },
-          revisionsById: {
-            ...this.normalizedRevisionsById(current),
-            [normalizedRevision.id]: normalizedRevision
-          },
-          revisionIds: current.revisionIds.includes(normalizedRevision.id)
-            ? current.revisionIds
-            : [...current.revisionIds, normalizedRevision.id]
-        }
+        ...current,
+        activeRevisionId: kind === 'help' && this.normalizeLang(lang) === 'en'
+          ? normalizedRevision.id
+          : current.activeRevisionId,
+        activeRevisionIdsByKind: {
+          ...(current.activeRevisionIdsByKind ?? {}),
+          [this.activeRevisionKey(kind, lang, contextKey)]: normalizedRevision.id
+        },
+        revisionsById: {
+          ...this.normalizedRevisionsById(current),
+          [normalizedRevision.id]: normalizedRevision
+        },
+        revisionIds: current.revisionIds.includes(normalizedRevision.id)
+          ? current.revisionIds
+          : [...current.revisionIds, normalizedRevision.id]
       };
     });
     return true;
+  }
+
+  private assertBootstrappedState(
+    table: DemoHelpCenterTable,
+    kind: HelpCenterDocumentKind,
+    lang: string,
+    contextKey: string | null
+  ): void {
+    if (kind === 'explanation' && !contextKey) {
+      return;
+    }
+    const revisions = this.revisionsForKind(table, kind, lang, contextKey);
+    const activeRevisionId = this.activeRevisionId(table, kind, lang, contextKey);
+    if (revisions.length > 0 && activeRevisionId && revisions.some(revision => revision.id === activeRevisionId)) {
+      return;
+    }
+    throw new Error(`Demo ${this.documentLabel(kind).toLowerCase()} content is not bootstrapped.`);
   }
 
   private latestRevision(revisions: readonly HelpCenterRevision[]): HelpCenterRevision | null {
@@ -479,593 +444,8 @@ export class DemoHelpCenterService {
     })[0] ?? null;
   }
 
-  private ensureSeededImageRefsLazyLoaded(): boolean {
-    const table = this.table();
-    const revisionIds = table.revisionIds.filter(id => {
-      const revision = table.revisionsById[id] as HelpCenterRevision | undefined;
-      return Boolean(revision?.sections?.some(section => this.hasLegacySeededImageSrc(section.contentHtml)));
-    });
-    if (revisionIds.length === 0) {
-      return false;
-    }
-    this.memoryDb.write(state => {
-      const current = state[HELP_CENTER_TABLE_NAME];
-      const revisionsById = this.normalizedRevisionsById(current);
-      for (const id of revisionIds) {
-        const revision = revisionsById[id];
-        if (!revision) {
-          continue;
-        }
-        revisionsById[id] = {
-          ...revision,
-          sections: revision.sections.map(section => ({
-            ...section,
-            contentHtml: this.normalizeSeededImageRefsInHtml(section.contentHtml)
-          }))
-        };
-      }
-      return {
-        ...state,
-        [HELP_CENTER_TABLE_NAME]: {
-          ...current,
-          revisionsById
-        }
-      };
-    });
-    return true;
-  }
-
-  private ensureScopedExplanationPanelSpan(): boolean {
-    const table = this.table();
-    const span1Contexts = new Set(['events', 'event.editor']);
-    const revisionIds = table.revisionIds.filter(id => {
-      const revision = table.revisionsById[id] as HelpCenterRevision | undefined;
-      return Boolean(revision)
-        && this.revisionKind(revision) === 'explanation'
-        && span1Contexts.has(this.revisionContextKey(revision) ?? '')
-        && revision?.sections?.some(section => section.panelSpan !== 'span-1');
-    });
-    if (revisionIds.length === 0) {
-      return false;
-    }
-    this.memoryDb.write(state => {
-      const current = state[HELP_CENTER_TABLE_NAME];
-      const revisionsById = this.normalizedRevisionsById(current);
-      for (const id of revisionIds) {
-        const revision = revisionsById[id];
-        if (!revision) {
-          continue;
-        }
-        revisionsById[id] = {
-          ...revision,
-          sections: revision.sections.map(section => ({
-            ...section,
-            panelSpan: 'span-1'
-          }))
-        };
-      }
-      return {
-        ...state,
-        [HELP_CENTER_TABLE_NAME]: {
-          ...current,
-          revisionsById
-        }
-      };
-    });
-    return true;
-  }
-
-  private ensureRevisionDescriptions(kind: HelpCenterDocumentKind, lang = 'en'): boolean {
-    const table = this.table();
-    const language = this.normalizeLang(lang);
-    const missingIds = table.revisionIds.filter(id => {
-      const revision = table.revisionsById[id] as HelpCenterRevision | undefined;
-      return Boolean(revision)
-        && this.revisionKind(revision) === kind
-        && this.revisionLang(revision) === language
-        && !this.nonEmptyText(revision?.description, '');
-    });
-    if (missingIds.length === 0) {
-      return false;
-    }
-    this.memoryDb.write(state => {
-      const current = state[HELP_CENTER_TABLE_NAME];
-      const revisionsById = this.normalizedRevisionsById(current);
-      for (const id of missingIds) {
-        const revision = revisionsById[id];
-        if (revision) {
-          revisionsById[id] = {
-            ...revision,
-            description: this.defaultDescription(kind, language)
-          };
-        }
-      }
-      return {
-        ...state,
-        [HELP_CENTER_TABLE_NAME]: {
-          ...current,
-          revisionsById
-        }
-      };
-    });
-    return true;
-  }
-
-  private ensureExplanationFilterCountCopy(kind: HelpCenterDocumentKind, lang = 'en'): boolean {
-    if (kind !== 'explanation') {
-      return false;
-    }
-    const language = this.normalizeLang(lang);
-    const copy = LEGACY_EXPLANATION_FILTER_COUNT_COPY_BY_LANG[language];
-    if (!copy) {
-      return false;
-    }
-    const table = this.table();
-    const revisionIds = table.revisionIds.filter(id => {
-      const revision = table.revisionsById[id] as HelpCenterRevision | undefined;
-      return Boolean(revision)
-        && this.revisionKind(revision) === 'explanation'
-        && this.revisionLang(revision) === language
-        && revision?.sections?.some(section => section.id === 'filters' && section.contentHtml.includes(copy.from));
-    });
-    if (revisionIds.length === 0) {
-      return false;
-    }
-    this.memoryDb.write(state => {
-      const current = state[HELP_CENTER_TABLE_NAME];
-      const revisionsById = this.normalizedRevisionsById(current);
-      for (const id of revisionIds) {
-        const revision = revisionsById[id];
-        if (!revision) {
-          continue;
-        }
-        revisionsById[id] = {
-          ...revision,
-          sections: revision.sections.map(section => section.id === 'filters'
-            ? { ...section, contentHtml: section.contentHtml.replace(copy.from, copy.to) }
-            : section)
-        };
-      }
-      return {
-        ...state,
-        [HELP_CENTER_TABLE_NAME]: {
-          ...current,
-          revisionsById
-        }
-      };
-    });
-    return true;
-  }
-
-  private ensureActivityRatesExplanationCopy(kind: HelpCenterDocumentKind, lang = 'en'): boolean {
-    if (kind !== 'explanation') {
-      return false;
-    }
-    const language = this.normalizeLang(lang);
-    const table = this.table();
-    const revisionIds = table.revisionIds.filter(id => {
-      const revision = table.revisionsById[id] as HelpCenterRevision | undefined;
-      return Boolean(revision)
-        && this.revisionKind(revision) === 'explanation'
-        && this.revisionLang(revision) === language
-        && this.revisionContextKey(revision) === 'activities.rates'
-        && this.isLegacyActivityRatesExplanation(revision);
-    });
-    if (revisionIds.length === 0) {
-      return false;
-    }
-    const replacement = this.defaultRevision('explanation', language, 'activities.rates');
-    this.memoryDb.write(state => {
-      const current = state[HELP_CENTER_TABLE_NAME];
-      const revisionsById = this.normalizedRevisionsById(current);
-      for (const id of revisionIds) {
-        const revision = revisionsById[id];
-        if (!revision) {
-          continue;
-        }
-        revisionsById[id] = {
-          ...revision,
-          title: replacement.title,
-          summary: replacement.summary,
-          sections: replacement.sections.map(section => ({ ...section })),
-          updatedAtIso: new Date().toISOString(),
-          updatedByUserId: revision.updatedByUserId || 'system'
-        };
-      }
-      return {
-        ...state,
-        [HELP_CENTER_TABLE_NAME]: {
-          ...current,
-          revisionsById
-        }
-      };
-    });
-    return true;
-  }
-
-  private ensureChatsExplanationCopy(kind: HelpCenterDocumentKind, lang = 'en'): boolean {
-    if (kind !== 'explanation') {
-      return false;
-    }
-    const language = this.normalizeLang(lang);
-    const table = this.table();
-    const revisionIds = table.revisionIds.filter(id => {
-      const revision = table.revisionsById[id] as HelpCenterRevision | undefined;
-      return Boolean(revision)
-        && this.revisionKind(revision) === 'explanation'
-        && this.revisionLang(revision) === language
-        && this.revisionContextKey(revision) === 'chats'
-        && this.isLegacyChatsExplanation(revision);
-    });
-    if (revisionIds.length === 0) {
-      return false;
-    }
-    const replacement = this.defaultRevision('explanation', language, 'chats');
-    this.memoryDb.write(state => {
-      const current = state[HELP_CENTER_TABLE_NAME];
-      const revisionsById = this.normalizedRevisionsById(current);
-      for (const id of revisionIds) {
-        const revision = revisionsById[id];
-        if (!revision) {
-          continue;
-        }
-        revisionsById[id] = {
-          ...revision,
-          title: replacement.title,
-          summary: replacement.summary,
-          sections: replacement.sections.map(section => ({ ...section })),
-          updatedAtIso: new Date().toISOString(),
-          updatedByUserId: revision.updatedByUserId || 'system'
-        };
-      }
-      return {
-        ...state,
-        [HELP_CENTER_TABLE_NAME]: {
-          ...current,
-          revisionsById
-        }
-      };
-    });
-    return true;
-  }
-
-  private ensureEventsExplanationCopy(kind: HelpCenterDocumentKind, lang = 'en'): boolean {
-    if (kind !== 'explanation') {
-      return false;
-    }
-    const language = this.normalizeLang(lang);
-    const table = this.table();
-    const revisionIds = table.revisionIds.filter(id => {
-      const revision = table.revisionsById[id] as HelpCenterRevision | undefined;
-      return Boolean(revision)
-        && this.revisionKind(revision) === 'explanation'
-        && this.revisionLang(revision) === language
-        && this.revisionContextKey(revision) === 'events'
-        && this.isLegacyEventsExplanation(revision);
-    });
-    if (revisionIds.length === 0) {
-      return false;
-    }
-    const replacement = this.defaultRevision('explanation', language, 'events');
-    this.memoryDb.write(state => {
-      const current = state[HELP_CENTER_TABLE_NAME];
-      const revisionsById = this.normalizedRevisionsById(current);
-      for (const id of revisionIds) {
-        const revision = revisionsById[id];
-        if (!revision) {
-          continue;
-        }
-        revisionsById[id] = {
-          ...revision,
-          title: replacement.title,
-          summary: replacement.summary,
-          sections: replacement.sections.map(section => ({ ...section })),
-          updatedAtIso: new Date().toISOString(),
-          updatedByUserId: revision.updatedByUserId || 'system'
-        };
-      }
-      return {
-        ...state,
-        [HELP_CENTER_TABLE_NAME]: {
-          ...current,
-          revisionsById
-        }
-      };
-    });
-    return true;
-  }
-
-  private ensureAssetsExplanationCopy(kind: HelpCenterDocumentKind, lang = 'en'): boolean {
-    if (kind !== 'explanation') {
-      return false;
-    }
-    const language = this.normalizeLang(lang);
-    const table = this.table();
-    const revisionIds = table.revisionIds.filter(id => {
-      const revision = table.revisionsById[id] as HelpCenterRevision | undefined;
-      return Boolean(revision)
-        && this.revisionKind(revision) === 'explanation'
-        && this.revisionLang(revision) === language
-        && this.revisionContextKey(revision) === 'assets'
-        && this.isLegacyAssetsExplanation(revision);
-    });
-    if (revisionIds.length === 0) {
-      return false;
-    }
-    const replacement = this.defaultRevision('explanation', language, 'assets');
-    this.memoryDb.write(state => {
-      const current = state[HELP_CENTER_TABLE_NAME];
-      const revisionsById = this.normalizedRevisionsById(current);
-      for (const id of revisionIds) {
-        const revision = revisionsById[id];
-        if (!revision) {
-          continue;
-        }
-        revisionsById[id] = {
-          ...revision,
-          title: replacement.title,
-          summary: replacement.summary,
-          sections: replacement.sections.map(section => ({ ...section })),
-          updatedAtIso: new Date().toISOString(),
-          updatedByUserId: revision.updatedByUserId || 'system'
-        };
-      }
-      return {
-        ...state,
-        [HELP_CENTER_TABLE_NAME]: {
-          ...current,
-          revisionsById
-        }
-      };
-    });
-    return true;
-  }
-
-  private ensureEventEditorExplanationCopy(kind: HelpCenterDocumentKind, lang = 'en'): boolean {
-    if (kind !== 'explanation') {
-      return false;
-    }
-    const language = this.normalizeLang(lang);
-    const table = this.table();
-    const revisionIds = table.revisionIds.filter(id => {
-      const revision = table.revisionsById[id] as HelpCenterRevision | undefined;
-      return Boolean(revision)
-        && this.revisionKind(revision) === 'explanation'
-        && this.revisionLang(revision) === language
-        && this.revisionContextKey(revision) === 'event.editor'
-        && this.isLegacyEventEditorExplanation(revision);
-    });
-    if (revisionIds.length === 0) {
-      return false;
-    }
-    const replacement = this.defaultRevision('explanation', language, 'event.editor');
-    this.memoryDb.write(state => {
-      const current = state[HELP_CENTER_TABLE_NAME];
-      const revisionsById = this.normalizedRevisionsById(current);
-      for (const id of revisionIds) {
-        const revision = revisionsById[id];
-        if (!revision) {
-          continue;
-        }
-        revisionsById[id] = {
-          ...revision,
-          title: replacement.title,
-          summary: replacement.summary,
-          sections: replacement.sections.map(section => ({ ...section })),
-          updatedAtIso: new Date().toISOString(),
-          updatedByUserId: revision.updatedByUserId || 'system'
-        };
-      }
-      return {
-        ...state,
-        [HELP_CENTER_TABLE_NAME]: {
-          ...current,
-          revisionsById
-        }
-      };
-    });
-    return true;
-  }
-
-  private ensureHomeAffinityNetworkExplanation(kind: HelpCenterDocumentKind, lang = 'en'): boolean {
-    if (kind !== 'explanation') {
-      return false;
-    }
-    const language = this.normalizeLang(lang);
-    const replacement = this.defaultRevision('explanation', language, 'home.game')
-      .sections.find(section => section.id === 'affinity-network');
-    if (!replacement) {
-      return false;
-    }
-    const table = this.table();
-    const revisionIds = table.revisionIds.filter(id => {
-      const revision = table.revisionsById[id] as HelpCenterRevision | undefined;
-      return Boolean(revision)
-        && this.revisionKind(revision) === 'explanation'
-        && this.revisionLang(revision) === language
-        && this.revisionContextKey(revision) === 'home.game'
-        && (
-          !revision?.sections?.some(section => section.id === 'affinity-network')
-          || revision?.sections?.some(section => this.isLegacyHomeAffinityNetworkSection(section))
-        );
-    });
-    if (revisionIds.length === 0) {
-      return false;
-    }
-    this.memoryDb.write(state => {
-      const current = state[HELP_CENTER_TABLE_NAME];
-      const revisionsById = this.normalizedRevisionsById(current);
-      for (const id of revisionIds) {
-        const revision = revisionsById[id];
-        if (!revision) {
-          continue;
-        }
-        const sections = [...(revision.sections ?? [])];
-        const affinityIndex = sections.findIndex(section => section.id === 'affinity');
-        const networkIndex = sections.findIndex(section => section.id === 'affinity-network');
-        if (networkIndex >= 0) {
-          sections.splice(networkIndex, 1, { ...sections[networkIndex], ...replacement });
-        } else {
-          sections.splice(affinityIndex >= 0 ? affinityIndex + 1 : sections.length, 0, { ...replacement });
-        }
-        revisionsById[id] = {
-          ...revision,
-          sections,
-          updatedAtIso: new Date().toISOString(),
-          updatedByUserId: revision.updatedByUserId || 'system'
-        };
-      }
-      return {
-        ...state,
-        [HELP_CENTER_TABLE_NAME]: {
-          ...current,
-          revisionsById
-        }
-      };
-    });
-    return true;
-  }
-
-  private isLegacyHomeAffinityNetworkSection(section: HelpCenterSection | null | undefined): boolean {
-    if (section?.id !== 'affinity-network') {
-      return false;
-    }
-    const title = `${section.title ?? ''}`;
-    const blurb = `${section.blurb ?? ''}`;
-    const contentHtml = `${section.contentHtml ?? ''}`;
-    return title === 'Affinity and group matching'
-      || blurb === 'Your score is compared with the crowd, not read alone.'
-      || blurb === 'Az értéked a tömeghez képest értelmeződik.'
-      || contentHtml.includes('social graph')
-      || contentHtml.includes('kapcsolati gráf')
-      || contentHtml.includes('affinity edges')
-      || contentHtml.includes('szimpátia-edge');
-  }
-
-  private isLegacyAssetsExplanation(revision: HelpCenterRevision | undefined): boolean {
-    if (!revision) {
-      return false;
-    }
-    const sections = revision.sections ?? [];
-    if (!sections.some(section => section.id === 'assets-entry')) {
-      return true;
-    }
-    return revision.title === 'Home explanation'
-      || revision.title === 'Kezdőlap magyarázat'
-      || sections.some(section =>
-        section.id === 'affinity'
-        || section.id === 'filters'
-        || section.id === 'history'
-        || section.title === 'Your assets and tickets'
-        || section.title === 'Saját eszközök és jegyek');
-  }
-
-  private isLegacyActivityRatesExplanation(revision: HelpCenterRevision | undefined): boolean {
-    return Boolean(revision?.sections?.some(section =>
-      LEGACY_ACTIVITY_RATES_EXPLANATION_SECTION_IDS.has(section.id)
-      || section.title === 'Panel actions'
-      || section.title === 'Panelműveletek'
-      || section.title === 'Activity menu'
-      || section.title === 'Tevékenység menü'
-      || section.title === 'Rating list'
-      || section.title === 'Értékelési lista'
-      || section.title === 'Star rating badge'
-      || section.title === 'Csillagos értékelő jelvény'
-      || section.title === 'Scoring a card'
-      || section.title === 'Kártya pontozása'
-      || `${section.contentHtml ?? ''}`.includes('The top-right controls change the panel mode or close it.')
-      || `${section.contentHtml ?? ''}`.includes('A jobb felső gombok módot váltanak vagy bezárják a panelt.')
-      || `${section.contentHtml ?? ''}`.includes('The first toolbar menu switches the whole Activities panel.')
-      || `${section.contentHtml ?? ''}`.includes('Az első eszköztári menü az egész Tevékenységek panelt váltja.')
-      || `${section.contentHtml ?? ''}`.includes('The star badge is the rating control, not a generic card score.')
-      || `${section.contentHtml ?? ''}`.includes('A csillagos jelvény az értékelés vezérlője, nem általános kártyapont.')
-      || `${section.contentHtml ?? ''}`.includes('Use the filter menu to switch between Given, Received, Mutual, Met, and Suggestions.')
-      || `${section.contentHtml ?? ''}`.includes('A szűrőmenüvel válthatsz: adott, kapott, kölcsönös, találkozott és javaslatok.')
-      || `${section.contentHtml ?? ''}`.includes('The fullscreen button opens a focused rating flow.')
-      || `${section.contentHtml ?? ''}`.includes('A teljes képernyő ikon fókuszált értékelési folyamatot nyit.')
-    ));
-  }
-
-  private isLegacyEventsExplanation(revision: HelpCenterRevision | undefined): boolean {
-    if (!revision || this.revisionContextKey(revision) !== 'events') {
-      return false;
-    }
-    if (revision.title === 'Home explanation' || revision.title === 'Kezdőlap magyarázat') {
-      return true;
-    }
-    return Boolean(revision.sections?.some(section =>
-      section.id === 'affinity'
-      || section.id === 'profile'
-      || section.id === 'filters'
-      || section.id === 'history'
-      || `${section.contentHtml ?? ''}`.includes('Tap or drag the Affinity slider')
-      || `${section.contentHtml ?? ''}`.includes('Tapints vagy húzd a Szimpátia sávot')
-      || `${section.contentHtml ?? ''}`.includes('Cards can contain more photos and a profile detail view')
-      || `${section.contentHtml ?? ''}`.includes('A kártya több képet és részletes profilt is rejthet')
-      || `${section.contentHtml ?? ''}`.includes('This is the event hub inside Activities.')
-      || `${section.contentHtml ?? ''}`.includes('Ez az eseményközpont a Tevékenységekben.')
-      || `${section.contentHtml ?? ''}`.includes('Embedded screens like checkout')
-      || `${section.contentHtml ?? ''}`.includes('A beágyazott képernyők, például fizetés')
-      || `${section.contentHtml ?? ''}`.includes('Create or auto-fill an event')
-      || `${section.contentHtml ?? ''}`.includes('Létrehozás vagy automatikus feltöltés')
-    ));
-  }
-
-  private isLegacyEventEditorExplanation(revision: HelpCenterRevision | undefined): boolean {
-    if (!revision || this.revisionContextKey(revision) !== 'event.editor') {
-      return false;
-    }
-    if (revision.title === 'Event editor explanation' || revision.title === 'Eseményszerkesztő magyarázat') {
-      return true;
-    }
-    return Boolean(revision.sections?.some(section =>
-      `${section.contentHtml ?? ''}`.includes('This is where the event card and the basic rules are made.')
-      || `${section.contentHtml ?? ''}`.includes('Itt készül az eseménykártya')
-      || `${section.contentHtml ?? ''}`.includes('These cards decide how people find, join, and understand the event.')
-      || `${section.contentHtml ?? ''}`.includes('Ezek döntik el, hogyan találják meg')
-      || `${section.contentHtml ?? ''}`.includes('Blind Event</strong> hides the crowd before the event')
-      || `${section.contentHtml ?? ''}`.includes('A <strong>Blind Event</strong> elrejti')
-      || `${section.contentHtml ?? ''}`.includes('Roles are simple:')
-      || `${section.contentHtml ?? ''}`.includes('A szerepek egyszerűek')
-      || `${section.contentHtml ?? ''}`.includes('Assets are the practical things')
-      || `${section.contentHtml ?? ''}`.includes('Az eszköz itt gyakorlati')
-      || `${section.contentHtml ?? ''}`.includes('Manager/Admin people are protected from normal disqualify/remove actions')
-      || `${section.contentHtml ?? ''}`.includes('Az Admin/Manager védett')
-      || `${section.contentHtml ?? ''}`.includes('helper-organizer role under Admin')
-      || `${section.contentHtml ?? ''}`.includes('segítő-szervező szerep az Admin alatt')
-    ));
-  }
-
-  private isLegacyChatsExplanation(revision: HelpCenterRevision | undefined): boolean {
-    if (!revision || this.revisionContextKey(revision) !== 'chats') {
-      return false;
-    }
-    if (revision.title === 'Home explanation' || revision.title === 'Kezdőlap magyarázat') {
-      return true;
-    }
-    return Boolean(revision.sections?.some(section =>
-      section.id === 'affinity'
-      || section.id === 'profile'
-      || section.id === 'filters'
-      || section.id === 'history'
-      || `${section.contentHtml ?? ''}`.includes('Tap or drag the Affinity slider')
-      || `${section.contentHtml ?? ''}`.includes('Tapints vagy húzd a Szimpátia sávot')
-      || `${section.contentHtml ?? ''}`.includes('Cards can contain more photos and a profile detail view')
-      || `${section.contentHtml ?? ''}`.includes('A kártya több képet és részletes profilt is rejthet')
-      || `${section.contentHtml ?? ''}`.includes('The message window shows the channel title, message history')
-      || `${section.contentHtml ?? ''}`.includes('The message window shows the channel title, history, shared items')
-      || `${section.contentHtml ?? ''}`.includes('Az üzenetablakban látod a csatorna címét, az üzeneteket')
-      || `${section.contentHtml ?? ''}`.includes('Az üzenetablakban látod a csatorna címét, az előzményeket')
-      || `${section.contentHtml ?? ''}`.includes('You can write text, reply to a message, react with emoji')
-      || `${section.contentHtml ?? ''}`.includes('Írhatsz szöveget, válaszolhatsz üzenetre')
-      || `${section.contentHtml ?? ''}`.includes('Tap a message to select it. The small buttons')
-      || `${section.contentHtml ?? ''}`.includes('Koppints egy üzenetre a kijelöléshez')
-      || `${section.contentHtml ?? ''}`.includes('Kitűzés')
-    ));
-  }
-
   private table(): DemoHelpCenterTable {
-    return this.memoryDb.read()[HELP_CENTER_TABLE_NAME];
+    return this.helpCenterRepository.readTable();
   }
 
   private privacyConsentRecordId(userId: string, revisionId: string): string {
@@ -1309,13 +689,6 @@ export class DemoHelpCenterService {
       .trim();
   }
 
-  private hasLegacySeededImageSrc(value: string | null | undefined): boolean {
-    const html = `${value ?? ''}`;
-    return /<img\b[^>]*\bsrc\s*=\s*(["'])\s*help-seeded-image:/i.test(html)
-      || /<img\b[^>]*\bdata-lazy-src\s*=\s*(["'])\s*help-seeded-image:/i.test(html)
-      || /<img\b[^>]*\bsrc\s*=\s*(["'])[^"']*#lazy-src=/i.test(html);
-  }
-
   private normalizeSeededImageRefsInHtml(value: string | null | undefined): string {
     return `${value ?? ''}`.replace(/<img\b[^>]*>/gi, tag => this.normalizeSeededImageTag(tag));
   }
@@ -1391,70 +764,19 @@ export class DemoHelpCenterService {
   }
 
   private defaultRevision(kind: HelpCenterDocumentKind, lang = 'en', contextKey?: string | null): HelpCenterRevision {
-    const language = this.normalizeLang(lang);
-    const revisionsByLang = this.defaultRevisionsByLang(kind, contextKey);
-    return this.cloneRevision(language === 'hu' ? revisionsByLang.hu : revisionsByLang.en, kind);
-  }
-
-  private defaultRevisionsByLang(
-    kind: HelpCenterDocumentKind,
-    contextKey?: string | null
-  ): { en: HelpCenterRevision; hu: HelpCenterRevision } {
-    if (kind === 'privacy') {
-      return APP_STATIC_DATA.defaultPrivacyCenterRevisionsByLang;
-    }
-    if (kind === 'explanation') {
-      const context = this.normalizeContextKey(kind, contextKey, false) ?? 'home.game';
-      const revisionsByLang = APP_STATIC_DATA.defaultExplanationRevisionsByContext[
-        context as keyof typeof APP_STATIC_DATA.defaultExplanationRevisionsByContext
-      ];
-      if (!revisionsByLang) {
-        throw new Error(`No default explanation revision exists for ${context}.`);
-      }
-      return revisionsByLang;
-    }
-    return APP_STATIC_DATA.defaultHelpCenterRevisionsByLang;
+    return this.cloneRevision(DemoHelpCenterSeedBuilder.defaultRevision(kind, lang, contextKey), kind);
   }
 
   private defaultTitle(kind: HelpCenterDocumentKind, version: number, lang = 'en'): string {
-    if (this.normalizeLang(lang) === 'hu') {
-      return kind === 'privacy'
-        ? `Adatvédelmi verzió v${version}`
-        : kind === 'explanation'
-          ? `Magyarázat verzió v${version}`
-          : `Súgó verzió v${version}`;
-    }
-    return `${this.documentLabel(kind)} revision v${version}`;
+    return DemoHelpCenterSeedBuilder.defaultTitle(kind, version, lang);
   }
 
   private defaultSummary(kind: HelpCenterDocumentKind, lang = 'en'): string {
-    if (this.normalizeLang(lang) === 'hu') {
-      return kind === 'privacy'
-        ? 'Adatvédelem elsőként'
-        : kind === 'explanation'
-          ? 'Rövid képernyőmagyarázat'
-          : 'Mit tehetsz a MyScoutee-ban';
-    }
-    return kind === 'privacy'
-      ? 'Privacy first'
-      : kind === 'explanation'
-        ? 'Short screen guidance'
-        : 'What you can do in MyScoutee';
+    return DemoHelpCenterSeedBuilder.defaultSummary(kind, lang);
   }
 
   private defaultDescription(kind: HelpCenterDocumentKind, lang = 'en'): string {
-    if (this.normalizeLang(lang) === 'hu') {
-      return kind === 'privacy'
-        ? 'Folytatás előtt nézd át és fogadd el, hogyan használja a MyScoutee az adataidat.'
-        : kind === 'explanation'
-          ? APP_STATIC_DATA.defaultExplanationHomeRevisionsByLang.hu.description
-          : 'A MyScoutee segít az eseményeket elejétől végéig megtervezni: meghívások, szakaszok és csoportok, erőforrások, valamint kontextushoz kötött csevegések.';
-    }
-    return kind === 'privacy'
-      ? APP_STATIC_DATA.defaultPrivacyCenterDescription
-      : kind === 'explanation'
-        ? ''
-      : APP_STATIC_DATA.defaultHelpCenterDescription;
+    return DemoHelpCenterSeedBuilder.defaultDescription(kind, lang);
   }
 
   private normalizeHeaderColor(value: string | null | undefined): HelpCenterRevision['headerColor'] {
@@ -1471,25 +793,11 @@ export class DemoHelpCenterService {
   }
 
   private documentLabel(kind: HelpCenterDocumentKind): string {
-    switch (kind) {
-      case 'privacy':
-        return 'Privacy';
-      case 'explanation':
-        return 'Explanation';
-      default:
-        return 'Help';
-    }
+    return DemoHelpCenterSeedBuilder.documentLabel(kind);
   }
 
   private defaultSectionIcon(kind: HelpCenterDocumentKind): string {
-    switch (kind) {
-      case 'privacy':
-        return 'policy';
-      case 'explanation':
-        return 'tips_and_updates';
-      default:
-        return 'help_outline';
-    }
+    return DemoHelpCenterSeedBuilder.defaultSectionIcon(kind);
   }
 
   private revisionKind(revision: HelpCenterRevision | null | undefined): HelpCenterDocumentKind {

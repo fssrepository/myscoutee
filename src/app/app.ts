@@ -1,4 +1,4 @@
-import { Component, OnDestroy, inject } from '@angular/core';
+import { Component, HostListener, OnDestroy, inject } from '@angular/core';
 import {
   NavigationCancel,
   NavigationEnd,
@@ -23,7 +23,7 @@ import { I18nService } from './shared/i18n';
     RouterOutlet,
     NavigatorComponent,
     AppInstallPromptComponent
-],
+  ],
   providers: [
     { provide: DateAdapter, useClass: AppCalendarDateAdapter },
     { provide: MAT_DATE_FORMATS, useValue: AppCalendarDateFormats.dateTime }
@@ -32,6 +32,8 @@ import { I18nService } from './shared/i18n';
   styleUrl: './app.scss'
 })
 export class App implements OnDestroy {
+  private static readonly ROUTE_WARMUP_MAX_VISIBLE_MS = 6000;
+  private static readonly MOBILE_RESUME_RECOVERY_DELAY_MS = 280;
   private readonly router = inject(Router);
   private readonly pwaService = inject(PwaService);
   private readonly appLocationService = inject(AppLocationService);
@@ -41,6 +43,8 @@ export class App implements OnDestroy {
   private readonly navigatorBindings: NavigatorBindings = {};
   private readonly routerEventsSubscription: Subscription;
   private routeWarmupHideTimer: ReturnType<typeof setTimeout> | null = null;
+  private routeWarmupWatchdogTimer: ReturnType<typeof setTimeout> | null = null;
+  private mobileResumeRecoveryTimer: ReturnType<typeof setTimeout> | null = null;
   private initialLandingWarmupPending = false;
   protected showNavigator = false;
   protected routeWarmupVisible = false;
@@ -57,6 +61,9 @@ export class App implements OnDestroy {
     this.syncNavigatorVisibility(initialRouteUrl);
     this.initialLandingWarmupPending = this.shouldShowLandingWarmup(initialRouteUrl);
     this.routeWarmupVisible = this.initialLandingWarmupPending;
+    if (this.routeWarmupVisible) {
+      this.scheduleRouteWarmupWatchdog();
+    }
     this.routerEventsSubscription = this.router.events.subscribe(event => {
       if (event instanceof NavigationStart) {
         this.syncNavigatorVisibility(event.url);
@@ -82,8 +89,25 @@ export class App implements OnDestroy {
 
   ngOnDestroy(): void {
     this.clearRouteWarmupHideTimer();
+    this.clearRouteWarmupWatchdogTimer();
+    this.clearMobileResumeRecoveryTimer();
     this.routerEventsSubscription.unsubscribe();
     this.navigatorService.clearBindings(this.navigatorBindings);
+  }
+
+  @HostListener('window:pageshow')
+  protected onPageShow(): void {
+    this.scheduleMobileResumeRecovery();
+  }
+
+  @HostListener('window:focus')
+  protected onWindowFocus(): void {
+    this.scheduleMobileResumeRecovery();
+  }
+
+  @HostListener('document:visibilitychange')
+  protected onDocumentVisibilityChange(): void {
+    this.scheduleMobileResumeRecovery();
   }
 
   private syncNavigatorVisibility(url: string): void {
@@ -107,6 +131,7 @@ export class App implements OnDestroy {
   private showRouteWarmup(): void {
     this.clearRouteWarmupHideTimer();
     this.routeWarmupVisible = true;
+    this.scheduleRouteWarmupWatchdog();
   }
 
   private completeInitialLandingWarmup(delayMs = 120): void {
@@ -116,6 +141,7 @@ export class App implements OnDestroy {
 
   private hideRouteWarmup(delayMs = 120): void {
     this.clearRouteWarmupHideTimer();
+    this.clearRouteWarmupWatchdogTimer();
     if (delayMs <= 0) {
       this.routeWarmupVisible = false;
       return;
@@ -132,6 +158,54 @@ export class App implements OnDestroy {
     }
     clearTimeout(this.routeWarmupHideTimer);
     this.routeWarmupHideTimer = null;
+  }
+
+  private scheduleRouteWarmupWatchdog(): void {
+    this.clearRouteWarmupWatchdogTimer();
+    this.routeWarmupWatchdogTimer = setTimeout(() => {
+      this.routeWarmupWatchdogTimer = null;
+      if (!this.routeWarmupVisible) {
+        return;
+      }
+      this.completeInitialLandingWarmup(0);
+    }, App.ROUTE_WARMUP_MAX_VISIBLE_MS);
+  }
+
+  private clearRouteWarmupWatchdogTimer(): void {
+    if (!this.routeWarmupWatchdogTimer) {
+      return;
+    }
+    clearTimeout(this.routeWarmupWatchdogTimer);
+    this.routeWarmupWatchdogTimer = null;
+  }
+
+  private scheduleMobileResumeRecovery(): void {
+    if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+      return;
+    }
+    this.clearMobileResumeRecoveryTimer();
+    this.mobileResumeRecoveryTimer = setTimeout(() => {
+      this.mobileResumeRecoveryTimer = null;
+      this.recoverAfterMobileResume();
+    }, App.MOBILE_RESUME_RECOVERY_DELAY_MS);
+  }
+
+  private recoverAfterMobileResume(): void {
+    if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+      return;
+    }
+    this.syncNavigatorVisibility(this.resolveInitialRouteUrl());
+    if (this.routeWarmupVisible) {
+      this.completeInitialLandingWarmup(0);
+    }
+  }
+
+  private clearMobileResumeRecoveryTimer(): void {
+    if (!this.mobileResumeRecoveryTimer) {
+      return;
+    }
+    clearTimeout(this.mobileResumeRecoveryTimer);
+    this.mobileResumeRecoveryTimer = null;
   }
 
   private resolveInitialRouteUrl(): string {

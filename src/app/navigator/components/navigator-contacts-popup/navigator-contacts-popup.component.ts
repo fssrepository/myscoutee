@@ -9,6 +9,7 @@ import { switchMap, tap } from 'rxjs/operators';
 
 import { resolveCurrentDemoDelayMs, resolveCurrentRouteDelayMs } from '../../../shared/core/base/services/route-delay.service';
 import {
+  ProgressIndicatorComponent,
   SmartListComponent,
   type ListQuery,
   type SmartListConfig,
@@ -37,6 +38,7 @@ import { NavigatorService } from '../../navigator.service';
     MatButtonModule,
     MatIconModule,
     MatSelectModule,
+    ProgressIndicatorComponent,
     SmartListComponent
   ],
   templateUrl: './navigator-contacts-popup.component.html',
@@ -340,7 +342,6 @@ export class NavigatorContactsPopupComponent implements OnDestroy {
       busyConfirmLabel: 'Deleting...',
       confirmTone: 'danger',
       failureMessage: 'Unable to delete this contact right now.',
-      ringPerimeter: 100,
       onConfirm: async () => {
         this.isDeletionsPending.set(true);
 

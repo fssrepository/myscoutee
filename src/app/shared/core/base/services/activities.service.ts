@@ -125,7 +125,7 @@ export class ActivitiesService extends BaseRouteModeService {
     signal?: AbortSignal
   ): Promise<PageResult<AppTypes.ActivityListRow>> {
     const activeUserId = this.resolveActiveUserId();
-    const page = await this.eventsService.queryActivitiesEventPage({
+    const page = await this.eventsService.queryActivitiesEventListPage({
       userId: activeUserId,
       filter: request.eventScopeFilter ?? 'active-events',
       hostingPublicationFilter: request.hostingPublicationFilter,

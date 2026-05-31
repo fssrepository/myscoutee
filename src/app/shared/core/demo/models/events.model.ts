@@ -90,6 +90,49 @@ export interface DemoEventRecord {
   affinity: number;
 }
 
+export interface DemoEventListItem {
+  id: string;
+  userId: string;
+  type: DemoRepositoryEventItemType;
+  status?: DemoEventStatus;
+  avatar: string;
+  title: string;
+  subtitle: string;
+  timeframe: string;
+  inviter?: string | null;
+  unread: number;
+  activity: number;
+  isAdmin: boolean;
+  isInvitation: boolean;
+  isHosting: boolean;
+  isTrashed: boolean;
+  published: boolean;
+  creatorUserId: string;
+  creatorName: string;
+  creatorInitials: string;
+  creatorCity: string;
+  visibility: AppTypes.EventVisibility;
+  startAtIso: string;
+  endAtIso: string;
+  distanceKm: number;
+  imageUrl: string;
+  location: string;
+  capacityMin: number | null;
+  capacityMax: number | null;
+  capacityTotal: number;
+  ticketing: boolean;
+  eventType?: AppTypes.EventRecordKind;
+  acceptedMembers: number;
+  pendingMembers: number;
+  pendingReason?: 'approval' | 'waitlist' | null;
+  topics: string[];
+  rating: number;
+  boost: number;
+  affinity: number;
+}
+
+export type DemoEventCardRecord = DemoEventRecord | DemoEventListItem;
+
 export interface DemoEventExploreQuery {
   userId: string;
   order: AppTypes.EventExploreOrder;
@@ -122,8 +165,8 @@ export interface DemoEventActivitiesQuery {
   rangeEnd?: string;
 }
 
-export interface DemoEventActivitiesQueryResult {
-  records: DemoEventRecord[];
+export interface DemoEventActivitiesListQueryResult {
+  records: DemoEventListItem[];
   total: number;
   nextCursor: string | null;
 }

@@ -749,7 +749,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     this.resetActivitiesStateForOpen();
     this.activitiesRates.clearEditorState();
     this.resetActivitiesScroll();
-    this.seedEventOwnerMemberCountsFromEventsTable();
+    this.syncEventOwnerMemberCountsFromEventRows();
   }
 
   private resetActivitiesStateForOpen(): void {
@@ -835,7 +835,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     this.refreshRateItems();
 
     this.refreshSectionBadges();
-    this.seedEventOwnerMemberCountsFromEventsTable();
+    this.syncEventOwnerMemberCountsFromEventRows();
   }
 
   private async refreshChatItems(): Promise<void> {
@@ -1331,7 +1331,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       }
       this.applyStandaloneEventRecords(records, true);
       this.refreshSectionBadges();
-      this.seedEventOwnerMemberCountsFromEventsTable();
+      this.syncEventOwnerMemberCountsFromEventRows();
       this.cdr.markForCheck();
     } catch {
       // Keep the last cached event state if the refresh fails.
@@ -2299,7 +2299,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     void this.activityMembersService.replaceMembersByOwner(owner, this.selectedActivityMembers, summary.capacityTotal);
   }
 
-  private seedEventOwnerMemberCountsFromEventsTable(): void {
+  private syncEventOwnerMemberCountsFromEventRows(): void {
     const eventRecords = [
       ...this.eventItems.map(item => ({
         id: item.id,

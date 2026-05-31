@@ -18,6 +18,7 @@ import { resolveCurrentDemoDelayMs } from '../../../core/base/services/route-del
 import type { DemoEventRecord } from '../../../core/demo/models/events.model';
 import { EventCheckoutDraftService } from '../../services/event-checkout-draft.service';
 import { EventCheckoutDialogService, type EventCheckoutDialogState } from '../../services/event-checkout-dialog.service';
+import { ProgressIndicatorComponent } from '../progress-indicator';
 
 type PricingSnapshot = {
   amount: number;
@@ -41,7 +42,8 @@ type CancellationPreview = {
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
-    MatNativeDateModule
+    MatNativeDateModule,
+    ProgressIndicatorComponent
   ],
   templateUrl: './event-checkout-popup.component.html',
   styleUrl: './event-checkout-popup.component.scss'

@@ -16,12 +16,11 @@ import type {
 import { DemoEventsService } from '../../demo';
 import { HttpEventsService } from '../../http';
 import type {
+  DemoEventActivitiesListQueryResult,
   DemoEventActivitiesQuery,
-  DemoEventActivitiesQueryResult,
   DemoEventExploreQuery,
   DemoEventExploreQueryResult,
   DemoEventRecord,
-  DemoEventScopeFilter,
   DemoRepositoryEventItemType
 } from '../../demo/models/events.model';
 import type { InfoCardData, InfoCardMenuAction } from '../../../ui';
@@ -66,22 +65,14 @@ export class EventsService extends BaseRouteModeService {
     return this.eventsService.queryTrashedItemsByUser(userId);
   }
 
-  queryEventItemsByFilter(
-    userId: string,
-    filter: DemoEventScopeFilter,
-    hostingPublicationFilter: 'all' | 'drafts' = 'all'
-  ): Promise<DemoEventRecord[]> {
-    return this.eventsService.queryEventItemsByFilter(userId, filter, hostingPublicationFilter);
-  }
-
-  async queryActivitiesEventPage(
+  async queryActivitiesEventListPage(
     query: DemoEventActivitiesQuery,
     signal?: AbortSignal
-  ): Promise<DemoEventActivitiesQueryResult> {
+  ): Promise<DemoEventActivitiesListQueryResult> {
     if (this.isDemoModeEnabled('/activities/events')) {
-      return this.demoEventsService.queryActivitiesEventPage(query, signal);
+      return this.demoEventsService.queryActivitiesEventListPage(query, signal);
     }
-    return this.httpEventsService.queryActivitiesEventPage(query, signal);
+    return this.httpEventsService.queryActivitiesEventListPage(query, signal);
   }
 
   queryExploreItems(userId: string): Promise<DemoEventRecord[]> {
