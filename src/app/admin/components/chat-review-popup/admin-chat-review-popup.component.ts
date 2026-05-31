@@ -3,7 +3,8 @@ import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 
-import { AdminService, type AdminChatMessageDto } from '../../admin.service';
+import { AdminService } from '../../admin.service';
+import type { AdminChatMessageDto } from '../../models/admin-moderation.model';
 
 @Component({
   selector: 'app-admin-chat-review-popup',

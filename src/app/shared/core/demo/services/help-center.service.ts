@@ -12,6 +12,7 @@ import type {
   PrivacyConsentSaveRequest
 } from '../../base/models';
 import { RouteDelayService } from '../../base/services/route-delay.service';
+import { DemoHelpCenterSeedBuilder } from '../builders';
 import type { DemoHelpCenterTable } from '../models/help-center.model';
 import { DemoHelpCenterRepository } from '../repositories/help-center.repository';
 
@@ -76,7 +77,7 @@ export class DemoHelpCenterService {
       const language = option.lang;
       const helpSeeded = this.ensureSeeded('help', language);
       const privacySeeded = this.ensureSeeded('privacy', language);
-      const explanationsSeeded = this.explanationBootstrapContextKeys()
+      const explanationsSeeded = DemoHelpCenterSeedBuilder.explanationBootstrapContextKeys()
         .map(contextKey => this.ensureSeeded('explanation', language, contextKey))
         .some(Boolean);
       changed = helpSeeded
@@ -87,13 +88,6 @@ export class DemoHelpCenterService {
     const lazyImageMigrationChanged = this.ensureSeededImageRefsLazyLoaded();
     const explanationPanelSpanChanged = this.ensureScopedExplanationPanelSpan();
     return changed || lazyImageMigrationChanged || explanationPanelSpanChanged;
-  }
-
-  private explanationBootstrapContextKeys(): string[] {
-    return APP_STATIC_DATA.explainableSurfaces
-      .filter(surface => surface.enabled)
-      .map(surface => this.normalizeContextKey('explanation', surface.key, false))
-      .filter((contextKey): contextKey is string => Boolean(contextKey));
   }
 
   async loadPrivacyConsent(
@@ -1340,70 +1334,19 @@ export class DemoHelpCenterService {
   }
 
   private defaultRevision(kind: HelpCenterDocumentKind, lang = 'en', contextKey?: string | null): HelpCenterRevision {
-    const language = this.normalizeLang(lang);
-    const revisionsByLang = this.defaultRevisionsByLang(kind, contextKey);
-    return this.cloneRevision(language === 'hu' ? revisionsByLang.hu : revisionsByLang.en, kind);
-  }
-
-  private defaultRevisionsByLang(
-    kind: HelpCenterDocumentKind,
-    contextKey?: string | null
-  ): { en: HelpCenterRevision; hu: HelpCenterRevision } {
-    if (kind === 'privacy') {
-      return APP_STATIC_DATA.defaultPrivacyCenterRevisionsByLang;
-    }
-    if (kind === 'explanation') {
-      const context = this.normalizeContextKey(kind, contextKey, false) ?? 'home.game';
-      const revisionsByLang = APP_STATIC_DATA.defaultExplanationRevisionsByContext[
-        context as keyof typeof APP_STATIC_DATA.defaultExplanationRevisionsByContext
-      ];
-      if (!revisionsByLang) {
-        throw new Error(`No default explanation revision exists for ${context}.`);
-      }
-      return revisionsByLang;
-    }
-    return APP_STATIC_DATA.defaultHelpCenterRevisionsByLang;
+    return this.cloneRevision(DemoHelpCenterSeedBuilder.defaultRevision(kind, lang, contextKey), kind);
   }
 
   private defaultTitle(kind: HelpCenterDocumentKind, version: number, lang = 'en'): string {
-    if (this.normalizeLang(lang) === 'hu') {
-      return kind === 'privacy'
-        ? `Adatvédelmi verzió v${version}`
-        : kind === 'explanation'
-          ? `Magyarázat verzió v${version}`
-          : `Súgó verzió v${version}`;
-    }
-    return `${this.documentLabel(kind)} revision v${version}`;
+    return DemoHelpCenterSeedBuilder.defaultTitle(kind, version, lang);
   }
 
   private defaultSummary(kind: HelpCenterDocumentKind, lang = 'en'): string {
-    if (this.normalizeLang(lang) === 'hu') {
-      return kind === 'privacy'
-        ? 'Adatvédelem elsőként'
-        : kind === 'explanation'
-          ? 'Rövid képernyőmagyarázat'
-          : 'Mit tehetsz a MyScoutee-ban';
-    }
-    return kind === 'privacy'
-      ? 'Privacy first'
-      : kind === 'explanation'
-        ? 'Short screen guidance'
-        : 'What you can do in MyScoutee';
+    return DemoHelpCenterSeedBuilder.defaultSummary(kind, lang);
   }
 
   private defaultDescription(kind: HelpCenterDocumentKind, lang = 'en'): string {
-    if (this.normalizeLang(lang) === 'hu') {
-      return kind === 'privacy'
-        ? 'Folytatás előtt nézd át és fogadd el, hogyan használja a MyScoutee az adataidat.'
-        : kind === 'explanation'
-          ? APP_STATIC_DATA.defaultExplanationHomeRevisionsByLang.hu.description
-          : 'A MyScoutee segít az eseményeket elejétől végéig megtervezni: meghívások, szakaszok és csoportok, erőforrások, valamint kontextushoz kötött csevegések.';
-    }
-    return kind === 'privacy'
-      ? APP_STATIC_DATA.defaultPrivacyCenterDescription
-      : kind === 'explanation'
-        ? ''
-      : APP_STATIC_DATA.defaultHelpCenterDescription;
+    return DemoHelpCenterSeedBuilder.defaultDescription(kind, lang);
   }
 
   private normalizeHeaderColor(value: string | null | undefined): HelpCenterRevision['headerColor'] {
@@ -1420,25 +1363,11 @@ export class DemoHelpCenterService {
   }
 
   private documentLabel(kind: HelpCenterDocumentKind): string {
-    switch (kind) {
-      case 'privacy':
-        return 'Privacy';
-      case 'explanation':
-        return 'Explanation';
-      default:
-        return 'Help';
-    }
+    return DemoHelpCenterSeedBuilder.documentLabel(kind);
   }
 
   private defaultSectionIcon(kind: HelpCenterDocumentKind): string {
-    switch (kind) {
-      case 'privacy':
-        return 'policy';
-      case 'explanation':
-        return 'tips_and_updates';
-      default:
-        return 'help_outline';
-    }
+    return DemoHelpCenterSeedBuilder.defaultSectionIcon(kind);
   }
 
   private revisionKind(revision: HelpCenterRevision | null | undefined): HelpCenterDocumentKind {

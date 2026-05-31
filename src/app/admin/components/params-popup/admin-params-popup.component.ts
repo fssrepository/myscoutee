@@ -6,14 +6,14 @@ import { MatIconModule } from '@angular/material/icon';
 import { RouteDelayService } from '../../../shared/core/base/services/route-delay.service';
 import { I18nPipe } from '../../../shared/i18n';
 import {
-  AdminService,
   type AdminParamFieldDto,
   type AdminParamOptionDto,
   type AdminParamsHistoryDto,
   type AdminParamsHistoryItemDto,
   type AdminParamsSectionDto,
   type AdminParamsStateDto
-} from '../../admin.service';
+} from '../../models/admin-params.model';
+import { AdminService } from '../../admin.service';
 
 type AdminParamOption = Readonly<AdminParamOptionDto>;
 

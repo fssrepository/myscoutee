@@ -19,7 +19,6 @@ import {
   type AdminNotificationRuleParameterValueType,
   type AdminNotificationRunResult,
   type AdminNotificationScheduleSlot,
-  type AdminNotificationTemplateOption,
   type AdminNotificationIntervalUnit,
   type AdminNotificationTimingMode,
   type AdminNotificationTriggerKind,
@@ -54,302 +53,52 @@ import { AdminMonitoringRepository } from './repositories/admin-monitoring.repos
 import { AdminNotificationsRepository } from './repositories/admin-notifications.repository';
 import { AdminParamsRepository } from './repositories/admin-params.repository';
 import { AdminStatsRepository } from './repositories/admin-stats.repository';
-
-export type AdminPopupKind =
-  | 'reports'
-  | 'feedback'
-  | 'chat'
-  | 'chat-review'
-  | 'warn-chat'
-  | 'profile'
-  | 'help-editor'
-  | 'idea-editor'
-  | 'notifications'
-  | 'params'
-  | 'stats'
-  | 'affinity-graph'
-  | 'monitoring'
-  | 'item-preview';
+import { AdminHelpSeedBuilder } from './builders/admin-help-seed.builder';
+import { AdminModerationSeedBuilder } from './builders/admin-moderation-seed.builder';
+import { AdminMonitoringSeedBuilder } from './builders/admin-monitoring-seed.builder';
+import { AdminNotificationsSeedBuilder } from './builders/admin-notifications-seed.builder';
+import { AdminParamsSeedBuilder } from './builders/admin-params-seed.builder';
+import { AdminProfileSeedBuilder } from './builders/admin-profile-seed.builder';
+import { AdminStatsSeedBuilder } from './builders/admin-stats-seed.builder';
+import type { AdminDashboardDto } from './models/admin-dashboard.model';
+import type { DemoAdminHelpTarget } from './models/admin-help.model';
+import type {
+  AdminChatMessageDto,
+  AdminFeedbackDto,
+  AdminModerationStore,
+  AdminReportDto,
+  AdminReportedUserDto
+} from './models/admin-moderation.model';
+import type {
+  AdminParamFieldDto,
+  AdminParamOptionDto,
+  AdminParamValueType,
+  AdminParamsDemoStore,
+  AdminParamsHistoryDto,
+  AdminParamsHistoryItemDto,
+  AdminParamsSectionDto,
+  AdminParamsStateDto
+} from './models/admin-params.model';
+import type { AdminUserDto } from './models/admin-profile.model';
+import type {
+  AdminBootstrapProgressState,
+  AdminPopupKind
+} from './models/admin-shell.model';
+import type {
+  AdminStatsBreakdownItemDto,
+  AdminStatsDashboardDto,
+  AdminStatsGraphDto,
+  AdminStatsGraphTimelinePointDto,
+  AdminStatsMetricDto,
+  AdminStatsRevenueDto,
+  AdminStatsRevenueTimelinePointDto,
+  AdminStatsSegmentDto,
+  AdminStatsTimelinePointDto
+} from './models/admin-stats.model';
 
 const OBSOLETE_NOTIFICATION_RULE_PARAMETER_KEYS = new Set([
   'jobs.process.randomGroups.historyPenalty'
 ]);
-
-export interface AdminUserDto {
-  id: string;
-  name: string;
-  initials: string;
-  email: string;
-  headline?: string | null;
-  about?: string | null;
-  images?: string[] | null;
-}
-
-export interface AdminChatMessageDto {
-  id: string;
-  sender: string;
-  senderUserId?: string | null;
-  senderInitials?: string | null;
-  senderGender?: 'woman' | 'man' | string | null;
-  text: string;
-  time?: string | null;
-  sentAtIso?: string | null;
-}
-
-export interface AdminReportDto {
-  id: string;
-  reporterUserId: string;
-  reporterName: string;
-  reporterImageUrl?: string | null;
-  targetUserId: string;
-  handle?: string | null;
-  reason: string;
-  details: string;
-  eventId?: string | null;
-  eventTitle?: string | null;
-  eventStartAtIso?: string | null;
-  memberEntryId?: string | null;
-  sourceType?: string | null;
-  sourceId?: string | null;
-  sourceText?: string | null;
-  chatId?: string | null;
-  messageId?: string | null;
-  assetId?: string | null;
-  assetType?: string | null;
-  chatTitle?: string | null;
-  chatMessages?: AdminChatMessageDto[];
-  createdDate: string;
-}
-
-export interface AdminReportedUserDto {
-  userId: string;
-  name: string;
-  initials: string;
-  gender: 'woman' | 'man' | string;
-  city: string;
-  imageUrl?: string | null;
-  profileStatus: UserDto['profileStatus'] | string;
-  reportCount: number;
-  lastReportedAtIso?: string | null;
-  blockedAtIso?: string | null;
-  hasSupportChat?: boolean | null;
-  supportChatUnread?: number | null;
-  reports: AdminReportDto[];
-}
-
-export interface AdminFeedbackDto {
-  id: string;
-  userId: string;
-  userName: string;
-  userImageUrl?: string | null;
-  category: string;
-  subject: string;
-  details: string;
-  createdDate: string;
-}
-
-export interface AdminDashboardDto {
-  activeAdmin: AdminUserDto;
-  reportedUsers: AdminReportedUserDto[];
-  blockedUsers: AdminReportedUserDto[];
-  feedback: AdminFeedbackDto[];
-}
-
-export interface AdminStatsMetricDto {
-  key: string;
-  labelKey: string;
-  value: number;
-  valueLabel?: string;
-  captionKey?: string;
-  caption?: string;
-  icon: string;
-  tone: 'blue' | 'green' | 'gold' | 'red' | 'purple' | 'slate';
-  percent?: number | null;
-}
-
-export interface AdminStatsBreakdownItemDto {
-  key: string;
-  labelKey: string;
-  label?: string;
-  value: number;
-  total?: number | null;
-  icon?: string;
-  tone?: AdminStatsMetricDto['tone'];
-}
-
-export interface AdminStatsSegmentDto {
-  key: string;
-  labelKey: string;
-  icon: string;
-  total: number;
-  healthPercent: number;
-  summaryKey: string;
-  summary?: string;
-  items: AdminStatsBreakdownItemDto[];
-}
-
-export interface AdminStatsTimelinePointDto {
-  dateKey: string;
-  label: string;
-  registrations: number;
-  activeUsers: number;
-  ratings: number;
-  events: number;
-  assets: number;
-  messages: number;
-  moderation: number;
-}
-
-export interface AdminStatsGraphTimelinePointDto {
-  dateKey: string;
-  label: string;
-  activeEdges: number;
-  newEdges: number;
-  recurringEdges: number;
-  weakTies: number;
-  bridgeUsers: number;
-  communities: number;
-  networkQuality: number;
-  clusterQuality: number;
-}
-
-export interface AdminStatsGraphDto {
-  healthScore: number;
-  healthLabelKey: string;
-  insightKey: string;
-  metrics: AdminStatsMetricDto[];
-  bridgeUsers: AdminStatsBreakdownItemDto[];
-  communities: AdminStatsBreakdownItemDto[];
-  signals: AdminStatsBreakdownItemDto[];
-  timeline: AdminStatsGraphTimelinePointDto[];
-}
-
-export interface AdminStatsRevenueTimelinePointDto {
-  dateKey: string;
-  label: string;
-  payableEvents: number;
-  payableAssets: number;
-  projectedEventCents: number;
-  projectedAssetCents: number;
-  actualPaymentCents: number;
-  payingUsers: number;
-}
-
-export interface AdminStatsRevenueDto {
-  metrics: AdminStatsMetricDto[];
-  assetCategories: AdminStatsBreakdownItemDto[];
-  timeline: AdminStatsRevenueTimelinePointDto[];
-}
-
-export interface AdminStatsDashboardDto {
-  generatedAtIso: string;
-  source: 'demo' | 'http' | 'fallback';
-  healthScore: number;
-  healthLabelKey: string;
-  healthSummaryKey: string;
-  kpis: AdminStatsMetricDto[];
-  segments: AdminStatsSegmentDto[];
-  attention: AdminStatsBreakdownItemDto[];
-  topCities: AdminStatsBreakdownItemDto[];
-  topTopics: AdminStatsBreakdownItemDto[];
-  timeline: AdminStatsTimelinePointDto[];
-  eventTypes: AdminStatsBreakdownItemDto[];
-  activityMix: AdminStatsBreakdownItemDto[];
-  graph: AdminStatsGraphDto;
-  revenue: AdminStatsRevenueDto;
-}
-
-export type AdminParamValueType = 'number' | 'text';
-
-export interface AdminParamOptionDto {
-  value: string;
-  label: string;
-  labelKey?: string | null;
-}
-
-export interface AdminParamFieldDto {
-  key: string;
-  label: string;
-  labelKey?: string | null;
-  group: string;
-  groupKey?: string | null;
-  valueType: AdminParamValueType;
-  numberValue?: number | null;
-  textValue?: string | null;
-  unit?: string | null;
-  options?: AdminParamOptionDto[] | null;
-  strategy?: string | null;
-  strategyKey?: string | null;
-  readOnly?: boolean | null;
-}
-
-export interface AdminParamsSectionDto {
-  key: string;
-  label: string;
-  labelKey?: string | null;
-  version: number;
-  changedDate: string;
-  changedBy: string;
-  summary: string;
-  summaryKey?: string | null;
-  fields: AdminParamFieldDto[];
-}
-
-export interface AdminParamsStateDto {
-  sections: AdminParamsSectionDto[];
-  updatedDate: string;
-}
-
-export interface AdminParamsHistoryItemDto {
-  configId?: string | null;
-  version: number;
-  changedDate: string;
-  changedBy: string;
-  summary: string;
-  summaryKey?: string | null;
-  active: boolean;
-  fields: AdminParamFieldDto[];
-}
-
-export interface AdminParamsHistoryDto {
-  sectionKey: string;
-  label: string;
-  labelKey?: string | null;
-  versions: AdminParamsHistoryItemDto[];
-}
-
-interface AdminModerationStore {
-  seededAtIso: string;
-  reports: AdminReportDto[];
-  feedback: AdminFeedbackDto[];
-}
-
-interface AdminParamsDemoStore extends AdminParamsStateDto {
-  historyBySection: Record<string, AdminParamsHistoryItemDto[]>;
-}
-
-interface DemoAdminHelpTarget {
-  key: string;
-  messageId: string;
-  attachmentId: string;
-  attachmentType: 'link' | 'event' | 'asset';
-  attachmentEntityId: string;
-  assetType?: 'Car' | 'Accommodation' | 'Supplies' | null;
-  title: string;
-  subtitle: string;
-  description: string;
-  previewUrl?: string | null;
-  text: string;
-  targetUrl: string;
-}
-
-type AdminBootstrapProgressStage = 'selector' | 'indexedDb' | 'records' | 'affinityGraph' | 'profile' | 'ready';
-
-export interface AdminBootstrapProgressState {
-  percent: number;
-  label: string;
-  stage: AdminBootstrapProgressStage;
-}
 
 const ADMIN_SESSION_STORAGE_KEY = 'myscoutee-admin-session';
 const ADMIN_NOTIFICATION_STORAGE_TIMEOUT_MS = 2500;
@@ -1276,88 +1025,10 @@ export class AdminService {
   }
 
   private buildSeedDemoModerationStore(): AdminModerationStore {
-    return {
-      seededAtIso: new Date().toISOString(),
-      reports: [
-        {
-          id: 'admin-demo-report-chat-kai-001',
-          reporterUserId: 'u1',
-          reporterName: 'Farkas Anna',
-          reporterImageUrl: this.firstUserImage(this.demoUsersRepository.queryUserById('u1')),
-          targetUserId: 'u5',
-          handle: 'Lina Park',
-          reason: 'Harassment',
-          details: 'The reported chat message made another event member feel unsafe and should be reviewed by moderation.',
-          eventId: 'a11a802ee0714a21db94ed4e',
-          eventTitle: 'Alpine Weekend 2.0',
-          eventStartAtIso: '2026-03-04T09:45:00.000Z',
-          sourceType: 'chat',
-          sourceId: 'c1-4',
-          sourceText: 'I can take one extra seat from downtown pickup.',
-          chatId: 'c1',
-          messageId: 'c1-4',
-          chatTitle: 'Driver Split - Alpine Weekend',
-          chatMessages: this.demoChatMessages('u1', 'c1'),
-          createdDate: '2026-04-25T11:12:00.000Z'
-        },
-        {
-          id: 'admin-demo-report-event-kai-002',
-          reporterUserId: 'u1',
-          reporterName: 'Farkas Anna',
-          reporterImageUrl: this.firstUserImage(this.demoUsersRepository.queryUserById('u1')),
-          targetUserId: 'u5',
-          handle: 'Lina Park',
-          reason: 'No-show / unsafe event behavior',
-          details: 'The user repeatedly joined event plans and disrupted logistics without updating the host.',
-          eventId: 'a11a802ee0714a21db94ed4e',
-          eventTitle: 'Alpine Weekend 2.0',
-          eventStartAtIso: '2026-03-04T09:45:00.000Z',
-          sourceType: 'event',
-          sourceId: 'a11a802ee0714a21db94ed4e',
-          sourceText: 'Host reported repeated logistics disruption before Alpine Weekend 2.0.',
-          createdDate: '2026-04-26T16:35:00.000Z'
-        },
-        {
-          id: 'admin-demo-report-asset-kai-003',
-          reporterUserId: 'u4',
-          reporterName: 'Maya Stone',
-          reporterImageUrl: this.firstUserImage(this.demoUsersRepository.queryUserById('u4')),
-          targetUserId: 'u5',
-          handle: 'Lina Park',
-          reason: 'Asset misuse',
-          details: 'Asset owner asked moderation to review a supplies request before approving future resource sharing.',
-          eventId: 'indoor-strategy-social-event',
-          eventTitle: 'Indoor Strategy Social',
-          eventStartAtIso: '2026-05-02T17:30:00.000Z',
-          sourceType: 'asset',
-          sourceId: 'f7b9be40d648a5448d018308',
-          sourceText: 'Game Night Box request needs moderation review.',
-          assetId: 'f7b9be40d648a5448d018308',
-          assetType: 'Supplies',
-          createdDate: '2026-04-27T09:20:00.000Z'
-        }
-      ],
-      feedback: [
-        {
-          id: 'admin-demo-feedback-report-status-001',
-          userId: 'u1',
-          userName: 'Farkas Anna',
-          category: 'UX improvement',
-          subject: 'Need clearer report status',
-          details: 'After reporting a user, I would like to see whether moderation has reviewed the report.',
-          createdDate: '2026-04-24T13:20:00.000Z'
-        },
-        {
-          id: 'admin-demo-feedback-event-warn-002',
-          userId: 'u5',
-          userName: 'Lina Park',
-          category: 'Feature request',
-          subject: 'Review event behavior faster',
-          details: 'Hosts need a way to warn members before blocking them from future participation.',
-          createdDate: '2026-04-23T18:05:00.000Z'
-        }
-      ]
-    };
+    return AdminModerationSeedBuilder.buildSeedDemoModerationStore({
+      userImageUrl: userId => this.firstUserImage(this.demoUsersRepository.queryUserById(userId)),
+      chatMessages: (ownerUserId, chatId) => this.demoChatMessages(ownerUserId, chatId)
+    });
   }
 
   private buildDemoDashboard(admin: AdminUserDto, store: AdminModerationStore): AdminDashboardDto {
@@ -1466,42 +1137,7 @@ export class AdminService {
   }
 
   private buildDemoAdminUser(admin: AdminUserDto): UserDto {
-    return {
-      id: admin.id,
-      name: admin.name,
-      age: 0,
-      birthday: '',
-      city: 'Admin',
-      height: '',
-      physique: '',
-      languages: ['English'],
-      horoscope: '',
-      initials: admin.initials,
-      gender: admin.id.includes('noel') ? 'man' : 'woman',
-      statusText: 'Admin workspace',
-      hostTier: 'Admin',
-      traitLabel: 'Safety',
-      completion: 100,
-      headline: `${admin.headline ?? ''}`.trim() || 'Moderation workspace',
-      about: `${admin.about ?? ''}`.trim() || 'Reviews reports, feedback, and support chats.',
-      images: [...(admin.images?.length ? admin.images : this.demoAdminImages(admin.id))],
-      profileStatus: 'public',
-      activities: {
-        game: 0,
-        chat: 0,
-        invitations: 0,
-        events: 0,
-        hosting: 0,
-        cars: 0,
-        accommodation: 0,
-        supplies: 0,
-        tickets: 0,
-        contacts: 0,
-        feedback: 0,
-        adminJobs: 0,
-        adminMetrics: 0
-      }
-    };
+    return AdminProfileSeedBuilder.buildDemoAdminUser(admin);
   }
 
   private enrichDemoFeedback(feedback: AdminFeedbackDto): AdminFeedbackDto {
@@ -1611,47 +1247,7 @@ export class AdminService {
   }
 
   private demoAdminHelpTargets(): DemoAdminHelpTarget[] {
-    return [
-      {
-        key: 'current',
-        messageId: 'm-admin-help-u1',
-        attachmentId: 'admin-help:u1:current',
-        attachmentType: 'link',
-        attachmentEntityId: '',
-        title: 'Open shared help view',
-        subtitle: 'Limited-time support token',
-        description: '',
-        text: 'Please help me, I am sharing my current MyScoutee screen with support.',
-        targetUrl: '/game'
-      },
-      {
-        key: 'events',
-        messageId: 'm-admin-help-u1-events',
-        attachmentId: 'admin-help:u1:events',
-        attachmentType: 'event',
-        attachmentEntityId: 'e1',
-        title: 'Alpine Weekend 2.0',
-        subtitle: 'Feb 27 - Mar 1',
-        description: 'Multi-day ski meetup with social dinner and pair game.',
-        previewUrl: 'https://picsum.photos/seed/demo-event-events%3Au1%3Ae1%3Aalpine-weekend-2.0/1200/700',
-        text: 'Please check what I see on this event screen.',
-        targetUrl: '/game?supportTarget=event&eventId=e1'
-      },
-      {
-        key: 'asset-supplies',
-        messageId: 'm-admin-help-u1-asset-supplies',
-        attachmentId: 'admin-help:u1:asset-supplies',
-        attachmentType: 'asset',
-        attachmentEntityId: 'asset-sup-2',
-        assetType: 'Supplies',
-        title: 'Game Night Box',
-        subtitle: 'Supplies - Austin',
-        description: 'Board games, cards, and speakers ready for the venue.',
-        previewUrl: 'https://picsum.photos/seed/supplies-gear-asset-sup-2/1200/700',
-        text: 'Please check this shared asset screen.',
-        targetUrl: '/game?supportTarget=asset&assetFilter=Supplies&assetId=asset-sup-2&assetTitle=Game%20Night%20Box&assetSubtitle=Board%20games%20%2B%20cards%20%2B%20speakers&assetCity=Austin&assetDetails=Board%20games%2C%20cards%2C%20and%20speakers%20ready%20for%20the%20venue.&assetPreview=https%3A%2F%2Fpicsum.photos%2Fseed%2Fsupplies-gear-asset-sup-2%2F1200%2F700'
-      }
-    ];
+    return AdminHelpSeedBuilder.demoAdminHelpTargets();
   }
 
   private demoChatMessages(ownerUserId: string, chatId: string): AdminChatMessageDto[] {
@@ -1965,15 +1561,11 @@ export class AdminService {
   }
 
   private demoAdminImages(adminUserId: string): string[] {
-    return adminUserId.includes('noel')
-      ? ['https://randomuser.me/api/portraits/men/75.jpg']
-      : ['https://randomuser.me/api/portraits/women/65.jpg'];
+    return AdminProfileSeedBuilder.demoAdminImages(adminUserId);
   }
 
   private isLegacyDemoAdminImage(imageUrl: string | null | undefined): boolean {
-    const normalized = `${imageUrl ?? ''}`.trim();
-    return normalized.includes('picsum.photos/seed/admin-ava-moderation')
-      || normalized.includes('picsum.photos/seed/admin-noel-safety');
+    return AdminProfileSeedBuilder.isLegacyDemoAdminImage(imageUrl);
   }
 
   private mergeStoredAdminProfile(admin: AdminUserDto): AdminUserDto {
@@ -1997,261 +1589,9 @@ export class AdminService {
   }
 
   private buildSeedDemoStatsSnapshot(): AdminStatsDashboardDto {
-    const nowIso = new Date().toISOString();
-    const segment = (
-      key: string,
-      labelKey: string,
-      icon: string,
-      total: number,
-      healthPercent: number,
-      items: AdminStatsBreakdownItemDto[]
-    ): AdminStatsSegmentDto => ({
-      key,
-      labelKey,
-      icon,
-      total,
-      healthPercent,
-      summaryKey: 'stats.segment.summary',
-      items
-    });
-    const item = (
-      key: string,
-      labelKey: string,
-      value: number,
-      total: number,
-      icon: string,
-      tone: AdminStatsMetricDto['tone']
-    ): AdminStatsBreakdownItemDto => ({ key, labelKey, value, total, icon, tone });
-    const metric = (
-      key: string,
-      labelKey: string,
-      value: number,
-      valueLabel: string,
-      icon: string,
-      tone: AdminStatsMetricDto['tone'],
-      percent: number
-    ): AdminStatsMetricDto => ({ key, labelKey, value, valueLabel, icon, tone, percent });
-    const timeline: AdminStatsTimelinePointDto[] = [
-      ['2026-04-28', 'Apr 28', 3, 24, 18, 4, 2, 38, 1],
-      ['2026-04-29', 'Apr 29', 5, 31, 22, 6, 3, 44, 2],
-      ['2026-04-30', 'Apr 30', 4, 29, 28, 5, 4, 47, 1],
-      ['2026-05-01', 'May 1', 8, 36, 32, 8, 4, 62, 3],
-      ['2026-05-02', 'May 2', 6, 42, 38, 7, 5, 71, 2],
-      ['2026-05-03', 'May 3', 4, 39, 35, 5, 3, 64, 1],
-      ['2026-05-04', 'May 4', 7, 46, 44, 9, 6, 83, 2],
-      ['2026-05-05', 'May 5', 9, 51, 49, 8, 5, 94, 4],
-      ['2026-05-06', 'May 6', 5, 47, 43, 6, 4, 86, 2],
-      ['2026-05-07', 'May 7', 6, 53, 56, 10, 7, 103, 3],
-      ['2026-05-08', 'May 8', 4, 49, 48, 7, 5, 91, 2],
-      ['2026-05-09', 'May 9', 7, 57, 61, 11, 6, 117, 4],
-      ['2026-05-10', 'May 10', 5, 54, 52, 8, 5, 99, 1],
-      ['2026-05-11', 'May 11', 6, 42, 36, 5, 3, 72, 2]
-    ].map(([dateKey, label, registrations, activeUsers, ratings, events, assets, messages, moderation]) => ({
-      dateKey: `${dateKey}`,
-      label: `${label}`,
-      registrations: Number(registrations),
-      activeUsers: Number(activeUsers),
-      ratings: Number(ratings),
-      events: Number(events),
-      assets: Number(assets),
-      messages: Number(messages),
-      moderation: Number(moderation)
-    }));
-    const revenueTimeline: AdminStatsRevenueTimelinePointDto[] = [
-      ['2026-04-28', 'Apr 28', 1, 1, 18000, 12000, 0, 0],
-      ['2026-04-29', 'Apr 29', 1, 2, 12500, 22000, 4200, 2],
-      ['2026-04-30', 'Apr 30', 0, 1, 0, 9500, 3800, 1],
-      ['2026-05-01', 'May 1', 2, 1, 26000, 18000, 6200, 3],
-      ['2026-05-02', 'May 2', 1, 2, 14500, 24000, 5300, 2],
-      ['2026-05-03', 'May 3', 0, 1, 0, 8500, 0, 0],
-      ['2026-05-04', 'May 4', 2, 1, 31000, 13000, 7800, 4],
-      ['2026-05-05', 'May 5', 1, 1, 16500, 16000, 2900, 1],
-      ['2026-05-06', 'May 6', 0, 2, 0, 28000, 6100, 3],
-      ['2026-05-07', 'May 7', 2, 1, 27500, 14000, 4500, 2],
-      ['2026-05-08', 'May 8', 1, 0, 15500, 0, 0, 0],
-      ['2026-05-09', 'May 9', 1, 2, 21000, 34000, 8200, 3],
-      ['2026-05-10', 'May 10', 0, 1, 0, 15000, 3200, 1],
-      ['2026-05-11', 'May 11', 0, 0, 0, 0, 0, 0]
-    ].map(([dateKey, label, payableEvents, payableAssets, projectedEventCents, projectedAssetCents, actualPaymentCents, payingUsers]) => ({
-      dateKey: `${dateKey}`,
-      label: `${label}`,
-      payableEvents: Number(payableEvents),
-      payableAssets: Number(payableAssets),
-      projectedEventCents: Number(projectedEventCents),
-      projectedAssetCents: Number(projectedAssetCents),
-      actualPaymentCents: Number(actualPaymentCents),
-      payingUsers: Number(payingUsers)
-    }));
-
-    return this.normalizeStatsDashboard({
-      generatedAtIso: nowIso,
-      source: 'demo',
-      healthScore: 84,
-      healthLabelKey: 'stats.health.good',
-      healthSummaryKey: 'stats.health.summary',
-      kpis: [
-        { key: 'active-profiles', labelKey: 'stats.kpi.active.profiles', value: 112, valueLabel: '112', caption: 'Public 58 · Friends 38 · Host 16', icon: 'groups', tone: 'green', percent: 88 },
-        { key: 'onboarding-users', labelKey: 'stats.kpi.onboarding.users', value: 9, valueLabel: '9', icon: 'how_to_reg', tone: 'gold', percent: 7 },
-        { key: 'inactive-profiles', labelKey: 'stats.kpi.inactive.profiles', value: 7, valueLabel: '7', icon: 'visibility_off', tone: 'slate', percent: 5 },
-        { key: 'active-users', labelKey: 'stats.kpi.active.users', value: 42, valueLabel: '42', icon: 'person', tone: 'blue', percent: 33 },
-        { key: 'returning-users', labelKey: 'stats.kpi.returning.users', value: 31, valueLabel: '31', icon: 'repeat', tone: 'purple', percent: 24 },
-        { key: 'departed-users', labelKey: 'stats.kpi.departed.users', value: 7, valueLabel: '7', icon: 'person_remove', tone: 'slate', percent: 5 },
-        { key: 'active-events', labelKey: 'stats.kpi.active.events', value: 18, valueLabel: '18', icon: 'event_available', tone: 'green', percent: 45 },
-        { key: 'active-assets', labelKey: 'stats.kpi.active.assets', value: 27, valueLabel: '27', icon: 'inventory_2', tone: 'gold', percent: 68 },
-        { key: 'moderation-pressure', labelKey: 'stats.kpi.moderation.pressure', value: 14, valueLabel: '14', icon: 'shield', tone: 'red', percent: 18 }
-      ],
-      segments: [
-        segment('community', 'stats.segment.community', 'person', 128, 88, [
-          item('profile.registered', 'stats.event.profile.registered', 29, 128, 'person_add', 'green'),
-          item('profile.active', 'stats.event.profile.active', 112, 128, 'groups', 'green'),
-          item('profile.onboarding', 'stats.event.profile.onboarding', 9, 128, 'how_to_reg', 'gold'),
-          item('profile.inactive', 'stats.event.profile.inactive', 7, 128, 'visibility_off', 'slate'),
-          item('active-users-7d', 'stats.event.active.users.7d', 42, 128, 'person', 'blue'),
-          item('active-users-30d', 'stats.event.active.users.30d', 68, 128, 'calendar_month', 'green'),
-          item('returning-users', 'stats.event.returning.users', 31, 128, 'repeat', 'purple'),
-          item('profile.deleted', 'stats.event.profile.deleted', 7, 135, 'person_remove', 'slate'),
-          item('deleted-median-days', 'stats.event.deleted.median.days', 46, 46, 'timer', 'gold'),
-          item('profile-fill-average', 'stats.event.profile.fill.average', 74, 100, 'fact_check', 'gold'),
-          item('tried-users', 'stats.event.tried.users', 128, 128, 'group', 'slate')
-        ]),
-        segment('matching', 'stats.segment.matching', 'hub', 342, 83, [
-          item('rates.synced', 'stats.event.rates.synced', 342, 342, 'star', 'gold')
-        ]),
-        segment('activities', 'stats.segment.activities', 'event_available', 91, 76, [
-          item('active-events', 'stats.event.active.events', 18, 91, 'event_available', 'green'),
-          item('all-events', 'stats.event.all.events', 28, 91, 'event', 'blue'),
-          item('active-assets', 'stats.event.active.assets', 27, 91, 'inventory_2', 'gold'),
-          item('all-assets', 'stats.event.all.assets', 39, 91, 'category', 'purple'),
-          item('event.members.changed', 'stats.event.event.members.changed', 37, 91, 'groups', 'green'),
-          item('asset.requests.changed', 'stats.event.asset.requests.changed', 14, 91, 'handshake', 'gold')
-        ]),
-        segment('communication', 'stats.segment.communication', 'chat', 426, 81, [
-          item('chat.message.sent', 'stats.event.chat.message.sent', 417, 426, 'forum', 'blue'),
-          item('admin.user.warned', 'stats.event.admin.user.warned', 9, 426, 'warning', 'gold')
-        ]),
-        segment('moderation', 'stats.segment.moderation', 'shield', 14, 62, [
-          item('report.submitted', 'stats.event.report.submitted', 8, 14, 'report', 'red'),
-          item('feedback.submitted', 'stats.event.feedback.submitted', 4, 14, 'feedback', 'purple'),
-          item('admin.user.blocked', 'stats.event.admin.user.blocked', 2, 14, 'block', 'red')
-        ])
-      ],
-      attention: [],
-      topCities: [
-        { key: 'austin', labelKey: '', label: 'Austin', value: 34, total: 128, icon: 'location_on', tone: 'blue' },
-        { key: 'seattle', labelKey: '', label: 'Seattle', value: 29, total: 128, icon: 'location_on', tone: 'green' },
-        { key: 'denver', labelKey: '', label: 'Denver', value: 23, total: 128, icon: 'location_on', tone: 'purple' },
-        { key: 'miami', labelKey: '', label: 'Miami', value: 18, total: 128, icon: 'location_on', tone: 'gold' }
-      ],
-      topTopics: [
-        { key: 'outdoors', labelKey: '', label: 'Outdoors', value: 38, total: 112, icon: 'local_offer', tone: 'green' },
-        { key: 'music', labelKey: '', label: 'Music', value: 31, total: 112, icon: 'local_offer', tone: 'purple' },
-        { key: 'board-games', labelKey: '', label: 'Board games', value: 24, total: 112, icon: 'local_offer', tone: 'blue' },
-        { key: 'fitness', labelKey: '', label: 'Fitness', value: 19, total: 112, icon: 'local_offer', tone: 'gold' }
-      ],
-      timeline,
-      eventTypes: [
-        { key: 'simple', labelKey: '', label: 'Simple', value: 14, total: 47, icon: 'category', tone: 'blue' },
-        { key: 'organized', labelKey: '', label: 'Organized', value: 10, total: 47, icon: 'category', tone: 'green' },
-        { key: 'matched-rooms', labelKey: '', label: 'Matched rooms', value: 8, total: 47, icon: 'hub', tone: 'purple' },
-        { key: 'recurring', labelKey: '', label: 'Recurring', value: 6, total: 47, icon: 'event_repeat', tone: 'gold' },
-        { key: 'multi-slot', labelKey: '', label: 'Multi-slot', value: 5, total: 47, icon: 'view_timeline', tone: 'green' },
-        { key: 'tournament', labelKey: '', label: 'Tournament', value: 4, total: 47, icon: 'emoji_events', tone: 'red' }
-      ],
-      activityMix: [
-        item('profiles', 'stats.domain.profiles', 128, 1001, 'person', 'blue'),
-        item('matching', 'stats.domain.matching', 342, 1001, 'hub', 'purple'),
-        item('events', 'stats.domain.events', 73, 1001, 'event', 'green'),
-        item('assets', 'stats.domain.assets', 18, 1001, 'inventory_2', 'gold'),
-        item('chats', 'stats.domain.chats', 426, 1001, 'chat', 'blue'),
-        item('moderation', 'stats.domain.moderation', 14, 1001, 'shield', 'red')
-      ],
-      graph: {
-        healthScore: 78,
-        healthLabelKey: 'stats.graph.health.watch',
-        insightKey: 'stats.graph.insight.healthy',
-        metrics: [
-          metric('graph-health', 'stats.graph.metric.health', 78, '78', 'monitoring', 'green', 78),
-          metric('graph-users', 'stats.graph.metric.users', 42, '42', 'person', 'blue', 100),
-          metric('graph-edges', 'stats.graph.metric.edges', 116, '116', 'share', 'purple', 92),
-          metric('graph-avg-degree', 'stats.graph.metric.avg.degree', 55, '5.5', 'hub', 'gold', 100),
-          metric('graph-communities', 'stats.graph.metric.communities', 6, '6', 'bubble_chart', 'green', 57),
-          metric('graph-bridges', 'stats.graph.metric.bridges', 8, '8', 'conversion_path', 'red', 100),
-          metric('graph-network-quality', 'stats.graph.metric.network.quality', 64, '64%', 'ssid_chart', 'blue', 64),
-          metric('graph-cluster-quality', 'stats.graph.metric.cluster.quality', 79, '79%', 'bubble_chart', 'green', 79),
-          metric('gender-female-to-male', 'stats.graph.metric.gender.female.to.male', 73, '7.3', 'female', 'purple', 73),
-          metric('gender-male-to-female', 'stats.graph.metric.gender.male.to.female', 69, '6.9', 'male', 'gold', 69)
-        ],
-        bridgeUsers: [
-          { key: 'lina-stone', labelKey: '', label: 'Lina Stone', value: 96, total: 320, icon: 'conversion_path', tone: 'red' },
-          { key: 'luca-hale', labelKey: '', label: 'Luca Hale', value: 84, total: 320, icon: 'conversion_path', tone: 'purple' },
-          { key: 'ava-baker', labelKey: '', label: 'Ava Baker', value: 71, total: 320, icon: 'conversion_path', tone: 'green' },
-          { key: 'mason-grant', labelKey: '', label: 'Mason Grant', value: 62, total: 320, icon: 'conversion_path', tone: 'gold' }
-        ],
-        communities: [
-          { key: 'community-1', labelKey: '', label: 'Austin event circle', value: 14, total: 42, icon: 'bubble_chart', tone: 'green' },
-          { key: 'community-2', labelKey: '', label: 'Seattle creators', value: 9, total: 42, icon: 'bubble_chart', tone: 'blue' },
-          { key: 'community-3', labelKey: '', label: 'Denver assets', value: 7, total: 42, icon: 'bubble_chart', tone: 'gold' },
-          { key: 'community-4', labelKey: '', label: 'Miami mixed', value: 5, total: 42, icon: 'bubble_chart', tone: 'purple' }
-        ],
-        signals: [
-          item('reachability-2-hop', 'stats.graph.signal.reachability', 68, 100, 'travel_explore', 'blue'),
-          item('weak-tie-ratio', 'stats.graph.signal.weak.ties', 34, 100, 'lan', 'purple'),
-          item('clustering', 'stats.graph.signal.clustering', 42, 100, 'bubble_chart', 'green'),
-          item('recurring-edge-ratio', 'stats.graph.signal.recurring', 31, 100, 'repeat', 'gold'),
-          item('bridge-coverage', 'stats.graph.signal.bridge.coverage', 19, 100, 'conversion_path', 'red'),
-          item('largest-community', 'stats.graph.signal.largest.community', 33, 100, 'groups', 'slate'),
-          item('network-quality', 'stats.graph.signal.network.quality', 64, 100, 'ssid_chart', 'blue'),
-          item('cluster-quality', 'stats.graph.signal.cluster.quality', 79, 100, 'bubble_chart', 'green')
-        ],
-        timeline: [
-          ['2026-04-28', 'Apr 28', 56, 8, 5, 19, 5, 7, 51, 69],
-          ['2026-04-29', 'Apr 29', 62, 7, 8, 21, 5, 7, 53, 70],
-          ['2026-04-30', 'Apr 30', 68, 9, 7, 23, 6, 7, 55, 71],
-          ['2026-05-01', 'May 1', 74, 10, 9, 25, 6, 7, 57, 72],
-          ['2026-05-02', 'May 2', 80, 11, 11, 28, 7, 7, 58, 73],
-          ['2026-05-03', 'May 3', 83, 6, 10, 29, 7, 7, 59, 74],
-          ['2026-05-04', 'May 4', 88, 12, 13, 31, 7, 6, 60, 75],
-          ['2026-05-05', 'May 5', 94, 14, 12, 32, 8, 6, 61, 76],
-          ['2026-05-06', 'May 6', 97, 7, 14, 32, 8, 6, 62, 76],
-          ['2026-05-07', 'May 7', 103, 13, 16, 35, 8, 6, 63, 77],
-          ['2026-05-08', 'May 8', 108, 8, 15, 36, 8, 6, 63, 78],
-          ['2026-05-09', 'May 9', 113, 12, 18, 38, 8, 6, 64, 78],
-          ['2026-05-10', 'May 10', 116, 9, 17, 39, 8, 6, 64, 79],
-          ['2026-05-11', 'May 11', 116, 5, 14, 40, 8, 6, 64, 79]
-        ].map(([dateKey, label, activeEdges, newEdges, recurringEdges, weakTies, bridgeUsers, communities, networkQuality, clusterQuality]) => ({
-          dateKey: `${dateKey}`,
-          label: `${label}`,
-          activeEdges: Number(activeEdges),
-          newEdges: Number(newEdges),
-          recurringEdges: Number(recurringEdges),
-          weakTies: Number(weakTies),
-          bridgeUsers: Number(bridgeUsers),
-          communities: Number(communities),
-          networkQuality: Number(networkQuality),
-          clusterQuality: Number(clusterQuality)
-        }))
-      },
-      revenue: {
-        metrics: [
-          metric('payable-events', 'stats.revenue.metric.payable.events', 12, '12', 'confirmation_number', 'green', 30),
-          metric('projected-event-revenue', 'stats.revenue.metric.projected.events', 202500, '$2,025.00', 'event_available', 'green', 48),
-          metric('avg-event-ticket', 'stats.revenue.metric.avg.event.ticket', 1688, '$16.88', 'sell', 'gold', 17),
-          metric('payable-assets', 'stats.revenue.metric.payable.assets', 16, '16', 'inventory_2', 'purple', 40),
-          metric('projected-asset-revenue', 'stats.revenue.metric.projected.assets', 213000, '$2,130.00', 'category', 'blue', 52),
-          metric('avg-asset-price', 'stats.revenue.metric.avg.asset.price', 13313, '$133.13', 'payments', 'slate', 100),
-          metric('actual-paid', 'stats.revenue.metric.actual.paid', 52200, '$522.00', 'paid', 'blue', 13),
-          metric('paying-users', 'stats.revenue.metric.paying.users', 22, '22', 'group', 'red', 88),
-          metric('avg-payment', 'stats.revenue.metric.avg.payment', 2373, '$23.73', 'receipt_long', 'purple', 24)
-        ],
-        assetCategories: [
-          { key: 'accommodation', labelKey: 'accommodation', label: '', value: 84000, total: 213000, icon: 'hotel', tone: 'gold' },
-          { key: 'car', labelKey: 'car', label: '', value: 77000, total: 213000, icon: 'directions_car', tone: 'blue' },
-          { key: 'supplies', labelKey: 'supplies', label: '', value: 52000, total: 213000, icon: 'category', tone: 'green' }
-        ],
-        timeline: revenueTimeline
-      }
-    }, 'demo');
+    return this.normalizeStatsDashboard(AdminStatsSeedBuilder.buildSeedDemoStatsSnapshot(), 'demo');
   }
+
 
   private normalizeStatsDashboard(
     dashboard: AdminStatsDashboardDto,
@@ -2411,189 +1751,9 @@ export class AdminService {
   }
 
   private buildDefaultMonitoringState(): AdminMonitoringStateDto {
-    const nowIso = new Date().toISOString();
-    const node = (
-      id: string,
-      labelKey: string,
-      icon: string,
-      kind: AdminMonitoringNodeKind,
-      tone: AdminMonitoringTone,
-      metrics: AdminMonitoringMetricDto[]
-    ): AdminMonitoringNodeDto => ({ id, labelKey, icon, kind, tone, metrics });
-    const edge = (
-      from: string,
-      to: string,
-      labelKey: string,
-      tone: AdminMonitoringTone,
-      volume: number
-    ): AdminMonitoringEdgeDto => ({ from, to, labelKey, tone, volume });
-    const category = (
-      key: string,
-      labelKey: string,
-      summaryKey: string,
-      icon: string,
-      tone: AdminMonitoringTone,
-      health: AdminMonitoringHealth,
-      total: number,
-      nodes: AdminMonitoringNodeDto[],
-      edges: AdminMonitoringEdgeDto[]
-    ): AdminMonitoringCategoryDto => ({ key, labelKey, summaryKey, icon, tone, health, total, nodes, edges });
-
-    return this.normalizeMonitoringState({
-      generatedAtIso: nowIso,
-      source: 'demo',
-      health: 'watch',
-      categories: [
-        category('users', 'admin.monitoring.category.users', 'admin.monitoring.category.users.summary', 'person', 'blue', 'watch', 84, [
-          node('users.ui', 'admin.monitoring.node.profile.ui', 'person', 'source', 'blue', [
-            this.monitoringMetric('profile-writes', 'admin.monitoring.metric.profile.writes', 84, 'blue', 'ok')
-          ]),
-          node('users.model', 'admin.monitoring.node.profile.model', 'badge', 'writeModel', 'green', [
-            this.monitoringMetric('registered', 'admin.monitoring.metric.registered', 29, 'green', 'ok'),
-            this.monitoringMetric('deleted', 'admin.monitoring.metric.deleted', 7, 'slate', 'watch')
-          ]),
-          node('users.status', 'admin.monitoring.node.status.propagation', 'rule', 'worker', 'gold', [
-            this.monitoringMetric('status-propagation-signals', 'admin.monitoring.metric.status.propagation.signals', 12, 'gold', 'watch')
-          ]),
-          node('users.purge', 'admin.monitoring.node.account.purge', 'delete_sweep', 'storage', 'slate', [
-            this.monitoringMetric('purge-signals', 'admin.monitoring.metric.purge.signals', 2, 'slate', 'ok')
-          ])
-        ], [
-          edge('users.ui', 'users.model', 'admin.monitoring.edge.write.path', 'blue', 84),
-          edge('users.model', 'users.status', 'admin.monitoring.edge.status.propagation', 'gold', 12),
-          edge('users.status', 'users.purge', 'admin.monitoring.edge.gdpr.window', 'slate', 2)
-        ]),
-        category('events', 'admin.monitoring.category.events', 'admin.monitoring.category.events.summary', 'event_available', 'green', 'watch', 91, [
-          node('events.ui', 'admin.monitoring.node.event.ui', 'edit_calendar', 'source', 'blue', [
-            this.monitoringMetric('event-writes', 'admin.monitoring.metric.event.writes', 73, 'blue', 'ok')
-          ]),
-          node('events.model', 'admin.monitoring.node.event.model', 'storage', 'writeModel', 'green', [
-            this.monitoringMetric('event-model', 'admin.monitoring.metric.persisted.events', 28, 'green', 'ok')
-          ]),
-          node('events.recompute', 'admin.monitoring.node.recompute.queue', 'sync_alt', 'queue', 'gold', [
-            this.monitoringMetric('recompute-pending', 'admin.monitoring.metric.recompute.pending', 18, 'gold', 'watch')
-          ]),
-          node('events.outbox', 'admin.monitoring.node.notification.outbox', 'outbox', 'outbox', 'purple', [
-            this.monitoringMetric('outbox-pending', 'admin.monitoring.metric.outbox.pending', 36, 'purple', 'watch')
-          ])
-        ], [
-          edge('events.ui', 'events.model', 'admin.monitoring.edge.write.path', 'blue', 73),
-          edge('events.model', 'events.recompute', 'admin.monitoring.edge.recompute', 'gold', 18),
-          edge('events.recompute', 'events.outbox', 'admin.monitoring.edge.visible.changes', 'purple', 36)
-        ]),
-        category('members', 'admin.monitoring.category.members', 'admin.monitoring.category.members.summary', 'groups', 'blue', 'watch', 54, [
-          node('members.ui', 'admin.monitoring.node.member.ui', 'group_add', 'source', 'blue', [
-            this.monitoringMetric('member-changes', 'admin.monitoring.metric.member.changes', 37, 'blue', 'ok')
-          ]),
-          node('members.model', 'admin.monitoring.node.member.model', 'fact_check', 'writeModel', 'green', [
-            this.monitoringMetric('accepted-members', 'admin.monitoring.metric.accepted.members', 128, 'green', 'ok')
-          ]),
-          node('members.inviter', 'admin.monitoring.node.auto.inviter', 'person_add', 'worker', 'gold', [
-            this.monitoringMetric('invites', 'admin.monitoring.metric.invites', 17, 'gold', 'ok')
-          ]),
-          node('members.outbox', 'admin.monitoring.node.notification.outbox', 'outbox', 'outbox', 'purple', [
-            this.monitoringMetric('pending-notifications', 'admin.monitoring.metric.outbox.pending', 36, 'purple', 'watch')
-          ])
-        ], [
-          edge('members.ui', 'members.model', 'admin.monitoring.edge.membership.write', 'blue', 37),
-          edge('members.model', 'members.inviter', 'admin.monitoring.edge.capacity.gate', 'gold', 17),
-          edge('members.inviter', 'members.outbox', 'admin.monitoring.edge.invite.delivery', 'purple', 36)
-        ]),
-        category('assets', 'admin.monitoring.category.assets', 'admin.monitoring.category.assets.summary', 'inventory_2', 'gold', 'watch', 39, [
-          node('assets.ui', 'admin.monitoring.node.asset.ui', 'inventory_2', 'source', 'gold', [
-            this.monitoringMetric('asset-writes', 'admin.monitoring.metric.asset.writes', 28, 'gold', 'ok')
-          ]),
-          node('assets.model', 'admin.monitoring.node.asset.model', 'storage', 'writeModel', 'green', [
-            this.monitoringMetric('requests', 'admin.monitoring.metric.asset.requests', 14, 'green', 'ok')
-          ]),
-          node('assets.recompute', 'admin.monitoring.node.recompute.queue', 'sync_alt', 'queue', 'blue', [
-            this.monitoringMetric('recompute-pending', 'admin.monitoring.metric.recompute.pending', 18, 'blue', 'watch')
-          ]),
-          node('assets.outbox', 'admin.monitoring.node.notification.outbox', 'outbox', 'outbox', 'purple', [
-            this.monitoringMetric('borrower-updates', 'admin.monitoring.metric.borrower.updates', 12, 'purple', 'watch')
-          ])
-        ], [
-          edge('assets.ui', 'assets.model', 'admin.monitoring.edge.write.path', 'gold', 28),
-          edge('assets.model', 'assets.recompute', 'admin.monitoring.edge.recompute', 'blue', 18),
-          edge('assets.recompute', 'assets.outbox', 'admin.monitoring.edge.availability.delivery', 'purple', 12)
-        ]),
-        category('matching', 'admin.monitoring.category.matching', 'admin.monitoring.category.matching.summary', 'hub', 'purple', 'watch', 342, [
-          node('matching.rates', 'admin.monitoring.node.rates', 'star', 'source', 'purple', [
-            this.monitoringMetric('rates-synced', 'admin.monitoring.metric.rates.synced', 342, 'purple', 'ok')
-          ]),
-          node('matching.queue', 'admin.monitoring.node.recompute.queue', 'pending_actions', 'queue', 'gold', [
-            this.monitoringMetric('recompute-pending', 'admin.monitoring.metric.recompute.pending', 18, 'gold', 'watch'),
-            this.monitoringMetric('recompute-running', 'admin.monitoring.metric.recompute.running', 2, 'blue', 'ok')
-          ]),
-          node('matching.worker', 'admin.monitoring.node.affinity.worker', 'ssid_chart', 'worker', 'blue', [
-            this.monitoringMetric('affinity-updates', 'admin.monitoring.metric.affinity.updates', 318, 'blue', 'ok')
-          ]),
-          node('matching.read', 'admin.monitoring.node.discovery.read.model', 'travel_explore', 'readModel', 'green', [
-            this.monitoringMetric('visible-scores', 'admin.monitoring.metric.visible.scores', 318, 'green', 'ok')
-          ])
-        ], [
-          edge('matching.rates', 'matching.queue', 'admin.monitoring.edge.recompute', 'gold', 342),
-          edge('matching.queue', 'matching.worker', 'admin.monitoring.edge.worker.pickup', 'blue', 2),
-          edge('matching.worker', 'matching.read', 'admin.monitoring.edge.read.model', 'green', 318)
-        ]),
-        category('chat', 'admin.monitoring.category.chat', 'admin.monitoring.category.chat.summary', 'forum', 'blue', 'watch', 426, [
-          node('chat.ui', 'admin.monitoring.node.chat.ui', 'chat', 'source', 'blue', [
-            this.monitoringMetric('messages', 'admin.monitoring.metric.messages', 417, 'blue', 'ok')
-          ]),
-          node('chat.stream', 'admin.monitoring.node.chat.stream', 'stream', 'writeModel', 'green', [
-            this.monitoringMetric('stream-events', 'admin.monitoring.metric.stream.events', 417, 'green', 'ok')
-          ]),
-          node('chat.attachments', 'admin.monitoring.node.attachment.lifecycle', 'attachment', 'storage', 'gold', [
-            this.monitoringMetric('attachment-checks', 'admin.monitoring.metric.attachment.checks', 23, 'gold', 'ok')
-          ]),
-          node('chat.outbox', 'admin.monitoring.node.notification.outbox', 'outbox', 'outbox', 'purple', [
-            this.monitoringMetric('push-pending', 'admin.monitoring.metric.outbox.pending', 36, 'purple', 'watch')
-          ])
-        ], [
-          edge('chat.ui', 'chat.stream', 'admin.monitoring.edge.write.path', 'blue', 417),
-          edge('chat.stream', 'chat.attachments', 'admin.monitoring.edge.attachment.lifecycle', 'gold', 23),
-          edge('chat.stream', 'chat.outbox', 'admin.monitoring.edge.push.intent', 'purple', 36)
-        ]),
-        category('notifications', 'admin.monitoring.category.notifications', 'admin.monitoring.category.notifications.summary', 'notifications_active', 'red', 'alert', 87, [
-          node('notifications.intent', 'admin.monitoring.node.notification.intent', 'edit_notifications', 'source', 'blue', [
-            this.monitoringMetric('intents', 'admin.monitoring.metric.notification.intents', 87, 'blue', 'ok')
-          ]),
-          node('notifications.outbox', 'admin.monitoring.node.notification.outbox', 'outbox', 'outbox', 'purple', [
-            this.monitoringMetric('outbox-pending', 'admin.monitoring.metric.outbox.pending', 36, 'purple', 'watch'),
-            this.monitoringMetric('outbox-failed', 'admin.monitoring.metric.outbox.failed', 3, 'red', 'alert')
-          ]),
-          node('notifications.firebase', 'admin.monitoring.node.firebase', 'cloud_upload', 'external', 'gold', [
-            this.monitoringMetric('sent', 'admin.monitoring.metric.outbox.sent', 48, 'green', 'ok')
-          ]),
-          node('notifications.tokens', 'admin.monitoring.node.device.tokens', 'phonelink_ring', 'storage', 'green', [
-            this.monitoringMetric('token-cleanup', 'admin.monitoring.metric.token.cleanup', 9, 'green', 'ok')
-          ])
-        ], [
-          edge('notifications.intent', 'notifications.outbox', 'admin.monitoring.edge.outbox.persist', 'purple', 87),
-          edge('notifications.outbox', 'notifications.firebase', 'admin.monitoring.edge.firebase.batch', 'gold', 48),
-          edge('notifications.firebase', 'notifications.tokens', 'admin.monitoring.edge.token.cleanup', 'green', 9)
-        ]),
-        category('jobs', 'admin.monitoring.category.jobs', 'admin.monitoring.category.jobs.summary', 'pending_actions', 'slate', 'ok', 16, [
-          node('jobs.admin', 'admin.monitoring.node.admin.ui', 'admin_panel_settings', 'source', 'slate', [
-            this.monitoringMetric('admin-changes', 'admin.monitoring.metric.admin.changes', 16, 'slate', 'ok')
-          ]),
-          node('jobs.config', 'admin.monitoring.node.job.config', 'tune', 'writeModel', 'blue', [
-            this.monitoringMetric('config-changes', 'admin.monitoring.metric.config.changes', 7, 'blue', 'ok')
-          ]),
-          node('jobs.scheduler', 'admin.monitoring.node.scheduler', 'schedule', 'worker', 'gold', [
-            this.monitoringMetric('scheduled-triggers', 'admin.monitoring.metric.scheduled.triggers', 9, 'gold', 'ok')
-          ]),
-          node('jobs.audit', 'admin.monitoring.node.audit.trail', 'history', 'storage', 'green', [
-            this.monitoringMetric('audit-events', 'admin.monitoring.metric.audit.events', 16, 'green', 'ok')
-          ])
-        ], [
-          edge('jobs.admin', 'jobs.config', 'admin.monitoring.edge.config.write', 'blue', 16),
-          edge('jobs.config', 'jobs.scheduler', 'admin.monitoring.edge.worker.pickup', 'gold', 9),
-          edge('jobs.scheduler', 'jobs.audit', 'admin.monitoring.edge.audit', 'green', 16)
-        ])
-      ]
-    }, 'demo');
+    return this.normalizeMonitoringState(AdminMonitoringSeedBuilder.buildDefaultMonitoringState(), 'demo');
   }
+
 
   private normalizeMonitoringState(
     state: AdminMonitoringStateDto,
@@ -2716,29 +1876,7 @@ export class AdminService {
     };
   }
 
-  private monitoringMetric(
-    key: string,
-    labelKey: string,
-    value: number,
-    tone: AdminMonitoringTone,
-    status: AdminMonitoringHealth
-  ): AdminMonitoringMetricDto {
-    const normalizedValue = Math.max(0, Math.trunc(Number(value) || 0));
-    return {
-      key,
-      labelKey,
-      value: normalizedValue,
-      valueLabel: this.compactNumber(normalizedValue),
-      tone,
-      status,
-      detailRows: [{
-        key: 'value',
-        labelKey,
-        valueLabel: this.compactNumber(normalizedValue),
-        tone
-      }]
-    };
-  }
+
 
   private normalizeMonitoringTone(value: string | null | undefined): AdminMonitoringTone {
     const normalized = `${value ?? ''}`.trim();
@@ -2807,238 +1945,18 @@ export class AdminService {
   }
 
   private buildDefaultParamsStore(): AdminParamsDemoStore {
-    const changedDate = '2026-05-01T09:00:00.000Z';
-    const sections: AdminParamsSectionDto[] = [
-      this.paramSection('matching', 'Matching', 3, '2026-05-07T12:30:00.000Z', 'admin-demo-ava', 'Raised inside-network confidence after graph review.', [
-        this.numberParam('rating.singleMutual', 'Single mutual', 'Ratings', 10, 'x'),
-        this.numberParam('rating.singleOneSided', 'Single one-sided', 'Ratings', 2, 'x'),
-        this.numberParam('rating.pairOutsideNetwork', 'Pair outside network', 'Ratings', 2, 'x'),
-        this.numberParam('rating.pairInsideNetwork', 'Pair inside network', 'Ratings', 5, 'x'),
-        this.numberParam('evidence.mutualSingle', 'Mutual single', 'Evidence', 1, 'x'),
-        this.numberParam('evidence.singleOneSided', 'Single one-sided', 'Evidence', 0, 'x'),
-        this.numberParam('evidence.pairOutsideNetwork', 'Pair outside network', 'Evidence', 0.3, 'x'),
-        this.numberParam('evidence.pairInsideNetwork', 'Pair inside network', 'Evidence', 0.7, 'x'),
-        this.numberParam('evidence.met', 'Met in person', 'Evidence', 0.5, 'x'),
-        this.numberParam('ownerContext', 'Owner context', 'Network', 3, 'x')
-      ]),
-      this.paramSection('profile', 'Profile', 2, '2026-05-04T10:10:00.000Z', 'admin-demo-noel', 'Balanced profile, workplace, school, and trait inputs.', [
-        this.numberParam('profileRules.0', 'Languages', 'Profile fields', 2, 'x', 'intersection'),
-        this.numberParam('profileRules.1', 'Physique', 'Profile fields', 3, 'x', 'exact'),
-        this.numberParam('profileRules.2', 'Interest', 'Profile fields', 2, 'x', 'intersection'),
-        this.numberParam('profileRules.3', 'Values', 'Profile fields', 3, 'x', 'intersection'),
-        this.numberParam('profileRules.4', 'Workout', 'Profile fields', 2, 'x', 'exact'),
-        this.numberParam('profileRules.5', 'Workplace', 'Experience', 4, 'x', 'intersection'),
-        this.numberParam('profileRules.6', 'Profession', 'Experience', 3, 'x', 'intersection'),
-        this.numberParam('profileRules.7', 'School', 'Experience', 4, 'x', 'intersection'),
-        this.numberParam('impressionRules.0', 'Personality traits', 'Traits', 4, 'x', 'trait-vector'),
-        this.numberParam('absolute.user.completion', 'Completion', 'Absolute user', 13, 'pts'),
-        this.numberParam('absolute.user.impressionAverageRating', 'Average rating', 'Impressions', 29, 'pts')
-      ]),
-      this.paramSection('events', 'Events', 4, '2026-05-08T15:45:00.000Z', 'admin-demo-ava', 'Adjusted host confidence and open-capacity boost.', [
-        this.numberParam('absolute.event.contentTokens', 'Content tokens', 'Affinity', 89, 'pts'),
-        this.numberParam('absolute.event.participantAffinity', 'Participant affinity', 'Affinity', 1, 'x'),
-        this.numberParam('boost.event.rating', 'Rating', 'Boost', 29, 'pts'),
-        this.numberParam('boost.event.acceptedMembers', 'Accepted members', 'Boost', 19, 'pts'),
-        this.numberParam('boost.event.pendingMembers', 'Pending members', 'Boost', 11, 'pts'),
-        this.numberParam('boost.event.capacityAvailable', 'Capacity available', 'Boost', 7, 'pts'),
-        this.numberParam('boost.event.hostConfidence', 'Host confidence', 'Boost', 0.25, 'x')
-      ]),
-      this.paramSection('assets', 'Assets', 2, '2026-05-06T08:15:00.000Z', 'admin-demo-noel', 'Added owner confidence and request pressure to asset ranking.', [
-        this.numberParam('absolute.asset.contentTokens', 'Content tokens', 'Affinity', 83, 'pts'),
-        this.numberParam('absolute.asset.ownerAffinity', 'Owner affinity', 'Affinity', 1, 'x'),
-        this.numberParam('boost.asset.capacityAvailable', 'Capacity available', 'Boost', 7, 'pts'),
-        this.numberParam('boost.asset.quantity', 'Quantity', 'Boost', 11, 'pts'),
-        this.numberParam('boost.asset.requestCount', 'Request count', 'Boost', 13, 'pts'),
-        this.numberParam('boost.asset.freshness', 'Freshness', 'Boost', 3, 'pts'),
-        this.numberParam('boost.asset.ownerConfidence', 'Owner confidence', 'Boost', 0.25, 'x')
-      ]),
-      this.paramSection('discovery', 'Discovery', 1, changedDate, 'system', 'Initial outside-network and distance balance.', [
-        this.numberParam('distance.multiplier', 'Distance multiplier', 'Distance', 5, 'pts'),
-        this.numberParam('distance.maxMeters', 'Max distance', 'Distance', 50000, 'm'),
-        this.textParam('distance.strategy', 'Distance strategy', 'Distance', 'linear', 'linear')
-      ]),
-      this.paramSection('notifications', 'Notifications', 1, changedDate, 'system', 'Initial Firebase batching and retry defaults.', [
-        this.numberParam('notifications.firebaseWindowStartHour', 'Window start', 'Firebase', 8, 'h'),
-        this.numberParam('notifications.firebaseWindowEndHour', 'Window end', 'Firebase', 22, 'h'),
-        this.numberParam('notifications.maxWorkers', 'Max workers', 'Delivery', 4, ''),
-        this.numberParam('notifications.maxRetries', 'Max retries', 'Retry', 5, ''),
-        this.numberParam('notifications.initialBackoffSeconds', 'Initial backoff', 'Retry', 30, 's'),
-        this.numberParam('notifications.collapseWindowSeconds', 'Collapse window', 'Collapse', 300, 's'),
-        this.numberParam('notifications.multicastThreshold', 'Multicast threshold', 'Delivery', 3, ''),
-        this.numberParam('notifications.topicThreshold', 'Topic threshold', 'Delivery', 250, '')
-      ]),
-      this.paramSection('jobs', 'Jobs', 1, changedDate, 'system', 'Initial recompute worker scheduling defaults.', [
-        this.numberParam('jobs.userChangedDebounceSeconds', 'User debounce', 'Debounce', 300, 's'),
-        this.numberParam('jobs.eventChangedDebounceSeconds', 'Event debounce', 'Debounce', 180, 's'),
-        this.numberParam('jobs.eventMembersChangedDebounceSeconds', 'Members debounce', 'Debounce', 300, 's'),
-        this.numberParam('jobs.assetChangedDebounceSeconds', 'Asset debounce', 'Debounce', 180, 's'),
-        this.numberParam('jobs.assetRequestsChangedDebounceSeconds', 'Requests debounce', 'Debounce', 180, 's'),
-        this.numberParam('jobs.configChangedDebounceSeconds', 'Config debounce', 'Debounce', 900, 's'),
-        this.numberParam('jobs.workerPollDelayMs', 'Worker poll delay', 'Worker', 60000, 'ms'),
-        this.numberParam('jobs.batchSize', 'Batch size', 'Worker', 50, ''),
-        this.numberParam('jobs.leaseDurationSeconds', 'Lease duration', 'Worker', 600, 's'),
-        this.numberParam('jobs.process.eventSchedulerPollDelayMs', 'Event scheduler poll', 'Processes', 1800000, 'ms'),
-        this.numberParam('jobs.process.autoInviterCadenceMs', 'Auto-inviter cadence', 'Processes', 7200000, 'ms'),
-        this.numberParam('jobs.process.notificationOutboxPollDelayMs', 'Notification outbox poll', 'Processes', 60000, 'ms'),
-        this.numberParam('jobs.process.accountPurgeWindowDays', 'Account purge window', 'Processes', 30, 'd'),
-        this.textParam('jobs.policy.autoInviterScope', 'Auto-inviter scope', 'Policy', 'Main event before tournament start', '', true),
-        this.textParam('jobs.policy.tournamentStart', 'Tournament start', 'Policy', 'Manual admin start from first stage', '', true),
-        this.textParam('jobs.policy.stageProgression', 'Stage progression', 'Policy', 'Admin finalizes scores before next stage', '', true)
-      ])
-    ];
-    const historyBySection = sections.reduce<Record<string, AdminParamsHistoryItemDto[]>>((acc, section) => {
-      acc[section.key] = [
-        {
-          configId: `demo-params-${section.key}-v${section.version}`,
-          version: section.version,
-          changedDate: section.changedDate,
-          changedBy: section.changedBy,
-          summary: section.summary,
-          summaryKey: section.summaryKey,
-          active: true,
-          fields: section.fields.map(field => ({ ...field }))
-        },
-        {
-          configId: `demo-params-${section.key}-v1`,
-          version: 1,
-          changedDate,
-          changedBy: 'system',
-          summary: 'Initial parameter seed.',
-          summaryKey: this.paramSummaryKey('Initial parameter seed.', section.key),
-          active: section.version === 1,
-          fields: section.fields.map(field => ({ ...field }))
-        }
-      ].filter((item, index, values) => values.findIndex(candidate => candidate.version === item.version) === index);
-      return acc;
-    }, {});
-    return this.normalizeParamsStore({
-      sections,
-      updatedDate: '2026-05-08T15:45:00.000Z',
-      historyBySection
-    });
+    return this.normalizeParamsStore(AdminParamsSeedBuilder.buildDefaultParamsStore());
   }
 
-  private paramSection(
-    key: string,
-    label: string,
-    version: number,
-    changedDate: string,
-    changedBy: string,
-    summary: string,
-    fields: AdminParamFieldDto[]
-  ): AdminParamsSectionDto {
-    return {
-      key,
-      label,
-      labelKey: this.paramSectionLabelKey(key),
-      version,
-      changedDate,
-      changedBy,
-      summary,
-      summaryKey: this.paramSummaryKey(summary, key),
-      fields: fields.map(field => this.normalizeParamField(field))
-    };
-  }
 
-  private numberParam(
-    key: string,
-    label: string,
-    group: string,
-    numberValue: number,
-    unit: string,
-    strategy = '',
-    readOnly = false
-  ): AdminParamFieldDto {
-    return {
-      key,
-      label,
-      labelKey: this.paramFieldLabelKey(key),
-      group,
-      groupKey: this.paramGroupLabelKey(group),
-      valueType: 'number',
-      numberValue,
-      textValue: null,
-      unit,
-      options: [],
-      strategy,
-      strategyKey: this.paramStrategyLabelKey(strategy),
-      readOnly
-    };
-  }
 
-  private textParam(
-    key: string,
-    label: string,
-    group: string,
-    textValue: string,
-    strategy = '',
-    readOnly = false
-  ): AdminParamFieldDto {
-    return {
-      key,
-      label,
-      labelKey: this.paramFieldLabelKey(key),
-      group,
-      groupKey: this.paramGroupLabelKey(group),
-      valueType: 'text',
-      numberValue: null,
-      textValue,
-      unit: null,
-      options: this.paramOptionsFor(key),
-      strategy,
-      strategyKey: this.paramStrategyLabelKey(strategy),
-      readOnly
-    };
-  }
 
-  private notificationRuleParameters(ruleKey: string): AdminNotificationRuleParameter[] {
-    switch (`${ruleKey ?? ''}`.trim()) {
-      case 'event-random-groups':
-        return [
-          this.jobNumberParam('jobs.process.randomGroups.minRoomSize', 'Min room size', 'Matched rooms', 2, ''),
-          this.jobNumberParam('jobs.process.randomGroups.maxRoomSize', 'Max room size', 'Matched rooms', 4, '')
-        ];
-      case 'event-auto-inviter':
-        return [
-          this.jobNumberParam('jobs.process.autoInviter.batchSize', 'Invite batch size', 'Auto inviter', 4, ''),
-          this.jobNumberParam('jobs.process.autoInviter.responseWindowHours', 'Response window', 'Auto inviter', 2, 'h'),
-          this.jobNumberParam('jobs.process.autoInviter.candidateLookahead', 'Candidate lookahead', 'Auto inviter', 24, 'h')
-        ];
-      case 'event-tournament-review':
-        return [
-          this.jobNumberParam('jobs.process.tournament.adminReminderHours', 'Admin reminder', 'Tournament', 2, 'h'),
-          this.jobNumberParam('jobs.process.tournament.scoreReviewHours', 'Score review window', 'Tournament', 2, 'h')
-        ];
-      default:
-        return [];
-    }
-  }
 
-  private jobNumberParam(
-    key: string,
-    label: string,
-    group: string,
-    numberValue: number,
-    unit: string,
-    strategy = '',
-    readOnly = false
-  ): AdminNotificationRuleParameter {
-    return {
-      key,
-      label,
-      labelKey: this.paramFieldLabelKey(key),
-      group,
-      groupKey: this.paramGroupLabelKey(group),
-      valueType: 'number',
-      numberValue,
-      textValue: null,
-      unit,
-      options: [],
-      strategy,
-      strategyKey: this.paramStrategyLabelKey(strategy),
-      readOnly
-    };
-  }
+
+
+
+
+
 
   private normalizeNotificationRuleParameter(field: AdminNotificationRuleParameter): AdminNotificationRuleParameter {
     const valueType: AdminNotificationRuleParameterValueType = field.valueType === 'text' ? 'text' : 'number';
@@ -3235,241 +2153,7 @@ export class AdminService {
   }
 
   private buildDefaultNotificationCenter(): AdminNotificationCenterState {
-    return this.normalizeNotificationCenter({
-      rules: [
-        this.defaultNotificationRule({
-          ruleKey: 'event-random-groups',
-          label: 'admin.jobs.rule.event.random.groups',
-          category: 'admin.jobs.category.scheduled',
-          description: 'admin.jobs.rule.event.random.groups.description',
-          actionKey: 'event.scheduler.random-groups',
-          triggerKind: 'scheduled_process',
-          enabled: false,
-          manualRunEnabled: true,
-          adminManageable: true,
-          priority: 200,
-          pushEnabled: false,
-          emailEnabled: false,
-          timingMode: 'interval',
-          intervalMinutes: 1440,
-          startTime: '09:00',
-          parameters: this.notificationRuleParameters('event-random-groups')
-        }),
-        this.defaultNotificationRule({
-          ruleKey: 'event-auto-inviter',
-          label: 'admin.jobs.rule.event.auto.inviter',
-          category: 'admin.jobs.category.scheduled',
-          description: 'admin.jobs.rule.event.auto.inviter.description',
-          actionKey: 'event.scheduler.auto-inviter',
-          triggerKind: 'scheduled_process',
-          enabled: true,
-          manualRunEnabled: false,
-          adminManageable: true,
-          priority: 210,
-          pushEnabled: false,
-          emailEnabled: false,
-          timingMode: 'interval',
-          intervalMinutes: 120,
-          startTime: '00:00',
-          parameters: this.notificationRuleParameters('event-auto-inviter')
-        }),
-        this.defaultNotificationRule({
-          ruleKey: 'event-tournament-review',
-          label: 'admin.jobs.rule.event.tournament.review',
-          category: 'admin.jobs.category.scheduled',
-          description: 'admin.jobs.rule.event.tournament.review.description',
-          actionKey: 'event.scheduler.tournament-review',
-          triggerKind: 'scheduled_process',
-          enabled: true,
-          manualRunEnabled: false,
-          adminManageable: true,
-          priority: 220,
-          pushEnabled: false,
-          emailEnabled: false,
-          timingMode: 'interval',
-          intervalMinutes: 30,
-          startTime: '00:00',
-          parameters: this.notificationRuleParameters('event-tournament-review')
-        }),
-        this.defaultNotificationRule({
-          ruleKey: 'notification-outbox',
-          label: 'admin.jobs.rule.notification.outbox',
-          category: 'admin.jobs.category.scheduled',
-          description: 'admin.jobs.rule.notification.outbox.description',
-          actionKey: 'notifications.outbox.worker',
-          triggerKind: 'scheduled_process',
-          enabled: true,
-          manualRunEnabled: false,
-          adminManageable: true,
-          priority: 230,
-          pushEnabled: false,
-          emailEnabled: false,
-          timingMode: 'interval',
-          intervalMinutes: 1,
-          startTime: '00:00'
-        }),
-        this.defaultNotificationRule({
-          ruleKey: 'affinity-recompute',
-          label: 'admin.jobs.rule.affinity.recompute',
-          category: 'admin.jobs.category.scheduled',
-          description: 'admin.jobs.rule.affinity.recompute.description',
-          actionKey: 'affinity.recompute.worker',
-          triggerKind: 'scheduled_process',
-          enabled: true,
-          manualRunEnabled: false,
-          adminManageable: true,
-          priority: 240,
-          pushEnabled: false,
-          emailEnabled: false,
-          timingMode: 'interval',
-          intervalMinutes: 1,
-          startTime: '00:00'
-        }),
-        this.defaultNotificationRule({
-          ruleKey: 'scheduled-messages',
-          label: 'admin.jobs.rule.scheduled.messages',
-          category: 'admin.jobs.category.scheduled',
-          description: 'admin.jobs.rule.scheduled.messages.description',
-          actionKey: 'scheduled.messages.worker',
-          triggerKind: 'scheduled_process',
-          enabled: true,
-          manualRunEnabled: false,
-          adminManageable: true,
-          priority: 250,
-          pushEnabled: false,
-          emailEnabled: false,
-          timingMode: 'interval',
-          intervalMinutes: 30,
-          startTime: '00:00'
-        }),
-        this.defaultNotificationRule({
-          ruleKey: 'account-purge',
-          label: 'admin.jobs.rule.account.purge',
-          category: 'admin.jobs.category.scheduled',
-          description: 'admin.jobs.rule.account.purge.description',
-          actionKey: 'users.deleted-account-purge',
-          triggerKind: 'scheduled_process',
-          enabled: true,
-          manualRunEnabled: false,
-          adminManageable: true,
-          priority: 260,
-          pushEnabled: false,
-          emailEnabled: false,
-          timingMode: 'interval',
-          intervalMinutes: 1440,
-          startTime: '02:00'
-        })
-      ],
-      emailTemplates: this.defaultNotificationTemplateOptions(),
-      updatedDate: new Date().toISOString()
-    });
-  }
-
-  private defaultNotificationRule(options: {
-    ruleKey: string;
-    label: string;
-    category: string;
-    description: string;
-    actionKey: string;
-    triggerKind: AdminNotificationTriggerKind;
-    enabled: boolean;
-    manualRunEnabled: boolean;
-    adminManageable?: boolean;
-    priority: number;
-    pushEnabled: boolean;
-    emailEnabled: boolean;
-    timingMode: AdminNotificationTimingMode;
-    intervalMinutes?: number;
-    startTime?: string;
-    month?: number;
-    dayOfMonth?: number;
-    emailSubject?: string;
-    emailBody?: string;
-    parameters?: AdminNotificationRuleParameter[];
-    scheduleSlots?: AdminNotificationScheduleSlot[];
-  }): AdminNotificationRule {
-    const interval = this.normalizeNotificationInterval(null, null, null, options.intervalMinutes ?? 60);
-    const startTime = this.normalizeNotificationTime(options.startTime);
-    return {
-      ruleKey: options.ruleKey,
-      label: options.label,
-      category: options.category,
-      description: options.description,
-      actionKey: options.actionKey,
-      triggerKind: options.triggerKind,
-      enabled: options.enabled,
-      manualRunEnabled: options.manualRunEnabled,
-      adminManageable: options.adminManageable !== false,
-      priority: options.priority,
-      channels: {
-        pushEnabled: options.pushEnabled,
-        emailEnabled: options.emailEnabled,
-        inAppEnabled: false,
-        supportChatEnabled: false
-      },
-      timing: {
-        mode: options.timingMode,
-        delayMinutes: 0,
-        intervalMinutes: interval.minutes,
-        intervalSeconds: interval.seconds,
-        intervalAmount: interval.amount,
-        intervalUnit: interval.unit,
-        month: options.month ?? 1,
-        dayOfMonth: options.dayOfMonth ?? 1,
-        time: startTime,
-        timezone: 'UTC',
-        cronExpression: this.intervalExpression(interval.amount, interval.unit, startTime)
-      },
-      scheduleSlots: options.scheduleSlots ?? this.defaultScheduleSlots(options.timingMode),
-      parameters: (options.parameters ?? []).map(field => this.normalizeNotificationRuleParameter(field)),
-      message: {
-        pushTitle: options.emailSubject ?? '',
-        pushBody: options.emailBody ?? '',
-        emailTemplateKey: '',
-        emailSubject: options.emailSubject ?? '',
-        emailBody: options.emailBody ?? '',
-        ctaPath: '/game'
-      },
-      runState: {
-        currentStatus: options.enabled ? 'idle' : 'suspended',
-        progressPercent: 0,
-        progressDetail: '',
-        startedAtIso: '',
-        finishedAtIso: '',
-        durationMillis: 0,
-        lastRunAtIso: '',
-        lastRunStatus: '',
-        lastRunDetail: '',
-        lastRunCount: 0,
-        lastRunUser: ''
-      },
-      runHistory: [],
-      updatedDate: '',
-      updatedUser: ''
-    };
-  }
-
-  private defaultNotificationTemplateOptions(): AdminNotificationTemplateOption[] {
-    return [
-      {
-        templateKey: 'email-template-promo-profile-completion-v1',
-        name: 'Profile completion reminder',
-        category: 'promotional',
-        description: 'Promotional reminder for incomplete active profiles.'
-      },
-      {
-        templateKey: 'email-template-promo-first-host-event-v1',
-        name: 'First host event prompt',
-        category: 'promotional',
-        description: 'Promotional reminder for members who have not hosted yet.'
-      },
-      {
-        templateKey: 'email-template-promo-country-broadcast-v1',
-        name: 'Country broadcast',
-        category: 'promotional',
-        description: 'Reusable country-level promotional email.'
-      }
-    ];
+    return this.normalizeNotificationCenter(AdminNotificationsSeedBuilder.buildDefaultNotificationCenter());
   }
 
   private normalizeNotificationCenter(state: AdminNotificationCenterState): AdminNotificationCenterState {

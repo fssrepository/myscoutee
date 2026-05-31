@@ -20,7 +20,8 @@ import { toActivityChatRow } from '../../../shared/core/base/converters/activiti
 import type { ActivityListRow } from '../../../shared/core/base/models';
 import { resolveCurrentRouteDelayMs } from '../../../shared/core/base/services/route-delay.service';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
-import { AdminService, type AdminReportedUserDto, type AdminReportDto } from '../../admin.service';
+import { AdminService } from '../../admin.service';
+import type { AdminReportedUserDto, AdminReportDto } from '../../models/admin-moderation.model';
 import { AdminChatReviewPopupComponent } from '../chat-review-popup/admin-chat-review-popup.component';
 import { AdminItemPreviewPopupComponent } from '../item-preview-popup/admin-item-preview-popup.component';
 

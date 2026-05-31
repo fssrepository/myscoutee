@@ -18,7 +18,8 @@ import type { DemoUser } from '../../../shared/core/base/interfaces/user.interfa
 import { toActivityChatRow } from '../../../shared/core/base/converters/activities-chat.converter';
 import type { ActivityListRow } from '../../../shared/core/base/models';
 import { resolveCurrentRouteDelayMs } from '../../../shared/core/base/services/route-delay.service';
-import { AdminService, type AdminFeedbackDto } from '../../admin.service';
+import { AdminService } from '../../admin.service';
+import type { AdminFeedbackDto } from '../../models/admin-moderation.model';
 
 interface AdminFeedbackListFilters {
   revision?: number;

@@ -10,7 +10,8 @@ import { SessionService, AppPopupContext } from '../../../shared/core';
 import type { DemoBootstrapProgressStage } from '../../../shared/core/demo';
 import { ConfirmationDialogComponent } from '../../../shared/ui/components/confirmation-dialog/confirmation-dialog.component';
 import { NavigatorService } from '../../../navigator/navigator.service';
-import { AdminService, type AdminBootstrapProgressState } from '../../admin.service';
+import { AdminService } from '../../admin.service';
+import type { AdminBootstrapProgressState } from '../../models/admin-shell.model';
 
 @Component({
   selector: 'app-admin-page',

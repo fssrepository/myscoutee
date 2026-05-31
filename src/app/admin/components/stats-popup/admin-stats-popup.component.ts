@@ -5,7 +5,6 @@ import { MatIconModule } from '@angular/material/icon';
 import { RouteDelayService } from '../../../shared/core/base/services/route-delay.service';
 import { I18nPipe } from '../../../shared/i18n';
 import {
-  AdminService,
   type AdminStatsBreakdownItemDto,
   type AdminStatsDashboardDto,
   type AdminStatsGraphDto,
@@ -15,7 +14,8 @@ import {
   type AdminStatsRevenueTimelinePointDto,
   type AdminStatsSegmentDto,
   type AdminStatsTimelinePointDto
-} from '../../admin.service';
+} from '../../models/admin-stats.model';
+import { AdminService } from '../../admin.service';
 
 type AdminStatsTimelineMetric = 'activeUsers' | 'registrations' | 'ratings' | 'activity' | 'messages' | 'moderation';
 type AdminStatsGraphTimelineMetric = 'activeEdges' | 'newEdges' | 'recurringEdges' | 'weakTies' | 'networkQuality' | 'clusterQuality';
