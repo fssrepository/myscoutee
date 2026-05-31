@@ -354,10 +354,10 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
       if (gateState && gateState.securityGateEnabled !== true) {
         return true;
       }
-      if (gateState?.eligible === true && gateState.locationRequired !== true) {
+      if (this.locationEligibilityResolvedFromCoordinates && gateState?.eligible === true) {
         return true;
       }
-      if (gateState && gateState.locationRequired !== true) {
+      if (this.locationEligibilityResolvedFromCoordinates && gateState && gateState.eligible === false) {
         this.confirmationDialogService.openInfo(
           this.loginUnavailableMessage(gateState),
           {
@@ -882,7 +882,7 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
           partitionKey: availability.partitionKey ?? null,
           message: availability.message ?? null,
           securityGateEnabled: availability.securityGateEnabled === true,
-          locationRequired: availability.locationRequired === true
+          locationRequired: false
         }
       : null;
     this.syncEntryAuthGateState();
@@ -900,18 +900,15 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
 
   private isLoginBlockedByLandingBundle(): boolean {
     return this.landingLoginAvailability !== null
+      && this.locationEligibilityResolvedFromCoordinates
       && this.landingLoginAvailability.securityGateEnabled === true
-      && this.landingLoginAvailability.eligible === false
-      && this.landingLoginAvailability.locationRequired !== true;
+      && this.landingLoginAvailability.eligible === false;
   }
 
   private isLoginLocationRequiredByLandingBundle(): boolean {
     return !this.entryNetworkUnavailable
-      && (this.landingLoginAvailability === null
-      || (
-        this.landingLoginAvailability.securityGateEnabled === true
-        && this.landingLoginAvailability.locationRequired === true
-      ));
+      && !this.locationEligibilityResolvedFromCoordinates
+      && this.landingLoginAvailability?.securityGateEnabled !== false;
   }
 
   private openBundledLoginUnavailableInfo(): void {
