@@ -252,41 +252,26 @@
 .event-explore-view-picker {
   position: relative;
   z-index: 20;
+  min-width: 0;
 }
 
-.event-explore-order-trigger.event-explore-order-upcoming {
-  background: rgba(230, 239, 255, 0.96);
-  color: #3556b7;
+.event-explore-order-trigger,
+.event-explore-view-trigger {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
 }
 
-.event-explore-order-trigger.event-explore-order-past-events {
-  background: rgba(248, 236, 221, 0.96);
-  color: #a85d1b;
+.event-explore-order-trigger span,
+.event-explore-view-trigger span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.event-explore-order-trigger.event-explore-order-nearby {
-  background: rgba(224, 244, 235, 0.98);
-  color: #21724b;
-}
-
-.event-explore-order-trigger.event-explore-order-most-relevant {
-  background: rgba(235, 235, 248, 0.98);
-  color: #5b5d86;
-}
-
-.event-explore-order-trigger.event-explore-order-top-rated {
-  background: rgba(255, 243, 223, 0.98);
-  color: #c27c07;
-}
-
-.event-explore-view-trigger.event-explore-view-day {
-  background: rgba(235, 245, 255, 0.97);
-  color: #38649d;
-}
-
-.event-explore-view-trigger.event-explore-view-distance {
-  background: rgba(228, 244, 236, 0.98);
-  color: #2e7b57;
+.event-explore-order-trigger .mat-icon,
+.event-explore-view-trigger .mat-icon {
+  flex: 0 0 16px;
 }
 
 .event-explore-filter-bar {
@@ -443,6 +428,26 @@
   flex-wrap: nowrap;
 }
 
+.event-explore-order-panel .activities-view-option {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  column-gap: 0.42rem;
+  justify-content: flex-start;
+  text-align: left;
+}
+
+.event-explore-order-panel .activities-view-option .mat-icon {
+  flex: 0 0 16px;
+}
+
+.event-explore-order-panel .activities-view-option span {
+  flex: 1 1 auto;
+  min-width: 0;
+  text-align: left;
+  line-height: 1.12;
+}
+
 .event-explore-order-upcoming {
   color: #2c6fb8;
 }
@@ -463,24 +468,47 @@
   color: #b7761f;
 }
 
+.event-explore-view-day {
+  color: #38649d;
+}
+
+.event-explore-view-distance {
+  color: #2e7b57;
+}
+
+.event-explore-order-trigger.event-explore-order-upcoming,
 .event-explore-order-panel .activities-view-option.event-explore-order-upcoming {
   background: linear-gradient(0deg, #ffffff, #edf7ff);
 }
 
+.event-explore-order-trigger.event-explore-order-past-events,
 .event-explore-order-panel .activities-view-option.event-explore-order-past-events {
   background: linear-gradient(0deg, #ffffff, #f4f5f8);
 }
 
+.event-explore-order-trigger.event-explore-order-nearby,
 .event-explore-order-panel .activities-view-option.event-explore-order-nearby {
   background: linear-gradient(0deg, #ffffff, #eef9f3);
 }
 
+.event-explore-order-trigger.event-explore-order-most-relevant,
 .event-explore-order-panel .activities-view-option.event-explore-order-most-relevant {
   background: linear-gradient(0deg, #ffffff, #f3f1ff);
 }
 
+.event-explore-order-trigger.event-explore-order-top-rated,
 .event-explore-order-panel .activities-view-option.event-explore-order-top-rated {
   background: linear-gradient(0deg, #ffffff, #fff8e8);
+}
+
+.event-explore-view-trigger.event-explore-view-day,
+.event-explore-order-panel .activities-view-option.event-explore-view-day {
+  background: linear-gradient(0deg, #ffffff, #edf7ff);
+}
+
+.event-explore-view-trigger.event-explore-view-distance,
+.event-explore-order-panel .activities-view-option.event-explore-view-distance {
+  background: linear-gradient(0deg, #ffffff, #eef9f3);
 }
 
 .event-explore-sticky-header {
@@ -493,19 +521,22 @@
 @media (max-width: 760px) {
   .event-explore-header-controls {
     gap: 0.3rem;
+    min-width: 0;
   }
 
   .event-explore-order-trigger,
   .event-explore-view-trigger {
-    width: 34px;
-    padding: 0;
-    justify-content: center;
-    gap: 0;
+    padding: 0 0.52rem;
+    justify-content: flex-start;
+    gap: 0.24rem;
   }
 
-  .event-explore-order-trigger span,
+  .event-explore-order-trigger span {
+    max-width: 6.4rem;
+  }
+
   .event-explore-view-trigger span {
-    display: none;
+    max-width: 4.8rem;
   }
 
   .event-explore-popup-shell .popup-panel-event-explore {
