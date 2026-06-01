@@ -82,19 +82,12 @@ select,
   border-radius: 6px;
 }
 
-@keyframes lazy-image-panel-spinner {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
 :where(.lazy-image-frame-loading) {
   position: relative;
   isolation: isolate;
 }
 
-:where(.lazy-image-frame-loading)::before,
-:where(.lazy-image-frame-loading)::after {
+:where(.lazy-image-frame-loading)::before {
   content: '';
   position: absolute;
   pointer-events: none;
@@ -107,17 +100,12 @@ select,
   background: rgba(246, 250, 255, 0.58);
 }
 
-:where(.lazy-image-frame-loading)::after {
+:where(.lazy-image-frame-spinner) {
+  position: absolute;
   top: 50%;
   left: 50%;
   z-index: 2;
-  width: 34px;
-  height: 34px;
-  margin: -17px 0 0 -17px;
-  border: 3px solid rgba(61, 105, 178, 0.18);
-  border-top-color: #2d65b3;
-  border-radius: 50%;
-  animation: lazy-image-panel-spinner 0.78s linear infinite;
+  transform: translate(-50%, -50%);
 }
 
 :where(.lazy-image-frame-loading > img.lazy-image-loading) {
@@ -154,35 +142,12 @@ select {
   }
 }
 
-@keyframes popup-close-wave-feedback {
-  0% {
-    opacity: 0.34;
-    transform: scale(0.24);
-  }
+$popup-close-wave-selector: ':where(button[class*="close" i], button[class*="back" i], button[aria-label*="close" i], button[aria-label*="back" i], button[aria-label*="cancel" i], button[aria-label*="dismiss" i], button[aria-label*="bezár" i], button[aria-label*="vissza" i], button[title*="close" i], button[title*="cancel" i], button[data-close-action="true"])';
 
-  100% {
-    opacity: 0;
-    transform: scale(1.08);
-  }
-}
-
-:where(
-  .popup-close,
-  .game-popup-close-btn,
-  .experience-form-close-btn,
-  .event-slots-popup-close,
-  .mobile-profile-selector-close-btn,
-  .event-checkout-dialog__close,
-  .pricing-editor__wizard-close,
-  .profile-onboarding-close-btn,
-  .entry-ideas-popup-close,
-  .stats-graph-help-close,
-  .event-explore-basket-panel__close,
-  .asset-explore-basket-panel__close,
-  .app-install-prompt__secondary,
-  .user-menu-close-btn
-) {
+#{$popup-close-wave-selector} {
   --popup-close-wave-color: rgba(255, 255, 255, 0.34);
+  --popup-close-rest-fill-color: rgba(255, 255, 255, 0.74);
+  --popup-close-rest-border-color: rgba(66, 86, 116, 0.22);
   --popup-close-fill-color: rgba(110, 124, 145, 0.18);
   --popup-close-click-fill-color: rgba(96, 111, 134, 0.24);
   position: relative;
@@ -190,55 +155,39 @@ select {
   overflow: hidden;
 }
 
-:where(
-  .popup-close,
-  .game-popup-close-btn,
-  .experience-form-close-btn,
-  .event-slots-popup-close,
-  .mobile-profile-selector-close-btn,
-  .event-checkout-dialog__close,
-  .pricing-editor__wizard-close,
-  .profile-onboarding-close-btn,
-  .entry-ideas-popup-close,
-  .stats-graph-help-close,
-  .event-explore-basket-panel__close,
-  .asset-explore-basket-panel__close,
-  .app-install-prompt__secondary,
-  .user-menu-close-btn
-)::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  pointer-events: none;
-  background: radial-gradient(
-    circle at center,
-    var(--popup-close-wave-color) 0%,
-    rgba(255, 255, 255, 0.18) 26%,
-    rgba(255, 255, 255, 0) 62%
-  );
-  opacity: 0;
-  transform: scale(0.24);
+#{$popup-close-wave-selector}:where(:has(> mat-icon)):not(:has(> span:not(.navigator-action-ripple):not(.app-global-close-ripple))),
+#{$popup-close-wave-selector}:where(:has(> .popup-close-glyph)) {
+  min-width: 34px;
+  min-height: 34px;
+  border-radius: 50%;
+  border-color: var(--popup-close-rest-border-color);
+  background-color: var(--popup-close-rest-fill-color);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
-:where(
-  .popup-close,
-  .game-popup-close-btn,
-  .experience-form-close-btn,
-  .event-slots-popup-close,
-  .mobile-profile-selector-close-btn,
-  .event-checkout-dialog__close,
-  .pricing-editor__wizard-close,
-  .profile-onboarding-close-btn,
-  .entry-ideas-popup-close,
-  .stats-graph-help-close,
-  .event-explore-basket-panel__close,
-  .asset-explore-basket-panel__close,
-  .app-install-prompt__secondary,
-  .user-menu-close-btn
-) > * {
+#{$popup-close-wave-selector} > * {
   position: relative;
   z-index: 1;
+}
+
+.app-global-close-ripple {
+  position: absolute;
+  z-index: 0;
+  border-radius: 50%;
+  pointer-events: none;
+  background: var(--popup-close-wave-color);
+  opacity: 0.4;
+  transform: scale(0);
+  animation: app-global-close-ripple 520ms cubic-bezier(0.2, 0, 0, 1) forwards;
+}
+
+@keyframes app-global-close-ripple {
+  to {
+    opacity: 0;
+    transform: scale(1);
+  }
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -375,58 +324,14 @@ select {
     filter: brightness(var(--interactive-press-brightness, 0.97));
   }
 
-  :where(
-    .popup-close,
-    .experience-form-close-btn,
-    .mobile-profile-selector-close-btn,
-    .event-checkout-dialog__close,
-    .pricing-editor__wizard-close,
-    .profile-onboarding-close-btn,
-    .entry-ideas-popup-close,
-    .stats-graph-help-close,
-    .event-explore-basket-panel__close,
-    .asset-explore-basket-panel__close,
-    .app-install-prompt__secondary,
-    .user-menu-close-btn
-  ):not(:disabled):not([aria-disabled='true']):hover {
+  #{$popup-close-wave-selector}:not(:disabled):not([aria-disabled='true']):hover {
     background-color: var(--popup-close-fill-color);
   }
 
-  :where(
-    .popup-close,
-    .experience-form-close-btn,
-    .mobile-profile-selector-close-btn,
-    .event-checkout-dialog__close,
-    .pricing-editor__wizard-close,
-    .profile-onboarding-close-btn,
-    .entry-ideas-popup-close,
-    .stats-graph-help-close,
-    .event-explore-basket-panel__close,
-    .asset-explore-basket-panel__close,
-    .app-install-prompt__secondary,
-    .user-menu-close-btn
-  ):not(:disabled):not([aria-disabled='true']):active {
+  #{$popup-close-wave-selector}:not(:disabled):not([aria-disabled='true']):active {
     background-color: var(--popup-close-click-fill-color);
   }
 
-  :where(
-    .popup-close,
-    .game-popup-close-btn,
-    .experience-form-close-btn,
-    .event-slots-popup-close,
-    .mobile-profile-selector-close-btn,
-    .event-checkout-dialog__close,
-    .pricing-editor__wizard-close,
-    .profile-onboarding-close-btn,
-    .entry-ideas-popup-close,
-    .stats-graph-help-close,
-    .event-explore-basket-panel__close,
-    .asset-explore-basket-panel__close,
-    .app-install-prompt__secondary,
-    .user-menu-close-btn
-  ):not(:disabled):not([aria-disabled='true']):active::after {
-    animation: popup-close-wave-feedback 0.42s ease-out;
-  }
 }
 
 @media (hover: none), (pointer: coarse) {
@@ -522,39 +427,8 @@ select {
     filter: brightness(var(--interactive-press-brightness, 0.97));
   }
 
-  :where(
-    .popup-close,
-    .experience-form-close-btn,
-    .mobile-profile-selector-close-btn,
-    .event-checkout-dialog__close,
-    .pricing-editor__wizard-close,
-    .profile-onboarding-close-btn,
-    .entry-ideas-popup-close,
-    .stats-graph-help-close,
-    .event-explore-basket-panel__close,
-    .asset-explore-basket-panel__close,
-    .app-install-prompt__secondary,
-    .user-menu-close-btn
-  ):not(:disabled):not([aria-disabled='true']):active {
+  #{$popup-close-wave-selector}:not(:disabled):not([aria-disabled='true']):active {
     background-color: var(--popup-close-click-fill-color);
   }
 
-  :where(
-    .popup-close,
-    .game-popup-close-btn,
-    .experience-form-close-btn,
-    .event-slots-popup-close,
-    .mobile-profile-selector-close-btn,
-    .event-checkout-dialog__close,
-    .pricing-editor__wizard-close,
-    .profile-onboarding-close-btn,
-    .entry-ideas-popup-close,
-    .stats-graph-help-close,
-    .event-explore-basket-panel__close,
-    .asset-explore-basket-panel__close,
-    .app-install-prompt__secondary,
-    .user-menu-close-btn
-  ):not(:disabled):not([aria-disabled='true']):active::after {
-    animation: popup-close-wave-feedback 0.42s ease-out;
-  }
 }

@@ -172,7 +172,7 @@
     <div class="game-popup-panel" (click)="$event.stopPropagation()">
       <header>
         <h2>Game History</h2>
-        <button type="button" (click)="closeLocalPopup()">×</button>
+        <button type="button" (click)="closeLocalPopup()" aria-label="Close">×</button>
       </header>
       <div class="game-popup-body">
         <p>Recent ratings and mutual matches can appear here.</p>

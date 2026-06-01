@@ -360,6 +360,7 @@ export class AssetInfoCardBuilder {
     const pendingCount = card.requests.filter(request => request.status === 'pending' && request.requestKind !== 'manual').length;
     return {
       variant: 'badge',
+      shape: 'circle',
       tone: card.type === 'Supplies' ? 'warm' : 'default',
       label: AssetCardBuilder.quantityLabel(card),
       detailLabel: AssetCardBuilder.capacityLabel(card),
