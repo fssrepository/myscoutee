@@ -553,6 +553,7 @@
     "params": "Params",
     "admin.params.platform": "Platform",
     "admin.params.loading": "Loading parameters",
+    "admin.params.history.loading": "Loading history",
     "admin.params.toggle.section": "Toggle parameter section",
     "admin.params.edit.section": "Edit section",
     "admin.params.open.history": "Open history",

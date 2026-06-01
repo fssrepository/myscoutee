@@ -553,6 +553,7 @@
     "params": "Paraméterek",
     "admin.params.platform": "Platform",
     "admin.params.loading": "Paraméterek betöltése",
+    "admin.params.history.loading": "Előzmények betöltése",
     "admin.params.toggle.section": "Paraméterszakasz nyitása vagy zárása",
     "admin.params.edit.section": "Szakasz szerkesztése",
     "admin.params.open.history": "Előzmények megnyitása",
