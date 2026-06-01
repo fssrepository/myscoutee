@@ -2280,20 +2280,6 @@
   overflow-y: auto;
 }
 
-@media (max-width: 760px) {
-  .chat-compose-box {
-    min-height: 40px;
-    padding-top: 0;
-  }
-
-  .chat-compose-box textarea {
-    height: 40px;
-    min-height: 40px;
-    border-radius: 10px;
-    padding-top: 0.58rem;
-    padding-bottom: 0.58rem;
-  }
-}
 
 .chat-reply-draft {
   flex: 0 0 100%;
@@ -2718,7 +2704,21 @@
   }
 }
 
+
 @media (max-width: 760px) {
+  .chat-compose-box {
+    min-height: 40px;
+    padding-top: 0;
+  }
+
+  .chat-compose-box textarea {
+    height: 40px;
+    min-height: 40px;
+    border-radius: 10px;
+    padding-top: 0.58rem;
+    padding-bottom: 0.58rem;
+  }
+
   .app-popup.event-chat-popup-shell {
     padding: 0;
     align-items: stretch;
@@ -2921,9 +2921,7 @@
     max-height: min(42vh, 18rem);
   }
 
-}
 
-@media (max-width: 720px) {
   .popup-chat-context-btn .event-editor-members-invite > span {
     display: inline;
   }

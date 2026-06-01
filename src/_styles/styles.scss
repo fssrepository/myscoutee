@@ -25,16 +25,14 @@ body {
   height: 100%;
 }
 
-@media (min-width: 761px) {
-  html.admin-document-no-scroll,
-  body.admin-document-no-scroll {
-    overflow: hidden;
-  }
+html.admin-document-no-scroll,
+body.admin-document-no-scroll {
+  overflow: hidden;
+}
 
-  body.admin-document-no-scroll app-root {
-    height: 100%;
-    overflow: hidden;
-  }
+body.admin-document-no-scroll app-root {
+  height: 100%;
+  overflow: hidden;
 }
 
 /* Mobile: remove the blue tap highlight while keeping keyboard focus visible */

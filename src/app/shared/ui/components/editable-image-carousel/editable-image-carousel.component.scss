@@ -385,13 +385,8 @@
   width: 24px;
 }
 
-@media (max-width: 980px) {
-  .editable-image-carousel {
-    --editable-image-slots-per-page: 3;
-  }
-}
 
-@media (max-width: 720px) {
+@media (max-width: 760px) {
   .editable-image-carousel {
     --editable-image-slots-per-page: 1;
     height: 240px;

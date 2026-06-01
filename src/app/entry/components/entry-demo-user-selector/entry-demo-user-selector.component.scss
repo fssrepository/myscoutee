@@ -535,13 +535,8 @@
   color: #fff;
 }
 
-@media (max-width: 1200px) {
-  .demo-user-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-}
 
-@media (max-width: 900px) {
+@media (max-width: 760px) {
   .demo-login-overlay {
     padding: 0;
     align-items: stretch;

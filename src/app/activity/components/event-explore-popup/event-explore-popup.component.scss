@@ -489,6 +489,7 @@
   box-shadow: 0 0.34rem 0 rgba(255, 255, 255, 0.98);
 }
 
+
 @media (max-width: 760px) {
   .event-explore-header-controls {
     gap: 0.3rem;
@@ -506,9 +507,7 @@
   .event-explore-view-trigger span {
     display: none;
   }
-}
 
-@media (max-width: 820px) {
   .event-explore-popup-shell .popup-panel-event-explore {
     width: min(100vw, calc(100vw - 0.6rem));
   }

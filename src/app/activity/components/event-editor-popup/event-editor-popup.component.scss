@@ -2477,7 +2477,8 @@ button.profile-status-select-wrap {
   min-width: 190px;
 }
 
-@media (max-width: 1060px) {
+
+@media (max-width: 760px) {
   .experience-form-grid {
     grid-template-columns: 1fr;
     row-gap: 0.72rem;
@@ -2521,9 +2522,7 @@ button.profile-status-select-wrap {
     align-items: center;
   }
 
-}
 
-@media (max-width: 760px) {
   .event-frequency-mobile-picker {
     position: relative;
     width: 100%;

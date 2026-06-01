@@ -319,24 +319,8 @@
   color: #121821;
 }
 
-@media (max-width: 860px) {
-  .affinity-graph-progress-shell {
-    top: 64px;
-    right: 30px;
-    left: 30px;
-    width: auto;
-  }
 
-  .affinity-graph-static-stack {
-    top: 10px;
-    bottom: 10px;
-    left: 18px;
-    right: 18px;
-    width: auto;
-  }
-}
-
-@media (max-width: 540px) {
+@media (max-width: 760px) {
   .affinity-graph-progress-shell {
     top: 61px;
     right: 22px;

@@ -143,7 +143,8 @@
   min-height: 100vh;
 }
 
-@media (max-width: 768px) {
+
+@media (max-width: 760px) {
   .content {
     overflow-x: hidden;
   }
@@ -151,9 +152,7 @@
   .content-area {
     box-sizing: border-box;
   }
-}
 
-@media (max-width: 720px) {
   .content.content-single {
     padding: 0 0.45rem;
   }

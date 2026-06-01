@@ -1748,7 +1748,11 @@
   background: linear-gradient(135deg, #ffe7df 0%, #fff1ec 100%);
 }
 
-@media (max-width: 1024px) {
+
+
+
+
+@media (max-width: 760px) {
   .entry-hero-main {
     grid-template-columns: 1fr;
   }
@@ -1756,15 +1760,7 @@
   .entry-hero-how {
     margin-top: 0.1rem;
   }
-}
 
-@media (max-width: 1079px) {
-  .entry-ideas-carousel {
-    --entry-ideas-per-page: 3;
-  }
-}
-
-@media (max-width: 900px) {
   .entry-shell {
     padding: 0.35rem;
   }
@@ -1783,10 +1779,6 @@
 
   .entry-header-actions {
     gap: 0.38rem;
-  }
-
-  .entry-brand-text {
-    font-size: 1.6rem;
   }
 
   .entry-preview-badge {
@@ -1815,7 +1807,7 @@
 
   .entry-hero {
     overflow: visible;
-    padding: 1.1rem;
+    padding: 0.94rem;
   }
 
   .entry-hero h1 {
@@ -1931,9 +1923,7 @@
     min-height: 42px;
     font-size: 1.06rem;
   }
-}
 
-@media (max-width: 720px) {
   .entry-ideas {
     padding: 0.42rem 0.2rem 0.68rem;
   }
@@ -2053,17 +2043,8 @@
   .entry-hero-cta {
     margin-top: 1rem;
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: 1fr;
     gap: 0.4rem;
-  }
-
-  .entry-shell {
-    padding: 0.35rem;
-  }
-
-  .entry-shell-panel {
-    border-radius: 0;
-    padding: 0;
   }
 
   .entry-brand-text {
@@ -2073,10 +2054,6 @@
   .entry-brand-mark {
     width: 34px;
     height: 34px;
-  }
-
-  .entry-hero {
-    padding: 0.94rem;
   }
 
   .entry-hero h1 {
@@ -2160,10 +2137,5 @@
     text-align: center;
     padding-bottom: calc(0.72rem + env(safe-area-inset-bottom));
   }
-}
 
-@media (max-width: 360px) {
-  .entry-hero-cta {
-    grid-template-columns: 1fr;
-  }
 }
