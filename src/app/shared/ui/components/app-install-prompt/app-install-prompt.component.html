@@ -37,7 +37,7 @@
           type="button"
           class="app-install-prompt__secondary"
           [disabled]="busy"
-          [attr.aria-label]="'later' | i18n"
+          [attr.aria-label]="'dismiss' | i18n: 'Dismiss'"
           (click)="dismiss()"
         >
           <mat-icon>close</mat-icon>

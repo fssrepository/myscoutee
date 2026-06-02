@@ -25,13 +25,14 @@ import {
 } from '../builders';
 import { DemoActivityMembersRepository } from '../repositories/activity-members.repository';
 import { DemoCountryPartitionsRepository } from '../repositories/country-partitions.repository';
+import { scopedStorageKey } from '../../base/storage-scope';
 
 @Injectable({
   providedIn: 'root'
 })
 export class DemoUsersService extends DemoRouteDelayService implements UserService {
   private static readonly INELIGIBLE_REGION_MESSAGE = 'Unavailable in your country';
-  private static readonly DEMO_COUNTRY_CODE_STORAGE_KEY = 'myscoutee.demo.countryCode';
+  private static readonly DEMO_COUNTRY_CODE_STORAGE_KEY = scopedStorageKey('countryCode', 'demo');
   private static readonly DEMO_USERS_ROUTE = '/auth/demo-users';
   private static readonly USER_BY_ID_ROUTE = '/auth/me';
   private static readonly USER_FEEDBACK_ROUTE = '/auth/me/feedback';

@@ -1,5 +1,13 @@
 import { Injectable } from '@angular/core';
 
+import {
+  APP_I18N_BUNDLES_STORE,
+  APP_SCOPED_INDEXED_DB_NAME,
+  APP_SCOPED_INDEXED_DB_VERSION,
+  createAppScopedObjectStores,
+  scopedStorageKey
+} from '../core/base/storage-scope';
+
 export interface StoredI18nBundle {
   lang: string;
   version: string;
@@ -12,10 +20,6 @@ export interface StoredI18nBundle {
 })
 export class I18nBundleRepository {
   private static readonly DEFAULT_LANGUAGE = 'en';
-  private static readonly STORAGE_PREFIX = 'myscoutee.i18n.bundle.v1';
-  private static readonly INDEXED_DB_NAME = 'myscoutee-i18n-db';
-  private static readonly INDEXED_DB_VERSION = 1;
-  private static readonly INDEXED_DB_STORE = 'bundles';
   private indexedDbOpenPromise: Promise<IDBDatabase | null> | null = null;
 
   async firstStoredBundle(candidates: readonly string[]): Promise<StoredI18nBundle | null> {
@@ -75,8 +79,8 @@ export class I18nBundleRepository {
       return null;
     }
     return await new Promise<StoredI18nBundle | null>(resolve => {
-      const tx = db.transaction(I18nBundleRepository.INDEXED_DB_STORE, 'readonly');
-      const request = tx.objectStore(I18nBundleRepository.INDEXED_DB_STORE).get(this.normalizeLanguage(lang));
+      const tx = db.transaction(APP_I18N_BUNDLES_STORE, 'readonly');
+      const request = tx.objectStore(APP_I18N_BUNDLES_STORE).get(this.normalizeLanguage(lang));
       request.onsuccess = () => {
         resolve(this.normalizeStoredBundle(request.result, lang));
       };
@@ -92,8 +96,8 @@ export class I18nBundleRepository {
       return;
     }
     await new Promise<void>(resolve => {
-      const tx = db.transaction(I18nBundleRepository.INDEXED_DB_STORE, 'readwrite');
-      tx.objectStore(I18nBundleRepository.INDEXED_DB_STORE).put(bundle, bundle.lang);
+      const tx = db.transaction(APP_I18N_BUNDLES_STORE, 'readwrite');
+      tx.objectStore(APP_I18N_BUNDLES_STORE).put(bundle, bundle.lang);
       tx.oncomplete = () => resolve();
       tx.onerror = () => resolve();
       tx.onabort = () => resolve();
@@ -106,12 +110,10 @@ export class I18nBundleRepository {
     }
     if (!this.indexedDbOpenPromise) {
       this.indexedDbOpenPromise = new Promise<IDBDatabase | null>(resolve => {
-        const request = indexedDB.open(I18nBundleRepository.INDEXED_DB_NAME, I18nBundleRepository.INDEXED_DB_VERSION);
+        const request = indexedDB.open(APP_SCOPED_INDEXED_DB_NAME, APP_SCOPED_INDEXED_DB_VERSION);
         request.onupgradeneeded = () => {
           const db = request.result;
-          if (!db.objectStoreNames.contains(I18nBundleRepository.INDEXED_DB_STORE)) {
-            db.createObjectStore(I18nBundleRepository.INDEXED_DB_STORE);
-          }
+          createAppScopedObjectStores(db);
         };
         request.onsuccess = () => resolve(request.result);
         request.onerror = () => resolve(null);
@@ -138,7 +140,8 @@ export class I18nBundleRepository {
   }
 
   private storageKey(lang: string): string {
-    return `${I18nBundleRepository.STORAGE_PREFIX}.${this.normalizeLanguage(lang) || I18nBundleRepository.DEFAULT_LANGUAGE}`;
+    const normalizedLang = this.normalizeLanguage(lang) || I18nBundleRepository.DEFAULT_LANGUAGE;
+    return scopedStorageKey(`i18n.bundle.v1.${normalizedLang}`);
   }
 
   private canUseLocalStorage(): boolean {

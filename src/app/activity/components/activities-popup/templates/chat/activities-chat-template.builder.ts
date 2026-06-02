@@ -1,6 +1,7 @@
 import type * as AppTypes from '../../../../../shared/core/base/models';
 
 export interface ActivitiesChatTemplateData {
+  id: string;
   title: string;
   subtitle: string;
   detail: string;
@@ -34,6 +35,7 @@ export function buildActivitiesChatTemplateData(
     : '';
 
   return {
+    id: row.id,
     title: row.title,
     subtitle: row.subtitle ?? '',
     detail: row.detail ?? '',

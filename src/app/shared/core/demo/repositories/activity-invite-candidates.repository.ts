@@ -9,6 +9,7 @@ import type {
   ActivityInviteCandidatesQuery,
   ActivityInviteCandidatesRepository
 } from '../../base/interfaces/activity-invite.interface';
+import { scopedStorageKey } from '../../base/storage-scope';
 import { DemoUsersRatingsRepository } from './users-ratings.repository';
 import { DemoUsersRepository } from './users.repository';
 
@@ -36,7 +37,7 @@ export class DemoActivityInviteCandidatesRepository implements ActivityInviteCan
 
     // Filter out existing contacts at the repository level if the owner is an asset
     if (query.owner.ownerType === 'asset') {
-      const storageKey = `myscoutee.navigator.contacts.v1.${activeUserId}`;
+      const storageKey = scopedStorageKey(`navigator.contacts.v1.${activeUserId}`);
       try {
         const rawContacts = localStorage.getItem(storageKey);
         if (rawContacts) {

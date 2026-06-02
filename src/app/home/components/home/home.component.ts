@@ -1441,11 +1441,7 @@ export class HomeComponent implements OnDestroy {
     if (this.users.length === 0) {
       return '';
     }
-    const stored = localStorage.getItem('demo-active-user');
-    if (!stored) {
-      return this.users[0].id;
-    }
-    return this.users.some(user => user.id === stored) ? stored : this.users[0].id;
+    return this.users[0].id;
   }
 
   private clampCandidateImagePan(): void {

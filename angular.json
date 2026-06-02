@@ -31,6 +31,7 @@
             "assets": [
               "src/assets",
               "src/404.html",
+              "src/robots.txt",
               "src/manifest.webmanifest",
               "src/app-sw.js",
               {
@@ -164,20 +165,34 @@
               "extractLicenses": false,
               "sourceMap": true
             },
-            "playground": {
+            "e2e": {
               "fileReplacements": [
                 {
                   "replace": "src/environments/environment.ts",
-                  "with": "src/environments/environment.playground.ts"
+                  "with": "src/environments/environment.e2e.ts"
                 }
               ],
-              "outputPath": {
-                "base": "dev",
-                "browser": ""
-              },
-              "optimization": false,
-              "extractLicenses": false,
-              "sourceMap": true
+              "budgets": [
+                {
+                  "type": "initial",
+                  "maximumWarning": "500kB",
+                  "maximumError": "3MB"
+                },
+                {
+                  "type": "anyComponentStyle",
+                  "maximumWarning": "20kB",
+                  "maximumError": "400kB"
+                }
+              ],
+              "outputHashing": "all",
+              "optimization": {
+                "styles": {
+                  "inlineCritical": true
+                },
+                "fonts": {
+                  "inline": true
+                }
+              }
             }
           },
           "defaultConfiguration": "development"
@@ -201,8 +216,8 @@
             "demo-http": {
               "buildTarget": "myscoutee:build:demo-http"
             },
-            "playground": {
-              "buildTarget": "myscoutee:build:playground"
+            "e2e": {
+              "buildTarget": "myscoutee:build:e2e"
             },
             "demo-github": {
               "buildTarget": "myscoutee:build:demo-github"

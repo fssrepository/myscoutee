@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 
 import { APP_STATIC_DATA } from '../../../app-static-data';
 import { AppUtils } from '../../../app-utils';
-import { AppMemoryDb } from '../../base/db';
+import { DemoMemoryDb } from '../../base/db';
 import type { UserDto } from '../../base/interfaces/user.interface';
 import type {
   EventFeedbackPersistedState,
@@ -28,7 +28,7 @@ export class DemoEventFeedbackRepository {
   private readonly activityMembersRepository = inject(DemoActivityMembersRepository);
   private readonly eventsRepository = inject(DemoEventsRepository);
   private readonly usersRepository = inject(DemoUsersRepository);
-  private readonly memoryDb = inject(AppMemoryDb);
+  private readonly memoryDb = inject(DemoMemoryDb);
 
   async flushToIndexedDb(): Promise<void> {
     await this.memoryDb.flushToIndexedDb();
@@ -182,8 +182,12 @@ export class DemoEventFeedbackRepository {
     }));
   }
 
-  seedEventFeedbackStates(): void {
-    const users = this.usersRepository.queryAllUsers();
+  seedEventFeedbackStates(
+    seedUsers?: readonly UserDto[],
+    eventItemsByUserId?: ReadonlyMap<string, readonly DemoEventRecord[]>,
+    itemsByUserId?: ReadonlyMap<string, readonly DemoEventRecord[]>
+  ): void {
+    const users = seedUsers?.length ? [...seedUsers] : this.usersRepository.queryAllUsers();
     if (users.length === 0) {
       return;
     }
@@ -194,7 +198,9 @@ export class DemoEventFeedbackRepository {
     let changed = false;
 
     for (const activeUser of users) {
-      const eventRecords = this.eventsRepository.queryEventItemsByUser(activeUser.id);
+      const eventRecords = [
+        ...(eventItemsByUserId?.get(activeUser.id) ?? this.eventsRepository.queryEventItemsByUser(activeUser.id))
+      ];
       if (eventRecords.length === 0) {
         continue;
       }
@@ -225,7 +231,7 @@ export class DemoEventFeedbackRepository {
       }
     }
 
-    if (this.seedOrganizerFeedbackShowcaseRecords(users, nextById, nextIds)) {
+    if (this.seedOrganizerFeedbackShowcaseRecords(users, nextById, nextIds, itemsByUserId)) {
       changed = true;
     }
 
@@ -245,14 +251,15 @@ export class DemoEventFeedbackRepository {
   private seedOrganizerFeedbackShowcaseRecords(
     users: UserDto[],
     nextById: Record<string, EventFeedbackPersistedState>,
-    nextIds: string[]
+    nextIds: string[],
+    itemsByUserId?: ReadonlyMap<string, readonly DemoEventRecord[]>
   ): boolean {
     const usersById = new Map(users.map(user => [user.id, user]));
     const hostedEventById = new Map<string, DemoEventRecord>();
     let changed = false;
 
     for (const user of users) {
-      for (const record of this.eventsRepository.queryItemsByUser(user.id)) {
+      for (const record of itemsByUserId?.get(user.id) ?? this.eventsRepository.queryItemsByUser(user.id)) {
         const eventId = record.id?.trim() ?? '';
         if (!eventId || record.isAdmin !== true || record.isInvitation || record.isTrashed) {
           continue;

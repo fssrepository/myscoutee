@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 
 import type { UserLocationEligibilityResponseDto } from '../../base/interfaces';
 import type { LandingContentState } from '../../base/models';
+import { DemoMemoryDb } from '../../base/db';
 import { DemoHelpCenterService } from './help-center.service';
 import { DemoIdeaPostsService } from './idea-posts.service';
 
@@ -17,10 +18,12 @@ export class DemoLandingContentService {
     locationRequired: false
   };
 
+  private readonly memoryDb = inject(DemoMemoryDb);
   private readonly helpCenter = inject(DemoHelpCenterService);
   private readonly ideaPosts = inject(DemoIdeaPostsService);
 
   async loadContent(): Promise<LandingContentState> {
+    await this.memoryDb.resetStorageOnce();
     await this.helpCenter.ensureEntryPrivacySeeded();
     const [privacy, ideas] = await Promise.all([
       this.helpCenter.loadState('privacy'),

@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 
-import { AppMemoryDb } from '../../base/db';
+import { DemoMemoryDb } from '../../base/db';
 import type { IdeaPost } from '../../base/models';
 import { DemoIdeaPostsSeedBuilder } from '../builders';
 import { IDEA_POSTS_TABLE_NAME, type DemoIdeaPostsTable } from '../models/idea-posts.model';
@@ -10,7 +10,7 @@ import { IDEA_POSTS_TABLE_NAME, type DemoIdeaPostsTable } from '../models/idea-p
 })
 export class DemoIdeaPostsRepository {
   private static readonly PERSIST_TIMEOUT_MS = 1500;
-  private readonly memoryDb = inject(AppMemoryDb);
+  private readonly memoryDb = inject(DemoMemoryDb);
 
   async whenReady(): Promise<void> {
     await this.memoryDb.whenReady();

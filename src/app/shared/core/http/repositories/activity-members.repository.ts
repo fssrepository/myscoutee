@@ -7,13 +7,13 @@ import type {
   ActivityMembersSummary
 } from '../../../core/base/models';
 import type * as AppTypes from '../../../core/base/models';
-import { AppMemoryDb } from '../../base/db';
+import { HttpMemoryDb } from '../../base/db';
 
 @Injectable({
   providedIn: 'root'
 })
 export class HttpActivityMembersRepository {
-  protected readonly memoryDb = inject(AppMemoryDb);
+  protected readonly memoryDb = inject(HttpMemoryDb);
   private readonly http = inject(HttpClient);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
   private readonly cachedMembersByOwnerKey: Record<string, AppTypes.ActivityMemberEntry[]> = {};
@@ -83,7 +83,8 @@ export class HttpActivityMembersRepository {
   async replaceMembersByOwner(
     owner: ActivityMemberOwnerRef,
     members: readonly AppTypes.ActivityMemberEntry[],
-    capacityTotal?: number | null
+    capacityTotal?: number | null,
+    actorUserId = ''
   ): Promise<void> {
     const normalizedOwner = this.normalizeOwnerRef(owner);
     if (!normalizedOwner) {
@@ -93,7 +94,8 @@ export class HttpActivityMembersRepository {
     await this.postVoid('/activities/events/members/replace', {
       owner: normalizedOwner,
       members: this.cloneEntries(members),
-      capacityTotal: this.normalizeCount(capacityTotal)
+      capacityTotal: this.normalizeCount(capacityTotal),
+      actorUserId: actorUserId.trim()
     });
   }
 

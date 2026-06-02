@@ -1,6 +1,20 @@
-import { AfterViewInit, Directive, ElementRef, Input, OnChanges, OnDestroy, Renderer2, SimpleChanges, effect, inject } from '@angular/core';
+import {
+  AfterViewInit,
+  ComponentRef,
+  Directive,
+  ElementRef,
+  Input,
+  OnChanges,
+  OnDestroy,
+  Renderer2,
+  SimpleChanges,
+  ViewContainerRef,
+  effect,
+  inject
+} from '@angular/core';
 
 import { I18nService } from '../../i18n';
+import { ProgressIndicatorComponent } from '../components/progress-indicator';
 
 @Directive({
   selector: '[appLazyBgImage]',
@@ -33,11 +47,13 @@ export class LazyBgImageDirective implements AfterViewInit, OnChanges, OnDestroy
   private static readonly nonSvgUrls = new Set<string>();
 
   private readonly i18n = inject(I18nService);
+  private readonly viewContainerRef = inject(ViewContainerRef);
   private readonly loadingClass = 'lazy-bg-loading';
   private readonly loadedClass = 'lazy-bg-loaded';
   private readonly errorClass = 'lazy-bg-error';
   private observer: IntersectionObserver | null = null;
   private htmlImageObserver: MutationObserver | null = null;
+  private readonly htmlImageFrameSpinners = new Map<HTMLElement, ComponentRef<ProgressIndicatorComponent>>();
   private hasLoaded = false;
   private isViewReady = false;
   private currentUrl: string | null = null;
@@ -146,6 +162,7 @@ export class LazyBgImageDirective implements AfterViewInit, OnChanges, OnDestroy
     this.disconnectObserver();
     this.disconnectHtmlImageObserver();
     this.detachHtmlImageHandlers();
+    this.destroyHtmlImageFrameSpinners();
   }
 
   private syncBackgroundMode(): void {
@@ -294,6 +311,7 @@ export class LazyBgImageDirective implements AfterViewInit, OnChanges, OnDestroy
   }
 
   private refreshHtmlImages(): void {
+    this.cleanupDetachedHtmlImageFrameSpinners();
     for (const image of this.htmlImages()) {
       if (image.dataset['lazyImageWired'] !== 'true') {
         image.dataset['lazyImageWired'] = 'true';
@@ -363,6 +381,11 @@ export class LazyBgImageDirective implements AfterViewInit, OnChanges, OnDestroy
     const frame = this.htmlImageFrame(image);
     frame?.classList.toggle('lazy-image-frame-loading', loading);
     frame?.classList.toggle('lazy-image-frame-loaded', !loading);
+    if (loading) {
+      this.ensureHtmlImageFrameSpinner(frame);
+    } else {
+      this.destroyHtmlImageFrameSpinner(frame);
+    }
   }
 
   private setHtmlImageFallbackState(image: HTMLImageElement, active: boolean): void {
@@ -371,12 +394,14 @@ export class LazyBgImageDirective implements AfterViewInit, OnChanges, OnDestroy
   }
 
   private clearHtmlImageState(image: HTMLImageElement): void {
+    const frame = this.htmlImageFrame(image);
     image.classList.remove('lazy-image-loading', 'lazy-image-loaded', 'lazy-image-fallback-active');
-    this.htmlImageFrame(image)?.classList.remove(
+    frame?.classList.remove(
       'lazy-image-frame-loading',
       'lazy-image-frame-loaded',
       'lazy-image-frame-fallback-active'
     );
+    this.destroyHtmlImageFrameSpinner(frame);
   }
 
   private htmlImageFrame(image: HTMLImageElement): HTMLElement | null {
@@ -385,6 +410,47 @@ export class LazyBgImageDirective implements AfterViewInit, OnChanges, OnDestroy
       return figure;
     }
     return image.parentElement;
+  }
+
+  private ensureHtmlImageFrameSpinner(frame: HTMLElement | null): void {
+    if (!frame || this.htmlImageFrameSpinners.has(frame)) {
+      return;
+    }
+    const spinnerRef = this.viewContainerRef.createComponent(ProgressIndicatorComponent);
+    spinnerRef.setInput('kind', 'spinner-ring');
+    spinnerRef.setInput('size', 'sm');
+    spinnerRef.setInput('state', 'loading');
+    this.renderer.addClass(spinnerRef.location.nativeElement, 'lazy-image-frame-spinner');
+    this.renderer.appendChild(frame, spinnerRef.location.nativeElement);
+    spinnerRef.changeDetectorRef.detectChanges();
+    this.htmlImageFrameSpinners.set(frame, spinnerRef);
+  }
+
+  private destroyHtmlImageFrameSpinner(frame: HTMLElement | null): void {
+    if (!frame) {
+      return;
+    }
+    const spinnerRef = this.htmlImageFrameSpinners.get(frame);
+    if (!spinnerRef) {
+      return;
+    }
+    spinnerRef.destroy();
+    this.htmlImageFrameSpinners.delete(frame);
+  }
+
+  private cleanupDetachedHtmlImageFrameSpinners(): void {
+    for (const frame of Array.from(this.htmlImageFrameSpinners.keys())) {
+      if (!this.elementRef.nativeElement.contains(frame)) {
+        this.destroyHtmlImageFrameSpinner(frame);
+      }
+    }
+  }
+
+  private destroyHtmlImageFrameSpinners(): void {
+    for (const spinnerRef of this.htmlImageFrameSpinners.values()) {
+      spinnerRef.destroy();
+    }
+    this.htmlImageFrameSpinners.clear();
   }
 
   private htmlImageSourceUrl(image: HTMLImageElement): string {

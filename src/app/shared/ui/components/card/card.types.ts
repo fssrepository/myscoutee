@@ -15,6 +15,7 @@ export type InfoCardSurfaceTone =
   | 'inactive';
 export type InfoCardOverlayVariant = 'avatar' | 'badge' | 'toggle';
 export type InfoCardOverlayLayout = 'default' | 'avatar-metric' | 'badge-with-leading-accessory';
+export type InfoCardOverlayShape = 'default' | 'circle';
 export type InfoCardOverlayTone =
   | 'default'
   | 'full'
@@ -146,6 +147,7 @@ export interface InfoCardOverlayAccessory {
 export interface InfoCardOverlayAction {
   variant?: InfoCardOverlayVariant;
   layout?: InfoCardOverlayLayout | null;
+  shape?: InfoCardOverlayShape | null;
   tone?: InfoCardOverlayTone | null;
   label?: string | null;
   icon?: string | null;

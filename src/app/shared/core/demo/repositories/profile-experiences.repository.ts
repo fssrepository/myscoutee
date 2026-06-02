@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 
 import type { ExperienceEntry } from '../../base/models/profile.model';
-import { AppMemoryDb } from '../../base/db';
+import { DemoMemoryDb } from '../../base/db';
 import { DemoProfileExperienceSeedBuilder } from '../builders';
 import { PROFILE_EXPERIENCES_TABLE_NAME } from '../models/profile-experiences.model';
 
@@ -9,7 +9,7 @@ import { PROFILE_EXPERIENCES_TABLE_NAME } from '../models/profile-experiences.mo
   providedIn: 'root'
 })
 export class DemoProfileExperiencesRepository {
-  private readonly memoryDb = inject(AppMemoryDb);
+  private readonly memoryDb = inject(DemoMemoryDb);
   private initialized = false;
 
   init(): void {

@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 
-import { AppMemoryDb } from '../../base/db';
+import { DemoMemoryDb } from '../../base/db';
 
 export interface DemoMediaImageRecord {
   scope: string;
@@ -18,7 +18,7 @@ export interface DemoMediaImageRecord {
   providedIn: 'root'
 })
 export class DemoMediaRepository {
-  private readonly memoryDb = inject(AppMemoryDb);
+  private readonly memoryDb = inject(DemoMemoryDb);
 
   async saveImage(record: DemoMediaImageRecord): Promise<void> {
     await this.memoryDb.writeIndexedDbTableEntry(`mediaImage:${this.newId('media')}`, {

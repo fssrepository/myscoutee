@@ -30,6 +30,7 @@ import type {
   InfoCardOverlayAccessory,
   InfoCardOverlayLayout,
   InfoCardOverlayAction,
+  InfoCardOverlayShape,
   InfoCardDetailStyle,
   InfoCardOverlayTone,
   InfoCardOverlayVariant
@@ -221,6 +222,10 @@ export class InfoCardComponent implements OnDestroy {
 
   protected overlayLayout(action: InfoCardOverlayAction | null | undefined): InfoCardOverlayLayout {
     return action?.layout ?? 'default';
+  }
+
+  protected overlayShape(action: InfoCardOverlayAction | null | undefined): InfoCardOverlayShape {
+    return action?.shape ?? 'default';
   }
 
   protected overlayTone(action: InfoCardOverlayAction | null | undefined): InfoCardOverlayTone {

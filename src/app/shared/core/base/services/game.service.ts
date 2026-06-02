@@ -14,6 +14,7 @@ import { DemoGameService } from '../../demo';
 import { DemoUsersRatingsRepository } from '../../demo/repositories/users-ratings.repository';
 import { HttpGameService } from '../../http';
 import { HttpUsersRatingsRepository } from '../../http/repositories/users-ratings.repository';
+import { BaseUsersRatingsRepository } from '../repositories/users-ratings.repository';
 import type { UserDto } from '../interfaces/user.interface';
 import { BaseRouteModeService } from './base-route-mode.service';
 
@@ -60,7 +61,7 @@ export class GameService extends BaseRouteModeService {
     return this.resolveRouteService('/game-cards/query', this.demoGameService, this.httpGameService);
   }
 
-  private get usersRatingsRepository(): HttpUsersRatingsRepository {
+  private get usersRatingsRepository(): BaseUsersRatingsRepository {
     return this.resolveRouteService('/activities/rates', this.demoUsersRatingsRepository, this.httpUsersRatingsRepository);
   }
 

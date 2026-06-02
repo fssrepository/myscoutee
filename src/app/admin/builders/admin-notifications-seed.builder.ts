@@ -88,6 +88,23 @@ export class AdminNotificationsSeedBuilder {
           parameters: this.notificationRuleParameters('event-tournament-review')
         }),
         this.defaultNotificationRule({
+          ruleKey: 'event-counter-expiry',
+          label: 'admin.jobs.rule.event.counter.expiry',
+          category: 'admin.jobs.category.scheduled',
+          description: 'admin.jobs.rule.event.counter.expiry.description',
+          actionKey: 'event.counter.expiry',
+          triggerKind: 'scheduled_process',
+          enabled: true,
+          manualRunEnabled: false,
+          adminManageable: true,
+          priority: 225,
+          pushEnabled: false,
+          emailEnabled: false,
+          timingMode: 'interval',
+          intervalMinutes: 5,
+          startTime: '00:00'
+        }),
+        this.defaultNotificationRule({
           ruleKey: 'notification-outbox',
           label: 'admin.jobs.rule.notification.outbox',
           category: 'admin.jobs.category.scheduled',

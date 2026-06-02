@@ -11,3 +11,4 @@ export { AssetInfoCardBuilder } from './asset-info-card.builder';
 export { EventExploreBuilder } from './event-explore.builder';
 export { EventEditorBuilder } from './event-editor.builder';
 export { PricingBuilder } from './pricing.builder';
+export { UserRatesBuilder } from './user-rates.builder';

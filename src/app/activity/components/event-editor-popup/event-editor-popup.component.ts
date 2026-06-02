@@ -585,12 +585,16 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
   eventEditorHeaderPendingMemberCount(): number {
     const source: any = this.eventEditorService.sourceEvent();
-    const pendingRaw = this.currentMemberSummary?.pendingMembers
-      ?? source?.pendingMembersCount
+    const eventId = this.currentEventIdentity();
+    const sync = this.appCtx.activityMembersSync();
+    const pendingRaw = sync && eventId && sync.id === eventId
+      ? sync.pendingMembers
+      : source?.pendingMembersCount
       ?? source?.pendingCount
       ?? source?.pendingMembers
       ?? source?.pending
       ?? source?.pendingInvites
+      ?? this.currentMemberSummary?.pendingMembers
       ?? 0;
     const pendingCount = Number(pendingRaw);
     if (!Number.isFinite(pendingCount) || pendingCount <= 0) {
