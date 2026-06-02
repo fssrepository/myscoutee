@@ -3,6 +3,7 @@ import { Location } from '@angular/common';
 import { Injectable, computed, inject, signal } from '@angular/core';
 
 import { environment } from '../../../environments/environment';
+import { scopedStorageKey } from '../../shared/core/base/storage-scope';
 import {
   AppContext,
   HelpCenterService,
@@ -90,7 +91,7 @@ const OBSOLETE_NOTIFICATION_RULE_PARAMETER_KEYS = new Set([
   'jobs.process.randomGroups.historyPenalty'
 ]);
 
-const ADMIN_SESSION_STORAGE_KEY = 'myscoutee-admin-session';
+const ADMIN_SESSION_STORAGE_KEY = scopedStorageKey('admin.session.v1');
 const ADMIN_NOTIFICATION_INTERVAL_UNIT = {
   seconds: 'seconds',
   minutes: 'minutes',

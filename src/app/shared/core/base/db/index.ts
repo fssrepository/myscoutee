@@ -1,1 +1,1 @@
-export { AppMemoryDb } from './app.db';
+export { AppMemoryDb, DemoMemoryDb, HttpMemoryDb } from './app.db';

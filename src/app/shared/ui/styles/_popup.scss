@@ -500,6 +500,7 @@
     filter: brightness(0.95);
   }
 
+
   @media (max-width: 760px) {
     .app-popup {
       padding: 0;
@@ -575,9 +576,7 @@
       overscroll-behavior: contain;
       -webkit-overflow-scrolling: touch;
     }
-  }
 
-  @media (max-width: 760px) {
     .popup-surface-overlay,
     .experience-form-overlay {
       padding: 0;

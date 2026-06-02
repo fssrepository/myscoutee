@@ -231,6 +231,7 @@ const PROCESS_RULE_ICONS: Record<string, string> = {
   'event-random-groups': 'hub',
   'event-auto-inviter': 'person_add',
   'event-tournament-review': 'emoji_events',
+  'event-counter-expiry': 'event_available',
   'notification-outbox': 'notifications_active',
   'affinity-recompute': 'sync_alt',
   'scheduled-messages': 'schedule_send',

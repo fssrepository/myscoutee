@@ -793,7 +793,9 @@
 
 }
 
-@media (max-width: 900px) {
+
+
+@media (max-width: 760px) {
   .navigator-contact-card {
     grid-template-columns: auto minmax(0, 1fr);
   }
@@ -813,9 +815,7 @@
   .item-action-menu.item-action-menu-mobile.is-open-up {
     bottom: max(0.7rem, env(safe-area-inset-bottom));
   }
-}
 
-@media (max-width: 720px) {
   .contacts-toolbar,
   .navigator-contact-form-summary,
   .navigator-contact-form-actions {
@@ -828,9 +828,7 @@
     min-width: 0;
     flex: 0 0 auto;
   }
-}
 
-@media (max-width: 760px) {
   .navigator-contact-form-popup {
     width: 100vw;
     max-width: 100vw;

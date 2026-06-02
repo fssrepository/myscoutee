@@ -34,6 +34,21 @@ import { I18nService } from './shared/i18n';
 export class App implements OnDestroy {
   private static readonly ROUTE_WARMUP_MAX_VISIBLE_MS = 6000;
   private static readonly MOBILE_RESUME_RECOVERY_DELAY_MS = 280;
+  private static readonly CLOSE_RIPPLE_TARGET_SELECTOR = [
+    'button[class*="close" i]',
+    'button[class*="back" i]',
+    'button[aria-label*="close" i]',
+    'button[aria-label*="back" i]',
+    'button[aria-label*="cancel" i]',
+    'button[aria-label*="dismiss" i]',
+    'button[aria-label*="bezár" i]',
+    'button[aria-label*="vissza" i]',
+    'button[aria-label*="mégsem" i]',
+    'button[title*="close" i]',
+    'button[title*="cancel" i]',
+    'button[data-close-action="true"]'
+  ].join(',');
+  private static readonly CLOSE_RIPPLE_DURATION_MS = 520;
   private readonly router = inject(Router);
   private readonly pwaService = inject(PwaService);
   private readonly appLocationService = inject(AppLocationService);
@@ -110,8 +125,37 @@ export class App implements OnDestroy {
     this.scheduleMobileResumeRecovery();
   }
 
+  @HostListener('document:pointerdown', ['$event'])
+  protected onDocumentPointerDown(event: PointerEvent): void {
+    this.showCloseActionRipple(event);
+  }
+
   private syncNavigatorVisibility(url: string): void {
     this.showNavigator = this.shouldShowNavigator(url);
+  }
+
+  private showCloseActionRipple(event: PointerEvent): void {
+    const target = event.target instanceof Element ? event.target : null;
+    const button = target?.closest<HTMLButtonElement>(App.CLOSE_RIPPLE_TARGET_SELECTOR);
+    if (!button || button.disabled || button.getAttribute('aria-disabled') === 'true') {
+      return;
+    }
+    if (button.querySelector('.navigator-action-ripple, .mat-ripple, .mat-mdc-button-persistent-ripple')) {
+      return;
+    }
+    const rect = button.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) {
+      return;
+    }
+    const size = Math.max(rect.width, rect.height) * 2.4;
+    const ripple = document.createElement('span');
+    ripple.className = 'app-global-close-ripple';
+    ripple.style.width = `${size}px`;
+    ripple.style.height = `${size}px`;
+    ripple.style.left = `${event.clientX - rect.left - size / 2}px`;
+    ripple.style.top = `${event.clientY - rect.top - size / 2}px`;
+    button.appendChild(ripple);
+    setTimeout(() => ripple.remove(), App.CLOSE_RIPPLE_DURATION_MS);
   }
 
   private shouldShowNavigator(url: string): boolean {

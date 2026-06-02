@@ -14,6 +14,7 @@ import {
   type UserImpressionsSectionDto,
   type UserRealtimeLongPollResponseDto
 } from '../shared/core';
+import { scopedStorageKey } from '../shared/core/base/storage-scope';
 import { ConfirmationDialogService } from '../shared/ui/services/confirmation-dialog.service';
 import { AssetPopupStateService } from '../asset/asset-popup-state.service';
 
@@ -65,8 +66,9 @@ export class NavigatorService {
   private static readonly USER_REALTIME_LONG_POLL_INTERVAL_MS = 30000;
   private static readonly DEMO_USER_REALTIME_LONG_POLL_INTERVAL_MS = 10000;
   private static readonly ACCOUNT_REACTIVATION_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
-  private static readonly ENTRY_CONSENT_KEY = 'entry-gdpr-consent';
-  private static readonly OPTIONAL_PRIVACY_APPROVAL_KEY = 'myscoutee-privacy-optional-approvals';
+  private static readonly ENTRY_CONSENT_KEY = scopedStorageKey('entry.gdpr-consent.v1');
+  private static readonly OPTIONAL_PRIVACY_APPROVAL_KEY = scopedStorageKey('privacy.optional-approvals.v1');
+  private static readonly ADMIN_SESSION_STORAGE_KEY = scopedStorageKey('admin.session.v1');
 
   private readonly usersService = inject(UsersService);
   private readonly helpCenterService = inject(HelpCenterService);
@@ -618,7 +620,7 @@ export class NavigatorService {
         this.closeImpressionsPopup();
         if (this.router.url.split('?')[0].startsWith('/admin')) {
           this.clearHydratedUser();
-          localStorage.removeItem('myscoutee-admin-session');
+          localStorage.removeItem(NavigatorService.ADMIN_SESSION_STORAGE_KEY);
           window.dispatchEvent(new CustomEvent('adminLogoutRequested'));
           await this.sessionService.logout().finally(() => this.router.navigate(['/admin']));
           return;
@@ -675,7 +677,7 @@ export class NavigatorService {
           }
           this.clearHydratedUser();
           if (typeof localStorage !== 'undefined') {
-            localStorage.removeItem('myscoutee-admin-session');
+            localStorage.removeItem(NavigatorService.ADMIN_SESSION_STORAGE_KEY);
           }
           window.dispatchEvent(new CustomEvent('adminLogoutRequested'));
           await this.sessionService.logout().finally(() => this.router.navigate(['/admin']));

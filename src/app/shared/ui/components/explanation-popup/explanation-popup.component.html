@@ -7,7 +7,7 @@
         <div class="explanation-popup__headline">
           <div class="explanation-popup__title-row">
             <h2 data-i18n-ignore>{{ revision.title }}</h2>
-            <button type="button" class="explanation-popup__primary explanation-popup__header-action" (click)="close($event)">
+            <button type="button" class="explanation-popup__primary explanation-popup__header-action" [attr.aria-label]="'close' | i18n: 'Close'" (click)="close($event)">
               <span>{{ 'got.it' | i18n }}</span>
               <mat-icon>check</mat-icon>
             </button>
@@ -884,7 +884,7 @@
           <div class="explanation-popup__headline">
             <div class="explanation-popup__title-row">
               <h2>{{ 'loading.explanation' | i18n: 'Loading explanation' }}</h2>
-              <button type="button" class="explanation-popup__primary explanation-popup__header-action" (click)="close($event)">
+              <button type="button" class="explanation-popup__primary explanation-popup__header-action" [attr.aria-label]="'close' | i18n: 'Close'" (click)="close($event)">
                 <span>{{ 'got.it' | i18n }}</span>
                 <mat-icon>check</mat-icon>
               </button>

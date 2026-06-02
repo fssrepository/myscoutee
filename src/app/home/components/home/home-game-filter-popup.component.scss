@@ -1042,31 +1042,29 @@
   background: rgba(98, 84, 163, 0.3);
 }
 
-@media (min-width: 761px) {
-  .game-filter-layout-columns {
-    grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr) minmax(0, 1fr);
-    align-items: stretch;
-  }
+.game-filter-layout-columns {
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr) minmax(0, 1fr);
+  align-items: stretch;
+}
 
-  .game-filter-layout-col {
-    align-content: stretch;
-  }
+.game-filter-layout-col {
+  align-content: stretch;
+}
 
-  .game-filter-layout-col-lifestyle > .game-filter-group-lifestyle,
-  .game-filter-layout-col-relationships > .game-filter-group-relationships,
-  .game-filter-layout-col-basics > .game-filter-group-beliefs {
-    height: 100%;
-  }
+.game-filter-layout-col-lifestyle > .game-filter-group-lifestyle,
+.game-filter-layout-col-relationships > .game-filter-group-relationships,
+.game-filter-layout-col-basics > .game-filter-group-beliefs {
+  height: 100%;
+}
 
-  .game-filter-layout-col-relationships > .game-filter-group-relationships {
-    display: flex;
-    flex-direction: column;
-  }
+.game-filter-layout-col-relationships > .game-filter-group-relationships {
+  display: flex;
+  flex-direction: column;
+}
 
-  .game-filter-layout-col-relationships .game-filter-nav-btn {
-    flex: 1 1 0;
-    min-height: 3.45rem;
-  }
+.game-filter-layout-col-relationships .game-filter-nav-btn {
+  flex: 1 1 0;
+  min-height: 3.45rem;
 }
 
 @media (max-width: 760px) {
@@ -1124,5 +1122,25 @@
   .game-filter-layout-columns {
     grid-template-columns: 1fr;
     padding-bottom: calc(0.5rem + env(safe-area-inset-bottom));
+  }
+
+  .game-filter-layout-col {
+    align-content: start;
+  }
+
+  .game-filter-layout-col-lifestyle > .game-filter-group-lifestyle,
+  .game-filter-layout-col-relationships > .game-filter-group-relationships,
+  .game-filter-layout-col-basics > .game-filter-group-beliefs {
+    height: auto;
+  }
+
+  .game-filter-layout-col-relationships > .game-filter-group-relationships {
+    display: grid;
+    flex-direction: initial;
+  }
+
+  .game-filter-layout-col-relationships .game-filter-nav-btn {
+    flex: initial;
+    min-height: 0;
   }
 }

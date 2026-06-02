@@ -401,6 +401,15 @@ button.ui-info-card__overlay-action {
   overflow: visible;
 }
 
+.ui-info-card__overlay-action--badge.ui-info-card__overlay-action--shape-circle {
+  width: 28px;
+  min-width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: 50%;
+  aspect-ratio: 1;
+}
+
 .ui-info-card__overlay-action--ring-active {
   overflow: visible;
   box-shadow:

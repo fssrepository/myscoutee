@@ -526,6 +526,8 @@ export class AdminNotificationsService {
         return 3;
       case 'event-tournament-review':
         return 2;
+      case 'event-counter-expiry':
+        return 6;
       case 'notification-outbox':
         return 12;
       case 'affinity-recompute':

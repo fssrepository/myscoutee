@@ -43,10 +43,8 @@
   padding-bottom: 0.46rem;
 }
 
-@media (min-width: 761px) {
-  :host(.rating-star-bar-host--dockable) {
-    bottom: -0.92rem;
-  }
+:host(.rating-star-bar-host--dockable) {
+  bottom: -0.92rem;
 }
 
 .rating-star-bar {

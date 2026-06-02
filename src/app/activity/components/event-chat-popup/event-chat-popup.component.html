@@ -4,7 +4,11 @@
     [style.--chat-compose-detached-space.px]="chatComposeDetachedSpace"
     >
     <div class="app-popup-backdrop" (click)="close()"></div>
-    <div class="app-popup-panel popup-panel-event-chat" (click)="$event.stopPropagation()">
+    <div
+      class="app-popup-panel popup-panel-event-chat"
+      [attr.data-chat-id]="chatSession.item.id"
+      (click)="$event.stopPropagation()"
+    >
       @if (isSelectedChatContextMenuOpen()) {
         <button
           type="button"

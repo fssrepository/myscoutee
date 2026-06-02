@@ -2,13 +2,14 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 
 import type { HelpCenterRevision } from '../models';
 import { HelpCenterService } from './help-center.service';
+import { scopedStorageKey } from '../storage-scope';
 
 @Injectable({
   providedIn: 'root'
 })
 export class ExplanationGuideService {
-  private static readonly STORAGE_KEY = 'myscoutee.explanation-guide.enabled.v1';
-  private static readonly DISMISSED_CONTEXTS_STORAGE_KEY = 'myscoutee.explanation-guide.dismissed-contexts.v1';
+  private static readonly STORAGE_KEY = scopedStorageKey('explanation-guide.enabled.v1');
+  private static readonly DISMISSED_CONTEXTS_STORAGE_KEY = scopedStorageKey('explanation-guide.dismissed-contexts.v1');
   private static readonly LOAD_PROGRESS_WINDOW_MS = 3000;
   private readonly helpCenter = inject(HelpCenterService);
   private readonly enabledRef = signal(this.readEnabledState());

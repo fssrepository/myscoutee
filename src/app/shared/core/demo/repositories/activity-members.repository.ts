@@ -69,7 +69,10 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
     super();
   }
 
-  init(ownerUserIds?: readonly string[]): void {
+  init(
+    ownerUserIds?: readonly string[],
+    assetsByUserId?: ReadonlyMap<string, readonly AppTypes.AssetCard[]>
+  ): void {
     this.demoEventsRepository.init();
     const normalizedOwnerUserIds = Array.from(new Set(
       (ownerUserIds ?? this.demoUsersRepository.queryAvailableDemoUsers().map(user => user.id))
@@ -144,7 +147,11 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
       appendSeededRecords(this.buildSeededInvitationOwnerRecords(existingOwnerKeys));
       appendSeededRecords(this.buildSeededHomeSocialBridgeRecords(existingOwnerKeys));
       for (const userId of normalizedOwnerUserIds) {
-        appendSeededRecords(this.buildSeededAssetOwnerRecordsForUser(userId, existingOwnerKeys));
+        appendSeededRecords(this.buildSeededAssetOwnerRecordsForUser(
+          userId,
+          existingOwnerKeys,
+          assetsByUserId?.get(userId)
+        ));
       }
       appendSeededRecords(this.buildSeededSubEventAndGroupOwnerRecords(existingOwnerKeys));
 
@@ -162,7 +169,9 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
       const batchState = this.memoryDb.read();
       let activityMembersTable = this.normalizeCollection(batchState[ACTIVITY_MEMBERS_TABLE_NAME]);
       
-      this.batchRefreshInvalidSeededRecordOwners(activityMembersTable);
+      if (currentTable.ids.length > 0) {
+        this.batchRefreshInvalidSeededRecordOwners(activityMembersTable);
+      }
       
       this.syncEventSummariesFromMembers();
       
@@ -520,8 +529,10 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
   override async replaceMembersByOwner(
     owner: ActivityMemberOwnerRef,
     members: readonly AppTypes.ActivityMemberEntry[],
-    capacityTotal?: number | null
+    capacityTotal?: number | null,
+    actorUserId = ''
   ): Promise<void> {
+    void actorUserId;
     const normalizedOwner = this.normalizeOwnerRef(owner);
     if (!normalizedOwner) {
       return;
@@ -1049,10 +1060,11 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
 
   private buildSeededAssetOwnerRecordsForUser(
     userId: string,
-    existingOwnerKeys: ReadonlySet<string> = new Set()
+    existingOwnerKeys: ReadonlySet<string> = new Set(),
+    seedAssets?: readonly AppTypes.AssetCard[]
   ): DemoActivityMemberRecord[] {
     const nextRecords: DemoActivityMemberRecord[] = [];
-    for (const asset of this.demoAssetsRepository.peekOwnedAssetsByUser(userId).slice(
+    for (const asset of (seedAssets ?? this.demoAssetsRepository.peekOwnedAssetsByUser(userId)).slice(
       0,
       DemoActivityMembersRepository.MAX_SEEDED_ASSETS_PER_USER
     )) {

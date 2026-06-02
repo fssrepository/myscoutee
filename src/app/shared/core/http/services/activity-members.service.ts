@@ -32,9 +32,10 @@ export class HttpActivityMembersService {
   async replaceMembersByOwner(
     owner: ActivityMemberOwnerRef,
     members: readonly AppTypes.ActivityMemberEntry[],
-    capacityTotal?: number | null
+    capacityTotal?: number | null,
+    actorUserId = ''
   ): Promise<void> {
-    await this.activityMembersRepository.replaceMembersByOwner(owner, members, capacityTotal);
+    await this.activityMembersRepository.replaceMembersByOwner(owner, members, capacityTotal, actorUserId);
   }
 
   async applyMemberAction(

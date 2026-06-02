@@ -112,13 +112,17 @@ export class I18nService {
     }
 
     const activeStored = stored;
-    const seed = await this.firstLocalSeedBundle(
-      candidates,
-      activeStored?.lang ?? null,
-      activeStored?.version ?? null
-    );
+    const seed = this.usesHttpBundles() && activeStored
+      ? null
+      : await this.firstLocalSeedBundle(
+        candidates,
+        activeStored?.lang ?? null,
+        activeStored?.version ?? null
+      );
     if (seed) {
-      await this.bundleRepository.writeStoredBundle(seed);
+      if (!this.usesHttpBundles()) {
+        await this.bundleRepository.writeStoredBundle(seed);
+      }
       this.applyBundle(seed.lang, seed.version, seed.data);
     }
 
@@ -127,7 +131,9 @@ export class I18nService {
 
   private async loadDefaultSourceBundle(): Promise<void> {
     const lang = I18nService.DEFAULT_LANGUAGE;
-    const stored = await this.bundleRepository.readStoredBundle(lang);
+    const stored = this.usesHttpBundles()
+      ? null
+      : await this.bundleRepository.readStoredBundle(lang);
     if (stored && Object.keys(stored.data).length > 0) {
       this.applySourceBundle(stored.data);
     }
@@ -146,12 +152,14 @@ export class I18nService {
       && this.compareVersions(seed.version, activeStored.version) <= 0) {
       return;
     }
-    await this.bundleRepository.writeStoredBundle(seed);
+    if (!this.usesHttpBundles()) {
+      await this.bundleRepository.writeStoredBundle(seed);
+    }
     this.applySourceBundle(seed.data);
   }
 
   private async refreshFromServer(candidates: readonly string[]): Promise<void> {
-    if (environment.activitiesDataSource !== 'http') {
+    if (!this.usesHttpBundles()) {
       return;
     }
     if (candidates.length === 0) {
@@ -194,6 +202,10 @@ export class I18nService {
     } catch {
       // The static English UI and any stored/local seed bundle remain available.
     }
+  }
+
+  private usesHttpBundles(): boolean {
+    return environment.activitiesDataSource === 'http';
   }
 
   private async firstLocalSeedBundle(

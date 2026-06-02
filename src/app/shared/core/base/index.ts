@@ -4,7 +4,8 @@ export * from './converters';
 export * from './formatters';
 export * from './guards';
 export * from './models';
-export { AppMemoryDb } from './db';
+export { AppMemoryDb, DemoMemoryDb, HttpMemoryDb } from './db';
+export { BaseUsersRatingsRepository } from './repositories/users-ratings.repository';
 export type { UserGameCardsStackSnapshot } from './interfaces/game.interface';
 export {
   USER_BY_ID_LOAD_CONTEXT_KEY,

@@ -1,13 +1,13 @@
 import { Injectable, inject } from '@angular/core';
 
-import { AppMemoryDb } from '../../base/db';
+import { DemoMemoryDb } from '../../base/db';
 import { HELP_CENTER_TABLE_NAME, type DemoHelpCenterTable } from '../models/help-center.model';
 
 @Injectable({
   providedIn: 'root'
 })
 export class DemoHelpCenterRepository {
-  private readonly memoryDb = inject(AppMemoryDb);
+  private readonly memoryDb = inject(DemoMemoryDb);
 
   async whenReady(): Promise<void> {
     await this.memoryDb.whenReady();

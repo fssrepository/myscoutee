@@ -558,6 +558,7 @@
   }
 }
 
+
 @media (max-width: 760px) {
   .event-supply-contributions-popup-shell .popup-body.popup-body-members {
     height: calc(100vh - 58px);
@@ -593,9 +594,7 @@
   .event-supply-contributions-popup-shell .subevent-supply-bring-range {
     white-space: normal;
   }
-}
 
-@media (max-width: 760px) {
   .event-supply-contributions-popup-shell.app-popup,
   .event-supply-contributions-popup-shell.app-popup-stacked {
     padding: 0;
@@ -613,10 +612,6 @@
     border: 0;
     border-radius: 0;
     box-shadow: none;
-  }
-
-  .event-supply-contributions-popup-shell .popup-body.popup-body-members {
-    height: calc(100dvh - 58px);
   }
 
   .event-supply-contributions-popup-shell .subevent-supply-bring-overlay {
