@@ -216,6 +216,20 @@ export class FirebaseMessagingService {
   }
 
   private get enabled(): boolean {
-    return environment.activitiesDataSource === 'http' && environment.firebaseMessagingEnabled;
+    return environment.activitiesDataSource === 'http'
+      && environment.firebaseMessagingEnabled
+      && !this.isLoopbackBrowserHost();
+  }
+
+  private isLoopbackBrowserHost(): boolean {
+    if (typeof window === 'undefined') {
+      return false;
+    }
+    const hostname = window.location.hostname.toLowerCase();
+    return hostname === 'localhost'
+      || hostname === '127.0.0.1'
+      || hostname === '[::1]'
+      || hostname === '::1'
+      || hostname.endsWith('.localhost');
   }
 }
