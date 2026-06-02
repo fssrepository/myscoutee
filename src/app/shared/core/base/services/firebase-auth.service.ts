@@ -18,6 +18,7 @@ import {
 
 import { environment } from '../../../../../environments/environment';
 import type * as AppTypes from '../../../core/base/models';
+import { scopedStorageKey } from '../storage-scope';
 
 export interface FirebaseAuthSignInResult {
   profile: AppTypes.FirebaseAuthProfile | null;
@@ -36,7 +37,7 @@ export type FirebaseConfigFile = Pick<
   providedIn: 'root'
 })
 export class FirebaseAuthService {
-  private static readonly FIREBASE_AUTH_PROFILE_KEY = 'firebase-auth-profile';
+  private static readonly FIREBASE_AUTH_PROFILE_KEY = scopedStorageKey('firebase.auth-profile.v1');
   private static readonly FIREBASE_CONFIG_PATH = 'keys/firebase.config.json';
 
   private firebaseAuthPromise: Promise<Auth | null> | null = null;
@@ -47,7 +48,7 @@ export class FirebaseAuthService {
   }
 
   loadStoredProfile(): AppTypes.FirebaseAuthProfile | null {
-    if (typeof localStorage === 'undefined') {
+    if (!this.enabled || typeof localStorage === 'undefined') {
       return null;
     }
     const raw = localStorage.getItem(FirebaseAuthService.FIREBASE_AUTH_PROFILE_KEY);
@@ -96,6 +97,9 @@ export class FirebaseAuthService {
   }
 
   async restoreSessionProfile(): Promise<AppTypes.FirebaseAuthProfile | null> {
+    if (!this.enabled) {
+      return null;
+    }
     const auth = await this.ensureFirebaseAuth();
     if (!auth) {
       return this.loadStoredProfile();

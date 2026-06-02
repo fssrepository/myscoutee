@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 
 import type * as AppTypes from '../../../core/base/models';
 import type { UserByIdQueryResponse } from '../interfaces/user.interface';
+import { scopedStorageKey } from '../storage-scope';
 
 interface CachedTicketPagePayload {
   items: readonly AppTypes.ActivityListRow[];
@@ -13,7 +14,7 @@ interface CachedTicketPagePayload {
   providedIn: 'root'
 })
 export class OfflineCacheService {
-  private static readonly STORAGE_PREFIX = 'myscoutee.offline.v1';
+  private static readonly STORAGE_PREFIX = 'offline.v1';
 
   readUser(userId: string): UserByIdQueryResponse | null {
     const normalizedUserId = userId.trim();
@@ -58,11 +59,11 @@ export class OfflineCacheService {
   }
 
   private userStorageKey(userId: string): string {
-    return `${OfflineCacheService.STORAGE_PREFIX}:user:${userId}`;
+    return scopedStorageKey(`${OfflineCacheService.STORAGE_PREFIX}:user:${userId}`);
   }
 
   private ticketStorageKey(userId: string, order: 'upcoming' | 'past'): string {
-    return `${OfflineCacheService.STORAGE_PREFIX}:tickets:${userId}:${order}`;
+    return scopedStorageKey(`${OfflineCacheService.STORAGE_PREFIX}:tickets:${userId}:${order}`);
   }
 
   private readJson<T>(key: string): T | null {

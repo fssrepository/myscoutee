@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 
 import { ActivityResourceBuilder } from '../../base/builders';
-import { AppMemoryDb } from '../../base/db';
+import { DemoMemoryDb } from '../../base/db';
 import type * as AppTypes from '../../../core/base/models';
 import { AppUtils } from '../../../app-utils';
 import { DemoAssetsRepository } from './assets.repository';
@@ -22,7 +22,7 @@ import { DemoSeedScheduleBuilder, DemoUserSeedBuilder } from '../builders';
   providedIn: 'root'
 })
 export class DemoActivityResourcesRepository extends HttpActivityResourcesRepository {
-  private readonly memoryDb = inject(AppMemoryDb);
+  private readonly memoryDb = inject(DemoMemoryDb);
   private readonly assetsRepository = inject(DemoAssetsRepository);
   private readonly eventsRepository = inject(DemoEventsRepository);
   private readonly usersRepository = inject(DemoUsersRepository);

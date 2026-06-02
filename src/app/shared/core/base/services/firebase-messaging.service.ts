@@ -6,14 +6,15 @@ import { environment } from '../../../../../environments/environment';
 import { AppContext } from '../context';
 import { FirebaseAuthService } from './firebase-auth.service';
 import { PwaService } from './pwa.service';
+import { scopedStorageKey } from '../storage-scope';
 
 @Injectable({
   providedIn: 'root'
 })
 export class FirebaseMessagingService {
-  private static readonly DEVICE_ID_STORAGE_KEY = 'myscoutee.device.id';
-  private static readonly TOKEN_STORAGE_KEY = 'myscoutee.messaging.token';
-  private static readonly TOKEN_USER_ID_STORAGE_KEY = 'myscoutee.messaging.user-id';
+  private static readonly DEVICE_ID_STORAGE_KEY = scopedStorageKey('messaging.device-id.v1');
+  private static readonly TOKEN_STORAGE_KEY = scopedStorageKey('messaging.token.v1');
+  private static readonly TOKEN_USER_ID_STORAGE_KEY = scopedStorageKey('messaging.user-id.v1');
 
   private readonly http = inject(HttpClient);
   private readonly appCtx = inject(AppContext);
@@ -24,14 +25,14 @@ export class FirebaseMessagingService {
   private foregroundListenerBound = false;
 
   initialize(): void {
-    if (this.initialized) {
+    if (this.initialized || !this.enabled) {
       return;
     }
     this.initialized = true;
 
     effect(() => {
       const userId = this.appCtx.activeUserId().trim();
-      if (!userId || !environment.firebaseMessagingEnabled) {
+      if (!userId || !this.enabled) {
         return;
       }
       if (typeof Notification === 'undefined') {
@@ -44,7 +45,7 @@ export class FirebaseMessagingService {
   }
 
   async requestAndRegisterForActiveUser(): Promise<void> {
-    if (!environment.firebaseMessagingEnabled || typeof Notification === 'undefined') {
+    if (!this.enabled || typeof Notification === 'undefined') {
       return;
     }
     if (Notification.permission === 'default') {
@@ -62,6 +63,9 @@ export class FirebaseMessagingService {
   }
 
   private async registerActiveDevice(): Promise<void> {
+    if (!this.enabled) {
+      return;
+    }
     const userId = this.appCtx.activeUserId().trim();
     if (!userId) {
       return;
@@ -141,6 +145,9 @@ export class FirebaseMessagingService {
   }
 
   private async unregisterStoredDevice(): Promise<void> {
+    if (!this.enabled) {
+      return;
+    }
     const userId = localStorage.getItem(FirebaseMessagingService.TOKEN_USER_ID_STORAGE_KEY)?.trim() ?? '';
     const firebaseToken = localStorage.getItem(FirebaseMessagingService.TOKEN_STORAGE_KEY)?.trim() ?? '';
     if (!userId || !firebaseToken) {
@@ -192,6 +199,9 @@ export class FirebaseMessagingService {
   }
 
   private async deleteDeviceRegistration(userId: string, firebaseToken: string): Promise<void> {
+    if (!this.enabled) {
+      return;
+    }
     try {
       await this.http.request('delete', `${this.apiBaseUrl}/activities/chats/devices`, {
         body: {
@@ -203,5 +213,9 @@ export class FirebaseMessagingService {
     } catch {
       // Ignore backend cleanup failures and keep the next registration attempt moving.
     }
+  }
+
+  private get enabled(): boolean {
+    return environment.activitiesDataSource === 'http' && environment.firebaseMessagingEnabled;
   }
 }

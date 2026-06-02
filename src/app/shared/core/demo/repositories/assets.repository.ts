@@ -6,7 +6,7 @@ import { DemoAssetBuilder, DemoSeedScheduleBuilder, DemoUserSeedBuilder } from '
 import type * as AppTypes from '../../../core/base/models';
 import type { DemoUser } from '../../base/interfaces/user.interface';
 import { HttpAssetsRepository } from '../../http/repositories/assets.repository';
-import { AppMemoryDb } from '../../base/db';
+import { DemoMemoryDb } from '../../base/db';
 import { DemoUsersRepository } from './users.repository';
 import {
   ASSETS_TABLE_NAME,
@@ -25,7 +25,7 @@ import {
 export class DemoAssetsRepository extends HttpAssetsRepository {
   private static readonly VISIBLE_EXPLORE_OWNER_LIMIT = 12;
   private static readonly AFFINITY_DISTANCE_BOOST_SCALE = 10_000;
-  private readonly memoryDb = inject(AppMemoryDb);
+  private readonly memoryDb = inject(DemoMemoryDb);
   private readonly usersRepository = inject(DemoUsersRepository);
 
   init(ownerUserIds?: readonly string[]): void {
@@ -668,12 +668,12 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
   }
 
   private upsertDemoAssetManagerRecord(
-    state: ReturnType<AppMemoryDb['read']>,
+    state: ReturnType<DemoMemoryDb['read']>,
     asset: DemoAssetRecord,
     actorUserId: string,
     targetUserId: string,
     now: Date
-  ): ReturnType<AppMemoryDb['read']> {
+  ): ReturnType<DemoMemoryDb['read']> {
     const ownerKey = `asset:${asset.id}`;
     const table = this.normalizeActivityMembersCollection(state[ACTIVITY_MEMBERS_TABLE_NAME]);
     const existing = (table.idsByOwnerKey[ownerKey] ?? [])

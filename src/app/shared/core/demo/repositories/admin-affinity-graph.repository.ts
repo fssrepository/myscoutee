@@ -8,7 +8,7 @@ import type {
   AdminAffinityGraphNodeDto
 } from '../../base/interfaces/admin-affinity-graph.interface';
 import { ADMIN_AFFINITY_GRAPH_STORE_KEY } from '../../base/interfaces/admin-affinity-graph.interface';
-import { AppMemoryDb } from '../../base/db';
+import { DemoMemoryDb } from '../../base/db';
 import { DemoUserSeedBuilder } from '../builders';
 import { USER_RATES_TABLE_NAME, USERS_TABLE_NAME } from '../models/users.model';
 
@@ -16,7 +16,7 @@ import { USER_RATES_TABLE_NAME, USERS_TABLE_NAME } from '../models/users.model';
   providedIn: 'root'
 })
 export class DemoAdminAffinityGraphRepository {
-  private readonly memoryDb = inject(AppMemoryDb);
+  private readonly memoryDb = inject(DemoMemoryDb);
   private readonly activeGraphProfileStatuses = new Set(['public', 'friends only', 'host only']);
 
   async buildGraphSnapshot(): Promise<AdminAffinityGraphDto> {

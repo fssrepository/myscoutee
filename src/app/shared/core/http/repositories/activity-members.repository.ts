@@ -7,13 +7,13 @@ import type {
   ActivityMembersSummary
 } from '../../../core/base/models';
 import type * as AppTypes from '../../../core/base/models';
-import { AppMemoryDb } from '../../base/db';
+import { HttpMemoryDb } from '../../base/db';
 
 @Injectable({
   providedIn: 'root'
 })
 export class HttpActivityMembersRepository {
-  protected readonly memoryDb = inject(AppMemoryDb);
+  protected readonly memoryDb = inject(HttpMemoryDb);
   private readonly http = inject(HttpClient);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
   private readonly cachedMembersByOwnerKey: Record<string, AppTypes.ActivityMemberEntry[]> = {};

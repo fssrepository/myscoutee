@@ -1,18 +1,18 @@
 import { TestBed } from '@angular/core/testing';
 
 import type * as AppTypes from '../../../core/base/models';
-import { AppMemoryDb } from '../../base/db';
+import { DemoMemoryDb } from '../../base/db';
 import type { ChatPopupMessage } from '../../base/models/chat.model';
 import { CHATS_TABLE_NAME, type DemoChatRecord } from '../models/chats.model';
 import { DemoChatsRepository } from './chats.repository';
 
 describe('DemoChatsRepository chat pages', () => {
-  let memoryDb: AppMemoryDb;
+  let memoryDb: DemoMemoryDb;
   let repository: DemoChatsRepository;
 
   beforeEach(async () => {
     TestBed.configureTestingModule({});
-    memoryDb = TestBed.inject(AppMemoryDb);
+    memoryDb = TestBed.inject(DemoMemoryDb);
     await memoryDb.whenReady();
     repository = TestBed.inject(DemoChatsRepository);
   });

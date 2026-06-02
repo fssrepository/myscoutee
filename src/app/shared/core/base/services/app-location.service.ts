@@ -9,12 +9,13 @@ import type { UserDto } from '../interfaces/user.interface';
 import { UsersService } from './users.service';
 import { SessionService } from './session.service';
 import { ConfirmationDialogService } from '../../../ui/services/confirmation-dialog.service';
+import { scopedStorageKey } from '../storage-scope';
 
 @Injectable({
   providedIn: 'root'
 })
 export class AppLocationService {
-  private static readonly STORAGE_PREFIX = 'myscoutee.location';
+  private static readonly STORAGE_PREFIX = 'location.v1';
   private static readonly ACCESS_RESTRICTED_TITLE = 'Login Unavailable';
   private static readonly ACCESS_RESTRICTED_MESSAGE = 'Login is currently unavailable from your country or region for security reasons. Please come back later.';
   private static readonly LOCATION_SYNC_DISTANCE_METERS = 5000;
@@ -204,7 +205,7 @@ export class AppLocationService {
       return null;
     }
     try {
-      const raw = localStorage.getItem(`${AppLocationService.STORAGE_PREFIX}:${userId}`);
+      const raw = localStorage.getItem(this.storageKey(userId));
       if (!raw) {
         return null;
       }
@@ -227,7 +228,7 @@ export class AppLocationService {
     }
     try {
       localStorage.setItem(
-        `${AppLocationService.STORAGE_PREFIX}:${userId}`,
+        this.storageKey(userId),
         JSON.stringify(coordinates)
       );
     } catch {
@@ -390,5 +391,9 @@ export class AppLocationService {
       }
     }
     return AppLocationService.ACCESS_RESTRICTED_MESSAGE;
+  }
+
+  private storageKey(userId: string): string {
+    return scopedStorageKey(`${AppLocationService.STORAGE_PREFIX}:${userId.trim()}`);
   }
 }

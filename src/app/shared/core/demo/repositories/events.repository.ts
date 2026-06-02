@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 
 import { AppUtils } from '../../../app-utils';
 import type { DemoEventSeedItem } from '../models/event-seed-item.model';
-import { AppMemoryDb } from '../../base/db';
+import { DemoMemoryDb } from '../../base/db';
 import { EVENT_FEEDBACK_TABLE_NAME } from '../models/event-feedback.model';
 import { DemoEventSeedBuilder, DemoEventsRepositoryBuilder, DemoSeedScheduleBuilder, DemoUserSeedBuilder } from '../builders';
 import {
@@ -77,7 +77,7 @@ export class DemoEventsRepository {
     'Brunch',
     'Mixer'
   ] as const;
-  private readonly memoryDb = inject(AppMemoryDb);
+  private readonly memoryDb = inject(DemoMemoryDb);
   private initialized = false;
 
   async flushToIndexedDb(): Promise<void> {

@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 
 import { AppUtils } from '../../../app-utils';
 import { DemoUserRatesBuilder, DemoUserSeedBuilder } from '../builders';
@@ -10,7 +10,8 @@ import type {
   UserRateRecord,
   UserRatesSyncResult
 } from '../../base/interfaces/game.interface';
-import { HttpUsersRatingsRepository } from '../../http/repositories/users-ratings.repository';
+import { DemoMemoryDb } from '../../base/db';
+import { BaseUsersRatingsRepository } from '../../base/repositories/users-ratings.repository';
 import {
   ACTIVITY_MEMBERS_TABLE_NAME,
 } from '../models/activity-members.model';
@@ -24,7 +25,7 @@ import {
 @Injectable({
   providedIn: 'root'
 })
-export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
+export class DemoUsersRatingsRepository extends BaseUsersRatingsRepository {
   private static readonly DEFAULT_DEMO_USERS_COUNT = 50;
   private static readonly MIN_ACTIVITY_RATE_CONNECTIONS = 8;
   private static readonly DEMO_ACTIVITY_RATE_SEED_COVERAGE_RATIO = 0.25;
@@ -32,6 +33,7 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
   private static readonly FEATURED_DEMO_ACTIVITY_RATE_EXTRA_SINGLE_GIVEN_COUNT = 4;
   private static readonly DEFAULT_DEMO_ACTIVITY_RATE_EXTRA_SINGLE_GIVEN_COUNT = 1;
   private static readonly MAX_DEMO_ACTIVITY_RATE_BOOTSTRAP_RECORDS = 1000;
+  protected override readonly memoryDb = inject(DemoMemoryDb);
   private initialized = false;
 
   init(): void {
@@ -272,11 +274,11 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
     return this.buildRateItemsByUserId(userId);
   }
 
-  override peekRateItemsByUserId(userId: string): RateRecord[] {
+  peekRateItemsByUserId(userId: string): RateRecord[] {
     return this.buildRateItemsByUserId(userId);
   }
 
-  override async queryRateItemsByUserId(userId: string): Promise<RateRecord[]> {
+  async queryRateItemsByUserId(userId: string): Promise<RateRecord[]> {
     return this.buildRateItemsByUserId(userId);
   }
 

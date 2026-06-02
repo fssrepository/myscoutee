@@ -7,7 +7,7 @@ import {
   USERS_TABLE_NAME,
   type DemoUsersRecordCollection
 } from '../models/users.model';
-import { AppMemoryDb } from '../../base/db';
+import { DemoMemoryDb } from '../../base/db';
 import { DemoUserFilterPreferencesBuilder, DemoUserSeedBuilder, DemoUsersRepositoryBuilder } from '../builders';
 import { CHATS_TABLE_NAME } from '../models/chats.model';
 import type { DemoMemorySchema } from '../models/memory.model';
@@ -28,7 +28,7 @@ export class DemoUsersRepository {
   private static readonly MIN_DEMO_EVENT_ITEMS_PER_USER = 30;
   private static readonly INITIAL_EVENT_FEEDBACK_UNLOCK_DELAY_MS = 2 * 60 * 60 * 1000;
   private readonly chatsRepository = inject(DemoChatsRepository);
-  private readonly memoryDb = inject(AppMemoryDb);
+  private readonly memoryDb = inject(DemoMemoryDb);
   private readonly eventsRepository = inject(DemoEventsRepository);
   private readonly usersRatingsRepository = inject(DemoUsersRatingsRepository);
 

@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 
-import { AppMemoryDb } from '../../base/db';
+import { DemoMemoryDb } from '../../base/db';
 import type * as AppTypes from '../../../core/base/models';
 import { SHARE_TOKENS_TABLE_NAME } from '../models/share-tokens.model';
 import { DemoEventsRepository } from './events.repository';
@@ -11,7 +11,7 @@ import { DemoAssetsRepository } from './assets.repository';
 })
 export class DemoShareTokensRepository {
   private static readonly TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
-  private readonly memoryDb = inject(AppMemoryDb);
+  private readonly memoryDb = inject(DemoMemoryDb);
   private readonly eventsRepository = inject(DemoEventsRepository);
   private readonly assetsRepository = inject(DemoAssetsRepository);
 

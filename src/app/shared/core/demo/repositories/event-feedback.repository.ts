@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 
 import { APP_STATIC_DATA } from '../../../app-static-data';
 import { AppUtils } from '../../../app-utils';
-import { AppMemoryDb } from '../../base/db';
+import { DemoMemoryDb } from '../../base/db';
 import type { UserDto } from '../../base/interfaces/user.interface';
 import type {
   EventFeedbackPersistedState,
@@ -28,7 +28,7 @@ export class DemoEventFeedbackRepository {
   private readonly activityMembersRepository = inject(DemoActivityMembersRepository);
   private readonly eventsRepository = inject(DemoEventsRepository);
   private readonly usersRepository = inject(DemoUsersRepository);
-  private readonly memoryDb = inject(AppMemoryDb);
+  private readonly memoryDb = inject(DemoMemoryDb);
 
   async flushToIndexedDb(): Promise<void> {
     await this.memoryDb.flushToIndexedDb();

@@ -23,6 +23,15 @@ import {
   USER_RATES_TABLE_NAME,
   USER_RATES_OUTBOX_TABLE_NAME
 } from '../../demo/models/users.model';
+import {
+  type AppStorageScope,
+  APP_STORAGE_SCOPE,
+  APP_SCOPED_INDEXED_DB_VERSION,
+  APP_TABLES_STORE,
+  appScopedIndexedDbName,
+  createAppScopedObjectStores,
+  scopedStorageKey
+} from '../storage-scope';
 
 interface ActivityRateCursorPayload {
   id: string;
@@ -47,19 +56,31 @@ interface NormalizedActivityRateRecordQuery {
   providedIn: 'root'
 })
 export class AppMemoryDb {
-  private static readonly STORAGE_KEY = 'myscoutee.memory.db.v1';
-  private static readonly LEGACY_STORAGE_KEYS = ['myscoutee.demo.db.v1'];
-  private static readonly INDEXED_DB_NAME = 'myscoutee-memory-db';
-  private static readonly LEGACY_INDEXED_DB_NAMES = ['myscoutee-demo-db'];
-  private static readonly INDEXED_DB_VERSION = 5;
-  private static readonly INDEXED_DB_STORE = 'tables';
-  private static readonly LEGACY_USER_RATES_RECORDS_STORE = 'userRateRecords';
-  private static readonly LEGACY_INDEXED_DB_STATE_KEY = 'current';
+  private static readonly SCHEMA_TABLE_KEYS = [
+    USERS_TABLE_NAME,
+    ASSETS_TABLE_NAME,
+    ACTIVITY_MEMBERS_TABLE_NAME,
+    ACTIVITY_RESOURCES_TABLE_NAME,
+    USER_RATES_TABLE_NAME,
+    USER_RATES_OUTBOX_TABLE_NAME,
+    USER_FILTER_PREFERENCES_TABLE_NAME,
+    CHATS_TABLE_NAME,
+    EVENT_FEEDBACK_TABLE_NAME,
+    HELP_CENTER_TABLE_NAME,
+    IDEA_POSTS_TABLE_NAME,
+    PROFILE_EXPERIENCES_TABLE_NAME,
+    SHARE_TOKENS_TABLE_NAME,
+    EVENTS_TABLE_NAME
+  ] as const;
   private readonly _tables = signal<DemoMemorySchema>(this.loadInitialState());
   private pendingPersistState: DemoMemorySchema | null = null;
   private persistTimerId: ReturnType<typeof setTimeout> | null = null;
   private hydrationComplete = false;
   private readonly hydrationReady: Promise<void>;
+
+  protected get storageScope(): AppStorageScope {
+    return APP_STORAGE_SCOPE;
+  }
 
   readonly tables = this._tables.asReadonly();
 
@@ -105,7 +126,7 @@ export class AppMemoryDb {
     if (!normalizedKey) {
       return null;
     }
-    const db = await this.openIndexedDb(AppMemoryDb.INDEXED_DB_NAME, true);
+    const db = await this.openIndexedDb();
     if (!db) {
       return null;
     }
@@ -117,13 +138,13 @@ export class AppMemoryDb {
     if (!normalizedKey) {
       return;
     }
-    const db = await this.openIndexedDb(AppMemoryDb.INDEXED_DB_NAME, true);
+    const db = await this.openIndexedDb();
     if (!db) {
       return;
     }
     await new Promise<void>(resolve => {
-      const tx = db.transaction(AppMemoryDb.INDEXED_DB_STORE, 'readwrite');
-      tx.objectStore(AppMemoryDb.INDEXED_DB_STORE).put(this.indexedDbEntryForPersistence(normalizedKey, value), normalizedKey);
+      const tx = db.transaction(APP_TABLES_STORE, 'readwrite');
+      tx.objectStore(APP_TABLES_STORE).put(this.indexedDbEntryForPersistence(normalizedKey, value), normalizedKey);
       tx.oncomplete = () => resolve();
       tx.onerror = () => resolve();
       tx.onabort = () => resolve();
@@ -221,7 +242,7 @@ export class AppMemoryDb {
       return fallback;
     }
     try {
-      const raw = localStorage.getItem(AppMemoryDb.STORAGE_KEY) ?? this.readLegacyStorageRaw();
+      const raw = localStorage.getItem(this.storageKey);
       if (!raw) {
         return fallback;
       }
@@ -232,22 +253,12 @@ export class AppMemoryDb {
     }
   }
 
-  private readLegacyStorageRaw(): string | null {
-    for (const key of AppMemoryDb.LEGACY_STORAGE_KEYS) {
-      const raw = localStorage.getItem(key);
-      if (raw) {
-        return raw;
-      }
-    }
-    return null;
-  }
-
   private persist(state: DemoMemorySchema): void {
     if (!this.canUseStorage()) {
       return;
     }
     try {
-      localStorage.setItem(AppMemoryDb.STORAGE_KEY, JSON.stringify(this.stateForPersistence(state)));
+      localStorage.setItem(this.storageKey, JSON.stringify(this.stateForLocalStoragePersistence(state)));
     } catch {
       // Ignore quota/private-mode write failures in demo mode.
     }
@@ -321,133 +332,42 @@ export class AppMemoryDb {
   }
 
   private async readFromIndexedDb(): Promise<DemoMemorySchema | null> {
-    const primaryDb = await this.openIndexedDb(AppMemoryDb.INDEXED_DB_NAME, true);
+    const primaryDb = await this.openIndexedDb();
     if (primaryDb) {
       const primarySnapshot = await this.readStateFromIndexedDb(primaryDb);
       if (primarySnapshot) {
         return primarySnapshot;
       }
     }
-
-    for (const legacyDbName of AppMemoryDb.LEGACY_INDEXED_DB_NAMES) {
-      const legacyDb = await this.openIndexedDb(legacyDbName, false);
-      if (!legacyDb) {
-        continue;
-      }
-      const legacySnapshot = await this.readStateFromIndexedDb(legacyDb);
-      if (legacySnapshot) {
-        return legacySnapshot;
-      }
-    }
-
     return null;
   }
 
   private async readStateFromIndexedDb(db: IDBDatabase): Promise<DemoMemorySchema | null> {
-    const users = await this.readIndexedDbEntry(db, USERS_TABLE_NAME);
-    const assets = await this.readIndexedDbEntry(db, ASSETS_TABLE_NAME);
-    const activityMembers = await this.readIndexedDbEntry(db, ACTIVITY_MEMBERS_TABLE_NAME);
-    const activityResources = await this.readIndexedDbEntry(db, ACTIVITY_RESOURCES_TABLE_NAME);
-    const rates = await this.readIndexedDbEntry(db, USER_RATES_TABLE_NAME);
     const outbox = await this.readIndexedDbEntry(db, USER_RATES_OUTBOX_TABLE_NAME);
-    const filterPreferences = await this.readIndexedDbEntry(db, USER_FILTER_PREFERENCES_TABLE_NAME);
-    const chats = await this.readIndexedDbEntry(db, CHATS_TABLE_NAME);
-    const eventFeedback = await this.readIndexedDbEntry(db, EVENT_FEEDBACK_TABLE_NAME);
-    const helpCenter = await this.readIndexedDbEntry(db, HELP_CENTER_TABLE_NAME);
-    const ideaPosts = await this.readIndexedDbEntry(db, IDEA_POSTS_TABLE_NAME);
-    const profileExperiences = await this.readIndexedDbEntry(db, PROFILE_EXPERIENCES_TABLE_NAME);
-    const events = await this.readIndexedDbEntry(db, EVENTS_TABLE_NAME)
-      ?? await this.readIndexedDbEntry(db, 'demoEvents');
-
-    const hasSegmentedState = users !== null
-      || activityMembers !== null
-      || activityResources !== null
-      || assets !== null
-      || rates !== null
-      || outbox !== null
-      || filterPreferences !== null
-      || chats !== null
-      || eventFeedback !== null
-      || helpCenter !== null
-      || ideaPosts !== null
-      || profileExperiences !== null
-      || events !== null;
-    if (!hasSegmentedState) {
-      const legacy = await this.readIndexedDbEntry(db, AppMemoryDb.LEGACY_INDEXED_DB_STATE_KEY);
-      if (legacy !== null) {
-        return this.normalizeState(legacy, this.createEmptyState());
-      }
+    if (outbox === null) {
       return null;
     }
 
     const partialState: Partial<DemoMemorySchema> = {};
-    if (users !== null) {
-      partialState[USERS_TABLE_NAME] = users as DemoMemorySchema[typeof USERS_TABLE_NAME];
-    }
-    if (assets !== null) {
-      partialState[ASSETS_TABLE_NAME] = assets as DemoMemorySchema[typeof ASSETS_TABLE_NAME];
-    }
-    if (activityMembers !== null) {
-      partialState[ACTIVITY_MEMBERS_TABLE_NAME] = activityMembers as DemoMemorySchema[typeof ACTIVITY_MEMBERS_TABLE_NAME];
-    }
-    if (activityResources !== null) {
-      partialState[ACTIVITY_RESOURCES_TABLE_NAME] = activityResources as DemoMemorySchema[typeof ACTIVITY_RESOURCES_TABLE_NAME];
-    }
-    if (rates !== null) {
-      partialState[USER_RATES_TABLE_NAME] = rates as DemoMemorySchema[typeof USER_RATES_TABLE_NAME];
-    }
-    if (outbox !== null) {
-      partialState[USER_RATES_OUTBOX_TABLE_NAME] = outbox as DemoMemorySchema[typeof USER_RATES_OUTBOX_TABLE_NAME];
-    }
-    if (filterPreferences !== null) {
-      partialState[USER_FILTER_PREFERENCES_TABLE_NAME] = filterPreferences as DemoMemorySchema[typeof USER_FILTER_PREFERENCES_TABLE_NAME];
-    }
-    if (chats !== null) {
-      partialState[CHATS_TABLE_NAME] = chats as DemoMemorySchema[typeof CHATS_TABLE_NAME];
-    }
-    if (eventFeedback !== null) {
-      partialState[EVENT_FEEDBACK_TABLE_NAME] = eventFeedback as DemoMemorySchema[typeof EVENT_FEEDBACK_TABLE_NAME];
-    }
-    if (helpCenter !== null) {
-      partialState[HELP_CENTER_TABLE_NAME] = helpCenter as DemoMemorySchema[typeof HELP_CENTER_TABLE_NAME];
-    }
-    if (ideaPosts !== null) {
-      partialState[IDEA_POSTS_TABLE_NAME] = ideaPosts as DemoMemorySchema[typeof IDEA_POSTS_TABLE_NAME];
-    }
-    if (profileExperiences !== null) {
-      partialState[PROFILE_EXPERIENCES_TABLE_NAME] = profileExperiences as DemoMemorySchema[typeof PROFILE_EXPERIENCES_TABLE_NAME];
-    }
-    if (events !== null) {
-      partialState[EVENTS_TABLE_NAME] = events as DemoMemorySchema[typeof EVENTS_TABLE_NAME];
-    }
+    partialState[USER_RATES_OUTBOX_TABLE_NAME] = outbox as DemoMemorySchema[typeof USER_RATES_OUTBOX_TABLE_NAME];
     return this.normalizeState(partialState, this.createEmptyState());
   }
 
   private async persistToIndexedDb(state: DemoMemorySchema): Promise<void> {
-    const db = await this.openIndexedDb(AppMemoryDb.INDEXED_DB_NAME, true);
+    const db = await this.openIndexedDb();
     if (!db) {
       return;
     }
-    const persistedState = this.stateForPersistence(state);
+    const persistedState = this.stateForIndexedDbPersistence(state);
     await new Promise<void>(resolve => {
-      const tx = db.transaction(AppMemoryDb.INDEXED_DB_STORE, 'readwrite');
-      const tablesStore = tx.objectStore(AppMemoryDb.INDEXED_DB_STORE);
-      tablesStore.put(persistedState[USERS_TABLE_NAME], USERS_TABLE_NAME);
-      tablesStore.put(persistedState[ASSETS_TABLE_NAME], ASSETS_TABLE_NAME);
-      tablesStore.put(persistedState[ACTIVITY_MEMBERS_TABLE_NAME], ACTIVITY_MEMBERS_TABLE_NAME);
-      tablesStore.put(persistedState[ACTIVITY_RESOURCES_TABLE_NAME], ACTIVITY_RESOURCES_TABLE_NAME);
-      tablesStore.put(persistedState[USER_RATES_TABLE_NAME], USER_RATES_TABLE_NAME);
+      const tx = db.transaction(APP_TABLES_STORE, 'readwrite');
+      const tablesStore = tx.objectStore(APP_TABLES_STORE);
+      for (const key of AppMemoryDb.SCHEMA_TABLE_KEYS) {
+        if (key !== USER_RATES_OUTBOX_TABLE_NAME) {
+          tablesStore.delete(key);
+        }
+      }
       tablesStore.put(persistedState[USER_RATES_OUTBOX_TABLE_NAME], USER_RATES_OUTBOX_TABLE_NAME);
-      tablesStore.put(persistedState[USER_FILTER_PREFERENCES_TABLE_NAME], USER_FILTER_PREFERENCES_TABLE_NAME);
-      tablesStore.put(persistedState[CHATS_TABLE_NAME], CHATS_TABLE_NAME);
-      tablesStore.put(persistedState[EVENT_FEEDBACK_TABLE_NAME], EVENT_FEEDBACK_TABLE_NAME);
-      tablesStore.put(persistedState[HELP_CENTER_TABLE_NAME], HELP_CENTER_TABLE_NAME);
-      tablesStore.put(persistedState[IDEA_POSTS_TABLE_NAME], IDEA_POSTS_TABLE_NAME);
-      tablesStore.put(persistedState[PROFILE_EXPERIENCES_TABLE_NAME], PROFILE_EXPERIENCES_TABLE_NAME);
-      tablesStore.put(persistedState[EVENTS_TABLE_NAME], EVENTS_TABLE_NAME);
-      tablesStore.delete('demoEvents');
-      tablesStore.delete('rates');
-      tablesStore.delete(AppMemoryDb.LEGACY_INDEXED_DB_STATE_KEY);
 
       tx.oncomplete = () => resolve();
       tx.onerror = () => resolve();
@@ -461,10 +381,16 @@ export class AppMemoryDb {
       : value;
   }
 
-  private stateForPersistence(state: DemoMemorySchema): DemoMemorySchema {
+  private stateForIndexedDbPersistence(state: DemoMemorySchema): DemoMemorySchema {
     return {
-      ...state,
-      [EVENTS_TABLE_NAME]: this.eventsTableForPersistence(state[EVENTS_TABLE_NAME])
+      ...this.createEmptyState(),
+      [USER_RATES_OUTBOX_TABLE_NAME]: state[USER_RATES_OUTBOX_TABLE_NAME]
+    };
+  }
+
+  private stateForLocalStoragePersistence(state: DemoMemorySchema): Partial<DemoMemorySchema> {
+    return {
+      [USER_RATES_OUTBOX_TABLE_NAME]: state[USER_RATES_OUTBOX_TABLE_NAME]
     };
   }
 
@@ -486,43 +412,25 @@ export class AppMemoryDb {
 
   private readIndexedDbEntry(db: IDBDatabase, key: string): Promise<unknown | null> {
     return new Promise<unknown | null>(resolve => {
-      const tx = db.transaction(AppMemoryDb.INDEXED_DB_STORE, 'readonly');
-      const store = tx.objectStore(AppMemoryDb.INDEXED_DB_STORE);
+      const tx = db.transaction(APP_TABLES_STORE, 'readonly');
+      const store = tx.objectStore(APP_TABLES_STORE);
       const request = store.get(key);
       request.onsuccess = () => resolve(request.result ?? null);
       request.onerror = () => resolve(null);
     });
   }
 
-  private openIndexedDb(dbName: string, createIfMissing: boolean): Promise<IDBDatabase | null> {
+  private openIndexedDb(): Promise<IDBDatabase | null> {
     if (typeof indexedDB === 'undefined') {
       return Promise.resolve(null);
     }
     return new Promise<IDBDatabase | null>(resolve => {
-      const request = indexedDB.open(dbName, AppMemoryDb.INDEXED_DB_VERSION);
-      let rejectedMissingDb = false;
-      request.onupgradeneeded = event => {
-        if (!createIfMissing && event.oldVersion === 0) {
-          rejectedMissingDb = true;
-          request.transaction?.abort();
-          return;
-        }
+      const request = indexedDB.open(this.indexedDbName, APP_SCOPED_INDEXED_DB_VERSION);
+      request.onupgradeneeded = () => {
         const db = request.result;
-        if (!db.objectStoreNames.contains(AppMemoryDb.INDEXED_DB_STORE)) {
-          db.createObjectStore(AppMemoryDb.INDEXED_DB_STORE);
-        }
-        if (db.objectStoreNames.contains(AppMemoryDb.LEGACY_USER_RATES_RECORDS_STORE)) {
-          db.deleteObjectStore(AppMemoryDb.LEGACY_USER_RATES_RECORDS_STORE);
-        }
+        createAppScopedObjectStores(db);
       };
-      request.onsuccess = () => {
-        if (rejectedMissingDb) {
-          request.result.close();
-          resolve(null);
-          return;
-        }
-        resolve(request.result);
-      };
+      request.onsuccess = () => resolve(request.result);
       request.onerror = () => resolve(null);
       request.onblocked = () => resolve(null);
     });
@@ -687,17 +595,17 @@ export class AppMemoryDb {
     const ratesSource = source[USER_RATES_TABLE_NAME] as Partial<DemoMemorySchema[typeof USER_RATES_TABLE_NAME]> | undefined;
     const outboxSource = source[USER_RATES_OUTBOX_TABLE_NAME] as Partial<DemoMemorySchema[typeof USER_RATES_OUTBOX_TABLE_NAME]> | undefined;
     const filterPreferencesSource = source[USER_FILTER_PREFERENCES_TABLE_NAME] as Partial<DemoMemorySchema[typeof USER_FILTER_PREFERENCES_TABLE_NAME]> | undefined;
-    const legacySource = source as Record<string, unknown>;
     const chatsSource = source[CHATS_TABLE_NAME] as Partial<DemoMemorySchema[typeof CHATS_TABLE_NAME]> | undefined;
     const eventFeedbackSource = source[EVENT_FEEDBACK_TABLE_NAME] as Partial<DemoMemorySchema[typeof EVENT_FEEDBACK_TABLE_NAME]> | undefined;
     const helpCenterSource = source[HELP_CENTER_TABLE_NAME] as Partial<DemoMemorySchema[typeof HELP_CENTER_TABLE_NAME]> | undefined;
     const ideaPostsSource = source[IDEA_POSTS_TABLE_NAME] as Partial<DemoMemorySchema[typeof IDEA_POSTS_TABLE_NAME]> | undefined;
     const profileExperiencesSource = source[PROFILE_EXPERIENCES_TABLE_NAME] as Partial<DemoMemorySchema[typeof PROFILE_EXPERIENCES_TABLE_NAME]> | undefined;
     const shareTokensSource = source[SHARE_TOKENS_TABLE_NAME] as Partial<DemoMemorySchema[typeof SHARE_TOKENS_TABLE_NAME]> | undefined;
-    const eventsSource = (
-      source[EVENTS_TABLE_NAME]
-      ?? legacySource['demoEvents']
-    ) as Partial<DemoMemorySchema[typeof EVENTS_TABLE_NAME]> | undefined;
+    const eventsSource = source[EVENTS_TABLE_NAME] as Partial<DemoMemorySchema[typeof EVENTS_TABLE_NAME]> | undefined;
+    const userRatesOutboxById = this.normalizeUserRatesOutboxById(
+      outboxSource?.byId,
+      fallback[USER_RATES_OUTBOX_TABLE_NAME].byId
+    );
     return {
       [ASSETS_TABLE_NAME]: {
         byId: this.normalizeAssetsById(assetsSource?.byId, fallback[ASSETS_TABLE_NAME].byId),
@@ -730,10 +638,10 @@ export class AppMemoryDb {
         idsByRelevantUserId: this.normalizeUserRatesIdsByRelevantUserId(ratesSource)
       },
       [USER_RATES_OUTBOX_TABLE_NAME]: {
-        byId: this.normalizeUserRatesOutboxById(outboxSource?.byId, fallback[USER_RATES_OUTBOX_TABLE_NAME].byId),
+        byId: userRatesOutboxById,
         ids: Array.isArray(outboxSource?.ids)
-          ? outboxSource.ids.map(id => String(id))
-          : [...fallback[USER_RATES_OUTBOX_TABLE_NAME].ids]
+          ? outboxSource.ids.map(id => String(id)).filter(id => Boolean(userRatesOutboxById[id]))
+          : fallback[USER_RATES_OUTBOX_TABLE_NAME].ids.filter(id => Boolean(userRatesOutboxById[id]))
       },
       [USER_FILTER_PREFERENCES_TABLE_NAME]: {
         byId: filterPreferencesSource?.byId && typeof filterPreferencesSource.byId === 'object'
@@ -825,6 +733,14 @@ export class AppMemoryDb {
 
   private canUseStorage(): boolean {
     return typeof localStorage !== 'undefined';
+  }
+
+  private get storageKey(): string {
+    return scopedStorageKey('memory.db.v1', this.storageScope);
+  }
+
+  private get indexedDbName(): string {
+    return appScopedIndexedDbName(this.storageScope);
   }
 
   private normalizeActivityMembersById(
@@ -1186,5 +1102,23 @@ export class AppMemoryDb {
     }
 
     return scoreGiven > 0 ? scoreGiven : 5;
+  }
+}
+
+@Injectable({
+  providedIn: 'root'
+})
+export class DemoMemoryDb extends AppMemoryDb {
+  protected override get storageScope(): AppStorageScope {
+    return 'demo';
+  }
+}
+
+@Injectable({
+  providedIn: 'root'
+})
+export class HttpMemoryDb extends AppMemoryDb {
+  protected override get storageScope(): AppStorageScope {
+    return 'http';
   }
 }

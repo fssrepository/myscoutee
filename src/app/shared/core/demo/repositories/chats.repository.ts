@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 
 import type * as AppTypes from '../../../core/base/models';
 import { AppUtils } from '../../../app-utils';
-import { AppMemoryDb } from '../../base/db';
+import { DemoMemoryDb } from '../../base/db';
 import { activityChatContextFilterKey } from '../../base/converters';
 import type { ChatRecord } from '../../base/models/chat.model';
 import { DemoChatsRepositoryBuilder, DemoSeedScheduleBuilder, DemoUserSeedBuilder } from '../builders';
@@ -13,7 +13,7 @@ import { USERS_TABLE_NAME } from '../models/users.model';
   providedIn: 'root'
 })
 export class DemoChatsRepository {
-  private readonly memoryDb = inject(AppMemoryDb);
+  private readonly memoryDb = inject(DemoMemoryDb);
   private initialized = false;
 
   init(): void {
