@@ -82,10 +82,16 @@ export class AppMemoryDb {
     return APP_STORAGE_SCOPE;
   }
 
+  protected get storageEnabled(): boolean {
+    return this.storageScope === APP_STORAGE_SCOPE;
+  }
+
   readonly tables = this._tables.asReadonly();
 
   constructor() {
-    this.hydrationReady = this.hydrateFromIndexedDb();
+    this.hydrationReady = this.storageEnabled
+      ? this.hydrateFromIndexedDb()
+      : this.completeInactiveHydration();
   }
 
   read(): DemoMemorySchema {
@@ -103,7 +109,7 @@ export class AppMemoryDb {
   write(updater: (current: DemoMemorySchema) => DemoMemorySchema): void {
     const next = this.normalizeState(updater(this._tables()));
     this._tables.set(next);
-    if (!this.hydrationComplete) {
+    if (!this.hydrationComplete || !this.storageEnabled) {
       return;
     }
     this.schedulePersist(next);
@@ -111,6 +117,9 @@ export class AppMemoryDb {
 
   async flushToIndexedDb(): Promise<void> {
     await this.whenReady();
+    if (!this.storageEnabled) {
+      return;
+    }
     if (this.persistTimerId !== null) {
       clearTimeout(this.persistTimerId);
       this.persistTimerId = null;
@@ -281,6 +290,10 @@ export class AppMemoryDb {
     }, 32);
   }
 
+  private async completeInactiveHydration(): Promise<void> {
+    this.hydrationComplete = true;
+  }
+
   private async hydrateFromIndexedDb(): Promise<void> {
     try {
       const snapshot = await this.readFromIndexedDb();
@@ -421,7 +434,7 @@ export class AppMemoryDb {
   }
 
   private openIndexedDb(): Promise<IDBDatabase | null> {
-    if (typeof indexedDB === 'undefined') {
+    if (!this.storageEnabled || typeof indexedDB === 'undefined') {
       return Promise.resolve(null);
     }
     return new Promise<IDBDatabase | null>(resolve => {
@@ -732,7 +745,7 @@ export class AppMemoryDb {
   }
 
   private canUseStorage(): boolean {
-    return typeof localStorage !== 'undefined';
+    return this.storageEnabled && typeof localStorage !== 'undefined';
   }
 
   private get storageKey(): string {
