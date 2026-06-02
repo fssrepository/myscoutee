@@ -520,8 +520,10 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
   override async replaceMembersByOwner(
     owner: ActivityMemberOwnerRef,
     members: readonly AppTypes.ActivityMemberEntry[],
-    capacityTotal?: number | null
+    capacityTotal?: number | null,
+    actorUserId = ''
   ): Promise<void> {
+    void actorUserId;
     const normalizedOwner = this.normalizeOwnerRef(owner);
     if (!normalizedOwner) {
       return;

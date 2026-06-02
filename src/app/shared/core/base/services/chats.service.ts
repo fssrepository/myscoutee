@@ -334,12 +334,7 @@ export class ChatsService extends BaseRouteModeService {
   ): Promise<PageResult<AppTypes.ActivityListRow>> {
     const users = options.users ?? this.demoUsersRepository.queryAllUsers();
     if (this.isDemoModeEnabled(ChatsService.CHAT_ROUTE)) {
-      const items = request.adminServiceOnly === true
-        ? await this.demoChatsService.querySupportCaseItemsForAdmin(userId, request.supportCaseFilter ?? 'all')
-        : options.chatItems && options.chatItems.length > 0
-        ? options.chatItems
-        : await this.demoChatsService.queryChatItemsByUser(userId);
-      const page = this.buildLocalActivitiesChatPage(userId, request, users, items);
+      const page = await this.demoChatsService.queryActivitiesChatPage(userId, request);
       return {
         items: buildActivityChatRows(page.items, {
           users,

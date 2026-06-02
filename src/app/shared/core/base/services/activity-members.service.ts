@@ -85,10 +85,12 @@ export class ActivityMembersService extends BaseRouteModeService {
     members: readonly AppTypes.ActivityMemberEntry[],
     capacityTotal?: number | null
   ): Promise<void> {
+    const actorUserId = this.appCtx.activeUserId().trim() || this.appCtx.getActiveUserId().trim();
     await this.activityMembersService.replaceMembersByOwner(
       owner,
       this.prepareMembersForPersistence(members),
-      capacityTotal
+      capacityTotal,
+      actorUserId
     );
     this.emitActivityMembersSyncForOwner(owner);
   }

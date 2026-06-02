@@ -28,6 +28,14 @@ export class DemoChatsService extends DemoRouteDelayService {
     return this.chatsRepository.querySupportCaseItemsForAdmin(userId, filter);
   }
 
+  async queryActivitiesChatPage(
+    userId: string,
+    request: AppTypes.ActivitiesPageRequest
+  ): Promise<{ items: DemoChatRecord[]; total: number; nextCursor?: string | null }> {
+    await this.waitForRouteDelay(DemoChatsService.CHAT_ROUTE);
+    return this.chatsRepository.queryActivitiesChatPage(userId, request);
+  }
+
   peekChatItemsByUser(userId: string): DemoChatRecord[] {
     return this.chatsRepository.queryChatItemsByUser(userId);
   }

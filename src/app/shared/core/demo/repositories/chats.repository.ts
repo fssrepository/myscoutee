@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import type * as AppTypes from '../../../core/base/models';
 import { AppUtils } from '../../../app-utils';
 import { AppMemoryDb } from '../../base/db';
+import { activityChatContextFilterKey } from '../../base/converters';
 import type { ChatRecord } from '../../base/models/chat.model';
 import { DemoChatsRepositoryBuilder, DemoSeedScheduleBuilder, DemoUserSeedBuilder } from '../builders';
 import { CHATS_TABLE_NAME, type DemoChatRecord } from '../models/chats.model';
@@ -51,6 +52,47 @@ export class DemoChatsRepository {
     return this.queryUserRecords(userId);
   }
 
+  queryActivitiesChatPage(
+    userId: string,
+    request: AppTypes.ActivitiesPageRequest
+  ): { items: DemoChatRecord[]; total: number; nextCursor: string | null } {
+    this.init();
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId || this.isSetupRequiredDemoProfile(normalizedUserId)) {
+      return {
+        items: [],
+        total: 0,
+        nextCursor: null
+      };
+    }
+
+    const rangeStartMs = this.parseRangeDateMs(request.rangeStart, Number.NEGATIVE_INFINITY);
+    const rangeEndMs = this.parseRangeDateMs(request.rangeEnd, Number.POSITIVE_INFINITY);
+    if (rangeStartMs > rangeEndMs) {
+      return {
+        items: [],
+        total: 0,
+        nextCursor: null
+      };
+    }
+
+    const source = (request.adminServiceOnly === true && request.chatContextFilter === 'service'
+      ? this.querySupportCaseRecordsForAdmin(normalizedUserId, request.supportCaseFilter ?? 'all')
+      : this.queryUserRecordsForPage(normalizedUserId, request))
+      .filter(record => this.matchesDateRange(record, rangeStartMs, rangeEndMs));
+    const sorted = this.sortChatPageRecords(source, request);
+    const pageSize = Math.max(1, Math.trunc(Number(request.pageSize) || 10));
+    const startIndex = this.resolvePageStartIndex(request, pageSize);
+    const endIndex = Math.min(sorted.length, startIndex + pageSize);
+    return {
+      items: sorted
+        .slice(startIndex, endIndex)
+        .map(record => DemoChatsRepositoryBuilder.cloneRecord(record, { includeMessages: false })),
+      total: sorted.length,
+      nextCursor: endIndex < sorted.length ? String(endIndex) : null
+    };
+  }
+
   queryChatMembers(chatId: string): AppTypes.ActivityMemberEntry[] {
     this.init();
     const normalizedChatId = `${chatId ?? ''}`.trim();
@@ -74,6 +116,14 @@ export class DemoChatsRepository {
   querySupportCaseItemsForAdmin(userId: string, filter: AppTypes.SupportCaseFilter = 'all'): DemoChatRecord[] {
     this.init();
     const normalizedUserId = userId.trim();
+    return this.querySupportCaseRecordsForAdmin(normalizedUserId, filter)
+      .map(record => DemoChatsRepositoryBuilder.cloneRecord(record, { includeMessages: false }));
+  }
+
+  private querySupportCaseRecordsForAdmin(
+    normalizedUserId: string,
+    filter: AppTypes.SupportCaseFilter = 'all'
+  ): DemoChatRecord[] {
     if (!this.isDemoAdminUser(normalizedUserId)) {
       return [];
     }
@@ -96,10 +146,10 @@ export class DemoChatsRepository {
     }
     return [...byChatId.values()]
       .filter(record => normalizedFilter === 'all' || record.supportCaseStatus === normalizedFilter)
-      .map(record => DemoChatsRepositoryBuilder.cloneRecord({
+      .map(record => ({
         ...record,
         ownerUserId: normalizedUserId
-      }, { includeMessages: false }));
+      }));
   }
 
   seedContextualRecordsForUser(userId: string, eventRecords: readonly import('../models/events.model').DemoEventRecord[]): boolean {
@@ -362,6 +412,82 @@ export class DemoChatsRepository {
       .filter((record): record is DemoChatRecord => Boolean(record))
       .filter(record => record.ownerUserId === normalizedUserId)
       .map(record => DemoChatsRepositoryBuilder.cloneRecord(record, { includeMessages: false }));
+  }
+
+  private queryUserRecordsForPage(
+    userId: string,
+    request: AppTypes.ActivitiesPageRequest
+  ): DemoChatRecord[] {
+    const table = this.memoryDb.read()[CHATS_TABLE_NAME];
+    return table.ids
+      .map(id => table.byId[id])
+      .filter((record): record is DemoChatRecord => Boolean(record))
+      .filter(record => record.ownerUserId === userId)
+      .filter(record => this.matchesChatContextFilter(record, request.chatContextFilter))
+      .filter(record => this.matchesSupportCaseFilter(record, request.supportCaseFilter));
+  }
+
+  private matchesChatContextFilter(
+    record: ChatRecord,
+    filter: AppTypes.ActivitiesChatContextFilter
+  ): boolean {
+    return filter === 'all' || activityChatContextFilterKey(record) === filter;
+  }
+
+  private matchesSupportCaseFilter(record: ChatRecord, filter: AppTypes.SupportCaseFilter | undefined): boolean {
+    const normalizedFilter = this.normalizeSupportCaseFilter(filter ?? 'all');
+    return normalizedFilter === 'all' || record.supportCaseStatus === normalizedFilter;
+  }
+
+  private sortChatPageRecords(
+    records: readonly DemoChatRecord[],
+    request: AppTypes.ActivitiesPageRequest
+  ): DemoChatRecord[] {
+    const direction = request.direction === 'asc' ? 1 : -1;
+    const sorted = [...records];
+    if (request.secondaryFilter === 'relevant') {
+      return sorted.sort((left, right) =>
+        this.chatMetricScore(right) - this.chatMetricScore(left)
+        || direction * (
+          AppUtils.toSortableDate(left.dateIso ?? '') - AppUtils.toSortableDate(right.dateIso ?? '')
+        )
+      );
+    }
+    return sorted.sort((left, right) =>
+      direction * (AppUtils.toSortableDate(left.dateIso ?? '') - AppUtils.toSortableDate(right.dateIso ?? ''))
+    );
+  }
+
+  private chatMetricScore(record: Pick<ChatRecord, 'unread' | 'memberIds'>): number {
+    const unread = Math.max(0, Math.trunc(Number(record.unread) || 0));
+    const memberCount = new Set(
+      (record.memberIds ?? [])
+        .map(memberId => `${memberId ?? ''}`.trim())
+        .filter(Boolean)
+    ).size;
+    return unread * 10 + memberCount;
+  }
+
+  private resolvePageStartIndex(request: AppTypes.ActivitiesPageRequest, pageSize: number): number {
+    const cursorIndex = Number(request.cursor);
+    if (Number.isFinite(cursorIndex)) {
+      return Math.max(0, Math.trunc(cursorIndex));
+    }
+    return Math.max(0, Math.trunc(Number(request.page) || 0)) * pageSize;
+  }
+
+  private matchesDateRange(record: ChatRecord, rangeStartMs: number, rangeEndMs: number): boolean {
+    const dateMs = AppUtils.toSortableDate(record.dateIso ?? '');
+    return dateMs >= rangeStartMs && dateMs <= rangeEndMs;
+  }
+
+  private parseRangeDateMs(value: string | null | undefined, fallback: number): number {
+    const text = `${value ?? ''}`.trim();
+    if (!text) {
+      return fallback;
+    }
+    const dateMs = AppUtils.toSortableDate(text);
+    return Number.isFinite(dateMs) ? dateMs : fallback;
   }
 
   private isDemoAdminUser(userId: string): boolean {

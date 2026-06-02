@@ -83,7 +83,8 @@ export class HttpActivityMembersRepository {
   async replaceMembersByOwner(
     owner: ActivityMemberOwnerRef,
     members: readonly AppTypes.ActivityMemberEntry[],
-    capacityTotal?: number | null
+    capacityTotal?: number | null,
+    actorUserId = ''
   ): Promise<void> {
     const normalizedOwner = this.normalizeOwnerRef(owner);
     if (!normalizedOwner) {
@@ -93,7 +94,8 @@ export class HttpActivityMembersRepository {
     await this.postVoid('/activities/events/members/replace', {
       owner: normalizedOwner,
       members: this.cloneEntries(members),
-      capacityTotal: this.normalizeCount(capacityTotal)
+      capacityTotal: this.normalizeCount(capacityTotal),
+      actorUserId: actorUserId.trim()
     });
   }
 
