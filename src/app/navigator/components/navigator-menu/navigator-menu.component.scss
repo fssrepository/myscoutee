@@ -720,6 +720,7 @@
   justify-content: center;
   gap: 0.18rem;
   padding: 0.4rem 0.35rem 0.32rem;
+  overflow: visible;
   cursor: pointer;
   transition: transform 0.14s ease, box-shadow 0.16s ease, filter 0.16s ease, background-color 0.16s ease;
 }
@@ -1106,6 +1107,7 @@
   justify-content: center;
   gap: 0.16rem;
   padding: 0.42rem 0.46rem;
+  overflow: visible;
   text-align: center;
   cursor: pointer;
   transition: transform 0.14s ease, box-shadow 0.16s ease, filter 0.16s ease, background-color 0.16s ease;
@@ -1177,9 +1179,12 @@
 
 .feedback-shortcut-btn {
   position: relative;
+  box-sizing: border-box;
+  width: 100%;
   border: 1px solid rgba(86, 74, 127, 0.26);
   border-radius: 12px;
   background: linear-gradient(180deg, #f6f4ff 0%, #efeafd 100%);
+  min-width: 0;
   min-height: 0;
   height: var(--navigator-shortcut-tile-height);
   display: inline-flex;
@@ -1188,6 +1193,7 @@
   justify-content: center;
   gap: 0.16rem;
   padding: 0.42rem 0.46rem;
+  overflow: visible;
   text-align: center;
   cursor: pointer;
 }
