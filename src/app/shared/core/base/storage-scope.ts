@@ -24,6 +24,27 @@ export function scopedStorageKey(key: string, scope: AppStorageScope = APP_STORA
   return `myscoutee.${scope}.${key.trim()}`;
 }
 
+export function scopedStorageKeyPrefix(scope: AppStorageScope = APP_STORAGE_SCOPE): string {
+  return `myscoutee.${scope}.`;
+}
+
+export function removeScopedStorageEntries(storage: Storage | undefined, scope: AppStorageScope): void {
+  if (!storage) {
+    return;
+  }
+  const prefix = scopedStorageKeyPrefix(scope);
+  const keys: string[] = [];
+  for (let index = 0; index < storage.length; index += 1) {
+    const key = storage.key(index);
+    if (key?.startsWith(prefix)) {
+      keys.push(key);
+    }
+  }
+  for (const key of keys) {
+    storage.removeItem(key);
+  }
+}
+
 export function createAppScopedObjectStores(db: IDBDatabase): void {
   if (!db.objectStoreNames.contains(APP_TABLES_STORE)) {
     db.createObjectStore(APP_TABLES_STORE);

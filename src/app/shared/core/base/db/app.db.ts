@@ -27,9 +27,11 @@ import {
   type AppStorageScope,
   APP_STORAGE_SCOPE,
   APP_SCOPED_INDEXED_DB_VERSION,
+  APP_I18N_BUNDLES_STORE,
   APP_TABLES_STORE,
   appScopedIndexedDbName,
   createAppScopedObjectStores,
+  removeScopedStorageEntries,
   scopedStorageKey
 } from '../storage-scope';
 
@@ -75,6 +77,8 @@ export class AppMemoryDb {
   private readonly _tables = signal<DemoMemorySchema>(this.loadInitialState());
   private pendingPersistState: DemoMemorySchema | null = null;
   private persistTimerId: ReturnType<typeof setTimeout> | null = null;
+  private resetStoragePromise: Promise<void> | null = null;
+  private storageResetComplete = false;
   private hydrationComplete = false;
   private readonly hydrationReady: Promise<void>;
 
@@ -117,17 +121,94 @@ export class AppMemoryDb {
 
   async flushToIndexedDb(): Promise<void> {
     await this.whenReady();
-    if (!this.storageEnabled) {
-      return;
-    }
     if (this.persistTimerId !== null) {
       clearTimeout(this.persistTimerId);
       this.persistTimerId = null;
     }
     const pendingState = this.pendingPersistState ?? this._tables();
     this.pendingPersistState = null;
-    this.persist(pendingState);
-    await this.persistToIndexedDb(pendingState);
+    if (this.storageEnabled) {
+      this.persist(pendingState);
+    }
+    await this.persistToIndexedDb(pendingState, true);
+  }
+
+  async resetStorage(): Promise<void> {
+    await this.resetStoragePreservingTables([]);
+  }
+
+  async resetStoragePreservingTables(preservedTableNames: readonly string[]): Promise<void> {
+    await this.whenReady();
+    const preservedTableNameSet = new Set(preservedTableNames.map(tableName => tableName.trim()).filter(Boolean));
+    const fullReset = preservedTableNameSet.size === 0;
+    const currentState = this._tables();
+    const nextState = this.createEmptyState();
+    for (const tableName of AppMemoryDb.SCHEMA_TABLE_KEYS) {
+      if (preservedTableNameSet.has(tableName)) {
+        (nextState as Record<string, unknown>)[tableName] = (currentState as Record<string, unknown>)[tableName];
+      }
+    }
+
+    if (this.persistTimerId !== null) {
+      clearTimeout(this.persistTimerId);
+      this.persistTimerId = null;
+    }
+    this.pendingPersistState = null;
+    this._tables.set(nextState);
+
+    if (typeof localStorage !== 'undefined') {
+      try {
+        if (fullReset) {
+          removeScopedStorageEntries(localStorage, this.storageScope);
+        } else {
+          localStorage.removeItem(this.storageKey);
+        }
+      } catch {
+        // A blocked localStorage should not break demo bootstrap.
+      }
+    }
+    if (fullReset && typeof sessionStorage !== 'undefined') {
+      try {
+        removeScopedStorageEntries(sessionStorage, this.storageScope);
+      } catch {
+        // A blocked sessionStorage should not break demo bootstrap.
+      }
+    }
+
+    const db = await this.openIndexedDb(true);
+    if (!db) {
+      return;
+    }
+    await new Promise<void>(resolve => {
+      const tx = db.transaction(APP_TABLES_STORE, 'readwrite');
+      tx.objectStore(APP_TABLES_STORE).clear();
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => resolve();
+      tx.onabort = () => resolve();
+    });
+    if (fullReset) {
+      await new Promise<void>(resolve => {
+        const tx = db.transaction(APP_I18N_BUNDLES_STORE, 'readwrite');
+        tx.objectStore(APP_I18N_BUNDLES_STORE).clear();
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => resolve();
+        tx.onabort = () => resolve();
+      });
+    }
+  }
+
+  async resetStorageOnce(): Promise<void> {
+    if (this.storageResetComplete) {
+      return;
+    }
+    if (!this.resetStoragePromise) {
+      this.resetStoragePromise = this.resetStorage()
+        .finally(() => {
+          this.storageResetComplete = true;
+          this.resetStoragePromise = null;
+        });
+    }
+    await this.resetStoragePromise;
   }
 
   async readIndexedDbTableEntry<T = unknown>(key: string): Promise<T | null> {
@@ -135,7 +216,7 @@ export class AppMemoryDb {
     if (!normalizedKey) {
       return null;
     }
-    const db = await this.openIndexedDb();
+    const db = await this.openIndexedDb(true);
     if (!db) {
       return null;
     }
@@ -147,17 +228,11 @@ export class AppMemoryDb {
     if (!normalizedKey) {
       return;
     }
-    const db = await this.openIndexedDb();
+    const db = await this.openIndexedDb(true);
     if (!db) {
       return;
     }
-    await new Promise<void>(resolve => {
-      const tx = db.transaction(APP_TABLES_STORE, 'readwrite');
-      tx.objectStore(APP_TABLES_STORE).put(this.indexedDbEntryForPersistence(normalizedKey, value), normalizedKey);
-      tx.oncomplete = () => resolve();
-      tx.onerror = () => resolve();
-      tx.onabort = () => resolve();
-    });
+    await this.putIndexedDbEntry(db, normalizedKey, this.indexedDbEntryForPersistence(normalizedKey, value));
   }
 
   async queryActivityRateRecords(query: ActivityRateRecordQuery): Promise<ActivityRateRecordQueryResult> {
@@ -356,49 +431,119 @@ export class AppMemoryDb {
   }
 
   private async readStateFromIndexedDb(db: IDBDatabase): Promise<DemoMemorySchema | null> {
-    const outbox = await this.readIndexedDbEntry(db, USER_RATES_OUTBOX_TABLE_NAME);
-    if (outbox === null) {
+    const partialState: Record<string, unknown> = {};
+    let hasStoredTable = false;
+    await Promise.all(AppMemoryDb.SCHEMA_TABLE_KEYS.map(async key => {
+      const entry = await this.readIndexedDbEntry(db, key);
+      if (entry === null) {
+        return;
+      }
+      partialState[key] = entry;
+      hasStoredTable = true;
+    }));
+
+    if (!hasStoredTable) {
       return null;
     }
 
-    const partialState: Partial<DemoMemorySchema> = {};
-    partialState[USER_RATES_OUTBOX_TABLE_NAME] = outbox as DemoMemorySchema[typeof USER_RATES_OUTBOX_TABLE_NAME];
     return this.normalizeState(partialState, this.createEmptyState());
   }
 
-  private async persistToIndexedDb(state: DemoMemorySchema): Promise<void> {
-    const db = await this.openIndexedDb();
+  private async persistToIndexedDb(state: DemoMemorySchema, force = false): Promise<void> {
+    const db = await this.openIndexedDb(force);
     if (!db) {
       return;
     }
     const persistedState = this.stateForIndexedDbPersistence(state);
-    await new Promise<void>(resolve => {
-      const tx = db.transaction(APP_TABLES_STORE, 'readwrite');
-      const tablesStore = tx.objectStore(APP_TABLES_STORE);
-      for (const key of AppMemoryDb.SCHEMA_TABLE_KEYS) {
-        if (key !== USER_RATES_OUTBOX_TABLE_NAME) {
-          tablesStore.delete(key);
-        }
-      }
-      tablesStore.put(persistedState[USER_RATES_OUTBOX_TABLE_NAME], USER_RATES_OUTBOX_TABLE_NAME);
-
-      tx.oncomplete = () => resolve();
-      tx.onerror = () => resolve();
-      tx.onabort = () => resolve();
-    });
+    await Promise.all(AppMemoryDb.SCHEMA_TABLE_KEYS.map(key => {
+      const value = this.indexedDbEntryForPersistence(key, persistedState[key]);
+      return this.shouldPersistIndexedDbTable(key, value)
+        ? this.putIndexedDbEntry(db, key, value)
+        : this.deleteIndexedDbEntry(db, key);
+    }));
   }
 
   private indexedDbEntryForPersistence(key: string, value: unknown): unknown {
-    return key === EVENTS_TABLE_NAME
+    const entry = key === EVENTS_TABLE_NAME
       ? this.eventsTableForPersistence(value as DemoMemorySchema[typeof EVENTS_TABLE_NAME])
       : value;
+    return this.indexedDbPlainValue(entry);
+  }
+
+  private indexedDbPlainValue(value: unknown): unknown {
+    return this.toIndexedDbPlainValue(value, new WeakSet<object>());
+  }
+
+  private shouldPersistIndexedDbTable(key: string, value: unknown): boolean {
+    if (!value || typeof value !== 'object') {
+      return false;
+    }
+    const table = value as Record<string, unknown>;
+    if (key === HELP_CENTER_TABLE_NAME) {
+      return Boolean(
+        `${table['activeRevisionId'] ?? ''}`.trim()
+        || this.hasEntries(table['revisionIds'])
+        || this.hasEntries(table['auditIds'])
+        || this.hasEntries(table['privacyConsentIds'])
+      );
+    }
+    if (key === PROFILE_EXPERIENCES_TABLE_NAME) {
+      return this.hasEntries(table['userIds']);
+    }
+    if (key === SHARE_TOKENS_TABLE_NAME) {
+      return this.hasEntries(table['tokens']);
+    }
+    if ('ids' in table) {
+      return this.hasEntries(table['ids']);
+    }
+    return Object.keys(table).length > 0;
+  }
+
+  private hasEntries(value: unknown): boolean {
+    return Array.isArray(value) && value.length > 0;
+  }
+
+  private toIndexedDbPlainValue(value: unknown, seen: WeakSet<object>): unknown {
+    if (
+      value === null
+      || typeof value === 'string'
+      || typeof value === 'number'
+      || typeof value === 'boolean'
+    ) {
+      return value;
+    }
+    if (value === undefined || typeof value === 'function' || typeof value === 'symbol') {
+      return null;
+    }
+    if (typeof value === 'bigint') {
+      return value.toString();
+    }
+    if (value instanceof Date) {
+      return value.toISOString();
+    }
+    if (Array.isArray(value)) {
+      return value.map(item => this.toIndexedDbPlainValue(item, seen));
+    }
+    if (typeof value !== 'object') {
+      return null;
+    }
+    if (seen.has(value)) {
+      return null;
+    }
+    seen.add(value);
+    const next: Record<string, unknown> = {};
+    for (const [key, entry] of Object.entries(value as Record<string, unknown>)) {
+      if (entry === undefined || typeof entry === 'function' || typeof entry === 'symbol') {
+        continue;
+      }
+      next[key] = this.toIndexedDbPlainValue(entry, seen);
+    }
+    seen.delete(value);
+    return next;
   }
 
   private stateForIndexedDbPersistence(state: DemoMemorySchema): DemoMemorySchema {
-    return {
-      ...this.createEmptyState(),
-      [USER_RATES_OUTBOX_TABLE_NAME]: state[USER_RATES_OUTBOX_TABLE_NAME]
-    };
+    return state;
   }
 
   private stateForLocalStoragePersistence(state: DemoMemorySchema): Partial<DemoMemorySchema> {
@@ -433,8 +578,28 @@ export class AppMemoryDb {
     });
   }
 
-  private openIndexedDb(): Promise<IDBDatabase | null> {
-    if (!this.storageEnabled || typeof indexedDB === 'undefined') {
+  private putIndexedDbEntry(db: IDBDatabase, key: string, value: unknown): Promise<void> {
+    return new Promise<void>(resolve => {
+      const tx = db.transaction(APP_TABLES_STORE, 'readwrite');
+      tx.objectStore(APP_TABLES_STORE).put(value, key);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => resolve();
+      tx.onabort = () => resolve();
+    });
+  }
+
+  private deleteIndexedDbEntry(db: IDBDatabase, key: string): Promise<void> {
+    return new Promise<void>(resolve => {
+      const tx = db.transaction(APP_TABLES_STORE, 'readwrite');
+      tx.objectStore(APP_TABLES_STORE).delete(key);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => resolve();
+      tx.onabort = () => resolve();
+    });
+  }
+
+  private openIndexedDb(force = false): Promise<IDBDatabase | null> {
+    if ((!force && !this.storageEnabled) || typeof indexedDB === 'undefined') {
       return Promise.resolve(null);
     }
     return new Promise<IDBDatabase | null>(resolve => {

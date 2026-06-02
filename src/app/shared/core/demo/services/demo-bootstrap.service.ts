@@ -1,5 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 
+import { DemoMemoryDb } from '../../base/db';
+import type { UserDto } from '../../base/interfaces/user.interface';
 import { DemoActivityResourcesRepository } from '../repositories/activity-resources.repository';
 import { DemoActivityMembersRepository } from '../repositories/activity-members.repository';
 import { DemoAssetsRepository } from '../repositories/assets.repository';
@@ -12,6 +14,8 @@ import { DemoProfileExperiencesRepository } from '../repositories/profile-experi
 import { DemoAdminAffinityGraphRepository } from '../repositories/admin-affinity-graph.repository';
 import { DemoUsersRatingsRepository } from '../repositories/users-ratings.repository';
 import { DemoUsersRepository } from '../repositories/users.repository';
+import { HELP_CENTER_TABLE_NAME } from '../models/help-center.model';
+import { IDEA_POSTS_TABLE_NAME } from '../models/idea-posts.model';
 
 export type DemoBootstrapProgressStage =
   | 'selector'
@@ -83,6 +87,7 @@ function demoBootstrapProgressStep(stage: DemoBootstrapProgressStage): DemoBoots
   providedIn: 'root'
 })
 export class DemoBootstrapService {
+  private readonly memoryDb = inject(DemoMemoryDb);
   private readonly chatsRepository = inject(DemoChatsRepository);
   private readonly eventsRepository = inject(DemoEventsRepository);
   private readonly eventFeedbackRepository = inject(DemoEventFeedbackRepository);
@@ -184,6 +189,16 @@ export class DemoBootstrapService {
     }
 
     await this.usersRepository.whenReady();
+    await this.memoryDb.resetStoragePreservingTables([
+      HELP_CENTER_TABLE_NAME,
+      IDEA_POSTS_TABLE_NAME
+    ]);
+
+    let seededUsers: readonly UserDto[] = [];
+    let seededUserIds: readonly string[] = [];
+    let assetsByUserId: ReturnType<DemoAssetsRepository['peekOwnedAssetsByUsers']> = new Map();
+    const ownerUserIds = (): readonly string[] | undefined => seededUserIds.length > 0 ? seededUserIds : undefined;
+
     await this.runBootstrapStep('selector');
     await this.runBootstrapStep('helpCenter', async () => {
       await this.initOptionalHelpCenter();
@@ -191,14 +206,31 @@ export class DemoBootstrapService {
     await this.runBootstrapStep('ideaPosts', async () => { await this.ideaPostsService.init(); });
     await this.runBootstrapStep('chats', () => this.chatsRepository.init());
     await this.runBootstrapStep('events', () => this.eventsRepository.init());
-    await this.runBootstrapStep('users', () => { this.usersRepository.init(); });
+    await this.runBootstrapStep('users', () => {
+      seededUsers = this.usersRepository.init();
+      seededUserIds = seededUsers
+        .map(user => user.id.trim())
+        .filter(userId => userId.length > 0);
+    });
     this.profileExperiencesRepository.init();
-    await this.runBootstrapStep('feedback', () => { this.eventFeedbackRepository.seedEventFeedbackStates(); });
-    await this.runBootstrapStep('ratings', () => this.usersRatingsRepository.init());
+    await this.runBootstrapStep('feedback', () => {
+      const eventItemsByUserId = this.eventsRepository.queryEventItemsByUsers(seededUserIds);
+      const itemsByUserId = this.eventsRepository.queryItemsByUsers(seededUserIds);
+      this.eventFeedbackRepository.seedEventFeedbackStates(seededUsers, eventItemsByUserId, itemsByUserId);
+    });
+    await this.runBootstrapStep('ratings', () => this.usersRatingsRepository.init(seededUsers));
     await this.runBootstrapStep('affinityGraph', () => this.bootstrapAffinityGraph());
-    await this.runBootstrapStep('assets', () => this.assetsRepository.init());
-    await this.runBootstrapStep('activityMembers', () => this.activityMembersRepository.init());
-    await this.runBootstrapStep('activityResources', () => this.activityResourcesRepository.init());
+    await this.runBootstrapStep('assets', () => {
+      this.assetsRepository.init(ownerUserIds(), seededUsers);
+      assetsByUserId = this.assetsRepository.peekOwnedAssetsByUsers(seededUserIds);
+    });
+    await this.runBootstrapStep('activityMembers', () => {
+      this.activityMembersRepository.init(ownerUserIds(), assetsByUserId);
+    });
+    await this.runBootstrapStep('activityResources', () => {
+      const sourceRecordsByUserId = this.eventsRepository.queryItemsByUsers(seededUserIds);
+      this.activityResourcesRepository.init(ownerUserIds(), sourceRecordsByUserId, assetsByUserId);
+    });
     await this.runBootstrapStep('indexedDb', () => this.usersRepository.flushToIndexedDb());
 
     this.ready = true;

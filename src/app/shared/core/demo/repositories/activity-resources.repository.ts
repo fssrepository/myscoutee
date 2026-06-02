@@ -28,7 +28,11 @@ export class DemoActivityResourcesRepository extends HttpActivityResourcesReposi
   private readonly usersRepository = inject(DemoUsersRepository);
   private lastInitToken = '';
 
-  init(ownerUserIds?: readonly string[]): void {
+  init(
+    ownerUserIds?: readonly string[],
+    sourceRecordsByUserId?: ReadonlyMap<string, readonly DemoEventRecord[]>,
+    assetsByUserId?: ReadonlyMap<string, readonly AppTypes.AssetCard[]>
+  ): void {
     if (!ownerUserIds) {
       this.usersRepository.init();
     }
@@ -45,6 +49,7 @@ export class DemoActivityResourcesRepository extends HttpActivityResourcesReposi
 
     this.eventsRepository.init();
     this.assetsRepository.init(normalizedUserIds);
+    const ownedAssetsByUserId = assetsByUserId ?? this.assetsRepository.peekOwnedAssetsByUsers(normalizedUserIds);
 
     const eventsTable = this.memoryDb.read()[EVENTS_TABLE_NAME];
     const currentTable = this.normalizeCollection(this.memoryDb.read()[ACTIVITY_RESOURCES_TABLE_NAME]);
@@ -53,8 +58,16 @@ export class DemoActivityResourcesRepository extends HttpActivityResourcesReposi
       return;
     }
 
+    const contributorUserIdsByEventId = new Map<string, string[]>();
     const managedUserIds = new Set(normalizedUserIds);
-    const desiredRecords = normalizedUserIds.flatMap(userId => this.buildSeededRecordsForUser(userId));
+    const desiredRecords = normalizedUserIds.flatMap(userId =>
+      this.buildSeededRecordsForUser(
+        userId,
+        sourceRecordsByUserId?.get(userId),
+        ownedAssetsByUserId.get(userId),
+        contributorUserIdsByEventId
+      )
+    );
     const desiredRecordIds = new Set(desiredRecords.map(record => record.id));
     const nextRecords: DemoActivitySubEventResourceRecord[] = [];
     const retainedRecordIds = new Set<string>();
@@ -227,20 +240,25 @@ export class DemoActivityResourcesRepository extends HttpActivityResourcesReposi
     return next;
   }
 
-  private buildSeededRecordsForUser(userId: string): DemoActivitySubEventResourceRecord[] {
+  private buildSeededRecordsForUser(
+    userId: string,
+    seedSourceRecords?: readonly DemoEventRecord[],
+    seedAssets?: readonly AppTypes.AssetCard[],
+    contributorUserIdsByEventId?: Map<string, string[]>
+  ): DemoActivitySubEventResourceRecord[] {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return [];
     }
 
-    const assets = this.assetsRepository.peekOwnedAssetsByUser(normalizedUserId);
-    const sourceRecords = this.collectSourceRecordsForUser(normalizedUserId);
+    const assets = seedAssets ?? this.assetsRepository.peekOwnedAssetsByUser(normalizedUserId);
+    const sourceRecords = seedSourceRecords ?? this.collectSourceRecordsForUser(normalizedUserId);
     const seenRecordIds = new Set<string>();
     const nextRecords: DemoActivitySubEventResourceRecord[] = [];
     let createdMs = DemoSeedScheduleBuilder.anchorDate().getTime();
 
     for (const record of sourceRecords) {
-      if (!this.shouldSeedResourcesForParticipant(record, normalizedUserId)) {
+      if (!this.shouldSeedResourcesForParticipant(record, normalizedUserId, contributorUserIdsByEventId)) {
         continue;
       }
       for (const subEvent of record.subEvents ?? []) {
@@ -283,13 +301,19 @@ export class DemoActivityResourcesRepository extends HttpActivityResourcesReposi
 
   private shouldSeedResourcesForParticipant(
     record: DemoEventRecord,
-    userId: string
+    userId: string,
+    contributorUserIdsByEventId?: Map<string, string[]>
   ): boolean {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return false;
     }
-    return this.resolveSeededResourceContributorUserIds(record).includes(normalizedUserId);
+    let contributorUserIds = contributorUserIdsByEventId?.get(record.id);
+    if (!contributorUserIds) {
+      contributorUserIds = this.resolveSeededResourceContributorUserIds(record);
+      contributorUserIdsByEventId?.set(record.id, contributorUserIds);
+    }
+    return contributorUserIds.includes(normalizedUserId);
   }
 
   private collectSourceRecordsForUser(

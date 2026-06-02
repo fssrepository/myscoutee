@@ -130,6 +130,23 @@ export class DemoEventsRepository {
     return this.queryUserRecords(userId).filter(record => record.type === 'events');
   }
 
+  queryItemsByUsers(userIds: readonly string[]): Map<string, DemoEventRecord[]> {
+    this.init();
+    this.materializeSlotRecords();
+    return this.queryUserRecordsByUsers(userIds, this.memoryDb.read()[EVENTS_TABLE_NAME]);
+  }
+
+  queryEventItemsByUsers(userIds: readonly string[]): Map<string, DemoEventRecord[]> {
+    this.init();
+    const recordsByUserId = this.queryUserRecordsByUsers(userIds, this.memoryDb.read()[EVENTS_TABLE_NAME]);
+    return new Map(
+      [...recordsByUserId.entries()].map(([userId, records]) => [
+        userId,
+        records.filter(record => record.type === 'events')
+      ])
+    );
+  }
+
   queryHostingItemsByUser(userId: string): DemoEventRecord[] {
     this.init();
     return this.queryUserRecords(userId).filter(record => record.type === 'hosting');
@@ -1116,6 +1133,59 @@ export class DemoEventsRepository {
       .filter(record => this.hasTrackedUserParticipation(record, normalizedUserId))
       .map(record => this.buildMembershipProjectionRecord(normalizedUserId, this.withResolvedSlotContext(record, table)));
     return [...directRecords, ...membershipRecords];
+  }
+
+  private queryUserRecordsByUsers(
+    userIds: readonly string[],
+    table: DemoEventRecordCollection
+  ): Map<string, DemoEventRecord[]> {
+    const normalizedUserIds = [...new Set(
+      userIds
+        .map(userId => userId.trim())
+        .filter(userId => userId.length > 0)
+        .filter(userId => !this.isSetupRequiredDemoProfile(userId))
+    )];
+    const recordsByUserId = new Map<string, DemoEventRecord[]>(
+      normalizedUserIds.map(userId => [userId, []])
+    );
+    if (normalizedUserIds.length === 0) {
+      return recordsByUserId;
+    }
+
+    const userIdSet = new Set(normalizedUserIds);
+    const preferredRecords = this.computePreferredEventRecords(table);
+    const preferredRecordByEventId = new Map(preferredRecords.map(record => [record.id, record]));
+    const directIdsByUserId = new Map<string, Set<string>>();
+
+    for (const id of table.ids) {
+      const record = this.normalizePersistedEventRecord(table.byId[id]);
+      const recordUserId = record?.userId?.trim() ?? '';
+      if (!record || !userIdSet.has(recordUserId)) {
+        continue;
+      }
+      if (!this.shouldIncludeUserDirectRecord(record, recordUserId, preferredRecordByEventId.get(record.id))) {
+        continue;
+      }
+      recordsByUserId.get(recordUserId)?.push(
+        this.withResolvedSlotContext(DemoEventsRepositoryBuilder.cloneRecord(record), table)
+      );
+      const directIds = directIdsByUserId.get(recordUserId) ?? new Set<string>();
+      directIds.add(record.id);
+      directIdsByUserId.set(recordUserId, directIds);
+    }
+
+    for (const userId of normalizedUserIds) {
+      const directIds = directIdsByUserId.get(userId) ?? new Set<string>();
+      const membershipRecords = preferredRecords
+        .filter(record => record.creatorUserId !== userId)
+        .filter(record => !record.isTrashed)
+        .filter(record => !directIds.has(record.id))
+        .filter(record => this.hasTrackedUserParticipation(record, userId))
+        .map(record => this.buildMembershipProjectionRecord(userId, this.withResolvedSlotContext(record, table)));
+      recordsByUserId.get(userId)?.push(...membershipRecords);
+    }
+
+    return recordsByUserId;
   }
 
   private buildMembershipProjectionRecord(userId: string, record: DemoEventRecord): DemoEventRecord {

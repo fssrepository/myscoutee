@@ -36,11 +36,12 @@ export class DemoUsersRatingsRepository extends BaseUsersRatingsRepository {
   protected override readonly memoryDb = inject(DemoMemoryDb);
   private initialized = false;
 
-  init(): void {
+  init(seedUsers?: readonly UserDto[]): void {
     if (this.initialized) {
       return;
     }
-    const users = this.querySeedUsers();
+    const users = (seedUsers?.length ? [...seedUsers] : this.querySeedUsers())
+      .filter(user => !DemoUserSeedBuilder.isEmptyOnboardingProfileUserId(user.id));
     const visibleSeedUsers = users.filter(user => DemoUserSeedBuilder.isActivityRateVisibleProfile(user));
     const ownerIdsToSeed = this.collectOwnerIdsNeedingActivityRateSeed(visibleSeedUsers);
     const currentRatesCount = this.memoryDb.read()[USER_RATES_TABLE_NAME].ids.length;

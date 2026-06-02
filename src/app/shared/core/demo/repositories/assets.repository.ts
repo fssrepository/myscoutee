@@ -19,6 +19,15 @@ import {
   type DemoActivityMembersRecordCollection
 } from '../models/activity-members.model';
 
+interface DemoAssetSeedContext {
+  allUsers: readonly DemoUser[];
+  usersById: ReadonlyMap<string, DemoUser>;
+  userIndexById: ReadonlyMap<string, number>;
+  userAffinityById: ReadonlyMap<string, number>;
+  sampleCards: readonly AppTypes.AssetCard[];
+  friendUsersByOwnerAndLimit: Map<string, readonly DemoUser[]>;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -27,10 +36,16 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
   private static readonly AFFINITY_DISTANCE_BOOST_SCALE = 10_000;
   private readonly memoryDb = inject(DemoMemoryDb);
   private readonly usersRepository = inject(DemoUsersRepository);
+  private lastInitToken = '';
 
-  init(ownerUserIds?: readonly string[]): void {
+  init(ownerUserIds?: readonly string[], seedUsers?: readonly DemoUser[]): void {
+    const allUsers = seedUsers?.length
+      ? seedUsers
+          .filter(user => !DemoUserSeedBuilder.isEmptyOnboardingProfileUserId(user.id))
+          .filter(user => DemoUserSeedBuilder.isPublicGameProfile(user))
+      : this.querySeedUsers();
     const normalizedOwnerIds = Array.from(new Set(
-      (ownerUserIds ?? this.querySeedUsers().map(user => user.id))
+      (ownerUserIds ?? allUsers.map(user => user.id))
         .map(userId => userId.trim())
         .filter(userId => userId.length > 0)
     ));
@@ -39,37 +54,61 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
     }
 
     const ownerIdsToInitialize = normalizedOwnerIds;
+    const seedContext = this.buildSeedContext(allUsers);
     if (ownerIdsToInitialize.length === 0) {
       return;
     }
 
     let nextTable = this.normalizeCollection(this.memoryDb.read()[ASSETS_TABLE_NAME]);
+    const initToken = this.initToken(nextTable, normalizedOwnerIds);
+    if (this.lastInitToken === initToken) {
+      return;
+    }
+
+    const nextById = { ...nextTable.byId };
+    const nextIds = [...nextTable.ids];
+    const nextIdSet = new Set(nextIds);
+    const nextIdsByOwnerUserId = this.cloneOwnerUserIdIndex(nextTable.idsByOwnerUserId);
     let changed = false;
 
     for (const ownerUserId of ownerIdsToInitialize) {
-      const records = this.buildSeededOwnerRecords(ownerUserId);
+      const records = this.buildSeededOwnerRecords(ownerUserId, seedContext);
       if (records.length === 0) {
         continue;
       }
-      const existingIds = new Set(nextTable.idsByOwnerUserId[ownerUserId] ?? []);
+      const ownerBucket = nextIdsByOwnerUserId[ownerUserId] ?? [];
+      const existingIds = new Set(ownerBucket);
       for (const record of records) {
         if (existingIds.has(record.id)) {
           continue;
         }
-        nextTable = this.upsertRecordCollection(nextTable, record);
+        nextById[record.id] = this.cloneRecordForStorage(record);
+        if (!nextIdSet.has(record.id)) {
+          nextIds.unshift(record.id);
+          nextIdSet.add(record.id);
+        }
+        ownerBucket.unshift(record.id);
         existingIds.add(record.id);
         changed = true;
       }
+      nextIdsByOwnerUserId[ownerUserId] = ownerBucket;
     }
 
     if (!changed) {
+      this.lastInitToken = initToken;
       return;
     }
 
+    nextTable = {
+      byId: nextById,
+      ids: nextIds,
+      idsByOwnerUserId: nextIdsByOwnerUserId
+    };
     this.memoryDb.write(state => ({
       ...state,
       [ASSETS_TABLE_NAME]: nextTable
     }));
+    this.lastInitToken = this.initToken(nextTable, normalizedOwnerIds);
   }
 
   override peekOwnedAssetsByUser(userId: string): AppTypes.AssetCard[] {
@@ -78,6 +117,31 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
       return [];
     }
     return this.readOwnerAssets(normalizedUserId);
+  }
+
+  peekOwnedAssetsByUsers(userIds: readonly string[]): Map<string, AppTypes.AssetCard[]> {
+    const normalizedUserIds = [...new Set(
+      userIds
+        .map(userId => userId.trim())
+        .filter(Boolean)
+    )];
+    const assetsByUserId = new Map<string, AppTypes.AssetCard[]>(
+      normalizedUserIds.map(userId => [userId, []])
+    );
+    if (normalizedUserIds.length === 0) {
+      return assetsByUserId;
+    }
+    const table = this.normalizeCollection(this.memoryDb.read()[ASSETS_TABLE_NAME]);
+    for (const userId of normalizedUserIds) {
+      const assets = (table.idsByOwnerUserId[userId] ?? [])
+        .map(id => table.byId[id])
+        .filter((record): record is DemoAssetRecord => Boolean(record))
+        .filter(record => !this.isSuppressedAssetStatus(record.status))
+        .sort((left, right) => right.updatedMs - left.updatedMs)
+        .map(record => this.toAssetCard(record, userId));
+      assetsByUserId.set(userId, assets);
+    }
+    return assetsByUserId;
   }
 
   override async queryOwnedAssetsByUser(userId: string): Promise<AppTypes.AssetCard[]> {
@@ -298,22 +362,25 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
     return saved ? this.toAssetCard(saved, normalizedUserId) : null;
   }
 
-  private buildSeededOwnerRecords(ownerUserId: string): DemoAssetRecord[] {
-    const allUsers = this.querySeedUsers();
-    const owner = allUsers.find(user => user.id === ownerUserId) ?? allUsers[0] ?? null;
+  private buildSeededOwnerRecords(
+    ownerUserId: string,
+    seedContext = this.buildSeedContext(this.querySeedUsers())
+  ): DemoAssetRecord[] {
+    const allUsers = seedContext.allUsers;
+    const owner = seedContext.usersById.get(ownerUserId) ?? allUsers[0] ?? null;
     if (!owner) {
       return [];
     }
-    const ownerIndex = Math.max(0, allUsers.findIndex(user => user.id === ownerUserId));
+    const ownerIndex = seedContext.userIndexById.get(ownerUserId) ?? 0;
     const otherUsers = allUsers.filter(user => user.id !== ownerUserId);
-    const baseCards = DemoAssetBuilder.buildSampleAssetCards(allUsers as DemoUser[]);
+    const baseCards = seedContext.sampleCards;
     const createdAt = DemoSeedScheduleBuilder.shiftDate(new Date('2026-02-01T12:00:00.000Z'));
     return baseCards.map((card, index) => {
       const createdMs = createdAt.getTime() + (index * 60_000);
       const createdAtIso = new Date(createdMs).toISOString();
       const imageUrl = DemoAssetBuilder.defaultAssetImage(card.type, `${ownerUserId}-${card.id}`);
       const category = this.seededCategoryForCard(card, ownerIndex, index);
-      const requests = this.buildSeededRequests(ownerUserId, card, otherUsers, index);
+      const requests = this.buildSeededRequests(ownerUserId, card, otherUsers, index, seedContext);
       return this.withResolvedAssetRelevance({
         ...card,
         id: `${ownerUserId}:${card.id}`,
@@ -335,7 +402,7 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
         updatedAtIso: createdAtIso,
         createdMs,
         updatedMs: createdMs
-      });
+      }, seedContext.userAffinityById, false);
     });
   }
 
@@ -343,13 +410,17 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
     ownerUserId: string,
     card: Pick<AppTypes.AssetCard, 'title' | 'type'>,
     users: readonly DemoUser[],
-    seedOffset: number
+    seedOffset: number,
+    seedContext?: DemoAssetSeedContext
   ): AppTypes.AssetMemberRequest[] {
     if (users.length === 0) {
       return [];
     }
     const targetCount = card.type === 'Car' ? 3 : 2;
-    const prioritizedUsers = DemoUserSeedBuilder.friendUsersForActiveUser(users, ownerUserId, Math.max(targetCount * 3, targetCount));
+    const preferredUserLimit = Math.max(targetCount * 3, targetCount);
+    const prioritizedUsers = seedContext
+      ? this.cachedFriendUsersForOwner(seedContext, ownerUserId, users, preferredUserLimit)
+      : DemoUserSeedBuilder.friendUsersForActiveUser(users, ownerUserId, preferredUserLimit);
     const requestUsers = prioritizedUsers.length > 0 ? prioritizedUsers : [...users];
     const requests: AppTypes.AssetMemberRequest[] = [];
     for (let index = 0; index < targetCount; index += 1) {
@@ -566,6 +637,36 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
     };
   }
 
+  private buildSeedContext(allUsers: readonly DemoUser[]): DemoAssetSeedContext {
+    return {
+      allUsers,
+      usersById: new Map(allUsers.map(user => [user.id, user])),
+      userIndexById: new Map(allUsers.map((user, index) => [user.id, index])),
+      userAffinityById: new Map(allUsers.map(user => [
+        user.id,
+        Math.max(0, Math.trunc(Number(user.affinity) || 0))
+      ])),
+      sampleCards: DemoAssetBuilder.buildSampleAssetCards(allUsers as DemoUser[]),
+      friendUsersByOwnerAndLimit: new Map()
+    };
+  }
+
+  private cachedFriendUsersForOwner(
+    seedContext: DemoAssetSeedContext,
+    ownerUserId: string,
+    users: readonly DemoUser[],
+    limit: number
+  ): readonly DemoUser[] {
+    const key = `${ownerUserId}:${limit}`;
+    const cached = seedContext.friendUsersByOwnerAndLimit.get(key);
+    if (cached) {
+      return cached;
+    }
+    const next = DemoUserSeedBuilder.friendUsersForActiveUser(users, ownerUserId, limit);
+    seedContext.friendUsersByOwnerAndLimit.set(key, next);
+    return next;
+  }
+
   private formatSeededRequestTimeframe(startAtIso: string, endAtIso: string): string {
     const start = new Date(startAtIso);
     const end = new Date(endAtIso);
@@ -586,6 +687,14 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
   private querySeedUsers(): DemoUser[] {
     return (this.usersRepository.queryGameStackUsers() as DemoUser[])
       .filter(user => !DemoUserSeedBuilder.isEmptyOnboardingProfileUserId(user.id));
+  }
+
+  private initToken(table: DemoAssetsRecordCollection, ownerUserIds: readonly string[]): string {
+    return [
+      table.ids.length,
+      table.ids.join('|'),
+      ownerUserIds.join('|')
+    ].join(':');
   }
 
   private assetMemberRecords(assetId: string): DemoActivityMemberRecord[] {
@@ -922,22 +1031,26 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
     };
   }
 
-  private withResolvedAssetRelevance(record: DemoAssetRecord): DemoAssetRecord {
+  private withResolvedAssetRelevance(
+    record: DemoAssetRecord,
+    userAffinityById?: ReadonlyMap<string, number>,
+    cloneNested = true
+  ): DemoAssetRecord {
     return {
       ...record,
-      affinity: this.resolveAssetAffinity(record),
+      affinity: this.resolveAssetAffinity(record, userAffinityById),
       boost: this.resolveAssetBoost(record),
-      routes: [...(record.routes ?? [])],
-      topics: [...(record.topics ?? [])],
-      policies: (record.policies ?? []).map(item => ({ ...item })),
-      pricing: record.pricing ? PricingBuilder.clonePricingConfig(record.pricing) : undefined,
-      requests: record.requests.map(request => this.cloneRequest(request)),
-      menuActions: [...(record.menuActions ?? [])]
+      routes: cloneNested ? [...(record.routes ?? [])] : (record.routes ?? []),
+      topics: cloneNested ? [...(record.topics ?? [])] : (record.topics ?? []),
+      policies: cloneNested ? (record.policies ?? []).map(item => ({ ...item })) : (record.policies ?? []),
+      pricing: cloneNested && record.pricing ? PricingBuilder.clonePricingConfig(record.pricing) : record.pricing,
+      requests: cloneNested ? record.requests.map(request => this.cloneRequest(request)) : record.requests,
+      menuActions: cloneNested ? [...(record.menuActions ?? [])] : (record.menuActions ?? [])
     };
   }
 
-  private resolveAssetAffinity(record: DemoAssetRecord): number {
-    const ownerAffinity = this.queryUserAffinity(record.ownerUserId);
+  private resolveAssetAffinity(record: DemoAssetRecord, userAffinityById?: ReadonlyMap<string, number>): number {
+    const ownerAffinity = userAffinityById?.get(record.ownerUserId) ?? this.queryUserAffinity(record.ownerUserId);
     const tokenScore = AppUtils.hashText([
       record.type,
       record.title,
@@ -1273,6 +1386,17 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
     };
   }
 
+  private cloneOwnerUserIdIndex(index: Record<string, readonly string[] | string[] | undefined>): Record<string, string[]> {
+    const next: Record<string, string[]> = {};
+    for (const [ownerUserId, ids] of Object.entries(index)) {
+      if (!ownerUserId.trim() || !Array.isArray(ids)) {
+        continue;
+      }
+      next[ownerUserId] = ids.map(id => String(id)).filter(id => id.length > 0);
+    }
+    return next;
+  }
+
   private queryVisibleExploreOwners(activeUserId: string): DemoUser[] {
     const allUsers = this.querySeedUsers();
     const prioritizedFriends = DemoUserSeedBuilder.friendUsersForActiveUser(
@@ -1297,15 +1421,7 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
   ): DemoAssetsRecordCollection {
     const nextById = {
       ...table.byId,
-      [record.id]: {
-        ...record,
-        routes: [...(record.routes ?? [])],
-        topics: [...(record.topics ?? [])],
-        policies: (record.policies ?? []).map(item => ({ ...item })),
-        pricing: record.pricing ? PricingBuilder.clonePricingConfig(record.pricing) : undefined,
-        requests: record.requests.map(request => this.cloneRequest(request)),
-        menuActions: [...(record.menuActions ?? [])]
-      }
+      [record.id]: this.cloneRecordForStorage(record)
     };
     const nextIds = table.ids.includes(record.id) ? [...table.ids] : [record.id, ...table.ids];
     const nextIdsByOwnerUserId = { ...table.idsByOwnerUserId };
@@ -1321,6 +1437,18 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
       byId: nextById,
       ids: nextIds,
       idsByOwnerUserId: nextIdsByOwnerUserId
+    };
+  }
+
+  private cloneRecordForStorage(record: DemoAssetRecord): DemoAssetRecord {
+    return {
+      ...record,
+      routes: [...(record.routes ?? [])],
+      topics: [...(record.topics ?? [])],
+      policies: (record.policies ?? []).map(item => ({ ...item })),
+      pricing: record.pricing ? PricingBuilder.clonePricingConfig(record.pricing) : undefined,
+      requests: record.requests.map(request => this.cloneRequest(request)),
+      menuActions: [...(record.menuActions ?? [])]
     };
   }
 
