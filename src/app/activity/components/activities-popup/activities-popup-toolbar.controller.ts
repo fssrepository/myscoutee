@@ -33,6 +33,7 @@ export class ActivitiesPopupToolbarController {
   private get chatBadge() { return this.host.chatBadge as number; }
   private get invitationsBadge() { return this.host.invitationsBadge as number; }
   private get eventsBadge() { return this.host.eventsBadge as number; }
+  private get allEventsScopeBadge() { return this.host.allEventsScopeBadge as number; }
   private get pendingBadge() { return this.host.pendingBadge as number; }
   private get hostingBadge() { return this.host.hostingBadge as number; }
   private get gameBadge() { return this.host.gameBadge as number; }
@@ -90,6 +91,7 @@ export class ActivitiesPopupToolbarController {
   activitiesPrimaryFilterCount(filter: AppTypes.ActivitiesPrimaryFilter): number {
     if (filter === 'rates') { return this.gameBadge; }
     if (filter === 'chats') { return this.chatBadge; }
+    if (filter === 'events') { return this.allEventsScopeBadge; }
     return 0;
   }
 
@@ -123,7 +125,7 @@ export class ActivitiesPopupToolbarController {
 
   activitiesEventScopeCount(scope: AppTypes.ActivitiesEventScope = this.activitiesEventScope): number {
     if (scope === 'all') {
-      return this.eventsBadge + this.pendingBadge + this.invitationsBadge + this.hostingBadge;
+      return this.allEventsScopeBadge;
     }
     if (scope === 'drafts') {
       return this.hostingDraftCount();

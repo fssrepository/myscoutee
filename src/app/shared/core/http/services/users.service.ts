@@ -365,6 +365,27 @@ export class HttpUsersService implements UserService {
         tickets: Math.max(0, Math.trunc(Number(user.activities?.tickets) || 0)),
         contacts: Math.max(0, Math.trunc(Number(user.activities?.contacts) || 0)),
         feedback: Math.max(0, Math.trunc(Number(user.activities?.feedback) || 0)),
+        event: {
+          all: this.normalizeInitialCounterValue(user.activities?.event?.all, 0),
+          active: this.normalizeInitialCounterValue(user.activities?.event?.active, 0),
+          pending: this.normalizeInitialCounterValue(user.activities?.event?.pending, 0),
+          invitations: this.normalizeInitialCounterValue(user.activities?.event?.invitations, 0),
+          hosting: this.normalizeInitialCounterValue(user.activities?.event?.hosting, 0),
+          drafts: this.normalizeInitialCounterValue(user.activities?.event?.drafts, 0),
+          trash: this.normalizeInitialCounterValue(user.activities?.event?.trash, 0)
+        },
+        asset: {
+          cars: this.normalizeInitialCounterValue(user.activities?.asset?.cars, 0),
+          accommodation: this.normalizeInitialCounterValue(user.activities?.asset?.accommodation, 0),
+          supplies: this.normalizeInitialCounterValue(user.activities?.asset?.supplies, 0),
+          tickets: this.normalizeInitialCounterValue(user.activities?.asset?.tickets, 0)
+        },
+        eventFeedback: {
+          ownEvents: this.normalizeInitialCounterValue(user.activities?.eventFeedback?.ownEvents, 0),
+          pending: this.normalizeInitialCounterValue(user.activities?.eventFeedback?.pending, 0),
+          feedbacked: this.normalizeInitialCounterValue(user.activities?.eventFeedback?.feedbacked, 0),
+          removed: this.normalizeInitialCounterValue(user.activities?.eventFeedback?.removed, 0)
+        },
         adminJobs: Math.max(0, Math.trunc(Number(user.activities?.adminJobs) || 0)),
         adminMetrics: Math.max(0, Math.trunc(Number(user.activities?.adminMetrics) || 0))
       }
@@ -435,6 +456,27 @@ export class HttpUsersService implements UserService {
       tickets: this.normalizeInitialCounterValue(overrides?.tickets, user.activities?.tickets),
       contacts: this.normalizeInitialCounterValue(overrides?.contacts, user.activities?.contacts),
       feedback: this.normalizeInitialCounterValue(overrides?.feedback, user.activities?.feedback),
+      event: {
+        all: this.normalizeInitialCounterValue(overrides?.event?.all, user.activities?.event?.all),
+        active: this.normalizeInitialCounterValue(overrides?.event?.active, user.activities?.event?.active),
+        pending: this.normalizeInitialCounterValue(overrides?.event?.pending, user.activities?.event?.pending),
+        invitations: this.normalizeInitialCounterValue(overrides?.event?.invitations, user.activities?.event?.invitations),
+        hosting: this.normalizeInitialCounterValue(overrides?.event?.hosting, user.activities?.event?.hosting),
+        drafts: this.normalizeInitialCounterValue(overrides?.event?.drafts, user.activities?.event?.drafts),
+        trash: this.normalizeInitialCounterValue(overrides?.event?.trash, user.activities?.event?.trash)
+      },
+      asset: {
+        cars: this.normalizeInitialCounterValue(overrides?.asset?.cars, user.activities?.asset?.cars),
+        accommodation: this.normalizeInitialCounterValue(overrides?.asset?.accommodation, user.activities?.asset?.accommodation),
+        supplies: this.normalizeInitialCounterValue(overrides?.asset?.supplies, user.activities?.asset?.supplies),
+        tickets: this.normalizeInitialCounterValue(overrides?.asset?.tickets, user.activities?.asset?.tickets)
+      },
+      eventFeedback: {
+        ownEvents: this.normalizeInitialCounterValue(overrides?.eventFeedback?.ownEvents, user.activities?.eventFeedback?.ownEvents),
+        pending: this.normalizeInitialCounterValue(overrides?.eventFeedback?.pending, user.activities?.eventFeedback?.pending),
+        feedbacked: this.normalizeInitialCounterValue(overrides?.eventFeedback?.feedbacked, user.activities?.eventFeedback?.feedbacked),
+        removed: this.normalizeInitialCounterValue(overrides?.eventFeedback?.removed, user.activities?.eventFeedback?.removed)
+      },
       adminJobs: this.normalizeInitialCounterValue(overrides?.adminJobs, user.activities?.adminJobs),
       adminMetrics: this.normalizeInitialCounterValue(overrides?.adminMetrics, user.activities?.adminMetrics)
     };
@@ -473,6 +515,9 @@ export class HttpUsersService implements UserService {
         tickets: Math.max(0, Math.trunc(Number(user.activities.tickets) || 0)),
         contacts: Math.max(0, Math.trunc(Number(user.activities.contacts) || 0)),
         feedback: Math.max(0, Math.trunc(Number(user.activities.feedback) || 0)),
+        event: user.activities.event,
+        asset: user.activities.asset,
+        eventFeedback: user.activities.eventFeedback,
         adminJobs: Math.max(0, Math.trunc(Number(user.activities.adminJobs) || 0)),
         adminMetrics: Math.max(0, Math.trunc(Number(user.activities.adminMetrics) || 0))
       }),
@@ -544,6 +589,36 @@ export class HttpUsersService implements UserService {
     }
     normalized.impressionsHostChanged = counters.impressionsHostChanged === true;
     normalized.impressionsMemberChanged = counters.impressionsMemberChanged === true;
+    if (counters.event) {
+      normalized.event = {
+        all: normalize(counters.event.all) ?? 0,
+        active: normalize(counters.event.active) ?? 0,
+        pending: normalize(counters.event.pending) ?? 0,
+        invitations: normalize(counters.event.invitations) ?? 0,
+        hosting: normalize(counters.event.hosting) ?? 0,
+        drafts: normalize(counters.event.drafts) ?? 0,
+        trash: normalize(counters.event.trash) ?? 0
+      };
+    }
+
+    if (counters.asset) {
+      normalized.asset = {
+        cars: normalize(counters.asset.cars) ?? 0,
+        accommodation: normalize(counters.asset.accommodation) ?? 0,
+        supplies: normalize(counters.asset.supplies) ?? 0,
+        tickets: normalize(counters.asset.tickets) ?? 0
+      };
+    }
+
+    if (counters.eventFeedback) {
+      normalized.eventFeedback = {
+        ownEvents: normalize(counters.eventFeedback.ownEvents) ?? 0,
+        pending: normalize(counters.eventFeedback.pending) ?? 0,
+        feedbacked: normalize(counters.eventFeedback.feedbacked) ?? 0,
+        removed: normalize(counters.eventFeedback.removed) ?? 0
+      };
+    }
+
     return normalized;
   }
 

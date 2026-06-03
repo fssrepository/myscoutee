@@ -4,7 +4,7 @@ import { AppUtils } from '../../shared/app-utils';
 import { APP_STATIC_DATA } from '../../shared/app-static-data';
 import { DemoEventFeedbackBuilder } from '../../shared/core/demo/builders';
 import { EventsService } from '../../shared/core/base';
-import type { UserDto } from '../../shared/core';
+import { AppContext, type UserDto } from '../../shared/core';
 import type { DemoEventSeedItem } from '../../shared/core/demo/models/event-seed-item.model';
 
 export interface EventFeedbackPopupSource {
@@ -76,6 +76,7 @@ export class EventFeedbackPopupStateService {
   private readonly eventFeedbackUnlockDelayMs = 2 * 60 * 60 * 1000;
   private readonly sourceRef = signal<EventFeedbackPopupSource | null>(null);
   private readonly eventsService = inject(EventsService);
+  private readonly appCtx = inject(AppContext);
 
   public registerSource(source: EventFeedbackPopupSource | null): void {
     this.sourceRef.set(source);
@@ -815,6 +816,7 @@ export class EventFeedbackPopupStateService {
     this.eventFeedbackListFilters.find(item => item.key === this.eventFeedbackListFilter())?.icon ?? 'schedule'
   );
 
+  public readonly eventFeedbackOwnEventsCount = computed(() => this.organizerEventFeedbackCards().length);
   public readonly eventFeedbackPendingCount = computed(() => this.eventFeedbackPendingItems().length);
   public readonly eventFeedbackFeedbackedCount = computed(() => this.eventFeedbackFeedbackedItems().length);
   public readonly eventFeedbackRemovedCount = computed(() => this.eventFeedbackRemovedItems().length);
@@ -1010,12 +1012,42 @@ export class EventFeedbackPopupStateService {
   });
 
   public eventFeedbackFilterCount(filter: AppTypes.EventFeedbackListFilter): number {
+    const loadedCount = (() => {
+      switch (filter) {
+        case 'own-events':
+          return this.eventFeedbackOwnEventsCount();
+        case 'pending':
+          return this.eventFeedbackPendingCount();
+        case 'feedbacked':
+          return this.eventFeedbackFeedbackedCount();
+        case 'removed':
+          return this.eventFeedbackRemovedCount();
+        default:
+          return 0;
+      }
+    })();
+
+    if (this.eventFeedbackAllItems().length > 0) {
+      return loadedCount;
+    }
+
+    const counters = this.sourceRef()?.activeUser?.activities?.eventFeedback
+      ?? this.appCtx.activeUserProfile()?.activities?.eventFeedback;
+    if (!counters) {
+      return loadedCount;
+    }
+
     switch (filter) {
-      case 'own-events': return this.organizerEventFeedbackBadgeCount();
-      case 'feedbacked': return this.eventFeedbackFeedbackedCount();
-      case 'removed': return this.eventFeedbackRemovedCount();
+      case 'own-events':
+        return counters.ownEvents ?? loadedCount;
       case 'pending':
-      default: return this.eventFeedbackPendingCount();
+        return counters.pending ?? loadedCount;
+      case 'feedbacked':
+        return counters.feedbacked ?? loadedCount;
+      case 'removed':
+        return counters.removed ?? loadedCount;
+      default:
+        return loadedCount;
     }
   }
 

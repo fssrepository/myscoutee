@@ -40,8 +40,35 @@ export interface UserMenuCountersDto {
   tickets?: number;
   contacts?: number;
   feedback?: number;
+  event?: UserEventCountersDto;
+  asset?: UserAssetCountersDto;
+  eventFeedback?: UserEventFeedbackCountersDto;
   adminJobs?: number;
   adminMetrics?: number;
+}
+
+export interface UserEventCountersDto {
+  all?: number;
+  active?: number;
+  pending?: number;
+  invitations?: number;
+  hosting?: number;
+  drafts?: number;
+  trash?: number;
+}
+
+export interface UserAssetCountersDto {
+  cars?: number;
+  accommodation?: number;
+  supplies?: number;
+  tickets?: number;
+}
+
+export interface UserEventFeedbackCountersDto {
+  ownEvents?: number;
+  pending?: number;
+  feedbacked?: number;
+  removed?: number;
 }
 
 export interface UserRealtimeCountersDto extends UserMenuCountersDto {
@@ -119,6 +146,9 @@ export interface UserDto {
     tickets?: number;
     contacts?: number;
     feedback?: number;
+    event?: UserEventCountersDto;
+    asset?: UserAssetCountersDto;
+    eventFeedback?: UserEventFeedbackCountersDto;
     adminJobs?: number;
     adminMetrics?: number;
   };

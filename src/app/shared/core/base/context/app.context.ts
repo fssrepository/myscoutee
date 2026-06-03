@@ -31,8 +31,35 @@ export interface ActivityCounters {
   tickets: number;
   contacts: number;
   feedback: number;
+  event?: ActivityEventCounters;
+  asset?: ActivityAssetCounters;
+  eventFeedback?: ActivityEventFeedbackCounters;
   adminJobs: number;
   adminMetrics: number;
+}
+
+export interface ActivityEventCounters {
+  all: number;
+  active: number;
+  pending: number;
+  invitations: number;
+  hosting: number;
+  drafts: number;
+  trash: number;
+}
+
+export interface ActivityAssetCounters {
+  cars: number;
+  accommodation: number;
+  supplies: number;
+  tickets: number;
+}
+
+export interface ActivityEventFeedbackCounters {
+  ownEvents: number;
+  pending: number;
+  feedbacked: number;
+  removed: number;
 }
 
 export interface LoadState {
@@ -261,6 +288,15 @@ export class AppContext {
         continue;
       }
       normalizedPatch[key] = this.normalizeCounterValue(value as number);
+    }
+    if (patch.event) {
+      normalizedPatch.event = this.cloneEventCounters(patch.event);
+    }
+    if (patch.asset) {
+      normalizedPatch.asset = this.cloneAssetCounters(patch.asset);
+    }
+    if (patch.eventFeedback) {
+      normalizedPatch.eventFeedback = this.cloneEventFeedbackCounters(patch.eventFeedback);
     }
     if (Object.keys(normalizedPatch).length === 0) {
       return;
@@ -675,10 +711,45 @@ export class AppContext {
         tickets: user.activities?.tickets ?? 0,
         contacts: user.activities?.contacts ?? 0,
         feedback: user.activities?.feedback ?? 0,
+        event: this.cloneEventCounters(user.activities?.event),
+        asset: this.cloneAssetCounters(user.activities?.asset),
+        eventFeedback: this.cloneEventFeedbackCounters(user.activities?.eventFeedback),
         adminJobs: user.activities?.adminJobs ?? 0,
         adminMetrics: user.activities?.adminMetrics ?? 0
       },
       impressions: user.impressions ? this.cloneImpressions(user.impressions) : undefined
+    };
+  }
+
+  private cloneEventCounters(counters: Partial<ActivityEventCounters> | undefined | null): ActivityEventCounters {
+    return {
+      all: this.normalizeCounterValue(Number(counters?.all) || 0),
+      active: this.normalizeCounterValue(Number(counters?.active) || 0),
+      pending: this.normalizeCounterValue(Number(counters?.pending) || 0),
+      invitations: this.normalizeCounterValue(Number(counters?.invitations) || 0),
+      hosting: this.normalizeCounterValue(Number(counters?.hosting) || 0),
+      drafts: this.normalizeCounterValue(Number(counters?.drafts) || 0),
+      trash: this.normalizeCounterValue(Number(counters?.trash) || 0)
+    };
+  }
+
+  private cloneAssetCounters(counters: Partial<ActivityAssetCounters> | undefined | null): ActivityAssetCounters {
+    return {
+      cars: this.normalizeCounterValue(Number(counters?.cars) || 0),
+      accommodation: this.normalizeCounterValue(Number(counters?.accommodation) || 0),
+      supplies: this.normalizeCounterValue(Number(counters?.supplies) || 0),
+      tickets: this.normalizeCounterValue(Number(counters?.tickets) || 0)
+    };
+  }
+
+  private cloneEventFeedbackCounters(
+    counters: Partial<ActivityEventFeedbackCounters> | undefined | null
+  ): ActivityEventFeedbackCounters {
+    return {
+      ownEvents: this.normalizeCounterValue(Number(counters?.ownEvents) || 0),
+      pending: this.normalizeCounterValue(Number(counters?.pending) || 0),
+      feedbacked: this.normalizeCounterValue(Number(counters?.feedbacked) || 0),
+      removed: this.normalizeCounterValue(Number(counters?.removed) || 0)
     };
   }
 
