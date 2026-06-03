@@ -538,6 +538,16 @@ export class DemoUsersRepository {
   }
 
   private sameActivityCounts(left: UserDto, right: UserDto): boolean {
+    const normalizeCounter = (value: number | undefined | null): number => {
+      return Number.isFinite(Math.trunc(Number(value))) ? Math.trunc(Number(value)) : 0;
+    };
+    const leftEvent = left.activities.event;
+    const rightEvent = right.activities.event;
+    const leftAsset = left.activities.asset;
+    const rightAsset = right.activities.asset;
+    const leftEventFeedback = left.activities.eventFeedback;
+    const rightEventFeedback = right.activities.eventFeedback;
+
     return left.activities.game === right.activities.game
       && left.activities.chat === right.activities.chat
       && left.activities.invitations === right.activities.invitations
@@ -548,6 +558,26 @@ export class DemoUsersRepository {
       && (left.activities.supplies ?? 0) === (right.activities.supplies ?? 0)
       && (left.activities.tickets ?? 0) === (right.activities.tickets ?? 0)
       && (left.activities.contacts ?? 0) === (right.activities.contacts ?? 0)
-      && (left.activities.feedback ?? 0) === (right.activities.feedback ?? 0);
+      && (left.activities.feedback ?? 0) === (right.activities.feedback ?? 0)
+      && Boolean(left.activities.event) === Boolean(right.activities.event)
+      && normalizeCounter(leftEvent?.all) === normalizeCounter(rightEvent?.all)
+      && normalizeCounter(leftEvent?.active) === normalizeCounter(rightEvent?.active)
+      && normalizeCounter(leftEvent?.pending) === normalizeCounter(rightEvent?.pending)
+      && normalizeCounter(leftEvent?.invitations) === normalizeCounter(rightEvent?.invitations)
+      && normalizeCounter(leftEvent?.hosting) === normalizeCounter(rightEvent?.hosting)
+      && normalizeCounter(leftEvent?.drafts) === normalizeCounter(rightEvent?.drafts)
+      && normalizeCounter(leftEvent?.trash) === normalizeCounter(rightEvent?.trash)
+      && Boolean(left.activities.asset) === Boolean(right.activities.asset)
+      && normalizeCounter(leftAsset?.cars) === normalizeCounter(rightAsset?.cars)
+      && normalizeCounter(leftAsset?.accommodation) === normalizeCounter(rightAsset?.accommodation)
+      && normalizeCounter(leftAsset?.supplies) === normalizeCounter(rightAsset?.supplies)
+      && normalizeCounter(leftAsset?.tickets) === normalizeCounter(rightAsset?.tickets)
+      && Boolean(left.activities.eventFeedback) === Boolean(right.activities.eventFeedback)
+      && normalizeCounter(leftEventFeedback?.ownEvents) === normalizeCounter(rightEventFeedback?.ownEvents)
+      && normalizeCounter(leftEventFeedback?.pending) === normalizeCounter(rightEventFeedback?.pending)
+      && normalizeCounter(leftEventFeedback?.feedbacked) === normalizeCounter(rightEventFeedback?.feedbacked)
+      && normalizeCounter(leftEventFeedback?.removed) === normalizeCounter(rightEventFeedback?.removed)
+      && normalizeCounter(left.activities.adminJobs) === normalizeCounter(right.activities.adminJobs)
+      && normalizeCounter(left.activities.adminMetrics) === normalizeCounter(right.activities.adminMetrics);
   }
 }
