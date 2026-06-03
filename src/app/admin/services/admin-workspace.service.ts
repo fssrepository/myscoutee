@@ -111,6 +111,13 @@ const ADMIN_NOTIFICATION_INTERVAL_SECONDS: Record<AdminNotificationIntervalUnit,
   years: 31536000
 };
 
+const ADMIN_DEMO_SELECTOR_PROGRESS_STEPS: readonly AdminBootstrapProgressState[] = [
+  { stage: 'records', percent: 24, label: 'Preparing admin graph members' },
+  { stage: 'records', percent: 54, label: 'Preparing admin graph ratings' },
+  { stage: 'affinityGraph', percent: 82, label: 'Preparing admin affinity graph' },
+  { stage: 'ready', percent: 100, label: 'Admin selector ready' }
+];
+
 @Injectable({
   providedIn: 'root'
 })
@@ -139,6 +146,8 @@ export class AdminWorkspaceService {
   private readonly busyRef = signal(false);
   private readonly errorRef = signal('');
   private readonly accessDeniedRef = signal(false);
+  private demoAdminSelectorPromise: Promise<void> | null = null;
+  private demoAdminSelectorReady = false;
 
   readonly dashboard = this.dashboardRef.asReadonly();
   readonly busy = this.busyRef.asReadonly();
@@ -182,6 +191,29 @@ export class AdminWorkspaceService {
     const dashboard = await this.loadDemoDashboard(this.activeAdmin()?.id);
     this.applyDashboard(dashboard);
     return dashboard;
+  }
+
+  async prepareDemoAdminSelector(
+    onProgress?: (state: AdminBootstrapProgressState) => void
+  ): Promise<DemoUserListItemDto[]> {
+    if (this.usesHttpAdminApi) {
+      onProgress?.({ percent: 100, label: 'Admin selector ready', stage: 'ready' });
+      return this.adminUsers();
+    }
+
+    if (this.demoAdminSelectorReady) {
+      onProgress?.({ percent: 100, label: 'Admin selector ready', stage: 'ready' });
+      return this.adminUsers();
+    }
+
+    if (!this.demoAdminSelectorPromise) {
+      this.demoAdminSelectorPromise = this.bootstrapDemoAdminSelector(onProgress)
+        .finally(() => {
+          this.demoAdminSelectorPromise = null;
+        });
+    }
+    await this.demoAdminSelectorPromise;
+    return this.adminUsers();
   }
 
   updateActiveAdmin(nextAdmin: AdminUserDto): void {
@@ -298,6 +330,7 @@ export class AdminWorkspaceService {
     onProgress?: (state: AdminBootstrapProgressState) => void
   ): Promise<AdminDashboardDto> {
     const admin = this.resolveDemoAdmin(adminUserId);
+    await this.prepareDemoAdminSelector();
     onProgress?.({ percent: 18, label: 'Preparing admin data', stage: 'indexedDb' });
     await this.demoUsersRepository.whenReady();
     await this.initOptionalDemoHelpCenter();
@@ -305,8 +338,7 @@ export class AdminWorkspaceService {
     this.demoUsersRepository.init();
     this.demoUsersRatingsRepository.init();
     await this.ensureDemoAdminProfiles();
-    onProgress?.({ percent: 36, label: 'Preparing affinity graph', stage: 'affinityGraph' });
-    await this.ensureDemoAffinityGraphSeed();
+    onProgress?.({ percent: 36, label: 'Preparing admin records', stage: 'records' });
     this.demoChatsRepository.init();
     await this.ensureDemoNotificationCenterSeed();
     await this.ensureDemoMonitoringSeed();
@@ -330,6 +362,35 @@ export class AdminWorkspaceService {
     } catch {
       // Help, privacy, and explanation content should never block admin demo bootstrap.
     }
+  }
+
+  private async bootstrapDemoAdminSelector(
+    onProgress?: (state: AdminBootstrapProgressState) => void
+  ): Promise<void> {
+    this.demoAdminSelectorReady = false;
+    const seededUsers = await this.runAdminSelectorStep(onProgress, ADMIN_DEMO_SELECTOR_PROGRESS_STEPS[0], () =>
+      this.demoUsersRepository.init()
+    );
+    await this.runAdminSelectorStep(onProgress, ADMIN_DEMO_SELECTOR_PROGRESS_STEPS[1], () => {
+      this.demoUsersRatingsRepository.init(seededUsers);
+    });
+    await this.runAdminSelectorStep(onProgress, ADMIN_DEMO_SELECTOR_PROGRESS_STEPS[2], () =>
+      this.ensureDemoAffinityGraphSeed()
+    );
+    this.demoAdminSelectorReady = true;
+    onProgress?.(ADMIN_DEMO_SELECTOR_PROGRESS_STEPS[3]);
+  }
+
+  private async runAdminSelectorStep<T = void>(
+    onProgress: ((state: AdminBootstrapProgressState) => void) | undefined,
+    step: AdminBootstrapProgressState,
+    work?: () => T | Promise<T>
+  ): Promise<T> {
+    onProgress?.(step);
+    await this.waitForUiYield();
+    const result = work ? await work() : undefined as T;
+    await this.waitForUiYield();
+    return result;
   }
 
   private async ensureDemoAffinityGraphSeed(): Promise<void> {
@@ -1840,5 +1901,15 @@ export class AdminWorkspaceService {
 
   private waitForBeat(): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, 180));
+  }
+
+  private waitForUiYield(): Promise<void> {
+    return new Promise(resolve => {
+      if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+        window.requestAnimationFrame(() => resolve());
+        return;
+      }
+      setTimeout(resolve, 0);
+    });
   }
 }

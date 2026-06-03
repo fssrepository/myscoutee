@@ -1,5 +1,5 @@
 import { CommonModule, DOCUMENT } from '@angular/common';
-import { Component, HostListener, OnDestroy, OnInit, Type, effect, inject, signal } from '@angular/core';
+import { ChangeDetectorRef, Component, HostListener, NgZone, OnDestroy, OnInit, Type, effect, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { MatRippleModule } from '@angular/material/core';
@@ -36,6 +36,8 @@ export class AdminPageComponent implements OnInit, OnDestroy {
   protected readonly shell = inject(AdminShellService);
   protected readonly sessionService = inject(SessionService);
   private readonly document = inject(DOCUMENT);
+  private readonly changeDetectorRef = inject(ChangeDetectorRef);
+  private readonly ngZone = inject(NgZone);
   private readonly router = inject(Router);
   private readonly navigatorService = inject(NavigatorService);
   private readonly popupCtx = inject(AppPopupContext);
@@ -49,6 +51,7 @@ export class AdminPageComponent implements OnInit, OnDestroy {
   private readonly statsPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly affinityGraphPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly monitoringPopupComponentRef = signal<Type<unknown> | null>(null);
+  private selectorLoadToken = 0;
 
   protected selectorOpen = false;
   protected selectorLoading = false;
@@ -207,19 +210,22 @@ export class AdminPageComponent implements OnInit, OnDestroy {
   }
 
   protected openSelector(): void {
+    const loadToken = ++this.selectorLoadToken;
     this.selectorOpen = true;
-    this.selectorLoading = false;
+    this.selectorLoading = true;
     this.selectorSubmitting = false;
     this.selectorLoadingProgress = 0;
-    this.selectorLoadingLabel = 'Select an admin user';
+    this.selectorLoadingLabel = 'Preparing admin affinity graph';
     this.selectorLoadingStage = 'selector';
     this.selectorErrorMessage = '';
+    void this.loadAdminSelector(loadToken);
   }
 
   protected closeSelector(): void {
     if (this.selectorSubmitting) {
       return;
     }
+    this.selectorLoadToken += 1;
     this.selectorOpen = false;
     this.selectorLoading = false;
     this.selectorSubmitting = false;
@@ -227,7 +233,7 @@ export class AdminPageComponent implements OnInit, OnDestroy {
   }
 
   protected async onSelectAdminUser(adminUserId: string): Promise<void> {
-    if (this.selectorSubmitting) {
+    if (this.selectorLoading || this.selectorSubmitting) {
       return;
     }
     this.selectorSubmitting = true;
@@ -276,9 +282,45 @@ export class AdminPageComponent implements OnInit, OnDestroy {
   }
 
   private applyProgress(state: AdminBootstrapProgressState): void {
-    this.selectorLoadingProgress = state.percent;
-    this.selectorLoadingLabel = state.label;
-    this.selectorLoadingStage = this.toDemoProgressStage(state.stage);
+    this.commitSelectorState(() => {
+      this.selectorLoadingProgress = state.percent;
+      this.selectorLoadingLabel = state.label;
+      this.selectorLoadingStage = this.toDemoProgressStage(state.stage);
+    });
+  }
+
+  private async loadAdminSelector(loadToken: number): Promise<void> {
+    try {
+      await this.workspace.prepareDemoAdminSelector(state => {
+        if (this.selectorLoadToken === loadToken && this.selectorOpen) {
+          this.applyProgress(state);
+        }
+      });
+      if (this.selectorLoadToken !== loadToken || !this.selectorOpen) {
+        return;
+      }
+      this.commitSelectorState(() => {
+        this.selectorLoading = false;
+        this.selectorLoadingProgress = 100;
+        this.selectorLoadingLabel = 'Select an admin user';
+        this.selectorLoadingStage = 'ready';
+      });
+    } catch {
+      if (this.selectorLoadToken !== loadToken || !this.selectorOpen) {
+        return;
+      }
+      this.commitSelectorState(() => {
+        this.selectorLoading = false;
+        this.selectorErrorMessage = this.workspace.error() || 'Unable to prepare admin selector.';
+      });
+    }
+  }
+
+  private commitSelectorState(update: () => void): void {
+    this.ngZone.run(() => {
+      update();
+      this.changeDetectorRef.detectChanges();
+    });
   }
 
   private toDemoProgressStage(stage: AdminBootstrapProgressState['stage']): DemoBootstrapProgressStage {
