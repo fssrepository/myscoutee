@@ -33,6 +33,7 @@ export class ActivitiesPopupToolbarController {
   private get chatBadge() { return this.host.chatBadge as number; }
   private get invitationsBadge() { return this.host.invitationsBadge as number; }
   private get eventsBadge() { return this.host.eventsBadge as number; }
+  private get allEventsScopeBadge() { return this.host.allEventsScopeBadge as number; }
   private get pendingBadge() { return this.host.pendingBadge as number; }
   private get hostingBadge() { return this.host.hostingBadge as number; }
   private get gameBadge() { return this.host.gameBadge as number; }
@@ -123,7 +124,7 @@ export class ActivitiesPopupToolbarController {
 
   activitiesEventScopeCount(scope: AppTypes.ActivitiesEventScope = this.activitiesEventScope): number {
     if (scope === 'all') {
-      return this.eventsBadge + this.pendingBadge + this.invitationsBadge + this.hostingBadge;
+      return this.allEventsScopeBadge;
     }
     if (scope === 'drafts') {
       return this.hostingDraftCount();

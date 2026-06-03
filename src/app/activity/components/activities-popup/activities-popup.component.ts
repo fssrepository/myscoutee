@@ -228,6 +228,9 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   protected chatBadge = this.activeUser.activities.chat;
   protected eventsBadge = this.activeUser.activities.events;
+  protected allEventsScopeBadge = this.activeUser.activities.events
+    + this.activeUser.activities.invitations
+    + this.activeUser.activities.hosting;
   protected pendingBadge = 0;
   protected hostingBadge = this.activeUser.activities.hosting;
   protected invitationsBadge = this.activeUser.activities.invitations;
@@ -1607,6 +1610,10 @@ export class ActivitiesPopupComponent implements OnDestroy {
     const adminReviewEvents = adminEvents.filter(item => this.isPendingReviewEventRecord(item));
     this.pendingBadge = visiblePendingEvents.length + adminReviewEvents.length;
     this.hostingBadge = adminEvents.length;
+    this.allEventsScopeBadge = visibleActiveEvents.length
+      + visiblePendingEvents.length
+      + visibleInvitations.length
+      + adminEvents.length;
     this.gameBadge = this.activeUser.activities.game;
     this.syncActivityCounterOverrides();
   }
