@@ -280,8 +280,8 @@ export class OwnedAssetsPopupFacadeService {
   }
 
   assetFilterCount(type: AppTypes.AssetFilterType): number {
-    const source = this.sourceRef();
-    const activeUser = source?.activeUser ?? this.appCtx.activeUserProfile();
+    const source = this.appCtx.getUserProfile(this.resolveContextOwnerUserId());
+    const activeUser = source ?? this.appCtx.activeUserProfile();
     const grouped = activeUser?.activities?.asset;
     const key = this.assetFilterCounterKey(type);
     switch (key) {

@@ -2,7 +2,7 @@ import { Injectable, Injector, inject } from '@angular/core';
 
 import { environment } from '../../../../../environments/environment';
 import { type LoadStatus } from '../context';
-import { AppContext } from '../context';
+import { AppContext, type ActivityCounters } from '../context';
 import { DemoBootstrapService, type DemoBootstrapProgressState, DemoUsersRepository, DemoUsersService } from '../../demo';
 import { HttpUsersService } from '../../http';
 import type {
@@ -12,6 +12,7 @@ import type {
   UserFeedbackSubmitRequestDto,
   UserLocationEligibilityResponseDto,
   UserDto,
+  UserMenuCountersDto,
   UserLogoutRequestDto,
   UserReportUserSubmitRequestDto,
   UserRealtimeLongPollResponseDto,
@@ -276,8 +277,11 @@ export class UsersService extends BaseRouteModeService {
       }
       if (resolvedUserId) {
         this.appCtx.clearUserCounterOverrides(resolvedUserId);
-        if (response.counterOverrides) {
-          this.appCtx.patchUserCounterOverrides(resolvedUserId, response.counterOverrides);
+      if (response.counterOverrides) {
+          this.appCtx.patchUserCounterOverrides(
+            resolvedUserId,
+            this.normalizeCounterOverrides(response.counterOverrides, response.user.activities)
+          );
         }
         if (response.filterPreferences) {
           this.appCtx.setUserFilterPreferences(resolvedUserId, response.filterPreferences);
@@ -689,6 +693,105 @@ export class UsersService extends BaseRouteModeService {
     return {
       user: null
     };
+  }
+
+  private normalizeCounterOverrides(
+    counterOverrides: UserMenuCountersDto | null | undefined,
+    fallbackActivities: UserDto['activities']
+  ): Partial<ActivityCounters> {
+    if (!counterOverrides) {
+      return {};
+    }
+
+    const normalizeWithFallback = (value: unknown, fallback: unknown): number | undefined => {
+      if (Number.isFinite(value)) {
+        return Math.max(0, Math.trunc(Number(value)));
+      }
+      if (Number.isFinite(Number(fallback))) {
+        return Math.max(0, Math.trunc(Number(fallback)));
+      }
+      return undefined;
+    };
+
+    const patch: Partial<ActivityCounters> = {};
+    const game = normalizeWithFallback(counterOverrides.game, fallbackActivities.game);
+    const chat = normalizeWithFallback(counterOverrides.chat, fallbackActivities.chat);
+    const invitations = normalizeWithFallback(counterOverrides.invitations, fallbackActivities.invitations);
+    const events = normalizeWithFallback(counterOverrides.events, fallbackActivities.events);
+    const hosting = normalizeWithFallback(counterOverrides.hosting, fallbackActivities.hosting);
+    const cars = normalizeWithFallback(counterOverrides.cars, fallbackActivities.cars);
+    const accommodation = normalizeWithFallback(counterOverrides.accommodation, fallbackActivities.accommodation);
+    const supplies = normalizeWithFallback(counterOverrides.supplies, fallbackActivities.supplies);
+    const tickets = normalizeWithFallback(counterOverrides.tickets, fallbackActivities.tickets);
+    const contacts = normalizeWithFallback(counterOverrides.contacts, fallbackActivities.contacts);
+    const feedback = normalizeWithFallback(counterOverrides.feedback, fallbackActivities.feedback);
+    const adminJobs = normalizeWithFallback(counterOverrides.adminJobs, fallbackActivities.adminJobs);
+    const adminMetrics = normalizeWithFallback(counterOverrides.adminMetrics, fallbackActivities.adminMetrics);
+
+    if (game !== undefined) patch.game = game;
+    if (chat !== undefined) patch.chat = chat;
+    if (invitations !== undefined) patch.invitations = invitations;
+    if (events !== undefined) patch.events = events;
+    if (hosting !== undefined) patch.hosting = hosting;
+    if (cars !== undefined) patch.cars = cars;
+    if (accommodation !== undefined) patch.accommodation = accommodation;
+    if (supplies !== undefined) patch.supplies = supplies;
+    if (tickets !== undefined) patch.tickets = tickets;
+    if (contacts !== undefined) patch.contacts = contacts;
+    if (feedback !== undefined) patch.feedback = feedback;
+
+    const eventAll = normalizeWithFallback(counterOverrides.event?.all, fallbackActivities.event?.all);
+    const eventActive = normalizeWithFallback(counterOverrides.event?.active, fallbackActivities.event?.active);
+    const eventPending = normalizeWithFallback(counterOverrides.event?.pending, fallbackActivities.event?.pending);
+    const eventInvitations = normalizeWithFallback(counterOverrides.event?.invitations, fallbackActivities.event?.invitations);
+    const eventHosting = normalizeWithFallback(counterOverrides.event?.hosting, fallbackActivities.event?.hosting);
+    const eventDrafts = normalizeWithFallback(counterOverrides.event?.drafts, fallbackActivities.event?.drafts);
+    const eventTrash = normalizeWithFallback(counterOverrides.event?.trash, fallbackActivities.event?.trash);
+    if (eventAll !== undefined || eventActive !== undefined || eventPending !== undefined
+      || eventInvitations !== undefined || eventHosting !== undefined
+      || eventDrafts !== undefined || eventTrash !== undefined
+    ) {
+      patch.event = {
+        all: eventAll ?? 0,
+        active: eventActive ?? 0,
+        pending: eventPending ?? 0,
+        invitations: eventInvitations ?? 0,
+        hosting: eventHosting ?? 0,
+        drafts: eventDrafts ?? 0,
+        trash: eventTrash ?? 0
+      };
+    }
+
+    const assetCars = normalizeWithFallback(counterOverrides.asset?.cars, fallbackActivities.asset?.cars);
+    const assetAccommodation = normalizeWithFallback(counterOverrides.asset?.accommodation, fallbackActivities.asset?.accommodation);
+    const assetSupplies = normalizeWithFallback(counterOverrides.asset?.supplies, fallbackActivities.asset?.supplies);
+    const assetTickets = normalizeWithFallback(counterOverrides.asset?.tickets, fallbackActivities.asset?.tickets);
+    if (assetCars !== undefined || assetAccommodation !== undefined || assetSupplies !== undefined || assetTickets !== undefined) {
+      patch.asset = {
+        cars: assetCars ?? 0,
+        accommodation: assetAccommodation ?? 0,
+        supplies: assetSupplies ?? 0,
+        tickets: assetTickets ?? 0
+      };
+    }
+
+    const feedbackOwnEvents = normalizeWithFallback(counterOverrides.eventFeedback?.ownEvents, fallbackActivities.eventFeedback?.ownEvents);
+    const feedbackPending = normalizeWithFallback(counterOverrides.eventFeedback?.pending, fallbackActivities.eventFeedback?.pending);
+    const feedbackFeedbacked = normalizeWithFallback(counterOverrides.eventFeedback?.feedbacked, fallbackActivities.eventFeedback?.feedbacked);
+    const feedbackRemoved = normalizeWithFallback(counterOverrides.eventFeedback?.removed, fallbackActivities.eventFeedback?.removed);
+    if (feedbackOwnEvents !== undefined || feedbackPending !== undefined || feedbackFeedbacked !== undefined || feedbackRemoved !== undefined) {
+      patch.eventFeedback = {
+        ownEvents: feedbackOwnEvents ?? 0,
+        pending: feedbackPending ?? 0,
+        feedbacked: feedbackFeedbacked ?? 0,
+        removed: feedbackRemoved ?? 0
+      };
+    }
+
+    if (adminJobs !== undefined) patch.adminJobs = adminJobs;
+    if (adminMetrics !== undefined) patch.adminMetrics = adminMetrics;
+
+    return patch;
   }
 
   private buildSessionFallbackUser(): UserDto | null {

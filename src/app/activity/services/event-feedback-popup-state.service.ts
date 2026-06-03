@@ -816,6 +816,7 @@ export class EventFeedbackPopupStateService {
     this.eventFeedbackListFilters.find(item => item.key === this.eventFeedbackListFilter())?.icon ?? 'schedule'
   );
 
+  public readonly eventFeedbackOwnEventsCount = computed(() => this.organizerEventFeedbackCards().length);
   public readonly eventFeedbackPendingCount = computed(() => this.eventFeedbackPendingItems().length);
   public readonly eventFeedbackFeedbackedCount = computed(() => this.eventFeedbackFeedbackedItems().length);
   public readonly eventFeedbackRemovedCount = computed(() => this.eventFeedbackRemovedItems().length);
@@ -1014,13 +1015,13 @@ export class EventFeedbackPopupStateService {
     const loadedCount = (() => {
       switch (filter) {
         case 'own-events':
-          return this.eventFeedbackOwnEvents().length;
+          return this.eventFeedbackOwnEventsCount();
         case 'pending':
-          return this.eventFeedbackPending().length;
+          return this.eventFeedbackPendingCount();
         case 'feedbacked':
-          return this.eventFeedbackFeedbacked().length;
+          return this.eventFeedbackFeedbackedCount();
         case 'removed':
-          return this.eventFeedbackRemoved().length;
+          return this.eventFeedbackRemovedCount();
         default:
           return 0;
       }
