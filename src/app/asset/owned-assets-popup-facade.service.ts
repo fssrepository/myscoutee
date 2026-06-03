@@ -280,16 +280,22 @@ export class OwnedAssetsPopupFacadeService {
   }
 
   assetFilterCount(type: AppTypes.AssetFilterType): number {
+    const source = this.sourceRef();
+    const activeUser = source?.activeUser ?? this.appCtx.activeUserProfile();
+    const grouped = activeUser?.activities?.asset;
     const key = this.assetFilterCounterKey(type);
-    if (!key) {
-      return 0;
+    switch (key) {
+      case 'cars':
+        return grouped?.cars ?? activeUser?.activities?.cars ?? 0;
+      case 'accommodation':
+        return grouped?.accommodation ?? activeUser?.activities?.accommodation ?? 0;
+      case 'supplies':
+        return grouped?.supplies ?? activeUser?.activities?.supplies ?? 0;
+      case 'tickets':
+        return grouped?.tickets ?? activeUser?.activities?.tickets ?? 0;
+      default:
+        return key ? activeUser?.activities?.[key] ?? 0 : 0;
     }
-    const activeUser = this.appCtx.activeUserProfile();
-    const userId = activeUser?.id?.trim() || this.appCtx.getActiveUserId().trim();
-    if (!userId) {
-      return 0;
-    }
-    return this.appCtx.resolveUserCounter(userId, key, Number(activeUser?.activities?.[key]) || 0);
   }
 
   eventVisibilityClass(option: AppTypes.EventVisibility): string {

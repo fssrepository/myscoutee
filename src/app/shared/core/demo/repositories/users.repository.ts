@@ -394,6 +394,27 @@ export class DemoUsersRepository {
           tickets: 0,
           contacts: 0,
           feedback: 0,
+          event: {
+            all: 0,
+            active: 0,
+            pending: 0,
+            invitations: 0,
+            hosting: 0,
+            drafts: 0,
+            trash: 0,
+          },
+          asset: {
+            cars: 0,
+            accommodation: 0,
+            supplies: 0,
+            tickets: 0,
+          },
+          eventFeedback: {
+            ownEvents: 0,
+            pending: 0,
+            feedbacked: 0,
+            removed: 0,
+          },
           adminJobs: user.activities?.adminJobs ?? 0,
           adminMetrics: user.activities?.adminMetrics ?? 0
         }

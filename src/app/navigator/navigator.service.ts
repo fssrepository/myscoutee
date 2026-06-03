@@ -6,7 +6,7 @@ import {
   SessionService,
   UsersService,
   type ActivityMemberOwnerType,
-  type ActivityCounterKey,
+  type ActivityCounterKey, type ActivityCounters,
   type EntryConsentState,
   type HelpCenterRevision,
   type PrivacyConsentRecord,
@@ -922,14 +922,14 @@ export class NavigatorService {
 
   private resolveDemoPolledCounterPatch(
     userId: string,
-    pendingPatch: Partial<Record<ActivityCounterKey, number>>
-  ): Partial<Record<ActivityCounterKey, number>> {
+    pendingPatch: Partial<ActivityCounters>
+  ): Partial<ActivityCounters> {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return pendingPatch;
     }
     const base = this.resolveUserRealtimeBaseCounters(normalizedUserId);
-    const next: Partial<Record<ActivityCounterKey, number>> = {};
+    const next: Partial<ActivityCounters> = {};
     const keys: ActivityCounterKey[] = [
       'game',
       'chat',
@@ -1004,14 +1004,14 @@ export class NavigatorService {
 
   private normalizePolledCounterPatch(
     counters: UserRealtimeLongPollResponseDto['counters'] | undefined
-  ): Partial<Record<ActivityCounterKey, number>> {
+  ): Partial<ActivityCounters> {
     const normalize = (value: unknown): number | undefined => {
       if (!Number.isFinite(value)) {
         return undefined;
       }
       return Math.max(0, Math.trunc(Number(value)));
     };
-    const patch: Partial<Record<ActivityCounterKey, number>> = {};
+    const patch: Partial<ActivityCounters> = {};
     const game = normalize(counters?.game);
     const chat = normalize(counters?.chat);
     const invitations = normalize(counters?.invitations);
@@ -1064,7 +1064,34 @@ export class NavigatorService {
     if (adminMetrics !== undefined) {
       patch.adminMetrics = adminMetrics;
     }
-    return patch;
+        if (counters?.event) {
+      patch.event = {
+        all: normalize(counters.event.all) ?? 0,
+        active: normalize(counters.event.active) ?? 0,
+        pending: normalize(counters.event.pending) ?? 0,
+        invitations: normalize(counters.event.invitations) ?? 0,
+        hosting: normalize(counters.event.hosting) ?? 0,
+        drafts: normalize(counters.event.drafts) ?? 0,
+        trash: normalize(counters.event.trash) ?? 0
+      };
+    }
+    if (counters?.asset) {
+      patch.asset = {
+        cars: normalize(counters.asset.cars) ?? 0,
+        accommodation: normalize(counters.asset.accommodation) ?? 0,
+        supplies: normalize(counters.asset.supplies) ?? 0,
+        tickets: normalize(counters.asset.tickets) ?? 0
+      };
+    }
+    if (counters?.eventFeedback) {
+      patch.eventFeedback = {
+        ownEvents: normalize(counters.eventFeedback.ownEvents) ?? 0,
+        pending: normalize(counters.eventFeedback.pending) ?? 0,
+        feedbacked: normalize(counters.eventFeedback.feedbacked) ?? 0,
+        removed: normalize(counters.eventFeedback.removed) ?? 0
+      };
+    }
+return patch;
   }
 
   private applyImpressionsChangeFlags(

@@ -638,6 +638,27 @@ export class UsersService extends BaseRouteModeService {
         tickets: normalizeCounter(counters.tickets),
         contacts: normalizeCounter(counters.contacts),
         feedback: normalizeCounter(counters.feedback),
+        event: {
+          all: normalizeCounter(counters.event?.all),
+          active: normalizeCounter(counters.event?.active),
+          pending: normalizeCounter(counters.event?.pending),
+          invitations: normalizeCounter(counters.event?.invitations),
+          hosting: normalizeCounter(counters.event?.hosting),
+          drafts: normalizeCounter(counters.event?.drafts),
+          trash: normalizeCounter(counters.event?.trash)
+        },
+        asset: {
+          cars: normalizeCounter(counters.asset?.cars),
+          accommodation: normalizeCounter(counters.asset?.accommodation),
+          supplies: normalizeCounter(counters.asset?.supplies),
+          tickets: normalizeCounter(counters.asset?.tickets)
+        },
+        eventFeedback: {
+          ownEvents: normalizeCounter(counters.eventFeedback?.ownEvents),
+          pending: normalizeCounter(counters.eventFeedback?.pending),
+          feedbacked: normalizeCounter(counters.eventFeedback?.feedbacked),
+          removed: normalizeCounter(counters.eventFeedback?.removed)
+        },
         adminJobs: normalizeCounter(counters.adminJobs),
         adminMetrics: normalizeCounter(counters.adminMetrics),
         impressionsHostChanged: counters.impressionsHostChanged === true,
@@ -708,6 +729,27 @@ export class UsersService extends BaseRouteModeService {
         tickets: 0,
         contacts: 0,
         feedback: 0,
+        event: {
+          all: 0,
+          active: 0,
+          pending: 0,
+          invitations: 0,
+          hosting: 0,
+          drafts: 0,
+          trash: 0
+        },
+        asset: {
+          cars: 0,
+          accommodation: 0,
+          supplies: 0,
+          tickets: 0
+        },
+        eventFeedback: {
+          ownEvents: 0,
+          pending: 0,
+          feedbacked: 0,
+          removed: 0
+        },
         adminJobs: 0,
         adminMetrics: 0
       }
@@ -760,6 +802,27 @@ export class UsersService extends BaseRouteModeService {
         tickets: Math.max(0, Math.trunc(Number(user.activities?.tickets) || 0)),
         contacts: Math.max(0, Math.trunc(Number(user.activities?.contacts) || 0)),
         feedback: Math.max(0, Math.trunc(Number(user.activities?.feedback) || 0)),
+        event: {
+          all: Math.max(0, Math.trunc(Number(user.activities?.event?.all) || 0)),
+          active: Math.max(0, Math.trunc(Number(user.activities?.event?.active) || 0)),
+          pending: Math.max(0, Math.trunc(Number(user.activities?.event?.pending) || 0)),
+          invitations: Math.max(0, Math.trunc(Number(user.activities?.event?.invitations) || 0)),
+          hosting: Math.max(0, Math.trunc(Number(user.activities?.event?.hosting) || 0)),
+          drafts: Math.max(0, Math.trunc(Number(user.activities?.event?.drafts) || 0)),
+          trash: Math.max(0, Math.trunc(Number(user.activities?.event?.trash) || 0))
+        },
+        asset: {
+          cars: Math.max(0, Math.trunc(Number(user.activities?.asset?.cars) || 0)),
+          accommodation: Math.max(0, Math.trunc(Number(user.activities?.asset?.accommodation) || 0)),
+          supplies: Math.max(0, Math.trunc(Number(user.activities?.asset?.supplies) || 0)),
+          tickets: Math.max(0, Math.trunc(Number(user.activities?.asset?.tickets) || 0))
+        },
+        eventFeedback: {
+          ownEvents: Math.max(0, Math.trunc(Number(user.activities?.eventFeedback?.ownEvents) || 0)),
+          pending: Math.max(0, Math.trunc(Number(user.activities?.eventFeedback?.pending) || 0)),
+          feedbacked: Math.max(0, Math.trunc(Number(user.activities?.eventFeedback?.feedbacked) || 0)),
+          removed: Math.max(0, Math.trunc(Number(user.activities?.eventFeedback?.removed) || 0))
+        },
         adminJobs: Math.max(0, Math.trunc(Number(user.activities?.adminJobs) || 0)),
         adminMetrics: Math.max(0, Math.trunc(Number(user.activities?.adminMetrics) || 0))
       }

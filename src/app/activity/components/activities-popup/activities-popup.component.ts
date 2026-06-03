@@ -227,13 +227,13 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected rateItems: RateRecord[] = [];
 
   protected chatBadge = this.activeUser.activities.chat;
-  protected eventsBadge = this.activeUser.activities.events;
-  protected allEventsScopeBadge = this.activeUser.activities.events
+  protected eventsBadge = this.activeUser.activities.event?.active ?? this.activeUser.activities.events;
+  protected allEventsScopeBadge = this.activeUser.activities.event?.all ?? this.activeUser.activities.events
     + this.activeUser.activities.invitations
     + this.activeUser.activities.hosting;
-  protected pendingBadge = 0;
-  protected hostingBadge = this.activeUser.activities.hosting;
-  protected invitationsBadge = this.activeUser.activities.invitations;
+  protected pendingBadge = this.activeUser.activities.event?.pending ?? 0;
+  protected hostingBadge = this.activeUser.activities.event?.hosting ?? this.activeUser.activities.hosting;
+  protected invitationsBadge = this.activeUser.activities.event?.invitations ?? this.activeUser.activities.invitations;
   protected gameBadge = this.activeUser.activities.game;
 
   protected publishedHostingIds: ReadonlySet<string> = new Set<string>();
@@ -574,7 +574,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   protected trashedActivityCount(): number {
-    return this.activitiesEvents.trashedActivityCount();
+    return this.activitiesEvents.trashedActivityCount() || this.activeUser.activities.event?.trash || 0;
   }
 
   protected openActivityRowInEventModule(row: AppTypes.ActivityListRow, readOnly: boolean): void {
@@ -1737,7 +1737,16 @@ export class ActivitiesPopupComponent implements OnDestroy {
       chat: this.chatBadge,
       invitations: this.invitationsBadge,
       events: this.eventsBadge,
-      hosting: this.hostingBadge
+      hosting: this.hostingBadge,
+      event: {
+        all: this.allEventsScopeBadge,
+        active: this.eventsBadge,
+        pending: this.pendingBadge,
+        invitations: this.invitationsBadge,
+        hosting: this.hostingBadge,
+        drafts: this.activeUser.activities.event?.drafts ?? 0,
+        trash: this.trashedActivityCount()
+      }
     });
   }
 
