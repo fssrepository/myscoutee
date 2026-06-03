@@ -11,7 +11,6 @@ import { DemoEventFeedbackRepository } from '../repositories/event-feedback.repo
 import { DemoHelpCenterService } from './help-center.service';
 import { DemoIdeaPostsService } from './idea-posts.service';
 import { DemoProfileExperiencesRepository } from '../repositories/profile-experiences.repository';
-import { DemoAdminAffinityGraphRepository } from '../repositories/admin-affinity-graph.repository';
 import { DemoUsersRatingsRepository } from '../repositories/users-ratings.repository';
 import { DemoUsersRepository } from '../repositories/users.repository';
 import { HELP_CENTER_TABLE_NAME } from '../models/help-center.model';
@@ -58,8 +57,7 @@ export const DEMO_BOOTSTRAP_PROGRESS_STEPS: readonly DemoBootstrapProgressStep[]
   { stage: 'users', percent: 34, label: 'Preparing demo users' },
   { stage: 'feedback', percent: 44, label: 'Preparing event feedback' },
   { stage: 'ratings', percent: 52, label: 'Loading ratings' },
-  { stage: 'affinityGraph', percent: 62, label: 'Preparing affinity graph' },
-  { stage: 'assets', percent: 70, label: 'Preparing owned assets' },
+  { stage: 'assets', percent: 64, label: 'Preparing owned assets' },
   { stage: 'activityMembers', percent: 82, label: 'Preparing activity members' },
   { stage: 'activityResources', percent: 94, label: 'Preparing activity resources' },
   { stage: 'indexedDb', percent: 98, label: 'Syncing demo IndexedDB' },
@@ -95,7 +93,6 @@ export class DemoBootstrapService {
   private readonly usersRepository = inject(DemoUsersRepository);
   private readonly activityMembersRepository = inject(DemoActivityMembersRepository);
   private readonly assetsRepository = inject(DemoAssetsRepository);
-  private readonly affinityGraphRepository = inject(DemoAdminAffinityGraphRepository);
   private readonly activityResourcesRepository = inject(DemoActivityResourcesRepository);
   private readonly profileExperiencesRepository = inject(DemoProfileExperiencesRepository);
   private readonly helpCenterService = inject(DemoHelpCenterService);
@@ -219,7 +216,6 @@ export class DemoBootstrapService {
       this.eventFeedbackRepository.seedEventFeedbackStates(seededUsers, eventItemsByUserId, itemsByUserId);
     });
     await this.runBootstrapStep('ratings', () => this.usersRatingsRepository.init(seededUsers));
-    await this.runBootstrapStep('affinityGraph', () => this.bootstrapAffinityGraph());
     await this.runBootstrapStep('assets', () => {
       this.assetsRepository.init(ownerUserIds(), seededUsers);
       assetsByUserId = this.assetsRepository.peekOwnedAssetsByUsers(seededUserIds);
@@ -235,10 +231,6 @@ export class DemoBootstrapService {
 
     this.ready = true;
     this.emitProgress(demoBootstrapProgressStep('ready'));
-  }
-
-  private async bootstrapAffinityGraph(): Promise<void> {
-    await this.affinityGraphRepository.buildAndWriteGraphSnapshot();
   }
 
   private async initOptionalHelpCenter(): Promise<void> {

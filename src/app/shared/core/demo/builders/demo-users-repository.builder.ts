@@ -123,45 +123,69 @@ export class DemoUsersRepositoryBuilder {
     user: UserDto,
     sources: DemoUsersRepositoryActivitySources
   ): UserDto {
+    const normalizeCounter = (value: unknown): number => {
+      const count = Number(value);
+      return Number.isFinite(count) ? Math.max(0, Math.trunc(count)) : 0;
+    };
+
+    const activities = user.activities;
+    const chat = sources.chatItems
+      ? DemoUserMenuCountersBuilder.resolveSectionBadge(sources.chatItems.map(item => item.unread), sources.chatItems.length)
+      : activities.chat;
+    const invitations = sources.invitationItems ? sources.invitationItems.length : activities.invitations;
+    const events = Number.isFinite(sources.eventsCount)
+      ? normalizeCounter(sources.eventsCount)
+      : sources.eventItems
+        ? sources.eventItems.length
+        : activities.events;
+    const hosting = sources.hostingItems ? sources.hostingItems.length : activities.hosting;
+    const game = sources.rateItems ? sources.rateItems.length : activities.game;
+    const cars = Number.isFinite(sources.carsCount) ? normalizeCounter(sources.carsCount) : activities.cars;
+    const accommodation = Number.isFinite(sources.accommodationCount) ? normalizeCounter(sources.accommodationCount) : activities.accommodation;
+    const supplies = Number.isFinite(sources.suppliesCount) ? normalizeCounter(sources.suppliesCount) : activities.supplies;
+    const tickets = Number.isFinite(sources.ticketsCount) ? normalizeCounter(sources.ticketsCount) : activities.tickets;
+    const contacts = Number.isFinite(sources.contactsCount) ? normalizeCounter(sources.contactsCount) : activities.contacts;
+    const feedback = Number.isFinite(sources.feedbackCount) ? normalizeCounter(sources.feedbackCount) : activities.feedback;
+    const event = activities.event;
+    const asset = activities.asset;
+    const eventFeedback = activities.eventFeedback;
+
     return {
       ...user,
       activities: {
-        ...user.activities,
-        chat: sources.chatItems
-          ? DemoUserMenuCountersBuilder.resolveSectionBadge(sources.chatItems.map(item => item.unread), sources.chatItems.length)
-          : user.activities.chat,
-        invitations: sources.invitationItems
-          ? sources.invitationItems.length
-          : user.activities.invitations,
-        events: Number.isFinite(sources.eventsCount)
-          ? Math.max(0, Math.trunc(Number(sources.eventsCount)))
-          : sources.eventItems
-            ? sources.eventItems.length
-          : user.activities.events,
-        hosting: sources.hostingItems
-          ? sources.hostingItems.length
-          : user.activities.hosting,
-        game: sources.rateItems
-          ? sources.rateItems.length
-          : user.activities.game,
-        cars: Number.isFinite(sources.carsCount)
-          ? Math.max(0, Math.trunc(Number(sources.carsCount)))
-          : user.activities.cars,
-        accommodation: Number.isFinite(sources.accommodationCount)
-          ? Math.max(0, Math.trunc(Number(sources.accommodationCount)))
-          : user.activities.accommodation,
-        supplies: Number.isFinite(sources.suppliesCount)
-          ? Math.max(0, Math.trunc(Number(sources.suppliesCount)))
-          : user.activities.supplies,
-        tickets: Number.isFinite(sources.ticketsCount)
-          ? Math.max(0, Math.trunc(Number(sources.ticketsCount)))
-          : user.activities.tickets,
-        contacts: Number.isFinite(sources.contactsCount)
-          ? Math.max(0, Math.trunc(Number(sources.contactsCount)))
-          : user.activities.contacts,
-        feedback: Number.isFinite(sources.feedbackCount)
-          ? Math.max(0, Math.trunc(Number(sources.feedbackCount)))
-          : user.activities.feedback
+        ...activities,
+        chat,
+        invitations,
+        events,
+        hosting,
+        game,
+        cars,
+        accommodation,
+        supplies,
+        tickets,
+        contacts,
+        feedback,
+        event: {
+          all: normalizeCounter(event?.all ?? events + invitations + hosting),
+          active: normalizeCounter(event?.active ?? events),
+          pending: normalizeCounter(event?.pending),
+          invitations: normalizeCounter(event?.invitations ?? invitations),
+          hosting: normalizeCounter(event?.hosting ?? hosting),
+          drafts: normalizeCounter(event?.drafts),
+          trash: normalizeCounter(event?.trash),
+        },
+        asset: {
+          cars: normalizeCounter(asset?.cars ?? cars),
+          accommodation: normalizeCounter(asset?.accommodation ?? accommodation),
+          supplies: normalizeCounter(asset?.supplies ?? supplies),
+          tickets: normalizeCounter(asset?.tickets ?? tickets),
+        },
+        eventFeedback: {
+          ownEvents: normalizeCounter(eventFeedback?.ownEvents),
+          pending: normalizeCounter(eventFeedback?.pending ?? feedback),
+          feedbacked: normalizeCounter(eventFeedback?.feedbacked),
+          removed: normalizeCounter(eventFeedback?.removed),
+        }
       }
     };
   }

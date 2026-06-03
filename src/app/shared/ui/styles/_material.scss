@@ -175,9 +175,11 @@
     padding: 0.34rem 0.44rem;
     display: inline-flex;
     align-items: center;
+    justify-content: flex-start;
     gap: 0.34rem;
     color: #1e3658;
     cursor: pointer;
+    text-align: left;
   }
 
   .popup-filter-option .mat-icon,
@@ -191,6 +193,13 @@
   .activities-view-option span {
     font-size: 0.78rem;
     font-weight: 700;
+  }
+
+  .popup-filter-option > span:not(.rate-filter-count-badge),
+  .activities-view-option > span:not(.rate-filter-count-badge) {
+    flex: 1 1 auto;
+    min-width: 0;
+    text-align: left;
   }
 
   .popup-mobile-filter-picker,
