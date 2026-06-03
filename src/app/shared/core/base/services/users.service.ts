@@ -705,10 +705,10 @@ export class UsersService extends BaseRouteModeService {
 
     const normalizeWithFallback = (value: unknown, fallback: unknown): number | undefined => {
       if (Number.isFinite(value)) {
-        return Math.max(0, Math.trunc(Number(value)));
+        return Math.max(0, Math.round(Number(value)));
       }
       if (Number.isFinite(Number(fallback))) {
-        return Math.max(0, Math.trunc(Number(fallback)));
+        return Math.max(0, Math.round(Number(fallback)));
       }
       return undefined;
     };
