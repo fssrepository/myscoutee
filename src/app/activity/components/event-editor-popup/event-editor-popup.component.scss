@@ -2714,13 +2714,6 @@ button.profile-status-select-wrap {
     padding: 0.08rem 0 0.72rem;
   }
 }
-.rotating-spinner {
-  animation: spin 1s linear infinite;
-}
-@keyframes spin {
-  100% { transform: rotate(360deg); }
-}
-
 .popup-loading-overlay {
   display: flex;
   flex-direction: column;

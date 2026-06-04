@@ -69,9 +69,9 @@
       </div>
     </div>
     <div class="popup-body">
-      @if (isLoadingEventData) {
-      <div class="popup-loading-overlay">
-        <mat-icon class="rotating-spinner" style="font-size: 48px; width: 48px; height: 48px; color: var(--color-primary, #F7BE34);">sync</mat-icon>
+      @if (isLoadingEventData()) {
+      <div class="popup-loading-overlay" aria-busy="true">
+        <app-progress-indicator kind="load-ring" [position]="eventDataLoadingProgress()"></app-progress-indicator>
       </div>
       } @else {
       <section class="editor-list-card">

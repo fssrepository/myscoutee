@@ -211,9 +211,8 @@
               class="entry-ideas-carousel-loading"
               aria-live="polite"
               aria-busy="true"
-              [style.--entry-ideas-loading-progress]="articlesLoadingProgress"
               >
-              <span class="entry-ideas-carousel-progress-ring" aria-hidden="true"></span>
+              <app-progress-indicator kind="load-ring" [position]="articlesLoadingProgress"></app-progress-indicator>
               <span class="entry-ideas-carousel-loading-label">{{ 'Loading articles' | i18n }}</span>
             </div>
           }

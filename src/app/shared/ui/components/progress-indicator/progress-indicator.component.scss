@@ -24,11 +24,6 @@
   justify-content: center;
 }
 
-:host(.app-progress-indicator-host--kind-load-ring.app-progress-indicator-host--size-sm) {
-  width: 46px;
-  height: 46px;
-}
-
 :host(.app-progress-indicator-host--kind-action-ring) {
   position: absolute;
   inset: 0;
@@ -134,11 +129,6 @@
 .app-progress-indicator__load-ring-progress {
   fill: none;
   stroke-width: 5;
-}
-
-:host(.app-progress-indicator-host--size-sm) .app-progress-indicator__load-ring-track,
-:host(.app-progress-indicator-host--size-sm) .app-progress-indicator__load-ring-progress {
-  stroke-width: 4;
 }
 
 .app-progress-indicator__load-ring-track {

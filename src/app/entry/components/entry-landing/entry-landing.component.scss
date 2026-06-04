@@ -868,16 +868,6 @@
   pointer-events: all;
 }
 
-.entry-ideas-carousel-progress-ring {
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
-  background:
-    radial-gradient(circle closest-side, #fff 67%, transparent 69%),
-    conic-gradient(#3268a8 calc(var(--entry-ideas-loading-progress, 0) * 1turn), rgba(58, 96, 143, 0.16) 0);
-  box-shadow: 0 8px 18px rgba(45, 86, 136, 0.14);
-}
-
 .entry-ideas-carousel-loading-label {
   max-width: 16rem;
   padding: 0 0.8rem;

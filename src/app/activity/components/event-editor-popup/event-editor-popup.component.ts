@@ -1,4 +1,4 @@
-import { Component, inject, ViewChild, ElementRef, OnInit, OnDestroy, HostListener, effect } from '@angular/core';
+import { Component, inject, ViewChild, ElementRef, OnInit, OnDestroy, HostListener, effect, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -24,8 +24,7 @@ import {
   AppContext,
   AppPopupContext,
   EventEditorDataService,
-  ExplanationGuideService,
-  RouteDelayService
+  ExplanationGuideService
 } from '../../../shared/core';
 import { HttpMediaService } from '../../../shared/core/http';
 import type { DemoEventRecord } from '../../../shared/core/demo/models/events.model';
@@ -59,9 +58,7 @@ import { EventSubeventsPopupComponent, EventSubeventsItem } from '../event-subev
 })
 export class EventEditorPopupComponent implements OnInit, OnDestroy {
   private static readonly DRAFT_AUTOSAVE_INTERVAL_MS = 5000;
-  private static readonly DETAIL_LOAD_ROUTE = '/activities/events';
-  private static readonly DETAIL_LOAD_DEMO_DELAY_MS = 1500;
-  private static readonly DETAIL_LOAD_TIMEOUT_MS = 3000;
+  private static readonly DETAIL_LOAD_PROGRESS_WINDOW_MS = 3000;
   protected readonly eventEditorService = inject(EventEditorPopupStateService);
   private readonly activitiesContext = inject(ActivitiesPopupStateService);
   private readonly activitiesService = inject(ActivitiesService);
@@ -71,7 +68,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   private readonly popupCtx = inject(AppPopupContext);
   private readonly httpMediaService = inject(HttpMediaService);
   private readonly explanationGuide = inject(ExplanationGuideService);
-  private readonly routeDelay = inject(RouteDelayService);
   protected readonly interestOptionGroups = APP_STATIC_DATA.interestOptionGroups;
 
   @ViewChild('eventImageInput') eventImageInput!: ElementRef<HTMLInputElement>;
@@ -96,7 +92,10 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   private isDraftAutosavePending = false;
   private eventEditorExplanationContextKey: string | null = null;
   private unregisterEventEditorExplanationContext: (() => void) | null = null;
-  protected isLoadingEventData = false;
+  protected readonly isLoadingEventData = signal(false);
+  protected readonly eventDataLoadingProgress = signal(0);
+  private eventDataLoadingProgressTimer: ReturnType<typeof setInterval> | null = null;
+  private eventDataLoadingProgressStartedAtMs = 0;
 
   constructor() {
     effect(() => {
@@ -211,6 +210,8 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       this.showPoliciesPopup = false;
       this.showPolicyEditorPopup = false;
       this.showMobileFrequencyPicker = false;
+      this.isLoadingEventData.set(false);
+      this.clearEventDataLoadingProgress();
       this.resetEditorContext();
       this.resetDraftAutosaveTracking();
     });
@@ -222,6 +223,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.openSubscription?.unsubscribe();
     this.closeSubscription?.unsubscribe();
     this.stopDraftAutosaveLoop();
+    this.clearEventDataLoadingProgress();
     this.clearEventEditorExplanationContext();
   }
 
@@ -281,6 +283,8 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.showTopicPicker = false;
     this.showMobileFrequencyPicker = false;
     this.isSavePending = false;
+    this.isLoadingEventData.set(false);
+    this.clearEventDataLoadingProgress();
     this.clearEventEditorExplanationContext();
     this.eventEditorService.close();
   }
@@ -1404,32 +1408,17 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       return;
     }
 
-    this.isLoadingEventData = true;
+    this.isLoadingEventData.set(true);
+    this.beginEventDataLoadingProgress();
     this.eventEditorService.open('edit', fallbackSource, readOnly);
     void this.refreshCurrentMemberSummary(row.id);
 
-    let isTimeout = false;
-    const timeoutPromise = new Promise<DemoEventRecord | null>(resolve => setTimeout(() => {
-      isTimeout = true;
-      resolve(null);
-    }, EventEditorPopupComponent.DETAIL_LOAD_TIMEOUT_MS));
-
     try {
-      const record = await Promise.race([
-        Promise.all([
-          this.eventEditorDataService.loadFullItemById(activeUserId, row.id),
-          this.routeDelay.waitForRouteDelay(
-            EventEditorPopupComponent.DETAIL_LOAD_ROUTE,
-            undefined,
-            undefined,
-            EventEditorPopupComponent.DETAIL_LOAD_DEMO_DELAY_MS
-          )
-        ]).then(([loadedRecord]) => loadedRecord),
-        timeoutPromise
-      ]);
+      const record = await this.eventEditorDataService.loadFullItemById(activeUserId, row.id);
 
-      this.isLoadingEventData = false;
-      if (!record || isTimeout) {
+      this.isLoadingEventData.set(false);
+      this.endEventDataLoadingProgress();
+      if (!record) {
         return;
       }
 
@@ -1438,8 +1427,48 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       this.editingEventId = this.currentRecord.id;
       this.openRecord(this.currentRecord, readOnly, this.editorTarget);
     } catch {
-      this.isLoadingEventData = false;
+      this.isLoadingEventData.set(false);
+      this.clearEventDataLoadingProgress();
     }
+  }
+
+  private beginEventDataLoadingProgress(): void {
+    this.clearEventDataLoadingProgress();
+    this.eventDataLoadingProgressStartedAtMs = this.nowMs();
+    this.eventDataLoadingProgressTimer = setInterval(() => this.updateEventDataLoadingProgress(), 100);
+    this.updateEventDataLoadingProgress();
+  }
+
+  private updateEventDataLoadingProgress(): void {
+    if (!this.eventDataLoadingProgressStartedAtMs) {
+      this.eventDataLoadingProgress.set(0);
+      return;
+    }
+    const elapsedMs = Math.max(0, this.nowMs() - this.eventDataLoadingProgressStartedAtMs);
+    this.eventDataLoadingProgress.set(Math.min(0.96, elapsedMs / EventEditorPopupComponent.DETAIL_LOAD_PROGRESS_WINDOW_MS));
+  }
+
+  private endEventDataLoadingProgress(): void {
+    this.clearEventDataLoadingProgressTimer();
+    this.eventDataLoadingProgress.set(1);
+  }
+
+  private clearEventDataLoadingProgress(): void {
+    this.clearEventDataLoadingProgressTimer();
+    this.eventDataLoadingProgressStartedAtMs = 0;
+    this.eventDataLoadingProgress.set(0);
+  }
+
+  private clearEventDataLoadingProgressTimer(): void {
+    if (!this.eventDataLoadingProgressTimer) {
+      return;
+    }
+    clearInterval(this.eventDataLoadingProgressTimer);
+    this.eventDataLoadingProgressTimer = null;
+  }
+
+  private nowMs(): number {
+    return typeof performance !== 'undefined' ? performance.now() : Date.now();
   }
 
   private openRecord(record: DemoEventRecord, readOnly: boolean, target: AppTypes.EventEditorTarget): void {

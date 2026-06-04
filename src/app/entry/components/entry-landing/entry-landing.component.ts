@@ -10,6 +10,7 @@ import {
   InfoCardComponent,
   type InfoCardData
 } from '../../../shared/ui/components/card';
+import { ProgressIndicatorComponent } from '../../../shared/ui/components/progress-indicator';
 import {
   SmartListComponent,
   type ListQuery,
@@ -41,6 +42,7 @@ interface HowStepSlide {
   standalone: true,
   imports: [
     InfoCardComponent,
+    ProgressIndicatorComponent,
     SmartListComponent,
     LazyBgImageDirective,
     MatRippleModule,
