@@ -12,7 +12,6 @@ import { OwnedAssetsPopupFacadeService } from '../../owned-assets-popup-facade.s
 import { AssetCardBuilder, PricingBuilder } from '../../../shared/core/base/builders';
 import type * as AppTypes from '../../../shared/core/base/models';
 import { AppContext, AssetTicketsService, ShareTokensService } from '../../../shared/core';
-import { resolveCurrentRouteDelayMs } from '../../../shared/core/base/services/route-delay.service';
 import { AssetFormPopupComponent } from '../asset-form-popup/asset-form-popup.component';
 import { AssetTicketCodePopupComponent } from '../asset-ticket-code-popup/asset-ticket-code-popup.component';
 import { AssetTicketScannerPopupComponent } from '../asset-ticket-scanner-popup/asset-ticket-scanner-popup.component';
@@ -128,7 +127,6 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
     from(this.loadTicketSmartListPage(query));
   protected readonly assetSmartListConfig: SmartListConfig<AppTypes.AssetCard, OwnedAssetListFilters> = {
     pageSize: 18,
-    loadingDelayMs: resolveCurrentRouteDelayMs('/assets'),
     defaultView: 'list',
     emptyLabel: query => this.assetFacade.ownedAssetEmptyLabel(query.filters?.type ?? 'Car'),
     emptyDescription: query => this.assetFacade.ownedAssetEmptyDescription(query.filters?.type ?? 'Car'),
@@ -150,7 +148,6 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
   };
   protected readonly ticketSmartListConfig: SmartListConfig<AppTypes.ActivityListRow, AssetTicketListFilters> = {
     pageSize: 18,
-    loadingDelayMs: resolveCurrentRouteDelayMs('/assets/tickets'),
     defaultView: 'list',
     emptyLabel: 'No ticketed events',
     emptyDescription: 'Enable Ticketing On in an event to generate a ticket here.',
