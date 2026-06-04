@@ -67,6 +67,7 @@
     "@angular/compiler-cli": "^21.2.12",
     "@angular/material": "^21.2.12",
     "jsdom": "^27.1.0",
+    "playwright": "^1.60.0",
     "typescript": "~5.9.2",
     "vitest": "^4.0.8"
   }
