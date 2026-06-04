@@ -132,7 +132,7 @@ export class DemoHelpCenterService {
     });
     await Promise.all([
       this.helpCenterRepository.flushToIndexedDb(),
-      this.routeDelay.waitForRouteDelay('/privacy/consents', undefined, undefined, 1500)
+      this.routeDelay.waitForRouteDelay('/privacy/consents')
     ]);
     return this.clonePrivacyConsent(consent);
   }
@@ -194,7 +194,7 @@ export class DemoHelpCenterService {
     });
     await Promise.all([
       this.helpCenterRepository.flushToIndexedDb(),
-      this.routeDelay.waitForRouteDelay(`/admin/${documentKind}/revisions`, undefined, undefined, 1500)
+      this.routeDelay.waitForRouteDelay(`/admin/${documentKind}/revisions`)
     ]);
     return this.stateFromTable(this.table(), documentKind, language, contextKey);
   }
@@ -254,7 +254,7 @@ export class DemoHelpCenterService {
     });
     await Promise.all([
       this.helpCenterRepository.flushToIndexedDb(),
-      this.routeDelay.waitForRouteDelay(`/admin/${documentKind}/revisions/activate`, undefined, undefined, 1500)
+      this.routeDelay.waitForRouteDelay(`/admin/${documentKind}/revisions/activate`)
     ]);
     return this.stateFromTable(this.table(), documentKind, language, contextKey);
   }
@@ -328,7 +328,7 @@ export class DemoHelpCenterService {
     });
     await Promise.all([
       this.helpCenterRepository.flushToIndexedDb(),
-      this.routeDelay.waitForRouteDelay(`/admin/${documentKind}/revisions/delete`, undefined, undefined, 1500)
+      this.routeDelay.waitForRouteDelay(`/admin/${documentKind}/revisions/delete`)
     ]);
     return this.stateFromTable(this.table(), documentKind, language, contextKey);
   }

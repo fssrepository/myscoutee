@@ -10,7 +10,11 @@
     <span class="app-progress-indicator__bar-loading" [style.transform]="progressTransform()"></span>
   </div>
 } @else if (isLoadRingKind) {
-  <span class="app-progress-indicator app-progress-indicator--load-ring">
+  <span
+    class="app-progress-indicator app-progress-indicator--load-ring"
+    [class.is-state-loading]="isLoadingState"
+    [class.is-state-success]="isSuccessState"
+  >
     <svg viewBox="0 0 58 58" class="app-progress-indicator__load-ring-svg">
       <circle class="app-progress-indicator__load-ring-track" cx="29" cy="29" r="25"></circle>
       <circle

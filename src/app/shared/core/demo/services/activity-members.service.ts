@@ -39,6 +39,7 @@ export class DemoActivityMembersService extends DemoRouteDelayService {
     capacityTotal?: number | null,
     actorUserId = ''
   ): Promise<void> {
+    await this.waitForRouteDelay(DemoActivityMembersService.MEMBERS_ROUTE);
     await this.activityMembersRepository.replaceMembersByOwner(owner, members, capacityTotal, actorUserId);
   }
 

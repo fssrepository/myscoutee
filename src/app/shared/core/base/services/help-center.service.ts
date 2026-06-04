@@ -13,7 +13,6 @@ import { BaseRouteModeService } from './base-route-mode.service';
 import { RouteDelayService } from './route-delay.service';
 
 export const HELP_CENTER_LOAD_CONTEXT_KEY = 'help-center-load';
-const ADMIN_HELP_CENTER_LOAD_DEMO_DELAY_MS = 1500;
 
 @Injectable({
   providedIn: 'root'
@@ -121,7 +120,7 @@ export class HelpCenterService extends BaseRouteModeService {
   private async loadState(kind: HelpCenterDocumentKind, lang?: string | null, contextKey?: string | null): Promise<HelpCenterState> {
     const [state] = await Promise.all([
       this.helpService(kind).loadState(kind, lang, contextKey),
-      this.routeDelay.waitForRouteDelay(`/${kind}/active`, undefined, undefined, 1500)
+      this.routeDelay.waitForRouteDelay(`/${kind}/active`)
     ]);
     this.setState(kind, state);
     return this.cloneState(state);
@@ -137,10 +136,7 @@ export class HelpCenterService extends BaseRouteModeService {
     contextKey?: string | null
   ): Promise<T> {
     const delay = this.routeDelay.waitForRouteDelay(
-      this.adminRoute(kind, contextKey),
-      undefined,
-      undefined,
-      ADMIN_HELP_CENTER_LOAD_DEMO_DELAY_MS
+      this.adminRoute(kind, contextKey)
     );
     try {
       const [result] = await Promise.all([work, delay]);

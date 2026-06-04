@@ -144,6 +144,10 @@
   transition: stroke-dashoffset 120ms linear;
 }
 
+.app-progress-indicator--load-ring.is-state-success .app-progress-indicator__load-ring-progress {
+  stroke-dashoffset: 0;
+}
+
 .app-progress-indicator--spinner-ring,
 .app-progress-indicator__spinner-ring-svg {
   width: 100%;
