@@ -362,7 +362,7 @@ export class AppLocationService {
             allowEscapeClose: false,
             onConfirm: async () => {
               await this.sessionService.logout();
-              await this.router.navigateByUrl('/entry');
+              await this.router.navigateByUrl(this.router.url.split('?')[0].startsWith('/admin') ? '/admin' : '/entry');
             }
           });
         }

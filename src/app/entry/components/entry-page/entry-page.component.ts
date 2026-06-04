@@ -170,7 +170,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   }
 
   private async beginExistingSessionGate(): Promise<void> {
-    const session = await this.sessionService.ensureSession();
+    const session = await this.sessionService.ensureSession() ?? await this.sessionService.restoreFirebaseSession();
     if (!session) {
       return;
     }

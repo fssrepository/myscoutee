@@ -65,6 +65,7 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
   private static readonly DEMO_SAVE_MIN_BUSY_MS = 1500;
   private static readonly DEMO_EXPERIENCE_LOAD_MIN_BUSY_MS = 1500;
   private static readonly MAX_IMAGE_SLOTS = 8;
+  private static readonly MIN_REQUIRED_IMAGES = 3;
   private static readonly LANGUAGE_PANEL_GAP_PX = 8;
   private static readonly LANGUAGE_PANEL_MAX_HEIGHT_PX = 260;
   private static readonly DRAFT_AUTOSAVE_INTERVAL_MS = 30_000;
@@ -95,8 +96,8 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
   private isDraftAutosavePending = false;
 
   protected readonly steps: OnboardingStep[] = [
+    { id: 'photos', title: 'Photos', optional: false },
     { id: 'basics', title: 'Basics', optional: false },
-    { id: 'photos', title: 'Photos', optional: true },
     { id: 'identity', title: 'Identity', optional: true },
     { id: 'about', title: 'About', optional: true },
     { id: 'lifestyle', title: 'Lifestyle', optional: true },
@@ -179,7 +180,7 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
   }
 
   protected currentStep(): OnboardingStep {
-    const stepId = this.draft?.currentStepId ?? 'basics';
+    const stepId = this.draft?.currentStepId ?? 'photos';
     return this.steps.find(step => step.id === stepId) ?? this.steps[0];
   }
 
@@ -215,6 +216,9 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
     if (!this.hasLanguageReady()) {
       labels.push('Language');
     }
+    if (this.imageCount() < ProfileOnboardingPopupComponent.MIN_REQUIRED_IMAGES) {
+      labels.push('3 photos');
+    }
     return labels;
   }
 
@@ -224,6 +228,9 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
     }
     if (this.currentStep().id === 'basics') {
       return this.requiredMissingLabels().length === 0;
+    }
+    if (this.currentStep().id === 'photos') {
+      return this.imageCount() >= ProfileOnboardingPopupComponent.MIN_REQUIRED_IMAGES;
     }
     if (this.currentStep().id === 'review') {
       return this.requiredMissingLabels().length === 0;
@@ -1041,7 +1048,7 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
     add((draft.form.heightCm ?? 0) > 0);
     add(Boolean(draft.form.physique.trim()));
     add(draft.form.languages.length > 0);
-    add(draft.form.images.length > 0);
+    add(draft.form.images.length >= ProfileOnboardingPopupComponent.MIN_REQUIRED_IMAGES);
     add(draft.form.about.trim().length >= 20);
     add(draft.form.values.length > 0);
     add(draft.form.interests.length > 0);

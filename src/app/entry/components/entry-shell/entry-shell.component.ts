@@ -370,7 +370,7 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
         this.confirmationDialogService.openInfo(
           this.loginUnavailableMessage(gateState),
           {
-            title: 'Login Unavailable',
+            title: 'Please register',
             confirmLabel: 'OK'
           }
         );
@@ -623,7 +623,7 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
             this.confirmationDialogService.openInfo(
               this.uiText(result.message?.trim() || 'Login is currently unavailable from your country or region for security reasons. Please come back later.'),
               {
-                title: this.uiText('Login Unavailable'),
+                title: this.uiText('Please register'),
                 confirmLabel: this.uiText('OK')
               }
             );
@@ -925,7 +925,7 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
 
   private openBundledLoginUnavailableInfo(): void {
     this.confirmationDialogService.openInfo(this.loginUnavailableMessage(this.landingLoginAvailability), {
-      title: 'Login Unavailable',
+      title: 'Please register',
       confirmLabel: 'OK'
     });
   }

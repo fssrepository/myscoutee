@@ -90,6 +90,10 @@ export class SessionService {
           : 'Verification email sent. Confirm it, then continue here.');
         return null;
       }
+      if (result.errorMessage) {
+        this.firebaseNoticeRef.set(result.errorMessage);
+        return null;
+      }
       if (!result.profile) {
         return null;
       }

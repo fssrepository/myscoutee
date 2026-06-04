@@ -10,18 +10,21 @@ export class DemoIdeaPostsSeedBuilder {
         id: 'idea-why-priority-matching',
         lang: 'en',
         title: 'How preferences become small group meetups',
-        excerpt: 'MyScoutee helps people who do not already know each other form small real-world group meetups from preference signals.',
+        excerpt: 'MyScoutee helps people who do not already know each other form small real-world group meetups from preference signals, then learn from feedback after they actually meet.',
         contentHtml: `
           <p><strong>MyScoutee is not just a profile browser. It is a way to organize small group meetups between people who do not already know each other, using preferences as the starting signal.</strong></p>
           <p>The starting point can be a walk, brunch, board-game afternoon, sport session, coffee, or any small local plan. People show who they would like to meet and what kind of activity feels comfortable; the host or the system can then shape those signals into a group that has enough shared interest to make sense.</p>
           <p>This is why the priority score matters. It does not exist only to rank profiles. It helps MyScoutee understand which strangers are worth putting in the same social context, who should be invited first, and when a meetup has enough mutual preference to become a real plan.</p>
+          <p>Preferences are not fixed forever. Before meeting, a 1-10 score is an early signal: who seems interesting, what kind of plan feels comfortable, and how much energy someone wants to invest.</p>
+          <p>After a meetup, feedback becomes a reality check. People can rate each other up or down based on the actual experience: better than expected, about the same, or not quite the right fit.</p>
           <p>The goal is not simply a match. The goal is a small event with a reason, a time, a place, a capacity, and clearer expectations before people start talking.</p>
           <ul>
             <li>Preference scores give more nuance than a binary yes/no swipe.</li>
-            <li>Group events give strangers a shared reason to meet.</li>
+            <li>Before: preference scores show interest and comfort with the plan.</li>
+            <li>After: satisfaction feedback shows how the real interaction landed.</li>
             <li>Hosts can manage capacity, invitations, requests, and participant visibility.</li>
           </ul>
-          <p>In short: you describe the kind of people and activity you are open to, and MyScoutee helps turn that signal into a practical group meetup.</p>
+          <p>In short: you describe the kind of people and activity you are open to, and MyScoutee helps turn that signal into a practical group meetup, then learn from what worked.</p>
         `,
         featured: true,
         submittedAtIso: this.rebaseSeedDateTime('2026-04-29T10:00:00.000Z'),
@@ -87,26 +90,6 @@ export class DemoIdeaPostsSeedBuilder {
         nowIso
       }),
       this.defaultPost({
-        id: 'idea-feedback-before-after',
-        lang: 'en',
-        title: 'Before and after: preferences can change',
-        excerpt: 'Scores can start as interest, then become satisfaction feedback after people actually meet.',
-        contentHtml: `
-          <p>Preferences are not fixed forever. Before meeting, a 1-10 score is an early signal: who seems interesting, what kind of plan feels comfortable, and how much energy someone wants to invest.</p>
-          <p>After a meetup, feedback becomes a reality check. People can rate each other up or down based on the actual experience: better than expected, about the same, or not quite the right fit.</p>
-          <p>This is not meant to become a public popularity board. The useful signal is the movement: did trust grow, did interest drop, or did both people feel more motivated to meet again?</p>
-          <ul>
-            <li>Before: preference scores show interest and comfort with the plan.</li>
-            <li>After: satisfaction feedback shows how the real interaction landed.</li>
-            <li>Later: people can adjust their preferences anytime as they learn what works for them.</li>
-          </ul>
-          <p>The important question is not who is objectively best. It is whether a real meeting raises or lowers the signal between two specific people.</p>
-        `,
-        featured: true,
-        submittedAtIso: this.rebaseSeedDateTime('2026-04-14T14:10:00.000Z'),
-        nowIso
-      }),
-      this.defaultPost({
         id: 'idea-register-value',
         lang: 'en',
         title: 'What viewers unlock when they register',
@@ -132,18 +115,21 @@ export class DemoIdeaPostsSeedBuilder {
         id: 'idea-why-priority-matching-hu',
         lang: 'hu',
         title: 'Preferenciákból kis csoportos találkozó',
-        excerpt: 'A MyScoutee olyan emberekből segít kis csoportos találkozót szervezni, akik még nem ismerik egymást, de a preferenciáik alapján passzolhatnak.',
+        excerpt: 'A MyScoutee olyan emberekből segít kis csoportos találkozót szervezni, akik még nem ismerik egymást, de a preferenciáik és a találkozás utáni visszajelzéseik alapján passzolhatnak.',
         contentHtml: `
           <p><strong>A MyScoutee nem csak profilnézegető. Arra való, hogy preferenciák alapján kis csoportos találkozók jöjjenek létre olyan emberek között, akik még nem ismerik egymást.</strong></p>
           <p>A kiindulás lehet séta, brunch, társasjáték, sport, kávézás vagy bármilyen kis helyi program. A résztvevők jelzik, kikkel és milyen helyzetben találkoznának szívesen; a szervező vagy a rendszer pedig ezekből a jelekből próbál életképes csoportot formálni.</p>
           <p>Ezért fontos a preferencia-pontszám. Nem csak profilok rangsorolására való. Segít megérteni, melyik idegeneket érdemes ugyanabba a társas helyzetbe tenni, kit érdemes először meghívni, és mikor van elég kölcsönös érdeklődés ahhoz, hogy a találkozóból valódi terv legyen.</p>
+          <p>A preferencia nem végleges. Találkozás előtt az 1-10 pontszám inkább előzetes jel: ki tűnik érdekesnek, milyen program komfortos, és mennyi energiát tennél bele.</p>
+          <p>Találkozás után már van valós élmény. Ilyenkor a visszajelzés arról szólhat, hogy az ember feljebb vagy lejjebb pontozná-e a másikat az élmény alapján: jobb volt-e, ugyanolyan, vagy nem igazán passzolt.</p>
           <p>A cél tehát nem önmagában a match, hanem egy konkrét kis esemény: ok, időpont, hely, létszám és tisztább elvárások még az első beszélgetés előtt.</p>
           <ul>
             <li>A preferencia-pontszám árnyaltabb jel, mint egy igen/nem swipe.</li>
-            <li>A csoportos esemény közös okot ad idegen embereknek a találkozásra.</li>
+            <li>Előtte a pontszám érdeklődést és komfortot mutat.</li>
+            <li>Utána az elégedettségi visszajelzés megmutatja, hogyan sikerült a valódi találkozás.</li>
             <li>A szervező kezelheti a létszámot, meghívásokat, jelentkezéseket és láthatóságot.</li>
           </ul>
-          <p>Röviden: megadod, milyen emberekkel és milyen programban találkoznál, a MyScoutee pedig segít ebből valódi kis csoportos találkozót szervezni.</p>
+          <p>Röviden: megadod, milyen emberekkel és milyen programban találkoznál, a MyScoutee pedig segít ebből valódi kis csoportos találkozót szervezni, majd tanulni abból, mi működött.</p>
         `,
         featured: true,
         submittedAtIso: this.rebaseSeedDateTime('2026-04-29T10:00:00.000Z'),
@@ -200,26 +186,6 @@ export class DemoIdeaPostsSeedBuilder {
         `,
         featured: true,
         submittedAtIso: this.rebaseSeedDateTime('2026-04-16T16:45:00.000Z'),
-        nowIso
-      }),
-      this.defaultPost({
-        id: 'idea-feedback-before-after-hu',
-        lang: 'hu',
-        title: 'Előtte és utána: a preferenciák változhatnak',
-        excerpt: 'A pontszám először érdeklődést jelez, találkozás után pedig elégedettségi visszajelzéssé válhat.',
-        contentHtml: `
-          <p>A preferencia nem végleges. Találkozás előtt az 1-10 pontszám inkább előzetes jel: ki tűnik érdekesnek, milyen program komfortos, és mennyi energiát tennél bele.</p>
-          <p>Találkozás után már van valós élmény. Ilyenkor a visszajelzés arról szólhat, hogy az ember feljebb vagy lejjebb pontozná-e a másikat az élmény alapján: jobb volt-e, ugyanolyan, vagy nem igazán passzolt.</p>
-          <p>Ez nem nyilvános népszerűségi verseny. A lényeg a változás: nőtt-e a bizalom, csökkent-e az érdeklődés, vagy erősebb lett-e a kedv egy következő találkozóra?</p>
-          <ul>
-            <li>Előtte: a pontszám érdeklődést és komfortot mutat.</li>
-            <li>Utána: az elégedettségi visszajelzés megmutatja, hogyan sikerült a valódi találkozás.</li>
-            <li>Később: a felhasználó bármikor módosíthatja a preferenciáit, ahogy tanul abból, mi működik neki.</li>
-          </ul>
-          <p>Így nem az a kérdés, ki objektíven a legjobb, hanem hogy két konkrét ember között a valós találkozás feljebb vagy lejjebb viszi-e a jelet.</p>
-        `,
-        featured: true,
-        submittedAtIso: this.rebaseSeedDateTime('2026-04-14T14:10:00.000Z'),
         nowIso
       }),
       this.defaultPost({

@@ -64,6 +64,7 @@ export interface ProfileOnboardingAssessment {
 })
 export class ProfileOnboardingService {
   private static readonly STORAGE_PREFIX = 'profile-onboarding.v1';
+  private static readonly MIN_REQUIRED_IMAGES = 3;
   readonly currentProfileFormVersion = 2;
 
   assessUser(user: UserDto | null | undefined): ProfileOnboardingAssessment {
@@ -122,7 +123,7 @@ export class ProfileOnboardingService {
     return this.normalizeDraft({
       version: 1,
       userId: user.id.trim(),
-      currentStepId: 'basics',
+      currentStepId: 'photos',
       updatedAtIso: new Date().toISOString(),
       completedStepIds: [],
       skippedStepIds: [],
@@ -149,6 +150,9 @@ export class ProfileOnboardingService {
     }
     if ((user.languages ?? []).filter(language => this.hasText(language)).length === 0) {
       missing.push('languages');
+    }
+    if ((user.images ?? []).filter(image => this.hasText(image)).length < ProfileOnboardingService.MIN_REQUIRED_IMAGES) {
+      missing.push('images');
     }
     return missing;
   }
@@ -314,7 +318,7 @@ export class ProfileOnboardingService {
     const candidate = `${value ?? ''}`.trim();
     return this.stepIds().includes(candidate as ProfileOnboardingStepId)
       ? candidate as ProfileOnboardingStepId
-      : 'basics';
+      : 'photos';
   }
 
   private normalizeStepIds(values: readonly ProfileOnboardingStepId[] | undefined): ProfileOnboardingStepId[] {
@@ -323,7 +327,7 @@ export class ProfileOnboardingService {
   }
 
   private stepIds(): ProfileOnboardingStepId[] {
-    return ['basics', 'photos', 'identity', 'about', 'lifestyle', 'values', 'interests', 'experience', 'review'];
+    return ['photos', 'basics', 'identity', 'about', 'lifestyle', 'values', 'interests', 'experience', 'review'];
   }
 
   private normalizeProfileStatus(value: unknown): ProfileStatus {
