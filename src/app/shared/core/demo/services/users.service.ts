@@ -55,8 +55,33 @@ export class DemoUsersService extends DemoRouteDelayService implements UserServi
     _requestTimeoutMs?: number,
     onProgress?: (state: DemoBootstrapProgressState) => void
   ): Promise<UsersListQueryResponse> {
-    await this.bootstrapService.ensureReady(onProgress);
-    await this.waitForRouteDelay(DemoUsersService.DEMO_USERS_ROUTE);
+    let routeDelaySettled = false;
+    let pendingReadyProgress: DemoBootstrapProgressState | null = null;
+    const routeDelayPromise = this.waitForRouteDelay(DemoUsersService.DEMO_USERS_ROUTE)
+      .finally(() => {
+        routeDelaySettled = true;
+      });
+    const reportProgress = onProgress
+      ? (state: DemoBootstrapProgressState): void => {
+          if (state.stage === 'ready' && !routeDelaySettled) {
+            pendingReadyProgress = state;
+            onProgress({
+              percent: 98,
+              label: 'Loading demo users',
+              stage: 'indexedDb'
+            });
+            return;
+          }
+          pendingReadyProgress = null;
+          onProgress(state);
+        }
+      : undefined;
+
+    await this.bootstrapService.ensureReady(reportProgress);
+    await routeDelayPromise;
+    if (pendingReadyProgress) {
+      onProgress?.(pendingReadyProgress);
+    }
     return {
       users: this.usersRepository.queryAvailableDemoUsers()
     };
