@@ -20,4 +20,8 @@ export class AdminStatsRepository {
   async writeStore<T>(store: T): Promise<void> {
     await this.memoryDb.writeIndexedDbTableEntry(APP_INDEXED_DB_KEYS.adminStats, store);
   }
+
+  async clearStore(): Promise<void> {
+    await this.memoryDb.deleteIndexedDbTableEntry(APP_INDEXED_DB_KEYS.adminStats);
+  }
 }

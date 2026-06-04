@@ -1146,7 +1146,7 @@ export class EventMembersPopupComponent {
     nextMembers: readonly AppTypes.ActivityMemberEntry[],
     previousMembers: readonly AppTypes.ActivityMemberEntry[]
   ): Promise<void> {
-    await this.waitForAnimationKickoff();
+    await this.waitForMemberActionRender();
     await this.commitMembers(nextMembers, previousMembers);
   }
 
@@ -1156,7 +1156,7 @@ export class EventMembersPopupComponent {
     action: 'disqualify' | 'reinstate',
     previousMembers: readonly AppTypes.ActivityMemberEntry[]
   ): Promise<void> {
-    await this.waitForAnimationKickoff();
+    await this.waitForMemberActionRender();
     if (!this.ownerId) {
       return;
     }
@@ -1189,27 +1189,14 @@ export class EventMembersPopupComponent {
     return entry.role === 'Admin' || entry.role === 'Manager';
   }
 
-  private async waitForAnimationKickoff(): Promise<void> {
-    await this.waitForNextPaint();
-    await this.wait(16);
-  }
-
-  private async wait(delayMs: number): Promise<void> {
-    if (delayMs <= 0) {
-      return;
-    }
+  private async waitForMemberActionRender(): Promise<void> {
     await new Promise<void>(resolve => {
-      setTimeout(() => resolve(), delayMs);
-    });
-  }
-
-  private async waitForNextPaint(): Promise<void> {
-    await new Promise<void>(resolve => {
-      if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
-        window.requestAnimationFrame(() => resolve());
+      const run = () => resolve();
+      if (typeof globalThis.requestAnimationFrame === 'function') {
+        globalThis.requestAnimationFrame(() => globalThis.requestAnimationFrame(run));
         return;
       }
-      setTimeout(() => resolve(), 0);
+      setTimeout(run, 0);
     });
   }
 

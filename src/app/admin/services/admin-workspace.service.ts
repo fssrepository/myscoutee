@@ -3,7 +3,7 @@ import { Location } from '@angular/common';
 import { Injectable, computed, inject, signal } from '@angular/core';
 
 import { environment } from '../../../environments/environment';
-import { scopedStorageKey } from '../../shared/core/base/storage-scope';
+import { APP_STORAGE_KEYS } from '../../shared/core/base/storage-scope';
 import {
   AppContext,
   HelpCenterService,
@@ -87,11 +87,7 @@ import type {
 } from '../models/admin-stats.model';
 import { AdminShellService } from './admin-shell.service';
 
-const OBSOLETE_NOTIFICATION_RULE_PARAMETER_KEYS = new Set([
-  'jobs.process.randomGroups.historyPenalty'
-]);
-
-const ADMIN_SESSION_STORAGE_KEY = scopedStorageKey('admin.session.v1');
+const ADMIN_SESSION_STORAGE_KEY = APP_STORAGE_KEYS.adminSession;
 const ADMIN_NOTIFICATION_INTERVAL_UNIT = {
   seconds: 'seconds',
   minutes: 'minutes',
@@ -178,6 +174,9 @@ export class AdminWorkspaceService {
   }
 
   get usesHttpAdminApi(): boolean {
+    if (this.sessionService.currentSession()?.kind === 'demo') {
+      return false;
+    }
     return environment.activitiesDataSource === 'http' || this.isFirebaseAdminMode;
   }
 
@@ -340,18 +339,18 @@ export class AdminWorkspaceService {
     await this.ensureDemoAdminProfiles();
     onProgress?.({ percent: 36, label: 'Preparing admin records', stage: 'records' });
     this.demoChatsRepository.init();
-    await this.ensureDemoNotificationCenterSeed();
-    await this.ensureDemoMonitoringSeed();
-    await this.ensureDemoStatsSeed();
-    await this.ensureDemoParamsSeed();
-    await this.ensureDemoAdminMenuCounterSeed();
+    await this.clearDemoAdminStores();
+    await this.seedDemoNotificationCenter();
+    await this.seedDemoMonitoring();
+    await this.seedDemoStats();
+    await this.seedDemoParams();
+    await this.seedDemoAdminMenuCounters();
     onProgress?.({ percent: 48, label: 'Creating moderation records', stage: 'records' });
-    const store = await this.ensureDemoModerationStore();
+    const store = await this.seedDemoModerationStore();
     await this.ensureDemoAdminSupportSeed(admin);
     onProgress?.({ percent: 74, label: 'Resolving reported users', stage: 'records' });
     const dashboard = this.buildDemoDashboard(admin, store);
     onProgress?.({ percent: 92, label: 'Opening admin workspace', stage: 'profile' });
-    await this.waitForBeat();
     onProgress?.({ percent: 100, label: 'Admin workspace ready', stage: 'ready' });
     return dashboard;
   }
@@ -375,7 +374,7 @@ export class AdminWorkspaceService {
       this.demoUsersRatingsRepository.init(seededUsers);
     });
     await this.runAdminSelectorStep(onProgress, ADMIN_DEMO_SELECTOR_PROGRESS_STEPS[2], () =>
-      this.ensureDemoAffinityGraphSeed()
+      this.seedDemoAffinityGraph()
     );
     this.demoAdminSelectorReady = true;
     onProgress?.(ADMIN_DEMO_SELECTOR_PROGRESS_STEPS[3]);
@@ -393,55 +392,43 @@ export class AdminWorkspaceService {
     return result;
   }
 
-  private async ensureDemoAffinityGraphSeed(): Promise<void> {
+  private async seedDemoAffinityGraph(): Promise<void> {
     await this.demoAffinityGraphRepository.buildAndWriteGraphSnapshot();
   }
 
-  private async ensureDemoModerationStore(): Promise<AdminModerationStore> {
-    const existing = await this.adminModerationRepository.readStore<AdminModerationStore>();
-    if (existing?.reports?.length) {
-      return this.normalizeStore(existing);
-    }
+  private async clearDemoAdminStores(): Promise<void> {
+    await Promise.all([
+      this.adminNotificationsRepository.clearStore(),
+      this.adminMonitoringRepository.clearStore(),
+      this.adminStatsRepository.clearStore(),
+      this.adminParamsRepository.clearStore(),
+      this.adminModerationRepository.clearStore()
+    ]);
+  }
+
+  private async seedDemoModerationStore(): Promise<AdminModerationStore> {
     const seeded = this.buildSeedDemoModerationStore();
     await this.adminModerationRepository.writeStore(seeded);
     return seeded;
   }
 
-  private async ensureDemoNotificationCenterSeed(): Promise<void> {
-    const existing = await this.adminNotificationsRepository.readStore<AdminNotificationCenterState>();
-    const seeded = this.withDefaultNotificationRules(existing ?? this.buildDefaultNotificationCenter());
-    if (!this.shouldRewriteDemoNotificationSeed(existing, seeded)) {
-      return;
-    }
-    await this.adminNotificationsRepository.writeStore(seeded);
+  private async seedDemoNotificationCenter(): Promise<void> {
+    await this.adminNotificationsRepository.writeStore(this.buildDefaultNotificationCenter());
   }
 
-  private async ensureDemoMonitoringSeed(): Promise<void> {
-    const existing = await this.adminMonitoringRepository.readStore<AdminMonitoringStateDto>();
-    if (existing?.categories?.length) {
-      return;
-    }
+  private async seedDemoMonitoring(): Promise<void> {
     await this.adminMonitoringRepository.writeStore(this.buildDefaultMonitoringState());
   }
 
-  private async ensureDemoStatsSeed(): Promise<void> {
-    const existing = await this.adminStatsRepository.readStore<AdminStatsDashboardDto>();
-    const normalized = existing ? this.normalizeStatsDashboard(existing, 'demo') : null;
-    if (normalized && this.isFreshStatsDemoSnapshot(normalized)) {
-      return;
-    }
+  private async seedDemoStats(): Promise<void> {
     await this.adminStatsRepository.writeStore(this.buildSeedDemoStatsSnapshot());
   }
 
-  private async ensureDemoParamsSeed(): Promise<void> {
-    const existing = await this.adminParamsRepository.readStore<AdminParamsDemoStore>();
-    if (existing?.sections?.length) {
-      return;
-    }
+  private async seedDemoParams(): Promise<void> {
     await this.adminParamsRepository.writeStore(this.buildDefaultParamsStore());
   }
 
-  private async ensureDemoAdminMenuCounterSeed(): Promise<void> {
+  private async seedDemoAdminMenuCounters(): Promise<void> {
     const [notificationCenter, monitoringState] = await Promise.all([
       this.adminNotificationsRepository.readStore<AdminNotificationCenterState>(),
       this.adminMonitoringRepository.readStore<AdminMonitoringStateDto>()
@@ -506,17 +493,6 @@ export class AdminWorkspaceService {
       || normalized.includes('timeout')
       || normalized.includes('hiany')
       || normalized.includes('hiba');
-  }
-
-  private shouldRewriteDemoNotificationSeed(
-    existing: AdminNotificationCenterState | null | undefined,
-    seeded: AdminNotificationCenterState
-  ): boolean {
-    if (!existing?.rules?.length) {
-      return true;
-    }
-    const existingKeys = new Set((existing.rules ?? []).map(rule => `${rule.ruleKey ?? ''}`.trim()));
-    return seeded.rules.some(rule => !existingKeys.has(rule.ruleKey));
   }
 
   private buildSeedDemoModerationStore(): AdminModerationStore {
@@ -784,14 +760,6 @@ export class AdminWorkspaceService {
     return Math.max(0, Math.trunc(Number(chat?.unread) || 0));
   }
 
-  private normalizeStore(store: AdminModerationStore): AdminModerationStore {
-    return {
-      seededAtIso: store.seededAtIso || new Date().toISOString(),
-      reports: Array.isArray(store.reports) ? store.reports.map(report => ({ ...report })) : [],
-      feedback: Array.isArray(store.feedback) ? store.feedback.map(item => ({ ...item })) : []
-    };
-  }
-
   private normalizeDashboard(dashboard: AdminDashboardDto): AdminDashboardDto {
     return {
       activeAdmin: {
@@ -984,7 +952,7 @@ export class AdminWorkspaceService {
     const normalizedSource = `${dashboard.source ?? source}`.trim() as AdminStatsDashboardDto['source'];
     return {
       generatedAtIso: `${dashboard.generatedAtIso ?? ''}`.trim() || new Date().toISOString(),
-      source: ['demo', 'http', 'fallback'].includes(normalizedSource) ? normalizedSource : source,
+      source: ['demo', 'http'].includes(normalizedSource) ? normalizedSource : source,
       healthScore: this.clampInteger(dashboard.healthScore, 0, 100, 0),
       healthLabelKey: `${dashboard.healthLabelKey ?? ''}`.trim() || 'stats.health.good',
       healthSummaryKey: `${dashboard.healthSummaryKey ?? ''}`.trim() || 'stats.health.summary',
@@ -1104,19 +1072,6 @@ export class AdminWorkspaceService {
     };
   }
 
-  private isFreshStatsDemoSnapshot(snapshot: AdminStatsDashboardDto): boolean {
-    return snapshot.timeline.length > 0
-      && snapshot.eventTypes.length > 0
-      && snapshot.segments.some(segment => segment.key === 'community')
-      && snapshot.segments.some(segment => segment.items.some(item => item.key === 'all-events'))
-      && snapshot.segments.some(segment => segment.items.some(item => item.key === 'profile-fill-average'))
-      && snapshot.graph.timeline.length > 0
-      && snapshot.graph.metrics.some(metric => metric.key === 'graph-network-quality')
-      && snapshot.revenue.timeline.length > 0
-      && snapshot.revenue.assetCategories.some(item => item.key === 'car')
-      && !snapshot.revenue.assetCategories.some(item => item.key === 'equipment' || item.key === 'transport');
-  }
-
   private normalizeStatsTone(value: string | null | undefined): AdminStatsMetricDto['tone'] {
     const normalized = `${value ?? ''}`.trim();
     return ['blue', 'green', 'gold', 'red', 'purple', 'slate'].includes(normalized)
@@ -1147,7 +1102,7 @@ export class AdminWorkspaceService {
     const categories = (state.categories ?? []).map(category => this.normalizeMonitoringCategory(category));
     return {
       generatedAtIso: `${state.generatedAtIso ?? ''}`.trim() || new Date().toISOString(),
-      source: ['demo', 'http', 'fallback'].includes(normalizedSource) ? normalizedSource : source,
+      source: ['demo', 'http'].includes(normalizedSource) ? normalizedSource : source,
       health: this.normalizeMonitoringHealth(state.health),
       categories
     };
@@ -1481,53 +1436,6 @@ export class AdminWorkspaceService {
     };
   }
 
-  private withDefaultNotificationRules(state: AdminNotificationCenterState): AdminNotificationCenterState {
-    const normalized = this.normalizeNotificationCenter(state);
-    const defaults = this.buildDefaultNotificationCenter();
-    const existingByKey = new Map((state.rules ?? []).map(rule => [`${rule.ruleKey ?? ''}`.trim(), rule] as const));
-    const defaultKeys = new Set(defaults.rules.map(rule => rule.ruleKey));
-    const mergedRules = [
-      ...defaults.rules.map(defaultRule => this.mergeDefaultNotificationRule(defaultRule, existingByKey.get(defaultRule.ruleKey))),
-      ...normalized.rules.filter(rule => !defaultKeys.has(rule.ruleKey))
-    ];
-    return this.normalizeNotificationCenter({
-      ...normalized,
-      rules: mergedRules,
-      emailTemplates: normalized.emailTemplates.length > 0 ? normalized.emailTemplates : defaults.emailTemplates,
-      updatedDate: normalized.updatedDate || defaults.updatedDate
-    });
-  }
-
-  private mergeDefaultNotificationRule(
-    defaultRule: AdminNotificationRule,
-    existingRule: AdminNotificationRule | undefined
-  ): AdminNotificationRule {
-    if (!existingRule) {
-      return defaultRule;
-    }
-    return {
-      ...defaultRule,
-      ...existingRule,
-      label: existingRule.label || defaultRule.label,
-      category: existingRule.category || defaultRule.category,
-      description: existingRule.description || defaultRule.description,
-      actionKey: existingRule.actionKey || defaultRule.actionKey,
-      triggerKind: existingRule.triggerKind || defaultRule.triggerKind,
-      manualRunEnabled: existingRule.manualRunEnabled === true,
-      priority: existingRule.priority || defaultRule.priority,
-      channels: existingRule.channels ?? defaultRule.channels,
-      timing: existingRule.timing ?? defaultRule.timing,
-      scheduleSlots: this.mergeDefaultNotificationRuleScheduleSlots(defaultRule, existingRule),
-      parameters: this.mergeNotificationRuleParameters(defaultRule.parameters, existingRule.parameters),
-      message: existingRule.message ?? defaultRule.message,
-      runState: existingRule.runState ?? defaultRule.runState,
-      runHistory: existingRule.runHistory ?? defaultRule.runHistory,
-      adminManageable: (existingRule as AdminNotificationRule & { adminManageable?: unknown }).adminManageable === undefined
-        ? defaultRule.adminManageable
-        : existingRule.adminManageable === true
-    };
-  }
-
   private normalizeNotificationRule(rule: AdminNotificationRule): AdminNotificationRule {
     const triggerKind = this.normalizeNotificationTriggerKind(rule.triggerKind);
     const timingMode = this.normalizeNotificationTimingMode(rule.timing?.mode, triggerKind);
@@ -1609,63 +1517,6 @@ export class AdminWorkspaceService {
       updatedDate: `${rule.updatedDate ?? ''}`.trim() || null,
       updatedUser: `${rule.updatedUser ?? ''}`.trim() || null
     };
-  }
-
-  private mergeDefaultNotificationRuleScheduleSlots(
-    defaultRule: AdminNotificationRule,
-    existingRule: AdminNotificationRule
-  ): AdminNotificationRule['scheduleSlots'] {
-    const existingSlots = existingRule.scheduleSlots ?? [];
-    const defaultSlots = defaultRule.scheduleSlots ?? [];
-    if (!defaultSlots.length) {
-      return [];
-    }
-    if (defaultSlots.length && existingSlots.length && existingSlots.every(slot => this.isGeneratedDefaultRunWindow(slot))) {
-      return defaultSlots;
-    }
-    return existingSlots.length ? existingSlots : defaultSlots;
-  }
-
-  private isGeneratedDefaultRunWindow(slot: AdminNotificationScheduleSlot): boolean {
-    return `${slot.id ?? ''}`.trim() === 'run-window-default'
-      && slot.frequency === 'daily'
-      && `${slot.time ?? ''}`.trim() === '09:00'
-      && `${slot.date ?? ''}`.trim() === ''
-      && Math.trunc(Number(slot.dayOfWeek) || 1) === 1;
-  }
-
-  private mergeNotificationRuleParameters(
-    defaultParameters: readonly AdminNotificationRuleParameter[] | undefined,
-    existingParameters: readonly AdminNotificationRuleParameter[] | undefined
-  ): AdminNotificationRuleParameter[] {
-    if (!(defaultParameters ?? []).length) {
-      return [];
-    }
-    const existingByKey = new Map(
-      (existingParameters ?? [])
-        .map(field => this.normalizeNotificationRuleParameter(field))
-        .filter(field => field.key)
-        .filter(field => !OBSOLETE_NOTIFICATION_RULE_PARAMETER_KEYS.has(field.key))
-        .map(field => [field.key, field] as const)
-    );
-    const defaultKeys = new Set<string>();
-    const merged = (defaultParameters ?? [])
-      .map(defaultField => {
-        const normalizedDefault = this.normalizeNotificationRuleParameter(defaultField);
-        defaultKeys.add(normalizedDefault.key);
-        const existing = existingByKey.get(normalizedDefault.key);
-        if (!existing) {
-          return normalizedDefault;
-        }
-        return this.normalizeNotificationRuleParameter({
-          ...normalizedDefault,
-          numberValue: existing.valueType === 'number' ? existing.numberValue : normalizedDefault.numberValue,
-          textValue: existing.valueType === 'text' ? existing.textValue : normalizedDefault.textValue
-        });
-      })
-      .filter(field => field.key);
-    const custom = [...existingByKey.values()].filter(field => !defaultKeys.has(field.key));
-    return [...merged, ...custom];
   }
 
   private normalizeAdminManageable(rule: AdminNotificationRule): boolean {
@@ -1897,10 +1748,6 @@ export class AdminWorkspaceService {
 
   private isAdminAccessDenied(error: unknown): boolean {
     return error instanceof HttpErrorResponse && (error.status === 401 || error.status === 403);
-  }
-
-  private waitForBeat(): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, 180));
   }
 
   private waitForUiYield(): Promise<void> {
