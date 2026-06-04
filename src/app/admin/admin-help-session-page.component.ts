@@ -151,26 +151,13 @@ export class AdminHelpSessionPageComponent implements OnInit {
 
   private async resolveAdminHelpToken(token: string): Promise<ShareTokenResolvedItem | null> {
     if (!environment.firebaseLoginEnabled) {
-      const demoResolved = this.resolveDemoAdminHelpToken(token);
-      if (demoResolved) {
-        return demoResolved;
-      }
-    }
-    try {
-      const resolved = await Promise.race([
-        this.shareTokens.resolveToken(token, ''),
-        new Promise<null>(resolve => setTimeout(() => resolve(null), 1200))
-      ]);
-      if (resolved) {
-        return resolved;
-      }
-    } catch {
-      // Fall through to the demo-token fallback below.
-    }
-    if (!environment.firebaseLoginEnabled) {
       return this.resolveDemoAdminHelpToken(token);
     }
-    return null;
+    try {
+      return await this.shareTokens.resolveToken(token, '');
+    } catch {
+      return null;
+    }
   }
 
   private applyProgress(state: DemoBootstrapProgressState): void {
