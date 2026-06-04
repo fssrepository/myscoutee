@@ -1162,6 +1162,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
         total: 0
       };
     }
+    await this.ownedAssets.waitForAssetListLoad(userId);
     const filtered = this.orderedOwnedAssetCards(type);
     const page = Math.max(0, Math.trunc(Number(query.page) || 0));
     const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 1));

@@ -26,6 +26,7 @@ export class OwnedAssetsPopupFacadeService {
   private readonly httpMediaService = inject(HttpMediaService);
   private readonly assetListRevisionRef = signal(0);
   private readonly assetListReloadRevisionRef = signal(0);
+  private readonly assetListLoadingRef = signal(false);
   private readonly uiRevisionRef = signal(0);
 
   readonly assetTypeOptions: AppTypes.AssetType[] = APP_STATIC_DATA.assetTypeOptions;
@@ -53,6 +54,9 @@ export class OwnedAssetsPopupFacadeService {
   private pendingAssetImageFile: File | null = null;
   private pendingAssetSourceImageUrl = '';
   private assetMutationVersion = 0;
+  private trackedAssetRefreshToken = 0;
+  private trackedAssetRefreshOwnerUserId = '';
+  private trackedAssetRefreshPromise: Promise<void> | null = null;
   private pendingAssetDeleteLabelValue = '';
   private pendingAssetDeleteErrorValue = '';
   private assetsExplanationContextKey: string | null = null;
@@ -60,6 +64,7 @@ export class OwnedAssetsPopupFacadeService {
 
   readonly assetListRevision = this.assetListRevisionRef.asReadonly();
   readonly assetListReloadRevision = this.assetListReloadRevisionRef.asReadonly();
+  readonly assetListLoading = this.assetListLoadingRef.asReadonly();
   readonly uiRevision = this.uiRevisionRef.asReadonly();
 
   get assetCards(): AppTypes.AssetCard[] {
@@ -89,6 +94,18 @@ export class OwnedAssetsPopupFacadeService {
 
   assetListRevisionValue(): number {
     return this.assetListRevisionRef();
+  }
+
+  async waitForAssetListLoad(ownerUserId: string): Promise<void> {
+    const normalizedOwnerUserId = ownerUserId.trim();
+    const refreshPromise = normalizedOwnerUserId
+      && normalizedOwnerUserId === this.trackedAssetRefreshOwnerUserId
+      ? this.trackedAssetRefreshPromise
+      : null;
+    if (!refreshPromise) {
+      return;
+    }
+    await refreshPromise;
   }
 
   initializeFromUser(userId: string): void {
@@ -340,6 +357,8 @@ export class OwnedAssetsPopupFacadeService {
     this.closeAssetForm();
     if (filter === 'Ticket') {
       this.assetPopupState.prepareTicketPopupOpen();
+    } else {
+      void this.refreshOwnedAssetsFromRepository(this.resolveOwnerUserId(), { trackLoading: true });
     }
     this.setAssetsExplanationContext(this.assetExplanationContextForFilter(filter));
     this.assetPopupState.setPrimaryVisible(true);
@@ -366,6 +385,8 @@ export class OwnedAssetsPopupFacadeService {
     this.activePopupFilter = filter;
     if (filter === 'Ticket') {
       this.assetPopupState.prepareTicketPopupOpen();
+    } else {
+      void this.refreshOwnedAssetsFromRepository(this.resolveOwnerUserId(), { trackLoading: true });
     }
     this.setAssetsExplanationContext(this.assetExplanationContextForFilter(filter));
     this.assetPopupState.setPrimaryVisible(true);
@@ -992,13 +1013,47 @@ export class OwnedAssetsPopupFacadeService {
     this.assetsExplanationContextKey = null;
   }
 
-  private async refreshOwnedAssetsFromRepository(ownerUserId: string): Promise<void> {
-    const requestMutationVersion = this.assetMutationVersion;
-    const cards = await this.assetsService.queryOwnedAssetsByUser(ownerUserId);
-    if (this.activeOwnerUserId !== ownerUserId || requestMutationVersion !== this.assetMutationVersion) {
-      return;
+  private refreshOwnedAssetsFromRepository(
+    ownerUserId: string,
+    options: { trackLoading?: boolean } = {}
+  ): Promise<void> {
+    const normalizedOwnerUserId = ownerUserId.trim();
+    if (!normalizedOwnerUserId) {
+      return Promise.resolve();
     }
-    this.applyAssetCards(cards, { persist: false, reloadList: false });
+    const requestMutationVersion = this.assetMutationVersion;
+    const trackLoading = options.trackLoading === true;
+    const trackedToken = trackLoading ? ++this.trackedAssetRefreshToken : 0;
+    if (trackLoading) {
+      this.trackedAssetRefreshOwnerUserId = normalizedOwnerUserId;
+      this.assetListLoadingRef.set(true);
+      this.touchUiState();
+    }
+    const refreshPromise = (async () => {
+      try {
+        const cards = await this.assetsService.queryOwnedAssetsByUser(normalizedOwnerUserId);
+        if (
+          this.activeOwnerUserId !== normalizedOwnerUserId
+          || requestMutationVersion !== this.assetMutationVersion
+        ) {
+          return;
+        }
+        this.applyAssetCards(cards, { persist: false, reloadList: false });
+      } catch {
+        // Keep the popup usable with the already-peeked cache if the refresh fails.
+      } finally {
+        if (trackLoading && this.trackedAssetRefreshToken === trackedToken) {
+          this.trackedAssetRefreshPromise = null;
+          this.trackedAssetRefreshOwnerUserId = '';
+          this.assetListLoadingRef.set(false);
+          this.touchUiState();
+        }
+      }
+    })();
+    if (trackLoading) {
+      this.trackedAssetRefreshPromise = refreshPromise;
+    }
+    return refreshPromise;
   }
 
   private markAssetMutation(): void {
