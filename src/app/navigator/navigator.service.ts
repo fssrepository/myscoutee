@@ -14,7 +14,6 @@ import {
   type UserImpressionsSectionDto,
   type UserRealtimeLongPollResponseDto
 } from '../shared/core';
-import { resolveCurrentRouteDelayMs } from '../shared/core/base/services/route-delay.service';
 import { APP_STORAGE_KEYS } from '../shared/core/base/storage-scope';
 import { ConfirmationDialogService } from '../shared/ui/services/confirmation-dialog.service';
 import { AssetPopupStateService } from '../asset/asset-popup-state.service';
@@ -296,7 +295,6 @@ export class NavigatorService {
           deletedAtIso: null
         };
         const saved = await this.usersService.saveUserProfile(reactivatedUser, {
-          minimumDurationMs: this.usersService.demoModeEnabled ? resolveCurrentRouteDelayMs('/auth/me') : 0,
           returnFallbackOnFailure: false
         });
         if (!saved) {

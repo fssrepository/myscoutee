@@ -4,7 +4,7 @@ import { environment } from '../../environments/environment';
 import { APP_STATIC_DATA } from '../shared/app-static-data';
 import { PricingBuilder } from '../shared/core/base/builders';
 import type * as AppTypes from '../shared/core/base/models';
-import { resolveCurrentRouteDelayMs } from '../shared/core/base/services/route-delay.service';
+import { RouteDelayService } from '../shared/core/base/services/route-delay.service';
 import { AssetPopupStateService } from './asset-popup-state.service';
 import { AppContext, AssetCardBuilder, AssetDefaultsBuilder, AssetsService, ExplanationGuideService, type ActivityCounterKey } from '../shared/core';
 import { HttpMediaService } from '../shared/core/http';
@@ -25,6 +25,7 @@ export class OwnedAssetsPopupFacadeService {
   private readonly appCtx = inject(AppContext);
   private readonly explanationGuide = inject(ExplanationGuideService);
   private readonly httpMediaService = inject(HttpMediaService);
+  private readonly routeDelay = inject(RouteDelayService);
   private readonly assetListRevisionRef = signal(0);
   private readonly assetListReloadRevisionRef = signal(0);
   private readonly uiRevisionRef = signal(0);
@@ -1020,7 +1021,7 @@ export class OwnedAssetsPopupFacadeService {
   }
 
   private demoMutationWindowMs(): number {
-    return resolveCurrentRouteDelayMs('/assets');
+    return this.routeDelay.resolveDelayMs('/assets');
   }
 
   private async wait(delayMs: number): Promise<void> {
