@@ -10,7 +10,7 @@ import { ConfirmationDialogComponent } from '../../../shared/ui/components/confi
 import { AvatarBtnComponent } from '../avatar-btn/avatar-btn.component';
 import { NavigatorMenuComponent } from '../navigator-menu/navigator-menu.component';
 import { NavigatorSettingsPopupsComponent } from '../navigator-settings-popups/navigator-settings-popups.component';
-import { SubEventResourcePopupService } from '../../../activity/services/sub-event-resource-popup.service';
+import { SubEventResourcePopupController } from '../../../activity/services/sub-event-resource-popup.controller';
 import { NavigatorService } from '../../navigator.service';
 
 @Component({
@@ -36,7 +36,7 @@ export class NavigatorComponent {
   private readonly ownedAssets = inject(OwnedAssetsPopupFacadeService);
   private readonly eventFeedbackPopupService = inject(EventFeedbackPopupStateService);
   private readonly eventEditorService = inject(EventEditorPopupStateService);
-  protected readonly subEventResources = inject(SubEventResourcePopupService);
+  protected readonly subEventResources = inject(SubEventResourcePopupController);
   private lastHandledActivitiesRequestMs = 0;
   private lastHandledAssetRequestMs = 0;
   private lastHandledEventFeedbackRequestMs = 0;

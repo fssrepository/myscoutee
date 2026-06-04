@@ -28,7 +28,6 @@ interface SupplyBringDialogState {
 interface SupplyContributionListFilters {
   revision?: number;
   contextKey?: string;
-  showProgress?: boolean;
 }
 
 export interface EventSupplyContributionsPopupHost {
@@ -83,8 +82,7 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
   protected supplyContributionSmartListQuery: Partial<ListQuery<SupplyContributionListFilters>> = {
     filters: {
       revision: 0,
-      contextKey: '',
-      showProgress: true
+      contextKey: ''
     }
   };
 
@@ -150,8 +148,7 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
       this.supplyContributionSmartListQuery = {
         filters: {
           revision: Date.now(),
-          contextKey,
-          showProgress: true
+          contextKey
         }
       };
       return;

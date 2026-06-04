@@ -20,7 +20,6 @@ import {
   UsersService,
   type UserDto
 } from '../../shared/core';
-import { resolveCurrentRouteDelayMs, RouteDelayService } from '../../shared/core/base/services/route-delay.service';
 import { ActivitiesPopupStateService } from './activities-popup-state.service';
 import { EventEditorPopupStateService } from './event-editor-popup-state.service';
 import { NavigatorService } from '../../navigator';
@@ -177,8 +176,7 @@ interface AssignedAssetJoinPricingPreview {
 @Injectable({
   providedIn: 'root'
 })
-export class SubEventResourcePopupService {
-  private static readonly SUB_EVENT_RESOURCES_ROUTE = '/activities/events/subevent-resources';
+export class SubEventResourcePopupController {
   private readonly activitiesContext = inject(ActivitiesPopupStateService);
   private readonly eventEditorService = inject(EventEditorPopupStateService);
   private readonly assetPopupService = inject(AssetPopupStateService);
@@ -191,7 +189,6 @@ export class SubEventResourcePopupService {
   private readonly popupCtx = inject(AppPopupContext);
   private readonly usersService = inject(UsersService);
   private readonly navigatorService = inject(NavigatorService);
-  private readonly routeDelay = inject(RouteDelayService);
 
   private get users(): UserDto[] {
     return this.usersService.peekCachedUsers();
@@ -958,11 +955,8 @@ export class SubEventResourcePopupService {
   }
 
   private async loadSupplyContributionRowsPage(
-    query: ListQuery<{ revision?: number; contextKey?: string; showProgress?: boolean }>
+    query: ListQuery<{ revision?: number; contextKey?: string }>
   ): Promise<PageResult<AppTypes.SubEventSupplyContributionRow>> {
-    if (query.filters?.showProgress === true) {
-      await this.routeDelay.waitForRouteDelay(SubEventResourcePopupService.SUB_EVENT_RESOURCES_ROUTE);
-    }
     const rows = this.supplyContributionRows();
     if (rows.length === 0 && !this.supplyPopupRef()) {
       return {
@@ -1816,45 +1810,41 @@ export class SubEventResourcePopupService {
       busy: true,
       error: null
     });
-    const startedAt = Date.now();
-    void this.ensureAssignedAssetJoinMinimumBusyDuration(startedAt)
-      .then(() => {
-        if (this.isAssetOwnedByActiveUser(sourceCard)) {
-          this.ownedAssets.assetCards = this.ownedAssets.assetCards.map(asset => (
-            asset.id === sourceCard.id && asset.type === sourceCard.type
-              ? {
-                  ...asset,
-                  requests: nextRequests
-                }
-              : asset
-          ));
-          this.assignedAssetJoinDialogRef.set(null);
-          this.syncPopupSubEventMetrics();
-          return;
-        }
+    if (this.isAssetOwnedByActiveUser(sourceCard)) {
+      this.ownedAssets.assetCards = this.ownedAssets.assetCards.map(asset => (
+        asset.id === sourceCard.id && asset.type === sourceCard.type
+          ? {
+              ...asset,
+              requests: nextRequests
+            }
+          : asset
+      ));
+      this.assignedAssetJoinDialogRef.set(null);
+      this.syncPopupSubEventMetrics();
+      return;
+    }
 
-        const activeContext = this.popupContextRef();
-        if (!activeContext || activeContext.subEvent.id !== context.subEvent.id) {
-          return;
-        }
-        const nextFallbackCards = this.cloneFallbackCards(activeContext.fallbackCardsByType);
-        const existingCards = nextFallbackCards[sourceCard.type] ?? [];
-        const nextFallbackAsset = this.assignedFallbackAssetSnapshot(context.subEvent.id, {
-          ...sourceCard,
-          requests: nextRequests
-        });
-        nextFallbackCards[sourceCard.type] = existingCards.some(card => card.id === sourceCard.id)
-          ? existingCards.map(card => card.id === sourceCard.id ? nextFallbackAsset : card)
-          : [...existingCards, nextFallbackAsset];
-        const nextContext = {
-          ...activeContext,
-          fallbackCardsByType: nextFallbackCards
-        };
-        this.popupContextRef.set(nextContext);
-        this.syncPopupSubEventMetrics(false);
-        this.persistPopupResourceState(nextContext);
-        this.assignedAssetJoinDialogRef.set(null);
-      });
+    const activeContext = this.popupContextRef();
+    if (!activeContext || activeContext.subEvent.id !== context.subEvent.id) {
+      return;
+    }
+    const nextFallbackCards = this.cloneFallbackCards(activeContext.fallbackCardsByType);
+    const existingCards = nextFallbackCards[sourceCard.type] ?? [];
+    const nextFallbackAsset = this.assignedFallbackAssetSnapshot(context.subEvent.id, {
+      ...sourceCard,
+      requests: nextRequests
+    });
+    nextFallbackCards[sourceCard.type] = existingCards.some(card => card.id === sourceCard.id)
+      ? existingCards.map(card => card.id === sourceCard.id ? nextFallbackAsset : card)
+      : [...existingCards, nextFallbackAsset];
+    const nextContext = {
+      ...activeContext,
+      fallbackCardsByType: nextFallbackCards
+    };
+    this.popupContextRef.set(nextContext);
+    this.syncPopupSubEventMetrics(false);
+    this.persistPopupResourceState(nextContext);
+    this.assignedAssetJoinDialogRef.set(null);
   }
 
   private canEditCapacity(card: AppTypes.SubEventResourceCard): boolean {
@@ -3252,28 +3242,6 @@ export class SubEventResourcePopupService {
     };
   }
 
-  private ensureAssetExploreBorrowMinimumBusyDuration(startedAtMs: number): Promise<void> {
-    const minimumBusyDurationMs = resolveCurrentRouteDelayMs('/assets');
-    const remainingMs = minimumBusyDurationMs - (Date.now() - startedAtMs);
-    if (remainingMs <= 0) {
-      return Promise.resolve();
-    }
-    return new Promise(resolve => {
-      setTimeout(resolve, remainingMs);
-    });
-  }
-
-  private ensureAssignedAssetJoinMinimumBusyDuration(startedAtMs: number): Promise<void> {
-    const minimumBusyDurationMs = resolveCurrentRouteDelayMs(SubEventResourcePopupService.SUB_EVENT_RESOURCES_ROUTE);
-    const remainingMs = minimumBusyDurationMs - (Date.now() - startedAtMs);
-    if (remainingMs <= 0) {
-      return Promise.resolve();
-    }
-    return new Promise(resolve => {
-      setTimeout(resolve, remainingMs);
-    });
-  }
-
   private canSubmitAssetExploreBorrow(): boolean {
     const dialog = this.assetExploreBorrowDialogRef();
     if (!dialog || dialog.busy || dialog.availableQuantity <= 0 || dialog.quantity > dialog.availableQuantity) {
@@ -3377,15 +3345,13 @@ export class SubEventResourcePopupService {
       : null;
 
     if (inventoryApplied && !dialog.paymentStep) {
-      const startedAt = Date.now();
       this.assetExploreBorrowDialogRef.set({
         ...dialog,
         busy: true,
         error: null
       });
       void this.eventsService.createCheckoutSession(checkoutRequest!)
-        .then(async session => {
-          await this.ensureAssetExploreBorrowMinimumBusyDuration(startedAt);
+        .then(session => {
           if (!session?.id) {
             throw new Error('Unable to start checkout.');
           }
@@ -3403,8 +3369,7 @@ export class SubEventResourcePopupService {
           this.assetExploreBorrowDialogRef.set(nextDialog);
           this.saveAssetExploreBorrowDraft(activeUser.id, context.subEvent.id, nextDialog);
         })
-        .catch(async error => {
-          await this.ensureAssetExploreBorrowMinimumBusyDuration(startedAt);
+        .catch(error => {
           const currentDialog = this.assetExploreBorrowDialogRef();
           if (!currentDialog || requestVersion !== this.pendingAssetExploreBorrowRequestVersion) {
             return;
@@ -3418,7 +3383,6 @@ export class SubEventResourcePopupService {
       return;
     }
 
-    const startedAt = Date.now();
     this.assetExploreBorrowDialogRef.set({
       ...dialog,
       busy: true,
@@ -3489,9 +3453,7 @@ export class SubEventResourcePopupService {
               }))
           ]
         };
-        const savedCard = await this.assetsService.saveOwnedAsset(dialog.ownerUserId, nextCard);
-        await this.ensureAssetExploreBorrowMinimumBusyDuration(startedAt);
-        return savedCard;
+        return this.assetsService.saveOwnedAsset(dialog.ownerUserId, nextCard);
       })
       .then(savedCard => {
         const currentDialog = this.assetExploreBorrowDialogRef();
@@ -3530,8 +3492,7 @@ export class SubEventResourcePopupService {
         );
         this.closeAssetExploreBorrowDialog();
       })
-      .catch(async error => {
-        await this.ensureAssetExploreBorrowMinimumBusyDuration(startedAt);
+      .catch(error => {
         const currentDialog = this.assetExploreBorrowDialogRef();
         if (!currentDialog || requestVersion !== this.pendingAssetExploreBorrowRequestVersion) {
           return;
