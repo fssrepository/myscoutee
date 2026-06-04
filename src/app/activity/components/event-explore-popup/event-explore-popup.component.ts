@@ -49,7 +49,6 @@ import { EventCheckoutDraftService, type EventCheckoutDraft } from '../../../sha
 import { EventCheckoutDialogService } from '../../../shared/ui/services/event-checkout-dialog.service';
 import { NavigatorService } from '../../../navigator';
 import type { DemoEventRecord } from '../../../shared/core/demo/models/events.model';
-import { resolveCurrentRouteDelayMs } from '../../../shared/core/base/services/route-delay.service';
 import type { ChatRecord } from '../../../shared/core/base/models/chat.model';
 
 type CheckoutDraftEntry = {
@@ -125,7 +124,6 @@ export class EventExplorePopupComponent {
   private eventEditorPrewarmStarted = false;
   private readonly leavingEventExploreRecordIds = new Set<string>();
   private readonly eventExploreExitAnimationMs = 180;
-  private readonly eventExploreJoinDelayMs = resolveCurrentRouteDelayMs('/activities/events', 1500);
   private lastAppliedActivityMembersUpdatedMs = 0;
   private lastPendingCheckoutDraftSourceIds = new Set<string>();
   private readonly locallyTrackedMembershipSourceIds = new Set<string>();
@@ -152,7 +150,6 @@ export class EventExplorePopupComponent {
   protected readonly eventExploreSmartListConfig: SmartListConfig<DemoEventRecord, EventExploreFeedFilters> = {
     pageSize: 10,
     initialPageSize: 20,
-    loadingDelayMs: resolveCurrentRouteDelayMs('/activities/events'),
     defaultView: 'list',
     emptyLabel: 'No visible events right now.',
     emptyDescription: 'Try another filter or check back later.',
@@ -1301,9 +1298,7 @@ export class EventExplorePopupComponent {
       confirmLabel: this.eventExploreJoinConfirmLabel(record, dialogOptions),
       busyConfirmLabel: this.eventExploreJoinBusyLabel(record, dialogOptions),
       failureMessage: this.eventExploreJoinFailureMessage(record, dialogOptions),
-      onSubmit: (selection) => this.submitEventExploreJoinRequest(record, selection, {
-        skipVisualDelay: true
-      })
+      onSubmit: (selection) => this.submitEventExploreJoinRequest(record, selection)
     });
   }
 
@@ -1317,10 +1312,7 @@ export class EventExplorePopupComponent {
 
   private async submitEventExploreJoinRequest(
     record: DemoEventRecord,
-    selection?: AppTypes.EventCheckoutSelection | null,
-    options: {
-      skipVisualDelay?: boolean;
-    } = {}
+    selection?: AppTypes.EventCheckoutSelection | null
   ): Promise<void> {
     const activeUserId = this.activeUserId.trim();
     if (!activeUserId) {
@@ -1330,15 +1322,12 @@ export class EventExplorePopupComponent {
     const exitPromise = this.runEventExploreExitTransition(record, () => {
       this.removeVisibleEventExploreRecord(record);
     });
-    const delayPromise = options.skipVisualDelay
-      ? Promise.resolve()
-      : this.waitForEventExploreDelay(this.eventExploreJoinDelayMs);
     const peekedMembers = this.activityMembersService.peekMembersByOwner(owner);
     const existingMembers = peekedMembers.length > 0 ? peekedMembers : this.buildMemberEntries(record);
     const existingEntry = existingMembers.find(member => member.userId === activeUserId);
 
     if (existingEntry) {
-      await Promise.all([exitPromise, delayPromise]);
+      await exitPromise;
       if (this.selectedMembersRecord?.id === record.id) {
         this.selectedMembers = this.sortMembersByActionTimeDesc(existingMembers);
       }
@@ -1366,7 +1355,7 @@ export class EventExplorePopupComponent {
         bookingConfirmed: isAcceptedBooking,
         pendingReason
       });
-      const [joinedRecord] = await Promise.all([requestJoinPromise, exitPromise, delayPromise]);
+      const [joinedRecord] = await Promise.all([requestJoinPromise, exitPromise]);
       if (!joinedRecord) {
         throw new Error(this.eventExploreJoinFailureMessage(record));
       }

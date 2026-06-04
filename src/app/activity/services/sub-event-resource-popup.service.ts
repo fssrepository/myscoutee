@@ -20,7 +20,7 @@ import {
   UsersService,
   type UserDto
 } from '../../shared/core';
-import { resolveCurrentDemoDelayMs } from '../../shared/core/base/services/route-delay.service';
+import { resolveCurrentRouteDelayMs, RouteDelayService } from '../../shared/core/base/services/route-delay.service';
 import { ActivitiesPopupStateService } from './activities-popup-state.service';
 import { EventEditorPopupStateService } from './event-editor-popup-state.service';
 import { NavigatorService } from '../../navigator';
@@ -178,8 +178,7 @@ interface AssignedAssetJoinPricingPreview {
   providedIn: 'root'
 })
 export class SubEventResourcePopupService {
-  private static readonly ASSET_EXPLORE_BORROW_MIN_BUSY_DURATION_MS = 1500;
-
+  private static readonly SUB_EVENT_RESOURCES_ROUTE = '/activities/events/subevent-resources';
   private readonly activitiesContext = inject(ActivitiesPopupStateService);
   private readonly eventEditorService = inject(EventEditorPopupStateService);
   private readonly assetPopupService = inject(AssetPopupStateService);
@@ -192,6 +191,7 @@ export class SubEventResourcePopupService {
   private readonly popupCtx = inject(AppPopupContext);
   private readonly usersService = inject(UsersService);
   private readonly navigatorService = inject(NavigatorService);
+  private readonly routeDelay = inject(RouteDelayService);
 
   private get users(): UserDto[] {
     return this.usersService.peekCachedUsers();
@@ -960,6 +960,9 @@ export class SubEventResourcePopupService {
   private async loadSupplyContributionRowsPage(
     query: ListQuery<{ revision?: number; contextKey?: string; showProgress?: boolean }>
   ): Promise<PageResult<AppTypes.SubEventSupplyContributionRow>> {
+    if (query.filters?.showProgress === true) {
+      await this.routeDelay.waitForRouteDelay(SubEventResourcePopupService.SUB_EVENT_RESOURCES_ROUTE);
+    }
     const rows = this.supplyContributionRows();
     if (rows.length === 0 && !this.supplyPopupRef()) {
       return {
@@ -3250,7 +3253,7 @@ export class SubEventResourcePopupService {
   }
 
   private ensureAssetExploreBorrowMinimumBusyDuration(startedAtMs: number): Promise<void> {
-    const minimumBusyDurationMs = resolveCurrentDemoDelayMs(SubEventResourcePopupService.ASSET_EXPLORE_BORROW_MIN_BUSY_DURATION_MS);
+    const minimumBusyDurationMs = resolveCurrentRouteDelayMs('/assets');
     const remainingMs = minimumBusyDurationMs - (Date.now() - startedAtMs);
     if (remainingMs <= 0) {
       return Promise.resolve();
@@ -3261,7 +3264,7 @@ export class SubEventResourcePopupService {
   }
 
   private ensureAssignedAssetJoinMinimumBusyDuration(startedAtMs: number): Promise<void> {
-    const minimumBusyDurationMs = resolveCurrentDemoDelayMs(SubEventResourcePopupService.ASSET_EXPLORE_BORROW_MIN_BUSY_DURATION_MS);
+    const minimumBusyDurationMs = resolveCurrentRouteDelayMs(SubEventResourcePopupService.SUB_EVENT_RESOURCES_ROUTE);
     const remainingMs = minimumBusyDurationMs - (Date.now() - startedAtMs);
     if (remainingMs <= 0) {
       return Promise.resolve();

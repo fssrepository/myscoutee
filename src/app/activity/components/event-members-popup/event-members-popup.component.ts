@@ -1,6 +1,4 @@
 import { CommonModule } from '@angular/common';
-import { environment } from '../../../../environments/environment';
-import { resolveCurrentRouteDelayMs } from '../../../shared/core/base/services/route-delay.service';
 import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
@@ -67,7 +65,6 @@ type MembersSummaryState = {
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class EventMembersPopupComponent {
-  private static readonly DELETE_PENDING_WINDOW_MS = 1500;
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly confirmationDialogService = inject(ConfirmationDialogService);
   private readonly activityMembersService = inject(ActivityMembersService);
@@ -129,8 +126,6 @@ export class EventMembersPopupComponent {
 
   protected readonly membersSmartListConfig: SmartListConfig<AppTypes.ActivityMemberEntry, MembersSmartListFilters> = {
     pageSize: 16,
-    loadingDelayMs: resolveCurrentRouteDelayMs('/activities/events/members'),
-    loadingWindowMs: 3000,
     defaultView: 'list',
     headerProgress: {
       enabled: true
@@ -482,17 +477,15 @@ export class EventMembersPopupComponent {
           }
         : member
     );
-    const pendingWindowPromise = this.minimumDeletePendingWindow();
     const approvePromise = this.runMemberUpdateAfterUiYield(nextMembers, previousMembers);
-    await Promise.all([pendingWindowPromise, approvePromise]);
+    await approvePromise;
   }
 
   private async confirmRemoveMember(entry: AppTypes.ActivityMemberEntry): Promise<void> {
     const previousMembers = this.currentOwnerMembers();
     const nextMembers = previousMembers.filter(member => member.id !== entry.id);
-    const pendingWindowPromise = this.minimumDeletePendingWindow();
     const deletePromise = this.runMemberUpdateAfterUiYield(nextMembers, previousMembers);
-    await Promise.all([pendingWindowPromise, deletePromise]);
+    await deletePromise;
   }
 
   private async confirmMemberAction(
@@ -504,9 +497,8 @@ export class EventMembersPopupComponent {
       return;
     }
     const previousMembers = this.currentOwnerMembers();
-    const pendingWindowPromise = this.minimumDeletePendingWindow();
     const actionPromise = this.runMemberActionAfterUiYield(owner, entry.userId, action, previousMembers);
-    await Promise.all([pendingWindowPromise, actionPromise]);
+    await actionPromise;
   }
 
   private memberRemovalTitle(entry: AppTypes.ActivityMemberEntry): string {
@@ -1150,12 +1142,6 @@ export class EventMembersPopupComponent {
     this.isMobileView = window.innerWidth <= 760;
   }
 
-  private minimumDeletePendingWindow(): Promise<void> {
-    return this.demoModeEnabled
-      ? this.wait(EventMembersPopupComponent.DELETE_PENDING_WINDOW_MS)
-      : Promise.resolve();
-  }
-
   private async runMemberUpdateAfterUiYield(
     nextMembers: readonly AppTypes.ActivityMemberEntry[],
     previousMembers: readonly AppTypes.ActivityMemberEntry[]
@@ -1205,7 +1191,7 @@ export class EventMembersPopupComponent {
 
   private async waitForAnimationKickoff(): Promise<void> {
     await this.waitForNextPaint();
-    await this.wait(this.demoModeEnabled ? 96 : 16);
+    await this.wait(16);
   }
 
   private async wait(delayMs: number): Promise<void> {
@@ -1225,10 +1211,6 @@ export class EventMembersPopupComponent {
       }
       setTimeout(() => resolve(), 0);
     });
-  }
-
-  private get demoModeEnabled(): boolean {
-    return environment.activitiesDataSource === 'demo';
   }
 
   private activeUserId(): string {

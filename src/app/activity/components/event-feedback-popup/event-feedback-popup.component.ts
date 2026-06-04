@@ -22,7 +22,6 @@ import {
 import type * as AppTypes from '../../../shared/core/base/models';
 import type { DemoEventRecord } from '../../../shared/core/demo/models/events.model';
 import { EventFeedbackPopupStateService, type EventFeedbackPopupSource } from '../../services/event-feedback-popup-state.service';
-import { resolveCurrentRouteDelayMs } from '../../../shared/core/base/services/route-delay.service';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
 
 interface EventFeedbackListFilters {
@@ -201,7 +200,6 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
     EventFeedbackListFilters
   > = {
     pageSize: 12,
-    loadingDelayMs: resolveCurrentRouteDelayMs('/activities/events/feedback'),
     defaultView: 'list',
     headerProgress: {
       enabled: true

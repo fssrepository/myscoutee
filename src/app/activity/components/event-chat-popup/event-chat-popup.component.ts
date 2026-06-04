@@ -13,11 +13,10 @@ import { CommonModule, Location } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { delay, from, of } from 'rxjs';
+import { from, of } from 'rxjs';
 
 import type * as AppTypes from '../../../shared/core/base/models';
 import { AppUtils } from '../../../shared/app-utils';
-import { resolveCurrentRouteDelayMs } from '../../../shared/core/base/services/route-delay.service';
 import { ActivitiesPopupStateService } from '../../services/activities-popup-state.service';
 import { EventEditorPopupStateService } from '../../services/event-editor-popup-state.service';
 import { ActivitiesService, ActivityResourceBuilder, ActivityResourcesService, AppContext, AppPopupContext, ChatsService, ChatVoiceClipsService, EventsService, ShareTokensService } from '../../../shared/core';
@@ -177,7 +176,6 @@ export class EventChatPopupComponent implements OnDestroy {
   private readonly chatHistoryPageSize = 10;
   private readonly chatInitialLoadMessageCount = 15;
   private readonly chatHistoryPreloadOffsetPx = 48;
-  private readonly chatLoadOlderDelayMs = resolveCurrentRouteDelayMs('/activities/chats', 1500);
   private readonly chatTypingIdleMs = 1800;
   private readonly chatTypingRemoteTtlMs = 3200;
   private readonly chatTransientFxMs = 1600;
@@ -191,7 +189,6 @@ export class EventChatPopupComponent implements OnDestroy {
     initialPageCount: 1,
     initialPageSize: this.chatInitialLoadMessageCount,
     preloadOffsetPx: this.chatHistoryPreloadOffsetPx,
-    loadingDelayMs: resolveCurrentRouteDelayMs('/activities/chats'),
     showStickyHeader: false,
     showFirstGroupMarker: true,
     loadTriggerEdge: 'end',
@@ -218,7 +215,7 @@ export class EventChatPopupComponent implements OnDestroy {
     if (query.page === 0 && sessionKey && this.initialChatLoadedSessionKey !== sessionKey) {
       return from(this.loadInitialChatThreadPage(query, sessionKey));
     }
-    return of(this.chatThreadPageResult(query)).pipe(delay(query.page > 0 ? this.chatLoadOlderDelayMs : 0));
+    return of(this.chatThreadPageResult(query));
   };
 
   @ViewChild('chatThreadSmartList')

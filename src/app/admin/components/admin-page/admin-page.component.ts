@@ -7,6 +7,7 @@ import { MatRippleModule } from '@angular/material/core';
 import { NavigatorComponent } from '../../../navigator';
 import { EntryDemoUserSelectorComponent } from '../../../entry/components/entry-demo-user-selector/entry-demo-user-selector.component';
 import { SessionService, AppPopupContext } from '../../../shared/core';
+import { resolveCurrentRouteDelayMs } from '../../../shared/core/base/services/route-delay.service';
 import type { DemoBootstrapProgressStage } from '../../../shared/core/demo';
 import { ConfirmationDialogComponent, ProgressIndicatorComponent } from '../../../shared/ui/components';
 import { NavigatorService } from '../../../navigator/navigator.service';
@@ -30,8 +31,6 @@ import type { AdminBootstrapProgressState } from '../../models/admin-shell.model
   styleUrl: './admin-page.component.scss'
 })
 export class AdminPageComponent implements OnInit, OnDestroy {
-  private static readonly DEMO_RESTORE_MIN_DELAY_MS = 1500;
-
   protected readonly workspace = inject(AdminWorkspaceService);
   protected readonly shell = inject(AdminShellService);
   protected readonly sessionService = inject(SessionService);
@@ -175,7 +174,7 @@ export class AdminPageComponent implements OnInit, OnDestroy {
     const restored = await this.workspace.restoreAdminSession();
     if (restored && this.shouldUseDemoAvatarGate()) {
       this.restoreAvatarGateActive.set(true);
-      await this.delay(AdminPageComponent.DEMO_RESTORE_MIN_DELAY_MS);
+      await this.delay(resolveCurrentRouteDelayMs('/admin'));
     }
     this.restoreAvatarGateActive.set(false);
     this.restoringWorkspace.set(false);
@@ -252,7 +251,7 @@ export class AdminPageComponent implements OnInit, OnDestroy {
       this.restoringWorkspace.set(true);
       if (this.shouldUseDemoAvatarGate()) {
         this.restoreAvatarGateActive.set(true);
-        await this.delay(AdminPageComponent.DEMO_RESTORE_MIN_DELAY_MS);
+        await this.delay(resolveCurrentRouteDelayMs('/admin'));
       }
       this.restoreAvatarGateActive.set(false);
       this.restoringWorkspace.set(false);

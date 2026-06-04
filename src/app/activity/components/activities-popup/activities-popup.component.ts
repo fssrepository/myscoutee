@@ -91,7 +91,6 @@ import {
   type ActivityCounters,
   type ActivityMembersSyncState
 } from '../../../shared/core';
-import { resolveCurrentRouteDelayMs } from '../../../shared/core/base/services/route-delay.service';
 import type {
   DemoEventRecord,
   DemoRepositoryEventItemType
@@ -369,7 +368,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected readonly activitiesSmartListConfig: SmartListConfig<AppTypes.ActivityListRow, ActivitiesSmartListFilters> = {
     pageSize: 10,
     initialPageSize: 20,
-    loadingDelayMs: resolveCurrentRouteDelayMs('/activities/chats'),
     defaultView: 'day',
     containerClass: () => this.activitiesSmartListClassMap(),
     listLayout: 'card-grid',
@@ -629,7 +627,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
       this.activitiesIndividualRateSocialBadgeEnabled = svc.activitiesIndividualRateSocialBadgeEnabled();
       this.activitiesPairRateSocialBadgeEnabled = svc.activitiesPairRateSocialBadgeEnabled();
       this.activitiesView                = svc.activitiesView() as AppTypes.ActivitiesView;
-      this.activitiesSmartListConfig.loadingDelayMs = this.resolveActivitiesLoadingDelayMs();
       this.showActivitiesViewPicker      = svc.activitiesShowViewPicker();
       this.showActivitiesSecondaryPicker = svc.activitiesShowSecondaryPicker();
       this.activitiesStickyValue         = svc.activitiesStickyValue();
@@ -2842,16 +2839,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   private userById(userId: string): DemoUser | undefined {
     return this.users.find(u => u.id === userId);
-  }
-
-  private resolveActivitiesLoadingDelayMs(): number {
-    if (this.activitiesPrimaryFilter === 'events') {
-      return resolveCurrentRouteDelayMs('/activities/events');
-    }
-    if (this.activitiesPrimaryFilter === 'rates') {
-      return resolveCurrentRouteDelayMs('/activities/rates');
-    }
-    return resolveCurrentRouteDelayMs('/activities/chats');
   }
 
   private syncActivitiesSmartListQuery(): void {

@@ -6,7 +6,7 @@ import { Observable, from } from 'rxjs';
 
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { IdeaPostsService, type IdeaArticleDetail, type IdeaPost, type IdeaPostSaveRequest } from '../../../shared/core';
-import { resolveCurrentRouteDelayMs, RouteDelayService } from '../../../shared/core/base/services/route-delay.service';
+import { RouteDelayService } from '../../../shared/core/base/services/route-delay.service';
 import {
   InfoCardComponent,
   type InfoCardData,
@@ -118,8 +118,6 @@ export class AdminIdeaEditorPopupComponent implements OnDestroy {
     pageSize: 10,
     initialPageSize: 10,
     initialPageCount: 1,
-    loadingDelayMs: resolveCurrentRouteDelayMs('/admin/ideas', 1500),
-    loadingWindowMs: 3000,
     defaultView: 'day',
     defaultDirection: 'desc',
     defaultGroupBy: 'submittedDay',
