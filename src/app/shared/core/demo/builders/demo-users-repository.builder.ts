@@ -149,6 +149,28 @@ export class DemoUsersRepositoryBuilder {
     const event = activities.event;
     const asset = activities.asset;
     const eventFeedback = activities.eventFeedback;
+    const hasEventSources = Boolean(sources.invitationItems)
+      || Number.isFinite(sources.eventsCount)
+      || Boolean(sources.eventItems)
+      || Boolean(sources.hostingItems);
+    const eventPending = normalizeCounter(event?.pending);
+    const eventDrafts = normalizeCounter(event?.drafts);
+    const eventTrash = normalizeCounter(event?.trash);
+    const eventActive = hasEventSources ? events : normalizeCounter(event?.active ?? events);
+    const eventInvitations = hasEventSources ? invitations : normalizeCounter(event?.invitations ?? invitations);
+    const eventHosting = hasEventSources ? hosting : normalizeCounter(event?.hosting ?? hosting);
+    const eventAll = hasEventSources
+      ? eventActive + eventPending + eventInvitations + eventHosting + eventDrafts
+      : normalizeCounter(event?.all ?? events + invitations + hosting);
+    const assetCars = Number.isFinite(sources.carsCount) ? cars : normalizeCounter(asset?.cars ?? cars);
+    const assetAccommodation = Number.isFinite(sources.accommodationCount)
+      ? accommodation
+      : normalizeCounter(asset?.accommodation ?? accommodation);
+    const assetSupplies = Number.isFinite(sources.suppliesCount) ? supplies : normalizeCounter(asset?.supplies ?? supplies);
+    const assetTickets = Number.isFinite(sources.ticketsCount) ? tickets : normalizeCounter(asset?.tickets ?? tickets);
+    const eventFeedbackPending = Number.isFinite(sources.feedbackCount)
+      ? feedback
+      : normalizeCounter(eventFeedback?.pending ?? feedback);
 
     return {
       ...user,
@@ -166,23 +188,23 @@ export class DemoUsersRepositoryBuilder {
         contacts,
         feedback,
         event: {
-          all: normalizeCounter(event?.all ?? events + invitations + hosting),
-          active: normalizeCounter(event?.active ?? events),
-          pending: normalizeCounter(event?.pending),
-          invitations: normalizeCounter(event?.invitations ?? invitations),
-          hosting: normalizeCounter(event?.hosting ?? hosting),
-          drafts: normalizeCounter(event?.drafts),
-          trash: normalizeCounter(event?.trash),
+          all: eventAll,
+          active: eventActive,
+          pending: eventPending,
+          invitations: eventInvitations,
+          hosting: eventHosting,
+          drafts: eventDrafts,
+          trash: eventTrash,
         },
         asset: {
-          cars: normalizeCounter(asset?.cars ?? cars),
-          accommodation: normalizeCounter(asset?.accommodation ?? accommodation),
-          supplies: normalizeCounter(asset?.supplies ?? supplies),
-          tickets: normalizeCounter(asset?.tickets ?? tickets),
+          cars: assetCars,
+          accommodation: assetAccommodation,
+          supplies: assetSupplies,
+          tickets: assetTickets,
         },
         eventFeedback: {
           ownEvents: normalizeCounter(eventFeedback?.ownEvents),
-          pending: normalizeCounter(eventFeedback?.pending ?? feedback),
+          pending: eventFeedbackPending,
           feedbacked: normalizeCounter(eventFeedback?.feedbacked),
           removed: normalizeCounter(eventFeedback?.removed),
         }

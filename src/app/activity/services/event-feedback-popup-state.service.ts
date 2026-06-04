@@ -1012,43 +1012,56 @@ export class EventFeedbackPopupStateService {
   });
 
   public eventFeedbackFilterCount(filter: AppTypes.EventFeedbackListFilter): number {
-    const loadedCount = (() => {
-      switch (filter) {
-        case 'own-events':
-          return this.eventFeedbackOwnEventsCount();
-        case 'pending':
-          return this.eventFeedbackPendingCount();
-        case 'feedbacked':
-          return this.eventFeedbackFeedbackedCount();
-        case 'removed':
-          return this.eventFeedbackRemovedCount();
-        default:
-          return 0;
-      }
-    })();
-
-    if (this.eventFeedbackAllItems().length > 0) {
-      return loadedCount;
-    }
-
-    const counters = this.sourceRef()?.activeUser?.activities?.eventFeedback
-      ?? this.appCtx.activeUserProfile()?.activities?.eventFeedback;
-    if (!counters) {
-      return loadedCount;
-    }
-
     switch (filter) {
       case 'own-events':
-        return counters.ownEvents ?? loadedCount;
+        return this.eventFeedbackCounterValue('ownEvents');
       case 'pending':
-        return counters.pending ?? loadedCount;
+        return this.activityCounterValue('feedback');
       case 'feedbacked':
-        return counters.feedbacked ?? loadedCount;
+        return this.eventFeedbackCounterValue('feedbacked');
       case 'removed':
-        return counters.removed ?? loadedCount;
+        return this.eventFeedbackCounterValue('removed');
       default:
-        return loadedCount;
+        return 0;
     }
+  }
+
+  private activityCounterValue(key: 'feedback'): number {
+    const activeUser = this.activeCounterUser();
+    const activeUserId = activeUser?.id?.trim() ?? '';
+    if (!activeUser || !activeUserId) {
+      return 0;
+    }
+    const overrides = this.appCtx.getUserCounterOverrides(activeUserId);
+    return this.normalizeCounter(overrides[key] ?? activeUser.activities?.[key]);
+  }
+
+  private eventFeedbackCounterValue(key: keyof NonNullable<UserDto['activities']['eventFeedback']>): number {
+    const activeUser = this.activeCounterUser();
+    const activeUserId = activeUser?.id?.trim() ?? '';
+    if (!activeUser || !activeUserId) {
+      return 0;
+    }
+    const overrides = this.appCtx.getUserCounterOverrides(activeUserId);
+    return this.normalizeCounter(overrides.eventFeedback?.[key] ?? activeUser.activities?.eventFeedback?.[key]);
+  }
+
+  private activeCounterUser(): UserDto | null {
+    const sourceUser = this.sourceRef()?.activeUser;
+    const sourceUserId = sourceUser?.id?.trim() ?? '';
+    const activeUser = this.appCtx.activeUserProfile();
+    if (activeUser?.id?.trim() === sourceUserId) {
+      return activeUser;
+    }
+    return sourceUser ?? activeUser;
+  }
+
+  private normalizeCounter(value: unknown): number {
+    const numericValue = Number(value);
+    if (!Number.isFinite(numericValue)) {
+      return 0;
+    }
+    return Math.max(0, Math.trunc(numericValue));
   }
 
   public eventFeedbackFilterOptionClass(filter: AppTypes.EventFeedbackListFilter): string {

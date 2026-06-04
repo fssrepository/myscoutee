@@ -280,22 +280,32 @@ export class OwnedAssetsPopupFacadeService {
   }
 
   assetFilterCount(type: AppTypes.AssetFilterType): number {
-    const source = this.appCtx.getUserProfile(this.resolveContextOwnerUserId());
+    const ownerUserId = this.resolveContextOwnerUserId();
+    const source = this.appCtx.getUserProfile(ownerUserId);
     const activeUser = source ?? this.appCtx.activeUserProfile();
-    const grouped = activeUser?.activities?.asset;
+    const overrides = ownerUserId ? this.appCtx.getUserCounterOverrides(ownerUserId) : {};
+    const grouped = overrides.asset ?? activeUser?.activities?.asset;
     const key = this.assetFilterCounterKey(type);
     switch (key) {
       case 'cars':
-        return grouped?.cars ?? activeUser?.activities?.cars ?? 0;
+        return this.normalizeAssetFilterCount(grouped?.cars ?? overrides.cars ?? activeUser?.activities?.cars);
       case 'accommodation':
-        return grouped?.accommodation ?? activeUser?.activities?.accommodation ?? 0;
+        return this.normalizeAssetFilterCount(grouped?.accommodation ?? overrides.accommodation ?? activeUser?.activities?.accommodation);
       case 'supplies':
-        return grouped?.supplies ?? activeUser?.activities?.supplies ?? 0;
+        return this.normalizeAssetFilterCount(grouped?.supplies ?? overrides.supplies ?? activeUser?.activities?.supplies);
       case 'tickets':
-        return grouped?.tickets ?? activeUser?.activities?.tickets ?? 0;
+        return this.normalizeAssetFilterCount(grouped?.tickets ?? overrides.tickets ?? activeUser?.activities?.tickets);
       default:
-        return key ? activeUser?.activities?.[key] ?? 0 : 0;
+        return key ? this.normalizeAssetFilterCount(overrides[key] ?? activeUser?.activities?.[key]) : 0;
     }
+  }
+
+  private normalizeAssetFilterCount(value: unknown): number {
+    const numericValue = Number(value);
+    if (!Number.isFinite(numericValue)) {
+      return 0;
+    }
+    return Math.max(0, Math.trunc(numericValue));
   }
 
   eventVisibilityClass(option: AppTypes.EventVisibility): string {

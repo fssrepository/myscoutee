@@ -36,6 +36,8 @@ export class ActivitiesPopupToolbarController {
   private get allEventsScopeBadge() { return this.host.allEventsScopeBadge as number; }
   private get pendingBadge() { return this.host.pendingBadge as number; }
   private get hostingBadge() { return this.host.hostingBadge as number; }
+  private get draftsBadge() { return this.host.draftsBadge as number; }
+  private get trashBadge() { return this.host.trashBadge as number; }
   private get gameBadge() { return this.host.gameBadge as number; }
   private get isMobileView() { return this.host.isMobileView as boolean; }
   private get showActivitiesViewPicker() { return this.host.showActivitiesViewPicker as boolean; }
@@ -60,7 +62,6 @@ export class ActivitiesPopupToolbarController {
   private isEventActivitiesPrimaryFilter(): boolean { return this.host.isEventActivitiesPrimaryFilter(); }
   private isHostingPublished(id: string): boolean { return this.host.isHostingPublished(id); }
   private isActivityIdentityTrashed(type: AppTypes.ActivityListRow['type'], id: string): boolean { return this.host.isActivityIdentityTrashed(type, id); }
-  private trashedActivityCount(): number { return this.host.trashedActivityCount(); }
   private chatItemsForActivities() { return this.host.chatItemsForActivities(); }
   private activityChatContextFilterKey(item: any) { return this.host.activityChatContextFilterKey(item); }
   private activitiesEventScopeLabel(): string { return this.host.activitiesEventScopeLabel(); }
@@ -128,10 +129,10 @@ export class ActivitiesPopupToolbarController {
       return this.allEventsScopeBadge;
     }
     if (scope === 'drafts') {
-      return this.hostingDraftCount();
+      return this.draftsBadge;
     }
     if (scope === 'trash') {
-      return this.trashedActivityCount();
+      return this.trashBadge;
     }
     if (scope === 'active-events') {
       return this.eventsBadge;
