@@ -2,21 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { environment } from '../../../../../environments/environment';
 
 import { resolveRouteConfig } from '../config';
-import { scopedStorageKey } from '../storage-scope';
 import { SessionService } from './session.service';
-
-export function resolveCurrentRouteDelayMs(route: string, fallbackDelayMs = 0): number {
-  const routeConfig = resolveRouteConfig(route);
-  if (routeConfig.http) {
-    return 0;
-  }
-  if (environment.activitiesDataSource === 'demo' || isStoredDemoSessionActive()) {
-    return routeConfig.demoDelayMs > 0
-      ? routeConfig.demoDelayMs
-      : normalizeDelayMs(fallbackDelayMs);
-  }
-  return 0;
-}
 
 function resolveCurrentRouteRequestTimeoutMs(route: string, fallbackTimeoutMs = 3000): number {
   const routeConfig = resolveRouteConfig(route);
@@ -45,7 +31,10 @@ export class RouteDelayService {
     if (routeConfig.http) {
       return 0;
     }
-    if (this.sessionService.currentSession()?.kind === 'demo' || environment.activitiesDataSource === 'demo') {
+    if (
+      this.sessionService.currentSession()?.kind === 'demo'
+      || (environment.activitiesDataSource !== 'http' && !environment.firebaseLoginEnabled)
+    ) {
       return routeConfig.demoDelayMs > 0
         ? routeConfig.demoDelayMs
         : normalizeDelayMs(fallbackDelayMs);
@@ -145,20 +134,4 @@ export class RouteDelayService {
 
 function normalizeDelayMs(value: number): number {
   return Math.max(0, Math.trunc(Number(value) || 0));
-}
-
-function isStoredDemoSessionActive(): boolean {
-  if (typeof localStorage === 'undefined') {
-    return false;
-  }
-  try {
-    const rawSession = localStorage.getItem(scopedStorageKey('session.v1'));
-    if (!rawSession) {
-      return false;
-    }
-    const session = JSON.parse(rawSession) as { kind?: unknown } | null;
-    return session?.kind === 'demo';
-  } catch {
-    return false;
-  }
 }

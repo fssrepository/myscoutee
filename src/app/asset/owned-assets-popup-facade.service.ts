@@ -4,7 +4,6 @@ import { environment } from '../../environments/environment';
 import { APP_STATIC_DATA } from '../shared/app-static-data';
 import { PricingBuilder } from '../shared/core/base/builders';
 import type * as AppTypes from '../shared/core/base/models';
-import { RouteDelayService } from '../shared/core/base/services/route-delay.service';
 import { AssetPopupStateService } from './asset-popup-state.service';
 import { AppContext, AssetCardBuilder, AssetDefaultsBuilder, AssetsService, ExplanationGuideService, type ActivityCounterKey } from '../shared/core';
 import { HttpMediaService } from '../shared/core/http';
@@ -25,7 +24,6 @@ export class OwnedAssetsPopupFacadeService {
   private readonly appCtx = inject(AppContext);
   private readonly explanationGuide = inject(ExplanationGuideService);
   private readonly httpMediaService = inject(HttpMediaService);
-  private readonly routeDelay = inject(RouteDelayService);
   private readonly assetListRevisionRef = signal(0);
   private readonly assetListReloadRevisionRef = signal(0);
   private readonly uiRevisionRef = signal(0);
@@ -235,7 +233,7 @@ export class OwnedAssetsPopupFacadeService {
           }
         })
       : Promise.resolve();
-    await this.awaitAssetMutationCompletion(persistPromise);
+    await persistPromise;
   }
 
   async promoteAssetRequestToManager(assetId: string, requestId: string): Promise<void> {
@@ -584,7 +582,7 @@ export class OwnedAssetsPopupFacadeService {
               }
             })
           : Promise.resolve();
-        await this.awaitAssetMutationCompletion(persistPromise);
+        await persistPromise;
       } else {
         const nextCard: AppTypes.AssetCard = {
           id: assetId,
@@ -611,7 +609,7 @@ export class OwnedAssetsPopupFacadeService {
               }
             })
           : Promise.resolve();
-        await this.awaitAssetMutationCompletion(persistPromise);
+        await persistPromise;
       }
       this.isAssetFormSavePending = false;
       this.closeAssetForm();
@@ -755,22 +753,6 @@ export class OwnedAssetsPopupFacadeService {
       return false;
     }
     const ownerUserId = this.resolveOwnerUserId();
-    if (this.demoMutationWindowMs() > 0) {
-      this.markAssetMutation();
-      this.applyAssetCards(this.assetCardsRef.filter(card => card.id !== normalizedCardId), {
-        persist: false,
-        reloadList: false
-      });
-      for (const hooks of this.runtimeHooks) {
-        hooks.onAssetDeleted?.(normalizedCardId);
-        hooks.onAssetsChanged?.();
-      }
-      if (ownerUserId) {
-        void this.assetsService.deleteOwnedAsset(ownerUserId, normalizedCardId).catch(() => undefined);
-      }
-      await this.wait(this.demoMutationWindowMs());
-      return true;
-    }
     if (ownerUserId) {
       await this.assetsService.deleteOwnedAsset(ownerUserId, normalizedCardId);
     }
@@ -1008,29 +990,6 @@ export class OwnedAssetsPopupFacadeService {
     this.unregisterAssetsExplanationContext?.();
     this.unregisterAssetsExplanationContext = null;
     this.assetsExplanationContextKey = null;
-  }
-
-  private async awaitAssetMutationCompletion(persistPromise: Promise<void>): Promise<void> {
-    const demoWindowMs = this.demoMutationWindowMs();
-    if (demoWindowMs <= 0) {
-      await persistPromise;
-      return;
-    }
-    void persistPromise.catch(() => undefined);
-    await this.wait(demoWindowMs);
-  }
-
-  private demoMutationWindowMs(): number {
-    return this.routeDelay.resolveDelayMs('/assets');
-  }
-
-  private async wait(delayMs: number): Promise<void> {
-    if (delayMs <= 0) {
-      return;
-    }
-    await new Promise<void>(resolve => {
-      setTimeout(() => resolve(), delayMs);
-    });
   }
 
   private async refreshOwnedAssetsFromRepository(ownerUserId: string): Promise<void> {
