@@ -33,6 +33,7 @@ export { ExplanationGuideService } from './base/services/explanation-guide.servi
 export { IdeaPostsService } from './base/services/idea-posts.service';
 export { LandingContentService } from './base/services/landing-content.service';
 export { MediaService } from './base/services/media.service';
+export { NavigatorContactsService } from './base/services/navigator-contacts.service';
 export { EventsService } from './base/services/events.service';
 export { RouteDelayService } from './base/services/route-delay.service';
 export { RouteIntervalSchedulerService } from './base/services/route-interval-scheduler.service';
@@ -66,7 +67,6 @@ export {
   SessionService,
   type AppSession
 } from './base/services/session.service';
-export { NavigatorContactsService } from '../../navigator/navigator-contacts.service';
 export * from './base/builders';
 export * from './base/converters';
 export * from './base/formatters';

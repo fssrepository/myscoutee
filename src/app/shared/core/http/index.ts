@@ -22,6 +22,7 @@ export { HttpHelpCenterService } from './services/help-center.service';
 export { HttpIdeaPostsService } from './services/idea-posts.service';
 export { HttpLandingContentService } from './services/landing-content.service';
 export { HttpMediaService } from './services/media.service';
+export { HttpNavigatorContactsService } from './services/navigator-contacts.service';
 export { HttpRatesService } from './services/rates.service';
 export { HttpUserExperiencesService } from './services/user-experiences.service';
 export { HttpUsersService } from './services/users.service';

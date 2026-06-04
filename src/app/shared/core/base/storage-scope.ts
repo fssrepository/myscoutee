@@ -28,6 +28,10 @@ export function scopedStorageKeyPrefix(scope: AppStorageScope = APP_STORAGE_SCOP
   return `myscoutee.${scope}.`;
 }
 
+export function navigatorContactsStorageKey(userId: string, scope: AppStorageScope = APP_STORAGE_SCOPE): string {
+  return scopedStorageKey(`navigator.contacts.v1.${userId.trim()}`, scope);
+}
+
 export function removeScopedStorageEntries(storage: Storage | undefined, scope: AppStorageScope): void {
   if (!storage) {
     return;

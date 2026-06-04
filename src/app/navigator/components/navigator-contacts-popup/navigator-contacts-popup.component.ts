@@ -4,30 +4,152 @@ import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
-import { from, timer, of, defer } from 'rxjs';
-import { switchMap, tap } from 'rxjs/operators';
+import { from } from 'rxjs';
+import { tap } from 'rxjs/operators';
 
-import { resolveCurrentDemoDelayMs, resolveCurrentRouteDelayMs } from '../../../shared/core/base/services/route-delay.service';
+import { AppUtils } from '../../../shared/app-utils';
 import {
   ProgressIndicatorComponent,
   SmartListComponent,
   type ListQuery,
+  type PageResult,
   type SmartListConfig,
   type SmartListLoadPage
 } from '../../../shared/ui';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
 import {
-  NAVIGATOR_CONTACT_METHOD_OPTIONS,
-  NavigatorContactsService,
+  AppContext,
+  AppPopupContext,
+  NavigatorContactsService as NavigatorContactsDataService,
+  ExplanationGuideService,
+  UsersService,
+  type ActivityMemberEntry,
   type NavigatorContactFormValue,
   type NavigatorContactListFilters,
   type NavigatorContactListItem,
   type NavigatorContactMethodDraft,
   type NavigatorContactMethodItem,
-  type NavigatorContactMethodType
-} from '../../navigator-contacts.service';
-import { ExplanationGuideService, UsersService } from '../../../shared/core';
+  type NavigatorContactMethodOption,
+  type NavigatorContactMethodType,
+  type NavigatorStoredContact,
+  type UserDto
+} from '../../../shared/core';
 import { NavigatorService } from '../../navigator.service';
+
+const NAVIGATOR_CONTACT_METHOD_OPTIONS: readonly NavigatorContactMethodOption[] = [
+  {
+    value: 'phone',
+    label: 'Phone',
+    icon: 'call',
+    placeholder: '+421 900 123 456',
+    helpText: 'Opens the phone app on mobile or the default calling handler.',
+    inputType: 'tel',
+    inputMode: 'tel',
+    autocomplete: 'tel',
+    actionLabel: 'Call',
+    openBehavior: 'same-tab'
+  },
+  {
+    value: 'sms',
+    label: 'SMS',
+    icon: 'sms',
+    placeholder: '+421 900 123 456',
+    helpText: 'Starts a text message with the number filled in.',
+    inputType: 'tel',
+    inputMode: 'tel',
+    autocomplete: 'tel',
+    actionLabel: 'Text',
+    openBehavior: 'same-tab'
+  },
+  {
+    value: 'whatsapp',
+    label: 'WhatsApp',
+    icon: 'chat',
+    placeholder: '+421900123456',
+    helpText: 'Uses the WhatsApp deep link when available.',
+    inputType: 'tel',
+    inputMode: 'tel',
+    autocomplete: 'tel',
+    actionLabel: 'Open WhatsApp',
+    openBehavior: 'new-tab'
+  },
+  {
+    value: 'email',
+    label: 'Email',
+    icon: 'mail',
+    placeholder: 'hello@example.com',
+    helpText: 'Opens the default mail app with the address ready.',
+    inputType: 'email',
+    inputMode: 'email',
+    autocomplete: 'email',
+    actionLabel: 'Email',
+    openBehavior: 'same-tab'
+  },
+  {
+    value: 'facebook',
+    label: 'Facebook',
+    icon: 'thumb_up',
+    placeholder: '@username or https://facebook.com/username',
+    helpText: 'Opens the Facebook profile in the app or a browser tab.',
+    inputType: 'url',
+    inputMode: 'url',
+    autocomplete: 'url',
+    actionLabel: 'Open Facebook',
+    openBehavior: 'new-tab'
+  },
+  {
+    value: 'instagram',
+    label: 'Instagram',
+    icon: 'photo_camera',
+    placeholder: '@username or https://instagram.com/username',
+    helpText: 'Opens the Instagram profile.',
+    inputType: 'url',
+    inputMode: 'url',
+    autocomplete: 'url',
+    actionLabel: 'Open Instagram',
+    openBehavior: 'new-tab'
+  },
+  {
+    value: 'telegram',
+    label: 'Telegram',
+    icon: 'send',
+    placeholder: '@username or https://t.me/username',
+    helpText: 'Opens the Telegram contact.',
+    inputType: 'url',
+    inputMode: 'url',
+    autocomplete: 'url',
+    actionLabel: 'Open Telegram',
+    openBehavior: 'new-tab'
+  },
+  {
+    value: 'linkedin',
+    label: 'LinkedIn',
+    icon: 'work',
+    placeholder: 'username or https://linkedin.com/in/username',
+    helpText: 'Opens the LinkedIn profile.',
+    inputType: 'url',
+    inputMode: 'url',
+    autocomplete: 'url',
+    actionLabel: 'Open LinkedIn',
+    openBehavior: 'new-tab'
+  },
+  {
+    value: 'website',
+    label: 'Website',
+    icon: 'language',
+    placeholder: 'https://example.com',
+    helpText: 'Opens any profile, portfolio, or custom contact URL.',
+    inputType: 'url',
+    inputMode: 'url',
+    autocomplete: 'url',
+    actionLabel: 'Open Link',
+    openBehavior: 'new-tab'
+  }
+];
+
+const CONTACT_METHOD_OPTION_BY_TYPE = new Map(
+  NAVIGATOR_CONTACT_METHOD_OPTIONS.map(option => [option.value, option])
+);
 
 @Component({
   selector: 'app-navigator-contacts-popup',
@@ -45,11 +167,14 @@ import { NavigatorService } from '../../navigator.service';
   styleUrl: './navigator-contacts-popup.component.scss'
 })
 export class NavigatorContactsPopupComponent implements OnDestroy {
+  private readonly appCtx = inject(AppContext);
+  private readonly popupCtx = inject(AppPopupContext);
   private readonly confirmationDialogService = inject(ConfirmationDialogService);
   private readonly navigatorService = inject(NavigatorService);
   private readonly usersService = inject(UsersService);
   private readonly explanationGuide = inject(ExplanationGuideService);
-  protected readonly contactsService = inject(NavigatorContactsService);
+  private readonly contactsDataService = inject(NavigatorContactsDataService);
+  protected readonly contactsPopupOpen = this.navigatorService.contactsPopupOpen;
   protected readonly contactMethodOptions = NAVIGATOR_CONTACT_METHOD_OPTIONS;
   protected readonly isMobileViewport = signal(this.detectMobileViewport());
   protected readonly searchText = signal('');
@@ -65,27 +190,46 @@ export class NavigatorContactsPopupComponent implements OnDestroy {
   }));
 
   private readonly manualRefreshRevision = signal(0);
+  private readonly contactsRef = signal<NavigatorStoredContact[]>([]);
+  private readonly revisionRef = signal(0);
+  private readonly lastOptimisticRevisionRef = signal(0);
+  private readonly contactCountRef = signal(0);
   private lastKnownTotal = 0;
   private readonly hasInitialLoadCompleted = signal(false);
-  private readonly isDeletionsPending = signal(false);
   private contactsExplanationContextKey: string | null = null;
   private unregisterContactsExplanationContext: (() => void) | null = null;
+  private loadedUserId = '';
+  private contactsLoadedForUserId = '';
+  private contactsLoadPromise: Promise<void> | null = null;
+  private contactLoadToken = 0;
 
   constructor() {
     effect(() => {
-      this.setContactsExplanationContext(this.contactsService.isOpen() ? 'contacts' : null);
+      const activeUserId = this.activeUserId();
+      if (activeUserId === this.loadedUserId) {
+        return;
+      }
+      this.loadedUserId = activeUserId;
+      this.contactsLoadedForUserId = '';
+      this.contactsLoadPromise = null;
+      this.contactLoadToken += 1;
+      this.applyContacts([], false);
     });
 
     effect(() => {
-      const revision = this.contactsService.revision();
-      const lastOptimistic = this.contactsService.lastOptimisticRevision();
+      this.setContactsExplanationContext(this.navigatorService.contactsPopupOpen() ? 'contacts' : null);
+    });
+
+    effect(() => {
+      const revision = this.revisionRef();
+      const lastOptimistic = this.lastOptimisticRevisionRef();
       untracked(() => {
-        const currentTotal = this.contactsService.contactCount();
+        const currentTotal = this.contactCountRef();
         if (revision && revision === lastOptimistic) {
           if (this.contactsSmartList) {
             const additions = Math.max(0, currentTotal - this.lastKnownTotal);
             const loadedCount = this.contactsSmartList.itemsSnapshot().length;
-            this.contactsSmartList.replaceVisibleItems(this.contactsService.contacts().slice(0, loadedCount + additions), {
+            this.contactsSmartList.replaceVisibleItems(this.contactListItems().slice(0, loadedCount + additions), {
               total: currentTotal
             });
           }
@@ -106,7 +250,7 @@ export class NavigatorContactsPopupComponent implements OnDestroy {
   private contactsSmartList?: SmartListComponent<NavigatorContactListItem, NavigatorContactListFilters>;
 
   protected readonly contactSmartListLoadPage: SmartListLoadPage<NavigatorContactListItem, NavigatorContactListFilters> = (query) =>
-    from(this.contactsService.loadContactPage(query)).pipe(
+    from(this.loadContactPage(query)).pipe(
       tap(() => {
         if (!this.hasInitialLoadCompleted()) {
           this.hasInitialLoadCompleted.set(true);
@@ -116,7 +260,6 @@ export class NavigatorContactsPopupComponent implements OnDestroy {
 
   protected readonly contactSmartListConfig = computed<SmartListConfig<NavigatorContactListItem, NavigatorContactListFilters>>(() => ({
     pageSize: 10,
-    loadingDelayMs: resolveCurrentRouteDelayMs('/navigator/contacts'),
     defaultView: 'list',
     emptyLabel: 'No contacts saved yet',
     emptyDescription: 'Use Create contact to add members into your personal quick-reach list.',
@@ -142,7 +285,7 @@ export class NavigatorContactsPopupComponent implements OnDestroy {
   @HostListener('window:keydown.escape', ['$event'])
   protected onEscape(event: Event): void {
     const keyboardEvent = event as KeyboardEvent;
-    if (!this.contactsService.isOpen() || keyboardEvent.defaultPrevented) {
+    if (!this.navigatorService.contactsPopupOpen() || keyboardEvent.defaultPrevented) {
       return;
     }
     keyboardEvent.preventDefault();
@@ -187,7 +330,7 @@ export class NavigatorContactsPopupComponent implements OnDestroy {
     this.searchText.set('');
     this.editingContact.set(null);
     this.formErrorMessage.set('');
-    this.contactsService.closePopup();
+    this.navigatorService.closeContactsPopup();
   }
 
   private setContactsExplanationContext(contextKey: string | null): void {
@@ -212,7 +355,7 @@ export class NavigatorContactsPopupComponent implements OnDestroy {
     event?.stopPropagation();
     this.closeActionMenu();
     
-    await this.contactsService.openCreateContactPicker();
+    await this.openCreateContactPickerFromMembers();
   }
 
   protected toggleActionMenu(contact: NavigatorContactListItem, event: Event): void {
@@ -246,7 +389,7 @@ export class NavigatorContactsPopupComponent implements OnDestroy {
     event?.stopPropagation();
     this.closeActionMenu();
     this.formErrorMessage.set('');
-    this.editingContact.set(this.contactsService.createFormValue(contact));
+    this.editingContact.set(this.createFormValue(contact));
   }
 
   protected viewContactProfile(contact: NavigatorContactListItem, event?: Event): void {
@@ -280,7 +423,7 @@ export class NavigatorContactsPopupComponent implements OnDestroy {
     }
     this.editingContact.set({
       ...contact,
-      methods: [...contact.methods, this.contactsService.createEmptyMethodDraft()]
+      methods: [...contact.methods, this.createEmptyMethodDraft()]
     });
   }
 
@@ -316,10 +459,7 @@ export class NavigatorContactsPopupComponent implements OnDestroy {
     this.isFormSavePending.set(true);
     this.formErrorMessage.set('');
     try {
-      await Promise.all([
-        this.contactsService.saveContact(contact),
-        this.wait(resolveCurrentDemoDelayMs(1500))
-      ]);
+      await this.saveContact(contact);
       this.isFormSavePending.set(false);
       this.editingContact.set(null);
     } catch (error) {
@@ -343,8 +483,6 @@ export class NavigatorContactsPopupComponent implements OnDestroy {
       confirmTone: 'danger',
       failureMessage: 'Unable to delete this contact right now.',
       onConfirm: async () => {
-        this.isDeletionsPending.set(true);
-
         // Optimistically remove from the visible list
         if (this.contactsSmartList) {
           const current = this.contactsSmartList.itemsSnapshot();
@@ -356,16 +494,7 @@ export class NavigatorContactsPopupComponent implements OnDestroy {
         // Update lastKnownTotal so the effect knows we already accounted for this deletion
         this.lastKnownTotal = Math.max(0, this.lastKnownTotal - 1);
 
-        try {
-          await this.contactsService.deleteContact(contact.id);
-
-          const delayMs = resolveCurrentDemoDelayMs(1500);
-          if (delayMs > 0) {
-            await new Promise(resolve => setTimeout(resolve, delayMs));
-          }
-        } finally {
-          this.isDeletionsPending.set(false);
-        }
+        await this.deleteContact(contact.id);
       }
     });
   }
@@ -373,11 +502,11 @@ export class NavigatorContactsPopupComponent implements OnDestroy {
   protected runMethod(method: NavigatorContactMethodItem, event?: Event): void {
     event?.stopPropagation();
     this.closeActionMenu();
-    this.contactsService.triggerMethod(method);
+    this.triggerMethod(method);
   }
 
   protected methodOption(type: NavigatorContactMethodType) {
-    return this.contactsService.methodOption(type);
+    return this.lookupMethodOption(type);
   }
 
   protected methodToneClass(type: NavigatorContactMethodType): string {
@@ -405,6 +534,455 @@ export class NavigatorContactsPopupComponent implements OnDestroy {
     return Math.max(0, contact.methods.length - 4);
   }
 
+  protected summaryLabel(): string {
+    const count = this.contactCountRef();
+    return count === 1 ? '1 saved contact' : `${count} saved contacts`;
+  }
+
+  private async openCreateContactPickerFromMembers(): Promise<void> {
+    const activeUserId = this.activeUserId();
+    if (!activeUserId) {
+      return;
+    }
+
+    this.popupCtx.openActivityInvitePopup({
+      ownerId: activeUserId,
+      ownerType: 'asset',
+      title: 'Create contact',
+      onApply: async selectedCandidates => {
+        await this.addContacts(selectedCandidates);
+      }
+    });
+  }
+
+  private async loadContactPage(
+    query: ListQuery<NavigatorContactListFilters>
+  ): Promise<PageResult<NavigatorContactListItem>> {
+    await this.ensureContactsLoadedForActiveUser();
+    const search = AppUtils.normalizeText(query.filters?.search ?? '');
+    const contacts = this.contactListItems()
+      .filter(contact => !search || contact.searchText.includes(search))
+      .sort((left, right) => this.compareContacts(left, right));
+    const pageSize = Math.max(1, Number(query.pageSize) || 24);
+    const startIndex = Math.max(0, Number(query.page) || 0) * pageSize;
+    return {
+      items: contacts.slice(startIndex, startIndex + pageSize),
+      total: contacts.length
+    };
+  }
+
+  private contactListItems(): NavigatorContactListItem[] {
+    return this.contactsRef().map(contact => this.toListItem(contact));
+  }
+
+  private createFormValue(contact: NavigatorContactListItem): NavigatorContactFormValue {
+    return {
+      id: contact.id,
+      userId: contact.userId,
+      name: contact.name,
+      initials: contact.initials,
+      gender: contact.gender,
+      city: contact.city,
+      avatarUrl: contact.avatarUrl,
+      headline: contact.headline,
+      methods: contact.methods.map(method => ({
+        id: method.id,
+        type: method.type,
+        value: method.value
+      }))
+    };
+  }
+
+  private createEmptyMethodDraft(type: NavigatorContactMethodType = 'phone'): NavigatorContactMethodDraft {
+    return {
+      id: this.randomId('method'),
+      type,
+      value: ''
+    };
+  }
+
+  private async saveContact(form: NavigatorContactFormValue): Promise<void> {
+    const activeUserId = this.activeUserId();
+    if (!activeUserId) {
+      return;
+    }
+    await this.ensureContactsLoadedForActiveUser();
+    const normalizedContactId = form.id.trim();
+    const existing = this.contactsRef().find(contact => contact.id === normalizedContactId);
+    const user = this.usersService.peekCachedUserById(form.userId) ?? null;
+    const nowIso = new Date().toISOString();
+    const nextContact = this.normalizeStoredContact({
+      id: normalizedContactId || form.userId.trim() || this.randomId('contact'),
+      userId: form.userId.trim(),
+      name: user?.name ?? form.name,
+      initials: user?.initials ?? form.initials,
+      gender: user?.gender ?? form.gender,
+      city: user?.city ?? form.city,
+      avatarUrl: this.resolveUserAvatarUrl(user) || form.avatarUrl,
+      headline: user?.headline ?? form.headline,
+      createdAtIso: existing?.createdAtIso ?? nowIso,
+      updatedAtIso: nowIso,
+      methods: form.methods
+    });
+    const nextContacts = this.contactsRef()
+      .filter(contact => contact.id !== nextContact.id)
+      .concat(nextContact);
+    const savedContacts = await this.contactsDataService.saveContacts(activeUserId, this.normalizeContacts(nextContacts));
+    this.contactsLoadedForUserId = activeUserId;
+    this.applyContacts(savedContacts, true);
+  }
+
+  private async deleteContact(contactId: string): Promise<void> {
+    const activeUserId = this.activeUserId();
+    const normalizedContactId = contactId.trim();
+    if (!activeUserId || !normalizedContactId) {
+      return;
+    }
+    await this.ensureContactsLoadedForActiveUser();
+    const savedContacts = await this.contactsDataService.deleteContact(activeUserId, normalizedContactId);
+    this.contactsLoadedForUserId = activeUserId;
+    this.applyContacts(savedContacts, true);
+  }
+
+  private triggerMethod(method: NavigatorContactMethodItem): void {
+    const href = method.href.trim();
+    if (!href || typeof window === 'undefined') {
+      return;
+    }
+    if (method.openBehavior === 'new-tab') {
+      window.open(href, '_blank', 'noopener,noreferrer');
+      return;
+    }
+    window.location.href = href;
+  }
+
+  private lookupMethodOption(type: NavigatorContactMethodType): NavigatorContactMethodOption {
+    return CONTACT_METHOD_OPTION_BY_TYPE.get(type) ?? NAVIGATOR_CONTACT_METHOD_OPTIONS[0];
+  }
+
+  private async addContacts(selectedCandidates: readonly ActivityMemberEntry[]): Promise<void> {
+    const activeUserId = this.activeUserId();
+    if (!activeUserId || selectedCandidates.length === 0) {
+      return;
+    }
+    await this.ensureContactsLoadedForActiveUser();
+    const nextById = new Map(this.contactsRef().map(contact => [contact.id, contact]));
+    const nowIso = new Date().toISOString();
+    for (const candidate of selectedCandidates) {
+      const normalizedUserId = candidate.userId.trim();
+      if (!normalizedUserId) {
+        continue;
+      }
+      const existing = nextById.get(normalizedUserId);
+      const user = this.usersService.peekCachedUserById(normalizedUserId);
+      nextById.set(normalizedUserId, this.normalizeStoredContact({
+        id: normalizedUserId,
+        userId: normalizedUserId,
+        name: user?.name ?? candidate.name,
+        initials: user?.initials ?? candidate.initials,
+        gender: user?.gender ?? candidate.gender,
+        city: user?.city ?? candidate.city,
+        avatarUrl: this.resolveUserAvatarUrl(user) || candidate.avatarUrl,
+        headline: user?.headline ?? user?.statusText ?? existing?.headline ?? '',
+        createdAtIso: existing?.createdAtIso ?? nowIso,
+        updatedAtIso: nowIso,
+        methods: existing?.methods ?? []
+      }));
+    }
+    const savedContacts = await this.contactsDataService.saveContacts(activeUserId, this.normalizeContacts([...nextById.values()]));
+    this.contactsLoadedForUserId = activeUserId;
+    this.applyContacts(savedContacts, true);
+  }
+
+  private toListItem(contact: NavigatorStoredContact): NavigatorContactListItem {
+    const user = this.usersService.peekCachedUserById(contact.userId);
+    const name = `${user?.name ?? contact.name}`.trim() || 'Contact';
+    const initials = `${user?.initials ?? contact.initials}`.trim() || AppUtils.initialsFromText(name);
+    const city = `${user?.city ?? contact.city}`.trim();
+    const headline = `${user?.headline ?? contact.headline ?? user?.statusText ?? ''}`.trim();
+    const avatarUrl = this.resolveUserAvatarUrl(user) || contact.avatarUrl;
+    const methods = contact.methods
+      .map(method => this.toMethodItem(method))
+      .filter((method): method is NavigatorContactMethodItem => Boolean(method.href));
+    const methodCount = methods.length;
+    const searchText = AppUtils.normalizeText([
+      name,
+      city,
+      headline,
+      ...methods.map(method => method.displayValue),
+      ...methods.map(method => method.label)
+    ].filter(Boolean).join(' '));
+    return {
+      id: contact.id,
+      userId: contact.userId,
+      name,
+      initials,
+      gender: user?.gender ?? contact.gender,
+      city,
+      avatarUrl,
+      headline,
+      groupLabel: this.groupLabel(name),
+      methodCount,
+      methodCountLabel: methodCount === 1 ? '1 route' : `${methodCount} routes`,
+      methods,
+      updatedAtIso: contact.updatedAtIso,
+      searchText
+    };
+  }
+
+  private toMethodItem(method: NavigatorContactMethodDraft): NavigatorContactMethodItem {
+    const option = this.lookupMethodOption(method.type);
+    const value = method.value.trim();
+    const href = this.resolveMethodHref(method.type, value);
+    const displayValue = this.resolveMethodDisplayValue(method.type, value);
+    return {
+      ...method,
+      label: option.label,
+      icon: option.icon,
+      displayValue,
+      menuLabel: displayValue || option.label,
+      href,
+      openBehavior: option.openBehavior
+    };
+  }
+
+  private resolveMethodHref(type: NavigatorContactMethodType, value: string): string {
+    if (!value) {
+      return '';
+    }
+    if (type === 'phone') {
+      const phone = this.normalizePhoneUriValue(value);
+      return phone ? `tel:${phone}` : '';
+    }
+    if (type === 'sms') {
+      const phone = this.normalizePhoneUriValue(value);
+      return phone ? `sms:${phone}` : '';
+    }
+    if (type === 'whatsapp') {
+      if (this.isAbsoluteUrl(value)) {
+        return value;
+      }
+      const digits = this.normalizePhoneDigits(value);
+      return digits ? `https://wa.me/${digits}` : '';
+    }
+    if (type === 'email') {
+      const email = value.replace(/^mailto:/i, '').trim();
+      return email ? `mailto:${email}` : '';
+    }
+    if (type === 'facebook') {
+      return this.socialHref(value, 'facebook.com/');
+    }
+    if (type === 'instagram') {
+      return this.socialHref(value, 'instagram.com/');
+    }
+    if (type === 'telegram') {
+      return this.socialHref(value, 't.me/');
+    }
+    if (type === 'linkedin') {
+      return this.socialHref(value, 'linkedin.com/in/');
+    }
+    return this.websiteHref(value);
+  }
+
+  private resolveMethodDisplayValue(type: NavigatorContactMethodType, value: string): string {
+    if (!value) {
+      return '';
+    }
+    if (type === 'phone' || type === 'sms' || type === 'whatsapp') {
+      return value;
+    }
+    if (type === 'email') {
+      return value.replace(/^mailto:/i, '').trim();
+    }
+    if (type === 'website') {
+      return value.replace(/^https?:\/\//i, '').trim();
+    }
+    const cleaned = value
+      .replace(/^https?:\/\//i, '')
+      .replace(/^www\./i, '')
+      .replace(/^[^/]+\//, '')
+      .replace(/^@/, '')
+      .trim();
+    return cleaned ? `@${cleaned}` : value;
+  }
+
+  private socialHref(value: string, domainPath: string): string {
+    if (this.isAbsoluteUrl(value)) {
+      return value;
+    }
+    const cleaned = value
+      .replace(/^@/, '')
+      .replace(/^https?:\/\//i, '')
+      .replace(/^www\./i, '')
+      .replace(/^[^/]+\//, '')
+      .trim();
+    return cleaned ? `https://${domainPath}${cleaned}` : '';
+  }
+
+  private websiteHref(value: string): string {
+    if (!value) {
+      return '';
+    }
+    if (this.isAbsoluteUrl(value)) {
+      return value;
+    }
+    return `https://${value.trim()}`;
+  }
+
+  private isAbsoluteUrl(value: string): boolean {
+    return /^https?:\/\//i.test(value.trim());
+  }
+
+  private normalizePhoneUriValue(value: string): string {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return '';
+    }
+    const hasPlusPrefix = trimmed.startsWith('+');
+    const digits = trimmed.replace(/[^\d]/g, '');
+    if (!digits) {
+      return '';
+    }
+    return `${hasPlusPrefix ? '+' : ''}${digits}`;
+  }
+
+  private normalizePhoneDigits(value: string): string {
+    return value.replace(/[^\d]/g, '').trim();
+  }
+
+  private normalizeStoredContact(contact: Partial<NavigatorStoredContact>): NavigatorStoredContact {
+    const name = `${contact.name ?? ''}`.trim() || 'Contact';
+    const userId = `${contact.userId ?? ''}`.trim();
+    const id = `${contact.id ?? ''}`.trim() || userId || this.randomId('contact');
+    const gender = contact.gender === 'woman' ? 'woman' : 'man';
+    const methods = (contact.methods ?? [])
+      .map(method => this.normalizeMethodDraft(method))
+      .filter((method): method is NavigatorContactMethodDraft => Boolean(method && method.value));
+    return {
+      id,
+      userId,
+      name,
+      initials: `${contact.initials ?? ''}`.trim() || AppUtils.initialsFromText(name),
+      gender,
+      city: `${contact.city ?? ''}`.trim(),
+      avatarUrl: `${contact.avatarUrl ?? ''}`.trim(),
+      headline: `${contact.headline ?? ''}`.trim(),
+      createdAtIso: `${contact.createdAtIso ?? ''}`.trim() || new Date().toISOString(),
+      updatedAtIso: `${contact.updatedAtIso ?? ''}`.trim() || new Date().toISOString(),
+      methods
+    };
+  }
+
+  private normalizeMethodDraft(method: Partial<NavigatorContactMethodDraft> | null | undefined): NavigatorContactMethodDraft | null {
+    if (!method) {
+      return null;
+    }
+    const type = CONTACT_METHOD_OPTION_BY_TYPE.has(method.type as NavigatorContactMethodType)
+      ? method.type as NavigatorContactMethodType
+      : 'phone';
+    const value = `${method.value ?? ''}`.trim();
+    if (!value) {
+      return null;
+    }
+    return {
+      id: `${method.id ?? ''}`.trim() || this.randomId('method'),
+      type,
+      value
+    };
+  }
+
+  private normalizeContacts(contacts: readonly Partial<NavigatorStoredContact>[]): NavigatorStoredContact[] {
+    return contacts
+      .map(contact => this.normalizeStoredContact(contact))
+      .filter(contact => contact.userId || contact.id)
+      .sort((left, right) => this.compareContacts(this.toListItem(left), this.toListItem(right)));
+  }
+
+  private applyContacts(contacts: readonly Partial<NavigatorStoredContact>[], optimistic: boolean): void {
+    const normalizedContacts = contacts
+      .map(contact => this.normalizeStoredContact(contact))
+      .filter(contact => contact.userId || contact.id)
+      .sort((left, right) => this.compareContacts(this.toListItem(left), this.toListItem(right)));
+    this.contactsRef.set(normalizedContacts);
+    this.contactCountRef.set(normalizedContacts.length);
+    this.bumpRevision(optimistic);
+  }
+
+  private async ensureContactsLoadedForActiveUser(): Promise<void> {
+    const activeUserId = this.activeUserId();
+    if (!activeUserId) {
+      return;
+    }
+    if (this.contactsLoadedForUserId === activeUserId) {
+      return;
+    }
+    if (this.contactsLoadPromise) {
+      await this.contactsLoadPromise;
+      return;
+    }
+    const loadPromise = this.loadContactsForActiveUser(activeUserId);
+    this.contactsLoadPromise = loadPromise;
+    try {
+      await loadPromise;
+    } finally {
+      if (this.contactsLoadPromise === loadPromise) {
+        this.contactsLoadPromise = null;
+      }
+    }
+  }
+
+  private async loadContactsForActiveUser(activeUserId: string): Promise<void> {
+    const token = ++this.contactLoadToken;
+    const contacts = await this.contactsDataService.loadContacts(activeUserId);
+    if (token !== this.contactLoadToken || activeUserId !== this.loadedUserId) {
+      return;
+    }
+    this.contactsLoadedForUserId = activeUserId;
+    this.applyContacts(contacts, false);
+  }
+
+  private compareContacts(
+    left: Pick<NavigatorContactListItem, 'name' | 'city' | 'updatedAtIso'>,
+    right: Pick<NavigatorContactListItem, 'name' | 'city' | 'updatedAtIso'>
+  ): number {
+    const nameCompare = left.name.localeCompare(right.name, undefined, { sensitivity: 'base' });
+    if (nameCompare !== 0) {
+      return nameCompare;
+    }
+    const cityCompare = left.city.localeCompare(right.city, undefined, { sensitivity: 'base' });
+    if (cityCompare !== 0) {
+      return cityCompare;
+    }
+    return right.updatedAtIso.localeCompare(left.updatedAtIso);
+  }
+
+  private groupLabel(name: string): string {
+    const firstLetter = AppUtils.normalizeText(name).charAt(0).toUpperCase();
+    return /^[A-Z]$/.test(firstLetter) ? firstLetter : '#';
+  }
+
+  private resolveUserAvatarUrl(user: UserDto | null | undefined): string {
+    return AppUtils.firstImageUrl(user?.images);
+  }
+
+  private activeUserId(): string {
+    return this.appCtx.activeUserId().trim();
+  }
+
+  private randomId(prefix: string): string {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+      return `${prefix}-${crypto.randomUUID()}`;
+    }
+    return `${prefix}-${Math.random().toString(36).slice(2, 10)}`;
+  }
+
+  private bumpRevision(optimistic = false): void {
+    this.revisionRef.update(value => value + 1);
+    if (optimistic) {
+      this.lastOptimisticRevisionRef.set(this.revisionRef());
+    }
+  }
+
   private closeActionMenu(): void {
     this.openActionMenu.set(null);
   }
@@ -421,11 +999,5 @@ export class NavigatorContactsPopupComponent implements OnDestroy {
 
   private detectMobileViewport(): boolean {
     return typeof window !== 'undefined' ? window.innerWidth <= 900 : false;
-  }
-
-  private async wait(delayMs: number): Promise<void> {
-    await new Promise<void>(resolve => {
-      setTimeout(() => resolve(), delayMs);
-    });
   }
 }

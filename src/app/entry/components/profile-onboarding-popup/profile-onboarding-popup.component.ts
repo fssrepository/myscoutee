@@ -903,7 +903,7 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
     this.experienceEntriesLoading = true;
     this.cdr.detectChanges();
     try {
-      const entries = await this.loadExperienceEntriesWithBusyWindow(normalizedUserId);
+      const entries = await this.userExperiencesService.loadUserExperiences(normalizedUserId);
       if (token !== this.experienceLoadToken || !this.draft || this.draft.userId !== normalizedUserId) {
         return;
       }
@@ -928,10 +928,6 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
     }
     this.experienceEntriesLoadedForUserId = userId;
     void this.loadExistingExperienceEntries(userId);
-  }
-
-  private async loadExperienceEntriesWithBusyWindow(userId: string): Promise<ExperienceEntry[]> {
-    return this.userExperiencesService.loadUserExperiences(userId);
   }
 
   private startDraftAutosaveLoop(): void {

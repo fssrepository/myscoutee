@@ -12,7 +12,6 @@ import { NavigatorMenuComponent } from '../navigator-menu/navigator-menu.compone
 import { NavigatorSettingsPopupsComponent } from '../navigator-settings-popups/navigator-settings-popups.component';
 import { SubEventResourcePopupService } from '../../../activity/services/sub-event-resource-popup.service';
 import { NavigatorService } from '../../navigator.service';
-import { NavigatorContactsService } from '../../navigator-contacts.service';
 
 @Component({
   selector: 'app-navigator',
@@ -32,7 +31,6 @@ export class NavigatorComponent {
   private readonly popupCtx = inject(AppPopupContext);
   private readonly explanationGuide = inject(ExplanationGuideService);
   private readonly navigatorService = inject(NavigatorService);
-  private readonly navigatorContactsService = inject(NavigatorContactsService);
   private readonly activitiesContext = inject(ActivitiesPopupStateService);
   private readonly assetPopupService = inject(AssetPopupStateService);
   private readonly ownedAssets = inject(OwnedAssetsPopupFacadeService);
@@ -123,7 +121,7 @@ export class NavigatorComponent {
     });
 
     effect(() => {
-      const isContactsOpen = this.navigatorContactsService.isOpen();
+      const isContactsOpen = this.navigatorService.contactsPopupOpen();
       if (isContactsOpen && !this.navigatorContactsPopupComponentRef()) {
         void this.ensureNavigatorContactsPopupLoaded();
       }

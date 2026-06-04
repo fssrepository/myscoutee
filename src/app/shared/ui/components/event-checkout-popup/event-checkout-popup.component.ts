@@ -14,7 +14,6 @@ import { AppUtils } from '../../../app-utils';
 import { PricingBuilder } from '../../../core/base/builders';
 import type * as AppTypes from '../../../core/base/models';
 import { EventsService } from '../../../core/base/services/events.service';
-import { resolveCurrentRouteDelayMs } from '../../../core/base/services/route-delay.service';
 import type { DemoEventRecord } from '../../../core/demo/models/events.model';
 import { EventCheckoutDraftService } from '../../services/event-checkout-draft.service';
 import { EventCheckoutDialogService, type EventCheckoutDialogState } from '../../services/event-checkout-dialog.service';
@@ -578,16 +577,13 @@ export class EventCheckoutPopupComponent {
       return;
     }
     if (!this.paymentStep && (this.shouldAwaitApprovalBeforePayment() || this.isWaitingListSelection())) {
-      const startedAt = Date.now();
       this.busy = true;
       this.errorMessage = '';
       try {
         await Promise.resolve(dialog.onSubmit(this.buildSelection(null, false)));
         this.persistCheckoutDraft();
-        await this.ensureMinimumBusyDuration(startedAt);
         this.dialogService.close();
       } catch (error) {
-        await this.ensureMinimumBusyDuration(startedAt);
         this.errorMessage = this.resolveErrorMessage(error, dialog.failureMessage);
       } finally {
         this.busy = false;
@@ -595,12 +591,10 @@ export class EventCheckoutPopupComponent {
       return;
     }
     if (!this.paymentStep && this.totalAmount() > 0) {
-      const startedAt = Date.now();
       this.busy = true;
       this.errorMessage = '';
       try {
         const session = await this.eventsService.createCheckoutSession(this.buildCheckoutRequest());
-        await this.ensureMinimumBusyDuration(startedAt);
         if (!session?.id) {
           throw new Error('Unable to start checkout.');
         }
@@ -608,7 +602,6 @@ export class EventCheckoutPopupComponent {
         this.persistCheckoutDraft();
         this.paymentStep = true;
       } catch (error) {
-        await this.ensureMinimumBusyDuration(startedAt);
         this.errorMessage = this.resolveErrorMessage(error, 'Unable to start checkout.');
       } finally {
         this.busy = false;
@@ -616,7 +609,6 @@ export class EventCheckoutPopupComponent {
       return;
     }
 
-    const startedAt = Date.now();
     this.busy = true;
     this.errorMessage = '';
     try {
@@ -640,11 +632,9 @@ export class EventCheckoutPopupComponent {
         this.checkoutSessionId = paymentSessionId;
       }
       await Promise.resolve(dialog.onSubmit(this.buildSelection(paymentSessionId)));
-      await this.ensureMinimumBusyDuration(startedAt);
       this.clearCheckoutDraft();
       this.dialogService.close();
     } catch (error) {
-      await this.ensureMinimumBusyDuration(startedAt);
       if (await this.recoverStalePaymentSession(error)) {
         return;
       }
@@ -1075,15 +1065,6 @@ export class EventCheckoutPopupComponent {
       return;
     }
     this.clearCheckoutDraft();
-  }
-
-  private async ensureMinimumBusyDuration(startedAt: number): Promise<void> {
-    const elapsed = Date.now() - startedAt;
-    const minimumBusyDurationMs = resolveCurrentRouteDelayMs('/activities/events/checkout');
-    const remaining = Math.max(0, minimumBusyDurationMs - elapsed);
-    if (remaining > 0) {
-      await new Promise(resolve => window.setTimeout(resolve, remaining));
-    }
   }
 
   private rebuildSlotCaches(slots: readonly AppTypes.EventSlotOccurrence[]): void {

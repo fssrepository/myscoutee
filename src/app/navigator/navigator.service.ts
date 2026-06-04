@@ -89,6 +89,7 @@ export class NavigatorService {
   private readonly profileEditorOpenRef = signal(false);
   private readonly profileViewTargetRef = signal<NavigatorProfileViewTarget | null>(null);
   private readonly impressionsPopupOpenRef = signal(false);
+  private readonly contactsPopupOpenRef = signal(false);
   private readonly impressionsPopupUserIdRef = signal('');
   private hydrationRequestVersion = 0;
   private userRealtimeLongPollTimer: ReturnType<typeof setInterval> | null = null;
@@ -110,6 +111,7 @@ export class NavigatorService {
   readonly reportUserContext = this.reportUserContextRef.asReadonly();
   readonly deletedAccountReactivationPending = this.deletedAccountReactivationPendingRef.asReadonly();
   readonly impressionsPopupOpen = this.impressionsPopupOpenRef.asReadonly();
+  readonly contactsPopupOpen = this.contactsPopupOpenRef.asReadonly();
   readonly impressionsPopupUserId = this.impressionsPopupUserIdRef.asReadonly();
   readonly menuUiState = computed<NavigatorMenuUiState>(() => ({
     open: this.menuOpenRef(),
@@ -167,10 +169,12 @@ export class NavigatorService {
       if (!session || !activeUserId) {
         this.stopUserRealtimeLongPoll();
         this.impressionsPopupOpenRef.set(false);
+        this.contactsPopupOpenRef.set(false);
         return;
       }
       if (this.isAdminWorkspaceRoute() || this.isAdminProfileActive(activeUserId)) {
         this.impressionsPopupOpenRef.set(false);
+        this.contactsPopupOpenRef.set(false);
         this.activateUserRealtimeLongPoll(activeUserId);
         return;
       }
@@ -217,6 +221,7 @@ export class NavigatorService {
     this.closeMenu();
     this.closeSettingsPopup();
     this.closeImpressionsPopup();
+    this.closeContactsPopup();
     this.closeProfileEditor();
     this.closeProfileView();
   }
@@ -603,6 +608,17 @@ export class NavigatorService {
     this.impressionsPopupOpenRef.set(true);
   }
 
+  openContactsPopup(): void {
+    if (!this.appCtx.activeUserId().trim()) {
+      return;
+    }
+    this.contactsPopupOpenRef.set(true);
+  }
+
+  closeContactsPopup(): void {
+    this.contactsPopupOpenRef.set(false);
+  }
+
   openDeleteAccountConfirm(): void {
     const activeUserName = this.appCtx.activeUserProfile()?.name?.trim() || 'this account';
     this.confirmationDialogService.open({
@@ -617,6 +633,7 @@ export class NavigatorService {
         this.closeSettingsPopup();
         this.closeProfileEditor();
         this.closeImpressionsPopup();
+        this.closeContactsPopup();
         if (this.router.url.split('?')[0].startsWith('/admin')) {
           this.clearHydratedUser();
           localStorage.removeItem(NavigatorService.ADMIN_SESSION_STORAGE_KEY);
@@ -658,6 +675,7 @@ export class NavigatorService {
         this.closeSettingsPopup();
         this.closeProfileEditor();
         this.closeImpressionsPopup();
+        this.closeContactsPopup();
         const activeUserId = this.appCtx.activeUserId().trim();
         if (this.router.url.split('?')[0].startsWith('/admin')) {
           if (activeUserId) {

@@ -26,7 +26,6 @@ import { CounterBadgePipe, ProgressIndicatorComponent } from '../../../shared/ui
 import { I18nPipe } from '../../../shared/i18n';
 import { NavigatorService } from '../../navigator.service';
 import { NavigatorSettingsMenuComponent } from '../navigator-settings-menu/navigator-settings-menu.component';
-import { NavigatorContactsService } from '../../navigator-contacts.service';
 import { ActivitiesPopupStateService } from '../../../activity/services/activities-popup-state.service';
 import type { ChatRecord } from '../../../shared/core/base/models/chat.model';
 
@@ -51,7 +50,6 @@ export class NavigatorMenuComponent {
   private readonly explanationGuide = inject(ExplanationGuideService);
   private readonly router = inject(Router);
   private readonly navigatorService = inject(NavigatorService);
-  private readonly navigatorContactsService = inject(NavigatorContactsService);
   private readonly activitiesContext = inject(ActivitiesPopupStateService);
   private readonly profileSaveLoadState = this.appCtx.selectLoadingState(USER_PROFILE_SAVE_CONTEXT_KEY);
   private readonly userLogoutLoadState = this.appCtx.selectLoadingState(USER_LOGOUT_CONTEXT_KEY);
@@ -96,7 +94,7 @@ export class NavigatorMenuComponent {
       accommodation: activityOverrides.accommodation ?? activeUser.activities?.accommodation ?? 0,
       supplies: activityOverrides.supplies ?? activeUser.activities?.supplies ?? 0,
       tickets: activityOverrides.tickets ?? activeUser.activities?.tickets ?? 0,
-      contacts: activityOverrides.contacts ?? activeUser.activities?.contacts ?? this.navigatorContactsService.contactCount(),
+      contacts: activityOverrides.contacts ?? activeUser.activities?.contacts ?? 0,
       feedback: activityOverrides.feedback ?? activeUser.activities?.feedback ?? 0,
       adminJobs: activityOverrides.adminJobs ?? activeUser.activities?.adminJobs ?? 0,
       adminMetrics: activityOverrides.adminMetrics ?? activeUser.activities?.adminMetrics ?? 0
@@ -328,7 +326,7 @@ export class NavigatorMenuComponent {
 
   protected openContactsPopup(event?: Event): void {
     event?.stopPropagation();
-    this.navigatorContactsService.openPopup();
+    this.navigatorService.openContactsPopup();
   }
 
   protected openEventFeedbackPopup(event?: Event): void {

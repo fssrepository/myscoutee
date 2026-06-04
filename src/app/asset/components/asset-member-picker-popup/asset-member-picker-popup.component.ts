@@ -16,7 +16,6 @@ import { from } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import type * as AppTypes from '../../../shared/core/base/models';
 import { AppUtils } from '../../../shared/app-utils';
-import { resolveCurrentRouteDelayMs } from '../../../shared/core/base/services/route-delay.service';
 import {
   BasketComponent,
   LazyBgImageDirective,
@@ -35,7 +34,6 @@ import {
   ActivityMembersService,
   AppContext,
   AppPopupContext,
-  NavigatorContactsService,
   UsersService
 } from '../../../shared/core';
 import { NavigatorService } from '../../../navigator';
@@ -63,14 +61,12 @@ interface ActivityInviteFilters {
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class AssetMemberPickerPopupComponent {
-  private static readonly CONFIRM_PENDING_WINDOW_MS = 1500;
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly appCtx = inject(AppContext);
   private readonly popupCtx = inject(AppPopupContext);
   private readonly activityInviteCandidatesService = inject(ActivityInviteCandidatesService);
   private readonly activityMembersService = inject(ActivityMembersService);
   private readonly ownedAssets = inject(OwnedAssetsPopupFacadeService);
-  private readonly navigatorContactsService = inject(NavigatorContactsService);
   private readonly navigatorService = inject(NavigatorService);
   private readonly usersService = inject(UsersService);
 
@@ -110,8 +106,6 @@ export class AssetMemberPickerPopupComponent {
 
   protected readonly inviteSmartListConfig: SmartListConfig<AppTypes.ActivityMemberEntry, ActivityInviteFilters> = {
     pageSize: 16,
-    loadingDelayMs: resolveCurrentRouteDelayMs('/activities/events/invite-candidates'),
-    loadingWindowMs: 3000,
     defaultView: 'list',
     headerProgress: {
       enabled: true
@@ -256,7 +250,7 @@ export class AssetMemberPickerPopupComponent {
     const selected = this.selectedInviteChips();
     this.isConfirmPending = true;
     this.confirmErrorMessage = '';
-    const pendingWindowPromise = this.minimumPendingWindow();
+    const pendingWindowPromise = this.activityInviteCandidatesService.waitForPendingWindow();
     this.cdr.markForCheck();
     try {
       const savePromise = this.runSaveAfterUiYield(selected);
@@ -416,10 +410,6 @@ export class AssetMemberPickerPopupComponent {
           ? cachedMembers
           : await this.activityMembersService.queryMembersByOwner(ownerRef);
 
-        if (this.ownerType === 'asset') {
-          const contacts = this.navigatorContactsService.allContactsAsMemberEntries();
-          currentMembers = [...currentMembers, ...contacts];
-        }
         const existingUserIds = [
           ...new Set([
             ...currentMembers.map(member => member.userId),
@@ -495,7 +485,6 @@ export class AssetMemberPickerPopupComponent {
     });
   }
 
-
   private hasSelectionChanges(): boolean {
     if (this.selectedUserIds.length !== this.persistedSelectedUserIds.size) {
       return true;
@@ -509,12 +498,6 @@ export class AssetMemberPickerPopupComponent {
       return;
     }
     await this.activityInviteCandidatesService.applyInvites(this.ownerId, selected, this.ownerType);
-  }
-
-  private minimumPendingWindow(): Promise<void> {
-    return this.demoModeEnabled
-      ? this.wait(AssetMemberPickerPopupComponent.CONFIRM_PENDING_WINDOW_MS)
-      : Promise.resolve();
   }
 
   private async runSaveAfterUiYield(selected: readonly AppTypes.ActivityMemberEntry[]): Promise<void> {
