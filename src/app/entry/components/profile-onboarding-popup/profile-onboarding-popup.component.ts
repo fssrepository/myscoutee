@@ -95,8 +95,8 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
   private isDraftAutosavePending = false;
 
   protected readonly steps: OnboardingStep[] = [
-    { id: 'photos', title: 'Photos', optional: false },
     { id: 'basics', title: 'Basics', optional: false },
+    { id: 'photos', title: 'Photos', optional: false },
     { id: 'identity', title: 'Identity', optional: true },
     { id: 'about', title: 'About', optional: true },
     { id: 'lifestyle', title: 'Lifestyle', optional: true },
@@ -179,7 +179,7 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
   }
 
   protected currentStep(): OnboardingStep {
-    const stepId = this.draft?.currentStepId ?? 'photos';
+    const stepId = this.draft?.currentStepId ?? 'basics';
     return this.steps.find(step => step.id === stepId) ?? this.steps[0];
   }
 
@@ -193,6 +193,14 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
   }
 
   protected requiredMissingLabels(): string[] {
+    const labels = this.basicsMissingLabels();
+    if (this.imageCount() < ProfileOnboardingPopupComponent.MIN_REQUIRED_IMAGES) {
+      labels.push('3 photos');
+    }
+    return labels;
+  }
+
+  protected basicsMissingLabels(): string[] {
     if (!this.draft) {
       return [];
     }
@@ -215,9 +223,6 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
     if (!this.hasLanguageReady()) {
       labels.push('Language');
     }
-    if (this.imageCount() < ProfileOnboardingPopupComponent.MIN_REQUIRED_IMAGES) {
-      labels.push('3 photos');
-    }
     return labels;
   }
 
@@ -226,7 +231,7 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
       return false;
     }
     if (this.currentStep().id === 'basics') {
-      return this.requiredMissingLabels().length === 0;
+      return this.basicsMissingLabels().length === 0;
     }
     if (this.currentStep().id === 'photos') {
       return this.imageCount() >= ProfileOnboardingPopupComponent.MIN_REQUIRED_IMAGES;
@@ -625,8 +630,13 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
   }
 
   protected stepRequiredMissing(stepId: ProfileOnboardingStepId): boolean {
-    const step = this.steps.find(candidate => candidate.id === stepId);
-    return Boolean(step && !step.optional && this.requiredMissingLabels().length > 0);
+    if (stepId === 'basics') {
+      return this.basicsMissingLabels().length > 0;
+    }
+    if (stepId === 'photos') {
+      return this.imageCount() < ProfileOnboardingPopupComponent.MIN_REQUIRED_IMAGES;
+    }
+    return false;
   }
 
   protected stepIcon(step: OnboardingStep): string {
@@ -647,7 +657,7 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
   }
 
   protected basicsErrorVisible(): boolean {
-    return this.attemptedContinue && this.currentStep().id === 'basics' && this.requiredMissingLabels().length > 0;
+    return this.attemptedContinue && this.currentStep().id === 'basics' && this.basicsMissingLabels().length > 0;
   }
 
   private async saveAndComplete(): Promise<void> {

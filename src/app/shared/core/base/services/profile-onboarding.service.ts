@@ -122,7 +122,7 @@ export class ProfileOnboardingService {
     return this.normalizeDraft({
       version: 1,
       userId: user.id.trim(),
-      currentStepId: 'photos',
+      currentStepId: 'basics',
       updatedAtIso: new Date().toISOString(),
       completedStepIds: [],
       skippedStepIds: [],
@@ -317,7 +317,7 @@ export class ProfileOnboardingService {
     const candidate = `${value ?? ''}`.trim();
     return this.stepIds().includes(candidate as ProfileOnboardingStepId)
       ? candidate as ProfileOnboardingStepId
-      : 'photos';
+      : 'basics';
   }
 
   private normalizeStepIds(values: readonly ProfileOnboardingStepId[] | undefined): ProfileOnboardingStepId[] {
@@ -326,7 +326,7 @@ export class ProfileOnboardingService {
   }
 
   private stepIds(): ProfileOnboardingStepId[] {
-    return ['photos', 'basics', 'identity', 'about', 'lifestyle', 'values', 'interests', 'experience', 'review'];
+    return ['basics', 'photos', 'identity', 'about', 'lifestyle', 'values', 'interests', 'experience', 'review'];
   }
 
   private normalizeProfileStatus(value: unknown): ProfileStatus {
