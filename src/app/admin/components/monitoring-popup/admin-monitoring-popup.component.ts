@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
 import type {
@@ -14,7 +14,6 @@ import { AdminMonitoringService } from '../../services/admin-monitoring.service'
 import { AdminShellService } from '../../services/admin-shell.service';
 
 const MONITORING_POPUP_KEY = 'monitoring';
-const MONITORING_LOAD_PROGRESS_WINDOW_MS = 3000;
 
 const MONITORING_FILTER = {
   all: 'all',
@@ -48,9 +47,9 @@ const MONITORING_FILTER_CATEGORIES: Record<MonitoringFilter, ReadonlySet<string>
   templateUrl: './admin-monitoring-popup.component.html',
   styleUrl: './admin-monitoring-popup.component.scss'
 })
-export class AdminMonitoringPopupComponent implements OnInit, OnDestroy {
+export class AdminMonitoringPopupComponent implements OnInit {
   protected readonly admin = inject(AdminShellService);
-  private readonly monitoringService = inject(AdminMonitoringService);
+  protected readonly monitoringService = inject(AdminMonitoringService);
   protected readonly popupKey = MONITORING_POPUP_KEY;
   protected readonly filterOptions = MONITORING_FILTER_OPTIONS;
   protected readonly loading = signal(false);
@@ -58,9 +57,6 @@ export class AdminMonitoringPopupComponent implements OnInit, OnDestroy {
   protected readonly state = signal<Awaited<ReturnType<AdminMonitoringService['loadMonitoringState']>> | null>(null);
   protected readonly filter = signal<MonitoringFilter>(MONITORING_FILTER.all);
   protected readonly filterMenuOpen = signal(false);
-  protected readonly loadingProgress = signal(0);
-  private loadingProgressTimer: ReturnType<typeof setInterval> | null = null;
-  private loadingProgressStartedAtMs = 0;
 
   protected readonly filteredCategories = computed(() => {
     const categories = this.state()?.categories ?? [];
@@ -77,10 +73,6 @@ export class AdminMonitoringPopupComponent implements OnInit, OnDestroy {
 
   async ngOnInit(): Promise<void> {
     await this.load();
-  }
-
-  ngOnDestroy(): void {
-    this.clearLoadingProgress();
   }
 
   protected close(): void {
@@ -140,7 +132,6 @@ export class AdminMonitoringPopupComponent implements OnInit, OnDestroy {
 
   private async load(): Promise<void> {
     this.loading.set(true);
-    this.beginLoadingProgress();
     this.error.set('');
     try {
       const state = await this.monitoringService.loadMonitoringState();
@@ -149,47 +140,7 @@ export class AdminMonitoringPopupComponent implements OnInit, OnDestroy {
       this.error.set('admin.monitoring.error.load');
     } finally {
       this.loading.set(false);
-      this.endLoadingProgress();
     }
-  }
-
-  private beginLoadingProgress(): void {
-    this.clearLoadingProgress();
-    this.loadingProgressStartedAtMs = this.nowMs();
-    this.loadingProgressTimer = setInterval(() => this.updateLoadingProgress(), 100);
-    this.updateLoadingProgress();
-  }
-
-  private updateLoadingProgress(): void {
-    if (!this.loadingProgressStartedAtMs) {
-      this.loadingProgress.set(0);
-      return;
-    }
-    const elapsedMs = Math.max(0, this.nowMs() - this.loadingProgressStartedAtMs);
-    this.loadingProgress.set(Math.min(0.96, elapsedMs / MONITORING_LOAD_PROGRESS_WINDOW_MS));
-  }
-
-  private endLoadingProgress(): void {
-    this.clearLoadingProgressTimer();
-    this.loadingProgress.set(1);
-  }
-
-  private clearLoadingProgress(): void {
-    this.clearLoadingProgressTimer();
-    this.loadingProgressStartedAtMs = 0;
-    this.loadingProgress.set(0);
-  }
-
-  private clearLoadingProgressTimer(): void {
-    if (!this.loadingProgressTimer) {
-      return;
-    }
-    clearInterval(this.loadingProgressTimer);
-    this.loadingProgressTimer = null;
-  }
-
-  private nowMs(): number {
-    return typeof performance !== 'undefined' ? performance.now() : Date.now();
   }
 
   private categoryHealthScore(category: AdminMonitoringCategoryDto): number {

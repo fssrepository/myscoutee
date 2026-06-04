@@ -5,7 +5,6 @@ import { MatIconModule } from '@angular/material/icon';
 import { Observable, of } from 'rxjs';
 
 import type * as AppTypes from '../../../shared/core/base/models';
-import { resolveCurrentRouteDelayMs } from '../../../shared/core/base/services/route-delay.service';
 import {
   InfoCardComponent,
   type InfoCardData
@@ -65,7 +64,7 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
   @Input({ required: true }) authMode: AppTypes.AuthMode = 'selector';
   @Input() firebaseAuthProfile: AppTypes.FirebaseAuthProfile | null = null;
   @Input() articlesLoading = false;
-  @Input() articlesLoadingProgress = 0;
+  @Input() articlesLoadingDurationMs = 3000;
   @Input() ideaCards: InfoCardData[] = [];
   @Input() authUnavailable = false;
   @Input() authUnavailableLabel = 'Unavailable in your country';
@@ -118,8 +117,6 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
     pageSize: 10,
     initialPageSize: 10,
     initialPageCount: 1,
-    loadingDelayMs: resolveCurrentRouteDelayMs('/landing/content', 1500),
-    loadingWindowMs: 3000,
     defaultView: 'day',
     defaultDirection: 'desc',
     defaultGroupBy: 'submittedDay',

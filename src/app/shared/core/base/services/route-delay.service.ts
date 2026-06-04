@@ -1,32 +1,92 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { environment } from '../../../../../environments/environment';
 
 import { resolveRouteConfig } from '../config';
+import { scopedStorageKey } from '../storage-scope';
+import { SessionService } from './session.service';
 
 export function resolveCurrentRouteDelayMs(route: string, fallbackDelayMs = 0): number {
   const routeConfig = resolveRouteConfig(route);
-  if (environment.activitiesDataSource === 'http' || routeConfig.http) {
+  if (routeConfig.http) {
     return 0;
   }
-  if (routeConfig.demoDelayMs > 0) {
-    return routeConfig.demoDelayMs;
+  if (environment.activitiesDataSource === 'demo' || isStoredDemoSessionActive()) {
+    return routeConfig.demoDelayMs > 0
+      ? routeConfig.demoDelayMs
+      : normalizeDelayMs(fallbackDelayMs);
   }
-  return normalizeDelayMs(fallbackDelayMs);
+  return 0;
 }
 
-export function resolveCurrentDemoDelayMs(fallbackDelayMs = 0): number {
-  if (environment.activitiesDataSource !== 'demo') {
-    return 0;
+export function resolveCurrentRouteRequestTimeoutMs(route: string, fallbackTimeoutMs = 3000): number {
+  const routeConfig = resolveRouteConfig(route);
+  if (routeConfig.requestTimeoutMs > 0) {
+    return routeConfig.requestTimeoutMs;
   }
-  return normalizeDelayMs(fallbackDelayMs);
+  return normalizeDelayMs(fallbackTimeoutMs);
+}
+
+export function resolveCurrentRouteIntervalMs(route: string, fallbackIntervalMs = 0): number {
+  const routeConfig = resolveRouteConfig(route);
+  if (routeConfig.intervalMs > 0) {
+    return routeConfig.intervalMs;
+  }
+  return normalizeDelayMs(fallbackIntervalMs);
 }
 
 @Injectable({
   providedIn: 'root'
 })
 export class RouteDelayService {
+  private readonly sessionService = inject(SessionService);
+
   resolveDelayMs(route: string, fallbackDelayMs = 0): number {
-    return resolveCurrentRouteDelayMs(route, fallbackDelayMs);
+    const routeConfig = resolveRouteConfig(route);
+    if (routeConfig.http) {
+      return 0;
+    }
+    if (this.sessionService.currentSession()?.kind === 'demo' || environment.activitiesDataSource === 'demo') {
+      return routeConfig.demoDelayMs > 0
+        ? routeConfig.demoDelayMs
+        : normalizeDelayMs(fallbackDelayMs);
+    }
+    return 0;
+  }
+
+  resolveRequestTimeoutMs(route: string, fallbackTimeoutMs = 3000): number {
+    return resolveCurrentRouteRequestTimeoutMs(route, fallbackTimeoutMs);
+  }
+
+  resolveIntervalMs(route: string, fallbackIntervalMs = 0): number {
+    return resolveCurrentRouteIntervalMs(route, fallbackIntervalMs);
+  }
+
+  withRequestTimeout<T>(
+    route: string,
+    task: Promise<T>,
+    timeoutMessage = 'Request timed out.',
+    fallbackTimeoutMs = 3000
+  ): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+      let finished = false;
+      let timeoutId: ReturnType<typeof setTimeout> | null = null;
+      const finish = (callback: () => void) => {
+        if (finished) {
+          return;
+        }
+        finished = true;
+        if (timeoutId !== null) {
+          clearTimeout(timeoutId);
+          timeoutId = null;
+        }
+        callback();
+      };
+      timeoutId = setTimeout(
+        () => finish(() => reject(new Error(timeoutMessage))),
+        this.resolveRequestTimeoutMs(route, fallbackTimeoutMs)
+      );
+      task.then(value => finish(() => resolve(value))).catch(error => finish(() => reject(error)));
+    });
   }
 
   async waitForRouteDelay(
@@ -85,4 +145,20 @@ export class RouteDelayService {
 
 function normalizeDelayMs(value: number): number {
   return Math.max(0, Math.trunc(Number(value) || 0));
+}
+
+function isStoredDemoSessionActive(): boolean {
+  if (typeof localStorage === 'undefined') {
+    return false;
+  }
+  try {
+    const rawSession = localStorage.getItem(scopedStorageKey('session.v1'));
+    if (!rawSession) {
+      return false;
+    }
+    const session = JSON.parse(rawSession) as { kind?: unknown } | null;
+    return session?.kind === 'demo';
+  } catch {
+    return false;
+  }
 }

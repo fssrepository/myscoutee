@@ -63,7 +63,11 @@
       <div class="popup-body notifications-body">
         @if (loading()) {
           <div class="notifications-state notifications-loading-state" aria-busy="true">
-            <app-progress-indicator kind="load-ring" [position]="loadingProgress()"></app-progress-indicator>
+            <app-progress-indicator
+              kind="load-ring"
+              state="loading"
+              [durationMs]="notificationsService.notificationCenterLoadProgressWindowMs()"
+            ></app-progress-indicator>
             <span>{{ 'admin.jobs.loading' | i18n }}</span>
           </div>
         } @else {

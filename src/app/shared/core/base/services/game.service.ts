@@ -17,6 +17,7 @@ import { HttpUsersRatingsRepository } from '../../http/repositories/users-rating
 import { BaseUsersRatingsRepository } from '../repositories/users-ratings.repository';
 import type { UserDto } from '../interfaces/user.interface';
 import { BaseRouteModeService } from './base-route-mode.service';
+import { resolveCurrentRouteRequestTimeoutMs } from './route-delay.service';
 
 export const USER_GAME_CARDS_LOAD_CONTEXT_KEY = 'user-game-cards';
 
@@ -39,7 +40,6 @@ class RequestTimeoutError extends Error {
   providedIn: 'root'
 })
 export class GameService extends BaseRouteModeService {
-  private static readonly DEFAULT_REQUEST_TIMEOUT_MS = 3000;
   private static readonly USER_RATES_OUTBOX_SYNC_INTERVAL_MS = 30000;
   private static readonly USER_RATES_OUTBOX_SYNC_BATCH_SIZE = 50;
   private readonly demoGameService = inject(DemoGameService);
@@ -684,7 +684,7 @@ export class GameService extends BaseRouteModeService {
 
   private resolveRequestTimeoutMs(value?: number): number {
     if (!Number.isFinite(value)) {
-      return GameService.DEFAULT_REQUEST_TIMEOUT_MS;
+      return resolveCurrentRouteRequestTimeoutMs('/game-cards/query');
     }
     return Math.max(1, Math.trunc(Number(value)));
   }

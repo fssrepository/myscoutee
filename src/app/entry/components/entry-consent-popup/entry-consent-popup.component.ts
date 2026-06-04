@@ -27,7 +27,7 @@ export class EntryConsentPopupComponent {
   @Input() open = false;
   @Input() viewOnly = false;
   @Input() loading = false;
-  @Input() loadingProgress = 0;
+  @Input() loadingDurationMs = 3000;
   @Input() approvalRequired = false;
 
   @Output() readonly closeRequested = new EventEmitter<void>();

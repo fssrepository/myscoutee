@@ -31,7 +31,11 @@
       <div class="entry-consent-content">
         @if (loading) {
           <section class="entry-consent-loading">
-            <app-progress-indicator kind="load-ring" [position]="loadingProgress"></app-progress-indicator>
+            <app-progress-indicator
+              kind="load-ring"
+              state="loading"
+              [durationMs]="loadingDurationMs"
+            ></app-progress-indicator>
             <span>{{ uiText('Loading privacy content') }}</span>
           </section>
         } @else if (activeRevision()) {

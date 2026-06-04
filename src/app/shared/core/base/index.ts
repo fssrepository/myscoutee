@@ -22,6 +22,7 @@ export { IdeaPostsService } from './services/idea-posts.service';
 export { LandingContentService } from './services/landing-content.service';
 export { MediaService } from './services/media.service';
 export { RouteDelayService } from './services/route-delay.service';
+export { RouteIntervalSchedulerService } from './services/route-interval-scheduler.service';
 export { ActivityMembersService } from './services/activity-members.service';
 export { ActivityResourcesService } from './services/activity-resources.service';
 export {

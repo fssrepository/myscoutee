@@ -212,7 +212,11 @@
               aria-live="polite"
               aria-busy="true"
               >
-              <app-progress-indicator kind="load-ring" [position]="articlesLoadingProgress"></app-progress-indicator>
+              <app-progress-indicator
+                kind="load-ring"
+                state="loading"
+                [durationMs]="articlesLoadingDurationMs"
+              ></app-progress-indicator>
               <span class="entry-ideas-carousel-loading-label">{{ 'Loading articles' | i18n }}</span>
             </div>
           }

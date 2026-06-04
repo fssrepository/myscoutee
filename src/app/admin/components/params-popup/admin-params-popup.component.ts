@@ -3,7 +3,6 @@ import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 
-import { RouteDelayService } from '../../../shared/core/base/services/route-delay.service';
 import { I18nPipe } from '../../../shared/i18n';
 import { ProgressIndicatorComponent } from '../../../shared/ui/components/progress-indicator';
 import {
@@ -27,17 +26,12 @@ type AdminParamOption = Readonly<AdminParamOptionDto>;
   styleUrl: './admin-params-popup.component.scss'
 })
 export class AdminParamsPopupComponent implements OnDestroy {
-  private static readonly ACTION_PENDING_WINDOW_MS = 1500;
-  private static readonly LOAD_PROGRESS_WINDOW_MS = 3000;
-
   protected readonly admin = inject(AdminShellService);
-  private readonly paramsService = inject(AdminParamsService);
-  private readonly routeDelay = inject(RouteDelayService);
+  protected readonly paramsService = inject(AdminParamsService);
   protected readonly loading = signal(false);
   protected readonly saving = signal(false);
   protected readonly reverting = signal(false);
   protected readonly revertingVersion = signal<number | null>(null);
-  protected readonly loadingProgress = signal(0);
   protected readonly error = signal('');
   protected readonly state = signal<AdminParamsStateDto | null>(null);
   protected readonly openSectionKey = signal('');
@@ -50,8 +44,6 @@ export class AdminParamsPopupComponent implements OnDestroy {
     const key = this.openSectionKey();
     return this.state()?.sections.find(section => section.key === key) ?? this.state()?.sections[0] ?? null;
   });
-  private loadingProgressTimer: ReturnType<typeof setInterval> | null = null;
-  private loadingProgressStartedAtMs = 0;
   private historyLoadGeneration = 0;
 
   constructor() {
@@ -64,12 +56,10 @@ export class AdminParamsPopupComponent implements OnDestroy {
     this.history.set(null);
     this.historyLoading.set(false);
     this.openTextSelectKey.set('');
-    this.clearLoadingProgress();
   }
 
   protected async load(): Promise<void> {
     this.loading.set(true);
-    this.beginLoadingProgress();
     this.error.set('');
     try {
       const state = await this.paramsService.loadParamsState();
@@ -81,7 +71,6 @@ export class AdminParamsPopupComponent implements OnDestroy {
       this.error.set(this.messageFromError(error, 'Unable to load parameters.'));
     } finally {
       this.loading.set(false);
-      this.endLoadingProgress();
     }
   }
 
@@ -153,7 +142,6 @@ export class AdminParamsPopupComponent implements OnDestroy {
       versions: []
     });
     this.historyLoading.set(true);
-    this.beginLoadingProgress();
     try {
       const history = await this.paramsService.loadParamsHistory(section.key);
       if (this.historyLoadGeneration !== loadGeneration) {
@@ -168,7 +156,6 @@ export class AdminParamsPopupComponent implements OnDestroy {
     } finally {
       if (this.historyLoadGeneration === loadGeneration) {
         this.historyLoading.set(false);
-        this.endLoadingProgress();
       }
     }
   }
@@ -181,7 +168,6 @@ export class AdminParamsPopupComponent implements OnDestroy {
     this.history.set(null);
     this.historyLoading.set(false);
     this.inspectedVersion.set(null);
-    this.clearLoadingProgress();
   }
 
   protected inspectVersion(item: AdminParamsHistoryItemDto, event?: Event): void {
@@ -200,12 +186,11 @@ export class AdminParamsPopupComponent implements OnDestroy {
     this.error.set('');
     let loadGeneration = 0;
     try {
-      const state = await this.withMinimumActionTime(this.paramsService.revertParamsSection(history.sectionKey, item.version));
+      const state = await this.paramsService.revertParamsSection(history.sectionKey, item.version);
       this.state.set(state);
       this.openSectionKey.set(history.sectionKey);
       loadGeneration = ++this.historyLoadGeneration;
       this.historyLoading.set(true);
-      this.beginLoadingProgress();
       const refreshedHistory = await this.paramsService.loadParamsHistory(history.sectionKey);
       if (this.historyLoadGeneration !== loadGeneration) {
         return;
@@ -219,7 +204,6 @@ export class AdminParamsPopupComponent implements OnDestroy {
     } finally {
       if (loadGeneration > 0 && this.historyLoadGeneration === loadGeneration) {
         this.historyLoading.set(false);
-        this.endLoadingProgress();
       }
       this.revertingVersion.set(null);
       this.reverting.set(false);
@@ -310,53 +294,6 @@ export class AdminParamsPopupComponent implements OnDestroy {
 
   protected updateNumberField(field: AdminParamFieldDto, value: string): void {
     field.numberValue = Number.isFinite(Number(value)) ? Number(value) : 0;
-  }
-
-  private beginLoadingProgress(): void {
-    this.clearLoadingProgress();
-    this.loadingProgressStartedAtMs = this.nowMs();
-    this.loadingProgressTimer = setInterval(() => this.updateLoadingProgress(), 100);
-    this.updateLoadingProgress();
-  }
-
-  private updateLoadingProgress(): void {
-    if (!this.loadingProgressStartedAtMs) {
-      this.loadingProgress.set(0);
-      return;
-    }
-    const elapsedMs = Math.max(0, this.nowMs() - this.loadingProgressStartedAtMs);
-    this.loadingProgress.set(Math.min(0.96, elapsedMs / AdminParamsPopupComponent.LOAD_PROGRESS_WINDOW_MS));
-  }
-
-  private endLoadingProgress(): void {
-    this.clearLoadingProgressTimer();
-    this.loadingProgress.set(1);
-  }
-
-  private clearLoadingProgress(): void {
-    this.clearLoadingProgressTimer();
-    this.loadingProgressStartedAtMs = 0;
-    this.loadingProgress.set(0);
-  }
-
-  private clearLoadingProgressTimer(): void {
-    if (!this.loadingProgressTimer) {
-      return;
-    }
-    clearInterval(this.loadingProgressTimer);
-    this.loadingProgressTimer = null;
-  }
-
-  private nowMs(): number {
-    return typeof performance !== 'undefined' ? performance.now() : Date.now();
-  }
-
-  private async withMinimumActionTime<T>(action: Promise<T>): Promise<T> {
-    const [result] = await Promise.all([
-      action,
-      this.routeDelay.waitForDelay(AdminParamsPopupComponent.ACTION_PENDING_WINDOW_MS)
-    ]);
-    return result;
   }
 
   private messageFromError(error: unknown, fallback: string): string {

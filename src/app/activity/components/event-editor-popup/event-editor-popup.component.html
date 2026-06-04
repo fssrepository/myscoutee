@@ -71,7 +71,11 @@
     <div class="popup-body">
       @if (isLoadingEventData()) {
       <div class="popup-loading-overlay" aria-busy="true">
-        <app-progress-indicator kind="load-ring" [position]="eventDataLoadingProgress()"></app-progress-indicator>
+        <app-progress-indicator
+          kind="load-ring"
+          state="loading"
+          [durationMs]="eventEditorDataService.detailLoadProgressWindowMs()"
+        ></app-progress-indicator>
       </div>
       } @else {
       <section class="editor-list-card">

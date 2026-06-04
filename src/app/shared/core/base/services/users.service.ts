@@ -23,7 +23,7 @@ import type {
 import type { UserGameFilterPreferencesDto } from '../interfaces/game.interface';
 import type { LocationCoordinates } from '../interfaces/location.interface';
 import { BaseRouteModeService } from './base-route-mode.service';
-import { resolveCurrentRouteDelayMs } from './route-delay.service';
+import { resolveCurrentRouteDelayMs, resolveCurrentRouteRequestTimeoutMs } from './route-delay.service';
 
 export { USER_GAME_CARDS_LOAD_CONTEXT_KEY } from './game.service';
 
@@ -59,9 +59,6 @@ class RequestAbortedError extends Error {
   providedIn: 'root'
 })
 export class UsersService extends BaseRouteModeService {
-  private static readonly DEFAULT_REQUEST_TIMEOUT_MS = 3000;
-  private static readonly DEMO_USERS_HTTP_TIMEOUT_MS = 10000;
-  private static readonly DEFAULT_SUBMIT_MIN_DELAY_MS = 1500;
   private readonly injector = inject(Injector);
   private readonly httpUsersService = inject(HttpUsersService);
   private readonly appCtx = inject(AppContext);
@@ -149,7 +146,7 @@ export class UsersService extends BaseRouteModeService {
     }
     await Promise.all(pendingUserIds.map(async userId => {
       try {
-        await this.loadUserById(userId, 1500);
+        await this.loadUserById(userId, resolveCurrentRouteRequestTimeoutMs('/auth/me'));
       } catch {
         // Keep enrichment warmup best-effort so screens stay responsive.
       }
@@ -168,7 +165,7 @@ export class UsersService extends BaseRouteModeService {
     const useLocalBootstrap = this.isDemoModeEnabled('/auth/demo-users');
     const effectiveTimeoutMs = useLocalBootstrap
       ? normalizedTimeoutMs
-      : Math.max(normalizedTimeoutMs, UsersService.DEMO_USERS_HTTP_TIMEOUT_MS);
+      : Math.max(normalizedTimeoutMs, resolveCurrentRouteRequestTimeoutMs('/auth/demo-users'));
 
     this.setLoadStatus(USERS_LOAD_CONTEXT_KEY, 'loading');
 
@@ -488,7 +485,7 @@ export class UsersService extends BaseRouteModeService {
 
       await this.ensureMinimumRequestDuration(
         startedAtMs,
-        resolveCurrentRouteDelayMs('/auth/me', UsersService.DEFAULT_SUBMIT_MIN_DELAY_MS),
+        resolveCurrentRouteDelayMs('/auth/me'),
         requestAbortController.signal
       );
 
@@ -513,7 +510,7 @@ export class UsersService extends BaseRouteModeService {
 
       await this.ensureMinimumRequestDuration(
         startedAtMs,
-        resolveCurrentRouteDelayMs('/auth/me', UsersService.DEFAULT_SUBMIT_MIN_DELAY_MS),
+        resolveCurrentRouteDelayMs('/auth/me'),
         requestAbortController.signal
       );
 
@@ -535,7 +532,7 @@ export class UsersService extends BaseRouteModeService {
 
   private resolveRequestTimeoutMs(value?: number): number {
     if (!Number.isFinite(value)) {
-      return UsersService.DEFAULT_REQUEST_TIMEOUT_MS;
+      return resolveCurrentRouteRequestTimeoutMs('/auth/me');
     }
     return Math.max(1, Math.trunc(Number(value)));
   }

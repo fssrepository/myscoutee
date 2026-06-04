@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
 import { I18nPipe } from '../../../shared/i18n';
@@ -31,11 +31,9 @@ type AdminStatsGraphAction = { key: string; labelKey: string; icon: string; tone
   templateUrl: './admin-stats-popup.component.html',
   styleUrl: './admin-stats-popup.component.scss'
 })
-export class AdminStatsPopupComponent implements OnDestroy {
-  private static readonly LOAD_PROGRESS_WINDOW_MS = 3000;
-
+export class AdminStatsPopupComponent {
   protected readonly admin = inject(AdminShellService);
-  private readonly statsService = inject(AdminStatsService);
+  protected readonly statsService = inject(AdminStatsService);
   protected readonly loading = signal(false);
   protected readonly error = signal('');
   protected readonly stats = signal<AdminStatsDashboardDto | null>(null);
@@ -47,7 +45,6 @@ export class AdminStatsPopupComponent implements OnDestroy {
   protected readonly timelineDragging = signal(false);
   protected readonly graphTimelineDragging = signal(false);
   protected readonly revenueTimelineDragging = signal(false);
-  protected readonly loadingProgress = signal(0);
   protected readonly topSegments = computed(() => this.stats()?.segments ?? []);
   protected readonly primaryKpis = computed(() => this.stats()?.kpis ?? []);
   protected readonly graph = computed(() => this.stats()?.graph ?? null);
@@ -76,15 +73,8 @@ export class AdminStatsPopupComponent implements OnDestroy {
     { key: 'actualPaymentCents', labelKey: 'stats.revenue.timeline.actual.paid', tone: 'gold' },
     { key: 'payingUsers', labelKey: 'stats.revenue.timeline.paying.users', tone: 'purple' }
   ];
-  private loadingProgressTimer: ReturnType<typeof setInterval> | null = null;
-  private loadingProgressStartedAtMs = 0;
-
   constructor() {
     void this.load();
-  }
-
-  ngOnDestroy(): void {
-    this.clearLoadingProgress();
   }
 
   protected close(): void {
@@ -610,7 +600,6 @@ export class AdminStatsPopupComponent implements OnDestroy {
       return;
     }
     this.loading.set(true);
-    this.beginLoadingProgress();
     this.error.set('');
     try {
       const dashboard = await this.statsService.loadStatsDashboard();
@@ -626,47 +615,7 @@ export class AdminStatsPopupComponent implements OnDestroy {
       this.error.set(error instanceof Error ? error.message : 'Unable to load stats.');
     } finally {
       this.loading.set(false);
-      this.endLoadingProgress();
     }
-  }
-
-  private beginLoadingProgress(): void {
-    this.clearLoadingProgress();
-    this.loadingProgressStartedAtMs = this.nowMs();
-    this.loadingProgressTimer = setInterval(() => this.updateLoadingProgress(), 100);
-    this.updateLoadingProgress();
-  }
-
-  private updateLoadingProgress(): void {
-    if (!this.loadingProgressStartedAtMs) {
-      this.loadingProgress.set(0);
-      return;
-    }
-    const elapsedMs = Math.max(0, this.nowMs() - this.loadingProgressStartedAtMs);
-    this.loadingProgress.set(Math.min(0.96, elapsedMs / AdminStatsPopupComponent.LOAD_PROGRESS_WINDOW_MS));
-  }
-
-  private endLoadingProgress(): void {
-    this.clearLoadingProgressTimer();
-    this.loadingProgress.set(1);
-  }
-
-  private clearLoadingProgress(): void {
-    this.clearLoadingProgressTimer();
-    this.loadingProgressStartedAtMs = 0;
-    this.loadingProgress.set(0);
-  }
-
-  private clearLoadingProgressTimer(): void {
-    if (!this.loadingProgressTimer) {
-      return;
-    }
-    clearInterval(this.loadingProgressTimer);
-    this.loadingProgressTimer = null;
-  }
-
-  private nowMs(): number {
-    return typeof performance !== 'undefined' ? performance.now() : Date.now();
   }
 
   private updateTimelineFromPointer(event: PointerEvent, points: AdminStatsTimelinePointDto[]): void {

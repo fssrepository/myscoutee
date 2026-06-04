@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectorRef, Component, HostListener, OnDestroy, ViewChild, effect, inject, signal } from '@angular/core';
+import { ChangeDetectorRef, Component, HostListener, ViewChild, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { Observable, from } from 'rxjs';
@@ -62,8 +62,7 @@ interface IdeaPostLangCache {
   templateUrl: './admin-idea-editor-popup.component.html',
   styleUrl: './admin-idea-editor-popup.component.scss'
 })
-export class AdminIdeaEditorPopupComponent implements OnDestroy {
-  private static readonly LOAD_PROGRESS_WINDOW_MS = 3000;
+export class AdminIdeaEditorPopupComponent {
   @ViewChild('ideaSmartList')
   private ideaSmartList?: SmartListComponent<IdeaInfoCard, IdeaSmartListFilters>;
 
@@ -91,13 +90,10 @@ export class AdminIdeaEditorPopupComponent implements OnDestroy {
   protected draftContentLang = 'en';
   protected ideaListFilters: IdeaSmartListFilters = { status: 'all', revision: 0 };
   protected readonly ideaImageSlotCount = 8;
-  protected readonly loadingProgress = signal(0);
   private stateLoadedForPopup = false;
   private adminPostsLoadPromise: Promise<void> | null = null;
   private adminPostsLoadGeneration = 0;
   private articlePanelLoadGeneration = 0;
-  private loadingProgressTimer: ReturnType<typeof setInterval> | null = null;
-  private loadingProgressStartedAtMs = 0;
   private listRevision = 0;
   private readonly postsByLang = new Map<string, IdeaPostLangCache>();
   private adminPostList: IdeaPost[] = [];
@@ -213,7 +209,6 @@ export class AdminIdeaEditorPopupComponent implements OnDestroy {
         this.articlePanelLoading = false;
         this.articlePanelLoadingMode = null;
         this.articlePanelLoadGeneration += 1;
-        this.clearLoadingProgress();
         this.filterMenuOpen = false;
         this.languageMenuOpen = false;
         this.formLanguageMenuOpen = false;
@@ -222,10 +217,6 @@ export class AdminIdeaEditorPopupComponent implements OnDestroy {
         return;
       }
     });
-  }
-
-  ngOnDestroy(): void {
-    this.clearLoadingProgress();
   }
 
   @HostListener('window:keydown.escape', ['$event'])
@@ -1011,7 +1002,6 @@ export class AdminIdeaEditorPopupComponent implements OnDestroy {
 
   private beginArticlePanelLoad(mode: IdeaPanelLoadingMode): number {
     const generation = ++this.articlePanelLoadGeneration;
-    this.beginLoadingProgress();
     this.articlePanelLoadingMode = mode;
     this.articlePanelLoading = true;
     this.error = '';
@@ -1025,7 +1015,6 @@ export class AdminIdeaEditorPopupComponent implements OnDestroy {
     }
     this.articlePanelLoading = false;
     this.articlePanelLoadingMode = null;
-    this.endLoadingProgress();
     this.refreshView();
   }
 
@@ -1033,7 +1022,6 @@ export class AdminIdeaEditorPopupComponent implements OnDestroy {
     this.articlePanelLoadGeneration += 1;
     this.articlePanelLoading = false;
     this.articlePanelLoadingMode = null;
-    this.clearLoadingProgress();
   }
 
   private isCurrentArticlePanelLoad(generation: number, mode: IdeaPanelLoadingMode): boolean {
@@ -1047,43 +1035,8 @@ export class AdminIdeaEditorPopupComponent implements OnDestroy {
     await this.routeDelay.waitForRouteDelay('/admin/ideas', undefined, undefined, 450);
   }
 
-  private beginLoadingProgress(): void {
-    this.clearLoadingProgress();
-    this.loadingProgressStartedAtMs = this.nowMs();
-    this.loadingProgressTimer = setInterval(() => this.updateLoadingProgress(), 100);
-    this.updateLoadingProgress();
-  }
-
-  private updateLoadingProgress(): void {
-    if (!this.loadingProgressStartedAtMs) {
-      this.loadingProgress.set(0);
-      return;
-    }
-    const elapsedMs = Math.max(0, this.nowMs() - this.loadingProgressStartedAtMs);
-    this.loadingProgress.set(Math.min(0.96, elapsedMs / AdminIdeaEditorPopupComponent.LOAD_PROGRESS_WINDOW_MS));
-  }
-
-  private endLoadingProgress(): void {
-    this.clearLoadingProgressTimer();
-    this.loadingProgress.set(1);
-  }
-
-  private clearLoadingProgress(): void {
-    this.clearLoadingProgressTimer();
-    this.loadingProgressStartedAtMs = 0;
-    this.loadingProgress.set(0);
-  }
-
-  private clearLoadingProgressTimer(): void {
-    if (!this.loadingProgressTimer) {
-      return;
-    }
-    clearInterval(this.loadingProgressTimer);
-    this.loadingProgressTimer = null;
-  }
-
-  private nowMs(): number {
-    return typeof performance !== 'undefined' ? performance.now() : Date.now();
+  protected articlePanelLoadProgressDurationMs(): number {
+    return this.routeDelay.resolveRequestTimeoutMs('/admin/ideas');
   }
 
   private beginEditing(draft: IdeaPostDraft): void {

@@ -45,8 +45,6 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
   private static readonly ENTRY_CONSENT_KEY = APP_STORAGE_KEYS.entryConsent;
   private static readonly ENTRY_CONSENT_AUDIT_KEY = APP_STORAGE_KEYS.entryConsentAudit;
   private static readonly ENTRY_CONSENT_AUDIT_MAX = 30;
-  private static readonly LANDING_ARTICLES_LOADING_WINDOW_MS = 3000;
-  private static readonly ENTRY_PRIVACY_LOADING_WINDOW_MS = 3000;
   private static readonly LOCATION_ELIGIBILITY_CACHE_KEY = APP_STORAGE_KEYS.entryLoginLocationEligibility;
   private static readonly LOCATION_ELIGIBILITY_CACHE_TTL_MS = 10 * 60 * 1000;
   private static readonly LOCATION_REQUEST_TIMEOUT_MS = 4500;
@@ -78,9 +76,8 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
   protected showEntryConsentPopup = false;
   protected entryConsentViewOnly = false;
   protected entryPrivacyLoading = true;
-  protected entryPrivacyLoadingProgress = 0;
   protected landingArticlesLoading = true;
-  protected landingArticlesLoadingProgress = 0;
+  protected landingContentLoadingDurationMs = this.landingContent.loadProgressWindowMs();
   protected landingIdeaCards: InfoCardData[] = [];
   protected entryAuthUnavailable = false;
   protected entryAuthUnavailableLabel = 'Unavailable in your country';
@@ -100,10 +97,6 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
   protected showFirebaseAuthPopup = false;
   private demoSelectorRequestToken = 0;
   private landingContentRequestToken = 0;
-  private entryPrivacyLoadingStartedAtMs = 0;
-  private entryPrivacyLoadingTimer: ReturnType<typeof setTimeout> | null = null;
-  private landingArticlesLoadingStartedAtMs = 0;
-  private landingArticlesLoadingInterval: ReturnType<typeof setInterval> | null = null;
   private landingLoginAvailability: UserLocationEligibilityResponseDto | null = null;
   private locationEligibilityResolvedFromCoordinates = false;
   private grantedLocationEligibilityPromise: Promise<void> | null = null;
@@ -132,8 +125,6 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
     this.landingContentRequestToken += 1;
     this.grantedLocationEligibilityRequestToken += 1;
     this.unbindGeolocationPermissionStatus();
-    this.clearEntryPrivacyLoadingWindow();
-    this.clearLandingArticlesLoadingWindow();
   }
 
   @HostListener('window:keydown.escape', ['$event'])
@@ -311,10 +302,8 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
   private initializeEntryFlow(): void {
     this.entryConsentViewOnly = false;
     this.entryPrivacyLoading = this.helpCenter.privacyState() === null;
-    this.entryPrivacyLoadingProgress = 0;
     this.showEntryConsentPopup = !this.entryPrivacyLoading && this.shouldPromptEntryConsent();
     this.landingArticlesLoading = true;
-    this.landingArticlesLoadingProgress = 0;
     this.syncLandingLoginAvailability(null, 'reset');
     this.showUserSelector = false;
     this.demoSelectorLoading = false;
@@ -790,90 +779,25 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
   }
 
   private startEntryPrivacyLoadingWindow(): void {
-    this.clearEntryPrivacyLoadingWindow();
     this.entryPrivacyLoading = true;
-    this.entryPrivacyLoadingProgress = 0.02;
-    this.entryPrivacyLoadingStartedAtMs = performance.now();
-    this.updateEntryPrivacyLoadingWindow();
-  }
-
-  private updateEntryPrivacyLoadingWindow(): void {
-    if (!this.entryPrivacyLoading) {
-      return;
-    }
-    const elapsed = Math.max(0, performance.now() - this.entryPrivacyLoadingStartedAtMs);
-    const nextProgress = Math.min(1, elapsed / EntryShellComponent.ENTRY_PRIVACY_LOADING_WINDOW_MS);
-    this.entryPrivacyLoadingProgress = Math.max(this.entryPrivacyLoadingProgress, nextProgress);
-    if (nextProgress >= 1) {
-      return;
-    }
-    this.entryPrivacyLoadingTimer = setTimeout(() => {
-      this.ngZone.run(() => {
-        this.updateEntryPrivacyLoadingWindow();
-        this.changeDetectorRef.markForCheck();
-      });
-    }, 80);
   }
 
   private endEntryPrivacyLoadingWindow(): void {
-    this.clearEntryPrivacyLoadingWindow();
     this.entryPrivacyLoading = false;
-    this.entryPrivacyLoadingProgress = 1;
-  }
-
-  private clearEntryPrivacyLoadingWindow(): void {
-    if (!this.entryPrivacyLoadingTimer) {
-      return;
-    }
-    clearTimeout(this.entryPrivacyLoadingTimer);
-    this.entryPrivacyLoadingTimer = null;
   }
 
   private startLandingArticlesLoadingWindow(): void {
-    this.clearLandingArticlesLoadingWindow();
     this.landingArticlesLoading = true;
-    this.landingArticlesLoadingProgress = 0.02;
-    this.landingArticlesLoadingStartedAtMs = performance.now();
-    this.updateLandingArticlesLoadingWindow();
-    this.landingArticlesLoadingInterval = this.ngZone.runOutsideAngular(() =>
-      setInterval(() => {
-        this.ngZone.run(() => {
-          this.updateLandingArticlesLoadingWindow();
-          this.changeDetectorRef.markForCheck();
-        });
-      }, 16)
-    );
   }
 
   private endLandingArticlesLoadingWindow(): void {
-    this.clearLandingArticlesLoadingWindow();
-    this.landingArticlesLoadingProgress = 1;
     this.changeDetectorRef.markForCheck();
     setTimeout(() => {
       this.ngZone.run(() => {
         this.landingArticlesLoading = false;
-        this.landingArticlesLoadingProgress = 0;
-        this.landingArticlesLoadingStartedAtMs = 0;
         this.changeDetectorRef.markForCheck();
       });
     }, 100);
-  }
-
-  private updateLandingArticlesLoadingWindow(): void {
-    if (!this.landingArticlesLoading) {
-      return;
-    }
-    const elapsed = Math.max(0, performance.now() - this.landingArticlesLoadingStartedAtMs);
-    const nextProgress = Math.min(1, elapsed / EntryShellComponent.LANDING_ARTICLES_LOADING_WINDOW_MS);
-    this.landingArticlesLoadingProgress = Math.max(this.landingArticlesLoadingProgress, nextProgress);
-  }
-
-  private clearLandingArticlesLoadingWindow(): void {
-    if (!this.landingArticlesLoadingInterval) {
-      return;
-    }
-    clearInterval(this.landingArticlesLoadingInterval);
-    this.landingArticlesLoadingInterval = null;
   }
 
   private syncLandingLoginAvailability(

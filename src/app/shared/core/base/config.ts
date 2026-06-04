@@ -1,13 +1,15 @@
 export interface RouteConfigEntry {
   routePrefix: string;
-  demoDelayMs: number;
+  demoDelayMs?: number;
   requestTimeoutMs?: number;
+  intervalMs?: number;
   http?: boolean;
 }
 
 export interface RouteConfig {
   defaultDemoDelayMs: number;
   defaultRequestTimeoutMs: number;
+  defaultIntervalMs: number;
   entries: RouteConfigEntry[];
 }
 
@@ -15,12 +17,14 @@ export interface ResolvedRouteConfig {
   routePrefix: string;
   demoDelayMs: number;
   requestTimeoutMs: number;
+  intervalMs: number;
   http: boolean;
 }
 
 export const ROUTE_CONFIG: RouteConfig = {
   defaultDemoDelayMs: 1500,
   defaultRequestTimeoutMs: 3000,
+  defaultIntervalMs: 0,
   entries: [
     {
       routePrefix: '/auth/demo-users',
@@ -204,6 +208,10 @@ export const ROUTE_CONFIG: RouteConfig = {
       demoDelayMs: 1500
     },
     {
+      routePrefix: '/activities/events/draft-autosave',
+      intervalMs: 5000
+    },
+    {
       routePrefix: '/activities/events/explore',
       demoDelayMs: 1500
     },
@@ -273,6 +281,7 @@ export function resolveRouteConfig(url: string): ResolvedRouteConfig {
     routePrefix: entry?.routePrefix ?? normalizedUrl,
     demoDelayMs: normalizeDelayMs(entry?.demoDelayMs ?? ROUTE_CONFIG.defaultDemoDelayMs),
     requestTimeoutMs: normalizeDelayMs(entry?.requestTimeoutMs ?? ROUTE_CONFIG.defaultRequestTimeoutMs),
+    intervalMs: normalizeDelayMs(entry?.intervalMs ?? ROUTE_CONFIG.defaultIntervalMs),
     http: entry?.http === true
   };
 }

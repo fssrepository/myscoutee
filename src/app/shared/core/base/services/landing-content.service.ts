@@ -69,6 +69,10 @@ export class LandingContentService extends BaseRouteModeService {
     return this.cloneDisplayState((await this.displayLoadPromise).state);
   }
 
+  loadProgressWindowMs(): number {
+    return this.routeDelay.resolveRequestTimeoutMs(LandingContentService.LANDING_CONTENT_ROUTE);
+  }
+
   ideaInfoCards(): InfoCardData[] {
     return this.ideaPosts.publishedIdeaInfoCards().map(card => ({ ...card }));
   }

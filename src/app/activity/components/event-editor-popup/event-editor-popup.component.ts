@@ -24,7 +24,8 @@ import {
   AppContext,
   AppPopupContext,
   EventEditorDataService,
-  ExplanationGuideService
+  ExplanationGuideService,
+  RouteIntervalSchedulerService
 } from '../../../shared/core';
 import { HttpMediaService } from '../../../shared/core/http';
 import type { DemoEventRecord } from '../../../shared/core/demo/models/events.model';
@@ -57,17 +58,16 @@ import { EventSubeventsPopupComponent, EventSubeventsItem } from '../event-subev
   styleUrls: ['./event-editor-popup.component.scss']
 })
 export class EventEditorPopupComponent implements OnInit, OnDestroy {
-  private static readonly DRAFT_AUTOSAVE_INTERVAL_MS = 5000;
-  private static readonly DETAIL_LOAD_PROGRESS_WINDOW_MS = 3000;
   protected readonly eventEditorService = inject(EventEditorPopupStateService);
   private readonly activitiesContext = inject(ActivitiesPopupStateService);
   private readonly activitiesService = inject(ActivitiesService);
-  private readonly eventEditorDataService = inject(EventEditorDataService);
+  protected readonly eventEditorDataService = inject(EventEditorDataService);
   private readonly activityMembersService = inject(ActivityMembersService);
   private readonly appCtx = inject(AppContext);
   private readonly popupCtx = inject(AppPopupContext);
   private readonly httpMediaService = inject(HttpMediaService);
   private readonly explanationGuide = inject(ExplanationGuideService);
+  private readonly routeIntervalScheduler = inject(RouteIntervalSchedulerService);
   protected readonly interestOptionGroups = APP_STATIC_DATA.interestOptionGroups;
 
   @ViewChild('eventImageInput') eventImageInput!: ElementRef<HTMLInputElement>;
@@ -87,15 +87,12 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   private readonly slotDateControlValueCache = new Map<string, Date | null>();
   private pricingSlotCatalogCacheKey = '';
   private pricingSlotCatalogCache: AppTypes.PricingSlotReference[] = [];
-  private draftAutosaveTimer: ReturnType<typeof setInterval> | null = null;
+  private stopDraftAutosave: (() => void) | null = null;
   private lastDraftAutosaveSignature = '';
   private isDraftAutosavePending = false;
   private eventEditorExplanationContextKey: string | null = null;
   private unregisterEventEditorExplanationContext: (() => void) | null = null;
   protected readonly isLoadingEventData = signal(false);
-  protected readonly eventDataLoadingProgress = signal(0);
-  private eventDataLoadingProgressTimer: ReturnType<typeof setInterval> | null = null;
-  private eventDataLoadingProgressStartedAtMs = 0;
 
   constructor() {
     effect(() => {
@@ -211,7 +208,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       this.showPolicyEditorPopup = false;
       this.showMobileFrequencyPicker = false;
       this.isLoadingEventData.set(false);
-      this.clearEventDataLoadingProgress();
       this.resetEditorContext();
       this.resetDraftAutosaveTracking();
     });
@@ -223,7 +219,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.openSubscription?.unsubscribe();
     this.closeSubscription?.unsubscribe();
     this.stopDraftAutosaveLoop();
-    this.clearEventDataLoadingProgress();
     this.clearEventEditorExplanationContext();
   }
 
@@ -284,7 +279,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.showMobileFrequencyPicker = false;
     this.isSavePending = false;
     this.isLoadingEventData.set(false);
-    this.clearEventDataLoadingProgress();
     this.clearEventEditorExplanationContext();
     this.eventEditorService.close();
   }
@@ -1409,7 +1403,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     }
 
     this.isLoadingEventData.set(true);
-    this.beginEventDataLoadingProgress();
     this.eventEditorService.open('edit', fallbackSource, readOnly);
     void this.refreshCurrentMemberSummary(row.id);
 
@@ -1417,7 +1410,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       const record = await this.eventEditorDataService.loadFullItemById(activeUserId, row.id);
 
       this.isLoadingEventData.set(false);
-      this.endEventDataLoadingProgress();
       if (!record) {
         return;
       }
@@ -1428,47 +1420,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       this.openRecord(this.currentRecord, readOnly, this.editorTarget);
     } catch {
       this.isLoadingEventData.set(false);
-      this.clearEventDataLoadingProgress();
     }
-  }
-
-  private beginEventDataLoadingProgress(): void {
-    this.clearEventDataLoadingProgress();
-    this.eventDataLoadingProgressStartedAtMs = this.nowMs();
-    this.eventDataLoadingProgressTimer = setInterval(() => this.updateEventDataLoadingProgress(), 100);
-    this.updateEventDataLoadingProgress();
-  }
-
-  private updateEventDataLoadingProgress(): void {
-    if (!this.eventDataLoadingProgressStartedAtMs) {
-      this.eventDataLoadingProgress.set(0);
-      return;
-    }
-    const elapsedMs = Math.max(0, this.nowMs() - this.eventDataLoadingProgressStartedAtMs);
-    this.eventDataLoadingProgress.set(Math.min(0.96, elapsedMs / EventEditorPopupComponent.DETAIL_LOAD_PROGRESS_WINDOW_MS));
-  }
-
-  private endEventDataLoadingProgress(): void {
-    this.clearEventDataLoadingProgressTimer();
-    this.eventDataLoadingProgress.set(1);
-  }
-
-  private clearEventDataLoadingProgress(): void {
-    this.clearEventDataLoadingProgressTimer();
-    this.eventDataLoadingProgressStartedAtMs = 0;
-    this.eventDataLoadingProgress.set(0);
-  }
-
-  private clearEventDataLoadingProgressTimer(): void {
-    if (!this.eventDataLoadingProgressTimer) {
-      return;
-    }
-    clearInterval(this.eventDataLoadingProgressTimer);
-    this.eventDataLoadingProgressTimer = null;
-  }
-
-  private nowMs(): number {
-    return typeof performance !== 'undefined' ? performance.now() : Date.now();
   }
 
   private openRecord(record: DemoEventRecord, readOnly: boolean, target: AppTypes.EventEditorTarget): void {
@@ -1570,17 +1522,17 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
   private startDraftAutosaveLoop(): void {
     this.stopDraftAutosaveLoop();
-    this.draftAutosaveTimer = setInterval(() => {
+    this.stopDraftAutosave = this.routeIntervalScheduler.startInterval('/activities/events/draft-autosave', () => {
       void this.runDraftAutosaveIfNeeded();
-    }, EventEditorPopupComponent.DRAFT_AUTOSAVE_INTERVAL_MS);
+    });
   }
 
   private stopDraftAutosaveLoop(): void {
-    if (!this.draftAutosaveTimer) {
+    if (!this.stopDraftAutosave) {
       return;
     }
-    clearInterval(this.draftAutosaveTimer);
-    this.draftAutosaveTimer = null;
+    this.stopDraftAutosave();
+    this.stopDraftAutosave = null;
   }
 
   private resetDraftAutosaveTracking(): void {

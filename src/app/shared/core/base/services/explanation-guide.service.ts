@@ -2,6 +2,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 
 import type { HelpCenterRevision } from '../models';
 import { HelpCenterService } from './help-center.service';
+import { RouteDelayService } from './route-delay.service';
 import { APP_STORAGE_KEYS } from '../storage-scope';
 
 @Injectable({
@@ -10,25 +11,21 @@ import { APP_STORAGE_KEYS } from '../storage-scope';
 export class ExplanationGuideService {
   private static readonly STORAGE_KEY = APP_STORAGE_KEYS.explanationGuideEnabled;
   private static readonly DISMISSED_CONTEXTS_STORAGE_KEY = APP_STORAGE_KEYS.explanationGuideDismissedContexts;
-  private static readonly LOAD_PROGRESS_WINDOW_MS = 3000;
   private readonly helpCenter = inject(HelpCenterService);
+  private readonly routeDelay = inject(RouteDelayService);
   private readonly enabledRef = signal(this.readEnabledState());
   private readonly currentContextRef = signal<string | null>(null);
   private readonly popupOpenRef = signal(false);
   private readonly loadingRef = signal(false);
-  private readonly loadingProgressRef = signal(0);
   private readonly visibleRevisionRef = signal<HelpCenterRevision | null>(null);
   private readonly dismissedContexts = new Set<string>(this.readDismissedContexts());
   private readonly contextStack: string[] = [];
   private loadSerial = 0;
-  private loadingProgressStartedAtMs = 0;
-  private loadingProgressTimer: ReturnType<typeof setTimeout> | null = null;
 
   readonly enabled = this.enabledRef.asReadonly();
   readonly currentContextKey = this.currentContextRef.asReadonly();
   readonly popupOpen = this.popupOpenRef.asReadonly();
   readonly loading = this.loadingRef.asReadonly();
-  readonly loadingProgress = this.loadingProgressRef.asReadonly();
   readonly visibleRevision = this.visibleRevisionRef.asReadonly();
   readonly hasVisiblePopup = computed(() => this.popupOpenRef());
   readonly hasVisibleRevision = computed(() => Boolean(this.visibleRevisionRef()));
@@ -86,6 +83,10 @@ export class ExplanationGuideService {
     this.setEnabled(true);
   }
 
+  loadProgressWindowMs(): number {
+    return this.routeDelay.resolveRequestTimeoutMs('/explanation/active');
+  }
+
   private refreshVisibleForCurrent(): void {
     const contextKey = this.currentContextRef();
     if (!this.enabledRef() || !contextKey || this.isDismissedContext(contextKey)) {
@@ -99,7 +100,7 @@ export class ExplanationGuideService {
 
   private async loadForContext(contextKey: string): Promise<void> {
     const serial = ++this.loadSerial;
-    this.beginLoadingProgress();
+    this.loadingRef.set(true);
     try {
       const state = await this.helpCenter.loadExplanationState(contextKey);
       if (serial !== this.loadSerial || !this.enabledRef() || this.currentContextRef() !== contextKey || this.isDismissedContext(contextKey)) {
@@ -111,7 +112,7 @@ export class ExplanationGuideService {
         return;
       }
       this.visibleRevisionRef.set(revision);
-      this.endLoadingProgress();
+      this.loadingRef.set(false);
     } catch {
       if (serial === this.loadSerial) {
         this.closePopup();
@@ -119,54 +120,10 @@ export class ExplanationGuideService {
     }
   }
 
-  private beginLoadingProgress(): void {
-    this.clearLoadingProgressTimer();
-    this.loadingRef.set(true);
-    this.loadingProgressStartedAtMs = this.nowMs();
-    this.loadingProgressRef.set(0.02);
-    this.updateLoadingProgress();
-  }
-
-  private updateLoadingProgress(): void {
-    if (!this.loadingRef()) {
-      return;
-    }
-    const elapsedMs = Math.max(0, this.nowMs() - this.loadingProgressStartedAtMs);
-    const nextProgress = Math.min(1, elapsedMs / ExplanationGuideService.LOAD_PROGRESS_WINDOW_MS);
-    this.loadingProgressRef.set(Math.max(this.loadingProgressRef(), nextProgress));
-    if (nextProgress >= 1) {
-      return;
-    }
-    this.loadingProgressTimer = setTimeout(() => this.updateLoadingProgress(), 80);
-  }
-
-  private endLoadingProgress(): void {
-    this.clearLoadingProgressTimer();
-    this.loadingRef.set(false);
-    this.loadingProgressRef.set(1);
-  }
-
   private closePopup(): void {
-    this.clearLoadingProgressTimer();
     this.loadingRef.set(false);
-    this.loadingProgressStartedAtMs = 0;
-    this.loadingProgressRef.set(0);
     this.visibleRevisionRef.set(null);
     this.popupOpenRef.set(false);
-  }
-
-  private clearLoadingProgressTimer(): void {
-    if (!this.loadingProgressTimer) {
-      return;
-    }
-    clearTimeout(this.loadingProgressTimer);
-    this.loadingProgressTimer = null;
-  }
-
-  private nowMs(): number {
-    return typeof performance !== 'undefined' && typeof performance.now === 'function'
-      ? performance.now()
-      : Date.now();
   }
 
   private normalizeContextKey(contextKey: string | null | undefined): string {

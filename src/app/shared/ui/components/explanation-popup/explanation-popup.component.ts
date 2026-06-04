@@ -28,7 +28,6 @@ export class ExplanationPopupComponent {
   protected readonly guide = inject(ExplanationGuideService);
   protected readonly popupOpen = this.guide.popupOpen;
   protected readonly loading = this.guide.loading;
-  protected readonly loadingProgress = this.guide.loadingProgress;
   protected readonly activeRevision = this.guide.visibleRevision;
   private readonly lazyImagePlaceholderUrl = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==';
   private readonly fallbackWideSectionIds = new Set<string>([

@@ -305,7 +305,7 @@ const STATUS_CLASS_PREFIX = 'is-';
 })
 export class AdminNotificationsPopupComponent implements OnDestroy {
   protected readonly admin = inject(AdminShellService);
-  private readonly notificationsService = inject(AdminNotificationsService);
+  protected readonly notificationsService = inject(AdminNotificationsService);
   private readonly workspace = inject(AdminWorkspaceService);
   protected readonly popupKey = ADMIN_POPUP_KEY;
   protected readonly jobI18n = JOB_I18N;
@@ -315,7 +315,6 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
 
   protected readonly loading = signal(false);
   protected readonly saving = signal(false);
-  protected readonly loadingProgress = signal(0);
   protected readonly runningRuleKey = signal('');
   protected readonly rowActionKey = signal('');
   protected readonly error = signal('');
@@ -330,8 +329,6 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
   protected readonly processFilterMenuOpen = signal(false);
   private loadedForOpen = false;
   private unsubscribeRuntimeUpdates: (() => void) | null = null;
-  private loadingProgressTimer: ReturnType<typeof setInterval> | null = null;
-  private loadingProgressStartedAtMs = 0;
   private readonly timingBaselineSignatures = new Map<string, string>();
   private readonly parameterBaselineSignatures = new Map<string, string>();
 
@@ -361,7 +358,6 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
 
   ngOnDestroy(): void {
     this.stopRuntimeUpdates();
-    this.clearLoadingProgress();
   }
 
   protected async load(silent = false): Promise<void> {
@@ -373,7 +369,6 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
     }
     if (!silent) {
       this.loading.set(true);
-      this.beginLoadingProgress();
     }
     this.error.set('');
     try {
@@ -398,7 +393,6 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
     } finally {
       if (!silent) {
         this.loading.set(false);
-        this.endLoadingProgress();
       }
     }
   }
@@ -1142,45 +1136,6 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
       updatedDate: event.updatedDate || current.updatedDate,
       updatedUser: event.updatedUser || current.updatedUser
     }));
-  }
-
-  private beginLoadingProgress(): void {
-    this.clearLoadingProgress();
-    this.loadingProgressStartedAtMs = this.nowMs();
-    this.loadingProgressTimer = setInterval(() => this.updateLoadingProgress(), 100);
-    this.updateLoadingProgress();
-  }
-
-  private updateLoadingProgress(): void {
-    if (!this.loadingProgressStartedAtMs) {
-      this.loadingProgress.set(0);
-      return;
-    }
-    const elapsedMs = Math.max(0, this.nowMs() - this.loadingProgressStartedAtMs);
-    this.loadingProgress.set(Math.min(0.96, elapsedMs / this.notificationsService.notificationCenterLoadProgressWindowMs()));
-  }
-
-  private endLoadingProgress(): void {
-    this.clearLoadingProgressTimer();
-    this.loadingProgress.set(1);
-  }
-
-  private clearLoadingProgress(): void {
-    this.clearLoadingProgressTimer();
-    this.loadingProgressStartedAtMs = 0;
-    this.loadingProgress.set(0);
-  }
-
-  private clearLoadingProgressTimer(): void {
-    if (!this.loadingProgressTimer) {
-      return;
-    }
-    clearInterval(this.loadingProgressTimer);
-    this.loadingProgressTimer = null;
-  }
-
-  private nowMs(): number {
-    return typeof performance !== 'undefined' ? performance.now() : Date.now();
   }
 
   private ensureProcessRules(state: AdminNotificationCenterState): AdminNotificationCenterState {

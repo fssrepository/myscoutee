@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectorRef, Component, HostListener, OnDestroy, effect, inject, signal } from '@angular/core';
+import { ChangeDetectorRef, Component, HostListener, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 
@@ -75,9 +75,7 @@ interface HelpEditorRevisionRow {
   templateUrl: './admin-help-editor-popup.component.html',
   styleUrl: './admin-help-editor-popup.component.scss'
 })
-export class AdminHelpEditorPopupComponent implements OnDestroy {
-  private static readonly ACTION_PENDING_WINDOW_MS = 1500;
-  private static readonly LOAD_PROGRESS_WINDOW_MS = 3000;
+export class AdminHelpEditorPopupComponent {
   private static readonly EXPLANATION_IMAGE_SLOT_COUNT = 8;
   private static readonly LAZY_IMAGE_PLACEHOLDER_URL = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==';
   private static readonly FALLBACK_SPAN_2_SECTION_IDS = new Set([
@@ -136,7 +134,6 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
   protected selectedExplanationContextKey = 'home.game';
   protected readonly explanationImageSlotCount = AdminHelpEditorPopupComponent.EXPLANATION_IMAGE_SLOT_COUNT;
   private stateLoadedForPopup = false;
-  protected readonly loadingProgress = signal(0);
   protected readonly panelSpanOptions: readonly HelpPanelSpanOption[] = [
     { value: 'span-1', icon: 'looks_one', label: 'span-1', title: 'One grid column' },
     { value: 'span-2', icon: 'looks_two', label: 'span-2', title: 'Two grid columns' },
@@ -230,9 +227,6 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
   protected visibleIconOptions: HelpIconOption[] = [];
   protected iconPickerActiveLabel = 'Common icons';
   protected iconPickerActiveCount = 0;
-  private loadingProgressTimer: ReturnType<typeof setTimeout> | null = null;
-  private loadingProgressStartedAtMs = 0;
-  private loadingCompletionTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor() {
     effect(() => {
@@ -240,8 +234,6 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
         this.stateLoadedForPopup = false;
         this.editing = false;
         this.draft = null;
-        this.clearLoadingCompletionTimer();
-        this.clearLoadingProgress();
         this.loading.set(false);
         this.closeDocumentMenu();
         this.closeLanguageMenu();
@@ -255,11 +247,6 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
         void this.load();
       }
     });
-  }
-
-  ngOnDestroy(): void {
-    this.clearLoadingCompletionTimer();
-    this.clearLoadingProgress();
   }
 
   @HostListener('window:keydown.escape', ['$event'])
@@ -280,10 +267,7 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
     if (this.loading()) {
       return;
     }
-    this.clearLoadingCompletionTimer();
-    this.clearLoadingProgress();
     this.loading.set(true);
-    this.beginLoadingProgress();
     this.error = '';
     try {
       const adminUserId = this.actorUserId();
@@ -303,8 +287,7 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
     } catch {
       this.error = this.loadErrorLabel();
     } finally {
-      this.endLoadingProgress();
-      this.completeLoadingAfterCheck();
+      this.loading.set(false);
     }
   }
 
@@ -868,7 +851,7 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
     this.saving = true;
     this.error = '';
     try {
-      await this.withMinimumActionTime(this.helpCenter.saveRevision(request, this.documentKind));
+      await this.helpCenter.saveRevision(request, this.documentKind);
       this.editing = false;
       this.draft = null;
       this.draftAccordionOpen = true;
@@ -891,7 +874,7 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
     this.activatingRevisionId = revision.id;
     this.error = '';
     try {
-      await this.withMinimumActionTime(this.helpCenter.activateRevision(revision.id, this.actorUserId(), this.documentKind));
+      await this.helpCenter.activateRevision(revision.id, this.actorUserId(), this.documentKind);
       this.selectInitialRevision(this.revisions(), this.activeRevision());
     } catch {
       this.error = this.activateErrorLabel();
@@ -916,7 +899,7 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
         this.saving = true;
         this.error = '';
         try {
-          await this.withMinimumActionTime(this.helpCenter.deleteRevision(revision.id, this.actorUserId(), this.documentKind));
+          await this.helpCenter.deleteRevision(revision.id, this.actorUserId(), this.documentKind);
           this.selectInitialRevision(this.revisions(), this.activeRevision());
         } catch {
           this.error = this.deleteErrorLabel();
@@ -1021,6 +1004,10 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
 
   protected loadingRevisionsLabel(): string {
     return this.uiText(`Loading ${this.documentLabelLower()} revisions`);
+  }
+
+  protected loadingProgressDurationMs(): number {
+    return this.routeDelay.resolveRequestTimeoutMs(`/admin/${this.documentKind}/revisions`);
   }
 
   protected revisionsAriaLabel(): string {
@@ -1547,65 +1534,4 @@ export class AdminHelpEditorPopupComponent implements OnDestroy {
     return `${value ?? ''}`.replace(/\s+/g, ' ').trim();
   }
 
-  private completeLoadingAfterCheck(): void {
-    this.clearLoadingCompletionTimer();
-    this.loadingCompletionTimer = setTimeout(() => {
-      this.loadingCompletionTimer = null;
-      this.loading.set(false);
-      this.changeDetectorRef.detectChanges();
-    }, 0);
-  }
-
-  private beginLoadingProgress(): void {
-    this.loadingProgressStartedAtMs = this.nowMs();
-    this.loadingProgress.set(0);
-    this.updateLoadingProgress();
-  }
-
-  private updateLoadingProgress(): void {
-    const elapsed = this.nowMs() - this.loadingProgressStartedAtMs;
-    const progress = Math.min(0.92, elapsed / AdminHelpEditorPopupComponent.LOAD_PROGRESS_WINDOW_MS);
-    this.loadingProgress.set(progress);
-    this.clearLoadingProgressTimer();
-    this.loadingProgressTimer = setTimeout(() => this.updateLoadingProgress(), 80);
-  }
-
-  private endLoadingProgress(): void {
-    this.clearLoadingProgressTimer();
-    this.loadingProgress.set(1);
-  }
-
-  private clearLoadingProgress(): void {
-    this.clearLoadingProgressTimer();
-    this.loadingProgressStartedAtMs = 0;
-    this.loadingProgress.set(0);
-  }
-
-  private clearLoadingProgressTimer(): void {
-    if (!this.loadingProgressTimer) {
-      return;
-    }
-    clearTimeout(this.loadingProgressTimer);
-    this.loadingProgressTimer = null;
-  }
-
-  private clearLoadingCompletionTimer(): void {
-    if (!this.loadingCompletionTimer) {
-      return;
-    }
-    clearTimeout(this.loadingCompletionTimer);
-    this.loadingCompletionTimer = null;
-  }
-
-  private async withMinimumActionTime<T>(action: Promise<T>): Promise<T> {
-    const [result] = await Promise.all([
-      action,
-      this.routeDelay.waitForDelay(AdminHelpEditorPopupComponent.ACTION_PENDING_WINDOW_MS)
-    ]);
-    return result;
-  }
-
-  private nowMs(): number {
-    return typeof performance !== 'undefined' && typeof performance.now === 'function' ? performance.now() : Date.now();
-  }
 }

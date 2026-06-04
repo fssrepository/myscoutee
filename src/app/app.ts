@@ -1,4 +1,4 @@
-import { Component, HostListener, OnDestroy, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, HostListener, OnDestroy, inject } from '@angular/core';
 import {
   NavigationCancel,
   NavigationEnd,
@@ -50,6 +50,7 @@ export class App implements OnDestroy {
   ].join(',');
   private static readonly CLOSE_RIPPLE_DURATION_MS = 520;
   private readonly router = inject(Router);
+  private readonly changeDetectorRef = inject(ChangeDetectorRef);
   private readonly pwaService = inject(PwaService);
   private readonly appLocationService = inject(AppLocationService);
   private readonly firebaseMessagingService = inject(FirebaseMessagingService);
@@ -188,11 +189,13 @@ export class App implements OnDestroy {
     this.clearRouteWarmupWatchdogTimer();
     if (delayMs <= 0) {
       this.routeWarmupVisible = false;
+      this.changeDetectorRef.detectChanges();
       return;
     }
     this.routeWarmupHideTimer = setTimeout(() => {
       this.routeWarmupVisible = false;
       this.routeWarmupHideTimer = null;
+      this.changeDetectorRef.detectChanges();
     }, delayMs);
   }
 

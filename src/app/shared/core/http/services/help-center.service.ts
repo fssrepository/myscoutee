@@ -14,12 +14,14 @@ import type {
   PrivacyConsentRecord,
   PrivacyConsentSaveRequest
 } from '../../base/models';
+import { RouteDelayService } from '../../base/services/route-delay.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class HttpHelpCenterService {
   private readonly http = inject(HttpClient);
+  private readonly routeDelay = inject(RouteDelayService);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
 
   async loadState(kind: HelpCenterDocumentKind = 'help', lang?: string | null, contextKey?: string | null): Promise<HelpCenterState> {
@@ -30,11 +32,12 @@ export class HttpHelpCenterService {
     if (context) {
       params['contextKey'] = context;
     }
-    const response = await this.http
+    const route = `/${documentKind}/active`;
+    const response = await this.routeDelay.withRequestTimeout(route, this.http
       .get<Partial<HelpCenterState> | null>(`${this.apiBaseUrl}/${documentKind}/active`, {
         params
       })
-      .toPromise();
+      .toPromise(), 'Help center request timed out.');
     return this.normalizeState(response, documentKind);
   }
 
@@ -49,7 +52,8 @@ export class HttpHelpCenterService {
       return null;
     }
     const minimumRevisionVersion = Math.trunc(Number(revisionVersion) || 0);
-    const response = await this.http
+    const route = '/privacy/consents';
+    const response = await this.routeDelay.withRequestTimeout(route, this.http
       .get<Partial<PrivacyConsentRecord> | null>(`${this.apiBaseUrl}/privacy/consents`, {
         params: {
           userId: normalizedUserId,
@@ -57,14 +61,15 @@ export class HttpHelpCenterService {
           ...(minimumRevisionVersion > 0 ? { revisionVersion: `${minimumRevisionVersion}` } : {})
         }
       })
-      .toPromise();
+      .toPromise(), 'Help center request timed out.');
     return this.normalizePrivacyConsent(response);
   }
 
   async savePrivacyConsent(request: PrivacyConsentSaveRequest): Promise<PrivacyConsentRecord> {
-    const response = await this.http
+    const route = '/privacy/consents';
+    const response = await this.routeDelay.withRequestTimeout(route, this.http
       .post<Partial<PrivacyConsentRecord> | null>(`${this.apiBaseUrl}/privacy/consents`, request)
-      .toPromise();
+      .toPromise(), 'Help center request timed out.');
     const consent = this.normalizePrivacyConsent(response);
     if (!consent) {
       throw new Error('Privacy consent could not be saved.');
@@ -87,42 +92,46 @@ export class HttpHelpCenterService {
     if (context) {
       params['contextKey'] = context;
     }
-    const response = await this.http
+    const route = this.adminRoute(documentKind, context);
+    const response = await this.routeDelay.withRequestTimeout(route, this.http
       .get<Partial<HelpCenterState> | null>(`${this.apiBaseUrl}/admin/${documentKind}`, {
         params
       })
-      .toPromise();
+      .toPromise(), 'Help center request timed out.');
     return this.normalizeState(response, documentKind);
   }
 
   async saveRevision(request: HelpCenterRevisionSaveRequest, kind: HelpCenterDocumentKind = 'help'): Promise<HelpCenterState> {
     const documentKind = this.normalizeKind(kind);
-    const response = await this.http
+    const route = `/admin/${documentKind}/revisions`;
+    const response = await this.routeDelay.withRequestTimeout(route, this.http
       .post<Partial<HelpCenterState> | null>(`${this.apiBaseUrl}/admin/${documentKind}/revisions`, request)
-      .toPromise();
+      .toPromise(), 'Help center request timed out.');
     return this.normalizeState(response, documentKind);
   }
 
   async activateRevision(revisionId: string, actorUserId: string, kind: HelpCenterDocumentKind = 'help'): Promise<HelpCenterState> {
     const documentKind = this.normalizeKind(kind);
-    const response = await this.http
+    const route = `/admin/${documentKind}/revisions/activate`;
+    const response = await this.routeDelay.withRequestTimeout(route, this.http
       .post<Partial<HelpCenterState> | null>(
         `${this.apiBaseUrl}/admin/${documentKind}/revisions/${encodeURIComponent(revisionId)}/activate`,
         { actorUserId }
       )
-      .toPromise();
+      .toPromise(), 'Help center request timed out.');
     return this.normalizeState(response, documentKind);
   }
 
   async deleteRevision(revisionId: string, actorUserId: string, kind: HelpCenterDocumentKind = 'help'): Promise<HelpCenterState> {
     const documentKind = this.normalizeKind(kind);
-    const response = await this.http
+    const route = `/admin/${documentKind}/revisions/delete`;
+    const response = await this.routeDelay.withRequestTimeout(route, this.http
       .request<Partial<HelpCenterState> | null>(
         'delete',
         `${this.apiBaseUrl}/admin/${documentKind}/revisions/${encodeURIComponent(revisionId)}`,
         { body: { actorUserId } }
       )
-      .toPromise();
+      .toPromise(), 'Help center request timed out.');
     return this.normalizeState(response, documentKind);
   }
 
@@ -290,6 +299,19 @@ export class HttpHelpCenterService {
     return APP_STATIC_DATA.explainableSurfaces.some(surface => surface.enabled && surface.key === normalized)
       ? normalized
       : null;
+  }
+
+  private adminRoute(kind: HelpCenterDocumentKind, contextKey?: string | null): string {
+    if (kind === 'privacy') {
+      return '/admin/privacy';
+    }
+    if (kind === 'explanation') {
+      const normalizedContextKey = `${contextKey ?? ''}`.trim();
+      return normalizedContextKey
+        ? `/admin/explanation/${normalizedContextKey}`
+        : '/admin/explanation/new';
+    }
+    return '/admin/help';
   }
 
   private documentLabel(kind: HelpCenterDocumentKind): string {
