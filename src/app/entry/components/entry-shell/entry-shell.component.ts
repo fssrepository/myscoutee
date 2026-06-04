@@ -77,7 +77,6 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
   protected entryConsentViewOnly = false;
   protected entryPrivacyLoading = true;
   protected landingArticlesLoading = true;
-  protected landingContentLoadingDurationMs = this.landingContent.loadProgressWindowMs();
   protected landingIdeaCards: InfoCardData[] = [];
   protected entryAuthUnavailable = false;
   protected entryAuthUnavailableLabel = 'Unavailable in your country';

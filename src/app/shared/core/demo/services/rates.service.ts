@@ -39,8 +39,9 @@ export class DemoRatesService extends DemoRouteDelayService {
     signal?: AbortSignal
   ): Promise<ActivityRatePageResult> {
     await this.waitForRouteDelay(DemoRatesService.RATES_ROUTE, signal);
+    const ownerUserId = this.resolveDemoActivityUserId(userId);
     const page = await this.usersRatingsRepository.queryActivityRateItemsPage(
-      this.toActivityRateRecordQuery(userId, request)
+      this.toActivityRateRecordQuery(ownerUserId, request)
     );
     const usersById = new Map(this.usersRepository.queryAllUsers().map(user => [user.id, { ...user }]));
     const userIds = new Set<string>();
@@ -63,6 +64,14 @@ export class DemoRatesService extends DemoRouteDelayService {
     };
   }
 
+
+  private resolveDemoActivityUserId(userId: string): string {
+    const normalizedUserId = userId.trim();
+    if (normalizedUserId) {
+      return normalizedUserId;
+    }
+    return this.usersRepository.queryAllUsers()[0]?.id ?? '';
+  }
 
   private toActivityRateRecordQuery(userId: string, request: ActivitiesPageRequest): ActivityRateRecordQuery {
     const [mode, displayDirection] = request.rateFilter.split('-') as [

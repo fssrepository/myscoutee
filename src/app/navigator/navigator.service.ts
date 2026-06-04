@@ -299,9 +299,7 @@ export class NavigatorService {
           previousProfileStatus: null,
           deletedAtIso: null
         };
-        const saved = await this.usersService.saveUserProfile(reactivatedUser, {
-          returnFallbackOnFailure: false
-        });
+        const saved = await this.usersService.saveUserProfile(reactivatedUser);
         if (!saved) {
           throw new Error('Unable to reactivate account.');
         }

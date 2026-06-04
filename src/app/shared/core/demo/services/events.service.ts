@@ -14,6 +14,7 @@ import type {
 import { DemoRouteDelayService } from './demo-route-delay.service';
 import { DemoEventFeedbackRepository } from '../repositories/event-feedback.repository';
 import { DemoEventsRepository } from '../repositories/events.repository';
+import { DemoUsersRepository } from '../repositories/users.repository';
 import type {
   DemoEventActivitiesListQueryResult,
   DemoEventActivitiesQuery,
@@ -32,6 +33,7 @@ export class DemoEventsService extends DemoRouteDelayService {
   private static readonly EVENTS_CHECKOUT_ROUTE = '/activities/events/checkout';
   private readonly eventsRepository = inject(DemoEventsRepository);
   private readonly eventFeedbackRepository = inject(DemoEventFeedbackRepository);
+  private readonly usersRepository = inject(DemoUsersRepository);
 
   async queryItemsByUser(userId: string): Promise<DemoEventRecord[]> {
     await this.waitForRouteDelay(DemoEventsService.EVENTS_ROUTE);
@@ -67,7 +69,10 @@ export class DemoEventsService extends DemoRouteDelayService {
     signal?: AbortSignal
   ): Promise<DemoEventActivitiesListQueryResult> {
     await this.waitForRouteDelay(DemoEventsService.EVENTS_ROUTE, signal);
-    return this.eventsRepository.queryActivitiesEventListPage(query);
+    return this.eventsRepository.queryActivitiesEventListPage({
+      ...query,
+      userId: this.resolveDemoActivityUserId(query.userId)
+    });
   }
 
   async queryExploreItems(userId: string): Promise<DemoEventRecord[]> {
@@ -81,11 +86,17 @@ export class DemoEventsService extends DemoRouteDelayService {
 
   async queryEventExplorePage(query: DemoEventExploreQuery): Promise<DemoEventExploreQueryResult> {
     await this.waitForRouteDelay(DemoEventsService.EVENTS_EXPLORE_ROUTE);
-    return this.eventsRepository.queryEventExplorePage(query);
+    return this.eventsRepository.queryEventExplorePage({
+      ...query,
+      userId: this.resolveDemoActivityUserId(query.userId)
+    });
   }
 
   peekEventExplorePage(query: DemoEventExploreQuery): DemoEventExploreQueryResult {
-    return this.eventsRepository.queryEventExplorePage(query);
+    return this.eventsRepository.queryEventExplorePage({
+      ...query,
+      userId: this.resolveDemoActivityUserId(query.userId)
+    });
   }
 
   async queryEventFeedbackStates(userId: string): Promise<EventFeedbackStateDto[]> {
@@ -237,5 +248,13 @@ export class DemoEventsService extends DemoRouteDelayService {
 
   countPendingEventFeedbackByUser(userId: string, feedbackUnlockDelayMs: number): number {
     return this.eventsRepository.countPendingEventFeedbackByUser(userId, feedbackUnlockDelayMs);
+  }
+
+  private resolveDemoActivityUserId(userId: string): string {
+    const normalizedUserId = userId.trim();
+    if (normalizedUserId) {
+      return normalizedUserId;
+    }
+    return this.usersRepository.queryAllUsers()[0]?.id ?? '';
   }
 }

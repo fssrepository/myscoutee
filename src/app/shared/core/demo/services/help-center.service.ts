@@ -36,10 +36,31 @@ export class DemoHelpCenterService {
   }
 
   async loadState(kind: HelpCenterDocumentKind = 'help', lang?: string | null, contextKey?: string | null): Promise<HelpCenterState> {
-    await this.helpCenterRepository.whenReady();
     const documentKind = this.normalizeKind(kind);
     const language = this.requestContentLang(lang);
     const context = this.normalizeContextKey(documentKind, contextKey, false);
+    await Promise.all([
+      this.helpCenterRepository.whenReady(),
+      this.routeDelay.waitForRouteDelay(`/${documentKind}/active`)
+    ]);
+    const table = this.table();
+    this.assertBootstrappedState(table, documentKind, language, context);
+    return this.stateFromTable(table, documentKind, language, context);
+  }
+
+  async loadAdminState(
+    _adminUserId: string,
+    kind: HelpCenterDocumentKind = 'help',
+    lang = 'en',
+    contextKey?: string | null
+  ): Promise<HelpCenterState> {
+    const documentKind = this.normalizeKind(kind);
+    const language = this.normalizeLang(lang);
+    const context = this.normalizeContextKey(documentKind, contextKey, false);
+    await Promise.all([
+      this.helpCenterRepository.whenReady(),
+      this.routeDelay.waitForRouteDelay(this.adminRoute(documentKind))
+    ]);
     const table = this.table();
     this.assertBootstrappedState(table, documentKind, language, context);
     return this.stateFromTable(table, documentKind, language, context);
@@ -897,6 +918,10 @@ export class DemoHelpCenterService {
   private activeRevisionKey(kind: HelpCenterDocumentKind, lang: string, contextKey?: string | null): string {
     const context = this.normalizeContextKey(kind, contextKey, false);
     return context ? `${kind}:${this.normalizeLang(lang)}:${context}` : `${kind}:${this.normalizeLang(lang)}`;
+  }
+
+  private adminRoute(kind: HelpCenterDocumentKind): string {
+    return `/admin/${kind}`;
   }
 
   private normalizeActor(actorUserId: string): string {

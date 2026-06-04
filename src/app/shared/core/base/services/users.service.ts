@@ -1,13 +1,11 @@
-import { Injectable, Injector, inject } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 
-import { environment } from '../../../../../environments/environment';
 import { type LoadStatus } from '../context';
 import { AppContext, type ActivityCounters } from '../context';
-import { DemoBootstrapService, type DemoBootstrapProgressState, DemoUsersRepository, DemoUsersService } from '../../demo';
+import { type DemoBootstrapProgressState, DemoUsersService } from '../../demo';
 import { HttpUsersService } from '../../http';
 import type {
   DemoUserListItemDto,
-  UserByIdQueryResponse,
   UserDeleteRequestDto,
   UserFeedbackSubmitRequestDto,
   UserLocationEligibilityResponseDto,
@@ -18,12 +16,12 @@ import type {
   UserRealtimeLongPollResponseDto,
   UserProfileImageUploadResult,
   UserSubmitActionResponseDto,
-  UserService
+  UserService,
+  UsersListQueryResponse
 } from '../interfaces/user.interface';
 import type { UserGameFilterPreferencesDto } from '../interfaces/game.interface';
 import type { LocationCoordinates } from '../interfaces/location.interface';
 import { BaseRouteModeService } from './base-route-mode.service';
-import { resolveCurrentRouteDelayMs, resolveCurrentRouteRequestTimeoutMs } from './route-delay.service';
 
 export { USER_GAME_CARDS_LOAD_CONTEXT_KEY } from './game.service';
 
@@ -35,60 +33,26 @@ export const USER_PROFILE_SAVE_CONTEXT_KEY = 'user-profile-save';
 export const USER_LOGOUT_CONTEXT_KEY = 'user-logout';
 export const USER_DELETE_CONTEXT_KEY = 'user-delete';
 
-export interface UserProfileSaveOptions {
-  requestTimeoutMs?: number;
-  minimumDurationMs?: number;
-  returnFallbackOnFailure?: boolean;
-}
-
-class RequestTimeoutError extends Error {
-  constructor() {
-    super('Users request timeout.');
-    this.name = 'RequestTimeoutError';
-  }
-}
-
-class RequestAbortedError extends Error {
-  constructor() {
-    super('Users request aborted.');
-    this.name = 'AbortError';
-  }
+interface RoutedUserService extends UserService {
+  queryAvailableDemoUsers(
+    requestTimeoutMs?: number,
+    onProgress?: (state: DemoBootstrapProgressState) => void
+  ): Promise<UsersListQueryResponse>;
+  prepareUserSession?(userId: string, onProgress?: (state: DemoBootstrapProgressState) => void): Promise<void>;
+  peekCachedUsers?(): UserDto[];
+  peekCachedUserById?(userId: string): UserDto | null;
 }
 
 @Injectable({
   providedIn: 'root'
 })
 export class UsersService extends BaseRouteModeService {
-  private readonly injector = inject(Injector);
+  private readonly demoUsersService = inject(DemoUsersService);
   private readonly httpUsersService = inject(HttpUsersService);
   private readonly appCtx = inject(AppContext);
-  private demoUsersServiceRef: DemoUsersService | null = null;
-  private demoUsersRepositoryRef: DemoUsersRepository | null = null;
-  private demoBootstrapServiceRef: DemoBootstrapService | null = null;
 
   get demoModeEnabled(): boolean {
     return this.isDemoModeEnabled('/auth/me');
-  }
-
-  private get demoUsersService(): DemoUsersService {
-    if (!this.demoUsersServiceRef) {
-      this.demoUsersServiceRef = this.injector.get(DemoUsersService);
-    }
-    return this.demoUsersServiceRef;
-  }
-
-  private get demoUsersRepository(): DemoUsersRepository {
-    if (!this.demoUsersRepositoryRef) {
-      this.demoUsersRepositoryRef = this.injector.get(DemoUsersRepository);
-    }
-    return this.demoUsersRepositoryRef;
-  }
-
-  private get demoBootstrapService(): DemoBootstrapService {
-    if (!this.demoBootstrapServiceRef) {
-      this.demoBootstrapServiceRef = this.injector.get(DemoBootstrapService);
-    }
-    return this.demoBootstrapServiceRef;
   }
 
   peekCachedUsers(): UserDto[] {
@@ -101,13 +65,11 @@ export class UsersService extends BaseRouteModeService {
       byId.set(userId, this.cloneUser(user));
     }
 
-    if (this.demoModeEnabled) {
-      for (const user of this.demoUsersRepository.queryAllUsers()) {
-        if (!user?.id?.trim() || byId.has(user.id)) {
-          continue;
-        }
-        byId.set(user.id, this.cloneUser(user));
+    for (const user of this.userService.peekCachedUsers?.() ?? []) {
+      if (!user?.id?.trim() || byId.has(user.id)) {
+        continue;
       }
+      byId.set(user.id, this.cloneUser(user));
     }
 
     const activeUser = this.appCtx.activeUserProfile();
@@ -127,11 +89,8 @@ export class UsersService extends BaseRouteModeService {
     if (appProfile) {
       return this.cloneUser(appProfile);
     }
-    if (!this.demoModeEnabled) {
-      return null;
-    }
-    const demoUser = this.demoUsersRepository.queryUserById(normalizedUserId);
-    return demoUser ? this.cloneUser(demoUser) : null;
+    const cachedUser = this.userService.peekCachedUserById?.(normalizedUserId) ?? null;
+    return cachedUser ? this.cloneUser(cachedUser) : null;
   }
 
   async warmCachedUsers(userIds: readonly string[]): Promise<void> {
@@ -146,52 +105,34 @@ export class UsersService extends BaseRouteModeService {
     }
     await Promise.all(pendingUserIds.map(async userId => {
       try {
-        await this.loadUserById(userId, resolveCurrentRouteRequestTimeoutMs('/auth/me'));
+        await this.loadUserById(userId);
       } catch {
         // Keep enrichment warmup best-effort so screens stay responsive.
       }
     }));
   }
 
-  private get userService(): UserService {
+  private get userService(): RoutedUserService {
     return this.resolveRouteService('/auth/me', this.demoUsersService, this.httpUsersService);
+  }
+
+  private get userSelectorService(): RoutedUserService {
+    return this.resolveRouteService('/auth/demo-users', this.demoUsersService, this.httpUsersService);
   }
 
   async loadAvailableDemoUsers(
     requestTimeoutMs?: number,
     onProgress?: (state: DemoBootstrapProgressState) => void
   ): Promise<DemoUserListItemDto[]> {
-    const normalizedTimeoutMs = this.resolveRequestTimeoutMs(requestTimeoutMs);
-    const useLocalBootstrap = this.isDemoModeEnabled('/auth/demo-users');
-    const effectiveTimeoutMs = useLocalBootstrap
-      ? normalizedTimeoutMs
-      : Math.max(normalizedTimeoutMs, resolveCurrentRouteRequestTimeoutMs('/auth/demo-users'));
-
     this.setLoadStatus(USERS_LOAD_CONTEXT_KEY, 'loading');
 
     try {
-      if (useLocalBootstrap) {
-        await this.demoBootstrapService.ensureReady(onProgress);
-      }
-      const { value: response } = await this.loadWithRecovery(
-        () => this.withRequestTimeout(
-          (useLocalBootstrap ? this.demoUsersService : this.httpUsersService).queryAvailableDemoUsers(),
-          effectiveTimeoutMs
-        ),
-        () => ({
-          users: useLocalBootstrap ? this.demoUsersRepository.queryAvailableDemoUsers() : []
-        }),
-        {
-          shouldRecover: next =>
-            useLocalBootstrap && (!Array.isArray(next.users) || next.users.length === 0),
-          hasRecoveryValue: next => Array.isArray(next.users) && next.users.length > 0
-        }
-      );
+      const response = await this.userSelectorService.queryAvailableDemoUsers(requestTimeoutMs, onProgress);
 
       this.setLoadStatus(USERS_LOAD_CONTEXT_KEY, 'success');
       return response.users;
     } catch (error) {
-      if (error instanceof RequestTimeoutError) {
+      if (this.isTimeoutError(error, 'Users request timeout.')) {
         this.setLoadStatus(USERS_LOAD_CONTEXT_KEY, 'timeout', 'Users request timeout.');
         return [];
       }
@@ -214,19 +155,10 @@ export class UsersService extends BaseRouteModeService {
       return;
     }
 
-    try {
-      await this.demoBootstrapService.ensureUserReady(userId, onProgress);
-    } catch {
-      const fallbackUser = this.demoUsersRepository.queryUserById(userId.trim());
-      if (!fallbackUser) {
-        throw new Error('Unable to prepare demo user session.');
-      }
-      onProgress?.({
-        percent: 100,
-        label: 'Demo session ready',
-        stage: 'sessionReady'
-      });
+    if (!this.userService.prepareUserSession) {
+      throw new Error('Unable to prepare demo user session.');
     }
+    await this.userService.prepareUserSession(userId, onProgress);
   }
 
   async checkLocationEligibility(coordinates?: LocationCoordinates | null): Promise<UserLocationEligibilityResponseDto> {
@@ -234,7 +166,6 @@ export class UsersService extends BaseRouteModeService {
   }
 
   async loadUserById(userId?: string, requestTimeoutMs?: number): Promise<UserDto | null> {
-    const normalizedTimeoutMs = this.resolveRequestTimeoutMs(requestTimeoutMs);
     const normalizedUserId = typeof userId === 'string' ? userId.trim() : '';
 
     if (this.isDemoModeEnabled('/auth/me') && !normalizedUserId) {
@@ -245,17 +176,7 @@ export class UsersService extends BaseRouteModeService {
     this.setLoadStatus(USER_BY_ID_LOAD_CONTEXT_KEY, 'loading');
 
     try {
-      const { value: response } = await this.loadWithRecovery(
-        () => this.withRequestTimeout(
-          this.userService.queryUserById(normalizedUserId || undefined),
-          normalizedTimeoutMs
-        ),
-        () => this.recoverUserByIdResponse(normalizedUserId),
-        {
-          shouldRecover: next => !next.user,
-          hasRecoveryValue: next => Boolean(next.user)
-        }
-      );
+      const response = await this.userService.queryUserById(normalizedUserId || undefined, requestTimeoutMs);
 
       if (!response.user) {
         this.setLoadStatus(USER_BY_ID_LOAD_CONTEXT_KEY, 'error', 'User details not found.');
@@ -274,7 +195,7 @@ export class UsersService extends BaseRouteModeService {
       }
       if (resolvedUserId) {
         this.appCtx.clearUserCounterOverrides(resolvedUserId);
-      if (response.counterOverrides) {
+        if (response.counterOverrides) {
           this.appCtx.patchUserCounterOverrides(
             resolvedUserId,
             this.normalizeCounterOverrides(response.counterOverrides, response.user.activities)
@@ -290,7 +211,7 @@ export class UsersService extends BaseRouteModeService {
       this.setLoadStatus(USER_BY_ID_LOAD_CONTEXT_KEY, 'success');
       return response.user;
     } catch (error) {
-      if (error instanceof RequestTimeoutError) {
+      if (this.isTimeoutError(error, 'User details request timeout.')) {
         this.setLoadStatus(USER_BY_ID_LOAD_CONTEXT_KEY, 'timeout', 'User details request timeout.');
         return null;
       }
@@ -309,7 +230,7 @@ export class UsersService extends BaseRouteModeService {
     await this.userService.saveUserFilterPreferences(normalizedUserId, preferences);
   }
 
-  async saveUserProfile(user: UserDto, options: UserProfileSaveOptions = {}): Promise<UserDto | null> {
+  async saveUserProfile(user: UserDto): Promise<UserDto | null> {
     if (!user?.id?.trim()) {
       this.setLoadStatus(USER_PROFILE_SAVE_CONTEXT_KEY, 'error', 'Missing user id.');
       return null;
@@ -317,30 +238,22 @@ export class UsersService extends BaseRouteModeService {
 
     this.appCtx.setUserProfile(user);
     this.setLoadStatus(USER_PROFILE_SAVE_CONTEXT_KEY, 'loading');
-    const normalizedTimeoutMs = this.resolveRequestTimeoutMs(options.requestTimeoutMs);
-    const startedAtMs = Date.now();
-    const minimumDurationMs = Math.max(0, Math.trunc(Number(options.minimumDurationMs) || 0));
-    const returnFallbackOnFailure = options.returnFallbackOnFailure !== false;
 
     try {
-      const savedUser = await this.withRequestTimeout(
-        this.userService.saveUserProfile(user),
-        normalizedTimeoutMs
-      );
-      await this.ensureMinimumRequestDuration(startedAtMs, minimumDurationMs);
-      const resolvedUser = savedUser ?? user;
-      this.appCtx.setUserProfile(resolvedUser);
+      const savedUser = await this.userService.saveUserProfile(user);
+      if (savedUser) {
+        this.appCtx.setUserProfile(savedUser);
+      }
       this.setLoadStatus(USER_PROFILE_SAVE_CONTEXT_KEY, 'success');
-      return resolvedUser;
+      return savedUser;
     } catch (error) {
-      await this.ensureMinimumRequestDuration(startedAtMs, minimumDurationMs);
-      if (error instanceof RequestTimeoutError) {
+      if (this.isTimeoutError(error, 'Profile save request timeout.')) {
         this.setLoadStatus(USER_PROFILE_SAVE_CONTEXT_KEY, 'timeout', 'Profile save request timeout.');
-        return returnFallbackOnFailure ? user : null;
+        return null;
       }
 
       this.setLoadStatus(USER_PROFILE_SAVE_CONTEXT_KEY, 'error', 'Unable to save profile.');
-      return returnFallbackOnFailure ? user : null;
+      return null;
     }
   }
 
@@ -351,7 +264,7 @@ export class UsersService extends BaseRouteModeService {
   ): Promise<UserSubmitActionResponseDto> {
     return this.submitUserAction(
       USER_FEEDBACK_SUBMIT_CONTEXT_KEY,
-      requestSignal => this.userService.submitUserFeedback(request, requestSignal),
+      (requestSignal, timeoutMs) => this.userService.submitUserFeedback(request, requestSignal, timeoutMs),
       requestTimeoutMs,
       'Feedback request timeout.',
       'Unable to send feedback.',
@@ -366,7 +279,7 @@ export class UsersService extends BaseRouteModeService {
   ): Promise<UserSubmitActionResponseDto> {
     return this.submitUserAction(
       USER_REPORT_USER_SUBMIT_CONTEXT_KEY,
-      requestSignal => this.userService.submitReportUser(request, requestSignal),
+      (requestSignal, timeoutMs) => this.userService.submitReportUser(request, requestSignal, timeoutMs),
       requestTimeoutMs,
       'Report request timeout.',
       'Unable to submit report.',
@@ -384,7 +297,7 @@ export class UsersService extends BaseRouteModeService {
     };
     return this.submitUserAction(
       USER_LOGOUT_CONTEXT_KEY,
-      requestSignal => this.userService.logoutUser(request, requestSignal),
+      (requestSignal, timeoutMs) => this.userService.logoutUser(request, requestSignal, timeoutMs),
       requestTimeoutMs,
       'Logout request timeout.',
       'Unable to log out.',
@@ -402,7 +315,7 @@ export class UsersService extends BaseRouteModeService {
     };
     return this.submitUserAction(
       USER_DELETE_CONTEXT_KEY,
-      requestSignal => this.userService.deleteUser(request, requestSignal),
+      (requestSignal, timeoutMs) => this.userService.deleteUser(request, requestSignal, timeoutMs),
       requestTimeoutMs,
       'Delete account request timeout.',
       'Unable to delete account.',
@@ -415,16 +328,12 @@ export class UsersService extends BaseRouteModeService {
     cursor: string | null = null,
     requestTimeoutMs?: number
   ): Promise<UserRealtimeLongPollResponseDto | null> {
-    const normalizedTimeoutMs = this.resolveRequestTimeoutMs(requestTimeoutMs);
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return null;
     }
     try {
-      const snapshot = await this.withRequestTimeout(
-        this.userService.queryUserRealtimeLongPoll(normalizedUserId, cursor),
-        normalizedTimeoutMs
-      );
+      const snapshot = await this.userService.queryUserRealtimeLongPoll(normalizedUserId, cursor, requestTimeoutMs);
       if (!snapshot) {
         return null;
       }
@@ -456,7 +365,10 @@ export class UsersService extends BaseRouteModeService {
 
   private async submitUserAction(
     contextKey: string,
-    requestFactory: (signal: AbortSignal) => Promise<UserSubmitActionResponseDto>,
+    requestFactory: (
+      signal: AbortSignal,
+      requestTimeoutMs?: number
+    ) => Promise<UserSubmitActionResponseDto>,
     requestTimeoutMs: number | undefined,
     timeoutMessage: string,
     fallbackErrorMessage: string,
@@ -470,24 +382,12 @@ export class UsersService extends BaseRouteModeService {
       };
     }
 
-    const normalizedTimeoutMs = this.resolveRequestTimeoutMs(requestTimeoutMs);
-    const startedAtMs = Date.now();
     const requestAbortController = new AbortController();
+    const unbindAbort = this.bindAbort(signal, requestAbortController);
     this.setLoadStatus(contextKey, 'loading');
 
     try {
-      const response = await this.withRequestTimeout(
-        requestFactory(requestAbortController.signal),
-        normalizedTimeoutMs,
-        signal,
-        requestAbortController
-      );
-
-      await this.ensureMinimumRequestDuration(
-        startedAtMs,
-        resolveCurrentRouteDelayMs('/auth/me'),
-        requestAbortController.signal
-      );
+      const response = await requestFactory(requestAbortController.signal, requestTimeoutMs);
 
       if (!response.submitted) {
         this.setLoadStatus(contextKey, 'error', response.message ?? fallbackErrorMessage);
@@ -508,13 +408,7 @@ export class UsersService extends BaseRouteModeService {
         };
       }
 
-      await this.ensureMinimumRequestDuration(
-        startedAtMs,
-        resolveCurrentRouteDelayMs('/auth/me'),
-        requestAbortController.signal
-      );
-
-      if (error instanceof RequestTimeoutError) {
+      if (this.isTimeoutError(error, timeoutMessage)) {
         this.setLoadStatus(contextKey, 'timeout', timeoutMessage);
         return {
           submitted: false,
@@ -527,90 +421,30 @@ export class UsersService extends BaseRouteModeService {
         submitted: false,
         message: fallbackErrorMessage
       };
+    } finally {
+      unbindAbort();
     }
-  }
-
-  private resolveRequestTimeoutMs(value?: number): number {
-    if (!Number.isFinite(value)) {
-      return resolveCurrentRouteRequestTimeoutMs('/auth/me');
-    }
-    return Math.max(1, Math.trunc(Number(value)));
-  }
-
-  private withRequestTimeout<T>(
-    promise: Promise<T>,
-    timeoutMs: number,
-    signal?: AbortSignal,
-    abortController?: AbortController
-  ): Promise<T> {
-    return new Promise<T>((resolve, reject) => {
-      if (signal?.aborted) {
-        abortController?.abort();
-        reject(new RequestAbortedError());
-        return;
-      }
-
-      const timer = setTimeout(() => {
-        abortController?.abort();
-        cleanup();
-        reject(new RequestTimeoutError());
-      }, timeoutMs);
-      const onAbort = () => {
-        abortController?.abort();
-        cleanup();
-        reject(new RequestAbortedError());
-      };
-      const cleanup = () => {
-        clearTimeout(timer);
-        signal?.removeEventListener('abort', onAbort);
-      };
-      signal?.addEventListener('abort', onAbort, { once: true });
-      void promise.then(
-        result => {
-          cleanup();
-          resolve(result);
-        },
-        error => {
-          cleanup();
-          reject(error);
-        }
-      );
-    });
-  }
-
-  private async ensureMinimumRequestDuration(
-    startedAtMs: number,
-    minimumDurationMs: number,
-    signal?: AbortSignal
-  ): Promise<void> {
-    const elapsedMs = Date.now() - startedAtMs;
-    const remainingMs = minimumDurationMs - elapsedMs;
-    if (remainingMs <= 0) {
-      return;
-    }
-    await new Promise<void>((resolve, reject) => {
-      if (signal?.aborted) {
-        reject(new RequestAbortedError());
-        return;
-      }
-      const timer = setTimeout(() => {
-        cleanup();
-        resolve();
-      }, remainingMs);
-      const onAbort = () => {
-        cleanup();
-        reject(new RequestAbortedError());
-      };
-      const cleanup = () => {
-        clearTimeout(timer);
-        signal?.removeEventListener('abort', onAbort);
-      };
-      signal?.addEventListener('abort', onAbort, { once: true });
-    });
   }
 
   private isAbortError(error: unknown): boolean {
-    return error instanceof RequestAbortedError || (error instanceof Error && error.name === 'AbortError');
+    return error instanceof Error && error.name === 'AbortError';
+  }
+
+  private isTimeoutError(error: unknown, message: string): boolean {
+    return error instanceof Error && error.message === message;
+  }
+
+  private bindAbort(signal: AbortSignal | undefined, abortController: AbortController): () => void {
+    if (!signal) {
+      return () => undefined;
+    }
+    if (signal.aborted) {
+      abortController.abort();
+      return () => undefined;
+    }
+    const onAbort = () => abortController.abort();
+    signal.addEventListener('abort', onAbort, { once: true });
+    return () => signal.removeEventListener('abort', onAbort);
   }
 
   private normalizeRealtimeSnapshot(
@@ -672,23 +506,6 @@ export class UsersService extends BaseRouteModeService {
       serverTsIso: typeof snapshot.serverTsIso === 'string'
         ? snapshot.serverTsIso
         : new Date().toISOString()
-    };
-  }
-
-  private recoverUserByIdResponse(userId: string): UserByIdQueryResponse {
-    const normalizedUserId = userId.trim();
-    const cachedUser = normalizedUserId
-      ? this.peekCachedUserById(normalizedUserId)
-      : (this.appCtx.activeUserProfile() ?? this.buildSessionFallbackUser());
-
-    if (cachedUser) {
-      return {
-        user: this.cloneUser(cachedUser)
-      };
-    }
-
-    return {
-      user: null
     };
   }
 
@@ -789,71 +606,6 @@ export class UsersService extends BaseRouteModeService {
     if (adminMetrics !== undefined) patch.adminMetrics = adminMetrics;
 
     return patch;
-  }
-
-  private buildSessionFallbackUser(): UserDto | null {
-    const session = this.sessionService.currentSession();
-    if (session?.kind !== 'firebase') {
-      return null;
-    }
-
-    return this.cloneUser({
-      id: session.profile.id.trim(),
-      name: session.profile.name.trim(),
-      age: 0,
-      birthday: '',
-      city: '',
-      height: '',
-      physique: '',
-      languages: [],
-      horoscope: '',
-      initials: session.profile.initials.trim(),
-      gender: 'man',
-      statusText: '',
-      hostTier: '',
-      traitLabel: '',
-      completion: 0,
-      headline: '',
-      about: '',
-      images: session.profile.imageUrl?.trim() ? [session.profile.imageUrl.trim()] : [],
-      profileStatus: 'public',
-      activities: {
-        game: 0,
-        chat: 0,
-        invitations: 0,
-        events: 0,
-        hosting: 0,
-        cars: 0,
-        accommodation: 0,
-        supplies: 0,
-        tickets: 0,
-        contacts: 0,
-        feedback: 0,
-        event: {
-          all: 0,
-          active: 0,
-          pending: 0,
-          invitations: 0,
-          hosting: 0,
-          drafts: 0,
-          trash: 0
-        },
-        asset: {
-          cars: 0,
-          accommodation: 0,
-          supplies: 0,
-          tickets: 0
-        },
-        eventFeedback: {
-          ownEvents: 0,
-          pending: 0,
-          feedbacked: 0,
-          removed: 0
-        },
-        adminJobs: 0,
-        adminMetrics: 0
-      }
-    });
   }
 
   private cloneUser(user: UserDto): UserDto {

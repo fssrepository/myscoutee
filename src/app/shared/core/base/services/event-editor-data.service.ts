@@ -5,9 +5,6 @@ import type { DemoEventRecord } from '../../demo/models/events.model';
 import { DemoEventEditorDataService } from '../../demo/services/event-editor-data.service';
 import { HttpEventEditorDataService } from '../../http/services/event-editor-data.service';
 import { BaseRouteModeService } from './base-route-mode.service';
-import { RouteDelayService } from './route-delay.service';
-
-const EVENT_EDITOR_DETAIL_ROUTE = '/activities/events';
 
 @Injectable({
   providedIn: 'root'
@@ -15,7 +12,6 @@ const EVENT_EDITOR_DETAIL_ROUTE = '/activities/events';
 export class EventEditorDataService extends BaseRouteModeService {
   private readonly demoEventEditorDataService = inject(DemoEventEditorDataService);
   private readonly httpEventEditorDataService = inject(HttpEventEditorDataService);
-  private readonly routeDelay = inject(RouteDelayService);
 
   peekKnownItemById(userId: string, itemId: string): DemoEventRecord | null {
     return this.isDemoModeEnabled('/activities/events')
@@ -33,10 +29,6 @@ export class EventEditorDataService extends BaseRouteModeService {
     return this.isDemoModeEnabled('/activities/events')
       ? this.demoEventEditorDataService.loadFullItemById(userId, itemId)
       : this.httpEventEditorDataService.loadFullItemById(userId, itemId);
-  }
-
-  detailLoadProgressWindowMs(): number {
-    return this.routeDelay.resolveRequestTimeoutMs(EVENT_EDITOR_DETAIL_ROUTE);
   }
 
   querySummaryByOwnerId(ownerId: string): Promise<ActivityMembersSummary | null> {

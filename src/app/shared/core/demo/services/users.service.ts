@@ -2,7 +2,9 @@ import { Injectable, inject } from '@angular/core';
 
 import { DemoUsersRepository } from '../repositories/users.repository';
 import { DemoRouteDelayService } from './demo-route-delay.service';
+import { DemoBootstrapService, type DemoBootstrapProgressState } from './demo-bootstrap.service';
 import type {
+  DemoUser,
   UserByIdQueryResponse,
   UserDeleteRequestDto,
   UserFeedbackSubmitRequestDto,
@@ -25,34 +27,59 @@ import {
 } from '../builders';
 import { DemoActivityMembersRepository } from '../repositories/activity-members.repository';
 import { DemoCountryPartitionsRepository } from '../repositories/country-partitions.repository';
-import { scopedStorageKey } from '../../base/storage-scope';
+import { APP_STORAGE_KEYS } from '../../base/storage-scope';
 
 @Injectable({
   providedIn: 'root'
 })
 export class DemoUsersService extends DemoRouteDelayService implements UserService {
   private static readonly INELIGIBLE_REGION_MESSAGE = 'Unavailable in your country';
-  private static readonly DEMO_COUNTRY_CODE_STORAGE_KEY = scopedStorageKey('countryCode', 'demo');
+  private static readonly DEMO_COUNTRY_CODE_STORAGE_KEY = APP_STORAGE_KEYS.demoCountryCode;
   private static readonly DEMO_USERS_ROUTE = '/auth/demo-users';
   private static readonly USER_BY_ID_ROUTE = '/auth/me';
   private static readonly USER_FEEDBACK_ROUTE = '/auth/me/feedback';
   private static readonly USER_REPORT_USER_ROUTE = '/auth/me/report-user';
   private static readonly USER_REALTIME_LONG_POLL_ROUTE = '/auth/me/realtime/long-poll';
+  private static readonly USER_FILTER_PREFERENCES_ROUTE = '/auth/me/preferences';
   private static readonly USER_REALTIME_LONG_POLL_SIMULATION_STEP_MS = 30000;
   private static readonly MAX_PROFILE_IMAGE_SLOTS = 8;
-  private static readonly FILTER_PREFERENCES_SAVE_DELAY_MS = 1500;
   private static readonly DELETED_ACCOUNT_PURGE_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
   private readonly activityMembersRepository = inject(DemoActivityMembersRepository);
+  private readonly bootstrapService = inject(DemoBootstrapService);
   private readonly countryPartitionsRepository = inject(DemoCountryPartitionsRepository);
   private readonly usersRepository = inject(DemoUsersRepository);
   private readonly realtimeCursorByUserId: Record<string, number> = {};
   private readonly realtimeLastAdvanceAtByUserId: Record<string, number> = {};
 
-  async queryAvailableDemoUsers(): Promise<UsersListQueryResponse> {
+  async queryAvailableDemoUsers(
+    _requestTimeoutMs?: number,
+    onProgress?: (state: DemoBootstrapProgressState) => void
+  ): Promise<UsersListQueryResponse> {
+    await this.bootstrapService.ensureReady(onProgress);
     await this.waitForRouteDelay(DemoUsersService.DEMO_USERS_ROUTE);
     return {
       users: this.usersRepository.queryAvailableDemoUsers()
     };
+  }
+
+  async prepareUserSession(
+    userId: string,
+    onProgress?: (state: DemoBootstrapProgressState) => void
+  ): Promise<void> {
+    await this.bootstrapService.ensureUserReady(userId, onProgress);
+  }
+
+  peekCachedUsers(): DemoUser[] {
+    return this.usersRepository.queryAllUsers().map(user => ({ ...user }));
+  }
+
+  peekCachedUserById(userId: string): DemoUser | null {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return null;
+    }
+    const user = this.usersRepository.queryUserById(normalizedUserId);
+    return user ? { ...user } : null;
   }
 
   async checkLocationEligibility(coordinates?: LocationCoordinates | null): Promise<UserLocationEligibilityResponseDto> {
@@ -108,7 +135,7 @@ export class DemoUsersService extends DemoRouteDelayService implements UserServi
       .slice(0, 2);
   }
 
-  async queryUserById(userId?: string): Promise<UserByIdQueryResponse> {
+  async queryUserById(userId?: string, _requestTimeoutMs?: number): Promise<UserByIdQueryResponse> {
     await this.usersRepository.whenReady();
     await this.waitForRouteDelay(DemoUsersService.USER_BY_ID_ROUTE);
     const normalizedUserId = typeof userId === 'string' ? userId.trim() : '';
@@ -146,7 +173,8 @@ export class DemoUsersService extends DemoRouteDelayService implements UserServi
 
   async queryUserRealtimeLongPoll(
     userId: string,
-    cursor?: string | null
+    cursor?: string | null,
+    _requestTimeoutMs?: number
   ): Promise<UserRealtimeLongPollResponseDto | null> {
     await this.waitForRouteDelay(DemoUsersService.USER_REALTIME_LONG_POLL_ROUTE);
     const normalizedUserId = userId.trim();
@@ -218,10 +246,10 @@ export class DemoUsersService extends DemoRouteDelayService implements UserServi
   async saveUserFilterPreferences(userId: string, preferences: UserGameFilterPreferencesDto): Promise<void> {
     this.usersRepository.upsertUserFilterPreferences(userId, preferences);
     await this.usersRepository.flushToIndexedDb();
-    await this.waitForDelay(DemoUsersService.FILTER_PREFERENCES_SAVE_DELAY_MS);
+    await this.waitForRouteDelay(DemoUsersService.USER_FILTER_PREFERENCES_ROUTE);
   }
 
-  async saveUserProfile(user: UserDto): Promise<UserDto | null> {
+  async saveUserProfile(user: UserDto, _requestTimeoutMs?: number): Promise<UserDto | null> {
     if (!user?.id?.trim()) {
       return null;
     }
@@ -232,7 +260,8 @@ export class DemoUsersService extends DemoRouteDelayService implements UserServi
 
   async submitUserFeedback(
     _request: UserFeedbackSubmitRequestDto,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    _requestTimeoutMs?: number
   ): Promise<UserSubmitActionResponseDto> {
     await this.waitForRouteDelay(DemoUsersService.USER_FEEDBACK_ROUTE, signal);
     return {
@@ -243,7 +272,8 @@ export class DemoUsersService extends DemoRouteDelayService implements UserServi
 
   async submitReportUser(
     request: UserReportUserSubmitRequestDto,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    _requestTimeoutMs?: number
   ): Promise<UserSubmitActionResponseDto> {
     await this.waitForRouteDelay(DemoUsersService.USER_REPORT_USER_ROUTE, signal);
     const normalizedActiveUserId = `${request.userId ?? ''}`.trim();
@@ -286,7 +316,8 @@ export class DemoUsersService extends DemoRouteDelayService implements UserServi
 
   async logoutUser(
     _request: UserLogoutRequestDto,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    _requestTimeoutMs?: number
   ): Promise<UserSubmitActionResponseDto> {
     await this.waitForRouteDelay(DemoUsersService.USER_BY_ID_ROUTE, signal);
     return {
@@ -297,7 +328,8 @@ export class DemoUsersService extends DemoRouteDelayService implements UserServi
 
   async deleteUser(
     request: UserDeleteRequestDto,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    _requestTimeoutMs?: number
   ): Promise<UserSubmitActionResponseDto> {
     await this.waitForRouteDelay(DemoUsersService.USER_BY_ID_ROUTE, signal);
     const normalizedUserId = request.userId.trim();

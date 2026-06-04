@@ -23,7 +23,6 @@ import { EventsService } from './events.service';
 import { RatesService } from './rates.service';
 import { SessionService } from './session.service';
 import { UsersService } from './users.service';
-import { DemoUsersRepository } from '../../demo';
 import { BaseRouteModeService } from './base-route-mode.service';
 
 export interface ActivitiesEventDisplaySync extends AppTypes.ActivitiesEventSyncPayload {
@@ -40,7 +39,6 @@ export class ActivitiesService extends BaseRouteModeService {
   private readonly ratesService = inject(RatesService);
   private readonly appCtx = inject(AppContext);
   private readonly usersService = inject(UsersService);
-  private readonly demoUsersRepository = inject(DemoUsersRepository);
 
   async loadActivities(
     query: ListQuery<ActivitiesFeedFilters>,
@@ -175,9 +173,7 @@ export class ActivitiesService extends BaseRouteModeService {
     if (session?.kind === 'firebase' && session.profile.id.trim().length > 0) {
       return session.profile.id.trim();
     }
-    return this.isDemoModeEnabled('/activities/events')
-      ? (this.demoUsersRepository.queryAllUsers()[0]?.id ?? '')
-      : '';
+    return this.usersService.peekCachedUsers()[0]?.id ?? '';
   }
 
   private normalizeEventActivitiesSort(value: string | undefined): 'date' | 'distance' | 'relevance' {
@@ -248,9 +244,6 @@ export class ActivitiesService extends BaseRouteModeService {
   }
 
   private resolveActivityUsers(preferredUsers?: readonly UserDto[] | null): UserDto[] {
-    if (this.isDemoModeEnabled('/activities/rates')) {
-      return this.demoUsersRepository.queryAllUsers();
-    }
     if (preferredUsers && preferredUsers.length > 0) {
       return preferredUsers.map(user => ({ ...user, images: [...(user.images ?? [])] }));
     }

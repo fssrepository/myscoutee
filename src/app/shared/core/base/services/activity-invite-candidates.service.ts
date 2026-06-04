@@ -9,7 +9,6 @@ import { AppContext } from '../context';
 import { EventsService } from './events.service';
 import { BaseRouteModeService } from './base-route-mode.service';
 import { AppUtils } from '../../../app-utils';
-import { RouteDelayService } from './route-delay.service';
 
 const ACTIVITY_INVITE_CANDIDATES_ROUTE = '/activities/events/invite-candidates';
 
@@ -22,7 +21,6 @@ export class ActivityInviteCandidatesService extends BaseRouteModeService {
   private readonly activityMembersService = inject(ActivityMembersService);
   private readonly eventsService = inject(EventsService);
   private readonly appCtx = inject(AppContext);
-  private readonly routeDelay = inject(RouteDelayService);
 
 
   private get inviteCandidatesService(): DemoActivityInviteCandidatesService | HttpActivityInviteCandidatesService {
@@ -31,10 +29,6 @@ export class ActivityInviteCandidatesService extends BaseRouteModeService {
       this.demoActivityInviteCandidatesService,
       this.httpActivityInviteCandidatesService
     );
-  }
-
-  waitForPendingWindow(): Promise<void> {
-    return this.routeDelay.waitForRouteDelay(ACTIVITY_INVITE_CANDIDATES_ROUTE);
   }
 
   async queryCandidatesByOwner(
@@ -79,7 +73,7 @@ export class ActivityInviteCandidatesService extends BaseRouteModeService {
       ownerType,
       ownerId: normalizedOwnerId
     };
-    const currentMembers = await this.activityMembersService.queryMembersByOwner(ownerRef);
+    const currentMembers = this.activityMembersService.peekMembersByOwner(ownerRef);
     const existingUserIds = new Set(currentMembers.map(member => member.userId));
     const nowIso = AppUtils.toIsoDateTime(new Date());
     const additions = selectedCandidates

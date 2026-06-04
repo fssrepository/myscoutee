@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import { environment } from '../../../../../environments/environment';
+import { AppUtils } from '../../../app-utils';
 import type { ActivitiesPageRequest } from '../../../core/base/models';
 import type { RateRecord } from '../../base/models/rate.model';
 import type { ActivityRatePageResult } from '../../base/interfaces/game.interface';
@@ -72,24 +73,34 @@ export class HttpRatesService {
       params = params.set('rangeEndIso', request.rangeEnd);
     }
 
-    const response = await this.requestWithAbort(
-      this.http.get<{
-        items?: RateRecord[] | null;
-        total?: number | null;
-        nextCursor?: string | null;
-        users?: UserDto[] | null;
-      } | null>(`${this.apiBaseUrl}${HttpRatesService.USER_RATES_PAGE_ROUTE}`, { params }),
-      signal
-    );
+    try {
+      const response = await this.requestWithAbort(
+        this.http.get<{
+          items?: RateRecord[] | null;
+          total?: number | null;
+          nextCursor?: string | null;
+          users?: UserDto[] | null;
+        } | null>(`${this.apiBaseUrl}${HttpRatesService.USER_RATES_PAGE_ROUTE}`, { params }),
+        signal
+      );
 
-    return {
-      items: Array.isArray(response?.items) ? response.items.map(item => ({ ...item })) : [],
-      total: Number.isFinite(response?.total) ? Math.max(0, Math.trunc(Number(response?.total))) : 0,
-      nextCursor: typeof response?.nextCursor === 'string' && response.nextCursor.trim().length > 0
-        ? response.nextCursor.trim()
-        : null,
-      users: Array.isArray(response?.users) ? response.users.map(user => this.cloneUser(user)) : []
-    };
+      const page = {
+        items: Array.isArray(response?.items) ? response.items.map(item => ({ ...item })) : [],
+        total: Number.isFinite(response?.total) ? Math.max(0, Math.trunc(Number(response?.total))) : 0,
+        nextCursor: typeof response?.nextCursor === 'string' && response.nextCursor.trim().length > 0
+          ? response.nextCursor.trim()
+          : null,
+        users: Array.isArray(response?.users) ? response.users.map(user => this.cloneUser(user)) : []
+      };
+      return this.shouldUseCachedActivitiesRatePage(page, userId)
+        ? this.buildCachedActivitiesRatePage(userId, request)
+        : page;
+    } catch (error) {
+      if (this.isAbortError(error)) {
+        throw error;
+      }
+      return this.buildCachedActivitiesRatePage(userId, request);
+    }
   }
 
   private requestWithAbort<T>(request$: Observable<T>, signal?: AbortSignal): Promise<T> {
@@ -145,6 +156,134 @@ export class HttpRatesService {
     const error = new Error('Request aborted.');
     error.name = 'AbortError';
     return error;
+  }
+
+  private shouldUseCachedActivitiesRatePage(page: ActivityRatePageResult, userId: string): boolean {
+    return page.items.length === 0
+      && page.total === 0
+      && this.peekRateItemsByUser(userId).length > 0;
+  }
+
+  private buildCachedActivitiesRatePage(userId: string, request: ActivitiesPageRequest): ActivityRatePageResult {
+    const [mode, direction] = request.rateFilter.split('-') as ['individual' | 'pair', RateRecord['direction']];
+    const pageSize = Math.max(1, Math.trunc(Number(request.pageSize) || 10));
+    const pageIndex = Math.max(0, Math.trunc(Number(request.page) || 0));
+    const filtered = this.peekRateItemsByUser(userId)
+      .filter(item => item.mode === mode && item.direction === direction)
+      .filter(item => this.matchesRateSocialFilter(item, request.rateSocialBadgeEnabled === true))
+      .filter(item => this.matchesRateRange(item, request))
+      .sort((left, right) => this.compareRateItems(left, right, request));
+    const cursorId = this.resolveRateCursorId(request.cursor);
+    const startIndex = cursorId
+      ? Math.max(0, filtered.findIndex(item => item.id === cursorId) + 1)
+      : pageIndex * pageSize;
+    const pageItems = filtered
+      .slice(startIndex, startIndex + pageSize)
+      .map(item => ({ ...item }));
+
+    return {
+      items: pageItems,
+      total: filtered.length,
+      nextCursor: filtered.length > startIndex + pageItems.length && pageItems.length > 0
+        ? pageItems[pageItems.length - 1]?.id ?? null
+        : null,
+      users: []
+    };
+  }
+
+  private matchesRateRange(item: RateRecord, request: ActivitiesPageRequest): boolean {
+    const happenedAtMs = AppUtils.toSortableDate(item.happenedAt ?? '');
+    const rangeStartMs = request.rangeStart ? AppUtils.toSortableDate(request.rangeStart) : null;
+    const rangeEndMs = request.rangeEnd ? AppUtils.toSortableDate(request.rangeEnd) : null;
+    if (rangeStartMs !== null && happenedAtMs < rangeStartMs) {
+      return false;
+    }
+    if (rangeEndMs !== null && happenedAtMs > rangeEndMs) {
+      return false;
+    }
+    return true;
+  }
+
+  private matchesRateSocialFilter(item: RateRecord, socialBadgeEnabled: boolean): boolean {
+    if (item.mode === 'individual') {
+      const friendsInCommon = item.socialContext === 'friends-in-common';
+      return socialBadgeEnabled ? friendsInCommon : !friendsInCommon;
+    }
+    if (item.mode === 'pair') {
+      const insideNetwork = item.socialContext === 'separated-friends';
+      return socialBadgeEnabled ? insideNetwork : !insideNetwork;
+    }
+    return true;
+  }
+
+  private compareRateItems(left: RateRecord, right: RateRecord, request: ActivitiesPageRequest): number {
+    if (request.sort === 'distance') {
+      const distanceDelta = this.rateDistanceValue(left) - this.rateDistanceValue(right);
+      if (distanceDelta !== 0) {
+        return distanceDelta;
+      }
+      return left.id.localeCompare(right.id);
+    }
+
+    if (request.sort === 'relevance') {
+      const relevanceDelta = this.rateRelevanceScore(right) - this.rateRelevanceScore(left);
+      if (relevanceDelta !== 0) {
+        return relevanceDelta;
+      }
+      return right.id.localeCompare(left.id);
+    }
+
+    const sortDirection = request.direction === 'asc' || request.direction === 'desc'
+      ? request.direction
+      : 'desc';
+    const happenedAtDelta = sortDirection === 'asc'
+      ? AppUtils.toSortableDate(left.happenedAt ?? '') - AppUtils.toSortableDate(right.happenedAt ?? '')
+      : AppUtils.toSortableDate(right.happenedAt ?? '') - AppUtils.toSortableDate(left.happenedAt ?? '');
+    if (happenedAtDelta !== 0) {
+      return happenedAtDelta;
+    }
+    return sortDirection === 'asc'
+      ? left.id.localeCompare(right.id)
+      : right.id.localeCompare(left.id);
+  }
+
+  private rateDistanceValue(item: RateRecord): number {
+    if (Number.isFinite(item.distanceMetersExact)) {
+      return Math.max(0, Math.trunc(Number(item.distanceMetersExact)));
+    }
+    return 0;
+  }
+
+  private rateRelevanceScore(item: RateRecord): number {
+    const scoreGiven = Number.isFinite(item.scoreGiven)
+      ? Math.max(0, Math.round(Number(item.scoreGiven)))
+      : 0;
+    const scoreReceived = Number.isFinite(item.scoreReceived)
+      ? Math.max(0, Math.round(Number(item.scoreReceived)))
+      : 0;
+    if (item.direction === 'mutual') {
+      return scoreGiven + scoreReceived;
+    }
+    return scoreGiven > 0 ? scoreGiven : 5;
+  }
+
+  private resolveRateCursorId(cursor: string | null | undefined): string | null {
+    const normalizedCursor = `${cursor ?? ''}`.trim();
+    if (!normalizedCursor) {
+      return null;
+    }
+    try {
+      const parsed = JSON.parse(normalizedCursor) as { id?: string };
+      return typeof parsed.id === 'string' && parsed.id.trim().length > 0
+        ? parsed.id.trim()
+        : normalizedCursor;
+    } catch {
+      return normalizedCursor;
+    }
+  }
+
+  private isAbortError(error: unknown): boolean {
+    return error instanceof Error && error.name === 'AbortError';
   }
 
   private cloneUser(user: UserDto): UserDto {

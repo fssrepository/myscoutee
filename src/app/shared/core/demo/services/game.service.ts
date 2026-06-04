@@ -61,7 +61,10 @@ export class DemoGameService extends DemoRouteDelayService implements UserGameDa
     );
   }
 
-  async queryUserGameCardsByFilter(request: UserGameCardsQueryRequest): Promise<UserGameCardsQueryResponse> {
+  async queryUserGameCardsByFilter(
+    request: UserGameCardsQueryRequest,
+    _requestTimeoutMs?: number
+  ): Promise<UserGameCardsQueryResponse> {
     await this.waitForRouteDelay(DemoGameService.USER_GAME_CARDS_ROUTE);
     const normalizedUserId = request.userId.trim();
     if (!normalizedUserId) {

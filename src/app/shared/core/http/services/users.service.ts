@@ -23,30 +23,44 @@ import type {
 } from '../../base/interfaces/user.interface';
 import type { UserGameFilterPreferencesDto } from '../../base/interfaces/game.interface';
 import type { LocationCoordinates } from '../../base/interfaces/location.interface';
+import { AppContext } from '../../base/context';
 import { OfflineCacheService } from '../../base/services/offline-cache.service';
+import { RouteDelayService } from '../../base/services/route-delay.service';
+import { SessionService } from '../../base/services/session.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class HttpUsersService implements UserService {
+  private static readonly DEMO_USERS_ROUTE = '/auth/demo-users';
+  private static readonly USER_BY_ID_ROUTE = '/auth/me';
   private static readonly PROFILE_IMAGE_UPLOAD_ROUTE = '/auth/me/profile-image';
   private static readonly USER_FEEDBACK_ROUTE = '/auth/me/feedback';
+  private static readonly USER_FILTER_PREFERENCES_ROUTE = '/auth/me/preferences';
   private static readonly USER_REPORT_USER_ROUTE = '/auth/me/report-user';
   private static readonly USER_LOGOUT_ROUTE = '/auth/me/logout';
   private static readonly USER_DELETE_ROUTE = '/auth/me/delete';
   private static readonly USER_REALTIME_LONG_POLL_ROUTE = '/auth/me/realtime/long-poll';
   private static readonly MAX_PROFILE_IMAGE_SLOTS = 8;
   private readonly http = inject(HttpClient);
+  private readonly appCtx = inject(AppContext);
   private readonly offlineCache = inject(OfflineCacheService);
+  private readonly routeDelay = inject(RouteDelayService);
+  private readonly sessionService = inject(SessionService);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
 
-  async queryAvailableDemoUsers(): Promise<UsersListQueryResponse> {
+  async queryAvailableDemoUsers(requestTimeoutMs?: number): Promise<UsersListQueryResponse> {
     type HttpDemoUserListEntry = Partial<UserDto> & Partial<DemoUserListItemDto> & {
       gender?: string | null;
     };
-    const response = await this.http
-      .get<HttpDemoUserListEntry[] | null>(`${this.apiBaseUrl}/auth/demo-users`)
-      .toPromise();
+    const response = await this.routeDelay.withRequestTimeout(
+      HttpUsersService.DEMO_USERS_ROUTE,
+      this.http
+        .get<HttpDemoUserListEntry[] | null>(`${this.apiBaseUrl}/auth/demo-users`)
+        .toPromise(),
+      'Users request timeout.',
+      requestTimeoutMs
+    );
     if (!Array.isArray(response)) {
       return { users: [] };
     }
@@ -55,6 +69,19 @@ export class HttpUsersService implements UserService {
         .map(user => this.toDemoUserListItem(user))
         .filter((user): user is DemoUserListItemDto => user !== null)
     };
+  }
+
+  prepareUserSession(): Promise<void> {
+    return Promise.resolve();
+  }
+
+  peekCachedUsers(): UserDto[] {
+    return [];
+  }
+
+  peekCachedUserById(userId: string): UserDto | null {
+    const cached = this.offlineCache.readUser(userId.trim());
+    return cached?.user ? this.cloneUser(cached.user) : null;
   }
 
   async checkLocationEligibility(coordinates?: LocationCoordinates | null): Promise<UserLocationEligibilityResponseDto> {
@@ -80,7 +107,7 @@ export class HttpUsersService implements UserService {
     };
   }
 
-  async queryUserById(userId?: string): Promise<UserByIdQueryResponse> {
+  async queryUserById(userId?: string, requestTimeoutMs?: number): Promise<UserByIdQueryResponse> {
     const normalizedUserId = typeof userId === 'string' ? userId.trim() : '';
     try {
       type HttpUserByIdResponse = UserDto & {
@@ -88,13 +115,18 @@ export class HttpUsersService implements UserService {
         filterPreferences?: UserGameFilterPreferencesDto | null;
         counterOverrides?: UserMenuCountersDto | null;
       };
-      const me = await this.http
-        .get<HttpUserByIdResponse | null>(`${this.apiBaseUrl}/auth/me`, {
-          params: normalizedUserId ? { userId: normalizedUserId } : {}
-        })
-        .toPromise();
+      const me = await this.routeDelay.withRequestTimeout(
+        HttpUsersService.USER_BY_ID_ROUTE,
+        this.http
+          .get<HttpUserByIdResponse | null>(`${this.apiBaseUrl}/auth/me`, {
+            params: normalizedUserId ? { userId: normalizedUserId } : {}
+          })
+          .toPromise(),
+        'User details request timeout.',
+        requestTimeoutMs
+      );
       if (!me) {
-        return { user: null };
+        return this.readUserByIdFallback(normalizedUserId) ?? { user: null };
       }
       const user = this.cloneUser(me);
       return this.cacheUserResponse({
@@ -103,15 +135,19 @@ export class HttpUsersService implements UserService {
         filterPreferences: me.filterPreferences ?? null,
         counterOverrides: this.buildInitialMenuCounterOverrides(user, me.counterOverrides)
       });
-    } catch {
+    } catch (error) {
+      if (this.isTimeoutError(error, 'User details request timeout.')) {
+        throw error;
+      }
       const cached = this.offlineCache.readUser(normalizedUserId);
-      return cached ?? { user: null };
+      return cached ?? this.readUserByIdFallback(normalizedUserId) ?? { user: null };
     }
   }
 
   async queryUserRealtimeLongPoll(
     userId: string,
-    cursor: string | null = null
+    cursor: string | null = null,
+    requestTimeoutMs?: number
   ): Promise<UserRealtimeLongPollResponseDto | null> {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
@@ -125,12 +161,17 @@ export class HttpUsersService implements UserService {
         cursor?: string | null;
         serverTsIso?: string;
       };
-      const response = await this.http
-        .post<HttpLongPollResponse | null>(
-          `${this.apiBaseUrl}${HttpUsersService.USER_REALTIME_LONG_POLL_ROUTE}`,
-          { userId: normalizedUserId, cursor }
-        )
-        .toPromise();
+      const response = await this.routeDelay.withRequestTimeout(
+        HttpUsersService.USER_REALTIME_LONG_POLL_ROUTE,
+        this.http
+          .post<HttpLongPollResponse | null>(
+            `${this.apiBaseUrl}${HttpUsersService.USER_REALTIME_LONG_POLL_ROUTE}`,
+            { userId: normalizedUserId, cursor }
+          )
+          .toPromise(),
+        'User realtime request timeout.',
+        requestTimeoutMs
+      );
       if (!response || !response.counters) {
         return this.buildFallbackLongPollSnapshot(normalizedUserId, cursor);
       }
@@ -143,7 +184,10 @@ export class HttpUsersService implements UserService {
           ? response.serverTsIso
           : new Date().toISOString()
       };
-    } catch {
+    } catch (error) {
+      if (this.isTimeoutError(error, 'User realtime request timeout.')) {
+        throw error;
+      }
       return this.buildFallbackLongPollSnapshot(normalizedUserId, cursor);
     }
   }
@@ -154,24 +198,32 @@ export class HttpUsersService implements UserService {
       return;
     }
     try {
-      await this.http
-        .post(`${this.apiBaseUrl}/auth/me/filter-preferences`, {
-          userId: normalizedUserId,
-          filterPreferences: preferences
-        })
-        .toPromise();
+      await this.routeDelay.withRequestTimeout(
+        HttpUsersService.USER_FILTER_PREFERENCES_ROUTE,
+        this.http
+          .post(`${this.apiBaseUrl}/auth/me/filter-preferences`, {
+            userId: normalizedUserId,
+            filterPreferences: preferences
+          })
+          .toPromise()
+      );
     } catch {
       // Keep UI state optimistic if backend endpoint is unavailable.
     }
   }
 
-  async saveUserProfile(user: UserDto): Promise<UserDto | null> {
+  async saveUserProfile(user: UserDto, requestTimeoutMs?: number): Promise<UserDto | null> {
     if (!user?.id?.trim()) {
       return null;
     }
-    const response = await this.http
-      .post<UserDto | null>(`${this.apiBaseUrl}/auth/me/profile`, user)
-      .toPromise();
+    const response = await this.routeDelay.withRequestTimeout(
+      HttpUsersService.USER_BY_ID_ROUTE,
+      this.http
+        .post<UserDto | null>(`${this.apiBaseUrl}/auth/me/profile`, user)
+        .toPromise(),
+      'Profile save request timeout.',
+      requestTimeoutMs
+    );
     if (!response) {
       return this.cloneUser(user);
     }
@@ -180,13 +232,19 @@ export class HttpUsersService implements UserService {
 
   async submitUserFeedback(
     request: UserFeedbackSubmitRequestDto,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    requestTimeoutMs?: number
   ): Promise<UserSubmitActionResponseDto> {
     try {
-      const response = await this.postAbortable<UserSubmitActionResponseDto>(
-        `${this.apiBaseUrl}${HttpUsersService.USER_FEEDBACK_ROUTE}`,
-        request,
-        signal
+      const response = await this.routeDelay.withRequestTimeout(
+        HttpUsersService.USER_FEEDBACK_ROUTE,
+        this.postAbortable<UserSubmitActionResponseDto>(
+          `${this.apiBaseUrl}${HttpUsersService.USER_FEEDBACK_ROUTE}`,
+          request,
+          signal
+        ),
+        'Feedback request timeout.',
+        requestTimeoutMs
       );
       if (!response) {
         return { submitted: true, message: null };
@@ -197,6 +255,9 @@ export class HttpUsersService implements UserService {
       };
     } catch (error) {
       if (this.isAbortError(error)) {
+        throw error;
+      }
+      if (this.isTimeoutError(error, 'Feedback request timeout.')) {
         throw error;
       }
       return {
@@ -208,13 +269,19 @@ export class HttpUsersService implements UserService {
 
   async submitReportUser(
     request: UserReportUserSubmitRequestDto,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    requestTimeoutMs?: number
   ): Promise<UserSubmitActionResponseDto> {
     try {
-      const response = await this.postAbortable<UserSubmitActionResponseDto>(
-        `${this.apiBaseUrl}${HttpUsersService.USER_REPORT_USER_ROUTE}`,
-        request,
-        signal
+      const response = await this.routeDelay.withRequestTimeout(
+        HttpUsersService.USER_REPORT_USER_ROUTE,
+        this.postAbortable<UserSubmitActionResponseDto>(
+          `${this.apiBaseUrl}${HttpUsersService.USER_REPORT_USER_ROUTE}`,
+          request,
+          signal
+        ),
+        'Report request timeout.',
+        requestTimeoutMs
       );
       if (!response) {
         return { submitted: true, message: null };
@@ -225,6 +292,9 @@ export class HttpUsersService implements UserService {
       };
     } catch (error) {
       if (this.isAbortError(error)) {
+        throw error;
+      }
+      if (this.isTimeoutError(error, 'Report request timeout.')) {
         throw error;
       }
       return {
@@ -236,13 +306,19 @@ export class HttpUsersService implements UserService {
 
   async logoutUser(
     request: UserLogoutRequestDto,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    requestTimeoutMs?: number
   ): Promise<UserSubmitActionResponseDto> {
     try {
-      const response = await this.postAbortable<UserSubmitActionResponseDto>(
-        `${this.apiBaseUrl}${HttpUsersService.USER_LOGOUT_ROUTE}`,
-        request,
-        signal
+      const response = await this.routeDelay.withRequestTimeout(
+        HttpUsersService.USER_LOGOUT_ROUTE,
+        this.postAbortable<UserSubmitActionResponseDto>(
+          `${this.apiBaseUrl}${HttpUsersService.USER_LOGOUT_ROUTE}`,
+          request,
+          signal
+        ),
+        'Logout request timeout.',
+        requestTimeoutMs
       );
       if (!response) {
         return { submitted: true, message: null };
@@ -255,6 +331,9 @@ export class HttpUsersService implements UserService {
       if (this.isAbortError(error)) {
         throw error;
       }
+      if (this.isTimeoutError(error, 'Logout request timeout.')) {
+        throw error;
+      }
       return {
         submitted: false,
         message: 'Unable to log out.'
@@ -264,13 +343,19 @@ export class HttpUsersService implements UserService {
 
   async deleteUser(
     request: UserDeleteRequestDto,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    requestTimeoutMs?: number
   ): Promise<UserSubmitActionResponseDto> {
     try {
-      const response = await this.postAbortable<UserSubmitActionResponseDto>(
-        `${this.apiBaseUrl}${HttpUsersService.USER_DELETE_ROUTE}`,
-        request,
-        signal
+      const response = await this.routeDelay.withRequestTimeout(
+        HttpUsersService.USER_DELETE_ROUTE,
+        this.postAbortable<UserSubmitActionResponseDto>(
+          `${this.apiBaseUrl}${HttpUsersService.USER_DELETE_ROUTE}`,
+          request,
+          signal
+        ),
+        'Delete account request timeout.',
+        requestTimeoutMs
       );
       if (!response) {
         return { submitted: true, message: null };
@@ -281,6 +366,9 @@ export class HttpUsersService implements UserService {
       };
     } catch (error) {
       if (this.isAbortError(error)) {
+        throw error;
+      }
+      if (this.isTimeoutError(error, 'Delete account request timeout.')) {
         throw error;
       }
       return {
@@ -413,6 +501,92 @@ export class HttpUsersService implements UserService {
     }
     this.offlineCache.writeUser(response.user.id.trim(), response);
     return response;
+  }
+
+  private readUserByIdFallback(userId: string): UserByIdQueryResponse | null {
+    const normalizedUserId = userId.trim();
+    if (normalizedUserId) {
+      return null;
+    }
+
+    const activeProfile = this.appCtx.activeUserProfile();
+    if (activeProfile) {
+      return {
+        user: this.cloneUser(activeProfile)
+      };
+    }
+
+    const sessionUser = this.buildFirebaseSessionUser();
+    return sessionUser
+      ? {
+          user: sessionUser
+        }
+      : null;
+  }
+
+  private buildFirebaseSessionUser(): UserDto | null {
+    const session = this.sessionService.currentSession();
+    if (session?.kind !== 'firebase') {
+      return null;
+    }
+
+    return this.cloneUser({
+      id: session.profile.id.trim(),
+      name: session.profile.name.trim(),
+      age: 0,
+      birthday: '',
+      city: '',
+      height: '',
+      physique: '',
+      languages: [],
+      horoscope: '',
+      initials: session.profile.initials.trim(),
+      gender: 'man',
+      statusText: '',
+      hostTier: '',
+      traitLabel: '',
+      completion: 0,
+      headline: '',
+      about: '',
+      images: session.profile.imageUrl?.trim() ? [session.profile.imageUrl.trim()] : [],
+      profileStatus: 'public',
+      activities: {
+        game: 0,
+        chat: 0,
+        invitations: 0,
+        events: 0,
+        hosting: 0,
+        cars: 0,
+        accommodation: 0,
+        supplies: 0,
+        tickets: 0,
+        contacts: 0,
+        feedback: 0,
+        event: {
+          all: 0,
+          active: 0,
+          pending: 0,
+          invitations: 0,
+          hosting: 0,
+          drafts: 0,
+          trash: 0
+        },
+        asset: {
+          cars: 0,
+          accommodation: 0,
+          supplies: 0,
+          tickets: 0
+        },
+        eventFeedback: {
+          ownEvents: 0,
+          pending: 0,
+          feedbacked: 0,
+          removed: 0
+        },
+        adminJobs: 0,
+        adminMetrics: 0
+      }
+    });
   }
 
   private cloneImpressionsSection(section?: UserImpressionsSectionDto): UserImpressionsSectionDto | undefined {
@@ -667,6 +841,10 @@ export class HttpUsersService implements UserService {
 
   private isAbortError(error: unknown): boolean {
     return error instanceof Error && error.name === 'AbortError';
+  }
+
+  private isTimeoutError(error: unknown, message: string): boolean {
+    return error instanceof Error && error.message === message;
   }
 
   private toDemoUserListItem(user: Partial<UserDto> & Partial<DemoUserListItemDto> & { gender?: string | null }): DemoUserListItemDto | null {

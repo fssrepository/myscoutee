@@ -5,6 +5,7 @@ import { AppUtils } from '../../../app-utils';
 import type { ChatRecord } from '../../base/models/chat.model';
 import { DemoRouteDelayService } from './demo-route-delay.service';
 import { DemoChatsRepository } from '../repositories/chats.repository';
+import { DemoUsersRepository } from '../repositories/users.repository';
 import type { DemoChatRecord } from '../models/chats.model';
 
 @Injectable({
@@ -14,6 +15,7 @@ export class DemoChatsService extends DemoRouteDelayService {
   private static readonly CHAT_ROUTE = '/activities/chats';
 
   private readonly chatsRepository = inject(DemoChatsRepository);
+  private readonly usersRepository = inject(DemoUsersRepository);
 
   async queryChatItemsByUser(userId: string): Promise<DemoChatRecord[]> {
     await this.waitForRouteDelay(DemoChatsService.CHAT_ROUTE);
@@ -30,10 +32,11 @@ export class DemoChatsService extends DemoRouteDelayService {
 
   async queryActivitiesChatPage(
     userId: string,
-    request: AppTypes.ActivitiesPageRequest
+    request: AppTypes.ActivitiesPageRequest,
+    _cachedChatItems: readonly ChatRecord[] = []
   ): Promise<{ items: DemoChatRecord[]; total: number; nextCursor?: string | null }> {
     await this.waitForRouteDelay(DemoChatsService.CHAT_ROUTE);
-    return this.chatsRepository.queryActivitiesChatPage(userId, request);
+    return this.chatsRepository.queryActivitiesChatPage(this.resolveDemoActivityUserId(userId), request);
   }
 
   peekChatItemsByUser(userId: string): DemoChatRecord[] {
@@ -120,5 +123,13 @@ export class DemoChatsService extends DemoRouteDelayService {
   async updateSupportCase(chat: ChatRecord, action: AppTypes.SupportCaseAction): Promise<DemoChatRecord | null> {
     await this.waitForRouteDelay(DemoChatsService.CHAT_ROUTE);
     return this.chatsRepository.updateSupportCase(chat, action);
+  }
+
+  private resolveDemoActivityUserId(userId: string): string {
+    const normalizedUserId = userId.trim();
+    if (normalizedUserId) {
+      return normalizedUserId;
+    }
+    return this.usersRepository.queryAllUsers()[0]?.id ?? '';
   }
 }

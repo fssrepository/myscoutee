@@ -92,7 +92,7 @@ export class HttpHelpCenterService {
     if (context) {
       params['contextKey'] = context;
     }
-    const route = this.adminRoute(documentKind, context);
+    const route = this.adminRoute(documentKind);
     const response = await this.routeDelay.withRequestTimeout(route, this.http
       .get<Partial<HelpCenterState> | null>(`${this.apiBaseUrl}/admin/${documentKind}`, {
         params
@@ -301,17 +301,8 @@ export class HttpHelpCenterService {
       : null;
   }
 
-  private adminRoute(kind: HelpCenterDocumentKind, contextKey?: string | null): string {
-    if (kind === 'privacy') {
-      return '/admin/privacy';
-    }
-    if (kind === 'explanation') {
-      const normalizedContextKey = `${contextKey ?? ''}`.trim();
-      return normalizedContextKey
-        ? `/admin/explanation/${normalizedContextKey}`
-        : '/admin/explanation/new';
-    }
-    return '/admin/help';
+  private adminRoute(kind: HelpCenterDocumentKind): string {
+    return `/admin/${kind}`;
   }
 
   private documentLabel(kind: HelpCenterDocumentKind): string {

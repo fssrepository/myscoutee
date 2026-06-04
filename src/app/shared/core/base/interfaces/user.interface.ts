@@ -212,15 +212,15 @@ export interface UserProfileImageUploadResult {
 }
 
 export interface UserService {
-  queryAvailableDemoUsers(): Promise<UsersListQueryResponse>;
+  queryAvailableDemoUsers(requestTimeoutMs?: number): Promise<UsersListQueryResponse>;
   checkLocationEligibility(coordinates?: LocationCoordinates | null): Promise<UserLocationEligibilityResponseDto>;
-  queryUserById(userId?: string): Promise<UserByIdQueryResponse>;
-  queryUserRealtimeLongPoll(userId: string, cursor?: string | null): Promise<UserRealtimeLongPollResponseDto | null>;
+  queryUserById(userId?: string, requestTimeoutMs?: number): Promise<UserByIdQueryResponse>;
+  queryUserRealtimeLongPoll(userId: string, cursor?: string | null, requestTimeoutMs?: number): Promise<UserRealtimeLongPollResponseDto | null>;
   saveUserFilterPreferences(userId: string, preferences: UserGameFilterPreferencesDto): Promise<void>;
-  saveUserProfile(user: UserDto): Promise<UserDto | null>;
-  submitUserFeedback(request: UserFeedbackSubmitRequestDto, signal?: AbortSignal): Promise<UserSubmitActionResponseDto>;
-  submitReportUser(request: UserReportUserSubmitRequestDto, signal?: AbortSignal): Promise<UserSubmitActionResponseDto>;
-  logoutUser(request: UserLogoutRequestDto, signal?: AbortSignal): Promise<UserSubmitActionResponseDto>;
-  deleteUser(request: UserDeleteRequestDto, signal?: AbortSignal): Promise<UserSubmitActionResponseDto>;
+  saveUserProfile(user: UserDto, requestTimeoutMs?: number): Promise<UserDto | null>;
+  submitUserFeedback(request: UserFeedbackSubmitRequestDto, signal?: AbortSignal, requestTimeoutMs?: number): Promise<UserSubmitActionResponseDto>;
+  submitReportUser(request: UserReportUserSubmitRequestDto, signal?: AbortSignal, requestTimeoutMs?: number): Promise<UserSubmitActionResponseDto>;
+  logoutUser(request: UserLogoutRequestDto, signal?: AbortSignal, requestTimeoutMs?: number): Promise<UserSubmitActionResponseDto>;
+  deleteUser(request: UserDeleteRequestDto, signal?: AbortSignal, requestTimeoutMs?: number): Promise<UserSubmitActionResponseDto>;
   uploadUserProfileImage(userId: string, file: File, slotIndex: number): Promise<UserProfileImageUploadResult>;
 }

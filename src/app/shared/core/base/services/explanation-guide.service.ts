@@ -2,7 +2,6 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 
 import type { HelpCenterRevision } from '../models';
 import { HelpCenterService } from './help-center.service';
-import { RouteDelayService } from './route-delay.service';
 import { APP_STORAGE_KEYS } from '../storage-scope';
 
 @Injectable({
@@ -12,7 +11,6 @@ export class ExplanationGuideService {
   private static readonly STORAGE_KEY = APP_STORAGE_KEYS.explanationGuideEnabled;
   private static readonly DISMISSED_CONTEXTS_STORAGE_KEY = APP_STORAGE_KEYS.explanationGuideDismissedContexts;
   private readonly helpCenter = inject(HelpCenterService);
-  private readonly routeDelay = inject(RouteDelayService);
   private readonly enabledRef = signal(this.readEnabledState());
   private readonly currentContextRef = signal<string | null>(null);
   private readonly popupOpenRef = signal(false);
@@ -81,10 +79,6 @@ export class ExplanationGuideService {
     this.dismissedContexts.delete(contextKey);
     this.writeDismissedContexts();
     this.setEnabled(true);
-  }
-
-  loadProgressWindowMs(): number {
-    return this.routeDelay.resolveRequestTimeoutMs('/explanation/active');
   }
 
   private refreshVisibleForCurrent(): void {

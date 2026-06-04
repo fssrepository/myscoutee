@@ -661,9 +661,7 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
     const payload = this.buildUserPayload(this.user, this.draft);
     let completionEmitted = false;
     try {
-      const savedUser = await this.usersService.saveUserProfile(payload, {
-        returnFallbackOnFailure: false
-      });
+      const savedUser = await this.usersService.saveUserProfile(payload);
       if (!savedUser) {
         throw new Error('Profile save returned no user.');
       }
@@ -974,14 +972,7 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
     }
     this.isDraftAutosavePending = true;
     try {
-      const savedUser = await this.usersService.saveUserProfile(
-        this.buildAutosaveUserPayload(this.user, this.draft),
-        {
-          requestTimeoutMs: 8000,
-          minimumDurationMs: 0,
-          returnFallbackOnFailure: false
-        }
-      );
+      const savedUser = await this.usersService.saveUserProfile(this.buildAutosaveUserPayload(this.user, this.draft));
       if (savedUser) {
         this.user = savedUser;
         this.lastDraftAutosaveSignature = this.buildDraftAutosaveSignature();

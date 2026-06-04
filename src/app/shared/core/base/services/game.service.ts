@@ -17,7 +17,6 @@ import { HttpUsersRatingsRepository } from '../../http/repositories/users-rating
 import { BaseUsersRatingsRepository } from '../repositories/users-ratings.repository';
 import type { UserDto } from '../interfaces/user.interface';
 import { BaseRouteModeService } from './base-route-mode.service';
-import { RouteDelayService } from './route-delay.service';
 
 export const USER_GAME_CARDS_LOAD_CONTEXT_KEY = 'user-game-cards';
 
@@ -27,13 +26,6 @@ interface UserGameCardsStackState {
   socialCards: UserGameSocialCard[];
   nextCursor: string | null;
   requestInFlight: boolean;
-}
-
-class RequestTimeoutError extends Error {
-  constructor() {
-    super('Game request timeout.');
-    this.name = 'RequestTimeoutError';
-  }
 }
 
 @Injectable({
@@ -47,7 +39,6 @@ export class GameService extends BaseRouteModeService {
   private readonly httpGameService = inject(HttpGameService);
   private readonly httpUsersRatingsRepository = inject(HttpUsersRatingsRepository);
   private readonly appCtx = inject(AppContext);
-  private readonly routeDelay = inject(RouteDelayService);
   private readonly userGameCardsStackStateByUserId: Record<string, UserGameCardsStackState> = {};
   private userRatesOutboxSyncInFlight = false;
   private userRatesOutboxSyncTimer: ReturnType<typeof setInterval> | null = null;
@@ -171,7 +162,6 @@ export class GameService extends BaseRouteModeService {
     if (this.isDemoModeEnabled('/game-cards/query')) {
       await this.demoGameService.whenReady();
     }
-    const normalizedTimeoutMs = this.resolveRequestTimeoutMs(requestTimeoutMs);
     const normalizedUserId = request.userId.trim();
 
     if (!normalizedUserId) {
@@ -182,8 +172,8 @@ export class GameService extends BaseRouteModeService {
     this.setLoadStatus(USER_GAME_CARDS_LOAD_CONTEXT_KEY, 'loading');
 
     try {
-      const response = await this.withRequestTimeout(
-        this.gameDataService.queryUserGameCardsByFilter({
+      const response = await this.gameDataService.queryUserGameCardsByFilter(
+        {
           userId: normalizedUserId,
           mode: request.mode ?? 'single',
           leftQuery: request.leftQuery ?? null,
@@ -191,8 +181,8 @@ export class GameService extends BaseRouteModeService {
           filterPreferences: request.filterPreferences ?? null,
           cursor: request.cursor ?? null,
           pageSize: request.pageSize
-        }),
-        normalizedTimeoutMs
+        },
+        requestTimeoutMs
       );
       if (!response.cards) {
         this.setLoadStatus(USER_GAME_CARDS_LOAD_CONTEXT_KEY, 'success');
@@ -219,7 +209,7 @@ export class GameService extends BaseRouteModeService {
           : null
       };
     } catch (error) {
-      if (error instanceof RequestTimeoutError) {
+      if (error instanceof Error && error.message === 'User game cards request timeout.') {
         this.setLoadStatus(
           USER_GAME_CARDS_LOAD_CONTEXT_KEY,
           'timeout',
@@ -420,27 +410,15 @@ export class GameService extends BaseRouteModeService {
         excludedPairKeys
       );
     try {
-      const { value: cards } = await this.loadWithRecovery(
-        () => this.loadUserGameCardsPage(
-          normalizedUserId,
-          filterPreferences,
-          existingCursor,
-          pageSize,
-          mode,
-          leftQuery,
-          rightQuery,
-          requestTimeoutMs
-        ),
-        () => this.buildRecoveredGameCardsPage(
-          normalizedUserId,
-          fallbackIds,
-          fallbackSocialCards,
-          fallbackCursor
-        ),
-        {
-          shouldRecover: next => next === null,
-          hasRecoveryValue: next => this.hasRecoveredGameCards(next)
-        }
+      const cards = await this.loadUserGameCardsPage(
+        normalizedUserId,
+        filterPreferences,
+        existingCursor,
+        pageSize,
+        mode,
+        leftQuery,
+        rightQuery,
+        requestTimeoutMs
       );
       if (cards) {
         state.filterCount = this.mergeUserGameCardsStackFilterCount(state.filterCount, cards.filterCount, reset);
@@ -591,40 +569,6 @@ export class GameService extends BaseRouteModeService {
       .join(':');
   }
 
-  private buildRecoveredGameCardsPage(
-    userId: string,
-    cardUserIds: readonly string[],
-    socialCards: readonly UserGameSocialCard[],
-    nextCursor: string | null
-  ): UserGameCardsDto | null {
-    if (
-      cardUserIds.length === 0
-      && socialCards.length === 0
-      && nextCursor === null
-      && this.peekUserGameCardsStackSnapshot(userId).filterCount === null
-    ) {
-      return null;
-    }
-    return {
-      filterCount: this.peekUserGameCardsStackSnapshot(userId).filterCount ?? cardUserIds.length + socialCards.length,
-      cardUserIds: [...cardUserIds],
-      socialCards: socialCards.map(card => ({ ...card })),
-      nextCursor
-    };
-  }
-
-  private hasRecoveredGameCards(cards: UserGameCardsDto | null): boolean {
-    return Boolean(
-      cards
-      && (
-        cards.cardUserIds.length > 0
-        || (cards.socialCards?.length ?? 0) > 0
-        || cards.nextCursor !== null
-        || Number.isFinite(cards.filterCount)
-      )
-    );
-  }
-
   private ensureUserGameCardsStackState(userId: string): UserGameCardsStackState {
     const existing = this.userGameCardsStackStateByUserId[userId];
     if (existing) {
@@ -683,28 +627,4 @@ export class GameService extends BaseRouteModeService {
     this.appCtx.setStatus(contextKey, status, message);
   }
 
-  private resolveRequestTimeoutMs(value?: number): number {
-    if (!Number.isFinite(value)) {
-      return this.routeDelay.resolveRequestTimeoutMs('/game-cards/query');
-    }
-    return Math.max(1, Math.trunc(Number(value)));
-  }
-
-  private withRequestTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
-    return new Promise<T>((resolve, reject) => {
-      const timer = setTimeout(() => {
-        reject(new RequestTimeoutError());
-      }, timeoutMs);
-      void promise.then(
-        result => {
-          clearTimeout(timer);
-          resolve(result);
-        },
-        error => {
-          clearTimeout(timer);
-          reject(error);
-        }
-      );
-    });
-  }
 }

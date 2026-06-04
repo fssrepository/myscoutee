@@ -6,12 +6,11 @@ import type { ActivitiesPageRequest } from '../../../core/base/models';
 import type { ChatRecord } from '../models/chat.model';
 import type { DemoUser } from '../interfaces/user.interface';
 import type { PageResult } from '../../../ui';
-import { activityChatContextFilterKey, buildActivityChatRows } from '../converters';
+import { buildActivityChatRows } from '../converters';
 import type { DemoChatRecord } from '../../demo/models/chats.model';
 import { DemoChatsService } from '../../demo';
 import { HttpChatsService } from '../../http';
 import { BaseRouteModeService } from './base-route-mode.service';
-import { DemoUsersRepository } from '../../demo';
 import { ActivityMembersService } from './activity-members.service';
 import { UsersService } from './users.service';
 
@@ -23,37 +22,23 @@ export class ChatsService extends BaseRouteModeService {
 
   private readonly demoChatsService = inject(DemoChatsService);
   private readonly httpChatsService = inject(HttpChatsService);
-  private readonly demoUsersRepository = inject(DemoUsersRepository);
   private readonly activityMembersService = inject(ActivityMembersService);
   private readonly usersService = inject(UsersService);
 
+  private get chatsService(): DemoChatsService | HttpChatsService {
+    return this.resolveRouteService(ChatsService.CHAT_ROUTE, this.demoChatsService, this.httpChatsService);
+  }
+
   async queryChatItemsByUser(userId: string): Promise<DemoChatRecord[]> {
-    if (this.isDemoModeEnabled(ChatsService.CHAT_ROUTE)) {
-      return this.demoChatsService.queryChatItemsByUser(userId);
-    }
-    const { value } = await this.loadWithRecovery(
-      () => this.httpChatsService.queryChatItemsByUser(userId),
-      () => this.httpChatsService.peekChatItemsByUser(userId),
-      {
-        shouldRecover: items => items.length === 0,
-        hasRecoveryValue: items => items.length > 0
-      }
-    );
-    return value;
+    return this.chatsService.queryChatItemsByUser(userId);
   }
 
   peekChatItemsByUser(userId: string): DemoChatRecord[] {
-    if (this.isDemoModeEnabled(ChatsService.CHAT_ROUTE)) {
-      return this.demoChatsService.peekChatItemsByUser(userId);
-    }
-    return this.httpChatsService.peekChatItemsByUser(userId);
+    return this.chatsService.peekChatItemsByUser(userId);
   }
 
   async loadChatMessages(chat: ChatRecord): Promise<AppTypes.ChatPopupMessage[]> {
-    if (this.isDemoModeEnabled(ChatsService.CHAT_ROUTE)) {
-      return this.demoChatsService.loadChatMessages(chat);
-    }
-    return this.httpChatsService.loadChatMessages(chat);
+    return this.chatsService.loadChatMessages(chat);
   }
 
   async loadChatMessagesResult(
@@ -107,17 +92,11 @@ export class ChatsService extends BaseRouteModeService {
     if (!normalizedChatId) {
       return [];
     }
-    if (this.isDemoModeEnabled(ChatsService.CHAT_ROUTE)) {
-      return this.demoChatsService.queryChatMembers(normalizedChatId);
-    }
-    return this.httpChatsService.queryChatMembers(normalizedChatId);
+    return this.chatsService.queryChatMembers(normalizedChatId);
   }
 
   async sendChatMessage(chat: ChatRecord, text: string, clientId?: string): Promise<AppTypes.ChatPopupMessage | null> {
-    if (this.isDemoModeEnabled(ChatsService.CHAT_ROUTE)) {
-      return this.demoChatsService.sendChatMessage(chat, text, clientId);
-    }
-    return this.httpChatsService.sendChatMessage(chat, text, clientId);
+    return this.chatsService.sendChatMessage(chat, text, clientId);
   }
 
   async sendChatMessageWithAttachments(
@@ -127,10 +106,7 @@ export class ChatsService extends BaseRouteModeService {
     clientId?: string,
     replyTo?: AppTypes.ChatPopupMessage['replyTo']
   ): Promise<AppTypes.ChatPopupMessage | null> {
-    if (this.isDemoModeEnabled(ChatsService.CHAT_ROUTE)) {
-      return this.demoChatsService.sendChatMessageWithAttachments(chat, text, attachments, clientId, replyTo);
-    }
-    return this.httpChatsService.sendChatMessageWithAttachments(chat, text, attachments, clientId, replyTo);
+    return this.chatsService.sendChatMessageWithAttachments(chat, text, attachments, clientId, replyTo);
   }
 
   async updateChatMessage(
@@ -138,51 +114,33 @@ export class ChatsService extends BaseRouteModeService {
     messageId: string,
     mutation: AppTypes.ChatMessageMutation
   ): Promise<AppTypes.ChatPopupMessage | null> {
-    if (this.isDemoModeEnabled(ChatsService.CHAT_ROUTE)) {
-      return this.demoChatsService.updateChatMessage(chat, messageId, mutation);
-    }
-    return this.httpChatsService.updateChatMessage(chat, messageId, mutation);
+    return this.chatsService.updateChatMessage(chat, messageId, mutation);
   }
 
   async watchChatMessages(
     chat: ChatRecord,
     onMessage: (message: AppTypes.ChatPopupMessage) => void
   ): Promise<() => void> {
-    if (this.isDemoModeEnabled(ChatsService.CHAT_ROUTE)) {
-      return this.demoChatsService.watchChatMessages(chat, onMessage);
-    }
-    return this.httpChatsService.watchChatMessages(chat, onMessage);
+    return this.chatsService.watchChatMessages(chat, onMessage);
   }
 
   async watchChatEvents(
     chat: ChatRecord,
     onEvent: (event: AppTypes.ChatLiveEvent) => void
   ): Promise<() => void> {
-    if (this.isDemoModeEnabled(ChatsService.CHAT_ROUTE)) {
-      return this.demoChatsService.watchChatEvents(chat, onEvent);
-    }
-    return this.httpChatsService.watchChatEvents(chat, onEvent);
+    return this.chatsService.watchChatEvents(chat, onEvent);
   }
 
   async sendChatTyping(chat: ChatRecord, typing: boolean): Promise<void> {
-    if (this.isDemoModeEnabled(ChatsService.CHAT_ROUTE)) {
-      return this.demoChatsService.sendChatTyping(chat, typing);
-    }
-    return this.httpChatsService.sendChatTyping(chat, typing);
+    return this.chatsService.sendChatTyping(chat, typing);
   }
 
   async markChatRead(chat: ChatRecord, messageIds: readonly string[]): Promise<void> {
-    if (this.isDemoModeEnabled(ChatsService.CHAT_ROUTE)) {
-      return this.demoChatsService.markChatRead(chat, messageIds);
-    }
-    return this.httpChatsService.markChatRead(chat, messageIds);
+    return this.chatsService.markChatRead(chat, messageIds);
   }
 
   async updateSupportCase(chat: ChatRecord, action: AppTypes.SupportCaseAction): Promise<DemoChatRecord | null> {
-    if (this.isDemoModeEnabled(ChatsService.CHAT_ROUTE)) {
-      return this.demoChatsService.updateSupportCase(chat, action);
-    }
-    return this.httpChatsService.updateSupportCase(chat, action);
+    return this.chatsService.updateSupportCase(chat, action);
   }
 
   async resolveEventServiceChat(input: {
@@ -332,31 +290,8 @@ export class ChatsService extends BaseRouteModeService {
       users?: readonly DemoUser[];
     } = {}
   ): Promise<PageResult<AppTypes.ActivityListRow>> {
-    const users = options.users ?? this.demoUsersRepository.queryAllUsers();
-    if (this.isDemoModeEnabled(ChatsService.CHAT_ROUTE)) {
-      const page = await this.demoChatsService.queryActivitiesChatPage(userId, request);
-      return {
-        items: buildActivityChatRows(page.items, {
-          users,
-          activeUserId: userId
-        }),
-        total: page.total,
-        nextCursor: page.nextCursor ?? null
-      };
-    }
-
-    const cachedChatItems = this.resolveCachedChatItems(userId, options.chatItems);
-    const { value: page } = await this.loadWithRecovery(
-      () => this.httpChatsService.queryActivitiesChatPage(userId, request),
-      () => this.buildLocalActivitiesChatPage(userId, request, users, cachedChatItems),
-      {
-        shouldRecover: next =>
-          next.items.length === 0
-          && next.total === 0
-          && cachedChatItems.length > 0,
-        hasRecoveryValue: next => next.items.length > 0 || next.total > 0
-      }
-    );
+    const users = options.users ?? this.usersService.peekCachedUsers();
+    const page = await this.chatsService.queryActivitiesChatPage(userId, request, options.chatItems);
 
     return {
       items: buildActivityChatRows(page.items, {
@@ -366,111 +301,6 @@ export class ChatsService extends BaseRouteModeService {
       total: page.total,
       nextCursor: page.nextCursor ?? null
     };
-  }
-
-  private buildLocalActivitiesChatPage(
-    userId: string,
-    request: ActivitiesPageRequest,
-    users: readonly DemoUser[],
-    items: readonly ChatRecord[]
-  ): { items: DemoChatRecord[]; total: number; nextCursor?: string | null } {
-    const filteredItems = items.filter(item =>
-      (request.chatContextFilter === 'all'
-        ? true
-        : activityChatContextFilterKey(item) === request.chatContextFilter)
-      && this.matchesSupportCaseFilter(item, request.supportCaseFilter)
-    );
-    const sorted = this.sortActivitiesChatItems(filteredItems, request, users, userId);
-    const startIndex = request.page * request.pageSize;
-    return {
-      items: sorted
-        .slice(startIndex, startIndex + request.pageSize)
-        .map(item => this.toDemoChatRecord(item, userId)),
-      total: sorted.length
-    };
-  }
-
-  private resolveCachedChatItems(
-    userId: string,
-    chatItems?: readonly ChatRecord[]
-  ): readonly ChatRecord[] {
-    if (chatItems && chatItems.length > 0) {
-      return chatItems;
-    }
-    return this.peekChatItemsByUser(userId);
-  }
-
-  private matchesSupportCaseFilter(item: ChatRecord, filter: AppTypes.SupportCaseFilter | undefined): boolean {
-    const normalizedFilter = filter === 'pending' || filter === 'picked' || filter === 'solved' || filter === 'blocked'
-      ? filter
-      : 'all';
-    if (normalizedFilter === 'all') {
-      return true;
-    }
-    return item.supportCaseStatus === normalizedFilter;
-  }
-
-  private sortActivitiesChatItems(
-    items: readonly ChatRecord[],
-    request: ActivitiesPageRequest,
-    users: readonly DemoUser[],
-    activeUserId: string
-  ): ChatRecord[] {
-    const sorted = [...items];
-    const userById = this.buildUserById(users);
-    const hasFallbackUser = userById.has(activeUserId) || users.length > 0;
-    if (request.secondaryFilter === 'past') {
-      return sorted.sort(
-        (left, right) => AppUtils.toSortableDate(right.dateIso ?? '') - AppUtils.toSortableDate(left.dateIso ?? '')
-      );
-    }
-    if (request.secondaryFilter === 'relevant') {
-      return sorted.sort((left, right) =>
-        this.chatMetricScore(right, userById, hasFallbackUser) - this.chatMetricScore(left, userById, hasFallbackUser)
-        || AppUtils.toSortableDate(right.dateIso ?? '') - AppUtils.toSortableDate(left.dateIso ?? '')
-      );
-    }
-    return sorted.sort(
-      (left, right) => AppUtils.toSortableDate(right.dateIso ?? '') - AppUtils.toSortableDate(left.dateIso ?? '')
-    );
-  }
-
-  private chatMetricScore(
-    item: Pick<ChatRecord, 'unread' | 'memberIds'>,
-    userById: ReadonlyMap<string, DemoUser>,
-    hasFallbackUser: boolean
-  ): number {
-    const unread = Math.max(0, Math.trunc(Number(item.unread) || 0));
-    return unread * 10 + this.chatMemberCount(item, userById, hasFallbackUser);
-  }
-
-  private chatMemberCount(
-    item: Pick<ChatRecord, 'memberIds'>,
-    userById: ReadonlyMap<string, DemoUser>,
-    hasFallbackUser: boolean
-  ): number {
-    const uniqueMemberIds = new Set(
-      (item.memberIds ?? [])
-        .map(memberId => `${memberId ?? ''}`.trim())
-        .filter(Boolean)
-    );
-    if (uniqueMemberIds.size > 0) {
-      return uniqueMemberIds.size;
-    }
-    if ((item.memberIds ?? []).length === 0) {
-      return hasFallbackUser ? 1 : 0;
-    }
-
-    const uniqueIds = new Set<string>();
-    for (const memberId of item.memberIds ?? []) {
-      if (userById.has(memberId)) {
-        uniqueIds.add(memberId);
-      }
-    }
-    if (uniqueIds.size > 0) {
-      return uniqueIds.size;
-    }
-    return hasFallbackUser ? 1 : 0;
   }
 
   private uniqueUserIds(userIds: readonly string[]): string[] {
@@ -515,18 +345,4 @@ export class ChatsService extends BaseRouteModeService {
     return chatId.startsWith(prefix) ? chatId.slice(prefix.length).trim() : '';
   }
 
-  private buildUserById(users: readonly DemoUser[]): ReadonlyMap<string, DemoUser> {
-    const userById = new Map<string, DemoUser>();
-    for (const user of users) {
-      userById.set(user.id, user);
-    }
-    return userById;
-  }
-
-  private toDemoChatRecord(item: ChatRecord, ownerUserId: string): DemoChatRecord {
-    return {
-      ...item,
-      ownerUserId
-    };
-  }
 }
