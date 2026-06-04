@@ -63,7 +63,8 @@ export class DemoUsersRatingsRepository extends BaseUsersRatingsRepository {
       if (!ownerUserId) {
         continue;
       }
-      const ownerRecords = DemoUserRatesBuilder.buildGeneratedRateItemsForUser(visibleSeedUsers, ownerUserId, {
+      const ownerGraphCohortUsers = this.graphSeedCohortUsers(visibleSeedUsers, ownerUserId);
+      const ownerRecords = DemoUserRatesBuilder.buildGeneratedRateItemsForUser(ownerGraphCohortUsers, ownerUserId, {
         extraSingleGivenCount: ownerIndex < DemoUsersRatingsRepository.FEATURED_DEMO_ACTIVITY_RATE_OWNER_COUNT
           ? DemoUsersRatingsRepository.FEATURED_DEMO_ACTIVITY_RATE_EXTRA_SINGLE_GIVEN_COUNT
           : DemoUsersRatingsRepository.DEFAULT_DEMO_ACTIVITY_RATE_EXTRA_SINGLE_GIVEN_COUNT,
@@ -148,6 +149,20 @@ export class DemoUsersRatingsRepository extends BaseUsersRatingsRepository {
     return [...counterpartIdsByOwner.entries()]
       .filter(([, counterpartIds]) => counterpartIds.size < DemoUsersRatingsRepository.MIN_ACTIVITY_RATE_CONNECTIONS)
       .map(([ownerUserId]) => ownerUserId);
+  }
+
+  private graphSeedCohortUsers<TUser extends { id: string }>(users: readonly TUser[], ownerUserId: string): readonly TUser[] {
+    if (users.length < DemoUsersRatingsRepository.MIN_ACTIVITY_RATE_CONNECTIONS * 2) {
+      return users;
+    }
+    const midpoint = Math.ceil(users.length * 2 / 3);
+    const ownerIndex = users.findIndex(user => user.id.trim() === ownerUserId.trim());
+    if (ownerIndex < 0) {
+      return users;
+    }
+    const cohortStart = ownerIndex < midpoint ? 0 : midpoint;
+    const cohortEnd = ownerIndex < midpoint ? midpoint : users.length;
+    return users.slice(cohortStart, cohortEnd);
   }
 
   private activityRateCounterpartUserIds(record: UserRateRecord, ownerUserId: string): string[] {

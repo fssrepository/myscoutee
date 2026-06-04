@@ -6,7 +6,9 @@ import type { IdeaPost } from '../../base/models';
 import { EVENTS_TABLE_NAME, type DemoEventRecord } from '../models/events.model';
 import { IDEA_POSTS_TABLE_NAME } from '../models/idea-posts.model';
 import { USERS_TABLE_NAME } from '../models/users.model';
+import { DemoAdminAffinityGraphRepository } from '../repositories/admin-affinity-graph.repository';
 import { DemoEventsRepository } from '../repositories/events.repository';
+import { DemoUsersRatingsRepository } from '../repositories/users-ratings.repository';
 import { DemoUsersRepository } from '../repositories/users.repository';
 import { DemoLandingContentService } from './landing-content.service';
 
@@ -88,6 +90,19 @@ describe('Demo bootstrap seeding', () => {
     expect(content.ideas.length).toBeGreaterThan(0);
   });
 
+  it('builds the admin affinity graph from bootstrap ratings with two demo clusters', async () => {
+    const usersRepository = TestBed.inject(DemoUsersRepository);
+    const usersRatingsRepository = TestBed.inject(DemoUsersRatingsRepository);
+    const affinityGraphRepository = TestBed.inject(DemoAdminAffinityGraphRepository);
+
+    const seededUsers = usersRepository.init();
+    usersRatingsRepository.init(seededUsers);
+    const snapshot = await affinityGraphRepository.buildGraphSnapshot();
+
+    expect(snapshot.nodes.length).toBe(48);
+    expect(componentSizes(snapshot.nodes.map(node => node.id), snapshot.edges)).toEqual([32, 16]);
+  });
+
   it('resets demo bootstrap tables without touching http-scoped storage', async () => {
     localStorage.setItem(scopedStorageKey('memory.db.v1', 'demo'), 'stale-demo-memory');
     localStorage.setItem(scopedStorageKey('session.v1', 'http'), 'keep-http-session');
@@ -160,4 +175,36 @@ function staleIdeaPost(id = 'stale'): IdeaPost {
     updatedAtIso: '2026-01-01T00:00:00.000Z',
     updatedByUserId: 'test'
   };
+}
+
+function componentSizes(nodes: readonly string[], edges: readonly { source: string; target: string }[]): number[] {
+  const parent = new Map(nodes.map(nodeId => [nodeId, nodeId]));
+  const find = (nodeId: string): string => {
+    const parentId = parent.get(nodeId) ?? nodeId;
+    if (parentId === nodeId) {
+      return nodeId;
+    }
+    const rootId = find(parentId);
+    parent.set(nodeId, rootId);
+    return rootId;
+  };
+  const union = (left: string, right: string): void => {
+    const leftRoot = find(left);
+    const rightRoot = find(right);
+    if (leftRoot !== rightRoot) {
+      parent.set(rightRoot, leftRoot);
+    }
+  };
+  const nodeIds = new Set(nodes);
+  for (const edge of edges) {
+    if (nodeIds.has(edge.source) && nodeIds.has(edge.target)) {
+      union(edge.source, edge.target);
+    }
+  }
+  const counts = new Map<string, number>();
+  for (const nodeId of nodes) {
+    const rootId = find(nodeId);
+    counts.set(rootId, (counts.get(rootId) ?? 0) + 1);
+  }
+  return [...counts.values()].sort((left, right) => right - left);
 }

@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { OrbitControls } from './vendor/OrbitControls.js';
-import { DEMO_AFFINITY_GRAPH } from './data.js';
 
 const GRAPH_DATA = normalizeGraphData(await loadInitialGraphData());
 const GRAPH_MEMBER_LABEL = GRAPH_DATA.source === 'http' ? 'Mongo members' : 'demo members';
@@ -2248,13 +2247,39 @@ function currentViewRadius() {
 }
 
 function forestOverviewRadius() {
+  return forestOverviewBounds().radius;
+}
+
+function forestOverviewBounds() {
   const forestComponents = visibleForestComponents();
-  const center = forestComponents[0]?.forestPosition?.clone() ?? new THREE.Vector3();
-  return forestComponents.reduce((maxRadius, component) => {
-    const position = component.forestPosition ?? center;
-    const badgeRadius = (component.forestScale ?? 5) * 0.55;
-    return Math.max(maxRadius, position.distanceTo(center) + badgeRadius);
-  }, 8);
+  if (forestComponents.length === 0) {
+    return {
+      center: new THREE.Vector3(),
+      radius: 8
+    };
+  }
+
+  const box = new THREE.Box3();
+  for (const component of forestComponents) {
+    const position = component.forestPosition ?? new THREE.Vector3();
+    const badgeRadius = Math.max(5, (component.forestScale ?? 5) * 0.82);
+    box.expandByPoint(new THREE.Vector3(
+      position.x - badgeRadius,
+      position.y - badgeRadius,
+      position.z - badgeRadius
+    ));
+    box.expandByPoint(new THREE.Vector3(
+      position.x + badgeRadius,
+      position.y + badgeRadius,
+      position.z + badgeRadius
+    ));
+  }
+
+  const sphere = box.getBoundingSphere(new THREE.Sphere());
+  return {
+    center: sphere.center,
+    radius: Math.max(8, sphere.radius)
+  };
 }
 
 function radiusForPoints(points) {
@@ -2301,9 +2326,8 @@ function fitCameraToVisibleTargets(animateTarget, durationMs) {
 
 function fitCameraToForestOverview(animateTarget) {
   updateVisibleForestComponents();
-  const forestComponents = visibleForestComponents();
-  const center = forestComponents[0]?.forestPosition?.clone() ?? new THREE.Vector3();
-  fitCameraToCenterRadius(center, forestOverviewRadius(), animateTarget, undefined, {
+  const bounds = forestOverviewBounds();
+  fitCameraToCenterRadius(bounds.center, bounds.radius, animateTarget, undefined, {
     lockZoomIfFitted: shouldLockForestOverviewZoom()
   });
 }
@@ -2318,7 +2342,13 @@ function fitCameraToPoints(points, animateTarget, durationMs) {
 function fitCameraToCenterRadius(center, radius, animateTarget, durationMs, options = {}) {
   const viewport = graphViewportMetrics();
   const safeWidthRatio = clamp(viewport.safeWidth / Math.max(1, viewport.fullWidth), 0.58, 1);
-  const distance = Math.max(48, (radius * 1.68) / safeWidthRatio);
+  const verticalFov = THREE.MathUtils.degToRad(camera.fov);
+  const tanHalfFov = Math.tan(verticalFov / 2);
+  const aspect = Math.max(0.1, camera.aspect || (viewport.fullWidth / Math.max(1, viewport.fullHeight)));
+  const fitPadding = options.fitPadding ?? 1.28;
+  const verticalDistance = (radius * fitPadding) / Math.max(0.001, tanHalfFov);
+  const horizontalDistance = (radius * fitPadding) / Math.max(0.001, tanHalfFov * aspect * safeWidthRatio);
+  const distance = Math.max(48, verticalDistance, horizontalDistance);
   const target = center.clone();
   const defaultDirection = new THREE.Vector3(0.24, 0.34, 1);
   const fittedOrbitDistance = distance * defaultDirection.length();
@@ -3999,39 +4029,10 @@ function seededVector(text) {
 }
 
 async function loadInitialGraphData() {
-  if (window.parent && window.parent !== window) {
-    return await requestGraphData('initialGraph');
+  if (!window.parent || window.parent === window) {
+    throw new Error('Affinity graph bridge is required.');
   }
-  return {
-    ...DEMO_AFFINITY_GRAPH,
-    labels: await loadLocalGraphLabels()
-  };
-}
-
-async function loadLocalGraphLabels() {
-  const language = String(navigator?.language ?? '').toLowerCase().startsWith('hu') ? 'hu' : 'en';
-  try {
-    const response = await fetch(`../../i18n/${language}.json`);
-    if (!response.ok) {
-      return {};
-    }
-    const bundle = await response.json();
-    return graphLabelsFromMessages(bundle?.messages);
-  } catch {
-    return {};
-  }
-}
-
-function graphLabelsFromMessages(messages) {
-  if (!messages || typeof messages !== 'object') {
-    return {};
-  }
-  return Object.fromEntries(
-    Object.entries(GRAPH_LABEL_KEYS).map(([labelKey, i18nKey]) => [
-      labelKey,
-      String(messages[i18nKey] ?? '').trim()
-    ]).filter(([, value]) => value)
-  );
+  return await requestGraphData('initialGraph');
 }
 
 function normalizeGraphData(data) {
