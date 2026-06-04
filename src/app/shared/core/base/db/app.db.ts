@@ -29,10 +29,10 @@ import {
   APP_SCOPED_INDEXED_DB_VERSION,
   APP_I18N_BUNDLES_STORE,
   APP_TABLES_STORE,
+  appMemoryDbStorageKey,
   appScopedIndexedDbName,
   createAppScopedObjectStores,
-  removeScopedStorageEntries,
-  scopedStorageKey
+  removeScopedStorageEntries
 } from '../storage-scope';
 
 interface ActivityRateCursorPayload {
@@ -186,7 +186,7 @@ export class AppMemoryDb {
       tx.onerror = () => resolve();
       tx.onabort = () => resolve();
     });
-    if (fullReset) {
+    if (fullReset && db.objectStoreNames.contains(APP_I18N_BUNDLES_STORE)) {
       await new Promise<void>(resolve => {
         const tx = db.transaction(APP_I18N_BUNDLES_STORE, 'readwrite');
         tx.objectStore(APP_I18N_BUNDLES_STORE).clear();
@@ -233,6 +233,24 @@ export class AppMemoryDb {
       return;
     }
     await this.putIndexedDbEntry(db, normalizedKey, this.indexedDbEntryForPersistence(normalizedKey, value));
+  }
+
+  async deleteIndexedDbTableEntry(key: string): Promise<void> {
+    const normalizedKey = key.trim();
+    if (!normalizedKey) {
+      return;
+    }
+    const db = await this.openIndexedDb(true);
+    if (!db) {
+      return;
+    }
+    await new Promise<void>(resolve => {
+      const tx = db.transaction(APP_TABLES_STORE, 'readwrite');
+      tx.objectStore(APP_TABLES_STORE).delete(normalizedKey);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => resolve();
+      tx.onabort = () => resolve();
+    });
   }
 
   async queryActivityRateRecords(query: ActivityRateRecordQuery): Promise<ActivityRateRecordQueryResult> {
@@ -914,7 +932,7 @@ export class AppMemoryDb {
   }
 
   private get storageKey(): string {
-    return scopedStorageKey('memory.db.v1', this.storageScope);
+    return appMemoryDbStorageKey(this.storageScope);
   }
 
   private get indexedDbName(): string {

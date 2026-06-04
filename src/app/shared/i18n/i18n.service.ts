@@ -111,13 +111,12 @@ export class I18nService {
       this.applyBundle(stored.lang, stored.version, stored.data);
     }
 
-    const activeStored = stored;
-    const seed = this.usesHttpBundles() && activeStored
+    const seed = this.usesHttpBundles() && stored
       ? null
       : await this.firstLocalSeedBundle(
         candidates,
-        activeStored?.lang ?? null,
-        activeStored?.version ?? null
+        stored?.lang ?? null,
+        stored?.version ?? null
       );
     if (seed) {
       if (!this.usesHttpBundles()) {
@@ -125,7 +124,6 @@ export class I18nService {
       }
       this.applyBundle(seed.lang, seed.version, seed.data);
     }
-
     await this.refreshFromServer(candidates);
   }
 
@@ -138,7 +136,6 @@ export class I18nService {
       this.applySourceBundle(stored.data);
     }
 
-    const activeStored = stored;
     const assetUrl = I18nService.LOCAL_SEED_ASSETS[lang];
     if (!assetUrl) {
       return;
@@ -147,9 +144,9 @@ export class I18nService {
     if (!seed || seed.lang !== lang || Object.keys(seed.data).length === 0) {
       return;
     }
-    if (activeStored?.version
-      && Object.keys(activeStored.data).length > 0
-      && this.compareVersions(seed.version, activeStored.version) <= 0) {
+    if (stored?.version
+      && Object.keys(stored.data).length > 0
+      && this.compareVersions(seed.version, stored.version) <= 0) {
       return;
     }
     if (!this.usesHttpBundles()) {
@@ -159,10 +156,7 @@ export class I18nService {
   }
 
   private async refreshFromServer(candidates: readonly string[]): Promise<void> {
-    if (!this.usesHttpBundles()) {
-      return;
-    }
-    if (candidates.length === 0) {
+    if (!this.usesHttpBundles() || candidates.length === 0) {
       return;
     }
     const activeLang = this.currentLanguageSignal();
@@ -230,7 +224,13 @@ export class I18nService {
     return null;
   }
 
-  private async loadLocalSeedBundle(assetUrl: string, allowDefaultLanguage = false): Promise<StoredI18nBundle | null> {
+  private async loadLocalSeedBundle(
+    assetUrl: string | undefined,
+    allowDefaultLanguage = false
+  ): Promise<StoredI18nBundle | null> {
+    if (!assetUrl) {
+      return null;
+    }
     try {
       const response = await firstValueFrom(this.http.get<I18nAssetBundle>(assetUrl));
       const lang = this.normalizeLanguage(response?.lang ?? '');

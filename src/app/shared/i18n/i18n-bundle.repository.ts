@@ -75,7 +75,7 @@ export class I18nBundleRepository {
 
   private async readIndexedDbBundle(lang: string): Promise<StoredI18nBundle | null> {
     const db = await this.openIndexedDb();
-    if (!db) {
+    if (!db || !db.objectStoreNames.contains(APP_I18N_BUNDLES_STORE)) {
       return null;
     }
     return await new Promise<StoredI18nBundle | null>(resolve => {
@@ -92,7 +92,7 @@ export class I18nBundleRepository {
 
   private async writeIndexedDbBundle(bundle: StoredI18nBundle): Promise<void> {
     const db = await this.openIndexedDb();
-    if (!db) {
+    if (!db || !db.objectStoreNames.contains(APP_I18N_BUNDLES_STORE)) {
       return;
     }
     await new Promise<void>(resolve => {
