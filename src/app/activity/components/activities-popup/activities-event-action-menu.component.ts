@@ -37,6 +37,8 @@ interface ActivitiesEventActionMenuState {
   desktopTop: number | null;
   desktopBottom: number | null;
   desktopMaxHeight: number | null;
+  triggerRect: InfoCardMenuTriggerRect | null;
+  positioned: boolean;
   closeTrigger: () => void;
 }
 
@@ -51,6 +53,7 @@ interface ActivitiesEventActionMenuState {
         [class.item-action-menu-mobile]="isMobileView"
         [class.item-action-menu-desktop]="!isMobileView"
         [class.is-open-up]="!isMobileView && actionMenu.openUp"
+        [class.is-positioned]="isMobileView || actionMenu.positioned"
         [style.left.px]="!isMobileView ? actionMenu.desktopLeft : null"
         [style.top.px]="!isMobileView ? actionMenu.desktopTop : null"
         [style.bottom.px]="!isMobileView ? actionMenu.desktopBottom : null"
@@ -99,6 +102,11 @@ export class ActivitiesEventActionMenuComponent {
       this.close();
       return;
     }
+    const previousMenu = this.menu;
+    if (previousMenu) {
+      this.clearRepositionTimers();
+      previousMenu.closeTrigger();
+    }
 
     const desktopPosition = this.resolveDesktopPosition(event, isMobileView);
     this.isMobileView = isMobileView;
@@ -112,6 +120,8 @@ export class ActivitiesEventActionMenuComponent {
       desktopTop: desktopPosition.top,
       desktopBottom: desktopPosition.bottom,
       desktopMaxHeight: desktopPosition.maxHeight,
+      triggerRect: event.triggerRect,
+      positioned: isMobileView,
       closeTrigger: event.closeTrigger
     };
     this.cdr.markForCheck();
@@ -140,6 +150,7 @@ export class ActivitiesEventActionMenuComponent {
     if (!menu) {
       return;
     }
+    this.clearRepositionTimers();
     const resolvedAction: InfoCardResolvedMenuAction = {
       id: action,
       ...config
@@ -229,9 +240,7 @@ export class ActivitiesEventActionMenuComponent {
     if (this.isMobileView || typeof window === 'undefined') {
       return;
     }
-    for (const delayMs of [0, 80, 180, 240, 320]) {
-      this.repositionTimers.push(window.setTimeout(() => this.repositionDesktopMenuFromLiveTrigger(), delayMs));
-    }
+    this.repositionTimers.push(window.setTimeout(() => this.repositionDesktopMenuFromLiveTrigger(), 0));
   }
 
   private clearRepositionTimers(): void {
@@ -250,24 +259,17 @@ export class ActivitiesEventActionMenuComponent {
     if (!menu || this.isMobileView || typeof window === 'undefined') {
       return;
     }
-    const trigger = this.resolveLiveMenuTrigger();
-    if (!trigger) {
+    const triggerRect = this.resolveLiveMenuTriggerRect() ?? menu.triggerRect;
+    if (!triggerRect) {
+      this.revealDesktopMenu();
       return;
     }
     const menuElement = document.querySelector<HTMLElement>('.activities-event-action-menu.item-action-menu.is-open');
     const measuredMenuHeight = menuElement
       ? Math.max(menuElement.getBoundingClientRect().height, menuElement.scrollHeight)
       : null;
-    const rect = trigger.getBoundingClientRect();
     const position = this.resolveDesktopPositionForRect(
-      {
-        left: rect.left,
-        top: rect.top,
-        right: rect.right,
-        bottom: rect.bottom,
-        width: rect.width,
-        height: rect.height
-      },
+      triggerRect,
       menu.actions,
       menu.card.menuTitle === null,
       false,
@@ -279,9 +281,39 @@ export class ActivitiesEventActionMenuComponent {
       desktopLeft: position.left,
       desktopTop: position.top,
       desktopBottom: position.bottom,
-      desktopMaxHeight: position.maxHeight
+      desktopMaxHeight: position.maxHeight,
+      triggerRect,
+      positioned: true
     };
     this.cdr.markForCheck();
+  }
+
+  private revealDesktopMenu(): void {
+    const menu = this.menu;
+    if (!menu || menu.positioned) {
+      return;
+    }
+    this.menu = {
+      ...menu,
+      positioned: true
+    };
+    this.cdr.markForCheck();
+  }
+
+  private resolveLiveMenuTriggerRect(): InfoCardMenuTriggerRect | null {
+    const trigger = this.resolveLiveMenuTrigger();
+    if (!trigger) {
+      return null;
+    }
+    const rect = trigger.getBoundingClientRect();
+    return {
+      left: rect.left,
+      top: rect.top,
+      right: rect.right,
+      bottom: rect.bottom,
+      width: rect.width,
+      height: rect.height
+    };
   }
 
   private resolveLiveMenuTrigger(): HTMLElement | null {
