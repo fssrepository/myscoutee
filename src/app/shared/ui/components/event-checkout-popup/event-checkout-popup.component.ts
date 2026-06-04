@@ -14,7 +14,7 @@ import { AppUtils } from '../../../app-utils';
 import { PricingBuilder } from '../../../core/base/builders';
 import type * as AppTypes from '../../../core/base/models';
 import { EventsService } from '../../../core/base/services/events.service';
-import { resolveCurrentDemoDelayMs } from '../../../core/base/services/route-delay.service';
+import { resolveCurrentRouteDelayMs } from '../../../core/base/services/route-delay.service';
 import type { DemoEventRecord } from '../../../core/demo/models/events.model';
 import { EventCheckoutDraftService } from '../../services/event-checkout-draft.service';
 import { EventCheckoutDialogService, type EventCheckoutDialogState } from '../../services/event-checkout-dialog.service';
@@ -50,7 +50,6 @@ type CancellationPreview = {
 })
 export class EventCheckoutPopupComponent {
   private static readonly MAX_VISIBLE_SLOTS = 10;
-  private static readonly MIN_BUSY_DURATION_MS = 1500;
   protected readonly environment = environment;
   protected readonly dialogService = inject(EventCheckoutDialogService);
   private readonly eventsService = inject(EventsService);
@@ -1080,7 +1079,7 @@ export class EventCheckoutPopupComponent {
 
   private async ensureMinimumBusyDuration(startedAt: number): Promise<void> {
     const elapsed = Date.now() - startedAt;
-    const minimumBusyDurationMs = resolveCurrentDemoDelayMs(EventCheckoutPopupComponent.MIN_BUSY_DURATION_MS);
+    const minimumBusyDurationMs = resolveCurrentRouteDelayMs('/activities/events/checkout');
     const remaining = Math.max(0, minimumBusyDurationMs - elapsed);
     if (remaining > 0) {
       await new Promise(resolve => window.setTimeout(resolve, remaining));
