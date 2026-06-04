@@ -18,11 +18,23 @@ import {
   type AdminAffinityGraphTileParams
 } from '../../shared/core/http';
 import { RouteDelayService } from '../../shared/core/base/services/route-delay.service';
+import { I18nService } from '../../shared/i18n';
 
 const ADMIN_AFFINITY_GRAPH_ROUTE = '/admin/affinity-graph';
 const AFFINITY_GRAPH_LOAD_DEMO_DELAY_MS = 1500;
 const AFFINITY_GRAPH_LOAD_PROGRESS_WINDOW_MS = 3000;
 const AFFINITY_GRAPH_FOREST_BASE_BUDGET = 16;
+const AFFINITY_GRAPH_LABEL_KEYS = {
+  graphView: 'admin.affinity.graph.view',
+  clusterDetail: 'admin.affinity.graph.cluster.detail',
+  clusterEyebrow: 'admin.affinity.graph.cluster.eyebrow',
+  clusterViewLabel: 'admin.affinity.graph.cluster.view.label',
+  clusterTitle: 'admin.affinity.graph.cluster.title',
+  clusterIsolatedTitle: 'admin.affinity.graph.cluster.isolated.title',
+  clusterExpandedKicker: 'admin.affinity.graph.cluster.expanded.kicker',
+  clusterIsolatedKicker: 'admin.affinity.graph.cluster.isolated.kicker',
+  clusterSummary: 'admin.affinity.graph.cluster.summary'
+} as const;
 
 @Injectable({
   providedIn: 'root'
@@ -31,6 +43,7 @@ export class AdminAffinityGraphService {
   private readonly demoRepository = inject(DemoAdminAffinityGraphRepository);
   private readonly httpRepository = inject(HttpAdminAffinityGraphRepository);
   private readonly routeDelay = inject(RouteDelayService);
+  private readonly i18n = inject(I18nService);
   private readonly loadingActiveRef = signal(false);
   private readonly loadingProgressRef = signal(0);
   private readonly loadingOverdueRef = signal(false);
@@ -385,10 +398,20 @@ export class AdminAffinityGraphService {
       forestLevel: this.positiveInteger(snapshot?.forestLevel, 0),
       maxForestLevel: this.positiveInteger(snapshot?.maxForestLevel, 0),
       maxZoom: this.positiveInteger(snapshot?.maxZoom, 0),
+      labels: this.affinityGraphLabels(),
       nodes: normalizedNodes,
       edges: normalizedEdges,
       forests: normalizedForests
     };
+  }
+
+  private affinityGraphLabels(): Record<string, string> {
+    return Object.fromEntries(
+      Object.entries(AFFINITY_GRAPH_LABEL_KEYS).map(([labelKey, i18nKey]) => [
+        labelKey,
+        this.i18n.translate(i18nKey)
+      ])
+    );
   }
 
   private normalizeNode(node: AdminAffinityGraphNodeDto | null | undefined): AdminAffinityGraphNodeDto | null {

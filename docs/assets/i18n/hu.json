@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.05.31.hu.4",
+  "version": "2026.06.04.hu.2",
     "messages": {
     "about": "Rólam",
     "accommodation": "Szállás",
@@ -62,6 +62,15 @@
     "admin.profile": "Admin profil",
     "admin.workspace": "Admin munkatér",
     "admin.workspace.ready": "Admin munkatér készen áll",
+    "admin.affinity.graph.cluster.detail": "{visibleMembers} látható · {collapsedMembers} összecsukva · {edgeCount} kapcsolat",
+    "admin.affinity.graph.cluster.eyebrow": "Szimpátia gráf nézet · Klaszter",
+    "admin.affinity.graph.cluster.expanded.kicker": "Kinyitott klaszter",
+    "admin.affinity.graph.cluster.isolated.kicker": "Izolált klaszter",
+    "admin.affinity.graph.cluster.isolated.title": "Izolált klaszter",
+    "admin.affinity.graph.cluster.summary": "{visibleMembers} fontos tag látható · {collapsedMembers} összecsukva · {edgeCount} kapcsolat a klaszterben.",
+    "admin.affinity.graph.cluster.title": "Klaszter gráf",
+    "admin.affinity.graph.cluster.view.label": "Klaszter gráf",
+    "admin.affinity.graph.view": "Szimpátia gráf nézet",
     "all": "Összes",
     "all.dates": "Minden dátum",
     "application.feedback": "Alkalmazás-visszajelzés",

@@ -45,6 +45,7 @@ export interface AdminAffinityGraphDto {
   forestLevel?: number | null;
   maxForestLevel?: number | null;
   maxZoom?: number | null;
+  labels?: Record<string, string> | null;
   nodes: AdminAffinityGraphNodeDto[];
   edges: AdminAffinityGraphEdgeDto[];
   forests?: AdminAffinityGraphForestDto[] | null;

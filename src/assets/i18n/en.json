@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.05.31.en.4",
+  "version": "2026.06.04.en.2",
   "messages": {
     "about": "About",
     "accommodation": "Accommodation",
@@ -62,6 +62,15 @@
     "admin.profile": "Admin profile",
     "admin.workspace": "Admin workspace",
     "admin.workspace.ready": "Admin workspace ready",
+    "admin.affinity.graph.cluster.detail": "{visibleMembers} visible · {collapsedMembers} collapsed · {edgeCount} links",
+    "admin.affinity.graph.cluster.eyebrow": "Affinity graph view · Cluster",
+    "admin.affinity.graph.cluster.expanded.kicker": "Expanded cluster",
+    "admin.affinity.graph.cluster.isolated.kicker": "Isolated cluster",
+    "admin.affinity.graph.cluster.isolated.title": "Isolated cluster",
+    "admin.affinity.graph.cluster.summary": "{visibleMembers} important members visible · {collapsedMembers} collapsed · {edgeCount} links in cluster.",
+    "admin.affinity.graph.cluster.title": "Cluster graph",
+    "admin.affinity.graph.cluster.view.label": "Cluster graph",
+    "admin.affinity.graph.view": "Affinity graph view",
     "all": "All",
     "all.dates": "All dates",
     "application.feedback": "Application feedback",
