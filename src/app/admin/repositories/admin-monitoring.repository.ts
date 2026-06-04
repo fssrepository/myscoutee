@@ -1,8 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 
 import { AppMemoryDb } from '../../shared/core/base/db';
-
-const ADMIN_MONITORING_STORE_KEY = 'adminMonitoring';
+import { APP_INDEXED_DB_KEYS } from '../../shared/core/base/storage-scope';
 
 @Injectable({
   providedIn: 'root'
@@ -15,10 +14,10 @@ export class AdminMonitoringRepository {
   }
 
   async readStore<T>(): Promise<T | null> {
-    return await this.memoryDb.readIndexedDbTableEntry<T>(ADMIN_MONITORING_STORE_KEY);
+    return await this.memoryDb.readIndexedDbTableEntry<T>(APP_INDEXED_DB_KEYS.adminMonitoring);
   }
 
   async writeStore<T>(store: T): Promise<void> {
-    await this.memoryDb.writeIndexedDbTableEntry(ADMIN_MONITORING_STORE_KEY, store);
+    await this.memoryDb.writeIndexedDbTableEntry(APP_INDEXED_DB_KEYS.adminMonitoring, store);
   }
 }

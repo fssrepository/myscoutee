@@ -1,6 +1,7 @@
 import type * as AppTypes from '../../../core/base/models';
+import { APP_INDEXED_DB_KEYS } from '../../base/storage-scope';
 
-export const ACTIVITY_RESOURCES_TABLE_NAME = 'activityResources' as const;
+export const ACTIVITY_RESOURCES_TABLE_NAME = APP_INDEXED_DB_KEYS.activityResources;
 
 export interface DemoActivitySubEventResourceRecord extends AppTypes.ActivitySubEventResourceState {
   id: string;

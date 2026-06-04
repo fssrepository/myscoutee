@@ -1,6 +1,7 @@
 import type { HelpCenterAuditEntry, HelpCenterRevision, PrivacyConsentRecord } from '../../base/models';
+import { APP_INDEXED_DB_KEYS } from '../../base/storage-scope';
 
-export const HELP_CENTER_TABLE_NAME = 'helpCenter';
+export const HELP_CENTER_TABLE_NAME = APP_INDEXED_DB_KEYS.helpCenter;
 
 export interface DemoHelpCenterTable {
   seeded: boolean;

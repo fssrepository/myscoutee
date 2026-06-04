@@ -1,6 +1,7 @@
 import type * as AppTypes from '../../../core/base/models';
+import { APP_INDEXED_DB_KEYS } from '../../base/storage-scope';
 
-export const ASSETS_TABLE_NAME = 'assets' as const;
+export const ASSETS_TABLE_NAME = APP_INDEXED_DB_KEYS.assets;
 
 export interface DemoAssetRecord extends AppTypes.AssetCard {
   ownerUserId: string;

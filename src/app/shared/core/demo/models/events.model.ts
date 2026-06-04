@@ -1,7 +1,8 @@
 import type * as AppTypes from '../../../core/base/models';
 import type { LocationCoordinates } from '../../base/interfaces';
+import { APP_INDEXED_DB_KEYS } from '../../base/storage-scope';
 
-export const EVENTS_TABLE_NAME = 'events' as const;
+export const EVENTS_TABLE_NAME = APP_INDEXED_DB_KEYS.events;
 
 export type DemoEventScopeFilter =
   | 'all'

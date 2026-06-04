@@ -3,7 +3,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { environment } from '../../../../../environments/environment';
 import type * as AppTypes from '../../../core/base/models';
 import { AppContext } from '../context';
-import { scopedStorageKey } from '../storage-scope';
+import { APP_STORAGE_KEYS } from '../storage-scope';
 import { FirebaseAuthService } from './firebase-auth.service';
 
 export type AppSession =
@@ -14,8 +14,8 @@ export type AppSession =
   providedIn: 'root'
 })
 export class SessionService {
-  private static readonly SESSION_STORAGE_KEY = scopedStorageKey('session.v1');
-  private static readonly DEMO_ACTIVE_USER_KEY = scopedStorageKey('demo.active-user.v1');
+  private static readonly SESSION_STORAGE_KEY = APP_STORAGE_KEYS.session;
+  private static readonly DEMO_ACTIVE_USER_KEY = APP_STORAGE_KEYS.demoActiveUser;
 
   private readonly firebaseAuthService = inject(FirebaseAuthService);
   private readonly appCtx = inject(AppContext);

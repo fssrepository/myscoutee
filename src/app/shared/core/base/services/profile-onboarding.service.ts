@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 
 import type { UserDto } from '../interfaces/user.interface';
 import type { ExperienceEntry, ProfileStatus } from '../models/profile.model';
-import { scopedStorageKey } from '../storage-scope';
+import { profileOnboardingDraftStorageKey } from '../storage-scope';
 
 export type ProfileOnboardingStepId =
   | 'basics'
@@ -63,7 +63,6 @@ export interface ProfileOnboardingAssessment {
   providedIn: 'root'
 })
 export class ProfileOnboardingService {
-  private static readonly STORAGE_PREFIX = 'profile-onboarding.v1';
   private static readonly MIN_REQUIRED_IMAGES = 3;
   readonly currentProfileFormVersion = 2;
 
@@ -383,7 +382,7 @@ export class ProfileOnboardingService {
   }
 
   private storageKey(userId: string): string {
-    return scopedStorageKey(`${ProfileOnboardingService.STORAGE_PREFIX}:${userId.trim()}`);
+    return profileOnboardingDraftStorageKey(userId);
   }
 
   private readJson<T>(key: string): T | null {

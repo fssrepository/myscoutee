@@ -9,13 +9,12 @@ import type { UserDto } from '../interfaces/user.interface';
 import { UsersService } from './users.service';
 import { SessionService } from './session.service';
 import { ConfirmationDialogService } from '../../../ui/services/confirmation-dialog.service';
-import { scopedStorageKey } from '../storage-scope';
+import { appLocationStorageKey } from '../storage-scope';
 
 @Injectable({
   providedIn: 'root'
 })
 export class AppLocationService {
-  private static readonly STORAGE_PREFIX = 'location.v1';
   private static readonly ACCESS_RESTRICTED_TITLE = 'Login Unavailable';
   private static readonly ACCESS_RESTRICTED_MESSAGE = 'Login is currently unavailable from your country or region for security reasons. Please come back later.';
   private static readonly LOCATION_SYNC_DISTANCE_METERS = 5000;
@@ -394,6 +393,6 @@ export class AppLocationService {
   }
 
   private storageKey(userId: string): string {
-    return scopedStorageKey(`${AppLocationService.STORAGE_PREFIX}:${userId.trim()}`);
+    return appLocationStorageKey(userId);
   }
 }

@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 
 import { DemoMemoryDb } from '../../base/db';
-import { scopedStorageKey } from '../../base/storage-scope';
+import { appMemoryDbStorageKey, demoActiveUserStorageKey, scopedSessionStorageKey } from '../../base/storage-scope';
 import type { IdeaPost } from '../../base/models';
 import { EVENTS_TABLE_NAME, type DemoEventRecord } from '../models/events.model';
 import { IDEA_POSTS_TABLE_NAME } from '../models/idea-posts.model';
@@ -22,7 +22,7 @@ describe('Demo bootstrap seeding', () => {
   });
 
   afterEach(() => {
-    localStorage.removeItem(scopedStorageKey('session.v1', 'http'));
+    localStorage.removeItem(scopedSessionStorageKey('http'));
     TestBed.resetTestingModule();
   });
 
@@ -104,8 +104,8 @@ describe('Demo bootstrap seeding', () => {
   });
 
   it('resets demo bootstrap tables without touching http-scoped storage', async () => {
-    localStorage.setItem(scopedStorageKey('memory.db.v1', 'demo'), 'stale-demo-memory');
-    localStorage.setItem(scopedStorageKey('session.v1', 'http'), 'keep-http-session');
+    localStorage.setItem(appMemoryDbStorageKey('demo'), 'stale-demo-memory');
+    localStorage.setItem(scopedSessionStorageKey('http'), 'keep-http-session');
     memoryDb.write(state => ({
       ...state,
       [USERS_TABLE_NAME]: {
@@ -125,20 +125,20 @@ describe('Demo bootstrap seeding', () => {
 
     expect(memoryDb.read()[USERS_TABLE_NAME].ids).toEqual([]);
     expect(memoryDb.read()[IDEA_POSTS_TABLE_NAME].ids).toEqual(['landing']);
-    expect(localStorage.getItem(scopedStorageKey('memory.db.v1', 'demo'))).toBeNull();
-    expect(localStorage.getItem(scopedStorageKey('session.v1', 'http'))).toBe('keep-http-session');
+    expect(localStorage.getItem(appMemoryDbStorageKey('demo'))).toBeNull();
+    expect(localStorage.getItem(scopedSessionStorageKey('http'))).toBe('keep-http-session');
   });
 
   it('full demo reset clears demo-scoped browser keys without touching http-scoped storage', async () => {
-    localStorage.setItem(scopedStorageKey('session.v1', 'demo'), 'drop-demo-session');
-    localStorage.setItem(scopedStorageKey('session.v1', 'http'), 'keep-http-session');
-    sessionStorage.setItem(scopedStorageKey('demo.active-user.v1', 'demo'), 'drop-demo-active-user');
+    localStorage.setItem(scopedSessionStorageKey('demo'), 'drop-demo-session');
+    localStorage.setItem(scopedSessionStorageKey('http'), 'keep-http-session');
+    sessionStorage.setItem(demoActiveUserStorageKey('demo'), 'drop-demo-active-user');
 
     await memoryDb.resetStorage();
 
-    expect(localStorage.getItem(scopedStorageKey('session.v1', 'demo'))).toBeNull();
-    expect(sessionStorage.getItem(scopedStorageKey('demo.active-user.v1', 'demo'))).toBeNull();
-    expect(localStorage.getItem(scopedStorageKey('session.v1', 'http'))).toBe('keep-http-session');
+    expect(localStorage.getItem(scopedSessionStorageKey('demo'))).toBeNull();
+    expect(sessionStorage.getItem(demoActiveUserStorageKey('demo'))).toBeNull();
+    expect(localStorage.getItem(scopedSessionStorageKey('http'))).toBe('keep-http-session');
   });
 });
 

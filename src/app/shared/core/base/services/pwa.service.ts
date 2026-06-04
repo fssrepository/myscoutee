@@ -1,6 +1,7 @@
 import { Injectable, computed, signal } from '@angular/core';
 
 import { environment } from '../../../../../environments/environment';
+import { APP_CACHE_KEYS, APP_STORAGE_KEYS } from '../storage-scope';
 
 interface BeforeInstallPromptChoice {
   outcome: 'accepted' | 'dismissed';
@@ -21,12 +22,12 @@ interface AppVersionPayload {
   providedIn: 'root'
 })
 export class PwaService {
-  private static readonly DEV_OVERRIDE_STORAGE_KEY = 'myscoutee.dev.service-worker';
-  private static readonly INSTALL_DISMISSED_STORAGE_KEY = 'myscoutee.install-prompt.dismissed';
-  private static readonly UPDATE_RELOAD_ATTEMPT_STORAGE_KEY = 'myscoutee.update-reload-attempt';
+  private static readonly DEV_OVERRIDE_STORAGE_KEY = APP_STORAGE_KEYS.pwaDevServiceWorker;
+  private static readonly INSTALL_DISMISSED_STORAGE_KEY = APP_STORAGE_KEYS.pwaInstallPromptDismissed;
+  private static readonly UPDATE_RELOAD_ATTEMPT_STORAGE_KEY = APP_STORAGE_KEYS.pwaUpdateReloadAttempt;
   private static readonly BUILD_ID_META_NAME = 'myscoutee-build-id';
   private static readonly APP_VERSION_URL = 'app-version.json';
-  private static readonly CACHE_PREFIX = 'myscoutee-runtime';
+  private static readonly CACHE_PREFIX = APP_CACHE_KEYS.runtimePrefix;
 
   private readonly installPromptRef = signal<BeforeInstallPromptEvent | null>(null);
   private readonly installBusyRef = signal(false);

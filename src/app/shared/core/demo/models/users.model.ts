@@ -4,11 +4,12 @@ import type {
   UserRateRecord
 } from '../../base/interfaces/game.interface';
 import type { UserDto } from '../../base/interfaces/user.interface';
+import { APP_INDEXED_DB_KEYS } from '../../base/storage-scope';
 
-export const USERS_TABLE_NAME = 'users' as const;
-export const USER_RATES_TABLE_NAME = 'userRates' as const;
-export const USER_RATES_OUTBOX_TABLE_NAME = 'userRatesOutbox' as const;
-export const USER_FILTER_PREFERENCES_TABLE_NAME = 'userFilterPreferences' as const;
+export const USERS_TABLE_NAME = APP_INDEXED_DB_KEYS.users;
+export const USER_RATES_TABLE_NAME = APP_INDEXED_DB_KEYS.userRates;
+export const USER_RATES_OUTBOX_TABLE_NAME = APP_INDEXED_DB_KEYS.userRatesOutbox;
+export const USER_FILTER_PREFERENCES_TABLE_NAME = APP_INDEXED_DB_KEYS.userFilterPreferences;
 
 export interface DemoUsersRecordCollection {
   byId: Record<string, UserDto>;

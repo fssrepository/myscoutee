@@ -1,6 +1,7 @@
 import type { IdeaPost } from '../../base/models';
+import { APP_INDEXED_DB_KEYS } from '../../base/storage-scope';
 
-export const IDEA_POSTS_TABLE_NAME = 'ideaPosts';
+export const IDEA_POSTS_TABLE_NAME = APP_INDEXED_DB_KEYS.ideaPosts;
 
 export interface DemoIdeaPostsTable {
   seeded: boolean;

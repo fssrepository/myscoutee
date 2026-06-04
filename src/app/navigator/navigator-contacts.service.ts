@@ -8,7 +8,7 @@ import {
   type ActivityMemberEntry,
   type UserDto
 } from '../shared/core';
-import { scopedStorageKey } from '../shared/core/base/storage-scope';
+import { navigatorContactsStorageKey } from '../shared/core/base/storage-scope';
 import type { ListQuery, PageResult } from '../shared/ui';
 
 export type NavigatorContactMethodType =
@@ -690,7 +690,7 @@ export class NavigatorContactsService {
   }
 
   private storageKey(userId: string): string {
-    return scopedStorageKey(`navigator.contacts.v1.${userId}`);
+    return navigatorContactsStorageKey(userId);
   }
 
   private resolveUserAvatarUrl(user: UserDto | null | undefined): string {

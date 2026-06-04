@@ -1,7 +1,8 @@
 import type { ActivityMemberOwnerType } from '../../../core/base/models';
 import type * as AppTypes from '../../../core/base/models';
+import { APP_INDEXED_DB_KEYS } from '../../base/storage-scope';
 
-export const ACTIVITY_MEMBERS_TABLE_NAME = 'activityMembers' as const;
+export const ACTIVITY_MEMBERS_TABLE_NAME = APP_INDEXED_DB_KEYS.activityMembers;
 
 export interface DemoActivityMemberRecord extends AppTypes.ActivityMemberEntry {
   ownerType: ActivityMemberOwnerType;

@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 
 import type * as AppTypes from '../../../core/base/models';
 import type { UserByIdQueryResponse } from '../interfaces/user.interface';
-import { scopedStorageKey } from '../storage-scope';
+import { offlineCacheTicketsStorageKey, offlineCacheUserStorageKey } from '../storage-scope';
 
 interface CachedTicketPagePayload {
   items: readonly AppTypes.ActivityListRow[];
@@ -14,8 +14,6 @@ interface CachedTicketPagePayload {
   providedIn: 'root'
 })
 export class OfflineCacheService {
-  private static readonly STORAGE_PREFIX = 'offline.v1';
-
   readUser(userId: string): UserByIdQueryResponse | null {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
@@ -59,11 +57,11 @@ export class OfflineCacheService {
   }
 
   private userStorageKey(userId: string): string {
-    return scopedStorageKey(`${OfflineCacheService.STORAGE_PREFIX}:user:${userId}`);
+    return offlineCacheUserStorageKey(userId);
   }
 
   private ticketStorageKey(userId: string, order: 'upcoming' | 'past'): string {
-    return scopedStorageKey(`${OfflineCacheService.STORAGE_PREFIX}:tickets:${userId}:${order}`);
+    return offlineCacheTicketsStorageKey(userId, order);
   }
 
   private readJson<T>(key: string): T | null {

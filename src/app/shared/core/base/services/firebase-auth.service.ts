@@ -19,7 +19,7 @@ import {
 
 import { environment } from '../../../../../environments/environment';
 import type * as AppTypes from '../../../core/base/models';
-import { scopedStorageKey } from '../storage-scope';
+import { APP_STORAGE_KEYS } from '../storage-scope';
 
 export interface FirebaseAuthSignInResult {
   profile: AppTypes.FirebaseAuthProfile | null;
@@ -39,7 +39,7 @@ export type FirebaseConfigFile = Pick<
   providedIn: 'root'
 })
 export class FirebaseAuthService {
-  private static readonly FIREBASE_AUTH_PROFILE_KEY = scopedStorageKey('firebase.auth-profile.v1');
+  private static readonly FIREBASE_AUTH_PROFILE_KEY = APP_STORAGE_KEYS.firebaseAuthProfile;
   private static readonly FIREBASE_CONFIG_PATH = 'keys/firebase.config.json';
 
   private firebaseAuthPromise: Promise<Auth | null> | null = null;

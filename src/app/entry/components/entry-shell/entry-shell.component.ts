@@ -12,7 +12,7 @@ import {
 import type { DemoBootstrapProgressStage } from '../../../shared/core/demo';
 import type * as AppTypes from '../../../shared/core/base/models';
 import type { LocationCoordinates } from '../../../shared/core/base/interfaces/location.interface';
-import { scopedStorageKey } from '../../../shared/core/base/storage-scope';
+import { APP_STORAGE_KEYS } from '../../../shared/core/base/storage-scope';
 import { ConfirmationDialogComponent } from '../../../shared/ui/components/confirmation-dialog/confirmation-dialog.component';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
 import { I18nService } from '../../../shared/i18n';
@@ -42,12 +42,12 @@ export interface EntryDemoUserSelectionEvent {
   styleUrl: './entry-shell.component.scss'
 })
 export class EntryShellComponent implements OnChanges, OnDestroy {
-  private static readonly ENTRY_CONSENT_KEY = scopedStorageKey('entry.gdpr-consent.v1');
-  private static readonly ENTRY_CONSENT_AUDIT_KEY = scopedStorageKey('entry.gdpr-consent-audit.v1');
+  private static readonly ENTRY_CONSENT_KEY = APP_STORAGE_KEYS.entryConsent;
+  private static readonly ENTRY_CONSENT_AUDIT_KEY = APP_STORAGE_KEYS.entryConsentAudit;
   private static readonly ENTRY_CONSENT_AUDIT_MAX = 30;
   private static readonly LANDING_ARTICLES_LOADING_WINDOW_MS = 3000;
   private static readonly ENTRY_PRIVACY_LOADING_WINDOW_MS = 3000;
-  private static readonly LOCATION_ELIGIBILITY_CACHE_KEY = scopedStorageKey('entry.login-location-eligibility.v1');
+  private static readonly LOCATION_ELIGIBILITY_CACHE_KEY = APP_STORAGE_KEYS.entryLoginLocationEligibility;
   private static readonly LOCATION_ELIGIBILITY_CACHE_TTL_MS = 10 * 60 * 1000;
   private static readonly LOCATION_REQUEST_TIMEOUT_MS = 4500;
   private static readonly LOCATION_REQUEST_MAXIMUM_AGE_MS = 15 * 60 * 1000;
