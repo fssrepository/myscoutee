@@ -14,9 +14,14 @@ export abstract class BaseRouteModeService {
 
   protected isDemoModeEnabled(route: string): boolean {
     const routeConfig = resolveRouteConfig(route);
+    if (routeConfig.http) {
+      return false;
+    }
+    if (this.sessionService.currentSession()?.kind === 'demo') {
+      return true;
+    }
     return environment.activitiesDataSource !== 'http'
-      && !routeConfig.http
-      && (this.sessionService.currentSession()?.kind === 'demo' || !environment.firebaseLoginEnabled);
+      && !environment.firebaseLoginEnabled;
   }
 
   protected resolveRouteService<TDemo, THttp>(route: string, demoService: TDemo, httpService: THttp): TDemo | THttp {
