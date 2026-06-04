@@ -17,12 +17,11 @@ import {
   type AdminAffinityGraphRangeParams,
   type AdminAffinityGraphTileParams
 } from '../../shared/core/http';
+import { SessionService } from '../../shared/core/base/services/session.service';
 import { RouteDelayService } from '../../shared/core/base/services/route-delay.service';
 import { I18nService } from '../../shared/i18n';
 
 const ADMIN_AFFINITY_GRAPH_ROUTE = '/admin/affinity-graph';
-const AFFINITY_GRAPH_LOAD_DEMO_DELAY_MS = 1500;
-const AFFINITY_GRAPH_LOAD_PROGRESS_WINDOW_MS = 3000;
 const AFFINITY_GRAPH_FOREST_BASE_BUDGET = 16;
 const AFFINITY_GRAPH_LABEL_KEYS = {
   graphView: 'admin.affinity.graph.view',
@@ -42,6 +41,7 @@ const AFFINITY_GRAPH_LABEL_KEYS = {
 export class AdminAffinityGraphService {
   private readonly demoRepository = inject(DemoAdminAffinityGraphRepository);
   private readonly httpRepository = inject(HttpAdminAffinityGraphRepository);
+  private readonly sessionService = inject(SessionService);
   private readonly routeDelay = inject(RouteDelayService);
   private readonly i18n = inject(I18nService);
   private readonly loadingActiveRef = signal(false);
@@ -155,6 +155,9 @@ export class AdminAffinityGraphService {
   }
 
   private get usesHttpAdminApi(): boolean {
+    if (this.sessionService.currentSession()?.kind === 'demo') {
+      return false;
+    }
     return environment.activitiesDataSource === 'http' || environment.firebaseLoginEnabled === true;
   }
 
@@ -203,10 +206,7 @@ export class AdminAffinityGraphService {
 
   private async withDemoGraphRouteDelay<T>(work: Promise<T>): Promise<T> {
     const delay = this.routeDelay.waitForRouteDelay(
-      ADMIN_AFFINITY_GRAPH_ROUTE,
-      undefined,
-      undefined,
-      AFFINITY_GRAPH_LOAD_DEMO_DELAY_MS
+      ADMIN_AFFINITY_GRAPH_ROUTE
     );
     try {
       const [result] = await Promise.all([work, delay]);
@@ -543,9 +543,10 @@ export class AdminAffinityGraphService {
       return;
     }
     const elapsedMs = Math.max(0, this.nowMs() - this.loadingStartedAtMs);
-    const nextProgress = Math.min(1, elapsedMs / AFFINITY_GRAPH_LOAD_PROGRESS_WINDOW_MS);
+    const progressWindowMs = this.routeDelay.resolveRequestTimeoutMs(ADMIN_AFFINITY_GRAPH_ROUTE);
+    const nextProgress = Math.min(1, elapsedMs / progressWindowMs);
     this.loadingProgressRef.set(Math.max(this.loadingProgressRef(), nextProgress));
-    this.loadingOverdueRef.set(elapsedMs >= AFFINITY_GRAPH_LOAD_PROGRESS_WINDOW_MS && this.loadingCounter > 0);
+    this.loadingOverdueRef.set(elapsedMs >= progressWindowMs && this.loadingCounter > 0);
   }
 
   private endLoadingProgress(): void {

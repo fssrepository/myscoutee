@@ -86,7 +86,7 @@ export interface AdminStatsRevenueDto {
 
 export interface AdminStatsDashboardDto {
   generatedAtIso: string;
-  source: 'demo' | 'http' | 'fallback';
+  source: 'demo' | 'http';
   healthScore: number;
   healthLabelKey: string;
   healthSummaryKey: string;

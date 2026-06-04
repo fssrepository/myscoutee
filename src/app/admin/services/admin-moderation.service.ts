@@ -19,7 +19,6 @@ import { AdminWorkspaceService } from './admin-workspace.service';
 const ADMIN_MODERATION_WARN_ROUTE = '/admin/reports/warn';
 const ADMIN_MODERATION_BLOCK_ROUTE = '/admin/reports/block';
 const ADMIN_MODERATION_UNBLOCK_ROUTE = '/admin/reports/unblock';
-const ADMIN_MODERATION_ACTION_DEMO_DELAY_MS = 1500;
 
 @Injectable({
   providedIn: 'root'
@@ -179,10 +178,7 @@ export class AdminModerationService {
       return work;
     }
     const delay = this.routeDelay.waitForRouteDelay(
-      route,
-      undefined,
-      undefined,
-      ADMIN_MODERATION_ACTION_DEMO_DELAY_MS
+      route
     );
     try {
       const [result] = await Promise.all([work, delay]);

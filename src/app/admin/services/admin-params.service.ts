@@ -17,16 +17,10 @@ import type {
 import { AdminParamsRepository } from '../repositories/admin-params.repository';
 import { AdminWorkspaceService } from './admin-workspace.service';
 
-const ADMIN_PARAMS_STORAGE_TIMEOUT_MS = 2500;
-const ADMIN_PARAMS_HTTP_TIMEOUT_MS = 12000;
 const ADMIN_PARAMS_LOAD_ROUTE = '/admin/params';
 const ADMIN_PARAMS_SAVE_ROUTE = '/admin/params/save';
 const ADMIN_PARAMS_HISTORY_ROUTE = '/admin/params/history';
 const ADMIN_PARAMS_REVERT_ROUTE = '/admin/params/revert';
-const ADMIN_PARAMS_LOAD_DEMO_DELAY_MS = 1500;
-const ADMIN_PARAMS_SAVE_DEMO_DELAY_MS = 1500;
-const ADMIN_PARAMS_HISTORY_DEMO_DELAY_MS = 1500;
-const ADMIN_PARAMS_REVERT_DEMO_DELAY_MS = 1500;
 
 interface AdminParamsDelayOptions {
   skipDemoDelay?: boolean;
@@ -42,23 +36,33 @@ export class AdminParamsService {
   private readonly routeDelay = inject(RouteDelayService);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
 
+  paramsLoadProgressWindowMs(): number {
+    return this.routeDelay.resolveRequestTimeoutMs(ADMIN_PARAMS_LOAD_ROUTE);
+  }
+
+  paramsHistoryProgressWindowMs(): number {
+    return this.routeDelay.resolveRequestTimeoutMs(ADMIN_PARAMS_HISTORY_ROUTE);
+  }
+
   async loadParamsState(options?: AdminParamsDelayOptions): Promise<AdminParamsStateDto> {
     return this.withAdminParamsDemoDelay(
       this.loadParamsStateSnapshot(),
       ADMIN_PARAMS_LOAD_ROUTE,
-      ADMIN_PARAMS_LOAD_DEMO_DELAY_MS,
       options
     );
   }
 
   private async loadParamsStateSnapshot(): Promise<AdminParamsStateDto> {
     if (this.workspace.usesHttpAdminApi) {
-      const state = await this.withHttpTimeout(this.http
+      const state = await this.routeDelay.withRequestTimeout(ADMIN_PARAMS_LOAD_ROUTE, this.http
         .get<AdminParamsStateDto>(`${this.apiBaseUrl}/admin/params`, {
           params: { adminUserId: this.workspace.activeAdmin()?.id ?? '' }
         })
-        .toPromise());
-      return this.normalizeParamsState(state ?? this.buildDefaultParamsStore());
+        .toPromise(), 'Params request timed out.');
+      if (!state) {
+        throw new Error('Admin params state is unavailable.');
+      }
+      return this.normalizeParamsState(state);
     }
     const store = await this.readDemoParamsStore();
     return this.normalizeParamsState(store);
@@ -73,7 +77,6 @@ export class AdminParamsService {
     return this.withAdminParamsDemoDelay(
       this.saveParamsSectionSnapshot(sectionKey, fields, summary),
       ADMIN_PARAMS_SAVE_ROUTE,
-      ADMIN_PARAMS_SAVE_DEMO_DELAY_MS,
       options
     );
   }
@@ -86,15 +89,18 @@ export class AdminParamsService {
     const normalizedSectionKey = `${sectionKey ?? ''}`.trim();
     const normalizedFields = fields.map(field => this.normalizeParamField(field));
     if (this.workspace.usesHttpAdminApi) {
-      const state = await this.withHttpTimeout(this.http
+      const state = await this.routeDelay.withRequestTimeout(ADMIN_PARAMS_SAVE_ROUTE, this.http
         .post<AdminParamsStateDto>(`${this.apiBaseUrl}/admin/params`, {
           adminUserId: this.workspace.activeAdmin()?.id ?? '',
           sectionKey: normalizedSectionKey,
           fields: normalizedFields,
           summary
         })
-        .toPromise());
-      return this.normalizeParamsState(state ?? this.buildDefaultParamsStore());
+        .toPromise(), 'Params request timed out.');
+      if (!state) {
+        throw new Error('Admin params save returned no state.');
+      }
+      return this.normalizeParamsState(state);
     }
     const store = await this.readDemoParamsStore();
     const nowIso = new Date().toISOString();
@@ -131,10 +137,7 @@ export class AdminParamsService {
           : store.historyBySection[normalizedSectionKey] ?? []
       }
     });
-    await this.withStorageFallback(
-      this.repository.writeStore(nextStore),
-      undefined
-    );
+    await this.repository.writeStore(nextStore);
     return this.normalizeParamsState(nextStore);
   }
 
@@ -142,7 +145,6 @@ export class AdminParamsService {
     return this.withAdminParamsDemoDelay(
       this.loadParamsHistorySnapshot(sectionKey),
       ADMIN_PARAMS_HISTORY_ROUTE,
-      ADMIN_PARAMS_HISTORY_DEMO_DELAY_MS,
       options
     );
   }
@@ -150,12 +152,12 @@ export class AdminParamsService {
   private async loadParamsHistorySnapshot(sectionKey: string): Promise<AdminParamsHistoryDto> {
     const normalizedSectionKey = `${sectionKey ?? ''}`.trim();
     if (this.workspace.usesHttpAdminApi) {
-      const history = await this.withHttpTimeout(this.http
+      const history = await this.routeDelay.withRequestTimeout(ADMIN_PARAMS_HISTORY_ROUTE, this.http
         .get<AdminParamsHistoryDto>(
           `${this.apiBaseUrl}/admin/params/${encodeURIComponent(normalizedSectionKey)}/history`,
           { params: { adminUserId: this.workspace.activeAdmin()?.id ?? '' } }
         )
-        .toPromise());
+        .toPromise(), 'Params request timed out.');
       return this.normalizeParamsHistory(history ?? {
         sectionKey: normalizedSectionKey,
         label: normalizedSectionKey,
@@ -175,8 +177,7 @@ export class AdminParamsService {
   async revertParamsSection(sectionKey: string, version: number): Promise<AdminParamsStateDto> {
     return this.withAdminParamsDemoDelay(
       this.revertParamsSectionSnapshot(sectionKey, version),
-      ADMIN_PARAMS_REVERT_ROUTE,
-      ADMIN_PARAMS_REVERT_DEMO_DELAY_MS
+      ADMIN_PARAMS_REVERT_ROUTE
     );
   }
 
@@ -184,7 +185,7 @@ export class AdminParamsService {
     const normalizedSectionKey = `${sectionKey ?? ''}`.trim();
     const normalizedVersion = Math.max(1, Math.trunc(Number(version) || 0));
     if (this.workspace.usesHttpAdminApi) {
-      const state = await this.withHttpTimeout(this.http
+      const state = await this.routeDelay.withRequestTimeout(ADMIN_PARAMS_REVERT_ROUTE, this.http
         .post<AdminParamsStateDto>(
           `${this.apiBaseUrl}/admin/params/${encodeURIComponent(normalizedSectionKey)}/revert`,
           {
@@ -192,8 +193,11 @@ export class AdminParamsService {
             version: normalizedVersion
           }
         )
-        .toPromise());
-      return this.normalizeParamsState(state ?? this.buildDefaultParamsStore());
+        .toPromise(), 'Params request timed out.');
+      if (!state) {
+        throw new Error('Admin params revert returned no state.');
+      }
+      return this.normalizeParamsState(state);
     }
     const history = await this.loadParamsHistory(normalizedSectionKey, { skipDemoDelay: true });
     const selected = history.versions.find(item => item.version === normalizedVersion);
@@ -211,13 +215,12 @@ export class AdminParamsService {
   private async withAdminParamsDemoDelay<T>(
     work: Promise<T>,
     route: string,
-    fallbackDelayMs: number,
     options?: AdminParamsDelayOptions
   ): Promise<T> {
     if (this.workspace.usesHttpAdminApi || options?.skipDemoDelay === true) {
       return work;
     }
-    const delay = this.routeDelay.waitForRouteDelay(route, undefined, undefined, fallbackDelayMs);
+    const delay = this.routeDelay.waitForRouteDelay(route);
     try {
       const [result] = await Promise.all([work, delay]);
       return result;
@@ -228,11 +231,8 @@ export class AdminParamsService {
   }
 
   private async readDemoParamsStore(): Promise<AdminParamsDemoStore> {
-    await this.withStorageFallback(this.repository.whenReady(), undefined);
-    const existing = await this.withStorageFallback(
-      this.repository.readStore<AdminParamsDemoStore>(),
-      null
-    );
+    await this.repository.whenReady();
+    const existing = await this.repository.readStore<AdminParamsDemoStore>();
     if (!existing?.sections?.length) {
       throw new Error('Demo params store is not bootstrapped.');
     }
@@ -393,46 +393,4 @@ export class AdminParamsService {
     ) + 1;
   }
 
-  private withStorageFallback<T>(task: Promise<T>, fallback: T): Promise<T> {
-    return new Promise<T>(resolve => {
-      let finished = false;
-      let timeoutId: ReturnType<typeof setTimeout> | null = null;
-      const finish = (value: T) => {
-        if (finished) {
-          return;
-        }
-        finished = true;
-        if (timeoutId !== null) {
-          clearTimeout(timeoutId);
-          timeoutId = null;
-        }
-        resolve(value);
-      };
-      timeoutId = setTimeout(() => finish(fallback), ADMIN_PARAMS_STORAGE_TIMEOUT_MS);
-      task.then(finish).catch(() => finish(fallback));
-    });
-  }
-
-  private withHttpTimeout<T>(task: Promise<T>): Promise<T> {
-    return new Promise<T>((resolve, reject) => {
-      let finished = false;
-      let timeoutId: ReturnType<typeof setTimeout> | null = null;
-      const finish = (callback: () => void) => {
-        if (finished) {
-          return;
-        }
-        finished = true;
-        if (timeoutId !== null) {
-          clearTimeout(timeoutId);
-          timeoutId = null;
-        }
-        callback();
-      };
-      timeoutId = setTimeout(
-        () => finish(() => reject(new Error('Params request timed out.'))),
-        ADMIN_PARAMS_HTTP_TIMEOUT_MS
-      );
-      task.then(value => finish(() => resolve(value))).catch(error => finish(() => reject(error)));
-    });
-  }
 }

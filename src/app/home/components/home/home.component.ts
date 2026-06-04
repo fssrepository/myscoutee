@@ -24,7 +24,6 @@ import {
 } from '../../../shared/ui';
 import type { DemoUser } from '../../../shared/core/base/interfaces/user.interface';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
-import { resolveCurrentRouteDelayMs } from '../../../shared/core/base/services/route-delay.service';
 import {
   AppContext,
   ExplanationGuideService,
@@ -239,7 +238,6 @@ export class HomeComponent implements OnDestroy {
     mobilePageSizeCap: null,
     presentation: 'fullscreen',
     showBackgroundLoadingProgress: true,
-    loadingDelayMs: resolveCurrentRouteDelayMs('/game-cards/query'),
     headerProgress: {
       enabled: true
     },
