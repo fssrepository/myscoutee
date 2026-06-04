@@ -18,7 +18,7 @@ export function resolveCurrentRouteDelayMs(route: string, fallbackDelayMs = 0): 
   return 0;
 }
 
-export function resolveCurrentRouteRequestTimeoutMs(route: string, fallbackTimeoutMs = 3000): number {
+function resolveCurrentRouteRequestTimeoutMs(route: string, fallbackTimeoutMs = 3000): number {
   const routeConfig = resolveRouteConfig(route);
   if (routeConfig.requestTimeoutMs > 0) {
     return routeConfig.requestTimeoutMs;
@@ -26,7 +26,7 @@ export function resolveCurrentRouteRequestTimeoutMs(route: string, fallbackTimeo
   return normalizeDelayMs(fallbackTimeoutMs);
 }
 
-export function resolveCurrentRouteIntervalMs(route: string, fallbackIntervalMs = 0): number {
+function resolveCurrentRouteIntervalMs(route: string, fallbackIntervalMs = 0): number {
   const routeConfig = resolveRouteConfig(route);
   if (routeConfig.intervalMs > 0) {
     return routeConfig.intervalMs;

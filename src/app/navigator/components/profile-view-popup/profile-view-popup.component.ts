@@ -216,7 +216,7 @@ export class ProfileViewPopupComponent {
   }
 
   private async loadMissingUser(userId: string, token: number): Promise<void> {
-    const loadedUser = await this.usersService.loadUserById(userId, 1500);
+    const loadedUser = await this.usersService.loadUserById(userId);
     if (token !== this.loadToken || !this.target()?.userId?.trim()) {
       return;
     }

@@ -4,7 +4,7 @@ import { environment } from '../../environments/environment';
 import { APP_STATIC_DATA } from '../shared/app-static-data';
 import { PricingBuilder } from '../shared/core/base/builders';
 import type * as AppTypes from '../shared/core/base/models';
-import { resolveCurrentDemoDelayMs } from '../shared/core/base/services/route-delay.service';
+import { resolveCurrentRouteDelayMs } from '../shared/core/base/services/route-delay.service';
 import { AssetPopupStateService } from './asset-popup-state.service';
 import { AppContext, AssetCardBuilder, AssetDefaultsBuilder, AssetsService, ExplanationGuideService, type ActivityCounterKey } from '../shared/core';
 import { HttpMediaService } from '../shared/core/http';
@@ -20,8 +20,6 @@ export interface OwnedAssetsRuntimeHooks {
   providedIn: 'root'
 })
 export class OwnedAssetsPopupFacadeService {
-  private static readonly DEMO_PENDING_WINDOW_MS = 1500;
-
   private readonly assetPopupState = inject(AssetPopupStateService);
   private readonly assetsService = inject(AssetsService);
   private readonly appCtx = inject(AppContext);
@@ -1022,7 +1020,7 @@ export class OwnedAssetsPopupFacadeService {
   }
 
   private demoMutationWindowMs(): number {
-    return resolveCurrentDemoDelayMs(OwnedAssetsPopupFacadeService.DEMO_PENDING_WINDOW_MS);
+    return resolveCurrentRouteDelayMs('/assets');
   }
 
   private async wait(delayMs: number): Promise<void> {

@@ -14,7 +14,8 @@ import {
   type UserImpressionsSectionDto,
   type UserRealtimeLongPollResponseDto
 } from '../shared/core';
-import { scopedStorageKey } from '../shared/core/base/storage-scope';
+import { resolveCurrentRouteDelayMs } from '../shared/core/base/services/route-delay.service';
+import { APP_STORAGE_KEYS } from '../shared/core/base/storage-scope';
 import { ConfirmationDialogService } from '../shared/ui/services/confirmation-dialog.service';
 import { AssetPopupStateService } from '../asset/asset-popup-state.service';
 
@@ -66,9 +67,9 @@ export class NavigatorService {
   private static readonly USER_REALTIME_LONG_POLL_INTERVAL_MS = 30000;
   private static readonly DEMO_USER_REALTIME_LONG_POLL_INTERVAL_MS = 10000;
   private static readonly ACCOUNT_REACTIVATION_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
-  private static readonly ENTRY_CONSENT_KEY = scopedStorageKey('entry.gdpr-consent.v1');
-  private static readonly OPTIONAL_PRIVACY_APPROVAL_KEY = scopedStorageKey('privacy.optional-approvals.v1');
-  private static readonly ADMIN_SESSION_STORAGE_KEY = scopedStorageKey('admin.session.v1');
+  private static readonly ENTRY_CONSENT_KEY = APP_STORAGE_KEYS.entryConsent;
+  private static readonly OPTIONAL_PRIVACY_APPROVAL_KEY = APP_STORAGE_KEYS.optionalPrivacyApprovals;
+  private static readonly ADMIN_SESSION_STORAGE_KEY = APP_STORAGE_KEYS.adminSession;
 
   private readonly usersService = inject(UsersService);
   private readonly helpCenterService = inject(HelpCenterService);
@@ -295,7 +296,7 @@ export class NavigatorService {
           deletedAtIso: null
         };
         const saved = await this.usersService.saveUserProfile(reactivatedUser, {
-          minimumDurationMs: this.usersService.demoModeEnabled ? 1500 : 0,
+          minimumDurationMs: this.usersService.demoModeEnabled ? resolveCurrentRouteDelayMs('/auth/me') : 0,
           returnFallbackOnFailure: false
         });
         if (!saved) {

@@ -17,7 +17,7 @@ import { HttpUsersRatingsRepository } from '../../http/repositories/users-rating
 import { BaseUsersRatingsRepository } from '../repositories/users-ratings.repository';
 import type { UserDto } from '../interfaces/user.interface';
 import { BaseRouteModeService } from './base-route-mode.service';
-import { resolveCurrentRouteRequestTimeoutMs } from './route-delay.service';
+import { RouteDelayService } from './route-delay.service';
 
 export const USER_GAME_CARDS_LOAD_CONTEXT_KEY = 'user-game-cards';
 
@@ -47,6 +47,7 @@ export class GameService extends BaseRouteModeService {
   private readonly httpGameService = inject(HttpGameService);
   private readonly httpUsersRatingsRepository = inject(HttpUsersRatingsRepository);
   private readonly appCtx = inject(AppContext);
+  private readonly routeDelay = inject(RouteDelayService);
   private readonly userGameCardsStackStateByUserId: Record<string, UserGameCardsStackState> = {};
   private userRatesOutboxSyncInFlight = false;
   private userRatesOutboxSyncTimer: ReturnType<typeof setInterval> | null = null;
@@ -684,7 +685,7 @@ export class GameService extends BaseRouteModeService {
 
   private resolveRequestTimeoutMs(value?: number): number {
     if (!Number.isFinite(value)) {
-      return resolveCurrentRouteRequestTimeoutMs('/game-cards/query');
+      return this.routeDelay.resolveRequestTimeoutMs('/game-cards/query');
     }
     return Math.max(1, Math.trunc(Number(value)));
   }
