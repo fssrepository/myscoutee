@@ -36,6 +36,10 @@ export const ROUTE_CONFIG: RouteConfig = {
       demoDelayMs: 1500
     },
     {
+      routePrefix: '/auth/me/onboarding-draft-autosave',
+      intervalMs: 30000
+    },
+    {
       routePrefix: '/auth/me/feedback',
       demoDelayMs: 1500
     },

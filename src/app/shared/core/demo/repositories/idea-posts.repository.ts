@@ -9,7 +9,6 @@ import { IDEA_POSTS_TABLE_NAME, type DemoIdeaPostsTable } from '../models/idea-p
   providedIn: 'root'
 })
 export class DemoIdeaPostsRepository {
-  private static readonly PERSIST_TIMEOUT_MS = 1500;
   private readonly memoryDb = inject(DemoMemoryDb);
 
   async whenReady(): Promise<void> {
@@ -27,7 +26,7 @@ export class DemoIdeaPostsRepository {
     }));
   }
 
-  seedDefaults(): boolean {
+  async seedDefaults(): Promise<boolean> {
     const table = this.readTable();
     const defaultPosts = DemoIdeaPostsSeedBuilder.buildDefaultPosts();
     const missingPosts = defaultPosts.filter(post => !table.byId[post.id]);
@@ -42,6 +41,7 @@ export class DemoIdeaPostsRepository {
       },
       ids: [...new Set([...current.ids, ...missingPosts.map(post => post.id)])]
     }));
+    await this.persist();
     return true;
   }
 
@@ -51,19 +51,13 @@ export class DemoIdeaPostsRepository {
     }
   }
 
-  async flushToIndexedDb(): Promise<void> {
-    await this.memoryDb.flushToIndexedDb();
+  async updateTableAndPersist(mutator: (table: DemoIdeaPostsTable) => DemoIdeaPostsTable): Promise<void> {
+    this.updateTable(mutator);
+    await this.persist();
   }
 
-  async persistBestEffort(timeoutMs = DemoIdeaPostsRepository.PERSIST_TIMEOUT_MS): Promise<void> {
-    try {
-      await Promise.race([
-        this.flushToIndexedDb(),
-        new Promise<void>(resolve => globalThis.setTimeout(resolve, timeoutMs))
-      ]);
-    } catch {
-      // Demo content still exists in memory even when browser storage is temporarily unavailable.
-    }
+  private async persist(): Promise<void> {
+    await this.memoryDb.flushToIndexedDb();
   }
 
   private clonePost(post: IdeaPost): IdeaPost {

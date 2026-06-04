@@ -16,6 +16,7 @@ import { I18nPipe } from '../../../shared/i18n';
 import { ProgressIndicatorComponent } from '../../../shared/ui';
 import {
   ProfileOnboardingService,
+  RouteIntervalSchedulerService,
   UserExperiencesService,
   UsersService,
   type ProfileOnboardingAssessment,
@@ -62,13 +63,10 @@ type ExperienceFormDraft = Omit<ExperienceEntry, 'id'> & { current: boolean };
   styleUrl: './profile-onboarding-popup.component.scss'
 })
 export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
-  private static readonly DEMO_SAVE_MIN_BUSY_MS = 1500;
-  private static readonly DEMO_EXPERIENCE_LOAD_MIN_BUSY_MS = 1500;
   private static readonly MAX_IMAGE_SLOTS = 8;
   private static readonly MIN_REQUIRED_IMAGES = 3;
   private static readonly LANGUAGE_PANEL_GAP_PX = 8;
   private static readonly LANGUAGE_PANEL_MAX_HEIGHT_PX = 260;
-  private static readonly DRAFT_AUTOSAVE_INTERVAL_MS = 30_000;
 
   @ViewChild('onboardingImageInput') private onboardingImageInput?: ElementRef<HTMLInputElement>;
   @ViewChild('languageSelectRoot', { read: ElementRef }) private languageSelectRoot?: ElementRef<HTMLElement>;
@@ -80,6 +78,7 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
   @Output() readonly dismissed = new EventEmitter<void>();
 
   private readonly onboarding = inject(ProfileOnboardingService);
+  private readonly routeIntervalScheduler = inject(RouteIntervalSchedulerService);
   private readonly usersService = inject(UsersService);
   private readonly userExperiencesService = inject(UserExperiencesService);
   private readonly cdr = inject(ChangeDetectorRef);
@@ -91,7 +90,7 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
   private previousBodyOverscrollBehavior = '';
   private previousDocumentOverflow = '';
   private previousDocumentOverscrollBehavior = '';
-  private draftAutosaveTimer: ReturnType<typeof setInterval> | null = null;
+  private stopDraftAutosave: (() => void) | null = null;
   private lastDraftAutosaveSignature = '';
   private isDraftAutosavePending = false;
 
@@ -663,8 +662,6 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
     let completionEmitted = false;
     try {
       const savedUser = await this.usersService.saveUserProfile(payload, {
-        requestTimeoutMs: 8000,
-        minimumDurationMs: this.usersService.demoModeEnabled ? ProfileOnboardingPopupComponent.DEMO_SAVE_MIN_BUSY_MS : 0,
         returnFallbackOnFailure: false
       });
       if (!savedUser) {
@@ -934,37 +931,22 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
   }
 
   private async loadExperienceEntriesWithBusyWindow(userId: string): Promise<ExperienceEntry[]> {
-    const startedAtMs = Date.now();
-    try {
-      return await this.userExperiencesService.loadUserExperiences(userId);
-    } finally {
-      if (this.usersService.demoModeEnabled) {
-        await this.waitForMinimumDuration(startedAtMs, ProfileOnboardingPopupComponent.DEMO_EXPERIENCE_LOAD_MIN_BUSY_MS);
-      }
-    }
-  }
-
-  private async waitForMinimumDuration(startedAtMs: number, minimumDurationMs: number): Promise<void> {
-    const remainingMs = minimumDurationMs - (Date.now() - startedAtMs);
-    if (remainingMs <= 0) {
-      return;
-    }
-    await new Promise<void>(resolve => setTimeout(resolve, remainingMs));
+    return this.userExperiencesService.loadUserExperiences(userId);
   }
 
   private startDraftAutosaveLoop(): void {
     this.stopDraftAutosaveLoop();
-    this.draftAutosaveTimer = setInterval(() => {
+    this.stopDraftAutosave = this.routeIntervalScheduler.startInterval('/auth/me/onboarding-draft-autosave', () => {
       void this.runDraftAutosaveIfNeeded();
-    }, ProfileOnboardingPopupComponent.DRAFT_AUTOSAVE_INTERVAL_MS);
+    });
   }
 
   private stopDraftAutosaveLoop(): void {
-    if (!this.draftAutosaveTimer) {
+    if (!this.stopDraftAutosave) {
       return;
     }
-    clearInterval(this.draftAutosaveTimer);
-    this.draftAutosaveTimer = null;
+    this.stopDraftAutosave();
+    this.stopDraftAutosave = null;
   }
 
   private resetDraftAutosaveTracking(): void {

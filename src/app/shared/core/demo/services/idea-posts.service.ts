@@ -10,26 +10,18 @@ import { RouteDelayService } from '../../base/services/route-delay.service';
   providedIn: 'root'
 })
 export class DemoIdeaPostsService {
-  private static readonly ADMIN_IDEAS_DEMO_DELAY_MS = 1500;
   private static readonly MAX_IMAGE_URLS = 24;
   private readonly ideaPostsRepository = inject(DemoIdeaPostsRepository);
   private readonly routeDelay = inject(RouteDelayService);
 
   async init(): Promise<boolean> {
     await this.ideaPostsRepository.whenReady();
-    const changed = this.ideaPostsRepository.seedDefaults();
-    if (changed) {
-      await this.ideaPostsRepository.persistBestEffort();
-    }
-    return changed;
+    return this.ideaPostsRepository.seedDefaults();
   }
 
   async loadPublishedPosts(lang?: string | null): Promise<IdeaPost[]> {
     await this.ideaPostsRepository.whenReady();
-    const changed = this.ideaPostsRepository.seedDefaults();
-    if (changed) {
-      await this.ideaPostsRepository.persistBestEffort();
-    }
+    await this.ideaPostsRepository.seedDefaults();
     const language = this.requestContentLang(lang);
     const posts = this.sortedPosts(this.table()).filter(post => post.published && !post.trashed && post.lang === language);
     return posts.length > 0 ? posts : this.sortedPosts(this.table()).filter(post => post.published && !post.trashed && post.lang === 'en');
@@ -38,7 +30,7 @@ export class DemoIdeaPostsService {
   async loadAdminPosts(_adminUserId = '', lang = 'en'): Promise<IdeaPost[]> {
     await this.ideaPostsRepository.whenReady();
     this.ideaPostsRepository.assertSeeded();
-    await this.routeDelay.waitForRouteDelay('/admin/ideas', undefined, undefined, DemoIdeaPostsService.ADMIN_IDEAS_DEMO_DELAY_MS);
+    await this.routeDelay.waitForRouteDelay('/admin/ideas');
     const language = this.normalizeLang(lang);
     return this.sortedPosts(this.table()).filter(post => post.lang === language);
   }
@@ -78,18 +70,17 @@ export class DemoIdeaPostsService {
       updatedAtIso: nowIso,
       updatedByUserId: request.actorUserId.trim() || 'admin'
     };
-    this.ideaPostsRepository.updateTable(table => ({
-      ...table,
-      seeded: true,
-      byId: {
-        ...table.byId,
-        [id]: post
-      },
-      ids: [...new Set([...table.ids.filter(currentId => currentId !== id), id])]
-    }));
     await Promise.all([
-      this.ideaPostsRepository.persistBestEffort(),
-      this.routeDelay.waitForRouteDelay('/admin/ideas', undefined, undefined, DemoIdeaPostsService.ADMIN_IDEAS_DEMO_DELAY_MS)
+      this.ideaPostsRepository.updateTableAndPersist(table => ({
+        ...table,
+        seeded: true,
+        byId: {
+          ...table.byId,
+          [id]: post
+        },
+        ids: [...new Set([...table.ids.filter(currentId => currentId !== id), id])]
+      })),
+      this.routeDelay.waitForRouteDelay('/admin/ideas')
     ]);
     return this.clonePost(post);
   }
@@ -102,31 +93,30 @@ export class DemoIdeaPostsService {
     }
     const nowIso = new Date().toISOString();
     const actor = actorUserId.trim() || 'admin';
-    this.ideaPostsRepository.updateTable(table => {
-      const post = table.byId[normalizedPostId];
-      if (!post) {
-        return table;
-      }
-      return {
-        ...table,
-        byId: {
-          ...table.byId,
-          [normalizedPostId]: {
-            ...this.normalizePost(post),
-            featured: false,
-            published: false,
-            trashed: true,
-            trashedAtIso: nowIso,
-            trashedByUserId: actor,
-            updatedAtIso: nowIso,
-            updatedByUserId: actor
-          }
-        }
-      };
-    });
     await Promise.all([
-      this.ideaPostsRepository.persistBestEffort(),
-      this.routeDelay.waitForRouteDelay('/admin/ideas', undefined, undefined, DemoIdeaPostsService.ADMIN_IDEAS_DEMO_DELAY_MS)
+      this.ideaPostsRepository.updateTableAndPersist(table => {
+        const post = table.byId[normalizedPostId];
+        if (!post) {
+          return table;
+        }
+        return {
+          ...table,
+          byId: {
+            ...table.byId,
+            [normalizedPostId]: {
+              ...this.normalizePost(post),
+              featured: false,
+              published: false,
+              trashed: true,
+              trashedAtIso: nowIso,
+              trashedByUserId: actor,
+              updatedAtIso: nowIso,
+              updatedByUserId: actor
+            }
+          }
+        };
+      }),
+      this.routeDelay.waitForRouteDelay('/admin/ideas')
     ]);
     return this.sortedPosts(this.table());
   }
@@ -137,32 +127,31 @@ export class DemoIdeaPostsService {
     const nowIso = new Date().toISOString();
     const actor = actorUserId.trim() || 'admin';
     let restored: IdeaPost | null = null;
-    this.ideaPostsRepository.updateTable(table => {
-      const post = table.byId[normalizedPostId];
-      if (!normalizedPostId || !post) {
-        return table;
-      }
-      restored = {
-        ...this.normalizePost(post),
-        featured: false,
-        published: false,
-        trashed: false,
-        trashedAtIso: '',
-        trashedByUserId: '',
-        updatedAtIso: nowIso,
-        updatedByUserId: actor
-      };
-      return {
-        ...table,
-        byId: {
-          ...table.byId,
-          [normalizedPostId]: restored
-        }
-      };
-    });
     await Promise.all([
-      this.ideaPostsRepository.persistBestEffort(),
-      this.routeDelay.waitForRouteDelay('/admin/ideas', undefined, undefined, DemoIdeaPostsService.ADMIN_IDEAS_DEMO_DELAY_MS)
+      this.ideaPostsRepository.updateTableAndPersist(table => {
+        const post = table.byId[normalizedPostId];
+        if (!normalizedPostId || !post) {
+          return table;
+        }
+        restored = {
+          ...this.normalizePost(post),
+          featured: false,
+          published: false,
+          trashed: false,
+          trashedAtIso: '',
+          trashedByUserId: '',
+          updatedAtIso: nowIso,
+          updatedByUserId: actor
+        };
+        return {
+          ...table,
+          byId: {
+            ...table.byId,
+            [normalizedPostId]: restored
+          }
+        };
+      }),
+      this.routeDelay.waitForRouteDelay('/admin/ideas')
     ]);
     if (!restored) {
       throw new Error('Article could not be restored.');
