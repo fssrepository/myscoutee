@@ -261,6 +261,10 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
     return this.networkUnavailable ? this.networkUnavailableLabel : 'Start exploring';
   }
 
+  protected showHowItWorksCta(): boolean {
+    return !this.networkUnavailable && (this.articlesLoading || this.featuredIdeaCards().length > 0);
+  }
+
   protected get isFirstHowSlide(): boolean {
     return this.activeHowSlideIndex === 0;
   }
@@ -662,11 +666,11 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
   }
 
   protected scrollEntryTo(sectionId: string, event?: Event): void {
+    event?.preventDefault();
     const target = document.getElementById(sectionId);
     if (!target) {
       return;
     }
-    event?.preventDefault();
     target.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 

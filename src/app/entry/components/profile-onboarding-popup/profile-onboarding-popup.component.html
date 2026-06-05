@@ -10,8 +10,11 @@
       <div class="profile-onboarding-panel">
         <header class="profile-onboarding-header">
           <div>
-            <span class="profile-onboarding-kicker">{{ 'Profile setup' | i18n }}</span>
+            <span class="profile-onboarding-kicker">{{ title | i18n }}</span>
             <h2>{{ currentStep().title | i18n }}</h2>
+            @if (message) {
+              <p class="profile-onboarding-message">{{ message | i18n }}</p>
+            }
           </div>
           <div class="profile-onboarding-progress" [attr.aria-label]="'Profile setup progress' | i18n">
             <span>{{ currentStepIndex() + 1 }}/{{ steps.length }}</span>

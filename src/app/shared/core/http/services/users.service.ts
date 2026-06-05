@@ -549,7 +549,7 @@ export class HttpUsersService implements UserService {
       headline: '',
       about: '',
       images: session.profile.imageUrl?.trim() ? [session.profile.imageUrl.trim()] : [],
-      profileStatus: 'public',
+      profileStatus: 'onboarding',
       activities: {
         game: 0,
         chat: 0,

@@ -15,7 +15,7 @@ import { appLocationStorageKey } from '../storage-scope';
   providedIn: 'root'
 })
 export class AppLocationService {
-  private static readonly ACCESS_RESTRICTED_TITLE = 'Login Unavailable';
+  private static readonly ACCESS_RESTRICTED_TITLE = 'Please register';
   private static readonly ACCESS_RESTRICTED_MESSAGE = 'Login is currently unavailable from your country or region for security reasons. Please come back later.';
   private static readonly LOCATION_SYNC_DISTANCE_METERS = 5000;
 
@@ -105,7 +105,7 @@ export class AppLocationService {
       headline: '',
       about: '',
       images: imageUrl?.trim() ? [imageUrl.trim()] : [],
-      profileStatus: 'public',
+      profileStatus: 'onboarding',
       activities: {
         game: 0,
         chat: 0,
@@ -124,6 +124,10 @@ export class AppLocationService {
 
   private runLocationSyncFlow(userId: string, activeUser: UserDto): void {
     if (!activeUser?.id?.trim()) {
+      return;
+    }
+    if (activeUser.profileStatus === 'onboarding') {
+      this.stopCoordinateWatch();
       return;
     }
 

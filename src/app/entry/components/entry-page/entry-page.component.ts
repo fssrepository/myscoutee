@@ -26,6 +26,8 @@ import { ProfileOnboardingPopupComponent } from '../profile-onboarding-popup/pro
       [open]="onboardingOpen"
       [user]="onboardingUser"
       [mobile]="isMobileView"
+      [title]="onboardingTitle"
+      [message]="onboardingMessage"
       (completed)="onOnboardingCompleted($event)"
       (dismissed)="onOnboardingDismissed()"
     ></app-profile-onboarding-popup>
@@ -42,6 +44,8 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   protected isMobileView = typeof window !== 'undefined' ? window.innerWidth <= 760 : false;
   protected onboardingOpen = false;
   protected onboardingUser: UserDto | null = null;
+  protected onboardingTitle = 'Profile setup';
+  protected onboardingMessage = '';
   private pendingRedirectAfterOnboarding = '';
   private pendingDemoSessionUserId = '';
   private autoOnboardingRequested = false;
@@ -189,6 +193,17 @@ export class EntryPageComponent implements OnInit, OnDestroy {
     if (gateToken !== this.postSessionGateToken) {
       return;
     }
+    if (!user && session.kind === 'firebase') {
+      this.openOnboardingGate(
+        this.buildFirebaseRegistrationUser(session.profile),
+        redirectUrl,
+        {
+          title: 'Please register',
+          message: 'Complete your profile to finish registration.'
+        }
+      );
+      return;
+    }
     if (!user) {
       this.closeOnboardingGate();
       await this.router.navigateByUrl(redirectUrl);
@@ -209,7 +224,16 @@ export class EntryPageComponent implements OnInit, OnDestroy {
       await this.router.navigateByUrl(redirectUrl);
       return;
     }
-    this.openOnboardingGate(user, redirectUrl);
+    this.openOnboardingGate(
+      user,
+      redirectUrl,
+      user.profileStatus === 'onboarding'
+        ? {
+            title: 'Please register',
+            message: 'Complete your profile to finish registration.'
+          }
+        : undefined
+    );
   }
 
   private isAdminRedirect(redirectUrl: string): boolean {
@@ -221,18 +245,103 @@ export class EntryPageComponent implements OnInit, OnDestroy {
     this.ngZone.run(() => {
       this.onboardingOpen = false;
       this.onboardingUser = null;
+      this.onboardingTitle = 'Profile setup';
+      this.onboardingMessage = '';
       this.pendingRedirectAfterOnboarding = '';
       this.pendingDemoSessionUserId = '';
       this.changeDetectorRef.detectChanges();
     });
   }
 
-  private openOnboardingGate(user: UserDto, redirectUrl: string): void {
+  private openOnboardingGate(
+    user: UserDto,
+    redirectUrl: string,
+    copy: { title: string; message?: string } = { title: 'Profile setup' }
+  ): void {
     this.ngZone.run(() => {
       this.pendingRedirectAfterOnboarding = redirectUrl;
       this.onboardingUser = user;
+      this.onboardingTitle = copy.title;
+      this.onboardingMessage = copy.message ?? '';
       this.onboardingOpen = true;
       this.changeDetectorRef.detectChanges();
     });
+  }
+
+  private buildFirebaseRegistrationUser(profile: Extract<AppSession, { kind: 'firebase' }>['profile']): UserDto {
+    const name = profile.name.trim() || profile.email.trim() || 'Firebase User';
+    const imageUrl = profile.imageUrl?.trim();
+    return {
+      id: profile.id.trim(),
+      name,
+      age: 0,
+      birthday: '',
+      city: '',
+      height: '',
+      physique: '',
+      languages: [],
+      horoscope: '',
+      initials: profile.initials.trim() || this.initialsFromText(name),
+      gender: 'man',
+      statusText: '',
+      hostTier: '',
+      traitLabel: '',
+      completion: 0,
+      headline: '',
+      about: '',
+      images: imageUrl ? [imageUrl] : [],
+      profileStatus: 'onboarding',
+      activities: this.emptyActivities()
+    };
+  }
+
+  private emptyActivities(): UserDto['activities'] {
+    return {
+      game: 0,
+      chat: 0,
+      invitations: 0,
+      events: 0,
+      hosting: 0,
+      cars: 0,
+      accommodation: 0,
+      supplies: 0,
+      tickets: 0,
+      contacts: 0,
+      feedback: 0,
+      event: {
+        all: 0,
+        active: 0,
+        pending: 0,
+        invitations: 0,
+        hosting: 0,
+        drafts: 0,
+        trash: 0
+      },
+      asset: {
+        cars: 0,
+        accommodation: 0,
+        supplies: 0,
+        tickets: 0
+      },
+      eventFeedback: {
+        ownEvents: 0,
+        pending: 0,
+        feedbacked: 0,
+        removed: 0
+      },
+      adminJobs: 0,
+      adminMetrics: 0
+    };
+  }
+
+  private initialsFromText(value: string): string {
+    const initials = value
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map(part => part.charAt(0).toUpperCase())
+      .join('');
+    return initials || 'U';
   }
 }

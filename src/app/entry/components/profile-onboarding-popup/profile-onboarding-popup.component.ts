@@ -73,6 +73,8 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
   @Input() open = false;
   @Input() user: UserDto | null = null;
   @Input() mobile = false;
+  @Input() title = 'Profile setup';
+  @Input() message = '';
 
   @Output() readonly completed = new EventEmitter<UserDto>();
   @Output() readonly dismissed = new EventEmitter<void>();

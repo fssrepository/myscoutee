@@ -6,6 +6,15 @@ import { appScopedIndexedDbName, removeScopedStorageEntries } from './app/shared
 
 type MutableConsole = Console & Record<string, (...args: unknown[]) => void>;
 
+declare global {
+  interface Window {
+    __myscouteeWarmup?: {
+      showNoNetwork?: () => void;
+      showFailure?: (title?: string, message?: string) => void;
+    };
+  }
+}
+
 const BOOTSTRAPPED_CLASS = 'app-bootstrapped';
 const BOOTSTRAP_RESUME_RELOAD_KEY = 'myscoutee.bootstrap.resume-reload.v1';
 const BOOTSTRAP_RESUME_GRACE_MS = 12_000;
@@ -72,6 +81,10 @@ function markBootstrapFailed(err: unknown): void {
   bootstrapSettled = true;
   unbindBootstrapResumeRecovery();
   console.error(err);
+  window.__myscouteeWarmup?.showFailure?.(
+    'Unable to start',
+    'The app could not finish starting. Please check the network and retry.'
+  );
 }
 
 async function resetDemoStorageBeforeBootstrap(): Promise<void> {

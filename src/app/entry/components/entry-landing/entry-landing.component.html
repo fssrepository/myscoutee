@@ -63,10 +63,12 @@
               <mat-icon>{{ entryPrimaryCtaIcon }}</mat-icon>
               <span>{{ entryPrimaryCtaLabel }}</span>
             </button>
-            <a class="entry-cta entry-cta-ghost" href="#articles" (click)="scrollEntryTo('articles', $event)">
-              <mat-icon>timeline</mat-icon>
-              <span>{{ 'see.how.it.works' | i18n: 'See how it works' }}</span>
-            </a>
+            @if (showHowItWorksCta()) {
+              <a class="entry-cta entry-cta-ghost" href="#articles" (click)="scrollEntryTo('articles', $event)">
+                <mat-icon>timeline</mat-icon>
+                <span>{{ 'see.how.it.works' | i18n: 'See how it works' }}</span>
+              </a>
+            }
             <button
               type="button"
               class="entry-cta entry-cta-bug"

@@ -45,10 +45,8 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
   private static readonly ENTRY_CONSENT_KEY = APP_STORAGE_KEYS.entryConsent;
   private static readonly ENTRY_CONSENT_AUDIT_KEY = APP_STORAGE_KEYS.entryConsentAudit;
   private static readonly ENTRY_CONSENT_AUDIT_MAX = 30;
-  private static readonly LOCATION_ELIGIBILITY_CACHE_KEY = APP_STORAGE_KEYS.entryLoginLocationEligibility;
-  private static readonly LOCATION_ELIGIBILITY_CACHE_TTL_MS = 10 * 60 * 1000;
   private static readonly LOCATION_REQUEST_TIMEOUT_MS = 4500;
-  private static readonly LOCATION_REQUEST_MAXIMUM_AGE_MS = 15 * 60 * 1000;
+  private static readonly LOCATION_REQUEST_MAXIMUM_AGE_MS = 0;
 
   private readonly injector = inject(Injector);
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
@@ -100,10 +98,16 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
   private locationEligibilityResolvedFromCoordinates = false;
   private grantedLocationEligibilityPromise: Promise<void> | null = null;
   private grantedLocationEligibilityRequestToken = 0;
+  private browserLocationAutoRequestAttempted = false;
   private geolocationPermissionStatus: PermissionStatus | null = null;
+  private geolocationPermissionState: PermissionState | null = null;
   private readonly geolocationPermissionChangeHandler = (): void => {
     this.ngZone.run(() => {
-      this.resolveGrantedLocationAccessIfNeeded();
+      this.geolocationPermissionState = this.geolocationPermissionStatus?.state ?? null;
+      if (this.geolocationPermissionState === 'granted') {
+        this.browserLocationAutoRequestAttempted = false;
+      }
+      this.syncEntryAuthGateState();
     });
   };
 
@@ -182,10 +186,6 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
       return;
     }
     if (this.loginEligibilityBusy) {
-      return;
-    }
-    const allowed = await this.ensureHttpLoginAccessAllowed();
-    if (!allowed) {
       return;
     }
     if (this.firebaseAuthProfile) {
@@ -313,7 +313,6 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
     this.demoSelectorSubmitting = false;
     this.demoSelectorSelectedUserId = '';
     this.showFirebaseAuthPopup = false;
-    this.restoreCachedLocationEligibility();
     void this.loadEntryContent();
   }
 
@@ -348,9 +347,6 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
     this.loginEligibilityBusy = true;
     try {
       const gateState = this.landingLoginAvailability;
-      if (gateState && gateState.securityGateEnabled !== true) {
-        return true;
-      }
       if (this.locationEligibilityResolvedFromCoordinates && gateState?.eligible === true) {
         return true;
       }
@@ -822,6 +818,7 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
       this.locationEligibilityResolvedFromCoordinates = true;
     } else if (source === 'reset') {
       this.locationEligibilityResolvedFromCoordinates = false;
+      this.browserLocationAutoRequestAttempted = false;
     }
     this.landingLoginAvailability = availability
       ? {
@@ -832,9 +829,6 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
           locationRequired: false
       }
       : null;
-    if (source === 'coordinates' && this.landingLoginAvailability?.eligible === true) {
-      this.saveCachedLocationEligibility(this.landingLoginAvailability);
-    }
     this.syncEntryAuthGateState();
   }
 
@@ -850,7 +844,7 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
     this.entryAuthUnavailableLabel = 'Unavailable in your country';
     this.entryAuthLocationRequired = !this.entryNetworkUnavailable && loginEnabled && this.isLoginLocationRequiredByLandingBundle();
     this.deferEntryAuthLocationRequiredLabel(this.grantedLocationEligibilityPromise ? 'Checking location' : 'Allow location');
-    this.resolveGrantedLocationAccessIfNeeded();
+    this.resolveBrowserLocationAccessIfNeeded();
     this.changeDetectorRef.markForCheck();
   }
 
@@ -863,8 +857,7 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
 
   private isLoginLocationRequiredByLandingBundle(): boolean {
     return !this.entryNetworkUnavailable
-      && !this.locationEligibilityResolvedFromCoordinates
-      && this.landingLoginAvailability?.securityGateEnabled !== false;
+      && !this.locationEligibilityResolvedFromCoordinates;
   }
 
   private openBundledLoginUnavailableInfo(): void {
@@ -879,17 +872,18 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
       || 'Login is currently unavailable from your country or region for security reasons. Please come back later.';
   }
 
-  private resolveGrantedLocationAccessIfNeeded(): void {
-    if (!this.entryAuthLocationRequired || this.grantedLocationEligibilityPromise) {
+  private resolveBrowserLocationAccessIfNeeded(): void {
+    if (!this.entryAuthLocationRequired || this.grantedLocationEligibilityPromise || this.browserLocationAutoRequestAttempted) {
       return;
     }
 
+    this.browserLocationAutoRequestAttempted = true;
     const requestToken = ++this.grantedLocationEligibilityRequestToken;
-    this.grantedLocationEligibilityPromise = this.resolveGrantedLocationAccess(requestToken)
+    this.grantedLocationEligibilityPromise = this.resolveBrowserLocationAccess(requestToken)
       .finally(() => {
         if (requestToken === this.grantedLocationEligibilityRequestToken) {
           this.grantedLocationEligibilityPromise = null;
-          this.deferEntryAuthLocationRequiredLabel('Allow location');
+          this.syncEntryAuthGateState();
         }
       });
     this.deferEntryAuthLocationRequiredLabel('Checking location');
@@ -908,10 +902,10 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
     }, 0);
   }
 
-  private async resolveGrantedLocationAccess(requestToken: number): Promise<void> {
+  private async resolveBrowserLocationAccess(requestToken: number): Promise<void> {
     try {
-      const permissionState = await this.queryGeolocationPermissionState();
-      if (requestToken !== this.grantedLocationEligibilityRequestToken || permissionState !== 'granted') {
+      await this.queryGeolocationPermissionState();
+      if (requestToken !== this.grantedLocationEligibilityRequestToken) {
         return;
       }
 
@@ -950,6 +944,7 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
     try {
       const status = await navigator.permissions.query({ name: 'geolocation' as PermissionName });
       this.bindGeolocationPermissionStatus(status);
+      this.geolocationPermissionState = status.state;
       return status.state;
     } catch {
       return null;
@@ -963,6 +958,7 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
 
     this.unbindGeolocationPermissionStatus();
     this.geolocationPermissionStatus = status;
+    this.geolocationPermissionState = status.state;
     status.addEventListener('change', this.geolocationPermissionChangeHandler);
   }
 
@@ -973,52 +969,7 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
 
     this.geolocationPermissionStatus.removeEventListener('change', this.geolocationPermissionChangeHandler);
     this.geolocationPermissionStatus = null;
-  }
-
-  private restoreCachedLocationEligibility(): void {
-    if (typeof sessionStorage === 'undefined') {
-      return;
-    }
-    try {
-      const raw = sessionStorage.getItem(EntryShellComponent.LOCATION_ELIGIBILITY_CACHE_KEY);
-      if (!raw) {
-        return;
-      }
-      const parsed = JSON.parse(raw) as {
-        savedAtMs?: number;
-        availability?: Partial<UserLocationEligibilityResponseDto> | null;
-      };
-      const savedAtMs = Math.trunc(Number(parsed.savedAtMs) || 0);
-      if (!savedAtMs || Date.now() - savedAtMs > EntryShellComponent.LOCATION_ELIGIBILITY_CACHE_TTL_MS) {
-        sessionStorage.removeItem(EntryShellComponent.LOCATION_ELIGIBILITY_CACHE_KEY);
-        return;
-      }
-      if (parsed.availability?.eligible === true) {
-        this.syncLandingLoginAvailability({
-          eligible: true,
-          partitionKey: parsed.availability.partitionKey ?? null,
-          message: parsed.availability.message ?? null,
-          securityGateEnabled: parsed.availability.securityGateEnabled === true,
-          locationRequired: false
-        }, 'coordinates');
-      }
-    } catch {
-      sessionStorage.removeItem(EntryShellComponent.LOCATION_ELIGIBILITY_CACHE_KEY);
-    }
-  }
-
-  private saveCachedLocationEligibility(availability: UserLocationEligibilityResponseDto): void {
-    if (typeof sessionStorage === 'undefined') {
-      return;
-    }
-    try {
-      sessionStorage.setItem(EntryShellComponent.LOCATION_ELIGIBILITY_CACHE_KEY, JSON.stringify({
-        savedAtMs: Date.now(),
-        availability
-      }));
-    } catch {
-      // Cache is only a speed-up for the landing gate.
-    }
+    this.geolocationPermissionState = null;
   }
 
 }

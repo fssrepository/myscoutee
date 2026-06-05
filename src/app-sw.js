@@ -4,7 +4,7 @@ const APP_CACHE = `${CACHE_PREFIX}-app-${CACHE_VERSION}`;
 const API_CACHE = `${CACHE_PREFIX}-api-${CACHE_VERSION}`;
 const MEDIA_CACHE = `${CACHE_PREFIX}-media-${CACHE_VERSION}`;
 const ACTIVE_CACHES = [APP_CACHE, API_CACHE, MEDIA_CACHE];
-const PRECACHE_URLS = [
+const PRECACHE_CORE_URLS = [
   './',
   './index.html',
   './manifest.webmanifest',
@@ -19,6 +19,8 @@ const PRECACHE_URLS = [
   './assets/i18n/en.json',
   './assets/i18n/hu.json'
 ];
+const PRECACHE_BUILD_URLS = [];
+const PRECACHE_URLS = [...PRECACHE_CORE_URLS, ...PRECACHE_BUILD_URLS];
 
 self.addEventListener('install', event => {
   self.skipWaiting();
@@ -67,6 +69,10 @@ self.addEventListener('fetch', event => {
   }
 
   if (url.origin === self.location.origin) {
+    if (isLandingContentRequest(url)) {
+      event.respondWith(staleWhileRevalidate(request, API_CACHE, matchAnyLandingContent, event));
+      return;
+    }
     if (isApiCacheable(url)) {
       event.respondWith(networkFirst(request, API_CACHE));
       return;
@@ -111,6 +117,10 @@ function isApiCacheable(url) {
   return url.pathname.startsWith('/api/auth/me') || url.pathname.startsWith('/api/assets/tickets');
 }
 
+function isLandingContentRequest(url) {
+  return url.pathname === '/api/landing/content';
+}
+
 function isStaticAsset(url, request) {
   if (url.pathname.endsWith('/app-sw.js')) {
     return false;
@@ -152,8 +162,45 @@ async function networkFirst(request, cacheName) {
         return fallback;
       }
     }
-    throw new Error('Network unavailable and no cached response.');
+    return unavailableResponse(request);
   }
+}
+
+async function staleWhileRevalidate(request, cacheName, fallbackMatcher, event) {
+  const cache = await caches.open(cacheName);
+  const cached = await cache.match(request);
+  const refresh = fetchAndCache(request, cache).catch(() => null);
+  event?.waitUntil(refresh.then(() => undefined));
+  if (cached) {
+    return cached;
+  }
+  const fallback = fallbackMatcher ? await fallbackMatcher(cache, request) : null;
+  if (fallback) {
+    return fallback;
+  }
+  return await refresh || unavailableResponse(request);
+}
+
+async function fetchAndCache(request, cache) {
+  const response = await fetch(request, { cache: 'no-store' });
+  if (response && (response.ok || response.type === 'opaque')) {
+    cache.put(request, response.clone());
+  }
+  return response;
+}
+
+async function matchAnyLandingContent(cache, request) {
+  const exact = await cache.match(request);
+  if (exact) {
+    return exact;
+  }
+  const keys = await cache.keys();
+  for (const key of keys) {
+    if (isLandingContentRequest(new URL(key.url))) {
+      return cache.match(key);
+    }
+  }
+  return null;
 }
 
 async function cacheFirst(request, cacheName) {
@@ -162,11 +209,35 @@ async function cacheFirst(request, cacheName) {
   if (cached) {
     return cached;
   }
-  const response = await fetch(request);
-  if (response && (response.ok || response.type === 'opaque')) {
-    cache.put(request, response.clone());
+  try {
+    const response = await fetch(request);
+    if (response && (response.ok || response.type === 'opaque')) {
+      cache.put(request, response.clone());
+    }
+    return response;
+  } catch {
+    return unavailableResponse(request);
   }
-  return response;
+}
+
+function unavailableResponse(request) {
+  if (request.mode === 'navigate') {
+    return new Response('<!doctype html><title>MyScoutee</title><body>No network</body>', {
+      status: 503,
+      statusText: 'Service Unavailable',
+      headers: {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Cache-Control': 'no-store'
+      }
+    });
+  }
+  return new Response('', {
+    status: 503,
+    statusText: 'Service Unavailable',
+    headers: {
+      'Cache-Control': 'no-store'
+    }
+  });
 }
 
 function parsePushPayload(event) {
