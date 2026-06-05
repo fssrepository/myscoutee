@@ -27,6 +27,7 @@ export class AssetFormPopupComponent implements OnChanges, OnInit, OnDestroy {
   @Input() title = '';
   @Input({ required: true }) assetForm!: Omit<AppTypes.AssetCard, 'id' | 'requests'>;
   @Input() canSave = false;
+  @Input() isLoading = false;
   @Input() isSavePending = false;
   @Input() sourceRefreshEnabled = false;
   @Input() assetFormVisibility: AppTypes.EventVisibility = 'Invitation only';
@@ -89,7 +90,7 @@ export class AssetFormPopupComponent implements OnChanges, OnInit, OnDestroy {
   }
 
   protected submitForm(): void {
-    if (!this.canSave || this.isSavePending) {
+    if (this.isLoading || !this.canSave || this.isSavePending) {
       return;
     }
     void this.save();
@@ -97,7 +98,7 @@ export class AssetFormPopupComponent implements OnChanges, OnInit, OnDestroy {
 
   protected toggleVisibilityPicker(event?: Event): void {
     event?.stopPropagation();
-    if (this.isSavePending) {
+    if (this.isLoading || this.isSavePending) {
       return;
     }
     this.showMobileAssetTypePicker = false;
@@ -107,7 +108,7 @@ export class AssetFormPopupComponent implements OnChanges, OnInit, OnDestroy {
 
   protected selectVisibility(option: AppTypes.EventVisibility, event?: Event): void {
     event?.stopPropagation();
-    if (this.isSavePending) {
+    if (this.isLoading || this.isSavePending) {
       return;
     }
     this.setAssetFormVisibility(option);
@@ -139,7 +140,7 @@ export class AssetFormPopupComponent implements OnChanges, OnInit, OnDestroy {
   protected openPoliciesPopup(event?: Event): void {
     event?.preventDefault();
     event?.stopPropagation();
-    if (this.isSavePending) {
+    if (this.isLoading || this.isSavePending) {
       return;
     }
     this.showPoliciesPopup = true;
@@ -158,7 +159,7 @@ export class AssetFormPopupComponent implements OnChanges, OnInit, OnDestroy {
   protected openPolicyEditor(index?: number, event?: Event): void {
     event?.preventDefault();
     event?.stopPropagation();
-    if (this.isSavePending) {
+    if (this.isLoading || this.isSavePending) {
       return;
     }
     const source = typeof index === 'number'
@@ -183,7 +184,7 @@ export class AssetFormPopupComponent implements OnChanges, OnInit, OnDestroy {
   }
 
   protected savePolicyDraft(): void {
-    if (!this.canSavePolicyDraft() || this.isSavePending) {
+    if (this.isLoading || !this.canSavePolicyDraft() || this.isSavePending) {
       return;
     }
     const nextItem: AppTypes.EventPolicyItem = {
@@ -206,7 +207,7 @@ export class AssetFormPopupComponent implements OnChanges, OnInit, OnDestroy {
   protected removePolicyDraft(index: number, event?: Event): void {
     event?.preventDefault();
     event?.stopPropagation();
-    if (this.isSavePending || index < 0 || index >= this.workingPolicies.length) {
+    if (this.isLoading || this.isSavePending || index < 0 || index >= this.workingPolicies.length) {
       return;
     }
     this.workingPolicies = this.workingPolicies.filter((_, itemIndex) => itemIndex !== index);
@@ -252,7 +253,7 @@ export class AssetFormPopupComponent implements OnChanges, OnInit, OnDestroy {
   }
 
   protected openMobileAssetTypeSelector(event: Event): void {
-    if (!this.isMobileAssetTypeSheetViewport() || this.isSavePending) {
+    if (!this.isMobileAssetTypeSheetViewport() || this.isLoading || this.isSavePending) {
       return;
     }
     event.stopPropagation();
@@ -262,7 +263,7 @@ export class AssetFormPopupComponent implements OnChanges, OnInit, OnDestroy {
   }
 
   protected selectMobileAssetType(type: AppTypes.AssetType, event?: Event): void {
-    if (this.isSavePending) {
+    if (this.isLoading || this.isSavePending) {
       return;
     }
     event?.stopPropagation();
@@ -271,7 +272,7 @@ export class AssetFormPopupComponent implements OnChanges, OnInit, OnDestroy {
   }
 
   protected openMobileAssetCategorySelector(event: Event): void {
-    if (!this.isMobileAssetTypeSheetViewport() || this.isSavePending) {
+    if (!this.isMobileAssetTypeSheetViewport() || this.isLoading || this.isSavePending) {
       return;
     }
     event.stopPropagation();
@@ -281,7 +282,7 @@ export class AssetFormPopupComponent implements OnChanges, OnInit, OnDestroy {
   }
 
   protected selectMobileAssetCategory(category: AppTypes.AssetCategory, event?: Event): void {
-    if (this.isSavePending) {
+    if (this.isLoading || this.isSavePending) {
       return;
     }
     event?.stopPropagation();

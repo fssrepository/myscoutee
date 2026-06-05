@@ -23,12 +23,25 @@ export class AssetsService extends BaseRouteModeService {
     return this.assetsService.peekOwnedAssetsByUser(userId);
   }
 
+  peekOwnedAssetById(userId: string, assetId: string): AppTypes.AssetCard | null {
+    return this.assetsService.peekOwnedAssetById(userId, assetId);
+  }
+
   async queryOwnedAssetsByUser(userId: string): Promise<AppTypes.AssetCard[]> {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return [];
     }
     return this.assetsService.queryOwnedAssetsByUser(normalizedUserId);
+  }
+
+  async loadFullOwnedAssetById(userId: string, assetId: string): Promise<AppTypes.AssetCard | null> {
+    const normalizedUserId = userId.trim();
+    const normalizedAssetId = assetId.trim();
+    if (!normalizedUserId || !normalizedAssetId) {
+      return null;
+    }
+    return this.assetsService.loadFullOwnedAssetById(normalizedUserId, normalizedAssetId);
   }
 
   async queryVisibleAssets(query: AppTypes.AssetExploreQuery): Promise<AppTypes.AssetCard[]> {

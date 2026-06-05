@@ -36,6 +36,7 @@ export class OwnedAssetsPopupFacadeService {
   assetFilter: AppTypes.AssetFilterType = 'Car';
   showAssetForm = false;
   editingAssetId: string | null = null;
+  isAssetFormLoading = false;
   isAssetFormSavePending = false;
   pendingAssetDeleteCardId: string | null = null;
   isAssetDeletePending = false;
@@ -54,6 +55,7 @@ export class OwnedAssetsPopupFacadeService {
   private pendingAssetImageFile: File | null = null;
   private pendingAssetSourceImageUrl = '';
   private assetMutationVersion = 0;
+  private assetFormLoadGeneration = 0;
   private trackedAssetRefreshToken = 0;
   private trackedAssetRefreshOwnerUserId = '';
   private trackedAssetRefreshPromise: Promise<void> | null = null;
@@ -335,7 +337,7 @@ export class OwnedAssetsPopupFacadeService {
   }
 
   setAssetFormVisibility(option: AppTypes.EventVisibility): void {
-    if (this.isAssetFormSavePending) {
+    if (this.isAssetFormLoading || this.isAssetFormSavePending) {
       return;
     }
     this.assetFormVisibility = option;
@@ -395,38 +397,16 @@ export class OwnedAssetsPopupFacadeService {
 
   openAssetForm(card?: AppTypes.AssetCard): void {
     this.itemActionMenu = null;
+    if (card) {
+      void this.openAssetFormForEdit(card);
+      return;
+    }
+    this.assetFormLoadGeneration += 1;
     this.showAssetForm = true;
+    this.isAssetFormLoading = false;
     this.isAssetFormSavePending = false;
     this.pendingAssetImageFile = null;
     this.pendingAssetSourceImageUrl = '';
-    if (card) {
-      const imageUrl = AssetCardBuilder.normalizeAssetImageLink(card.type, card.imageUrl);
-      const sourceLink = AssetCardBuilder.normalizeAssetSourceLink(card.sourceLink, imageUrl);
-      this.editingAssetId = card.id;
-      this.assetFormVisibility = card.visibility === 'Friends only'
-        ? 'Friends only'
-        : card.visibility === 'Invitation only'
-          ? 'Invitation only'
-          : 'Public';
-      this.assetForm = {
-        type: card.type,
-        title: card.title,
-        subtitle: card.subtitle,
-        category: AssetDefaultsBuilder.normalizeCategory(card.type, card.category),
-        city: card.city,
-        capacityTotal: card.capacityTotal,
-        quantity: card.quantity,
-        details: card.details,
-        imageUrl,
-        sourceLink,
-        routes: AssetCardBuilder.normalizeAssetRoutes(card.type, card.routes),
-        topics: [...(card.topics ?? [])],
-        policies: (card.policies ?? []).map(item => ({ ...item })),
-        pricing: PricingBuilder.clonePricingConfig(card.pricing ?? PricingBuilder.createDefaultPricingConfig('asset'))
-      };
-      this.touchUiState();
-      return;
-    }
     this.editingAssetId = null;
     const type = this.activeAssetType();
     this.assetFormVisibility = 'Public';
@@ -434,9 +414,49 @@ export class OwnedAssetsPopupFacadeService {
     this.touchUiState();
   }
 
+  private async openAssetFormForEdit(card: AppTypes.AssetCard): Promise<void> {
+    const generation = ++this.assetFormLoadGeneration;
+    const ownerUserId = this.resolveOwnerUserId();
+    this.showAssetForm = true;
+    this.isAssetFormLoading = Boolean(ownerUserId);
+    this.isAssetFormSavePending = false;
+    this.pendingAssetImageFile = null;
+    this.pendingAssetSourceImageUrl = '';
+    this.applyAssetFormFromCard(card);
+    this.touchUiState();
+
+    if (!ownerUserId) {
+      this.isAssetFormLoading = false;
+      this.touchUiState();
+      return;
+    }
+
+    try {
+      const loadedCard = await this.assetsService.loadFullOwnedAssetById(ownerUserId, card.id);
+      if (!this.isCurrentAssetFormLoad(generation, card.id)) {
+        return;
+      }
+      if (loadedCard) {
+        this.applyAssetCards(this.assetCardsRef.map(item => (
+          item.id === loadedCard.id ? loadedCard : item
+        )), { persist: false, reloadList: false });
+        this.applyAssetFormFromCard(loadedCard);
+      }
+      this.isAssetFormLoading = false;
+      this.touchUiState();
+    } catch {
+      if (this.isCurrentAssetFormLoad(generation, card.id)) {
+        this.isAssetFormLoading = false;
+        this.touchUiState();
+      }
+    }
+  }
+
   closeAssetForm(): void {
+    this.assetFormLoadGeneration += 1;
     this.showAssetForm = false;
     this.editingAssetId = null;
+    this.isAssetFormLoading = false;
     this.isAssetFormSavePending = false;
     this.pendingAssetImageFile = null;
     this.pendingAssetSourceImageUrl = '';
@@ -446,7 +466,43 @@ export class OwnedAssetsPopupFacadeService {
     this.touchUiState();
   }
 
+  private applyAssetFormFromCard(card: AppTypes.AssetCard): void {
+    const imageUrl = AssetCardBuilder.normalizeAssetImageLink(card.type, card.imageUrl);
+    const sourceLink = AssetCardBuilder.normalizeAssetSourceLink(card.sourceLink, imageUrl);
+    this.editingAssetId = card.id;
+    this.assetFormVisibility = card.visibility === 'Friends only'
+      ? 'Friends only'
+      : card.visibility === 'Invitation only'
+        ? 'Invitation only'
+        : 'Public';
+    this.assetForm = {
+      type: card.type,
+      title: card.title,
+      subtitle: card.subtitle,
+      category: AssetDefaultsBuilder.normalizeCategory(card.type, card.category),
+      city: card.city,
+      capacityTotal: card.capacityTotal,
+      quantity: card.quantity,
+      details: card.details,
+      imageUrl,
+      sourceLink,
+      routes: AssetCardBuilder.normalizeAssetRoutes(card.type, card.routes),
+      topics: [...(card.topics ?? [])],
+      policies: (card.policies ?? []).map(item => ({ ...item })),
+      pricing: PricingBuilder.clonePricingConfig(card.pricing ?? PricingBuilder.createDefaultPricingConfig('asset'))
+    };
+  }
+
+  private isCurrentAssetFormLoad(generation: number, assetId: string): boolean {
+    return this.showAssetForm
+      && this.assetFormLoadGeneration === generation
+      && this.editingAssetId === assetId;
+  }
+
   canSubmitAssetForm(): boolean {
+    if (this.isAssetFormLoading) {
+      return false;
+    }
     const title = this.assetForm.title.trim();
     const capacityTotal = Math.max(0, Math.trunc(Number(this.assetForm.capacityTotal) || 0));
     const quantity = Math.max(0, Math.trunc(Number(this.assetForm.quantity) || 0));
@@ -476,6 +532,9 @@ export class OwnedAssetsPopupFacadeService {
   }
 
   async refreshAssetFromSourceLink(): Promise<void> {
+    if (this.isAssetFormLoading) {
+      return;
+    }
     const sourceUrl = this.normalizedAssetSourcePreviewUrl(true);
     if (!sourceUrl) {
       return;
@@ -508,10 +567,16 @@ export class OwnedAssetsPopupFacadeService {
   }
 
   canRefreshAssetFromSourceLink(): boolean {
+    if (this.isAssetFormLoading) {
+      return false;
+    }
     return Boolean(this.normalizedAssetSourcePreviewUrl(false));
   }
 
   applyAssetImageFile(file: File): void {
+    if (this.isAssetFormLoading) {
+      return;
+    }
     this.revokeObjectUrl(this.assetForm.imageUrl);
     this.pendingAssetImageFile = environment.activitiesDataSource === 'http' ? file : null;
     this.pendingAssetSourceImageUrl = '';
@@ -519,7 +584,7 @@ export class OwnedAssetsPopupFacadeService {
   }
 
   async saveAssetCard(): Promise<void> {
-    if (this.isAssetFormSavePending || !this.canSubmitAssetForm()) {
+    if (this.isAssetFormLoading || this.isAssetFormSavePending || !this.canSubmitAssetForm()) {
       return;
     }
     this.isAssetFormSavePending = true;

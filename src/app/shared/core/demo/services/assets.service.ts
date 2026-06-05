@@ -16,9 +16,18 @@ export class DemoAssetsService extends DemoRouteDelayService {
     return this.assetsRepository.peekOwnedAssetsByUser(userId);
   }
 
+  peekOwnedAssetById(userId: string, assetId: string): AppTypes.AssetCard | null {
+    return this.assetsRepository.peekOwnedAssetById(userId, assetId);
+  }
+
   async queryOwnedAssetsByUser(userId: string): Promise<AppTypes.AssetCard[]> {
     await this.waitForRouteDelay(DemoAssetsService.ASSETS_ROUTE);
     return this.assetsRepository.queryOwnedAssetsByUser(userId);
+  }
+
+  async loadFullOwnedAssetById(userId: string, assetId: string): Promise<AppTypes.AssetCard | null> {
+    await this.waitForRouteDelay(DemoAssetsService.ASSETS_ROUTE);
+    return this.assetsRepository.loadFullOwnedAssetById(userId, assetId);
   }
 
   async queryVisibleAssets(query: AppTypes.AssetExploreQuery): Promise<AppTypes.AssetCard[]> {

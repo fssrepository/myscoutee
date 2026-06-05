@@ -10,7 +10,7 @@
               type="button"
               class="popup-view-fab event-visibility-trigger"
               [ngClass]="eventVisibilityClass(assetFormVisibility)"
-              [disabled]="isSavePending"
+              [disabled]="isSavePending || isLoading"
               (click)="toggleVisibilityPicker($event)"
               aria-label="Open asset visibility selector"
               >
@@ -40,8 +40,8 @@
             <button
               type="button"
               class="popup-header-add-btn subevent-leaderboard-save-btn asset-form-save-btn"
-              [class.form-save-invalid]="!canSave && !isSavePending"
-              [disabled]="!canSave || isSavePending"
+              [class.form-save-invalid]="!canSave && !isSavePending && !isLoading"
+              [disabled]="!canSave || isSavePending || isLoading"
               (click)="submitForm()"
               aria-label="Save asset"
               >
@@ -53,6 +53,14 @@
           </button>
         </div>
       </div>
+      @if (isLoading) {
+        <div class="popup-loading-overlay" aria-busy="true">
+          <app-progress-indicator
+            kind="load-ring"
+            state="loading"
+          ></app-progress-indicator>
+        </div>
+      } @else {
       <section class="experience-form-panel" [ngClass]="eventVisibilityClass(assetFormVisibility)" [class.is-saving]="isSavePending">
         <div class="experience-form-grid">
           <label class="experience-description-field">
@@ -290,6 +298,7 @@
           }
         </div>
       </section>
+      }
 
       @if (showPoliciesPopup) {
         <div class="event-slots-popup-backdrop" (click)="closePoliciesPopup()"></div>
