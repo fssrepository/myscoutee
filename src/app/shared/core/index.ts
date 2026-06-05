@@ -33,13 +33,27 @@ export { ExplanationGuideService } from './base/services/explanation-guide.servi
 export { IdeaPostsService } from './base/services/idea-posts.service';
 export { LandingContentService } from './base/services/landing-content.service';
 export { MediaService } from './base/services/media.service';
+export { AdminDemoDataService } from './base/services/admin-demo-data.service';
+export { AdminWorkspaceDataService } from './base/services/admin-workspace-data.service';
+export {
+  AdminModerationDataService,
+  type AdminModerationActionResult,
+  type AdminModerationUserPatch
+} from './base/services/admin-moderation-data.service';
+export {
+  AdminAffinityGraphService,
+  type AdminAffinityGraphRangeParams,
+  type AdminAffinityGraphTileParams
+} from './base/services/admin-affinity-graph.service';
 export { ContactsService } from './base/services/contacts.service';
 export { I18nService } from './base/services/i18n.service';
 export { I18nBundleRepository, type StoredI18nBundle } from './base/repositories/i18n-bundle.repository';
 export {
   BOOTSTRAP_PROCESS_STEPS,
+  BootstrapProcessService,
   SESSION_PROCESS_STEPS,
   bootstrapProcessStep,
+  type BootstrapProcessListener,
   type BootstrapProcessStage,
   type BootstrapProcessState,
   type BootstrapProcessStep

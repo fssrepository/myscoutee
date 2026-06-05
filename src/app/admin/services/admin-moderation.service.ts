@@ -1,44 +1,30 @@
-import { HttpClient } from '@angular/common/http';
 import { Injectable, inject, signal } from '@angular/core';
 
-import { environment } from '../../../environments/environment';
 import { ActivitiesPopupStateService } from '../../activity/services/activities-popup-state.service';
-import { RouteDelayService } from '../../shared/core/base/services/route-delay.service';
-import type { ChatPopupMessage, ChatRecord } from '../../shared/core/base/models/chat.model';
 import {
-  LocalChatsRepository,
-  LocalUsersRepository,
-  type ChatThreadRecord
-} from '../../shared/core/local';
-import type { AdminDashboardDto } from '../models/admin-dashboard.model';
+  AdminModerationDataService,
+  type AdminModerationActionResult
+} from '../../shared/core';
+import type { ChatRecord } from '../../shared/core/base/models/chat.model';
 import type { AdminReportedUserDto } from '../models/admin-moderation.model';
 import type { AdminUserDto } from '../models/admin-profile.model';
 import { AdminShellService } from './admin-shell.service';
 import { AdminWorkspaceService } from './admin-workspace.service';
 
-const ADMIN_MODERATION_WARN_ROUTE = '/admin/reports/warn';
-const ADMIN_MODERATION_BLOCK_ROUTE = '/admin/reports/block';
-const ADMIN_MODERATION_UNBLOCK_ROUTE = '/admin/reports/unblock';
-
 @Injectable({
   providedIn: 'root'
 })
 export class AdminModerationService {
-  private readonly http = inject(HttpClient);
   private readonly workspace = inject(AdminWorkspaceService);
   private readonly shell = inject(AdminShellService);
-  private readonly demoUsersRepository = inject(LocalUsersRepository);
-  private readonly demoChatsRepository = inject(LocalChatsRepository);
+  private readonly moderationData = inject(AdminModerationDataService);
   private readonly activitiesContext = inject(ActivitiesPopupStateService);
-  private readonly routeDelay = inject(RouteDelayService);
-  private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
   private readonly warnedUserIdsRef = signal<Set<string>>(new Set());
 
   hasSupportChat(user: AdminReportedUserDto): boolean {
     const userId = `${user.userId ?? ''}`.trim();
     const resolved = this.resolveDashboardReportedUser(userId) ?? user;
     return Boolean(resolved.hasSupportChat)
-      || this.demoSupportChatExists(userId)
       || this.warnedUserIdsRef().has(userId);
   }
 
@@ -46,7 +32,7 @@ export class AdminModerationService {
     const userId = `${user.userId ?? ''}`.trim();
     const resolved = this.resolveDashboardReportedUser(userId) ?? user;
     const explicit = Math.max(0, Math.trunc(Number(resolved.supportChatUnread) || 0));
-    return this.workspace.usesHttpAdminApi ? explicit : explicit || this.demoSupportChatUnread(userId);
+    return explicit;
   }
 
   isUserBlocked(user: AdminReportedUserDto | null | undefined): boolean {
@@ -60,10 +46,7 @@ export class AdminModerationService {
   }
 
   async warnUser(userId: string, message: string): Promise<void> {
-    await this.withAdminModerationDemoDelay(
-      this.warnUserAction(userId, message),
-      ADMIN_MODERATION_WARN_ROUTE
-    );
+    await this.warnUserAction(userId, message);
   }
 
   private async warnUserAction(userId: string, message: string): Promise<void> {
@@ -71,30 +54,16 @@ export class AdminModerationService {
     if (!normalizedUserId) {
       return;
     }
-    if (this.workspace.usesHttpAdminApi) {
-      const dashboard = await this.http.post<AdminDashboardDto>(
-        `${this.apiBaseUrl}/admin/users/${encodeURIComponent(normalizedUserId)}/warn`,
-        {
-          adminUserId: this.workspace.activeAdmin()?.id ?? '',
-          message
-        }
-      ).toPromise();
-      if (dashboard) {
-        this.workspace.applyDashboard(dashboard);
-        this.markUserWarned(normalizedUserId);
-      }
-      return;
-    }
-    await this.appendDemoSupportMessage(normalizedUserId, message);
-    this.markUserWarned(normalizedUserId);
-    await this.workspace.refreshDemoDashboard();
+    const result = await this.moderationData.warnUser(
+      normalizedUserId,
+      this.workspace.activeAdmin() ?? this.fallbackAdmin(),
+      message
+    );
+    this.applyModerationActionResult(normalizedUserId, result, { markWarned: true });
   }
 
   async blockUser(userId: string, message: string): Promise<void> {
-    await this.withAdminModerationDemoDelay(
-      this.blockUserAction(userId, message),
-      ADMIN_MODERATION_BLOCK_ROUTE
-    );
+    await this.blockUserAction(userId, message);
   }
 
   private async blockUserAction(userId: string, message: string): Promise<void> {
@@ -102,41 +71,16 @@ export class AdminModerationService {
     if (!normalizedUserId) {
       return;
     }
-    if (this.workspace.usesHttpAdminApi) {
-      const dashboard = await this.http.post<AdminDashboardDto>(
-        `${this.apiBaseUrl}/admin/users/${encodeURIComponent(normalizedUserId)}/block`,
-        {
-          adminUserId: this.workspace.activeAdmin()?.id ?? '',
-          message
-        }
-      ).toPromise();
-      if (dashboard) {
-        this.workspace.applyDashboard(dashboard);
-        this.markUserWarned(normalizedUserId);
-        this.refreshSelectedReportedUser(normalizedUserId);
-      }
-      return;
-    }
-    const user = this.demoUsersRepository.queryUserById(normalizedUserId);
-    if (user) {
-      this.demoUsersRepository.upsertUser({
-        ...user,
-        previousProfileStatus: user.profileStatus,
-        profileStatus: 'blocked'
-      });
-    }
-    await this.appendDemoSupportMessage(normalizedUserId, message);
-    this.markUserWarned(normalizedUserId);
-    await this.demoUsersRepository.flushToIndexedDb();
-    await this.workspace.refreshDemoDashboard();
-    this.refreshSelectedReportedUser(normalizedUserId);
+    const result = await this.moderationData.blockUser(
+      normalizedUserId,
+      this.workspace.activeAdmin() ?? this.fallbackAdmin(),
+      message
+    );
+    this.applyModerationActionResult(normalizedUserId, result, { markWarned: true });
   }
 
   async unblockUser(userId: string): Promise<void> {
-    await this.withAdminModerationDemoDelay(
-      this.unblockUserAction(userId),
-      ADMIN_MODERATION_UNBLOCK_ROUTE
-    );
+    await this.unblockUserAction(userId);
   }
 
   private async unblockUserAction(userId: string): Promise<void> {
@@ -144,109 +88,31 @@ export class AdminModerationService {
     if (!normalizedUserId) {
       return;
     }
-    if (this.workspace.usesHttpAdminApi) {
-      const dashboard = await this.http.post<AdminDashboardDto>(
-        `${this.apiBaseUrl}/admin/users/${encodeURIComponent(normalizedUserId)}/unblock`,
-        {
-          adminUserId: this.workspace.activeAdmin()?.id ?? '',
-          message: ''
-        }
-      ).toPromise();
-      if (dashboard) {
-        this.workspace.applyDashboard(dashboard);
-        this.refreshSelectedReportedUser(normalizedUserId);
-      }
+    const result = await this.moderationData.unblockUser(
+      normalizedUserId,
+      this.workspace.activeAdmin() ?? this.fallbackAdmin()
+    );
+    this.applyModerationActionResult(normalizedUserId, result);
+  }
+
+  private applyModerationActionResult(
+    userId: string,
+    result: AdminModerationActionResult | null | undefined,
+    options: { markWarned?: boolean } = {}
+  ): void {
+    if (!result) {
       return;
     }
-    const user = this.demoUsersRepository.queryUserById(normalizedUserId);
-    if (user) {
-      this.demoUsersRepository.upsertUser({
-        ...user,
-        previousProfileStatus: undefined,
-        profileStatus: user.previousProfileStatus && user.previousProfileStatus !== 'blocked'
-          ? user.previousProfileStatus
-          : 'public'
-      });
-      await this.demoUsersRepository.flushToIndexedDb();
+    if (result.dashboard) {
+      this.workspace.applyDashboard(result.dashboard);
     }
-    await this.workspace.refreshDemoDashboard();
-    this.refreshSelectedReportedUser(normalizedUserId);
-  }
-
-  private async withAdminModerationDemoDelay<T>(work: Promise<T>, route: string): Promise<T> {
-    if (this.workspace.usesHttpAdminApi) {
-      return work;
+    if (result.userPatch) {
+      this.workspace.patchModerationUser(result.userPatch);
     }
-    const delay = this.routeDelay.waitForRouteDelay(
-      route
-    );
-    try {
-      const [result] = await Promise.all([work, delay]);
-      return result;
-    } catch (error) {
-      await delay.catch(() => undefined);
-      throw error;
+    if (options.markWarned === true) {
+      this.markUserWarned(userId);
     }
-  }
-
-  private async appendDemoSupportMessage(userId: string, text: string): Promise<void> {
-    const admin = this.workspace.activeAdmin() ?? this.fallbackAdmin();
-    const reportedUser = this.resolveDashboardReportedUser(userId);
-    const now = new Date();
-    const nowIso = now.toISOString();
-    const chatId = `c-support-admin-${userId}`;
-    const messageId = `m-admin-${Date.now()}`;
-    const adminAvatar = {
-      id: admin.id,
-      initials: admin.initials,
-      gender: 'woman' as const
-    };
-    const userChat: ChatThreadRecord = {
-      id: chatId,
-      avatar: admin.initials,
-      title: 'MyScoutee Support',
-      lastMessage: text,
-      lastSenderId: admin.id,
-      memberIds: [userId, admin.id],
-      unread: 1,
-      dateIso: nowIso,
-      channelType: 'serviceEvent',
-      serviceContext: 'notification',
-      ownerUserId: userId,
-      messages: []
-    };
-    const userMessage: ChatPopupMessage = {
-      id: messageId,
-      sender: admin.name,
-      senderAvatar: adminAvatar,
-      text,
-      time: now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
-      sentAtIso: nowIso,
-      mine: false,
-      readBy: []
-    };
-    const adminChat: ChatThreadRecord = {
-      id: chatId,
-      avatar: reportedUser?.initials || 'U',
-      title: `MyScoutee Support · ${reportedUser?.name || 'Reported user'}`,
-      lastMessage: text,
-      lastSenderId: admin.id,
-      memberIds: [userId, admin.id],
-      unread: 0,
-      dateIso: nowIso,
-      channelType: 'serviceEvent',
-      serviceContext: 'notification',
-      ownerUserId: admin.id,
-      messages: []
-    };
-    const adminMessage: ChatPopupMessage = {
-      ...userMessage,
-      mine: true,
-      readBy: []
-    };
-    this.demoChatsRepository.upsertSupportChatMessage(userChat, userMessage, true);
-    this.demoChatsRepository.upsertSupportChatMessage(adminChat, adminMessage, false);
-    await this.demoChatsRepository.flushToIndexedDb();
+    this.refreshSelectedReportedUser(userId);
   }
 
   private resolveDashboardReportedUser(userId: string): AdminReportedUserDto | null {
@@ -271,27 +137,6 @@ export class AdminModerationService {
       next.add(normalizedUserId);
       return next;
     });
-  }
-
-  private demoSupportChatExists(userId: string): boolean {
-    const normalizedUserId = `${userId ?? ''}`.trim();
-    const adminId = this.workspace.activeAdmin()?.id ?? '';
-    if (!normalizedUserId || !adminId) {
-      return false;
-    }
-    return this.demoChatsRepository.queryChatItemsByUser(adminId)
-      .some(chat => chat.id === `c-support-admin-${normalizedUserId}`);
-  }
-
-  private demoSupportChatUnread(userId: string): number {
-    const normalizedUserId = `${userId ?? ''}`.trim();
-    const adminId = this.workspace.activeAdmin()?.id ?? '';
-    if (!normalizedUserId || !adminId) {
-      return 0;
-    }
-    const chat = this.demoChatsRepository.queryChatItemsByUser(adminId)
-      .find(item => item.id === `c-support-admin-${normalizedUserId}`);
-    return Math.max(0, Math.trunc(Number(chat?.unread) || 0));
   }
 
   private refreshSelectedReportedUser(userId: string): void {

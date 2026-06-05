@@ -3,8 +3,10 @@ import { Injectable, inject } from '@angular/core';
 import { LocalMemoryDb } from '../../base/db';
 import type { UserDto } from '../../base/interfaces/user.interface';
 import {
+  BootstrapProcessService,
   bootstrapProcessStep,
   type BootstrapProcessStage,
+  type BootstrapProcessListener,
   type BootstrapProcessState
 } from '../../base/services/bootstrap.service';
 import { LocalActivityResourcesRepository } from '../repositories/activity-resources.repository';
@@ -22,12 +24,11 @@ import { LocalUsersRepository } from '../repositories/users.repository';
 import { HELP_CENTER_TABLE_NAME } from '../../base/models/help-center.model';
 import { IDEA_POSTS_TABLE_NAME } from '../../base/models/idea-posts.model';
 
-type BootstrapProcessListener = (state: BootstrapProcessState) => void;
-
 @Injectable({
   providedIn: 'root'
 })
 export class LocalBootstrapService {
+  private readonly process = inject(BootstrapProcessService);
   private readonly memoryDb = inject(LocalMemoryDb);
   private readonly chatsRepository = inject(LocalChatsRepository);
   private readonly eventsRepository = inject(LocalEventsRepository);
@@ -98,17 +99,17 @@ export class LocalBootstrapService {
       if (filterPreferencesChanged || activityCountersChanged || impressionsChanged) {
         onProgress?.(bootstrapProcessStep('sessionIndexedDb'));
         await this.usersRepository.flushToIndexedDb();
-        await this.waitForUiYield();
+        await this.process.waitForUiYield();
       }
       onProgress?.(bootstrapProcessStep('sessionReady'));
       return;
     }
 
     onProgress?.(bootstrapProcessStep('session'));
-    await this.waitForUiYield();
+    await this.process.waitForUiYield();
 
     onProgress?.(bootstrapProcessStep('sessionChats'));
-    await this.waitForUiYield();
+    await this.process.waitForUiYield();
     const contextualChatsChanged = this.chatsRepository.seedContextualRecordsForUser(
       normalizedUserId,
       this.eventsRepository.queryItemsByUser(normalizedUserId)
@@ -118,7 +119,7 @@ export class LocalBootstrapService {
     if (contextualChatsChanged || filterPreferencesChanged || activityCountersChanged || impressionsChanged) {
       onProgress?.(bootstrapProcessStep('sessionIndexedDb'));
       await this.usersRepository.flushToIndexedDb();
-      await this.waitForUiYield();
+      await this.process.waitForUiYield();
     }
 
     this.readyUserIds.add(normalizedUserId);
@@ -194,33 +195,14 @@ export class LocalBootstrapService {
     stage: BootstrapProcessStage,
     work?: () => void | Promise<void>
   ): Promise<void> {
-    this.emitProgress(bootstrapProcessStep(stage));
-    await this.waitForUiYield();
-    if (work) {
-      await work();
-      await this.waitForUiYield();
-    }
+    await this.process.runStep(bootstrapProcessStep(stage), state => this.emitProgress(state), work);
   }
 
   private emitProgress(state: BootstrapProcessState): void {
-    this.lastProcessState = {
-      percent: Math.max(0, Math.min(100, Math.round(state.percent))),
-      label: state.label.trim() || 'Preparing demo data',
-      stage: state.stage
-    };
+    this.lastProcessState = this.process.normalize(state, 'Preparing demo data');
 
     for (const listener of this.listeners) {
       listener(this.lastProcessState);
     }
-  }
-
-  private waitForUiYield(): Promise<void> {
-    return new Promise(resolve => {
-      if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
-        window.requestAnimationFrame(() => resolve());
-        return;
-      }
-      setTimeout(resolve, 0);
-    });
   }
 }

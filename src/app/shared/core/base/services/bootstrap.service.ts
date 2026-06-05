@@ -1,3 +1,5 @@
+import { Injectable } from '@angular/core';
+
 export type BootstrapProcessStage =
   | 'selector'
   | 'helpCenter'
@@ -19,17 +21,21 @@ export type BootstrapProcessStage =
   | 'sessionIndexedDb'
   | 'sessionReady';
 
-export interface BootstrapProcessState {
+export interface BootstrapProcessState<Stage extends string = BootstrapProcessStage> {
   percent: number;
   label: string;
-  stage: BootstrapProcessStage;
+  stage: Stage;
 }
 
-export interface BootstrapProcessStep {
-  stage: BootstrapProcessStage;
+export interface BootstrapProcessStep<Stage extends string = BootstrapProcessStage> {
+  stage: Stage;
   percent: number;
   label: string;
 }
+
+export type BootstrapProcessListener<Stage extends string = BootstrapProcessStage> = (
+  state: BootstrapProcessState<Stage>
+) => void;
 
 export const BOOTSTRAP_PROCESS_STEPS: readonly BootstrapProcessStep[] = [
   { stage: 'selector', percent: 0, label: 'Preparing demo selector' },
@@ -61,4 +67,42 @@ const PROCESS_STEP_BY_STAGE = new Map<BootstrapProcessStage, BootstrapProcessSte
 
 export function bootstrapProcessStep(stage: BootstrapProcessStage): BootstrapProcessState {
   return PROCESS_STEP_BY_STAGE.get(stage) ?? BOOTSTRAP_PROCESS_STEPS[0];
+}
+
+@Injectable({
+  providedIn: 'root'
+})
+export class BootstrapProcessService {
+  normalize<Stage extends string>(
+    state: BootstrapProcessState<Stage>,
+    fallbackLabel = 'Preparing data'
+  ): BootstrapProcessState<Stage> {
+    return {
+      percent: Math.max(0, Math.min(100, Math.round(state.percent))),
+      label: state.label.trim() || fallbackLabel,
+      stage: state.stage
+    };
+  }
+
+  async runStep<Stage extends string, T = void>(
+    step: BootstrapProcessStep<Stage>,
+    onProgress: BootstrapProcessListener<Stage> | undefined,
+    work?: () => T | Promise<T>
+  ): Promise<T> {
+    onProgress?.(this.normalize(step));
+    await this.waitForUiYield();
+    const result = work ? await work() : undefined as T;
+    await this.waitForUiYield();
+    return result;
+  }
+
+  waitForUiYield(): Promise<void> {
+    return new Promise(resolve => {
+      if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+        window.requestAnimationFrame(() => resolve());
+        return;
+      }
+      setTimeout(resolve, 0);
+    });
+  }
 }

@@ -22,12 +22,26 @@ export { HelpCenterService, HELP_CENTER_LOAD_CONTEXT_KEY } from './services/help
 export { IdeaPostsService } from './services/idea-posts.service';
 export { LandingContentService } from './services/landing-content.service';
 export { MediaService } from './services/media.service';
+export { AdminDemoDataService } from './services/admin-demo-data.service';
+export { AdminWorkspaceDataService } from './services/admin-workspace-data.service';
+export {
+  AdminModerationDataService,
+  type AdminModerationActionResult,
+  type AdminModerationUserPatch
+} from './services/admin-moderation-data.service';
+export {
+  AdminAffinityGraphService,
+  type AdminAffinityGraphRangeParams,
+  type AdminAffinityGraphTileParams
+} from './services/admin-affinity-graph.service';
 export { ContactsService } from './services/contacts.service';
 export { I18nService } from './services/i18n.service';
 export {
   BOOTSTRAP_PROCESS_STEPS,
+  BootstrapProcessService,
   SESSION_PROCESS_STEPS,
   bootstrapProcessStep,
+  type BootstrapProcessListener,
   type BootstrapProcessStage,
   type BootstrapProcessState,
   type BootstrapProcessStep

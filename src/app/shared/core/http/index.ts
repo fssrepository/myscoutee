@@ -4,6 +4,9 @@ export {
   type AdminAffinityGraphRangeParams,
   type AdminAffinityGraphTileParams
 } from './repositories/admin-affinity-graph.repository';
+export { HttpAdminAffinityGraphService } from './services/admin-affinity-graph.service';
+export { HttpAdminModerationService } from './services/admin-moderation.service';
+export { HttpAdminWorkspaceService } from './services/admin-workspace.service';
 export { HttpAssetTicketsRepository } from './repositories/asset-tickets.repository';
 export { HttpActivityInviteCandidatesRepository } from './repositories/activity-invite-candidates.repository';
 export { HttpActivityMembersRepository } from './repositories/activity-members.repository';

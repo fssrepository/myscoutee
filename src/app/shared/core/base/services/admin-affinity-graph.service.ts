@@ -1,6 +1,6 @@
-import { Injectable, computed, inject, signal } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 
-import { environment } from '../../../environments/environment';
+import { environment } from '../../../../../environments/environment';
 import {
   type AdminAffinityGraphDto,
   type AdminAffinityGraphEdgeDto,
@@ -10,18 +10,18 @@ import {
   type AdminAffinityGraphNeighborhoodDto,
   type AdminAffinityGraphNodeDto,
   type AdminAffinityGraphTileDto
-} from '../../shared/core/base/interfaces/admin-affinity-graph.interface';
-import { LocalAdminAffinityGraphRepository } from '../../shared/core/local/repositories/admin-affinity-graph.repository';
+} from '../interfaces/admin-affinity-graph.interface';
+import { I18nService } from './i18n.service';
+import { SessionService } from './session.service';
+import { LocalAdminAffinityGraphService } from '../../local/services/admin-affinity-graph.service';
 import {
-  HttpAdminAffinityGraphRepository,
+  HttpAdminAffinityGraphService,
   type AdminAffinityGraphRangeParams,
   type AdminAffinityGraphTileParams
-} from '../../shared/core/http';
-import { SessionService } from '../../shared/core/base/services/session.service';
-import { RouteDelayService } from '../../shared/core/base/services/route-delay.service';
-import { I18nService } from '../../shared/core';
+} from '../../http/services/admin-affinity-graph.service';
 
-const ADMIN_AFFINITY_GRAPH_ROUTE = '/admin/affinity-graph';
+export type { AdminAffinityGraphRangeParams, AdminAffinityGraphTileParams };
+
 const AFFINITY_GRAPH_FOREST_BASE_BUDGET = 16;
 const AFFINITY_GRAPH_LABEL_KEYS = {
   graphView: 'admin.affinity.graph.view',
@@ -39,84 +39,64 @@ const AFFINITY_GRAPH_LABEL_KEYS = {
   providedIn: 'root'
 })
 export class AdminAffinityGraphService {
-  private readonly demoRepository = inject(LocalAdminAffinityGraphRepository);
-  private readonly httpRepository = inject(HttpAdminAffinityGraphRepository);
+  private readonly localService = inject(LocalAdminAffinityGraphService);
+  private readonly httpService = inject(HttpAdminAffinityGraphService);
   private readonly sessionService = inject(SessionService);
-  private readonly routeDelay = inject(RouteDelayService);
   private readonly i18n = inject(I18nService);
-  private readonly loadingActiveRef = signal(false);
-  private readonly loadingProgressRef = signal(0);
-  private readonly loadingOverdueRef = signal(false);
-  private loadingCounter = 0;
-  private loadingStartedAtMs = 0;
-  private loadingProgressTimer: ReturnType<typeof setInterval> | null = null;
-  private loadingCompleteTimer: ReturnType<typeof setTimeout> | null = null;
-
-  readonly loadingState = computed(() => ({
-    active: this.loadingActiveRef() || this.loadingProgressRef() > 0,
-    progress: this.loadingProgressRef(),
-    overdue: this.loadingOverdueRef()
-  }));
 
   async loadInitialGraph(adminUserId?: string | null): Promise<AdminAffinityGraphDto> {
-    return this.withLoadingProgress(async () => {
-      const snapshot = this.usesHttpAdminApi
-        ? await this.loadHttpInitialGraph(adminUserId)
-        : await this.withDemoGraphRouteDelay(this.readDemoGraphSnapshot());
-      return this.normalizeSnapshot(snapshot, this.usesHttpAdminApi ? 'http' : 'demo');
-    });
+    const snapshot = this.usesHttpAdminApi
+      ? await this.loadHttpInitialGraph(adminUserId)
+      : await this.readLocalGraphSnapshot(true);
+    return this.normalizeSnapshot(snapshot, this.usesHttpAdminApi ? 'http' : 'demo');
   }
 
   async loadMeta(adminUserId?: string | null, range?: AdminAffinityGraphRangeParams): Promise<AdminAffinityGraphMetaDto> {
     if (this.usesHttpAdminApi) {
-      return this.withLoadingProgress(() => this.httpRepository.loadMeta(adminUserId, range));
+      return await this.httpService.loadMeta(adminUserId, range);
     }
     return this.metaFromSnapshot(await this.demoSnapshot(range));
   }
 
   async loadForests(adminUserId?: string | null, range?: AdminAffinityGraphRangeParams): Promise<AdminAffinityGraphForestsDto> {
     if (this.usesHttpAdminApi) {
-      return this.withLoadingProgress(() => this.httpRepository.loadForests(adminUserId, range));
+      return await this.httpService.loadForests(adminUserId, range);
     }
-    return this.withLoadingProgress(async () => {
-      const snapshot = await this.withDemoGraphRouteDelay(this.demoSnapshot(range));
-      const components = this.components(snapshot.nodes, snapshot.edges);
-      const forests = components.map((component, index) => this.forestFromComponent(component, index));
-      const page = this.forestPage(forests, range);
-      return {
-        generatedAtIso: snapshot.generatedAtIso,
-        source: snapshot.source,
-        layoutVersion: snapshot.layoutVersion,
-        forestCount: forests.length,
-        forestLevel: page.forestLevel,
-        maxForestLevel: page.maxForestLevel,
-        limit: page.limit,
-        offset: page.offset,
-        forests: page.forests
-      };
-    });
+    const snapshot = await this.demoSnapshot(range, true);
+    const components = this.components(snapshot.nodes, snapshot.edges);
+    const forests = components.map((component, index) => this.forestFromComponent(component, index));
+    const page = this.forestPage(forests, range);
+    return {
+      generatedAtIso: snapshot.generatedAtIso,
+      source: snapshot.source,
+      layoutVersion: snapshot.layoutVersion,
+      forestCount: forests.length,
+      forestLevel: page.forestLevel,
+      maxForestLevel: page.maxForestLevel,
+      limit: page.limit,
+      offset: page.offset,
+      forests: page.forests
+    };
   }
 
   async loadTile(adminUserId?: string | null, tile?: AdminAffinityGraphTileParams): Promise<AdminAffinityGraphTileDto> {
     if (this.usesHttpAdminApi) {
-      return this.withLoadingProgress(() => this.httpRepository.loadTile(adminUserId, tile));
+      return await this.httpService.loadTile(adminUserId, tile);
     }
-    return this.withLoadingProgress(async () => {
-      const snapshot = await this.withDemoGraphRouteDelay(this.demoSnapshot(tile));
-      return {
-        generatedAtIso: snapshot.generatedAtIso,
-        source: snapshot.source,
-        layoutVersion: snapshot.layoutVersion,
-        z: Math.max(0, Math.trunc(Number(tile?.z ?? 0))),
-        x: Math.max(0, Math.trunc(Number(tile?.x ?? 0))),
-        y: Math.max(0, Math.trunc(Number(tile?.y ?? 0))),
-        nodeCount: snapshot.nodes.length,
-        edgeCount: snapshot.edges.length,
-        truncated: false,
-        nodes: snapshot.nodes,
-        edges: snapshot.edges
-      };
-    });
+    const snapshot = await this.demoSnapshot(tile, true);
+    return {
+      generatedAtIso: snapshot.generatedAtIso,
+      source: snapshot.source,
+      layoutVersion: snapshot.layoutVersion,
+      z: Math.max(0, Math.trunc(Number(tile?.z ?? 0))),
+      x: Math.max(0, Math.trunc(Number(tile?.x ?? 0))),
+      y: Math.max(0, Math.trunc(Number(tile?.y ?? 0))),
+      nodeCount: snapshot.nodes.length,
+      edgeCount: snapshot.edges.length,
+      truncated: false,
+      nodes: snapshot.nodes,
+      edges: snapshot.edges
+    };
   }
 
   async loadNeighborhood(
@@ -126,30 +106,28 @@ export class AdminAffinityGraphService {
     range?: AdminAffinityGraphRangeParams
   ): Promise<AdminAffinityGraphNeighborhoodDto> {
     if (this.usesHttpAdminApi) {
-      return this.withLoadingProgress(() => this.httpRepository.loadNeighborhood(userId, depth, adminUserId, range));
+      return await this.httpService.loadNeighborhood(userId, depth, adminUserId, range);
     }
-    return this.withLoadingProgress(async () => {
-      const snapshot = await this.withDemoGraphRouteDelay(this.demoSnapshot(range));
-      const normalizedUserId = `${userId ?? ''}`.trim();
-      const selectedIds = this.neighborhoodIds(snapshot.edges, normalizedUserId, Math.max(1, Math.min(3, Math.trunc(Number(depth ?? 1)))));
-      if (snapshot.nodes.some(node => node.id === normalizedUserId)) {
-        selectedIds.add(normalizedUserId);
-      }
-      return {
-        generatedAtIso: snapshot.generatedAtIso,
-        source: snapshot.source,
-        layoutVersion: snapshot.layoutVersion,
-        centerUserId: normalizedUserId,
-        depth: Math.max(1, Math.min(3, Math.trunc(Number(depth ?? 1)))),
-        nodes: snapshot.nodes.filter(node => selectedIds.has(node.id)),
-        edges: snapshot.edges.filter(edge => selectedIds.has(edge.source) && selectedIds.has(edge.target))
-      };
-    });
+    const snapshot = await this.demoSnapshot(range, true);
+    const normalizedUserId = `${userId ?? ''}`.trim();
+    const selectedIds = this.neighborhoodIds(snapshot.edges, normalizedUserId, Math.max(1, Math.min(3, Math.trunc(Number(depth ?? 1)))));
+    if (snapshot.nodes.some(node => node.id === normalizedUserId)) {
+      selectedIds.add(normalizedUserId);
+    }
+    return {
+      generatedAtIso: snapshot.generatedAtIso,
+      source: snapshot.source,
+      layoutVersion: snapshot.layoutVersion,
+      centerUserId: normalizedUserId,
+      depth: Math.max(1, Math.min(3, Math.trunc(Number(depth ?? 1)))),
+      nodes: snapshot.nodes.filter(node => selectedIds.has(node.id)),
+      edges: snapshot.edges.filter(edge => selectedIds.has(edge.source) && selectedIds.has(edge.target))
+    };
   }
 
   async rebuildLayout(adminUserId?: string | null): Promise<AdminAffinityGraphMetaDto> {
     if (this.usesHttpAdminApi) {
-      return this.withLoadingProgress(() => this.httpRepository.rebuildLayout(adminUserId));
+      return await this.httpService.rebuildLayout(adminUserId);
     }
     return this.metaFromSnapshot(await this.demoSnapshot());
   }
@@ -163,9 +141,9 @@ export class AdminAffinityGraphService {
 
   private async loadHttpInitialGraph(adminUserId?: string | null): Promise<AdminAffinityGraphDto> {
     const [meta, forests, firstTile] = await Promise.all([
-      this.httpRepository.loadMeta(adminUserId),
-      this.httpRepository.loadForests(adminUserId, { forestLevel: 0, limit: AFFINITY_GRAPH_FOREST_BASE_BUDGET + 4, offset: 0 }),
-      this.httpRepository.loadTile(adminUserId, { z: 0, x: 0, y: 0, minWeight: 0, maxWeight: 1 })
+      this.httpService.loadMeta(adminUserId),
+      this.httpService.loadForests(adminUserId, { forestLevel: 0, limit: AFFINITY_GRAPH_FOREST_BASE_BUDGET + 4, offset: 0 }),
+      this.httpService.loadTile(adminUserId, { z: 0, x: 0, y: 0, minWeight: 0, maxWeight: 1 })
     ]);
     const nodesById = new Map<string, AdminAffinityGraphNodeDto>();
     for (const node of firstTile.nodes ?? []) {
@@ -188,33 +166,23 @@ export class AdminAffinityGraphService {
     }, 'http');
   }
 
-  private async demoSnapshot(range?: AdminAffinityGraphRangeParams | null): Promise<AdminAffinityGraphDto> {
-    const snapshot = await this.readDemoGraphSnapshot();
+  private async demoSnapshot(
+    range?: AdminAffinityGraphRangeParams | null,
+    waitForRouteDelay = false
+  ): Promise<AdminAffinityGraphDto> {
+    const snapshot = await this.readLocalGraphSnapshot(waitForRouteDelay);
     return {
       ...snapshot,
       edges: this.filterEdges(snapshot.edges, range)
     };
   }
 
-  private async readDemoGraphSnapshot(): Promise<AdminAffinityGraphDto> {
-    const snapshot = await this.demoRepository.readGraphSnapshot();
+  private async readLocalGraphSnapshot(waitForRouteDelay = false): Promise<AdminAffinityGraphDto> {
+    const snapshot = await this.localService.readGraphSnapshot({ waitForRouteDelay });
     if (!snapshot) {
       throw new Error('Demo affinity graph snapshot is not bootstrapped.');
     }
     return this.normalizeSnapshot(snapshot, 'demo');
-  }
-
-  private async withDemoGraphRouteDelay<T>(work: Promise<T>): Promise<T> {
-    const delay = this.routeDelay.waitForRouteDelay(
-      ADMIN_AFFINITY_GRAPH_ROUTE
-    );
-    try {
-      const [result] = await Promise.all([work, delay]);
-      return result;
-    } catch (error) {
-      await delay.catch(() => undefined);
-      throw error;
-    }
   }
 
   private metaFromSnapshot(snapshot: AdminAffinityGraphDto): AdminAffinityGraphMetaDto {
@@ -508,83 +476,6 @@ export class AdminAffinityGraphService {
 
   private round(value: number): number {
     return Math.round(value * 1000) / 1000;
-  }
-
-  private async withLoadingProgress<T>(work: () => Promise<T>): Promise<T> {
-    this.beginLoadingProgress();
-    try {
-      return await work();
-    } finally {
-      this.endLoadingProgress();
-    }
-  }
-
-  private beginLoadingProgress(): void {
-    this.loadingCounter += 1;
-    if (this.loadingCounter > 1) {
-      return;
-    }
-    if (this.loadingCompleteTimer) {
-      clearTimeout(this.loadingCompleteTimer);
-      this.loadingCompleteTimer = null;
-    }
-    this.loadingActiveRef.set(true);
-    this.loadingProgressRef.set(0.02);
-    this.loadingOverdueRef.set(false);
-    this.loadingStartedAtMs = this.nowMs();
-    this.updateLoadingProgress();
-    this.loadingProgressTimer = setInterval(() => this.updateLoadingProgress(), 80);
-  }
-
-  private updateLoadingProgress(): void {
-    if (!this.loadingStartedAtMs) {
-      this.loadingProgressRef.set(0);
-      this.loadingOverdueRef.set(false);
-      return;
-    }
-    const elapsedMs = Math.max(0, this.nowMs() - this.loadingStartedAtMs);
-    const progressWindowMs = this.routeDelay.resolveRequestTimeoutMs(ADMIN_AFFINITY_GRAPH_ROUTE);
-    const nextProgress = Math.min(1, elapsedMs / progressWindowMs);
-    this.loadingProgressRef.set(Math.max(this.loadingProgressRef(), nextProgress));
-    this.loadingOverdueRef.set(elapsedMs >= progressWindowMs && this.loadingCounter > 0);
-  }
-
-  private endLoadingProgress(): void {
-    if (this.loadingCounter === 0) {
-      return;
-    }
-    this.loadingCounter = Math.max(0, this.loadingCounter - 1);
-    if (this.loadingCounter !== 0) {
-      return;
-    }
-    this.clearLoadingProgressTimer();
-    this.loadingActiveRef.set(false);
-    this.loadingProgressRef.set(1);
-    this.loadingOverdueRef.set(false);
-    if (this.loadingCompleteTimer) {
-      clearTimeout(this.loadingCompleteTimer);
-    }
-    this.loadingCompleteTimer = setTimeout(() => {
-      if (this.loadingCounter !== 0) {
-        return;
-      }
-      this.loadingStartedAtMs = 0;
-      this.loadingProgressRef.set(0);
-      this.loadingOverdueRef.set(false);
-      this.loadingCompleteTimer = null;
-    }, 120);
-  }
-
-  private clearLoadingProgressTimer(): void {
-    if (!this.loadingProgressTimer) {
-      return;
-    }
-    clearInterval(this.loadingProgressTimer);
-    this.loadingProgressTimer = null;
-  }
-
-  private nowMs(): number {
-    return typeof performance !== 'undefined' ? performance.now() : Date.now();
   }
 }
 
