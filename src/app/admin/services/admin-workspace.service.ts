@@ -809,12 +809,13 @@ export class AdminWorkspaceService {
   private activateAdminProfile(dashboard: AdminDashboardDto): void {
     const admin = dashboard.activeAdmin;
     const user = this.buildAdminProfile(admin, dashboard);
+    const chatUnread = this.adminChatUnreadCount(dashboard);
     this.appCtx.setUserProfile(user);
     this.appCtx.setActiveUserId(user.id);
     this.appCtx.setStatus(USER_BY_ID_LOAD_CONTEXT_KEY, 'success');
     this.appCtx.patchUserCounterOverrides(user.id, {
       game: dashboard.reportedUsers.reduce((total, item) => total + item.reportCount, 0),
-      chat: 1,
+      chat: chatUnread,
       events: dashboard.reportedUsers.length,
       hosting: 0,
       invitations: 0,
@@ -823,6 +824,19 @@ export class AdminWorkspaceService {
       adminJobs: user.activities.adminJobs ?? 0,
       adminMetrics: user.activities.adminMetrics ?? 0
     });
+  }
+
+  private adminChatUnreadCount(dashboard: AdminDashboardDto): number {
+    const unreadByUserId = new Map<string, number>();
+    for (const user of [...(dashboard.reportedUsers ?? []), ...(dashboard.blockedUsers ?? [])]) {
+      const userId = `${user.userId ?? ''}`.trim();
+      if (!userId) {
+        continue;
+      }
+      const unread = Math.max(0, Math.trunc(Number(user.supportChatUnread) || 0));
+      unreadByUserId.set(userId, Math.max(unreadByUserId.get(userId) ?? 0, unread));
+    }
+    return [...unreadByUserId.values()].reduce((total, unread) => total + unread, 0);
   }
 
   private async refreshAdminMenuCountersFromUserRecord(adminUserId: string): Promise<void> {
@@ -884,7 +898,7 @@ export class AdminWorkspaceService {
       admin: true,
       activities: {
         game: dashboard.reportedUsers.reduce((total, item) => total + item.reportCount, 0),
-        chat: 1,
+        chat: this.adminChatUnreadCount(dashboard),
         invitations: 0,
         events: dashboard.reportedUsers.length,
         hosting: 0,
