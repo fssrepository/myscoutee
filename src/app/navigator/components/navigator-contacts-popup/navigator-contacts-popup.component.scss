@@ -273,29 +273,40 @@
   gap: 0.36rem;
 }
 
-.experience-action-menu-trigger {
+.experience-action-btn.experience-action-menu-trigger,
+.experience-action-btn.navigator-contact-profile-trigger {
+  appearance: none;
+  box-sizing: border-box;
+  flex: 0 0 36px;
   width: 36px;
+  min-width: 36px;
   height: 36px;
-  border: 0;
+  min-height: 36px;
+  padding: 0;
   border-radius: 50%;
-  background: rgba(232, 239, 248, 0.92);
-  color: #26476f;
+  overflow: hidden;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
 }
 
-.experience-action-menu-trigger .mat-icon {
+.experience-action-btn.experience-action-menu-trigger {
+  border: 0;
+  background: rgba(232, 239, 248, 0.92);
+  color: #26476f;
+}
+
+.experience-action-btn.experience-action-menu-trigger .mat-icon,
+.experience-action-btn.navigator-contact-profile-trigger .mat-icon {
   width: 18px;
   height: 18px;
   font-size: 18px;
   line-height: 18px;
+  pointer-events: none;
 }
 
-.navigator-contact-profile-trigger {
-  width: 36px;
-  height: 36px;
+.experience-action-btn.navigator-contact-profile-trigger {
   border: 1px solid rgba(41, 99, 143, 0.24);
   background: rgba(232, 246, 251, 0.92);
   color: #226d83;
@@ -781,6 +792,7 @@
 @media (hover: hover) and (pointer: fine) {
   .contacts-search-clear:hover,
   .experience-action-menu-trigger:hover,
+  .navigator-contact-profile-trigger:hover,
   .navigator-contact-method-remove-btn:hover,
   .navigator-contact-method-chip:hover {
     filter: brightness(0.98);

@@ -393,15 +393,17 @@ export class NavigatorContactsPopupComponent implements OnDestroy {
   }
 
   protected viewContactProfile(contact: NavigatorContactListItem, event?: Event): void {
+    event?.preventDefault();
     event?.stopPropagation();
     this.closeActionMenu();
     const userId = `${contact.userId ?? ''}`.trim();
     if (!userId) {
       return;
     }
+    const user = this.usersService.peekCachedUserById(userId);
     this.navigatorService.openProfileView({
       userId,
-      user: this.usersService.peekCachedUserById(userId),
+      user,
       label: contact.name
     });
   }
