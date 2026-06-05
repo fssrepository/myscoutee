@@ -21,7 +21,8 @@ import type { LocationCoordinates } from '../../base/interfaces/location.interfa
 import {
   LocalUserFilterPreferencesBuilder,
   LocalUserMenuCountersBuilder,
-  LocalUserRealtimeSnapshotBuilder
+  LocalUserRealtimeSnapshotBuilder,
+  type LocalUserRealtimeSnapshotState
 } from '../builders';
 import { LocalActivityMembersRepository } from '../repositories/activity-members.repository';
 import { LocalCountryPartitionsRepository } from '../repositories/country-partitions.repository';
@@ -47,6 +48,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
   private readonly usersRepository = inject(LocalUsersRepository);
   private readonly realtimeCursorByUserId: Record<string, number> = {};
   private readonly realtimeLastAdvanceAtByUserId: Record<string, number> = {};
+  private readonly realtimeStateByUserId: Record<string, LocalUserRealtimeSnapshotState> = {};
 
   async queryAvailableDemoUsers(
     _requestTimeoutMs?: number,
@@ -170,6 +172,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
     const loadedUser = this.usersRepository.queryUserById(normalizedUserId);
     if (loadedUser?.profileStatus === 'deleted' && this.isDeletedAccountPastPurgeWindow(loadedUser)) {
       this.usersRepository.purgeUser(normalizedUserId);
+      this.clearRealtimeState(normalizedUserId);
       await this.usersRepository.flushToIndexedDb();
       return {
         user: null,
@@ -180,6 +183,9 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
     const user = loadedUser
       ? this.withSeededActivityCounts(loadedUser, counterOverrides)
       : null;
+    if (user) {
+      this.primeLocalRealtimeState(user);
+    }
     const allUsers = this.usersRepository.queryGameStackUsers(normalizedUserId);
     const filterCount = allUsers.length;
     const persistedFilterPreferences = this.usersRepository.queryUserFilterPreferences(normalizedUserId);
@@ -203,24 +209,49 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
     if (!normalizedUserId) {
       return null;
     }
-    const loadedUser = this.usersRepository.queryUserById(normalizedUserId);
-    if (!loadedUser) {
+    const parsedCursor = this.parseRealtimeCursor(cursor);
+    if (parsedCursor === null) {
+      this.resetLocalRealtimeCursor(normalizedUserId);
+    }
+    let state = this.getPrimedLocalRealtimeState(normalizedUserId);
+    if (!state) {
       return null;
     }
-    const nextCursor = this.resolveRealtimeCursor(normalizedUserId, this.parseRealtimeCursor(cursor));
-    const counters = LocalUserRealtimeSnapshotBuilder.buildSimulatedRealtimeCounters(loadedUser, nextCursor);
-    const impressions = LocalUserRealtimeSnapshotBuilder.buildSimulatedRealtimeImpressions(
-      loadedUser.impressions,
-      counters,
-      nextCursor
-    );
+    const previousCursor = state.cursor;
+    const nextCursor = this.resolveRealtimeCursor(normalizedUserId, parsedCursor);
+    const advanced = nextCursor > previousCursor;
+    if (advanced) {
+      state = LocalUserRealtimeSnapshotBuilder.advanceState(state, nextCursor);
+      this.realtimeStateByUserId[normalizedUserId] = state;
+    }
     return {
       userId: normalizedUserId,
-      counters,
-      impressions,
+      counters: LocalUserRealtimeSnapshotBuilder.buildSnapshotCounters(state, {
+        suppressImpressionChangeFlags: !advanced
+      }),
+      impressions: state.impressions,
       cursor: String(nextCursor),
       serverTsIso: new Date().toISOString()
     };
+  }
+
+  private primeLocalRealtimeState(user: UserDto): void {
+    const normalizedUserId = user.id.trim();
+    if (!normalizedUserId) {
+      return;
+    }
+    this.realtimeStateByUserId[normalizedUserId] = LocalUserRealtimeSnapshotBuilder.buildInitialState(user);
+  }
+
+  private getPrimedLocalRealtimeState(userId: string): LocalUserRealtimeSnapshotState | null {
+    return this.realtimeStateByUserId[userId] ?? null;
+  }
+
+  private resetLocalRealtimeCursor(userId: string): void {
+    const state = this.realtimeStateByUserId[userId];
+    if (state) {
+      this.realtimeStateByUserId[userId] = LocalUserRealtimeSnapshotBuilder.resetState(state);
+    }
   }
 
   private parseRealtimeCursor(cursor: string | null | undefined): number | null {
@@ -279,6 +310,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
       return null;
     }
     const savedUser = this.usersRepository.upsertUser(user);
+    this.clearRealtimeState(savedUser.id);
     await this.usersRepository.flushToIndexedDb();
     return savedUser;
   }
@@ -369,6 +401,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
         previousProfileStatus,
         deletedAtIso: new Date().toISOString()
       });
+      this.clearRealtimeState(normalizedUserId);
     }
     return {
       submitted: true,
@@ -416,6 +449,16 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
         adminMetrics: counters.adminMetrics ?? user.activities.adminMetrics
       }
     };
+  }
+
+  private clearRealtimeState(userId: string): void {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return;
+    }
+    delete this.realtimeStateByUserId[normalizedUserId];
+    delete this.realtimeCursorByUserId[normalizedUserId];
+    delete this.realtimeLastAdvanceAtByUserId[normalizedUserId];
   }
 
 }

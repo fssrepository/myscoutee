@@ -11,6 +11,9 @@ export { LocalUserFilterPreferencesBuilder } from './user-filter-preferences.bui
 export { LocalUserImpressionsSeedBuilder } from './user-impressions.builder';
 export { LocalUserMenuCountersBuilder } from './user-menu-counters.builder';
 export { LocalUserRatesBuilder } from './user-rates.builder';
-export { LocalUserRealtimeSnapshotBuilder } from './user-realtime-snapshot.builder';
+export {
+  LocalUserRealtimeSnapshotBuilder,
+  type LocalUserRealtimeSnapshotState
+} from './user-realtime-snapshot.builder';
 export { LocalUserSeedBuilder } from './user-seed.builder';
 export { LocalUsersRepositoryBuilder } from './users-repository.builder';

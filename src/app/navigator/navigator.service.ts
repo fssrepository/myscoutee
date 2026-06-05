@@ -7,7 +7,7 @@ import {
   SessionService,
   UsersService,
   type ActivityMemberOwnerType,
-  type ActivityCounterKey, type ActivityCounters,
+  type ActivityCounters,
   type EntryConsentState,
   type HelpCenterRevision,
   type PrivacyConsentRecord,
@@ -101,7 +101,6 @@ export class NavigatorService {
   private readonly userRealtimeLongPollCursorByUserId: Record<string, string> = {};
   private readonly userSeenImpressionsCursorByUserId: Record<string, string> = {};
   private readonly userIgnoreNextImpressionsSnapshotByUserId: Record<string, boolean> = {};
-  private readonly userRealtimeBaseCountersByUserId: Record<string, Record<ActivityCounterKey, number>> = {};
 
   readonly bindings = this.bindingsRef.asReadonly();
   readonly profileEditorOpen = this.profileEditorOpenRef.asReadonly();
@@ -745,7 +744,6 @@ export class NavigatorService {
     if (!normalizedUserId || this.appCtx.activeUserId().trim() !== normalizedUserId) {
       return;
     }
-    this.captureUserRealtimeBaseCounters(normalizedUserId);
     this.startUserRealtimeLongPoll();
   }
 
@@ -795,30 +793,6 @@ export class NavigatorService {
       || normalizedUserId.startsWith('admin-');
   }
 
-  private captureUserRealtimeBaseCounters(userId: string): void {
-    const normalizedUserId = userId.trim();
-    if (!normalizedUserId) {
-      return;
-    }
-    const user = this.appCtx.getUserProfile(normalizedUserId) ?? this.appCtx.activeUserProfile();
-    const overrides = this.appCtx.getUserCounterOverrides(normalizedUserId);
-    this.userRealtimeBaseCountersByUserId[normalizedUserId] = {
-      game: this.normalizeRealtimeCounterValue(overrides.game ?? user?.activities?.game),
-      chat: this.normalizeRealtimeCounterValue(overrides.chat ?? user?.activities?.chat),
-      invitations: this.normalizeRealtimeCounterValue(overrides.invitations ?? user?.activities?.invitations),
-      events: this.normalizeRealtimeCounterValue(overrides.events ?? user?.activities?.events),
-      hosting: this.normalizeRealtimeCounterValue(overrides.hosting ?? user?.activities?.hosting),
-      cars: this.normalizeRealtimeCounterValue(overrides.cars ?? user?.activities?.cars),
-      accommodation: this.normalizeRealtimeCounterValue(overrides.accommodation ?? user?.activities?.accommodation),
-      supplies: this.normalizeRealtimeCounterValue(overrides.supplies ?? user?.activities?.supplies),
-      tickets: this.normalizeRealtimeCounterValue(overrides.tickets ?? user?.activities?.tickets),
-      contacts: this.normalizeRealtimeCounterValue(overrides.contacts ?? user?.activities?.contacts),
-      feedback: this.normalizeRealtimeCounterValue(overrides.feedback ?? user?.activities?.feedback),
-      adminJobs: this.normalizeRealtimeCounterValue(overrides.adminJobs ?? user?.activities?.adminJobs),
-      adminMetrics: this.normalizeRealtimeCounterValue(overrides.adminMetrics ?? user?.activities?.adminMetrics)
-    };
-  }
-
   private async runUserRealtimeLongPollTick(): Promise<void> {
     if (this.userRealtimeLongPollInFlight) {
       return;
@@ -849,10 +823,7 @@ export class NavigatorService {
     const shouldIgnoreNextImpressionsSnapshot = this.userIgnoreNextImpressionsSnapshotByUserId[userId] === true;
     const isSeenCursor = nextCursor.length > 0 && this.userSeenImpressionsCursorByUserId[userId] === nextCursor;
     const shouldSuppressImpressionBadges = shouldIgnoreNextImpressionsSnapshot || isSeenCursor;
-    const rawCounterPatch = this.normalizePolledCounterPatch(snapshot.counters);
-    const counterPatch = this.usersService.demoModeEnabled
-      ? this.resolveDemoPolledCounterPatch(userId, rawCounterPatch)
-      : rawCounterPatch;
+    const counterPatch = this.normalizePolledCounterPatch(snapshot.counters);
     const nextImpressions = snapshot.impressions
       ? (shouldSuppressImpressionBadges ? this.normalizeSeenImpressions(snapshot.impressions) : snapshot.impressions)
       : undefined;
@@ -924,88 +895,6 @@ export class NavigatorService {
           }
         : undefined
     };
-  }
-
-  private resolveDemoPolledCounterPatch(
-    userId: string,
-    pendingPatch: Partial<ActivityCounters>
-  ): Partial<ActivityCounters> {
-    const normalizedUserId = userId.trim();
-    if (!normalizedUserId) {
-      return pendingPatch;
-    }
-    const base = this.resolveUserRealtimeBaseCounters(normalizedUserId);
-    const next: Partial<ActivityCounters> = {};
-    const keys: ActivityCounterKey[] = [
-      'game',
-      'chat',
-      'invitations',
-      'events',
-      'hosting',
-      'cars',
-      'accommodation',
-      'supplies',
-      'tickets',
-      'contacts',
-      'feedback',
-      'adminJobs',
-      'adminMetrics'
-    ];
-    for (const key of keys) {
-      if (pendingPatch[key] === undefined) {
-        continue;
-      }
-      next[key] = this.normalizeRealtimeCounterValue(base[key] + (pendingPatch[key] ?? 0));
-    }
-    return next;
-  }
-
-  private resolveUserRealtimeBaseCounters(userId: string): Record<ActivityCounterKey, number> {
-    const normalizedUserId = userId.trim();
-    if (!normalizedUserId) {
-      return {
-        game: 0,
-        chat: 0,
-        invitations: 0,
-        events: 0,
-        hosting: 0,
-        cars: 0,
-        accommodation: 0,
-        supplies: 0,
-        tickets: 0,
-        contacts: 0,
-        feedback: 0,
-        adminJobs: 0,
-        adminMetrics: 0
-      };
-    }
-    const existing = this.userRealtimeBaseCountersByUserId[normalizedUserId];
-    if (existing) {
-      return {
-        game: this.normalizeRealtimeCounterValue(existing.game),
-        chat: this.normalizeRealtimeCounterValue(existing.chat),
-        invitations: this.normalizeRealtimeCounterValue(existing.invitations),
-        events: this.normalizeRealtimeCounterValue(existing.events),
-        hosting: this.normalizeRealtimeCounterValue(existing.hosting),
-        cars: this.normalizeRealtimeCounterValue(existing.cars),
-        accommodation: this.normalizeRealtimeCounterValue(existing.accommodation),
-        supplies: this.normalizeRealtimeCounterValue(existing.supplies),
-        tickets: this.normalizeRealtimeCounterValue(existing.tickets),
-        contacts: this.normalizeRealtimeCounterValue(existing.contacts),
-        feedback: this.normalizeRealtimeCounterValue(existing.feedback),
-        adminJobs: this.normalizeRealtimeCounterValue(existing.adminJobs),
-        adminMetrics: this.normalizeRealtimeCounterValue(existing.adminMetrics)
-      };
-    }
-    this.captureUserRealtimeBaseCounters(normalizedUserId);
-    return this.resolveUserRealtimeBaseCounters(normalizedUserId);
-  }
-
-  private normalizeRealtimeCounterValue(value: unknown): number {
-    if (!Number.isFinite(value)) {
-      return 0;
-    }
-    return Math.max(0, Math.trunc(Number(value)));
   }
 
   private normalizePolledCounterPatch(
