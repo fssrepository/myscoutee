@@ -12,11 +12,8 @@ export abstract class BaseRouteModeService {
     if (routeConfig.http) {
       return false;
     }
-    if (this.sessionService.currentSession()?.kind === 'demo') {
-      return true;
-    }
     return environment.activitiesDataSource !== 'http'
-      && !environment.firebaseLoginEnabled;
+      && (this.sessionService.currentSession()?.kind === 'demo' || !environment.firebaseLoginEnabled);
   }
 
   protected resolveRouteService<TDemo, THttp>(route: string, demoService: TDemo, httpService: THttp): TDemo | THttp {

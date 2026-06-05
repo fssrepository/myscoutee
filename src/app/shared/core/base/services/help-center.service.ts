@@ -71,12 +71,12 @@ export class HelpCenterService extends BaseRouteModeService {
     revisionId: string,
     revisionVersion?: number
   ): Promise<PrivacyConsentRecord | null> {
-    const consent = await this.helpService('privacy').loadPrivacyConsent(userId, revisionId, revisionVersion);
+    const consent = await this.privacyConsentService().loadPrivacyConsent(userId, revisionId, revisionVersion);
     return consent ? this.clonePrivacyConsent(consent) : null;
   }
 
   async savePrivacyConsent(request: PrivacyConsentSaveRequest): Promise<PrivacyConsentRecord> {
-    return this.clonePrivacyConsent(await this.helpService('privacy').savePrivacyConsent(request));
+    return this.clonePrivacyConsent(await this.privacyConsentService().savePrivacyConsent(request));
   }
 
   async loadAdminState(adminUserId: string, kind: HelpCenterDocumentKind = 'help', lang = 'en', contextKey?: string | null): Promise<HelpCenterState> {
@@ -116,6 +116,10 @@ export class HelpCenterService extends BaseRouteModeService {
 
   private helpService(kind: HelpCenterDocumentKind): DemoHelpCenterService | HttpHelpCenterService {
     return this.resolveRouteService(`/${kind}/active`, this.demoHelpCenterService, this.httpHelpCenterService);
+  }
+
+  private privacyConsentService(): DemoHelpCenterService | HttpHelpCenterService {
+    return this.resolveRouteService('/privacy/consents', this.demoHelpCenterService, this.httpHelpCenterService);
   }
 
   private setState(kind: HelpCenterDocumentKind, state: HelpCenterState): void {
