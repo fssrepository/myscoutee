@@ -17,7 +17,7 @@ import type {
 } from '../../../shared/core/base/interfaces/experience.interface';
 import type * as AppTypes from '../../../shared/core/base/models';
 import { AppUtils } from '../../../shared/app-utils';
-import { AppContext, ProfileOnboardingService, UserExperiencesService, UsersService, type UserDto } from '../../../shared/core';
+import { AppContext, MediaService, ProfileOnboardingService, UserExperiencesService, UsersService, type UserDto } from '../../../shared/core';
 import { I18nService } from '../../../shared/core';
 import { I18nPipe } from '../../../shared/ui';
 import { CounterBadgePipe, ProgressIndicatorComponent } from '../../../shared/ui';
@@ -88,6 +88,7 @@ export class ProfileEditorComponent {
   private readonly profileOnboardingService = inject(ProfileOnboardingService);
   private readonly userExperiencesService = inject(UserExperiencesService);
   private readonly usersService = inject(UsersService);
+  private readonly mediaService = inject(MediaService);
   private readonly languageSheetHeightCssVar = '--mobile-language-sheet-height';
   private readonly profileDetailsFormByUser: Record<string, AppTypes.ProfileDetailFormGroup[]> = {};
   private readonly profileImageSlotsByUser: Record<string, Array<string | null>> = {};
@@ -2177,57 +2178,26 @@ export class ProfileEditorComponent {
     this.cdr.markForCheck();
     try {
       this.syncActiveUserImageSlotsState(true);
-      if (this.usersService.demoModeEnabled && this.profileUser) {
-        await this.usersService.saveUserProfile(this.cloneUser(this.profileUser));
-      }
-      const uploadResult = await this.usersService.uploadUserProfileImage(userId, file, slotIndex);
-      if (!uploadResult.uploaded) {
+      const uploadResult = await this.mediaService.uploadImage(userId, `profile-${slotIndex}`, file);
+      const uploadedImageUrl = uploadResult.imageUrl?.trim() ?? '';
+      if (!uploadResult.uploaded || !uploadedImageUrl) {
         this.confirmationDialogService.openInfo('Unable to upload image', {
           title: 'Upload failed',
           confirmTone: 'neutral'
         });
         return;
       }
-      const verifiedImageUrl = await this.reloadUploadedImageUrl(userId, slotIndex, uploadResult.imageUrl);
-      if (!verifiedImageUrl) {
-        this.confirmationDialogService.openInfo('Image uploaded but profile refresh failed', {
-          title: 'Upload incomplete',
-          confirmTone: 'neutral'
-        });
-        return;
-      }
       this.revokeObjectUrl(previousImage);
-      this.imageSlots[slotIndex] = verifiedImageUrl;
+      this.imageSlots[slotIndex] = uploadedImageUrl;
       this.selectedImageIndex = this.resolveSelectedImageIndexAfterUpload(slotIndex);
       this.syncActiveUserImageSlotsState(false);
-      if (this.usersService.demoModeEnabled && this.profileUser) {
+      if (this.profileUser) {
         await this.usersService.saveUserProfile(this.cloneUser(this.profileUser));
       }
     } finally {
       this.uploadingImageSlotIndex = null;
       this.cdr.markForCheck();
     }
-  }
-
-  private async reloadUploadedImageUrl(
-    userId: string,
-    slotIndex: number,
-    uploadedImageUrl: string | null
-  ): Promise<string | null> {
-    if (uploadedImageUrl) {
-      return uploadedImageUrl;
-    }
-    const loadedUser = await this.usersService.loadUserById(userId);
-    if (!loadedUser) {
-      return null;
-    }
-    const loadedImages = (loadedUser.images ?? [])
-      .map(image => image.trim())
-      .filter(image => image.length > 0);
-    if (slotIndex >= 0 && slotIndex < loadedImages.length) {
-      return loadedImages[slotIndex] ?? null;
-    }
-    return loadedImages[loadedImages.length - 1] ?? null;
   }
 
   private resolveSelectedImageIndexAfterUpload(slotIndex: number): number {

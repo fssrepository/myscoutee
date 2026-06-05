@@ -14,7 +14,6 @@ import type {
   UserLogoutRequestDto,
   UserReportUserSubmitRequestDto,
   UserRealtimeLongPollResponseDto,
-  UserProfileImageUploadResult,
   UserSubmitActionResponseDto,
   UserService,
   UsersListQueryResponse
@@ -342,22 +341,6 @@ export class UsersService extends BaseRouteModeService {
       return null;
     }
   }
-
-  async uploadUserProfileImage(
-    userId: string,
-    file: File,
-    slotIndex: number
-  ): Promise<UserProfileImageUploadResult> {
-    const normalizedUserId = userId.trim();
-    if (!normalizedUserId) {
-      return {
-        uploaded: false,
-        imageUrl: null
-      };
-    }
-    return this.userService.uploadUserProfileImage(normalizedUserId, file, slotIndex);
-  }
-
 
   private setLoadStatus(contextKey: string, status: LoadStatus, message?: string): void {
     this.appCtx.setStatus(contextKey, status, message);

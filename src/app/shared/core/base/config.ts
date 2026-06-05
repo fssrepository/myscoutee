@@ -60,10 +60,6 @@ export const ROUTE_CONFIG: RouteConfig = {
       demoDelayMs: 1500
     },
     {
-      routePrefix: '/auth/me/profile-image',
-      demoDelayMs: 1500
-    },
-    {
       routePrefix: '/auth/me/logout',
       demoDelayMs: 1500
     },
@@ -250,6 +246,21 @@ export const ROUTE_CONFIG: RouteConfig = {
     {
       routePrefix: '/assets/tickets',
       demoDelayMs: 1500
+    },
+    {
+      routePrefix: '/media/images/import',
+      demoDelayMs: 1500,
+      requestTimeoutMs: 15000
+    },
+    {
+      routePrefix: '/media/images',
+      demoDelayMs: 1500,
+      requestTimeoutMs: 15000
+    },
+    {
+      routePrefix: '/media/audio',
+      demoDelayMs: 1500,
+      requestTimeoutMs: 20000
     },
     {
       routePrefix: '/navigator/contacts',

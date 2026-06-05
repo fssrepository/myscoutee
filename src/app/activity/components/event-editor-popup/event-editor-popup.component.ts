@@ -25,9 +25,9 @@ import {
   AppPopupContext,
   EventEditorDataService,
   ExplanationGuideService,
+  MediaService,
   RouteIntervalSchedulerService
 } from '../../../shared/core';
-import { HttpMediaService } from '../../../shared/core/http';
 import type { ActivityEventRecord } from '../../../shared/core/base/models/events.model';
 import { CounterBadgePipe, PricingEditorComponent, ProgressIndicatorComponent, TopicPickerPopupComponent } from '../../../shared/ui';
 import { environment } from '../../../../environments/environment';
@@ -65,7 +65,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   private readonly activityMembersService = inject(ActivityMembersService);
   private readonly appCtx = inject(AppContext);
   private readonly popupCtx = inject(AppPopupContext);
-  private readonly httpMediaService = inject(HttpMediaService);
+  private readonly mediaService = inject(MediaService);
   private readonly explanationGuide = inject(ExplanationGuideService);
   private readonly routeIntervalScheduler = inject(RouteIntervalSchedulerService);
   protected readonly interestOptionGroups = APP_STATIC_DATA.interestOptionGroups;
@@ -942,7 +942,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     if (this.pendingEventImageFile && this.eventForm.imageUrl.startsWith('blob:')) {
       URL.revokeObjectURL(this.eventForm.imageUrl);
     }
-    this.pendingEventImageFile = this.demoModeEnabled ? null : file;
+    this.pendingEventImageFile = file;
     this.eventForm.imageUrl = URL.createObjectURL(file);
     target.value = '';
   }
@@ -2333,10 +2333,10 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   private async resolvePersistedEventImageUrl(activeUserId: string, eventId: string): Promise<string | null> {
-    if (this.demoModeEnabled || !this.pendingEventImageFile) {
+    if (!this.pendingEventImageFile) {
       return this.eventForm.imageUrl.trim() || null;
     }
-    const uploadResult = await this.httpMediaService.uploadImage('event', activeUserId, eventId, this.pendingEventImageFile);
+    const uploadResult = await this.mediaService.uploadImage(activeUserId, eventId, this.pendingEventImageFile);
     if (!uploadResult.uploaded || !uploadResult.imageUrl) {
       return null;
     }

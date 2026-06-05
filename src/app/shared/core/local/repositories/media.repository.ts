@@ -2,15 +2,14 @@ import { Injectable, inject } from '@angular/core';
 
 import { LocalMemoryDb } from '../../base/db';
 
-export interface DemoMediaImageRecord {
-  scope: string;
+export interface LocalMediaImageRecord {
   ownerId: string;
   entityId: string;
   fileName: string;
   contentType: string;
   size: number;
   imageUrl: string;
-  blob: File;
+  blob: Blob;
   createdAtIso: string;
 }
 
@@ -20,10 +19,9 @@ export interface DemoMediaImageRecord {
 export class LocalMediaRepository {
   private readonly memoryDb = inject(LocalMemoryDb);
 
-  async saveImage(record: DemoMediaImageRecord): Promise<void> {
+  async saveImage(record: LocalMediaImageRecord): Promise<void> {
     await this.memoryDb.writeIndexedDbTableEntry(`mediaImage:${this.newId('media')}`, {
       ...record,
-      scope: record.scope.trim() || 'content',
       ownerId: record.ownerId.trim() || 'admin',
       entityId: record.entityId.trim() || 'shared'
     });

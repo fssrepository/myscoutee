@@ -15,7 +15,7 @@ import { AppUtils } from '../../../shared/app-utils';
 import { I18nPipe } from '../../../shared/ui';
 import { ProgressIndicatorComponent } from '../../../shared/ui';
 import {
-  ProfileOnboardingService, RouteIntervalSchedulerService, UserExperiencesService, UsersService, type ProfileOnboardingAssessment, type ProfileOnboardingDraft, type ProfileOnboardingStepId, type UserDto } from '../../../shared/core';
+  MediaService, ProfileOnboardingService, RouteIntervalSchedulerService, UserExperiencesService, UsersService, type ProfileOnboardingAssessment, type ProfileOnboardingDraft, type ProfileOnboardingStepId, type UserDto } from '../../../shared/core';
 import type {
   DetailPrivacy,
   ExperienceEntry,
@@ -74,6 +74,7 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
   private readonly onboarding = inject(ProfileOnboardingService);
   private readonly routeIntervalScheduler = inject(RouteIntervalSchedulerService);
   private readonly usersService = inject(UsersService);
+  private readonly mediaService = inject(MediaService);
   private readonly userExperiencesService = inject(UserExperiencesService);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly document = inject(DOCUMENT);
@@ -1109,16 +1110,13 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
     this.cdr.detectChanges();
     try {
       this.syncDraftImagesFromSlots();
-      const uploadResult = await this.usersService.uploadUserProfileImage(this.user.id, file, slotIndex);
-      if (!uploadResult.uploaded) {
+      const uploadResult = await this.mediaService.uploadImage(this.user.id, `profile-${slotIndex}`, file);
+      const uploadedImageUrl = uploadResult.imageUrl?.trim() ?? '';
+      if (!uploadResult.uploaded || !uploadedImageUrl) {
         throw new Error('Upload failed.');
       }
-      const verifiedImageUrl = await this.reloadUploadedImageUrl(this.user.id, slotIndex, uploadResult.imageUrl);
-      if (!verifiedImageUrl) {
-        throw new Error('Uploaded image was not available.');
-      }
       this.revokeObjectUrl(previousImage);
-      this.imageSlots[slotIndex] = verifiedImageUrl;
+      this.imageSlots[slotIndex] = uploadedImageUrl;
       this.selectedImageIndex = this.resolveSelectedImageIndexAfterUpload(slotIndex);
       this.syncDraftImagesFromSlots();
     } catch {
@@ -1127,21 +1125,6 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
       this.uploadingImageSlotIndex = null;
       this.cdr.detectChanges();
     }
-  }
-
-  private async reloadUploadedImageUrl(
-    userId: string,
-    slotIndex: number,
-    uploadedImageUrl: string | null
-  ): Promise<string | null> {
-    if (uploadedImageUrl?.trim()) {
-      return uploadedImageUrl.trim();
-    }
-    const loadedUser = await this.usersService.loadUserById(userId, 2500);
-    const loadedImages = (loadedUser?.images ?? [])
-      .map(image => image.trim())
-      .filter(image => image.length > 0);
-    return loadedImages[slotIndex] ?? loadedImages[loadedImages.length - 1] ?? null;
   }
 
   private resolveSelectedImageIndexAfterUpload(slotIndex: number): number {

@@ -14,7 +14,6 @@ import type {
   UserRealtimeCountersDto,
   UserRealtimeLongPollResponseDto,
   UserImpressionsSectionDto,
-  UserProfileImageUploadResult,
   UserReportUserSubmitRequestDto,
   UserService,
   UserSubmitActionResponseDto,
@@ -34,14 +33,12 @@ import { SessionService } from '../../base/services/session.service';
 export class HttpUsersService implements UserService {
   private static readonly DEMO_USERS_ROUTE = '/auth/demo-users';
   private static readonly USER_BY_ID_ROUTE = '/auth/me';
-  private static readonly PROFILE_IMAGE_UPLOAD_ROUTE = '/auth/me/profile-image';
   private static readonly USER_FEEDBACK_ROUTE = '/auth/me/feedback';
   private static readonly USER_FILTER_PREFERENCES_ROUTE = '/auth/me/preferences';
   private static readonly USER_REPORT_USER_ROUTE = '/auth/me/report-user';
   private static readonly USER_LOGOUT_ROUTE = '/auth/me/logout';
   private static readonly USER_DELETE_ROUTE = '/auth/me/delete';
   private static readonly USER_REALTIME_LONG_POLL_ROUTE = '/auth/me/realtime/long-poll';
-  private static readonly MAX_PROFILE_IMAGE_SLOTS = 8;
   private readonly http = inject(HttpClient);
   private readonly appCtx = inject(AppContext);
   private readonly offlineCache = inject(OfflineCacheService);
@@ -374,56 +371,6 @@ export class HttpUsersService implements UserService {
       return {
         submitted: false,
         message: 'Unable to delete account.'
-      };
-    }
-  }
-
-  async uploadUserProfileImage(
-    userId: string,
-    file: File,
-    slotIndex: number
-  ): Promise<UserProfileImageUploadResult> {
-    const normalizedUserId = userId.trim();
-    if (!normalizedUserId) {
-      return {
-        uploaded: false,
-        imageUrl: null
-      };
-    }
-    const normalizedSlotIndex = this.resolveSlotIndex(slotIndex);
-    if (normalizedSlotIndex === null) {
-      return {
-        uploaded: false,
-        imageUrl: null
-      };
-    }
-    const formData = new FormData();
-    formData.append('image', file, file.name);
-    formData.append('slotIndex', String(normalizedSlotIndex));
-    formData.append('userId', normalizedUserId);
-    try {
-      type UploadResponse = {
-        imageUrl?: string | null;
-        url?: string | null;
-      };
-      const response = await this.http
-        .post<UploadResponse | null>(`${this.apiBaseUrl}${HttpUsersService.PROFILE_IMAGE_UPLOAD_ROUTE}`, formData)
-        .toPromise();
-      const resolvedImageUrl =
-        (typeof response?.imageUrl === 'string' && response.imageUrl.trim().length > 0
-          ? response.imageUrl.trim()
-          : null)
-        ?? (typeof response?.url === 'string' && response.url.trim().length > 0
-          ? response.url.trim()
-          : null);
-      return {
-        uploaded: true,
-        imageUrl: resolvedImageUrl
-      };
-    } catch {
-      return {
-        uploaded: false,
-        imageUrl: null
       };
     }
   }
@@ -869,16 +816,5 @@ export class HttpUsersService implements UserService {
       profileStatus: user.profileStatus,
       deletedAtIso: typeof user.deletedAtIso === 'string' ? user.deletedAtIso : null
     };
-  }
-
-  private resolveSlotIndex(slotIndex: number): number | null {
-    if (!Number.isFinite(slotIndex)) {
-      return null;
-    }
-    const normalized = Math.trunc(Number(slotIndex));
-    if (normalized < 0 || normalized >= HttpUsersService.MAX_PROFILE_IMAGE_SLOTS) {
-      return null;
-    }
-    return normalized;
   }
 }

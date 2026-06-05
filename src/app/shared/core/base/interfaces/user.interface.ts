@@ -204,11 +204,6 @@ export interface UserSubmitActionResponseDto {
   message?: string | null;
 }
 
-export interface UserProfileImageUploadResult {
-  uploaded: boolean;
-  imageUrl: string | null;
-}
-
 export interface UserService {
   queryAvailableDemoUsers(requestTimeoutMs?: number): Promise<UsersListQueryResponse>;
   checkLocationEligibility(coordinates?: LocationCoordinates | null): Promise<UserLocationEligibilityResponseDto>;
@@ -220,5 +215,4 @@ export interface UserService {
   submitReportUser(request: UserReportUserSubmitRequestDto, signal?: AbortSignal, requestTimeoutMs?: number): Promise<UserSubmitActionResponseDto>;
   logoutUser(request: UserLogoutRequestDto, signal?: AbortSignal, requestTimeoutMs?: number): Promise<UserSubmitActionResponseDto>;
   deleteUser(request: UserDeleteRequestDto, signal?: AbortSignal, requestTimeoutMs?: number): Promise<UserSubmitActionResponseDto>;
-  uploadUserProfileImage(userId: string, file: File, slotIndex: number): Promise<UserProfileImageUploadResult>;
 }

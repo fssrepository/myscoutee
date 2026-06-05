@@ -5,8 +5,7 @@ import { APP_STATIC_DATA } from '../shared/app-static-data';
 import { PricingBuilder } from '../shared/core/base/builders';
 import type * as AppTypes from '../shared/core/base/models';
 import { AssetPopupStateService } from './asset-popup-state.service';
-import { AppContext, AssetCardBuilder, AssetDefaultsBuilder, AssetsService, ExplanationGuideService, type ActivityCounterKey } from '../shared/core';
-import { HttpMediaService } from '../shared/core/http';
+import { AppContext, AssetCardBuilder, AssetDefaultsBuilder, AssetsService, ExplanationGuideService, MediaService, type ActivityCounterKey } from '../shared/core';
 
 export interface OwnedAssetsRuntimeHooks {
   onAssetsChanged?(): void;
@@ -23,7 +22,7 @@ export class OwnedAssetsPopupFacadeService {
   private readonly assetsService = inject(AssetsService);
   private readonly appCtx = inject(AppContext);
   private readonly explanationGuide = inject(ExplanationGuideService);
-  private readonly httpMediaService = inject(HttpMediaService);
+  private readonly mediaService = inject(MediaService);
   private readonly assetListRevisionRef = signal(0);
   private readonly assetListReloadRevisionRef = signal(0);
   private readonly assetListLoadingRef = signal(false);
@@ -578,7 +577,7 @@ export class OwnedAssetsPopupFacadeService {
       return;
     }
     this.revokeObjectUrl(this.assetForm.imageUrl);
-    this.pendingAssetImageFile = environment.activitiesDataSource === 'http' ? file : null;
+    this.pendingAssetImageFile = file;
     this.pendingAssetSourceImageUrl = '';
     this.assetForm.imageUrl = URL.createObjectURL(file);
   }
@@ -706,11 +705,8 @@ export class OwnedAssetsPopupFacadeService {
   }
 
   private async resolvePersistedAssetImageUrl(ownerUserId: string, assetId: string): Promise<string | null> {
-    if (environment.activitiesDataSource !== 'http') {
-      return this.assetForm.imageUrl.trim() || null;
-    }
     if (this.pendingAssetImageFile) {
-      const uploadResult = await this.httpMediaService.uploadImage('asset', ownerUserId, assetId, this.pendingAssetImageFile);
+      const uploadResult = await this.mediaService.uploadImage(ownerUserId, assetId, this.pendingAssetImageFile);
       if (!uploadResult.uploaded || !uploadResult.imageUrl) {
         return null;
       }
@@ -722,7 +718,7 @@ export class OwnedAssetsPopupFacadeService {
     }
     const pendingSourceImageUrl = this.pendingAssetSourceImageUrl.trim();
     if (pendingSourceImageUrl && pendingSourceImageUrl === this.assetForm.imageUrl.trim()) {
-      const importResult = await this.httpMediaService.importImage('asset', ownerUserId, assetId, pendingSourceImageUrl);
+      const importResult = await this.mediaService.importImage(ownerUserId, assetId, pendingSourceImageUrl);
       if (importResult.uploaded && importResult.imageUrl) {
         this.pendingAssetSourceImageUrl = '';
         this.assetForm.imageUrl = importResult.imageUrl;
