@@ -400,10 +400,8 @@ export class ContactsPopupComponent implements OnDestroy {
     if (!userId) {
       return;
     }
-    const user = this.usersService.peekCachedUserById(userId);
     this.navigatorService.openProfileView({
       userId,
-      user,
       label: contact.name
     });
   }

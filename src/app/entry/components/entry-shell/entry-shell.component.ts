@@ -599,7 +599,23 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
             throw new Error(this.uiText('Location permission was not granted. Use the browser prompt or site settings, then try again.'));
           }
 
-          const result = await this.usersService.checkLocationEligibility(coordinates);
+          let result: UserLocationEligibilityResponseDto;
+          try {
+            result = await this.usersService.checkLocationEligibility(coordinates);
+          } catch {
+            this.markEntryNetworkUnavailable();
+            settle(false);
+            setTimeout(() => {
+              this.confirmationDialogService.openInfo(
+                this.uiText('The server is not reachable right now. Please try again when the network is back.'),
+                {
+                  title: this.uiText('No network'),
+                  confirmLabel: this.uiText('OK')
+                }
+              );
+            }, 0);
+            return;
+          }
           this.syncLandingLoginAvailability(result, 'coordinates');
           if (result.eligible) {
             settle(true);
@@ -738,9 +754,8 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
           if (requestToken !== this.landingContentRequestToken) {
             return;
           }
-          this.entryNetworkUnavailable = true;
           this.landingIdeaCards = [];
-          this.syncLandingLoginAvailability(null, 'reset');
+          this.markEntryNetworkUnavailable();
           this.finishEntryPrivacyLoad(requestToken);
         });
       }
@@ -823,6 +838,12 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
     this.syncEntryAuthGateState();
   }
 
+  private markEntryNetworkUnavailable(): void {
+    this.entryNetworkUnavailable = true;
+    this.entryNetworkUnavailableLabel = 'No network';
+    this.syncLandingLoginAvailability(null, 'reset');
+  }
+
   private syncEntryAuthGateState(): void {
     const loginEnabled = this.authMode === 'firebase';
     this.entryAuthUnavailable = !this.entryNetworkUnavailable && loginEnabled && this.isLoginBlockedByLandingBundle();
@@ -899,7 +920,15 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
         return;
       }
 
-      const result = await this.usersService.checkLocationEligibility(coordinates);
+      let result: UserLocationEligibilityResponseDto;
+      try {
+        result = await this.usersService.checkLocationEligibility(coordinates);
+      } catch {
+        if (requestToken === this.grantedLocationEligibilityRequestToken) {
+          this.ngZone.run(() => this.markEntryNetworkUnavailable());
+        }
+        return;
+      }
       if (requestToken !== this.grantedLocationEligibilityRequestToken) {
         return;
       }

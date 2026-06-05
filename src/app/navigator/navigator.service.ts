@@ -49,13 +49,11 @@ export interface NavigatorBindings {
 
 export interface NavigatorProfileViewRequest {
   userId: string;
-  user?: unknown | null;
   label?: string | null;
 }
 
 export interface NavigatorProfileViewTarget {
   userId: string;
-  user: UserDto | null;
   label: string | null;
 }
 
@@ -245,17 +243,6 @@ export class NavigatorService {
     this.syncHydratedUser(loadedUser);
     void this.helpCenterService.preloadAll();
     return loadedUser;
-  }
-
-  private asUserDto(value: unknown): UserDto | null {
-    if (!value || typeof value !== 'object') {
-      return null;
-    }
-    const candidate = value as Partial<UserDto>;
-    if (typeof candidate.id !== 'string' || !candidate.id.trim()) {
-      return null;
-    }
-    return candidate as UserDto;
   }
 
   private shouldPromptDeletedAccountReactivation(user: UserDto): boolean {
@@ -514,18 +501,13 @@ export class NavigatorService {
     if (!userId) {
       return;
     }
-    const embeddedUser = this.asUserDto(request.user);
-    const targetUserId = embeddedUser?.id?.trim() || userId;
-    const targetLabel = `${request.label ?? embeddedUser?.name ?? ''}`.trim() || null;
+    const targetLabel = `${request.label ?? ''}`.trim() || null;
     const currentTarget = this.profileViewTargetRef();
-    if (currentTarget?.userId === targetUserId && currentTarget.label === targetLabel) {
-      if (!embeddedUser || currentTarget.user) {
-        return;
-      }
+    if (currentTarget?.userId === userId && currentTarget.label === targetLabel) {
+      return;
     }
     this.profileViewTargetRef.set({
-      userId: targetUserId,
-      user: embeddedUser,
+      userId,
       label: targetLabel
     });
   }

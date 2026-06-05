@@ -128,7 +128,6 @@ function buildActivitiesRateCardPairSlots(
       profileView: profileUser
         ? {
             userId: profileUser.id,
-            user: profileUser.profile ?? null,
             label: profileUser.name
           }
         : null
@@ -201,7 +200,6 @@ function buildActivitiesRateContextBadge(
     ariaLabel: `View ${bridgeUser.name} profile`,
     profileView: {
       userId: bridgeUser.id,
-      user: bridgeUser.profile ?? null,
       label: bridgeUser.name
     }
   };

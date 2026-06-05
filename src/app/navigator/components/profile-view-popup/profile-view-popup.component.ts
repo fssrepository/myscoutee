@@ -1,19 +1,19 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, HostListener, computed, effect, inject, signal, untracked } from '@angular/core';
+import { ChangeDetectionStrategy, Component, HostListener, computed, inject, resource, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
 import { AppUtils } from '../../../shared/app-utils';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { I18nPipe } from '../../../shared/i18n';
 import {
-  UserExperiencesService,
-  UsersService,
+  ContactsService,
   type ExperienceEntry,
+  type ProfileViewData,
   type ProfileDetailFormGroup,
   type ProfileDetailFormRow,
   type UserDto
 } from '../../../shared/core';
-import { NavigatorService, type NavigatorProfileViewTarget } from '../../navigator.service';
+import { NavigatorService } from '../../navigator.service';
 
 interface ProfileViewRow {
   label: string;
@@ -35,16 +35,42 @@ interface ProfileViewRow {
 })
 export class ProfileViewPopupComponent {
   private readonly navigatorService = inject(NavigatorService);
-  private readonly usersService = inject(UsersService);
-  private readonly userExperiencesService = inject(UserExperiencesService);
-  private readonly cdr = inject(ChangeDetectorRef);
-  private loadToken = 0;
+  private readonly contactsService = inject(ContactsService);
 
   protected readonly target = this.navigatorService.profileViewTarget;
-  protected readonly user = signal<UserDto | null>(null);
-  protected readonly loadingUser = signal(false);
-  protected readonly experiences = signal<ExperienceEntry[]>([]);
-  protected readonly loadingExperiences = signal(false);
+  private readonly targetUserId = computed(() => this.target()?.userId?.trim() || undefined);
+  private readonly profileResource = resource<ProfileViewData, string | undefined>({
+    params: () => this.targetUserId(),
+    defaultValue: {
+      user: null,
+      experiences: []
+    },
+    loader: async ({ params }) => {
+      const userId = `${params ?? ''}`.trim();
+      if (!userId) {
+        return {
+          user: null,
+          experiences: []
+        };
+      }
+      try {
+        return await this.contactsService.loadContactProfile(userId);
+      } catch {
+        return {
+          user: null,
+          experiences: []
+        };
+      }
+    }
+  });
+  protected readonly user = computed(() => {
+    const user = this.profileResource.value().user;
+    const targetUserId = this.targetUserId();
+    return targetUserId && user?.id?.trim() === targetUserId ? user : null;
+  });
+  protected readonly loadingUser = computed(() => Boolean(this.targetUserId()) && this.profileResource.isLoading());
+  protected readonly experiences = computed(() => this.user() ? this.profileResource.value().experiences : []);
+  protected readonly loadingExperiences = computed(() => this.loadingUser() && Boolean(this.user()));
   protected readonly activePhotoIndex = signal(0);
   protected readonly photos = computed(() => this.profilePhotos(this.user()));
   protected readonly activePhoto = computed(() => {
@@ -58,13 +84,6 @@ export class ProfileViewPopupComponent {
   protected readonly basicsRows = computed(() => this.buildBasicsRows(this.user()));
   protected readonly aboutRows = computed(() => this.buildAboutRows(this.user()));
   protected readonly detailGroups = computed(() => this.buildDetailGroups(this.user()));
-
-  constructor() {
-    effect(() => {
-      const target = this.target();
-      untracked(() => this.syncTarget(target));
-    });
-  }
 
   @HostListener('window:keydown.escape', ['$event'])
   protected onEscape(event: Event): void {
@@ -192,60 +211,6 @@ export class ProfileViewPopupComponent {
 
   protected isExperienceEmpty(): boolean {
     return !this.loadingExperiences() && this.experiences().length === 0;
-  }
-
-  private syncTarget(target: NavigatorProfileViewTarget | null): void {
-    const token = ++this.loadToken;
-    this.experiences.set([]);
-    this.loadingExperiences.set(false);
-    this.activePhotoIndex.set(0);
-    if (!target?.userId?.trim()) {
-      this.user.set(null);
-      this.loadingUser.set(false);
-      return;
-    }
-
-    const embeddedUser = target.user ?? this.usersService.peekCachedUserById(target.userId);
-    this.user.set(embeddedUser);
-    this.loadingUser.set(!embeddedUser);
-    this.cdr.markForCheck();
-
-    if (!embeddedUser) {
-      void this.loadMissingUser(target.userId, token);
-    }
-    void this.loadExperiences(target.userId, token);
-  }
-
-  private async loadMissingUser(userId: string, token: number): Promise<void> {
-    const loadedUser = await this.usersService.loadUserById(userId);
-    if (token !== this.loadToken || !this.target()?.userId?.trim()) {
-      return;
-    }
-    this.user.set(loadedUser);
-    this.loadingUser.set(false);
-    this.cdr.markForCheck();
-  }
-
-  private async loadExperiences(userId: string, token: number): Promise<void> {
-    this.loadingExperiences.set(true);
-    this.cdr.markForCheck();
-    try {
-      const entries = await this.userExperiencesService.loadUserExperiences(userId);
-      if (token !== this.loadToken) {
-        return;
-      }
-      this.experiences.set(entries);
-    } catch {
-      if (token !== this.loadToken) {
-        return;
-      }
-      this.experiences.set([]);
-    } finally {
-      if (token === this.loadToken) {
-        this.loadingExperiences.set(false);
-        this.cdr.markForCheck();
-      }
-    }
   }
 
   private profilePhotos(user: UserDto | null): string[] {

@@ -3,6 +3,8 @@ import { Injectable, inject } from '@angular/core';
 
 import { environment } from '../../../../../environments/environment';
 import type * as AppTypes from '../../../core/base/models';
+import type { ProfileViewData } from '../../base/interfaces/profile.interface';
+import type { UserDto } from '../../base/interfaces/user.interface';
 
 interface ContactsSaveRequest {
   userId: string;
@@ -27,6 +29,19 @@ export class HttpContactsService {
       })
       .toPromise();
     return this.normalizeContacts(response);
+  }
+
+  async loadContactProfile(userId: string): Promise<ProfileViewData> {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return this.emptyProfileViewData();
+    }
+    const response = await this.http
+      .get<Partial<ProfileViewData> | null>(
+        `${this.apiBaseUrl}/navigator/contacts/${encodeURIComponent(normalizedUserId)}/profile`
+      )
+      .toPromise();
+    return this.normalizeProfileView(response);
   }
 
   async saveContacts(
@@ -121,5 +136,70 @@ export class HttpContactsService {
       ...contact,
       methods: contact.methods.map(method => ({ ...method }))
     }));
+  }
+
+  private normalizeProfileView(value: Partial<ProfileViewData> | null | undefined): ProfileViewData {
+    return {
+      user: value?.user ? this.cloneUser(value.user) : null,
+      experiences: this.normalizeExperienceEntries(value?.experiences)
+    };
+  }
+
+  private emptyProfileViewData(): ProfileViewData {
+    return {
+      user: null,
+      experiences: []
+    };
+  }
+
+  private cloneUser(user: UserDto): UserDto {
+    return {
+      ...user,
+      languages: [...(user.languages ?? [])],
+      images: [...(user.images ?? [])],
+      profileDetails: (user.profileDetails ?? []).map(group => ({
+        title: `${group.title ?? ''}`,
+        rows: (group.rows ?? []).map(row => ({
+          labelKey: `${row.labelKey ?? ''}`,
+          value: `${row.value ?? ''}`,
+          privacy: row.privacy,
+          options: [...(row.options ?? [])]
+        }))
+      })),
+      activities: {
+        ...user.activities,
+        event: user.activities?.event ? { ...user.activities.event } : undefined,
+        asset: user.activities?.asset ? { ...user.activities.asset } : undefined,
+        eventFeedback: user.activities?.eventFeedback ? { ...user.activities.eventFeedback } : undefined
+      }
+    };
+  }
+
+  private normalizeExperienceEntries(entries: readonly Partial<AppTypes.ExperienceEntry>[] | null | undefined): AppTypes.ExperienceEntry[] {
+    return (Array.isArray(entries) ? entries : [])
+      .map(entry => this.normalizeExperienceEntry(entry))
+      .filter((entry): entry is AppTypes.ExperienceEntry => Boolean(entry));
+  }
+
+  private normalizeExperienceEntry(entry: Partial<AppTypes.ExperienceEntry> | null | undefined): AppTypes.ExperienceEntry | null {
+    const id = `${entry?.id ?? ''}`.trim();
+    if (!id) {
+      return null;
+    }
+    const type = entry?.type === 'School'
+      || entry?.type === 'Online Session'
+      || entry?.type === 'Additional Project'
+      ? entry.type
+      : 'Workspace';
+    return {
+      id,
+      type,
+      title: `${entry?.title ?? ''}`.trim(),
+      org: `${entry?.org ?? ''}`.trim(),
+      city: `${entry?.city ?? ''}`.trim(),
+      dateFrom: `${entry?.dateFrom ?? ''}`.trim(),
+      dateTo: `${entry?.dateTo ?? ''}`.trim() || 'Present',
+      description: `${entry?.description ?? ''}`.trim()
+    };
   }
 }

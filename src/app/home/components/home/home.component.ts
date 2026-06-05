@@ -683,7 +683,6 @@ export class HomeComponent implements OnDestroy {
       profileView: candidate
         ? {
             userId: candidate.id,
-            user: candidate,
             label: candidate.name
           }
         : null,
@@ -1775,7 +1774,6 @@ export class HomeComponent implements OnDestroy {
       profileView: candidate
         ? {
             userId: candidate.id,
-            user: candidate,
             label: candidate.name
           }
         : null
@@ -1876,7 +1874,6 @@ export class HomeComponent implements OnDestroy {
       ariaLabel: `View ${bridgeUser.name} profile`,
       profileView: {
         userId: bridgeUser.id,
-        user: bridgeUser,
         label: bridgeUser.name
       }
     };

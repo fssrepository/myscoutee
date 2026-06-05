@@ -458,7 +458,6 @@ export class EventMembersPopupComponent {
     this.inlineItemActionMenu = null;
     this.navigatorService.openProfileView({
       userId,
-      user: entry.profile ?? this.usersService.peekCachedUserById(userId),
       label: entry.name
     });
     this.cdr.markForCheck();

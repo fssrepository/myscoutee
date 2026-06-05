@@ -32,8 +32,7 @@ import {
   ActivityInviteCandidatesService,
   ActivityMembersService,
   AppContext,
-  AppPopupContext,
-  UsersService
+  AppPopupContext
 } from '../../../shared/core';
 import { NavigatorService } from '../../../navigator';
 import { OwnedAssetsPopupFacadeService } from '../../owned-assets-popup-facade.service';
@@ -67,7 +66,6 @@ export class AssetMemberPickerPopupComponent {
   private readonly activityMembersService = inject(ActivityMembersService);
   private readonly ownedAssets = inject(OwnedAssetsPopupFacadeService);
   private readonly navigatorService = inject(NavigatorService);
-  private readonly usersService = inject(UsersService);
 
   protected isOpen = false;
   protected title = 'Invite members';
@@ -328,7 +326,6 @@ export class AssetMemberPickerPopupComponent {
     }
     this.navigatorService.openProfileView({
       userId,
-      user: candidate.profile ?? this.usersService.peekCachedUserById(userId),
       label: candidate.name
     });
   }

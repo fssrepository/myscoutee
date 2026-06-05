@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 
 import type * as AppTypes from '../../../core/base/models';
+import type { ProfileViewData } from '../interfaces/profile.interface';
 import { DemoContactsService } from '../../demo/services/contacts.service';
 import { HttpContactsService } from '../../http/services/contacts.service';
 import { BaseRouteModeService } from './base-route-mode.service';
@@ -22,6 +23,10 @@ export class ContactsService extends BaseRouteModeService {
 
   loadContacts(userId: string): Promise<AppTypes.StoredContact[]> {
     return this.contactsService.loadContacts(userId);
+  }
+
+  loadContactProfile(userId: string): Promise<ProfileViewData> {
+    return this.contactsService.loadContactProfile(userId);
   }
 
   saveContacts(
