@@ -2,8 +2,9 @@ import { Injectable, inject } from '@angular/core';
 
 import { type LoadStatus } from '../context';
 import { AppContext, type ActivityCounters } from '../context';
-import { type LocalBootstrapProgressState, LocalUsersService } from '../../local';
+import { LocalUsersService } from '../../local';
 import { HttpUsersService } from '../../http';
+import type { BootstrapProcessState } from './bootstrap.service';
 import type {
   UserSelectorListItemDto,
   UserDeleteRequestDto,
@@ -35,9 +36,9 @@ export const USER_DELETE_CONTEXT_KEY = 'user-delete';
 interface RoutedUserService extends UserService {
   queryAvailableDemoUsers(
     requestTimeoutMs?: number,
-    onProgress?: (state: LocalBootstrapProgressState) => void
+    onProgress?: (state: BootstrapProcessState) => void
   ): Promise<UsersListQueryResponse>;
-  prepareUserSession?(userId: string, onProgress?: (state: LocalBootstrapProgressState) => void): Promise<void>;
+  prepareUserSession(userId: string, onProgress?: (state: BootstrapProcessState) => void): Promise<void>;
   peekCachedUsers?(): UserDto[];
   peekCachedUserById?(userId: string): UserDto | null;
 }
@@ -121,7 +122,7 @@ export class UsersService extends BaseRouteModeService {
 
   async loadAvailableDemoUsers(
     requestTimeoutMs?: number,
-    onProgress?: (state: LocalBootstrapProgressState) => void
+    onProgress?: (state: BootstrapProcessState) => void
   ): Promise<UserSelectorListItemDto[]> {
     this.setLoadStatus(USERS_LOAD_CONTEXT_KEY, 'loading');
 
@@ -143,20 +144,8 @@ export class UsersService extends BaseRouteModeService {
 
   async prepareDemoUserSession(
     userId: string,
-    onProgress?: (state: LocalBootstrapProgressState) => void
+    onProgress?: (state: BootstrapProcessState) => void
   ): Promise<void> {
-    if (!this.isDemoModeEnabled('/auth/me')) {
-      onProgress?.({
-        percent: 100,
-        label: 'Demo session ready',
-        stage: 'sessionReady'
-      });
-      return;
-    }
-
-    if (!this.userService.prepareUserSession) {
-      throw new Error('Unable to prepare demo user session.');
-    }
     await this.userService.prepareUserSession(userId, onProgress);
   }
 

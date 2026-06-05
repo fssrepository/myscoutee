@@ -11,14 +11,12 @@ import {
   SessionService,
   ShareTokensService,
   UsersService,
+  type BootstrapProcessStage,
+  type BootstrapProcessState,
   type UserSelectorListItemDto,
   type ShareTokenResolvedItem
 } from '../shared/core';
 import type { AssetCard } from '../shared/core/base/models';
-import {
-  type LocalBootstrapProgressStage,
-  type LocalBootstrapProgressState
-} from '../shared/core/local';
 import { EntryDemoUserSelectorComponent } from '../entry/components/entry-demo-user-selector/entry-demo-user-selector.component';
 
 @Component({
@@ -74,7 +72,7 @@ export class AdminHelpSessionPageComponent implements OnInit {
   protected selectorSubmitting = false;
   protected selectorLoadingProgress = 0;
   protected selectorLoadingLabel = 'Preparing demo data';
-  protected selectorLoadingStage: LocalBootstrapProgressStage = 'selector';
+  protected selectorLoadingStage: BootstrapProcessStage = 'selector';
   protected selectorUsers: UserSelectorListItemDto[] = [];
   protected selectorSelectedUserId = '';
   protected error = '';
@@ -160,7 +158,7 @@ export class AdminHelpSessionPageComponent implements OnInit {
     }
   }
 
-  private applyProgress(state: LocalBootstrapProgressState): void {
+  private applyProgress(state: BootstrapProcessState): void {
     this.commitSelectorState(() => {
       this.selectorLoadingProgress = state.percent;
       this.selectorLoadingLabel = state.label;

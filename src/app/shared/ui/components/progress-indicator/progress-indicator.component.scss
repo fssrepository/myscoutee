@@ -16,6 +16,11 @@
   width: 100%;
 }
 
+:host(.app-progress-indicator-host--kind-pill-bar) {
+  display: block;
+  width: 100%;
+}
+
 :host(.app-progress-indicator-host--kind-load-ring) {
   display: inline-flex;
   width: 58px;
@@ -112,6 +117,45 @@
 
 :host(.app-progress-indicator-host--tone-chat) .app-progress-indicator__bar-loading {
   background: linear-gradient(270deg, rgba(243, 166, 54, 0.98) 0%, rgba(233, 133, 37, 0.98) 100%);
+}
+
+.app-progress-indicator--pill-bar {
+  --app-progress-pill-fill: linear-gradient(90deg, #57ba7c 0%, #3f8fe1 52%, #7d6be8 100%);
+  --app-progress-pill-glow: rgba(73, 132, 213, 0.18);
+  --app-progress-pill-track-stripe-strong: rgba(97, 126, 178, 0.12);
+  --app-progress-pill-track-stripe-soft: rgba(97, 126, 178, 0.04);
+  height: 0.9rem;
+  border-radius: 999px;
+  border: 1px solid rgba(58, 91, 144, 0.18);
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0)),
+    repeating-linear-gradient(
+      -55deg,
+      var(--app-progress-pill-track-stripe-strong) 0,
+      var(--app-progress-pill-track-stripe-strong) 12px,
+      var(--app-progress-pill-track-stripe-soft) 12px,
+      var(--app-progress-pill-track-stripe-soft) 24px
+    ),
+    rgba(227, 237, 249, 0.78);
+  background-position: 0 0, 0 0, 0 0;
+  background-size: auto, 24px 24px, auto;
+  box-shadow: inset 0 1px 2px rgba(31, 52, 86, 0.08);
+  animation: app-progress-indicator-pill-track-shift 1.4s linear infinite;
+}
+
+.app-progress-indicator__pill-bar-fill {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+  background: var(--app-progress-pill-fill);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    0 0 14px var(--app-progress-pill-glow);
+  transition: transform 0.28s ease;
+  transform: scaleX(0);
+  transform-origin: left center;
+  will-change: transform;
 }
 
 .app-progress-indicator--load-ring,
@@ -228,6 +272,16 @@
 
   to {
     stroke-dashoffset: 0;
+  }
+}
+
+@keyframes app-progress-indicator-pill-track-shift {
+  from {
+    background-position: 0 0, 0 0, 0 0;
+  }
+
+  to {
+    background-position: 0 0, 24px 0, 0 0;
   }
 }
 

@@ -23,6 +23,7 @@ import type {
 import type { UserGameFilterPreferencesDto } from '../../base/interfaces/game.interface';
 import type { LocationCoordinates } from '../../base/interfaces/location.interface';
 import { AppContext } from '../../base/context';
+import { bootstrapProcessStep, type BootstrapProcessState } from '../../base/services/bootstrap.service';
 import { OfflineCacheService } from '../../base/services/offline-cache.service';
 import { RouteDelayService } from '../../base/services/route-delay.service';
 import { SessionService } from '../../base/services/session.service';
@@ -46,7 +47,10 @@ export class HttpUsersService implements UserService {
   private readonly sessionService = inject(SessionService);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
 
-  async queryAvailableDemoUsers(requestTimeoutMs?: number): Promise<UsersListQueryResponse> {
+  async queryAvailableDemoUsers(
+    requestTimeoutMs?: number,
+    _onProgress?: (state: BootstrapProcessState) => void
+  ): Promise<UsersListQueryResponse> {
     type HttpDemoUserListEntry = Partial<UserDto> & Partial<UserSelectorListItemDto> & {
       gender?: string | null;
     };
@@ -68,7 +72,8 @@ export class HttpUsersService implements UserService {
     };
   }
 
-  prepareUserSession(): Promise<void> {
+  prepareUserSession(_userId: string, onProgress?: (state: BootstrapProcessState) => void): Promise<void> {
+    onProgress?.(bootstrapProcessStep('sessionReady'));
     return Promise.resolve();
   }
 

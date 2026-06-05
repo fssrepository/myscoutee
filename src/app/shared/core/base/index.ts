@@ -24,6 +24,14 @@ export { LandingContentService } from './services/landing-content.service';
 export { MediaService } from './services/media.service';
 export { ContactsService } from './services/contacts.service';
 export { I18nService } from './services/i18n.service';
+export {
+  BOOTSTRAP_PROCESS_STEPS,
+  SESSION_PROCESS_STEPS,
+  bootstrapProcessStep,
+  type BootstrapProcessStage,
+  type BootstrapProcessState,
+  type BootstrapProcessStep
+} from './services/bootstrap.service';
 export { RouteDelayService } from './services/route-delay.service';
 export { RouteIntervalSchedulerService } from './services/route-interval-scheduler.service';
 export { ActivityMembersService } from './services/activity-members.service';

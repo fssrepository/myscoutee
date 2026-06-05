@@ -2,7 +2,8 @@ import { Injectable, inject } from '@angular/core';
 
 import { LocalUsersRepository } from '../repositories/users.repository';
 import { LocalRouteDelayService } from './route-delay.service';
-import { LocalBootstrapService, type LocalBootstrapProgressState } from './bootstrap.service';
+import type { BootstrapProcessState } from '../../base/services/bootstrap.service';
+import { LocalBootstrapService } from './bootstrap.service';
 import type {
   UserDto,
   UserByIdQueryResponse,
@@ -52,16 +53,16 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
 
   async queryAvailableDemoUsers(
     _requestTimeoutMs?: number,
-    onProgress?: (state: LocalBootstrapProgressState) => void
+    onProgress?: (state: BootstrapProcessState) => void
   ): Promise<UsersListQueryResponse> {
     let routeDelaySettled = false;
-    let pendingReadyProgress: LocalBootstrapProgressState | null = null;
+    let pendingReadyProgress: BootstrapProcessState | null = null;
     const routeDelayPromise = this.waitForRouteDelay(LocalUsersService.DEMO_USERS_ROUTE)
       .finally(() => {
         routeDelaySettled = true;
       });
     const reportProgress = onProgress
-      ? (state: LocalBootstrapProgressState): void => {
+      ? (state: BootstrapProcessState): void => {
           if (state.stage === 'ready' && !routeDelaySettled) {
             pendingReadyProgress = state;
             onProgress({
@@ -88,7 +89,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
 
   async prepareUserSession(
     userId: string,
-    onProgress?: (state: LocalBootstrapProgressState) => void
+    onProgress?: (state: BootstrapProcessState) => void
   ): Promise<void> {
     await this.bootstrapService.ensureUserReady(userId, onProgress);
   }

@@ -6,10 +6,10 @@ import {
   LandingContentService,
   USERS_LOAD_CONTEXT_KEY,
   UsersService,
+  type BootstrapProcessStage,
   type UserSelectorListItemDto,
   type UserLocationEligibilityResponseDto
 } from '../../../shared/core';
-import type { LocalBootstrapProgressStage } from '../../../shared/core/local';
 import type * as AppTypes from '../../../shared/core/base/models';
 import type { LocationCoordinates } from '../../../shared/core/base/interfaces/location.interface';
 import { APP_STORAGE_KEYS } from '../../../shared/core/base/storage-scope';
@@ -87,7 +87,7 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
   protected demoSelectorLoading = false;
   protected demoSelectorLoadingProgress = 0;
   protected demoSelectorLoadingLabel = 'Preparing demo data';
-  protected demoSelectorLoadingStage: LocalBootstrapProgressStage = 'selector';
+  protected demoSelectorLoadingStage: BootstrapProcessStage = 'selector';
   protected demoSelectorErrorMessage = '';
   protected demoSelectorSubmitting = false;
   protected demoSelectorSelectedUserId = '';

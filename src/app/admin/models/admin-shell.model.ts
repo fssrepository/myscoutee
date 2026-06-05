@@ -14,10 +14,10 @@ export type AdminPopupKind =
   | 'monitoring'
   | 'item-preview';
 
-export type AdminBootstrapProgressStage = 'selector' | 'indexedDb' | 'records' | 'affinityGraph' | 'profile' | 'ready';
+export type AdminBootstrapProcessStage = 'selector' | 'indexedDb' | 'records' | 'affinityGraph' | 'profile' | 'ready';
 
-export interface AdminBootstrapProgressState {
+export interface AdminBootstrapProcessState {
   percent: number;
   label: string;
-  stage: AdminBootstrapProgressStage;
+  stage: AdminBootstrapProcessStage;
 }

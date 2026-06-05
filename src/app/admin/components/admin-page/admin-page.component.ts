@@ -6,13 +6,12 @@ import { MatRippleModule } from '@angular/material/core';
 
 import { NavigatorComponent } from '../../../navigator';
 import { EntryDemoUserSelectorComponent } from '../../../entry/components/entry-demo-user-selector/entry-demo-user-selector.component';
-import { SessionService, AppPopupContext } from '../../../shared/core';
-import type { LocalBootstrapProgressStage } from '../../../shared/core/local';
+import { SessionService, AppPopupContext, type BootstrapProcessStage } from '../../../shared/core';
 import { ConfirmationDialogComponent } from '../../../shared/ui/components';
 import { NavigatorService } from '../../../navigator/navigator.service';
 import { AdminShellService } from '../../services/admin-shell.service';
 import { AdminWorkspaceService } from '../../services/admin-workspace.service';
-import type { AdminBootstrapProgressState } from '../../models/admin-shell.model';
+import type { AdminBootstrapProcessState } from '../../models/admin-shell.model';
 
 @Component({
   selector: 'app-admin-page',
@@ -55,7 +54,7 @@ export class AdminPageComponent implements OnInit, OnDestroy {
   protected selectorSubmitting = false;
   protected selectorLoadingProgress = 0;
   protected selectorLoadingLabel = 'Preparing admin data';
-  protected selectorLoadingStage: LocalBootstrapProgressStage = 'selector';
+  protected selectorLoadingStage: BootstrapProcessStage = 'selector';
   protected selectorErrorMessage = '';
   protected readonly restoringWorkspace = signal(this.currentRouteIsWorkspace());
   protected readonly reportsPopupComponent = this.reportsPopupComponentRef.asReadonly();
@@ -264,11 +263,11 @@ export class AdminPageComponent implements OnInit, OnDestroy {
     }
   }
 
-  private applyProgress(state: AdminBootstrapProgressState): void {
+  private applyProgress(state: AdminBootstrapProcessState): void {
     this.commitSelectorState(() => {
       this.selectorLoadingProgress = state.percent;
       this.selectorLoadingLabel = state.label;
-      this.selectorLoadingStage = this.toDemoProgressStage(state.stage);
+      this.selectorLoadingStage = this.toDemoProcessStage(state.stage);
     });
   }
 
@@ -306,7 +305,7 @@ export class AdminPageComponent implements OnInit, OnDestroy {
     });
   }
 
-  private toDemoProgressStage(stage: AdminBootstrapProgressState['stage']): LocalBootstrapProgressStage {
+  private toDemoProcessStage(stage: AdminBootstrapProcessState['stage']): BootstrapProcessStage {
     switch (stage) {
       case 'indexedDb':
         return 'indexedDb';

@@ -73,7 +73,7 @@ import type {
   AdminParamsStateDto
 } from '../models/admin-params.model';
 import type { AdminUserDto } from '../models/admin-profile.model';
-import type { AdminBootstrapProgressState } from '../models/admin-shell.model';
+import type { AdminBootstrapProcessState } from '../models/admin-shell.model';
 import type {
   AdminStatsBreakdownItemDto,
   AdminStatsDashboardDto,
@@ -107,7 +107,7 @@ const ADMIN_NOTIFICATION_INTERVAL_SECONDS: Record<AdminNotificationIntervalUnit,
   years: 31536000
 };
 
-const ADMIN_DEMO_SELECTOR_PROGRESS_STEPS: readonly AdminBootstrapProgressState[] = [
+const ADMIN_DEMO_SELECTOR_PROCESS_STEPS: readonly AdminBootstrapProcessState[] = [
   { stage: 'records', percent: 24, label: 'Preparing admin graph members' },
   { stage: 'records', percent: 54, label: 'Preparing admin graph ratings' },
   { stage: 'affinityGraph', percent: 82, label: 'Preparing admin affinity graph' },
@@ -193,7 +193,7 @@ export class AdminWorkspaceService {
   }
 
   async prepareDemoAdminSelector(
-    onProgress?: (state: AdminBootstrapProgressState) => void
+    onProgress?: (state: AdminBootstrapProcessState) => void
   ): Promise<UserSelectorListItemDto[]> {
     if (this.usesHttpAdminApi) {
       onProgress?.({ percent: 100, label: 'Admin selector ready', stage: 'ready' });
@@ -260,7 +260,7 @@ export class AdminWorkspaceService {
 
   async bootstrapAdmin(
     adminUserId?: string,
-    onProgress?: (state: AdminBootstrapProgressState) => void
+    onProgress?: (state: AdminBootstrapProcessState) => void
   ): Promise<AdminDashboardDto | null> {
     if (this.busyRef()) {
       return this.dashboardRef();
@@ -333,7 +333,7 @@ export class AdminWorkspaceService {
 
   private async loadDemoDashboard(
     adminUserId?: string,
-    onProgress?: (state: AdminBootstrapProgressState) => void
+    onProgress?: (state: AdminBootstrapProcessState) => void
   ): Promise<AdminDashboardDto> {
     const admin = this.resolveDemoAdmin(adminUserId);
     await this.prepareDemoAdminSelector();
@@ -371,25 +371,25 @@ export class AdminWorkspaceService {
   }
 
   private async bootstrapDemoAdminSelector(
-    onProgress?: (state: AdminBootstrapProgressState) => void
+    onProgress?: (state: AdminBootstrapProcessState) => void
   ): Promise<void> {
     this.demoAdminSelectorReady = false;
-    const seededUsers = await this.runAdminSelectorStep(onProgress, ADMIN_DEMO_SELECTOR_PROGRESS_STEPS[0], () =>
+    const seededUsers = await this.runAdminSelectorStep(onProgress, ADMIN_DEMO_SELECTOR_PROCESS_STEPS[0], () =>
       this.demoUsersRepository.init()
     );
-    await this.runAdminSelectorStep(onProgress, ADMIN_DEMO_SELECTOR_PROGRESS_STEPS[1], () => {
+    await this.runAdminSelectorStep(onProgress, ADMIN_DEMO_SELECTOR_PROCESS_STEPS[1], () => {
       this.demoUsersRatingsRepository.init(seededUsers);
     });
-    await this.runAdminSelectorStep(onProgress, ADMIN_DEMO_SELECTOR_PROGRESS_STEPS[2], () =>
+    await this.runAdminSelectorStep(onProgress, ADMIN_DEMO_SELECTOR_PROCESS_STEPS[2], () =>
       this.seedDemoAffinityGraph()
     );
     this.demoAdminSelectorReady = true;
-    onProgress?.(ADMIN_DEMO_SELECTOR_PROGRESS_STEPS[3]);
+    onProgress?.(ADMIN_DEMO_SELECTOR_PROCESS_STEPS[3]);
   }
 
   private async runAdminSelectorStep<T = void>(
-    onProgress: ((state: AdminBootstrapProgressState) => void) | undefined,
-    step: AdminBootstrapProgressState,
+    onProgress: ((state: AdminBootstrapProcessState) => void) | undefined,
+    step: AdminBootstrapProcessState,
     work?: () => T | Promise<T>
   ): Promise<T> {
     onProgress?.(step);

@@ -2,6 +2,11 @@ import { Injectable, inject } from '@angular/core';
 
 import { LocalMemoryDb } from '../../base/db';
 import type { UserDto } from '../../base/interfaces/user.interface';
+import {
+  bootstrapProcessStep,
+  type BootstrapProcessStage,
+  type BootstrapProcessState
+} from '../../base/services/bootstrap.service';
 import { LocalActivityResourcesRepository } from '../repositories/activity-resources.repository';
 import { LocalActivityMembersRepository } from '../repositories/activity-members.repository';
 import { LocalAssetsRepository } from '../repositories/assets.repository';
@@ -17,72 +22,7 @@ import { LocalUsersRepository } from '../repositories/users.repository';
 import { HELP_CENTER_TABLE_NAME } from '../../base/models/help-center.model';
 import { IDEA_POSTS_TABLE_NAME } from '../../base/models/idea-posts.model';
 
-export type LocalBootstrapProgressStage =
-  | 'selector'
-  | 'helpCenter'
-  | 'ideaPosts'
-  | 'chats'
-  | 'events'
-  | 'users'
-  | 'contacts'
-  | 'feedback'
-  | 'ratings'
-  | 'affinityGraph'
-  | 'assets'
-  | 'activityMembers'
-  | 'activityResources'
-  | 'indexedDb'
-  | 'ready'
-  | 'session'
-  | 'sessionChats'
-  | 'sessionIndexedDb'
-  | 'sessionReady';
-
-export interface LocalBootstrapProgressState {
-  percent: number;
-  label: string;
-  stage: LocalBootstrapProgressStage;
-}
-
-export interface LocalBootstrapProgressStep {
-  stage: LocalBootstrapProgressStage;
-  percent: number;
-  label: string;
-}
-
-export const LOCAL_BOOTSTRAP_PROGRESS_STEPS: readonly LocalBootstrapProgressStep[] = [
-  { stage: 'selector', percent: 0, label: 'Preparing demo selector' },
-  { stage: 'helpCenter', percent: 5, label: 'Preparing help content' },
-  { stage: 'ideaPosts', percent: 8, label: 'Preparing article content' },
-  { stage: 'chats', percent: 11, label: 'Loading chats' },
-  { stage: 'events', percent: 22, label: 'Loading events' },
-  { stage: 'users', percent: 34, label: 'Preparing demo users' },
-  { stage: 'contacts', percent: 40, label: 'Preparing contacts' },
-  { stage: 'feedback', percent: 46, label: 'Preparing event feedback' },
-  { stage: 'ratings', percent: 52, label: 'Loading ratings' },
-  { stage: 'assets', percent: 64, label: 'Preparing owned assets' },
-  { stage: 'activityMembers', percent: 82, label: 'Preparing activity members' },
-  { stage: 'activityResources', percent: 94, label: 'Preparing activity resources' },
-  { stage: 'indexedDb', percent: 98, label: 'Syncing demo IndexedDB' },
-  { stage: 'ready', percent: 100, label: 'Demo data ready' }
-];
-
-export const LOCAL_SESSION_PROGRESS_STEPS: readonly LocalBootstrapProgressStep[] = [
-  { stage: 'session', percent: 0, label: 'Preparing demo session' },
-  { stage: 'sessionChats', percent: 38, label: 'Preparing chat threads' },
-  { stage: 'sessionIndexedDb', percent: 84, label: 'Syncing demo IndexedDB' },
-  { stage: 'sessionReady', percent: 100, label: 'Demo session ready' }
-];
-
-type LocalBootstrapProgressListener = (state: LocalBootstrapProgressState) => void;
-
-const LOCAL_PROGRESS_STEP_BY_STAGE = new Map<LocalBootstrapProgressStage, LocalBootstrapProgressStep>(
-  [...LOCAL_BOOTSTRAP_PROGRESS_STEPS, ...LOCAL_SESSION_PROGRESS_STEPS].map(step => [step.stage, step])
-);
-
-function localBootstrapProgressStep(stage: LocalBootstrapProgressStage): LocalBootstrapProgressStep {
-  return LOCAL_PROGRESS_STEP_BY_STAGE.get(stage) ?? LOCAL_BOOTSTRAP_PROGRESS_STEPS[0];
-}
+type BootstrapProcessListener = (state: BootstrapProcessState) => void;
 
 @Injectable({
   providedIn: 'root'
@@ -105,21 +45,21 @@ export class LocalBootstrapService {
   private bootstrapPromise: Promise<void> | null = null;
   private ready = false;
   private readonly readyUserIds = new Set<string>();
-  private lastProgress: LocalBootstrapProgressState = {
+  private lastProcessState: BootstrapProcessState = {
     percent: 0,
     label: 'Preparing demo selector',
     stage: 'selector'
   };
-  private readonly listeners = new Set<LocalBootstrapProgressListener>();
+  private readonly listeners = new Set<BootstrapProcessListener>();
 
-  async ensureReady(onProgress?: LocalBootstrapProgressListener): Promise<void> {
+  async ensureReady(onProgress?: BootstrapProcessListener): Promise<void> {
     if (onProgress) {
       this.listeners.add(onProgress);
-      onProgress(this.lastProgress);
+      onProgress(this.lastProcessState);
     }
 
     if (this.ready) {
-      this.emitProgress(localBootstrapProgressStep('ready'));
+      this.emitProgress(bootstrapProcessStep('ready'));
       if (onProgress) {
         this.listeners.delete(onProgress);
       }
@@ -141,10 +81,10 @@ export class LocalBootstrapService {
     }
   }
 
-  async ensureUserReady(userId: string, onProgress?: LocalBootstrapProgressListener): Promise<void> {
+  async ensureUserReady(userId: string, onProgress?: BootstrapProcessListener): Promise<void> {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
-      onProgress?.(localBootstrapProgressStep('sessionReady'));
+      onProgress?.(bootstrapProcessStep('sessionReady'));
       return;
     }
 
@@ -156,18 +96,18 @@ export class LocalBootstrapService {
       const activityCountersChanged = this.usersRepository.stampSeededActivityCountsForUser(normalizedUserId);
       const impressionsChanged = this.usersRepository.stampSeededImpressionsForUser(normalizedUserId);
       if (filterPreferencesChanged || activityCountersChanged || impressionsChanged) {
-        onProgress?.(localBootstrapProgressStep('sessionIndexedDb'));
+        onProgress?.(bootstrapProcessStep('sessionIndexedDb'));
         await this.usersRepository.flushToIndexedDb();
         await this.waitForUiYield();
       }
-      onProgress?.(localBootstrapProgressStep('sessionReady'));
+      onProgress?.(bootstrapProcessStep('sessionReady'));
       return;
     }
 
-    onProgress?.(localBootstrapProgressStep('session'));
+    onProgress?.(bootstrapProcessStep('session'));
     await this.waitForUiYield();
 
-    onProgress?.(localBootstrapProgressStep('sessionChats'));
+    onProgress?.(bootstrapProcessStep('sessionChats'));
     await this.waitForUiYield();
     const contextualChatsChanged = this.chatsRepository.seedContextualRecordsForUser(
       normalizedUserId,
@@ -176,18 +116,18 @@ export class LocalBootstrapService {
     const activityCountersChanged = this.usersRepository.stampSeededActivityCountsForUser(normalizedUserId);
     const impressionsChanged = this.usersRepository.stampSeededImpressionsForUser(normalizedUserId);
     if (contextualChatsChanged || filterPreferencesChanged || activityCountersChanged || impressionsChanged) {
-      onProgress?.(localBootstrapProgressStep('sessionIndexedDb'));
+      onProgress?.(bootstrapProcessStep('sessionIndexedDb'));
       await this.usersRepository.flushToIndexedDb();
       await this.waitForUiYield();
     }
 
     this.readyUserIds.add(normalizedUserId);
-    onProgress?.(localBootstrapProgressStep('sessionReady'));
+    onProgress?.(bootstrapProcessStep('sessionReady'));
   }
 
   private async runBootstrap(): Promise<void> {
     if (this.ready) {
-      this.emitProgress(localBootstrapProgressStep('ready'));
+      this.emitProgress(bootstrapProcessStep('ready'));
       return;
     }
 
@@ -239,7 +179,7 @@ export class LocalBootstrapService {
     await this.runBootstrapStep('indexedDb', () => this.usersRepository.flushToIndexedDb());
 
     this.ready = true;
-    this.emitProgress(localBootstrapProgressStep('ready'));
+    this.emitProgress(bootstrapProcessStep('ready'));
   }
 
   private async initOptionalHelpCenter(): Promise<void> {
@@ -251,10 +191,10 @@ export class LocalBootstrapService {
   }
 
   private async runBootstrapStep(
-    stage: LocalBootstrapProgressStage,
+    stage: BootstrapProcessStage,
     work?: () => void | Promise<void>
   ): Promise<void> {
-    this.emitProgress(localBootstrapProgressStep(stage));
+    this.emitProgress(bootstrapProcessStep(stage));
     await this.waitForUiYield();
     if (work) {
       await work();
@@ -262,15 +202,15 @@ export class LocalBootstrapService {
     }
   }
 
-  private emitProgress(state: LocalBootstrapProgressState): void {
-    this.lastProgress = {
+  private emitProgress(state: BootstrapProcessState): void {
+    this.lastProcessState = {
       percent: Math.max(0, Math.min(100, Math.round(state.percent))),
       label: state.label.trim() || 'Preparing demo data',
       stage: state.stage
     };
 
     for (const listener of this.listeners) {
-      listener(this.lastProgress);
+      listener(this.lastProcessState);
     }
   }
 

@@ -9,6 +9,10 @@
     <span class="app-progress-indicator__bar-fill" [style.transform]="progressTransform()"></span>
     <span class="app-progress-indicator__bar-loading" [style.transform]="progressTransform()"></span>
   </div>
+} @else if (isPillBarKind) {
+  <div class="app-progress-indicator app-progress-indicator--pill-bar">
+    <span class="app-progress-indicator__pill-bar-fill" [style.transform]="progressTransform()"></span>
+  </div>
 } @else if (isLoadRingKind) {
   <span
     class="app-progress-indicator app-progress-indicator--load-ring"

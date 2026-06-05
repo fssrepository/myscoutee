@@ -33,13 +33,7 @@ export { LocalActivityInviteCandidatesService } from './services/activity-invite
 export { LocalActivityMembersService } from './services/activity-members.service';
 export { LocalActivityResourcesService } from './services/activity-resources.service';
 export { LocalChatsService } from './services/chats.service';
-export {
-  LocalBootstrapService,
-  LOCAL_BOOTSTRAP_PROGRESS_STEPS,
-  LOCAL_SESSION_PROGRESS_STEPS,
-  type LocalBootstrapProgressStage,
-  type LocalBootstrapProgressState
-} from './services/bootstrap.service';
+export { LocalBootstrapService } from './services/bootstrap.service';
 export { LocalEventEditorDataService } from './services/event-editor-data.service';
 export { LocalEventsService } from './services/events.service';
 export { LocalGameService } from './services/game.service';

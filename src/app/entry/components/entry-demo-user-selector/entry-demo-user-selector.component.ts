@@ -4,17 +4,11 @@ import { CommonModule } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatRippleModule } from '@angular/material/core';
 
-import { I18nPipe } from '../../../shared/ui';
+import { I18nPipe, ProgressIndicatorComponent } from '../../../shared/ui';
 import {
-  LOCAL_BOOTSTRAP_PROGRESS_STEPS, LOCAL_SESSION_PROGRESS_STEPS, type LocalBootstrapProgressStage
-} from '../../../shared/core/local';
-import type { UserSelectorListItemDto } from '../../../shared/core';
-
-type UserSelectorProgressSegment = {
-  stage: LocalBootstrapProgressStage;
-  start: number;
-  width: number;
-};
+  type BootstrapProcessStage,
+  type UserSelectorListItemDto
+} from '../../../shared/core';
 
 @Component({
   selector: 'app-entry-demo-user-selector',
@@ -23,6 +17,7 @@ type UserSelectorProgressSegment = {
     CommonModule,
     MatButtonModule,
     MatRippleModule,
+    ProgressIndicatorComponent,
     I18nPipe
   ],
   templateUrl: './entry-demo-user-selector.component.html',
@@ -33,7 +28,7 @@ export class EntryDemoUserSelectorComponent {
   @Input() loading = false;
   @Input() loadingProgress = 0;
   @Input() loadingLabel = 'Preparing demo data';
-  @Input() loadingStage: LocalBootstrapProgressStage = 'selector';
+  @Input() loadingStage: BootstrapProcessStage = 'selector';
   @Input() errorMessage = '';
   @Input() submitting = false;
   @Input() users: UserSelectorListItemDto[] = [];
@@ -114,17 +109,11 @@ export class EntryDemoUserSelectorComponent {
     return this.users.find(user => user.id.trim() === normalizedUserId) ?? null;
   }
 
-  protected loadingSegments(): ReadonlyArray<UserSelectorProgressSegment> {
-    const steps = this.loadingStage.startsWith('session')
-      ? LOCAL_SESSION_PROGRESS_STEPS
-      : LOCAL_BOOTSTRAP_PROGRESS_STEPS;
-    return steps
-      .slice(0, -1)
-      .map((step, index) => ({
-        stage: step.stage,
-        start: step.percent,
-        width: Math.max(0, steps[index + 1].percent - step.percent)
-      }))
-      .filter(segment => segment.width > 0);
+  protected loadingPosition(): number {
+    const progress = Number(this.loadingProgress);
+    if (!Number.isFinite(progress)) {
+      return 0;
+    }
+    return Math.max(0, Math.min(1, progress / 100));
   }
 }

@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, HostBinding, Input, OnChanges, OnDe
 
 import { AppContext } from '../../../core';
 
-export type ProgressIndicatorKind = 'bar' | 'load-ring' | 'action-ring' | 'spinner-ring';
+export type ProgressIndicatorKind = 'bar' | 'pill-bar' | 'load-ring' | 'action-ring' | 'spinner-ring';
 export type ProgressIndicatorPlacement = 'edge' | 'inline';
 export type ProgressIndicatorShape = 'circle' | 'button';
 export type ProgressIndicatorSize = 'sm' | 'md';
@@ -55,6 +55,11 @@ export class ProgressIndicatorComponent implements OnChanges, OnDestroy {
   @HostBinding('class.app-progress-indicator-host--kind-bar')
   protected get hostBarKindClass(): boolean {
     return this.kind === 'bar';
+  }
+
+  @HostBinding('class.app-progress-indicator-host--kind-pill-bar')
+  protected get hostPillBarKindClass(): boolean {
+    return this.kind === 'pill-bar';
   }
 
   @HostBinding('class.app-progress-indicator-host--kind-load-ring')
@@ -128,6 +133,10 @@ export class ProgressIndicatorComponent implements OnChanges, OnDestroy {
 
   protected get isBarKind(): boolean {
     return this.kind === 'bar';
+  }
+
+  protected get isPillBarKind(): boolean {
+    return this.kind === 'pill-bar';
   }
 
   protected get isLoadRingKind(): boolean {
